@@ -1,0 +1,19 @@
+title = "gavel gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "gavel-env-secret-with-value"
+description = "Provider secret assigned a non-empty value"
+regex = '''(?i)\b(?:PAYPAL_CLIENT_SECRET|DEEPGRAM_API_KEY|GROQ_API_KEY)\b\s*[=:]\s*["']?[A-Za-z0-9_.\-/+]{8,}'''
+keywords = ["paypal_client_secret", "deepgram_api_key", "groq_api_key"]
+
+[allowlist]
+description = "Paths that never hold real values"
+paths = [
+  '''(^|/)node_modules/''',
+  '''(^|/)package-lock\.json$''',
+  '''^\.gitleaks\.toml$''',
+  '''^scripts/check-bundle-secrets\.mjs$''',
+]

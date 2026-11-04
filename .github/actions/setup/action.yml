@@ -1,0 +1,16 @@
+name: setup
+description: Install Node from .nvmrc and dependencies with npm ci
+inputs:
+  install:
+    description: Run npm ci
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+      with:
+        node-version-file: .nvmrc
+        cache: npm
+    - if: inputs.install == 'true'
+      shell: bash
+      run: npm ci --ignore-scripts
