@@ -17,6 +17,7 @@ import {
   type HoldRecord,
   type Journal,
   type PaymentAudit,
+  type ReconcileReport,
 } from '@gavel/payments';
 import { DEFAULT_FAKE_WEBHOOK_ID, FakePayPalServer } from '@gavel/payments/fake';
 import {
@@ -121,6 +122,7 @@ async function makeRig(core: { autoReleaseRemainder?: boolean } = {}) {
       audit,
       gateway,
       verifier,
+      killSwitch,
       ...extra,
     });
   return { paypal, clock, ids, stores, audits, holdsApi, killSwitch, service };
@@ -195,7 +197,11 @@ interface Run {
 }
 
 /** A, B and C bid; A leads at 13000. The auctioneer hammers early. */
-async function runToHammer(rig: Rig, service: AuctionService): Promise<Run> {
+async function runToHammer(
+  rig: Rig,
+  service: AuctionService,
+  beforeHammer?: (bidders: Bidder[]) => void,
+): Promise<Run> {
   const auctionId = rig.ids.mint<'AuctionId'>();
   const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
   const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
@@ -208,6 +214,7 @@ async function runToHammer(rig: Rig, service: AuctionService): Promise<Run> {
   await room.submitBid(a.conn, bid(rig, 12000));
   await room.submitBid(c.conn, bid(rig, 12500));
   await room.submitBid(a.conn, bid(rig, 13000));
+  beforeHammer?.([a, b, c]);
   await room.control(boss.conn, { controlId: 'hammer-1', action: 'hammer', args: { closeNow: 1 } });
   return { auctionId, room, a, b, c, screen: screen.transport };
 }
@@ -426,11 +433,27 @@ describe('auction service: webhooks', () => {
     expect((await rig.stores.holds.get(a.holdId))?.status).toBe('HELD');
     expect(await rig.stores.webhookEvents.listUnprocessed()).toEqual([]);
 
+    // The buyer really withdraws the authorization at PayPal; only then does the event count.
+    rig.paypal.core.void(a.authId);
     const good = signed('WH-G1', 'PAYMENT.AUTHORIZATION.VOIDED', { authId: a.authId }, 2);
     expect((await service.handleWebhook(good.rawBody, good.headers)).status).toBe(200);
     expect((await rig.stores.holds.get(a.holdId))?.status).toBe('VOIDED');
     // The same delivery again changes nothing.
     expect((await service.handleWebhook(good.rawBody, good.headers)).status).toBe(200);
+    expect(await rig.stores.webhookEvents.listUnprocessed()).toEqual([]);
+    await service.close();
+  });
+
+  it('ignores a void event while PayPal still holds the authorization (PAYMENTS-R3-11)', async () => {
+    const rig = await makeRig();
+    const service = rig.service();
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    // A delayed or reordered event for an authorization that is live.
+    const late = signed('WH-L1', 'PAYMENT.AUTHORIZATION.VOIDED', { authId: a.authId }, 1);
+    expect((await service.handleWebhook(late.rawBody, late.headers)).status).toBe(200);
+    expect((await rig.stores.holds.get(a.holdId))?.status).toBe('HELD');
     expect(await rig.stores.webhookEvents.listUnprocessed()).toEqual([]);
     await service.close();
   });
@@ -474,7 +497,6 @@ describe('auction service: crash at every boundary', () => {
       'journaled:capture_ok',
       'before:void',
       'after:void',
-      'journaled:void',
       'journaled:all_released',
       'before:engine:CompleteLot',
       'after:engine:CompleteLot',
@@ -484,6 +506,7 @@ describe('auction service: crash at every boundary', () => {
     ]) {
       expect(labels).toContain(expected);
     }
+    expect(labels.some((l) => l.startsWith('journaled:void_'))).toBe(true);
   });
 
   it('ends with exactly one capture whichever boundary the process dies at', async () => {
@@ -620,6 +643,39 @@ describe('auction service: round 3 blocking fixes (RT3)', () => {
     expect(Object.keys(journal.voids)).toContain(run.b.id);
     expect(Object.keys(journal.voids)).toContain(run.c.id);
     expect(Object.keys(journal.voids)).not.toContain(run.b.holdId);
+    await service.close();
+  });
+});
+
+describe('auction service: reconcile after settlement (INT-R3-15)', () => {
+  it('runs reconcile once the journal is SETTLED and hands over the report', async () => {
+    const rig = await makeRig();
+    const reports: ReconcileReport[] = [];
+    const service = rig.service({ onReconcile: (r) => void reports.push(r) });
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    expect(reports.length).toBeGreaterThan(0);
+    const last = reports[reports.length - 1];
+    expect(last?.journalState).toBe('SETTLED');
+    const bad = ['STATUS_CONFLICT', 'MISSING_CAPTURE', 'EXTRA_CAPTURE', 'AMOUNT_MISMATCH'];
+    expect((last?.findings ?? []).filter((f) => bad.includes(f.code))).toEqual([]);
+    await service.close();
+  });
+
+  it('keeps the settlement settled when the report handler throws', async () => {
+    const rig = await makeRig();
+    const errors: unknown[] = [];
+    const service = rig.service({
+      onReconcile: () => {
+        throw new Error('sink down');
+      },
+      onError: (_id, e) => void errors.push(e),
+    });
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    expect(errors.length).toBeGreaterThan(0);
     await service.close();
   });
 });
@@ -1085,6 +1141,177 @@ describe('auction service: unfinished settlements and spare holds (RT-81)', () =
     await expectSettled(rig, run, a, [], 35000);
     expect(rig.paypal.core.getAuthorization(spare?.authId ?? '').status).toBe('VOIDED');
     expect((await rig.stores.holds.get(extra.holdId))?.status).toBe('VOIDED');
+    await service.close();
+  });
+});
+
+describe('auction service: leftover red-team round 3 (PAY-73)', () => {
+  it('resumes after the engine already promoted past a skipped leader (PAYMENTS-R3-02)', async () => {
+    const rig = await makeRig();
+    let voidLeader: () => Promise<void> = async () => undefined;
+    let crash = true;
+    const service = rig.service({
+      retryDelayMs: 3_600_000,
+      resumeIntervalMs: 0,
+      onError: () => undefined,
+      boundary: async (label) => {
+        // The leader's hold is lost between the hammer and the plan.
+        if (label === 'before:settle') await voidLeader();
+        if (label === 'after:prepare' && crash) {
+          crash = false;
+          throw new Error('process died');
+        }
+      },
+    });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const d = await enroll(rig, service, room, auctionId, 'Di', 50000);
+    await room.submitBid(a.conn, bid(rig, 10000));
+    await room.submitBid(d.conn, bid(rig, 11000));
+    voidLeader = async () => {
+      const hold = await rig.stores.holds.get(d.holdId);
+      if (hold !== null) await rig.stores.holds.put({ ...hold, status: 'VOIDED' });
+    };
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    expect(await rig.stores.journals.load(auctionId)).toBeNull();
+    await service.resume();
+    await service.idle();
+    const run: Run = { auctionId, room, a, b: d, c: d, screen: new MemoryTransport() };
+    await expectSettled(rig, run, a, [], 10000);
+    await service.close();
+  });
+
+  it('does not share the saga lease with another instance (PAYMENTS-R3-10)', async () => {
+    const rig = await makeRig();
+    let taken = false;
+    const service = rig.service({
+      retryDelayMs: 5,
+      retryMaxDelayMs: 20,
+      resumeIntervalMs: 0,
+      boundary: async (label) => {
+        // Another instance, named the way every instance used to be, holds the lease.
+        if (label === 'after:create-settlement' && !taken) {
+          taken = true;
+          const id = [...(await rig.stores.store.listAuctions())][0] ?? '';
+          await rig.stores.journals.acquireLease(id, 'service', 600_000, rig.clock.now());
+        }
+      },
+    });
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    await new Promise((r) => setTimeout(r, 60));
+    expect(rig.paypal.core.getAuthorization(run.a.authId).captures).toHaveLength(0);
+    await rig.stores.journals.releaseLease(run.auctionId, 'service');
+    await vi.waitFor(async () => {
+      expect((await journalOf(rig, run.auctionId)).state).toBe('SETTLED');
+    });
+    await service.idle();
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    await service.close();
+  });
+
+  it('exposes reconcile on the service (PAYMENTS-R3-12)', async () => {
+    const rig = await makeRig();
+    const service = rig.service();
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    const report = await service.reconcile(run.auctionId);
+    expect(report.journalState).toBe('SETTLED');
+    await service.close();
+  });
+
+  /** A buyer who finishes the PayPal popup after the hammer: a live hold the plan never saw. */
+  async function lateHold(
+    rig: Rig,
+    auctionId: AuctionId,
+  ): Promise<{ holdId: string; authId: string; bidderId: BidderId }> {
+    const bidderId = rig.ids.mint<'BidderId'>();
+    const created = await rig.holdsApi.createHoldOrder({
+      auctionId,
+      bidderId,
+      ceilingCents: 30000,
+      presetsCents: config.ceilingPresets,
+    });
+    rig.paypal.core.approveOrder(created.orderId);
+    await rig.holdsApi.completeApproval({ holdId: created.holdId, orderId: created.orderId });
+    const held = await rig.stores.holds.get(created.holdId);
+    expect(held?.status).toBe('HELD');
+    return { holdId: created.holdId, authId: held?.authId ?? '', bidderId };
+  }
+
+  it('voids an authorization approved after the settlement ended when registration is refused (PAYMENTS-R3-09)', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0 });
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    expect(await service.acceptsHolds(run.auctionId)).toBe(false);
+    const late = await lateHold(rig, run.auctionId);
+    expect(rig.paypal.core.getAuthorization(late.authId).status).not.toBe('VOIDED');
+    await expect(
+      service.registerBidder({
+        auctionId: run.auctionId,
+        bidderId: late.bidderId,
+        name: 'Late',
+        holdId: late.holdId,
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    expect(rig.paypal.core.getAuthorization(late.authId).status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(late.holdId))?.status).toBe('VOIDED');
+    await service.close();
+  });
+
+  it('voids a late authorization on resume even when nobody registers it (SERVICE-R3-09)', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0 });
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    const late = await lateHold(rig, run.auctionId);
+    await service.resume();
+    await service.idle();
+    expect(rig.paypal.core.getAuthorization(late.authId).status).toBe('VOIDED');
+    await service.close();
+  });
+
+  it('accepts holds until the hammer (SERVICE-R3-09)', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0 });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    await service.createAuction(auctionId, config, 'auctioneer-sub');
+    expect(await service.acceptsHolds(auctionId)).toBe(true);
+    await service.close();
+  });
+});
+
+describe('auction service: void phase of the payments package (PAYMENTS-R3-03)', () => {
+  it('sends a settlement with a void that never works to review instead of pending forever', async () => {
+    const rig = await makeRig();
+    const service = rig.service({
+      retryDelayMs: 3_600_000,
+      resumeIntervalMs: 0,
+      maxVoidResumes: 1,
+      onError: () => undefined,
+    });
+    // Only the losers' voids fail; the winner's capture and remainder go through.
+    const run = await runToHammer(rig, service, (bidders) => {
+      for (const b of bidders.slice(1)) rig.paypal.core.inject('void', 'http_500', b.authId, 1000);
+    });
+    await service.idle();
+    expect((await journalOf(rig, run.auctionId)).state).toBe('VOIDING');
+    for (let i = 0; i < 5; i++) {
+      await service.resume();
+      await service.idle();
+    }
+    expect((await journalOf(rig, run.auctionId)).state).toBe('FAILED_NEEDS_REVIEW');
+    // The winner was charged once, and the room hears that the result is under review.
+    expect(rig.paypal.core.getAuthorization(run.a.authId).captures).toHaveLength(1);
+    const last = (await events(rig, run.auctionId))
+      .filter((e) => e.type === 'settlement_update')
+      .at(-1);
+    expect(last).toMatchObject({ auctionState: 'FAILED_NEEDS_REVIEW' });
     await service.close();
   });
 });
