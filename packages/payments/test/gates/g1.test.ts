@@ -170,6 +170,13 @@ describe('personal fields in evidence (PAYMENTS-R2-12)', () => {
     expect(JSON.stringify(r)).not.toMatch(/example\.test|1 Road|"P1"|"M1"/);
   });
 
+  it('lint accepts a long upper-case issue name but still rejects a mixed-case token', () => {
+    expect(
+      lintTokens({ name: 'UNPROCESSABLE_ENTITY AUTHORIZATION_NOT_HONORED_AFTER_HONOR_PERIOD' }),
+    ).toEqual([]);
+    expect(lintTokens({ note: 'AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEf' })).toEqual(['note']);
+  });
+
   it('lint rejects an email-shaped value that was not redacted', () => {
     expect(lintTokens({ note: 'contact buyer@example.test' })).toEqual(['note']);
   });
