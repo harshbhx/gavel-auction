@@ -85,4 +85,44 @@ describe('evidence (T-PAY-070)', () => {
     expect(problems.map((p) => p.line)).toEqual([1, 2]);
     expect(problems[1]?.errors).toEqual(['invalid json']);
   });
+
+  it('redacts non-allowlisted response headers and nonce fields before the lint', () => {
+    const noisy = 'dc;desc=ewogICJrZXkiOiAidmFsdWUiCn0KZXhhbXBsZXZhbHVlMTIzNDU2Nzg5MDEyMzQ1Ng';
+    const record: EvidenceRecord = {
+      ...base,
+      response: {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'PayPal-Debug-Id': 'abc123',
+          Date: 'Tue, 04 Nov 2026 10:15:00 GMT',
+          'Server-Timing': noisy,
+        },
+        body: { status: 'COMPLETED', nonce: noisy, nested: { nonce: noisy } },
+      },
+    };
+    const out = redact(record);
+    expect(out.response?.headers).toEqual({
+      'Content-Type': 'application/json',
+      'PayPal-Debug-Id': 'abc123',
+      Date: 'Tue, 04 Nov 2026 10:15:00 GMT',
+      'Server-Timing': '[REDACTED]',
+    });
+    expect(out.response?.body).toEqual({
+      status: 'COMPLETED',
+      nonce: '[REDACTED]',
+      nested: { nonce: '[REDACTED]' },
+    });
+    expect(() => toJsonlLine(record)).not.toThrow();
+  });
+
+  it('keeps the lint strict for other response headers and body fields', () => {
+    const token = 'A21AAKexampleexampleexampleexample1234';
+    const out = redact({
+      ...base,
+      response: { status: 200, headers: { 'X-Other': token }, body: { note: token } },
+    });
+    expect(out.response?.headers?.['X-Other']).toBe('[REDACTED]');
+    expect(lintTokens(out)).toEqual(['response.body.note']);
+  });
 });
