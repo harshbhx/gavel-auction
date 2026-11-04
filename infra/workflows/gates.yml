@@ -15,17 +15,13 @@ on:
         required: true
         options:
           - g1
-          - g2
-          - g3
           - idem
           - measure
       resume_run:
         description: Optional run id of an earlier run that paused for buyer approval (exit code 3)
         type: string
         required: false
-  # G3 timed probe (day 3.5, 4 and 5 checks). The script decides which checks are due.
-  schedule:
-    - cron: '17 */6 * * *'
+  # The G3 timed probe (schedule) is added back together with the gate:g3 script.
 
 permissions:
   contents: read
@@ -64,8 +60,6 @@ jobs:
         run: |
           case "$GATE" in
             g1) script=gate:g1 ;;
-            g2) script=gate:g2 ;;
-            g3) script=gate:g3 ;;
             idem) script=gate:idem ;;
             measure) script=measure ;;
             *) echo "unknown gate: $GATE"; exit 2 ;;
@@ -83,64 +77,5 @@ jobs:
         with:
           name: gate-evidence
           path: docs/evidence
-          if-no-files-found: warn
-          retention-days: 90
-
-  g3-probe:
-    if: ${{ github.event_name == 'schedule' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    environment: sandbox-nightly
-    permissions:
-      contents: read
-      actions: read
-    concurrency:
-      group: gates-g3-probe
-      cancel-in-progress: false
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup
-      # The probe spans days, so its run file travels from one scheduled run to the next as an
-      # artifact. The first run finds none and starts a new probe.
-      - name: Restore the probe state
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          mkdir -p "$RUNNER_TEMP/g3-state"
-          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=g3-probe-state&per_page=1" --jq '.artifacts[0].id // empty')
-          if [ -n "$id" ]; then
-            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > "$RUNNER_TEMP/g3-state.zip"
-            unzip -o "$RUNNER_TEMP/g3-state.zip" -d "$RUNNER_TEMP/g3-state"
-          fi
-      - name: Run the G3 probe
-        env:
-          PAYPAL_ENV: sandbox
-          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
-          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
-          PAYPAL_WEBHOOK_ID: ${{ secrets.PAYPAL_WEBHOOK_ID }}
-        run: |
-          state="$RUNNER_TEMP/g3-state"
-          resume=$(find "$state" -name '*.run.json' 2>/dev/null | sort | tail -1)
-          if [ -n "$resume" ]; then
-            npm run gate:g3 -w @gavel/payments -- --resume "$resume" --out "$state"
-          else
-            npm run gate:g3 -w @gavel/payments -- --out "$state"
-          fi
-      - name: Keep the probe state
-        if: ${{ always() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: g3-probe-state
-          path: ${{ runner.temp }}/g3-state
-          if-no-files-found: warn
-          retention-days: 14
-      - name: Upload evidence
-        if: ${{ always() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: g3-evidence
-          path: ${{ runner.temp }}/g3-state
           if-no-files-found: warn
           retention-days: 90

@@ -19,6 +19,10 @@ const SECRET_KEYS = new Set([
   'surname',
   'full_name',
   'payer_id',
+  'account_id',
+  'business_name',
+  'tax_id',
+  'birth_date',
   'merchant_id',
   'address_line_1',
   'address_line_2',
@@ -68,12 +72,27 @@ export const EvidenceRecord = z.object({
 });
 export type EvidenceRecord = z.infer<typeof EvidenceRecord>;
 
-function redactValue(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(redactValue);
+/** Objects whose plain string `name` is a person or cardholder name, not an error name. */
+const PERSONAL_PARENTS: ReadonlySet<string> = new Set([
+  'payment_source',
+  'card',
+  'paypal',
+  'payer',
+  'shipping',
+  'billing_address',
+]);
+
+function redactValue(value: unknown, personal = false): unknown {
+  if (Array.isArray(value)) return value.map((v) => redactValue(v, personal));
   if (value !== null && typeof value === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      out[k] = SECRET_KEYS.has(k.toLowerCase()) ? REDACTED : redactValue(v);
+      const key = k.toLowerCase();
+      if (SECRET_KEYS.has(key) || (personal && key === 'name' && typeof v === 'string')) {
+        out[k] = REDACTED;
+      } else {
+        out[k] = redactValue(v, personal || PERSONAL_PARENTS.has(key));
+      }
     }
     return out;
   }

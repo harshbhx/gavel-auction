@@ -34,17 +34,40 @@ const ord = await fetch(`${base}/v2/checkout/orders`, {
   }),
 });
 const body = await ord.json();
+const scopeOk = /payments|orders|Braintree|checkout/i.test(scope ?? '');
+const statusOk = body.status === 'PAYER_ACTION_REQUIRED' || body.status === 'CREATED';
+// The create response may be minimal, so the intent is read back with a GET.
+const back =
+  ord.status === 201 && body.id
+    ? await fetch(`${base}/v2/checkout/orders/${encodeURIComponent(body.id)}`, {
+        headers: { Authorization: `Bearer ${access_token}` },
+      })
+    : null;
+const readBack = back?.ok ? await back.json() : {};
+const intentOk = readBack.intent === 'AUTHORIZE';
+const approveOk = (body.links ?? []).some((l) => l.rel === 'payer-action' || l.rel === 'approve');
+console.log('create order status', ord.status, 'order status', body.status);
 console.log(
-  'create order status',
-  ord.status,
-  'order status',
-  body.status,
+  'scopes ok',
+  scopeOk,
+  'status ok',
+  statusOk,
   'intent ok',
-  ord.status === 201,
+  intentOk,
+  'approve link',
+  approveOk,
 );
-console.log(
-  'approve link present',
-  (body.links ?? []).some((l) => l.rel === 'payer-action' || l.rel === 'approve'),
-);
-console.log(ord.status === 201 ? 'G0 PASS' : 'G0 FAIL: ' + JSON.stringify(body).slice(0, 300));
-process.exit(ord.status === 201 ? 0 : 1);
+const failed = [
+  ['orders scope missing', scopeOk],
+  ['order status not CREATED or PAYER_ACTION_REQUIRED', statusOk],
+  ['AUTHORIZE intent not echoed', intentOk],
+  ['approve link missing', approveOk],
+]
+  .filter(([, ok]) => !ok)
+  .map(([why]) => why);
+if (ord.status !== 201 || failed.length > 0) {
+  console.log('G0 FAIL: ' + (failed.join('; ') || JSON.stringify(body).slice(0, 300)));
+  process.exit(1);
+}
+console.log('G0 PASS');
+process.exit(0);
