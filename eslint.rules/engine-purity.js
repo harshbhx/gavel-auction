@@ -15,6 +15,10 @@ const IO_MODULES = [
   'cluster',
   'worker_threads',
   'os',
+  'crypto',
+  'perf_hooks',
+  'timers',
+  'timers/promises',
 ];
 
 const patterns = IO_MODULES.flatMap((m) => [m, `node:${m}`]);

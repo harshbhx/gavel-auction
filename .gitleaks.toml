@@ -6,14 +6,20 @@ useDefault = true
 [[rules]]
 id = "gavel-env-secret-with-value"
 description = "Provider secret assigned a non-empty value"
-regex = '''(?i)\b(?:PAYPAL_CLIENT_SECRET|DEEPGRAM_API_KEY|GROQ_API_KEY)\b\s*[=:]\s*["']?[A-Za-z0-9_.\-/+]{8,}'''
+regex = '''(?i)\b(?:PAYPAL_CLIENT_SECRET|DEEPGRAM_API_KEY|GROQ_API_KEY)\b[ \t]*[=:][ \t]*["']?[A-Za-z0-9_.\-/+]{8,}'''
 keywords = ["paypal_client_secret", "deepgram_api_key", "groq_api_key"]
 
 [allowlist]
-description = "Paths that never hold real values"
+description = "Dependency directories and the lockfile; no project file is exempt"
 paths = [
   '''(^|/)node_modules/''',
   '''(^|/)package-lock\.json$''',
-  '''^\.gitleaks\.toml$''',
-  '''^scripts/check-bundle-secrets\.mjs$''',
+]
+# The two fake values that earlier versions of scripts/check-bundle-secrets.mjs used in its
+# self test. Matched by value, so a real credential in any file is still reported.
+regexes = [
+  '''abc123def''',
+  '''abcdefghijklmnop1234''',
+  # Canary values the CI secrets job injects into the web build to prove they never reach dist.
+  '''canary-[a-z-]+-4f9c2a71''',
 ]

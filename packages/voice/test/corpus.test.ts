@@ -37,10 +37,7 @@ function load<T>(file: string, schema: z.ZodType<T>): T[] {
 const cases = load('cases.json', caseSchema);
 const golden = load('parser-golden.json', goldenSchema);
 
-/**
- * Floors for what exists today (the 109 Python cases). SPEC R-VOX-077 requires 150 cases and
- * 12 categories once the extended corpus (VOX-40) lands; raise these two constants there.
- */
+/** Floors for the corpus size and category count (SPEC R-VOX-077). */
 const MIN_CASES = 150;
 const MIN_CATEGORIES = 12;
 const SPEC_MIN_CASES = 150;
@@ -52,15 +49,10 @@ describe('T-VOX-085 corpus shape (R-VOX-077)', () => {
     expect(new Set(cases.map((c) => c.category)).size).toBeGreaterThanOrEqual(MIN_CATEGORIES);
   });
 
-  it.skipIf(cases.length < SPEC_MIN_CASES)(
-    'meets the spec floor of 150 cases and 12 categories',
-    () => {
-      expect(cases.length).toBeGreaterThanOrEqual(SPEC_MIN_CASES);
-      expect(new Set(cases.map((c) => c.category)).size).toBeGreaterThanOrEqual(
-        SPEC_MIN_CATEGORIES,
-      );
-    },
-  );
+  it('meets the spec floor of 150 cases and 12 categories', () => {
+    expect(cases.length).toBeGreaterThanOrEqual(SPEC_MIN_CASES);
+    expect(new Set(cases.map((c) => c.category)).size).toBeGreaterThanOrEqual(SPEC_MIN_CATEGORIES);
+  });
 
   it('has unique ids and a non-empty dev and held-out set', () => {
     const ids = cases.map((c) => c.id);
