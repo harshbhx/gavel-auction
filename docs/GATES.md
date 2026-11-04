@@ -22,7 +22,7 @@ Verdict: remainder released (decision A).
 
 Decision: PASS-WITH-FALLBACK
 Fallback if FAIL: wallet buyers only, card untested (R-PAY-037).
-Evidence: docs/evidence/G1/G1-20261104T231047Z.jsonl (sha256 a3afb1ef73d055d233ba5e31ddc023570a73b25b4a5108dd3d16676044fafbd0)
+Evidence: docs/evidence/G1/G1-20261104T231047Z.jsonl (sha256 8ac39be0454bcab5c7e2764d87d1d09566ac384681fc3e361285f78c70422bb8)
 Links: spec tags flipped: R-PAY-059, R-PAY-051.
 Scope: wallet buyer only. The card buyer was not tested, so the result does not cover card buyers (R-PAY-037); G2 stays NOT RUN.
 Saga: a void refused with PREVIOUSLY_CAPTURED on the winner's remainder is treated as released (packages/payments/src/errorMap.ts, saga/remainder.ts).

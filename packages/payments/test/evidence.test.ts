@@ -142,4 +142,37 @@ describe('evidence (T-PAY-070)', () => {
     expect(r.name).toBe('UNPROCESSABLE_ENTITY');
     expect(r.payment_source.card.last_digits).toBe('1111');
   });
+
+  it('redacts the query values of links in response bodies', () => {
+    const order = {
+      ...base,
+      response: {
+        status: 200,
+        body: {
+          id: 'ORDER0000000000000',
+          links: [
+            {
+              href: 'https://www.sandbox.paypal.com/checkoutnow?token=1KX67448NS3929301',
+              method: 'GET',
+              rel: 'payer-action',
+            },
+            {
+              href: 'https://www.sandbox.paypal.com/webapps/x?ba_token=BA-4W123456789012345&approve=1&flow=wallet#frag',
+              method: 'GET',
+              rel: 'approve',
+            },
+          ],
+        },
+      },
+    };
+    const r = redact(order);
+    const links = (r.response?.body as { links: { href: string }[] }).links;
+    expect(links[0]?.href).toBe('https://www.sandbox.paypal.com/checkoutnow?token=[REDACTED]');
+    expect(links[1]?.href).toBe(
+      'https://www.sandbox.paypal.com/webapps/x?ba_token=[REDACTED]&approve=[REDACTED]&flow=[REDACTED]#frag',
+    );
+    expect(JSON.stringify(r)).not.toContain('1KX67448NS3929301');
+    expect(lintTokens(r)).toEqual([]);
+    expect(() => toJsonlLine(order)).not.toThrow();
+  });
 });
