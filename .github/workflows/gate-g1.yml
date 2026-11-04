@@ -1,0 +1,69 @@
+name: gate-g1
+# Runs sandbox gate G1 by hand: authorize 5.00, capture 3.50 with final_capture, observe the
+# remainder, try an explicit void. A headless browser signs in as the sandbox buyer to approve
+# the order. Actions secrets needed: PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, SANDBOX_BUYER_EMAIL,
+# SANDBOX_BUYER_PASSWORD (optional for a card-funded buyer: SANDBOX_CARD_BUYER_EMAIL and
+# SANDBOX_CARD_BUYER_PASSWORD). The job runs only from main, so code on a pushed branch never
+# reads the secrets. Move the secrets into an environment with a required reviewer when the
+# `sandbox-nightly` environment exists (see docs/GATES.md).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  g1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ github.ref == 'refs/heads/main' }}
+    concurrency:
+      group: gate-g1
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check that the secrets exist
+        env:
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+        run: |
+          missing=""
+          for name in PAYPAL_CLIENT_ID PAYPAL_CLIENT_SECRET SANDBOX_BUYER_EMAIL SANDBOX_BUYER_PASSWORD; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error title=Missing secrets::Add these repository Actions secrets and run again:$missing"
+            exit 2
+          fi
+      - uses: ./.github/actions/setup
+      - name: Install the browser
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.49.1
+          cd "$RUNNER_TEMP/pw" && npx playwright install --with-deps chromium
+      - name: Run G1
+        env:
+          PAYPAL_ENV: sandbox
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          SANDBOX_CARD_BUYER_EMAIL: ${{ secrets.SANDBOX_CARD_BUYER_EMAIL }}
+          SANDBOX_CARD_BUYER_PASSWORD: ${{ secrets.SANDBOX_CARD_BUYER_PASSWORD }}
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
+        run: npm run gate:g1 -w @gavel/payments -- --browser --out "$PWD/docs/evidence"
+      # The evidence, the screenshots (input fields masked) and the GATES.md entry are uploaded
+      # even when the gate failed, so the failure can be read without rerunning.
+      - name: Upload evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g1-evidence
+          path: |
+            docs/evidence
+            docs/GATES.md
+          if-no-files-found: warn
+          retention-days: 30
