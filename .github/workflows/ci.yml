@@ -112,6 +112,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup
       - run: npm run check:ascii
       # The word list is a secret, so the scanner that sees it must not be code from the pull
@@ -128,6 +130,27 @@ jobs:
           BANNED_WORDS: ${{ secrets.BANNED_WORDS }}
           # Pull requests from forks never receive the secret; the same check runs on main.
           BANNED_WORDS_ALLOW_EMPTY: ${{ github.event.pull_request.head.repo.fork == true }}
+      # Commit messages (body and trailers), the pull request title and description and the branch
+      # name are checked too, because they reach the public history. The text is passed through
+      # the environment and never interpolated into the command line.
+      - name: Banned words in commit messages and pull request text
+        if: ${{ github.event_name == 'pull_request' }}
+        run: >-
+          node trusted/scripts/check-banned-words.mjs --root .
+          --text PR_TITLE --text PR_BODY --text BRANCH_NAME
+          --git-log "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+        env:
+          BANNED_WORDS: ${{ secrets.BANNED_WORDS }}
+          BANNED_WORDS_ALLOW_EMPTY: ${{ github.event.pull_request.head.repo.fork == true }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+      # A squash merge builds a new message; it is checked here, after the merge, as well.
+      - name: Banned words in the pushed commit message
+        if: ${{ github.event_name == 'push' }}
+        run: node trusted/scripts/check-banned-words.mjs --root . --git-log "-1 ${{ github.sha }}"
+        env:
+          BANNED_WORDS: ${{ secrets.BANNED_WORDS }}
   docs-format:
     runs-on: ubuntu-latest
     timeout-minutes: 15
