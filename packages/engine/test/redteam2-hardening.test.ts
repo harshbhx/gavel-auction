@@ -6,13 +6,27 @@ import { decide } from '../src/decide/index.js';
 import { InMemoryLedgerStore } from '../src/ledger/memory-store.js';
 import type { LedgerStore } from '../src/ledger/store.js';
 import { AuctionRuntime } from '../src/runtime.js';
-import { A, AU, B, L1, bid, errCode, id, mk, open, run, scene } from './decide-helpers.js';
+import {
+  A,
+  AU,
+  B,
+  L1,
+  bid,
+  captured,
+  errCode,
+  id,
+  mk,
+  open,
+  run,
+  scene,
+} from './decide-helpers.js';
 
 describe('red-team round 2 hardening (engine)', () => {
   it('T-ENG-070 R-ENG-088 ENG-R2-03: a changed body under the same id conflicts for money and revoke commands', () => {
     let s = open(scene(), L1);
     s = bid(s, 200, A, 1000).state;
     s = run(s, mk(300, { type: 'Hammer', lotId: L1, actor: 'host', early: true })).state;
+    s = captured(s, 350);
     const price = s.lots[L1]?.priceCents ?? 0;
     const done = mk(
       400,

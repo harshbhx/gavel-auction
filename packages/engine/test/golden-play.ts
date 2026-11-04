@@ -1,5 +1,6 @@
 import type { Command } from '../src/commands.js';
 import { EngineError } from '../src/errors.js';
+import type { SettlementState } from '../src/events.js';
 import { rank } from '../src/rules/ranking.js';
 import { initialState } from '../src/state.js';
 import type { AuctionState } from '../src/state.js';
@@ -70,6 +71,38 @@ export function play(fx: Fixture): Observed {
       }
     }
     if (r.result.outcome.kind === 'rejected') rejects.push(rejectName(r.result.outcome.reason));
+  };
+  // The capture path a lot takes before CompleteLot (R-ENG-066). The fixtures model the capture
+  // as the complete step itself, so the winner's path is recorded silently before it.
+  const CAPTURE_PATH: readonly (readonly [SettlementState, SettlementState])[] = [
+    ['HELD', 'BIDDING'],
+    ['BIDDING', 'WINNER_SELECTED'],
+    ['WINNER_SELECTED', 'CAPTURING'],
+    ['CAPTURING', 'CAPTURED'],
+  ];
+  const recordCapture = (at: number): void => {
+    const lot = s.lots[L1];
+    if (lot === undefined || lot.winnerId === null || lot.priceCents === null) return;
+    if (lot.settlement !== 'HELD') return;
+    for (const [from, to] of CAPTURE_PATH) {
+      try {
+        const r = run(
+          s,
+          mk(Math.max(at, s.head.at), {
+            type: 'RecordSettlement',
+            lotId: L1,
+            from,
+            to,
+            ref: 'golden',
+          }),
+        );
+        if (r.result.outcome.kind === 'rejected') return;
+        s = r.state;
+      } catch (e) {
+        if (!(e instanceof EngineError)) throw e;
+        return;
+      }
+    }
   };
   const attempt = (at: number, body: Parameters<typeof mk>[1]): void => {
     try {
@@ -147,6 +180,7 @@ export function play(fx: Fixture): Observed {
         attempt(st.at, { type: 'RevokeCeiling', bidderId: who ?? idOf(''), reason: 'other' });
         break;
       case 'complete':
+        recordCapture(st.at);
         // Bidder and amount come from the fixture so a wrong winner or amount can be presented.
         attempt(st.at, {
           type: 'CompleteLot',
