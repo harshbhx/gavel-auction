@@ -31,8 +31,7 @@ export interface ConformanceAssertion {
 }
 
 let seq = 0;
-const rid = (what: string): string =>
-  `conf-${what}-${(seq += 1)}-${Math.random().toString(36).slice(2, 8)}`;
+const rid = (what: string): string => `conf-${process.pid}-${what}-${(seq += 1)}`;
 
 async function refusal(p: Promise<unknown>): Promise<PayPalError> {
   try {
