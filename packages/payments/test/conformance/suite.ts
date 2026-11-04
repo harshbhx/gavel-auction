@@ -180,6 +180,121 @@ export const ASSERTIONS: readonly ConformanceAssertion[] = [
       expect(truth.capturedCents).toBe(0);
     },
   },
+  {
+    id: 'C08',
+    title: 'the same request id on a different authorization is not replayed from the first one',
+    async run(t) {
+      const first = await t.newAuthorization(30000);
+      const second = await t.newAuthorization(30000);
+      const requestId = rid('shared');
+      const a = await t.gateway.capture(first.authId, {
+        amountCents: 10000,
+        finalCapture: false,
+        invoiceId: rid('inv'),
+        requestId,
+      });
+      const err = await refusalOrDone(
+        t.gateway.capture(second.authId, {
+          amountCents: 10000,
+          finalCapture: false,
+          invoiceId: rid('inv'),
+          requestId,
+        }),
+      );
+      if (err !== null) expect(err.outcome).toBe('definite');
+      // Never the first capture handed back for the other authorization.
+      const truth = await t.gateway.getHoldTruth(ref(second));
+      expect([0, 10000]).toContain(truth.capturedCents);
+      const firstTruth = await t.gateway.getHoldTruth(ref(first));
+      expect(firstTruth.capturedCents).toBe(10000);
+      expect(a.amountCents).toBe(10000);
+    },
+  },
+  {
+    id: 'C09',
+    title: 'a refused call retried with the same request id is refused again, never applied',
+    async run(t) {
+      const hold = await t.newAuthorization(30000);
+      await t.gateway.capture(hold.authId, {
+        amountCents: 5000,
+        finalCapture: true,
+        invoiceId: rid('inv'),
+        requestId: rid('cap'),
+      });
+      const retry = {
+        amountCents: 1000,
+        finalCapture: true,
+        invoiceId: rid('inv'),
+        requestId: rid('retry'),
+      };
+      const one = await refusal(t.gateway.capture(hold.authId, retry));
+      const two = await refusal(t.gateway.capture(hold.authId, retry));
+      expect(one.outcome).toBe('definite');
+      expect(two.outcome).toBe('definite');
+      const truth = await t.gateway.getHoldTruth(ref(hold));
+      expect(truth.capturedCents).toBe(5000);
+    },
+  },
+  {
+    id: 'C10',
+    title: 'a capture far above the hold is refused definitely and captures nothing',
+    async run(t) {
+      const hold = await t.newAuthorization(30000);
+      const e = await refusal(
+        t.gateway.capture(hold.authId, {
+          amountCents: 90000,
+          finalCapture: true,
+          invoiceId: rid('inv'),
+          requestId: rid('cap'),
+        }),
+      );
+      expect(e.outcome).toBe('definite');
+      const truth = await t.gateway.getHoldTruth(ref(hold));
+      expect(truth.capturedCents).toBe(0);
+    },
+  },
+  {
+    id: 'C11',
+    title: 'voiding a partially captured authorization keeps the captured amount',
+    async run(t) {
+      const hold = await t.newAuthorization(30000);
+      await t.gateway.capture(hold.authId, {
+        amountCents: 10000,
+        finalCapture: false,
+        invoiceId: rid('inv'),
+        requestId: rid('cap'),
+      });
+      const err = await refusalOrDone(t.gateway.voidAuthorization(hold.authId, rid('void')));
+      if (err !== null) expect(err.outcome).toBe('definite');
+      const truth = await t.gateway.getHoldTruth(ref(hold));
+      expect(truth.capturedCents).toBe(10000);
+    },
+  },
+  {
+    id: 'C12',
+    title: 'the same request id with a different amount does not capture twice',
+    async run(t) {
+      const hold = await t.newAuthorization(30000);
+      const requestId = rid('cap');
+      await t.gateway.capture(hold.authId, {
+        amountCents: 10000,
+        finalCapture: false,
+        invoiceId: rid('inv'),
+        requestId,
+      });
+      const err = await refusalOrDone(
+        t.gateway.capture(hold.authId, {
+          amountCents: 12000,
+          finalCapture: false,
+          invoiceId: rid('inv'),
+          requestId,
+        }),
+      );
+      if (err !== null) expect(err.outcome).toBe('definite');
+      const truth = await t.gateway.getHoldTruth(ref(hold));
+      expect(truth.capturedCents).toBe(10000);
+    },
+  },
 ];
 
 export interface ConformanceOptions {
