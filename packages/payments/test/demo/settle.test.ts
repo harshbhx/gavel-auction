@@ -5,7 +5,7 @@ import {
   parseDemoAuths,
   runCrashResume,
   sandboxDemoEnv,
-} from '../../demo/settle-with-crash.js';
+} from '../../demo/settle-lib.js';
 import { PaymentsConfigError } from '../../src/config.js';
 
 describe('settlement demo against the fake', () => {

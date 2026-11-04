@@ -21,9 +21,9 @@
     "gate:g1": "echo \"gate g1: not implemented yet\" >&2 && exit 1",
     "gate:g2": "echo \"gate g2: not implemented yet\" >&2 && exit 1",
     "gate:g3": "echo \"gate g3: not implemented yet\" >&2 && exit 1",
-    "gate:idem": "vite-node gates/idempotency.ts",
-    "measure": "vite-node gates/measure.ts",
-    "demo:settle": "vite-node demo/settle-with-crash.ts"
+    "gate:idem": "vite-node gates/idempotency.ts --",
+    "measure": "vite-node gates/measure.ts --",
+    "demo:settle": "vite-node demo/settle-with-crash.ts --"
   },
   "dependencies": {
     "zod": "3.23.8"

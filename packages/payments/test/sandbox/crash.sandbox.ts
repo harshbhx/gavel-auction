@@ -1,12 +1,6 @@
 import { MemoryHoldStore } from '../../src/stores/memory.js';
 import { reconcile, type ReconcileReport } from '../../src/reconcile/reconcile.js';
-import {
-  fakeDemoEnv,
-  runCrashResume,
-  sandboxDemoEnv,
-  type DemoEnv,
-  type DemoResult,
-} from '../../demo/settle-with-crash.js';
+import { runCrashResume, type DemoEnv, type DemoResult } from '../../demo/settle-lib.js';
 
 /**
  * Crash between capture and journal save (T-PAY-094; R-PAY-060).
@@ -20,7 +14,7 @@ import {
  * Fake: the unit test test/demo/settle.test.ts runs it in CI.
  * Sandbox (manual, not part of CI): set PAYPAL_ENV=sandbox, PAYPAL_CLIENT_ID,
  * PAYPAL_CLIENT_SECRET and DEMO_AUTHS (approved authorizations, see the demo script), then
- *   npx vite-node test/sandbox/crash.sandbox.ts
+ *   npm run demo:settle -w @gavel/payments -- --sandbox --check
  * UNVERIFIED until it has run in the sandbox: that PayPal answers the repeated capture
  * request with the first capture (idempotency) or that the truth check finds it.
  */
@@ -68,24 +62,4 @@ export async function checkCrashResume(
   const bad = report.findings.filter((f) => MONEY_FINDINGS.has(f.code));
   if (bad.length > 0) fail(`reconcile: ${bad.map((f) => `${f.code} ${f.holdId}`).join(', ')}`);
   return { result, report };
-}
-
-/** Manual entry: `--fake` (default) or `--sandbox`. */
-export async function main(argv: readonly string[]): Promise<number> {
-  const env = argv.includes('--sandbox') ? sandboxDemoEnv(process.env) : fakeDemoEnv();
-  const { report } = await checkCrashResume(env, (l) => console.log(l));
-  console.log(`reconcile: ${report.findings.length} finding(s), none about money`);
-  return 0;
-}
-
-if (process.argv[1]?.endsWith('crash.sandbox.ts') === true) {
-  main(process.argv.slice(2)).then(
-    (code) => {
-      process.exitCode = code;
-    },
-    (e: unknown) => {
-      console.error(e instanceof Error ? e.message : String(e));
-      process.exitCode = 1;
-    },
-  );
 }
