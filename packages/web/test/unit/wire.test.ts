@@ -134,9 +134,7 @@ describe('wire seam and drift (T-WEB-002)', () => {
 type Mutation = readonly [label: string, make: () => unknown];
 
 function without(name: MessageName, key: string): unknown {
-  const copy: Record<string, unknown> = { ...fixtures[name] };
-  delete copy[key];
-  return copy;
+  return Object.fromEntries(Object.entries(fixtures[name]).filter(([k]) => k !== key));
 }
 
 function withField(name: MessageName, key: string, value: unknown): unknown {
