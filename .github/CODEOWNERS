@@ -8,14 +8,13 @@
 /packages/server/        @harshbhx
 /packages/web/           @harshbhx
 /packages/e2e/           @harshbhx
-/infra/                  @harshbhx
 /.github/                @harshbhx
-/docs/specs/SPEC-engine.md    @harshbhx
-/docs/specs/SPEC-payments.md  @harshbhx
-/docs/specs/SPEC-realtime.md  @harshbhx
-/docs/specs/SPEC-voice.md     @harshbhx
-/docs/specs/SPEC-web.md       @harshbhx
-/docs/specs/SPEC-quality.md   @harshbhx
+/docs/specs/engine/          @harshbhx
+/docs/specs/payments/        @harshbhx
+/docs/specs/realtime/        @harshbhx
+/docs/specs/voice/           @harshbhx
+/docs/specs/web/             @harshbhx
+/docs/specs/quality/         @harshbhx
 /docs/DECISIONS.md       @harshbhx
 /docs/GATES.md           @harshbhx
 /package.json /tsconfig.base.json /eslint.config.js   @harshbhx
