@@ -619,9 +619,10 @@ export async function runG1(opts: RunG1Options): Promise<number> {
   }
 }
 
-const isEntry = process.argv
-  .slice(1)
-  .some((a) => pathToFileURL(resolve(a)).href === import.meta.url);
+// vite-node drops the script from argv, so its own binary name marks the entry run.
+const isEntry =
+  /vite-node/.test(process.argv[1] ?? '') ||
+  process.argv.slice(1).some((a) => pathToFileURL(resolve(a)).href === import.meta.url);
 if (isEntry) {
   runG1({ argv: process.argv.slice(2), env: process.env }).then(
     (code) => {
