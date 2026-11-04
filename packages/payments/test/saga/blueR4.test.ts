@@ -3,6 +3,7 @@ import { PayPalError } from '../../src/errors.js';
 import type { ErrorKind } from '../../src/types.js';
 import { runCapturePhase } from '../../src/saga/capture.js';
 import { runSettlement } from '../../src/saga/void.js';
+import { assertFakeInvariants } from '../../src/fake/invariants.js';
 import { CEILINGS, makeRig, seed, withGateway } from './rig.js';
 
 function fault(kind: ErrorKind, status: number): PayPalError {
@@ -36,6 +37,7 @@ describe('round 4 settlement fixes', () => {
     down = false;
     const done = await runSettlement(deps, 'auc1');
     expect(done.status).toBe('settled');
+    assertFakeInvariants(rig.core);
   });
 
   it('R4-S02 a lagging read of the winner does not strand the losers', async () => {
@@ -55,6 +57,7 @@ describe('round 4 settlement fixes', () => {
     });
     const out = await runSettlement(deps, 'auc1');
     expect(out.status).toBe('settled');
+    assertFakeInvariants(rig.core);
   });
 
   it('R4-S02 a real mismatch still voids the losers before it fails', async () => {
@@ -71,6 +74,7 @@ describe('round 4 settlement fixes', () => {
     expect(out).toMatchObject({ status: 'failed', reason: 'mismatch' });
     expect(rig.core.inspect(rig.auth['b2'] ?? '').voidEffects).toBe(1);
     expect(rig.core.inspect(rig.auth['b3'] ?? '').voidEffects).toBe(1);
+    assertFakeInvariants(rig.core);
   });
 
   it('R4-S02 an unreadable winner does not block the loser voids', async () => {
@@ -81,6 +85,7 @@ describe('round 4 settlement fixes', () => {
     expect(out).toMatchObject({ status: 'pending', reason: 'remainder_unavailable' });
     expect(rig.core.inspect(rig.auth['b2'] ?? '').voidEffects).toBe(1);
     expect(rig.core.inspect(rig.auth['b3'] ?? '').voidEffects).toBe(1);
+    assertFakeInvariants(rig.core);
   });
 
   it('R4-S03 not_found on a void is not released while the hold is live', async () => {
@@ -97,6 +102,7 @@ describe('round 4 settlement fixes', () => {
     expect(out).toMatchObject({ status: 'pending', reason: 'void_incomplete' });
     if (out.status !== 'pending') return;
     expect(out.journal.voids['b2']).toBe('VOID_FAILED');
+    assertFakeInvariants(rig.core);
   });
 
   it('R4-S04 an auth fault on capture is pending and the next run captures', async () => {
@@ -114,6 +120,7 @@ describe('round 4 settlement fixes', () => {
     broken = false;
     const second = await runCapturePhase(deps, 'auc1');
     expect(second.status).toBe('captured');
+    assertFakeInvariants(rig.core);
   });
 
   it('R4-S05 the kill switch pauses the unknown clock', async () => {
@@ -150,5 +157,6 @@ describe('round 4 settlement fixes', () => {
       status: 'pending',
       reason: 'kill_switch',
     });
+    assertFakeInvariants(rig.core);
   });
 });
