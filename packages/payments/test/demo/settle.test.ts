@@ -6,7 +6,9 @@ import {
   runCrashResume,
   sandboxDemoEnv,
 } from '../../demo/settle-lib.js';
-import { PaymentsConfigError } from '../../src/config.js';
+import { LATENCY_TARGETS_MS, PaymentsConfigError, SAGA_DEFAULTS } from '../../src/config.js';
+import { DEFAULT_MAX_VOID_RESUMES, DEFAULT_VOID_CONCURRENCY } from '../../src/saga/void.js';
+import { DEFAULT_UNKNOWN_DEADLINE_MS } from '../../src/saga/unknown.js';
 
 describe('settlement demo against the fake', () => {
   it('survives a kill between capture and journal save with one capture', async () => {
@@ -42,5 +44,19 @@ describe('settlement demo against the fake', () => {
     expect(holds['b2']).toEqual({ authId: 'A2', ceilingCents: 25000 });
     expect(() => parseDemoAuths('b1:A1:30000')).toThrow(/no entry/);
     expect(() => parseDemoAuths('b1:A1:x')).toThrow(/DEMO_AUTHS/);
+  });
+});
+
+describe('saga defaults (R-PAY-152)', () => {
+  it('match the constants the saga uses', () => {
+    expect(SAGA_DEFAULTS.voidConcurrency).toBe(DEFAULT_VOID_CONCURRENCY);
+    expect(SAGA_DEFAULTS.maxVoidResumes).toBe(DEFAULT_MAX_VOID_RESUMES);
+    expect(SAGA_DEFAULTS.unknownDeadlineMs).toBe(DEFAULT_UNKNOWN_DEADLINE_MS);
+  });
+
+  it('keeps the settled target above the capture target', () => {
+    expect(LATENCY_TARGETS_MS.hammerToSettledSixHoldsP95).toBeGreaterThan(
+      LATENCY_TARGETS_MS.hammerToCapturedP95,
+    );
   });
 });
