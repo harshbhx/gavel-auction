@@ -1,8 +1,16 @@
 import { DEFAULT_AUCTION_CONFIG } from './config.js';
 import { EngineError } from './errors.js';
 import type { LedgerEntry } from './events.js';
-import { bidderKey, newLot, recordCommand, withBids } from './state.js';
-import type { AuctionState, BidderState, LotState } from './state.js';
+import {
+  bidderKey,
+  initialState,
+  newLot,
+  recordCommand,
+  recordCommandInto,
+  withBids,
+  withNewBid,
+} from './state.js';
+import type { AuctionState, BidderState, LotState, SeenCommand } from './state.js';
 
 function setLot(s: AuctionState, lotId: string, f: (l: LotState) => LotState): AuctionState {
   const lot = s.lots[lotId];
@@ -19,6 +27,8 @@ function setBidder(s: AuctionState, key: string, f: (b: BidderState) => BidderSt
 function apply(s: AuctionState, e: LedgerEntry): AuctionState {
   switch (e.type) {
     case 'AUCTION_CREATED':
+      // A ledger has one genesis; a second AUCTION_CREATED must not overwrite config mid-auction.
+      if (s.auctionId !== null) return s;
       return {
         ...s,
         auctionId: e.auctionId,
@@ -79,8 +89,8 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
     case 'BID_RECORDED': {
       const p = e.payload;
       return setLot(s, p.lotId, (l) =>
-        withBids({ ...l, endsAt: p.endsAtAfter }, [
-          ...l.bids,
+        withNewBid(
+          { ...l, endsAt: p.endsAtAfter },
           {
             bidId: p.bidId,
             bidderId: p.bidderId,
@@ -89,7 +99,7 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
             seq: e.seq,
             status: 'active',
           },
-        ]),
+        ),
       );
     }
     case 'BID_REJECTED':
@@ -176,4 +186,20 @@ export function evolve(s: AuctionState, e: LedgerEntry): AuctionState {
   const next = apply(s, e);
   const commands = recordCommand(next.commands, e);
   return { ...next, commands, head: { seq: e.seq, at: e.at, hash: e.hash } };
+}
+
+/**
+ * Reduces a whole ledger from the initial state. Same result as folding `evolve`
+ * but the seen-command index is built once instead of copied per entry (R-ENG-118).
+ */
+export function evolveAll(entries: readonly LedgerEntry[]): AuctionState {
+  const commands: Record<string, SeenCommand> = {};
+  let s: AuctionState = initialState;
+  for (const e of entries) {
+    s = apply(s, e);
+    recordCommandInto(commands, e);
+  }
+  const last = entries[entries.length - 1];
+  if (last === undefined) return s;
+  return { ...s, commands, head: { seq: last.seq, at: last.at, hash: last.hash } };
 }

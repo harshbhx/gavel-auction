@@ -24,6 +24,8 @@ export type VerifyFailure =
   | 'bad_prev'
   | 'bad_seq'
   | 'bad_time'
+  | 'bad_genesis'
+  | 'bad_auction'
   | 'unsupported_version'
   | 'truncated';
 
@@ -104,9 +106,12 @@ export function verifyChain(
   const hasher = o.hasher ?? pureHasher;
   let prevHash = GENESIS_PREV;
   let prevAt = Number.NEGATIVE_INFINITY;
+  let auctionId: string | undefined;
   for (let i = 0; i < entries.length; i++) {
     const e = entries[i] as LedgerEntry;
     const fail = (reason: VerifyFailure): VerifyResult => ({ ok: false, firstBadIndex: i, reason });
+    // Untrusted input: anything that is not an object cannot be a valid entry.
+    if (typeof e !== 'object' || e === null || Array.isArray(e)) return fail('bad_hash');
     if ((e.v as number) !== 1) return fail('unsupported_version');
     if (e.seq !== i + 1) return fail('bad_seq');
     if (typeof e.at !== 'number' || e.at < prevAt) return fail('bad_time');
@@ -118,6 +123,11 @@ export function verifyChain(
       return fail('bad_hash');
     }
     if (h !== e.hash) return fail('bad_hash');
+    // One auction per ledger, opened by AUCTION_CREATED (R-ENG-073).
+    if (i === 0 && e.type !== 'AUCTION_CREATED') return fail('bad_genesis');
+    if (i > 0 && e.auctionId !== auctionId) return fail('bad_auction');
+    if (i > 0 && e.type === 'AUCTION_CREATED') return fail('bad_genesis');
+    auctionId = e.auctionId;
     prevHash = e.hash;
     prevAt = e.at;
   }

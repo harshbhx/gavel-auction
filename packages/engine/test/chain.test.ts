@@ -13,7 +13,10 @@ const LOT = '01JC0000000000000000000M01' as Ulid;
 function build(n: number): LedgerEntry[] {
   const out: LedgerEntry[] = [];
   for (let i = 0; i < n; i++) {
-    const ev: LedgerEvent = { type: 'LOT_CLOSING', payload: { lotId: LOT, reason: 'deadline' } };
+    const ev: LedgerEvent =
+      i === 0
+        ? { type: 'AUCTION_CREATED', payload: { title: 'Gala', config: {} } }
+        : { type: 'LOT_CLOSING', payload: { lotId: LOT, reason: 'deadline' } };
     const head =
       out.length === 0
         ? genesisHead(A)
@@ -121,6 +124,46 @@ describe('chain', () => {
     });
   });
 
+  it('ENG-RT-09: genesis must be AUCTION_CREATED and the auction id must not change', () => {
+    const l = build(3);
+    const notGenesis = sealBatch(
+      [{ type: 'LOT_CLOSING', payload: { lotId: LOT, reason: 'deadline' } }],
+      genesisHead(A),
+      1000,
+      C1,
+    );
+    expect(verifyChain(notGenesis)).toMatchObject({ ok: false, reason: 'bad_genesis' });
+    const other = '01JC0000000000000000000002' as Ulid;
+    const foreign = sealBatch(
+      [{ type: 'LOT_CLOSING', payload: { lotId: LOT, reason: 'deadline' } }],
+      { auctionId: other, seq: 3, hash: (l[2] as LedgerEntry).hash },
+      2000,
+      C1,
+    );
+    expect(verifyChain([...l, ...foreign])).toMatchObject({
+      ok: false,
+      firstBadIndex: 3,
+      reason: 'bad_auction',
+    });
+    const second = sealBatch(
+      [{ type: 'AUCTION_CREATED', payload: { title: 'Again', config: {} } }],
+      { auctionId: A, seq: 3, hash: (l[2] as LedgerEntry).hash },
+      2000,
+      C1,
+    );
+    expect(verifyChain([...l, ...second])).toMatchObject({ ok: false, reason: 'bad_genesis' });
+  });
+
+  it('ENG-RT-11: malformed entries are reported, not thrown', () => {
+    for (const bad of [null, 'x', 7, [], undefined]) {
+      expect(verifyChain([bad as unknown as LedgerEntry])).toMatchObject({
+        ok: false,
+        firstBadIndex: 0,
+      });
+    }
+    expect(verifyChain([{} as unknown as LedgerEntry])).toMatchObject({ ok: false });
+  });
+
   it('R-ENG-075: headOf', () => {
     expect(headOf([])).toBeNull();
     const l = build(3);
@@ -156,5 +199,23 @@ describe('InMemoryLedgerStore', () => {
     await expect(store.append(A, bad, 3)).rejects.toThrow(RangeError);
     expect((await store.read(A, 1)).length).toBe(3);
     expect(await store.head('01JC0000000000000000000002' as Ulid)).toBeNull();
+    // ENG-RT-09: entries of another auction, or not extending the head, are refused.
+    const next = sealBatch(
+      [{ type: 'LOT_CLOSING', payload: { lotId: LOT, reason: 'deadline' } }],
+      { auctionId: A, seq: 3, hash: (batch[2] as LedgerEntry).hash },
+      2000,
+      C1,
+    );
+    await expect(store.append('01JC0000000000000000000002' as Ulid, next, 0)).rejects.toThrow(
+      RangeError,
+    );
+    const stale = sealBatch(
+      [{ type: 'LOT_CLOSING', payload: { lotId: LOT, reason: 'deadline' } }],
+      { auctionId: A, seq: 3, hash: 'f'.repeat(64) },
+      2000,
+      C1,
+    );
+    await expect(store.append(A, stale, 3)).rejects.toThrow(RangeError);
+    await store.append(A, next, 3);
   });
 });
