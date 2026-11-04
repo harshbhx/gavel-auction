@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GAVEL golden fixture",
+  "type": "object",
+  "required": ["name", "parity", "config", "steps", "expect"],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "parity": { "type": "boolean" },
+    "config": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["english", "proxy", "second_price"] },
+        "reserve": { "type": "integer", "minimum": 1 },
+        "minIncrement": { "type": "integer", "minimum": 1 },
+        "endTs": { "type": "integer" },
+        "softCloseWindow": { "type": "integer", "minimum": 0 },
+        "softCloseExtension": { "type": "integer", "minimum": 0 },
+        "maxExtensions": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["op", "at"],
+        "properties": {
+          "op": { "enum": ["register", "bid", "tick", "hammer", "promote", "revoke", "complete"] },
+          "at": { "type": "integer", "minimum": 0 },
+          "bidder": { "type": "string" },
+          "amount": { "type": "integer" },
+          "ceiling": { "type": "integer" }
+        }
+      }
+    },
+    "expect": {
+      "type": "object",
+      "properties": {
+        "winner": { "type": ["string", "null"] },
+        "price": { "type": "integer" },
+        "ranking": { "type": "array", "items": { "type": "array", "prefixItems": [{ "type": "string" }, { "type": "integer" }] } },
+        "rejects": { "type": "array", "items": { "type": "string" } },
+        "endsAt": { "type": "integer" }
+      }
+    }
+  }
+}
