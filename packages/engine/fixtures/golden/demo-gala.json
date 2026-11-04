@@ -410,8 +410,8 @@
   },
   "galaExpect": {
     "head": {
-      "seq": 0,
-      "hash": "PENDING"
+      "seq": 48,
+      "hash": "38f77790761993389c12e0c608905ae2d527c2b9e5209921e603d1ef9529dd0a"
     },
     "rejects": ["over_ceiling", "unconfirmed"],
     "winners": {
