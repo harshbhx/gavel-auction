@@ -162,10 +162,13 @@ describe('red-team hardening (engine)', () => {
   });
 
   it('ENG-RT-10: canonical JSON escapes non-ASCII like Python ensure_ascii', () => {
-    expect(canonicalize({ k: 'café \u{1F600} \u007f' })).toBe(
+    const eacute = String.fromCharCode(0xe9);
+    const smile = String.fromCodePoint(0x1f600);
+    const del = String.fromCharCode(0x7f);
+    expect(canonicalize({ k: `caf${eacute} ${smile} ${del}` })).toBe(
       '{"k":"caf\\u00e9 \\ud83d\\ude00 \\u007f"}',
     );
-    expect(canonicalize({ é: 1 })).toBe('{"\\u00e9":1}');
+    expect(canonicalize({ [eacute]: 1 })).toBe('{"\\u00e9":1}');
   });
 
   it('ENG-RT-13: envelope checks run for every command type', () => {
