@@ -12,9 +12,6 @@ on:
 permissions:
   contents: read
 
-env:
-  GATE_CURRENCY: INR
-
 jobs:
   g1:
     runs-on: ubuntu-latest

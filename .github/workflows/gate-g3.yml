@@ -24,7 +24,6 @@ jobs:
       group: gate-g3
       cancel-in-progress: false
     env:
-      GATE_CURRENCY: INR
       STATE: ${{ github.workspace }}/g3-state
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
