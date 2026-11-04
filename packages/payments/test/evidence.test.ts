@@ -46,7 +46,7 @@ describe('evidence (T-PAY-070)', () => {
       ...base,
       response: { status: 200, body: { note: 'A21AAKexampleexampleexampleexample1234' } },
     };
-    expect(lintTokens(planted)).toEqual(['response.body.note']);
+    expect(lintTokens(redact(planted))).toEqual(['response.body.note']);
     expect(() => toJsonlLine(planted)).toThrow(/token-shaped/);
     const bad = JSON.stringify(planted);
     const problems = lintJsonl(

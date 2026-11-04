@@ -1,4 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { clearRegisteredSecrets, logPayment, registerSecret, setLogSink } from '../src/log.js';
 
@@ -64,12 +66,12 @@ describe('logPayment', () => {
   });
 
   it('no console.log in src outside log.ts', () => {
-    const dir = new URL('../src/', import.meta.url);
-    for (const f of readdirSync(dir)) {
-      if (f === 'log.ts') continue;
-      expect(readFileSync(new URL(f, dir), 'utf8'), f).not.toMatch(
-        /console\.(log|info|warn|error|debug)/,
-      );
+    const root = fileURLToPath(new URL('../src/', import.meta.url));
+    const files = readdirSync(root, { recursive: true, withFileTypes: true })
+      .filter((d) => d.isFile() && d.name.endsWith('.ts') && d.name !== 'log.ts')
+      .map((d) => join(d.parentPath, d.name));
+    for (const f of files) {
+      expect(readFileSync(f, 'utf8'), f).not.toMatch(/console\.(log|info|warn|error|debug)/);
     }
   });
 });
