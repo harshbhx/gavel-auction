@@ -161,6 +161,6 @@ if (
 ) {
   const server = createMockServer();
   server.listen(PORT, () => {
-    console.log(`Mock WS server on ws://localhost:${PORT}/?scenario=happy`);
+    process.stdout.write(`Mock WS server on ws://localhost:${PORT}/?scenario=happy\n`);
   });
 }

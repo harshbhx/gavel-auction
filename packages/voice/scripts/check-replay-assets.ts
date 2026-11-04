@@ -71,5 +71,5 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
     for (const e of allErrors) console.error(`  - ${e}`);
     process.exit(1);
   }
-  console.log('Replay assets OK');
+  process.stdout.write('Replay assets OK\n');
 }
