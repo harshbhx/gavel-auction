@@ -62,6 +62,7 @@ function encode(v: unknown, out: string[]): void {
     checkString(v);
     out.push(quote(v));
   } else if (Array.isArray(v)) {
+    if (Object.keys(v).length !== v.length) bad('arrays must be dense without extra properties');
     out.push('[');
     for (let i = 0; i < v.length; i++) {
       if (i > 0) out.push(',');
@@ -69,6 +70,8 @@ function encode(v: unknown, out: string[]): void {
     }
     out.push(']');
   } else if (typeof v === 'object') {
+    const proto: unknown = Object.getPrototypeOf(v);
+    if (proto !== Object.prototype && proto !== null) bad('only plain objects are canonical');
     const obj = v as Record<string, unknown>;
     const keys = Object.keys(obj).sort(compareCodePoints);
     out.push('{');

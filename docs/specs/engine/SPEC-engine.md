@@ -132,7 +132,7 @@ Requirement ids are stable; the test and issue tables refer to them.
 - **R-ENG-061** At most one lot is OPEN or CLOSING at a time; `OpenLot` is valid only if the previous lot in order is SETTLING, DONE or the lot is first.
 - **R-ENG-062** Lots open in `lotOrder` as added; `OpenLot{lotId}` for a non-next PENDING lot fails `out_of_order`.
 - **R-ENG-063** With holdScope `event`, a winner's hammer price on lot N reduces their available ceiling on every later lot.
-- **R-ENG-064** `CloseAuction` is valid only when all lots are DONE (settled or unsold) and appends `AUCTION_CLOSED{headHash anchor}`; afterwards every command fails `auction_closed`.
+- **R-ENG-064** `CloseAuction` is valid only when all lots are DONE (settled or unsold) and appends `AUCTION_CLOSED{headHash anchor}`; afterwards every command fails `auction_closed`, except `RecordSettlement` for a DONE lot whose settlement has not reached SETTLED, so a release that is still being recorded is never lost.
 - **R-ENG-065** Bids on one lot never alter the ranking, price or end time of another lot.
 
 ### Settlement entries
