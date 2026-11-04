@@ -69,3 +69,42 @@ export function smallValue(word: string): number | undefined {
 export function isNumberToken(token: string): boolean {
   return smallValue(token) !== undefined || token in SCALE || token === 'point' || isNumeral(token);
 }
+
+/** Words and symbols accepted as US dollars (R-VOX-039). "us dollars" works through "dollars". */
+export const USD_WORDS: ReadonlySet<string> = new Set([
+  '$',
+  'dollar',
+  'dollars',
+  'buck',
+  'bucks',
+  'usd',
+]);
+
+/** Words after "N dollars" that mark the fractional part: "five dollars fifty cents". */
+export const CENT_WORDS: ReadonlySet<string> = new Set(['cent', 'cents']);
+
+/** Currencies that are recognised only to be refused: no conversion is ever done. */
+export const NON_USD_WORDS: ReadonlySet<string> = new Set([
+  'pound',
+  'pounds',
+  'quid',
+  'gbp',
+  'euro',
+  'euros',
+  'eur',
+  'rupee',
+  'rupees',
+  'rs',
+  'inr',
+  'lakh',
+  'lakhs',
+  'lac',
+  'lacs',
+  'peso',
+  'pesos',
+  'yen',
+  '£',
+  '€',
+  '₹',
+  '¥',
+]);
