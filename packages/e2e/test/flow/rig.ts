@@ -84,7 +84,7 @@ export async function makeRig() {
     maxCeilingCents: 100_000,
     newId: () => `HOLD-${(holdCounter += 1)}`,
   });
-  const verifier = new WebhookVerifier({ auth, webhookId: DEFAULT_FAKE_WEBHOOK_ID });
+  const verifier = new WebhookVerifier({ auth, webhookId: DEFAULT_FAKE_WEBHOOK_ID, fake: true });
   const killSwitch = new PersistentKillSwitch({
     store: new MemoryKillStateStore(),
     audit,

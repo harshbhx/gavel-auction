@@ -36,7 +36,9 @@ export type RejectReason =
   | 'missing_header'
   | 'malformed_body'
   | 'verification_failed'
-  | 'unreadable_answer';
+  | 'unreadable_answer'
+  | 'precheck_failed'
+  | 'rate_limited';
 
 export type VerifyOutcome = { ok: true } | { ok: false; reason: RejectReason };
 
@@ -102,13 +104,86 @@ export function buildVerifyBody(
   );
 }
 
+/** Signature algorithms PayPal documents for webhook deliveries. */
+const PAYPAL_AUTH_ALGOS: ReadonlySet<string> = new Set([
+  'SHA256withRSA',
+  'SHA256WITHRSA',
+  'SHA1withRSA',
+  'SHA1WITHRSA',
+]);
+
+/** Hosts that serve PayPal's webhook certificates. */
+function isPayPalCertUrl(raw: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== 'https:' || url.username !== '' || url.password !== '') return false;
+  const host = url.hostname.toLowerCase();
+  return host === 'paypal.com' || host.endsWith('.paypal.com');
+}
+
+export interface WebhookVerifierOptions {
+  auth: VerifyAuth;
+  webhookId: string;
+  /**
+   * Fake mode for tests and the fake PayPal server: skips the algorithm, certificate
+   * host and age checks (fake deliveries use a local certificate URL and a fake clock)
+   * and leaves the call limit off unless `maxCallsPerWindow` is given.
+   */
+  fake?: boolean;
+  /** Clock for the age check and the call limit. Defaults to Date.now. */
+  nowMs?: () => number;
+  /** Largest accepted distance between transmission time and now. Default 10 minutes. */
+  maxSkewMs?: number;
+  /** Most calls to PayPal's verify endpoint per window. Default 120 (live), unlimited (fake). */
+  maxCallsPerWindow?: number;
+  /** Length of the call-limit window. Default 60 seconds. */
+  windowMs?: number;
+}
+
 export class WebhookVerifier {
   private readonly auth: VerifyAuth;
   private readonly webhookId: string;
+  private readonly fake: boolean;
+  private readonly nowMs: () => number;
+  private readonly maxSkewMs: number;
+  private readonly maxCalls: number;
+  private readonly windowMs: number;
+  private windowStartMs = 0;
+  private callsInWindow = 0;
 
-  constructor(opts: { auth: VerifyAuth; webhookId: string }) {
+  constructor(opts: WebhookVerifierOptions) {
     this.auth = opts.auth;
     this.webhookId = opts.webhookId;
+    this.fake = opts.fake === true;
+    this.nowMs = opts.nowMs ?? Date.now;
+    this.maxSkewMs = opts.maxSkewMs ?? 10 * 60_000;
+    this.maxCalls = opts.maxCallsPerWindow ?? (this.fake ? Number.POSITIVE_INFINITY : 120);
+    this.windowMs = opts.windowMs ?? 60_000;
+  }
+
+  /** Checks that need no call to PayPal. */
+  private passesPrechecks(authAlgo: string, certUrl: string, transmissionTime: string): boolean {
+    if (this.fake) return true;
+    if (!PAYPAL_AUTH_ALGOS.has(authAlgo) || !isPayPalCertUrl(certUrl)) return false;
+    const sentMs = Date.parse(transmissionTime);
+    if (Number.isNaN(sentMs)) return false;
+    return Math.abs(this.nowMs() - sentMs) <= this.maxSkewMs;
+  }
+
+  /** Takes one slot of the call limit; false when the window is used up. */
+  private takeCallSlot(): boolean {
+    const now = this.nowMs();
+    if (now - this.windowStartMs >= this.windowMs || now < this.windowStartMs) {
+      this.windowStartMs = now;
+      this.callsInWindow = 0;
+    }
+    if (this.callsInWindow >= this.maxCalls) return false;
+    this.callsInWindow += 1;
+    return true;
   }
 
   /**
@@ -137,6 +212,10 @@ export class WebhookVerifier {
     }
     const rawEvent = readRawEvent(rawBody);
     if (rawEvent === undefined) return { ok: false, reason: 'malformed_body' };
+    if (!this.passesPrechecks(authAlgo, certUrl, transmissionTime)) {
+      return { ok: false, reason: 'precheck_failed' };
+    }
+    if (!this.takeCallSlot()) return { ok: false, reason: 'rate_limited' };
 
     const res = await this.auth.send({
       method: 'POST',
