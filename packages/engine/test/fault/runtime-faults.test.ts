@@ -48,7 +48,7 @@ function rig(plan: FaultPlan = [], opts: { onEntries?: (e: readonly LedgerEntry[
 describe('FaultyStore', () => {
   runStoreContract(() => Promise.resolve(new FaultyStore(new InMemoryLedgerStore())));
 
-  it('records every call with the fault it got', async () => {
+  it('T-ENG-059 R-ENG-076 records every call with the fault it got', async () => {
     const { store, rt } = rig([null, { kind: 'delay', ms: 1 }]);
     await rt.dispatch(create());
     await rt.dispatch(register(A));
@@ -118,7 +118,7 @@ describe('runtime under store faults', () => {
     expect((await inner.read(AU, 1)).length).toBe(before.length + 2);
   });
 
-  it('R-ENG-100 an observer that fails after the append does not undo or hide the command', async () => {
+  it('T-ENG-071 R-ENG-100 an observer that fails after the append does not undo or hide the command', async () => {
     const { inner, rt, observerErrors } = rig([], {
       onEntries: () => {
         throw new Error('observer down');
@@ -158,7 +158,7 @@ describe('runtime under store faults', () => {
     }
   });
 
-  it('R-ENG-100 acknowledgements may overtake each other across auctions; each ledger stays intact', async () => {
+  it('T-ENG-071 R-ENG-100 acknowledgements may overtake each other across auctions; each ledger stays intact', async () => {
     const plan: FaultPlan = (c) => (c.auctionId === AU ? { kind: 'reorder_ack', ms: 40 } : null);
     const inner = new InMemoryLedgerStore();
     const store = new FaultyStore(inner, plan);
@@ -189,7 +189,7 @@ describe('runtime under store faults', () => {
     expect(await inner.read(AU, 1)).toHaveLength(1);
   });
 
-  it('R-ENG-004 a command older than the head, or ahead of the clock, appends nothing and does not poison the runtime', async () => {
+  it('T-ENG-004 R-ENG-004 a command older than the head, or ahead of the clock, appends nothing and does not poison the runtime', async () => {
     const clock = new ManualClock(10_000);
     const inner = new InMemoryLedgerStore();
     const rt = new AuctionRuntime({ store: inner, clock, maxClockSkewMs: 500 });
@@ -234,7 +234,7 @@ describe('runtime under store faults', () => {
     );
   });
 
-  it('R-ENG-101 two writers on one store never lose or double an acknowledged command', async () => {
+  it('T-ENG-072 R-ENG-101 two writers on one store never lose or double an acknowledged command', async () => {
     const inner = new InMemoryLedgerStore();
     const a = new AuctionRuntime({ store: inner });
     const b = new AuctionRuntime({ store: inner });
