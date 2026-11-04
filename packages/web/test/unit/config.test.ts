@@ -47,6 +47,63 @@ describe('validateEnv', () => {
     expect(validateEnv(env).ok).toBe(true);
   });
 
+  it('accepts https and wss hosts', () => {
+    const env = {
+      ...good,
+      VITE_API_BASE: 'https://api.example.org',
+      VITE_WS_BASE: 'wss://api.example.org',
+    };
+    expect(validateEnv(env).ok).toBe(true);
+  });
+
+  it('accepts plain http and ws only for a loopback host', () => {
+    for (const host of ['localhost', '127.0.0.1', '[::1]']) {
+      expect(
+        validateEnv({
+          ...good,
+          VITE_API_BASE: `http://${host}:8787`,
+          VITE_WS_BASE: `ws://${host}:8787`,
+        }).ok,
+      ).toBe(true);
+    }
+    expect(validateEnv({ ...good, VITE_API_BASE: 'http://api.example.org' })).toEqual({
+      ok: false,
+      missing: ['VITE_API_BASE'],
+    });
+    expect(validateEnv({ ...good, VITE_WS_BASE: 'ws://api.example.org' })).toEqual({
+      ok: false,
+      missing: ['VITE_WS_BASE'],
+    });
+  });
+
+  it('rejects values that are not usable endpoints (WEB-RT-13)', () => {
+    for (const bad of [
+      'not a url',
+      'ftp://api.example.org',
+      'javascript:alert(1)',
+      'https://user:pass@api.example.org',
+      'http://localhost.evil.example',
+    ]) {
+      expect(validateEnv({ ...good, VITE_API_BASE: bad }), bad).toEqual({
+        ok: false,
+        missing: ['VITE_API_BASE'],
+      });
+    }
+    expect(validateEnv({ ...good, VITE_WS_BASE: 'https://api.example.org' })).toEqual({
+      ok: false,
+      missing: ['VITE_WS_BASE'],
+    });
+  });
+
+  it('rejects a PayPal client id that is not a single token', () => {
+    for (const bad of ['has space', 'quote"id', 'a/b', '']) {
+      expect(validateEnv({ ...good, VITE_PAYPAL_CLIENT_ID: bad }), bad).toEqual({
+        ok: false,
+        missing: ['VITE_PAYPAL_CLIENT_ID'],
+      });
+    }
+  });
+
   it('rejects an unknown VITE_PAYMENTS value', () => {
     expect(validateEnv({ ...good, VITE_PAYMENTS: 'stripe' })).toEqual({
       ok: false,
