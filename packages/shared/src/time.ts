@@ -19,6 +19,9 @@ export interface Clock {
   setTimer(atMs: number, fn: () => void): CancelTimer;
 }
 
+/** Largest delay setTimeout accepts. */
+export const MAX_TIMEOUT_MS = 2_147_483_647;
+
 /** The only place Date.now is read in this package. */
 export class SystemClock implements Clock {
   now(): EpochMs {
@@ -26,8 +29,24 @@ export class SystemClock implements Clock {
   }
 
   setTimer(atMs: number, fn: () => void): CancelTimer {
-    const handle = setTimeout(fn, Math.max(0, atMs - Date.now()));
-    return () => clearTimeout(handle);
+    let handle: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+    // Node caps a delay at 2^31-1 ms and may fire a millisecond early, so
+    // re-arm until the wall clock has really reached `atMs`.
+    const arm = (): void => {
+      const delay = Math.min(Math.max(0, atMs - Date.now()), MAX_TIMEOUT_MS);
+      handle = setTimeout(() => {
+        handle = undefined;
+        if (cancelled) return;
+        if (Date.now() < atMs) arm();
+        else fn();
+      }, delay);
+    };
+    arm();
+    return () => {
+      cancelled = true;
+      if (handle !== undefined) clearTimeout(handle);
+    };
   }
 }
 
@@ -51,9 +70,14 @@ export class ManualClock implements Clock {
     return EpochMs(this.current);
   }
 
-  /** Jump to a time without firing timers. */
+  /**
+   * Move to a time. Moving forward fires due timers exactly like `advanceTo`;
+   * moving backwards only rewinds, since nothing can fire in the past.
+   */
   set(value: number): void {
-    this.current = EpochMs(value);
+    const target = EpochMs(value);
+    if (target >= this.current) this.advanceTo(target);
+    else this.current = target;
   }
 
   setTimer(atMs: number, fn: () => void): CancelTimer {

@@ -36,7 +36,7 @@ describe('server config (T-RT-089)', () => {
       STORE: 'postgres',
       DATABASE_URL: 'postgres://u:p@h/db',
       CORS_ORIGINS: 'https://a.example, https://b.example',
-      DEMO_MODE: '1',
+      PAYMENTS: 'sandbox',
       MAX_ROOMS: '5',
     });
     expect(r.ok && r.config).toMatchObject({
@@ -44,7 +44,7 @@ describe('server config (T-RT-089)', () => {
       NODE_ENV: 'production',
       STORE: 'postgres',
       CORS_ORIGINS: ['https://a.example', 'https://b.example'],
-      DEMO_MODE: true,
+      DEMO_MODE: false,
       MAX_ROOMS: 5,
     });
   });
@@ -111,5 +111,55 @@ describe('server config (T-RT-089)', () => {
       expect(text).not.toContain(secret);
     }
     expect(dump.PUBLIC_URL).toBe(good.PUBLIC_URL);
+  });
+});
+
+describe('production rules (R-RT-131)', () => {
+  const prod = {
+    ...good,
+    NODE_ENV: 'production',
+    STORE: 'postgres',
+    DATABASE_URL: 'postgres://u:p@h/db',
+    PAYMENTS: 'sandbox',
+  };
+
+  it('accepts a compliant production env', () => {
+    expect(parseConfig(prod).ok).toBe(true);
+  });
+
+  it('rejects weak secrets, memory store, fake payments and demo mode', () => {
+    const r = parseConfig({
+      ...good,
+      NODE_ENV: 'production',
+      TOKEN_SECRET: 'a',
+      ADMIN_KEY: 'a',
+      DEMO_MODE: '1',
+    });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    const text = r.errors.join('\n');
+    for (const key of ['TOKEN_SECRET', 'ADMIN_KEY', 'STORE', 'PAYMENTS', 'DEMO_MODE']) {
+      expect(text).toContain(key);
+    }
+  });
+
+  it('allows the memory store only with ALLOW_MEMORY_STORE=1', () => {
+    const base = { ...prod, STORE: 'memory', DATABASE_URL: undefined };
+    expect(parseConfig(base).ok).toBe(false);
+    expect(parseConfig({ ...base, ALLOW_MEMORY_STORE: '1' }).ok).toBe(true);
+  });
+
+  it('rejects a weak previous secret and postgres without DATABASE_URL', () => {
+    expect(parseConfig({ ...prod, TOKEN_SECRET_PREVIOUS: 'short' }).ok).toBe(false);
+    expect(parseConfig({ ...prod, DATABASE_URL: undefined }).ok).toBe(false);
+  });
+
+  it('keeps short secrets valid outside production', () => {
+    expect(parseConfig({ ...good, TOKEN_SECRET: 'a', ADMIN_KEY: 'a' }).ok).toBe(true);
+  });
+
+  it('defaults the per-bidder connection cap to 3', () => {
+    const r = parseConfig(good);
+    expect(r.ok && r.config.MAX_CONN_PER_BIDDER).toBe(3);
   });
 });

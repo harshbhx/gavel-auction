@@ -92,8 +92,8 @@ export class UlidMinter implements Ids {
   }
 }
 
-const SEQ_PREFIX = '01TEST0000000000000000';
-const SEQ_MAX = 9999;
+const SEQ_PREFIX = '01TEST';
+const SEQ_DIGITS = 20;
 
 /** Deterministic ids for tests: `01TEST...0001`, `01TEST...0002`, and so on. */
 export class SeqIds implements Ids {
@@ -101,7 +101,7 @@ export class SeqIds implements Ids {
 
   mint<B extends string = string>(): Ulid<B> {
     this.n += 1;
-    if (this.n > SEQ_MAX) throw new RangeError('SeqIds exhausted');
-    return parseId<B>(SEQ_PREFIX + String(this.n).padStart(4, '0'));
+    if (!Number.isSafeInteger(this.n)) throw new RangeError('SeqIds exhausted');
+    return parseId<B>(SEQ_PREFIX + String(this.n).padStart(SEQ_DIGITS, '0'));
   }
 }

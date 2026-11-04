@@ -5,8 +5,19 @@ import { isUlid, type AuctionId, type BidderId, type BidId, type MsgId } from '.
 import { AuctionConfigSchema } from '../config-schema';
 import { isCents, type Cents } from '../money';
 import { EpochMs } from '../time';
-import { AuditPayloadSchema } from './audit';
-import { decodeFrame, message, type FrameResult } from './envelope';
+import { scrubMessage } from '../api-error';
+import { AuditPayloadSchema, PublicAuditRowSchema } from './audit';
+import {
+  MAX_BIDDERS_PER_ROOM,
+  MAX_NAME_CHARS,
+  MAX_NOTE_CHARS,
+  MAX_PADDLE,
+  MAX_SERVER_FRAME_BYTES,
+  MAX_TRANSCRIPT_CHARS,
+  decodeFrame,
+  message,
+  type FrameResult,
+} from './envelope';
 
 const ulid = <T extends string>() => z.custom<T>(isUlid, 'invalid id');
 const cents = () => z.custom<Cents>(isCents, 'must be integer cents');
@@ -18,6 +29,21 @@ const epochMs = () =>
 const seq = z.number().int().positive();
 const settlementState = z.enum(SETTLEMENT_STATES);
 const errorCode = z.enum(ERROR_CODES);
+const MAX_ERROR_MESSAGE_CHARS = 300;
+const paddle = z.number().int().min(1).max(MAX_PADDLE);
+
+/** The auctioneer sees full rows; everyone else sees public rows only. */
+const auditRow = z.union([AuditPayloadSchema, PublicAuditRowSchema]);
+
+const hasUnique = (items: readonly object[], key: 'paddle' | 'bidderId'): boolean => {
+  const seen = new Set<unknown>();
+  for (const item of items) {
+    const value = (item as Record<string, unknown>)[key];
+    if (seen.has(value)) return false;
+    seen.add(value);
+  }
+  return true;
+};
 
 /** Fields every server frame after a successful join carries. */
 const ev = { seq, ts: epochMs() };
@@ -31,17 +57,20 @@ export const RoomSnapshotSchema = z
     leaderId: ulid<BidderId>().nullable(),
     endTs: epochMs(),
     minNext: cents(),
-    roster: z.array(
-      z
-        .object({
-          bidderId: ulid<BidderId>(),
-          paddle: z.number().int(),
-          name: z.string(),
-          hold: z.enum(['HELD', 'NONE']),
-        })
-        .strict(),
-    ),
-    recentAudit: z.array(AuditPayloadSchema).max(50),
+    roster: z
+      .array(
+        z
+          .object({
+            bidderId: ulid<BidderId>(),
+            paddle,
+            name: z.string().max(MAX_NAME_CHARS),
+            hold: z.enum(['HELD', 'NONE']),
+          })
+          .strict(),
+      )
+      .max(MAX_BIDDERS_PER_ROOM)
+      .refine((r) => hasUnique(r, 'paddle') && hasUnique(r, 'bidderId'), 'duplicate paddle or id'),
+    recentAudit: z.array(auditRow).max(50),
     settlement: z
       .object({
         rev: z.number().int(),
@@ -57,7 +86,7 @@ export const RoomSnapshotSchema = z
 export const RegisteredSchema = message('registered', {
   ...ev,
   bidderId: ulid<BidderId>(),
-  paddle: z.number().int(),
+  paddle,
   ceiling: cents().optional(),
   role: z.enum(['auctioneer', 'bidder', 'screen']),
 });
@@ -81,7 +110,7 @@ export const PriceSchema = message('price', {
   ...ev,
   price: cents(),
   leaderId: ulid<BidderId>().nullable(),
-  leaderPaddle: z.number().int().nullable(),
+  leaderPaddle: paddle.nullable(),
   endTs: epochMs(),
   minNext: cents(),
   extensions: z.number().int().nonnegative(),
@@ -91,9 +120,9 @@ export const StateSchema = message('state', { ...ev, snapshot: RoomSnapshotSchem
 
 export const ConfirmRequestSchema = message('confirm_request', {
   ...ev,
-  confirmId: z.string().min(1),
+  confirmId: z.string().min(1).max(64),
   amount: cents(),
-  transcript: z.string().optional(),
+  transcript: z.string().max(MAX_TRANSCRIPT_CHARS).optional(),
   expiresAt: epochMs(),
 });
 
@@ -101,7 +130,9 @@ export const HammerSchema = message('hammer', {
   ...ev,
   winnerId: ulid<BidderId>().nullable(),
   price: cents(),
-  ranking: z.array(z.object({ bidderId: ulid<BidderId>(), amount: cents() }).strict()),
+  ranking: z
+    .array(z.object({ bidderId: ulid<BidderId>(), amount: cents() }).strict())
+    .max(MAX_BIDDERS_PER_ROOM),
 });
 
 export const SettlementUpdateSchema = message('settlement_update', {
@@ -110,15 +141,16 @@ export const SettlementUpdateSchema = message('settlement_update', {
   auctionState: settlementState,
   you: settlementState.optional(),
   amountCaptured: cents().optional(),
-  note: z.string().optional(),
+  note: z.string().max(MAX_NOTE_CHARS).optional(),
 });
 
-export const AuditEventSchema = message('audit_event', { ...ev, audit: AuditPayloadSchema });
+export const AuditEventSchema = message('audit_event', { ...ev, audit: auditRow });
 
 /** `seq` is omitted on errors that have no event behind them. */
 export const ErrorSchema = message('error', {
   code: errorCode,
-  message: z.string(),
+  // Scrubbed so a bearer token or stack line in an internal message never reaches a client.
+  message: z.string().transform((m) => scrubMessage(m).slice(0, MAX_ERROR_MESSAGE_CHARS)),
   retryAfterMs: z.number().int().nonnegative().optional(),
   seq: seq.optional(),
 });
@@ -151,5 +183,5 @@ export type ServerMsg = z.infer<(typeof serverSchemas)[keyof typeof serverSchema
 
 /** Decode one server frame. Never throws. */
 export function decodeServerMsg(raw: string | Uint8Array): FrameResult<ServerMsg> {
-  return decodeFrame(raw, serverSchemas);
+  return decodeFrame(raw, serverSchemas, MAX_SERVER_FRAME_BYTES);
 }
