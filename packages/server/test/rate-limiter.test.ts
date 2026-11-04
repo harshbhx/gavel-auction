@@ -57,7 +57,7 @@ describe('rate limiter (T-RT-087)', () => {
     const { clock, rl } = setup();
     for (let i = 0; i < 10; i++) {
       expect(rl.checkJoin('1.2.3.4').ok).toBe(true);
-      clock.advance(1000);
+      clock.advance(100);
     }
     expect(rl.checkJoin('1.2.3.4').ok).toBe(false);
     expect(rl.checkJoin('5.6.7.8').ok).toBe(true);
