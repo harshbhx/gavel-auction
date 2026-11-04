@@ -56,7 +56,13 @@ export type LedgerEvent =
     }
   | {
       type: 'CEILING_RAISED';
-      payload: { bidderId: Ulid; fromCents: number; ceilingCents: number; lotId?: Ulid };
+      payload: {
+        bidderId: Ulid;
+        fromCents: number;
+        ceilingCents: number;
+        holdRef?: string;
+        lotId?: Ulid;
+      };
     }
   | { type: 'CEILING_REVOKED'; payload: { bidderId: Ulid; reason: RevokeReason } }
   | { type: 'LOT_OPENED'; payload: { lotId: Ulid; endsAt: number } }

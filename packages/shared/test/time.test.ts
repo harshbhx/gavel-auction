@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { EpochMs, ManualClock, SystemClock } from '../src/time';
 
 describe('clocks', () => {
@@ -102,5 +102,77 @@ describe('SystemClock timers', () => {
     cancel();
     await new Promise((r) => setTimeout(r, 40));
     expect(fired).toBe(1);
+  });
+});
+
+describe('SystemClock timers with fake time (R-RT-043)', () => {
+  it('re-arms a delay beyond 2^31-1 ms instead of firing early', () => {
+    vi.useFakeTimers();
+    try {
+      const c = new SystemClock();
+      let fired = 0;
+      c.setTimer(Date.now() + 3_000_000_000, () => fired++);
+      vi.advanceTimersByTime(2_999_999_999);
+      expect(fired).toBe(0);
+      vi.advanceTimersByTime(1);
+      expect(fired).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not fire until Date.now has reached the target', () => {
+    vi.useFakeTimers();
+    try {
+      const c = new SystemClock();
+      const target = Date.now() + 1000;
+      let fired = 0;
+      c.setTimer(target, () => fired++);
+      const real = Date.now;
+      // Simulate a timer that fires a millisecond early.
+      vi.spyOn(Date, 'now').mockImplementation(() => real() - 1);
+      vi.advanceTimersByTime(1000);
+      expect(fired).toBe(0);
+      vi.mocked(Date.now).mockRestore();
+      vi.advanceTimersByTime(1);
+      expect(fired).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('cancel stops a re-armed timer', () => {
+    vi.useFakeTimers();
+    try {
+      const c = new SystemClock();
+      let fired = 0;
+      const cancel = c.setTimer(Date.now() + 3_000_000_000, () => fired++);
+      vi.advanceTimersByTime(2_500_000_000);
+      cancel();
+      vi.advanceTimersByTime(1_000_000_000);
+      expect(fired).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('ManualClock.set fires due timers', () => {
+  it('fires a timer when set moves past it', () => {
+    const c = new ManualClock(0);
+    let fired = 0;
+    c.setTimer(10, () => fired++);
+    c.set(11);
+    expect(fired).toBe(1);
+    expect(c.now()).toBe(11);
+  });
+
+  it('rewinding does not fire anything', () => {
+    const c = new ManualClock(50);
+    let fired = 0;
+    c.setTimer(60, () => fired++);
+    c.set(10);
+    expect(fired).toBe(0);
+    expect(c.now()).toBe(10);
   });
 });
