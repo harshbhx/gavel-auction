@@ -19,7 +19,12 @@ import {
   assertRawBodyCapture,
   type VerifiedWebhook,
 } from '../../src/webhooks/handler.js';
-import { WebhookVerifier, readRawEvent } from '../../src/webhooks/verify.js';
+import {
+  WebhookVerifier,
+  readRawEvent,
+  type VerifyAuth,
+  type WebhookVerifierOptions,
+} from '../../src/webhooks/verify.js';
 
 let server: FakePayPalServer;
 let verifier: WebhookVerifier;
@@ -46,7 +51,7 @@ beforeEach(async () => {
     clientId: 'fake-client',
     clientSecret: 'fake-secret-value',
   });
-  verifier = new WebhookVerifier({ auth, webhookId: DEFAULT_FAKE_WEBHOOK_ID });
+  verifier = new WebhookVerifier({ auth, webhookId: DEFAULT_FAKE_WEBHOOK_ID, fake: true });
   emitter = new WebhookEmitter({
     webhookId: DEFAULT_FAKE_WEBHOOK_ID,
     nowMs: () => server.core.clock.nowMs(),
@@ -125,6 +130,7 @@ describe('T-PAY-060 verifyWebhook', () => {
     const other = new WebhookVerifier({
       auth,
       webhookId: 'WH-OTHER',
+      fake: true,
     });
     expect(await other.verifyWebhook(d.rawBody, d.headers)).toMatchObject({ ok: false });
   });
@@ -197,6 +203,104 @@ describe('T-PAY-061 raw body splicing', () => {
 
   it('readRawEvent returns the input text unchanged', () => {
     for (const s of RAW_BODY_SAMPLES) expect(readRawEvent(Buffer.from(s, 'utf8'))).toBe(s);
+  });
+});
+
+describe('verifyWebhook prechecks and call limit', () => {
+  const NOW = Date.parse('2026-11-04T10:00:00.000Z');
+  const good: Record<string, string> = {
+    'PAYPAL-AUTH-ALGO': 'SHA256withRSA',
+    'PAYPAL-CERT-URL': 'https://api.sandbox.paypal.com/v1/notifications/certs/CERT-1',
+    'PAYPAL-TRANSMISSION-ID': 'T1',
+    'PAYPAL-TRANSMISSION-SIG': 'c2ln',
+    'PAYPAL-TRANSMISSION-TIME': '2026-11-04T09:59:00.000Z',
+  };
+  const body = '{"id":"WH-1"}';
+  let calls: number;
+  const counting: VerifyAuth = {
+    send: async () => {
+      calls += 1;
+      return {
+        status: 200,
+        headers: {},
+        text: '{"verification_status":"FAILURE"}',
+        attempts: 1,
+      };
+    },
+  };
+  const live = (extra: Partial<WebhookVerifierOptions> = {}): WebhookVerifier =>
+    new WebhookVerifier({ auth: counting, webhookId: 'WH', nowMs: () => NOW, ...extra });
+
+  beforeEach(() => {
+    calls = 0;
+  });
+
+  it('sends a well-formed delivery to PayPal', async () => {
+    expect(await live().verifyWebhook(body, good)).toEqual({
+      ok: false,
+      reason: 'verification_failed',
+    });
+    expect(calls).toBe(1);
+  });
+
+  it.each([
+    ['an unknown algorithm', { 'PAYPAL-AUTH-ALGO': 'none' }],
+    ['a certificate url on another host', { 'PAYPAL-CERT-URL': 'https://paypal.com.evil.test/c' }],
+    ['a plain http certificate url', { 'PAYPAL-CERT-URL': 'http://api.paypal.com/c' }],
+    ['a stale transmission time', { 'PAYPAL-TRANSMISSION-TIME': '2026-11-04T08:00:00.000Z' }],
+    ['an unreadable transmission time', { 'PAYPAL-TRANSMISSION-TIME': 'yesterday' }],
+  ])('rejects %s without calling PayPal', async (_name, override) => {
+    expect(await live().verifyWebhook(body, { ...good, ...override })).toEqual({
+      ok: false,
+      reason: 'precheck_failed',
+    });
+    expect(calls).toBe(0);
+  });
+
+  it('caps calls to PayPal per window and starts again after it', async () => {
+    let now = NOW;
+    const v = live({ nowMs: () => now, maxCallsPerWindow: 2, windowMs: 1000 });
+    const headers = { ...good, 'PAYPAL-TRANSMISSION-TIME': new Date(NOW).toISOString() };
+    await v.verifyWebhook(body, headers);
+    await v.verifyWebhook(body, headers);
+    expect(await v.verifyWebhook(body, headers)).toEqual({ ok: false, reason: 'rate_limited' });
+    expect(calls).toBe(2);
+    now += 1000;
+    expect(await v.verifyWebhook(body, headers)).toMatchObject({ reason: 'verification_failed' });
+    expect(calls).toBe(3);
+  });
+
+  it('fake mode accepts a local certificate url', async () => {
+    const v = live({ fake: true });
+    const fakeHeaders = { ...good, 'PAYPAL-CERT-URL': FAKE_CERT_URL, 'PAYPAL-AUTH-ALGO': 'X' };
+    expect(await v.verifyWebhook(body, fakeHeaders)).toMatchObject({
+      reason: 'verification_failed',
+    });
+    expect(calls).toBe(1);
+  });
+
+  it('the handler answers 503 without a row when the limit is hit, and samples reject rows', async () => {
+    const audits: PaymentAudit[] = [];
+    let t = 5000;
+    const handler = new WebhookHandler({
+      verifier: live({ maxCallsPerWindow: 0 }),
+      audit: {
+        append: async (e) => {
+          audits.push(e);
+        },
+      },
+      clock: { nowMs: () => t },
+      onVerified: async () => undefined,
+    });
+    expect(await handler.handle(Buffer.from(body), good)).toEqual({ status: 503 });
+    expect(audits).toEqual([]);
+    const bad = { ...good, 'PAYPAL-AUTH-ALGO': 'none' };
+    expect(await handler.handle(Buffer.from(body), bad)).toEqual({ status: 401 });
+    expect(await handler.handle(Buffer.from(body), bad)).toEqual({ status: 401 });
+    expect(audits).toHaveLength(1);
+    t += 1000;
+    await handler.handle(Buffer.from(body), bad);
+    expect(audits).toHaveLength(2);
   });
 });
 
