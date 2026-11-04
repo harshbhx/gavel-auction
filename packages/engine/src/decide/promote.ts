@@ -2,7 +2,7 @@ import type { Command } from '../commands.js';
 import { EngineError } from '../errors.js';
 import type { LedgerEvent } from '../events.js';
 import { candidates } from '../rules/candidates.js';
-import { bidderFor, available } from '../rules/exposure.js';
+import { bidderFor, available, scopeKey, standingExposure } from '../rules/exposure.js';
 import type { AuctionState } from '../state.js';
 import { assertNotInPast } from './setup.js';
 import type { DecideResult } from './setup.js';
@@ -47,7 +47,13 @@ export function decidePromote(state: AuctionState, cmd: PromoteCommand): DecideR
     depth += 1;
     if (depth > max) break;
     const bidder = bidderFor(state, cand.bidderId, cmd.lotId);
-    const headroom = available(state, cand.bidderId, cmd.lotId);
+    // A candidate who leads another open lot keeps that exposure reserved, or the
+    // other lot could not be hammered later (ENG-R2-06).
+    const headroom = Math.max(
+      0,
+      available(state, cand.bidderId, cmd.lotId) -
+        standingExposure(state, cand.bidderId, scopeKey(state, cmd.lotId)),
+    );
     if (bidder === undefined || bidder.revoked || cand.priceCents > headroom) {
       events.push({
         type: 'CANDIDATE_SKIPPED',

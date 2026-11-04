@@ -211,3 +211,22 @@ Consequences:
 - A crash after a capture and before CompleteLot is repaired by the bridge, which reads the engine first and sends only what is missing.
 
 Evidence: SPEC-quality R-QA-027, SPEC-realtime R-RT-093, SPEC-engine R-ENG-076 and R-ENG-104, packages/server/src/store.
+
+## D-0013: Terminal settlement state of a DONE lot is derived, not commanded
+
+Date: 2026-11-04
+Status: accepted
+Owner: engine
+Context: R-ENG-068 says a DONE lot accepts no settlement command, but CompleteLot makes the lot DONE, so a captured lot could never record SETTLED and a lot left unsold by a promotion could never record VOIDING. The ledger then ended with a settlement state that disagreed with payments (ENG-R2-11).
+Decision: RecordSettlement stays limited to SETTLING lots, so R-ENG-068 holds without exception. The reducer sets the terminal state instead: LOT_SETTLED moves lot.settlement to SETTLED, and LOT_UNSOLD moves it to VOIDING when the lot was SETTLING (a hammered lot that lost its last candidate and released its hold). A lot unsold without a hammer (no bids) keeps HELD, since nothing was held. The bridge keeps sending RecordSettlement for the steps in between and CompleteLot last.
+Alternatives:
+
+- Allow RecordSettlement on DONE lots: rejected, it contradicts R-ENG-068 and opens the ledger to late writes after the lot closed.
+- A new terminal command: rejected, the two terminal states follow from events that already exist.
+
+Consequences:
+
+- lot.settlement is final the moment the lot is DONE, and replay reproduces it from the same entries.
+- No new event type and no change to ledger hashes.
+
+Evidence: SPEC-engine R-ENG-067, R-ENG-068, packages/engine/src/evolve.ts, packages/engine/test/settlement.test.ts.

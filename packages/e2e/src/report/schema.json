@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GAVEL test report summary",
+  "type": "object",
+  "required": ["sha", "builtAt", "layers", "coverage", "scenarioMatrix", "invariants", "mutation", "warnings"],
+  "additionalProperties": false,
+  "properties": {
+    "sha": { "type": "string", "minLength": 1 },
+    "builtAt": { "type": "string", "minLength": 1 },
+    "layers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "unit": { "$ref": "#/definitions/counted" },
+        "property": { "$ref": "#/definitions/counted" },
+        "contract": { "$ref": "#/definitions/counted" },
+        "scenario": { "$ref": "#/definitions/counted" },
+        "e2e": { "$ref": "#/definitions/counted" },
+        "sandbox": { "$ref": "#/definitions/counted" },
+        "load": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "p95AckMs": { "type": "number", "minimum": 0 },
+            "lostBids": { "type": "number", "minimum": 0 },
+            "scripts": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["lines", "branches"],
+        "properties": {
+          "lines": { "type": "number", "minimum": 0 },
+          "branches": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "scenarioMatrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string" },
+          "inproc": { "type": "string", "enum": ["pass", "fail", "skip"] },
+          "chromium": { "type": "string", "enum": ["pass", "fail", "skip"] },
+          "firefox": { "type": "string", "enum": ["pass", "fail", "skip"] },
+          "webkit": { "type": "string", "enum": ["pass", "fail", "skip"] }
+        }
+      }
+    },
+    "invariants": {
+      "type": "object",
+      "additionalProperties": { "type": "number", "minimum": 0 }
+    },
+    "mutation": {
+      "type": "object",
+      "additionalProperties": { "type": "number", "minimum": 0 }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "definitions": {
+    "counted": {
+      "type": "object",
+      "required": ["total", "passed"],
+      "properties": {
+        "total": { "type": "number", "minimum": 0 },
+        "passed": { "type": "number", "minimum": 0 },
+        "cases": { "type": "number", "minimum": 0 },
+        "flaky": { "type": "number", "minimum": 0 },
+        "lastRun": { "type": "string" }
+      }
+    }
+  }
+}

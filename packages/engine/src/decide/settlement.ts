@@ -10,7 +10,11 @@ import type { DecideResult } from './setup.js';
 export type CompleteLotCommand = Extract<Command, { type: 'CompleteLot' }>;
 export type RecordSettlementCommand = Extract<Command, { type: 'RecordSettlement' }>;
 
-/** A lot that was hammered and not yet settled; DONE lots accept nothing (R-ENG-068). */
+/**
+ * A lot that was hammered and not yet settled; DONE lots accept nothing (R-ENG-068).
+ * The terminal settlement state is not a command: evolve sets it from LOT_SETTLED
+ * (SETTLED) and from a LOT_UNSOLD that follows a hammer (VOIDING).
+ */
 function settlingLot(state: AuctionState, lotId: string): LotState {
   if (state.auctionId === null) throw new EngineError('bad_command', 'auction not created');
   if (state.closed) throw new EngineError('auction_closed');
