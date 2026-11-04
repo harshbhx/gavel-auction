@@ -1,0 +1,231 @@
+import { classifyError } from './errorMap.js';
+import { PayPalError } from './errors.js';
+import { assertNotEngaged } from './killswitch.js';
+import { ORDERS_PATH, OrdersClient, type CreateOrderInput, type OrderView } from './orders.js';
+import type { TokenManager } from './oauth.js';
+import { PaymentsApiClient } from './paymentsApi.js';
+import { decimalToCents } from './money.js';
+import type { Clock, KillSwitch, PaymentsGateway } from './ports.js';
+import type { CaptureRef, HoldTruth } from './types.js';
+
+/**
+ * PayPalGateway: the PaymentsGateway over the real HTTP clients (SPEC 3.2,
+ * R-PAY-019, R-PAY-021). Against the fake HTTP server it runs the same client
+ * code that talks to the sandbox; FakeGateway is the in-process twin and the
+ * conformance test holds both to the same results.
+ *
+ * Latency and PayPal-Debug-Id of every attempt are logged and counted by the
+ * transport the token manager was built on (log line per attempt, the
+ * paypal_calls_total counter and the paypal_latency_ms histogram); failures carry
+ * the debug id on the thrown PayPalError.
+ *
+ * Money-moving methods (createOrder, authorizeOrder, capture, reauthorize) check
+ * the kill switch first; voids and reads never do (R-PAY-006, R-PAY-063).
+ */
+
+export type GatewayAuth = Pick<TokenManager, 'send'>;
+
+export interface PayPalGatewayOptions {
+  auth: GatewayAuth;
+  /** True only in fake mode; passed to the approve link check. */
+  fake: boolean;
+  clock?: Clock;
+  killSwitch?: KillSwitch;
+}
+
+type TruthStatus = HoldTruth['status'];
+
+/** PayPal authorization statuses the truth check understands. UNVERIFIED (G1): exact names. */
+const AUTH_STATUS: Readonly<Record<string, TruthStatus>> = {
+  CREATED: 'CREATED',
+  PENDING: 'PENDING',
+  PARTIALLY_CAPTURED: 'PARTIALLY_CAPTURED',
+  CAPTURED: 'CAPTURED',
+  VOIDED: 'VOIDED',
+  EXPIRED: 'EXPIRED',
+  DENIED: 'DENIED',
+};
+
+/** Capture statuses that count as money taken or on its way. */
+const COUNTED_CAPTURE: ReadonlySet<string> = new Set(['COMPLETED', 'PENDING']);
+
+type Json = Record<string, unknown>;
+
+function asObject(v: unknown): Json | undefined {
+  return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Json) : undefined;
+}
+
+/** Captures listed on the order, or null when the order does not carry the field. */
+export function capturesOf(order: unknown): CaptureRef[] | null {
+  const units = asObject(order)?.['purchase_units'];
+  const unit = Array.isArray(units) ? asObject(units[0]) : undefined;
+  const payments = asObject(unit?.['payments']);
+  if (unit === undefined) return null;
+  const list = payments?.['captures'];
+  if (list === undefined) return [];
+  if (!Array.isArray(list)) return null;
+  const out: CaptureRef[] = [];
+  for (const raw of list) {
+    const c = asObject(raw);
+    const id = c?.['id'];
+    const amount = asObject(c?.['amount']);
+    const value = amount?.['value'];
+    if (c === undefined || typeof id !== 'string' || typeof value !== 'string') return null;
+    if (typeof c['status'] === 'string' && !COUNTED_CAPTURE.has(c['status'])) continue;
+    let cents: number;
+    try {
+      cents = decimalToCents(value);
+    } catch {
+      return null;
+    }
+    const ref: CaptureRef = {
+      captureId: id,
+      amountCents: cents,
+      final: c['final_capture'] === true,
+    };
+    if (typeof c['invoice_id'] === 'string') ref.invoiceId = c['invoice_id'];
+    out.push(ref);
+  }
+  return out;
+}
+
+function unreadable(status: string): PayPalError {
+  return new PayPalError({
+    kind: 'server_error',
+    status: 200,
+    name: 'UNKNOWN_AUTHORIZATION_STATUS',
+    message: `authorization status ${status} is not known`,
+    outcome: 'unknown',
+  });
+}
+
+export class PayPalGateway implements PaymentsGateway {
+  private readonly auth: GatewayAuth;
+  private readonly orders: OrdersClient;
+  private readonly payments: PaymentsApiClient;
+  private readonly clock: Clock;
+  private readonly killSwitch: KillSwitch | undefined;
+
+  constructor(opts: PayPalGatewayOptions) {
+    this.auth = opts.auth;
+    this.orders = new OrdersClient({ auth: opts.auth, fake: opts.fake });
+    this.payments = new PaymentsApiClient({ auth: opts.auth });
+    this.clock = opts.clock ?? { nowMs: () => Date.now() };
+    this.killSwitch = opts.killSwitch;
+  }
+
+  private async gate(): Promise<void> {
+    if (this.killSwitch !== undefined) await assertNotEngaged(this.killSwitch);
+  }
+
+  async createOrder(i: CreateOrderInput): Promise<{ orderId: string; approveUrl?: string }> {
+    await this.gate();
+    return this.orders.createOrder(i);
+  }
+
+  getOrder(orderId: string): Promise<OrderView> {
+    return this.orders.getOrder(orderId);
+  }
+
+  async authorizeOrder(
+    orderId: string,
+    requestId: string,
+  ): Promise<{ authId: string; amountCents: number }> {
+    await this.gate();
+    return this.orders.authorizeOrder(orderId, requestId);
+  }
+
+  /**
+   * GET the authorization (status, amount) and, when the order id is known, GET
+   * the order for its captures. A missing authorization is `NOT_FOUND`. Without
+   * an order id, or when the order does not list captures, `captures` is null
+   * (not observable, UNVERIFIED G1) and `capturedCents` is 0.
+   */
+  async getHoldTruth(h: { holdId: string; authId: string; orderId?: string }): Promise<HoldTruth> {
+    const observedAtMs = this.clock.nowMs();
+    let auth;
+    try {
+      auth = await this.payments.getAuthorization(h.authId);
+    } catch (e) {
+      if (e instanceof PayPalError && e.kind === 'not_found') {
+        return {
+          holdId: h.holdId,
+          authId: h.authId,
+          status: 'NOT_FOUND',
+          amountCents: 0,
+          capturedCents: 0,
+          captures: [],
+          observedAtMs,
+        };
+      }
+      throw e;
+    }
+    let status = AUTH_STATUS[auth.status];
+    if (status === undefined) throw unreadable(auth.status);
+
+    let captures: CaptureRef[] | null = null;
+    if (h.orderId !== undefined) captures = await this.readCaptures(h.orderId);
+    const capturedCents = captures === null ? 0 : captures.reduce((s, c) => s + c.amountCents, 0);
+    if (
+      captures !== null &&
+      captures.length > 0 &&
+      (status === 'CREATED' || status === 'PENDING')
+    ) {
+      // The order shows money taken before the authorization status caught up.
+      status = captures.some((c) => c.final) ? 'CAPTURED' : 'PARTIALLY_CAPTURED';
+    }
+    return {
+      holdId: h.holdId,
+      authId: h.authId,
+      status,
+      amountCents: auth.amountCents,
+      capturedCents,
+      captures,
+      observedAtMs,
+    };
+  }
+
+  private async readCaptures(orderId: string): Promise<CaptureRef[] | null> {
+    try {
+      const res = await this.auth.send({
+        method: 'GET',
+        path: `${ORDERS_PATH}/${encodeURIComponent(orderId)}`,
+        op: 'get',
+        headers: { Accept: 'application/json' },
+      });
+      if (res.status < 200 || res.status >= 300) {
+        throw classifyError(res.status, res.headers, res.text);
+      }
+      let json: unknown;
+      try {
+        json = JSON.parse(res.text);
+      } catch {
+        return null;
+      }
+      return capturesOf(json);
+    } catch (e) {
+      if (e instanceof PayPalError && e.kind === 'not_found') return null;
+      throw e;
+    }
+  }
+
+  async capture(
+    authId: string,
+    i: { amountCents: number; finalCapture: boolean; invoiceId: string; requestId: string },
+  ): Promise<{ captureId: string; amountCents: number }> {
+    await this.gate();
+    return this.payments.capture(authId, i);
+  }
+
+  voidAuthorization(authId: string, requestId: string): Promise<void> {
+    return this.payments.voidAuthorization(authId, requestId);
+  }
+
+  async reauthorize(
+    authId: string,
+    i: { amountCents: number; requestId: string },
+  ): Promise<{ amountCents: number }> {
+    await this.gate();
+    return this.payments.reauthorize(authId, i);
+  }
+}
