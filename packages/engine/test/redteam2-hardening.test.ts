@@ -149,6 +149,8 @@ describe('red-team round 2 hardening (engine)', () => {
   });
 
   it('T-ENG-070 R-ENG-070 ENG-R2-14: canonical keys sort by code point like Python', () => {
-    expect(canonicalize({ '\u{10000}': 2, '￿': 1 })).toBe('{"\\uffff":1,"\\ud800\\udc00":2}');
+    const astral = String.fromCodePoint(0x10000);
+    const bmp = String.fromCodePoint(0xffff);
+    expect(canonicalize({ [astral]: 2, [bmp]: 1 })).toBe('{"\\uffff":1,"\\ud800\\udc00":2}');
   });
 });
