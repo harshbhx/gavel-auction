@@ -5,7 +5,11 @@ import { msgId } from '../builders';
 import { baseConfig, Script, bidders, openSnapshot } from './_kit';
 
 const roster = bidders([12, 'Priya'], [7, 'Sam']);
-const config = { ...baseConfig, reserve: Cents(15_000) };
+const config = {
+  ...baseConfig,
+  reserve: Cents(15_000),
+  ceilingPresets: [Cents(15_000), Cents(50_000)],
+};
 
 function reject(script: Script, at: number, n: number, reason: ErrorCode): Script {
   return script.emit(at, (e) => ({

@@ -26,7 +26,7 @@ export const BASE_TIME = 1_700_000_000_000;
 export const baseConfig: AuctionConfig = {
   mode: 'english',
   currency: 'USD',
-  reserve: Cents(0),
+  reserve: Cents(100),
   minIncrement: Cents(5_000),
   endTs: EpochMs(BASE_TIME + 60_000),
   softCloseWindowMs: 10_000,
