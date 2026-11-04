@@ -122,9 +122,20 @@ describe('TypeScript parser against the golden (T-VOX-036, R-VOX-036)', () => {
         ...(c.speaker === null ? {} : { speakerBidderId: c.speaker }),
         ...(c.currentPriceCents === null ? {} : { currentPriceCents: c.currentPriceCents }),
       });
-      const same =
+      const exact =
         r.status === g.status &&
         (g.status !== 'bid' || (r.bidder?.value === g.bidder && r.amountCents === g.amountCents));
+      // R-VOX-041: a spoken paddle that differs from the speaker is a confirm with both bidders,
+      // where the Python prototype lets the paddle win.
+      const speakerConflict =
+        g.status === 'bid' &&
+        r.reason === 'multiple_bidders' &&
+        c.speaker !== null &&
+        r.candidates.some((x) => x.bidder?.value === g.bidder) &&
+        r.candidates.some((x) => x.bidder?.value === c.speaker);
+      // R-VOX-044: a retraction without a new amount is none (retract), the prototype says confirm.
+      const retraction = g.status === 'confirm' && r.status === 'none' && r.reason === 'retract';
+      const same = exact || speakerConflict || retraction;
       if (!same) {
         mismatches.push(
           `${c.id} "${c.text}": ts ${r.status}/${r.bidder?.value ?? '-'}/${String(r.amountCents)} golden ${g.status}/${g.bidder ?? '-'}/${String(g.amountCents)}`,

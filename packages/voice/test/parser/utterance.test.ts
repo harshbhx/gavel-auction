@@ -69,7 +69,7 @@ describe('red-team: paddle followed by a scale word (R-VOX-040, 049)', () => {
   });
 
   it('keeps "paddle five three hundred" a plain bid', () => {
-    const r = parseBid('paddle five three hundred', ctx);
+    const r = parseBid('paddle five three hundred', { speakerBidderId: '5' });
     expect(r.status).toBe('bid');
     expect(r.amountCents).toBe(30000);
   });
