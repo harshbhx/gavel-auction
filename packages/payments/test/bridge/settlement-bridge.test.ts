@@ -18,7 +18,7 @@ import { FakeGateway } from '../../src/fake/gateway.js';
 import { runCapturePhase } from '../../src/saga/capture.js';
 import { createSettlement, newJournal } from '../../src/saga/create.js';
 import { step } from '../../src/saga/machine.js';
-import type { PlanOutcome } from '../../src/saga/plan.js';
+import { planFromOutcome, type PlanOutcome } from '../../src/saga/plan.js';
 import { MemoryJournalStore } from '../../src/stores/memory.js';
 import type { HoldRecord, HoldRef, PaymentAudit } from '../../src/types.js';
 
@@ -197,8 +197,8 @@ describe('SettlementBridge', () => {
 
     it('refuses to book a capture to a bidder who is not the engine winner', async () => {
       const outcome = await outcomeOf(rig);
-      const { plan } = await rig.bridge.prepare(AU, outcome, rig.holds, 10000);
-      // Pretend the saga charged C while the engine's winner is B.
+      // The engine was never told to skip A, but the saga charges B.
+      const plan = planFromOutcome(outcome, rig.holds, 10000);
       let j = newJournal(plan);
       j = step(j, { type: 'start_auction', tsMs: 1 }).journal;
       j = step(j, { type: 'hammer', tsMs: 2 }).journal;
@@ -206,7 +206,7 @@ describe('SettlementBridge', () => {
       j = step(j, {
         type: 'capture_ok',
         tsMs: 4,
-        winner: { bidderId: C, holdId: 'hold-C', captureId: 'CAP', amountCents: 20000 },
+        winner: { bidderId: B, holdId: 'hold-B', captureId: 'CAP', amountCents: 21000 },
       }).journal;
       j = step(j, { type: 'begin_void', tsMs: 5 }).journal;
       j = step(j, { type: 'all_released', tsMs: 6 }).journal;
