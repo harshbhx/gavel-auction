@@ -25,6 +25,31 @@ export const DEFAULT_FAKE_BASE_URL = 'http://127.0.0.1';
 export const DEFAULT_MAX_CEILING_CENTS = 25000;
 export const DEFAULT_HOLD_MAX_AGE_MS = 7200000;
 
+/**
+ * Latency targets (R-PAY-152), milliseconds. Measured against the fake PayPal the client
+ * adds under 25 ms per call, so these budgets are spent almost entirely by PayPal.
+ * UNVERIFIED (G1 measurement): the sandbox numbers. Fallback: raise the targets to the
+ * sandbox p95 and keep the saga defaults below, which do not depend on them.
+ */
+export const LATENCY_TARGETS_MS = {
+  hammerToCapturedP95: 2500,
+  hammerToSettledSixHoldsP95: 6000,
+  webhookHandlerOk: 300,
+} as const;
+
+/**
+ * Saga defaults, chosen from the measured call counts: a settlement of 6 holds makes one
+ * truth check and one capture for the winner, then 5 voids. Three voids at a time finish
+ * them in two waves, so hammer to SETTLED costs about six sequential call latencies and
+ * stays inside the 6 s target while a call stays under 1 s at p95. The values equal the
+ * constants in saga/void.ts and saga/unknown.ts; a test keeps them equal.
+ */
+export const SAGA_DEFAULTS = {
+  voidConcurrency: 3,
+  maxVoidResumes: 5,
+  unknownDeadlineMs: 600000,
+} as const;
+
 type Env = Record<string, string | undefined>;
 
 function positiveInt(env: Env, name: string, dflt: number): number {

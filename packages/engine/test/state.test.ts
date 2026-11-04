@@ -117,6 +117,18 @@ const events: Array<{ event: LedgerEvent; at: number; cmd?: string }> = [
 describe('evolve', () => {
   const entries = entriesFrom(events);
 
+  it('T-ENG-148 R-ENG-006 ENG-RT-13 keyed state maps have no prototype', () => {
+    const entries = entriesFrom(events);
+    const s = entries.reduce(evolve, initialState);
+    for (const m of [s.lots, s.bidders, s.commands]) {
+      expect(Object.getPrototypeOf(m)).toBeNull();
+      expect(m['constructor']).toBeUndefined();
+      expect(m['__proto__']).toBeUndefined();
+    }
+    expect(Object.keys(s.lots)).toContain(L1);
+    expect(Object.getPrototypeOf(initialState.lots)).toBeNull();
+  });
+
   it('R-ENG-092: state equals the reduction of the ledger and does not mutate inputs', () => {
     const frozen = JSON.stringify(initialState);
     const full = entries.reduce(evolve, initialState);
