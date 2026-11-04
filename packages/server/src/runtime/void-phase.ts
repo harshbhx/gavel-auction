@@ -52,6 +52,14 @@ export function isReleased(journal: Journal, bidderId: string, holdId: string): 
   return journal.voids[bidderId] !== undefined || journal.voids[holdId] !== undefined;
 }
 
+/** Kinds that mean the void will never work, however often it is repeated. */
+const REFUSED_KINDS: ReadonlySet<string> = new Set([
+  'auth_failed',
+  'invalid_request',
+  'already_captured',
+  'rejected',
+]);
+
 export function voidRequestId(journal: Journal, holdId: string): string {
   return buildRequestId({
     auctionId: journal.auctionId,
@@ -134,6 +142,7 @@ class VoidRun {
     for (const target of voidTargets(this.j)) {
       if (isReleased(this.j, target.bidderId, target.holdId)) continue;
       const how = await this.release(target);
+      if (how === 'refused') return this.escalate();
       if (how === null) continue;
       const next = structuredClone(this.j);
       next.voids[target.bidderId] = how;
@@ -202,6 +211,12 @@ class VoidRun {
     return null;
   }
 
+  /** A void PayPal refuses for good cannot be retried away: hand the settlement to an operator. */
+  private async escalate(): Promise<VoidOutcome> {
+    await this.apply({ type: 'void_budget_exhausted', tsMs: this.deps.clock.nowMs() });
+    return { status: 'failed', journal: this.j };
+  }
+
   private async mismatch(): Promise<VoidOutcome> {
     await this.apply({ type: 'mismatch', tsMs: this.deps.clock.nowMs() });
     return { status: 'failed', journal: this.j };
@@ -211,7 +226,7 @@ class VoidRun {
   private async release(target: {
     holdId: string;
     authId: string;
-  }): Promise<'voided' | 'released' | null> {
+  }): Promise<'voided' | 'released' | 'refused' | null> {
     const attempts = this.deps.maxAttempts ?? 3;
     const requestId = voidRequestId(this.j, target.holdId);
     for (let i = 0; i < attempts; i++) {
@@ -224,6 +239,7 @@ class VoidRun {
       } catch (e) {
         if (!(e instanceof PayPalError)) throw e;
         if (RELEASED_KINDS.has(e.kind)) return 'released';
+        if (e.outcome === 'definite' && REFUSED_KINDS.has(e.kind)) return 'refused';
       }
     }
     return null;
