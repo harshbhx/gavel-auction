@@ -32,3 +32,5 @@ export type {
   Ulid,
 } from './types.js';
 export { CEILING_PRESETS_CENTS, MIN_CEILING_CENTS, DEFAULT_MAX_CEILING_CENTS } from './policy.js';
+export { AuctionRuntime } from './runtime.js';
+export type { RuntimeOptions, RuntimeResult } from './runtime.js';
