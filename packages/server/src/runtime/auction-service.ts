@@ -38,7 +38,7 @@ import type { RateLimiter } from '../limits/rate-limiter';
 import { Room, type RoomDeps } from '../room/room';
 import type { HammerResult, SettlePort, SettlementReport } from '../room/settle-port';
 import { LedgerEngine, lotIdOf } from './ledger-engine';
-import { runVoidPhase } from './void-phase';
+import { isReleased, runVoidPhase } from './void-phase';
 import { WebhookIntake } from './webhook-intake';
 
 /** Everything the service needs from the outside, as ports. */
@@ -194,6 +194,13 @@ class Service implements AuctionService, SettlePort {
     const parsed = AuctionConfigSchema.safeParse(config);
     if (!parsed.success) throw new GavelError('bad_message', 'invalid auction config');
     if (this.rooms.has(auctionId)) throw new GavelError('conflict', 'auction exists');
+    // Dry-run the engine build: a config or id it cannot run must never reach the log, or the
+    // auction could not be loaded again and would block resume (R-RT-012, R-RT-059).
+    try {
+      new LedgerEngine(auctionId, parsed.data);
+    } catch {
+      throw new GavelError('bad_message', 'auction config the engine cannot run');
+    }
     const created = Room.create(auctionId, parsed.data, auctioneerSub, this.roomDeps(auctionId));
     this.rooms.set(auctionId, created);
     try {
@@ -298,9 +305,17 @@ class Service implements AuctionService, SettlePort {
 
   async resume(): Promise<void> {
     for (const id of await this.deps.store.listAuctions()) {
-      await this.room(id);
-      const journal = await this.deps.journals.load(lotIdOf(id));
-      if (journal !== null) this.schedule(id);
+      // One unloadable auction must not stop the others from resuming.
+      try {
+        const room = await this.room(id);
+        // A hammered room with no journal yet, or whose settle request was never stored, has
+        // to be driven again; an earlier run may have died before the journal was created.
+        await room.retrySettlement();
+        const journal = await this.deps.journals.load(lotIdOf(id));
+        if (journal !== null || this.engines.get(id)?.hammered === true) this.schedule(id);
+      } catch (e) {
+        this.deps.onError?.(id, e);
+      }
     }
     await this.intake.sweep();
   }
@@ -372,6 +387,10 @@ class Service implements AuctionService, SettlePort {
       lotId,
     );
     if (released.status === 'busy' || released.status === 'not_ready') return;
+    if (released.status === 'failed') {
+      await this.finishBridge(room, auctionId, released.journal);
+      return;
+    }
     if (released.status === 'pending') {
       await this.report(room, released.journal);
       return;
@@ -501,7 +520,7 @@ function perBidder(journal: Journal): Record<string, SettlementReport['auctionSt
   const settled = journal.state === 'SETTLED';
   for (const [bidderId, hold] of Object.entries(journal.holds)) {
     if (journal.winner?.bidderId === bidderId) out[bidderId] = settled ? 'SETTLED' : 'CAPTURED';
-    else if (journal.voids[hold.holdId] !== undefined) out[bidderId] = 'SETTLED';
+    else if (isReleased(journal, bidderId, hold.holdId)) out[bidderId] = 'SETTLED';
     else if (journal.state === 'VOIDING') out[bidderId] = 'VOIDING';
     else out[bidderId] = journal.state;
   }
