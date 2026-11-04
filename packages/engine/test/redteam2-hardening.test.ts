@@ -9,7 +9,7 @@ import { AuctionRuntime } from '../src/runtime.js';
 import { A, AU, B, L1, bid, errCode, id, mk, open, run, scene } from './decide-helpers.js';
 
 describe('red-team round 2 hardening (engine)', () => {
-  it('ENG-R2-03: a changed body under the same id conflicts for money and revoke commands', () => {
+  it('T-ENG-070 R-ENG-088 ENG-R2-03: a changed body under the same id conflicts for money and revoke commands', () => {
     let s = open(scene(), L1);
     s = bid(s, 200, A, 1000).state;
     s = run(s, mk(300, { type: 'Hammer', lotId: L1, actor: 'host', early: true })).state;
@@ -39,7 +39,7 @@ describe('red-team round 2 hardening (engine)', () => {
     expect(decide(s, revoke).outcome.kind).toBe('duplicate');
   });
 
-  it('ENG-R2-04: raising a held ceiling needs a different holdRef', () => {
+  it('T-ENG-070 R-ENG-046 ENG-R2-04: raising a held ceiling needs a different holdRef', () => {
     let s = scene();
     const reg = (ceilingCents: number, holdRef: string) =>
       mk(10, { type: 'RegisterBidder', bidderId: id('BZ'), ceilingCents, holdRef });
@@ -60,13 +60,13 @@ describe('red-team round 2 hardening (engine)', () => {
     audit,
   });
 
-  it('ENG-R2-05: the untrusted parser rejects audit.confirmed', () => {
+  it('T-ENG-070 R-ENG-089 ENG-R2-05: the untrusted parser rejects audit.confirmed', () => {
     expect(errCode(() => parseCommand(bidBody({ confidenceBps: 100, confirmed: true })))).toBe(
       'bad_command',
     );
   });
 
-  it('INTEGRATION-R2-05: a 0..1 confidence is converted to basis points at the boundary', () => {
+  it('T-ENG-070 R-ENG-029 INTEGRATION-R2-05: a 0..1 confidence is converted to basis points at the boundary', () => {
     const cmd = parseCommand(bidBody({ confidence: 0.92 }));
     expect(cmd.type === 'PlaceBid' && cmd.audit.confidenceBps).toBe(9200);
     expect(confidenceToBps(1)).toBe(10000);
@@ -77,7 +77,7 @@ describe('red-team round 2 hardening (engine)', () => {
     );
   });
 
-  it('ENG-R2-08: a throwing onEntries observer does not fail a stored command', async () => {
+  it('T-ENG-070 R-ENG-100 ENG-R2-08: a throwing onEntries observer does not fail a stored command', async () => {
     const errors: unknown[] = [];
     const rt = new AuctionRuntime({
       store: new InMemoryLedgerStore(),
@@ -92,7 +92,7 @@ describe('red-team round 2 hardening (engine)', () => {
     expect(errors).toHaveLength(1);
   });
 
-  it('ENG-R2-09: a duplicate returns the entries of the first application', async () => {
+  it('T-ENG-070 R-ENG-087 ENG-R2-09: a duplicate returns the entries of the first application', async () => {
     const rt = new AuctionRuntime({ store: new InMemoryLedgerStore() });
     const create = mk(0, { type: 'CreateAuction', title: 'Gala', config: {} });
     const first = await rt.dispatch(create);
@@ -102,7 +102,7 @@ describe('red-team round 2 hardening (engine)', () => {
     expect(again.entries).toEqual(first.entries);
   });
 
-  it('ENG-R2-07: an auction id with no ledger is not cached', async () => {
+  it('T-ENG-070 R-ENG-099 ENG-R2-07: an auction id with no ledger is not cached', async () => {
     const inner = new InMemoryLedgerStore();
     let reads = 0;
     const store: LedgerStore = {
@@ -119,7 +119,7 @@ describe('red-team round 2 hardening (engine)', () => {
     expect(reads).toBe(2);
   });
 
-  it('ENG-R2-12: decide bounds the promote reason and the bid audit shape', () => {
+  it('T-ENG-070 R-ENG-089 ENG-R2-12: decide bounds the promote reason and the bid audit shape', () => {
     const s = open(scene(), L1);
     const long: Command = mk(300, {
       type: 'PromoteRunnerUp',
@@ -148,7 +148,7 @@ describe('red-team round 2 hardening (engine)', () => {
     expect(errCode(() => decide(s, nested))).toBe('bad_command');
   });
 
-  it('ENG-R2-14: canonical keys sort by code point like Python', () => {
+  it('T-ENG-070 R-ENG-070 ENG-R2-14: canonical keys sort by code point like Python', () => {
     expect(canonicalize({ '\u{10000}': 2, '￿': 1 })).toBe('{"\\uffff":1,"\\ud800\\udc00":2}');
   });
 });
