@@ -1,4 +1,3 @@
-import type { SettlementState } from './enums';
 import type { ErrorCode } from './errors';
 import type { RoomEvent } from './events';
 import type { AuctionId, BidderId, Jti } from './ids';
@@ -62,70 +61,4 @@ export interface Transport {
   send(text: string): void;
   /** Close with a WebSocket close code. */
   close(code: number, reason: string): void;
-}
-
-export interface HammerOutcome {
-  readonly winner: BidderId | null;
-  readonly price: Cents;
-  readonly ranking: ReadonlyArray<{ readonly bidderId: BidderId; readonly amount: Cents }>;
-}
-
-export type TokenKind = 'session' | 'auctioneer' | 'admin';
-
-export interface TokenClaims {
-  readonly sub: string;
-  readonly kind: TokenKind;
-  readonly aud: AuctionId;
-  readonly iat: number;
-  readonly exp: number;
-  readonly jti: Jti;
-}
-
-export interface PaymentsPort {
-  settle(req: {
-    auctionId: AuctionId;
-    outcome: HammerOutcome;
-    holds: Record<string, string>;
-  }): Promise<void>;
-  handleWebhook(req: {
-    rawBody: Uint8Array;
-    headers: Record<string, string>;
-  }): Promise<
-    | { kind: 'ok'; auctionId?: AuctionId }
-    | { kind: 'duplicate' }
-    | { kind: 'invalid_signature' }
-    | { kind: 'retry'; reason: string }
-  >;
-  onSettlementUpdate(
-    cb: (u: {
-      auctionId: AuctionId;
-      rev: number;
-      auctionState: SettlementState;
-      perBidder: Record<string, SettlementState>;
-      amountCaptured?: Cents;
-      note?: string;
-    }) => void,
-  ): () => void;
-  onHoldReported(
-    cb: (h: {
-      auctionId: AuctionId;
-      bidderId: BidderId;
-      name: string;
-      ceiling: Cents;
-      holdRef: string;
-    }) => void,
-  ): () => void;
-}
-
-export interface Logger {
-  debug(m: string, c?: object): void;
-  info(m: string, c?: object): void;
-  warn(m: string, c?: object): void;
-  error(m: string, c?: object): void;
-  child(c: object): Logger;
-}
-
-export interface TokenSigner {
-  sign(claims: TokenClaims): Promise<string>;
-  verify(token: string, expectKind?: TokenKind[]): Promise<TokenClaims>;
 }
