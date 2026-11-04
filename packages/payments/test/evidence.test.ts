@@ -152,7 +152,7 @@ describe('evidence (T-PAY-070)', () => {
           id: 'ORDER0000000000000',
           links: [
             {
-              href: 'https://www.sandbox.paypal.com/checkoutnow?token=1KX67448NS3929301',
+              href: 'https://www.sandbox.paypal.com/checkoutnow?token=TOKEN00000000000',
               method: 'GET',
               rel: 'payer-action',
             },
@@ -171,7 +171,7 @@ describe('evidence (T-PAY-070)', () => {
     expect(links[1]?.href).toBe(
       'https://www.sandbox.paypal.com/webapps/x?ba_token=[REDACTED]&approve=[REDACTED]&flow=[REDACTED]#frag',
     );
-    expect(JSON.stringify(r)).not.toContain('1KX67448NS3929301');
+    expect(JSON.stringify(r)).not.toContain('TOKEN00000000000');
     expect(lintTokens(r)).toEqual([]);
     expect(() => toJsonlLine(order)).not.toThrow();
   });
