@@ -21,9 +21,10 @@ export interface Intent {
   reason: VoiceReason | null;
 }
 
-const WITHDRAW = /(^| )(i'm out|i am out|i pass|pass|no thanks)( |$)/;
+const WITHDRAW =
+  /(^| )(i'm out|i am out|im out|count me out|i'm done|i am done|im done|i quit|i'm finished|im finished|drop out|dropping out|i pass|pass|no thanks)( |$)/;
 const HEDGE =
-  /(^| )(maybe|perhaps|probably|thinking|about|around|roughly|between|or so|not sure|might|i guess|if|hold on|hang on|let me think)( |$)/;
+  /(^| )(maybe|perhaps|probably|thinking|about|around|roughly|between|or so|not sure|might|i guess|if|hold on|hang on|let me think|stop at|stopping at|my limit|my max|my maximum|my budget|my ceiling|my cap)( |$)/;
 const BACKGROUND =
   /(^| )(the price is|price is|it's at|now at|currently|reserve|starting|opening|we are at|we're at|going once|going twice|going three times|fair warning|sold|kids|years old|people)( |$)/;
 const QUESTION_START = new Set([

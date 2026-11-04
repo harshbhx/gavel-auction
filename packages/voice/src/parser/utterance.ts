@@ -36,18 +36,49 @@ function fromIntent(intent: Intent, base: ParseResult): ParseResult {
   };
 }
 
-/** Parses one final transcript through every rule stage and returns the checked result with spans. */
-export function parseUtterance(text: string, ctx: ParseContext = {}): ParseResult {
-  if (text.length > MAX_INPUT_CHARS) return withSpans(text, parseBid(text, ctx));
+/** A parse result plus the pipeline signal for a retraction (R-VOX-044, 050). */
+export interface UtteranceOutcome {
+  result: ParseResult;
+  /** True when the utterance retracts the fresh pending candidate, so the pipeline must clear it. */
+  cancelPending: boolean;
+}
+
+/**
+ * Parses one final transcript and also reports whether it cancels the pending candidate. A caller
+ * that keeps a PendingCandidateStore clears it when cancelPending is true.
+ */
+export function parseUtteranceOutcome(text: string, ctx: ParseContext = {}): UtteranceOutcome {
+  if (text.length > MAX_INPUT_CHARS) {
+    return { result: withSpans(text, parseBid(text, ctx)), cancelPending: false };
+  }
   const intent = detectIntent(text);
   if (HARD_INTENTS.has(intent.kind)) {
-    return withSpans(text, fromIntent(intent, parseBid(text, ctx)));
+    return {
+      result: withSpans(text, fromIntent(intent, parseBid(text, ctx))),
+      cancelPending: false,
+    };
   }
   const correction = parseCorrection(text, ctx);
   if (correction !== null) {
     const r = correction.result;
-    return withSpans(text, r.status === 'bid' ? refineAmounts(text, ctx, r) : r);
+    return {
+      result: withSpans(text, r.status === 'bid' ? refineAmounts(text, ctx, r) : r),
+      cancelPending: correction.cancelPending,
+    };
   }
-  if (intent.status !== null) return withSpans(text, fromIntent(intent, parseBid(text, ctx)));
-  return withSpans(text, refineAmounts(text, ctx, parseWithAsr(text, ctx)));
+  if (intent.status !== null) {
+    return {
+      result: withSpans(text, fromIntent(intent, parseBid(text, ctx))),
+      cancelPending: false,
+    };
+  }
+  return {
+    result: withSpans(text, refineAmounts(text, ctx, parseWithAsr(text, ctx))),
+    cancelPending: false,
+  };
+}
+
+/** Parses one final transcript through every rule stage and returns the checked result with spans. */
+export function parseUtterance(text: string, ctx: ParseContext = {}): ParseResult {
+  return parseUtteranceOutcome(text, ctx).result;
 }
