@@ -193,7 +193,7 @@ Consequences:
 
 Evidence: scripts/check-coverage.mjs, SPEC-quality R-QA-021.
 
-## Durable write order for the ledger, the room log and the settlement journal
+## D-0012: Durable write order for the ledger, the room log and the settlement journal
 
 Date: 2026-11-04
 Status: accepted
