@@ -80,7 +80,7 @@ describe('decide CompleteLot and RecordSettlement', () => {
     expect(errCode(() => decide(a.state, settle(500, 'NOPE', 'CAPTURED')))).toBe('bad_command');
   });
 
-  it('ENG-R3-06 R-ENG-067 only edges of the settlement graph can be recorded', () => {
+  it('T-ENG-145 R-ENG-067 ENG-R3-06 only edges of the settlement graph can be recorded', () => {
     const s = hammered(2000);
     expect(errCode(() => decide(s, settle(400, 'HELD', 'HELD')))).toBe('state_continuity');
     expect(errCode(() => decide(s, settle(400, 'HELD', 'CAPTURED')))).toBe('state_continuity');

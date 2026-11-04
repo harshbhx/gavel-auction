@@ -35,7 +35,7 @@ describe('PromoteRunnerUp that ends unsold keeps its body (ENG-R3-11)', () => {
   const promoteWith = (at: number, who: Ulid, reason: string) =>
     mk(at, { type: 'PromoteRunnerUp', lotId: L1, disqualifiedBidderId: who, reason }, KEY);
 
-  it('R-ENG-087 a retry with the same body is a duplicate, a changed body conflicts', () => {
+  it('T-ENG-142 R-ENG-087 ENG-R3-11 a retry with the same body is a duplicate, a changed body conflicts', () => {
     const first = run(hammered({ fallbackPolicy: 'unsold' }), promoteWith(400, C, 'declined'));
     expect(first.state.lots[L1]?.status).toBe('DONE');
     expect(decide(first.state, promoteWith(410, C, 'declined')).outcome.kind).toBe('duplicate');

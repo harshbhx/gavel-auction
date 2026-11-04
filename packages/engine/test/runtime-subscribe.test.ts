@@ -69,7 +69,7 @@ describe('AuctionRuntime subscribe', () => {
 describe('SubscriptionHub backpressure', () => {
   const entry = (seq: number): LedgerEntry => ({ seq }) as LedgerEntry;
 
-  it('ENG-R3-12 R-ENG-103 drops a reader that stops draining and ends it with an error', async () => {
+  it('T-ENG-144 R-ENG-103 ENG-R3-12 drops a reader that stops draining and ends it with an error', async () => {
     const hub = new SubscriptionHub(3);
     const it = hub.subscribe(AU, 1, async () => [])[Symbol.asyncIterator]();
     const first = it.next();
