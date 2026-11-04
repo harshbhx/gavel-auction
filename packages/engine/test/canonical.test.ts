@@ -35,4 +35,9 @@ describe('canonicalize', () => {
     );
     expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
   });
+  it('R4-E08 R-ENG-071 golden vector: code point key order and ASCII-only escapes', () => {
+    // U+FFFF sorts before U+1F600 by code point; UTF-16 order would put the astral key first.
+    const v = { '\u{1F600}': 2, '\uffff': 1, '\u007f': 3 };
+    expect(canonicalize(v)).toBe('{"\\u007f":3,"\\uffff":1,"\\ud83d\\ude00":2}');
+  });
 });
