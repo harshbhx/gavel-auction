@@ -161,11 +161,26 @@ export function summarizeDecisions(observed: readonly G1Observed[]): {
   return { decision: 'PASS', fallback: '', flippedTags, letters };
 }
 
-function must(res: GateResponse, expected: number, what: string, buyer: BuyerLabel): void {
-  if (res.status === expected) return;
+/**
+ * Statuses accepted for a POST that creates or advances a PayPal resource. PayPal answers 201
+ * on first use of a PayPal-Request-Id and may replay the stored answer as 200 on a retry.
+ */
+export const CREATED_OR_REPLAYED: readonly number[] = [200, 201];
+
+/** Order statuses that mean PayPal accepted the order and is waiting for buyer approval. */
+export const ORDER_CREATED_STATUSES: readonly string[] = ['CREATED', 'PAYER_ACTION_REQUIRED'];
+
+export function must(
+  res: Pick<GateResponse, 'status' | 'json'>,
+  expected: number | readonly number[],
+  what: string,
+  buyer: BuyerLabel,
+): void {
+  const accepted = typeof expected === 'number' ? [expected] : expected;
+  if (accepted.includes(res.status)) return;
   const name = errorName(res.json);
   throw new Error(
-    `G1 ${buyer}: ${what} answered HTTP ${res.status}${name === '' ? '' : ` (${name})`}, expected ${expected}`,
+    `G1 ${buyer}: ${what} answered HTTP ${res.status}${name === '' ? '' : ` (${name})`}, expected ${accepted.join(' or ')}`,
   );
 }
 
@@ -209,11 +224,17 @@ async function runBuyer(
         },
       },
     });
-    must(res, 201, 'order creation', buyer);
+    must(res, CREATED_OR_REPLAYED, 'order creation', buyer);
     const orderId = str(field(res.json, 'id'));
     const approveUrl = approveLink(res.json);
     if (orderId === '' || approveUrl === '') {
       throw new Error(`G1 ${buyer}: order response has no id or approval link`);
+    }
+    const orderStatus = str(field(res.json, 'status'));
+    if (!ORDER_CREATED_STATUSES.includes(orderStatus)) {
+      throw new Error(
+        `G1 ${buyer}: order creation answered status '${orderStatus}', expected CREATED or PAYER_ACTION_REQUIRED`,
+      );
     }
     return { orderId, approveUrl };
   });
@@ -268,7 +289,7 @@ async function runBuyer(
       path: `/v2/checkout/orders/${orderId}/authorize`,
       headers: { ...auth, 'PayPal-Request-Id': rid('authorize') },
     });
-    must(res, 201, 'authorize', buyer);
+    must(res, CREATED_OR_REPLAYED, 'authorize', buyer);
     const id = str(firstAuthorization(res.json)['id']);
     if (id === '') throw new Error(`G1 ${buyer}: authorize answered without an authorization id`);
     return id;

@@ -3,7 +3,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { lintJsonl, lintTokens, redact } from '../../gates/evidence.js';
-import { decideG1, runG1, summarizeDecisions, type G1Observed } from '../../gates/g1.js';
+import {
+  CREATED_OR_REPLAYED,
+  decideG1,
+  must,
+  ORDER_CREATED_STATUSES,
+  runG1,
+  summarizeDecisions,
+  type G1Observed,
+} from '../../gates/g1.js';
 import { EXIT_OK, EXIT_REFUSED } from '../../gates/runner.js';
 
 let out: string;
@@ -74,6 +82,31 @@ describe('decideG1 (SPEC 7.3)', () => {
     expect(
       decideG1({ captureHttp: 422, authStatusAfterCapture: 'CREATED', voidHttp: 0 }).decision,
     ).toBe('FAIL');
+  });
+});
+
+describe('G1 status asserts', () => {
+  const reply = (status: number) => ({ status, headers: {}, text: '', json: {}, latencyMs: 1 });
+
+  it('accepts 201 and a 200 idempotent replay on order creation and authorize', () => {
+    expect(CREATED_OR_REPLAYED).toEqual([200, 201]);
+    expect(() => must(reply(201), CREATED_OR_REPLAYED, 'order creation', 'wallet')).not.toThrow();
+    expect(() => must(reply(200), CREATED_OR_REPLAYED, 'order creation', 'wallet')).not.toThrow();
+    expect(() => must(reply(200), CREATED_OR_REPLAYED, 'authorize', 'card')).not.toThrow();
+  });
+
+  it('still rejects other statuses and names every accepted one', () => {
+    expect(() => must(reply(404), CREATED_OR_REPLAYED, 'order creation', 'wallet')).toThrow(
+      'G1 wallet: order creation answered HTTP 404, expected 200 or 201',
+    );
+    expect(() => must(reply(204), 200, 'order read after approval', 'card')).toThrow(
+      'expected 200',
+    );
+  });
+
+  it('accepts only CREATED or PAYER_ACTION_REQUIRED as a fresh order status', () => {
+    expect(ORDER_CREATED_STATUSES).toEqual(['CREATED', 'PAYER_ACTION_REQUIRED']);
+    expect(ORDER_CREATED_STATUSES.includes('APPROVED')).toBe(false);
   });
 });
 
