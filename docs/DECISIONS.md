@@ -361,3 +361,22 @@ Consequences:
 - A lot added without an explicit mode in LOT_ADDED is treated as not sealed.
 
 Evidence: packages/engine/src/ledger/public-export.ts, packages/engine/test/public-export.test.ts, SPEC-engine R-ENG-045, R-ENG-086, R-ENG-108, R-ENG-109.
+
+## D-0021: Public export no longer publishes private entry hashes (version 3)
+
+Date: 2026-11-04
+Status: accepted
+Owner: engine
+Context: Version 2 of the public export carried `fullHash`, the hash of the private entry, on every entry. For a sealed bid or a ceiling entry the only private input left was a small integer, so anyone could hash each candidate amount against the published value and recover it (R5-E01). The export also kept the spoken transcript of sealed bids and the bid amount of proxy lots, which is the bidder's secret maximum (R5-E02, R5-E03).
+Decision: The public export is version 3. An entry that had fields removed carries `fullHash` null, or a keyed commitment (hash over the secret `commitKey` and the private hash) when the auditor passes a key to `publicExport`. An entry that lost nothing keeps the private hash. Sealed lots also lose `audit.transcript`; proxy lots lose `amountCents`, `amountRaw` and `audit.transcript` until the hammer, and keep the price fields. `matchesLedger` verifies the private chain and compares each public entry byte for byte with the re-derived one, with the same key. `verifyPublicExport` and the `verify-ledger` command take an expected head and report a truncated export; the command rejects an empty file unless `--allow-empty` is given.
+Alternatives:
+
+- Salted commitment with a per-entry random salt: rejected, the export would no longer be reproducible from the ledger.
+- Keep proxy maxima public: rejected, the public projection shows only the price and SPEC R-ENG-109 says no viewer sees a maximum.
+
+Consequences:
+
+- Public export version 2 files no longer verify (`bad_version`); regenerate them. The private ledger, its golden fixtures and hash vector are unchanged.
+- Without a key the public chain no longer binds redacted entries to a private hash; the auditor re-derives the whole export from the ledger instead.
+
+Evidence: packages/engine/src/ledger/public-export.ts, packages/engine/bin/verify-ledger.mjs, packages/engine/test/public-export.test.ts, SPEC-engine R-ENG-045, R-ENG-078, R-ENG-086, R-ENG-109.

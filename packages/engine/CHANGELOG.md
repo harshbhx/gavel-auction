@@ -12,6 +12,8 @@ All notable changes to `@gavel/engine`. Money is integer cents; the ledger forma
 
 ### Changed
 
+- Public export is version 3: redacted entries no longer carry the private hash (`fullHash` is null or a keyed commitment), sealed and proxy lots lose transcripts and proxy maxima, `matchesLedger` compares full entries, and `verify-ledger --head` detects truncation (D-0021).
+
 - The golden runner sends every bid to the engine, including bids past the deadline or after the hammer, and compares the engine's reason codes without folding them. `complete` takes the bidder and amount from the fixture.
 
 ## Release readiness (R-ENG-122, R-ENG-123, R-ENG-124)

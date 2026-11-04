@@ -87,6 +87,18 @@ describe('ledger export', () => {
       expect(fail.code).toBe(1);
       expect(fail.out).toContain('first bad index 2');
       expect(node('bin/verify-ledger.mjs', []).code).toBe(2);
+      const head = headOf(entries);
+      const goodHead = `${head?.seq}:${head?.hash}`;
+      expect(node('bin/verify-ledger.mjs', ['--head', goodHead, good]).code).toBe(0);
+      const cut = join(dir, 'cut.jsonl');
+      writeFileSync(cut, exportJsonl(entries.slice(0, 2)));
+      const trunc = node('bin/verify-ledger.mjs', ['--head', goodHead, cut]);
+      expect(trunc.code).toBe(1);
+      expect(trunc.out).toContain('truncated');
+      const empty = join(dir, 'empty.jsonl');
+      writeFileSync(empty, '');
+      expect(node('bin/verify-ledger.mjs', [empty]).code).toBe(1);
+      expect(node('bin/verify-ledger.mjs', ['--allow-empty', empty]).code).toBe(0);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

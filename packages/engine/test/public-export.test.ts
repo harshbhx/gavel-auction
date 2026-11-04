@@ -9,7 +9,7 @@ const A = '01JC0000000000000000000001' as Ulid;
 const L = '01JC0000000000000000000M01' as Ulid;
 const P = '01JC0000000000000000000B01' as Ulid;
 const Q = '01JC0000000000000000000B02' as Ulid;
-const lot = (mode: 'english' | 'second_price'): LedgerEvent => ({
+const lot = (mode: 'english' | 'proxy' | 'second_price'): LedgerEvent => ({
   type: 'LOT_ADDED',
   payload: {
     lotId: L,
@@ -25,8 +25,8 @@ const lot = (mode: 'english' | 'second_price'): LedgerEvent => ({
     },
   },
 });
-const audit = {};
-const recorded = (amountCents: number): LedgerEvent =>
+const audit: Record<string, unknown> = {};
+const recorded = (amountCents: number, a: Record<string, unknown> = audit): LedgerEvent =>
   ({
     type: 'BID_RECORDED',
     payload: {
@@ -35,7 +35,7 @@ const recorded = (amountCents: number): LedgerEvent =>
       bidderId: P,
       amountCents,
       source: 'ui',
-      audit,
+      audit: a,
       priceBefore: 1000,
       priceAfter: amountCents,
       leaderBefore: Q,
@@ -46,7 +46,10 @@ const recorded = (amountCents: number): LedgerEvent =>
     },
   }) as unknown as LedgerEvent;
 
-function ledger(mode: 'english' | 'second_price'): LedgerEntry[] {
+function ledger(
+  mode: 'english' | 'proxy' | 'second_price',
+  a: Record<string, unknown> = audit,
+): LedgerEntry[] {
   const events: LedgerEvent[] = [
     { type: 'AUCTION_CREATED', payload: { title: 'Gala', config: {} } },
     lot(mode),
@@ -54,7 +57,7 @@ function ledger(mode: 'english' | 'second_price'): LedgerEntry[] {
       type: 'BIDDER_REGISTERED',
       payload: { bidderId: P, ceilingCents: 90000, holdRef: 'hold-secret-1' },
     },
-    recorded(2000),
+    recorded(2000, a),
     {
       type: 'BID_REJECTED',
       payload: {
@@ -110,7 +113,6 @@ describe('public export', () => {
       count: pub.length,
       headHash: (pub[pub.length - 1] as PublicEntry).hash,
     });
-    expect(pub.map((e) => e.fullHash)).toEqual(full.map((e) => e.hash));
     expect(matchesLedger(pub, full)).toBe(true);
     expect(matchesLedger(pub, full.slice(0, 3))).toBe(false);
   });
@@ -136,5 +138,88 @@ describe('public export', () => {
     const before = JSON.stringify(full);
     publicExport(full);
     expect(JSON.stringify(full)).toBe(before);
+  });
+
+  it('T-ENG-087 R-ENG-109 R5-E01: a redacted entry publishes no private hash, so amounts cannot be brute forced', () => {
+    const full = ledger('second_price');
+    const pub = publicExport(full);
+    for (const [i, e] of pub.entries()) {
+      if (e.redacted.length > 0) expect(e.fullHash).toBeNull();
+      else expect(e.fullHash).toBe((full[i] as LedgerEntry).hash);
+    }
+    const text = JSON.stringify(pub);
+    for (const e of full) {
+      if ((pub[e.seq - 1] as PublicEntry).redacted.length > 0) expect(text).not.toContain(e.hash);
+    }
+    // The attacker rebuilds the private entry for each small amount and compares the hash.
+    const target = full[3] as LedgerEntry;
+    const hits = [1999, 2000, 2001].filter((amount) => {
+      const guess = sealBatch(
+        [{ ...recorded(amount) } as LedgerEvent],
+        { auctionId: A, seq: 3, hash: (full[2] as LedgerEntry).hash },
+        target.at,
+        null,
+      )[0] as LedgerEntry;
+      return text.includes(guess.hash);
+    });
+    expect(hits).toEqual([]);
+  });
+
+  it('T-ENG-087 R-ENG-108 R5-E01: with a commit key the link is a keyed commitment the auditor can check', () => {
+    const full = ledger('second_price');
+    const key = 'auditor-secret-01';
+    const pub = publicExport(full, undefined, { commitKey: key });
+    const bid = pub[3] as PublicEntry;
+    expect(bid.fullHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(bid.fullHash).not.toBe((full[3] as LedgerEntry).hash);
+    expect(verifyPublicExport(pub).ok).toBe(true);
+    expect(matchesLedger(pub, full, undefined, { commitKey: key })).toBe(true);
+    expect(matchesLedger(pub, full, undefined, { commitKey: 'other' })).toBe(false);
+    expect(matchesLedger(pub, full)).toBe(false);
+  });
+
+  it('T-ENG-087 R-ENG-109 R5-E02: the spoken transcript of a sealed lot is removed until the hammer', () => {
+    const spoken = { transcript: 'two hundred fifty', utteranceId: 'u1' };
+    const bid = publicExport(ledger('second_price', spoken))[3] as PublicEntry;
+    expect(JSON.stringify(bid)).not.toContain('two hundred fifty');
+    expect(bid.payload['audit']).toEqual({ utteranceId: 'u1' });
+    expect(bid.redacted).toContain('audit.transcript');
+    const open = publicExport(ledger('english', spoken))[3] as PublicEntry;
+    expect(JSON.stringify(open)).toContain('two hundred fifty');
+  });
+
+  it('T-ENG-087 R-ENG-019 R-ENG-109 R5-E03: a proxy lot publishes the price but not the bid maximum', () => {
+    const spoken = { transcript: 'two thousand' };
+    const bid = publicExport(ledger('proxy', spoken))[3] as PublicEntry;
+    expect(bid.payload['amountCents']).toBeUndefined();
+    expect(bid.payload['amountRaw']).toBeUndefined();
+    expect(bid.payload['priceAfter']).toBe(2000);
+    expect(bid.redacted).toEqual(expect.arrayContaining(['amountCents', 'audit.transcript']));
+    expect(JSON.stringify(bid)).not.toContain('two thousand');
+  });
+
+  it('T-ENG-087 R-ENG-078 R5-E05: matchesLedger rejects a public entry whose content changed but whose hashes did not', () => {
+    const full = ledger('english');
+    const pub = JSON.parse(JSON.stringify(publicExport(full))) as PublicEntry[];
+    expect(matchesLedger(pub, full)).toBe(true);
+    (pub[3] as PublicEntry).payload['bidId'] = 'forged';
+    expect(matchesLedger(pub, full)).toBe(false);
+    const badLedger = JSON.parse(JSON.stringify(full)) as LedgerEntry[];
+    (badLedger[1] as { at: number }).at += 1;
+    expect(matchesLedger(publicExport(badLedger), badLedger)).toBe(false);
+  });
+
+  it('T-ENG-058 R-ENG-078 R5-E06: a truncated public export fails against the expected head', () => {
+    const pub = publicExport(ledger('english'));
+    const head = pub[pub.length - 1] as PublicEntry;
+    const expectedHead = { seq: head.seq, hash: head.hash };
+    expect(verifyPublicExport(pub, undefined, { expectedHead }).ok).toBe(true);
+    expect(verifyPublicExport(pub.slice(0, 3), undefined, { expectedHead })).toMatchObject({
+      ok: false,
+      reason: 'truncated',
+    });
+    expect(verifyPublicExport([], undefined, { expectedHead })).toMatchObject({
+      reason: 'truncated',
+    });
   });
 });
