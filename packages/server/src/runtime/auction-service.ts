@@ -6,8 +6,8 @@ import {
   type Ulid,
 } from '@gavel/engine';
 import {
-  SettlementBridge,
   BridgeError,
+  SettlementBridge,
   createEngineAdapter,
   createSettlement,
   createWebhookHandler,
@@ -44,6 +44,7 @@ import type { RateLimiter } from '../limits/rate-limiter';
 import { Room, type RoomDeps } from '../room/room';
 import type { HammerResult, SettlePort, SettlementReport } from '../room/settle-port';
 import { LedgerEngine, lotIdOf } from './ledger-engine';
+import { reviewCodeOf } from './review-code';
 import { isReleased, runVoidPhase } from './void-phase';
 import { WebhookIntake } from './webhook-intake';
 
@@ -505,7 +506,10 @@ class Service implements AuctionService, SettlePort {
         await this.bridge.closeIfDone(auctionId);
       }
     } catch (e) {
-      if (!(e instanceof BridgeError)) throw e;
+      // A rule failure after money moved (capture_mismatch, captured_over_ceiling, ...)
+      // will not fix itself on a retry: hand it to an operator instead of rerunning the
+      // same step on every resume (R-PAY-037).
+      if (reviewCodeOf(e) === undefined) throw e;
       // The code stays with the host; viewers only learn that the result is under review.
       this.deps.onError?.(auctionId, e);
       await this.report(room, journal, { final: true, note: REVIEW_NOTE });

@@ -1,17 +1,36 @@
 import {
   closeSync,
-  fstatSync,
+  existsSync,
   fsyncSync,
-  ftruncateSync,
   mkdirSync,
   openSync,
   readFileSync,
+  statSync,
   truncateSync,
   writeSync,
 } from 'node:fs';
 import { join } from 'node:path';
 import { GENESIS_PREV, LedgerConflict } from '@gavel/engine';
 import type { LedgerEntry, LedgerStore, Ulid } from '@gavel/engine';
+
+/** Calls `write(buf, offset)` until every byte is out; `write` returns how many it wrote. */
+export function writeFully(buf: Buffer, write: (buf: Buffer, offset: number) => number): void {
+  let off = 0;
+  while (off < buf.length) {
+    const n = write(buf, off);
+    if (n <= 0) throw new Error('ledger write made no progress');
+    off += n;
+  }
+}
+
+function fsyncDir(dir: string): void {
+  const fd = openSync(dir, 'r');
+  try {
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+}
 
 /** The ledger file is damaged somewhere before its tail; it is left as found. */
 export class LedgerCorruption extends Error {
@@ -108,25 +127,29 @@ export class FileLedgerStore implements LedgerStore {
     if (gap >= 0) throw new RangeError(`entry at index ${gap} is not contiguous`);
     if (entries.length === 0) return;
 
-    const fd = openSync(this.path(auctionId), 'a');
+    const file = this.path(auctionId);
+    const created = !existsSync(file);
+    const before = created ? 0 : statSync(file).size;
+    const fd = openSync(file, 'a');
     try {
-      const before = fstatSync(fd).size;
+      const buf = Buffer.from(`${JSON.stringify(entries)}\n`, 'utf8');
+      // writeSync may write less than asked; loop until the whole line is out.
+      writeFully(buf, (b, off) => writeSync(fd, b, off, b.length - off));
+      fsyncSync(fd);
+    } catch (e) {
+      // A partial line would swallow the next batch: cut it back and drop the cache.
       try {
-        writeSync(fd, `${JSON.stringify(entries)}\n`);
-        fsyncSync(fd);
-      } catch (e) {
-        // A partial line would swallow the next batch: cut it back and drop the cache.
-        try {
-          ftruncateSync(fd, before);
-        } catch {
-          // The write error is the one worth reporting.
-        }
-        this.ledgers.delete(auctionId);
-        throw e;
+        truncateSync(file, before);
+      } catch {
+        // The write error is the one worth reporting.
       }
+      this.ledgers.delete(auctionId);
+      throw e;
     } finally {
       closeSync(fd);
     }
+    // A new file is only durable once its directory entry is too.
+    if (created) fsyncDir(this.dir);
     cur.push(...entries);
   }
 

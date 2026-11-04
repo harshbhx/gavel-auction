@@ -29,10 +29,16 @@ export function decidePromote(state: AuctionState, cmd: PromoteCommand): DecideR
   if (lot.winnerId === null || lot.winnerId !== cmd.disqualifiedBidderId) {
     throw new EngineError('not_current_winner', cmd.disqualifiedBidderId);
   }
-  const unsold = (): DecideResult => ({
-    events: [{ type: 'LOT_UNSOLD', payload: { lotId: cmd.lotId, reason: 'no_valid_winner' } }],
-    outcome: { kind: 'accepted' },
+  const unsoldEvent = (): LedgerEvent => ({
+    type: 'LOT_UNSOLD',
+    payload: {
+      lotId: cmd.lotId,
+      reason: 'no_valid_winner',
+      disqualifiedBidderId: cmd.disqualifiedBidderId,
+      promoteReason: cmd.reason,
+    },
   });
+  const unsold = (): DecideResult => ({ events: [unsoldEvent()], outcome: { kind: 'accepted' } });
 
   const max = state.config.maxFallbackDepth;
   if (state.config.fallbackPolicy === 'unsold') return unsold();
@@ -80,6 +86,6 @@ export function decidePromote(state: AuctionState, cmd: PromoteCommand): DecideR
     });
     return { events, outcome: { kind: 'accepted' } };
   }
-  events.push({ type: 'LOT_UNSOLD', payload: { lotId: cmd.lotId, reason: 'no_valid_winner' } });
+  events.push(unsoldEvent());
   return { events, outcome: { kind: 'accepted' } };
 }
