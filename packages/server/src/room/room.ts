@@ -77,6 +77,7 @@ type Reply = Extract<ServerMsg, { t: 'bid_accepted' | 'bid_rejected' }>;
 
 const READ_PAGE = 1000;
 const RECENT_AUDIT = 50;
+const AUTO_HAMMER_RETRY_MS = 2_000;
 
 /**
  * A single auction room. Every mutation goes through one FIFO mailbox that runs
@@ -153,6 +154,11 @@ export class Room {
     return this.maxInFlight;
   }
 
+  /** The engine the room is running now; a half-built rebuild is never visible here. */
+  get activeEngine(): EnginePort | undefined {
+    return this.engine;
+  }
+
   get lastSeq(): number {
     return this.seq;
   }
@@ -184,6 +190,8 @@ export class Room {
   registerBidder(reg: RegisterBidder): Promise<void> {
     return this.enqueue(async () => {
       if (this.roster.has(reg.bidderId)) return;
+      // The settlement plan is cut at the hammer; a later registration could never be voided (R-RT-054).
+      if (this.hammered) throw new GavelError('conflict', 'auction is hammered');
       // Reject anything the wire or the event schema would refuse, before it reaches the log (R-RT-054).
       const name = reg.name.trim();
       if (
@@ -770,6 +778,8 @@ export class Room {
     try {
       await this.ensureClean();
     } catch {
+      // The store is down at the due time: try again soon instead of losing the hammer.
+      this.retryAutoHammer();
       return;
     }
     if (this.hammered || this.closingAt === undefined) return;
@@ -778,7 +788,23 @@ export class Room {
       this.armTimer();
       return;
     }
-    await this.doHammer(undefined);
+    try {
+      await this.doHammer(undefined);
+    } finally {
+      if (!this.hammered && !this.done) this.retryAutoHammer();
+    }
+  }
+
+  private retryAutoHammer(): void {
+    this.cancelHammer?.();
+    this.cancelHammer = this.deps.clock.setTimer(
+      this.deps.clock.now() + AUTO_HAMMER_RETRY_MS,
+      () => {
+        this.enqueue(() => this.onAutoHammer()).catch(() => {
+          this.dirty = true;
+        });
+      },
+    );
   }
 
   private async onTimer(): Promise<void> {

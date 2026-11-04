@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Every job here is real: an npm script that is not implemented exits 1 instead of passing.
 # The browser end-to-end job is absent until packages/e2e has a Playwright suite; it joins the
