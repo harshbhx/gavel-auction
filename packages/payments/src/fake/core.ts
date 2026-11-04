@@ -1,4 +1,5 @@
 import type { Clock } from '../ports.js';
+import { IdempotencyConflict, IdempotencyTable } from './idempotency.js';
 
 /**
  * In-memory fake of the PayPal authorize/capture/void/reauthorize slice plus
@@ -184,7 +185,7 @@ export class FakePayPalCore {
   private readonly approveBaseUrl: string;
   private readonly auths = new Map<string, AuthRecord>();
   private readonly orders = new Map<string, OrderRecord>();
-  private readonly idem = new Map<string, { params: string; result: unknown }>();
+  private readonly idem = new IdempotencyTable();
   private readonly counters = new Map<string, number>();
   private faults: Fault[] = [];
 
@@ -275,18 +276,23 @@ export class FakePayPalCore {
     if (fault === 'http_500') throw new FakeApiError(500, 'INTERNAL_SERVICE_ERROR');
     const key = requestId === undefined ? null : `${op}|${id}|${requestId}`;
     if (key !== null) {
-      const stored = this.idem.get(key);
-      if (stored !== undefined) {
-        if (stored.params !== params) {
+      let stored: T | undefined;
+      try {
+        stored = this.idem.replay<T>(key, params);
+      } catch (e) {
+        if (e instanceof IdempotencyConflict) {
           throw new FakeApiError(422, 'DUPLICATE_REQUEST_ID_DIFFERENT_PARAMS');
         }
+        throw e;
+      }
+      if (stored !== undefined) {
         if (fault === 'timeout_after_success') throw new FakeTimeout(op);
-        return structuredClone(stored.result) as T;
+        return stored;
       }
     }
     if (fault === 'capture_declined') throw new FakeApiError(422, 'INSTRUMENT_DECLINED');
     const result = fn();
-    if (key !== null) this.idem.set(key, { params, result: structuredClone(result) });
+    if (key !== null) this.idem.store(key, params, result);
     if (fault === 'timeout_after_success') throw new FakeTimeout(op);
     return result;
   }
