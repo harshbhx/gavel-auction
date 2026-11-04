@@ -143,6 +143,16 @@ describe('payload builders', () => {
     });
   });
 
+  it('settlementUpdateFor shows a hold voided under its hold id as VOIDED', () => {
+    const rig = makeRig(CEILINGS);
+    const j = newJournal(planFor(rig, CEILINGS, [['b1', 22000]]));
+    j.voids['hold-b2'] = 'voided';
+    j.voids['constructor'] = 'voided';
+    const holds = settlementUpdateFor(j, 9).holds;
+    expect(holds.find((h) => h.bidderId === 'b2')?.status).toBe('VOIDED');
+    expect(holds.find((h) => h.bidderId === 'b3')?.status).toBe('HELD');
+  });
+
   it('settlementUpdateFor on a fresh journal has every hold HELD and no capture', () => {
     const rig = makeRig(CEILINGS);
     const j = newJournal(planFor(rig, CEILINGS, [['b1', 22000]]));
