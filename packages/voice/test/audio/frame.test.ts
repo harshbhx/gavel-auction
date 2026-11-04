@@ -55,7 +55,12 @@ describe('T-VOX-005 frame codec', () => {
   });
 
   it('decodes a view with a nonzero byteOffset', () => {
-    const bytes = encodeBatch({ seq: 3, tsMs: 100, flags: 0, pcm: new Int16Array(FRAME_SAMPLES).fill(-5) });
+    const bytes = encodeBatch({
+      seq: 3,
+      tsMs: 100,
+      flags: 0,
+      pcm: new Int16Array(FRAME_SAMPLES).fill(-5),
+    });
     const padded = new Uint8Array(bytes.length + 3);
     padded.set(bytes, 3);
     expect(decodeBatch(padded.subarray(3)).pcm[0]).toBe(-5);
@@ -68,10 +73,14 @@ describe('T-VOX-005 frame codec', () => {
     expect(codeOf(() => decodeBatch(odd))).toBe('bad_length');
     expect(codeOf(() => decodeBatch(ok.subarray(0, HEADER_BYTES)))).toBe('bad_length'); // 0 frames
     expect(codeOf(() => decodeBatch(ok.subarray(0, 5)))).toBe('bad_length');
-    expect(codeOf(() => encodeBatch({ seq: 0, tsMs: 0, flags: 0, pcm: new Int16Array(11 * FRAME_SAMPLES) }))).toBe(
+    expect(
+      codeOf(() =>
+        encodeBatch({ seq: 0, tsMs: 0, flags: 0, pcm: new Int16Array(11 * FRAME_SAMPLES) }),
+      ),
+    ).toBe('bad_length');
+    expect(codeOf(() => encodeBatch({ seq: 0, tsMs: 0, flags: 0, pcm: new Int16Array(0) }))).toBe(
       'bad_length',
     );
-    expect(codeOf(() => encodeBatch({ seq: 0, tsMs: 0, flags: 0, pcm: new Int16Array(0) }))).toBe('bad_length');
   });
 
   it('rejects bad magic and version', () => {

@@ -25,7 +25,9 @@ function zeroCrossHz(x: Float32Array, rate: number, from: number, to: number): n
     if (a < 0 && b >= 0) crossings.push(i - 1 + -a / (b - a));
   }
   const periods = crossings.length - 1;
-  return (periods * rate) / ((crossings[crossings.length - 1] as number) - (crossings[0] as number));
+  return (
+    (periods * rate) / ((crossings[crossings.length - 1] as number) - (crossings[0] as number))
+  );
 }
 
 describe('T-VOX-003 resampler', () => {
@@ -60,9 +62,11 @@ describe('T-VOX-003 resampler', () => {
     const whole = resampleTo16k(44100).process(input).slice();
     const rs = resampleTo16k(44100);
     const parts: number[] = [];
-    for (let i = 0; i < input.length; i += 1000) parts.push(...rs.process(input.subarray(i, i + 1000)));
+    for (let i = 0; i < input.length; i += 1000)
+      parts.push(...rs.process(input.subarray(i, i + 1000)));
     expect(parts.length).toBe(whole.length);
-    for (let i = 0; i < whole.length; i++) expect(parts[i] as number).toBeCloseTo(whole[i] as number, 5);
+    for (let i = 0; i < whole.length; i++)
+      expect(parts[i] as number).toBeCloseTo(whole[i] as number, 5);
   });
 
   it('rejects unsupported rates', () => {
