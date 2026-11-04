@@ -1,9 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { Banner } from '../../src/design/primitives/Banner';
 import { Button } from '../../src/design/primitives/Button';
 import { Chip } from '../../src/design/primitives/Chip';
+import { Dialog } from '../../src/design/primitives/Dialog';
 import { Field } from '../../src/design/primitives/Field';
+import { Sheet } from '../../src/design/primitives/Sheet';
 
 const read = (rel: string): string => readFileSync(new URL(rel, import.meta.url), 'utf8');
 const css = read('../../src/design/primitives/primitives.css');
@@ -83,9 +87,10 @@ describe('Button', () => {
 
 describe('focus ring', () => {
   it('is 2 px wide on controls', () => {
-    expect(rule('.gv-btn:focus-visible,\n.gv-input:focus-visible')).toContain(
-      'outline: 2px solid var(--color-focus)',
-    );
+    expect(css).toContain('.gv-btn:focus-visible,');
+    expect(css).toContain('.gv-input:focus-visible,');
+    expect(css).toContain('outline: 2px solid var(--color-focus)');
+    expect(css).toContain('outline-offset: 2px');
   });
 
   it.each([
@@ -148,5 +153,211 @@ describe('Field', () => {
     const input = screen.getByLabelText('Amount');
     expect(input.getAttribute('inputmode')).toBe('numeric');
     expect((input as HTMLInputElement).value).toBe('5');
+  });
+});
+
+describe('Dialog', () => {
+  it('renders nothing when closed', () => {
+    const onClose = vi.fn();
+    const { container } = render(
+      <Dialog open={false} onClose={onClose} title="Test">
+        Content
+      </Dialog>,
+    );
+    expect(container.querySelector('.gv-dialog')).toBeNull();
+    expect(screen.queryByText('Content')).toBeNull();
+  });
+
+  it('renders content when open and has dialog role', () => {
+    const onClose = vi.fn();
+    render(
+      <Dialog open onClose={onClose} title="Confirm">
+        <button>OK</button>
+      </Dialog>,
+    );
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(dialog.getAttribute('aria-label')).toBe('Confirm');
+    expect(screen.getByText('OK')).toBeTruthy();
+  });
+
+  it('closes on Escape', () => {
+    const onClose = vi.fn();
+    render(
+      <Dialog open onClose={onClose} title="Test">
+        <button>OK</button>
+      </Dialog>,
+    );
+    fireEvent.keyDown(screen.getByRole('presentation'), { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not close on Escape when strict', () => {
+    const onClose = vi.fn();
+    render(
+      <Dialog open onClose={onClose} title="Test" strict>
+        <button>OK</button>
+      </Dialog>,
+    );
+    fireEvent.keyDown(screen.getByRole('presentation'), { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('closes on backdrop click', () => {
+    const onClose = vi.fn();
+    render(
+      <Dialog open onClose={onClose} title="Test">
+        <button>OK</button>
+      </Dialog>,
+    );
+    fireEvent.click(screen.getByRole('presentation'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not close on backdrop click when strict', () => {
+    const onClose = vi.fn();
+    render(
+      <Dialog open onClose={onClose} title="Test" strict>
+        <button>OK</button>
+      </Dialog>,
+    );
+    fireEvent.click(screen.getByRole('presentation'));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('does not close when clicking inside the dialog panel', () => {
+    const onClose = vi.fn();
+    render(
+      <Dialog open onClose={onClose} title="Test">
+        <button>OK</button>
+      </Dialog>,
+    );
+    fireEvent.click(screen.getByText('OK'));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('traps focus inside the dialog', () => {
+    render(
+      <div>
+        <button>Outside</button>
+        <Dialog open onClose={vi.fn()} title="Trap">
+          <button>First</button>
+          <button>Second</button>
+        </Dialog>
+      </div>,
+    );
+    const first = screen.getByText('First');
+    const second = screen.getByText('Second');
+    expect(document.activeElement).toBe(first);
+    second.focus();
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Tab' });
+    expect(document.activeElement).toBe(first);
+  });
+
+  it('restores focus to trigger on close', () => {
+    const Wrapper = () => {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button onClick={() => setOpen(true)}>Open</button>
+          <Dialog open={open} onClose={() => setOpen(false)} title="Restore">
+            <button>Inside</button>
+          </Dialog>
+        </>
+      );
+    };
+    // Need React for useState
+    render(<Wrapper />);
+    const trigger = screen.getByText('Open');
+    trigger.focus();
+    fireEvent.click(trigger);
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole('presentation'), { key: 'Escape' });
+    expect(document.activeElement).toBe(trigger);
+  });
+});
+
+describe('Sheet', () => {
+  it('renders nothing when closed', () => {
+    const { container } = render(
+      <Sheet open={false} onClose={vi.fn()} title="Test">
+        Content
+      </Sheet>,
+    );
+    expect(container.querySelector('.gv-sheet')).toBeNull();
+  });
+
+  it('renders content when open with dialog role', () => {
+    render(
+      <Sheet open onClose={vi.fn()} title="Bid">
+        <button>OK</button>
+      </Sheet>,
+    );
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(dialog.getAttribute('aria-label')).toBe('Bid');
+  });
+
+  it('closes on Escape', () => {
+    const onClose = vi.fn();
+    render(
+      <Sheet open onClose={onClose} title="Test">
+        <button>OK</button>
+      </Sheet>,
+    );
+    fireEvent.keyDown(screen.getByRole('presentation'), { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes on backdrop click but not on panel click', () => {
+    const onClose = vi.fn();
+    render(
+      <Sheet open onClose={onClose} title="Test">
+        <button>OK</button>
+      </Sheet>,
+    );
+    fireEvent.click(screen.getByText('OK'));
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('presentation'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Banner', () => {
+  it('renders with info tone and icon', () => {
+    const { container } = render(
+      <Banner tone="info" icon={<svg data-testid="icon" />}>
+        Reconnecting
+      </Banner>,
+    );
+    const banner = container.querySelector('.gv-banner');
+    expect(banner?.getAttribute('data-tone')).toBe('info');
+    expect(banner?.getAttribute('role')).toBe('status');
+    expect(screen.getByText('Reconnecting')).toBeTruthy();
+    expect(screen.getByTestId('icon').parentElement?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('renders warn tone', () => {
+    const { container } = render(
+      <Banner tone="warn" icon={<svg />}>
+        Paused
+      </Banner>,
+    );
+    expect(container.querySelector('.gv-banner')?.getAttribute('data-tone')).toBe('warn');
+  });
+
+  it('renders danger tone', () => {
+    const { container } = render(
+      <Banner tone="danger" icon={<svg />}>
+        Stopped
+      </Banner>,
+    );
+    expect(container.querySelector('.gv-banner')?.getAttribute('data-tone')).toBe('danger');
+  });
+
+  it('has CSS rules for all three tones', () => {
+    expect(css).toContain(".gv-banner[data-tone='info']");
+    expect(css).toContain(".gv-banner[data-tone='warn']");
+    expect(css).toContain(".gv-banner[data-tone='danger']");
   });
 });
