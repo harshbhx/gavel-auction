@@ -34,6 +34,8 @@
  *  - parkOrphan sets `parkedUntilMs`; unknown ids reject.
  *  - listOrphans(now) returns unprocessed events with parkedUntilMs > now,
  *    oldest receivedAtMs first.
+ *  - listUnprocessed returns every event without a result, parked or not,
+ *    oldest receivedAtMs first.
  *
  * HoldStore
  *  - get returns null for unknown ids; put replaces by holdId.
@@ -221,6 +223,17 @@ export function webhookStoreContract(name: string, make: () => WebhookEventStore
       expect((await s.listOrphans(100)).map((e) => e.id)).toEqual(['e1', 'e2']);
       expect((await s.listOrphans(599)).map((e) => e.id)).toEqual(['e1', 'e2']);
       expect(await s.listOrphans(600)).toEqual([]);
+    });
+
+    it('listUnprocessed returns stored events that were never parked or processed', async () => {
+      const s = make();
+      await s.insertIfAbsent(hook('e2', 20));
+      await s.insertIfAbsent(hook('e1', 10));
+      await s.insertIfAbsent(hook('e3', 30));
+      await s.parkOrphan('e2', 600);
+      await s.markProcessed('e3', 'ok');
+      expect(await s.listOrphans(0).then((l) => l.map((e) => e.id))).toEqual(['e2']);
+      expect((await s.listUnprocessed()).map((e) => e.id)).toEqual(['e1', 'e2']);
     });
 
     it('markProcessed removes the event from the orphan list and stores the result', async () => {

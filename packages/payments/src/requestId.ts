@@ -30,14 +30,18 @@ export function base32(bytes: Uint8Array): string {
   return out;
 }
 
-/** Deterministic PayPal-Request-Id (SPEC 4.4): 44 characters. */
+/**
+ * Deterministic PayPal-Request-Id (SPEC 4.4): 44 characters. The five parts are
+ * hashed as a JSON array so no choice of ids can produce the same preimage as
+ * another tuple (R-PAY-013).
+ */
 export function buildRequestId(p: RequestIdParts): string {
-  if (!Number.isInteger(p.amountCents) || p.amountCents < 0)
+  if (!Number.isSafeInteger(p.amountCents) || p.amountCents < 0)
     throw new RangeError('amountCents must be a non-negative integer');
-  if (!Number.isInteger(p.generation) || p.generation < 0)
+  if (!Number.isSafeInteger(p.generation) || p.generation < 0)
     throw new RangeError('generation must be a non-negative integer');
   const digest = createHash('sha256')
-    .update(`${p.auctionId}|${p.op}|${p.holdId}|${p.amountCents}|${p.generation}`)
+    .update(JSON.stringify([p.auctionId, p.op, p.holdId, p.amountCents, p.generation]))
     .digest();
   return `gv1-${base32(digest).slice(0, 40)}`;
 }

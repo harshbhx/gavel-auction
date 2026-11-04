@@ -1,7 +1,8 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { z } from 'zod';
 import { PayPalError } from './errors.js';
 import type { AuditSink, Clock, KillSwitch, PaymentsGateway } from './ports.js';
+import { writeFileAtomicSync } from './stores/atomic.js';
 import type { KillState } from './types.js';
 
 /**
@@ -37,7 +38,41 @@ export class MemoryKillStateStore implements KillStateStore {
   }
 }
 
-/** One JSON file, written atomically (temp file then rename). */
+const KillStateSchema = z
+  .object({
+    engaged: z.boolean(),
+    reason: z.string().optional(),
+    by: z.string().optional(),
+    sinceMs: z.number().optional(),
+  })
+  .strict();
+
+/**
+ * Parses the kill file. Any parse or shape failure reads as ENGAGED (fail closed,
+ * R-PAY-110): money calls then stop with kill_switch_engaged and an operator
+ * releases the switch, which rewrites a valid file.
+ */
+export function parseKillState(text: string): KillState {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return { engaged: true, reason: 'kill switch file is not valid JSON', by: 'system' };
+  }
+  const parsed = KillStateSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { engaged: true, reason: 'kill switch file has an invalid shape', by: 'system' };
+  }
+  const { engaged, reason, by, sinceMs } = parsed.data;
+  return {
+    engaged,
+    ...(reason !== undefined ? { reason } : {}),
+    ...(by !== undefined ? { by } : {}),
+    ...(sinceMs !== undefined ? { sinceMs } : {}),
+  };
+}
+
+/** One JSON file, written atomically (fsynced unique temp file, then rename). */
 export class FileKillStateStore implements KillStateStore {
   constructor(readonly path: string) {}
 
@@ -49,14 +84,11 @@ export class FileKillStateStore implements KillStateStore {
       if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { ...RELEASED };
       throw e;
     }
-    return JSON.parse(text) as KillState;
+    return parseKillState(text);
   }
 
   async save(state: KillState): Promise<void> {
-    mkdirSync(dirname(this.path), { recursive: true });
-    const tmp = `${this.path}.tmp`;
-    writeFileSync(tmp, JSON.stringify(state), 'utf8');
-    renameSync(tmp, this.path);
+    writeFileAtomicSync(this.path, JSON.stringify(state));
   }
 }
 

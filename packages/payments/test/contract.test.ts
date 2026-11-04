@@ -8,6 +8,7 @@ import {
   CreateHoldResponse,
   HOLD_ERROR_CODES,
   HoldErrorResponse,
+  holdOwnedBySession,
 } from '../src/contract/web.js';
 
 const dir = join(import.meta.dirname, '..', 'src', 'contract', 'fixtures');
@@ -44,5 +45,18 @@ describe('web contract fixtures (T-PAY-024)', () => {
     expect(ApproveHoldResponse.safeParse({ ...res, status: 'CAPTURED' }).success).toBe(false);
     expect(ApproveHoldRequest.safeParse({}).success).toBe(false);
     expect(HoldErrorResponse.safeParse({ error: 'teapot' }).success).toBe(false);
+  });
+
+  it('rejects a browser-supplied bidderId on create', () => {
+    const req = load('create-hold.request.json') as Record<string, unknown>;
+    expect(req).not.toHaveProperty('bidderId');
+    expect(CreateHoldRequest.safeParse({ ...req, bidderId: 'victim' }).success).toBe(false);
+  });
+
+  it('approve and abandon are allowed only for the hold owner', () => {
+    expect(holdOwnedBySession('b1', 'b1')).toBe(true);
+    expect(holdOwnedBySession('b1', 'b2')).toBe(false);
+    expect(holdOwnedBySession('b1', undefined)).toBe(false);
+    expect(holdOwnedBySession('', '')).toBe(false);
   });
 });
