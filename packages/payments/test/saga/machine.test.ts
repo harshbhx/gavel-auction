@@ -9,7 +9,12 @@ import {
   type SettlementEvent,
   type SettlementEventType,
 } from '../../src/saga/machine.js';
-import { SETTLEMENT_STATES, type Journal, type SettlementState } from '../../src/types.js';
+import {
+  SETTLEMENT_STATES,
+  type Journal,
+  type JournalWinner,
+  type SettlementState,
+} from '../../src/types.js';
 
 /** SPEC 6.1 explicit table, written out independently of the implementation. */
 const SPEC_TABLE: Record<SettlementState, SettlementState[]> = {
@@ -196,6 +201,36 @@ describe('effects are data', () => {
         amountCents: 21000,
       },
     ]);
+  });
+
+  it('refuses a winner that is not the candidate at the cursor, with another hold or a wrong amount', () => {
+    const base = journalIn('CAPTURING');
+    const win = (w: Partial<JournalWinner>, type: 'capture_ok' | 'adopted' = 'capture_ok') => ({
+      type,
+      tsMs: 1,
+      winner: { bidderId: 'b1', holdId: 'h1', captureId: 'CAP-1', amountCents: 22000, ...w },
+    });
+    expect(() => step(base, win({ bidderId: 'b2', holdId: 'h2', amountCents: 21000 }))).toThrow(
+      IllegalTransition,
+    );
+    expect(() => step(base, win({ holdId: 'h2' }))).toThrow(IllegalTransition);
+    expect(() => step(base, win({ amountCents: 99999 }))).toThrow(IllegalTransition);
+    expect(() => step(base, win({ amountCents: 21000 }))).toThrow(IllegalTransition);
+    expect(() => step(base, win({ amountCents: 30001 }, 'adopted'))).toThrow(IllegalTransition);
+    // an adopted capture below the planned price is within the ceiling and accepted
+    expect(step(base, win({ amountCents: 21000 }, 'adopted')).journal.winner?.amountCents).toBe(
+      21000,
+    );
+  });
+
+  it('refuses a failure for a bidder other than the candidate at the cursor', () => {
+    expect(() =>
+      step(journalIn('CAPTURING'), {
+        type: 'definite_fail',
+        tsMs: 1,
+        failure: { bidderId: 'b2', reason: 'declined' },
+      }),
+    ).toThrow(IllegalTransition);
   });
 
   it('no sale voids all holds', () => {

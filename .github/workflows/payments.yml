@@ -1,22 +1,30 @@
 name: payments
 on:
   pull_request:
-    paths: ['packages/payments/**', '.github/workflows/payments.yml']
+    paths:
+      - 'packages/payments/**'
+      - 'scripts/gates/**'
+      - 'docs/specs/payments/**'
+      - 'package-lock.json'
+      - '.github/workflows/payments.yml'
   push:
     branches: [main]
-    paths: ['packages/payments/**', '.github/workflows/payments.yml']
+    paths:
+      - 'packages/payments/**'
+      - 'scripts/gates/**'
+      - 'docs/specs/payments/**'
+      - 'package-lock.json'
+      - '.github/workflows/payments.yml'
 jobs:
   payments:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/payments
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - run: npm install --no-audit --no-fund
-      - run: npm run check:deps
-      - run: npm run typecheck
-      - run: npm test
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run check:deps -w @gavel/payments
+      - run: npm run typecheck -w @gavel/payments
+      - run: npm test -w @gavel/payments

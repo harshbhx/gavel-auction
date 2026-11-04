@@ -63,6 +63,11 @@ export interface WebhookEventStore {
   markProcessed(id: string, result: string): Promise<void>;
   parkOrphan(id: string, untilMs: number): Promise<void>;
   listOrphans(nowMs: number): Promise<StoredWebhook[]>;
+  /**
+   * Every stored event without a result, parked or not, oldest first. A sweep
+   * processes these so an event stored just before a crash is not lost (R-PAY-094).
+   */
+  listUnprocessed(): Promise<StoredWebhook[]>;
 }
 
 export interface HoldStore {
