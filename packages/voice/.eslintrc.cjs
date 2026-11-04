@@ -29,12 +29,15 @@ module.exports = {
   },
   overrides: [
     {
-      // Pure, clock-free zones: time is always passed in.
+      // Pure, clock-free zones: time is always passed in. This list replaces the base list, so the
+      // import and re-export guards are repeated here.
       files: [
         'src/decide/**/*.ts',
         'src/parser/**/*.ts',
         'src/segment/**/*.ts',
         'src/pipeline/**/*.ts',
+        'src/audio/**/*.ts',
+        'src/stt/**/*.ts',
       ],
       rules: {
         'no-restricted-syntax': [
@@ -46,16 +49,36 @@ module.exports = {
               'packages/voice may import packages/engine and packages/payments as types only (use "import type").',
           },
           {
-            selector: "CallExpression[callee.object.name='Date'][callee.property.name='now']",
-            message: 'Date.now is not allowed here: take time as an input.',
+            selector:
+              'ExportNamedDeclaration[exportKind!="type"][source.value=/^@gavel\\/(engine|payments)(\\/|$)/]',
+            message: 'Re-exporting values from engine or payments is not allowed.',
           },
           {
-            selector: "CallExpression[callee.object.name='Math'][callee.property.name='random']",
+            selector:
+              'ExportAllDeclaration[exportKind!="type"][source.value=/^@gavel\\/(engine|payments)(\\/|$)/]',
+            message: 'Re-exporting values from engine or payments is not allowed.',
+          },
+          {
+            selector: 'ImportDeclaration[source.value=/^node:/]',
+            message: 'Node built-ins are not allowed here: this code is bundled for the browser.',
+          },
+          {
+            selector:
+              "MemberExpression[object.name='Date'], NewExpression[callee.name='Date'], CallExpression[callee.name='Date']",
+            message: 'The clock is not allowed here: take time as an input.',
+          },
+          {
+            selector:
+              "MemberExpression[object.name='Math']:matches([property.name='random'], [property.value='random'])",
             message: 'Math.random is not allowed here: take randomness as an input.',
           },
           {
-            selector: "NewExpression[callee.name='Date']",
-            message: 'new Date is not allowed here: take time as an input.',
+            selector: "MemberExpression[object.name='performance']",
+            message: 'performance is not allowed here: take time as an input.',
+          },
+          {
+            selector: "MemberExpression[object.name='crypto']",
+            message: 'crypto is not allowed here: take randomness and ids as inputs.',
           },
         ],
       },

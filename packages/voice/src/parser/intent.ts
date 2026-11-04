@@ -23,7 +23,7 @@ export interface Intent {
 
 const WITHDRAW = /(^| )(i'm out|i am out|i pass|pass|no thanks)( |$)/;
 const HEDGE =
-  /(^| )(maybe|perhaps|thinking|about|around|roughly|between|or so|not sure|might|i guess)( |$)/;
+  /(^| )(maybe|perhaps|probably|thinking|about|around|roughly|between|or so|not sure|might|i guess|if|hold on|hang on|let me think)( |$)/;
 const BACKGROUND =
   /(^| )(the price is|price is|it's at|now at|currently|reserve|starting|opening|we are at|we're at|going once|going twice|going three times|fair warning|sold|kids|years old|people)( |$)/;
 const QUESTION_START = new Set([
@@ -39,6 +39,17 @@ const QUESTION_START = new Set([
   'do',
   'are',
   'why',
+  'should',
+  'would',
+  'will',
+  'shall',
+  'where',
+  'when',
+  'which',
+  'am',
+  'have',
+  'has',
+  'whose',
 ]);
 const NEGATIONS = new Set([
   'not',

@@ -36,6 +36,19 @@ describe('determinism guard', () => {
     expect(await lint('const a = new Date();\n', file)).toHaveLength(1);
   });
 
+  it('rejects other clocks, ids and re-exports in the pure zones', async () => {
+    for (const code of [
+      'const a = performance.now();\n',
+      'const a = crypto.randomUUID();\n',
+      "const a = Date['now']();\n",
+      'const a = Date();\n',
+      "export { mutate } from '@gavel/engine';\n",
+    ]) {
+      expect(await lint(code, 'src/parser/x.ts'), code).toHaveLength(1);
+    }
+    expect(await lint('const a = performance.now();\n', 'src/audio/x.ts')).toHaveLength(1);
+  });
+
   it('allows them outside the pure zones', async () => {
     expect(await lint('const a = Date.now();\n', 'src/browser/x.ts')).toHaveLength(0);
   });

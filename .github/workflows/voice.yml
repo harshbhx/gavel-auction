@@ -23,5 +23,4 @@ jobs:
       - run: ./node_modules/.bin/eslint packages/voice/src --max-warnings 0
       - run: npm test -w @gavel/voice
       - name: size-limit
-        if: ${{ hashFiles('packages/voice/src/parser/parse.ts') != '' && hashFiles('packages/voice/src/decide/policy.ts') != '' && hashFiles('packages/voice/src/browser/capture.ts') != '' }}
         run: npm run size -w @gavel/voice
