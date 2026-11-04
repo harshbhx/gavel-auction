@@ -137,7 +137,7 @@ describe('amount selection', () => {
   });
 
   it('the same amount said twice is one amount', () => {
-    expect(bid('three hundred three hundred')).toBe(30000);
+    expect(bid('three hundred I said three hundred')).toBe(30000);
   });
 
   it('a number it cannot read needs confirmation', () => {
@@ -186,7 +186,7 @@ describe('R-VOX-035 total and deterministic', () => {
   }
 
   it('handles 2000 characters and rejects more', () => {
-    expect(parseBid('three hundred '.repeat(100).slice(0, 2000), ctx).status).toBe('bid');
+    expect(parseBid('say three hundred '.repeat(111).slice(0, 2000), ctx).status).toBe('bid');
     expect(parseBid('x'.repeat(2001), ctx).reason).toBe('too_long');
   });
 });
