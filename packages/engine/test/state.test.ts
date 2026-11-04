@@ -106,7 +106,10 @@ const events: Array<{ event: LedgerEvent; at: number; cmd?: string }> = [
   },
   {
     at: 100008,
-    event: { type: 'LOT_SETTLED', payload: { lotId: L1, capturedCents: 1000, ref: 'r' } },
+    event: {
+      type: 'LOT_SETTLED',
+      payload: { lotId: L1, winnerId: A, capturedCents: 1000, ref: 'r' },
+    },
   },
   { at: 100009, event: { type: 'AUCTION_CLOSED', payload: { headHash: 'h11' } } },
 ];

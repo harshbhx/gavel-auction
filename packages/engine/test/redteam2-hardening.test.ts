@@ -16,13 +16,13 @@ describe('red-team round 2 hardening (engine)', () => {
     const price = s.lots[L1]?.priceCents ?? 0;
     const done = mk(
       400,
-      { type: 'CompleteLot', lotId: L1, capturedCents: price, ref: 'pi_1' },
+      { type: 'CompleteLot', lotId: L1, bidderId: A, capturedCents: price, ref: 'pi_1' },
       id('R3C1'),
     );
     s = run(s, done).state;
     const other = mk(
       400,
-      { type: 'CompleteLot', lotId: L1, capturedCents: price, ref: 'pi_2' },
+      { type: 'CompleteLot', lotId: L1, bidderId: A, capturedCents: price, ref: 'pi_2' },
       id('R3C1'),
     );
     expect(errCode(() => decide(s, other))).toBe('command_conflict');
