@@ -37,29 +37,56 @@ export interface PayPalSdkV6 {
 
 export type SdkLoader = () => Promise<PayPalSdkV6>;
 
-const SDK_URL = 'https://www.paypal.com/web-sdk/v6/core';
+/**
+ * The sandbox SDK host. This app is sandbox only (R-QA-038), so the live host must never be
+ * loaded; a test pins this constant to the sandbox host.
+ */
+export const PAYPAL_SDK_URL = 'https://www.sandbox.paypal.com/web-sdk/v6/core';
 
-/** Injects the SDK script once, on first use, and resolves with the global it defines. */
+let sdkLoad: Promise<PayPalSdkV6> | null = null;
+
+/** Test helper: forget the cached load. */
+export function resetPayPalSdkLoad(): void {
+  sdkLoad = null;
+}
+
+function readGlobalSdk(): PayPalSdkV6 | undefined {
+  const candidate = (globalThis as unknown as { paypal?: unknown }).paypal;
+  const create = (candidate as { createInstance?: unknown } | undefined)?.createInstance;
+  return typeof create === 'function' ? (candidate as PayPalSdkV6) : undefined;
+}
+
+/**
+ * Injects the SDK script once and resolves with the global it defines. Calls made while the
+ * script is loading share one promise, so a double click or a retry never adds a second tag. A
+ * failed load removes its tag and clears the promise, so the next call starts clean.
+ */
 export function loadPayPalSdkScript(): Promise<PayPalSdkV6> {
-  return new Promise((resolve, reject) => {
-    const read = (): PayPalSdkV6 | undefined =>
-      (globalThis as unknown as { paypal?: PayPalSdkV6 }).paypal;
-    const existing = read();
-    if (existing !== undefined) {
-      resolve(existing);
-      return;
-    }
+  const existing = readGlobalSdk();
+  if (existing !== undefined) return Promise.resolve(existing);
+  if (sdkLoad !== null) return sdkLoad;
+  sdkLoad = new Promise<PayPalSdkV6>((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = SDK_URL;
+    const fail = (code: string): void => {
+      script.remove();
+      sdkLoad = null;
+      reject(new Error(code));
+    };
+    script.src = PAYPAL_SDK_URL;
     script.async = true;
+    script.crossOrigin = 'anonymous';
+    script.referrerPolicy = 'no-referrer';
     script.onload = () => {
-      const sdk = read();
-      if (sdk === undefined) reject(new Error('paypal_sdk_missing'));
+      // The vendor URL is not versioned, so a fixed integrity hash is not possible; check the
+      // shape of what it defined instead of trusting any global named `paypal`.
+      const sdk = readGlobalSdk();
+      if (sdk === undefined) fail('paypal_sdk_missing');
       else resolve(sdk);
     };
-    script.onerror = () => reject(new Error('paypal_sdk_load_failed'));
+    script.onerror = () => fail('paypal_sdk_load_failed');
     document.head.appendChild(script);
   });
+  return sdkLoad;
 }
 
 export interface PayPalAdapterDeps {
@@ -73,6 +100,7 @@ export interface PayPalAdapterDeps {
 
 type Outcome =
   | { kind: 'approved'; orderId: string }
+  | { kind: 'mismatch' }
   | { kind: 'cancelled' }
   | { kind: 'declined'; code: string }
   | { kind: 'failed'; code: string };
@@ -119,6 +147,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     on('awaiting_buyer');
     const outcome = await this.approve(orderId, clientToken);
     if (outcome.kind === 'cancelled') return finish('cancelled');
+    if (outcome.kind === 'mismatch') return finish('error', { errorCode: 'order_mismatch' });
     if (outcome.kind === 'declined') return finish('declined', { errorCode: outcome.code });
     if (outcome.kind === 'failed') {
       // Wallet-buyer fallback: approve on PayPal's own page and finish on the return route.
@@ -182,7 +211,9 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
         ...(clientToken === undefined ? {} : { clientToken }),
       });
       const session = instance.createOneTimePaymentSession({
-        onApprove: (data) => settle({ kind: 'approved', orderId: data.orderId }),
+        // Only confirm the order this attempt created, never one the SDK hands back unasked.
+        onApprove: (data) =>
+          settle(data.orderId === orderId ? { kind: 'approved', orderId } : { kind: 'mismatch' }),
         onCancel: () => settle({ kind: 'cancelled' }),
         onError: (error) => {
           const code = error.code ?? 'paypal_error';

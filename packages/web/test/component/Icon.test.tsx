@@ -1,4 +1,6 @@
 import { render } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ICON_PATHS, Icon, type IconName } from '../../src/design/icons';
 
@@ -47,6 +49,20 @@ describe('Icon', () => {
     const { container } = render(<Icon name="check" title="<b>x</b>" />);
     expect(container.querySelector('svg b')).toBeNull();
     expect(container.querySelector('title')?.textContent).toBe('<b>x</b>');
+  });
+
+  it('never parses a title as markup, even one that closes the title element (WEB-RT-18)', () => {
+    const hostile = '</title><script>globalThis.hacked = 1</script><title>';
+    const { container } = render(<Icon name="check" title={hostile} />);
+    expect(container.querySelector('script')).toBeNull();
+    expect(container.querySelectorAll('title')).toHaveLength(1);
+    expect(container.querySelector('title')?.textContent).toBe(hostile);
+  });
+
+  it('does not use innerHTML', () => {
+    const here = dirname(import.meta.url.replace(/^file:\/\//, ''));
+    const source = readFileSync(resolve(here, '../../src/design/icons/Icon.tsx'), 'utf8');
+    expect(source).not.toMatch(/dangerouslySetInnerHTML|innerHTML/);
   });
 
   it('draws on currentColor and loads nothing from the network', () => {
