@@ -10,7 +10,16 @@ import type { Ulid } from '../src/types.js';
 const hammer = (s: AuctionState, at: number, lotId = L1) =>
   run(s, mk(at, { type: 'Hammer', lotId, actor: 'host', early: true })).state;
 const complete = (s: AuctionState, at: number, lotId: Ulid, cents: number) =>
-  run(s, mk(at, { type: 'CompleteLot', lotId, capturedCents: cents, ref: 'c' })).state;
+  run(
+    s,
+    mk(at, {
+      type: 'CompleteLot',
+      lotId,
+      bidderId: s.lots[lotId]?.winnerId ?? A,
+      capturedCents: cents,
+      ref: 'c',
+    }),
+  ).state;
 function withCeiling(s: AuctionState, bidderId: Ulid, ceilingCents: number): AuctionState {
   const b = s.bidders[bidderId];
   if (b === undefined) throw new Error('bidder missing');
