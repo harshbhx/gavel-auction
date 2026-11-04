@@ -30,6 +30,7 @@ interface Script {
   /** Whether the password field is still visible after login. */
   passwordStays?: boolean;
   styleFails?: boolean;
+  shotFails?: boolean;
   noReturn?: boolean;
   /** The bot-check input becomes visible after Next instead of the password field. */
   captcha?: boolean;
@@ -38,6 +39,7 @@ interface Script {
 }
 
 function launcher(script: Script, log: string[]): BrowserLauncher {
+  let masked = false;
   let nextClicked = false;
   let loggedIn = false;
   const kind = (selector: string): string => {
@@ -57,6 +59,7 @@ function launcher(script: Script, log: string[]): BrowserLauncher {
       const l: LocatorLike = {
         first: () => l,
         isVisible: () => {
+          if (masked) return Promise.resolve(false);
           if (k === 'email')
             return Promise.resolve(!miss('email') && main !== (script.emailInFrame === true));
           if (!main) return Promise.resolve(false);
@@ -91,17 +94,24 @@ function launcher(script: Script, log: string[]): BrowserLauncher {
       return l;
     },
     addStyleTag: ({ content }) => {
+      masked = true;
       log.push(`style ${content.includes('transparent') ? 'hide' : 'other'}`);
       return script.styleFails === true ? Promise.reject(new Error('no style')) : Promise.resolve();
     },
-    evaluate: () =>
-      Promise.resolve({
+    evaluate: (expression) => {
+      if (expression.includes('.remove()')) {
+        masked = false;
+        log.push('unstyle');
+        return Promise.resolve(undefined);
+      }
+      return Promise.resolve({
         inputs: [
           { tag: 'input', type: 'email', id: 'x', name: '', role: '', aria: '', visible: true },
         ],
         buttons: [],
         counts: { inputs: 1, buttons: 0, links: 2, iframes: 1 },
-      }),
+      });
+    },
   });
   const main = frame(true);
   const child = frame(false);
@@ -115,7 +125,7 @@ function launcher(script: Script, log: string[]): BrowserLauncher {
     waitForLoadState: () => Promise.resolve(),
     screenshot: ({ path }) => {
       log.push(`shot ${path.split('/').pop() ?? ''}`);
-      return Promise.resolve();
+      return script.shotFails === true ? Promise.reject(new Error('shot')) : Promise.resolve();
     },
     url: () => 'https://www.sandbox.paypal.com/signin?token=SECRET&x=1',
   };
@@ -177,6 +187,22 @@ describe('approveInBrowser', () => {
     log.forEach((l, i) => {
       if (l.startsWith('shot')) expect(log[i - 1]).toBe('style hide');
     });
+  });
+
+  it('removes the hiding style after every screenshot so fields are visible again', async () => {
+    const log: string[] = [];
+    await approveInBrowser(opts({}, log));
+    log.forEach((l, i) => {
+      if (l.startsWith('shot')) expect(log.slice(i + 1, i + 3)).toContain('unstyle');
+    });
+    expect(log).toContain('fill email <email>');
+  });
+
+  it('removes the hiding style even when the screenshot throws', async () => {
+    const log: string[] = [];
+    await approveInBrowser(opts({ shotFails: true }, log));
+    expect(log).toContain('unstyle');
+    expect(log).toContain('fill email <email>');
   });
 
   it('takes no screenshot when the page cannot be hidden', async () => {
