@@ -16,7 +16,7 @@ export interface RankedBid {
   rank: number;
 }
 
-function better(a: BidRecord, b: BidRecord): boolean {
+export function better(a: BidRecord, b: BidRecord): boolean {
   if (a.amountCents !== b.amountCents) return a.amountCents > b.amountCents;
   if (a.at !== b.at) return a.at < b.at;
   return a.seq < b.seq;

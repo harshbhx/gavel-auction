@@ -89,7 +89,10 @@ export function decideHammer(state: AuctionState, cmd: HammerCommand): DecideRes
   const ranked = rank(lot.bids);
   const winner = ranked[0];
   if (winner === undefined) {
-    events.push({ type: 'LOT_UNSOLD', payload: { lotId: cmd.lotId, reason: 'no_bids' } });
+    events.push({
+      type: 'LOT_UNSOLD',
+      payload: { lotId: cmd.lotId, reason: 'no_bids', actor: cmd.actor },
+    });
     return { events, outcome: { kind: 'accepted' } };
   }
   const pl: PricingLot = {

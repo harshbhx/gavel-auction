@@ -160,7 +160,7 @@ describe('decideSetup', () => {
     });
     const raise: SetupCommand = {
       ...base,
-      commandId: id('RAISE'),
+      commandId: id('R4'),
       type: 'RegisterBidder',
       bidderId: A,
       ceilingCents: 50000,

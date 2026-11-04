@@ -27,6 +27,14 @@ function checkString(s: string): void {
   }
 }
 
+/** Python json.dumps(ensure_ascii=True): every code unit outside 0x20..0x7e becomes \\uXXXX. */
+function quote(s: string): string {
+  return JSON.stringify(s).replace(
+    /[^\x20-\x7e]/g,
+    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`,
+  );
+}
+
 function compareUtf16(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
@@ -43,7 +51,7 @@ function encode(v: unknown, out: string[]): void {
     out.push(String(v));
   } else if (typeof v === 'string') {
     checkString(v);
-    out.push(JSON.stringify(v));
+    out.push(quote(v));
   } else if (Array.isArray(v)) {
     out.push('[');
     for (let i = 0; i < v.length; i++) {
@@ -59,7 +67,7 @@ function encode(v: unknown, out: string[]): void {
       if (FORBIDDEN_KEYS.has(k)) bad(`forbidden key ${k}`);
       checkString(k);
       if (i > 0) out.push(',');
-      out.push(JSON.stringify(k), ':');
+      out.push(quote(k), ':');
       encode(obj[k], out);
     });
     out.push('}');

@@ -1,7 +1,7 @@
 import { EngineError } from '../errors.js';
 import type { BidAudit } from '../events.js';
 import type { RejectReason } from '../reasons.js';
-import { LIMITS } from '../types.js';
+import { LIMITS, MAX_AMOUNT_CENTS } from '../types.js';
 import type { BidSource } from '../types.js';
 import type { AuctionState, LotState } from '../state.js';
 import { available, bidderFor } from './exposure.js';
@@ -11,7 +11,7 @@ import { checkProxyBid } from './pricing-proxy.js';
 import { rank } from './ranking.js';
 
 /** Largest bid amount accepted, in cents (R-ENG-001). */
-export const MAX_AMOUNT_CENTS = 100_000_000;
+export { MAX_AMOUNT_CENTS };
 
 const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/;
 
@@ -82,7 +82,7 @@ export function validateBid(state: AuctionState, lot: LotState, cmd: BidInput): 
     });
   }
   const avail = available(state, cmd.bidderId, cmd.lotId);
-  if (amount > avail) return fail('over_ceiling', { availableCeilingCents: avail });
+  if (amount > avail) return fail('over_ceiling');
   if (amount < cfg.reserveCents) return fail('below_reserve', { reserveCents: cfg.reserveCents });
 
   const pl: PricingLot = {

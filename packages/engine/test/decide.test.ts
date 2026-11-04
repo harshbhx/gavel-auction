@@ -21,7 +21,10 @@ describe('decide wrapper', () => {
     const first = run(s, placeBid(1000));
     expect(first.result.outcome.kind).toBe('accepted');
     const again = run(first.state, placeBid(1000));
-    expect(again.result).toEqual({ events: [], outcome: { kind: 'duplicate' } });
+    expect(again.result).toEqual({
+      events: [],
+      outcome: { kind: 'duplicate', original: { kind: 'accepted' } },
+    });
     expect(again.state).toBe(first.state);
     expect(first.state.commands[CID]?.seq).toBe(first.entries[0]?.seq);
     // A retry stamped later is still the same command.
@@ -51,7 +54,7 @@ describe('decide wrapper', () => {
     expect(decide(s, c).outcome.kind).toBe('duplicate');
     const changed = mk(1, { type: 'CreateAuction', title: 'Other', config: {} }, id('CREATE'));
     expect(errCode(() => decide(s, changed))).toBe('command_conflict');
-    const lot = mk(2, { type: 'AddLot', lot: lotConfig(L1) }, id('ADDLOT'));
+    const lot = mk(2, { type: 'AddLot', lot: lotConfig(L1) }, id('ADD1'));
     s = run(s, lot).state;
     expect(decide(s, lot).outcome.kind).toBe('duplicate');
   });
