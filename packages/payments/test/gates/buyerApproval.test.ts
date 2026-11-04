@@ -36,6 +36,12 @@ interface Script {
   captcha?: boolean;
   /** Put the email field in a second frame instead of the main one. */
   emailInFrame?: boolean;
+  /** An overlay blocks normal clicks; only forced clicks go through. */
+  intercepted?: boolean;
+  /** Enter in the password field does not submit the form. */
+  enterFails?: boolean;
+  /** Both normal and forced clicks are blocked; only a dispatched event works. */
+  forceFails?: boolean;
 }
 
 function launcher(script: Script, log: string[]): BrowserLauncher {
@@ -76,7 +82,31 @@ function launcher(script: Script, log: string[]): BrowserLauncher {
             return Promise.resolve(loggedIn && !miss('confirm') && script.passwordStays !== true);
           return Promise.resolve(false);
         },
-        click: () => {
+        press: (key) => {
+          log.push(`press ${k} ${key}`);
+          if (script.enterFails === true) return Promise.reject(new Error('no enter'));
+          if (k === 'password' && key === 'Enter') loggedIn = true;
+          return Promise.resolve();
+        },
+        scrollIntoViewIfNeeded: () => {
+          log.push(`scroll ${k}`);
+          return Promise.resolve();
+        },
+        dispatchEvent: (type) => {
+          log.push(`dispatch ${k} ${type}`);
+          if (k === 'next') nextClicked = true;
+          if (k === 'login' || k === 'confirm') loggedIn = true;
+          return Promise.resolve();
+        },
+        click: (o) => {
+          if (script.intercepted === true && o?.force !== true) {
+            log.push(`blocked ${k}`);
+            return Promise.reject(new Error('intercepts pointer events'));
+          }
+          if (script.forceFails === true && script.intercepted === true) {
+            log.push(`blocked ${k}`);
+            return Promise.reject(new Error('intercepts pointer events'));
+          }
           log.push(`click ${k}`);
           if (k === 'next') nextClicked = true;
           if (k === 'login') loggedIn = true;
@@ -165,6 +195,30 @@ describe('approveInBrowser', () => {
     expect(log.some((l) => l.includes('review'))).toBe(true);
     expect(log.some((l) => l.includes('returned'))).toBe(true);
     expect(log[log.length - 1]).toBe('closed');
+  });
+
+  it('submits the password with Enter before any click on Log In', async () => {
+    const log: string[] = [];
+    await approveInBrowser(opts({}, log));
+    expect(log).toContain('press password Enter');
+    expect(log).not.toContain('click login');
+  });
+
+  it('clicks Log In with force when Enter does not submit and an overlay blocks the click', async () => {
+    const log: string[] = [];
+    await approveInBrowser(opts({ enterFails: true, intercepted: true }, log));
+    expect(log).toContain('blocked login');
+    expect(log).toContain('scroll login');
+    expect(log).toContain('click login');
+    expect(log).toContain('blocked next');
+    expect(log).toContain('click next');
+  });
+
+  it('falls back to a dispatched click when even forced clicks are blocked', async () => {
+    const log: string[] = [];
+    await approveInBrowser(opts({ enterFails: true, intercepted: true, forceFails: true }, log));
+    expect(log).toContain('dispatch login click');
+    expect(log).toContain('dispatch next click');
   });
 
   it('skips Next on the one-page layout', async () => {

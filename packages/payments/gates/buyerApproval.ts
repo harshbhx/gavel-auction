@@ -24,7 +24,12 @@ export interface BuyerCredentials {
 export interface LocatorLike {
   first(): LocatorLike;
   isVisible(): Promise<boolean>;
-  click(opts?: { timeout: number }): Promise<void>;
+  click(opts?: { timeout: number; force?: boolean }): Promise<void>;
+  /** Presses a key in the element, for example Enter in the password field. */
+  press(key: string, opts?: { timeout: number }): Promise<void>;
+  scrollIntoViewIfNeeded(opts?: { timeout: number }): Promise<void>;
+  /** Dispatches a DOM event straight at the element, bypassing overlay hit-testing. */
+  dispatchEvent(type: string, eventInit?: Record<string, unknown>): Promise<void>;
   fill(value: string, opts?: { timeout: number }): Promise<void>;
   count(): Promise<number>;
   /** Resolves when the element is visible, rejects after the timeout. */
@@ -279,6 +284,27 @@ async function waitVisible(
   }
 }
 
+/**
+ * Clicks an element so that an overlay on top of it cannot block the click: a normal click first,
+ * then scroll into view plus a forced click, then a dispatched click event.
+ */
+async function robustClick(locator: LocatorLike, timeout = 10_000): Promise<void> {
+  try {
+    await locator.click({ timeout: Math.min(timeout, 5000) });
+    return;
+  } catch {
+    // intercepted by an overlay or not yet stable: fall through to the forced paths
+  }
+  await locator.scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => undefined);
+  try {
+    await locator.click({ timeout, force: true });
+    return;
+  } catch {
+    // fall through to a synthetic click
+  }
+  await locator.dispatchEvent('click');
+}
+
 async function settle(page: PageLike): Promise<void> {
   await page.waitForLoadState('domcontentloaded', { timeout: 30_000 }).catch(() => undefined);
   await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
@@ -317,7 +343,7 @@ export async function approveInBrowser(opts: ApproveOptions): Promise<void> {
   mkdirSync(opts.shotDir, { recursive: true });
   const browser = await opts.launcher.launch();
   try {
-    const page = await browser.newPage({ viewport: { width: 1200, height: 900 } });
+    const page = await browser.newPage({ viewport: { width: 1200, height: 1400 } });
     let shots = 0;
     const snap = async (name: string): Promise<void> => {
       shots += 1;
@@ -356,7 +382,7 @@ export async function approveInBrowser(opts: ApproveOptions): Promise<void> {
     const clickPrimary = async (selectors: readonly string[]): Promise<boolean> => {
       const b = await findVisible(page, selectors, 5000);
       if (b === undefined) return false;
-      await b.click({ timeout: 10_000 });
+      await robustClick(b);
       return true;
     };
 
@@ -409,12 +435,23 @@ export async function approveInBrowser(opts: ApproveOptions): Promise<void> {
       );
     }
     await password.fill(opts.credentials.password, { timeout: 10_000 });
-    if (!(await clickPrimary(LOGIN_BUTTONS))) {
-      return await fail(
-        'login',
-        'no log in button was found after the password step',
-        'no-login-button',
-      );
+    // Enter submits the form without depending on where the Log In button sits on the page.
+    let submitted = false;
+    try {
+      await password.press('Enter', { timeout: 5000 });
+      submitted = true;
+      await page.waitForTimeout(1500);
+    } catch {
+      // fall back to clicking the button
+    }
+    if (!submitted || (await findVisible(page, PASSWORD_FIELDS, 0)) !== undefined) {
+      if (!(await clickPrimary(LOGIN_BUTTONS))) {
+        return await fail(
+          'login',
+          'no log in button was found after the password step',
+          'no-login-button',
+        );
+      }
     }
     await settle(page);
     await dismissCookies(page);
@@ -445,7 +482,7 @@ export async function approveInBrowser(opts: ApproveOptions): Promise<void> {
     const confirm = confirmHit.locator;
     await snap('after-login');
     await snap('review');
-    await confirm.click({ timeout: 10_000 });
+    await robustClick(confirm);
     try {
       await page.waitForURL(opts.returnPattern, { timeout });
     } catch {
