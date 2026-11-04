@@ -29,6 +29,17 @@ Every page shows a "Sandbox: no real money moves" banner. A room is labelled "Li
 
 Card and guest checkout is untested in our sandbox (gate G2 in `docs/GATES.md` is NOT RUN). If it fails, only PayPal wallet sandbox buyers will be offered.
 
+### What judges can test on the hosted demo
+
+The hosted server runs in production mode, which refuses fake payments (`packages/server/src/config.ts`). A judge therefore sees one of two things, labelled on every page:
+
+1. Live sandbox room: needs a PayPal sandbox buyer. The sandbox buyer logins and wallet-only instructions are published in the Devpost entry and the repository's judge walkthrough, never in the source tree. Card and guest checkout is offered only if gate G2 passes.
+2. Recorded replay: `/replay/:recordingId` plays a labelled recorded auction with no PayPal calls. It is the fallback when no sandbox buyer is at hand and the only path that needs no login.
+
+The scripted demo launcher uses fake payments, so it is not available on the hosted server. Run it locally to see the fake PayPal.
+
+Timing. A hold older than 2 hours (`GAVEL_HOLD_MAX_AGE_MS`, 7,200,000 ms) when the settlement starts is flagged stale and a `stale_hold` row is written to the audit trail. A stale hold is still captured; the flag is a warning, not a refusal. PayPal's honor period for an authorization is unproven (gate G3), so register, bid and hammer within one sitting. A judge who registers and comes back later may see the hold flagged or voided by PayPal, in which case the bidder is dropped from the ladder as a revoked hold. Seeded demo data holds no real authorizations and is shown only as recorded events.
+
 ## 3. Bid: QR or typed entry
 
 - QR: the big screen shows a QR code that opens `/join/<roomId>?c=<code>` on your phone. After joining, the bid screen at `/r/<roomId>/bid` has a quick-bid button, +increment buttons and a custom amount field. Bids above your ceiling are blocked.
