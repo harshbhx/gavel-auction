@@ -21,7 +21,12 @@ const MAX_FIRST_CHAR = '7';
 const ULID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 
 export function isUlid(raw: unknown): raw is string {
-  return typeof raw === 'string' && raw.length === ULID_LENGTH && ULID_RE.test(raw) && raw[0]! <= MAX_FIRST_CHAR;
+  return (
+    typeof raw === 'string' &&
+    raw.length === ULID_LENGTH &&
+    ULID_RE.test(raw) &&
+    (raw[0] ?? '9') <= MAX_FIRST_CHAR
+  );
 }
 
 /** Validate a raw string and brand it. Throws `bad_message` when invalid. */

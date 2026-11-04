@@ -39,7 +39,10 @@
       "properties": {
         "winner": { "type": ["string", "null"] },
         "price": { "type": "integer" },
-        "ranking": { "type": "array", "items": { "type": "array", "prefixItems": [{ "type": "string" }, { "type": "integer" }] } },
+        "ranking": {
+          "type": "array",
+          "items": { "type": "array", "prefixItems": [{ "type": "string" }, { "type": "integer" }] }
+        },
         "rejects": { "type": "array", "items": { "type": "string" } },
         "endsAt": { "type": "integer" }
       }

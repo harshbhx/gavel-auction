@@ -3,7 +3,15 @@ import { join } from 'node:path';
 import type { Mode } from '../types.js';
 
 export type StepOp = 'register' | 'bid' | 'tick' | 'hammer' | 'promote' | 'revoke' | 'complete';
-const OPS: readonly StepOp[] = ['register', 'bid', 'tick', 'hammer', 'promote', 'revoke', 'complete'];
+const OPS: readonly StepOp[] = [
+  'register',
+  'bid',
+  'tick',
+  'hammer',
+  'promote',
+  'revoke',
+  'complete',
+];
 const MODES: readonly Mode[] = ['english', 'proxy', 'second_price'];
 
 export interface Step {
@@ -49,7 +57,8 @@ export function parseFixture(raw: unknown, file: string): Fixture {
     throw new Error(`${file}: ${m}`);
   };
   if (!isObj(raw)) return fail('fixture must be an object');
-  if (typeof raw['name'] !== 'string' || raw['name'] === '') fail('name must be a non-empty string');
+  if (typeof raw['name'] !== 'string' || raw['name'] === '')
+    fail('name must be a non-empty string');
   if (typeof raw['parity'] !== 'boolean') fail('parity must be a boolean');
   const config = raw['config'];
   if (!isObj(config) || !MODES.includes(config['mode'] as Mode)) fail('config.mode is invalid');
