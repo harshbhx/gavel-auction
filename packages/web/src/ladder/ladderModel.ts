@@ -25,6 +25,8 @@ export interface SettlementView {
   lotId: string;
   phase: SettlementState;
   winnerPaddle: number | null;
+  /** The price the hammer fell at. When present, the winning lane must be charged exactly this. */
+  hammerPriceCents?: number;
   holds: HoldView[];
   invariants: { ok: boolean; violations: string[] };
 }
@@ -218,7 +220,13 @@ function buildInvariants(view: SettlementView): LadderInvariants {
       Number.isSafeInteger(h.releasedCents),
   );
   const capturedWithinCeiling =
-    winningCeilingCents === null ? capturedCents === 0 : capturedCents <= winningCeilingCents;
+    winningCeilingCents === null
+      ? capturedCents === 0
+      : view.hammerPriceCents === undefined
+        ? capturedCents <= winningCeilingCents
+        : // Only the winning price may be charged, never the ceiling (R-WEB-091). Until the capture
+          // lands nothing is captured yet, which is not a violation.
+          capturedCents === 0 || capturedCents === view.hammerPriceCents;
   const totalsMatch =
     !FINAL_PHASES.includes(view.phase) || capturedCents + releasedCents === holdsCents;
   return {
