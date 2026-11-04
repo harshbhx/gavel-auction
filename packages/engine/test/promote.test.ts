@@ -73,7 +73,7 @@ describe('decide PromoteRunnerUp', () => {
     expect(r.state.lots[L1]?.winnerId).toBe(A);
   });
 
-  it('R-ENG-056 a revoked candidate is skipped with its own reason', () => {
+  it('T-ENG-043 R-ENG-056 a revoked candidate is skipped with its own reason', () => {
     const s0 = hammered();
     const b = s0.bidders[B];
     if (b === undefined) throw new Error('bidder missing');
@@ -93,7 +93,7 @@ describe('decide PromoteRunnerUp', () => {
     expect(committed(r.state, B, 'event')).toBe(0);
   });
 
-  it('R-ENG-057 running out of candidates ends the lot unsold', () => {
+  it('T-ENG-044 R-ENG-057 running out of candidates ends the lot unsold', () => {
     let s = hammered({ maxFallbackDepth: 5 });
     s = run(s, promote(400, C)).state;
     s = run(s, promote(410, B)).state;

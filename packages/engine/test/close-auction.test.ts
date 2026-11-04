@@ -37,7 +37,7 @@ describe('decide CloseAuction', () => {
     ).toBe('auction_closed');
   });
 
-  it('R-ENG-064 a pending lot blocks closing, an unsold one does not', () => {
+  it('T-ENG-048 R-ENG-064 a pending lot blocks closing, an unsold one does not', () => {
     let s = open(scene({ lots: [lotConfig(L1), lotConfig(L2)] }), L1);
     s = hammer(s, 300);
     expect(s.lots[L1]?.status).toBe('DONE');
