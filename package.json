@@ -27,15 +27,20 @@
     "report": "echo 'report: not implemented'",
     "check:secrets": "echo 'check:secrets: not implemented'",
     "check:deps": "echo 'check:deps: not implemented'",
-    "check:ascii": "echo 'check:ascii: not implemented'",
-    "check:banned-words": "echo 'check:banned-words: not implemented'",
-    "check:ownership": "node scripts/check-ownership.mjs"
+    "check:ascii": "node scripts/check-ascii.mjs",
+    "check:banned-words": "node scripts/check-banned-words.mjs",
+    "check:ownership": "node scripts/check-ownership.mjs",
+    "test:tools": "node --test \"scripts/tests/*.test.mjs\" \"eslint.rules/tests/*.test.mjs\"",
+    "prepare": "husky || true"
   },
   "devDependencies": {
+    "@commitlint/cli": "19.5.0",
     "@eslint/js": "9.15.0",
     "eslint": "9.15.0",
     "eslint-plugin-react-hooks": "5.0.0",
     "globals": "15.12.0",
+    "husky": "9.1.6",
+    "lint-staged": "15.2.10",
     "prettier": "3.3.3",
     "typescript": "5.6.3",
     "typescript-eslint": "8.15.0"
