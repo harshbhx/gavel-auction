@@ -1,10 +1,11 @@
+import { randomBytes } from 'node:crypto';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { FakePayPalServer } from '../../src/fake/server.js';
-import { amount, errorName, field, firstAuthorization, str } from '../gateUtil.js';
+import { amount, errorName, field, firstAuthorization, gateCurrency, str } from '../gateUtil.js';
 import { fetchAccessToken } from '../http.js';
 import {
   EXIT_REFUSED,
@@ -102,8 +103,13 @@ export interface G2ServerDeps {
   domain: string;
 }
 
+/** Header every /api call must carry; the served page holds the value. */
+export const G2_TOKEN_HEADER = 'x-g2-token';
+
 export interface G2Server {
   url: string;
+  /** Per-run secret the page sends with every /api call. */
+  pageToken: string;
   results: G2Results;
   /** Resolves when both paths are final, or rejects on timeout. */
   done(timeoutMs: number): Promise<G2Results>;
@@ -153,6 +159,11 @@ export async function startG2Server(
   const page =
     deps.pageHtml ??
     readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'index.html'), 'utf8');
+  const pageToken = randomBytes(16).toString('hex');
+  const servedPage = page.includes('</head>')
+    ? page.replace('</head>', `<meta name="g2-token" content="${pageToken}" /></head>`)
+    : `<meta name="g2-token" content="${pageToken}" />${page}`;
+  let boundPort = 0;
   let counter = 0;
   let waiter: (() => void) | undefined;
   const settle = (): void => {
@@ -160,10 +171,29 @@ export async function startG2Server(
   };
 
   const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    // Only the operator's own browser tab may talk to this server: the Host must be this
+    // loopback address (no DNS rebinding) and any Origin must be the server itself.
+    const hosts = [`127.0.0.1:${boundPort}`, `localhost:${boundPort}`];
+    if (!hosts.includes(req.headers.host ?? '')) return send(res, 403, { error: 'bad host' });
+    const origin = req.headers.origin;
+    if (origin !== undefined && !hosts.some((h) => origin === `http://${h}`)) {
+      return send(res, 403, { error: 'bad origin' });
+    }
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (req.method === 'GET' && url.pathname === '/') {
-      send(res, 200, page, 'text/html; charset=utf-8');
+      send(res, 200, servedPage, 'text/html; charset=utf-8');
       return;
+    }
+    if (url.pathname.startsWith('/api/')) {
+      if (req.headers[G2_TOKEN_HEADER] !== pageToken) {
+        return send(res, 403, { error: 'missing or wrong token' });
+      }
+      if (
+        req.method === 'POST' &&
+        !/^application\/json\b/i.test(req.headers['content-type'] ?? '')
+      ) {
+        return send(res, 415, { error: 'content type must be application/json' });
+      }
     }
     if (req.method === 'GET' && url.pathname === '/api/config') {
       const tokenRes = await ctx.http.request('G2.1 client token', {
@@ -176,7 +206,7 @@ export async function startG2Server(
         body: `grant_type=client_credentials&response_type=client_token&intent=sdk_init&domains[]=${encodeURIComponent(deps.domain)}`,
       });
       const clientToken = str(field(tokenRes.json, 'access_token'));
-      send(res, 200, { clientToken, sdkUrl: deps.sdkUrl });
+      send(res, 200, { clientToken, sdkUrl: deps.sdkUrl, currency: gateCurrency() });
       return;
     }
     if (req.method === 'POST' && url.pathname === '/api/orders') {
@@ -271,7 +301,9 @@ export async function startG2Server(
     });
   });
   const addr = server.address() as AddressInfo;
+  boundPort = addr.port;
   return {
+    pageToken,
     url: `http://localhost:${addr.port}`,
     results,
     done: (timeoutMs) =>
@@ -321,7 +353,7 @@ export interface G2Deps {
   timeoutMs: number;
   sdkUrl: string;
   /** Fake runs: drives the page's calls instead of a person. */
-  drive?: (baseUrl: string) => Promise<void>;
+  drive?: (baseUrl: string, pageToken: string) => Promise<void>;
   gatesMdPath?: string;
 }
 
@@ -343,7 +375,7 @@ export async function g2Gate(ctx: GateContext, deps: G2Deps): Promise<void> {
     ctx.log(
       `G2 page: ${srv.url}  (open it in a browser, pay once with the wallet and once as a guest with a card)`,
     );
-    if (deps.drive !== undefined) await deps.drive(srv.url);
+    if (deps.drive !== undefined) await deps.drive(srv.url, srv.pageToken);
     const results = await srv.done(deps.timeoutMs);
     const verdict = decideG2(results);
     ctx.check(
@@ -425,10 +457,10 @@ function parseG2Flags(argv: readonly string[]): G2Flags {
   return flags;
 }
 
-async function postJson(url: string, body: unknown): Promise<unknown> {
+async function postJson(url: string, pageToken: string, body: unknown): Promise<unknown> {
   const r = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', [G2_TOKEN_HEADER]: pageToken },
     body: JSON.stringify(body),
   });
   return r.json();
@@ -472,21 +504,27 @@ export async function runG2(opts: RunG2Options): Promise<number> {
         };
         const fakeSrv = server;
         if (fakeSrv !== undefined) {
-          deps.drive = async (base) => {
-            await fetch(`${base}/api/config`);
-            const wallet = (await postJson(`${base}/api/orders`, { path: 'wallet' })) as {
+          deps.drive = async (base, pageToken) => {
+            await fetch(`${base}/api/config`, { headers: { [G2_TOKEN_HEADER]: pageToken } });
+            const wallet = (await postJson(`${base}/api/orders`, pageToken, {
+              path: 'wallet',
+            })) as {
               orderId: string;
             };
             fakeSrv.core.approveOrder(wallet.orderId);
-            await postJson(`${base}/api/orders/${wallet.orderId}/authorize`, { path: 'wallet' });
+            await postJson(`${base}/api/orders/${wallet.orderId}/authorize`, pageToken, {
+              path: 'wallet',
+            });
             if (flags.fakeCard === 'offered') {
-              const card = (await postJson(`${base}/api/orders`, { path: 'card' })) as {
+              const card = (await postJson(`${base}/api/orders`, pageToken, { path: 'card' })) as {
                 orderId: string;
               };
               fakeSrv.core.approveOrder(card.orderId);
-              await postJson(`${base}/api/orders/${card.orderId}/authorize`, { path: 'card' });
+              await postJson(`${base}/api/orders/${card.orderId}/authorize`, pageToken, {
+                path: 'card',
+              });
             } else {
-              await postJson(`${base}/api/report`, {
+              await postJson(`${base}/api/report`, pageToken, {
                 path: 'card',
                 outcome: 'not_offered',
                 detail: '',
