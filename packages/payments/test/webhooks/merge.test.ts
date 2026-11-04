@@ -119,7 +119,10 @@ describe('observeHold', () => {
     const authId = authOf(rig, 'h1');
     rig.core.capture(authId, 220, true);
     const ev = rig.core.events;
-    for (const e of ev) await processEvent(rig.deps, storedFrom(e));
+    for (const e of ev) {
+      await rig.events.insertIfAbsent(storedFrom(e));
+      await processEvent(rig.deps, storedFrom(e));
+    }
     expect((await rig.holds.get('h1'))?.status).toBe('CAPTURED');
     // PayPal now reports a voided authorization (a late, contradictory fact).
     const voided = {
@@ -136,7 +139,7 @@ describe('observeHold', () => {
         }),
       },
     };
-    const res = await processEvent(voided, {
+    const late = {
       id: 'WH-late',
       eventType: 'PAYMENT.AUTHORIZATION.VOIDED',
       receivedAtMs: 1,
@@ -145,7 +148,9 @@ describe('observeHold', () => {
         event_type: 'PAYMENT.AUTHORIZATION.VOIDED',
         resource: { authId },
       }),
-    });
+    };
+    await rig.events.insertIfAbsent(late);
+    const res = await processEvent(voided, late);
     expect(res).toBe('status_conflict');
     expect((await rig.holds.get('h1'))?.status).toBe('CAPTURED');
     expect(rig.audits.filter((a) => a.label === 'status_conflict')).toHaveLength(1);

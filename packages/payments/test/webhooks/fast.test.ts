@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WebhookEventStore } from '../../src/ports.js';
 import { MemoryWebhookEventStore } from '../../src/stores/memory.js';
 import type { StoredWebhook } from '../../src/types.js';
@@ -8,18 +8,19 @@ import { authOf, makeWebhookRig, mustGet, storedFrom } from './rig.js';
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe('T-PAY-068 handler responsiveness', () => {
   it('answers 200 under 300 ms with the event stored while the truth check takes seconds', async () => {
-    let releaseTruth: () => void = () => undefined;
-    const gate = new Promise<void>((r) => {
-      releaseTruth = r;
-    });
+    vi.useFakeTimers();
     const rig = await makeWebhookRig(
       { h1: 30000 },
       {
         gateway: {
           getHoldTruth: async (h) => {
-            await gate; // stands in for a 3 s truth check
+            await sleep(3000); // a slow truth check
             return {
               holdId: h.holdId,
               authId: h.authId,
@@ -58,15 +59,17 @@ describe('T-PAY-068 handler responsiveness', () => {
       onVerified: intake.onVerified,
     });
 
-    const t0 = performance.now();
-    const res = await handler.handle(Buffer.from(row.body), {});
-    const took = performance.now() - t0;
-    expect(res).toEqual({ status: 200 });
-    expect(took).toBeLessThan(300);
+    // Virtual time: the answer must be out after the 100 ms store, long before the 3 s truth check.
+    let answered: { status: number } | undefined;
+    void handler.handle(Buffer.from(row.body), {}).then((r) => {
+      answered = r;
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(answered).toEqual({ status: 200 });
     expect(await inner.listUnprocessed()).toHaveLength(1);
     expect((await mustGet(rig, 'h1')).status).toBe('HELD');
 
-    releaseTruth();
+    await vi.advanceTimersByTimeAsync(3000);
     await intake.drain();
     expect((await mustGet(rig, 'h1')).status).toBe('CAPTURED');
     expect(await inner.listUnprocessed()).toHaveLength(0);
