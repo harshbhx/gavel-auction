@@ -9,6 +9,7 @@ import type { Candidate, SettlementState, UnsoldReason } from './events.js';
 import { bestByBidder, better, rank } from './rules/ranking.js';
 import type { BidRecord } from './rules/ranking.js';
 import type { RejectReason } from './reasons.js';
+import { MAX_AMOUNT_CENTS } from './types.js';
 import type { AuctionConfig, LotConfig, LotStatus, Ulid } from './types.js';
 
 /** Zero hash used as `prev` of the first ledger entry. */
@@ -159,7 +160,10 @@ const digestOf = (v: JsonValue): string => pureHasher.sha256Hex(utf8(canonicaliz
 
 /** Bid amount as echoed in a ledger entry: the integer, else the raw text (R-ENG-082). */
 function amountKey(amountCents: unknown): JsonValue {
-  return typeof amountCents === 'number' && Number.isSafeInteger(amountCents)
+  return typeof amountCents === 'number' &&
+    Number.isSafeInteger(amountCents) &&
+    amountCents >= 1 &&
+    amountCents <= MAX_AMOUNT_CENTS
     ? amountCents
     : String(amountCents).slice(0, 40);
 }
@@ -262,8 +266,12 @@ export function entryBody(e: LedgerEntry): string | null {
     case 'BID_REJECTED':
       return bidBody(e.payload, e.payload.amountCents ?? e.payload.amountRaw ?? null);
     case 'LOT_HAMMERED':
-    case 'LOT_UNSOLD':
       return digestOf({ t: 'Hammer', lotId: e.payload.lotId, actor: e.payload.actor ?? null });
+    case 'LOT_UNSOLD':
+      // A promotion that ends unsold echoes no body; only the Hammer path does.
+      return e.payload.reason === 'no_valid_winner'
+        ? null
+        : digestOf({ t: 'Hammer', lotId: e.payload.lotId, actor: e.payload.actor ?? null });
     default:
       return null;
   }
@@ -286,8 +294,12 @@ function commandTypeOf(e: LedgerEntry): string | null {
     case 'END_EXTENDED':
       return 'PlaceBid';
     case 'LOT_HAMMERED':
-    case 'LOT_UNSOLD':
       return 'Hammer';
+    case 'LOT_UNSOLD':
+      return e.payload.reason === 'no_valid_winner' ? 'PromoteRunnerUp' : 'Hammer';
+    case 'FALLBACK_PROMOTED':
+    case 'CANDIDATE_SKIPPED':
+      return 'PromoteRunnerUp';
     case 'CEILING_REVOKED':
       return 'RevokeCeiling';
     case 'LOT_SETTLED':
