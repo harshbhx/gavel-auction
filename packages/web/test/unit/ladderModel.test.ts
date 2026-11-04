@@ -1,16 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { buildLadder } from '../../src/ladder/ladderModel';
+import { buildLadder, type SettlementView } from '../../src/ladder/ladderModel';
 import type { Scenario } from '../../src/net/transport';
 import { hold, settlementView } from '../../src/testing/scenarios/_kit';
 import { failed_needs_review } from '../../src/testing/scenarios/failed_needs_review';
 import { happy } from '../../src/testing/scenarios/happy';
 import { winner_declined_fallback } from '../../src/testing/scenarios/winner_declined_fallback';
-import type { SettlementView } from '../../src/wire';
 
 function updates(s: Scenario): SettlementView[] {
-  return s.steps.flatMap((step) =>
-    step.emit?.t === 'settlement_update' ? [step.emit.settlement] : [],
-  );
+  return [...(s.settlementViews ?? [])];
 }
 
 function last(s: Scenario): SettlementView {
