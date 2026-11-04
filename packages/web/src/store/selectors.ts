@@ -26,7 +26,15 @@ export interface PriceView {
   endTs: number;
 }
 
-export type MyStatus = 'watching' | 'none' | 'leading' | 'outbid' | 'atCeiling' | 'won' | 'lost';
+export type MyStatus =
+  | 'watching'
+  | 'none'
+  | 'leading'
+  | 'outbid'
+  | 'atCeiling'
+  | 'won'
+  | 'lost'
+  | 'review';
 
 export interface CeilingUsage {
   /** Highest amount this bidder has bid in the recent window. */
@@ -70,8 +78,22 @@ export const selectPrice: Selector<PriceView | null> = memo((s) => {
 export const selectMyStatus: Selector<MyStatus> = memo((s) => {
   const you = youOf(s);
   if (you === null) return 'watching';
-  if (s.hammer !== null) return s.hammer.winnerId === you.bidderId ? 'won' : 'lost';
   const snap = s.snapshot;
+  // Once settlement reports this bidder's own state it outranks the hammer (R-WEB-090): a
+  // failed capture or a fallback must not keep showing the hammer's winner as won.
+  switch (snap?.settlement?.you) {
+    case 'CAPTURED':
+      return 'won';
+    case 'SETTLED':
+    case 'VOIDING':
+    case 'FALLBACK_RUNNER_UP':
+      return 'lost';
+    case 'FAILED_NEEDS_REVIEW':
+      return 'review';
+    default:
+      break;
+  }
+  if (s.hammer !== null) return s.hammer.winnerId === you.bidderId ? 'won' : 'lost';
   if (snap?.leaderId === you.bidderId) return 'leading';
   const hasBid = s.recentBids.some((b) => b.bidderId === you.bidderId);
   if (!hasBid) return 'none';
