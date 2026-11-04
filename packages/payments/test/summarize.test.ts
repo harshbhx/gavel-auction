@@ -39,6 +39,8 @@ describe('summarize', () => {
     expect(out).toContain('| G1.5 | open or released | released | observed |');
     expect(out).toContain(`(sha256 ${sha256Hex(text)})`);
     expect(out).toContain('Fallback adopted: none');
+    expect(out).toContain('\nStatus: PASS\n');
+    expect(formatEntry({ ...entry, decision: 'FAIL' })).toContain('\nStatus: FAIL\n');
     expect(() => withEvidenceHash({ ...entry }, 'not json\n')).toThrow(/lint/);
   });
 });

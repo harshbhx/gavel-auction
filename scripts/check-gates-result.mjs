@@ -18,7 +18,7 @@ export function parseGateSections(md) {
   for (const line of md.split('\n')) {
     const head = /^## (G\d+)\b/.exec(line);
     if (head) {
-      current = { status: '', decision: '', evidence: '' };
+      current = { status: '', decision: '', evidence: '', fallback: '' };
       sections[head[1]] = current;
       continue;
     }
@@ -27,8 +27,11 @@ export function parseGateSections(md) {
       continue;
     }
     if (!current) continue;
-    const field = /^(Status|Decision|Evidence):\s*(.*)$/.exec(line);
-    if (field) current[field[1].toLowerCase()] = field[2].trim();
+    const field = /^(Status|Decision|Evidence|Fallback adopted):\s*(.*)$/.exec(line);
+    if (field) {
+      const key = field[1] === 'Fallback adopted' ? 'fallback' : field[1].toLowerCase();
+      current[key] = field[2].trim();
+    }
   }
   return sections;
 }
@@ -56,9 +59,15 @@ export function checkGatesResult(flags, md) {
   const mode = flags.g1_remainder_mode;
   if (!['A', 'B', 'C', 'unknown'].includes(mode)) problems.push('g1_remainder_mode is invalid');
   else if (mode !== 'unknown') {
-    // G1 may close as PASS or FAIL; either way the mode needs a recorded decision.
-    const why = closed(sections.G1, sections.G1?.status === 'FAIL' ? 'FAIL' : 'PASS');
+    // A remainder mode needs a PASS entry. A FAIL entry only backs a mode when it records the
+    // fallback that was adopted; otherwise the flag has to stay "unknown".
+    const g1 = sections.G1;
+    const failed = g1?.status === 'FAIL';
+    const why = closed(g1, failed ? 'FAIL' : 'PASS');
     if (why) problems.push(`g1_remainder_mode is ${mode} but G1 ${why}`);
+    else if (failed && (g1.fallback === '' || g1.fallback.toLowerCase() === 'none')) {
+      problems.push(`g1_remainder_mode is ${mode} but G1 has Status FAIL and no adopted fallback`);
+    }
   }
   for (const [flag, gate] of [
     ['g2_card_authorize', 'G2'],

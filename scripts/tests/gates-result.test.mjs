@@ -43,6 +43,27 @@ describe('check-gates-result', () => {
     assert.deepEqual(checkGatesResult(flags, ok), []);
   });
 
+  it('accepts a generated G1 entry that carries a Status line', () => {
+    const flags = { ...OFF, g1_remainder_mode: 'A' };
+    const tmpl = '## G1: partial capture\n\nStatus: NOT RUN\nDecision: n/a\n\n';
+    const gen =
+      '## G1 partial capture  (run G1-1)\nStatus: PASS\nEvidence: e (sha256 x)\nDecision: PASS\n';
+    assert.deepEqual(checkGatesResult(flags, tmpl + gen), []);
+  });
+
+  it('does not let a FAIL entry without a fallback back a remainder mode', () => {
+    const flags = { ...OFF, g1_remainder_mode: 'A' };
+    const fail = md('G1', { Status: 'FAIL', Decision: 'x', Evidence: 'y' });
+    assert.match(checkGatesResult(flags, fail)[0], /no adopted fallback/);
+    const withFallback = md('G1', {
+      Status: 'FAIL',
+      Decision: 'x',
+      Evidence: 'y',
+      'Fallback adopted': 'void explicitly',
+    });
+    assert.deepEqual(checkGatesResult(flags, withFallback), []);
+  });
+
   it('rejects unknown or mistyped flags', () => {
     assert.equal(checkGatesResult({ ...OFF, extra: true }, '').length, 1);
     assert.equal(checkGatesResult({ ...OFF, g2_card_authorize: 'yes' }, '').length, 1);
