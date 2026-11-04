@@ -88,7 +88,18 @@ async function standard(rig: Rig): Promise<void> {
 }
 
 function withGateway(rig: Rig, patch: Partial<PaymentsGateway>): CaptureDeps {
-  return { ...rig.deps, gateway: { ...rig.gw, ...patch } };
+  const base = rig.gw;
+  const gateway: PaymentsGateway = {
+    createOrder: (i) => base.createOrder(i),
+    getOrder: (id) => base.getOrder(id),
+    authorizeOrder: (id, r) => base.authorizeOrder(id, r),
+    getHoldTruth: (h) => base.getHoldTruth(h),
+    capture: (a, i) => base.capture(a, i),
+    voidAuthorization: (a, r) => base.voidAuthorization(a, r),
+    reauthorize: (a, i) => base.reauthorize(a, i),
+    ...patch,
+  };
+  return { ...rig.deps, gateway };
 }
 
 function callsTo(rig: Rig, authId: string): number {
