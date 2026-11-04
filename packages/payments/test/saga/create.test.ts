@@ -58,6 +58,7 @@ describe('createSettlement', () => {
       holdId: 'h1',
       authId: 'AUTH-1',
       ceilingCents: 30000,
+      createdAtMs: 1,
       stale: false,
     });
     expect(r.journal.plan.candidates).toHaveLength(2);
@@ -180,10 +181,33 @@ describe('plan validation', () => {
     expect(() => validatePlan(p)).toThrow(SettlementError);
   });
 
-  it('a candidate priced above its ceiling is not a plan error (the runner checks it)', () => {
+  it('a candidate priced above its hold ceiling, below the reserve, or above an earlier one is plan_invalid', () => {
+    const invalid = [
+      plan({ candidates: [{ bidderId: 'b1', priceCents: 30001 }] }),
+      plan({ candidates: [{ bidderId: 'b1', priceCents: 4999 }] }),
+      plan({
+        candidates: [
+          { bidderId: 'b1', priceCents: 21000 },
+          { bidderId: 'b2', priceCents: 22000 },
+        ],
+      }),
+    ];
+    for (const p of invalid) {
+      expect(() => validatePlan(p)).toThrow(SettlementError);
+    }
     expect(() =>
-      validatePlan(plan({ candidates: [{ bidderId: 'b1', priceCents: 99999999 }] })),
+      validatePlan(plan({ candidates: [{ bidderId: 'b1', priceCents: 30000 }] })),
     ).not.toThrow();
+  });
+
+  it('flags a hold older than the maximum age when the settlement is created', async () => {
+    const journals = new MemoryJournalStore();
+    const r = await createSettlement(
+      { journals, clock: { nowMs: () => 10_000 }, holdMaxAgeMs: 9_998 },
+      plan(),
+    );
+    expect(r.journal.holds['b1']?.stale).toBe(true); // created at 1, age 9999 > 9998
+    expect(r.journal.holds['b2']?.stale).toBe(false); // created at 2, age 9998
   });
 });
 

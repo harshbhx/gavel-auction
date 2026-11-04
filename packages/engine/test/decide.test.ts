@@ -92,8 +92,8 @@ describe('decide wrapper', () => {
     expect(decideDev(s, cmd)).toEqual(one);
   });
 
-  it('R-ENG-089 commands that are not implemented yet fail bad_command', () => {
+  it('T-ENG-048 R-ENG-064 CloseAuction with a lot still pending fails auction_open_lots', () => {
     const s = scene();
-    expect(errCode(() => decide(s, mk(5, { type: 'CloseAuction' })))).toBe('bad_command');
+    expect(errCode(() => decide(s, mk(5, { type: 'CloseAuction' })))).toBe('auction_open_lots');
   });
 });

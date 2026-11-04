@@ -134,10 +134,24 @@
     "expect": { "kind": "rejected", "outcome": "definite", "name": "NOT_AUTHORIZED" }
   },
   {
-    "row": "409 other 4xx",
+    "row": "409 in-flight conflict",
     "status": 409,
     "headers": {},
     "body": "",
-    "expect": { "kind": "rejected", "outcome": "definite" }
+    "expect": { "kind": "rejected", "outcome": "unknown" }
+  },
+  {
+    "row": "408 request timeout",
+    "status": 408,
+    "headers": {},
+    "body": "",
+    "expect": { "kind": "rejected", "outcome": "unknown" }
+  },
+  {
+    "row": "425 too early",
+    "status": 425,
+    "headers": {},
+    "body": "",
+    "expect": { "kind": "rejected", "outcome": "unknown" }
   }
 ]

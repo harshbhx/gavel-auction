@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -83,6 +83,21 @@ describe('file stores survive a restart', () => {
       await b.webhooks.insertIfAbsent({ id: 'e1', eventType: 'X', receivedAtMs: 2, body: '' }),
     ).toBe(false);
     expect((await b.holds.get('h1'))?.status).toBe('HELD');
+  });
+
+  it('leaves no temp files and uses a complete file after many writes', async () => {
+    const dir = freshDir();
+    const a = openFileStores(dir);
+    await a.journals.create(makeJournal('a1', 0));
+    for (let v = 1; v <= 5; v += 1) await a.journals.save(makeJournal('a1', v), v - 1);
+    expect(readdirSync(dir).filter((f) => f.endsWith('.tmp'))).toEqual([]);
+    expect(() => JSON.parse(readFileSync(join(dir, 'journals.json'), 'utf8'))).not.toThrow();
+  });
+
+  it('refuses to start empty on a corrupt journal file', () => {
+    const dir = freshDir();
+    writeFileSync(join(dir, 'journals.json'), '{"journals":{"a1":');
+    expect(() => new FileJournalStore(join(dir, 'journals.json'))).toThrow(/not valid JSON/);
   });
 
   it('stores journals as canonical JSON', async () => {
