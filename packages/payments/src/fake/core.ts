@@ -53,7 +53,10 @@ export class FakeTimeout extends Error {
 }
 
 export type FakeFaultKind =
-  'timeout_before' | 'timeout_after_success' | 'http_500' | 'capture_declined';
+  | 'timeout_before'
+  | 'timeout_after_success'
+  | 'http_500'
+  | 'capture_declined';
 
 export type FakeOp = 'order' | 'authorize' | 'capture' | 'void' | 'reauthorize' | 'get';
 
