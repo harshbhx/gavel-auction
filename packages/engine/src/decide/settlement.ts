@@ -28,11 +28,13 @@ function settlingLot(state: AuctionState, lotId: string): LotState {
 /**
  * The lot a settlement step is recorded against: a SETTLING lot, or a DONE lot whose
  * settlement has not reached SETTLED yet (an unsold or aborted lot still releasing its
- * holds). The ledger must be able to show that the money was released (R-ENG-067).
+ * holds). The ledger must be able to show that the money was released (R-ENG-067), also
+ * after the auction was closed, so a release is never left unrecorded (R4-E02).
  */
 function recordableLot(state: AuctionState, lotId: string): LotState {
+  if (state.auctionId === null) throw new EngineError('bad_command', 'auction not created');
   const lot = state.lots[lotId];
-  if (lot !== undefined && lot.status === 'DONE' && !state.closed && lot.settlement !== 'SETTLED') {
+  if (lot !== undefined && lot.status === 'DONE' && lot.settlement !== 'SETTLED') {
     if (lot.capturedCents !== null) throw new EngineError('lot_done');
     return lot;
   }
