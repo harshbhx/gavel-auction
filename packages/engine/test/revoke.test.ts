@@ -46,4 +46,27 @@ describe('decide RevokeCeiling', () => {
       'bad_command',
     );
   });
+
+  it('ENG-R3-05 R-ENG-044 a failure of a replaced hold does not revoke the raised ceiling', () => {
+    let s = scene();
+    s = run(
+      s,
+      mk(1, { type: 'RegisterBidder', bidderId: A, ceilingCents: 91000, holdRef: 'H1' }),
+    ).state;
+    s = run(
+      s,
+      mk(2, { type: 'RegisterBidder', bidderId: A, ceilingCents: 92000, holdRef: 'H2' }),
+    ).state;
+    const stale = run(
+      s,
+      mk(3, { type: 'RevokeCeiling', bidderId: A, reason: 'expired', holdRef: 'H1' }),
+    );
+    expect(stale.entries).toEqual([]);
+    expect(Object.values(stale.state.bidders).every((b) => !b.revoked)).toBe(true);
+    const live = run(
+      s,
+      mk(4, { type: 'RevokeCeiling', bidderId: A, reason: 'expired', holdRef: 'H2' }),
+    );
+    expect(live.entries[0]?.payload).toEqual({ bidderId: A, reason: 'expired', holdRef: 'H2' });
+  });
 });
