@@ -1,7 +1,7 @@
 import { DEFAULT_AUCTION_CONFIG } from './config.js';
 import { EngineError } from './errors.js';
 import type { LedgerEntry } from './events.js';
-import { bidderKey, newLot, withBids } from './state.js';
+import { bidderKey, newLot, recordCommand, withBids } from './state.js';
 import type { AuctionState, BidderState, LotState } from './state.js';
 
 function setLot(s: AuctionState, lotId: string, f: (l: LotState) => LotState): AuctionState {
@@ -173,9 +173,6 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
  */
 export function evolve(s: AuctionState, e: LedgerEntry): AuctionState {
   const next = apply(s, e);
-  const commands =
-    e.cmd !== null && next.commands[e.cmd] === undefined
-      ? { ...next.commands, [e.cmd]: e.seq }
-      : next.commands;
+  const commands = recordCommand(next.commands, e);
   return { ...next, commands, head: { seq: e.seq, at: e.at, hash: e.hash } };
 }
