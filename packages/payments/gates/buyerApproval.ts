@@ -11,7 +11,8 @@ import { SANDBOX_APPROVE_HOST } from '../src/guard.js';
  * unit tests and --fake runs never touch it.
  *
  * Credentials are used only to fill the form. They are never logged, never put in an
- * error message and never written to evidence. Screenshots mask every input field.
+ * error message and never written to evidence. Screenshots hide all text, images and input
+ * fields first, so the buyer name, email, address and balance never appear in an artifact.
  */
 
 export interface BuyerCredentials {
@@ -36,6 +37,7 @@ export interface PageLike {
   waitForURL(pattern: RegExp, opts: { timeout: number }): Promise<void>;
   waitForTimeout(ms: number): Promise<void>;
   waitForLoadState(state: 'domcontentloaded'): Promise<void>;
+  addStyleTag(opts: { content: string }): Promise<unknown>;
   screenshot(opts: { path: string; mask?: LocatorLike[] }): Promise<unknown>;
   url(): string;
 }
@@ -118,6 +120,12 @@ export interface ApproveOptions {
   timeoutMs?: number;
 }
 
+/** Makes the page layout-only: no text, image, canvas or field value is drawn. */
+export const HIDE_PAGE_CONTENT_CSS =
+  '* { color: transparent !important; text-shadow: none !important; ' +
+  '-webkit-text-fill-color: transparent !important; } ' +
+  'img, svg, video, canvas, input, textarea, select { visibility: hidden !important; }';
+
 async function visible(l: LocatorLike): Promise<boolean> {
   try {
     return await l.isVisible();
@@ -140,7 +148,13 @@ export async function approveInBrowser(opts: ApproveOptions): Promise<void> {
         opts.shotDir,
         `${opts.shotPrefix}-${String(shots).padStart(2, '0')}-${name}.png`,
       );
-      // Input fields are masked so the buyer address never appears in an artifact.
+      // The review page shows the buyer name, email, address and balance as plain text, so all
+      // content is hidden before the shot; if that fails no screenshot is taken at all.
+      try {
+        await page.addStyleTag({ content: HIDE_PAGE_CONTENT_CSS });
+      } catch {
+        return;
+      }
       await page.screenshot({ path: file, mask: [page.locator('input')] }).catch(() => undefined);
     };
 

@@ -16,6 +16,7 @@ jobs:
   g1:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: sandbox-nightly
     if: ${{ github.ref == 'refs/heads/main' }}
     concurrency:
       group: gate-g1
@@ -72,6 +73,7 @@ jobs:
           name: g1-evidence
           path: |
             docs/evidence
+            !docs/evidence/**/*.run.json
             docs/GATES.md
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 7

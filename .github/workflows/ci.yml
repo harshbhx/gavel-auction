@@ -161,6 +161,7 @@ jobs:
           install: 'false'
       - run: node scripts/check-docs-format.mjs --self-test
       - run: node scripts/check-docs-format.mjs
+      - run: node scripts/check-gates-result.mjs
   commitlint:
     runs-on: ubuntu-latest
     timeout-minutes: 15
