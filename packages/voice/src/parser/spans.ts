@@ -9,7 +9,7 @@ import { extractPaddles } from './paddle.js';
 
 export type ParseSpan = NonNullable<ParseResult['spans']>[number];
 
-const CURRENCY_SYMBOL = /^[$£€₹¥]$/;
+const CURRENCY_SYMBOL = /^[$\u00A3\u20AC\u20B9\u00A5]$/;
 
 export function computeSpans(text: string): ParseSpan[] {
   if (text.length > MAX_INPUT_CHARS) return [];
