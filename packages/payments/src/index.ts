@@ -25,5 +25,8 @@ export * from './saga/bridge.js';
 export * from './bridge/index.js';
 export * from './stores/file.js';
 export * from './stores/memory.js';
+export * from './webhooks/dedupe.js';
 export * from './webhooks/handler.js';
+export * from './webhooks/merge.js';
+export * from './webhooks/orphans.js';
 export * from './webhooks/verify.js';

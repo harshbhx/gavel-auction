@@ -1,5 +1,7 @@
 import { PayPalError } from '../errors.js';
-import type { AuditSink, Clock, PaymentsMetrics } from '../ports.js';
+import type { AuditSink, Clock, PaymentsMetrics, WebhookEventStore } from '../ports.js';
+import type { StoredWebhook } from '../types.js';
+import { storeEvent } from './dedupe.js';
 import type { RejectReason, WebhookHeaders, WebhookVerifier } from './verify.js';
 
 /**
@@ -98,6 +100,61 @@ export class WebhookHandler {
     }
     return { status: 200 };
   }
+}
+
+export interface WebhookIntakeDeps {
+  events: Pick<WebhookEventStore, 'insertIfAbsent'>;
+  /** Heavy work (truth check, merge). Runs after the event is stored and 200 is on its way. */
+  process: (event: StoredWebhook) => Promise<unknown>;
+  audit: AuditSink;
+  clock: Clock;
+}
+
+/**
+ * Store before 200, process after (R-PAY-099). `onVerified` resolves as soon as the
+ * event row is durable; a duplicate id stops there with no effect (R-PAY-094). The
+ * processing of a new event is started but not awaited, so a slow truth check never
+ * delays the answer. A processing failure is audited and left for `sweepOrphans`,
+ * which retries every event that has no result.
+ */
+export class WebhookIntake {
+  private readonly pending = new Set<Promise<void>>();
+
+  constructor(private readonly deps: WebhookIntakeDeps) {}
+
+  readonly onVerified = async (e: VerifiedWebhook): Promise<void> => {
+    const { events, clock } = this.deps;
+    const stored = await storeEvent(events, e.rawBody, e.receivedAtMs);
+    if (!stored.isNew) return;
+    const job = Promise.resolve()
+      .then(() => this.deps.process(stored.event))
+      .then(
+        () => undefined,
+        async () => {
+          try {
+            await this.deps.audit.append({
+              kind: 'state_change',
+              op: 'webhook_process',
+              label: 'webhook_process_failed',
+              tsMs: clock.nowMs(),
+            });
+          } catch {
+            // The sweep retries the event whether or not the audit write worked.
+          }
+        },
+      )
+      .finally(() => void this.pending.delete(job));
+    this.pending.add(job);
+  };
+
+  /** Resolves when all processing started so far has finished (tests, shutdown). */
+  async drain(): Promise<void> {
+    while (this.pending.size > 0) await Promise.all([...this.pending]);
+  }
+}
+
+export function createWebhookIntake(deps: WebhookIntakeDeps): WebhookIntake {
+  return new WebhookIntake(deps);
 }
 
 export function createWebhookHandler(deps: WebhookHandlerDeps): WebhookHandler {
