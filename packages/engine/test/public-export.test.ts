@@ -86,8 +86,11 @@ describe('public export', () => {
     expect(text).not.toContain('90000');
     expect(text).not.toContain('hold-secret-1');
     expect(text).not.toContain('availableCeilingCents');
-    expect(text).not.toContain('leaderAfter');
     expect(text).toContain('"other":1');
+    const bid = publicExport(ledger('english'))[3] as PublicEntry;
+    expect(bid.payload['leaderBefore']).toBeUndefined();
+    expect(bid.payload['leaderAfter']).toBeUndefined();
+    expect(bid.redacted).toContain('leaderAfter');
   });
 
   it('T-ENG-087 R-ENG-086: a sealed lot loses amounts before the hammer, an open lot keeps them', () => {
