@@ -454,4 +454,24 @@ describe('round 2 blocking fixes (RT2)', () => {
     process.off('unhandledRejection', onUnhandled);
     expect(unhandled).toEqual([]);
   });
+
+  it('keeps every viewer gapless after a private rejection (R-RT-036)', async () => {
+    const t = await setup();
+    const c1 = await t.connect('bidder', t.b1);
+    const c2 = await t.connect('bidder', t.b2);
+    const screen = await t.connect('screen');
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    await t.room.submitBid(c2.conn, t.bid(40000)); // over ceiling, private to c2
+    await t.room.submitBid(c2.conn, t.bid(10500));
+    for (const c of [c1, c2, screen]) {
+      const seqs = [
+        ...new Set(c.transport.messages().map((m) => m.seq as number | undefined)),
+      ].filter((n): n is number => n !== undefined);
+      const ordered = seqs.slice().sort((a, b) => a - b);
+      for (let i = 1; i < ordered.length; i++) {
+        expect(ordered[i]).toBeLessThanOrEqual((ordered[i - 1] ?? 0) + 1);
+      }
+      expect(ordered.at(-1)).toBe(t.room.lastSeq);
+    }
+  });
 });

@@ -387,9 +387,37 @@ export class Room {
   }
 
   private broadcastAudit(audit: AuditPayload, seq: number, ts: ReturnType<Clock['now']>): void {
+    const frame: ServerMsg = { v: 1, t: 'audit_event', seq, ts, audit };
     for (const conn of this.conns.values()) {
-      this.send(conn, { v: 1, t: 'audit_event', seq, ts, audit });
+      if (redactForViewer(conn.role, conn.bidderId, frame) === null) {
+        // This viewer may not see the row, but the seq was consumed: carry it with a frame that
+        // leaves their view unchanged, so they do not see a gap and resync (R-RT-036).
+        this.sendSeqFiller(conn, seq, ts);
+        continue;
+      }
+      this.send(conn, frame);
     }
+  }
+
+  private sendSeqFiller(conn: Connection, seq: number, ts: ReturnType<Clock['now']>): void {
+    const view = this.requireEngine().view();
+    if (view.price === null) {
+      this.sendState(conn);
+      return;
+    }
+    const leaderPaddle = view.leader ? (this.roster.get(view.leader)?.paddle ?? null) : null;
+    this.send(conn, {
+      v: 1,
+      t: 'price',
+      seq,
+      ts,
+      price: view.price,
+      leaderId: view.leader,
+      leaderPaddle,
+      endTs: view.endTs,
+      minNext: view.minNext,
+      extensions: view.extensions,
+    });
   }
 
   private snapshotFor(conn: Connection): RoomSnapshot {
