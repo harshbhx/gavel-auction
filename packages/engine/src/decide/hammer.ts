@@ -1,11 +1,10 @@
 import type { Command } from '../commands.js';
 import { EngineError } from '../errors.js';
-import type { Candidate, LedgerEvent, RankedEntry } from '../events.js';
-import { assertWithinCeiling, hammerPrice as basicHammer } from '../rules/pricing-basic.js';
+import type { LedgerEvent, RankedEntry } from '../events.js';
+import { candidatesOf, priceFor } from '../rules/candidates.js';
+import { assertWithinCeiling } from '../rules/pricing-basic.js';
 import type { PricingLot } from '../rules/pricing-basic.js';
-import { hammerPrice as proxyHammer } from '../rules/pricing-proxy.js';
 import { rank } from '../rules/ranking.js';
-import type { RankedBid } from '../rules/ranking.js';
 import { available } from '../rules/exposure.js';
 import type { AuctionState } from '../state.js';
 import type { Ulid } from '../types.js';
@@ -46,27 +45,6 @@ export function decideTick(state: AuctionState, cmd: TickCommand): DecideResult 
     events: [{ type: 'LOT_CLOSING', payload: { lotId: id, reason: 'deadline' } }],
     outcome: { kind: 'accepted' },
   };
-}
-
-function priceFor(lot: PricingLot, ranked: readonly RankedBid[]): number | null {
-  return lot.mode === 'proxy' ? proxyHammer(lot, ranked) : basicHammer(lot, ranked);
-}
-
-/**
- * Winner first, then up to `depth` runner-ups, each priced as if every earlier
- * candidate were disqualified (R-ENG-051). Full fallback handling is separate.
- */
-function candidatesOf(lot: PricingLot, ranked: readonly RankedBid[], depth: number): Candidate[] {
-  const out: Candidate[] = [];
-  const n = Math.min(ranked.length, depth + 1);
-  for (let i = 0; i < n; i++) {
-    const rest = ranked.slice(i);
-    const price = priceFor(lot, rest);
-    const who = rest[0];
-    if (price === null || who === undefined) break;
-    out.push({ bidderId: who.bidderId as Ulid, priceCents: price });
-  }
-  return out;
 }
 
 /**
