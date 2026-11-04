@@ -15,14 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm install --no-audit --no-fund
-        working-directory: packages/shared
-      - run: npm install --no-audit --no-fund
-        working-directory: packages/server
-      - run: npx tsc --noEmit
-        working-directory: packages/server
-      - run: npx vitest run --passWithNoTests
-        working-directory: packages/server
+      - uses: ./.github/actions/setup
+      - run: npm run typecheck -w @gavel/server
+      - run: npm run test -w @gavel/server
