@@ -242,4 +242,13 @@ describe('reconcile (R-PAY-100, R-PAY-103, T-PAY-071)', () => {
     await run({ truths: { h1: truth('h1', { capturedCents: 21000 }) } }, metrics);
     expect(metrics.counter('reconcile_findings_total', { code: 'AMOUNT_MISMATCH' })).toBe(1);
   });
+
+  it('does not treat an inherited property name as a voided bidder', async () => {
+    const r = await run({
+      journal: journal({ voids: {} }),
+      records: [record('h1', 'b1', 'CAPTURED'), record('h2', 'constructor', 'HELD')],
+      truths: { h2: truth('h2', { status: 'CAPTURED', capturedCents: 100 }) },
+    });
+    expect(codes(r)).not.toContain('STATUS_CONFLICT');
+  });
 });

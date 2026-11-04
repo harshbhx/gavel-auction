@@ -158,7 +158,7 @@ export async function reconcile(deps: ReconcileDeps, auctionId: string): Promise
     const captured = isCaptured(truth);
     const inFlight = journal?.intent?.op === 'capture' && journal.intent.holdId === s.holdId;
     const seen = truthAsHoldStatus(truth);
-    const voidedInJournal = journal !== null && s.bidderId in journal.voids;
+    const voidedInJournal = journal !== null && Object.hasOwn(journal.voids, s.bidderId);
 
     const conflict =
       (record !== undefined && conflicts(record.status, seen)) ||
