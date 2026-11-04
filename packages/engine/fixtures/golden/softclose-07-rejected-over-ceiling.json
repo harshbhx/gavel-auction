@@ -1,0 +1,38 @@
+{
+  "name": "soft close: over ceiling bid in window does not extend",
+  "parity": true,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000,
+    "softCloseWindow": 10000,
+    "softCloseExtension": 15000,
+    "maxExtensions": 2
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 2000
+    },
+    {
+      "op": "bid",
+      "at": 95000,
+      "bidder": "a",
+      "amount": 3000
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    }
+  ],
+  "expect": {
+    "winner": null,
+    "price": 0,
+    "ranking": [],
+    "rejects": ["over_ceiling"],
+    "endsAt": 100000
+  }
+}

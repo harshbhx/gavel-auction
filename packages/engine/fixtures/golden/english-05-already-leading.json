@@ -1,0 +1,41 @@
+{
+  "name": "english: leader cannot outbid self",
+  "parity": true,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "a",
+      "amount": 1000
+    },
+    {
+      "op": "bid",
+      "at": 2000,
+      "bidder": "a",
+      "amount": 1500
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    }
+  ],
+  "expect": {
+    "winner": "a",
+    "price": 1000,
+    "ranking": [["a", 1000]],
+    "rejects": ["already_leading"],
+    "endsAt": 100000
+  }
+}

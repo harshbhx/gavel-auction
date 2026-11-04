@@ -1,0 +1,69 @@
+{
+  "name": "english: three bidders climb the ladder",
+  "parity": true,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "b",
+      "ceiling": 100000
+    },
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "c",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "a",
+      "amount": 1000
+    },
+    {
+      "op": "bid",
+      "at": 2000,
+      "bidder": "b",
+      "amount": 1100
+    },
+    {
+      "op": "bid",
+      "at": 3000,
+      "bidder": "c",
+      "amount": 1300
+    },
+    {
+      "op": "bid",
+      "at": 4000,
+      "bidder": "a",
+      "amount": 1500
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    }
+  ],
+  "expect": {
+    "winner": "a",
+    "price": 1500,
+    "ranking": [
+      ["a", 1500],
+      ["c", 1300],
+      ["b", 1100]
+    ],
+    "rejects": [],
+    "endsAt": 100000
+  }
+}

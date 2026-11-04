@@ -1,0 +1,35 @@
+{
+  "name": "second_price: single bidder pays reserve",
+  "parity": true,
+  "config": {
+    "mode": "second_price",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "a",
+      "amount": 5000
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    }
+  ],
+  "expect": {
+    "winner": "a",
+    "price": 1000,
+    "ranking": [["a", 5000]],
+    "rejects": [],
+    "endsAt": 100000
+  }
+}
