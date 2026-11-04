@@ -17,6 +17,7 @@ import {
 import { SettlementError, createSettlement, newJournal } from '../../src/saga/create.js';
 import { MemoryJournalStore } from '../../src/stores/memory.js';
 import type { HoldTruth, PaymentAudit, SettlementPlan } from '../../src/types.js';
+import { FRESH_HOLDS } from '../helpers/age.js';
 
 const START_MS = 1_800_000_000_000;
 
@@ -78,7 +79,7 @@ const CEILINGS = { b1: 30000, b2: 25000, b3: 20000 };
 
 async function standard(rig: Rig): Promise<void> {
   await createSettlement(
-    { journals: rig.journals },
+    { journals: rig.journals, ...FRESH_HOLDS },
     planFor(rig, CEILINGS, [
       ['b1', 22000],
       ['b2', 21000],
@@ -241,7 +242,10 @@ describe('T-PAY-034 invariants before any PayPal call', () => {
   it('a plan with such a price is refused when it is created', async () => {
     const rig = makeRig(CEILINGS);
     await expect(
-      createSettlement({ journals: rig.journals }, planFor(rig, CEILINGS, [['b1', 30001]])),
+      createSettlement(
+        { journals: rig.journals, ...FRESH_HOLDS },
+        planFor(rig, CEILINGS, [['b1', 30001]]),
+      ),
     ).rejects.toBeInstanceOf(SettlementError);
     expect(await rig.journals.load('auc1')).toBeNull();
   });

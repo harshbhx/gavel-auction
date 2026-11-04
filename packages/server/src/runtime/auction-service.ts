@@ -6,6 +6,7 @@ import {
   createEngineAdapter,
   createSettlement,
   createWebhookHandler,
+  DEFAULT_HOLD_MAX_AGE_MS,
   guardGateway,
   reconcile,
   voidAllLiveHolds,
@@ -70,6 +71,8 @@ export interface AuctionServiceDeps {
   holds: HoldStore;
   webhookEvents: WebhookEventStore;
   audit: AuditSink;
+  /** GAVEL_HOLD_MAX_AGE_MS: a hold older than this at settlement start is flagged stale. */
+  holdMaxAgeMs?: number;
   gateway: PaymentsGateway;
   /** Checks PayPal's signature on a webhook delivery. */
   verifier: Pick<WebhookVerifier, 'verifyWebhook'>;
@@ -790,7 +793,15 @@ class Service implements AuctionService, SettlePort {
       plan = (await this.bridge.prepare(auctionId, outcome, holds, reserveCents)).plan;
     }
     await this.boundary('after:prepare');
-    const created = await createSettlement({ journals: this.deps.journals }, plan);
+    const created = await createSettlement(
+      {
+        journals: this.deps.journals,
+        clock: this.payClock,
+        holdMaxAgeMs: this.deps.holdMaxAgeMs ?? DEFAULT_HOLD_MAX_AGE_MS,
+        audit: this.deps.audit,
+      },
+      plan,
+    );
     await this.boundary('after:create-settlement');
     return created.journal;
   }

@@ -1,4 +1,4 @@
-import type { Clock, JournalStore } from '../ports.js';
+import type { AuditSink, Clock, JournalStore } from '../ports.js';
 import { JournalExists } from '../stores/memory.js';
 import { DEFAULT_MAX_ATTEMPTS, DEFAULT_TIMEOUT_MS, RETRY_AFTER_MAX_MS } from '../transport.js';
 import { canonicalJson } from '../types.js';
@@ -100,7 +100,7 @@ export interface HoldAgePolicy {
 }
 
 /** The first journal of a settlement: state HELD, version 0, nothing done yet. */
-export function newJournal(plan: SettlementPlan, age?: HoldAgePolicy): Journal {
+export function newJournal(plan: SettlementPlan, age: HoldAgePolicy): Journal {
   const holds: Record<string, JournalHold> = {};
   for (const [bidderId, h] of Object.entries(plan.holds)) {
     holds[bidderId] = {
@@ -109,7 +109,7 @@ export function newJournal(plan: SettlementPlan, age?: HoldAgePolicy): Journal {
       ceilingCents: h.ceilingCents,
       createdAtMs: h.createdAtMs,
       // A hold older than the maximum age at settlement start is flagged (R-PAY-034).
-      stale: age !== undefined && age.nowMs - h.createdAtMs > age.holdMaxAgeMs,
+      stale: age.nowMs - h.createdAtMs > age.holdMaxAgeMs,
     };
   }
   return {
@@ -153,16 +153,15 @@ export interface CreateResult {
  * plan returns the stored journal; a different plan throws plan_mismatch.
  */
 export async function createSettlement(
-  deps: { journals: JournalStore; clock?: Clock; holdMaxAgeMs?: number },
+  deps: { journals: JournalStore; clock: Clock; holdMaxAgeMs: number; audit: AuditSink },
   plan: SettlementPlan,
 ): Promise<CreateResult> {
   validatePlan(plan);
-  const fresh = newJournal(
-    plan,
-    deps.clock !== undefined && deps.holdMaxAgeMs !== undefined
-      ? { nowMs: deps.clock.nowMs(), holdMaxAgeMs: deps.holdMaxAgeMs }
-      : undefined,
-  );
+  if (!Number.isSafeInteger(deps.holdMaxAgeMs) || deps.holdMaxAgeMs <= 0) {
+    throw new SettlementError('plan_invalid', 'holdMaxAgeMs must be a positive integer');
+  }
+  const nowMs = deps.clock.nowMs();
+  const fresh = newJournal(plan, { nowMs, holdMaxAgeMs: deps.holdMaxAgeMs });
 
   const compare = (existing: Journal): CreateResult => {
     if (planKey(existing) !== planKey(fresh)) {
@@ -178,6 +177,18 @@ export async function createSettlement(
   if (existing !== null) return compare(existing);
   try {
     await deps.journals.create(fresh);
+    // One audit row per stale hold, written once with the journal that carries the flag. A stale
+    // hold is still captured (R-PAY-072); the flag and the row are what an operator reads.
+    for (const [bidderId, h] of Object.entries(fresh.holds)) {
+      if (h.stale !== true) continue;
+      await deps.audit.append({
+        kind: 'stale_hold',
+        auctionId: plan.auctionId,
+        holdId: h.holdId,
+        label: `age_ms=${nowMs - h.createdAtMs} bidder=${bidderId}`,
+        tsMs: nowMs,
+      });
+    }
     return { journal: fresh, created: true };
   } catch (e) {
     if (!(e instanceof JournalExists)) throw e;

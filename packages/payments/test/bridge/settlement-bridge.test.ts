@@ -21,6 +21,7 @@ import { step } from '../../src/saga/machine.js';
 import { planFromOutcome, type PlanOutcome } from '../../src/saga/plan.js';
 import { MemoryJournalStore } from '../../src/stores/memory.js';
 import type { HoldRecord, HoldRef, Journal, PaymentAudit } from '../../src/types.js';
+import { FRESH_HOLDS } from '../helpers/age.js';
 
 const START_MS = 1_800_000_000_000;
 const pad = (s: string): string => s.padStart(26, '0');
@@ -156,7 +157,7 @@ describe('SettlementBridge', () => {
       expect(prepared.promoted.map((p) => p.bidderId)).toEqual([A]);
       expect((await lotOf(rig)).winnerId).toBe(B);
 
-      await createSettlement({ journals: rig.journals }, prepared.plan);
+      await createSettlement({ journals: rig.journals, ...FRESH_HOLDS }, prepared.plan);
       const out = await capture(rig);
       expect(out.status).toBe('captured');
       if (out.status !== 'captured') return;
@@ -165,7 +166,7 @@ describe('SettlementBridge', () => {
 
     it('runs hammer, plan, saga, record, complete and close through the runtime', async () => {
       const prepared = await rig.bridge.prepare(AU, await outcomeOf(rig), rig.holds, 10000);
-      await createSettlement({ journals: rig.journals }, prepared.plan);
+      await createSettlement({ journals: rig.journals, ...FRESH_HOLDS }, prepared.plan);
       await capture(rig);
 
       const journal = await runSettlementTail(rig);
@@ -184,7 +185,7 @@ describe('SettlementBridge', () => {
 
     it('is safe to repeat: a second pass sends nothing new', async () => {
       const prepared = await rig.bridge.prepare(AU, await outcomeOf(rig), rig.holds, 10000);
-      await createSettlement({ journals: rig.journals }, prepared.plan);
+      await createSettlement({ journals: rig.journals, ...FRESH_HOLDS }, prepared.plan);
       await capture(rig);
 
       const journal = await runSettlementTail(rig);
