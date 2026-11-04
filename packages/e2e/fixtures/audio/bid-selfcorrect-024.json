@@ -1,0 +1,16 @@
+{
+  "id": "bid-selfcorrect-024",
+  "file": "bid-selfcorrect-024.wav",
+  "sampleRate": 16000,
+  "durationMs": 4120,
+  "category": "self-correction",
+  "noise": "crowd-snr-10db",
+  "transcriptTruth": "two hundred make that two twenty for paddle four",
+  "expected": {
+    "kind": "bid",
+    "amountCents": 22000,
+    "bidder": "4",
+    "needsConfirm": false
+  },
+  "sttFixture": "bid-selfcorrect-024.stt.json"
+}

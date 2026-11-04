@@ -1,0 +1,50 @@
+{
+  "provider": "recorded",
+  "language": "en-US",
+  "transcript": "six hundred for paddle fourteen or forty",
+  "confidence": 0.62,
+  "words": [
+    {
+      "word": "six",
+      "startMs": 350,
+      "endMs": 704,
+      "confidence": 0.6
+    },
+    {
+      "word": "hundred",
+      "startMs": 744,
+      "endMs": 1099,
+      "confidence": 0.56
+    },
+    {
+      "word": "for",
+      "startMs": 1139,
+      "endMs": 1493,
+      "confidence": 0.62
+    },
+    {
+      "word": "paddle",
+      "startMs": 1533,
+      "endMs": 1887,
+      "confidence": 0.58
+    },
+    {
+      "word": "fourteen",
+      "startMs": 1927,
+      "endMs": 2281,
+      "confidence": 0.54
+    },
+    {
+      "word": "or",
+      "startMs": 2321,
+      "endMs": 2676,
+      "confidence": 0.6
+    },
+    {
+      "word": "forty",
+      "startMs": 2716,
+      "endMs": 3070,
+      "confidence": 0.56
+    }
+  ]
+}

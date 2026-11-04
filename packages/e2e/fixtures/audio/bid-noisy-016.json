@@ -1,0 +1,16 @@
+{
+  "id": "bid-noisy-016",
+  "file": "bid-noisy-016.wav",
+  "sampleRate": 16000,
+  "durationMs": 2600,
+  "category": "noisy",
+  "noise": "hvac-snr-20db",
+  "transcriptTruth": "six fifty for paddle two",
+  "expected": {
+    "kind": "bid",
+    "amountCents": 65000,
+    "bidder": "2",
+    "needsConfirm": false
+  },
+  "sttFixture": "bid-noisy-016.stt.json"
+}

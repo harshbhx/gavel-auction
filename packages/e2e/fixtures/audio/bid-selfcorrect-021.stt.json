@@ -1,0 +1,62 @@
+{
+  "provider": "recorded",
+  "language": "en-US",
+  "transcript": "three hundred no wait three fifty for paddle twelve",
+  "confidence": 0.95,
+  "words": [
+    {
+      "word": "three",
+      "startMs": 350,
+      "endMs": 701,
+      "confidence": 0.94
+    },
+    {
+      "word": "hundred",
+      "startMs": 741,
+      "endMs": 1092,
+      "confidence": 0.9
+    },
+    {
+      "word": "no",
+      "startMs": 1132,
+      "endMs": 1483,
+      "confidence": 0.96
+    },
+    {
+      "word": "wait",
+      "startMs": 1523,
+      "endMs": 1874,
+      "confidence": 0.92
+    },
+    {
+      "word": "three",
+      "startMs": 1914,
+      "endMs": 2266,
+      "confidence": 0.88
+    },
+    {
+      "word": "fifty",
+      "startMs": 2306,
+      "endMs": 2657,
+      "confidence": 0.94
+    },
+    {
+      "word": "for",
+      "startMs": 2697,
+      "endMs": 3048,
+      "confidence": 0.9
+    },
+    {
+      "word": "paddle",
+      "startMs": 3088,
+      "endMs": 3439,
+      "confidence": 0.96
+    },
+    {
+      "word": "twelve",
+      "startMs": 3479,
+      "endMs": 3830,
+      "confidence": 0.92
+    }
+  ]
+}

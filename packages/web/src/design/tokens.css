@@ -1,0 +1,105 @@
+/*
+ * Design tokens. Every colour, type, space, radius, shadow and motion value is a CSS custom property.
+ * Components reference these properties and never hard-code colours.
+ *
+ * Colour (semantic, per theme; light is the base here, dark and projector override in themes.css):
+ *   --color-bg, --color-surface, --color-fg, --color-fg-muted, --color-border,
+ *   --color-accent, --color-on-accent, --color-success, --color-warning, --color-danger,
+ *   --color-focus
+ * Type:
+ *   --font-sans, --type-scale (1 for light and dark, 2 for projector),
+ *   --font-size-1..6 (12, 14, 16, 20, 28, 40 px times --type-scale), --line-height-body (1.5)
+ * Space:   --space-1..8 (4px grid)
+ * Radius:  --radius-sm, --radius-md, --radius-lg, --radius-pill
+ * Shadow:  --shadow-1, --shadow-2
+ * Motion:  --duration-micro (120ms), --duration-standard (240ms), --duration-hammer (600ms),
+ *          --duration-fade (opacity fades; 80ms under reduced motion), --hammer-static (0 or 1)
+ * Utility: .tabular enables tabular figures for money and paddle numbers.
+ *
+ * Theme switch: set data-theme="light" | "dark" | "projector" on the root element.
+ * Without the attribute the theme follows prefers-color-scheme.
+ */
+
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./fonts/inter-latin-wght-normal.woff2') format('woff2-variations');
+}
+
+:root {
+  /* colour: light */
+  --color-bg: #ffffff;
+  --color-surface: #f3f4f6;
+  --color-fg: #14161a;
+  --color-fg-muted: #4b5563;
+  --color-border: #6b7280;
+  --color-accent: #1d4ed8;
+  --color-on-accent: #ffffff;
+  --color-success: #067647;
+  --color-warning: #8a4b00;
+  --color-danger: #b42318;
+  --color-focus: #1d4ed8;
+
+  /* type */
+  --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  --type-scale: 1;
+  --font-size-1: calc(12px * var(--type-scale));
+  --font-size-2: calc(14px * var(--type-scale));
+  --font-size-3: calc(16px * var(--type-scale));
+  --font-size-4: calc(20px * var(--type-scale));
+  --font-size-5: calc(28px * var(--type-scale));
+  --font-size-6: calc(40px * var(--type-scale));
+  --line-height-body: 1.5;
+
+  /* space */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /* shadow */
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.12);
+  --shadow-2: 0 8px 24px rgb(0 0 0 / 0.18);
+
+  /* motion */
+  --duration-micro: 120ms;
+  --duration-standard: 240ms;
+  --duration-hammer: 600ms;
+  --duration-fade: 120ms;
+  --hammer-static: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-micro: 0ms;
+    --duration-standard: 0ms;
+    --duration-hammer: 0ms;
+    --duration-fade: 80ms;
+    --hammer-static: 1;
+  }
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-3);
+  line-height: var(--line-height-body);
+  color: var(--color-fg);
+  background: var(--color-bg);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

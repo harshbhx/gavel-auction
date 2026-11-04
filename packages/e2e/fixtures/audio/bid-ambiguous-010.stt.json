@@ -1,0 +1,50 @@
+{
+  "provider": "recorded",
+  "language": "en-US",
+  "transcript": "two sixty two sixteen for paddle eleven",
+  "confidence": 0.62,
+  "words": [
+    {
+      "word": "two",
+      "startMs": 350,
+      "endMs": 704,
+      "confidence": 0.62
+    },
+    {
+      "word": "sixty",
+      "startMs": 744,
+      "endMs": 1099,
+      "confidence": 0.58
+    },
+    {
+      "word": "two",
+      "startMs": 1139,
+      "endMs": 1493,
+      "confidence": 0.54
+    },
+    {
+      "word": "sixteen",
+      "startMs": 1533,
+      "endMs": 1887,
+      "confidence": 0.6
+    },
+    {
+      "word": "for",
+      "startMs": 1927,
+      "endMs": 2281,
+      "confidence": 0.56
+    },
+    {
+      "word": "paddle",
+      "startMs": 2321,
+      "endMs": 2676,
+      "confidence": 0.62
+    },
+    {
+      "word": "eleven",
+      "startMs": 2716,
+      "endMs": 3070,
+      "confidence": 0.58
+    }
+  ]
+}
