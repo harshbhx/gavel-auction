@@ -2,7 +2,6 @@ import {
   ManualClock,
   SeqIds,
   add,
-  assertGapless,
   type AuctionConfig,
   type AuctionId,
   type BidMsg,

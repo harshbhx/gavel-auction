@@ -26,11 +26,20 @@ describe('reject fan-out (T-RT-029)', () => {
     const c1 = await t.connect('bidder', t.b1);
     const c2 = await t.connect('bidder', t.b2);
     const screen = await t.connect('screen');
-    const before = [c1, screen].map((c) => c.transport.frames.length);
+    const c1Before = c1.transport.frames.length;
+    const screenBefore = screen.transport.frames.length;
     await t.room.submitBid(c2.conn, t.bid(40000));
     const rejected = c2.transport.messages('bid_rejected');
     expect(rejected).toMatchObject([{ reason: 'over_ceiling' }]);
     expect(rejected[0]).toHaveProperty('retryable');
-    expect([c1, screen].map((c) => c.transport.frames.length)).toEqual(before);
+    // The rejected bid still takes a seq, so each other connection gets exactly one frame that keeps
+    // its seq gap-free (R-RT-036) and never carries the rejection itself.
+    for (const [c, from] of [
+      [c1, c1Before],
+      [screen, screenBefore],
+    ] as const) {
+      expect(c.transport.messages().slice(from)).toHaveLength(1);
+      expect(c.transport.messages('bid_rejected')).toHaveLength(0);
+    }
   });
 });
