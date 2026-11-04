@@ -143,6 +143,9 @@ export class Transport {
     this.maxAttempts = Math.max(1, opts.maxAttempts ?? DEFAULT_MAX_ATTEMPTS);
     this.retryAfterMaxMs = opts.retryAfterMaxMs ?? RETRY_AFTER_MAX_MS;
     this.timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    if (!Number.isFinite(this.timeoutMs) || this.timeoutMs <= 0) {
+      throw new RangeError('timeoutMs must be a positive number');
+    }
   }
 
   /** Full-jitter delay before retry number `retries` (0 for the first retry). */

@@ -5,9 +5,12 @@ import type { CopyKey } from './en';
  * A negation ("not charged", "not a payment") or "charged only if" is allowed.
  */
 export const bannedBeforeCapture: RegExp[] = [
-  /(?<!not )\bcharged\b(?! only if)/i,
-  /\bpay\b/i,
+  /(?<!not )\bcharg(?:e|es|ed|ing)\b(?! only if)/i,
+  /\bpay(?:s|ing)?\b/i,
+  /\bpaid\b/i,
   /(?<!not a )\bpayments?\b/i,
+  // Money is only captured once the state is CAPTURED, so "capture" cannot describe an earlier step.
+  /\bcaptur(?:e|es|ing)\b/i,
   /\bdebit(?:ed)?\b/i,
   /\bbilled\b/i,
   /\bdeducted\b/i,
@@ -26,16 +29,16 @@ export const bannedEverywhere: RegExp[] = [
 export const superlativeFirst: RegExp = /\bfirst\b/i;
 
 /**
- * Keys that contain a banned word but are safe: they are shown only once money is charged,
- * or they describe the rule itself in plain words, or use "first" as an ordinal.
- * Every entry needs a reason.
+ * Keys that contain a banned word but are safe: they are shown only once money is charged
+ * (a CAPTURED lane, a settlement narrative or a failed capture), or use "first" as an ordinal.
+ * Every entry needs a reason, and the set is pinned by a test, so adding one is a visible change.
+ * Text that explains the rule before capture is not exempt: it must pass the ban, for example
+ * with "charged only if".
  */
 export const wordingExemptions: Readonly<Partial<Record<CopyKey, string>>> = {
-  'landing.explain': 'states the rule: only the winner is charged, after the hammer',
   'ladder.state.CAPTURED': 'ladder state label shown only for a CAPTURED lane',
   'ladder.invariants.ok': 'settlement totals line shown only after capture',
   'ladder.fallback': 'settlement narrative shown after a failed capture attempt',
-  'receipt.capturing': 'receipt copy for the capture step itself',
   'receipt.failed': 'receipt copy for a failed capture',
   'bid.waitingLot': 'ordinal use of "first", not a claim',
   'replay.chapter.bid': 'chapter label, ordinal use of "first"',

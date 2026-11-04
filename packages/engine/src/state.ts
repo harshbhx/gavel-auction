@@ -288,6 +288,12 @@ function commandTypeOf(e: LedgerEntry): string | null {
     case 'LOT_HAMMERED':
     case 'LOT_UNSOLD':
       return 'Hammer';
+    case 'CEILING_REVOKED':
+      return 'RevokeCeiling';
+    case 'LOT_SETTLED':
+      return 'CompleteLot';
+    case 'SETTLEMENT_STATE':
+      return 'RecordSettlement';
     case 'LOT_CLOSING':
       return 'Tick';
     default:

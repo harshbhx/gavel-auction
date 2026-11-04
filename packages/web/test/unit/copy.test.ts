@@ -138,7 +138,14 @@ describe('banned wording (R-WEB-120, R-WEB-122)', () => {
     const flagged = (s: string): boolean => bannedBeforeCapture.some((r) => r.test(s));
     for (const s of [
       'Charged $5',
+      'Charging winning price',
+      'Charge the winner',
+      'The winner is charged the winning price',
       'Pay now',
+      'Winner pays',
+      'You have paid',
+      'Capturing your payment',
+      'Capture the hold',
       'Your payment',
       'debited',
       'billed',
@@ -149,6 +156,9 @@ describe('banned wording (R-WEB-120, R-WEB-122)', () => {
     }
     for (const s of [
       'Held, not charged.',
+      'The winner is charged only if the hammer falls',
+      'Finalising winning price',
+      '{c} captured, {r} released',
       'You are charged only if you win',
       'not a payment',
       'Voice feed',
@@ -171,6 +181,35 @@ describe('banned wording (R-WEB-120, R-WEB-122)', () => {
         [...bannedEverywhere, superlativeFirst].filter((r) => r.test(v)).map((r) => `${k}: ${r}`),
       );
     expect(hits).toEqual([]);
+  });
+
+  it('pins the exempt keys: each is shown only after money is charged (WEB-RT-11, WEB-RT-12)', () => {
+    expect(Object.keys(wordingExemptions).sort()).toEqual([
+      'bid.waitingLot',
+      'ladder.fallback',
+      'ladder.invariants.ok',
+      'ladder.state.CAPTURED',
+      'receipt.failed',
+      'replay.chapter.bid',
+    ]);
+    expect(Object.values(wordingExemptions).every((reason) => (reason ?? '').length > 10)).toBe(
+      true,
+    );
+  });
+
+  it('keeps the pre-registration rule text and the capture step free of charge wording', () => {
+    for (const key of [
+      'landing.explain',
+      'landing.promise',
+      'ladder.state.CAPTURING',
+      'receipt.capturing',
+    ] as const) {
+      expect(
+        bannedBeforeCapture.filter((r) => r.test(en[key])),
+        key,
+      ).toEqual([]);
+    }
+    expect(en['landing.explain']).toContain('charged only if');
   });
 
   it('has no exemption for a key that does not need one', () => {
