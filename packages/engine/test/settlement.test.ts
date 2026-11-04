@@ -121,11 +121,40 @@ describe('decide CompleteLot and RecordSettlement', () => {
     ).state;
     expect(unsold.lots[L1]?.status).toBe('DONE');
     expect(unsold.lots[L1]?.settlement).toBe('VOIDING');
-    expect(errCode(() => decide(unsold, settle(500, 'VOIDING', 'SETTLED')))).toBe('lot_done');
+    const released = run(unsold, settle(500, 'VOIDING', 'SETTLED')).state;
+    expect(released.lots[L1]?.settlement).toBe('SETTLED');
+    expect(errCode(() => decide(released, settle(600, 'SETTLED', 'SETTLED')))).toBe('lot_done');
     const empty = run(
       open(scene(), L1),
       mk(300, { type: 'Hammer', lotId: L1, actor: 'host', early: true }),
     ).state;
     expect(empty.lots[L1]?.settlement).toBe('HELD');
+  });
+
+  it('ENG-R3-01 a release recorded before the lot goes unsold is not overwritten', () => {
+    const s = hammered(2000);
+    const released = run(s, settle(400, 'HELD', 'SETTLED')).state;
+    const unsold = run(
+      released,
+      mk(500, {
+        type: 'PromoteRunnerUp',
+        lotId: L1,
+        disqualifiedBidderId: A,
+        reason: 'declined',
+      }),
+    ).state;
+    expect(unsold.lots[L1]?.status).toBe('DONE');
+    expect(unsold.lots[L1]?.settlement).toBe('SETTLED');
+  });
+
+  it('ENG-R3-01 an aborted lot can record the release of its holds', () => {
+    const aborted = run(
+      open(scene(), L1),
+      mk(300, { type: 'AbortLot', lotId: L1, reason: 'kill switch', actor: 'host' }),
+    ).state;
+    expect(aborted.lots[L1]?.status).toBe('DONE');
+    const voiding = run(aborted, settle(400, 'HELD', 'VOIDING')).state;
+    const settled = run(voiding, settle(500, 'VOIDING', 'SETTLED')).state;
+    expect(settled.lots[L1]?.settlement).toBe('SETTLED');
   });
 });

@@ -25,6 +25,20 @@ function settlingLot(state: AuctionState, lotId: string): LotState {
   return lot;
 }
 
+/**
+ * The lot a settlement step is recorded against: a SETTLING lot, or a DONE lot whose
+ * settlement has not reached SETTLED yet (an unsold or aborted lot still releasing its
+ * holds). The ledger must be able to show that the money was released (R-ENG-067).
+ */
+function recordableLot(state: AuctionState, lotId: string): LotState {
+  const lot = state.lots[lotId];
+  if (lot !== undefined && lot.status === 'DONE' && !state.closed && lot.settlement !== 'SETTLED') {
+    if (lot.capturedCents !== null) throw new EngineError('lot_done');
+    return lot;
+  }
+  return settlingLot(state, lotId);
+}
+
 /** Captured cents already recorded for a bidder within one holdScope key. */
 function capturedIn(state: AuctionState, bidderId: string, key: string): number {
   let sum = 0;
@@ -85,7 +99,7 @@ export function decideRecordSettlement(
   cmd: RecordSettlementCommand,
 ): DecideResult {
   assertNotInPast(state, cmd);
-  const lot = settlingLot(state, cmd.lotId);
+  const lot = recordableLot(state, cmd.lotId);
   if (cmd.ref.length > LIMITS.text) throw new EngineError('limit_exceeded', 'ref');
   const known: readonly string[] = SETTLEMENT_STATES;
   if (!known.includes(cmd.to) || !known.includes(cmd.from)) {

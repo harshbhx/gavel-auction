@@ -241,6 +241,21 @@ describe('SettlementBridge', () => {
       j = step(j, { type: 'all_released', tsMs: 4 }).journal;
       expect(await rig.bridge.finish(AU, j)).toEqual({ status: 'unsold' });
       expect((await lotOf(rig)).status).toBe('DONE');
+      expect((await lotOf(rig)).settlement).toBe('SETTLED');
+    });
+
+    it('records the release for a lot the engine already ended unsold (ENG-R3-01)', async () => {
+      rig = await makeRig([]);
+      const { plan } = await rig.bridge.prepare(AU, await outcomeOf(rig), rig.holds, 10000);
+      expect((await lotOf(rig)).settlement).toBe('VOIDING');
+      let j = newJournal({ ...plan, candidates: [] });
+      j = step(j, { type: 'start_auction', tsMs: 1 }).journal;
+      j = step(j, { type: 'hammer', tsMs: 2 }).journal;
+      j = step(j, { type: 'no_candidate', tsMs: 3 }).journal;
+      j = step(j, { type: 'all_released', tsMs: 4 }).journal;
+      expect(await rig.bridge.finish(AU, j)).toEqual({ status: 'unsold' });
+      expect((await lotOf(rig)).settlement).toBe('SETTLED');
+      expect(await rig.bridge.finish(AU, j)).toEqual({ status: 'unsold' });
     });
   });
 

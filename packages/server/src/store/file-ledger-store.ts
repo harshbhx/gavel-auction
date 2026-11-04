@@ -83,7 +83,8 @@ export class FileLedgerStore implements LedgerStore {
       }
     }
     // Cut the unfinished write off so the next batch starts on a fresh line.
-    if (tail !== '') truncateSync(this.path(auctionId), Buffer.byteLength(text) - Buffer.byteLength(tail));
+    if (tail !== '')
+      truncateSync(this.path(auctionId), Buffer.byteLength(text) - Buffer.byteLength(tail));
     this.ledgers.set(auctionId, entries);
     return entries;
   }
