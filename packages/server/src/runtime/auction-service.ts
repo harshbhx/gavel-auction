@@ -227,7 +227,7 @@ class Service implements AuctionService, SettlePort {
       throw new GavelError('bad_message', 'end time is more than a day away');
     }
     try {
-      new LedgerEngine(auctionId, parsed.data);
+      new LedgerEngine(auctionId, parsed.data, this.deps.clock.now());
     } catch {
       throw new GavelError('bad_message', 'auction config the engine cannot run');
     }
@@ -257,7 +257,7 @@ class Service implements AuctionService, SettlePort {
       store: this.deps.store,
       clock: this.deps.clock,
       ids: this.deps.ids,
-      engine: (config) => new LedgerEngine(auctionId, config),
+      engine: (config, createdAt) => new LedgerEngine(auctionId, config, createdAt),
       settle: this,
       durable: (id, engine) => this.flushLedger(id, engine, false),
       ...(this.deps.limiter !== undefined ? { limiter: this.deps.limiter } : {}),

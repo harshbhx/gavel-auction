@@ -1,5 +1,6 @@
 import type {
   AuctionId,
+  BidSource,
   BidderId,
   Cents,
   ControlAction,
@@ -27,6 +28,23 @@ export interface HammerEnginePort extends EnginePort {
 /** An engine that can cancel the lot before the hammer (kill switch). The result is an unsold hammer. */
 export interface AbortEnginePort extends HammerEnginePort {
   abort(now: EpochMs): HammerResult;
+}
+
+/** What the room knows about a bid beyond its amount; the engine ledger keeps it. */
+export interface BidMeta {
+  source: BidSource;
+  transcript?: string;
+  /** Parser confidence, 0 to 1. */
+  confidence?: number;
+}
+
+/** An engine that records the source and the audit fields of every bid. */
+export interface MetaBidEnginePort extends EnginePort {
+  placeBidWith(bidder: BidderId, amount: Cents, ts: EpochMs, meta: BidMeta): EngineBidResult;
+}
+
+export function canPlaceWithMeta(engine: EnginePort): engine is MetaBidEnginePort {
+  return typeof (engine as Partial<MetaBidEnginePort>).placeBidWith === 'function';
 }
 
 export function canAbort(engine: EnginePort): engine is AbortEnginePort {
