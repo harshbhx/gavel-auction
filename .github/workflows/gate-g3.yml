@@ -33,13 +33,36 @@ jobs:
       - name: Restore the probe state
         env:
           GH_TOKEN: ${{ github.token }}
+          G3_TAG_KEY: ${{ secrets.PAYPAL_CLIENT_SECRET }}
         run: |
+          g3_tag() {
+            (cd "$1" && find . -type f \( -name '*.run.json' -o -name 'complete.marker' \) | LC_ALL=C sort | xargs -r sha256sum | sha256sum \
+              | cut -d' ' -f1 | openssl dgst -sha256 -hmac "$G3_TAG_KEY" -r | cut -d' ' -f1)
+          }
           mkdir -p "$STATE"
-          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=g3-probe-state&per_page=1" --jq '.artifacts[0] | select(.expired == false) | .id // empty')
-          if [ -n "$id" ]; then
-            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > "$RUNNER_TEMP/g3-state.zip"
+          # Only an artifact uploaded by a completed run of this workflow on main counts, and
+          # only when its manifest tag matches (the tag is keyed with a repository secret,
+          # which a pull request run cannot read).
+          mkdir -p "$STATE"
+          want=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=g3-probe-state&per_page=30" \
+            --jq '.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main") | "\(.id) \(.workflow_run.id)"')
+          while read -r aid rid; do
+            [ -n "$aid" ] || continue
+            run_info=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$rid" --jq '[.path, .event, .head_branch, .conclusion] | @tsv')
+            case "$run_info" in
+              ".github/workflows/gate-g3.yml"$'\t'schedule$'\t'main$'\t'* | ".github/workflows/gate-g3.yml"$'\t'workflow_dispatch$'\t'main$'\t'*) ;;
+              *) echo "Skipping artifact $aid from run $rid ($run_info)"; continue ;;
+            esac
+            rm -rf "$STATE" && mkdir -p "$STATE"
+            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$aid/zip" > "$RUNNER_TEMP/g3-state.zip"
             unzip -o "$RUNNER_TEMP/g3-state.zip" -d "$STATE"
-          fi
+            if [ "$(g3_tag "$STATE")" = "$(cat "$STATE/state.tag" 2>/dev/null)" ]; then
+              echo "Using probe state from run $rid"
+              break
+            fi
+            echo "Tag mismatch in artifact $aid; ignoring it"
+            rm -rf "$STATE" && mkdir -p "$STATE"
+          done <<< "$want"
           resume=$(find "$STATE" -name '*.run.json' | sort | tail -1)
           done_marker=$(find "$STATE" -name 'complete.marker' | head -1)
           if [ "${{ github.event_name }}" = "schedule" ]; then
@@ -91,7 +114,14 @@ jobs:
           PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
           PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
         run: npm run gate:g3 -w @gavel/payments -- --resume "$RESUME_FILE" --out "$STATE"
-      # The state travels from one scheduled run to the next as an artifact.
+      # The state travels from one scheduled run to the next as an artifact, with a keyed tag.
+      - name: Tag the probe state
+        if: ${{ always() && env.mode != 'skip' }}
+        env:
+          G3_TAG_KEY: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+        run: |
+          (cd "$STATE" && rm -f state.tag && find . -type f \( -name '*.run.json' -o -name 'complete.marker' \) | LC_ALL=C sort | xargs -r sha256sum | sha256sum \
+            | cut -d' ' -f1 | openssl dgst -sha256 -hmac "$G3_TAG_KEY" -r | cut -d' ' -f1 > state.tag)
       - name: Keep the probe state
         if: ${{ always() && env.mode != 'skip' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
