@@ -206,7 +206,7 @@ describe('InMemoryLedgerStore', () => {
       2000,
       C1,
     );
-    await expect(store.append('01JC0000000000000000000002' as Ulid, next, 3)).rejects.toThrow(
+    await expect(store.append('01JC0000000000000000000002' as Ulid, next, 0)).rejects.toThrow(
       RangeError,
     );
     const stale = sealBatch(

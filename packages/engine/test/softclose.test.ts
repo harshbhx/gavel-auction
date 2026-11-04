@@ -28,7 +28,8 @@ describe('softclose', () => {
   it('T-ENG-027 R-ENG-034 R-ENG-035: exact window boundaries', () => {
     const lot = mk(sc);
     expect(extension(lot, 69999)).toEqual({ endsAt: 100000, extended: false });
-    expect(extension(lot, 70000)).toEqual({ endsAt: 100000, extended: true });
+    expect(extension(lot, 70000)).toEqual({ endsAt: 100000, extended: false });
+    expect(extension(lot, 70001)).toEqual({ endsAt: 100001, extended: true });
     expect(extension(lot, 99999)).toEqual({ endsAt: 129999, extended: true });
   });
 

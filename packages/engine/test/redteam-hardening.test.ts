@@ -46,7 +46,7 @@ describe('red-team hardening (engine)', () => {
         source: 'manual',
         audit: {},
       },
-      id('DUP1'),
+      id('D4P1'),
     );
     const first = run(s, cmd);
     expect(first.result.outcome).toEqual({ kind: 'rejected', reason: 'below_reserve' });
@@ -64,7 +64,7 @@ describe('red-team hardening (engine)', () => {
         source: 'manual',
         audit: {},
       },
-      id('DUP2'),
+      id('D4P2'),
     );
     const second = run(first.state, ok);
     expect(decide(second.state, ok).outcome).toEqual({
@@ -108,7 +108,7 @@ describe('red-team hardening (engine)', () => {
 
   it('ENG-RT-13 ENG-RT-18: a bid reusing a body-less command id conflicts', () => {
     const s0 = open(scene(), L1);
-    const tickId = id('TICK1');
+    const tickId = id('TCK1');
     const s = run(s0, mk(10100, { type: 'Tick' }, tickId)).state;
     const reuse = mk(
       10100,
@@ -146,7 +146,7 @@ describe('red-team hardening (engine)', () => {
     const s = scene();
     const again = {
       v: 1,
-      auctionId: id('OTHER'),
+      auctionId: id('AAB'),
       seq: s.head.seq + 1,
       at: s.head.at,
       type: 'AUCTION_CREATED',
@@ -176,7 +176,7 @@ describe('red-team hardening (engine)', () => {
       ),
     ).toBe('bad_id');
     expect(errCode(() => decide(s, mk(Number.NaN, { type: 'Tick' })))).toBe('bad_time');
-    expect(errCode(() => decide(s, { ...mk(1, { type: 'Tick' }), auctionId: id('OTHER') }))).toBe(
+    expect(errCode(() => decide(s, { ...mk(1, { type: 'Tick' }), auctionId: id('AAB') }))).toBe(
       'bad_command',
     );
     expect(

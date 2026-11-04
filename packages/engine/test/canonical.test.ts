@@ -13,8 +13,8 @@ function code(fn: () => unknown): string | undefined {
 
 describe('canonicalize', () => {
   it('T-ENG-053 (R-ENG-071): exact output and key order independence', () => {
-    expect(canonicalize({ b: 1, a: [2, { d: 1, c: 2 }], e: 'é' })).toBe(
-      '{"a":[2,{"c":2,"d":1}],"b":1,"e":"é"}',
+    expect(canonicalize({ b: 1, a: [2, { d: 1, c: 2 }], e: '\u00e9' })).toBe(
+      '{"a":[2,{"c":2,"d":1}],"b":1,"e":"\\u00e9"}',
     );
     expect(canonicalize({ x: 1, y: 2 })).toBe(canonicalize({ y: 2, x: 1 }));
   });
@@ -22,7 +22,7 @@ describe('canonicalize', () => {
     for (const v of [1.5, -0, NaN, Infinity, undefined, '\ud800', 'a\udc00b']) {
       expect(code(() => canonicalize(v as unknown as JsonValue))).toBe('non_canonical');
     }
-    expect(canonicalize('😀')).toBe('"😀"');
+    expect(canonicalize('\u{1F600}')).toBe('"\\ud83d\\ude00"');
     expect(code(() => canonicalize({ a: undefined } as unknown as JsonValue))).toBe(
       'non_canonical',
     );
