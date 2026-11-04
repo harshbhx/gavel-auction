@@ -1,0 +1,129 @@
+/* Core controls. Colours, type, space and motion come from tokens.css only. */
+
+.gv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  min-width: 40px;
+  padding: 0 var(--space-4);
+  border: 2px solid var(--gv-btn-color, var(--color-accent));
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--gv-btn-color, var(--color-accent));
+  font: inherit;
+  font-size: var(--font-size-3);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-micro),
+    color var(--duration-micro);
+}
+
+.gv-btn--bid {
+  min-height: 48px;
+  min-width: 48px;
+  font-size: var(--font-size-4);
+}
+
+.gv-btn--solid {
+  background: var(--gv-btn-color, var(--color-accent));
+  color: var(--color-on-accent);
+}
+
+.gv-btn[data-tone='danger'] {
+  --gv-btn-color: var(--color-danger);
+}
+
+.gv-btn[data-tone='positive'] {
+  --gv-btn-color: var(--color-success);
+}
+
+.gv-btn[data-tone='neutral'] {
+  --gv-btn-color: var(--color-fg);
+}
+
+.gv-btn[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.gv-btn:focus-visible,
+.gv-input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.gv-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.gv-field__label {
+  font-size: var(--font-size-2);
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.gv-field__hint {
+  font-size: var(--font-size-2);
+  color: var(--color-fg-muted);
+}
+
+.gv-field__error {
+  display: flex;
+  gap: var(--space-1);
+  font-size: var(--font-size-2);
+  color: var(--color-danger);
+}
+
+.gv-input {
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font: inherit;
+  font-size: var(--font-size-3);
+}
+
+.gv-input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+  border-width: 2px;
+}
+
+.gv-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--gv-chip-color, var(--color-border));
+  border-radius: var(--radius-pill);
+  color: var(--color-fg);
+  font-size: var(--font-size-2);
+  font-weight: 600;
+}
+
+.gv-chip__icon {
+  display: inline-flex;
+  color: var(--gv-chip-color, var(--color-fg));
+}
+
+.gv-chip[data-tone='success'] {
+  --gv-chip-color: var(--color-success);
+}
+
+.gv-chip[data-tone='warning'] {
+  --gv-chip-color: var(--color-warning);
+}
+
+.gv-chip[data-tone='danger'] {
+  --gv-chip-color: var(--color-danger);
+}
+
+.gv-chip[data-tone='accent'] {
+  --gv-chip-color: var(--color-accent);
+}
