@@ -4,6 +4,9 @@ inputs:
   install:
     description: Run npm ci
     default: 'true'
+  build-cache:
+    description: Restore and save the TypeScript incremental info and the vite cache
+    default: 'true'
 runs:
   using: composite
   steps:
@@ -14,3 +17,16 @@ runs:
     - if: inputs.install == 'true'
       shell: bash
       run: npm ci --ignore-scripts
+    # Incremental build info only speeds up the next run; a stale entry is validated by tsc against
+    # the file contents, so a restored cache can never change a result. The sha in the key makes
+    # every run save a fresh entry; restore-keys falls back to the newest one for the same lockfile.
+    - if: inputs.build-cache == 'true'
+      uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+      with:
+        path: |
+          **/*.tsbuildinfo
+          node_modules/.vite
+        key: build-${{ runner.os }}-${{ github.job }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+        restore-keys: |
+          build-${{ runner.os }}-${{ github.job }}-${{ hashFiles('package-lock.json') }}-
+          build-${{ runner.os }}-${{ github.job }}-

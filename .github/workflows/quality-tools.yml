@@ -17,8 +17,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: quality-tools-${{ github.ref }}
-  cancel-in-progress: true
+  group: quality-tools-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   hook-timing:

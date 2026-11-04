@@ -91,11 +91,25 @@ jobs:
           fi
       - uses: ./.github/actions/setup
         if: ${{ env.mode != 'skip' }}
+      - name: Cache the browser
+        id: pw-cache
+        if: ${{ env.mode == 'start' }}
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-1.49.1-chromium
       - name: Install the browser
         if: ${{ env.mode == 'start' }}
+        env:
+          BROWSER_CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
         run: |
           npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.49.1
-          cd "$RUNNER_TEMP/pw" && npx playwright install --with-deps chromium
+          cd "$RUNNER_TEMP/pw"
+          if [ "$BROWSER_CACHE_HIT" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
       - name: Day 0 of the probe
         if: ${{ env.mode == 'start' }}
         env:
