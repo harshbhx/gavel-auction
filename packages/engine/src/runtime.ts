@@ -33,7 +33,16 @@ export interface RuntimeOptions {
   onObserverError?: (err: unknown, auctionId: Ulid) => void;
   /** Source of the durations reported to `onDecision`; defaults to the system clock. */
   clock?: Clock;
+  /**
+   * How far past the runtime clock a command time may be (default one minute). A time
+   * further ahead is refused `bad_time`, so one command cannot push `head.at` out of reach
+   * of every later real-time command.
+   */
+  maxClockSkewMs?: number;
 }
+
+/** Default allowance for a command time ahead of the runtime clock. */
+export const DEFAULT_MAX_CLOCK_SKEW_MS = 60_000;
 
 /**
  * Single-writer orchestration for the auctions a host serves. Commands of one
@@ -49,6 +58,7 @@ export class AuctionRuntime {
   private readonly onDecision: DecisionHook | undefined;
   private readonly onObserverError: RuntimeOptions['onObserverError'];
   private readonly clock: Clock;
+  private readonly maxSkewMs: number;
   private readonly hub = new SubscriptionHub();
   private readonly cache = new Map<string, AuctionState>();
   private readonly tails = new Map<string, Promise<unknown>>();
@@ -60,6 +70,7 @@ export class AuctionRuntime {
     this.onDecision = opts.onDecision;
     this.onObserverError = opts.onObserverError;
     this.clock = opts.clock ?? new SystemClock();
+    this.maxSkewMs = opts.maxClockSkewMs ?? DEFAULT_MAX_CLOCK_SKEW_MS;
   }
 
   /** Every entry with seq >= fromSeq in order, then live entries, without gaps or duplicates (R-ENG-103). */
@@ -110,6 +121,9 @@ export class AuctionRuntime {
 
   private async execute(cmd: Command): Promise<RuntimeResult> {
     const started = this.clock.nowMs();
+    if (typeof cmd.at === 'number' && cmd.at > started + this.maxSkewMs) {
+      throw new EngineError('bad_time', `${cmd.at} is ahead of the clock`);
+    }
     const result = await this.attempt(cmd);
     const elapsed = this.clock.nowMs() - started;
     safeDecision(this.onDecision, decisionMetric(cmd, result.outcome, result.entries, elapsed));
