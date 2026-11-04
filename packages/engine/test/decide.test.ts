@@ -6,7 +6,7 @@ import type { Command } from '../src/commands.js';
 import { initialState } from '../src/state.js';
 import { A, L1, errCode, id, lotConfig, mk, open, run, scene, seal } from './decide-helpers.js';
 
-const CID = id('DUPLICATE');
+const CID = id('D1');
 
 const placeBid = (amount: number, at = 200): Command =>
   mk(

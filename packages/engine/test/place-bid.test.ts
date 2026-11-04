@@ -162,11 +162,16 @@ describe('decide PlaceBid', () => {
     const run1 = (tsA: number, tsB: number) => {
       let st = bid(s, 200, A, 1000, L1, { audit: { clientTs: tsA } }).state;
       st = bid(st, 300, B, 1100, L1, { audit: { clientTs: tsB } }).state;
-      return st.lots[L1];
+      const lot = st.lots[L1];
+      return {
+        leader: lot?.leaderId,
+        endsAt: lot?.endsAt,
+        order: lot?.bids.map((b) => [b.bidderId, b.amountCents, b.at, b.seq]),
+      };
     };
     const x = run1(1000, 1);
     const y = run1(1, 1000);
-    expect(x?.leaderId).toBe(B);
+    expect(x.leader).toBe(B);
     expect(x).toEqual(y);
   });
 
