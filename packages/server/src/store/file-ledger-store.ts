@@ -33,9 +33,9 @@ export class LedgerCorruption extends Error {
  * parse on the next start and is dropped. The checks on `expectedHeadSeq`,
  * contiguity and `prev` are the same as the in-memory store.
  *
- * Write order for the three records (see docs/DECISIONS.md): the engine ledger is
- * written first and is the source of truth; the room log is derived from it; the
- * payments journal is saved only after LOT_HAMMERED is in the ledger.
+ * Write order (see docs/DECISIONS.md, D-0012 and D-0014): the room log holds an event first,
+ * the service writes the engine ledger before it acknowledges that event, and the payments
+ * journal is saved only after LOT_HAMMERED is in the ledger.
  */
 export class FileLedgerStore implements LedgerStore {
   private readonly ledgers = new Map<string, LedgerEntry[]>();
