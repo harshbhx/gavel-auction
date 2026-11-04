@@ -1,4 +1,5 @@
-import type { ClientMessage, RoomConfigView, ServerMessage } from '../wire';
+import type { SettlementView } from '../ladder/ladderModel';
+import type { AuctionConfig, ClientMessage, ServerMessage } from '../wire';
 
 export type Unsubscribe = () => void;
 export type TransportStatus = 'connecting' | 'open' | 'closed';
@@ -36,6 +37,8 @@ export interface ScenarioStep {
 export interface Scenario {
   name: string;
   description: string;
-  roomConfig: RoomConfigView;
+  roomConfig: AuctionConfig;
   steps: ScenarioStep[];
+  /** Per-hold settlement detail for the ladder, in the order the settlement updates are emitted. */
+  settlementViews?: readonly SettlementView[];
 }

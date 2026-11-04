@@ -1,33 +1,30 @@
 import type { Scenario } from '../../net/transport';
+import { Cents } from '@gavel/shared';
+import type { ErrorCode } from '../../wire';
+import { msgId } from '../builders';
 import { baseConfig, Script, bidders, openSnapshot } from './_kit';
 
-const roster = bidders([12, 'Priya', 20_000], [7, 'Sam', 40_000]);
-const config = { ...baseConfig, reserveCents: 15_000 };
+const roster = bidders([12, 'Priya'], [7, 'Sam']);
+const config = { ...baseConfig, reserve: Cents(15_000) };
 
-function reject(
-  script: Script,
-  at: number,
-  clientBidId: string,
-  code: string,
-  details?: Record<string, unknown>,
-): Script {
+function reject(script: Script, at: number, n: number, reason: ErrorCode): Script {
   return script.emit(at, (e) => ({
+    v: 1,
     t: 'bid_rejected',
     ...e,
-    clientBidId,
-    code,
-    message: code,
-    ...(details === undefined ? {} : { details }),
+    mid: msgId(900 + n),
+    reason,
+    retryable: false,
   }));
 }
 
-const script = new Script().state(0, openSnapshot(roster, config)).acceptedBid(1_000, 12, 5_000, 1);
+const script = new Script().state(0, openSnapshot(roster, config)).acceptedBid(1_000, 12, 5_000);
 
-reject(script, 2_000, 'rj-over', 'over_ceiling', { maxCents: 20_000 });
-reject(script, 3_000, 'rj-low', 'below_increment', { minCents: 10_000 });
-reject(script, 4_000, 'rj-closed', 'closed');
-reject(script, 5_000, 'rj-lead', 'already_leading');
-reject(script, 6_000, 'rj-reserve', 'below_reserve');
+reject(script, 2_000, 1, 'over_ceiling');
+reject(script, 3_000, 2, 'below_increment');
+reject(script, 4_000, 3, 'closed');
+reject(script, 5_000, 4, 'already_leading');
+reject(script, 6_000, 5, 'below_reserve');
 
 /** One rejection for each code in the copy table. */
 export const rejections: Scenario = script.build(

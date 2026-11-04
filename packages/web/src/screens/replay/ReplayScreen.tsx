@@ -63,7 +63,7 @@ function ReplayView({ bundle, autoplay }: { bundle: ReplayBundle; autoplay: bool
 
   useEffect(() => {
     const transport = new ScenarioTransport(bundleToScenario(bundle));
-    let current = initialRoomState(bundle.events[0]?.msg.roomId ?? '');
+    let current = initialRoomState('');
     const off = transport.onMessage((msg) => {
       current = reduce(current, { kind: 'wire', msg }).state;
       setState(current);
@@ -80,8 +80,8 @@ function ReplayView({ bundle, autoplay }: { bundle: ReplayBundle; autoplay: bool
   return (
     <section>
       <h1>{bundle.title}</h1>
-      {snapshot !== null && snapshot.price.currentCents !== null && (
-        <p className="tabular">{formatUsd(snapshot.price.currentCents)}</p>
+      {snapshot !== null && snapshot.price !== null && (
+        <p className="tabular">{formatUsd(snapshot.price)}</p>
       )}
     </section>
   );

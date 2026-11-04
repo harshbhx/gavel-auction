@@ -1,128 +1,116 @@
+import { Cents, EpochMs, type AuctionConfig, type RoomSnapshot } from '@gavel/shared';
+import type { HoldView, SettlementView } from '../../ladder/ladderModel';
 import type { Scenario, ScenarioStep } from '../../net/transport';
-import type {
-  BidderView,
-  HoldView,
-  RoomConfigView,
-  RoomSnapshot,
-  ServerMessage,
-  SettlementState,
-  SettlementView,
-} from '../../wire';
+import type { ServerMessage, SettlementState } from '../../wire';
+import {
+  BASE_TIME,
+  baseConfig,
+  bidId,
+  bidderId,
+  msgId,
+  openSnapshot,
+  roster,
+  type RosterEntry,
+} from '../builders';
 
-export const ROOM_ID = 'room-demo';
+export { baseConfig, openSnapshot, roster };
+
 export const LOT_ID = 'lot-1';
-const BASE_TIME = 1_700_000_000_000;
-
-export const baseConfig: RoomConfigView = {
-  minIncrementCents: 5_000,
-  reserveCents: 0,
-  softCloseMs: 10_000,
-  maxCeilingCents: 100_000,
-  minCeilingCents: 5_000,
-  lateEntry: true,
-  mode: 'english',
-};
 
 export interface Envelope3 {
   seq: number;
-  roomId: string;
-  serverTime: number;
+  ts: EpochMs;
 }
 
 /** Builds a Scenario one message at a time. Sequence numbers count up from 1 in emit order. */
 export class Script {
   readonly steps: ScenarioStep[] = [];
+  private readonly views: SettlementView[] = [];
   private seq = 0;
   private bidSeq = 0;
+  private rev = 0;
 
   emit(at: number, build: (env: Envelope3) => ServerMessage, fault?: ScenarioStep['fault']): this {
     this.seq += 1;
-    const msg = build({ seq: this.seq, roomId: ROOM_ID, serverTime: BASE_TIME + at });
+    const msg = build({ seq: this.seq, ts: EpochMs(BASE_TIME + at) });
     this.steps.push(fault === undefined ? { at, emit: msg } : { at, emit: msg, fault });
     return this;
   }
 
-  /** Accepted bid: broadcast, acceptance for the bidder, and the new price. */
+  /** Accepted bid: the acceptance for the bidder, then the new price for everyone. */
   acceptedBid(
     at: number,
     paddle: number,
     amountCents: number,
-    bidCount: number,
-    minIncrementCents: number = baseConfig.minIncrementCents,
-    closesAt?: number,
+    minIncrementCents: number = baseConfig.minIncrement,
+    endTs?: number,
+    extensions = 0,
   ): this {
     this.bidSeq += 1;
-    const clientBidId = `cb-${this.bidSeq}`;
-    this.emit(at, (e) => ({ t: 'bid', ...e, paddle, amountCents, clientBidId }));
-    this.emit(at, (e) => ({ t: 'bid_accepted', ...e, clientBidId, paddle, amountCents }));
+    const n = this.bidSeq;
+    this.emit(at, (e) => ({
+      v: 1,
+      t: 'bid_accepted',
+      ...e,
+      mid: msgId(n),
+      bidId: bidId(n),
+      amount: Cents(amountCents),
+    }));
     return this.emit(at, (e) => ({
+      v: 1,
       t: 'price',
       ...e,
-      currentCents: amountCents,
+      price: Cents(amountCents),
+      leaderId: bidderId(paddle),
       leaderPaddle: paddle,
-      nextMinCents: amountCents + minIncrementCents,
-      bidCount,
-      ...(closesAt === undefined ? {} : { closesAt }),
+      endTs: EpochMs(endTs ?? baseConfig.endTs),
+      minNext: Cents(amountCents + minIncrementCents),
+      extensions,
     }));
   }
 
   state(at: number, snapshot: RoomSnapshot): this {
-    return this.emit(at, (e) => ({ t: 'state', ...e, ...snapshot }));
+    return this.emit(at, (e) => ({ v: 1, t: 'state', ...e, snapshot }));
   }
 
-  hammer(
-    at: number,
-    winnerPaddle: number | null,
-    priceCents: number | null,
-    reserveMet = true,
-  ): this {
+  hammer(at: number, winnerPaddle: number | null, priceCents: number): this {
     return this.emit(at, (e) => ({
+      v: 1,
       t: 'hammer',
       ...e,
-      lotId: LOT_ID,
-      winnerPaddle,
-      priceCents,
-      reserveMet,
+      winnerId: winnerPaddle === null ? null : bidderId(winnerPaddle),
+      price: Cents(priceCents),
+      ranking:
+        winnerPaddle === null
+          ? []
+          : [{ bidderId: bidderId(winnerPaddle), amount: Cents(priceCents) }],
     }));
   }
 
+  /** Emits the phase on the wire and keeps the per-hold detail for the ladder. */
   settlement(at: number, view: SettlementView): this {
-    return this.emit(at, (e) => ({ t: 'settlement_update', ...e, settlement: view }));
+    this.views.push(view);
+    this.rev += 1;
+    const rev = this.rev;
+    const captured = view.holds.reduce((n, h) => n + h.capturedCents, 0);
+    return this.emit(at, (e) => ({
+      v: 1,
+      t: 'settlement_update',
+      ...e,
+      rev,
+      auctionState: view.phase,
+      ...(captured > 0 ? { amountCaptured: Cents(captured) } : {}),
+    }));
   }
 
-  build(name: string, description: string, roomConfig: RoomConfigView = baseConfig): Scenario {
-    return { name, description, roomConfig, steps: this.steps };
+  build(name: string, description: string, roomConfig: AuctionConfig = baseConfig): Scenario {
+    return { name, description, roomConfig, steps: this.steps, settlementViews: this.views };
   }
 }
 
-export function bidders(
-  ...list: Array<[paddle: number, name: string, ceilingCents: number]>
-): BidderView[] {
-  return list.map(([paddle, name, ceilingCents]) => ({
-    paddle,
-    name,
-    holdState: 'HELD',
-    ceilingCents,
-  }));
-}
-
-export function openSnapshot(
-  list: BidderView[],
-  config: RoomConfigView = baseConfig,
-  status: RoomSnapshot['room']['status'] = 'OPEN',
-): RoomSnapshot {
-  return {
-    room: { id: ROOM_ID, name: 'Spring Gala', status, config },
-    lot: { id: LOT_ID, title: 'Signed first edition' },
-    price: {
-      currentCents: null,
-      leaderPaddle: null,
-      nextMinCents: config.minIncrementCents,
-      bidCount: 0,
-    },
-    bidders: list,
-  };
-}
+/** Roster rows for a scenario: `[paddle, name]`. */
+export const bidders = roster;
+export type { RosterEntry };
 
 export function hold(
   paddle: number,

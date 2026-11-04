@@ -1,4 +1,33 @@
-import type { HoldView, SettlementState, SettlementView } from '../wire';
+import type { SettlementState } from '../wire';
+
+export interface HoldVerification {
+  eventId: string;
+  kind: 'webhook' | 'lookup';
+  eventType?: string;
+  at: number;
+}
+
+/** One hold in the settlement ladder. The shared wire protocol carries only the phase, so the per-hold detail comes from the settlement view endpoint. */
+export interface HoldView {
+  paddle: number;
+  name: string;
+  ceilingCents: number;
+  state: SettlementState;
+  capturedCents: number;
+  releasedCents: number;
+  reason?: string;
+  verifiedBy: HoldVerification[];
+  /** Last 6 characters only. */
+  idSuffix: string;
+}
+
+export interface SettlementView {
+  lotId: string;
+  phase: SettlementState;
+  winnerPaddle: number | null;
+  holds: HoldView[];
+  invariants: { ok: boolean; violations: string[] };
+}
 
 export type RungStatus = 'done' | 'current' | 'pending';
 

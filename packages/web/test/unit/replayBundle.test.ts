@@ -17,14 +17,14 @@ describe('parseBundle', () => {
     if (!r.ok) return;
     expect(r.bundle.title).toBe('Spring Gala demo');
     expect(r.bundle.durationMs).toBe(18_000);
-    expect(r.bundle.roomConfig.minIncrementCents).toBe(5_000);
+    expect(r.bundle.roomConfig.minIncrement).toBe(5_000);
   });
 
-  it('falls back to the room name when no title is given', () => {
+  it('falls back to a default title when none is given', () => {
     const raw = happyBundle() as Record<string, unknown>;
     delete raw['title'];
     const r = parseBundle(raw);
-    expect(r.ok && r.bundle.title).toBe('Spring Gala');
+    expect(r.ok && r.bundle.title).toBe('Recording');
   });
 
   it.each([
@@ -38,7 +38,7 @@ describe('parseBundle', () => {
 
   it('rejects a malformed message and reports its index', () => {
     const raw = happyBundle() as { events: Array<{ t: number; msg: unknown }> };
-    raw.events[2] = { t: 5, msg: { t: 'price', seq: 3 } };
+    raw.events[2] = { t: 5, msg: { v: 1, t: 'price', seq: 3 } };
     expect(parseBundle(raw)).toEqual({ ok: false, error: 'event', index: 2 });
   });
 
