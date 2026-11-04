@@ -377,7 +377,7 @@ describe('settlement (R-RT-051..053, R-RT-060)', () => {
     await t.room.control(boss.conn, { controlId: 'c1', action: 'hammer', args: { closeNow: 1 } });
     expect(types(await t.events())).not.toContain('settle_requested');
     const payments = new StubPayments();
-    const restarted = await Room.load(t.auctionId, { ...t.deps, settle: payments });
+    await Room.load(t.auctionId, { ...t.deps, settle: payments });
     expect(payments.calls).toHaveLength(1);
     expect(payments.calls[0]?.outcome).toMatchObject({ winnerId: t.b1, price: 10000 });
     // A second restart re-calls settle (not yet settled) but never appends a second request.
