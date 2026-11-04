@@ -1,0 +1,33 @@
+{
+  "exempt": ["package-lock.json", "**/*.tsbuildinfo", "**/dist/**", "**/*.d.ts", "etc/*.api.md"],
+  "bypassLabel": "cross-area",
+  "areas": {
+    "ENG": ["packages/engine/**", "docs/specs/SPEC-engine.md"],
+    "PAY": ["packages/payments/**", "docs/GATES.md", "docs/specs/SPEC-payments.md"],
+    "RT": ["packages/shared/**", "packages/server/**", "docs/specs/SPEC-realtime.md"],
+    "VOI": ["packages/voice/**", "docs/specs/SPEC-voice.md"],
+    "VOX": ["packages/voice/**", "docs/specs/SPEC-voice.md"],
+    "WEB": ["packages/web/**", "docs/specs/SPEC-web.md"],
+    "QA": [
+      "packages/e2e/**",
+      "infra/**",
+      ".github/**",
+      "scripts/**",
+      "docs/DECISIONS.md",
+      "docs/GATES.md",
+      "docs/specs/SPEC-quality.md",
+      "package.json",
+      "tsconfig.json",
+      "tsconfig.base.json",
+      "eslint.config.js",
+      ".prettierrc.json",
+      ".prettierignore",
+      ".editorconfig",
+      ".nvmrc",
+      ".npmrc",
+      ".gitignore",
+      ".gitleaks.toml",
+      "CONTRIBUTING.md"
+    ]
+  }
+}
