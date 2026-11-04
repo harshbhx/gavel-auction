@@ -1,10 +1,4 @@
-import {
-  AuctionRuntime,
-  EngineError,
-  parseCommand,
-  type LedgerStore,
-  type Ulid,
-} from '@gavel/engine';
+import { AuctionRuntime, EngineError, type LedgerStore, type Ulid } from '@gavel/engine';
 import {
   BridgeError,
   SettlementBridge,
@@ -46,9 +40,10 @@ import {
 import type { RateLimiter } from '../limits/rate-limiter';
 import { Room, type RoomDeps } from '../room/room';
 import type { HammerResult, SettlePort, SettlementReport } from '../room/settle-port';
+import { dispatchAtHead } from './engine-dispatch';
 import { LedgerEngine, commandIdFor, lotIdOf } from './ledger-engine';
 import { reviewCodeOf } from './review-code';
-import { isReleased, runVoidPhase } from './void-phase';
+import { isReleased, runVoidPhase, voidSpareHolds } from './void-phase';
 import { WebhookIntake } from './webhook-intake';
 
 /** Everything the service needs from the outside, as ports. */
@@ -86,6 +81,12 @@ export interface AuctionServiceDeps {
    * `before:`/`after:` plus the step, and `journaled:` plus the saga event.
    */
   boundary?: (label: string) => Promise<void> | void;
+  /** First wait before an unfinished settlement run is tried again, in ms. Default 15000. */
+  retryDelayMs?: number;
+  /** Longest wait between two tries of one settlement; the wait doubles up to it. Default 300000. */
+  retryMaxDelayMs?: number;
+  /** How often `resume()` runs on its own, in ms; 0 turns the timer off. Default 60000. */
+  resumeIntervalMs?: number;
   /** Told when a settlement run stops with an error. The run is not retried until `resume()`. */
   onError?: (auctionId: string, error: unknown) => void;
 }
@@ -165,6 +166,11 @@ class Service implements AuctionService, SettlePort {
   private readonly cursors = new WeakMap<LedgerEngine, number>();
   private readonly ledgerLocks = new Map<string, Promise<void>>();
   private readonly runs = new Map<string, Promise<void>>();
+  private readonly retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly retryCounts = new Map<string, number>();
+  private resumeTimer: ReturnType<typeof setInterval> | undefined;
+  private resuming = false;
+  private closed = false;
   private readonly runtime: AuctionRuntime;
   private readonly bridge: SettlementBridge;
   private readonly intake: WebhookIntake;
@@ -180,9 +186,7 @@ class Service implements AuctionService, SettlePort {
       createEngineAdapter({
         dispatch: async (cmd) => {
           await this.boundary(`before:engine:${cmd.type}`);
-          const result = await this.runtime.dispatch(
-            parseCommand({ ...cmd, commandId: contentCommandId(cmd) }),
-          );
+          const result = await dispatchAtHead(this.runtime, cmd, contentCommandId(cmd));
           await this.boundary(`after:engine:${cmd.type}`);
           return result;
         },
@@ -200,6 +204,11 @@ class Service implements AuctionService, SettlePort {
       onHoldStatus: (hold) => this.onHoldStatus(hold),
       ...(deps.orphanWindowMs !== undefined ? { orphanWindowMs: deps.orphanWindowMs } : {}),
     });
+    const every = deps.resumeIntervalMs ?? DEFAULT_RESUME_INTERVAL_MS;
+    if (every > 0) {
+      this.resumeTimer = setInterval(() => void this.tick(), every);
+      this.resumeTimer.unref();
+    }
     this.webhook = createWebhookHandler({
       verifier: deps.verifier,
       audit: deps.audit,
@@ -309,18 +318,25 @@ class Service implements AuctionService, SettlePort {
   }
 
   private async revokeInEngine(hold: HoldRecord): Promise<void> {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        await this.bridge.onHoldStatus(hold.auctionId, hold);
-        return;
-      } catch (e) {
-        // A settlement command can move the engine clock between the adapter's read and its
-        // dispatch; the revoke is repeated instead of dropped. The engine may also refuse a
-        // late revoke by rule; the settlement journal stays the source of truth then.
-        if (!(e instanceof EngineError)) throw e;
-        if (e.code !== 'time_regression') return;
-        if (attempt >= MAX_REVOKE_RETRIES) throw e;
-      }
+    try {
+      await this.bridge.onHoldStatus(hold.auctionId, hold);
+    } catch (e) {
+      // The engine may refuse a late revoke by rule; the settlement journal stays the source
+      // of truth then. Anything else goes back to the intake, which applies the event again.
+      if (!(e instanceof EngineError)) throw e;
+      if (e.code === 'time_regression') throw e;
+    }
+  }
+
+  private async tick(): Promise<void> {
+    if (this.closed || this.resuming) return;
+    this.resuming = true;
+    try {
+      await this.resume();
+    } catch (e) {
+      this.deps.onError?.('resume', e);
+    } finally {
+      this.resuming = false;
     }
   }
 
@@ -337,13 +353,39 @@ class Service implements AuctionService, SettlePort {
   }
 
   private schedule(auctionId: string): void {
-    if (this.runs.has(auctionId)) return;
+    if (this.runs.has(auctionId) || this.closed) return;
     const run = this.settlementRun(auctionId as AuctionId)
+      .then((outcome) => {
+        if (outcome === 'again') this.armRetry(auctionId);
+        else this.retryCounts.delete(auctionId);
+      })
       .catch((e: unknown) => this.deps.onError?.(auctionId, e))
       .finally(() => {
         if (this.runs.get(auctionId) === run) this.runs.delete(auctionId);
       });
     this.runs.set(auctionId, run);
+  }
+
+  /**
+   * A run that ended waiting (a capture whose outcome is unknown, a switch that is engaged, a
+   * void PayPal has not confirmed) is tried again after a growing wait, so the settlement
+   * does not depend on the host calling `resume()`.
+   */
+  private armRetry(auctionId: string): void {
+    if (this.closed || this.retryTimers.has(auctionId)) return;
+    const tries = this.retryCounts.get(auctionId) ?? 0;
+    this.retryCounts.set(auctionId, tries + 1);
+    const base = this.deps.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS;
+    const cap = this.deps.retryMaxDelayMs ?? DEFAULT_RETRY_MAX_DELAY_MS;
+    const timer = setTimeout(
+      () => {
+        this.retryTimers.delete(auctionId);
+        this.schedule(auctionId);
+      },
+      Math.min(cap, base * 2 ** Math.min(tries, 20)),
+    );
+    timer.unref();
+    this.retryTimers.set(auctionId, timer);
   }
 
   async idle(): Promise<void> {
@@ -391,6 +433,10 @@ class Service implements AuctionService, SettlePort {
   }
 
   async close(): Promise<void> {
+    this.closed = true;
+    if (this.resumeTimer !== undefined) clearInterval(this.resumeTimer);
+    for (const timer of this.retryTimers.values()) clearTimeout(timer);
+    this.retryTimers.clear();
     for (const room of this.rooms.values()) await (await room).close();
   }
 
@@ -398,17 +444,18 @@ class Service implements AuctionService, SettlePort {
     await this.deps.boundary?.(label);
   }
 
-  private async settlementRun(auctionId: AuctionId): Promise<void> {
+  private async settlementRun(auctionId: AuctionId): Promise<'done' | 'again'> {
     const room = await this.room(auctionId);
     const engine = hammeredEngine(room);
     if (engine === undefined) throw new Error('auction is not hammered');
     const lotId = lotIdOf(auctionId);
     await this.syncLedger(auctionId, engine);
+    let retry = false;
 
     let journal = await this.deps.journals.load(lotId);
     if (journal === null) {
       try {
-        journal = await this.openSettlement(auctionId, engine);
+        journal = await this.openSettlement(auctionId, engine, room);
       } catch (e) {
         if (!(e instanceof BridgeError)) throw e;
         // Not retried silently: the room shows the review state and the host hears the code.
@@ -419,16 +466,18 @@ class Service implements AuctionService, SettlePort {
           perBidder: {},
           note: REVIEW_NOTE,
         });
-        return;
+        return 'done';
       }
     }
     if (TERMINAL.has(journal.state)) {
       // A process that died after the journal ended but before the room heard the final
       // report: finish the engine side and send it. Repeated reports are dropped by rev.
+      if (journal.state === 'FAILED_NEEDS_REVIEW') await this.releaseOnReview(journal);
       await this.finishBridge(room, auctionId, journal);
-      return;
+      return 'done';
     }
     await this.report(room, journal);
+    if ((await this.releaseSpares(journal)) > 0) retry = true;
 
     const captured = await runCapturePhase(
       {
@@ -446,13 +495,15 @@ class Service implements AuctionService, SettlePort {
       },
       lotId,
     );
-    if (captured.status === 'busy') return;
+    if (captured.status === 'busy') return 'again';
     if (captured.status === 'failed') {
+      // Nobody can be charged until an operator decides; the other bidders' money is freed now.
+      await this.releaseOnReview(captured.journal);
       await this.finishBridge(room, auctionId, captured.journal);
-      return;
+      return 'done';
     }
     await this.report(room, captured.journal);
-    if (captured.status === 'pending') return;
+    if (captured.status === 'pending') return 'again';
     if (captured.status === 'captured') await this.markCaptured(captured.journal);
     await this.boundary('after:capture-phase');
 
@@ -471,16 +522,44 @@ class Service implements AuctionService, SettlePort {
       },
       lotId,
     );
-    if (released.status === 'busy' || released.status === 'not_ready') return;
+    if (released.status === 'busy') return 'again';
+    if (released.status === 'not_ready') return 'done';
     if (released.status === 'failed') {
       await this.finishBridge(room, auctionId, released.journal);
-      return;
+      return 'done';
     }
     if (released.status === 'pending') {
       await this.report(room, released.journal);
-      return;
+      return 'again';
     }
     await this.finishBridge(room, auctionId, released.journal);
+    return retry ? 'again' : 'done';
+  }
+
+  /**
+   * Voids the live holds the settlement does not keep: a bidder's second hold, a hold of
+   * someone who never registered. Returns how many voids are still unconfirmed.
+   */
+  private async releaseSpares(journal: Journal): Promise<number> {
+    const keep = new Set(Object.values(journal.holds).map((h) => h.holdId));
+    return voidSpareHolds({ gateway: this.gateway, holds: this.deps.holds }, journal, keep);
+  }
+
+  /**
+   * A settlement in review never reaches the void phase. Every hold except the one whose
+   * capture is unresolved is released, so no bidder's money stays blocked until expiry.
+   */
+  private async releaseOnReview(journal: Journal): Promise<void> {
+    const keep = new Set<string>();
+    if (journal.winner !== null) keep.add(journal.winner.holdId);
+    const candidate = journal.plan.candidates[journal.cursor];
+    const unresolved = candidate === undefined ? undefined : journal.holds[candidate.bidderId];
+    if (unresolved !== undefined) keep.add(unresolved.holdId);
+    try {
+      await voidSpareHolds({ gateway: this.gateway, holds: this.deps.holds }, journal, keep);
+    } catch (e) {
+      this.deps.onError?.(journal.auctionId, e);
+    }
   }
 
   /** The ledger holds every command of the room engine, then `synced` is set for this process. */
@@ -523,12 +602,16 @@ class Service implements AuctionService, SettlePort {
    * Plans the settlement from the engine's hammer outcome and the bidders' holds, tells
    * the engine about leaders that cannot be charged, then stores the journal.
    */
-  private async openSettlement(auctionId: AuctionId, engine: LedgerEngine): Promise<Journal> {
+  private async openSettlement(
+    auctionId: AuctionId,
+    engine: LedgerEngine,
+    room: Room,
+  ): Promise<Journal> {
     const lotId = lotIdOf(auctionId);
     const state = await this.runtime.state(auctionId as unknown as Ulid);
     const lot = state.lots[lotId];
     if (lot === undefined) throw new Error('lot is missing from the engine ledger');
-    const holds = await this.heldRefs(auctionId);
+    const holds = await this.heldRefs(auctionId, room);
     const reserveCents = engine.config.reserve;
 
     let plan: SettlementPlan;
@@ -549,12 +632,17 @@ class Service implements AuctionService, SettlePort {
     return created.journal;
   }
 
-  /** The newest HELD hold of every bidder, as the saga's plan wants them. */
-  private async heldRefs(auctionId: AuctionId): Promise<Record<string, HoldRef>> {
+  /**
+   * The hold each registered bidder joined with, as the saga's plan wants them. A second hold
+   * the bidder approved later was never shown to the room, so it is not used; it is voided
+   * as a spare instead.
+   */
+  private async heldRefs(auctionId: AuctionId, room: Room): Promise<Record<string, HoldRef>> {
     const out: Record<string, HoldRef> = {};
-    const all = await this.deps.holds.listByAuction(auctionId);
-    for (const h of all.sort((a, b) => a.createdAtMs - b.createdAtMs)) {
+    const registered = room.holdRefs;
+    for (const h of await this.deps.holds.listByAuction(auctionId)) {
       if (h.status !== 'HELD' || h.authId === undefined) continue;
+      if (registered.get(h.bidderId as BidderId) !== h.holdId) continue;
       out[h.bidderId] = {
         holdId: h.holdId,
         authId: h.authId,
@@ -630,7 +718,9 @@ class Service implements AuctionService, SettlePort {
 }
 
 const MAX_LOT_AHEAD_MS = 86_400_000;
-const MAX_REVOKE_RETRIES = 3;
+const DEFAULT_RETRY_DELAY_MS = 15_000;
+const DEFAULT_RETRY_MAX_DELAY_MS = 300_000;
+const DEFAULT_RESUME_INTERVAL_MS = 60_000;
 const ABORT_ACTOR = 'kill_switch';
 const REVIEW_NOTE = 'needs_review';
 
