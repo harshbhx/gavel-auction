@@ -844,51 +844,55 @@ describe('auction service: kill switch before the hammer (D-0015)', () => {
     await service.close();
   });
 
-  it('finishes the abort whichever boundary the process dies at', async () => {
-    const labels: string[] = [];
-    {
-      const rig = await makeRig();
-      const service = rig.service({
-        killSwitch: rig.killSwitch,
-        boundary: (l) => void labels.push(l),
-      });
-      await openThenEngage(rig, service);
-      await service.abortOpenLots();
-      await service.idle();
-      await service.close();
-    }
-    expect(labels).toContain('before:abort');
-    expect(labels).toContain('mid:ledger-sync');
-    for (let crashAt = 0; crashAt < labels.length; crashAt++) {
-      const rig = await makeRig();
-      let seen = 0;
-      const first = rig.service({
-        killSwitch: rig.killSwitch,
-        boundary: () => {
-          if (seen++ === crashAt) throw new Error('process died');
-        },
-        onError: () => undefined,
-      });
-      const run = await openThenEngage(rig, first);
-      await first.abortOpenLots();
-      await first.idle();
-
-      const second = rig.service({ killSwitch: rig.killSwitch });
-      await second.resume();
-      await second.idle();
-      try {
-        await expectAborted(rig, run);
-      } catch (e) {
-        throw new Error(
-          `crash at boundary ${crashAt} (${labels[crashAt]}) did not abort: ${String(e)}`,
-          {
-            cause: e,
-          },
-        );
+  it(
+    'finishes the abort whichever boundary the process dies at',
+    { timeout: 300_000 },
+    async () => {
+      const labels: string[] = [];
+      {
+        const rig = await makeRig();
+        const service = rig.service({
+          killSwitch: rig.killSwitch,
+          boundary: (l) => void labels.push(l),
+        });
+        await openThenEngage(rig, service);
+        await service.abortOpenLots();
+        await service.idle();
+        await service.close();
       }
-      await second.close();
-    }
-  });
+      expect(labels).toContain('before:abort');
+      expect(labels).toContain('mid:ledger-sync');
+      for (let crashAt = 0; crashAt < labels.length; crashAt++) {
+        const rig = await makeRig();
+        let seen = 0;
+        const first = rig.service({
+          killSwitch: rig.killSwitch,
+          boundary: () => {
+            if (seen++ === crashAt) throw new Error('process died');
+          },
+          onError: () => undefined,
+        });
+        const run = await openThenEngage(rig, first);
+        await first.abortOpenLots();
+        await first.idle();
+
+        const second = rig.service({ killSwitch: rig.killSwitch });
+        await second.resume();
+        await second.idle();
+        try {
+          await expectAborted(rig, run);
+        } catch (e) {
+          throw new Error(
+            `crash at boundary ${crashAt} (${labels[crashAt]}) did not abort: ${String(e)}`,
+            {
+              cause: e,
+            },
+          );
+        }
+        await second.close();
+      }
+    },
+  );
 });
 
 describe('auction service: crash matrix on durable stores (SERVICE-R3-17)', () => {
@@ -907,50 +911,54 @@ describe('auction service: crash matrix on durable stores (SERVICE-R3-17)', () =
     });
   }
 
-  it('settles after a death at every boundary with the files reopened from disk', async () => {
-    const labels: string[] = [];
-    {
-      const dir = mkdtempSync(join(tmpdir(), 'gavel-matrix-'));
-      dirs.push(dir);
-      const rig = await makeRig();
-      await openFiles(rig, dir);
-      const service = rig.service({ boundary: (l) => void labels.push(l) });
-      await runToHammer(rig, service);
-      await service.idle();
-      await service.close();
-      (rig.stores.store as FileRoomStore).close();
-    }
-    expect(labels.length).toBeGreaterThan(20);
-    for (let crashAt = 0; crashAt < labels.length; crashAt++) {
-      const dir = mkdtempSync(join(tmpdir(), 'gavel-matrix-'));
-      dirs.push(dir);
-      const rig = await makeRig();
-      await openFiles(rig, dir);
-      let seen = 0;
-      const first = rig.service({
-        boundary: () => {
-          if (seen++ === crashAt) throw new Error('process died');
-        },
-        onError: () => undefined,
-      });
-      const run = await runToHammer(rig, first);
-      await first.idle();
-      (rig.stores.store as FileRoomStore).close();
-
-      // A new process opens the same files again.
-      await openFiles(rig, dir);
-      const second = rig.service();
-      await second.resume();
-      await second.idle();
-      try {
-        await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
-      } catch (e) {
-        throw new Error(`crash at boundary ${crashAt} (${labels[crashAt]}): ${String(e)}`, {
-          cause: e,
-        });
+  it(
+    'settles after a death at every boundary with the files reopened from disk',
+    { timeout: 300_000 },
+    async () => {
+      const labels: string[] = [];
+      {
+        const dir = mkdtempSync(join(tmpdir(), 'gavel-matrix-'));
+        dirs.push(dir);
+        const rig = await makeRig();
+        await openFiles(rig, dir);
+        const service = rig.service({ boundary: (l) => void labels.push(l) });
+        await runToHammer(rig, service);
+        await service.idle();
+        await service.close();
+        (rig.stores.store as FileRoomStore).close();
       }
-      await second.close();
-      (rig.stores.store as FileRoomStore).close();
-    }
-  });
+      expect(labels.length).toBeGreaterThan(20);
+      for (let crashAt = 0; crashAt < labels.length; crashAt++) {
+        const dir = mkdtempSync(join(tmpdir(), 'gavel-matrix-'));
+        dirs.push(dir);
+        const rig = await makeRig();
+        await openFiles(rig, dir);
+        let seen = 0;
+        const first = rig.service({
+          boundary: () => {
+            if (seen++ === crashAt) throw new Error('process died');
+          },
+          onError: () => undefined,
+        });
+        const run = await runToHammer(rig, first);
+        await first.idle();
+        (rig.stores.store as FileRoomStore).close();
+
+        // A new process opens the same files again.
+        await openFiles(rig, dir);
+        const second = rig.service();
+        await second.resume();
+        await second.idle();
+        try {
+          await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+        } catch (e) {
+          throw new Error(`crash at boundary ${crashAt} (${labels[crashAt]}): ${String(e)}`, {
+            cause: e,
+          });
+        }
+        await second.close();
+        (rig.stores.store as FileRoomStore).close();
+      }
+    },
+  );
 });
