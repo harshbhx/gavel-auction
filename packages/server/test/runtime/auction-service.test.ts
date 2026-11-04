@@ -427,11 +427,27 @@ describe('auction service: webhooks', () => {
     expect((await rig.stores.holds.get(a.holdId))?.status).toBe('HELD');
     expect(await rig.stores.webhookEvents.listUnprocessed()).toEqual([]);
 
+    // The buyer really withdraws the authorization at PayPal; only then does the event count.
+    rig.paypal.core.void(a.authId);
     const good = signed('WH-G1', 'PAYMENT.AUTHORIZATION.VOIDED', { authId: a.authId }, 2);
     expect((await service.handleWebhook(good.rawBody, good.headers)).status).toBe(200);
     expect((await rig.stores.holds.get(a.holdId))?.status).toBe('VOIDED');
     // The same delivery again changes nothing.
     expect((await service.handleWebhook(good.rawBody, good.headers)).status).toBe(200);
+    expect(await rig.stores.webhookEvents.listUnprocessed()).toEqual([]);
+    await service.close();
+  });
+
+  it('ignores a void event while PayPal still holds the authorization (PAYMENTS-R3-11)', async () => {
+    const rig = await makeRig();
+    const service = rig.service();
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    // A delayed or reordered event for an authorization that is live.
+    const late = signed('WH-L1', 'PAYMENT.AUTHORIZATION.VOIDED', { authId: a.authId }, 1);
+    expect((await service.handleWebhook(late.rawBody, late.headers)).status).toBe(200);
+    expect((await rig.stores.holds.get(a.holdId))?.status).toBe('HELD');
     expect(await rig.stores.webhookEvents.listUnprocessed()).toEqual([]);
     await service.close();
   });
@@ -475,7 +491,6 @@ describe('auction service: crash at every boundary', () => {
       'journaled:capture_ok',
       'before:void',
       'after:void',
-      'journaled:void',
       'journaled:all_released',
       'before:engine:CompleteLot',
       'after:engine:CompleteLot',
@@ -485,6 +500,7 @@ describe('auction service: crash at every boundary', () => {
     ]) {
       expect(labels).toContain(expected);
     }
+    expect(labels.some((l) => l.startsWith('journaled:void_'))).toBe(true);
   });
 
   it('ends with exactly one capture whichever boundary the process dies at', async () => {
@@ -1227,6 +1243,34 @@ describe('auction service: leftover red-team round 3 (PAY-73)', () => {
     const auctionId = rig.ids.mint<'AuctionId'>();
     await service.createAuction(auctionId, config, 'auctioneer-sub');
     expect(await service.acceptsHolds(auctionId)).toBe(true);
+    await service.close();
+  });
+});
+
+describe('auction service: void phase of the payments package (PAYMENTS-R3-03)', () => {
+  it('sends a settlement with a void that never works to review instead of pending forever', async () => {
+    const rig = await makeRig();
+    const service = rig.service({
+      retryDelayMs: 3_600_000,
+      resumeIntervalMs: 0,
+      maxVoidResumes: 1,
+      onError: () => undefined,
+    });
+    rig.paypal.core.inject('void', 'http_500', null, 1000);
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    expect((await journalOf(rig, run.auctionId)).state).toBe('VOIDING');
+    for (let i = 0; i < 5; i++) {
+      await service.resume();
+      await service.idle();
+    }
+    expect((await journalOf(rig, run.auctionId)).state).toBe('FAILED_NEEDS_REVIEW');
+    // The winner was charged once, and the room hears that the result is under review.
+    expect(rig.paypal.core.getAuthorization(run.a.authId).captures).toHaveLength(1);
+    const last = (await events(rig, run.auctionId))
+      .filter((e) => e.type === 'settlement_update')
+      .at(-1);
+    expect(last).toMatchObject({ auctionState: 'FAILED_NEEDS_REVIEW' });
     await service.close();
   });
 });

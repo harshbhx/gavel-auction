@@ -11,6 +11,7 @@ import {
   voidAllLiveHolds,
   revokeReasonFor,
   runCapturePhase,
+  runVoidPhase,
   type AuditSink,
   type EngineEnvelope,
   type HoldRecord,
@@ -49,7 +50,7 @@ import type { HammerResult, SettlePort, SettlementReport } from '../room/settle-
 import { dispatchAtHead } from './engine-dispatch';
 import { LedgerEngine, commandIdFor, lotIdOf } from './ledger-engine';
 import { reviewCodeOf } from './review-code';
-import { isReleased, runVoidPhase, voidSpareHolds } from './void-phase';
+import { isReleased, voidSpareHolds } from './void-phase';
 import { WebhookIntake } from './webhook-intake';
 
 /** Everything the service needs from the outside, as ports. */
@@ -86,8 +87,13 @@ export interface AuctionServiceDeps {
   leaseOwner?: string;
   /** Unknown capture outcome deadline, in ms (payments default when absent). */
   unknownDeadlineMs?: number;
-  /** Void attempts per hold in one run (payments default 3 when absent). */
-  maxVoidAttempts?: number;
+  /** Voids sent at the same time (payments default 3 when absent). */
+  voidConcurrency?: number;
+  /**
+   * Runs that may find a void still stuck before the settlement goes to review (payments
+   * default 5 when absent).
+   */
+  maxVoidResumes?: number;
   /** How long a webhook for an unknown hold is retried, in ms. */
   orphanWindowMs?: number;
   /**
@@ -227,6 +233,12 @@ class Service implements AuctionService, SettlePort {
       events: deps.webhookEvents,
       holds: deps.holds,
       clock: this.payClock,
+      truth: (hold) =>
+        this.gateway.getHoldTruth({
+          holdId: hold.holdId,
+          authId: hold.authId ?? '',
+          orderId: hold.orderId,
+        }),
       listAuctions: async () => [...(await deps.store.listAuctions())],
       onHoldStatus: (hold) => this.onHoldStatus(hold),
       ...(deps.orphanWindowMs !== undefined ? { orphanWindowMs: deps.orphanWindowMs } : {}),
@@ -544,6 +556,7 @@ class Service implements AuctionService, SettlePort {
       // report: finish the engine side and send it. Repeated reports are dropped by rev.
       if (journal.state === 'FAILED_NEEDS_REVIEW') await this.releaseOnReview(journal);
       // A buyer who approved after the plan was cut has a live hold the journal does not know.
+      await this.markReleasedHolds(journal);
       const open = await this.releaseSpares(journal);
       await this.finishBridge(room, auctionId, journal);
       return open > 0 ? 'again' : 'done';
@@ -583,26 +596,29 @@ class Service implements AuctionService, SettlePort {
       {
         journals: this.deps.journals,
         gateway: this.gateway,
-        holds: this.deps.holds,
         audit: this.deps.audit,
         clock: this.payClock,
         owner: this.owner,
         boundary: (label) => this.boundary(label),
-        ...(this.deps.maxVoidAttempts !== undefined
-          ? { maxAttempts: this.deps.maxVoidAttempts }
+        ...(this.deps.metrics !== undefined ? { metrics: this.deps.metrics } : {}),
+        ...(this.deps.voidConcurrency !== undefined
+          ? { voidConcurrency: this.deps.voidConcurrency }
+          : {}),
+        ...(this.deps.maxVoidResumes !== undefined
+          ? { maxVoidResumes: this.deps.maxVoidResumes }
           : {}),
       },
       lotId,
     );
     if (released.status === 'busy') return 'again';
-    if (released.status === 'not_ready') return 'done';
+    await this.markReleasedHolds(released.journal);
     if (released.status === 'failed') {
       await this.finishBridge(room, auctionId, released.journal);
       return 'done';
     }
     if (released.status === 'pending') {
       await this.report(room, released.journal);
-      return 'again';
+      return released.reason === 'not_ready' ? 'done' : 'again';
     }
     if ((await this.releaseSpares(released.journal)) > 0) retry = true;
     await this.finishBridge(room, auctionId, released.journal);
@@ -728,6 +744,16 @@ class Service implements AuctionService, SettlePort {
       };
     }
     return out;
+  }
+
+  /** Hold records follow the journal: a released authorization is VOIDED (also after a crash). */
+  private async markReleasedHolds(journal: Journal): Promise<void> {
+    for (const [bidderId, jh] of Object.entries(journal.holds)) {
+      if (!isReleased(journal, bidderId, jh.holdId)) continue;
+      const hold = await this.deps.holds.get(jh.holdId);
+      if (hold === null || hold.status === 'VOIDED' || hold.status === 'CAPTURED') continue;
+      await this.deps.holds.put({ ...hold, status: 'VOIDED' });
+    }
   }
 
   private async markCaptured(journal: Journal): Promise<void> {

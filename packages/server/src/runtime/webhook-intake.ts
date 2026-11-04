@@ -3,6 +3,7 @@ import type {
   HoldRecord,
   HoldStatus,
   HoldStore,
+  HoldTruth,
   StoredWebhook,
   VerifiedWebhook,
   WebhookEventStore,
@@ -22,6 +23,11 @@ export interface WebhookIntakeDeps {
   clock: Clock;
   /** Every auction id the service knows, to find the hold behind an authorization id. */
   listAuctions(): Promise<string[]>;
+  /**
+   * Reads the hold's state at the processor. A webhook is only a hint (R-PAY-095): the
+   * status written to the record comes from this read, never from the event body.
+   */
+  truth(hold: HoldRecord): Promise<HoldTruth>;
   /** Called after a hold changed status because of an event. */
   onHoldStatus(hold: HoldRecord): Promise<void>;
   /** How long an event for an unknown hold is retried. Default 10 minutes. */
@@ -70,16 +76,28 @@ export function authIdOf(e: { eventType: string; resource: Json }): string | und
     : undefined;
 }
 
-/** The status a hold moves to for an event type, or undefined for events that do not change a hold. */
-function targetStatus(e: ParsedEvent): HoldStatus | undefined {
-  switch (e.eventType) {
-    case 'PAYMENT.AUTHORIZATION.VOIDED':
-      return e.resource['reason'] === 'expired' ? 'EXPIRED' : 'VOIDED';
-    case 'PAYMENT.AUTHORIZATION.DENIED':
+/** True for the event types that can change a hold; the new status comes from the truth read. */
+function changesHold(e: ParsedEvent): boolean {
+  return (
+    e.eventType === 'PAYMENT.AUTHORIZATION.VOIDED' ||
+    e.eventType === 'PAYMENT.AUTHORIZATION.DENIED' ||
+    e.eventType === 'PAYMENT.CAPTURE.COMPLETED'
+  );
+}
+
+/** The hold status a processor state means, or undefined while the hold is still live. */
+function statusFromTruth(truth: HoldTruth): HoldStatus | undefined {
+  switch (truth.status) {
+    case 'VOIDED':
+      return 'VOIDED';
+    case 'EXPIRED':
+      return 'EXPIRED';
+    case 'DENIED':
       return 'DENIED';
-    case 'PAYMENT.CAPTURE.COMPLETED':
+    case 'CAPTURED':
       return 'CAPTURED';
     default:
+      // CREATED, PENDING, PARTIALLY_CAPTURED and NOT_FOUND: nothing is final yet.
       return undefined;
   }
 }
@@ -129,8 +147,7 @@ export class WebhookIntake {
 
   private async apply(stored: StoredWebhook): Promise<'processed' | 'parked'> {
     const event = parse(stored.body);
-    const target = event === undefined ? undefined : targetStatus(event);
-    if (event === undefined || target === undefined) {
+    if (event === undefined || !changesHold(event)) {
       await this.deps.events.markProcessed(stored.id, 'ignored');
       return 'processed';
     }
@@ -152,6 +169,12 @@ export class WebhookIntake {
       // is recorded (R-ENG-044).
       await this.deps.onHoldStatus(hold);
       await this.deps.events.markProcessed(stored.id, `unchanged:${hold.status}`);
+      return 'processed';
+    }
+    // A read that fails throws: the event stays stored and the sweep applies it again.
+    const target = statusFromTruth(await this.deps.truth(hold));
+    if (target === undefined) {
+      await this.deps.events.markProcessed(stored.id, 'unchanged:live');
       return 'processed';
     }
     const next: HoldRecord = { ...hold, status: target };
