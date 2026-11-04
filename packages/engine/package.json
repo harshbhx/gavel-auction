@@ -7,19 +7,25 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./node": "./src/node/index.ts"
   },
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0 && node scripts/check-imports.mjs",
     "test:coverage": "vitest run --coverage",
-    "check:trace": "node scripts/trace-check.mjs"
+    "check:trace": "node scripts/trace-check.mjs",
+    "check:bundle": "node scripts/bundle-check.mjs"
   },
   "devDependencies": {
     "@types/node": "22.10.2",
+    "esbuild": "0.24.2",
     "fast-check": "3.23.1",
     "typescript": "5.6.3",
     "vitest": "2.1.8"
+  },
+  "bin": {
+    "verify-ledger": "./bin/verify-ledger.mjs"
   }
 }
