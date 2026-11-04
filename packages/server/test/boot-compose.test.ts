@@ -68,7 +68,7 @@ describe('server entry point (INT-R3-17)', () => {
         currency: 'USD',
         reserve: 10000,
         minIncrement: 500,
-        endTs: 4_102_444_800_000,
+        endTs: Date.now() + 3_600_000,
         softCloseWindowMs: 30_000,
         softCloseExtensionMs: 30_000,
         maxExtensions: 5,
