@@ -1,0 +1,52 @@
+name: quality-tools
+on:
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - 'eslint.rules/**'
+      - 'commitlint.config.cjs'
+      - 'lint-staged.config.cjs'
+      - '.husky/**'
+      - '.asciiignore'
+      - 'package.json'
+      - '.github/workflows/quality-tools.yml'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-tools-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/setup
+      - run: npm run test:tools
+  hook-timing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/setup
+      - name: Time lint-staged on a 10 file change
+        run: |
+          mkdir -p "$RUNNER_TEMP/timing" && mkdir -p tmp-hook-timing
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            printf 'export const value%s = %s;\n' "$i" "$i" > "tmp-hook-timing/f$i.ts"
+          done
+          git add tmp-hook-timing
+          start=$(date +%s.%N)
+          npx --no-install lint-staged
+          end=$(date +%s.%N)
+          elapsed=$(echo "$end - $start" | bc -l)
+          echo "lint-staged took ${elapsed}s"
+          if [ "$(echo "$elapsed < 5" | bc -l)" != "1" ]; then
+            echo "hook is slower than 5 s"
+            exit 1
+          fi

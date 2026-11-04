@@ -1,0 +1,13 @@
+# Paths allowed to contain non-ASCII text (fixtures that need unicode). One glob per line.
+# Supported: * (no slash), ** (any depth). Lines starting with # are comments.
+scripts/tests/fixtures/**
+
+# Currency symbols and unicode inputs that the parser, canonicalisation and wire tests need
+docs/specs/voice/SPEC-voice.md
+packages/engine/test/canonical.test.ts
+packages/payments/test/fixtures/errors/garbage.json
+packages/shared/test/wire-envelope.test.ts
+packages/voice/src/parser/lexicon.ts
+packages/voice/src/parser/normalize.ts
+packages/voice/test/parser/amounts.test.ts
+reference/python/parser.py
