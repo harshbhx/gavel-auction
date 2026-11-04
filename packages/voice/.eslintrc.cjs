@@ -21,7 +21,8 @@ module.exports = {
         message: 'Re-exporting values from engine or payments is not allowed.',
       },
       {
-        selector: 'ExportAllDeclaration[exportKind!="type"][source.value=/^@gavel\\/(engine|payments)(\\/|$)/]',
+        selector:
+          'ExportAllDeclaration[exportKind!="type"][source.value=/^@gavel\\/(engine|payments)(\\/|$)/]',
         message: 'Re-exporting values from engine or payments is not allowed.',
       },
     ],

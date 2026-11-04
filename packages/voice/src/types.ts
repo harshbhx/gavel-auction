@@ -4,18 +4,41 @@ import { z } from 'zod';
 export type Cents = number;
 
 export const VOICE_REASONS = [
-  'ok', 'empty', 'no_amount', 'question', 'auctioneer_talk', 'negation', 'withdraw',
-  'correction', 'retract', 'hedged', 'multiple_amounts', 'multiple_bidders',
-  'uninterpretable_number', 'unknown_bidder', 'unregistered_paddle', 'homophone',
-  'to_for_ambiguity', 'unsupported_currency', 'fractional_amount', 'implausible_amount',
-  'large_jump', 'below_minimum', 'above_ceiling', 'not_open', 'already_high_bidder',
-  'duplicate', 'low_confidence', 'llm_disagree', 'too_long', 'garbage', 'stt_unavailable',
+  'ok',
+  'empty',
+  'no_amount',
+  'question',
+  'auctioneer_talk',
+  'negation',
+  'withdraw',
+  'correction',
+  'retract',
+  'hedged',
+  'multiple_amounts',
+  'multiple_bidders',
+  'uninterpretable_number',
+  'unknown_bidder',
+  'unregistered_paddle',
+  'homophone',
+  'to_for_ambiguity',
+  'unsupported_currency',
+  'fractional_amount',
+  'implausible_amount',
+  'large_jump',
+  'below_minimum',
+  'above_ceiling',
+  'not_open',
+  'already_high_bidder',
+  'duplicate',
+  'low_confidence',
+  'llm_disagree',
+  'too_long',
+  'garbage',
+  'stt_unavailable',
 ] as const;
 export type VoiceReason = (typeof VOICE_REASONS)[number];
 
-export const PARSE_FLAGS = [
-  'asr_repair', 'colloquial_hundreds', 'make_it', 'correction',
-] as const;
+export const PARSE_FLAGS = ['asr_repair', 'colloquial_hundreds', 'make_it', 'correction'] as const;
 export type ParseFlag = (typeof PARSE_FLAGS)[number];
 
 /** Paddle "12" or a bidder id. */
@@ -95,7 +118,13 @@ export interface ConfirmPrompt {
 }
 
 export type Decision =
-  | { kind: 'accept'; bidderId: string; amountCents: Cents; confidence: number; evidence: VoiceEvidence }
+  | {
+      kind: 'accept';
+      bidderId: string;
+      amountCents: Cents;
+      confidence: number;
+      evidence: VoiceEvidence;
+    }
   | { kind: 'confirm'; prompt: ConfirmPrompt; evidence: VoiceEvidence }
   | { kind: 'drop'; reason: VoiceReason; evidence: VoiceEvidence };
 
@@ -116,7 +145,9 @@ export type PipelineEvent =
 
 const cents = z.number().int();
 const reasonSchema = z.enum(VOICE_REASONS);
-const bidderRefSchema = z.object({ kind: z.enum(['paddle', 'speaker']), value: z.string() }).strict();
+const bidderRefSchema = z
+  .object({ kind: z.enum(['paddle', 'speaker']), value: z.string() })
+  .strict();
 const candidateSchema = z
   .object({ bidder: bidderRefSchema.nullable(), amountCents: cents.nullable() })
   .strict();

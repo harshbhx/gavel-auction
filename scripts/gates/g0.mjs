@@ -19,7 +19,7 @@ if (!tok.ok) {
   console.log('G0 FAIL: token request rejected');
   process.exit(1);
 }
-const { access_token, scope, app_id } = await tok.json();
+const { access_token, scope } = await tok.json();
 console.log('scopes include payments:', /payments|orders|Braintree|checkout/i.test(scope ?? ''));
 const ord = await fetch(`${base}/v2/checkout/orders`, {
   method: 'POST',
@@ -34,7 +34,14 @@ const ord = await fetch(`${base}/v2/checkout/orders`, {
   }),
 });
 const body = await ord.json();
-console.log('create order status', ord.status, 'order status', body.status, 'intent ok', ord.status === 201);
+console.log(
+  'create order status',
+  ord.status,
+  'order status',
+  body.status,
+  'intent ok',
+  ord.status === 201,
+);
 console.log(
   'approve link present',
   (body.links ?? []).some((l) => l.rel === 'payer-action' || l.rel === 'approve'),

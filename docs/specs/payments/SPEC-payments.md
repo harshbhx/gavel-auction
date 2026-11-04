@@ -22,19 +22,19 @@ Out of scope: the auction rules (engine), HTTP/WebSocket hosting and SQL adapter
 
 ## 2. Definitions
 
-| Term | Meaning |
-|---|---|
-| Hold | A PayPal authorization created for one bidder in one auction for the bidder's ceiling (integer cents, USD). |
-| Ceiling | The authorized amount. The engine guarantees a bid never exceeds it. |
-| Hammer price | Clearing price chosen by the engine (can be below the winner's ceiling). |
-| Candidate | `(bidderId, holdId, priceCents)`; the engine ranking produces an ordered list. First is the winner at the hammer price, the rest are runner-ups each priced at their own rule (see 6.3). |
-| Settlement | The persisted record that drives capture and void for one auction. |
-| Journal | Durable settlement record plus append-only step history (Section 6.2). |
-| Intent | A write-ahead entry saved before any money-moving call. |
-| Definite outcome | The call was answered with a 4xx other than 408/429, or a 2xx. The server did or did not apply it, and we know which. |
-| Unknown outcome | Timeout, connection reset, 5xx, or 429 after retries. The call may or may not have been applied. |
-| Truth check | A read (`GET authorization`, `GET order`) used to decide what really happened. |
-| Gate | A sandbox experiment G1..G5 that verifies an assumption. Payments owns G1-G4. G5 (STT) belongs to voice. |
+| Term             | Meaning                                                                                                                                                                                  |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hold             | A PayPal authorization created for one bidder in one auction for the bidder's ceiling (integer cents, USD).                                                                              |
+| Ceiling          | The authorized amount. The engine guarantees a bid never exceeds it.                                                                                                                     |
+| Hammer price     | Clearing price chosen by the engine (can be below the winner's ceiling).                                                                                                                 |
+| Candidate        | `(bidderId, holdId, priceCents)`; the engine ranking produces an ordered list. First is the winner at the hammer price, the rest are runner-ups each priced at their own rule (see 6.3). |
+| Settlement       | The persisted record that drives capture and void for one auction.                                                                                                                       |
+| Journal          | Durable settlement record plus append-only step history (Section 6.2).                                                                                                                   |
+| Intent           | A write-ahead entry saved before any money-moving call.                                                                                                                                  |
+| Definite outcome | The call was answered with a 4xx other than 408/429, or a 2xx. The server did or did not apply it, and we know which.                                                                    |
+| Unknown outcome  | Timeout, connection reset, 5xx, or 429 after retries. The call may or may not have been applied.                                                                                         |
+| Truth check      | A read (`GET authorization`, `GET order`) used to decide what really happened.                                                                                                           |
+| Gate             | A sandbox experiment G1..G5 that verifies an assumption. Payments owns G1-G4. G5 (STT) belongs to voice.                                                                                 |
 
 ## 3. Requirements
 
@@ -57,7 +57,7 @@ IDs are stable. MUST = release blocker for the demo. SHOULD = expected, can slip
 - R-PAY-012 MUST: Payments v2: `getAuthorization(authId)`, `capture(authId, {amountCents, finalCapture, invoiceId})`, `voidAuthorization(authId)`, `reauthorize(authId, {amountCents})`.
 - R-PAY-013 MUST: Every POST sends a `PayPal-Request-Id` header. The id is a deterministic function of `(auctionId, op, holdId, amountCents, generation)` (Section 4.4), at most 64 characters. UNVERIFIED (G1): the maximum accepted length and the retention window of request ids. Fallback: the saga never relies on request-id replay for correctness; truth checks decide (R-PAY-050).
 - R-PAY-014 MUST: All retries of one logical attempt reuse the same `PayPal-Request-Id`. A new id is minted only when parameters change (generation + 1), never because of a retry or a resume.
-- R-PAY-015 MUST: Retry policy: retry on network error, timeout, 429, 500, 502, 503, 504. Exponential backoff with full jitter: delay = random(0, min(capMs, baseMs * 2^attempt)), defaults baseMs 250, capMs 4000, maxAttempts 4. `Retry-After` (seconds or HTTP date) overrides the computed delay when larger, bounded by 30 s. Randomness and sleep are injectable.
+- R-PAY-015 MUST: Retry policy: retry on network error, timeout, 429, 500, 502, 503, 504. Exponential backoff with full jitter: delay = random(0, min(capMs, baseMs \* 2^attempt)), defaults baseMs 250, capMs 4000, maxAttempts 4. `Retry-After` (seconds or HTTP date) overrides the computed delay when larger, bounded by 30 s. Randomness and sleep are injectable.
 - R-PAY-016 MUST: Per-request timeout default 10 s, injectable. A timeout is classified as unknown outcome for POSTs and as transient for GETs.
 - R-PAY-017 MUST: Error mapping (Section 4.3) returns a `PayPalError` with `kind`, `status`, `name`, `issue`, `debugId` (from the `PayPal-Debug-Id` response header or body `debug_id`), `message`, `outcome: "definite" | "unknown"`. Unknown PayPal error names on 4xx map to `kind: "rejected"` with `outcome: "definite"`.
 - R-PAY-018 MUST: The client never throws raw `fetch` errors or strings; the saga catches only `PayPalError`.
@@ -181,13 +181,21 @@ IDs are stable. MUST = release blocker for the demo. SHOULD = expected, can slip
 
 ```ts
 export interface SettlementPlan {
-  auctionId: string;               // ULID
+  auctionId: string; // ULID
   reserveCents: number;
-  candidates: Candidate[];         // best first; [0] is the hammer winner
-  holds: Record<string, HoldRef>;  // bidderId -> hold
+  candidates: Candidate[]; // best first; [0] is the hammer winner
+  holds: Record<string, HoldRef>; // bidderId -> hold
 }
-export interface Candidate { bidderId: string; priceCents: number }
-export interface HoldRef { holdId: string; authId: string; ceilingCents: number; createdAtMs: number }
+export interface Candidate {
+  bidderId: string;
+  priceCents: number;
+}
+export interface HoldRef {
+  holdId: string;
+  authId: string;
+  ceilingCents: number;
+  createdAtMs: number;
+}
 ```
 
 Mapper `planFromOutcome(outcome, holds, reserve)` mirrors `ranking_from_outcome`: winner at `outcome.price`, then `outcome.ranking.slice(1)` each at its own amount. UNVERIFIED engine detail: whether runner-up price in second-price mode should equal their own best bid or the next price level; default is the prototype behaviour; decision owner engine (Open question Q3).
@@ -198,20 +206,20 @@ Mapper `planFromOutcome(outcome, holds, reserve)` mirrors `ranking_from_outcome`
 
 ### 4.3 Error mapping table
 
-| Condition | `kind` | `outcome` | Saga reaction |
-|---|---|---|---|
-| network error, timeout, reset | `network` | unknown (POST) / transient (GET) | retry, then pending |
-| 429 | `rate_limited` | unknown after retries | retry with Retry-After, then pending |
-| 500, 502, 503, 504 | `server_error` | unknown | retry, then pending |
-| 401 | `auth_expired` then `auth_failed` | definite | refresh once |
-| 404 | `not_found` | definite | truth `NOT_FOUND`; capture: fallback; void: released |
-| 400 | `invalid_request` | definite | invariant failure; `FAILED_NEEDS_REVIEW` |
-| 422 issue AUTHORIZATION_VOIDED / ALREADY_VOIDED | `already_voided` | definite | capture: fallback; void: released |
-| 422 issue AUTHORIZATION_EXPIRED | `expired` | definite | capture: fallback; void: released |
-| 422 issue AUTHORIZATION_ALREADY_CAPTURED | `already_captured` | definite | capture: adopt after truth; void: fine if winner else conflict |
-| 422 issue INSTRUMENT_DECLINED | `declined` | definite | capture: fallback |
-| 422 issue DUPLICATE_REQUEST_ID_DIFFERENT_PARAMS (assumed name) | `idempotency_conflict` | definite | `FAILED_NEEDS_REVIEW` (bug) |
-| other 4xx | `rejected` | definite | as `declined` after truth check |
+| Condition                                                      | `kind`                            | `outcome`                        | Saga reaction                                                  |
+| -------------------------------------------------------------- | --------------------------------- | -------------------------------- | -------------------------------------------------------------- |
+| network error, timeout, reset                                  | `network`                         | unknown (POST) / transient (GET) | retry, then pending                                            |
+| 429                                                            | `rate_limited`                    | unknown after retries            | retry with Retry-After, then pending                           |
+| 500, 502, 503, 504                                             | `server_error`                    | unknown                          | retry, then pending                                            |
+| 401                                                            | `auth_expired` then `auth_failed` | definite                         | refresh once                                                   |
+| 404                                                            | `not_found`                       | definite                         | truth `NOT_FOUND`; capture: fallback; void: released           |
+| 400                                                            | `invalid_request`                 | definite                         | invariant failure; `FAILED_NEEDS_REVIEW`                       |
+| 422 issue AUTHORIZATION_VOIDED / ALREADY_VOIDED                | `already_voided`                  | definite                         | capture: fallback; void: released                              |
+| 422 issue AUTHORIZATION_EXPIRED                                | `expired`                         | definite                         | capture: fallback; void: released                              |
+| 422 issue AUTHORIZATION_ALREADY_CAPTURED                       | `already_captured`                | definite                         | capture: adopt after truth; void: fine if winner else conflict |
+| 422 issue INSTRUMENT_DECLINED                                  | `declined`                        | definite                         | capture: fallback                                              |
+| 422 issue DUPLICATE_REQUEST_ID_DIFFERENT_PARAMS (assumed name) | `idempotency_conflict`            | definite                         | `FAILED_NEEDS_REVIEW` (bug)                                    |
+| other 4xx                                                      | `rejected`                        | definite                         | as `declined` after truth check                                |
 
 UNVERIFIED (G1): every PayPal issue name in this table other than the HTTP statuses. The prototype names are assumptions. Fallback: classification by HTTP status class alone (4xx definite, 5xx unknown) plus the mandatory truth check before any fallback (R-PAY-053), which makes a wrong name harmless.
 
@@ -220,22 +228,23 @@ UNVERIFIED (G1): every PayPal issue name in this table other than the HTTP statu
 ```
 requestId = "gv1-" + base32(sha256(`${auctionId}|${op}|${holdId}|${amountCents}|${generation}`)).slice(0, 40)
 ```
+
 Length 44. `op` in `{order, authorize, capture, void, reauth}`.
 
 ### 4.5 Fault taxonomy (fake)
 
-| Kind | Behaviour at the fake |
-|---|---|
-| timeout_before | request received, not applied, connection held then dropped after `timeoutMs` |
-| timeout_after_success | applied (and idempotency stored), response dropped |
-| http_500 | not applied, 500 `INTERNAL_SERVICE_ERROR` |
-| http_429 | not applied, 429 with `Retry-After: n` |
-| http_401_once | next business call gets 401, token endpoint then works |
-| connection_reset | socket destroyed immediately, not applied |
-| slow(ms) | applied, response delayed |
-| capture_declined | 422 `INSTRUMENT_DECLINED`, not applied |
-| malformed_body | 200 with truncated JSON, applied |
-| forget_idempotency | idempotency table cleared (simulates retention expiry) |
+| Kind                  | Behaviour at the fake                                                         |
+| --------------------- | ----------------------------------------------------------------------------- |
+| timeout_before        | request received, not applied, connection held then dropped after `timeoutMs` |
+| timeout_after_success | applied (and idempotency stored), response dropped                            |
+| http_500              | not applied, 500 `INTERNAL_SERVICE_ERROR`                                     |
+| http_429              | not applied, 429 with `Retry-After: n`                                        |
+| http_401_once         | next business call gets 401, token endpoint then works                        |
+| connection_reset      | socket destroyed immediately, not applied                                     |
+| slow(ms)              | applied, response delayed                                                     |
+| capture_declined      | 422 `INSTRUMENT_DECLINED`, not applied                                        |
+| malformed_body        | 200 with truncated JSON, applied                                              |
+| forget_idempotency    | idempotency table cleared (simulates retention expiry)                        |
 
 ### 4.6 Capture algorithm (runner, simplified)
 
@@ -257,26 +266,67 @@ for candidate at cursor:
 ### 5.1 Gateway port
 
 ```ts
-export type HoldStatus = 'PENDING_APPROVAL'|'HELD'|'CAPTURED'|'VOIDED'|'EXPIRED'|'DENIED'|'UNKNOWN';
+export type HoldStatus =
+  | 'PENDING_APPROVAL'
+  | 'HELD'
+  | 'CAPTURED'
+  | 'VOIDED'
+  | 'EXPIRED'
+  | 'DENIED'
+  | 'UNKNOWN';
 export interface HoldTruth {
-  holdId: string; authId: string;
-  status: 'CREATED'|'PENDING'|'PARTIALLY_CAPTURED'|'CAPTURED'|'VOIDED'|'EXPIRED'|'DENIED'|'NOT_FOUND';
-  amountCents: number; capturedCents: number;
-  captures: CaptureRef[] | null;        // null = not observable (UNVERIFIED G1)
+  holdId: string;
+  authId: string;
+  status:
+    | 'CREATED'
+    | 'PENDING'
+    | 'PARTIALLY_CAPTURED'
+    | 'CAPTURED'
+    | 'VOIDED'
+    | 'EXPIRED'
+    | 'DENIED'
+    | 'NOT_FOUND';
+  amountCents: number;
+  capturedCents: number;
+  captures: CaptureRef[] | null; // null = not observable (UNVERIFIED G1)
   observedAtMs: number;
 }
-export interface CaptureRef { captureId: string; amountCents: number; final: boolean; invoiceId?: string }
+export interface CaptureRef {
+  captureId: string;
+  amountCents: number;
+  final: boolean;
+  invoiceId?: string;
+}
 export interface PaymentsGateway {
-  createOrder(i: { holdId: string; ceilingCents: number; description: string; requestId: string }): Promise<{ orderId: string; approveUrl?: string }>;
+  createOrder(i: {
+    holdId: string;
+    ceilingCents: number;
+    description: string;
+    requestId: string;
+  }): Promise<{ orderId: string; approveUrl?: string }>;
   getOrder(orderId: string): Promise<{ orderId: string; status: string; authId?: string }>;
-  authorizeOrder(orderId: string, requestId: string): Promise<{ authId: string; amountCents: number }>;
+  authorizeOrder(
+    orderId: string,
+    requestId: string,
+  ): Promise<{ authId: string; amountCents: number }>;
   getHoldTruth(h: { holdId: string; authId: string; orderId?: string }): Promise<HoldTruth>;
-  capture(authId: string, i: { amountCents: number; finalCapture: boolean; invoiceId: string; requestId: string }): Promise<{ captureId: string; amountCents: number }>;
+  capture(
+    authId: string,
+    i: { amountCents: number; finalCapture: boolean; invoiceId: string; requestId: string },
+  ): Promise<{ captureId: string; amountCents: number }>;
   voidAuthorization(authId: string, requestId: string): Promise<void>;
-  reauthorize(authId: string, i: { amountCents: number; requestId: string }): Promise<{ amountCents: number }>;
+  reauthorize(
+    authId: string,
+    i: { amountCents: number; requestId: string },
+  ): Promise<{ amountCents: number }>;
 }
 export class PayPalError extends Error {
-  kind: ErrorKind; status: number; name: string; issue?: string; debugId?: string; outcome: 'definite'|'unknown';
+  kind: ErrorKind;
+  status: number;
+  name: string;
+  issue?: string;
+  debugId?: string;
+  outcome: 'definite' | 'unknown';
 }
 ```
 
@@ -285,21 +335,31 @@ export class PayPalError extends Error {
 ```ts
 export interface JournalStore {
   load(auctionId: string): Promise<Journal | null>;
-  create(j: Journal): Promise<void>;                           // fails if exists
-  save(j: Journal, expectedVersion: number): Promise<void>;    // CAS; throws VersionConflict
+  create(j: Journal): Promise<void>; // fails if exists
+  save(j: Journal, expectedVersion: number): Promise<void>; // CAS; throws VersionConflict
   acquireLease(auctionId: string, owner: string, ttlMs: number, nowMs: number): Promise<boolean>;
   releaseLease(auctionId: string, owner: string): Promise<void>;
 }
 export interface WebhookEventStore {
-  insertIfAbsent(e: StoredWebhook): Promise<boolean>;          // true = new
+  insertIfAbsent(e: StoredWebhook): Promise<boolean>; // true = new
   markProcessed(id: string, result: string): Promise<void>;
   parkOrphan(id: string, untilMs: number): Promise<void>;
   listOrphans(nowMs: number): Promise<StoredWebhook[]>;
 }
-export interface HoldStore { get(holdId: string): Promise<HoldRecord|null>; byBidder(auctionId: string, bidderId: string): Promise<HoldRecord|null>; put(h: HoldRecord): Promise<void>; listByAuction(auctionId: string): Promise<HoldRecord[]> }
-export interface AuditSink { append(e: PaymentAudit): Promise<void> }
-export interface Clock { nowMs(): number }
+export interface HoldStore {
+  get(holdId: string): Promise<HoldRecord | null>;
+  byBidder(auctionId: string, bidderId: string): Promise<HoldRecord | null>;
+  put(h: HoldRecord): Promise<void>;
+  listByAuction(auctionId: string): Promise<HoldRecord[]>;
+}
+export interface AuditSink {
+  append(e: PaymentAudit): Promise<void>;
+}
+export interface Clock {
+  nowMs(): number;
+}
 ```
+
 The in-memory and file-backed implementations live in payments; SQL adapters are built by the realtime area against these interfaces (Open question Q2).
 
 ### 5.3 Web contract (zod, JSON)
@@ -315,6 +375,7 @@ request : { "orderId": "5O190127TN364715T" }
 response: { "holdId": "...", "status": "HELD", "ceilingCents": 15000 }
 errors  : 404 order_not_found | 409 order_not_approved | 503 paypal_unavailable
 ```
+
 Browser sequence (UNVERIFIED (G2) for SDK call names; the HTTP contract is fixed):
 
 ```
@@ -326,6 +387,7 @@ web                         server                       PayPal
  | POST /api/holds/:id/approve>| authorizeOrder ----------->|
  |<-- {status:HELD} ----------|<-- authorization CREATED ---|
 ```
+
 onCancel and onError in the browser: web calls `DELETE /api/holds/{holdId}` (abandon pending order; no PayPal call, the order simply expires). The fixture `contract/fixtures/*.json` holds one example per message for the web area's mocks.
 
 ### 5.4 Settlement payloads
@@ -339,34 +401,76 @@ onCancel and onError in the browser: web calls `DELETE /api/holds/{holdId}` (aba
     { "bidderId": "b1", "holdId": "h1", "status": "DENIED" },
     { "bidderId": "b2", "holdId": "h2", "status": "HELD" }
   ],
-  "fromBidderId": "b1", "toBidderId": "b2", "reason": "declined",
-  "capture": null, "tsMs": 1762300000000
+  "fromBidderId": "b1",
+  "toBidderId": "b2",
+  "reason": "declined",
+  "capture": null,
+  "tsMs": 1762300000000
 }
 ```
+
 ```json
-{ "type": "audit_event", "auctionId": "01JC...", "kind": "paypal_call",
-  "op": "capture", "holdId": "h1", "requestId": "gv1-...", "attempt": 2,
-  "status": 500, "outcome": "unknown", "debugId": "abc123", "tsMs": 1762300000100 }
+{
+  "type": "audit_event",
+  "auctionId": "01JC...",
+  "kind": "paypal_call",
+  "op": "capture",
+  "holdId": "h1",
+  "requestId": "gv1-...",
+  "attempt": 2,
+  "status": 500,
+  "outcome": "unknown",
+  "debugId": "abc123",
+  "tsMs": 1762300000100
+}
 ```
+
 Payload types are re-exported by `packages/shared` wire definitions; payments owns the domain fields, realtime owns the envelope.
 
 ### 5.5 Journal (persisted JSON, version 1)
 
 ```json
 {
-  "v": 1, "auctionId": "01JC...", "version": 7, "state": "CAPTURING",
-  "plan": { "reserveCents": 5000, "candidates": [{"bidderId":"b1","priceCents":22000},{"bidderId":"b2","priceCents":21000}] },
-  "holds": { "b1": {"holdId":"h1","authId":"AUTH-1","ceilingCents":30000,"stale":false}, "b2": {"holdId":"h2","authId":"AUTH-2","ceilingCents":25000,"stale":false} },
+  "v": 1,
+  "auctionId": "01JC...",
+  "version": 7,
+  "state": "CAPTURING",
+  "plan": {
+    "reserveCents": 5000,
+    "candidates": [
+      { "bidderId": "b1", "priceCents": 22000 },
+      { "bidderId": "b2", "priceCents": 21000 }
+    ]
+  },
+  "holds": {
+    "b1": { "holdId": "h1", "authId": "AUTH-1", "ceilingCents": 30000, "stale": false },
+    "b2": { "holdId": "h2", "authId": "AUTH-2", "ceilingCents": 25000, "stale": false }
+  },
   "cursor": 0,
-  "intent": { "op": "capture", "holdId": "h1", "requestId": "gv1-...", "amountCents": 22000, "startedAtMs": 1762300000000 },
+  "intent": {
+    "op": "capture",
+    "holdId": "h1",
+    "requestId": "gv1-...",
+    "amountCents": 22000,
+    "startedAtMs": 1762300000000
+  },
   "unknownSince": null,
   "winner": null,
   "failed": [],
   "voids": {},
   "resumes": 0,
-  "history": [ {"seq":1,"tsMs":1,"from":"WINNER_SELECTED","to":"CAPTURING","label":"journaled:start_capture"} ]
+  "history": [
+    {
+      "seq": 1,
+      "tsMs": 1,
+      "from": "WINNER_SELECTED",
+      "to": "CAPTURING",
+      "label": "journaled:start_capture"
+    }
+  ]
 }
 ```
+
 Canonical serialization: sorted keys, no whitespace, so journals compare byte for byte.
 
 ## 6. State machines and sequences
@@ -383,6 +487,7 @@ CAPTURING --unknown_deadline|invariant|mismatch--> FAILED_NEEDS_REVIEW
 VOIDING --void_budget_exhausted--> FAILED_NEEDS_REVIEW
 CAPTURED --mismatch--> FAILED_NEEDS_REVIEW
 ```
+
 Explicit table (row = from, columns = allowed to): HELD:{BIDDING, VOIDING}; BIDDING:{WINNER_SELECTED, VOIDING}; WINNER_SELECTED:{CAPTURING, VOIDING, FAILED_NEEDS_REVIEW}; CAPTURING:{CAPTURED, FALLBACK_RUNNER_UP, FAILED_NEEDS_REVIEW}; FALLBACK_RUNNER_UP:{CAPTURING, VOIDING, FAILED_NEEDS_REVIEW}; CAPTURED:{VOIDING, FAILED_NEEDS_REVIEW}; VOIDING:{SETTLED, FAILED_NEEDS_REVIEW}; SETTLED:{}; FAILED_NEEDS_REVIEW:{}. HELD to VOIDING covers an auction cancelled before it started.
 
 ### 6.2 Crash labels
@@ -407,6 +512,7 @@ hammer   runner           journal              PayPal
   |        |-- void h1, void h3 ------------------> 200 / 200
   |        |--save------->| SETTLED
 ```
+
 Runner-up pricing: candidate `priceCents` is fixed by the engine at plan time (prototype: runner-up at its own best bid). The saga never recomputes prices.
 
 ### 6.4 Display mapping (hold status to ladder step for the web area)
@@ -422,6 +528,7 @@ raw body + headers --verify(API)--> FAIL --> 401, audit webhook_rejected
                                               new  --> map to hint --> known hold? --yes--> observeHold (GET) --> monotonic merge --> 200
                                                                               \--no--> parkOrphan --> 200
 ```
+
 Monotonic merge rank: `PENDING_APPROVAL(0) < HELD(1) < CAPTURED(2)`; `VOIDED, EXPIRED, DENIED` terminal; terminal vs different terminal = `status_conflict`.
 
 ## 7. Evidence log format (docs/GATES.md and docs/evidence)
@@ -431,12 +538,39 @@ Monotonic merge rank: `PENDING_APPROVAL(0) < HELD(1) < CAPTURED(2)`; `VOIDED, EX
 Each gate run writes `docs/evidence/<gate>/<runId>.jsonl`, one JSON object per line, UTF-8, sorted keys:
 
 ```json
-{"gate":"G1","runId":"G1-20261104T101500Z-wallet","step":"G1.4 capture 350 final","tsMs":1762251300000,
- "request":{"method":"POST","url":"https://api-m.sandbox.paypal.com/v2/payments/authorizations/<id>/capture","headers":{"PayPal-Request-Id":"gate-g1-cap-1","Content-Type":"application/json","Authorization":"[REDACTED]"},"body":{"amount":{"currency_code":"USD","value":"3.50"},"final_capture":true}},
- "response":{"status":201,"headers":{"PayPal-Debug-Id":"<id>"},"body":{"id":"<capture id>","status":"COMPLETED"},"latencyMs":812},
- "assertion":{"name":"capture completed","expected":"COMPLETED","actual":"COMPLETED","pass":true},
- "buyer":"wallet","env":"sandbox","scriptVersion":"<git sha>"}
+{
+  "gate": "G1",
+  "runId": "G1-20261104T101500Z-wallet",
+  "step": "G1.4 capture 350 final",
+  "tsMs": 1762251300000,
+  "request": {
+    "method": "POST",
+    "url": "https://api-m.sandbox.paypal.com/v2/payments/authorizations/<id>/capture",
+    "headers": {
+      "PayPal-Request-Id": "gate-g1-cap-1",
+      "Content-Type": "application/json",
+      "Authorization": "[REDACTED]"
+    },
+    "body": { "amount": { "currency_code": "USD", "value": "3.50" }, "final_capture": true }
+  },
+  "response": {
+    "status": 201,
+    "headers": { "PayPal-Debug-Id": "<id>" },
+    "body": { "id": "<capture id>", "status": "COMPLETED" },
+    "latencyMs": 812
+  },
+  "assertion": {
+    "name": "capture completed",
+    "expected": "COMPLETED",
+    "actual": "COMPLETED",
+    "pass": true
+  },
+  "buyer": "wallet",
+  "env": "sandbox",
+  "scriptVersion": "<git sha>"
+}
 ```
+
 Redaction: `Authorization`, `client_secret`, `access_token`, `PAYPAL-TRANSMISSION-SIG`, buyer passwords, full card numbers (sandbox card numbers are test data but are still removed). Account ids are kept; passwords are never stored. A lint test (T-PAY-070) fails if a record contains a token-shaped string.
 
 ### 7.2 docs/GATES.md entry template
@@ -456,19 +590,19 @@ Spec tags flipped: R-PAY-059, R-PAY-051 (list)
 
 ### 7.3 Decision matrices
 
-| Gate | Observation | Decision | Effect on code |
-|---|---|---|---|
-| G1 | after final capture, GET shows authorization CAPTURED and explicit void is rejected | A | winner remainder branch is a no-op |
-| G1 | remainder still open, explicit void succeeds | B | saga void phase includes the winner's remainder (R-PAY-059) |
-| G1 | remainder open and void rejected | C | document that remainder expires on its own; UI copy "released on expiry"; escalate |
-| G1 | partial capture with final_capture rejected for card buyers | FAIL(card) | wallet buyers only (R-PAY-037) |
-| G2 | card AUTHORIZE works in SDK v6 | PASS | enable card in UI |
-| G2 | card AUTHORIZE not offered or fails | PASS-WITH-FALLBACK | wallet only; copy changes |
-| G3 | capture after day 3 succeeds | PASS | no reauth; keep stale flag |
-| G3 | capture after day 3 fails, reauth works | PASS-WITH-FALLBACK | enable R-PAY-070 |
-| G3 | both fail | FAIL | demo holds minutes before capture; document |
-| G4 | real events verify, simulator events fail | PASS | as designed |
-| G4 | no public URL or verify fails | PASS-WITH-FALLBACK | polling reconciliation only; webhook ticks in UI come from our own observations |
+| Gate | Observation                                                                         | Decision           | Effect on code                                                                     |
+| ---- | ----------------------------------------------------------------------------------- | ------------------ | ---------------------------------------------------------------------------------- |
+| G1   | after final capture, GET shows authorization CAPTURED and explicit void is rejected | A                  | winner remainder branch is a no-op                                                 |
+| G1   | remainder still open, explicit void succeeds                                        | B                  | saga void phase includes the winner's remainder (R-PAY-059)                        |
+| G1   | remainder open and void rejected                                                    | C                  | document that remainder expires on its own; UI copy "released on expiry"; escalate |
+| G1   | partial capture with final_capture rejected for card buyers                         | FAIL(card)         | wallet buyers only (R-PAY-037)                                                     |
+| G2   | card AUTHORIZE works in SDK v6                                                      | PASS               | enable card in UI                                                                  |
+| G2   | card AUTHORIZE not offered or fails                                                 | PASS-WITH-FALLBACK | wallet only; copy changes                                                          |
+| G3   | capture after day 3 succeeds                                                        | PASS               | no reauth; keep stale flag                                                         |
+| G3   | capture after day 3 fails, reauth works                                             | PASS-WITH-FALLBACK | enable R-PAY-070                                                                   |
+| G3   | both fail                                                                           | FAIL               | demo holds minutes before capture; document                                        |
+| G4   | real events verify, simulator events fail                                           | PASS               | as designed                                                                        |
+| G4   | no public URL or verify fails                                                       | PASS-WITH-FALLBACK | polling reconciliation only; webhook ticks in UI come from our own observations    |
 
 ## 8. Error and edge cases
 
@@ -504,121 +638,121 @@ Test runner: vitest in `packages/payments`; all heavy runs in GitHub Actions (`p
 
 ### 10.1 Unit tests
 
-| ID | Requirements | Input | Expected |
-|---|---|---|---|
-| T-PAY-001 | R-PAY-020 | `centsToDecimal` for 0, 5, 100, 1050, 35000, 999999999 | "0.00","0.05","1.00","10.50","350.00","9999999.99" |
-| T-PAY-002 | R-PAY-020 | property: 1000 random integers round-trip; non-integers, negatives, "1.234", "1,5", "" | round-trip holds; the invalid inputs throw |
-| T-PAY-003 | R-PAY-001, 002 | env: PAYPAL_ENV=live; base url https://api-m.paypal.com; host with sandbox as subdomain suffix attack `api-m.sandbox.paypal.com.evil.test`; http scheme | each throws `payments_not_sandbox` |
-| T-PAY-004 | R-PAY-002, 004 | loopback base URL without `GAVEL_PAYMENTS_FAKE=1`; with it | throws; allowed |
-| T-PAY-005 | R-PAY-003 | order response whose approve link host is `www.paypal.com` | order discarded, error raised |
-| T-PAY-006 | R-PAY-005, 031 | ceilings 0, -1, 25001 (cap 25000), 25000, 1 | refused, refused, refused, accepted, accepted; no network call on refusal (fake call counter 0) |
-| T-PAY-007 | R-PAY-007, 130 | log events and errors containing token, secret, Basic header, transmission signature | output contains `[REDACTED]`, never the original strings |
-| T-PAY-008 | R-PAY-013, 014, 4.4 | same inputs twice; generation 0 vs 1; amount differs | equal ids; different ids; length 44; charset base32 |
-| T-PAY-009 | R-PAY-017, 4.3 | table-driven: each row of 4.3 as a fake response | `kind` and `outcome` match; unknown 422 issue maps to `rejected` definite |
-| T-PAY-010 | R-PAY-015 | fake clock/sleep; faults http_500 x2 then ok | 3 attempts, delays within full-jitter bounds, same request id on all attempts |
-| T-PAY-011 | R-PAY-015 | http_429 with `Retry-After: 2` and with HTTP date; `Retry-After: 120` | sleep >= 2 s; date parsed; capped at 30 s |
-| T-PAY-012 | R-PAY-016 | slow(15000) with 10 s timeout | `network` unknown for POST; transient for GET |
-| T-PAY-013 | R-PAY-010 | 20 concurrent calls with expired token | exactly one token request |
-| T-PAY-014 | R-PAY-010 | http_401_once on capture | token refreshed once, call replayed, success; second 401 gives `auth_failed` |
-| T-PAY-015 | R-PAY-011 | createOrder body inspected at the fake | intent AUTHORIZE, one purchase unit, amount value from cents, custom_id = holdId |
-| T-PAY-016 | R-PAY-011 | authorizeOrder on approved and unapproved order | authId returned; unapproved gives `order_not_approved` |
-| T-PAY-017 | R-PAY-012, 051 | capture body at fake | `final_capture: true`, amount decimal, `invoice_id` set |
-| T-PAY-018 | R-PAY-018 | fake returns garbage text, HTML 502, empty body | all surface as `PayPalError`, never SyntaxError |
-| T-PAY-019 | R-PAY-021 | same conformance assertions through `FakeGateway` and `PayPalGateway`+server | identical results |
+| ID        | Requirements        | Input                                                                                                                                                   | Expected                                                                                        |
+| --------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| T-PAY-001 | R-PAY-020           | `centsToDecimal` for 0, 5, 100, 1050, 35000, 999999999                                                                                                  | "0.00","0.05","1.00","10.50","350.00","9999999.99"                                              |
+| T-PAY-002 | R-PAY-020           | property: 1000 random integers round-trip; non-integers, negatives, "1.234", "1,5", ""                                                                  | round-trip holds; the invalid inputs throw                                                      |
+| T-PAY-003 | R-PAY-001, 002      | env: PAYPAL_ENV=live; base url https://api-m.paypal.com; host with sandbox as subdomain suffix attack `api-m.sandbox.paypal.com.evil.test`; http scheme | each throws `payments_not_sandbox`                                                              |
+| T-PAY-004 | R-PAY-002, 004      | loopback base URL without `GAVEL_PAYMENTS_FAKE=1`; with it                                                                                              | throws; allowed                                                                                 |
+| T-PAY-005 | R-PAY-003           | order response whose approve link host is `www.paypal.com`                                                                                              | order discarded, error raised                                                                   |
+| T-PAY-006 | R-PAY-005, 031      | ceilings 0, -1, 25001 (cap 25000), 25000, 1                                                                                                             | refused, refused, refused, accepted, accepted; no network call on refusal (fake call counter 0) |
+| T-PAY-007 | R-PAY-007, 130      | log events and errors containing token, secret, Basic header, transmission signature                                                                    | output contains `[REDACTED]`, never the original strings                                        |
+| T-PAY-008 | R-PAY-013, 014, 4.4 | same inputs twice; generation 0 vs 1; amount differs                                                                                                    | equal ids; different ids; length 44; charset base32                                             |
+| T-PAY-009 | R-PAY-017, 4.3      | table-driven: each row of 4.3 as a fake response                                                                                                        | `kind` and `outcome` match; unknown 422 issue maps to `rejected` definite                       |
+| T-PAY-010 | R-PAY-015           | fake clock/sleep; faults http_500 x2 then ok                                                                                                            | 3 attempts, delays within full-jitter bounds, same request id on all attempts                   |
+| T-PAY-011 | R-PAY-015           | http_429 with `Retry-After: 2` and with HTTP date; `Retry-After: 120`                                                                                   | sleep >= 2 s; date parsed; capped at 30 s                                                       |
+| T-PAY-012 | R-PAY-016           | slow(15000) with 10 s timeout                                                                                                                           | `network` unknown for POST; transient for GET                                                   |
+| T-PAY-013 | R-PAY-010           | 20 concurrent calls with expired token                                                                                                                  | exactly one token request                                                                       |
+| T-PAY-014 | R-PAY-010           | http_401_once on capture                                                                                                                                | token refreshed once, call replayed, success; second 401 gives `auth_failed`                    |
+| T-PAY-015 | R-PAY-011           | createOrder body inspected at the fake                                                                                                                  | intent AUTHORIZE, one purchase unit, amount value from cents, custom_id = holdId                |
+| T-PAY-016 | R-PAY-011           | authorizeOrder on approved and unapproved order                                                                                                         | authId returned; unapproved gives `order_not_approved`                                          |
+| T-PAY-017 | R-PAY-012, 051      | capture body at fake                                                                                                                                    | `final_capture: true`, amount decimal, `invoice_id` set                                         |
+| T-PAY-018 | R-PAY-018           | fake returns garbage text, HTML 502, empty body                                                                                                         | all surface as `PayPalError`, never SyntaxError                                                 |
+| T-PAY-019 | R-PAY-021           | same conformance assertions through `FakeGateway` and `PayPalGateway`+server                                                                            | identical results                                                                               |
 
 ### 10.2 Hold lifecycle
 
-| ID | Requirements | Case | Expected |
-|---|---|---|---|
-| T-PAY-020 | R-PAY-030 | create, approve via `/__fake/approve`, complete | hold HELD with authId stored; browser-supplied authId ignored |
-| T-PAY-021 | R-PAY-032 | second `createHoldOrder` while pending / after HELD | same orderId / `hold_exists` |
-| T-PAY-022 | R-PAY-033 | `completeApproval` twice, plus authorize timeout_after_success once | one authorization at fake, same hold returned |
-| T-PAY-023 | R-PAY-034 | hold age 2h01m at settlement start | `stale: true` audited, capture still attempted |
-| T-PAY-024 | R-PAY-035, 036 | validate fixtures `contract/fixtures/*.json` against zod | all parse; mutated examples fail with expected codes |
-| T-PAY-025 | R-PAY-037 | gates-result flag false | `cardEnabled() === false` |
-| T-PAY-026 | 8.1 | order approved, no authorize, `recover` | authorized when auction open; abandoned when closed |
-| T-PAY-027 | R-PAY-111 | kill switch engaged then createOrder, authorize | both refuse with `kill_switch_engaged`, 0 network calls |
+| ID        | Requirements   | Case                                                                | Expected                                                      |
+| --------- | -------------- | ------------------------------------------------------------------- | ------------------------------------------------------------- |
+| T-PAY-020 | R-PAY-030      | create, approve via `/__fake/approve`, complete                     | hold HELD with authId stored; browser-supplied authId ignored |
+| T-PAY-021 | R-PAY-032      | second `createHoldOrder` while pending / after HELD                 | same orderId / `hold_exists`                                  |
+| T-PAY-022 | R-PAY-033      | `completeApproval` twice, plus authorize timeout_after_success once | one authorization at fake, same hold returned                 |
+| T-PAY-023 | R-PAY-034      | hold age 2h01m at settlement start                                  | `stale: true` audited, capture still attempted                |
+| T-PAY-024 | R-PAY-035, 036 | validate fixtures `contract/fixtures/*.json` against zod            | all parse; mutated examples fail with expected codes          |
+| T-PAY-025 | R-PAY-037      | gates-result flag false                                             | `cardEnabled() === false`                                     |
+| T-PAY-026 | 8.1            | order approved, no authorize, `recover`                             | authorized when auction open; abandoned when closed           |
+| T-PAY-027 | R-PAY-111      | kill switch engaged then createOrder, authorize                     | both refuse with `kill_switch_engaged`, 0 network calls       |
 
 ### 10.3 State machine and saga
 
-| ID | Requirements | Case | Expected |
-|---|---|---|---|
-| T-PAY-030 | R-PAY-040, 041 | exhaustive: every (state, event) pair | allowed pairs match 6.1 table, all others throw `IllegalTransition`; `step` pure (deep-equal on repeated call, input not mutated) |
-| T-PAY-031 | R-PAY-040 | property: random event sequences | the state always in the nine allowed values; terminal states never leave |
-| T-PAY-032 | R-PAY-044, 045 | second `createSettlement` with different plan; second concurrent `run` | `plan_mismatch`; `busy`; one set of PayPal effects |
-| T-PAY-033 | R-PAY-050..052, 056, 061 | 3 bidders, ceilings 300/250/200, price 220 | capture 220 final on winner, voids on others, SETTLED, invariants pass |
-| T-PAY-034 | R-PAY-052 | price 301 vs ceiling 300; price below reserve; price 0 | `FAILED_NEEDS_REVIEW` with zero PayPal calls; skip to next candidate; refused |
-| T-PAY-035 | R-PAY-062 | no candidates, 3 holds | 3 voids, SETTLED, winner null |
-| T-PAY-036 | R-PAY-053, 065 | winner capture_declined | truth check shown in `calls`, FALLBACK_RUNNER_UP, runner-up captured at own price, winner's hold voided in void phase, exactly one capture overall |
-| T-PAY-037 | R-PAY-053 | winner hold voided externally; expired by clock (30 d); expired (fake) | each falls back once |
-| T-PAY-038 | R-PAY-053 | capture returns 422 but the fake actually applied it (injected inconsistency) | truth shows CAPTURED, adopt, no second capture |
-| T-PAY-039 | R-PAY-054 | persistent timeout_before and timeout_after_success on capture (more than maxAttempts) | state CAPTURING, `pending`, runner-up never called; fake call log has no capture on runner-up |
-| T-PAY-040 | R-PAY-054, 050 | persistent timeouts, then fault cleared, resume | truth check first; capture adopted if applied, retried with same request id if not; one capture |
-| T-PAY-041 | R-PAY-055 | unknown outcome beyond deadline (clock advance 601 s) | FAILED_NEEDS_REVIEW reason `capture_outcome_unknown`; no voids |
-| T-PAY-042 | R-PAY-057, 058 | void for already voided, expired; void http_500 x6; void rejected with live hold | released; released; pending then resume; VOID_FAILED then after 5 resumes FAILED_NEEDS_REVIEW |
-| T-PAY-043 | R-PAY-059 | fake `autoReleaseRemainder` true and false | no extra void; explicit void recorded `remainder_voided`; released + captured = hold in both |
-| T-PAY-044 | R-PAY-060 | crash at every label (port of `test_crash_at_every_boundary_then_resume`, parametrized over the label count) | final journal equals the uninterrupted journal (canonical bytes, ignoring `resumes` and timestamps); invariants pass |
-| T-PAY-045 | R-PAY-060 | crash everywhere plus `forget_idempotency` | same |
-| T-PAY-046 | R-PAY-060 | crash everywhere plus timeout_after_success on first capture | same |
-| T-PAY-047 | R-PAY-060 | double crash chain (crash at i, resume, crash at j>i, resume) over all pairs for a 3-bidder plan | same |
-| T-PAY-048 | R-PAY-063 | engage kill switch before CAPTURING; engage after capture | `pending(kill_switch)`, no capture; voids still run; after release resume completes |
-| T-PAY-049 | R-PAY-064, 132 | run with fallback | audit entries: one per call incl. retries; `settlement_update` sequence matches transitions; canonical JSON key order stable |
-| T-PAY-050 | R-PAY-150 | run twice with same seed | journals byte-identical |
-| T-PAY-051 | R-PAY-071, 072 | hold age 3d 1h, reauth enabled and disabled | reauth once with same ceiling when enabled; capture proceeds either way |
-| T-PAY-052 | R-PAY-061 | property: random plans (2-8 bidders), random single-fault schedules from the 4.5 taxonomy, random crash points, 500 seeds | invariants always hold; terminal state reached after at most 10 resumes or state is `pending` with no capture to a non-winner; at most one capture |
-| T-PAY-053 | R-PAY-045 | lease expiry during slow step (advance clock 31 s) | second runner can take over; first runner's save fails with `VersionConflict` |
+| ID        | Requirements             | Case                                                                                                                      | Expected                                                                                                                                           |
+| --------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T-PAY-030 | R-PAY-040, 041           | exhaustive: every (state, event) pair                                                                                     | allowed pairs match 6.1 table, all others throw `IllegalTransition`; `step` pure (deep-equal on repeated call, input not mutated)                  |
+| T-PAY-031 | R-PAY-040                | property: random event sequences                                                                                          | the state always in the nine allowed values; terminal states never leave                                                                           |
+| T-PAY-032 | R-PAY-044, 045           | second `createSettlement` with different plan; second concurrent `run`                                                    | `plan_mismatch`; `busy`; one set of PayPal effects                                                                                                 |
+| T-PAY-033 | R-PAY-050..052, 056, 061 | 3 bidders, ceilings 300/250/200, price 220                                                                                | capture 220 final on winner, voids on others, SETTLED, invariants pass                                                                             |
+| T-PAY-034 | R-PAY-052                | price 301 vs ceiling 300; price below reserve; price 0                                                                    | `FAILED_NEEDS_REVIEW` with zero PayPal calls; skip to next candidate; refused                                                                      |
+| T-PAY-035 | R-PAY-062                | no candidates, 3 holds                                                                                                    | 3 voids, SETTLED, winner null                                                                                                                      |
+| T-PAY-036 | R-PAY-053, 065           | winner capture_declined                                                                                                   | truth check shown in `calls`, FALLBACK_RUNNER_UP, runner-up captured at own price, winner's hold voided in void phase, exactly one capture overall |
+| T-PAY-037 | R-PAY-053                | winner hold voided externally; expired by clock (30 d); expired (fake)                                                    | each falls back once                                                                                                                               |
+| T-PAY-038 | R-PAY-053                | capture returns 422 but the fake actually applied it (injected inconsistency)                                             | truth shows CAPTURED, adopt, no second capture                                                                                                     |
+| T-PAY-039 | R-PAY-054                | persistent timeout_before and timeout_after_success on capture (more than maxAttempts)                                    | state CAPTURING, `pending`, runner-up never called; fake call log has no capture on runner-up                                                      |
+| T-PAY-040 | R-PAY-054, 050           | persistent timeouts, then fault cleared, resume                                                                           | truth check first; capture adopted if applied, retried with same request id if not; one capture                                                    |
+| T-PAY-041 | R-PAY-055                | unknown outcome beyond deadline (clock advance 601 s)                                                                     | FAILED_NEEDS_REVIEW reason `capture_outcome_unknown`; no voids                                                                                     |
+| T-PAY-042 | R-PAY-057, 058           | void for already voided, expired; void http_500 x6; void rejected with live hold                                          | released; released; pending then resume; VOID_FAILED then after 5 resumes FAILED_NEEDS_REVIEW                                                      |
+| T-PAY-043 | R-PAY-059                | fake `autoReleaseRemainder` true and false                                                                                | no extra void; explicit void recorded `remainder_voided`; released + captured = hold in both                                                       |
+| T-PAY-044 | R-PAY-060                | crash at every label (port of `test_crash_at_every_boundary_then_resume`, parametrized over the label count)              | final journal equals the uninterrupted journal (canonical bytes, ignoring `resumes` and timestamps); invariants pass                               |
+| T-PAY-045 | R-PAY-060                | crash everywhere plus `forget_idempotency`                                                                                | same                                                                                                                                               |
+| T-PAY-046 | R-PAY-060                | crash everywhere plus timeout_after_success on first capture                                                              | same                                                                                                                                               |
+| T-PAY-047 | R-PAY-060                | double crash chain (crash at i, resume, crash at j>i, resume) over all pairs for a 3-bidder plan                          | same                                                                                                                                               |
+| T-PAY-048 | R-PAY-063                | engage kill switch before CAPTURING; engage after capture                                                                 | `pending(kill_switch)`, no capture; voids still run; after release resume completes                                                                |
+| T-PAY-049 | R-PAY-064, 132           | run with fallback                                                                                                         | audit entries: one per call incl. retries; `settlement_update` sequence matches transitions; canonical JSON key order stable                       |
+| T-PAY-050 | R-PAY-150                | run twice with same seed                                                                                                  | journals byte-identical                                                                                                                            |
+| T-PAY-051 | R-PAY-071, 072           | hold age 3d 1h, reauth enabled and disabled                                                                               | reauth once with same ceiling when enabled; capture proceeds either way                                                                            |
+| T-PAY-052 | R-PAY-061                | property: random plans (2-8 bidders), random single-fault schedules from the 4.5 taxonomy, random crash points, 500 seeds | invariants always hold; terminal state reached after at most 10 resumes or state is `pending` with no capture to a non-winner; at most one capture |
+| T-PAY-053 | R-PAY-045                | lease expiry during slow step (advance clock 31 s)                                                                        | second runner can take over; first runner's save fails with `VersionConflict`                                                                      |
 
 ### 10.4 Webhooks
 
-| ID | Requirements | Case | Expected |
-|---|---|---|---|
-| T-PAY-060 | R-PAY-090, 093 | valid signature via fake verify; tampered body; missing header | accept; 401 and audit row; 401 |
-| T-PAY-061 | R-PAY-091 | body with unusual whitespace and key order | the verify request contains the exact original bytes (assert on the fake's received body) |
-| T-PAY-062 | R-PAY-094 | same event id twice and 50 times concurrently | one insert, one effect, all 200 |
-| T-PAY-063 | R-PAY-095 | event claims capture of 999 but truth says 220 | ledger uses 220; `AMOUNT_MISMATCH` finding |
-| T-PAY-064 | R-PAY-096 | deliver full event set in `reverse`, `shuffle(seed 1..20)`, `duplicate` | final hold statuses equal the fifo result in every mode |
-| T-PAY-065 | R-PAY-096 | CAPTURE.COMPLETED before settlement record; unknown hold | observed_captured then adopted; parked then resolved by `sweepOrphans` |
-| T-PAY-066 | R-PAY-097 | CAPTURED then VOIDED for same hold | not applied, `status_conflict` audit |
-| T-PAY-067 | R-PAY-098 | unknown event type; fixtures from G4 (when present) | 200 and stored; fixture parse tests |
-| T-PAY-068 | R-PAY-099 | store latency 100 ms, truth-check latency 3 s | handler returns 200 under 300 ms with event stored |
-| T-PAY-069 | R-PAY-126 | `drop` 100% of webhooks through a full saga | settlement still SETTLED; reconcile reports no drift (polling covers) |
+| ID        | Requirements   | Case                                                                    | Expected                                                                                  |
+| --------- | -------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| T-PAY-060 | R-PAY-090, 093 | valid signature via fake verify; tampered body; missing header          | accept; 401 and audit row; 401                                                            |
+| T-PAY-061 | R-PAY-091      | body with unusual whitespace and key order                              | the verify request contains the exact original bytes (assert on the fake's received body) |
+| T-PAY-062 | R-PAY-094      | same event id twice and 50 times concurrently                           | one insert, one effect, all 200                                                           |
+| T-PAY-063 | R-PAY-095      | event claims capture of 999 but truth says 220                          | ledger uses 220; `AMOUNT_MISMATCH` finding                                                |
+| T-PAY-064 | R-PAY-096      | deliver full event set in `reverse`, `shuffle(seed 1..20)`, `duplicate` | final hold statuses equal the fifo result in every mode                                   |
+| T-PAY-065 | R-PAY-096      | CAPTURE.COMPLETED before settlement record; unknown hold                | observed_captured then adopted; parked then resolved by `sweepOrphans`                    |
+| T-PAY-066 | R-PAY-097      | CAPTURED then VOIDED for same hold                                      | not applied, `status_conflict` audit                                                      |
+| T-PAY-067 | R-PAY-098      | unknown event type; fixtures from G4 (when present)                     | 200 and stored; fixture parse tests                                                       |
+| T-PAY-068 | R-PAY-099      | store latency 100 ms, truth-check latency 3 s                           | handler returns 200 under 300 ms with event stored                                        |
+| T-PAY-069 | R-PAY-126      | `drop` 100% of webhooks through a full saga                             | settlement still SETTLED; reconcile reports no drift (polling covers)                     |
 
 ### 10.5 Reconciliation, safety, gates
 
-| ID | Requirements | Case | Expected |
-|---|---|---|---|
-| T-PAY-070 | R-PAY-007, 141 | evidence lint over sample records, including one with a planted token | planted record rejected; clean ones pass; schema validation of the jsonl |
-| T-PAY-071 | R-PAY-100, 103 | seeded drift per finding code (6 fixtures) | each code reported once; two runs equal besides `observedAt` |
-| T-PAY-072 | R-PAY-101 | live hold after SETTLED; repair off and on | reported; voided only with `repair`; no capture ever |
-| T-PAY-073 | R-PAY-110, 112, 113 | engage, restart (new instance on same store), void all | still engaged; voids audited with actor |
-| T-PAY-074 | R-PAY-120, 121, 125 | server boots on ephemeral port, call each route, reset | responses match recorded fixture shapes; ids deterministic |
-| T-PAY-075 | R-PAY-122 | every fault kind in 4.5 applied once to capture | observed client behaviour matches the 4.5 table |
-| T-PAY-076 | R-PAY-123 | same request id different params | 422 mapped `idempotency_conflict` |
-| T-PAY-077 | R-PAY-124 | clock advance across honor and validity boundaries with both `afterHonorCapture` values | statuses and errors per prototype tests `test_fake_paypal.py` (ported) |
-| T-PAY-078 | R-PAY-127 | corrupt the fake state (double final capture) | `assertFakeInvariants` throws |
-| T-PAY-079 | R-PAY-140..143 | `npm run gate:g1 -- --fake` for both remainder modes | evidence file valid, decision A or B printed according to the mode |
-| T-PAY-080 | R-PAY-147 | `npm run measure -- --fake` | output JSON validates; p50 <= p95 <= p99 |
-| T-PAY-081 | R-PAY-128 | conformance suite on fake; (manual) on sandbox | same assertions pass; differences logged |
+| ID        | Requirements        | Case                                                                                    | Expected                                                                 |
+| --------- | ------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| T-PAY-070 | R-PAY-007, 141      | evidence lint over sample records, including one with a planted token                   | planted record rejected; clean ones pass; schema validation of the jsonl |
+| T-PAY-071 | R-PAY-100, 103      | seeded drift per finding code (6 fixtures)                                              | each code reported once; two runs equal besides `observedAt`             |
+| T-PAY-072 | R-PAY-101           | live hold after SETTLED; repair off and on                                              | reported; voided only with `repair`; no capture ever                     |
+| T-PAY-073 | R-PAY-110, 112, 113 | engage, restart (new instance on same store), void all                                  | still engaged; voids audited with actor                                  |
+| T-PAY-074 | R-PAY-120, 121, 125 | server boots on ephemeral port, call each route, reset                                  | responses match recorded fixture shapes; ids deterministic               |
+| T-PAY-075 | R-PAY-122           | every fault kind in 4.5 applied once to capture                                         | observed client behaviour matches the 4.5 table                          |
+| T-PAY-076 | R-PAY-123           | same request id different params                                                        | 422 mapped `idempotency_conflict`                                        |
+| T-PAY-077 | R-PAY-124           | clock advance across honor and validity boundaries with both `afterHonorCapture` values | statuses and errors per prototype tests `test_fake_paypal.py` (ported)   |
+| T-PAY-078 | R-PAY-127           | corrupt the fake state (double final capture)                                           | `assertFakeInvariants` throws                                            |
+| T-PAY-079 | R-PAY-140..143      | `npm run gate:g1 -- --fake` for both remainder modes                                    | evidence file valid, decision A or B printed according to the mode       |
+| T-PAY-080 | R-PAY-147           | `npm run measure -- --fake`                                                             | output JSON validates; p50 <= p95 <= p99                                 |
+| T-PAY-081 | R-PAY-128           | conformance suite on fake; (manual) on sandbox                                          | same assertions pass; differences logged                                 |
 
 ### 10.6 Sandbox-only (manual workflow, secrets present)
 
-| ID | Requirements | Case | Expected |
-|---|---|---|---|
-| T-PAY-090 | G1, R-PAY-143 | evidence per 7.1 for wallet and card buyers | GATES.md entry with decision |
-| T-PAY-091 | G2, R-PAY-144 | SDK v6 page, AUTHORIZE, wallet and guest card | order id and authorization id in evidence |
-| T-PAY-092 | G3, R-PAY-145 | immediate reauth plus day 3.5, 4, 5 probe | documented behaviour |
-| T-PAY-093 | G4, R-PAY-146 | real capture and void produce events that verify | fixtures committed |
-| T-PAY-094 | R-PAY-060 | kill the process between capture and journal save on the sandbox (PAY-67) | one capture on PayPal, reconcile clean |
-| T-PAY-095 | R-PAY-013 | repeat a capture with the same request id and with a different id | observed behaviour recorded; spec tags flipped |
+| ID        | Requirements  | Case                                                                      | Expected                                       |
+| --------- | ------------- | ------------------------------------------------------------------------- | ---------------------------------------------- |
+| T-PAY-090 | G1, R-PAY-143 | evidence per 7.1 for wallet and card buyers                               | GATES.md entry with decision                   |
+| T-PAY-091 | G2, R-PAY-144 | SDK v6 page, AUTHORIZE, wallet and guest card                             | order id and authorization id in evidence      |
+| T-PAY-092 | G3, R-PAY-145 | immediate reauth plus day 3.5, 4, 5 probe                                 | documented behaviour                           |
+| T-PAY-093 | G4, R-PAY-146 | real capture and void produce events that verify                          | fixtures committed                             |
+| T-PAY-094 | R-PAY-060     | kill the process between capture and journal save on the sandbox (PAY-67) | one capture on PayPal, reconcile clean         |
+| T-PAY-095 | R-PAY-013     | repeat a capture with the same request id and with a different id         | observed behaviour recorded; spec tags flipped |
 
 ## 11. Open questions
 
-| # | Question | Decision owner | Default until decided |
-|---|---|---|---|
-| Q1 | Does `final_capture=true` auto-release the remainder (G1), and is it the same for card buyers? | payments (P1), evidence from G1 | Assume not: explicit void branch on (R-PAY-059) |
-| Q2 | Who writes the SQL adapters for `JournalStore`, `WebhookEventStore`, `HoldStore`? | realtime, with payments review | payments ships in-memory and JSON-file stores; realtime implements SQL from the interfaces and runs the shared contract tests (PAY-26) |
-| Q3 | Runner-up price: own best bid (prototype) vs next price level in second-price mode | engine | prototype behaviour; payments takes the price from the plan |
-| Q4 | Can the card-funded guest flow run with intent AUTHORIZE in SDK v6 (G2)? | payments (P1) with web | wallet buyers only |
-| Q5 | Public webhook URL for G4 and the demo (hosted server, or temporary tunnel) | infra with Harsh | polling reconciliation only; webhook ticks from our own truth checks |
-| Q6 | Is a hard 2-hour hold age appropriate for demos spanning more than one session? | Harsh | 2 h default; override by env |
-| Q7 | Who runs the day-4/5 G3 probe, and with which sandbox accounts, given the deadline of Nov 12? | Harsh | probe started on Nov 4 so day 5 lands on Nov 9 |
+| #   | Question                                                                                       | Decision owner                  | Default until decided                                                                                                                  |
+| --- | ---------------------------------------------------------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Q1  | Does `final_capture=true` auto-release the remainder (G1), and is it the same for card buyers? | payments (P1), evidence from G1 | Assume not: explicit void branch on (R-PAY-059)                                                                                        |
+| Q2  | Who writes the SQL adapters for `JournalStore`, `WebhookEventStore`, `HoldStore`?              | realtime, with payments review  | payments ships in-memory and JSON-file stores; realtime implements SQL from the interfaces and runs the shared contract tests (PAY-26) |
+| Q3  | Runner-up price: own best bid (prototype) vs next price level in second-price mode             | engine                          | prototype behaviour; payments takes the price from the plan                                                                            |
+| Q4  | Can the card-funded guest flow run with intent AUTHORIZE in SDK v6 (G2)?                       | payments (P1) with web          | wallet buyers only                                                                                                                     |
+| Q5  | Public webhook URL for G4 and the demo (hosted server, or temporary tunnel)                    | infra with Harsh                | polling reconciliation only; webhook ticks from our own truth checks                                                                   |
+| Q6  | Is a hard 2-hour hold age appropriate for demos spanning more than one session?                | Harsh                           | 2 h default; override by env                                                                                                           |
+| Q7  | Who runs the day-4/5 G3 probe, and with which sandbox accounts, given the deadline of Nov 12?  | Harsh                           | probe started on Nov 4 so day 5 lands on Nov 9                                                                                         |

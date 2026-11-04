@@ -30,7 +30,8 @@ type Env = Record<string, string | undefined>;
 function positiveInt(env: Env, name: string, dflt: number): number {
   const raw = env[name];
   if (raw === undefined || raw === '') return dflt;
-  if (!/^\d+$/.test(raw)) throw new PaymentsConfigError('payments_bad_config', `${name} must be a positive integer`);
+  if (!/^\d+$/.test(raw))
+    throw new PaymentsConfigError('payments_bad_config', `${name} must be a positive integer`);
   const n = parseInt(raw, 10);
   if (!(n > 0) || n > 9007199254740991) {
     throw new PaymentsConfigError('payments_bad_config', `${name} must be a positive integer`);
@@ -40,7 +41,8 @@ function positiveInt(env: Env, name: string, dflt: number): number {
 
 function required(env: Env, name: string): string {
   const v = env[name];
-  if (v === undefined || v === '') throw new PaymentsConfigError('payments_bad_config', `${name} is required`);
+  if (v === undefined || v === '')
+    throw new PaymentsConfigError('payments_bad_config', `${name} is required`);
   return v;
 }
 
@@ -54,7 +56,9 @@ export function loadConfig(env: Env): PaymentsConfig {
   return {
     env: 'sandbox',
     clientId: fake ? (env['PAYPAL_CLIENT_ID'] ?? '') : required(env, 'PAYPAL_CLIENT_ID'),
-    clientSecret: fake ? (env['PAYPAL_CLIENT_SECRET'] ?? '') : required(env, 'PAYPAL_CLIENT_SECRET'),
+    clientSecret: fake
+      ? (env['PAYPAL_CLIENT_SECRET'] ?? '')
+      : required(env, 'PAYPAL_CLIENT_SECRET'),
     webhookId: env['PAYPAL_WEBHOOK_ID'] ?? '',
     baseUrl,
     maxCeilingCents: positiveInt(env, 'GAVEL_MAX_CEILING_CENTS', DEFAULT_MAX_CEILING_CENTS),

@@ -8,12 +8,14 @@ Related: `docs/PLAN.md`, `reference/python/engine.py` (prototype), branch `feat/
 GAVEL turns every bid in a live auction into a promise backed by a PayPal authorization hold. The engine is the part that decides, with no ambiguity and no I/O, what each bid means: accepted or rejected and why, who leads, what the price is, when the lot closes, who wins, what they pay, and who is next in line if the winner's hold fails. Every decision is recorded in an append-only, hash-chained ledger, so the whole auction can be replayed and proven after the fact.
 
 In scope:
+
 - Auction modes `english`, `proxy`, `second_price`; reserve; flat and laddered increments; soft close with caps; per-bidder ceilings (the hold amount); runner-up ranking and fallback pricing; multi-lot events with cumulative exposure.
 - Command model (`decide`), event model (`evolve`), ledger sealing and verification, bid audit record, replay and state digest.
 - A thin single-writer runtime over a `LedgerStore` interface (no database code), projections that are safe to send to viewers, a clock abstraction.
 - Golden fixtures shared with the Python reference, property tests, differential tests, fault injection.
 
 Out of scope (owned elsewhere):
+
 - PayPal calls, the capture/void saga and its transition graph (payments). The engine only records settlement facts it is told.
 - WebSocket transport, auth, persistence adapters, rate limiting (realtime). Wire message schemas and error-code registry (shared).
 - Speech-to-text and bid parsing (voice). The engine receives the parsed amount plus the audit fields and enforces the confirmation rule as a last safety net.
@@ -38,8 +40,8 @@ Gates: nothing in this spec depends on an unverified PayPal behaviour. Two desig
 - Golden fixture: a JSON scenario with expected results, run by both TypeScript and Python.
 
 ## 3. Requirements
-Requirement ids are stable; the test and issue tables refer to them.
 
+Requirement ids are stable; the test and issue tables refer to them.
 
 ### Money, time, identifiers
 
@@ -224,6 +226,7 @@ Requirement ids are stable; the test and issue tables refer to them.
 ## 4. Interfaces
 
 ### 4.1 Package layout (single owner: engine)
+
 ```
 packages/engine/
   src/types.ts reasons.ts errors.ts canonical.ts sha256.ts hasher.ts clock.ts policy.ts config.ts
@@ -239,12 +242,14 @@ packages/engine/
   test/ ... (unit, properties/, fault/, fuzz/, contract/, scenario/)
 reference/python/golden_runner.py scenario_export.py test_golden.py   (owned by engine)
 ```
+
 The existing `src/engine.ts` stays until `legacy.ts` replaces its internals; its test file is not edited.
 
 ### 4.2 Core types
+
 ```ts
-export type Cents = number;             // safe integer, 1..100_000_000 for bids
-export type EpochMs = number;           // integer
+export type Cents = number; // safe integer, 1..100_000_000 for bids
+export type EpochMs = number; // integer
 export type Ulid = string;
 export type Mode = 'english' | 'proxy' | 'second_price';
 export type LotStatus = 'PENDING' | 'OPEN' | 'CLOSING' | 'SETTLING' | 'DONE';
@@ -254,52 +259,90 @@ export type IncrementRule =
   | { flatCents: number }
   | { ladder: Array<{ fromCents: number; incrementCents: number }> };
 
-export interface SoftClose { windowMs: number; extensionMs: number; maxExtensions: number; hardCloseMs?: number }
+export interface SoftClose {
+  windowMs: number;
+  extensionMs: number;
+  maxExtensions: number;
+  hardCloseMs?: number;
+}
 
 export interface AuctionConfig {
   currency: 'USD';
   holdScope: 'event' | 'lot';
-  maxCeilingCents: number;            // default 100000 in sandbox
-  confirmBelowBps: number;            // default 8500
+  maxCeilingCents: number; // default 100000 in sandbox
+  confirmBelowBps: number; // default 8500
   fallbackPolicy: 'runner_up' | 'unsold';
-  maxFallbackDepth: number;           // default 2
+  maxFallbackDepth: number; // default 2
 }
 export interface LotConfig {
-  lotId: Ulid; title: string; mode: Mode; reserveCents: number;
-  increment: IncrementRule; durationMs: number; softClose: SoftClose; hammer: 'auto' | 'manual';
+  lotId: Ulid;
+  title: string;
+  mode: Mode;
+  reserveCents: number;
+  increment: IncrementRule;
+  durationMs: number;
+  softClose: SoftClose;
+  hammer: 'auto' | 'manual';
 }
 export interface BidAudit {
-  utteranceId?: string; audioStartMs?: number; audioEndMs?: number; transcript?: string;
-  confidenceBps?: number; confirmed?: boolean; parserVersion?: string; clientTs?: number;
+  utteranceId?: string;
+  audioStartMs?: number;
+  audioEndMs?: number;
+  transcript?: string;
+  confidenceBps?: number;
+  confirmed?: boolean;
+  parserVersion?: string;
+  clientTs?: number;
 }
 ```
 
 ### 4.3 Commands (all carry `commandId: Ulid`, `at: EpochMs`, `auctionId`)
+
 ```ts
 type Command =
- | { type:'CreateAuction'; title:string; config:Partial<AuctionConfig> }
- | { type:'AddLot'; lot: LotConfig }
- | { type:'RegisterBidder'; bidderId:Ulid; ceilingCents:number; holdRef?:string; lotId?:Ulid }
- | { type:'OpenLot'; lotId:Ulid }
- | { type:'PlaceBid'; lotId:Ulid; bidderId:Ulid; amountCents:number; source:BidSource; audit:BidAudit }
- | { type:'Tick' }
- | { type:'Hammer'; lotId:Ulid; early?:boolean; actor:string }
- | { type:'RevokeCeiling'; bidderId:Ulid; reason:'declined'|'expired'|'voided'|'other' }
- | { type:'PromoteRunnerUp'; lotId:Ulid; disqualifiedBidderId:Ulid; reason:string }
- | { type:'CompleteLot'; lotId:Ulid; capturedCents:number; ref:string }
- | { type:'RecordSettlement'; lotId:Ulid; from:SettlementState; to:SettlementState; ref:string }
- | { type:'CloseAuction' };
+  | { type: 'CreateAuction'; title: string; config: Partial<AuctionConfig> }
+  | { type: 'AddLot'; lot: LotConfig }
+  | { type: 'RegisterBidder'; bidderId: Ulid; ceilingCents: number; holdRef?: string; lotId?: Ulid }
+  | { type: 'OpenLot'; lotId: Ulid }
+  | {
+      type: 'PlaceBid';
+      lotId: Ulid;
+      bidderId: Ulid;
+      amountCents: number;
+      source: BidSource;
+      audit: BidAudit;
+    }
+  | { type: 'Tick' }
+  | { type: 'Hammer'; lotId: Ulid; early?: boolean; actor: string }
+  | { type: 'RevokeCeiling'; bidderId: Ulid; reason: 'declined' | 'expired' | 'voided' | 'other' }
+  | { type: 'PromoteRunnerUp'; lotId: Ulid; disqualifiedBidderId: Ulid; reason: string }
+  | { type: 'CompleteLot'; lotId: Ulid; capturedCents: number; ref: string }
+  | {
+      type: 'RecordSettlement';
+      lotId: Ulid;
+      from: SettlementState;
+      to: SettlementState;
+      ref: string;
+    }
+  | { type: 'CloseAuction' };
 ```
+
 `SettlementState` is the fixed list: HELD, BIDDING, WINNER_SELECTED, CAPTURING, CAPTURED, VOIDING, SETTLED, FALLBACK_RUNNER_UP, FAILED_NEEDS_REVIEW.
 
 ### 4.4 Decision, evolution, runtime
+
 ```ts
 export type Outcome =
-  | { kind:'accepted' } | { kind:'rejected'; reason: RejectReason }
-  | { kind:'noop' } | { kind:'duplicate' };
-export interface DecideResult { events: LedgerEvent[]; outcome: Outcome }
+  | { kind: 'accepted' }
+  | { kind: 'rejected'; reason: RejectReason }
+  | { kind: 'noop' }
+  | { kind: 'duplicate' };
+export interface DecideResult {
+  events: LedgerEvent[];
+  outcome: Outcome;
+}
 
-export function decide(state: AuctionState, cmd: Command): DecideResult;      // pure
+export function decide(state: AuctionState, cmd: Command): DecideResult; // pure
 export function evolve(state: AuctionState, entry: LedgerEntry): AuctionState; // pure, total
 export function replay(entries: readonly LedgerEntry[], hasher?: Hasher): AuctionState;
 export function stateDigest(state: AuctionState, hasher?: Hasher): string;
@@ -312,22 +355,39 @@ export interface LedgerStore {
   head(auctionId: Ulid): Promise<{ seq: number; hash: string } | null>;
 }
 export class AuctionRuntime {
-  constructor(opts: { store: LedgerStore; hasher?: Hasher; onDecision?: (m: DecisionMetric) => void });
+  constructor(opts: {
+    store: LedgerStore;
+    hasher?: Hasher;
+    onDecision?: (m: DecisionMetric) => void;
+  });
   dispatch(cmd: Command): Promise<DecideResult & { entries: LedgerEntry[] }>;
   subscribe(auctionId: Ulid, fromSeq: number): AsyncIterable<LedgerEntry>;
   state(auctionId: Ulid): Promise<AuctionState>;
 }
 export function projectPublic(s: AuctionState, aliasOf: (id: Ulid) => string): PublicView;
-export function projectBidder(s: AuctionState, bidderId: Ulid, aliasOf: (id: Ulid) => string): BidderView;
-export function projectAuditor(entries: readonly LedgerEntry[], opts?: { full?: boolean }): LedgerEntry[];
-export function verifyChain(entries: readonly LedgerEntry[], o?: { expectedHead?: { seq:number; hash:string } }): VerifyResult;
+export function projectBidder(
+  s: AuctionState,
+  bidderId: Ulid,
+  aliasOf: (id: Ulid) => string,
+): BidderView;
+export function projectAuditor(
+  entries: readonly LedgerEntry[],
+  opts?: { full?: boolean },
+): LedgerEntry[];
+export function verifyChain(
+  entries: readonly LedgerEntry[],
+  o?: { expectedHead?: { seq: number; hash: string } },
+): VerifyResult;
 ```
+
 `VerifyResult = {ok:true,count,headHash} | {ok:false,firstBadIndex,reason:'bad_hash'|'bad_prev'|'bad_seq'|'bad_time'|'unsupported_version'|'truncated'}`.
 
 ### 4.5 Ledger entry, canonical form and golden vector
+
 Event types (18): AUCTION_CREATED, LOT_ADDED, BIDDER_REGISTERED, CEILING_RAISED, CEILING_REVOKED, LOT_OPENED, BID_RECORDED, BID_REJECTED, BID_STRUCK, END_EXTENDED, LOT_CLOSING, LOT_HAMMERED, FALLBACK_PROMOTED, CANDIDATE_SKIPPED, LOT_UNSOLD, SETTLEMENT_STATE, LOT_SETTLED, AUCTION_CLOSED.
 
 Hash input is the canonical JSON (keys sorted, no spaces, integers only) of the entry without `hash`. Golden vector (Python `hashlib.sha256` over `json.dumps(sort_keys=True, separators=(',',':'))`; must match TypeScript):
+
 ```
 entry 1 canonical:
 {"at":1788000000000,"auctionId":"01JC0000000000000000000001","cmd":"01JC0000000000000000000A01","payload":{"config":{"currency":"USD","holdScope":"event"},"title":"Spring Gala"},"prev":"0000000000000000000000000000000000000000000000000000000000000000","seq":1,"type":"AUCTION_CREATED","v":1}
@@ -337,47 +397,104 @@ entry 2 canonical:
 hash 2 = f685ed77a83bf8dde536e1f3ffc999879451cb2c1052c15d9ccd4b30929a5b13
 SHA-256("abc") = ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
 ```
+
 (The vector uses illustrative ids; the lot id in entry 2 is not a valid ULID letter set for engine validation, so the vector test calls `sealBatch` directly, which does not validate ids.)
 
 ### 4.6 Example accepted-bid entry (payload fields per aud-fields)
+
 ```json
-{"v":1,"auctionId":"01JC0000000000000000000001","seq":14,"at":1788000123456,"type":"BID_RECORDED",
- "cmd":"01JC0000000000000000000B07",
- "payload":{"bidId":"01JC0000000000000000000B07","lotId":"01JC00000000000000000002L1","bidderId":"01JC0000000000000000000BD2",
-  "amountCents":15000,"source":"voice",
-  "audit":{"utteranceId":"u-81","audioStartMs":412300,"audioEndMs":413900,"transcript":"one fifty from the back","confidenceBps":9120,"confirmed":true,"parserVersion":"p1","clientTs":1788000123100},
-  "priceBefore":12500,"priceAfter":15000,"leaderBefore":"01JC0000000000000000000BD1","leaderAfter":"01JC0000000000000000000BD2",
-  "rank":1,"endsAtBefore":1788000130000,"endsAtAfter":1788000153456},
- "prev":"<64 hex>","hash":"<64 hex>"}
+{
+  "v": 1,
+  "auctionId": "01JC0000000000000000000001",
+  "seq": 14,
+  "at": 1788000123456,
+  "type": "BID_RECORDED",
+  "cmd": "01JC0000000000000000000B07",
+  "payload": {
+    "bidId": "01JC0000000000000000000B07",
+    "lotId": "01JC00000000000000000002L1",
+    "bidderId": "01JC0000000000000000000BD2",
+    "amountCents": 15000,
+    "source": "voice",
+    "audit": {
+      "utteranceId": "u-81",
+      "audioStartMs": 412300,
+      "audioEndMs": 413900,
+      "transcript": "one fifty from the back",
+      "confidenceBps": 9120,
+      "confirmed": true,
+      "parserVersion": "p1",
+      "clientTs": 1788000123100
+    },
+    "priceBefore": 12500,
+    "priceAfter": 15000,
+    "leaderBefore": "01JC0000000000000000000BD1",
+    "leaderAfter": "01JC0000000000000000000BD2",
+    "rank": 1,
+    "endsAtBefore": 1788000130000,
+    "endsAtAfter": 1788000153456
+  },
+  "prev": "<64 hex>",
+  "hash": "<64 hex>"
+}
 ```
+
 Rejected example payload: `{"bidId":"...","lotId":"...","bidderId":"...","amountCents":null,"amountRaw":"150.5","source":"manual","audit":{},"reason":"bad_amount","detail":{}}`.
 
 LOT_HAMMERED payload example:
+
 ```json
-{"lotId":"...","winnerId":"...BD2","priceCents":15000,"mode":"english",
- "ranking":[{"bidderId":"...BD2","amountCents":15000,"at":1788000123456,"seq":14},{"bidderId":"...BD1","amountCents":12500,"at":1788000100000,"seq":11}],
- "candidates":[{"bidderId":"...BD2","priceCents":15000},{"bidderId":"...BD1","priceCents":12500}],
- "endsAt":1788000153456,"extensions":1,"closedAtSeq":16}
+{
+  "lotId": "...",
+  "winnerId": "...BD2",
+  "priceCents": 15000,
+  "mode": "english",
+  "ranking": [
+    { "bidderId": "...BD2", "amountCents": 15000, "at": 1788000123456, "seq": 14 },
+    { "bidderId": "...BD1", "amountCents": 12500, "at": 1788000100000, "seq": 11 }
+  ],
+  "candidates": [
+    { "bidderId": "...BD2", "priceCents": 15000 },
+    { "bidderId": "...BD1", "priceCents": 12500 }
+  ],
+  "endsAt": 1788000153456,
+  "extensions": 1,
+  "closedAtSeq": 16
+}
 ```
+
 `candidates` has the same shape as the saga's ranking input (bidder, price if promoted), best first.
 
 ### 4.7 Golden fixture format
+
 ```json
-{"name":"english-boundary-01","parity":true,
- "config":{"mode":"english","reserveCents":1000,"increment":{"flatCents":500},"durationMs":100000,"softClose":{"windowMs":0,"extensionMs":0,"maxExtensions":0}},
- "steps":[
-  {"op":"register","bidder":"A","ceilingCents":50000,"at":0},
-  {"op":"bid","bidder":"A","amountCents":999,"at":1000,"expectReject":"below_reserve"},
-  {"op":"bid","bidder":"A","amountCents":1000,"at":2000},
-  {"op":"tick","at":100000},
-  {"op":"hammer","at":100000}],
- "expect":{"winner":"A","priceCents":1000,"ranking":[["A",1000]],"endsAt":100000}}
+{
+  "name": "english-boundary-01",
+  "parity": true,
+  "config": {
+    "mode": "english",
+    "reserveCents": 1000,
+    "increment": { "flatCents": 500 },
+    "durationMs": 100000,
+    "softClose": { "windowMs": 0, "extensionMs": 0, "maxExtensions": 0 }
+  },
+  "steps": [
+    { "op": "register", "bidder": "A", "ceilingCents": 50000, "at": 0 },
+    { "op": "bid", "bidder": "A", "amountCents": 999, "at": 1000, "expectReject": "below_reserve" },
+    { "op": "bid", "bidder": "A", "amountCents": 1000, "at": 2000 },
+    { "op": "tick", "at": 100000 },
+    { "op": "hammer", "at": 100000 }
+  ],
+  "expect": { "winner": "A", "priceCents": 1000, "ranking": [["A", 1000]], "endsAt": 100000 }
+}
 ```
+
 Bidder names (`A`, `B`) are mapped to ULIDs by the loader. Python converts `at` ms to seconds by dividing by 1000. Fixtures with ladders, cumulative ceilings, striking, fallback or holdScope are `parity:false` (the reference has no such features) and are checked against hand-derived expectations.
 
 ## 5. State machines and sequences
 
 ### 5.1 Lot status
+
 ```
           OpenLot                 Tick(at>=endsAt) | Hammer(early)            Hammer
  PENDING ---------> OPEN ---------------------------------------> CLOSING ----------> SETTLING
@@ -387,9 +504,11 @@ Bidder names (`A`, `B`) are mapped to ULIDs by the loader. Python converts `at` 
                       +-----------------------------------------------> DONE <--+--------+
                                          PromoteRunnerUp exhausted => LOT_UNSOLD(no_valid_winner) -> DONE
 ```
+
 Legacy names: OPEN, CLOSING, SETTLING, DONE are unchanged from the reference; PENDING is new.
 
 ### 5.2 Sequence: voice bid in english mode
+
 ```
  host(realtime)            runtime                 decide/evolve               store
    | PlaceBid(at=server)     |                          |                       |
@@ -403,7 +522,9 @@ Legacy names: OPEN, CLOSING, SETTLING, DONE are unchanged from the reference; PE
    |<--result+entries--------|  notify subscribers      |                       |
    | bid_accepted/price/audit_event broadcast (host, using projections)           |
 ```
+
 ### 5.3 Sequence: fallback after hold failure
+
 ```
  payments saga          host            runtime
    | capture fails definitively |          |
@@ -413,7 +534,9 @@ Legacy names: OPEN, CLOSING, SETTLING, DONE are unchanged from the reference; PE
    |                            |<-- FALLBACK_PROMOTED(to=B, price) or CANDIDATE_SKIPPED... or LOT_UNSOLD
    | saga proceeds with B at price; RecordSettlement(from,to) entries follow
 ```
+
 ### 5.4 Ceiling accounting (holdScope event)
+
 ```
  ceiling 5000
  lot1 hammer 3000 (SETTLING) -> committed 3000, available 2000
@@ -422,33 +545,35 @@ Legacy names: OPEN, CLOSING, SETTLING, DONE are unchanged from the reference; PE
 ```
 
 ## 6. Error and edge cases
-| Case | Behaviour |
-|---|---|
-| Two bids same ms, same amount (proxy/sealed) | Both accepted; order by `seq`, i.e. arrival at the single writer |
-| Two english bids race for the same price | Second arrives after the first is evolved; fails below_increment |
-| Bid at exactly `endsAt` | LOT_CLOSING then BID_REJECTED(lot_not_open) |
-| Bid at `endsAt - 1` inside window | Accepted and extends if enabled |
-| `at` earlier than head | `time_regression`, nothing appended; host clamps with monotonicAt |
-| Client clock wildly off | Irrelevant: `clientTs` is stored only |
-| Bid amount 1.5 or NaN | Rejected `bad_amount`, `amountRaw` stored as text |
-| Amount exactly ceiling | Accepted; one cent above rejected |
-| Winner price above remaining ceiling | `InvariantError`, no hammer; cannot occur if validation passes |
-| Winner revoked after hammer | CEILING_REVOKED only; fallback is explicit |
-| Fallback candidate lacks headroom | CANDIDATE_SKIPPED then next candidate |
-| All candidates fail | LOT_UNSOLD(no_valid_winner); host moves settlement to FAILED_NEEDS_REVIEW |
-| Duplicate delivery of PlaceBid | `duplicate` outcome, no append |
-| Same commandId, different body | `command_conflict` |
-| Append outcome unknown | Head read, commandId lookup, no double write |
-| Process crash after append before notify | Restart replays; subscribers resume from last seq |
-| Sealed lot read by public | Amounts hidden until hammer |
-| Ledger tampered in storage | `verifyChain` reports first bad index; replay refuses |
-| Last entries deleted | Detected only against a published head (`expectedHead`) |
-| Zero bids | LOT_UNSOLD(no_bids) |
-| Single bidder proxy or sealed | Pays reserve |
-| Bidder re-registers lower | `cannot_lower_ceiling` |
-| Command after AUCTION_CLOSED | `auction_closed` |
+
+| Case                                         | Behaviour                                                                 |
+| -------------------------------------------- | ------------------------------------------------------------------------- |
+| Two bids same ms, same amount (proxy/sealed) | Both accepted; order by `seq`, i.e. arrival at the single writer          |
+| Two english bids race for the same price     | Second arrives after the first is evolved; fails below_increment          |
+| Bid at exactly `endsAt`                      | LOT_CLOSING then BID_REJECTED(lot_not_open)                               |
+| Bid at `endsAt - 1` inside window            | Accepted and extends if enabled                                           |
+| `at` earlier than head                       | `time_regression`, nothing appended; host clamps with monotonicAt         |
+| Client clock wildly off                      | Irrelevant: `clientTs` is stored only                                     |
+| Bid amount 1.5 or NaN                        | Rejected `bad_amount`, `amountRaw` stored as text                         |
+| Amount exactly ceiling                       | Accepted; one cent above rejected                                         |
+| Winner price above remaining ceiling         | `InvariantError`, no hammer; cannot occur if validation passes            |
+| Winner revoked after hammer                  | CEILING_REVOKED only; fallback is explicit                                |
+| Fallback candidate lacks headroom            | CANDIDATE_SKIPPED then next candidate                                     |
+| All candidates fail                          | LOT_UNSOLD(no_valid_winner); host moves settlement to FAILED_NEEDS_REVIEW |
+| Duplicate delivery of PlaceBid               | `duplicate` outcome, no append                                            |
+| Same commandId, different body               | `command_conflict`                                                        |
+| Append outcome unknown                       | Head read, commandId lookup, no double write                              |
+| Process crash after append before notify     | Restart replays; subscribers resume from last seq                         |
+| Sealed lot read by public                    | Amounts hidden until hammer                                               |
+| Ledger tampered in storage                   | `verifyChain` reports first bad index; replay refuses                     |
+| Last entries deleted                         | Detected only against a published head (`expectedHead`)                   |
+| Zero bids                                    | LOT_UNSOLD(no_bids)                                                       |
+| Single bidder proxy or sealed                | Pays reserve                                                              |
+| Bidder re-registers lower                    | `cannot_lower_ceiling`                                                    |
+| Command after AUCTION_CLOSED                 | `auction_closed`                                                          |
 
 ## 7. Non-functional
+
 - Latency: decide + seal + evolve median < 1 ms, p99 < 5 ms at 200 bidders and 5000 bids on Node 22 (nfr-latency). State uses persistent-style updates of the active lot only.
 - Determinism: no clock, randomness, locale, or iteration-order dependence; ordered maps; integer math only; canonical JSON. A replay on any machine reproduces every hash.
 - Security: ceilings and holdRefs never leave through public projections; ids validated before use; prototype keys refused; size limits; the ledger is tamper-evident but not tamper-proof (an attacker with write access can rewrite everything unless a head hash was published elsewhere, hence the anchor).
@@ -457,8 +582,8 @@ Legacy names: OPEN, CLOSING, SETTLING, DONE are unchanged from the reference; PE
 - Observability: every decision produces entries (the audit trail) and one `onDecision` metric; rejected bids are first-class records.
 - Accessibility: not applicable to this package; projections carry `reasonText` keys only, the UI owns copy.
 
-
 ## 8. Test specification
+
 Each test lists the requirement ids it verifies. Inputs and expected values are concrete; implementers add more cases but never fewer.
 
 - **T-ENG-001** [R-ENG-001, R-ENG-027] Submit amounts 0, -1, 1.5, NaN, Infinity, 100000001, '500' (string) to an open english lot; each is BID_REJECTED reason bad_amount; ledger payload has amountCents null and amountRaw string for non-integers; chain verifies.
@@ -466,7 +591,7 @@ Each test lists the requirement ids it verifies. Inputs and expected values are 
 - **T-ENG-003** [R-ENG-003, R-ENG-121] Run the full fixture suite with Date.now and Math.random replaced by throwing stubs; no test fails.
 - **T-ENG-004** [R-ENG-004] Head at=2000; dispatch command at=1999 throws time_regression and store length unchanged; monotonicAt(1999,2000)=2000.
 - **T-ENG-005** [R-ENG-005] PlaceBid with bidderId 'alice', lotId '', commandId lower-case ULID -> EngineError bad_id; no entries appended.
-- **T-ENG-006** [R-ENG-006] RegisterBidder with bidderId '__proto__' fails; payload containing key 'constructor' fails with non_canonical; a Map-keyed state is unaffected (Object.prototype.polluted undefined).
+- **T-ENG-006** [R-ENG-006] RegisterBidder with bidderId '**proto**' fails; payload containing key 'constructor' fails with non_canonical; a Map-keyed state is unaffected (Object.prototype.polluted undefined).
 - **T-ENG-007** [R-ENG-007] Transcript of 2001 chars, 201st lot, 1001st bidder, 20001st bid, 129-char holdRef each fail limit_exceeded; boundary values (2000, 200, 1000, 20000, 128) succeed.
 - **T-ENG-008** [R-ENG-008, R-ENG-010] Lot config {reserve:0, increment:{ladder:[{fromCents:100,incrementCents:0}]}} returns 3 errors: reserve, ladder first fromCents must be 0, incrementCents >= 1; no throw.
 - **T-ENG-009** [R-ENG-009] validateAuctionConfig({}) value deep-equals the defaults table; lot defaults increment flat 100, maxExtensions 10.
@@ -514,7 +639,7 @@ Each test lists the requirement ids it verifies. Inputs and expected values are 
 - **T-ENG-051** [R-ENG-069] Force a LOT_SETTLED that would put captured total above ceiling via a crafted state -> InvariantError and no entry.
 - **T-ENG-052** [R-ENG-072, R-ENG-070, R-ENG-071] The two-entry golden vector in section 4.5 hashes to e1d36276...5540 and f685ed77...5b13 in both TypeScript and Python.
 - **T-ENG-053** [R-ENG-071] Canonical output for {b:1,a:[2,{d:1,c:2}],e:'\u00e9'} is exact; 1.5, -0, NaN, undefined, lone surrogate each throw non_canonical; key order independent of insertion order.
-- **T-ENG-054** [R-ENG-079, R-ENG-120] NIST vectors '', 'abc', 448-bit message, 1,000,000 x 'a' match; implementation file imports nothing from node:*.
+- **T-ENG-054** [R-ENG-079, R-ENG-120] NIST vectors '', 'abc', 448-bit message, 1,000,000 x 'a' match; implementation file imports nothing from node:\*.
 - **T-ENG-055** [R-ENG-073, R-ENG-070] Entries start at seq 1; gaps or duplicates fail verification with reason bad_seq; at decreasing fails bad_time.
 - **T-ENG-056** [R-ENG-074, R-ENG-080] For a 40-entry ledger, mutate each entry's payload byte, at, type, prev, hash, v in turn: verifyChain reports firstBadIndex equal to that entry (or the next for hash-only) every time.
 - **T-ENG-057** [R-ENG-074] Delete middle entry, swap two entries, duplicate an entry, truncate tail: each reported; truncation only with expectedHead.
@@ -549,6 +674,7 @@ Each test lists the requirement ids it verifies. Inputs and expected values are 
 - **T-ENG-086** [R-ENG-124, R-ENG-122, R-ENG-123] trace script exits 1 on a seeded missing id; coverage thresholds 95/90 enforced in vitest config; workflow file lists all steps.
 
 ### 8.1 Property tests (fast-check, seeded; 500 runs per property locally, 5000 nightly)
+
 1. Winner price <= winner ceiling; sum captured per bidder <= ceiling (ENG-48, ENG-49).
 2. One winner, equal to ranking[0], or none (ENG-48).
 3. English price never decreases; each accepted bid raises it by >= increment (ENG-48).
@@ -559,30 +685,34 @@ Each test lists the requirement ids it verifies. Inputs and expected values are 
 8. Idempotency, time shift, arrival-order invariance (ENG-53).
 
 ### 8.2 Fault injection matrix (ENG-55)
-| Fault | Where | Expected |
-|---|---|---|
-| Fail before commit | store.append | no entries, command retriable, same commandId safe |
-| Fail after commit (torn) | store.append | no duplicate entry (rt-torn) |
-| Ack delayed | store | no early notification |
-| Concurrent writer | store | retry after rehydrate, then store_conflict after 3 |
-| Process restart mid-lot | runtime | rehydrate gives identical digest |
-| Clock goes backwards | host input | time_regression, nothing written |
-| Duplicate delivery | host | duplicate outcome |
-| Subscriber slow or disconnected | subscribe | resume from seq without gaps |
+
+| Fault                           | Where        | Expected                                           |
+| ------------------------------- | ------------ | -------------------------------------------------- |
+| Fail before commit              | store.append | no entries, command retriable, same commandId safe |
+| Fail after commit (torn)        | store.append | no duplicate entry (rt-torn)                       |
+| Ack delayed                     | store        | no early notification                              |
+| Concurrent writer               | store        | retry after rehydrate, then store_conflict after 3 |
+| Process restart mid-lot         | runtime      | rehydrate gives identical digest                   |
+| Clock goes backwards            | host input   | time_regression, nothing written                   |
+| Duplicate delivery              | host         | duplicate outcome                                  |
+| Subscriber slow or disconnected | subscribe    | resume from seq without gaps                       |
 
 ### 8.3 Fixtures
+
 Sixty hand-checked fixtures (14 english, 12 proxy, 10 sealed, 10 soft close, 8 reject order, plus extras) and `demo-gala.json`. Every fixture file carries its test id in `name`.
 
 ## 9. Open questions
-| # | Question | Decision owner | Default until decided |
-|---|---|---|---|
-| Q1 | holdScope `event` (one hold, several partial captures; UNVERIFIED (G1)) or `lot` (one hold per lot)? | Harsh with payments owner after G1 | `event` in engine; demo runs a single lot per bidder hold, so `lot` is a config change, not a code change |
-| Q2 | Should pre-engine parse failures (unparseable audio) be ledger entries? | Voice and realtime owners | No: the engine ledger records only commands that reached it; voice records its own `audit_event` rows |
-| Q3 | Store transcripts in the ledger in plain text? Retention and redaction of PII. | Harsh | Plain text in the sandbox demo; auditor-only access |
-| Q4 | Does a bid that leaves price and leader unchanged (proxy) extend the soft close? | Harsh | Yes, as in the reference engine |
-| Q5 | Carry the ledger head hash into a PayPal capture field (UNVERIFIED (G1))? | Payments owner | No; show the head hash only in the receipt UI |
-| Q6 | Is `hardCloseMs` on by default? | Harsh | Off by default, set in the gala fixture |
-| Q7 | Who owns the settlement transition graph validation? | Payments owner | Payments; engine checks only continuity of `from` |
+
+| #   | Question                                                                                             | Decision owner                     | Default until decided                                                                                     |
+| --- | ---------------------------------------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Q1  | holdScope `event` (one hold, several partial captures; UNVERIFIED (G1)) or `lot` (one hold per lot)? | Harsh with payments owner after G1 | `event` in engine; demo runs a single lot per bidder hold, so `lot` is a config change, not a code change |
+| Q2  | Should pre-engine parse failures (unparseable audio) be ledger entries?                              | Voice and realtime owners          | No: the engine ledger records only commands that reached it; voice records its own `audit_event` rows     |
+| Q3  | Store transcripts in the ledger in plain text? Retention and redaction of PII.                       | Harsh                              | Plain text in the sandbox demo; auditor-only access                                                       |
+| Q4  | Does a bid that leaves price and leader unchanged (proxy) extend the soft close?                     | Harsh                              | Yes, as in the reference engine                                                                           |
+| Q5  | Carry the ledger head hash into a PayPal capture field (UNVERIFIED (G1))?                            | Payments owner                     | No; show the head hash only in the receipt UI                                                             |
+| Q6  | Is `hardCloseMs` on by default?                                                                      | Harsh                              | Off by default, set in the gala fixture                                                                   |
+| Q7  | Who owns the settlement transition graph validation?                                                 | Payments owner                     | Payments; engine checks only continuity of `from`                                                         |
 
 ## 10. Traceability
+
 `DEPS.md` holds the table mapping every R-ENG and T-ENG id to its issue key. `scripts/trace-check.mjs` (ENG-10) enforces that test titles carry T-ENG ids and cover R-ENG ids.

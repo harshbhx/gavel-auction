@@ -51,11 +51,17 @@ const decisions: Decision[] = [
       ttlMs: 10000,
       expiresAtMs: 195000,
       defaultAction: 'drop',
-      options: [{ id: 'o1', label: 'Yes, $350 for paddle 12', bidderId: '01JB1', amountCents: 35000 }],
+      options: [
+        { id: 'o1', label: 'Yes, $350 for paddle 12', bidderId: '01JB1', amountCents: 35000 },
+      ],
       spokenAnswerAllowed: false,
     },
   },
-  { kind: 'drop', reason: 'no_amount', evidence: { ...evidence, reason: 'no_amount', confidence: 0.1 } },
+  {
+    kind: 'drop',
+    reason: 'no_amount',
+    evidence: { ...evidence, reason: 'no_amount', confidence: 0.1 },
+  },
 ];
 
 describe('T-VOX-079 audit record per decision', () => {

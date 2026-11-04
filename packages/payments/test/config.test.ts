@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { loadConfig, PaymentsConfigError, redactedConfig } from '../src/config.js';
 
-const base = { PAYPAL_ENV: 'sandbox', PAYPAL_CLIENT_ID: 'cid-123', PAYPAL_CLIENT_SECRET: 'sec-456', PAYPAL_WEBHOOK_ID: 'wh-789' };
+const base = {
+  PAYPAL_ENV: 'sandbox',
+  PAYPAL_CLIENT_ID: 'cid-123',
+  PAYPAL_CLIENT_SECRET: 'sec-456',
+  PAYPAL_WEBHOOK_ID: 'wh-789',
+};
 
 describe('config', () => {
   it('applies defaults', () => {
@@ -15,12 +20,15 @@ describe('config', () => {
   it('parses overrides and rejects non-integers', () => {
     expect(loadConfig({ ...base, GAVEL_MAX_CEILING_CENTS: '100' }).maxCeilingCents).toBe(100);
     for (const bad of ['1.5', '-3', 'abc', '0']) {
-      expect(() => loadConfig({ ...base, GAVEL_HOLD_MAX_AGE_MS: bad })).toThrow(PaymentsConfigError);
+      expect(() => loadConfig({ ...base, GAVEL_HOLD_MAX_AGE_MS: bad })).toThrow(
+        PaymentsConfigError,
+      );
     }
   });
 
   it('missing client id is an error unless fake mode', () => {
-    const { PAYPAL_CLIENT_ID: _omit, ...rest } = base;
+    const rest: Record<string, string | undefined> = { ...base };
+    delete rest.PAYPAL_CLIENT_ID;
     expect(() => loadConfig(rest)).toThrow(PaymentsConfigError);
     expect(loadConfig({ ...rest, GAVEL_PAYMENTS_FAKE: '1' }).fake).toBe(true);
   });
