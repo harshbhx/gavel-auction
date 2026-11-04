@@ -12,7 +12,7 @@ const placeBid = (amountCents: number, commandId = id('R2B1')): Command =>
   );
 
 describe('red-team round 2 blocking (engine)', () => {
-  it('ENG-R2-01: a retried bid with an out-of-range amount is a duplicate', () => {
+  it('T-ENG-070 R-ENG-087 R-ENG-088 ENG-R2-01: a retried bid with an out-of-range amount is a duplicate', () => {
     for (const amount of [-5, 0, -0, 100_000_001, 1.5, Number.NaN]) {
       const s = open(scene(), L1);
       const cmd = placeBid(amount);
@@ -25,7 +25,7 @@ describe('red-team round 2 blocking (engine)', () => {
     }
   });
 
-  it('ENG-R2-02: a retried promotion that ends unsold is a duplicate, not a conflict', () => {
+  it('T-ENG-070 R-ENG-087 R-ENG-088 ENG-R2-02: a retried promotion that ends unsold is a duplicate, not a conflict', () => {
     let s: AuctionState = open(scene({ config: { fallbackPolicy: 'unsold' } }), L1);
     s = bid(s, 200, A, 1000).state;
     s = bid(s, 210, B, 1500).state;
@@ -44,7 +44,7 @@ describe('red-team round 2 blocking (engine)', () => {
     });
   });
 
-  it('ENG-R2-02: a retried promotion that skips candidates then ends unsold is a duplicate', () => {
+  it('T-ENG-070 R-ENG-087 R-ENG-088 ENG-R2-02: a retried promotion that skips candidates then ends unsold is a duplicate', () => {
     let s: AuctionState = open(scene(), L1);
     s = bid(s, 200, A, 1000).state;
     s = bid(s, 210, B, 1500).state;
