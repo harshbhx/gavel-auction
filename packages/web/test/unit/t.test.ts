@@ -17,12 +17,16 @@ describe('copy catalog', () => {
   });
 
   it('turns a missing param into a compile error', () => {
-    // @ts-expect-error params are required for keys with placeholders
-    expect(() => t('reg.paddleTaken')).not.toThrow();
-    // @ts-expect-error every placeholder must be supplied
-    expect(() => t('reg.paddleTaken', { n: 1 })).not.toThrow();
-    // @ts-expect-error unknown keys are rejected
-    expect(() => t('no.such.key')).not.toThrow();
+    // Never called: these lines exist so the type checker proves the errors.
+    const compileOnly = (): void => {
+      // @ts-expect-error params are required for keys with placeholders
+      t('reg.paddleTaken');
+      // @ts-expect-error every placeholder must be supplied
+      t('reg.paddleTaken', { n: 1 });
+      // @ts-expect-error unknown keys are rejected
+      t('no.such.key');
+    };
+    expect(compileOnly).toBeTypeOf('function');
   });
 
   it('leaves no placeholder behind when all params are given', () => {

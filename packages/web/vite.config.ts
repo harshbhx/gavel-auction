@@ -21,6 +21,13 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    env: {
+      VITE_API_BASE: 'http://localhost:8787',
+      VITE_WS_BASE: 'ws://localhost:8787',
+      VITE_PAYPAL_CLIENT_ID: 'sandbox-client',
+      VITE_SANDBOX: 'true',
+      VITE_PAYMENTS: 'fake',
+    },
     include: ['test/**/*.test.{ts,tsx}'],
   },
 });
