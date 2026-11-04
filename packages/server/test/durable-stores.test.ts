@@ -1,9 +1,9 @@
 import {
   mkdtempSync,
-  readFileSync,
   rmSync,
   appendFileSync,
   readdirSync,
+  readFileSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -205,5 +205,54 @@ describe('RoomJournalStore errors and version rule', () => {
       expectedVersion: 0,
       actualVersion: 1,
     });
+  });
+});
+
+describe('round 3 blocking fixes (RT3)', () => {
+  const ids = new SeqIds();
+  const AID = ids.mint<'AuctionId'>() as AuctionId;
+  const ev = (seq: number): RoomEvent =>
+    ({ type: 'settle_requested', auctionId: AID, seq, ts: 1000 as EpochMs }) as RoomEvent;
+
+  it('FileRoomStore keeps memory unchanged when the write fails (SERVICE-R3-04)', async () => {
+    const file = join(freshDir(), 'room.jsonl');
+    const store = await FileRoomStore.open(file);
+    await store.appendEvents(AID, 0, [ev(1)]);
+    await store.putJournal('journal:x', 0, { n: 1 });
+    store.close(); // every later write fails
+    await expect(store.appendEvents(AID, 1, [ev(2)])).rejects.toThrow();
+    await expect(store.putJournal('journal:x', 1, { n: 2 })).rejects.toThrow();
+    expect(await store.lastSeq(AID)).toBe(1);
+    expect((await store.getJournal('journal:x'))?.version).toBe(1);
+  });
+
+  it('FileRoomStore refuses to boot on a corrupt line in the middle (SERVICE-R3-05)', async () => {
+    const file = join(freshDir(), 'room.jsonl');
+    const store = await FileRoomStore.open(file);
+    await store.appendEvents(AID, 0, [ev(1)]);
+    await store.appendEvents(AID, 1, [ev(2)]);
+    store.close();
+    const lines = readFileSync(file, 'utf8').split('\n');
+    lines.splice(1, 0, '{"k":"events","auct');
+    writeFileSync(file, lines.join('\n'));
+    await expect(FileRoomStore.open(file)).rejects.toThrow(/corrupt/);
+    // The file is left as it was, so nothing acknowledged is lost.
+    expect(readFileSync(file, 'utf8').split('\n')).toHaveLength(lines.length);
+  });
+
+  it('FileLedgerStore refuses to load a corrupt line in the middle (SERVICE-R3-05)', async () => {
+    const dir = freshDir();
+    const store = new FileLedgerStore(dir);
+    const e1 = entry(1, GENESIS_PREV);
+    const e2 = entry(2, e1.hash);
+    await store.append(A, [e1], 0);
+    await store.append(A, [e2], 1);
+    const file = join(dir, readdirSync(dir).find((f) => f.endsWith('.ledger.jsonl')) ?? '');
+    const lines = readFileSync(file, 'utf8').split('\n');
+    lines.splice(1, 0, '[{"v":1,"auctionId":"');
+    writeFileSync(file, lines.join('\n'));
+    const restarted = new FileLedgerStore(dir);
+    await expect(restarted.head(A)).rejects.toThrow(/corrupt/);
+    expect(readFileSync(file, 'utf8').split('\n')).toHaveLength(lines.length);
   });
 });

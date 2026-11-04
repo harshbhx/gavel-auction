@@ -20,7 +20,7 @@ import { createSettlement, newJournal } from '../../src/saga/create.js';
 import { step } from '../../src/saga/machine.js';
 import { planFromOutcome, type PlanOutcome } from '../../src/saga/plan.js';
 import { MemoryJournalStore } from '../../src/stores/memory.js';
-import type { HoldRecord, HoldRef, PaymentAudit } from '../../src/types.js';
+import type { HoldRecord, HoldRef, Journal, PaymentAudit } from '../../src/types.js';
 
 const START_MS = 1_800_000_000_000;
 const pad = (s: string): string => s.padStart(26, '0');
@@ -219,6 +219,78 @@ describe('SettlementBridge', () => {
         name: 'BridgeError',
         code: 'winner_mismatch',
       });
+    });
+  });
+
+  describe('capture declined, runner-up charged (PAYMENTS-R3-01)', () => {
+    function fallbackJournal(
+      plan: Parameters<typeof newJournal>[0],
+      holds: Record<string, HoldRef>,
+    ): Journal {
+      let j = newJournal(plan);
+      j = step(j, { type: 'start_auction', tsMs: 1 }).journal;
+      j = step(j, { type: 'hammer', tsMs: 2 }).journal;
+      j = step(j, { type: 'begin', tsMs: 3 }).journal;
+      j = step(j, {
+        type: 'definite_fail',
+        tsMs: 4,
+        failure: { bidderId: A, reason: 'capture_declined' },
+      }).journal;
+      j = step(j, { type: 'next_candidate', tsMs: 5 }).journal;
+      j = step(j, {
+        type: 'capture_ok',
+        tsMs: 6,
+        winner: {
+          bidderId: B,
+          holdId: holds[B]?.holdId ?? '',
+          captureId: 'CAPB',
+          amountCents: 21000,
+        },
+      }).journal;
+      j = step(j, { type: 'begin_void', tsMs: 7 }).journal;
+      return step(j, { type: 'all_released', tsMs: 8 }).journal;
+    }
+
+    it('promotes the engine to the charged runner-up, completes the lot and closes', async () => {
+      rig = await makeRig([A, B, C]);
+      const { plan } = await rig.bridge.prepare(AU, await outcomeOf(rig), rig.holds, 10000);
+      const j = fallbackJournal(plan, rig.holds);
+      expect((await lotOf(rig)).winnerId).toBe(A);
+
+      expect(await rig.bridge.finish(AU, j)).toEqual({
+        status: 'completed',
+        bidderId: B,
+        capturedCents: 21000,
+      });
+      const lot = await lotOf(rig);
+      expect(lot.status).toBe('DONE');
+      expect(lot.winnerId).toBe(B);
+      expect(lot.capturedCents).toBe(21000);
+      expect(await rig.bridge.closeIfDone(AU)).toEqual({ status: 'closed' });
+    });
+
+    it('resumes after a crash that happened between the promote and CompleteLot', async () => {
+      rig = await makeRig([A, B, C]);
+      const { plan } = await rig.bridge.prepare(AU, await outcomeOf(rig), rig.holds, 10000);
+      const j = fallbackJournal(plan, rig.holds);
+      await rig.bridge.recordProgress(AU, j);
+      await rig.runtime.dispatch(
+        parseCommand({
+          commandId: nextId(),
+          at: 400,
+          auctionId: AU,
+          type: 'PromoteRunnerUp',
+          lotId: LOT,
+          disqualifiedBidderId: A,
+          reason: 'capture_declined',
+        }),
+      );
+      expect((await lotOf(rig)).winnerId).toBe(B);
+
+      expect(await rig.bridge.finish(AU, j)).toMatchObject({ status: 'completed', bidderId: B });
+      const head = await rig.store.head(AU as never);
+      expect(await rig.bridge.finish(AU, j)).toMatchObject({ status: 'completed', bidderId: B });
+      expect(await rig.store.head(AU as never)).toEqual(head);
     });
   });
 

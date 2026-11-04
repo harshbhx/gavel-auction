@@ -137,12 +137,13 @@ export class FileLedgerStore implements LedgerStore {
       writeFully(buf, (b, off) => writeSync(fd, b, off, b.length - off));
       fsyncSync(fd);
     } catch (e) {
-      // Do not leave a partial line behind for the next append to build on.
+      // A partial line would swallow the next batch: cut it back and drop the cache.
       try {
         truncateSync(file, before);
       } catch {
-        this.ledgers.delete(auctionId);
+        // The write error is the one worth reporting.
       }
+      this.ledgers.delete(auctionId);
       throw e;
     } finally {
       closeSync(fd);
