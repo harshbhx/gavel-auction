@@ -167,7 +167,7 @@ describe('frame assembler end of stream (#833)', () => {
     a.push(new Int16Array(100).fill(5));
     const out = a.flush();
     expect(out).toHaveLength(1);
-    expect(out[0]?.flags & FLAG_END_OF_STREAM).toBe(FLAG_END_OF_STREAM);
+    expect((out[0]?.flags ?? 0) & FLAG_END_OF_STREAM).toBe(FLAG_END_OF_STREAM);
     expect(out[0]?.pcm[99]).toBe(5);
     expect(out[0]?.pcm[100]).toBe(0);
     expect(a.flush()).toEqual([]);
