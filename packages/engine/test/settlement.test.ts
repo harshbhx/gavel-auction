@@ -105,4 +105,27 @@ describe('decide CompleteLot and RecordSettlement', () => {
     expect(() => decide(lowerCeiling(s, 80000), done)).toThrow(InvariantError);
     expect(decide(lowerCeiling(s, 85000), done).events).toHaveLength(1);
   });
+  it('T-ENG-049 R-ENG-068 ENG-R2-11 a DONE lot ends with a terminal settlement state', () => {
+    const s = hammered(2000);
+    expect(s.lots[L1]?.settlement).toBe('HELD');
+    const paid = run(s, complete(400, 2000)).state;
+    expect(paid.lots[L1]?.settlement).toBe('SETTLED');
+    const unsold = run(
+      s,
+      mk(400, {
+        type: 'PromoteRunnerUp',
+        lotId: L1,
+        disqualifiedBidderId: A,
+        reason: 'declined',
+      }),
+    ).state;
+    expect(unsold.lots[L1]?.status).toBe('DONE');
+    expect(unsold.lots[L1]?.settlement).toBe('VOIDING');
+    expect(errCode(() => decide(unsold, settle(500, 'VOIDING', 'SETTLED')))).toBe('lot_done');
+    const empty = run(
+      open(scene(), L1),
+      mk(300, { type: 'Hammer', lotId: L1, actor: 'host', early: true }),
+    ).state;
+    expect(empty.lots[L1]?.settlement).toBe('HELD');
+  });
 });
