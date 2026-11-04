@@ -140,6 +140,7 @@ describe('decide CompleteLot and RecordSettlement', () => {
     s = open(s, L2, 320);
     s = bid(s, 330, A, 25000, L2).state;
     s = run(s, mk(340, { type: 'Hammer', lotId: L2, actor: 'host', early: true })).state;
+    s = captured(s, 345, L2);
     const done = mk(350, {
       type: 'CompleteLot',
       lotId: L2,

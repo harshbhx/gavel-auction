@@ -435,7 +435,7 @@
   "galaExpect": {
     "head": {
       "seq": 51,
-      "hash": "38f77790761993389c12e0c608905ae2d527c2b9e5209921e603d1ef9529dd0a"
+      "hash": "7280f9ab1b51872f62f6ff090befabf71620d2532229aac9b2601afb7dfd85c0"
     },
     "rejects": ["over_ceiling", "unconfirmed"],
     "winners": {
