@@ -230,3 +230,75 @@ Consequences:
 - No new event type and no change to ledger hashes.
 
 Evidence: SPEC-engine R-ENG-067, R-ENG-068, packages/engine/src/evolve.ts, packages/engine/test/settlement.test.ts.
+
+## D-0014: Accepted bids reach the engine ledger before they are acknowledged
+
+Date: 2026-11-04
+Status: accepted
+Owner: server
+Context: D-0012 says the ledger is written first, but the service replayed the room's command list into the engine runtime once, at the hammer. A crash during an open lot left no hash-chained ledger at all (ENG-R3-03, SERVICE-R3-15).
+Decision: The room log stays the first durable record of a room event, because the room engine decides a bid synchronously and the log append is what makes it final. Straight after the append, and before the sender gets bid_accepted (or registered, or a revoke takes effect), the room calls a host hook and the service writes the new engine commands to the ledger, one writer per auction, in order. The ledger therefore never lags an acknowledgement: the sender hears nothing until the ledger holds the bid. If the ledger write fails, the event stays committed in the room log, the sender gets store_unavailable, and a retry of the same message id is answered with the original reply only after the ledger has caught up. Command ids come from the command content, so repeating a write after a crash is a duplicate and appends nothing. The hammer still flushes whatever is missing before the settlement starts, so a restart converges to the same ledger. Rejected bids stay in the room log only (their bid_rejected event carries the audit record); the engine ledger holds no entry for them and the room engine does not replay them.
+Alternatives:
+
+- Ledger append first, then the room log: rejected, a failed log append would leave a ledger entry the rebuilt room does not have, and the retry would produce a different command.
+- Keep the hammer-time batch and correct the text: rejected, it leaves the live auction without any tamper evidence until the end.
+
+Consequences:
+
+- D-0012 stays true for the order the settlement relies on (ledger holds LOT_HAMMERED before the journal exists); the room log is not derived from the ledger, and a lost room log is not rebuilt from it.
+- Every accepted bid costs one ledger append before its acknowledgement.
+
+Evidence: packages/server/src/runtime/auction-service.ts (flushLedger), packages/server/src/room/room.ts (makeDurable), SPEC-engine R-ENG-076, SPEC-quality R-QA-027.
+
+## D-0015: The kill switch cancels an open auction through an unsold hammer and AbortLot
+
+Date: 2026-11-04
+Status: accepted
+Owner: server
+Context: Nothing sent the engine AbortLot, so an engaged kill switch only stopped captures after the hammer and the room kept taking bids with live holds (ENG-R3-02).
+Decision: The service gets abortOpenLots(). While the kill switch is engaged it asks every room that has not been hammered to abort. The room appends a control record (id abort:<auction>, args abort 1) and a hammered event with no winner, which makes the room an ordinary unsold auction: the engine applies AbortLot (reason kill_switch), the ledger flush sends it after every bid, and the existing settlement voids every hold and reports to the room. No capture is attempted, so the kill switch does not hold the run back, and voids are not blocked by it. The host calls abortOpenLots when it engages the switch; resume() calls it too, so a restart or the periodic timer completes an interrupted abort. A room replays the control record to reproduce the abort instead of a normal hammer. The saga's own cancel transition (HELD or BIDDING to VOIDING) is not used; the no-candidate path ends in the same VOIDING state.
+Alternatives:
+
+- A new room event type for the abort: rejected, the control record and the hammered event already carry what replay needs, so the wire and log contracts stay as they are.
+- Void the holds and leave the room open: rejected, the room would keep accepting bids nobody can pay.
+
+Consequences:
+
+- A hammer that fires between the engage and the abortOpenLots call settles normally and waits on the kill switch as before.
+- The abort is final; releasing the kill switch does not reopen the auction.
+
+Evidence: packages/server/src/runtime/auction-service.ts (abortOpenLots), packages/server/src/room/room.ts (abort), packages/engine/src/decide/abort-lot.ts, R-PAY-037.
+
+## D-0016: A revoked hold drops the bidder's ceiling in the room before the hammer
+
+Date: 2026-11-04
+Status: accepted
+Owner: server
+Context: A leader whose hold was voided or denied mid-auction stayed leader until settlement, and the revoke was lost if the process died between saving the hold and telling the engine (SERVICE-R3-11).
+Decision: onHoldStatus sends a hold that can no longer be charged to the room, which appends a ceiling_revoked event, applies the revoke to the room engine (striking the bidder's bids) and broadcasts the new price, then writes the ledger. The event type is new in the shared room event schema. A bidder who is not on the roster or is already revoked is a no-op that still flushes the ledger. After the hammer the settlement bridge delivers the revoke as before, and a time_regression from a concurrent settlement command is retried instead of dropped. The webhook intake already calls onHoldStatus again for an event whose hold is no longer HELD and is not yet marked processed, so a crash between saving the hold and the revoke repeats the revoke from the sweep.
+Alternatives:
+
+- Re-derive revokes from the hold store when a room loads: rejected, a rebuilt room would apply them at the end of the log instead of where they happened.
+
+Consequences:
+
+- Older logs have no ceiling_revoked events and replay unchanged.
+
+Evidence: packages/server/src/runtime/auction-service.ts (onHoldStatus), packages/server/src/room/room.ts (revokeBidder), R-ENG-044.
+
+## D-0017: Bridge commands use content-derived ids
+
+Date: 2026-11-04
+Status: accepted
+Owner: server
+Context: The settlement bridge sent every ledger command with a fresh random id, so exactly-once recovery by command id protected nothing and two overlapping drivers could both pass the read-first checks and then fail each other (ENG-R3-13).
+Decision: The service derives the id of CompleteLot, RecordSettlement, PromoteRunnerUp, RevokeCeiling and CloseAuction from the command content (lot, bidder, ref or disqualified bidder). A second driver sending the same step gets a duplicate from the engine, which ignores the time of a repeat. This lives in the service's dispatch wrapper; the bridge, the adapter and every public contract are unchanged.
+Alternatives:
+
+- Change the adapter to take content-derived ids: rejected, it changes the payments adapter contract.
+
+Consequences:
+
+- finishBridge needs no special handling of lot_done and state_continuity for a repeat of the same step.
+
+Evidence: packages/server/src/runtime/auction-service.ts (contentCommandId), SPEC-engine R-ENG-087.

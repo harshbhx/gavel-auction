@@ -99,6 +99,12 @@ export const HammeredEvent = record('hammered', {
   ranking: z.array(z.object({ bidderId: ulid<BidderId>(), amount: cents() }).strict()),
 });
 
+/** A bidder's hold can no longer be charged, so their ceiling is revoked before the hammer. */
+export const CeilingRevokedEvent = record('ceiling_revoked', {
+  bidderId: ulid<BidderId>(),
+  reason: z.enum(['declined', 'expired', 'voided']),
+});
+
 export const SettleRequestedEvent = record('settle_requested', {});
 
 export const SettlementUpdateEvent = record('settlement_update', {
@@ -120,6 +126,7 @@ export const RoomEventSchema = z.discriminatedUnion('type', [
   ControlEvent,
   StateChangedEvent,
   HammeredEvent,
+  CeilingRevokedEvent,
   SettleRequestedEvent,
   SettlementUpdateEvent,
 ]);

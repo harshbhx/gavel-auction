@@ -1,0 +1,8 @@
+{
+  "auctionId": "01J9ZQ4Y6Z8K3M5N7P9R1S3T5V",
+  "seq": 12,
+  "ts": 1789000000012,
+  "type": "ceiling_revoked",
+  "bidderId": "01J9ZQ3A0B2C4D6F8H0J2K4M6N",
+  "reason": "voided"
+}
