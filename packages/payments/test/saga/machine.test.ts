@@ -125,6 +125,7 @@ describe('T-PAY-030 transition table', () => {
   });
 
   it('step is pure: repeated calls deep-equal and the input is untouched', () => {
+    let compared = 0;
     for (const state of SETTLEMENT_STATES) {
       for (const type of EVENT_TYPES) {
         const input = deepFreeze(journalIn(state));
@@ -132,15 +133,20 @@ describe('T-PAY-030 transition table', () => {
         let a: ReturnType<typeof step>;
         try {
           a = step(input, ev);
-        } catch {
+        } catch (e) {
+          // Only a rejected transition may be skipped; any other failure is a defect.
+          expect(e, `${state} + ${type}`).toBeInstanceOf(IllegalTransition);
           continue;
         }
+        compared += 1;
         const b = step(input, ev);
         expect(b).toEqual(a);
         expect(a.journal).not.toBe(input);
         expect(input).toEqual(journalIn(state));
       }
     }
+    expect(compared).toBe(allowedTransitions().length);
+    expect(compared).toBeGreaterThan(0);
   });
 
   it('records version, history and timestamps', () => {

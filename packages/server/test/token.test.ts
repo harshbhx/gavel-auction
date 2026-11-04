@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { signToken, verifyToken, TOKEN_TTL_S, type TokenPayload } from '../src/auth/token';
+import {
+  signToken,
+  verifyToken,
+  TOKEN_TTL_S,
+  type JtiStore,
+  type TokenPayload,
+} from '../src/auth/token';
 
 const AUCTION = '01J9ZQ4Y6Z8K3M5N7P9R1S3T5V';
 const OTHER = '01J9ZQ4Y6Z8K3M5N7P9R1S3T5W';
@@ -18,7 +24,24 @@ const payload: TokenPayload = {
   exp: NOW_S + TOKEN_TTL_S.session,
 };
 
-const opts = { aud: AUCTION, kinds: ['session'] as const, nowMs: NOW_MS };
+/** In-memory denylist and single-use set for tests. */
+class TestJtis implements JtiStore {
+  readonly revoked = new Set<string>();
+  readonly used = new Set<string>();
+  fail = false;
+  async isRevoked(jti: string): Promise<boolean> {
+    if (this.fail) throw new Error('store down');
+    return this.revoked.has(jti);
+  }
+  async consume(jti: string): Promise<boolean> {
+    if (this.fail) throw new Error('store down');
+    if (this.used.has(jti)) return false;
+    this.used.add(jti);
+    return true;
+  }
+}
+
+const opts = { aud: AUCTION, kinds: ['session'] as const, nowMs: NOW_MS, jtis: new TestJtis() };
 const b64url = (s: string) => btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
 describe('token sign and verify (T-RT-058)', () => {
@@ -119,7 +142,7 @@ describe('token claims (T-RT-059)', () => {
   it('rejects the wrong kind for the route', async () => {
     const token = await signToken({ ...payload, kind: 'screen' }, SECRET);
     const r = await verifyToken(token, SECRET, opts);
-    expect(r).toMatchObject({ ok: false, code: 'forbidden' });
+    expect(r).toMatchObject({ ok: false, code: 'unauthorized' });
   });
 
   it('accepts any kind the route lists', async () => {
@@ -134,6 +157,98 @@ describe('token claims (T-RT-059)', () => {
       session: 14_400,
       auctioneer: 43_200,
       screen: 43_200,
+    });
+  });
+});
+
+describe('secret rotation (R-RT-082)', () => {
+  const PREVIOUS = 'previous-secret-previous-secret-xx';
+
+  it('accepts a token signed by the previous secret', async () => {
+    const token = await signToken(payload, PREVIOUS);
+    expect((await verifyToken(token, [SECRET, PREVIOUS], opts)).ok).toBe(true);
+    expect((await verifyToken(token, SECRET, opts)).ok).toBe(false);
+  });
+
+  it('accepts the current secret and rejects an unknown one', async () => {
+    const token = await signToken(payload, SECRET);
+    expect((await verifyToken(token, [SECRET, PREVIOUS], opts)).ok).toBe(true);
+    const stranger = await signToken(payload, 'unknown-secret-unknown-secret-xxx');
+    expect((await verifyToken(stranger, [SECRET, PREVIOUS], opts)).ok).toBe(false);
+  });
+});
+
+describe('revocation and replay (R-RT-083, R-RT-084)', () => {
+  it('rejects a revoked jti', async () => {
+    const jtis = new TestJtis();
+    jtis.revoked.add(payload.jti);
+    const token = await signToken(payload, SECRET);
+    const r = await verifyToken(token, SECRET, { ...opts, jtis });
+    expect(r).toMatchObject({ ok: false, code: 'unauthorized' });
+  });
+
+  it('accepts an invite once, then reports invite_used', async () => {
+    const jtis = new TestJtis();
+    const invite: TokenPayload = {
+      ...payload,
+      kind: 'invite',
+      exp: NOW_S + TOKEN_TTL_S.invite,
+    };
+    const token = await signToken(invite, SECRET);
+    const o = { ...opts, kinds: ['invite'] as const, jtis };
+    expect((await verifyToken(token, SECRET, o)).ok).toBe(true);
+    expect(await verifyToken(token, SECRET, o)).toMatchObject({ ok: false, code: 'invite_used' });
+  });
+
+  it('does not burn an invite that fails another check', async () => {
+    const jtis = new TestJtis();
+    const invite: TokenPayload = { ...payload, kind: 'invite', exp: NOW_S + TOKEN_TTL_S.invite };
+    const token = await signToken(invite, SECRET);
+    const bad = { ...opts, aud: OTHER, kinds: ['invite'] as const, jtis };
+    expect((await verifyToken(token, SECRET, bad)).ok).toBe(false);
+    expect(jtis.used.size).toBe(0);
+  });
+
+  it('fails closed when the store errors', async () => {
+    const jtis = new TestJtis();
+    jtis.fail = true;
+    const token = await signToken(payload, SECRET);
+    expect(await verifyToken(token, SECRET, { ...opts, jtis })).toMatchObject({
+      ok: false,
+      code: 'unauthorized',
+    });
+  });
+});
+
+describe('claim binding (T-RT-059)', () => {
+  const check = async (p: TokenPayload) =>
+    verifyToken(await signToken(p, SECRET), SECRET, { ...opts, jtis: new TestJtis() });
+
+  it('rejects a session token without bidderId', async () => {
+    const rest: Partial<TokenPayload> = { ...payload };
+    delete rest.bidderId;
+    expect((await check(rest as TokenPayload)).ok).toBe(false);
+  });
+
+  it('rejects sub that differs from bidderId', async () => {
+    expect((await check({ ...payload, sub: OTHER })).ok).toBe(false);
+  });
+
+  it('rejects an iat in the future', async () => {
+    const r = await check({ ...payload, iat: NOW_S + 3600, exp: NOW_S + 3600 + 100 });
+    expect(r.ok).toBe(false);
+  });
+
+  it('rejects a lifetime longer than the kind allows, and exp before iat', async () => {
+    expect((await check({ ...payload, exp: NOW_S + TOKEN_TTL_S.session + 1 })).ok).toBe(false);
+    expect((await check({ ...payload, exp: NOW_S - 5, iat: NOW_S })).ok).toBe(false);
+  });
+
+  it('answers a wrong kind with unauthorized, not forbidden', async () => {
+    const token = await signToken({ ...payload, kind: 'screen' }, SECRET);
+    expect(await verifyToken(token, SECRET, { ...opts, jtis: new TestJtis() })).toMatchObject({
+      ok: false,
+      code: 'unauthorized',
     });
   });
 });

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { parseUtterance } from '../src/parser/utterance.js';
 
 const caseSchema = z.object({
   id: z.string().regex(/^[a-z_]+-\d{3}$/),
@@ -36,10 +37,7 @@ function load<T>(file: string, schema: z.ZodType<T>): T[] {
 const cases = load('cases.json', caseSchema);
 const golden = load('parser-golden.json', goldenSchema);
 
-/**
- * Floors for what exists today (the 109 Python cases). SPEC R-VOX-077 requires 150 cases and
- * 12 categories once the extended corpus (VOX-40) lands; raise these two constants there.
- */
+/** Floors for the corpus size and category count (SPEC R-VOX-077). */
 const MIN_CASES = 150;
 const MIN_CATEGORIES = 12;
 const SPEC_MIN_CASES = 150;
@@ -51,15 +49,10 @@ describe('T-VOX-085 corpus shape (R-VOX-077)', () => {
     expect(new Set(cases.map((c) => c.category)).size).toBeGreaterThanOrEqual(MIN_CATEGORIES);
   });
 
-  it.skipIf(cases.length < SPEC_MIN_CASES)(
-    'meets the spec floor of 150 cases and 12 categories',
-    () => {
-      expect(cases.length).toBeGreaterThanOrEqual(SPEC_MIN_CASES);
-      expect(new Set(cases.map((c) => c.category)).size).toBeGreaterThanOrEqual(
-        SPEC_MIN_CATEGORIES,
-      );
-    },
-  );
+  it('meets the spec floor of 150 cases and 12 categories', () => {
+    expect(cases.length).toBeGreaterThanOrEqual(SPEC_MIN_CASES);
+    expect(new Set(cases.map((c) => c.category)).size).toBeGreaterThanOrEqual(SPEC_MIN_CATEGORIES);
+  });
 
   it('has unique ids and a non-empty dev and held-out set', () => {
     const ids = cases.map((c) => c.id);
@@ -108,5 +101,39 @@ describe('Python golden (R-VOX-036)', () => {
     for (const g of golden) {
       if (g.amountCents !== null) expect(g.amountCents % 100).toBe(0);
     }
+  });
+});
+
+describe('TypeScript parser against the golden (T-VOX-036, R-VOX-036)', () => {
+  it('matches status, bidder and amount of every case except the recorded divergences', () => {
+    const mismatches: string[] = [];
+    for (const c of cases) {
+      const g = golden.find((x) => x.id === c.id);
+      if (!g) continue;
+      const r = parseUtterance(c.text, {
+        ...(c.speaker === null ? {} : { speakerBidderId: c.speaker }),
+        ...(c.currentPriceCents === null ? {} : { currentPriceCents: c.currentPriceCents }),
+      });
+      const exact =
+        r.status === g.status &&
+        (g.status !== 'bid' || (r.bidder?.value === g.bidder && r.amountCents === g.amountCents));
+      // R-VOX-041: a spoken paddle that differs from the speaker is a confirm with both bidders,
+      // where the Python prototype lets the paddle win.
+      const speakerConflict =
+        g.status === 'bid' &&
+        r.reason === 'multiple_bidders' &&
+        c.speaker !== null &&
+        r.candidates.some((x) => x.bidder?.value === g.bidder) &&
+        r.candidates.some((x) => x.bidder?.value === c.speaker);
+      // R-VOX-044: a retraction without a new amount is none (retract), the prototype says confirm.
+      const retraction = g.status === 'confirm' && r.status === 'none' && r.reason === 'retract';
+      const same = exact || speakerConflict || retraction;
+      if (!same) {
+        mismatches.push(
+          `${c.id} "${c.text}": ts ${r.status}/${r.bidder?.value ?? '-'}/${String(r.amountCents)} golden ${g.status}/${g.bidder ?? '-'}/${String(g.amountCents)}`,
+        );
+      }
+    }
+    expect(mismatches).toEqual([]);
   });
 });

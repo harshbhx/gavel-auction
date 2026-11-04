@@ -98,11 +98,16 @@ export function decideSetup(state: AuctionState, cmd: SetupCommand): DecideResul
         if (cmd.ceilingCents <= existing.ceilingCents) {
           throw new EngineError('cannot_lower_ceiling', String(cmd.ceilingCents));
         }
+        // A larger ceiling needs a larger authorisation: a raise on a held bidder must say which.
+        if (existing.holdRef !== null && cmd.holdRef === undefined) {
+          throw new EngineError('bad_command', 'holdRef required to raise a held ceiling');
+        }
         const payload: Extract<LedgerEvent, { type: 'CEILING_RAISED' }>['payload'] = {
           bidderId: cmd.bidderId,
           fromCents: existing.ceilingCents,
           ceilingCents: cmd.ceilingCents,
         };
+        if (cmd.holdRef !== undefined) payload.holdRef = cmd.holdRef;
         if (cmd.lotId !== undefined) payload.lotId = cmd.lotId;
         return accepted([{ type: 'CEILING_RAISED', payload }]);
       }
