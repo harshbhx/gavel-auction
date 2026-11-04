@@ -103,6 +103,8 @@ export class HoldService {
   private readonly newId: () => string;
   private readonly pendingTtlMs: number;
   private readonly inflight = new Map<string, Promise<ApprovedHold>>();
+  /** Tail of the createHoldOrder queue per (auction, bidder). */
+  private readonly creating = new Map<string, Promise<unknown>>();
 
   constructor(private readonly deps: HoldServiceDeps) {
     this.newId = deps.newId ?? (() => randomUUID());
@@ -118,7 +120,27 @@ export class HoldService {
     return settled ?? all[all.length - 1] ?? null;
   }
 
-  async createHoldOrder(i: CreateHoldInput): Promise<CreatedHold> {
+  /**
+   * Creates the bidder's hold order. Calls for one (auction, bidder) run one after
+   * the other, so a double click or a second tab sees the first call's record and
+   * gets the same order back instead of creating a second authorization.
+   */
+  createHoldOrder(i: CreateHoldInput): Promise<CreatedHold> {
+    const key = JSON.stringify([i.auctionId, i.bidderId]);
+    const prev = this.creating.get(key) ?? Promise.resolve();
+    const run = prev.then(
+      () => this.createOne(i),
+      () => this.createOne(i),
+    );
+    this.creating.set(key, run);
+    const clear = (): void => {
+      if (this.creating.get(key) === run) this.creating.delete(key);
+    };
+    void run.then(clear, clear);
+    return run;
+  }
+
+  private async createOne(i: CreateHoldInput): Promise<CreatedHold> {
     try {
       validateCeiling(i.ceilingCents, {
         maxCeilingCents: this.deps.maxCeilingCents,
