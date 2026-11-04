@@ -177,19 +177,22 @@ export function play(fx: Fixture): Observed {
 const fixtures = loadFixtures(GOLDEN);
 
 describe('golden fixtures against the TypeScript engine', () => {
-  it('loads the shared fixtures', () => {
+  it('T-ENG-081 R-ENG-112 loads the shared fixtures', () => {
     expect(fixtures.length).toBeGreaterThan(0);
   });
 
-  it.each(fixtures.map((f) => [f.name, f] as const))('%s', (_name, fx) => {
-    const got = play(fx);
-    const want = fx.expect;
-    for (const key of Object.keys(want) as Array<keyof typeof want>) {
-      expect(got[key], key).toEqual(want[key]);
-    }
-  });
+  it.each(fixtures.map((f) => [f.name, f] as const))(
+    'T-ENG-081 R-ENG-113 golden fixture %s',
+    (_name, fx) => {
+      const got = play(fx);
+      const want = fx.expect;
+      for (const key of Object.keys(want) as Array<keyof typeof want>) {
+        expect(got[key], key).toEqual(want[key]);
+      }
+    },
+  );
 
-  it('reports a difference when a result changes', () => {
+  it('T-ENG-081 R-ENG-113 reports a difference when a result changes', () => {
     const fx: Fixture = {
       name: 'x',
       parity: true,
