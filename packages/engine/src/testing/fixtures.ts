@@ -69,7 +69,9 @@ export function parseFixture(raw: unknown, file: string): Fixture {
     if (!OPS.includes(s['op'] as StepOp)) fail(`step ${i} has unknown op ${String(s['op'])}`);
     if (!Number.isInteger(s['at'])) fail(`step ${i} needs integer at`);
   });
-  if (!isObj(raw['expect'])) fail('expect must be an object');
+  if (!isObj(raw['expect']) || Object.keys(raw['expect']).length === 0) {
+    fail('expect must be a non-empty object');
+  }
   return raw as unknown as Fixture;
 }
 
