@@ -608,3 +608,26 @@ describe('auction service: round 3 blocking fixes (RT3)', () => {
     await service.close();
   });
 });
+
+describe('auction service: round 3 hardening (RT3)', () => {
+  it('refuses an end time the engine lot cannot reach yet (SERVICE-R3-12)', async () => {
+    const rig = await makeRig();
+    const service = rig.service();
+    const far = { ...config, endTs: START + 3 * 86_400_000 } as unknown as AuctionConfig;
+    await expect(
+      service.createAuction(rig.ids.mint<'AuctionId'>(), far, 'auctioneer-sub'),
+    ).rejects.toMatchObject({ code: 'bad_message' });
+    expect(await rig.stores.store.listAuctions()).toHaveLength(0);
+    await service.close();
+  });
+
+  it('uses the room engine, so the settlement sees every registration (SERVICE-R3-10)', async () => {
+    const rig = await makeRig();
+    const service = rig.service();
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    expect(run.room.activeEngine).toBeDefined();
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    await service.close();
+  });
+});

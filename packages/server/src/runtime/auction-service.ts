@@ -145,7 +145,6 @@ export function createAuctionService(deps: AuctionServiceDeps): AuctionService {
 
 class Service implements AuctionService, SettlePort {
   private readonly rooms = new Map<string, Promise<Room>>();
-  private readonly engines = new Map<string, LedgerEngine>();
   private readonly synced = new Set<string>();
   private readonly runs = new Map<string, Promise<void>>();
   private readonly runtime: AuctionRuntime;
@@ -202,6 +201,11 @@ class Service implements AuctionService, SettlePort {
     if (this.rooms.has(auctionId)) throw new GavelError('conflict', 'auction exists');
     // Dry-run the engine build: a config or id it cannot run must never reach the log, or the
     // auction could not be loaded again and would block resume (R-RT-012, R-RT-059).
+    // The engine lot is at most a day long and opens at creation time at the latest, so an end
+    // time further away could not be settled early (bad_time at the ledger sync).
+    if (parsed.data.endTs - this.deps.clock.now() > MAX_LOT_AHEAD_MS) {
+      throw new GavelError('bad_message', 'end time is more than a day away');
+    }
     try {
       new LedgerEngine(auctionId, parsed.data);
     } catch {
@@ -213,7 +217,6 @@ class Service implements AuctionService, SettlePort {
       return await created;
     } catch (e) {
       this.rooms.delete(auctionId);
-      this.engines.delete(auctionId);
       throw e;
     }
   }
@@ -234,11 +237,7 @@ class Service implements AuctionService, SettlePort {
       store: this.deps.store,
       clock: this.deps.clock,
       ids: this.deps.ids,
-      engine: (config) => {
-        const engine = new LedgerEngine(auctionId, config);
-        this.engines.set(auctionId, engine);
-        return engine;
-      },
+      engine: (config) => new LedgerEngine(auctionId, config),
       settle: this,
       ...(this.deps.limiter !== undefined ? { limiter: this.deps.limiter } : {}),
     };
@@ -320,7 +319,7 @@ class Service implements AuctionService, SettlePort {
         // to be driven again; an earlier run may have died before the journal was created.
         await room.retrySettlement();
         const journal = await this.deps.journals.load(lotIdOf(id));
-        if (journal !== null || this.engines.get(id)?.hammered === true) this.schedule(id);
+        if (journal !== null || hammeredEngine(room) !== undefined) this.schedule(id);
       } catch (e) {
         this.deps.onError?.(id, e);
       }
@@ -338,13 +337,28 @@ class Service implements AuctionService, SettlePort {
 
   private async settlementRun(auctionId: AuctionId): Promise<void> {
     const room = await this.room(auctionId);
-    const engine = this.engines.get(auctionId);
-    if (engine === undefined || !engine.hammered) throw new Error('auction is not hammered');
+    const engine = hammeredEngine(room);
+    if (engine === undefined) throw new Error('auction is not hammered');
     const lotId = lotIdOf(auctionId);
     await this.syncLedger(auctionId, engine);
 
     let journal = await this.deps.journals.load(lotId);
-    if (journal === null) journal = await this.openSettlement(auctionId, engine);
+    if (journal === null) {
+      try {
+        journal = await this.openSettlement(auctionId, engine);
+      } catch (e) {
+        if (!(e instanceof BridgeError)) throw e;
+        // Not retried silently: the room shows the review state and the host hears the code.
+        this.deps.onError?.(auctionId, e);
+        await room.reportSettlement({
+          rev: 1,
+          auctionState: 'FAILED_NEEDS_REVIEW',
+          perBidder: {},
+          note: REVIEW_NOTE,
+        });
+        return;
+      }
+    }
     if (TERMINAL.has(journal.state)) {
       // A process that died after the journal ended but before the room heard the final
       // report: finish the engine side and send it. Repeated reports are dropped by rev.
@@ -492,7 +506,9 @@ class Service implements AuctionService, SettlePort {
       }
     } catch (e) {
       if (!(e instanceof BridgeError)) throw e;
-      await this.report(room, journal, { final: true, note: e.code });
+      // The code stays with the host; viewers only learn that the result is under review.
+      this.deps.onError?.(auctionId, e);
+      await this.report(room, journal, { final: true, note: REVIEW_NOTE });
       return;
     }
     await this.boundary('after:bridge');
@@ -509,7 +525,9 @@ class Service implements AuctionService, SettlePort {
     if (terminal && opts.final !== true) return;
     const note = opts.note;
     const report: SettlementReport = {
-      rev: journal.version + (note === undefined ? 0 : 1),
+      // A review report sorts just below the report for the same journal version, so a
+      // corrected report after the operator fixed the cause is never dropped as stale.
+      rev: journal.version * 2 + (note === undefined ? 2 : 1),
       auctionState: note === undefined ? journal.state : 'FAILED_NEEDS_REVIEW',
       perBidder: perBidder(journal),
       ...(journal.winner !== null && journal.state === 'SETTLED'
@@ -520,6 +538,15 @@ class Service implements AuctionService, SettlePort {
     await room.reportSettlement(report);
     await this.boundary('after:report');
   }
+}
+
+const MAX_LOT_AHEAD_MS = 86_400_000;
+const REVIEW_NOTE = 'needs_review';
+
+/** The room's own engine once it has been hammered; never a partial rebuild's engine. */
+function hammeredEngine(room: Room): LedgerEngine | undefined {
+  const engine = room.activeEngine;
+  return engine instanceof LedgerEngine && engine.hammered ? engine : undefined;
 }
 
 /** Per bidder state shown to viewers, from the journal alone. */
