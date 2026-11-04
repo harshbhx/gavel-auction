@@ -15,7 +15,13 @@ export type BridgeCommand =
       to: SettlementState;
       ref: string;
     }
-  | { type: 'CompleteLot'; lotId: string; capturedCents: number; ref: string }
+  | {
+      type: 'CompleteLot';
+      lotId: string;
+      bidderId: string;
+      capturedCents: number;
+      ref: string;
+    }
   | { type: 'CloseAuction' };
 
 /** What the bridge reads about one lot from the engine. */

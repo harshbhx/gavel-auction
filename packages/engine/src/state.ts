@@ -55,6 +55,8 @@ export interface LotState {
   readonly settlement: SettlementState;
   readonly capturedCents: number | null;
   readonly unsoldReason: UnsoldReason | null;
+  /** Why the lot was cancelled before the hammer; null for every other lot. */
+  readonly abortReason: string | null;
   readonly closedAtSeq: number | null;
 }
 
@@ -131,6 +133,7 @@ export function newLot(lotId: Ulid, config: LotConfig | null): LotState {
     settlement: 'HELD',
     capturedCents: null,
     unsoldReason: null,
+    abortReason: null,
     closedAtSeq: null,
   };
 }
@@ -217,8 +220,16 @@ export function commandBody(cmd: Command): string | null {
       return digestOf({
         t: 'CompleteLot',
         lotId: cmd.lotId,
+        winnerId: cmd.bidderId,
         capturedCents: cmd.capturedCents,
         ref: cmd.ref,
+      });
+    case 'AbortLot':
+      return digestOf({
+        t: 'AbortLot',
+        lotId: cmd.lotId,
+        reason: cmd.reason,
+        actor: cmd.actor,
       });
     case 'RecordSettlement':
       return digestOf({
@@ -300,8 +311,16 @@ export function entryBody(e: LedgerEntry): string | null {
       return digestOf({
         t: 'CompleteLot',
         lotId: e.payload.lotId,
+        winnerId: e.payload.winnerId,
         capturedCents: e.payload.capturedCents,
         ref: e.payload.ref,
+      });
+    case 'LOT_ABORTED':
+      return digestOf({
+        t: 'AbortLot',
+        lotId: e.payload.lotId,
+        reason: e.payload.reason,
+        actor: e.payload.actor,
       });
     case 'SETTLEMENT_STATE':
       return digestOf({
@@ -354,6 +373,8 @@ function commandTypeOf(e: LedgerEntry): string | null {
       return 'PromoteRunnerUp';
     case 'CEILING_REVOKED':
       return 'RevokeCeiling';
+    case 'LOT_ABORTED':
+      return 'AbortLot';
     case 'LOT_SETTLED':
       return 'CompleteLot';
     case 'SETTLEMENT_STATE':
