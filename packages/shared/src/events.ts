@@ -6,6 +6,9 @@ import { isUlid, type AuctionId, type BidderId, type BidId, type MsgId } from '.
 import { isCents, type Cents } from './money';
 import { EpochMs } from './time';
 import { AuditPayloadSchema } from './wire/audit';
+import { MAX_NAME_CHARS } from './wire/envelope';
+
+export const MAX_HOLD_REF_CHARS = 128;
 
 const ulid = <T extends string>() => z.custom<T>(isUlid, 'invalid id');
 const cents = () => z.custom<Cents>(isCents, 'must be integer cents');
@@ -38,9 +41,9 @@ export const AuctionCreatedEvent = record('auction_created', {
 export const BidderRegisteredEvent = record('bidder_registered', {
   bidderId: ulid<BidderId>(),
   paddle: z.number().int(),
-  name: z.string(),
+  name: z.string().min(1).max(MAX_NAME_CHARS),
   ceiling: cents(),
-  holdRef: z.string(),
+  holdRef: z.string().min(1).max(MAX_HOLD_REF_CHARS),
 });
 
 export const BidAcceptedEvent = record('bid_accepted', {

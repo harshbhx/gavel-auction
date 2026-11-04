@@ -16,6 +16,20 @@ export interface PlanOutcome {
   candidates: ReadonlyArray<{ bidderId: string; priceCents: number }>;
 }
 
+/** A candidate left out of the plan, so the caller can tell the engine (PromoteRunnerUp). */
+export interface SkippedCandidate {
+  bidderId: string;
+  /** The engine's price for the candidate, in cents. */
+  priceCents: number;
+  reason: 'no_hold' | 'price_above_hold';
+}
+
+export interface PlanResult {
+  plan: SettlementPlan;
+  /** Candidates dropped from the plan, in the engine's order. */
+  skipped: SkippedCandidate[];
+}
+
 /**
  * Builds a settlement plan from the engine's hammer outcome: the engine's
  * candidates in order, at the engine's prices. A candidate with no hold, or whose
@@ -29,6 +43,20 @@ export function planFromOutcome(
   holds: Record<string, HoldRef>,
   reserveCents: number,
 ): SettlementPlan {
+  return planWithSkipped(outcome, holds, reserveCents).plan;
+}
+
+/**
+ * Like planFromOutcome, but also returns the candidates that were left out. A
+ * skipped leader (the hammer winner among them) must reach the engine as a
+ * PromoteRunnerUp before the first capture, otherwise the engine still believes
+ * the skipped bidder won while another bidder is charged.
+ */
+export function planWithSkipped(
+  outcome: PlanOutcome,
+  holds: Record<string, HoldRef>,
+  reserveCents: number,
+): PlanResult {
   const first = outcome.candidates[0];
   if (first !== undefined) {
     if (first.bidderId !== outcome.winnerId || first.priceCents !== outcome.priceCents) {
@@ -37,14 +65,25 @@ export function planFromOutcome(
   }
   const seen = new Set<string>();
   const candidates: Candidate[] = [];
+  const skipped: SkippedCandidate[] = [];
   for (const entry of outcome.candidates) {
     if (seen.has(entry.bidderId)) {
       throw new Error(`duplicate bidder in candidates: ${entry.bidderId}`);
     }
     seen.add(entry.bidderId);
     const hold = holds[entry.bidderId];
-    if (hold === undefined || entry.priceCents > hold.ceilingCents) continue;
+    if (hold === undefined || entry.priceCents > hold.ceilingCents) {
+      skipped.push({
+        bidderId: entry.bidderId,
+        priceCents: entry.priceCents,
+        reason: hold === undefined ? 'no_hold' : 'price_above_hold',
+      });
+      continue;
+    }
     candidates.push({ bidderId: entry.bidderId, priceCents: entry.priceCents });
   }
-  return { auctionId: outcome.lotId, reserveCents, candidates, holds: { ...holds } };
+  return {
+    plan: { auctionId: outcome.lotId, reserveCents, candidates, holds: { ...holds } },
+    skipped,
+  };
 }

@@ -90,6 +90,28 @@ describe('rate limiter configuration (R-RT-120)', () => {
     expect(limitsFromConfig({ RATE_BID_PER_S: 3, RATE_BID_BURST: 5 }).bid).toEqual(LIMITS.bid);
   });
 
+  it('lets a venue override the join and http buckets (R-RT-120)', () => {
+    const limits = limitsFromConfig({
+      RATE_BID_PER_S: 3,
+      RATE_BID_BURST: 5,
+      RATE_JOIN_PER_MIN: 120,
+      RATE_JOIN_BURST: 300,
+      RATE_HTTP_PER_MIN: 600,
+      RATE_HTTP_BURST: 600,
+    });
+    expect(limits.join).toEqual({ refillMs: 500, burst: 300 });
+    expect(limits.http).toEqual({ refillMs: 100, burst: 600 });
+    const clock = new ManualClock(1_789_000_000_000);
+    const rl = new RateLimiter(clock, limits);
+    for (let i = 0; i < 40; i++) expect(rl.checkJoin('venue-nat').ok).toBe(true);
+  });
+
+  it('keeps the default join and http buckets when no override is set', () => {
+    const limits = limitsFromConfig({ RATE_BID_PER_S: 3, RATE_BID_BURST: 5 });
+    expect(limits.join).toEqual(LIMITS.join);
+    expect(limits.http).toEqual(LIMITS.http);
+  });
+
   it('honours a larger configured burst', () => {
     const clock = new ManualClock(1_789_000_000_000);
     const rl = new RateLimiter(clock, limitsFromConfig({ RATE_BID_PER_S: 3, RATE_BID_BURST: 20 }));
