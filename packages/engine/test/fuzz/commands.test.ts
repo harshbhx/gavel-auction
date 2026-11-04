@@ -244,7 +244,7 @@ function mutate(r: Rng, cmd: Command): unknown {
   if (how < 0.45 && keys.length > 0) {
     target[pick(r, keys)] = randomValue(r, 2);
   } else if (how < 0.65 && keys.length > 0) {
-    delete target[pick(r, keys)];
+    Reflect.deleteProperty(target, pick(r, keys));
   } else if (how < 0.85) {
     Object.defineProperty(target, pick(r, KEYS), {
       value: randomValue(r, 2),
