@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { FakePayPalServer } from '../../src/fake/server.js';
-import { amount, errorName, field, firstAuthorization, gateCurrency, str } from '../gateUtil.js';
+import { amount, errorName, field, firstAuthorization, str } from '../gateUtil.js';
 import { fetchAccessToken } from '../http.js';
 import {
   EXIT_REFUSED,
@@ -206,7 +206,7 @@ export async function startG2Server(
         body: `grant_type=client_credentials&response_type=client_token&intent=sdk_init&domains[]=${encodeURIComponent(deps.domain)}`,
       });
       const clientToken = str(field(tokenRes.json, 'access_token'));
-      send(res, 200, { clientToken, sdkUrl: deps.sdkUrl, currency: gateCurrency() });
+      send(res, 200, { clientToken, sdkUrl: deps.sdkUrl, currency: ctx.currency });
       return;
     }
     if (req.method === 'POST' && url.pathname === '/api/orders') {
