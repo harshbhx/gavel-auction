@@ -24,6 +24,7 @@ const SECRET_KEYS = new Set([
   'tax_id',
   'birth_date',
   'merchant_id',
+  'app_id',
   'address_line_1',
   'address_line_2',
   'admin_area_1',
