@@ -1,0 +1,35 @@
+{
+  "name": "reject order: over_ceiling beats below_reserve",
+  "parity": true,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 500
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "a",
+      "amount": 700
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    }
+  ],
+  "expect": {
+    "winner": null,
+    "price": 0,
+    "ranking": [],
+    "rejects": ["over_ceiling"],
+    "endsAt": 100000
+  }
+}

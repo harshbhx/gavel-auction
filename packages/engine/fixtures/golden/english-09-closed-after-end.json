@@ -1,0 +1,47 @@
+{
+  "name": "english: bid after end is rejected",
+  "parity": true,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "b",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "a",
+      "amount": 1000
+    },
+    {
+      "op": "bid",
+      "at": 100001,
+      "bidder": "b",
+      "amount": 5000
+    },
+    {
+      "op": "hammer",
+      "at": 100001
+    }
+  ],
+  "expect": {
+    "winner": "a",
+    "price": 1000,
+    "ranking": [["a", 1000]],
+    "rejects": ["closed"],
+    "endsAt": 100000
+  }
+}

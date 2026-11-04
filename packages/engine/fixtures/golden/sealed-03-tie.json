@@ -1,0 +1,50 @@
+{
+  "name": "second_price: equal bids go to the earlier one",
+  "parity": true,
+  "config": {
+    "mode": "second_price",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "b",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "a",
+      "amount": 3000
+    },
+    {
+      "op": "bid",
+      "at": 2000,
+      "bidder": "b",
+      "amount": 3000
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    }
+  ],
+  "expect": {
+    "winner": "a",
+    "price": 3000,
+    "ranking": [
+      ["a", 3000],
+      ["b", 3000]
+    ],
+    "rejects": [],
+    "endsAt": 100000
+  }
+}

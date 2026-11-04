@@ -1,0 +1,29 @@
+{
+  "name": "english: no bids ends without winner",
+  "parity": true,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    }
+  ],
+  "expect": {
+    "winner": null,
+    "price": 0,
+    "ranking": [],
+    "rejects": [],
+    "endsAt": 100000
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "name": "soft close: extensions stop at maxExtensions",
+  "parity": true,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000,
+    "softCloseWindow": 10000,
+    "softCloseExtension": 15000,
+    "maxExtensions": 2
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "b",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 95000,
+      "bidder": "a",
+      "amount": 1000
+    },
+    {
+      "op": "bid",
+      "at": 105000,
+      "bidder": "b",
+      "amount": 1100
+    },
+    {
+      "op": "bid",
+      "at": 115000,
+      "bidder": "a",
+      "amount": 1200
+    },
+    {
+      "op": "hammer",
+      "at": 120000
+    }
+  ],
+  "expect": {
+    "winner": "a",
+    "price": 1200,
+    "ranking": [
+      ["a", 1200],
+      ["b", 1100]
+    ],
+    "rejects": [],
+    "endsAt": 120000
+  }
+}
