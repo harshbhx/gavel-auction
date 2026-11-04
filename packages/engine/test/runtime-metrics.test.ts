@@ -42,7 +42,7 @@ describe('AuctionRuntime onDecision', () => {
     });
     const asyncHook = new AuctionRuntime({
       store: new InMemoryLedgerStore(),
-      onDecision: () => Promise.reject(new Error('boom')) as unknown as void,
+      onDecision: () => Promise.reject(new Error('boom')),
     });
     const expected = await plain.dispatch(create());
     for (const rt of [sync, asyncHook]) {
