@@ -20,7 +20,12 @@ export function genesisHead(auctionId: Ulid): ChainHead {
 }
 
 export type VerifyFailure =
-  'bad_hash' | 'bad_prev' | 'bad_seq' | 'bad_time' | 'unsupported_version' | 'truncated';
+  | 'bad_hash'
+  | 'bad_prev'
+  | 'bad_seq'
+  | 'bad_time'
+  | 'unsupported_version'
+  | 'truncated';
 
 export type VerifyResult =
   | { ok: true; count: number; headHash: string }
