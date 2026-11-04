@@ -1,4 +1,4 @@
-import { ICON_PATHS, type IconName } from './paths';
+import { ICON_PATHS, type IconName, type IconShape } from './paths';
 
 export interface IconProps {
   readonly name: IconName;
@@ -7,9 +7,35 @@ export interface IconProps {
   readonly size?: number;
 }
 
+function Shape({ shape }: { readonly shape: IconShape }) {
+  switch (shape.tag) {
+    case 'path':
+      return <path d={shape.d} {...(shape.fill === undefined ? {} : { fill: shape.fill })} />;
+    case 'circle':
+      return (
+        <circle
+          cx={shape.cx}
+          cy={shape.cy}
+          r={shape.r}
+          {...(shape.fill === undefined ? {} : { fill: shape.fill })}
+        />
+      );
+    case 'rect':
+      return (
+        <rect
+          x={shape.x}
+          y={shape.y}
+          width={shape.width}
+          height={shape.height}
+          {...(shape.rx === undefined ? {} : { rx: shape.rx })}
+        />
+      );
+  }
+}
+
+/** Shapes are React elements, so a title is escaped by React and nothing is parsed as markup. */
 export function Icon({ name, title, size = 24 }: IconProps) {
   const labelled = title !== undefined && title !== '';
-  const markup = (labelled ? `<title>${escapeText(title)}</title>` : '') + ICON_PATHS[name];
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -23,11 +49,11 @@ export function Icon({ name, title, size = 24 }: IconProps) {
       strokeLinejoin="round"
       focusable="false"
       {...(labelled ? { role: 'img' } : { 'aria-hidden': true })}
-      dangerouslySetInnerHTML={{ __html: markup }}
-    />
+    >
+      {labelled && <title>{title}</title>}
+      {ICON_PATHS[name].map((shape, i) => (
+        <Shape key={i} shape={shape} />
+      ))}
+    </svg>
   );
-}
-
-function escapeText(value: string): string {
-  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

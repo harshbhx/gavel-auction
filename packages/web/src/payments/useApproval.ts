@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PaymentsMode } from '../config';
 import { FakeApprovalAdapter, type FakeAdapterDeps } from './fakeAdapter';
+import { PayPalV6Adapter, type PayPalAdapterDeps } from './paypalV6Adapter';
 import type { ApprovalResult, ApprovalState, PaymentApprovalPort } from './port';
+import {
+  clearAllRegistrations,
+  clearRegistration,
+  loadRegistration,
+  saveRegistration,
+} from './registrationStore';
 
 interface Attempt {
   clientRegistrationId: string;
@@ -19,6 +26,12 @@ const attempts = new Map<string, Attempt>();
 /** Test helper: forget every attempt. */
 export function resetApprovalMemory(): void {
   attempts.clear();
+  clearAllRegistrations();
+}
+
+/** Test helper: drop the in-memory attempts only, as a page reload does. */
+export function resetAttemptMemoryOnly(): void {
+  attempts.clear();
 }
 
 const keyOf = (roomId: string, bidderId: string): string => `${roomId}:${bidderId}`;
@@ -27,19 +40,30 @@ function newId(): string {
   return globalThis.crypto.randomUUID();
 }
 
-/** The real PayPal adapter is not built yet (gate G2). Until then it reports an error state. */
-class UnavailablePayPalAdapter implements PaymentApprovalPort {
-  start(_req: unknown, on: (s: ApprovalState) => void): Promise<ApprovalResult> {
-    on('preparing');
-    on('error');
-    return Promise.resolve({ state: 'error', errorCode: 'paypal_adapter_unavailable' });
-  }
-  cancel(): void {}
+/** VITE_PAYMENTS=fake selects the fake adapter (R-WEB-048); anything else uses PayPal v6. */
+export function createApprovalPort(
+  mode: PaymentsMode,
+  fake: FakeAdapterDeps,
+  paypal: Pick<PayPalAdapterDeps, 'apiBase' | 'clientId'>,
+): PaymentApprovalPort {
+  return mode === 'fake' ? new FakeApprovalAdapter(fake) : new PayPalV6Adapter(paypal);
 }
 
-/** VITE_PAYMENTS=fake selects the fake adapter (R-WEB-048). */
-export function createApprovalPort(mode: PaymentsMode, fake: FakeAdapterDeps): PaymentApprovalPort {
-  return mode === 'fake' ? new FakeApprovalAdapter(fake) : new UnavailablePayPalAdapter();
+/**
+ * Return route step for a buyer who approved on PayPal's own page: finishes the hold with the
+ * registration id stored when the attempt began, so the server sees the same id as before.
+ */
+export function completeApprovalReturn(
+  adapter: Pick<PayPalV6Adapter, 'completeRedirect'>,
+  req: { roomId: string; bidderId: string; orderId: string },
+  on: (s: ApprovalState) => void,
+): Promise<ApprovalResult> {
+  const stored = loadRegistration(req.roomId, req.bidderId);
+  if (stored === null) {
+    on('error');
+    return Promise.resolve({ state: 'error', errorCode: 'registration_missing' });
+  }
+  return adapter.completeRedirect(req.roomId, req.orderId, stored.clientRegistrationId, on);
 }
 
 export interface UseApprovalOptions {
@@ -93,17 +117,20 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
       if (current?.promise != null) return current.promise;
       if (current?.result?.state === 'held') return Promise.resolve(current.result);
 
-      // A declined order is dead on the server, so it needs a new id. Cancelled and error retries reuse it.
+      // A declined order is dead on the server, so it needs a new id. Cancelled and error retries
+      // reuse it, and so does a reload: the stored id is the one the server already saw.
+      const stored = current === undefined ? loadRegistration(roomId, bidderId) : null;
       const attempt: Attempt = {
         clientRegistrationId:
           current !== undefined && current.result?.state !== 'declined'
             ? current.clientRegistrationId
-            : makeId(),
+            : (stored?.clientRegistrationId ?? makeId()),
         promise: null,
         state: 'preparing',
         result: null,
       };
       attempts.set(key, attempt);
+      saveRegistration(roomId, bidderId, { clientRegistrationId: attempt.clientRegistrationId });
       const promise = port
         .start(
           { roomId, bidderId, ceilingCents, clientRegistrationId: attempt.clientRegistrationId },
@@ -113,6 +140,7 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
           },
         )
         .then((r) => {
+          if (r.state === 'declined') clearRegistration(roomId, bidderId);
           attempt.result = r;
           attempt.state = r.state;
           attempt.promise = null;
