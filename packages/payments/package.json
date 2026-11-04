@@ -28,6 +28,7 @@
     "zod": "3.23.8"
   },
   "devDependencies": {
+    "@gavel/engine": "0.1.0",
     "@types/node": "22.10.2",
     "fast-check": "3.23.1",
     "typescript": "5.6.3",

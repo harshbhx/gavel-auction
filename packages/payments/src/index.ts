@@ -22,6 +22,7 @@ export * from './saga/create.js';
 export * from './saga/machine.js';
 export * from './saga/plan.js';
 export * from './saga/bridge.js';
+export * from './bridge/index.js';
 export * from './stores/file.js';
 export * from './stores/memory.js';
 export * from './webhooks/handler.js';
