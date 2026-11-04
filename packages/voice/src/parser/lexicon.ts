@@ -1,0 +1,71 @@
+/** Number lexicon, ported from reference/python/parser.py. All keys are lower case. */
+
+/** Prototype-free table, so lookups such as "constructor" never hit Object.prototype. */
+function table(entries: Record<string, number>): Readonly<Record<string, number>> {
+  return Object.freeze(Object.assign(Object.create(null) as Record<string, number>, entries));
+}
+
+export const UNITS: Readonly<Record<string, number>> = table({
+  zero: 0,
+  oh: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+});
+
+export const TEENS: Readonly<Record<string, number>> = table({
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19,
+});
+
+export const TENS: Readonly<Record<string, number>> = table({
+  twenty: 20,
+  thirty: 30,
+  forty: 40,
+  fourty: 40,
+  fifty: 50,
+  sixty: 60,
+  seventy: 70,
+  eighty: 80,
+  ninety: 90,
+});
+
+export const SCALE: Readonly<Record<string, number>> = table({
+  hundred: 100,
+  thousand: 1000,
+  grand: 1000,
+  k: 1000,
+});
+
+/** Words that multiply the whole preceding value by 1000. */
+export const THOUSAND_WORDS: ReadonlySet<string> = new Set(['k', 'grand', 'thousand']);
+
+const NUMERAL = /^\d+(\.\d+)?$/;
+
+export function isNumeral(token: string): boolean {
+  return NUMERAL.test(token);
+}
+
+/** Value of a single unit, teen or tens word, or undefined. */
+export function smallValue(word: string): number | undefined {
+  return UNITS[word] ?? TEENS[word] ?? TENS[word];
+}
+
+/** A token that can be part of a number span (words, scale words, numerals, "point"). */
+export function isNumberToken(token: string): boolean {
+  return smallValue(token) !== undefined || token in SCALE || token === 'point' || isNumeral(token);
+}
