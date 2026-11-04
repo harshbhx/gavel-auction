@@ -29,6 +29,8 @@ export interface RuntimeOptions {
   onEntries?: (auctionId: Ulid, entries: readonly LedgerEntry[]) => void;
   /** Called once per dispatched command; a failing hook never affects the result (R-ENG-105). */
   onDecision?: DecisionHook;
+  /** Told when `onEntries` or a subscriber publish throws; the command result is unaffected. */
+  onObserverError?: (err: unknown, auctionId: Ulid) => void;
   /** Source of the durations reported to `onDecision`; defaults to the system clock. */
   clock?: Clock;
 }
@@ -45,6 +47,7 @@ export class AuctionRuntime {
   private readonly hasher: Hasher;
   private readonly onEntries: RuntimeOptions['onEntries'];
   private readonly onDecision: DecisionHook | undefined;
+  private readonly onObserverError: RuntimeOptions['onObserverError'];
   private readonly clock: Clock;
   private readonly hub = new SubscriptionHub();
   private readonly cache = new Map<string, AuctionState>();
@@ -55,6 +58,7 @@ export class AuctionRuntime {
     this.hasher = opts.hasher ?? pureHasher;
     this.onEntries = opts.onEntries;
     this.onDecision = opts.onDecision;
+    this.onObserverError = opts.onObserverError;
     this.clock = opts.clock ?? new SystemClock();
   }
 
@@ -95,7 +99,8 @@ export class AuctionRuntime {
       entries.length === 0
         ? initialState
         : replay(entries, this.hasher, await this.headOf(auctionId));
-    this.cache.set(auctionId, state);
+    // An auction id that has no ledger is not remembered, so random ids cannot grow the cache.
+    if (entries.length > 0) this.cache.set(auctionId, state);
     return state;
   }
 
@@ -122,7 +127,9 @@ export class AuctionRuntime {
     for (let retry = 0; ; retry++) {
       const state = await this.hydrate(auctionId);
       const result = decide(state, cmd);
-      if (result.events.length === 0) return { ...result, entries: [] };
+      if (result.events.length === 0) {
+        return { ...result, entries: await this.originalEntries(auctionId, state, cmd, result) };
+      }
       const entries = sealBatch(
         result.events,
         { auctionId, seq: state.head.seq, hash: state.head.hash },
@@ -162,8 +169,39 @@ export class AuctionRuntime {
     }
   }
 
+  /** A duplicate returns the entries its first application wrote (R-ENG-087). */
+  private async originalEntries(
+    auctionId: Ulid,
+    state: AuctionState,
+    cmd: Command,
+    result: DecideResult,
+  ): Promise<LedgerEntry[]> {
+    if (result.outcome.kind !== 'duplicate') return [];
+    const seen = state.commands[cmd.commandId];
+    if (seen === undefined) return [];
+    const from = await this.store.read(auctionId, seen.seq);
+    return from.filter((e) => e.cmd === cmd.commandId);
+  }
+
   private announce(auctionId: Ulid, entries: readonly LedgerEntry[]): void {
-    this.hub.publish(auctionId, entries);
-    this.onEntries?.(auctionId, entries);
+    // The append is already durable: an observer failure must never fail the command.
+    try {
+      this.hub.publish(auctionId, entries);
+    } catch (e) {
+      this.reportObserver(e, auctionId);
+    }
+    try {
+      this.onEntries?.(auctionId, entries);
+    } catch (e) {
+      this.reportObserver(e, auctionId);
+    }
+  }
+
+  private reportObserver(err: unknown, auctionId: Ulid): void {
+    try {
+      this.onObserverError?.(err, auctionId);
+    } catch {
+      // A failing error hook is ignored.
+    }
   }
 }

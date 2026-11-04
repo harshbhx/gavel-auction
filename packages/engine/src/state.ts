@@ -213,6 +213,30 @@ export function commandBody(cmd: Command): string | null {
       });
     case 'Hammer':
       return digestOf({ t: 'Hammer', lotId: cmd.lotId, actor: cmd.actor });
+    case 'CompleteLot':
+      return digestOf({
+        t: 'CompleteLot',
+        lotId: cmd.lotId,
+        capturedCents: cmd.capturedCents,
+        ref: cmd.ref,
+      });
+    case 'RecordSettlement':
+      return digestOf({
+        t: 'RecordSettlement',
+        lotId: cmd.lotId,
+        from: cmd.from,
+        to: cmd.to,
+        ref: cmd.ref,
+      });
+    case 'RevokeCeiling':
+      return digestOf({ t: 'RevokeCeiling', bidderId: cmd.bidderId, reason: cmd.reason });
+    case 'PromoteRunnerUp':
+      return digestOf({
+        t: 'PromoteRunnerUp',
+        lotId: cmd.lotId,
+        disqualifiedBidderId: cmd.disqualifiedBidderId,
+        reason: cmd.reason,
+      });
     default:
       return null;
   }
@@ -272,6 +296,34 @@ export function entryBody(e: LedgerEntry): string | null {
       return e.payload.reason === 'no_valid_winner'
         ? null
         : digestOf({ t: 'Hammer', lotId: e.payload.lotId, actor: e.payload.actor ?? null });
+    case 'LOT_SETTLED':
+      return digestOf({
+        t: 'CompleteLot',
+        lotId: e.payload.lotId,
+        capturedCents: e.payload.capturedCents,
+        ref: e.payload.ref,
+      });
+    case 'SETTLEMENT_STATE':
+      return digestOf({
+        t: 'RecordSettlement',
+        lotId: e.payload.lotId,
+        from: e.payload.from,
+        to: e.payload.to,
+        ref: e.payload.ref,
+      });
+    case 'CEILING_REVOKED':
+      return digestOf({
+        t: 'RevokeCeiling',
+        bidderId: e.payload.bidderId,
+        reason: e.payload.reason,
+      });
+    case 'FALLBACK_PROMOTED':
+      return digestOf({
+        t: 'PromoteRunnerUp',
+        lotId: e.payload.lotId,
+        disqualifiedBidderId: e.payload.from,
+        reason: e.payload.reason,
+      });
     default:
       return null;
   }
