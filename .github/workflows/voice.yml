@@ -1,0 +1,25 @@
+name: voice
+on:
+  pull_request:
+    paths: ['packages/voice/**', '.github/workflows/voice.yml']
+  push:
+    branches: [main]
+    paths: ['packages/voice/**', '.github/workflows/voice.yml']
+jobs:
+  voice:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/voice
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - name: size-limit
+        if: ${{ hashFiles('packages/voice/src/parser/parse.ts') != '' && hashFiles('packages/voice/src/decide/policy.ts') != '' && hashFiles('packages/voice/src/browser/capture.ts') != '' }}
+        run: npm run size
