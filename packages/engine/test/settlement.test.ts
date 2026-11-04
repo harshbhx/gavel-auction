@@ -131,7 +131,7 @@ describe('decide CompleteLot and RecordSettlement', () => {
     expect(empty.lots[L1]?.settlement).toBe('HELD');
   });
 
-  it('ENG-R3-01 a release recorded before the lot goes unsold is not overwritten', () => {
+  it('T-ENG-140 R-ENG-068 ENG-R3-01 a release recorded before the lot goes unsold is not overwritten', () => {
     const s = hammered(2000);
     const released = run(s, settle(400, 'HELD', 'SETTLED')).state;
     const unsold = run(
@@ -147,7 +147,7 @@ describe('decide CompleteLot and RecordSettlement', () => {
     expect(unsold.lots[L1]?.settlement).toBe('SETTLED');
   });
 
-  it('ENG-R3-01 an aborted lot can record the release of its holds', () => {
+  it('T-ENG-141 R-ENG-067 ENG-R3-01 an aborted lot can record the release of its holds', () => {
     const aborted = run(
       open(scene(), L1),
       mk(300, { type: 'AbortLot', lotId: L1, reason: 'kill switch', actor: 'host' }),
