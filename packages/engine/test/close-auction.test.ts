@@ -2,7 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { decide } from '../src/decide/index.js';
 import { available } from '../src/rules/exposure.js';
 import type { Body } from './decide-helpers.js';
-import { A, B, L1, L2, bid, errCode, lotConfig, mk, open, run, scene } from './decide-helpers.js';
+import {
+  A,
+  B,
+  L1,
+  L2,
+  bid,
+  captured,
+  errCode,
+  lotConfig,
+  mk,
+  open,
+  run,
+  scene,
+} from './decide-helpers.js';
 import { initialState } from '../src/state.js';
 import type { AuctionState } from '../src/state.js';
 import type { Ulid } from '../src/types.js';
@@ -11,7 +24,7 @@ const hammer = (s: AuctionState, at: number, lotId = L1) =>
   run(s, mk(at, { type: 'Hammer', lotId, actor: 'host', early: true })).state;
 const complete = (s: AuctionState, at: number, lotId: Ulid, cents: number) =>
   run(
-    s,
+    captured(s, at, lotId),
     mk(at, {
       type: 'CompleteLot',
       lotId,

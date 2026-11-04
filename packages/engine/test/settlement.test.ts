@@ -2,7 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { decide } from '../src/decide/index.js';
 import { InvariantError } from '../src/errors.js';
 import { parseCommand } from '../src/commands.js';
-import { A, B, L1, L2, bid, errCode, lotConfig, mk, open, run, scene } from './decide-helpers.js';
+import {
+  A,
+  B,
+  L1,
+  L2,
+  bid,
+  captured,
+  errCode,
+  lotConfig,
+  mk,
+  open,
+  run,
+  scene,
+} from './decide-helpers.js';
 import type { AuctionState } from '../src/state.js';
 import { SETTLEMENT_STATES } from '../src/events.js';
 
@@ -31,7 +44,7 @@ const settle = (at: number, from: string, to: string) =>
 
 describe('decide CompleteLot and RecordSettlement', () => {
   it('T-ENG-049 R-ENG-066 R-ENG-068 capture must equal the price', () => {
-    const s = hammered(2000);
+    const s = captured(hammered(2000), 350);
     expect(errCode(() => decide(s, complete(400, 1500)))).toBe('capture_mismatch');
     const r = run(s, complete(400, 2000));
     expect(r.entries.map((e) => e.type)).toEqual(['LOT_SETTLED']);
@@ -41,7 +54,7 @@ describe('decide CompleteLot and RecordSettlement', () => {
   });
 
   it('T-ENG-049 R-ENG-066 ENG-91 a capture booked to anyone but the winner is refused', () => {
-    const s = hammered(2000);
+    const s = captured(hammered(2000), 350);
     const wrong = mk(400, {
       type: 'CompleteLot',
       lotId: L1,
@@ -98,8 +111,22 @@ describe('decide CompleteLot and RecordSettlement', () => {
     );
   });
 
-  it('T-ENG-051 R-ENG-069 captured total above the ceiling is an invariant failure', () => {
+  it('T-ENG-146 R-ENG-066 ENG-R3-06 a lot cannot be completed before its capture is recorded', () => {
     const s = hammered(2000);
+    expect(errCode(() => decide(s, complete(400, 2000)))).toBe('state_continuity');
+    const voiding = run(s, settle(350, 'HELD', 'VOIDING')).state;
+    expect(errCode(() => decide(voiding, complete(400, 2000)))).toBe('state_continuity');
+    const capturing = run(
+      run(run(s, settle(350, 'HELD', 'BIDDING')).state, settle(360, 'BIDDING', 'WINNER_SELECTED'))
+        .state,
+      settle(370, 'WINNER_SELECTED', 'CAPTURING'),
+    ).state;
+    expect(errCode(() => decide(capturing, complete(400, 2000)))).toBe('state_continuity');
+    expect(decide(captured(s, 350), complete(400, 2000)).events).toHaveLength(1);
+  });
+
+  it('T-ENG-051 R-ENG-069 captured total above the ceiling is an invariant failure', () => {
+    const s = captured(hammered(2000), 350);
     expect(lowerCeiling(s, 1500)).toBeDefined();
     expect(() => decide(lowerCeiling(s, 1500), complete(400, 2000))).toThrow(InvariantError);
     expect(decide(lowerCeiling(s, 2000), complete(400, 2000)).events).toHaveLength(1);
@@ -109,10 +136,11 @@ describe('decide CompleteLot and RecordSettlement', () => {
     let s = open(scene({ lots: [lotConfig(L1), lotConfig(L2)] }), L1);
     s = bid(s, 200, A, 60000).state;
     s = run(s, mk(300, { type: 'Hammer', lotId: L1, actor: 'host', early: true })).state;
-    s = run(s, complete(310, 60000)).state;
+    s = run(captured(s, 305), complete(310, 60000)).state;
     s = open(s, L2, 320);
     s = bid(s, 330, A, 25000, L2).state;
     s = run(s, mk(340, { type: 'Hammer', lotId: L2, actor: 'host', early: true })).state;
+    s = captured(s, 345, L2);
     const done = mk(350, {
       type: 'CompleteLot',
       lotId: L2,
@@ -126,7 +154,7 @@ describe('decide CompleteLot and RecordSettlement', () => {
   it('T-ENG-049 R-ENG-068 ENG-R2-11 a DONE lot ends with a terminal settlement state', () => {
     const s = hammered(2000);
     expect(s.lots[L1]?.settlement).toBe('HELD');
-    const paid = run(s, complete(400, 2000)).state;
+    const paid = run(captured(s, 350), complete(400, 2000)).state;
     expect(paid.lots[L1]?.settlement).toBe('SETTLED');
     const unsold = run(
       s,
