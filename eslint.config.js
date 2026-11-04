@@ -3,6 +3,7 @@ import globals from 'globals';
 import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 import determinism from './eslint.rules/determinism.js';
+import enginePurity from './eslint.rules/engine-purity.js';
 
 export default tseslint.config(
   {
@@ -22,6 +23,7 @@ export default tseslint.config(
       'no-unused-vars': 'off',
     },
   },
+  enginePurity,
   {
     files: ['packages/web/**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks },

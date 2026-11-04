@@ -18,6 +18,7 @@ export const ENGINE_ERROR_CODES = [
   'lot_not_open',
   'non_canonical',
   'not_current_winner',
+  'out_of_order',
   'soft_close_not_allowed_sealed',
   'store_conflict',
   'time_regression',

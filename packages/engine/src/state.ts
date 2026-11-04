@@ -1,4 +1,10 @@
+import { canonicalize } from './canonical.js';
+import type { JsonValue } from './canonical.js';
+import type { Command } from './commands.js';
 import { DEFAULT_AUCTION_CONFIG } from './config.js';
+import type { BidAudit, LedgerEntry } from './events.js';
+import { pureHasher } from './sha256.js';
+import { utf8 } from './hasher.js';
 import type { Candidate, SettlementState, UnsoldReason } from './events.js';
 import { bestByBidder, rank } from './rules/ranking.js';
 import type { BidRecord } from './rules/ranking.js';
@@ -56,6 +62,12 @@ export interface AuctionHead {
   readonly hash: string;
 }
 
+/** A command that produced at least one entry. `body` is null until an entry echoes it. */
+export interface SeenCommand {
+  readonly seq: number;
+  readonly body: string | null;
+}
+
 export interface AuctionState {
   readonly auctionId: Ulid | null;
   readonly title: string | null;
@@ -64,8 +76,8 @@ export interface AuctionState {
   readonly lots: Readonly<Record<string, LotState>>;
   /** Keyed by `bidderKey`. */
   readonly bidders: Readonly<Record<string, BidderState>>;
-  /** commandId to the seq of the first entry it produced. */
-  readonly commands: Readonly<Record<string, number>>;
+  /** Seen-command index: commandId to its first seq and body digest (R-ENG-087, R-ENG-088). */
+  readonly commands: Readonly<Record<string, SeenCommand>>;
   readonly head: AuctionHead;
   readonly closed: boolean;
   readonly closedHeadHash: string | null;
@@ -118,4 +130,122 @@ export function withBids(lot: LotState, bids: readonly BidRecord[]): LotState {
   const best = Object.fromEntries(bestByBidder(bids));
   const top = rank(bids)[0];
   return { ...lot, bids, best, leaderId: top === undefined ? null : (top.bidderId as Ulid) };
+}
+
+const digestOf = (v: JsonValue): string => pureHasher.sha256Hex(utf8(canonicalize(v)));
+
+/** Bid amount as echoed in a ledger entry: the integer, else the raw text (R-ENG-082). */
+function amountKey(amountCents: unknown): JsonValue {
+  return typeof amountCents === 'number' && Number.isSafeInteger(amountCents)
+    ? amountCents
+    : String(amountCents).slice(0, 40);
+}
+
+const withOptional = (base: Record<string, JsonValue>, k: string, v: unknown): void => {
+  if (v !== undefined && v !== null) base[k] = v as JsonValue;
+};
+
+/**
+ * Digest of the parts of a command that its entries echo, `at` excluded so a
+ * retry with a later timestamp is still the same command (R-ENG-087). Null for
+ * command types whose entries do not echo a body. Must agree with `entryBody`.
+ */
+export function commandBody(cmd: Command): string | null {
+  switch (cmd.type) {
+    case 'CreateAuction':
+      return digestOf({
+        t: 'CreateAuction',
+        title: cmd.title,
+        config: { ...cmd.config } as unknown as JsonValue,
+      });
+    case 'AddLot':
+      return digestOf({ t: 'AddLot', lotId: cmd.lot.lotId });
+    case 'RegisterBidder': {
+      const b: Record<string, JsonValue> = {
+        t: 'RegisterBidder',
+        bidderId: cmd.bidderId,
+        ceilingCents: cmd.ceilingCents,
+      };
+      withOptional(b, 'lotId', cmd.lotId);
+      return digestOf(b);
+    }
+    case 'OpenLot':
+      return digestOf({ t: 'OpenLot', lotId: cmd.lotId });
+    case 'PlaceBid':
+      return digestOf({
+        t: 'PlaceBid',
+        lotId: cmd.lotId,
+        bidderId: cmd.bidderId,
+        amount: amountKey(cmd.amountCents),
+        source: cmd.source,
+        audit: { ...cmd.audit } as unknown as JsonValue,
+      });
+    case 'Hammer':
+      return digestOf({ t: 'Hammer', lotId: cmd.lotId });
+    default:
+      return null;
+  }
+}
+
+function bidBody(
+  p: { lotId: string; bidderId: string; source: string; audit: BidAudit },
+  amount: unknown,
+): string {
+  return digestOf({
+    t: 'PlaceBid',
+    lotId: p.lotId,
+    bidderId: p.bidderId,
+    amount: amountKey(amount),
+    source: p.source,
+    audit: { ...p.audit } as unknown as JsonValue,
+  });
+}
+
+/** Body digest recoverable from one ledger entry, or null when it echoes none. */
+export function entryBody(e: LedgerEntry): string | null {
+  switch (e.type) {
+    case 'AUCTION_CREATED':
+      return digestOf({
+        t: 'CreateAuction',
+        title: e.payload.title,
+        config: { ...e.payload.config } as unknown as JsonValue,
+      });
+    case 'LOT_ADDED':
+      return digestOf({ t: 'AddLot', lotId: e.payload.lotId });
+    case 'BIDDER_REGISTERED':
+    case 'CEILING_RAISED': {
+      const p = e.payload;
+      const b: Record<string, JsonValue> = {
+        t: 'RegisterBidder',
+        bidderId: p.bidderId,
+        ceilingCents: p.ceilingCents,
+      };
+      withOptional(b, 'lotId', p.lotId);
+      return digestOf(b);
+    }
+    case 'LOT_OPENED':
+      return digestOf({ t: 'OpenLot', lotId: e.payload.lotId });
+    case 'BID_RECORDED':
+      return bidBody(e.payload, e.payload.amountCents);
+    case 'BID_REJECTED':
+      return bidBody(e.payload, e.payload.amountCents ?? e.payload.amountRaw ?? null);
+    case 'LOT_HAMMERED':
+    case 'LOT_UNSOLD':
+      return digestOf({ t: 'Hammer', lotId: e.payload.lotId });
+    default:
+      return null;
+  }
+}
+
+/** Adds an entry to the seen-command index; later entries of a command may fill its body. */
+export function recordCommand(
+  commands: AuctionState['commands'],
+  e: LedgerEntry,
+): AuctionState['commands'] {
+  if (e.cmd === null) return commands;
+  const seen = commands[e.cmd];
+  if (seen !== undefined && seen.body !== null) return commands;
+  const body = entryBody(e);
+  if (seen === undefined) return { ...commands, [e.cmd]: { seq: e.seq, body } };
+  return body === null ? commands : { ...commands, [e.cmd]: { seq: seen.seq, body } };
 }
