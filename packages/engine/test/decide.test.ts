@@ -4,18 +4,7 @@ import { evolve } from '../src/evolve.js';
 import { commandBody, entryBody } from '../src/state.js';
 import type { Command } from '../src/commands.js';
 import { initialState } from '../src/state.js';
-import {
-  A,
-  L1,
-  errCode,
-  id,
-  lotConfig,
-  mk,
-  open,
-  run,
-  scene,
-  seal,
-} from './decide-helpers.js';
+import { A, L1, errCode, id, lotConfig, mk, open, run, scene, seal } from './decide-helpers.js';
 
 const CID = id('DUPLICATE');
 
