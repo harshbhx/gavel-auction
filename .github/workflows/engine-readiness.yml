@@ -1,0 +1,25 @@
+name: engine-readiness
+on:
+  pull_request:
+    paths:
+      - 'packages/engine/**'
+      - 'docs/specs/engine/**'
+      - '.github/workflows/engine-readiness.yml'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: engine-readiness-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/setup
+      - run: npm run check:trace -w @gavel/engine
