@@ -1,0 +1,86 @@
+name: Spike
+description: Time-boxed investigation or proof of concept.
+labels: ['type:spike']
+body:
+  - type: input
+    id: spec
+    attributes:
+      label: Spec
+      description: 'Spec reference, e.g. docs/specs/SPEC-web.md: R-WEB-008'
+    validations:
+      required: false
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What question the spike answers.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What is included in this investigation.
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: What is explicitly excluded.
+    validations:
+      required: true
+  - type: textarea
+    id: interfaces
+    attributes:
+      label: Interfaces
+      description: Exported symbols, endpoints, or wire messages affected.
+    validations:
+      required: false
+  - type: textarea
+    id: files
+    attributes:
+      label: Files
+      description: Files to create or modify.
+    validations:
+      required: true
+  - type: textarea
+    id: depends-on
+    attributes:
+      label: Depends on
+      description: 'Blocking issues, e.g. #100 (WEB-01).'
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: Checkboxes that must be true before merge.
+    validations:
+      required: true
+  - type: textarea
+    id: test-plan
+    attributes:
+      label: Test plan
+      description: 'T-ids and short descriptions.'
+    validations:
+      required: true
+  - type: textarea
+    id: definition-of-done
+    attributes:
+      label: Definition of done
+      description: Merge, CI, docs, secrets, ASCII conditions.
+    validations:
+      required: true
+  - type: dropdown
+    id: size
+    attributes:
+      label: Size
+      options:
+        - XS
+        - S
+        - M
+        - L
+        - XL
+    validations:
+      required: true
