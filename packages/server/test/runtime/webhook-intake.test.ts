@@ -125,3 +125,21 @@ describe('webhook intake crash safety (ENG-R3-04)', () => {
     expect(await r.events.listUnprocessed()).toHaveLength(1);
   });
 });
+
+describe('webhook intake unparseable events (PAY-R3-13)', () => {
+  it('stores a signed event without id or event_type under a body hash and marks it unparseable', async () => {
+    const r = rig();
+    const odd: VerifiedWebhook = {
+      headers: {} as unknown as VerifiedWebhook['headers'],
+      rawBody: Buffer.from(JSON.stringify({ kind: 'new-shape' })),
+      receivedAtMs: 5,
+    };
+    await r.intake.accept(odd);
+    await r.intake.accept(odd);
+    expect(await r.events.listUnprocessed()).toEqual([]);
+    const all = Object.values(r.events.snapshot().events);
+    expect(all).toHaveLength(1);
+    expect(all[0]?.id.startsWith('unparseable:')).toBe(true);
+    expect(all[0]?.result).toBe('unparseable');
+  });
+});

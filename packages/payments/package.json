@@ -18,9 +18,9 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p .",
     "check:deps": "node -e \"const d=Object.keys(require('./package.json').dependencies||{});const bad=d.filter(x=>x!=='zod');if(bad.length){console.error('forbidden runtime dependencies: '+bad.join(', '));process.exit(1)}\"",
-    "gate:g1": "vite-node gates/g1.ts",
-    "gate:g2": "echo \"gate g2: not implemented yet\" >&2 && exit 1",
-    "gate:g3": "echo \"gate g3: not implemented yet\" >&2 && exit 1",
+    "gate:g1": "vite-node gates/g1.ts --",
+    "gate:g2": "vite-node gates/g2/server.ts --",
+    "gate:g3": "vite-node gates/g3.ts --",
     "gate:idem": "vite-node gates/idempotency.ts --",
     "measure": "vite-node gates/measure.ts --",
     "demo:settle": "vite-node demo/settle-with-crash.ts --"

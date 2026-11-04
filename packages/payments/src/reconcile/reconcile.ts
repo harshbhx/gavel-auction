@@ -19,6 +19,7 @@ export const FINDING_CODES = [
   'EXTRA_CAPTURE',
   'LIVE_HOLD_AFTER_SETTLED',
   'MISSING_CAPTURE',
+  'REFUNDED_CAPTURE',
   'STATUS_CONFLICT',
   'STATUS_DRIFT',
   'UNOBSERVABLE',
@@ -152,13 +153,25 @@ export async function reconcile(deps: ReconcileDeps, auctionId: string): Promise
       continue;
     }
     if (truth.captures === null) add('UNOBSERVABLE', s, 'captures are not observable');
+    const refunded = truth.captures?.find((c) => c.refund !== undefined);
+    if (refunded?.refund !== undefined)
+      add(
+        'REFUNDED_CAPTURE',
+        s,
+        `capture ${refunded.captureId} is ${refunded.refund.status}` +
+          (refunded.refund.refundedCents === undefined
+            ? ''
+            : `, ${refunded.refund.refundedCents} refunded`),
+      );
 
     const winner = journal?.winner ?? null;
     const isWinner = winner !== null && winner.holdId === s.holdId;
     const captured = isCaptured(truth);
     const inFlight = journal?.intent?.op === 'capture' && journal.intent.holdId === s.holdId;
     const seen = truthAsHoldStatus(truth);
-    const voidedInJournal = journal !== null && s.bidderId in journal.voids;
+    const voidedInJournal =
+      journal !== null &&
+      (Object.hasOwn(journal.voids, s.bidderId) || Object.hasOwn(journal.voids, s.holdId));
 
     const conflict =
       (record !== undefined && conflicts(record.status, seen)) ||

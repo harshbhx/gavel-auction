@@ -6,6 +6,7 @@ All notable changes to `@gavel/engine`. Money is integer cents; the ledger forma
 
 ### Added
 
+- Redacted public export: a second hash chain (version 2) without ceilings, hold references, leaders or sealed amounts, tied to the private ledger by `fullHash` (ENG-RT-12).
 - Golden fixtures for promote, revoke, complete, abort and closed-lot bids, and an `abort` step op (R-ENG-066, R-ENG-112, R-ENG-113).
 - Seeded differential test against the Python reference, 2000 scenarios per run (R-ENG-114).
 

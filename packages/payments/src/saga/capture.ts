@@ -4,6 +4,7 @@ import type { PaymentsMetrics } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
 import type { CaptureRef, HoldTruth, Journal } from '../types.js';
 import { withLease } from './create.js';
+import { defaultLeaseOwner } from './owner.js';
 import { step, type SettlementEvent } from './machine.js';
 import { DEFAULT_UNKNOWN_DEADLINE_MS, UNKNOWN_REVIEW_REASON, unknownExpired } from './unknown.js';
 
@@ -53,7 +54,7 @@ export interface CaptureDeps {
   metrics?: PaymentsMetrics;
   /** Default 600000 (R-PAY-055). */
   unknownDeadlineMs?: number;
-  /** Lease owner. Default "runner". */
+  /** Lease owner. Default: a random id fixed for this process. */
   owner?: string;
   /**
    * Called at every crash boundary: `journaled:<event>` after a save, and
@@ -113,7 +114,7 @@ export class CapturePhase {
   private readonly owner: string;
 
   constructor(private readonly deps: CaptureDeps) {
-    this.owner = deps.owner ?? 'runner';
+    this.owner = deps.owner ?? defaultLeaseOwner('runner');
   }
 
   /** Runs, or resumes, the capture phase of one settlement. */
@@ -445,6 +446,10 @@ export function verdict(truth: HoldTruth, priceCents: number, invoiceId: string)
     return truth.capturedCents > 0
       ? { kind: 'mismatch', why: 'untracked capture' }
       : { kind: 'open' };
+  }
+  if (truth.captures.some((c) => c.refund !== undefined)) {
+    // Money was taken and returned: never open, never adopted, never captured again.
+    return { kind: 'mismatch', why: 'capture refunded' };
   }
   const ours = truth.captures.filter(
     (c) =>

@@ -132,7 +132,7 @@ Requirement ids are stable; the test and issue tables refer to them.
 - **R-ENG-061** At most one lot is OPEN or CLOSING at a time; `OpenLot` is valid only if the previous lot in order is SETTLING, DONE or the lot is first.
 - **R-ENG-062** Lots open in `lotOrder` as added; `OpenLot{lotId}` for a non-next PENDING lot fails `out_of_order`.
 - **R-ENG-063** With holdScope `event`, a winner's hammer price on lot N reduces their available ceiling on every later lot.
-- **R-ENG-064** `CloseAuction` is valid only when all lots are DONE (settled or unsold) and appends `AUCTION_CLOSED{headHash anchor}`; afterwards every command fails `auction_closed`.
+- **R-ENG-064** `CloseAuction` is valid only when all lots are DONE (settled or unsold) and appends `AUCTION_CLOSED{headHash anchor}`; afterwards every command fails `auction_closed`, except `RecordSettlement` for a DONE lot whose settlement has not reached SETTLED, so a release that is still being recorded is never lost.
 - **R-ENG-065** Bids on one lot never alter the ranking, price or end time of another lot.
 
 ### Settlement entries
@@ -145,7 +145,7 @@ Requirement ids are stable; the test and issue tables refer to them.
 ### Ledger and hash chain
 
 - **R-ENG-070** A ledger entry is `{v:1,auctionId,seq,at,type,cmd,payload,prev,hash}`; `cmd` is the commandId or null.
-- **R-ENG-071** Canonical JSON: object keys sorted by UTF-16 code unit, no whitespace, integers only (no floats, no -0, no exponent), strings escaped as `JSON.stringify`, `undefined` and lone surrogates rejected with `non_canonical`.
+- **R-ENG-071** Canonical JSON: object keys sorted by Unicode code point (not by UTF-16 code unit, which differs for astral characters), no whitespace, integers only (no floats, no -0, no exponent), strings written with `JSON.stringify` escapes and then every character outside U+0020..U+007E (including DEL, U+007F) as a lowercase `\uXXXX` code unit escape (astral characters as a surrogate pair), `undefined`, lone surrogates and non-plain objects rejected with `non_canonical`. A second verifier must reproduce the astral-key and DEL golden vector in `packages/engine/test/canonical.test.ts`.
 - **R-ENG-072** `hash = lowercase hex SHA-256 of UTF-8 canonical JSON of the entry without its `hash` field`; the genesis `prev` is 64 zeros. The golden vector in this spec MUST be reproduced by TypeScript and Python.
 - **R-ENG-073** `seq` starts at 1 and increases by exactly 1; `at` is non-decreasing.
 - **R-ENG-074** `verifyChain(entries, {expectedHead?})` returns `{ok, count, headHash}` or `{ok:false, firstBadIndex, reason}` and MUST detect: field mutation, reorder, deleted middle entry, duplicated entry, wrong prev, wrong hash, wrong seq, and (with expectedHead) tail truncation.
@@ -638,7 +638,7 @@ Each test lists the requirement ids it verifies. Inputs and expected values are 
 - **T-ENG-050** [R-ENG-067] RecordSettlement from HELD to CAPTURING ok; next with from HELD again -> state_continuity; to 'PAID' -> bad_command.
 - **T-ENG-051** [R-ENG-069] Force a LOT_SETTLED that would put captured total above ceiling via a crafted state -> InvariantError and no entry.
 - **T-ENG-052** [R-ENG-072, R-ENG-070, R-ENG-071] The two-entry golden vector in section 4.5 hashes to e1d36276...5540 and f685ed77...5b13 in both TypeScript and Python.
-- **T-ENG-053** [R-ENG-071] Canonical output for {b:1,a:[2,{d:1,c:2}],e:'\u00e9'} is exact; 1.5, -0, NaN, undefined, lone surrogate each throw non_canonical; key order independent of insertion order.
+- **T-ENG-053** [R-ENG-071] Canonical output for {b:1,a:[2,{d:1,c:2}],e:'\u00e9'} is exact; the astral key and DEL vector is exact; 1.5, -0, NaN, undefined, lone surrogate each throw non_canonical; key order independent of insertion order.
 - **T-ENG-054** [R-ENG-079, R-ENG-120] NIST vectors '', 'abc', 448-bit message, 1,000,000 x 'a' match; implementation file imports nothing from node:\*.
 - **T-ENG-055** [R-ENG-073, R-ENG-070] Entries start at seq 1; gaps or duplicates fail verification with reason bad_seq; at decreasing fails bad_time.
 - **T-ENG-056** [R-ENG-074, R-ENG-080] For a 40-entry ledger, mutate each entry's payload byte, at, type, prev, hash, v in turn: verifyChain reports firstBadIndex equal to that entry (or the next for hash-only) every time.

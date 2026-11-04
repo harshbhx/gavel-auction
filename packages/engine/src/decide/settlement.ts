@@ -28,11 +28,13 @@ function settlingLot(state: AuctionState, lotId: string): LotState {
 /**
  * The lot a settlement step is recorded against: a SETTLING lot, or a DONE lot whose
  * settlement has not reached SETTLED yet (an unsold or aborted lot still releasing its
- * holds). The ledger must be able to show that the money was released (R-ENG-067).
+ * holds). The ledger must be able to show that the money was released (R-ENG-067), also
+ * after the auction was closed, so a release is never left unrecorded (R4-E02).
  */
 function recordableLot(state: AuctionState, lotId: string): LotState {
+  if (state.auctionId === null) throw new EngineError('bad_command', 'auction not created');
   const lot = state.lots[lotId];
-  if (lot !== undefined && lot.status === 'DONE' && !state.closed && lot.settlement !== 'SETTLED') {
+  if (lot !== undefined && lot.status === 'DONE' && lot.settlement !== 'SETTLED') {
     if (lot.capturedCents !== null) throw new EngineError('lot_done');
     return lot;
   }
@@ -50,13 +52,21 @@ function capturedIn(state: AuctionState, bidderId: string, key: string): number 
 }
 
 /**
- * Decides CompleteLot (R-ENG-066, R-ENG-069): the capture must be booked to the
+ * Decides CompleteLot (R-ENG-066, R-ENG-069): the recorded settlement must already be
+ * CAPTURED, or SETTLED once the saga also released the other holds (the ledger saw the
+ * capture happen), the capture must be booked to the
  * lot's current winner, the captured amount must equal the hammer or promoted price, and the bidder's captured total must fit the ceiling.
  */
 export function decideCompleteLot(state: AuctionState, cmd: CompleteLotCommand): DecideResult {
   assertNotInPast(state, cmd);
   const lot = settlingLot(state, cmd.lotId);
   if (cmd.ref.length > LIMITS.text) throw new EngineError('limit_exceeded', 'ref');
+  if (lot.settlement !== 'CAPTURED' && lot.settlement !== 'SETTLED') {
+    throw new EngineError(
+      'state_continuity',
+      `lot settlement is ${lot.settlement}, not CAPTURED or SETTLED`,
+    );
+  }
   if (lot.winnerId === null || lot.priceCents === null) {
     throw new EngineError('bad_command', 'lot has no winner');
   }

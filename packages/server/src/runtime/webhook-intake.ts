@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type {
   Clock,
   HoldRecord,
@@ -117,7 +118,21 @@ export class WebhookIntake {
   async accept(delivery: VerifiedWebhook): Promise<void> {
     const body = delivery.rawBody.toString('utf8');
     const event = parse(body);
-    if (event === undefined) return;
+    if (event === undefined) {
+      // A signed delivery of a shape this code does not read: keep the raw body under its
+      // hash so it can be inspected, and answer 200 (the processor must not retry it).
+      const id = `unparseable:${createHash('sha256').update(delivery.rawBody).digest('hex')}`;
+      const raw: StoredWebhook = {
+        id,
+        eventType: 'unparseable',
+        receivedAtMs: delivery.receivedAtMs,
+        body,
+      };
+      if (await this.deps.events.insertIfAbsent(raw)) {
+        await this.deps.events.markProcessed(id, 'unparseable');
+      }
+      return;
+    }
     const stored: StoredWebhook = {
       id: event.id,
       eventType: event.eventType,

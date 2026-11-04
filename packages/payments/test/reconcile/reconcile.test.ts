@@ -133,6 +133,24 @@ describe('reconcile (R-PAY-100, R-PAY-103, T-PAY-071)', () => {
       },
       'h1',
     ],
+    [
+      'REFUNDED_CAPTURE',
+      {
+        truths: {
+          h1: truth('h1', {
+            captures: [
+              {
+                captureId: 'C1',
+                amountCents: 22000,
+                final: true,
+                refund: { status: 'REFUNDED', refundedCents: 22000 },
+              },
+            ],
+          }),
+        },
+      },
+      'h1',
+    ],
     ['AMOUNT_MISMATCH', { truths: { h1: truth('h1', { capturedCents: 21000 }) } }, 'h1'],
     [
       'LIVE_HOLD_AFTER_SETTLED',
@@ -164,6 +182,15 @@ describe('reconcile (R-PAY-100, R-PAY-103, T-PAY-071)', () => {
     expect(codes(r).filter((c) => c === code)).toHaveLength(1);
     expect(r.findings.find((f) => f.code === code)?.holdId).toBe(holdId);
     expect(r.findings.every((f) => f.code === code)).toBe(true);
+  });
+
+  it('reads a journal void recorded under the hold id as a conflict with a PayPal capture', async () => {
+    const r = await run({
+      journal: journal({ voids: { h2: 'voided' } }),
+      records: [record('h1', 'b1', 'CAPTURED'), record('h2', 'b2', 'CAPTURED')],
+      truths: { h2: truth('h2', { status: 'CAPTURED', capturedCents: 100 }) },
+    });
+    expect(codes(r)).toContain('STATUS_CONFLICT');
   });
 
   it('covers every finding code in the fixtures', () => {
@@ -241,5 +268,14 @@ describe('reconcile (R-PAY-100, R-PAY-103, T-PAY-071)', () => {
     const metrics = createMetrics();
     await run({ truths: { h1: truth('h1', { capturedCents: 21000 }) } }, metrics);
     expect(metrics.counter('reconcile_findings_total', { code: 'AMOUNT_MISMATCH' })).toBe(1);
+  });
+
+  it('does not treat an inherited property name as a voided bidder', async () => {
+    const r = await run({
+      journal: journal({ voids: {} }),
+      records: [record('h1', 'b1', 'CAPTURED'), record('h2', 'constructor', 'HELD')],
+      truths: { h2: truth('h2', { status: 'CAPTURED', capturedCents: 100 }) },
+    });
+    expect(codes(r)).not.toContain('STATUS_CONFLICT');
   });
 });
