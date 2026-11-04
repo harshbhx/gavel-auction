@@ -39,10 +39,14 @@ describe('T-PAY-039 persistent unknown outcome stays pending', () => {
 
   it('keeps the unknown start time across runs', async () => {
     const rig = makeRig({ b1: 30000, b2: 25000 });
-    await seed(rig, [
-      ['b1', 22000],
-      ['b2', 21000],
-    ]);
+    await seed(
+      rig,
+      [
+        ['b1', 22000],
+        ['b2', 21000],
+      ],
+      { b1: 30000, b2: 25000 },
+    );
     rig.core.inject('capture', 'timeout_before', rig.auth['b1'] ?? '', 3);
     const first = await runCapturePhase(rig.deps, 'auc1');
     const since = first.status === 'pending' ? first.journal.unknownSince : null;
@@ -136,10 +140,14 @@ describe('T-PAY-041 review deadline', () => {
 
   it('a capture that did take effect is still adopted after the deadline', async () => {
     const rig = makeRig({ b1: 30000, b2: 25000 });
-    await seed(rig, [
-      ['b1', 22000],
-      ['b2', 21000],
-    ]);
+    await seed(
+      rig,
+      [
+        ['b1', 22000],
+        ['b2', 21000],
+      ],
+      { b1: 30000, b2: 25000 },
+    );
     rig.core.inject('capture', 'timeout_after_success', rig.auth['b1'] ?? '', 1);
     expect((await runCapturePhase(rig.deps, 'auc1')).status).toBe('pending');
     rig.clock.advance(601_000);
