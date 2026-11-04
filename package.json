@@ -16,28 +16,31 @@
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "echo 'test: not implemented'",
-    "test:pkg": "echo 'test:pkg: not implemented'",
-    "test:coverage": "echo 'test:coverage: not implemented'",
-    "test:property": "echo 'test:property: not implemented'",
+    "test": "vitest run --project 'unit:*' --passWithNoTests",
+    "test:pkg": "vitest run --passWithNoTests --project",
+    "test:coverage": "vitest run --coverage --project 'unit:*' --passWithNoTests && node scripts/check-coverage.mjs",
+    "test:property": "vitest run --project 'property:*' --passWithNoTests",
     "test:scenarios": "echo 'test:scenarios: not implemented'",
     "test:e2e": "echo 'test:e2e: not implemented'",
     "test:e2e:sandbox": "echo 'test:e2e:sandbox: not implemented'",
     "test:load": "echo 'test:load: not implemented'",
     "report": "echo 'report: not implemented'",
     "check:secrets": "echo 'check:secrets: not implemented'",
-    "check:deps": "echo 'check:deps: not implemented'",
+    "check:deps": "depcruise packages --config .dependency-cruiser.cjs && node scripts/check-engine-purity.mjs",
     "check:ascii": "echo 'check:ascii: not implemented'",
     "check:banned-words": "echo 'check:banned-words: not implemented'",
     "check:ownership": "node scripts/check-ownership.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.15.0",
+    "@vitest/coverage-v8": "2.1.8",
+    "dependency-cruiser": "16.8.0",
     "eslint": "9.15.0",
     "eslint-plugin-react-hooks": "5.0.0",
     "globals": "15.12.0",
     "prettier": "3.3.3",
     "typescript": "5.6.3",
-    "typescript-eslint": "8.15.0"
+    "typescript-eslint": "8.15.0",
+    "vitest": "2.1.8"
   }
 }
