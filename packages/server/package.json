@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@gavel/shared": "0.1.0"
+    "@gavel/shared": "0.1.0",
+    "zod": "3.23.8"
   },
   "devDependencies": {
     "typescript": "5.6.3",
