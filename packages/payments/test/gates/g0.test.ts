@@ -43,10 +43,10 @@ describe('gate g0', () => {
 });
 
 describe('gateCurrency', () => {
-  it('defaults to USD, accepts INR and rejects other shapes', () => {
+  it('defaults to USD, accepts INR and normalises case', () => {
     expect(gateCurrency({})).toBe('USD');
     expect(gateCurrency({ GATE_CURRENCY: '' })).toBe('USD');
     expect(gateCurrency({ GATE_CURRENCY: 'INR' })).toBe('INR');
-    expect(() => gateCurrency({ GATE_CURRENCY: 'inr' })).toThrow();
+    expect(gateCurrency({ GATE_CURRENCY: ' inr ' })).toBe('INR');
   });
 });

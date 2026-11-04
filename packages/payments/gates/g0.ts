@@ -14,8 +14,6 @@ import type { GateContext } from './runner.js';
 
 export const G0_SCRIPT_VERSION = 'g0-1';
 
-const SCOPE_PATTERN = /payments|orders|Braintree|checkout/i;
-
 export async function g0Gate(ctx: GateContext): Promise<void> {
   const token = await fetchAccessToken(
     ctx.http,
@@ -31,7 +29,13 @@ export async function g0Gate(ctx: GateContext): Promise<void> {
     headers: { ...auth, 'PayPal-Request-Id': `g0-${run}` },
     body: {
       intent: 'AUTHORIZE',
-      purchase_units: [{ amount: { currency_code: gateCurrency(), value: '5.00' } }],
+      purchase_units: [
+        {
+          reference_id: `g0-${run}`,
+          custom_id: `g0-${run}`,
+          amount: { currency_code: gateCurrency(), value: '5.00' },
+        },
+      ],
     },
   });
   const orderId = str(field(created.json, 'id'));
