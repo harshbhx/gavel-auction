@@ -96,6 +96,7 @@ const fixtures: Record<string, Record<string, unknown>> = {
     price: 12000,
     ranking: [{ bidderId: B, amount: 12000 }],
   },
+  ceiling_revoked: { ...at(12), type: 'ceiling_revoked', bidderId: B, reason: 'voided' },
   settle_requested: { ...at(10), type: 'settle_requested' },
   settlement_update: {
     ...at(11),

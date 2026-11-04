@@ -1,6 +1,16 @@
 import type { LedgerEntry } from './events.js';
 import type { Ulid } from './types.js';
 
+/** A subscriber fell too far behind and was dropped; reconnect from the last seq seen. */
+export class SubscriberOverflow extends Error {
+  constructor(readonly limit: number) {
+    super(`subscriber is more than ${limit} entries behind`);
+    this.name = 'SubscriberOverflow';
+  }
+}
+
+export const DEFAULT_MAX_QUEUE = 10_000;
+
 type Listener = (entries: readonly LedgerEntry[]) => void;
 
 /**
@@ -11,6 +21,8 @@ type Listener = (entries: readonly LedgerEntry[]) => void;
  */
 export class SubscriptionHub {
   private readonly listeners = new Map<string, Set<Listener>>();
+
+  constructor(private readonly maxQueue: number = DEFAULT_MAX_QUEUE) {}
 
   /** Announces entries that the store has acknowledged. */
   publish(auctionId: Ulid, entries: readonly LedgerEntry[]): void {
@@ -33,12 +45,22 @@ export class SubscriptionHub {
         }
       };
     };
+    const maxQueue = this.maxQueue;
     return {
       [Symbol.asyncIterator]: async function* (): AsyncGenerator<LedgerEntry, void, undefined> {
         const queue: LedgerEntry[] = [];
         let wake: (() => void) | null = null;
+        let overflowed = false;
         const detach = attach((es) => {
-          queue.push(...es);
+          if (overflowed) return;
+          if (queue.length + es.length > maxQueue) {
+            // A reader that stopped draining must not grow memory without bound.
+            overflowed = true;
+            queue.length = 0;
+            detach();
+          } else {
+            queue.push(...es);
+          }
           wake?.();
         });
         try {
@@ -50,6 +72,7 @@ export class SubscriptionHub {
             }
           }
           for (;;) {
+            if (overflowed) throw new SubscriberOverflow(maxQueue);
             const e = queue.shift();
             if (e === undefined) {
               await new Promise<void>((resolve) => {

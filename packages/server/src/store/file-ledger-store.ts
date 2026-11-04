@@ -1,15 +1,47 @@
 import {
   closeSync,
+  existsSync,
   fsyncSync,
   mkdirSync,
   openSync,
   readFileSync,
+  statSync,
   truncateSync,
   writeSync,
 } from 'node:fs';
 import { join } from 'node:path';
 import { GENESIS_PREV, LedgerConflict } from '@gavel/engine';
 import type { LedgerEntry, LedgerStore, Ulid } from '@gavel/engine';
+
+/** Calls `write(buf, offset)` until every byte is out; `write` returns how many it wrote. */
+export function writeFully(buf: Buffer, write: (buf: Buffer, offset: number) => number): void {
+  let off = 0;
+  while (off < buf.length) {
+    const n = write(buf, off);
+    if (n <= 0) throw new Error('ledger write made no progress');
+    off += n;
+  }
+}
+
+function fsyncDir(dir: string): void {
+  const fd = openSync(dir, 'r');
+  try {
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/** The ledger file is damaged somewhere before its tail; it is left as found. */
+export class LedgerCorruption extends Error {
+  constructor(
+    readonly file: string,
+    detail: string,
+  ) {
+    super(`ledger file is corrupt (${detail}): ${file}`);
+    this.name = 'LedgerCorruption';
+  }
+}
 
 /**
  * A durable LedgerStore for one host: one JSON-lines file per auction, one line
@@ -20,9 +52,9 @@ import type { LedgerEntry, LedgerStore, Ulid } from '@gavel/engine';
  * parse on the next start and is dropped. The checks on `expectedHeadSeq`,
  * contiguity and `prev` are the same as the in-memory store.
  *
- * Write order for the three records (see docs/DECISIONS.md): the engine ledger is
- * written first and is the source of truth; the room log is derived from it; the
- * payments journal is saved only after LOT_HAMMERED is in the ledger.
+ * Write order (see docs/DECISIONS.md, D-0012 and D-0014): the room log holds an event first,
+ * the service writes the engine ledger before it acknowledges that event, and the payments
+ * journal is saved only after LOT_HAMMERED is in the ledger.
  */
 export class FileLedgerStore implements LedgerStore {
   private readonly ledgers = new Map<string, LedgerEntry[]>();
@@ -46,22 +78,34 @@ export class FileLedgerStore implements LedgerStore {
       if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
     }
     const entries: LedgerEntry[] = [];
-    let good = 0;
-    // Only newline-terminated lines count: the last segment is an unfinished write.
-    for (const line of text.split('\n').slice(0, -1)) {
-      if (line === '') {
-        good += 1;
-        continue;
-      }
+    const lines = text.split('\n');
+    // Only the final, newline-less segment can be a torn write: every append ends
+    // with a newline, so a terminated line is a complete batch. A terminated line
+    // that does not parse, or does not extend the chain, is damage; keep the file
+    // untouched and refuse to load it (R-ENG-076).
+    const tail = lines.pop() ?? '';
+    for (const [i, line] of lines.entries()) {
+      if (line === '') continue;
+      let batch: unknown;
       try {
-        entries.push(...(JSON.parse(line) as LedgerEntry[]));
-        good += Buffer.byteLength(line) + 1;
+        batch = JSON.parse(line);
       } catch {
-        break; // a torn tail from a crash mid-write: the batch never completed
+        throw new LedgerCorruption(this.path(auctionId), `line ${i + 1} does not parse`);
+      }
+      if (!Array.isArray(batch)) {
+        throw new LedgerCorruption(this.path(auctionId), `line ${i + 1} is not a batch`);
+      }
+      for (const e of batch as LedgerEntry[]) {
+        const want = entries.at(-1)?.hash ?? GENESIS_PREV;
+        if (e.seq !== entries.length + 1 || e.prev !== want) {
+          throw new LedgerCorruption(this.path(auctionId), `line ${i + 1} breaks the chain`);
+        }
+        entries.push(e);
       }
     }
-    // Cut the torn tail off so the next batch starts on a fresh line.
-    if (good < Buffer.byteLength(text)) truncateSync(this.path(auctionId), good);
+    // Cut the unfinished write off so the next batch starts on a fresh line.
+    if (tail !== '')
+      truncateSync(this.path(auctionId), Buffer.byteLength(text) - Buffer.byteLength(tail));
     this.ledgers.set(auctionId, entries);
     return entries;
   }
@@ -83,13 +127,29 @@ export class FileLedgerStore implements LedgerStore {
     if (gap >= 0) throw new RangeError(`entry at index ${gap} is not contiguous`);
     if (entries.length === 0) return;
 
-    const fd = openSync(this.path(auctionId), 'a');
+    const file = this.path(auctionId);
+    const created = !existsSync(file);
+    const before = created ? 0 : statSync(file).size;
+    const fd = openSync(file, 'a');
     try {
-      writeSync(fd, `${JSON.stringify(entries)}\n`);
+      const buf = Buffer.from(`${JSON.stringify(entries)}\n`, 'utf8');
+      // writeSync may write less than asked; loop until the whole line is out.
+      writeFully(buf, (b, off) => writeSync(fd, b, off, b.length - off));
       fsyncSync(fd);
+    } catch (e) {
+      // A partial line would swallow the next batch: cut it back and drop the cache.
+      try {
+        truncateSync(file, before);
+      } catch {
+        // The write error is the one worth reporting.
+      }
+      this.ledgers.delete(auctionId);
+      throw e;
     } finally {
       closeSync(fd);
     }
+    // A new file is only durable once its directory entry is too.
+    if (created) fsyncDir(this.dir);
     cur.push(...entries);
   }
 

@@ -20,9 +20,25 @@ export function decideRevoke(state: AuctionState, cmd: RevokeCommand): DecideRes
   const records = Object.values(state.bidders).filter((b) => b.bidderId === cmd.bidderId);
   if (records.length === 0) throw new EngineError('bad_command', 'unknown bidder');
   if (records.every((b) => b.revoked)) return { events: [], outcome: { kind: 'noop' } };
+  // A hold that was replaced by a raise no longer backs the bidder; its late failure
+  // must not revoke the ceiling the newer hold still covers (ENG-R3-05).
+  if (
+    cmd.holdRef !== undefined &&
+    records.some((b) => b.holdRef !== null) &&
+    !records.some((b) => b.holdRef === cmd.holdRef)
+  ) {
+    return { events: [], outcome: { kind: 'noop' } };
+  }
 
   const events: LedgerEvent[] = [
-    { type: 'CEILING_REVOKED', payload: { bidderId: cmd.bidderId, reason: cmd.reason } },
+    {
+      type: 'CEILING_REVOKED',
+      payload: {
+        bidderId: cmd.bidderId,
+        reason: cmd.reason,
+        ...(cmd.holdRef === undefined ? {} : { holdRef: cmd.holdRef }),
+      },
+    },
   ];
   for (const lotId of state.lotOrder) {
     const lot = state.lots[lotId];

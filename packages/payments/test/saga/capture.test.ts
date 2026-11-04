@@ -395,7 +395,7 @@ describe('unknown outcome (R-PAY-054, R-PAY-055)', () => {
     expect((await runCapturePhase(rig.deps, 'auc1')).status).toBe('pending');
     rig.clock.advance(600_001);
     const out = await runCapturePhase(rig.deps, 'auc1');
-    expect(out).toMatchObject({ status: 'failed', reason: 'unknown_deadline' });
+    expect(out).toMatchObject({ status: 'failed', reason: 'capture_outcome_unknown' });
     expect(out.status === 'failed' && out.journal.state).toBe('FAILED_NEEDS_REVIEW');
     for (const b of ['b2', 'b3']) expect(callsTo(rig, rig.auth[b] ?? '')).toBe(0);
     expect(rig.core.inspect(rig.auth['b1'] ?? '').voidEffects).toBe(0);

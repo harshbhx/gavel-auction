@@ -70,14 +70,32 @@ describe('decide CompleteLot and RecordSettlement', () => {
 
   it('T-ENG-050 R-ENG-067 settlement states must continue from the last one', () => {
     const s = hammered(2000);
-    const a = run(s, settle(400, 'HELD', 'CAPTURING'));
+    const a = run(s, settle(400, 'HELD', 'BIDDING'));
     expect(a.entries.map((e) => e.type)).toEqual(['SETTLEMENT_STATE']);
-    expect(a.state.lots[L1]?.settlement).toBe('CAPTURING');
+    expect(a.state.lots[L1]?.settlement).toBe('BIDDING');
     expect(errCode(() => decide(a.state, settle(500, 'HELD', 'CAPTURED')))).toBe(
       'state_continuity',
     );
-    expect(errCode(() => decide(a.state, settle(500, 'CAPTURING', 'PAID')))).toBe('bad_command');
+    expect(errCode(() => decide(a.state, settle(500, 'BIDDING', 'PAID')))).toBe('bad_command');
     expect(errCode(() => decide(a.state, settle(500, 'NOPE', 'CAPTURED')))).toBe('bad_command');
+  });
+
+  it('T-ENG-145 R-ENG-067 ENG-R3-06 only edges of the settlement graph can be recorded', () => {
+    const s = hammered(2000);
+    expect(errCode(() => decide(s, settle(400, 'HELD', 'HELD')))).toBe('state_continuity');
+    expect(errCode(() => decide(s, settle(400, 'HELD', 'CAPTURED')))).toBe('state_continuity');
+    const settled = run(
+      run(s, settle(400, 'HELD', 'VOIDING')).state,
+      settle(410, 'VOIDING', 'SETTLED'),
+    ).state;
+    expect(errCode(() => decide(settled, settle(420, 'SETTLED', 'HELD')))).toBe('state_continuity');
+    const capturing = run(
+      run(s, settle(400, 'HELD', 'BIDDING')).state,
+      settle(410, 'BIDDING', 'WINNER_SELECTED'),
+    ).state;
+    expect(errCode(() => decide(capturing, settle(420, 'WINNER_SELECTED', 'BIDDING')))).toBe(
+      'state_continuity',
+    );
   });
 
   it('T-ENG-051 R-ENG-069 captured total above the ceiling is an invariant failure', () => {
@@ -121,11 +139,43 @@ describe('decide CompleteLot and RecordSettlement', () => {
     ).state;
     expect(unsold.lots[L1]?.status).toBe('DONE');
     expect(unsold.lots[L1]?.settlement).toBe('VOIDING');
-    expect(errCode(() => decide(unsold, settle(500, 'VOIDING', 'SETTLED')))).toBe('lot_done');
+    const released = run(unsold, settle(500, 'VOIDING', 'SETTLED')).state;
+    expect(released.lots[L1]?.settlement).toBe('SETTLED');
+    expect(errCode(() => decide(released, settle(600, 'SETTLED', 'SETTLED')))).toBe('lot_done');
     const empty = run(
       open(scene(), L1),
       mk(300, { type: 'Hammer', lotId: L1, actor: 'host', early: true }),
     ).state;
     expect(empty.lots[L1]?.settlement).toBe('HELD');
+  });
+
+  it('T-ENG-140 R-ENG-068 ENG-R3-01 a release recorded before the lot goes unsold is not overwritten', () => {
+    const s = hammered(2000);
+    const released = run(
+      run(s, settle(400, 'HELD', 'VOIDING')).state,
+      settle(410, 'VOIDING', 'SETTLED'),
+    ).state;
+    const unsold = run(
+      released,
+      mk(500, {
+        type: 'PromoteRunnerUp',
+        lotId: L1,
+        disqualifiedBidderId: A,
+        reason: 'declined',
+      }),
+    ).state;
+    expect(unsold.lots[L1]?.status).toBe('DONE');
+    expect(unsold.lots[L1]?.settlement).toBe('SETTLED');
+  });
+
+  it('T-ENG-141 R-ENG-067 ENG-R3-01 an aborted lot can record the release of its holds', () => {
+    const aborted = run(
+      open(scene(), L1),
+      mk(300, { type: 'AbortLot', lotId: L1, reason: 'kill switch', actor: 'host' }),
+    ).state;
+    expect(aborted.lots[L1]?.status).toBe('DONE');
+    const voiding = run(aborted, settle(400, 'HELD', 'VOIDING')).state;
+    const settled = run(voiding, settle(500, 'VOIDING', 'SETTLED')).state;
+    expect(settled.lots[L1]?.settlement).toBe('SETTLED');
   });
 });
