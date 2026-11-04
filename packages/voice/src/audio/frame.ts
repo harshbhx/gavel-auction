@@ -40,7 +40,10 @@ function checkPayload(bytes: number, flags: number): void {
   }
   const frames = bytes / FRAME_BYTES;
   if (!Number.isInteger(frames) || frames < 1 || frames > MAX_FRAMES) {
-    throw new VoiceFrameError('bad_length', `payload of ${bytes} bytes is not 1..${MAX_FRAMES} whole frames`);
+    throw new VoiceFrameError(
+      'bad_length',
+      `payload of ${bytes} bytes is not 1..${MAX_FRAMES} whole frames`,
+    );
   }
 }
 
