@@ -2025,9 +2025,9 @@
     }
   },
   {
-    "id": "homophone-001",
+    "id": "teen_ty-001",
     "set": "dev",
-    "category": "homophone",
+    "category": "teen_ty",
     "text": "sixteen",
     "speaker": "7",
     "currentPriceCents": 5000,
@@ -2036,9 +2036,9 @@
     }
   },
   {
-    "id": "homophone-002",
+    "id": "teen_ty-002",
     "set": "dev",
-    "category": "homophone",
+    "category": "teen_ty",
     "text": "seventeen",
     "speaker": "7",
     "currentPriceCents": 6000,
@@ -2047,9 +2047,9 @@
     }
   },
   {
-    "id": "homophone-003",
+    "id": "teen_ty-003",
     "set": "heldout",
-    "category": "homophone",
+    "category": "teen_ty",
     "text": "nineteen",
     "speaker": "7",
     "currentPriceCents": 8000,

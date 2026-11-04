@@ -1328,7 +1328,7 @@
     "candidatesCents": ["5", "6"]
   },
   {
-    "id": "homophone-001",
+    "id": "teen_ty-001",
     "status": "confirm",
     "bidder": "7",
     "amountCents": 1600,
@@ -1336,7 +1336,7 @@
     "candidatesCents": [1600, 6000]
   },
   {
-    "id": "homophone-002",
+    "id": "teen_ty-002",
     "status": "confirm",
     "bidder": "7",
     "amountCents": 1700,
@@ -1344,7 +1344,7 @@
     "candidatesCents": [1700, 7000]
   },
   {
-    "id": "homophone-003",
+    "id": "teen_ty-003",
     "status": "confirm",
     "bidder": "7",
     "amountCents": 1900,

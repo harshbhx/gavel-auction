@@ -25,7 +25,7 @@ describe('T-VOX-042 ASR repair (R-VOX-042)', () => {
   });
 
   it('repairs "for" after a paddle word, matching the Python golden', () => {
-    const r = parseWithAsr('paddle for three hundred', ctx);
+    const r = parseWithAsr('paddle for three hundred');
     expect(r.status).toBe('bid');
     expect(r.bidder).toEqual({ kind: 'paddle', value: '4' });
     expect(r.amountCents).toBe(30000);

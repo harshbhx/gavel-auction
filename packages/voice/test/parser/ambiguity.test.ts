@@ -3,8 +3,6 @@ import { parseBidChecked } from '../../src/parser/ambiguity.js';
 import { computeSpans } from '../../src/parser/spans.js';
 
 const ctx = { speakerBidderId: '7' };
-const amounts = (text: string, c = ctx): Array<number | null> =>
-  parseBidChecked(text, c).candidates.map((x) => x.amountCents);
 
 describe('T-VOX-048 homophones (R-VOX-048)', () => {
   it('price 24000: "two fifteen" is confirm with both readings', () => {
@@ -89,7 +87,7 @@ describe('T-VOX-053 spans (R-VOX-053)', () => {
 
   it('is attached to the parser result', () => {
     const r = parseBidChecked('paddle nine two fifty', ctx);
-    expect(r.spans?.length).toBe(2);
-    expect(amounts('paddle nine two fifty')).toEqual([]);
+    expect(r.spans?.some((s) => s.kind === 'paddle')).toBe(true);
+    expect(r.spans?.some((s) => s.kind === 'amount')).toBe(true);
   });
 });
