@@ -116,8 +116,11 @@ export class PaymentsApiClient {
 
   /**
    * POST .../capture with `amount`, `final_capture` and `invoice_id` exactly as
-   * R-PAY-051 states. Returns the capture id and the amount PayPal reports, or
-   * the requested amount when the answer does not carry one.
+   * R-PAY-051 states. Returns the capture id and the amount PayPal reports. A
+   * capture counts as taken only when PayPal says COMPLETED and reports exactly
+   * the requested amount: DECLINED or FAILED is a definite `declined`; PENDING,
+   * any other status, a missing amount or a different amount is an unknown
+   * outcome (read the authorization before acting).
    */
   async capture(
     authId: string,
@@ -139,7 +142,21 @@ export class PaymentsApiClient {
     const json = parseJson(res.text);
     const captureId = json === undefined ? undefined : nonEmpty(json['id']);
     if (json === undefined || captureId === undefined) throw malformed(res, 'capture');
-    return { captureId, amountCents: centsOf(json['amount']) ?? i.amountCents };
+    const status = nonEmpty(json['status']);
+    if (status === 'DECLINED' || status === 'FAILED') {
+      throw new PayPalError({
+        kind: 'declined',
+        status: res.status,
+        name: `CAPTURE_${status}`,
+        message: `capture ${status.toLowerCase()}`,
+        outcome: 'definite',
+      });
+    }
+    const amountCents = centsOf(json['amount']);
+    if (status !== 'COMPLETED' || amountCents === undefined || amountCents !== i.amountCents) {
+      throw malformed(res, 'capture');
+    }
+    return { captureId, amountCents };
   }
 
   /**
