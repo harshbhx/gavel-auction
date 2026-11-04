@@ -1,0 +1,24 @@
+name: realtime-shared
+on:
+  pull_request:
+    paths:
+      - 'packages/shared/**'
+      - '.github/workflows/realtime-shared.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'packages/shared/**'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+        working-directory: packages/shared
+      - run: npx tsc --noEmit
+        working-directory: packages/shared
+      - run: npx vitest run
+        working-directory: packages/shared
