@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gate G2: PayPal SDK v6 AUTHORIZE</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 42rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.5;
+      }
+      section {
+        border: 1px solid #bbb;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+      }
+      h2 {
+        margin-top: 0;
+        font-size: 1.1rem;
+      }
+      .status {
+        font-family: ui-monospace, monospace;
+        white-space: pre-wrap;
+      }
+      .pass {
+        color: #0a6b2a;
+      }
+      .fail {
+        color: #a31515;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Gate G2: authorize a 5.00 order with the PayPal SDK v6</h1>
+    <p>
+      Sandbox only. Use a personal sandbox buyer. Pay with the PayPal wallet in the first box and as
+      a guest with a sandbox test card in the second. The page tells the server what happened; the
+      server writes the evidence. Take a screenshot of each finished box.
+    </p>
+
+    <section id="wallet">
+      <h2>1. PayPal wallet</h2>
+      <div id="wallet-button"></div>
+      <div class="status" id="wallet-status">waiting for the SDK</div>
+    </section>
+
+    <section id="card">
+      <h2>2. Guest card</h2>
+      <div id="card-button"></div>
+      <div class="status" id="card-status">waiting for the SDK</div>
+    </section>
+
+    <script>
+      // UNVERIFIED (G2): every SDK v6 call name below comes from the v6 documentation and has not
+      // been run by us. The server contract (/api/*) does not depend on them.
+      const $ = (id) => document.getElementById(id);
+      const show = (path, text, cls) => {
+        const el = $(path + '-status');
+        el.textContent = text;
+        el.className = 'status ' + (cls || '');
+      };
+      const post = async (url, body) => {
+        const r = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body || {}),
+        });
+        return { status: r.status, body: await r.json().catch(() => ({})) };
+      };
+      const report = (path, outcome, detail) => post('/api/report', { path, outcome, detail });
+
+      function session(sdk, path, create) {
+        const options = {
+          onApprove: async (data) => {
+            show(path, 'approved, authorizing order ' + data.orderId);
+            const res = await post(
+              '/api/orders/' + encodeURIComponent(data.orderId) + '/authorize',
+              {
+                path,
+              },
+            );
+            const ok = res.status === 200 && res.body.authorized === true;
+            show(
+              path,
+              ok
+                ? 'AUTHORIZED. order ' + res.body.orderId + ', authorization ' + res.body.authId
+                : 'authorize failed: HTTP ' + res.status + ' ' + JSON.stringify(res.body),
+              ok ? 'pass' : 'fail',
+            );
+          },
+          onCancel: () => {
+            show(path, 'cancelled by the buyer', 'fail');
+            report(path, 'cancelled', '');
+          },
+          onError: (e) => {
+            const detail = String((e && e.message) || e).slice(0, 300);
+            show(path, 'error: ' + detail, 'fail');
+            report(path, 'error', detail);
+          },
+        };
+        return create(options);
+      }
+
+      function attach(button, path, mk) {
+        button.addEventListener('click', async () => {
+          try {
+            show(path, 'creating the order');
+            const res = await post('/api/orders', { path });
+            if (res.status !== 200) throw new Error('order creation failed: HTTP ' + res.status);
+            await mk.start(
+              { presentationMode: 'auto' },
+              Promise.resolve({ orderId: res.body.orderId }),
+            );
+          } catch (e) {
+            const detail = String((e && e.message) || e).slice(0, 300);
+            show(path, 'error: ' + detail, 'fail');
+            report(path, 'error', detail);
+          }
+        });
+      }
+
+      async function main() {
+        const cfg = await (await fetch('/api/config')).json();
+        if (!cfg.clientToken) {
+          show('wallet', 'the server could not get a client token', 'fail');
+          show('card', 'the server could not get a client token', 'fail');
+          return;
+        }
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = cfg.sdkUrl;
+          s.onload = resolve;
+          s.onerror = () => reject(new Error('the SDK script did not load'));
+          document.head.appendChild(s);
+        });
+        const sdk = await window.paypal.createInstance({
+          clientToken: cfg.clientToken,
+          components: ['paypal-payments', 'paypal-guest-payments'],
+          pageType: 'checkout',
+        });
+        const eligible = await sdk.findEligibleMethods({ currencyCode: 'USD' });
+
+        if (eligible.isEligible('paypal')) {
+          const btn = document.createElement('paypal-button');
+          btn.setAttribute('type', 'pay');
+          $('wallet-button').appendChild(btn);
+          attach(
+            btn,
+            'wallet',
+            session(sdk, 'wallet', (o) => sdk.createPayPalOneTimePaymentSession(o)),
+          );
+          show('wallet', 'ready: click the button');
+        } else {
+          show('wallet', 'the SDK does not offer PayPal here', 'fail');
+          report('wallet', 'not_offered', '');
+        }
+
+        if (eligible.isEligible('basic_card') || eligible.isEligible('paypal_guest')) {
+          const btn = document.createElement('paypal-basic-card-button');
+          $('card-button').appendChild(btn);
+          attach(
+            btn,
+            'card',
+            session(sdk, 'card', (o) => sdk.createPayPalGuestOneTimePaymentSession(o)),
+          );
+          show('card', 'ready: click the button');
+        } else {
+          show('card', 'the SDK does not offer guest card checkout here', 'fail');
+          report('card', 'not_offered', '');
+        }
+      }
+
+      main().catch((e) => {
+        const detail = String((e && e.message) || e).slice(0, 300);
+        show('wallet', 'error: ' + detail, 'fail');
+        show('card', 'error: ' + detail, 'fail');
+        report('wallet', 'error', detail);
+        report('card', 'error', detail);
+      });
+    </script>
+  </body>
+</html>
