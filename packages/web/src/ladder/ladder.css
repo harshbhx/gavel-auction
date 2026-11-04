@@ -1,0 +1,87 @@
+.gv-ladder__lanes,
+.gv-ladder__rungs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gv-ladder__lane {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.2fr) 3fr minmax(12rem, 1.5fr);
+  gap: var(--space-3, 0.75rem);
+  align-items: center;
+  padding: var(--space-3, 0.75rem) 0;
+  border-bottom: 1px solid var(--color-border, currentColor);
+}
+
+.gv-ladder__who {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+}
+
+.gv-ladder__rungs {
+  display: flex;
+  gap: var(--space-3, 0.75rem);
+  flex-wrap: wrap;
+}
+
+.gv-ladder__rung {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 0.25rem);
+  color: var(--color-fg-muted, inherit);
+}
+
+.gv-ladder__rung[data-status='done'] {
+  color: var(--color-fg, inherit);
+}
+
+.gv-ladder__rung[data-status='current'] {
+  font-weight: 700;
+  color: var(--color-fg, inherit);
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  padding: 0 var(--space-2, 0.5rem);
+}
+
+.gv-ladder__rung[data-status='pending'] .gv-ladder__label {
+  font-style: italic;
+}
+
+.gv-ladder__banner {
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+  align-items: center;
+  border: 2px solid currentColor;
+  padding: var(--space-2, 0.5rem);
+}
+
+/* Phone: each lane becomes a vertical stepper. */
+@media (max-width: 40rem) {
+  .gv-ladder__lane {
+    grid-template-columns: 1fr;
+  }
+
+  .gv-ladder__rungs {
+    flex-direction: column;
+    gap: var(--space-2, 0.5rem);
+    border-inline-start: 2px solid currentColor;
+    padding-inline-start: var(--space-3, 0.75rem);
+  }
+}
+
+/* Forced colors: state is carried by icon, text and borders, never by fill colour. */
+@media (forced-colors: active) {
+  .gv-ladder__rung[data-status='current'] {
+    border-color: Highlight;
+  }
+
+  .gv-ladder__rung[data-status='done'] .gv-ladder__icon {
+    color: CanvasText;
+  }
+
+  .gv-ladder__banner {
+    border-color: CanvasText;
+  }
+}
