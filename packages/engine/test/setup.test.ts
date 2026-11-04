@@ -148,4 +148,33 @@ describe('decideSetup', () => {
     s = apply(s, [{ type: 'AUCTION_CLOSED', payload: { headHash: 'x' } }]);
     expect(errCode(() => decideSetup(s, { ...base, type: 'AddLot', lot }))).toBe('auction_closed');
   });
+
+  it('ENG-RT-01: raising a ceiling carries the new holdRef', () => {
+    let s = run(initialState, create as SetupCommand);
+    s = run(s, {
+      ...base,
+      type: 'RegisterBidder',
+      bidderId: A,
+      ceilingCents: 10000,
+      holdRef: 'H1',
+    });
+    const raise: SetupCommand = {
+      ...base,
+      commandId: id('RAISE'),
+      type: 'RegisterBidder',
+      bidderId: A,
+      ceilingCents: 50000,
+      holdRef: 'H2',
+    };
+    const r = decideSetup(s, raise);
+    expect(r.events).toEqual([
+      {
+        type: 'CEILING_RAISED',
+        payload: { bidderId: A, fromCents: 10000, ceilingCents: 50000, holdRef: 'H2' },
+      },
+    ]);
+    expect(apply(s, r.events).bidders[A]?.holdRef).toBe('H2');
+    const noHold: SetupCommand = { ...raise, holdRef: undefined };
+    expect(errCode(() => decideSetup(s, noHold))).toBe('bad_command');
+  });
 });
