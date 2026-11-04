@@ -7,6 +7,7 @@ import {
   readFileSync,
   statSync,
   truncateSync,
+  unlinkSync,
   writeSync,
 } from 'node:fs';
 import { join } from 'node:path';
@@ -136,10 +137,15 @@ export class FileLedgerStore implements LedgerStore {
       // writeSync may write less than asked; loop until the whole line is out.
       writeFully(buf, (b, off) => writeSync(fd, b, off, b.length - off));
       fsyncSync(fd);
+      // A new file is only durable once its directory entry is too. A failure here leaves
+      // the file ahead of the cache, so it takes the same undo path as a failed write.
+      if (created) fsyncDir(this.dir);
     } catch (e) {
-      // A partial line would swallow the next batch: cut it back and drop the cache.
+      // A partial line would swallow the next batch: cut it back (or remove the file this
+      // call created) and drop the cache.
       try {
-        truncateSync(file, before);
+        if (created) unlinkSync(file);
+        else truncateSync(file, before);
       } catch {
         // The write error is the one worth reporting.
       }
@@ -148,8 +154,6 @@ export class FileLedgerStore implements LedgerStore {
     } finally {
       closeSync(fd);
     }
-    // A new file is only durable once its directory entry is too.
-    if (created) fsyncDir(this.dir);
     cur.push(...entries);
   }
 
