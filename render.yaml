@@ -1,0 +1,24 @@
+# Render blueprint for the single Node host (D-0006, D-0018).
+# The stores are files owned by one process, so the service keeps one instance and
+# its data directory sits on a persistent disk. Without the disk a redeploy wipes
+# the room log, ledger, journals and holds.
+services:
+  - type: web
+    name: gavel-host
+    runtime: node
+    plan: starter
+    numInstances: 1
+    buildCommand: npm ci && npm run build
+    startCommand: node packages/server/dist/index.js
+    healthCheckPath: /healthz
+    disk:
+      name: gavel-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      - key: GAVEL_DATA_DIR
+        value: /var/data
+      - key: GAVEL_MODE
+        value: sandbox

@@ -2,7 +2,15 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Mode } from '../types.js';
 
-export type StepOp = 'register' | 'bid' | 'tick' | 'hammer' | 'promote' | 'revoke' | 'complete';
+export type StepOp =
+  | 'register'
+  | 'bid'
+  | 'tick'
+  | 'hammer'
+  | 'promote'
+  | 'revoke'
+  | 'complete'
+  | 'abort';
 const OPS: readonly StepOp[] = [
   'register',
   'bid',
@@ -11,6 +19,7 @@ const OPS: readonly StepOp[] = [
   'promote',
   'revoke',
   'complete',
+  'abort',
 ];
 const MODES: readonly Mode[] = ['english', 'proxy', 'second_price'];
 

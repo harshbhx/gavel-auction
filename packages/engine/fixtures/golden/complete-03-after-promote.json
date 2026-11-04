@@ -1,0 +1,87 @@
+{
+  "name": "complete: the capture must match the promoted winner and price",
+  "parity": false,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "b",
+      "ceiling": 100000
+    },
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "c",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "a",
+      "amount": 1000
+    },
+    {
+      "op": "bid",
+      "at": 2000,
+      "bidder": "b",
+      "amount": 1100
+    },
+    {
+      "op": "bid",
+      "at": 3000,
+      "bidder": "c",
+      "amount": 1200
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    },
+    {
+      "op": "promote",
+      "at": 100001,
+      "bidder": "c"
+    },
+    {
+      "op": "complete",
+      "at": 100002,
+      "bidder": "c",
+      "amount": 1200
+    },
+    {
+      "op": "complete",
+      "at": 100003,
+      "bidder": "b",
+      "amount": 1200
+    },
+    {
+      "op": "complete",
+      "at": 100004,
+      "bidder": "b",
+      "amount": 1100
+    },
+    {
+      "op": "complete",
+      "at": 100005,
+      "bidder": "b",
+      "amount": 1100
+    }
+  ],
+  "expect": {
+    "winner": "b",
+    "price": 1100,
+    "rejects": ["not_current_winner", "capture_mismatch", "lot_done"],
+    "endsAt": 100000
+  }
+}
