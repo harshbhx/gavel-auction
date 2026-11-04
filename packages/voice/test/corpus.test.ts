@@ -40,8 +40,8 @@ const golden = load('parser-golden.json', goldenSchema);
  * Floors for what exists today (the 109 Python cases). SPEC R-VOX-077 requires 150 cases and
  * 12 categories once the extended corpus (VOX-40) lands; raise these two constants there.
  */
-const MIN_CASES = 109;
-const MIN_CATEGORIES = 10;
+const MIN_CASES = 150;
+const MIN_CATEGORIES = 12;
 const SPEC_MIN_CASES = 150;
 const SPEC_MIN_CATEGORIES = 12;
 
