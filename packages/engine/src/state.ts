@@ -12,6 +12,14 @@ import type { RejectReason } from './reasons.js';
 import { MAX_AMOUNT_CENTS } from './types.js';
 import type { AuctionConfig, LotConfig, LotStatus, Ulid } from './types.js';
 
+/**
+ * A record with no prototype, so keys such as `constructor` or `__proto__` are plain
+ * own keys and never reach Object.prototype (R-ENG-006).
+ */
+export function dict<T>(entries: Readonly<Record<string, T>> = {}): Record<string, T> {
+  return Object.assign(Object.create(null) as Record<string, T>, entries);
+}
+
 /** Zero hash used as `prev` of the first ledger entry. */
 export const GENESIS_HASH = '0'.repeat(64);
 
@@ -57,6 +65,8 @@ export interface LotState {
   readonly unsoldReason: UnsoldReason | null;
   /** Why the lot was cancelled before the hammer; null for every other lot. */
   readonly abortReason: string | null;
+  /** BID_REJECTED entries recorded for this lot (bounds ledger growth from bad bids). */
+  readonly rejectedBids: number;
   readonly closedAtSeq: number | null;
 }
 
@@ -100,9 +110,9 @@ export const initialState: AuctionState = {
   title: null,
   config: DEFAULT_AUCTION_CONFIG,
   lotOrder: [],
-  lots: {},
-  bidders: {},
-  commands: {},
+  lots: dict(),
+  bidders: dict(),
+  commands: dict(),
   head: { seq: 0, at: 0, hash: GENESIS_HASH },
   closed: false,
   closedHeadHash: null,
@@ -134,6 +144,7 @@ export function newLot(lotId: Ulid, config: LotConfig | null): LotState {
     capturedCents: null,
     unsoldReason: null,
     abortReason: null,
+    rejectedBids: 0,
     closedAtSeq: null,
   };
 }
@@ -428,5 +439,5 @@ export function recordCommand(
 ): AuctionState['commands'] {
   if (e.cmd === null) return commands;
   const next = nextSeen(commands[e.cmd], e);
-  return next === null ? commands : { ...commands, [e.cmd]: next };
+  return next === null ? commands : dict({ ...commands, [e.cmd]: next });
 }

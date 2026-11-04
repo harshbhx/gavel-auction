@@ -54,6 +54,8 @@ export const LIMITS = {
   lots: 200,
   bidders: 1000,
   bidsPerLot: 20000,
+  /** Rejected PlaceBid entries kept per lot; further rejects fail without a ledger entry. */
+  rejectedPerLot: 5000,
   holdRef: 128,
   /** Free-text audit and actor fields (utteranceId, parserVersion, actor, reason, ref). */
   text: 128,
