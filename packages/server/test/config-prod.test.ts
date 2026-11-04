@@ -23,7 +23,9 @@ describe('production config guards (T-RT-090)', () => {
 
   it('counts bytes, not characters', () => {
     // 16 two-byte characters are 32 bytes.
-    expect(productionGuardErrors({ ...good, TOKEN_SECRET: 'é'.repeat(16) })).toEqual([]);
+    expect(
+      productionGuardErrors({ ...good, TOKEN_SECRET: String.fromCharCode(0xe9).repeat(16) }),
+    ).toEqual([]);
   });
 
   it('fails a short admin key', () => {
