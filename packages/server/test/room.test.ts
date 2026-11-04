@@ -475,3 +475,67 @@ describe('round 2 blocking fixes (RT2)', () => {
     }
   });
 });
+
+describe('round 3 blocking fixes (RT3)', () => {
+  class CappedEngine extends TestEngine {
+    override register(bidder: BidderId, ceiling: Cents): void {
+      if (ceiling > 100_000_000) throw new Error('bad_ceiling');
+      super.register(bidder, ceiling);
+    }
+  }
+
+  it('does not store a registration the engine refuses, so replay still loads (SERVICE-R3-01)', async () => {
+    const clock = new ManualClock(START);
+    const ids = new SeqIds();
+    const store = new MemoryStore(() => clock.now());
+    const deps: RoomDeps = { store, clock, ids, engine: (cfg) => new CappedEngine(cfg) };
+    const auctionId = ids.mint<'AuctionId'>();
+    const room = await Room.create(auctionId, config, 'auctioneer-sub', deps);
+    const ok = ids.mint<'BidderId'>();
+    await room.registerBidder({
+      bidderId: ok,
+      name: 'Ada',
+      ceiling: 50000 as Cents,
+      holdRef: 'h1',
+    });
+    const before = await store.lastSeq(auctionId);
+    const huge = ids.mint<'BidderId'>();
+    await expect(
+      room.registerBidder({
+        bidderId: huge,
+        name: 'Big',
+        ceiling: 150_000_000 as Cents,
+        holdRef: 'h2',
+      }),
+    ).rejects.toMatchObject({ code: 'bad_message' });
+    expect(await store.lastSeq(auctionId)).toBe(before);
+    // The room keeps working and the log still replays.
+    const late = ids.mint<'BidderId'>();
+    await room.registerBidder({
+      bidderId: late,
+      name: 'Cy',
+      ceiling: 40000 as Cents,
+      holdRef: 'h3',
+    });
+    const reloaded = await Room.load(auctionId, deps);
+    expect(reloaded.lastSeq).toBe(room.lastSeq);
+  });
+
+  it('skips an already stored registration the engine refuses instead of failing the load (SERVICE-R3-01)', async () => {
+    const clock = new ManualClock(START);
+    const ids = new SeqIds();
+    const store = new MemoryStore(() => clock.now());
+    const lax: RoomDeps = { store, clock, ids, engine: (cfg) => new TestEngine(cfg) };
+    const auctionId = ids.mint<'AuctionId'>();
+    const room = await Room.create(auctionId, config, 'auctioneer-sub', lax);
+    await room.registerBidder({
+      bidderId: ids.mint<'BidderId'>(),
+      name: 'Big',
+      ceiling: 150_000_000 as Cents,
+      holdRef: 'h2',
+    });
+    const strict: RoomDeps = { ...lax, engine: (cfg) => new CappedEngine(cfg) };
+    const reloaded = await Room.load(auctionId, strict);
+    expect(reloaded.lastSeq).toBe(room.lastSeq);
+  });
+});

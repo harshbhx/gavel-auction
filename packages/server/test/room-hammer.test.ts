@@ -398,3 +398,43 @@ describe('settlement (R-RT-051..053, R-RT-060)', () => {
     expect(screen.transport.messages('hammer')).toHaveLength(1);
   });
 });
+
+describe('round 3 hardening (RT3)', () => {
+  it('tries the auto-hammer again after a store error at the due time (SERVICE-R3-13)', async () => {
+    const t = await setup({ autoHammerDelayMs: 3000 });
+    const c1 = await t.connect(t.room, 'bidder', t.b1);
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    t.clock.set(START + 600_000);
+    await t.flush();
+    const append = t.store.appendEvents.bind(t.store);
+    let down = true;
+    t.store.appendEvents = async (...args: Parameters<typeof append>) => {
+      if (down) throw new Error('store down');
+      return append(...args);
+    };
+    t.clock.set(START + 603_000);
+    await t.flush();
+    expect(types(await t.events())).not.toContain('hammered');
+    down = false;
+    t.clock.set(START + 610_000);
+    await t.flush();
+    expect(types(await t.events())).toContain('hammered');
+  });
+
+  it('refuses a registration after the hammer (SERVICE-R3-09)', async () => {
+    const t = await setup({ autoHammerDelayMs: 3000 });
+    t.clock.set(START + 600_000);
+    await t.flush();
+    t.clock.set(START + 603_000);
+    await t.flush();
+    expect(types(await t.events())).toContain('hammered');
+    await expect(
+      t.room.registerBidder({
+        bidderId: t.ids.mint<'BidderId'>(),
+        name: 'Late',
+        ceiling: 40000 as Cents,
+        holdRef: 'h9',
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' });
+  });
+});

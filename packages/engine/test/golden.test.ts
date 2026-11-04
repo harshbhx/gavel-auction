@@ -6,7 +6,7 @@ import { EngineError } from '../src/errors.js';
 import { rank } from '../src/rules/ranking.js';
 import { initialState } from '../src/state.js';
 import type { AuctionState } from '../src/state.js';
-import { loadFixtures } from '../src/testing/fixtures.js';
+import { loadFixtures, parseFixture } from '../src/testing/fixtures.js';
 import type { Fixture, Step } from '../src/testing/fixtures.js';
 import type { IncrementRule, Ulid } from '../src/types.js';
 import { L1, id, mk, run } from './decide-helpers.js';
@@ -173,6 +173,13 @@ export function play(fx: Fixture): Observed {
   };
 }
 
+/** The keys on which the observed result differs from what the fixture expects. */
+function differences(got: Observed, want: Fixture['expect']): string[] {
+  return (Object.keys(want) as Array<keyof typeof want>).filter(
+    (key) => JSON.stringify(got[key]) !== JSON.stringify(want[key]),
+  );
+}
+
 const fixtures = loadFixtures(GOLDEN);
 
 describe('golden fixtures against the TypeScript engine', () => {
@@ -185,9 +192,7 @@ describe('golden fixtures against the TypeScript engine', () => {
     (_name, fx) => {
       const got = play(fx);
       const want = fx.expect;
-      for (const key of Object.keys(want) as Array<keyof typeof want>) {
-        expect(got[key], key).toEqual(want[key]);
-      }
+      expect(differences(got, want)).toEqual([]);
     },
   );
 
@@ -203,6 +208,8 @@ describe('golden fixtures against the TypeScript engine', () => {
       ],
       expect: { price: 101 },
     };
-    expect(play(fx).price).toBe(100);
+    expect(differences(play(fx), fx.expect)).toEqual(['price']);
+    expect(differences(play(fx), { price: 100 })).toEqual([]);
+    expect(() => parseFixture({ ...fx, expect: {} }, 'x.json')).toThrow(/non-empty/);
   });
 });

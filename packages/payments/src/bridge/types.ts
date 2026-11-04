@@ -6,7 +6,12 @@ import type { SettlementState } from '../types.js';
  * structural so the bridge does not import the engine's runtime code.
  */
 export type BridgeCommand =
-  | { type: 'RevokeCeiling'; bidderId: string; reason: 'declined' | 'expired' | 'voided' }
+  | {
+      type: 'RevokeCeiling';
+      bidderId: string;
+      holdRef?: string;
+      reason: 'declined' | 'expired' | 'voided';
+    }
   | { type: 'PromoteRunnerUp'; lotId: string; disqualifiedBidderId: string; reason: string }
   | {
       type: 'RecordSettlement';

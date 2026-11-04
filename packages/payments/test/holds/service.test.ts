@@ -131,6 +131,20 @@ afterEach(async () => {
   await rig.close();
 });
 
+describe('PAYMENTS-R3-08 concurrent createHoldOrder', () => {
+  it('creates one order for two simultaneous calls of one bidder', async () => {
+    const [a, b] = await Promise.all([create(rig), create(rig)]);
+    expect(b).toEqual(a);
+    expect(rig.counts.createOrder).toBe(1);
+    expect(await rig.holds.listByAuction('a1')).toHaveLength(1);
+  });
+
+  it('still creates separate orders for different bidders', async () => {
+    await Promise.all([create(rig, 'b1'), create(rig, 'b2')]);
+    expect(rig.counts.createOrder).toBe(2);
+  });
+});
+
 describe('T-PAY-020 create, approve, complete', () => {
   it('stores the authorization id PayPal returned and ignores one from the browser', async () => {
     const { holdId, orderId } = await create(rig);

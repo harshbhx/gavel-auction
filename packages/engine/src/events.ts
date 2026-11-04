@@ -15,6 +15,30 @@ export const SETTLEMENT_STATES = [
 ] as const;
 export type SettlementState = (typeof SETTLEMENT_STATES)[number];
 
+/**
+ * The edges the settlement saga may record (SPEC 6.1), the same set as the payments
+ * state machine. RecordSettlement refuses any other pair (R-ENG-067).
+ */
+export const SETTLEMENT_EDGES: readonly (readonly [SettlementState, SettlementState])[] = [
+  ['HELD', 'BIDDING'],
+  ['HELD', 'VOIDING'],
+  ['BIDDING', 'VOIDING'],
+  ['BIDDING', 'WINNER_SELECTED'],
+  ['WINNER_SELECTED', 'VOIDING'],
+  ['WINNER_SELECTED', 'CAPTURING'],
+  ['CAPTURING', 'CAPTURED'],
+  ['CAPTURING', 'FALLBACK_RUNNER_UP'],
+  ['FALLBACK_RUNNER_UP', 'CAPTURING'],
+  ['FALLBACK_RUNNER_UP', 'VOIDING'],
+  ['CAPTURED', 'VOIDING'],
+  ['VOIDING', 'SETTLED'],
+  ['WINNER_SELECTED', 'FAILED_NEEDS_REVIEW'],
+  ['CAPTURING', 'FAILED_NEEDS_REVIEW'],
+  ['FALLBACK_RUNNER_UP', 'FAILED_NEEDS_REVIEW'],
+  ['CAPTURED', 'FAILED_NEEDS_REVIEW'],
+  ['VOIDING', 'FAILED_NEEDS_REVIEW'],
+];
+
 /** Bid audit record (R-ENG-083). */
 export interface BidAudit {
   utteranceId?: string;
@@ -64,7 +88,10 @@ export type LedgerEvent =
         lotId?: Ulid;
       };
     }
-  | { type: 'CEILING_REVOKED'; payload: { bidderId: Ulid; reason: RevokeReason } }
+  | {
+      type: 'CEILING_REVOKED';
+      payload: { bidderId: Ulid; reason: RevokeReason; holdRef?: string };
+    }
   | { type: 'LOT_OPENED'; payload: { lotId: Ulid; endsAt: number } }
   | {
       type: 'BID_RECORDED';
@@ -140,7 +167,17 @@ export type LedgerEvent =
       type: 'CANDIDATE_SKIPPED';
       payload: { lotId: Ulid; bidderId: Ulid; reason: string; depth: number; priceCents: number };
     }
-  | { type: 'LOT_UNSOLD'; payload: { lotId: Ulid; reason: UnsoldReason; actor?: string } }
+  | {
+      type: 'LOT_UNSOLD';
+      payload: {
+        lotId: Ulid;
+        reason: UnsoldReason;
+        actor?: string;
+        /** The PromoteRunnerUp body that ended the lot, echoed for idempotency (R-ENG-087). */
+        disqualifiedBidderId?: Ulid;
+        promoteReason?: string;
+      };
+    }
   | { type: 'LOT_ABORTED'; payload: { lotId: Ulid; reason: string; actor: string } }
   | {
       type: 'SETTLEMENT_STATE';

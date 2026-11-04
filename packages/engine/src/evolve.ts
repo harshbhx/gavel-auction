@@ -163,7 +163,8 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
         priceCents: null,
         unsoldReason: e.payload.reason,
         // A lot that was hammered and then lost its last candidate releases its hold (ENG-R2-11).
-        settlement: l.status === 'SETTLING' ? 'VOIDING' : l.settlement,
+        settlement:
+          l.status === 'SETTLING' && l.settlement !== 'SETTLED' ? 'VOIDING' : l.settlement,
       }));
     case 'LOT_ABORTED':
       return setLot(s, e.payload.lotId, (l) => ({

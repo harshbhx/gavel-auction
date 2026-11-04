@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { clearSession, loadSession, saveSession, type StorageLike } from '../../src/net/session';
+import {
+  clearAuctioneerToken,
+  getBidderSession,
+  readAuctioneerToken,
+  type FragmentSource,
+} from '../../src/store/session';
 
 function memory(): StorageLike & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -56,5 +62,43 @@ describe('session storage (R-WEB-029)', () => {
     expect(loadSession('a1', blocked)).toBeNull();
     expect(saveSession('a1', { token: 'x' }, blocked)).toBe(false);
     expect(() => clearSession('a1', blocked)).not.toThrow();
+  });
+});
+
+describe('room identity (R-WEB-029)', () => {
+  function fakeWindow(hash: string): FragmentSource & { urls: string[] } {
+    const urls: string[] = [];
+    return {
+      urls,
+      location: { hash, pathname: '/auctioneer', search: '?r=1' },
+      history: { replaceState: (_d, _u, url) => void urls.push(url) },
+    };
+  }
+
+  it('reads the bidder session and survives blocked storage', () => {
+    const store = memory();
+    saveSession('a1', { token: 't', bidderId: 'b' }, store);
+    expect(getBidderSession('a1', store)).toEqual({ token: 't', bidderId: 'b' });
+    expect(getBidderSession('a1', blocked)).toBeNull();
+  });
+
+  it('reads the auctioneer token once, clears the fragment and keeps it in memory', () => {
+    clearAuctioneerToken();
+    const win = fakeWindow('#token=abc.def');
+    expect(readAuctioneerToken(win)).toBe('abc.def');
+    expect(win.urls).toEqual(['/auctioneer?r=1']);
+    expect(readAuctioneerToken(fakeWindow(''))).toBe('abc.def');
+    clearAuctioneerToken();
+    expect(readAuctioneerToken(fakeWindow(''))).toBeNull();
+  });
+
+  it('still returns the token when the address bar cannot be rewritten', () => {
+    clearAuctioneerToken();
+    const win = fakeWindow('#raw-token');
+    win.history.replaceState = () => {
+      throw new Error('blocked');
+    };
+    expect(readAuctioneerToken(win)).toBe('raw-token');
+    clearAuctioneerToken();
   });
 });
