@@ -67,6 +67,11 @@ export function decideCompleteLot(state: AuctionState, cmd: CompleteLotCommand):
       `lot settlement is ${lot.settlement}, not CAPTURED or SETTLED`,
     );
   }
+  // SETTLED is also reachable by voiding alone (WINNER_SELECTED to VOIDING to SETTLED); that
+  // path never captured anything, so it cannot complete the lot.
+  if (!lot.captureSeen) {
+    throw new EngineError('state_continuity', 'lot settlement never reached CAPTURED');
+  }
   if (lot.winnerId === null || lot.priceCents === null) {
     throw new EngineError('bad_command', 'lot has no winner');
   }

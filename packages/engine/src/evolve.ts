@@ -183,7 +183,11 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
         abortReason: e.payload.reason,
       }));
     case 'SETTLEMENT_STATE':
-      return setLot(s, e.payload.lotId, (l) => ({ ...l, settlement: e.payload.to }));
+      return setLot(s, e.payload.lotId, (l) => ({
+        ...l,
+        settlement: e.payload.to,
+        captureSeen: l.captureSeen || e.payload.to === 'CAPTURED',
+      }));
     case 'LOT_SETTLED':
       return setLot(s, e.payload.lotId, (l) => ({
         ...l,
