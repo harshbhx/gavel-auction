@@ -15,8 +15,7 @@ export type LotStatus = 'PENDING' | 'OPEN' | 'CLOSING' | 'SETTLING' | 'DONE';
 export type BidSource = 'voice' | 'manual' | 'qr';
 
 export type IncrementRule =
-  | { flatCents: number }
-  | { ladder: Array<{ fromCents: number; incrementCents: number }> };
+  { flatCents: number } | { ladder: Array<{ fromCents: number; incrementCents: number }> };
 
 export interface SoftClose {
   windowMs: number;
@@ -54,6 +53,8 @@ export const LIMITS = {
   lots: 200,
   bidders: 1000,
   bidsPerLot: 20000,
+  /** Rejected PlaceBid entries kept per lot; further rejects fail without a ledger entry. */
+  rejectedPerLot: 5000,
   holdRef: 128,
   /** Free-text audit and actor fields (utteranceId, parserVersion, actor, reason, ref). */
   text: 128,
