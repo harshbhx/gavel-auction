@@ -11,8 +11,8 @@ import type { LotConfig, Ulid } from '../src/types.js';
 import { entriesFrom } from './entries.js';
 
 const id = (s: string): Ulid => s.padStart(26, '0') as Ulid;
-const AU = id('AUC');
-const L1 = id('L1');
+const AU = id('AAA');
+const L1 = id('M1');
 const A = id('A');
 
 const base = { commandId: id('CMD'), auctionId: AU, at: 100 };
