@@ -5,6 +5,7 @@ import {
   readdirSync,
   readFileSync,
   writeFileSync,
+  writeSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -115,6 +116,29 @@ describe('FileLedgerStore crash and resume (R-QA-027)', () => {
   });
 });
 
+describe('FileLedgerStore directory sync failure (R4-V06)', () => {
+  class FlakyDirLedger extends FileLedgerStore {
+    failDirOnce = true;
+    protected override syncDir(dir: string): void {
+      if (this.failDirOnce) {
+        this.failDirOnce = false;
+        throw new Error('EIO');
+      }
+      super.syncDir(dir);
+    }
+  }
+
+  it('leaves no batch behind, so a retry writes it once', async () => {
+    const dir = freshDir();
+    const store = new FlakyDirLedger(dir);
+    const e1 = entry(1, GENESIS_PREV);
+    await expect(store.append(A, [e1], 0)).rejects.toThrow('EIO');
+    await store.append(A, [e1], 0);
+    expect((await store.read(A, 1)).map((e) => e.seq)).toEqual([1]);
+    expect((await new FlakyDirLedger(dir).read(A, 1)).map((e) => e.seq)).toEqual([1]);
+  });
+});
+
 describe('writeFully (ENG-R3-08)', () => {
   it('keeps writing after a short write until the whole buffer is out', () => {
     const out: number[] = [];
@@ -171,6 +195,43 @@ describe('FileRoomStore crash and resume (R-RT-093)', () => {
     const second = await FileRoomStore.open(file);
     expect(await second.lastSeq(AID)).toBe(1);
     second.close();
+  });
+
+  it('opens a new file with its directory synced and reopens it unchanged (R4-V07)', async () => {
+    const file = join(freshDir(), 'nested', 'room.jsonl');
+    const first = await FileRoomStore.open(file);
+    await first.appendEvents(AID, 0, [ev(1)]);
+    first.close();
+    const second = await FileRoomStore.open(file);
+    expect(await second.lastSeq(AID)).toBe(1);
+    second.close();
+  });
+
+  it('refuses later writes when a failed write could not be rolled back (R4-V08)', async () => {
+    const file = join(freshDir(), 'room.jsonl');
+    const first = await FileRoomStore.open(file);
+    await first.appendEvents(AID, 0, [ev(1)]);
+    const write = first.io.write;
+    first.io.write = (fd, text) => {
+      writeSync(fd, text.slice(0, 7));
+      throw new Error('disk full');
+    };
+    first.io.truncate = () => {
+      throw new Error('cannot truncate');
+    };
+    await expect(first.appendEvents(AID, 1, [ev(2)])).rejects.toThrow('disk full');
+    first.io.write = write;
+    await expect(first.appendEvents(AID, 1, [ev(2)])).rejects.toThrow('broken');
+    expect(await first.lastSeq(AID)).toBe(1);
+    first.close();
+
+    const second = await FileRoomStore.open(file);
+    expect(await second.lastSeq(AID)).toBe(1);
+    await second.appendEvents(AID, 1, [ev(2)]);
+    second.close();
+    const third = await FileRoomStore.open(file);
+    expect(await third.lastSeq(AID)).toBe(2);
+    third.close();
   });
 
   it('a payments journal and its lease survive a restart through RoomJournalStore', async () => {
