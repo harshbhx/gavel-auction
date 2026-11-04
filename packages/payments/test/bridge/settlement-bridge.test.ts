@@ -69,9 +69,9 @@ async function makeRig(hasHold: readonly string[]): Promise<Rig> {
   }
   await send(100, { type: 'OpenLot', lotId: LOT });
   const bids: Array<[string, number]> = [
-    [A, 22000],
-    [B, 21000],
     [C, 20000],
+    [B, 21000],
+    [A, 22000],
   ];
   for (const [i, [bidderId, amountCents]] of bids.entries()) {
     await send(200 + i * 10, {
