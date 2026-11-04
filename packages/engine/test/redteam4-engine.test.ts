@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { canonicalize } from '../src/canonical.js';
 import type { JsonValue } from '../src/canonical.js';
 import { decide } from '../src/decide/index.js';
-import type { AuctionState } from '../src/state.js';
+import { initialState, type AuctionState } from '../src/state.js';
 import type { SettlementState } from '../src/events.js';
 import { A, B, L1, L2, bid, errCode, lotConfig, mk, open, run, scene } from './decide-helpers.js';
 
@@ -48,9 +48,13 @@ describe('red team round 4 engine fixes', () => {
 
   it('T-ENG-034 R4-E09 R-ENG-044 a revoked bidder cannot register for another lot under lot-scoped holds', () => {
     let s = run(
-      scene({ config: { holdScope: 'lot' }, lots: [lotConfig(L1), lotConfig(L2)] }),
-      mk(1, { type: 'RegisterBidder', bidderId: B, ceilingCents: 5000, lotId: L1 }),
+      initialState,
+      mk(0, { type: 'CreateAuction', title: 'Gala', config: { holdScope: 'lot' } }),
     ).state;
+    for (const lot of [lotConfig(L1), lotConfig(L2)]) {
+      s = run(s, mk(0, { type: 'AddLot', lot })).state;
+    }
+    s = run(s, mk(1, { type: 'RegisterBidder', bidderId: B, ceilingCents: 5000, lotId: L1 })).state;
     s = run(s, mk(2, { type: 'RevokeCeiling', bidderId: B, reason: 'declined' })).state;
     const again = mk(3, { type: 'RegisterBidder', bidderId: B, ceilingCents: 5000, lotId: L2 });
     expect(errCode(() => decide(s, again))).toBe('bad_command');
