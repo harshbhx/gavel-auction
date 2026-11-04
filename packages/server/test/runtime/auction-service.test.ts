@@ -196,7 +196,11 @@ interface Run {
 }
 
 /** A, B and C bid; A leads at 13000. The auctioneer hammers early. */
-async function runToHammer(rig: Rig, service: AuctionService): Promise<Run> {
+async function runToHammer(
+  rig: Rig,
+  service: AuctionService,
+  beforeHammer?: (bidders: Bidder[]) => void,
+): Promise<Run> {
   const auctionId = rig.ids.mint<'AuctionId'>();
   const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
   const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
@@ -209,6 +213,7 @@ async function runToHammer(rig: Rig, service: AuctionService): Promise<Run> {
   await room.submitBid(a.conn, bid(rig, 12000));
   await room.submitBid(c.conn, bid(rig, 12500));
   await room.submitBid(a.conn, bid(rig, 13000));
+  beforeHammer?.([a, b, c]);
   await room.control(boss.conn, { controlId: 'hammer-1', action: 'hammer', args: { closeNow: 1 } });
   return { auctionId, room, a, b, c, screen: screen.transport };
 }
@@ -1256,8 +1261,10 @@ describe('auction service: void phase of the payments package (PAYMENTS-R3-03)',
       maxVoidResumes: 1,
       onError: () => undefined,
     });
-    rig.paypal.core.inject('void', 'http_500', null, 1000);
-    const run = await runToHammer(rig, service);
+    // Only the losers' voids fail; the winner's capture and remainder go through.
+    const run = await runToHammer(rig, service, (bidders) => {
+      for (const b of bidders.slice(1)) rig.paypal.core.inject('void', 'http_500', b.authId, 1000);
+    });
     await service.idle();
     expect((await journalOf(rig, run.auctionId)).state).toBe('VOIDING');
     for (let i = 0; i < 5; i++) {
