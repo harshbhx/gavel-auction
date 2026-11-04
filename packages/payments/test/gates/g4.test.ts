@@ -3,8 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { lintJsonl } from '../../gates/evidence.js';
+import { DEFAULT_FAKE_WEBHOOK_ID, FakePayPalServer } from '../../src/fake/server.js';
 import {
   diffKeys,
+  g4Gate,
   fixtureName,
   parseReceiverLog,
   runG4,
@@ -12,7 +14,7 @@ import {
   simulatorShapes,
   summarizeEvent,
 } from '../../gates/g4.js';
-import { EXIT_OK, EXIT_REFUSED } from '../../gates/runner.js';
+import { EXIT_FAILED, EXIT_OK, EXIT_REFUSED, runGate } from '../../gates/runner.js';
 
 let out: string;
 let lines: string[];
@@ -121,5 +123,44 @@ describe('G4 against the fake', () => {
     const code = await runG4({ argv: ['--out', out], env: { PAYPAL_ENV: 'sandbox' }, log });
     expect(code).toBe(EXIT_REFUSED);
     expect(lines.join('\n')).toContain('--log');
+  });
+});
+
+describe('G4 with a delivery that does not verify', () => {
+  it('writes no fixture for it and fails the run', async () => {
+    const server = new FakePayPalServer();
+    await server.start();
+    try {
+      const forged = JSON.stringify({
+        id: 'WH-FORGED',
+        event_type: 'PAYMENT.CAPTURE.COMPLETED',
+        resource: { id: 'C1' },
+      });
+      const fixturesDir = join(out, 'fixtures');
+      const verdict = async (): Promise<Response> =>
+        new Response(JSON.stringify({ verification_status: 'FAILURE' }), { status: 200 });
+      const code = await runGate({
+        gate: 'G4',
+        scriptVersion: 'test',
+        argv: ['--fake', '--out', out],
+        env: {
+          PAYPAL_ENV: 'sandbox',
+          PAYPAL_BASE_URL: server.url,
+          PAYPAL_WEBHOOK_ID: DEFAULT_FAKE_WEBHOOK_ID,
+        },
+        log,
+        main: (ctx) =>
+          g4Gate(ctx, {
+            deliveries: [{ headers: {}, rawBody: forged }],
+            fixturesDir,
+            fake: true,
+            fetch: verdict,
+          }),
+      });
+      expect(code).toBe(EXIT_FAILED);
+      expect(readdirSync(fixturesDir)).toEqual([]);
+    } finally {
+      await server.stop();
+    }
   });
 });

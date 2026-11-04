@@ -236,7 +236,6 @@ export async function g4Gate(ctx: GateContext, deps: G4Deps): Promise<void> {
       ctx.check(step, 'delivery is a JSON event', true, false);
       continue;
     }
-    seen.add(summary.eventType);
     const v = await verifyDelivery(ctx, deps, token, d);
     ctx.http.note(step, `verify ${summary.eventType}`, {
       eventId: summary.id,
@@ -245,6 +244,15 @@ export async function g4Gate(ctx: GateContext, deps: G4Deps): Promise<void> {
       verification: v.verification,
     });
     ctx.check(step, `${summary.eventType} verifies`, 'SUCCESS', v.verification);
+    if (v.verification !== 'SUCCESS') {
+      // A delivery that did not verify may be forged: no fixture, no shape comparison.
+      ctx.http.note(`G4.2 fixture ${i + 1}`, 'delivery rejected, no fixture written', {
+        eventType: summary.eventType,
+        verification: v.verification,
+      });
+      continue;
+    }
+    seen.add(summary.eventType);
 
     // G4.2 sanitized fixture, one per delivery.
     const n = (counts.get(summary.eventType) ?? 0) + 1;
