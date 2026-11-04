@@ -1,6 +1,8 @@
 import {
   closeSync,
+  fstatSync,
   fsyncSync,
+  ftruncateSync,
   mkdirSync,
   openSync,
   readFileSync,
@@ -57,10 +59,11 @@ export class FileLedgerStore implements LedgerStore {
         entries.push(...(JSON.parse(line) as LedgerEntry[]));
         good += Buffer.byteLength(line) + 1;
       } catch {
-        break; // a torn tail from a crash mid-write: the batch never completed
+        // A newline-terminated line that does not parse is corruption, not a torn tail.
+        throw new Error(`ledger file for ${auctionId} is corrupt at byte ${good}`);
       }
     }
-    // Cut the torn tail off so the next batch starts on a fresh line.
+    // Cut the unterminated final segment (a crash mid-write) so the next batch starts on a fresh line.
     if (good < Buffer.byteLength(text)) truncateSync(this.path(auctionId), good);
     this.ledgers.set(auctionId, entries);
     return entries;
@@ -85,8 +88,20 @@ export class FileLedgerStore implements LedgerStore {
 
     const fd = openSync(this.path(auctionId), 'a');
     try {
-      writeSync(fd, `${JSON.stringify(entries)}\n`);
-      fsyncSync(fd);
+      const before = fstatSync(fd).size;
+      try {
+        writeSync(fd, `${JSON.stringify(entries)}\n`);
+        fsyncSync(fd);
+      } catch (e) {
+        // A partial line would swallow the next batch: cut it back and drop the cache.
+        try {
+          ftruncateSync(fd, before);
+        } catch {
+          // The write error is the one worth reporting.
+        }
+        this.ledgers.delete(auctionId);
+        throw e;
+      }
     } finally {
       closeSync(fd);
     }

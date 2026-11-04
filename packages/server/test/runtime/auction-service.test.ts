@@ -56,8 +56,8 @@ afterEach(async () => {
 });
 
 /** Everything that outlives a restart of the service. */
-async function makeRig() {
-  const paypal = new FakePayPalServer({ timers: { sleep: noSleep } });
+async function makeRig(core: { autoReleaseRemainder?: boolean } = {}) {
+  const paypal = new FakePayPalServer({ timers: { sleep: noSleep }, core });
   await paypal.start();
   open.push(paypal);
   const auth = new TokenManager({
@@ -510,5 +510,94 @@ describe('auction service: crash at every boundary', () => {
       }
       await second.close();
     }
+  });
+});
+
+describe('auction service: round 3 blocking fixes (RT3)', () => {
+  it('refuses a config the engine cannot run before anything is stored (SERVICE-R3-02)', async () => {
+    const rig = await makeRig();
+    const service = rig.service();
+    const tooShort = { ...config, endTs: 500 } as unknown as AuctionConfig;
+    const tooDear = { ...config, reserve: 150_000_000 } as unknown as AuctionConfig;
+    for (const bad of [tooShort, tooDear]) {
+      const id = rig.ids.mint<'AuctionId'>();
+      await expect(service.createAuction(id, bad, 'auctioneer-sub')).rejects.toMatchObject({
+        code: 'bad_message',
+      });
+    }
+    expect(await rig.stores.store.listAuctions()).toHaveLength(0);
+    await service.close();
+  });
+
+  it('resumes the other auctions when one cannot be loaded (SERVICE-R3-02)', async () => {
+    const rig = await makeRig();
+    const first = rig.service();
+    const poisoned = rig.ids.mint<'AuctionId'>();
+    await rig.stores.store.appendEvents(poisoned, 0, [
+      {
+        type: 'auction_created',
+        auctionId: poisoned,
+        seq: 1,
+        ts: START,
+        config: { ...config, endTs: 500 } as unknown as AuctionConfig,
+        auctioneerSub: 'x',
+      },
+    ]);
+    const run = await runToHammer(rig, first);
+    await first.close();
+    const errors: string[] = [];
+    const second = rig.service({ onError: (id) => void errors.push(id) });
+    await second.resume();
+    await second.idle();
+    expect(errors).toContain(poisoned);
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    await second.close();
+  });
+
+  it('settles a hammered room whose first run died before the journal existed (SERVICE-R3-03)', async () => {
+    const rig = await makeRig();
+    let fail = true;
+    const service = rig.service({
+      boundary: (label) => {
+        if (fail && label === 'after:prepare') {
+          fail = false;
+          throw new Error('store hiccup');
+        }
+      },
+      onError: () => undefined,
+    });
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    expect(await rig.stores.journals.load(run.auctionId)).toBeNull();
+    // The same process, rooms cached: resume must drive the settlement again.
+    await service.resume();
+    await service.idle();
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    await service.close();
+  });
+
+  it('releases the winner remainder when PayPal does not (SERVICE-R3-06, INT-R3-02)', async () => {
+    const rig = await makeRig({ autoReleaseRemainder: false });
+    const service = rig.service();
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    // Ada held 50000 and was charged 13000: the other 37000 is freed.
+    expect(rig.paypal.core.released(run.a.authId)).toBe(37000);
+    const journal = await journalOf(rig, run.auctionId);
+    expect(journal.voids[`remainder:${run.a.id}`]).toBe('remainder_voided');
+    await service.close();
+  });
+
+  it('keys the void records by bidder so reconcile finds no conflict (INT-R3-03)', async () => {
+    const rig = await makeRig();
+    const service = rig.service();
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    const journal = await journalOf(rig, run.auctionId);
+    expect(Object.keys(journal.voids)).toContain(run.b.id);
+    expect(Object.keys(journal.voids)).toContain(run.c.id);
+    expect(Object.keys(journal.voids)).not.toContain(run.b.holdId);
+    await service.close();
   });
 });
