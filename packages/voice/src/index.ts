@@ -23,3 +23,20 @@ export {
 } from './types.js';
 export { parseUtterance, parseUtteranceOutcome } from './parser/utterance.js';
 export type { UtteranceOutcome } from './parser/utterance.js';
+export {
+  commandIdFromKey,
+  confidenceToBps,
+  resolveConfirm,
+  toPlaceBid,
+} from './pipeline/bid-command.js';
+export type { PlaceBidCommand, PlaceBidContext } from './pipeline/bid-command.js';
+export { AUDIO_ERROR_CODES, createVoiceSession } from './session.js';
+export type {
+  AudioErrorCode,
+  AudioStream,
+  FrameResult,
+  OpenResult,
+  StreamKey,
+  VoiceSession,
+  VoiceSessionDeps,
+} from './session.js';
