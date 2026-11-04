@@ -39,7 +39,7 @@ describe('decide CompleteLot and RecordSettlement', () => {
     expect(errCode(() => decide(r.state, settle(500, 'HELD', 'CAPTURING')))).toBe('lot_done');
   });
 
-  it('R-ENG-066 a lot that was not hammered cannot be completed', () => {
+  it('T-ENG-049 R-ENG-066 a lot that was not hammered cannot be completed', () => {
     const s = open(scene(), L1);
     expect(errCode(() => decide(s, complete(400, 2000)))).toBe('bad_command');
     expect(
@@ -68,7 +68,7 @@ describe('decide CompleteLot and RecordSettlement', () => {
     expect(decide(lowerCeiling(s, 2000), complete(400, 2000)).events).toHaveLength(1);
   });
 
-  it('R-ENG-069 event scope sums captured cents of every lot of the bidder', () => {
+  it('T-ENG-051 R-ENG-069 event scope sums captured cents of every lot of the bidder', () => {
     let s = open(scene({ lots: [lotConfig(L1), lotConfig(L2)] }), L1);
     s = bid(s, 200, A, 60000).state;
     s = run(s, mk(300, { type: 'Hammer', lotId: L1, actor: 'host', early: true })).state;

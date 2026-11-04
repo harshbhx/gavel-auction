@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { decide } from '../src/decide/index.js';
-import { A, B, C, L1, bid, errCode, mk, open, run, scene } from './decide-helpers.js';
+import { A, B, L1, id, bid, errCode, mk, open, run, scene } from './decide-helpers.js';
 
 const revoke = (at: number, bidderId: typeof A, reason: 'declined' | 'expired' = 'declined') =>
   mk(at, { type: 'RevokeCeiling', bidderId, reason });
@@ -19,8 +19,8 @@ describe('decide RevokeCeiling', () => {
     expect(lot?.best[B]?.amountCents).toBe(2500);
     const again = bid(r.state, 600, A, 4000);
     expect(again.result.outcome).toEqual({ kind: 'rejected', reason: 'ceiling_revoked' });
-    const unknown = bid(r.state, 600, C, 4000);
-    expect(unknown.result.outcome.kind).toBe('rejected');
+    const unknown = bid(r.state, 600, id('BD'), 4000);
+    expect(unknown.result.outcome).toEqual({ kind: 'rejected', reason: 'unregistered' });
     expect(errCode(() => decide(r.state, revoke(700, 'ZZ' as typeof A)))).toBe('bad_id');
   });
 
@@ -36,7 +36,7 @@ describe('decide RevokeCeiling', () => {
     expect(r.state.lots[L1]?.priceCents).toBe(before?.priceCents);
   });
 
-  it('R-ENG-044 a repeated revocation is a noop and an unknown bidder fails', () => {
+  it('T-ENG-034 R-ENG-044 a repeated revocation is a noop and an unknown bidder fails', () => {
     const s = scene();
     const first = run(s, revoke(10, A));
     expect(first.result.outcome.kind).toBe('accepted');

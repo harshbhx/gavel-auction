@@ -50,7 +50,7 @@ describe('candidates', () => {
     expect(candidates(lot, new Set([A, B]), 2)).toEqual([{ bidderId: C, priceCents: 400 }]);
   });
 
-  it('R-ENG-051 depth limits the runner-ups and english pays the own bid', () => {
+  it('T-ENG-041 R-ENG-051 depth limits the runner-ups and english pays the own bid', () => {
     let s = open(scene(), L1);
     s = bid(s, 200, A, 1000).state;
     s = bid(s, 300, B, 1500).state;
