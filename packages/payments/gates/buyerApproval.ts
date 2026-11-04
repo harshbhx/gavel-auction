@@ -206,6 +206,9 @@ export const HIDE_PAGE_CONTENT_CSS =
   '-webkit-text-fill-color: transparent !important; } ' +
   'img, svg, video, canvas, input, textarea, select { visibility: hidden !important; }';
 
+/** Expression that removes the injected hiding style again, so the page is usable afterwards. */
+const REMOVE_MASK_EXPRESSION = `Array.from(document.querySelectorAll('style')).filter((s) => s.textContent === ${JSON.stringify(HIDE_PAGE_CONTENT_CSS)}).forEach((s) => s.remove())`;
+
 async function visible(l: LocatorLike): Promise<boolean> {
   try {
     return await l.isVisible();
@@ -325,13 +328,19 @@ export async function approveInBrowser(opts: ApproveOptions): Promise<void> {
       // The review page shows the buyer name, email, address and balance as plain text, so all
       // content is hidden in every frame before the shot; if that fails no screenshot is taken.
       try {
+        try {
+          for (const frame of page.frames())
+            await frame.addStyleTag({ content: HIDE_PAGE_CONTENT_CSS });
+        } catch {
+          return;
+        }
+        const mask = page.frames().map((f) => f.locator('input'));
+        await page.screenshot({ path: file, mask }).catch(() => undefined);
+      } finally {
+        // The hiding style must not outlive the shot: later steps wait for visible fields.
         for (const frame of page.frames())
-          await frame.addStyleTag({ content: HIDE_PAGE_CONTENT_CSS });
-      } catch {
-        return;
+          await frame.evaluate(REMOVE_MASK_EXPRESSION).catch(() => undefined);
       }
-      const mask = page.frames().map((f) => f.locator('input'));
-      await page.screenshot({ path: file, mask }).catch(() => undefined);
     };
     /** Takes a masked shot, gathers layout-only diagnostics and throws the stage error. */
     const fail = async (stage: string, message: string, shot: string): Promise<never> => {
