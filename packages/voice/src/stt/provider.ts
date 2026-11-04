@@ -168,9 +168,17 @@ export class EventChannel<T extends { type: string }> {
       return;
     }
     if (this.items.length >= this.capacity) {
-      const i = this.items.findIndex((x) => x.type === 'interim');
-      this.items.splice(i >= 0 ? i : 0, 1);
-      this.dropped += 1;
+      // Interims go first, then utterance_end markers. Finals, errors and state changes carry
+      // decisions and failover signals, so they are dropped only past twice the capacity.
+      let i = this.items.findIndex((x) => x.type === 'interim');
+      if (i < 0) i = this.items.findIndex((x) => x.type === 'utterance_end');
+      if (i >= 0) {
+        this.items.splice(i, 1);
+        this.dropped += 1;
+      } else if (this.items.length >= this.capacity * 2) {
+        this.items.splice(0, 1);
+        this.dropped += 1;
+      }
     }
     this.items.push(item);
   }

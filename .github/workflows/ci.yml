@@ -177,7 +177,6 @@ jobs:
       - name: Python parser golden is up to date
         run: python3 packages/voice/scripts/export-golden.py --check
       - name: Bundle size limit
-        if: ${{ hashFiles('packages/voice/src/parser/parse.ts') != '' && hashFiles('packages/voice/src/decide/policy.ts') != '' && hashFiles('packages/voice/src/browser/capture.ts') != '' }}
         run: npm run size -w @gavel/voice
   e2e-fixtures:
     runs-on: ubuntu-latest

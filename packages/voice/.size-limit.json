@@ -1,0 +1,9 @@
+[
+  {
+    "name": "parser (browser, gzip)",
+    "path": "src/parser/utterance.ts",
+    "limit": "20 KB",
+    "gzip": true,
+    "ignore": ["zod"]
+  }
+]

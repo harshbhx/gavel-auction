@@ -143,7 +143,7 @@ export type PipelineEvent =
 // zod schemas. Objects are strict so persisted audit data stays allow-listed.
 // ---------------------------------------------------------------------------
 
-const cents = z.number().int();
+const cents = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 const reasonSchema = z.enum(VOICE_REASONS);
 const bidderRefSchema = z
   .object({ kind: z.enum(['paddle', 'speaker']), value: z.string() })
@@ -174,7 +174,10 @@ export const parseResultSchema = z
       )
       .optional(),
   })
-  .strict();
+  .strict()
+  .refine((r) => r.status !== 'bid' || r.amountCents !== null, {
+    message: 'a bid needs an amount',
+  });
 
 export const voiceEvidenceSchema = z
   .object({
