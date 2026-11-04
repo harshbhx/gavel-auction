@@ -156,7 +156,7 @@ describe('gala through the runtime', () => {
     }
     // The settlement entries the saga recorded, in ledger order, for the three lots.
     const saga = stored.flatMap((e) => (e.type === 'SETTLEMENT_STATE' ? [e.payload.to] : []));
-    expect(saga).toHaveLength(11);
+    expect(saga).toHaveLength(14);
     expect(saga.filter((s) => s === 'FALLBACK_RUNNER_UP')).toHaveLength(1);
 
     const view = projectPublic(state, alias);
