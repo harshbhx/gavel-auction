@@ -471,7 +471,8 @@ describe('auction service: crash at every boundary', () => {
   });
 
   it('ends with exactly one capture whichever boundary the process dies at', async () => {
-    const total = (await boundaries()).length;
+    const labels = await boundaries();
+    const total = labels.length;
     expect(total).toBeGreaterThan(20);
     for (let crashAt = 0; crashAt < total; crashAt++) {
       const rig = await makeRig();
@@ -492,7 +493,20 @@ describe('auction service: crash at every boundary', () => {
       try {
         await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
       } catch (e) {
-        throw new Error(`crash at boundary ${crashAt} did not settle: ${String(e)}`, { cause: e });
+        const journal = await rig.stores.journals.load(run.auctionId);
+        throw new Error(
+          `crash at boundary ${crashAt} (${labels[crashAt]}) did not settle: ${String(e)}; journal ${JSON.stringify(
+            journal === null
+              ? null
+              : {
+                  state: journal.state,
+                  history: journal.history.map((h) => h.label),
+                  winner: journal.winner,
+                  voids: journal.voids,
+                },
+          )}`,
+          { cause: e },
+        );
       }
       await second.close();
     }
