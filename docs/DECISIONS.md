@@ -192,3 +192,22 @@ Consequences:
 - The ratchet in CI only allows this value to go up from here.
 
 Evidence: scripts/check-coverage.mjs, SPEC-quality R-QA-021.
+
+## Durable write order for the ledger, the room log and the settlement journal
+
+Date: 2026-11-04
+Status: accepted
+Owner: quality
+Context: A restart must not leave the payments journal and holds pointing at a lot the engine ledger no longer knows. Three records are written by three stores: the engine ledger (LedgerStore), the room event log (RoomStore) and the payments journal (JournalStore, held in RoomStore slots).
+Decision: The engine ledger is the source of truth and is written first. The room log is derived from ledger entries and may lag; on start it is rebuilt from the ledger. The payments journal for a lot is created only after LOT_HAMMERED is in the ledger, and the bridge sends RecordSettlement and CompleteLot only after the journal step they describe is saved. A file-backed ledger and room store (one JSON line per batch, synced before the call returns, torn tail dropped on start) back the single-host crash scenarios; Postgres and D1 adapters must pass the same contract suites.
+Alternatives:
+
+- Room log as source of truth: rejected, the engine replays and verifies the hash chain from its own ledger.
+- One transaction across all three: rejected, the stores are separate and PayPal calls sit between them.
+
+Consequences:
+
+- A crash between the ledger append and the journal create leaves a hammered lot with no settlement; the runner creates it on resume.
+- A crash after a capture and before CompleteLot is repaired by the bridge, which reads the engine first and sends only what is missing.
+
+Evidence: SPEC-quality R-QA-027, SPEC-realtime R-RT-093, SPEC-engine R-ENG-076 and R-ENG-104, packages/server/src/store.
