@@ -59,7 +59,7 @@ const pricingLot = (mode: Mode): PricingLot => ({
 });
 
 describe('pricing properties', () => {
-  it('R-ENG-026 a hammered lot has exactly one winner and price <= the winner ceiling', () => {
+  it('T-ENG-018 R-ENG-026 a hammered lot has exactly one winner and price <= the winner ceiling', () => {
     for (const mode of ['english', 'proxy', 'second_price'] as const) {
       fc.assert(
         fc.property(fc.array(bidStep, { maxLength: 30 }), (steps) => {
@@ -86,7 +86,7 @@ describe('pricing properties', () => {
     }
   });
 
-  it('R-ENG-026 a price above the available ceiling throws InvariantError', () => {
+  it('T-ENG-018 R-ENG-026 a price above the available ceiling throws InvariantError', () => {
     fc.assert(
       fc.property(
         fc.integer({ min: 1, max: 1_000_000 }),
@@ -100,7 +100,7 @@ describe('pricing properties', () => {
     );
   });
 
-  it('R-ENG-024 ranking is a total order, independent of insertion order', () => {
+  it('T-ENG-021 R-ENG-024 ranking is a total order, independent of insertion order', () => {
     const raw = fc.record({
       bidder: fc.integer({ min: 0, max: 5 }),
       amountCents: fc.integer({ min: 1, max: 3000 }),
@@ -150,7 +150,7 @@ describe('pricing properties', () => {
     );
   });
 
-  it('R-ENG-017 english: the price is the highest active bid and never decreases', () => {
+  it('T-ENG-014 R-ENG-017 english: the price is the highest active bid and never decreases', () => {
     fc.assert(
       fc.property(fc.array(bidStep, { maxLength: 30 }), (steps) => {
         let prev = 0;
@@ -170,7 +170,7 @@ describe('pricing properties', () => {
     );
   });
 
-  it('R-ENG-019 proxy: reserve with one bidder, else max(reserve, min(top, second + inc))', () => {
+  it('T-ENG-016 R-ENG-019 proxy: reserve with one bidder, else max(reserve, min(top, second + inc))', () => {
     const maxes = fc.array(fc.integer({ min: RESERVE, max: 50000 }), {
       minLength: 1,
       maxLength: 6,

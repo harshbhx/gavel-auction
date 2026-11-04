@@ -46,7 +46,7 @@ const utility = (o: Outcome, who: string, value: number): number =>
   o.winner === who ? value - o.price : 0;
 
 describe('mechanism properties (toy models)', () => {
-  it('R-ENG-023 second price: price is max(reserve, second highest), reserve with one bidder, null before hammer', () => {
+  it('T-ENG-019 R-ENG-023 second price: price is max(reserve, second highest), reserve with one bidder, null before hammer', () => {
     fc.assert(
       fc.property(
         fc.array(fc.integer({ min: 1, max: 5000 }), { minLength: 1, maxLength: 8 }),
@@ -108,7 +108,7 @@ describe('mechanism properties (toy models)', () => {
     );
   });
 
-  it('vickrey: bidding the true value is weakly dominant', () => {
+  it('T-ENG-020 R-ENG-023 vickrey: bidding the true value is weakly dominant', () => {
     fc.assert(
       fc.property(
         fc.integer({ min: 1, max: 1000 }),
@@ -129,7 +129,7 @@ describe('mechanism properties (toy models)', () => {
     );
   });
 
-  it('vickrey: tie at the top goes to the earlier bid and a raise cannot profit', () => {
+  it('T-ENG-020 R-ENG-023 vickrey: tie at the top goes to the earlier bid and a raise cannot profit', () => {
     const tie = sealed(
       [
         { bidder: 'me', amount: 500, at: 1 },
@@ -148,7 +148,7 @@ describe('mechanism properties (toy models)', () => {
     expect(win).toEqual({ winner: 'me', price: 500 });
   });
 
-  it('ascending clock ends within one increment of the second highest value', () => {
+  it('T-ENG-014 R-ENG-017 ascending clock ends within one increment of the second highest value', () => {
     fc.assert(
       fc.property(
         fc.uniqueArray(fc.integer({ min: 150, max: 900 }), { minLength: 2, maxLength: 5 }),
