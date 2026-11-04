@@ -240,7 +240,12 @@ export function commandBody(cmd: Command): string | null {
         ref: cmd.ref,
       });
     case 'RevokeCeiling':
-      return digestOf({ t: 'RevokeCeiling', bidderId: cmd.bidderId, reason: cmd.reason });
+      return digestOf({
+        t: 'RevokeCeiling',
+        bidderId: cmd.bidderId,
+        reason: cmd.reason,
+        ...(cmd.holdRef === undefined ? {} : { holdRef: cmd.holdRef }),
+      });
     case 'PromoteRunnerUp':
       return digestOf({
         t: 'PromoteRunnerUp',
@@ -303,10 +308,19 @@ export function entryBody(e: LedgerEntry): string | null {
     case 'LOT_HAMMERED':
       return digestOf({ t: 'Hammer', lotId: e.payload.lotId, actor: e.payload.actor ?? null });
     case 'LOT_UNSOLD':
-      // A promotion that ends unsold echoes no body; only the Hammer path does.
-      return e.payload.reason === 'no_valid_winner'
-        ? null
-        : digestOf({ t: 'Hammer', lotId: e.payload.lotId, actor: e.payload.actor ?? null });
+      // A promotion that ends unsold echoes its body when the payload carries it; older
+      // ledgers do not, and echo none.
+      if (e.payload.reason === 'no_valid_winner') {
+        return e.payload.disqualifiedBidderId === undefined
+          ? null
+          : digestOf({
+              t: 'PromoteRunnerUp',
+              lotId: e.payload.lotId,
+              disqualifiedBidderId: e.payload.disqualifiedBidderId,
+              reason: e.payload.promoteReason ?? '',
+            });
+      }
+      return digestOf({ t: 'Hammer', lotId: e.payload.lotId, actor: e.payload.actor ?? null });
     case 'LOT_SETTLED':
       return digestOf({
         t: 'CompleteLot',
@@ -335,6 +349,7 @@ export function entryBody(e: LedgerEntry): string | null {
         t: 'RevokeCeiling',
         bidderId: e.payload.bidderId,
         reason: e.payload.reason,
+        ...(e.payload.holdRef === undefined ? {} : { holdRef: e.payload.holdRef }),
       });
     case 'FALLBACK_PROMOTED':
       return digestOf({

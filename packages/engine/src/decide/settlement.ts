@@ -1,6 +1,6 @@
 import type { Command } from '../commands.js';
 import { EngineError, InvariantError } from '../errors.js';
-import { SETTLEMENT_STATES } from '../events.js';
+import { SETTLEMENT_EDGES, SETTLEMENT_STATES } from '../events.js';
 import { bidderFor, scopeKey } from '../rules/exposure.js';
 import type { AuctionState, LotState } from '../state.js';
 import { LIMITS } from '../types.js';
@@ -107,6 +107,9 @@ export function decideRecordSettlement(
   }
   if (cmd.from !== lot.settlement) {
     throw new EngineError('state_continuity', `${cmd.from} != ${lot.settlement}`);
+  }
+  if (!SETTLEMENT_EDGES.some(([f, t]) => f === cmd.from && t === cmd.to)) {
+    throw new EngineError('state_continuity', `${cmd.from} -> ${cmd.to} is not a transition`);
   }
   return {
     events: [
