@@ -1,4 +1,4 @@
-# Mounting the auction service (RT-9N)
+# Mounting the auction service (RT-97)
 
 The composition root is `createAuctionService(deps)` in `packages/server/src/runtime/`. It has no routes and no sockets. The HTTP and WebSocket host (RT-70, RT-72) builds it once at start-up and mounts four things.
 
