@@ -68,3 +68,31 @@ describe('secret rotation (T-RT-060)', () => {
     ).toEqual([NEW]);
   });
 });
+
+describe('previous secret end time (R4-W09)', () => {
+  const until = (NOW_S + 3600) * 1000;
+  const set = secretSetFromConfig({
+    TOKEN_SECRET: NEW,
+    TOKEN_SECRET_PREVIOUS: OLD,
+    TOKEN_SECRET_PREVIOUS_UNTIL: until,
+  });
+
+  it('accepts the previous secret before its end time and counts the use', async () => {
+    let hits = 0;
+    const counted = { ...set, onPreviousUse: () => void (hits += 1) };
+    const token = await signToken(payload, OLD);
+    expect((await verifyRotating(token, counted, opts)).ok).toBe(true);
+    expect(hits).toBe(1);
+    const fresh = await signWithCurrent(payload, counted);
+    expect((await verifyRotating(fresh, counted, opts)).ok).toBe(true);
+    expect(hits).toBe(1);
+  });
+
+  it('refuses the previous secret once its end time has passed', async () => {
+    const token = await signToken(payload, OLD);
+    const late = { ...opts, nowMs: until };
+    expect((await verifyRotating(token, set, late)).ok).toBe(false);
+    const current = await signWithCurrent(payload, set);
+    expect((await verifyRotating(current, set, late)).ok).toBe(true);
+  });
+});

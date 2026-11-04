@@ -31,7 +31,12 @@ export const TokenPayloadSchema = z
 export type TokenPayload = z.infer<typeof TokenPayloadSchema>;
 
 export type VerifyResult =
-  | { ok: true; payload: TokenPayload }
+  | {
+      ok: true;
+      payload: TokenPayload;
+      /** Present only when no secret but a later (previous) one matched the signature. */
+      viaPrevious?: true;
+    }
   | {
       ok: false;
       code: Extract<ErrorCode, 'unauthorized' | 'forbidden' | 'invite_used'>;
@@ -136,9 +141,13 @@ export async function verifyToken(
   // early, so rotation does not log everyone out and timing stays flat.
   const list = typeof secrets === 'string' ? [secrets] : secrets;
   let signed = false;
-  for (const secret of list) {
+  let current = false;
+  for (const [i, secret] of list.entries()) {
     const expected = await mac(secret, body);
-    if (constantTimeEqual(expected, gotSig)) signed = true;
+    if (constantTimeEqual(expected, gotSig)) {
+      signed = true;
+      if (i === 0) current = true;
+    }
   }
   if (!signed) return deny('unauthorized', 'bad signature');
 
@@ -177,5 +186,7 @@ export async function verifyToken(
   } catch {
     return deny('unauthorized', 'revocation check failed');
   }
-  return { ok: true, payload };
+  return current || list.length < 2
+    ? { ok: true, payload }
+    : { ok: true, payload, viaPrevious: true };
 }
