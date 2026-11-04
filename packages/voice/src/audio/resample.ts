@@ -83,7 +83,10 @@ export function resampleTo16k(rateIn: number): Resampler {
 
 /** Clamp float32 [-1, 1] to int16; NaN becomes 0. Pass `dest` to avoid allocating. */
 export function floatToInt16(input: Float32Array, dest?: Int16Array): Int16Array {
-  const out = dest && dest.length >= input.length ? dest.subarray(0, input.length) : new Int16Array(input.length);
+  const out =
+    dest && dest.length >= input.length
+      ? dest.subarray(0, input.length)
+      : new Int16Array(input.length);
   for (let i = 0; i < input.length; i++) {
     const v = input[i] as number;
     if (v !== v) out[i] = 0;
