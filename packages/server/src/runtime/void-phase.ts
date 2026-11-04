@@ -55,12 +55,16 @@ export async function voidSpareHolds(
 ): Promise<number> {
   let open = 0;
   for (const hold of await deps.holds.listByAuction(journal.auctionId)) {
-    if (hold.status !== 'HELD' || hold.authId === undefined || keep.has(hold.holdId)) continue;
+    const authId = hold.authId;
+    if (hold.status !== 'HELD' || authId === undefined || keep.has(hold.holdId)) continue;
     try {
-      await deps.gateway.voidAuthorization(hold.authId, voidRequestId(journal, hold.holdId));
+      await deps.gateway.voidAuthorization(authId, voidRequestId(journal, hold.holdId));
     } catch (e) {
       if (!(e instanceof PayPalError)) throw e;
-      if (!RELEASED_KINDS.has(e.kind) && !(await isGone(deps.gateway, hold))) {
+      if (
+        !RELEASED_KINDS.has(e.kind) &&
+        !(await isGone(deps.gateway, { holdId: hold.holdId, authId }))
+      ) {
         open += 1;
         continue;
       }

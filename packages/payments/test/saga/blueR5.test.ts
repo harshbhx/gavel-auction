@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PayPalError } from '../../src/errors.js';
+import { assertFakeInvariants } from '../../src/fake/invariants.js';
 import { runCapturePhase } from '../../src/saga/capture.js';
 import { runSettlement, runVoidPhase } from '../../src/saga/void.js';
 import { CEILINGS, makeRig, seed, withGateway } from './rig.js';
@@ -35,6 +36,7 @@ describe('round 5 settlement fixes', () => {
     rig.clock.advance(400_000);
     const out = await runSettlement(deps, 'auc1');
     expect(out).toMatchObject({ status: 'failed', reason: 'void_unconfirmed:b2' });
+    assertFakeInvariants(rig.core);
   });
 
   it('R5-S01 a winner remainder that stays unreadable goes to review after the deadline', async () => {
@@ -57,5 +59,6 @@ describe('round 5 settlement fixes', () => {
       status: 'failed',
       reason: 'remainder_unconfirmed',
     });
+    assertFakeInvariants(rig.core);
   });
 });

@@ -386,7 +386,7 @@ class Run {
     if (fresh.length === 0 && stale.length === 0) return;
     await this.patch('pending_since', (d) => {
       for (const k of fresh) d.voids[k] = String(now);
-      for (const k of stale) delete d.voids[k];
+      d.voids = Object.fromEntries(Object.entries(d.voids).filter(([k]) => !stale.includes(k)));
     });
   }
 
@@ -431,7 +431,8 @@ export type SettlementDeps = CaptureDeps & VoidDeps;
 
 /** The outcome of a whole run: capture, then void and release. */
 export type SettlementOutcome =
-  Exclude<CaptureOutcome, { status: 'captured' | 'no_sale' }> | VoidOutcome;
+  | Exclude<CaptureOutcome, { status: 'captured' | 'no_sale' }>
+  | VoidOutcome;
 
 /**
  * Runs, or resumes, a settlement from the hammer to SETTLED: the capture phase
