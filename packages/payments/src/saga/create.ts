@@ -1,5 +1,6 @@
 import type { Clock, JournalStore } from '../ports.js';
 import { JournalExists } from '../stores/memory.js';
+import { DEFAULT_MAX_ATTEMPTS, DEFAULT_TIMEOUT_MS, RETRY_AFTER_MAX_MS } from '../transport.js';
 import { canonicalJson } from '../types.js';
 import type { Journal, JournalHold, SettlementPlan } from '../types.js';
 
@@ -35,7 +36,15 @@ export class LeaseLost extends Error {
   }
 }
 
-export const DEFAULT_LEASE_TTL_MS = 30_000;
+/**
+ * One retried money call can take attempts * timeout plus the Retry-After sleeps
+ * (130 s with the transport defaults) and a 401 doubles that. The lease must
+ * outlive that, or a second runner can start while the first call is in flight.
+ */
+export const DEFAULT_LEASE_TTL_MS =
+  2 *
+    (DEFAULT_MAX_ATTEMPTS * DEFAULT_TIMEOUT_MS + (DEFAULT_MAX_ATTEMPTS - 1) * RETRY_AFTER_MAX_MS) +
+  60_000;
 
 function isCents(n: unknown, min: number): n is number {
   return typeof n === 'number' && Number.isSafeInteger(n) && n >= min;
@@ -48,6 +57,11 @@ export function validatePlan(plan: SettlementPlan): void {
   };
   if (typeof plan.auctionId !== 'string' || plan.auctionId === '') bad('auctionId is required');
   if (!isCents(plan.reserveCents, 0)) bad('reserveCents must be a non-negative integer');
+
+  if (!Array.isArray(plan.candidates)) bad('candidates must be a list');
+  if (plan.holds === null || typeof plan.holds !== 'object' || Array.isArray(plan.holds)) {
+    bad('holds must be an object keyed by bidder');
+  }
 
   const seen = new Set<string>();
   let previousPrice = Number.POSITIVE_INFINITY;
@@ -73,6 +87,7 @@ export function validatePlan(plan: SettlementPlan): void {
     if (typeof h.holdId !== 'string' || h.holdId === '') bad(`hold of ${bidderId} has no holdId`);
     if (typeof h.authId !== 'string' || h.authId === '') bad(`hold of ${bidderId} has no authId`);
     if (!isCents(h.ceilingCents, 1)) bad(`ceiling of ${bidderId} must be a positive integer`);
+    if (!isCents(h.createdAtMs, 0)) bad(`createdAtMs of ${bidderId} must be a safe integer`);
     if (holdIds.has(h.holdId)) bad(`hold ${h.holdId} is used by more than one bidder`);
     holdIds.add(h.holdId);
   }

@@ -30,7 +30,11 @@ import { step, type SettlementEvent } from './machine.js';
 
 export const DEFAULT_UNKNOWN_DEADLINE_MS = 600_000;
 
-export type PendingReason = 'capture_outcome_unknown' | 'kill_switch' | 'truth_unavailable';
+export type PendingReason =
+  | 'capture_outcome_unknown'
+  | 'kill_switch'
+  | 'truth_unavailable'
+  | 'auth_unavailable';
 
 export type CaptureOutcome =
   | { status: 'captured'; journal: Journal }
@@ -344,6 +348,10 @@ class Run {
     const j = this.j;
     if (err.kind === 'kill_switch_engaged') {
       return { status: 'pending', reason: 'kill_switch', journal: j };
+    }
+    if (err.kind === 'auth_unavailable') {
+      // Nothing was sent: the winner is not charged and not failed. Retry later with the same intent.
+      return { status: 'pending', reason: 'auth_unavailable', journal: j };
     }
     if (err.outcome === 'unknown') {
       // R-PAY-054: never the next candidate. Remember when it started.

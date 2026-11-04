@@ -36,13 +36,16 @@ export function clearRegisteredSecrets(): void {
   registered.clear();
 }
 
+const MAX_REDACT_INPUT = 8192;
+
 export function redactString(input: string): string {
-  let out = input;
+  // Bound the input first: the key pattern below is quadratic on long letter runs.
+  let out = input.length > MAX_REDACT_INPUT ? `${input.slice(0, MAX_REDACT_INPUT)}...` : input;
   for (const s of registered) out = out.split(s).join(REDACTED);
   out = out.replace(/\b(Basic|Bearer)\s+[A-Za-z0-9+/=._~-]+/gi, `$1 ${REDACTED}`);
   // Also matches JSON that was already escaped inside a string (\"key\":\"value\", at any depth of escaping).
   out = out.replace(
-    /(\\*"?(?:[A-Za-z_-]*(?:secret|token|authorization|signature|sig|password)[A-Za-z_-]*)\\*"?\s*[:=]\s*)(\\*"?)[^\s"\\,}&]+/gi,
+    /(\\*"?(?:[A-Za-z_-]{0,40}(?:secret|token|authorization|signature|sig|password)[A-Za-z_-]{0,40})\\*"?\s*[:=]\s*)(\\*"?)[^\s"\\,}&]+/gi,
     `$1$2${REDACTED}`,
   );
   return out;
