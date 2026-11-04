@@ -17,13 +17,13 @@ Status: in development for the PayPal AI Hackathon 2026 (PayPal sandbox only). T
 
 PayPal sandbox gates (see `docs/GATES.md`):
 
-| Gate | Question                                      | Status  |
-| ---- | --------------------------------------------- | ------- |
-| G1   | Partial capture and release of the remainder  | NOT RUN |
-| G2   | Card and guest AUTHORIZE                      | NOT RUN |
-| G3   | Honor period, validity and reauthorize        | NOT RUN |
-| G4   | Webhook signature verification on real events | NOT RUN |
-| G5   | Speech-to-text accuracy on noisy bids         | NOT RUN |
+| Gate | Question                                      | Status                           |
+| ---- | --------------------------------------------- | -------------------------------- |
+| G1   | Partial capture and release of the remainder  | PASS-WITH-FALLBACK (wallet only) |
+| G2   | Card and guest AUTHORIZE                      | NOT RUN                          |
+| G3   | Honor period, validity and reauthorize        | NOT RUN                          |
+| G4   | Webhook signature verification on real events | NOT RUN                          |
+| G5   | Speech-to-text accuracy on noisy bids         | NOT RUN                          |
 
 Until the gates are run, behaviour against PayPal is established only against the project's own fake server. Bids are intended to arrive by voice, QR or typed entry; see the table for what exists today.
 
