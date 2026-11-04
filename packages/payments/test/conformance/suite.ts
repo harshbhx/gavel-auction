@@ -73,7 +73,6 @@ export const ASSERTIONS: readonly ConformanceAssertion[] = [
     title: 'a fresh authorization reads as live with nothing captured',
     async run(t) {
       const hold = await t.newAuthorization(30000);
-      const { authId } = hold;
       const truth = await t.gateway.getHoldTruth(ref(hold));
       expect(['CREATED', 'PENDING']).toContain(truth.status);
       expect(truth.amountCents).toBe(30000);
