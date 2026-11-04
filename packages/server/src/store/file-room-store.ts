@@ -1,5 +1,6 @@
 import {
   closeSync,
+  existsSync,
   fstatSync,
   fsyncSync,
   ftruncateSync,
@@ -20,6 +21,15 @@ type LogRecord =
   | { k: 'deny'; jti: Jti; untilMs: EpochMs }
   | { k: 'journal'; key: string; expectedVersion: number; value: unknown };
 
+function fsyncDir(dir: string): void {
+  const fd = openSync(dir, 'r');
+  try {
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+}
+
 /**
  * A RoomStore that survives a restart: the full MemoryStore behaviour with every
  * accepted write also appended to a JSON-lines file and synced (R-RT-093). On
@@ -29,6 +39,13 @@ type LogRecord =
 export class FileRoomStore extends MemoryStore {
   private fd = -1;
   private replaying = true;
+  /** Set when a failed write could not be rolled back; every later write is refused. */
+  private broken: Error | undefined;
+  /** File calls behind `persist`; a test replaces one to make a disk write or rollback fail. */
+  readonly io = {
+    write: (fd: number, text: string): number => writeSync(fd, text),
+    truncate: (fd: number, size: number): void => ftruncateSync(fd, size),
+  };
 
   private constructor(now: () => number) {
     super(now);
@@ -61,9 +78,16 @@ export class FileRoomStore extends MemoryStore {
       good += Buffer.byteLength(line) + 1;
     }
     // Cut a torn tail so the next record starts on a fresh line.
-    if (good < Buffer.byteLength(text)) truncateSync(file, good);
+    const torn = good < Buffer.byteLength(text);
+    if (torn) truncateSync(file, good);
+    const created = !existsSync(file);
     store.replaying = false;
     store.fd = openSync(file, 'a');
+    // A new file, or a cut tail, is only durable once the directory is synced too (R-RT-093).
+    if (created || torn) {
+      if (torn) fsyncSync(store.fd);
+      fsyncDir(dirname(file));
+    }
     return store;
   }
 
@@ -91,16 +115,22 @@ export class FileRoomStore extends MemoryStore {
 
   private persist(r: LogRecord): void {
     if (this.replaying) return;
+    if (this.broken !== undefined) {
+      throw new Error('room store file is broken after a failed rollback; restart the host', {
+        cause: this.broken,
+      });
+    }
     const before = fstatSync(this.fd).size;
     try {
-      writeSync(this.fd, `${JSON.stringify(r)}\n`);
+      this.io.write(this.fd, `${JSON.stringify(r)}\n`);
       fsyncSync(this.fd);
     } catch (e) {
-      // Drop any partial bytes so the next record starts on a fresh line.
+      // Drop any partial bytes so the next record starts on a fresh line. When that fails the
+      // file ends in a partial line: refuse every later write instead of merging into it.
       try {
-        ftruncateSync(this.fd, before);
+        this.io.truncate(this.fd, before);
       } catch {
-        // The original error is the one worth reporting.
+        this.broken = e instanceof Error ? e : new Error(String(e));
       }
       throw e;
     }

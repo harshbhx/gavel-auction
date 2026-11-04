@@ -7,6 +7,7 @@ import {
   readFileSync,
   statSync,
   truncateSync,
+  unlinkSync,
   writeSync,
 } from 'node:fs';
 import { join } from 'node:path';
@@ -148,9 +149,28 @@ export class FileLedgerStore implements LedgerStore {
     } finally {
       closeSync(fd);
     }
-    // A new file is only durable once its directory entry is too.
-    if (created) fsyncDir(this.dir);
+    // A new file is only durable once its directory entry is too. When that sync fails the
+    // batch is not acknowledged: remove the new file and drop the cache, so memory and file
+    // agree and a retry writes the batch once (R-ENG-076).
+    if (created) {
+      try {
+        this.syncDir(this.dir);
+      } catch (e) {
+        try {
+          unlinkSync(file);
+        } catch {
+          // The sync error is the one worth reporting; the cache is dropped either way.
+        }
+        this.ledgers.delete(auctionId);
+        throw e;
+      }
+    }
     cur.push(...entries);
+  }
+
+  /** Syncs a directory entry; a seam so a test can fail it. */
+  protected syncDir(dir: string): void {
+    fsyncDir(dir);
   }
 
   async read(auctionId: Ulid, fromSeq: number): Promise<LedgerEntry[]> {

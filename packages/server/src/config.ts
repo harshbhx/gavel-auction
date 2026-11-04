@@ -23,6 +23,8 @@ const EnvObject = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   TOKEN_SECRET: z.string().min(1),
   TOKEN_SECRET_PREVIOUS: z.string().min(1).optional(),
+  /** Epoch ms after which TOKEN_SECRET_PREVIOUS is no longer accepted. */
+  TOKEN_SECRET_PREVIOUS_UNTIL: int(1).optional(),
   ADMIN_KEY: z.string().min(1),
   STORE: z.enum(['memory', 'postgres', 'd1']).default('memory'),
   DATABASE_URL: z.string().min(1).optional(),

@@ -539,3 +539,32 @@ describe('round 3 blocking fixes (RT3)', () => {
     expect(reloaded.lastSeq).toBe(room.lastSeq);
   });
 });
+
+describe('registration announcement (R4-V09)', () => {
+  it('tells the bidder even when the ledger write after the log append fails', async () => {
+    const t = await setup();
+    let down = true;
+    const loaded = await Room.load(t.auctionId, {
+      ...t.deps,
+      durable: async () => {
+        if (down) throw new Error('ledger down');
+      },
+    });
+    const id = t.ids.mint<'BidderId'>();
+    const transport = new MemoryTransport();
+    await loaded.attach({
+      id: t.ids.mint<'ConnId'>() as ConnId,
+      role: 'bidder',
+      sub: id,
+      transport,
+      bidderId: id,
+    });
+    const reg = { bidderId: id, name: 'Cy', ceiling: 30000 as Cents, holdRef: 'h3' };
+    await expect(loaded.registerBidder(reg)).rejects.toThrow('ledger down');
+    expect(transport.messages('registered')).toHaveLength(1);
+
+    down = false;
+    await loaded.registerBidder(reg);
+    expect(transport.messages('registered')).toHaveLength(1);
+  });
+});
