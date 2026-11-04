@@ -1,0 +1,10 @@
+{
+  "v": 1,
+  "t": "registered",
+  "seq": 15,
+  "ts": 1789000001500,
+  "bidderId": "01J9ZQ3A0B2C4D6F8H0J2K4M6N",
+  "paddle": 12,
+  "ceiling": 50000,
+  "role": "bidder"
+}

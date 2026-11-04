@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>GAVEL quality report</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 2rem;
+        color: #111;
+      }
+      table {
+        border-collapse: collapse;
+        margin-bottom: 1.5rem;
+      }
+      th,
+      td {
+        border: 1px solid #bbb;
+        padding: 0.3rem 0.7rem;
+        text-align: left;
+      }
+      th {
+        background: #eee;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>GAVEL quality report</h1>
+    <p>Commit {{SHA}}, built {{BUILT_AT}}</p>
+    <h2>Layers against targets</h2>
+    {{LAYERS}}
+    <h2>Coverage</h2>
+    {{COVERAGE}}
+    <h2>Scenario matrix</h2>
+    {{MATRIX}}
+    <h2>Invariants run</h2>
+    {{INVARIANTS}}
+    <h2>Mutation score</h2>
+    {{MUTATION}}
+    <h2>Warnings</h2>
+    {{WARNINGS}}
+  </body>
+</html>

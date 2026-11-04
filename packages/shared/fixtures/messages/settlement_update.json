@@ -1,0 +1,9 @@
+{
+  "v": 1,
+  "t": "settlement_update",
+  "seq": 15,
+  "ts": 1789000001500,
+  "rev": 2,
+  "auctionState": "CAPTURING",
+  "you": "CAPTURING"
+}

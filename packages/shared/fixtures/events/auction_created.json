@@ -1,0 +1,19 @@
+{
+  "auctionId": "01J9ZQ4Y6Z8K3M5N7P9R1S3T5V",
+  "seq": 1,
+  "ts": 1789000000001,
+  "type": "auction_created",
+  "config": {
+    "mode": "english",
+    "currency": "USD",
+    "reserve": 10000,
+    "minIncrement": 1000,
+    "endTs": 1789000060000,
+    "softCloseWindowMs": 10000,
+    "softCloseExtensionMs": 10000,
+    "maxExtensions": 3,
+    "ceilingPresets": [20000, 50000],
+    "confirmConfidenceThreshold": 0.7
+  },
+  "auctioneerSub": "host"
+}
