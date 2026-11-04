@@ -1,4 +1,6 @@
 {
-  "files": [],
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": { "types": [] },
+  "files": ["scripts/root-anchor.ts"],
   "references": []
 }
