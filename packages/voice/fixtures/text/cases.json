@@ -1,0 +1,1342 @@
+[
+  {
+    "id": "plain-001",
+    "set": "dev",
+    "category": "plain",
+    "text": "two hundred",
+    "speaker": "4",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "4",
+      "amountCents": 20000
+    }
+  },
+  {
+    "id": "plain-002",
+    "set": "dev",
+    "category": "plain",
+    "text": "three hundred",
+    "speaker": "4",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "4",
+      "amountCents": 30000
+    }
+  },
+  {
+    "id": "plain-003",
+    "set": "dev",
+    "category": "plain",
+    "text": "I'll go three hundred",
+    "speaker": "9",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "9",
+      "amountCents": 30000
+    }
+  },
+  {
+    "id": "plain-004",
+    "set": "dev",
+    "category": "plain",
+    "text": "four hundred and fifty",
+    "speaker": "2",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "2",
+      "amountCents": 45000
+    }
+  },
+  {
+    "id": "plain-005",
+    "set": "dev",
+    "category": "plain",
+    "text": "one thousand",
+    "speaker": "2",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "2",
+      "amountCents": 100000
+    }
+  },
+  {
+    "id": "plain-006",
+    "set": "dev",
+    "category": "plain",
+    "text": "two thousand five hundred",
+    "speaker": "3",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "3",
+      "amountCents": 250000
+    }
+  },
+  {
+    "id": "plain-007",
+    "set": "dev",
+    "category": "plain",
+    "text": "five hundred dollars",
+    "speaker": "5",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "5",
+      "amountCents": 50000
+    }
+  },
+  {
+    "id": "plain-008",
+    "set": "dev",
+    "category": "plain",
+    "text": "I bid seventy five",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "6",
+      "amountCents": 7500
+    }
+  },
+  {
+    "id": "plain-009",
+    "set": "dev",
+    "category": "plain",
+    "text": "ninety",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "6",
+      "amountCents": 9000
+    }
+  },
+  {
+    "id": "plain-010",
+    "set": "dev",
+    "category": "plain",
+    "text": "a hundred and twenty",
+    "speaker": "1",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "1",
+      "amountCents": 12000
+    }
+  },
+  {
+    "id": "plain-011",
+    "set": "dev",
+    "category": "plain",
+    "text": "um I'll say six hundred",
+    "speaker": "8",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "8",
+      "amountCents": 60000
+    }
+  },
+  {
+    "id": "plain-012",
+    "set": "dev",
+    "category": "plain",
+    "text": "$350",
+    "speaker": "8",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "8",
+      "amountCents": 35000
+    }
+  },
+  {
+    "id": "plain-013",
+    "set": "dev",
+    "category": "plain",
+    "text": "420 dollars",
+    "speaker": "8",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "8",
+      "amountCents": 42000
+    }
+  },
+  {
+    "id": "colloquial-001",
+    "set": "dev",
+    "category": "colloquial",
+    "text": "two fifty",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 25000
+    }
+  },
+  {
+    "id": "colloquial-002",
+    "set": "dev",
+    "category": "colloquial",
+    "text": "two-fifty-five",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 25500
+    }
+  },
+  {
+    "id": "colloquial-003",
+    "set": "dev",
+    "category": "colloquial",
+    "text": "three seventy five",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 37500
+    }
+  },
+  {
+    "id": "colloquial-004",
+    "set": "dev",
+    "category": "colloquial",
+    "text": "one twenty",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 12000
+    }
+  },
+  {
+    "id": "colloquial-005",
+    "set": "dev",
+    "category": "colloquial",
+    "text": "twelve fifty",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 125000
+    }
+  },
+  {
+    "id": "colloquial-006",
+    "set": "dev",
+    "category": "colloquial",
+    "text": "fifteen hundred",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 150000
+    }
+  },
+  {
+    "id": "colloquial-007",
+    "set": "dev",
+    "category": "colloquial",
+    "text": "eight fifty",
+    "speaker": "3",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "3",
+      "amountCents": 85000
+    }
+  },
+  {
+    "id": "colloquial-008",
+    "set": "dev",
+    "category": "colloquial",
+    "text": "nine twenty five",
+    "speaker": "3",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "3",
+      "amountCents": 92500
+    }
+  },
+  {
+    "id": "colloquial-009",
+    "set": "dev",
+    "category": "colloquial",
+    "text": "go two sixty",
+    "speaker": "3",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "3",
+      "amountCents": 26000
+    }
+  },
+  {
+    "id": "paddle-001",
+    "set": "dev",
+    "category": "paddle",
+    "text": "two-fifty-five from paddle twelve",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "12",
+      "amountCents": 25500
+    }
+  },
+  {
+    "id": "paddle-002",
+    "set": "dev",
+    "category": "paddle",
+    "text": "paddle 7 three hundred",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 30000
+    }
+  },
+  {
+    "id": "paddle-003",
+    "set": "dev",
+    "category": "paddle",
+    "text": "bidder number nine four hundred",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "9",
+      "amountCents": 40000
+    }
+  },
+  {
+    "id": "paddle-004",
+    "set": "dev",
+    "category": "paddle",
+    "text": "number twenty one, five hundred",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "21",
+      "amountCents": 50000
+    }
+  },
+  {
+    "id": "paddle-005",
+    "set": "dev",
+    "category": "paddle",
+    "text": "three hundred from paddle fourteen",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "14",
+      "amountCents": 30000
+    }
+  },
+  {
+    "id": "paddle-006",
+    "set": "dev",
+    "category": "paddle",
+    "text": "paddle five, two fifty",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "5",
+      "amountCents": 25000
+    }
+  },
+  {
+    "id": "paddle-007",
+    "set": "dev",
+    "category": "paddle",
+    "text": "seat 3 plays 600",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "3",
+      "amountCents": 60000
+    }
+  },
+  {
+    "id": "paddle-008",
+    "set": "dev",
+    "category": "paddle",
+    "text": "three hundred",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "numeral-001",
+    "set": "dev",
+    "category": "numeral",
+    "text": "1.5k",
+    "speaker": "2",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "2",
+      "amountCents": 150000
+    }
+  },
+  {
+    "id": "numeral-002",
+    "set": "dev",
+    "category": "numeral",
+    "text": "2k",
+    "speaker": "2",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "2",
+      "amountCents": 200000
+    }
+  },
+  {
+    "id": "numeral-003",
+    "set": "dev",
+    "category": "numeral",
+    "text": "$1,500",
+    "speaker": "2",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "2",
+      "amountCents": 150000
+    }
+  },
+  {
+    "id": "numeral-004",
+    "set": "dev",
+    "category": "numeral",
+    "text": "1500",
+    "speaker": "2",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "2",
+      "amountCents": 150000
+    }
+  },
+  {
+    "id": "numeral-005",
+    "set": "dev",
+    "category": "numeral",
+    "text": "I'll do 2.5 k",
+    "speaker": "2",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "2",
+      "amountCents": 250000
+    }
+  },
+  {
+    "id": "numeral-006",
+    "set": "dev",
+    "category": "numeral",
+    "text": "one point five k",
+    "speaker": "2",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "2",
+      "amountCents": 150000
+    }
+  },
+  {
+    "id": "numeral-007",
+    "set": "dev",
+    "category": "numeral",
+    "text": "two grand",
+    "speaker": "2",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "2",
+      "amountCents": 200000
+    }
+  },
+  {
+    "id": "numeral-008",
+    "set": "dev",
+    "category": "numeral",
+    "text": "3 hundred",
+    "speaker": "2",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "2",
+      "amountCents": 30000
+    }
+  },
+  {
+    "id": "numeral-009",
+    "set": "dev",
+    "category": "numeral",
+    "text": "paddle 12 for 1,250",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "12",
+      "amountCents": 125000
+    }
+  },
+  {
+    "id": "asr_error-001",
+    "set": "dev",
+    "category": "asr_error",
+    "text": "to fifty",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 25000
+    }
+  },
+  {
+    "id": "asr_error-002",
+    "set": "dev",
+    "category": "asr_error",
+    "text": "too hundred",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 20000
+    }
+  },
+  {
+    "id": "asr_error-003",
+    "set": "dev",
+    "category": "asr_error",
+    "text": "free hundred",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 30000
+    }
+  },
+  {
+    "id": "asr_error-004",
+    "set": "dev",
+    "category": "asr_error",
+    "text": "for hunderd",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 40000
+    }
+  },
+  {
+    "id": "asr_error-005",
+    "set": "dev",
+    "category": "asr_error",
+    "text": "five hundread",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 50000
+    }
+  },
+  {
+    "id": "asr_error-006",
+    "set": "dev",
+    "category": "asr_error",
+    "text": "tree fifty",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 35000
+    }
+  },
+  {
+    "id": "asr_error-007",
+    "set": "dev",
+    "category": "asr_error",
+    "text": "I'll go to hundred and fifty",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "asr_error-008",
+    "set": "dev",
+    "category": "asr_error",
+    "text": "paddle ate, two fifty",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "8",
+      "amountCents": 25000
+    }
+  },
+  {
+    "id": "asr_error-009",
+    "set": "dev",
+    "category": "asr_error",
+    "text": "won thousand",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 100000
+    }
+  },
+  {
+    "id": "asr_error-010",
+    "set": "dev",
+    "category": "asr_error",
+    "text": "two thousend",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 200000
+    }
+  },
+  {
+    "id": "asr_error-011",
+    "set": "dev",
+    "category": "asr_error",
+    "text": "uh, three, hundred",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 30000
+    }
+  },
+  {
+    "id": "asr_error-012",
+    "set": "dev",
+    "category": "asr_error",
+    "text": "THREE HUNDRED!!",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 30000
+    }
+  },
+  {
+    "id": "homophone-001",
+    "set": "dev",
+    "category": "homophone",
+    "text": "two fifteen",
+    "speaker": "7",
+    "currentPriceCents": 24000,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "homophone-002",
+    "set": "dev",
+    "category": "homophone",
+    "text": "fifteen",
+    "speaker": "7",
+    "currentPriceCents": 4000,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "homophone-003",
+    "set": "dev",
+    "category": "homophone",
+    "text": "three sixteen",
+    "speaker": "7",
+    "currentPriceCents": 35000,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "homophone-004",
+    "set": "dev",
+    "category": "homophone",
+    "text": "two fifty",
+    "speaker": "7",
+    "currentPriceCents": 24000,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 25000
+    }
+  },
+  {
+    "id": "homophone-005",
+    "set": "dev",
+    "category": "homophone",
+    "text": "two fifteen",
+    "speaker": "7",
+    "currentPriceCents": 10000,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 21500
+    }
+  },
+  {
+    "id": "homophone-006",
+    "set": "dev",
+    "category": "homophone",
+    "text": "eighty",
+    "speaker": "7",
+    "currentPriceCents": 6000,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 8000
+    }
+  },
+  {
+    "id": "homophone-007",
+    "set": "dev",
+    "category": "homophone",
+    "text": "fifty",
+    "speaker": "7",
+    "currentPriceCents": 4000,
+    "expected": {
+      "status": "bid",
+      "bidder": "7",
+      "amountCents": 5000
+    }
+  },
+  {
+    "id": "ambiguous-001",
+    "set": "dev",
+    "category": "ambiguous",
+    "text": "two fifty or three hundred",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "ambiguous-002",
+    "set": "dev",
+    "category": "ambiguous",
+    "text": "two fifty, no three hundred",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "ambiguous-003",
+    "set": "dev",
+    "category": "ambiguous",
+    "text": "maybe two fifty",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "ambiguous-004",
+    "set": "dev",
+    "category": "ambiguous",
+    "text": "I was thinking about two hundred",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "ambiguous-005",
+    "set": "dev",
+    "category": "ambiguous",
+    "text": "somewhere between two and three hundred",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "ambiguous-006",
+    "set": "dev",
+    "category": "ambiguous",
+    "text": "two twenty fifty",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "two_bidders-001",
+    "set": "dev",
+    "category": "two_bidders",
+    "text": "paddle five two fifty paddle nine two sixty",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "two_bidders-002",
+    "set": "dev",
+    "category": "two_bidders",
+    "text": "paddle 5 300 paddle 9 300",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "two_bidders-003",
+    "set": "dev",
+    "category": "two_bidders",
+    "text": "number three three hundred bidder eight three hundred",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "two_bidders-004",
+    "set": "dev",
+    "category": "two_bidders",
+    "text": "seat two four hundred seat six four fifty",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "correction-001",
+    "set": "dev",
+    "category": "correction",
+    "text": "two fifty no wait three hundred",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "correction-002",
+    "set": "dev",
+    "category": "correction",
+    "text": "three hundred sorry I mean two hundred",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "correction-003",
+    "set": "dev",
+    "category": "correction",
+    "text": "scratch that",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "correction-004",
+    "set": "dev",
+    "category": "correction",
+    "text": "actually never mind",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "correction-005",
+    "set": "dev",
+    "category": "correction",
+    "text": "four hundred, wait no, forget it",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "non_bid-001",
+    "set": "dev",
+    "category": "non_bid",
+    "text": "how much is it now",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-002",
+    "set": "dev",
+    "category": "non_bid",
+    "text": "is it two fifty?",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-003",
+    "set": "dev",
+    "category": "non_bid",
+    "text": "the price is now two hundred",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-004",
+    "set": "dev",
+    "category": "non_bid",
+    "text": "nice vase",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-005",
+    "set": "dev",
+    "category": "non_bid",
+    "text": "did he say three hundred",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-006",
+    "set": "dev",
+    "category": "non_bid",
+    "text": "we are at two fifty now",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-007",
+    "set": "dev",
+    "category": "non_bid",
+    "text": "lot number seven please",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-008",
+    "set": "dev",
+    "category": "non_bid",
+    "text": "my wife says no",
+    "speaker": "7",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "plain-014",
+    "set": "heldout",
+    "category": "plain",
+    "text": "let's do six fifty",
+    "speaker": "2",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "2",
+      "amountCents": 65000
+    }
+  },
+  {
+    "id": "plain-015",
+    "set": "heldout",
+    "category": "plain",
+    "text": "seven hundred and twenty five",
+    "speaker": "2",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "2",
+      "amountCents": 72500
+    }
+  },
+  {
+    "id": "plain-016",
+    "set": "heldout",
+    "category": "plain",
+    "text": "I raise to eight hundred",
+    "speaker": "2",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "2",
+      "amountCents": 80000
+    },
+    "knownDivergence": "Python reads 'to' after a raising verb as ambiguous and returns confirm; the label is the intended bid. Recorded, not deleted (R-VOX-036)."
+  },
+  {
+    "id": "colloquial-010",
+    "set": "heldout",
+    "category": "colloquial",
+    "text": "four forty",
+    "speaker": "5",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "5",
+      "amountCents": 44000
+    }
+  },
+  {
+    "id": "colloquial-011",
+    "set": "heldout",
+    "category": "colloquial",
+    "text": "one fifty five",
+    "speaker": "5",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "5",
+      "amountCents": 15500
+    }
+  },
+  {
+    "id": "colloquial-012",
+    "set": "heldout",
+    "category": "colloquial",
+    "text": "nineteen hundred",
+    "speaker": "5",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "5",
+      "amountCents": 190000
+    }
+  },
+  {
+    "id": "paddle-009",
+    "set": "heldout",
+    "category": "paddle",
+    "text": "paddle thirty, five hundred",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "30",
+      "amountCents": 50000
+    }
+  },
+  {
+    "id": "paddle-010",
+    "set": "heldout",
+    "category": "paddle",
+    "text": "bidder 4 says six hundred",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "4",
+      "amountCents": 60000
+    }
+  },
+  {
+    "id": "paddle-011",
+    "set": "heldout",
+    "category": "paddle",
+    "text": "five hundred from paddle twenty two",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "22",
+      "amountCents": 50000
+    }
+  },
+  {
+    "id": "numeral-010",
+    "set": "heldout",
+    "category": "numeral",
+    "text": "$2.5k",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "6",
+      "amountCents": 250000
+    }
+  },
+  {
+    "id": "numeral-011",
+    "set": "heldout",
+    "category": "numeral",
+    "text": "three point five k",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "6",
+      "amountCents": 350000
+    }
+  },
+  {
+    "id": "numeral-012",
+    "set": "heldout",
+    "category": "numeral",
+    "text": "10k",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "6",
+      "amountCents": 1000000
+    }
+  },
+  {
+    "id": "asr_error-013",
+    "set": "heldout",
+    "category": "asr_error",
+    "text": "tree hundred",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "6",
+      "amountCents": 30000
+    }
+  },
+  {
+    "id": "asr_error-014",
+    "set": "heldout",
+    "category": "asr_error",
+    "text": "fore fifty",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "6",
+      "amountCents": 45000
+    }
+  },
+  {
+    "id": "asr_error-015",
+    "set": "heldout",
+    "category": "asr_error",
+    "text": "to thousand",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "6",
+      "amountCents": 200000
+    }
+  },
+  {
+    "id": "asr_error-016",
+    "set": "heldout",
+    "category": "asr_error",
+    "text": "I'll go sirty",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "bid",
+      "bidder": "6",
+      "amountCents": 3000
+    }
+  },
+  {
+    "id": "homophone-008",
+    "set": "heldout",
+    "category": "homophone",
+    "text": "sixteen hundred",
+    "speaker": "6",
+    "currentPriceCents": 165000,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "homophone-009",
+    "set": "heldout",
+    "category": "homophone",
+    "text": "thirty",
+    "speaker": "6",
+    "currentPriceCents": 2000,
+    "expected": {
+      "status": "bid",
+      "bidder": "6",
+      "amountCents": 3000
+    }
+  },
+  {
+    "id": "ambiguous-007",
+    "set": "heldout",
+    "category": "ambiguous",
+    "text": "two hundred, or two fifty, not sure",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "ambiguous-008",
+    "set": "heldout",
+    "category": "ambiguous",
+    "text": "around three hundred",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "two_bidders-005",
+    "set": "heldout",
+    "category": "two_bidders",
+    "text": "bidder 2 six hundred bidder 3 six fifty",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "correction-006",
+    "set": "heldout",
+    "category": "correction",
+    "text": "five hundred, I mean four",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "confirm"
+    }
+  },
+  {
+    "id": "non_bid-009",
+    "set": "heldout",
+    "category": "non_bid",
+    "text": "who has two fifty",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-010",
+    "set": "heldout",
+    "category": "non_bid",
+    "text": "that's two hundred going once",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-011",
+    "set": "heldout",
+    "category": "non_bid",
+    "text": "sold for three hundred to paddle five",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-012",
+    "set": "heldout",
+    "category": "non_bid",
+    "text": "the reserve is one hundred",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-013",
+    "set": "heldout",
+    "category": "non_bid",
+    "text": "I have two kids",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-014",
+    "set": "heldout",
+    "category": "non_bid",
+    "text": "give me a second",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  }
+]
