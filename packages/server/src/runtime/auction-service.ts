@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   AuctionRuntime,
   EngineError,
@@ -10,7 +11,12 @@ import {
   SettlementBridge,
   createEngineAdapter,
   createSettlement,
+  buildRequestId,
   createWebhookHandler,
+  guardGateway,
+  reconcile,
+  voidAllLiveHolds,
+  PayPalError,
   revokeReasonFor,
   runCapturePhase,
   type AuditSink,
@@ -24,7 +30,9 @@ import {
   type PaymentsGateway,
   type PaymentsMetrics,
   type PlanOutcome,
+  type ReconcileReport,
   type SettlementPlan,
+  type VoidAllOutcome,
   type WebhookEventStore,
   type WebhookHandler,
   type WebhookHeaders,
@@ -70,10 +78,28 @@ export interface AuctionServiceDeps {
   gateway: PaymentsGateway;
   /** Checks PayPal's signature on a webhook delivery. */
   verifier: Pick<WebhookVerifier, 'verifyWebhook'>;
-  killSwitch?: KillSwitch;
+  /**
+   * Required: leaving it out would let captures run while an operator believes they are
+   * stopped. The service also wraps the gateway with it, so money-moving calls are refused
+   * while it is engaged.
+   */
+  killSwitch: KillSwitch;
   metrics?: PaymentsMetrics;
-  /** Lease owner for the saga phases. Default "service". */
+  /**
+   * Lease owner for the saga phases. Default: an id unique to this service instance
+   * (process id plus random), so a restarted or second process cannot take over a lease
+   * that a live run holds. Two instances must never share an owner.
+   */
   leaseOwner?: string;
+  /**
+   * First wait before a settlement that stopped pending (kill switch engaged, unknown
+   * capture outcome, void incomplete, lease busy) is run again; doubled per attempt up to
+   * `retryMaxMs`. 0 turns the retry off, and only `resume()` drives such runs then.
+   * Default 5000.
+   */
+  retryBaseMs?: number;
+  /** Longest wait between two retries. Default 60000. */
+  retryMaxMs?: number;
   /** Unknown capture outcome deadline, in ms (payments default when absent). */
   unknownDeadlineMs?: number;
   /** Void attempts per hold in one run (payments default 3 when absent). */
@@ -118,6 +144,16 @@ export interface AuctionService {
    * periodic timer finishes an abort that was interrupted.
    */
   abortOpenLots(): Promise<string[]>;
+  /**
+   * True while holds may still be approved for the auction: it has not been hammered and no
+   * settlement exists. A host passes it to the hold flow so an approval that lands after the
+   * plan was cut is refused instead of leaving an authorization nobody voids.
+   */
+  acceptsHolds(auctionId: AuctionId): Promise<boolean>;
+  /** Admin: voids every hold of the auction that is not captured (R-PAY-112). */
+  voidAll(auctionId: AuctionId, actor: string): Promise<VoidAllOutcome>;
+  /** Admin: compares the journal, the hold records and PayPal for one auction (R-PAY-100). */
+  reconcile(auctionId: AuctionId): Promise<ReconcileReport>;
   /** The webhook route's body: raw request bytes and headers in, HTTP status out. */
   handleWebhook(rawBody: Buffer, headers: WebhookHeaders): Promise<WebhookResponse>;
   /**
@@ -171,10 +207,15 @@ class Service implements AuctionService, SettlePort {
   private readonly webhook: WebhookHandler;
   private readonly payClock: { nowMs(): number };
   private readonly gateway: PaymentsGateway;
+  private readonly owner: string;
+  private readonly retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly retryAttempts = new Map<string, number>();
+  private closed = false;
 
   constructor(private readonly deps: AuctionServiceDeps) {
     this.payClock = { nowMs: () => deps.clock.now() };
-    this.gateway = withOrderLookup(deps.gateway, deps.holds);
+    this.gateway = guardGateway(withOrderLookup(deps.gateway, deps.holds), deps.killSwitch);
+    this.owner = deps.leaseOwner ?? `service-${process.pid}-${randomUUID()}`;
     this.runtime = new AuctionRuntime({ store: deps.ledger });
     this.bridge = new SettlementBridge(
       createEngineAdapter({
@@ -276,12 +317,53 @@ class Service implements AuctionService, SettlePort {
       throw new GavelError('forbidden', 'the bidder has no held hold in this auction');
     }
     const room = await this.room(input.auctionId);
-    await room.registerBidder({
-      bidderId: input.bidderId,
-      name: input.name,
-      ceiling: hold.ceilingCents as Cents,
-      holdRef: hold.holdId,
-    });
+    try {
+      await room.registerBidder({
+        bidderId: input.bidderId,
+        name: input.name,
+        ceiling: hold.ceilingCents as Cents,
+        holdRef: hold.holdId,
+      });
+    } catch (e) {
+      // A refused registration leaves a live authorization nobody uses. Once the plan is
+      // cut it is not in the journal either, so it is released here (SERVICE-R3-09).
+      if (e instanceof GavelError && e.code === 'conflict')
+        await this.sweepLateHolds(input.auctionId);
+      throw e;
+    }
+  }
+
+  async acceptsHolds(auctionId: AuctionId): Promise<boolean> {
+    if (hammeredEngine(await this.room(auctionId)) !== undefined) return false;
+    return (await this.deps.journals.load(lotIdOf(auctionId))) === null;
+  }
+
+  async voidAll(auctionId: AuctionId, actor: string): Promise<VoidAllOutcome> {
+    return voidAllLiveHolds(
+      {
+        journals: this.deps.journals,
+        gateway: this.gateway,
+        audit: this.deps.audit,
+        clock: this.payClock,
+        owner: this.owner,
+        boundary: (label) => this.boundary(label),
+      },
+      lotIdOf(auctionId),
+      actor,
+    );
+  }
+
+  reconcile(auctionId: AuctionId): Promise<ReconcileReport> {
+    return reconcile(
+      {
+        gateway: this.gateway,
+        journals: this.deps.journals,
+        holds: this.deps.holds,
+        clock: this.payClock,
+        ...(this.deps.metrics !== undefined ? { metrics: this.deps.metrics } : {}),
+      },
+      lotIdOf(auctionId),
+    );
   }
 
   // ---- webhooks
@@ -337,13 +419,44 @@ class Service implements AuctionService, SettlePort {
   }
 
   private schedule(auctionId: string): void {
-    if (this.runs.has(auctionId)) return;
+    if (this.runs.has(auctionId) || this.closed) return;
+    this.clearRetry(auctionId);
     const run = this.settlementRun(auctionId as AuctionId)
+      .then((again) => {
+        if (again) this.armRetry(auctionId);
+        else this.retryAttempts.delete(auctionId);
+      })
       .catch((e: unknown) => this.deps.onError?.(auctionId, e))
       .finally(() => {
         if (this.runs.get(auctionId) === run) this.runs.delete(auctionId);
       });
     this.runs.set(auctionId, run);
+  }
+
+  /**
+   * A run that stopped pending is run again after a growing wait: nothing else would, since
+   * the kill switch being released or a capture outcome becoming known raises no event
+   * (R-PAY-054, R-PAY-055). Runs that stop with an error are left to `resume()`.
+   */
+  private armRetry(auctionId: string): void {
+    const base = this.deps.retryBaseMs ?? DEFAULT_RETRY_BASE_MS;
+    if (base <= 0 || this.closed) return;
+    const attempt = (this.retryAttempts.get(auctionId) ?? 0) + 1;
+    this.retryAttempts.set(auctionId, attempt);
+    const wait = Math.min(this.deps.retryMaxMs ?? DEFAULT_RETRY_MAX_MS, base * 2 ** (attempt - 1));
+    const timer = setTimeout(() => {
+      this.retryTimers.delete(auctionId);
+      this.schedule(auctionId);
+    }, wait);
+    timer.unref();
+    this.retryTimers.set(auctionId, timer);
+  }
+
+  private clearRetry(auctionId: string): void {
+    const timer = this.retryTimers.get(auctionId);
+    if (timer === undefined) return;
+    clearTimeout(timer);
+    this.retryTimers.delete(auctionId);
   }
 
   async idle(): Promise<void> {
@@ -391,6 +504,8 @@ class Service implements AuctionService, SettlePort {
   }
 
   async close(): Promise<void> {
+    this.closed = true;
+    for (const id of [...this.retryTimers.keys()]) this.clearRetry(id);
     for (const room of this.rooms.values()) await (await room).close();
   }
 
@@ -398,7 +513,8 @@ class Service implements AuctionService, SettlePort {
     await this.deps.boundary?.(label);
   }
 
-  private async settlementRun(auctionId: AuctionId): Promise<void> {
+  /** Runs the settlement as far as it goes; true when it stopped pending and should be retried. */
+  private async settlementRun(auctionId: AuctionId): Promise<boolean> {
     const room = await this.room(auctionId);
     const engine = hammeredEngine(room);
     if (engine === undefined) throw new Error('auction is not hammered');
@@ -419,14 +535,15 @@ class Service implements AuctionService, SettlePort {
           perBidder: {},
           note: REVIEW_NOTE,
         });
-        return;
+        return false;
       }
     }
     if (TERMINAL.has(journal.state)) {
       // A process that died after the journal ended but before the room heard the final
       // report: finish the engine side and send it. Repeated reports are dropped by rev.
       await this.finishBridge(room, auctionId, journal);
-      return;
+      await this.sweepLateHolds(auctionId);
+      return false;
     }
     await this.report(room, journal);
 
@@ -436,9 +553,9 @@ class Service implements AuctionService, SettlePort {
         gateway: this.gateway,
         audit: this.deps.audit,
         clock: this.payClock,
-        owner: this.deps.leaseOwner ?? 'service',
+        owner: this.owner,
         boundary: (label) => this.boundary(label),
-        ...(this.deps.killSwitch !== undefined ? { killSwitch: this.deps.killSwitch } : {}),
+        killSwitch: this.deps.killSwitch,
         ...(this.deps.metrics !== undefined ? { metrics: this.deps.metrics } : {}),
         ...(this.deps.unknownDeadlineMs !== undefined
           ? { unknownDeadlineMs: this.deps.unknownDeadlineMs }
@@ -446,13 +563,13 @@ class Service implements AuctionService, SettlePort {
       },
       lotId,
     );
-    if (captured.status === 'busy') return;
+    if (captured.status === 'busy') return true;
     if (captured.status === 'failed') {
       await this.finishBridge(room, auctionId, captured.journal);
-      return;
+      return false;
     }
     await this.report(room, captured.journal);
-    if (captured.status === 'pending') return;
+    if (captured.status === 'pending') return true;
     if (captured.status === 'captured') await this.markCaptured(captured.journal);
     await this.boundary('after:capture-phase');
 
@@ -463,7 +580,7 @@ class Service implements AuctionService, SettlePort {
         holds: this.deps.holds,
         audit: this.deps.audit,
         clock: this.payClock,
-        owner: this.deps.leaseOwner ?? 'service',
+        owner: this.owner,
         boundary: (label) => this.boundary(label),
         ...(this.deps.maxVoidAttempts !== undefined
           ? { maxAttempts: this.deps.maxVoidAttempts }
@@ -471,16 +588,19 @@ class Service implements AuctionService, SettlePort {
       },
       lotId,
     );
-    if (released.status === 'busy' || released.status === 'not_ready') return;
+    if (released.status === 'busy') return true;
+    if (released.status === 'not_ready') return false;
     if (released.status === 'failed') {
       await this.finishBridge(room, auctionId, released.journal);
-      return;
+      return false;
     }
     if (released.status === 'pending') {
       await this.report(room, released.journal);
-      return;
+      return true;
     }
+    await this.sweepLateHolds(auctionId);
     await this.finishBridge(room, auctionId, released.journal);
+    return false;
   }
 
   /** The ledger holds every command of the room engine, then `synced` is set for this process. */
@@ -535,10 +655,14 @@ class Service implements AuctionService, SettlePort {
     if (lot.winnerId === null || lot.priceCents === null) {
       plan = { auctionId: lotId, reserveCents, candidates: [], holds };
     } else {
+      // The plan is cut from the hammer-time facts: `lot.winnerId` and `lot.priceCents` move
+      // when the engine already promoted past a skipped leader before a crash, but the
+      // candidate list never does. prepare() then finds the promotion done and carries on.
+      const hammer = lot.candidates[0];
       const outcome: PlanOutcome = {
         lotId,
-        winnerId: lot.winnerId,
-        priceCents: lot.priceCents,
+        winnerId: hammer?.bidderId ?? lot.winnerId,
+        priceCents: hammer?.priceCents ?? lot.priceCents,
         candidates: lot.candidates.map((c) => ({ bidderId: c.bidderId, priceCents: c.priceCents })),
       };
       plan = (await this.bridge.prepare(auctionId, outcome, holds, reserveCents)).plan;
@@ -563,6 +687,37 @@ class Service implements AuctionService, SettlePort {
       };
     }
     return out;
+  }
+
+  /**
+   * Voids every HELD authorization of the auction that the journal does not know: a buyer
+   * who finished the PayPal popup after the plan was cut. Best effort and idempotent (the
+   * request id is fixed per hold); a void PayPal does not take stays HELD for the next call.
+   */
+  private async sweepLateHolds(auctionId: string): Promise<void> {
+    const journal = await this.deps.journals.load(lotIdOf(auctionId as AuctionId));
+    if (journal === null) return;
+    const known = new Set(Object.values(journal.holds).map((h) => h.holdId));
+    for (const hold of await this.deps.holds.listByAuction(auctionId)) {
+      if (hold.status !== 'HELD' || hold.authId === undefined || known.has(hold.holdId)) continue;
+      const requestId = buildRequestId({
+        auctionId: journal.auctionId,
+        op: 'void',
+        holdId: hold.holdId,
+        amountCents: 0,
+        generation: 0,
+      });
+      try {
+        await this.gateway.voidAuthorization(hold.authId, requestId);
+      } catch (e) {
+        if (!(e instanceof PayPalError)) throw e;
+        if (!LATE_HOLD_GONE.has(e.kind)) {
+          this.deps.onError?.(auctionId, e);
+          continue;
+        }
+      }
+      await this.deps.holds.put({ ...hold, status: 'VOIDED' });
+    }
   }
 
   private async markCaptured(journal: Journal): Promise<void> {
@@ -629,6 +784,9 @@ class Service implements AuctionService, SettlePort {
   }
 }
 
+const DEFAULT_RETRY_BASE_MS = 5_000;
+const DEFAULT_RETRY_MAX_MS = 60_000;
+const LATE_HOLD_GONE: ReadonlySet<string> = new Set(['already_voided', 'expired', 'not_found']);
 const MAX_LOT_AHEAD_MS = 86_400_000;
 const MAX_REVOKE_RETRIES = 3;
 const ABORT_ACTOR = 'kill_switch';
