@@ -217,6 +217,12 @@ export class HoldService {
         throw new HoldError('order_not_found', 'no pending hold for this order');
       }
       const authorization = await this.authorize(hold);
+      // The record may have been abandoned while the authorize call was in flight.
+      const current = await this.deps.holds.get(holdId);
+      if (current === null || current.status !== 'PENDING_APPROVAL') {
+        await this.releaseAbandoned(current ?? hold, authorization.authId);
+        throw new HoldError('order_not_found', 'no pending hold for this order');
+      }
       const held: HoldRecord = {
         ...hold,
         authId: authorization.authId,
@@ -229,6 +235,26 @@ export class HoldService {
       return approved(held);
     } catch (e) {
       throw toHoldError(e);
+    }
+  }
+
+  /** Keeps the authorization id on an abandoned record and voids it at once; a failed void stays findable. */
+  private async releaseAbandoned(record: HoldRecord, authId: string): Promise<void> {
+    await this.deps.holds.put({ ...record, authId, status: 'EXPIRED' });
+    await this.audit(record, record.status, 'EXPIRED', 'hold_authorized_after_abandon');
+    try {
+      await this.deps.gateway.voidAuthorization(
+        authId,
+        buildRequestId({
+          auctionId: record.auctionId,
+          op: 'void',
+          holdId: record.holdId,
+          amountCents: 0,
+          generation: 0,
+        }),
+      );
+    } catch (e) {
+      if (!(e instanceof PayPalError)) throw e;
     }
   }
 
