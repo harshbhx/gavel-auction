@@ -13,7 +13,10 @@ export type Outcome =
   | { kind: 'accepted' }
   | { kind: 'rejected'; reason: RejectReason }
   | { kind: 'noop' }
-  | { kind: 'duplicate' };
+  | {
+      kind: 'duplicate';
+      original: { kind: 'accepted' } | { kind: 'rejected'; reason: RejectReason };
+    };
 
 export interface DecideResult {
   events: LedgerEvent[];
@@ -78,6 +81,9 @@ export function decideSetup(state: AuctionState, cmd: SetupCommand): DecideResul
       if (state.lotOrder.length >= LIMITS.lots) throw new EngineError('limit_exceeded', 'lots');
       const v = validateLotConfig(cmd.lot);
       if (!v.ok) return configFailure(v.errors);
+      if (v.value.reserveCents > state.config.maxCeilingCents) {
+        throw new EngineError('bad_command', 'reserve above maxCeilingCents');
+      }
       return accepted([{ type: 'LOT_ADDED', payload: { lotId: v.value.lotId, lot: v.value } }]);
     }
     case 'RegisterBidder': {

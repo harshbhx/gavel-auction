@@ -45,6 +45,9 @@ export interface LotConfig {
   hammer: 'auto' | 'manual';
 }
 
+/** Largest bid amount, reserve or increment accepted, in cents (R-ENG-001). */
+export const MAX_AMOUNT_CENTS = 100_000_000;
+
 export const LIMITS = {
   transcript: 2000,
   title: 120,
@@ -52,4 +55,6 @@ export const LIMITS = {
   bidders: 1000,
   bidsPerLot: 20000,
   holdRef: 128,
+  /** Free-text audit and actor fields (utteranceId, parserVersion, actor, reason, ref). */
+  text: 128,
 } as const;

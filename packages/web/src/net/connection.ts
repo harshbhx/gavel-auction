@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import type { JoinSend, ServerMessage } from '../wire';
+import type { AuctionId } from '@gavel/shared';
+import { PROTOCOL_VERSION, type JoinMsg, type ServerMessage } from '../wire';
 import type { Transport, TransportStatus } from './transport';
 
 /** Delays between reconnect attempts. The last value repeats (R-WEB-023). */
@@ -13,16 +14,16 @@ export interface ConnectionSnapshot {
   offline: boolean;
 }
 
-/** Join message with the bidder session token. The token field is not in the shared contract yet. */
-export type JoinWithToken = JoinSend & { sessionToken?: string };
+/** A connection that stays open this long counts as stable, and the backoff starts over. */
+export const STABLE_AFTER_MS = 5000;
 
 export interface ConnectionDeps {
   transport: Transport;
-  roomId: string;
+  auctionId: AuctionId;
   /** Highest seq applied so far, read at every (re)join. */
-  getResumeFromSeq(): number;
-  /** Bidder session token, or null for a watcher. */
-  getSessionToken(): string | null;
+  getLastSeq(): number;
+  /** The session token: a bidder token, or the screen token a watcher was given. */
+  getToken(): string;
   onMessage(msg: ServerMessage): void;
   /** Defaults to Math.random. Returns a value in [0, 1). */
   random?: () => number;
@@ -39,7 +40,9 @@ export function backoffDelay(attempt: number, random: number): number {
 /**
  * Keeps a transport connected: reconnects forever with jittered backoff, re-sends `join` with the
  * resume point and session token on every open, and derives `offline` once the connection has
- * been down for 2000 ms.
+ * been down for 2000 ms. The backoff starts over only after the server accepted the join (the
+ * first snapshot) or the socket stayed open for STABLE_AFTER_MS, so a server that accepts the
+ * socket and then drops it is not hammered.
  */
 export class ConnectionManager {
   private snapshot: ConnectionSnapshot = { status: 'closed', offline: false };
@@ -47,6 +50,7 @@ export class ConnectionManager {
   private attempt = 0;
   private reconnectTimer: unknown = null;
   private offlineTimer: unknown = null;
+  private stableTimer: unknown = null;
   private running = false;
   private unsubscribers: Array<() => void> = [];
   private readonly random: () => number;
@@ -74,7 +78,10 @@ export class ConnectionManager {
     const { transport } = this.deps;
     this.unsubscribers = [
       transport.onStatus((s) => this.handleStatus(s)),
-      transport.onMessage((m) => this.deps.onMessage(m)),
+      transport.onMessage((m) => {
+        if (m.t === 'state') this.attempt = 0;
+        this.deps.onMessage(m);
+      }),
     ];
     transport.connect();
   }
@@ -83,6 +90,7 @@ export class ConnectionManager {
     this.running = false;
     this.clearReconnect();
     this.clearOffline();
+    this.clearStable();
     this.unsubscribers.forEach((u) => u());
     this.unsubscribers = [];
     this.deps.transport.close();
@@ -92,9 +100,13 @@ export class ConnectionManager {
   private handleStatus(status: TransportStatus): void {
     if (!this.running) return;
     if (status === 'open') {
-      this.attempt = 0;
       this.clearReconnect();
       this.clearOffline();
+      this.clearStable();
+      this.stableTimer = this.setTimer(() => {
+        this.stableTimer = null;
+        this.attempt = 0;
+      }, STABLE_AFTER_MS);
       this.update({ status, offline: false });
       this.sendJoin();
       return;
@@ -103,6 +115,7 @@ export class ConnectionManager {
       this.update({ ...this.snapshot, status });
       return;
     }
+    this.clearStable();
     this.update({ ...this.snapshot, status });
     if (this.offlineTimer === null && !this.snapshot.offline) {
       this.offlineTimer = this.setTimer(() => {
@@ -113,13 +126,14 @@ export class ConnectionManager {
     this.scheduleReconnect();
   }
 
-  private sendJoin(): void {
-    const token = this.deps.getSessionToken();
-    const join: JoinWithToken = {
+  /** Sends a join with the current token and resume point. Used on open and to resync. */
+  sendJoin(): void {
+    const join: JoinMsg = {
+      v: PROTOCOL_VERSION,
       t: 'join',
-      roomId: this.deps.roomId,
-      resumeFromSeq: this.deps.getResumeFromSeq(),
-      ...(token === null ? {} : { sessionToken: token }),
+      token: this.deps.getToken(),
+      auctionId: this.deps.auctionId,
+      lastSeq: this.deps.getLastSeq(),
     };
     this.deps.transport.send(join);
   }
@@ -137,6 +151,11 @@ export class ConnectionManager {
   private clearReconnect(): void {
     if (this.reconnectTimer !== null) this.clearTimer(this.reconnectTimer);
     this.reconnectTimer = null;
+  }
+
+  private clearStable(): void {
+    if (this.stableTimer !== null) this.clearTimer(this.stableTimer);
+    this.stableTimer = null;
   }
 
   private clearOffline(): void {

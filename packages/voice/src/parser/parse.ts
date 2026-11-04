@@ -89,7 +89,12 @@ function parseAmounts(tokens: string[]): {
         continue;
       }
     }
-    amounts.push({ cents: value, colloquial: isColloquialHundreds(slice, value) });
+    // "five and a half": the half is part of the amount, so the bid is fractional, not whole.
+    const half = tokens[e] === 'and' && tokens[e + 1] === 'a' && tokens[e + 2] === 'half';
+    amounts.push({
+      cents: half ? value + 50 : value,
+      colloquial: !half && isColloquialHundreds(slice, value),
+    });
   }
   return { amounts, unreadable, centsOnly };
 }

@@ -1,4 +1,4 @@
-import { parseServerMessage, type ClientMessage, type ServerMessage } from '../wire';
+import { decodeServerMsg, encodeMsg, type ClientMessage, type ServerMessage } from '../wire';
 import type { Transport, TransportStatus, Unsubscribe } from './transport';
 
 /** The slice of WebSocket this transport uses, so tests can supply a fake. */
@@ -14,6 +14,15 @@ export interface SocketLike {
 
 export type SocketFactory = (url: string) => SocketLike;
 
+/** Why a frame was not delivered, for diagnostics. Nothing is dropped without being counted. */
+export interface FrameProblem {
+  kind: 'undecodable' | 'unencodable' | 'binary';
+  /** Shared decoder code, such as bad_message or unsupported_version. */
+  code: string;
+  /** Running total of problems on this transport. */
+  count: number;
+}
+
 const OPEN = 1;
 
 const defaultFactory: SocketFactory = (url) => new WebSocket(url) as unknown as SocketLike;
@@ -24,6 +33,8 @@ export class WebSocketTransport implements Transport {
   private status: TransportStatus = 'closed';
   private readonly messageListeners = new Set<(m: ServerMessage) => void>();
   private readonly statusListeners = new Set<(s: TransportStatus) => void>();
+  private readonly problemListeners = new Set<(p: FrameProblem) => void>();
+  private problems = 0;
 
   constructor(
     private readonly url: string,
@@ -36,7 +47,11 @@ export class WebSocketTransport implements Transport {
     try {
       socket = this.factory(this.url);
     } catch {
-      this.setStatus('closed');
+      // A failed attempt is an event of its own: the connection manager schedules the next try
+      // from it, even though the status was already closed.
+      this.socket = null;
+      this.status = 'closed';
+      this.statusListeners.forEach((cb) => cb('closed'));
       return;
     }
     this.socket = socket;
@@ -52,21 +67,47 @@ export class WebSocketTransport implements Transport {
     socket.onclose = lost;
     socket.onerror = lost;
     socket.onmessage = (ev) => {
-      if (this.socket !== socket || typeof ev.data !== 'string') return;
-      let raw: unknown;
-      try {
-        raw = JSON.parse(ev.data);
-      } catch {
+      if (this.socket !== socket) return;
+      if (typeof ev.data !== 'string') {
+        this.problem('binary', 'bad_message');
         return;
       }
-      const msg = parseServerMessage(raw);
-      if (msg !== null) this.messageListeners.forEach((cb) => cb(msg));
+      const res = decodeServerMsg(ev.data);
+      if (!res.ok) {
+        this.problem('undecodable', res.code);
+        return;
+      }
+      this.messageListeners.forEach((cb) => cb(res.value));
     };
   }
 
   send(msg: ClientMessage): void {
     if (this.socket === null || this.socket.readyState !== OPEN) return;
-    this.socket.send(JSON.stringify(msg));
+    const encoded = encodeMsg(msg);
+    if (!encoded.ok) {
+      this.problem('unencodable', encoded.error.code);
+      return;
+    }
+    this.socket.send(encoded.value);
+  }
+
+  /** Total frames that could not be decoded or encoded since this transport was created. */
+  get problemCount(): number {
+    return this.problems;
+  }
+
+  /** Called for every frame that was rejected, so drift from the shared schemas is visible. */
+  onProblem(cb: (p: FrameProblem) => void): Unsubscribe {
+    this.problemListeners.add(cb);
+    return () => {
+      this.problemListeners.delete(cb);
+    };
+  }
+
+  private problem(kind: FrameProblem['kind'], code: string): void {
+    this.problems += 1;
+    const problem: FrameProblem = { kind, code, count: this.problems };
+    this.problemListeners.forEach((cb) => cb(problem));
   }
 
   onMessage(cb: (m: ServerMessage) => void): Unsubscribe {

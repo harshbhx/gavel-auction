@@ -1,33 +1,14 @@
+import { Cents } from '@gavel/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { ScenarioTransport } from '../../src/net/scenarioTransport';
 import type { Scenario, ScenarioStep } from '../../src/net/transport';
-import type { PriceMessage, ServerMessage } from '../../src/wire';
+import { baseConfig, msgId, priceMsg } from '../../src/testing/builders';
+import type { PriceMsg, ServerMessage } from '../../src/wire';
 
-const config = {
-  minIncrementCents: 1_000,
-  reserveCents: 0,
-  softCloseMs: 10_000,
-  maxCeilingCents: 100_000,
-  minCeilingCents: 5_000,
-  lateEntry: true,
-  mode: 'english',
-} as const;
-
-function price(seq: number, cents: number): PriceMessage {
-  return {
-    t: 'price',
-    seq,
-    roomId: 'r',
-    serverTime: seq,
-    currentCents: cents,
-    leaderPaddle: 1,
-    nextMinCents: cents + 1_000,
-    bidCount: seq,
-  };
-}
+const price = (seq: number, cents: number): PriceMsg => priceMsg(seq, 1, cents);
 
 function scenario(steps: ScenarioStep[]): Scenario {
-  return { name: 't', description: 'test', roomConfig: config, steps };
+  return { name: 't', description: 'test', roomConfig: baseConfig, steps };
 }
 
 function collect(t: ScenarioTransport): ServerMessage[] {
@@ -36,7 +17,7 @@ function collect(t: ScenarioTransport): ServerMessage[] {
   return out;
 }
 
-const seqs = (ms: ServerMessage[]): number[] => ms.map((m) => m.seq);
+const seqs = (ms: ServerMessage[]): number[] => ms.map((m) => m.seq ?? 0);
 
 describe('ScenarioTransport', () => {
   it('delivers steps in time order as the clock advances, with no network', () => {
@@ -165,11 +146,11 @@ describe('ScenarioTransport', () => {
 
   it('checks expectClient against what the client sent', () => {
     const t = new ScenarioTransport(
-      scenario([{ at: 0, expectClient: { t: 'bid', amountCents: 5000 } }]),
+      scenario([{ at: 0, expectClient: { t: 'bid', amount: Cents(5000) } }]),
     );
     t.connect();
     expect(t.expectationsMet()).toBe(false);
-    t.send({ t: 'bid', clientBidId: 'c', paddle: 1, amountCents: 5000, source: 'qr' });
+    t.send({ v: 1, t: 'bid', mid: msgId(1), amount: Cents(5000), source: 'qr' });
     expect(t.expectationsMet()).toBe(true);
   });
 

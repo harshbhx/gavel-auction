@@ -12,7 +12,7 @@ import { withSpans } from './spans.js';
 
 /** Amounts below this many cents are not a bid (R-VOX-051). */
 export const MIN_PLAUSIBLE_CENTS = 100;
-/** Amounts above this many cents are not a bid: 10,000,000 dollars times 100 (R-VOX-051). */
+/** Amounts above this many cents (1,000,000 dollars) are not a bid (R-VOX-051). */
 export const MAX_PLAUSIBLE_CENTS = 100_000_000;
 
 /** "fifty" and "fifteen" sound alike; each teen/ty word maps to the other one (R-VOX-048). */
@@ -33,7 +33,19 @@ export const HOMOPHONES: ReadonlyMap<string, string> = new Map([
   ['fourteen', 'forty'],
 ]);
 
-const HUGE_WORDS = new Set(['million', 'millions', 'billion', 'billions', 'crore', 'crores']);
+const HUGE_WORDS = new Set([
+  'million',
+  'millions',
+  'mil',
+  'mill',
+  'billion',
+  'billions',
+  'bil',
+  'trillion',
+  'trillions',
+  'crore',
+  'crores',
+]);
 
 function implausible(base: ParseResult, amountCents: Cents | null): ParseResult {
   const candidates: Candidate[] =

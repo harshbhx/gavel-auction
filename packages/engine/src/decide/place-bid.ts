@@ -7,7 +7,7 @@ import { currentPrice as proxyPrice } from '../rules/pricing-proxy.js';
 import { rank } from '../rules/ranking.js';
 import type { BidRecord, RankedBid } from '../rules/ranking.js';
 import { extension } from '../rules/softclose.js';
-import { assertBidIds, validateBid } from '../rules/validate-bid.js';
+import { assertBidIds, isValidAmount, validateBid } from '../rules/validate-bid.js';
 import type { AuctionState, LotState } from '../state.js';
 import { LIMITS } from '../types.js';
 import type { Ulid } from '../types.js';
@@ -30,6 +30,16 @@ function assertBidShape(cmd: PlaceBidCommand): void {
   }
   if (a.transcript !== undefined && a.transcript.length > LIMITS.transcript) {
     throw new EngineError('limit_exceeded', 'transcript');
+  }
+  for (const k of ['audioStartMs', 'audioEndMs', 'clientTs'] as const) {
+    const v = a[k];
+    if (v !== undefined && (!Number.isSafeInteger(v) || Object.is(v, -0))) {
+      throw new EngineError('bad_command', `audit.${k}`);
+    }
+  }
+  for (const k of ['utteranceId', 'parserVersion'] as const) {
+    const v = a[k];
+    if (v !== undefined && v.length > LIMITS.text) throw new EngineError('limit_exceeded', k);
   }
 }
 
@@ -66,7 +76,7 @@ export function decidePlaceBid(state: AuctionState, cmd: PlaceBidCommand): Decid
     if (lot.status === 'OPEN' && lot.endsAt !== null && cmd.at >= lot.endsAt) {
       events.push({ type: 'LOT_CLOSING', payload: { lotId: cmd.lotId, reason: 'deadline' } });
     }
-    const safe = Number.isSafeInteger(cmd.amountCents);
+    const safe = isValidAmount(cmd.amountCents);
     events.push({
       type: 'BID_REJECTED',
       payload: {
@@ -97,6 +107,7 @@ export function decidePlaceBid(state: AuctionState, cmd: PlaceBidCommand): Decid
   };
   const after = rank([...lot.bids, record]);
   const ext = extension(lot, cmd.at);
+  const sealed = pl.mode === 'second_price';
   const mine = after.find((r) => r.bidderId === cmd.bidderId);
   const events: LedgerEvent[] = [
     {
@@ -110,9 +121,10 @@ export function decidePlaceBid(state: AuctionState, cmd: PlaceBidCommand): Decid
         audit: cmd.audit,
         priceBefore: priceOf(pl, before),
         priceAfter: priceOf(pl, after),
-        leaderBefore: (before[0]?.bidderId as Ulid | undefined) ?? null,
-        leaderAfter: (after[0]?.bidderId as Ulid | undefined) ?? null,
-        rank: mine?.rank ?? after.length,
+        // Sealed lots reveal neither the leader nor the rank before the hammer (R-ENG-086).
+        leaderBefore: sealed ? null : ((before[0]?.bidderId as Ulid | undefined) ?? null),
+        leaderAfter: sealed ? null : ((after[0]?.bidderId as Ulid | undefined) ?? null),
+        rank: sealed ? null : (mine?.rank ?? after.length),
         endsAtBefore: lot.endsAt,
         endsAtAfter: ext.endsAt,
       },

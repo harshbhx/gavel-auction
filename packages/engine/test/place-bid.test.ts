@@ -60,9 +60,10 @@ describe('decide PlaceBid', () => {
     let s = open(scene({ lots: [cfg] }), L1, 0); // endsAt 100000
     expect(bid(s, 69999, A, 1000).entries.map((e) => e.type)).toEqual(['BID_RECORDED']);
     const at70 = bid(s, 70000, A, 1000);
-    expect(at70.entries.map((e) => e.type)).toEqual(['BID_RECORDED', 'END_EXTENDED']);
+    // The window opens at 70000 but the end time would not move, so nothing is extended.
+    expect(at70.entries.map((e) => e.type)).toEqual(['BID_RECORDED']);
     expect(at70.state.lots[L1]?.endsAt).toBe(100000);
-    expect(at70.state.lots[L1]?.extensions).toBe(1);
+    expect(at70.state.lots[L1]?.extensions).toBe(0);
     const late = bid(s, 99999, A, 1000);
     expect(late.state.lots[L1]?.endsAt).toBe(129999);
     expect(late.entries[1]?.payload).toEqual({
@@ -90,7 +91,9 @@ describe('decide PlaceBid', () => {
       s = bid(s, end - 1, i % 2 === 0 ? A : B, (amount += 100)).state;
       expect(s.lots[L1]?.endsAt ?? 0).toBeLessThanOrEqual(120000);
     }
-    expect(s.lots[L1]?.extensions).toBe(3);
+    // The first bid extends to the hard close; later bids would not move it.
+    expect(s.lots[L1]?.extensions).toBe(1);
+    expect(s.lots[L1]?.endsAt).toBe(120000);
   });
 
   it('T-ENG-029 R-ENG-081 R-ENG-083 R-ENG-084 an accepted voice bid carries the full payload', () => {

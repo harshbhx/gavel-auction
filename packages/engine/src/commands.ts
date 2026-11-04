@@ -1,6 +1,7 @@
 import { EngineError } from './errors.js';
 import { SETTLEMENT_STATES } from './events.js';
 import type { BidAudit, RevokeReason, SettlementState } from './events.js';
+import { LIMITS } from './types.js';
 import type { AuctionConfig, BidSource, LotConfig, Ulid } from './types.js';
 
 interface Base {
@@ -113,7 +114,7 @@ function keysOnly(o: Rec, allowed: readonly string[], what: string): void {
 
 function int(o: Rec, k: string, what: string): number {
   const v = o[k];
-  if (typeof v !== 'number' || !Number.isSafeInteger(v))
+  if (typeof v !== 'number' || !Number.isSafeInteger(v) || Object.is(v, -0))
     return bad(`${what}.${k} must be an integer`);
   return v;
 }
@@ -121,6 +122,13 @@ function int(o: Rec, k: string, what: string): number {
 function str(o: Rec, k: string, what: string): string {
   const v = o[k];
   if (typeof v !== 'string') return bad(`${what}.${k} must be a string`);
+  return v;
+}
+
+/** A free-text field kept in the ledger: bounded so one command cannot bloat every entry. */
+function shortStr(o: Rec, k: string, what: string): string {
+  const v = str(o, k, what);
+  if (v.length > LIMITS.text) throw new EngineError('limit_exceeded', `${what}.${k}`);
   return v;
 }
 
@@ -151,7 +159,7 @@ function parseAudit(x: unknown): BidAudit {
       if (typeof c !== 'boolean') return bad('audit.confirmed must be a boolean');
       out.confirmed = c;
     } else if (k === 'utteranceId' || k === 'transcript' || k === 'parserVersion') {
-      out[k] = str(o, k, 'audit');
+      out[k] = k === 'transcript' ? str(o, k, 'audit') : shortStr(o, k, 'audit');
     } else {
       const n = int(o, k, 'audit');
       if (k === 'confidenceBps' && (n < 0 || n > 10000)) bad('audit.confidenceBps out of range');
@@ -258,7 +266,7 @@ export function parseCommand(x: unknown): Command {
         type: 'Hammer',
         ...base(['lotId', 'early', 'actor']),
         lotId: ulid(o, 'lotId', type),
-        actor: str(o, 'actor', type),
+        actor: shortStr(o, 'actor', type),
       };
       const early = o['early'];
       if (early !== undefined) {
@@ -280,7 +288,7 @@ export function parseCommand(x: unknown): Command {
         ...base(['lotId', 'disqualifiedBidderId', 'reason']),
         lotId: ulid(o, 'lotId', type),
         disqualifiedBidderId: ulid(o, 'disqualifiedBidderId', type),
-        reason: str(o, 'reason', type),
+        reason: shortStr(o, 'reason', type),
       };
     case 'CompleteLot':
       return {
@@ -288,7 +296,7 @@ export function parseCommand(x: unknown): Command {
         ...base(['lotId', 'capturedCents', 'ref']),
         lotId: ulid(o, 'lotId', type),
         capturedCents: int(o, 'capturedCents', type),
-        ref: str(o, 'ref', type),
+        ref: shortStr(o, 'ref', type),
       };
     case 'RecordSettlement':
       return {
@@ -297,7 +305,7 @@ export function parseCommand(x: unknown): Command {
         lotId: ulid(o, 'lotId', type),
         from: oneOf(o, 'from', SETTLEMENT_STATES, type),
         to: oneOf(o, 'to', SETTLEMENT_STATES, type),
-        ref: str(o, 'ref', type),
+        ref: shortStr(o, 'ref', type),
       };
     case 'CloseAuction':
       return { type: 'CloseAuction', ...base([]) };

@@ -1,7 +1,7 @@
 import type { Scenario } from '../../net/transport';
 import { Script, bidders, hold, openSnapshot, settlementView } from './_kit';
 
-const roster = bidders([12, 'Priya', 50_000], [7, 'Sam', 40_000], [9, 'Ana', 10_000]);
+const roster = bidders([12, 'Priya'], [7, 'Sam'], [9, 'Ana']);
 const REASON = 'hold expired';
 const verified = {
   eventId: 'evt-capture-2',
@@ -13,9 +13,9 @@ const verified = {
 /** The winning hold expires, the runner-up is selected and ends CAPTURED. 30000 + 70000 = 100000. */
 export const winner_declined_fallback: Scenario = new Script()
   .state(0, openSnapshot(roster))
-  .acceptedBid(1_000, 9, 5_000, 1)
-  .acceptedBid(2_000, 7, 30_000, 2)
-  .acceptedBid(3_000, 12, 35_000, 3)
+  .acceptedBid(1_000, 9, 5_000)
+  .acceptedBid(2_000, 7, 30_000)
+  .acceptedBid(3_000, 12, 35_000)
   .hammer(13_000, 12, 35_000)
   .settlement(
     14_000,

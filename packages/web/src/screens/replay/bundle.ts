@@ -1,5 +1,5 @@
 import type { Scenario } from '../../net/transport';
-import { parseServerMessage, type RoomConfigView, type ServerMessage } from '../../wire';
+import { parseServerMessage, type AuctionConfig, type ServerMessage } from '../../wire';
 
 /** Recording bundle format, events.json v1 (OQ-WEB-5). Audio is a separate optional file. */
 export const BUNDLE_VERSION = 1;
@@ -15,7 +15,7 @@ export interface ReplayBundle {
   title: string;
   /** Offset of the last event. */
   durationMs: number;
-  roomConfig: RoomConfigView;
+  roomConfig: AuctionConfig;
   events: ReplayEvent[];
 }
 
@@ -54,14 +54,14 @@ export function parseBundle(raw: unknown): BundleResult {
   const firstState = events.find((e) => e.msg.t === 'state')?.msg;
   if (firstState === undefined || firstState.t !== 'state') return { ok: false, error: 'no_state' };
 
-  const title = typeof raw['title'] === 'string' ? raw['title'] : firstState.room.name;
+  const title = typeof raw['title'] === 'string' ? raw['title'] : 'Recording';
   return {
     ok: true,
     bundle: {
       version: BUNDLE_VERSION,
       title,
       durationMs: previous,
-      roomConfig: firstState.room.config,
+      roomConfig: firstState.snapshot.config,
       events,
     },
   };
@@ -87,7 +87,7 @@ export function chapterOffsets(bundle: ReplayBundle): Partial<Record<ChapterId, 
   };
   for (const { t, msg } of bundle.events) {
     if (msg.t === 'registered') mark('reg', t);
-    else if (msg.t === 'bid') mark('bid', t);
+    else if (msg.t === 'price' && msg.leaderId !== null) mark('bid', t);
     else if (msg.t === 'confirm_request') mark('confirm', t);
     else if (msg.t === 'hammer') mark('hammer', t);
     else if (msg.t === 'settlement_update') mark('settle', t);

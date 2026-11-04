@@ -18,5 +18,5 @@ export function extension(lot: LotState, at: number): { endsAt: number; extended
   if (sc.hardCloseMs !== undefined && lot.openedAt !== null) {
     endsAt = Math.min(endsAt, Math.max(lot.endsAt, lot.openedAt + sc.hardCloseMs));
   }
-  return { endsAt, extended: true };
+  return { endsAt, extended: endsAt > lot.endsAt };
 }

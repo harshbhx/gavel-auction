@@ -1,29 +1,26 @@
+import { Cents, EpochMs } from '@gavel/shared';
 import type { Scenario } from '../../net/transport';
 import { Script, bidders, openSnapshot } from './_kit';
 
-const roster = bidders([12, 'Priya', 50_000], [7, 'Sam', 40_000]);
+const roster = bidders([12, 'Priya'], [7, 'Sam']);
 
 const script = new Script()
   .state(0, openSnapshot(roster))
-  .acceptedBid(1_000, 7, 10_000, 1)
+  .acceptedBid(1_000, 7, 10_000)
   .emit(3_000, (e) => ({
+    v: 1,
     t: 'confirm_request',
     ...e,
     confirmId: 'confirm-1',
-    paddle: 12,
-    amountCents: 15_000,
+    amount: Cents(15_000),
     transcript: 'one fifty paddle twelve',
-    confidence: 0.62,
-    expiresAt: e.serverTime + 8_000,
-    addressee: 'both',
+    expiresAt: EpochMs(e.ts + 8_000),
   }));
 script.steps.push({
   at: 4_000,
   expectClient: { t: 'confirm_response', confirmId: 'confirm-1', accept: true },
 });
-script
-  .emit(4_200, (e) => ({ t: 'confirm_response', ...e, confirmId: 'confirm-1', accept: true }))
-  .acceptedBid(4_300, 12, 15_000, 2);
+script.acceptedBid(4_300, 12, 15_000);
 
 /** A low-confidence voice bid is held until the bidder or auctioneer answers the confirm request. */
 export const ambiguous_confirm: Scenario = script.build(

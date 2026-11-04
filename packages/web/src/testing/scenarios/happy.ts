@@ -1,7 +1,7 @@
 import type { Scenario } from '../../net/transport';
 import { Script, bidders, hold, openSnapshot, settlementView } from './_kit';
 
-const roster = bidders([12, 'Priya', 50_000], [7, 'Sam', 40_000], [9, 'Ana', 10_000]);
+const roster = bidders([12, 'Priya'], [7, 'Sam'], [9, 'Ana']);
 
 const verified = {
   eventId: 'evt-capture-1',
@@ -13,11 +13,11 @@ const verified = {
 /** Three bidders, five accepted bids, hammer, full settlement. Totals: 35000 + 65000 = 100000. */
 export const happy: Scenario = new Script()
   .state(0, openSnapshot(roster))
-  .acceptedBid(1_000, 9, 5_000, 1)
-  .acceptedBid(2_000, 7, 15_000, 2)
-  .acceptedBid(3_000, 12, 25_000, 3)
-  .acceptedBid(4_000, 7, 30_000, 4)
-  .acceptedBid(5_000, 12, 35_000, 5)
+  .acceptedBid(1_000, 9, 5_000)
+  .acceptedBid(2_000, 7, 15_000)
+  .acceptedBid(3_000, 12, 25_000)
+  .acceptedBid(4_000, 7, 30_000)
+  .acceptedBid(5_000, 12, 35_000)
   .hammer(15_000, 12, 35_000)
   .settlement(
     16_000,
