@@ -45,3 +45,14 @@ export type {
   PublicView,
 } from './projections.js';
 export type { DecisionHook, DecisionMetric } from './runtime-metrics.js';
+export {
+  PUBLIC_EXPORT_VERSION,
+  matchesLedger,
+  publicExport,
+  verifyPublicExport,
+} from './ledger/public-export.js';
+export type {
+  PublicEntry,
+  PublicVerifyFailure,
+  PublicVerifyResult,
+} from './ledger/public-export.js';
