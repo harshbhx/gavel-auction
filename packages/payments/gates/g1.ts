@@ -54,8 +54,8 @@ import { appendEntry, withEvidenceHash, type Decision, type GateRow } from './su
  */
 
 export const G1_SCRIPT_VERSION = 'g1-1';
-export const G1_AUTHORIZE_CENTS = 500;
-export const G1_CAPTURE_CENTS = 350;
+export const G1_AUTHORIZE_CENTS = 50000;
+export const G1_CAPTURE_CENTS = 35000;
 
 export type BuyerLabel = 'wallet' | 'card';
 export type G1Decision = 'A' | 'B' | 'C' | 'FAIL';

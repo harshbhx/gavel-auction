@@ -34,7 +34,7 @@ import { appendEntry, withEvidenceHash, type Decision, type GateRow } from '../s
  */
 
 export const G2_SCRIPT_VERSION = 'g2-1';
-export const G2_HOLD_CENTS = 500;
+export const G2_HOLD_CENTS = 50000;
 export const SANDBOX_SDK_URL = 'https://www.sandbox.paypal.com/web-sdk/v6/core';
 
 export type G2Path = 'wallet' | 'card';
