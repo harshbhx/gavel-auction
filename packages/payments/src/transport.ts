@@ -88,6 +88,8 @@ export function parseRetryAfter(value: string | undefined, nowMs: number): numbe
     const seconds = Number(v);
     return Number.isSafeInteger(seconds) ? seconds * 1000 : undefined;
   }
+  // HTTP dates contain a month name; this rejects numbers Date.parse would read as a year.
+  if (!/[A-Za-z]/.test(v)) return undefined;
   const at = Date.parse(v);
   if (Number.isNaN(at)) return undefined;
   return Math.max(0, at - nowMs);
