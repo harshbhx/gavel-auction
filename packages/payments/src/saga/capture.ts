@@ -5,6 +5,9 @@ import { buildRequestId } from '../requestId.js';
 import type { CaptureRef, HoldTruth, Journal } from '../types.js';
 import { withLease } from './create.js';
 import { step, type SettlementEvent } from './machine.js';
+import { DEFAULT_UNKNOWN_DEADLINE_MS, UNKNOWN_REVIEW_REASON, unknownExpired } from './unknown.js';
+
+export { DEFAULT_UNKNOWN_DEADLINE_MS };
 
 /**
  * Capture phase of the settlement runner (SPEC 3.5, 4.6; R-PAY-050 to R-PAY-056,
@@ -27,8 +30,6 @@ import { step, type SettlementEvent } from './machine.js';
  * truth cannot list captures but reports the hold as captured, the capture cannot
  * be identified and the settlement goes to FAILED_NEEDS_REVIEW instead of guessing.
  */
-
-export const DEFAULT_UNKNOWN_DEADLINE_MS = 600_000;
 
 export type PendingReason =
   | 'capture_outcome_unknown'
@@ -250,7 +251,7 @@ class Run {
     }
 
     // R-PAY-055: the outcome has been unknown for too long.
-    if (j.unknownSince !== null && this.now() - j.unknownSince > this.deadlineMs) {
+    if (unknownExpired(j.unknownSince, this.now(), this.deadlineMs)) {
       return this.fail('unknown_deadline');
     }
     if (truth === undefined) return { status: 'pending', reason: 'truth_unavailable', journal: j };
@@ -399,8 +400,14 @@ class Run {
   }
 
   private async fail(kind: 'invariant' | 'mismatch' | 'unknown_deadline'): Promise<CaptureOutcome> {
-    const journal = await this.apply(this.ev(kind));
-    return { status: 'failed', reason: kind, journal };
+    // R-PAY-055: the review reason of an unknown outcome is named after the outcome.
+    const reason = kind === 'unknown_deadline' ? UNKNOWN_REVIEW_REASON : kind;
+    const event =
+      kind === 'unknown_deadline'
+        ? { ...this.ev(kind), label: `journaled:${reason}` }
+        : this.ev(kind);
+    const journal = await this.apply(event);
+    return { status: 'failed', reason, journal };
   }
 
   private async auditCall(
