@@ -9,6 +9,7 @@ import {
   isSandboxApproveUrl,
   missingBuyerSecrets,
   type BrowserLauncher,
+  type FrameLike,
   type LocatorLike,
   type PageLike,
 } from '../../gates/buyerApproval.js';
@@ -22,58 +23,92 @@ afterEach(() => {
 });
 
 interface Script {
-  /** Selectors for which waitForSelector rejects. */
-  missing?: readonly string[];
-  /** Whether #password is still visible after login. */
+  /** Field kinds that never become visible. */
+  missing?: readonly ('email' | 'password' | 'next' | 'confirm')[];
+  /** Whether the password field is visible before Next is clicked (one-page layout). */
+  onePage?: boolean;
+  /** Whether the password field is still visible after login. */
   passwordStays?: boolean;
   styleFails?: boolean;
-  confirmMissing?: boolean;
   noReturn?: boolean;
+  /** Put the email field in a second frame instead of the main one. */
+  emailInFrame?: boolean;
 }
 
 function launcher(script: Script, log: string[]): BrowserLauncher {
-  const locator = (selector: string): LocatorLike => {
-    const l: LocatorLike = {
-      first: () => l,
-      isVisible: () =>
-        Promise.resolve(selector === '#password' ? script.passwordStays === true : true),
-      click: () => {
-        log.push(`click ${selector.slice(0, 12)}`);
-        return Promise.resolve();
-      },
-      waitFor: () =>
-        selector.includes('Complete Purchase') && script.confirmMissing === true
-          ? Promise.reject(new Error('timeout'))
-          : Promise.resolve(),
-    };
-    return l;
+  let nextClicked = false;
+  let loggedIn = false;
+  const kind = (selector: string): string => {
+    if (selector.includes('email') && !selector.includes('password')) return 'email';
+    if (selector.includes('password')) return 'password';
+    if (selector.includes('btnNext') || selector.includes('next|continue')) return 'next';
+    if (selector.includes('btnLogin') || selector.includes('log ?in')) return 'login';
+    if (selector.includes('submit-button') || selector.includes('complete purchase'))
+      return 'confirm';
+    return 'other';
   };
-  const page: PageLike = {
-    goto: () => Promise.resolve(),
-    locator,
-    fill: (selector, value) => {
-      log.push(
-        `fill ${selector.slice(0, 8).trim()} ${value === 'pw-secret' ? '<password>' : '<email>'}`,
-      );
-      return Promise.resolve();
+  const miss = (k: string): boolean => (script.missing ?? []).some((m) => m === k);
+  const frame = (main: boolean): FrameLike => ({
+    locator: (selector) => {
+      const k = kind(selector);
+      const l: LocatorLike = {
+        first: () => l,
+        isVisible: () => {
+          if (k === 'email')
+            return Promise.resolve(!miss('email') && main !== (script.emailInFrame === true));
+          if (!main) return Promise.resolve(false);
+          if (k === 'password') {
+            if (miss('password')) return Promise.resolve(false);
+            if (loggedIn) return Promise.resolve(script.passwordStays === true);
+            return Promise.resolve(script.onePage === true || nextClicked);
+          }
+          if (k === 'next') return Promise.resolve(!miss('next'));
+          if (k === 'login') return Promise.resolve(true);
+          if (k === 'confirm') return Promise.resolve(loggedIn && !miss('confirm'));
+          return Promise.resolve(false);
+        },
+        click: () => {
+          log.push(`click ${k}`);
+          if (k === 'next') nextClicked = true;
+          if (k === 'login') loggedIn = true;
+          return Promise.resolve();
+        },
+        fill: (value) => {
+          log.push(`fill ${k} ${value === 'pw-secret' ? '<password>' : '<email>'}`);
+          return Promise.resolve();
+        },
+        count: () => Promise.resolve(1),
+      };
+      return l;
     },
-    waitForSelector: (selector) =>
-      (script.missing ?? []).some((m) => selector.includes(m))
-        ? Promise.reject(new Error('timeout'))
-        : Promise.resolve(),
-    waitForURL: () =>
-      script.noReturn === true ? Promise.reject(new Error('timeout')) : Promise.resolve(),
-    waitForTimeout: () => Promise.resolve(),
-    waitForLoadState: () => Promise.resolve(),
     addStyleTag: ({ content }) => {
       log.push(`style ${content.includes('transparent') ? 'hide' : 'other'}`);
       return script.styleFails === true ? Promise.reject(new Error('no style')) : Promise.resolve();
     },
+    evaluate: () =>
+      Promise.resolve({
+        inputs: [
+          { tag: 'input', type: 'email', id: 'x', name: '', role: '', aria: '', visible: true },
+        ],
+        buttons: [],
+        counts: { inputs: 1, buttons: 0, links: 2, iframes: 1 },
+      }),
+  });
+  const main = frame(true);
+  const child = frame(false);
+  const page: PageLike = {
+    ...main,
+    goto: () => Promise.resolve(),
+    frames: () => [main, child],
+    waitForURL: () =>
+      script.noReturn === true ? Promise.reject(new Error('timeout')) : Promise.resolve(),
+    waitForTimeout: () => Promise.resolve(),
+    waitForLoadState: () => Promise.resolve(),
     screenshot: ({ path }) => {
       log.push(`shot ${path.split('/').pop() ?? ''}`);
       return Promise.resolve();
     },
-    url: () => 'https://example.com/return',
+    url: () => 'https://www.sandbox.paypal.com/signin?token=SECRET&x=1',
   };
   return {
     launch: () =>
@@ -95,7 +130,7 @@ function opts(script: Script, log: string[]) {
     shotDir: dir,
     shotPrefix: 'run-wallet',
     launcher: launcher(script, log),
-    timeoutMs: 1000,
+    timeoutMs: 1,
   };
 }
 
@@ -104,12 +139,25 @@ describe('approveInBrowser', () => {
     const log: string[] = [];
     await approveInBrowser(opts({}, log));
     expect(log.filter((l) => l.startsWith('fill'))).toEqual([
-      'fill #email, <email>',
-      'fill #passwor <password>',
+      'fill email <email>',
+      'fill password <password>',
     ]);
+    expect(log).toContain('click next');
     expect(log.some((l) => l.includes('review'))).toBe(true);
     expect(log.some((l) => l.includes('returned'))).toBe(true);
     expect(log[log.length - 1]).toBe('closed');
+  });
+
+  it('skips Next on the one-page layout', async () => {
+    const log: string[] = [];
+    await approveInBrowser(opts({ onePage: true }, log));
+    expect(log).not.toContain('click next');
+  });
+
+  it('finds the email field inside a frame', async () => {
+    const log: string[] = [];
+    await approveInBrowser(opts({ emailInFrame: true }, log));
+    expect(log).toContain('fill email <email>');
   });
 
   it('hides all page text before every screenshot', async () => {
@@ -129,10 +177,10 @@ describe('approveInBrowser', () => {
   });
 
   it.each([
-    ['login form', { missing: ['#email'] }, 'no email field'],
-    ['password step', { missing: ['#password'] }, 'SANDBOX_BUYER_EMAIL is a sandbox buyer'],
+    ['login form', { missing: ['email'] }, 'no email field'],
+    ['password step', { missing: ['password'] }, 'SANDBOX_BUYER_EMAIL is a sandbox buyer'],
     ['login', { passwordStays: true }, 'SANDBOX_BUYER_PASSWORD'],
-    ['review page', { confirmMissing: true }, 'no confirm button'],
+    ['review page', { missing: ['confirm'] }, 'no confirm button'],
     ['confirm', { noReturn: true }, 'never reached the return URL'],
   ] as const)('fails at %s with a clear message and still closes', async (stage, script, text) => {
     const log: string[] = [];
@@ -142,6 +190,18 @@ describe('approveInBrowser', () => {
     expect((err as Error).message).toContain(text);
     expect((err as Error).message).not.toContain('pw-secret');
     expect(log[log.length - 1]).toBe('closed');
+  });
+
+  it('records layout-only diagnostics without the query string or secrets', async () => {
+    const log: string[] = [];
+    const err = (await approveInBrowser(opts({ missing: ['email'] }, log)).catch(
+      (e: unknown) => e,
+    )) as BuyerApprovalError;
+    expect(err.diagnostics).toContain('https://www.sandbox.paypal.com/signin');
+    expect(err.diagnostics).not.toContain('SECRET');
+    expect(err.diagnostics).toContain('"counts"');
+    expect(err.message).not.toContain('buyer@example.test');
+    expect(log.some((l) => l.includes('no-login-form'))).toBe(true);
   });
 });
 
