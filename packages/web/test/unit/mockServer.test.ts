@@ -33,7 +33,7 @@ describe('Fault injection matrix (T-WEB-063)', () => {
 
   it('clean happy scenario reaches settlement', () => {
     expect(cleanFinal).toBeDefined();
-    expect(cleanFinal?.settlement.phase).toBe('CAPTURED');
+    expect(cleanFinal?.auctionState).toBe('CAPTURED');
   });
 
   it('fault "drop" delivers no messages', () => {
@@ -48,8 +48,8 @@ describe('Fault injection matrix (T-WEB-063)', () => {
     expect(messages.length).toBeGreaterThan(cleanMessages.length);
     const faultedFinal = lastOfType(messages, 'settlement_update');
     expect(faultedFinal).toBeDefined();
-    expect(faultedFinal?.settlement.phase).toBe(cleanFinal?.settlement.phase);
-    expect(faultedFinal?.settlement.winnerPaddle).toBe(cleanFinal?.settlement.winnerPaddle);
+    expect(faultedFinal?.auctionState).toBe(cleanFinal?.auctionState);
+    expect(faultedFinal?.amountCaptured).toBe(cleanFinal?.amountCaptured);
   });
 
   it('fault "reorder" delivers all settlement phases', () => {
@@ -59,12 +59,12 @@ describe('Fault injection matrix (T-WEB-063)', () => {
       .filter(
         (m): m is Extract<ServerMessage, { t: 'settlement_update' }> => m.t === 'settlement_update',
       )
-      .map((m) => m.settlement.phase);
+      .map((m) => m.auctionState);
     const cleanPhases = cleanMessages
       .filter(
         (m): m is Extract<ServerMessage, { t: 'settlement_update' }> => m.t === 'settlement_update',
       )
-      .map((m) => m.settlement.phase);
+      .map((m) => m.auctionState);
     expect(new Set(phases)).toEqual(new Set(cleanPhases));
   });
 
@@ -79,8 +79,8 @@ describe('Fault injection matrix (T-WEB-063)', () => {
     const messages = collectMessages(faulted);
     const faultedFinal = lastOfType(messages, 'settlement_update');
     expect(faultedFinal).toBeDefined();
-    expect(faultedFinal?.settlement.phase).toBe(cleanFinal?.settlement.phase);
-    expect(faultedFinal?.settlement.winnerPaddle).toBe(cleanFinal?.settlement.winnerPaddle);
+    expect(faultedFinal?.auctionState).toBe(cleanFinal?.auctionState);
+    expect(faultedFinal?.amountCaptured).toBe(cleanFinal?.amountCaptured);
   });
 });
 
