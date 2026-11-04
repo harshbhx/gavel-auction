@@ -1,0 +1,16 @@
+{
+  "id": "bid-clear-003",
+  "file": "bid-clear-003.wav",
+  "sampleRate": 16000,
+  "durationMs": 2980,
+  "category": "clear",
+  "noise": null,
+  "transcriptTruth": "one thousand for paddle twenty one",
+  "expected": {
+    "kind": "bid",
+    "amountCents": 100000,
+    "bidder": "21",
+    "needsConfirm": false
+  },
+  "sttFixture": "bid-clear-003.stt.json"
+}
