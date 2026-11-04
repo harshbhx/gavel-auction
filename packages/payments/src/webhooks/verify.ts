@@ -125,6 +125,10 @@ function isPayPalCertUrl(raw: string): boolean {
   return host === 'paypal.com' || host.endsWith('.paypal.com');
 }
 
+const MAX_PROVEN_CERTS = 16;
+const BASE64_SHAPE = /^[A-Za-z0-9+/_-]{4,2048}={0,2}$/;
+const TRANSMISSION_ID_SHAPE = /^[A-Za-z0-9._:-]{1,128}$/;
+
 export interface WebhookVerifierOptions {
   auth: VerifyAuth;
   webhookId: string;
@@ -154,6 +158,9 @@ export class WebhookVerifier {
   private readonly windowMs: number;
   private windowStartMs = 0;
   private callsInWindow = 0;
+  private unprovenInWindow = 0;
+  /** Certificate urls that have signed a verified delivery; bounded, oldest dropped first. */
+  private readonly provenCerts = new Set<string>();
 
   constructor(opts: WebhookVerifierOptions) {
     this.auth = opts.auth;
@@ -174,16 +181,36 @@ export class WebhookVerifier {
     return Math.abs(this.nowMs() - sentMs) <= this.maxSkewMs;
   }
 
-  /** Takes one slot of the call limit; false when the window is used up. */
-  private takeCallSlot(): boolean {
+  /**
+   * Takes one slot of the call limit; false when the window is used up. A quarter of
+   * the window is kept for deliveries that name a certificate url that has signed a
+   * verified delivery before, so a flood of forged requests with plausible headers
+   * cannot use up the whole window and starve real ones.
+   */
+  private takeCallSlot(certUrl: string): boolean {
     const now = this.nowMs();
     if (now - this.windowStartMs >= this.windowMs || now < this.windowStartMs) {
       this.windowStartMs = now;
       this.callsInWindow = 0;
+      this.unprovenInWindow = 0;
     }
     if (this.callsInWindow >= this.maxCalls) return false;
+    if (!this.provenCerts.has(certUrl)) {
+      const reserve = Math.floor(this.maxCalls / 4);
+      if (this.unprovenInWindow >= this.maxCalls - reserve) return false;
+      this.unprovenInWindow += 1;
+    }
     this.callsInWindow += 1;
     return true;
+  }
+
+  private rememberCert(certUrl: string): void {
+    this.provenCerts.delete(certUrl);
+    this.provenCerts.add(certUrl);
+    if (this.provenCerts.size > MAX_PROVEN_CERTS) {
+      const oldest = this.provenCerts.values().next().value;
+      if (oldest !== undefined) this.provenCerts.delete(oldest);
+    }
   }
 
   /**
@@ -212,10 +239,14 @@ export class WebhookVerifier {
     }
     const rawEvent = readRawEvent(rawBody);
     if (rawEvent === undefined) return { ok: false, reason: 'malformed_body' };
-    if (!this.passesPrechecks(authAlgo, certUrl, transmissionTime)) {
+    if (
+      !this.passesPrechecks(authAlgo, certUrl, transmissionTime) ||
+      (!this.fake &&
+        (!BASE64_SHAPE.test(transmissionSig) || !TRANSMISSION_ID_SHAPE.test(transmissionId)))
+    ) {
       return { ok: false, reason: 'precheck_failed' };
     }
-    if (!this.takeCallSlot()) return { ok: false, reason: 'rate_limited' };
+    if (!this.takeCallSlot(certUrl)) return { ok: false, reason: 'rate_limited' };
 
     const res = await this.auth.send({
       method: 'POST',
@@ -236,6 +267,8 @@ export class WebhookVerifier {
     } catch {
       return { ok: false, reason: 'unreadable_answer' };
     }
-    return status === 'SUCCESS' ? { ok: true } : { ok: false, reason: 'verification_failed' };
+    if (status !== 'SUCCESS') return { ok: false, reason: 'verification_failed' };
+    this.rememberCert(certUrl);
+    return { ok: true };
   }
 }

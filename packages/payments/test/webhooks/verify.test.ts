@@ -270,6 +270,50 @@ describe('verifyWebhook prechecks and call limit', () => {
     expect(calls).toBe(3);
   });
 
+  it('forged requests with plausible headers do not starve a delivery from a proven certificate', async () => {
+    const realCert = 'https://api.paypal.com/v1/notifications/certs/CERT-REAL';
+    const auth2: VerifyAuth = {
+      send: async (req) => {
+        const real = typeof req.body === 'string' && req.body.includes(realCert);
+        return {
+          status: 200,
+          headers: {},
+          text: real ? '{"verification_status":"SUCCESS"}' : '{"verification_status":"FAILURE"}',
+          attempts: 1,
+        };
+      },
+    };
+    const v = new WebhookVerifier({
+      auth: auth2,
+      webhookId: 'WH',
+      nowMs: () => NOW,
+      maxCallsPerWindow: 8,
+      windowMs: 60_000,
+    });
+    const headers = { ...good, 'PAYPAL-TRANSMISSION-TIME': new Date(NOW).toISOString() };
+    const genuine = { ...headers, 'PAYPAL-CERT-URL': realCert };
+    expect(await v.verifyWebhook(body, genuine)).toEqual({ ok: true });
+    for (let i = 0; i < 20; i += 1) await v.verifyWebhook(body, headers);
+    expect(await v.verifyWebhook(body, headers)).toEqual({ ok: false, reason: 'rate_limited' });
+    expect(await v.verifyWebhook(body, genuine)).toEqual({ ok: true });
+  });
+
+  it('rejects a signature or transmission id of the wrong shape without a slot', async () => {
+    const v = live({ maxCallsPerWindow: 1 });
+    const headers = { ...good, 'PAYPAL-TRANSMISSION-TIME': new Date(NOW).toISOString() };
+    for (const bad of [
+      { 'PAYPAL-TRANSMISSION-SIG': 'not a signature!' },
+      { 'PAYPAL-TRANSMISSION-ID': 'id with spaces' },
+    ]) {
+      expect(await v.verifyWebhook(body, { ...headers, ...bad })).toEqual({
+        ok: false,
+        reason: 'precheck_failed',
+      });
+    }
+    expect(calls).toBe(0);
+    expect(await v.verifyWebhook(body, headers)).toMatchObject({ reason: 'verification_failed' });
+  });
+
   it('fake mode accepts a local certificate url', async () => {
     const v = live({ fake: true });
     const fakeHeaders = { ...good, 'PAYPAL-CERT-URL': FAKE_CERT_URL, 'PAYPAL-AUTH-ALGO': 'X' };
