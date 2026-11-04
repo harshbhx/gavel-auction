@@ -446,6 +446,10 @@ export function verdict(truth: HoldTruth, priceCents: number, invoiceId: string)
       ? { kind: 'mismatch', why: 'untracked capture' }
       : { kind: 'open' };
   }
+  if (truth.captures.some((c) => c.refund !== undefined)) {
+    // Money was taken and returned: never open, never adopted, never captured again.
+    return { kind: 'mismatch', why: 'capture refunded' };
+  }
   const ours = truth.captures.filter(
     (c) =>
       c.final &&
