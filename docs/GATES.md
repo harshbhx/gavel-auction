@@ -68,6 +68,28 @@ Decision: n/a
 Fallback if FAIL: always show the confirm prompt for spoken bids.
 Links: n/a
 
+## Latency targets and measured numbers
+
+Targets (R-PAY-152) against the first measurement. The run is `npm run measure -- --fake` in the `payments-evidence` workflow (50 sequential and 10 parallel cycles against the fake PayPal, 2026-11-04). The fake answers on loopback, so these numbers are the overhead of our own client and not PayPal's latency. Sandbox numbers stay UNVERIFIED (G1 measurement) until the same script runs there; the fallback is to raise the targets to the sandbox p95.
+
+| Target                                   | Value  | Measured (fake)                                              | Status     |
+| ---------------------------------------- | ------ | ------------------------------------------------------------ | ---------- |
+| hammer to CAPTURED p95                   | 2.5 s  | capture p95 1.37 ms sequential, 18.33 ms with 10 in parallel | UNVERIFIED |
+| hammer to SETTLED, 6 holds, p95          | 6 s    | void p95 0.95 ms sequential, 5.77 ms with 10 in parallel     | UNVERIFIED |
+| webhook handler 200, without verify call | 300 ms | not part of this script (covered by T-PAY-068)               | UNVERIFIED |
+
+Rate limit: 0 answers with 429 and no `Retry-After` header in 60 cycles against the fake. The real limits are UNVERIFIED (G1 measurement).
+
+Budget with sandbox numbers still open: a settlement of 6 holds is one truth check, one capture and 5 voids. With 3 voids at a time that is about 6 sequential call latencies, so the 6 s target holds while a call stays under 1 s at p95.
+
+Saga defaults (`SAGA_DEFAULTS` in `packages/payments/src/config.ts`, equal to the constants in the saga):
+
+| Setting           | Value  | Reason                                                                                                                              |
+| ----------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| voidConcurrency   | 3      | two waves for 5 voids; the parallel run shows 10 concurrent calls cost 6 to 20 times one call, so a small bound keeps the tail down |
+| maxVoidResumes    | 5      | a void that fails five resumes goes to review instead of looping                                                                    |
+| unknownDeadlineMs | 600000 | ten minutes for an unknown capture outcome before review (R-PAY-053)                                                                |
+
 ## Run entries
 
 `gates/summarize.ts` in `packages/payments` appends one entry per gate run below this line in the format of SPEC 7.2 (operator, date, script sha, buyer kinds without credentials, observed rows, evidence path with its sha256, decision, fallback adopted, spec tags flipped). The status blocks above change only after the matching entry exists.

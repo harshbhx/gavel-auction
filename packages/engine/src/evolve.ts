@@ -3,6 +3,7 @@ import { EngineError } from './errors.js';
 import type { LedgerEntry } from './events.js';
 import {
   bidderKey,
+  dict,
   initialState,
   newLot,
   recordCommand,
@@ -15,13 +16,13 @@ import type { AuctionState, BidderState, LotState, SeenCommand } from './state.j
 function setLot(s: AuctionState, lotId: string, f: (l: LotState) => LotState): AuctionState {
   const lot = s.lots[lotId];
   if (lot === undefined) return s;
-  return { ...s, lots: { ...s.lots, [lotId]: f(lot) } };
+  return { ...s, lots: dict({ ...s.lots, [lotId]: f(lot) }) };
 }
 
 function setBidder(s: AuctionState, key: string, f: (b: BidderState) => BidderState): AuctionState {
   const b = s.bidders[key];
   if (b === undefined) return s;
-  return { ...s, bidders: { ...s.bidders, [key]: f(b) } };
+  return { ...s, bidders: dict({ ...s.bidders, [key]: f(b) }) };
 }
 
 function apply(s: AuctionState, e: LedgerEntry): AuctionState {
@@ -41,7 +42,7 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
       return {
         ...s,
         lotOrder: [...s.lotOrder, lotId],
-        lots: { ...s.lots, [lotId]: newLot(lotId, lot ?? null) },
+        lots: dict({ ...s.lots, [lotId]: newLot(lotId, lot ?? null) }),
       };
     }
     case 'BIDDER_REGISTERED': {
@@ -49,7 +50,7 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
       const key = bidderKey(p.bidderId, p.lotId);
       return {
         ...s,
-        bidders: {
+        bidders: dict({
           ...s.bidders,
           [key]: {
             bidderId: p.bidderId,
@@ -58,7 +59,7 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
             holdRef: p.holdRef ?? null,
             revoked: false,
           },
-        },
+        }),
       };
     }
     case 'CEILING_RAISED': {
@@ -71,11 +72,13 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
     }
     case 'CEILING_REVOKED': {
       const id = e.payload.bidderId;
-      const bidders = Object.fromEntries(
-        Object.entries(s.bidders).map(([k, b]) => [
-          k,
-          b.bidderId === id ? { ...b, revoked: true } : b,
-        ]),
+      const bidders = dict(
+        Object.fromEntries(
+          Object.entries(s.bidders).map(([k, b]) => [
+            k,
+            b.bidderId === id ? { ...b, revoked: true } : b,
+          ]),
+        ),
       );
       return { ...s, bidders };
     }
@@ -103,7 +106,7 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
       );
     }
     case 'BID_REJECTED':
-      return s;
+      return setLot(s, e.payload.lotId, (l) => ({ ...l, rejectedBids: l.rejectedBids + 1 }));
     case 'BID_STRUCK': {
       const p = e.payload;
       return setLot(s, p.lotId, (l) =>
@@ -205,7 +208,7 @@ export function evolve(s: AuctionState, e: LedgerEntry): AuctionState {
  * but the seen-command index is built once instead of copied per entry (R-ENG-118).
  */
 export function evolveAll(entries: readonly LedgerEntry[]): AuctionState {
-  const commands: Record<string, SeenCommand> = {};
+  const commands: Record<string, SeenCommand> = dict();
   let s: AuctionState = initialState;
   for (const e of entries) {
     s = apply(s, e);
