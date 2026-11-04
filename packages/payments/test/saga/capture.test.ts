@@ -448,6 +448,19 @@ describe('mismatching truth', () => {
     expect(verdict(t, 300, 'inv').kind).toBe('adopt');
     expect(verdict(t, 301, 'inv').kind).toBe('mismatch');
     expect(verdict(t, 300, 'other').kind).toBe('mismatch');
+    const refunded = {
+      ...t,
+      captures: [
+        {
+          captureId: 'C1',
+          amountCents: 300,
+          final: true,
+          invoiceId: 'inv',
+          refund: { status: 'REFUNDED' as const, refundedCents: 300 },
+        },
+      ],
+    };
+    expect(verdict(refunded, 300, 'inv')).toEqual({ kind: 'mismatch', why: 'capture refunded' });
     const partial = { ...t, captures: [{ captureId: 'C1', amountCents: 300, final: false }] };
     expect(verdict(partial, 300, 'inv').kind).toBe('mismatch');
   });

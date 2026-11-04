@@ -337,7 +337,8 @@ export class Room {
         throw e;
       }
       this.seq = seq;
-      await this.makeDurable();
+      // Tell everyone before the ledger write: the log append consumed the seq, and a ledger
+      // failure that makes the host retry must not leave viewers with a gap (R-RT-036).
       for (const conn of this.conns.values()) {
         if (conn.role !== 'bidder' || conn.bidderId !== reg.bidderId) {
           // The seq is consumed by this event, so everyone else gets the new roster as a snapshot
@@ -356,6 +357,7 @@ export class Room {
           role: 'bidder',
         });
       }
+      await this.makeDurable();
     });
   }
 

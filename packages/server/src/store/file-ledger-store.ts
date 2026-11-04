@@ -139,7 +139,7 @@ export class FileLedgerStore implements LedgerStore {
       fsyncSync(fd);
       // A new file is only durable once its directory entry is too. A failure here leaves
       // the file ahead of the cache, so it takes the same undo path as a failed write.
-      if (created) fsyncDir(this.dir);
+      if (created) this.syncDir(this.dir);
     } catch (e) {
       // A partial line would swallow the next batch: cut it back (or remove the file this
       // call created) and drop the cache.
@@ -155,6 +155,11 @@ export class FileLedgerStore implements LedgerStore {
       closeSync(fd);
     }
     cur.push(...entries);
+  }
+
+  /** Syncs a directory entry; a seam so a test can fail it. */
+  protected syncDir(dir: string): void {
+    fsyncDir(dir);
   }
 
   async read(auctionId: Ulid, fromSeq: number): Promise<LedgerEntry[]> {

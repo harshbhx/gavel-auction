@@ -133,6 +133,24 @@ describe('reconcile (R-PAY-100, R-PAY-103, T-PAY-071)', () => {
       },
       'h1',
     ],
+    [
+      'REFUNDED_CAPTURE',
+      {
+        truths: {
+          h1: truth('h1', {
+            captures: [
+              {
+                captureId: 'C1',
+                amountCents: 22000,
+                final: true,
+                refund: { status: 'REFUNDED', refundedCents: 22000 },
+              },
+            ],
+          }),
+        },
+      },
+      'h1',
+    ],
     ['AMOUNT_MISMATCH', { truths: { h1: truth('h1', { capturedCents: 21000 }) } }, 'h1'],
     [
       'LIVE_HOLD_AFTER_SETTLED',

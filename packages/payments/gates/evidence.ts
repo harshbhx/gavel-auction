@@ -118,13 +118,18 @@ const TOKEN_PATTERNS: ReadonlyArray<RegExp> = [
 /** The shape of buildRequestId output: an idempotency key, not a credential. */
 const REQUEST_ID_SHAPE = /\bgv1-[A-Z2-7]{40}\b/g;
 
+/** PayPal error and issue names, for example AUTHORIZATION_NOT_HONORED_AFTER_HONOR_PERIOD. */
+const ISSUE_NAME_SHAPE = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g;
+
 /** Returns the JSON paths of string values that look like credentials. */
 export function lintTokens(record: unknown): string[] {
   const hits: string[] = [];
   const walk = (value: unknown, path: string): void => {
     if (typeof value === 'string') {
       if (value === REDACTED) return;
-      const text = value.replace(REQUEST_ID_SHAPE, 'request-id');
+      const text = value
+        .replace(REQUEST_ID_SHAPE, 'request-id')
+        .replace(ISSUE_NAME_SHAPE, 'issue-name');
       if (TOKEN_PATTERNS.some((p) => p.test(text)) || EMAIL_SHAPE.test(text)) hits.push(path);
     } else if (Array.isArray(value)) {
       value.forEach((v, i) => walk(v, `${path}[${i}]`));

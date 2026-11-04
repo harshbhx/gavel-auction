@@ -341,3 +341,23 @@ Consequences:
 - Each run pays a few milliseconds for the bundle.
 
 Evidence: packages/engine/bin/verify-ledger.mjs, SPEC-engine R-ENG-078, R-ENG-120.
+
+## D-0020: Privacy by a redacted public chain, not by hashing private fields
+
+Date: 2026-11-04
+Status: accepted
+Owner: engine
+Context: Ledger entries carry ceilings, hold references, leader and rank, and bid amounts on sealed lots in plaintext, and the entry hash covers them. A redacted export cannot pass the v1 chain check, and an unredacted export leaks how high a rival can go (ENG-RT-12).
+Decision: The private ledger, its v1 entries and its hash vector do not change. A public export is a second chain (version 2) over redacted copies: ceilingCents, fromCents, holdRef, leader and rank fields, availableCeilingCents, and the amounts of a sealed lot before its hammer are removed, and each public entry records the names it dropped and the hash of the private entry it came from. The public chain is verified on its own; an auditor with the private ledger confirms the export with matchesLedger.
+Alternatives:
+
+- Salted digests of private fields inside the entry: rejected, it changes the hash vector and every golden fixture, and an unsalted digest of a small number can be guessed.
+- Stop writing the private fields: rejected, settlement and audit need them.
+
+Consequences:
+
+- The golden fixtures and hash vector are unchanged; no version bump of the private ledger.
+- The public chain proves order and integrity of what is shown, and binds to the private ledger through fullHash; it does not let a viewer check the hidden values.
+- A lot added without an explicit mode in LOT_ADDED is treated as not sealed.
+
+Evidence: packages/engine/src/ledger/public-export.ts, packages/engine/test/public-export.test.ts, SPEC-engine R-ENG-045, R-ENG-086, R-ENG-108, R-ENG-109.

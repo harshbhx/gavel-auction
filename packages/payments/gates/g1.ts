@@ -2,7 +2,6 @@ import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { FakePayPalServer } from '../src/fake/server.js';
-import { centsToDecimal } from '../src/money.js';
 import {
   approveInBrowser,
   comparePayer,
@@ -10,8 +9,17 @@ import {
   loadPlaywrightLauncher,
   missingBuyerSecrets,
   type BrowserLauncher,
-  type BuyerCredentials,
 } from './buyerApproval.js';
+import {
+  amount,
+  approveLink,
+  buyerCredentials,
+  errorName,
+  field,
+  firstAuthorization,
+  payerEmail,
+  str,
+} from './gateUtil.js';
 import { fetchAccessToken, type GateResponse } from './http.js';
 import {
   EXIT_REFUSED,
@@ -84,18 +92,6 @@ export interface G1Deps {
   gatesMdPath?: string;
 }
 
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return v !== null && typeof v === 'object' && !Array.isArray(v);
-}
-
-function str(v: unknown): string {
-  return typeof v === 'string' ? v : '';
-}
-
-function field(json: unknown, key: string): unknown {
-  return isRecord(json) ? json[key] : undefined;
-}
-
 /** Statuses of an authorization that mean no part of the amount is still held. */
 const RELEASED_STATUSES: ReadonlySet<string> = new Set(['CAPTURED', 'VOIDED', 'EXPIRED']);
 
@@ -105,11 +101,16 @@ export function decideG1(o: {
   authStatusAfterCapture: string;
   voidHttp: number;
 }): { decision: G1Decision; remainderOpen: boolean } {
-  const remainderOpen = !RELEASED_STATUSES.has(o.authStatusAfterCapture);
-  if (o.captureHttp < 200 || o.captureHttp >= 300) return { decision: 'FAIL', remainderOpen };
-  if (!remainderOpen) return { decision: 'A', remainderOpen };
+  const releasedByStatus = RELEASED_STATUSES.has(o.authStatusAfterCapture);
+  if (o.captureHttp < 200 || o.captureHttp >= 300) {
+    return { decision: 'FAIL', remainderOpen: !releasedByStatus };
+  }
+  // A void is accepted only while something is still held, so an accepted void after the
+  // final capture proves the remainder was open even when the authorization reads CAPTURED.
   const voided = o.voidHttp >= 200 && o.voidHttp < 300;
-  return { decision: voided ? 'B' : 'C', remainderOpen };
+  if (voided) return { decision: 'B', remainderOpen: true };
+  if (releasedByStatus) return { decision: 'A', remainderOpen: false };
+  return { decision: 'C', remainderOpen: true };
 }
 
 /** Combines per-buyer decisions into the GATES.md decision, the fallback and the flipped tags. */
@@ -158,41 +159,6 @@ export function summarizeDecisions(observed: readonly G1Observed[]): {
     };
   }
   return { decision: 'PASS', fallback: '', flippedTags, letters };
-}
-
-function amount(cents: number): { currency_code: string; value: string } {
-  return { currency_code: 'USD', value: centsToDecimal(cents) };
-}
-
-function approveLink(json: unknown): string {
-  const links = field(json, 'links');
-  if (!Array.isArray(links)) return '';
-  for (const l of links) {
-    if (isRecord(l) && (l['rel'] === 'payer-action' || l['rel'] === 'approve')) {
-      return str(l['href']);
-    }
-  }
-  return '';
-}
-
-function firstAuthorization(json: unknown): Record<string, unknown> {
-  const units = field(json, 'purchase_units');
-  const unit = Array.isArray(units) && isRecord(units[0]) ? units[0] : {};
-  const payments = isRecord(unit['payments']) ? unit['payments'] : {};
-  const list = Array.isArray(payments['authorizations']) ? payments['authorizations'] : [];
-  return isRecord(list[0]) ? list[0] : {};
-}
-
-function errorName(json: unknown): string {
-  const details = field(json, 'details');
-  const issue = Array.isArray(details) && isRecord(details[0]) ? str(details[0]['issue']) : '';
-  return [str(field(json, 'name')), issue].filter((x) => x !== '').join(' ');
-}
-
-function payerEmail(json: unknown): string | undefined {
-  const payer = field(json, 'payer');
-  const email = isRecord(payer) ? payer['email_address'] : undefined;
-  return typeof email === 'string' ? email : undefined;
 }
 
 function must(res: GateResponse, expected: number, what: string, buyer: BuyerLabel): void {
@@ -546,16 +512,6 @@ function parseG1Flags(argv: readonly string[]): G1Flags {
   return flags;
 }
 
-function credentialsFor(
-  env: Record<string, string | undefined>,
-  buyer: BuyerLabel,
-): BuyerCredentials | undefined {
-  const prefix = buyer === 'wallet' ? 'SANDBOX_BUYER' : 'SANDBOX_CARD_BUYER';
-  const email = env[`${prefix}_EMAIL`] ?? '';
-  const password = env[`${prefix}_PASSWORD`] ?? '';
-  return email.trim() !== '' && password !== '' ? { email, password } : undefined;
-}
-
 /** Entry point. --fake starts the fake PayPal; --browser approves in a headless browser. */
 export async function runG1(opts: RunG1Options): Promise<number> {
   const log = opts.log ?? ((m: string) => console.log(m));
@@ -574,7 +530,7 @@ export async function runG1(opts: RunG1Options): Promise<number> {
   }
 
   const buyers: BuyerLabel[] = ['wallet'];
-  if (fake || credentialsFor(opts.env, 'card') !== undefined) buyers.push('card');
+  if (fake || buyerCredentials(opts.env, 'card') !== undefined) buyers.push('card');
 
   if (flags.browser && !fake) {
     const missing = missingBuyerSecrets(opts.env);
@@ -619,12 +575,12 @@ export async function runG1(opts: RunG1Options): Promise<number> {
           const shotDir = join(dirname(ctx.evidencePath), 'screens');
           const emails: Partial<Record<BuyerLabel, string>> = {};
           for (const b of buyers) {
-            const c = credentialsFor(env, b);
+            const c = buyerCredentials(env, b);
             if (c !== undefined) emails[b] = c.email;
           }
           deps.buyerEmails = emails;
           deps.approve = async ({ approveUrl, buyer }) => {
-            const credentials = credentialsFor(env, buyer);
+            const credentials = buyerCredentials(env, buyer);
             if (credentials === undefined) {
               throw new Error(`no credentials configured for the ${buyer} buyer`);
             }
@@ -650,9 +606,10 @@ export async function runG1(opts: RunG1Options): Promise<number> {
   }
 }
 
-const isEntry = process.argv
-  .slice(1)
-  .some((a) => pathToFileURL(resolve(a)).href === import.meta.url);
+// vite-node drops the script from argv, so its own binary name marks the entry run.
+const isEntry =
+  /vite-node/.test(process.argv[1] ?? '') ||
+  process.argv.slice(1).some((a) => pathToFileURL(resolve(a)).href === import.meta.url);
 if (isEntry) {
   runG1({ argv: process.argv.slice(2), env: process.env }).then(
     (code) => {

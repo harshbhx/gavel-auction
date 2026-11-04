@@ -44,7 +44,7 @@ Replay plays a recorded auction through the same console, big screen and ladder 
 When the auctioneer hammers, check that:
 
 1. The winner's hold is captured for the winning price only, not the ceiling. For example a $500 ceiling and a $350 winning bid captures $350.
-2. Every other bidder's hold is voided. The winner's unused remainder is intended to be released; the code does not yet void it explicitly, and gate G1 has not been run.
+2. Every other bidder's hold is voided. The winner's unused remainder is released: the settlement code reads the authorization after the capture and, if PayPal still shows an open remainder, voids it explicitly (`packages/payments/src/saga/remainder.ts`). This is tested against the fake PayPal in both modes (remainder auto-released or not); gate G1 has not been run, so PayPal's real behaviour is unproven.
 3. The ladder shows HELD, then CAPTURED for the winner and VOIDED for the others, with the source of each confirmation (PayPal webhook or lookup).
 4. Exactly one capture happens even if the server stops mid-settlement and resumes. If PayPal's answer is unknown the settlement stops for review rather than guessing.
 
@@ -62,7 +62,7 @@ The settlement logic is built and tested against the fake PayPal only. Whether P
 
 ## 7. Audit trail
 
-Open `/r/<roomId>/audit` from the launcher (it needs the auctioneer or reviewer link). The audit screen is specified to show accepted bids, rejected bids, confirmations and control actions with source, transcript and parsed amount, and to export CSV or JSON with a SHA-256 of the rows. Today the engine's hash-chained ledger records accepted bids with source `manual` and no transcript or confidence; rejected bids appear only in the room log, which is not hash-chained. Settlement writes a journal of each capture and void. A verify command for the ledger is planned (ENG-61) and is not available yet.
+Open `/r/<roomId>/audit` from the launcher (it needs the auctioneer or reviewer link). The audit screen is specified to show accepted bids, rejected bids, confirmations and control actions with source, transcript and parsed amount, and to export CSV or JSON with a SHA-256 of the rows. The engine's hash-chained ledger records both accepted bids (`BID_ACCEPTED`) and rejected bids (`BID_REJECTED`, with the reason), each with its source and an audit block that can hold the transcript, confidence and parser version. Until the voice adapter exists (section 8) every bid arrives as `manual`, so those fields are empty. Settlement writes a journal of each capture and void. A ledger export can be checked without a server: `verify-ledger <ledger.jsonl>` in `packages/engine` prints the entry count and head hash, or the first bad entry, and exits non-zero on tampering.
 
 ## 8. Not built yet
 
