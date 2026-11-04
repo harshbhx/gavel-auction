@@ -300,7 +300,7 @@ class Service implements AuctionService, SettlePort {
     for (const id of await this.deps.store.listAuctions()) {
       await this.room(id);
       const journal = await this.deps.journals.load(lotIdOf(id));
-      if (journal !== null && !TERMINAL.has(journal.state)) this.schedule(id);
+      if (journal !== null) this.schedule(id);
     }
     await this.intake.sweep();
   }
@@ -322,6 +322,12 @@ class Service implements AuctionService, SettlePort {
 
     let journal = await this.deps.journals.load(lotId);
     if (journal === null) journal = await this.openSettlement(auctionId, engine);
+    if (TERMINAL.has(journal.state)) {
+      // A process that died after the journal ended but before the room heard the final
+      // report: finish the engine side and send it. Repeated reports are dropped by rev.
+      await this.finishBridge(room, auctionId, journal);
+      return;
+    }
     await this.report(room, journal);
 
     const captured = await runCapturePhase(
