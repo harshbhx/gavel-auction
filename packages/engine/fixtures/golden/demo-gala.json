@@ -1,0 +1,437 @@
+{
+  "name": "T-ENG-083 demo gala: guitar lot as a plain golden fixture",
+  "parity": false,
+  "config": {
+    "mode": "english",
+    "reserve": 10000,
+    "minIncrement": 1000,
+    "endTs": 60000,
+    "softCloseWindow": 10000,
+    "softCloseExtension": 10000,
+    "maxExtensions": 3
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "ana",
+      "ceiling": 100000
+    },
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "ben",
+      "ceiling": 80000
+    },
+    {
+      "op": "bid",
+      "at": 4000,
+      "bidder": "ana",
+      "amount": 10000
+    },
+    {
+      "op": "bid",
+      "at": 19000,
+      "bidder": "ben",
+      "amount": 11000
+    },
+    {
+      "op": "bid",
+      "at": 39000,
+      "bidder": "ana",
+      "amount": 12000
+    },
+    {
+      "op": "bid",
+      "at": 54000,
+      "bidder": "ben",
+      "amount": 13000
+    },
+    {
+      "op": "bid",
+      "at": 57000,
+      "bidder": "ana",
+      "amount": 150000
+    },
+    {
+      "op": "hammer",
+      "at": 64000
+    }
+  ],
+  "expect": {
+    "winner": "ben",
+    "price": 13000,
+    "ranking": [
+      ["ben", 13000],
+      ["ana", 12000]
+    ],
+    "rejects": ["over_ceiling"],
+    "endsAt": 64000
+  },
+  "gala": {
+    "title": "Spring Charity Gala",
+    "auctionConfig": {
+      "maxCeilingCents": 500000
+    },
+    "bidders": [
+      {
+        "key": "ana",
+        "ceilingCents": 100000,
+        "holdRef": "hold-ana"
+      },
+      {
+        "key": "ben",
+        "ceilingCents": 80000,
+        "holdRef": "hold-ben"
+      },
+      {
+        "key": "cara",
+        "ceilingCents": 60000,
+        "holdRef": "hold-cara"
+      },
+      {
+        "key": "dev",
+        "ceilingCents": 40000,
+        "holdRef": "hold-dev"
+      }
+    ],
+    "lots": [
+      {
+        "key": "guitar",
+        "title": "Signed guitar",
+        "mode": "english",
+        "reserveCents": 10000,
+        "incrementCents": 1000,
+        "durationMs": 60000,
+        "softClose": {
+          "windowMs": 10000,
+          "extensionMs": 10000,
+          "maxExtensions": 3
+        },
+        "hammer": "auto"
+      },
+      {
+        "key": "getaway",
+        "title": "Weekend getaway",
+        "mode": "english",
+        "reserveCents": 20000,
+        "incrementCents": 2500,
+        "durationMs": 60000,
+        "softClose": {
+          "windowMs": 0,
+          "extensionMs": 0,
+          "maxExtensions": 10
+        },
+        "hammer": "auto"
+      },
+      {
+        "key": "chef",
+        "title": "Chef's table",
+        "mode": "english",
+        "reserveCents": 15000,
+        "incrementCents": 1000,
+        "durationMs": 60000,
+        "softClose": {
+          "windowMs": 0,
+          "extensionMs": 0,
+          "maxExtensions": 10
+        },
+        "hammer": "auto"
+      }
+    ],
+    "steps": [
+      {
+        "at": 1000,
+        "do": "open",
+        "lot": "guitar"
+      },
+      {
+        "at": 5000,
+        "do": "bid",
+        "lot": "guitar",
+        "bidder": "ana",
+        "amountCents": 10000
+      },
+      {
+        "at": 20000,
+        "do": "bid",
+        "lot": "guitar",
+        "bidder": "ben",
+        "amountCents": 11000
+      },
+      {
+        "at": 40000,
+        "do": "bid",
+        "lot": "guitar",
+        "bidder": "ana",
+        "amountCents": 12000
+      },
+      {
+        "at": 55000,
+        "do": "bid",
+        "lot": "guitar",
+        "bidder": "ben",
+        "amountCents": 13000
+      },
+      {
+        "at": 58000,
+        "do": "bid",
+        "lot": "guitar",
+        "bidder": "ana",
+        "amountCents": 150000
+      },
+      {
+        "at": 65000,
+        "do": "tick"
+      },
+      {
+        "at": 65000,
+        "do": "hammer",
+        "lot": "guitar"
+      },
+      {
+        "at": 65100,
+        "do": "settle",
+        "lot": "guitar",
+        "from": "HELD",
+        "to": "BIDDING",
+        "ref": "saga-guitar-1"
+      },
+      {
+        "at": 65200,
+        "do": "settle",
+        "lot": "guitar",
+        "from": "BIDDING",
+        "to": "WINNER_SELECTED",
+        "ref": "saga-guitar-2"
+      },
+      {
+        "at": 65300,
+        "do": "settle",
+        "lot": "guitar",
+        "from": "WINNER_SELECTED",
+        "to": "CAPTURING",
+        "ref": "saga-guitar-3"
+      },
+      {
+        "at": 66000,
+        "do": "complete",
+        "lot": "guitar",
+        "bidder": "ben",
+        "capturedCents": 13000,
+        "ref": "cap-guitar"
+      },
+      {
+        "at": 70000,
+        "do": "open",
+        "lot": "getaway"
+      },
+      {
+        "at": 72000,
+        "do": "bid",
+        "lot": "getaway",
+        "bidder": "cara",
+        "amountCents": 22500,
+        "source": "voice",
+        "confidenceBps": 7000,
+        "transcript": "twenty two fifty"
+      },
+      {
+        "at": 75000,
+        "do": "bid",
+        "lot": "getaway",
+        "bidder": "cara",
+        "amountCents": 22500
+      },
+      {
+        "at": 90000,
+        "do": "bid",
+        "lot": "getaway",
+        "bidder": "dev",
+        "amountCents": 25000
+      },
+      {
+        "at": 110000,
+        "do": "bid",
+        "lot": "getaway",
+        "bidder": "cara",
+        "amountCents": 27500
+      },
+      {
+        "at": 125000,
+        "do": "bid",
+        "lot": "getaway",
+        "bidder": "ana",
+        "amountCents": 30000
+      },
+      {
+        "at": 130000,
+        "do": "tick"
+      },
+      {
+        "at": 130000,
+        "do": "hammer",
+        "lot": "getaway"
+      },
+      {
+        "at": 130100,
+        "do": "settle",
+        "lot": "getaway",
+        "from": "HELD",
+        "to": "BIDDING",
+        "ref": "saga-getaway-1"
+      },
+      {
+        "at": 130200,
+        "do": "settle",
+        "lot": "getaway",
+        "from": "BIDDING",
+        "to": "WINNER_SELECTED",
+        "ref": "saga-getaway-2"
+      },
+      {
+        "at": 130300,
+        "do": "settle",
+        "lot": "getaway",
+        "from": "WINNER_SELECTED",
+        "to": "CAPTURING",
+        "ref": "saga-getaway-3"
+      },
+      {
+        "at": 131000,
+        "do": "complete",
+        "lot": "getaway",
+        "bidder": "ana",
+        "capturedCents": 30000,
+        "ref": "cap-getaway"
+      },
+      {
+        "at": 140000,
+        "do": "open",
+        "lot": "chef"
+      },
+      {
+        "at": 150000,
+        "do": "bid",
+        "lot": "chef",
+        "bidder": "dev",
+        "amountCents": 15000
+      },
+      {
+        "at": 160000,
+        "do": "bid",
+        "lot": "chef",
+        "bidder": "ben",
+        "amountCents": 16000
+      },
+      {
+        "at": 170000,
+        "do": "bid",
+        "lot": "chef",
+        "bidder": "cara",
+        "amountCents": 17000
+      },
+      {
+        "at": 180000,
+        "do": "bid",
+        "lot": "chef",
+        "bidder": "ben",
+        "amountCents": 18000
+      },
+      {
+        "at": 200000,
+        "do": "tick"
+      },
+      {
+        "at": 200000,
+        "do": "hammer",
+        "lot": "chef"
+      },
+      {
+        "at": 200100,
+        "do": "settle",
+        "lot": "chef",
+        "from": "HELD",
+        "to": "BIDDING",
+        "ref": "saga-chef-1"
+      },
+      {
+        "at": 200200,
+        "do": "settle",
+        "lot": "chef",
+        "from": "BIDDING",
+        "to": "WINNER_SELECTED",
+        "ref": "saga-chef-2"
+      },
+      {
+        "at": 200300,
+        "do": "settle",
+        "lot": "chef",
+        "from": "WINNER_SELECTED",
+        "to": "CAPTURING",
+        "ref": "saga-chef-3"
+      },
+      {
+        "at": 200400,
+        "do": "settle",
+        "lot": "chef",
+        "from": "CAPTURING",
+        "to": "FALLBACK_RUNNER_UP",
+        "ref": "saga-chef-4"
+      },
+      {
+        "at": 200500,
+        "do": "promote",
+        "lot": "chef",
+        "bidder": "ben",
+        "reason": "capture_declined"
+      },
+      {
+        "at": 200600,
+        "do": "settle",
+        "lot": "chef",
+        "from": "FALLBACK_RUNNER_UP",
+        "to": "CAPTURING",
+        "ref": "saga-chef-5"
+      },
+      {
+        "at": 200700,
+        "do": "complete",
+        "lot": "chef",
+        "bidder": "cara",
+        "capturedCents": 17000,
+        "ref": "cap-chef"
+      },
+      {
+        "at": 201000,
+        "do": "close"
+      }
+    ]
+  },
+  "galaExpect": {
+    "head": {
+      "seq": 0,
+      "hash": "PENDING"
+    },
+    "rejects": ["over_ceiling", "unconfirmed"],
+    "winners": {
+      "guitar": {
+        "bidder": "ben",
+        "priceCents": 13000
+      },
+      "getaway": {
+        "bidder": "ana",
+        "priceCents": 30000
+      },
+      "chef": {
+        "bidder": "cara",
+        "priceCents": 17000
+      }
+    },
+    "settlement": {
+      "guitar": "SETTLED",
+      "getaway": "SETTLED",
+      "chef": "SETTLED"
+    }
+  }
+}
