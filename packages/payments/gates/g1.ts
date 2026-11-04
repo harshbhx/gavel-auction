@@ -19,6 +19,7 @@ import {
   firstAuthorization,
   payerEmail,
   str,
+  gateCurrency,
 } from './gateUtil.js';
 import { fetchAccessToken, type GateResponse } from './http.js';
 import {
@@ -80,6 +81,8 @@ export interface G1Observed {
 }
 
 export interface G1Deps {
+  /** Currency of the orders; defaults to GATE_CURRENCY from the process environment. */
+  currency?: string;
   /** Approves an order as the buyer. Absent: the run pauses and a person approves. */
   approve?: (info: { orderId: string; approveUrl: string; buyer: BuyerLabel }) => Promise<void>;
   /** Buyers to run, in order. Default: wallet only. */
@@ -209,7 +212,7 @@ async function runBuyer(
           {
             reference_id: `g1-${run}-${buyer}`,
             custom_id: `g1-${run}-${buyer}`,
-            amount: amount(G1_AUTHORIZE_CENTS),
+            amount: amount(G1_AUTHORIZE_CENTS, deps.currency),
           },
         ],
         payment_source: {
@@ -313,7 +316,7 @@ async function runBuyer(
       path: `/v2/payments/authorizations/${authId}/capture`,
       headers: { ...auth, 'PayPal-Request-Id': rid('capture') },
       body: {
-        amount: amount(G1_CAPTURE_CENTS),
+        amount: amount(G1_CAPTURE_CENTS, deps.currency),
         final_capture: true,
         invoice_id: `g1-${run}-${buyer}`,
       },
@@ -582,7 +585,7 @@ export async function runG1(opts: RunG1Options): Promise<number> {
       env,
       log,
       main: async (ctx) => {
-        const deps: G1Deps = { buyers };
+        const deps: G1Deps = { buyers, currency: gateCurrency(env) };
         if (opts.sleep !== undefined) deps.sleep = opts.sleep;
         else if (fake) deps.sleep = () => Promise.resolve();
         const srv = server;
