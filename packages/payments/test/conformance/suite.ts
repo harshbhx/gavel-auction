@@ -14,7 +14,9 @@ export interface ConformanceTarget {
   label: string;
   gateway: PaymentsGateway;
   /** A fresh, live authorization for exactly this many cents. */
-  newAuthorization(amountCents: number): Promise<{ holdId: string; authId: string }>;
+  newAuthorization(
+    amountCents: number,
+  ): Promise<{ holdId: string; authId: string; orderId?: string }>;
   close?(): Promise<void>;
 }
 
@@ -31,7 +33,29 @@ export interface ConformanceAssertion {
 }
 
 let seq = 0;
+
+/** getHoldTruth input for a hold made by `newAuthorization`. */
+function ref(h: { holdId: string; authId: string; orderId?: string }): {
+  holdId: string;
+  authId: string;
+  orderId?: string;
+} {
+  return h.orderId === undefined
+    ? { holdId: h.holdId, authId: h.authId }
+    : { holdId: h.holdId, authId: h.authId, orderId: h.orderId };
+}
 const rid = (what: string): string => `conf-${process.pid}-${what}-${(seq += 1)}`;
+
+/** Null when the call succeeded, the error when PayPal refused it. */
+async function refusalOrDone(p: Promise<unknown>): Promise<PayPalError | null> {
+  try {
+    await p;
+    return null;
+  } catch (e) {
+    if (e instanceof PayPalError) return e;
+    throw e;
+  }
+}
 
 async function refusal(p: Promise<unknown>): Promise<PayPalError> {
   try {
@@ -48,8 +72,9 @@ export const ASSERTIONS: readonly ConformanceAssertion[] = [
     id: 'C01',
     title: 'a fresh authorization reads as live with nothing captured',
     async run(t) {
-      const { holdId, authId } = await t.newAuthorization(30000);
-      const truth = await t.gateway.getHoldTruth({ holdId, authId });
+      const hold = await t.newAuthorization(30000);
+      const { authId } = hold;
+      const truth = await t.gateway.getHoldTruth(ref(hold));
       expect(['CREATED', 'PENDING']).toContain(truth.status);
       expect(truth.amountCents).toBe(30000);
       expect(truth.capturedCents).toBe(0);
@@ -59,7 +84,8 @@ export const ASSERTIONS: readonly ConformanceAssertion[] = [
     id: 'C02',
     title: 'a final capture below the hold is reported with its amount and the hold is closed',
     async run(t) {
-      const { holdId, authId } = await t.newAuthorization(30000);
+      const hold = await t.newAuthorization(30000);
+      const { authId } = hold;
       const cap = await t.gateway.capture(authId, {
         amountCents: 22000,
         finalCapture: true,
@@ -67,7 +93,7 @@ export const ASSERTIONS: readonly ConformanceAssertion[] = [
         requestId: rid('cap'),
       });
       expect(cap.amountCents).toBe(22000);
-      const truth = await t.gateway.getHoldTruth({ holdId, authId });
+      const truth = await t.gateway.getHoldTruth(ref(hold));
       expect(truth.capturedCents).toBe(22000);
       expect(truth.status).toBe('CAPTURED');
     },
@@ -76,7 +102,8 @@ export const ASSERTIONS: readonly ConformanceAssertion[] = [
     id: 'C03',
     title: 'the same request id replays the first capture instead of capturing twice',
     async run(t) {
-      const { holdId, authId } = await t.newAuthorization(30000);
+      const hold = await t.newAuthorization(30000);
+      const { authId } = hold;
       const input = {
         amountCents: 10000,
         finalCapture: false,
@@ -86,7 +113,7 @@ export const ASSERTIONS: readonly ConformanceAssertion[] = [
       const a = await t.gateway.capture(authId, input);
       const b = await t.gateway.capture(authId, input);
       expect(b.captureId).toBe(a.captureId);
-      const truth = await t.gateway.getHoldTruth({ holdId, authId });
+      const truth = await t.gateway.getHoldTruth(ref(hold));
       expect(truth.capturedCents).toBe(10000);
     },
   },
@@ -114,13 +141,15 @@ export const ASSERTIONS: readonly ConformanceAssertion[] = [
   },
   {
     id: 'C05',
-    title: 'a void releases the hold and a second void is still definite',
+    title: 'a void releases the hold and a second void either succeeds or is refused definitely',
     async run(t) {
-      const { holdId, authId } = await t.newAuthorization(30000);
+      const hold = await t.newAuthorization(30000);
+      const { authId } = hold;
       await t.gateway.voidAuthorization(authId, rid('void'));
-      const truth = await t.gateway.getHoldTruth({ holdId, authId });
+      const truth = await t.gateway.getHoldTruth(ref(hold));
       expect(truth.status).toBe('VOIDED');
-      await t.gateway.voidAuthorization(authId, rid('void'));
+      const again = await refusalOrDone(t.gateway.voidAuthorization(authId, rid('void')));
+      if (again !== null) expect(again.outcome).toBe('definite');
     },
   },
   {

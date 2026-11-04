@@ -44,10 +44,16 @@ async function fakeHttp(): Promise<ConformanceTarget> {
   return {
     label: 'fake (http)',
     gateway: new PayPalGateway({ auth, fake: true }),
-    newAuthorization: async (cents) => ({
-      holdId: `hold-${(payer += 1)}`,
-      authId: server.core.createAuthorization(`payer-${payer}`, cents).id,
-    }),
+    newAuthorization: async (cents) => {
+      const holdId = `hold-${(payer += 1)}`;
+      const order = server.core.createOrder(
+        { holdId, amountCents: cents, description: 'conformance' },
+        `conf-order-${payer}`,
+      );
+      server.core.approveOrder(order.id);
+      const auth = server.core.authorizeOrder(order.id, `conf-auth-${payer}`);
+      return { holdId, authId: auth.authId, orderId: order.id };
+    },
     close: () => server.stop(),
   };
 }
@@ -57,7 +63,7 @@ runConformance('fake (http)', fakeHttp);
 
 /**
  * Sandbox run (manual workflow only, UNVERIFIED until the first run). It needs
- * sandbox credentials and one approved, unused authorization id per assertion
+ * sandbox credentials and one approved, unused `authId:orderId` pair per assertion
  * in CONFORMANCE_AUTH_IDS (comma separated, each for CONFORMANCE_AUTH_CENTS).
  * Differences are appended to src/fake/ASSUMPTIONS.md when CONFORMANCE_ASSUMPTIONS
  * names that file. The unit-test network guard (test/setup.ts) must allow the
@@ -89,10 +95,13 @@ if (sandboxReady) {
         fake: false,
       }),
       newAuthorization: async (amount) => {
-        const authId = queue.shift();
-        if (authId === undefined) throw new Error('no unused authorization id left');
+        const next = queue.shift();
+        if (next === undefined) throw new Error('no unused authorization id left');
         if (amount !== cents) throw new Error(`sandbox authorizations are for ${cents} cents`);
-        return { holdId: `conf-${authId}`, authId };
+        const [authId = '', orderId] = next.split(':');
+        return orderId === undefined || orderId === ''
+          ? { holdId: `conf-${authId}`, authId }
+          : { holdId: `conf-${authId}`, authId, orderId };
       },
     }),
     { onDifference: (d) => differences.push(d) },

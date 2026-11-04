@@ -1,5 +1,5 @@
 import { PayPalError } from '../errors.js';
-import type { AuditSink, PaymentsGateway } from '../ports.js';
+import type { AuditSink } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
 import { reconcile, type ReconcileDeps, type ReconcileReport } from './reconcile.js';
 
@@ -31,7 +31,6 @@ export interface RepairedReport extends ReconcileReport {
 }
 
 export interface RepairDeps extends ReconcileDeps {
-  gateway: Pick<PaymentsGateway, 'getHoldTruth' | 'voidAuthorization'>;
   audit: AuditSink;
 }
 

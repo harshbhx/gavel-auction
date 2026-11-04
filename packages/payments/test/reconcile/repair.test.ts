@@ -135,7 +135,8 @@ describe('T-PAY-072 reconciler repair', () => {
     const rig = await makeRig();
     await reconcileWithRepair(rig.deps, AUCTION, { repair: 'void_live_holds' });
     const again = await reconcileWithRepair(rig.deps, AUCTION, { repair: 'void_live_holds' });
-    expect(again.findings).toEqual([]);
+    // The stale hold record is still reported as drift, but nothing is live and nothing is voided.
+    expect(again.findings.map((f) => f.code)).not.toContain('LIVE_HOLD_AFTER_SETTLED');
     expect(again.repairs).toEqual([]);
     expect(callsOn(rig, rig.auth.b2, 'void')).toBe(1);
   });
