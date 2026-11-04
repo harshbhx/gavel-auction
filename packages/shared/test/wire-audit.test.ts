@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AuditPayloadSchema } from '../src/wire/audit';
+import { AuditPayloadSchema, PublicAuditRowSchema, toPublicAudit } from '../src/wire/audit';
 
 const base = {
   bidId: '01J9ZQ5C0B2C4D6F8H0J2K4M6N',
@@ -45,5 +45,40 @@ describe('audit_event payload (T-RT-018)', () => {
     expect(AuditPayloadSchema.safeParse({ ...base, outcome: 'maybe' }).success).toBe(false);
     expect(AuditPayloadSchema.safeParse({ ...base, parsedAmount: 1.5 }).success).toBe(false);
     expect(AuditPayloadSchema.safeParse({ ...base, extra: 1 }).success).toBe(false);
+  });
+});
+
+describe('public audit view (R-RT-038, R-RT-055)', () => {
+  const parse = (o: unknown) => AuditPayloadSchema.parse(o);
+
+  it('keeps accepted rows and drops transcript, confidence and reason', () => {
+    const row = parse({
+      ...base,
+      transcript: 'sixty thousand',
+      confidence: 0.4,
+      parsedAmount: 60000,
+      reason: 'x',
+    });
+    const pub = toPublicAudit(row);
+    expect(pub).not.toBeNull();
+    expect(pub).not.toHaveProperty('transcript');
+    expect(pub).not.toHaveProperty('confidence');
+    expect(pub).not.toHaveProperty('reason');
+    expect(pub?.parsedAmount).toBe(60000);
+    expect(PublicAuditRowSchema.safeParse(pub).success).toBe(true);
+  });
+
+  it('hides rejected, expired and superseded rows (ceiling probing)', () => {
+    for (const outcome of ['rejected', 'expired', 'superseded']) {
+      const row = parse({ ...base, outcome, reason: 'over_ceiling', parsedAmount: 60000 });
+      expect(toPublicAudit(row)).toBeNull();
+    }
+  });
+
+  it('bounds free text on full rows', () => {
+    expect(AuditPayloadSchema.safeParse({ ...base, transcript: 'x'.repeat(501) }).success).toBe(
+      false,
+    );
+    expect(AuditPayloadSchema.safeParse({ ...base, reason: 'x'.repeat(121) }).success).toBe(false);
   });
 });

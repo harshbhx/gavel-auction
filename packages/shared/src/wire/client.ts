@@ -1,9 +1,14 @@
 import { z } from 'zod';
 import { BID_SOURCES } from '../enums';
 import { isUlid, type AuctionId, type BidderId, type MsgId } from '../ids';
-import { isCents, type Cents } from '../money';
 import { EpochMs } from '../time';
-import { decodeFrame, message, type FrameResult } from './envelope';
+import {
+  MAX_NAME_CHARS,
+  MAX_TRANSCRIPT_CHARS,
+  decodeFrame,
+  message,
+  type FrameResult,
+} from './envelope';
 
 const ulid = <T extends string>() => z.custom<T>(isUlid, 'invalid id');
 
@@ -11,15 +16,20 @@ export const JoinSchema = message('join', {
   token: z.string().min(1),
   auctionId: ulid<AuctionId>(),
   lastSeq: z.number().int().nonnegative().optional(),
-  client: z.object({ name: z.string(), version: z.string() }).strict().optional(),
+  client: z
+    .object({ name: z.string().max(MAX_NAME_CHARS), version: z.string().max(32) })
+    .strict()
+    .optional(),
 });
 
 export const BidSchema = message('bid', {
   mid: ulid<MsgId>(),
-  amount: z.custom<Cents>(isCents, 'must be integer cents'),
+  // Any finite number decodes; the room maps a non-cent value to bid_rejected
+  // bad_amount instead of closing the socket with bad_message.
+  amount: z.number().refine(Number.isFinite, 'must be a finite number'),
   source: z.enum(BID_SOURCES),
   bidderId: ulid<BidderId>().optional(),
-  transcript: z.string().optional(),
+  transcript: z.string().max(MAX_TRANSCRIPT_CHARS).optional(),
   confidence: z.number().min(0).max(1).optional(),
   ambiguous: z.boolean().optional(),
   audioTsMs: z.number().int().nonnegative().optional(),
@@ -31,7 +41,7 @@ export const BidSchema = message('bid', {
 });
 
 export const ConfirmResponseSchema = message('confirm_response', {
-  confirmId: z.string().min(1),
+  confirmId: z.string().min(1).max(64),
   accept: z.boolean(),
 });
 

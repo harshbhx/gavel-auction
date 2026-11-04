@@ -2,8 +2,18 @@ import { z } from 'zod';
 import { GavelError, type ErrorCode } from '../errors';
 
 export const PROTOCOL_VERSION = 1 as const;
-/** Largest accepted frame, in bytes. */
+/** Largest frame a client may send, in bytes (R-RT-014). */
 export const MAX_FRAME_BYTES = 16 * 1024;
+/** Largest frame the server may send: a full snapshot or hammer ranking must fit. */
+export const MAX_SERVER_FRAME_BYTES = 256 * 1024;
+/** Room-size limits shared by the schemas and the server config defaults. */
+export const MAX_BIDDERS_PER_ROOM = 200;
+export const MAX_PADDLE = 9999;
+/** Bounds for free text that clients can persist or the server echoes. */
+export const MAX_NAME_CHARS = 64;
+export const MAX_TRANSCRIPT_CHARS = 500;
+export const MAX_REASON_CHARS = 120;
+export const MAX_NOTE_CHARS = 300;
 
 /** Strict `{v:1, t, ...shape}` schema for one message type. */
 export function message<T extends string, S extends z.ZodRawShape>(t: T, shape: S) {
@@ -34,8 +44,9 @@ const byteLength = (raw: string | Uint8Array): number =>
 export function decodeFrame<S extends Record<string, z.ZodTypeAny>>(
   raw: string | Uint8Array,
   schemas: S,
+  maxBytes: number = MAX_FRAME_BYTES,
 ): FrameResult<z.infer<S[keyof S]>> {
-  if (byteLength(raw) > MAX_FRAME_BYTES) return fail('bad_message', 'frame too large');
+  if (byteLength(raw) > maxBytes) return fail('bad_message', 'frame too large');
   let json: unknown;
   try {
     json = JSON.parse(typeof raw === 'string' ? raw : new TextDecoder().decode(raw));

@@ -32,7 +32,22 @@ export type TokenPayload = z.infer<typeof TokenPayloadSchema>;
 
 export type VerifyResult =
   | { ok: true; payload: TokenPayload }
-  | { ok: false; code: Extract<ErrorCode, 'unauthorized' | 'forbidden'>; reason: string };
+  | {
+      ok: false;
+      code: Extract<ErrorCode, 'unauthorized' | 'forbidden' | 'invite_used'>;
+      reason: string;
+    };
+
+/**
+ * Revocation and single-use state, supplied by the store. Required on every
+ * verification so the denylist and replay checks cannot be skipped (R-RT-083/084).
+ */
+export interface JtiStore {
+  /** True when the jti is on the denylist. */
+  isRevoked(jti: string): Promise<boolean>;
+  /** Mark an invite jti as used. Resolves false when it was already used. */
+  consume(jti: string, expSec: number): Promise<boolean>;
+}
 
 export interface VerifyOptions {
   /** The auction the caller is talking to. */
@@ -41,7 +56,12 @@ export interface VerifyOptions {
   kinds: readonly TokenKind[];
   /** Current time in epoch milliseconds. */
   nowMs: number;
+  /** Denylist and invite replay state; any error from it fails the check closed. */
+  jtis: JtiStore;
 }
+
+/** Clock skew tolerated when comparing `iat` with the server clock. */
+export const MAX_IAT_SKEW_S = 60;
 
 const B64URL = /^[A-Za-z0-9_-]+$/;
 const encoder = new TextEncoder();
@@ -87,16 +107,19 @@ export async function signToken(payload: TokenPayload, secret: string): Promise<
   return `${body}.${toB64Url(await mac(secret, body))}`;
 }
 
-const deny = (code: 'unauthorized' | 'forbidden', reason: string): VerifyResult => ({
+const deny = (
+  code: 'unauthorized' | 'forbidden' | 'invite_used',
+  reason: string,
+): VerifyResult => ({
   ok: false,
   code,
   reason,
 });
 
-/** Verify signature, shape, audience, expiry and kind. Never throws. */
+/** Verify signature, shape, audience, lifetime, kind, identity binding, revocation and replay. Never throws. */
 export async function verifyToken(
   token: string,
-  secret: string,
+  secrets: string | readonly string[],
   opts: VerifyOptions,
 ): Promise<VerifyResult> {
   const parts = token.split('.');
@@ -109,8 +132,15 @@ export async function verifyToken(
     return deny('unauthorized', 'malformed token');
   }
 
-  const expected = await mac(secret, body);
-  if (!constantTimeEqual(expected, gotSig)) return deny('unauthorized', 'bad signature');
+  // Try every configured secret (current first, then previous) without exiting
+  // early, so rotation does not log everyone out and timing stays flat.
+  const list = typeof secrets === 'string' ? [secrets] : secrets;
+  let signed = false;
+  for (const secret of list) {
+    const expected = await mac(secret, body);
+    if (constantTimeEqual(expected, gotSig)) signed = true;
+  }
+  if (!signed) return deny('unauthorized', 'bad signature');
 
   let json: unknown;
   try {
@@ -124,6 +154,28 @@ export async function verifyToken(
 
   if (payload.aud !== opts.aud) return deny('unauthorized', 'wrong audience');
   if (payload.exp * 1000 <= opts.nowMs) return deny('unauthorized', 'expired');
-  if (!opts.kinds.includes(payload.kind)) return deny('forbidden', 'wrong token kind');
+  if (payload.iat * 1000 > opts.nowMs + MAX_IAT_SKEW_S * 1000) {
+    return deny('unauthorized', 'issued in the future');
+  }
+  if (payload.exp <= payload.iat || payload.exp - payload.iat > TOKEN_TTL_S[payload.kind]) {
+    return deny('unauthorized', 'bad lifetime');
+  }
+  // A wrong kind is an authentication failure (4401), not a permission failure.
+  if (!opts.kinds.includes(payload.kind)) return deny('unauthorized', 'wrong token kind');
+  if (payload.kind === 'session' && payload.bidderId === undefined) {
+    return deny('unauthorized', 'session token without bidderId');
+  }
+  if (payload.bidderId !== undefined && payload.sub !== payload.bidderId) {
+    return deny('unauthorized', 'sub does not match bidderId');
+  }
+
+  try {
+    if (await opts.jtis.isRevoked(payload.jti)) return deny('unauthorized', 'revoked');
+    if (payload.kind === 'invite' && !(await opts.jtis.consume(payload.jti, payload.exp))) {
+      return deny('invite_used', 'invite already used');
+    }
+  } catch {
+    return deny('unauthorized', 'revocation check failed');
+  }
   return { ok: true, payload };
 }
