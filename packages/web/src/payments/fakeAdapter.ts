@@ -4,7 +4,7 @@ export type FakeFaultMode = 'ok' | 'cancel' | 'decline' | 'slow' | 'error';
 
 export type FetchLike = (
   input: string,
-  init: { method: 'POST'; headers: Record<string, string>; body: string },
+  init: { method: 'POST'; headers: Record<string, string>; body: string; signal?: AbortSignal },
 ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
 export interface FakeAdapterDeps {

@@ -5,10 +5,14 @@ import {
   type FakeFaultMode,
   type FetchLike,
 } from '../../src/payments/fakeAdapter';
+import { PayPalV6Adapter } from '../../src/payments/paypalV6Adapter';
 import type { ApprovalRequest, ApprovalState } from '../../src/payments/port';
+import { saveRegistration } from '../../src/payments/registrationStore';
 import {
+  completeApprovalReturn,
   createApprovalPort,
   resetApprovalMemory,
+  resetAttemptMemoryOnly,
   useApproval,
 } from '../../src/payments/useApproval';
 
@@ -128,12 +132,17 @@ describe('fake adapter state sequences (T-WEB-020)', () => {
 
 describe('port selection (R-WEB-048)', () => {
   it('VITE_PAYMENTS=fake selects the fake adapter', () => {
-    expect(createApprovalPort('fake', { apiBase: 'http://api.test' })).toBeInstanceOf(
+    const paypal = { apiBase: 'http://api.test', clientId: 'client-1' };
+    expect(createApprovalPort('fake', { apiBase: 'http://api.test' }, paypal)).toBeInstanceOf(
       FakeApprovalAdapter,
     );
-    expect(createApprovalPort('paypal', { apiBase: 'http://api.test' })).not.toBeInstanceOf(
-      FakeApprovalAdapter,
-    );
+  });
+
+  it('the default mode uses the real PayPal v6 adapter, not a stub (WEB-RT-02)', async () => {
+    const paypal = { apiBase: 'http://api.test', clientId: 'client-1' };
+    const port = createApprovalPort('paypal', { apiBase: 'http://api.test' }, paypal);
+    expect(port).toBeInstanceOf(PayPalV6Adapter);
+    expect(port).not.toBeInstanceOf(FakeApprovalAdapter);
   });
 });
 
@@ -217,5 +226,82 @@ describe('useApproval idempotency (T-WEB-021)', () => {
     for (const call of spy.mock.calls) ids.push(call[0].clientRegistrationId);
     expect(ids).toHaveLength(2);
     expect(ids[0]).not.toBe(ids[1]);
+  });
+});
+
+describe('registration id survives a reload and the redirect return (WEB-RT-10)', () => {
+  it('reuses the stored id after the in-memory attempts are gone', async () => {
+    const { fetch } = mockFetch();
+    const port = adapter('cancel', fetch);
+    const spy = vi.spyOn(port, 'start');
+    const options = { port, roomId: 'room-1', bidderId: 'b-5' };
+    const first = renderHook(() => useApproval({ ...options, makeId: () => 'reg-first' }));
+    await act(async () => {
+      await first.result.current.start(50_000);
+    });
+    first.unmount();
+
+    // A reload drops module memory but not sessionStorage.
+    resetAttemptMemoryOnly();
+    const second = renderHook(() => useApproval({ ...options, makeId: () => 'reg-second' }));
+    await act(async () => {
+      await second.result.current.start(50_000);
+    });
+    expect(spy.mock.calls.map((c) => c[0].clientRegistrationId)).toEqual([
+      'reg-first',
+      'reg-first',
+    ]);
+  });
+
+  it('keeps ids apart per room and bidder', async () => {
+    const { fetch } = mockFetch();
+    const port = adapter('cancel', fetch);
+    const spy = vi.spyOn(port, 'start');
+    const a = renderHook(() =>
+      useApproval({ port, roomId: 'room-1', bidderId: 'b-1', makeId: () => 'reg-a' }),
+    );
+    const b = renderHook(() =>
+      useApproval({ port, roomId: 'room-2', bidderId: 'b-1', makeId: () => 'reg-b' }),
+    );
+    await act(async () => {
+      await a.result.current.start(50_000);
+      await b.result.current.start(50_000);
+    });
+    expect(spy.mock.calls.map((c) => c[0].clientRegistrationId)).toEqual(['reg-a', 'reg-b']);
+  });
+
+  it('completes the redirect return with the stored id', async () => {
+    const posted: string[] = [];
+    const fetch: FetchLike = (_url, init) => {
+      posted.push(init.body);
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ holdIdSuffix: 'ZZ9988', state: 'HELD' }),
+      });
+    };
+    saveRegistration('room-1', 'b-7', { clientRegistrationId: 'reg-redirect' });
+    const real = new PayPalV6Adapter({ apiBase: 'http://api.test', clientId: 'c', fetch });
+    const states: ApprovalState[] = [];
+    const result = await completeApprovalReturn(
+      real,
+      { roomId: 'room-1', bidderId: 'b-7', orderId: 'ord-9' },
+      (s) => states.push(s),
+    );
+    expect(result).toMatchObject({ state: 'held', holdIdSuffix: 'ZZ9988' });
+    expect(JSON.parse(posted[0] ?? '{}')).toEqual({
+      orderId: 'ord-9',
+      clientRegistrationId: 'reg-redirect',
+    });
+  });
+
+  it('reports an error instead of inventing an id when nothing was stored', async () => {
+    const real = new PayPalV6Adapter({ apiBase: 'http://api.test', clientId: 'c' });
+    const result = await completeApprovalReturn(
+      real,
+      { roomId: 'room-1', bidderId: 'nobody', orderId: 'ord-9' },
+      () => undefined,
+    );
+    expect(result).toMatchObject({ state: 'error', errorCode: 'registration_missing' });
   });
 });

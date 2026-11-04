@@ -1,7 +1,7 @@
 import { EngineError } from '../errors.js';
 import type { BidAudit } from '../events.js';
 import type { RejectReason } from '../reasons.js';
-import { LIMITS } from '../types.js';
+import { LIMITS, MAX_AMOUNT_CENTS } from '../types.js';
 import type { BidSource } from '../types.js';
 import type { AuctionState, LotState } from '../state.js';
 import { available, bidderFor } from './exposure.js';
@@ -11,7 +11,7 @@ import { checkProxyBid } from './pricing-proxy.js';
 import { rank } from './ranking.js';
 
 /** Largest bid amount accepted, in cents (R-ENG-001). */
-export const MAX_AMOUNT_CENTS = 100_000_000;
+export { MAX_AMOUNT_CENTS };
 
 const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/;
 
@@ -72,20 +72,17 @@ export function validateBid(state: AuctionState, lot: LotState, cmd: BidInput): 
   if (bidder.revoked) return fail('ceiling_revoked');
   if (!isValidAmount(cmd.amountCents)) return fail('bad_amount');
   const amount = cmd.amountCents;
-  const conf = cmd.audit.confidenceBps;
-  if (
-    cmd.source === 'voice' &&
-    conf !== undefined &&
-    conf < state.config.confirmBelowBps &&
-    cmd.audit.confirmed !== true
-  ) {
+  // A voice bid with no confidence score is treated as zero confidence: the gate fails closed.
+  // Only the server may set `audit.confirmed`; callers must not forward it from a client.
+  const conf = cmd.source === 'voice' ? (cmd.audit.confidenceBps ?? 0) : undefined;
+  if (conf !== undefined && conf < state.config.confirmBelowBps && cmd.audit.confirmed !== true) {
     return fail('unconfirmed', {
       confidenceBps: conf,
       confirmBelowBps: state.config.confirmBelowBps,
     });
   }
   const avail = available(state, cmd.bidderId, cmd.lotId);
-  if (amount > avail) return fail('over_ceiling', { availableCeilingCents: avail });
+  if (amount > avail) return fail('over_ceiling');
   if (amount < cfg.reserveCents) return fail('below_reserve', { reserveCents: cfg.reserveCents });
 
   const pl: PricingLot = {

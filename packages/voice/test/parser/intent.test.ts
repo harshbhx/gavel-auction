@@ -23,8 +23,10 @@ describe('T-VOX-045 negations (R-VOX-045)', () => {
     expect(i.reason).toBe('negation');
   });
 
-  it('a negation farther than 3 tokens from the amount does not apply', () => {
-    expect(detectIntent("I don't know why but three hundred").kind).not.toBe('negation');
+  it('a negation far from the amount in a long clause does not apply', () => {
+    expect(
+      detectIntent("I don't know what the others think about the lot but three hundred").kind,
+    ).not.toBe('negation');
     expect(detectIntent('three hundred').kind).toBe('bid_like');
   });
 });

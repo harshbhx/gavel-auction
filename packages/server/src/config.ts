@@ -15,7 +15,9 @@ const csv = z.string().transform((v) =>
     .filter((s) => s.length > 0),
 );
 
-const EnvSchema = z.object({
+const byteLength = (s: string): number => new TextEncoder().encode(s).length;
+
+const EnvObject = z.object({
   PORT: int(1).pipe(z.number().max(65535)).default('8080'),
   PUBLIC_URL: z.string().url(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -30,11 +32,40 @@ const EnvSchema = z.object({
   ALLOW_MEMORY_STORE: flag.default('0'),
   RATE_BID_PER_S: int(1).default('3'),
   RATE_BID_BURST: int(1).default('5'),
+  RATE_JOIN_PER_MIN: int(1).default('10'),
+  RATE_JOIN_BURST: int(1).default('10'),
+  RATE_HTTP_PER_MIN: int(1).default('60'),
+  RATE_HTTP_BURST: int(1).default('60'),
+  MAX_CONN_PER_BIDDER: int(1).default('3'),
   MAX_CONN_PER_ROOM: int(1).default('500'),
   MAX_BIDDERS_PER_ROOM: int(1).default('200'),
   MAX_ROOMS: int(1).default('20'),
   MAX_BIDS_PER_AUCTION: int(1).default('5000'),
   PAYMENTS: z.enum(['fake', 'sandbox']).default('fake'),
+});
+
+/** Production rules (R-RT-131) that a plain field schema cannot express. */
+const EnvSchema = EnvObject.superRefine((env, ctx) => {
+  const problem = (path: string, message: string): void => {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+  };
+  if (env.STORE === 'postgres' && env.DATABASE_URL === undefined) {
+    problem('DATABASE_URL', 'required when STORE=postgres');
+  }
+  if (env.NODE_ENV !== 'production') return;
+  if (byteLength(env.TOKEN_SECRET) < 32) {
+    problem('TOKEN_SECRET', 'must be at least 32 bytes in production');
+  }
+  if (env.TOKEN_SECRET_PREVIOUS !== undefined && byteLength(env.TOKEN_SECRET_PREVIOUS) < 32) {
+    problem('TOKEN_SECRET_PREVIOUS', 'must be at least 32 bytes in production');
+  }
+  if (env.ADMIN_KEY.length < 24)
+    problem('ADMIN_KEY', 'must be at least 24 characters in production');
+  if (env.STORE === 'memory' && !env.ALLOW_MEMORY_STORE) {
+    problem('STORE', 'memory store needs ALLOW_MEMORY_STORE=1 in production');
+  }
+  if (env.PAYMENTS === 'fake') problem('PAYMENTS', 'fake payments are not allowed in production');
+  if (env.DEMO_MODE) problem('DEMO_MODE', 'demo endpoints must be off in production');
 });
 
 export type ServerConfig = z.infer<typeof EnvSchema>;

@@ -89,7 +89,12 @@ function parseAmounts(tokens: string[]): {
         continue;
       }
     }
-    amounts.push({ cents: value, colloquial: isColloquialHundreds(slice, value) });
+    // "five and a half": the half is part of the amount, so the bid is fractional, not whole.
+    const half = tokens[e] === 'and' && tokens[e + 1] === 'a' && tokens[e + 2] === 'half';
+    amounts.push({
+      cents: half ? value + 50 : value,
+      colloquial: !half && isColloquialHundreds(slice, value),
+    });
   }
   return { amounts, unreadable, centsOnly };
 }
@@ -125,6 +130,20 @@ function parse(text: string, ctx: ParseContext): ParseResult {
 
   if (amounts.length === 0 && centsOnly.length === 0 && unreadable === 0)
     return result('none', 'no_amount');
+
+  // "paddle five hundred": the number is either the paddle (and the amount is a bare "hundred") or
+  // the start of the amount. Both readings go to the console; neither is accepted by itself.
+  const scaled = scan.refs.find((r) => r.scaleAfter === true);
+  if (scaled !== undefined) {
+    const skip = new Set<number>();
+    for (let k = scaled.start; k < scaled.valueStart; k++) skip.add(k);
+    const asAmount = parseAmounts(rest(skip)).amounts[0]?.cents ?? null;
+    const asPaddle = amounts[0]?.cents ?? null;
+    const candidates = [cand(asPaddle, paddle(scaled.paddle)), cand(asAmount, speaker)].sort(
+      (a, b) => (a.amountCents ?? 0) - (b.amountCents ?? 0),
+    );
+    return result('confirm', 'multiple_bidders', { candidates });
+  }
 
   const distinctPaddles = [...new Set(scan.paddles)].sort(paddleOrder);
   const distinctAmounts = [...new Set(amounts.map((a) => a.cents))].sort((a, b) => a - b);

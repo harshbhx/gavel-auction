@@ -1,16 +1,20 @@
 import type { Scenario } from '../../net/transport';
+import { Cents } from '@gavel/shared';
+import { bidderId } from '../builders';
 import { Script, bidders, hold, openSnapshot, settlementView } from './_kit';
 
-const roster = bidders([12, 'Priya', 50_000], [7, 'Sam', 40_000]);
+const roster = bidders([12, 'Priya'], [7, 'Sam']);
 
 /** The auctioneer stops the room mid-lot: no winner, every hold is released. */
 export const kill_switch: Scenario = new Script()
   .state(0, openSnapshot(roster))
-  .acceptedBid(1_000, 7, 10_000, 1)
-  .acceptedBid(2_000, 12, 15_000, 2)
+  .acceptedBid(1_000, 7, 10_000)
+  .acceptedBid(2_000, 12, 15_000)
   .state(5_000, {
-    ...openSnapshot(roster, undefined, 'STOPPED'),
-    price: { currentCents: 15_000, leaderPaddle: 12, nextMinCents: 20_000, bidCount: 2 },
+    ...openSnapshot(roster, undefined, 'DONE'),
+    price: Cents(15_000),
+    leaderId: bidderId(12),
+    minNext: Cents(20_000),
   })
   .settlement(
     6_000,

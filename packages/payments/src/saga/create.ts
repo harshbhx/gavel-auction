@@ -1,5 +1,6 @@
 import type { Clock, JournalStore } from '../ports.js';
 import { JournalExists } from '../stores/memory.js';
+import { DEFAULT_MAX_ATTEMPTS, DEFAULT_TIMEOUT_MS, RETRY_AFTER_MAX_MS } from '../transport.js';
 import { canonicalJson } from '../types.js';
 import type { Journal, JournalHold, SettlementPlan } from '../types.js';
 
@@ -35,7 +36,15 @@ export class LeaseLost extends Error {
   }
 }
 
-export const DEFAULT_LEASE_TTL_MS = 30_000;
+/**
+ * One retried money call can take attempts * timeout plus the Retry-After sleeps
+ * (130 s with the transport defaults) and a 401 doubles that. The lease must
+ * outlive that, or a second runner can start while the first call is in flight.
+ */
+export const DEFAULT_LEASE_TTL_MS =
+  2 *
+    (DEFAULT_MAX_ATTEMPTS * DEFAULT_TIMEOUT_MS + (DEFAULT_MAX_ATTEMPTS - 1) * RETRY_AFTER_MAX_MS) +
+  60_000;
 
 function isCents(n: unknown, min: number): n is number {
   return typeof n === 'number' && Number.isSafeInteger(n) && n >= min;
@@ -49,13 +58,28 @@ export function validatePlan(plan: SettlementPlan): void {
   if (typeof plan.auctionId !== 'string' || plan.auctionId === '') bad('auctionId is required');
   if (!isCents(plan.reserveCents, 0)) bad('reserveCents must be a non-negative integer');
 
+  if (!Array.isArray(plan.candidates)) bad('candidates must be a list');
+  if (plan.holds === null || typeof plan.holds !== 'object' || Array.isArray(plan.holds)) {
+    bad('holds must be an object keyed by bidder');
+  }
+
   const seen = new Set<string>();
+  let previousPrice = Number.POSITIVE_INFINITY;
   for (const c of plan.candidates) {
     if (typeof c.bidderId !== 'string' || c.bidderId === '') bad('candidate bidderId is required');
     if (seen.has(c.bidderId)) bad(`bidder ${c.bidderId} appears more than once`);
     seen.add(c.bidderId);
     if (!isCents(c.priceCents, 1)) bad(`price of ${c.bidderId} must be a positive integer`);
-    if (plan.holds[c.bidderId] === undefined) bad(`bidder ${c.bidderId} has no hold`);
+    const hold = plan.holds[c.bidderId];
+    if (hold === undefined) bad(`bidder ${c.bidderId} has no hold`);
+    // Never plan a charge the buyer did not authorize or the seller would not accept (R-PAY-061, R-PAY-062).
+    if (hold !== undefined && c.priceCents > hold.ceilingCents) {
+      bad(`price of ${c.bidderId} is above its hold ceiling`);
+    }
+    if (c.priceCents < plan.reserveCents) bad(`price of ${c.bidderId} is below the reserve`);
+    // A fallback is priced as if the earlier candidates were out, so it never rises.
+    if (c.priceCents > previousPrice) bad(`price of ${c.bidderId} is above an earlier candidate`);
+    previousPrice = c.priceCents;
   }
 
   const holdIds = new Set<string>();
@@ -63,20 +87,29 @@ export function validatePlan(plan: SettlementPlan): void {
     if (typeof h.holdId !== 'string' || h.holdId === '') bad(`hold of ${bidderId} has no holdId`);
     if (typeof h.authId !== 'string' || h.authId === '') bad(`hold of ${bidderId} has no authId`);
     if (!isCents(h.ceilingCents, 1)) bad(`ceiling of ${bidderId} must be a positive integer`);
+    if (!isCents(h.createdAtMs, 0)) bad(`createdAtMs of ${bidderId} must be a safe integer`);
     if (holdIds.has(h.holdId)) bad(`hold ${h.holdId} is used by more than one bidder`);
     holdIds.add(h.holdId);
   }
 }
 
+/** What newJournal needs to flag stale holds: the injected clock reading and GAVEL_HOLD_MAX_AGE_MS. */
+export interface HoldAgePolicy {
+  nowMs: number;
+  holdMaxAgeMs: number;
+}
+
 /** The first journal of a settlement: state HELD, version 0, nothing done yet. */
-export function newJournal(plan: SettlementPlan): Journal {
+export function newJournal(plan: SettlementPlan, age?: HoldAgePolicy): Journal {
   const holds: Record<string, JournalHold> = {};
   for (const [bidderId, h] of Object.entries(plan.holds)) {
     holds[bidderId] = {
       holdId: h.holdId,
       authId: h.authId,
       ceilingCents: h.ceilingCents,
-      stale: false,
+      createdAtMs: h.createdAtMs,
+      // A hold older than the maximum age at settlement start is flagged (R-PAY-034).
+      stale: age !== undefined && age.nowMs - h.createdAtMs > age.holdMaxAgeMs,
     };
   }
   return {
@@ -120,11 +153,16 @@ export interface CreateResult {
  * plan returns the stored journal; a different plan throws plan_mismatch.
  */
 export async function createSettlement(
-  deps: { journals: JournalStore },
+  deps: { journals: JournalStore; clock?: Clock; holdMaxAgeMs?: number },
   plan: SettlementPlan,
 ): Promise<CreateResult> {
   validatePlan(plan);
-  const fresh = newJournal(plan);
+  const fresh = newJournal(
+    plan,
+    deps.clock !== undefined && deps.holdMaxAgeMs !== undefined
+      ? { nowMs: deps.clock.nowMs(), holdMaxAgeMs: deps.holdMaxAgeMs }
+      : undefined,
+  );
 
   const compare = (existing: Journal): CreateResult => {
     if (planKey(existing) !== planKey(fresh)) {

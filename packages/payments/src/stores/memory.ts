@@ -88,8 +88,7 @@ export class MemoryJournalStore implements JournalStore {
 
   async create(j: Journal): Promise<void> {
     if (this.journals.has(j.auctionId)) throw new JournalExists(j.auctionId);
-    this.journals.set(j.auctionId, canonicalJson(j));
-    this.changed();
+    this.commit(j.auctionId, canonicalJson(j));
   }
 
   async save(j: Journal, expectedVersion: number): Promise<void> {
@@ -98,8 +97,23 @@ export class MemoryJournalStore implements JournalStore {
     if (current === null || current !== expectedVersion) {
       throw new VersionConflict(j.auctionId, expectedVersion, current);
     }
-    this.journals.set(j.auctionId, canonicalJson(j));
-    this.changed();
+    this.commit(j.auctionId, canonicalJson(j));
+  }
+
+  /**
+   * Applies a journal change and persists it; when persisting throws, the map is
+   * put back so memory never holds a change the disk does not (R-PAY-042).
+   */
+  private commit(auctionId: string, canonical: string): void {
+    const before = this.journals.get(auctionId);
+    this.journals.set(auctionId, canonical);
+    try {
+      this.changed();
+    } catch (e) {
+      if (before === undefined) this.journals.delete(auctionId);
+      else this.journals.set(auctionId, before);
+      throw e;
+    }
   }
 
   async acquireLease(
@@ -111,7 +125,13 @@ export class MemoryJournalStore implements JournalStore {
     const cur = this.leases.get(auctionId);
     if (cur !== undefined && cur.owner !== owner && cur.expiresAtMs > nowMs) return false;
     this.leases.set(auctionId, { owner, expiresAtMs: nowMs + ttlMs });
-    this.changed();
+    try {
+      this.changed();
+    } catch (e) {
+      if (cur === undefined) this.leases.delete(auctionId);
+      else this.leases.set(auctionId, cur);
+      throw e;
+    }
     return true;
   }
 
@@ -119,7 +139,12 @@ export class MemoryJournalStore implements JournalStore {
     const cur = this.leases.get(auctionId);
     if (cur === undefined || cur.owner !== owner) return;
     this.leases.delete(auctionId);
-    this.changed();
+    try {
+      this.changed();
+    } catch (e) {
+      this.leases.set(auctionId, cur);
+      throw e;
+    }
   }
 }
 
@@ -151,7 +176,12 @@ export class MemoryWebhookEventStore implements WebhookEventStore {
   async insertIfAbsent(e: StoredWebhook): Promise<boolean> {
     if (this.events.has(e.id)) return false;
     this.events.set(e.id, clone(e));
-    this.changed();
+    try {
+      this.changed();
+    } catch (err) {
+      this.events.delete(e.id);
+      throw err;
+    }
     return true;
   }
 
@@ -160,15 +190,24 @@ export class MemoryWebhookEventStore implements WebhookEventStore {
     if (cur === undefined) throw new Error(`unknown webhook event ${id}`);
     const next: StoredWebhook = { ...cur, result };
     delete next.parkedUntilMs;
-    this.events.set(id, next);
-    this.changed();
+    this.replaceEvent(id, cur, next);
   }
 
   async parkOrphan(id: string, untilMs: number): Promise<void> {
     const cur = this.events.get(id);
     if (cur === undefined) throw new Error(`unknown webhook event ${id}`);
-    this.events.set(id, { ...cur, parkedUntilMs: untilMs });
-    this.changed();
+    this.replaceEvent(id, cur, { ...cur, parkedUntilMs: untilMs });
+  }
+
+  /** Swaps an event and persists; a failed write restores the previous event. */
+  private replaceEvent(id: string, previous: StoredWebhook, next: StoredWebhook): void {
+    this.events.set(id, next);
+    try {
+      this.changed();
+    } catch (e) {
+      this.events.set(id, previous);
+      throw e;
+    }
   }
 
   async listOrphans(nowMs: number): Promise<StoredWebhook[]> {
@@ -176,6 +215,13 @@ export class MemoryWebhookEventStore implements WebhookEventStore {
       .filter(
         (e) => e.result === undefined && e.parkedUntilMs !== undefined && e.parkedUntilMs > nowMs,
       )
+      .sort((a, b) => a.receivedAtMs - b.receivedAtMs || (a.id < b.id ? -1 : 1))
+      .map(clone);
+  }
+
+  async listUnprocessed(): Promise<StoredWebhook[]> {
+    return [...this.events.values()]
+      .filter((e) => e.result === undefined)
       .sort((a, b) => a.receivedAtMs - b.receivedAtMs || (a.id < b.id ? -1 : 1))
       .map(clone);
   }
@@ -214,8 +260,15 @@ export class MemoryHoldStore implements HoldStore {
   }
 
   async put(h: HoldRecord): Promise<void> {
+    const before = this.holds.get(h.holdId);
     this.holds.set(h.holdId, clone(h));
-    this.onChange?.(this.snapshot());
+    try {
+      this.onChange?.(this.snapshot());
+    } catch (e) {
+      if (before === undefined) this.holds.delete(h.holdId);
+      else this.holds.set(h.holdId, before);
+      throw e;
+    }
   }
 
   /** Ordered by createdAtMs, then holdId. */

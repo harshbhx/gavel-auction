@@ -26,6 +26,7 @@ export type ErrorKind =
   | 'server_error'
   | 'auth_expired'
   | 'auth_failed'
+  | 'auth_unavailable'
   | 'not_found'
   | 'invalid_request'
   | 'already_voided'
@@ -135,6 +136,8 @@ export interface JournalHold {
   holdId: string;
   authId: string;
   ceilingCents: number;
+  /** When the hold was created; lets a resume compute its age (R-PAY-034). */
+  createdAtMs?: number;
   stale: boolean;
 }
 

@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { PENDING_MAX_AGE_MS } from '../parser/correction.js';
 import type { BidderRef, Cents, ParseContext } from '../types.js';
 
@@ -9,10 +8,20 @@ export const DUPLICATE_WINDOW_MS = 1500;
 export function normalizeForDedupe(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[’]/g, "'")
+    .replace(/\u2019/g, "'")
     .split(/[^\p{L}\p{N}']+/u)
     .filter((w) => w !== '')
     .join(' ');
+}
+
+/** 32-bit FNV-1a with a seed; two seeds give a 64-bit digest without any platform crypto. */
+function fnv1a(text: string, seed: number): string {
+  let h = seed >>> 0;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0');
 }
 
 /** Stable key: identical (room, lot, audioStartMs, text) always gives the identical key. */
@@ -22,8 +31,10 @@ export function idempotencyKey(
   audioStartMs: number,
   text: string,
 ): string {
-  const digest = createHash('sha1').update(text).digest('hex').slice(0, 12);
-  return `${roomId}:${lotId}:${audioStartMs}:${digest}`;
+  const norm = normalizeForDedupe(text);
+  const digest = (fnv1a(norm, 0x811c9dc5) + fnv1a(norm, 0x01000193)).slice(0, 12);
+  // ':' inside an id is escaped, so ('a:b', 'c') and ('a', 'b:c') never collide.
+  return `${encodeURIComponent(roomId)}:${encodeURIComponent(lotId)}:${audioStartMs}:${digest}`;
 }
 
 /** Remembers when each normalized text was last processed. Time is always passed in. */
@@ -39,9 +50,10 @@ export class DuplicateFilter {
     }
     const key = normalizeForDedupe(text);
     const last = this.seen.get(key);
-    if (last !== undefined && atMs >= last && atMs - last < this.windowMs) return true;
+    const duplicate = last !== undefined && atMs >= last && atMs - last < this.windowMs;
+    // A dropped duplicate also renews the window, so a replay storm never leaks one through.
     this.seen.set(key, atMs);
-    return false;
+    return duplicate;
   }
 }
 

@@ -161,6 +161,14 @@ describe('validateBid', () => {
     );
   });
 
+  it('ENG-RT-02: a voice bid with no confidence fails closed', () => {
+    const { s, lot } = build('english');
+    expect(reason(validateBid(s, lot, bid({ source: 'voice', audit: {} })))).toBe('unconfirmed');
+    expect(reason(validateBid(s, lot, bid({ source: 'voice', audit: { confirmed: true } })))).toBe(
+      'ok',
+    );
+  });
+
   it('below_reserve before mode rules', () => {
     const { s, lot } = build('english');
     expect(reason(validateBid(s, lot, bid({ amountCents: 999 })))).toBe('below_reserve');

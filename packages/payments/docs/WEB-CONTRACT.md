@@ -6,7 +6,7 @@ Schemas live in `src/contract/web.ts`; one example per message is in `src/contra
 
 ```
 POST /api/holds
-  request : { auctionId, bidderId, ceilingCents }        CreateHoldRequest
+  request : { auctionId, ceilingCents }                   CreateHoldRequest
   response: { holdId, orderId, clientToken? }            CreateHoldResponse
   errors  : 400 ceiling_out_of_range | 409 hold_exists
             503 paypal_unavailable | 503 kill_switch_engaged | 503 payments_not_sandbox
@@ -21,7 +21,11 @@ DELETE /api/holds/{holdId}        (browser onCancel / onError; no PayPal call, t
 
 Every error response has the body `{ "error": <code> }` (`HoldErrorResponse`). Codes: `ceiling_out_of_range`, `hold_exists`, `order_not_found`, `order_not_approved`, `paypal_unavailable`, `kill_switch_engaged`, `payments_not_sandbox`.
 
-The server never trusts an `authId` or amount from the browser. The amount sent to PayPal is computed server-side from the validated `ceilingCents`.
+The server never trusts an `authId`, an amount or a bidder id from the browser. `CreateHoldRequest` has no `bidderId`: the bidder is derived from the authenticated session, and a body that names one is rejected by the strict schema.
+
+Ownership: `approve` and `DELETE` act only on a hold whose `bidderId` equals the session bidder (`holdOwnedBySession`). A mismatch is answered exactly like an unknown hold, `404 order_not_found`, so a guessed or leaked `holdId` reveals nothing and cannot be used by another viewer.
+
+The amount sent to PayPal is computed server-side from the validated `ceilingCents`.
 
 ## Browser sequence
 

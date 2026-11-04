@@ -13,7 +13,10 @@ export type Outcome =
   | { kind: 'accepted' }
   | { kind: 'rejected'; reason: RejectReason }
   | { kind: 'noop' }
-  | { kind: 'duplicate' };
+  | {
+      kind: 'duplicate';
+      original: { kind: 'accepted' } | { kind: 'rejected'; reason: RejectReason };
+    };
 
 export interface DecideResult {
   events: LedgerEvent[];
@@ -78,6 +81,9 @@ export function decideSetup(state: AuctionState, cmd: SetupCommand): DecideResul
       if (state.lotOrder.length >= LIMITS.lots) throw new EngineError('limit_exceeded', 'lots');
       const v = validateLotConfig(cmd.lot);
       if (!v.ok) return configFailure(v.errors);
+      if (v.value.reserveCents > state.config.maxCeilingCents) {
+        throw new EngineError('bad_command', 'reserve above maxCeilingCents');
+      }
       return accepted([{ type: 'LOT_ADDED', payload: { lotId: v.value.lotId, lot: v.value } }]);
     }
     case 'RegisterBidder': {
@@ -98,11 +104,16 @@ export function decideSetup(state: AuctionState, cmd: SetupCommand): DecideResul
         if (cmd.ceilingCents <= existing.ceilingCents) {
           throw new EngineError('cannot_lower_ceiling', String(cmd.ceilingCents));
         }
+        // A larger ceiling needs a larger authorisation: a raise on a held bidder must say which.
+        if (existing.holdRef !== null && cmd.holdRef === undefined) {
+          throw new EngineError('bad_command', 'holdRef required to raise a held ceiling');
+        }
         const payload: Extract<LedgerEvent, { type: 'CEILING_RAISED' }>['payload'] = {
           bidderId: cmd.bidderId,
           fromCents: existing.ceilingCents,
           ceilingCents: cmd.ceilingCents,
         };
+        if (cmd.holdRef !== undefined) payload.holdRef = cmd.holdRef;
         if (cmd.lotId !== undefined) payload.lotId = cmd.lotId;
         return accepted([{ type: 'CEILING_RAISED', payload }]);
       }

@@ -4,9 +4,17 @@
   "private": true,
   "type": "module",
   "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0 && node scripts/check-imports.mjs",
+    "test:coverage": "vitest run --coverage",
+    "check:trace": "node scripts/trace-check.mjs"
   },
   "devDependencies": {
     "@types/node": "22.10.2",

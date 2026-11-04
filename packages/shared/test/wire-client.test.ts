@@ -57,15 +57,36 @@ describe('client messages (T-RT-014)', () => {
     }
   });
 
-  it('rejects fractional or negative amounts, bad ids and extra fields', () => {
+  it('decodes fractional or negative amounts so the room can answer bad_amount', () => {
+    for (const amount of [350.5, -1]) {
+      const r = decodeClientMsg(enc({ v: 1, t: 'bid', mid: MID, amount, source: 'qr' }));
+      expect(r.ok).toBe(true);
+    }
+  });
+
+  it('rejects non-finite amounts, bad ids and extra fields', () => {
     const bad = [
-      { v: 1, t: 'bid', mid: MID, amount: 10.5, source: 'qr' },
-      { v: 1, t: 'bid', mid: MID, amount: -1, source: 'qr' },
+      { v: 1, t: 'bid', mid: MID, amount: '10', source: 'qr' },
+      { v: 1, t: 'bid', mid: MID, amount: null, source: 'qr' },
       { v: 1, t: 'bid', mid: 'nope', amount: 1, source: 'qr' },
       { v: 1, t: 'bid', mid: MID, amount: 1, source: 'sms' },
       { v: 1, t: 'bid', mid: MID, amount: 1, source: 'qr', extra: 1 },
       { v: 1, t: 'join', token: '', auctionId: AUCTION },
     ];
     for (const b of bad) expect(decodeClientMsg(enc(b)).ok).toBe(false);
+  });
+});
+
+describe('client free text is bounded (R-RT-017)', () => {
+  const long = 'x'.repeat(5000);
+
+  it('rejects oversized names, versions, transcripts and confirm ids', () => {
+    const cases = [
+      { v: 1, t: 'join', token: 't', auctionId: AUCTION, client: { name: long, version: '1' } },
+      { v: 1, t: 'join', token: 't', auctionId: AUCTION, client: { name: 'w', version: long } },
+      { v: 1, t: 'bid', mid: MID, amount: 1, source: 'voice', transcript: long },
+      { v: 1, t: 'confirm_response', confirmId: long, accept: true },
+    ];
+    for (const c of cases) expect(decodeClientMsg(enc(c)).ok).toBe(false);
   });
 });

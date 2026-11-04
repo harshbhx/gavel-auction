@@ -1,0 +1,65 @@
+{
+  "name": "english: rejects are reported in step order",
+  "parity": true,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 5000
+    },
+    {
+      "op": "bid",
+      "at": 500,
+      "bidder": "x",
+      "amount": 2000
+    },
+    {
+      "op": "bid",
+      "at": 600,
+      "bidder": "a",
+      "amount": 0
+    },
+    {
+      "op": "bid",
+      "at": 700,
+      "bidder": "a",
+      "amount": 6000
+    },
+    {
+      "op": "bid",
+      "at": 800,
+      "bidder": "a",
+      "amount": 900
+    },
+    {
+      "op": "bid",
+      "at": 900,
+      "bidder": "a",
+      "amount": 1500
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "a",
+      "amount": 1600
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    }
+  ],
+  "expect": {
+    "winner": "a",
+    "price": 1500,
+    "ranking": [["a", 1500]],
+    "rejects": ["unregistered", "bad_amount", "over_ceiling", "below_reserve", "already_leading"],
+    "endsAt": 100000
+  }
+}

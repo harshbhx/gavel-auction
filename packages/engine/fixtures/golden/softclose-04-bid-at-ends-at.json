@@ -1,0 +1,38 @@
+{
+  "name": "soft close: bid at endsAt is closed",
+  "parity": true,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000,
+    "softCloseWindow": 10000,
+    "softCloseExtension": 15000,
+    "maxExtensions": 2
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 100000,
+      "bidder": "a",
+      "amount": 1000
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    }
+  ],
+  "expect": {
+    "winner": null,
+    "price": 0,
+    "ranking": [],
+    "rejects": ["closed"],
+    "endsAt": 100000
+  }
+}

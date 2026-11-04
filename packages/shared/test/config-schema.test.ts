@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AuctionConfigSchema } from '../src/config-schema';
+import { AuctionConfigSchema, endsInFuture } from '../src/config-schema';
 
 const valid = {
   currency: 'USD',
@@ -40,5 +40,37 @@ describe('AuctionConfig (T-RT-010)', () => {
     const rest: Record<string, unknown> = { ...valid };
     delete rest.reserve;
     expect(AuctionConfigSchema.safeParse(rest).success).toBe(false);
+  });
+});
+
+describe('AuctionConfig boundaries (R-RT-012)', () => {
+  const bad = (patch: Record<string, unknown>) =>
+    AuctionConfigSchema.safeParse({ ...valid, ...patch }).success;
+
+  it('rejects a zero reserve and a zero increment', () => {
+    expect(bad({ reserve: 0 })).toBe(false);
+    expect(bad({ reserve: 99 })).toBe(false);
+    expect(bad({ minIncrement: 0 })).toBe(false);
+  });
+
+  it('rejects unbounded soft-close extension', () => {
+    expect(bad({ softCloseExtensionMs: 4_000_000_000 })).toBe(false);
+    expect(bad({ softCloseExtensionMs: 600_000 })).toBe(true);
+    expect(bad({ maxExtensions: 1_000_000 })).toBe(false);
+    expect(bad({ maxExtensions: 50 })).toBe(true);
+  });
+
+  it('requires 1..8 ascending presets at or above the reserve', () => {
+    expect(bad({ ceilingPresets: [] })).toBe(false);
+    expect(bad({ ceilingPresets: Array.from({ length: 9 }, (_, i) => 10000 + i) })).toBe(false);
+    expect(bad({ ceilingPresets: [100000, 50000] })).toBe(false);
+    expect(bad({ ceilingPresets: [50000, 50000] })).toBe(false);
+    expect(bad({ ceilingPresets: [5000, 50000] })).toBe(false);
+    expect(bad({ ceilingPresets: [10000] })).toBe(true);
+  });
+
+  it('endsInFuture compares against now', () => {
+    expect(endsInFuture({ endTs: 2000 as never }, 1000)).toBe(true);
+    expect(endsInFuture({ endTs: 1000 as never }, 1000)).toBe(false);
   });
 });

@@ -28,6 +28,8 @@ export interface TransportInit {
   method: string;
   headers: Record<string, string>;
   body?: string;
+  /** Aborted when the per-attempt timeout elapses. */
+  signal?: AbortSignal;
 }
 
 export type FetchLike = (url: string, init: TransportInit) => Promise<TransportResponse>;
@@ -45,8 +47,11 @@ export interface TransportOptions {
   maxAttempts?: number;
   /** Upper bound for a Retry-After wait. Default 30 s. */
   retryAfterMaxMs?: number;
+  /** Per-attempt timeout covering headers and body. Default 10 s (R-PAY-016). */
+  timeoutMs?: number;
 }
 
+export const DEFAULT_TIMEOUT_MS = 10_000;
 export const DEFAULT_BASE_MS = 250;
 export const DEFAULT_CAP_MS = 4000;
 export const DEFAULT_MAX_ATTEMPTS = 4;
@@ -125,6 +130,7 @@ export class Transport {
   private readonly capMs: number;
   private readonly maxAttempts: number;
   private readonly retryAfterMaxMs: number;
+  private readonly timeoutMs: number;
 
   constructor(opts: TransportOptions = {}) {
     this.doFetch = opts.fetch ?? (globalThis.fetch as unknown as FetchLike);
@@ -136,6 +142,10 @@ export class Transport {
     this.capMs = opts.capMs ?? DEFAULT_CAP_MS;
     this.maxAttempts = Math.max(1, opts.maxAttempts ?? DEFAULT_MAX_ATTEMPTS);
     this.retryAfterMaxMs = opts.retryAfterMaxMs ?? RETRY_AFTER_MAX_MS;
+    this.timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    if (!Number.isFinite(this.timeoutMs) || this.timeoutMs <= 0) {
+      throw new RangeError('timeoutMs must be a positive number');
+    }
   }
 
   /** Full-jitter delay before retry number `retries` (0 for the first retry). */
@@ -154,8 +164,8 @@ export class Transport {
   async send(req: TransportRequest): Promise<TransportResult> {
     const headers: Record<string, string> = { ...(req.headers ?? {}) };
     if (req.requestId !== undefined) headers[REQUEST_ID_HEADER] = req.requestId;
-    const init: TransportInit = { method: req.method, headers };
-    if (req.body !== undefined) init.body = req.body;
+    const base: TransportInit = { method: req.method, headers };
+    if (req.body !== undefined) base.body = req.body;
 
     let lastError: PayPalError | undefined;
     for (let attempt = 1; attempt <= this.maxAttempts; attempt += 1) {
@@ -165,8 +175,7 @@ export class Transport {
       let failure: PayPalError | undefined;
 
       try {
-        const res = await this.doFetch(req.url, init);
-        const text = await res.text();
+        const { res, text } = await this.attempt(req.url, base);
         if (!RETRYABLE_STATUS.has(res.status)) {
           result = { status: res.status, headers: res.headers, text, attempts: attempt };
         } else {
@@ -187,6 +196,37 @@ export class Transport {
     }
     if (lastError === undefined) throw new Error('transport: no attempt was made');
     throw lastError;
+  }
+
+  /**
+   * One request with a hard deadline. The signal is passed to fetch, and the wait
+   * is also raced against the deadline so a fetch that ignores the signal cannot
+   * hold the caller (and its lease) forever. A timeout is a network failure with
+   * an unknown outcome.
+   */
+  private async attempt(
+    url: string,
+    base: TransportInit,
+  ): Promise<{ res: TransportResponse; text: string }> {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(new Error(`request timed out after ${this.timeoutMs} ms`));
+      }, this.timeoutMs);
+    });
+    const work = (async () => {
+      const res = await this.doFetch(url, { ...base, signal: controller.signal });
+      const text = await res.text();
+      return { res, text };
+    })();
+    work.catch(() => undefined);
+    try {
+      return await Promise.race([work, deadline]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
   }
 
   /** One log line per attempt (R-PAY-019, R-PAY-130) plus the call counter. */

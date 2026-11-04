@@ -21,7 +21,10 @@ describe('decide wrapper', () => {
     const first = run(s, placeBid(1000));
     expect(first.result.outcome.kind).toBe('accepted');
     const again = run(first.state, placeBid(1000));
-    expect(again.result).toEqual({ events: [], outcome: { kind: 'duplicate' } });
+    expect(again.result).toEqual({
+      events: [],
+      outcome: { kind: 'duplicate', original: { kind: 'accepted' } },
+    });
     expect(again.state).toBe(first.state);
     expect(first.state.commands[CID]?.seq).toBe(first.entries[0]?.seq);
     // A retry stamped later is still the same command.
@@ -51,7 +54,7 @@ describe('decide wrapper', () => {
     expect(decide(s, c).outcome.kind).toBe('duplicate');
     const changed = mk(1, { type: 'CreateAuction', title: 'Other', config: {} }, id('CREATE'));
     expect(errCode(() => decide(s, changed))).toBe('command_conflict');
-    const lot = mk(2, { type: 'AddLot', lot: lotConfig(L1) }, id('ADDLOT'));
+    const lot = mk(2, { type: 'AddLot', lot: lotConfig(L1) }, id('ADD1'));
     s = run(s, lot).state;
     expect(decide(s, lot).outcome.kind).toBe('duplicate');
   });
@@ -89,8 +92,8 @@ describe('decide wrapper', () => {
     expect(decideDev(s, cmd)).toEqual(one);
   });
 
-  it('R-ENG-089 commands that are not implemented yet fail bad_command', () => {
+  it('T-ENG-048 R-ENG-064 CloseAuction with a lot still pending fails auction_open_lots', () => {
     const s = scene();
-    expect(errCode(() => decide(s, mk(5, { type: 'CloseAuction' })))).toBe('bad_command');
+    expect(errCode(() => decide(s, mk(5, { type: 'CloseAuction' })))).toBe('auction_open_lots');
   });
 });

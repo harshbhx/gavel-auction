@@ -56,7 +56,13 @@ export type LedgerEvent =
     }
   | {
       type: 'CEILING_RAISED';
-      payload: { bidderId: Ulid; fromCents: number; ceilingCents: number; lotId?: Ulid };
+      payload: {
+        bidderId: Ulid;
+        fromCents: number;
+        ceilingCents: number;
+        holdRef?: string;
+        lotId?: Ulid;
+      };
     }
   | { type: 'CEILING_REVOKED'; payload: { bidderId: Ulid; reason: RevokeReason } }
   | { type: 'LOT_OPENED'; payload: { lotId: Ulid; endsAt: number } }
@@ -73,7 +79,7 @@ export type LedgerEvent =
         priceAfter: number | null;
         leaderBefore: Ulid | null;
         leaderAfter: Ulid | null;
-        rank: number;
+        rank: number | null;
         endsAtBefore: number;
         endsAtAfter: number;
       };
@@ -134,7 +140,7 @@ export type LedgerEvent =
       type: 'CANDIDATE_SKIPPED';
       payload: { lotId: Ulid; bidderId: Ulid; reason: string; depth: number; priceCents: number };
     }
-  | { type: 'LOT_UNSOLD'; payload: { lotId: Ulid; reason: UnsoldReason } }
+  | { type: 'LOT_UNSOLD'; payload: { lotId: Ulid; reason: UnsoldReason; actor?: string } }
   | {
       type: 'SETTLEMENT_STATE';
       payload: { lotId: Ulid; from: SettlementState; to: SettlementState; ref: string };

@@ -1,4 +1,35 @@
-import type { HoldView, SettlementState, SettlementView } from '../wire';
+import type { SettlementState } from '../wire';
+
+export interface HoldVerification {
+  eventId: string;
+  kind: 'webhook' | 'lookup';
+  eventType?: string;
+  at: number;
+}
+
+/** One hold in the settlement ladder. The shared wire protocol carries only the phase, so the per-hold detail comes from the settlement view endpoint. */
+export interface HoldView {
+  paddle: number;
+  name: string;
+  ceilingCents: number;
+  state: SettlementState;
+  capturedCents: number;
+  releasedCents: number;
+  reason?: string;
+  verifiedBy: HoldVerification[];
+  /** Last 6 characters only. */
+  idSuffix: string;
+}
+
+export interface SettlementView {
+  lotId: string;
+  phase: SettlementState;
+  winnerPaddle: number | null;
+  /** The price the hammer fell at. When present, the winning lane must be charged exactly this. */
+  hammerPriceCents?: number;
+  holds: HoldView[];
+  invariants: { ok: boolean; violations: string[] };
+}
 
 export type RungStatus = 'done' | 'current' | 'pending';
 
@@ -189,7 +220,13 @@ function buildInvariants(view: SettlementView): LadderInvariants {
       Number.isSafeInteger(h.releasedCents),
   );
   const capturedWithinCeiling =
-    winningCeilingCents === null ? capturedCents === 0 : capturedCents <= winningCeilingCents;
+    winningCeilingCents === null
+      ? capturedCents === 0
+      : view.hammerPriceCents === undefined
+        ? capturedCents <= winningCeilingCents
+        : // Only the winning price may be charged, never the ceiling (R-WEB-091). Until the capture
+          // lands nothing is captured yet, which is not a violation.
+          capturedCents === 0 || capturedCents === view.hammerPriceCents;
   const totalsMatch =
     !FINAL_PHASES.includes(view.phase) || capturedCents + releasedCents === holdsCents;
   return {

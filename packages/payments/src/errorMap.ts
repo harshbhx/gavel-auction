@@ -119,7 +119,7 @@ function make(
   fallbackName: string,
   rawText: string,
 ): PayPalError {
-  const message = parsed.message ?? (snippet(rawText) || `HTTP ${status}`);
+  const message = snippet(parsed.message ?? rawText) || `HTTP ${status}`;
   const init: ConstructorParameters<typeof PayPalError>[0] = {
     kind,
     status,
@@ -165,6 +165,11 @@ export function classifyError(
       (parsed.name !== undefined ? ISSUE_RULES[parsed.name] : undefined);
     if (rule !== undefined) return build(rule.kind, 'definite', 'UNPROCESSABLE_ENTITY');
     return build('rejected', 'definite', 'UNPROCESSABLE_ENTITY');
+  }
+  // A gateway timeout or an in-flight conflict does not prove the request had no
+  // effect (R-PAY-053, R-PAY-054): the outcome stays unknown and the truth check decides.
+  if (status === 408 || status === 409 || status === 425) {
+    return build('rejected', 'unknown', `HTTP_${status}`);
   }
   if (status >= 400) return build('rejected', 'definite', `HTTP_${status}`);
   // Not an error status at all (1xx, 2xx, 3xx): the effect is not knowable here.

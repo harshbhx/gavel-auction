@@ -60,17 +60,23 @@ function amountsOf(text: string, ctx: ParseContext): { amounts: Cents[]; res: Pa
   return { amounts, res };
 }
 
+/** Both sides known and the same kind and value; an unknown side never matches. */
 function sameBidder(a: BidderRef | null, b: BidderRef | null): boolean {
-  return a === null || b === null || a.value === b.value;
+  return a !== null && b !== null && a.kind === b.kind && a.value === b.value;
 }
 
-function bidderFor(text: string, tail: ParseResult, ctx: ParseContext): BidderRef | null {
+/** The bidder named by the text (a paddle) or by the microphone (the speaker), or null. */
+function explicitBidder(text: string, tail: ParseResult, ctx: ParseContext): BidderRef | null {
   if (tail.bidder?.kind === 'paddle') return tail.bidder;
   const paddles = [...new Set(extractPaddles(tokenize(text)).paddles)];
   const only = paddles[0];
   if (paddles.length === 1 && only !== undefined) return { kind: 'paddle', value: only };
   if (ctx.speakerBidderId !== undefined) return { kind: 'speaker', value: ctx.speakerBidderId };
-  return ctx.pendingCandidate?.bidder ?? null;
+  return null;
+}
+
+function bidderFor(text: string, tail: ParseResult, ctx: ParseContext): BidderRef | null {
+  return explicitBidder(text, tail, ctx) ?? ctx.pendingCandidate?.bidder ?? null;
 }
 
 function correctionResult(
@@ -134,7 +140,9 @@ export function parseCorrection(text: string, ctx: ParseContext = {}): Correctio
           confidence: 0.5,
           source: 'rules',
         },
-        cancelPending: live !== undefined && sameBidder(live.bidder, target),
+        // Only the bidder who is named or speaking can cancel: a room mic with no paddle cannot.
+        cancelPending:
+          live !== undefined && sameBidder(live.bidder, explicitBidder(text, res, ctx)),
         replacedCents: pending?.amountCents ?? null,
       };
     }
@@ -145,7 +153,7 @@ export function parseCorrection(text: string, ctx: ParseContext = {}): Correctio
     };
   }
 
-  const lower = text.toLowerCase().replace(/’/g, "'");
+  const lower = text.toLowerCase().replace(/\u2019/g, "'");
   const notXY = NOT_X_Y.exec(lower);
   if (notXY !== null) {
     const x = amountsOf(notXY[1] ?? '', ctx);

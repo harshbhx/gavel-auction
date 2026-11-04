@@ -1,0 +1,41 @@
+{
+  "name": "reject order: below_increment beats already_leading",
+  "parity": true,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "a",
+      "amount": 2000
+    },
+    {
+      "op": "bid",
+      "at": 2000,
+      "bidder": "a",
+      "amount": 2050
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    }
+  ],
+  "expect": {
+    "winner": "a",
+    "price": 2000,
+    "ranking": [["a", 2000]],
+    "rejects": ["below_increment"],
+    "endsAt": 100000
+  }
+}

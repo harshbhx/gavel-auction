@@ -86,7 +86,11 @@ describe('decide Hammer and Tick', () => {
     const s = open(scene(), L1);
     const r = run(s, hammer(200, true));
     expect(r.entries.map((e) => e.type)).toEqual(['LOT_CLOSING', 'LOT_UNSOLD']);
-    expect(r.entries[1]?.payload).toEqual({ lotId: L1, reason: 'no_bids' });
+    expect(r.entries[1]?.payload).toEqual({
+      lotId: L1,
+      reason: 'no_bids',
+      actor: 'host:1',
+    });
     expect(r.state.lots[L1]?.status).toBe('DONE');
     expect(errCode(() => bid(r.state, 300, A, 1000))).toBe('lot_done');
     expect(errCode(() => decide(r.state, hammer(300, true)))).toBe('lot_done');

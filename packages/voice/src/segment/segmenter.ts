@@ -58,8 +58,9 @@ export class Segmenter {
     this.lastNow = nowMs;
     switch (ev.type) {
       case 'interim': {
-        if (this.parts.length > 0) this.interimSinceFinal = true;
+        // A blank interim is a silence keep-alive: it must not postpone the flush of a held final.
         if (ev.text.trim() === '') return [];
+        if (this.parts.length > 0) this.interimSinceFinal = true;
         return [{ type: 'caption', text: ev.text, final: false, startMs: ev.startMs }];
       }
       case 'final': {

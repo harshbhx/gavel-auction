@@ -4,13 +4,19 @@ import { Button } from '../../src/design/primitives/Button';
 import {
   backoffDelay,
   ConnectionManager,
+  STABLE_AFTER_MS,
   setActiveConnection,
   useConnection,
-  type JoinWithToken,
 } from '../../src/net/connection';
 import type { Transport, TransportStatus } from '../../src/net/transport';
 import { WebSocketTransport, type SocketLike } from '../../src/net/wsTransport';
-import type { ClientMessage, ServerMessage } from '../../src/wire';
+import { auctionId, priceMsg, stateMsg } from '../../src/testing/builders';
+import {
+  PROTOCOL_VERSION,
+  encodeMsg,
+  type ClientMessage,
+  type ServerMessage,
+} from '../../src/wire';
 
 /** Virtual clock: timers fire in order as `advance` moves time forward. */
 class Clock {
@@ -82,15 +88,15 @@ class FakeTransport implements Transport {
   }
 }
 
-function setup(random = 0.5, seq = 0, token: string | null = 'tok') {
+function setup(random = 0.5, seq = 0, token = 'tok') {
   const clock = new Clock();
   const transport = new FakeTransport();
   const received: ServerMessage[] = [];
   const manager = new ConnectionManager({
     transport,
-    roomId: 'r1',
-    getResumeFromSeq: () => seq,
-    getSessionToken: () => token,
+    auctionId: auctionId(),
+    getLastSeq: () => seq,
+    getToken: () => token,
     onMessage: (m) => received.push(m),
     random: () => random,
     setTimer: clock.setTimer,
@@ -134,9 +140,65 @@ describe('ConnectionManager reconnect (T-WEB-013)', () => {
     transport.failConnect = false;
     clock.advance(8000);
     expect(transport.current).toBe('open');
+    clock.advance(STABLE_AFTER_MS);
     transport.set('closed');
     const last = clock.delays[clock.delays.length - 1];
     expect(last).toBe(500);
+  });
+
+  it('keeps backing off when the server accepts the socket and drops it at once (WEB-RT-08)', () => {
+    const { clock, transport, manager } = setup();
+    transport.failConnect = false;
+    manager.start();
+    const waits: number[] = [];
+    for (let i = 0; i < 6; i += 1) {
+      transport.set('closed');
+      waits.push(clock.delays[clock.delays.length - 1] ?? -1);
+      clock.advance(waits[i] ?? 0);
+    }
+    expect(waits).toEqual([500, 1000, 2000, 4000, 8000, 8000]);
+  });
+
+  it('starts the backoff over once the server answered the join with a snapshot', () => {
+    const { clock, transport, manager } = setup();
+    transport.failConnect = false;
+    manager.start();
+    transport.set('closed');
+    clock.advance(500);
+    transport.set('closed');
+    clock.advance(1000);
+    const received = (transport as unknown as { msgCbs: Set<(m: ServerMessage) => void> }).msgCbs;
+    received.forEach((cb) => cb(stateMsg(1)));
+    const before = clock.delays.length;
+    transport.set('closed');
+    expect(clock.delays.slice(before).filter((d) => d !== 2000)).toEqual([500]);
+  });
+
+  it('keeps retrying when the socket factory throws (WEB-RT-07)', () => {
+    const clock = new Clock();
+    let attempts = 0;
+    const transport = new WebSocketTransport('ws://x/ws', () => {
+      attempts += 1;
+      throw new Error('blocked');
+    });
+    const manager = new ConnectionManager({
+      transport,
+      auctionId: auctionId(),
+      getLastSeq: () => 0,
+      getToken: () => 'tok',
+      onMessage: () => {},
+      random: () => 0.5,
+      setTimer: clock.setTimer,
+      clearTimer: clock.clearTimer,
+    });
+    manager.start();
+    expect(attempts).toBe(1);
+    clock.advance(500);
+    expect(attempts).toBe(2);
+    clock.advance(1000);
+    expect(attempts).toBe(3);
+    clock.advance(2000);
+    expect(attempts).toBe(4);
   });
 
   it('applies jitter to the delay', () => {
@@ -154,35 +216,31 @@ describe('ConnectionManager reconnect (T-WEB-013)', () => {
     manager.start();
     transport.set('closed');
     clock.advance(500);
-    const joins = transport.sent.filter((m): m is JoinWithToken => m.t === 'join');
+    const joins = transport.sent.filter((m) => m.t === 'join');
     expect(joins).toHaveLength(2);
     expect(joins[1]).toEqual({
+      v: PROTOCOL_VERSION,
       t: 'join',
-      roomId: 'r1',
-      resumeFromSeq: 42,
-      sessionToken: 'secret-token',
+      token: 'secret-token',
+      auctionId: auctionId(),
+      lastSeq: 42,
     });
   });
 
-  it('omits the token for a watcher', () => {
-    const { transport, manager } = setup(0.5, 0, null);
+  it('sendJoin repeats the join with the token, for a resync (WEB-RT-04)', () => {
+    const { transport, manager } = setup(0.5, 7, 'tok-9');
     transport.failConnect = false;
     manager.start();
-    expect(transport.sent[0]).toEqual({ t: 'join', roomId: 'r1', resumeFromSeq: 0 });
+    manager.sendJoin();
+    expect(transport.sent).toHaveLength(2);
+    expect(transport.sent[1]).toMatchObject({ t: 'join', token: 'tok-9', lastSeq: 7 });
   });
 
   it('forwards server messages and stops cleanly', () => {
     const { clock, transport, manager, received } = setup();
     transport.failConnect = false;
     manager.start();
-    const msg: ServerMessage = {
-      t: 'error',
-      seq: 1,
-      roomId: 'r1',
-      serverTime: 1,
-      code: 'x',
-      message: 'm',
-    };
+    const msg: ServerMessage = priceMsg(1, 1, 1_000);
     (transport as unknown as { msgCbs: Set<(m: ServerMessage) => void> }).msgCbs.forEach((cb) =>
       cb(msg),
     );
@@ -296,23 +354,81 @@ describe('WebSocketTransport', () => {
     transport.connect();
     const socket = sockets[0];
     if (socket === undefined) throw new Error('no socket');
-    transport.send({ t: 'join', roomId: 'r1' });
+    const join: ClientMessage = {
+      v: PROTOCOL_VERSION,
+      t: 'join',
+      token: 'tok',
+      auctionId: auctionId(),
+      lastSeq: 0,
+    };
+    transport.send(join);
     expect(socket.sent).toEqual([]);
     socket.readyState = 1;
-    transport.send({ t: 'join', roomId: 'r1' });
-    expect(socket.sent).toEqual([JSON.stringify({ t: 'join', roomId: 'r1' })]);
+    transport.send(join);
+    expect(socket.sent).toEqual([JSON.stringify(join)]);
   });
 
-  it('delivers valid messages and drops malformed ones', () => {
+  it('does not send a message the shared schema rejects', () => {
+    const { sockets, transport } = make();
+    transport.connect();
+    const socket = sockets[0];
+    if (socket === undefined) throw new Error('no socket');
+    socket.readyState = 1;
+    const bad = { v: 1, t: 'join', roomId: 'r1' } as unknown as ClientMessage;
+    transport.send(bad);
+    expect(socket.sent).toEqual([]);
+    expect(transport.problemCount).toBe(1);
+  });
+
+  it('delivers frames encoded by the shared codec', () => {
     const { sockets, transport, messages } = make();
     transport.connect();
     const socket = sockets[0];
     if (socket === undefined) throw new Error('no socket');
-    const good = { t: 'error', seq: 1, roomId: 'r1', serverTime: 1, code: 'x', message: 'm' };
-    socket.onmessage?.({ data: JSON.stringify(good) });
+    const frames: ServerMessage[] = [stateMsg(1), priceMsg(2, 7, 10_000)];
+    for (const frame of frames) {
+      const encoded = encodeMsg(frame);
+      if (!encoded.ok) throw new Error('fixture does not encode');
+      socket.onmessage?.({ data: encoded.value });
+    }
+    expect(messages.map((m) => m.t)).toEqual(['state', 'price']);
+    expect(messages[1]).toMatchObject({ price: 10_000, leaderPaddle: 7 });
+    expect(transport.problemCount).toBe(0);
+  });
+
+  it('delivers an error frame that has no seq (WEB-RT-09)', () => {
+    const { sockets, transport, messages } = make();
+    transport.connect();
+    const socket = sockets[0];
+    if (socket === undefined) throw new Error('no socket');
+    socket.onmessage?.({
+      data: JSON.stringify({ v: 1, t: 'error', code: 'unauthorized', message: 'bad token' }),
+    });
+    expect(messages).toEqual([{ v: 1, t: 'error', code: 'unauthorized', message: 'bad token' }]);
+  });
+
+  it('counts and reports frames it cannot decode instead of dropping them silently (WEB-RT-09)', () => {
+    const { sockets, transport, messages } = make();
+    const problems: Array<{ kind: string; code: string; count: number }> = [];
+    transport.onProblem((p) => problems.push(p));
+    transport.connect();
+    const socket = sockets[0];
+    if (socket === undefined) throw new Error('no socket');
     socket.onmessage?.({ data: 'not json' });
     socket.onmessage?.({ data: JSON.stringify({ t: 'price' }) });
-    expect(messages).toEqual([good]);
+    socket.onmessage?.({ data: new ArrayBuffer(4) });
+    // The old mirror shape: no v, room and time fields.
+    socket.onmessage?.({
+      data: JSON.stringify({ t: 'price', seq: 1, roomId: 'r', serverTime: 1 }),
+    });
+    expect(messages).toEqual([]);
+    expect(transport.problemCount).toBe(4);
+    expect(problems.map((p) => [p.kind, p.count])).toEqual([
+      ['undecodable', 1],
+      ['undecodable', 2],
+      ['binary', 3],
+      ['undecodable', 4],
+    ]);
   });
 
   it('opens a fresh socket on every connect and ignores the old one', () => {

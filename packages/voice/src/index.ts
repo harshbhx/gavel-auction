@@ -21,3 +21,5 @@ export {
   toAuditRecord,
   voiceEvidenceSchema,
 } from './types.js';
+export { parseUtterance, parseUtteranceOutcome } from './parser/utterance.js';
+export type { UtteranceOutcome } from './parser/utterance.js';

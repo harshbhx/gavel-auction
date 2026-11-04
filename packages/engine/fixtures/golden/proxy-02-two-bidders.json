@@ -1,0 +1,50 @@
+{
+  "name": "proxy: price is second max plus increment",
+  "parity": true,
+  "config": {
+    "mode": "proxy",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "b",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "a",
+      "amount": 5000
+    },
+    {
+      "op": "bid",
+      "at": 2000,
+      "bidder": "b",
+      "amount": 3000
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    }
+  ],
+  "expect": {
+    "winner": "a",
+    "price": 3100,
+    "ranking": [
+      ["a", 5000],
+      ["b", 3000]
+    ],
+    "rejects": [],
+    "endsAt": 100000
+  }
+}

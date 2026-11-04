@@ -1,51 +1,51 @@
+import { Cents, EpochMs, type MsgId } from '@gavel/shared';
 import { describe, expect, it, vi } from 'vitest';
-import { PendingBids } from '../../src/store/localEvents';
-import type { ClientMessage, ServerMessage } from '../../src/wire';
+import { MAX_FINISHED_BIDS, PendingBids } from '../../src/store/localEvents';
+import { bidId, bidderId, msgId } from '../../src/testing/builders';
+import type { ClientMessage, ErrorCode, ServerMessage } from '../../src/wire';
 
 function setup() {
   vi.useFakeTimers();
   const sent: ClientMessage[] = [];
   let n = 0;
   const bids = new PendingBids({
-    paddle: 12,
     send: (m) => sent.push(m),
     setTimer: (fn, ms) => setTimeout(fn, ms),
     clearTimer: (h) => clearTimeout(h as number),
-    newId: () => `cb-${(n += 1)}`,
+    newId: () => msgId((n += 1)),
   });
   return { bids, sent };
 }
 
-const base = { seq: 1, roomId: 'r', serverTime: 1 } as const;
-const accepted = (id: string): ServerMessage => ({
+const base = { v: 1, seq: 1, ts: EpochMs(1) } as const;
+const accepted = (mid: MsgId): ServerMessage => ({
+  ...base,
   t: 'bid_accepted',
-  ...base,
-  clientBidId: id,
-  paddle: 12,
-  amountCents: 35_000,
+  mid,
+  bidId: bidId(1),
+  amount: Cents(35_000),
 });
-const rejected = (id: string, code: string): ServerMessage => ({
+const rejected = (mid: MsgId, reason: ErrorCode): ServerMessage => ({
+  ...base,
   t: 'bid_rejected',
-  ...base,
-  clientBidId: id,
-  code,
-  message: 'no',
+  mid,
+  reason,
+  retryable: false,
 });
+const amount = (n: number) => Cents(n);
 
 describe('pending bids (T-WEB-015)', () => {
   it('is pending immediately and sends the bid', () => {
     const { bids, sent } = setup();
-    const id = bids.submitBid(35_000);
+    const id = bids.submitBid(amount(35_000), 'qr');
     expect(bids.get(id)?.status).toBe('pending');
-    expect(sent).toEqual([
-      { t: 'bid', clientBidId: id, paddle: 12, amountCents: 35_000, source: 'qr' },
-    ]);
+    expect(sent).toEqual([{ v: 1, t: 'bid', mid: id, amount: 35_000, source: 'qr' }]);
     vi.useRealTimers();
   });
 
-  it('resolves to accepted by clientBidId', () => {
+  it('resolves to accepted by mid', () => {
     const { bids } = setup();
-    const id = bids.submitBid(35_000);
+    const id = bids.submitBid(amount(35_000), 'qr');
     bids.handle(accepted(id));
     expect(bids.get(id)?.status).toBe('accepted');
     vi.advanceTimersByTime(10_000);
@@ -55,7 +55,7 @@ describe('pending bids (T-WEB-015)', () => {
 
   it('resolves to rejected with the code', () => {
     const { bids } = setup();
-    const id = bids.submitBid(35_000);
+    const id = bids.submitBid(amount(35_000), 'qr');
     bids.handle(rejected(id, 'over_ceiling'));
     expect(bids.get(id)).toMatchObject({ status: 'rejected', code: 'over_ceiling' });
     vi.useRealTimers();
@@ -63,15 +63,15 @@ describe('pending bids (T-WEB-015)', () => {
 
   it('ignores results for other bids', () => {
     const { bids } = setup();
-    const id = bids.submitBid(35_000);
-    bids.handle(accepted('someone-else'));
+    const id = bids.submitBid(amount(35_000), 'qr');
+    bids.handle(accepted(msgId(99)));
     expect(bids.get(id)?.status).toBe('pending');
     vi.useRealTimers();
   });
 
-  it('turns unknown at 4000 ms and resends with the same clientBidId', () => {
+  it('turns unknown at 4000 ms and resends with the same mid', () => {
     const { bids, sent } = setup();
-    const id = bids.submitBid(35_000);
+    const id = bids.submitBid(amount(35_000), 'qr');
     vi.advanceTimersByTime(3999);
     expect(bids.get(id)?.status).toBe('pending');
     vi.advanceTimersByTime(1);
@@ -90,7 +90,7 @@ describe('pending bids (T-WEB-015)', () => {
 
   it('a late result after unknown still resolves the bid', () => {
     const { bids } = setup();
-    const id = bids.submitBid(1_000);
+    const id = bids.submitBid(amount(1_000), 'qr');
     vi.advanceTimersByTime(4000);
     bids.handle(accepted(id));
     expect(bids.get(id)?.status).toBe('accepted');
@@ -99,7 +99,7 @@ describe('pending bids (T-WEB-015)', () => {
 
   it('does not retry a bid that is not unknown', () => {
     const { bids, sent } = setup();
-    const id = bids.submitBid(1_000);
+    const id = bids.submitBid(amount(1_000), 'qr');
     expect(bids.retry(id)).toBe(false);
     expect(sent).toHaveLength(1);
     vi.useRealTimers();
@@ -109,9 +109,42 @@ describe('pending bids (T-WEB-015)', () => {
     const { bids } = setup();
     let calls = 0;
     bids.subscribe(() => (calls += 1));
-    const id = bids.submitBid(1_000);
+    const id = bids.submitBid(amount(1_000), 'qr');
     bids.handle(accepted(id));
     expect(calls).toBe(2);
+    vi.useRealTimers();
+  });
+
+  it('sends the source it was given and the bidder it bids for (WEB-RT-16)', () => {
+    const { bids, sent } = setup();
+    bids.submitBid(amount(5_000), 'manual', bidderId(7));
+    bids.submitBid(amount(6_000), 'voice');
+    expect(sent.map((m) => (m.t === 'bid' ? m.source : null))).toEqual(['manual', 'voice']);
+    expect(sent[0]).toMatchObject({ bidderId: bidderId(7) });
+    vi.useRealTimers();
+  });
+
+  it('keeps only the newest finished bids (WEB-RT-16)', () => {
+    const { bids } = setup();
+    const ids: MsgId[] = [];
+    for (let i = 0; i < MAX_FINISHED_BIDS + 20; i += 1) {
+      const id = bids.submitBid(amount(1_000 + i), 'qr');
+      ids.push(id);
+      bids.handle(accepted(id));
+    }
+    expect(bids.list()).toHaveLength(MAX_FINISHED_BIDS);
+    expect(bids.get(ids[0] as MsgId)).toBeUndefined();
+    expect(bids.get(ids[ids.length - 1] as MsgId)?.status).toBe('accepted');
+    vi.useRealTimers();
+  });
+
+  it('never evicts a bid that is still pending', () => {
+    const { bids } = setup();
+    const first = bids.submitBid(amount(1_000), 'qr');
+    for (let i = 0; i < MAX_FINISHED_BIDS + 5; i += 1) {
+      bids.handle(accepted(bids.submitBid(amount(2_000 + i), 'qr')));
+    }
+    expect(bids.get(first)?.status).toBe('pending');
     vi.useRealTimers();
   });
 });

@@ -1,13 +1,13 @@
 import type { Scenario } from '../../net/transport';
 import { Script, bidders, hold, openSnapshot, settlementView } from './_kit';
 
-const roster = bidders([12, 'Priya', 50_000], [7, 'Sam', 40_000]);
+const roster = bidders([12, 'Priya'], [7, 'Sam']);
 
 /** Capture fails and no fallback is available: settlement stops in FAILED_NEEDS_REVIEW. */
 export const failed_needs_review: Scenario = new Script()
   .state(0, openSnapshot(roster))
-  .acceptedBid(1_000, 7, 10_000, 1)
-  .acceptedBid(2_000, 12, 15_000, 2)
+  .acceptedBid(1_000, 7, 10_000)
+  .acceptedBid(2_000, 12, 15_000)
   .hammer(12_000, 12, 15_000)
   .settlement(
     13_000,

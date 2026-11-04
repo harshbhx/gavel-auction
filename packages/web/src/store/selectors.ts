@@ -1,4 +1,4 @@
-import type { ConfirmRequest, SettlementState } from '../wire';
+import type { ConfirmRequestMsg, SettlementState } from '../wire';
 import type { BidRecord, RoomState } from './roomReducer';
 
 export type Selector<T> = (state: RoomState) => T;
@@ -16,9 +16,25 @@ function memo<T>(select: Selector<T>): Selector<T> {
   };
 }
 
-export type PriceView = NonNullable<RoomState['snapshot']>['price'];
+export interface PriceView {
+  /** Null until the first bid. */
+  currentCents: number | null;
+  leaderId: string | null;
+  leaderPaddle: number | null;
+  nextMinCents: number;
+  /** When bidding closes, in server time. */
+  endTs: number;
+}
 
-export type MyStatus = 'watching' | 'none' | 'leading' | 'outbid' | 'atCeiling' | 'won' | 'lost';
+export type MyStatus =
+  | 'watching'
+  | 'none'
+  | 'leading'
+  | 'outbid'
+  | 'atCeiling'
+  | 'won'
+  | 'lost'
+  | 'review';
 
 export interface CeilingUsage {
   /** Highest amount this bidder has bid in the recent window. */
@@ -26,54 +42,97 @@ export interface CeilingUsage {
   maxCents: number;
 }
 
+/** One bidder in the roster with the hold state the snapshot reports. */
 export interface LadderRow {
+  bidderId: string;
   paddle: number;
   name: string;
   state: SettlementState;
-  ceilingCents: number;
-  capturedCents: number;
-  releasedCents: number;
 }
 
-export const selectPrice: Selector<PriceView | null> = memo((s) => s.snapshot?.price ?? null);
+interface You {
+  bidderId: string;
+  ceiling: number | null;
+}
+
+function youOf(s: RoomState): You | null {
+  const fromSnapshot = s.snapshot?.you;
+  if (fromSnapshot !== undefined) {
+    return { bidderId: fromSnapshot.bidderId, ceiling: fromSnapshot.ceiling };
+  }
+  return s.me === null ? null : { bidderId: s.me.bidderId, ceiling: s.me.ceiling };
+}
+
+export const selectPrice: Selector<PriceView | null> = memo((s) => {
+  const snap = s.snapshot;
+  if (snap === null) return null;
+  return {
+    currentCents: snap.price,
+    leaderId: snap.leaderId,
+    leaderPaddle: s.leaderPaddle,
+    nextMinCents: snap.minNext,
+    endTs: snap.endTs,
+  };
+});
 
 export const selectMyStatus: Selector<MyStatus> = memo((s) => {
-  const you = s.snapshot?.you;
-  if (you === undefined) return 'watching';
-  if (s.hammer !== null) return s.hammer.winnerPaddle === you.paddle ? 'won' : 'lost';
-  const price = s.snapshot?.price;
-  if (price?.leaderPaddle === you.paddle) return 'leading';
-  const hasBid = s.recentBids.some((b) => b.paddle === you.paddle);
+  const you = youOf(s);
+  if (you === null) return 'watching';
+  const snap = s.snapshot;
+  // Once settlement reports this bidder's own state it outranks the hammer (R-WEB-090): a
+  // failed capture or a fallback must not keep showing the hammer's winner as won.
+  switch (snap?.settlement?.you) {
+    case 'CAPTURED':
+      return 'won';
+    case 'SETTLED':
+    case 'VOIDING':
+    case 'FALLBACK_RUNNER_UP':
+      return 'lost';
+    case 'FAILED_NEEDS_REVIEW':
+      return 'review';
+    default:
+      break;
+  }
+  if (s.hammer !== null) return s.hammer.winnerId === you.bidderId ? 'won' : 'lost';
+  if (snap?.leaderId === you.bidderId) return 'leading';
+  const hasBid = s.recentBids.some((b) => b.bidderId === you.bidderId);
   if (!hasBid) return 'none';
-  return price !== undefined && price.nextMinCents > you.ceilingCents ? 'atCeiling' : 'outbid';
+  return snap !== null && you.ceiling !== null && snap.minNext > you.ceiling
+    ? 'atCeiling'
+    : 'outbid';
 });
 
 export const selectCeilingUsage: Selector<CeilingUsage | null> = memo((s) => {
-  const you = s.snapshot?.you;
-  if (you === undefined) return null;
+  const you = youOf(s);
+  if (you === null || you.ceiling === null) return null;
   const usedCents = s.recentBids
-    .filter((b) => b.paddle === you.paddle)
-    .reduce((max, b) => Math.max(max, b.amountCents), 0);
-  return { usedCents, maxCents: you.ceilingCents };
+    .filter((b) => b.bidderId === you.bidderId)
+    .reduce((max, b) => Math.max(max, b.amount), 0);
+  return { usedCents, maxCents: you.ceiling };
 });
 
-export const selectLadderRows: Selector<readonly LadderRow[]> = memo((s) =>
-  (s.snapshot?.settlement?.holds ?? []).map((h) => ({
-    paddle: h.paddle,
-    name: h.name,
-    state: h.state,
-    ceilingCents: h.ceilingCents,
-    capturedCents: h.capturedCents,
-    releasedCents: h.releasedCents,
-  })),
-);
+export const selectLadderRows: Selector<readonly LadderRow[]> = memo((s) => {
+  const snap = s.snapshot;
+  if (snap === null) return [];
+  const you = youOf(s);
+  return snap.roster
+    .filter((r) => r.hold === 'HELD')
+    .map((r) => ({
+      bidderId: r.bidderId,
+      paddle: r.paddle,
+      name: r.name,
+      // The phase and this bidder's own hold are all the wire says; the rest is HELD.
+      state:
+        you !== null && r.bidderId === you.bidderId ? (snap.settlement?.you ?? 'HELD') : 'HELD',
+    }));
+});
 
 /** Newest bid first. */
 export const selectStream: Selector<readonly BidRecord[]> = memo((s) =>
   [...s.recentBids].reverse(),
 );
 
-export const selectConfirmQueue: Selector<readonly ConfirmRequest[]> = memo(
+export const selectConfirmQueue: Selector<readonly ConfirmRequestMsg[]> = memo(
   (s) => s.confirmRequests,
 );
 

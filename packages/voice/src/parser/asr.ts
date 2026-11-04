@@ -71,6 +71,13 @@ function nextToNumber(token: string): boolean {
   return /^\p{L}+$/u.test(token) && isNumberToken(ASR.get(token) ?? token);
 }
 
+/** True when the tokens just before index i end a paddle reference ("paddle seven", "bidder twenty one"). */
+function endsPaddleRef(tokens: readonly string[], i: number): boolean {
+  let k = i - 1;
+  while (k >= 0 && isNumberToken(tokens[k] ?? '')) k -= 1;
+  return k < i - 1 && PADDLE_WORDS.has(tokens[k] ?? '');
+}
+
 /** Repairs ASR confusions in lower-case tokens. Pure. */
 export function repairTokens(tokens: readonly string[]): AsrRepair {
   const fixed: string[] = [];
@@ -81,7 +88,19 @@ export function repairTokens(tokens: readonly string[]): AsrRepair {
       fixed.push(t);
       return;
     }
-    const near = nextToNumber(tokens[i - 1] ?? '') || nextToNumber(tokens[i + 1] ?? '');
+    const prev = tokens[i - 1] ?? '';
+    const next = tokens[i + 1] ?? '';
+    // A preposition right after a finished amount ("three hundred to me", "five hundred for
+    // paddle seven") is not a digit: repairing it would silently append one to the amount.
+    if (PREPOSITIONS.has(t) && !ALWAYS.has(t)) {
+      const afterNumber = isNumberToken(prev);
+      const beforeNumber = /^\p{L}+$/u.test(next) && isNumberToken(ASR.get(next) ?? next);
+      if ((afterNumber && !beforeNumber) || PADDLE_WORDS.has(next) || endsPaddleRef(tokens, i)) {
+        fixed.push(t);
+        return;
+      }
+    }
+    const near = nextToNumber(prev) || nextToNumber(next);
     if (!ALWAYS.has(t) && !near) {
       fixed.push(t);
       return;

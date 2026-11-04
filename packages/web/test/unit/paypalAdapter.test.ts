@@ -156,6 +156,13 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     expect(t.redirect).not.toHaveBeenCalled();
   });
 
+  it('does not confirm an order the attempt did not create (WEB-RT-17)', async () => {
+    const t = make((cb) => cb.onApprove({ orderId: 'someone-elses-order' }));
+    const result = await t.adapter.start(req, () => {});
+    expect(result).toMatchObject({ state: 'error', errorCode: 'order_mismatch' });
+    expect(t.urls.some((u) => u.endsWith('/holds'))).toBe(false);
+  });
+
   it('reports order_failed and hold_failed', async () => {
     const noOrder = make(() => {}, null);
     expect((await noOrder.adapter.start(req, () => {})).errorCode).toBe('order_failed');
@@ -193,9 +200,67 @@ describe('import boundary (T-WEB-022)', () => {
   it('lets only paypalV6Adapter.ts reference the PayPal SDK', () => {
     const offenders = files(srcDir)
       .filter((f) => /\.(ts|tsx)$/.test(f) && !f.endsWith('payments/paypalV6Adapter.ts'))
-      .filter((f) =>
-        /@paypal\/|paypal\.com\/web-sdk|paypalV6Adapter/.test(readFileSync(f, 'utf8')),
-      );
+      .filter((f) => /@paypal\/|paypal\.com\/web-sdk/.test(readFileSync(f, 'utf8')));
     expect(offenders).toEqual([]);
+  });
+
+  it('lets only the adapter and the approval factory import the adapter module', () => {
+    const importers = files(srcDir)
+      .filter((f) => /\.(ts|tsx)$/.test(f) && !f.endsWith('payments/paypalV6Adapter.ts'))
+      .filter((f) => /paypalV6Adapter/.test(readFileSync(f, 'utf8')))
+      .map((f) => f.slice(srcDir.length + 1));
+    expect(importers).toEqual(['payments/useApproval.ts']);
+  });
+
+  it('never names the live PayPal host in source (WEB-RT-03)', () => {
+    const offenders = files(srcDir)
+      .filter((f) => /\.(ts|tsx)$/.test(f))
+      .filter((f) => /\/\/(www\.|api-m\.)?paypal\.com/.test(readFileSync(f, 'utf8')));
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe('PayPalV6Adapter request timeouts (R-WEB-045)', () => {
+  const hang: FetchLike = () => new Promise(() => {});
+
+  it('gives up on an order request that never answers and lets the buyer retry', async () => {
+    const adapter = new PayPalV6Adapter({
+      apiBase: 'http://api',
+      clientId: 'c',
+      fetch: hang,
+      requestTimeoutMs: 20,
+    });
+    const states: ApprovalState[] = [];
+    const result = await adapter.start(req, (s) => states.push(s));
+    expect(result).toMatchObject({ state: 'error', errorCode: 'order_timeout' });
+    expect(states).toEqual(['preparing', 'error']);
+  });
+
+  it('cancel() ends a pending request instead of doing nothing', async () => {
+    const adapter = new PayPalV6Adapter({ apiBase: 'http://api', clientId: 'c', fetch: hang });
+    const pending = adapter.start(req, () => {});
+    adapter.cancel();
+    expect((await pending).state).toBe('cancelled');
+  });
+
+  it('reports hold_timeout when the hold request stalls after approval', async () => {
+    const { sdk } = stubSdk((cb) => cb.onApprove({ orderId: 'ord-1' }));
+    const fetch: FetchLike = (url) =>
+      url.endsWith('/orders')
+        ? Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ orderId: 'ord-1' }),
+          })
+        : new Promise(() => {});
+    const adapter = new PayPalV6Adapter({
+      apiBase: 'http://api',
+      clientId: 'c',
+      loadSdk: () => Promise.resolve(sdk),
+      fetch,
+      requestTimeoutMs: 20,
+    });
+    const result = await adapter.start(req, () => {});
+    expect(result).toMatchObject({ state: 'error', errorCode: 'hold_timeout' });
   });
 });
