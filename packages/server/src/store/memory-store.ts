@@ -16,6 +16,31 @@ export class MemoryStore implements RoomStore {
 
   constructor(private readonly now: () => number = () => 0) {}
 
+  /** The append rules without the write, so a durable store can check before it persists. */
+  protected checkAppend(auctionId: AuctionId, expectedSeq: number, events: RoomEvent[]): void {
+    const log = this.logs.get(auctionId) ?? [];
+    if (log.length !== expectedSeq) {
+      throw new GavelError('conflict', `expected seq ${expectedSeq}, store is at ${log.length}`);
+    }
+    events.forEach((e, i) => {
+      if (e.seq !== expectedSeq + 1 + i || e.auctionId !== auctionId) {
+        throw new GavelError('conflict', 'events must be gapless and belong to the auction');
+      }
+    });
+  }
+
+  /** The journal version rule without the write. */
+  protected checkJournal(key: string, expectedVersion: number): void {
+    const current = this.journals.get(key)?.version ?? 0;
+    if (current !== expectedVersion) throw new GavelError('conflict', 'journal version mismatch');
+  }
+
+  /** True when `consumeJti` would accept this jti now. */
+  protected jtiIsFresh(jti: Jti): boolean {
+    const until = this.used.get(jti);
+    return until === undefined || until <= this.now();
+  }
+
   async appendEvents(
     auctionId: AuctionId,
     expectedSeq: number,

@@ -2,7 +2,10 @@
 
 How to run the hosted GAVEL demo and check that it does what it claims. Everything runs in the PayPal sandbox only. No real money moves and no real card or PayPal account is needed.
 
-Status labels used below: "available" means the code is on main today. "not available yet" means the part is specified (see `docs/specs`) but not built or not deployed, so the step cannot be followed end to end yet. This guide is updated as those parts land.
+Status labels used below: "available" means the code is on main today. "not available yet" means the part is specified (see `docs/specs`) but not built or not deployed, so the step cannot be followed end to end yet.
+`packages/server` has no entry point or HTTP routes yet, so the steps in sections 2, 3, 5 and 7 describe the intended flow and cannot be followed end to end today. What runs today is the engine, the settlement code against the fake PayPal, and the web components, each in its own tests.
+
+This guide is updated as those parts land.
 
 ## 1. What to open
 
@@ -41,11 +44,11 @@ Replay plays a recorded auction through the same console, big screen and ladder 
 When the auctioneer hammers, check that:
 
 1. The winner's hold is captured for the winning price only, not the ceiling. For example a $500 ceiling and a $350 winning bid captures $350.
-2. Every other bidder's hold is voided, and the winner's unused remainder is released.
+2. Every other bidder's hold is voided. The winner's unused remainder is intended to be released; the code does not yet void it explicitly, and gate G1 has not been run.
 3. The ladder shows HELD, then CAPTURED for the winner and VOIDED for the others, with the source of each confirmation (PayPal webhook or lookup).
 4. Exactly one capture happens even if the server stops mid-settlement and resumes. If PayPal's answer is unknown the settlement stops for review rather than guessing.
 
-The settlement logic is built and tested against the fake PayPal. Whether PayPal sandbox releases the remainder after a partial capture is not yet proven (gate G1 is NOT RUN), so the code voids explicitly after capture. Webhook signature checks against real sandbox events (G4) are also not yet proven.
+The settlement logic is built and tested against the fake PayPal only. Whether PayPal sandbox releases the remainder after a partial capture is not yet proven (gate G1 is NOT RUN). Webhook signature checks against real sandbox events (G4) are also not yet proven.
 
 ## 6. What is real and what is recorded
 
@@ -59,12 +62,15 @@ The settlement logic is built and tested against the fake PayPal. Whether PayPal
 
 ## 7. Audit trail
 
-Open `/r/<roomId>/audit` from the launcher (it needs the auctioneer or reviewer link). Every accepted bid, rejected bid, confirmation and control action is a row with source (voice, qr or manual), transcript and parsed amount where relevant, outcome and time. You can filter rows and export CSV or JSON; the export header carries a SHA-256 of the rows so edits are detectable. The engine also keeps a hash-chained ledger, and settlement writes a journal of each capture and void. A verify command for the ledger is planned (ENG-61) and is not available yet.
+Open `/r/<roomId>/audit` from the launcher (it needs the auctioneer or reviewer link). The audit screen is specified to show accepted bids, rejected bids, confirmations and control actions with source, transcript and parsed amount, and to export CSV or JSON with a SHA-256 of the rows. Today the engine's hash-chained ledger records accepted bids with source `manual` and no transcript or confidence; rejected bids appear only in the room log, which is not hash-chained. Settlement writes a journal of each capture and void. A verify command for the ledger is planned (ENG-61) and is not available yet.
 
 ## 8. Not built yet
 
 - Hosted deployment and the public demo URL (QA-59 to QA-61).
 - The full web screens: the app shell is a placeholder on main today, so the console, bid screen, big screen and audit view exist as specs and tested components only.
+- A server entry point with HTTP and WebSocket routes, including the hold routes the web app calls.
+- A persistent store for a hosted deploy (the file stores need a persistent disk and a single instance).
+- An adapter from the voice package to the room.
 - Real sandbox runs of gates G1 to G5 (all NOT RUN in `docs/GATES.md`).
 - Live voice with real speech providers.
 - Recorded demo auctions for replay.

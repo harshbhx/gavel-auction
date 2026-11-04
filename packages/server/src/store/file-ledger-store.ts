@@ -1,6 +1,8 @@
 import {
   closeSync,
+  fstatSync,
   fsyncSync,
+  ftruncateSync,
   mkdirSync,
   openSync,
   readFileSync,
@@ -108,8 +110,20 @@ export class FileLedgerStore implements LedgerStore {
 
     const fd = openSync(this.path(auctionId), 'a');
     try {
-      writeSync(fd, `${JSON.stringify(entries)}\n`);
-      fsyncSync(fd);
+      const before = fstatSync(fd).size;
+      try {
+        writeSync(fd, `${JSON.stringify(entries)}\n`);
+        fsyncSync(fd);
+      } catch (e) {
+        // A partial line would swallow the next batch: cut it back and drop the cache.
+        try {
+          ftruncateSync(fd, before);
+        } catch {
+          // The write error is the one worth reporting.
+        }
+        this.ledgers.delete(auctionId);
+        throw e;
+      }
     } finally {
       closeSync(fd);
     }
