@@ -40,7 +40,7 @@ describe('decide CompleteLot and RecordSettlement', () => {
     expect(errCode(() => decide(r.state, settle(500, 'HELD', 'CAPTURING')))).toBe('lot_done');
   });
 
-  it('ENG-91 R-ENG-066 a capture booked to anyone but the winner is refused', () => {
+  it('T-ENG-049 R-ENG-066 ENG-91 a capture booked to anyone but the winner is refused', () => {
     const s = hammered(2000);
     const wrong = mk(400, {
       type: 'CompleteLot',

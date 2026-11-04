@@ -8,7 +8,7 @@ const abort = (at: number, lotId = L1, commandId = id('AB1')) =>
   mk(at, { type: 'AbortLot', lotId, reason: 'kill switch', actor: 'host' }, commandId);
 
 describe('decide AbortLot', () => {
-  it('R-ENG-068 ENG-90 an OPEN lot with bids is cancelled with no winner', () => {
+  it('T-ENG-038 R-ENG-068 ENG-90 an OPEN lot with bids is cancelled with no winner', () => {
     let s = open(scene(), L1);
     s = bid(s, 200, A, 2000).state;
     const r = run(s, abort(300));
@@ -22,7 +22,7 @@ describe('decide AbortLot', () => {
     expect(lot?.unsoldReason).toBeNull();
   });
 
-  it('R-ENG-068 ENG-90 a CLOSING lot and a PENDING lot can be aborted', () => {
+  it('T-ENG-038 R-ENG-068 ENG-90 a CLOSING lot and a PENDING lot can be aborted', () => {
     let s = open(scene(), L1);
     s = run(s, mk(20000, { type: 'Tick' })).state;
     expect(s.lots[L1]?.status).toBe('CLOSING');
@@ -31,7 +31,7 @@ describe('decide AbortLot', () => {
     expect(run(p, abort(5, L2)).state.lots[L2]?.status).toBe('DONE');
   });
 
-  it('R-ENG-068 ENG-90 an aborted lot frees the room for the next lot and takes no bids', () => {
+  it('T-ENG-038 R-ENG-068 ENG-90 an aborted lot frees the room for the next lot and takes no bids', () => {
     let s = open(scene({ lots: [lotConfig(L1), lotConfig(L2)] }), L1);
     s = run(s, abort(300)).state;
     expect(errCode(() => bid(s, 400, A, 2000))).toBe('lot_done');
@@ -43,21 +43,21 @@ describe('decide AbortLot', () => {
     expect(s.lots[L2]?.status).toBe('OPEN');
   });
 
-  it('R-ENG-068 ENG-90 a hammered lot cannot be aborted', () => {
+  it('T-ENG-038 R-ENG-068 ENG-90 a hammered lot cannot be aborted', () => {
     let s = open(scene(), L1);
     s = bid(s, 200, A, 2000).state;
     s = run(s, mk(300, { type: 'Hammer', lotId: L1, actor: 'host', early: true })).state;
     expect(errCode(() => decide(s, abort(400)))).toBe('lot_frozen');
   });
 
-  it('R-ENG-068 ENG-90 unknown lot, closed auction and over-long text are refused', () => {
+  it('T-ENG-038 R-ENG-068 ENG-90 unknown lot, closed auction and over-long text are refused', () => {
     const s = open(scene(), L1);
     expect(errCode(() => decide(s, abort(300, id('ZZ9'))))).toBe('bad_command');
     const long = mk(300, { type: 'AbortLot', lotId: L1, reason: 'x'.repeat(5000), actor: 'h' });
     expect(errCode(() => decide(s, long))).toBe('limit_exceeded');
   });
 
-  it('R-ENG-068 ENG-90 a retried command is a duplicate and a changed body conflicts', () => {
+  it('T-ENG-038 R-ENG-068 ENG-90 a retried command is a duplicate and a changed body conflicts', () => {
     const s = run(open(scene(), L1), abort(300)).state;
     expect(decide(s, abort(400)).outcome.kind).toBe('duplicate');
     const other = mk(
@@ -68,7 +68,7 @@ describe('decide AbortLot', () => {
     expect(errCode(() => decide(s, other))).toBe('command_conflict');
   });
 
-  it('R-ENG-068 ENG-90 the parser accepts the command and rejects unknown fields', () => {
+  it('T-ENG-038 R-ENG-068 ENG-90 the parser accepts the command and rejects unknown fields', () => {
     const base = { commandId: id('AB9'), at: 5, auctionId: id('AAA'), type: 'AbortLot' };
     const ok = { ...base, lotId: L1, reason: 'r', actor: 'a' };
     expect(parseCommand(ok)).toMatchObject({ type: 'AbortLot', lotId: L1 });
@@ -76,7 +76,7 @@ describe('decide AbortLot', () => {
     expect(() => parseCommand({ ...ok, actor: undefined })).toThrow();
   });
 
-  it('R-ENG-068 ENG-90 projections show the aborted lot', () => {
+  it('T-ENG-038 R-ENG-068 ENG-90 projections show the aborted lot', () => {
     let s = open(scene(), L1);
     const r = run(s, abort(300));
     s = r.state;

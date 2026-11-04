@@ -49,7 +49,7 @@
     "commands.test.ts :: R-ENG-084: source must be voice, manual or qr",
     "commands.test.ts :: R-ENG-083: confidenceBps 10001 fails",
     "commands.test.ts :: parses every simple command and rejects bad ids",
-    "commands.test.ts :: R-ENG-070: the ledger has 18 event types",
+    "commands.test.ts :: R-ENG-070: the ledger has 19 event types",
     "config.test.ts :: R-ENG-002: non-USD currency fails unsupported_currency",
     "config.test.ts :: R-ENG-010: ladder must start at 0 and strictly increase",
     "config.test.ts :: never throws on garbage",
