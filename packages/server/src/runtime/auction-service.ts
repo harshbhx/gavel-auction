@@ -456,7 +456,10 @@ class Service implements AuctionService, SettlePort {
     await this.boundary('before:bridge');
     try {
       await this.bridge.finish(auctionId, journal);
-      if (journal.state === 'SETTLED') await this.bridge.closeIfDone(auctionId);
+      // A restart after the close entry must not close twice (the engine rejects it).
+      if (journal.state === 'SETTLED' && !(await this.runtime.state(auctionId as Ulid)).closed) {
+        await this.bridge.closeIfDone(auctionId);
+      }
     } catch (e) {
       if (!(e instanceof BridgeError)) throw e;
       await this.report(room, journal, { final: true, note: e.code });
