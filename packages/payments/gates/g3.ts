@@ -62,7 +62,7 @@ import { appendEntry, withEvidenceHash, type GateRow } from './summarize.js';
  */
 
 export const G3_SCRIPT_VERSION = 'g3-1';
-export const G3_HOLD_CENTS = 500;
+export const G3_HOLD_CENTS = 50000;
 
 export interface G3Deps {
   approve?: (info: { orderId: string; approveUrl: string; kind: 'wallet' }) => Promise<void>;

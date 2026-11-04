@@ -15,8 +15,19 @@ export function field(json: unknown, key: string): unknown {
   return isRecord(json) ? json[key] : undefined;
 }
 
-export function amount(cents: number): { currency_code: string; value: string } {
-  return { currency_code: 'USD', value: centsToDecimal(cents) };
+/** Currency of the gate orders: GATE_CURRENCY, INR by default (the sandbox accounts are Indian). */
+export const DEFAULT_GATE_CURRENCY = 'INR';
+
+export function gateCurrency(env: Record<string, string | undefined> = process.env): string {
+  const raw = env['GATE_CURRENCY']?.trim().toUpperCase();
+  return raw === undefined || raw === '' ? DEFAULT_GATE_CURRENCY : raw;
+}
+
+export function amount(
+  cents: number,
+  currency: string = gateCurrency(),
+): { currency_code: string; value: string } {
+  return { currency_code: currency, value: centsToDecimal(cents) };
 }
 
 /** The buyer approval link of an order response, or "". */

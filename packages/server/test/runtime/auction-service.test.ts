@@ -108,7 +108,7 @@ async function makeRig(core: { autoReleaseRemainder?: boolean } = {}) {
     holds: new MemoryHoldStore(),
     webhookEvents: new MemoryWebhookEventStore(),
   };
-  const verifier = new WebhookVerifier({ auth, webhookId: DEFAULT_FAKE_WEBHOOK_ID });
+  const verifier = new WebhookVerifier({ auth, webhookId: DEFAULT_FAKE_WEBHOOK_ID, fake: true });
   const holdsApi = holdService(stores.holds);
   const killSwitch = new PersistentKillSwitch({
     store: new MemoryKillStateStore(),
