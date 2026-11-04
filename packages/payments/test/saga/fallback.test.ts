@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { PayPalError } from '../../src/errors.js';
 import { assertFakeInvariants } from '../../src/fake/invariants.js';
 import { fallbackOf } from '../../src/saga/fallback.js';
-import { newJournal } from '../../src/saga/create.js';
 import { runSettlement } from '../../src/saga/void.js';
 import { CEILINGS, callsOf, makeRig, planFor, seed, withGateway } from './rig.js';
+import { freshJournal } from '../helpers/age.js';
 
 function capturedTotal(rig: ReturnType<typeof makeRig>): number {
   return Object.values(rig.auth).reduce((sum, id) => sum + rig.core.inspect(id).capturedCents, 0);
@@ -130,7 +130,7 @@ describe('T-PAY-038 a refusal that was applied', () => {
 describe('fallbackOf', () => {
   it('names who failed, who is next and why, only while falling back', () => {
     const rig = makeRig(CEILINGS);
-    const j = newJournal(
+    const j = freshJournal(
       planFor(rig, CEILINGS, [
         ['b1', 22000],
         ['b2', 21000],

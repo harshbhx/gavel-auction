@@ -33,6 +33,15 @@ describe('config', () => {
     expect(loadConfig({ ...rest, GAVEL_PAYMENTS_FAKE: '1' }).fake).toBe(true);
   });
 
+  it('requires PAYPAL_WEBHOOK_ID outside fake mode', () => {
+    const rest: Record<string, string | undefined> = { ...base };
+    delete rest.PAYPAL_WEBHOOK_ID;
+    expect(() => loadConfig(rest)).toThrow(/PAYPAL_WEBHOOK_ID is required/);
+    expect(() => loadConfig({ ...rest, PAYPAL_WEBHOOK_ID: '' })).toThrow(PaymentsConfigError);
+    expect(loadConfig({ ...rest, GAVEL_PAYMENTS_FAKE: '1' }).webhookId).toBe('');
+    expect(loadConfig(rest, { requireWebhookId: false }).webhookId).toBe('');
+  });
+
   it('requires PAYPAL_ENV=sandbox', () => {
     expect(() => loadConfig({ ...base, PAYPAL_ENV: 'live' })).toThrow(/sandbox/);
   });
