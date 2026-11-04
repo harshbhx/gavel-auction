@@ -79,6 +79,11 @@ describe('summarizeDecisions', () => {
     expect(s.decision).toBe('PASS');
     expect(s.fallback).toBe('');
   });
+  it('is not a full PASS when the card buyer was never run', () => {
+    const s = summarizeDecisions([obs('wallet', 'A')]);
+    expect(s.decision).toBe('PASS-WITH-FALLBACK');
+    expect(s.fallback).toContain('card untested');
+  });
   it('is PASS-WITH-FALLBACK for B', () => {
     expect(summarizeDecisions([obs('wallet', 'B')]).decision).toBe('PASS-WITH-FALLBACK');
   });

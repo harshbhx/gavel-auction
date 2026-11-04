@@ -85,4 +85,21 @@ describe('evidence (T-PAY-070)', () => {
     expect(problems.map((p) => p.line)).toEqual([1, 2]);
     expect(problems[1]?.errors).toEqual(['invalid json']);
   });
+
+  it('redacts payer account ids and cardholder names but keeps error names', () => {
+    const order = {
+      payment_source: {
+        paypal: { account_id: 'ABCD1234', name: { given_name: 'A', surname: 'B' } },
+        card: { name: 'Jane Buyer', last_digits: '1111', brand: 'VISA' },
+      },
+      name: 'UNPROCESSABLE_ENTITY',
+      details: [{ issue: 'X' }],
+    };
+    const r = redact(order);
+    const text = JSON.stringify(r);
+    expect(text).not.toContain('ABCD1234');
+    expect(text).not.toContain('Jane Buyer');
+    expect(r.name).toBe('UNPROCESSABLE_ENTITY');
+    expect(r.payment_source.card.last_digits).toBe('1111');
+  });
 });

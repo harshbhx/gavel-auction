@@ -3,9 +3,9 @@ name: gate-g1
 # remainder, try an explicit void. A headless browser signs in as the sandbox buyer to approve
 # the order. Actions secrets needed: PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, SANDBOX_BUYER_EMAIL,
 # SANDBOX_BUYER_PASSWORD (optional for a card-funded buyer: SANDBOX_CARD_BUYER_EMAIL and
-# SANDBOX_CARD_BUYER_PASSWORD). The job runs only from main, so code on a pushed branch never
-# reads the secrets. Move the secrets into an environment with a required reviewer when the
-# `sandbox-nightly` environment exists (see docs/GATES.md).
+# SANDBOX_CARD_BUYER_PASSWORD). The job runs only from main and declares the `sandbox-nightly`
+# environment (required reviewer, main only; see docs/GATES.md), so code on a pushed branch
+# never reads the secrets.
 on:
   workflow_dispatch:
 
@@ -16,6 +16,7 @@ jobs:
   g1:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: sandbox-nightly
     if: ${{ github.ref == 'refs/heads/main' }}
     concurrency:
       group: gate-g1
@@ -55,8 +56,10 @@ jobs:
           SANDBOX_CARD_BUYER_PASSWORD: ${{ secrets.SANDBOX_CARD_BUYER_PASSWORD }}
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
         run: npm run gate:g1 -w @gavel/payments -- --browser --out "$PWD/docs/evidence"
-      # The evidence, the screenshots (input fields masked) and the GATES.md entry are uploaded
-      # even when the gate failed, so the failure can be read without rerunning.
+      # The evidence, the screenshots (all page text hidden) and the GATES.md entry are uploaded
+      # even when the gate failed, so the failure can be read without rerunning. Run files hold
+      # order ids and approval links and stay on the runner. The repository is public, so the
+      # artifact is kept for a short time.
       - name: Upload evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -64,6 +67,7 @@ jobs:
           name: g1-evidence
           path: |
             docs/evidence
+            !docs/evidence/**/*.run.json
             docs/GATES.md
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 7
