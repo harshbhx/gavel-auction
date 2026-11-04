@@ -54,7 +54,7 @@ describe('scenario loader (T-QA-027)', () => {
       'expect:',
       'expect:\n  - { rejected: [{ actor: ana, code: NOT_A_CODE }] }',
     );
-    expect(() => parseScenarioYaml(bad)).toThrow(/unknown error code/);
+    expect(() => parseScenarioYaml(bad)).toThrow(/expect\[0\]/);
   });
 
   it('reports malformed yaml', () => {

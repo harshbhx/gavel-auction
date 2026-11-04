@@ -17,8 +17,5 @@ jobs:
         with:
           node-version: 22
       - run: npm install --no-audit --no-fund
-        working-directory: packages/shared
-      - run: npx tsc --noEmit
-        working-directory: packages/shared
-      - run: npx vitest run
-        working-directory: packages/shared
+      - run: npx tsc --noEmit -p packages/shared
+      - run: npx vitest run --project 'unit:shared'
