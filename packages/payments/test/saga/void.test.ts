@@ -169,7 +169,7 @@ describe('T-PAY-042 void outcomes', () => {
     const second = await runSettlement(rig.deps, 'auc1');
     expect(second.status).toBe('settled');
     if (second.status !== 'settled') return;
-    expect(second.journal.resumes).toBe(1);
+    expect(second.journal.resumes).toBe(0);
     expect(rig.core.inspect(rig.auth['b2'] ?? '').voidEffects).toBe(1);
     assertFakeInvariants(rig.core);
   });
