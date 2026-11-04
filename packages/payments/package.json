@@ -13,12 +13,12 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit -p .",
     "check:deps": "node -e \"const d=Object.keys(require('./package.json').dependencies||{});const bad=d.filter(x=>x!=='zod');if(bad.length){console.error('forbidden runtime dependencies: '+bad.join(', '));process.exit(1)}\"",
-    "gate:g1": "echo \"gate g1: not implemented yet\"",
-    "gate:g2": "echo \"gate g2: not implemented yet\"",
-    "gate:g3": "echo \"gate g3: not implemented yet\"",
+    "gate:g1": "echo \"gate g1: not implemented yet\" >&2 && exit 1",
+    "gate:g2": "echo \"gate g2: not implemented yet\" >&2 && exit 1",
+    "gate:g3": "echo \"gate g3: not implemented yet\" >&2 && exit 1",
     "gate:idem": "vite-node gates/idempotency.ts",
     "measure": "vite-node gates/measure.ts"
   },
