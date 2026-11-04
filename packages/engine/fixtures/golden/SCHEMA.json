@@ -26,7 +26,9 @@
         "type": "object",
         "required": ["op", "at"],
         "properties": {
-          "op": { "enum": ["register", "bid", "tick", "hammer", "promote", "revoke", "complete"] },
+          "op": {
+            "enum": ["register", "bid", "tick", "hammer", "promote", "revoke", "complete", "abort"]
+          },
           "at": { "type": "integer", "minimum": 0 },
           "bidder": { "type": "string" },
           "amount": { "type": "integer" },
