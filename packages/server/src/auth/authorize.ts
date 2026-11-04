@@ -112,7 +112,10 @@ function walk(
   const mine = role === 'bidder' && viewer !== undefined && owner === viewer;
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
-    if (k === 'you' && !(role === 'bidder' && isOwn(v, viewer))) continue;
+    // `you` is the viewer's own block or, on a settlement frame, their own settlement state;
+    // the room builds both per connection, so a bidder only ever holds their own.
+    if (k === 'you' && !(role === 'bidder' && (typeof v === 'string' || isOwn(v, viewer))))
+      continue;
     if (CEILING_KEYS.has(k) && !mine) continue;
     out[k] = walk(role, viewer, v, k, fullAudit);
   }
