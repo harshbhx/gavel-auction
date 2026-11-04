@@ -96,7 +96,7 @@ Saga defaults (`SAGA_DEFAULTS` in `packages/payments/src/config.ts`, equal to th
 
 ## Sandbox environment (required before any gate runs)
 
-The gate workflows (`.github/workflows/gate-g0.yml` and `infra/workflows/gates.yml`) declare
+The gate workflows (`.github/workflows/gate-g0.yml` and `.github/workflows/gate-g1.yml`) declare
 `environment: sandbox-nightly` and only run from `main`. The repository owner must create that
 environment once:
 

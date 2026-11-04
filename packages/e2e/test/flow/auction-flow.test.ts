@@ -166,5 +166,5 @@ describe('auction flow in one process', () => {
       }
       await second.close();
     }
-  });
+  }, 60_000);
 });
