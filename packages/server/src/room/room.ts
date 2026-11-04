@@ -162,6 +162,9 @@ export class Room {
   private done = false;
   /** True when the engine may be ahead of the stored log and must be rebuilt first. */
   private dirty = false;
+  /** Set when this host lost the room; the room serves nothing and arms no timer. */
+  private stopped = false;
+  private cancelTimerRetry: CancelTimer | undefined;
   /** Count of frames dropped because they failed to encode; surfaced for metrics and tests. */
   encodeFailures = 0;
 
@@ -241,7 +244,40 @@ export class Room {
     this.cancelTimer = undefined;
     this.cancelHammer?.();
     this.cancelHammer = undefined;
+    this.cancelTimerRetry?.();
+    this.cancelTimerRetry = undefined;
     await this.tail;
+  }
+
+  /**
+   * This host lost the room to another one (R-RT-061): cancel every timer and refuse further
+   * commands with `host_fenced`. Nothing is rebuilt or re-armed afterwards.
+   */
+  stop(): void {
+    this.stopped = true;
+    this.cancelTimer?.();
+    this.cancelTimer = undefined;
+    this.cancelHammer?.();
+    this.cancelHammer = undefined;
+    this.cancelTimerRetry?.();
+    this.cancelTimerRetry = undefined;
+  }
+
+  /** True once the settlement's final report reached the room. */
+  get isDone(): boolean {
+    return this.done;
+  }
+
+  get isStopped(): boolean {
+    return this.stopped;
+  }
+
+  private storeError(): GavelError {
+    return new GavelError(this.stopped ? 'host_fenced' : 'store_unavailable');
+  }
+
+  private storeCode(): ErrorCode {
+    return this.stopped ? 'host_fenced' : 'store_unavailable';
   }
 
   /** Report a payment hold: the bidder joins the roster with their private ceiling (R-RT-054). */
@@ -283,7 +319,7 @@ export class Room {
       try {
         await this.ensureClean();
       } catch {
-        throw new GavelError('store_unavailable');
+        throw this.storeError();
       }
       // The engine decides first: a registration it refuses must never reach the log, or every
       // later replay would throw on it and the auction could not be loaded again (R-RT-059).
@@ -353,7 +389,7 @@ export class Room {
       try {
         await this.makeDurable();
       } catch {
-        this.sendError(conn, 'store_unavailable');
+        this.sendError(conn, this.storeCode());
         return;
       }
       this.send(conn, prior);
@@ -362,7 +398,7 @@ export class Room {
     try {
       await this.ensureClean();
     } catch {
-      this.sendError(conn, 'store_unavailable');
+      this.sendError(conn, this.storeCode());
       return;
     }
     const engine = this.requireEngine();
@@ -418,7 +454,7 @@ export class Room {
     } catch {
       // State must not change: rebuild the engine from the log and tell the sender.
       await this.recover().catch(() => undefined);
-      this.sendError(conn, 'store_unavailable');
+      this.sendError(conn, this.storeCode());
       return;
     }
     this.seq = seq;
@@ -432,7 +468,7 @@ export class Room {
       durable = false;
     }
     if (reply && durable) this.send(conn, reply);
-    else if (reply) this.sendError(conn, 'store_unavailable');
+    else if (reply) this.sendError(conn, this.storeCode());
     if (event.type === 'bid_accepted') {
       this.broadcastPrice(seq, ts);
       this.armTimer();
@@ -509,7 +545,7 @@ export class Room {
       try {
         await this.ensureClean();
       } catch {
-        this.sendError(conn, 'store_unavailable');
+        this.sendError(conn, this.storeCode());
         return;
       }
       if (this.hammered) {
@@ -537,7 +573,7 @@ export class Room {
       try {
         await this.ensureClean();
       } catch {
-        throw new GavelError('store_unavailable');
+        throw this.storeError();
       }
       if (this.hammered || this.done) return false;
       await this.doHammer(undefined, { by });
@@ -551,14 +587,19 @@ export class Room {
    * room reproduces it. `hammered` means the room is past that point and the settlement
    * bridge handles the hold instead. Idempotent; the ledger is written on every call.
    */
-  revokeBidder(bidderId: BidderId, reason: RevokeReason): Promise<RevokeOutcome> {
+  revokeBidder(bidderId: BidderId, reason: RevokeReason, holdRef?: string): Promise<RevokeOutcome> {
     return this.enqueue(async () => {
       try {
         await this.ensureClean();
       } catch {
-        throw new GavelError('store_unavailable');
+        throw this.storeError();
       }
       if (this.hammered) return 'hammered';
+      // A hold that is not the registered one does not back the ceiling (R-ENG-044).
+      const registered = this.roster.get(bidderId)?.holdRef;
+      if (holdRef !== undefined && registered !== undefined && registered !== holdRef) {
+        return 'noop';
+      }
       if (!this.roster.has(bidderId) || this.revoked.has(bidderId)) {
         await this.makeDurable();
         return 'noop';
@@ -585,7 +626,7 @@ export class Room {
         await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
       } catch {
         await this.recover().catch(() => undefined);
-        throw new GavelError('store_unavailable');
+        throw this.storeError();
       }
       this.seq = seq;
       this.revoked.add(bidderId);
@@ -672,7 +713,7 @@ export class Room {
       await this.deps.store.appendEvents(this.auctionId, this.seq, events);
     } catch {
       await this.recover().catch(() => undefined);
-      if (by) this.sendError(by.conn, 'store_unavailable');
+      if (by) this.sendError(by.conn, this.storeCode());
       return;
     }
     this.cancelTimer?.();
@@ -756,7 +797,7 @@ export class Room {
       try {
         await this.ensureClean();
       } catch {
-        throw new GavelError('store_unavailable');
+        throw this.storeError();
       }
       if (!this.hammered) throw new GavelError('conflict', 'auction is not hammered');
       if (this.settlement && report.rev <= this.settlement.rev) return;
@@ -778,7 +819,7 @@ export class Room {
         await this.deps.store.appendEvents(this.auctionId, this.seq, [event.data]);
       } catch {
         await this.recover().catch(() => undefined);
-        throw new GavelError('store_unavailable');
+        throw this.storeError();
       }
       this.seq = seq;
       this.applySettlement(report);
@@ -917,6 +958,9 @@ export class Room {
     this.cancelTimer = undefined;
     this.cancelHammer?.();
     this.cancelHammer = undefined;
+    this.cancelTimerRetry?.();
+    this.cancelTimerRetry = undefined;
+    if (this.stopped) return;
     const view = this.engine?.view();
     if (!view || this.hammered) return;
     if (view.state === 'CLOSING') {
@@ -926,14 +970,33 @@ export class Room {
     if (view.state !== 'OPEN') return;
     this.cancelTimer = this.deps.clock.setTimer(view.endTs, () => {
       this.enqueue(() => this.onTimer()).catch(() => {
-        // A throwing timer body must not become an unhandled rejection; rebuild on the next command.
+        // A throwing timer body must not become an unhandled rejection; rebuild on the next
+        // command, and try the end of the lot again soon in case no command comes (R-RT-041).
         this.dirty = true;
+        this.retryTimer();
       });
     });
   }
 
+  /** The end-of-lot timer could not run (store down): try again after a short delay. */
+  private retryTimer(): void {
+    if (this.stopped || this.hammered || this.done) return;
+    this.cancelTimerRetry?.();
+    this.cancelTimerRetry = this.deps.clock.setTimer(
+      this.deps.clock.now() + AUTO_HAMMER_RETRY_MS,
+      () => {
+        this.cancelTimerRetry = undefined;
+        this.enqueue(() => this.onTimer()).catch(() => {
+          this.dirty = true;
+          this.retryTimer();
+        });
+      },
+    );
+  }
+
   /** Schedule the hammer `autoHammerDelayMs` after CLOSING began, if the config asks for it (R-RT-044). */
   private armAutoHammer(): void {
+    if (this.stopped) return;
     const delay = this.config?.autoHammerDelayMs;
     if (delay === undefined || this.closingAt === undefined) return;
     this.cancelHammer = this.deps.clock.setTimer(this.closingAt + delay, () => {
@@ -965,6 +1028,7 @@ export class Room {
   }
 
   private retryAutoHammer(): void {
+    if (this.stopped) return;
     this.cancelHammer?.();
     this.cancelHammer = this.deps.clock.setTimer(
       this.deps.clock.now() + AUTO_HAMMER_RETRY_MS,
@@ -980,6 +1044,7 @@ export class Room {
     try {
       await this.ensureClean();
     } catch {
+      this.retryTimer();
       return;
     }
     const engine = this.requireEngine();
@@ -1006,6 +1071,7 @@ export class Room {
       await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
     } catch {
       await this.recover().catch(() => undefined);
+      this.retryTimer();
       return;
     }
     this.seq = seq;
@@ -1026,6 +1092,7 @@ export class Room {
   }
 
   private async ensureClean(): Promise<void> {
+    if (this.stopped) throw new GavelError('host_fenced');
     if (!this.dirty) return;
     const fresh = new Room(this.auctionId, this.deps);
     try {

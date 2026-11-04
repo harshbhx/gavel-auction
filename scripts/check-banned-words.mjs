@@ -3,8 +3,14 @@
 // The list is read from env BANNED_WORDS (comma or newline separated, a CI secret) or from the
 // untracked file scripts/banned-words.txt. The list is never committed and never printed:
 // failures report only file, line and column.
+// Besides file contents it checks file paths, and on request free text from the environment
+// (--text NAME: a pull request title, body or branch name) and commit messages
+// (--git-log RANGE: the git log arguments, such as "base..head"). Hits in paths, text and commit
+// messages are reported by position or short commit id only, never by the text itself.
 // Usage: node scripts/check-banned-words.mjs            whole tree (tracked files)
 //        node scripts/check-banned-words.mjs a.md b.ts  only the given files (pre-commit)
+//        node scripts/check-banned-words.mjs --text PR_TITLE --git-log "origin/main..HEAD"
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -57,6 +63,41 @@ export function checkFiles(rootDir, files, matcher) {
   return failures;
 }
 
+/** Returns the files whose path (any directory or file name part) contains a listed word. */
+export function checkPaths(files, matcher) {
+  const failures = [];
+  for (const file of files) {
+    const normal = file.replace(/\\/g, '/').replace(/^\.\//, '');
+    if (matcher.test(normal)) failures.push({ index: failures.length + 1 });
+  }
+  return failures;
+}
+
+/** Checks free text such as a pull request title; reports line and column only. */
+export function checkText(label, text, matcher) {
+  return findBanned(text ?? '', matcher).map((h) => ({ label, ...h }));
+}
+
+/** Splits `git log --format=%B%x00` output into commit messages. */
+export function splitLog(out) {
+  return out.split('\0').filter((m) => m.trim() !== '');
+}
+
+/** Checks the message of every commit in the git range; reports the short commit id only. */
+export function checkCommits(rootDir, range, matcher, run = execFileSync) {
+  const out = run('git', ['log', '--format=%h%x01%B%x00', ...range.split(/\s+/).filter(Boolean)], {
+    cwd: rootDir,
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  const failures = [];
+  for (const entry of splitLog(out)) {
+    const [id, ...body] = entry.trim().split('\u0001');
+    if (matcher.test(body.join('\u0001'))) failures.push({ commit: id });
+  }
+  return failures;
+}
+
 /**
  * Decides what to do when no word list is configured. Outside CI a missing list is skipped so
  * local runs work; in CI it is a failure, except where the run opts out (pull requests from
@@ -73,9 +114,21 @@ export function parseArgs(argv) {
   let target;
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--root') target = argv[(i += 1)];
+    else if (argv[i] === '--text' || argv[i] === '--git-log') i += 1;
     else files.push(argv[i]);
   }
   return { target, files };
+}
+
+/** Reads the --text NAME and --git-log RANGE options. */
+export function parseMetaArgs(argv) {
+  const texts = [];
+  const logs = [];
+  for (let i = 0; i < argv.length; i += 1) {
+    if (argv[i] === '--text') texts.push(argv[(i += 1)]);
+    else if (argv[i] === '--git-log') logs.push(argv[(i += 1)]);
+  }
+  return { texts, logs };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -94,8 +147,17 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const files = selectFiles(root, given);
   const failures = checkFiles(root, files, matcher);
   for (const f of failures) console.error(`${f.file}:${f.line}:${f.column} contains a banned word`);
-  if (failures.length > 0) {
-    console.error(`check:banned-words failed: ${failures.length} match(es)`);
+  const pathHits = checkPaths(files, matcher);
+  for (const h of pathHits) console.error(`file path #${h.index} contains a banned word`);
+  const meta = parseMetaArgs(process.argv.slice(2));
+  const textHits = meta.texts.flatMap((name) => checkText(name, process.env[name], matcher));
+  for (const h of textHits)
+    console.error(`${h.label}:${h.line}:${h.column} contains a banned word`);
+  const commitHits = meta.logs.flatMap((range) => checkCommits(root, range, matcher));
+  for (const h of commitHits) console.error(`commit ${h.commit} message contains a banned word`);
+  const total = failures.length + pathHits.length + textHits.length + commitHits.length;
+  if (total > 0) {
+    console.error(`check:banned-words failed: ${total} match(es)`);
     process.exit(1);
   }
   console.log(`check:banned-words ok (${files.length} files)`);
