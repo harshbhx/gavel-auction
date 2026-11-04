@@ -23,7 +23,7 @@ export type LogSink = (line: string) => void;
 
 export const REDACTED = '[REDACTED]';
 
-const SECRET_KEY = /secret|token|authorization|signature|password|api[-_]?key/i;
+const SECRET_KEY = /secret|token|authorization|signature|(?:^|[-_])sig(?:$|[-_])|password|api[-_]?key/i;
 const registered = new Set<string>();
 
 /** Register an exact secret value that must never be written (e.g. the client secret). */
@@ -40,7 +40,7 @@ export function redactString(input: string): string {
   for (const s of registered) out = out.split(s).join(REDACTED);
   out = out.replace(/\b(Basic|Bearer)\s+[A-Za-z0-9+/=._~-]+/gi, `$1 ${REDACTED}`);
   out = out.replace(
-    /("?(?:[A-Za-z_-]*(?:secret|token|authorization|signature|password)[A-Za-z_-]*)"?\s*[:=]\s*)("?)[^\s",}&]+/gi,
+    /("?(?:[A-Za-z_-]*(?:secret|token|authorization|signature|sig|password)[A-Za-z_-]*)"?\s*[:=]\s*)("?)[^\s",}&]+/gi,
     `$1$2${REDACTED}`,
   );
   return out;
