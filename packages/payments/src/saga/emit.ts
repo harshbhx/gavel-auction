@@ -58,7 +58,11 @@ export interface AuditEventPayload {
 function holdStatus(j: Journal, bidderId: string, holdId: string): HoldStatus {
   if (j.winner?.holdId === holdId) return 'CAPTURED';
   const failed = j.failed.find((f) => f.bidderId === bidderId);
-  const voided = j.voids[bidderId];
+  const voided = Object.hasOwn(j.voids, bidderId)
+    ? j.voids[bidderId]
+    : Object.hasOwn(j.voids, holdId)
+      ? j.voids[holdId]
+      : undefined;
   if (voided === 'voided' || voided === 'released') return 'VOIDED';
   if (failed !== undefined) {
     if (failed.reason === 'hold_voided') return 'VOIDED';

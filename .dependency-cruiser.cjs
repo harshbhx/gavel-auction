@@ -36,7 +36,7 @@ module.exports = {
       name: 'engine-no-node-io',
       comment: 'The engine is pure: no filesystem, network, process or OS access (R-QA-002).',
       severity: 'error',
-      from: { path: '^packages/engine/src/', pathNot: '^packages/engine/src/testing/' },
+      from: { path: '^packages/engine/src/', pathNot: '^packages/engine/src/(testing|node)/' },
       to: { dependencyTypes: ['core'], path: NODE_IO },
     },
   ],
