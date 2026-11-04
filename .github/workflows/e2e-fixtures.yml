@@ -1,0 +1,37 @@
+name: e2e-fixtures
+on:
+  pull_request:
+    paths:
+      [
+        'packages/e2e/fixtures/**',
+        'scripts/check-fixtures.mjs',
+        '.github/workflows/e2e-fixtures.yml',
+      ]
+  push:
+    branches: [main]
+    paths:
+      [
+        'packages/e2e/fixtures/**',
+        'scripts/check-fixtures.mjs',
+        '.github/workflows/e2e-fixtures.yml',
+      ]
+jobs:
+  fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Synthesize audio fixtures
+        run: node packages/e2e/fixtures/audio/generate.mjs
+      - name: Validate fixtures
+        run: node scripts/check-fixtures.mjs
+      - name: Validator rejects a broken clip
+        run: |
+          tmp="$(mktemp -d)"
+          cp -r packages/e2e/fixtures "$tmp/fixtures"
+          head -c 1000 /dev/zero > "$tmp/fixtures/audio/bid-clear-001.wav"
+          if node scripts/check-fixtures.mjs --root "$tmp/fixtures"; then
+            echo "validator accepted a broken wav"; exit 1
+          fi

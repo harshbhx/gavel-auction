@@ -1,0 +1,38 @@
+{
+  "provider": "recorded",
+  "language": "en-US",
+  "transcript": "three hundred for paddle twelve",
+  "confidence": 0.95,
+  "words": [
+    {
+      "word": "three",
+      "startMs": 350,
+      "endMs": 710,
+      "confidence": 0.94
+    },
+    {
+      "word": "hundred",
+      "startMs": 750,
+      "endMs": 1110,
+      "confidence": 0.9
+    },
+    {
+      "word": "for",
+      "startMs": 1150,
+      "endMs": 1510,
+      "confidence": 0.96
+    },
+    {
+      "word": "paddle",
+      "startMs": 1550,
+      "endMs": 1910,
+      "confidence": 0.92
+    },
+    {
+      "word": "twelve",
+      "startMs": 1950,
+      "endMs": 2310,
+      "confidence": 0.88
+    }
+  ]
+}

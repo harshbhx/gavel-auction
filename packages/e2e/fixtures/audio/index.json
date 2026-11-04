@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "clips": [
+    {
+      "id": "bid-clear-001",
+      "category": "clear",
+      "noise": null
+    },
+    {
+      "id": "bid-clear-002",
+      "category": "clear",
+      "noise": null
+    },
+    {
+      "id": "bid-clear-003",
+      "category": "clear",
+      "noise": null
+    },
+    {
+      "id": "bid-ambiguous-004",
+      "category": "ambiguous",
+      "noise": null
+    },
+    {
+      "id": "bid-clear-005",
+      "category": "clear",
+      "noise": null
+    },
+    {
+      "id": "bid-clear-006",
+      "category": "clear",
+      "noise": null
+    },
+    {
+      "id": "bid-clear-007",
+      "category": "clear",
+      "noise": null
+    },
+    {
+      "id": "bid-clear-008",
+      "category": "clear",
+      "noise": null
+    },
+    {
+      "id": "bid-ambiguous-009",
+      "category": "ambiguous",
+      "noise": null
+    },
+    {
+      "id": "bid-ambiguous-010",
+      "category": "ambiguous",
+      "noise": null
+    },
+    {
+      "id": "bid-ambiguous-011",
+      "category": "ambiguous",
+      "noise": null
+    },
+    {
+      "id": "bid-ambiguous-012",
+      "category": "ambiguous",
+      "noise": null
+    },
+    {
+      "id": "bid-noisy-013",
+      "category": "noisy",
+      "noise": "crowd-snr-10db"
+    },
+    {
+      "id": "bid-noisy-014",
+      "category": "noisy",
+      "noise": "crowd-snr-5db"
+    },
+    {
+      "id": "bid-noisy-015",
+      "category": "noisy",
+      "noise": "street-snr-8db"
+    },
+    {
+      "id": "bid-noisy-016",
+      "category": "noisy",
+      "noise": "hvac-snr-20db"
+    },
+    {
+      "id": "bid-noisy-017",
+      "category": "noisy",
+      "noise": "crowd-snr-10db"
+    },
+    {
+      "id": "bid-noisy-018",
+      "category": "noisy",
+      "noise": "room-snr-15db"
+    },
+    {
+      "id": "bid-noisy-019",
+      "category": "noisy",
+      "noise": "crowd-snr-5db"
+    },
+    {
+      "id": "bid-noisy-020",
+      "category": "noisy",
+      "noise": "street-snr-8db"
+    },
+    {
+      "id": "bid-selfcorrect-021",
+      "category": "self-correction",
+      "noise": null
+    },
+    {
+      "id": "bid-selfcorrect-022",
+      "category": "self-correction",
+      "noise": null
+    },
+    {
+      "id": "bid-selfcorrect-023",
+      "category": "self-correction",
+      "noise": null
+    },
+    {
+      "id": "bid-selfcorrect-024",
+      "category": "self-correction",
+      "noise": "crowd-snr-10db"
+    }
+  ]
+}

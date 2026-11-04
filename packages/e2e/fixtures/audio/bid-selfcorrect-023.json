@@ -1,0 +1,16 @@
+{
+  "id": "bid-selfcorrect-023",
+  "file": "bid-selfcorrect-023.wav",
+  "sampleRate": 16000,
+  "durationMs": 3740,
+  "category": "self-correction",
+  "noise": null,
+  "transcriptTruth": "one fifty for paddle nine no paddle nineteen",
+  "expected": {
+    "kind": "bid",
+    "amountCents": 15000,
+    "bidder": "19",
+    "needsConfirm": false
+  },
+  "sttFixture": "bid-selfcorrect-023.stt.json"
+}

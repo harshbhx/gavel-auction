@@ -1,0 +1,159 @@
+{
+  "version": 1,
+  "bids": [
+    {
+      "clip": "bid-clear-001",
+      "outcome": "bid",
+      "paddle": "12",
+      "amountCents": 30000
+    },
+    {
+      "clip": "bid-clear-002",
+      "outcome": "bid",
+      "paddle": "7",
+      "amountCents": 50000
+    },
+    {
+      "clip": "bid-clear-003",
+      "outcome": "bid",
+      "paddle": "21",
+      "amountCents": 100000
+    },
+    {
+      "clip": "bid-ambiguous-004",
+      "outcome": "confirm_request",
+      "paddle": "7",
+      "amountCents": 5000,
+      "candidates": [5000, 1500],
+      "paddleCandidates": null
+    },
+    {
+      "clip": "bid-clear-005",
+      "outcome": "bid",
+      "paddle": "9",
+      "amountCents": 25000
+    },
+    {
+      "clip": "bid-clear-006",
+      "outcome": "bid",
+      "paddle": "40",
+      "amountCents": 80000
+    },
+    {
+      "clip": "bid-clear-007",
+      "outcome": "bid",
+      "paddle": "3",
+      "amountCents": 7500
+    },
+    {
+      "clip": "bid-clear-008",
+      "outcome": "bid",
+      "paddle": "18",
+      "amountCents": 15000
+    },
+    {
+      "clip": "bid-ambiguous-009",
+      "outcome": "confirm_request",
+      "paddle": "5",
+      "amountCents": 130000,
+      "candidates": [130000, 140000],
+      "paddleCandidates": null
+    },
+    {
+      "clip": "bid-ambiguous-010",
+      "outcome": "confirm_request",
+      "paddle": "11",
+      "amountCents": 26000,
+      "candidates": [26000, 21600],
+      "paddleCandidates": null
+    },
+    {
+      "clip": "bid-ambiguous-011",
+      "outcome": "confirm_request",
+      "paddle": "14",
+      "amountCents": 60000,
+      "candidates": null,
+      "paddleCandidates": ["14", "40"]
+    },
+    {
+      "clip": "bid-ambiguous-012",
+      "outcome": "confirm_request",
+      "paddle": "2",
+      "amountCents": 9000,
+      "candidates": [9000, 1900],
+      "paddleCandidates": null
+    },
+    {
+      "clip": "bid-noisy-013",
+      "outcome": "bid",
+      "paddle": "6",
+      "amountCents": 40000
+    },
+    {
+      "clip": "bid-noisy-014",
+      "outcome": "bid",
+      "paddle": "30",
+      "amountCents": 90000
+    },
+    {
+      "clip": "bid-noisy-015",
+      "outcome": "bid",
+      "paddle": "14",
+      "amountCents": 12000
+    },
+    {
+      "clip": "bid-noisy-016",
+      "outcome": "bid",
+      "paddle": "2",
+      "amountCents": 65000
+    },
+    {
+      "clip": "bid-noisy-017",
+      "outcome": "bid",
+      "paddle": "12",
+      "amountCents": 35000
+    },
+    {
+      "clip": "bid-noisy-018",
+      "outcome": "bid",
+      "paddle": "8",
+      "amountCents": 200000
+    },
+    {
+      "clip": "bid-noisy-019",
+      "outcome": "bid",
+      "paddle": "19",
+      "amountCents": 110000
+    },
+    {
+      "clip": "bid-noisy-020",
+      "outcome": "bid",
+      "paddle": "1",
+      "amountCents": 42500
+    },
+    {
+      "clip": "bid-selfcorrect-021",
+      "outcome": "bid",
+      "paddle": "12",
+      "amountCents": 35000
+    },
+    {
+      "clip": "bid-selfcorrect-022",
+      "outcome": "bid",
+      "paddle": "7",
+      "amountCents": 45000
+    },
+    {
+      "clip": "bid-selfcorrect-023",
+      "outcome": "bid",
+      "paddle": "19",
+      "amountCents": 15000
+    },
+    {
+      "clip": "bid-selfcorrect-024",
+      "outcome": "bid",
+      "paddle": "4",
+      "amountCents": 22000
+    }
+  ]
+}

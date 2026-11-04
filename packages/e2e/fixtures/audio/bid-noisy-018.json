@@ -1,0 +1,16 @@
+{
+  "id": "bid-noisy-018",
+  "file": "bid-noisy-018.wav",
+  "sampleRate": 16000,
+  "durationMs": 2600,
+  "category": "noisy",
+  "noise": "room-snr-15db",
+  "transcriptTruth": "two thousand for paddle eight",
+  "expected": {
+    "kind": "bid",
+    "amountCents": 200000,
+    "bidder": "8",
+    "needsConfirm": false
+  },
+  "sttFixture": "bid-noisy-018.stt.json"
+}

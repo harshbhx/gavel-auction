@@ -1,0 +1,50 @@
+{
+  "provider": "recorded",
+  "language": "en-US",
+  "transcript": "thirteen hundred or fourteen hundred paddle five",
+  "confidence": 0.62,
+  "words": [
+    {
+      "word": "thirteen",
+      "startMs": 350,
+      "endMs": 704,
+      "confidence": 0.54
+    },
+    {
+      "word": "hundred",
+      "startMs": 744,
+      "endMs": 1099,
+      "confidence": 0.6
+    },
+    {
+      "word": "or",
+      "startMs": 1139,
+      "endMs": 1493,
+      "confidence": 0.56
+    },
+    {
+      "word": "fourteen",
+      "startMs": 1533,
+      "endMs": 1887,
+      "confidence": 0.62
+    },
+    {
+      "word": "hundred",
+      "startMs": 1927,
+      "endMs": 2281,
+      "confidence": 0.58
+    },
+    {
+      "word": "paddle",
+      "startMs": 2321,
+      "endMs": 2676,
+      "confidence": 0.54
+    },
+    {
+      "word": "five",
+      "startMs": 2716,
+      "endMs": 3070,
+      "confidence": 0.6
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+[
+  {
+    "row": "429",
+    "status": 429,
+    "headers": { "Retry-After": "2", "PayPal-Debug-Id": "dbg-429" },
+    "body": "{\"name\":\"RATE_LIMIT_REACHED\",\"message\":\"Too many requests.\"}",
+    "expect": { "kind": "rate_limited", "outcome": "unknown", "debugId": "dbg-429" }
+  },
+  {
+    "row": "500",
+    "status": 500,
+    "headers": {},
+    "body": "{\"name\":\"INTERNAL_SERVICE_ERROR\",\"message\":\"An internal service error has occurred.\",\"debug_id\":\"dbg-500\"}",
+    "expect": { "kind": "server_error", "outcome": "unknown", "debugId": "dbg-500" }
+  },
+  {
+    "row": "502",
+    "status": 502,
+    "headers": {},
+    "body": "",
+    "expect": { "kind": "server_error", "outcome": "unknown" }
+  },
+  {
+    "row": "503",
+    "status": 503,
+    "headers": {},
+    "body": "{}",
+    "expect": { "kind": "server_error", "outcome": "unknown" }
+  },
+  {
+    "row": "504",
+    "status": 504,
+    "headers": {},
+    "body": "gateway timeout",
+    "expect": { "kind": "server_error", "outcome": "unknown" }
+  },
+  {
+    "row": "401",
+    "status": 401,
+    "headers": {},
+    "body": "{\"error\":\"invalid_token\",\"error_description\":\"Access Token not found in cache\"}",
+    "expect": { "kind": "auth_expired", "outcome": "definite", "name": "invalid_token" }
+  },
+  {
+    "row": "401 after refresh",
+    "status": 401,
+    "afterRefresh": true,
+    "headers": {},
+    "body": "{\"error\":\"invalid_token\"}",
+    "expect": { "kind": "auth_failed", "outcome": "definite" }
+  },
+  {
+    "row": "404",
+    "status": 404,
+    "headers": {},
+    "body": "{\"name\":\"RESOURCE_NOT_FOUND\",\"message\":\"The specified resource does not exist.\",\"debug_id\":\"dbg-404\"}",
+    "expect": { "kind": "not_found", "outcome": "definite", "debugId": "dbg-404" }
+  },
+  {
+    "row": "400",
+    "status": 400,
+    "headers": {},
+    "body": "{\"name\":\"INVALID_REQUEST\",\"message\":\"Request is not well-formed.\",\"details\":[{\"issue\":\"INVALID_STRING_LENGTH\"}]}",
+    "expect": { "kind": "invalid_request", "outcome": "definite", "issue": "INVALID_STRING_LENGTH" }
+  },
+  {
+    "row": "422 AUTHORIZATION_VOIDED",
+    "status": 422,
+    "headers": {},
+    "body": "{\"name\":\"UNPROCESSABLE_ENTITY\",\"details\":[{\"issue\":\"AUTHORIZATION_VOIDED\"}]}",
+    "expect": { "kind": "already_voided", "outcome": "definite", "issue": "AUTHORIZATION_VOIDED" }
+  },
+  {
+    "row": "422 AUTHORIZATION_ALREADY_VOIDED",
+    "status": 422,
+    "headers": {},
+    "body": "{\"name\":\"UNPROCESSABLE_ENTITY\",\"details\":[{\"issue\":\"AUTHORIZATION_ALREADY_VOIDED\"}]}",
+    "expect": { "kind": "already_voided", "outcome": "definite" }
+  },
+  {
+    "row": "422 AUTHORIZATION_EXPIRED",
+    "status": 422,
+    "headers": {},
+    "body": "{\"name\":\"UNPROCESSABLE_ENTITY\",\"details\":[{\"issue\":\"AUTHORIZATION_EXPIRED\"}]}",
+    "expect": { "kind": "expired", "outcome": "definite" }
+  },
+  {
+    "row": "422 AUTHORIZATION_ALREADY_CAPTURED",
+    "status": 422,
+    "headers": {},
+    "body": "{\"name\":\"UNPROCESSABLE_ENTITY\",\"details\":[{\"issue\":\"AUTHORIZATION_ALREADY_CAPTURED\"}]}",
+    "expect": { "kind": "already_captured", "outcome": "definite" }
+  },
+  {
+    "row": "422 INSTRUMENT_DECLINED",
+    "status": 422,
+    "headers": {},
+    "body": "{\"name\":\"UNPROCESSABLE_ENTITY\",\"details\":[{\"issue\":\"INSTRUMENT_DECLINED\"}]}",
+    "expect": { "kind": "declined", "outcome": "definite" }
+  },
+  {
+    "row": "422 DUPLICATE_REQUEST_ID_DIFFERENT_PARAMS",
+    "status": 422,
+    "headers": {},
+    "body": "{\"name\":\"UNPROCESSABLE_ENTITY\",\"details\":[{\"issue\":\"DUPLICATE_REQUEST_ID_DIFFERENT_PARAMS\"}]}",
+    "expect": { "kind": "idempotency_conflict", "outcome": "definite" }
+  },
+  {
+    "row": "422 issue named at top level",
+    "status": 422,
+    "headers": {},
+    "body": "{\"name\":\"INSTRUMENT_DECLINED\",\"message\":\"declined\"}",
+    "expect": { "kind": "declined", "outcome": "definite" }
+  },
+  {
+    "row": "422 unknown issue",
+    "status": 422,
+    "headers": {},
+    "body": "{\"name\":\"UNPROCESSABLE_ENTITY\",\"details\":[{\"issue\":\"SOMETHING_NEW\"}]}",
+    "expect": { "kind": "rejected", "outcome": "definite", "issue": "SOMETHING_NEW" }
+  },
+  {
+    "row": "422 no body",
+    "status": 422,
+    "headers": {},
+    "body": "",
+    "expect": { "kind": "rejected", "outcome": "definite" }
+  },
+  {
+    "row": "403 other 4xx",
+    "status": 403,
+    "headers": {},
+    "body": "{\"name\":\"NOT_AUTHORIZED\",\"message\":\"Authorization failed due to insufficient permissions.\"}",
+    "expect": { "kind": "rejected", "outcome": "definite", "name": "NOT_AUTHORIZED" }
+  },
+  {
+    "row": "409 other 4xx",
+    "status": 409,
+    "headers": {},
+    "body": "",
+    "expect": { "kind": "rejected", "outcome": "definite" }
+  }
+]
