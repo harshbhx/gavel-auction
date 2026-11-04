@@ -88,7 +88,7 @@ describe('decide CompleteLot and RecordSettlement', () => {
       run(s, settle(400, 'HELD', 'VOIDING')).state,
       settle(410, 'VOIDING', 'SETTLED'),
     ).state;
-    expect(errCode(() => decide(settled, settle(420, 'SETTLED', 'HELD')))).toBe('lot_done');
+    expect(errCode(() => decide(settled, settle(420, 'SETTLED', 'HELD')))).toBe('state_continuity');
     const capturing = run(
       run(s, settle(400, 'HELD', 'BIDDING')).state,
       settle(410, 'BIDDING', 'WINNER_SELECTED'),

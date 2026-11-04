@@ -10,7 +10,7 @@ export { LEDGER_EVENT_TYPES, SETTLEMENT_EDGES, SETTLEMENT_STATES } from './event
 export type { LedgerEntry, LedgerEvent, BidAudit } from './events.js';
 export { REJECT_REASONS } from './reasons.js';
 export type { RejectReason } from './reasons.js';
-export { EngineError, ENGINE_ERROR_CODES } from './errors.js';
+export { EngineError, ENGINE_ERROR_CODES, InvariantError } from './errors.js';
 export type { EngineErrorCode } from './errors.js';
 export { ChainError, replay, stateDigest } from './replay.js';
 export { GENESIS_PREV, genesisHead, headOf, sealBatch, verifyChain } from './ledger/chain.js';

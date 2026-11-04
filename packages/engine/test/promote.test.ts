@@ -31,7 +31,7 @@ const promote = (at: number, who: Ulid, lotId: Ulid = L1) =>
   mk(at, { type: 'PromoteRunnerUp', lotId, disqualifiedBidderId: who, reason: 'hold_failed' });
 
 describe('PromoteRunnerUp that ends unsold keeps its body (ENG-R3-11)', () => {
-  const KEY = id('PU1');
+  const KEY = id('PV1');
   const promoteWith = (at: number, who: Ulid, reason: string) =>
     mk(at, { type: 'PromoteRunnerUp', lotId: L1, disqualifiedBidderId: who, reason }, KEY);
 
