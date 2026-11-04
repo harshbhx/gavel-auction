@@ -1,15 +1,26 @@
 name: gate-g0
+# Runs the sandbox payment gate by hand. The PayPal sandbox secrets live in the `sandbox-nightly`
+# environment, which is limited to the main branch and needs a reviewer, so code from a pushed
+# branch can never read them.
 on:
-  push:
-    branches: [gate/g0]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   g0:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: sandbox-nightly
+    if: ${{ github.ref == 'refs/heads/main' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          node-version: 22
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+        with:
+          install: 'false'
       - run: node scripts/gates/g0.mjs
         env:
           PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}

@@ -39,6 +39,96 @@ export function parseWav(buf) {
   return { ...fmt, durationMs };
 }
 
+const ONES = {
+  zero: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19,
+};
+const TENS = {
+  twenty: 20,
+  thirty: 30,
+  forty: 40,
+  fifty: 50,
+  sixty: 60,
+  seventy: 70,
+  eighty: 80,
+  ninety: 90,
+};
+const isNum = (w) => w in ONES || w in TENS || w === 'hundred' || w === 'thousand';
+
+function wordsValue(run) {
+  let total = 0;
+  let cur = 0;
+  for (const w of run) {
+    if (w in ONES) cur += ONES[w];
+    else if (w in TENS) cur += TENS[w];
+    else if (w === 'hundred') cur = (cur === 0 ? 1 : cur) * 100;
+    else if (w === 'thousand') {
+      total += (cur === 0 ? 1 : cur) * 1000;
+      cur = 0;
+    }
+  }
+  return total + cur;
+}
+
+/** Whole-dollar value of a spoken number run; "one fifty" is 150 and "four twenty five" is 425. */
+export function spokenValue(run) {
+  const first = ONES[run[0]];
+  const second = run[1];
+  const colloquial =
+    first !== undefined &&
+    first >= 1 &&
+    first <= 9 &&
+    second !== undefined &&
+    (second in TENS || (second in ONES && ONES[second] >= 10));
+  return colloquial ? first * 100 + wordsValue(run.slice(1)) : wordsValue(run);
+}
+
+function firstRun(tokens) {
+  const start = tokens.findIndex(isNum);
+  if (start === -1) return null;
+  let end = start;
+  while (end < tokens.length && isNum(tokens[end])) end += 1;
+  return tokens.slice(start, end);
+}
+
+/** Reads { amountCents, bidder } from a clear spoken bid, honouring "no wait" style corrections. */
+export function parseSpokenBid(text) {
+  const words = text.toLowerCase().split(/\s+/);
+  const joined = ` ${words.join(' ')} `;
+  let after = joined;
+  for (const marker of [' no wait ', ' sorry ', ' make that ']) {
+    const at = after.lastIndexOf(marker);
+    if (at !== -1) after = after.slice(at + marker.length - 1);
+  }
+  const tokens = after.trim().split(/\s+/);
+  const paddleAt = tokens.lastIndexOf('paddle');
+  const amountRun = firstRun(paddleAt === -1 ? tokens : tokens.slice(0, paddleAt));
+  const lastPaddle = words.lastIndexOf('paddle');
+  const bidderRun = lastPaddle === -1 ? null : firstRun(words.slice(lastPaddle + 1));
+  return {
+    amountCents: amountRun ? spokenValue(amountRun) * 100 : null,
+    bidder: bidderRun ? String(spokenValue(bidderRun)) : null,
+  };
+}
+
 export function dirSize(dir) {
   let total = 0;
   for (const name of readdirSync(dir)) {
@@ -88,6 +178,23 @@ export function validate(fixturesDir) {
         errors.push(`${where}: expected.bidder required`);
       if (typeof e.needsConfirm !== 'boolean')
         errors.push(`${where}: expected.needsConfirm must be boolean`);
+      if (
+        e.needsConfirm === true &&
+        Array.isArray(e.candidates) &&
+        !e.candidates.includes(e.amountCents)
+      )
+        errors.push(`${where}: expected.candidates must include expected.amountCents`);
+      if (e.needsConfirm === false && typeof s.transcriptTruth === 'string') {
+        const spoken = parseSpokenBid(s.transcriptTruth);
+        if (spoken.amountCents !== e.amountCents)
+          errors.push(
+            `${where}: expected.amountCents ${e.amountCents} disagrees with the spoken amount ${spoken.amountCents}`,
+          );
+        if (spoken.bidder !== e.bidder)
+          errors.push(
+            `${where}: expected.bidder ${e.bidder} disagrees with the spoken bidder ${spoken.bidder}`,
+          );
+      }
     }
     byId.set(s.id, s);
     const wavPath = join(audioDir, String(s.file));
@@ -119,6 +226,13 @@ export function validate(fixturesDir) {
       if (stt && (!Array.isArray(stt.words) || stt.words.length === 0))
         errors.push(`audio/${s.sttFixture}: words required`);
       else if (stt) {
+        if (stt.transcript !== s.transcriptTruth)
+          errors.push(`audio/${s.sttFixture}: transcript differs from transcriptTruth`);
+        else if (
+          Array.isArray(stt.words) &&
+          stt.words.map((w) => w.word).join(' ') !== stt.transcript
+        )
+          errors.push(`audio/${s.sttFixture}: words do not spell the transcript`);
         for (const w of stt.words) {
           if (
             typeof w.word !== 'string' ||

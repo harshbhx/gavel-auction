@@ -5,13 +5,14 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
   group: pr-meta-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 # Runs the validator from the base branch; the pull request code is never checked out.
+# The branch name and title are attacker-controlled text, so they are only written to the job
+# log and never to a comment; the failed check is the signal.
 jobs:
   branch-and-title:
     runs-on: ubuntu-latest
@@ -33,12 +34,6 @@ jobs:
           node scripts/check-branch-pr.mjs > "$RUNNER_TEMP/pr-meta.md"
           echo "status=$?" >> "$GITHUB_OUTPUT"
           cat "$RUNNER_TEMP/pr-meta.md"
-      - name: Comment with the fix
-        if: steps.check.outputs.status != '0'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --edit-last --create-if-none --body-file "$RUNNER_TEMP/pr-meta.md"
       - name: Fail
         if: steps.check.outputs.status != '0'
         run: exit 1
