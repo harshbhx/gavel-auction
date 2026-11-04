@@ -213,6 +213,18 @@ export class OrdersClient {
     const authId = extractAuthorizationId(json);
     if (json === undefined || authId === undefined) throw malformed(res, 'authorization');
     const auth = firstAuthorization(json);
+    // Only a CREATED authorization holds money; PENDING resolves later (read the order), DENIED never will.
+    const authStatus = nonEmpty(auth?.['status']);
+    if (authStatus === 'DENIED') {
+      throw new PayPalError({
+        kind: 'declined',
+        status: res.status,
+        name: 'AUTHORIZATION_DENIED',
+        message: 'the authorization was denied',
+        outcome: 'definite',
+      });
+    }
+    if (authStatus !== 'CREATED') throw malformed(res, 'authorization');
     const amountCents = centsOf(auth?.['amount']) ?? centsOf(unit(json)?.['amount']);
     if (amountCents === undefined) throw malformed(res, 'authorization');
     return { authId, amountCents };

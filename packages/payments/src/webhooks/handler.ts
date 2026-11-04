@@ -32,8 +32,11 @@ export interface WebhookHandlerDeps {
   audit: AuditSink;
   clock: Clock;
   metrics?: PaymentsMetrics;
-  /** Called only for verified deliveries; its failure propagates to the route. */
-  onVerified?: (event: VerifiedWebhook) => Promise<void>;
+  /**
+   * Called only for verified deliveries; it must store the event durably. A throw
+   * is answered with 503 so PayPal redelivers the event (R-PAY-093).
+   */
+  onVerified: (event: VerifiedWebhook) => Promise<void>;
 }
 
 export class WebhookHandler {
@@ -81,7 +84,18 @@ export class WebhookHandler {
     }
 
     metrics?.incr('webhook_events_total', { result: 'verified' });
-    await this.deps.onVerified?.({ rawBody, headers, receivedAtMs });
+    try {
+      await this.deps.onVerified({ rawBody, headers, receivedAtMs });
+    } catch {
+      metrics?.incr('webhook_events_total', { result: 'intake_failed' });
+      await audit.append({
+        kind: 'state_change',
+        op: 'webhook_intake',
+        label: 'webhook_intake_failed',
+        tsMs: receivedAtMs,
+      });
+      return { status: 503 };
+    }
     return { status: 200 };
   }
 }

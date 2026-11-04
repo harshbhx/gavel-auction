@@ -184,7 +184,7 @@ function checkWinner(journal: Journal, event: SettlementEvent & { winner: Journa
   if (hold === undefined || hold.holdId !== w.holdId) refuse('winner hold does not match');
   if (!Number.isSafeInteger(w.amountCents) || w.amountCents <= 0) refuse('bad winner amount');
   if (w.amountCents > (hold?.ceilingCents ?? 0)) refuse('winner amount above the hold ceiling');
-  if (event.type === 'capture_ok' && w.amountCents !== cand.priceCents) {
+  if (w.amountCents !== cand.priceCents) {
     refuse('captured amount differs from the planned price');
   }
 }

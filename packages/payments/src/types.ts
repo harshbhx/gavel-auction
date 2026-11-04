@@ -26,6 +26,7 @@ export type ErrorKind =
   | 'server_error'
   | 'auth_expired'
   | 'auth_failed'
+  | 'auth_unavailable'
   | 'not_found'
   | 'invalid_request'
   | 'already_voided'

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_LEASE_TTL_MS,
   LeaseLost,
   SettlementError,
   createSettlement,
@@ -284,7 +285,7 @@ describe('lease', () => {
 
     const first = await withLease(deps, 'a1', 'runner-1', async () => {
       const mine = (await journals.load('a1')) ?? journal;
-      clock.t += 31_000; // the slow step outlives the 30 s lease
+      clock.t += DEFAULT_LEASE_TTL_MS + 1; // the slow step outlives the lease
 
       const second = await withLease(deps, 'a1', 'runner-2', async () => {
         const theirs = (await journals.load('a1')) ?? journal;
