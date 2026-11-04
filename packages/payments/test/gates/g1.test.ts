@@ -61,6 +61,10 @@ describe('decideG1 (SPEC 7.3)', () => {
     expect(
       decideG1({ captureHttp: 201, authStatusAfterCapture: 'CAPTURED', voidHttp: 422 }),
     ).toEqual({ decision: 'A', remainderOpen: false });
+    // The authorization reads CAPTURED but the void is accepted: the remainder was still held.
+    expect(
+      decideG1({ captureHttp: 201, authStatusAfterCapture: 'CAPTURED', voidHttp: 201 }),
+    ).toEqual({ decision: 'B', remainderOpen: true });
     expect(
       decideG1({ captureHttp: 201, authStatusAfterCapture: 'PARTIALLY_CAPTURED', voidHttp: 201 }),
     ).toEqual({ decision: 'B', remainderOpen: true });
@@ -112,11 +116,11 @@ describe('G1 against the fake (T-PAY-079)', () => {
     expect(records.every((r) => r.assertion === undefined || r.assertion.pass)).toBe(true);
   });
 
-  it('open remainder: the fake still reports CAPTURED, so the status-based decision is A', async () => {
+  it('open remainder: the fake reads CAPTURED but accepts the void, so the decision is B', async () => {
     const code = await run(['--fake-remainder', 'open']);
     expect(code).toBe(EXIT_OK);
-    expect(lines.some((l) => l.includes('G1 decision: wallet=A, card=A'))).toBe(true);
-    expect(readFileSync(join(out, 'GATES.md'), 'utf8')).toContain('Decision: PASS');
+    expect(lines.some((l) => l.includes('G1 decision: wallet=B, card=B'))).toBe(true);
+    expect(readFileSync(join(out, 'GATES.md'), 'utf8')).toContain('Decision: PASS-WITH-FALLBACK');
   });
 });
 

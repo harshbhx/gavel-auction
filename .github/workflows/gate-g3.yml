@@ -1,0 +1,110 @@
+name: gate-g3
+# Sandbox gate G3: does an authorization stay capturable past the honor period, and does
+# reauthorize extend it? Run manually from main to start the probe (day 0: a headless browser
+# signs in as the sandbox buyer and approves four orders). The scheduled runs pick the probe up
+# again and do the checks at 3.5, 4 and 5 days; the last one appends the GATES.md entry.
+# Actions secrets needed: PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, SANDBOX_BUYER_EMAIL,
+# SANDBOX_BUYER_PASSWORD. Both triggers run only from main, so code on a pushed branch never
+# reads the secrets.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  g3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: ${{ github.ref == 'refs/heads/main' }}
+    concurrency:
+      group: gate-g3
+      cancel-in-progress: false
+    env:
+      STATE: ${{ github.workspace }}/g3-state
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Restore the probe state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$STATE"
+          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=g3-probe-state&per_page=1" --jq '.artifacts[0] | select(.expired == false) | .id // empty')
+          if [ -n "$id" ]; then
+            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > "$RUNNER_TEMP/g3-state.zip"
+            unzip -o "$RUNNER_TEMP/g3-state.zip" -d "$STATE"
+          fi
+          resume=$(find "$STATE" -name '*.run.json' | sort | tail -1)
+          done_marker=$(find "$STATE" -name 'complete.marker' | head -1)
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            if [ -z "$resume" ]; then echo "mode=skip" >> "$GITHUB_ENV"; echo "No probe is running; start one with Run workflow."; exit 0; fi
+            if [ -n "$done_marker" ]; then echo "mode=skip" >> "$GITHUB_ENV"; echo "The probe is finished."; exit 0; fi
+            echo "mode=resume" >> "$GITHUB_ENV"
+            echo "RESUME_FILE=$resume" >> "$GITHUB_ENV"
+          else
+            rm -rf "$STATE" && mkdir -p "$STATE"
+            echo "mode=start" >> "$GITHUB_ENV"
+          fi
+      - name: Check that the secrets exist
+        if: ${{ env.mode == 'start' }}
+        env:
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+        run: |
+          missing=""
+          for name in PAYPAL_CLIENT_ID PAYPAL_CLIENT_SECRET SANDBOX_BUYER_EMAIL SANDBOX_BUYER_PASSWORD; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error title=Missing secrets::Add these repository Actions secrets and run again:$missing"
+            exit 2
+          fi
+      - uses: ./.github/actions/setup
+        if: ${{ env.mode != 'skip' }}
+      - name: Install the browser
+        if: ${{ env.mode == 'start' }}
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.49.1
+          cd "$RUNNER_TEMP/pw" && npx playwright install --with-deps chromium
+      - name: Day 0 of the probe
+        if: ${{ env.mode == 'start' }}
+        env:
+          PAYPAL_ENV: sandbox
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
+        run: npm run gate:g3 -w @gavel/payments -- --browser --out "$STATE"
+      - name: Checkpoints that are due
+        if: ${{ env.mode == 'resume' }}
+        env:
+          PAYPAL_ENV: sandbox
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+        run: npm run gate:g3 -w @gavel/payments -- --resume "$RESUME_FILE" --out "$STATE"
+      # The state travels from one scheduled run to the next as an artifact.
+      - name: Keep the probe state
+        if: ${{ always() && env.mode != 'skip' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g3-probe-state
+          path: ${{ env.STATE }}
+          if-no-files-found: warn
+          retention-days: 14
+      # The GATES.md entry exists only after the last checkpoint; download it from that run.
+      - name: Upload the entry
+        if: ${{ always() && env.mode != 'skip' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g3-entry
+          path: GATES.md
+          if-no-files-found: ignore
+          retention-days: 30
