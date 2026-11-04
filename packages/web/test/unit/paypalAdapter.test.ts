@@ -14,7 +14,7 @@ const req: ApprovalRequest = {
   roomId: 'room 1',
   bidderId: 'b1',
   ceilingCents: 50_000,
-  clientRegistrationId: 'reg-12345678',
+  clientRegistrationId: 'reg-one',
 };
 
 type Script = (cb: PayPalSessionCallbacks) => void;
@@ -165,7 +165,7 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
 
   it('completes a redirect approval on the return route', async () => {
     const t = make(() => {});
-    const result = await t.adapter.completeRedirect('room 1', 'ord-1', 'reg-12345678', (s) =>
+    const result = await t.adapter.completeRedirect('room 1', 'ord-1', 'reg-one', (s) =>
       t.states.push(s),
     );
     expect(result).toMatchObject({ state: 'held', holdIdSuffix: 'ABC123' });
