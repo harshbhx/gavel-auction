@@ -9,3 +9,4 @@ coverage/
 report/
 *.tsbuildinfo
 .DS_Store
+scripts/banned-words.txt
