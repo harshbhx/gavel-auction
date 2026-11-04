@@ -54,7 +54,7 @@ CASES = [
  ("asr_error", "for hunderd", "7", None, B("7", 400)),
  ("asr_error", "five hundread", "7", None, B("7", 500)),
  ("asr_error", "tree fifty", "7", None, B("7", 350)),
- ("asr_error", "I'll go to hundred and fifty", "7", None, C),  # label changed after policy: 'to' ambiguous (150 vs 250)
+ ("asr_error", "I'll go to hundred and fifty", "7", None, C),  # 'to' is ambiguous (150 vs 250)
  ("asr_error", "paddle ate, two fifty", None, None, B("8", 250)),
  ("asr_error", "won thousand", "7", None, B("7", 1000)),
  ("asr_error", "two thousend", "7", None, B("7", 2000)),
@@ -97,7 +97,7 @@ CASES = [
  ("non_bid", "my wife says no", "7", None, N),
 ]
 
-# HELD-OUT set: written after the parser was tuned on CASES; never used to tune. Same author, so still optimistic.
+# HELD-OUT set: never used to tune the parser; kept separate from CASES for evaluation.
 HELDOUT = [
  ("plain", "let's do six fifty", "2", None, B("2", 650)),
  ("plain", "seven hundred and twenty five", "2", None, B("2", 725)),

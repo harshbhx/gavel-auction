@@ -1,7 +1,7 @@
 # SPEC-payments: packages/payments
 
 Owner area: payments (PAY). Status: draft v1, 2026-11-04. Sandbox only.
-Companion files: `issues-payments.json`, `DEPS.md`. Reference prototype: `reference/python/fake_paypal.py`, `reference/python/saga.py`, `reference/python/test_saga.py`.
+Companion files: `issues-payments.json`, `DEPS.md`. Reference implementation: `reference/python/fake_paypal.py`, `reference/python/saga.py`, `reference/python/test_saga.py`.
 
 Tag convention. Anything about PayPal behaviour that has not been observed in our sandbox is tagged `UNVERIFIED (G1..G5)` and is followed by `Fallback:`. Anything without a tag is either our own design decision or a PayPal fact already relied on in the plan (OAuth, Orders v2 intent AUTHORIZE, Payments v2 capture/void/reauthorize, `PayPal-Request-Id`). When a gate passes, the tag is flipped in this file by issue PAY-70.
 
@@ -143,11 +143,11 @@ IDs are stable. MUST = release blocker for the demo. SHOULD = expected, can slip
 - R-PAY-120 MUST: `packages/payments/src/fake` provides `FakePayPalCore` (pure in-memory state machine, port of `fake_paypal.py`, plus orders) and `FakePayPalServer` (HTTP, listens on an ephemeral port) implementing: `POST /v1/oauth2/token`, `POST /v2/checkout/orders`, `GET /v2/checkout/orders/{id}`, `POST /v2/checkout/orders/{id}/authorize`, `GET /v2/payments/authorizations/{id}`, `POST /v2/payments/authorizations/{id}/capture`, `.../void`, `.../reauthorize`, `POST /v1/notifications/verify-webhook-signature`.
 - R-PAY-121 MUST: Control surface under `/__fake/*` (never exposed by the real client): `POST /__fake/approve/{orderId}` (simulates the buyer), `POST /__fake/clock/advance`, `POST /__fake/inject`, `POST /__fake/webhooks/deliver`, `GET /__fake/state`, `GET /__fake/invariants`, `POST /__fake/reset`.
 - R-PAY-122 MUST: Fault kinds (Section 4.5): `timeout_before`, `timeout_after_success`, `http_500`, `http_429` (with `Retry-After`), `http_401_once`, `connection_reset`, `slow(ms)`, `capture_declined`, `malformed_body`, `forget_idempotency`. A fault targets `(op, authId|null, times)` and an optional `afterNthCall`.
-- R-PAY-123 MUST: Idempotency semantics match the prototype: same `(op, authId, PayPal-Request-Id)` with equal params replays the stored result; with different params returns 422 `DUPLICATE_REQUEST_ID_DIFFERENT_PARAMS`. The error name is `[assumed]` (UNVERIFIED (G1)); the client does not branch on it beyond `kind: "idempotency_conflict"`.
+- R-PAY-123 MUST: Idempotency semantics match the reference implementation: same `(op, authId, PayPal-Request-Id)` with equal params replays the stored result; with different params returns 422 `DUPLICATE_REQUEST_ID_DIFFERENT_PARAMS`. The error name is `[assumed]` (UNVERIFIED (G1)); the client does not branch on it beyond `kind: "idempotency_conflict"`.
 - R-PAY-124 MUST: The fake has `Clock` injection: honor period (default 3 d), validity (default 29 d), `afterHonorCapture: "ok" | "fail"`, `autoReleaseRemainder: boolean`, over-capture cap function `min(115%, +$75)` as configurable `captureLimit(hold)`; all are marked as assumptions in `fake/ASSUMPTIONS.md` with the gate that will confirm each.
 - R-PAY-125 MUST: Seeded determinism: same seed and same call sequence produce identical ids and webhook order. Ids are sequential per kind (`AUTH-1`), not random.
 - R-PAY-126 MUST: Webhook delivery modes: `fifo`, `reverse`, `shuffle(seed)`, `duplicate`, `drop(ids)`, `delay(ms)`. Events are signed with a fake scheme understood by the fake verify endpoint (HMAC over transmission id, time, webhook id and raw body with a fixed test key).
-- R-PAY-127 MUST: `check_invariants` from the prototype is ported as `core.checkInvariants()` and called by the shared test helper `assertFakeInvariants(core)` after each saga test.
+- R-PAY-127 MUST: `check_invariants` from the reference implementation is ported as `core.checkInvariants()` and called by the shared test helper `assertFakeInvariants(core)` after each saga test.
 - R-PAY-128 SHOULD: A conformance suite (PAY-55) runs the same assertions against the fake and, when `PAYPAL_ENV=sandbox` credentials are present and the job is the manual workflow, against the real sandbox; differences are recorded in `ASSUMPTIONS.md`.
 
 ### 3.11 Observability
@@ -166,7 +166,7 @@ IDs are stable. MUST = release blocker for the demo. SHOULD = expected, can slip
 - R-PAY-145 MUST: G3: immediate reauthorize attempt (records the error name), plus a timed probe created on day 0 with three authorizations captured, reauthorized and left alone at day 3.5 / 4 / 5 (runs scripted via GitHub Actions `schedule` or manual dispatch). Output: documented honor and validity behaviour and the rule for R-PAY-034 and R-PAY-070.
 - R-PAY-146 MUST: G4: receive real sandbox webhooks for capture and void, verify signatures through R-PAY-090, and record that simulator-produced events fail verification (or not). Output: event names and shapes (sanitized fixtures committed to `packages/payments/test/fixtures/webhooks/`).
 - R-PAY-147 MUST: Measurement script `npm run measure` performs 50 sequential and 10 parallel authorize/capture/void cycles, records p50/p95/p99 latency per op, count of 429 and `Retry-After` values, and writes `docs/evidence/measure/<run>.json` and a table in `docs/GATES.md`.
-- R-PAY-148 MUST: Any gate that fails with no workaround triggers the plan's decision path: the issue is labelled `blocked:needs-harsh` with the evidence link and the fallback named in this spec.
+- R-PAY-148 MUST: Any gate that fails with no workaround triggers the plan's decision path: the issue is labelled `blocked:needs-owner` with the evidence link and the fallback named in this spec.
 
 ### 3.13 Non-functional
 
@@ -753,6 +753,6 @@ Test runner: vitest in `packages/payments`; all heavy runs in GitHub Actions (`p
 | Q2  | Who writes the SQL adapters for `JournalStore`, `WebhookEventStore`, `HoldStore`?              | realtime, with payments review  | payments ships in-memory and JSON-file stores; realtime implements SQL from the interfaces and runs the shared contract tests (PAY-26) |
 | Q3  | Runner-up price: own best bid (prototype) vs next price level in second-price mode             | engine                          | prototype behaviour; payments takes the price from the plan                                                                            |
 | Q4  | Can the card-funded guest flow run with intent AUTHORIZE in SDK v6 (G2)?                       | payments (P1) with web          | wallet buyers only                                                                                                                     |
-| Q5  | Public webhook URL for G4 and the demo (hosted server, or temporary tunnel)                    | infra with Harsh                | polling reconciliation only; webhook ticks from our own truth checks                                                                   |
-| Q6  | Is a hard 2-hour hold age appropriate for demos spanning more than one session?                | Harsh                           | 2 h default; override by env                                                                                                           |
-| Q7  | Who runs the day-4/5 G3 probe, and with which sandbox accounts, given the deadline of Nov 12?  | Harsh                           | probe started on Nov 4 so day 5 lands on Nov 9                                                                                         |
+| Q5  | Public webhook URL for G4 and the demo (hosted server, or temporary tunnel)                    | infra with Project owner        | polling reconciliation only; webhook ticks from our own truth checks                                                                   |
+| Q6  | Is a hard 2-hour hold age appropriate for demos spanning more than one session?                | Project owner                   | 2 h default; override by env                                                                                                           |
+| Q7  | Who runs the day-4/5 G3 probe, and with which sandbox accounts, given the deadline of Nov 12?  | Project owner                   | probe started on Nov 4 so day 5 lands on Nov 9                                                                                         |

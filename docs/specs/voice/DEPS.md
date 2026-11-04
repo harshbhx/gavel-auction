@@ -7,7 +7,7 @@ Dependency note for packages/voice. Keys are VOX-nn. Waves: 1 = start now, 2 = n
 VOX-02 types -> VOX-09 SttProvider/FakeStt -> VOX-30..32 segmenter -> VOX-51 pipeline -> VOX-52/53 faults -> VOX-67 session -> VOX-66 replay e2e.
 Parser chain: VOX-12 numbers -> VOX-33 core -> VOX-34..38 -> VOX-39 parity (needs VOX-10 golden).
 Decision chain: VOX-43 score -> VOX-44 merge, VOX-45 validate -> VOX-46 policy -> VOX-50 decide -> VOX-49 answers.
-G5 chain: VOX-14, VOX-15, VOX-16, VOX-17 (keys, blocked on Harsh) -> VOX-29, VOX-42, VOX-55 -> VOX-59 -> VOX-60, VOX-61, VOX-65.
+G5 chain: VOX-14, VOX-15, VOX-16, VOX-17 (keys, blocked on the project owner) -> VOX-29, VOX-42, VOX-55 -> VOX-59 -> VOX-60, VOX-61, VOX-65.
 
 ## Wave 1 (no dependencies)
 
@@ -95,7 +95,7 @@ Can all start at once: VOX-01, VOX-02, VOX-03, VOX-04, VOX-05, VOX-06, VOX-07, V
 - Engine owner: BidContext snapshot (section 14 item 3) needed by VOX-45 integration tests; unit tests use fakes.
 - Web owner: consumes CaptureState, captions, prompts, strings (VOX-19, VOX-47, VOX-50, VOX-64).
 - Quality owner: reviews VOX-57 and VOX-66 workflows.
-- Harsh: VOX-17 keys, VOX-16 consent.
+- Project owner: VOX-17 keys, VOX-16 consent.
 
 ## Coverage: requirement id -> issue keys
 
