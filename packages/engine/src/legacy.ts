@@ -108,7 +108,7 @@ export class Auction {
     const window = sealed ? 0 : toMs(opts.softCloseWindow ?? 0);
     const extension = sealed ? 0 : toMs(opts.softCloseExtension ?? 0);
     this.auctionId = ulid('A', 1);
-    this.lotId = ulid('L', 1);
+    this.lotId = ulid('M', 1);
     this.exec({
       type: 'CreateAuction',
       title: id.slice(0, 120) || 'auction',
