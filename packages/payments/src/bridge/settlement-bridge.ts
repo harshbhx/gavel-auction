@@ -144,12 +144,19 @@ export class SettlementBridge {
   async recordProgress(auctionId: string, journal: Journal): Promise<number> {
     const lotId = journal.auctionId;
     const lot = await this.lot(auctionId, lotId);
-    if (lot.status !== 'SETTLING') return 0;
+    if (lot.status !== 'SETTLING' && lot.status !== 'DONE') return 0;
     const done = new Set(await this.engine.settlementRefs(auctionId, lotId));
+    // A DONE lot (unsold or aborted) already sits at some recorded state; the history
+    // before that point is not replayed, only the steps from it to the end (R-ENG-067).
+    let waiting = lot.status === 'DONE';
     let sent = 0;
     for (const h of journal.history) {
       const ref = settlementRef(lotId, h.seq);
       if (done.has(ref)) continue;
+      if (waiting) {
+        if (h.from !== lot.settlement) continue;
+        waiting = false;
+      }
       await this.engine.dispatch(auctionId, {
         type: 'RecordSettlement',
         lotId,
@@ -176,7 +183,10 @@ export class SettlementBridge {
     }
     if (journal.state !== 'SETTLED') return { status: 'pending' };
     let lot = await this.lot(auctionId, lotId);
-    if (lot.status === 'DONE') return this.describe(journal, lot);
+    if (lot.status === 'DONE') {
+      await this.recordProgress(auctionId, journal);
+      return this.describe(journal, lot);
+    }
     await this.recordProgress(auctionId, journal);
     lot = await this.lot(auctionId, lotId);
 

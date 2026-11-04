@@ -14,7 +14,7 @@ import { SeqIds, type AuctionId, type EpochMs, type Jti, type RoomEvent } from '
 import { afterAll, describe, expect, it } from 'vitest';
 import { runStoreContract } from '../../engine/src/testing/store-contract';
 import { journalStoreContract, makeJournal } from '../../payments/test/storeContract';
-import { FileLedgerStore } from '../src/store/file-ledger-store';
+import { FileLedgerStore, LedgerCorruption } from '../src/store/file-ledger-store';
 import { FileRoomStore } from '../src/store/file-room-store';
 import { MemoryStore } from '../src/store/memory-store';
 import { RoomJournalStore } from '../src/store/room-journal-store';
@@ -83,6 +83,35 @@ describe('FileLedgerStore crash and resume (R-QA-027)', () => {
     expect((await restarted.head(A))?.seq).toBe(1);
     await restarted.append(A, [entry(2, e1.hash)], 1);
     expect((await new FileLedgerStore(dir).read(A, 1)).map((e) => e.seq)).toEqual([1, 2]);
+  });
+
+  it('refuses a damaged middle line and leaves the file untouched', async () => {
+    const dir = freshDir();
+    const store = new FileLedgerStore(dir);
+    const e1 = entry(1, GENESIS_PREV);
+    const e2 = entry(2, e1.hash);
+    const e3 = entry(3, e2.hash);
+    await store.append(A, [e1], 0);
+    await store.append(A, [e2], 1);
+    await store.append(A, [e3], 2);
+    const file = join(dir, readdirSync(dir).find((f) => f.endsWith('.ledger.jsonl')) ?? '');
+    const lines = readFileSync(file, 'utf8').split('\n');
+    lines[1] = '[{"v":1,"auct';
+    const damaged = lines.join('\n');
+    writeFileSync(file, damaged);
+
+    await expect(new FileLedgerStore(dir).head(A)).rejects.toBeInstanceOf(LedgerCorruption);
+    expect(readFileSync(file, 'utf8')).toBe(damaged);
+  });
+
+  it('refuses a batch that does not extend the chain', async () => {
+    const dir = freshDir();
+    const store = new FileLedgerStore(dir);
+    const e1 = entry(1, GENESIS_PREV);
+    await store.append(A, [e1], 0);
+    const file = join(dir, readdirSync(dir).find((f) => f.endsWith('.ledger.jsonl')) ?? '');
+    appendFileSync(file, `${JSON.stringify([entry(3, e1.hash)])}\n`);
+    await expect(new FileLedgerStore(dir).head(A)).rejects.toBeInstanceOf(LedgerCorruption);
   });
 });
 

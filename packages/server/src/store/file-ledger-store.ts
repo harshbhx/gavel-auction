@@ -13,6 +13,17 @@ import { join } from 'node:path';
 import { GENESIS_PREV, LedgerConflict } from '@gavel/engine';
 import type { LedgerEntry, LedgerStore, Ulid } from '@gavel/engine';
 
+/** The ledger file is damaged somewhere before its tail; it is left as found. */
+export class LedgerCorruption extends Error {
+  constructor(
+    readonly file: string,
+    detail: string,
+  ) {
+    super(`ledger file is corrupt (${detail}): ${file}`);
+    this.name = 'LedgerCorruption';
+  }
+}
+
 /**
  * A durable LedgerStore for one host: one JSON-lines file per auction, one line
  * per appended batch (R-ENG-076, R-ENG-104, R-QA-027).
@@ -48,23 +59,34 @@ export class FileLedgerStore implements LedgerStore {
       if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
     }
     const entries: LedgerEntry[] = [];
-    let good = 0;
-    // Only newline-terminated lines count: the last segment is an unfinished write.
-    for (const line of text.split('\n').slice(0, -1)) {
-      if (line === '') {
-        good += 1;
-        continue;
-      }
+    const lines = text.split('\n');
+    // Only the final, newline-less segment can be a torn write: every append ends
+    // with a newline, so a terminated line is a complete batch. A terminated line
+    // that does not parse, or does not extend the chain, is damage; keep the file
+    // untouched and refuse to load it (R-ENG-076).
+    const tail = lines.pop() ?? '';
+    for (const [i, line] of lines.entries()) {
+      if (line === '') continue;
+      let batch: unknown;
       try {
-        entries.push(...(JSON.parse(line) as LedgerEntry[]));
-        good += Buffer.byteLength(line) + 1;
+        batch = JSON.parse(line);
       } catch {
-        // A newline-terminated line that does not parse is corruption, not a torn tail.
-        throw new Error(`ledger file for ${auctionId} is corrupt at byte ${good}`);
+        throw new LedgerCorruption(this.path(auctionId), `line ${i + 1} does not parse`);
+      }
+      if (!Array.isArray(batch)) {
+        throw new LedgerCorruption(this.path(auctionId), `line ${i + 1} is not a batch`);
+      }
+      for (const e of batch as LedgerEntry[]) {
+        const want = entries.at(-1)?.hash ?? GENESIS_PREV;
+        if (e.seq !== entries.length + 1 || e.prev !== want) {
+          throw new LedgerCorruption(this.path(auctionId), `line ${i + 1} breaks the chain`);
+        }
+        entries.push(e);
       }
     }
-    // Cut the unterminated final segment (a crash mid-write) so the next batch starts on a fresh line.
-    if (good < Buffer.byteLength(text)) truncateSync(this.path(auctionId), good);
+    // Cut the unfinished write off so the next batch starts on a fresh line.
+    if (tail !== '')
+      truncateSync(this.path(auctionId), Buffer.byteLength(text) - Buffer.byteLength(tail));
     this.ledgers.set(auctionId, entries);
     return entries;
   }

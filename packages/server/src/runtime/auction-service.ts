@@ -1,4 +1,10 @@
-import { AuctionRuntime, parseCommand, type LedgerStore, type Ulid } from '@gavel/engine';
+import {
+  AuctionRuntime,
+  EngineError,
+  parseCommand,
+  type LedgerStore,
+  type Ulid,
+} from '@gavel/engine';
 import {
   SettlementBridge,
   BridgeError,
@@ -269,8 +275,10 @@ class Service implements AuctionService, SettlePort {
     if (this.synced.has(hold.auctionId)) {
       try {
         await this.bridge.onHoldStatus(hold.auctionId, hold);
-      } catch {
-        // The engine may refuse a late revoke; the settlement journal stays the source of truth.
+      } catch (e) {
+        // The engine may refuse a late revoke by rule; the settlement journal stays the
+        // source of truth. Any other failure goes back so the event is applied again.
+        if (!(e instanceof EngineError)) throw e;
       }
     }
     const journal = await this.deps.journals.load(lotIdOf(hold.auctionId as AuctionId));
