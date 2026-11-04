@@ -223,13 +223,20 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     const done = new Promise<Outcome>((resolve) => {
       settle = resolve;
     });
-    this.abandon = () => settle({ kind: 'cancelled' });
+    let abandoned = false;
+    this.abandon = () => {
+      abandoned = true;
+      settle({ kind: 'cancelled' });
+    };
     try {
       const sdk = await (this.deps.loadSdk ?? loadPayPalSdkScript)();
+      // A cancel during the load must not open a popup the buyer can no longer close.
+      if (abandoned) return { kind: 'cancelled' };
       const instance = await sdk.createInstance({
         clientId: this.deps.clientId,
         ...(clientToken === undefined ? {} : { clientToken }),
       });
+      if (abandoned) return { kind: 'cancelled' };
       const session = instance.createOneTimePaymentSession({
         // Only confirm the order this attempt created, never one the SDK hands back unasked.
         onApprove: (data) =>

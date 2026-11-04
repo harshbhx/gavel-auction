@@ -126,6 +126,27 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     expect((await pending).state).toBe('cancelled');
   });
 
+  it('cancel() while the SDK is still loading never opens the popup (WEB-R2-06)', async () => {
+    const { sdk, calls } = stubSdk(() => {});
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const loadSdk = vi.fn(() => gate.then(() => sdk));
+    const adapter = new PayPalV6Adapter({
+      apiBase: 'http://api',
+      clientId: 'client-1',
+      loadSdk,
+      fetch: fakeFetch().fetch,
+    });
+    const pending = adapter.start(req, () => {});
+    await vi.waitFor(() => expect(loadSdk).toHaveBeenCalled());
+    adapter.cancel();
+    release();
+    expect((await pending).state).toBe('cancelled');
+    expect(calls).not.toContain('start');
+  });
+
   it('falls back to redirect approval when the popup fails', async () => {
     const t = make(
       () => {},
