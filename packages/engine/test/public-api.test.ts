@@ -134,4 +134,11 @@ describe('package surface', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('T-ENG-085 R-ENG-126 the README has the four required headings', () => {
+    const text = readFileSync(join(pkgDir, 'README.md'), 'utf8');
+    for (const h of ['Commands', 'Ledger format', 'Hash vector', 'Fixtures']) {
+      expect(text).toMatch(new RegExp(`^## ${h}$`, 'm'));
+    }
+  });
 });
