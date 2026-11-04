@@ -34,8 +34,12 @@ import {
   type ControlCommand,
   type HammerEnginePort,
   type HammerResult,
+  type DurableHook,
+  type RevokeReason,
   type SettlePort,
   type SettlementReport,
+  canAbort,
+  canRevoke,
 } from './settle-port';
 
 /** One live connection as the room sees it. Identity comes from the verified token only. */
@@ -58,7 +62,16 @@ export interface RoomDeps {
   limiter?: RateLimiter;
   /** Payments side of settlement; without it a hammered room stays in SETTLING. */
   settle?: SettlePort;
+  /**
+   * Runs after an event is in the room log and before it is acknowledged (R-ENG-076):
+   * the host writes the engine ledger here. A throw withholds the acknowledgement; the
+   * event stays committed and a retry of the same message is answered once this succeeds.
+   */
+  durable?: DurableHook;
 }
+
+/** What `revokeBidder` did. */
+export type RevokeOutcome = 'applied' | 'noop' | 'hammered';
 
 export interface RegisterBidder {
   bidderId: BidderId;
@@ -78,6 +91,11 @@ type Reply = Extract<ServerMsg, { t: 'bid_accepted' | 'bid_rejected' }>;
 const READ_PAGE = 1000;
 const RECENT_AUDIT = 50;
 const AUTO_HAMMER_RETRY_MS = 2_000;
+
+/** The control id of a kill-switch abort; one per auction, so a repeat is a no-op. */
+function abortControlId(auctionId: string): string {
+  return `abort:${auctionId}`;
+}
 
 /**
  * A single auction room. Every mutation goes through one FIFO mailbox that runs
@@ -105,6 +123,8 @@ export class Room {
   private hammered: (HammerResult & { seq: number; ts: number }) | undefined;
   private settleRequested = false;
   private settleCalled = false;
+  private abortPending = false;
+  private revoked = new Set<BidderId>();
   private settlement: SettlementReport | undefined;
   private done = false;
   /** True when the engine may be ahead of the stored log and must be rebuilt first. */
@@ -189,7 +209,10 @@ export class Room {
   /** Report a payment hold: the bidder joins the roster with their private ceiling (R-RT-054). */
   registerBidder(reg: RegisterBidder): Promise<void> {
     return this.enqueue(async () => {
-      if (this.roster.has(reg.bidderId)) return;
+      if (this.roster.has(reg.bidderId)) {
+        await this.makeDurable();
+        return;
+      }
       // The settlement plan is cut at the hammer; a later registration could never be voided (R-RT-054).
       if (this.hammered) throw new GavelError('conflict', 'auction is hammered');
       // Reject anything the wire or the event schema would refuse, before it reaches the log (R-RT-054).
@@ -240,6 +263,7 @@ export class Room {
         throw e;
       }
       this.seq = seq;
+      await this.makeDurable();
       for (const conn of this.conns.values()) {
         if (conn.role !== 'bidder' || conn.bidderId !== reg.bidderId) {
           // The seq is consumed by this event, so everyone else gets the new roster as a snapshot
@@ -286,7 +310,14 @@ export class Room {
     const key = `${bidderId}:${msg.mid}`;
     const prior = this.replies.get(key);
     if (prior) {
-      // A replay returns the original reply and appends nothing (R-RT-034).
+      // A replay returns the original reply and appends nothing (R-RT-034). The reply is
+      // only repeated once the ledger holds the bid, so an acknowledgement is never ahead of it.
+      try {
+        await this.makeDurable();
+      } catch {
+        this.sendError(conn, 'store_unavailable');
+        return;
+      }
       this.send(conn, prior);
       return;
     }
@@ -356,7 +387,14 @@ export class Room {
     this.pushAudit(audit);
     const reply = this.replyFor(event);
     if (reply) this.replies.set(key, reply);
-    if (reply) this.send(conn, reply);
+    let durable = true;
+    try {
+      await this.makeDurable();
+    } catch {
+      durable = false;
+    }
+    if (reply && durable) this.send(conn, reply);
+    else if (reply) this.sendError(conn, 'store_unavailable');
     if (event.type === 'bid_accepted') {
       this.broadcastPrice(seq, ts);
       this.armTimer();
@@ -451,14 +489,98 @@ export class Room {
     });
   }
 
+  /**
+   * Cancels the open lot because the payments kill switch is engaged (R-PAY-037): the room
+   * ends as an unsold hammer, so settlement voids every hold. Returns false when the room
+   * was already hammered or finished. Safe to repeat.
+   */
+  abort(by: string): Promise<boolean> {
+    return this.enqueue(async () => {
+      try {
+        await this.ensureClean();
+      } catch {
+        throw new GavelError('store_unavailable');
+      }
+      if (this.hammered || this.done) return false;
+      await this.doHammer(undefined, { by });
+      return this.hammered !== undefined;
+    });
+  }
+
+  /**
+   * A bidder's hold can no longer be charged: revoke their ceiling before the hammer so
+   * nobody has to outbid a leader who cannot pay. The revoke is a log event, so a rebuilt
+   * room reproduces it. `hammered` means the room is past that point and the settlement
+   * bridge handles the hold instead. Idempotent; the ledger is written on every call.
+   */
+  revokeBidder(bidderId: BidderId, reason: RevokeReason): Promise<RevokeOutcome> {
+    return this.enqueue(async () => {
+      try {
+        await this.ensureClean();
+      } catch {
+        throw new GavelError('store_unavailable');
+      }
+      if (this.hammered) return 'hammered';
+      if (!this.roster.has(bidderId) || this.revoked.has(bidderId)) {
+        await this.makeDurable();
+        return 'noop';
+      }
+      const engine = this.requireEngine();
+      if (!canRevoke(engine)) throw new GavelError('internal', 'engine cannot revoke');
+      const seq = this.seq + 1;
+      const ts = this.deps.clock.now();
+      try {
+        engine.revoke(bidderId, reason, ts);
+      } catch {
+        this.dirty = true;
+        throw new GavelError('internal');
+      }
+      const event: RoomEvent = {
+        type: 'ceiling_revoked',
+        auctionId: this.auctionId,
+        seq,
+        ts,
+        bidderId,
+        reason,
+      };
+      try {
+        await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+      } catch {
+        await this.recover().catch(() => undefined);
+        throw new GavelError('store_unavailable');
+      }
+      this.seq = seq;
+      this.revoked.add(bidderId);
+      // The leader may have changed; the price message carries the new seq, so no one sees a gap.
+      this.broadcastPrice(seq, ts);
+      this.armTimer();
+      await this.makeDurable();
+      return 'applied';
+    });
+  }
+
+  /** Writes what the room log holds into the engine ledger (host hook); throws when it is not durable. */
+  private async makeDurable(): Promise<void> {
+    const engine = this.engine;
+    if (this.deps.durable && engine) await this.deps.durable(this.auctionId, engine);
+  }
+
   /** Append the hammer (with its control record when the auctioneer asked), broadcast it, then settle. */
-  private async doHammer(by: { conn: Connection; cmd: ControlCommand } | undefined): Promise<void> {
+  private async doHammer(
+    by: { conn: Connection; cmd: ControlCommand } | undefined,
+    abort?: { by: string },
+  ): Promise<void> {
     if (this.hammered) return;
     const engine = this.requireHammer();
     const ts = this.deps.clock.now();
     let result: HammerResult;
     try {
-      result = engine.hammer(ts);
+      if (abort !== undefined) {
+        if (!canAbort(engine)) throw new GavelError('internal', 'engine cannot abort');
+        result = engine.abort(ts);
+      } else {
+        result = engine.hammer(ts);
+      }
     } catch {
       // The engine may be half-mutated: rebuild from the log before the next command (R-RT-033).
       this.dirty = true;
@@ -467,23 +589,32 @@ export class Room {
     }
     const first = this.seq + 1;
     const events: RoomEvent[] = [];
-    if (by) {
+    const control = by
+      ? {
+          controlId: by.cmd.controlId,
+          by: by.conn.sub,
+          ...(by.cmd.args ? { args: by.cmd.args } : {}),
+        }
+      : abort
+        ? { controlId: abortControlId(this.auctionId), by: abort.by, args: { abort: 1 } }
+        : undefined;
+    if (control) {
       const bidId = this.deps.ids.mint<'BidId'>();
       events.push({
         type: 'control',
         auctionId: this.auctionId,
         seq: first,
         ts,
-        controlId: by.cmd.controlId,
-        action: by.cmd.action,
-        by: by.conn.sub,
-        ...(by.cmd.args ? { args: by.cmd.args } : {}),
+        controlId: control.controlId,
+        action: 'hammer',
+        by: control.by,
+        ...(control.args ? { args: control.args } : {}),
         audit: {
           bidId,
           bidderId: this.deps.ids.mint<'BidderId'>(),
           source: 'manual',
           outcome: 'accepted',
-          reason: `control:${by.cmd.action}`,
+          reason: abort ? 'control:abort' : `control:${by?.cmd.action ?? 'hammer'}`,
           serverTs: ts,
           seq: first,
         },
@@ -510,8 +641,8 @@ export class Room {
     this.cancelTimer = undefined;
     this.cancelHammer?.();
     this.cancelHammer = undefined;
-    if (by) {
-      this.controlIds.add(by.cmd.controlId);
+    if (control) {
+      this.controlIds.add(control.controlId);
       // The control record consumed a seq nobody else can see; carry it so clients see no gap (R-RT-036).
       this.seq = first;
       for (const conn of this.conns.values()) this.sendSeqFiller(conn, first, ts);
@@ -874,6 +1005,7 @@ export class Room {
     this.closingAt = fresh.closingAt;
     this.controlIds = fresh.controlIds;
     this.hammered = fresh.hammered;
+    this.revoked = fresh.revoked;
     this.settleRequested = fresh.settleRequested;
     this.settlement = fresh.settlement;
     this.done = fresh.done;
@@ -892,6 +1024,8 @@ export class Room {
     this.closingAt = undefined;
     this.controlIds = new Set();
     this.hammered = undefined;
+    this.abortPending = false;
+    this.revoked = new Set();
     this.settleRequested = false;
     this.settlement = undefined;
     this.done = false;
@@ -934,11 +1068,23 @@ export class Room {
         break;
       case 'control':
         this.controlIds.add(event.controlId);
+        if (event.controlId === abortControlId(this.auctionId)) this.abortPending = true;
         break;
-      case 'hammered':
-        this.hammered = { ...this.requireHammer().hammer(event.ts), seq: event.seq, ts: event.ts };
+      case 'ceiling_revoked':
+        if (this.roster.has(event.bidderId)) {
+          const engine = this.requireEngine();
+          if (canRevoke(engine)) engine.revoke(event.bidderId, event.reason, event.ts);
+        }
+        this.revoked.add(event.bidderId);
+        break;
+      case 'hammered': {
+        const engine = this.requireHammer();
+        const result =
+          this.abortPending && canAbort(engine) ? engine.abort(event.ts) : engine.hammer(event.ts);
+        this.hammered = { ...result, seq: event.seq, ts: event.ts };
         this.lastState = 'SETTLING';
         break;
+      }
       case 'settle_requested':
         this.settleRequested = true;
         break;

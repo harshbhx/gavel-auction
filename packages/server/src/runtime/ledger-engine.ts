@@ -24,7 +24,12 @@ import {
   type EpochMs,
   type ErrorCode,
 } from '@gavel/shared';
-import type { HammerEnginePort, HammerResult } from '../room/settle-port';
+import type {
+  AbortEnginePort,
+  HammerResult,
+  RevokeEnginePort,
+  RevokeReason,
+} from '../room/settle-port';
 
 /** One lot per room. Its id is the room's auction id, so a settlement key and a lot id coincide. */
 export function lotIdOf(auctionId: AuctionId): string {
@@ -80,7 +85,7 @@ const REJECT_TO_ERROR: Readonly<Record<RejectReason, ErrorCode>> = {
  * replays that list into the engine runtime, which owns the durable ledger the
  * settlement bridge talks to. A rebuilt room produces the same list again.
  */
-export class LedgerEngine implements HammerEnginePort {
+export class LedgerEngine implements AbortEnginePort, RevokeEnginePort {
   private state: AuctionState = initialState;
   private readonly lotId: EngineUlid;
   private readonly openAt: number;
@@ -204,6 +209,33 @@ export class LedgerEngine implements HammerEnginePort {
         amount: r.amountCents as Cents,
       })),
     };
+  }
+
+  /**
+   * Cancels the lot before the hammer (the kill switch). The engine lot ends DONE with
+   * no winner; the room treats it as an unsold hammer and the settlement voids every hold.
+   */
+  abort(now: EpochMs): HammerResult {
+    const at = Math.max(now, this.state.head.at);
+    this.run(at, 'AbortLot', [], {
+      type: 'AbortLot',
+      lotId: this.lotId,
+      reason: 'kill_switch',
+      actor: 'kill_switch',
+    });
+    return { winnerId: null, price: 0 as Cents, ranking: [] };
+  }
+
+  /** Revokes the bidder's ceiling and strikes their bids; false when already revoked. */
+  revoke(bidder: BidderId, reason: RevokeReason, now: EpochMs): boolean {
+    const at = Math.max(now, this.state.head.at);
+    return (
+      this.run(at, 'RevokeCeiling', [bidder, reason], {
+        type: 'RevokeCeiling',
+        bidderId: bidder as unknown as EngineUlid,
+        reason,
+      }).entries.length > 0
+    );
   }
 
   view(): EngineView {

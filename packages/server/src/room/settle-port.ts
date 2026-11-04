@@ -24,6 +24,34 @@ export interface HammerEnginePort extends EnginePort {
   hammer(now: EpochMs): HammerResult;
 }
 
+/** An engine that can cancel the lot before the hammer (kill switch). The result is an unsold hammer. */
+export interface AbortEnginePort extends HammerEnginePort {
+  abort(now: EpochMs): HammerResult;
+}
+
+export function canAbort(engine: EnginePort): engine is AbortEnginePort {
+  return typeof (engine as Partial<AbortEnginePort>).abort === 'function';
+}
+
+export type RevokeReason = 'declined' | 'expired' | 'voided';
+
+/** An engine that can revoke a bidder's ceiling while the lot is open. */
+export interface RevokeEnginePort extends EnginePort {
+  /** Returns false when the bidder was already revoked. */
+  revoke(bidder: BidderId, reason: RevokeReason, now: EpochMs): boolean;
+}
+
+export function canRevoke(engine: EnginePort): engine is RevokeEnginePort {
+  return typeof (engine as Partial<RevokeEnginePort>).revoke === 'function';
+}
+
+/**
+ * Called after the room log holds an event and before the room acknowledges it. The host
+ * writes the engine ledger here; a throw means the write is not durable yet, so the
+ * sender gets no acknowledgement and may retry.
+ */
+export type DurableHook = (auctionId: AuctionId, engine: EnginePort) => Promise<void>;
+
 export function canHammer(engine: EnginePort): engine is HammerEnginePort {
   return typeof (engine as Partial<HammerEnginePort>).hammer === 'function';
 }
