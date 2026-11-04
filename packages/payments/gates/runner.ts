@@ -13,6 +13,7 @@ import { assertSandboxConfig } from '../src/guard.js';
 import { redactString, registerSecret } from '../src/log.js';
 import { toJsonlLine, type EvidenceRecord } from './evidence.js';
 import { RecordingHttp, type RawFetch } from './http.js';
+import { gateCurrency } from './gateUtil.js';
 
 /**
  * Gate runner base (SPEC 3.12, R-PAY-140, R-PAY-142).
@@ -117,6 +118,8 @@ export interface GateContext {
   runId: string;
   args: GateArgs;
   config: PaymentsConfig;
+  /** Currency of the gate orders, read from the env passed to runGate. */
+  currency: string;
   http: RecordingHttp;
   evidencePath: string;
   runFile: string;
@@ -226,6 +229,7 @@ export async function runGate(opts: RunGateOptions): Promise<number> {
     runId: run.runId,
     args,
     config,
+    currency: gateCurrency(opts.env),
     http,
     evidencePath,
     runFile,

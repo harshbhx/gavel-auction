@@ -63,10 +63,11 @@
         el.textContent = text;
         el.className = 'status ' + (cls || '');
       };
+      const pageToken = document.querySelector('meta[name="g2-token"]').content;
       const post = async (url, body) => {
         const r = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-G2-Token': pageToken },
           body: JSON.stringify(body || {}),
         });
         return { status: r.status, body: await r.json().catch(() => ({})) };
@@ -124,7 +125,9 @@
       }
 
       async function main() {
-        const cfg = await (await fetch('/api/config')).json();
+        const cfg = await (
+          await fetch('/api/config', { headers: { 'X-G2-Token': pageToken } })
+        ).json();
         if (!cfg.clientToken) {
           show('wallet', 'the server could not get a client token', 'fail');
           show('card', 'the server could not get a client token', 'fail');
@@ -142,7 +145,7 @@
           components: ['paypal-payments', 'paypal-guest-payments'],
           pageType: 'checkout',
         });
-        const eligible = await sdk.findEligibleMethods({ currencyCode: 'USD' });
+        const eligible = await sdk.findEligibleMethods({ currencyCode: cfg.currency });
 
         if (eligible.isEligible('paypal')) {
           const btn = document.createElement('paypal-button');
