@@ -13,7 +13,7 @@ import {
 import { Transport } from '../src/transport.js';
 import { newJournal } from '../src/saga/create.js';
 import { WebhookHandler } from '../src/webhooks/handler.js';
-import type { SettlementPlan } from '../src/types.js';
+import type { HoldRecord, SettlementPlan } from '../src/types.js';
 
 const plan = (): SettlementPlan => ({
   auctionId: 'a1',
@@ -152,18 +152,22 @@ describe('stores roll back a failed write (R2-07)', () => {
     expect(await journals.acquireLease('a1', 'r2', 1000, 0)).toBe(true);
 
     const hooks = new MemoryWebhookEventStore(undefined, onChange);
-    const ev = { id: 'E1', rawBody: '{}', receivedAtMs: 1 } as Parameters<
-      MemoryWebhookEventStore['insertIfAbsent']
-    >[0];
+    const ev = { id: 'E1', eventType: 'X', receivedAtMs: 1, body: '{}' };
     fail = true;
     await expect(hooks.insertIfAbsent(ev)).rejects.toThrow('ENOSPC');
     fail = false;
     expect(await hooks.insertIfAbsent(ev)).toBe(true);
 
     const holds = new MemoryHoldStore(undefined, onChange);
-    const h = { holdId: 'h1', auctionId: 'a1', bidderId: 'b1', createdAtMs: 1 } as Parameters<
-      MemoryHoldStore['put']
-    >[0];
+    const h: HoldRecord = {
+      holdId: 'h1',
+      auctionId: 'a1',
+      bidderId: 'b1',
+      orderId: 'O1',
+      ceilingCents: 100,
+      status: 'HELD',
+      createdAtMs: 1,
+    };
     fail = true;
     await expect(holds.put(h)).rejects.toThrow('ENOSPC');
     expect(await holds.get('h1')).toBeNull();
