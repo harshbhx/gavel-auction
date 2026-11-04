@@ -4,6 +4,7 @@ import type { PaymentsMetrics } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
 import type { HoldTruth, Journal, JournalHold } from '../types.js';
 import { runCapturePhase, type CaptureDeps, type CaptureOutcome } from './capture.js';
+import { defaultLeaseOwner } from './owner.js';
 import { withLease } from './create.js';
 import { step, type SettlementEvent } from './machine.js';
 import { releaseWinnerRemainder, remainderKey, type RemainderResult } from './remainder.js';
@@ -53,7 +54,7 @@ export interface VoidDeps extends VoidCallDeps {
   voidConcurrency?: number;
   /** Default 5 (R-PAY-058). */
   maxVoidResumes?: number;
-  /** Lease owner. Default "runner". */
+  /** Lease owner. Default: a random id fixed for this process. */
   owner?: string;
 }
 
@@ -129,7 +130,7 @@ export class VoidPhase {
   private readonly owner: string;
 
   constructor(private readonly deps: VoidDeps) {
-    this.owner = deps.owner ?? 'runner';
+    this.owner = deps.owner ?? defaultLeaseOwner('runner');
   }
 
   /** Runs, or resumes, the void phase of one settlement. */

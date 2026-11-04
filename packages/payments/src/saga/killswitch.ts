@@ -3,6 +3,7 @@ import type { Clock, JournalStore, PaymentsGateway } from '../ports.js';
 import type { AuditSink } from '../ports.js';
 import type { HoldTruth, Journal } from '../types.js';
 import { withLease } from './create.js';
+import { defaultLeaseOwner } from './owner.js';
 import { voidHold, type VoidStatus } from './void.js';
 
 /**
@@ -49,7 +50,7 @@ export async function voidAllLiveHolds(
   const leased = await withLease(
     { journals: deps.journals, clock: deps.clock },
     auctionId,
-    deps.owner ?? 'admin',
+    deps.owner ?? defaultLeaseOwner('admin'),
     async (renew) => {
       let journal = await deps.journals.load(auctionId);
       if (journal === null) throw new Error(`no settlement for auction ${auctionId}`);
