@@ -6,7 +6,9 @@ import type { AuctionState } from '../state.js';
 import { decideHammer, decideTick } from './hammer.js';
 import { decideOpenLot } from './open-lot.js';
 import { decidePlaceBid } from './place-bid.js';
+import { decideRevoke } from './revoke.js';
 import { decideSetup } from './setup.js';
+import { decideCompleteLot, decideRecordSettlement } from './settlement.js';
 import type { DecideResult } from './setup.js';
 
 export type { DecideResult, Outcome } from './setup.js';
@@ -76,9 +78,12 @@ function route(state: AuctionState, cmd: Command): DecideResult {
     case 'Hammer':
       return decideHammer(state, cmd);
     case 'RevokeCeiling':
-    case 'PromoteRunnerUp':
+      return decideRevoke(state, cmd);
     case 'CompleteLot':
+      return decideCompleteLot(state, cmd);
     case 'RecordSettlement':
+      return decideRecordSettlement(state, cmd);
+    case 'PromoteRunnerUp':
     case 'CloseAuction':
       throw new EngineError('bad_command', `${cmd.type} is not supported yet`);
     default:

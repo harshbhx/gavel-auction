@@ -34,3 +34,13 @@ export type {
 export { CEILING_PRESETS_CENTS, MIN_CEILING_CENTS, DEFAULT_MAX_CEILING_CENTS } from './policy.js';
 export { AuctionRuntime } from './runtime.js';
 export type { RuntimeOptions, RuntimeResult } from './runtime.js';
+export { candidates } from './rules/candidates.js';
+export { projectPublic, projectBidder, projectAuditor } from './projections.js';
+export type {
+  AliasOf,
+  AuditorEntry,
+  AuditorOptions,
+  BidderView,
+  PublicLotView,
+  PublicView,
+} from './projections.js';
