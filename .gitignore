@@ -5,3 +5,7 @@ dist/
 *.log
 __pycache__/
 .venv/
+coverage/
+report/
+*.tsbuildinfo
+.DS_Store

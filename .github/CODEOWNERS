@@ -1,0 +1,21 @@
+# Single owner per path. Roles are mapped to handles here; replace the handle
+# when ownership moves. Roles: realtime-owner, engine-owner, payments-owner,
+# voice-owner, web-owner, quality-owner.
+/packages/shared/        @harshbhx
+/packages/engine/        @harshbhx
+/packages/payments/      @harshbhx
+/packages/voice/         @harshbhx
+/packages/server/        @harshbhx
+/packages/web/           @harshbhx
+/packages/e2e/           @harshbhx
+/infra/                  @harshbhx
+/.github/                @harshbhx
+/docs/specs/SPEC-engine.md    @harshbhx
+/docs/specs/SPEC-payments.md  @harshbhx
+/docs/specs/SPEC-realtime.md  @harshbhx
+/docs/specs/SPEC-voice.md     @harshbhx
+/docs/specs/SPEC-web.md       @harshbhx
+/docs/specs/SPEC-quality.md   @harshbhx
+/docs/DECISIONS.md       @harshbhx
+/docs/GATES.md           @harshbhx
+/package.json /tsconfig.base.json /eslint.config.js   @harshbhx
