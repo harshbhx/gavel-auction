@@ -154,7 +154,7 @@ export function publicExport(
       }
     }
     const body: Omit<PublicEntry, 'hash'> = {
-      v: 2,
+      v: PUBLIC_EXPORT_VERSION,
       auctionId: e.auctionId,
       seq: e.seq,
       at: e.at,
