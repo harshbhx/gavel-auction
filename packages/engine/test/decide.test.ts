@@ -6,9 +6,7 @@ import type { Command } from '../src/commands.js';
 import { initialState } from '../src/state.js';
 import {
   A,
-  AU,
   L1,
-  bid,
   errCode,
   id,
   lotConfig,
