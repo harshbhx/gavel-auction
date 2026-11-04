@@ -1,0 +1,16 @@
+{
+  "id": "bid-noisy-020",
+  "file": "bid-noisy-020.wav",
+  "sampleRate": 16000,
+  "durationMs": 2980,
+  "category": "noisy",
+  "noise": "street-snr-8db",
+  "transcriptTruth": "four twenty five for paddle one",
+  "expected": {
+    "kind": "bid",
+    "amountCents": 42500,
+    "bidder": "1",
+    "needsConfirm": false
+  },
+  "sttFixture": "bid-noisy-020.stt.json"
+}
