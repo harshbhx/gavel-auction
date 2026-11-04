@@ -156,6 +156,39 @@ function voidTargets(j: Journal): string[] {
     .sort();
 }
 
+/** The candidate at the cursor, the one every capture or failure event must refer to. */
+function currentCandidate(
+  journal: Journal,
+  event: SettlementEvent,
+): { bidderId: string; priceCents: number } {
+  const cand = journal.plan.candidates[journal.cursor];
+  if (cand === undefined) {
+    throw new IllegalTransition(journal.state, event.type, 'no candidate at the cursor');
+  }
+  return cand;
+}
+
+/**
+ * Checks a winner payload against the journal (R-PAY-040, R-PAY-052, R-PAY-061):
+ * the candidate at the cursor, its own hold, within that hold's ceiling and, for a
+ * fresh capture, at exactly the planned price.
+ */
+function checkWinner(journal: Journal, event: SettlementEvent & { winner: JournalWinner }): void {
+  const cand = currentCandidate(journal, event);
+  const refuse = (why: string): never => {
+    throw new IllegalTransition(journal.state, event.type, why);
+  };
+  const w = event.winner;
+  if (w.bidderId !== cand.bidderId) refuse('winner is not the candidate at the cursor');
+  const hold = journal.holds[w.bidderId];
+  if (hold === undefined || hold.holdId !== w.holdId) refuse('winner hold does not match');
+  if (!Number.isSafeInteger(w.amountCents) || w.amountCents <= 0) refuse('bad winner amount');
+  if (w.amountCents > (hold?.ceilingCents ?? 0)) refuse('winner amount above the hold ceiling');
+  if (event.type === 'capture_ok' && w.amountCents !== cand.priceCents) {
+    refuse('captured amount differs from the planned price');
+  }
+}
+
 /** Applies one event. Throws IllegalTransition for any pair outside SPEC 6.1. */
 export function step(journal: Journal, event: SettlementEvent): StepResult {
   const from = journal.state;
@@ -171,11 +204,19 @@ export function step(journal: Journal, event: SettlementEvent): StepResult {
       break;
     case 'capture_ok':
     case 'adopted':
+      checkWinner(journal, event);
       next.winner = { ...event.winner };
       next.intent = null;
       next.unknownSince = null;
       break;
     case 'definite_fail':
+      if (event.failure.bidderId !== currentCandidate(journal, event).bidderId) {
+        throw new IllegalTransition(
+          from,
+          event.type,
+          'failure is not for the candidate at the cursor',
+        );
+      }
       next.failed.push({ ...event.failure });
       next.intent = null;
       next.unknownSince = null;

@@ -37,6 +37,22 @@ describe('logPayment', () => {
     for (const s of ['dXNlcjpwYXNz', sig, token, 's3cr3t-value-xyz']) expect(out).not.toContain(s);
   });
 
+  it('redacts secrets inside JSON text embedded in a message, plain and already escaped', () => {
+    const plain =
+      'upstream said {"access_token":"A21AAKsecretvalue123","client_secret":"hunter2hunter2"}';
+    const escaped = JSON.stringify(plain);
+    const lines = capture(() => {
+      logPayment({ op: 'x', message: plain });
+      logPayment({ op: 'x', message: escaped });
+      logPayment({ op: 'x', message: `wrapped ${JSON.stringify({ body: escaped })}` });
+    });
+    for (const line of lines) {
+      expect(line).not.toContain('A21AAKsecretvalue123');
+      expect(line).not.toContain('hunter2hunter2');
+      expect(line).toContain('[REDACTED]');
+    }
+  });
+
   it('writes the R-PAY-130 JSON line', () => {
     const [line] = capture(() =>
       logPayment({

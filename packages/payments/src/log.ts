@@ -40,8 +40,9 @@ export function redactString(input: string): string {
   let out = input;
   for (const s of registered) out = out.split(s).join(REDACTED);
   out = out.replace(/\b(Basic|Bearer)\s+[A-Za-z0-9+/=._~-]+/gi, `$1 ${REDACTED}`);
+  // Also matches JSON that was already escaped inside a string (\"key\":\"value\").
   out = out.replace(
-    /("?(?:[A-Za-z_-]*(?:secret|token|authorization|signature|sig|password)[A-Za-z_-]*)"?\s*[:=]\s*)("?)[^\s",}&]+/gi,
+    /(\\?"?(?:[A-Za-z_-]*(?:secret|token|authorization|signature|sig|password)[A-Za-z_-]*)\\?"?\s*[:=]\s*)(\\?"?)[^\s"\\,}&]+/gi,
     `$1$2${REDACTED}`,
   );
   return out;

@@ -135,6 +135,8 @@ export interface JournalHold {
   holdId: string;
   authId: string;
   ceilingCents: number;
+  /** When the hold was created; lets a resume compute its age (R-PAY-034). */
+  createdAtMs?: number;
   stale: boolean;
 }
 

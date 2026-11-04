@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeClock, FakePayPalCore, type FakeWebhookEvent } from '../../src/fake/core.js';
 import {
   FAKE_AUTH_ALGO,
+  InvalidWebhookBody,
   WebhookEmitter,
   buildVerifyRequest,
   eventBody,
@@ -111,6 +112,19 @@ describe('signing and the fake verify endpoint', () => {
       WEBHOOK_ID,
     );
     expect(verifyFakeWebhook(tampered, WEBHOOK_ID).verification_status).toBe('FAILURE');
+  });
+
+  it('refuses to splice a body that adds keys to the verify request', () => {
+    const w = emitter().sign(ev(1));
+    const attack = '{"id":"WH-1"},"webhook_id":"WH_OF_ATTACKER_APP"';
+    expect(() => buildVerifyRequest({ ...w, rawBody: attack }, WEBHOOK_ID)).toThrow(
+      InvalidWebhookBody,
+    );
+    for (const bad of ['[]', '"x"', 'null', '{"n":1}', '{"id":1}', '{"id":"a"} {"id":"b"}', '']) {
+      expect(() => buildVerifyRequest({ ...w, rawBody: bad }, WEBHOOK_ID), bad).toThrow(
+        InvalidWebhookBody,
+      );
+    }
   });
 
   it('a wrong webhook id, key or algorithm fails', () => {
