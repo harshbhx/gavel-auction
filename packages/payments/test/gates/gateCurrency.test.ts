@@ -6,10 +6,11 @@ import { G1_AUTHORIZE_CENTS, runG1 } from '../../gates/g1.js';
 import { amount, gateCurrency } from '../../gates/gateUtil.js';
 
 describe('gate currency', () => {
-  it('defaults to INR and reads GATE_CURRENCY', () => {
-    expect(gateCurrency({})).toBe('INR');
-    expect(gateCurrency({ GATE_CURRENCY: ' ' })).toBe('INR');
+  it('defaults to USD and reads GATE_CURRENCY', () => {
+    expect(gateCurrency({})).toBe('USD');
+    expect(gateCurrency({ GATE_CURRENCY: ' ' })).toBe('USD');
     expect(gateCurrency({ GATE_CURRENCY: 'usd' })).toBe('USD');
+    expect(gateCurrency({ GATE_CURRENCY: 'inr' })).toBe('INR');
   });
 
   it('builds amounts in the gate currency', () => {
@@ -44,15 +45,15 @@ describe('G1 order body', () => {
     return bodies;
   }
 
-  it('sends INR by default', async () => {
+  it('sends USD by default', async () => {
     const bodies = await orderBodies({});
     expect(bodies.length).toBeGreaterThan(0);
-    expect(JSON.stringify(bodies[0])).toContain('"currency_code":"INR","value":"500.00"');
+    expect(JSON.stringify(bodies[0])).toContain('"currency_code":"USD","value":"500.00"');
     expect(G1_AUTHORIZE_CENTS).toBe(50000);
   });
 
-  it('sends USD when GATE_CURRENCY=USD', async () => {
-    const bodies = await orderBodies({ GATE_CURRENCY: 'USD' });
-    expect(JSON.stringify(bodies[0])).toContain('"currency_code":"USD","value":"500.00"');
+  it('sends INR when GATE_CURRENCY=INR', async () => {
+    const bodies = await orderBodies({ GATE_CURRENCY: 'INR' });
+    expect(JSON.stringify(bodies[0])).toContain('"currency_code":"INR","value":"500.00"');
   });
 });

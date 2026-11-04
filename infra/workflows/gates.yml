@@ -52,7 +52,6 @@ jobs:
       - name: Run the gate
         env:
           GATE: ${{ inputs.gate }}
-          GATE_CURRENCY: INR
           RESUME_RUN: ${{ inputs.resume_run }}
           PAYPAL_ENV: sandbox
           PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
