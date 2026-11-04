@@ -15,6 +15,7 @@ export type { EngineErrorCode } from './errors.js';
 export { ChainError, replay, stateDigest } from './replay.js';
 export { GENESIS_PREV, genesisHead, headOf, sealBatch, verifyChain } from './ledger/chain.js';
 export type { ChainHead, VerifyFailure, VerifyResult } from './ledger/chain.js';
+export { exportJsonl, verifyJsonl, tamperAt } from './ledger/export.js';
 export { LedgerConflict } from './ledger/store.js';
 export type { LedgerStore } from './ledger/store.js';
 export { InMemoryLedgerStore } from './ledger/memory-store.js';
