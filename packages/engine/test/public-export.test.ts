@@ -44,7 +44,7 @@ const recorded = (amountCents: number): LedgerEvent =>
       endsAtBefore: 5,
       endsAtAfter: 5,
     },
-  }) as LedgerEvent;
+  }) as unknown as LedgerEvent;
 
 function ledger(mode: 'english' | 'second_price'): LedgerEntry[] {
   const events: LedgerEvent[] = [
