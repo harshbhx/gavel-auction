@@ -72,9 +72,10 @@ export function validateBid(state: AuctionState, lot: LotState, cmd: BidInput): 
   if (bidder.revoked) return fail('ceiling_revoked');
   if (!isValidAmount(cmd.amountCents)) return fail('bad_amount');
   const amount = cmd.amountCents;
-  const conf = cmd.audit.confidenceBps;
+  // A voice bid with no confidence score is treated as zero confidence: the gate fails closed.
+  // Only the server may set `audit.confirmed`; callers must not forward it from a client.
+  const conf = cmd.source === 'voice' ? (cmd.audit.confidenceBps ?? 0) : undefined;
   if (
-    cmd.source === 'voice' &&
     conf !== undefined &&
     conf < state.config.confirmBelowBps &&
     cmd.audit.confirmed !== true

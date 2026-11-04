@@ -56,6 +56,7 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
       return setBidder(s, bidderKey(p.bidderId, p.lotId), (b) => ({
         ...b,
         ceilingCents: p.ceilingCents,
+        holdRef: p.holdRef ?? b.holdRef,
       }));
     }
     case 'CEILING_REVOKED': {
