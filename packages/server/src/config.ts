@@ -17,6 +17,9 @@ const csv = z.string().transform((v) =>
 
 const byteLength = (s: string): number => new TextEncoder().encode(s).length;
 
+/** An optional secret; the field lists name it so that no name is followed by a value. */
+const secret = z.string().min(1).optional();
+
 const EnvObject = z.object({
   PORT: int(1).pipe(z.number().max(65535)).default('8080'),
   PUBLIC_URL: z.string().url(),
@@ -45,8 +48,20 @@ const EnvObject = z.object({
   MAX_BIDDERS_PER_ROOM: int(1).default('200'),
   MAX_ROOMS: int(1).default('20'),
   MAX_BIDS_PER_AUCTION: int(1).default('5000'),
+  /** The one payments switch: `fake` runs the in-process fake PayPal, `sandbox` the PayPal sandbox. */
   PAYMENTS: z.enum(['fake', 'sandbox']).default('fake'),
+  /** Must be `sandbox`; any other value stops the boot (R-QA-043). */
+  PAYPAL_ENV: z.literal('sandbox').default('sandbox'),
+  PAYPAL_CLIENT_ID: z.string().min(1).optional(),
+  PAYPAL_CLIENT_SECRET: secret,
+  PAYPAL_WEBHOOK_ID: z.string().min(1).optional(),
+  PAYPAL_BASE_URL: z.string().url().optional(),
+  GAVEL_MAX_CEILING_CENTS: int(1).optional(),
+  GAVEL_HOLD_MAX_AGE_MS: int(1).optional(),
 });
+
+/** Every variable name the server reads; `.env.example` is checked against it. */
+export const CONFIG_KEYS: readonly string[] = Object.keys(EnvObject.shape);
 
 /** Production rules (R-RT-131) that a plain field schema cannot express. */
 const EnvSchema = EnvObject.superRefine((env, ctx) => {
@@ -55,6 +70,11 @@ const EnvSchema = EnvObject.superRefine((env, ctx) => {
   };
   if (env.STORE === 'postgres' && env.DATABASE_URL === undefined) {
     problem('DATABASE_URL', 'required when STORE=postgres');
+  }
+  if (env.PAYMENTS === 'sandbox') {
+    for (const key of ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_WEBHOOK_ID'] as const) {
+      if (env[key] === undefined) problem(key, 'required when PAYMENTS=sandbox');
+    }
   }
   if (env.NODE_ENV !== 'production') return;
   if (byteLength(env.TOKEN_SECRET) < 32) {
@@ -91,7 +111,15 @@ export function parseConfig(env: Readonly<Record<string, string | undefined>>): 
   };
 }
 
-const SECRET_KEYS = ['TOKEN_SECRET', 'TOKEN_SECRET_PREVIOUS', 'ADMIN_KEY', 'DATABASE_URL'] as const;
+const SECRET_KEYS = [
+  'TOKEN_SECRET',
+  'TOKEN_SECRET_PREVIOUS',
+  'ADMIN_KEY',
+  'DATABASE_URL',
+  'PAYPAL_CLIENT_ID',
+  'PAYPAL_CLIENT_SECRET',
+  'PAYPAL_WEBHOOK_ID',
+] as const;
 export const REDACTED = '[redacted]';
 
 /** A copy of the config that is safe to log: secrets are replaced. */

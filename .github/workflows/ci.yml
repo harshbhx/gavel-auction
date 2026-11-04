@@ -145,8 +145,8 @@ jobs:
           DEEPGRAM_API_KEY: canary-deepgram-api-key-4f9c2a71
           GROQ_API_KEY: canary-groq-api-key-4f9c2a71
           LLM_API_KEY: canary-llm-api-key-4f9c2a71
-          ADMIN_TOKEN: canary-admin-token-4f9c2a71
-          AUCTIONEER_TOKEN_SECRET: canary-auctioneer-token-4f9c2a71
+          ADMIN_KEY: canary-admin-key-4f9c2a71
+          TOKEN_SECRET: canary-token-secret-4f9c2a71
           DATABASE_URL: canary-database-url-4f9c2a71
   ascii-banned:
     runs-on: ubuntu-latest
