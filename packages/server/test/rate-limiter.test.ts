@@ -1,6 +1,6 @@
 import { ManualClock } from '@gavel/shared';
 import { describe, expect, it } from 'vitest';
-import { RateLimiter } from '../src/limits/rate-limiter';
+import { LIMITS, RateLimiter, limitsFromConfig, normalizePath } from '../src/limits/rate-limiter';
 
 const setup = () => {
   const clock = new ManualClock(1_789_000_000_000);
@@ -79,5 +79,55 @@ describe('rate limiter (T-RT-087)', () => {
     rl.sweep();
     for (let i = 0; i < 5; i++) expect(rl.checkBid('b1').ok).toBe(true);
     expect(rl.checkBid('b1').ok).toBe(false);
+  });
+});
+
+describe('rate limiter configuration (R-RT-120)', () => {
+  it('derives the bid bucket from config', () => {
+    const limits = limitsFromConfig({ RATE_BID_PER_S: 1, RATE_BID_BURST: 20 });
+    expect(limits.bid).toEqual({ refillMs: 1000, burst: 20 });
+    expect(limits.frame).toEqual(LIMITS.frame);
+    expect(limitsFromConfig({ RATE_BID_PER_S: 3, RATE_BID_BURST: 5 }).bid).toEqual(LIMITS.bid);
+  });
+
+  it('honours a larger configured burst', () => {
+    const clock = new ManualClock(1_789_000_000_000);
+    const rl = new RateLimiter(clock, limitsFromConfig({ RATE_BID_PER_S: 3, RATE_BID_BURST: 20 }));
+    for (let i = 0; i < 20; i++) expect(rl.checkBid('b1').ok).toBe(true);
+    expect(rl.checkBid('b1').ok).toBe(false);
+  });
+});
+
+describe('rate limiter memory and paths', () => {
+  it('bounds the bucket map', () => {
+    const clock = new ManualClock(1_789_000_000_000);
+    const rl = new RateLimiter(clock, LIMITS, 100);
+    for (let i = 0; i < 1000; i++) rl.checkFrame(`conn-${i}`);
+    expect(rl.size).toBeLessThanOrEqual(100);
+  });
+
+  it('prunes idle buckets on its own as time passes', () => {
+    const clock = new ManualClock(1_789_000_000_000);
+    const rl = new RateLimiter(clock);
+    for (let i = 0; i < 50; i++) rl.checkFrame(`conn-${i}`);
+    expect(rl.size).toBe(50);
+    clock.advance(120_000);
+    rl.checkFrame('late');
+    expect(rl.size).toBe(1);
+  });
+
+  it('normalises paths before the webhook exemption', () => {
+    expect(normalizePath('/webhooks/../api/auctions/x/control')).toBe('/api/auctions/x/control');
+    expect(normalizePath('/webhooks/%2e%2e/api')).toBe('/api');
+    expect(normalizePath('//webhooks//paypal?x=1')).toBe('/webhooks/paypal');
+    expect(normalizePath('/%zz')).toBeNull();
+  });
+
+  it('does not exempt a dot-segment path that escapes /webhooks/', () => {
+    const rl = new RateLimiter(new ManualClock(1_789_000_000_000));
+    for (let i = 0; i < 60; i++) rl.checkHttp('1.1.1.1', '/webhooks/../api/x');
+    expect(rl.checkHttp('1.1.1.1', '/webhooks/../api/x').ok).toBe(false);
+    expect(rl.checkHttp('1.1.1.1', '/webhooks/%2e%2e/api/x').ok).toBe(false);
+    expect(rl.checkHttp('1.1.1.1', '/webhooks/paypal?id=1').ok).toBe(true);
   });
 });

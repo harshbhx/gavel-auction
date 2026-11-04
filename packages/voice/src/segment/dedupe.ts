@@ -9,7 +9,7 @@ export const DUPLICATE_WINDOW_MS = 1500;
 export function normalizeForDedupe(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[’]/g, "'")
+    .replace(/\u2019/g, "'")
     .split(/[^\p{L}\p{N}']+/u)
     .filter((w) => w !== '')
     .join(' ');

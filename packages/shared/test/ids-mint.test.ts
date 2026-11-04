@@ -64,3 +64,13 @@ describe('SeqIds (T-RT-003)', () => {
     expect(isUlid(new SeqIds().mint())).toBe(true);
   });
 });
+
+describe('SeqIds beyond 9999 (T-RT-003)', () => {
+  it('keeps minting valid ids for a long load run', () => {
+    const ids = new SeqIds();
+    let last = '';
+    for (let i = 0; i < 20_000; i++) last = ids.mint();
+    expect(last).toBe('01TEST00000000000000020000');
+    expect(isUlid(last)).toBe(true);
+  });
+});

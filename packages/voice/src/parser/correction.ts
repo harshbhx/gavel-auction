@@ -145,7 +145,7 @@ export function parseCorrection(text: string, ctx: ParseContext = {}): Correctio
     };
   }
 
-  const lower = text.toLowerCase().replace(/’/g, "'");
+  const lower = text.toLowerCase().replace(/\u2019/g, "'");
   const notXY = NOT_X_Y.exec(lower);
   if (notXY !== null) {
     const x = amountsOf(notXY[1] ?? '', ctx);

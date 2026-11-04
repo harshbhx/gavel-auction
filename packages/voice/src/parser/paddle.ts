@@ -12,6 +12,13 @@ export interface PaddleRef {
   /** Token index of the first paddle word and one past the last token of the number. */
   start: number;
   end: number;
+  /** Token index where the paddle number starts (just after the paddle words). */
+  valueStart: number;
+  /**
+   * True when a scale word (hundred, thousand, k, grand) directly follows the paddle number, so the
+   * number may be the start of the amount ("paddle five hundred"). The parser asks instead of guessing.
+   */
+  scaleAfter?: true;
   /**
    * Digit read-out reading of "paddle one two ...": the paddle could be 1 or 12. The parser only
    * uses it when the plain reading leaves a number it cannot read.
@@ -86,7 +93,8 @@ export function extractPaddles(tokens: readonly TokenLike[]): PaddleScan {
         alt = { paddle: String(d1 * 10 + d2), end: j + 2 };
       }
     }
-    const ref: PaddleRef = { paddle: String(value), start: i, end };
+    const ref: PaddleRef = { paddle: String(value), start: i, end, valueStart: j };
+    if (text(tokens[end]) in SCALE) ref.scaleAfter = true;
     if (alt !== undefined) ref.alt = alt;
     refs.push(ref);
     for (let k = i; k < end; k++) consumed.add(k);
