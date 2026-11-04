@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "t": "price",
+  "seq": 15,
+  "ts": 1789000001500,
+  "price": 35000,
+  "leaderId": "01J9ZQ3A0B2C4D6F8H0J2K4M6N",
+  "leaderPaddle": 12,
+  "endTs": 1789000060000,
+  "minNext": 36000,
+  "extensions": 0
+}

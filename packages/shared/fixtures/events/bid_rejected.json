@@ -1,0 +1,17 @@
+{
+  "auctionId": "01J9ZQ4Y6Z8K3M5N7P9R1S3T5V",
+  "seq": 4,
+  "ts": 1789000000004,
+  "type": "bid_rejected",
+  "bidderId": "01J9ZQ3A0B2C4D6F8H0J2K4M6N",
+  "mid": "01J9ZQ5A0B2C4D6F8H0J2K4M6N",
+  "reason": "below_increment",
+  "audit": {
+    "bidId": "01J9ZQ5C0B2C4D6F8H0J2K4M6N",
+    "bidderId": "01J9ZQ3A0B2C4D6F8H0J2K4M6N",
+    "source": "qr",
+    "outcome": "rejected",
+    "serverTs": 1789000000000,
+    "seq": 3
+  }
+}
