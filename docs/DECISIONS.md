@@ -384,6 +384,9 @@ Evidence: packages/engine/src/ledger/public-export.ts, packages/engine/bin/verif
 ## D-0022: No ceiling raises in the demo; the first hold decides
 
 Date: 2026-11-04
+Status: accepted
+Owner: server
+Context: A bidder can ask for a second hold while the first is still live, and the room could register that second hold as a ceiling raise. The engine supports `CEILING_RAISED`, but a raise would change payments, the room and the web copy together, and the demo does not need it.
 Decision: A bidder has one hold per auction and cannot raise it. Payments answers a second hold request for a bidder with a live hold with 409 `hold_exists`. If a second authorization is approved anyway (a lapsed order approved late), the room keeps the first registration: `registerBidder` for a bidder already on the roster is a no-op that appends no event, the engine never receives a raise, and the plan uses the first hold. The settlement service voids the unused second authorization as a spare. The engine keeps its `CEILING_RAISED` support for later, but nothing in the server reaches it.
 Alternatives:
 
