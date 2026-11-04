@@ -6,8 +6,8 @@ import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
 import { FakePayPalServer } from '../src/fake/server.js';
-import { fetchAccessToken } from './http.js';
 import { gateCurrency } from './gateUtil.js';
+import { fetchAccessToken } from './http.js';
 import {
   EXIT_REFUSED,
   GateUsageError,
@@ -254,7 +254,7 @@ export async function measureGate(ctx: GateContext, deps: MeasureDeps): Promise<
             {
               reference_id: `measure-${i + 1}`,
               custom_id: `measure-${i + 1}`,
-              amount: { currency_code: gateCurrency(), value: '5.00' },
+              amount: { currency_code: gateCurrency(deps.env), value: '5.00' },
             },
           ],
         },
@@ -312,7 +312,7 @@ export async function measureGate(ctx: GateContext, deps: MeasureDeps): Promise<
       path: `/v2/payments/authorizations/${authId}/capture`,
       headers: rid('capture'),
       body: {
-        amount: { currency_code: gateCurrency(), value: '2.00' },
+        amount: { currency_code: gateCurrency(deps.env), value: '2.00' },
         final_capture: false,
         invoice_id: `${prefix}-${n}`,
       },

@@ -107,6 +107,8 @@ environment once:
 4. Delete the repository-level copies of the same four secrets, so a workflow on any other branch
    cannot read them.
 
+The sandbox accounts must be US accounts. PayPal rejects INR orders for the sandbox buyers with `422 CURRENCY_NOT_SUPPORTED`, and India sandbox buyers fail at the buyer approval page with USD. Gates send USD by default; set `GATE_CURRENCY` only to override it for a specific run.
+
 Until the environment exists, GitHub creates it on first use with no reviewer and no branch rule,
 so do not run a gate before step 2 is done. The gate workflows are manual and main-only, so CI is
 not affected in the meantime.

@@ -35,6 +35,7 @@ Gates: G1 partial capture, remainder and explicit void (PAY-59). G2 SDK v6 appro
 | I03 | Request ids are remembered forever. The fault `forget_idempotency` simulates expiry; PayPal's real retention window is unknown. | `idempotency.ts`, `faults.ts`         | IDEM | Same as I01.                                                                                                   | unverified |
 | I04 | Request ids of up to 64 characters are accepted (ours are 44).                                                                  | `server.ts` does not check the length | IDEM | Shorten the id construction (SPEC 4.4).                                                                        | unverified |
 | I05 | Idempotency is keyed per `(operation, target id, request id)`, not globally.                                                    | `core.ts` `run()` key                 | IDEM | Request ids are unique per `(auction, op, hold, amount, generation)` anyway, so a global key behaves the same. | unverified |
+| I06 | A call refused with a 4xx is not stored: a retry with the same request id executes again and is refused again.                  | `core.ts` `run()`                     | IDEM | The saga re-reads the truth after a refusal; a retry that succeeds later is observed, not assumed.             | unverified |
 
 ## HTTP surface of the fake server
 
@@ -64,3 +65,29 @@ Gates: G1 partial capture, remainder and explicit void (PAY-59). G2 SDK v6 appro
 | W03 | The verify endpoint receives the original event text spliced into the request body, and answers `verification_status` `SUCCESS` or `FAILURE`.                            | `webhooks.ts` `buildVerifyRequest` | G4   | Handler fails closed: anything other than `SUCCESS` is rejected (R-PAY-091).            | unverified |
 | W04 | Events can arrive duplicated, reordered or not at all; the fake's delivery modes (`fifo`, `reverse`, `shuffle`, duplicate, drop) model that.                             | `webhooks.ts` `planDeliveries`     | G4   | Handler is idempotent on the event id and polling reconciliation covers missing events. | by design  |
 | W05 | Expiry of an authorization emits `PAYMENT.AUTHORIZATION.VOIDED` with reason `expired`.                                                                                   | `core.ts` `refresh()`              | G3   | Reconciliation reads the authorization status, not the event.                           | unverified |
+
+## Conformance test per unverified assumption
+
+The gateway conformance suite (`test/conformance/suite.ts`, run by `test/conformance/run.test.ts`) runs the same assertions against the fake core, the fake over HTTP and, when the sandbox variables are set (`PAYPAL_ENV=sandbox`, `CONFORMANCE_MANUAL=1`, credentials and `CONFORMANCE_AUTH_IDS`), against the PayPal sandbox. Where the sandbox disagrees with the fake the run records a difference below instead of failing. A row stays `unverified` until a sandbox run has passed its test id; the fake passing it proves only that the fake behaves as written.
+
+| Assumption | Test id                       | Covered by                                                                                                        |
+| ---------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| A01        | C02                           | Final capture closes the hold; remainder release is observed through the hold status.                             |
+| A02        | C11                           | Void of a partially captured authorization keeps the captured amount.                                             |
+| A03        | C10                           | A capture far above the limit is refused definitely. The exact 115% / $75 limit has no test: the id needs G1.     |
+| A04        | C04, C09                      | Capture after a final capture is refused definitely, also when retried.                                           |
+| A05        | C06                           | Capture on a voided authorization is refused definitely. The issue name is not asserted.                          |
+| A06        | C05                           | A second void succeeds or is refused definitely. The issue name is not asserted.                                  |
+| A07, A08   | none                          | Needs the 29 day validity period; covered only by G3 evidence.                                                    |
+| A09-A11    | none                          | Needs the 3 day honor period; covered only by G3 evidence.                                                        |
+| A12        | none                          | A declined payment cannot be provoked on demand in the sandbox.                                                   |
+| A13, A14   | none                          | Order creation and approval are outside the `PaymentsGateway` port assertions; G2 covers the approval path.       |
+| I01        | C03                           | Same request id replays the first capture.                                                                        |
+| I02        | C12                           | Same request id with another amount is replayed or refused, never captured twice. The issue name is not asserted. |
+| I03, I04   | none                          | Retention window and id length are measured by the IDEM gate (`gates/idempotency.ts`).                            |
+| I05        | C08                           | Same request id on another authorization is not replayed from the first one.                                      |
+| I06        | C09                           | A refused (4xx) call retried with the same request id is refused again and applies nothing.                       |
+| H01-H14    | C01, C07 (H01, H02, H06, H07) | Response shapes are exercised through the gateway adapter. The rest need G1, G4 or M evidence.                    |
+| W01-W05    | none                          | Webhooks are outside the gateway port; G4 covers them.                                                            |
+
+The item list of finding PAYMENTS-RT-22 maps to: (a) C08, (b) C09, (c) C02, C04, C06, C10, C12 for behaviour and none for the exact issue names, (d) C11.
