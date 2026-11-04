@@ -108,7 +108,7 @@ describe('red-team: one entry point for all stages (R-VOX-043, 045, 046, 047, 05
 describe('red-team round 2: retraction signal (R-VOX-044, 050)', () => {
   it('parseUtteranceOutcome reports cancelPending so the pending store is cleared', () => {
     const store = new PendingCandidateStore();
-    store.set({ id: 'c1', bidder: { kind: 'paddle', value: '7' }, amountCents: 35000 }, 1000);
+    store.set({ id: 'c1', bidder: { kind: 'speaker', value: '7' }, amountCents: 35000 }, 1000);
     const pendingCandidate = store.get(4000);
     const out = parseUtteranceOutcome('scratch that', { speakerBidderId: '7', pendingCandidate });
     expect(out.result.status).toBe('none');
@@ -121,7 +121,7 @@ describe('red-team round 2: retraction signal (R-VOX-044, 050)', () => {
   it('does not cancel for another speaker or an ordinary bid', () => {
     const pendingCandidate = {
       id: 'c1',
-      bidder: { kind: 'paddle' as const, value: '7' },
+      bidder: { kind: 'speaker' as const, value: '7' },
       amountCents: 35000,
       ageMs: 1000,
     };
