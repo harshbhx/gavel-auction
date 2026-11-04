@@ -35,7 +35,7 @@ Out of scope: engine rules (packages/engine), wire transport and auth (packages/
 - Gate G5: STT accuracy gate (section 10).
 - UNVERIFIED (gate G5): any vendor behaviour, parameter name or limit not yet observed in a live call by this team.
 
-Money: parser output is integer cents (amountCents). The Python prototype used whole dollars; the port multiplies by 100 at the output boundary only.
+Money: parser output is integer cents (amountCents). The Python reference implementation used whole dollars; the port multiplies by 100 at the output boundary only.
 
 ## 3. Package layout
 
@@ -418,7 +418,7 @@ Convention: MUST/SHOULD; each id has at least one test in section 12.
 ### 6.4 Bid parser
 
 - R-VOX-035 parseBid MUST be pure, deterministic and total: for any string up to 2000 characters it returns a ParseResult and never throws.
-- R-VOX-036 The TypeScript port MUST reproduce the Python prototype's status, bidder and amount (converted to cents) on every case in parser_cases.py (CASES and HELDOUT); a golden file produced by running the Python parser in CI MUST be compared case by case. The one known held-out divergence ("I raise to eight hundred") MUST be recorded, not deleted.
+- R-VOX-036 The TypeScript port MUST reproduce the Python reference implementation's status, bidder and amount (converted to cents) on every case in parser_cases.py (CASES and HELDOUT); a golden file produced by running the Python parser in CI MUST be compared case by case. The one known held-out divergence ("I raise to eight hundred") MUST be recorded, not deleted.
 - R-VOX-037 Number words MUST cover zero..nineteen, tens, hundred, thousand, grand, k, "a hundred", "and", hyphen forms, "oh" as zero, and colloquial hundreds ("three fifty", "twelve fifty", "two fifty five"). Extended forms MUST also parse: "twenty five hundred" 2500, "two and a half thousand" 2500, "a thousand" 1000, "a grand" 1000, "three and a half k" 3500.
 - R-VOX-038 Numerals MUST parse: "350", "1,500", "1500", "1.5k", "$2.5K", "10k", "350.00". A fractional value that is not a whole dollar ("350.50") MUST be returned in cents with flag fractional_amount and status confirm.
 - R-VOX-039 Currency: "$", dollars, dollar, bucks, buck, USD, US dollars MUST be accepted as USD. pounds, quid, euros, rupees, rs, lakh, pesos, yen and the symbols GBP-sign, EUR-sign, INR-sign MUST yield status confirm, reason unsupported_currency, with no conversion. "N dollars M cents" MUST yield N\*100+M cents.
@@ -823,12 +823,12 @@ voice_audio_dropped_batches_total, voice_audio_dropped_ms_total, voice_capture_s
 
 ## 16. Open questions
 
-| #   | Question                                                                                                                       | Owner                     | Default                                                                                            |
-| --- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------- | -------------------------------------------------------------------------------------------------- |
-| 1   | Browser to vendor directly with a short-lived token, or relay through the server? Token grant support is UNVERIFIED (gate G5). | Harsh with realtime owner | Server relay (spec assumes it)                                                                     |
-| 2   | Is the language model required for auto-accept, and which provider and model id?                                               | voice owner at G5         | Rules + model agreement; rules-only auto-accept for clean forms at 0.90                            |
-| 3   | Fixture voices: team recordings versus synthetic speech only? Consent for committed audio.                                     | Harsh                     | 3 synthetic voices, 2 team voices with written consent                                             |
-| 4   | Paddle attribution on a single room mic versus per-bidder phone mic: which is the demo setup?                                  | Harsh                     | Room mic with paddle numbers for the video; phone mic with speaker attribution for the try-it page |
-| 5   | Should accepted voice bids be retractable by the auctioneer (engine support)?                                                  | engine owner              | No; advisory only (R-VOX-044)                                                                      |
-| 6   | Deepgram smart_format on or off, keyterms on or off.                                                                           | voice owner at G5         | Off and on respectively until measured                                                             |
-| 7   | Whole-dollar only bids in the demo auction?                                                                                    | Harsh                     | Whole dollars; cents parsed but confirmed                                                          |
+| #   | Question                                                                                                                       | Owner                             | Default                                                                                            |
+| --- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 1   | Browser to vendor directly with a short-lived token, or relay through the server? Token grant support is UNVERIFIED (gate G5). | Project owner with realtime owner | Server relay (spec assumes it)                                                                     |
+| 2   | Is the language model required for auto-accept, and which provider and model id?                                               | voice owner at G5                 | Rules + model agreement; rules-only auto-accept for clean forms at 0.90                            |
+| 3   | Fixture voices: team recordings versus synthetic speech only? Consent for committed audio.                                     | Project owner                     | 3 synthetic voices, 2 team voices with written consent                                             |
+| 4   | Paddle attribution on a single room mic versus per-bidder phone mic: which is the demo setup?                                  | Project owner                     | Room mic with paddle numbers for the video; phone mic with speaker attribution for the try-it page |
+| 5   | Should accepted voice bids be retractable by the auctioneer (engine support)?                                                  | engine owner                      | No; advisory only (R-VOX-044)                                                                      |
+| 6   | Deepgram smart_format on or off, keyterms on or off.                                                                           | voice owner at G5                 | Off and on respectively until measured                                                             |
+| 7   | Whole-dollar only bids in the demo auction?                                                                                    | Project owner                     | Whole dollars; cents parsed but confirmed                                                          |

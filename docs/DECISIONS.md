@@ -174,3 +174,21 @@ Consequences:
 - From the freeze only fixes labelled priority:P0 or type:bug merge.
 
 Evidence: SPEC-quality section 2 (Freeze), MASTER-PLAN.
+
+## D-0011: Engine coverage threshold set to measured baseline
+
+Date: 2026-11-04
+Status: accepted
+Owner: quality
+Context: The engine gate was advisory, so it never failed. Measured on main it is 93.5 percent lines and 87.7 percent branches, below the 95 and 90 targets in SPEC-quality R-QA-021.
+Decision: Make the engine gate enforcing at 93 percent lines and 87 percent branches (coverage threshold lowered from the advisory 95 and 90), and raise it back to 95 and 90 as the engine package adds the missing tests.
+Alternatives:
+
+- Keep 95 and 90 enforcing: rejected, it blocks every merge until the engine tests land.
+- Keep the gate advisory: rejected, a deleted test file would go unnoticed.
+
+Consequences:
+
+- The ratchet in CI only allows this value to go up from here.
+
+Evidence: scripts/check-coverage.mjs, SPEC-quality R-QA-021.

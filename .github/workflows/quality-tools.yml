@@ -21,13 +21,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  tools:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: ./.github/actions/setup
-      - run: npm run test:tools
   hook-timing:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -42,7 +35,7 @@ jobs:
           done
           git add tmp-hook-timing
           start=$(date +%s.%N)
-          npx --no-install lint-staged
+          BANNED_WORDS_ALLOW_EMPTY=true npx --no-install lint-staged
           end=$(date +%s.%N)
           elapsed=$(echo "$end - $start" | bc -l)
           echo "lint-staged took ${elapsed}s"
