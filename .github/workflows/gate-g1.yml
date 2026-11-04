@@ -2,6 +2,7 @@ name: gate-g1
 on:
   push:
     branches: [gate/g1]
+  workflow_dispatch:
 jobs:
   g1:
     runs-on: ubuntu-latest
