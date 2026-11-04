@@ -1,0 +1,40 @@
+{
+  "v": 1,
+  "t": "state",
+  "seq": 15,
+  "ts": 1789000001500,
+  "snapshot": {
+    "auctionId": "01J9ZQ4Y6Z8K3M5N7P9R1S3T5V",
+    "config": {
+      "mode": "english",
+      "currency": "USD",
+      "reserve": 10000,
+      "minIncrement": 1000,
+      "endTs": 1789000060000,
+      "softCloseWindowMs": 10000,
+      "softCloseExtensionMs": 10000,
+      "maxExtensions": 3,
+      "ceilingPresets": [20000, 50000],
+      "confirmConfidenceThreshold": 0.7
+    },
+    "status": "OPEN",
+    "price": 35000,
+    "leaderId": "01J9ZQ3A0B2C4D6F8H0J2K4M6N",
+    "endTs": 1789000060000,
+    "minNext": 36000,
+    "roster": [
+      { "bidderId": "01J9ZQ3A0B2C4D6F8H0J2K4M6N", "paddle": 12, "name": "Ada", "hold": "HELD" }
+    ],
+    "recentAudit": [
+      {
+        "bidId": "01J9ZQ5C0B2C4D6F8H0J2K4M6N",
+        "bidderId": "01J9ZQ3A0B2C4D6F8H0J2K4M6N",
+        "source": "qr",
+        "outcome": "accepted",
+        "serverTs": 1789000000000,
+        "seq": 15
+      }
+    ],
+    "you": { "bidderId": "01J9ZQ3A0B2C4D6F8H0J2K4M6N", "ceiling": 50000 }
+  }
+}

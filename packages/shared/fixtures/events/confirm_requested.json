@@ -1,0 +1,19 @@
+{
+  "auctionId": "01J9ZQ4Y6Z8K3M5N7P9R1S3T5V",
+  "seq": 5,
+  "ts": 1789000000005,
+  "type": "confirm_requested",
+  "confirmId": "c1",
+  "bidderId": "01J9ZQ3A0B2C4D6F8H0J2K4M6N",
+  "mid": "01J9ZQ5A0B2C4D6F8H0J2K4M6N",
+  "amount": 13000,
+  "expiresAt": 1789000010000,
+  "audit": {
+    "bidId": "01J9ZQ5C0B2C4D6F8H0J2K4M6N",
+    "bidderId": "01J9ZQ3A0B2C4D6F8H0J2K4M6N",
+    "source": "qr",
+    "outcome": "accepted",
+    "serverTs": 1789000000000,
+    "seq": 3
+  }
+}

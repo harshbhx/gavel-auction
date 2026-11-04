@@ -1,0 +1,9 @@
+{
+  "v": 1,
+  "t": "bid_accepted",
+  "seq": 15,
+  "ts": 1789000001500,
+  "mid": "01J9ZQ5A0B2C4D6F8H0J2K4M6N",
+  "bidId": "01J9ZQ5C0B2C4D6F8H0J2K4M6N",
+  "amount": 35000
+}
