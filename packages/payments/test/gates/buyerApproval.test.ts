@@ -26,6 +26,7 @@ interface Script {
   missing?: readonly string[];
   /** Whether #password is still visible after login. */
   passwordStays?: boolean;
+  styleFails?: boolean;
   confirmMissing?: boolean;
   noReturn?: boolean;
 }
@@ -64,6 +65,10 @@ function launcher(script: Script, log: string[]): BrowserLauncher {
       script.noReturn === true ? Promise.reject(new Error('timeout')) : Promise.resolve(),
     waitForTimeout: () => Promise.resolve(),
     waitForLoadState: () => Promise.resolve(),
+    addStyleTag: ({ content }) => {
+      log.push(`style ${content.includes('transparent') ? 'hide' : 'other'}`);
+      return script.styleFails === true ? Promise.reject(new Error('no style')) : Promise.resolve();
+    },
     screenshot: ({ path }) => {
       log.push(`shot ${path.split('/').pop() ?? ''}`);
       return Promise.resolve();
@@ -105,6 +110,22 @@ describe('approveInBrowser', () => {
     expect(log.some((l) => l.includes('review'))).toBe(true);
     expect(log.some((l) => l.includes('returned'))).toBe(true);
     expect(log[log.length - 1]).toBe('closed');
+  });
+
+  it('hides all page text before every screenshot', async () => {
+    const log: string[] = [];
+    await approveInBrowser(opts({}, log));
+    const shots = log.filter((l) => l.startsWith('shot'));
+    expect(shots.length).toBeGreaterThan(1);
+    log.forEach((l, i) => {
+      if (l.startsWith('shot')) expect(log[i - 1]).toBe('style hide');
+    });
+  });
+
+  it('takes no screenshot when the page cannot be hidden', async () => {
+    const log: string[] = [];
+    await approveInBrowser(opts({ styleFails: true }, log));
+    expect(log.some((l) => l.startsWith('shot'))).toBe(false);
   });
 
   it.each([
