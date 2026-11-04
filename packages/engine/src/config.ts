@@ -1,3 +1,4 @@
+import { MAX_AMOUNT_CENTS } from './types.js';
 import type { AuctionConfig, IncrementRule, LotConfig, Mode, SoftClose } from './types.js';
 
 export interface ConfigError {
@@ -88,8 +89,8 @@ function validateIncrement(
     return { ...DEFAULT_LOT_DEFAULTS.increment };
   }
   if (x['flatCents'] !== undefined && x['ladder'] === undefined) {
-    if (!isInt(x['flatCents']) || x['flatCents'] < 1) {
-      add('increment.flatCents', 'bad_increment', 'flatCents must be an integer >= 1');
+    if (!inRange(x['flatCents'], 1, MAX_AMOUNT_CENTS)) {
+      add('increment.flatCents', 'bad_increment', 'flatCents must be an integer in 1..100000000');
       return { ...DEFAULT_LOT_DEFAULTS.increment };
     }
     return { flatCents: x['flatCents'] };
@@ -109,8 +110,8 @@ function validateIncrement(
     }
     const from = raw['fromCents'];
     const inc = raw['incrementCents'];
-    if (!isInt(from) || from < 0) {
-      add(`${p}.fromCents`, 'bad_increment', 'fromCents must be an integer >= 0');
+    if (!inRange(from, 0, MAX_AMOUNT_CENTS)) {
+      add(`${p}.fromCents`, 'bad_increment', 'fromCents must be an integer in 0..100000000');
     } else {
       if (i === 0 && from !== 0) {
         add(`${p}.fromCents`, 'bad_increment', 'ladder first fromCents must be 0');
@@ -120,8 +121,12 @@ function validateIncrement(
       }
       prev = from;
     }
-    if (!isInt(inc) || inc < 1) {
-      add(`${p}.incrementCents`, 'bad_increment', 'incrementCents must be an integer >= 1');
+    if (!inRange(inc, 1, MAX_AMOUNT_CENTS)) {
+      add(
+        `${p}.incrementCents`,
+        'bad_increment',
+        'incrementCents must be an integer in 1..100000000',
+      );
     }
     if (isInt(from) && isInt(inc)) out.push({ fromCents: from, incrementCents: inc });
   });
@@ -197,8 +202,8 @@ export function validateLotConfig(x: unknown): Result<LotConfig, ConfigError[]> 
   if (typeof x['mode'] === 'string' && (MODES as readonly string[]).includes(x['mode'])) {
     mode = x['mode'] as Mode;
   } else add('mode', 'bad_value', 'mode must be english, proxy or second_price');
-  if (!isInt(x['reserveCents']) || x['reserveCents'] < 1) {
-    add('reserveCents', 'bad_value', 'reserve must be an integer >= 1 cent');
+  if (!inRange(x['reserveCents'], 1, MAX_AMOUNT_CENTS)) {
+    add('reserveCents', 'bad_value', 'reserve must be an integer in 1..100000000 cents');
   }
   let durationMs: number | undefined;
   if (inRange(x['durationMs'], 1000, 86_400_000)) durationMs = x['durationMs'];

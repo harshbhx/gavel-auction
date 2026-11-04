@@ -49,7 +49,8 @@ describe('softclose', () => {
         lot = { ...lot, endsAt: r.endsAt, extensions: lot.extensions + 1 };
       }
     }
-    expect(extended).toBe(3);
+    // The second bid is capped to the current end time: a no-op, not an extension.
+    expect(extended).toBe(1);
     expect(lot.endsAt).toBe(120000);
   });
 
