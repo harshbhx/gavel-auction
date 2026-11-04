@@ -119,7 +119,7 @@ function make(
   fallbackName: string,
   rawText: string,
 ): PayPalError {
-  const message = parsed.message ?? (snippet(rawText) || `HTTP ${status}`);
+  const message = snippet(parsed.message ?? rawText) || `HTTP ${status}`;
   const init: ConstructorParameters<typeof PayPalError>[0] = {
     kind,
     status,

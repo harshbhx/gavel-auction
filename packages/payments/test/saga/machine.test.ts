@@ -223,9 +223,11 @@ describe('effects are data', () => {
     expect(() => step(base, win({ amountCents: 99999 }))).toThrow(IllegalTransition);
     expect(() => step(base, win({ amountCents: 21000 }))).toThrow(IllegalTransition);
     expect(() => step(base, win({ amountCents: 30001 }, 'adopted'))).toThrow(IllegalTransition);
-    // an adopted capture below the planned price is within the ceiling and accepted
-    expect(step(base, win({ amountCents: 21000 }, 'adopted')).journal.winner?.amountCents).toBe(
-      21000,
+    // an adopted capture must also be at exactly the planned price
+    expect(() => step(base, win({ amountCents: 21000 }, 'adopted'))).toThrow(IllegalTransition);
+    expect(() => step(base, win({ amountCents: 25000 }, 'adopted'))).toThrow(IllegalTransition);
+    expect(step(base, win({ amountCents: 22000 }, 'adopted')).journal.winner?.amountCents).toBe(
+      22000,
     );
   });
 

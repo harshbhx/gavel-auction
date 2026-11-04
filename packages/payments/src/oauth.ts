@@ -122,16 +122,38 @@ export class TokenManager {
    * `auth_failed`. Other responses are returned as the transport returned them.
    */
   async send(req: AuthorizedRequest): Promise<TransportResult> {
-    const token = await this.getToken();
+    const token = await this.beforeSend(() => this.getToken());
     const first = await this.sendWith(token, req);
     if (first.status !== 401) return first;
 
-    const fresh = await this.refreshAfter(token);
+    const fresh = await this.beforeSend(() => this.refreshAfter(token));
     const second = await this.sendWith(fresh, req);
     if (second.status === 401) {
       throw classifyError(401, second.headers, second.text, { afterRefresh: true });
     }
     return second;
+  }
+
+  /**
+   * Runs token acquisition. A failure here means the business request was never
+   * sent, so an unknown outcome is rewritten as a definite `auth_unavailable`
+   * (R-PAY-053): the caller must not treat the money call as possibly taken.
+   */
+  private async beforeSend(acquire: () => Promise<string>): Promise<string> {
+    try {
+      return await acquire();
+    } catch (e) {
+      if (!(e instanceof PayPalError) || e.outcome !== 'unknown') throw e;
+      const init: ConstructorParameters<typeof PayPalError>[0] = {
+        kind: 'auth_unavailable',
+        status: e.status,
+        name: 'AUTH_UNAVAILABLE',
+        message: 'the access token could not be fetched; the request was not sent',
+        outcome: 'definite',
+      };
+      if (e.debugId !== undefined) init.debugId = e.debugId;
+      throw new PayPalError(init);
+    }
   }
 
   /**
