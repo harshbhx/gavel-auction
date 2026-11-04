@@ -185,7 +185,7 @@ export async function createSettlement(
         kind: 'stale_hold',
         auctionId: plan.auctionId,
         holdId: h.holdId,
-        label: `age_ms=${nowMs - h.createdAtMs} bidder=${bidderId}`,
+        label: `age_ms=${nowMs - (h.createdAtMs ?? nowMs)} bidder=${bidderId}`,
         tsMs: nowMs,
       });
     }

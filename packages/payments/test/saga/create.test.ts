@@ -4,14 +4,13 @@ import {
   LeaseLost,
   SettlementError,
   createSettlement,
-  newJournal,
   renewLease,
   validatePlan,
   withLease,
 } from '../../src/saga/create.js';
 import { MemoryJournalStore, VersionConflict } from '../../src/stores/memory.js';
 import type { SettlementPlan } from '../../src/types.js';
-import { FRESH_HOLDS, recordingAudit } from '../helpers/age.js';
+import { FRESH_HOLDS, recordingAudit, freshJournal } from '../helpers/age.js';
 
 function plan(over: Partial<SettlementPlan> = {}): SettlementPlan {
   return {
@@ -130,7 +129,7 @@ describe('createSettlement', () => {
 
   it('does not share objects with the caller', () => {
     const p = plan();
-    const j = newJournal(p);
+    const j = freshJournal(p);
     p.candidates[0] = { bidderId: 'zz', priceCents: 1 };
     expect(j.plan.candidates[0]?.bidderId).toBe('b1');
   });

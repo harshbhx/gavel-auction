@@ -14,10 +14,10 @@ import {
   verdict,
   type CaptureDeps,
 } from '../../src/saga/capture.js';
-import { SettlementError, createSettlement, newJournal } from '../../src/saga/create.js';
+import { SettlementError, createSettlement } from '../../src/saga/create.js';
 import { MemoryJournalStore } from '../../src/stores/memory.js';
 import type { HoldTruth, PaymentAudit, SettlementPlan } from '../../src/types.js';
-import { FRESH_HOLDS } from '../helpers/age.js';
+import { FRESH_HOLDS, freshJournal } from '../helpers/age.js';
 
 const START_MS = 1_800_000_000_000;
 
@@ -181,7 +181,7 @@ describe('T-PAY-033 capture at the winning price', () => {
 
 describe('T-PAY-034 invariants before any PayPal call', () => {
   async function direct(rig: Rig, candidates: Array<[string, number]>, reserve = 5000) {
-    await rig.journals.create(newJournal(planFor(rig, CEILINGS, candidates, reserve)));
+    await rig.journals.create(freshJournal(planFor(rig, CEILINGS, candidates, reserve)));
   }
 
   it('a price above the hold ceiling goes to FAILED_NEEDS_REVIEW with zero calls', async () => {
