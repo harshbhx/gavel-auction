@@ -59,3 +59,19 @@ export async function verifyRotating(
   if (result.ok && result.viaPrevious === true) secrets.onPreviousUse?.();
   return result;
 }
+
+/**
+ * A startup warning for the host to log when a previous secret is still configured past its end
+ * time, or has no end time at all. Returns undefined when nothing needs attention.
+ */
+export function previousSecretWarning(secrets: SecretSet, nowMs: number): string | undefined {
+  if (secrets.verifying.length < 2) return undefined;
+  const until = secrets.previousUntilMs;
+  if (until === undefined) {
+    return 'TOKEN_SECRET_PREVIOUS is set with no TOKEN_SECRET_PREVIOUS_UNTIL; it is accepted indefinitely';
+  }
+  if (nowMs >= until) {
+    return 'TOKEN_SECRET_PREVIOUS is still set past TOKEN_SECRET_PREVIOUS_UNTIL; remove it';
+  }
+  return undefined;
+}
