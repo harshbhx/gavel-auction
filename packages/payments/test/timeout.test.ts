@@ -48,7 +48,7 @@ function make(delayMs: number, timeoutMs?: number) {
     fetch: slow(delayMs, seen),
     sleep: async () => undefined,
     random: () => 0,
-    now: () => Date.now(),
+    now: () => 0,
     maxAttempts: 1,
     ...(timeoutMs !== undefined ? { timeoutMs } : {}),
   });
@@ -137,7 +137,7 @@ describe('transport timeout (T-PAY-012)', () => {
       fetch,
       sleep: async () => undefined,
       random: () => 0,
-      now: () => Date.now(),
+      now: () => 0,
       timeoutMs: 50,
     });
     const p = transport.send({
