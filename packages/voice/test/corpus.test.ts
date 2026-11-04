@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { parseUtterance } from '../src/parser/utterance.js';
 
 const caseSchema = z.object({
   id: z.string().regex(/^[a-z_]+-\d{3}$/),
@@ -108,5 +109,28 @@ describe('Python golden (R-VOX-036)', () => {
     for (const g of golden) {
       if (g.amountCents !== null) expect(g.amountCents % 100).toBe(0);
     }
+  });
+});
+
+describe('TypeScript parser against the golden (T-VOX-036, R-VOX-036)', () => {
+  it('matches status, bidder and amount of every case except the recorded divergences', () => {
+    const mismatches: string[] = [];
+    for (const c of cases) {
+      const g = golden.find((x) => x.id === c.id);
+      if (!g) continue;
+      const r = parseUtterance(c.text, {
+        ...(c.speaker === null ? {} : { speakerBidderId: c.speaker }),
+        ...(c.currentPriceCents === null ? {} : { currentPriceCents: c.currentPriceCents }),
+      });
+      const same =
+        r.status === g.status &&
+        (g.status !== 'bid' || (r.bidder?.value === g.bidder && r.amountCents === g.amountCents));
+      if (!same) {
+        mismatches.push(
+          `${c.id} "${c.text}": ts ${r.status}/${r.bidder?.value ?? '-'}/${String(r.amountCents)} golden ${g.status}/${g.bidder ?? '-'}/${String(g.amountCents)}`,
+        );
+      }
+    }
+    expect(mismatches).toEqual([]);
   });
 });
