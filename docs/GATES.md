@@ -67,3 +67,7 @@ Verdict: n/a
 Decision: n/a
 Fallback if FAIL: always show the confirm prompt for spoken bids.
 Links: n/a
+
+## Run entries
+
+`gates/summarize.ts` in `packages/payments` appends one entry per gate run below this line in the format of SPEC 7.2 (operator, date, script sha, buyer kinds without credentials, observed rows, evidence path with its sha256, decision, fallback adopted, spec tags flipped). The status blocks above change only after the matching entry exists.
