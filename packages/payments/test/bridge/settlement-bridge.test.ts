@@ -206,7 +206,12 @@ describe('SettlementBridge', () => {
       j = step(j, {
         type: 'capture_ok',
         tsMs: 4,
-        winner: { bidderId: B, holdId: 'hold-B', captureId: 'CAP', amountCents: 21000 },
+        winner: {
+          bidderId: B,
+          holdId: rig.holds[B]?.holdId ?? '',
+          captureId: 'CAP',
+          amountCents: 21000,
+        },
       }).journal;
       j = step(j, { type: 'begin_void', tsMs: 5 }).journal;
       j = step(j, { type: 'all_released', tsMs: 6 }).journal;
