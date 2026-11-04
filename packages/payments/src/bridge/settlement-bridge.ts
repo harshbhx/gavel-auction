@@ -89,6 +89,7 @@ export class SettlementBridge {
     await this.engine.dispatch(auctionId, {
       type: 'RevokeCeiling',
       bidderId: hold.bidderId,
+      holdRef: hold.holdId,
       reason,
     });
     return true;

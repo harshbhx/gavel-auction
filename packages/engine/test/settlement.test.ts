@@ -70,14 +70,32 @@ describe('decide CompleteLot and RecordSettlement', () => {
 
   it('T-ENG-050 R-ENG-067 settlement states must continue from the last one', () => {
     const s = hammered(2000);
-    const a = run(s, settle(400, 'HELD', 'CAPTURING'));
+    const a = run(s, settle(400, 'HELD', 'BIDDING'));
     expect(a.entries.map((e) => e.type)).toEqual(['SETTLEMENT_STATE']);
-    expect(a.state.lots[L1]?.settlement).toBe('CAPTURING');
+    expect(a.state.lots[L1]?.settlement).toBe('BIDDING');
     expect(errCode(() => decide(a.state, settle(500, 'HELD', 'CAPTURED')))).toBe(
       'state_continuity',
     );
-    expect(errCode(() => decide(a.state, settle(500, 'CAPTURING', 'PAID')))).toBe('bad_command');
+    expect(errCode(() => decide(a.state, settle(500, 'BIDDING', 'PAID')))).toBe('bad_command');
     expect(errCode(() => decide(a.state, settle(500, 'NOPE', 'CAPTURED')))).toBe('bad_command');
+  });
+
+  it('ENG-R3-06 R-ENG-067 only edges of the settlement graph can be recorded', () => {
+    const s = hammered(2000);
+    expect(errCode(() => decide(s, settle(400, 'HELD', 'HELD')))).toBe('state_continuity');
+    expect(errCode(() => decide(s, settle(400, 'HELD', 'CAPTURED')))).toBe('state_continuity');
+    const settled = run(
+      run(s, settle(400, 'HELD', 'VOIDING')).state,
+      settle(410, 'VOIDING', 'SETTLED'),
+    ).state;
+    expect(errCode(() => decide(settled, settle(420, 'SETTLED', 'HELD')))).toBe('lot_done');
+    const capturing = run(
+      run(s, settle(400, 'HELD', 'BIDDING')).state,
+      settle(410, 'BIDDING', 'WINNER_SELECTED'),
+    ).state;
+    expect(errCode(() => decide(capturing, settle(420, 'WINNER_SELECTED', 'BIDDING')))).toBe(
+      'state_continuity',
+    );
   });
 
   it('T-ENG-051 R-ENG-069 captured total above the ceiling is an invariant failure', () => {
@@ -133,7 +151,10 @@ describe('decide CompleteLot and RecordSettlement', () => {
 
   it('ENG-R3-01 a release recorded before the lot goes unsold is not overwritten', () => {
     const s = hammered(2000);
-    const released = run(s, settle(400, 'HELD', 'SETTLED')).state;
+    const released = run(
+      run(s, settle(400, 'HELD', 'VOIDING')).state,
+      settle(410, 'VOIDING', 'SETTLED'),
+    ).state;
     const unsold = run(
       released,
       mk(500, {
