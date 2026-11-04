@@ -1,4 +1,4 @@
-import { FLAG_DISCONTINUITY, FRAME_SAMPLES, type AudioBatch } from './frame.js';
+import { FLAG_DISCONTINUITY, FLAG_END_OF_STREAM, FRAME_SAMPLES, type AudioBatch } from './frame.js';
 
 export const FRAMES_PER_BATCH = 5;
 const FRAME_MS = 20;
@@ -42,9 +42,27 @@ export class FrameAssembler {
 
   /** Mark `ms` of missing audio: later timestamps shift by it and the next batch is flagged. */
   markGap(ms: number): void {
-    if (ms <= 0) return;
+    if (!Number.isFinite(ms) || ms <= 0) return;
     this.gapMs += Math.round(ms);
     this.gapFlag = true;
+  }
+
+  /** Emit the held partial batch, padded with silence to a full batch, for end of stream. */
+  flush(): AudioBatch[] {
+    if (this.filled === 0) return [];
+    this.pending.fill(0, this.filled);
+    const out: AudioBatch[] = [
+      {
+        seq: this.seq++,
+        tsMs: this.framesSent * FRAME_MS + this.gapMs,
+        flags: (this.gapFlag ? FLAG_DISCONTINUITY : 0) | FLAG_END_OF_STREAM,
+        pcm: this.pending.slice(),
+      },
+    ];
+    this.gapFlag = false;
+    this.framesSent += FRAMES_PER_BATCH;
+    this.filled = 0;
+    return out;
   }
 
   /** Samples held back waiting for a full batch. */

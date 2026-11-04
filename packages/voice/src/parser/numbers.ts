@@ -91,7 +91,7 @@ function integerWords(t: string[]): number | null {
   return thousands * 1000 + rest;
 }
 
-/** "one point five k": value in dollars, rounded half up to a whole dollar. */
+/** "one point five k": value in dollars; at most three decimal digits. */
 function decimalWords(t: string[]): number | null {
   const p = t.indexOf('point');
   const whole = integerWords(t.slice(0, p));
@@ -101,8 +101,8 @@ function decimalWords(t: string[]): number | null {
   const digits = frac.slice(0, -1).map((w) => UNITS[w]);
   if (digits.length === 0 || digits.some((d) => d === undefined)) return null;
   const ds = digits.join('');
-  const thousandths = Number(ds.padEnd(3, '0').slice(0, 3)) + (Number(ds[3] ?? '0') >= 5 ? 1 : 0);
-  return whole * 1000 + thousandths;
+  if (ds.length > 3) return null; // finer than a whole dollar: not an amount we read
+  return whole * 1000 + Number(ds.padEnd(3, '0'));
 }
 
 function prepare(seq: readonly string[]): string[] {
@@ -169,7 +169,9 @@ function numeralCents(text: string, multiplier: number): number | null {
   const n = BigInt(intPart + frac);
   const num = n * BigInt(multiplier) * 100n;
   const den = 10n ** BigInt(frac.length);
-  const cents = (num * 2n + den) / (den * 2n);
+  // A sub-cent amount ("350.004") is not a bid amount: refuse it instead of rounding it away.
+  if (num % den !== 0n) return null;
+  const cents = num / den;
   return cents <= BigInt(MAX_CENTS) ? Number(cents) : null;
 }
 

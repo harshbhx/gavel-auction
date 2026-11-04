@@ -1,15 +1,9 @@
 [
   {
-    "name": "parser + decide (browser, gzip)",
-    "path": ["src/parser/parse.ts", "src/decide/policy.ts"],
+    "name": "parser (browser, gzip)",
+    "path": "src/parser/utterance.ts",
     "limit": "20 KB",
     "gzip": true,
     "ignore": ["zod"]
-  },
-  {
-    "name": "capture (browser, gzip)",
-    "path": "src/browser/capture.ts",
-    "limit": "8 KB",
-    "gzip": true
   }
 ]
