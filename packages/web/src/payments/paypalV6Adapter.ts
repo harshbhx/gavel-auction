@@ -96,7 +96,15 @@ export interface PayPalAdapterDeps {
   fetch?: FetchLike;
   /** Fallback: sends this tab to PayPal's approval page. Defaults to location.assign. */
   redirect?: (url: string) => void;
+  /** How long an order or hold request may take before it is abandoned. Defaults to 15 s. */
+  requestTimeoutMs?: number;
 }
+
+export const REQUEST_TIMEOUT_MS = 15_000;
+
+type PostResult =
+  | { ok: true; body: Record<string, unknown> }
+  | { ok: false; why: 'timeout' | 'aborted' | 'failed' };
 
 type Outcome =
   | { kind: 'approved'; orderId: string }
@@ -115,10 +123,12 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 export class PayPalV6Adapter implements PaymentApprovalPort {
   private session: PayPalSessionV6 | null = null;
   private abandon: (() => void) | null = null;
+  private readonly inFlight = new Set<AbortController>();
 
   constructor(private readonly deps: PayPalAdapterDeps) {}
 
   cancel(): void {
+    for (const c of this.inFlight) c.abort();
     this.abandon?.();
     this.session?.cancel();
   }
@@ -137,12 +147,18 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
       ceilingCents: req.ceilingCents,
       clientRegistrationId: req.clientRegistrationId,
     });
-    const orderId = order?.['orderId'];
-    if (order === null || typeof orderId !== 'string') {
-      return finish('error', { errorCode: 'order_failed' });
+    if (!order.ok) {
+      if (order.why === 'aborted') return finish('cancelled');
+      return finish('error', {
+        errorCode: order.why === 'timeout' ? 'order_timeout' : 'order_failed',
+      });
     }
-    const clientToken = typeof order['clientToken'] === 'string' ? order['clientToken'] : undefined;
-    const approveUrl = typeof order['approveUrl'] === 'string' ? order['approveUrl'] : null;
+    const orderId = order.body['orderId'];
+    if (typeof orderId !== 'string') return finish('error', { errorCode: 'order_failed' });
+    const clientToken =
+      typeof order.body['clientToken'] === 'string' ? order.body['clientToken'] : undefined;
+    const approveUrl =
+      typeof order.body['approveUrl'] === 'string' ? order.body['approveUrl'] : null;
 
     on('awaiting_buyer');
     const outcome = await this.approve(orderId, clientToken);
@@ -190,10 +206,14 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     finish: (state: ApprovalState, extra?: Partial<ApprovalResult>) => ApprovalResult,
   ): Promise<ApprovalResult> {
     const hold = await this.post(`${roomPath}/holds`, { orderId, clientRegistrationId });
-    const suffix = hold?.['holdIdSuffix'];
-    if (hold === null || typeof suffix !== 'string') {
-      return finish('error', { errorCode: 'hold_failed' });
+    if (!hold.ok) {
+      if (hold.why === 'aborted') return finish('cancelled');
+      return finish('error', {
+        errorCode: hold.why === 'timeout' ? 'hold_timeout' : 'hold_failed',
+      });
     }
+    const suffix = hold.body['holdIdSuffix'];
+    if (typeof suffix !== 'string') return finish('error', { errorCode: 'hold_failed' });
     return finish('held', { holdIdSuffix: suffix });
   }
 
@@ -235,22 +255,40 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     }
   }
 
-  private async post(
-    path: string,
-    body: Record<string, unknown>,
-  ): Promise<Record<string, unknown> | null> {
+  private async post(path: string, body: Record<string, unknown>): Promise<PostResult> {
     const doFetch: FetchLike = this.deps.fetch ?? ((url, init) => globalThis.fetch(url, init));
+    const controller = new AbortController();
+    this.inFlight.add(controller);
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, this.deps.requestTimeoutMs ?? REQUEST_TIMEOUT_MS);
+    // Resolves when the request is abandoned, even if the transport never answers.
+    const aborted = new Promise<'abort'>((resolve) => {
+      controller.signal.addEventListener('abort', () => resolve('abort'));
+    });
     try {
-      const res = await doFetch(`${this.deps.apiBase}${path}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) return null;
-      const json = await res.json();
-      return isRecord(json) ? json : null;
+      const res = await Promise.race([
+        doFetch(`${this.deps.apiBase}${path}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        }),
+        aborted,
+      ]);
+      if (res === 'abort') return { ok: false, why: timedOut ? 'timeout' : 'aborted' };
+      if (!res.ok) return { ok: false, why: 'failed' };
+      const json = await Promise.race([res.json(), aborted]);
+      if (json === 'abort') return { ok: false, why: timedOut ? 'timeout' : 'aborted' };
+      return isRecord(json) ? { ok: true, body: json } : { ok: false, why: 'failed' };
     } catch {
-      return null;
+      if (controller.signal.aborted) return { ok: false, why: timedOut ? 'timeout' : 'aborted' };
+      return { ok: false, why: 'failed' };
+    } finally {
+      clearTimeout(timer);
+      this.inFlight.delete(controller);
     }
   }
 }

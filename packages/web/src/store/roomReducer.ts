@@ -25,6 +25,12 @@ export interface RoomState {
   auctionId: string;
   /** Highest seq applied. Snapshots set it. */
   lastSeq: number;
+  /**
+   * Message types already applied at `lastSeq`. The server sends bid_accepted, price and
+   * audit_event for one accepted bid under a single seq (R-RT-036), so a repeat of the same
+   * type is a duplicate but a different type is a new frame.
+   */
+  appliedAtSeq: readonly string[];
   resyncing: boolean;
   /** Messages that arrived while a resync was pending, oldest first. */
   held: readonly ServerMessage[];
@@ -65,6 +71,7 @@ export function initialRoomState(auctionId: string): RoomState {
   return {
     auctionId,
     lastSeq: 0,
+    appliedAtSeq: [],
     resyncing: false,
     held: [],
     snapshot: null,
@@ -90,7 +97,12 @@ function applySnapshot(state: RoomState, msg: Extract<ServerMessage, { t: 'state
   return {
     ...initialRoomState(state.auctionId === '' ? snap.auctionId : state.auctionId),
     lastSeq: msg.seq,
+    // The snapshot already contains what price and audit_event at this seq would add.
+    appliedAtSeq: ['state', 'price', 'audit_event'],
     snapshot: snap,
+    // A snapshot does not list this client's own bids, but they are still true: keep them.
+    recentBids:
+      state.auctionId === '' || state.auctionId === snap.auctionId ? state.recentBids : [],
     leaderPaddle: snap.roster.find((r) => r.bidderId === snap.leaderId)?.paddle ?? null,
     expectedBidderId: state.expectedBidderId,
     me: state.me,
@@ -102,6 +114,12 @@ function applySnapshot(state: RoomState, msg: Extract<ServerMessage, { t: 'state
   };
 }
 
+/** A price frame that repeats the current leader and amount (a seq filler) is not a new bid. */
+function isRepeatOfLastBid(bids: readonly BidRecord[], bidderId: string, amount: number): boolean {
+  const last = bids.at(-1);
+  return last !== undefined && last.bidderId === bidderId && last.amount === amount;
+}
+
 function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): RoomState {
   switch (msg.t) {
     case 'price':
@@ -110,7 +128,7 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
           ...state,
           leaderPaddle: msg.leaderPaddle,
           recentBids:
-            msg.leaderId === null
+            msg.leaderId === null || isRepeatOfLastBid(state.recentBids, msg.leaderId, msg.price)
               ? state.recentBids
               : [
                   ...state.recentBids,
@@ -180,6 +198,23 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
   }
 }
 
+type Step = { kind: 'dup' } | { kind: 'gap' } | { kind: 'applied'; state: RoomState };
+
+/** Decide what one sequenced message does to the state, given the current `lastSeq`. */
+function step(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): Step {
+  const seq = msg.seq ?? 0;
+  if (seq < state.lastSeq) return { kind: 'dup' };
+  if (seq === state.lastSeq) {
+    if (state.lastSeq === 0 || state.appliedAtSeq.includes(msg.t)) return { kind: 'dup' };
+    return {
+      kind: 'applied',
+      state: { ...apply(state, msg), appliedAtSeq: [...state.appliedAtSeq, msg.t] },
+    };
+  }
+  if (seq > state.lastSeq + 1) return { kind: 'gap' };
+  return { kind: 'applied', state: { ...apply(state, msg), lastSeq: seq, appliedAtSeq: [msg.t] } };
+}
+
 /**
  * Applies the held messages that follow on from the snapshot, in order. Anything after a gap is
  * dropped: if it was real, the next live message shows the gap and asks for a new snapshot.
@@ -187,18 +222,19 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
 function drainHeld(state: RoomState): RoomState {
   let current: RoomState = { ...state, held: [] };
   const later = state.held
-    .filter((m) => m.seq !== undefined && m.seq > state.lastSeq)
+    .filter((m) => m.seq !== undefined && m.seq >= state.lastSeq)
     .sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
   for (const msg of later) {
-    if (msg.t === 'state' || msg.seq === undefined || msg.seq === current.lastSeq) continue;
-    if (msg.seq !== current.lastSeq + 1) break;
-    current = { ...apply(current, msg), lastSeq: msg.seq };
+    if (msg.t === 'state') continue;
+    const r = step(current, msg);
+    if (r.kind === 'gap') break;
+    if (r.kind === 'applied') current = r.state;
   }
   return current;
 }
 
 function hold(state: RoomState, msg: ServerMessage): RoomState {
-  if (state.held.some((m) => m.seq === msg.seq)) return state;
+  if (state.held.some((m) => m.seq === msg.seq && m.t === msg.t)) return state;
   return { ...state, held: [...state.held, msg].slice(-MAX_HELD) };
 }
 
@@ -242,16 +278,17 @@ export function reduce(state: RoomState, ev: RoomEvent): ReduceResult {
     return { state: drainHeld({ ...applySnapshot(state, msg), held: state.held }), effects: [] };
   }
 
-  if (seq <= state.lastSeq) return { state, effects: [] };
+  if (seq < state.lastSeq) return { state, effects: [] };
 
   if (state.resyncing) return { state: hold(state, msg), effects: [] };
 
-  if (seq > state.lastSeq + 1) {
+  const r = step(state, msg);
+  if (r.kind === 'dup') return { state, effects: [] };
+  if (r.kind === 'gap') {
     return {
       state: { ...hold(state, msg), resyncing: true },
       effects: [{ type: 'resync', lastSeq: state.lastSeq }],
     };
   }
-
-  return { state: { ...apply(state, msg), lastSeq: seq }, effects: [] };
+  return { state: r.state, effects: [] };
 }
