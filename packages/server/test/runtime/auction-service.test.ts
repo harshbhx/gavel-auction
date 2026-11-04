@@ -17,6 +17,7 @@ import {
   type HoldRecord,
   type Journal,
   type PaymentAudit,
+  type ReconcileReport,
 } from '@gavel/payments';
 import { DEFAULT_FAKE_WEBHOOK_ID, FakePayPalServer } from '@gavel/payments/fake';
 import {
@@ -196,7 +197,11 @@ interface Run {
 }
 
 /** A, B and C bid; A leads at 13000. The auctioneer hammers early. */
-async function runToHammer(rig: Rig, service: AuctionService): Promise<Run> {
+async function runToHammer(
+  rig: Rig,
+  service: AuctionService,
+  beforeHammer?: (bidders: Bidder[]) => void,
+): Promise<Run> {
   const auctionId = rig.ids.mint<'AuctionId'>();
   const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
   const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
@@ -209,6 +214,7 @@ async function runToHammer(rig: Rig, service: AuctionService): Promise<Run> {
   await room.submitBid(a.conn, bid(rig, 12000));
   await room.submitBid(c.conn, bid(rig, 12500));
   await room.submitBid(a.conn, bid(rig, 13000));
+  beforeHammer?.([a, b, c]);
   await room.control(boss.conn, { controlId: 'hammer-1', action: 'hammer', args: { closeNow: 1 } });
   return { auctionId, room, a, b, c, screen: screen.transport };
 }
@@ -427,11 +433,27 @@ describe('auction service: webhooks', () => {
     expect((await rig.stores.holds.get(a.holdId))?.status).toBe('HELD');
     expect(await rig.stores.webhookEvents.listUnprocessed()).toEqual([]);
 
+    // The buyer really withdraws the authorization at PayPal; only then does the event count.
+    rig.paypal.core.void(a.authId);
     const good = signed('WH-G1', 'PAYMENT.AUTHORIZATION.VOIDED', { authId: a.authId }, 2);
     expect((await service.handleWebhook(good.rawBody, good.headers)).status).toBe(200);
     expect((await rig.stores.holds.get(a.holdId))?.status).toBe('VOIDED');
     // The same delivery again changes nothing.
     expect((await service.handleWebhook(good.rawBody, good.headers)).status).toBe(200);
+    expect(await rig.stores.webhookEvents.listUnprocessed()).toEqual([]);
+    await service.close();
+  });
+
+  it('ignores a void event while PayPal still holds the authorization (PAYMENTS-R3-11)', async () => {
+    const rig = await makeRig();
+    const service = rig.service();
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    // A delayed or reordered event for an authorization that is live.
+    const late = signed('WH-L1', 'PAYMENT.AUTHORIZATION.VOIDED', { authId: a.authId }, 1);
+    expect((await service.handleWebhook(late.rawBody, late.headers)).status).toBe(200);
+    expect((await rig.stores.holds.get(a.holdId))?.status).toBe('HELD');
     expect(await rig.stores.webhookEvents.listUnprocessed()).toEqual([]);
     await service.close();
   });
@@ -475,7 +497,6 @@ describe('auction service: crash at every boundary', () => {
       'journaled:capture_ok',
       'before:void',
       'after:void',
-      'journaled:void',
       'journaled:all_released',
       'before:engine:CompleteLot',
       'after:engine:CompleteLot',
@@ -485,6 +506,7 @@ describe('auction service: crash at every boundary', () => {
     ]) {
       expect(labels).toContain(expected);
     }
+    expect(labels.some((l) => l.startsWith('journaled:void_'))).toBe(true);
   });
 
   it('ends with exactly one capture whichever boundary the process dies at', async () => {
@@ -621,6 +643,39 @@ describe('auction service: round 3 blocking fixes (RT3)', () => {
     expect(Object.keys(journal.voids)).toContain(run.b.id);
     expect(Object.keys(journal.voids)).toContain(run.c.id);
     expect(Object.keys(journal.voids)).not.toContain(run.b.holdId);
+    await service.close();
+  });
+});
+
+describe('auction service: reconcile after settlement (INT-R3-15)', () => {
+  it('runs reconcile once the journal is SETTLED and hands over the report', async () => {
+    const rig = await makeRig();
+    const reports: ReconcileReport[] = [];
+    const service = rig.service({ onReconcile: (r) => void reports.push(r) });
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    expect(reports.length).toBeGreaterThan(0);
+    const last = reports[reports.length - 1];
+    expect(last?.journalState).toBe('SETTLED');
+    const bad = ['STATUS_CONFLICT', 'MISSING_CAPTURE', 'EXTRA_CAPTURE', 'AMOUNT_MISMATCH'];
+    expect((last?.findings ?? []).filter((f) => bad.includes(f.code))).toEqual([]);
+    await service.close();
+  });
+
+  it('keeps the settlement settled when the report handler throws', async () => {
+    const rig = await makeRig();
+    const errors: unknown[] = [];
+    const service = rig.service({
+      onReconcile: () => {
+        throw new Error('sink down');
+      },
+      onError: (_id, e) => void errors.push(e),
+    });
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    expect(errors.length).toBeGreaterThan(0);
     await service.close();
   });
 });
@@ -1227,6 +1282,36 @@ describe('auction service: leftover red-team round 3 (PAY-73)', () => {
     const auctionId = rig.ids.mint<'AuctionId'>();
     await service.createAuction(auctionId, config, 'auctioneer-sub');
     expect(await service.acceptsHolds(auctionId)).toBe(true);
+    await service.close();
+  });
+});
+
+describe('auction service: void phase of the payments package (PAYMENTS-R3-03)', () => {
+  it('sends a settlement with a void that never works to review instead of pending forever', async () => {
+    const rig = await makeRig();
+    const service = rig.service({
+      retryDelayMs: 3_600_000,
+      resumeIntervalMs: 0,
+      maxVoidResumes: 1,
+      onError: () => undefined,
+    });
+    // Only the losers' voids fail; the winner's capture and remainder go through.
+    const run = await runToHammer(rig, service, (bidders) => {
+      for (const b of bidders.slice(1)) rig.paypal.core.inject('void', 'http_500', b.authId, 1000);
+    });
+    await service.idle();
+    expect((await journalOf(rig, run.auctionId)).state).toBe('VOIDING');
+    for (let i = 0; i < 5; i++) {
+      await service.resume();
+      await service.idle();
+    }
+    expect((await journalOf(rig, run.auctionId)).state).toBe('FAILED_NEEDS_REVIEW');
+    // The winner was charged once, and the room hears that the result is under review.
+    expect(rig.paypal.core.getAuthorization(run.a.authId).captures).toHaveLength(1);
+    const last = (await events(rig, run.auctionId))
+      .filter((e) => e.type === 'settlement_update')
+      .at(-1);
+    expect(last).toMatchObject({ auctionState: 'FAILED_NEEDS_REVIEW' });
     await service.close();
   });
 });

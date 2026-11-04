@@ -1,0 +1,58 @@
+{
+  "name": "revoke: a revoked bidder cannot bid",
+  "parity": false,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "b",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "a",
+      "amount": 1000
+    },
+    {
+      "op": "revoke",
+      "at": 2000,
+      "bidder": "a"
+    },
+    {
+      "op": "bid",
+      "at": 3000,
+      "bidder": "a",
+      "amount": 1200
+    },
+    {
+      "op": "bid",
+      "at": 4000,
+      "bidder": "b",
+      "amount": 1000
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    }
+  ],
+  "expect": {
+    "winner": "b",
+    "price": 1000,
+    "ranking": [["b", 1000]],
+    "rejects": ["ceiling_revoked"],
+    "endsAt": 100000
+  }
+}

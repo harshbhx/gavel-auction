@@ -1,0 +1,50 @@
+{
+  "name": "abort: a hammered lot cannot be aborted",
+  "parity": false,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "b",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "a",
+      "amount": 1000
+    },
+    {
+      "op": "bid",
+      "at": 2000,
+      "bidder": "b",
+      "amount": 1100
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    },
+    {
+      "op": "abort",
+      "at": 100001
+    }
+  ],
+  "expect": {
+    "winner": "b",
+    "price": 1100,
+    "rejects": ["lot_frozen"],
+    "endsAt": 100000
+  }
+}

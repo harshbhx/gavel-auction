@@ -1,0 +1,68 @@
+{
+  "name": "promote: proxy runner-up is repriced from the remaining bids",
+  "parity": false,
+  "config": {
+    "mode": "proxy",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "b",
+      "ceiling": 100000
+    },
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "c",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "a",
+      "amount": 5000
+    },
+    {
+      "op": "bid",
+      "at": 2000,
+      "bidder": "b",
+      "amount": 3000
+    },
+    {
+      "op": "bid",
+      "at": 3000,
+      "bidder": "c",
+      "amount": 2000
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    },
+    {
+      "op": "promote",
+      "at": 100001,
+      "bidder": "a"
+    }
+  ],
+  "expect": {
+    "winner": "b",
+    "price": 2100,
+    "ranking": [
+      ["a", 5000],
+      ["b", 3000],
+      ["c", 2000]
+    ],
+    "rejects": [],
+    "endsAt": 100000
+  }
+}

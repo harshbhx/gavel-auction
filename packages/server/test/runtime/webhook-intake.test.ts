@@ -1,5 +1,5 @@
 import { MemoryHoldStore, MemoryWebhookEventStore } from '@gavel/payments';
-import type { HoldRecord, VerifiedWebhook } from '@gavel/payments';
+import type { HoldRecord, HoldTruth, VerifiedWebhook } from '@gavel/payments';
 import { describe, expect, it } from 'vitest';
 import { WebhookIntake } from '../../src/runtime/webhook-intake';
 
@@ -20,15 +20,26 @@ function rig(): {
   events: MemoryWebhookEventStore;
   seen: string[];
   failNext: { on: boolean };
+  truthStatus: { value: HoldTruth['status'] };
 } {
   const holds = new MemoryHoldStore();
   const events = new MemoryWebhookEventStore();
   const seen: string[] = [];
   const failNext = { on: false };
+  const truthStatus: { value: HoldTruth['status'] } = { value: 'DENIED' };
   const intake = new WebhookIntake({
     events,
     holds,
     clock: { nowMs: () => 1000 },
+    truth: async (h) => ({
+      holdId: h.holdId,
+      authId: h.authId ?? '',
+      status: truthStatus.value,
+      amountCents: h.ceilingCents,
+      capturedCents: 0,
+      captures: [],
+      observedAtMs: 1000,
+    }),
     listAuctions: async () => ['AU1'],
     onHoldStatus: async (h) => {
       if (failNext.on) {
@@ -38,7 +49,7 @@ function rig(): {
       seen.push(`${h.holdId}:${h.status}`);
     },
   });
-  return { intake, holds, events, seen, failNext };
+  return { intake, holds, events, seen, failNext, truthStatus };
 }
 
 const denied = {
@@ -66,5 +77,51 @@ describe('webhook intake crash safety (ENG-R3-04)', () => {
     expect(await r.intake.sweep()).toBe(1);
     expect(r.seen).toEqual(['H1:DENIED']);
     expect(await r.events.listUnprocessed()).toEqual([]);
+  });
+
+  it('writes the status the processor reports, not the one the event names (PAYMENTS-R3-11)', async () => {
+    const r = rig();
+    await r.holds.put(hold);
+    // The event says denied, the processor says the authorization is still live.
+    r.truthStatus.value = 'CREATED';
+    await r.intake.accept(denied);
+    expect((await r.holds.get('H1'))?.status).toBe('HELD');
+    expect(r.seen).toEqual([]);
+    expect(await r.events.listUnprocessed()).toEqual([]);
+  });
+
+  it('keeps a partly captured hold HELD when a capture event arrives (PAYMENTS-R3-11)', async () => {
+    const r = rig();
+    await r.holds.put(hold);
+    r.truthStatus.value = 'PARTIALLY_CAPTURED';
+    await r.intake.accept({
+      ...denied,
+      rawBody: Buffer.from(
+        JSON.stringify({
+          id: 'WH-2',
+          event_type: 'PAYMENT.CAPTURE.COMPLETED',
+          resource: { authId: 'AUTH-1' },
+        }),
+      ),
+    });
+    expect((await r.holds.get('H1'))?.status).toBe('HELD');
+  });
+
+  it('leaves the event for the sweep when the truth read fails (PAYMENTS-R3-11)', async () => {
+    const r = rig();
+    await r.holds.put(hold);
+    const failing = new WebhookIntake({
+      events: r.events,
+      holds: r.holds,
+      clock: { nowMs: () => 1000 },
+      truth: async () => {
+        throw new Error('paypal unavailable');
+      },
+      listAuctions: async () => ['AU1'],
+      onHoldStatus: async () => undefined,
+    });
+    await failing.accept(denied);
+    expect((await r.holds.get('H1'))?.status).toBe('HELD');
+    expect(await r.events.listUnprocessed()).toHaveLength(1);
   });
 });

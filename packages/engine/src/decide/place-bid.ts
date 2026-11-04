@@ -92,6 +92,9 @@ export function decidePlaceBid(state: AuctionState, cmd: PlaceBidCommand): Decid
   const check = validateBid(state, lot, cmd);
 
   if (!check.ok) {
+    if (lot.rejectedBids >= LIMITS.rejectedPerLot) {
+      throw new EngineError('limit_exceeded', 'rejected bids');
+    }
     const events: LedgerEvent[] = [];
     if (lot.status === 'OPEN' && lot.endsAt !== null && cmd.at >= lot.endsAt) {
       events.push({ type: 'LOT_CLOSING', payload: { lotId: cmd.lotId, reason: 'deadline' } });

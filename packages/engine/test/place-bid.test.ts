@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { decide } from '../src/decide/index.js';
 import type { BidAudit } from '../src/events.js';
 import { stateDigest } from '../src/replay.js';
+import { LIMITS } from '../src/types.js';
 import { A, B, L1, bid, errCode, lotConfig, mk, open, run, scene } from './decide-helpers.js';
 
 const soft = { windowMs: 30000, extensionMs: 30000, maxExtensions: 3 };
@@ -12,7 +13,15 @@ describe('decide PlaceBid', () => {
     const r = bid(s, 200, A, 500); // below reserve
     expect(r.entries.map((e) => e.type)).toEqual(['BID_REJECTED']);
     expect(r.result.outcome).toEqual({ kind: 'rejected', reason: 'below_reserve' });
-    const strip = (st: typeof s) => stateDigest({ ...st, head: s.head, commands: {} });
+    const strip = (st: typeof s) =>
+      stateDigest({
+        ...st,
+        head: s.head,
+        commands: {},
+        lots: Object.fromEntries(
+          Object.entries(st.lots).map(([k, l]) => [k, { ...l, rejectedBids: 0 }]),
+        ),
+      });
     expect(strip(r.state)).toBe(strip(s));
     expect(r.state.lots[L1]?.bids).toEqual([]);
     expect(r.entries[0]?.payload).toMatchObject({ amountCents: 500, reason: 'below_reserve' });
@@ -193,6 +202,21 @@ describe('decide PlaceBid', () => {
       reason: 'lot_not_open',
     });
     expect(errCode(() => bid(s, 200, A, 1000, B))).toBe('bad_command');
+  });
+
+  it('T-ENG-147 R-ENG-007 ENG-RT-14 rejected bids per lot are capped', () => {
+    const s0 = open(scene(), L1);
+    const lot = s0.lots[L1];
+    if (lot === undefined) throw new Error('lot missing');
+    const full = {
+      ...s0,
+      lots: { ...s0.lots, [L1]: { ...lot, rejectedBids: LIMITS.rejectedPerLot - 1 } },
+    };
+    const last = bid(full, 200, A, 500);
+    expect(last.entries.map((e) => e.type)).toEqual(['BID_REJECTED']);
+    expect(last.state.lots[L1]?.rejectedBids).toBe(LIMITS.rejectedPerLot);
+    expect(errCode(() => bid(last.state, 210, A, 500))).toBe('limit_exceeded');
+    expect(bid(last.state, 210, A, 1000).result.outcome.kind).toBe('accepted');
   });
 
   it('R-ENG-083 rejects an over-long transcript', () => {

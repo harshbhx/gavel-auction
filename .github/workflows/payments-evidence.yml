@@ -1,0 +1,36 @@
+name: payments-evidence
+# Runs the latency measurement and the settlement demo against the fake PayPal and keeps the
+# output as an artifact. No secrets; the sandbox variants are run by hand.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/payments-evidence.yml'
+      - 'packages/payments/gates/measure.ts'
+      - 'packages/payments/demo/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Measure (fake)
+        run: npm run measure -w @gavel/payments -- --fake --out "$RUNNER_TEMP/evidence" | tee "$RUNNER_TEMP/measure.txt"
+      - name: Demo (fake)
+        run: npm run demo:settle -w @gavel/payments | tee "$RUNNER_TEMP/demo.txt"
+      - name: Crash-resume check (fake)
+        run: npm run demo:settle -w @gavel/payments -- --check
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: payments-evidence
+          path: |
+            ${{ runner.temp }}/evidence
+            ${{ runner.temp }}/measure.txt
+            ${{ runner.temp }}/demo.txt
