@@ -44,3 +44,4 @@ export type {
   PublicLotView,
   PublicView,
 } from './projections.js';
+export type { DecisionHook, DecisionMetric } from './runtime-metrics.js';
