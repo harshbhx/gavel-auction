@@ -1,0 +1,38 @@
+{
+  "name": "soft close: bid 1 ms before window does not extend",
+  "parity": true,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000,
+    "softCloseWindow": 10000,
+    "softCloseExtension": 15000,
+    "maxExtensions": 2
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 89999,
+      "bidder": "a",
+      "amount": 1000
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    }
+  ],
+  "expect": {
+    "winner": "a",
+    "price": 1000,
+    "ranking": [["a", 1000]],
+    "rejects": [],
+    "endsAt": 100000
+  }
+}

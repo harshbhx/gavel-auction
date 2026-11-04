@@ -1,0 +1,47 @@
+{
+  "name": "proxy: lowering own max rejected",
+  "parity": true,
+  "config": {
+    "mode": "proxy",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "a",
+      "amount": 3000
+    },
+    {
+      "op": "bid",
+      "at": 2000,
+      "bidder": "a",
+      "amount": 2500
+    },
+    {
+      "op": "bid",
+      "at": 3000,
+      "bidder": "a",
+      "amount": 3000
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    }
+  ],
+  "expect": {
+    "winner": "a",
+    "price": 1000,
+    "ranking": [["a", 3000]],
+    "rejects": ["not_higher_than_own_max", "not_higher_than_own_max"],
+    "endsAt": 100000
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "reject order: unregistered beats over_ceiling",
+  "parity": true,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 2000
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "x",
+      "amount": 9999
+    },
+    {
+      "op": "hammer",
+      "at": 100000
+    }
+  ],
+  "expect": {
+    "winner": null,
+    "price": 0,
+    "ranking": [],
+    "rejects": ["unregistered"],
+    "endsAt": 100000
+  }
+}
