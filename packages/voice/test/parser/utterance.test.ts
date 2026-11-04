@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { detectIntent } from '../../src/parser/intent.js';
 import { parseWithAsr, repairTokens } from '../../src/parser/asr.js';
 import { parseBid } from '../../src/parser/parse.js';
-import { parseUtterance } from '../../src/parser/utterance.js';
+import { parseUtterance, parseUtteranceOutcome } from '../../src/parser/utterance.js';
+import { PendingCandidateStore } from '../../src/segment/dedupe.js';
 
 const ctx = { speakerBidderId: '7' };
 
@@ -101,5 +102,81 @@ describe('red-team: one entry point for all stages (R-VOX-043, 045, 046, 047, 05
     expect(parseUtterance('paddle 12 for 1,250', ctx)).toEqual(
       parseUtterance('paddle 12 for 1,250', ctx),
     );
+  });
+});
+
+describe('red-team round 2: retraction signal (R-VOX-044, 050)', () => {
+  it('parseUtteranceOutcome reports cancelPending so the pending store is cleared', () => {
+    const store = new PendingCandidateStore();
+    store.set({ id: 'c1', bidder: { kind: 'paddle', value: '7' }, amountCents: 35000 }, 1000);
+    const pendingCandidate = store.get(4000);
+    const out = parseUtteranceOutcome('scratch that', { speakerBidderId: '7', pendingCandidate });
+    expect(out.result.status).toBe('none');
+    expect(out.result.reason).toBe('retract');
+    expect(out.cancelPending).toBe(true);
+    if (out.cancelPending) store.clear();
+    expect(store.get(4100)).toBeUndefined();
+  });
+
+  it('does not cancel for another speaker or an ordinary bid', () => {
+    const pendingCandidate = {
+      id: 'c1',
+      bidder: { kind: 'paddle' as const, value: '7' },
+      amountCents: 35000,
+      ageMs: 1000,
+    };
+    expect(
+      parseUtteranceOutcome('scratch that', { speakerBidderId: '9', pendingCandidate })
+        .cancelPending,
+    ).toBe(false);
+    expect(parseUtteranceOutcome('four hundred', ctx).cancelPending).toBe(false);
+  });
+});
+
+describe('red-team round 2: withdrawals and limits are not bids (R-VOX-045, 046)', () => {
+  for (const text of [
+    'count me out at four hundred',
+    "I'm done at three hundred",
+    'im done at three hundred',
+    'im out at three hundred',
+  ]) {
+    it(`"${text}" is none`, () => {
+      const r = parseUtterance(text, ctx);
+      expect(r.status).toBe('none');
+      expect(r.amountCents).toBeNull();
+    });
+  }
+  for (const text of [
+    "I'll stop at three hundred",
+    'my limit is three hundred',
+    'my budget is five hundred',
+  ]) {
+    it(`"${text}" is never an auto-accepted bid`, () => {
+      const r = parseUtterance(text, ctx);
+      expect(r.status).not.toBe('bid');
+      expect(r.amountCents).toBeNull();
+    });
+  }
+});
+
+describe('red-team round 2: "for" after a spoken paddle (R-VOX-042)', () => {
+  it('keeps the preposition in "paddle seven for three hundred"', () => {
+    expect(repairTokens(['paddle', 'seven', 'for', 'three', 'hundred']).tokens).toEqual([
+      'paddle',
+      'seven',
+      'for',
+      'three',
+      'hundred',
+    ]);
+    const r = parseUtterance('paddle seven for three hundred', {});
+    expect(r.status).toBe('bid');
+    expect(r.bidder).toEqual({ kind: 'paddle', value: '7' });
+    expect(r.amountCents).toBe(30000);
+  });
+
+  it('reads "paddle twelve for four hundred" as paddle 12 and 400', () => {
+    const r = parseUtterance('paddle twelve for four hundred', {});
+    expect(r.bidder).toEqual({ kind: 'paddle', value: '12' });
+    expect(r.amountCents).toBe(40000);
   });
 });
