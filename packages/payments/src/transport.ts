@@ -28,7 +28,7 @@ export interface TransportInit {
   method: string;
   headers: Record<string, string>;
   body?: string;
-  /** Aborted when the per-attempt timeout elapses. */
+  /** Aborted by the transport when the per-request timeout elapses. */
   signal?: AbortSignal;
 }
 
@@ -47,7 +47,7 @@ export interface TransportOptions {
   maxAttempts?: number;
   /** Upper bound for a Retry-After wait. Default 30 s. */
   retryAfterMaxMs?: number;
-  /** Per-attempt timeout covering headers and body. Default 10 s (R-PAY-016). */
+  /** Per-attempt timeout in ms. Default 10 s. */
   timeoutMs?: number;
 }
 
@@ -174,8 +174,15 @@ export class Transport {
       let result: TransportResult | undefined;
       let failure: PayPalError | undefined;
 
+      const controller = new AbortController();
+      let timedOut = false;
+      const timer = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, this.timeoutMs);
       try {
-        const { res, text } = await this.attempt(req.url, base);
+        const res = await this.doFetch(req.url, { ...base, signal: controller.signal });
+        const text = await res.text();
         if (!RETRYABLE_STATUS.has(res.status)) {
           result = { status: res.status, headers: res.headers, text, attempts: attempt };
         } else {
@@ -183,7 +190,12 @@ export class Transport {
           failure = classifyError(res.status, res.headers, text);
         }
       } catch (cause) {
-        failure = classifyNetworkError(cause, req.method);
+        failure = classifyNetworkError(
+          timedOut ? new Error(`timed out after ${this.timeoutMs} ms`) : cause,
+          req.method,
+        );
+      } finally {
+        clearTimeout(timer);
       }
 
       this.report(req, attempt, startedAt, result, failure);
@@ -196,37 +208,6 @@ export class Transport {
     }
     if (lastError === undefined) throw new Error('transport: no attempt was made');
     throw lastError;
-  }
-
-  /**
-   * One request with a hard deadline. The signal is passed to fetch, and the wait
-   * is also raced against the deadline so a fetch that ignores the signal cannot
-   * hold the caller (and its lease) forever. A timeout is a network failure with
-   * an unknown outcome.
-   */
-  private async attempt(
-    url: string,
-    base: TransportInit,
-  ): Promise<{ res: TransportResponse; text: string }> {
-    const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const deadline = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => {
-        controller.abort();
-        reject(new Error(`request timed out after ${this.timeoutMs} ms`));
-      }, this.timeoutMs);
-    });
-    const work = (async () => {
-      const res = await this.doFetch(url, { ...base, signal: controller.signal });
-      const text = await res.text();
-      return { res, text };
-    })();
-    work.catch(() => undefined);
-    try {
-      return await Promise.race([work, deadline]);
-    } finally {
-      if (timer !== undefined) clearTimeout(timer);
-    }
   }
 
   /** One log line per attempt (R-PAY-019, R-PAY-130) plus the call counter. */

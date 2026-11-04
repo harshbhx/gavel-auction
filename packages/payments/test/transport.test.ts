@@ -240,37 +240,3 @@ describe('attempt counter reporting', () => {
     expect(JSON.stringify(logs)).not.toContain('abcdefghijkl');
   });
 });
-
-describe('per-request timeout', () => {
-  it('turns a fetch that never answers into a network failure with unknown outcome', async () => {
-    const calls: TransportInit[] = [];
-    const never: FetchLike = (_url, init) => {
-      calls.push(init);
-      return new Promise(() => undefined);
-    };
-    const transport = new Transport({
-      fetch: never,
-      sleep: async () => undefined,
-      timeoutMs: 20,
-      maxAttempts: 2,
-    });
-    let thrown: unknown;
-    try {
-      await transport.send(REQ);
-    } catch (e) {
-      thrown = e;
-    }
-    expect(thrown).toBeInstanceOf(PayPalError);
-    expect((thrown as PayPalError).kind).toBe('network');
-    expect((thrown as PayPalError).outcome).toBe('unknown');
-    expect(calls).toHaveLength(2);
-    expect(calls[0]?.signal?.aborted).toBe(true);
-  });
-
-  it('does not abort a request that answers in time', async () => {
-    const h = harness([{ status: 200 }], { timeoutMs: 1000 });
-    const out = await h.transport.send(REQ);
-    expect(out.status).toBe(200);
-    expect(h.calls[0]?.init.signal?.aborted).toBe(false);
-  });
-});

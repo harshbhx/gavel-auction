@@ -1,6 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { writeFileAtomicSync } from './atomic.js';
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import {
   MemoryHoldStore,
   MemoryJournalStore,
@@ -12,10 +11,9 @@ import {
 
 /**
  * JSON-file stores for demos and crash tests: the in-memory behaviour plus a
- * snapshot written after every mutation (fsynced unique temp file, rename, fsynced
- * directory, so a crash leaves the old or the new file, never a mix). One process
- * owns a file; there is no cross-process locking, and a second writer on the same
- * path overwrites the first. A new instance on the same path sees the saved state,
+ * snapshot written after every mutation (temp file, then rename, so a reader
+ * never sees a half-written file). One process owns a file; there is no
+ * cross-process locking. A new instance on the same path sees the saved state,
  * which is how tests model a restart.
  */
 
@@ -27,17 +25,14 @@ function readJson<T>(path: string, empty: T): T {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return empty;
     throw e;
   }
-  try {
-    return JSON.parse(text) as T;
-  } catch (e) {
-    throw new Error(
-      `store file ${path} is not valid JSON (${e instanceof Error ? e.message : String(e)}); restore it from a backup instead of starting empty`,
-    );
-  }
+  return JSON.parse(text) as T;
 }
 
 function writeJsonAtomic(path: string, value: unknown): void {
-  writeFileAtomicSync(path, JSON.stringify(value));
+  mkdirSync(dirname(path), { recursive: true });
+  const tmp = `${path}.tmp`;
+  writeFileSync(tmp, JSON.stringify(value), 'utf8');
+  renameSync(tmp, path);
 }
 
 export class FileJournalStore extends MemoryJournalStore {

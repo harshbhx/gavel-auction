@@ -215,41 +215,8 @@ export function extractRawEvent(requestBody: string): string | null {
   return null;
 }
 
-/** The webhook body is not exactly one JSON object with a string id. Maps to HTTP 401. */
-export class InvalidWebhookBody extends Error {
-  constructor(why: string) {
-    super(`invalid webhook body: ${why}`);
-    this.name = 'InvalidWebhookBody';
-  }
-}
-
-/**
- * Parses the raw body once, for validation only (the original bytes are kept for
- * the splice): it must be a single JSON object with no trailing bytes and a string
- * `id` (R-PAY-090, R-PAY-092).
- */
-function assertSingleEventObject(rawBody: string): void {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(rawBody);
-  } catch {
-    throw new InvalidWebhookBody('not a single JSON value');
-  }
-  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new InvalidWebhookBody('not a JSON object');
-  }
-  if (typeof (parsed as Record<string, unknown>)['id'] !== 'string') {
-    throw new InvalidWebhookBody('missing id');
-  }
-}
-
-/**
- * Builds the body of POST /v1/notifications/verify-webhook-signature by raw
- * splicing. The body is validated first so a crafted body cannot add keys (such as
- * a second webhook_id) to the request; throws InvalidWebhookBody otherwise.
- */
+/** Builds the body of POST /v1/notifications/verify-webhook-signature by raw splicing. */
 export function buildVerifyRequest(w: SignedWebhook, webhookId: string): string {
-  assertSingleEventObject(w.rawBody);
   const h = (name: string): string => JSON.stringify(w.headers[name] ?? '');
   return (
     '{' +
@@ -295,12 +262,6 @@ export function verifyFakeWebhook(
   }
   if (parsed === null || typeof parsed !== 'object') return failure;
   const o = parsed as Record<string, unknown>;
-  // The first textual hit must be the real top-level event, not text inside a string.
-  try {
-    if (JSON.stringify(JSON.parse(rawEvent)) !== JSON.stringify(o['webhook_event'])) return failure;
-  } catch {
-    return failure;
-  }
   const id = o['transmission_id'];
   const time = o['transmission_time'];
   const sig = o['transmission_sig'];

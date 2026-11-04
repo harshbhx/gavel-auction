@@ -57,9 +57,6 @@ export type FakeFaultKind =
   | 'timeout_before'
   | 'timeout_after_success'
   | 'http_500'
-  | 'http_429'
-  | 'connection_reset'
-  | 'forget_idempotency'
   | 'capture_declined';
 
 export type FakeOp = 'order' | 'authorize' | 'capture' | 'void' | 'reauthorize' | 'get';
@@ -78,8 +75,6 @@ interface AuthRecord {
   id: string;
   payer: string;
   holdCents: number;
-  /** The amount the buyer authorized; never raised by a reauthorization (R-PAY-061, R-PAY-071). */
-  ceilingCents: number;
   startMs: number;
   status: AuthStatus;
   captures: FakeCaptureRecord[];
@@ -209,12 +204,6 @@ export class FakePayPalCore {
 
   /** Arms a fault for the next `times` matching calls. targetId null matches any. */
   inject(op: FakeOp, kind: FakeFaultKind, targetId: string | null = null, times = 1): void {
-    if (kind === 'capture_declined' && op !== 'capture') {
-      throw new Error(`fault ${kind} only applies to capture, not ${op}`);
-    }
-    if (kind === 'forget_idempotency' && op === 'get') {
-      throw new Error(`fault ${kind} does not apply to reads`);
-    }
     this.faults.push({ op, kind, targetId, times });
   }
 
@@ -243,20 +232,6 @@ export class FakePayPalCore {
       }
     }
     return null;
-  }
-
-  /** Faults that stop a call before it has any effect. Shared by writes and reads. */
-  private failBeforeApply(op: FakeOp, fault: FakeFaultKind | null): void {
-    if (fault === 'timeout_before' || fault === 'connection_reset') throw new FakeTimeout(op);
-    if (fault === 'http_500') throw new FakeApiError(500, 'INTERNAL_SERVICE_ERROR');
-    if (fault === 'http_429') throw new FakeApiError(429, 'RATE_LIMIT_REACHED');
-  }
-
-  /** A read (GET) is faulted like any call; a read has no effect to time out after. */
-  private readFault(id: string): void {
-    const fault = this.takeFault('get', id);
-    this.failBeforeApply('get', fault);
-    if (fault === 'timeout_after_success') throw new FakeTimeout('get');
   }
 
   private static hasFinal(a: AuthRecord): boolean {
@@ -297,10 +272,9 @@ export class FakePayPalCore {
   ): T {
     this.calls.push({ op, id });
     const fault = this.takeFault(op, id);
-    this.failBeforeApply(op, fault);
-    // forget_idempotency: the server has lost its table, so the retry executes again.
-    const key =
-      requestId === undefined || fault === 'forget_idempotency' ? null : `${op}|${id}|${requestId}`;
+    if (fault === 'timeout_before') throw new FakeTimeout(op);
+    if (fault === 'http_500') throw new FakeApiError(500, 'INTERNAL_SERVICE_ERROR');
+    const key = requestId === undefined ? null : `${op}|${id}|${requestId}`;
     if (key !== null) {
       let stored: T | undefined;
       try {
@@ -366,7 +340,6 @@ export class FakePayPalCore {
     authId?: string;
   } {
     this.calls.push({ op: 'get', id: orderId });
-    this.readFault(orderId);
     const o = this.orders.get(orderId);
     if (o === undefined) throw new FakeApiError(404, 'RESOURCE_NOT_FOUND');
     const view = { id: o.id, status: o.status, holdId: o.holdId, amountCents: o.amountCents };
@@ -401,7 +374,6 @@ export class FakePayPalCore {
       id: this.nextId('AUTH'),
       payer,
       holdCents: amountCents,
-      ceilingCents: amountCents,
       startMs: this.clock.nowMs(),
       status: 'CREATED',
       captures: [],
@@ -419,7 +391,6 @@ export class FakePayPalCore {
 
   getAuthorization(authId: string): FakeAuthView {
     this.calls.push({ op: 'get', id: authId });
-    this.readFault(authId);
     const a = this.auth(authId);
     return {
       id: a.id,
@@ -486,8 +457,6 @@ export class FakePayPalCore {
       }
       a.status = 'VOIDED';
       a.voidEffects += 1;
-      // Voiding a partially captured authorization releases the open remainder (assumed, G1).
-      if (a.captures.length > 0) a.remainderVoided = true;
       this.emit('PAYMENT.AUTHORIZATION.VOIDED', { authId: a.id, reason: 'void' });
       return { id: a.id, status: a.status };
     });
@@ -506,13 +475,7 @@ export class FakePayPalCore {
       if (this.clock.nowMs() - a.startMs <= this.honorMs) {
         throw new FakeApiError(422, 'REAUTHORIZATION_TOO_EARLY');
       }
-      if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
-        throw new FakeApiError(400, 'INVALID_AMOUNT');
-      }
-      if (amountCents < FakePayPalCore.capturedOf(a)) {
-        throw new FakeApiError(422, 'REAUTHORIZATION_BELOW_CAPTURED');
-      }
-      if (amountCents > a.ceilingCents || amountCents > this.limit(a.holdCents)) {
+      if (amountCents > this.limit(a.holdCents)) {
         throw new FakeApiError(422, 'REAUTHORIZATION_AMOUNT_EXCEEDS_LIMIT');
       }
       a.holdCents = amountCents;
@@ -550,13 +513,8 @@ export class FakePayPalCore {
 
   // ---------- invariants
 
-  /**
-   * Ported from check_invariants; throws Error on the first violation. The total
-   * captured never exceeds the buyer's ceiling (R-PAY-061), independently of the
-   * over-capture limit the fake tolerates; pass allowOverCapture only in tests
-   * of that limit itself.
-   */
-  checkInvariants(opts: { allowOverCapture?: boolean } = {}): true {
+  /** Ported from check_invariants; throws Error on the first violation. */
+  checkInvariants(): true {
     for (const a of this.auths.values()) {
       this.refresh(a);
       const captured = FakePayPalCore.capturedOf(a);
@@ -564,9 +522,6 @@ export class FakePayPalCore {
         throw new Error(`${a.id} ${msg}`);
       };
       if (captured > this.limit(a.holdCents)) fail('captured above cap');
-      if (opts.allowOverCapture !== true && captured > a.ceilingCents) {
-        fail('captured above the authorized ceiling');
-      }
       if (a.captures.filter((c) => c.final).length > 1) fail('has more than one final capture');
       const last = a.captures[a.captures.length - 1];
       if (FakePayPalCore.hasFinal(a) && last !== undefined && !last.final)
@@ -589,9 +544,7 @@ export class FakePayPalCore {
     const a = this.auths.get(authId);
     if (a === undefined) throw new FakeApiError(404, 'RESOURCE_NOT_FOUND');
     this.refresh(a);
-    if (a.status === 'VOIDED' || a.status === 'EXPIRED') {
-      return Math.max(0, a.holdCents - FakePayPalCore.capturedOf(a));
-    }
+    if (a.status === 'VOIDED' || a.status === 'EXPIRED') return a.holdCents;
     if (FakePayPalCore.hasFinal(a)) {
       const remainder = Math.max(0, a.holdCents - FakePayPalCore.capturedOf(a));
       return this.autoReleaseRemainder || a.remainderVoided ? remainder : 0;

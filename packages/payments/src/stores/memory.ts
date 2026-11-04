@@ -179,13 +179,6 @@ export class MemoryWebhookEventStore implements WebhookEventStore {
       .sort((a, b) => a.receivedAtMs - b.receivedAtMs || (a.id < b.id ? -1 : 1))
       .map(clone);
   }
-
-  async listUnprocessed(): Promise<StoredWebhook[]> {
-    return [...this.events.values()]
-      .filter((e) => e.result === undefined)
-      .sort((a, b) => a.receivedAtMs - b.receivedAtMs || (a.id < b.id ? -1 : 1))
-      .map(clone);
-  }
 }
 
 /** In-memory HoldStore. */

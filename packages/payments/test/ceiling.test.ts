@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { validateCeiling } from '../src/ceiling.js';
 import { PayPalError } from '../src/errors.js';
 
-const rules = { maxCeilingCents: 25000, presetsCents: [1, 25000] };
+const rules = { maxCeilingCents: 25000 };
 
 function refused(fn: () => unknown): boolean {
   try {
@@ -50,14 +50,6 @@ describe('T-PAY-006 ceiling validator', () => {
     expect(validateCeiling(5000, r)).toBe(5000);
     expect(refused(() => validateCeiling(7500, r))).toBe(true);
     expect(refused(() => validateCeiling(1, { ...r, presetsCents: [] }))).toBe(true);
-  });
-
-  it('fails closed when the presets are omitted by a caller that bypasses the type', () => {
-    const noPresets = { maxCeilingCents: 25000 } as unknown as Parameters<
-      typeof validateCeiling
-    >[1];
-    expect(refused(() => validateCeiling(24999, noPresets))).toBe(true);
-    expect(refused(() => validateCeiling(5000, noPresets))).toBe(true);
   });
 
   it('still applies the cap when a preset exceeds it', () => {

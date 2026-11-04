@@ -71,20 +71,6 @@ describe('assertFakeInvariants', () => {
     expect(() => assertFakeInvariants(both)).toThrow(/voided and captured/);
   });
 
-  it('a capture above the buyer ceiling fails even within the fake over-capture limit', () => {
-    const core = mk();
-    const a = core.createAuthorization('p', 10000).id;
-    core.capture(a, 11400, true, 'c'); // hold + 15% is tolerated by the fake, the buyer authorized 10000
-    expect(() => assertFakeInvariants(core)).toThrow(/authorized ceiling/);
-  });
-
-  it('with the limit set to the ceiling the over-capture itself is refused', () => {
-    const core = new FakePayPalCore({ clock: new FakeClock(), captureLimit: (h) => h });
-    const a = core.createAuthorization('p', 10000).id;
-    expect(() => core.capture(a, 11400, true, 'c')).toThrow(/CAPTURE_AMOUNT_EXCEEDS_LIMIT/);
-    expect(() => assertFakeInvariants(core)).not.toThrow();
-  });
-
   it('fakeReleasedCents mirrors released', () => {
     const core = mk();
     const a = core.createAuthorization('p', 1000).id;

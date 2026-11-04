@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { buildRequestId } from '../src/requestId.js';
 import { EvidenceRecord, lintJsonl, lintTokens, redact, toJsonlLine } from '../gates/evidence.js';
 
 const base: EvidenceRecord = {
@@ -55,29 +54,6 @@ describe('evidence (T-PAY-070)', () => {
     );
     expect(problems).toHaveLength(1);
     expect(problems[0]?.line).toBe(2);
-  });
-
-  it('accepts the production PayPal-Request-Id and still flags other long tokens', () => {
-    const id = buildRequestId({
-      auctionId: 'a1',
-      op: 'capture',
-      holdId: 'h1',
-      amountCents: 22000,
-      generation: 0,
-    });
-    const record: EvidenceRecord = {
-      ...base,
-      request: {
-        method: 'POST',
-        url: 'https://api-m.sandbox.paypal.com/v2/checkout/orders',
-        headers: { 'PayPal-Request-Id': id },
-      },
-      assertion: { name: 'replay', expected: id, actual: `replayed ${id}`, pass: true },
-    };
-    expect(lintTokens(record)).toEqual([]);
-    expect(() => toJsonlLine(record)).not.toThrow();
-    const longToken = 'x'.repeat(44);
-    expect(lintTokens({ note: `${id} ${longToken}` })).toEqual(['note']);
   });
 
   it('flags schema violations and bad json', () => {

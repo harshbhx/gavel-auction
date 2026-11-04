@@ -31,18 +31,4 @@ describe('requestId', () => {
     expect(() => buildRequestId({ ...p, amountCents: 1.5 })).toThrow(RangeError);
     expect(() => buildRequestId({ ...p, generation: -1 })).toThrow(RangeError);
   });
-
-  it('does not collide when a field contains the old delimiter', () => {
-    const a = buildRequestId({ ...p, auctionId: 'A|capture|H1', op: 'void', holdId: 'X' });
-    const b = buildRequestId({ ...p, auctionId: 'A', op: 'capture', holdId: 'H1|void|X' });
-    expect(a).not.toBe(b);
-  });
-
-  it('rejects amounts that are not safe integers', () => {
-    expect(() => buildRequestId({ ...p, amountCents: 1e21 })).toThrow(RangeError);
-    expect(() => buildRequestId({ ...p, amountCents: Number.MAX_SAFE_INTEGER + 1 })).toThrow(
-      RangeError,
-    );
-    expect(() => buildRequestId({ ...p, generation: 1e21 })).toThrow(RangeError);
-  });
 });

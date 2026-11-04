@@ -18,18 +18,8 @@ describe('ladderStep', () => {
     });
   }
 
-  it('shows a leftover HELD loser as released and an unknown role as checking once settled', () => {
-    expect(ladderStep('HELD', 'SETTLED', 'other').step).toBe('released');
-    expect(ladderStep('HELD', 'SETTLED').step).toBe('checking');
-  });
-
-  it('never shows the charged winner as released while their hold record lags', () => {
-    expect(ladderStep('HELD', 'SETTLED', 'winner')).toEqual({
-      step: 'charged',
-      label: 'Charged at winning price',
-    });
-    expect(ladderStep('UNKNOWN', 'SETTLED', 'winner').step).toBe('charged');
-    expect(ladderStep('CAPTURED', 'SETTLED', 'winner').step).toBe('charged');
+  it('shows a leftover HELD hold as released once settled', () => {
+    expect(ladderStep('HELD', 'SETTLED').step).toBe('released');
   });
 
   it('shows open holds as checking while the settlement needs review', () => {

@@ -50,22 +50,12 @@ export function validatePlan(plan: SettlementPlan): void {
   if (!isCents(plan.reserveCents, 0)) bad('reserveCents must be a non-negative integer');
 
   const seen = new Set<string>();
-  let previousPrice = Number.POSITIVE_INFINITY;
   for (const c of plan.candidates) {
     if (typeof c.bidderId !== 'string' || c.bidderId === '') bad('candidate bidderId is required');
     if (seen.has(c.bidderId)) bad(`bidder ${c.bidderId} appears more than once`);
     seen.add(c.bidderId);
     if (!isCents(c.priceCents, 1)) bad(`price of ${c.bidderId} must be a positive integer`);
-    const hold = plan.holds[c.bidderId];
-    if (hold === undefined) bad(`bidder ${c.bidderId} has no hold`);
-    // Never plan a charge the buyer did not authorize or the seller would not accept (R-PAY-061, R-PAY-062).
-    if (hold !== undefined && c.priceCents > hold.ceilingCents) {
-      bad(`price of ${c.bidderId} is above its hold ceiling`);
-    }
-    if (c.priceCents < plan.reserveCents) bad(`price of ${c.bidderId} is below the reserve`);
-    // A fallback is priced as if the earlier candidates were out, so it never rises.
-    if (c.priceCents > previousPrice) bad(`price of ${c.bidderId} is above an earlier candidate`);
-    previousPrice = c.priceCents;
+    if (plan.holds[c.bidderId] === undefined) bad(`bidder ${c.bidderId} has no hold`);
   }
 
   const holdIds = new Set<string>();
@@ -78,23 +68,15 @@ export function validatePlan(plan: SettlementPlan): void {
   }
 }
 
-/** What newJournal needs to flag stale holds: the injected clock reading and GAVEL_HOLD_MAX_AGE_MS. */
-export interface HoldAgePolicy {
-  nowMs: number;
-  holdMaxAgeMs: number;
-}
-
 /** The first journal of a settlement: state HELD, version 0, nothing done yet. */
-export function newJournal(plan: SettlementPlan, age?: HoldAgePolicy): Journal {
+export function newJournal(plan: SettlementPlan): Journal {
   const holds: Record<string, JournalHold> = {};
   for (const [bidderId, h] of Object.entries(plan.holds)) {
     holds[bidderId] = {
       holdId: h.holdId,
       authId: h.authId,
       ceilingCents: h.ceilingCents,
-      createdAtMs: h.createdAtMs,
-      // A hold older than the maximum age at settlement start is flagged (R-PAY-034).
-      stale: age !== undefined && age.nowMs - h.createdAtMs > age.holdMaxAgeMs,
+      stale: false,
     };
   }
   return {
@@ -138,16 +120,11 @@ export interface CreateResult {
  * plan returns the stored journal; a different plan throws plan_mismatch.
  */
 export async function createSettlement(
-  deps: { journals: JournalStore; clock?: Clock; holdMaxAgeMs?: number },
+  deps: { journals: JournalStore },
   plan: SettlementPlan,
 ): Promise<CreateResult> {
   validatePlan(plan);
-  const fresh = newJournal(
-    plan,
-    deps.clock !== undefined && deps.holdMaxAgeMs !== undefined
-      ? { nowMs: deps.clock.nowMs(), holdMaxAgeMs: deps.holdMaxAgeMs }
-      : undefined,
-  );
+  const fresh = newJournal(plan);
 
   const compare = (existing: Journal): CreateResult => {
     if (planKey(existing) !== planKey(fresh)) {

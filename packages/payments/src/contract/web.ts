@@ -24,14 +24,11 @@ export const HOLD_ERROR_STATUS: Record<HoldErrorCode, number> = {
 
 const id = z.string().min(1);
 
-/**
- * POST /api/holds request. There is deliberately no bidderId: the server derives
- * the bidder from the authenticated session, and `.strict()` rejects a body that
- * tries to name one (R-PAY-030, R-PAY-035).
- */
+/** POST /api/holds request. */
 export const CreateHoldRequest = z
   .object({
     auctionId: id,
+    bidderId: id,
     ceilingCents: z.number().int().positive(),
   })
   .strict();
@@ -72,18 +69,3 @@ export type HoldErrorResponse = z.infer<typeof HoldErrorResponse>;
 
 /** Browser abandon (onCancel, onError): DELETE /api/holds/{holdId}, no body. */
 export const ABANDON_HOLD_METHOD = 'DELETE';
-
-/**
- * Ownership rule for approve and abandon (R-PAY-035): the session bidder must be
- * the hold's bidder. A route handler answers a mismatch exactly like an unknown
- * hold (404 order_not_found), so a guessed or leaked holdId reveals nothing and
- * cannot be used by another viewer.
- */
-export function holdOwnedBySession(
-  holdBidderId: string,
-  sessionBidderId: string | undefined,
-): boolean {
-  return (
-    sessionBidderId !== undefined && sessionBidderId !== '' && holdBidderId === sessionBidderId
-  );
-}
