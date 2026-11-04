@@ -58,6 +58,10 @@ export class AudioQueue {
   }
 
   get stats(): QueueStats {
-    return { length: this.items.length, droppedBatches: this.droppedBatches, droppedMs: this.droppedMs };
+    return {
+      length: this.items.length,
+      droppedBatches: this.droppedBatches,
+      droppedMs: this.droppedMs,
+    };
   }
 }
