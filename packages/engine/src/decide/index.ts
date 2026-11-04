@@ -4,6 +4,7 @@ import { commandBody } from '../state.js';
 import { LIMITS } from '../types.js';
 import type { AuctionState } from '../state.js';
 import { decideHammer, decideTick } from './hammer.js';
+import { decideAbortLot } from './abort-lot.js';
 import { decideCloseAuction } from './close-auction.js';
 import { decideOpenLot } from './open-lot.js';
 import { decidePlaceBid } from './place-bid.js';
@@ -45,6 +46,7 @@ export function assertEnvelope(state: AuctionState, cmd: Command): void {
       break;
     case 'OpenLot':
     case 'Hammer':
+    case 'AbortLot':
     case 'CompleteLot':
     case 'RecordSettlement':
     case 'PromoteRunnerUp':
@@ -55,6 +57,15 @@ export function assertEnvelope(state: AuctionState, cmd: Command): void {
       break;
     default:
       break;
+  }
+  if (cmd.type === 'CompleteLot') assertUlid('bidderId', cmd.bidderId);
+  if (cmd.type === 'AbortLot') {
+    if (typeof cmd.reason !== 'string' || cmd.reason.length > LIMITS.text) {
+      throw new EngineError('limit_exceeded', 'reason');
+    }
+    if (typeof cmd.actor !== 'string' || cmd.actor.length > LIMITS.text) {
+      throw new EngineError('limit_exceeded', 'actor');
+    }
   }
   if (cmd.type === 'PromoteRunnerUp') {
     assertUlid('disqualifiedBidderId', cmd.disqualifiedBidderId);
@@ -86,6 +97,8 @@ function route(state: AuctionState, cmd: Command): DecideResult {
       return decideHammer(state, cmd);
     case 'RevokeCeiling':
       return decideRevoke(state, cmd);
+    case 'AbortLot':
+      return decideAbortLot(state, cmd);
     case 'CompleteLot':
       return decideCompleteLot(state, cmd);
     case 'RecordSettlement':
