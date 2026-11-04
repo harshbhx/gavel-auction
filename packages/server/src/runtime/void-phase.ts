@@ -12,7 +12,10 @@ import {
  * holds the journal does not keep.
  */
 
-const RELEASED_KINDS: ReadonlySet<string> = new Set(['already_voided', 'expired', 'not_found']);
+const RELEASED_KINDS: ReadonlySet<string> = new Set(['already_voided', 'expired']);
+
+/** What a read of the authorization must say before a refused void counts as released. */
+const GONE_TRUTH: ReadonlySet<string> = new Set(['VOIDED', 'EXPIRED', 'NOT_FOUND']);
 
 /** Journal record values that mean the authorization is gone (VOID_FAILED and pending are not). */
 const RELEASED_RECORDS: ReadonlySet<string> = new Set(['voided', 'released']);
@@ -57,7 +60,7 @@ export async function voidSpareHolds(
       await deps.gateway.voidAuthorization(hold.authId, voidRequestId(journal, hold.holdId));
     } catch (e) {
       if (!(e instanceof PayPalError)) throw e;
-      if (!RELEASED_KINDS.has(e.kind)) {
+      if (!RELEASED_KINDS.has(e.kind) && !(await isGone(deps.gateway, hold))) {
         open += 1;
         continue;
       }
@@ -65,4 +68,18 @@ export async function voidSpareHolds(
     await deps.holds.put({ ...hold, status: 'VOIDED' });
   }
   return open;
+}
+
+/** R-PAY-058: a refused void is trusted only after the authorization read says it is gone. */
+async function isGone(
+  gateway: PaymentsGateway,
+  hold: { holdId: string; authId: string },
+): Promise<boolean> {
+  try {
+    const truth = await gateway.getHoldTruth({ holdId: hold.holdId, authId: hold.authId });
+    return GONE_TRUTH.has(truth.status);
+  } catch (e) {
+    if (e instanceof PayPalError) return false;
+    throw e;
+  }
 }

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { InMemoryLedgerStore, evolveAll, type Ulid } from '@gavel/engine';
 import {
   HoldService,
+  PayPalError,
   MemoryHoldStore,
   MemoryKillStateStore,
   PersistentKillSwitch,
@@ -1414,5 +1415,39 @@ describe('auction service: red-team round 4 (RT-01)', () => {
     expect(open).toBe(0);
     expect((await rig.stores.holds.get(created.holdId))?.status).toBe('VOIDED');
     expect(rig.paypal.core.getAuthorization(hold?.authId ?? '').status).toBe('VOIDED');
+  });
+
+  it('keeps a hold open when a 404 void is not backed by the authorization read (R5-S02)', async () => {
+    const rig = await makeRig();
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const created = await rig.holdsApi.createHoldOrder({
+      auctionId,
+      bidderId: rig.ids.mint<'BidderId'>(),
+      ceilingCents: 30000,
+      presetsCents: config.ceilingPresets,
+    });
+    rig.paypal.core.approveOrder(created.orderId);
+    await rig.holdsApi.completeApproval({ holdId: created.holdId, orderId: created.orderId });
+    const refusing = {
+      voidAuthorization: async (): Promise<never> => {
+        throw new PayPalError({
+          kind: 'not_found',
+          status: 404,
+          name: 'not_found',
+          message: 'not found',
+          outcome: 'definite',
+        });
+      },
+      getHoldTruth: (h: { holdId: string; authId: string }) => rig.gateway.getHoldTruth(h),
+    } as unknown as typeof rig.gateway;
+
+    const open = await voidSpareHolds(
+      { gateway: refusing, holds: rig.stores.holds },
+      { auctionId },
+      new Set<string>(),
+    );
+
+    expect(open).toBe(1);
+    expect((await rig.stores.holds.get(created.holdId))?.status).toBe('HELD');
   });
 });

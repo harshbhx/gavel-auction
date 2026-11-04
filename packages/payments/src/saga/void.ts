@@ -7,6 +7,7 @@ import { runCapturePhase, type CaptureDeps, type CaptureOutcome } from './captur
 import { defaultLeaseOwner } from './owner.js';
 import { withLease } from './create.js';
 import { step, type SettlementEvent } from './machine.js';
+import { DEFAULT_UNKNOWN_DEADLINE_MS, unknownExpired } from './unknown.js';
 import { releaseWinnerRemainder, remainderKey, type RemainderResult } from './remainder.js';
 
 /**
@@ -25,7 +26,11 @@ import { releaseWinnerRemainder, remainderKey, type RemainderResult } from './re
  * (or `pending` when the outcome is unknown) and retried on the next run. Each
  * run that finds a VOID_FAILED hold uses one resume; after `maxVoidResumes` the
  * settlement goes to FAILED_NEEDS_REVIEW with reason `void_failed:<bidderId>`. A
- * `pending` hold is retried on every run and does not use the budget. Voids are not
+ * `pending` hold is retried on every run and does not use the budget, but the journal
+ * records when it first became pending (`pending_since:<bidderId>`); after the unknown
+ * deadline the settlement goes to FAILED_NEEDS_REVIEW with reason
+ * `void_unconfirmed:<bidderId>`. The same limit applies to a winner's remainder that
+ * stays unavailable (`remainder_unconfirmed`). Voids are not
  * blocked by the kill switch (R-PAY-006, R-PAY-063).
  *
  * The journal keeps one entry per bidder in `voids`: voided, released,
@@ -38,6 +43,9 @@ export const DEFAULT_MAX_VOID_RESUMES = 5;
 const MISMATCH_READS = 3;
 
 export type VoidStatus = 'voided' | 'released' | 'VOID_FAILED' | 'pending';
+
+const PENDING_SINCE = 'pending_since:';
+const REMAINDER_SINCE = 'remainder_since:';
 
 const DONE: ReadonlySet<string> = new Set<VoidStatus>(['voided', 'released']);
 const RELEASED_KINDS: ReadonlySet<string> = new Set(['already_voided', 'expired']);
@@ -57,6 +65,8 @@ export interface VoidDeps extends VoidCallDeps {
   voidConcurrency?: number;
   /** Default 5 (R-PAY-058). */
   maxVoidResumes?: number;
+  /** How long a pending void or an unavailable remainder is retried. Default ten minutes. */
+  unknownDeadlineMs?: number;
   /** Lease owner. Default: a random id fixed for this process. */
   owner?: string;
 }
@@ -252,10 +262,24 @@ class Run {
       result = await releaseWinnerRemainder(this.deps, this.j);
     }
     switch (result.status) {
-      case 'unavailable':
+      case 'unavailable': {
         // The losers do not wait for the winner's remainder.
         await this.runVoids();
+        const sinceKey = `${REMAINDER_SINCE}${winner.bidderId}`;
+        const since = this.sinceOf(sinceKey);
+        if (since === null) {
+          await this.patch('remainder_since', (d) => {
+            d.voids[sinceKey] = String(this.now());
+          });
+        } else if (unknownExpired(since, this.now(), this.deadlineMs())) {
+          const journal = await this.apply({
+            ...this.ev('mismatch'),
+            label: 'journaled:remainder_unconfirmed',
+          } as SettlementEvent);
+          return { status: 'failed', reason: 'remainder_unconfirmed', journal };
+        }
         return { status: 'pending', reason: 'remainder_unavailable', journal: this.j };
+      }
       case 'mismatch': {
         await this.runVoids();
         const journal = await this.apply(this.ev('mismatch'));
@@ -288,6 +312,16 @@ class Run {
       .sort((a, b) => (a.bidderId < b.bidderId ? -1 : a.bidderId > b.bidderId ? 1 : 0));
   }
 
+  private deadlineMs(): number {
+    return this.deps.unknownDeadlineMs ?? DEFAULT_UNKNOWN_DEADLINE_MS;
+  }
+
+  private sinceOf(key: string): number | null {
+    const raw = this.j.voids[key];
+    const n = raw === undefined ? NaN : Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+
   private statusOf(bidderId: string): string | undefined {
     return this.j.voids[bidderId];
   }
@@ -310,13 +344,50 @@ class Run {
       });
     }
 
+    const expired = this.targets().find(
+      (t) =>
+        this.statusOf(t.bidderId) === 'pending' &&
+        unknownExpired(
+          this.sinceOf(`${PENDING_SINCE}${t.bidderId}`),
+          this.now(),
+          this.deadlineMs(),
+        ),
+    );
+    if (expired !== undefined) {
+      const journal = await this.apply({
+        type: 'void_budget_exhausted',
+        tsMs: this.now(),
+        label: `journaled:void_unconfirmed:${expired.bidderId}`,
+      });
+      return { status: 'failed', reason: `void_unconfirmed:${expired.bidderId}`, journal };
+    }
+
     await this.runVoids();
+    await this.markPending();
 
     if (this.targets().every((t) => DONE.has(this.statusOf(t.bidderId) ?? ''))) {
       const journal = await this.apply(this.ev('all_released'));
       return { status: 'settled', journal };
     }
     return { status: 'pending', reason: 'void_incomplete', journal: this.j };
+  }
+
+  /** Records when a hold first became pending, and forgets it once the hold moves on. */
+  private async markPending(): Promise<void> {
+    const now = this.now();
+    const stale: string[] = [];
+    const fresh: string[] = [];
+    for (const t of this.targets()) {
+      const key = `${PENDING_SINCE}${t.bidderId}`;
+      const pending = this.statusOf(t.bidderId) === 'pending';
+      if (pending && this.j.voids[key] === undefined) fresh.push(key);
+      if (!pending && this.j.voids[key] !== undefined) stale.push(key);
+    }
+    if (fresh.length === 0 && stale.length === 0) return;
+    await this.patch('pending_since', (d) => {
+      for (const k of fresh) d.voids[k] = String(now);
+      for (const k of stale) delete d.voids[k];
+    });
   }
 
   /** Voids every target that is not done yet, with bounded concurrency. */
@@ -360,8 +431,7 @@ export type SettlementDeps = CaptureDeps & VoidDeps;
 
 /** The outcome of a whole run: capture, then void and release. */
 export type SettlementOutcome =
-  | Exclude<CaptureOutcome, { status: 'captured' | 'no_sale' }>
-  | VoidOutcome;
+  Exclude<CaptureOutcome, { status: 'captured' | 'no_sale' }> | VoidOutcome;
 
 /**
  * Runs, or resumes, a settlement from the hammer to SETTLED: the capture phase
