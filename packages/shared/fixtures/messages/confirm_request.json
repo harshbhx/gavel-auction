@@ -1,0 +1,9 @@
+{
+  "v": 1,
+  "t": "confirm_request",
+  "seq": 15,
+  "ts": 1789000001500,
+  "confirmId": "c1",
+  "amount": 35000,
+  "expiresAt": 1789000018000
+}
