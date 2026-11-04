@@ -16,6 +16,49 @@ export const LIMITS: Readonly<Record<LimitKind, BucketSpec>> = {
   http: { refillMs: 1000, burst: 60 },
 };
 
+/**
+ * Limits with the bid bucket taken from config (RATE_BID_PER_S, RATE_BID_BURST).
+ * The refill period is whole milliseconds, rounded down, so 3/s gives 333 ms.
+ */
+export function limitsFromConfig(cfg: {
+  RATE_BID_PER_S: number;
+  RATE_BID_BURST: number;
+}): Readonly<Record<LimitKind, BucketSpec>> {
+  return {
+    ...LIMITS,
+    bid: {
+      refillMs: Math.max(1, Math.floor(1000 / cfg.RATE_BID_PER_S)),
+      burst: cfg.RATE_BID_BURST,
+    },
+  };
+}
+
+/** Upper bound on live buckets; the oldest are dropped beyond it. */
+export const MAX_BUCKETS = 50_000;
+/** How often idle buckets are pruned, in clock milliseconds. */
+const SWEEP_EVERY_MS = 60_000;
+
+/**
+ * Canonical form of a request path for the exemption check: query and fragment
+ * removed, percent escapes decoded, backslashes treated as slashes, empty and
+ * dot segments resolved. Returns null when the path cannot be decoded.
+ */
+export function normalizePath(raw: string): string | null {
+  let path = raw.split(/[?#]/, 1)[0] ?? '';
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    return null;
+  }
+  const out: string[] = [];
+  for (const seg of path.replace(/\\/g, '/').split('/')) {
+    if (seg === '' || seg === '.') continue;
+    if (seg === '..') out.pop();
+    else out.push(seg);
+  }
+  return '/' + out.join('/');
+}
+
 export type RateResult = { ok: true } | { ok: false; code: 'rate_limited'; retryAfterMs: number };
 
 interface Bucket {
@@ -34,15 +77,27 @@ export class RateLimiter {
   constructor(
     private readonly clock: Clock,
     private readonly limits: Readonly<Record<LimitKind, BucketSpec>> = LIMITS,
-  ) {}
+    private readonly maxBuckets: number = MAX_BUCKETS,
+  ) {
+    this.lastSweepMs = clock.now();
+  }
+
+  private lastSweepMs: number;
+
+  /** Number of live buckets (for metrics and tests). */
+  get size(): number {
+    return this.buckets.size;
+  }
 
   /** Take one token from the bucket for `kind` and `key`. No state besides the bucket changes. */
   check(kind: LimitKind, key: string): RateResult {
     const spec = this.limits[kind];
     const now = this.clock.now();
     const id = `${kind}:${key}`;
+    if (now - this.lastSweepMs >= SWEEP_EVERY_MS) this.sweep();
     let b = this.buckets.get(id);
     if (!b) {
+      this.makeRoom();
       b = { tokens: spec.burst, lastMs: now };
       this.buckets.set(id, b);
     }
@@ -79,19 +134,32 @@ export class RateLimiter {
 
   /** HTTP limit per IP; webhook routes are exempt. */
   checkHttp(ip: string, path: string): RateResult {
-    if (EXEMPT_PREFIXES.some((p) => path.startsWith(p))) return { ok: true };
+    const normal = normalizePath(path);
+    if (normal !== null && EXEMPT_PREFIXES.some((p) => normal.startsWith(p))) return { ok: true };
     return this.check('http', ip);
   }
 
   /** Drop buckets that have fully refilled, to bound memory. */
   sweep(): void {
     const now = this.clock.now();
+    this.lastSweepMs = now;
     for (const [id, b] of this.buckets) {
       const kind = id.slice(0, id.indexOf(':')) as LimitKind;
       const spec = this.limits[kind];
       if (b.tokens + Math.floor((now - b.lastMs) / spec.refillMs) >= spec.burst) {
         this.buckets.delete(id);
       }
+    }
+  }
+
+  /** Make space for one more bucket: prune idle ones, then drop the oldest. */
+  private makeRoom(): void {
+    if (this.buckets.size < this.maxBuckets) return;
+    this.sweep();
+    while (this.buckets.size >= this.maxBuckets) {
+      const oldest = this.buckets.keys().next();
+      if (oldest.done) break;
+      this.buckets.delete(oldest.value);
     }
   }
 }

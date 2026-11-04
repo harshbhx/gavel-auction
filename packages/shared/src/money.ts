@@ -18,3 +18,33 @@ export function Cents(value: number): Cents {
   }
   return value;
 }
+
+const checked = (value: number): Cents => {
+  if (!isCents(value)) {
+    throw new GavelError('bad_amount', 'amount must be an integer number of cents in range');
+  }
+  return value;
+};
+
+/** a + b, throwing `bad_amount` when the result leaves 0..MAX_CENTS. */
+export function add(a: Cents, b: Cents): Cents {
+  return checked(a + b);
+}
+
+/** a - b, throwing `bad_amount` when the result would be negative. */
+export function sub(a: Cents, b: Cents): Cents {
+  return checked(a - b);
+}
+
+/** Three-way compare: negative, zero or positive. */
+export function cmp(a: Cents, b: Cents): -1 | 0 | 1 {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+export function min(a: Cents, b: Cents): Cents {
+  return a <= b ? a : b;
+}
+
+export function max(a: Cents, b: Cents): Cents {
+  return a >= b ? a : b;
+}

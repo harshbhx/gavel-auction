@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { decodeServerMsg, serverSchemas } from '../src/wire/server';
+import { encodeMsg } from '../src/wire/codec';
 
 const B1 = '01J9ZQ3A0B2C4D6F8H0J2K4M6N';
 const MID = '01J9ZQ5A0B2C4D6F8H0J2K4M6N';
@@ -142,5 +143,36 @@ describe('seq and ts (T-RT-016)', () => {
     expect(dec(fixtures.error).ok).toBe(true);
     expect(dec({ ...(fixtures.error as object), seq: 7 }).ok).toBe(true);
     expect(dec({ ...(fixtures.error as object), seq: 0 }).ok).toBe(false);
+  });
+});
+
+describe('error frames and room-size limits (R-RT-017, R-RT-121)', () => {
+  it('scrubs bearer tokens and stack lines from the message', () => {
+    const msg = 'failed Bearer abc.def.ghi\n    at run (/srv/app.js:1:1)';
+    const enc = encodeMsg({ v: 1, t: 'error', code: 'internal', message: msg });
+    expect(enc.ok).toBe(true);
+    if (!enc.ok) return;
+    expect(enc.value).not.toContain('abc.def.ghi');
+    expect(enc.value).not.toContain('app.js');
+  });
+
+  it('truncates a very long message instead of failing', () => {
+    const enc = encodeMsg({ v: 1, t: 'error', code: 'internal', message: 'a b '.repeat(5000) });
+    expect(enc.ok).toBe(true);
+    if (enc.ok) expect(enc.value.length).toBeLessThan(600);
+  });
+
+  it('rejects paddle 0, negative paddles and duplicate roster entries', () => {
+    const roster = (r: unknown) => dec({ ...ev, t: 'state', snapshot: { ...snapshot, roster: r } });
+    const row = { bidderId: B1, paddle: 12, name: 'Ada', hold: 'HELD' };
+    expect(roster([row]).ok).toBe(true);
+    expect(roster([{ ...row, paddle: 0 }]).ok).toBe(false);
+    expect(roster([{ ...row, paddle: -5 }]).ok).toBe(false);
+    expect(roster([row, { ...row, bidderId: AUCTION }]).ok).toBe(false);
+  });
+
+  it('caps the hammer ranking', () => {
+    const ranking = Array.from({ length: 201 }, () => ({ bidderId: B1, amount: 1 }));
+    expect(dec({ ...(fixtures.hammer as object), ranking }).ok).toBe(false);
   });
 });
