@@ -21,10 +21,10 @@ function project(
     test: {
       name: `${kind}:${pkg}`,
       root: join(rootDir, 'packages', pkg),
-      include: kind === 'unit' ? ['test/**/*.test.ts'] : ['test/**/*.property.test.ts'],
+      include: kind === 'unit' ? ['test/**/*.test.{ts,tsx}'] : ['test/**/*.property.test.{ts,tsx}'],
       exclude:
         kind === 'unit'
-          ? ['test/**/*.property.test.ts', '**/node_modules/**']
+          ? ['test/**/*.property.test.{ts,tsx}', '**/node_modules/**']
           : ['**/node_modules/**'],
     },
   };
@@ -34,7 +34,8 @@ const projects: TestProjectInlineConfiguration[] = [];
 for (const pkg of PACKAGES) {
   if (!existsSync(join(rootDir, 'packages', pkg, 'test'))) continue;
   const own = join(rootDir, 'packages', pkg, 'vitest.config.ts');
-  const base = existsSync(own) ? own : undefined;
+  const vite = join(rootDir, 'packages', pkg, 'vite.config.ts');
+  const base = existsSync(own) ? own : existsSync(vite) ? vite : undefined;
   projects.push(project(pkg, 'unit', base), project(pkg, 'property', base));
 }
 
