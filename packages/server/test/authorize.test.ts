@@ -1,10 +1,12 @@
+import type { RoomEvent } from '@gavel/shared';
 import { describe, expect, it } from 'vitest';
 import {
   AUTH_MATRIX,
   AUTH_ROLES,
   OPERATIONS,
   authorize,
-  redactForRole,
+  redactEventForExport,
+  redactForViewer,
   type AuthRole,
   type Operation,
 } from '../src/auth/authorize';
@@ -60,9 +62,96 @@ describe('authorization matrix (T-RT-064)', () => {
         roster: [{ ceiling: 9, name: 'a' }],
       },
     };
-    const out = JSON.stringify(redactForRole('screen', frame));
+    const out = JSON.stringify(redactForViewer('screen', undefined, frame));
     expect(out).not.toContain('ceiling');
     expect(out).toContain('price');
-    expect(redactForRole('bidder', frame)).toBe(frame);
+  });
+});
+
+const B1 = '01J9ZQ3A0B2C4D6F8H0J2K4M6N';
+const B2 = '01J9ZQ3A0B2C4D6F8H0J2K4M6P';
+const BID = '01J9ZQ7A0B2C4D6F8H0J2K4M6N';
+
+describe('ceiling redaction per viewer (R-RT-055)', () => {
+  const registeredB2 = { t: 'registered', bidderId: B2, ceiling: 30000 };
+
+  it('a bidder never sees another bidder ceiling', () => {
+    const out = redactForViewer('bidder', B1, registeredB2);
+    expect(JSON.stringify(out)).not.toContain('ceiling');
+  });
+
+  it('a bidder keeps their own ceiling and own you block', () => {
+    const own = { t: 'registered', bidderId: B1, ceiling: 30000 };
+    expect(redactForViewer('bidder', B1, own)).toEqual(own);
+    const snap = { snapshot: { you: { bidderId: B1, ceiling: 7 } } };
+    expect(redactForViewer('bidder', B1, snap)).toEqual(snap);
+    expect(JSON.stringify(redactForViewer('bidder', B2, snap))).not.toContain('you');
+  });
+
+  it('a ceiling with no named owner is dropped for bidders', () => {
+    expect(JSON.stringify(redactForViewer('bidder', B1, { ceiling: 5 }))).not.toContain('ceiling');
+  });
+
+  it('the auctioneer never sees ceilings', () => {
+    expect(JSON.stringify(redactForViewer('auctioneer', undefined, registeredB2))).not.toContain(
+      'ceiling',
+    );
+  });
+});
+
+describe('public audit rows (R-RT-038, R-RT-055)', () => {
+  const full = {
+    bidId: BID,
+    bidderId: B2,
+    source: 'voice',
+    transcript: 'sixty thousand',
+    parsedAmount: 60000,
+    outcome: 'rejected',
+    reason: 'over_ceiling',
+    serverTs: 1,
+    seq: 3,
+  };
+  const accepted = { ...full, outcome: 'accepted', reason: undefined };
+
+  it('does not broadcast a rejected row to non-auctioneers', () => {
+    const frame = { v: 1, t: 'audit_event', seq: 3, ts: 1, audit: full };
+    expect(redactForViewer('bidder', B1, frame)).toBeNull();
+    expect(redactForViewer('screen', undefined, frame)).toBeNull();
+    expect(redactForViewer('auctioneer', undefined, frame)).toEqual(frame);
+  });
+
+  it('strips transcripts from accepted rows for non-auctioneers', () => {
+    const frame = { v: 1, t: 'audit_event', seq: 3, ts: 1, audit: accepted };
+    const out = JSON.stringify(redactForViewer('bidder', B1, frame));
+    expect(out).not.toContain('transcript');
+    expect(out).toContain('parsedAmount');
+  });
+
+  it('filters snapshot recentAudit to public accepted rows', () => {
+    const snap = { snapshot: { recentAudit: [full, accepted] } };
+    const out = redactForViewer('screen', undefined, snap) as {
+      snapshot: { recentAudit: Array<Record<string, unknown>> };
+    };
+    expect(out.snapshot.recentAudit).toHaveLength(1);
+    expect(out.snapshot.recentAudit[0]).not.toHaveProperty('transcript');
+    expect(out.snapshot.recentAudit[0]).not.toHaveProperty('reason');
+  });
+});
+
+describe('event export (R-RT-108)', () => {
+  const base = { auctionId: BID, seq: 1, ts: 1 };
+  const registered = {
+    ...base,
+    type: 'bidder_registered',
+    bidderId: B1,
+    paddle: 1,
+    name: 'a',
+    ceiling: 9000,
+    holdRef: 'h',
+  } as unknown as RoomEvent;
+
+  it('drops the ceiling for the auctioneer, keeps it for admin', () => {
+    expect(redactEventForExport('auctioneer', registered)).not.toHaveProperty('ceiling');
+    expect(redactEventForExport('admin', registered)).toHaveProperty('ceiling', 9000);
   });
 });

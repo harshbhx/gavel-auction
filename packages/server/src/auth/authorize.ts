@@ -1,4 +1,11 @@
-import type { ErrorCode } from '@gavel/shared';
+import {
+  AuditPayloadSchema,
+  PublicAuditRowSchema,
+  toPublicAudit,
+  type ErrorCode,
+  type PublicAuditRow,
+  type RoomEvent,
+} from '@gavel/shared';
 
 /** `admin` is the operator key, not a token role. */
 export type AuthRole = 'auctioneer' | 'bidder' | 'screen' | 'admin';
@@ -39,23 +46,110 @@ export function authorize(op: Operation, role: AuthRole): AuthDecision {
   return allowed ? { ok: true } : { ok: false, code: 'forbidden' };
 }
 
+const CEILING_KEYS: ReadonlySet<string> = new Set(['ceiling']);
+
 /**
- * Remove bidder-private fields (ceilings) from an outbound frame for roles that
- * must not see them (R-RT-086). Screens never receive `ceiling` or `you`.
+ * Remove private fields from an outbound frame for one viewer (R-RT-055, R-RT-086).
+ *
+ * - Auctioneer, screen and admin never receive a `ceiling` (auctioneers see hold
+ *   state), and screens never receive `you`.
+ * - A bidder keeps `you` and `ceiling` only where the surrounding object names
+ *   the viewer's own bidderId; anything else is dropped (fail closed).
+ * - Everyone but the auctioneer and admin sees public audit rows only: accepted
+ *   bids, no transcripts, no reject reasons (R-RT-038).
+ *
+ * Returns null when the whole frame must not be sent to this viewer (an
+ * `audit_event` for a row that is not public).
  */
-export function redactForRole<T>(role: AuthRole, frame: T): T {
-  if (role !== 'screen') return frame;
-  return stripKeys(frame, new Set(['ceiling', 'you'])) as T;
+export function redactForViewer<T>(
+  role: AuthRole,
+  viewerBidderId: string | undefined,
+  frame: T,
+): T | null {
+  const fullAudit = role === 'auctioneer' || role === 'admin';
+  if (!fullAudit && isAuditEventFrame(frame)) {
+    if (toPublicRow(frame.audit) === null) return null;
+  }
+  return walk(role, viewerBidderId, frame, undefined, fullAudit) as T;
 }
 
-function stripKeys(value: unknown, drop: ReadonlySet<string>): unknown {
-  if (Array.isArray(value)) return value.map((v) => stripKeys(v, drop));
-  if (typeof value === 'object' && value !== null) {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value)) {
-      if (!drop.has(k)) out[k] = stripKeys(v, drop);
+function isAuditEventFrame(frame: unknown): frame is { t: 'audit_event'; audit: unknown } {
+  return (
+    typeof frame === 'object' &&
+    frame !== null &&
+    (frame as { t?: unknown }).t === 'audit_event' &&
+    'audit' in frame
+  );
+}
+
+function toPublicRow(row: unknown): PublicAuditRow | null {
+  const parsed = AuditPayloadSchema.safeParse(row);
+  if (parsed.success) return toPublicAudit(parsed.data);
+  const pub = PublicAuditRowSchema.safeParse(row);
+  return pub.success ? pub.data : null;
+}
+
+function walk(
+  role: AuthRole,
+  viewer: string | undefined,
+  value: unknown,
+  parentKey: string | undefined,
+  fullAudit: boolean,
+): unknown {
+  if (Array.isArray(value)) {
+    if (!fullAudit && parentKey === 'recentAudit') {
+      return value.map(toPublicRow).filter((r): r is PublicAuditRow => r !== null);
     }
-    return out;
+    return value.map((v) => walk(role, viewer, v, parentKey, fullAudit));
   }
-  return value;
+  if (typeof value !== 'object' || value === null) return value;
+
+  if (!fullAudit && parentKey === 'audit') {
+    return toPublicRow(value) ?? {};
+  }
+  const obj = value as Record<string, unknown>;
+  const owner = typeof obj.bidderId === 'string' ? obj.bidderId : undefined;
+  const mine = role === 'bidder' && viewer !== undefined && owner === viewer;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (k === 'you' && !(role === 'bidder' && isOwn(v, viewer))) continue;
+    if (CEILING_KEYS.has(k) && !mine) continue;
+    out[k] = walk(role, viewer, v, k, fullAudit);
+  }
+  return out;
+}
+
+function isOwn(you: unknown, viewer: string | undefined): boolean {
+  return (
+    viewer !== undefined &&
+    typeof you === 'object' &&
+    you !== null &&
+    (you as { bidderId?: unknown }).bidderId === viewer
+  );
+}
+
+/** A persisted event as exported: the bidder's ceiling is never included. */
+export type ExportedEvent =
+  | Exclude<RoomEvent, { type: 'bidder_registered' }>
+  | Omit<Extract<RoomEvent, { type: 'bidder_registered' }>, 'ceiling'>;
+
+/**
+ * Event log export for a role (R-RT-108). The auctioneer export drops ceilings
+ * and the amounts of ceiling rejections; only the operator key gets the raw log.
+ */
+export function redactEventForExport(role: AuthRole, event: RoomEvent): ExportedEvent {
+  if (role === 'admin') return event;
+  if (event.type === 'bidder_registered') {
+    const copy: Partial<typeof event> = { ...event };
+    delete copy.ceiling;
+    return copy as Omit<typeof event, 'ceiling'>;
+  }
+  if (event.type === 'bid_rejected' && event.reason === 'over_ceiling') {
+    const copy: Partial<typeof event> = { ...event };
+    delete copy.amount;
+    const audit: Partial<typeof event.audit> = { ...event.audit };
+    delete audit.parsedAmount;
+    return { ...copy, audit } as typeof event;
+  }
+  return event;
 }

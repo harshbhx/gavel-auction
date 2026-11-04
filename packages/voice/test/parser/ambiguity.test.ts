@@ -80,7 +80,7 @@ describe('T-VOX-053 spans (R-VOX-053)', () => {
   });
 
   it('T-VOX-062: offsets are valid with apostrophes and capitals', () => {
-    const text = 'I’LL GO Paddle Nine, Two Fifty';
+    const text = 'I\u2019LL GO Paddle Nine, Two Fifty';
     const spans = computeSpans(text);
     expect(spans.map((s) => text.slice(s.start, s.end))).toEqual(['Paddle Nine', 'Two Fifty']);
   });

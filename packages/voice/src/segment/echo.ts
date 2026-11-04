@@ -13,7 +13,7 @@ export const ECHO_PHRASES: readonly string[] = [
 function words(text: string): string[] {
   return text
     .toLowerCase()
-    .replace(/[’]/g, "'")
+    .replace(/\u2019/g, "'")
     .split(/[^\p{L}\p{N}']+/u)
     .filter((w) => w !== '');
 }
