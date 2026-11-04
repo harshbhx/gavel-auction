@@ -1,5 +1,11 @@
-import type { CopyKey } from '../../copy/en';
 import { chapterOffsets, type ChapterId, type ReplayBundle } from './bundle';
+
+export type ChapterCopyKey =
+  | 'replay.chapter.reg'
+  | 'replay.chapter.bid'
+  | 'replay.chapter.confirm'
+  | 'replay.chapter.hammer'
+  | 'replay.chapter.settle';
 
 export const SPEEDS = [0.5, 1, 2, 4] as const;
 export type Speed = (typeof SPEEDS)[number];
@@ -10,12 +16,12 @@ export const SEEK_STEP_MS = 5000;
 export interface ChapterMarker {
   id: ChapterId;
   offsetMs: number;
-  copyKey: CopyKey;
+  copyKey: ChapterCopyKey;
 }
 
 const ORDER: readonly ChapterId[] = ['reg', 'bid', 'confirm', 'hammer', 'settle'];
 
-const COPY_KEYS: Readonly<Record<ChapterId, CopyKey>> = {
+const COPY_KEYS: Readonly<Record<ChapterId, ChapterCopyKey>> = {
   reg: 'replay.chapter.reg',
   bid: 'replay.chapter.bid',
   confirm: 'replay.chapter.confirm',

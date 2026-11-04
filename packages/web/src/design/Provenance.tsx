@@ -1,12 +1,12 @@
 import { t } from '../copy/t';
-import type { CopyKey } from '../copy/en';
+
 import { Icon, type IconName } from './icons';
 import { Chip, type ChipTone } from './primitives/Chip';
 
 export type ProvenanceKind = 'live' | 'scripted' | 'recorded';
 
 interface Variant {
-  readonly key: CopyKey;
+  readonly key: 'prov.live' | 'prov.scripted' | 'prov.recorded';
   readonly icon: IconName;
   readonly tone: ChipTone;
 }
