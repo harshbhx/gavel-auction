@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+import { touchesCode } from '../classify-change.mjs';
+
+describe('classify-change', () => {
+  it('treats plain documentation as docs-only', () => {
+    assert.equal(touchesCode(['docs/a.md', 'README.md']), false);
+  });
+
+  it('counts a move from source into docs as code (both paths listed)', () => {
+    assert.equal(touchesCode(['packages/engine/src/x.ts', 'docs/x.md']), true);
+  });
+
+  it('counts evidence files and gate or decision logs as code', () => {
+    assert.equal(touchesCode(['docs/evidence/run-1.json']), true);
+    assert.equal(touchesCode(['docs/GATES.md']), true);
+    assert.equal(touchesCode(['docs/DECISIONS.md']), true);
+  });
+
+  it('counts an empty list as code', () => {
+    assert.equal(touchesCode(['']), true);
+  });
+});
