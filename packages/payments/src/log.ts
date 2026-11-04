@@ -23,7 +23,8 @@ export type LogSink = (line: string) => void;
 
 export const REDACTED = '[REDACTED]';
 
-const SECRET_KEY = /secret|token|authorization|signature|(?:^|[-_])sig(?:$|[-_])|password|api[-_]?key/i;
+const SECRET_KEY =
+  /secret|token|authorization|signature|(?:^|[-_])sig(?:$|[-_])|password|api[-_]?key/i;
 const registered = new Set<string>();
 
 /** Register an exact secret value that must never be written (e.g. the client secret). */
@@ -52,7 +53,8 @@ export function redactValue(value: unknown, key = ''): unknown {
   if (Array.isArray(value)) return value.map((v) => redactValue(v));
   if (value !== null && typeof value === 'object') {
     const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = redactValue(v, k);
+    for (const [k, v] of Object.entries(value as Record<string, unknown>))
+      out[k] = redactValue(v, k);
     return out;
   }
   return value;

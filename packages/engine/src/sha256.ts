@@ -36,8 +36,14 @@ function sha256Hex(bytes: Uint8Array): string {
       const s1 = rotr(w2, 17) ^ rotr(w2, 19) ^ (w2 >>> 10);
       w[i] = ((w[i - 16] as number) + s0 + (w[i - 7] as number) + s1) >>> 0;
     }
-    let a = h[0] as number, b = h[1] as number, c = h[2] as number, d = h[3] as number;
-    let e = h[4] as number, f = h[5] as number, g = h[6] as number, hh = h[7] as number;
+    let a = h[0] as number,
+      b = h[1] as number,
+      c = h[2] as number,
+      d = h[3] as number;
+    let e = h[4] as number,
+      f = h[5] as number,
+      g = h[6] as number,
+      hh = h[7] as number;
     for (let i = 0; i < 64; i++) {
       const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
       const ch = (e & f) ^ (~e & g);
@@ -45,13 +51,23 @@ function sha256Hex(bytes: Uint8Array): string {
       const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
       const maj = (a & b) ^ (a & c) ^ (b & c);
       const t2 = (S0 + maj) >>> 0;
-      hh = g; g = f; f = e; e = (d + t1) >>> 0;
-      d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+      hh = g;
+      g = f;
+      f = e;
+      e = (d + t1) >>> 0;
+      d = c;
+      c = b;
+      b = a;
+      a = (t1 + t2) >>> 0;
     }
-    h[0] = ((h[0] as number) + a) >>> 0; h[1] = ((h[1] as number) + b) >>> 0;
-    h[2] = ((h[2] as number) + c) >>> 0; h[3] = ((h[3] as number) + d) >>> 0;
-    h[4] = ((h[4] as number) + e) >>> 0; h[5] = ((h[5] as number) + f) >>> 0;
-    h[6] = ((h[6] as number) + g) >>> 0; h[7] = ((h[7] as number) + hh) >>> 0;
+    h[0] = ((h[0] as number) + a) >>> 0;
+    h[1] = ((h[1] as number) + b) >>> 0;
+    h[2] = ((h[2] as number) + c) >>> 0;
+    h[3] = ((h[3] as number) + d) >>> 0;
+    h[4] = ((h[4] as number) + e) >>> 0;
+    h[5] = ((h[5] as number) + f) >>> 0;
+    h[6] = ((h[6] as number) + g) >>> 0;
+    h[7] = ((h[7] as number) + hh) >>> 0;
   }
   let hex = '';
   for (const v of h) hex += v.toString(16).padStart(8, '0');

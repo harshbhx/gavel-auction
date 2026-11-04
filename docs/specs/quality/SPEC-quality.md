@@ -4,7 +4,7 @@ Area owner: quality (files: packages/e2e, infra/, .github/, docs/DECISIONS.md, d
 Key prefix: QA-. Requirement prefix: R-QA-. Test prefix: T-QA-.
 Status: draft for review. Date: 2026-11-04. Deadline: 2026-11-12 12:00 PST (2026-11-13 01:30 IST).
 
----------------------------------------------------------------------------------------------------
+---
 
 ## 1. Purpose and scope
 
@@ -28,18 +28,18 @@ Hard constraints inherited from the hackathon rules and project rules:
 
 ## 2. Definitions
 
-| Term | Meaning |
-|---|---|
-| Wave | Group of issues that can start together. Wave 1 has no dependencies and needs no keys. Wave 2 needs wave 1 interfaces. Wave 3 is integration. Wave 4 is polish and submission. |
-| Interface-first | The issue that publishes types, a fake and fixtures for a module lands before any issue that implements or consumes the real module. |
-| Gate (G1..G5) | Day-1 experiments recorded in docs/GATES.md. G1 partial capture and remainder release. G2 card/guest AUTHORIZE. G3 honor period vs validity and reauthorize. G4 real webhook signature verification. G5 STT accuracy on noisy bids. |
-| Scenario | A declarative script (YAML or TS DSL) describing actors, a clock, injected faults and expected ledger and UI outcomes. Run by the scenario runner against in-process packages (fast) or the full stack (e2e). |
-| Fake PayPal | The in-memory/HTTP server in packages/payments that mimics the PayPal endpoints GAVEL uses, with fault injection hooks. |
-| Real-sandbox job | Workflow that exercises the PayPal sandbox with real credentials stored as GitHub environment secrets. Runs nightly and on manual dispatch only. |
+| Term             | Meaning                                                                                                                                                                                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Wave             | Group of issues that can start together. Wave 1 has no dependencies and needs no keys. Wave 2 needs wave 1 interfaces. Wave 3 is integration. Wave 4 is polish and submission.                                                                                     |
+| Interface-first  | The issue that publishes types, a fake and fixtures for a module lands before any issue that implements or consumes the real module.                                                                                                                               |
+| Gate (G1..G5)    | Day-1 experiments recorded in docs/GATES.md. G1 partial capture and remainder release. G2 card/guest AUTHORIZE. G3 honor period vs validity and reauthorize. G4 real webhook signature verification. G5 STT accuracy on noisy bids.                                |
+| Scenario         | A declarative script (YAML or TS DSL) describing actors, a clock, injected faults and expected ledger and UI outcomes. Run by the scenario runner against in-process packages (fast) or the full stack (e2e).                                                      |
+| Fake PayPal      | The in-memory/HTTP server in packages/payments that mimics the PayPal endpoints GAVEL uses, with fault injection hooks.                                                                                                                                            |
+| Real-sandbox job | Workflow that exercises the PayPal sandbox with real credentials stored as GitHub environment secrets. Runs nightly and on manual dispatch only.                                                                                                                   |
 | Money invariants | I1 at most one capture per lot. I2 captured <= ceiling of the winner hold. I3 each non-winner hold voided exactly once. I4 captured + released = sum of holds for the lot. I5 outcome identical under duplicate, reordered and delayed webhooks and under retries. |
-| Replay | Recorded audio plus a recorded clock driven through the real parse and engine pipeline. |
-| Flake | A test that fails and then passes on the same commit. Tracked and quarantined, never silently retried more than once. |
-| Freeze | From D8 12:00 IST only fixes labelled `priority:P0` or `type:bug` merge. |
+| Replay           | Recorded audio plus a recorded clock driven through the real parse and engine pipeline.                                                                                                                                                                            |
+| Flake            | A test that fails and then passes on the same commit. Tracked and quarantined, never silently retried more than once.                                                                                                                                              |
+| Freeze           | From D8 12:00 IST only fixes labelled `priority:P0` or `type:bug` merge.                                                                                                                                                                                           |
 
 ## 3. Requirements
 
@@ -172,49 +172,77 @@ import type { Cents, EpochMs, Ulid, ErrorCode } from '@gavel/shared';
 export type Mode = 'inproc' | 'stack';
 export type Fault =
   | { at: 'paypal.capture'; kind: 'http'; status: 500 | 502 | 503 | 429; times: number }
-  | { at: 'paypal.capture'; kind: 'timeout_after_commit' }          // request lands, response lost
+  | { at: 'paypal.capture'; kind: 'timeout_after_commit' } // request lands, response lost
   | { at: 'paypal.void'; kind: 'http'; status: 500; times: number; bidder?: string }
   | { at: 'paypal.authorization'; kind: 'expire' | 'void_external' | 'decline'; bidder: string }
-  | { at: 'webhook'; kind: 'duplicate' | 'delay' | 'reorder'; event: string; times?: number; ms?: number }
+  | {
+      at: 'webhook';
+      kind: 'duplicate' | 'delay' | 'reorder';
+      event: string;
+      times?: number;
+      ms?: number;
+    }
   | { at: 'server'; kind: 'kill'; checkpoint: Checkpoint }
   | { at: 'stt'; kind: 'timeout' | 'garbage' | 'low_confidence'; times?: number }
   | { at: 'ws'; kind: 'drop'; client: string; forMs: number };
 
 export type Checkpoint =
-  | 'after_winner_selected' | 'before_capture_request'
-  | 'after_capture_request_before_response' | 'after_capture_recorded'
-  | `during_void_loop:${number}` | 'before_final_ledger';
+  | 'after_winner_selected'
+  | 'before_capture_request'
+  | 'after_capture_request_before_response'
+  | 'after_capture_recorded'
+  | `during_void_loop:${number}`
+  | 'before_final_ledger';
 
 export type Step =
   | { t: number; actor: string; do: 'register'; ceiling: Cents; funding?: 'wallet' | 'card' }
   | { t: number; actor: string; do: 'bid'; amount: Cents; via?: 'qr' | 'voice' | 'manual' }
-  | { t: number; actor: string; do: 'say'; audio: string }           // fixture id, voice replay
+  | { t: number; actor: string; do: 'say'; audio: string } // fixture id, voice replay
   | { t: number; actor: string; do: 'confirm'; accept: boolean }
   | { t: number; actor: 'auctioneer'; do: 'open' | 'pause' | 'resume' | 'extend' | 'hammer' }
   | { t: number; actor: string; do: 'disconnect' | 'reconnect' }
-  | { t: number; actor: string; do: 'send_raw'; frame: string }       // abusive input
+  | { t: number; actor: string; do: 'send_raw'; frame: string } // abusive input
   | { t: number; do: 'advance_clock'; ms: number }
   | { t: number; do: 'fault'; fault: Fault };
 
 export type Expect =
   | { ledger: { winner: string | null; captured: Cents; released: Cents; voided: string[] } }
-  | { settlement: Record<string, 'HELD'|'BIDDING'|'WINNER_SELECTED'|'CAPTURING'|'CAPTURED'|'VOIDING'|'SETTLED'|'FALLBACK_RUNNER_UP'|'FAILED_NEEDS_REVIEW'> }
-  | { invariants: Array<'I1'|'I2'|'I3'|'I4'|'I5'> }
+  | {
+      settlement: Record<
+        string,
+        | 'HELD'
+        | 'BIDDING'
+        | 'WINNER_SELECTED'
+        | 'CAPTURING'
+        | 'CAPTURED'
+        | 'VOIDING'
+        | 'SETTLED'
+        | 'FALLBACK_RUNNER_UP'
+        | 'FAILED_NEEDS_REVIEW'
+      >;
+    }
+  | { invariants: Array<'I1' | 'I2' | 'I3' | 'I4' | 'I5'> }
   | { rejected: Array<{ actor: string; code: ErrorCode }> }
   | { paypalCalls: { capture: number; void: number; reauthorize?: number } }
-  | { ui?: { view: 'bidder'|'auctioneer'|'public'|'audit'; text?: string; a11y?: true } };
+  | { ui?: { view: 'bidder' | 'auctioneer' | 'public' | 'audit'; text?: string; a11y?: true } };
 
 export interface Scenario {
-  id: string;                 // 'S03-crash-resume-mid-settlement'
+  id: string; // 'S03-crash-resume-mid-settlement'
   title: string;
   modes: Mode[];
-  seed: number;               // PRNG seed
+  seed: number; // PRNG seed
   clock: { startMs: EpochMs };
-  auction: { itemId: string; reserve: Cents; minIncrement: Cents; softCloseMs: number; mode: 'english' };
+  auction: {
+    itemId: string;
+    reserve: Cents;
+    minIncrement: Cents;
+    softCloseMs: number;
+    mode: 'english';
+  };
   actors: Record<string, { bidderId?: Ulid; funding: 'wallet' | 'card' }>;
   steps: Step[];
   expect: Expect[];
-  tags?: string[];            // '@gate:G1', '@slow', '@sandbox'
+  tags?: string[]; // '@gate:G1', '@slow', '@sandbox'
 }
 ```
 
@@ -222,11 +250,20 @@ Runner contract:
 
 ```ts
 export interface ScenarioResult {
-  id: string; mode: Mode; browser?: string; pass: boolean; durationMs: number;
-  invariantsChecked: string[]; failures: Array<{ expectIndex: number; message: string; diff?: unknown }>;
-  trace?: string;             // path to NDJSON event trace
+  id: string;
+  mode: Mode;
+  browser?: string;
+  pass: boolean;
+  durationMs: number;
+  invariantsChecked: string[];
+  failures: Array<{ expectIndex: number; message: string; diff?: unknown }>;
+  trace?: string; // path to NDJSON event trace
 }
-export function runScenario(s: Scenario, mode: Mode, opts?: { workdir: string }): Promise<ScenarioResult>;
+export function runScenario(
+  s: Scenario,
+  mode: Mode,
+  opts?: { workdir: string },
+): Promise<ScenarioResult>;
 ```
 
 Example (S04 duplicate webhooks, abbreviated):
@@ -240,13 +277,17 @@ clock: { startMs: 1793750400000 }
 auction: { itemId: lot-1, reserve: 5000, minIncrement: 500, softCloseMs: 0, mode: english }
 actors: { ana: { funding: wallet }, ben: { funding: card } }
 steps:
-  - { t: 0,     actor: ana, do: register, ceiling: 50000 }
-  - { t: 0,     actor: ben, do: register, ceiling: 25000 }
-  - { t: 1000,  actor: auctioneer, do: open }
-  - { t: 2000,  actor: ana, do: bid, amount: 6000 }
-  - { t: 3000,  actor: ben, do: bid, amount: 7000 }
-  - { t: 4000,  do: fault, fault: { at: webhook, kind: duplicate, event: PAYMENT.CAPTURE.COMPLETED, times: 49 } }
-  - { t: 5000,  actor: auctioneer, do: hammer }
+  - { t: 0, actor: ana, do: register, ceiling: 50000 }
+  - { t: 0, actor: ben, do: register, ceiling: 25000 }
+  - { t: 1000, actor: auctioneer, do: open }
+  - { t: 2000, actor: ana, do: bid, amount: 6000 }
+  - { t: 3000, actor: ben, do: bid, amount: 7000 }
+  - {
+      t: 4000,
+      do: fault,
+      fault: { at: webhook, kind: duplicate, event: PAYMENT.CAPTURE.COMPLETED, times: 49 },
+    }
+  - { t: 5000, actor: auctioneer, do: hammer }
 expect:
   - ledger: { winner: ben, captured: 7000, released: 18000, voided: [ana] }
   - paypalCalls: { capture: 1, void: 1 }
@@ -276,20 +317,20 @@ Webhook event fixture `packages/e2e/fixtures/webhooks/capture-completed.json`: c
 
 ### 4.5 Workflow inventory (`.github/workflows/`)
 
-| File | Trigger | Jobs | Notes |
-|---|---|---|---|
-| ci.yml | pull_request, push main | typecheck, lint, format-check, unit, coverage, property, scenarios, e2e-fake (3 shards x browser matrix reduced to chromium on PR), deps, secrets, ascii-banned, commitlint, ownership | required checks |
-| e2e-matrix.yml | push main, manual | Chromium, Firefox, WebKit, iPhone 14, Pixel 7 | full matrix, uploads traces |
-| nightly-sandbox.yml | cron `30 20 * * *` (02:00 IST), manual | real-sandbox specs R1..R8 | environment `sandbox-nightly`; skip without secrets |
-| load.yml | manual, push tag `v*` | L1..L4 | uploads latency JSON |
-| mutation.yml | weekly, manual | Stryker on engine and saga | non-blocking |
-| report.yml | workflow_run of ci on main | build report, publish artifact and `/quality` | |
-| screenshots.yml | manual | seeded demo, Playwright captures | outputs `docs/submission/screenshots/` artifact |
-| deploy-staging.yml | push main | build, deploy API to Render staging, web to Pages preview, smoke | |
-| deploy-prod.yml | tag `v*`, manual (rollback input) | same, `production` environment with reviewer | |
-| uptime.yml | schedule `*/5 * * * *` | probe `/healthz`, `/readyz`, `/warmup` | annotation on failure |
-| backup.yml | schedule daily, manual | export NDJSON, upload artifact | |
-| gitleaks-history.yml | manual | full-history scan | run before going public |
+| File                 | Trigger                                | Jobs                                                                                                                                                                                   | Notes                                               |
+| -------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| ci.yml               | pull_request, push main                | typecheck, lint, format-check, unit, coverage, property, scenarios, e2e-fake (3 shards x browser matrix reduced to chromium on PR), deps, secrets, ascii-banned, commitlint, ownership | required checks                                     |
+| e2e-matrix.yml       | push main, manual                      | Chromium, Firefox, WebKit, iPhone 14, Pixel 7                                                                                                                                          | full matrix, uploads traces                         |
+| nightly-sandbox.yml  | cron `30 20 * * *` (02:00 IST), manual | real-sandbox specs R1..R8                                                                                                                                                              | environment `sandbox-nightly`; skip without secrets |
+| load.yml             | manual, push tag `v*`                  | L1..L4                                                                                                                                                                                 | uploads latency JSON                                |
+| mutation.yml         | weekly, manual                         | Stryker on engine and saga                                                                                                                                                             | non-blocking                                        |
+| report.yml           | workflow_run of ci on main             | build report, publish artifact and `/quality`                                                                                                                                          |                                                     |
+| screenshots.yml      | manual                                 | seeded demo, Playwright captures                                                                                                                                                       | outputs `docs/submission/screenshots/` artifact     |
+| deploy-staging.yml   | push main                              | build, deploy API to Render staging, web to Pages preview, smoke                                                                                                                       |                                                     |
+| deploy-prod.yml      | tag `v*`, manual (rollback input)      | same, `production` environment with reviewer                                                                                                                                           |                                                     |
+| uptime.yml           | schedule `*/5 * * * *`                 | probe `/healthz`, `/readyz`, `/warmup`                                                                                                                                                 | annotation on failure                               |
+| backup.yml           | schedule daily, manual                 | export NDJSON, upload artifact                                                                                                                                                         |                                                     |
+| gitleaks-history.yml | manual                                 | full-history scan                                                                                                                                                                      | run before going public                             |
 
 ### 4.6 Environment variables (names only, `.env.example`)
 
@@ -352,26 +393,26 @@ Gate close rule: a gate is CLOSED only when status is PASS or FAIL with a record
 
 ### 4.9 Security review checklist (OWASP-style, GAVEL specific)
 
-| ID | Item | Priority |
-|---|---|---|
-| SEC-01 | Broken access control: auctioneer actions (open, hammer, manual bid, extend) require a signed auctioneer token; bidder cannot call them over WS or HTTP | P0 |
-| SEC-02 | Bidder identity: join token bound to bidder id and auction; a bidder cannot bid as another; token replay after auction close rejected | P0 |
-| SEC-03 | Webhook authenticity: PayPal signature verified with raw body; unsigned, wrong cert url host, expired timestamp all rejected; dedupe by event id | P0 |
-| SEC-04 | Secrets: none in repo or history (gitleaks), none in logs, none in client bundle (bundle grep for `PAYPAL_CLIENT_SECRET`) | P0 |
-| SEC-05 | Sandbox-only guard and boot validation (R-QA-038, R-QA-043) | P0 |
-| SEC-06 | Money integrity: amounts are integer cents server-side; client-supplied totals ignored; capture amount always from ledger; capture <= ceiling | P0 |
-| SEC-07 | Injection: all inbound frames validated by zod; SQL via parameterised queries; no `dangerouslySetInnerHTML`; transcripts rendered as text | P0 |
-| SEC-08 | Abusive input: frame size cap 4 KB, message rate cap 20/s per socket, bid rate cap, audio chunk cap, room size cap, join flood cap per IP | P1 |
-| SEC-09 | CORS and origins: allowlist from `ALLOWED_ORIGINS`; WS origin checked; no wildcard with credentials | P1 |
-| SEC-10 | Transport and headers: HTTPS only, HSTS, CSP (no inline script except hashed), X-Content-Type-Options, Referrer-Policy, frame-ancestors none on auctioneer view | P1 |
-| SEC-11 | Audio and PII: recordings only of demo actors; no personal data stored beyond display name and masked email; export endpoint behind ADMIN_TOKEN | P1 |
-| SEC-12 | Dependency risk: `npm audit --omit=dev` has no high or critical without a recorded waiver | P1 |
-| SEC-13 | SSRF: server never fetches user-supplied URLs; webhook cert URL host allowlist | P1 |
-| SEC-14 | DoS on parse path: language-model call timeout 4 s, concurrency cap, fallback to manual confirm; cost cap env `LLM_MAX_CALLS_PER_MIN` | P1 |
-| SEC-15 | Logging: no tokens, card data, client secret, full emails; reqId present | P2 |
-| SEC-16 | Admin and ops pages: token required, rate limited, not indexed | P2 |
-| SEC-17 | Clickjacking and open redirect on PayPal return URL (fixed allowlist) | P2 |
-| SEC-18 | Time: server time authoritative; client timestamps ignored for ordering | P0 |
+| ID     | Item                                                                                                                                                            | Priority |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| SEC-01 | Broken access control: auctioneer actions (open, hammer, manual bid, extend) require a signed auctioneer token; bidder cannot call them over WS or HTTP         | P0       |
+| SEC-02 | Bidder identity: join token bound to bidder id and auction; a bidder cannot bid as another; token replay after auction close rejected                           | P0       |
+| SEC-03 | Webhook authenticity: PayPal signature verified with raw body; unsigned, wrong cert url host, expired timestamp all rejected; dedupe by event id                | P0       |
+| SEC-04 | Secrets: none in repo or history (gitleaks), none in logs, none in client bundle (bundle grep for `PAYPAL_CLIENT_SECRET`)                                       | P0       |
+| SEC-05 | Sandbox-only guard and boot validation (R-QA-038, R-QA-043)                                                                                                     | P0       |
+| SEC-06 | Money integrity: amounts are integer cents server-side; client-supplied totals ignored; capture amount always from ledger; capture <= ceiling                   | P0       |
+| SEC-07 | Injection: all inbound frames validated by zod; SQL via parameterised queries; no `dangerouslySetInnerHTML`; transcripts rendered as text                       | P0       |
+| SEC-08 | Abusive input: frame size cap 4 KB, message rate cap 20/s per socket, bid rate cap, audio chunk cap, room size cap, join flood cap per IP                       | P1       |
+| SEC-09 | CORS and origins: allowlist from `ALLOWED_ORIGINS`; WS origin checked; no wildcard with credentials                                                             | P1       |
+| SEC-10 | Transport and headers: HTTPS only, HSTS, CSP (no inline script except hashed), X-Content-Type-Options, Referrer-Policy, frame-ancestors none on auctioneer view | P1       |
+| SEC-11 | Audio and PII: recordings only of demo actors; no personal data stored beyond display name and masked email; export endpoint behind ADMIN_TOKEN                 | P1       |
+| SEC-12 | Dependency risk: `npm audit --omit=dev` has no high or critical without a recorded waiver                                                                       | P1       |
+| SEC-13 | SSRF: server never fetches user-supplied URLs; webhook cert URL host allowlist                                                                                  | P1       |
+| SEC-14 | DoS on parse path: language-model call timeout 4 s, concurrency cap, fallback to manual confirm; cost cap env `LLM_MAX_CALLS_PER_MIN`                           | P1       |
+| SEC-15 | Logging: no tokens, card data, client secret, full emails; reqId present                                                                                        | P2       |
+| SEC-16 | Admin and ops pages: token required, rate limited, not indexed                                                                                                  | P2       |
+| SEC-17 | Clickjacking and open redirect on PayPal return URL (fixed allowlist)                                                                                           | P2       |
+| SEC-18 | Time: server time authoritative; client timestamps ignored for ordering                                                                                         | P0       |
 
 ### 4.10 Accessibility audit matrix
 
@@ -379,17 +420,17 @@ Views: bidder (join, register with ceiling presets, waiting, bidding, confirm pr
 
 ### 4.11 Video script and shot list (target 2:50, hard limit 2:55)
 
-| Time | Shot | On-screen label | Voiceover (draft) | Source |
-|---|---|---|---|---|
-| 0:00-0:15 | Paper bid sheet, then a charity hall photo or screen recording of a spreadsheet | none | "Every charity auction has winners who never pay." | stock-free: own photo or drawn graphic |
-| 0:15-0:25 | Title card GAVEL, one line | none | "GAVEL makes the bid itself a PayPal hold, so the hammer is a payment." | graphic |
-| 0:25-0:50 | Two bidders register on phones: ceiling preset, PayPal sandbox approval, copy "held, not charged"; PayPal sandbox page showing two authorizations | "Real PayPal sandbox" | "Each bidder approves a hold as their ceiling." | live capture |
-| 0:50-1:15 | Auctioneer console and public screen: bids by QR phone and one spoken bid (20 s max) | "Live" and "Voice: recorded replay" where applicable | "Bids arrive by voice, phone or paddle. Rules are deterministic." | live capture |
-| 1:15-1:35 | Ambiguous utterance, confirm prompt, accepted | "Language model proposes, engine decides" | "When the bid is unclear, we ask." | recorded replay, labelled |
-| 1:35-2:05 | Hammer: state ladder HELD to CAPTURED to SETTLED, webhook ticks, PayPal sandbox shows capture at winning price and others voided | "Real PayPal sandbox" | "Only the winning price is captured. Every other hold is voided." | live capture |
-| 2:05-2:25 | Kill the server mid-settlement, restart, ladder resumes, one capture in sandbox | "Fault injected" | "Crash mid-settlement: still exactly one charge." | live capture |
-| 2:25-2:42 | Audit trail row for a spoken bid; `/quality` report page with counts | "Counts from CI run <sha>" | "Every bid is auditable. Tests prove the money rules." | capture |
-| 2:42-2:50 | Close card: hosted URL, repo URL, license, sandbox only | none | "Try it. Sandbox only." | graphic |
+| Time      | Shot                                                                                                                                              | On-screen label                                      | Voiceover (draft)                                                       | Source                                 |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------------- |
+| 0:00-0:15 | Paper bid sheet, then a charity hall photo or screen recording of a spreadsheet                                                                   | none                                                 | "Every charity auction has winners who never pay."                      | stock-free: own photo or drawn graphic |
+| 0:15-0:25 | Title card GAVEL, one line                                                                                                                        | none                                                 | "GAVEL makes the bid itself a PayPal hold, so the hammer is a payment." | graphic                                |
+| 0:25-0:50 | Two bidders register on phones: ceiling preset, PayPal sandbox approval, copy "held, not charged"; PayPal sandbox page showing two authorizations | "Real PayPal sandbox"                                | "Each bidder approves a hold as their ceiling."                         | live capture                           |
+| 0:50-1:15 | Auctioneer console and public screen: bids by QR phone and one spoken bid (20 s max)                                                              | "Live" and "Voice: recorded replay" where applicable | "Bids arrive by voice, phone or paddle. Rules are deterministic."       | live capture                           |
+| 1:15-1:35 | Ambiguous utterance, confirm prompt, accepted                                                                                                     | "Language model proposes, engine decides"            | "When the bid is unclear, we ask."                                      | recorded replay, labelled              |
+| 1:35-2:05 | Hammer: state ladder HELD to CAPTURED to SETTLED, webhook ticks, PayPal sandbox shows capture at winning price and others voided                  | "Real PayPal sandbox"                                | "Only the winning price is captured. Every other hold is voided."       | live capture                           |
+| 2:05-2:25 | Kill the server mid-settlement, restart, ladder resumes, one capture in sandbox                                                                   | "Fault injected"                                     | "Crash mid-settlement: still exactly one charge."                       | live capture                           |
+| 2:25-2:42 | Audit trail row for a spoken bid; `/quality` report page with counts                                                                              | "Counts from CI run <sha>"                           | "Every bid is auditable. Tests prove the money rules."                  | capture                                |
+| 2:42-2:50 | Close card: hosted URL, repo URL, license, sandbox only                                                                                           | none                                                 | "Try it. Sandbox only."                                                 | graphic                                |
 
 Rules: no copyrighted music (use silence or a royalty-free track with its licence recorded in docs/SUBMISSION.md); captions burned in and uploaded as SRT; no real money, no real personal data; capture at 1920x1080, 30 fps; record two full takes; export H.264; verify on YouTube as signed-out viewer that it is public and under 3:00.
 
@@ -451,13 +492,24 @@ Rules: no copyrighted music (use silence or a royalty-free track with its licenc
 
 ```json
 {
-  "sha": "abc1234", "builtAt": "2026-11-09T18:00:00Z",
-  "layers": { "unit": {"total": 612, "passed": 612}, "property": {"total": 41, "passed": 41, "cases": 8200},
-              "contract": {"total": 63, "passed": 63}, "scenario": {"total": 44, "passed": 44},
-              "e2e": {"total": 52, "passed": 52, "flaky": 0}, "sandbox": {"total": 8, "passed": 8, "lastRun": "2026-11-09T20:30:00Z"},
-              "load": {"p95AckMs": 118, "lostBids": 0} },
-  "coverage": { "engine": {"lines": 97.1, "branches": 92.4}, "payments": {"lines": 93.0, "branches": 88.2} },
-  "scenarioMatrix": [ {"id": "S03", "inproc": "pass", "chromium": "pass", "firefox": "pass", "webkit": "pass"} ],
+  "sha": "abc1234",
+  "builtAt": "2026-11-09T18:00:00Z",
+  "layers": {
+    "unit": { "total": 612, "passed": 612 },
+    "property": { "total": 41, "passed": 41, "cases": 8200 },
+    "contract": { "total": 63, "passed": 63 },
+    "scenario": { "total": 44, "passed": 44 },
+    "e2e": { "total": 52, "passed": 52, "flaky": 0 },
+    "sandbox": { "total": 8, "passed": 8, "lastRun": "2026-11-09T20:30:00Z" },
+    "load": { "p95AckMs": 118, "lostBids": 0 }
+  },
+  "coverage": {
+    "engine": { "lines": 97.1, "branches": 92.4 },
+    "payments": { "lines": 93.0, "branches": 88.2 }
+  },
+  "scenarioMatrix": [
+    { "id": "S03", "inproc": "pass", "chromium": "pass", "firefox": "pass", "webkit": "pass" }
+  ],
   "invariants": { "I1": 214, "I2": 214, "I3": 214, "I4": 214, "I5": 214 },
   "mutation": { "engine": 84.0, "saga": 81.5 }
 }
@@ -511,20 +563,20 @@ Rules: no copyrighted music (use silence or a royalty-free track with its licenc
 
 ## 6. Error and edge cases
 
-| Case | Required behaviour |
-|---|---|
-| Fork PR without secrets | Sandbox job skipped with neutral status; fake-based jobs run normally |
-| Real sandbox rate limit or 5xx during nightly | Retry with backoff up to 3 times then `inconclusive`, not `fail`; transcript uploaded |
-| Gate result contradicts a requirement | The spec owner opens a DECISIONS.md entry and the tagged tests move to the stated fallback in the same PR |
-| Flaky Playwright test | One retry, recorded in flakes.json; second flake in 7 days quarantines |
-| Coverage gate fails on a docs-only PR | Coverage job runs only when `packages/**` changed; required check reports success when skipped via path-aware aggregator job `ci / required` |
-| Lockfile drift | `npm ci` fails; PR must include lockfile |
-| Two PRs touch `packages/shared` | Second rebases on the first; `interface` label PRs merge in order of opening |
-| Render cold start during demo | `/warmup` called by the UI on landing and by uptime probe; always-on during judging |
-| PayPal sandbox outage during recording | Record with fake PayPal in `fake` mode and label on screen "Simulated PayPal" for that segment only; keep one real-sandbox segment from an earlier take |
-| Video over 3:00 | Cut section 4.11 rows 1 and 8 first; never cut hammer or crash segments |
-| Submission portal down at deadline | Submit by D9 04:00 PST; save draft earlier on D8 |
-| Secrets leaked in a PR | Rotate sandbox secret immediately, force-remove from history before public, record in DECISIONS.md |
+| Case                                          | Required behaviour                                                                                                                                      |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fork PR without secrets                       | Sandbox job skipped with neutral status; fake-based jobs run normally                                                                                   |
+| Real sandbox rate limit or 5xx during nightly | Retry with backoff up to 3 times then `inconclusive`, not `fail`; transcript uploaded                                                                   |
+| Gate result contradicts a requirement         | The spec owner opens a DECISIONS.md entry and the tagged tests move to the stated fallback in the same PR                                               |
+| Flaky Playwright test                         | One retry, recorded in flakes.json; second flake in 7 days quarantines                                                                                  |
+| Coverage gate fails on a docs-only PR         | Coverage job runs only when `packages/**` changed; required check reports success when skipped via path-aware aggregator job `ci / required`            |
+| Lockfile drift                                | `npm ci` fails; PR must include lockfile                                                                                                                |
+| Two PRs touch `packages/shared`               | Second rebases on the first; `interface` label PRs merge in order of opening                                                                            |
+| Render cold start during demo                 | `/warmup` called by the UI on landing and by uptime probe; always-on during judging                                                                     |
+| PayPal sandbox outage during recording        | Record with fake PayPal in `fake` mode and label on screen "Simulated PayPal" for that segment only; keep one real-sandbox segment from an earlier take |
+| Video over 3:00                               | Cut section 4.11 rows 1 and 8 first; never cut hammer or crash segments                                                                                 |
+| Submission portal down at deadline            | Submit by D9 04:00 PST; save draft earlier on D8                                                                                                        |
+| Secrets leaked in a PR                        | Rotate sandbox secret immediately, force-remove from history before public, record in DECISIONS.md                                                      |
 
 ## 7. Non-functional requirements
 
@@ -641,14 +693,14 @@ Tagged `@sandbox`; each uses redacted transcripts as artifacts. Where behaviour 
 
 ## 9. Open questions
 
-| # | Question | Decision owner | Default |
-|---|---|---|---|
-| Q1 | Is the Durable Object path chosen by the realtime spike, and does that change the deploy workflow? | realtime owner with quality | Single Node server on Render; keep a DO deploy workflow as a stub only |
-| Q2 | Always-on Render instance for the judging window: approve spend up to 10 USD? | Harsh | Yes from D8; otherwise 4-minute keep-alive ping |
-| Q3 | Is a second reviewer available, or do we self-merge after green CI with the owner's review? | Harsh | Owner review required, self-merge allowed for docs only |
-| Q4 | Which language-model provider and STT provider are named in the Devpost text? | voice owner | Whatever is wired at the D7 feature freeze, named exactly |
-| Q5 | Can PayPal sandbox authorizations be aged to test honor-period expiry (gate G3), or only simulated by the fake? | payments owner | Simulate with fake (S07, S08); record `inconclusive` for R3 |
-| Q6 | Is Safari on a real iOS device available for the manual check? | Harsh | WebKit emulation plus one manual check on a team phone |
-| Q7 | Does the video use real or recorded voice bids? | Harsh and web owner | Recorded replay labelled on screen for noise control, one live spoken bid in a quiet room |
-| Q8 | Public repo timing: make public at D8 or D9? | Harsh | D8 evening, after checklist 4.14, so the judges see history |
-| Q9 | Retention of nightly transcripts as artifacts | quality | 14 days, redacted |
+| #   | Question                                                                                                        | Decision owner              | Default                                                                                   |
+| --- | --------------------------------------------------------------------------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------- |
+| Q1  | Is the Durable Object path chosen by the realtime spike, and does that change the deploy workflow?              | realtime owner with quality | Single Node server on Render; keep a DO deploy workflow as a stub only                    |
+| Q2  | Always-on Render instance for the judging window: approve spend up to 10 USD?                                   | Harsh                       | Yes from D8; otherwise 4-minute keep-alive ping                                           |
+| Q3  | Is a second reviewer available, or do we self-merge after green CI with the owner's review?                     | Harsh                       | Owner review required, self-merge allowed for docs only                                   |
+| Q4  | Which language-model provider and STT provider are named in the Devpost text?                                   | voice owner                 | Whatever is wired at the D7 feature freeze, named exactly                                 |
+| Q5  | Can PayPal sandbox authorizations be aged to test honor-period expiry (gate G3), or only simulated by the fake? | payments owner              | Simulate with fake (S07, S08); record `inconclusive` for R3                               |
+| Q6  | Is Safari on a real iOS device available for the manual check?                                                  | Harsh                       | WebKit emulation plus one manual check on a team phone                                    |
+| Q7  | Does the video use real or recorded voice bids?                                                                 | Harsh and web owner         | Recorded replay labelled on screen for noise control, one live spoken bid in a quiet room |
+| Q8  | Public repo timing: make public at D8 or D9?                                                                    | Harsh                       | D8 evening, after checklist 4.14, so the judges see history                               |
+| Q9  | Retention of nightly transcripts as artifacts                                                                   | quality                     | 14 days, redacted                                                                         |

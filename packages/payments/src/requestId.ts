@@ -32,8 +32,10 @@ export function base32(bytes: Uint8Array): string {
 
 /** Deterministic PayPal-Request-Id (SPEC 4.4): 44 characters. */
 export function buildRequestId(p: RequestIdParts): string {
-  if (!Number.isInteger(p.amountCents) || p.amountCents < 0) throw new RangeError('amountCents must be a non-negative integer');
-  if (!Number.isInteger(p.generation) || p.generation < 0) throw new RangeError('generation must be a non-negative integer');
+  if (!Number.isInteger(p.amountCents) || p.amountCents < 0)
+    throw new RangeError('amountCents must be a non-negative integer');
+  if (!Number.isInteger(p.generation) || p.generation < 0)
+    throw new RangeError('generation must be a non-negative integer');
   const digest = createHash('sha256')
     .update(`${p.auctionId}|${p.op}|${p.holdId}|${p.amountCents}|${p.generation}`)
     .digest();

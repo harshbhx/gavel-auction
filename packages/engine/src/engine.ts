@@ -83,7 +83,11 @@ export class Auction {
     const best = new Map<string, Bid>();
     for (const b of this.bids) {
       const cur = best.get(b.bidder);
-      if (!cur || b.amount > cur.amount || (b.amount === cur.amount && (b.ts < cur.ts || (b.ts === cur.ts && b.seq < cur.seq)))) {
+      if (
+        !cur ||
+        b.amount > cur.amount ||
+        (b.amount === cur.amount && (b.ts < cur.ts || (b.ts === cur.ts && b.seq < cur.seq)))
+      ) {
         best.set(b.bidder, b);
       }
     }

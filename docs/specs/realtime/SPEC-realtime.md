@@ -33,7 +33,6 @@ Every external dependency of the room sits behind an interface in `ports.ts` wit
 
 Each requirement is testable and appears in the Coverage table in DEPS.md. MUST is mandatory, SHOULD is desirable.
 
-
 ### 3.1 Shared contracts (ids, money, time, errors, schemas)
 
 - **R-RT-001** Ids MUST be 26-char Crockford ULID strings with branded TypeScript types (AuctionId, BidderId, BidId, MsgId, ConnId, EventId, Jti); `parseId` MUST reject wrong length, lowercase-invalid chars (I L O U) and overflow of the 48-bit time prefix.
@@ -188,34 +187,100 @@ export const PROTOCOL_VERSION = 1 as const;
 type Base = { v: 1 };
 
 // client -> server
-export type JoinMsg = Base & { t: 'join'; token: string; auctionId: AuctionId; lastSeq?: number; client?: { name: string; version: string } };
-export type BidMsg = Base & {
-  t: 'bid'; mid: MsgId; amount: Cents; source: 'qr' | 'voice' | 'manual';
-  bidderId?: BidderId;            // honoured only for auctioneer + source 'manual'
-  transcript?: string; confidence?: number; ambiguous?: boolean; audioTsMs?: number; clientTs?: EpochMs;
+export type JoinMsg = Base & {
+  t: 'join';
+  token: string;
+  auctionId: AuctionId;
+  lastSeq?: number;
+  client?: { name: string; version: string };
 };
-export type ConfirmResponseMsg = Base & { t: 'confirm_response'; confirmId: string; accept: boolean };
+export type BidMsg = Base & {
+  t: 'bid';
+  mid: MsgId;
+  amount: Cents;
+  source: 'qr' | 'voice' | 'manual';
+  bidderId?: BidderId; // honoured only for auctioneer + source 'manual'
+  transcript?: string;
+  confidence?: number;
+  ambiguous?: boolean;
+  audioTsMs?: number;
+  clientTs?: EpochMs;
+};
+export type ConfirmResponseMsg = Base & {
+  t: 'confirm_response';
+  confirmId: string;
+  accept: boolean;
+};
 
 // server -> client (all after join carry seq + ts)
 type Ev = Base & { seq: number; ts: EpochMs };
-export type RegisteredMsg = Ev & { t: 'registered'; bidderId: BidderId; paddle: number; ceiling?: Cents /* owner only */ ; role: Role };
+export type RegisteredMsg = Ev & {
+  t: 'registered';
+  bidderId: BidderId;
+  paddle: number;
+  ceiling?: Cents /* owner only */;
+  role: Role;
+};
 export type BidAcceptedMsg = Ev & { t: 'bid_accepted'; mid: MsgId; bidId: BidId; amount: Cents };
-export type BidRejectedMsg = Ev & { t: 'bid_rejected'; mid: MsgId; reason: ErrorCode; retryable: boolean; retryAfterMs?: number };
-export type PriceMsg = Ev & { t: 'price'; price: Cents; leaderId: BidderId | null; leaderPaddle: number | null; endTs: EpochMs; minNext: Cents; extensions: number };
+export type BidRejectedMsg = Ev & {
+  t: 'bid_rejected';
+  mid: MsgId;
+  reason: ErrorCode;
+  retryable: boolean;
+  retryAfterMs?: number;
+};
+export type PriceMsg = Ev & {
+  t: 'price';
+  price: Cents;
+  leaderId: BidderId | null;
+  leaderPaddle: number | null;
+  endTs: EpochMs;
+  minNext: Cents;
+  extensions: number;
+};
 export type StateMsg = Ev & { t: 'state'; snapshot: RoomSnapshot };
-export type ConfirmRequestMsg = Ev & { t: 'confirm_request'; confirmId: string; amount: Cents; transcript?: string; expiresAt: EpochMs };
-export type HammerMsg = Ev & { t: 'hammer'; winnerId: BidderId | null; price: Cents; ranking: Array<{ bidderId: BidderId; amount: Cents }> };
-export type SettlementUpdateMsg = Ev & { t: 'settlement_update'; rev: number; auctionState: SettlementState; you?: SettlementState; amountCaptured?: Cents; note?: string };
+export type ConfirmRequestMsg = Ev & {
+  t: 'confirm_request';
+  confirmId: string;
+  amount: Cents;
+  transcript?: string;
+  expiresAt: EpochMs;
+};
+export type HammerMsg = Ev & {
+  t: 'hammer';
+  winnerId: BidderId | null;
+  price: Cents;
+  ranking: Array<{ bidderId: BidderId; amount: Cents }>;
+};
+export type SettlementUpdateMsg = Ev & {
+  t: 'settlement_update';
+  rev: number;
+  auctionState: SettlementState;
+  you?: SettlementState;
+  amountCaptured?: Cents;
+  note?: string;
+};
 export type AuditEventMsg = Ev & { t: 'audit_event'; audit: AuditPayload };
-export type ErrorMsg = Base & { t: 'error'; code: ErrorCode; message: string; retryAfterMs?: number; seq?: number };
+export type ErrorMsg = Base & {
+  t: 'error';
+  code: ErrorCode;
+  message: string;
+  retryAfterMs?: number;
+  seq?: number;
+};
 
 export interface RoomSnapshot {
-  auctionId: AuctionId; config: PublicConfig; status: 'SCHEDULED'|'OPEN'|'PAUSED'|'CLOSING'|'SETTLING'|'DONE';
-  price: Cents | null; leaderId: BidderId | null; endTs: EpochMs; minNext: Cents;
-  roster: Array<{ bidderId: BidderId; paddle: number; name: string; hold: 'HELD'|'NONE' }>;
-  recentAudit: AuditPayload[];   // max 50
+  auctionId: AuctionId;
+  config: PublicConfig;
+  status: 'SCHEDULED' | 'OPEN' | 'PAUSED' | 'CLOSING' | 'SETTLING' | 'DONE';
+  price: Cents | null;
+  leaderId: BidderId | null;
+  endTs: EpochMs;
+  minNext: Cents;
+  roster: Array<{ bidderId: BidderId; paddle: number; name: string; hold: 'HELD' | 'NONE' }>;
+  recentAudit: AuditPayload[]; // max 50
   settlement?: { rev: number; auctionState: SettlementState; you?: SettlementState };
-  you?: { bidderId: BidderId; ceiling: Cents };   // bidder role only
+  you?: { bidderId: BidderId; ceiling: Cents }; // bidder role only
 }
 ```
 
@@ -239,16 +304,71 @@ JSON examples (money in cents):
 ```ts
 export type RoomEvent = { auctionId: AuctionId; seq: number; ts: EpochMs } & (
   | { type: 'auction_created'; config: AuctionConfig; auctioneerSub: string }
-  | { type: 'bidder_registered'; bidderId: BidderId; paddle: number; name: string; ceiling: Cents; holdRef: string }
-  | { type: 'bid_accepted'; bidId: BidId; bidderId: BidderId; mid: MsgId; amount: Cents; source: BidSource; audit: AuditPayload; endTsAfter: EpochMs }
-  | { type: 'bid_rejected'; bidderId: BidderId; mid: MsgId; amount?: Cents; reason: ErrorCode; audit: AuditPayload }
-  | { type: 'confirm_requested'; confirmId: string; bidderId: BidderId; mid: MsgId; amount: Cents; expiresAt: EpochMs; audit: AuditPayload }
-  | { type: 'confirm_resolved'; confirmId: string; outcome: 'accepted'|'rejected'|'expired'|'superseded'; audit: AuditPayload }
-  | { type: 'control'; controlId: string; action: 'open'|'pause'|'resume'|'extend'|'hammer'; by: string; args?: Record<string, number>; audit: AuditPayload }
+  | {
+      type: 'bidder_registered';
+      bidderId: BidderId;
+      paddle: number;
+      name: string;
+      ceiling: Cents;
+      holdRef: string;
+    }
+  | {
+      type: 'bid_accepted';
+      bidId: BidId;
+      bidderId: BidderId;
+      mid: MsgId;
+      amount: Cents;
+      source: BidSource;
+      audit: AuditPayload;
+      endTsAfter: EpochMs;
+    }
+  | {
+      type: 'bid_rejected';
+      bidderId: BidderId;
+      mid: MsgId;
+      amount?: Cents;
+      reason: ErrorCode;
+      audit: AuditPayload;
+    }
+  | {
+      type: 'confirm_requested';
+      confirmId: string;
+      bidderId: BidderId;
+      mid: MsgId;
+      amount: Cents;
+      expiresAt: EpochMs;
+      audit: AuditPayload;
+    }
+  | {
+      type: 'confirm_resolved';
+      confirmId: string;
+      outcome: 'accepted' | 'rejected' | 'expired' | 'superseded';
+      audit: AuditPayload;
+    }
+  | {
+      type: 'control';
+      controlId: string;
+      action: 'open' | 'pause' | 'resume' | 'extend' | 'hammer';
+      by: string;
+      args?: Record<string, number>;
+      audit: AuditPayload;
+    }
   | { type: 'state_changed'; from: string; to: string; endTs: EpochMs }
-  | { type: 'hammered'; winnerId: BidderId | null; price: Cents; ranking: Array<{ bidderId: BidderId; amount: Cents }> }
+  | {
+      type: 'hammered';
+      winnerId: BidderId | null;
+      price: Cents;
+      ranking: Array<{ bidderId: BidderId; amount: Cents }>;
+    }
   | { type: 'settle_requested' }
-  | { type: 'settlement_update'; rev: number; auctionState: SettlementState; perBidder: Record<string, SettlementState>; amountCaptured?: Cents; note?: string }
+  | {
+      type: 'settlement_update';
+      rev: number;
+      auctionState: SettlementState;
+      perBidder: Record<string, SettlementState>;
+      amountCaptured?: Cents;
+      note?: string;
+    }
 );
 ```
 
@@ -261,7 +381,7 @@ export interface RoomStore {
   lastSeq(auctionId: AuctionId): Promise<number>;
   saveSnapshot(auctionId: AuctionId, seq: number, state: unknown): Promise<void>;
   loadSnapshot(auctionId: AuctionId): Promise<{ seq: number; state: unknown } | null>;
-  consumeJti(jti: Jti, ttlMs: number): Promise<boolean>;          // true if first use
+  consumeJti(jti: Jti, ttlMs: number): Promise<boolean>; // true if first use
   denyJti(jti: Jti, untilMs: EpochMs): Promise<void>;
   isDenied(jti: Jti): Promise<boolean>;
   getJournal(key: string): Promise<{ version: number; value: unknown } | null>;
@@ -270,26 +390,76 @@ export interface RoomStore {
   ping(): Promise<void>;
 }
 
-export interface PaymentsPort {            // implemented by packages/payments (proposed; confirm with owner)
-  settle(req: { auctionId: AuctionId; outcome: HammerOutcome; holds: Record<BidderId, string> }): Promise<void>; // idempotent by auctionId
-  handleWebhook(req: { rawBody: Uint8Array; headers: Record<string, string> }): Promise<
-    | { kind: 'ok'; auctionId?: AuctionId } | { kind: 'duplicate' } | { kind: 'invalid_signature' } | { kind: 'retry'; reason: string }>;
-  onSettlementUpdate(cb: (u: { auctionId: AuctionId; rev: number; auctionState: SettlementState; perBidder: Record<string, SettlementState>; amountCaptured?: Cents; note?: string }) => void): () => void;
-  onHoldReported(cb: (h: { auctionId: AuctionId; bidderId: BidderId; name: string; ceiling: Cents; holdRef: string }) => void): () => void;
+export interface PaymentsPort {
+  // implemented by packages/payments (proposed; confirm with owner)
+  settle(req: {
+    auctionId: AuctionId;
+    outcome: HammerOutcome;
+    holds: Record<BidderId, string>;
+  }): Promise<void>; // idempotent by auctionId
+  handleWebhook(req: {
+    rawBody: Uint8Array;
+    headers: Record<string, string>;
+  }): Promise<
+    | { kind: 'ok'; auctionId?: AuctionId }
+    | { kind: 'duplicate' }
+    | { kind: 'invalid_signature' }
+    | { kind: 'retry'; reason: string }
+  >;
+  onSettlementUpdate(
+    cb: (u: {
+      auctionId: AuctionId;
+      rev: number;
+      auctionState: SettlementState;
+      perBidder: Record<string, SettlementState>;
+      amountCaptured?: Cents;
+      note?: string;
+    }) => void,
+  ): () => void;
+  onHoldReported(
+    cb: (h: {
+      auctionId: AuctionId;
+      bidderId: BidderId;
+      name: string;
+      ceiling: Cents;
+      holdRef: string;
+    }) => void,
+  ): () => void;
 }
 
 export interface EnginePort {
   register(bidder: string, ceiling: number): void;
-  placeBid(bidder: string, amount: number, ts: number): { price: number | null; leader: string | null; endTs: number };
+  placeBid(
+    bidder: string,
+    amount: number,
+    ts: number,
+  ): { price: number | null; leader: string | null; endTs: number };
   tick(now: number): 'OPEN' | 'CLOSING' | 'SETTLING' | 'DONE';
   hammer(now: number): { winner: string | null; price: number; ranking: Array<[string, number]> };
-  extendTo(endTs: number): void;           // requested from the engine owner (pause/resume, auctioneer extend)
+  extendTo(endTs: number): void; // requested from the engine owner (pause/resume, auctioneer extend)
   complete(): void;
-  view(): { state: string; price: number | null; leader: string | null; endTs: number; extensions: number; minNext: number; ranking: Array<[string, number]> };
+  view(): {
+    state: string;
+    price: number | null;
+    leader: string | null;
+    endTs: number;
+    extensions: number;
+    minNext: number;
+    ranking: Array<[string, number]>;
+  };
 }
 
-export interface Logger { debug(m: string, c?: object): void; info(m: string, c?: object): void; warn(m: string, c?: object): void; error(m: string, c?: object): void; child(c: object): Logger }
-export interface TokenSigner { sign(claims: TokenClaims): Promise<string>; verify(token: string, expectKind?: TokenKind[]): Promise<TokenClaims> }
+export interface Logger {
+  debug(m: string, c?: object): void;
+  info(m: string, c?: object): void;
+  warn(m: string, c?: object): void;
+  error(m: string, c?: object): void;
+  child(c: object): Logger;
+}
+export interface TokenSigner {
+  sign(claims: TokenClaims): Promise<string>;
+  verify(token: string, expectKind?: TokenKind[]): Promise<TokenClaims>;
+}
 ```
 
 The existing engine (`packages/engine`, branch feat/engine-ts) has `register`, `placeBid`, `tick`, `hammer`, `complete` and codes `closed, unregistered, bad_amount, over_ceiling, below_reserve, below_increment, already_leading, not_open, bad_ceiling, not_higher_than_own_max, already_bid, cannot_hammer, cannot_complete`. It has no `extendTo`; that is a DEPS request. Without it, pause and resume (R-RT-049) cannot move `endTs`, and the fallback is to ship without pause (auctioneer `extend` also needs it).
@@ -297,10 +467,19 @@ The existing engine (`packages/engine`, branch feat/engine-ts) has `register`, `
 ### 4.4 Room core
 
 ```ts
-export interface RoomDeps { store: RoomStore; clock: Clock; ids: Ids; engine: () => EnginePort; payments: PaymentsPort; log: Logger; limits: Limits; metrics: Metrics }
+export interface RoomDeps {
+  store: RoomStore;
+  clock: Clock;
+  ids: Ids;
+  engine: () => EnginePort;
+  payments: PaymentsPort;
+  log: Logger;
+  limits: Limits;
+  metrics: Metrics;
+}
 export class Room {
-  static load(auctionId: AuctionId, deps: RoomDeps): Promise<Room>;     // replays log (R-RT-059)
-  submit(cmd: Command): Promise<CommandResult>;                          // enters the mailbox
+  static load(auctionId: AuctionId, deps: RoomDeps): Promise<Room>; // replays log (R-RT-059)
+  submit(cmd: Command): Promise<CommandResult>; // enters the mailbox
   attach(conn: Connection, join: JoinMsg, claims: TokenClaims): Promise<void>;
   detach(conn: ConnId): void;
   status(): RoomStatus;
@@ -309,7 +488,13 @@ export class Room {
 export type Command =
   | { k: 'bid'; by: Claims; msg: BidMsg; connId: ConnId }
   | { k: 'confirm'; by: Claims; msg: ConfirmResponseMsg }
-  | { k: 'control'; by: Claims; controlId: string; action: ControlAction; args?: Record<string, number> }
+  | {
+      k: 'control';
+      by: Claims;
+      controlId: string;
+      action: ControlAction;
+      args?: Record<string, number>;
+    }
   | { k: 'hold'; hold: HoldReport }
   | { k: 'settlement'; update: SettlementUpdate }
   | { k: 'timer'; which: 'close' | 'confirm_ttl' | 'auto_hammer'; ref?: string };
@@ -317,54 +502,54 @@ export type Command =
 
 ### 4.5 HTTP routes
 
-| Method and path | Auth | Purpose |
-|---|---|---|
-| POST /api/auctions | admin key | create auction, returns `{auctionId, auctioneerLink, screenLink}` |
-| GET /api/auctions/:id | none | public summary |
-| POST /api/auctions/:id/invites | auctioneer | mint 1..50 invites |
-| POST /api/auctions/:id/join | invite token in body | exchange for session token `{sessionToken, bidderId, wsUrl}` |
-| POST /api/auctions/:id/control | auctioneer | `{controlId, action, args}` |
-| POST /api/auctions/:id/auctioneer/rotate | auctioneer | revoke and mint new link |
-| GET /api/auctions/:id/snapshot | any role token | role-filtered RoomSnapshot |
-| GET /api/auctions/:id/events?after=&limit= | auctioneer, screen | wire-shaped frames |
-| GET /api/auctions/:id/export | auctioneer or admin | NDJSON log |
-| POST /webhooks/paypal | verifier only | raw body to PaymentsPort |
-| POST /api/demo/reset, /api/demo/seed | admin key, DEMO_MODE | demo path |
-| GET /healthz, /readyz, /metrics | none (metrics: admin or private net) | ops |
-| GET /ops/rooms | admin key | loaded rooms |
-| GET /ws | token in `join` frame | WebSocket upgrade |
+| Method and path                            | Auth                                 | Purpose                                                           |
+| ------------------------------------------ | ------------------------------------ | ----------------------------------------------------------------- |
+| POST /api/auctions                         | admin key                            | create auction, returns `{auctionId, auctioneerLink, screenLink}` |
+| GET /api/auctions/:id                      | none                                 | public summary                                                    |
+| POST /api/auctions/:id/invites             | auctioneer                           | mint 1..50 invites                                                |
+| POST /api/auctions/:id/join                | invite token in body                 | exchange for session token `{sessionToken, bidderId, wsUrl}`      |
+| POST /api/auctions/:id/control             | auctioneer                           | `{controlId, action, args}`                                       |
+| POST /api/auctions/:id/auctioneer/rotate   | auctioneer                           | revoke and mint new link                                          |
+| GET /api/auctions/:id/snapshot             | any role token                       | role-filtered RoomSnapshot                                        |
+| GET /api/auctions/:id/events?after=&limit= | auctioneer, screen                   | wire-shaped frames                                                |
+| GET /api/auctions/:id/export               | auctioneer or admin                  | NDJSON log                                                        |
+| POST /webhooks/paypal                      | verifier only                        | raw body to PaymentsPort                                          |
+| POST /api/demo/reset, /api/demo/seed       | admin key, DEMO_MODE                 | demo path                                                         |
+| GET /healthz, /readyz, /metrics            | none (metrics: admin or private net) | ops                                                               |
+| GET /ops/rooms                             | admin key                            | loaded rooms                                                      |
+| GET /ws                                    | token in `join` frame                | WebSocket upgrade                                                 |
 
 Authorization matrix (R-RT-085): operation x role.
 
-| Operation | auctioneer | bidder | screen | admin |
-|---|---|---|---|---|
-| ws join | yes | yes | yes | no |
-| bid (own) | no | yes | no | no |
-| bid (manual for others) | yes | no | no | no |
-| confirm_response | no | yes (own) | no | no |
-| control | yes | no | no | no |
-| invites, rotate | yes | no | no | no |
-| snapshot (filtered) | yes | yes | yes | no |
-| export | yes | no | no | yes |
-| create, demo, ops | no | no | no | yes |
+| Operation               | auctioneer | bidder    | screen | admin |
+| ----------------------- | ---------- | --------- | ------ | ----- |
+| ws join                 | yes        | yes       | yes    | no    |
+| bid (own)               | no         | yes       | no     | no    |
+| bid (manual for others) | yes        | no        | no     | no    |
+| confirm_response        | no         | yes (own) | no     | no    |
+| control                 | yes        | no        | no     | no    |
+| invites, rotate         | yes        | no        | no     | no    |
+| snapshot (filtered)     | yes        | yes       | yes    | no    |
+| export                  | yes        | no        | no     | yes   |
+| create, demo, ops       | no         | no        | no     | yes   |
 
 ### 4.6 Close codes and error table (excerpt; full table in errors.ts)
 
-| code | HTTP | WS close | retryable |
-|---|---|---|---|
-| bad_message | 400 | 1008 | no |
-| unsupported_version | 400 | 4002 | no |
-| not_joined | 400 | 4003 | no |
-| unauthorized | 401 | 4401 | no |
-| forbidden | 403 | none | no |
-| invite_used | 409 | none | no |
-| rate_limited | 429 | none | yes |
-| room_full, room_cap, auction_full | 503 | 4009 | yes (room_full) |
-| store_unavailable | 503 | none | yes |
-| conflict, host_fenced | 409 | 4010 | no |
-| join timeout | n/a | 4001 | n/a |
-| slow consumer | n/a | 4008 | n/a |
-| process stop (SIGTERM) | n/a | 1001 | n/a |
+| code                              | HTTP | WS close | retryable       |
+| --------------------------------- | ---- | -------- | --------------- |
+| bad_message                       | 400  | 1008     | no              |
+| unsupported_version               | 400  | 4002     | no              |
+| not_joined                        | 400  | 4003     | no              |
+| unauthorized                      | 401  | 4401     | no              |
+| forbidden                         | 403  | none     | no              |
+| invite_used                       | 409  | none     | no              |
+| rate_limited                      | 429  | none     | yes             |
+| room_full, room_cap, auction_full | 503  | 4009     | yes (room_full) |
+| store_unavailable                 | 503  | none     | yes             |
+| conflict, host_fenced             | 409  | 4010     | no              |
+| join timeout                      | n/a  | 4001     | n/a             |
+| slow consumer                     | n/a  | 4008     | n/a             |
+| process stop (SIGTERM)            | n/a  | 1001     | n/a             |
 
 ### 4.7 Config (env)
 
@@ -373,7 +558,15 @@ Authorization matrix (R-RT-085): operation x role.
 ### 4.8 Token payload
 
 ```json
-{"kind":"session","aud":"01J9ZQ4Y6Z8K3M5N7P9R1S3T5V","sub":"01J9ZQ3A0B2C4D6F8H0J2K4M6N","bidderId":"01J9ZQ3A0B2C4D6F8H0J2K4M6N","jti":"01J9ZQ6A0B2C4D6F8H0J2K4M6N","iat":1789000000,"exp":1789014400}
+{
+  "kind": "session",
+  "aud": "01J9ZQ4Y6Z8K3M5N7P9R1S3T5V",
+  "sub": "01J9ZQ3A0B2C4D6F8H0J2K4M6N",
+  "bidderId": "01J9ZQ3A0B2C4D6F8H0J2K4M6N",
+  "jti": "01J9ZQ6A0B2C4D6F8H0J2K4M6N",
+  "iat": 1789000000,
+  "exp": 1789014400
+}
 ```
 
 Lifetimes: invite 24 h, session 4 h, auctioneer 12 h, screen 12 h. Payload is base64url JSON, no `alg` field.
@@ -389,6 +582,7 @@ SCHEDULED --open--> OPEN --endTs/closeNow--> CLOSING --hammer--> SETTLING --SETT
               v  |
             PAUSED
 ```
+
 Engine states OPEN, CLOSING, SETTLING, DONE map 1:1; SCHEDULED and PAUSED are room-level. Settlement states come from payments: HELD, BIDDING, WINNER_SELECTED, CAPTURING, CAPTURED, VOIDING, SETTLED, FALLBACK_RUNNER_UP, FAILED_NEEDS_REVIEW; RT stores and fans them out and gates DONE on SETTLED or FAILED_NEEDS_REVIEW.
 
 ### 5.2 Bid sequence
@@ -405,6 +599,7 @@ client        host/conn       Room mailbox           engine        store        
   |<--bid_accepted(seq)-----------|                    |             |              |
   |               |               |--price(seq)---------------------------------->| |
 ```
+
 Failure branch: on append failure the engine mutation is discarded by rebuilding the engine from the in-memory event list, so state matches the log.
 
 ### 5.3 Confirmation
@@ -435,14 +630,14 @@ restart between hammered and settle call: settle_requested present, no settlemen
 
 ### 5.6 Host decision table (spike RT-86)
 
-| Criterion | Pass threshold for Durable Object to win |
-|---|---|
-| Room p95 accept-to-broadcast, 20 clients, same region | within 1.5x of Node and < 150 ms |
-| Restart recovery from log | < 2 s for 1000 events |
-| Payments saga and secrets co-location | saga can run in same process or via authenticated call with no extra secret exposure |
-| Persistence for ledger | D1 or SQLite-backed storage passes contract suite |
-| Deploy effort | < 3 h from clean checkout to live URL, with existing wrangler login |
-| Free-plan limits (WebSocket duration, requests) | demo-sized load fits, UNVERIFIED (spike) |
+| Criterion                                             | Pass threshold for Durable Object to win                                             |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Room p95 accept-to-broadcast, 20 clients, same region | within 1.5x of Node and < 150 ms                                                     |
+| Restart recovery from log                             | < 2 s for 1000 events                                                                |
+| Payments saga and secrets co-location                 | saga can run in same process or via authenticated call with no extra secret exposure |
+| Persistence for ledger                                | D1 or SQLite-backed storage passes contract suite                                    |
+| Deploy effort                                         | < 3 h from clean checkout to live URL, with existing wrangler login                  |
+| Free-plan limits (WebSocket duration, requests)       | demo-sized load fits, UNVERIFIED (spike)                                             |
 
 Any miss means Node. Default is Node on Render with Postgres (R-RT-142).
 
@@ -472,7 +667,6 @@ Any miss means Node. Default is Node on Render with Postgres (R-RT-142).
 - Observability: JSON logs with correlation ids, metrics JSON, `/ops/rooms`.
 - Compatibility: wire changes bump `PROTOCOL_VERSION`; golden fixtures guard accidental drift.
 - Accessibility: no UI here; error `message` strings are plain sentences suitable for screen readers.
-
 
 ## 8. Test specification
 
@@ -556,7 +750,7 @@ All tests run in GitHub Actions (Vitest; fast-check for property tests; Postgres
 - **T-RT-076** [integration] (R-RT-104) snapshot and events?after=5&limit=10 return schema-valid role-filtered data
 - **T-RT-077** [integration] (R-RT-105) 415 for text/plain, 413 for 65537 bytes, CORS preflight allowed only for allowlist
 - **T-RT-078** [integration] (R-RT-106) control hammer over HTTP then WS client receives hammer frame
-- **T-RT-079** [integration] (R-RT-107) DEMO_MODE=0: /api/demo/* 404; =1 reset gives empty room, seed gives scripted auction with 3 bidders
+- **T-RT-079** [integration] (R-RT-107) DEMO_MODE=0: /api/demo/\* 404; =1 reset gives empty room, seed gives scripted auction with 3 bidders
 - **T-RT-080** [unit] (R-RT-108) export NDJSON equals log; ReplayFeed at 4x with ManualClock emits frames at original deltas / 4
 - **T-RT-081** [unit] (R-RT-110) byte-exact raw body (including odd whitespace) reaches PaymentsPort; JSON is not re-serialised
 - **T-RT-082** [unit] (R-RT-111) stub returns ok, duplicate, invalid_signature, retry: 200,200,400,503
@@ -595,30 +789,48 @@ All tests run in GitHub Actions (Vitest; fast-check for property tests; Postgres
 - `packages/server/test/scenarios/*.json`: scripted scenarios, format:
 
 ```json
-{"name":"happy-path-english","config":{"reserve":10000,"minIncrement":1000,"endTs":60000},
- "clients":{"A":{"role":"bidder","paddle":12,"ceiling":50000},"B":{"role":"bidder","paddle":7,"ceiling":30000},"HOST":{"role":"auctioneer"}},
- "steps":[{"at":1000,"from":"A","send":{"t":"bid","mid":"m1","amount":10000,"source":"qr"}},
-          {"at":2000,"from":"B","send":{"t":"bid","mid":"m2","amount":12000,"source":"qr"}},
-          {"at":60000,"from":"HOST","control":"hammer"},
-          {"at":61000,"settlement":{"rev":1,"auctionState":"SETTLED"}}],
- "expect":{"framesFile":"happy-path-english.frames.json","finalStatus":"DONE","winner":"A"}}
+{
+  "name": "happy-path-english",
+  "config": { "reserve": 10000, "minIncrement": 1000, "endTs": 60000 },
+  "clients": {
+    "A": { "role": "bidder", "paddle": 12, "ceiling": 50000 },
+    "B": { "role": "bidder", "paddle": 7, "ceiling": 30000 },
+    "HOST": { "role": "auctioneer" }
+  },
+  "steps": [
+    {
+      "at": 1000,
+      "from": "A",
+      "send": { "t": "bid", "mid": "m1", "amount": 10000, "source": "qr" }
+    },
+    {
+      "at": 2000,
+      "from": "B",
+      "send": { "t": "bid", "mid": "m2", "amount": 12000, "source": "qr" }
+    },
+    { "at": 60000, "from": "HOST", "control": "hammer" },
+    { "at": 61000, "settlement": { "rev": 1, "auctionState": "SETTLED" } }
+  ],
+  "expect": { "framesFile": "happy-path-english.frames.json", "finalStatus": "DONE", "winner": "A" }
+}
 ```
-  The same runner is imported by packages/e2e so UI scenarios and server scenarios share fixtures.
+
+The same runner is imported by packages/e2e so UI scenarios and server scenarios share fixtures.
+
 - Test seeds: property tests print the fast-check seed on failure; `RT_SEED` pins it.
 - Fault injection: `FlakyStore` (fail Nth append, delay, force Conflict), `StubPayments` (inject ok, duplicate, invalid_signature, retry; push out-of-order updates), slow-consumer client that never drains.
 
-
 ## 10. Open questions
 
-| # | Question | Decision owner | Default |
-|---|---|---|---|
-| 1 | Durable Object or Node host? | Harsh with spike RT-86 results | Node on Render plus Postgres (R-RT-142) |
-| 2 | Engine gains `extendTo(endTs)` for pause/resume and auctioneer extend | engine owner | Add it; if refused, drop pause and extend from the demo |
-| 3 | PaymentsPort shape (`settle`, `handleWebhook`, update callbacks) acceptable? | payments owner | As in 4.3; adapter layer in server if payments differs |
-| 4 | Can an auctioneer void an accepted bid (misheard)? Breaks log purity | Harsh | No; use a manual counter-bid and an audit note |
-| 5 | Does PayPal retry non-2xx webhooks and on what schedule? | payments owner, gate G4 | UNVERIFIED (G4); route returns 503 for `retry`, 200 otherwise |
-| 6 | Who confirms low-confidence voice bids: bidder only or auctioneer too? | web owner | Bidder only (R-RT-045) |
-| 7 | Is `confirmConfidenceThreshold` 0.85 right? | voice owner after gate G5 | 0.85, configurable per auction |
-| 8 | Hosted store for the live demo: Render Postgres free tier lifetime limits | Harsh | Use it for the judging window; MemoryStore plus export as backup |
-| 9 | Should the screen role see bidder names or paddles only? | web owner | Paddles and first names |
-| 10 | Room events retention beyond the hackathon | Harsh | Keep forever, sandbox data only |
+| #   | Question                                                                     | Decision owner                 | Default                                                          |
+| --- | ---------------------------------------------------------------------------- | ------------------------------ | ---------------------------------------------------------------- |
+| 1   | Durable Object or Node host?                                                 | Harsh with spike RT-86 results | Node on Render plus Postgres (R-RT-142)                          |
+| 2   | Engine gains `extendTo(endTs)` for pause/resume and auctioneer extend        | engine owner                   | Add it; if refused, drop pause and extend from the demo          |
+| 3   | PaymentsPort shape (`settle`, `handleWebhook`, update callbacks) acceptable? | payments owner                 | As in 4.3; adapter layer in server if payments differs           |
+| 4   | Can an auctioneer void an accepted bid (misheard)? Breaks log purity         | Harsh                          | No; use a manual counter-bid and an audit note                   |
+| 5   | Does PayPal retry non-2xx webhooks and on what schedule?                     | payments owner, gate G4        | UNVERIFIED (G4); route returns 503 for `retry`, 200 otherwise    |
+| 6   | Who confirms low-confidence voice bids: bidder only or auctioneer too?       | web owner                      | Bidder only (R-RT-045)                                           |
+| 7   | Is `confirmConfidenceThreshold` 0.85 right?                                  | voice owner after gate G5      | 0.85, configurable per auction                                   |
+| 8   | Hosted store for the live demo: Render Postgres free tier lifetime limits    | Harsh                          | Use it for the judging window; MemoryStore plus export as backup |
+| 9   | Should the screen role see bidder names or paddles only?                     | web owner                      | Paddles and first names                                          |
+| 10  | Room events retention beyond the hackathon                                   | Harsh                          | Keep forever, sandbox data only                                  |

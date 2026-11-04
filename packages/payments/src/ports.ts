@@ -25,7 +25,10 @@ export interface PaymentsGateway {
   /** Read. Never changes state; failures are transient. */
   getOrder(orderId: string): Promise<{ orderId: string; status: string; authId?: string }>;
   /** POST. Unknown outcome: the authorization may exist; read the order. */
-  authorizeOrder(orderId: string, requestId: string): Promise<{ authId: string; amountCents: number }>;
+  authorizeOrder(
+    orderId: string,
+    requestId: string,
+  ): Promise<{ authId: string; amountCents: number }>;
   /** Read. The only source of truth the saga trusts after an unknown outcome. */
   getHoldTruth(h: { holdId: string; authId: string; orderId?: string }): Promise<HoldTruth>;
   /** POST. Unknown outcome: money may have moved; check getHoldTruth. */
@@ -36,7 +39,10 @@ export interface PaymentsGateway {
   /** POST. Definite on 2xx and on already_voided/expired/not_found; unknown otherwise. */
   voidAuthorization(authId: string, requestId: string): Promise<void>;
   /** POST. Unknown outcome: the authorization amount may have changed. */
-  reauthorize(authId: string, i: { amountCents: number; requestId: string }): Promise<{ amountCents: number }>;
+  reauthorize(
+    authId: string,
+    i: { amountCents: number; requestId: string },
+  ): Promise<{ amountCents: number }>;
 }
 
 export interface JournalStore {

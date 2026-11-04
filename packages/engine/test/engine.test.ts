@@ -51,7 +51,14 @@ describe('english', () => {
   });
 
   it('soft close extends the end time, capped', () => {
-    const a = new Auction('s', { reserve: 1, minIncrement: 1, endTs: 100, softCloseWindow: 10, softCloseExtension: 10, maxExtensions: 2 });
+    const a = new Auction('s', {
+      reserve: 1,
+      minIncrement: 1,
+      endTs: 100,
+      softCloseWindow: 10,
+      softCloseExtension: 10,
+      maxExtensions: 2,
+    });
     a.register('ann', 1_000);
     a.register('bob', 1_000);
     a.placeBid('ann', 10, 95);
@@ -103,19 +110,20 @@ describe('invariants', () => {
     let s = 12345;
     const rnd = () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648;
     for (let i = 0; i < 300; i++) {
-      const mode = (['english', 'proxy', 'second_price'] as const)[i % 3]!;
+      const modes = ['english', 'proxy', 'second_price'] as const;
+      const mode = modes[i % 3] ?? 'english';
       const a = new Auction(`r${i}`, { mode, reserve: 10, minIncrement: 5, endTs: 1000 });
       const names = ['a', 'b', 'c', 'd'];
       for (const n of names) a.register(n, 100 + Math.floor(rnd() * 900));
       for (let t = 1; t < 60; t++) {
         try {
-          a.placeBid(names[Math.floor(rnd() * 4)]!, 1 + Math.floor(rnd() * 1000), t);
+          a.placeBid(names[Math.floor(rnd() * 4)] ?? 'a', 1 + Math.floor(rnd() * 1000), t);
         } catch (e) {
           if (!(e instanceof Rejected)) throw e;
         }
       }
       const out = a.hammer(1000);
-      if (out.winner) expect(out.price).toBeLessThanOrEqual(a.ceilings.get(out.winner)!);
+      if (out.winner) expect(out.price).toBeLessThanOrEqual(a.ceilings.get(out.winner) ?? 0);
     }
   });
 });

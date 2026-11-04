@@ -8,18 +8,15 @@ on:
 jobs:
   voice:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/voice
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
       - run: npm install --no-audit --no-fund
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test
+      - run: npm run typecheck -w @gavel/voice
+      - run: ./node_modules/.bin/eslint packages/voice/src --max-warnings 0
+      - run: npm test -w @gavel/voice
       - name: size-limit
         if: ${{ hashFiles('packages/voice/src/parser/parse.ts') != '' && hashFiles('packages/voice/src/decide/policy.ts') != '' && hashFiles('packages/voice/src/browser/capture.ts') != '' }}
-        run: npm run size
+        run: npm run size -w @gavel/voice

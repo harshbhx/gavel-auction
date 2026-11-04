@@ -17,5 +17,12 @@ export type Role = (typeof ROLES)[number];
 export const BID_SOURCES = ['voice', 'qr', 'manual'] as const;
 export type BidSource = (typeof BID_SOURCES)[number];
 
-export const AUCTION_STATUSES = ['SCHEDULED', 'OPEN', 'PAUSED', 'CLOSING', 'SETTLING', 'DONE'] as const;
+export const AUCTION_STATUSES = [
+  'SCHEDULED',
+  'OPEN',
+  'PAUSED',
+  'CLOSING',
+  'SETTLING',
+  'DONE',
+] as const;
 export type AuctionStatus = (typeof AUCTION_STATUSES)[number];

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { base32, buildRequestId, type RequestIdParts } from '../src/requestId.js';
 
-const p: RequestIdParts = { auctionId: 'a1', op: 'capture', holdId: 'h1', amountCents: 22000, generation: 0 };
+const p: RequestIdParts = {
+  auctionId: 'a1',
+  op: 'capture',
+  holdId: 'h1',
+  amountCents: 22000,
+  generation: 0,
+};
 
 describe('requestId', () => {
   it('T-PAY-008 deterministic, sensitive to generation and amount, 44 chars base32', () => {

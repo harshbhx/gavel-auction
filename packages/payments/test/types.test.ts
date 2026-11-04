@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { canonicalJson, SETTLEMENT_STATES, type SettlementState } from '../src/types.js';
 
-type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+type Equal<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 type Expected =
   | 'HELD'
   | 'BIDDING'

@@ -23,12 +23,16 @@ describe('canonicalize', () => {
       expect(code(() => canonicalize(v as unknown as JsonValue))).toBe('non_canonical');
     }
     expect(canonicalize('😀')).toBe('"😀"');
-    expect(code(() => canonicalize({ a: undefined } as unknown as JsonValue))).toBe('non_canonical');
+    expect(code(() => canonicalize({ a: undefined } as unknown as JsonValue))).toBe(
+      'non_canonical',
+    );
   });
   it('T-ENG-006 (R-ENG-006): forbidden keys fail without polluting prototypes', () => {
     expect(code(() => canonicalize({ constructor: 1 }))).toBe('non_canonical');
     expect(code(() => canonicalize({ prototype: 1 }))).toBe('non_canonical');
-    expect(code(() => canonicalize(JSON.parse('{"__proto__":1}') as JsonValue))).toBe('non_canonical');
+    expect(code(() => canonicalize(JSON.parse('{"__proto__":1}') as JsonValue))).toBe(
+      'non_canonical',
+    );
     expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
   });
 });

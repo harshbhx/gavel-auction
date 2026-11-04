@@ -12,7 +12,9 @@ async function lint(code: string, filePath: string): Promise<string[]> {
 
 describe('T-VOX-068 import guard (R-VOX-061)', () => {
   it('rejects value imports of engine and payments', async () => {
-    expect(await lint("import { Auction } from '@gavel/engine';\n", 'src/types.ts')).toHaveLength(1);
+    expect(await lint("import { Auction } from '@gavel/engine';\n", 'src/types.ts')).toHaveLength(
+      1,
+    );
     expect(await lint("import { pay } from '@gavel/payments';\n", 'src/types.ts')).toHaveLength(1);
     expect(
       await lint("import { x } from '../../../packages/engine/src/index';\n", 'src/types.ts'),
@@ -20,7 +22,9 @@ describe('T-VOX-068 import guard (R-VOX-061)', () => {
   });
 
   it('allows type-only imports', async () => {
-    expect(await lint("import type { Auction } from '@gavel/engine';\n", 'src/types.ts')).toHaveLength(0);
+    expect(
+      await lint("import type { Auction } from '@gavel/engine';\n", 'src/types.ts'),
+    ).toHaveLength(0);
   });
 });
 
