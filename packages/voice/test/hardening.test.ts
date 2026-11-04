@@ -132,7 +132,7 @@ describe('LLM output and result bounds (#801)', () => {
   it('rejects negative, huge and non-numeric values', () => {
     expect(parseLlmOutput({ ...good, amount_dollars: -300 })).toBeNull();
     expect(parseLlmOutput({ ...good, amount_dollars: 1e300 })).toBeNull();
-    expect(parseLlmOutput({ ...good, amount_dollars: 9007199254740993 })).toBeNull();
+    expect(parseLlmOutput({ ...good, amount_dollars: Number.MAX_SAFE_INTEGER + 2 })).toBeNull();
     expect(parseLlmOutput({ ...good, paddle: 'x'.repeat(500) })).toBeNull();
     expect(parseLlmOutput({ ...good, alternatives: [-1] })).toBeNull();
   });
