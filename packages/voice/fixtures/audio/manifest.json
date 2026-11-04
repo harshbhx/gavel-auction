@@ -1,0 +1,531 @@
+[
+  {
+    "id": "a01",
+    "file": "a01-three-hundred-clean.wav",
+    "text": "three hundred",
+    "category": "plain",
+    "voice": "tts-en-US-1",
+    "noise": "none",
+    "snrDb": null,
+    "seed": 1000,
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 27500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 30000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a02",
+    "file": "a02-ill-go-four-hundred-and-fifty-cafe10.wav",
+    "text": "I'll go four hundred and fifty",
+    "category": "plain",
+    "voice": "tts-en-IN-1",
+    "noise": "cafe",
+    "snrDb": 10,
+    "seed": 1001,
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 42500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 45000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a03",
+    "file": "a03-two-fifty-cafe10.wav",
+    "text": "two fifty",
+    "category": "colloquial",
+    "voice": "tts-en-GB-1",
+    "noise": "cafe",
+    "snrDb": 10,
+    "seed": 1002,
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 22500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 25000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a04",
+    "file": "a04-three-seventy-five-crowd5.wav",
+    "text": "three seventy five",
+    "category": "colloquial",
+    "voice": "team-voice-1",
+    "noise": "crowd",
+    "snrDb": 5,
+    "seed": 1003,
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 35000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 37500
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a05",
+    "file": "a05-twelve-fifty-crowd5.wav",
+    "text": "twelve fifty",
+    "category": "colloquial",
+    "voice": "tts-en-US-1",
+    "noise": "crowd",
+    "snrDb": 5,
+    "seed": 1004,
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 122500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 125000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a06",
+    "file": "a06-fifteen-hundred-clean.wav",
+    "text": "fifteen hundred",
+    "category": "colloquial",
+    "voice": "tts-en-IN-1",
+    "noise": "none",
+    "snrDb": null,
+    "seed": 1005,
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 147500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 150000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a07",
+    "file": "a07-paddle-twelve-three-fifty-cafe10.wav",
+    "text": "paddle twelve three fifty",
+    "category": "paddle",
+    "voice": "tts-en-IN-1",
+    "noise": "cafe",
+    "snrDb": 10,
+    "seed": 1006,
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 32500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 35000,
+      "paddle": "12"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a08",
+    "file": "a08-bidder-number-nine-four-hundred-crowd5.wav",
+    "text": "bidder number nine four hundred",
+    "category": "paddle",
+    "voice": "tts-en-GB-1",
+    "noise": "crowd",
+    "snrDb": 5,
+    "seed": 1007,
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 37500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 40000,
+      "paddle": "9"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a09",
+    "file": "a09-three-hundred-from-paddle-fourteen-cafe10.wav",
+    "text": "three hundred from paddle fourteen",
+    "category": "paddle",
+    "voice": "team-voice-1",
+    "noise": "cafe",
+    "snrDb": 10,
+    "seed": 1008,
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 27500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 30000,
+      "paddle": "14"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a10",
+    "file": "a10-paddle-seven-five-hundred-dollars-crowd5.wav",
+    "text": "paddle seven, five hundred dollars",
+    "category": "paddle",
+    "voice": "team-voice-2",
+    "noise": "crowd",
+    "snrDb": 5,
+    "seed": 1009,
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 47500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 50000,
+      "paddle": "7"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a11",
+    "file": "a11-two-thousand-five-hundred-cafe10.wav",
+    "text": "two thousand five hundred",
+    "category": "plain",
+    "voice": "tts-en-US-1",
+    "noise": "cafe",
+    "snrDb": 10,
+    "seed": 1010,
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 247500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 250000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a12",
+    "file": "a12-one-point-five-k-clean.wav",
+    "text": "one point five k",
+    "category": "numeral",
+    "voice": "tts-en-GB-1",
+    "noise": "none",
+    "snrDb": null,
+    "seed": 1011,
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 147500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 150000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a13",
+    "file": "a13-i-bid-seventy-five-cafe10.wav",
+    "text": "I bid seventy five",
+    "category": "plain",
+    "voice": "team-voice-2",
+    "noise": "cafe",
+    "snrDb": 10,
+    "seed": 1012,
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 5000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 7500
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a14",
+    "file": "a14-two-fifty-no-wait-three-hundred-clean.wav",
+    "text": "two fifty no wait three hundred",
+    "category": "correction",
+    "voice": "tts-en-IN-1",
+    "noise": "none",
+    "snrDb": null,
+    "seed": 1013,
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "amountCents": 30000
+        }
+      ]
+    ]
+  },
+  {
+    "id": "a15",
+    "file": "a15-maybe-two-fifty-cafe10.wav",
+    "text": "maybe two fifty",
+    "category": "ambiguous",
+    "voice": "tts-en-US-1",
+    "noise": "cafe",
+    "snrDb": 10,
+    "seed": 1014,
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "amountCents": 25000
+        }
+      ]
+    ]
+  },
+  {
+    "id": "a16",
+    "file": "a16-two-fifty-or-three-hundred-crowd5.wav",
+    "text": "two fifty or three hundred",
+    "category": "ambiguous",
+    "voice": "team-voice-1",
+    "noise": "crowd",
+    "snrDb": 5,
+    "seed": 1015,
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "amountCents": 25000
+        },
+        {
+          "amountCents": 30000
+        }
+      ]
+    ]
+  },
+  {
+    "id": "a17",
+    "file": "a17-paddle-five-two-fifty-paddle-nine-two-si-cafe10.wav",
+    "text": "paddle five two fifty paddle nine two sixty",
+    "category": "two_bidders",
+    "voice": "tts-en-GB-1",
+    "noise": "cafe",
+    "snrDb": 10,
+    "seed": 1016,
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "paddle": "5",
+          "amountCents": 25000
+        },
+        {
+          "paddle": "9",
+          "amountCents": 26000
+        }
+      ]
+    ]
+  },
+  {
+    "id": "a18",
+    "file": "a18-fifteen-clean.wav",
+    "text": "fifteen",
+    "category": "ambiguous",
+    "voice": "team-voice-2",
+    "noise": "none",
+    "snrDb": null,
+    "seed": 1017,
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 4000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "amountCents": 1500
+        },
+        {
+          "amountCents": 5000
+        }
+      ]
+    ]
+  },
+  {
+    "id": "a19",
+    "file": "a19-no-make-it-four-hundred-cafe10.wav",
+    "text": "no, make it four hundred",
+    "category": "correction",
+    "voice": "tts-en-IN-1",
+    "noise": "cafe",
+    "snrDb": 10,
+    "seed": 1018,
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 35000,
+      "pendingCandidate": {
+        "paddle": "7",
+        "amountCents": 35000
+      }
+    },
+    "expected": {
+      "outcome": "confirm",
+      "intended": {
+        "paddle": "7",
+        "amountCents": 40000
+      }
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "paddle": "7",
+          "amountCents": 40000
+        }
+      ]
+    ]
+  },
+  {
+    "id": "a20",
+    "file": "a20-the-price-is-now-two-hundred-clean.wav",
+    "text": "the price is now two hundred",
+    "category": "non_bid",
+    "voice": "tts-en-US-1",
+    "noise": "none",
+    "snrDb": null,
+    "seed": 1019,
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a21",
+    "file": "a21-is-it-two-fifty-crowd5.wav",
+    "text": "is it two fifty",
+    "category": "non_bid",
+    "voice": "team-voice-1",
+    "noise": "crowd",
+    "snrDb": 5,
+    "seed": 1020,
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a22",
+    "file": "a22-i-have-two-kids-cafe10.wav",
+    "text": "I have two kids",
+    "category": "non_bid",
+    "voice": "team-voice-2",
+    "noise": "cafe",
+    "snrDb": 10,
+    "seed": 1021,
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a23",
+    "file": "a23-im-out-clean.wav",
+    "text": "I'm out",
+    "category": "non_bid",
+    "voice": "tts-en-GB-1",
+    "noise": "none",
+    "snrDb": null,
+    "seed": 1022,
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "a24",
+    "file": "a24-three-fifty-rupees-cafe10.wav",
+    "text": "three fifty rupees",
+    "category": "currency",
+    "voice": "tts-en-IN-1",
+    "noise": "cafe",
+    "snrDb": 10,
+    "seed": 1023,
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": []
+  }
+]
