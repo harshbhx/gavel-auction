@@ -11,3 +11,8 @@ packages/voice/src/parser/lexicon.ts
 packages/voice/src/parser/normalize.ts
 packages/voice/test/parser/amounts.test.ts
 reference/python/parser.py
+packages/voice/src/parser/correction.ts
+packages/voice/src/parser/spans.ts
+packages/voice/src/segment/dedupe.ts
+packages/voice/src/segment/echo.ts
+packages/voice/test/parser/ambiguity.test.ts
