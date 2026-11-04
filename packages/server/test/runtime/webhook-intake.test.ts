@@ -1,5 +1,5 @@
 import { MemoryHoldStore, MemoryWebhookEventStore } from '@gavel/payments';
-import type { HoldRecord } from '@gavel/payments';
+import type { HoldRecord, VerifiedWebhook } from '@gavel/payments';
 import { describe, expect, it } from 'vitest';
 import { WebhookIntake } from '../../src/runtime/webhook-intake';
 
@@ -42,6 +42,7 @@ function rig(): {
 }
 
 const denied = {
+  headers: {} as unknown as VerifiedWebhook['headers'],
   rawBody: Buffer.from(
     JSON.stringify({
       id: 'WH-1',
