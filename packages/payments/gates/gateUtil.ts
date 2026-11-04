@@ -15,8 +15,8 @@ export function field(json: unknown, key: string): unknown {
   return isRecord(json) ? json[key] : undefined;
 }
 
-/** Currency of the gate orders: GATE_CURRENCY, INR by default (the sandbox accounts are Indian). */
-export const DEFAULT_GATE_CURRENCY = 'INR';
+/** Currency of the gate orders: GATE_CURRENCY, USD by default (the sandbox accounts are US). */
+export const DEFAULT_GATE_CURRENCY = 'USD';
 
 export function gateCurrency(env: Record<string, string | undefined> = process.env): string {
   const raw = env['GATE_CURRENCY']?.trim().toUpperCase();
