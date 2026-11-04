@@ -1288,7 +1288,11 @@ describe('auction service: leftover red-team round 3 (PAY-73)', () => {
 });
 
 describe('auction service: void phase of the payments package (PAYMENTS-R3-03)', () => {
-  it('sends a settlement with a void that never works to review instead of pending forever', async () => {
+  // R4-S01 (#1209): a void that fails with an unknown outcome (5xx, timeout) is retried free of the
+  // resume budget. The older R3-03 expectation (FAILED_NEEDS_REVIEW after maxVoidResumes) only holds
+  // for a definite refusal, which the fake PayPal cannot produce on a void; that case is covered in
+  // packages/payments/test/saga. So the service must keep VOIDING and recover once the outage ends.
+  it('keeps retrying voids through a long outage without using the resume budget', async () => {
     const rig = await makeRig();
     const service = rig.service({
       retryDelayMs: 3_600_000,
@@ -1296,9 +1300,8 @@ describe('auction service: void phase of the payments package (PAYMENTS-R3-03)',
       maxVoidResumes: 1,
       onError: () => undefined,
     });
-    // Only the losers' voids fail; the winner's capture and remainder go through.
     const run = await runToHammer(rig, service, (bidders) => {
-      for (const b of bidders.slice(1)) rig.paypal.core.inject('void', 'http_500', b.authId, 1000);
+      for (const b of bidders.slice(1)) rig.paypal.core.inject('void', 'http_500', b.authId, 7);
     });
     await service.idle();
     expect((await journalOf(rig, run.auctionId)).state).toBe('VOIDING');
@@ -1306,13 +1309,15 @@ describe('auction service: void phase of the payments package (PAYMENTS-R3-03)',
       await service.resume();
       await service.idle();
     }
-    expect((await journalOf(rig, run.auctionId)).state).toBe('FAILED_NEEDS_REVIEW');
-    // The winner was charged once, and the room hears that the result is under review.
+    const mid = await journalOf(rig, run.auctionId);
+    expect(mid.state).not.toBe('FAILED_NEEDS_REVIEW');
+    expect(mid.resumes).toBe(0);
+    for (let i = 0; i < 6 && (await journalOf(rig, run.auctionId)).state !== 'SETTLED'; i++) {
+      await service.resume();
+      await service.idle();
+    }
+    expect((await journalOf(rig, run.auctionId)).state).toBe('SETTLED');
     expect(rig.paypal.core.getAuthorization(run.a.authId).captures).toHaveLength(1);
-    const last = (await events(rig, run.auctionId))
-      .filter((e) => e.type === 'settlement_update')
-      .at(-1);
-    expect(last).toMatchObject({ auctionState: 'FAILED_NEEDS_REVIEW' });
     await service.close();
   });
 });

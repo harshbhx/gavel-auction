@@ -68,8 +68,6 @@ export interface CaptureDeps {
 const INVARIANT_KINDS: ReadonlySet<string> = new Set([
   'invalid_request',
   'idempotency_conflict',
-  'auth_failed',
-  'auth_expired',
   'ceiling_out_of_range',
 ]);
 
@@ -251,16 +249,16 @@ class Run {
       if (out !== undefined) return out;
     }
 
+    // R-PAY-063: no new capture (checked first: no retry is possible, so the unknown clock must not fire) while the kill switch is engaged.
+    if (this.deps.killSwitch !== undefined && (await this.deps.killSwitch.isEngaged()).engaged) {
+      return { status: 'pending', reason: 'kill_switch', journal: j };
+    }
+
     // R-PAY-055: the outcome has been unknown for too long.
     if (unknownExpired(j.unknownSince, this.now(), this.deadlineMs)) {
       return this.fail('unknown_deadline');
     }
     if (truth === undefined) return { status: 'pending', reason: 'truth_unavailable', journal: j };
-
-    // R-PAY-063: no new capture while the kill switch is engaged.
-    if (this.deps.killSwitch !== undefined && (await this.deps.killSwitch.isEngaged()).engaged) {
-      return { status: 'pending', reason: 'kill_switch', journal: j };
-    }
 
     // Write-ahead intent; a resume reuses the saved one, so the request id repeats.
     const saved = j.intent;
@@ -351,7 +349,11 @@ class Run {
     if (err.kind === 'kill_switch_engaged') {
       return { status: 'pending', reason: 'kill_switch', journal: j };
     }
-    if (err.kind === 'auth_unavailable') {
+    if (
+      err.kind === 'auth_unavailable' ||
+      err.kind === 'auth_failed' ||
+      err.kind === 'auth_expired'
+    ) {
       // Nothing was sent: the winner is not charged and not failed. Retry later with the same intent.
       return { status: 'pending', reason: 'auth_unavailable', journal: j };
     }
