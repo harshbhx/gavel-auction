@@ -86,7 +86,7 @@ Scenarios are YAML files in `packages/e2e/scenarios/`, named `S<nn>-<slug>.yaml`
 
 ## Add a fixture
 
-Fixtures live under `packages/<name>/fixtures/` next to the code they feed. Keep each file small, deterministic and free of secrets. Generated fixtures (for example the audio set) are produced by their `generate.mjs` script and must be regenerated, not edited by hand. Run `node scripts/check-fixtures.mjs` after adding one.
+Fixtures live under `packages/<name>/fixtures/` next to the code they feed. Keep each file small, deterministic and free of secrets. Script-built fixtures (for example the audio set) come from their `generate.mjs` script and must be regenerated, not edited by hand. Run `node scripts/check-fixtures.mjs` after adding one.
 
 ## Run a gate
 
