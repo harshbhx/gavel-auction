@@ -870,5 +870,485 @@
     "amountCents": null,
     "reason": "no amount",
     "candidatesCents": []
+  },
+  {
+    "id": "negation-001",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "no amount",
+    "candidatesCents": []
+  },
+  {
+    "id": "negation-002",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "no amount",
+    "candidatesCents": []
+  },
+  {
+    "id": "negation-003",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "no amount",
+    "candidatesCents": []
+  },
+  {
+    "id": "negation-004",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "question",
+    "candidatesCents": []
+  },
+  {
+    "id": "currency-001",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 30000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "currency-002",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 35000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "currency-003",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 40000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "currency-004",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 30000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "currency-005",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 150000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "make_it-001",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 40000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "make_it-002",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 45000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "make_it-003",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 50000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "make_it-004",
+    "status": "confirm",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "correction/retraction",
+    "candidatesCents": []
+  },
+  {
+    "id": "make_it-005",
+    "status": "confirm",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "correction/retraction",
+    "candidatesCents": []
+  },
+  {
+    "id": "make_it-006",
+    "status": "confirm",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "correction/retraction",
+    "candidatesCents": []
+  },
+  {
+    "id": "cents_digits-001",
+    "status": "confirm",
+    "bidder": "7",
+    "amountCents": null,
+    "reason": "uninterpretable number",
+    "candidatesCents": []
+  },
+  {
+    "id": "cents_digits-002",
+    "status": "confirm",
+    "bidder": "7",
+    "amountCents": null,
+    "reason": "uninterpretable number",
+    "candidatesCents": []
+  },
+  {
+    "id": "cents_digits-003",
+    "status": "bid",
+    "bidder": "12",
+    "amountCents": 35000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "cents_digits-004",
+    "status": "bid",
+    "bidder": "4",
+    "amountCents": 50000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "injection-001",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "no amount",
+    "candidatesCents": []
+  },
+  {
+    "id": "injection-002",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "no amount",
+    "candidatesCents": []
+  },
+  {
+    "id": "injection-003",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "no amount",
+    "candidatesCents": []
+  },
+  {
+    "id": "injection-004",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "no amount",
+    "candidatesCents": []
+  },
+  {
+    "id": "indian_english-001",
+    "status": "bid",
+    "bidder": "8",
+    "amountCents": 50000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "indian_english-002",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 40000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "indian_english-003",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 25000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "indian_english-004",
+    "status": "bid",
+    "bidder": "9",
+    "amountCents": 40000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "indian_english-005",
+    "status": "bid",
+    "bidder": "3",
+    "amountCents": 25000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "extended_numbers-001",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 250000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "extended_numbers-002",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 100000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "extended_numbers-003",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 150000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "extended_numbers-004",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 150000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "extended_numbers-005",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 50000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "extended_numbers-006",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 45000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "extended_numbers-007",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 125000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "extended_numbers-008",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 25500,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "extended_numbers-009",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 4500,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "extended_numbers-010",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 10000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "extended_numbers-011",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 120000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "extended_numbers-012",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 30000000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "hedged-001",
+    "status": "confirm",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "hedged amount",
+    "candidatesCents": []
+  },
+  {
+    "id": "hedged-002",
+    "status": "confirm",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "hedged amount",
+    "candidatesCents": []
+  },
+  {
+    "id": "hedged-003",
+    "status": "confirm",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "hedged amount",
+    "candidatesCents": []
+  },
+  {
+    "id": "hedged-004",
+    "status": "confirm",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "hedged amount",
+    "candidatesCents": []
+  },
+  {
+    "id": "question-001",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "question",
+    "candidatesCents": []
+  },
+  {
+    "id": "question-002",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "question",
+    "candidatesCents": []
+  },
+  {
+    "id": "question-003",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "auctioneer/background talk",
+    "candidatesCents": []
+  },
+  {
+    "id": "question-004",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "auctioneer/background talk",
+    "candidatesCents": []
+  },
+  {
+    "id": "auctioneer-001",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "auctioneer/background talk",
+    "candidatesCents": []
+  },
+  {
+    "id": "auctioneer-002",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "auctioneer/background talk",
+    "candidatesCents": []
+  },
+  {
+    "id": "asr_prep-001",
+    "status": "bid",
+    "bidder": "7",
+    "amountCents": 25000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "asr_prep-002",
+    "status": "bid",
+    "bidder": "4",
+    "amountCents": 30000,
+    "reason": "",
+    "candidatesCents": []
+  },
+  {
+    "id": "asr_prep-003",
+    "status": "confirm",
+    "bidder": "7",
+    "amountCents": null,
+    "reason": "to/for: preposition or digit?",
+    "candidatesCents": [15000, 25000]
+  },
+  {
+    "id": "asr_prep-004",
+    "status": "confirm",
+    "bidder": "7",
+    "amountCents": null,
+    "reason": "to/for: preposition or digit?",
+    "candidatesCents": [30000, 50000]
+  },
+  {
+    "id": "multi-001",
+    "status": "confirm",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "multiple bidders",
+    "candidatesCents": ["2", "3"]
+  },
+  {
+    "id": "multi-002",
+    "status": "confirm",
+    "bidder": "7",
+    "amountCents": null,
+    "reason": "multiple amounts",
+    "candidatesCents": [25000, 30000]
+  },
+  {
+    "id": "multi-003",
+    "status": "confirm",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "multiple bidders",
+    "candidatesCents": ["5", "6"]
+  },
+  {
+    "id": "homophone-001",
+    "status": "confirm",
+    "bidder": "7",
+    "amountCents": 1600,
+    "reason": "homophone",
+    "candidatesCents": [1600, 6000]
+  },
+  {
+    "id": "homophone-002",
+    "status": "confirm",
+    "bidder": "7",
+    "amountCents": 1700,
+    "reason": "homophone",
+    "candidatesCents": [1700, 7000]
+  },
+  {
+    "id": "homophone-003",
+    "status": "confirm",
+    "bidder": "7",
+    "amountCents": 1900,
+    "reason": "homophone",
+    "candidatesCents": [1900, 9000]
   }
 ]
