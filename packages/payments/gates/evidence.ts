@@ -101,7 +101,48 @@ function redactValue(value: unknown, personal = false): unknown {
 
 /** Returns a deep copy with secret-bearing fields replaced by [REDACTED]. */
 export function redact<T>(record: T): T {
-  return redactValue(record) as T;
+  return redactResponse(redactValue(record)) as T;
+}
+
+/** Response headers that are kept as they are; every other response header is replaced. */
+const RESPONSE_HEADER_ALLOWLIST: ReadonlySet<string> = new Set([
+  'content-type',
+  'paypal-debug-id',
+  'date',
+]);
+
+/** Response body fields that carry per-response values and no evidence. */
+const RESPONSE_BODY_DROP_KEYS: ReadonlySet<string> = new Set(['nonce', 'server-timing']);
+
+function dropBodyFields(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(dropBodyFields);
+  if (value !== null && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = RESPONSE_BODY_DROP_KEYS.has(k.toLowerCase()) ? REDACTED : dropBodyFields(v);
+    }
+    return out;
+  }
+  return value;
+}
+
+/** Applies the response header allowlist and drops nonce style body fields. */
+function redactResponse(record: unknown): unknown {
+  if (record === null || typeof record !== 'object') return record;
+  const rec = record as Record<string, unknown>;
+  const res = rec['response'];
+  if (res === null || typeof res !== 'object') return record;
+  const out: Record<string, unknown> = { ...(res as Record<string, unknown>) };
+  const headers = out['headers'];
+  if (headers !== null && typeof headers === 'object') {
+    const kept: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(headers as Record<string, unknown>)) {
+      kept[k] = RESPONSE_HEADER_ALLOWLIST.has(k.toLowerCase()) ? v : REDACTED;
+    }
+    out['headers'] = kept;
+  }
+  if ('body' in out) out['body'] = dropBodyFields(out['body']);
+  return { ...rec, response: out };
 }
 
 const EMAIL_SHAPE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.[A-Za-z]{2,}/;
