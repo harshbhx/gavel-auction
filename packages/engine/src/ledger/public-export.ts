@@ -100,7 +100,7 @@ export function publicExport(
       if (typeof detail === 'object' && detail !== null && !Array.isArray(detail)) {
         const inner = new Set<string>();
         pub = { ...pub, detail: withoutKeys(detail, DETAIL_FIELDS, inner) };
-        if (inner.size > 0) dropped.add('detail.availableCeilingCents');
+        if (inner.size > 0) dropped.add('detail.ceiling');
       }
     }
     if (e.type === 'LOT_HAMMERED' || e.type === 'LOT_UNSOLD' || e.type === 'LOT_ABORTED') {

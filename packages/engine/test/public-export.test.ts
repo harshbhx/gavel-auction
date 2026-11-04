@@ -67,7 +67,7 @@ function ledger(mode: 'english' | 'second_price'): LedgerEntry[] {
         reason: 'over_ceiling',
         detail: { availableCeilingCents: 50000, other: 1 },
       },
-    } as LedgerEvent,
+    } as unknown as LedgerEvent,
   ];
   const out: LedgerEntry[] = [];
   for (const ev of events) {
