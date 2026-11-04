@@ -19,9 +19,18 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
-        with:
-          install: 'false'
-      - run: node scripts/gates/g0.mjs
+      - name: Run G0
         env:
+          PAYPAL_ENV: sandbox
           PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
           PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          GATE_CURRENCY: ${{ vars.GATE_CURRENCY }}
+        run: npm run gate:g0 -w @gavel/payments -- --out "$PWD/docs/evidence"
+      - name: Upload evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g0-evidence
+          path: docs/evidence
+          if-no-files-found: warn
+          retention-days: 30
