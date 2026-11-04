@@ -13,6 +13,23 @@ const SECRET_KEYS = new Set([
   'number',
   'security_code',
   'cvv',
+  // Personal fields of order and authorization responses (the repository is public).
+  'email_address',
+  'given_name',
+  'surname',
+  'full_name',
+  'payer_id',
+  'merchant_id',
+  'address_line_1',
+  'address_line_2',
+  'admin_area_1',
+  'admin_area_2',
+  'postal_code',
+  'phone_number',
+  'national_number',
+  'refresh_token',
+  'id_token',
+  'token',
 ]);
 
 const httpRequest = z.object({
@@ -68,6 +85,8 @@ export function redact<T>(record: T): T {
   return redactValue(record) as T;
 }
 
+const EMAIL_SHAPE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.[A-Za-z]{2,}/;
+
 const TOKEN_PATTERNS: ReadonlyArray<RegExp> = [
   /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/,
   /\bBasic\s+[A-Za-z0-9+/=]{12,}/,
@@ -87,7 +106,7 @@ export function lintTokens(record: unknown): string[] {
     if (typeof value === 'string') {
       if (value === REDACTED) return;
       const text = value.replace(REQUEST_ID_SHAPE, 'request-id');
-      if (TOKEN_PATTERNS.some((p) => p.test(text))) hits.push(path);
+      if (TOKEN_PATTERNS.some((p) => p.test(text)) || EMAIL_SHAPE.test(text)) hits.push(path);
     } else if (Array.isArray(value)) {
       value.forEach((v, i) => walk(v, `${path}[${i}]`));
     } else if (value !== null && typeof value === 'object') {
