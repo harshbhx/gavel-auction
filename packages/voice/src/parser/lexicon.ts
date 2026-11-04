@@ -108,3 +108,27 @@ export const NON_USD_WORDS: ReadonlySet<string> = new Set([
   '₹',
   '¥',
 ]);
+
+/** Words that introduce a paddle number, including the ASR forms "paddy" and "padel". */
+export const PADDLE_WORDS: ReadonlySet<string> = new Set([
+  'paddle',
+  'bidder',
+  'number',
+  'seat',
+  'card',
+  'paddy',
+  'padel',
+]);
+
+/** ASR confusions for a number word that directly follows a paddle word ("padel ate" is paddle 8). */
+export const PADDLE_VALUE_ASR: Readonly<Record<string, string>> = table({
+  to: 'two',
+  too: 'two',
+  tu: 'two',
+  for: 'four',
+  fore: 'four',
+  free: 'three',
+  tree: 'three',
+  ate: 'eight',
+  won: 'one',
+});
