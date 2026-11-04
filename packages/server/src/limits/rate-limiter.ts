@@ -23,9 +23,22 @@ export const LIMITS: Readonly<Record<LimitKind, BucketSpec>> = {
 export function limitsFromConfig(cfg: {
   RATE_BID_PER_S: number;
   RATE_BID_BURST: number;
+  RATE_JOIN_PER_MIN?: number;
+  RATE_JOIN_BURST?: number;
+  RATE_HTTP_PER_MIN?: number;
+  RATE_HTTP_BURST?: number;
 }): Readonly<Record<LimitKind, BucketSpec>> {
+  const perMin = (rate: number): number => Math.max(1, Math.floor(60_000 / rate));
   return {
     ...LIMITS,
+    join: {
+      refillMs: cfg.RATE_JOIN_PER_MIN ? perMin(cfg.RATE_JOIN_PER_MIN) : LIMITS.join.refillMs,
+      burst: cfg.RATE_JOIN_BURST ?? LIMITS.join.burst,
+    },
+    http: {
+      refillMs: cfg.RATE_HTTP_PER_MIN ? perMin(cfg.RATE_HTTP_PER_MIN) : LIMITS.http.refillMs,
+      burst: cfg.RATE_HTTP_BURST ?? LIMITS.http.burst,
+    },
     bid: {
       refillMs: Math.max(1, Math.floor(1000 / cfg.RATE_BID_PER_S)),
       burst: cfg.RATE_BID_BURST,
