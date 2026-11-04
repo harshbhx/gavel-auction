@@ -62,6 +62,8 @@ export interface LotState {
   readonly skipped: readonly SkippedCandidate[];
   readonly settlement: SettlementState;
   readonly capturedCents: number | null;
+  /** True once the settlement record passed through CAPTURED (a void-only path never sets it). */
+  readonly captureSeen: boolean;
   readonly unsoldReason: UnsoldReason | null;
   /** Why the lot was cancelled before the hammer; null for every other lot. */
   readonly abortReason: string | null;
@@ -142,6 +144,7 @@ export function newLot(lotId: Ulid, config: LotConfig | null): LotState {
     skipped: [],
     settlement: 'HELD',
     capturedCents: null,
+    captureSeen: false,
     unsoldReason: null,
     abortReason: null,
     rejectedBids: 0,
