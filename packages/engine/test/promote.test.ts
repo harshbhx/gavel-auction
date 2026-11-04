@@ -123,4 +123,21 @@ describe('decide PromoteRunnerUp', () => {
     expect(r.entries[0]?.type).toBe('CANDIDATE_SKIPPED');
     expect(r.entries[0]?.payload).toMatchObject({ bidderId: B, reason: 'ceiling_insufficient' });
   });
+  it('T-ENG-043 R-ENG-056 ENG-R2-06 a runner-up who leads another open lot keeps that exposure reserved', () => {
+    let s = open(scene({ lots: [lotConfig(L1), lotConfig(L2)] }), L1);
+    s = bid(s, 200, B, 3000).state;
+    s = bid(s, 210, A, 3100).state;
+    s = run(s, mk(300, { type: 'Hammer', lotId: L1, actor: 'host', early: true })).state;
+    const b = s.bidders[B];
+    if (b === undefined) throw new Error('bidder missing');
+    s = { ...s, bidders: { ...s.bidders, [B]: { ...b, ceilingCents: 5000 } } };
+    s = open(s, L2, 400);
+    s = bid(s, 410, B, 5000, L2).state;
+    const r = run(s, promote(500, A));
+    expect(r.entries.map((e) => e.type)).toEqual(['CANDIDATE_SKIPPED', 'LOT_UNSOLD']);
+    expect(r.entries[0]?.payload).toMatchObject({ bidderId: B, reason: 'ceiling_insufficient' });
+    // The other lot can still be hammered because the promotion did not commit B twice.
+    const h = run(r.state, mk(600, { type: 'Hammer', lotId: L2, actor: 'host', early: true }));
+    expect(h.entries.map((e) => e.type)).toContain('LOT_HAMMERED');
+  });
 });
