@@ -84,6 +84,7 @@ interface RosterEntry {
   paddle: number;
   name: string;
   ceiling: Cents;
+  holdRef: string;
 }
 
 type Reply = Extract<ServerMsg, { t: 'bid_accepted' | 'bid_rejected' }>;
@@ -177,6 +178,11 @@ export class Room {
   /** The engine the room is running now; a half-built rebuild is never visible here. */
   get activeEngine(): EnginePort | undefined {
     return this.engine;
+  }
+
+  /** The hold each registered bidder joined with; the settlement charges against these. */
+  get holdRefs(): ReadonlyMap<BidderId, string> {
+    return new Map([...this.roster].map(([id, r]) => [id, r.holdRef]));
   }
 
   get lastSeq(): number {
@@ -1102,6 +1108,7 @@ export class Room {
       paddle: event.paddle,
       name: event.name,
       ceiling: event.ceiling,
+      holdRef: event.holdRef,
     });
   }
 

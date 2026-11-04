@@ -251,3 +251,37 @@ class VoidRun {
     await this.deps.holds.put({ ...hold, status: 'VOIDED' });
   }
 }
+
+export interface SpareVoidDeps {
+  gateway: PaymentsGateway;
+  holds: HoldStore;
+}
+
+/**
+ * Voids every live hold of the auction that the settlement does not keep: a second hold a
+ * bidder approved after registering, a hold of a bidder who never registered, or, when the
+ * settlement ends in review, every hold but the one with an unresolved capture. The request
+ * id comes from the hold, so a repeat is applied once by PayPal. Returns how many voids are
+ * still unconfirmed; a later run repeats them.
+ */
+export async function voidSpareHolds(
+  deps: SpareVoidDeps,
+  journal: Journal,
+  keep: ReadonlySet<string>,
+): Promise<number> {
+  let open = 0;
+  for (const hold of await deps.holds.listByAuction(journal.auctionId)) {
+    if (hold.status !== 'HELD' || hold.authId === undefined || keep.has(hold.holdId)) continue;
+    try {
+      await deps.gateway.voidAuthorization(hold.authId, voidRequestId(journal, hold.holdId));
+    } catch (e) {
+      if (!(e instanceof PayPalError)) throw e;
+      if (!RELEASED_KINDS.has(e.kind)) {
+        open += 1;
+        continue;
+      }
+    }
+    await deps.holds.put({ ...hold, status: 'VOIDED' });
+  }
+  return open;
+}
