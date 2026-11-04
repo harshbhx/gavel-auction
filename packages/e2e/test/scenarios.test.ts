@@ -74,7 +74,10 @@ describe('scenario execution (R-QA-025, R-QA-026)', () => {
     const low: Scenario = {
       ...scenario,
       steps: scenario.steps.map(
-        (s): Step => (s.do === 'bid' && s.amount === 6500 ? { ...s, amount: 6100 } : s),
+        (s): Step =>
+          s.do === 'bid' && s.amount === 6500
+            ? { t: s.t, actor: s.actor, do: 'bid', amount: 6100 }
+            : s,
       ),
     };
     expect(runLadder(low).rejected).toEqual([{ actor: 'ben', reason: 'too_low' }]);
