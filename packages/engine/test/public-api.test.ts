@@ -8,7 +8,7 @@ import { exportJsonl, headOf, sealBatch, tamperAt, verifyJsonl } from '../src/in
 import { verifyLedgerFile } from '../src/node/index.js';
 
 const pkgDir = new URL('..', import.meta.url).pathname;
-const AUCTION = '01JC0000000000000000000001';
+const AUCTION = '01JC0000000000000000000001' as api.Ulid;
 
 function ledger(): ReturnType<typeof sealBatch> {
   const head = { auctionId: AUCTION, seq: 0, hash: api.GENESIS_PREV };
@@ -65,8 +65,9 @@ describe('ledger export', () => {
     const lines = text.split('\n');
     lines[2] = '{not json';
     expect(verifyJsonl(lines.join('\n'))).toMatchObject({ ok: false, firstBadIndex: 2 });
-    lines[2] = '';
-    expect(verifyJsonl(lines.join('\n'))).toMatchObject({ ok: false, firstBadIndex: 2 });
+    const blank = text.split('\n');
+    blank[1] = '';
+    expect(verifyJsonl(blank.join('\n'))).toMatchObject({ ok: false, firstBadIndex: 1 });
     expect(() => tamperAt(text, 9)).toThrow(RangeError);
   });
 
