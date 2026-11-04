@@ -278,8 +278,15 @@ export class Auction {
   complete(): void {
     if (this.state !== 'SETTLING') throw new Rejected('cannot_complete', this.state);
     const price = this.lot.priceCents;
-    if (price !== null) {
-      this.exec({ type: 'CompleteLot', lotId: this.lotId, capturedCents: price, ref: 'legacy' });
+    const winnerId = this.lot.winnerId;
+    if (price !== null && winnerId !== null) {
+      this.exec({
+        type: 'CompleteLot',
+        lotId: this.lotId,
+        bidderId: winnerId,
+        capturedCents: price,
+        ref: 'legacy',
+      });
     }
     this.completed = true;
   }

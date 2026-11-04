@@ -68,7 +68,7 @@ describe('commands', () => {
     ).toBe('bad_command');
   });
 
-  it('R-ENG-070: the ledger has 18 event types', () => {
-    expect(new Set(LEDGER_EVENT_TYPES).size).toBe(18);
+  it('R-ENG-070: the ledger has 19 event types', () => {
+    expect(new Set(LEDGER_EVENT_TYPES).size).toBe(19);
   });
 });
