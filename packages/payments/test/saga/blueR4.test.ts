@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PayPalError } from '../../src/errors.js';
 import type { ErrorKind } from '../../src/types.js';
 import { runCapturePhase } from '../../src/saga/capture.js';
-import { runSettlement } from '../../src/saga/void.js';
+import { runSettlement, runVoidPhase } from '../../src/saga/void.js';
 import { CEILINGS, makeRig, seed, withGateway } from './rig.js';
 
 function fault(kind: ErrorKind, status: number): PayPalError {
@@ -67,7 +67,9 @@ describe('round 4 settlement fixes', () => {
         capturedCents: h.authId === b1 ? 1 : 0,
       }),
     });
-    const out = await runSettlement(deps, 'auc1');
+    // The capture phase runs on the healthy gateway; the faulty read hits the void phase only.
+    await runCapturePhase(rig.deps, 'auc1');
+    const out = await runVoidPhase(deps, 'auc1');
     expect(out).toMatchObject({ status: 'failed', reason: 'mismatch' });
     expect(rig.core.inspect(rig.auth['b2'] ?? '').voidEffects).toBe(1);
     expect(rig.core.inspect(rig.auth['b3'] ?? '').voidEffects).toBe(1);
@@ -76,8 +78,10 @@ describe('round 4 settlement fixes', () => {
   it('R4-S02 an unreadable winner does not block the loser voids', async () => {
     const rig = makeRig(CEILINGS);
     await seed(rig);
+    // The capture phase runs first; the one-shot read fault then hits the remainder read.
+    await runCapturePhase(rig.deps, 'auc1');
     rig.core.inject('get', 'http_500', rig.auth['b1'] ?? '', 1);
-    const out = await runSettlement(rig.deps, 'auc1');
+    const out = await runVoidPhase(rig.deps, 'auc1');
     expect(out).toMatchObject({ status: 'pending', reason: 'remainder_unavailable' });
     expect(rig.core.inspect(rig.auth['b2'] ?? '').voidEffects).toBe(1);
     expect(rig.core.inspect(rig.auth['b3'] ?? '').voidEffects).toBe(1);
