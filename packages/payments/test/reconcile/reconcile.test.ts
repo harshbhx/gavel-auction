@@ -166,6 +166,15 @@ describe('reconcile (R-PAY-100, R-PAY-103, T-PAY-071)', () => {
     expect(r.findings.every((f) => f.code === code)).toBe(true);
   });
 
+  it('reads a journal void recorded under the hold id as a conflict with a PayPal capture', async () => {
+    const r = await run({
+      journal: journal({ voids: { h2: 'voided' } }),
+      records: [record('h1', 'b1', 'CAPTURED'), record('h2', 'b2', 'CAPTURED')],
+      truths: { h2: truth('h2', { status: 'CAPTURED', capturedCents: 100 }) },
+    });
+    expect(codes(r)).toContain('STATUS_CONFLICT');
+  });
+
   it('covers every finding code in the fixtures', () => {
     expect(new Set(drift.map(([c]) => c))).toEqual(new Set(FINDING_CODES));
   });
