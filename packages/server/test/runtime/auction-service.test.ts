@@ -29,7 +29,7 @@ import {
   type EpochMs,
   type RoomEvent,
 } from '@gavel/shared';
-import { afterAll, afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryTransport } from '../../src/room/memory-transport';
 import type { Connection, Room } from '../../src/room/room';
 import { MemoryStore } from '../../src/store/memory-store';
@@ -961,4 +961,130 @@ describe('auction service: crash matrix on durable stores (SERVICE-R3-17)', () =
       }
     },
   );
+});
+
+describe('auction service: unfinished settlements and spare holds (RT-81)', () => {
+  /** Two bidders bid, the operator stops the switch, then the auctioneer hammers. */
+  async function hammerWithSwitchEngaged(rig: Rig, service: AuctionService): Promise<Run> {
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    await room.submitBid(a.conn, bid(rig, 10000));
+    await room.submitBid(b.conn, bid(rig, 10500));
+    await rig.killSwitch.engage('operator stop', 'ops');
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    return { auctionId, room, a, b, c: b, screen: new MemoryTransport() };
+  }
+
+  it('tries a waiting settlement again on its own (INT-R3-05)', async () => {
+    const rig = await makeRig();
+    const service = rig.service({
+      killSwitch: rig.killSwitch,
+      retryDelayMs: 10,
+      resumeIntervalMs: 0,
+    });
+    const run = await hammerWithSwitchEngaged(rig, service);
+    await service.idle();
+    // The capture waits while the switch is engaged; nothing is charged.
+    expect((await journalOf(rig, run.auctionId)).state).not.toBe('SETTLED');
+    expect(rig.paypal.core.getAuthorization(run.b.authId).captures).toHaveLength(0);
+
+    await rig.killSwitch.release('ops');
+    await vi.waitFor(async () => {
+      expect((await journalOf(rig, run.auctionId)).state).toBe('SETTLED');
+    });
+    await service.idle();
+    await expectSettled(rig, run, run.b, [run.a], 10500);
+    await service.close();
+  });
+
+  it('runs resume on a timer (INT-R3-05)', async () => {
+    const rig = await makeRig();
+    const first = rig.service({ killSwitch: rig.killSwitch, retryDelayMs: 3_600_000 });
+    const run = await hammerWithSwitchEngaged(rig, first);
+    await first.idle();
+    await first.close();
+    await rig.killSwitch.release('ops');
+
+    const second = rig.service({ resumeIntervalMs: 20 });
+    await vi.waitFor(async () => {
+      expect((await journalOf(rig, run.auctionId)).state).toBe('SETTLED');
+    });
+    await second.idle();
+    await expectSettled(rig, run, run.b, [run.a], 10500);
+    await second.close();
+  });
+
+  it('releases the other holds when the settlement ends in review (INT-R3-06)', async () => {
+    const rig = await makeRig();
+    const errors: unknown[] = [];
+    const service = rig.service({
+      retryDelayMs: 10,
+      resumeIntervalMs: 0,
+      unknownDeadlineMs: 1_000,
+      onError: (_id, e) => errors.push(e),
+    });
+    // The capture request times out, so its outcome stays unknown.
+    rig.paypal.core.inject('capture', 'timeout_before', null, 1000);
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    const c = await enroll(rig, service, room, auctionId, 'Cy', 30000);
+    await room.submitBid(b.conn, bid(rig, 10000));
+    await room.submitBid(a.conn, bid(rig, 11000));
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    expect((await journalOf(rig, auctionId)).state).toBe('CAPTURING');
+
+    // Ten seconds later the unknown outcome is past its deadline.
+    rig.clock.set(START + 10_000);
+    await vi.waitFor(async () => {
+      expect((await journalOf(rig, auctionId)).state).toBe('FAILED_NEEDS_REVIEW');
+    });
+    await service.idle();
+    for (const loser of [b, c]) {
+      expect(rig.paypal.core.getAuthorization(loser.authId).status).toBe('VOIDED');
+      expect((await rig.stores.holds.get(loser.holdId))?.status).toBe('VOIDED');
+    }
+    // The hold with the unresolved capture is not touched.
+    expect(rig.paypal.core.getAuthorization(a.authId).status).not.toBe('VOIDED');
+    await service.close();
+  });
+
+  it('charges the hold the room registered and voids the bidder second hold (INT-R3-07)', async () => {
+    const rig = await makeRig();
+    const service = rig.service();
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    // A smaller hold approved later and never registered. The hold service refuses a second
+    // hold for one bidder, so it is made for another id and stored under Ada's.
+    const extra = await rig.holdsApi.createHoldOrder({
+      auctionId,
+      bidderId: rig.ids.mint<'BidderId'>(),
+      ceilingCents: 30000,
+      presetsCents: config.ceilingPresets,
+    });
+    rig.paypal.core.approveOrder(extra.orderId);
+    await rig.holdsApi.completeApproval({ holdId: extra.holdId, orderId: extra.orderId });
+    const made = await rig.stores.holds.get(extra.holdId);
+    if (made === null) throw new Error('no spare hold');
+    const spare = { ...made, bidderId: a.id, createdAtMs: made.createdAtMs + 1 };
+    await rig.stores.holds.put(spare);
+
+    await room.submitBid(a.conn, bid(rig, 35000));
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+
+    const run: Run = { auctionId, room, a, b: a, c: a, screen: new MemoryTransport() };
+    await expectSettled(rig, run, a, [], 35000);
+    expect(rig.paypal.core.getAuthorization(spare?.authId ?? '').status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(extra.holdId))?.status).toBe('VOIDED');
+    await service.close();
+  });
 });
