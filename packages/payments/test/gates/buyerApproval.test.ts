@@ -31,6 +31,8 @@ interface Script {
   passwordStays?: boolean;
   styleFails?: boolean;
   noReturn?: boolean;
+  /** The bot-check input becomes visible after Next instead of the password field. */
+  captcha?: boolean;
   /** Put the email field in a second frame instead of the main one. */
   emailInFrame?: boolean;
 }
@@ -39,6 +41,7 @@ function launcher(script: Script, log: string[]): BrowserLauncher {
   let nextClicked = false;
   let loggedIn = false;
   const kind = (selector: string): string => {
+    if (selector.includes('aptcha')) return 'captcha';
     if (selector.includes('email') && !selector.includes('password')) return 'email';
     if (selector.includes('password')) return 'password';
     if (selector.includes('btnNext') || selector.includes('next|continue')) return 'next';
@@ -57,14 +60,17 @@ function launcher(script: Script, log: string[]): BrowserLauncher {
           if (k === 'email')
             return Promise.resolve(!miss('email') && main !== (script.emailInFrame === true));
           if (!main) return Promise.resolve(false);
+          if (k === 'captcha') return Promise.resolve(script.captcha === true && nextClicked);
           if (k === 'password') {
+            if (script.captcha === true) return Promise.resolve(false);
             if (miss('password')) return Promise.resolve(false);
             if (loggedIn) return Promise.resolve(script.passwordStays === true);
             return Promise.resolve(script.onePage === true || nextClicked);
           }
           if (k === 'next') return Promise.resolve(!miss('next'));
           if (k === 'login') return Promise.resolve(true);
-          if (k === 'confirm') return Promise.resolve(loggedIn && !miss('confirm'));
+          if (k === 'confirm')
+            return Promise.resolve(loggedIn && !miss('confirm') && script.passwordStays !== true);
           return Promise.resolve(false);
         },
         click: () => {
@@ -78,6 +84,9 @@ function launcher(script: Script, log: string[]): BrowserLauncher {
           return Promise.resolve();
         },
         count: () => Promise.resolve(1),
+        waitFor: async () => {
+          if (!(await l.isVisible())) throw new Error('timeout');
+        },
       };
       return l;
     },
@@ -180,6 +189,7 @@ describe('approveInBrowser', () => {
     ['login form', { missing: ['email'] }, 'no email field'],
     ['password step', { missing: ['password'] }, 'SANDBOX_BUYER_EMAIL is a sandbox buyer'],
     ['login', { passwordStays: true }, 'SANDBOX_BUYER_PASSWORD'],
+    ['password step', { captcha: true }, 'captcha shown'],
     ['review page', { missing: ['confirm'] }, 'no confirm button'],
     ['confirm', { noReturn: true }, 'never reached the return URL'],
   ] as const)('fails at %s with a clear message and still closes', async (stage, script, text) => {
