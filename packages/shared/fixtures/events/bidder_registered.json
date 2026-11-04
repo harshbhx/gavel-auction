@@ -1,0 +1,11 @@
+{
+  "auctionId": "01J9ZQ4Y6Z8K3M5N7P9R1S3T5V",
+  "seq": 2,
+  "ts": 1789000000002,
+  "type": "bidder_registered",
+  "bidderId": "01J9ZQ3A0B2C4D6F8H0J2K4M6N",
+  "paddle": 7,
+  "name": "Ana",
+  "ceiling": 50000,
+  "holdRef": "h1"
+}
