@@ -822,15 +822,15 @@ The same runner is imported by packages/e2e so UI scenarios and server scenarios
 
 ## 10. Open questions
 
-| #   | Question                                                                     | Decision owner                 | Default                                                          |
-| --- | ---------------------------------------------------------------------------- | ------------------------------ | ---------------------------------------------------------------- |
-| 1   | Durable Object or Node host?                                                 | Harsh with spike RT-86 results | Node on Render plus Postgres (R-RT-142)                          |
-| 2   | Engine gains `extendTo(endTs)` for pause/resume and auctioneer extend        | engine owner                   | Add it; if refused, drop pause and extend from the demo          |
-| 3   | PaymentsPort shape (`settle`, `handleWebhook`, update callbacks) acceptable? | payments owner                 | As in 4.3; adapter layer in server if payments differs           |
-| 4   | Can an auctioneer void an accepted bid (misheard)? Breaks log purity         | Harsh                          | No; use a manual counter-bid and an audit note                   |
-| 5   | Does PayPal retry non-2xx webhooks and on what schedule?                     | payments owner, gate G4        | UNVERIFIED (G4); route returns 503 for `retry`, 200 otherwise    |
-| 6   | Who confirms low-confidence voice bids: bidder only or auctioneer too?       | web owner                      | Bidder only (R-RT-045)                                           |
-| 7   | Is `confirmConfidenceThreshold` 0.85 right?                                  | voice owner after gate G5      | 0.85, configurable per auction                                   |
-| 8   | Hosted store for the live demo: Render Postgres free tier lifetime limits    | Harsh                          | Use it for the judging window; MemoryStore plus export as backup |
-| 9   | Should the screen role see bidder names or paddles only?                     | web owner                      | Paddles and first names                                          |
-| 10  | Room events retention beyond the hackathon                                   | Harsh                          | Keep forever, sandbox data only                                  |
+| #   | Question                                                                     | Decision owner                         | Default                                                          |
+| --- | ---------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------------- |
+| 1   | Durable Object or Node host?                                                 | Project owner with spike RT-86 results | Node on Render plus Postgres (R-RT-142)                          |
+| 2   | Engine gains `extendTo(endTs)` for pause/resume and auctioneer extend        | engine owner                           | Add it; if refused, drop pause and extend from the demo          |
+| 3   | PaymentsPort shape (`settle`, `handleWebhook`, update callbacks) acceptable? | payments owner                         | As in 4.3; adapter layer in server if payments differs           |
+| 4   | Can an auctioneer void an accepted bid (misheard)? Breaks log purity         | Project owner                          | No; use a manual counter-bid and an audit note                   |
+| 5   | Does PayPal retry non-2xx webhooks and on what schedule?                     | payments owner, gate G4                | UNVERIFIED (G4); route returns 503 for `retry`, 200 otherwise    |
+| 6   | Who confirms low-confidence voice bids: bidder only or auctioneer too?       | web owner                              | Bidder only (R-RT-045)                                           |
+| 7   | Is `confirmConfidenceThreshold` 0.85 right?                                  | voice owner after gate G5              | 0.85, configurable per auction                                   |
+| 8   | Hosted store for the live demo: Render Postgres free tier lifetime limits    | Project owner                          | Use it for the judging window; MemoryStore plus export as backup |
+| 9   | Should the screen role see bidder names or paddles only?                     | web owner                              | Paddles and first names                                          |
+| 10  | Room events retention beyond the hackathon                                   | Project owner                          | Keep forever, sandbox data only                                  |

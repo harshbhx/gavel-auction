@@ -10,6 +10,8 @@ import {
   checkFiles as checkBanned,
   loadWordList,
   parseWordList,
+  emptyListOutcome,
+  parseArgs,
 } from '../check-banned-words.mjs';
 import { globToRegExp } from '../lib-text-check.mjs';
 
@@ -64,5 +66,21 @@ describe('check-banned-words', () => {
     assert.deepEqual(loadWordList('/nonexistent', { BANNED_WORDS: 'one,two' }), ['one', 'two']);
     assert.deepEqual(loadWordList('/nonexistent', {}), []);
     assert.equal(buildMatcher([]), undefined);
+  });
+});
+
+describe('check-banned-words empty list', () => {
+  it('fails in CI when no list is configured', () => {
+    assert.equal(emptyListOutcome({ CI: 'true' }), 'fail');
+    assert.equal(emptyListOutcome({ CI: 'true', BANNED_WORDS_ALLOW_EMPTY: 'false' }), 'fail');
+  });
+
+  it('skips locally and when CI explicitly allows an empty list', () => {
+    assert.equal(emptyListOutcome({}), 'skip');
+    assert.equal(emptyListOutcome({ CI: 'true', BANNED_WORDS_ALLOW_EMPTY: 'true' }), 'skip');
+  });
+
+  it('parses --root apart from file arguments', () => {
+    assert.deepEqual(parseArgs(['--root', 'pr', 'a.md']), { target: 'pr', files: ['a.md'] });
   });
 });

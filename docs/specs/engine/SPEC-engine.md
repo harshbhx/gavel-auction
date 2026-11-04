@@ -1,7 +1,7 @@
 # SPEC-engine: deterministic auction engine, ledger and audit trail
 
 Area: ENG. Package: `packages/engine` (`@gavel/engine`). Status: draft for implementation, 2026-11-04.
-Related: `docs/PLAN.md`, `reference/python/engine.py` (prototype), branch `feat/engine-ts` (first TypeScript port).
+Related: `docs/PLAN.md`, `reference/python/engine.py` (reference implementation).
 
 ## 1. Purpose and scope
 
@@ -703,15 +703,15 @@ Sixty hand-checked fixtures (14 english, 12 proxy, 10 sealed, 10 soft close, 8 r
 
 ## 9. Open questions
 
-| #   | Question                                                                                             | Decision owner                     | Default until decided                                                                                     |
-| --- | ---------------------------------------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Q1  | holdScope `event` (one hold, several partial captures; UNVERIFIED (G1)) or `lot` (one hold per lot)? | Harsh with payments owner after G1 | `event` in engine; demo runs a single lot per bidder hold, so `lot` is a config change, not a code change |
-| Q2  | Should pre-engine parse failures (unparseable audio) be ledger entries?                              | Voice and realtime owners          | No: the engine ledger records only commands that reached it; voice records its own `audit_event` rows     |
-| Q3  | Store transcripts in the ledger in plain text? Retention and redaction of PII.                       | Harsh                              | Plain text in the sandbox demo; auditor-only access                                                       |
-| Q4  | Does a bid that leaves price and leader unchanged (proxy) extend the soft close?                     | Harsh                              | Yes, as in the reference engine                                                                           |
-| Q5  | Carry the ledger head hash into a PayPal capture field (UNVERIFIED (G1))?                            | Payments owner                     | No; show the head hash only in the receipt UI                                                             |
-| Q6  | Is `hardCloseMs` on by default?                                                                      | Harsh                              | Off by default, set in the gala fixture                                                                   |
-| Q7  | Who owns the settlement transition graph validation?                                                 | Payments owner                     | Payments; engine checks only continuity of `from`                                                         |
+| #   | Question                                                                                             | Decision owner                             | Default until decided                                                                                     |
+| --- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| Q1  | holdScope `event` (one hold, several partial captures; UNVERIFIED (G1)) or `lot` (one hold per lot)? | Project owner with payments owner after G1 | `event` in engine; demo runs a single lot per bidder hold, so `lot` is a config change, not a code change |
+| Q2  | Should pre-engine parse failures (unparseable audio) be ledger entries?                              | Voice and realtime owners                  | No: the engine ledger records only commands that reached it; voice records its own `audit_event` rows     |
+| Q3  | Store transcripts in the ledger in plain text? Retention and redaction of PII.                       | Project owner                              | Plain text in the sandbox demo; auditor-only access                                                       |
+| Q4  | Does a bid that leaves price and leader unchanged (proxy) extend the soft close?                     | Project owner                              | Yes, as in the reference engine                                                                           |
+| Q5  | Carry the ledger head hash into a PayPal capture field (UNVERIFIED (G1))?                            | Payments owner                             | No; show the head hash only in the receipt UI                                                             |
+| Q6  | Is `hardCloseMs` on by default?                                                                      | Project owner                              | Off by default, set in the gala fixture                                                                   |
+| Q7  | Who owns the settlement transition graph validation?                                                 | Payments owner                             | Payments; engine checks only continuity of `from`                                                         |
 
 ## 10. Traceability
 
