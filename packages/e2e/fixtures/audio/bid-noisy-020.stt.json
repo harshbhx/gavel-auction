@@ -1,0 +1,44 @@
+{
+  "provider": "recorded",
+  "language": "en-US",
+  "transcript": "four twenty five for paddle one",
+  "confidence": 0.79,
+  "words": [
+    {
+      "word": "four",
+      "startMs": 350,
+      "endMs": 707,
+      "confidence": 0.8
+    },
+    {
+      "word": "twenty",
+      "startMs": 747,
+      "endMs": 1103,
+      "confidence": 0.76
+    },
+    {
+      "word": "five",
+      "startMs": 1143,
+      "endMs": 1500,
+      "confidence": 0.72
+    },
+    {
+      "word": "for",
+      "startMs": 1540,
+      "endMs": 1897,
+      "confidence": 0.78
+    },
+    {
+      "word": "paddle",
+      "startMs": 1937,
+      "endMs": 2293,
+      "confidence": 0.74
+    },
+    {
+      "word": "one",
+      "startMs": 2333,
+      "endMs": 2690,
+      "confidence": 0.8
+    }
+  ]
+}

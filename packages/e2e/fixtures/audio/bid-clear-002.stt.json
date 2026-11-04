@@ -1,0 +1,38 @@
+{
+  "provider": "recorded",
+  "language": "en-US",
+  "transcript": "five hundred for paddle seven",
+  "confidence": 0.95,
+  "words": [
+    {
+      "word": "five",
+      "startMs": 350,
+      "endMs": 710,
+      "confidence": 0.92
+    },
+    {
+      "word": "hundred",
+      "startMs": 750,
+      "endMs": 1110,
+      "confidence": 0.88
+    },
+    {
+      "word": "for",
+      "startMs": 1150,
+      "endMs": 1510,
+      "confidence": 0.94
+    },
+    {
+      "word": "paddle",
+      "startMs": 1550,
+      "endMs": 1910,
+      "confidence": 0.9
+    },
+    {
+      "word": "seven",
+      "startMs": 1950,
+      "endMs": 2310,
+      "confidence": 0.96
+    }
+  ]
+}

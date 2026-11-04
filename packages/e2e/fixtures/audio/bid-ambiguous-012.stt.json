@@ -1,0 +1,38 @@
+{
+  "provider": "recorded",
+  "language": "en-US",
+  "transcript": "ninety nineteen for paddle two",
+  "confidence": 0.62,
+  "words": [
+    {
+      "word": "ninety",
+      "startMs": 350,
+      "endMs": 710,
+      "confidence": 0.58
+    },
+    {
+      "word": "nineteen",
+      "startMs": 750,
+      "endMs": 1110,
+      "confidence": 0.54
+    },
+    {
+      "word": "for",
+      "startMs": 1150,
+      "endMs": 1510,
+      "confidence": 0.6
+    },
+    {
+      "word": "paddle",
+      "startMs": 1550,
+      "endMs": 1910,
+      "confidence": 0.56
+    },
+    {
+      "word": "two",
+      "startMs": 1950,
+      "endMs": 2310,
+      "confidence": 0.62
+    }
+  ]
+}

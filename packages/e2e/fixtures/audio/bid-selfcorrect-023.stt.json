@@ -1,0 +1,56 @@
+{
+  "provider": "recorded",
+  "language": "en-US",
+  "transcript": "one fifty for paddle nine no paddle nineteen",
+  "confidence": 0.95,
+  "words": [
+    {
+      "word": "one",
+      "startMs": 350,
+      "endMs": 703,
+      "confidence": 0.9
+    },
+    {
+      "word": "fifty",
+      "startMs": 743,
+      "endMs": 1095,
+      "confidence": 0.96
+    },
+    {
+      "word": "for",
+      "startMs": 1135,
+      "endMs": 1488,
+      "confidence": 0.92
+    },
+    {
+      "word": "paddle",
+      "startMs": 1528,
+      "endMs": 1880,
+      "confidence": 0.88
+    },
+    {
+      "word": "nine",
+      "startMs": 1920,
+      "endMs": 2273,
+      "confidence": 0.94
+    },
+    {
+      "word": "no",
+      "startMs": 2313,
+      "endMs": 2665,
+      "confidence": 0.9
+    },
+    {
+      "word": "paddle",
+      "startMs": 2705,
+      "endMs": 3058,
+      "confidence": 0.96
+    },
+    {
+      "word": "nineteen",
+      "startMs": 3098,
+      "endMs": 3450,
+      "confidence": 0.92
+    }
+  ]
+}

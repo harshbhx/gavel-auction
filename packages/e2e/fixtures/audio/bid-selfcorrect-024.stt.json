@@ -1,0 +1,62 @@
+{
+  "provider": "recorded",
+  "language": "en-US",
+  "transcript": "two hundred make that two twenty for paddle four",
+  "confidence": 0.79,
+  "words": [
+    {
+      "word": "two",
+      "startMs": 350,
+      "endMs": 701,
+      "confidence": 0.72
+    },
+    {
+      "word": "hundred",
+      "startMs": 741,
+      "endMs": 1092,
+      "confidence": 0.78
+    },
+    {
+      "word": "make",
+      "startMs": 1132,
+      "endMs": 1483,
+      "confidence": 0.74
+    },
+    {
+      "word": "that",
+      "startMs": 1523,
+      "endMs": 1874,
+      "confidence": 0.8
+    },
+    {
+      "word": "two",
+      "startMs": 1914,
+      "endMs": 2266,
+      "confidence": 0.76
+    },
+    {
+      "word": "twenty",
+      "startMs": 2306,
+      "endMs": 2657,
+      "confidence": 0.72
+    },
+    {
+      "word": "for",
+      "startMs": 2697,
+      "endMs": 3048,
+      "confidence": 0.78
+    },
+    {
+      "word": "paddle",
+      "startMs": 3088,
+      "endMs": 3439,
+      "confidence": 0.74
+    },
+    {
+      "word": "four",
+      "startMs": 3479,
+      "endMs": 3830,
+      "confidence": 0.8
+    }
+  ]
+}
