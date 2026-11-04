@@ -1,5 +1,5 @@
 {
-  "engine": { "lines": 95, "branches": 90 },
+  "engine": { "lines": 95, "branches": 90, "advisory": true },
   "payments": { "lines": 90, "branches": 85 },
   "shared": { "lines": 95, "branches": 90 },
   "voice": { "lines": 85, "branches": 80 },

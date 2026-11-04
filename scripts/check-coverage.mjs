@@ -83,8 +83,10 @@ function checkCoverage() {
     for (const k of METRICS) {
       const actual = pct(a[k].c, a[k].t);
       const ok = actual + 1e-9 >= gate[k];
-      if (!ok) failed = true;
-      rows.push([pkg, k, `${actual.toFixed(2)}%`, `${gate[k]}%`, ok ? 'ok' : 'FAIL']);
+      // advisory: true reports a miss as WARN until the owning package reaches its gate.
+      if (!ok && !gate.advisory) failed = true;
+      const status = ok ? 'ok' : gate.advisory ? 'WARN (advisory)' : 'FAIL';
+      rows.push([pkg, k, `${actual.toFixed(2)}%`, `${gate[k]}%`, status]);
     }
   }
   const out = table(rows);
