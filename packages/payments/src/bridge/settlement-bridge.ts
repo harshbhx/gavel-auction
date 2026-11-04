@@ -185,6 +185,7 @@ export class SettlementBridge {
       await this.makeUnsold(auctionId, lotId);
       return { status: 'unsold' };
     }
+    lot = await this.promoteToCharged(auctionId, lotId, journal, won.bidderId);
     if (lot.winnerId !== won.bidderId) {
       throw new BridgeError(
         'winner_mismatch',
@@ -199,6 +200,34 @@ export class SettlementBridge {
       ref: won.captureId,
     });
     return { status: 'completed', bidderId: won.bidderId, capturedCents: won.amountCents };
+  }
+
+  /**
+   * A capture that failed definitely makes the saga charge the next candidate, but
+   * the engine still names the failed bidder as winner. Walk the journal's failed
+   * bidders and promote past each one while it is the engine's winner, re-reading
+   * the lot every time, until the engine winner is the charged bidder. A winner the
+   * journal did not fail is never promoted (R-PAY-053, R-ENG-066).
+   */
+  private async promoteToCharged(
+    auctionId: string,
+    lotId: string,
+    journal: Journal,
+    chargedId: string,
+  ): Promise<BridgeLot> {
+    for (let i = 0; i <= journal.failed.length; i++) {
+      const lot = await this.lot(auctionId, lotId);
+      if (lot.status === 'DONE' || lot.winnerId === null || lot.winnerId === chargedId) return lot;
+      const failure = journal.failed.find((f) => f.bidderId === lot.winnerId);
+      if (failure === undefined) return lot;
+      await this.engine.dispatch(auctionId, {
+        type: 'PromoteRunnerUp',
+        lotId,
+        disqualifiedBidderId: failure.bidderId,
+        reason: failure.reason,
+      });
+    }
+    return this.lot(auctionId, lotId);
   }
 
   private describe(journal: Journal, lot: BridgeLot): FinishResult {

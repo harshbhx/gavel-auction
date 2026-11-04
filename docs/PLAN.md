@@ -1,10 +1,26 @@
 # GAVEL: design plan (PayPal AI Hackathon 2026)
 
-Deadline: Thu Nov 12 2026 12:00pm PST (= Fri Nov 13 01:30 IST). Early eligibility check if submitted by Nov 5 (optional). Scope: PayPal sandbox only. Behaviour against the real PayPal sandbox and real speech-to-text is verified by the gate tests in section 5.
+Deadline: Thu Nov 12 2026 12:00pm PST (= Fri Nov 13 01:30 IST). Early eligibility check if submitted by Nov 5 (optional). Scope: PayPal sandbox only. Behaviour against the real PayPal sandbox and real speech-to-text is not yet verified: the gate tests in section 5 have not been run (all NOT RUN in `docs/GATES.md`). Settlement is tested against the project's fake PayPal server only.
+
+## 0. Current status
+
+| Area                                                       | Works now                | Works with the fake PayPal only | Not built yet                                         |
+| ---------------------------------------------------------- | ------------------------ | ------------------------------- | ----------------------------------------------------- |
+| Engine and hash-chained ledger                             | yes                      |                                 | ledger verify command                                 |
+| Settlement saga (capture, void, journal, resume, webhooks) |                          | yes                             | run against the real sandbox                          |
+| Hold creation and approval service                         |                          | yes                             | HTTP routes for the web app                           |
+| Room and runtime service with file stores                  | in tests, one process    |                                 | server entry point, HTTP and WebSocket routes, deploy |
+| Web components, routes and replay player                   | components and tests     |                                 | working screens against a live room                   |
+| Voice package (capture, STT clients, parser)               | offline                  |                                 | adapter into a room, live audio route                 |
+| Replay of recorded audio                                   | player and bundle format |                                 | recording export, published recording                 |
+| Crash and resume                                           | in-process test hook     |                                 | trigger on a hosted server                            |
+| Hosted demo                                                |                          |                                 | Render deploy with a persistent disk                  |
+
+Gates G1 to G5: NOT RUN.
 
 ## 1. Pitch (one paragraph)
 
-GAVEL turns every bid in a live auction into a PayPal payment promise. Bidders approve a PayPal authorization hold as their ceiling. Bids come in by voice, QR/mobile or manual entry; AI turns noisy spoken bids into structured, confirmable bids. A deterministic engine runs an ascending English auction. At the hammer GAVEL captures only the winning price from the winner's hold and voids every other hold, with a full audit trail. Start: small fundraisers and community auctions; engine works for any live auction.
+GAVEL turns every bid in a live auction into a PayPal payment promise. Bidders approve a PayPal authorization hold as their ceiling. Bids are designed to come in by voice, QR/mobile or manual entry (today the voice parser and the room exist as separate packages, with no adapter between them); AI turns noisy spoken bids into structured, confirmable bids. A deterministic engine runs an ascending English auction. At the hammer GAVEL captures only the winning price from the winner's hold and voids every other hold. This is tested against a fake PayPal server and not yet against the real sandbox. Start: small fundraisers and community auctions; engine works for any live auction.
 Judge line: "Every charity auction has winners who never pay; GAVEL makes the bid itself a PayPal hold, so the hammer is a payment." (Do not quote a non-payment rate; none found.)
 
 ## 2. Design decisions
@@ -12,7 +28,7 @@ Judge line: "Every charity auction has winners who never pay; GAVEL makes the bi
 1. English ascending (minimum increment, soft-close extension) is the main mode. Second-price/proxy ceiling is an optional mode.
 2. Hybrid input: voice, QR mobile bids and manual auctioneer entry, so the auction keeps working if speech fails.
 3. Voice is one input path among several; the engine, the PayPal authorization-state ladder and the audit trail are the core of the product.
-4. Bid audit trail per bid: audio timestamp, transcript, bidder, parsed amount, confidence, confirmed or not, accepted or rejected with reason.
+4. Bid audit trail per bid (target): audio timestamp, transcript, bidder, parsed amount, confidence, confirmed or not, accepted or rejected with reason. Today the hash-chained ledger records accepted bids with source `manual` and an empty audit object; rejected bids are kept in the room log only, which is not hash-chained.
 5. Ceiling presets (for example 100/250/500/1000, or custom) with clear "held, not charged" copy.
 6. No bidder-shading or economics claims are made. An optional LLM-bidder side chart may cite 2507.09083 and 2608.14613 only for what they show.
 7. Claims are limited to: PayPal hold as a hard ceiling, deterministic rules on spoken and hybrid bids, capturing the clearing price only, and voiding the rest. No "first" claims (neighbouring projects: Criee, Every Rep, Rent-A-Bot, Voice Auction House, Showrunner).
@@ -20,19 +36,19 @@ Judge line: "Every charity auction has winners who never pay; GAVEL makes the bi
 ## 3. Architecture
 
 - Web app: React + TypeScript + Vite (bidder view, auctioneer console, public big-screen view, audit view).
-- Real-time: Cloudflare Durable Object per auction + WebSockets (inferred feasible; test day 2). Fallback: single Node server with WebSockets on Render.
-- Backend: Node + TypeScript API (PayPal secrets, webhooks) on Render.
+- Real-time: a single Node process per host (decision D-0006), with the room and runtime in `packages/server`. There is no HTTP or WebSocket server entry point yet. A Cloudflare Durable Object per auction was considered and is not used.
+- Backend: Node + TypeScript on Render (PayPal secrets, webhooks). The payments package and the runtime service exist; the API routes and the process that wires them together do not.
 - Payments: PayPal Orders v2 intent=AUTHORIZE; Payments v2 capture (partial, final_capture=true), void, reauthorize if needed; PayPal-Request-Id idempotency; webhooks (authorization voided, capture completed).
 - Speech: Deepgram Nova-3 streaming (primary), Groq Whisper (fallback), browser Web Speech (try-it mode), plus recorded-audio "Replay auction" for judges.
 - AI parse: structured-output LLM with deterministic validator; ambiguity -> "Did you mean 350 for paddle 12?" confirmation. LLM never decides winner or moves money.
-- Store: Cloudflare D1 or Postgres (ledger + audit). Tests: Vitest + Playwright (run in GitHub Actions, not on the VM).
-- Reference implementation (Python, `reference/python`): engine, fake PayPal, saga, parser and 194 tests. The TypeScript packages port its logic and reuse its test cases and labelled utterances.
+- Store: JSON and JSON-lines files on local disk (room log, ledger, journals, holds, webhook events). Each file belongs to one process; there is no cross-process lock. A hosted deploy needs a persistent disk and a single instance, or a move to a database; neither exists yet. Tests: Vitest + Playwright, run in GitHub Actions.
+- Reference implementation (Python, `reference/python`): engine, fake PayPal, saga, parser and its tests. The TypeScript packages port its logic and reuse its test cases and labelled utterances.
 
 ## 4. Settlement state machine (must be crash-safe)
 
 register -> authorize (hold) -> active bidder -> bid parse -> confirm if low confidence -> deterministic validation (ceiling, increment, state) -> ledger -> hammer -> winner = highest valid bid -> capture winning amount (partial, final) -> void all other holds -> verify via webhook/GET -> final ledger. Fall back to the runner-up if the winner's hold expired, was declined or was voided (covered by the reference implementation's tests). Invariants: at most one capture; captured <= ceiling; each non-winner voided exactly once; captured + released = holds; idempotent under retry/duplicate/out-of-order webhooks.
 
-## 5. Gate tests (day 1, need PayPal sandbox app)
+## 5. Gate tests (need a PayPal sandbox app; all NOT RUN)
 
 G1 authorize 500 -> capture 350 final_capture=true -> is the 150 remainder auto-released or still active? void it explicitly; check via GET and webhooks. Both PayPal-wallet and card sandbox buyers.
 G2 guest/card AUTHORIZE flow in JS SDK v6 (Card Fields/Fastlane docs show CAPTURE sample; verify AUTHORIZE works). Fallback: PayPal-wallet sandbox buyers (bulk sandbox accounts).
@@ -56,11 +72,11 @@ If G1 or G2 fails with no workaround: switch to Orders AUTHORIZE with PayPal-wal
 
 ## 7. Video storyboard (3:00)
 
-0:00 problem (winner never paid; paper sheets) 0:20 register two bidders, holds visible in PayPal sandbox 0:45 live bidding: voice (20 s) + QR 1:15 confirm-on-ambiguity moment 1:40 hammer: winner captured at winning price, others voided, state ladder + webhook ticks 2:15 crash mid-settlement, resume, still exactly one charge 2:35 audit trail + test count 2:50 close. Mark what is real vs recorded on screen.
+0:00 problem (winner never paid; paper sheets) 0:20 register two bidders, holds visible in PayPal sandbox 0:45 live bidding: voice (20 s) + QR 1:15 confirm-on-ambiguity moment 1:40 hammer: winner captured at winning price, others voided, state ladder + webhook ticks 2:15 crash mid-settlement, resume, still exactly one charge (planned: today only an in-process test hook exists, with no trigger on a hosted server) 2:35 audit trail + test count 2:50 close. Mark what is real vs recorded on screen.
 
 ## 8. Submission checklist
 
-Public repo + visible OSS license; run instructions + hosted URL (free to test until Dec 15); PayPal sandbox only; AI tool and model named in text; PayPal central; public YouTube <3 min, no copyrighted music; English; Devpost tools list; mention what changed if reused earlier work; optional early check by Nov 5.
+Public repo + visible OSS license; run instructions + hosted URL (not deployed yet; holds expire within days, so the hosted build needs fresh sandbox holds at test time); PayPal sandbox only; AI tool and model named in text; PayPal central; public YouTube <3 min, no copyrighted music; English; Devpost tools list; mention what changed if reused earlier work; optional early check by Nov 5.
 
 ## 9. Risks and what stays unknown
 
