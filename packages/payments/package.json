@@ -19,6 +19,7 @@
     "gate:g1": "echo \"gate g1: not implemented yet\"",
     "gate:g2": "echo \"gate g2: not implemented yet\"",
     "gate:g3": "echo \"gate g3: not implemented yet\"",
+    "gate:idem": "vite-node gates/idempotency.ts",
     "measure": "vite-node gates/measure.ts"
   },
   "dependencies": {
