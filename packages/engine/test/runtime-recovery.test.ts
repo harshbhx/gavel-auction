@@ -99,7 +99,7 @@ describe('AuctionRuntime recovery', () => {
 });
 
 describe('AuctionRuntime state reads', () => {
-  it('R4-E03 R-ENG-099 a cold state read during an append does not fail as truncated', async () => {
+  it('T-ENG-072 R4-E03 R-ENG-099 a cold state read during an append does not fail as truncated', async () => {
     const inner = new InMemoryLedgerStore();
     const writer = new AuctionRuntime({ store: inner });
     await writer.dispatch(create());
@@ -122,7 +122,7 @@ describe('AuctionRuntime state reads', () => {
     expect((await reader.state(AU)).head.seq).toBeGreaterThanOrEqual(state.head.seq);
   });
 
-  it('R4-E03 R-ENG-098 a state read waits for a command queued before it', async () => {
+  it('T-ENG-072 R4-E03 R-ENG-098 a state read waits for a command queued before it', async () => {
     const rt = new AuctionRuntime({ store: new InMemoryLedgerStore() });
     const pending = rt.dispatch(create());
     const state = await rt.state(AU);
