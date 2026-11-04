@@ -156,6 +156,13 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     expect(t.redirect).not.toHaveBeenCalled();
   });
 
+  it('does not confirm an order the attempt did not create (WEB-RT-17)', async () => {
+    const t = make((cb) => cb.onApprove({ orderId: 'someone-elses-order' }));
+    const result = await t.adapter.start(req, () => {});
+    expect(result).toMatchObject({ state: 'error', errorCode: 'order_mismatch' });
+    expect(t.urls.some((u) => u.endsWith('/holds'))).toBe(false);
+  });
+
   it('reports order_failed and hold_failed', async () => {
     const noOrder = make(() => {}, null);
     expect((await noOrder.adapter.start(req, () => {})).errorCode).toBe('order_failed');
@@ -193,9 +200,22 @@ describe('import boundary (T-WEB-022)', () => {
   it('lets only paypalV6Adapter.ts reference the PayPal SDK', () => {
     const offenders = files(srcDir)
       .filter((f) => /\.(ts|tsx)$/.test(f) && !f.endsWith('payments/paypalV6Adapter.ts'))
-      .filter((f) =>
-        /@paypal\/|paypal\.com\/web-sdk|paypalV6Adapter/.test(readFileSync(f, 'utf8')),
-      );
+      .filter((f) => /@paypal\/|paypal\.com\/web-sdk/.test(readFileSync(f, 'utf8')));
+    expect(offenders).toEqual([]);
+  });
+
+  it('lets only the adapter and the approval factory import the adapter module', () => {
+    const importers = files(srcDir)
+      .filter((f) => /\.(ts|tsx)$/.test(f) && !f.endsWith('payments/paypalV6Adapter.ts'))
+      .filter((f) => /paypalV6Adapter/.test(readFileSync(f, 'utf8')))
+      .map((f) => f.slice(srcDir.length + 1));
+    expect(importers).toEqual(['payments/useApproval.ts']);
+  });
+
+  it('never names the live PayPal host in source (WEB-RT-03)', () => {
+    const offenders = files(srcDir)
+      .filter((f) => /\.(ts|tsx)$/.test(f))
+      .filter((f) => /\/\/(www\.|api-m\.)?paypal\.com/.test(readFileSync(f, 'utf8')));
     expect(offenders).toEqual([]);
   });
 });
