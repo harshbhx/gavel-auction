@@ -16,7 +16,9 @@ import {
   type Clock,
   type Cents,
   type ConnId,
+  type EngineBidResult,
   type EnginePort,
+  type EpochMs,
   type ErrorCode,
   type Ids,
   type RoomEvent,
@@ -31,6 +33,7 @@ import type { RateLimiter } from '../limits/rate-limiter';
 import {
   TERMINAL_SETTLEMENT,
   canHammer,
+  type BidMeta,
   type ControlCommand,
   type HammerEnginePort,
   type HammerResult,
@@ -39,6 +42,7 @@ import {
   type SettlePort,
   type SettlementReport,
   canAbort,
+  canPlaceWithMeta,
   canRevoke,
 } from './settle-port';
 
@@ -53,12 +57,40 @@ export interface Connection {
   transport: Transport;
 }
 
+/** The source and audit fields of a bid as the room records them, live and on replay. */
+function bidMeta(conn: Connection, msg: BidMsg): BidMeta {
+  if (conn.role === 'auctioneer') {
+    const meta: BidMeta = {
+      source: 'manual',
+      transcript: `manual by ${conn.sub}`.slice(0, 120),
+    };
+    if (msg.confidence !== undefined) meta.confidence = msg.confidence;
+    return meta;
+  }
+  const meta: BidMeta = { source: msg.source };
+  if (msg.transcript !== undefined) meta.transcript = msg.transcript;
+  if (msg.confidence !== undefined) meta.confidence = msg.confidence;
+  return meta;
+}
+
+function placeBidOn(
+  engine: EnginePort,
+  bidder: BidderId,
+  amount: Cents,
+  ts: EpochMs,
+  meta: BidMeta,
+): EngineBidResult {
+  return canPlaceWithMeta(engine)
+    ? engine.placeBidWith(bidder, amount, ts, meta)
+    : engine.placeBid(bidder, amount, ts);
+}
+
 export interface RoomDeps {
   store: RoomStore;
   clock: Clock;
   ids: Ids;
   /** Builds a fresh engine for a config; called again whenever the room is rebuilt from its log. */
-  engine: (config: AuctionConfig) => EnginePort;
+  engine: (config: AuctionConfig, createdAt: EpochMs) => EnginePort;
   limiter?: RateLimiter;
   /** Payments side of settlement; without it a hammered room stays in SETTLING. */
   settle?: SettlePort;
@@ -336,7 +368,7 @@ export class Room {
     else if (!this.roster.has(bidderId)) code = 'unregistered';
     else {
       try {
-        const res = engine.placeBid(bidderId, msg.amount, ts);
+        const res = placeBidOn(engine, bidderId, msg.amount, ts, bidMeta(conn, msg));
         if (!res.ok) code = res.code;
       } catch {
         // The engine may be half-mutated: rebuild from the log before the next command (R-RT-033).
@@ -414,16 +446,16 @@ export class Room {
     const audit: AuditPayload = {
       bidId,
       bidderId,
-      source: conn.role === 'auctioneer' ? 'manual' : msg.source,
+      source: bidMeta(conn, msg).source,
       outcome: code === undefined ? 'accepted' : 'rejected',
       serverTs: ts,
       seq,
     };
     if (isCents(msg.amount)) audit.parsedAmount = msg.amount;
-    if (msg.transcript !== undefined) audit.transcript = msg.transcript;
-    if (msg.confidence !== undefined) audit.confidence = msg.confidence;
+    const meta = bidMeta(conn, msg);
+    if (meta.transcript !== undefined) audit.transcript = meta.transcript;
+    if (meta.confidence !== undefined) audit.confidence = meta.confidence;
     if (code !== undefined) audit.reason = code;
-    if (conn.role === 'auctioneer') audit.transcript = `manual by ${conn.sub}`.slice(0, 120);
     return audit;
   }
 
@@ -1044,7 +1076,7 @@ export class Room {
     switch (event.type) {
       case 'auction_created':
         this.config = event.config;
-        this.engine = this.deps.engine(event.config);
+        this.engine = this.deps.engine(event.config, event.ts);
         break;
       case 'bidder_registered':
         try {
@@ -1055,7 +1087,11 @@ export class Room {
         }
         break;
       case 'bid_accepted':
-        this.requireEngine().placeBid(event.bidderId, event.amount, event.ts);
+        placeBidOn(this.requireEngine(), event.bidderId, event.amount, event.ts, {
+          source: event.audit.source,
+          ...(event.audit.transcript !== undefined ? { transcript: event.audit.transcript } : {}),
+          ...(event.audit.confidence !== undefined ? { confidence: event.audit.confidence } : {}),
+        });
         this.remember(event);
         break;
       case 'bid_rejected':

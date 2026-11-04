@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import {
+  LIMITS,
   EngineError,
   decide,
   evolve,
@@ -26,7 +27,9 @@ import {
 } from '@gavel/shared';
 import type {
   AbortEnginePort,
+  BidMeta,
   HammerResult,
+  MetaBidEnginePort,
   RevokeEnginePort,
   RevokeReason,
 } from '../room/settle-port';
@@ -36,8 +39,9 @@ export function lotIdOf(auctionId: AuctionId): string {
   return auctionId;
 }
 
-/** Longest lot the engine accepts; the lot is opened this long before the room's end time. */
-const LOT_DURATION_MS = 86_400_000;
+/** Shortest lot the engine accepts. */
+const MIN_LOT_DURATION_MS = 1000;
+const MAX_LOT_DURATION_MS = 86_400_000;
 const MAX_SOFT_CLOSE_MS = 600_000;
 const MAX_CEILING_CENTS = 100_000_000;
 
@@ -85,20 +89,28 @@ const REJECT_TO_ERROR: Readonly<Record<RejectReason, ErrorCode>> = {
  * replays that list into the engine runtime, which owns the durable ledger the
  * settlement bridge talks to. A rebuilt room produces the same list again.
  */
-export class LedgerEngine implements AbortEnginePort, RevokeEnginePort {
+export class LedgerEngine implements AbortEnginePort, RevokeEnginePort, MetaBidEnginePort {
   private state: AuctionState = initialState;
   private readonly lotId: EngineUlid;
   private readonly openAt: number;
   private readonly cfg: AuctionConfig;
   private applied: Command[] = [];
+  /** Bids the engine accepted so far; it tells two bids of one millisecond apart. */
+  private bidsApplied = 0;
 
+  /**
+   * `createdAt` is when the room was created: the ledger's auction, lot and opening are
+   * stamped with it, so the ledger shows the real timeline. The lot runs from then to the
+   * room's end time (at least the engine's shortest lot).
+   */
   constructor(
     private readonly auctionId: AuctionId,
     cfg: AuctionConfig,
+    createdAt: EpochMs = Math.max(0, cfg.endTs - MAX_LOT_DURATION_MS) as EpochMs,
   ) {
     this.cfg = cfg;
     this.lotId = lotIdOf(auctionId) as EngineUlid;
-    this.openAt = Math.max(0, cfg.endTs - LOT_DURATION_MS);
+    this.openAt = Math.max(0, Math.min(createdAt, cfg.endTs - MIN_LOT_DURATION_MS));
     const durationMs = cfg.endTs - this.openAt;
     const lot: LotConfig = {
       lotId: this.lotId,
@@ -154,20 +166,24 @@ export class LedgerEngine implements AbortEnginePort, RevokeEnginePort {
   }
 
   placeBid(bidder: BidderId, amount: Cents, ts: EpochMs): EngineBidResult {
+    return this.placeBidWith(bidder, amount, ts, { source: 'manual' });
+  }
+
+  placeBidWith(bidder: BidderId, amount: Cents, ts: EpochMs, meta: BidMeta): EngineBidResult {
     const at = Math.max(ts, this.state.head.at);
     let outcome: ReturnType<typeof decide>['outcome'];
     try {
       outcome = this.run(
         at,
         'PlaceBid',
-        [bidder, amount],
+        [bidder, amount, this.bidsApplied],
         {
           type: 'PlaceBid',
           lotId: this.lotId,
           bidderId: bidder as unknown as EngineUlid,
           amountCents: amount,
-          source: 'manual',
-          audit: {},
+          source: meta.source,
+          audit: auditOf(meta),
         },
         false,
       ).outcome;
@@ -176,8 +192,11 @@ export class LedgerEngine implements AbortEnginePort, RevokeEnginePort {
         return { ok: false, code: 'closed' };
       throw e;
     }
+    // The command id carries the count of accepted bids, so two bids of one millisecond are
+    // never taken for one; a duplicate here can only be a repeat of a bid already counted.
     const result = outcome.kind === 'duplicate' ? outcome.original : outcome;
     if (result.kind === 'rejected') return { ok: false, code: REJECT_TO_ERROR[result.reason] };
+    this.bidsApplied += 1;
     return { ok: true };
   }
 
@@ -305,6 +324,14 @@ export class LedgerEngine implements AbortEnginePort, RevokeEnginePort {
     this.applied.push(cmd);
     return { outcome: result.outcome, entries };
   }
+}
+
+/** The audit fields the engine keeps. The room has already confirmed the bid, so it is marked so. */
+function auditOf(meta: BidMeta): Extract<Command, { type: 'PlaceBid' }>['audit'] {
+  const audit: Extract<Command, { type: 'PlaceBid' }>['audit'] = { confirmed: true };
+  if (meta.transcript !== undefined) audit.transcript = meta.transcript.slice(0, LIMITS.transcript);
+  if (meta.confidence !== undefined) audit.confidenceBps = Math.round(meta.confidence * 10_000);
+  return audit;
 }
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
