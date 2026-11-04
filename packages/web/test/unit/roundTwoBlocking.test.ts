@@ -100,18 +100,18 @@ describe('seq fillers for private frames (WEB-R2-02)', () => {
 
 describe('reconnect snapshot (WEB-R2-03)', () => {
   it('keeps own bids so status and the ceiling meter survive a snapshot', () => {
-    const live = run(base(), priceMsg(7, ME, 45_000), priceMsg(8, 9, 46_000)).state;
+    const live = run(base(), priceMsg(7, ME, 10_000), priceMsg(8, 9, 11_000)).state;
     expect(selectMyStatus(live)).toBe('outbid');
     const snap = {
       ...openSnapshot(roster([ME, 'Me'], [9, 'Other'])),
       you,
-      price: Cents(46_000),
+      price: Cents(11_000),
       leaderId: bidderId(9),
-      minNext: Cents(46_500),
+      minNext: Cents(11_500),
     };
     const after = run(live, stateMsg(20, snap)).state;
     expect(selectMyStatus(after)).toBe('outbid');
-    expect(selectCeilingUsage(after)).toEqual({ usedCents: 45_000, maxCents: 50_000 });
+    expect(selectCeilingUsage(after)).toEqual({ usedCents: 10_000, maxCents: 50_000 });
   });
 });
 
@@ -119,8 +119,8 @@ describe('status follows settlement (WEB-R2-04, R-WEB-090)', () => {
   const hammer = (winner: number): ServerMessage => ({
     v: 1,
     t: 'hammer',
-    seq: 10,
-    ts: EpochMs(BASE_TIME + 10),
+    seq: 7,
+    ts: EpochMs(BASE_TIME + 7),
     winnerId: bidderId(winner),
     price: Cents(35_000),
     ranking: [],
@@ -139,14 +139,14 @@ describe('status follows settlement (WEB-R2-04, R-WEB-090)', () => {
   it('does not call a bidder the winner when their capture failed', () => {
     const won = run(base(), hammer(ME)).state;
     expect(selectMyStatus(won)).toBe('won');
-    const failed = run(won, settle(11, 'FAILED_NEEDS_REVIEW')).state;
+    const failed = run(won, settle(8, 'FAILED_NEEDS_REVIEW')).state;
     expect(selectMyStatus(failed)).toBe('review');
   });
 
   it('shows won only once the capture is confirmed, and lost on a fallback', () => {
-    const captured = run(base(), hammer(ME), settle(11, 'CAPTURED')).state;
+    const captured = run(base(), hammer(ME), settle(8, 'CAPTURED')).state;
     expect(selectMyStatus(captured)).toBe('won');
-    const fallback = run(base(), hammer(ME), settle(11, 'FALLBACK_RUNNER_UP')).state;
+    const fallback = run(base(), hammer(ME), settle(8, 'FALLBACK_RUNNER_UP')).state;
     expect(selectMyStatus(fallback)).toBe('lost');
   });
 });
