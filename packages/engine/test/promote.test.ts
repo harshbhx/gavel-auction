@@ -11,6 +11,7 @@ import {
   L2,
   bid,
   errCode,
+  id,
   lotConfig,
   mk,
   open,
@@ -28,6 +29,24 @@ function hammered(config?: Record<string, unknown>): AuctionState {
 
 const promote = (at: number, who: Ulid, lotId: Ulid = L1) =>
   mk(at, { type: 'PromoteRunnerUp', lotId, disqualifiedBidderId: who, reason: 'hold_failed' });
+
+describe('PromoteRunnerUp that ends unsold keeps its body (ENG-R3-11)', () => {
+  const KEY = id('PU1');
+  const promoteWith = (at: number, who: Ulid, reason: string) =>
+    mk(at, { type: 'PromoteRunnerUp', lotId: L1, disqualifiedBidderId: who, reason }, KEY);
+
+  it('R-ENG-087 a retry with the same body is a duplicate, a changed body conflicts', () => {
+    const first = run(hammered({ fallbackPolicy: 'unsold' }), promoteWith(400, C, 'declined'));
+    expect(first.state.lots[L1]?.status).toBe('DONE');
+    expect(decide(first.state, promoteWith(410, C, 'declined')).outcome.kind).toBe('duplicate');
+    expect(errCode(() => decide(first.state, promoteWith(420, B, 'declined')))).toBe(
+      'command_conflict',
+    );
+    expect(errCode(() => decide(first.state, promoteWith(430, C, 'other')))).toBe(
+      'command_conflict',
+    );
+  });
+});
 
 describe('decide PromoteRunnerUp', () => {
   it('T-ENG-040 R-ENG-054 R-ENG-058 R-ENG-059 promotes the next candidate and moves the commitment', () => {
