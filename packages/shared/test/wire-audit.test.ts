@@ -29,8 +29,7 @@ describe('audit_event payload (T-RT-018)', () => {
   });
 
   it.each(['bidId', 'bidderId', 'source', 'outcome', 'serverTs', 'seq'])('requires %s', (key) => {
-    const rest: Record<string, unknown> = { ...base };
-    delete rest[key];
+    const rest = Object.fromEntries(Object.entries(base).filter(([k]) => k !== key));
     expect(AuditPayloadSchema.safeParse(rest).success).toBe(false);
   });
 
