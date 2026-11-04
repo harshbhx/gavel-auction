@@ -133,6 +133,15 @@ export function summarizeDecisions(observed: readonly G1Observed[]): {
     };
   }
   const flippedTags = ['R-PAY-059', 'R-PAY-051'];
+  if (card === undefined) {
+    // Guest card buyers were never exercised: the result cannot read as a full PASS.
+    return {
+      decision: 'PASS-WITH-FALLBACK',
+      fallback: 'wallet buyers only, card untested (R-PAY-037)',
+      flippedTags,
+      letters,
+    };
+  }
   if (card !== undefined && (card.decision === 'FAIL' || card.decision === 'C')) {
     return {
       decision: 'PASS-WITH-FALLBACK',
@@ -298,6 +307,9 @@ async function runBuyer(
   });
   const cap = capture as { http: number; status: string; final: boolean | null; name: string };
   ctx.check('G1.5 capture 350 final', 'capture accepted', true, cap.http >= 200 && cap.http < 300);
+  if (cap.http >= 200 && cap.http < 300 && cap.status !== 'COMPLETED' && cap.status !== 'PENDING') {
+    throw new Error(`G1 ${buyer}: capture answered HTTP ${cap.http} with status '${cap.status}'`);
+  }
   if (cap.http < 200 || cap.http >= 300) {
     ctx.log(
       `G1 ${buyer}: capture of ${G1_CAPTURE_CENTS} cents with final_capture=true answered HTTP ${cap.http}${cap.name === '' ? '' : ` (${cap.name})`}`,
@@ -310,17 +322,33 @@ async function runBuyer(
     return true;
   });
   const after = await ctx.step(key('G1.6 observe remainder'), async (): Promise<Json> => {
-    const a = await http.request('G1.6 read authorization after capture', {
-      method: 'GET',
-      path: `/v2/payments/authorizations/${authId}`,
-      headers: auth,
-    });
+    const readAuth = (): Promise<GateResponse> =>
+      http.request('G1.6 read authorization after capture', {
+        method: 'GET',
+        path: `/v2/payments/authorizations/${authId}`,
+        headers: auth,
+      });
+    // Poll until two reads in a row agree (at most four reads) so an early read is not a result.
+    let a = await readAuth();
+    for (let i = 0; i < 3; i += 1) {
+      await sleep(2000);
+      const next = await readAuth();
+      const stable = str(field(next.json, 'status')) === str(field(a.json, 'status'));
+      a = next;
+      if (stable) break;
+    }
     const o = await http.request('G1.6 read order after capture', {
       method: 'GET',
       path: `/v2/checkout/orders/${orderId}`,
       headers: auth,
     });
-    return { auth: str(field(a.json, 'status')), order: str(field(o.json, 'status')) };
+    must(a, 200, 'authorization read after capture', buyer);
+    must(o, 200, 'order read after capture', buyer);
+    const authStatus = str(field(a.json, 'status'));
+    if (authStatus === '') {
+      throw new Error(`G1 ${buyer}: authorization read after capture carried no status`);
+    }
+    return { auth: authStatus, order: str(field(o.json, 'status')) };
   });
   const seen = after as { auth: string; order: string };
 
@@ -340,7 +368,10 @@ async function runBuyer(
       path: `/v2/payments/authorizations/${authId}`,
       headers: auth,
     });
-    return str(field(res.json, 'status'));
+    must(res, 200, 'authorization read after void', buyer);
+    const status = str(field(res.json, 'status'));
+    if (status === '') throw new Error(`G1 ${buyer}: authorization read after void had no status`);
+    return status;
   });
 
   const verdict = decideG1({
