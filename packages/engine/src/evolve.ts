@@ -162,6 +162,8 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
         winnerId: null,
         priceCents: null,
         unsoldReason: e.payload.reason,
+        // A lot that was hammered and then lost its last candidate releases its hold (ENG-R2-11).
+        settlement: l.status === 'SETTLING' ? 'VOIDING' : l.settlement,
       }));
     case 'LOT_ABORTED':
       return setLot(s, e.payload.lotId, (l) => ({
@@ -178,6 +180,7 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
         ...l,
         status: 'DONE',
         capturedCents: e.payload.capturedCents,
+        settlement: 'SETTLED',
       }));
     case 'AUCTION_CLOSED':
       return { ...s, closed: true, closedHeadHash: e.payload.headHash };
