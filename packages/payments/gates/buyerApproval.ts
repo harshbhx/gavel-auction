@@ -27,6 +27,8 @@ export interface LocatorLike {
   click(opts?: { timeout: number }): Promise<void>;
   fill(value: string, opts?: { timeout: number }): Promise<void>;
   count(): Promise<number>;
+  /** Resolves when the element is visible, rejects after the timeout. */
+  waitFor(opts: { state: 'visible'; timeout: number }): Promise<void>;
 }
 
 /** The slice of a Playwright frame (the page itself is also a frame-like) that the flow needs. */
@@ -76,16 +78,22 @@ export class BuyerApprovalError extends Error {
 }
 
 const EMAIL_FIELDS = [
-  'input[type=email]',
   '#email',
   'input[name=login_email]',
+  'input[type=email]',
   '#login_emailphone',
   'input[autocomplete=username]',
   'input[name=email]',
   '[data-testid*=email] input',
   'input[data-testid*=email]',
 ];
-const PASSWORD_FIELDS = ['input[type=password]', '#password', 'input[name=login_password]'];
+const PASSWORD_FIELDS = ['#password', 'input[name=login_password]', 'input[type=password]'];
+/** Bot-check inputs of the split login layout; visible means PayPal wants a challenge solved. */
+const CAPTCHA_FIELDS = [
+  'input#splitHybridCaptcha',
+  'input#splitPasswordCaptcha',
+  'input[name*=captcha i]',
+];
 const NEXT_RE = '^\\s*(next|continue)\\s*$';
 const NEXT_BUTTONS = [
   '#btnNext',
@@ -235,6 +243,39 @@ async function findVisible(
   }
 }
 
+/**
+ * Waits until one of the selectors is visible in the page or any of its frames and returns the
+ * locator with its selector. Uses real locator waits (retrying inside the browser) in rounds, so
+ * frames that appear late are picked up. Returns undefined when the timeout passes.
+ */
+async function waitVisible(
+  page: PageLike,
+  selectors: readonly string[],
+  timeoutMs: number,
+): Promise<{ locator: LocatorLike; selector: string } | undefined> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const slice = Math.max(1, Math.min(5000, deadline - Date.now()));
+    const waits: Promise<{ locator: LocatorLike; selector: string }>[] = [];
+    for (const frame of page.frames()) {
+      for (const selector of selectors) {
+        const locator = frame.locator(selector).first();
+        waits.push(
+          locator.waitFor({ state: 'visible', timeout: slice }).then(() => ({ locator, selector })),
+        );
+      }
+    }
+    if (waits.length > 0) {
+      try {
+        return await Promise.any(waits);
+      } catch {
+        // none visible in this round
+      }
+    }
+    if (Date.now() >= deadline) return undefined;
+  }
+}
+
 async function settle(page: PageLike): Promise<void> {
   await page.waitForLoadState('domcontentloaded', { timeout: 30_000 }).catch(() => undefined);
   await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
@@ -319,23 +360,37 @@ export async function approveInBrowser(opts: ApproveOptions): Promise<void> {
     await dismissCookies(page);
     await snap('landing');
 
-    const email = await findVisible(page, EMAIL_FIELDS, Math.min(timeout, 45_000));
-    if (email === undefined) {
+    const emailHit = await waitVisible(page, EMAIL_FIELDS, Math.min(timeout, 45_000));
+    if (emailHit === undefined) {
       return await fail(
         'login form',
         'no email field appeared (PayPal may have changed the page or shown a bot check)',
         'no-login-form',
       );
     }
-    await email.fill(opts.credentials.email, { timeout: 10_000 });
+    await emailHit.locator.fill(opts.credentials.email, { timeout: 10_000 });
 
     // The one-page layout shows both fields; the split layout needs Next first.
     let password = await findVisible(page, PASSWORD_FIELDS, 0);
     if (password === undefined) {
-      await clickPrimary(NEXT_BUTTONS);
+      if (!(await clickPrimary(NEXT_BUTTONS))) {
+        return await fail('login form', 'no Next button was found after the email', 'no-next');
+      }
       await settle(page);
       await dismissCookies(page);
-      password = await findVisible(page, PASSWORD_FIELDS, Math.min(timeout, 30_000));
+      const hit = await waitVisible(
+        page,
+        [...PASSWORD_FIELDS, ...CAPTCHA_FIELDS],
+        Math.min(timeout, 45_000),
+      );
+      if (hit !== undefined && CAPTCHA_FIELDS.includes(hit.selector)) {
+        return await fail(
+          'password step',
+          'captcha shown: PayPal asked for a bot check before the password',
+          'captcha',
+        );
+      }
+      password = hit?.locator;
     }
     if (password === undefined) {
       return await fail(
@@ -353,26 +408,33 @@ export async function approveInBrowser(opts: ApproveOptions): Promise<void> {
       );
     }
     await settle(page);
-    await page.waitForTimeout(6000);
     await dismissCookies(page);
 
-    if ((await findVisible(page, PASSWORD_FIELDS, 0)) !== undefined) {
-      return await fail(
-        'login',
-        'PayPal showed the password field again; check SANDBOX_BUYER_EMAIL and SANDBOX_BUYER_PASSWORD',
-        'login-rejected',
-      );
+    // Signed in when the review page shows up or the browser is already on the return URL.
+    const returned = (): boolean => opts.returnPattern.test(page.url());
+    const confirmHit = returned()
+      ? undefined
+      : await waitVisible(page, CONFIRM_BUTTONS, Math.min(timeout, 60_000));
+    if (returned()) {
+      await snap('returned');
+      return;
     }
-    await snap('after-login');
-
-    const confirm = await findVisible(page, CONFIRM_BUTTONS, Math.min(timeout, 30_000));
-    if (confirm === undefined) {
+    if (confirmHit === undefined) {
+      if ((await findVisible(page, PASSWORD_FIELDS, 0)) !== undefined) {
+        return await fail(
+          'login',
+          'PayPal showed the password field again; check SANDBOX_BUYER_EMAIL and SANDBOX_BUYER_PASSWORD',
+          'login-rejected',
+        );
+      }
       return await fail(
         'review page',
         'no confirm button appeared after sign-in',
         'no-confirm-button',
       );
     }
+    const confirm = confirmHit.locator;
+    await snap('after-login');
     await snap('review');
     await confirm.click({ timeout: 10_000 });
     try {
