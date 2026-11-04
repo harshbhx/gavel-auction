@@ -14,7 +14,7 @@ import { SeqIds, type AuctionId, type EpochMs, type Jti, type RoomEvent } from '
 import { afterAll, describe, expect, it } from 'vitest';
 import { runStoreContract } from '../../engine/src/testing/store-contract';
 import { journalStoreContract, makeJournal } from '../../payments/test/storeContract';
-import { FileLedgerStore, LedgerCorruption } from '../src/store/file-ledger-store';
+import { FileLedgerStore, LedgerCorruption, writeFully } from '../src/store/file-ledger-store';
 import { FileRoomStore } from '../src/store/file-room-store';
 import { MemoryStore } from '../src/store/memory-store';
 import { RoomJournalStore } from '../src/store/room-journal-store';
@@ -112,6 +112,23 @@ describe('FileLedgerStore crash and resume (R-QA-027)', () => {
     const file = join(dir, readdirSync(dir).find((f) => f.endsWith('.ledger.jsonl')) ?? '');
     appendFileSync(file, `${JSON.stringify([entry(3, e1.hash)])}\n`);
     await expect(new FileLedgerStore(dir).head(A)).rejects.toBeInstanceOf(LedgerCorruption);
+  });
+});
+
+describe('writeFully (ENG-R3-08)', () => {
+  it('keeps writing after a short write until the whole buffer is out', () => {
+    const out: number[] = [];
+    const buf = Buffer.from('abcdefghij');
+    writeFully(buf, (b, off) => {
+      const n = Math.min(3, b.length - off);
+      out.push(...b.subarray(off, off + n));
+      return n;
+    });
+    expect(Buffer.from(out).toString()).toBe('abcdefghij');
+  });
+
+  it('fails instead of looping when the write makes no progress', () => {
+    expect(() => writeFully(Buffer.from('ab'), () => 0)).toThrow();
   });
 });
 

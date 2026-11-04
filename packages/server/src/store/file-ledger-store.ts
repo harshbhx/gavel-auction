@@ -1,15 +1,36 @@
 import {
   closeSync,
+  existsSync,
   fsyncSync,
   mkdirSync,
   openSync,
   readFileSync,
+  statSync,
   truncateSync,
   writeSync,
 } from 'node:fs';
 import { join } from 'node:path';
 import { GENESIS_PREV, LedgerConflict } from '@gavel/engine';
 import type { LedgerEntry, LedgerStore, Ulid } from '@gavel/engine';
+
+/** Calls `write(buf, offset)` until every byte is out; `write` returns how many it wrote. */
+export function writeFully(buf: Buffer, write: (buf: Buffer, offset: number) => number): void {
+  let off = 0;
+  while (off < buf.length) {
+    const n = write(buf, off);
+    if (n <= 0) throw new Error('ledger write made no progress');
+    off += n;
+  }
+}
+
+function fsyncDir(dir: string): void {
+  const fd = openSync(dir, 'r');
+  try {
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+}
 
 /** The ledger file is damaged somewhere before its tail; it is left as found. */
 export class LedgerCorruption extends Error {
@@ -106,13 +127,28 @@ export class FileLedgerStore implements LedgerStore {
     if (gap >= 0) throw new RangeError(`entry at index ${gap} is not contiguous`);
     if (entries.length === 0) return;
 
-    const fd = openSync(this.path(auctionId), 'a');
+    const file = this.path(auctionId);
+    const created = !existsSync(file);
+    const before = created ? 0 : statSync(file).size;
+    const fd = openSync(file, 'a');
     try {
-      writeSync(fd, `${JSON.stringify(entries)}\n`);
+      const buf = Buffer.from(`${JSON.stringify(entries)}\n`, 'utf8');
+      // writeSync may write less than asked; loop until the whole line is out.
+      writeFully(buf, (b, off) => writeSync(fd, b, off, b.length - off));
       fsyncSync(fd);
+    } catch (e) {
+      // Do not leave a partial line behind for the next append to build on.
+      try {
+        truncateSync(file, before);
+      } catch {
+        this.ledgers.delete(auctionId);
+      }
+      throw e;
     } finally {
       closeSync(fd);
     }
+    // A new file is only durable once its directory entry is too.
+    if (created) fsyncDir(this.dir);
     cur.push(...entries);
   }
 
