@@ -6,6 +6,7 @@ import {
   type Ulid,
 } from '@gavel/engine';
 import {
+  BridgeError,
   SettlementBridge,
   createEngineAdapter,
   createSettlement,
