@@ -50,13 +50,17 @@ function capturedIn(state: AuctionState, bidderId: string, key: string): number 
 }
 
 /**
- * Decides CompleteLot (R-ENG-066, R-ENG-069): the capture must be booked to the
+ * Decides CompleteLot (R-ENG-066, R-ENG-069): the recorded settlement must already be
+ * CAPTURED (the ledger saw the capture happen), the capture must be booked to the
  * lot's current winner, the captured amount must equal the hammer or promoted price, and the bidder's captured total must fit the ceiling.
  */
 export function decideCompleteLot(state: AuctionState, cmd: CompleteLotCommand): DecideResult {
   assertNotInPast(state, cmd);
   const lot = settlingLot(state, cmd.lotId);
   if (cmd.ref.length > LIMITS.text) throw new EngineError('limit_exceeded', 'ref');
+  if (lot.settlement !== 'CAPTURED') {
+    throw new EngineError('state_continuity', `lot settlement is ${lot.settlement}, not CAPTURED`);
+  }
   if (lot.winnerId === null || lot.priceCents === null) {
     throw new EngineError('bad_command', 'lot has no winner');
   }

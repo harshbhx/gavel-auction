@@ -214,6 +214,14 @@
         "ref": "saga-guitar-3"
       },
       {
+        "at": 65400,
+        "do": "settle",
+        "lot": "guitar",
+        "from": "CAPTURING",
+        "to": "CAPTURED",
+        "ref": "saga-guitar-4"
+      },
+      {
         "at": 66000,
         "do": "complete",
         "lot": "guitar",
@@ -296,6 +304,14 @@
         "from": "WINNER_SELECTED",
         "to": "CAPTURING",
         "ref": "saga-getaway-3"
+      },
+      {
+        "at": 130400,
+        "do": "settle",
+        "lot": "getaway",
+        "from": "CAPTURING",
+        "to": "CAPTURED",
+        "ref": "saga-getaway-4"
       },
       {
         "at": 131000,
@@ -395,6 +411,14 @@
         "ref": "saga-chef-5"
       },
       {
+        "at": 200650,
+        "do": "settle",
+        "lot": "chef",
+        "from": "CAPTURING",
+        "to": "CAPTURED",
+        "ref": "saga-chef-6"
+      },
+      {
         "at": 200700,
         "do": "complete",
         "lot": "chef",
@@ -410,7 +434,7 @@
   },
   "galaExpect": {
     "head": {
-      "seq": 48,
+      "seq": 51,
       "hash": "38f77790761993389c12e0c608905ae2d527c2b9e5209921e603d1ef9529dd0a"
     },
     "rejects": ["over_ceiling", "unconfirmed"],
