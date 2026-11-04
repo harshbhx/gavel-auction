@@ -134,7 +134,11 @@ describe('round 4 settlement fixes', () => {
     });
     const deps = {
       ...base,
-      killSwitch: { isEngaged: async () => ({ engaged }) },
+      killSwitch: {
+        isEngaged: async () => ({ engaged }),
+        engage: async () => undefined,
+        release: async () => undefined,
+      },
     };
     expect(await runCapturePhase(deps, 'auc1')).toMatchObject({
       status: 'pending',
