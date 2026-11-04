@@ -9,7 +9,7 @@ export interface DecisionMetric {
   /** Rejection reason when the outcome (or the original of a duplicate) is a rejection. */
   reason?: string;
   durationMs: number;
-  /** Entries the command appended; empty for noops and duplicates. */
+  /** Entries the command wrote; for a duplicate, the entries of its first application. */
   entries: readonly LedgerEntry[];
 }
 

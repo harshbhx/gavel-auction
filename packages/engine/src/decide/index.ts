@@ -56,7 +56,12 @@ export function assertEnvelope(state: AuctionState, cmd: Command): void {
     default:
       break;
   }
-  if (cmd.type === 'PromoteRunnerUp') assertUlid('disqualifiedBidderId', cmd.disqualifiedBidderId);
+  if (cmd.type === 'PromoteRunnerUp') {
+    assertUlid('disqualifiedBidderId', cmd.disqualifiedBidderId);
+    if (typeof cmd.reason !== 'string' || cmd.reason.length > LIMITS.text) {
+      throw new EngineError('limit_exceeded', 'reason');
+    }
+  }
   if (
     cmd.type === 'Hammer' &&
     !(typeof cmd.actor === 'string' && cmd.actor.length <= LIMITS.text)
