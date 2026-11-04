@@ -108,6 +108,11 @@ export interface AuctionServiceDeps {
   retryMaxDelayMs?: number;
   /** How often `resume()` runs on its own, in ms; 0 turns the timer off. Default 60000. */
   resumeIntervalMs?: number;
+  /**
+   * Receives the reconcile report of an auction once its settlement is SETTLED. Reconcile
+   * only reads; a failed read is passed to `onError` and never blocks the settlement.
+   */
+  onReconcile?: (report: ReconcileReport) => Promise<void> | void;
   /** Told when a settlement run stops with an error. The run is not retried until `resume()`. */
   onError?: (auctionId: string, error: unknown) => void;
 }
@@ -793,6 +798,26 @@ class Service implements AuctionService, SettlePort {
     }
     await this.boundary('after:bridge');
     await this.report(room, journal, { final: true });
+    if (journal.state === 'SETTLED') await this.reconcileSettled(auctionId, journal);
+  }
+
+  /** One reconcile pass after SETTLED (R-PAY-063): captured plus released must equal the holds. */
+  private async reconcileSettled(auctionId: AuctionId, journal: Journal): Promise<void> {
+    try {
+      const report = await reconcile(
+        {
+          gateway: this.gateway,
+          journals: this.deps.journals,
+          holds: this.deps.holds,
+          clock: this.payClock,
+          ...(this.deps.metrics !== undefined ? { metrics: this.deps.metrics } : {}),
+        },
+        journal.auctionId,
+      );
+      await this.deps.onReconcile?.(report);
+    } catch (e) {
+      this.deps.onError?.(auctionId, e);
+    }
   }
 
   /** One progress report to the room. `rev` is the journal version, so reports stay ordered. */

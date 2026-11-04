@@ -26,6 +26,11 @@ describe('package entry', () => {
       'JournalExists',
       'VersionConflict',
       'withLease',
+      'reconcile',
+      'voidAllLiveHolds',
+      'releaseWinnerRemainder',
+      'settlementUpdateFor',
+      'runSettlement',
     ]) {
       expect(typeof (pkg as Record<string, unknown>)[name], name).toBe('function');
     }

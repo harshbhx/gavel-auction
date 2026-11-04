@@ -17,6 +17,7 @@ import {
   type HoldRecord,
   type Journal,
   type PaymentAudit,
+  type ReconcileReport,
 } from '@gavel/payments';
 import { DEFAULT_FAKE_WEBHOOK_ID, FakePayPalServer } from '@gavel/payments/fake';
 import {
@@ -642,6 +643,39 @@ describe('auction service: round 3 blocking fixes (RT3)', () => {
     expect(Object.keys(journal.voids)).toContain(run.b.id);
     expect(Object.keys(journal.voids)).toContain(run.c.id);
     expect(Object.keys(journal.voids)).not.toContain(run.b.holdId);
+    await service.close();
+  });
+});
+
+describe('auction service: reconcile after settlement (INT-R3-15)', () => {
+  it('runs reconcile once the journal is SETTLED and hands over the report', async () => {
+    const rig = await makeRig();
+    const reports: ReconcileReport[] = [];
+    const service = rig.service({ onReconcile: (r) => void reports.push(r) });
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    expect(reports.length).toBeGreaterThan(0);
+    const last = reports[reports.length - 1];
+    expect(last?.journalState).toBe('SETTLED');
+    const bad = ['STATUS_CONFLICT', 'MISSING_CAPTURE', 'EXTRA_CAPTURE', 'AMOUNT_MISMATCH'];
+    expect((last?.findings ?? []).filter((f) => bad.includes(f.code))).toEqual([]);
+    await service.close();
+  });
+
+  it('keeps the settlement settled when the report handler throws', async () => {
+    const rig = await makeRig();
+    const errors: unknown[] = [];
+    const service = rig.service({
+      onReconcile: () => {
+        throw new Error('sink down');
+      },
+      onError: (_id, e) => void errors.push(e),
+    });
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    expect(errors.length).toBeGreaterThan(0);
     await service.close();
   });
 });
