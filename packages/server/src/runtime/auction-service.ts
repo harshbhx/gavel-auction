@@ -45,6 +45,7 @@ import {
   type RoomStore,
 } from '@gavel/shared';
 import type { RateLimiter } from '../limits/rate-limiter';
+import { FencedStore } from '../room/fence';
 import { Room, type RoomDeps } from '../room/room';
 import type { HammerResult, SettlePort, SettlementReport } from '../room/settle-port';
 import { dispatchAtHead } from './engine-dispatch';
@@ -197,6 +198,9 @@ export function createAuctionService(deps: AuctionServiceDeps): AuctionService {
 
 class Service implements AuctionService, SettlePort {
   private readonly rooms = new Map<string, Promise<Room>>();
+  /** Rooms this host lost to another host (R-RT-061); they are never served or resumed here. */
+  private readonly fenced = new Set<string>();
+  private readonly roomStore: RoomStore;
   private readonly synced = new Set<string>();
   /** How many of a room engine's commands the ledger already holds, per engine instance. */
   private readonly cursors = new WeakMap<LedgerEngine, number>();
@@ -217,6 +221,7 @@ class Service implements AuctionService, SettlePort {
 
   constructor(private readonly deps: AuctionServiceDeps) {
     this.payClock = { nowMs: () => deps.clock.now() };
+    this.roomStore = new FencedStore(deps.store, { onFenced: (id) => this.onFenced(id) });
     this.gateway = guardGateway(withOrderLookup(deps.gateway, deps.holds), deps.killSwitch);
     this.owner = deps.leaseOwner ?? `service-${process.pid}-${randomUUID()}`;
     this.runtime = new AuctionRuntime({ store: deps.ledger });
@@ -295,6 +300,9 @@ class Service implements AuctionService, SettlePort {
   }
 
   room(auctionId: AuctionId): Promise<Room> {
+    if (this.fenced.has(auctionId)) {
+      return Promise.reject(new GavelError('host_fenced', 'this host no longer owns the room'));
+    }
     const known = this.rooms.get(auctionId);
     if (known !== undefined) return known;
     const loaded = Room.load(auctionId, this.roomDeps(auctionId));
@@ -305,9 +313,25 @@ class Service implements AuctionService, SettlePort {
     return loaded;
   }
 
+  /**
+   * Another host appended to this room's log first. This host stops serving the room: timers
+   * stop, commands are refused, and no settlement run or resume pass touches it again.
+   */
+  private onFenced(auctionId: string): void {
+    this.fenced.add(auctionId);
+    const timer = this.retryTimers.get(auctionId);
+    if (timer !== undefined) clearTimeout(timer);
+    this.retryTimers.delete(auctionId);
+    this.retryCounts.delete(auctionId);
+    const known = this.rooms.get(auctionId);
+    this.rooms.delete(auctionId);
+    this.deps.onError?.(auctionId, new GavelError('host_fenced'));
+    if (known !== undefined) void known.then((room) => room.stop()).catch(() => undefined);
+  }
+
   private roomDeps(auctionId: AuctionId): RoomDeps {
     return {
-      store: this.deps.store,
+      store: this.roomStore,
       clock: this.deps.clock,
       ids: this.deps.ids,
       engine: (config, createdAt) => new LedgerEngine(auctionId, config, createdAt),
@@ -397,11 +421,22 @@ class Service implements AuctionService, SettlePort {
     let afterHammer = true;
     if (reason !== null) {
       const room = await this.room(hold.auctionId as AuctionId);
-      afterHammer = (await room.revokeBidder(hold.bidderId as BidderId, reason)) === 'hammered';
+      // Only the hold the room registered backs the bidder's ceiling. A spare hold that is
+      // declined, expired or voided must not strike a bidder whose registered hold is good.
+      if (room.holdRefs.get(hold.bidderId as BidderId) !== hold.holdId) {
+        await this.rescheduleOpenJournal(hold.auctionId);
+        return;
+      }
+      afterHammer =
+        (await room.revokeBidder(hold.bidderId as BidderId, reason, hold.holdId)) === 'hammered';
     }
     if (afterHammer && this.synced.has(hold.auctionId)) await this.revokeInEngine(hold);
-    const journal = await this.deps.journals.load(lotIdOf(hold.auctionId as AuctionId));
-    if (journal !== null && !TERMINAL.has(journal.state)) this.schedule(hold.auctionId);
+    await this.rescheduleOpenJournal(hold.auctionId);
+  }
+
+  private async rescheduleOpenJournal(auctionId: string): Promise<void> {
+    const journal = await this.deps.journals.load(lotIdOf(auctionId as AuctionId));
+    if (journal !== null && !TERMINAL.has(journal.state)) this.schedule(auctionId);
   }
 
   private async revokeInEngine(hold: HoldRecord): Promise<void> {
@@ -440,7 +475,7 @@ class Service implements AuctionService, SettlePort {
   }
 
   private schedule(auctionId: string): void {
-    if (this.runs.has(auctionId) || this.closed) return;
+    if (this.runs.has(auctionId) || this.closed || this.fenced.has(auctionId)) return;
     const run = this.settlementRun(auctionId as AuctionId)
       .then((outcome) => {
         if (outcome === 'again') this.armRetry(auctionId);
@@ -459,7 +494,7 @@ class Service implements AuctionService, SettlePort {
    * does not depend on the host calling `resume()`.
    */
   private armRetry(auctionId: string): void {
-    if (this.closed || this.retryTimers.has(auctionId)) return;
+    if (this.closed || this.fenced.has(auctionId) || this.retryTimers.has(auctionId)) return;
     const tries = this.retryCounts.get(auctionId) ?? 0;
     this.retryCounts.set(auctionId, tries + 1);
     const base = this.deps.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS;
@@ -484,6 +519,7 @@ class Service implements AuctionService, SettlePort {
     if (!(await killSwitch.isEngaged()).engaged) return [];
     const aborted: string[] = [];
     for (const id of await this.deps.store.listAuctions()) {
+      if (this.fenced.has(id)) continue;
       // One auction that cannot be aborted now must not keep the others open.
       try {
         const room = await this.room(id);
@@ -504,6 +540,7 @@ class Service implements AuctionService, SettlePort {
       this.deps.onError?.('kill-switch', e);
     }
     for (const id of await this.deps.store.listAuctions()) {
+      if (this.fenced.has(id)) continue;
       // One unloadable auction must not stop the others from resuming.
       try {
         const room = await this.room(id);
@@ -511,12 +548,27 @@ class Service implements AuctionService, SettlePort {
         // to be driven again; an earlier run may have died before the journal was created.
         await room.retrySettlement();
         const journal = await this.deps.journals.load(lotIdOf(id));
-        if (journal !== null || hammeredEngine(room) !== undefined) this.schedule(id);
+        if (await this.needsRun(id, room, journal)) this.schedule(id);
       } catch (e) {
         this.deps.onError?.(id, e);
       }
     }
     await this.intake.sweep();
+  }
+
+  /**
+   * Whether a resume pass has to drive the settlement of this auction. A settlement that is
+   * final and already reported to the room is left alone unless a live hold remains, so the
+   * bridge and the PayPal reconcile do not repeat every minute for every finished auction.
+   */
+  private async needsRun(
+    auctionId: AuctionId,
+    room: Room,
+    journal: Journal | null,
+  ): Promise<boolean> {
+    if (journal === null) return hammeredEngine(room) !== undefined && !room.isDone;
+    if (!TERMINAL.has(journal.state) || !room.isDone) return true;
+    return (await this.deps.holds.listByAuction(auctionId)).some((h) => h.status === 'HELD');
   }
 
   async close(): Promise<void> {
@@ -547,13 +599,26 @@ class Service implements AuctionService, SettlePort {
         if (!(e instanceof BridgeError)) throw e;
         // Not retried silently: the room shows the review state and the host hears the code.
         this.deps.onError?.(auctionId, e);
+        // No journal exists, so nothing else would ever release the bidders' money: void every
+        // live hold now, keeping none, before the room goes final (R-PAY-037).
+        let open = 0;
+        try {
+          open = await voidSpareHolds(
+            { gateway: this.gateway, holds: this.deps.holds },
+            { auctionId: lotId },
+            new Set<string>(),
+          );
+        } catch (voidError) {
+          this.deps.onError?.(auctionId, voidError);
+          open = 1;
+        }
         await room.reportSettlement({
           rev: 1,
           auctionState: 'FAILED_NEEDS_REVIEW',
           perBidder: {},
           note: REVIEW_NOTE,
         });
-        return 'done';
+        return open > 0 ? 'again' : 'done';
       }
     }
     if (TERMINAL.has(journal.state)) {

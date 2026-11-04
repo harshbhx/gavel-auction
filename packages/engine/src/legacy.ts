@@ -14,7 +14,7 @@ import type { Command } from './commands.js';
 import { decide } from './decide/index.js';
 import { EngineError } from './errors.js';
 import { evolve } from './evolve.js';
-import type { LedgerEntry } from './events.js';
+import type { LedgerEntry, SettlementState } from './events.js';
 import { sealBatch } from './ledger/chain.js';
 import { monotonicAt } from './clock.js';
 import { currentPrice as basicPrice } from './rules/pricing-basic.js';
@@ -280,6 +280,23 @@ export class Auction {
     const price = this.lot.priceCents;
     const winnerId = this.lot.winnerId;
     if (price !== null && winnerId !== null) {
+      // CompleteLot needs the recorded settlement to be CAPTURED (R-ENG-066): the legacy
+      // API has no payment saga, so it records the capture path itself before completing.
+      const path: readonly [SettlementState, SettlementState][] = [
+        ['HELD', 'BIDDING'],
+        ['BIDDING', 'WINNER_SELECTED'],
+        ['WINNER_SELECTED', 'CAPTURING'],
+        ['CAPTURING', 'CAPTURED'],
+      ];
+      for (const [from, to] of path) {
+        this.exec({
+          type: 'RecordSettlement',
+          lotId: this.lotId,
+          from,
+          to,
+          ref: 'legacy',
+        });
+      }
       this.exec({
         type: 'CompleteLot',
         lotId: this.lotId,
