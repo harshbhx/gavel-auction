@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { loadScenarioFile } from '../src/index';
-import type { Scenario, Step } from '../src/index';
+import type { Scenario } from '../src/index';
 import { runLadder } from '../src/runner/ladder';
 
 const DIR = join(fileURLToPath(new URL('.', import.meta.url)), '..', 'scenarios');
@@ -68,18 +68,16 @@ describe('scenario execution (R-QA-025, R-QA-026)', () => {
     expect(runLadder(broken).winner).toBe('ben');
   });
 
-  it('rejects a bid below the minimum increment', () => {
+  it('rejects a repeated bid that is below the minimum increment', () => {
     const file = files.find((f) => f.startsWith('S01-')) ?? '';
     const scenario = loadScenarioFile(join(DIR, file));
-    const low: Scenario = {
+    const first = scenario.steps.find((s) => s.do === 'bid');
+    expect(first).toBeDefined();
+    if (first === undefined) return;
+    const repeated: Scenario = {
       ...scenario,
-      steps: scenario.steps.map(
-        (s): Step =>
-          s.do === 'bid' && s.amount === 6500
-            ? { t: s.t, actor: s.actor, do: 'bid', amount: 6100 }
-            : s,
-      ),
+      steps: [...scenario.steps, { ...first, t: first.t + 500 }],
     };
-    expect(runLadder(low).rejected).toEqual([{ actor: 'ben', reason: 'too_low' }]);
+    expect(runLadder(repeated).rejected).toEqual([{ actor: 'ana', reason: 'too_low' }]);
   });
 });
