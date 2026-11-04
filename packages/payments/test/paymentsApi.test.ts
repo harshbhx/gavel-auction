@@ -197,3 +197,58 @@ describe('reauthorize', () => {
     expect(err.outcome).toBe('definite');
   });
 });
+
+describe('capture result checks', () => {
+  function stub(status: number, body: unknown): PaymentsApiClient {
+    return new PaymentsApiClient({
+      auth: {
+        send: async () => ({
+          status,
+          headers: {},
+          text: JSON.stringify(body),
+          attempts: 1,
+        }),
+      },
+    });
+  }
+  const input = { amountCents: 1000, finalCapture: true, invoiceId: 'inv', requestId: 'r' };
+  const amt = (value: string): { currency_code: string; value: string } => ({
+    currency_code: 'USD',
+    value,
+  });
+
+  it('accepts a COMPLETED capture for the requested amount', async () => {
+    const c = await stub(201, { id: 'C1', status: 'COMPLETED', amount: amt('10.00') }).capture(
+      'A',
+      input,
+    );
+    expect(c).toEqual({ captureId: 'C1', amountCents: 1000 });
+  });
+
+  it('a PENDING capture is an unknown outcome, not a charge', async () => {
+    const err = await failure(
+      stub(201, { id: 'C1', status: 'PENDING', amount: amt('10.00') }).capture('A', input),
+    );
+    expect(err.outcome).toBe('unknown');
+  });
+
+  it('a DECLINED capture is a definite failure', async () => {
+    const err = await failure(
+      stub(201, { id: 'C1', status: 'DECLINED', amount: amt('10.00') }).capture('A', input),
+    );
+    expect(err.kind).toBe('declined');
+    expect(err.outcome).toBe('definite');
+  });
+
+  it('a different reported amount is an unknown outcome', async () => {
+    const err = await failure(
+      stub(201, { id: 'C1', status: 'COMPLETED', amount: amt('4.00') }).capture('A', input),
+    );
+    expect(err.outcome).toBe('unknown');
+  });
+
+  it('a missing amount is an unknown outcome', async () => {
+    const err = await failure(stub(201, { id: 'C1', status: 'COMPLETED' }).capture('A', input));
+    expect(err.outcome).toBe('unknown');
+  });
+});

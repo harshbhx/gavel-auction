@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { LedgerEvent } from '../../../engine/src/events.js';
 import type { Ulid } from '../../../engine/src/types.js';
 import { createSettlement, validatePlan } from '../../src/saga/create.js';
-import { planFromOutcome } from '../../src/saga/plan.js';
+import { planFromOutcome, planWithSkipped } from '../../src/saga/plan.js';
 import { MemoryJournalStore } from '../../src/stores/memory.js';
 import type { HoldRef } from '../../src/types.js';
 
@@ -115,5 +115,18 @@ describe('planFromOutcome', () => {
         0,
       ),
     ).toThrow(/duplicate bidder/);
+  });
+
+  it('reports who was skipped so the engine can be told', () => {
+    const r = planWithSkipped(proxyPayload(), { b2: holds.b2, b3: hold('h3', 500) }, 1000);
+    expect(r.plan.candidates.map((c) => c.bidderId)).toEqual(['b2']);
+    expect(r.skipped).toEqual([
+      { bidderId: 'b1', priceCents: 12100, reason: 'no_hold' },
+      { bidderId: 'b3', priceCents: 1000, reason: 'price_above_hold' },
+    ]);
+  });
+
+  it('reports no skips when every candidate can be charged', () => {
+    expect(planWithSkipped(proxyPayload(), holds, 1000).skipped).toEqual([]);
   });
 });
