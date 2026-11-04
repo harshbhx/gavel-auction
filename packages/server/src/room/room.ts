@@ -211,9 +211,27 @@ export class Room {
         ceiling: reg.ceiling,
         holdRef: reg.holdRef,
       };
-      await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+      try {
+        await this.ensureClean();
+      } catch {
+        throw new GavelError('store_unavailable');
+      }
+      // The engine decides first: a registration it refuses must never reach the log, or every
+      // later replay would throw on it and the auction could not be loaded again (R-RT-059).
+      try {
+        this.applyRegistered(event);
+      } catch {
+        this.dirty = true;
+        throw new GavelError('bad_message', 'registration refused by the engine');
+      }
+      try {
+        await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+      } catch (e) {
+        // The engine already holds the bidder; rebuild it from the stored log (R-RT-033).
+        await this.recover().catch(() => undefined);
+        throw e;
+      }
       this.seq = seq;
-      this.applyRegistered(event);
       for (const conn of this.conns.values()) {
         if (conn.role !== 'bidder' || conn.bidderId !== reg.bidderId) {
           // The seq is consumed by this event, so everyone else gets the new roster as a snapshot
@@ -547,6 +565,11 @@ export class Room {
     return this.enqueue(() => this.requestSettle());
   }
 
+  /** Drive a hammered room's settlement again: store a missing request and call payments. */
+  retrySettlement(): Promise<void> {
+    return this.resumeSettlement();
+  }
+
   /**
    * Settlement progress from payments (R-RT-052): validated, ordered by `rev` (stale or
    * repeated revs are dropped), persisted, then broadcast. DONE only on a terminal state (R-RT-053).
@@ -864,7 +887,12 @@ export class Room {
         this.engine = this.deps.engine(event.config);
         break;
       case 'bidder_registered':
-        this.applyRegistered(event);
+        try {
+          this.applyRegistered(event);
+        } catch {
+          // A registration the engine refuses (written by an older build) must not brick the load.
+          // The roster stays without this bidder, matching the engine.
+        }
         break;
       case 'bid_accepted':
         this.requireEngine().placeBid(event.bidderId, event.amount, event.ts);
