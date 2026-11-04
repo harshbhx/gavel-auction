@@ -25,11 +25,11 @@ export const PREVIOUS_CLOSE = '</previous_segment>';
 
 /** Removes control characters and angle brackets so the text cannot close its own delimiter. */
 function quote(text: string): string {
-  const clean = text
-    .replace(/[\u0000-\u001f\u007f<>]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, MAX_TEXT_CHARS);
+  const printable = Array.from(text, (ch) => {
+    const code = ch.codePointAt(0) ?? 0;
+    return code < 32 || code === 127 || ch === '<' || ch === '>' ? ' ' : ch;
+  }).join('');
+  const clean = printable.replace(/\s+/g, ' ').trim().slice(0, MAX_TEXT_CHARS);
   return JSON.stringify(clean);
 }
 
