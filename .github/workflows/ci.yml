@@ -12,8 +12,9 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Script jobs call npm scripts that print "not implemented" and exit 0 until their issue lands,
-# so every job passes cleanly while packages are still missing.
+# Every job here is real: an npm script that is not implemented exits 1 instead of passing.
+# The browser end-to-end job is absent until packages/e2e has a Playwright suite; it joins the
+# `required` list in the change that adds it.
 jobs:
   typecheck:
     runs-on: ubuntu-latest
@@ -48,8 +49,13 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup
       - run: npm run test:coverage
+      - name: Thresholds may only be raised
+        if: ${{ github.event_name == 'pull_request' }}
+        run: node scripts/check-coverage.mjs --ratchet "origin/${{ github.base_ref }}"
   property:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -64,33 +70,6 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: ./.github/actions/setup
       - run: npm run test:scenarios
-  e2e-fake:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3]
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: ./.github/actions/setup
-      - name: Cache Playwright browsers
-        if: ${{ hashFiles('packages/e2e/package.json') != '' }}
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - name: Install Chromium
-        if: ${{ hashFiles('packages/e2e/package.json') != '' }}
-        run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/3
-      - name: Upload traces
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
-        with:
-          name: e2e-traces-${{ matrix.shard }}
-          path: packages/e2e/test-results
-          if-no-files-found: ignore
   deps:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -116,7 +95,18 @@ jobs:
           GITLEAKS_CONFIG: .gitleaks.toml
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
       - run: node scripts/check-bundle-secrets.mjs --self-test
-      - run: npm run check:secrets
+      - name: Build the web bundle with canary secrets and scan it
+        run: npm run check:secrets
+        env:
+          VITE_SANDBOX: 'true'
+          PAYPAL_CLIENT_SECRET: canary-paypal-client-secret-4f9c2a71
+          PAYPAL_WEBHOOK_ID: canary-paypal-webhook-id-4f9c2a71
+          DEEPGRAM_API_KEY: canary-deepgram-api-key-4f9c2a71
+          GROQ_API_KEY: canary-groq-api-key-4f9c2a71
+          LLM_API_KEY: canary-llm-api-key-4f9c2a71
+          ADMIN_TOKEN: canary-admin-token-4f9c2a71
+          AUCTIONEER_TOKEN_SECRET: canary-auctioneer-token-4f9c2a71
+          DATABASE_URL: canary-database-url-4f9c2a71
   ascii-banned:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -124,9 +114,20 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: ./.github/actions/setup
       - run: npm run check:ascii
-      - run: npm run check:banned-words
+      # The word list is a secret, so the scanner that sees it must not be code from the pull
+      # request. It runs from the base commit and reads the pull request tree as data.
+      - name: Check out the trusted scanner (base commit)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          path: trusted
+          persist-credentials: false
+      - name: Banned words
+        run: node trusted/scripts/check-banned-words.mjs --root .
         env:
           BANNED_WORDS: ${{ secrets.BANNED_WORDS }}
+          # Pull requests from forks never receive the secret; the same check runs on main.
+          BANNED_WORDS_ALLOW_EMPTY: ${{ github.event.pull_request.head.repo.fork == true }}
   docs-format:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -164,6 +165,50 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
           BASE_REF: origin/${{ github.base_ref }}
+  voice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/setup
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b
+        with:
+          python-version: '3.12'
+      - name: Python parser golden is up to date
+        run: python3 packages/voice/scripts/export-golden.py --check
+      - name: Bundle size limit
+        if: ${{ hashFiles('packages/voice/src/parser/parse.ts') != '' && hashFiles('packages/voice/src/decide/policy.ts') != '' && hashFiles('packages/voice/src/browser/capture.ts') != '' }}
+        run: npm run size -w @gavel/voice
+  e2e-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/setup
+        with:
+          install: 'false'
+      - name: Synthesize audio fixtures
+        run: node packages/e2e/fixtures/audio/generate.mjs
+      - name: Validate fixtures
+        run: node scripts/check-fixtures.mjs
+  reference-python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b
+        with:
+          python-version: '3.12'
+      - run: pip install pytest hypothesis
+      - run: pytest -q
+        working-directory: reference/python
+  tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/setup
+      - run: npm run test:tools
   required:
     if: ${{ always() }}
     needs:
@@ -174,24 +219,34 @@ jobs:
       - coverage
       - property
       - scenarios
-      - e2e-fake
       - deps
       - secrets
       - ascii-banned
       - docs-format
       - commitlint
+      - voice
+      - e2e-fixtures
+      - reference-python
+      - tools
       - ownership
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require every job to pass or be skipped
+      # Every job must succeed. Only `ownership` may be skipped, and only because it is defined
+      # for pull requests alone (it has an event-based `if`).
+      - name: Require every job to succeed
         env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
+          NEEDS: ${{ toJSON(needs) }}
+          EVENT: ${{ github.event_name }}
         run: |
-          echo "results: $RESULTS"
-          for r in $RESULTS; do
-            if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
-              echo "a required job finished with: $r"
-              exit 1
-            fi
-          done
+          node -e '
+            const needs = JSON.parse(process.env.NEEDS);
+            let bad = 0;
+            for (const [name, job] of Object.entries(needs)) {
+              const okSkip = name === "ownership" && process.env.EVENT !== "pull_request";
+              const ok = job.result === "success" || (okSkip && job.result === "skipped");
+              console.log(name + ": " + job.result + (ok ? "" : "  <-- not accepted"));
+              if (!ok) bad += 1;
+            }
+            process.exit(bad === 0 ? 0 : 1);
+          '

@@ -1,7 +1,11 @@
 name: gitleaks-history
-# Full-history secret scan. Run by hand before the repository is made public.
+# Full-history secret scan: weekly, on every push to main, and on demand before a release.
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 1'
+  push:
+    branches: [main]
 
 permissions:
   contents: read

@@ -15,7 +15,7 @@ Unblocks: QA-01 -> QA-12, QA-14, QA-32; QA-51 (ci.yml) -> QA-09, QA-50, QA-60; Q
 - Infra: QA-59 -> QA-60 -> QA-61, QA-63, QA-64; QA-60 + QA-61 -> QA-62.
 - Reports and submission: QA-14 -> QA-57 -> QA-58 -> QA-69; QA-37 -> QA-67 -> QA-68; QA-54 + QA-08 -> QA-71; QA-68, QA-69, QA-70, QA-71, QA-43 -> QA-72.
 
-## Needs Harsh or Dhairya (label blocked:needs-harsh)
+## Needs the project owner (label blocked:needs-owner)
 
 QA-09 (apply protection), QA-25, QA-44, QA-45, QA-46, QA-47 (sandbox and STT keys), QA-59 (environments), QA-60, QA-61, QA-63 (hosting accounts, webhook registration), QA-68, QA-71, QA-72 (video, visibility flip, submit).
 

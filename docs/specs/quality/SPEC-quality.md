@@ -448,7 +448,7 @@ Rules: no copyrighted music (use silence or a royalty-free track with its licenc
 10. What is next: real organisers pilot, reauthorization, multi-currency (not built).
 11. Built with: TypeScript, React, Vite, Node, Playwright, Vitest, fast-check, Render, Cloudflare, PayPal sandbox APIs, Deepgram, named language model.
 12. Try it: hosted URL, judge walkthrough, repo, video.
-13. Reuse statement: logic and tests of an earlier scratch prototype were ported to TypeScript.
+13. Reuse statement: logic and tests of the Python reference implementation were ported to TypeScript.
 
 ### 4.13 Screenshot list
 
@@ -696,11 +696,11 @@ Tagged `@sandbox`; each uses redacted transcripts as artifacts. Where behaviour 
 | #   | Question                                                                                                        | Decision owner              | Default                                                                                   |
 | --- | --------------------------------------------------------------------------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------- |
 | Q1  | Is the Durable Object path chosen by the realtime spike, and does that change the deploy workflow?              | realtime owner with quality | Single Node server on Render; keep a DO deploy workflow as a stub only                    |
-| Q2  | Always-on Render instance for the judging window: approve spend up to 10 USD?                                   | Harsh                       | Yes from D8; otherwise 4-minute keep-alive ping                                           |
-| Q3  | Is a second reviewer available, or do we self-merge after green CI with the owner's review?                     | Harsh                       | Owner review required, self-merge allowed for docs only                                   |
+| Q2  | Always-on Render instance for the judging window: approve spend up to 10 USD?                                   | Project owner               | Yes from D8; otherwise 4-minute keep-alive ping                                           |
+| Q3  | Is a second reviewer available, or do we self-merge after green CI with the owner's review?                     | Project owner               | Owner review required, self-merge allowed for docs only                                   |
 | Q4  | Which language-model provider and STT provider are named in the Devpost text?                                   | voice owner                 | Whatever is wired at the D7 feature freeze, named exactly                                 |
 | Q5  | Can PayPal sandbox authorizations be aged to test honor-period expiry (gate G3), or only simulated by the fake? | payments owner              | Simulate with fake (S07, S08); record `inconclusive` for R3                               |
-| Q6  | Is Safari on a real iOS device available for the manual check?                                                  | Harsh                       | WebKit emulation plus one manual check on a team phone                                    |
-| Q7  | Does the video use real or recorded voice bids?                                                                 | Harsh and web owner         | Recorded replay labelled on screen for noise control, one live spoken bid in a quiet room |
-| Q8  | Public repo timing: make public at D8 or D9?                                                                    | Harsh                       | D8 evening, after checklist 4.14, so the judges see history                               |
+| Q6  | Is Safari on a real iOS device available for the manual check?                                                  | Project owner               | WebKit emulation plus one manual check on a team phone                                    |
+| Q7  | Does the video use real or recorded voice bids?                                                                 | Project owner and web owner | Recorded replay labelled on screen for noise control, one live spoken bid in a quiet room |
+| Q8  | Public repo timing: make public at D8 or D9?                                                                    | Project owner               | D8 evening, after checklist 4.14, so the judges see history                               |
 | Q9  | Retention of nightly transcripts as artifacts                                                                   | quality                     | 14 days, redacted                                                                         |

@@ -64,6 +64,28 @@ function table(rows) {
   return [fmt(head), fmt(widths.map((w) => '-'.repeat(w))), ...rows.map(fmt)].join('\n');
 }
 
+/** Evaluates every configured package against its gate. A package with no sources fails. */
+export function evaluate(summary, thresholds) {
+  const agg = aggregate(summary, Object.keys(thresholds));
+  const rows = [];
+  let failed = false;
+  for (const [pkg, gate] of Object.entries(thresholds)) {
+    const a = agg[pkg];
+    if (a.files === 0) {
+      failed = true;
+      rows.push([pkg, '-', '-', '-', 'FAIL (no instrumented sources)']);
+      continue;
+    }
+    for (const k of METRICS) {
+      const actual = pct(a[k].c, a[k].t);
+      const ok = actual + 1e-9 >= gate[k];
+      if (!ok) failed = true;
+      rows.push([pkg, k, `${actual.toFixed(2)}%`, `${gate[k]}%`, ok ? 'ok' : 'FAIL']);
+    }
+  }
+  return { rows, failed };
+}
+
 function checkCoverage() {
   const thresholds = readThresholds();
   if (!existsSync(SUMMARY)) {
@@ -71,24 +93,7 @@ function checkCoverage() {
     return 1;
   }
   const summary = JSON.parse(readFileSync(SUMMARY, 'utf8'));
-  const agg = aggregate(summary, Object.keys(thresholds));
-  const rows = [];
-  let failed = false;
-  for (const [pkg, gate] of Object.entries(thresholds)) {
-    const a = agg[pkg];
-    if (a.files === 0) {
-      rows.push([pkg, '-', '-', '-', 'skipped (no sources)']);
-      continue;
-    }
-    for (const k of METRICS) {
-      const actual = pct(a[k].c, a[k].t);
-      const ok = actual + 1e-9 >= gate[k];
-      // advisory: true reports a miss as WARN until the owning package reaches its gate.
-      if (!ok && !gate.advisory) failed = true;
-      const status = ok ? 'ok' : gate.advisory ? 'WARN (advisory)' : 'FAIL';
-      rows.push([pkg, k, `${actual.toFixed(2)}%`, `${gate[k]}%`, status]);
-    }
-  }
+  const { rows, failed } = evaluate(summary, thresholds);
   const out = table(rows);
   if (failed) console.error(`coverage gates failed:\n${out}`);
   else console.log(`coverage gates:\n${out}`);
