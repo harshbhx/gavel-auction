@@ -4,6 +4,7 @@ import type {
   BidderId,
   Cents,
   ControlAction,
+  EngineBidResult,
   EnginePort,
   EpochMs,
   SettlementState,
