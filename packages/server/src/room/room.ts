@@ -20,6 +20,7 @@ import {
   type ErrorCode,
   type Ids,
   type RoomEvent,
+  RoomEventSchema,
   type RoomSnapshot,
   type RoomStore,
   type ServerMsg,
@@ -27,6 +28,15 @@ import {
 } from '@gavel/shared';
 import { authorize, redactForViewer } from '../auth/authorize';
 import type { RateLimiter } from '../limits/rate-limiter';
+import {
+  TERMINAL_SETTLEMENT,
+  canHammer,
+  type ControlCommand,
+  type HammerEnginePort,
+  type HammerResult,
+  type SettlePort,
+  type SettlementReport,
+} from './settle-port';
 
 /** One live connection as the room sees it. Identity comes from the verified token only. */
 export interface Connection {
@@ -46,6 +56,8 @@ export interface RoomDeps {
   /** Builds a fresh engine for a config; called again whenever the room is rebuilt from its log. */
   engine: (config: AuctionConfig) => EnginePort;
   limiter?: RateLimiter;
+  /** Payments side of settlement; without it a hammered room stays in SETTLING. */
+  settle?: SettlePort;
 }
 
 export interface RegisterBidder {
@@ -85,6 +97,15 @@ export class Room {
   private audit: AuditPayload[] = [];
   private readonly conns = new Map<ConnId, Connection>();
   private cancelTimer: CancelTimer | undefined;
+  private cancelHammer: CancelTimer | undefined;
+  /** When the room entered CLOSING; the auto-hammer delay counts from here (R-RT-044). */
+  private closingAt: number | undefined;
+  private controlIds = new Set<string>();
+  private hammered: (HammerResult & { seq: number; ts: number }) | undefined;
+  private settleRequested = false;
+  private settleCalled = false;
+  private settlement: SettlementReport | undefined;
+  private done = false;
   /** True when the engine may be ahead of the stored log and must be rebuilt first. */
   private dirty = false;
   /** Count of frames dropped because they failed to encode; surfaced for metrics and tests. */
@@ -123,6 +144,7 @@ export class Room {
     const room = new Room(auctionId, deps);
     await room.replay();
     room.armTimer();
+    await room.resumeSettlement();
     return room;
   }
 
@@ -153,6 +175,8 @@ export class Room {
   async close(): Promise<void> {
     this.cancelTimer?.();
     this.cancelTimer = undefined;
+    this.cancelHammer?.();
+    this.cancelHammer = undefined;
     await this.tail;
   }
 
@@ -366,6 +390,215 @@ export class Room {
     return undefined;
   }
 
+  /**
+   * Auctioneer control command (R-RT-048). Idempotent by `controlId`. Only `hammer`
+   * is wired: pause, resume, extend and open need engine support that does not exist yet (R-RT-049).
+   */
+  control(conn: Connection, cmd: ControlCommand): Promise<void> {
+    if (!authorize('control', conn.role).ok) {
+      this.sendError(conn, 'forbidden');
+      return Promise.resolve();
+    }
+    if (cmd.action !== 'hammer' || cmd.controlId.length === 0) {
+      this.sendError(conn, 'bad_message');
+      return Promise.resolve();
+    }
+    return this.enqueue(async () => {
+      try {
+        await this.ensureClean();
+      } catch {
+        this.sendError(conn, 'store_unavailable');
+        return;
+      }
+      if (this.hammered) {
+        // A repeat returns the same result and appends nothing (R-RT-050).
+        this.sendHammer(conn, this.hammered);
+        return;
+      }
+      if (this.controlIds.has(cmd.controlId)) return;
+      const open = this.requireEngine().view().state === 'OPEN';
+      if (open && cmd.args?.closeNow !== 1) {
+        this.sendError(conn, 'conflict');
+        return;
+      }
+      await this.doHammer({ conn, cmd });
+    });
+  }
+
+  /** Append the hammer (with its control record when the auctioneer asked), broadcast it, then settle. */
+  private async doHammer(by: { conn: Connection; cmd: ControlCommand } | undefined): Promise<void> {
+    if (this.hammered) return;
+    const engine = this.requireHammer();
+    const ts = this.deps.clock.now();
+    let result: HammerResult;
+    try {
+      result = engine.hammer(ts);
+    } catch {
+      // The engine may be half-mutated: rebuild from the log before the next command (R-RT-033).
+      this.dirty = true;
+      if (by) this.sendError(by.conn, 'internal');
+      return;
+    }
+    const first = this.seq + 1;
+    const events: RoomEvent[] = [];
+    if (by) {
+      const bidId = this.deps.ids.mint<'BidId'>();
+      events.push({
+        type: 'control',
+        auctionId: this.auctionId,
+        seq: first,
+        ts,
+        controlId: by.cmd.controlId,
+        action: by.cmd.action,
+        by: by.conn.sub,
+        ...(by.cmd.args ? { args: by.cmd.args } : {}),
+        audit: {
+          bidId,
+          bidderId: this.deps.ids.mint<'BidderId'>(),
+          source: 'manual',
+          outcome: 'accepted',
+          reason: `control:${by.cmd.action}`,
+          serverTs: ts,
+          seq: first,
+        },
+      });
+    }
+    const hammerSeq = first + events.length;
+    events.push({
+      type: 'hammered',
+      auctionId: this.auctionId,
+      seq: hammerSeq,
+      ts,
+      winnerId: result.winnerId,
+      price: result.price,
+      ranking: result.ranking,
+    });
+    try {
+      await this.deps.store.appendEvents(this.auctionId, this.seq, events);
+    } catch {
+      await this.recover().catch(() => undefined);
+      if (by) this.sendError(by.conn, 'store_unavailable');
+      return;
+    }
+    this.cancelTimer?.();
+    this.cancelTimer = undefined;
+    this.cancelHammer?.();
+    this.cancelHammer = undefined;
+    if (by) {
+      this.controlIds.add(by.cmd.controlId);
+      // The control record consumed a seq nobody else can see; carry it so clients see no gap (R-RT-036).
+      this.seq = first;
+      for (const conn of this.conns.values()) this.sendSeqFiller(conn, first, ts);
+    }
+    this.seq = hammerSeq;
+    this.lastState = 'SETTLING';
+    this.hammered = { ...result, seq: hammerSeq, ts };
+    for (const conn of this.conns.values()) this.sendHammer(conn, this.hammered);
+    await this.requestSettle();
+  }
+
+  private sendHammer(conn: Connection, h: HammerResult & { seq: number; ts: number }): void {
+    this.send(conn, {
+      v: 1,
+      t: 'hammer',
+      seq: h.seq,
+      ts: h.ts as ReturnType<Clock['now']>,
+      winnerId: h.winnerId,
+      price: h.price,
+      ranking: h.ranking,
+    });
+  }
+
+  /** Persist the settle request, then hand the outcome to payments once per process (R-RT-051). */
+  private async requestSettle(): Promise<void> {
+    const hammered = this.hammered;
+    const settle = this.deps.settle;
+    if (!hammered || !settle || this.done || this.settleCalled) return;
+    if (!this.settleRequested) {
+      const seq = this.seq + 1;
+      const ts = this.deps.clock.now();
+      try {
+        await this.deps.store.appendEvents(this.auctionId, this.seq, [
+          { type: 'settle_requested', auctionId: this.auctionId, seq, ts },
+        ]);
+      } catch {
+        await this.recover().catch(() => undefined);
+        return;
+      }
+      this.seq = seq;
+      this.settleRequested = true;
+      for (const conn of this.conns.values()) this.sendSeqFiller(conn, seq, ts);
+    }
+    this.settleCalled = true;
+    try {
+      await settle.settle(this.auctionId, {
+        winnerId: hammered.winnerId,
+        price: hammered.price,
+        ranking: hammered.ranking,
+      });
+    } catch {
+      // Not lost: a restart resumes settlement from the log (R-RT-060).
+      this.settleCalled = false;
+    }
+  }
+
+  /** After a restart: a hammered room that is not settled calls payments again (R-RT-060). */
+  private resumeSettlement(): Promise<void> {
+    return this.enqueue(() => this.requestSettle());
+  }
+
+  /**
+   * Settlement progress from payments (R-RT-052): validated, ordered by `rev` (stale or
+   * repeated revs are dropped), persisted, then broadcast. DONE only on a terminal state (R-RT-053).
+   */
+  reportSettlement(report: SettlementReport): Promise<void> {
+    return this.enqueue(async () => {
+      try {
+        await this.ensureClean();
+      } catch {
+        throw new GavelError('store_unavailable');
+      }
+      if (!this.hammered) throw new GavelError('conflict', 'auction is not hammered');
+      if (this.settlement && report.rev <= this.settlement.rev) return;
+      const seq = this.seq + 1;
+      const ts = this.deps.clock.now();
+      const event = RoomEventSchema.safeParse({
+        type: 'settlement_update',
+        auctionId: this.auctionId,
+        seq,
+        ts,
+        rev: report.rev,
+        auctionState: report.auctionState,
+        perBidder: report.perBidder,
+        ...(report.amountCaptured !== undefined ? { amountCaptured: report.amountCaptured } : {}),
+        ...(report.note !== undefined ? { note: report.note } : {}),
+      });
+      if (!event.success) throw new GavelError('bad_message', 'invalid settlement update');
+      try {
+        await this.deps.store.appendEvents(this.auctionId, this.seq, [event.data]);
+      } catch {
+        await this.recover().catch(() => undefined);
+        throw new GavelError('store_unavailable');
+      }
+      this.seq = seq;
+      this.applySettlement(report);
+      for (const conn of this.conns.values()) {
+        const you = conn.bidderId ? report.perBidder[conn.bidderId] : undefined;
+        this.send(conn, {
+          v: 1,
+          t: 'settlement_update',
+          seq,
+          ts,
+          rev: report.rev,
+          auctionState: report.auctionState,
+          ...(you ? { you } : {}),
+          ...(report.amountCaptured !== undefined ? { amountCaptured: report.amountCaptured } : {}),
+          ...(report.note !== undefined ? { note: report.note } : {}),
+        });
+      }
+    });
+  }
+
   private broadcastPrice(seq: number, ts: ReturnType<Clock['now']>): void {
     const view = this.requireEngine().view();
     if (view.price === null) return;
@@ -428,7 +661,7 @@ export class Room {
     const snapshot: RoomSnapshot = {
       auctionId: this.auctionId,
       config,
-      status: view.state,
+      status: this.done ? 'DONE' : view.state,
       price: view.price,
       leaderId: view.leader,
       endTs: view.endTs,
@@ -441,6 +674,14 @@ export class Room {
       })),
       recentAudit: [...this.audit],
     };
+    if (this.settlement) {
+      const own = conn.bidderId ? this.settlement.perBidder[conn.bidderId] : undefined;
+      snapshot.settlement = {
+        rev: this.settlement.rev,
+        auctionState: this.settlement.auctionState,
+        ...(own ? { you: own } : {}),
+      };
+    }
     if (conn.bidderId && you) snapshot.you = { bidderId: conn.bidderId, ceiling: you.ceiling };
     return snapshot;
   }
@@ -473,14 +714,48 @@ export class Room {
   /** Re-arm the close timer for the engine's current endTs (R-RT-041). */
   private armTimer(): void {
     this.cancelTimer?.();
+    this.cancelTimer = undefined;
+    this.cancelHammer?.();
+    this.cancelHammer = undefined;
     const view = this.engine?.view();
-    if (!view || view.state !== 'OPEN') return;
+    if (!view || this.hammered) return;
+    if (view.state === 'CLOSING') {
+      this.armAutoHammer();
+      return;
+    }
+    if (view.state !== 'OPEN') return;
     this.cancelTimer = this.deps.clock.setTimer(view.endTs, () => {
       this.enqueue(() => this.onTimer()).catch(() => {
         // A throwing timer body must not become an unhandled rejection; rebuild on the next command.
         this.dirty = true;
       });
     });
+  }
+
+  /** Schedule the hammer `autoHammerDelayMs` after CLOSING began, if the config asks for it (R-RT-044). */
+  private armAutoHammer(): void {
+    const delay = this.config?.autoHammerDelayMs;
+    if (delay === undefined || this.closingAt === undefined) return;
+    this.cancelHammer = this.deps.clock.setTimer(this.closingAt + delay, () => {
+      this.enqueue(() => this.onAutoHammer()).catch(() => {
+        this.dirty = true;
+      });
+    });
+  }
+
+  private async onAutoHammer(): Promise<void> {
+    try {
+      await this.ensureClean();
+    } catch {
+      return;
+    }
+    if (this.hammered || this.closingAt === undefined) return;
+    const due = this.closingAt + (this.config?.autoHammerDelayMs ?? 0);
+    if (this.deps.clock.now() < due) {
+      this.armTimer();
+      return;
+    }
+    await this.doHammer(undefined);
   }
 
   private async onTimer(): Promise<void> {
@@ -517,7 +792,9 @@ export class Room {
     }
     this.seq = seq;
     this.lastState = to;
+    if (to === 'CLOSING') this.closingAt = now;
     for (const conn of this.conns.values()) this.sendState(conn);
+    this.armTimer();
   }
 
   /**
@@ -545,6 +822,12 @@ export class Room {
     this.audit = fresh.audit;
     this.seq = fresh.seq;
     this.lastState = fresh.lastState;
+    this.closingAt = fresh.closingAt;
+    this.controlIds = fresh.controlIds;
+    this.hammered = fresh.hammered;
+    this.settleRequested = fresh.settleRequested;
+    this.settlement = fresh.settlement;
+    this.done = fresh.done;
     this.dirty = false;
     this.armTimer();
   }
@@ -557,6 +840,12 @@ export class Room {
     this.audit = [];
     this.seq = 0;
     this.lastState = 'OPEN';
+    this.closingAt = undefined;
+    this.controlIds = new Set();
+    this.hammered = undefined;
+    this.settleRequested = false;
+    this.settlement = undefined;
+    this.done = false;
     let from = 1;
     for (;;) {
       const page = await this.deps.store.readEvents(this.auctionId, from, READ_PAGE);
@@ -587,6 +876,20 @@ export class Room {
       case 'state_changed':
         this.requireEngine().tick(event.ts);
         this.lastState = event.to;
+        if (event.to === 'CLOSING') this.closingAt = event.ts;
+        break;
+      case 'control':
+        this.controlIds.add(event.controlId);
+        break;
+      case 'hammered':
+        this.hammered = { ...this.requireHammer().hammer(event.ts), seq: event.seq, ts: event.ts };
+        this.lastState = 'SETTLING';
+        break;
+      case 'settle_requested':
+        this.settleRequested = true;
+        break;
+      case 'settlement_update':
+        this.applySettlement(event);
         break;
       default:
         break;
@@ -611,6 +914,26 @@ export class Room {
   private pushAudit(audit: AuditPayload): void {
     this.audit.push(audit);
     if (this.audit.length > RECENT_AUDIT) this.audit.shift();
+  }
+
+  private requireHammer(): HammerEnginePort {
+    const engine = this.requireEngine();
+    if (!canHammer(engine)) throw new GavelError('internal', 'engine cannot hammer');
+    return engine;
+  }
+
+  private applySettlement(report: SettlementReport): void {
+    this.settlement = {
+      rev: report.rev,
+      auctionState: report.auctionState,
+      perBidder: report.perBidder,
+      ...(report.amountCaptured !== undefined ? { amountCaptured: report.amountCaptured } : {}),
+      ...(report.note !== undefined ? { note: report.note } : {}),
+    };
+    if (TERMINAL_SETTLEMENT.includes(report.auctionState)) {
+      this.done = true;
+      this.lastState = 'DONE';
+    }
   }
 
   private requireEngine(): EnginePort {

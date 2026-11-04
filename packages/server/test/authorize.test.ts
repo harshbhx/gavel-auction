@@ -155,3 +155,11 @@ describe('event export (R-RT-108)', () => {
     expect(redactEventForExport('admin', registered)).toHaveProperty('ceiling', 9000);
   });
 });
+
+describe('settlement state in you (RT-91)', () => {
+  it('keeps the bidder their own settlement state and hides it from screens', () => {
+    const frame = { t: 'settlement_update', rev: 1, auctionState: 'CAPTURED', you: 'CAPTURED' };
+    expect(redactForViewer('bidder', B1, frame)).toEqual(frame);
+    expect(JSON.stringify(redactForViewer('screen', undefined, frame))).not.toContain('you');
+  });
+});
