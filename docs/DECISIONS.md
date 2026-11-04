@@ -321,3 +321,23 @@ Consequences:
 - The crash and resume segment of the demo works on the hosted URL because journals survive a restart.
 
 Evidence: docs/PLAN.md (Store), packages/payments/src/stores/file.ts header, SPEC-quality R-QA-042.
+
+## D-0019: The verify-ledger CLI bundles the TypeScript verifier with esbuild at run time
+
+Date: 2026-11-04
+Status: accepted
+Owner: engine
+Context: `verify-ledger` is a plain Node script that must run the same verifier the engine ships, which is TypeScript with `.js` import specifiers. Node's built-in type stripping does not rewrite those specifiers, and the repository has no build step for the engine.
+Decision: `bin/verify-ledger.mjs` bundles `src/ledger/export.ts` in memory with esbuild on each run and imports the result. esbuild is already in the lockfile through vitest; it is now a pinned dev dependency of `@gavel/engine`, and the browser bundle check uses it too. No compiled output is committed and the package keeps no runtime dependency.
+Alternatives:
+
+- tsx as a dev dependency: rejected, a second TypeScript loader for one script.
+- A committed compiled script: rejected, it can drift from the source verifier.
+- Reimplement the verifier in plain JavaScript: rejected, two implementations of the hash chain.
+
+Consequences:
+
+- The CLI needs dev dependencies installed (a repository checkout, not a published package).
+- Each run pays a few milliseconds for the bundle.
+
+Evidence: packages/engine/bin/verify-ledger.mjs, SPEC-engine R-ENG-078, R-ENG-120.
