@@ -43,9 +43,8 @@
   --color-focus: #1d4ed8;
 
   /* type */
-  --font-sans:
-    'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    sans-serif;
+  --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
   --type-scale: 1;
   --font-size-1: calc(12px * var(--type-scale));
   --font-size-2: calc(14px * var(--type-scale));
