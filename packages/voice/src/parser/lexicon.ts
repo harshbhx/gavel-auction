@@ -1,8 +1,8 @@
 /** Number lexicon, ported from reference/python/parser.py. All keys are lower case. */
 
 /** Prototype-free table, so lookups such as "constructor" never hit Object.prototype. */
-function table(entries: Record<string, number>): Readonly<Record<string, number>> {
-  return Object.freeze(Object.assign(Object.create(null) as Record<string, number>, entries));
+function table<V>(entries: Record<string, V>): Readonly<Record<string, V>> {
+  return Object.freeze(Object.assign(Object.create(null) as Record<string, V>, entries));
 }
 
 export const UNITS: Readonly<Record<string, number>> = table({
