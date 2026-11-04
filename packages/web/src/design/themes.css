@@ -1,0 +1,56 @@
+/*
+ * Theme overrides for tokens.css. Light values live in tokens.css.
+ * Dark applies when data-theme="dark", or when no data-theme is set and the system prefers dark.
+ * Projector is dark with maximum contrast and a type scale of 2.0; it is forced on the public screen.
+ */
+
+:root[data-theme='dark'] {
+  --color-bg: #0f1115;
+  --color-surface: #1a1d24;
+  --color-fg: #f3f4f6;
+  --color-fg-muted: #a8b0bd;
+  --color-border: #8a93a3;
+  --color-accent: #8fb4ff;
+  --color-on-accent: #0b1020;
+  --color-success: #6ee7a0;
+  --color-warning: #fbbf24;
+  --color-danger: #ff9b8f;
+  --color-focus: #8fb4ff;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-2: 0 8px 24px rgb(0 0 0 / 0.6);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --color-bg: #0f1115;
+    --color-surface: #1a1d24;
+    --color-fg: #f3f4f6;
+    --color-fg-muted: #a8b0bd;
+    --color-border: #8a93a3;
+    --color-accent: #8fb4ff;
+    --color-on-accent: #0b1020;
+    --color-success: #6ee7a0;
+    --color-warning: #fbbf24;
+    --color-danger: #ff9b8f;
+    --color-focus: #8fb4ff;
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.5);
+    --shadow-2: 0 8px 24px rgb(0 0 0 / 0.6);
+  }
+}
+
+:root[data-theme='projector'] {
+  --type-scale: 2;
+  --color-bg: #000000;
+  --color-surface: #0d0d0d;
+  --color-fg: #ffffff;
+  --color-fg-muted: #d1d5db;
+  --color-border: #b5bcc8;
+  --color-accent: #9ec1ff;
+  --color-on-accent: #000000;
+  --color-success: #8cf0b4;
+  --color-warning: #ffd66b;
+  --color-danger: #ffb4a9;
+  --color-focus: #ffffff;
+  --shadow-1: none;
+  --shadow-2: none;
+}

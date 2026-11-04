@@ -1,0 +1,22 @@
+name: web
+on:
+  pull_request:
+    paths: ['packages/web/**', 'package-lock.json', '.github/workflows/web.yml']
+  push:
+    branches: [main]
+    paths: ['packages/web/**', 'package-lock.json', '.github/workflows/web.yml']
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck -w @gavel/web
+      - run: ./node_modules/.bin/eslint packages/web --max-warnings 0
+      - run: npm test -w @gavel/web
+      - run: npm run build -w @gavel/web
+        env:
+          VITE_SANDBOX: 'true'
