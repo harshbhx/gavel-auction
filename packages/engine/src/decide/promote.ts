@@ -38,7 +38,24 @@ export function decidePromote(state: AuctionState, cmd: PromoteCommand): DecideR
       promoteReason: cmd.reason,
     },
   });
-  const unsold = (): DecideResult => ({ events: [unsoldEvent()], outcome: { kind: 'accepted' } });
+  // A lot caught mid capture goes through the recorded fallback step before the release,
+  // because the payments graph has no direct CAPTURING to VOIDING edge (R4-E10).
+  const unsoldEvents = (): LedgerEvent[] =>
+    lot.settlement === 'CAPTURING'
+      ? [
+          {
+            type: 'SETTLEMENT_STATE',
+            payload: {
+              lotId: cmd.lotId,
+              from: 'CAPTURING',
+              to: 'FALLBACK_RUNNER_UP',
+              ref: `promote:${cmd.reason}`,
+            },
+          },
+          unsoldEvent(),
+        ]
+      : [unsoldEvent()];
+  const unsold = (): DecideResult => ({ events: unsoldEvents(), outcome: { kind: 'accepted' } });
 
   const max = state.config.maxFallbackDepth;
   if (state.config.fallbackPolicy === 'unsold') return unsold();
@@ -86,6 +103,6 @@ export function decidePromote(state: AuctionState, cmd: PromoteCommand): DecideR
     });
     return { events, outcome: { kind: 'accepted' } };
   }
-  events.push(unsoldEvent());
+  events.push(...unsoldEvents());
   return { events, outcome: { kind: 'accepted' } };
 }

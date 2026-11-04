@@ -97,3 +97,36 @@ describe('AuctionRuntime recovery', () => {
     expect(calls).toBe(1);
   });
 });
+
+describe('AuctionRuntime state reads', () => {
+  it('T-ENG-072 R4-E03 R-ENG-099 a cold state read during an append does not fail as truncated', async () => {
+    const inner = new InMemoryLedgerStore();
+    const writer = new AuctionRuntime({ store: inner });
+    await writer.dispatch(create());
+    let appendOnce = true;
+    const store: LedgerStore = {
+      append: (a, e, h) => inner.append(a, e, h),
+      read: async (a, f) => {
+        const entries = await inner.read(a, f);
+        if (appendOnce) {
+          appendOnce = false;
+          await writer.dispatch(register(A));
+        }
+        return entries;
+      },
+      head: (a) => inner.head(a),
+    };
+    const reader = new AuctionRuntime({ store });
+    const state = await reader.state(AU);
+    expect(state.head.seq).toBeGreaterThanOrEqual(1);
+    expect((await reader.state(AU)).head.seq).toBeGreaterThanOrEqual(state.head.seq);
+  });
+
+  it('T-ENG-072 R4-E03 R-ENG-098 a state read waits for a command queued before it', async () => {
+    const rt = new AuctionRuntime({ store: new InMemoryLedgerStore() });
+    const pending = rt.dispatch(create());
+    const state = await rt.state(AU);
+    await pending;
+    expect(state.head.seq).toBe(1);
+  });
+});

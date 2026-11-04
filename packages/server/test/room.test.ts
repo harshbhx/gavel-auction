@@ -539,3 +539,57 @@ describe('round 3 blocking fixes (RT3)', () => {
     expect(reloaded.lastSeq).toBe(room.lastSeq);
   });
 });
+
+class DownStore extends MemoryStore {
+  down = false;
+  override async appendEvents(
+    auctionId: AuctionId,
+    expectedSeq: number,
+    events: RoomEvent[],
+  ): Promise<void> {
+    if (this.down) throw new Error('store down');
+    return super.appendEvents(auctionId, expectedSeq, events);
+  }
+  override async readEvents(
+    auctionId: AuctionId,
+    fromSeq: number,
+    limit: number,
+  ): Promise<RoomEvent[]> {
+    if (this.down) throw new Error('store down');
+    return super.readEvents(auctionId, fromSeq, limit);
+  }
+}
+
+describe('red-team round 4 (RT-01)', () => {
+  it('ends the lot after the store comes back, with no command in between (R4-V05)', async () => {
+    const store = new DownStore();
+    const t = await setup({ store });
+    const c1 = await t.connect('bidder', t.b1);
+    const c2 = await t.connect('bidder', t.b2);
+    await t.room.submitBid(c1.conn, t.bid(10000));
+
+    // A failed append whose rebuild also fails leaves the room dirty.
+    store.down = true;
+    await t.room.submitBid(c2.conn, t.bid(10500));
+    t.clock.set(config.endTs);
+    await t.connect('screen');
+    store.down = false;
+    t.clock.set(config.endTs + 2_000);
+    await t.connect('screen');
+
+    const types = (await store.readEvents(t.auctionId, 1, 1000)).map((e) => e.type);
+    expect(types).toContain('state_changed');
+  });
+
+  it('refuses commands and arms nothing once the host is fenced (R4-V02)', async () => {
+    const t = await setup();
+    const c1 = await t.connect('bidder', t.b1);
+    t.room.stop();
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    expect(c1.transport.messages('error')).toMatchObject([{ code: 'host_fenced' }]);
+    t.clock.set(config.endTs + 1);
+    await t.connect('screen');
+    const types = (await t.store.readEvents(t.auctionId, 1, 1000)).map((e) => e.type);
+    expect(types).not.toContain('state_changed');
+  });
+});
