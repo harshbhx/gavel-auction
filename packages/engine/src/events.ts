@@ -43,7 +43,7 @@ export type CloseReason = 'deadline' | 'early';
 export type UnsoldReason = 'no_bids' | 'no_valid_winner';
 export type RevokeReason = 'declined' | 'expired' | 'voided' | 'other';
 
-/** The 18 ledger event types and their payloads (spec section 4.5). */
+/** The 19 ledger event types and their payloads (spec section 4.5). */
 export type LedgerEvent =
   | {
       type: 'AUCTION_CREATED';
@@ -141,11 +141,15 @@ export type LedgerEvent =
       payload: { lotId: Ulid; bidderId: Ulid; reason: string; depth: number; priceCents: number };
     }
   | { type: 'LOT_UNSOLD'; payload: { lotId: Ulid; reason: UnsoldReason; actor?: string } }
+  | { type: 'LOT_ABORTED'; payload: { lotId: Ulid; reason: string; actor: string } }
   | {
       type: 'SETTLEMENT_STATE';
       payload: { lotId: Ulid; from: SettlementState; to: SettlementState; ref: string };
     }
-  | { type: 'LOT_SETTLED'; payload: { lotId: Ulid; capturedCents: number; ref: string } }
+  | {
+      type: 'LOT_SETTLED';
+      payload: { lotId: Ulid; winnerId: Ulid; capturedCents: number; ref: string };
+    }
   | { type: 'AUCTION_CLOSED'; payload: { headHash: string } };
 
 export type LedgerEventType = LedgerEvent['type'];
@@ -166,6 +170,7 @@ export const LEDGER_EVENT_TYPES = [
   'FALLBACK_PROMOTED',
   'CANDIDATE_SKIPPED',
   'LOT_UNSOLD',
+  'LOT_ABORTED',
   'SETTLEMENT_STATE',
   'LOT_SETTLED',
   'AUCTION_CLOSED',

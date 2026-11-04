@@ -21,9 +21,9 @@ import type { BridgeEngine, BridgeLot } from './types.js';
  * Every step reads the engine first and sends only what is missing, so a retry
  * after a crash never sends a command twice.
  *
- * Not recordable: a kill-switch cancel before the hammer (HELD or BIDDING ->
- * VOIDING). The lot is still OPEN and the engine has no abort command; those
- * entries stay in the payments journal only.
+ * A kill-switch cancel before the hammer (HELD or BIDDING -> VOIDING) leaves the
+ * lot OPEN; it is recorded with the engine AbortLot command, which the host sends
+ * and this bridge does not. Those journal entries are not replayed by recordProgress.
  */
 
 export class BridgeError extends Error {
@@ -194,6 +194,7 @@ export class SettlementBridge {
     await this.engine.dispatch(auctionId, {
       type: 'CompleteLot',
       lotId,
+      bidderId: won.bidderId,
       capturedCents: won.amountCents,
       ref: won.captureId,
     });

@@ -32,8 +32,8 @@ function capturedIn(state: AuctionState, bidderId: string, key: string): number 
 }
 
 /**
- * Decides CompleteLot (R-ENG-066, R-ENG-069): the captured amount must equal the
- * hammer or promoted price, and the bidder's captured total must fit the ceiling.
+ * Decides CompleteLot (R-ENG-066, R-ENG-069): the capture must be booked to the
+ * lot's current winner, the captured amount must equal the hammer or promoted price, and the bidder's captured total must fit the ceiling.
  */
 export function decideCompleteLot(state: AuctionState, cmd: CompleteLotCommand): DecideResult {
   assertNotInPast(state, cmd);
@@ -41,6 +41,9 @@ export function decideCompleteLot(state: AuctionState, cmd: CompleteLotCommand):
   if (cmd.ref.length > LIMITS.text) throw new EngineError('limit_exceeded', 'ref');
   if (lot.winnerId === null || lot.priceCents === null) {
     throw new EngineError('bad_command', 'lot has no winner');
+  }
+  if (cmd.bidderId !== lot.winnerId) {
+    throw new EngineError('not_current_winner', `${cmd.bidderId} != ${lot.winnerId}`);
   }
   if (cmd.capturedCents !== lot.priceCents) {
     throw new EngineError('capture_mismatch', `${cmd.capturedCents} != ${lot.priceCents}`);
@@ -57,7 +60,12 @@ export function decideCompleteLot(state: AuctionState, cmd: CompleteLotCommand):
     events: [
       {
         type: 'LOT_SETTLED',
-        payload: { lotId: cmd.lotId, capturedCents: cmd.capturedCents, ref: cmd.ref },
+        payload: {
+          lotId: cmd.lotId,
+          winnerId: lot.winnerId,
+          capturedCents: cmd.capturedCents,
+          ref: cmd.ref,
+        },
       },
     ],
     outcome: { kind: 'accepted' },

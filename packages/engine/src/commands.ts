@@ -39,7 +39,14 @@ export type Command =
       disqualifiedBidderId: Ulid;
       reason: string;
     })
-  | (Base & { type: 'CompleteLot'; lotId: Ulid; capturedCents: number; ref: string })
+  | (Base & { type: 'AbortLot'; lotId: Ulid; reason: string; actor: string })
+  | (Base & {
+      type: 'CompleteLot';
+      lotId: Ulid;
+      bidderId: Ulid;
+      capturedCents: number;
+      ref: string;
+    })
   | (Base & {
       type: 'RecordSettlement';
       lotId: Ulid;
@@ -61,6 +68,7 @@ export const COMMAND_TYPES = [
   'Hammer',
   'RevokeCeiling',
   'PromoteRunnerUp',
+  'AbortLot',
   'CompleteLot',
   'RecordSettlement',
   'CloseAuction',
@@ -305,11 +313,20 @@ export function parseCommand(x: unknown): Command {
         disqualifiedBidderId: ulid(o, 'disqualifiedBidderId', type),
         reason: shortStr(o, 'reason', type),
       };
+    case 'AbortLot':
+      return {
+        type: 'AbortLot',
+        ...base(['lotId', 'reason', 'actor']),
+        lotId: ulid(o, 'lotId', type),
+        reason: shortStr(o, 'reason', type),
+        actor: shortStr(o, 'actor', type),
+      };
     case 'CompleteLot':
       return {
         type: 'CompleteLot',
-        ...base(['lotId', 'capturedCents', 'ref']),
+        ...base(['lotId', 'bidderId', 'capturedCents', 'ref']),
         lotId: ulid(o, 'lotId', type),
+        bidderId: ulid(o, 'bidderId', type),
         capturedCents: int(o, 'capturedCents', type),
         ref: shortStr(o, 'ref', type),
       };

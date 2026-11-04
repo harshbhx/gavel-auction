@@ -21,6 +21,8 @@ export interface PublicLotView {
   /** Alias of the leader; null for sealed lots until the hammer. */
   leaderAlias: string | null;
   bidCount: number;
+  /** True when the lot was cancelled before the hammer (kill switch). */
+  aborted: boolean;
 }
 
 export interface PublicView {
@@ -87,6 +89,7 @@ function publicLot(lot: LotState, aliasOf: AliasOf): PublicLotView {
     priceCents,
     leaderAlias: leader === null ? null : aliasOf(leader),
     bidCount: active.length,
+    aborted: lot.abortReason !== null,
   };
 }
 
