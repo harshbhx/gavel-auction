@@ -120,3 +120,16 @@ export function errCode(f: () => unknown): string {
   }
   return 'none';
 }
+
+/** Records the payment saga up to CAPTURED for a hammered lot, all at time `at`. */
+export function captured(s: AuctionState, at: number, lotId: Ulid = L1): AuctionState {
+  const path = ['HELD', 'BIDDING', 'WINNER_SELECTED', 'CAPTURING', 'CAPTURED'] as const;
+  let cur = s;
+  for (let i = 1; i < path.length; i += 1) {
+    const from = path[i - 1];
+    const to = path[i];
+    if (from === undefined || to === undefined) break;
+    cur = run(cur, mk(at, { type: 'RecordSettlement', lotId, from, to, ref: `saga-${i}` })).state;
+  }
+  return cur;
+}

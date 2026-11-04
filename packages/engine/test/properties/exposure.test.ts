@@ -6,7 +6,7 @@ import { available, bidderFor, committed, scopeKey } from '../../src/rules/expos
 import { initialState } from '../../src/state.js';
 import type { AuctionState } from '../../src/state.js';
 import type { LotConfig, Mode, Ulid } from '../../src/types.js';
-import { A, B, C, L1, L2, id, lotConfig, mk, nextId, run } from '../decide-helpers.js';
+import { A, B, C, L1, L2, captured, id, lotConfig, mk, nextId, run } from '../decide-helpers.js';
 
 // Seeded like the other property files; set GAVEL_PROPERTY_SEED / GAVEL_PROPERTY_RUNS to replay.
 const SEED = Number(process.env['GAVEL_PROPERTY_SEED'] ?? 20261104);
@@ -290,6 +290,7 @@ describe('ceiling and exposure properties', () => {
       }),
     ).state;
     s = run(s, mk(3, { type: 'Hammer', lotId: L1, early: true, actor: 'prop' })).state;
+    s = captured(s, 3);
     expect(() =>
       run(s, {
         ...mk(4, { type: 'CompleteLot', lotId: L1, bidderId: A, capturedCents: 3001, ref: 'x' }),
