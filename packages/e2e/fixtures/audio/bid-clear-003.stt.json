@@ -1,0 +1,44 @@
+{
+  "provider": "recorded",
+  "language": "en-US",
+  "transcript": "one thousand for paddle twenty one",
+  "confidence": 0.95,
+  "words": [
+    {
+      "word": "one",
+      "startMs": 350,
+      "endMs": 707,
+      "confidence": 0.9
+    },
+    {
+      "word": "thousand",
+      "startMs": 747,
+      "endMs": 1103,
+      "confidence": 0.96
+    },
+    {
+      "word": "for",
+      "startMs": 1143,
+      "endMs": 1500,
+      "confidence": 0.92
+    },
+    {
+      "word": "paddle",
+      "startMs": 1540,
+      "endMs": 1897,
+      "confidence": 0.88
+    },
+    {
+      "word": "twenty",
+      "startMs": 1937,
+      "endMs": 2293,
+      "confidence": 0.94
+    },
+    {
+      "word": "one",
+      "startMs": 2333,
+      "endMs": 2690,
+      "confidence": 0.9
+    }
+  ]
+}

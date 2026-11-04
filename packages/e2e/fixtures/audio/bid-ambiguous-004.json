@@ -1,0 +1,17 @@
+{
+  "id": "bid-ambiguous-004",
+  "file": "bid-ambiguous-004.wav",
+  "sampleRate": 16000,
+  "durationMs": 2220,
+  "category": "ambiguous",
+  "noise": null,
+  "transcriptTruth": "fifty fifteen for seven",
+  "expected": {
+    "kind": "bid",
+    "amountCents": 5000,
+    "bidder": "7",
+    "needsConfirm": true,
+    "candidates": [5000, 1500]
+  },
+  "sttFixture": "bid-ambiguous-004.stt.json"
+}

@@ -1,0 +1,32 @@
+{
+  "provider": "recorded",
+  "language": "en-US",
+  "transcript": "fifty fifteen for seven",
+  "confidence": 0.62,
+  "words": [
+    {
+      "word": "fifty",
+      "startMs": 350,
+      "endMs": 715,
+      "confidence": 0.54
+    },
+    {
+      "word": "fifteen",
+      "startMs": 755,
+      "endMs": 1120,
+      "confidence": 0.6
+    },
+    {
+      "word": "for",
+      "startMs": 1160,
+      "endMs": 1525,
+      "confidence": 0.56
+    },
+    {
+      "word": "seven",
+      "startMs": 1565,
+      "endMs": 1930,
+      "confidence": 0.62
+    }
+  ]
+}

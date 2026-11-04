@@ -1,0 +1,17 @@
+{
+  "id": "bid-ambiguous-009",
+  "file": "bid-ambiguous-009.wav",
+  "sampleRate": 16000,
+  "durationMs": 3360,
+  "category": "ambiguous",
+  "noise": null,
+  "transcriptTruth": "thirteen hundred or fourteen hundred paddle five",
+  "expected": {
+    "kind": "bid",
+    "amountCents": 130000,
+    "bidder": "5",
+    "needsConfirm": true,
+    "candidates": [130000, 140000]
+  },
+  "sttFixture": "bid-ambiguous-009.stt.json"
+}
