@@ -118,7 +118,7 @@ describe('conformance suite itself', () => {
   it('T-PAY-081 has a stable, unique set of assertions', () => {
     const ids = ASSERTIONS.map((a) => a.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids.length).toBeGreaterThanOrEqual(7);
+    expect(ids.length).toBeGreaterThanOrEqual(12);
   });
 
   it('formats differences as sorted table rows and nothing when there are none', () => {
