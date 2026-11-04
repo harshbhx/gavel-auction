@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -210,6 +210,24 @@ describe('persistence', () => {
     await after.release('harsh');
     const third = new PersistentKillSwitch({ ...deps, store: new FileKillStateStore(path) });
     expect((await third.isEngaged()).engaged).toBe(false);
+  });
+
+  it('a kill file with the wrong shape or broken JSON reads as engaged and blocks money calls', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gavel-kill-'));
+    dirs.push(dir);
+    for (const text of ['{}', '{"engaged":0}', '{"engaged":"no"}', '{"engaged":fal', '[]', '']) {
+      const path = join(dir, 'kill.json');
+      writeFileSync(path, text);
+      const ks = new PersistentKillSwitch({
+        store: new FileKillStateStore(path),
+        audit: { append: async () => undefined },
+        clock: { nowMs: () => 1 },
+      });
+      expect((await ks.isEngaged()).engaged, text).toBe(true);
+      const err = await assertNotEngaged(ks).catch((e: unknown) => e);
+      expect(err, text).toBeInstanceOf(PayPalError);
+      expect((err as PayPalError).kind).toBe('kill_switch_engaged');
+    }
   });
 
   it('stays engaged even when the audit sink fails', async () => {
