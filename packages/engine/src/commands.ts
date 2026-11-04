@@ -32,7 +32,7 @@ export type Command =
     })
   | (Base & { type: 'Tick' })
   | (Base & { type: 'Hammer'; lotId: Ulid; early?: boolean; actor: string })
-  | (Base & { type: 'RevokeCeiling'; bidderId: Ulid; reason: RevokeReason })
+  | (Base & { type: 'RevokeCeiling'; bidderId: Ulid; reason: RevokeReason; holdRef?: string })
   | (Base & {
       type: 'PromoteRunnerUp';
       lotId: Ulid;
@@ -298,13 +298,17 @@ export function parseCommand(x: unknown): Command {
       }
       return cmd;
     }
-    case 'RevokeCeiling':
-      return {
+    case 'RevokeCeiling': {
+      const b = base(['bidderId', 'reason', 'holdRef']);
+      const cmd: Extract<Command, { type: 'RevokeCeiling' }> = {
         type: 'RevokeCeiling',
-        ...base(['bidderId', 'reason']),
+        ...b,
         bidderId: ulid(o, 'bidderId', type),
         reason: oneOf(o, 'reason', REVOKE_REASONS, type),
       };
+      if (o['holdRef'] !== undefined) cmd.holdRef = str(o, 'holdRef', type);
+      return cmd;
+    }
     case 'PromoteRunnerUp':
       return {
         type: 'PromoteRunnerUp',

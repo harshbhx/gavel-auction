@@ -147,6 +147,10 @@ export class WebhookIntake {
       return 'parked';
     }
     if (hold.status !== 'HELD') {
+      // The status may have been saved by an earlier attempt that died before the engine
+      // heard about it. onHoldStatus is safe to repeat, so run it again before the result
+      // is recorded (R-ENG-044).
+      await this.deps.onHoldStatus(hold);
       await this.deps.events.markProcessed(stored.id, `unchanged:${hold.status}`);
       return 'processed';
     }

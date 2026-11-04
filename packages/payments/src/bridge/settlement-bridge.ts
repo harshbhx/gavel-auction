@@ -89,6 +89,7 @@ export class SettlementBridge {
     await this.engine.dispatch(auctionId, {
       type: 'RevokeCeiling',
       bidderId: hold.bidderId,
+      holdRef: hold.holdId,
       reason,
     });
     return true;
@@ -144,12 +145,19 @@ export class SettlementBridge {
   async recordProgress(auctionId: string, journal: Journal): Promise<number> {
     const lotId = journal.auctionId;
     const lot = await this.lot(auctionId, lotId);
-    if (lot.status !== 'SETTLING') return 0;
+    if (lot.status !== 'SETTLING' && lot.status !== 'DONE') return 0;
     const done = new Set(await this.engine.settlementRefs(auctionId, lotId));
+    // A DONE lot (unsold or aborted) already sits at some recorded state; the history
+    // before that point is not replayed, only the steps from it to the end (R-ENG-067).
+    let waiting = lot.status === 'DONE';
     let sent = 0;
     for (const h of journal.history) {
       const ref = settlementRef(lotId, h.seq);
       if (done.has(ref)) continue;
+      if (waiting) {
+        if (h.from !== lot.settlement) continue;
+        waiting = false;
+      }
       await this.engine.dispatch(auctionId, {
         type: 'RecordSettlement',
         lotId,
@@ -176,7 +184,10 @@ export class SettlementBridge {
     }
     if (journal.state !== 'SETTLED') return { status: 'pending' };
     let lot = await this.lot(auctionId, lotId);
-    if (lot.status === 'DONE') return this.describe(journal, lot);
+    if (lot.status === 'DONE') {
+      await this.recordProgress(auctionId, journal);
+      return this.describe(journal, lot);
+    }
     await this.recordProgress(auctionId, journal);
     lot = await this.lot(auctionId, lotId);
 
@@ -185,6 +196,7 @@ export class SettlementBridge {
       await this.makeUnsold(auctionId, lotId);
       return { status: 'unsold' };
     }
+    lot = await this.promoteToCharged(auctionId, lotId, journal, won.bidderId);
     if (lot.winnerId !== won.bidderId) {
       throw new BridgeError(
         'winner_mismatch',
@@ -199,6 +211,34 @@ export class SettlementBridge {
       ref: won.captureId,
     });
     return { status: 'completed', bidderId: won.bidderId, capturedCents: won.amountCents };
+  }
+
+  /**
+   * A capture that failed definitely makes the saga charge the next candidate, but
+   * the engine still names the failed bidder as winner. Walk the journal's failed
+   * bidders and promote past each one while it is the engine's winner, re-reading
+   * the lot every time, until the engine winner is the charged bidder. A winner the
+   * journal did not fail is never promoted (R-PAY-053, R-ENG-066).
+   */
+  private async promoteToCharged(
+    auctionId: string,
+    lotId: string,
+    journal: Journal,
+    chargedId: string,
+  ): Promise<BridgeLot> {
+    for (let i = 0; i <= journal.failed.length; i++) {
+      const lot = await this.lot(auctionId, lotId);
+      if (lot.status === 'DONE' || lot.winnerId === null || lot.winnerId === chargedId) return lot;
+      const failure = journal.failed.find((f) => f.bidderId === lot.winnerId);
+      if (failure === undefined) return lot;
+      await this.engine.dispatch(auctionId, {
+        type: 'PromoteRunnerUp',
+        lotId,
+        disqualifiedBidderId: failure.bidderId,
+        reason: failure.reason,
+      });
+    }
+    return this.lot(auctionId, lotId);
   }
 
   private describe(journal: Journal, lot: BridgeLot): FinishResult {

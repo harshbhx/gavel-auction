@@ -6,6 +6,7 @@ import {
   type AuditSink,
   type Clock,
   type HoldStore,
+  type HoldTruth,
   type Journal,
   type JournalStore,
   type PaymentsGateway,
@@ -40,9 +41,24 @@ export type VoidOutcome =
   | { status: 'pending'; journal: Journal }
   /** The journal is not in a state this phase handles (not captured yet, or failed). */
   | { status: 'not_ready'; journal: Journal }
+  /** The winner's authorization does not match the capture; the journal needs review. */
+  | { status: 'failed'; journal: Journal }
   | { status: 'busy' };
 
 const RELEASED_KINDS: ReadonlySet<string> = new Set(['already_voided', 'expired', 'not_found']);
+
+/** True when this bidder's hold has a recorded release, under the bidder key or the old hold key. */
+export function isReleased(journal: Journal, bidderId: string, holdId: string): boolean {
+  return journal.voids[bidderId] !== undefined || journal.voids[holdId] !== undefined;
+}
+
+/** Kinds that mean the void will never work, however often it is repeated. */
+const REFUSED_KINDS: ReadonlySet<string> = new Set([
+  'auth_failed',
+  'invalid_request',
+  'already_captured',
+  'rejected',
+]);
 
 export function voidRequestId(journal: Journal, holdId: string): string {
   return buildRequestId({
@@ -116,31 +132,101 @@ class VoidRun {
   async drive(): Promise<VoidOutcome> {
     if (this.j.state === 'SETTLED') return { status: 'settled', journal: this.j };
     if (this.j.state === 'CAPTURED') {
+      const stopped = await this.remainder();
+      if (stopped !== null) return stopped;
       await this.apply({ type: 'begin_void', tsMs: this.deps.clock.nowMs() });
     }
     if (this.j.state !== 'VOIDING') return { status: 'not_ready', journal: this.j };
 
+    // Records are keyed by bidder id, as reconcile, the kill switch and the ladder read them.
     for (const target of voidTargets(this.j)) {
-      if (this.j.voids[target.holdId] !== undefined) continue;
-      if (!(await this.release(target))) continue;
+      if (isReleased(this.j, target.bidderId, target.holdId)) continue;
+      const how = await this.release(target);
+      if (how === 'refused') return this.escalate();
+      if (how === null) continue;
       const next = structuredClone(this.j);
-      next.voids[target.holdId] = voidRequestId(this.j, target.holdId);
+      next.voids[target.bidderId] = how;
       next.version = this.j.version + 1;
       await this.save(next, 'journaled:void');
     }
     // Also covers a crash between a journaled void and the hold record update.
     for (const target of voidTargets(this.j)) {
-      if (this.j.voids[target.holdId] !== undefined) await this.markHold(target.holdId);
+      if (isReleased(this.j, target.bidderId, target.holdId)) await this.markHold(target.holdId);
     }
 
-    const open = voidTargets(this.j).filter((t) => this.j.voids[t.holdId] === undefined);
+    const open = voidTargets(this.j).filter((t) => !isReleased(this.j, t.bidderId, t.holdId));
     if (open.length > 0) return { status: 'pending', journal: this.j };
     await this.apply({ type: 'all_released', tsMs: this.deps.clock.nowMs() });
     return { status: 'settled', journal: this.j };
   }
 
-  /** One authorization released, or false when it is still unconfirmed after the attempts. */
-  private async release(target: { holdId: string; authId: string }): Promise<boolean> {
+  /**
+   * The winner's unused authorization (R-PAY-059): whether PayPal frees it after the final
+   * capture is not verified, so it is read back and voided when still open. Done once.
+   */
+  private async remainder(): Promise<VoidOutcome | null> {
+    const winner = this.j.winner;
+    if (winner === null) return null;
+    const key = `remainder:${winner.bidderId}`;
+    if (this.j.voids[key] !== undefined) return null;
+    const hold = this.j.holds[winner.bidderId];
+    if (hold === undefined) return this.mismatch();
+    let truth: HoldTruth;
+    try {
+      await this.boundary('before:get');
+      truth = await this.deps.gateway.getHoldTruth({ holdId: hold.holdId, authId: hold.authId });
+    } catch (e) {
+      if (e instanceof PayPalError) return { status: 'pending', journal: this.j };
+      throw e;
+    }
+    if (truth.status !== 'CAPTURED' || truth.capturedCents !== winner.amountCents) {
+      return this.mismatch();
+    }
+    const remainder = hold.ceilingCents - winner.amountCents;
+    let label = 'remainder_released';
+    if (truth.amountCents > truth.capturedCents && remainder > 0) {
+      const requestId = buildRequestId({
+        auctionId: this.j.auctionId,
+        op: 'void',
+        holdId: hold.holdId,
+        amountCents: remainder,
+        generation: 0,
+      });
+      try {
+        await this.boundary('before:remainder-void');
+        await this.deps.gateway.voidAuthorization(hold.authId, requestId);
+        label = 'remainder_voided';
+      } catch (e) {
+        if (!(e instanceof PayPalError)) throw e;
+        if (e.kind === 'already_captured' || RELEASED_KINDS.has(e.kind))
+          label = 'remainder_released';
+        else if (e.outcome === 'unknown') return { status: 'pending', journal: this.j };
+        else label = 'remainder_unreleased'; // left to expire; the settlement still completes
+      }
+    }
+    const next = structuredClone(this.j);
+    next.voids[key] = label;
+    next.version = this.j.version + 1;
+    await this.save(next, `journaled:${label}`);
+    return null;
+  }
+
+  /** A void PayPal refuses for good cannot be retried away: hand the settlement to an operator. */
+  private async escalate(): Promise<VoidOutcome> {
+    await this.apply({ type: 'void_budget_exhausted', tsMs: this.deps.clock.nowMs() });
+    return { status: 'failed', journal: this.j };
+  }
+
+  private async mismatch(): Promise<VoidOutcome> {
+    await this.apply({ type: 'mismatch', tsMs: this.deps.clock.nowMs() });
+    return { status: 'failed', journal: this.j };
+  }
+
+  /** One authorization released: how it was recorded, or null when still unconfirmed. */
+  private async release(target: {
+    holdId: string;
+    authId: string;
+  }): Promise<'voided' | 'released' | 'refused' | null> {
     const attempts = this.deps.maxAttempts ?? 3;
     const requestId = voidRequestId(this.j, target.holdId);
     for (let i = 0; i < attempts; i++) {
@@ -149,13 +235,14 @@ class VoidRun {
       try {
         await this.deps.gateway.voidAuthorization(target.authId, requestId);
         await this.boundary('after:void');
-        return true;
+        return 'voided';
       } catch (e) {
         if (!(e instanceof PayPalError)) throw e;
-        if (RELEASED_KINDS.has(e.kind)) return true;
+        if (RELEASED_KINDS.has(e.kind)) return 'released';
+        if (e.outcome === 'definite' && REFUSED_KINDS.has(e.kind)) return 'refused';
       }
     }
-    return false;
+    return null;
   }
 
   private async markHold(holdId: string): Promise<void> {

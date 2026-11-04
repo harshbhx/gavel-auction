@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { InMemoryLedgerStore } from '../src/ledger/memory-store.js';
 import { AuctionRuntime } from '../src/runtime.js';
+import { SubscriberOverflow, SubscriptionHub } from '../src/runtime-subscribe.js';
+import type { LedgerEntry } from '../src/events.js';
 import { AU, id, mk } from './decide-helpers.js';
 
 const reg = (n: number) =>
@@ -61,5 +63,23 @@ describe('AuctionRuntime subscribe', () => {
     const seqs = [(await next).value?.seq, (await it.next()).value?.seq];
     await it.return?.();
     expect(seqs).toEqual([2, 3]);
+  });
+});
+
+describe('SubscriptionHub backpressure', () => {
+  const entry = (seq: number): LedgerEntry => ({ seq }) as LedgerEntry;
+
+  it('T-ENG-144 R-ENG-103 ENG-R3-12 drops a reader that stops draining and ends it with an error', async () => {
+    const hub = new SubscriptionHub(3);
+    const it = hub.subscribe(AU, 1, async () => [])[Symbol.asyncIterator]();
+    const first = it.next();
+    await Promise.resolve();
+    await Promise.resolve();
+    // The reader is parked on the empty queue; fill past the cap without letting it run.
+    hub.publish(AU, [entry(1), entry(2)]);
+    hub.publish(AU, [entry(3), entry(4)]);
+    await expect(first).rejects.toBeInstanceOf(SubscriberOverflow);
+    // Dropped: later publishes reach nobody.
+    expect(() => hub.publish(AU, [entry(5)])).not.toThrow();
   });
 });

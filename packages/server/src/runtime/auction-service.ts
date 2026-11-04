@@ -1,12 +1,20 @@
-import { AuctionRuntime, parseCommand, type LedgerStore, type Ulid } from '@gavel/engine';
 import {
-  SettlementBridge,
+  AuctionRuntime,
+  EngineError,
+  parseCommand,
+  type LedgerStore,
+  type Ulid,
+} from '@gavel/engine';
+import {
   BridgeError,
+  SettlementBridge,
   createEngineAdapter,
   createSettlement,
   createWebhookHandler,
+  revokeReasonFor,
   runCapturePhase,
   type AuditSink,
+  type EngineEnvelope,
   type HoldRecord,
   type HoldRef,
   type HoldStore,
@@ -31,14 +39,16 @@ import {
   type BidderId,
   type Cents,
   type Clock,
+  type EnginePort,
   type Ids,
   type RoomStore,
 } from '@gavel/shared';
 import type { RateLimiter } from '../limits/rate-limiter';
 import { Room, type RoomDeps } from '../room/room';
 import type { HammerResult, SettlePort, SettlementReport } from '../room/settle-port';
-import { LedgerEngine, lotIdOf } from './ledger-engine';
-import { runVoidPhase } from './void-phase';
+import { LedgerEngine, commandIdFor, lotIdOf } from './ledger-engine';
+import { reviewCodeOf } from './review-code';
+import { isReleased, runVoidPhase } from './void-phase';
 import { WebhookIntake } from './webhook-intake';
 
 /** Everything the service needs from the outside, as ports. */
@@ -48,7 +58,10 @@ export interface AuctionServiceDeps {
   clock: Clock;
   ids: Ids;
   limiter?: RateLimiter;
-  /** Engine ledger store; the engine runtime appends here when an auction is hammered. */
+  /**
+   * Engine ledger store. The engine runtime appends every accepted command here before the
+   * room acknowledges it (see D-0014), and the hammer flushes whatever is still missing.
+   */
   ledger: LedgerStore;
   journals: JournalStore;
   holds: HoldStore;
@@ -97,6 +110,14 @@ export interface AuctionService {
   /** The room, loaded from its log on first use. */
   room(auctionId: AuctionId): Promise<Room>;
   registerBidder(input: RegisterBidderInput): Promise<void>;
+  /**
+   * Kill switch before the hammer: when the switch is engaged, ends every auction that has
+   * not been hammered as an unsold lot (the engine records AbortLot), so settlement voids
+   * every hold, and reports the result to the room. Returns the auctions it aborted. The
+   * host calls it when it engages the switch; `resume()` calls it too, so a restart or the
+   * periodic timer finishes an abort that was interrupted.
+   */
+  abortOpenLots(): Promise<string[]>;
   /** The webhook route's body: raw request bytes and headers in, HTTP status out. */
   handleWebhook(rawBody: Buffer, headers: WebhookHeaders): Promise<WebhookResponse>;
   /**
@@ -139,8 +160,10 @@ export function createAuctionService(deps: AuctionServiceDeps): AuctionService {
 
 class Service implements AuctionService, SettlePort {
   private readonly rooms = new Map<string, Promise<Room>>();
-  private readonly engines = new Map<string, LedgerEngine>();
   private readonly synced = new Set<string>();
+  /** How many of a room engine's commands the ledger already holds, per engine instance. */
+  private readonly cursors = new WeakMap<LedgerEngine, number>();
+  private readonly ledgerLocks = new Map<string, Promise<void>>();
   private readonly runs = new Map<string, Promise<void>>();
   private readonly runtime: AuctionRuntime;
   private readonly bridge: SettlementBridge;
@@ -157,7 +180,9 @@ class Service implements AuctionService, SettlePort {
       createEngineAdapter({
         dispatch: async (cmd) => {
           await this.boundary(`before:engine:${cmd.type}`);
-          const result = await this.runtime.dispatch(parseCommand(cmd));
+          const result = await this.runtime.dispatch(
+            parseCommand({ ...cmd, commandId: contentCommandId(cmd) }),
+          );
           await this.boundary(`after:engine:${cmd.type}`);
           return result;
         },
@@ -194,13 +219,24 @@ class Service implements AuctionService, SettlePort {
     const parsed = AuctionConfigSchema.safeParse(config);
     if (!parsed.success) throw new GavelError('bad_message', 'invalid auction config');
     if (this.rooms.has(auctionId)) throw new GavelError('conflict', 'auction exists');
+    // Dry-run the engine build: a config or id it cannot run must never reach the log, or the
+    // auction could not be loaded again and would block resume (R-RT-012, R-RT-059).
+    // The engine lot is at most a day long and opens at creation time at the latest, so an end
+    // time further away could not be settled early (bad_time at the ledger sync).
+    if (parsed.data.endTs - this.deps.clock.now() > MAX_LOT_AHEAD_MS) {
+      throw new GavelError('bad_message', 'end time is more than a day away');
+    }
+    try {
+      new LedgerEngine(auctionId, parsed.data);
+    } catch {
+      throw new GavelError('bad_message', 'auction config the engine cannot run');
+    }
     const created = Room.create(auctionId, parsed.data, auctioneerSub, this.roomDeps(auctionId));
     this.rooms.set(auctionId, created);
     try {
       return await created;
     } catch (e) {
       this.rooms.delete(auctionId);
-      this.engines.delete(auctionId);
       throw e;
     }
   }
@@ -221,12 +257,9 @@ class Service implements AuctionService, SettlePort {
       store: this.deps.store,
       clock: this.deps.clock,
       ids: this.deps.ids,
-      engine: (config) => {
-        const engine = new LedgerEngine(auctionId, config);
-        this.engines.set(auctionId, engine);
-        return engine;
-      },
+      engine: (config) => new LedgerEngine(auctionId, config),
       settle: this,
+      durable: (id, engine) => this.flushLedger(id, engine, false),
       ...(this.deps.limiter !== undefined ? { limiter: this.deps.limiter } : {}),
     };
   }
@@ -257,17 +290,38 @@ class Service implements AuctionService, SettlePort {
     return this.webhook.handle(rawBody, headers);
   }
 
-  /** A hold changed because of a webhook: tell the engine, and nudge a waiting settlement. */
+  /**
+   * A hold changed because of a webhook. Before the hammer a hold that can no longer be
+   * charged revokes the bidder's ceiling in the room (a logged room event, then the ledger),
+   * so the leader is dropped at once; after the hammer the settlement bridge tells the engine.
+   * Anything that fails goes back to the intake, which applies the event again.
+   */
   private async onHoldStatus(hold: HoldRecord): Promise<void> {
-    if (this.synced.has(hold.auctionId)) {
-      try {
-        await this.bridge.onHoldStatus(hold.auctionId, hold);
-      } catch {
-        // The engine may refuse a late revoke; the settlement journal stays the source of truth.
-      }
+    const reason = revokeReasonFor(hold.status);
+    let afterHammer = true;
+    if (reason !== null) {
+      const room = await this.room(hold.auctionId as AuctionId);
+      afterHammer = (await room.revokeBidder(hold.bidderId as BidderId, reason)) === 'hammered';
     }
+    if (afterHammer && this.synced.has(hold.auctionId)) await this.revokeInEngine(hold);
     const journal = await this.deps.journals.load(lotIdOf(hold.auctionId as AuctionId));
     if (journal !== null && !TERMINAL.has(journal.state)) this.schedule(hold.auctionId);
+  }
+
+  private async revokeInEngine(hold: HoldRecord): Promise<void> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await this.bridge.onHoldStatus(hold.auctionId, hold);
+        return;
+      } catch (e) {
+        // A settlement command can move the engine clock between the adapter's read and its
+        // dispatch; the revoke is repeated instead of dropped. The engine may also refuse a
+        // late revoke by rule; the settlement journal stays the source of truth then.
+        if (!(e instanceof EngineError)) throw e;
+        if (e.code !== 'time_regression') return;
+        if (attempt >= MAX_REVOKE_RETRIES) throw e;
+      }
+    }
   }
 
   // ---- settlement
@@ -296,11 +350,42 @@ class Service implements AuctionService, SettlePort {
     while (this.runs.size > 0) await Promise.all([...this.runs.values()]);
   }
 
-  async resume(): Promise<void> {
+  async abortOpenLots(): Promise<string[]> {
+    const killSwitch = this.deps.killSwitch;
+    if (killSwitch === undefined || !(await killSwitch.isEngaged()).engaged) return [];
+    const aborted: string[] = [];
     for (const id of await this.deps.store.listAuctions()) {
-      await this.room(id);
-      const journal = await this.deps.journals.load(lotIdOf(id));
-      if (journal !== null) this.schedule(id);
+      // One auction that cannot be aborted now must not keep the others open.
+      try {
+        const room = await this.room(id);
+        await this.boundary('before:abort');
+        if (await room.abort(ABORT_ACTOR)) aborted.push(id);
+        await this.boundary('after:abort');
+      } catch (e) {
+        this.deps.onError?.(id, e);
+      }
+    }
+    return aborted;
+  }
+
+  async resume(): Promise<void> {
+    try {
+      await this.abortOpenLots();
+    } catch (e) {
+      this.deps.onError?.('kill-switch', e);
+    }
+    for (const id of await this.deps.store.listAuctions()) {
+      // One unloadable auction must not stop the others from resuming.
+      try {
+        const room = await this.room(id);
+        // A hammered room with no journal yet, or whose settle request was never stored, has
+        // to be driven again; an earlier run may have died before the journal was created.
+        await room.retrySettlement();
+        const journal = await this.deps.journals.load(lotIdOf(id));
+        if (journal !== null || hammeredEngine(room) !== undefined) this.schedule(id);
+      } catch (e) {
+        this.deps.onError?.(id, e);
+      }
     }
     await this.intake.sweep();
   }
@@ -315,13 +400,28 @@ class Service implements AuctionService, SettlePort {
 
   private async settlementRun(auctionId: AuctionId): Promise<void> {
     const room = await this.room(auctionId);
-    const engine = this.engines.get(auctionId);
-    if (engine === undefined || !engine.hammered) throw new Error('auction is not hammered');
+    const engine = hammeredEngine(room);
+    if (engine === undefined) throw new Error('auction is not hammered');
     const lotId = lotIdOf(auctionId);
     await this.syncLedger(auctionId, engine);
 
     let journal = await this.deps.journals.load(lotId);
-    if (journal === null) journal = await this.openSettlement(auctionId, engine);
+    if (journal === null) {
+      try {
+        journal = await this.openSettlement(auctionId, engine);
+      } catch (e) {
+        if (!(e instanceof BridgeError)) throw e;
+        // Not retried silently: the room shows the review state and the host hears the code.
+        this.deps.onError?.(auctionId, e);
+        await room.reportSettlement({
+          rev: 1,
+          auctionState: 'FAILED_NEEDS_REVIEW',
+          perBidder: {},
+          note: REVIEW_NOTE,
+        });
+        return;
+      }
+    }
     if (TERMINAL.has(journal.state)) {
       // A process that died after the journal ended but before the room heard the final
       // report: finish the engine side and send it. Repeated reports are dropped by rev.
@@ -372,6 +472,10 @@ class Service implements AuctionService, SettlePort {
       lotId,
     );
     if (released.status === 'busy' || released.status === 'not_ready') return;
+    if (released.status === 'failed') {
+      await this.finishBridge(room, auctionId, released.journal);
+      return;
+    }
     if (released.status === 'pending') {
       await this.report(room, released.journal);
       return;
@@ -379,17 +483,40 @@ class Service implements AuctionService, SettlePort {
     await this.finishBridge(room, auctionId, released.journal);
   }
 
-  /** Replays the room engine's commands into the engine runtime, once per process. */
+  /** The ledger holds every command of the room engine, then `synced` is set for this process. */
   private async syncLedger(auctionId: AuctionId, engine: LedgerEngine): Promise<void> {
     if (this.synced.has(auctionId)) return;
-    const commands = engine.commands;
-    const middle = Math.floor(commands.length / 2);
-    for (const [i, cmd] of commands.entries()) {
-      await this.runtime.dispatch(cmd);
-      if (i === middle) await this.boundary('mid:ledger-sync');
-    }
-    await this.boundary('after:ledger-sync');
+    await this.flushLedger(auctionId, engine, true);
     this.synced.add(auctionId);
+  }
+
+  /**
+   * Writes the room engine's commands the ledger does not have yet, in order, one writer per
+   * auction. Command ids come from the command content, so a repeat after a crash (the cursor
+   * is memory only) is a duplicate and writes nothing. With `hooks` the crash boundaries of
+   * the hammer-time sync are visited; the per-bid flush has none.
+   */
+  private flushLedger(auctionId: string, engine: EnginePort, hooks: boolean): Promise<void> {
+    if (!(engine instanceof LedgerEngine)) return Promise.resolve();
+    const before = this.ledgerLocks.get(auctionId) ?? Promise.resolve();
+    const run = before.catch(() => undefined).then(() => this.writeLedger(engine, hooks));
+    this.ledgerLocks.set(auctionId, run);
+    return run;
+  }
+
+  private async writeLedger(engine: LedgerEngine, hooks: boolean): Promise<void> {
+    const commands = engine.commands;
+    const from = this.cursors.get(engine) ?? 0;
+    const total = commands.length;
+    const middle = from + Math.floor((total - from) / 2);
+    for (let i = from; i < total; i++) {
+      const cmd = commands[i];
+      if (cmd === undefined) break;
+      await this.runtime.dispatch(cmd);
+      this.cursors.set(engine, i + 1);
+      if (hooks && i === middle) await this.boundary('mid:ledger-sync');
+    }
+    if (hooks) await this.boundary('after:ledger-sync');
   }
 
   /**
@@ -464,8 +591,13 @@ class Service implements AuctionService, SettlePort {
         await this.bridge.closeIfDone(auctionId);
       }
     } catch (e) {
-      if (!(e instanceof BridgeError)) throw e;
-      await this.report(room, journal, { final: true, note: e.code });
+      // A rule failure after money moved (capture_mismatch, captured_over_ceiling, ...)
+      // will not fix itself on a retry: hand it to an operator instead of rerunning the
+      // same step on every resume (R-PAY-037).
+      if (reviewCodeOf(e) === undefined) throw e;
+      // The code stays with the host; viewers only learn that the result is under review.
+      this.deps.onError?.(auctionId, e);
+      await this.report(room, journal, { final: true, note: REVIEW_NOTE });
       return;
     }
     await this.boundary('after:bridge');
@@ -482,7 +614,9 @@ class Service implements AuctionService, SettlePort {
     if (terminal && opts.final !== true) return;
     const note = opts.note;
     const report: SettlementReport = {
-      rev: journal.version + (note === undefined ? 0 : 1),
+      // A review report sorts just below the report for the same journal version, so a
+      // corrected report after the operator fixed the cause is never dropped as stale.
+      rev: journal.version * 2 + (note === undefined ? 2 : 1),
       auctionState: note === undefined ? journal.state : 'FAILED_NEEDS_REVIEW',
       perBidder: perBidder(journal),
       ...(journal.winner !== null && journal.state === 'SETTLED'
@@ -495,13 +629,45 @@ class Service implements AuctionService, SettlePort {
   }
 }
 
+const MAX_LOT_AHEAD_MS = 86_400_000;
+const MAX_REVOKE_RETRIES = 3;
+const ABORT_ACTOR = 'kill_switch';
+const REVIEW_NOTE = 'needs_review';
+
+/**
+ * Id of a bridge command from what it says, not from a fresh random number: two drivers
+ * (a webhook-triggered run and resume, or a run after a lease loss) that send the same step
+ * produce the same id, and the engine answers the second as a duplicate instead of failing
+ * with lot_done or state_continuity. The engine ignores the time when it compares a repeat.
+ */
+function contentCommandId(cmd: EngineEnvelope): string {
+  switch (cmd.type) {
+    case 'CompleteLot':
+      return commandIdFor(cmd.auctionId, [cmd.type, cmd.lotId, cmd.bidderId, cmd.ref]);
+    case 'RecordSettlement':
+      return commandIdFor(cmd.auctionId, [cmd.type, cmd.lotId, cmd.ref]);
+    case 'PromoteRunnerUp':
+      return commandIdFor(cmd.auctionId, [cmd.type, cmd.lotId, cmd.disqualifiedBidderId]);
+    case 'RevokeCeiling':
+      return commandIdFor(cmd.auctionId, [cmd.type, cmd.bidderId, cmd.reason]);
+    case 'CloseAuction':
+      return commandIdFor(cmd.auctionId, [cmd.type]);
+  }
+}
+
+/** The room's own engine once it has been hammered; never a partial rebuild's engine. */
+function hammeredEngine(room: Room): LedgerEngine | undefined {
+  const engine = room.activeEngine;
+  return engine instanceof LedgerEngine && engine.hammered ? engine : undefined;
+}
+
 /** Per bidder state shown to viewers, from the journal alone. */
 function perBidder(journal: Journal): Record<string, SettlementReport['auctionState']> {
   const out: Record<string, SettlementReport['auctionState']> = {};
   const settled = journal.state === 'SETTLED';
   for (const [bidderId, hold] of Object.entries(journal.holds)) {
     if (journal.winner?.bidderId === bidderId) out[bidderId] = settled ? 'SETTLED' : 'CAPTURED';
-    else if (journal.voids[hold.holdId] !== undefined) out[bidderId] = 'SETTLED';
+    else if (isReleased(journal, bidderId, hold.holdId)) out[bidderId] = 'SETTLED';
     else if (journal.state === 'VOIDING') out[bidderId] = 'VOIDING';
     else out[bidderId] = journal.state;
   }
