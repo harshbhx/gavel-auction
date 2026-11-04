@@ -120,6 +120,25 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
 }
 
+const APPROVE_HOSTS: readonly string[] = ['www.sandbox.paypal.com', 'sandbox.paypal.com'];
+
+/** The redirect fallback may only go to PayPal's sandbox over https, never to a string the server picked. */
+function safeApproveUrl(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  try {
+    const url = new URL(raw);
+    const ok =
+      url.protocol === 'https:' &&
+      APPROVE_HOSTS.includes(url.hostname) &&
+      url.username === '' &&
+      url.password === '' &&
+      url.port === '';
+    return ok ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 export class PayPalV6Adapter implements PaymentApprovalPort {
   private session: PayPalSessionV6 | null = null;
   private abandon: (() => void) | null = null;
@@ -157,8 +176,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     if (typeof orderId !== 'string') return finish('error', { errorCode: 'order_failed' });
     const clientToken =
       typeof order.body['clientToken'] === 'string' ? order.body['clientToken'] : undefined;
-    const approveUrl =
-      typeof order.body['approveUrl'] === 'string' ? order.body['approveUrl'] : null;
+    const approveUrl = safeApproveUrl(order.body['approveUrl']);
 
     on('awaiting_buyer');
     const outcome = await this.approve(orderId, clientToken);

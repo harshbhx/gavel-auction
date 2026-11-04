@@ -147,15 +147,28 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     expect(calls).not.toContain('start');
   });
 
+  it.each([
+    'https://www.paypal.com/checkoutnow?token=ord-1',
+    'javascript:alert(1)',
+    'https://user:pw@www.sandbox.paypal.com/approve',
+    'http://www.sandbox.paypal.com/approve',
+    'https://www.sandbox.paypal.com.evil.example/approve',
+  ])('refuses the redirect fallback for %s (WEB-R2-09)', async (approveUrl) => {
+    const t = make(() => {}, { orderId: 'ord-1', approveUrl }, true, true);
+    const result = await t.adapter.start(req, () => {});
+    expect(t.redirect).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ state: 'error', errorCode: 'popup_failed' });
+  });
+
   it('falls back to redirect approval when the popup fails', async () => {
     const t = make(
       () => {},
-      { orderId: 'ord-1', approveUrl: 'https://paypal.example/approve?token=ord-1' },
+      { orderId: 'ord-1', approveUrl: 'https://www.sandbox.paypal.com/approve?token=ord-1' },
       true,
       true,
     );
     const result = await t.adapter.start(req, (s) => t.states.push(s));
-    expect(t.redirect).toHaveBeenCalledWith('https://paypal.example/approve?token=ord-1');
+    expect(t.redirect).toHaveBeenCalledWith('https://www.sandbox.paypal.com/approve?token=ord-1');
     expect(result.state).toBe('awaiting_buyer');
     expect(result.errorCode).toBe('popup_failed');
   });
@@ -163,7 +176,7 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
   it('falls back to redirect when an SDK error is not a decline', async () => {
     const t = make((cb) => cb.onError({ code: 'AUTHORIZE_NOT_SUPPORTED' }), {
       orderId: 'ord-1',
-      approveUrl: 'https://paypal.example/approve',
+      approveUrl: 'https://sandbox.paypal.com/approve',
     });
     const result = await t.adapter.start(req, () => {});
     expect(t.redirect).toHaveBeenCalledTimes(1);
