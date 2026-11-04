@@ -1,0 +1,41 @@
+{
+  "name": "abort: a lot that reached its deadline can still be aborted",
+  "parity": false,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "a",
+      "amount": 1000
+    },
+    {
+      "op": "tick",
+      "at": 100000
+    },
+    {
+      "op": "abort",
+      "at": 100001
+    },
+    {
+      "op": "hammer",
+      "at": 100002
+    }
+  ],
+  "expect": {
+    "winner": null,
+    "price": 0,
+    "rejects": ["lot_done"]
+  }
+}

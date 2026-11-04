@@ -303,7 +303,26 @@ Consequences:
 
 Evidence: packages/server/src/runtime/auction-service.ts (contentCommandId), SPEC-engine R-ENG-087.
 
-## D-0018: The verify-ledger CLI bundles the TypeScript verifier with esbuild at run time
+## D-0018: The hosted demo keeps its file stores on a persistent disk, one instance
+
+Date: 2026-11-04
+Status: accepted
+Owner: quality
+Context: The room log, ledger, journals, holds and webhook events are files, and each file belongs to one process with no cross-process lock. A Render web service has an ephemeral disk, so a redeploy would lose every record while the sandbox authorizations still exist at PayPal, and a rolling deploy starts the new instance before the old one stops, so two writers could share one snapshot (INT-R3-16).
+Decision: Deploy with a persistent disk mounted at /var/data and numInstances 1, both set in render.yaml. The host reads the data directory from GAVEL_DATA_DIR and every file store lives under it. Deploys must stop the old instance before the new one starts (Render: disable zero-downtime deploys for this service). Back the disk up with a snapshot before a deploy that changes a store format.
+Alternatives:
+
+- Postgres or D1 for every store: deferred, it is a larger change than the demo needs.
+- A lock file taken at start-up: wanted as a second guard; tracked as a follow-up in packages/server because the host entry point is not built yet.
+
+Consequences:
+
+- The host entry point must create its stores under GAVEL_DATA_DIR and refuse to start when that directory is missing in hosted mode.
+- The crash and resume segment of the demo works on the hosted URL because journals survive a restart.
+
+Evidence: docs/PLAN.md (Store), packages/payments/src/stores/file.ts header, SPEC-quality R-QA-042.
+
+## D-0019: The verify-ledger CLI bundles the TypeScript verifier with esbuild at run time
 
 Date: 2026-11-04
 Status: accepted

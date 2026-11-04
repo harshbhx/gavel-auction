@@ -25,9 +25,13 @@ function incrementOf(fx: Fixture): IncrementRule {
   return ladder === undefined ? { flatCents: fx.config.minIncrement ?? 1 } : { ladder };
 }
 
-/** Python reject codes and engine reasons differ for a few cases; both map to one name. */
+/**
+ * The reference engine has one code, `closed`, for a bid on a lot past its deadline or already
+ * hammered. The TypeScript engine reports that as `lot_not_open`. Every other code, including
+ * `lot_done`, is compared as the engine reports it.
+ */
 function rejectName(code: string): string {
-  return code === 'lot_done' || code === 'lot_not_open' ? 'closed' : code;
+  return code === 'lot_not_open' ? 'closed' : code;
 }
 
 export function play(fx: Fixture): Observed {
@@ -57,6 +61,12 @@ export function play(fx: Fixture): Observed {
       if (e.type === 'LOT_HAMMERED') {
         winner = names.get(e.payload.winnerId) ?? e.payload.winnerId;
         price = e.payload.priceCents;
+      } else if (e.type === 'FALLBACK_PROMOTED') {
+        winner = names.get(e.payload.to) ?? e.payload.to;
+        price = e.payload.priceCents;
+      } else if (e.type === 'LOT_UNSOLD' || e.type === 'LOT_ABORTED') {
+        winner = null;
+        price = 0;
       }
     }
     if (r.result.outcome.kind === 'rejected') rejects.push(rejectName(r.result.outcome.reason));
@@ -108,19 +118,15 @@ export function play(fx: Fixture): Observed {
         });
         break;
       case 'bid':
-        tick(st.at);
-        if (s.lots[L1]?.status !== 'OPEN') {
-          rejects.push('closed');
-        } else {
-          attempt(st.at, {
-            type: 'PlaceBid',
-            lotId: L1,
-            bidderId: who ?? idOf(''),
-            amountCents: st.amount ?? 0,
-            source: 'manual',
-            audit: {},
-          });
-        }
+        // The engine decides every bid, including those past the deadline or after the hammer.
+        attempt(st.at, {
+          type: 'PlaceBid',
+          lotId: L1,
+          bidderId: who ?? idOf(''),
+          amountCents: st.amount ?? 0,
+          source: 'manual',
+          audit: {},
+        });
         break;
       case 'tick':
         tick(st.at);
@@ -140,21 +146,19 @@ export function play(fx: Fixture): Observed {
       case 'revoke':
         attempt(st.at, { type: 'RevokeCeiling', bidderId: who ?? idOf(''), reason: 'other' });
         break;
-      case 'complete': {
-        const lot = s.lots[L1];
-        if (lot === undefined || lot.winnerId === null || lot.priceCents === null) {
-          rejects.push('cannot_complete');
-        } else {
-          attempt(st.at, {
-            type: 'CompleteLot',
-            lotId: L1,
-            bidderId: lot.winnerId as Ulid,
-            capturedCents: lot.priceCents,
-            ref: 'golden',
-          });
-        }
+      case 'complete':
+        // Bidder and amount come from the fixture so a wrong winner or amount can be presented.
+        attempt(st.at, {
+          type: 'CompleteLot',
+          lotId: L1,
+          bidderId: who ?? idOf(''),
+          capturedCents: st.amount ?? 0,
+          ref: 'golden',
+        });
         break;
-      }
+      case 'abort':
+        attempt(st.at, { type: 'AbortLot', lotId: L1, reason: 'golden', actor: 'golden' });
+        break;
     }
   }
   const lot = s.lots[L1];

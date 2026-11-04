@@ -1,0 +1,64 @@
+{
+  "name": "promote: a lot that is not hammered cannot be promoted",
+  "parity": false,
+  "config": {
+    "mode": "english",
+    "reserve": 1000,
+    "minIncrement": 100,
+    "endTs": 100000
+  },
+  "steps": [
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "a",
+      "ceiling": 100000
+    },
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "b",
+      "ceiling": 100000
+    },
+    {
+      "op": "register",
+      "at": 0,
+      "bidder": "c",
+      "ceiling": 100000
+    },
+    {
+      "op": "bid",
+      "at": 1000,
+      "bidder": "a",
+      "amount": 1000
+    },
+    {
+      "op": "bid",
+      "at": 2000,
+      "bidder": "b",
+      "amount": 1100
+    },
+    {
+      "op": "bid",
+      "at": 3000,
+      "bidder": "c",
+      "amount": 1200
+    },
+    {
+      "op": "promote",
+      "at": 5000,
+      "bidder": "c"
+    }
+  ],
+  "expect": {
+    "winner": null,
+    "price": 0,
+    "ranking": [
+      ["c", 1200],
+      ["b", 1100],
+      ["a", 1000]
+    ],
+    "rejects": ["cannot_promote"],
+    "endsAt": 100000
+  }
+}

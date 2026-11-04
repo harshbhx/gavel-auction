@@ -2,7 +2,7 @@
 // Verifies a ledger export without any server (R-ENG-078).
 //   verify-ledger ledger.jsonl
 // Prints the entry count and head hash and exits 0, or prints the first bad index and exits 1.
-// The verifier is TypeScript; esbuild bundles src/ledger/export.ts in memory on each run (see D-0018).
+// The verifier is TypeScript; esbuild bundles src/ledger/export.ts in memory on each run (see D-0019).
 import { Buffer } from 'node:buffer';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

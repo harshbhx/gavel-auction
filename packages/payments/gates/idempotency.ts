@@ -343,9 +343,10 @@ export async function runIdempotency(opts: RunIdempotencyOptions): Promise<numbe
 }
 
 // Runs when the file is the script being executed (node or vite-node), not when imported.
-const isEntry = process.argv
-  .slice(1)
-  .some((a) => pathToFileURL(resolve(a)).href === import.meta.url);
+// vite-node drops the script from argv, so its own binary name marks the entry run.
+const isEntry =
+  /vite-node/.test(process.argv[1] ?? '') ||
+  process.argv.slice(1).some((a) => pathToFileURL(resolve(a)).href === import.meta.url);
 if (isEntry) {
   runIdempotency({ argv: process.argv.slice(2), env: process.env }).then(
     (code) => {
