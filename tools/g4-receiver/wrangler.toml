@@ -1,0 +1,8 @@
+name = "gavel-g4-receiver"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "LOG"
+id = "d29e3758c2ad41ecb74eeb219b380156"
