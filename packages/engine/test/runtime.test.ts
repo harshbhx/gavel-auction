@@ -105,11 +105,13 @@ describe('AuctionRuntime', () => {
   });
 
   it('T-ENG-070 R-ENG-087 a retried command appends nothing', async () => {
-    const rt = new AuctionRuntime({ store: new InMemoryLedgerStore() });
+    const store = new InMemoryLedgerStore();
+    const rt = new AuctionRuntime({ store });
     const create = mk(0, { type: 'CreateAuction', title: 'Gala', config: {} });
-    await rt.dispatch(create);
+    const first = await rt.dispatch(create);
     const again = await rt.dispatch(create);
-    expect(again.entries).toEqual([]);
+    expect(again.entries).toEqual(first.entries);
     expect(again.outcome.kind).toBe('duplicate');
+    expect(await store.read(AU, 1)).toHaveLength(1);
   });
 });

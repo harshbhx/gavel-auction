@@ -4,7 +4,7 @@ export type { DecideResult, Outcome } from './decide/index.js';
 export { evolve, evolveAll } from './evolve.js';
 export { initialState, commandBody, entryBody } from './state.js';
 export type { AuctionState, LotState, BidderState, SeenCommand } from './state.js';
-export { parseCommand, COMMAND_TYPES } from './commands.js';
+export { parseCommand, confidenceToBps, COMMAND_TYPES } from './commands.js';
 export type { Command, CommandType } from './commands.js';
 export { LEDGER_EVENT_TYPES } from './events.js';
 export type { LedgerEntry, LedgerEvent, BidAudit } from './events.js';

@@ -23,7 +23,7 @@ describe('AuctionRuntime onDecision', () => {
     await rt.dispatch(mk(1, { type: 'RegisterBidder', bidderId: A, ceilingCents: 5000 }));
     expect(metrics.map((m) => [m.commandType, m.outcome, m.entries.length])).toEqual([
       ['CreateAuction', 'accepted', 1],
-      ['CreateAuction', 'duplicate', 0],
+      ['CreateAuction', 'duplicate', 1],
       ['RegisterBidder', 'accepted', 1],
     ]);
     for (const m of metrics) {

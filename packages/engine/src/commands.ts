@@ -71,13 +71,13 @@ const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const BID_SOURCES: readonly string[] = ['voice', 'manual', 'qr'];
 const REVOKE_REASONS: readonly string[] = ['declined', 'expired', 'voided', 'other'];
 const MODES: readonly string[] = ['english', 'proxy', 'second_price'];
+/** Fields a parsed audit may carry; `confirmed` is set by the server only, never parsed. */
 const AUDIT_KEYS = [
   'utteranceId',
   'audioStartMs',
   'audioEndMs',
   'transcript',
   'confidenceBps',
-  'confirmed',
   'parserVersion',
   'clientTs',
 ] as const;
@@ -148,17 +148,32 @@ function oneOf<T extends string>(o: Rec, k: string, allowed: readonly string[], 
   return v as T;
 }
 
+/**
+ * Converts a confidence score in 0..1 (shared wire and voice units) to the integer
+ * basis points the engine gate compares with `confirmBelowBps`.
+ */
+export function confidenceToBps(confidence: number): number {
+  if (typeof confidence !== 'number' || !Number.isFinite(confidence)) {
+    throw new EngineError('bad_command', 'confidence must be a finite number');
+  }
+  return Math.min(10000, Math.max(0, Math.round(confidence * 10000)));
+}
+
 function parseAudit(x: unknown): BidAudit {
   const o = rec(x, 'audit');
-  keysOnly(o, AUDIT_KEYS, 'audit');
+  keysOnly(o, [...AUDIT_KEYS, 'confidence'], 'audit');
   const out: BidAudit = {};
+  if (o['confidence'] !== undefined) {
+    if (o['confidenceBps'] !== undefined) bad('audit: give confidence or confidenceBps, not both');
+    const c = o['confidence'];
+    if (typeof c !== 'number' || !Number.isFinite(c) || c < 0 || c > 1) {
+      bad('audit.confidence must be a number from 0 to 1');
+    }
+    out.confidenceBps = confidenceToBps(c as number);
+  }
   for (const k of AUDIT_KEYS) {
     if (o[k] === undefined) continue;
-    if (k === 'confirmed') {
-      const c = o[k];
-      if (typeof c !== 'boolean') return bad('audit.confirmed must be a boolean');
-      out.confirmed = c;
-    } else if (k === 'utteranceId' || k === 'transcript' || k === 'parserVersion') {
+    if (k === 'utteranceId' || k === 'transcript' || k === 'parserVersion') {
       out[k] = k === 'transcript' ? str(o, k, 'audit') : shortStr(o, k, 'audit');
     } else {
       const n = int(o, k, 'audit');

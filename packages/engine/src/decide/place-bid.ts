@@ -18,11 +18,31 @@ export type PlaceBidCommand = Extract<Command, { type: 'PlaceBid' }>;
 
 const SOURCES: readonly string[] = ['voice', 'manual', 'qr'];
 const AMOUNT_RAW_MAX = 40;
+const AUDIT_FIELD_TYPES: Readonly<Record<string, 'string' | 'number' | 'boolean' | undefined>> = {
+  utteranceId: 'string',
+  audioStartMs: 'number',
+  audioEndMs: 'number',
+  transcript: 'string',
+  confidenceBps: 'number',
+  confirmed: 'boolean',
+  parserVersion: 'string',
+  clientTs: 'number',
+};
 
 /** R-ENG-083, R-ENG-084: shape checks that do not depend on state. */
 function assertBidShape(cmd: PlaceBidCommand): void {
   if (!SOURCES.includes(cmd.source)) throw new EngineError('bad_command', 'source');
   const a = cmd.audit;
+  if (typeof a !== 'object' || a === null || Array.isArray(a)) {
+    throw new EngineError('bad_command', 'audit');
+  }
+  // Only the known scalar fields may be present, so a typed command cannot smuggle extras.
+  for (const [k, v] of Object.entries(a)) {
+    const kind = AUDIT_FIELD_TYPES[k];
+    if (kind === undefined || v === undefined || typeof v !== kind) {
+      throw new EngineError('bad_command', `audit.${k}`);
+    }
+  }
   if (a.confidenceBps !== undefined) {
     if (!Number.isSafeInteger(a.confidenceBps) || a.confidenceBps < 0 || a.confidenceBps > 10000) {
       throw new EngineError('bad_command', 'audit.confidenceBps');

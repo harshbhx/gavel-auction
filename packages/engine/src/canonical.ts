@@ -35,8 +35,17 @@ function quote(s: string): string {
   );
 }
 
-function compareUtf16(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
+/** Orders by code point, as Python's sort_keys does; UTF-16 order differs for astral characters. */
+function compareCodePoints(a: string, b: string): number {
+  const x = Array.from(a);
+  const y = Array.from(b);
+  const n = Math.min(x.length, y.length);
+  for (let i = 0; i < n; i++) {
+    const p = (x[i] as string).codePointAt(0) as number;
+    const q = (y[i] as string).codePointAt(0) as number;
+    if (p !== q) return p < q ? -1 : 1;
+  }
+  return x.length < y.length ? -1 : x.length > y.length ? 1 : 0;
 }
 
 function encode(v: unknown, out: string[]): void {
@@ -61,7 +70,7 @@ function encode(v: unknown, out: string[]): void {
     out.push(']');
   } else if (typeof v === 'object') {
     const obj = v as Record<string, unknown>;
-    const keys = Object.keys(obj).sort(compareUtf16);
+    const keys = Object.keys(obj).sort(compareCodePoints);
     out.push('{');
     keys.forEach((k, i) => {
       if (FORBIDDEN_KEYS.has(k)) bad(`forbidden key ${k}`);
