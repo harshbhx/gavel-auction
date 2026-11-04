@@ -19,6 +19,7 @@ jobs:
   g4:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    environment: sandbox-nightly
     if: ${{ github.ref == 'refs/heads/main' }}
     concurrency:
       group: gate-g4

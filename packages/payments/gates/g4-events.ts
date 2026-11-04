@@ -17,13 +17,7 @@ import {
   str,
 } from './gateUtil.js';
 import { fetchAccessToken } from './http.js';
-import {
-  EXIT_REFUSED,
-  parseGateArgs,
-  runGate,
-  type GateContext,
-  type Json,
-} from './runner.js';
+import { EXIT_REFUSED, parseGateArgs, runGate, type GateContext, type Json } from './runner.js';
 
 /**
  * G4 event generator: drives two small sandbox flows so PayPal sends real webhooks to the
@@ -93,7 +87,8 @@ async function runFlow(
     need(res.status, 'order creation', flow);
     const id = str(field(res.json, 'id'));
     const link = approveLink(res.json);
-    if (id === '' || link === '') throw new Error(`G4 events ${flow}: no order id or approval link`);
+    if (id === '' || link === '')
+      throw new Error(`G4 events ${flow}: no order id or approval link`);
     return { orderId: id, approveUrl: link };
   });
   const orderId = String((order as { orderId: Json }).orderId);
@@ -113,7 +108,8 @@ async function runFlow(
     });
     need(res.status, 'authorize', flow);
     const id = str(firstAuthorization(res.json)['id']);
-    if (id === '') throw new Error(`G4 events ${flow}: authorize answered without an authorization id`);
+    if (id === '')
+      throw new Error(`G4 events ${flow}: authorize answered without an authorization id`);
     return id;
   });
 

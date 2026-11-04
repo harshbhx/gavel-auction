@@ -3,11 +3,11 @@
 A small Cloudflare Worker that logs each PayPal sandbox webhook delivery untouched, so gate G4
 (`packages/payments/gates/g4.ts`) can verify and compare real events.
 
-| Route | Effect |
-| --- | --- |
-| `POST /hook` | Stores `{headers, rawBody, receivedAt}` (header names lower-cased, body as received, at most 256 KB). Entries expire after 7 days. |
-| `GET /log?token=<LOG_TOKEN>` | JSONL, one `{"headers":{...},"rawBody":"..."}` per delivery, oldest first. |
-| `DELETE /log?token=<LOG_TOKEN>` | Clears the log. |
+| Route                           | Effect                                                                                                                             |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /hook`                    | Stores `{headers, rawBody, receivedAt}` (header names lower-cased, body as received, at most 256 KB). Entries expire after 7 days. |
+| `GET /log?token=<LOG_TOKEN>`    | JSONL, one `{"headers":{...},"rawBody":"..."}` per delivery, oldest first.                                                         |
+| `DELETE /log?token=<LOG_TOKEN>` | Clears the log.                                                                                                                    |
 
 Anything else answers 404 or 405. Without a valid token `/log` answers 401.
 
