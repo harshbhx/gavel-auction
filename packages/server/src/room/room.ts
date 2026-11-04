@@ -2,6 +2,8 @@ import {
   ERROR_TABLE,
   GavelError,
   MAX_BIDDERS_PER_ROOM,
+  MAX_HOLD_REF_CHARS,
+  MAX_NAME_CHARS,
   encodeMsg,
   isCents,
   type AuctionConfig,
@@ -85,6 +87,8 @@ export class Room {
   private cancelTimer: CancelTimer | undefined;
   /** True when the engine may be ahead of the stored log and must be rebuilt first. */
   private dirty = false;
+  /** Count of frames dropped because they failed to encode; surfaced for metrics and tests. */
+  encodeFailures = 0;
 
   private constructor(
     readonly auctionId: AuctionId,
@@ -156,6 +160,18 @@ export class Room {
   registerBidder(reg: RegisterBidder): Promise<void> {
     return this.enqueue(async () => {
       if (this.roster.has(reg.bidderId)) return;
+      // Reject anything the wire or the event schema would refuse, before it reaches the log (R-RT-054).
+      const name = reg.name.trim();
+      if (
+        name.length === 0 ||
+        name.length > MAX_NAME_CHARS ||
+        !isCents(reg.ceiling) ||
+        reg.ceiling < (this.config?.reserve ?? 0) ||
+        reg.holdRef.length === 0 ||
+        reg.holdRef.length > MAX_HOLD_REF_CHARS
+      ) {
+        throw new GavelError('bad_message', 'invalid registration');
+      }
       if (this.roster.size >= MAX_BIDDERS_PER_ROOM) throw new GavelError('room_full');
       const seq = this.seq + 1;
       const ts = this.deps.clock.now();
@@ -167,7 +183,7 @@ export class Room {
         ts,
         bidderId: reg.bidderId,
         paddle,
-        name: reg.name,
+        name,
         ceiling: reg.ceiling,
         holdRef: reg.holdRef,
       };
@@ -175,18 +191,22 @@ export class Room {
       this.seq = seq;
       this.applyRegistered(event);
       for (const conn of this.conns.values()) {
-        if (conn.role === 'bidder' && conn.bidderId === reg.bidderId) {
-          this.send(conn, {
-            v: 1,
-            t: 'registered',
-            seq,
-            ts,
-            bidderId: reg.bidderId,
-            paddle,
-            ceiling: reg.ceiling,
-            role: 'bidder',
-          });
+        if (conn.role !== 'bidder' || conn.bidderId !== reg.bidderId) {
+          // The seq is consumed by this event, so everyone else gets the new roster as a snapshot
+          // instead of seeing a gap they would have to resync from (R-RT-036).
+          this.sendState(conn);
+          continue;
         }
+        this.send(conn, {
+          v: 1,
+          t: 'registered',
+          seq,
+          ts,
+          bidderId: reg.bidderId,
+          paddle,
+          ceiling: reg.ceiling,
+          role: 'bidder',
+        });
       }
     });
   }
@@ -234,8 +254,15 @@ export class Room {
     if (!isCents(msg.amount)) code = 'bad_amount';
     else if (!this.roster.has(bidderId)) code = 'unregistered';
     else {
-      const res = engine.placeBid(bidderId, msg.amount, ts);
-      if (!res.ok) code = res.code;
+      try {
+        const res = engine.placeBid(bidderId, msg.amount, ts);
+        if (!res.ok) code = res.code;
+      } catch {
+        // The engine may be half-mutated: rebuild from the log before the next command (R-RT-033).
+        this.dirty = true;
+        this.sendError(conn, 'internal');
+        return;
+      }
     }
 
     const bidId = this.deps.ids.mint<'BidId'>();
@@ -406,6 +433,7 @@ export class Room {
     if (out === null) return;
     const enc = encodeMsg(out);
     if (enc.ok) conn.transport.send(enc.value);
+    else this.encodeFailures += 1;
   }
 
   private sendError(conn: Connection, code: ErrorCode, retryAfterMs?: number): void {
@@ -420,7 +448,10 @@ export class Room {
     const view = this.engine?.view();
     if (!view || view.state !== 'OPEN') return;
     this.cancelTimer = this.deps.clock.setTimer(view.endTs, () => {
-      void this.enqueue(() => this.onTimer());
+      this.enqueue(() => this.onTimer()).catch(() => {
+        // A throwing timer body must not become an unhandled rejection; rebuild on the next command.
+        this.dirty = true;
+      });
     });
   }
 

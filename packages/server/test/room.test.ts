@@ -377,3 +377,81 @@ describe('close timer (R-RT-041, R-RT-043)', () => {
     expect(c2.transport.messages('bid_rejected')).toMatchObject([{ reason: 'closed' }]);
   });
 });
+
+describe('round 2 blocking fixes (RT2)', () => {
+  it('refuses a registration the wire cannot carry, so state frames keep flowing (R-RT-054)', async () => {
+    const t = await setup();
+    const c1 = await t.connect('bidder', t.b1);
+    const before = await t.store.lastSeq(t.auctionId);
+    const bad = t.ids.mint<'BidderId'>();
+    const base = { bidderId: bad, holdRef: 'h' };
+    await expect(
+      t.room.registerBidder({ ...base, name: 'x'.repeat(65), ceiling: 50000 as Cents }),
+    ).rejects.toMatchObject({ code: 'bad_message' });
+    await expect(
+      t.room.registerBidder({ ...base, name: 'Cy', ceiling: 1.5 as Cents }),
+    ).rejects.toMatchObject({ code: 'bad_message' });
+    await expect(
+      t.room.registerBidder({ ...base, name: 'Cy', ceiling: 50000 as Cents, holdRef: '' }),
+    ).rejects.toMatchObject({ code: 'bad_message' });
+    expect(await t.store.lastSeq(t.auctionId)).toBe(before);
+    const states = c1.transport.messages('state').length;
+    const c2 = await t.connect('bidder', t.b2);
+    expect(c2.transport.messages('state')).toHaveLength(1);
+    expect(c1.transport.messages('state').length).toBe(states);
+    expect(t.room.encodeFailures).toBe(0);
+  });
+
+  it('sends other clients a snapshot when someone registers, so seq has no gap (R-RT-036)', async () => {
+    const t = await setup();
+    const c1 = await t.connect('bidder', t.b1);
+    const screen = await t.connect('screen');
+    const n = t.ids.mint<'BidderId'>();
+    await t.room.registerBidder({
+      bidderId: n,
+      name: 'Di',
+      ceiling: 40000 as Cents,
+      holdRef: 'h3',
+    });
+    const seq = t.room.lastSeq;
+    expect(c1.transport.messages('state').at(-1)?.seq).toBe(seq);
+    expect(screen.transport.messages('state').at(-1)?.seq).toBe(seq);
+  });
+
+  it('answers internal and rebuilds when the engine throws on a bid (R-RT-033)', async () => {
+    let boom = true;
+    const t = await setup();
+    const c1 = await t.connect('bidder', t.b1);
+    const engine = (t.room as unknown as { engine: EnginePort }).engine;
+    const real = engine.placeBid.bind(engine);
+    engine.placeBid = (...args) => {
+      if (boom) {
+        boom = false;
+        throw new Error('engine exploded');
+      }
+      return real(...args);
+    };
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    expect(c1.transport.messages('error')).toMatchObject([{ code: 'internal' }]);
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    expect(c1.transport.messages('bid_accepted')).toHaveLength(1);
+  });
+
+  it('does not raise an unhandled rejection when the timer body throws (R-RT-041)', async () => {
+    const t = await setup();
+    const c1 = await t.connect('bidder', t.b1);
+    c1.transport.send = () => {
+      throw new Error('socket closed');
+    };
+    const unhandled: unknown[] = [];
+    const onUnhandled = (e: unknown): void => {
+      unhandled.push(e);
+    };
+    process.on('unhandledRejection', onUnhandled);
+    t.clock.set(config.endTs);
+    await t.room.close().catch(() => undefined);
+    await new Promise((r) => setTimeout(r, 10));
+    process.off('unhandledRejection', onUnhandled);
+    expect(unhandled).toEqual([]);
+  });
+});
