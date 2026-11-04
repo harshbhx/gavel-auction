@@ -2,7 +2,6 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { Command } from '../src/commands.js';
-import { decide } from '../src/decide/index.js';
 import { EngineError } from '../src/errors.js';
 import { rank } from '../src/rules/ranking.js';
 import { initialState } from '../src/state.js';
