@@ -103,10 +103,12 @@ export class RecordingHttp {
 
     const headers: Record<string, string> = { ...(req.headers ?? {}) };
     let body: string | undefined;
-    if (typeof req.body === 'string') {
-      body = req.body;
-    } else if (req.body !== undefined) {
-      body = JSON.stringify(req.body);
+    // PayPal answers 415 to a bodyless POST, so one without a payload sends "{}".
+    const payload: unknown = req.body === undefined && req.method === 'POST' ? {} : req.body;
+    if (typeof payload === 'string') {
+      body = payload;
+    } else if (payload !== undefined) {
+      body = JSON.stringify(payload);
       if (!Object.keys(headers).some((k) => k.toLowerCase() === 'content-type')) {
         headers['Content-Type'] = 'application/json';
       }
@@ -118,8 +120,8 @@ export class RecordingHttp {
       url,
       headers,
     };
-    if (req.body !== undefined) {
-      recorded.body = typeof req.body === 'string' ? (parseJson(req.body) ?? req.body) : req.body;
+    if (payload !== undefined) {
+      recorded.body = typeof payload === 'string' ? (parseJson(payload) ?? payload) : payload;
     }
 
     const started = this.now();

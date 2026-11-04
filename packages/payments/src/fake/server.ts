@@ -84,6 +84,7 @@ const STATUS_NAMES: Readonly<Record<number, string>> = {
   400: 'INVALID_REQUEST',
   401: 'AUTHENTICATION_FAILURE',
   404: 'RESOURCE_NOT_FOUND',
+  415: 'UNSUPPORTED_MEDIA_TYPE',
   422: 'UNPROCESSABLE_ENTITY',
   500: 'INTERNAL_SERVICE_ERROR',
 };
@@ -262,6 +263,18 @@ export class FakePayPalServer {
       if (isToken) return this.issueToken(header);
       const denied = this.checkBearer(header);
       if (denied !== undefined) return denied;
+      if (route.op === 'authorize') {
+        // Like PayPal: authorize needs a JSON content type and a body, else 415.
+        const ct = req.headers['content-type'];
+        const isJson = typeof ct === 'string' && /^application\/json\b/i.test(ct);
+        if (!isJson || body.trim() === '') {
+          return errorResponse(
+            415,
+            'UNSUPPORTED_MEDIA_TYPE',
+            'The request payload is not supported',
+          );
+        }
+      }
       const parsed = parseJson(body);
       if (body.trim() !== '' && parsed === undefined && route.op !== 'verify') {
         return errorResponse(400, 'MALFORMED_REQUEST_JSON');
