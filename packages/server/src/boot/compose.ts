@@ -31,8 +31,8 @@ import {
   type RoomStore,
 } from '@gavel/shared';
 import type { AuthRole } from '../auth/authorize';
-import { secretSetFromConfig } from '../auth/rotation';
-import { verifyRotating, type JtiStore } from '../auth/token';
+import { secretSetFromConfig, verifyRotating } from '../auth/rotation';
+import type { JtiStore } from '../auth/token';
 import { loadConfig, redactConfig, type LoadHooks, type ServerConfig } from '../config';
 import { createExportHandler } from '../http/export';
 import { createHealthRoutes } from '../http/health';
