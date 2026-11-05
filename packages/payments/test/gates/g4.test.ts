@@ -171,7 +171,10 @@ describe('G4 coverage needs this run (R6-E03)', () => {
     JSON.stringify({
       id: `WH-${authId}`,
       event_type: 'PAYMENT.CAPTURE.COMPLETED',
-      resource: { id: `CAP-${authId}`, supplementary_data: { related_ids: { authorization_id: authId } } },
+      resource: {
+        id: `CAP-${authId}`,
+        supplementary_data: { related_ids: { authorization_id: authId } },
+      },
     });
   const voided = (authId: string): string =>
     JSON.stringify({
