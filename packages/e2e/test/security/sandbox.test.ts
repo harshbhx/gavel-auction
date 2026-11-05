@@ -52,7 +52,7 @@ describe('the client refuses the live host (T-QA-040)', () => {
   it('throws payments_not_sandbox for a live environment name, at config load and at the guard', () => {
     const env = {
       PAYPAL_CLIENT_ID: 'placeholder-id',
-      PAYPAL_CLIENT_SECRET: 'placeholder-secret',
+      PAYPAL_CLIENT_SECRET: 'fake',
       PAYPAL_WEBHOOK_ID: 'placeholder-webhook',
     };
     for (const name of ['live', 'production', 'LIVE', '', 'Sandbox']) {
@@ -68,7 +68,7 @@ describe('the client refuses the live host (T-QA-040)', () => {
     const cfg = {
       PAYPAL_ENV: 'sandbox',
       PAYPAL_CLIENT_ID: 'placeholder-id',
-      PAYPAL_CLIENT_SECRET: 'placeholder-secret',
+      PAYPAL_CLIENT_SECRET: 'fake',
       PAYPAL_WEBHOOK_ID: 'placeholder-webhook',
       PAYPAL_BASE_URL: LIVE_API,
     };

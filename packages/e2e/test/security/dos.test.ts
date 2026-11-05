@@ -122,6 +122,8 @@ describe('audit gate with expiring waivers (T-QA-077)', () => {
   });
 });
 
+const mockedNow = (): number => vi.getMockedSystemTime()?.getTime() ?? 0;
+
 describe('a hanging language model (T-QA-078)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -141,7 +143,7 @@ describe('a hanging language model (T-QA-078)', () => {
       speakerKnown: false,
       previousSegment: null,
     };
-    const started = Date.now();
+    const started = mockedNow();
     const outcome = client.parse(input, new AbortController().signal).catch((e: unknown) => e);
     await vi.advanceTimersByTimeAsync(LLM_TIMEOUT_MS);
     const err = await outcome;
@@ -150,7 +152,7 @@ describe('a hanging language model (T-QA-078)', () => {
     expect(client.status).toBe('down');
     expect(hang.calls).toHaveLength(1);
     expect(hang.calls[0]?.signal.aborted).toBe(true);
-    expect(Date.now() - started).toBeLessThan(FALLBACK_BUDGET_MS);
+    expect(mockedNow() - started).toBeLessThan(FALLBACK_BUDGET_MS);
   });
 });
 
