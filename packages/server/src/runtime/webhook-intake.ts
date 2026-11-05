@@ -32,6 +32,13 @@ export interface WebhookIntakeDeps {
   truth(hold: HoldRecord): Promise<HoldTruth>;
   /** Called after a hold changed status because of an event. */
   onHoldStatus(hold: HoldRecord): Promise<void>;
+  /**
+   * Called for every capture event about a known hold (PAYMENT.CAPTURE.PENDING, COMPLETED,
+   * DENIED, DECLINED; R11-O03). The event is only a hint: the receiver runs the settlement
+   * again, which re-reads the truth and adopts a completed capture or falls back on a
+   * declined one.
+   */
+  onCaptureHint?(hold: HoldRecord): Promise<void>;
   /** How long an event for an unknown hold is retried. Default 10 minutes. */
   orphanWindowMs?: number;
 }
@@ -87,6 +94,14 @@ function changesHold(e: ParsedEvent): boolean {
   );
 }
 
+/** Capture events that make the settlement read the truth again (R11-O03). */
+const CAPTURE_HINTS: ReadonlySet<string> = new Set([
+  'PAYMENT.CAPTURE.PENDING',
+  'PAYMENT.CAPTURE.COMPLETED',
+  'PAYMENT.CAPTURE.DENIED',
+  'PAYMENT.CAPTURE.DECLINED',
+]);
+
 /** The hold status a processor state means, or undefined while the hold is still live. */
 function statusFromTruth(truth: HoldTruth): HoldStatus | undefined {
   switch (truth.status) {
@@ -97,7 +112,12 @@ function statusFromTruth(truth: HoldTruth): HoldStatus | undefined {
     case 'DENIED':
       return 'DENIED';
     case 'CAPTURED':
-      return 'CAPTURED';
+      // R11-O03: a capture PayPal still lists as PENDING may be declined; nothing is final yet.
+      return truth.captures !== null &&
+        truth.captures.length > 0 &&
+        truth.captures.every((c) => c.pending === true)
+        ? undefined
+        : 'CAPTURED';
     default:
       // CREATED, PENDING, PARTIALLY_CAPTURED and NOT_FOUND: nothing is final yet.
       return undefined;
@@ -163,7 +183,8 @@ export class WebhookIntake {
 
   private async apply(stored: StoredWebhook): Promise<'processed' | 'parked'> {
     const event = parse(stored.body);
-    if (event === undefined || !changesHold(event)) {
+    const hint = event !== undefined && CAPTURE_HINTS.has(event.eventType);
+    if (event === undefined || (!changesHold(event) && !hint)) {
       await this.deps.events.markProcessed(stored.id, 'ignored');
       return 'processed';
     }
@@ -178,6 +199,11 @@ export class WebhookIntake {
       }
       if (stored.parkedUntilMs === undefined) await this.deps.events.parkOrphan(stored.id, until);
       return 'parked';
+    }
+    if (hint) await this.deps.onCaptureHint?.(hold);
+    if (!changesHold(event)) {
+      await this.deps.events.markProcessed(stored.id, `hint:${event.eventType}`);
+      return 'processed';
     }
     if (hold.status !== 'HELD') {
       // The status may have been saved by an earlier attempt that died before the engine

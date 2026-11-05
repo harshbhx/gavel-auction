@@ -13,6 +13,7 @@ import {
   reconcile,
   voidAllLiveHolds,
   revokeReasonFor,
+  reviewKeepHolds,
   runCapturePhase,
   runVoidPhase,
   type AuditSink,
@@ -29,6 +30,7 @@ import {
   type ReconcileReport,
   type SettlementPlan,
   type VoidAllOutcome,
+  type VoidDeps,
   type WebhookEventStore,
   type WebhookHandler,
   type WebhookHeaders,
@@ -111,6 +113,12 @@ export interface AuctionServiceDeps {
    * default 5 when absent).
    */
   maxVoidResumes?: number;
+  /**
+   * How long a settlement in review keeps the next candidates' holds live, in ms (R9-M04;
+   * payments default 24 hours when absent). An operator can release them earlier with
+   * `releaseReviewHolds`.
+   */
+  reviewHoldMaxAgeMs?: number;
   /** How long a webhook for an unknown hold is retried, in ms. */
   orphanWindowMs?: number;
   /**
@@ -176,6 +184,15 @@ export interface AuctionService {
   acceptsHolds(auctionId: AuctionId): Promise<boolean>;
   /** Admin: voids every hold of the auction that is not captured (R-PAY-112). */
   voidAll(auctionId: AuctionId, actor: string): Promise<VoidAllOutcome>;
+  /**
+   * Admin (R9-M04, R11-O01): a settlement in review keeps the next candidates' holds so the
+   * lot can still fall back to them. This releases them now, before the review is
+   * `reviewHoldMaxAgeMs` old. The hold of a capture in doubt and the winner's stay.
+   */
+  releaseReviewHolds(
+    auctionId: AuctionId,
+    actor: string,
+  ): Promise<'released' | 'busy' | 'not_in_review'>;
   /** Admin: compares the journal, the hold records and PayPal for one auction (R-PAY-100). */
   reconcile(auctionId: AuctionId): Promise<ReconcileReport>;
   /** The webhook route's body: raw request bytes and headers in, HTTP status out. */
@@ -216,16 +233,6 @@ function withOrderLookup(gateway: PaymentsGateway, holds: HoldStore): PaymentsGa
       return gateway.getHoldTruth(hold === null ? h : { ...h, orderId: hold.orderId });
     },
   };
-}
-
-/** Holds a settlement in review keeps live: the winner's and the unresolved candidate's. */
-function keptOnReview(journal: Journal): Set<string> {
-  const keep = new Set<string>();
-  if (journal.winner !== null) keep.add(journal.winner.holdId);
-  const candidate = journal.plan.candidates[journal.cursor];
-  const unresolved = candidate === undefined ? undefined : journal.holds[candidate.bidderId];
-  if (unresolved !== undefined) keep.add(unresolved.holdId);
-  return keep;
 }
 
 export function createAuctionService(deps: AuctionServiceDeps): AuctionService {
@@ -299,6 +306,8 @@ class Service implements AuctionService, SettlePort {
         }),
       listAuctions: async () => [...(await deps.store.listAuctions())],
       onHoldStatus: (hold) => this.onHoldStatus(hold),
+      // R11-O03: a capture event re-runs the settlement, which reads the truth again.
+      onCaptureHint: (hold) => this.rescheduleOpenJournal(hold.auctionId),
       ...(deps.orphanWindowMs !== undefined ? { orphanWindowMs: deps.orphanWindowMs } : {}),
     });
     const every = deps.resumeIntervalMs ?? DEFAULT_RESUME_INTERVAL_MS;
@@ -521,6 +530,27 @@ class Service implements AuctionService, SettlePort {
     );
   }
 
+  async releaseReviewHolds(
+    auctionId: AuctionId,
+    actor: string,
+  ): Promise<'released' | 'busy' | 'not_in_review'> {
+    const lotId = lotIdOf(auctionId);
+    const journal = await this.deps.journals.load(lotId);
+    if (journal === null || journal.state !== 'FAILED_NEEDS_REVIEW') return 'not_in_review';
+    await this.deps.audit.append({
+      kind: 'void_all',
+      auctionId: lotId,
+      label: 'review_release',
+      actor,
+      tsMs: this.payClock.nowMs(),
+    });
+    const released = await runVoidPhase(this.voidDeps({ releaseAllReviewHolds: true }), lotId);
+    if (released.status === 'busy') return 'busy';
+    await this.markReleasedHolds(released.journal);
+    await this.finishBridge(await this.room(auctionId), auctionId, released.journal);
+    return 'released';
+  }
+
   reconcile(auctionId: AuctionId): Promise<ReconcileReport> {
     return reconcile(
       {
@@ -732,9 +762,11 @@ class Service implements AuctionService, SettlePort {
   ): Promise<boolean> {
     if (journal === null) return hammeredEngine(room) !== undefined && !room.isDone;
     if (!TERMINAL.has(journal.state) || !room.isDone) return true;
+    // A review keeps some holds on purpose (R8-S06): the same set the release uses, so a
+    // kept hold does not rerun the settlement and a hold the release must free does
+    // (R11-O01, R11-O04). The next candidates leave the set once the review is old.
     const keep =
-      journal.state === 'FAILED_NEEDS_REVIEW' ? keptOnReview(journal) : new Set<string>();
-    // A review keeps the winner's and the unresolved candidate's hold on purpose (R8-S06).
+      journal.state === 'FAILED_NEEDS_REVIEW' ? this.reviewKeep(journal) : new Set<string>();
     return (await this.deps.holds.listByAuction(auctionId)).some(
       (h) => h.status === 'HELD' && !keep.has(h.holdId),
     );
@@ -799,7 +831,7 @@ class Service implements AuctionService, SettlePort {
     if (TERMINAL.has(journal.state)) {
       // A process that died after the journal ended but before the room heard the final
       // report: finish the engine side and send it. Repeated reports are dropped by rev.
-      if (journal.state === 'FAILED_NEEDS_REVIEW') await this.releaseOnReview(journal);
+      if (journal.state === 'FAILED_NEEDS_REVIEW') journal = await this.releaseOnReview(journal);
       // A buyer who approved after the plan was cut has a live hold the journal does not know.
       await this.markReleasedHolds(journal);
       const open = await this.releaseSpares(journal);
@@ -827,9 +859,10 @@ class Service implements AuctionService, SettlePort {
     );
     if (captured.status === 'busy') return 'again';
     if (captured.status === 'failed') {
-      // Nobody can be charged until an operator decides; the other bidders' money is freed now.
-      await this.releaseOnReview(captured.journal);
-      await this.finishBridge(room, auctionId, captured.journal);
+      // Nobody can be charged until an operator decides; the holds the review does not keep
+      // are freed now.
+      const reviewed = await this.releaseOnReview(captured.journal);
+      await this.finishBridge(room, auctionId, reviewed);
       return 'done';
     }
     await this.report(room, captured.journal);
@@ -837,24 +870,7 @@ class Service implements AuctionService, SettlePort {
     if (captured.status === 'captured') await this.markCaptured(captured.journal);
     await this.boundary('after:capture-phase');
 
-    const released = await runVoidPhase(
-      {
-        journals: this.deps.journals,
-        gateway: this.gateway,
-        audit: this.deps.audit,
-        clock: this.payClock,
-        owner: this.owner,
-        boundary: (label) => this.boundary(label),
-        ...(this.deps.metrics !== undefined ? { metrics: this.deps.metrics } : {}),
-        ...(this.deps.voidConcurrency !== undefined
-          ? { voidConcurrency: this.deps.voidConcurrency }
-          : {}),
-        ...(this.deps.maxVoidResumes !== undefined
-          ? { maxVoidResumes: this.deps.maxVoidResumes }
-          : {}),
-      },
-      lotId,
-    );
+    const released = await runVoidPhase(this.voidDeps(), lotId);
     if (released.status === 'busy') return 'again';
     await this.markReleasedHolds(released.journal);
     if (released.status === 'failed') {
@@ -879,17 +895,56 @@ class Service implements AuctionService, SettlePort {
     return voidSpareHolds({ gateway: this.gateway, holds: this.deps.holds }, journal, keep);
   }
 
+  /** The payments void phase as the service runs it: normal settlements and review releases. */
+  private voidDeps(extra: Pick<VoidDeps, 'releaseAllReviewHolds'> = {}): VoidDeps {
+    return {
+      journals: this.deps.journals,
+      gateway: this.gateway,
+      audit: this.deps.audit,
+      clock: this.payClock,
+      owner: this.owner,
+      boundary: (label) => this.boundary(label),
+      ...(this.deps.metrics !== undefined ? { metrics: this.deps.metrics } : {}),
+      ...(this.deps.voidConcurrency !== undefined
+        ? { voidConcurrency: this.deps.voidConcurrency }
+        : {}),
+      ...(this.deps.maxVoidResumes !== undefined
+        ? { maxVoidResumes: this.deps.maxVoidResumes }
+        : {}),
+      ...(this.deps.reviewHoldMaxAgeMs !== undefined
+        ? { reviewHoldMaxAgeMs: this.deps.reviewHoldMaxAgeMs }
+        : {}),
+      ...extra,
+    };
+  }
+
+  /** The holds a settlement in review keeps live now (payments `reviewKeepHolds`). */
+  private reviewKeep(journal: Journal): Set<string> {
+    return reviewKeepHolds(journal, {
+      nowMs: this.payClock.nowMs(),
+      reviewHoldMaxAgeMs: this.deps.reviewHoldMaxAgeMs,
+    });
+  }
+
   /**
-   * A settlement in review never reaches the void phase. Every hold except the one whose
-   * capture is unresolved is released, so no bidder's money stays blocked until expiry.
+   * A settlement in review releases the holds it does not keep through the payments void
+   * phase, so this service and the payments package use one keep-set (`reviewKeepHolds`;
+   * R9-M04, R11-O01, R11-O04): the winner's hold, the hold of a capture in doubt and, for a
+   * review raised in the capture phase, the next candidates' holds until the review is
+   * `reviewHoldMaxAgeMs` old. Every other hold of the journal is voided after a truth read,
+   * so no bidder's money stays blocked until expiry. Holds outside the journal are left to
+   * `releaseSpares`. Returns the journal as the release left it.
    */
-  private async releaseOnReview(journal: Journal): Promise<void> {
-    const keep = keptOnReview(journal);
+  private async releaseOnReview(journal: Journal): Promise<Journal> {
+    let latest = journal;
     try {
-      await voidSpareHolds({ gateway: this.gateway, holds: this.deps.holds }, journal, keep);
+      const released = await runVoidPhase(this.voidDeps(), journal.auctionId);
+      if (released.status !== 'busy') latest = released.journal;
     } catch (e) {
       this.deps.onError?.(journal.auctionId, e);
     }
+    await this.markReleasedHolds(latest);
+    return latest;
   }
 
   /** The ledger holds every command of the room engine, then `synced` is set for this process. */
