@@ -33,7 +33,8 @@ async function checkMissingVariable() {
   const { child, out } = run({ PATH: process.env.PATH ?? '' });
   const code = await new Promise((r) => child.once('exit', r));
   if (code !== 78) throw new Error(`expected exit 78 without configuration, got ${code}`);
-  if (!out.text.includes('TOKEN_SECRET')) throw new Error('exit 78 message does not name TOKEN_SECRET');
+  if (!out.text.includes('TOKEN_SECRET'))
+    throw new Error('exit 78 message does not name TOKEN_SECRET');
   console.log('ok: missing configuration exits 78 and names the variable');
 }
 
