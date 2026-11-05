@@ -6,12 +6,12 @@ A gate without evidence reads NOT RUN. PASS, PARTIAL and FAIL need an Evidence l
 ## G1: partial capture and remainder release
 
 Status: PASS
-Run date / by: 2026-11-04 by harshbhx
+Run date / by: 2026-11-04 by harshbhx (wallet); 2026-11-05 by harshbhx (card, run G1-20261105T123116Z)
 Question: after authorize 500.00 and capture 350.00 with final_capture=true, is the 150.00 remainder released or still active?
-Setup: sandbox, wallet buyer only (no passwords recorded), script version 7e83b05.
+Setup: sandbox, wallet buyer (script version 7e83b05) and card buyer (run G1-20261105T123116Z, script version 3a1fe9c); no passwords or card numbers recorded.
 Requests: create order (AUTHORIZE 500.00), buyer approval, authorize, capture 350.00 with final_capture, read the authorization and order, then an explicit void of the remainder.
-Observed: after the final capture the authorization reads CAPTURED and the order COMPLETED, so the remainder is released without a void. An explicit void afterwards answers HTTP 422 PREVIOUSLY_CAPTURED. The capture accepted `invoice_id` and the order lists it on the capture.
-Verdict: remainder released (decision A).
+Observed: after the final capture the authorization reads CAPTURED and the order COMPLETED for both buyers, so the remainder is released without a void. An explicit void afterwards answers HTTP 422 PREVIOUSLY_CAPTURED for both. The wallet capture accepted `invoice_id` and the order lists it on the capture.
+Verdict: remainder released for wallet and card (decision A).
 
 | id                                               | expected             | actual                                                                         | verdict  |
 | ------------------------------------------------ | -------------------- | ------------------------------------------------------------------------------ | -------- |
@@ -19,12 +19,17 @@ Verdict: remainder released (decision A).
 | G1.6 wallet remainder status after final capture | open or released     | authorization CAPTURED, order COMPLETED: released                              | observed |
 | G1.7 wallet explicit void of the remainder       | accepted or rejected | HTTP 422 UNPROCESSABLE_ENTITY PREVIOUSLY_CAPTURED, authorization then CAPTURED | observed |
 | G1.8 wallet decision                             | A, B or C            | A                                                                              | observed |
+| G1.5 card capture 350 with final_capture         | accepted             | HTTP 201 COMPLETED                                                             | observed |
+| G1.6 card remainder status after final capture   | open or released     | authorization CAPTURED, order COMPLETED: released                              | observed |
+| G1.7 card explicit void of the remainder         | accepted or rejected | HTTP 422 UNPROCESSABLE_ENTITY PREVIOUSLY_CAPTURED, authorization then CAPTURED | observed |
+| G1.8 card decision                               | A, B or C            | A                                                                              | observed |
 
-Decision: PASS-WITH-FALLBACK (wallet only; guest/card G2 pending)
-Fallback if FAIL: wallet buyers only, card untested (R-PAY-037).
+Decision: PASS (wallet and card)
+Fallback if FAIL: wallet buyers only, card path off (R-PAY-037).
 Evidence: docs/evidence/G1/G1-20261104T231047Z.jsonl (sha256 8ac39be0454bcab5c7e2764d87d1d09566ac384681fc3e361285f78c70422bb8)
+Evidence: docs/evidence/G1/G1-20261105T123116Z.jsonl (sha256 2c8ff2e139b0ecf66a1a273761ff8031f385f199f44dd0d2111cc54b10b7d4cb)
 Links: spec tags flipped: R-PAY-059, R-PAY-051.
-Scope: wallet buyer only. The card buyer was not tested, so the result does not cover card buyers (R-PAY-037); G2 stays NOT RUN.
+Scope: sandbox wallet and card buyers. Guest checkout capture was not part of this run.
 Saga: a void refused with PREVIOUSLY_CAPTURED on the winner's remainder is treated as released (packages/payments/src/errorMap.ts, saga/remainder.ts).
 
 ## G2: card and guest AUTHORIZE
@@ -47,7 +52,7 @@ Decision: PASS
 Fallback if FAIL: restrict registration to wallet buyers.
 Evidence: docs/evidence/G2/G2-20261105T115228Z.jsonl (sha256 2a0e9ee97fbecfa3419647a93bf39a77369be82c7a5e624827fe0e1ebcfffdfe)
 Links: spec tags flipped: R-PAY-036, R-PAY-037. Flag: g2_card_authorize true.
-Scope: AUTHORIZE only. Capture and void for a card buyer were not part of this run, so the G1 remainder result still covers wallet buyers only (R-PAY-037 governs advertising card checkout, not capture).
+Scope: AUTHORIZE only. Capture and void for a card buyer are covered by G1 (run G1-20261105T123116Z).
 
 ## G3: honor period versus validity and reauthorize
 
