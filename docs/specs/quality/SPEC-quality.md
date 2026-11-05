@@ -660,8 +660,8 @@ Common setup: fake PayPal server on a random port, seeded clock, three browsers 
 
 Tagged `@sandbox`; each uses redacted transcripts as artifacts. Where behaviour is not yet proven the spec reads `UNVERIFIED (gate Gn)` and its assertion is "record observed value", closing the gate rather than failing.
 
-- T-QA-050 R1 authorize 500.00, capture 350.00 with `final_capture=true`; GET authorization status; assert captured equals 35000 and record whether remainder is released (UNVERIFIED gate G1). Fallback if not released: explicit void of the remainder, assert voided.
-- T-QA-051 R2 card/guest buyer AUTHORIZE flow (UNVERIFIED gate G2); fallback wallet buyers only; spec records which path ran.
+- T-QA-050 R1 authorize 500.00, capture 350.00 with `final_capture=true`; GET authorization status; assert captured equals 35000 and record whether remainder is released (observed in G1: released for wallet and card). Fallback if not released: explicit void of the remainder, assert voided.
+- T-QA-051 R2 card/guest buyer AUTHORIZE flow (verified in G2 for wallet and guest card); fallback wallet buyers only; spec records which path ran.
 - T-QA-052 R3 reauthorize path after simulated delay (UNVERIFIED gate G3); if sandbox cannot age authorizations, record `inconclusive` and rely on fake scenario S08.
 - T-QA-053 R4 real webhook delivery to staging, signature verified (UNVERIFIED gate G4): assert event id recorded and dedupe works on a replay.
 - T-QA-054 R5 idempotent capture: send same capture twice with one `PayPal-Request-Id`; assert one capture.
