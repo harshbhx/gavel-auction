@@ -1,3 +1,74 @@
 {
-  "waivers": []
+  "waivers": [
+    {
+      "advisory": "GHSA-5gmw-xhrv-c9v3",
+      "reason": "tinypool worker-option prototype pollution; Dev/test-only tooling, never in the hosted runtime; fix needs a major bump (vitest 4, vite 7+) that CI has not proven; test runner is not exposed (no vitest UI/API server, no vite dev server on a shared network). Patched tinypool arrives with vitest upgrade.",
+      "expires": "2027-02-01"
+    },
+    {
+      "advisory": "GHSA-85c8-ppgw-ccpr",
+      "reason": "tinypool worker-option prototype pollution; Dev/test-only tooling, never in the hosted runtime; fix needs a major bump (vitest 4, vite 7+) that CI has not proven; test runner is not exposed (no vitest UI/API server, no vite dev server on a shared network). Patched tinypool arrives with vitest upgrade.",
+      "expires": "2027-02-01"
+    },
+    {
+      "advisory": "GHSA-9crc-q9x8-hgqq",
+      "reason": "vitest API/UI server or mocker issue; Dev/test-only tooling, never in the hosted runtime; fix needs a major bump (vitest 4, vite 7+) that CI has not proven; test runner is not exposed (no vitest UI/API server, no vite dev server on a shared network).",
+      "expires": "2027-02-01"
+    },
+    {
+      "advisory": "GHSA-5xrq-8626-4rwp",
+      "reason": "vitest API/UI server or mocker issue; Dev/test-only tooling, never in the hosted runtime; fix needs a major bump (vitest 4, vite 7+) that CI has not proven; test runner is not exposed (no vitest UI/API server, no vite dev server on a shared network).",
+      "expires": "2027-02-01"
+    },
+    {
+      "advisory": "GHSA-82fw-gwwq-j7x9",
+      "reason": "vitest API/UI server or mocker issue; Dev/test-only tooling, never in the hosted runtime; fix needs a major bump (vitest 4, vite 7+) that CI has not proven; test runner is not exposed (no vitest UI/API server, no vite dev server on a shared network).",
+      "expires": "2027-02-01"
+    },
+    {
+      "advisory": "GHSA-4w7w-66w2-5vf9",
+      "reason": "vite dev-server or launch-editor issue; Dev/test-only tooling, never in the hosted runtime; fix needs a major bump (vitest 4, vite 7+) that CI has not proven; test runner is not exposed (no vitest UI/API server, no vite dev server on a shared network). Production builds ship static assets only.",
+      "expires": "2027-02-01"
+    },
+    {
+      "advisory": "GHSA-v6wh-96g9-6wx3",
+      "reason": "vite dev-server or launch-editor issue; Dev/test-only tooling, never in the hosted runtime; fix needs a major bump (vitest 4, vite 7+) that CI has not proven; test runner is not exposed (no vitest UI/API server, no vite dev server on a shared network). Production builds ship static assets only.",
+      "expires": "2027-02-01"
+    },
+    {
+      "advisory": "GHSA-698v-4r3x-3vcv",
+      "reason": "vite dev-server or launch-editor issue; Dev/test-only tooling, never in the hosted runtime; fix needs a major bump (vitest 4, vite 7+) that CI has not proven; test runner is not exposed (no vitest UI/API server, no vite dev server on a shared network). Production builds ship static assets only.",
+      "expires": "2027-02-01"
+    },
+    {
+      "advisory": "GHSA-r825-w8mm-5pxw",
+      "reason": "vite dev-server or launch-editor issue; Dev/test-only tooling, never in the hosted runtime; fix needs a major bump (vitest 4, vite 7+) that CI has not proven; test runner is not exposed (no vitest UI/API server, no vite dev server on a shared network). Production builds ship static assets only.",
+      "expires": "2027-02-01"
+    },
+    {
+      "advisory": "GHSA-587h-7wmj-h5pm",
+      "reason": "vite dev-server or launch-editor issue; Dev/test-only tooling, never in the hosted runtime; fix needs a major bump (vitest 4, vite 7+) that CI has not proven; test runner is not exposed (no vitest UI/API server, no vite dev server on a shared network). Production builds ship static assets only.",
+      "expires": "2027-02-01"
+    },
+    {
+      "advisory": "GHSA-9jrq-w75r-8gcw",
+      "reason": "vite dev-server or launch-editor issue; Dev/test-only tooling, never in the hosted runtime; fix needs a major bump (vitest 4, vite 7+) that CI has not proven; test runner is not exposed (no vitest UI/API server, no vite dev server on a shared network). Production builds ship static assets only.",
+      "expires": "2027-02-01"
+    },
+    {
+      "advisory": "GHSA-rq7h-c2jc-7f22",
+      "reason": "vite dev-server or launch-editor issue; Dev/test-only tooling, never in the hosted runtime; fix needs a major bump (vitest 4, vite 7+) that CI has not proven; test runner is not exposed (no vitest UI/API server, no vite dev server on a shared network). Production builds ship static assets only.",
+      "expires": "2027-02-01"
+    },
+    {
+      "advisory": "GHSA-fx2h-pf6j-xcff",
+      "reason": "vite dev-server or launch-editor issue; Dev/test-only tooling, never in the hosted runtime; fix needs a major bump (vitest 4, vite 7+) that CI has not proven; test runner is not exposed (no vitest UI/API server, no vite dev server on a shared network). Production builds ship static assets only.",
+      "expires": "2027-02-01"
+    },
+    {
+      "advisory": "GHSA-mrhx-c7xc-m3w5",
+      "reason": "zod memory exhaustion on oversized constrained collections; no 3.x fix exists (needs zod 4, a breaking API change). Mitigated: HTTP bodies are capped at 64 KiB (MAX_BODY_BYTES in packages/server/src/http/app.ts). Revisit with a zod 4 migration.",
+      "expires": "2027-02-01"
+    }
+  ]
 }
