@@ -8,7 +8,7 @@ export const REDACTED = '[redacted]';
 
 /** Keys whose values are never logged, matched case-insensitively. */
 const SECRET_KEY =
-  /token|secret|authorization|password|passwd|cookie|api[-_]?key|signature|bearer|admin|key|dsn|database[-_]?url|credential/i;
+  /token|secret|authorization|password|passwd|cookie|api[-_]?key|signature|bearer|admin|key|dsn|database[-_]?url|credential|client[-_]?id|webhook/i;
 
 /** True when a field name must never be logged; config redaction uses the same list (R-RT-132). */
 export function isSecretKey(name: string): boolean {

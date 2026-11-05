@@ -129,6 +129,8 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
+      - name: Fail on tracked node_modules paths
+        run: node scripts/check-no-tracked-node-modules.mjs
       - name: Scan commits for secrets
         uses: gitleaks/gitleaks-action@83373cf2f8c4db6e24b41c1a9b086bb9619e9cd3
         env:
@@ -145,8 +147,8 @@ jobs:
           DEEPGRAM_API_KEY: canary-deepgram-api-key-4f9c2a71
           GROQ_API_KEY: canary-groq-api-key-4f9c2a71
           LLM_API_KEY: canary-llm-api-key-4f9c2a71
-          ADMIN_TOKEN: canary-admin-token-4f9c2a71
-          AUCTIONEER_TOKEN_SECRET: canary-auctioneer-token-4f9c2a71
+          ADMIN_KEY: canary-admin-key-4f9c2a71
+          TOKEN_SECRET: canary-token-secret-4f9c2a71
           DATABASE_URL: canary-database-url-4f9c2a71
   ascii-banned:
     runs-on: ubuntu-latest
