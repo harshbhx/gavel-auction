@@ -95,6 +95,12 @@ CASES = [
  ("non_bid", "we are at two fifty now", "7", None, N),   # auctioneer echo: should NOT be a bid
  ("non_bid", "lot number seven please", None, None, N),
  ("non_bid", "my wife says no", "7", None, N),
+ ("non_bid", "lot number twelve who'll give me five hundred", "6", None, N),
+ ("non_bid", "item number three four hundred", null, None, N),
+ ("non_bid", "paddle twelve do i hear five hundred and fifty", null, None, N),
+ ("non_bid", "paddle nine can I get seven hundred", null, None, N),
+ ("non_bid", "who will give me four fifty", "6", None, N),
+ ("non_bid", "page number two fifty", null, None, N),
 ]
 
 # HELD-OUT set: never used to tune the parser; kept separate from CASES for evaluation.

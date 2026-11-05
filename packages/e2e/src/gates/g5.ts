@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { parseUtterance } from '@gavel/voice';
 
 // Gate G5 harness (R-QA-029, T-QA-059): 20 noisy bid utterances go through a live speech-to-text
@@ -174,13 +175,51 @@ export interface G5Deps {
   utterances?: readonly G5Utterance[];
 }
 
+export type G5Provider = 'deepgram' | 'groq';
+const KEY_VARS: Record<G5Provider, string> = {
+  deepgram: 'DEEPGRAM_API_KEY',
+  groq: 'GROQ_API_KEY',
+};
+
 export type G5Run =
   | { status: 'skipped'; reason: string }
-  | { status: 'done'; rows: G5Row[]; summary: G5Summary };
+  | { status: 'done'; provider?: G5Provider; rows: G5Row[]; summary: G5Summary };
 
-export async function runG5(deps: G5Deps): Promise<G5Run> {
-  const key = deps.env['DEEPGRAM_API_KEY'] ?? '';
-  if (key.trim() === '') return { status: 'skipped', reason: 'DEEPGRAM_API_KEY is not set' };
+type G5Done = Extract<G5Run, { status: 'done' }>;
+
+export const GROQ_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
+export const GROQ_MODEL = 'whisper-large-v3-turbo';
+
+export type G5FormFetch = (
+  url: string,
+  init: { method: string; headers: Record<string, string>; body: FormData },
+) => Promise<{ status: number; json(): Promise<unknown> }>;
+
+/** Transcribes one WAV with the Groq endpoint and model the product uses. The key only goes in the header. */
+export async function groqTranscribe(
+  audio: Uint8Array,
+  key: string,
+  doFetch: G5FormFetch,
+): Promise<string> {
+  const form = new FormData();
+  form.append('file', new Blob([audio], { type: 'audio/wav' }), 'audio.wav');
+  form.append('model', GROQ_MODEL);
+  form.append('response_format', 'json');
+  form.append('language', 'en');
+  const res = await doFetch(GROQ_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}` },
+    body: form,
+  });
+  if (res.status !== 200) throw new Error(`speech-to-text answered ${res.status}`);
+  const body = (await res.json()) as { text?: unknown };
+  return typeof body.text === 'string' ? body.text : '';
+}
+
+export async function runG5(deps: G5Deps, provider: G5Provider = 'deepgram'): Promise<G5Run> {
+  const keyVar = KEY_VARS[provider];
+  const key = deps.env[keyVar] ?? '';
+  if (key.trim() === '') return { status: 'skipped', reason: `${keyVar} is not set` };
   const set = deps.utterances ?? G5_UTTERANCES;
   const audio = new Map<string, Uint8Array>();
   for (const u of set) {
@@ -206,19 +245,52 @@ export async function runG5(deps: G5Deps): Promise<G5Run> {
       latencyMs,
     });
   }
-  return { status: 'done', rows, summary: summarize(rows) };
+  return { status: 'done', provider, rows, summary: summarize(rows) };
 }
 
 const pct = (x: number): string => x.toFixed(3);
 
+const providerName = (run: G5Done): string => (run.provider === 'groq' ? 'Groq' : 'Deepgram');
+
+export interface G5Evidence {
+  /** Repo-relative path the file is committed at. */
+  path: string;
+  sha256: string;
+}
+
+/** Redacted evidence: per-utterance noise, outcome and latency. No audio and no transcript text. */
+export function renderEvidenceFile(run: G5Done, date: string): string {
+  const out = {
+    gate: 'G5',
+    date,
+    provider: run.provider ?? 'deepgram',
+    summary: run.summary,
+    rows: run.rows.map((r) => ({
+      id: r.id,
+      noise: r.noise,
+      outcome: r.outcome,
+      latencyMs: r.latencyMs,
+    })),
+  };
+  return `${JSON.stringify(out, null, 2)}\n`;
+}
+
+export function evidenceName(run: G5Done, date: string): string {
+  return `g5-${run.provider ?? 'deepgram'}-${date}.json`;
+}
+
+export function sha256Hex(text: string): string {
+  return createHash('sha256').update(text).digest('hex');
+}
+
 /** The G5-live subsection: the accuracy table per noise condition and the totals. */
-export function renderG5Block(run: Extract<G5Run, { status: 'done' }>, date: string): string {
+export function renderG5Block(run: G5Done, date: string): string {
   const { rows, summary: s } = run;
   const noises = [...new Set(rows.map((r) => r.noise))].sort();
   const lines = [
     '### G5-live: live speech-to-text on noisy bids',
     '',
-    `Run ${date}. ${s.n} recorded noisy utterances through the live provider and the rule parser.`,
+    `Run ${date}. ${s.n} recorded noisy utterances through live ${providerName(run)} and the rule parser.`,
     'No transcript text is kept here; only the outcome per utterance.',
     '',
     '| noise | n | exact | confirm | wrong accept | none |',
@@ -239,8 +311,9 @@ export function renderG5Block(run: Extract<G5Run, { status: 'done' }>, date: str
 /** Sets the G5 header fields and swaps in the G5-live subsection. Other sections are untouched. */
 export function applyG5ToGates(
   md: string,
-  run: Extract<G5Run, { status: 'done' }>,
+  run: G5Done,
   date: string,
+  evidenceFile?: G5Evidence,
 ): string {
   const start = md.indexOf('## G5:');
   if (start < 0) throw new Error('GATES.md has no G5 section');
@@ -253,13 +326,20 @@ export function applyG5ToGates(
   };
   // A status the docs check accepts: the verdict, never the old free-form RUN.
   set('Status', s.verdict);
-  const evidence =
-    'G5-live table in this section (Deepgram prerecorded endpoint only, not the chunked Groq path the product runs)';
+  const scope =
+    run.provider === 'groq'
+      ? 'Groq whole-file requests, not the chunked streaming path'
+      : 'Deepgram prerecorded endpoint only, not the Groq path the product runs';
+  const file =
+    evidenceFile === undefined
+      ? ''
+      : `redacted evidence file ${evidenceFile.path} (sha256 ${evidenceFile.sha256}); `;
+  const evidence = `${file}G5-live table in this section (${scope})`;
   section = /^Evidence:/m.test(section)
     ? section.replace(/^Evidence:.*$/m, `Evidence: ${evidence}`)
     : section.replace(/^(Status:.*)$/m, `$1\nEvidence: ${evidence}`);
   set('Run date / by', `${date} / g5 harness`);
-  set('Setup', `${s.n} noisy recordings, live Deepgram, rule parser`);
+  set('Setup', `${s.n} noisy recordings, live ${providerName(run)}, rule parser`);
   set(
     'Observed',
     `exact ${pct(s.exactRate)}, confirm ${pct(s.confirmRate)}, wrong accept ${pct(s.wrongAcceptRate)}`,
