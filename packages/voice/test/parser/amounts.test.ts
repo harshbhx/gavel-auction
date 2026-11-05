@@ -74,6 +74,8 @@ describe('T-VOX-039 currency (R-VOX-039)', () => {
     for (const [text, cents] of [
       ['five dollars fifty cents', 550],
       ['350 dollars 25 cents', 35025],
+      ['paddle seven three hundred dollars and fifty cents', 30050],
+      ['paddle seven five hundred bucks and twenty five cents', 50025],
     ] as const) {
       const r = parseBid(text, ctx);
       expect(r.amountCents).toBe(cents);

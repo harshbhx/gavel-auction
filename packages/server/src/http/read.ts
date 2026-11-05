@@ -1,8 +1,9 @@
 import { GavelError, type AuctionId } from '@gavel/shared';
 import { z } from 'zod';
-import { authorize, redactEventForExport, redactForViewer } from '../auth/authorize';
+import { authorize, redactForViewer } from '../auth/authorize';
 import { auctionIdOf, authenticate, json, parseBody, type Ctx, type HttpApp } from './app';
 import { roomFor, snapshotFor } from './auctions';
+import { redactPersonal } from './export';
 
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 1000;
@@ -36,8 +37,10 @@ export function mountRead(app: HttpApp): void {
     await roomFor(c.deps, auctionId);
     const events = await c.deps.store.readEvents(auctionId as AuctionId, after + 1, limit);
     const out = events.map((e) => {
-      const exported = redactEventForExport(role, e);
-      return role === 'auctioneer' ? exported : redactForViewer(role, undefined, exported);
+      // Never more than the NDJSON export gives the same role: no ceilings, transcripts,
+      // hold references or auctioneer subject.
+      const personal = redactPersonal(role, e);
+      return role === 'auctioneer' ? personal : redactForViewer(role, undefined, personal);
     });
     const last = events[events.length - 1];
     return json(200, { events: out, next: last === undefined ? after : last.seq });

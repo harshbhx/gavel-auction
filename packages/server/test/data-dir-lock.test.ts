@@ -172,4 +172,14 @@ describe('data directory lock across hosts (R8-S02)', () => {
       }),
     ).toThrow(/in use by process 1 on a1b2/);
   });
+
+  it('refuses to start while another starter holds the takeover guard (R12-S13)', () => {
+    const dir = fresh();
+    writeFileSync(join(dir, LOCK_FILE), JSON.stringify({ pid: 2147483646, host: 'x', start: 1 }));
+    writeFileSync(join(dir, `${LOCK_FILE}.takeover`), 'busy');
+    expect(() =>
+      acquireDataDirLock(dir, { pid: 1, host: 'x', heartbeatMs: 0, isAlive: () => false }),
+    ).toThrow(/could not lock/);
+    expect(readFileSync(join(dir, LOCK_FILE), 'utf8')).toContain('2147483646');
+  });
 });

@@ -14,7 +14,9 @@ PUBLIC_URL=http://localhost:8080 TOKEN_SECRET=dev-token-secret ADMIN_KEY=dev-adm
 
 The process validates its environment first and exits with every problem listed if a value is missing or invalid. On success it prints one JSON line, `{"msg":"listening","port":...}`. `SIGTERM` and `SIGINT` stop accepting connections and exit.
 
-Health: `GET /healthz` (process is up), `GET /readyz` (stores and payments are ready), `GET /metrics` (JSON snapshot).
+Health: `GET /healthz` (process is up), `GET /readyz` (the room store answers a ping; payments are not probed), `GET /metrics` (JSON snapshot).
+
+The booted process serves the ops, webhook and admin routes (`/admin/export?auction=<id>`, `/admin/replay-bundle`, `/warmup`, `/metrics`, `/ops/*`, `/webhooks/paypal`). The auction, invite, join, control, read and token routes are not mounted by `main.ts` yet (#722). Every route but `/healthz`, `/readyz` and the webhook is limited per client by `RATE_HTTP_*`; set `TRUSTED_PROXY_HOPS` to the number of proxies in front of the host (1 on Render) so the client address is read from `x-forwarded-for`.
 
 ## Configure
 
@@ -45,7 +47,7 @@ With `PAYMENTS=sandbox` the payments layer also reads `PAYPAL_CLIENT_ID`, `PAYPA
 2. Set `TOKEN_SECRET` to the new value and restart. Tokens signed with either secret are accepted until the deadline.
 3. After the deadline remove the two `PREVIOUS` settings and restart.
 4. Rotate `ADMIN_KEY` by changing it and restarting; rotate PayPal credentials in the PayPal developer dashboard first, then update the environment.
-5. A leaked auctioneer link is revoked with the auctioneer rotate endpoint, which issues a new link and closes sockets that used the old one.
+5. A leaked auctioneer link is revoked with the auctioneer rotate endpoint, which issues a new link and raises a per-auction floor so every earlier auctioneer token stops working on HTTP and on socket join (live sockets are not closed). Rotate, `auctioneer/revoke-all` and `auctioneer/revoke` need the admin key.
 
 ## Demo reset
 
@@ -53,14 +55,14 @@ Only when `DEMO_MODE=1` (never in production): `POST /api/demo/reset` clears dem
 
 ## Troubleshooting
 
-| Symptom                                       | Check                                                                                       |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Exits at start with a list of problems        | Each line names the setting; production adds length, store, payments and demo rules above   |
-| `fake payments are not allowed in production` | Set `PAYMENTS=sandbox` and the PayPal secrets, or run with `NODE_ENV=development`           |
-| `/readyz` fails                               | Store path or database unreachable, or PayPal credentials rejected; read the JSON log lines |
-| Data gone after restart                       | `STORE=memory` keeps nothing; use `STORE=file` with `DATA_DIR` on a persistent disk         |
-| Settlement stopped for review                 | PayPal's answer was unknown; the journal flags it instead of guessing. See `docs/DEMO.md` 5 |
-| Webhooks rejected                             | `PAYPAL_WEBHOOK_ID` must match the sandbox webhook; signatures are verified                 |
+| Symptom                                       | Check                                                                                                 |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Exits at start with a list of problems        | Each line names the setting; production adds length, store, payments and demo rules above             |
+| `fake payments are not allowed in production` | Set `PAYMENTS=sandbox` and the PayPal secrets, or run with `NODE_ENV=development`                     |
+| `/readyz` fails                               | Store path or database unreachable; read the JSON log lines (PayPal credentials are not checked here) |
+| Data gone after restart                       | `STORE=memory` keeps nothing; use `STORE=file` with `DATA_DIR` on a persistent disk                   |
+| Settlement stopped for review                 | PayPal's answer was unknown; the journal flags it instead of guessing. See `docs/DEMO.md` 5           |
+| Webhooks rejected                             | `PAYPAL_WEBHOOK_ID` must match the sandbox webhook; signatures are verified                           |
 
 ## Shared fixtures
 

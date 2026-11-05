@@ -147,4 +147,6 @@ jobs:
         run: |
           overall=$(node -e "console.log(JSON.parse(require('fs').readFileSync('packages/e2e/report/sandbox.json','utf8')).overall)")
           echo "overall: $overall"
+          # A crashed spec leaves no result file, which the report counts as fail. An overall
+          # of inconclusive (transient PayPal status) stays green.
           if [ "$overall" = "fail" ]; then exit 1; fi

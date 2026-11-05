@@ -40,10 +40,15 @@ function confirmFrom(
   reason: ParseResult['reason'],
   source: ParseResult['source'],
 ): ParseResult {
+  // With several readings no single one speaks for the parse: the amount stays null so the
+  // validator checks every candidate (R7-02) instead of only the lowest.
+  const many = candidates.length > 1;
+  const first = candidates[0];
+  const sameWho = candidates.every((c) => sameBidder(c.bidder, first?.bidder ?? null));
   return {
     status: 'confirm',
-    bidder: candidates[0]?.bidder ?? null,
-    amountCents: candidates[0]?.amountCents ?? null,
+    bidder: !many || sameWho ? (first?.bidder ?? null) : rules.bidder,
+    amountCents: many ? null : (first?.amountCents ?? null),
     reason,
     candidates,
     flags: rules.flags,
