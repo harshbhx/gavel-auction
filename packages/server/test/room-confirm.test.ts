@@ -15,9 +15,20 @@ describe('needsConfirm (R-RT-045)', () => {
     expect(needsConfirm(voice(mid, 100, { confidence: 0.62 }), 0.85)).toBe(true);
     expect(needsConfirm(voice(mid, 100, { confidence: 0.85 }), 0.85)).toBe(false);
     expect(needsConfirm(voice(mid, 100, { confidence: 0.99, ambiguous: true }), 0.85)).toBe(true);
-    expect(needsConfirm({ ...voice(mid, 100, { confidence: 0.1 }), source: 'qr' }, 0.85)).toBe(
-      false,
-    );
+    expect(needsConfirm({ v: 1, t: 'bid', mid, amount: 100, source: 'qr' }, 0.85)).toBe(false);
+  });
+
+  it('fails closed: no confidence, or a qr label on a spoken bid, still asks (INTEGRATION-RT-12)', () => {
+    expect(needsConfirm(voice(mid, 100), 0.85)).toBe(true);
+    expect(
+      needsConfirm(
+        { ...voice(mid, 100, { confidence: 0.1, transcript: 'um' }), source: 'qr' },
+        0.85,
+      ),
+    ).toBe(true);
+    expect(
+      needsConfirm({ v: 1, t: 'bid', mid, amount: 100, source: 'manual', transcript: 'x' }, 0.85),
+    ).toBe(true);
   });
 
   it('keeps one held bid per bidder and forgets a dropped one', () => {
