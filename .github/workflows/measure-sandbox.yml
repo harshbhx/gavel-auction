@@ -1,0 +1,82 @@
+name: measure-sandbox
+# Latency of the real PayPal sandbox (order, authorize, capture, void: p50 / p95 per call), on manual
+# dispatch only: gh workflow run measure-sandbox. A buyer must approve every order, so the run
+# drives the sandbox buyer in a browser (the approval itself is not timed). The cycle count is small
+# to respect the sandbox rate limits. The job runs in the `sandbox-nightly` environment; the
+# secrets are only passed through env. Without them the job ends green with a notice. The uploaded
+# artifact holds numbers only (counts, milliseconds, status counts).
+on:
+  workflow_dispatch:
+    inputs:
+      cycles:
+        description: 'Sequential cycles (1 to 50)'
+        required: false
+        default: '10'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  measure:
+    if: ${{ github.ref == 'refs/heads/main' && !github.event.repository.fork }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: sandbox-nightly
+    concurrency:
+      group: measure-sandbox
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Check which secrets exist
+        id: secrets
+        # Only the names of missing secrets are printed, never a value.
+        env:
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+        run: |
+          missing=""
+          for name in PAYPAL_CLIENT_ID PAYPAL_CLIENT_SECRET SANDBOX_BUYER_EMAIL SANDBOX_BUYER_PASSWORD; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Sandbox measurement skipped::Missing secrets:$missing"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install the browser
+        if: ${{ steps.secrets.outputs.present == 'true' }}
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.49.1
+          cd "$RUNNER_TEMP/pw"
+          npx playwright install --with-deps chromium
+      - name: Measure against the sandbox
+        if: ${{ steps.secrets.outputs.present == 'true' }}
+        env:
+          PAYPAL_ENV: sandbox
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          MEASURE_SANDBOX_CYCLES: ${{ inputs.cycles }}
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
+        run: npm run measure:sandbox -w @gavel/e2e -- --out "$RUNNER_TEMP/measure" | tee "$RUNNER_TEMP/measure.txt"
+      - name: Upload the numbers
+        if: ${{ steps.secrets.outputs.present == 'true' && always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: measure-sandbox
+          path: |
+            ${{ runner.temp }}/measure/measure-sandbox.json
+            ${{ runner.temp }}/measure/measure-sandbox.md
+          if-no-files-found: warn
+          retention-days: 30
