@@ -21,9 +21,12 @@ import { Receipt } from './screens/receipt/Receipt';
 import { Approve } from './screens/register/Approve';
 import { RegisterScreen, type RegistrationDraft } from './screens/register/RegisterScreen';
 import { ScreenView } from './screens/screen/ScreenView';
+import { ErrorBoundary } from './screens/states/ErrorBoundary';
+import { NotFound } from './screens/states/NotFound';
+import { TokenGate } from './screens/states/TokenGate';
 import { roomStore, useRoom } from './store/roomStore';
 import { summarizePending, type PendingSummary } from './store/localEvents';
-import { readAuctioneerToken } from './store/session';
+import { hasAuctioneerAccess, readAuctioneerToken } from './store/session';
 
 export interface AppProps {
   /** Starting path. Defaults to the browser location; tests pass their own. */
