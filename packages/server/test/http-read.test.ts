@@ -152,7 +152,9 @@ describe('snapshot and events (T-RT-076)', () => {
     expect(body.next).toBe(9);
     for (const e of body.events) {
       const withCeiling =
-        (e as { type: string }).type === 'bidder_registered' ? { ...(e as object), ceiling: 0 } : e;
+        (e as { type: string }).type === 'bidder_registered'
+          ? { ...(e as object), ceiling: 0, name: 'n', holdRef: 'h' }
+          : e;
       const parsed = RoomEventSchema.safeParse(withCeiling);
       expect(parsed.success).toBe(true);
       expect(JSON.stringify(e)).not.toContain('ceiling');

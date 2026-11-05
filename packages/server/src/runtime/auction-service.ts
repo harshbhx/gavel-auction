@@ -476,6 +476,17 @@ class Service implements AuctionService, SettlePort {
       }
       throw e;
     }
+    // A webhook may have denied, voided or expired the hold while the registration waited in
+    // the mailbox; onHoldStatus ignored it then because the room did not know the hold yet.
+    // Read it again and revoke now, before any bid can lean on a dead hold (R-ENG-044).
+    const after = await this.deps.holds.get(input.holdId);
+    if (after !== null && after.status !== 'HELD') {
+      const reason = revokeReasonFor(after.status);
+      if (reason !== null) {
+        await room.revokeBidder(input.bidderId, reason, after.holdId);
+        await this.rescheduleOpenJournal(input.auctionId);
+      }
+    }
   }
 
   /** Voids the hold of a refused registration; a failed void is reported, never masks the refusal. */
