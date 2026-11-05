@@ -58,6 +58,11 @@ export interface Connection {
 }
 
 /** The source and audit fields of a bid as the room records them, live and on replay. */
+/** What a mid is bound to: the amount and the effective source (manual for the auctioneer). */
+function bidDigest(amount: unknown, source: string): string {
+  return `${isCents(amount) ? amount : ''}|${source}`;
+}
+
 function bidMeta(conn: Connection, msg: BidMsg): BidMeta {
   if (conn.role === 'auctioneer') {
     const meta: BidMeta = {
@@ -146,7 +151,7 @@ export class Room {
   private engine: EnginePort | undefined;
   private lastState = 'OPEN';
   private roster = new Map<BidderId, RosterEntry>();
-  private replies = new Map<string, Reply>();
+  private replies = new Map<string, { reply: Reply; digest: string }>();
   private audit: AuditPayload[] = [];
   private readonly conns = new Map<ConnId, Connection>();
   private cancelTimer: CancelTimer | undefined;
@@ -350,6 +355,11 @@ export class Room {
   private async handleBid(conn: Connection, msg: BidMsg, bidderId: BidderId): Promise<void> {
     const key = `${bidderId}:${msg.mid}`;
     const prior = this.replies.get(key);
+    if (prior && prior.digest !== bidDigest(msg.amount, bidMeta(conn, msg).source)) {
+      // The same mid with a different amount or submitter is not a replay (R-RT-034).
+      this.sendError(conn, 'conflict');
+      return;
+    }
     if (prior) {
       // A replay returns the original reply and appends nothing (R-RT-034). The reply is
       // only repeated once the ledger holds the bid, so an acknowledgement is never ahead of it.
@@ -359,7 +369,7 @@ export class Room {
         this.sendError(conn, 'store_unavailable');
         return;
       }
-      this.send(conn, prior);
+      this.send(conn, prior.reply);
       return;
     }
     try {
@@ -427,7 +437,7 @@ export class Room {
     this.seq = seq;
     this.pushAudit(audit);
     const reply = this.replyFor(event);
-    if (reply) this.replies.set(key, reply);
+    if (reply) this.replies.set(key, { reply, digest: bidDigest(msg.amount, audit.source) });
     let durable = true;
     try {
       await this.makeDurable();
@@ -1153,7 +1163,10 @@ export class Room {
 
   private remember(event: Extract<RoomEvent, { type: 'bid_accepted' | 'bid_rejected' }>): void {
     const reply = this.replyFor(event);
-    if (reply) this.replies.set(`${event.bidderId}:${event.mid}`, reply);
+    if (reply) {
+      const digest = bidDigest(event.audit.parsedAmount, event.audit.source);
+      this.replies.set(`${event.bidderId}:${event.mid}`, { reply, digest });
+    }
     this.pushAudit(event.audit);
   }
 

@@ -584,4 +584,32 @@ describe('room close, roster hold state, duplicate mid, repeat registration', ()
     expect(hold(t.b1)).toBe('HELD');
     expect(hold(t.b2)).toBe('NONE');
   });
+
+  it('answers a reused mid with a different amount or submitter as conflict (R-RT-034)', async () => {
+    const t = await setup();
+    const c1 = await t.connect('bidder', t.b1);
+    const boss = await t.connect('auctioneer');
+    const mid = t.ids.mint<'MsgId'>();
+    await t.room.submitBid(c1.conn, t.bid(10000, mid));
+    const seq = t.room.lastSeq;
+    await t.room.submitBid(c1.conn, t.bid(10000, mid));
+    expect(c1.transport.messages('bid_accepted')).toHaveLength(2);
+    await t.room.submitBid(c1.conn, t.bid(20000, mid));
+    expect(c1.transport.messages('error').at(-1)).toMatchObject({ code: 'conflict' });
+    await t.room.submitBid(boss.conn, { ...t.bid(10000, mid), bidderId: t.b1 });
+    expect(boss.transport.messages('error').at(-1)).toMatchObject({ code: 'conflict' });
+    expect(t.room.lastSeq).toBe(seq);
+  });
+
+  it('keeps the duplicate-mid check after the room is reloaded (R-RT-034)', async () => {
+    const t = await setup();
+    const c1 = await t.connect('bidder', t.b1);
+    const mid = t.ids.mint<'MsgId'>();
+    await t.room.submitBid(c1.conn, t.bid(10000, mid));
+    const reloaded = await Room.load(t.auctionId, t.deps);
+    const again = new MemoryTransport();
+    const conn: Connection = { ...c1.conn, transport: again };
+    await reloaded.submitBid(conn, t.bid(20000, mid));
+    expect(again.messages('error')).toMatchObject([{ code: 'conflict' }]);
+  });
 });
