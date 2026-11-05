@@ -41,7 +41,8 @@ export const CAP_COUNTERS = [
 export type CapCounter = (typeof CAP_COUNTERS)[number];
 
 export type AdmitResult =
-  { ok: true; superseded?: string } | { ok: false; code: 'room_full' | 'auction_full' };
+  | { ok: true; superseded?: string }
+  | { ok: false; code: 'room_full' | 'auction_full' };
 
 interface RoomUsage {
   /** Connection ids per bidder, oldest first. */

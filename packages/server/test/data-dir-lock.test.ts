@@ -42,11 +42,11 @@ describe('data directory lock (R6-A04)', () => {
     const dir = fresh();
     const file = join(dir, LOCK_FILE);
     writeFileSync(file, '');
-    const t = Date.now();
-    expect(() => acquireDataDirLock(dir, { now: () => t })).toThrow(/refusing to start/);
+    const t = 1_789_000_000_000;
+    utimesSync(file, new Date(t), new Date(t));
+    expect(() => acquireDataDirLock(dir, { now: () => t + 1_000 })).toThrow(/refusing to start/);
     expect(existsSync(file)).toBe(true);
-    utimesSync(file, new Date(t - 60_000), new Date(t - 60_000));
-    acquireDataDirLock(dir, { now: () => t }).release();
+    acquireDataDirLock(dir, { now: () => t + 60_000 }).release();
     expect(existsSync(file)).toBe(false);
   });
 
