@@ -251,7 +251,9 @@ export function parseDemoAuths(raw: string): Record<string, DemoHold> {
     const [bidderId, authId, cents, orderId] = part.trim().split(':');
     const ceilingCents = Number(cents);
     if (!bidderId || !authId || !Number.isInteger(ceilingCents) || ceilingCents <= 0) {
-      throw new Error('DEMO_AUTHS must look like bidder:authorizationId:ceilingCents[:orderId],...');
+      throw new Error(
+        'DEMO_AUTHS must look like bidder:authorizationId:ceilingCents[:orderId],...',
+      );
     }
     out[bidderId] = { authId, ceilingCents, ...(orderId ? { orderId } : {}) };
   }
