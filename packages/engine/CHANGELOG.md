@@ -17,6 +17,8 @@ All notable changes to `@gavel/engine`. Money is integer cents; the ledger forma
 
 - Public export is version 4: no private hash after the first redacted entry, no transcripts on any lot, no proxy runner-up prices in the hammer, no amount on an over-ceiling rejection and no reason or price on a skipped candidate (D-0031).
 
+- Round 12 fixes (D-0032): review resolution steps, no capture on a lot without a winner, promotion reserves trailing bids, no unsold promotion after a capture, hard close honoured by extend and resume, lot-scoped revocation by hold, `closedAtSeq` names the lot's LOT_CLOSING, `promote:` refs reserved, and AUCTION_CREATED stores the whole config.
+
 - The golden runner sends every bid to the engine, including bids past the deadline or after the hammer, and compares the engine's reason codes without folding them. `complete` takes the bidder and amount from the fixture.
 
 ## Release readiness (R-ENG-122, R-ENG-123, R-ENG-124)

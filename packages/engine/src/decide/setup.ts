@@ -68,8 +68,10 @@ export function decideSetup(state: AuctionState, cmd: SetupCommand): DecideResul
       }
       const v = validateAuctionConfig(cmd.config);
       if (!v.ok) return configFailure(v.errors);
+      // The whole validated config is written, so replay never depends on the defaults of the
+      // engine version that reads the ledger (R12-E13), as AddLot already does for lots.
       return accepted([
-        { type: 'AUCTION_CREATED', payload: { title: cmd.title, config: cmd.config } },
+        { type: 'AUCTION_CREATED', payload: { title: cmd.title, config: { ...v.value } } },
       ]);
     }
     case 'AddLot': {
@@ -124,8 +126,14 @@ export function decideSetup(state: AuctionState, cmd: SetupCommand): DecideResul
         if (cmd.lotId !== undefined) payload.lotId = cmd.lotId;
         return accepted([{ type: 'CEILING_RAISED', payload }]);
       }
-      // A revoked bidder cannot return through another lot's record under lot-scoped holds (R-ENG-044).
-      if (Object.values(state.bidders).some((b) => b.bidderId === cmd.bidderId && b.revoked)) {
+      // A revoked bidder cannot return through another lot's record under lot-scoped holds
+      // (R-ENG-044); a record revoked only because its own lot's hold ended does not count
+      // (R12-E09).
+      if (
+        Object.values(state.bidders).some(
+          (b) => b.bidderId === cmd.bidderId && b.revoked && b.revokedLotOnly !== true,
+        )
+      ) {
         throw new EngineError('bad_command', 'bidder ceiling is revoked');
       }
       const known = new Set(Object.values(state.bidders).map((b) => b.bidderId));

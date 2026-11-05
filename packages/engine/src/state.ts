@@ -1,7 +1,13 @@
 import { canonicalize } from './canonical.js';
 import type { JsonValue } from './canonical.js';
+import { PROMOTE_REF_PREFIX } from './commands.js';
 import type { Command } from './commands.js';
-import { DEFAULT_AUCTION_CONFIG, validateLotConfig } from './config.js';
+import {
+  DEFAULT_AUCTION_CONFIG,
+  createdConfig,
+  validateAuctionConfig,
+  validateLotConfig,
+} from './config.js';
 import type { BidAudit, LedgerEntry } from './events.js';
 import { pureHasher } from './sha256.js';
 import { utf8 } from './hasher.js';
@@ -31,6 +37,12 @@ export interface BidderState {
   /** Opaque audit reference, never interpreted (R-ENG-046). */
   readonly holdRef: string | null;
   readonly revoked: boolean;
+  /**
+   * Set when only this lot's record was revoked because its own hold ended (holdScope lot,
+   * R12-E09). Such a revocation does not stop the bidder from registering for another lot;
+   * a bidder-wide revocation clears the marker. Absent on every other record.
+   */
+  readonly revokedLotOnly?: true;
 }
 
 export interface SkippedCandidate {
@@ -72,6 +84,13 @@ export interface LotState {
    * lot that was never paused, or has been resumed, keeps the same state digest as before.
    */
   readonly pausedRemainingMs?: number;
+  /**
+   * Total time the clock stood still across finished pauses; the hard close moves by it
+   * (R12-E08). Absent until a resume moved the clock.
+   */
+  readonly pausedTotalMs?: number;
+  /** Seq of this lot's LOT_CLOSING, present only while the lot is CLOSING (R12-E11). */
+  readonly closingSeq?: number;
   /** BID_REJECTED entries recorded for this lot (bounds ledger growth from bad bids). */
   readonly rejectedBids: number;
   readonly closedAtSeq: number | null;
@@ -201,12 +220,16 @@ const withOptional = (base: Record<string, JsonValue>, k: string, v: unknown): v
  */
 export function commandBody(cmd: Command): string | null {
   switch (cmd.type) {
-    case 'CreateAuction':
+    case 'CreateAuction': {
+      // The entry stores the validated, fully defaulted config (R12-E13).
+      const v = validateAuctionConfig(cmd.config);
+      const config = v.ok ? v.value : cmd.config;
       return digestOf({
         t: 'CreateAuction',
         title: cmd.title,
-        config: { ...cmd.config } as unknown as JsonValue,
+        config: { ...config } as unknown as JsonValue,
       });
+    }
     case 'AddLot': {
       const v = validateLotConfig(cmd.lot);
       const lot = v.ok ? v.value : cmd.lot;
@@ -306,10 +329,11 @@ function bidBody(
 export function entryBody(e: LedgerEntry): string | null {
   switch (e.type) {
     case 'AUCTION_CREATED':
+      // An older partial config stands for the same whole config replay gives it.
       return digestOf({
         t: 'CreateAuction',
         title: e.payload.title,
-        config: { ...e.payload.config } as unknown as JsonValue,
+        config: { ...createdConfig(e.payload.config) } as unknown as JsonValue,
       });
     case 'LOT_ADDED':
       return digestOf({
@@ -452,8 +476,12 @@ function commandTypeOf(e: LedgerEntry): string | null {
   }
 }
 
+/**
+ * The fallback step a promotion injects. `promote:` is reserved for it: RecordSettlement refuses
+ * a ref with that prefix, so a recorded step is never taken for a promotion (R12-E12).
+ */
 function isPromoteStep(e: LedgerEntry): boolean {
-  return e.type === 'SETTLEMENT_STATE' && e.payload.ref.startsWith('promote:');
+  return e.type === 'SETTLEMENT_STATE' && e.payload.ref.startsWith(PROMOTE_REF_PREFIX);
 }
 
 function nextSeen(seen: SeenCommand | undefined, e: LedgerEntry): SeenCommand | null {

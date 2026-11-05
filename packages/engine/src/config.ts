@@ -17,6 +17,26 @@ export const DEFAULT_AUCTION_CONFIG: AuctionConfig = {
   maxFallbackDepth: 2,
 };
 
+/**
+ * The defaults an `AUCTION_CREATED` entry written before D-0032 was filled from at replay. Such
+ * entries carry only the fields the caller passed; replay fills the rest from this frozen copy,
+ * never from the current `DEFAULT_AUCTION_CONFIG`, so a later change of a default cannot change
+ * what an existing ledger means (R12-E13). New entries carry the whole validated config.
+ */
+export const LEDGER_V1_AUCTION_DEFAULTS: Readonly<AuctionConfig> = Object.freeze<AuctionConfig>({
+  currency: 'USD',
+  holdScope: 'event',
+  maxCeilingCents: 100000,
+  confirmBelowBps: 8500,
+  fallbackPolicy: 'runner_up',
+  maxFallbackDepth: 2,
+});
+
+/** The whole config an `AUCTION_CREATED` payload stands for, old partial payloads included. */
+export function createdConfig(config: Partial<AuctionConfig>): AuctionConfig {
+  return { ...LEDGER_V1_AUCTION_DEFAULTS, ...config };
+}
+
 export const DEFAULT_LOT_DEFAULTS = {
   hammer: 'auto',
   increment: { flatCents: 100 },

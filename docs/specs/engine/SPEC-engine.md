@@ -92,7 +92,7 @@ Requirement ids are stable; the test and issue tables refer to them.
 
 - **R-ENG-034** An accepted bid with `at >= endsAt - windowMs` MUST set `endsAt = max(endsAt, at + extensionMs)` and increment `extensions`, if soft close is enabled and extensions < maxExtensions.
 - **R-ENG-035** Exact boundaries: `at == endsAt - windowMs` triggers; `at == endsAt - windowMs - 1` does not; `at == endsAt - 1` is accepted; `at == endsAt` is rejected as lot_not_open.
-- **R-ENG-036** `endsAt` MUST never exceed `openedAt + hardCloseMs` when hardCloseMs is set, and extensions MUST never exceed maxExtensions.
+- **R-ENG-036** `endsAt` MUST never exceed `openedAt + hardCloseMs` when hardCloseMs is set, and extensions MUST never exceed maxExtensions. A pause stops the clock, so the hard close moves by the paused time each `LOT_RESUMED` shows (`endsAtAfter - endsAtBefore`); an `ExtendLot` that would pass the hard close fails `bad_command`, and `extraMs` outside 1..600000 fails `bad_command` in decide as well as in `parseCommand` (D-0032).
 - **R-ENG-037** Second-price lots never extend.
 - **R-ENG-038** Each extension MUST append `END_EXTENDED{lotId,endsAtBefore,endsAtAfter,extensions,triggerBidId}` immediately after the triggering `BID_RECORDED`.
 - **R-ENG-039** Rejected bids MUST NOT extend the end time.
@@ -103,14 +103,14 @@ Requirement ids are stable; the test and issue tables refer to them.
 - **R-ENG-041** Registering an existing bidder again MAY only raise the ceiling (`CEILING_RAISED`); a lower or equal value fails `cannot_lower_ceiling`.
 - **R-ENG-042** A bid with amount > availableCeiling MUST be rejected `over_ceiling`, where availableCeiling = ceiling - committed(bidder).
 - **R-ENG-043** `committed(bidder)` is the sum of hammer prices of lots the bidder currently holds as winner (status SETTLING or DONE, not failed or demoted) within the same holdScope key.
-- **R-ENG-044** `RevokeCeiling{bidderId,reason}` appends `CEILING_REVOKED`; further bids are rejected; if the lot is OPEN or CLOSING each of the bidder's active bids gets a `BID_STRUCK` entry and the ranking is recomputed. After a hammer, the engine only records the revocation (fallback is a separate command).
+- **R-ENG-044** `RevokeCeiling{bidderId,reason}` appends `CEILING_REVOKED`; further bids are rejected; if the lot is OPEN or CLOSING each of the bidder's active bids gets a `BID_STRUCK` entry and the ranking is recomputed. After a hammer, the engine only records the revocation (fallback is a separate command). Under holdScope `lot`, a revocation whose `holdRef` backs lot records revokes those records only, strikes bids on those lots only, and each `CEILING_REVOKED` carries that `lotId`; such a record does not stop the bidder from registering for another lot (D-0032).
 - **R-ENG-045** Ceilings and holdRefs MUST NOT appear in the public or other-bidder projections, only in the auditor projection and the bidder's own view.
 - **R-ENG-046** `holdRef` is an opaque string stored for audit; the engine never interprets it.
 
 ### Hammer and outcome
 
 - **R-ENG-047** `Hammer` is valid only when the lot is CLOSING, or OPEN with `early:true`; otherwise it fails `cannot_hammer`.
-- **R-ENG-048** `LOT_HAMMERED` payload MUST contain `lotId, winnerId, priceCents, mode, ranking[{bidderId,amountCents,at,seq}], candidates[{bidderId,priceCents}], endsAt, extensions, closedAtSeq`.
+- **R-ENG-048** `LOT_HAMMERED` payload MUST contain `lotId, winnerId, priceCents, mode, ranking[{bidderId,amountCents,at,seq}], candidates[{bidderId,priceCents}], endsAt, extensions, closedAtSeq`. `closedAtSeq` is the seq of that lot's `LOT_CLOSING`, also when other entries come between the close and the hammer.
 - **R-ENG-049** A hammer with no active bids appends `LOT_UNSOLD{lotId,reason:'no_bids'}` and ends the lot as DONE.
 - **R-ENG-050** Hammer price follows the mode rules: english top bid; proxy `price()`; second_price `max(reserve, second)`.
 - **R-ENG-051** `candidates` lists the winner first and up to `maxFallbackDepth` runner-ups, each with the price they would pay if every earlier candidate were disqualified.
@@ -122,7 +122,7 @@ Requirement ids are stable; the test and issue tables refer to them.
 - **R-ENG-054** `PromoteRunnerUp{lotId,disqualifiedBidderId,reason}` is valid for a SETTLING lot and the current winner only; it appends `FALLBACK_PROMOTED{lotId,from,to,priceCents,depth,reason}` naming the next candidate.
 - **R-ENG-055** The promoted price is recomputed by re-running the mode's pricing over active bids with all disqualified bidders removed (english: own bid; proxy and second_price: the recomputed formulas).
 - **R-ENG-056** A candidate whose price exceeds their current available ceiling, or whose ceiling is revoked, MUST be skipped with `CANDIDATE_SKIPPED{bidderId,reason}` and the next candidate considered in the same batch.
-- **R-ENG-057** When candidates run out or depth exceeds `maxFallbackDepth`, the engine appends `LOT_UNSOLD{reason:'no_valid_winner'}`.
+- **R-ENG-057** When candidates run out or depth exceeds `maxFallbackDepth`, the engine appends `LOT_UNSOLD{reason:'no_valid_winner'}`. Once the lot's settlement has passed CAPTURED such a promotion fails `state_continuity`: captured money is never booked as no sale (D-0032).
 - **R-ENG-058** A demoted winner's committed amount is released at the moment of demotion; the promoted bidder's committed amount increases by the new price.
 - **R-ENG-059** Every fallback step (promotion, skip, unsold) MUST be a ledger entry carrying the reason string, depth and the price, so the settlement history can be reconstructed from the ledger alone.
 - **R-ENG-060** With `fallbackPolicy:'unsold'`, PromoteRunnerUp appends `LOT_UNSOLD{reason:'no_valid_winner'}` directly.
@@ -132,13 +132,13 @@ Requirement ids are stable; the test and issue tables refer to them.
 - **R-ENG-061** At most one lot is OPEN or CLOSING at a time; `OpenLot` is valid only if the previous lot in order is SETTLING, DONE or the lot is first.
 - **R-ENG-062** Lots open in `lotOrder` as added; `OpenLot{lotId}` for a non-next PENDING lot fails `out_of_order`.
 - **R-ENG-063** With holdScope `event`, a winner's hammer price on lot N reduces their available ceiling on every later lot.
-- **R-ENG-064** `CloseAuction` is valid only when all lots are DONE (settled or unsold) and appends `AUCTION_CLOSED{headHash anchor}`; afterwards every command fails `auction_closed`, except `RecordSettlement` for a DONE lot whose settlement has not reached SETTLED, so a release that is still being recorded is never lost.
+- **R-ENG-064** `CloseAuction` is valid only when all lots are DONE (settled or unsold) and appends `AUCTION_CLOSED{headHash anchor}`; afterwards every command fails `auction_closed`, except `RecordSettlement` for a DONE lot whose settlement has not reached SETTLED, so a release that is still being recorded is never lost. A lot without a winner (unsold or aborted) may record the saga steps that release its holds but never a capture: a step to CAPTURING or CAPTURED fails `state_continuity` (D-0032).
 - **R-ENG-065** Bids on one lot never alter the ranking, price or end time of another lot.
 
 ### Settlement entries
 
 - **R-ENG-066** `CompleteLot{lotId,capturedCents,ref}` appends `LOT_SETTLED`; `capturedCents` MUST equal the hammer or promoted price, else the command fails `capture_mismatch` and appends nothing.
-- **R-ENG-067** `RecordSettlement{lotId,from,to,ref}` appends `SETTLEMENT_STATE`; `to` MUST be a member of the fixed settlement states and `from` MUST equal the lot's last recorded state (initial HELD). The transition graph itself is owned by the payments package.
+- **R-ENG-067** `RecordSettlement{lotId,from,to,ref}` appends `SETTLEMENT_STATE`; `to` MUST be a member of the fixed settlement states and `from` MUST equal the lot's last recorded state (initial HELD). The transition graph itself is owned by the payments package. An operator resolves a review with FAILED_NEEDS_REVIEW to VOIDING or to SETTLED and a non-empty `ref`; a lot that captured is then completed with `CompleteLot`. A `ref` starting with `promote:` is reserved for the step a promotion injects and fails `bad_command` (D-0032).
 - **R-ENG-068** A DONE lot accepts no further bid, hammer, promote or settlement command (`lot_done`).
 - **R-ENG-069** Sum of captured cents per bidder per holdScope key MUST NOT exceed that bidder's ceiling; the engine MUST throw `InvariantError` instead of recording a violating `LOT_SETTLED`.
 
@@ -397,6 +397,8 @@ entry 2 canonical:
 hash 2 = f685ed77a83bf8dde536e1f3ffc999879451cb2c1052c15d9ccd4b30929a5b13
 SHA-256("abc") = ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
 ```
+
+Entry 1 has the partial config older ledgers carry. Since D-0032 `CreateAuction` writes the whole validated config; replay fills an older partial config from the frozen defaults of that time (`LEDGER_V1_AUCTION_DEFAULTS`), never from the current defaults.
 
 (The vector uses illustrative ids; the lot id in entry 2 is not a valid ULID letter set for engine validation, so the vector test calls `sealBatch` directly, which does not validate ids.)
 
