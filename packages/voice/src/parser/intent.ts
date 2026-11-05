@@ -93,6 +93,13 @@ const intent = (
   reason: VoiceReason | null,
 ): Intent => ({ kind, status, reason });
 
+const NO_PHRASE_TAILS = new Set(['problem', 'worries', 'worry', 'doubt']);
+
+/** True for the fixed phrases "no problem", "no worries", "no doubt", which are not negations. */
+function isNoPhrase(tokens: string[], at: number): boolean {
+  return tokens[at] === 'no' && NO_PHRASE_TAILS.has(tokens[at + 1] ?? '');
+}
+
 /**
  * Negated and affirmative amount counts, clause by clause (clauses end at , ; . ! ?). A negation
  * applies to an amount when it is earlier in the same clause within NEGATION_SCOPE tokens, when it
@@ -121,9 +128,10 @@ function negationCounts(text: string): { negated: number; affirmative: number } 
     }
     lastAffirmative = 0;
     for (const [s, e] of spans) {
-      let neg = carry || TRAILING_NEGATION.has(tokens[e] ?? '');
+      let neg = carry || (TRAILING_NEGATION.has(tokens[e] ?? '') && !isNoPhrase(tokens, e));
       for (let k = Math.max(0, s - NEGATION_SCOPE); k < s; k++) {
         const w = tokens[k] ?? '';
+        if (isNoPhrase(tokens, k)) continue;
         if (NEGATIONS.has(w) || (w === 'thanks' && tokens[k - 1] === 'no')) neg = true;
       }
       if (neg) {
