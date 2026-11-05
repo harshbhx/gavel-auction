@@ -80,7 +80,7 @@ export interface ScenarioResult {
 
 export const START_MS = 1_789_000_000_000;
 
-const CONFIG = {
+export const SCENARIO_CONFIG = {
   mode: 'english',
   currency: 'USD',
   reserve: 10000,
@@ -94,7 +94,7 @@ const CONFIG = {
 } as unknown as AuctionConfig;
 
 /** Plain English-auction engine with a hammer; enough to drive the room. */
-class ScenarioEngine implements HammerEnginePort {
+export class ScenarioEngine implements HammerEnginePort {
   private readonly ceilings = new Map<BidderId, Cents>();
   private readonly top = new Map<BidderId, Cents>();
   private price: Cents | null = null;
@@ -182,7 +182,7 @@ export async function runScenario(scenario: Scenario): Promise<ScenarioResult> {
     settle: new NoopSettle(),
   };
   const auctionId = ids.mint<'AuctionId'>() as AuctionId;
-  const room = await Room.create(auctionId, CONFIG, 'auctioneer-sub', deps);
+  const room = await Room.create(auctionId, SCENARIO_CONFIG, 'auctioneer-sub', deps);
   const bidderIds = new Map<string, BidderId>();
   const keyOf = new Map<string, string>();
   for (const b of scenario.bidders) {
