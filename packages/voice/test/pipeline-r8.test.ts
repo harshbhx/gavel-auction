@@ -132,3 +132,37 @@ describe('R8-V10 spoken confirmation gate', () => {
     });
   });
 });
+
+describe('toPlaceBid re-validation of a confirmed option (R-VOX-069)', () => {
+  const fresh = (over: Partial<BidContext> = {}): BidContext => ({
+    nowMs: 5000,
+    lotState: 'OPEN',
+    currentPriceCents: 30000,
+    minIncrementCents: 1000,
+    highBidderId: null,
+    roster: new Map([['7', { bidderId: 'B7', ceilingCents: 1_000_000, holdActive: true }]]),
+    recent: [],
+    ...over,
+  });
+  const ctx = { ...base, confirmedOptionId: 'o500' };
+
+  it('places the bid when the option still validates', () => {
+    expect(toPlaceBid(confirm(true), { ...ctx, current: fresh() })?.amountCents).toBe(50000);
+  });
+
+  it('refuses when the price moved past the option', () => {
+    expect(
+      toPlaceBid(confirm(true), { ...ctx, current: fresh({ currentPriceCents: 60000 }) }),
+    ).toBeNull();
+  });
+
+  it('refuses when the bidder is already the high bidder', () => {
+    expect(
+      toPlaceBid(confirm(true), { ...ctx, current: fresh({ highBidderId: 'B7' }) }),
+    ).toBeNull();
+  });
+
+  it('refuses when the lot is no longer open', () => {
+    expect(toPlaceBid(confirm(true), { ...ctx, current: fresh({ lotState: 'OTHER' }) })).toBeNull();
+  });
+});

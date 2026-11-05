@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { FakeStt, VirtualClock } from '../../src/stt/fake.js';
 import { classifyHttpStatus, type FetchLike } from '../../src/stt/groq.js';
@@ -132,5 +133,26 @@ describe('T-VOX-023 secret scan', () => {
 
   it('passes ordinary code', () => {
     expect(scanText('f.ts', 'const apiKey = env.GROQ_API_KEY;')).toEqual([]);
+  });
+});
+
+describe('README provider list matches selectProvider', () => {
+  const readme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
+
+  it('every documented selectable provider can be built', () => {
+    const line = /^Selectable providers: (.+)\.$/m.exec(readme)?.[1] ?? '';
+    const names = [...line.matchAll(/`(\w+)`/g)].map((m) => m[1] ?? '');
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) {
+      const p = selectProvider({ VOICE_STT: name, GROQ_API_KEY: 'k' }, { fetch: noFetch });
+      expect(p.name).toBe(name);
+    }
+  });
+
+  it('does not document a provider selectProvider cannot build', () => {
+    expect(readme).not.toMatch(/Deepgram provider|moves from Deepgram/);
+    expect(() => selectProvider({ VOICE_STT: 'deepgram', DEEPGRAM_API_KEY: 'k' })).toThrow(
+      SttConfigError,
+    );
   });
 });

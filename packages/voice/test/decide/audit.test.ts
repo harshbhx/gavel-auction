@@ -68,7 +68,7 @@ describe('decision audit record', () => {
 
     for (const d of [accept, confirm, drop]) {
       const rec = buildAudit(d);
-      expect(rec.transcript).toBe(d.evidence.transcript);
+      expect(rec.transcript).toBe(d.kind === 'drop' ? '' : d.evidence.transcript);
       expect(typeof rec.confirmed).toBe('boolean');
       expect(rec.reason).toBe(d.kind === 'drop' ? d.reason : d.evidence.reason);
       for (const key of EVIDENCE_KEYS) {

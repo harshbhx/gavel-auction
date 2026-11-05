@@ -5,7 +5,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { loadScenarioFile } from '../src/index';
 import type { Scenario } from '../src/index';
 import type { Cents } from '@gavel/shared';
-import { checkExpectations, runScenarioInProc, scenarioConfig } from './flow/scenario-runner';
+import {
+  assertSupported,
+  checkExpectations,
+  runScenarioInProc,
+  scenarioConfig,
+} from './flow/scenario-runner';
 
 const DIR = join(fileURLToPath(new URL('.', import.meta.url)), '..', 'scenarios');
 
@@ -72,6 +77,17 @@ describe('scenario execution (R-QA-025, R-QA-026)', () => {
     expect(config['mode']).toBe('english');
     expect(config['endTs']).toBe(scenario.clock.startMs + 600_000);
     expect(config['reserve']).toBe(scenario.auction.reserve);
+  });
+
+  it('rejects a scenario that declares card funding instead of ignoring it', async () => {
+    const scenario = s01();
+    const card: Scenario = {
+      ...scenario,
+      actors: { ...scenario.actors, ben: { funding: 'card' } },
+    };
+    expect(() => assertSupported(card)).toThrow(/ben funding "card" is not supported/);
+    await expect(runScenarioInProc(card, open)).rejects.toThrow(/not supported/);
+    expect(() => assertSupported(scenario)).not.toThrow();
   });
 
   it('reports a failing comparison for a wrong expectation (not vacuous)', async () => {
