@@ -1,0 +1,22 @@
+{
+  "status": 200,
+  "body": {
+    "id": "{{ORDER_ID}}",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/{{ORDER_ID}}",
+        "method": "GET",
+        "rel": "self"
+      },
+      {
+        "href": "https://www.sandbox.paypal.com/checkoutnow?token=[REDACTED]",
+        "method": "GET",
+        "rel": "payer-action"
+      }
+    ],
+    "payment_source": {
+      "paypal": {}
+    },
+    "status": "PAYER_ACTION_REQUIRED"
+  }
+}

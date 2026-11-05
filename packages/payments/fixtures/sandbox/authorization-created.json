@@ -1,0 +1,55 @@
+{
+  "status": 200,
+  "body": {
+    "amount": {
+      "currency_code": "USD",
+      "value": "500.00"
+    },
+    "create_time": "2026-11-04T23:11:14Z",
+    "custom_id": "g1-261104T231047Z-wallet",
+    "expiration_time": "2026-12-03T23:11:14Z",
+    "id": "{{AUTH_ID}}",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/{{AUTH_ID}}",
+        "method": "GET",
+        "rel": "self"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/{{AUTH_ID}}/capture",
+        "method": "POST",
+        "rel": "capture"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/{{AUTH_ID}}/void",
+        "method": "POST",
+        "rel": "void"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/{{AUTH_ID}}/reauthorize",
+        "method": "POST",
+        "rel": "reauthorize"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/{{ORDER_ID}}",
+        "method": "GET",
+        "rel": "up"
+      }
+    ],
+    "payee": {
+      "email_address": "[REDACTED]",
+      "merchant_id": "[REDACTED]"
+    },
+    "seller_protection": {
+      "dispute_categories": ["ITEM_NOT_RECEIVED", "UNAUTHORIZED_TRANSACTION"],
+      "status": "ELIGIBLE"
+    },
+    "status": "CREATED",
+    "supplementary_data": {
+      "related_ids": {
+        "order_id": "{{ORDER_ID}}"
+      }
+    },
+    "update_time": "2026-11-04T23:11:14Z"
+  }
+}
