@@ -120,9 +120,8 @@ Saga defaults (`SAGA_DEFAULTS` in `packages/payments/src/config.ts`, equal to th
 
 ## Sandbox environment (required before any gate runs)
 
-The gate workflows (`.github/workflows/gate-g0.yml`, `gate-g1.yml`, `gate-g3.yml` and
-`gate-g4.yml`) declare `environment: sandbox-nightly` and only run from `main`. The environment
-does not exist until the owner creates it, so until then those jobs wait or fail. The repository owner must create that
+The gate workflows (`.github/workflows/gate-g0.yml` and `.github/workflows/gate-g1.yml`) declare
+`environment: sandbox-nightly` and only run from `main`. The repository owner must create that
 environment once:
 
 1. Settings, Environments, New environment, name `sandbox-nightly`.
@@ -131,11 +130,6 @@ environment once:
    `SANDBOX_BUYER_EMAIL`, `SANDBOX_BUYER_PASSWORD`.
 4. Delete the repository-level copies of the same four secrets, so a workflow on any other branch
    cannot read them.
-
-`packages/payments/src/gates-result.json` flags (`g1_remainder_mode`, `g2_card_authorize`,
-`g4_webhooks_verified`) may leave their safe value only while the matching section above is
-closed with an Evidence line; `test/gates/gatesResultEvidence.test.ts` fails otherwise, and also
-when the evidence file no longer matches its recorded sha256.
 
 The sandbox accounts must be US accounts. PayPal rejects INR orders for the sandbox buyers with `422 CURRENCY_NOT_SUPPORTED`, and India sandbox buyers fail at the buyer approval page with USD. Gates send USD by default; set `GATE_CURRENCY` only to override it for a specific run.
 

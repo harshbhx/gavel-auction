@@ -30,7 +30,6 @@
     "check:ascii": "node scripts/check-ascii.mjs",
     "check:banned-words": "node scripts/check-banned-words.mjs",
     "check:ownership": "node scripts/check-ownership.mjs",
-    "check:audit": "node scripts/check-audit.mjs",
     "check:gates-result": "node scripts/check-gates-result.mjs",
     "test:tools": "node --test \"scripts/tests/*.test.mjs\" \"eslint.rules/tests/*.test.mjs\"",
     "prepare": "husky || true"

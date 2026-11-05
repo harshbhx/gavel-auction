@@ -59,7 +59,7 @@ function fnv1a(text: string, seed: number): number {
 }
 
 /**
- * A ULID-shaped command id derived from the given key. A segment the
+ * A ULID-shaped command id derived only from the idempotency key. A segment the
  * STT replays after a reconnect carries the same key, so it maps to the same id
  * and the engine's commandId dedupe drops it (R-VOX-071, R-RT-053).
  */
@@ -103,8 +103,6 @@ export function toPlaceBid(decision: Decision, ctx: PlaceBidContext): PlaceBidCo
     if (ctx.at >= decision.prompt.expiresAtMs) return null;
     const option = decision.prompt.options.find((o) => o.id === ctx.confirmedOptionId);
     if (option === undefined) return null;
-    // A prompt that forbids spoken answers cannot be confirmed by voice (R8-V10).
-    if (ctx.confirmedBy === 'voice' && !decision.prompt.spokenAnswerAllowed) return null;
     bidderId = option.bidderId;
     amountCents = option.amountCents;
     confirmed = true;
@@ -113,23 +111,9 @@ export function toPlaceBid(decision: Decision, ctx: PlaceBidContext): PlaceBidCo
     return null;
   }
   const ev = decision.evidence;
-  const confidenceBps = confidenceToBps(ev.confidence);
-  // The engine compares the whole command body for a repeated id, so the id covers everything the
-  // body carries: an identical replay dedupes, a different amount, bidder, option or audit does
-  // not collide and make the engine throw command_conflict (R8-V03).
-  const bodyKey = [
-    ev.idempotencyKey,
-    bidderId,
-    amountCents,
-    confirmed ? `c:${ctx.confirmedOptionId ?? ''}:${confirmedBy ?? ''}` : 'a',
-    ev.transcript,
-    ev.audioStartMs,
-    ev.audioEndMs,
-    confidenceBps,
-  ].join('|');
   return {
     type: 'PlaceBid',
-    commandId: commandIdFromKey(ctx.auctionId, bodyKey),
+    commandId: commandIdFromKey(ctx.auctionId, ev.idempotencyKey),
     at: ctx.at,
     auctionId: ctx.auctionId,
     lotId: ctx.lotId,
@@ -140,7 +124,7 @@ export function toPlaceBid(decision: Decision, ctx: PlaceBidContext): PlaceBidCo
       transcript: ev.transcript,
       audioStartMs: ev.audioStartMs,
       audioEndMs: ev.audioEndMs,
-      confidenceBps,
+      confidenceBps: confidenceToBps(ev.confidence),
       confirmed,
       ...(confirmedBy !== undefined ? { confirmedBy } : {}),
     },

@@ -21,18 +21,10 @@ export const GROQ_DEFAULT_MODEL = 'whisper-large-v3-turbo';
 /** Confidence used when the response carries no log probability. */
 export const GROQ_FALLBACK_CONFIDENCE = 0.5;
 const MAX_PENDING_CHUNKS = 8;
-/** Per-request deadline; a hung request must not stall the drain loop. */
-export const GROQ_REQUEST_TIMEOUT_MS = 4000;
-export const GROQ_STOP_DEADLINE_MS = 8000;
 
 export type FetchLike = (
   url: string,
-  init: {
-    method: string;
-    headers: Record<string, string>;
-    body: FormData;
-    signal?: AbortSignal;
-  },
+  init: { method: string; headers: Record<string, string>; body: FormData },
 ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
 export interface GroqSttOptions {
@@ -44,8 +36,6 @@ export interface GroqSttOptions {
   /** Milliseconds clock used for latency; defaults to Date.now. */
   now?: () => number;
   maxPendingChunks?: number;
-  requestTimeoutMs?: number;
-  stopDeadlineMs?: number;
 }
 
 /** exp(avg_logprob) clamped to 0..1 and rounded to two decimals. */
@@ -171,21 +161,7 @@ export class GroqStt implements InstrumentedSttProvider {
     } catch {
       this.stats.addDropped();
     }
-    // A stuck request is bounded by its own timeout; this deadline is the last resort.
-    const deadlineMs = this.opts.stopDeadlineMs ?? GROQ_STOP_DEADLINE_MS;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const deadline = new Promise<void>((resolve) => {
-      timer = setTimeout(resolve, deadlineMs);
-    });
-    while (this.running) {
-      const ran = this.running;
-      const hit = await Promise.race([ran.then(() => false), deadline.then(() => true)]);
-      if (hit) {
-        this.pending.length = 0;
-        break;
-      }
-    }
-    if (timer !== undefined) clearTimeout(timer);
+    while (this.running) await this.running;
     this.emit({ type: 'state', state: 'closed' });
     this.channel.close();
   }
@@ -220,27 +196,18 @@ export class GroqStt implements InstrumentedSttProvider {
     form.append('response_format', 'verbose_json');
     form.append('language', 'en');
     form.append('temperature', '0');
-    const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timedOut = new Promise<'timeout'>((resolve) => {
-      timer = setTimeout(() => {
-        controller.abort();
-        resolve('timeout');
-      }, this.opts.requestTimeoutMs ?? GROQ_REQUEST_TIMEOUT_MS);
-    });
     try {
-      const outcome = await Promise.race([this.request(form, controller.signal), timedOut]);
-      if (outcome === 'timeout') {
-        this.emit({ type: 'error', code: 'timeout', retryable: true });
-        return;
-      }
-      const res = outcome.res;
+      const res = await this.opts.fetch(this.opts.endpoint ?? GROQ_DEFAULT_ENDPOINT, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${this.opts.apiKey}` },
+        body: form,
+      });
       if (!res.ok) {
         const { code, retryable } = classifyHttpStatus(res.status);
         this.emit({ type: 'error', code, retryable });
         return;
       }
-      const parsed = parseResponse(outcome.body);
+      const parsed = parseResponse(await res.json());
       if (!parsed) {
         this.emit({ type: 'error', code: 'unknown', retryable: true });
         return;
@@ -259,25 +226,8 @@ export class GroqStt implements InstrumentedSttProvider {
         this.now() - chunk.readyAt,
       );
     } catch {
-      const code = controller.signal.aborted ? 'timeout' : 'closed';
-      this.emit({ type: 'error', code, retryable: true });
-    } finally {
-      if (timer !== undefined) clearTimeout(timer);
+      this.emit({ type: 'error', code: 'closed', retryable: true });
     }
-  }
-
-  private async request(
-    form: FormData,
-    signal: AbortSignal,
-  ): Promise<{ res: { ok: boolean; status: number }; body: unknown }> {
-    const res = await this.opts.fetch(this.opts.endpoint ?? GROQ_DEFAULT_ENDPOINT, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${this.opts.apiKey}` },
-      body: form,
-      signal,
-    });
-    const body = res.ok ? await res.json() : null;
-    return { res, body };
   }
 
   private emit(event: SttEvent, latencyMs?: number): void {

@@ -9,7 +9,7 @@ Status: in development for the PayPal AI Hackathon 2026 (PayPal sandbox only). T
 | Auction engine (English ascending, soft close, hash-chained ledger)                                       | yes                      |                                 |                                                       |
 | Settlement (capture the winning price, void other holds, journal, resume after a crash, webhook handling) |                          | yes                             | run against the real sandbox                          |
 | Hold creation and approval service                                                                        |                          | yes                             | HTTP routes that expose it to the web app             |
-| Room and runtime service (bid intake, settlement scheduling, file stores)                                 | in tests, in one process |                                 | WebSocket gateway, deploy                             |
+| Room and runtime service (bid intake, settlement scheduling, file stores)                                 | in tests, in one process |                                 | server entry point, HTTP and WebSocket routes, deploy |
 | Web app (routes, bid and console components, replay player)                                               | components and tests     |                                 | working screens against a live room, hosted URL       |
 | Voice (audio capture, Groq speech-to-text client, bid parser)                                             | as a package, offline    |                                 | adapter that feeds bids into a room, live audio route |
 | Bid input by QR or typed entry                                                                            | components only          |                                 | end-to-end flow on a server                           |
@@ -42,7 +42,7 @@ npm start -w @gavel/server  # start the server
 npm run dev -w @gavel/web   # start the web dev server (separate process)
 ```
 
-Copy `.env.example` to `.env` for the secret names the project reads: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `DEEPGRAM_API_KEY`, `GROQ_API_KEY`, `LLM_API_KEY`, `DATABASE_URL`. Never commit real values. The server reads its own settings from the process environment (`PORT`, `PUBLIC_URL`, `TOKEN_SECRET`, `ADMIN_KEY`, `STORE`, `PAYMENTS` and others); they are listed in `packages/server/README.md`.
+Copy `.env.example` to `.env` for the secret names the project reads: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `DEEPGRAM_API_KEY`, `GROQ_API_KEY`, `LLM_API_KEY`, `ADMIN_TOKEN`, `AUCTIONEER_TOKEN_SECRET`, `DATABASE_URL`. Never commit real values. The server reads its own settings from the process environment (`PORT`, `PUBLIC_URL`, `TOKEN_SECRET`, `ADMIN_KEY`, `STORE`, `PAYMENTS` and others); they are listed in `packages/server/README.md`.
 
 The web app takes `VITE_SANDBOX=true` (sandbox banner and sandbox-only behaviour), plus `VITE_API_BASE`, `VITE_WS_BASE`, `VITE_PAYMENTS` and `VITE_PAYPAL_CLIENT_ID`.
 

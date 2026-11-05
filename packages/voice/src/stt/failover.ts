@@ -10,19 +10,6 @@ import {
 const SAMPLE_RATE = 16000;
 
 /** Timer source; VirtualClock satisfies it, so tests never sleep. */
-/** Mean-square level above about -50 dBFS counts as speech for arming the silence timer. */
-const SPEECH_MEAN_SQUARE = (32768 * 10 ** (-50 / 20)) ** 2;
-
-function hasSpeech(pcm: Int16Array): boolean {
-  if (pcm.length === 0) return false;
-  let sum = 0;
-  for (let i = 0; i < pcm.length; i++) {
-    const v = pcm[i] ?? 0;
-    sum += v * v;
-  }
-  return sum / pcm.length > SPEECH_MEAN_SQUARE;
-}
-
 export interface FailoverClock {
   now(): number;
   setTimeout(fn: () => void, ms: number): number;
@@ -77,8 +64,6 @@ export class FailoverStt implements InstrumentedSttProvider {
   private silenceTimer: number | null = null;
   private armed = false;
   private sawEvent = false;
-  /** End of the last final already delivered; audio up to here is never replayed (R8-V04). */
-  private lastFinalEndMs = -1;
   private consecutiveErrors = 0;
   private open = false;
   private ended = false;
@@ -118,8 +103,7 @@ export class FailoverStt implements InstrumentedSttProvider {
       this.stats.addBytes(batch.pcm.byteLength);
       if ((batch.flags & FLAG_KEEPALIVE) === 0) {
         this.remember(batch);
-        // A quiet room is not a dead provider: the timer starts at the first speech (R8-V05).
-        if (!this.armed && this.onPrimary && hasSpeech(batch.pcm)) this.armSilence();
+        if (!this.armed && this.onPrimary) this.armSilence();
         this.maybeProbe();
       }
       this.active.write(batch);
@@ -159,13 +143,6 @@ export class FailoverStt implements InstrumentedSttProvider {
     }
   }
 
-  /** Ring audio that no delivered final has already covered. */
-  private undeliveredRing(): AudioBatch[] {
-    return this.ring.filter(
-      (b) => b.tsMs + Math.round((b.pcm.length * 1000) / SAMPLE_RATE) > this.lastFinalEndMs,
-    );
-  }
-
   // ---- event handling ----
 
   private pump(provider: SttProvider): void {
@@ -182,7 +159,6 @@ export class FailoverStt implements InstrumentedSttProvider {
 
   private fromActive(e: SttEvent): void {
     this.emit(e);
-    if (e.type === 'final') this.lastFinalEndMs = Math.max(this.lastFinalEndMs, e.endMs);
     if (!this.onPrimary || this.ended) return;
     if (e.type === 'interim' || e.type === 'final' || e.type === 'utterance_end') {
       this.sawEvent = true;
@@ -240,7 +216,7 @@ export class FailoverStt implements InstrumentedSttProvider {
     void to
       .start(this.startOpts)
       .then(() => {
-        for (const b of this.undeliveredRing()) to.write(b);
+        for (const b of this.ring) to.write(b);
       })
       .catch(() => undefined);
   }
@@ -254,8 +230,12 @@ export class FailoverStt implements InstrumentedSttProvider {
     this.probe = p;
     this.pump(p);
     this.probeTimer = this.o.clock.setTimeout(() => this.failProbe(), this.o.silenceMs);
-    // The probe starts from live audio; replayed audio would surface stale text as live (R8-V04).
-    void p.start(this.startOpts).catch(() => this.failProbe());
+    void p
+      .start(this.startOpts)
+      .then(() => {
+        for (const b of this.ring) p.write(b);
+      })
+      .catch(() => this.failProbe());
   }
 
   private fromProbe(e: SttEvent): void {

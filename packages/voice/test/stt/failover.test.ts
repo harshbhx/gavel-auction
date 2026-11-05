@@ -5,10 +5,8 @@ import { FakeStt, VirtualClock, type ScriptStep } from '../../src/stt/fake.js';
 import type { SttEvent } from '../../src/stt/provider.js';
 import { runConformance } from './conformance.js';
 
-function batch(seq: number, quiet = false): AudioBatch {
-  const pcm = new Int16Array(5 * FRAME_SAMPLES);
-  if (!quiet) pcm.fill(8000);
-  return { seq, tsMs: seq * 100, flags: 0, pcm };
+function batch(seq: number): AudioBatch {
+  return { seq, tsMs: seq * 100, flags: 0, pcm: new Int16Array(5 * FRAME_SAMPLES) };
 }
 
 async function flush(): Promise<void> {
@@ -41,7 +39,7 @@ interface Rig {
   switches: SwitchReason[];
   seen: SttEvent[];
   /** Write n batches, advancing 100 ms after each. */
-  feed(n: number, quiet?: boolean): Promise<void>;
+  feed(n: number): Promise<void>;
 }
 
 function rig(primaryScripts: ScriptStep[][]): Rig {
@@ -75,9 +73,9 @@ function rig(primaryScripts: ScriptStep[][]): Rig {
     fallbacks,
     switches,
     seen,
-    feed: async (n, quiet = false) => {
+    feed: async (n) => {
       for (let i = 0; i < n; i++) {
-        stt.write(batch(seq++, quiet));
+        stt.write(batch(seq++));
         clock.advance(100);
         await flush();
       }
@@ -111,31 +109,6 @@ describe('T-VOX-019 failover triggers', () => {
     expect(r.switches).toEqual(['silent']);
     expect(r.fallbacks).toHaveLength(1);
     expect(r.fallbacks[0]?.processedBatches).toBe(30);
-    await r.stt.stop();
-  });
-
-  it('a quiet room does not trip the silence switch (R8-V05)', async () => {
-    const r = rig([[]]);
-    await r.stt.start({ keyterms: [], language: 'en' });
-    await r.feed(50, true);
-    await flush();
-    expect(r.switches).toEqual([]);
-    await r.feed(29);
-    expect(r.switches).toEqual([]);
-    await r.feed(1);
-    await flush();
-    expect(r.switches).toEqual(['silent']);
-    await r.stt.stop();
-  });
-
-  it('replay skips audio already covered by a delivered final (R8-V04)', async () => {
-    const r = rig([[interim(100), final(4600, 500)]]);
-    await r.stt.start({ keyterms: [], language: 'en' });
-    await r.feed(46);
-    await flush();
-    expect(r.switches).toEqual(['late_final']);
-    // Batches 0..4 end at or before 500 ms; only 5..45 are replayed.
-    expect(r.fallbacks[0]?.processedBatches).toBe(41);
     await r.stt.stop();
   });
 

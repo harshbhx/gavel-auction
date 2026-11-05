@@ -8,9 +8,8 @@ services:
     runtime: node
     plan: starter
     numInstances: 1
-    # vite-node is a dev dependency and NODE_ENV=production would skip it, so ask for dev packages.
-    buildCommand: npm ci --include=dev
-    startCommand: npm start -w @gavel/server
+    buildCommand: npm ci && npm run build
+    startCommand: node packages/server/dist/index.js
     healthCheckPath: /healthz
     disk:
       name: gavel-data
@@ -19,25 +18,7 @@ services:
     envVars:
       - key: NODE_VERSION
         value: '22'
-      - key: NODE_ENV
-        value: production
-      - key: STORE
-        value: file
-      - key: DATA_DIR
+      - key: GAVEL_DATA_DIR
         value: /var/data
-      - key: PAYMENTS
+      - key: GAVEL_MODE
         value: sandbox
-      # The public https URL of this service; set it in the dashboard after the first deploy.
-      - key: PUBLIC_URL
-        sync: false
-      - key: TOKEN_SECRET
-        sync: false
-      - key: ADMIN_KEY
-        sync: false
-      # PAYMENTS=sandbox needs the PayPal sandbox app credentials (config.ts refuses to boot without).
-      - key: PAYPAL_CLIENT_ID
-        sync: false
-      - key: PAYPAL_CLIENT_SECRET
-        sync: false
-      - key: PAYPAL_WEBHOOK_ID
-        sync: false

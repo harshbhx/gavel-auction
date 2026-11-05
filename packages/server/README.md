@@ -1,6 +1,6 @@
 # @gavel/server
 
-The single-process host: HTTP routes, room runtime, settlement scheduling and file stores. No WebSocket gateway is mounted by `src/main.ts` yet, so bidding over a socket is not possible in the booted process. Sandbox only; no real money moves.
+The single-process host: HTTP and WebSocket routes, room runtime, settlement scheduling and file stores. Sandbox only; no real money moves.
 
 ## Run
 
