@@ -249,7 +249,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     mailboxDepth: () => 0,
   });
   const service = createAuctionService({
-    metrics,
+    roomMetrics: metrics,
     store: stores.room,
     clock,
     ids,

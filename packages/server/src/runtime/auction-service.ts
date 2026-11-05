@@ -63,7 +63,7 @@ export interface AuctionServiceDeps {
   ids: Ids;
   limiter?: RateLimiter;
   /** Counters fed from the room bid path (R-RT-122, R-RT-135). */
-  metrics?: RoomDeps['metrics'];
+  roomMetrics?: RoomDeps['metrics'];
   /**
    * Engine ledger store. The engine runtime appends every accepted command here before the
    * room acknowledges it (see D-0014), and the hammer flushes whatever is still missing.
@@ -381,7 +381,7 @@ class Service implements AuctionService, SettlePort {
       settle: this,
       durable: (id, engine) => this.flushLedger(id, engine, false),
       ...(this.deps.limiter !== undefined ? { limiter: this.deps.limiter } : {}),
-      ...(this.deps.metrics !== undefined ? { metrics: this.deps.metrics } : {}),
+      ...(this.deps.roomMetrics !== undefined ? { metrics: this.deps.roomMetrics } : {}),
     };
   }
 
@@ -612,7 +612,8 @@ class Service implements AuctionService, SettlePort {
   ): Promise<boolean> {
     if (journal === null) return hammeredEngine(room) !== undefined && !room.isDone;
     if (!TERMINAL.has(journal.state) || !room.isDone) return true;
-    const keep = journal.state === 'FAILED_NEEDS_REVIEW' ? keptOnReview(journal) : new Set<string>();
+    const keep =
+      journal.state === 'FAILED_NEEDS_REVIEW' ? keptOnReview(journal) : new Set<string>();
     // A review keeps the winner's and the unresolved candidate's hold on purpose (R8-S06).
     return (await this.deps.holds.listByAuction(auctionId)).some(
       (h) => h.status === 'HELD' && !keep.has(h.holdId),

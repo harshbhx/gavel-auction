@@ -14,7 +14,7 @@ vi.mock('../src/runtime/auction-service', async (importActual) => {
     ...actual,
     createAuctionService: (deps: Parameters<typeof actual.createAuctionService>[0]) => {
       passedHoldMaxAge.push(deps.holdMaxAgeMs);
-      passedMetrics.push(deps.metrics);
+      passedMetrics.push(deps.roomMetrics);
       return actual.createAuctionService(deps);
     },
   };
@@ -209,7 +209,9 @@ describe('GAVEL_HOLD_MAX_AGE_MS (R6-B01)', () => {
       connections: number;
       bids: { accepted: number };
     }> =>
-      (await fetch(`${url}/metrics`, { headers: { 'x-admin-key': base.ADMIN_KEY } })).json() as never;
+      (
+        await fetch(`${url}/metrics`, { headers: { 'x-admin-key': base.ADMIN_KEY } })
+      ).json() as never;
     expect((await read()).rooms).toBe(0);
     await app.service.createAuction(
       '01HZZZZZZZZZZZZZZZZZZZZZZB' as never,
@@ -238,7 +240,8 @@ describe('GAVEL_HOLD_MAX_AGE_MS (R6-B01)', () => {
     const { app, url } = await boot();
     const aud = '01HZZZZZZZZZZZZZZZZZZZZZZC';
     const jti = '01HZZZZZZZZZZZZZZZZZZZZZZD';
-    const nowS = Math.floor(Date.now() / 1000);
+    const nowMs = new SystemClock().now();
+    const nowS = Math.floor(nowMs / 1000);
     const token = await signToken(
       { kind: 'auctioneer', aud, sub: 'auctioneer-1', jti, iat: nowS, exp: nowS + 3600 },
       base.TOKEN_SECRET,
@@ -246,7 +249,7 @@ describe('GAVEL_HOLD_MAX_AGE_MS (R6-B01)', () => {
     const get = (): Promise<Response> =>
       fetch(`${url}/api/auctions/${aud}/export`, { headers: { authorization: `Bearer ${token}` } });
     expect((await get()).status).toBe(404);
-    await app.store.denyJti(jti as never, (Date.now() + 3_600_000) as never);
+    await app.store.denyJti(jti as never, (nowMs + 3_600_000) as never);
     expect((await get()).status).toBe(401);
   });
 });
