@@ -40,8 +40,8 @@ export interface LatencyResult {
 const config = {
   mode: 'english',
   currency: 'USD',
-  reserve: 10000,
-  minIncrement: 100,
+  reserve: 100,
+  minIncrement: 1,
   endTs: START + 24 * 3_600_000,
   softCloseWindowMs: 1000,
   softCloseExtensionMs: 1000,
@@ -50,7 +50,7 @@ const config = {
   confirmConfidenceThreshold: 0.85,
 } as unknown as AuctionConfig;
 
-const CEILING = 1_000_000_000 as Cents;
+const CEILING = 100_000 as Cents;
 
 async function build(listeners: number) {
   const clock = new ManualClock(START);
