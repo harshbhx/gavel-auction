@@ -28,11 +28,14 @@ describe('T-QA-064 L5 soak', () => {
   it('keeps the invariants across several rounds on a fake clock', async () => {
     let t = 0;
     const r = await runSoak({
-      now: () => (t += 1000),
+      now: () => t,
       rss: () => 0,
       durationMs: 4000,
       bidders: 4,
-      pause: () => Promise.resolve(),
+      pause: () => {
+        t += 1000;
+        return Promise.resolve();
+      },
     });
     expect(r.rounds).toBeGreaterThanOrEqual(2);
     expect(r.checks.filter((c) => !c.ok)).toEqual([]);
