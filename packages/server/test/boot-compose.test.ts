@@ -90,6 +90,26 @@ describe('server entry point (INT-R3-17)', () => {
     expect((await res.text()).length).toBeGreaterThan(0);
   });
 
+  it('lets an in-flight request finish when closing (R6-A02)', async () => {
+    const app = await composeServer(
+      { ...base },
+      {
+        sink: () => undefined,
+        extraRoutes: () => async (req, res) => {
+          if (req.url !== '/slow') return false;
+          await new Promise((r) => setTimeout(r, 300));
+          res.end('finished');
+          return true;
+        },
+      },
+    );
+    const port = await app.listen(0);
+    const pending = fetch(`http://127.0.0.1:${port}/slow`).then((r) => r.text());
+    await new Promise((r) => setTimeout(r, 100));
+    await app.close();
+    expect(await pending).toBe('finished');
+  });
+
   it('refuses to boot with an unavailable store', async () => {
     await expect(
       composeServer({ ...base, STORE: 'd1' }, { sink: () => undefined }),
