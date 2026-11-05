@@ -46,6 +46,13 @@ import {
 } from './confirm-resolve';
 import type { RateLimiter } from '../limits/rate-limiter';
 import {
+  MAX_CONNECTIONS_PER_TOKEN,
+  SUPERSEDED_CODE,
+  SUPERSEDED_REASON,
+  eventFrames,
+  planResync,
+} from './resync';
+import {
   TERMINAL_SETTLEMENT,
   canHammer,
   type BidMeta,
@@ -246,11 +253,48 @@ export class Room {
     return this.conns.size;
   }
 
-  attach(conn: Connection): Promise<void> {
+  /**
+   * Add a connection. With `lastSeq`, a client that missed at most 200 events gets those frames
+   * replayed before the snapshot; otherwise it gets the snapshot only (R-RT-057). A token may
+   * hold three connections; the oldest beyond that is closed as superseded (R-RT-058).
+   */
+  attach(conn: Connection, lastSeq?: number): Promise<void> {
     return this.enqueue(async () => {
+      this.supersedeOldest(conn);
       this.conns.set(conn.id, conn);
+      const plan = planResync(lastSeq, this.seq);
+      if (plan.kind === 'replay') {
+        let events: RoomEvent[] = [];
+        try {
+          events = await this.deps.store.readEvents(
+            this.auctionId,
+            plan.from,
+            plan.to - plan.from + 1,
+          );
+        } catch {
+          events = [];
+        }
+        const complete = events.length === plan.to - plan.from + 1;
+        if (complete) {
+          for (const event of events) {
+            for (const frame of eventFrames(event)) this.send(conn, frame);
+          }
+        }
+      }
       this.sendState(conn);
     });
+  }
+
+  private supersedeOldest(next: Connection): void {
+    const mine = [...this.conns.values()].filter(
+      (c) => c.role === next.role && c.sub === next.sub && c.bidderId === next.bidderId,
+    );
+    while (mine.length >= MAX_CONNECTIONS_PER_TOKEN) {
+      const oldest = mine.shift();
+      if (!oldest) break;
+      this.conns.delete(oldest.id);
+      oldest.transport.close(SUPERSEDED_CODE, SUPERSEDED_REASON);
+    }
   }
 
   detach(connId: ConnId): void {
