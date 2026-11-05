@@ -322,7 +322,7 @@ describe('idempotency, failures and restart (T-RT-025, T-RT-026, R-RT-059)', () 
     expect(await t.store.lastSeq(t.auctionId)).toBe(seqBefore);
   });
 
-  it('ignores a repeat registration with a higher ceiling and keeps the first hold (D-0022)', async () => {
+  it('ignores a repeat registration with a higher ceiling and keeps the first hold (D-0023)', async () => {
     const t = await setup();
     const seqBefore = await t.store.lastSeq(t.auctionId);
     await t.room.registerBidder({

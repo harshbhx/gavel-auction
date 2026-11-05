@@ -14,9 +14,10 @@ import {
   verdict,
   type CaptureDeps,
 } from '../../src/saga/capture.js';
-import { SettlementError, createSettlement, newJournal } from '../../src/saga/create.js';
+import { SettlementError, createSettlement } from '../../src/saga/create.js';
 import { MemoryJournalStore } from '../../src/stores/memory.js';
 import type { HoldTruth, PaymentAudit, SettlementPlan } from '../../src/types.js';
+import { FRESH_HOLDS, freshJournal } from '../helpers/age.js';
 
 const START_MS = 1_800_000_000_000;
 
@@ -78,7 +79,7 @@ const CEILINGS = { b1: 30000, b2: 25000, b3: 20000 };
 
 async function standard(rig: Rig): Promise<void> {
   await createSettlement(
-    { journals: rig.journals },
+    { journals: rig.journals, ...FRESH_HOLDS },
     planFor(rig, CEILINGS, [
       ['b1', 22000],
       ['b2', 21000],
@@ -180,7 +181,7 @@ describe('T-PAY-033 capture at the winning price', () => {
 
 describe('T-PAY-034 invariants before any PayPal call', () => {
   async function direct(rig: Rig, candidates: Array<[string, number]>, reserve = 5000) {
-    await rig.journals.create(newJournal(planFor(rig, CEILINGS, candidates, reserve)));
+    await rig.journals.create(freshJournal(planFor(rig, CEILINGS, candidates, reserve)));
   }
 
   it('a price above the hold ceiling goes to FAILED_NEEDS_REVIEW with zero calls', async () => {
@@ -241,7 +242,10 @@ describe('T-PAY-034 invariants before any PayPal call', () => {
   it('a plan with such a price is refused when it is created', async () => {
     const rig = makeRig(CEILINGS);
     await expect(
-      createSettlement({ journals: rig.journals }, planFor(rig, CEILINGS, [['b1', 30001]])),
+      createSettlement(
+        { journals: rig.journals, ...FRESH_HOLDS },
+        planFor(rig, CEILINGS, [['b1', 30001]]),
+      ),
     ).rejects.toBeInstanceOf(SettlementError);
     expect(await rig.journals.load('auc1')).toBeNull();
   });

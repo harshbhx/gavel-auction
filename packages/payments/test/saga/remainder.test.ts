@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { classifyError } from '../../src/errorMap.js';
 import { assertFakeInvariants } from '../../src/fake/invariants.js';
 import { runCapturePhase } from '../../src/saga/capture.js';
 import { releaseWinnerRemainder, remainderKey } from '../../src/saga/remainder.js';
@@ -103,5 +104,27 @@ describe('T-PAY-043 winner remainder', () => {
     expect(out.status).toBe('settled');
     if (out.status !== 'settled') return;
     expect(out.journal.voids[remainderKey('b1')]).toBe('remainder_unreleased');
+  });
+
+  it('a void answered 422 PREVIOUSLY_CAPTURED (G1 sandbox) counts as released and settles', async () => {
+    const rig = makeRig(CEILINGS, { autoReleaseRemainder: false });
+    await seed(rig);
+    const b1 = rig.auth['b1'] ?? '';
+    const deps = withGateway(rig, {
+      voidAuthorization: async (a, r) => {
+        if (a === b1) {
+          throw classifyError(
+            422,
+            {},
+            '{"name":"UNPROCESSABLE_ENTITY","details":[{"issue":"PREVIOUSLY_CAPTURED"}]}',
+          );
+        }
+        return rig.gw.voidAuthorization(a, r);
+      },
+    });
+    const out = await runSettlement(deps, 'auc1');
+    expect(out.status).toBe('settled');
+    if (out.status !== 'settled') return;
+    expect(out.journal.voids[remainderKey('b1')]).toBe('remainder_released');
   });
 });

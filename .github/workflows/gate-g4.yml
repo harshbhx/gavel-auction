@@ -1,0 +1,113 @@
+name: gate-g4
+# Runs sandbox gate G4 by hand: a small sandbox flow makes PayPal send real webhooks to the
+# receiver in tools/g4-receiver (a capture and a void), the log is fetched from the receiver
+# and gate G4 verifies every delivery. Before the first run set the webhook URL of the sandbox
+# app to <receiver url>/hook. Actions secrets needed: PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET,
+# PAYPAL_WEBHOOK_ID, SANDBOX_BUYER_EMAIL, SANDBOX_BUYER_PASSWORD, G4_LOG_TOKEN. The job runs
+# only from main, so code on a pushed branch never reads the secrets.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RECEIVER_URL: https://gavel-g4-receiver.creharsh.workers.dev
+  GATE_CURRENCY: USD
+
+jobs:
+  g4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: sandbox-nightly
+    if: ${{ github.ref == 'refs/heads/main' }}
+    concurrency:
+      group: gate-g4
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check that the secrets exist
+        env:
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          PAYPAL_WEBHOOK_ID: ${{ secrets.PAYPAL_WEBHOOK_ID }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          G4_LOG_TOKEN: ${{ secrets.G4_LOG_TOKEN }}
+        run: |
+          missing=""
+          for name in PAYPAL_CLIENT_ID PAYPAL_CLIENT_SECRET PAYPAL_WEBHOOK_ID SANDBOX_BUYER_EMAIL SANDBOX_BUYER_PASSWORD G4_LOG_TOKEN; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error title=Missing secrets::Add these repository Actions secrets and run again:$missing"
+            exit 2
+          fi
+      - uses: ./.github/actions/setup
+      - name: Cache the browser
+        id: pw-cache
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-1.49.1-chromium
+      - name: Install the browser
+        env:
+          BROWSER_CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.49.1
+          cd "$RUNNER_TEMP/pw"
+          if [ "$BROWSER_CACHE_HIT" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+      - name: Clear the receiver log
+        env:
+          G4_LOG_TOKEN: ${{ secrets.G4_LOG_TOKEN }}
+        run: |
+          curl -fsS -X DELETE --get --data-urlencode "token=$G4_LOG_TOKEN" "$RECEIVER_URL/log"
+          echo
+      - name: Generate sandbox events
+        env:
+          PAYPAL_ENV: sandbox
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
+        run: npm run gate:g4-events -w @gavel/payments -- --out "$RUNNER_TEMP/g4-events"
+      - name: Wait for the deliveries
+        run: sleep 60
+      - name: Fetch the receiver log
+        env:
+          G4_LOG_TOKEN: ${{ secrets.G4_LOG_TOKEN }}
+        run: |
+          curl -fsS --get --data-urlencode "token=$G4_LOG_TOKEN" "$RECEIVER_URL/log" -o "$RUNNER_TEMP/g4-receiver.jsonl"
+          echo "deliveries: $(grep -c . "$RUNNER_TEMP/g4-receiver.jsonl" || true)"
+      - name: Run G4
+        env:
+          PAYPAL_ENV: sandbox
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          PAYPAL_WEBHOOK_ID: ${{ secrets.PAYPAL_WEBHOOK_ID }}
+        run: |
+          npm run gate:g4 -w @gavel/payments -- --log "$RUNNER_TEMP/g4-receiver.jsonl" --out "$PWD/docs/evidence" --fixtures "$PWD/docs/evidence/G4/fixtures"
+      - name: Clear the receiver log again
+        if: ${{ always() }}
+        env:
+          G4_LOG_TOKEN: ${{ secrets.G4_LOG_TOKEN }}
+        run: curl -fsS -X DELETE --get --data-urlencode "token=$G4_LOG_TOKEN" "$RECEIVER_URL/log" || true
+      # Only the gate's own evidence and sanitized fixtures are uploaded, never the raw log.
+      - name: Upload evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g4-evidence
+          path: |
+            docs/evidence
+            !docs/evidence/**/*.run.json
+            docs/GATES.md
+          if-no-files-found: warn
+          retention-days: 7

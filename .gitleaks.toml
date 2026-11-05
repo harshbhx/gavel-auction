@@ -22,4 +22,6 @@ regexes = [
   '''abcdefghijklmnop1234''',
   # Canary values the CI secrets job injects into the web build to prove they never reach dist.
   '''canary-[a-z-]+-4f9c2a71''',
+  # Sandbox order id recorded in the G1 evidence history before link query values were redacted.
+  '''1KX67448NS3929301''',
 ]

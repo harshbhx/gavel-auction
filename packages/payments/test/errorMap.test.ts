@@ -52,6 +52,16 @@ describe('T-PAY-009 error mapping table (SPEC 4.3)', () => {
     expect(err.outcome).toBe('definite');
   });
 
+  it('maps 422 PREVIOUSLY_CAPTURED (void after a final capture, G1) to already_captured', () => {
+    const err = classifyError(
+      422,
+      {},
+      '{"name":"UNPROCESSABLE_ENTITY","details":[{"issue":"PREVIOUSLY_CAPTURED"}]}',
+    );
+    expect(err.kind).toBe('already_captured');
+    expect(err.outcome).toBe('definite');
+  });
+
   it('takes the debug id from the header first, then the body', () => {
     const body = '{"debug_id":"from-body"}';
     expect(classifyError(500, { 'paypal-debug-id': 'from-header' }, body).debugId).toBe(
