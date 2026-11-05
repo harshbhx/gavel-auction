@@ -166,8 +166,12 @@ export interface RegisterBidderInput {
 export interface AuctionService {
   /** Creates a room. `config` is validated against the shared schema. */
   createAuction(auctionId: AuctionId, config: AuctionConfig, auctioneerSub: string): Promise<Room>;
-  /** The room, loaded from its log on first use. */
-  room(auctionId: AuctionId): Promise<Room>;
+  /**
+   * The room, loaded from its log on first use. `settlement: true` marks a settlement, webhook,
+   * recovery or kill-switch path: it may load beyond `MAX_ROOMS` when no finished room can be
+   * evicted, because the cap is meant for new auctions, not for existing ones.
+   */
+  room(auctionId: AuctionId, opts?: { settlement?: boolean }): Promise<Room>;
   /** Loaded room count and open connections, for the metrics gauges. */
   stats(): { rooms: number; connections: number; mailboxDepth: number };
   /** The loaded rooms, for `GET /ops/rooms`. */
@@ -248,6 +252,8 @@ class Service implements AuctionService, SettlePort {
   private readonly rooms = new Map<string, Promise<Room>>();
   /** The same rooms once loaded, for synchronous gauges. */
   private readonly ready = new Map<string, Room>();
+  /** When each loaded room was last asked for, to evict the least recently used first. */
+  private readonly lastUsed = new Map<string, number>();
   /** Rooms this host lost to another host (R-RT-061); they are never served or resumed here. */
   private readonly fenced = new Set<string>();
   private readonly roomStore: RoomStore;
@@ -361,6 +367,7 @@ class Service implements AuctionService, SettlePort {
     }
     const created = Room.create(auctionId, parsed.data, auctioneerSub, this.roomDeps(auctionId));
     this.rooms.set(auctionId, created);
+    this.lastUsed.set(auctionId, this.deps.clock.now());
     this.track(auctionId, created);
     try {
       return await created;
@@ -377,8 +384,10 @@ class Service implements AuctionService, SettlePort {
    */
   private evictFinished(): void {
     if (this.rooms.size < this.caps.rooms) return;
-    for (const [id, room] of [...this.ready]) {
-      if (!this.rooms.has(id) || !room.isDone || room.connectionCount > 0) continue;
+    const candidates = [...this.ready]
+      .filter(([id, room]) => this.rooms.has(id) && room.isDone && room.connectionCount === 0)
+      .sort((a, b) => (this.lastUsed.get(a[0]) ?? 0) - (this.lastUsed.get(b[0]) ?? 0));
+    for (const [id, room] of candidates) {
       this.unload(id, room);
       if (this.rooms.size < this.caps.rooms) return;
     }
@@ -392,6 +401,7 @@ class Service implements AuctionService, SettlePort {
     this.retryCounts.delete(id);
     this.rooms.delete(id);
     this.ready.delete(id);
+    this.lastUsed.delete(id);
     void room.close().catch(() => undefined);
   }
 
@@ -424,16 +434,23 @@ class Service implements AuctionService, SettlePort {
     return { rooms, connections, mailboxDepth };
   }
 
-  room(auctionId: AuctionId): Promise<Room> {
+  room(auctionId: AuctionId, opts: { settlement?: boolean } = {}): Promise<Room> {
     if (this.fenced.has(auctionId)) {
       return Promise.reject(new GavelError('host_fenced', 'this host no longer owns the room'));
     }
     const known = this.rooms.get(auctionId);
-    if (known !== undefined) return known;
+    if (known !== undefined) {
+      this.lastUsed.set(auctionId, this.deps.clock.now());
+      return known;
+    }
     this.evictFinished();
-    if (this.rooms.size >= this.caps.rooms) {
+    // Settlement-critical paths (settlement, webhooks, recovery, kill switch) act on an auction
+    // that already exists, so the cap meant for new auctions must not refuse them: with no
+    // finished room left to evict they load beyond the cap.
+    if (opts.settlement !== true && this.rooms.size >= this.caps.rooms) {
       return Promise.reject(new GavelError('room_cap', 'room cap reached'));
     }
+    this.lastUsed.set(auctionId, this.deps.clock.now());
     const loaded = Room.load(auctionId, this.roomDeps(auctionId));
     this.rooms.set(auctionId, loaded);
     this.track(auctionId, loaded);
@@ -456,6 +473,7 @@ class Service implements AuctionService, SettlePort {
     const known = this.rooms.get(auctionId);
     this.rooms.delete(auctionId);
     this.ready.delete(auctionId);
+    this.lastUsed.delete(auctionId);
     this.deps.onError?.(auctionId, new GavelError('host_fenced'));
     if (known !== undefined) void known.then((room) => room.fence()).catch(() => undefined);
   }
@@ -554,7 +572,7 @@ class Service implements AuctionService, SettlePort {
   }
 
   async acceptsHolds(auctionId: AuctionId): Promise<boolean> {
-    if (hammeredEngine(await this.room(auctionId)) !== undefined) return false;
+    if (hammeredEngine(await this.room(auctionId, { settlement: true })) !== undefined) return false;
     return (await this.deps.journals.load(lotIdOf(auctionId))) === null;
   }
 
@@ -590,7 +608,7 @@ class Service implements AuctionService, SettlePort {
     const released = await runVoidPhase(this.voidDeps({ releaseAllReviewHolds: true }), lotId);
     if (released.status === 'busy') return 'busy';
     await this.markReleasedHolds(released.journal);
-    await this.finishBridge(await this.room(auctionId), auctionId, released.journal);
+    await this.finishBridge(await this.room(auctionId, { settlement: true }), auctionId, released.journal);
     return 'released';
   }
 
@@ -627,7 +645,7 @@ class Service implements AuctionService, SettlePort {
     const reason = revokeReasonFor(hold.status);
     let afterHammer = true;
     if (reason !== null) {
-      const room = await this.room(hold.auctionId as AuctionId);
+      const room = await this.room(hold.auctionId as AuctionId, { settlement: true });
       // Only the hold the room registered backs the bidder's ceiling. A spare hold that is
       // declined, expired or voided must not strike a bidder whose registered hold is good.
       if (room.holdRefs.get(hold.bidderId as BidderId) !== hold.holdId) {
@@ -729,7 +747,7 @@ class Service implements AuctionService, SettlePort {
       if (this.fenced.has(id)) continue;
       // One auction that cannot be aborted now must not keep the others open.
       try {
-        const room = await this.room(id);
+        const room = await this.room(id, { settlement: true });
         await this.boundary('before:abort');
         if (await room.abort(ABORT_ACTOR)) aborted.push(id);
         await this.boundary('after:abort');
@@ -750,7 +768,7 @@ class Service implements AuctionService, SettlePort {
       if (this.fenced.has(id)) continue;
       // One unloadable auction must not stop the others from resuming.
       try {
-        const room = await this.room(id);
+        const room = await this.room(id, { settlement: true });
         // A hammered room with no journal yet, or whose settle request was never stored, has
         // to be driven again; an earlier run may have died before the journal was created.
         await room.retrySettlement();
@@ -838,7 +856,7 @@ class Service implements AuctionService, SettlePort {
   }
 
   private async settlementRun(auctionId: AuctionId): Promise<'done' | 'again'> {
-    const room = await this.room(auctionId);
+    const room = await this.room(auctionId, { settlement: true });
     const engine = hammeredEngine(room);
     if (engine === undefined) throw new Error('auction is not hammered');
     const lotId = lotIdOf(auctionId);
