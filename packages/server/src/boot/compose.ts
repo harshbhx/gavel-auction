@@ -31,6 +31,7 @@ import {
   type RoomStore,
 } from '@gavel/shared';
 import type { AuthRole } from '../auth/authorize';
+import { auctioneerTokenLive } from '../auth/auctioneer-floor';
 import { previousSecretWarning, secretSetFromConfig, verifyRotating } from '../auth/rotation';
 import type { JtiStore } from '../auth/token';
 import { loadConfig, redactConfig, type LoadHooks, type ServerConfig } from '../config';
@@ -330,7 +331,8 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
         nowMs: clock.now(),
         jtis: revocationsOf(stores.room),
       });
-      return result.ok ? 'auctioneer' : undefined;
+      if (!result.ok) return undefined;
+      return (await auctioneerTokenLive(stores.room, result.payload)) ? 'auctioneer' : undefined;
     },
   });
   const replayBundleRoute = createReplayBundleHandler({

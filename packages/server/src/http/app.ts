@@ -11,6 +11,7 @@ import {
 import type { z } from 'zod';
 import { signWithCurrent, verifyRotating, type SecretSet } from '../auth/rotation';
 import { TOKEN_TTL_S, type JtiStore, type TokenKind, type TokenPayload } from '../auth/token';
+import { auctioneerTokenLive } from '../auth/auctioneer-floor';
 import type { AuctionService } from '../runtime/auction-service';
 
 /** Largest request body the host reads (R-RT-105). */
@@ -304,6 +305,9 @@ export async function verifyFor(
     jtis: jtiStoreOf(deps),
   });
   if (!r.ok) throw new GavelError(r.code, r.reason);
+  if (!(await auctioneerTokenLive(deps.store, r.payload))) {
+    throw new GavelError('unauthorized', 'token revoked');
+  }
   return r.payload;
 }
 
@@ -331,8 +335,9 @@ export async function mintToken(
   auctionId: string,
   sub: string,
   bidderId?: string,
+  notBeforeSec = 0,
 ): Promise<Minted> {
-  const iat = Math.floor(deps.clock.now() / 1000);
+  const iat = Math.max(Math.floor(deps.clock.now() / 1000), notBeforeSec);
   const jti = deps.ids.mint<'Jti'>();
   const payload: TokenPayload = {
     kind,
