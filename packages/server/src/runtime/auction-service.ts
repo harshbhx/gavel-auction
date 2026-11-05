@@ -164,11 +164,7 @@ export interface AuctionService {
   /** Admin: compares the journal, the hold records and PayPal for one auction (R-PAY-100). */
   reconcile(auctionId: AuctionId): Promise<ReconcileReport>;
   /** The webhook route's body: raw request bytes and headers in, HTTP status out. */
-  handleWebhook(
-    rawBody: Buffer,
-    headers: WebhookHeaders,
-    source?: string,
-  ): Promise<WebhookResponse>;
+  handleWebhook(rawBody: Buffer, headers: WebhookHeaders): Promise<WebhookResponse>;
   /**
    * Loads every known room (which resumes hammered ones), continues unfinished
    * settlements and applies stored webhook events. Call it at start-up and on a timer.
@@ -482,12 +478,8 @@ class Service implements AuctionService, SettlePort {
 
   // ---- webhooks
 
-  handleWebhook(
-    rawBody: Buffer,
-    headers: WebhookHeaders,
-    source?: string,
-  ): Promise<WebhookResponse> {
-    return this.webhook.handle(rawBody, headers, source);
+  handleWebhook(rawBody: Buffer, headers: WebhookHeaders): Promise<WebhookResponse> {
+    return this.webhook.handle(rawBody, headers);
   }
 
   /**
