@@ -301,6 +301,16 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: ./.github/actions/setup
       - run: npm run test:tools
+  package-checks:
+    needs: [changes]
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/setup
+      # Package-level guard that the root lint does not read: the trace baseline.
+      - run: npm run check:trace -w @gavel/engine
   prod-build:
     needs: [changes]
     if: ${{ needs.changes.outputs.code == 'true' }}
@@ -316,6 +326,7 @@ jobs:
     needs:
       - changes
       - prod-build
+      - package-checks
       - typecheck
       - lint
       - format-check
