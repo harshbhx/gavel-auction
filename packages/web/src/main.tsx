@@ -23,7 +23,14 @@ import('./config')
   .then(({ App, config }) => {
     createRoot(root).render(
       <StrictMode>
-        <App liveBase={config.wsBase} />
+        <App
+          liveBase={config.wsBase}
+          api={{
+            apiBase: config.apiBase,
+            payments: config.payments,
+            paypalClientId: config.paypalClientId,
+          }}
+        />
       </StrictMode>,
     );
   })

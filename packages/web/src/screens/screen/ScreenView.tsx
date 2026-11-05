@@ -77,7 +77,11 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
           </>
         )}
         {!closed && price !== null && (
-          <p className="gv-screen__clock tabular">{formatCountdown(price.endTs - now())}</p>
+          <p className="gv-screen__clock tabular">
+            {formatCountdown(
+              price.paused && price.remainingMs !== null ? price.remainingMs : price.endTs - now(),
+            )}
+          </p>
         )}
       </div>
       <section className="gv-screen__ticker" aria-label={t('screen.latest')}>
