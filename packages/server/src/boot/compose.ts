@@ -35,6 +35,7 @@ import { auctioneerTokenLive } from '../auth/auctioneer-floor';
 import { previousSecretWarning, secretSetFromConfig, verifyRotating } from '../auth/rotation';
 import type { JtiStore } from '../auth/token';
 import { loadConfig, redactConfig, type LoadHooks, type ServerConfig } from '../config';
+import { createExportHandler as createLedgerExportHandler } from '../admin/export';
 import { createReplayBundleHandler } from '../admin/replay-bundle';
 import { createExportHandler } from '../http/export';
 import { createHealthRoutes } from '../http/health';
@@ -43,7 +44,7 @@ import { adminKeyMatches, createOpsRoomsHandler } from '../http/ops';
 import { capsFromConfig } from '../limits/caps';
 import { limitsFromConfig } from '../limits/rate-limiter';
 import { createGuardedWebhookRoute } from '../http/webhook-guard';
-import { portFromService } from '../http/webhook';
+import { portFromService, sourceOf } from '../http/webhook';
 import { createPaymentAudit } from './payment-audit';
 import { createLogger, type LogSink } from '../log/logger';
 import { RateLimiter } from '../limits/rate-limiter';
@@ -276,9 +277,10 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     rooms: () => serviceStats().rooms,
     mailboxDepth: () => serviceStats().mailboxDepth,
   });
+  const limiter = new RateLimiter(clock, limitsFromConfig(config));
   const service = createAuctionService({
     roomMetrics: metrics,
-    limiter: new RateLimiter(clock, limitsFromConfig(config)),
+    limiter,
     caps: capsFromConfig(config),
     store: stores.room,
     clock,
@@ -340,7 +342,12 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     ledger: stores.ledger,
     now: () => clock.now(),
   });
+  const ledgerExportRoute = createLedgerExportHandler({
+    adminKey: config.ADMIN_KEY,
+    ledger: stores.ledger,
+  });
   const webhookRoute = createGuardedWebhookRoute(portFromService(service), {
+    trustedProxyHops: config.TRUSTED_PROXY_HOPS,
     log: {
       info: (m, f) => log.info(m, f),
       warn: (m, f) => log.warn(m, f),
@@ -384,8 +391,20 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
 
   const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const path = (req.url ?? '').split('?')[0] ?? '';
+    // Liveness probes come from the platform, not a client: never limit them.
     if (path === '/healthz') return health.healthz(req, res);
     if (path === '/readyz') return health.readyz(req, res);
+    // R-RT-120: per-client HTTP limit; webhook routes are exempt inside checkHttp.
+    const limited = limiter.checkHttp(sourceOf(req, config.TRUSTED_PROXY_HOPS) ?? 'unknown', path);
+    if (!limited.ok) {
+      res.writeHead(429, {
+        'content-type': 'application/json',
+        'retry-after': String(Math.max(1, Math.ceil(limited.retryAfterMs / 1000))),
+      });
+      res.end('{"error":"rate_limited"}');
+      return;
+    }
+    if (path === '/admin/export') return ledgerExportRoute(req, res);
     if (path === '/admin/replay-bundle') return replayBundleRoute(req, res);
     if (path === '/warmup') return warmupRoute(req, res);
     if (path === '/metrics') return metricsRoute(req, res);
