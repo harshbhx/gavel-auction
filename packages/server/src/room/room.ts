@@ -21,6 +21,7 @@ import {
   type EnginePort,
   type EpochMs,
   type ErrorCode,
+  isErrorCode,
   type Ids,
   type RoomEvent,
   RoomEventSchema,
@@ -101,6 +102,15 @@ function bidMeta(conn: Connection, msg: BidMsg, confirmed = false): BidMeta {
   if (meta.source === 'voice' && msg.confidence !== undefined) meta.confidence = msg.confidence;
   if (confirmed && meta.source === 'voice') meta.confirmed = true;
   return meta;
+}
+
+/** Accept only `ok: true`; a rejection must carry a known code; anything else is malformed. */
+function bidOutcome(res: unknown): 'accepted' | 'malformed' | ErrorCode {
+  if (typeof res !== 'object' || res === null) return 'malformed';
+  const r = res as { ok?: unknown; code?: unknown };
+  if (r.ok === true) return 'accepted';
+  if (r.ok === false && isErrorCode(r.code)) return r.code;
+  return 'malformed';
 }
 
 function placeBidOn(
@@ -271,6 +281,14 @@ export class Room {
   attach(conn: Connection, lastSeq?: number): Promise<void> {
     return this.enqueue(async () => {
       this.supersedeOldest(conn);
+      try {
+        await this.ensureClean();
+      } catch {
+        // The engine may be ahead of the store: send nothing derived from it (R-RT-056).
+        this.conns.set(conn.id, conn);
+        this.sendError(conn, this.storeCode());
+        return;
+      }
       this.conns.set(conn.id, conn);
       const plan = planResync(lastSeq, this.seq);
       if (plan.kind === 'replay') {
@@ -359,6 +377,11 @@ export class Room {
   /** Report a payment hold: the bidder joins the roster with their private ceiling (R-RT-054). */
   registerBidder(reg: RegisterBidder): Promise<void> {
     return this.enqueue(async () => {
+      try {
+        await this.ensureClean();
+      } catch {
+        throw this.storeError();
+      }
       if (this.roster.has(reg.bidderId)) {
         // A revoked bidder cannot be backed by a second hold; the caller releases it (D-0023).
         if (
@@ -519,8 +542,21 @@ export class Room {
     else if (!this.roster.has(bidderId)) code = 'unregistered';
     else {
       try {
-        const res = placeBidOn(engine, bidderId, msg.amount, ts, bidMeta(conn, msg, confirmed));
-        if (!res.ok) code = res.code;
+        const res: unknown = placeBidOn(
+          engine,
+          bidderId,
+          msg.amount,
+          ts,
+          bidMeta(conn, msg, confirmed),
+        );
+        const outcome = bidOutcome(res);
+        if (outcome === 'malformed') {
+          // Not a result the room can trust: rebuild from the log and persist nothing (R-RT-035).
+          this.dirty = true;
+          this.sendError(conn, 'internal');
+          return;
+        }
+        if (outcome !== 'accepted') code = outcome;
       } catch {
         // The engine may be half-mutated: rebuild from the log before the next command (R-RT-033).
         this.dirty = true;
@@ -581,8 +617,8 @@ export class Room {
     if (reply && durable) this.send(conn, reply);
     else if (reply) this.sendError(conn, this.storeCode());
     if (event.type === 'bid_accepted') {
-      this.broadcastPrice(seq, ts);
       this.armTimer();
+      this.broadcastPrice(seq, ts);
     }
     this.broadcastAudit(audit, seq, ts);
   }
@@ -1017,8 +1053,8 @@ export class Room {
       this.seq = seq;
       this.revoked.add(bidderId);
       // The leader may have changed; the price message carries the new seq, so no one sees a gap.
-      this.broadcastPrice(seq, ts);
       this.armTimer();
+      this.broadcastPrice(seq, ts);
       await this.makeDurable();
       return 'applied';
     });
@@ -1332,8 +1368,16 @@ export class Room {
     const out = redactForViewer(conn.role, conn.bidderId, msg);
     if (out === null) return;
     const enc = encodeMsg(out);
-    if (enc.ok) conn.transport.send(enc.value);
-    else this.encodeFailures += 1;
+    if (!enc.ok) {
+      this.encodeFailures += 1;
+      return;
+    }
+    try {
+      conn.transport.send(enc.value);
+    } catch {
+      // A dead socket must not stop the fan-out to the others: drop only this connection.
+      this.conns.delete(conn.id);
+    }
   }
 
   private sendError(conn: Connection, code: ErrorCode, retryAfterMs?: number): void {
@@ -1448,7 +1492,11 @@ export class Room {
     }
     const from = this.lastState;
     const to = engine.tick(now);
-    if (to === from) return;
+    if (to === from) {
+      // Past endTs but the engine has not moved: try again soon rather than stay OPEN (R-RT-041).
+      this.retryTimer();
+      return;
+    }
     const seq = this.seq + 1;
     const event: RoomEvent = {
       type: 'state_changed',
@@ -1492,6 +1540,8 @@ export class Room {
     } catch {
       throw new GavelError('store_unavailable');
     }
+    // A log longer than what clients were told means an append committed after it failed.
+    const moved = fresh.seq !== this.seq;
     this.config = fresh.config;
     this.engine = fresh.engine;
     this.roster = fresh.roster;
@@ -1508,6 +1558,8 @@ export class Room {
     this.done = fresh.done;
     this.dirty = false;
     this.armTimer();
+    // Tell everyone about events they never saw: resend the state (R-RT-056).
+    if (moved) for (const conn of this.conns.values()) this.sendState(conn);
   }
 
   private async replay(): Promise<void> {

@@ -153,3 +153,25 @@ describe('rate limiter memory and paths', () => {
     expect(rl.checkHttp('1.1.1.1', '/webhooks/paypal?id=1').ok).toBe(true);
   });
 });
+
+describe('rate limiter eviction (#960)', () => {
+  it('does not reset an exhausted bid bucket when another kind floods the map', () => {
+    const clock = new ManualClock(1_789_000_000_000);
+    const rl = new RateLimiter(clock, LIMITS, 100);
+    for (let i = 0; i < 5; i++) expect(rl.checkBid('b1').ok).toBe(true);
+    expect(rl.checkBid('b1').ok).toBe(false);
+    for (let i = 0; i < 1000; i++) rl.checkHttp(`ip-${i}`, '/x');
+    expect(rl.checkBid('b1').ok).toBe(false);
+  });
+
+  it('denies new keys of a full kind instead of evicting live ones', () => {
+    const clock = new ManualClock(1_789_000_000_000);
+    const rl = new RateLimiter(clock, LIMITS, 10);
+    for (let i = 0; i < 10; i++) rl.checkHttp(`ip-${i}`, '/x');
+    for (let i = 0; i < 60; i++) rl.checkHttp('ip-0', '/x');
+    expect(rl.checkHttp('ip-0', '/x').ok).toBe(false);
+    expect(rl.checkHttp('new-ip', '/x').ok).toBe(false);
+    expect(rl.checkHttp('ip-0', '/x').ok).toBe(false);
+    expect(rl.size).toBeLessThanOrEqual(10);
+  });
+});
