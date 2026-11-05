@@ -73,8 +73,8 @@ and open a pull request. Do not edit a gate to PASS by hand.
 ## G0: sandbox connectivity and credentials
 
 - Failure signals: `gate-g0` red; auth errors (401) on token request; no G0 evidence file.
-  `docs/GATES.md` has no G0 section today, so G0 results are the run log and any file under
-  `docs/evidence/G0/`.
+  `docs/GATES.md` has a G0 section (PASS, run 41815593520); the evidence is the run log, as no file
+  is committed under `docs/evidence/G0/`.
 - Check: the `gate-g0` run log; Apps and Credentials in the PayPal dashboard (app exists, mode is
   sandbox); the four repository secrets exist.
 - Fallback decision: none for payments. Without G0 no later real-sandbox gate is meaningful, so

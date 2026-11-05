@@ -36,7 +36,7 @@ Rule: an item is marked [x] only after it is verified on `main`. An item marked 
 
 ## Known limits
 
-- [x] Gate G2 (card and guest AUTHORIZE) is UNVERIFIED: NOT RUN in `docs/GATES.md`.
+- [x] Gate G2 (card and guest AUTHORIZE) passed on the sandbox: PASS in `docs/GATES.md`.
 - [x] Gate G3 (honor period, validity and reauthorize) is UNVERIFIED: NOT RUN in `docs/GATES.md`.
 - [x] Gate G5 (speech-to-text accuracy on noisy bids) is UNVERIFIED: NOT RUN in `docs/GATES.md`.
 - [x] Hosted demo and WebSocket room flow are not available yet (see `docs/DEMO.md`).

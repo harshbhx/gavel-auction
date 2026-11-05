@@ -3,6 +3,30 @@
 A gate is CLOSED only when Status is PASS or FAIL with a recorded Decision. PARTIAL stays open.
 A gate without evidence reads NOT RUN. PASS, PARTIAL and FAIL need an Evidence line.
 
+## G0: sandbox app and buyer accounts
+
+Status: PASS
+Run date / by: 2026-11-04 by harshbhx (workflow gate-g0, run 41815593520, branch gate/g0)
+Question: does the sandbox app authenticate, and can it create an AUTHORIZE order?
+Setup: sandbox, the new business app (client id and secret as repository secrets, values never recorded), script `node scripts/gates/g0.mjs`.
+Requests: client credentials token request, create order with intent AUTHORIZE.
+Observed: token request HTTP 200 and the scopes include payments; create order HTTP 201 with order status CREATED and intent as sent; the approve link is present. The script printed `G0 PASS`.
+Verdict: sandbox credentials work and the app can create an AUTHORIZE order.
+
+| id                          | expected                 | actual                      | verdict  |
+| --------------------------- | ------------------------ | --------------------------- | -------- |
+| G0.1 token                  | HTTP 200, payments scope | HTTP 200, payments scope    | observed |
+| G0.2 create AUTHORIZE order | HTTP 201 CREATED         | HTTP 201 CREATED, intent ok | observed |
+| G0.3 approve link           | present                  | present                     | observed |
+
+Decision: PASS
+Fallback if FAIL: none for payments; hold G1 to G4 and demo on the fake PayPal.
+Evidence: no evidence file is committed under docs/evidence/G0/ and the run published no artifact; the evidence is the run log of workflow gate-g0, run 41815593520 (2026-11-04).
+Links: workflow gate-g0, run 41815593520; secrets by name below.
+Scope: connectivity, token scopes and order creation only. No buyer approval or capture was part of G0.
+Sandbox accounts: 1 business account that owns the app, and 5 personal buyer accounts, all US and USD. Buyer A, buyer B, buyer C (card), buyer D and buyer E use the emails gavel-buyer-a, gavel-buyer-b, gavel-buyer-card, gavel-buyer-d and gavel-buyer-e at personal.example.com. Passwords are not recorded in the repository.
+Secrets (names only): the app is `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET`; buyer credentials are the pairs `SANDBOX_BUYER`, `SANDBOX_BUYER2`, `SANDBOX_BUYER3` and `SANDBOX_CARD_BUYER`. The pair for buyer E (`SANDBOX_BUYER4`) is not set yet.
+
 ## G1: partial capture and remainder release
 
 Status: PASS
@@ -164,6 +188,29 @@ recorded bids (`G5_AUDIO_DIR/g5-01.wav` to `g5-20.wav`, supplied privately) to t
 prints `skipped` when the key or a recording is missing. The nightly workflow
 `.github/workflows/nightly-sandbox.yml` calls it too. Verdict: PASS needs exact plus recoverable
 confirm at 0.90 or more and wrong accepts at 0.05 or less; PARTIAL needs 0.70 or more; otherwise FAIL.
+
+## Decision
+
+Interim decision: GO, with documented fallbacks. This is not a final go: G3 and G5 are NOT RUN.
+
+Verified, with evidence above:
+
+- Wallet and card AUTHORIZE work (G2), so the card and guest path is on (`g2_card_authorize` true).
+- Partial capture with `final_capture` releases the remainder for wallet and card buyers (G1, decision A).
+- Real webhooks verify through PayPal's endpoint (G4). Tampered-event rejection is covered against the fake only.
+- The sandbox app and buyer accounts work (G0).
+
+Not run, results pending:
+
+- G3 (honor period, validity and reauthorize): NOT RUN. Fallback: capture within the verified validity window and use the reauthorize path (spec R3, T-QA-052) before hammer. R3 is the plan, not a result: it is not verified until G3 runs.
+- G5 (speech-to-text accuracy on noisy bids): NOT RUN. Fallback: always show the confirm prompt for spoken bids.
+
+What changes the decision:
+
+- G3 shows a validity window shorter than the longest planned auction, or reauthorize does not extend it: auctions are capped to the validity window and the demo stays short, or the decision moves to NO-GO for long auctions.
+- G3 passes with a window that covers the planned auctions: the decision becomes GO for card and wallet.
+- G5 FAIL: voice bids stay behind the confirm prompt; the payments decision is unchanged.
+- A later run of G1, G2 or G4 that no longer matches the recorded evidence reopens that gate and the flag that depends on it.
 
 ## Latency targets and measured numbers
 

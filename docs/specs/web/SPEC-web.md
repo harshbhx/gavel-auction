@@ -460,7 +460,7 @@ Server contract the adapter relies on (owner: payments/realtime; confirm names t
 2. Buyer approves in the PayPal UI opened by the SDK.
 3. `POST /api/rooms/:id/holds` body `{ orderId, clientRegistrationId }` returns `{ holdIdSuffix, state:'HELD' }`; the server authorizes the order. The browser never calls PayPal APIs with secrets.
 
-JS SDK v6 specifics: the exact v6 calls (instance creation, session type, button or popup presentation, `onApprove`, `onCancel`, `onError` payloads) are `UNVERIFIED (gate G2)`. The adapter isolates them in one file with a typed internal interface; the card/guest path is also UNVERIFIED (G2). Fallback if v6 AUTHORIZE for card fails: PayPal-wallet buyers only, same port, redirect-style approval via the order's approve link and a return route `/r/:roomId/register?return=1&token=...` that calls step 3. Fallback if v6 itself fails: the redirect flow becomes the main path. The UI states in R-WEB-044 are identical in all three.
+JS SDK v6 specifics: the exact v6 calls (instance creation, session type, button or popup presentation, `onApprove`, `onCancel`, `onError` payloads) are `UNVERIFIED (gate G2)`. The adapter isolates them in one file with a typed internal interface; the card/guest path authorizes in v6 (verified in G2). Fallback if v6 AUTHORIZE for card fails: PayPal-wallet buyers only, same port, redirect-style approval via the order's approve link and a return route `/r/:roomId/register?return=1&token=...` that calls step 3. Fallback if v6 itself fails: the redirect flow becomes the main path. The UI states in R-WEB-044 are identical in all three.
 
 ### 5.4 Clock and formatting
 
@@ -548,7 +548,7 @@ Bidder        Web                      Server              PayPal
   |------------>| GET /join/:id           |                    |
   |             |-- join{room} ---------->|                    |
   | name,paddle,ceiling                   |                    |
-  |------------>| POST /orders ---------->|-- create order --->|  (AUTHORIZE) UNVERIFIED G2
+  |------------>| POST /orders ---------->|-- create order --->|  (AUTHORIZE) verified G2
   |             |<-- orderId -------------|                    |
   |             |== SDK v6 approval UI ==============> buyer approves
   |             | POST /holds ----------->|-- authorize ----->|
