@@ -66,3 +66,31 @@ export function clearSession(
     // Nothing to clear.
   }
 }
+
+const HIGH_PREFIX = 'gavel:highbid:';
+
+/** The bidder's own highest accepted amount for this auction, or 0 when none is stored. */
+export function loadHighBid(
+  auctionId: string,
+  storage: StorageLike | null = defaultStorage(),
+): number {
+  if (storage === null) return 0;
+  try {
+    const n = Number(storage.getItem(`${HIGH_PREFIX}${auctionId}`));
+    return Number.isInteger(n) && n > 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function saveHighBid(
+  auctionId: string,
+  cents: number,
+  storage: StorageLike | null = defaultStorage(),
+): void {
+  try {
+    storage?.setItem(`${HIGH_PREFIX}${auctionId}`, String(cents));
+  } catch {
+    // Storage is blocked or full; the snapshot still restores the amount.
+  }
+}
