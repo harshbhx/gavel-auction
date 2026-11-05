@@ -214,17 +214,28 @@ What changes the decision:
 
 ## Latency targets and measured numbers
 
-Targets (R-PAY-152) against the first measurement. The run is `npm run measure -- --fake` in the `payments-evidence` workflow (50 sequential and 10 parallel cycles against the fake PayPal, 2026-11-04). The fake answers on loopback, so these numbers are the overhead of our own client and not PayPal's latency. Sandbox numbers stay UNVERIFIED (G1 measurement) until the same script runs there; the fallback is to raise the targets to the sandbox p95.
+Targets (R-PAY-152) against the sandbox measurement. Date: 2026-11-05. Workflow: `measure-sandbox`, run 42047543821 (https://github.com/harshbhx/gavel-auction/actions/runs/42047543821). Real PayPal sandbox, 10 sequential cycles, 0 failures, so n=10 per call. The raw evidence is not committed; the run log is the record.
 
-| Target                                   | Value  | Measured (fake)                                              | Status     |
-| ---------------------------------------- | ------ | ------------------------------------------------------------ | ---------- |
-| hammer to CAPTURED p95                   | 2.5 s  | capture p95 1.37 ms sequential, 18.33 ms with 10 in parallel | UNVERIFIED |
-| hammer to SETTLED, 6 holds, p95          | 6 s    | void p95 0.95 ms sequential, 5.77 ms with 10 in parallel     | UNVERIFIED |
-| webhook handler 200, without verify call | 300 ms | not part of this script (covered by T-PAY-068)               | UNVERIFIED |
+| Call      | p50 (ms) | p95 (ms) | max (ms) |
+| --------- | -------- | -------- | -------- |
+| order     | 650.88   | 758.5    | 758.5    |
+| authorize | 1299.04  | 2268.65  | 2268.65  |
+| capture   | 1871.69  | 2280.66  | 2280.66  |
+| void      | 939.76   | 1235.96  | 1235.96  |
+
+Earlier, the same script ran against the fake PayPal (`npm run measure -- --fake`, 2026-11-04, 50 sequential and 10 parallel cycles). Those numbers were our client overhead on loopback, not PayPal latency, and they do not count as a sandbox measurement.
+
+| Target                                   | Value  | Measured (sandbox, n=10)                                                                                 | Status                      |
+| ---------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------- | --------------------------- |
+| hammer to CAPTURED p95                   | 2.5 s  | capture p95 2280.66 ms (the same capture mapping the fake table used; with n=10 p95 is close to the max) | MET (sandbox, n=10)         |
+| hammer to SETTLED, 6 holds, p95          | 6 s    | void p95 1235.96 ms; the truth check that settlement also needs is not measured by this script           | UNVERIFIED (G1 measurement) |
+| webhook handler 200, without verify call | 300 ms | not part of this script (covered by T-PAY-068)                                                           | UNVERIFIED (G1 measurement) |
+
+Fallback: where a target is not met on sandbox numbers, the target is raised to the sandbox p95. The CAPTURED target is met. The SETTLED target is not shown to hold: the budget below assumes each call stays under 1 s at p95, and sandbox void p95 is 1235.96 ms, so that assumption fails. The fallback therefore applies to SETTLED, and its target must be raised to the sandbox-based value (a decision for the owner, after the truth-check latency is measured). The saga defaults below are not changed by this record.
 
 Rate limit: 0 answers with 429 and no `Retry-After` header in 60 cycles against the fake. The real limits are UNVERIFIED (G1 measurement).
 
-Budget with sandbox numbers still open: a settlement of 6 holds is one truth check, one capture and 5 voids. With 3 voids at a time that is about 6 sequential call latencies, so the 6 s target holds while a call stays under 1 s at p95.
+Budget with sandbox numbers: a settlement of 6 holds is one truth check, one capture and 5 voids. With 3 voids at a time that is two void waves. Using sandbox p95 for the capture and void calls alone gives 2 x 1235.96 + 2280.66 = 4752.58 ms, before the truth check, which is not measured yet. The 6 s target is not shown to hold with margin on sandbox numbers.
 
 Saga defaults (`SAGA_DEFAULTS` in `packages/payments/src/config.ts`, equal to the constants in the saga):
 
