@@ -104,7 +104,7 @@ describe('server config (T-RT-089)', () => {
   it('redacts secrets in the dump', () => {
     const r = parseConfig({
       ...good,
-      TOKEN_SECRET_PREVIOUS: 'previous-secret-value',
+      TOKEN_SECRET_PREVIOUS: 'previous-secret-value-0123456789-abcdef',
       DATABASE_URL: 'postgres://u:pw@h/db',
     });
     if (!r.ok) throw new Error('expected ok');
@@ -114,7 +114,7 @@ describe('server config (T-RT-089)', () => {
     expect(dump.ADMIN_KEY).toBe(REDACTED);
     expect(dump.DATABASE_URL).toBe(REDACTED);
     const text = JSON.stringify(dump);
-    for (const secret of [good.TOKEN_SECRET, good.ADMIN_KEY, 'previous-secret-value', 'pw@h']) {
+    for (const secret of [good.TOKEN_SECRET, good.ADMIN_KEY, 'previous-secret-value-0123456789-abcdef', 'pw@h']) {
       expect(text).not.toContain(secret);
     }
     expect(dump.PUBLIC_URL).toBe(good.PUBLIC_URL);
