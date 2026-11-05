@@ -2,6 +2,7 @@
 
 export const en = {
   'app.name': 'GAVEL',
+  'gallery.specimen': 'Specimen',
   'banner.sandbox': 'Sandbox: no real money moves',
   'prov.live': 'Live sandbox room',
   'prov.scripted': 'Scripted demo: recorded events, no PayPal calls',
