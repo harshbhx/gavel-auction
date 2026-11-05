@@ -247,12 +247,14 @@ export function ReceiptRoute({ roomId }: { roomId: string }) {
   );
 }
 
+const NO_ROSTER: readonly { bidderId: string; paddle: number }[] = [];
+
 export function AuditRoute() {
   const rows = useRoom((s) => s.audit);
   const loaded = useRoom((s) => s.snapshot !== null);
   const truncated = useRoom((s) => s.auditTruncated);
   const roomId = useRoom((s) => s.auctionId);
-  const roster = useRoom((s) => s.snapshot?.roster ?? []);
+  const roster = useRoom((s) => s.snapshot?.roster ?? NO_ROSTER);
   const online = useOnline();
   const [filters, setFilters] = useUrlFilters();
   const paddleOf = (id: string): number | null =>
