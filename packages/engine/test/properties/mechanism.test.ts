@@ -1,4 +1,5 @@
 import fc from 'fast-check';
+import { MIN_RUNS, SEED as PROPERTY_SEED, runsFor } from '../property-params.js';
 import { describe, expect, it } from 'vitest';
 import { hammerPrice, currentPrice } from '../../src/rules/pricing-basic.js';
 import type { PricingLot } from '../../src/rules/pricing-basic.js';
@@ -7,8 +8,8 @@ import type { BidRecord } from '../../src/rules/ranking.js';
 
 // These are toy-model checks of the mechanism logic. They say nothing about how real bidders behave.
 // Seeded ports of reference/python/test_properties.py; set GAVEL_PROPERTY_SEED to replay.
-const SEED = Number(process.env['GAVEL_PROPERTY_SEED'] ?? 20261104);
-const NUM_RUNS = Number(process.env['GAVEL_PROPERTY_RUNS'] ?? 500);
+const SEED = PROPERTY_SEED;
+const NUM_RUNS = runsFor('mechanism', 500);
 const params = { seed: SEED, numRuns: NUM_RUNS };
 
 const sealedLot = (reserveCents: number): PricingLot => ({
@@ -104,7 +105,7 @@ describe('mechanism properties (toy models)', () => {
           }
         },
       ),
-      { ...params, numRuns: Math.max(50, Math.floor(NUM_RUNS / 5)) },
+      { ...params, numRuns: Math.max(MIN_RUNS, Math.floor(NUM_RUNS / 5)) },
     );
   });
 

@@ -1,4 +1,5 @@
 import fc from 'fast-check';
+import { SEED as PROPERTY_SEED, runsFor } from '../property-params.js';
 import { describe, expect, it } from 'vitest';
 import { InvariantError } from '../../src/errors.js';
 import {
@@ -15,8 +16,8 @@ import { A, B, C, L1, bid, lotConfig, mk, open, run, scene } from '../decide-hel
 
 // Seeded and replayable: set GAVEL_PROPERTY_SEED to reuse a seed, GAVEL_PROPERTY_RUNS for the
 // nightly run (5000). The default is 500 runs.
-const SEED = Number(process.env['GAVEL_PROPERTY_SEED'] ?? 20261104);
-const NUM_RUNS = Number(process.env['GAVEL_PROPERTY_RUNS'] ?? 500);
+const SEED = PROPERTY_SEED;
+const NUM_RUNS = runsFor('pricing', 500);
 const params = { seed: SEED, numRuns: NUM_RUNS };
 
 const CEILING = 90000;

@@ -1,4 +1,5 @@
 import { dirname, join } from 'node:path';
+import { SEED as PROPERTY_SEED, runsFor } from '../property-params.js';
 import { fileURLToPath } from 'node:url';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
@@ -16,8 +17,8 @@ import type { IncrementRule, Mode, Ulid } from '../../src/types.js';
 import { A, AU, B, C, L1, L2, id, lotConfig, mk, open, run, scene } from '../decide-helpers.js';
 
 // Seeded like the other property files; set GAVEL_PROPERTY_SEED / GAVEL_PROPERTY_RUNS to replay.
-const SEED = Number(process.env['GAVEL_PROPERTY_SEED'] ?? 20261104);
-const NUM_RUNS = Number(process.env['GAVEL_PROPERTY_RUNS'] ?? 100);
+const SEED = PROPERTY_SEED;
+const NUM_RUNS = runsFor('invariance', 100);
 const params = { seed: SEED, numRuns: NUM_RUNS };
 const SLOW = 120_000;
 

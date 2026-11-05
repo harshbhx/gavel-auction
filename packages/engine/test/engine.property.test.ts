@@ -1,4 +1,5 @@
 import fc from 'fast-check';
+import { SEED as PROPERTY_SEED, runsFor } from './property-params.js';
 import { describe, expect, it } from 'vitest';
 import { bestByBidder, rank } from '../src/rules/ranking.js';
 import type { BidRecord } from '../src/rules/ranking.js';
@@ -7,9 +8,8 @@ import { A, B, C, L1, bid, lotConfig, open, scene } from './decide-helpers.js';
 
 // R-QA-023: at least 200 runs per property, and the seed is printed so a failure can be replayed
 // (set GAVEL_PROPERTY_SEED to reuse one).
-const SEED = Number(process.env['GAVEL_PROPERTY_SEED'] ?? 20261104);
-const NUM_RUNS = 300;
-console.log(`engine property tests: seed=${SEED} numRuns=${NUM_RUNS}`);
+const SEED = PROPERTY_SEED;
+const NUM_RUNS = runsFor('engine.property', 300);
 const params = { seed: SEED, numRuns: NUM_RUNS };
 
 const CEILING = 90000;
@@ -107,16 +107,14 @@ describe('ranking properties (R-QA-023)', () => {
     at: fc.integer({ min: 0, max: 100 }),
   });
   const toRecords = (raws: ReadonlyArray<{ bidder: number; amountCents: number; at: number }>) =>
-    raws.map(
-      (r, i): BidRecord => ({
-        bidderId: `b${r.bidder}`,
-        amountCents: r.amountCents,
-        at: r.at,
-        bidId: `id${i}`,
-        seq: i,
-        status: 'active',
-      }),
-    );
+    raws.map((r, i): BidRecord => ({
+      bidderId: `b${r.bidder}`,
+      amountCents: r.amountCents,
+      at: r.at,
+      bidId: `id${i}`,
+      seq: i,
+      status: 'active',
+    }));
 
   it('rank 1 is the highest amount with the earliest time on a tie', () => {
     fc.assert(
