@@ -110,18 +110,48 @@ describe('toPlaceBid (R-VOX-071, R-RT-053)', () => {
   });
 });
 
+describe('confirm expiry and thresholds (R6-C03, R6-C04)', () => {
+  const ctx = { auctionId: AUCTION, lotId: 'lot1' };
+
+  it('drops a confirm answer given at or after the prompt expiry', () => {
+    expect(toPlaceBid(confirm, { ...ctx, at: 9000, confirmedOptionId: 'o1' })).toBeNull();
+    expect(toPlaceBid(confirm, { ...ctx, at: 8999, confirmedOptionId: 'o1' })).not.toBeNull();
+    expect(resolveConfirm(confirm, { optionId: 'o1' }, 300_000)).toBeNull();
+  });
+
+  it('records who confirmed the bid', () => {
+    const base = { ...ctx, at: 1, confirmedOptionId: 'o1' };
+    expect(toPlaceBid(confirm, base)?.audit.confirmedBy).toBe('bidder');
+    expect(toPlaceBid(confirm, { ...base, confirmedBy: 'auctioneer' })?.audit.confirmedBy).toBe(
+      'auctioneer',
+    );
+  });
+
+  it('makes no bid from an accept below the auto threshold', () => {
+    const low: Decision = {
+      ...accept,
+      confidence: 0.3,
+      evidence: evidence({ confidence: 0.3 }),
+    } as Decision;
+    expect(toPlaceBid(low, { ...ctx, at: 1 })).toBeNull();
+    const mismatch: Decision = { ...accept, confidence: 0.95 } as Decision;
+    const low2: Decision = { ...mismatch, evidence: evidence({ confidence: 0.3 }) } as Decision;
+    expect(toPlaceBid(low2, { ...ctx, at: 1 })).toBeNull();
+  });
+});
+
 describe('resolveConfirm (R-ENG-084)', () => {
   it('marks the audit confirmed when the bidder says yes', () => {
-    const audit = resolveConfirm(confirm, { optionId: 'o1' });
+    const audit = resolveConfirm(confirm, { optionId: 'o1' }, 1);
     expect(audit).toMatchObject({ outcome: 'accepted', confirmed: true, amountCents: 35000 });
   });
 
   it('rejects on no, unknown option, or a non-confirm decision', () => {
-    expect(resolveConfirm(confirm, { accept: false })).toMatchObject({
+    expect(resolveConfirm(confirm, { accept: false }, 1)).toMatchObject({
       outcome: 'rejected',
       confirmed: false,
     });
-    expect(resolveConfirm(confirm, { optionId: 'zz' })?.outcome).toBe('rejected');
-    expect(resolveConfirm(accept, { optionId: 'o1' })).toBeNull();
+    expect(resolveConfirm(confirm, { optionId: 'zz' }, 1)?.outcome).toBe('rejected');
+    expect(resolveConfirm(accept, { optionId: 'o1' }, 1)).toBeNull();
   });
 });
