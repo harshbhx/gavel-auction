@@ -49,7 +49,13 @@ import {
 } from './confirm-resolve';
 import { DEFAULT_CAPS, type CapLimits } from '../limits/caps';
 import type { RateLimiter } from '../limits/rate-limiter';
-import { SUPERSEDED_CODE, SUPERSEDED_REASON, eventFrames, planResync } from './resync';
+import {
+  SUPERSEDED_CODE,
+  SUPERSEDED_REASON,
+  eventFrames,
+  planResync,
+  stripConfirmAudit,
+} from './resync';
 import {
   TERMINAL_SETTLEMENT,
   canHammer,
@@ -183,7 +189,7 @@ export class Room {
   private closed = false;
   private maxInFlight = 0;
   private seq = 0;
-  /** Bids in the log, accepted and rejected alike; bounded by `caps.bidsPerAuction`. */
+  /** Accepted bids in the log; bounded by `caps.bidsPerAuction`. Rejected bids never count. */
   private bidCount = 0;
   private config: AuctionConfig | undefined;
   private engine: EnginePort | undefined;
@@ -687,7 +693,7 @@ export class Room {
       return;
     }
     this.seq = seq;
-    this.bidCount += 1;
+    if (event.type === 'bid_accepted') this.bidCount += 1;
     if (event.type === 'bid_accepted') this.deps.metrics?.bidAccepted();
     else this.deps.metrics?.bidRejected();
     this.pushAudit(audit);
@@ -732,6 +738,11 @@ export class Room {
       }
       const late = this.deps.clock.now() >= held.expiresAt;
       const outcome: ConfirmOutcome = late ? 'expired' : msg.accept ? 'accepted' : 'rejected';
+      if (outcome === 'accepted' && this.bidCount >= this.caps.bidsPerAuction) {
+        // Refuse before the hold is consumed, so the resolution is never logged without a bid.
+        this.sendError(conn, 'auction_full');
+        return;
+      }
       if (!(await this.resolveConfirm(held, outcome))) {
         this.sendError(conn, this.storeCode());
         return;
@@ -747,6 +758,11 @@ export class Room {
         ...(held.confidence !== undefined ? { confidence: held.confidence } : {}),
       };
       await this.handleBid(conn, bid, bidderId, true);
+      if (!this.replies.has(`${bidderId}:${held.mid}`) && !this.stopped) {
+        // The bid did not reach the log: put the hold back so the bidder can answer again.
+        this.confirms.add(held);
+        this.armConfirmTimer(held);
+      }
     });
   }
 
@@ -885,7 +901,7 @@ export class Room {
           t: 'audit_event',
           seq: event.seq,
           ts: event.ts,
-          audit: event.audit,
+          audit: stripConfirmAudit(event.audit),
         });
       } else {
         this.sendSeqFiller(conn, event.seq, event.ts);
@@ -1794,7 +1810,7 @@ export class Room {
   }
 
   private remember(event: Extract<RoomEvent, { type: 'bid_accepted' | 'bid_rejected' }>): void {
-    this.bidCount += 1;
+    if (event.type === 'bid_accepted') this.bidCount += 1;
     const reply = this.replyFor(event);
     if (reply) {
       const digest = bidDigest(event.audit.parsedAmount, event.audit.source);

@@ -37,5 +37,14 @@ export function eventFrames(event: RoomEvent, fullAudit = false): ServerMsg[] {
     if (!fullAudit) return [];
     if (event.type === 'confirm_resolved' && event.outcome === 'accepted') return [];
   }
-  return [{ v: 1, t: 'audit_event', seq: event.seq, ts: event.ts, audit: event.audit }];
+  return [{ v: 1, t: 'audit_event', seq: event.seq, ts: event.ts, audit: fullAudit && (event.type === 'confirm_requested' || event.type === 'confirm_resolved') ? stripConfirmAudit(event.audit) : event.audit }];
+}
+
+/**
+ * A held bid's amount, transcript and audio time must not reach the auctioneer: the bid may
+ * still be refused as over the bidder's ceiling (R-RT-055). Only the state of the hold is shown.
+ */
+export function stripConfirmAudit<T extends object>(audit: T): T {
+  const { parsedAmount: _a, transcript: _t, audioTsMs: _m, ...rest } = audit as Record<string, unknown>;
+  return rest as T;
 }

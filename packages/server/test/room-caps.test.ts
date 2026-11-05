@@ -36,6 +36,16 @@ describe('room enforces the configured caps (R-RT-058, R-RT-062)', () => {
     expect(t.room.lastSeq).toBe(seq);
   });
 
+  it('does not count rejected bids toward MAX_BIDS_PER_AUCTION (#1511)', async () => {
+    const t = await setup({ caps: { ...DEFAULT_CAPS, bidsPerAuction: 2 } });
+    const c1 = await t.connect('bidder', t.b1);
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    for (let i = 0; i < 5; i += 1) await t.room.submitBid(c1.conn, t.bid(10000));
+    await t.room.submitBid(c1.conn, t.bid(10100));
+    expect(c1.transport.messages('error').map((m) => m.code)).toEqual([]);
+    expect(c1.transport.messages('bid_accepted')).toHaveLength(2);
+  });
+
   it('caps the roster at MAX_BIDDERS_PER_ROOM', async () => {
     const t = await setup({ caps: { ...DEFAULT_CAPS, biddersPerRoom: 2 } });
     await expect(
