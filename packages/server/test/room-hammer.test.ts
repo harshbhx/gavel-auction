@@ -438,3 +438,26 @@ describe('round 3 hardening (RT3)', () => {
     ).rejects.toMatchObject({ code: 'conflict' });
   });
 });
+
+describe('round 12 server hardening (R12-S01)', () => {
+  it('refuses a client control id in the kill-switch namespace (R12-S01)', async () => {
+    const t = await setup();
+    const c1 = await t.connect(t.room, 'bidder', t.b1);
+    const boss = await t.connect(t.room, 'auctioneer');
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    await t.room.control(boss.conn, {
+      controlId: `abort:${t.auctionId}`,
+      action: 'hammer',
+      args: { closeNow: 1 },
+    });
+    expect(boss.transport.messages('error')).toMatchObject([{ code: 'bad_message' }]);
+    expect(types(await t.events())).not.toContain('hammered');
+    // The room is still open: a normal id still hammers the sale with the real winner.
+    await t.room.control(boss.conn, { controlId: 'c1', action: 'hammer', args: { closeNow: 1 } });
+    const restarted = await Room.load(t.auctionId, t.deps);
+    const screen = await t.connect(restarted, 'screen');
+    expect(screen.transport.messages('state').at(-1)?.snapshot).toMatchObject({
+      status: 'SETTLING',
+    });
+  });
+});

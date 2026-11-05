@@ -37,7 +37,7 @@ describe('bidder identity (T-RT-031)', () => {
     await t.room.submitBid(c1.conn, { ...t.bid(10000), source: 'manual' });
     const boss = await t.connect('auctioneer');
     t.clock.set(t.clock.now() + 1000);
-    await t.room.submitBid(boss.conn, { ...t.bid(11000), bidderId: t.b2, source: 'qr' });
+    await t.room.submitBid(boss.conn, { ...t.bid(10500), bidderId: t.b2, source: 'qr' });
     const events = await t.store.readEvents(t.auctionId, 4, 2);
     expect(events[0]).toMatchObject({ source: 'qr', audit: { source: 'qr' } });
     expect(events[1]).toMatchObject({ source: 'manual', audit: { source: 'manual' } });

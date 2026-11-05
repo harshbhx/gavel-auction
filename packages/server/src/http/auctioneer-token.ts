@@ -1,9 +1,9 @@
-import { isUlid, type EpochMs, type Jti } from '@gavel/shared';
+import { GavelError, isUlid, type AuctionId, type EpochMs, type Jti } from '@gavel/shared';
 import { z } from 'zod';
+import { raiseAuctioneerFloor } from '../auth/auctioneer-floor';
 import { TOKEN_TTL_S } from '../auth/token';
 import {
   auctionIdOf,
-  authenticate,
   json,
   mintToken,
   parseBody,
@@ -16,17 +16,40 @@ import { linkFor, roomFor } from './auctions';
 const RevokeBody = z.object({ jti: z.string().refine(isUlid, 'invalid id') }).strict();
 
 /**
- * Auctioneer token routes (R-RT-084). Both routes put a jti on the store denylist, which HTTP
- * and WebSocket verification both consult, so a revoked token stops working everywhere.
+ * Auctioneer token routes (R-RT-084). All three need the operator key: a leaked auctioneer
+ * link must not be able to mint a successor and lock the real auctioneer out. Each one raises
+ * the per-auction floor, so every auctioneer token issued earlier stops working (HTTP and the
+ * socket join both check it), whatever its jti.
  */
 export function mountAuctioneerToken(app: HttpApp): void {
+  /** Operator key: kill every earlier auctioneer token and issue a fresh link. */
   app.post('/api/auctions/:id/auctioneer/rotate', async (c: Ctx) => {
     const auctionId = auctionIdOf(c);
-    const who = await authenticate(c, auctionId, ['auctioneer']);
+    requireAdmin(c);
     await roomFor(c.deps, auctionId);
-    const next = await mintToken(c.deps, 'auctioneer', auctionId, who.sub);
-    await c.deps.store.denyJti(who.jti as Jti, (who.exp * 1000) as EpochMs);
+    const created = (await c.deps.store.readEvents(auctionId as AuctionId, 1, 1))[0];
+    if (created?.type !== 'auction_created') throw new GavelError('not_found', 'no such auction');
+    const nowSec = Math.floor(c.deps.clock.now() / 1000);
+    const floor = await raiseAuctioneerFloor(c.deps.store, auctionId, nowSec + 1);
+    const next = await mintToken(
+      c.deps,
+      'auctioneer',
+      auctionId,
+      created.auctioneerSub,
+      undefined,
+      floor,
+    );
     return json(200, { auctioneerLink: linkFor(c.deps, auctionId, 'console', next.token) });
+  });
+
+  /** Operator key: kill every auctioneer token of the auction without issuing a new one. */
+  app.post('/api/auctions/:id/auctioneer/revoke-all', async (c: Ctx) => {
+    const auctionId = auctionIdOf(c);
+    requireAdmin(c);
+    await roomFor(c.deps, auctionId);
+    const nowSec = Math.floor(c.deps.clock.now() / 1000);
+    await raiseAuctioneerFloor(c.deps.store, auctionId, nowSec + 1);
+    return json(200, { revoked: true });
   });
 
   /** Operator key plus the jti to kill, for a lost or leaked link. */

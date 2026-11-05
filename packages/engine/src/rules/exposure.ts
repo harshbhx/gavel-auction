@@ -30,15 +30,17 @@ export function committed(state: AuctionState, bidderId: string, key: string): n
 }
 
 /**
- * Standing exposure on lots that are still OPEN or CLOSING: the bidder's best
- * active bid on each lot they currently lead, within the holdScope key.
+ * Standing exposure on lots that are still OPEN or CLOSING: the bidder's best active bid on
+ * each such lot within the holdScope key, whether or not it leads now. A bid that trails can
+ * lead later when the leader is revoked, and the hammer must still find it within the
+ * ceiling (ENG-R2-06, R12-E03).
  */
 export function standingExposure(state: AuctionState, bidderId: string, key: string): number {
   let sum = 0;
   for (const lot of Object.values(state.lots)) {
     if (scopeKey(state, lot.lotId) !== key) continue;
     if (lot.status !== 'OPEN' && lot.status !== 'CLOSING') continue;
-    if (lot.leaderId === bidderId) sum += lot.best[bidderId]?.amountCents ?? 0;
+    sum += lot.best[bidderId]?.amountCents ?? 0;
   }
   return sum;
 }

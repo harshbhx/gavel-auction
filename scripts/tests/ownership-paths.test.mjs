@@ -48,3 +48,13 @@ describe('ownership paths', () => {
     assert.deepEqual(dead, []);
   });
 });
+
+describe('CODEOWNERS syntax', () => {
+  it('has one pattern and only @owners on every line', () => {
+    const lines = readFileSync(join(root, '.github', 'CODEOWNERS'), 'utf8')
+      .split('\n')
+      .filter((l) => l.trim() !== '' && !l.startsWith('#'));
+    const bad = lines.filter((l) => !/^\/\S+\s+(@[\w-]+(\/[\w-]+)?\s*)+$/.test(l.trim() + ' '));
+    assert.deepEqual(bad, []);
+  });
+});

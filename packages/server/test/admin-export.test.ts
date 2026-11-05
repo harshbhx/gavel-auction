@@ -57,6 +57,12 @@ describe('admin export (T-QA-085)', () => {
     expect((await call(h, '/admin/export?auctionId=a/b', 'k')).status).toBe(400);
   });
 
+  it('accepts the spec query name and answers 404 for an unknown auction (R12-S12)', async () => {
+    const h = createExportHandler({ adminKey: 'k', ledger: await seeded() });
+    expect((await call(h, '/admin/export?auction=A1', 'k')).status).toBe(200);
+    expect((await call(h, '/admin/export?auction=NOPE', 'k')).status).toBe(404);
+  });
+
   it('verifyChain accepts the export', async () => {
     const h = createExportHandler({ adminKey: 'k', ledger: await seeded() });
     const out = await call(h, '/admin/export?auctionId=A1', 'k');

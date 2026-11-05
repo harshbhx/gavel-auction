@@ -5,7 +5,8 @@ name: gate-g4
 # app to <receiver url>/hook. The repository variable G4_RECEIVER_URL holds the receiver's
 # https URL (no trailing slash). Actions secrets needed: PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET,
 # PAYPAL_WEBHOOK_ID, SANDBOX_BUYER_EMAIL, SANDBOX_BUYER_PASSWORD, G4_LOG_TOKEN. The job runs
-# only from main, so code on a pushed branch never reads the secrets.
+# only from main, but the secrets are repository-level, so a workflow on a pushed branch can
+# still read them. Keep only throwaway sandbox values in them.
 on:
   workflow_dispatch:
 

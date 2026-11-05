@@ -20,8 +20,9 @@ acts and what to re-run. It holds names only: no secret values, logins or buyer 
 - Gate workflows declare `environment: sandbox-nightly` and run only from `main`. If a run waits
   forever or fails at the environment step, the environment or its reviewer is missing: owner
   action (see "Sandbox environment" in `docs/GATES.md`).
-- The four environment secrets are `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`,
-  `SANDBOX_BUYER_EMAIL` and `SANDBOX_BUYER_PASSWORD`. A missing or expired one shows as an auth
+- The four repository-level Actions secrets (not yet moved into an environment, see issue 1597)
+  are `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `SANDBOX_BUYER_EMAIL` and
+  `SANDBOX_BUYER_PASSWORD`. A missing or expired one shows as an auth
   error or a skipped spec. The owner rotates it in the environment settings; never paste a value
   into an issue, a log or a pull request.
 - Gate flags in `packages/payments/src/gates-result.json` may leave their safe value only while
@@ -74,7 +75,7 @@ and open a pull request. Do not edit a gate to PASS by hand.
   `docs/GATES.md` has no G0 section today, so G0 results are the run log and any file under
   `docs/evidence/G0/`.
 - Check: the `gate-g0` run log; Apps and Credentials in the PayPal dashboard (app exists, mode is
-  sandbox); the four environment secrets exist.
+  sandbox); the four repository secrets exist.
 - Fallback decision: none for payments. Without G0 no later real-sandbox gate is meaningful, so
   hold G1 to G4 and demo on the fake PayPal (see "Demo fallback").
 - Who acts: owner (secrets, dashboard, approving the environment). Contributor reads the log and

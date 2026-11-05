@@ -31,9 +31,16 @@ describe('gate workflows', () => {
 
   it('keeps run files and long retention out of the G1 artifact', () => {
     const text = readFileSync(`${dir}/gate-g1.yml`, 'utf8');
-    assert.match(text, /^ {12}!docs\/evidence\/\*\*\/\*\.run\.json$/m);
+    assert.match(text, /^ {12}!\$\{\{ runner\.temp \}\}\/g1-evidence\/\*\*\/\*\.run\.json$/m);
     const days = Number(/retention-days: (\d+)/.exec(text)?.[1]);
     assert.ok(days > 0 && days <= 7);
+  });
+
+  it('counts G1 evidence only from a fresh directory, not the committed files', () => {
+    const text = readFileSync(`${dir}/gate-g1.yml`, 'utf8');
+    assert.match(text, /--out "\$RUNNER_TEMP\/g1-evidence"/);
+    assert.match(text, /find "\$RUNNER_TEMP\/g1-evidence" .*-name 'G1-\*\.jsonl'/);
+    assert.doesNotMatch(text, /find docs\/evidence/);
   });
 
   it('has no workflow parked outside .github/workflows', () => {

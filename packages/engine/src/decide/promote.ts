@@ -1,3 +1,4 @@
+import { PROMOTE_REF_PREFIX } from '../commands.js';
 import type { Command } from '../commands.js';
 import { EngineError } from '../errors.js';
 import type { LedgerEvent } from '../events.js';
@@ -57,13 +58,20 @@ export function decidePromote(state: AuctionState, cmd: PromoteCommand): DecideR
               lotId: cmd.lotId,
               from: 'CAPTURING',
               to: 'FALLBACK_RUNNER_UP',
-              ref: `promote:${cmd.reason}`,
+              ref: `${PROMOTE_REF_PREFIX}${cmd.reason}`,
             },
           },
           unsoldEvent(),
         ]
       : [unsoldEvent()];
-  const unsold = (): DecideResult => ({ events: unsoldEvents(), outcome: { kind: 'accepted' } });
+  // After a recorded capture the money belongs to a sale: a promotion may move the lot to the
+  // bidder the saga charged, never end it unsold (R12-E10).
+  const unsold = (): DecideResult => {
+    if (lot.captureSeen) {
+      throw new EngineError('state_continuity', 'a captured lot cannot end unsold');
+    }
+    return { events: unsoldEvents(), outcome: { kind: 'accepted' } };
+  };
 
   const max = state.config.maxFallbackDepth;
   if (state.config.fallbackPolicy === 'unsold') return unsold();
@@ -78,8 +86,8 @@ export function decidePromote(state: AuctionState, cmd: PromoteCommand): DecideR
     depth += 1;
     if (depth > max) break;
     const bidder = bidderFor(state, cand.bidderId, cmd.lotId);
-    // A candidate who leads another open lot keeps that exposure reserved, or the
-    // other lot could not be hammered later (ENG-R2-06).
+    // A candidate's best bid on the open lot stays reserved, leading or not, or that lot
+    // could not be hammered later once the bid leads (ENG-R2-06, R12-E03).
     const headroom = Math.max(
       0,
       available(state, cand.bidderId, cmd.lotId) -
@@ -111,6 +119,6 @@ export function decidePromote(state: AuctionState, cmd: PromoteCommand): DecideR
     });
     return { events, outcome: { kind: 'accepted' } };
   }
-  events.push(...unsoldEvents());
-  return { events, outcome: { kind: 'accepted' } };
+  const end = unsold();
+  return { events: [...events, ...end.events], outcome: end.outcome };
 }

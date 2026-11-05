@@ -1,6 +1,6 @@
 {
   "name": "promote: only the current winner can be disqualified",
-  "parity": false,
+  "parity": true,
   "config": {
     "mode": "english",
     "reserve": 1000,

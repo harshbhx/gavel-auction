@@ -193,6 +193,22 @@ export function play(fx: Fixture): Observed {
       case 'abort':
         attempt(st.at, { type: 'AbortLot', lotId: L1, reason: 'golden', actor: 'golden' });
         break;
+      case 'pause':
+        attempt(st.at, { type: 'PauseLot', lotId: L1, actor: 'golden' });
+        break;
+      case 'resume':
+        attempt(st.at, { type: 'ResumeLot', lotId: L1, actor: 'golden' });
+        break;
+      case 'extend':
+        // `amount` is the added time in milliseconds.
+        attempt(st.at, {
+          type: 'ExtendLot',
+          lotId: L1,
+          extraMs: st.amount ?? 0,
+          reason: 'golden',
+          actor: 'golden',
+        });
+        break;
     }
   }
   const lot = s.lots[L1];

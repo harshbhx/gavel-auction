@@ -1,4 +1,5 @@
 import { answerConfirm, parseSpokenAnswer, type AnswerOutcome } from '../decide/answer.js';
+import { score } from '../decide/score.js';
 import { merge } from '../decide/merge.js';
 import { classify, DEFAULT_POLICY, type PolicyConfig } from '../decide/policy.js';
 import { PromptBook } from '../decide/prompts.js';
@@ -298,8 +299,23 @@ export class VoicePipeline {
         this.faults.noteLlm(false);
       }
     }
-    const merged = merge(rules, llm);
+    const merged = this.rescore(merge(rules, llm), seg, llm !== null);
     return this.finish(seg, segmentId, rules, llm, merged, ctx, pending?.amountCents);
+  }
+
+  /**
+   * Section 8 confidence for a clean bid: the parser's placeholder 1.0 never decides alone, the
+   * speech-to-text confidence (word level, else segment level) and the parse flags are applied.
+   */
+  private rescore(merged: ParseResult, seg: Segment, hasModel: boolean): ParseResult {
+    if (merged.status !== 'bid') return merged;
+    const confidence = score({
+      flags: merged.flags,
+      wordConfidences: seg.words.map((w) => w.confidence),
+      segmentConfidence: seg.confidence,
+      merge: hasModel && merged.flags.length === 0 ? 'agree_clean' : 'agree',
+    });
+    return { ...merged, confidence: Math.min(merged.confidence, confidence) };
   }
 
   /** A retraction cancels only a fresh pending candidate; an accepted bid gets an advisory. */

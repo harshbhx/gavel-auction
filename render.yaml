@@ -23,6 +23,8 @@ services:
         value: '22'
       - key: NODE_ENV
         value: production
+      - key: TRUSTED_PROXY_HOPS
+        value: '1'
       - key: STORE
         value: file
       - key: DATA_DIR

@@ -1,6 +1,6 @@
 {
   "name": "abort: an open lot is cancelled and refuses bids and a hammer",
-  "parity": false,
+  "parity": true,
   "config": {
     "mode": "english",
     "reserve": 1000,

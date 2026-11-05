@@ -76,8 +76,10 @@ export function buildSandboxReport(input: ReportInput): SandboxReport {
       ? {
           spec,
           gate: DEFAULT_GATE[spec],
-          status: 'inconclusive',
-          observed: 'no result was written',
+          // With the secrets present every spec must write a result. A missing file means the
+          // spec threw before finish() or never loaded, so it is a failure, not a transient.
+          status: 'fail',
+          observed: 'no result was written: the spec threw before finish() or did not load',
           finishedAt: null,
         }
       : {

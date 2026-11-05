@@ -34,6 +34,7 @@ import {
 } from '@gavel/shared';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryTransport } from '../../src/room/memory-transport';
+import { DEFAULT_CAPS } from '../../src/limits/caps';
 import type { Connection, Room } from '../../src/room/room';
 import { voidSpareHolds } from '../../src/runtime/void-phase';
 import { MemoryStore } from '../../src/store/memory-store';
@@ -399,6 +400,55 @@ describe('auction service: settlement end to end', () => {
   });
 });
 
+describe('auction service: room cap counts live rooms (R12-S02)', () => {
+  it('evicts a settled, unconnected room to make space for a new auction', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ caps: { ...DEFAULT_CAPS, rooms: 1 }, resumeIntervalMs: 0 });
+    const first = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(first, config, 'auctioneer-sub');
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    expect(room.isDone).toBe(true);
+    // While someone is connected the room stays and the cap holds.
+    await expect(
+      service.createAuction(rig.ids.mint<'AuctionId'>(), config, 'auctioneer-sub'),
+    ).rejects.toMatchObject({ code: 'room_cap' });
+    room.detach(boss.conn.id);
+    const second = rig.ids.mint<'AuctionId'>();
+    await service.createAuction(second, config, 'auctioneer-sub');
+    expect(service.stats().rooms).toBe(1);
+    await service.close();
+  });
+});
+
+describe('auction service: resume under a room cap (R12-S02)', () => {
+  it('loads a live auction after a restart although finished ones fill the cap', async () => {
+    const rig = await makeRig();
+    const first = rig.service({ resumeIntervalMs: 0 });
+    const done = rig.ids.mint<'AuctionId'>();
+    const doneRoom = await first.createAuction(done, config, 'auctioneer-sub');
+    const boss = await connect(rig, doneRoom, 'auctioneer');
+    await doneRoom.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await first.idle();
+    expect(doneRoom.isDone).toBe(true);
+    const live = rig.ids.mint<'AuctionId'>();
+    await first.createAuction(live, config, 'auctioneer-sub');
+    await first.close();
+    const errors: string[] = [];
+    const second = rig.service({
+      caps: { ...DEFAULT_CAPS, rooms: 1 },
+      resumeIntervalMs: 0,
+      onError: (id) => void errors.push(id),
+    });
+    await second.resume();
+    expect(errors).toEqual([]);
+    const room = await second.room(live);
+    expect(room.isDone).toBe(false);
+    await second.close();
+  });
+});
+
 describe('auction service: gauges and counters (R8-S03)', () => {
   it('counts loaded rooms and connections and hands the metrics to the rooms', async () => {
     const rig = await makeRig();
@@ -416,6 +466,37 @@ describe('auction service: gauges and counters (R8-S03)', () => {
 });
 
 describe('auction service: bidder registration', () => {
+  it('revokes a bidder whose hold was denied while the registration waited (R12-S10)', async () => {
+    const rig = await makeRig();
+    const inner = rig.stores.holds;
+    let reads = 0;
+    const holds: typeof inner = Object.assign(Object.create(inner) as typeof inner, {
+      get: async (holdId: string) => {
+        const h = await inner.get(holdId);
+        reads += 1;
+        // The webhook lands right after the registration read the hold as HELD.
+        if (reads === 1 && h !== null) await inner.put({ ...h, status: 'DENIED' });
+        return h;
+      },
+    });
+    const service = rig.service({ holds });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const id = rig.ids.mint<'BidderId'>();
+    const created = await rig.holdsApi.createHoldOrder({
+      auctionId,
+      bidderId: id,
+      ceilingCents: 30000,
+      presetsCents: config.ceilingPresets,
+    });
+    rig.paypal.core.approveOrder(created.orderId);
+    await rig.holdsApi.completeApproval({ holdId: created.holdId, orderId: created.orderId });
+    await service.registerBidder({ auctionId, bidderId: id, name: 'Ed', holdId: created.holdId });
+    expect((await events(rig, auctionId)).map((e) => e.type)).toContain('ceiling_revoked');
+    expect(room.activeEngine).toBeDefined();
+    await service.close();
+  });
+
   it('refuses a bidder without a held hold', async () => {
     const rig = await makeRig();
     const service = rig.service();
@@ -642,7 +723,8 @@ describe('auction service: round 3 blocking fixes (RT3)', () => {
 
   it('releases the winner remainder when PayPal does not (SERVICE-R3-06, INT-R3-02)', async () => {
     const rig = await makeRig({ autoReleaseRemainder: false });
-    const service = rig.service();
+    // An open remainder is G1 decision B; the default (A, recorded) sends no void (R12-P06).
+    const service = rig.service({ remainderMode: 'B' });
     const run = await runToHammer(rig, service);
     await service.idle();
     await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
@@ -1311,6 +1393,46 @@ describe('auction service: unfinished settlements and spare holds (RT-81)', () =
       capturedCents: 0,
     });
     expect(rig.paypal.core.getAuthorization(b.authId).capturedCents).toBe(10000);
+    rig.paypal.core.checkInvariants();
+    await service.close();
+  });
+
+  it('a capture PayPal holds as PENDING for hours is booked once PayPal completes it (R12-P01)', async () => {
+    const rig = await makeRig();
+    const service = rig.service({
+      retryDelayMs: 3_600_000,
+      resumeIntervalMs: 0,
+      onError: () => undefined,
+    });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    rig.paypal.core.inject('capture', 'capture_pending', a.authId);
+    await room.submitBid(b.conn, bid(rig, 10000));
+    await room.submitBid(a.conn, bid(rig, 11000));
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+
+    // Two hours later PayPal still lists it PENDING: far past the ten-minute deadline of a
+    // lost answer, well inside the pending-capture deadline.
+    rig.clock.set(START + 7_200_000);
+    await service.resume();
+    await service.idle();
+    expect((await journalOf(rig, auctionId)).state).toBe('CAPTURING');
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('CREATED');
+
+    const captureId = rig.paypal.core.getAuthorization(a.authId).captures[0]?.id ?? '';
+    rig.paypal.core.completeCapture(captureId);
+    const hook = signed('WH-C1', 'PAYMENT.CAPTURE.COMPLETED', { authId: a.authId, captureId }, 1);
+    expect((await service.handleWebhook(hook.rawBody, hook.headers)).status).toBe(200);
+    await service.idle();
+    const done = await journalOf(rig, auctionId);
+    expect(done.state).toBe('SETTLED');
+    expect(done.winner).toMatchObject({ bidderId: a.id, amountCents: 11000 });
+    expect(rig.paypal.core.getAuthorization(a.authId).capturedCents).toBe(11000);
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('VOIDED');
     rig.paypal.core.checkInvariants();
     await service.close();
   });

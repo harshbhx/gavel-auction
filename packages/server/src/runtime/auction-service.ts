@@ -28,6 +28,7 @@ import {
   type PaymentsMetrics,
   type PlanOutcome,
   type ReconcileReport,
+  type RemainderMode,
   type SettlementPlan,
   type VoidAllOutcome,
   type VoidDeps,
@@ -106,6 +107,10 @@ export interface AuctionServiceDeps {
   leaseOwner?: string;
   /** Unknown capture outcome deadline, in ms (payments default when absent). */
   unknownDeadlineMs?: number;
+  /** How long a capture PayPal reports PENDING is waited for, in ms (payments default three days). */
+  pendingCaptureDeadlineMs?: number;
+  /** G1 decision for the winner's remainder (payments default A, the recorded decision). */
+  remainderMode?: RemainderMode;
   /** Voids sent at the same time (payments default 3 when absent). */
   voidConcurrency?: number;
   /**
@@ -340,6 +345,7 @@ class Service implements AuctionService, SettlePort {
       throw new GavelError('bad_message', 'unsupported mode, increment ladder or hold scope');
     }
     if (this.rooms.has(auctionId)) throw new GavelError('conflict', 'auction exists');
+    this.evictFinished();
     if (this.rooms.size >= this.caps.rooms) throw new GavelError('room_cap', 'room cap reached');
     // Dry-run the engine build: a config or id it cannot run must never reach the log, or the
     // auction could not be loaded again and would block resume (R-RT-012, R-RT-059).
@@ -361,6 +367,26 @@ class Service implements AuctionService, SettlePort {
     } catch (e) {
       this.rooms.delete(auctionId);
       throw e;
+    }
+  }
+
+  /**
+   * `MAX_ROOMS` bounds live rooms, not auctions per data directory (R12-S02): when the cap is
+   * reached, rooms whose settlement is over and that no one is connected to are dropped, and
+   * loaded again from their log if anything asks for them later.
+   */
+  private evictFinished(): void {
+    if (this.rooms.size < this.caps.rooms) return;
+    for (const [id, room] of [...this.ready]) {
+      if (!this.rooms.has(id) || !room.isDone || room.connectionCount > 0) continue;
+      const timer = this.retryTimers.get(id);
+      if (timer !== undefined) clearTimeout(timer);
+      this.retryTimers.delete(id);
+      this.retryCounts.delete(id);
+      this.rooms.delete(id);
+      this.ready.delete(id);
+      void room.close().catch(() => undefined);
+      if (this.rooms.size < this.caps.rooms) return;
     }
   }
 
@@ -399,6 +425,7 @@ class Service implements AuctionService, SettlePort {
     }
     const known = this.rooms.get(auctionId);
     if (known !== undefined) return known;
+    this.evictFinished();
     if (this.rooms.size >= this.caps.rooms) {
       return Promise.reject(new GavelError('room_cap', 'room cap reached'));
     }
@@ -475,6 +502,17 @@ class Service implements AuctionService, SettlePort {
         if (journal !== null) await this.releaseSpares(journal);
       }
       throw e;
+    }
+    // A webhook may have denied, voided or expired the hold while the registration waited in
+    // the mailbox; onHoldStatus ignored it then because the room did not know the hold yet.
+    // Read it again and revoke now, before any bid can lean on a dead hold (R-ENG-044).
+    const after = await this.deps.holds.get(input.holdId);
+    if (after !== null && after.status !== 'HELD') {
+      const reason = revokeReasonFor(after.status);
+      if (reason !== null) {
+        await room.revokeBidder(input.bidderId, reason, after.holdId);
+        await this.rescheduleOpenJournal(input.auctionId);
+      }
     }
   }
 
@@ -854,6 +892,9 @@ class Service implements AuctionService, SettlePort {
         ...(this.deps.unknownDeadlineMs !== undefined
           ? { unknownDeadlineMs: this.deps.unknownDeadlineMs }
           : {}),
+        ...(this.deps.pendingCaptureDeadlineMs !== undefined
+          ? { pendingCaptureDeadlineMs: this.deps.pendingCaptureDeadlineMs }
+          : {}),
       },
       lotId,
     );
@@ -914,6 +955,7 @@ class Service implements AuctionService, SettlePort {
       ...(this.deps.reviewHoldMaxAgeMs !== undefined
         ? { reviewHoldMaxAgeMs: this.deps.reviewHoldMaxAgeMs }
         : {}),
+      ...(this.deps.remainderMode !== undefined ? { remainderMode: this.deps.remainderMode } : {}),
       ...extra,
     };
   }

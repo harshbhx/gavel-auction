@@ -52,6 +52,16 @@ export function mountInvites(app: HttpApp): void {
 
   app.post('/api/auctions/:id/join', async (c: Ctx) => {
     const auctionId = auctionIdOf(c);
+    const limited = c.deps.joinLimit?.(c.req);
+    if (limited && !limited.ok) {
+      return new Response(JSON.stringify({ error: 'rate_limited' }), {
+        status: 429,
+        headers: {
+          'content-type': 'application/json',
+          'retry-after': String(Math.max(1, Math.ceil(limited.retryAfterMs / 1000))),
+        },
+      });
+    }
     const { invite } = parseBody(JoinBody, await c.body());
     await roomFor(c.deps, auctionId);
     const claims = await verifyFor(c.deps, invite, auctionId, ['invite']);

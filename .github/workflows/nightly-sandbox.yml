@@ -1,7 +1,7 @@
 name: nightly-sandbox
 # Real PayPal sandbox specs R1 to R8 and the G5 speech harness (R-QA-029, R-QA-040), every night at
-# 20:30 UTC and on manual dispatch. The job runs in the `sandbox-nightly` environment, which holds
-# the secrets. Without the secrets (or in a fork) it still writes report/sandbox.json with every
+# 20:30 UTC and on manual dispatch. The job runs in the `sandbox-nightly` environment, which has no
+# reviewer, no branch rule and no secrets; the secrets are repository-level. Without the secrets (or in a fork) it still writes report/sandbox.json with every
 # spec marked `skipped` and ends green. The pull request job runs the same specs with no secrets
 # and no environment, to prove they skip instead of fail.
 on:
@@ -147,4 +147,6 @@ jobs:
         run: |
           overall=$(node -e "console.log(JSON.parse(require('fs').readFileSync('packages/e2e/report/sandbox.json','utf8')).overall)")
           echo "overall: $overall"
+          # A crashed spec leaves no result file, which the report counts as fail. An overall
+          # of inconclusive (transient PayPal status) stays green.
           if [ "$overall" = "fail" ]; then exit 1; fi

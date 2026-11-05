@@ -91,7 +91,7 @@ Golden fixtures live in `fixtures/golden/*.json` and are shared byte for byte wi
 }
 ```
 
-Step ops are `register`, `bid`, `tick`, `hammer`, `promote`, `revoke` and `complete`; every step has an integer `at`. `expect` may hold `winner`, `price`, `ranking`, `rejects` and `endsAt`. `parity: true` means the Python reference must produce the same result.
+Step ops are `register`, `bid`, `tick`, `hammer`, `promote`, `revoke`, `complete`, `abort`, `pause`, `resume` and `extend`; every step has an integer `at`. `expect` may hold `winner`, `price`, `ranking`, `rejects` and `endsAt`. `parity: true` means the Python reference must produce the same result.
 
 To add a fixture:
 

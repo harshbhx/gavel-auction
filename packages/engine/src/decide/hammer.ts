@@ -90,8 +90,9 @@ export function decideHammer(state: AuctionState, cmd: HammerCommand): DecideRes
     at: r.at,
     seq: r.seq,
   }));
-  // The closing entry is in this batch for an early hammer, else already in the ledger.
-  const closedAtSeq = early ? state.head.seq + 1 : state.head.seq;
+  // The closing entry is in this batch for an early hammer, else it is the lot's own
+  // LOT_CLOSING, which other entries may follow before the hammer (R12-E11).
+  const closedAtSeq = early ? state.head.seq + 1 : (lot.closingSeq ?? state.head.seq);
   events.push({
     type: 'LOT_HAMMERED',
     payload: {

@@ -4,9 +4,9 @@ JSON files in this directory describe a scripted auction and its expected outcom
 
 Fields: `name`, `parity` (true when the Python reference must produce the same result), `config`, `steps`, `expect`.
 
-Step ops: `register`, `bid`, `tick`, `hammer`, `promote`, `revoke`, `complete`, `abort`. Every step carries `at` in integer epoch milliseconds. Money is integer cents.
+Step ops: `register`, `bid`, `tick`, `hammer`, `promote`, `revoke`, `complete`, `abort`, `pause`, `resume`, `extend`. Every step carries `at` in integer epoch milliseconds. Money is integer cents.
 
-`complete` takes the bidder and the captured amount (`amount`) from the step, so a wrong winner or a wrong amount can be presented. Fixtures that use `promote`, `revoke`, `complete` or `abort` set `parity` to false, because the Python reference has no such ops.
+`complete` takes the bidder and the captured amount (`amount`) from the step, so a wrong winner or a wrong amount can be presented. `extend` takes the added time in milliseconds from `amount`. The Python reference supports every op except `complete` (D-0030), so fixtures that use `complete`, and fixtures with a ladder, set `parity` to false.
 
 `rejects` holds the engine's reason code, except that the reference's `closed` stands for the engine's `lot_not_open`.
 

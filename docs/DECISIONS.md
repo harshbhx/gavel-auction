@@ -528,3 +528,118 @@ Consequences:
 - The public ledger export cannot show rejected bids; the room log audit screen does.
 
 Evidence: packages/server/src/runtime/ledger-engine.ts, packages/server/test/ledger-engine-contract.test.ts, R6-D03, R6-D04.
+
+## D-0030: The Python reference covers promote, revoke, abort, pause, resume and extend
+
+Date: 2026-11-05
+Status: accepted
+Owner: engine
+Context: The differential test (R-ENG-114) and the parity fixtures (R-ENG-112, R-ENG-113) only covered register, bid, tick and hammer, so the reference had no promote, revoke, abort or pause commands and the engine's fallback, strike and clock rules were checked against hand-derived fixtures only (issue #1443). Some behaviour the reference now needs is not spelled out: R-ENG-055 and R-ENG-057 do not say whether a skipped candidate counts toward the fallback depth, and D-0025 does not say what the deadline is after a pause that never resumes.
+Decision: `reference/python/engine.py` gains `revoke`, `abort`, `promote`, `pause`, `resume` and `extend`, and the fixture ops `pause`, `resume` and `extend` exist (`amount` of an extend step is the added time in ms). The reference follows the engine on every point below, and the differential generator draws these commands in about half of its scenarios.
+
+- A revoke before the hammer strikes the bidder's bids; after the hammer only the flag is set. An unknown bidder is refused `bad_command`; a repeated revoke is a no-op.
+- A hammer with no bids, an abort, and a promotion with no candidate left all end the lot DONE with no winner (winner null, price 0). A DONE lot answers bids, hammer, promote, pause, resume, extend and abort with `lot_done`; a hammered lot answers abort, pause, resume and extend with `lot_frozen`.
+- A promotion removes the disqualified, demoted and skipped bidders, prices each remaining candidate over the bids that are left, and counts a skipped candidate (revoked or priced above the ceiling) toward `maxFallbackDepth` (default 2). A depth above the limit leaves the lot unsold.
+- A paused lot keeps its old `endsAt` until it resumes; the deadline after a resume is the resume time plus the time left. Tick, bids and the hammer wait while paused (`closed` for a bid, `cannot_hammer` for the hammer). Extend adds time without using up a soft-close extension. Pause, resume and extend are refused `closed` when the lot is CLOSING or its deadline has passed, and `bad_command` for a repeated pause, a resume of a running lot and an extend of a paused lot.
+- The reference reports the engine's `lot_not_open` as `closed`, as before.
+- Seeded scenarios keep their base draws: the operator commands come from a second generator seeded from the seed and the scenario index, so seed 20261104 and the pinned scenario of D-0027 still give the same base scenarios.
+- Parity fixtures for promote, revoke, abort and the closed-lot case are now `parity: true`; fixtures that use `complete` or ladders stay `parity: false`.
+
+Alternatives:
+
+- Leave the commands out of the reference: rejected, the fallback and clock rules would have no independent check.
+- Stop counting skipped candidates in the depth: rejected, the engine counts them and R-ENG-057 bounds the whole walk.
+
+Consequences:
+
+- A divergence in these commands now fails the differential job with the scenario JSON.
+- The reference has no settlement ops, so `complete`, `RecordSettlement` and the capture guard of promote (R8-E01) are still checked by fixtures only.
+
+Evidence: reference/python/engine.py, reference/python/scenario_export.py, reference/python/test_scenario_export.py, packages/engine/test/golden-play.ts, packages/engine/fixtures/golden/pause-01-resume-shifts-deadline.json, R-ENG-044, R-ENG-054 to R-ENG-060, R-ENG-112, R-ENG-114, D-0025, D-0026.
+
+## D-0031: Public export version 4 closes the round 12 privacy leaks
+
+Date: 2026-11-05
+Status: accepted
+Owner: engine
+Context: Review round 12 found four ways the version 3 public export still revealed private values. A private entry hash covers `prev`, the private hash of the entry before it, so the first unredacted entry after a redacted one committed to the redacted entry and its ceiling or sealed amount could be brute forced by hashing forward (R12-E01, issue #1550). Transcripts stayed on english lots although the spec shows them to auditors only (R12-E05, #1554). A proxy hammer kept `candidates[].priceCents`, and each runner-up price is the next lower secret maximum plus the increment (R12-E06, #1555). An `over_ceiling` rejection kept its amount and a `CANDIDATE_SKIPPED` kept its reason and price, both upper bounds on a ceiling (R12-E07, #1556).
+Decision: The public export is version 4 (`PUBLIC_EXPORT_VERSION`, and `REPLAY_EXPORT_VERSION` in shared). From the first entry that loses a field to the end of the export, every entry carries `fullHash` null, or the keyed commitment when the auditor passes a `commitKey`; entries before it keep the private hash, which a viewer can recompute from public data anyway. Every `BID_RECORDED` and `BID_REJECTED` loses `audit.transcript` whatever the mode. A proxy `LOT_HAMMERED` keeps the winner's candidate price and drops `priceCents` from every later candidate (`candidates.priceCents` in `redacted`); a charged runner-up price is still published by `FALLBACK_PROMOTED`. A `BID_REJECTED` with reason `over_ceiling` loses `amountCents` and `amountRaw`; other rejections keep their amounts, since they only show a lower bound that an accepted bid would show too. `CANDIDATE_SKIPPED` keeps `lotId`, `bidderId` and `depth` and loses `reason` and `priceCents`. The private ledger, its hash vector and the golden fixtures do not change.
+Alternatives:
+
+- Null `fullHash` on every entry: rejected, it gives up a link that leaks nothing; the sticky rule is just as safe.
+- Drop every rejected bid amount: rejected, only an over-ceiling rejection bounds a ceiling and the other amounts help a reader follow the room.
+- Keep the version number: rejected, the same version would mean two different payload sets and `matchesLedger` on an old export would fail without saying why.
+
+Consequences:
+
+- Version 3 exports and replay bundles no longer verify (`bad_version`); rebuild them from the ledger.
+- Without a commit key the public chain binds to the private ledger only up to the first redaction; the auditor re-derives the export from the ledger with `matchesLedger`, as before.
+- A skipped candidate who was not revoked still tells a viewer that their ceiling did not cover their price at promotion time; hiding that would mean hiding who was promoted.
+
+Evidence: packages/engine/src/ledger/public-export.ts, packages/engine/test/round12-privacy.test.ts, packages/engine/test/public-export.test.ts, packages/shared/src/replay-bundle.ts, SPEC-engine R-ENG-045, R-ENG-108, R-ENG-109, D-0020, D-0021.
+
+## D-0032: Engine settlement, clock, scope and history fixes from review round 12
+
+Date: 2026-11-05
+Status: accepted
+Owner: engine
+Context: Review round 12 found that a captured lot sent to review could never be completed (R12-E02, issue #1551), that a promotion could leave a trailing bid above its bidder's ceiling so the next hammer threw forever (R12-E03, #1552), that a lot with no winner could record a whole capture history (R12-E04, #1553), that ExtendLot and ResumeLot could pass the hard close and decide trusted `extraMs` (R12-E08, #1557), that under holdScope lot the end of one hold revoked the bidder on every lot (R12-E09, #1558), that a promotion after a capture could end the lot unsold (R12-E10, #1559), that `closedAtSeq` named the ledger head (R12-E11, #1560), that a RecordSettlement ref starting with `promote:` was indexed as a promotion (R12-E12, #1561), and that `AUCTION_CREATED` stored a partial config filled from the current code defaults at replay (R12-E13, #1562).
+Decision:
+
+- Review resolution: RecordSettlement accepts FAILED_NEEDS_REVIEW to VOIDING and FAILED_NEEDS_REVIEW to SETTLED as operator steps with a non-empty ref. They are not added to `SETTLEMENT_EDGES`, which stays the saga graph. A lot that captured is then completed with CompleteLot and the auction can close.
+- Promotion reserve: the headroom of a candidate is its available ceiling minus its best active bid on every OPEN or CLOSING lot in the same scope, leading or not. Every active bid then stays within its bidder's available ceiling, so the hammer's ceiling check stays an invariant and is not turned into a skip.
+- A lot without a winner (unsold or aborted) never records a capture: a RecordSettlement step to CAPTURING or CAPTURED fails `state_continuity`, also after CloseAuction. The other saga steps stay allowed, because the saga passes BIDDING and WINNER_SELECTED before it releases the holds of a lot nobody won, and the settlement bridge replays that history.
+- Hard close: a pause stops the clock, so the hard close moves by the paused time each LOT_RESUMED shows (`endsAtAfter - endsAtBefore`, kept on the lot as `pausedTotalMs`); soft close and ExtendLot are capped at that moved hard close, and an ExtendLot past it fails `bad_command`. decideExtendLot checks `extraMs` (safe integer 1..600000) itself. R-ENG-036 is amended to say so.
+- Lot-scoped revocation: under holdScope lot a RevokeCeiling whose holdRef backs lot records revokes those records only, strikes bids on those lots only, and each CEILING_REVOKED carries an optional `lotId`. Such a record (`revokedLotOnly`) does not stop the bidder from registering for another lot. A revocation without a holdRef, or under holdScope event, is bidder-wide as before, whatever the reason; a caller that wants a declined card to cover every lot omits the holdRef.
+- After a recorded capture a promotion that would end the lot unsold, including `fallbackPolicy: 'unsold'`, fails `state_continuity`.
+- `LOT_HAMMERED.closedAtSeq` is the seq of the lot's own LOT_CLOSING; the lot keeps it as `closingSeq` only while it is CLOSING.
+- `promote:` is a reserved ref prefix: RecordSettlement and parseCommand refuse it with `bad_command`.
+- CreateAuction writes the whole validated config into AUCTION_CREATED, and the command body digest uses the same value. Replay fills an older partial config from `LEDGER_V1_AUCTION_DEFAULTS`, a frozen copy of today's defaults, never from `DEFAULT_AUCTION_CONFIG`; the entry body of an old entry is digested over that filled config, so a retry of the original command still dedupes.
+
+Ledger compatibility: no new event type and no new command; the private ledger stays v1 and the hash vector is unchanged. The new payload fields (`CEILING_REVOKED.lotId`, a whole config in AUCTION_CREATED) are additive, and every older ledger replays to the same lots, winners, prices and settlements. The new state fields are optional and present only when they carry a value, so a state digest changes only where one applies. The demo gala fixture's pinned head hash changes because its AUCTION_CREATED now carries the whole config. The Python reference gains the `extraMs` range check; it has no hard close, holds or settlement, so the other rules are checked by engine tests.
+Alternatives:
+
+- A new ResolveReview command and event: rejected, two extra review edges on RecordSettlement say the same with no new event type.
+- Allow only the void edges on a lot without a winner: rejected, the saga records HELD to BIDDING to WINNER_SELECTED to VOIDING for a lot nobody won, so the bridge could not record that release.
+- Strike or skip an over-ceiling top bidder at the hammer: rejected, it hides the cause; the reserve keeps the invariant at the only place it can break.
+- Cap a resumed deadline at the original hard close: rejected, a pause would eat the bidding time it was meant to protect.
+- Keep bidder-wide revocation for a declined lot hold: rejected, the other lots are backed by their own holds; the caller can still revoke everywhere.
+- Mark the promotion step with a payload flag instead of reserving the prefix: rejected, it changes the SETTLEMENT_STATE shape for every new entry.
+
+Consequences:
+
+- A runner-up with a trailing bid on the open lot is skipped when its ceiling cannot cover both.
+- An operator console needs a RecordSettlement form for the two review steps; the payments saga is unchanged.
+- An auctioneer extension near the hard close fails instead of passing it.
+
+Evidence: packages/engine/src/decide/settlement.ts, packages/engine/src/decide/promote.ts, packages/engine/src/decide/revoke.ts, packages/engine/src/decide/pause.ts, packages/engine/src/decide/hammer.ts, packages/engine/src/decide/setup.ts, packages/engine/src/evolve.ts, packages/engine/src/config.ts, packages/engine/test/round12-engine.test.ts, reference/python/engine.py, SPEC-engine R-ENG-036, R-ENG-044, R-ENG-048, R-ENG-057, R-ENG-064, R-ENG-067, D-0025, D-0026.
+
+## D-0033: Payments round 12: a paid sale is never ended by a slow release, a PENDING capture waits days, decision A sends no remainder void
+
+Date: 2026-11-05
+Status: accepted
+Owner: payments
+Context: Round 12 review findings R12-P01 to R12-P06 (issues #1563 to #1568). One ten-minute deadline (R-PAY-055) was applied to things that are not lost answers: a capture PayPal holds as PENDING, the voids and the remainder read after a confirmed capture, and the time the kill switch was engaged. A failed order read was taken as "captures not observable", which a captured hold turns into a review. The remainder check sent a void on every sale although G1 recorded decision A. The webhook verifier refused every transmission older than ten minutes although the 503 answers rely on PayPal's redeliveries.
+Decision: Each deadline now matches what it waits for, and the recorded gate results are followed.
+
+- A capture PayPal has reported PENDING (the capture answer or a truth read) is marked on the journal intent (`pendingSinceMs`) and waits under `pendingCaptureDeadlineMs`, default three days, instead of the ten-minute unknown deadline. It is adopted once COMPLETED and falls back once declined, as before (R11-O03). Reconcile treats a capture intent as in flight only while the journal is not terminal, so a capture completed after a review is reported as EXTRA_CAPTURE.
+- A sale (winner set) never goes to FAILED_NEEDS_REVIEW because a void or the remainder read stays unconfirmed. Every run retries the pending voids before it judges their age. Past the deadline one `settlement_alert` audit entry and the `settlement_alerts_total` metric are raised (`void_unconfirmed:<bidderId>`, `remainder_unconfirmed`) and the saga keeps retrying until PayPal answers; the sale settles and is booked then. A no sale still goes to review after the retry (`void_unconfirmed`), and a void refused on a live hold still uses the resume budget (R-PAY-058).
+- `PayPalGateway.getHoldTruth` with an order id throws an unknown-outcome `ORDER_UNREADABLE` error when the order answers 404, a body that does not parse, or a capture list it cannot read. `captures: null` now only means no order id was given.
+- While the kill switch is engaged the unknown clock stands still: the run saves `unknownPausedAtMs` (the engage time, never before `unknownSince`), and the first run after the release adds the held time to `unknownSince`.
+- The winner remainder follows the G1 decision (`remainderMode`, default A as in gates-result.json): A records `remainder_released` and sends no void when the authorization reads CAPTURED with our final capture; B and `unknown` void explicitly as before; C records `remainder_unreleased` without a call.
+- The webhook verifier refuses a transmission time more than ten minutes in the future or older than `maxRedeliveryAgeMs` (default seven days). An older time inside that horizon is a possible PayPal redelivery: it goes to PayPal's verify endpoint, within a quarter of the verify-call window (`maxRedeliveryCallsPerWindow`), and the event id is deduplicated as before.
+
+Alternatives:
+
+- A review to SETTLED or review to CAPTURED transition: rejected for now, the engine and the bridge treat FAILED_NEEDS_REVIEW as final (see R12-E02); keeping a paid sale out of review needs no new transition.
+- Releasing the winner's hold when a pending capture is declined after its review: not done. Whether the authorization is open again after a decline is UNVERIFIED (A16), so the hold stays for the operator (`releaseReviewHolds`, voidAll), the safe side for the winner's funds.
+- Widening the webhook age window without a separate call share: rejected, an old transmission time costs nothing to forge.
+
+Consequences:
+
+- A capture that stays PENDING keeps every candidate's hold for up to three days; the room shows the settlement pending meanwhile.
+- A long PayPal outage after a capture leaves the lot SETTLING with an alert instead of a terminal review; it completes on its own when PayPal answers.
+- A deployment that meets an open remainder (decision B or C, for example card buyers) must set `remainderMode`; the fake's `autoReleaseRemainder: false` is tested in mode B.
+- UNVERIFIED: how long PayPal keeps a capture PENDING (A16), whether an automatic webhook retry keeps the original transmission id and time, and PayPal's retry horizon (W06, G4 recorded first deliveries only).
+
+Evidence: docs/evidence/G1/G1-20261104T231047Z.jsonl (G1.6, G1.7), docs/GATES.md G4, packages/payments/src/fake/ASSUMPTIONS.md A01, A16, H14, W06, packages/payments/test/saga/r12.test.ts, R-PAY-055, R-PAY-058, R-PAY-059, R-PAY-063, issues #1563 to #1568.

@@ -1,6 +1,6 @@
 {
   "name": "revoke: a revoked bidder's bids are struck before the hammer",
-  "parity": false,
+  "parity": true,
   "config": {
     "mode": "english",
     "reserve": 1000,

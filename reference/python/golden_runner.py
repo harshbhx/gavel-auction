@@ -2,6 +2,9 @@
 
 Usage: python golden_runner.py fixtures/golden [more dirs or files]
 
+Ops: register, bid, tick, hammer, promote, revoke, abort, pause, resume, extend (`amount` of an
+extend step is the added time in ms). `complete` is not supported by engine.py.
+
 Fixtures are JSON files with integer-millisecond times (see
 packages/engine/fixtures/golden/SCHEMA.json). Times are converted to exact
 seconds (Fraction) before they reach the engine, so boundary milliseconds
@@ -58,7 +61,6 @@ def run_fixture(fx: dict) -> dict:
             kwargs[dst] = secs(cfg[src]) if is_time else cfg[src]
     a = Auction(fx["name"], cfg["mode"], **kwargs)
     rejects: list[str] = []
-    outcome = None
     for i, st in enumerate(fx["steps"]):
         op, at = st["op"], secs(st["at"])
         try:
@@ -69,13 +71,26 @@ def run_fixture(fx: dict) -> dict:
             elif op == "tick":
                 a.tick(at)
             elif op == "hammer":
-                outcome = a.hammer(at)
+                a.hammer(at)
+            elif op == "promote":
+                a.promote(st["bidder"])
+            elif op == "revoke":
+                a.revoke(st["bidder"])
+            elif op == "abort":
+                a.abort()
+            elif op == "pause":
+                a.pause(at)
+            elif op == "resume":
+                a.resume(at)
+            elif op == "extend":
+                a.extend(at, secs(st["amount"]))  # `amount` is the added time in ms
             elif op == "complete":
                 a.complete()
             else:
                 raise SystemExit(f"{fx['name']}: step {i}: op {op} is not supported by engine.py")
         except Rejected as r:
             rejects.append(r.code)
+    outcome = a.outcome  # the current result: hammer, promotion, unsold or abort
     res: dict = {
         "winner": outcome.winner if outcome else None,
         "price": outcome.price if outcome else 0,
