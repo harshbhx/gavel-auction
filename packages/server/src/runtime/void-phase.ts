@@ -1,6 +1,7 @@
 import {
   PayPalError,
   buildRequestId,
+  sharedHoldQueue,
   voidHold,
   type AuditSink,
   type Clock as PaymentsClock,
@@ -73,7 +74,12 @@ export async function voidSpareHolds(
         continue;
       }
     }
-    await deps.holds.put({ ...hold, status: 'VOIDED' });
+    // Re-read inside the hold's queue: a webhook or an approval may have written meanwhile.
+    await sharedHoldQueue.run(hold.holdId, async () => {
+      const latest = await deps.holds.get(hold.holdId);
+      if (latest === null || latest.status !== 'HELD') return;
+      await deps.holds.put({ ...latest, status: 'VOIDED' });
+    });
   }
   return open;
 }
@@ -129,7 +135,12 @@ export async function voidOrphanHold(
     stale: false,
   });
   if (status === 'voided' || status === 'released') {
-    await deps.holds.put({ ...hold, status: 'VOIDED' });
+    // Re-read inside the hold's queue: a webhook or an approval may have written meanwhile.
+    await sharedHoldQueue.run(hold.holdId, async () => {
+      const latest = await deps.holds.get(hold.holdId);
+      if (latest === null || latest.status !== 'HELD') return;
+      await deps.holds.put({ ...latest, status: 'VOIDED' });
+    });
   }
   return status;
 }
