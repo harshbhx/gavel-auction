@@ -31,6 +31,18 @@ export interface AbortEnginePort extends HammerEnginePort {
   abort(now: EpochMs): HammerResult;
 }
 
+/** An engine whose lot clock the auctioneer can pause, resume and extend (R-RT-049). */
+export interface ClockEnginePort extends EnginePort {
+  readonly paused: boolean;
+  pause(now: EpochMs): void;
+  resume(now: EpochMs): void;
+  extend(now: EpochMs, extraMs: number): void;
+}
+
+export function canClock(engine: EnginePort): engine is ClockEnginePort {
+  return typeof (engine as Partial<ClockEnginePort>).pause === 'function';
+}
+
 /** What the room knows about a bid beyond its amount; the engine ledger keeps it. */
 export interface BidMeta {
   source: BidSource;

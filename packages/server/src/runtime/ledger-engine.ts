@@ -15,6 +15,7 @@ import {
 } from '@gavel/engine';
 import {
   CROCKFORD,
+  GavelError,
   type AuctionConfig,
   type AuctionId,
   type BidderId,
@@ -27,6 +28,7 @@ import {
 } from '@gavel/shared';
 import type {
   AbortEnginePort,
+  ClockEnginePort,
   BidMeta,
   HammerResult,
   MetaBidEnginePort,
@@ -89,7 +91,9 @@ const REJECT_TO_ERROR: Readonly<Record<RejectReason, ErrorCode>> = {
  * replays that list into the engine runtime, which owns the durable ledger the
  * settlement bridge talks to. A rebuilt room produces the same list again.
  */
-export class LedgerEngine implements AbortEnginePort, RevokeEnginePort, MetaBidEnginePort {
+export class LedgerEngine
+  implements AbortEnginePort, RevokeEnginePort, MetaBidEnginePort, ClockEnginePort
+{
   private state: AuctionState = initialState;
   private readonly lotId: EngineUlid;
   private readonly openAt: number;
@@ -243,6 +247,50 @@ export class LedgerEngine implements AbortEnginePort, RevokeEnginePort, MetaBidE
       actor: 'kill_switch',
     });
     return { winnerId: null, price: 0 as Cents, ranking: [] };
+  }
+
+  /** True while the lot clock is frozen by a pause. */
+  get paused(): boolean {
+    return this.lot()?.pausedRemainingMs !== undefined;
+  }
+
+  /** Freezes the lot clock; throws a `conflict` GavelError when the engine refuses. */
+  pause(now: EpochMs): void {
+    this.clock(now, 'PauseLot', [], { type: 'PauseLot', lotId: this.lotId, actor: 'auctioneer' });
+  }
+
+  /** Restarts a paused clock with the time that was left. */
+  resume(now: EpochMs): void {
+    this.clock(now, 'ResumeLot', [], { type: 'ResumeLot', lotId: this.lotId, actor: 'auctioneer' });
+  }
+
+  /** Adds `extraMs` to a running lot. */
+  extend(now: EpochMs, extraMs: number): void {
+    this.clock(now, 'ExtendLot', [extraMs], {
+      type: 'ExtendLot',
+      lotId: this.lotId,
+      extraMs,
+      reason: 'auctioneer',
+      actor: 'auctioneer',
+    });
+  }
+
+  private clock(
+    now: EpochMs,
+    kind: string,
+    key: ReadonlyArray<string | number | boolean>,
+    body: DistributiveOmit<Command, 'commandId' | 'at' | 'auctionId'>,
+  ): void {
+    const at = Math.max(now, this.state.head.at);
+    try {
+      // A command the engine rejects leaves no ledger entry; the caller must not log it as applied.
+      if (this.run(at, kind, key, body).entries.length === 0) {
+        throw new GavelError('conflict', kind);
+      }
+    } catch (e) {
+      if (e instanceof EngineError) throw new GavelError('conflict', e.code);
+      throw e;
+    }
   }
 
   /** Revokes the bidder's ceiling and strikes their bids; false when already revoked. */

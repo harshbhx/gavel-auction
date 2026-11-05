@@ -1,10 +1,12 @@
 import { GavelError } from '@gavel/shared';
 import { z } from 'zod';
 import { authorize } from '../auth/authorize';
+import { consumeInvite } from '../auth/token';
 import {
   auctionIdOf,
   authenticate,
   json,
+  jtiStoreOf,
   mintToken,
   parseBody,
   verifyFor,
@@ -52,10 +54,12 @@ export function mountInvites(app: HttpApp): void {
     const auctionId = auctionIdOf(c);
     const { invite } = parseBody(JoinBody, await c.body());
     await roomFor(c.deps, auctionId);
-    // Verification consumes the invite jti in the store, so a second exchange fails `invite_used`.
     const claims = await verifyFor(c.deps, invite, auctionId, ['invite']);
     const bidderId = claims.bidderId ?? claims.sub;
     const session = await mintToken(c.deps, 'session', auctionId, bidderId, bidderId);
+    // Verification does not consume; burning the invite here makes a concurrent second exchange fail `invite_used`.
+    const burned = await consumeInvite(claims, jtiStoreOf(c.deps));
+    if (!burned.ok) throw new GavelError(burned.code, burned.reason);
     return json(200, {
       sessionToken: session.token,
       bidderId,

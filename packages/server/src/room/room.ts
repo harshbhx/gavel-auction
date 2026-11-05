@@ -67,6 +67,7 @@ import {
   canAbort,
   canPlaceWithMeta,
   canRevoke,
+  canClock,
 } from './settle-port';
 
 /** One live connection as the room sees it. Identity comes from the verified token only. */
@@ -809,18 +810,20 @@ export class Room {
   }
 
   /**
-   * Auctioneer control command (R-RT-048). Idempotent by `controlId`. Only `hammer`
-   * is wired: pause, resume, extend and open need engine support that does not exist yet (R-RT-049).
+   * Auctioneer control command (R-RT-048). Idempotent by `controlId`. `hammer` closes the lot;
+   * `open`, `pause`, `resume` and `extend` act on the engine clock (R-RT-049) and are audited
+   * as control records in the log, so a rebuilt room replays them.
    */
   control(conn: Connection, cmd: ControlCommand): Promise<void> {
     if (!authorize('control', conn.role).ok) {
       this.sendError(conn, 'forbidden');
       return Promise.resolve();
     }
-    if (cmd.action !== 'hammer' || cmd.controlId.length === 0) {
+    if (cmd.controlId.length === 0) {
       this.sendError(conn, 'bad_message');
       return Promise.resolve();
     }
+    if (cmd.action !== 'hammer') return this.enqueue(() => this.clockControl(conn, cmd));
     return this.enqueue(async () => {
       try {
         await this.ensureClean();
@@ -841,6 +844,96 @@ export class Room {
       }
       await this.doHammer({ conn, cmd });
     });
+  }
+
+  private async clockControl(conn: Connection, cmd: ControlCommand): Promise<void> {
+    try {
+      await this.ensureClean();
+    } catch {
+      this.sendError(conn, this.storeCode());
+      return;
+    }
+    // A repeat returns the first result and appends nothing (R-RT-050).
+    if (this.controlIds.has(cmd.controlId)) return;
+    const engine = this.requireEngine();
+    if (!canClock(engine)) {
+      this.sendError(conn, 'bad_message');
+      return;
+    }
+    if (this.hammered || engine.view().state !== 'OPEN') {
+      this.sendError(conn, 'conflict');
+      return;
+    }
+    const extraMs = cmd.args?.extraMs;
+    if (
+      cmd.action === 'extend' &&
+      (extraMs === undefined || !Number.isInteger(extraMs) || extraMs < 1 || extraMs > 600_000)
+    ) {
+      this.sendError(conn, 'bad_message');
+      return;
+    }
+    const seq = this.seq + 1;
+    const ts = this.deps.clock.now();
+    try {
+      this.applyClock(engine, cmd.action, ts, extraMs);
+    } catch (e) {
+      if (e instanceof GavelError && e.code === 'conflict') {
+        this.sendError(conn, 'conflict');
+        return;
+      }
+      this.dirty = true;
+      this.sendError(conn, 'internal');
+      return;
+    }
+    const event: RoomEvent = {
+      type: 'control',
+      auctionId: this.auctionId,
+      seq,
+      ts,
+      controlId: cmd.controlId,
+      action: cmd.action,
+      by: conn.sub,
+      ...(cmd.args ? { args: cmd.args } : {}),
+      audit: {
+        bidId: this.deps.ids.mint<'BidId'>(),
+        bidderId: this.deps.ids.mint<'BidderId'>(),
+        source: 'manual',
+        outcome: 'accepted',
+        reason: `control:${cmd.action}`,
+        serverTs: ts,
+        seq,
+      },
+    };
+    try {
+      await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+    } catch {
+      await this.recover().catch(() => undefined);
+      this.sendError(conn, this.storeCode());
+      return;
+    }
+    this.seq = seq;
+    this.controlIds.add(cmd.controlId);
+    // The new deadline or state reaches clients in the price message; its seq leaves no gap.
+    this.broadcastPrice(seq, ts);
+    this.armTimer();
+    try {
+      await this.makeDurable();
+    } catch {
+      this.sendError(conn, this.storeCode());
+    }
+  }
+
+  /** Applies a clock control to the engine; `open` only checks the lot is open. Shared by live and replay. */
+  private applyClock(
+    engine: EnginePort,
+    action: ControlCommand['action'],
+    ts: EpochMs,
+    extraMs: number | undefined,
+  ): void {
+    if (!canClock(engine)) throw new GavelError('internal', 'engine has no clock controls');
+    if (action === 'pause') engine.pause(ts);
+    else if (action === 'resume') engine.resume(ts);
+    else if (action === 'extend' && extraMs !== undefined) engine.extend(ts, extraMs);
   }
 
   /**
@@ -1252,6 +1345,8 @@ export class Room {
       return;
     }
     if (view.state !== 'OPEN') return;
+    const engine = this.engine;
+    if (engine && canClock(engine) && engine.paused) return;
     this.cancelTimer = this.deps.clock.setTimer(view.endTs, () => {
       this.enqueue(() => this.onTimer()).catch(() => {
         // A throwing timer body must not become an unhandled rejection; rebuild on the next
@@ -1462,6 +1557,13 @@ export class Room {
         break;
       case 'control':
         this.controlIds.add(event.controlId);
+        if (event.action !== 'hammer' && event.action !== 'open') {
+          try {
+            this.applyClock(this.requireEngine(), event.action, event.ts, event.args?.extraMs);
+          } catch {
+            // The engine refused what the live room accepted (older build); keep loading.
+          }
+        }
         if (event.controlId === abortControlId(this.auctionId)) this.abortPending = true;
         break;
       case 'ceiling_revoked':
