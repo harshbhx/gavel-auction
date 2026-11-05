@@ -177,17 +177,22 @@ function parse(text: string, ctx: ParseContext): ParseResult {
   const sharedAmount = distinctAmounts.length === 1 ? (distinctAmounts[0] ?? null) : null;
 
   if (distinctPaddles.length > 1) {
-    // "paddle seven three hundred paddle nine four hundred": one amount per paddle, in order.
-    if (
-      distinctAmounts.length > 1 &&
-      amounts.length === scan.refs.length &&
-      scan.refs.length === distinctPaddles.length
-    ) {
-      return result('confirm', 'multiple_bidders', {
-        candidates: scan.refs
-          .map((r, i) => cand(amounts[i]?.cents ?? null, paddle(r.paddle)))
-          .sort((a, b) => paddleOrder(a.bidder?.value ?? '', b.bidder?.value ?? '')),
+    // "paddle seven three hundred paddle nine four hundred": the amount after each paddle belongs
+    // to that paddle, when every paddle has exactly one.
+    if (scan.refs.length === distinctPaddles.length) {
+      const paired = scan.refs.map((r, i) => {
+        const next = scan.refs[i + 1];
+        const own = parseAmounts(tokens.slice(r.end, next === undefined ? undefined : next.start));
+        return own.amounts.length === 1 && own.unreadable === 0
+          ? cand(own.amounts[0]?.cents ?? null, paddle(r.paddle))
+          : null;
       });
+      const all = paired.flatMap((c) => (c === null ? [] : [c]));
+      if (all.length === paired.length && new Set(all.map((c) => c.amountCents)).size > 1) {
+        return result('confirm', 'multiple_bidders', {
+          candidates: all.sort((a, b) => paddleOrder(a.bidder?.value ?? '', b.bidder?.value ?? '')),
+        });
+      }
     }
     return result('confirm', 'multiple_bidders', {
       candidates: distinctPaddles.map((p) => cand(sharedAmount, paddle(p))),

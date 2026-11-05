@@ -173,7 +173,7 @@ describe('R12-V03 per-bidder candidates', () => {
     };
     const v = validate(merge(r, null), ctx);
     const ids = v.kind === 'confirm' ? (v.choices ?? []).map((c) => c.bidderId).sort() : [];
-    expect(ids).toEqual([B7, 'b12']);
+    expect(ids).toEqual(['b12', B7]);
   });
 
   it('the pipeline prompt lists one option per bidder', () => {
