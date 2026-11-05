@@ -140,3 +140,25 @@ describe('body rules and CORS (T-RT-077)', () => {
     expect(b.headers.get('access-control-allow-origin')).toBeNull();
   });
 });
+
+describe('http app security headers and CORS (T-QA-075, T-QA-076)', () => {
+  it('adds the baseline headers to every response, including errors', async () => {
+    const app = setup();
+    for (const path of ['/t/echo', '/t/crash', '/nope']) {
+      const res = await app.fetch(new Request(`http://h.test${path}`));
+      expect(res.headers.get('content-security-policy')).toBeTruthy();
+      expect(res.headers.get('strict-transport-security')).toMatch(/max-age=\d+/);
+      expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+    }
+  });
+
+  it('reflects only configured origins', async () => {
+    const app = setup();
+    const ok = await app.fetch(new Request('http://h.test/nope', { headers: { origin: ORIGIN } }));
+    expect(ok.headers.get('access-control-allow-origin')).toBe(ORIGIN);
+    const evil = await app.fetch(
+      new Request('http://h.test/nope', { headers: { origin: 'https://evil.example' } }),
+    );
+    expect(evil.headers.get('access-control-allow-origin')).toBeNull();
+  });
+});

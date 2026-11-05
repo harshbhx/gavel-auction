@@ -13,6 +13,7 @@ import { signWithCurrent, verifyRotating, type SecretSet } from '../auth/rotatio
 import { TOKEN_TTL_S, type JtiStore, type TokenKind, type TokenPayload } from '../auth/token';
 import { auctioneerTokenLive } from '../auth/auctioneer-floor';
 import type { AuctionService } from '../runtime/auction-service';
+import { securityHeaders } from './security-headers';
 
 /** Largest request body the host reads (R-RT-105). */
 export const MAX_BODY_BYTES = 64 * 1024;
@@ -116,7 +117,7 @@ export class HttpApp {
     const out = new Response(res.body, res);
     out.headers.set('x-request-id', requestId);
     out.headers.set('cache-control', 'no-store');
-    out.headers.set('x-content-type-options', 'nosniff');
+    securityHeaders(out.headers);
     if (allowed !== null) {
       out.headers.set('access-control-allow-origin', allowed);
       out.headers.set('access-control-expose-headers', 'x-request-id');

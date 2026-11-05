@@ -4,8 +4,9 @@ import { describe, expect, it } from 'vitest';
 // GAVEL_STAGING_URL (for example the in-process server on a local port, or the deployed
 // staging site). Without it the suite is skipped, unless GAVEL_REQUIRE_STAGING=1 is set (a
 // pipeline that has a target must set it), in which case a missing URL fails the run instead of
-// passing with zero assertions. The in-process server emits none of these headers yet, so the
-// suite cannot run against it; the hosted site is the target.
+// passing with zero assertions. The server sets the headers through securityHeaders (packages/server/src/http); deploy-staging
+// runs this suite with GAVEL_REQUIRE_STAGING=1. The evil-origin WebSocket test skips with a reason
+// while no gateway accepts a same-origin upgrade.
 
 const base = process.env['GAVEL_STAGING_URL'];
 const EVIL = 'https://evil.example';
@@ -43,24 +44,39 @@ describe.skipIf(base === undefined)('evil origin (T-QA-075)', () => {
     expect(allow).not.toBe('*');
   });
 
-  it('rejects a WebSocket upgrade from an evil origin', async () => {
-    const root = base ?? '';
-    const url = root.replace(/^http/, 'ws');
-    const outcome = await new Promise<string>((resolve) => {
-      // Node's global WebSocket accepts a headers option through its init object.
-      const init: { headers: Record<string, string> } = { headers: { Origin: EVIL } };
-      const Ctor = WebSocket as unknown as new (
-        u: string,
-        o: { headers: Record<string, string> },
-      ) => WebSocket;
-      const ws = new Ctor(url, init);
-      ws.addEventListener('open', () => {
-        ws.close();
-        resolve('open');
-      });
-      ws.addEventListener('error', () => resolve('rejected'));
-      ws.addEventListener('close', () => resolve('rejected'));
-    });
-    expect(outcome).toBe('rejected');
+  it('rejects a WebSocket upgrade from an evil origin', async (ctx) => {
+    const url = (base ?? '').replace(/^http/, 'ws');
+    // A refusal only means something when a same-origin upgrade opens first.
+    if ((await upgrade(url, new URL(base ?? '').origin)) !== 'open') {
+      console.info('no WebSocket gateway answers a same-origin upgrade on the target');
+      ctx.skip();
+      return;
+    }
+    expect(await upgrade(url, EVIL)).toBe('rejected');
   });
 });
+
+/** Opens a WebSocket with the given Origin and reports whether it opened or was refused. */
+function upgrade(url: string, origin: string): Promise<'open' | 'rejected'> {
+  return new Promise((resolve) => {
+    // Node's global WebSocket accepts a headers option through its init object.
+    const Ctor = WebSocket as unknown as new (
+      u: string,
+      o: { headers: Record<string, string> },
+    ) => WebSocket;
+    const ws = new Ctor(url, { headers: { Origin: origin } });
+    const timer = setTimeout(() => {
+      ws.close();
+      resolve('rejected');
+    }, 5000);
+    ws.addEventListener('open', () => {
+      clearTimeout(timer);
+      ws.close();
+      resolve('open');
+    });
+    ws.addEventListener('error', () => {
+      clearTimeout(timer);
+      resolve('rejected');
+    });
+  });
+}

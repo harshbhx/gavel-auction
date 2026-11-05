@@ -38,6 +38,8 @@ import { loadConfig, redactConfig, type LoadHooks, type ServerConfig } from '../
 import { createExportHandler as createLedgerExportHandler } from '../admin/export';
 import { createReplayBundleHandler } from '../admin/replay-bundle';
 import { createExportHandler } from '../http/export';
+import { createGateway } from '../host/gateway';
+import { createNodeWsHost } from '../host/node-ws';
 import { createHealthRoutes } from '../http/health';
 import { createMetricsRoute } from '../http/metrics';
 import { adminKeyMatches, createOpsRoomsHandler } from '../http/ops';
@@ -229,6 +231,11 @@ function bearerOf(req: IncomingMessage): string | undefined {
   return m?.[1];
 }
 
+/** Origins that may open a socket: the configured CORS list plus the public origin. */
+function wsOrigins(config: { PUBLIC_URL: string; CORS_ORIGINS: readonly string[] }): string[] {
+  return [...new Set([new URL(config.PUBLIC_URL).origin, ...config.CORS_ORIGINS])];
+}
+
 function notFound(res: ServerResponse): void {
   res.writeHead(404, { 'content-type': 'application/json' });
   res.end('{"error":"not_found"}');
@@ -417,6 +424,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     notFound(res);
   };
   const http = createServer((req, res) => {
+    if (wsHost.handleRequest(req, res)) return;
     handle(req, res).catch((error: unknown) => {
       log.error('request failed', {
         error: error instanceof Error ? error.message : String(error),
@@ -426,6 +434,20 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
         res.end('{"error":"internal"}');
       } else res.destroy();
     });
+  });
+
+  const wsHost = createNodeWsHost({
+    server: http,
+    clock,
+    allowedOrigins: wsOrigins(config),
+    accept: createGateway({
+      service,
+      store: stores.room,
+      clock,
+      ids,
+      secrets,
+      limiter,
+    }),
   });
 
   return {
@@ -443,6 +465,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
         });
       }),
     close: async (graceMs = 5000) => {
+      await wsHost.close();
       await new Promise<void>((resolve) => {
         if (!http.listening) return resolve();
         http.close(() => resolve());

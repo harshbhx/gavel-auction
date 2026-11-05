@@ -1,0 +1,40 @@
+name: interface-check
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    paths:
+      - 'packages/*/src/**'
+      - 'etc/**'
+      - 'api-extractor.json'
+      - 'scripts/check-interface-label.mjs'
+      - '.github/workflows/interface-check.yml'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: interface-check-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  api-reports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/setup
+      - name: Generate API reports
+        run: node scripts/check-interface-label.mjs --generate
+      - name: Keep the generated reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: api-reports
+          path: etc/
+          if-no-files-found: ignore
+      - name: Compare with the committed reports
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: node scripts/check-interface-label.mjs --check
