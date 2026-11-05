@@ -1,0 +1,20 @@
+id: S09-reconnect
+title: Bidder drops during bidding and resumes without losing state
+modes: [inproc]
+seed: 9
+clock: { startMs: 1793750400000 }
+auction: { itemId: lot-1, reserve: 5000, minIncrement: 500, softCloseMs: 0, mode: english }
+actors: { ana: { funding: wallet }, ben: { funding: wallet } }
+steps:
+  - { t: 0, actor: ana, do: register, ceiling: 50000 }
+  - { t: 0, actor: ben, do: register, ceiling: 25000 }
+  - { t: 1000, actor: auctioneer, do: open }
+  - { t: 2000, actor: ana, do: bid, amount: 6000 }
+  - { t: 2500, do: fault, fault: { at: ws, kind: drop, client: ben, forMs: 3000 } }
+  - { t: 6000, actor: ben, do: bid, amount: 6500 }
+  - { t: 7000, actor: ana, do: bid, amount: 8000 }
+  - { t: 8000, actor: auctioneer, do: hammer }
+expect:
+  - ledger: { winner: ana, captured: 8000, released: 42000, voided: [ben] }
+  - paypalCalls: { capture: 1, void: 1 }
+  - invariants: [I1, I2, I3, I4, I5]
