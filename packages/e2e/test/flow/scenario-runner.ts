@@ -20,6 +20,30 @@ export interface Outcome {
   invariants: Partial<Record<Invariant, boolean>>;
 }
 
+/** Length of the bidding window the runner gives every scenario, counted from clock.startMs. */
+const WINDOW_MS = 600_000;
+
+/**
+ * The auction config a scenario declares: mode, reserve, increment, soft close and an end time
+ * counted from its own clock.startMs, so none of these fields is silently ignored.
+ * actors.*.funding and seed are not applied: the fake PayPal server has no wallet/card split and
+ * the runner draws no random numbers.
+ */
+export function scenarioConfig(scenario: Scenario): AuctionConfig {
+  const presets = [
+    ...new Set(scenario.steps.flatMap((s) => (s.do === 'register' ? [s.ceiling] : []))),
+  ].sort((a, b) => a - b);
+  return {
+    ...CONFIG,
+    mode: scenario.auction.mode,
+    ceilingPresets: presets,
+    reserve: scenario.auction.reserve,
+    minIncrement: scenario.auction.minIncrement,
+    softCloseWindowMs: scenario.auction.softCloseMs,
+    endTs: scenario.clock.startMs + WINDOW_MS,
+  } as unknown as AuctionConfig;
+}
+
 const SUPPORTED_STEPS = new Set(['register', 'open', 'bid', 'hammer']);
 
 export async function runScenarioInProc(
@@ -30,19 +54,12 @@ export async function runScenarioInProc(
   stop.push(rig.paypal);
   const service = rig.service();
   const auctionId = rig.ids.mint<'AuctionId'>();
-  const presets = [
-    ...new Set(scenario.steps.flatMap((s) => (s.do === 'register' ? [s.ceiling] : []))),
-  ].sort((a, b) => a - b);
-  const config = {
-    ...CONFIG,
-    ceilingPresets: presets,
-    reserve: scenario.auction.reserve,
-    minIncrement: scenario.auction.minIncrement,
-  } as unknown as AuctionConfig;
+  const config = scenarioConfig(scenario);
+  const presets = (config as unknown as { ceilingPresets: number[] }).ceilingPresets;
   const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
   const bidders = new Map<string, Bidder>();
   let boss: Awaited<ReturnType<typeof connect>> | undefined;
-  const base = rig.clock.now();
+  const base = scenario.clock.startMs;
 
   const steps = [...scenario.steps].sort((a, b) => a.t - b.t);
   for (const step of steps) {

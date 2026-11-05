@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { answerConfirm } from '../src/decide/answer.js';
-import { toPlaceBid, type Decision, type VoiceEvidence } from '../src/index.js';
+import { isReplayConflict, toPlaceBid, type Decision, type VoiceEvidence } from '../src/index.js';
 import type { BidContext, ConfirmPrompt } from '../src/types.js';
 
 const AUCTION = '01JC0000000000000000000009';
@@ -72,10 +72,33 @@ describe('R8-V03 command id covers the command body', () => {
     expect(b?.commandId).not.toBe(a?.commandId);
   });
 
-  it('a replay differing only in transcript or confidence gets a different id', () => {
+  it('a replay differing only in transcript or confidence keeps the same id (R9-V05)', () => {
     const a = toPlaceBid(accept(), base);
-    const b = toPlaceBid(accept({ transcript: 'Paddle 12, $500.', confidence: 0.95 }), base);
+    const b = toPlaceBid(
+      accept({ transcript: 'Paddle 12, $500.', confidence: 0.95, audioStartMs: 183450 }),
+      base,
+    );
+    expect(b?.commandId).toBe(a?.commandId);
+    expect(b?.audit.transcript).toBe('Paddle 12, $500.');
+    expect(b?.audit.confidenceBps).not.toBe(a?.audit.confidenceBps);
+  });
+
+  it('a different amount or bidder gets a different id (R9-V05)', () => {
+    const a = toPlaceBid(accept(), base);
+    const other = accept();
+    if (other.kind !== 'accept') return;
+    const b = toPlaceBid({ ...other, amountCents: 60000 }, base);
+    const c = toPlaceBid({ ...other, bidderId: '01JB0000000000000000000002' }, base);
     expect(b?.commandId).not.toBe(a?.commandId);
+    expect(c?.commandId).not.toBe(a?.commandId);
+  });
+
+  it('isReplayConflict recognises an engine command_conflict only (R9-V05)', () => {
+    expect(isReplayConflict(Object.assign(new Error('x'), { code: 'command_conflict' }))).toBe(
+      true,
+    );
+    expect(isReplayConflict(Object.assign(new Error('x'), { code: 'bad_command' }))).toBe(false);
+    expect(isReplayConflict(null)).toBe(false);
   });
 
   it('an identical replay keeps the same id', () => {
