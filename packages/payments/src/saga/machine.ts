@@ -208,6 +208,7 @@ export function step(journal: Journal, event: SettlementEvent): StepResult {
       next.winner = { ...event.winner };
       next.intent = null;
       next.unknownSince = null;
+      delete next.unknownPausedAtMs;
       break;
     case 'definite_fail':
       if (event.failure.bidderId !== currentCandidate(journal, event).bidderId) {
@@ -220,6 +221,7 @@ export function step(journal: Journal, event: SettlementEvent): StepResult {
       next.failed.push({ ...event.failure });
       next.intent = null;
       next.unknownSince = null;
+      delete next.unknownPausedAtMs;
       break;
     case 'next_candidate':
       next.cursor += 1;

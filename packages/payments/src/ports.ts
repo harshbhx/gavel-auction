@@ -106,7 +106,7 @@ export interface KillSwitch {
 export type Labels = Record<string, string>;
 
 export interface PaymentsMetrics {
-  /** Counters: paypal_calls_total, paypal_retries_total, settlement_transitions_total, webhook_events_total, reconcile_findings_total. */
+  /** Counters: paypal_calls_total, paypal_retries_total, settlement_transitions_total, settlement_alerts_total, webhook_events_total, reconcile_findings_total. */
   incr(name: string, labels?: Labels, by?: number): void;
   /** Histograms: paypal_latency_ms. */
   observe(name: string, value: number, labels?: Labels): void;

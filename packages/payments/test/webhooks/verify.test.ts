@@ -247,7 +247,15 @@ describe('verifyWebhook prechecks and call limit', () => {
     ['an unknown algorithm', { 'PAYPAL-AUTH-ALGO': 'none' }],
     ['a certificate url on another host', { 'PAYPAL-CERT-URL': 'https://paypal.com.evil.test/c' }],
     ['a plain http certificate url', { 'PAYPAL-CERT-URL': 'http://api.paypal.com/c' }],
-    ['a stale transmission time', { 'PAYPAL-TRANSMISSION-TIME': '2026-11-04T08:00:00.000Z' }],
+    // R12-P04: an old transmission time within the redelivery horizon goes to PayPal.
+    [
+      'a transmission time past the horizon',
+      { 'PAYPAL-TRANSMISSION-TIME': '2026-10-20T10:00:00.000Z' },
+    ],
+    [
+      'a transmission time in the future',
+      { 'PAYPAL-TRANSMISSION-TIME': '2026-11-04T10:30:00.000Z' },
+    ],
     ['an unreadable transmission time', { 'PAYPAL-TRANSMISSION-TIME': 'yesterday' }],
   ])('rejects %s without calling PayPal', async (_name, override) => {
     expect(await live().verifyWebhook(body, { ...good, ...override })).toEqual({

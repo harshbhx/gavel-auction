@@ -4,7 +4,11 @@ import { assertFakeInvariants } from '../../src/fake/invariants.js';
 import { FakePayPalServer } from '../../src/fake/server.js';
 import { PayPalGateway } from '../../src/gateway.js';
 import { TokenManager } from '../../src/oauth.js';
-import { runCapturePhase, type CaptureOutcome } from '../../src/saga/capture.js';
+import {
+  DEFAULT_PENDING_CAPTURE_DEADLINE_MS,
+  runCapturePhase,
+  type CaptureOutcome,
+} from '../../src/saga/capture.js';
 import { createSettlement } from '../../src/saga/create.js';
 import { voidAllLiveHolds, type VoidAllOutcome } from '../../src/saga/killswitch.js';
 import {
@@ -17,7 +21,7 @@ import { MemoryHoldStore, MemoryJournalStore } from '../../src/stores/memory.js'
 import { Transport } from '../../src/transport.js';
 import type { Journal, PaymentAudit, SettlementPlan } from '../../src/types.js';
 import { FRESH_HOLDS } from '../helpers/age.js';
-import { CEILINGS as RIG_CEILINGS, makeRig, seed } from './rig.js';
+import { CEILINGS as RIG_CEILINGS, makeRig, refusal, seed, withGateway } from './rig.js';
 
 /**
  * Round 11 red-team findings on the settlement saga (R11-O01 to R11-O06). The saga runs
@@ -190,7 +194,13 @@ describe('R11-O03 a PENDING capture is not the sale', () => {
 
   it('goes to review with both holds kept when it stays pending past the deadline', async () => {
     const { w } = await pendingOnB1();
+    // R12-P01: a PENDING capture waits under its own deadline, not the ten-minute one.
     w.clock.advance(601_000);
+    expect(await runSettlement(w.deps, 'auc1')).toMatchObject({
+      status: 'pending',
+      reason: 'capture_pending',
+    });
+    w.clock.advance(DEFAULT_PENDING_CAPTURE_DEADLINE_MS);
     const out = await runSettlement(w.deps, 'auc1');
     expect(out).toMatchObject({ status: 'failed', reason: 'capture_outcome_unknown' });
     expect(w.server.core.inspect(w.auth('b1')).voidEffects).toBe(0);
@@ -339,9 +349,10 @@ describe('R11-O01, R11-O04 one keep-set for every review release', () => {
   it('a no-sale review raised in the void phase keeps nothing and releases the last candidate', async () => {
     const rig = makeRig(RIG_CEILINGS);
     await seed(rig, TWO);
-    // Both captures are declined: no sale. The void of b2 then fails once with a 5xx.
+    // Both captures are declined: no sale. The void of b2 then fails with a 5xx, also on the
+    // retry after the deadline (R12-P02: a run retries before it judges the age).
     rig.core.inject('capture', 'capture_declined', null, 2);
-    rig.core.inject('void', 'http_500', rig.auth['b2'] ?? '', 1);
+    rig.core.inject('void', 'http_500', rig.auth['b2'] ?? '', 2);
     expect(await runSettlement(rig.deps, 'auc1')).toMatchObject({ status: 'pending' });
     rig.clock.advance(601_000);
     const out = await runSettlement(rig.deps, 'auc1');
@@ -360,11 +371,21 @@ describe('R11-O01, R11-O04 one keep-set for every review release', () => {
   it('a sale in review keeps only the winner', async () => {
     const rig = makeRig(RIG_CEILINGS);
     await seed(rig, TWO);
-    rig.core.inject('void', 'http_500', rig.auth['b2'] ?? '', 1);
-    await runSettlement(rig.deps, 'auc1');
-    rig.clock.advance(601_000);
-    const out = await runSettlement(rig.deps, 'auc1');
-    expect(out).toMatchObject({ status: 'failed', reason: 'void_unconfirmed:b2' });
+    // A slow release no longer ends a sale in review (R12-P02); a void PayPal refuses on a
+    // live hold until the resume budget is spent still does (R-PAY-058).
+    const b2 = rig.auth['b2'] ?? '';
+    const deps = {
+      ...withGateway(rig, {
+        voidAuthorization: async (a, r) => {
+          if (a === b2) throw refusal();
+          return rig.gw.voidAuthorization(a, r);
+        },
+      }),
+      maxVoidResumes: 0,
+    };
+    await runSettlement(deps, 'auc1');
+    const out = await runSettlement(deps, 'auc1');
+    expect(out).toMatchObject({ status: 'failed', reason: 'void_failed:b2' });
     const j = await rig.journals.load('auc1');
     if (j === null) throw new Error('journal');
     expect(reviewKeepHolds(j, { nowMs: rig.clock.nowMs() })).toEqual(new Set(['hold-b1']));

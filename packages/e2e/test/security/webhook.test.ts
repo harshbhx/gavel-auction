@@ -179,8 +179,9 @@ describe('webhook checks that need the live rules (T-QA-072)', () => {
     ],
     ['an unknown signature algorithm', { 'PAYPAL-AUTH-ALGO': 'none' }],
     [
-      'a transmission time an hour old',
-      { 'PAYPAL-TRANSMISSION-TIME': new Date(NOW - 3_600_000).toISOString() },
+      // R12-P04: an hour-old time can be a PayPal redelivery and goes to PayPal's verify.
+      'a transmission time older than the redelivery horizon',
+      { 'PAYPAL-TRANSMISSION-TIME': new Date(NOW - 8 * 86_400_000).toISOString() },
     ],
     [
       'a transmission time an hour ahead',

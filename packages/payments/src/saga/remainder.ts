@@ -8,17 +8,28 @@ import { truthArgs } from './truth.js';
  * Winner remainder policy (SPEC 3.5, R-PAY-059).
  *
  * After CAPTURED the winner's authorization is read again. When PayPal reports the
- * whole hold as used or released nothing is done. When an open remainder is
- * possible it is voided explicitly and recorded `remainder_voided`.
+ * whole hold as used or released nothing is done. What else happens follows the G1
+ * decision (SPEC 7.3), `remainderMode`:
  *
- * VERIFIED (G1, sandbox, wallet buyer): PayPal releases the remainder by itself after
- * a final capture, and a void afterwards answers 422 PREVIOUSLY_CAPTURED. Card buyers
- * are untested, so the explicit void stays as the fallback when the hold is larger
- * than the capture; a refusal that says the authorization is already captured,
- * voided or expired counts as released (not_found is not: the hold may still be live) (no second effect). Both fake modes
- * (`autoReleaseRemainder` true and false) are tested. If the void is refused for
- * another reason the remainder is recorded `remainder_unreleased` and left to
- * expire (G1 decision C); the settlement still completes.
+ *   A        the authorization reads CAPTURED with our final capture: PayPal released the
+ *            remainder. Recorded `remainder_released`, no void is sent (R12-P06).
+ *   B        an open remainder is voided explicitly and recorded `remainder_voided`.
+ *   C        the remainder cannot be voided; recorded `remainder_unreleased`, left to expire.
+ *   unknown  as B.
+ *
+ * VERIFIED (G1, sandbox 2026-11-04, wallet buyer): decision A. The authorization keeps its
+ * original amount (G1.6: amount 500.00, CAPTURED, captured 350.00), so the amount cannot
+ * tell a released remainder from an open one, and a void afterwards always answers 422
+ * PREVIOUSLY_CAPTURED (G1.7). The default is therefore A, the decision recorded in
+ * `gates-result.json` (a test keeps the two equal). Card buyers are untested and card
+ * checkout is off (G2); a deployment that meets an open remainder runs mode B, which the
+ * fake models with `autoReleaseRemainder: false`. In mode A a hold whose order does not
+ * list our final capture also takes the explicit void.
+ *
+ * On the explicit void a refusal that says the authorization is already captured, voided
+ * or expired counts as released (not_found is not: the hold may still be live), with no
+ * second effect. If the void is refused for another reason the remainder is recorded
+ * `remainder_unreleased` and left to expire (G1 decision C); the settlement still completes.
  */
 
 export type RemainderResult =
@@ -33,11 +44,19 @@ export function remainderKey(bidderId: string): string {
   return `remainder:${bidderId}`;
 }
 
+/** The G1 decision (SPEC 7.3), as `g1_remainder_mode` in gates-result.json. */
+export type RemainderMode = 'A' | 'B' | 'C' | 'unknown';
+
+/** The recorded G1 decision (A, sandbox 2026-11-04). */
+export const DEFAULT_REMAINDER_MODE: RemainderMode = 'A';
+
 export interface RemainderDeps {
   gateway: PaymentsGateway;
   audit: AuditSink;
   clock: Clock;
   boundary?: (label: string) => Promise<void> | void;
+  /** Default DEFAULT_REMAINDER_MODE. */
+  remainderMode?: RemainderMode;
 }
 
 const RELEASED_KINDS: ReadonlySet<string> = new Set([
@@ -72,6 +91,15 @@ export async function releaseWinnerRemainder(
   if (truth.amountCents <= truth.capturedCents || remainder <= 0) {
     return { status: 'auto_released' };
   }
+  const mode = deps.remainderMode ?? DEFAULT_REMAINDER_MODE;
+  const finalCapture = (truth.captures ?? []).some(
+    (c) => c.final && c.amountCents === winner.amountCents,
+  );
+  // Decision A (G1): CAPTURED after our final capture is the remainder released. A void
+  // would only be refused (G1.7), and an unanswered one must not hold up a paid sale.
+  if (mode === 'A' && finalCapture) return { status: 'auto_released' };
+  // Decision C: PayPal refuses the void; the remainder lapses with the authorization.
+  if (mode === 'C') return { status: 'unreleased' };
 
   const requestId = buildRequestId({
     auctionId: journal.auctionId,

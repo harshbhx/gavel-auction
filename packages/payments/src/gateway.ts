@@ -163,6 +163,22 @@ function unreadable(status: string): PayPalError {
   });
 }
 
+/**
+ * R12-P03: the order named for a truth read could not be read. Like every other
+ * unreadable answer (H14) it is an unknown outcome: the caller reads again later. It is
+ * never "captures not observable", which a captured hold would turn into a review.
+ */
+function orderUnreadable(status: number, why: string, debugId?: string): PayPalError {
+  return new PayPalError({
+    kind: 'server_error',
+    status,
+    name: 'ORDER_UNREADABLE',
+    message: `order read for the truth check failed: ${why}`,
+    outcome: 'unknown',
+    ...(debugId === undefined ? {} : { debugId }),
+  });
+}
+
 export class PayPalGateway implements PaymentsGateway {
   private readonly auth: GatewayAuth;
   private readonly orders: OrdersClient;
@@ -202,8 +218,11 @@ export class PayPalGateway implements PaymentsGateway {
   /**
    * GET the authorization (status, amount) and, when the order id is known, GET
    * the order for its captures. A missing authorization is `NOT_FOUND`. Without
-   * an order id, or when the order does not list captures, `captures` is null
-   * (not observable, UNVERIFIED G1) and `capturedCents` is 0.
+   * an order id `captures` is null (not observable) and `capturedCents` is 0. With an
+   * order id the captures are always read: an order that answers 404, a body that does
+   * not parse or a capture list of an unknown shape throws an unknown-outcome
+   * PayPalError (R12-P03), so the caller reads again instead of judging a hold whose
+   * captures it could not see.
    */
   async getHoldTruth(h: { holdId: string; authId: string; orderId?: string }): Promise<HoldTruth> {
     const observedAtMs = this.clock.nowMs();
@@ -228,7 +247,7 @@ export class PayPalGateway implements PaymentsGateway {
     if (status === undefined) throw unreadable(auth.status);
 
     let lists: CaptureLists | null = null;
-    if (h.orderId !== undefined) lists = await this.readCaptures(h.orderId);
+    if (h.orderId !== undefined && h.orderId !== '') lists = await this.readCaptures(h.orderId);
     const captures = lists === null ? null : lists.captures;
     const capturedCents = captures === null ? 0 : captures.reduce((s, c) => s + c.amountCents, 0);
     if (
@@ -251,28 +270,29 @@ export class PayPalGateway implements PaymentsGateway {
     };
   }
 
-  private async readCaptures(orderId: string): Promise<CaptureLists | null> {
-    try {
-      const res = await this.auth.send({
-        method: 'GET',
-        path: `${ORDERS_PATH}/${encodeURIComponent(orderId)}`,
-        op: 'get',
-        headers: { Accept: 'application/json' },
-      });
-      if (res.status < 200 || res.status >= 300) {
-        throw classifyError(res.status, res.headers, res.text);
-      }
-      let json: unknown;
-      try {
-        json = JSON.parse(res.text);
-      } catch {
-        return null;
-      }
-      return captureListsOf(json);
-    } catch (e) {
-      if (e instanceof PayPalError && e.kind === 'not_found') return null;
-      throw e;
+  private async readCaptures(orderId: string): Promise<CaptureLists> {
+    const res = await this.auth.send({
+      method: 'GET',
+      path: `${ORDERS_PATH}/${encodeURIComponent(orderId)}`,
+      op: 'get',
+      headers: { Accept: 'application/json' },
+    });
+    if (res.status < 200 || res.status >= 300) {
+      const err = classifyError(res.status, res.headers, res.text);
+      // The authorization was just read, so the hold exists: a 404 on its order is a read
+      // that failed, and it says nothing about the captures.
+      if (err.kind === 'not_found') throw orderUnreadable(res.status, 'not found', err.debugId);
+      throw err;
     }
+    let json: unknown;
+    try {
+      json = JSON.parse(res.text);
+    } catch {
+      throw orderUnreadable(res.status, 'body is not JSON');
+    }
+    const lists = captureListsOf(json);
+    if (lists === null) throw orderUnreadable(res.status, 'captures cannot be read');
+    return lists;
   }
 
   async capture(
