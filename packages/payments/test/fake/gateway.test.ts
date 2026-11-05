@@ -39,7 +39,12 @@ describe('FakeGateway implements the PaymentsGateway port', () => {
   it('runs order, approval, authorize, capture without HTTP', async () => {
     const { gw, core } = mk();
     const { orderId, authId } = await hold(gw, core);
-    expect(await gw.getOrder(orderId)).toEqual({ orderId, status: 'COMPLETED', authId });
+    expect(await gw.getOrder(orderId)).toMatchObject({
+      orderId,
+      status: 'COMPLETED',
+      authId,
+      authStatus: 'CREATED',
+    });
     const cap = await gw.capture(authId, {
       amountCents: 600,
       finalCapture: true,
