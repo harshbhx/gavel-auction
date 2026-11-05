@@ -379,6 +379,9 @@ export function entryBody(e: LedgerEntry): string | null {
         actor: e.payload.actor,
       });
     case 'SETTLEMENT_STATE':
+      // The fallback step a promotion injects has no command identity of its own: the
+      // LOT_UNSOLD that follows carries the body (R8-E02).
+      if (isPromoteStep(e)) return null;
       return digestOf({
         t: 'RecordSettlement',
         lotId: e.payload.lotId,
@@ -441,12 +444,16 @@ function commandTypeOf(e: LedgerEntry): string | null {
     case 'LOT_SETTLED':
       return 'CompleteLot';
     case 'SETTLEMENT_STATE':
-      return 'RecordSettlement';
+      return isPromoteStep(e) ? 'PromoteRunnerUp' : 'RecordSettlement';
     case 'LOT_CLOSING':
       return 'Tick';
     default:
       return null;
   }
+}
+
+function isPromoteStep(e: LedgerEntry): boolean {
+  return e.type === 'SETTLEMENT_STATE' && e.payload.ref.startsWith('promote:');
 }
 
 function nextSeen(seen: SeenCommand | undefined, e: LedgerEntry): SeenCommand | null {
