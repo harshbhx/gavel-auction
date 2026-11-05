@@ -20,7 +20,7 @@ Verdict: remainder released (decision A).
 | G1.7 wallet explicit void of the remainder       | accepted or rejected | HTTP 422 UNPROCESSABLE_ENTITY PREVIOUSLY_CAPTURED, authorization then CAPTURED | observed |
 | G1.8 wallet decision                             | A, B or C            | A                                                                              | observed |
 
-Decision: PASS-WITH-FALLBACK
+Decision: PASS-WITH-FALLBACK (wallet only; guest/card G2 pending)
 Fallback if FAIL: wallet buyers only, card untested (R-PAY-037).
 Evidence: docs/evidence/G1/G1-20261104T231047Z.jsonl (sha256 8ac39be0454bcab5c7e2764d87d1d09566ac384681fc3e361285f78c70422bb8)
 Links: spec tags flipped: R-PAY-059, R-PAY-051.

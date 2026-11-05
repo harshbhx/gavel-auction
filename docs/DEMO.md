@@ -59,7 +59,7 @@ When the auctioneer hammers, check that:
 3. The ladder shows HELD, then CAPTURED for the winner and VOIDED for the others, with the source of each confirmation (PayPal webhook or lookup).
 4. Exactly one capture happens even if the server stops mid-settlement and resumes. If PayPal's answer is unknown the settlement stops for review rather than guessing.
 
-The settlement logic is built and tested against the fake PayPal only. Remainder release after a partial capture is proven on the PayPal sandbox for wallet buyers only (gate G1 PASS-WITH-FALLBACK); card buyers are not tested. Webhook signature verification is proven on the PayPal sandbox (gate G4 PASS, 2026-11-05): six real events, including a capture and a void, each verified SUCCESS through PayPal's endpoint.
+The settlement logic is built and tested against the fake PayPal only. Remainder release after a partial capture is proven on the PayPal sandbox for wallet buyers only. Gate G1 is PASS-WITH-FALLBACK (wallet only; guest/card G2 pending); card buyers are not tested. Webhook signature verification is proven on the PayPal sandbox (gate G4 PASS, 2026-11-05): six real events, including a capture and a void, each verified SUCCESS through PayPal's endpoint.
 
 ## 6. What is real and what is recorded
 
@@ -82,7 +82,7 @@ Open `/r/<roomId>/audit` from the launcher (it needs the auctioneer or reviewer 
 - A WebSocket gateway mounted by the server entry point, so bidding works over a socket in the booted process.
 - A persistent store for a hosted deploy (the file stores need a persistent disk and a single instance).
 - An adapter from the voice package to the room.
-- Real sandbox runs of gates G2 to G5 (all NOT RUN in `docs/GATES.md`); G1 passed for wallet buyers only.
+- Real sandbox runs of gates G2 to G5 (all NOT RUN in `docs/GATES.md`); G1 is PASS-WITH-FALLBACK (wallet only; guest/card G2 pending).
 - Live voice with real speech providers.
 - Recorded demo auctions for replay.
 - Card and guest checkout (depends on G2).
