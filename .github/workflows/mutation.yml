@@ -1,0 +1,103 @@
+name: mutation
+on:
+  schedule:
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'stryker.config.mjs'
+      - '.github/workflows/mutation.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  seeded:
+    # Pipeline check: a >= mutated to > must be reported as killed.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/setup
+      - name: Write the fixture
+        run: |
+          mkdir -p tmp-seeded
+          printf 'export const atLeast = (a: number, b: number): boolean => a >= b;\n' > tmp-seeded/cmp.ts
+          {
+            echo "import { expect, it } from 'vitest';"
+            echo "import { atLeast } from './cmp';"
+            echo "it('accepts equal values', () => {"
+            echo "  expect(atLeast(2, 2)).toBe(true);"
+            echo "  expect(atLeast(1, 2)).toBe(false);"
+            echo "});"
+          } > tmp-seeded/cmp.test.ts
+          printf "export default { test: { include: ['*.test.ts'] } };\n" > tmp-seeded/vitest.config.ts
+      - name: Run Stryker on the fixture
+        env:
+          STRYKER_TARGET: seeded
+        run: npx --no-install stryker run
+      - name: The seeded mutant is killed
+        run: |
+          node -e "
+          const r = JSON.parse(require('fs').readFileSync('reports/mutation/seeded/mutation.json', 'utf8'));
+          const ms = Object.values(r.files).flatMap((f) => f.mutants);
+          const m = ms.find((x) => x.mutatorName === 'EqualityOperator' && x.replacement === 'a > b');
+          if (!m || m.status !== 'Killed') { console.error('seeded mutant not killed', JSON.stringify(m)); process.exit(1); }
+          console.log('seeded mutant killed');
+          "
+
+  mutation:
+    needs: seeded
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [engine, saga]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/setup
+      - name: Run Stryker
+        # Non-blocking: the score is reported, never a gate.
+        continue-on-error: true
+        env:
+          STRYKER_TARGET: ${{ matrix.target }}
+        run: npx --no-install stryker run
+      - name: Write summary.json
+        if: always()
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          node -e "
+          const fs = require('fs');
+          const dir = 'reports/mutation/' + process.env.TARGET;
+          if (!fs.existsSync(dir + '/mutation.json')) { console.error('no mutation report'); process.exit(0); }
+          const r = JSON.parse(fs.readFileSync(dir + '/mutation.json', 'utf8'));
+          let killed = 0, survived = 0, noCoverage = 0, other = 0;
+          const survivors = [];
+          for (const [file, f] of Object.entries(r.files)) {
+            for (const m of f.mutants) {
+              if (m.status === 'Killed' || m.status === 'Timeout') killed += 1;
+              else if (m.status === 'Survived') { survived += 1; survivors.push({ file, line: m.location.start.line, mutator: m.mutatorName, replacement: m.replacement }); }
+              else if (m.status === 'NoCoverage') { noCoverage += 1; survivors.push({ file, line: m.location.start.line, mutator: m.mutatorName, replacement: m.replacement }); }
+              else other += 1;
+            }
+          }
+          const valid = killed + survived + noCoverage;
+          const score = valid === 0 ? 0 : Math.round((killed / valid) * 10000) / 100;
+          const summary = { target: process.env.TARGET, threshold: 80, score, killed, survived, noCoverage, ignored: other, survivors };
+          fs.writeFileSync(dir + '/summary.json', JSON.stringify(summary, null, 2));
+          console.log('mutation score ' + score + ' (threshold 80, non-blocking), survivors ' + survivors.length);
+          "
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: mutation-${{ matrix.target }}
+          path: reports/mutation/${{ matrix.target }}
+          if-no-files-found: ignore
