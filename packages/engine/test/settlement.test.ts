@@ -206,4 +206,30 @@ describe('decide CompleteLot and RecordSettlement', () => {
     const settled = run(voiding, settle(500, 'VOIDING', 'SETTLED')).state;
     expect(settled.lots[L1]?.settlement).toBe('SETTLED');
   });
+
+  it('T-ENG-049 R-ENG-066 R-ENG-069 R5-E04 a lot released by voiding alone cannot be completed with a capture', () => {
+    const s = hammered(2000);
+    const voided = run(
+      run(run(s, settle(400, 'HELD', 'BIDDING')).state, settle(410, 'BIDDING', 'WINNER_SELECTED'))
+        .state,
+      settle(420, 'WINNER_SELECTED', 'VOIDING'),
+    ).state;
+    const released = run(voided, settle(430, 'VOIDING', 'SETTLED')).state;
+    expect(released.lots[L1]?.settlement).toBe('SETTLED');
+    expect(errCode(() => decide(released, complete(500, 2000)))).toBe('state_continuity');
+    const direct = run(
+      run(s, settle(400, 'HELD', 'VOIDING')).state,
+      settle(410, 'VOIDING', 'SETTLED'),
+    ).state;
+    expect(errCode(() => decide(direct, complete(500, 2000)))).toBe('state_continuity');
+  });
+
+  it('T-ENG-049 R-ENG-066 R-ENG-069 R5-E04 a real capture followed by the release still completes', () => {
+    const afterCapture = run(
+      run(captured(hammered(2000), 350), settle(400, 'CAPTURED', 'VOIDING')).state,
+      settle(410, 'VOIDING', 'SETTLED'),
+    ).state;
+    const r = run(afterCapture, complete(500, 2000));
+    expect(r.entries.map((e) => e.type)).toEqual(['LOT_SETTLED']);
+  });
 });

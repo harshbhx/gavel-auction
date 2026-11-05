@@ -6,10 +6,13 @@ All notable changes to `@gavel/engine`. Money is integer cents; the ledger forma
 
 ### Added
 
+- Redacted public export: a second hash chain (version 2) without ceilings, hold references, leaders or sealed amounts, tied to the private ledger by `fullHash` (ENG-RT-12).
 - Golden fixtures for promote, revoke, complete, abort and closed-lot bids, and an `abort` step op (R-ENG-066, R-ENG-112, R-ENG-113).
 - Seeded differential test against the Python reference, 2000 scenarios per run (R-ENG-114).
 
 ### Changed
+
+- Public export is version 3: redacted entries no longer carry the private hash (`fullHash` is null or a keyed commitment), sealed and proxy lots lose transcripts and proxy maxima, `matchesLedger` compares full entries, and `verify-ledger --head` detects truncation (D-0021).
 
 - The golden runner sends every bid to the engine, including bids past the deadline or after the hammer, and compares the engine's reason codes without folding them. `complete` takes the bidder and amount from the fixture.
 

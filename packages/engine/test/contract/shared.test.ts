@@ -11,6 +11,7 @@ import { MAX_AMOUNT_CENTS } from '../../src/types.js';
 import { toBps } from '../../../shared/src/confidence';
 import {
   AUCTION_MODES,
+  AuctionConfigSchema,
   MAX_CEILING_PRESETS,
   MAX_EXTENSIONS_LIMIT,
   MAX_SOFT_CLOSE_EXTENSION_MS,
@@ -25,40 +26,10 @@ import { L1, lotConfig } from '../decide-helpers.js';
  * place where they must agree is pinned here and a drift fails this file.
  */
 
-/** Engine reasons that have a different name on the wire. */
-const RENAMED_ON_THE_WIRE: Readonly<Record<string, string>> = { lot_not_open: 'closed' };
-
-/** Engine reasons the wire has no code for yet; the server maps them before they reach a client. */
-const ENGINE_ONLY_REASONS = [
-  'ceiling_revoked',
-  'unconfirmed',
-  'not_higher_than_own_max',
-  'already_bid',
-  'limit_exceeded',
-] as const;
-
 describe('contract with shared: reject reasons', () => {
-  it('T-ENG-022 R-ENG-028: every engine reason is a shared error code, renamed, or listed as engine only', () => {
+  it('T-ENG-022 R-ENG-028 R-ENG-125: every engine reject reason is a shared error code of the same name', () => {
     const wire: readonly string[] = ERROR_CODES;
-    const unaccounted = REJECT_REASONS.filter(
-      (r) =>
-        !wire.includes(r) &&
-        RENAMED_ON_THE_WIRE[r] === undefined &&
-        !(ENGINE_ONLY_REASONS as readonly string[]).includes(r),
-    );
-    expect(unaccounted).toEqual([]);
-  });
-
-  it('T-ENG-022 R-ENG-028: renamed reasons point at a shared code and engine only reasons are not on the wire', () => {
-    const wire: readonly string[] = ERROR_CODES;
-    for (const [reason, code] of Object.entries(RENAMED_ON_THE_WIRE)) {
-      expect(REJECT_REASONS as readonly string[]).toContain(reason);
-      expect(wire).toContain(code);
-    }
-    for (const reason of ENGINE_ONLY_REASONS) {
-      expect(REJECT_REASONS as readonly string[]).toContain(reason);
-      expect(wire).not.toContain(reason);
-    }
+    expect(REJECT_REASONS.filter((r) => !wire.includes(r))).toEqual([]);
   });
 
   it('T-ENG-022 R-ENG-028: REJECT_REASONS has no duplicates', () => {
@@ -96,8 +67,48 @@ describe('contract with shared: config and money', () => {
 
   it('T-ENG-009 R-ENG-009: the engine mode set contains the shared modes and money fits shared cents', () => {
     const engineModes = ['english', 'proxy', 'second_price'];
-    for (const m of AUCTION_MODES) expect(engineModes).toContain(m);
+    expect([...AUCTION_MODES].sort()).toEqual([...engineModes].sort());
     expect(MAX_AMOUNT_CENTS).toBeLessThanOrEqual(MAX_CENTS);
     expect(isCents(MAX_AMOUNT_CENTS)).toBe(true);
+  });
+});
+
+describe('contract with shared: config schema', () => {
+  const base = {
+    currency: 'USD',
+    reserve: 10000,
+    minIncrement: 500,
+    endTs: 1_789_000_000_000,
+    softCloseWindowMs: 30_000,
+    softCloseExtensionMs: 30_000,
+    maxExtensions: 10,
+    ceilingPresets: [50000],
+    confirmConfidenceThreshold: 0.85,
+  };
+
+  it('T-ENG-009 R-ENG-028: the shared schema accepts every engine mode, hold scope and a ladder', () => {
+    for (const mode of AUCTION_MODES) {
+      expect(AuctionConfigSchema.safeParse({ ...base, mode }).success).toBe(true);
+    }
+    for (const holdScope of ['event', 'lot']) {
+      expect(AuctionConfigSchema.safeParse({ ...base, holdScope }).success).toBe(true);
+      expect(validateAuctionConfig({ holdScope }).ok).toBe(true);
+    }
+    const ladder = [
+      { fromCents: 0, incrementCents: 100 },
+      { fromCents: 10000, incrementCents: 500 },
+    ];
+    expect(AuctionConfigSchema.safeParse({ ...base, incrementLadder: ladder }).success).toBe(true);
+    expect(validateLotConfig(lotConfig(L1, { increment: { ladder } })).ok).toBe(true);
+  });
+
+  it('T-ENG-009 R-ENG-028: the shared schema refuses a ladder the engine refuses', () => {
+    const bad = [
+      { fromCents: 100, incrementCents: 100 },
+      { fromCents: 50, incrementCents: 100 },
+    ];
+    expect(AuctionConfigSchema.safeParse({ ...base, incrementLadder: bad }).success).toBe(false);
+    expect(validateLotConfig(lotConfig(L1, { increment: { ladder: bad } })).ok).toBe(false);
+    expect(AuctionConfigSchema.safeParse({ ...base, holdScope: 'room' }).success).toBe(false);
   });
 });

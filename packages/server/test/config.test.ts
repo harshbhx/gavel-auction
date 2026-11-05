@@ -7,6 +7,12 @@ const good = {
   ADMIN_KEY: 'admin-key-value-0123456789',
 };
 
+const paypal = {
+  PAYPAL_CLIENT_ID: 'client-id-value',
+  PAYPAL_CLIENT_SECRET: 'cs-val',
+  PAYPAL_WEBHOOK_ID: 'webhook-id-value',
+};
+
 describe('server config (T-RT-089)', () => {
   it('applies defaults', () => {
     const r = parseConfig(good);
@@ -37,6 +43,7 @@ describe('server config (T-RT-089)', () => {
       DATABASE_URL: 'postgres://u:p@h/db',
       CORS_ORIGINS: 'https://a.example, https://b.example',
       PAYMENTS: 'sandbox',
+      ...paypal,
       MAX_ROOMS: '5',
     });
     expect(r.ok && r.config).toMatchObject({
@@ -121,6 +128,7 @@ describe('production rules (R-RT-131)', () => {
     STORE: 'postgres',
     DATABASE_URL: 'postgres://u:p@h/db',
     PAYMENTS: 'sandbox',
+    ...paypal,
   };
 
   it('accepts a compliant production env', () => {
@@ -141,6 +149,17 @@ describe('production rules (R-RT-131)', () => {
     for (const key of ['TOKEN_SECRET', 'ADMIN_KEY', 'STORE', 'PAYMENTS', 'DEMO_MODE']) {
       expect(text).toContain(key);
     }
+  });
+
+  it('requires an explicit absolute DATA_DIR for the file store (R6-A05)', () => {
+    const file = { ...prod, STORE: 'file', DATABASE_URL: undefined };
+    for (const dir of [undefined, '', 'data', './data']) {
+      const r = parseConfig({ ...file, DATA_DIR: dir });
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.errors.join('\n')).toContain('DATA_DIR');
+    }
+    expect(parseConfig({ ...file, DATA_DIR: '/var/lib/gavel' }).ok).toBe(true);
+    expect(parseConfig({ ...good, STORE: 'file' }).ok).toBe(true);
   });
 
   it('allows the memory store only with ALLOW_MEMORY_STORE=1', () => {

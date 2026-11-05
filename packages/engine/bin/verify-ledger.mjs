@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Verifies a ledger export without any server (R-ENG-078).
-//   verify-ledger ledger.jsonl
+//   verify-ledger [--head <seq>:<hash>] [--allow-empty] ledger.jsonl
+// --head fails a shortened export as truncated; an empty file fails unless --allow-empty is given.
 // Prints the entry count and head hash and exits 0, or prints the first bad index and exits 1.
 // The verifier is TypeScript; esbuild bundles src/ledger/export.ts in memory on each run (see D-0019).
 import { Buffer } from 'node:buffer';
@@ -25,9 +26,25 @@ async function loadVerifier() {
 }
 
 async function main(argv) {
-  const file = argv[0];
-  if (file === undefined || argv.length !== 1) {
-    console.error('usage: verify-ledger <ledger.jsonl>');
+  const usage = 'usage: verify-ledger [--head <seq>:<hash>] [--allow-empty] <ledger.jsonl>';
+  let expectedHead;
+  let allowEmpty = false;
+  const files = [];
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--allow-empty') allowEmpty = true;
+    else if (a === '--head') {
+      const m = /^(\d+):([0-9a-f]{64})$/.exec(argv[++i] ?? '');
+      if (m === null) {
+        console.error(usage);
+        return 2;
+      }
+      expectedHead = { seq: Number(m[1]), hash: m[2] };
+    } else files.push(a);
+  }
+  const file = files[0];
+  if (file === undefined || files.length !== 1) {
+    console.error(usage);
     return 2;
   }
   let text;
@@ -38,7 +55,11 @@ async function main(argv) {
     return 2;
   }
   const { verifyJsonl } = await loadVerifier();
-  const r = verifyJsonl(text);
+  const r = verifyJsonl(text, expectedHead === undefined ? {} : { expectedHead });
+  if (r.ok && r.count === 0 && !allowEmpty) {
+    console.log('FAIL empty export: no entries (pass --allow-empty to accept)');
+    return 1;
+  }
   if (r.ok) {
     console.log(`OK ${r.count} entries`);
     console.log(`head ${r.headHash}`);

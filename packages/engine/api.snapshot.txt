@@ -14,6 +14,7 @@ LIMITS
 LedgerConflict
 MAX_AMOUNT_CENTS
 MIN_CEILING_CENTS
+PUBLIC_EXPORT_VERSION
 REJECT_REASONS
 SETTLEMENT_EDGES
 SETTLEMENT_STATES
@@ -29,10 +30,12 @@ exportJsonl
 genesisHead
 headOf
 initialState
+matchesLedger
 parseCommand
 projectAuditor
 projectBidder
 projectPublic
+publicExport
 replay
 sealBatch
 stateDigest
@@ -41,6 +44,7 @@ validateAuctionConfig
 validateLotConfig
 verifyChain
 verifyJsonl
+verifyPublicExport
 type AliasOf
 type AuctionConfig
 type AuctionState
@@ -66,7 +70,10 @@ type LotState
 type LotStatus
 type Mode
 type Outcome
+type PublicEntry
 type PublicLotView
+type PublicVerifyFailure
+type PublicVerifyResult
 type PublicView
 type RejectReason
 type RuntimeOptions

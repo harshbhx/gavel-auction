@@ -13,7 +13,7 @@ import { rank } from './ranking.js';
 /** Largest bid amount accepted, in cents (R-ENG-001). */
 export { MAX_AMOUNT_CENTS };
 
-const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/;
+const ULID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 
 /** The fields of PlaceBid that validation reads. */
 export interface BidInput {

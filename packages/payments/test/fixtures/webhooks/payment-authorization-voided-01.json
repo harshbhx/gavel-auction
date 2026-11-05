@@ -1,0 +1,63 @@
+{
+  "create_time": "2026-11-05T01:21:07.959Z",
+  "event_type": "PAYMENT.AUTHORIZATION.VOIDED",
+  "event_version": "1.0",
+  "id": "WH-27H65830FF8916237-5LB43850PC380700P",
+  "links": [
+    {
+      "href": "https://api.sandbox.paypal.com/v1/notifications/webhooks-events/WH-27H65830FF8916237-5LB43850PC380700P",
+      "method": "GET",
+      "rel": "self"
+    },
+    {
+      "href": "https://api.sandbox.paypal.com/v1/notifications/webhooks-events/WH-27H65830FF8916237-5LB43850PC380700P/resend",
+      "method": "POST",
+      "rel": "resend"
+    }
+  ],
+  "resource": {
+    "amount": { "currency_code": "USD", "value": "1.00" },
+    "create_time": "2026-11-05T01:21:02Z",
+    "custom_id": "g4e-261105T012008Z-void",
+    "expiration_time": "2026-12-04T01:21:02Z",
+    "id": "4EL81525YS0767615",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/4EL81525YS0767615",
+        "method": "GET",
+        "rel": "self"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/4EL81525YS0767615/capture",
+        "method": "POST",
+        "rel": "capture"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/4EL81525YS0767615/void",
+        "method": "POST",
+        "rel": "void"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/4EL81525YS0767615/reauthorize",
+        "method": "POST",
+        "rel": "reauthorize"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/0NT04842CT6180901",
+        "method": "GET",
+        "rel": "up"
+      }
+    ],
+    "payee": { "email_address": "[REDACTED]", "merchant_id": "[REDACTED]" },
+    "seller_protection": {
+      "dispute_categories": ["ITEM_NOT_RECEIVED", "UNAUTHORIZED_TRANSACTION"],
+      "status": "ELIGIBLE"
+    },
+    "status": "VOIDED",
+    "supplementary_data": { "related_ids": { "order_id": "0NT04842CT6180901" } },
+    "update_time": "2026-11-05T01:21:04Z"
+  },
+  "resource_type": "authorization",
+  "resource_version": "2.0",
+  "summary": "A payment authorization was voided."
+}

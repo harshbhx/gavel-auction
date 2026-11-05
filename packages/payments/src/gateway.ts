@@ -49,6 +49,26 @@ const AUTH_STATUS: Readonly<Record<string, TruthStatus>> = {
 /** Capture statuses that count as money taken or on its way. */
 const COUNTED_CAPTURE: ReadonlySet<string> = new Set(['COMPLETED', 'PENDING']);
 
+/** Capture statuses where money was taken and then returned; kept so nothing re-captures. */
+const REFUNDED_CAPTURE: ReadonlySet<string> = new Set(['REFUNDED', 'PARTIALLY_REFUNDED']);
+
+/** Sum of the refunds PayPal lists on the order, or undefined when none can be read. */
+function refundedCentsOf(payments: Json | undefined): number | undefined {
+  const list = payments?.['refunds'];
+  if (!Array.isArray(list) || list.length === 0) return undefined;
+  let sum = 0;
+  for (const raw of list) {
+    const v = asObject(asObject(raw)?.['amount'])?.['value'];
+    if (typeof v !== 'string') return undefined;
+    try {
+      sum += decimalToCents(v);
+    } catch {
+      return undefined;
+    }
+  }
+  return sum;
+}
+
 type Json = Record<string, unknown>;
 
 function asObject(v: unknown): Json | undefined {
@@ -71,7 +91,9 @@ export function capturesOf(order: unknown): CaptureRef[] | null {
     const amount = asObject(c?.['amount']);
     const value = amount?.['value'];
     if (c === undefined || typeof id !== 'string' || typeof value !== 'string') return null;
-    if (typeof c['status'] === 'string' && !COUNTED_CAPTURE.has(c['status'])) continue;
+    const status = c['status'];
+    const refunded = typeof status === 'string' && REFUNDED_CAPTURE.has(status);
+    if (typeof status === 'string' && !refunded && !COUNTED_CAPTURE.has(status)) continue;
     let cents: number;
     try {
       cents = decimalToCents(value);
@@ -84,6 +106,13 @@ export function capturesOf(order: unknown): CaptureRef[] | null {
       final: c['final_capture'] === true,
     };
     if (typeof c['invoice_id'] === 'string') ref.invoiceId = c['invoice_id'];
+    if (refunded) {
+      const total = status === 'REFUNDED' ? cents : refundedCentsOf(payments);
+      ref.refund = {
+        status: status === 'REFUNDED' ? 'REFUNDED' : 'PARTIALLY_REFUNDED',
+        ...(total === undefined ? {} : { refundedCents: total }),
+      };
+    }
     out.push(ref);
   }
   return out;

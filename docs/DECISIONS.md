@@ -341,3 +341,97 @@ Consequences:
 - Each run pays a few milliseconds for the bundle.
 
 Evidence: packages/engine/bin/verify-ledger.mjs, SPEC-engine R-ENG-078, R-ENG-120.
+
+## D-0020: Privacy by a redacted public chain, not by hashing private fields
+
+Date: 2026-11-04
+Status: accepted
+Owner: engine
+Context: Ledger entries carry ceilings, hold references, leader and rank, and bid amounts on sealed lots in plaintext, and the entry hash covers them. A redacted export cannot pass the v1 chain check, and an unredacted export leaks how high a rival can go (ENG-RT-12).
+Decision: The private ledger, its v1 entries and its hash vector do not change. A public export is a second chain (version 2) over redacted copies: ceilingCents, fromCents, holdRef, leader and rank fields, availableCeilingCents, and the amounts of a sealed lot before its hammer are removed, and each public entry records the names it dropped and the hash of the private entry it came from. The public chain is verified on its own; an auditor with the private ledger confirms the export with matchesLedger.
+Alternatives:
+
+- Salted digests of private fields inside the entry: rejected, it changes the hash vector and every golden fixture, and an unsalted digest of a small number can be guessed.
+- Stop writing the private fields: rejected, settlement and audit need them.
+
+Consequences:
+
+- The golden fixtures and hash vector are unchanged; no version bump of the private ledger.
+- The public chain proves order and integrity of what is shown, and binds to the private ledger through fullHash; it does not let a viewer check the hidden values.
+- A lot added without an explicit mode in LOT_ADDED is treated as not sealed.
+
+Evidence: packages/engine/src/ledger/public-export.ts, packages/engine/test/public-export.test.ts, SPEC-engine R-ENG-045, R-ENG-086, R-ENG-108, R-ENG-109.
+
+## D-0021: Public export no longer publishes private entry hashes (version 3)
+
+Date: 2026-11-04
+Status: accepted
+Owner: engine
+Context: Version 2 of the public export carried `fullHash`, the hash of the private entry, on every entry. For a sealed bid or a ceiling entry the only private input left was a small integer, so anyone could hash each candidate amount against the published value and recover it (R5-E01). The export also kept the spoken transcript of sealed bids and the bid amount of proxy lots, which is the bidder's secret maximum (R5-E02, R5-E03).
+Decision: The public export is version 3. An entry that had fields removed carries `fullHash` null, or a keyed commitment (hash over the secret `commitKey` and the private hash) when the auditor passes a key to `publicExport`. An entry that lost nothing keeps the private hash. Sealed lots also lose `audit.transcript`; proxy lots lose `amountCents`, `amountRaw` and `audit.transcript` until the hammer, and keep the price fields. `matchesLedger` verifies the private chain and compares each public entry byte for byte with the re-derived one, with the same key. `verifyPublicExport` and the `verify-ledger` command take an expected head and report a truncated export; the command rejects an empty file unless `--allow-empty` is given.
+Alternatives:
+
+- Salted commitment with a per-entry random salt: rejected, the export would no longer be reproducible from the ledger.
+- Keep proxy maxima public: rejected, the public projection shows only the price and SPEC R-ENG-109 says no viewer sees a maximum.
+
+Consequences:
+
+- Public export version 2 files no longer verify (`bad_version`); regenerate them. The private ledger, its golden fixtures and hash vector are unchanged.
+- Without a key the public chain no longer binds redacted entries to a private hash; the auditor re-derives the whole export from the ledger instead.
+
+Evidence: packages/engine/src/ledger/public-export.ts, packages/engine/bin/verify-ledger.mjs, packages/engine/test/public-export.test.ts, SPEC-engine R-ENG-045, R-ENG-078, R-ENG-086, R-ENG-109.
+
+## D-0022: One lot per auction room; the ledger is the audit log
+
+Date: 2026-11-04
+Status: accepted
+Owner: server
+Context: The engine accepts many lots and a hold scope of lot or event, but the settlement journal, the hold store and the room are keyed by auction id with one candidate per bidder and one capture per hold. A second hammer in the same auction would be refused as a different plan (INTEGRATION-RT-08). The room log and the engine ledger are also two records of the same events (INTEGRATION-RT-10).
+Decision: A room runs exactly one lot. The server creates the lot with the room's auction id as lot id (lotIdOf), so the settlement journal key, the hold key and the lot id are the same value, and no server route adds a second lot. Multi-lot events are out of scope until journals and holds are keyed by auction and lot and a multi-win capture amount is defined. For the logs, D-0012 and D-0014 stand: the engine ledger is the hash-chained audit record and the source for the public export and verification (D-0020, D-0021); the room log is the first durable record of a room event and the replay source for a room; rejected bids, voice and confirm records live in the room log only.
+Alternatives:
+
+- Key journals and holds by auction and lot now: rejected, the demo is single lot and the change reaches payments, the store contract and the web settlement screen.
+- Persist only ledger entries and derive the room log: rejected in D-0014, a failed log append would leave ledger entries the rebuilt room does not have.
+
+Consequences:
+
+- A second lot in one auction is not a supported product path.
+- The audit export a judge verifies comes from the ledger, never from the room log.
+
+Evidence: packages/server/src/runtime/ledger-engine.ts (lotIdOf), packages/payments/src/saga/plan.ts, packages/engine/src/ledger/public-export.ts, SPEC-engine R-ENG-013, R-ENG-043, R-ENG-070, R-PAY-044.
+
+## D-0023: No ceiling raises in the demo; the first hold decides
+
+Date: 2026-11-04
+Status: accepted
+Owner: server
+Context: A bidder can ask for a second hold while the first is still live, and the room could register that second hold as a ceiling raise. The engine supports `CEILING_RAISED`, but a raise would change payments, the room and the web copy together, and the demo does not need it.
+Decision: A bidder has one hold per auction and cannot raise it. Payments answers a second hold request for a bidder with a live hold with 409 `hold_exists`. If a second authorization is approved anyway (a lapsed order approved late), the room keeps the first registration: `registerBidder` for a bidder already on the roster is a no-op that appends no event, the engine never receives a raise, and the plan uses the first hold. The settlement service voids the unused second authorization as a spare. The engine keeps its `CEILING_RAISED` support for later, but nothing in the server reaches it.
+Alternatives:
+
+- Supersede the old hold: payments would void the first hold only after the second is HELD, the room would append a ceiling_raised event and call the engine, and the plan would use the latest hold. Rejected for now: three components change together and the demo does not need it.
+- Reject a repeat registration with an error: rejected, a retry of the same registration must stay harmless.
+
+Consequences:
+
+- A bidder who wants a higher ceiling joins again as a new bidder or the auctioneer starts a new lot; the web copy must not offer a raise.
+- Reopening this needs the supersede flow above, with a regression test per component.
+
+Evidence: packages/payments/src/holds/service.ts (hold_exists), packages/server/src/room/room.ts (registerBidder), packages/server/src/runtime/auction-service.ts (heldRefs), packages/server/test/room.test.ts, R-ENG-040, R-RT-054, R-PAY-031.
+
+## D-0024: /metrics needs the admin key and is rate limited
+
+Date: 2026-11-05
+Status: accepted
+Owner: server
+Context: `GET /metrics` answered anyone with connection counts, bid volume, latency and webhook and rate-limit counters, which tells an attacker when a flood takes effect.
+Decision: `/metrics` stays on the public listener but requires the `x-admin-key` header (the same constant-time check as `/ops/rooms`), answers 401 without it, and answers 429 with `retry-after` past 60 requests per minute for the whole route. Webhook outcomes, bids, rejected bids and rate limit hits are fed into the collector from the webhook guard and the room.
+Alternatives:
+
+- A separate internal listener: rejected, the host has one port and no private network on the demo deployment.
+
+Consequences:
+
+- A scraper must send the admin key; unauthenticated probes see 401 only.
+
+Evidence: packages/server/src/http/metrics.ts, packages/server/test/metrics.test.ts, R-RT-135, R-RT-137.

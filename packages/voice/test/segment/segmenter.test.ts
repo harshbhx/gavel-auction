@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Segmenter, type SegmentEvent } from '../../src/segment/segmenter.js';
-import type { SttEvent } from '../../src/stt/provider.js';
+import type { SttEvent, SttWord } from '../../src/stt/provider.js';
 
 function final(text: string, over: Partial<Extract<SttEvent, { type: 'final' }>> = {}): SttEvent {
   return {
@@ -150,5 +150,89 @@ describe('T-VOX-033 limits (R-VOX-033)', () => {
     const out = s.push(final('   ', { speechFinal: true }), 0);
     expect(drops(out)).toEqual(['empty']);
     expect(out.some((e) => e.type === 'caption')).toBe(false);
+  });
+});
+
+function timed(spec: Array<[string, number, number]>): SttWord[] {
+  return spec.map(([word, start, end]) => ({ word, start, end, confidence: 0.9 }));
+}
+
+function sayWords(text: string, startSec: number): Array<[string, number, number]> {
+  return text.split(' ').map((w, i): [string, number, number] => {
+    const s = startSec + i * 0.3;
+    return [w, s, s + 0.25];
+  });
+}
+
+describe('T-VOX-029 gap split through the segmenter (R-VOX-029, #794)', () => {
+  it('two bids separated by one second of silence become two segments', () => {
+    const s = new Segmenter();
+    const words = timed([
+      ...sayWords('paddle five three hundred', 0),
+      ...sayWords('paddle nine four hundred', 2.2),
+    ]);
+    const out = s.push(
+      final('paddle five three hundred paddle nine four hundred', {
+        words,
+        startMs: 0,
+        endMs: 3700,
+        speechFinal: true,
+      }),
+      4000,
+    );
+    expect(segments(out)).toEqual(['paddle five three hundred', 'paddle nine four hundred']);
+  });
+
+  it('a short pause inside the text keeps one segment', () => {
+    const s = new Segmenter();
+    const words = timed([...sayWords('paddle five', 0), ...sayWords('three hundred', 0.9)]);
+    const out = s.push(
+      final('paddle five three hundred', { words, startMs: 0, endMs: 2000, speechFinal: true }),
+      2000,
+    );
+    expect(segments(out)).toEqual(['paddle five three hundred']);
+  });
+});
+
+describe('T-VOX-031 echo gate through the segmenter (R-VOX-031, #794, #795)', () => {
+  it('pure auctioneer echo is dropped', () => {
+    const s = new Segmenter();
+    expect(drops(s.push(final('going once', { speechFinal: true }), 0))).toEqual([
+      'auctioneer_talk',
+    ]);
+  });
+
+  it('a bid shouted over going once keeps the bid and marks the echo', () => {
+    const s = new Segmenter();
+    const out = s.push(final('going once paddle nine four hundred', { speechFinal: true }), 0);
+    expect(segments(out)).toEqual(['paddle nine four hundred']);
+    const seg = out.find((e) => e.type === 'segment');
+    expect(seg?.type === 'segment' && seg.segment.echo).toBe(true);
+  });
+
+  it('a bid followed by sold on the room mic is kept', () => {
+    const s = new Segmenter();
+    const out = s.push(final('paddle nine four hundred sold', { speechFinal: true }), 0);
+    expect(segments(out)).toEqual(['paddle nine four hundred']);
+  });
+});
+
+describe('T-VOX-032 duplicate filter through the segmenter (R-VOX-032, #794)', () => {
+  it('the same text again inside 1500 ms is dropped, later it is kept', () => {
+    const s = new Segmenter();
+    const say = (now: number): SegmentEvent[] =>
+      s.push(final('paddle five three hundred', { speechFinal: true }), now);
+    expect(segments(say(0))).toHaveLength(1);
+    expect(drops(say(1000))).toEqual(['duplicate']);
+    expect(segments(say(5000))).toHaveLength(1);
+  });
+});
+
+describe('pending candidate store on the segmenter (R-VOX-034, #794)', () => {
+  it('holds a candidate for 8 s and then forgets it', () => {
+    const s = new Segmenter();
+    s.pending.set({ id: 'p1', bidder: { kind: 'paddle', value: '7' }, amountCents: 35000 }, 1000);
+    expect(s.pending.get(5000)?.ageMs).toBe(4000);
+    expect(s.pending.get(9000)).toBeUndefined();
   });
 });

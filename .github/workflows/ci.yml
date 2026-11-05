@@ -16,7 +16,36 @@ concurrency:
 # The browser end-to-end job is absent until packages/e2e has a Playwright suite; it joins the
 # `required` list in the change that adds it.
 jobs:
+  # Decides whether the change touches anything but documentation. A pull request that only
+  # changes documentation skips the build, test and type jobs; every cheap check (format, docs
+  # format, commit messages, ownership, secrets, banned words, tool tests) still runs, and the
+  # `required` roll-up always runs. Pushes to main always run everything.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Rename detection is off inside the script, so a move into docs lists both paths.
+          node scripts/classify-change.mjs "$BASE_SHA" >> "$GITHUB_OUTPUT"
+          if grep -q 'code=false' "$GITHUB_OUTPUT"; then
+            echo "Documentation-only change: build, test and type jobs are skipped."
+          fi
   typecheck:
+    needs: [changes]
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -24,6 +53,8 @@ jobs:
       - uses: ./.github/actions/setup
       - run: npm run typecheck
   lint:
+    needs: [changes]
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -38,6 +69,8 @@ jobs:
       - uses: ./.github/actions/setup
       - run: npm run format:check
   unit:
+    needs: [changes]
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -45,6 +78,8 @@ jobs:
       - uses: ./.github/actions/setup
       - run: npm test
   coverage:
+    needs: [changes, format-check, commitlint]
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -57,6 +92,8 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         run: node scripts/check-coverage.mjs --ratchet "origin/${{ github.base_ref }}"
   property:
+    needs: [changes, format-check, commitlint]
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -64,6 +101,8 @@ jobs:
       - uses: ./.github/actions/setup
       - run: npm run test:property
   scenarios:
+    needs: [changes]
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -71,6 +110,8 @@ jobs:
       - uses: ./.github/actions/setup
       - run: npm run test:scenarios
   deps:
+    needs: [changes]
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -88,6 +129,8 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
+      - name: Fail on tracked node_modules paths
+        run: node scripts/check-no-tracked-node-modules.mjs
       - name: Scan commits for secrets
         uses: gitleaks/gitleaks-action@83373cf2f8c4db6e24b41c1a9b086bb9619e9cd3
         env:
@@ -104,14 +147,16 @@ jobs:
           DEEPGRAM_API_KEY: canary-deepgram-api-key-4f9c2a71
           GROQ_API_KEY: canary-groq-api-key-4f9c2a71
           LLM_API_KEY: canary-llm-api-key-4f9c2a71
-          ADMIN_TOKEN: canary-admin-token-4f9c2a71
-          AUCTIONEER_TOKEN_SECRET: canary-auctioneer-token-4f9c2a71
+          ADMIN_KEY: canary-admin-key-4f9c2a71
+          TOKEN_SECRET: canary-token-secret-4f9c2a71
           DATABASE_URL: canary-database-url-4f9c2a71
   ascii-banned:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup
       - run: npm run check:ascii
       # The word list is a secret, so the scanner that sees it must not be code from the pull
@@ -128,6 +173,27 @@ jobs:
           BANNED_WORDS: ${{ secrets.BANNED_WORDS }}
           # Pull requests from forks never receive the secret; the same check runs on main.
           BANNED_WORDS_ALLOW_EMPTY: ${{ github.event.pull_request.head.repo.fork == true }}
+      # Commit messages (body and trailers), the pull request title and description and the branch
+      # name are checked too, because they reach the public history. The text is passed through
+      # the environment and never interpolated into the command line.
+      - name: Banned words in commit messages and pull request text
+        if: ${{ github.event_name == 'pull_request' }}
+        run: >-
+          node trusted/scripts/check-banned-words.mjs --root .
+          --text PR_TITLE --text PR_BODY --text BRANCH_NAME
+          --git-log "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+        env:
+          BANNED_WORDS: ${{ secrets.BANNED_WORDS }}
+          BANNED_WORDS_ALLOW_EMPTY: ${{ github.event.pull_request.head.repo.fork == true }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+      # A squash merge builds a new message; it is checked here, after the merge, as well.
+      - name: Banned words in the pushed commit message
+        if: ${{ github.event_name == 'push' }}
+        run: node trusted/scripts/check-banned-words.mjs --root . --git-log "-1 ${{ github.sha }}"
+        env:
+          BANNED_WORDS: ${{ secrets.BANNED_WORDS }}
   docs-format:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -138,6 +204,7 @@ jobs:
           install: 'false'
       - run: node scripts/check-docs-format.mjs --self-test
       - run: node scripts/check-docs-format.mjs
+      - run: node scripts/check-gates-result.mjs
   commitlint:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -166,6 +233,8 @@ jobs:
           PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
           BASE_REF: origin/${{ github.base_ref }}
   voice:
+    needs: [changes]
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -191,6 +260,8 @@ jobs:
       - name: Validate fixtures
         run: node scripts/check-fixtures.mjs
   reference-python:
+    needs: [changes]
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -211,6 +282,7 @@ jobs:
   required:
     if: ${{ always() }}
     needs:
+      - changes
       - typecheck
       - lint
       - format-check
@@ -231,8 +303,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # Every job must succeed. Only `ownership` may be skipped, and only because it is defined
-      # for pull requests alone (it has an event-based `if`).
+      # Every job must succeed. Two kinds of skip are accepted: `ownership` is defined for pull
+      # requests alone, and the build, test and type jobs are skipped when the `changes` job found
+      # a documentation-only pull request. A job skipped because an earlier job failed is not
+      # accepted: the earlier job is itself reported as failed.
       - name: Require every job to succeed
         env:
           NEEDS: ${{ toJSON(needs) }}
@@ -240,9 +314,13 @@ jobs:
         run: |
           node -e '
             const needs = JSON.parse(process.env.NEEDS);
+            const docsOnly = needs.changes.result === "success" && needs.changes.outputs.code === "false";
+            const docsSkippable = new Set(["typecheck", "lint", "unit", "coverage", "property", "scenarios", "deps", "voice", "reference-python"]);
             let bad = 0;
             for (const [name, job] of Object.entries(needs)) {
-              const okSkip = name === "ownership" && process.env.EVENT !== "pull_request";
+              const okSkip =
+                (name === "ownership" && process.env.EVENT !== "pull_request") ||
+                (docsOnly && docsSkippable.has(name));
               const ok = job.result === "success" || (okSkip && job.result === "skipped");
               console.log(name + ": " + job.result + (ok ? "" : "  <-- not accepted"));
               if (!ok) bad += 1;

@@ -41,7 +41,12 @@ export interface WebhookHandlerDeps {
   onVerified: (event: VerifiedWebhook) => Promise<void>;
 }
 
+/** At most one `webhook_rejected` audit row per this many milliseconds. */
+const REJECT_AUDIT_INTERVAL_MS = 1000;
+
 export class WebhookHandler {
+  private lastRejectAuditMs = Number.NEGATIVE_INFINITY;
+
   constructor(private readonly deps: WebhookHandlerDeps) {}
 
   async handle(rawBody: Buffer, headers: WebhookHeaders): Promise<WebhookResponse> {
@@ -72,8 +77,17 @@ export class WebhookHandler {
       return { status: 503 };
     }
 
+    if (reason === 'rate_limited') {
+      // Too many calls to PayPal in the window: shed load, keep no row, let PayPal retry.
+      metrics?.incr('webhook_events_total', { result: 'rate_limited' });
+      return { status: 503 };
+    }
+
     if (reason !== undefined) {
       metrics?.incr('webhook_events_total', { result: 'rejected' });
+      // A flood of bad requests leaves a sampled trail: the counter above sees all of them.
+      if (receivedAtMs - this.lastRejectAuditMs < REJECT_AUDIT_INTERVAL_MS) return { status: 401 };
+      this.lastRejectAuditMs = receivedAtMs;
       // The reason is a fixed code; the body and the signature are never stored here.
       await audit.append({
         kind: 'state_change',

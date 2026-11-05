@@ -45,6 +45,8 @@ export interface CaptureRef {
   amountCents: number;
   final: boolean;
   invoiceId?: string;
+  /** Set only when PayPal reports the capture as REFUNDED or PARTIALLY_REFUNDED. */
+  refund?: { status: 'REFUNDED' | 'PARTIALLY_REFUNDED'; refundedCents?: number };
 }
 
 export interface HoldTruth {

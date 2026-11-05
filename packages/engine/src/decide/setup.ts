@@ -121,6 +121,10 @@ export function decideSetup(state: AuctionState, cmd: SetupCommand): DecideResul
         if (cmd.lotId !== undefined) payload.lotId = cmd.lotId;
         return accepted([{ type: 'CEILING_RAISED', payload }]);
       }
+      // A revoked bidder cannot return through another lot's record under lot-scoped holds (R-ENG-044).
+      if (Object.values(state.bidders).some((b) => b.bidderId === cmd.bidderId && b.revoked)) {
+        throw new EngineError('bad_command', 'bidder ceiling is revoked');
+      }
       const known = new Set(Object.values(state.bidders).map((b) => b.bidderId));
       if (known.size >= LIMITS.bidders) throw new EngineError('limit_exceeded', 'bidders');
       const payload: Extract<LedgerEvent, { type: 'BIDDER_REGISTERED' }>['payload'] = {
