@@ -21,6 +21,7 @@ import {
   type EnginePort,
   type EpochMs,
   type ErrorCode,
+  isErrorCode,
   type Ids,
   type RoomEvent,
   RoomEventSchema,
@@ -94,6 +95,15 @@ function bidMeta(conn: Connection, msg: BidMsg, confirmed = false): BidMeta {
   if (meta.source === 'voice' && msg.confidence !== undefined) meta.confidence = msg.confidence;
   if (confirmed && meta.source === 'voice') meta.confirmed = true;
   return meta;
+}
+
+/** Accept only `ok: true`; a rejection must carry a known code; anything else is malformed. */
+function bidOutcome(res: unknown): 'accepted' | 'malformed' | ErrorCode {
+  if (typeof res !== 'object' || res === null) return 'malformed';
+  const r = res as { ok?: unknown; code?: unknown };
+  if (r.ok === true) return 'accepted';
+  if (r.ok === false && isErrorCode(r.code)) return r.code;
+  return 'malformed';
 }
 
 function placeBidOn(
@@ -504,8 +514,21 @@ export class Room {
     else if (!this.roster.has(bidderId)) code = 'unregistered';
     else {
       try {
-        const res = placeBidOn(engine, bidderId, msg.amount, ts, bidMeta(conn, msg, confirmed));
-        if (!res.ok) code = res.code;
+        const res: unknown = placeBidOn(
+          engine,
+          bidderId,
+          msg.amount,
+          ts,
+          bidMeta(conn, msg, confirmed),
+        );
+        const outcome = bidOutcome(res);
+        if (outcome === 'malformed') {
+          // Not a result the room can trust: rebuild from the log and persist nothing (R-RT-035).
+          this.dirty = true;
+          this.sendError(conn, 'internal');
+          return;
+        }
+        if (outcome !== 'accepted') code = outcome;
       } catch {
         // The engine may be half-mutated: rebuild from the log before the next command (R-RT-033).
         this.dirty = true;
