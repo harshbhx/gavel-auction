@@ -332,9 +332,7 @@ describe('registration id survives a reload and the redirect return (WEB-RT-10)'
       (s) => states.push(s),
     );
     expect(result).toMatchObject({ state: 'held', holdIdSuffix: 'ZZ9988' });
-    expect(posted).toEqual([
-      'http://api.test/api/holds/hold-ZZ9988/approve {"orderId":"ord-9"}',
-    ]);
+    expect(posted).toEqual(['http://api.test/api/holds/hold-ZZ9988/approve {"orderId":"ord-9"}']);
   });
 
   it('reports an error instead of inventing an id when nothing was stored', async () => {

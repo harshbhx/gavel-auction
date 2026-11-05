@@ -19,8 +19,8 @@ describe('CreateHoldResponse', () => {
     expect(CreateHoldResponse.safeParse({ holdId: 'h-1', orderId: 'o-1', extra: 1 }).success).toBe(
       false,
     );
-    expect(CreateHoldResponse.safeParse({ holdId: 'h-1', orderId: 'o-1', approveUrl: '' }).success).toBe(
-      false,
-    );
+    expect(
+      CreateHoldResponse.safeParse({ holdId: 'h-1', orderId: 'o-1', approveUrl: '' }).success,
+    ).toBe(false);
   });
 });

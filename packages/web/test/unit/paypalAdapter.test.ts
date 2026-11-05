@@ -48,7 +48,11 @@ function stubSdk(script: Script, opts: { startRejects?: boolean } = {}) {
 function fakeFetch(
   orderBody: unknown = { holdId: 'hold-ABC123', orderId: 'ord-1', clientToken: 'ct' },
   holdOk = true,
-  holdBody: Record<string, unknown> = { holdId: 'hold-ABC123', status: 'HELD', ceilingCents: 50_000 },
+  holdBody: Record<string, unknown> = {
+    holdId: 'hold-ABC123',
+    status: 'HELD',
+    ceilingCents: 50_000,
+  },
 ) {
   const urls: string[] = [];
   const bodies: unknown[] = [];
@@ -227,12 +231,7 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     'http://www.sandbox.paypal.com/approve',
     'https://www.sandbox.paypal.com.evil.example/approve',
   ])('refuses the redirect fallback for %s (WEB-R2-09)', async (approveUrl) => {
-    const t = make(
-      () => {},
-      { holdId: 'hold-ABC123', orderId: 'ord-1', approveUrl },
-      true,
-      true,
-    );
+    const t = make(() => {}, { holdId: 'hold-ABC123', orderId: 'ord-1', approveUrl }, true, true);
     const result = await t.adapter.start(req, () => {});
     expect(t.redirect).not.toHaveBeenCalled();
     expect(result).toMatchObject({ state: 'error', errorCode: 'popup_failed' });
