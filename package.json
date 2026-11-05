@@ -27,6 +27,8 @@
     "report": "echo 'report: not implemented' && exit 1",
     "check:secrets": "npm run build -w @gavel/web && node scripts/check-bundle-secrets.mjs --require-dir --canaries-from-env",
     "check:deps": "depcruise packages --config .dependency-cruiser.cjs && node scripts/check-engine-purity.mjs && npm run check:deps -w @gavel/payments",
+    "api:report": "node scripts/check-interface-label.mjs --generate",
+    "test:mutation": "stryker run",
     "check:ascii": "node scripts/check-ascii.mjs",
     "check:banned-words": "node scripts/check-banned-words.mjs",
     "check:ownership": "node scripts/check-ownership.mjs",
@@ -37,6 +39,9 @@
   "devDependencies": {
     "@commitlint/cli": "19.5.0",
     "@eslint/js": "9.15.0",
+    "@microsoft/api-extractor": "7.47.11",
+    "@stryker-mutator/core": "8.7.1",
+    "@stryker-mutator/vitest-runner": "8.7.1",
     "@vitest/coverage-v8": "2.1.8",
     "dependency-cruiser": "16.8.0",
     "eslint": "9.15.0",
