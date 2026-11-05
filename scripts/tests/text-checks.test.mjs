@@ -52,6 +52,35 @@ describe('check-ascii', () => {
   });
 });
 
+describe('text detection by content', () => {
+  const bom = Buffer.from([0xff, 0xfe]);
+  it('scans UTF-16 text with a byte order mark', () => {
+    const dir = tree({ 'x.md': Buffer.concat([bom, Buffer.from(`it${SMART}s`, 'utf16le')]) });
+    assert.equal(checkAscii(dir, ['x.md'], []).length, 1);
+  });
+
+  it('scans UTF-16 text without a byte order mark', () => {
+    const dir = tree({ 'y.md': Buffer.from(`hello ${SMART} world`, 'utf16le') });
+    assert.equal(checkAscii(dir, ['y.md'], []).length, 1);
+  });
+
+  it('scans printable text hidden under a media extension', () => {
+    const dir = tree({ 'notes.png': `plain ${SMART} notes\n` });
+    assert.equal(checkAscii(dir, ['notes.png'], []).length, 1);
+  });
+
+  it('scans a text file that holds one stray NUL byte', () => {
+    const dir = tree({ 'z.md': `abc\0 ${SMART} def\n` });
+    assert.equal(checkAscii(dir, ['z.md'], []).length, 1);
+  });
+
+  it('still skips real binary content under a media extension', () => {
+    const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 0, 0xff, 0xfe, 0xc3, 0, 1, 2, 3]);
+    const dir = tree({ 'real.png': bytes });
+    assert.deepEqual(checkAscii(dir, ['real.png'], []), []);
+  });
+});
+
 describe('check-banned-words', () => {
   const words = parseWordList('Foo Bar, bazword\n# comment\n');
   const matcher = buildMatcher(words);
