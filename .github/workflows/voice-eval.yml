@@ -34,6 +34,10 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Text mode (transcripts through the parser, no keys)
         run: npm run eval -w @gavel/voice -- --mode text --set all --out eval-out/text
+      - name: Text mode, dev and held-out reported apart
+        run: |
+          npm run eval -w @gavel/voice -- --mode text --set dev --out eval-out/text/dev
+          npm run eval -w @gavel/voice -- --mode text --set heldout --out eval-out/text/heldout
       - name: Job summary
         if: always()
         run: |
