@@ -67,6 +67,11 @@ export interface LotState {
   readonly unsoldReason: UnsoldReason | null;
   /** Why the lot was cancelled before the hammer; null for every other lot. */
   readonly abortReason: string | null;
+  /**
+   * Time left on the clock while the lot is paused (PauseLot). Present only during a pause, so a
+   * lot that was never paused, or has been resumed, keeps the same state digest as before.
+   */
+  readonly pausedRemainingMs?: number;
   /** BID_REJECTED entries recorded for this lot (bounds ledger growth from bad bids). */
   readonly rejectedBids: number;
   readonly closedAtSeq: number | null;
@@ -245,6 +250,17 @@ export function commandBody(cmd: Command): string | null {
         reason: cmd.reason,
         actor: cmd.actor,
       });
+    case 'PauseLot':
+    case 'ResumeLot':
+      return digestOf({ t: cmd.type, lotId: cmd.lotId, actor: cmd.actor });
+    case 'ExtendLot':
+      return digestOf({
+        t: 'ExtendLot',
+        lotId: cmd.lotId,
+        extraMs: cmd.extraMs,
+        reason: cmd.reason,
+        actor: cmd.actor,
+      });
     case 'RecordSettlement':
       return digestOf({
         t: 'RecordSettlement',
@@ -350,6 +366,18 @@ export function entryBody(e: LedgerEntry): string | null {
         reason: e.payload.reason,
         actor: e.payload.actor,
       });
+    case 'LOT_PAUSED':
+      return digestOf({ t: 'PauseLot', lotId: e.payload.lotId, actor: e.payload.actor });
+    case 'LOT_RESUMED':
+      return digestOf({ t: 'ResumeLot', lotId: e.payload.lotId, actor: e.payload.actor });
+    case 'LOT_EXTENDED':
+      return digestOf({
+        t: 'ExtendLot',
+        lotId: e.payload.lotId,
+        extraMs: e.payload.extraMs,
+        reason: e.payload.reason,
+        actor: e.payload.actor,
+      });
     case 'SETTLEMENT_STATE':
       return digestOf({
         t: 'RecordSettlement',
@@ -404,6 +432,12 @@ function commandTypeOf(e: LedgerEntry): string | null {
       return 'RevokeCeiling';
     case 'LOT_ABORTED':
       return 'AbortLot';
+    case 'LOT_PAUSED':
+      return 'PauseLot';
+    case 'LOT_RESUMED':
+      return 'ResumeLot';
+    case 'LOT_EXTENDED':
+      return 'ExtendLot';
     case 'LOT_SETTLED':
       return 'CompleteLot';
     case 'SETTLEMENT_STATE':

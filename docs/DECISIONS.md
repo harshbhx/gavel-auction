@@ -435,3 +435,23 @@ Consequences:
 - A scraper must send the admin key; unauthenticated probes see 401 only.
 
 Evidence: packages/server/src/http/metrics.ts, packages/server/test/metrics.test.ts, R-RT-135, R-RT-137.
+
+## D-0025: Pause, resume and extend are engine commands; ceiling policy lives in shared
+
+Date: 2026-11-05
+Status: accepted
+Owner: engine
+Context: The shared control events and the web console offer pause, resume and extend, but the engine had no command behind them, so a pause could not keep the time left and an extension had nothing to call (INTEGRATION-RT-18). Separately the ceiling presets, minimum and cap were three independent copies (INTEGRATION-RT-04).
+Decision: The engine gains `PauseLot`, `ResumeLot` and `ExtendLot` with ledger events `LOT_PAUSED`, `LOT_RESUMED` and `LOT_EXTENDED` (22 event types). Pause records the time left; Tick does nothing and bids are rejected as `lot_not_open` (detail `paused: true`) while paused; resume sets the deadline to the resume time plus the time left. Extend adds 1 to 600000 ms to a running lot, does not use up a soft-close extension, and is refused while paused. A paused lot cannot be hammered early, but it can still be aborted. `pausedRemainingMs` exists on a lot only while it is paused, so unpaused lots keep the same state digest. The ceiling presets, minimum and default cap are defined in `@gavel/shared` (`ceilings.ts`); engine and payments keep matching copies because neither may depend on shared, and `packages/server/test/ceiling-policy.test.ts` fails when any copy drifts.
+Alternatives:
+
+- Add `PAUSED` to the lot status: rejected, it changes every status switch and the state digest of existing ledgers.
+- Reuse `END_EXTENDED` for admin extension: rejected, that event is tied to a trigger bid and the soft-close counter.
+- Make payments and engine import the shared constants: rejected, both packages keep a tiny dependency set.
+
+Consequences:
+
+- The room and web console can map pause, resume and extend control actions onto the new commands; wiring them is a follow-up outside this change.
+- A hold created for a ceiling the engine later refuses is still not voided by the room; that part of INTEGRATION-RT-04 stays open.
+
+Evidence: packages/engine/src/decide/pause.ts, packages/engine/test/pause-lot.test.ts, packages/shared/src/ceilings.ts, packages/server/test/ceiling-policy.test.ts, R-RT-048, R-RT-049, R-ENG-014, R-ENG-040, R-PAY-031.

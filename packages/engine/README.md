@@ -26,6 +26,9 @@ Every command carries `type`, `commandId` (ULID), `at` (integer epoch ms) and `a
 | `RevokeCeiling`    | Remove a bidder's ceiling and strike their bids                |
 | `PromoteRunnerUp`  | Offer the lot to the next candidate                            |
 | `AbortLot`         | Cancel an open lot as unsold                                   |
+| `PauseLot`         | Freeze an open lot's clock and reject bids                     |
+| `ResumeLot`        | Restart a paused clock with the time that was left             |
+| `ExtendLot`        | Add time to a running lot (auctioneer extension)               |
 | `CompleteLot`      | Finish a lot after settlement                                  |
 | `RecordSettlement` | Record a settlement state edge (for example HELD to CAPTURING) |
 | `CloseAuction`     | Close the auction                                              |
