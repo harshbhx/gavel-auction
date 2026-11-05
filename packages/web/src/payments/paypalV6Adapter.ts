@@ -193,7 +193,13 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     }
 
     on('confirming');
-    return this.confirm(roomPath, outcome.orderId, req.clientRegistrationId, finish);
+    return this.confirm(
+      roomPath,
+      outcome.orderId,
+      req.clientRegistrationId,
+      finish,
+      req.ceilingCents,
+    );
   }
 
   /** Return route step: the buyer came back from PayPal's approval page with an order id. */
@@ -222,6 +228,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     orderId: string,
     clientRegistrationId: string,
     finish: (state: ApprovalState, extra?: Partial<ApprovalResult>) => ApprovalResult,
+    expectedCents?: number,
   ): Promise<ApprovalResult> {
     const hold = await this.post(`${roomPath}/holds`, { orderId, clientRegistrationId });
     if (!hold.ok) {
@@ -232,7 +239,14 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     }
     const suffix = hold.body['holdIdSuffix'];
     if (typeof suffix !== 'string') return finish('error', { errorCode: 'hold_failed' });
-    return finish('held', { holdIdSuffix: suffix });
+    const confirmed = hold.body['ceilingCents'];
+    if (typeof confirmed !== 'number' || !Number.isSafeInteger(confirmed)) {
+      return finish('error', { errorCode: 'hold_failed' });
+    }
+    if (expectedCents !== undefined && confirmed !== expectedCents) {
+      return finish('error', { errorCode: 'hold_mismatch' });
+    }
+    return finish('held', { holdIdSuffix: suffix, ceilingCents: confirmed });
   }
 
   /** Loads the SDK now (not at page load) and runs one approval session. */

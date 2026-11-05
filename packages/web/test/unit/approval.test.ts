@@ -277,7 +277,8 @@ describe('registration id survives a reload and the redirect return (WEB-RT-10)'
       return Promise.resolve({
         ok: true,
         status: 200,
-        json: () => Promise.resolve({ holdIdSuffix: 'ZZ9988', state: 'HELD' }),
+        json: () =>
+          Promise.resolve({ holdIdSuffix: 'ZZ9988', ceilingCents: 50_000, state: 'HELD' }),
       });
     };
     saveRegistration('room-1', 'b-7', { clientRegistrationId: 'reg-redirect' });

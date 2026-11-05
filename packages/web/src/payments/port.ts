@@ -20,6 +20,8 @@ export interface ApprovalRequest {
 export interface ApprovalResult {
   state: ApprovalState;
   holdIdSuffix?: string;
+  /** The amount the server confirmed it holds; show this, not what the buyer typed. */
+  ceilingCents?: number;
   errorCode?: string;
   correlationId?: string;
 }

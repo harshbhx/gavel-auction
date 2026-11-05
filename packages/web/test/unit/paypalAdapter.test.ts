@@ -44,7 +44,15 @@ function stubSdk(script: Script, opts: { startRejects?: boolean } = {}) {
   return { sdk, calls };
 }
 
-function fakeFetch(orderBody: unknown = { orderId: 'ord-1', clientToken: 'ct' }, holdOk = true) {
+function fakeFetch(
+  orderBody: unknown = { orderId: 'ord-1', clientToken: 'ct' },
+  holdOk = true,
+  holdBody: Record<string, unknown> = {
+    holdIdSuffix: 'ABC123',
+    ceilingCents: 50_000,
+    state: 'HELD',
+  },
+) {
   const urls: string[] = [];
   const fetch: FetchLike = (url) => {
     urls.push(url);
@@ -58,15 +66,21 @@ function fakeFetch(orderBody: unknown = { orderId: 'ord-1', clientToken: 'ct' },
     return Promise.resolve({
       ok: holdOk,
       status: 200,
-      json: () => Promise.resolve({ holdIdSuffix: 'ABC123', state: 'HELD' }),
+      json: () => Promise.resolve(holdBody),
     });
   };
   return { fetch, urls };
 }
 
-function make(script: Script, orderBody?: unknown, holdOk = true, startRejects = false) {
+function make(
+  script: Script,
+  orderBody?: unknown,
+  holdOk = true,
+  startRejects = false,
+  holdBody?: Record<string, unknown>,
+) {
   const { sdk, calls } = stubSdk(script, { startRejects });
-  const net = fakeFetch(orderBody, holdOk);
+  const net = fakeFetch(orderBody, holdOk, holdBody);
   const loadSdk = vi.fn(() => Promise.resolve(sdk));
   const redirect = vi.fn();
   const adapter = new PayPalV6Adapter({
@@ -91,6 +105,22 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
       'http://api/api/rooms/room%201/holds',
     ]);
     expect(t.calls[0]).toBe('createInstance:client-1:ct');
+  });
+
+  it('returns the amount the server confirmed (WEB-R2-10)', async () => {
+    const t = make((cb) => cb.onApprove({ orderId: 'ord-1' }));
+    const result = await t.adapter.start(req, () => {});
+    expect(result.ceilingCents).toBe(50_000);
+  });
+
+  it('treats a different confirmed amount as an error (WEB-R2-10)', async () => {
+    const t = make((cb) => cb.onApprove({ orderId: 'ord-1' }), undefined, true, false, {
+      holdIdSuffix: 'ABC123',
+      ceilingCents: 20_000,
+    });
+    const result = await t.adapter.start(req, () => {});
+    expect(result).toMatchObject({ state: 'error', errorCode: 'hold_mismatch' });
+    expect(result.holdIdSuffix).toBeUndefined();
   });
 
   it('loads the SDK only on the approval step', async () => {
