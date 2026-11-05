@@ -1,6 +1,7 @@
 import { t } from '../../copy/t';
 import { Icon } from '../../design/icons';
 import { Banner } from '../../design/primitives/Banner';
+import { Button } from '../../design/primitives/Button';
 import { useConnection } from '../../net/connection';
 import {
   selectCeilingUsage,
@@ -33,6 +34,12 @@ export interface BidScreenProps {
   pending?: boolean;
   /** The latest rejection, shown until the price changes or 6 seconds pass. */
   rejection?: BidRejection | null;
+  /** False while there is nowhere to send a bid yet. */
+  canSend?: boolean;
+  /** The latest bid got no answer or was never sent; the bidder may resend it. */
+  unsent?: boolean;
+  /** Sends the unanswered bid again under its original id. */
+  onResend?: () => void;
   /** This bidder's paddle; with onConfirm it enables the confirm sheet. */
   myPaddle?: number;
   /** Sends one confirm_response. */
@@ -47,6 +54,9 @@ export function BidScreen({
   onBid,
   pending = false,
   rejection = null,
+  canSend = true,
+  unsent = false,
+  onResend,
   myPaddle,
   onConfirm,
   stopped = false,
@@ -64,7 +74,9 @@ export function BidScreen({
   const status = myStatus(base, pending);
   const nextMin = price?.nextMinCents ?? reserve;
   const ceiling = usage?.maxCents ?? null;
-  const canBid = base !== 'watching' && !bidsLocked(auctionStatus, stopped);
+  // Bid controls stay off while the connection is down: the offline banner says why.
+  const canBid =
+    base !== 'watching' && !bidsLocked(auctionStatus, stopped) && canSend && !connection.offline;
 
   const { vibrate, setVibrate } = useOutbid(base, price?.currentCents ?? 0);
   const send = useSendGuard(onBid, pending);
@@ -135,10 +147,21 @@ export function BidScreen({
         minCents={nextMin}
       />
 
+      {unsent && !pending && (
+        <div role="status">
+          <p>{t('bid.unknown')}</p>
+          {onResend !== undefined && (
+            <Button disabled={connection.offline} onClick={onResend}>
+              {t('bid.resend')}
+            </Button>
+          )}
+        </div>
+      )}
+
       {usage !== null && <CeilingMeter usedCents={usage.usedCents} maxCents={usage.maxCents} />}
 
       <ul aria-label={t('console.stream')}>
-        {stream.slice(-LAST_EVENTS).map((b) => (
+        {stream.slice(0, LAST_EVENTS).map((b) => (
           <li key={b.seq}>
             <span>{b.paddle === null ? null : t('bid.leader', { n: b.paddle })}</span>
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatUsd(b.amount)}</span>

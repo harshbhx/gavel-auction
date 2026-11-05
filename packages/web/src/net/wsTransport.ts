@@ -81,14 +81,16 @@ export class WebSocketTransport implements Transport {
     };
   }
 
-  send(msg: ClientMessage): void {
-    if (this.socket === null || this.socket.readyState !== OPEN) return;
+  /** True when the frame went to an open socket; false when it was dropped (closed or unencodable). */
+  send(msg: ClientMessage): boolean {
+    if (this.socket === null || this.socket.readyState !== OPEN) return false;
     const encoded = encodeMsg(msg);
     if (!encoded.ok) {
       this.problem('unencodable', encoded.error.code);
-      return;
+      return false;
     }
     this.socket.send(encoded.value);
+    return true;
   }
 
   /** Total frames that could not be decoded or encoded since this transport was created. */
