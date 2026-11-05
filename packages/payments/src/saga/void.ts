@@ -4,7 +4,7 @@ import type { PaymentsMetrics } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
 import type { HoldTruth, Journal, JournalHold } from '../types.js';
 import { runCapturePhase, type CaptureDeps, type CaptureOutcome } from './capture.js';
-import { defaultLeaseOwner } from './owner.js';
+import { defaultLeaseOwner, runLeaseOwner } from './owner.js';
 import { withLease } from './create.js';
 import { step, type SettlementEvent } from './machine.js';
 import { DEFAULT_UNKNOWN_DEADLINE_MS, unknownExpired } from './unknown.js';
@@ -67,7 +67,7 @@ export interface VoidDeps extends VoidCallDeps {
   maxVoidResumes?: number;
   /** How long a pending void or an unavailable remainder is retried. Default ten minutes. */
   unknownDeadlineMs?: number;
-  /** Lease owner. Default: a random id fixed for this process. */
+  /** Lease owner. Default: the process id plus a fresh random suffix per run. */
   owner?: string;
 }
 
@@ -141,9 +141,11 @@ export async function voidHold(
 
 export class VoidPhase {
   private readonly owner: string;
+  private readonly explicitOwner: boolean;
 
   constructor(private readonly deps: VoidDeps) {
     this.owner = deps.owner ?? defaultLeaseOwner('runner');
+    this.explicitOwner = deps.owner !== undefined;
   }
 
   /** Runs, or resumes, the void phase of one settlement. */
@@ -151,7 +153,8 @@ export class VoidPhase {
     const leased = await withLease(
       { journals: this.deps.journals, clock: this.deps.clock },
       auctionId,
-      this.owner,
+      // A default owner is unique per run, so a second run in this process gets `busy`.
+      this.explicitOwner ? this.owner : runLeaseOwner(this.owner),
       async (renew) => {
         const journal = await this.deps.journals.load(auctionId);
         if (journal === null) throw new Error(`no settlement for auction ${auctionId}`);

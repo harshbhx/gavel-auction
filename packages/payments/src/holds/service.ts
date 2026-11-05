@@ -276,7 +276,23 @@ export class HoldService {
       // The answer may have been lost: the order says whether the authorization exists.
       const order = await gateway.getOrder(hold.orderId);
       if (order.authId === undefined) throw e;
-      return { authId: order.authId, amountCents: hold.ceilingCents };
+      // Only a CREATED authorization holds money. PENDING is not held yet and DENIED never
+      // will be: adopting either would register a ceiling that reserves nothing.
+      if (order.authStatus !== 'CREATED') {
+        if (order.authStatus === 'DENIED') {
+          throw new PayPalError({
+            kind: 'declined',
+            status: 200,
+            name: 'AUTHORIZATION_DENIED',
+            message: 'the authorization was denied',
+            outcome: 'definite',
+          });
+        }
+        throw e;
+      }
+      // The amount comes from PayPal; without it nothing proves what is reserved.
+      if (order.authAmountCents === undefined) throw e;
+      return { authId: order.authId, amountCents: order.authAmountCents };
     }
   }
 
