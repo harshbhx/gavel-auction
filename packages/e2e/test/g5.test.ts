@@ -5,10 +5,14 @@ import {
   classify,
   deepgramTranscribe,
   G5_UTTERANCES,
+  groqTranscribe,
+  renderEvidenceFile,
   renderG5Block,
   runG5,
+  sha256Hex,
   summarize,
   type G5Fetch,
+  type G5FormFetch,
   type G5Row,
   type G5Run,
 } from '../src/gates/g5';
@@ -220,5 +224,75 @@ describe('GATES.md block', () => {
 
   it('refuses a file without a G5 section', () => {
     expect(() => applyG5ToGates('# nothing', done, '2026-11-05')).toThrow('no G5 section');
+  });
+});
+
+describe('Groq measurement and evidence file', () => {
+  it('skips Groq without GROQ_API_KEY and never calls the provider', async () => {
+    let calls = 0;
+    const run = await runG5(
+      {
+        env: keyEnv,
+        readAudio: () => bytes,
+        transcribe: async () => {
+          calls += 1;
+          return '';
+        },
+        now: () => 0,
+      },
+      'groq',
+    );
+    expect(run).toEqual({ status: 'skipped', reason: 'GROQ_API_KEY is not set' });
+    expect(calls).toBe(0);
+  });
+
+  it('measures Groq when the key is set', async () => {
+    const run = await runG5(
+      {
+        env: { GROQ_API_KEY: 'g'.repeat(40) },
+        readAudio: () => bytes,
+        transcribe: async () => 'what a lovely room',
+        now: () => 0,
+      },
+      'groq',
+    );
+    expect(run.status).toBe('done');
+    if (run.status === 'done') expect(run.provider).toBe('groq');
+  });
+
+  it('sends the key only in the header and throws on a bad status', async () => {
+    const seen: { url: string; auth: string | undefined }[] = [];
+    const ok: G5FormFetch = async (url, init) => {
+      seen.push({ url, auth: init.headers['Authorization'] });
+      return { status: 200, json: async () => ({ text: 'hello' }) };
+    };
+    expect(await groqTranscribe(bytes, 'KEY', ok)).toBe('hello');
+    expect(seen[0]?.auth).toBe('Bearer KEY');
+    expect(seen[0]?.url).not.toContain('KEY');
+    const bad: G5FormFetch = async () => ({ status: 429, json: async () => ({}) });
+    await expect(groqTranscribe(bytes, 'KEY', bad)).rejects.toThrow('answered 429');
+  });
+
+  it('writes a redacted evidence file and points the Evidence line at it with its sha256', () => {
+    const rows = [{ ...row('exact'), heard: 'secret words' }, row('none')];
+    const done: Extract<G5Run, { status: 'done' }> = {
+      status: 'done',
+      provider: 'groq',
+      rows,
+      summary: summarize(rows),
+    };
+    const text = renderEvidenceFile(done, '2026-11-05');
+    expect(text).not.toContain('secret words');
+    expect(text).toContain('"provider": "groq"');
+    const sha = sha256Hex(text);
+    expect(sha).toMatch(/^[0-9a-f]{64}$/);
+    const md = '## G5: x\n\nStatus: NOT RUN\nRun date / by: n/a\n\n## Next\n';
+    const out = applyG5ToGates(md, done, '2026-11-05', {
+      path: 'docs/evidence/g5-groq-2026-11-05.json',
+      sha256: sha,
+    });
+    expect(out).toContain(
+      `Evidence: redacted evidence file docs/evidence/g5-groq-2026-11-05.json (sha256 ${sha})`,
+    );
   });
 });
