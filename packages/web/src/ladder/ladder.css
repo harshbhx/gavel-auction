@@ -57,6 +57,31 @@
   padding: var(--space-2, 0.5rem);
 }
 
+/* Rung and money changes settle with the standard duration (0ms under reduced motion). */
+.gv-ladder__rung {
+  transition:
+    color var(--duration-standard, 240ms),
+    border-color var(--duration-standard, 240ms);
+}
+
+.gv-ladder__money[data-kind='captured'] {
+  animation: gv-price-tick var(--duration-standard, 240ms) ease-out both;
+}
+
+.gv-ladder__lane[data-winner='true'] {
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-ladder__rung {
+    transition: none;
+  }
+
+  .gv-ladder__money[data-kind='captured'] {
+    animation: none;
+  }
+}
+
 /* Phone: each lane becomes a vertical stepper. */
 @media (max-width: 40rem) {
   .gv-ladder__lane {
