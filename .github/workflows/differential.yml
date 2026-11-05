@@ -7,6 +7,13 @@ on:
       - '.github/workflows/differential.yml'
   push:
     branches: [main]
+  schedule:
+    - cron: '41 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: 'Seed for the rotating run (default is derived from the run id)'
+        required: false
 
 permissions:
   contents: read
@@ -25,9 +32,22 @@ jobs:
         with:
           python-version: '3.12'
       - uses: ./.github/actions/setup
-      - name: Export 2000 seeded scenarios from the Python reference
+      - name: Export 2000 scenarios from the Python reference with the pinned seed
         run: python3 reference/python/scenario_export.py --seed 20261104 --n 2000 > "$RUNNER_TEMP/scenarios.jsonl"
-      - name: Compare the TypeScript engine on the same scenarios
+      - name: Compare the TypeScript engine on the pinned seed
         env:
           GAVEL_DIFFERENTIAL_FILE: ${{ runner.temp }}/scenarios.jsonl
+        run: npx vitest run --project 'unit:engine' differential
+      # A second run with a seed that changes every run, so the comparison is not limited to one
+      # fixed sample. The seed is printed; replay it with workflow_dispatch and the seed input.
+      - name: Export 2000 scenarios with a rotating seed
+        env:
+          INPUT_SEED: ${{ github.event.inputs.seed }}
+        run: |
+          seed="${INPUT_SEED:-$(( GITHUB_RUN_ID % 2000000000 ))}"
+          echo "differential rotating seed=$seed"
+          python3 reference/python/scenario_export.py --seed "$seed" --n 2000 > "$RUNNER_TEMP/scenarios-rotating.jsonl"
+      - name: Compare the TypeScript engine on the rotating seed
+        env:
+          GAVEL_DIFFERENTIAL_FILE: ${{ runner.temp }}/scenarios-rotating.jsonl
         run: npx vitest run --project 'unit:engine' differential
