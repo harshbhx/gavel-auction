@@ -59,3 +59,23 @@ describe('T-VOX-070 confidence formula (R-VOX-062)', () => {
     expect(score(input)).toBe(score(input));
   });
 });
+
+describe('segment confidence without word confidences (R7-05)', () => {
+  it('keeps a low Groq transcript confidence under the auto threshold', () => {
+    const low = score({ flags: [], wordConfidences: [], segmentConfidence: 0.22, merge: 'agree' });
+    expect(low).toBeLessThan(0.85);
+    expect(low).toBe(0.25);
+  });
+
+  it('does not penalise a confident segment and ignores it when words exist', () => {
+    const high = score({ flags: [], wordConfidences: [], segmentConfidence: 0.95, merge: 'agree' });
+    expect(high).toBe(0.97);
+    const words = score({
+      flags: [],
+      wordConfidences: [0.95],
+      segmentConfidence: 0.1,
+      merge: 'agree',
+    });
+    expect(words).toBe(0.97);
+  });
+});

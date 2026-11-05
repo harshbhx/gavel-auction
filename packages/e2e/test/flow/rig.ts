@@ -175,7 +175,9 @@ export function bidMessage(
   voice?: VoiceFields,
 ): BidMsg {
   const base = { v: 1 as const, t: 'bid' as const, mid: rig.ids.mint<'MsgId'>(), amount };
-  if (source === 'manual' || voice === undefined) return { ...base, source: 'manual' };
+  if (source === 'manual') return { ...base, source: 'manual' };
+  // Main's default for a voice bid without fields: a high confidence so the gate passes.
+  if (voice === undefined) return { ...base, source: 'voice', confidence: 0.99 };
   return {
     ...base,
     source: 'voice',

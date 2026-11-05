@@ -332,7 +332,8 @@ export class LedgerEngine implements AbortEnginePort, RevokeEnginePort, MetaBidE
  * Manual and QR bids are entered by a person and are not scored.
  */
 function auditOf(meta: BidMeta): Extract<Command, { type: 'PlaceBid' }>['audit'] {
-  const scored = meta.source === 'voice' && meta.confidence !== undefined;
+  // A voice bid with no confidence is still scored: it is never stamped confirmed by absence.
+  const scored = meta.source === 'voice';
   const audit: Extract<Command, { type: 'PlaceBid' }>['audit'] =
     scored && meta.confirmed !== true ? {} : { confirmed: true };
   if (meta.transcript !== undefined) audit.transcript = meta.transcript.slice(0, LIMITS.transcript);

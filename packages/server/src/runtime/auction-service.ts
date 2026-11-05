@@ -581,7 +581,11 @@ class Service implements AuctionService, SettlePort {
     this.retryTimers.clear();
     // A settlement run in progress finishes before its room closes; no new run starts now.
     await this.idle();
-    for (const room of this.rooms.values()) await (await room).close();
+    const results = await Promise.allSettled(
+      [...this.rooms.values()].map(async (room) => (await room).close()),
+    );
+    const failed = results.find((r) => r.status === 'rejected');
+    if (failed !== undefined) throw (failed as PromiseRejectedResult).reason;
   }
 
   private async boundary(label: string): Promise<void> {

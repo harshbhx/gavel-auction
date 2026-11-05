@@ -27,12 +27,12 @@ export interface PendingConfirm {
 
 /**
  * True when a bid must be confirmed before the engine may see it: a voice bid whose
- * confidence is below the threshold, or one the parser flagged as ambiguous (R-RT-045).
+ * confidence is below the threshold (a missing one counts as zero), or one the parser flagged as ambiguous (R-RT-045).
  */
 export function needsConfirm(msg: BidMsg, threshold: number): boolean {
   if (msg.source !== 'voice') return false;
   if (msg.ambiguous === true) return true;
-  return msg.confidence !== undefined && msg.confidence < threshold;
+  return (msg.confidence ?? 0) < threshold;
 }
 
 /** The held bids of one room, at most one per bidder. */

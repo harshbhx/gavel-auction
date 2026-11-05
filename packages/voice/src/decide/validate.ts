@@ -6,7 +6,14 @@ export const JUMP_ABSOLUTE_CENTS = 100000;
 
 export type Verdict =
   | { kind: 'accept'; bidderId: string; amountCents: Cents }
-  | { kind: 'confirm'; reason: VoiceReason; bidderId: string | null; amountCents: Cents | null }
+  | {
+      kind: 'confirm';
+      reason: VoiceReason;
+      bidderId: string | null;
+      amountCents: Cents | null;
+      /** Amounts that survived validation when the parse itself had several (R-VOX-065). */
+      candidates?: readonly Cents[];
+    }
   | { kind: 'drop'; reason: VoiceReason };
 
 type Resolved = { bidderId: string; ceilingCents: Cents; holdActive: boolean };
@@ -29,6 +36,50 @@ function hasHomophoneAlternative(parse: ParseResult, price: Cents): boolean {
   return parse.candidates.some((c) => c.amountCents !== null && c.amountCents > price);
 }
 
+/** Why a single amount can never be placed by this bidder right now, or null when it can. */
+function rejection(amount: Cents, who: Resolved, ctx: BidContext): VoiceReason | null {
+  if (amount <= ctx.currentPriceCents) return 'below_minimum';
+  if (amount < ctx.currentPriceCents + ctx.minIncrementCents) return 'below_minimum';
+  if (amount > who.ceilingCents) return 'above_ceiling';
+  if (ctx.highBidderId === who.bidderId) return 'already_high_bidder';
+  const duplicate = ctx.recent.some(
+    (r) =>
+      r.bidderId === who.bidderId &&
+      r.amountCents === amount &&
+      ctx.nowMs - r.atMs >= 0 &&
+      ctx.nowMs - r.atMs <= DUPLICATE_WINDOW_MS,
+  );
+  return duplicate ? 'duplicate' : null;
+}
+
+/**
+ * A confirm parse with candidates and no single amount (multiple amounts, "to"/"for"
+ * ambiguity): keep the candidates that pass, ask the bidder to choose, and drop only when
+ * none survive (R-VOX-065, T-VOX-073).
+ */
+function validateCandidates(parse: ParseResult, ctx: BidContext, who: Resolved): Verdict {
+  if (parse.status !== 'confirm') return { kind: 'drop', reason: 'no_amount' };
+  const amounts: Cents[] = [];
+  let lastReason: VoiceReason = 'no_amount';
+  for (const c of parse.candidates) {
+    if (c.amountCents === null) continue;
+    const why = rejection(c.amountCents, who, ctx);
+    if (why === null) {
+      if (!amounts.includes(c.amountCents)) amounts.push(c.amountCents);
+    } else {
+      lastReason = why;
+    }
+  }
+  if (amounts.length === 0) return { kind: 'drop', reason: lastReason };
+  return {
+    kind: 'confirm',
+    reason: parse.reason,
+    bidderId: who.bidderId,
+    amountCents: amounts.length === 1 ? (amounts[0] ?? null) : null,
+    candidates: amounts,
+  };
+}
+
 /**
  * Last-stage checks (R-VOX-064). Can only downgrade or reject: a parse that is not a clean
  * bid never becomes an accept.
@@ -47,7 +98,7 @@ export function validate(parse: ParseResult, ctx: BidContext): Verdict {
   }
 
   const amount = parse.amountCents;
-  if (amount === null) return { kind: 'drop', reason: 'no_amount' };
+  if (amount === null) return validateCandidates(parse, ctx, who);
 
   const price = ctx.currentPriceCents;
   if (amount <= price) {
