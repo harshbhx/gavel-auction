@@ -433,7 +433,9 @@ export class VoicePipeline {
     const verdict = validate(merged, ctx);
     const base = classify(merged, this.deps.policy ?? DEFAULT_POLICY);
     // Auctioneer echo was cut out of this segment: the bid next to it is never taken on its own.
-    const cls = base === 'accept' && seg.echo === true ? 'confirm' : base;
+    // A shared room microphone also hears the auctioneer, so a bid on it is confirmed first (R12-V02).
+    const cls =
+      base === 'accept' && (seg.echo === true || this.deps.mic === 'room') ? 'confirm' : base;
     const conf = merged.confidence;
     if (verdict.kind === 'drop') return [this.decision(seg, segmentId, rules, llm, verdict, conf)];
     if (verdict.kind === 'accept' && cls === 'accept') {

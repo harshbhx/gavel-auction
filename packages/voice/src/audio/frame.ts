@@ -14,6 +14,8 @@ export const VERSION = 1;
 export const FLAG_DISCONTINUITY = 1;
 export const FLAG_KEEPALIVE = 2;
 export const FLAG_END_OF_STREAM = 4;
+/** With FLAG_KEEPALIVE: the speaker stopped (key released or muted); finish the held utterance. */
+export const FLAG_END_OF_UTTERANCE = 8;
 
 export interface AudioBatch {
   seq: number;

@@ -34,6 +34,8 @@ export const DEEPGRAM_DEFAULT_CONFIG: DeepgramConfig = {
     sample_rate: 16000,
     channels: 1,
     interim_results: true,
+    punctuate: true,
+    smart_format: true,
     endpointing: 300,
     utterance_end_ms: 1000,
     language: 'en',

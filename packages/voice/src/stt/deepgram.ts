@@ -1,4 +1,9 @@
-import { FLAG_END_OF_STREAM, FLAG_KEEPALIVE, type AudioBatch } from '../audio/frame.js';
+import {
+  FLAG_END_OF_STREAM,
+  FLAG_END_OF_UTTERANCE,
+  FLAG_KEEPALIVE,
+  type AudioBatch,
+} from '../audio/frame.js';
 import {
   buildDeepgramUrl,
   mergeDeepgramConfig,
@@ -130,6 +135,9 @@ export class DeepgramStt implements InstrumentedSttProvider {
   private started = false;
   private ended = false;
   private sentAudioSinceTick = false;
+  /** Per-socket map from audio sent (vendor clock) to the capture timeline (R12-V05). */
+  private sentMs = 0;
+  private spans: Array<{ audioMs: number; lenMs: number; tsMs: number }> = [];
   private cancelKeepAlive: (() => void) | null = null;
   private serverClosed: (() => void) | null = null;
   protected openError: SttEvent | null = null;
@@ -160,12 +168,19 @@ export class DeepgramStt implements InstrumentedSttProvider {
     }
     try {
       this.stats.addBytes(batch.pcm.byteLength);
-      if ((batch.flags & FLAG_KEEPALIVE) !== 0) return;
+      if ((batch.flags & FLAG_KEEPALIVE) !== 0) {
+        // Key released or muted: the vendor never hears the trailing silence, so flush now (R12-V06).
+        if ((batch.flags & FLAG_END_OF_UTTERANCE) !== 0 && this.sentMs > 0) {
+          ws.send(this.config.finalizeMessage);
+        }
+        return;
+      }
       if (ws.bufferedAmount > this.config.maxBufferedBytes) {
         this.stats.addDropped();
         return;
       }
       ws.send(pcmBytes(batch.pcm));
+      this.recordSent(batch);
       this.sentAudioSinceTick = true;
       if ((batch.flags & FLAG_END_OF_STREAM) !== 0) ws.send(this.config.finalizeMessage);
     } catch {
@@ -255,13 +270,16 @@ export class DeepgramStt implements InstrumentedSttProvider {
       }, this.config.openTimeoutMs);
       ws.onopen = () => {
         this.live = true;
+        this.sentMs = 0;
+        this.spans = [];
         this.sentAudioSinceTick = false;
         this.startKeepAlive();
         this.emit({ type: 'state', state: 'open' });
         settle(true);
       };
       ws.onmessage = (ev) => {
-        const event = mapDeepgramMessage(ev.data);
+        const raw = mapDeepgramMessage(ev.data);
+        const event = raw ? this.toCaptureTime(raw) : null;
         // Results that arrive after CloseStream are the flush, so only a closed channel drops them.
         if (event) this.emit(event);
       };
@@ -314,6 +332,55 @@ export class DeepgramStt implements InstrumentedSttProvider {
   protected emit(event: SttEvent): void {
     this.stats.observe(event);
     this.channel.push(event);
+  }
+
+  private recordSent(batch: AudioBatch): void {
+    const lenMs = Math.round(batch.pcm.length / 16);
+    this.spans.push({ audioMs: this.sentMs, lenMs, tsMs: batch.tsMs });
+    if (this.spans.length > 4096) this.spans.splice(0, this.spans.length - 2048);
+    this.sentMs += lenMs;
+  }
+
+  /** Vendor audio time (ms since this socket opened) to the capture clock of AudioBatch.tsMs. */
+  private captureMs(audioMs: number, edge: 'start' | 'end' = 'start'): number {
+    const spans = this.spans;
+    if (spans.length === 0) return audioMs;
+    let hit = spans[spans.length - 1] as (typeof spans)[number];
+    if (audioMs <= (spans[0] as (typeof spans)[number]).audioMs)
+      hit = spans[0] as (typeof spans)[number];
+    else {
+      for (const s of spans) {
+        // A start on a span boundary belongs to the span that begins there; an end to the one that ends there.
+        const end = s.audioMs + s.lenMs;
+        if (edge === 'end' ? audioMs <= end : audioMs < end) {
+          hit = s;
+          break;
+        }
+      }
+    }
+    return Math.max(0, Math.round(hit.tsMs + (audioMs - hit.audioMs)));
+  }
+
+  private toCaptureTime(e: SttEvent): SttEvent {
+    switch (e.type) {
+      case 'interim':
+        return { ...e, startMs: this.captureMs(e.startMs) };
+      case 'utterance_end':
+        return { ...e, atMs: this.captureMs(e.atMs, 'end') };
+      case 'final':
+        return {
+          ...e,
+          startMs: this.captureMs(e.startMs),
+          endMs: this.captureMs(e.endMs, 'end'),
+          words: e.words.map((w) => ({
+            ...w,
+            start: this.captureMs(Math.round(w.start * 1000)) / 1000,
+            end: this.captureMs(Math.round(w.end * 1000), 'end') / 1000,
+          })),
+        };
+      default:
+        return e;
+    }
   }
 
   private detach(ws: WsLike): void {

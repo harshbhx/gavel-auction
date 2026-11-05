@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   FLAG_DISCONTINUITY,
+  FLAG_END_OF_UTTERANCE,
   FLAG_KEEPALIVE,
   FRAME_SAMPLES,
   type AudioBatch,
@@ -64,19 +65,22 @@ describe('MuteController', () => {
     expect(out).toHaveLength(1);
     ctl.mute();
     expect(ctl.state).toBe('muted');
+    // A user mute also sends one end-of-utterance marker batch (R12-V06), so out is 2 long.
+    expect(out).toHaveLength(2);
+    expect(out[1]?.flags).toBe(FLAG_KEEPALIVE | FLAG_END_OF_UTTERANCE);
     ctl.push(audio(20));
-    expect(out).toHaveLength(1);
+    expect(out).toHaveLength(2);
     clock.advance(4999);
-    expect(out).toHaveLength(1);
+    expect(out).toHaveLength(2);
     clock.advance(1);
     clock.advance(5000);
-    const keep = out.slice(1);
+    const keep = out.slice(2);
     expect(keep.map((b) => b.tsMs)).toEqual([5000, 10000]);
     for (const b of keep) {
       expect(b.flags & FLAG_KEEPALIVE).toBe(FLAG_KEEPALIVE);
       expect(b.pcm.length).toBe(0);
     }
-    expect(out.map((b) => b.seq)).toEqual([0, 1, 2]);
+    expect(out.map((b) => b.seq)).toEqual([0, 1, 2, 3]);
   });
 
   it('unmute resumes audio with a discontinuity flag once and stops keepalives', () => {
@@ -86,11 +90,13 @@ describe('MuteController', () => {
     ctl.unmute();
     expect(ctl.state).toBe('running');
     clock.advance(20000);
-    expect(out).toHaveLength(0);
+    // Only the end-of-utterance marker from the mute; no keepalives after unmute (R12-V06).
+    expect(out).toHaveLength(1);
+    expect(out[0]?.flags).toBe(FLAG_KEEPALIVE | FLAG_END_OF_UTTERANCE);
     ctl.push(audio(100));
     ctl.push(audio(120));
-    expect(out[0]?.flags).toBe(FLAG_DISCONTINUITY);
-    expect(out[1]?.flags).toBe(0);
+    expect(out[1]?.flags).toBe(FLAG_DISCONTINUITY);
+    expect(out[2]?.flags).toBe(0);
   });
 
   it('AudioContext suspended moves to muted(suspended) within 1 s', () => {
@@ -120,8 +126,28 @@ describe('MuteController', () => {
     expect(out).toHaveLength(2);
     expect(out[1]?.flags).toBe(FLAG_DISCONTINUITY);
     ctl.talkEnd();
+    // Releasing the key sends one end-of-utterance marker; later audio is still gated.
+    expect(out).toHaveLength(3);
     ctl.push(audio(5200));
-    expect(out).toHaveLength(2);
+    expect(out).toHaveLength(3);
+  });
+
+  it('push-to-talk release ends the utterance (R12-V06)', () => {
+    const { out, ctl } = setup({ mode: 'push_to_talk' });
+    ctl.attach();
+    expect(out).toHaveLength(0);
+    ctl.talkStart();
+    ctl.talkEnd();
+    const last = out[out.length - 1];
+    expect(last?.flags).toBe(FLAG_KEEPALIVE | FLAG_END_OF_UTTERANCE);
+    expect(last?.pcm.length).toBe(0);
+  });
+
+  it('a user mute ends the utterance too (R12-V06)', () => {
+    const { out, ctl } = setup();
+    ctl.attach();
+    ctl.mute();
+    expect(out[out.length - 1]?.flags).toBe(FLAG_KEEPALIVE | FLAG_END_OF_UTTERANCE);
   });
 
   it('setMode switches between open-mic and push-to-talk; talk keys are inert in open-mic', () => {

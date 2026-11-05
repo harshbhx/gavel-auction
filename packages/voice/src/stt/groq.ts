@@ -3,6 +3,7 @@ import { encodeWav } from '../audio/wav.js';
 import {
   FLAG_DISCONTINUITY,
   FLAG_END_OF_STREAM,
+  FLAG_END_OF_UTTERANCE,
   FLAG_KEEPALIVE,
   type AudioBatch,
 } from '../audio/frame.js';
@@ -128,6 +129,10 @@ export class GroqStt implements InstrumentedSttProvider {
       this.stats.addBytes(batch.pcm.byteLength);
       if ((batch.flags & FLAG_KEEPALIVE) !== 0) {
         this.clockMs = Math.max(this.clockMs, batch.tsMs);
+        // Key released or muted: no more frames will arrive, so close the held chunk now (R12-V06).
+        if ((batch.flags & FLAG_END_OF_UTTERANCE) !== 0) {
+          this.enqueueChunks(this.endpointer.flush());
+        }
         return;
       }
       // Audio before a gap is cut at the gap, never joined to the audio after it (R7-11).
