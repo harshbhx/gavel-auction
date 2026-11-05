@@ -140,6 +140,29 @@ export const HammerSchema = message('hammer', {
     .max(MAX_BIDDERS_PER_ROOM),
 });
 
+/** One hold in the settlement ladder. Amounts are integer cents; idSuffix is the last 6 characters only. */
+const settlementHold = z
+  .object({
+    paddle,
+    state: settlementState,
+    capturedCents: z.number().int().nonnegative(),
+    releasedCents: z.number().int().nonnegative(),
+    idSuffix: z.string().max(6),
+    verifiedBy: z
+      .array(
+        z
+          .object({
+            eventId: z.string().max(64),
+            kind: z.enum(['webhook', 'lookup']),
+            eventType: z.string().max(64).optional(),
+            at: z.number().int(),
+          })
+          .strict(),
+      )
+      .max(10),
+  })
+  .strict();
+
 export const SettlementUpdateSchema = message('settlement_update', {
   ...ev,
   rev: z.number().int(),
@@ -147,6 +170,13 @@ export const SettlementUpdateSchema = message('settlement_update', {
   you: settlementState.optional(),
   amountCaptured: cents().optional(),
   note: z.string().max(MAX_NOTE_CHARS).optional(),
+  /** Per-hold detail for the ladder. Older servers omit these three fields; clients must cope. */
+  holds: z.array(settlementHold).max(MAX_BIDDERS_PER_ROOM).optional(),
+  winnerPaddle: paddle.nullable().optional(),
+  invariants: z
+    .object({ ok: z.boolean(), violations: z.array(z.string().max(120)).max(20) })
+    .strict()
+    .optional(),
 });
 
 export const AuditEventSchema = message('audit_event', { ...ev, audit: auditRow });

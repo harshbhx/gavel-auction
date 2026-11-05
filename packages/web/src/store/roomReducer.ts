@@ -4,7 +4,16 @@ import type {
   HammerMsg,
   RoomSnapshot,
   ServerMessage,
+  SettlementUpdateMsg,
 } from '../wire';
+
+/** Per-hold settlement data from the latest settlement_update that carried it. */
+export interface SettlementDetail {
+  rev: number;
+  holds: NonNullable<SettlementUpdateMsg['holds']>;
+  winnerPaddle: number | null;
+  invariants: { ok: boolean; violations: string[] };
+}
 
 export interface BidRecord {
   seq: number;
@@ -45,6 +54,8 @@ export interface RoomState {
   audit: readonly AuditPayload[];
   /** True when audit rows may be missing: older ones were dropped or the snapshot window was full. */
   auditTruncated: boolean;
+  /** Absent until the server sends per-hold settlement data. */
+  settlementDetail?: SettlementDetail;
   lastError: { code: string; message: string; retryAfterMs: number | null } | null;
 }
 
@@ -118,6 +129,7 @@ function applySnapshot(state: RoomState, msg: Extract<ServerMessage, { t: 'state
     audit: [...snap.recentAudit],
     // The snapshot carries at most SNAPSHOT_AUDIT_ROWS rows: a full window may hide older ones.
     auditTruncated: snap.recentAudit.length >= SNAPSHOT_AUDIT_ROWS,
+    ...(state.settlementDetail === undefined ? {} : { settlementDetail: state.settlementDetail }),
   };
 }
 
@@ -178,9 +190,11 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
       };
     case 'hammer':
       return { ...state, hammer: msg };
-    case 'settlement_update':
-      return withSnapshot(state, (s) =>
-        s.settlement !== undefined && msg.rev < s.settlement.rev
+    case 'settlement_update': {
+      const stale =
+        state.snapshot?.settlement !== undefined && msg.rev < state.snapshot.settlement.rev;
+      const next = withSnapshot(state, (s) =>
+        stale
           ? s
           : {
               ...s,
@@ -191,6 +205,17 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
               },
             },
       );
+      if (stale || msg.holds === undefined) return next;
+      return {
+        ...next,
+        settlementDetail: {
+          rev: msg.rev,
+          holds: msg.holds,
+          winnerPaddle: msg.winnerPaddle ?? null,
+          invariants: msg.invariants ?? { ok: true, violations: [] },
+        },
+      };
+    }
     case 'audit_event':
       return {
         ...state,
