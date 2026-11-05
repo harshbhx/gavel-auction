@@ -1,6 +1,6 @@
 {
   "name": "promote: a lot that is not hammered cannot be promoted",
-  "parity": false,
+  "parity": true,
   "config": {
     "mode": "english",
     "reserve": 1000,

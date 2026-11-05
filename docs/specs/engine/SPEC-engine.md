@@ -489,7 +489,7 @@ LOT_HAMMERED payload example:
 }
 ```
 
-Bidder names (`A`, `B`) are mapped to ULIDs by the loader. Python converts `at` ms to seconds by dividing by 1000. Fixtures with ladders, cumulative ceilings, striking, fallback or holdScope are `parity:false` (the reference has no such features) and are checked against hand-derived expectations.
+Bidder names (`A`, `B`) are mapped to ULIDs by the loader. Python converts `at` ms to seconds by dividing by 1000. Fixtures with ladders, cumulative ceilings, settlement (`complete`) or holdScope are `parity:false` (the reference has no such features); striking, fallback, abort and pause, resume and extend are covered by the reference (D-0030) and are checked against hand-derived expectations.
 
 ## 5. State machines and sequences
 

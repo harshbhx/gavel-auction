@@ -1,6 +1,6 @@
 {
   "name": "promote: a revoked runner-up is skipped and the next candidate wins",
-  "parity": false,
+  "parity": true,
   "config": {
     "mode": "english",
     "reserve": 1000,

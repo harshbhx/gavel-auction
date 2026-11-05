@@ -1,6 +1,6 @@
 {
   "name": "revoke: a revoked bidder cannot bid",
-  "parity": false,
+  "parity": true,
   "config": {
     "mode": "english",
     "reserve": 1000,

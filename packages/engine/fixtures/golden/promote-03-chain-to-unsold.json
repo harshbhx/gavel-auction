@@ -1,6 +1,6 @@
 {
   "name": "promote: every candidate disqualified in turn leaves the lot unsold",
-  "parity": false,
+  "parity": true,
   "config": {
     "mode": "english",
     "reserve": 1000,

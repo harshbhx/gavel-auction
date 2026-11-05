@@ -1,6 +1,6 @@
 {
   "name": "closed lot: a bid on a lot that closed with no bids is refused as done",
-  "parity": false,
+  "parity": true,
   "config": {
     "mode": "english",
     "reserve": 1000,

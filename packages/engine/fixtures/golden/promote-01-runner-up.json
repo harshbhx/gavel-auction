@@ -1,6 +1,6 @@
 {
   "name": "promote: hammer winner is disqualified and the runner-up wins at its own bid",
-  "parity": false,
+  "parity": true,
   "config": {
     "mode": "english",
     "reserve": 1000,
