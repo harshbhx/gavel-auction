@@ -3866,6 +3866,7 @@ export const RoomSnapshotSchema: z.ZodObject<{
     you: z.ZodOptional<z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
         ceiling: z.ZodType<Cents, z.ZodTypeDef, Cents>;
+        highBid: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
     }, "strict", z.ZodTypeAny, {
         bidderId: string & {
             readonly __brand_brand: "BidderId";
@@ -3873,6 +3874,7 @@ export const RoomSnapshotSchema: z.ZodObject<{
         ceiling: number & {
             readonly __brand_centsBrand: "Cents";
         };
+        highBid?: Cents | undefined;
     }, {
         bidderId: string & {
             readonly __brand_brand: "BidderId";
@@ -3880,6 +3882,7 @@ export const RoomSnapshotSchema: z.ZodObject<{
         ceiling: number & {
             readonly __brand_centsBrand: "Cents";
         };
+        highBid?: Cents | undefined;
     }>>;
 }, "strict", z.ZodTypeAny, {
     status: "SCHEDULED" | "OPEN" | "PAUSED" | "CLOSING" | "SETTLING" | "DONE";
@@ -3973,6 +3976,7 @@ export const RoomSnapshotSchema: z.ZodObject<{
         ceiling: number & {
             readonly __brand_centsBrand: "Cents";
         };
+        highBid?: Cents | undefined;
     } | undefined;
     settlement?: {
         rev: number;
@@ -4055,6 +4059,7 @@ export const RoomSnapshotSchema: z.ZodObject<{
         ceiling: number & {
             readonly __brand_centsBrand: "Cents";
         };
+        highBid?: Cents | undefined;
     } | undefined;
     settlement?: {
         rev: number;
@@ -4534,6 +4539,7 @@ export const serverSchemas: {
             you: z.ZodOptional<z.ZodObject<{
                 bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
                 ceiling: z.ZodType<Cents, z.ZodTypeDef, Cents>;
+                highBid: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
             }, "strict", z.ZodTypeAny, {
                 bidderId: string & {
                     readonly __brand_brand: "BidderId";
@@ -4541,6 +4547,7 @@ export const serverSchemas: {
                 ceiling: number & {
                     readonly __brand_centsBrand: "Cents";
                 };
+                highBid?: Cents | undefined;
             }, {
                 bidderId: string & {
                     readonly __brand_brand: "BidderId";
@@ -4548,6 +4555,7 @@ export const serverSchemas: {
                 ceiling: number & {
                     readonly __brand_centsBrand: "Cents";
                 };
+                highBid?: Cents | undefined;
             }>>;
         }, "strict", z.ZodTypeAny, {
             status: "SCHEDULED" | "OPEN" | "PAUSED" | "CLOSING" | "SETTLING" | "DONE";
@@ -4641,6 +4649,7 @@ export const serverSchemas: {
                 ceiling: number & {
                     readonly __brand_centsBrand: "Cents";
                 };
+                highBid?: Cents | undefined;
             } | undefined;
             settlement?: {
                 rev: number;
@@ -4723,6 +4732,7 @@ export const serverSchemas: {
                 ceiling: number & {
                     readonly __brand_centsBrand: "Cents";
                 };
+                highBid?: Cents | undefined;
             } | undefined;
             settlement?: {
                 rev: number;
@@ -4831,6 +4841,7 @@ export const serverSchemas: {
                 ceiling: number & {
                     readonly __brand_centsBrand: "Cents";
                 };
+                highBid?: Cents | undefined;
             } | undefined;
             settlement?: {
                 rev: number;
@@ -4919,6 +4930,7 @@ export const serverSchemas: {
                 ceiling: number & {
                     readonly __brand_centsBrand: "Cents";
                 };
+                highBid?: Cents | undefined;
             } | undefined;
             settlement?: {
                 rev: number;
@@ -5036,6 +5048,64 @@ export const serverSchemas: {
         you: z.ZodOptional<z.ZodEnum<["HELD", "BIDDING", "WINNER_SELECTED", "CAPTURING", "CAPTURED", "VOIDING", "SETTLED", "FALLBACK_RUNNER_UP", "FAILED_NEEDS_REVIEW"]>>;
         amountCaptured: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
         note: z.ZodOptional<z.ZodString>;
+        holds: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            paddle: z.ZodNumber;
+            state: z.ZodEnum<["HELD", "BIDDING", "WINNER_SELECTED", "CAPTURING", "CAPTURED", "VOIDING", "SETTLED", "FALLBACK_RUNNER_UP", "FAILED_NEEDS_REVIEW"]>;
+            capturedCents: z.ZodNumber;
+            releasedCents: z.ZodNumber;
+            idSuffix: z.ZodString;
+            verifiedBy: z.ZodArray<z.ZodObject<{
+                eventId: z.ZodString;
+                kind: z.ZodEnum<["webhook", "lookup"]>;
+                eventType: z.ZodOptional<z.ZodString>;
+                at: z.ZodNumber;
+            }, "strict", z.ZodTypeAny, {
+                at: number;
+                eventId: string;
+                kind: "webhook" | "lookup";
+                eventType?: string | undefined;
+            }, {
+                at: number;
+                eventId: string;
+                kind: "webhook" | "lookup";
+                eventType?: string | undefined;
+            }>, "many">;
+        }, "strict", z.ZodTypeAny, {
+            paddle: number;
+            state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
+            capturedCents: number;
+            releasedCents: number;
+            idSuffix: string;
+            verifiedBy: {
+                at: number;
+                eventId: string;
+                kind: "webhook" | "lookup";
+                eventType?: string | undefined;
+            }[];
+        }, {
+            paddle: number;
+            state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
+            capturedCents: number;
+            releasedCents: number;
+            idSuffix: string;
+            verifiedBy: {
+                at: number;
+                eventId: string;
+                kind: "webhook" | "lookup";
+                eventType?: string | undefined;
+            }[];
+        }>, "many">>;
+        winnerPaddle: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+        invariants: z.ZodOptional<z.ZodObject<{
+            ok: z.ZodBoolean;
+            violations: z.ZodArray<z.ZodString, "many">;
+        }, "strict", z.ZodTypeAny, {
+            ok: boolean;
+            violations: string[];
+        }, {
+            ok: boolean;
+            violations: string[];
+        }>>;
         seq: z.ZodNumber;
         ts: z.ZodEffects<z.ZodNumber, EpochMs, number>;
     }, "strict", z.ZodTypeAny, {
@@ -5050,6 +5120,24 @@ export const serverSchemas: {
         amountCaptured?: Cents | undefined;
         note?: string | undefined;
         you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+        holds?: {
+            paddle: number;
+            state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
+            capturedCents: number;
+            releasedCents: number;
+            idSuffix: string;
+            verifiedBy: {
+                at: number;
+                eventId: string;
+                kind: "webhook" | "lookup";
+                eventType?: string | undefined;
+            }[];
+        }[] | undefined;
+        winnerPaddle?: number | null | undefined;
+        invariants?: {
+            ok: boolean;
+            violations: string[];
+        } | undefined;
     }, {
         v: 1;
         t: "settlement_update";
@@ -5060,6 +5148,24 @@ export const serverSchemas: {
         amountCaptured?: Cents | undefined;
         note?: string | undefined;
         you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+        holds?: {
+            paddle: number;
+            state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
+            capturedCents: number;
+            releasedCents: number;
+            idSuffix: string;
+            verifiedBy: {
+                at: number;
+                eventId: string;
+                kind: "webhook" | "lookup";
+                eventType?: string | undefined;
+            }[];
+        }[] | undefined;
+        winnerPaddle?: number | null | undefined;
+        invariants?: {
+            ok: boolean;
+            violations: string[];
+        } | undefined;
     }>;
     readonly audit_event: z.ZodObject<{
         v: z.ZodLiteral<1>;
@@ -5312,6 +5418,64 @@ export const SettlementUpdateSchema: z.ZodObject<{
     you: z.ZodOptional<z.ZodEnum<["HELD", "BIDDING", "WINNER_SELECTED", "CAPTURING", "CAPTURED", "VOIDING", "SETTLED", "FALLBACK_RUNNER_UP", "FAILED_NEEDS_REVIEW"]>>;
     amountCaptured: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
     note: z.ZodOptional<z.ZodString>;
+    holds: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        paddle: z.ZodNumber;
+        state: z.ZodEnum<["HELD", "BIDDING", "WINNER_SELECTED", "CAPTURING", "CAPTURED", "VOIDING", "SETTLED", "FALLBACK_RUNNER_UP", "FAILED_NEEDS_REVIEW"]>;
+        capturedCents: z.ZodNumber;
+        releasedCents: z.ZodNumber;
+        idSuffix: z.ZodString;
+        verifiedBy: z.ZodArray<z.ZodObject<{
+            eventId: z.ZodString;
+            kind: z.ZodEnum<["webhook", "lookup"]>;
+            eventType: z.ZodOptional<z.ZodString>;
+            at: z.ZodNumber;
+        }, "strict", z.ZodTypeAny, {
+            at: number;
+            eventId: string;
+            kind: "webhook" | "lookup";
+            eventType?: string | undefined;
+        }, {
+            at: number;
+            eventId: string;
+            kind: "webhook" | "lookup";
+            eventType?: string | undefined;
+        }>, "many">;
+    }, "strict", z.ZodTypeAny, {
+        paddle: number;
+        state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
+        capturedCents: number;
+        releasedCents: number;
+        idSuffix: string;
+        verifiedBy: {
+            at: number;
+            eventId: string;
+            kind: "webhook" | "lookup";
+            eventType?: string | undefined;
+        }[];
+    }, {
+        paddle: number;
+        state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
+        capturedCents: number;
+        releasedCents: number;
+        idSuffix: string;
+        verifiedBy: {
+            at: number;
+            eventId: string;
+            kind: "webhook" | "lookup";
+            eventType?: string | undefined;
+        }[];
+    }>, "many">>;
+    winnerPaddle: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    invariants: z.ZodOptional<z.ZodObject<{
+        ok: z.ZodBoolean;
+        violations: z.ZodArray<z.ZodString, "many">;
+    }, "strict", z.ZodTypeAny, {
+        ok: boolean;
+        violations: string[];
+    }, {
+        ok: boolean;
+        violations: string[];
+    }>>;
     seq: z.ZodNumber;
     ts: z.ZodEffects<z.ZodNumber, EpochMs, number>;
 }, "strict", z.ZodTypeAny, {
@@ -5326,6 +5490,24 @@ export const SettlementUpdateSchema: z.ZodObject<{
     amountCaptured?: Cents | undefined;
     note?: string | undefined;
     you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+    holds?: {
+        paddle: number;
+        state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
+        capturedCents: number;
+        releasedCents: number;
+        idSuffix: string;
+        verifiedBy: {
+            at: number;
+            eventId: string;
+            kind: "webhook" | "lookup";
+            eventType?: string | undefined;
+        }[];
+    }[] | undefined;
+    winnerPaddle?: number | null | undefined;
+    invariants?: {
+        ok: boolean;
+        violations: string[];
+    } | undefined;
 }, {
     v: 1;
     t: "settlement_update";
@@ -5336,6 +5518,24 @@ export const SettlementUpdateSchema: z.ZodObject<{
     amountCaptured?: Cents | undefined;
     note?: string | undefined;
     you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+    holds?: {
+        paddle: number;
+        state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
+        capturedCents: number;
+        releasedCents: number;
+        idSuffix: string;
+        verifiedBy: {
+            at: number;
+            eventId: string;
+            kind: "webhook" | "lookup";
+            eventType?: string | undefined;
+        }[];
+    }[] | undefined;
+    winnerPaddle?: number | null | undefined;
+    invariants?: {
+        ok: boolean;
+        violations: string[];
+    } | undefined;
 }>;
 
 // @public (undocumented)
@@ -5665,6 +5865,7 @@ export const StateSchema: z.ZodObject<{
         you: z.ZodOptional<z.ZodObject<{
             bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
             ceiling: z.ZodType<Cents, z.ZodTypeDef, Cents>;
+            highBid: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
         }, "strict", z.ZodTypeAny, {
             bidderId: string & {
                 readonly __brand_brand: "BidderId";
@@ -5672,6 +5873,7 @@ export const StateSchema: z.ZodObject<{
             ceiling: number & {
                 readonly __brand_centsBrand: "Cents";
             };
+            highBid?: Cents | undefined;
         }, {
             bidderId: string & {
                 readonly __brand_brand: "BidderId";
@@ -5679,6 +5881,7 @@ export const StateSchema: z.ZodObject<{
             ceiling: number & {
                 readonly __brand_centsBrand: "Cents";
             };
+            highBid?: Cents | undefined;
         }>>;
     }, "strict", z.ZodTypeAny, {
         status: "SCHEDULED" | "OPEN" | "PAUSED" | "CLOSING" | "SETTLING" | "DONE";
@@ -5772,6 +5975,7 @@ export const StateSchema: z.ZodObject<{
             ceiling: number & {
                 readonly __brand_centsBrand: "Cents";
             };
+            highBid?: Cents | undefined;
         } | undefined;
         settlement?: {
             rev: number;
@@ -5854,6 +6058,7 @@ export const StateSchema: z.ZodObject<{
             ceiling: number & {
                 readonly __brand_centsBrand: "Cents";
             };
+            highBid?: Cents | undefined;
         } | undefined;
         settlement?: {
             rev: number;
@@ -5962,6 +6167,7 @@ export const StateSchema: z.ZodObject<{
             ceiling: number & {
                 readonly __brand_centsBrand: "Cents";
             };
+            highBid?: Cents | undefined;
         } | undefined;
         settlement?: {
             rev: number;
@@ -6050,6 +6256,7 @@ export const StateSchema: z.ZodObject<{
             ceiling: number & {
                 readonly __brand_centsBrand: "Cents";
             };
+            highBid?: Cents | undefined;
         } | undefined;
         settlement?: {
             rev: number;

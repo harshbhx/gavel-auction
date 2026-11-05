@@ -11,12 +11,30 @@ export function App(input: AppProps): JSX_2.Element;
 
 // @public (undocumented)
 export interface AppProps {
+    api?: {
+        apiBase: string;
+        payments: PaymentsMode;
+        paypalClientId: string;
+    };
     gallery?: boolean;
     initialPath?: string;
+    liveBase?: string;
 }
+
+// @public (undocumented)
+export function AuditRoute(): JSX_2.Element;
 
 // @public
 export function navigate(to: string): void;
+
+// @public (undocumented)
+export function ReceiptRoute(input: {
+    roomId: string;
+}): JSX_2.Element;
+
+// Warnings were encountered during analysis:
+//
+// /home/runner/work/gavel-auction/gavel-auction/.api-types/web/App.d.ts:12:9 - (ae-forgotten-export) The symbol "PaymentsMode" needs to be exported by the entry point App.d.ts
 
 // (No @packageDocumentation comment for this package)
 
