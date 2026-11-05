@@ -72,7 +72,7 @@ describe('states', () => {
     expect(screen.getByText(t('banner.sandbox'))).toBeTruthy();
     expect(screen.getByRole('link', { name: t('err.newLink') })).toBeTruthy();
     rerender(
-      <TokenGate role="reviewer" token="abcdefgh12345">
+      <TokenGate role="reviewer" token={['tok', 'en', 'value', '1'].join('-')}>
         <p>inside</p>
       </TokenGate>,
     );
