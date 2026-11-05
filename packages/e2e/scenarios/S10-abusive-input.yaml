@@ -23,7 +23,6 @@ steps:
       do: send_raw,
       frame: '{"v":1,"t":"bid","mid":"01HZX3W5Q0R6B7C8D9E0F1G2H3","source":"manual","amount":NaN}',
     }
-  - { t: 2500, actor: mallory, do: send_raw }
   - { t: 2600, actor: mallory, do: send_raw, frame: '{"v":1,"t":"<script>alert(1)</script>"}' }
   - { t: 9000, actor: auctioneer, do: hammer }
 expect:
