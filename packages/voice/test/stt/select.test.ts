@@ -57,12 +57,12 @@ describe('T-VOX-022 provider selection matrix', () => {
 
   it('missing key is a typed auth-style config error that never echoes a key', () => {
     try {
-      selectProvider({ VOICE_STT: 'groq', DEEPGRAM_API_KEY: 'sentinel-key-value' });
+      selectProvider({ VOICE_STT: 'groq', DEEPGRAM_API_KEY: 'zz9q' });
       expect.unreachable();
     } catch (e) {
       const err = e as SttConfigError;
       expect(err.code).toBe('missing_key');
-      expect(err.message).not.toContain('sentinel-key-value');
+      expect(err.message).not.toContain('zz9q');
     }
   });
 
@@ -76,12 +76,12 @@ describe('T-VOX-022 provider selection matrix', () => {
   it('logs the selection once and never the key', () => {
     const lines: string[] = [];
     selectProvider(
-      { GROQ_API_KEY: 'sentinel-key-value' },
+      { GROQ_API_KEY: 'zz9q' },
       { fetch: noFetch, log: (m, f) => lines.push(`${m} ${JSON.stringify(f)}`) },
     );
     expect(lines).toHaveLength(1);
     expect(lines[0]).toContain('groq');
-    expect(lines[0]).not.toContain('sentinel-key-value');
+    expect(lines[0]).not.toContain('zz9q');
   });
 });
 
