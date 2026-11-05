@@ -14,12 +14,14 @@ export const KILL_PHRASE = 'STOP';
 export interface KillSwitchProps {
   /** True once the room reported the stopped status. The stopped state is permanent. */
   readonly stopped: boolean;
-  readonly onKill: () => void;
+  /** A rejection is shown to the user: the kill route may be missing or refuse the request. */
+  readonly onKill: () => void | Promise<void>;
 }
 
 export function KillSwitch({ stopped, onKill }: KillSwitchProps) {
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState('');
+  const [failed, setFailed] = useState(false);
   const announced = useRef(false);
 
   useEffect(() => {
@@ -48,6 +50,7 @@ export function KillSwitch({ stopped, onKill }: KillSwitchProps) {
       <Button tone="danger" onClick={() => setOpen(true)}>
         {t('kill.button')}
       </Button>
+      {failed && <p role="alert">{t('kill.failed')}</p>}
       <Dialog open={open} onClose={close} title={t('kill.title')}>
         <p>{t('kill.consequence')}</p>
         <Field
@@ -64,7 +67,13 @@ export function KillSwitch({ stopped, onKill }: KillSwitchProps) {
           disabled={!ready}
           onComplete={() => {
             close();
-            onKill();
+            setFailed(false);
+            try {
+              const pending = onKill();
+              if (pending instanceof Promise) pending.catch(() => setFailed(true));
+            } catch {
+              setFailed(true);
+            }
           }}
         />
         <Button variant="outline" tone="neutral" onClick={close}>
