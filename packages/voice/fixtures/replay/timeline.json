@@ -1,0 +1,7 @@
+{
+  "utterances": [
+    { "startMs": 2000, "endMs": 4720, "expected": "bid" },
+    { "startMs": 9000, "endMs": 13085, "expected": "confirm" },
+    { "startMs": 17000, "endMs": 19695, "expected": "none" }
+  ]
+}

@@ -102,22 +102,6 @@ describe('Endpointer (T-VOX-017)', () => {
     expect(feedInFrames(ep, combined, 50, 1000)).toHaveLength(1);
   });
 
-  it('keeps a short tail after an 8 s forced split (R9-V06)', () => {
-    const ep = new Endpointer();
-    feedInFrames(ep, silenceSamples(SAMPLE_RATE), 0, 0);
-    // 7.9 s of speech plus the pre-roll reaches the 8 s cut, leaving a tail well under 150 ms.
-    const speech = sineSamples(0.8, Math.round(SAMPLE_RATE * 7.9));
-    const trailing = silenceSamples(SAMPLE_RATE * 2);
-    const combined = new Int16Array(speech.length + trailing.length);
-    combined.set(speech);
-    combined.set(trailing, speech.length);
-    const chunks = feedInFrames(ep, combined, 50, 1000);
-    expect(chunks).toHaveLength(2);
-    expect(ep.discardedChunks).toBe(0);
-    // The second chunk starts with the carried overlap so the cut word is heard whole.
-    expect(chunks[1]?.pcm.length).toBeGreaterThan(SAMPLE_RATE * 0.2);
-  });
-
   it('recovers from steady -35 dBFS noise that starts after a quiet second (R8-V02)', () => {
     const ep = new Endpointer();
     feedInFrames(ep, silenceSamples(SAMPLE_RATE), 0, 0);

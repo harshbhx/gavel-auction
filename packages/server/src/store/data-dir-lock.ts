@@ -32,8 +32,6 @@ export interface LockOptions {
   isAlive?: (pid: number) => boolean;
   /** How often the holder refreshes the lock file's mtime; default 10 s, 0 turns it off. */
   heartbeatMs?: number;
-  /** Blocks for the given ms; used once to wait out a foreign lock's stale window. */
-  sleep?: (ms: number) => void;
 }
 
 /** A lock owned by another host is stale once its mtime is this many heartbeats old. */
@@ -48,10 +46,6 @@ interface Owner {
 
 /** Lock files held by this process, so a second acquire in the same process still refuses. */
 const heldHere = new Set<string>();
-
-function blockingSleep(ms: number): void {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-}
 
 function alive(pid: number): boolean {
   try {
@@ -100,8 +94,6 @@ export function acquireDataDirLock(dir: string, opts: LockOptions = {}): DataDir
   const now = opts.now ?? Date.now;
   const isAlive = opts.isAlive ?? alive;
   const mine = JSON.stringify(me);
-  const sleep = opts.sleep ?? blockingSleep;
-  let waited = false;
 
   const tryCreate = (): boolean => {
     const tmp = join(dir, `${LOCK_FILE}.${String(me.pid)}.${String(now())}.tmp`);
@@ -198,17 +190,7 @@ export function acquireDataDirLock(dir: string, opts: LockOptions = {}): DataDir
           continue;
         }
         const beatMs = opts.heartbeatMs ?? DEFAULT_HEARTBEAT_MS;
-        const windowMs = beatMs * HEARTBEAT_MISSES;
-        live = beatMs <= 0 || age < windowMs;
-        if (live && beatMs > 0 && !waited) {
-          // A restarted container has a new hostname, so a differing host is no proof of a
-          // live owner. Wait out the stale window once, then judge by the heartbeat again;
-          // a live owner keeps refreshing the file and still wins.
-          waited = true;
-          sleep(Math.max(0, windowMs - age) + 1);
-          attempt -= 1;
-          continue;
-        }
+        live = beatMs <= 0 || age < beatMs * HEARTBEAT_MISSES;
       }
       if (live) {
         throw new Error(

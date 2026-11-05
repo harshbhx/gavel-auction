@@ -58,26 +58,10 @@ function fnv1a(text: string, seed: number): number {
   return h;
 }
 
-/** Width of the audio-start bucket that identifies one utterance in a command id (R9-V05). */
-const ID_WINDOW_MS = 5000;
-
 /**
- * True when the engine refused a voice command only because the same id arrived with different
- * evidence (another provider's transcript of the same speech). The caller treats it as a
- * duplicate, not a failure (R9-V05).
- */
-export function isReplayConflict(err: unknown): boolean {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    (err as { code?: unknown }).code === 'command_conflict'
-  );
-}
-
-/**
- * A ULID-shaped command id derived from the given key. Speech the STT replays after a reconnect
- * or a provider switch carries the same stable key, so it maps to the same id and the engine's
- * commandId dedupe drops it (R-VOX-071, R-RT-053).
+ * A ULID-shaped command id derived from the given key. A segment the
+ * STT replays after a reconnect carries the same key, so it maps to the same id
+ * and the engine's commandId dedupe drops it (R-VOX-071, R-RT-053).
  */
 export function commandIdFromKey(auctionId: string, idempotencyKey: string): string {
   const text = `${auctionId}|${idempotencyKey}`;
@@ -130,16 +114,18 @@ export function toPlaceBid(decision: Decision, ctx: PlaceBidContext): PlaceBidCo
   }
   const ev = decision.evidence;
   const confidenceBps = confidenceToBps(ev.confidence);
-  // The id is the idempotency token, so it covers the stable identity of the utterance only:
-  // lot, bidder, amount, confirmed option and the audio window. Transcript and confidence vary
-  // between providers replaying the same speech and stay in the body (R9-V05). The window is
-  // bucketed so a replay whose start differs by a few ms still maps to the same id.
+  // The engine compares the whole command body for a repeated id, so the id covers everything the
+  // body carries: an identical replay dedupes, a different amount, bidder, option or audit does
+  // not collide and make the engine throw command_conflict (R8-V03).
   const bodyKey = [
-    ctx.lotId,
+    ev.idempotencyKey,
     bidderId,
     amountCents,
     confirmed ? `c:${ctx.confirmedOptionId ?? ''}:${confirmedBy ?? ''}` : 'a',
-    Math.floor(ev.audioStartMs / ID_WINDOW_MS),
+    ev.transcript,
+    ev.audioStartMs,
+    ev.audioEndMs,
+    confidenceBps,
   ].join('|');
   return {
     type: 'PlaceBid',

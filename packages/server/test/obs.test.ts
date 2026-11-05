@@ -1,0 +1,94 @@
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { afterEach, describe, expect, it } from 'vitest';
+import { createLogger } from '../src/log/logger';
+import { createLogRing, maskEmails, OPS_LOG_LINES } from '../src/obs/logring';
+import { createOpsSummaryRoute, createPrometheusRoute } from '../src/obs/ops-summary';
+import { formatPrometheus } from '../src/obs/prometheus';
+import { MetricsCollector } from '../src/ops/metrics';
+
+const servers: Server[] = [];
+afterEach(async () => {
+  await Promise.all(servers.splice(0).map((s) => new Promise((r) => s.close(r))));
+});
+
+function collector(): MetricsCollector {
+  const m = new MetricsCollector({ connections: () => 3, rooms: () => 1, mailboxDepth: () => 0 });
+  m.bidAccepted();
+  m.bidRejected();
+  m.bidLatencyMs(12);
+  m.webhookOutcome('duplicate');
+  return m;
+}
+
+describe('log ring', () => {
+  it('keeps the newest 100 lines and masks emails', () => {
+    const ring = createLogRing();
+    for (let i = 0; i < OPS_LOG_LINES + 5; i += 1) ring.write(`line ${String(i)}`);
+    const lines = ring.lines();
+    expect(lines).toHaveLength(OPS_LOG_LINES);
+    expect(lines[0]).toBe('line 5');
+    expect(maskEmails('mail alice@example.com now')).toBe('mail a***@e***.com now');
+  });
+
+  it('every logger line parses with the required keys and holds no full email', () => {
+    const ring = createLogRing();
+    const log = createLogger({ clock: { now: () => 1700000000000 }, sink: ring.write });
+    log.info('registered bidder@example.org', { reqId: 'r1', auctionId: 'a1' });
+    for (const line of ring.lines()) {
+      const rec = JSON.parse(line) as Record<string, unknown>;
+      for (const key of ['ts', 'level', 'msg', 'context']) expect(rec).toHaveProperty(key);
+      expect(line).not.toMatch(/bidder@example\.org/);
+    }
+  });
+});
+
+describe('prometheus text', () => {
+  it('lists the metric families', () => {
+    const text = formatPrometheus(collector().snapshot());
+    for (const name of [
+      'gavel_ws_connections 3',
+      'gavel_bids_total{result="accepted"} 1',
+      'gavel_bids_total{result="rejected"} 1',
+      'gavel_bid_ack_latency_ms{quantile="0.95"} 12',
+      'gavel_webhook_total{outcome="duplicate"} 1',
+    ]) {
+      expect(text).toContain(name);
+    }
+    expect(text.endsWith('\n')).toBe(true);
+  });
+});
+
+describe('ops routes', () => {
+  it('require the admin key and serve the summary and Prometheus text', async () => {
+    const m = collector();
+    const ring = createLogRing();
+    ring.write('{"msg":"hello"}');
+    const summary = createOpsSummaryRoute({
+      adminKey: 'k-test',
+      logs: () => ring.lines(),
+      sagas: () => [{ auctionId: 'a1', lotId: 'l1', state: 'HOLD_PLACED' }],
+      metrics: () => m.snapshot(),
+    });
+    const prom = createPrometheusRoute({ adminKey: 'k-test', metrics: () => m.snapshot() });
+    const server = createServer((req, res) =>
+      req.url === '/ops/summary' ? summary(req, res) : prom(req, res),
+    );
+    servers.push(server);
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    const base = 'http://127.0.0.1:' + String((server.address() as AddressInfo).port);
+    const headers = { 'x-admin-key': 'k-test' };
+
+    expect((await fetch(base + '/ops/summary')).status).toBe(401);
+    expect((await fetch(base + '/metrics/prometheus')).status).toBe(401);
+    const res = await fetch(base + '/ops/summary', { headers });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { logs: string[]; sagas: unknown[]; paypal: object };
+    expect(body.logs).toHaveLength(1);
+    expect(body.sagas).toHaveLength(1);
+    expect(body.paypal).toMatchObject({ duplicate: 1 });
+    const p = await fetch(base + '/metrics/prometheus', { headers });
+    expect(p.headers.get('content-type')).toContain('text/plain');
+    expect(await p.text()).toContain('gavel_rooms_loaded 1');
+  });
+});
