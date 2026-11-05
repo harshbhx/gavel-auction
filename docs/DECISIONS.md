@@ -473,4 +473,4 @@ Consequences:
 - A bidder who reaches the per-bidder cap on a lot gets `limit_exceeded` for further bids on that lot.
 - Public proxy exports no longer show each bidder's final maximum.
 
-Evidence: packages/engine/test/redteam8-engine.test.ts, R8-E01, R8-E02, R8-E03, R8-E04, R8-E05.
+Evidence: packages/engine/test/round8-engine.test.ts, R8-E01, R8-E02, R8-E03, R8-E04, R8-E05.
