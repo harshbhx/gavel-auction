@@ -2,7 +2,12 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { buildAudit } from '../src/decide/audit.js';
 import { decide, type DecideSegment } from '../src/decide/decide.js';
-import { auditRecordSchema, type BidContext, type ParseResult } from '../src/types.js';
+import {
+  auditRecordSchema,
+  toAuditRecord,
+  type BidContext,
+  type ParseResult,
+} from '../src/types.js';
 import {
   PERSISTED_VOICE_KEYS,
   PRIVACY_NOTICE,
@@ -97,6 +102,20 @@ describe('privacy (T-VOX-104)', () => {
     expect(rec.transcript).toBe('');
     expect(rec.evidence.transcript).toBe('');
     expect(JSON.stringify(rec)).not.toContain('number');
+  });
+
+  it('the public toAuditRecord entry point also blanks a no-bid drop', () => {
+    const none = { ...bidParse(), status: 'none' as const, reason: 'no_amount' as const };
+    const rec = toAuditRecord(decide(seg('my number is five five five'), none, none, ctx()));
+    expect(rec.transcript).toBe('');
+    expect(rec.evidence.transcript).toBe('');
+  });
+
+  it('a system drop (stt unavailable) keeps the words of a possible bid', () => {
+    const none = { ...bidParse(), status: 'none' as const, reason: 'stt_unavailable' as const };
+    const d = decide(seg('paddle twelve two hundred'), none, none, ctx());
+    expect(d.kind).toBe('drop');
+    expect(toAuditRecord(d).transcript).toBe('paddle twelve two hundred');
   });
 
   it('a bid-related drop keeps its transcript', () => {

@@ -253,17 +253,30 @@ export function toAuditRecord(d: Decision): AuditRecord {
         evidence: ev,
       };
     }
-    case 'drop':
+    case 'drop': {
+      const keep = dropKeepsWords(d);
       return {
         decision: 'drop',
         outcome: 'rejected',
-        transcript: ev.transcript,
+        transcript: keep ? ev.transcript : '',
         bidderId: null,
         amountCents: ev.rules.amountCents,
         confidence: ev.confidence,
         confirmed: false,
         reason: d.reason,
-        evidence: ev,
+        evidence: keep ? ev : { ...ev, transcript: '' },
       };
+    }
   }
+}
+
+/**
+ * A drop that read no bid (question, filler, bystander chatter) is stored without its words.
+ * Drops caused by the system rather than the words (stt unavailable, stale audio) keep them,
+ * since they may be a real spoken bid and the transcript is its only evidence.
+ */
+function dropKeepsWords(d: Extract<Decision, { kind: 'drop' }>): boolean {
+  const ev = d.evidence;
+  const readAsBid = ev.rules.status !== 'none' || (ev.llm !== null && ev.llm.status !== 'none');
+  return readAsBid || d.reason === 'stt_unavailable' || d.reason === 'low_confidence';
 }

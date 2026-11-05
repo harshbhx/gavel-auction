@@ -80,6 +80,8 @@ export class FailoverStt implements InstrumentedSttProvider {
   /** Probe has answered; the swap waits for the active provider to finish its utterance (R9-V02). */
   private recovering = false;
   private recoverTimer: number | null = null;
+  /** The active provider has heard speech (interim) it has not yet finalised (R10-V02). */
+  private activeOpen = false;
   /** End of the last final already delivered; audio up to here is never replayed (R8-V04). */
   private lastFinalEndMs = -1;
   private consecutiveErrors = 0;
@@ -188,6 +190,8 @@ export class FailoverStt implements InstrumentedSttProvider {
 
   private fromActive(e: SttEvent): void {
     this.emit(e);
+    if (e.type === 'interim') this.activeOpen = true;
+    else if (e.type === 'final' || e.type === 'utterance_end') this.activeOpen = false;
     if (e.type === 'final') this.lastFinalEndMs = Math.max(this.lastFinalEndMs, e.endMs);
     if (this.recovering && (e.type === 'final' || e.type === 'utterance_end')) {
       this.completeRecovery();
@@ -246,6 +250,8 @@ export class FailoverStt implements InstrumentedSttProvider {
     this.switches += 1;
     this.stats.counters.reconnects += 1;
     this.clearSilence();
+    this.armed = false;
+    this.activeOpen = false;
     this.circuitUntil = this.o.clock.now() + this.o.circuitMs;
     this.o.onSwitch?.({ from: from.name, to: to.name, reason });
     void from.stop().catch(() => undefined);
@@ -283,8 +289,20 @@ export class FailoverStt implements InstrumentedSttProvider {
       // The probe only heard the tail of any utterance in flight, so its text is dropped and
       // the swap waits until the active provider has delivered its own final (R9-V02).
       this.recovering = true;
-      this.recoverTimer = this.o.clock.setTimeout(() => this.completeRecovery(), this.o.silenceMs);
+      this.armRecoverTimer(0);
     }
+  }
+
+  /**
+   * The swap never cuts a fallback utterance short: while it holds an unfinished one the timer
+   * waits for its final, up to a hard bound so a dead fallback cannot block recovery (R10-V02).
+   */
+  private armRecoverTimer(waits: number): void {
+    this.recoverTimer = this.o.clock.setTimeout(() => {
+      this.recoverTimer = null;
+      if (this.activeOpen && waits < 3) this.armRecoverTimer(waits + 1);
+      else this.completeRecovery();
+    }, this.o.silenceMs);
   }
 
   private completeRecovery(): void {
@@ -298,6 +316,9 @@ export class FailoverStt implements InstrumentedSttProvider {
     this.active = probe;
     this.onPrimary = true;
     this.sawEvent = true;
+    this.armed = false;
+    this.activeOpen = false;
+    this.clearSilence();
     this.consecutiveErrors = 0;
     this.switches += 1;
     this.o.onSwitch?.({ from: old.name, to: probe.name, reason: 'recovered' });

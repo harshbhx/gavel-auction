@@ -116,11 +116,10 @@ export class VoicePipeline {
     for (const a of this.book.sweep()) this.audit(this.deferred, a.reason, a.promptId, a.promptId);
     const taken = this.book.take(promptId);
     this.open.delete(promptId);
+    // An answered, expired or swept prompt never leaves its pending candidate behind (R10-V03).
+    this.clearPendingFor(promptId);
     if (taken.status !== 'ok' || prompt === undefined) {
       return { kind: 'dropped', reason: 'low_confidence', message: 'That question expired.' };
-    }
-    if (this.segmenter.pending.get(this.deps.clock())?.id === promptId) {
-      this.segmenter.pending.clear();
     }
     const outcome = answerConfirm({
       prompt,
@@ -155,6 +154,12 @@ export class VoicePipeline {
     return out;
   }
 
+  private clearPendingFor(promptId: string): void {
+    if (this.segmenter.pending.get(this.deps.clock())?.id === promptId) {
+      this.segmenter.pending.clear();
+    }
+  }
+
   private audit(
     out: PipelineOutput[],
     reason: 'confirm_expired' | 'superseded' | 'low_confidence',
@@ -162,6 +167,7 @@ export class VoicePipeline {
     id: string,
   ): void {
     this.open.delete(promptId);
+    this.clearPendingFor(promptId);
     if (reason === 'confirm_expired') {
       out.push({ type: 'confirm_expired', promptId });
       out.push({ type: 'audit', audit: 'confirm_expired', id });
