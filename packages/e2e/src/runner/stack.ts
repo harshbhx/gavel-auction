@@ -60,6 +60,7 @@ export async function startStack(opts: StackOptions = {}): Promise<Stack> {
     STORE: 'file',
     DATA_DIR: dataDir,
     PAYMENTS: 'fake',
+    PAYPAL_ENV: 'sandbox',
     ...opts.env,
     ...(checkpoint === undefined ? {} : { GAVEL_CHECKPOINT_KILL: checkpoint }),
   });
