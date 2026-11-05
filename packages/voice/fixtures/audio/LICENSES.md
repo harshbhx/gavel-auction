@@ -13,3 +13,17 @@ by the CI job owner before the first render.
 | team-voice-2 | voice | team recording (issue 433)                 | contributor grant, in repo  | written consent pending, issue 433 |
 | cafe         | noise | public-domain cafe ambience                | CC0 or equivalent (to cite) | not applicable                     |
 | crowd        | noise | public-domain crowd ambience               | CC0 or equivalent (to cite) | not applicable                     |
+
+## Replay clip (R-VOX-085)
+
+`../replay/auction-demo.wav` is 24 s, 16 kHz mono, about 0.77 MB. Speech is synthetic, rendered
+with the two en-US voices of the Windows speech synthesizer (David and Zira). Room noise is seeded
+pseudo-random noise generated for the clip. No person was recorded, so no consent is needed.
+Lines in timeline order: "Bidder four, three hundred." (bid), "Three fifty or maybe four hundred, I
+am not sure." (confirm), "Let me think about that for a moment." (none).
+
+| id           | kind  | source                                   | license                         | consent                   |
+| ------------ | ----- | ---------------------------------------- | ------------------------------- | ------------------------- |
+| sapi-david   | voice | Windows speech synthesizer, en-US male   | output of an installed OS voice | not applicable, synthetic |
+| sapi-zira    | voice | Windows speech synthesizer, en-US female | output of an installed OS voice | not applicable, synthetic |
+| generated-rn | noise | seeded noise written for this clip       | generated, no third-party audio | not applicable            |

@@ -193,8 +193,8 @@ export class WebhookIntake {
       await this.deps.events.markProcessed(stored.id, 'unchanged:live');
       return 'processed';
     }
-    // The truth read took a while: write from the record as it is now, inside the hold's
-    // queue, so a newer write (an approval, an orphan void) is not overwritten (HRD-16).
+    // The truth read above took time; write on the record as it is now, inside the queue every
+    // other hold writer uses, so a newer write is not overwritten by the older copy (R9-M05).
     const next = await sharedHoldQueue.run(hold.holdId, async () => {
       const latest = (await this.deps.holds.get(hold.holdId)) ?? hold;
       if (latest.status !== 'HELD') return latest;
@@ -203,7 +203,7 @@ export class WebhookIntake {
       return merged;
     });
     await this.deps.onHoldStatus(next);
-    await this.deps.events.markProcessed(stored.id, `hold:${target}`);
+    await this.deps.events.markProcessed(stored.id, `hold:${next.status}`);
     return 'processed';
   }
 

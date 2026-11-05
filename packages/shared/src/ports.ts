@@ -93,6 +93,8 @@ export interface PaymentsPort {
   handleWebhook(req: {
     rawBody: Uint8Array;
     headers: Record<string, string>;
+    /** The sender's address as the route knows it; feeds the per-source call limit (R9-M02). */
+    source?: string | undefined;
   }): Promise<
     | { kind: 'ok'; auctionId?: AuctionId }
     | { kind: 'duplicate' }
