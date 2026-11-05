@@ -1,0 +1,126 @@
+name: browser-specs
+# Browser specs in CI only (R-QA-031, R-QA-034, R-WEB-124; T-QA-045, T-QA-046, T-WEB-056).
+# - e2e: the five-project matrix from packages/e2e/playwright.config.ts, one job per project.
+# - web-visual: the web app screenshots from packages/web/playwright.config.ts.
+# - baseline-guard: a PR that changes screenshot baselines needs the visual-update label.
+# - workflow_dispatch with update_baselines=true rewrites baselines and uploads them as an artifact
+#   to review and commit in a PR that carries the visual-update label.
+on:
+  workflow_dispatch:
+    inputs:
+      update_baselines:
+        description: 'Rewrite screenshot baselines and upload them as an artifact'
+        type: boolean
+        default: false
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    paths:
+      - 'packages/e2e/specs/**'
+      - 'packages/e2e/__screenshots__/**'
+      - 'packages/e2e/playwright.config.ts'
+      - 'packages/e2e/src/fixtures/**'
+      - 'packages/web/**'
+      - '.github/workflows/browser-specs.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-specs-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  baseline-guard:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Baselines change only with the visual-update label
+        env:
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -E '(^|/)__screenshots__/' || true)"
+          if [ -n "$changed" ] && ! printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'visual-update'; then
+            echo "Baseline files changed without the visual-update label:"
+            echo "$changed"
+            exit 1
+          fi
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit, iphone-14, pixel-7]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Install the browser
+        run: npx playwright install --with-deps "$PW_BROWSER"
+        env:
+          PW_BROWSER: ${{ (matrix.project == 'firefox' && 'firefox') || (contains(fromJSON('["webkit","iphone-14"]'), matrix.project) && 'webkit') || 'chromium' }}
+      - name: Run the specs
+        working-directory: packages/e2e
+        env:
+          UPDATE: ${{ github.event.inputs.update_baselines == 'true' && '--update-snapshots' || '' }}
+          PROJECT: ${{ matrix.project }}
+        run: npx playwright test --project="$PROJECT" $UPDATE
+      - name: Upload the report, traces and failure screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: e2e-report-${{ matrix.project }}
+          path: |
+            packages/e2e/playwright-report
+            packages/e2e/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload updated baselines
+        if: github.event.inputs.update_baselines == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: e2e-baselines-${{ matrix.project }}
+          path: packages/e2e/__screenshots__
+          if-no-files-found: ignore
+          retention-days: 7
+
+  web-visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+      - name: Run the web specs
+        working-directory: packages/web
+        env:
+          UPDATE: ${{ github.event.inputs.update_baselines == 'true' && '--update-snapshots' || '' }}
+        run: npx playwright test $UPDATE
+      - name: Upload failure output
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: web-visual-results
+          path: packages/web/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload updated baselines
+        if: github.event.inputs.update_baselines == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: web-visual-baselines
+          path: packages/web/test/visual/__screenshots__
+          if-no-files-found: ignore
+          retention-days: 7
