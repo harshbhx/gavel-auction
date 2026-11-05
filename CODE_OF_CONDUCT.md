@@ -17,6 +17,6 @@ This applies to issues, pull requests, review comments, discussions and any othe
 
 ## Enforcement
 
-Maintainers may edit or remove comments, close threads, and restrict participation when behaviour breaks this standard. To report a concern, email dhairyapatel0246@gmail.com. Reports are handled privately and the reporter's identity is not shared without consent.
+Maintainers may edit or remove comments, close threads, and restrict participation when behaviour breaks this standard. To report a concern, email bhanushaliharsh434@gmail.com. Reports are handled privately and the reporter's identity is not shared without consent.
 
 Maintainers who are involved in an incident step aside from the decision about it.
