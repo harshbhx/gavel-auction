@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   DuplicateFilter,
@@ -30,6 +31,11 @@ describe('T-VOX-032 duplicates and idempotency key (R-VOX-032)', () => {
     expect(idempotencyKey('room1', 'lot1', 1300, 'two fifty')).not.toBe(a);
     expect(idempotencyKey('room1', 'lot1', 1200, 'two sixty')).not.toBe(a);
     expect(a).toMatch(/^room1:lot1:1200:[0-9a-f]{12}$/);
+  });
+
+  it('uses the documented sha1(text).slice(0,12) digest', () => {
+    const digest = createHash('sha1').update('two fifty', 'utf8').digest('hex').slice(0, 12);
+    expect(idempotencyKey('room1', 'lot1', 1200, 'Two fifty.')).toBe(`room1:lot1:1200:${digest}`);
   });
 });
 
