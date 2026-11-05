@@ -10,6 +10,7 @@ import {
   type AuctionId,
   type AuditPayload,
   type BidMsg,
+  type ConfirmResponseMsg,
   type BidderId,
   type BidId,
   type CancelTimer,
@@ -29,7 +30,28 @@ import {
   type Transport,
 } from '@gavel/shared';
 import { authorize, redactForViewer } from '../auth/authorize';
+import {
+  CONFIRM_TTL_MS,
+  ConfirmBook,
+  confirmAudit,
+  needsConfirm,
+  requestedEvent,
+  type PendingConfirm,
+} from './confirm';
+import {
+  CONFIRM_REASON,
+  endsWithoutBid,
+  resolvedEvent,
+  type ConfirmOutcome,
+} from './confirm-resolve';
 import type { RateLimiter } from '../limits/rate-limiter';
+import {
+  MAX_CONNECTIONS_PER_TOKEN,
+  SUPERSEDED_CODE,
+  SUPERSEDED_REASON,
+  eventFrames,
+  planResync,
+} from './resync';
 import {
   TERMINAL_SETTLEMENT,
   canHammer,
@@ -58,7 +80,7 @@ export interface Connection {
 }
 
 /** The source and audit fields of a bid as the room records them, live and on replay. */
-function bidMeta(conn: Connection, msg: BidMsg): BidMeta {
+function bidMeta(conn: Connection, msg: BidMsg, confirmed = false): BidMeta {
   if (conn.role === 'auctioneer') {
     const meta: BidMeta = {
       source: 'manual',
@@ -70,6 +92,7 @@ function bidMeta(conn: Connection, msg: BidMsg): BidMeta {
   const meta: BidMeta = { source: msg.source === 'voice' ? 'voice' : 'qr' };
   if (msg.transcript !== undefined) meta.transcript = msg.transcript;
   if (meta.source === 'voice' && msg.confidence !== undefined) meta.confidence = msg.confidence;
+  if (confirmed && meta.source === 'voice') meta.confirmed = true;
   return meta;
 }
 
@@ -165,6 +188,8 @@ export class Room {
   /** Set when this host lost the room; the room serves nothing and arms no timer. */
   private stopped = false;
   private cancelTimerRetry: CancelTimer | undefined;
+  /** Voice bids waiting for their bidder's answer; in memory only, the events are the record. */
+  private readonly confirms = new ConfirmBook();
   /** Count of frames dropped because they failed to encode; surfaced for metrics and tests. */
   encodeFailures = 0;
 
@@ -228,11 +253,48 @@ export class Room {
     return this.conns.size;
   }
 
-  attach(conn: Connection): Promise<void> {
+  /**
+   * Add a connection. With `lastSeq`, a client that missed at most 200 events gets those frames
+   * replayed before the snapshot; otherwise it gets the snapshot only (R-RT-057). A token may
+   * hold three connections; the oldest beyond that is closed as superseded (R-RT-058).
+   */
+  attach(conn: Connection, lastSeq?: number): Promise<void> {
     return this.enqueue(async () => {
+      this.supersedeOldest(conn);
       this.conns.set(conn.id, conn);
+      const plan = planResync(lastSeq, this.seq);
+      if (plan.kind === 'replay') {
+        let events: RoomEvent[] = [];
+        try {
+          events = await this.deps.store.readEvents(
+            this.auctionId,
+            plan.from,
+            plan.to - plan.from + 1,
+          );
+        } catch {
+          events = [];
+        }
+        const complete = events.length === plan.to - plan.from + 1;
+        if (complete) {
+          for (const event of events) {
+            for (const frame of eventFrames(event)) this.send(conn, frame);
+          }
+        }
+      }
       this.sendState(conn);
     });
+  }
+
+  private supersedeOldest(next: Connection): void {
+    const mine = [...this.conns.values()].filter(
+      (c) => c.role === next.role && c.sub === next.sub && c.bidderId === next.bidderId,
+    );
+    while (mine.length >= MAX_CONNECTIONS_PER_TOKEN) {
+      const oldest = mine.shift();
+      if (!oldest) break;
+      this.conns.delete(oldest.id);
+      oldest.transport.close(SUPERSEDED_CODE, SUPERSEDED_REASON);
+    }
   }
 
   detach(connId: ConnId): void {
@@ -246,6 +308,7 @@ export class Room {
     this.cancelHammer = undefined;
     this.cancelTimerRetry?.();
     this.cancelTimerRetry = undefined;
+    this.confirms.clear();
     await this.tail;
   }
 
@@ -255,6 +318,7 @@ export class Room {
    */
   stop(): void {
     this.stopped = true;
+    this.confirms.clear();
     this.cancelTimer?.();
     this.cancelTimer = undefined;
     this.cancelHammer?.();
@@ -389,7 +453,12 @@ export class Room {
     return this.enqueue(() => this.handleBid(conn, msg, bidderId));
   }
 
-  private async handleBid(conn: Connection, msg: BidMsg, bidderId: BidderId): Promise<void> {
+  private async handleBid(
+    conn: Connection,
+    msg: BidMsg,
+    bidderId: BidderId,
+    confirmed = false,
+  ): Promise<void> {
     const key = `${bidderId}:${msg.mid}`;
     const prior = this.replies.get(key);
     if (prior) {
@@ -411,6 +480,19 @@ export class Room {
       return;
     }
     const engine = this.requireEngine();
+    if (
+      !confirmed &&
+      conn.role === 'bidder' &&
+      this.config !== undefined &&
+      isCents(msg.amount) &&
+      this.roster.has(bidderId) &&
+      !this.hammered &&
+      engine.view().state === 'OPEN' &&
+      needsConfirm(msg, this.config.confirmConfidenceThreshold)
+    ) {
+      await this.holdForConfirm(msg, bidderId);
+      return;
+    }
     const ts = this.deps.clock.now();
     const seq = this.seq + 1;
 
@@ -419,7 +501,7 @@ export class Room {
     else if (!this.roster.has(bidderId)) code = 'unregistered';
     else {
       try {
-        const res = placeBidOn(engine, bidderId, msg.amount, ts, bidMeta(conn, msg));
+        const res = placeBidOn(engine, bidderId, msg.amount, ts, bidMeta(conn, msg, confirmed));
         if (!res.ok) code = res.code;
       } catch {
         // The engine may be half-mutated: rebuild from the log before the next command (R-RT-033).
@@ -430,7 +512,7 @@ export class Room {
     }
 
     const bidId = this.deps.ids.mint<'BidId'>();
-    const audit = this.buildAudit(bidId, bidderId, msg, conn, code, ts, seq);
+    const audit = this.buildAudit(bidId, bidderId, msg, conn, code, ts, seq, confirmed);
     const event: RoomEvent =
       code === undefined
         ? {
@@ -485,6 +567,187 @@ export class Room {
     this.broadcastAudit(audit, seq, ts);
   }
 
+  /**
+   * Answer to a confirm request (R-RT-046). Accept runs the normal pipeline at the server
+   * time of the answer; reject, or an answer after the deadline, is audited and places no bid.
+   */
+  respondConfirm(conn: Connection, msg: ConfirmResponseMsg): Promise<void> {
+    if (!authorize('confirm_response', conn.role).ok || conn.bidderId === undefined) {
+      this.sendError(conn, 'forbidden');
+      return Promise.resolve();
+    }
+    const bidderId = conn.bidderId;
+    return this.enqueue(async () => {
+      try {
+        await this.ensureClean();
+      } catch {
+        this.sendError(conn, this.storeCode());
+        return;
+      }
+      const held = this.confirms.get(msg.confirmId);
+      if (!held || held.bidderId !== bidderId) {
+        this.sendError(conn, 'not_found');
+        return;
+      }
+      const late = this.deps.clock.now() >= held.expiresAt;
+      const outcome: ConfirmOutcome = late ? 'expired' : msg.accept ? 'accepted' : 'rejected';
+      if (!(await this.resolveConfirm(held, outcome))) {
+        this.sendError(conn, this.storeCode());
+        return;
+      }
+      if (outcome !== 'accepted') return;
+      const bid: BidMsg = {
+        v: 1,
+        t: 'bid',
+        mid: held.mid,
+        amount: held.amount,
+        source: 'voice',
+        ...(held.transcript !== undefined ? { transcript: held.transcript } : {}),
+        ...(held.confidence !== undefined ? { confidence: held.confidence } : {}),
+      };
+      await this.handleBid(conn, bid, bidderId, true);
+    });
+  }
+
+  /** Hold a low-confidence or ambiguous voice bid and ask its bidder; the engine is not touched. */
+  private async holdForConfirm(msg: BidMsg, bidderId: BidderId): Promise<void> {
+    const ts = this.deps.clock.now();
+    const prior = this.confirms.forBidder(bidderId);
+    const held: PendingConfirm = {
+      confirmId: this.deps.ids.mint<'ConfirmId'>(),
+      bidderId,
+      mid: msg.mid,
+      amount: msg.amount as Cents,
+      ...(msg.transcript !== undefined ? { transcript: msg.transcript } : {}),
+      ...(msg.confidence !== undefined ? { confidence: msg.confidence } : {}),
+      expiresAt: (ts + CONFIRM_TTL_MS) as EpochMs,
+    };
+    const events: RoomEvent[] = [];
+    let seq = this.seq;
+    if (prior) {
+      seq += 1;
+      const audit = confirmAudit(
+        prior,
+        this.deps.ids.mint<'BidId'>(),
+        'superseded',
+        CONFIRM_REASON.superseded,
+        ts,
+        seq,
+      );
+      events.push(
+        resolvedEvent({ auctionId: this.auctionId, seq, ts }, prior.confirmId, 'superseded', audit),
+      );
+    }
+    seq += 1;
+    const askAudit = confirmAudit(
+      held,
+      this.deps.ids.mint<'BidId'>(),
+      'rejected',
+      'awaiting confirmation',
+      ts,
+      seq,
+    );
+    events.push(requestedEvent(this.auctionId, held, askAudit, seq, ts));
+    try {
+      await this.deps.store.appendEvents(this.auctionId, this.seq, events);
+    } catch {
+      await this.recover().catch(() => undefined);
+      const conn = [...this.conns.values()].find((c) => c.bidderId === bidderId);
+      if (conn) this.sendError(conn, this.storeCode());
+      return;
+    }
+    this.seq = seq;
+    if (prior) this.confirms.drop(prior.confirmId);
+    this.armConfirmTimer(held);
+    this.confirms.add(held);
+    for (const event of events) this.fanOutConfirm(event, held);
+  }
+
+  private armConfirmTimer(held: PendingConfirm, at: number = held.expiresAt): void {
+    held.cancel = this.deps.clock.setTimer(at, () => {
+      this.enqueue(async () => {
+        if (this.stopped || this.confirms.get(held.confirmId) !== held) return;
+        if (!(await this.resolveConfirm(held, 'expired'))) {
+          // The log is unavailable: keep the held bid and try again shortly.
+          this.armConfirmTimer(held, this.deps.clock.now() + AUTO_HAMMER_RETRY_MS);
+        }
+      }).catch(() => undefined);
+    });
+  }
+
+  /** Write the end of a held bid to the log and tell the room. False when the log refused it. */
+  private async resolveConfirm(held: PendingConfirm, outcome: ConfirmOutcome): Promise<boolean> {
+    const ts = this.deps.clock.now();
+    const seq = this.seq + 1;
+    const audit = confirmAudit(
+      held,
+      this.deps.ids.mint<'BidId'>(),
+      outcome,
+      CONFIRM_REASON[outcome],
+      ts,
+      seq,
+    );
+    const event = resolvedEvent(
+      { auctionId: this.auctionId, seq, ts },
+      held.confirmId,
+      outcome,
+      audit,
+    );
+    try {
+      await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+    } catch {
+      await this.recover().catch(() => undefined);
+      return false;
+    }
+    this.seq = seq;
+    this.confirms.drop(held.confirmId);
+    this.fanOutConfirm(event, held);
+    return true;
+  }
+
+  /**
+   * Send one confirm event's seq to everyone: the request goes to its bidder only, an
+   * unanswered end tells the bidder their bid was not placed, the auctioneer sees the audit row
+   * of a resolution, and every other viewer gets a frame that keeps their seq whole (R-RT-036).
+   */
+  private fanOutConfirm(event: RoomEvent, held: PendingConfirm): void {
+    for (const conn of this.conns.values()) {
+      const own = conn.role === 'bidder' && conn.bidderId === held.bidderId;
+      if (event.type === 'confirm_requested' && own) {
+        this.send(conn, {
+          v: 1,
+          t: 'confirm_request',
+          seq: event.seq,
+          ts: event.ts,
+          confirmId: event.confirmId,
+          amount: event.amount,
+          ...(held.transcript !== undefined ? { transcript: held.transcript } : {}),
+          expiresAt: event.expiresAt,
+        });
+      } else if (event.type === 'confirm_resolved' && own && endsWithoutBid(event.outcome)) {
+        this.send(conn, {
+          v: 1,
+          t: 'bid_rejected',
+          seq: event.seq,
+          ts: event.ts,
+          mid: held.mid,
+          reason: 'unconfirmed',
+          retryable: ERROR_TABLE.unconfirmed.retryable,
+        });
+      } else if (event.type === 'confirm_resolved' && conn.role === 'auctioneer') {
+        this.send(conn, {
+          v: 1,
+          t: 'audit_event',
+          seq: event.seq,
+          ts: event.ts,
+          audit: event.audit,
+        });
+      } else {
+        this.sendSeqFiller(conn, event.seq, event.ts);
+      }
+    }
+  }
+
   private buildAudit(
     bidId: BidId,
     bidderId: BidderId,
@@ -493,6 +756,7 @@ export class Room {
     code: ErrorCode | undefined,
     ts: ReturnType<Clock['now']>,
     seq: number,
+    confirmed = false,
   ): AuditPayload {
     const audit: AuditPayload = {
       bidId,
@@ -503,7 +767,8 @@ export class Room {
       seq,
     };
     if (isCents(msg.amount)) audit.parsedAmount = msg.amount;
-    const meta = bidMeta(conn, msg);
+    const meta = bidMeta(conn, msg, confirmed);
+    if (meta.confirmed) audit.confirmed = true;
     if (meta.transcript !== undefined) audit.transcript = meta.transcript;
     if (meta.confidence !== undefined) audit.confidence = meta.confidence;
     if (code !== undefined) audit.reason = code;
@@ -1173,6 +1438,7 @@ export class Room {
           source: event.audit.source,
           ...(event.audit.transcript !== undefined ? { transcript: event.audit.transcript } : {}),
           ...(event.audit.confidence !== undefined ? { confidence: event.audit.confidence } : {}),
+          ...(event.audit.confirmed === true ? { confirmed: true } : {}),
         });
         this.remember(event);
         break;

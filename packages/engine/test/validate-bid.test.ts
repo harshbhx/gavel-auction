@@ -111,6 +111,7 @@ describe('validateBid', () => {
       { bidderId: 'alice' },
       { lotId: '' },
       { commandId: id('CMD').toLowerCase() },
+      { bidderId: '8ZZZZZZZZZZZZZZZZZZZZZZZZZ' },
     ]) {
       expect(() => validateBid(s, lot, bid(o as Partial<BidInput>))).toThrow(EngineError);
     }
