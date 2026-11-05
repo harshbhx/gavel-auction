@@ -53,6 +53,7 @@ import {
   eventFrames,
   planResync,
 } from './resync';
+import { canPause, isPausedEngine } from './pause';
 import {
   TERMINAL_SETTLEMENT,
   canHammer,
@@ -809,15 +810,16 @@ export class Room {
   }
 
   /**
-   * Auctioneer control command (R-RT-048). Idempotent by `controlId`. Only `hammer`
-   * is wired: pause, resume, extend and open need engine support that does not exist yet (R-RT-049).
+   * Auctioneer control command (R-RT-048). Idempotent by `controlId`. `hammer`, `pause` and
+   * `resume` are wired; extend and open are not (R-RT-049).
    */
   control(conn: Connection, cmd: ControlCommand): Promise<void> {
     if (!authorize('control', conn.role).ok) {
       this.sendError(conn, 'forbidden');
       return Promise.resolve();
     }
-    if (cmd.action !== 'hammer' || cmd.controlId.length === 0) {
+    const pauseAction = cmd.action === 'pause' || cmd.action === 'resume';
+    if ((cmd.action !== 'hammer' && !pauseAction) || cmd.controlId.length === 0) {
       this.sendError(conn, 'bad_message');
       return Promise.resolve();
     }
@@ -826,6 +828,10 @@ export class Room {
         await this.ensureClean();
       } catch {
         this.sendError(conn, this.storeCode());
+        return;
+      }
+      if (pauseAction) {
+        await this.doPauseResume(conn, cmd);
         return;
       }
       if (this.hammered) {
@@ -922,6 +928,75 @@ export class Room {
   private async makeDurable(): Promise<void> {
     const engine = this.engine;
     if (this.deps.durable && engine) await this.deps.durable(this.auctionId, engine);
+  }
+
+  /**
+   * Pause or resume the lot clock (R-RT-049). The control record is the only log entry; a
+   * rebuilt room replays it against the engine. Pause stops the close timer; resume re-arms it
+   * for the shifted `endTs`.
+   */
+  private async doPauseResume(conn: Connection, cmd: ControlCommand): Promise<void> {
+    if (this.controlIds.has(cmd.controlId)) return;
+    const engine = this.requireEngine();
+    if (!canPause(engine)) {
+      this.sendError(conn, 'bad_message');
+      return;
+    }
+    const pausing = cmd.action === 'pause';
+    if (
+      this.hammered ||
+      this.done ||
+      engine.view().state !== 'OPEN' ||
+      engine.isPaused() === pausing
+    ) {
+      this.sendError(conn, 'conflict');
+      return;
+    }
+    const ts = this.deps.clock.now();
+    try {
+      if (pausing) engine.pause(ts);
+      else engine.resume(ts);
+    } catch {
+      this.dirty = true;
+      this.sendError(conn, 'internal');
+      return;
+    }
+    const seq = this.seq + 1;
+    const event: RoomEvent = {
+      type: 'control',
+      auctionId: this.auctionId,
+      seq,
+      ts,
+      controlId: cmd.controlId,
+      action: pausing ? 'pause' : 'resume',
+      by: conn.sub,
+      ...(cmd.args ? { args: cmd.args } : {}),
+      audit: {
+        bidId: this.deps.ids.mint<'BidId'>(),
+        bidderId: this.deps.ids.mint<'BidderId'>(),
+        source: 'manual',
+        outcome: 'accepted',
+        reason: `control:${cmd.action}`,
+        serverTs: ts,
+        seq,
+      },
+    };
+    try {
+      await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+    } catch {
+      await this.recover().catch(() => undefined);
+      this.sendError(conn, this.storeCode());
+      return;
+    }
+    this.seq = seq;
+    this.controlIds.add(cmd.controlId);
+    this.broadcastPrice(seq, ts);
+    this.armTimer();
+    try {
+      await this.makeDurable();
+    } catch {
+      this.sendError(conn, this.storeCode());
+    }
   }
 
   /** Append the hammer (with its control record when the auctioneer asked), broadcast it, then settle. */
@@ -1251,7 +1326,7 @@ export class Room {
       this.armAutoHammer();
       return;
     }
-    if (view.state !== 'OPEN') return;
+    if (view.state !== 'OPEN' || isPausedEngine(this.engine)) return;
     this.cancelTimer = this.deps.clock.setTimer(view.endTs, () => {
       this.enqueue(() => this.onTimer()).catch(() => {
         // A throwing timer body must not become an unhandled rejection; rebuild on the next
@@ -1463,6 +1538,13 @@ export class Room {
       case 'control':
         this.controlIds.add(event.controlId);
         if (event.controlId === abortControlId(this.auctionId)) this.abortPending = true;
+        if (event.action === 'pause' || event.action === 'resume') {
+          const engine = this.requireEngine();
+          if (canPause(engine)) {
+            if (event.action === 'pause') engine.pause(event.ts);
+            else engine.resume(event.ts);
+          }
+        }
         break;
       case 'ceiling_revoked':
         if (this.roster.has(event.bidderId)) {
