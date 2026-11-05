@@ -25,13 +25,23 @@ async function runQuiet(argv: string[]): Promise<{ code: number; out: string }> 
 const S01 = fileURLToPath(new URL('../scenarios/S01-happy-path.yaml', import.meta.url));
 
 describe('in-process scenario runner (T-QA-027)', () => {
-  it('runs S01 without a browser in under 2 s and holds I1 to I5', { timeout: 15_000 }, async () => {
-    const result = await runScenarioInProc(loadScenarioFile(S01));
-    expect(result.failures).toEqual([]);
-    expect(result.outcome.winner).toBe('ana');
-    expect(result.outcome.invariants).toEqual({ I1: true, I2: true, I3: true, I4: true, I5: true });
-    expect(result.trace[0]?.kind).toBe('start');
-  });
+  it(
+    'runs S01 without a browser in under 2 s and holds I1 to I5',
+    { timeout: 15_000 },
+    async () => {
+      const result = await runScenarioInProc(loadScenarioFile(S01));
+      expect(result.failures).toEqual([]);
+      expect(result.outcome.winner).toBe('ana');
+      expect(result.outcome.invariants).toEqual({
+        I1: true,
+        I2: true,
+        I3: true,
+        I4: true,
+        I5: true,
+      });
+      expect(result.trace[0]?.kind).toBe('start');
+    },
+  );
 
   it('records the seed override in the trace header', async () => {
     const result = await runScenarioInProc(loadScenarioFile(S01), { seed: 77 });
