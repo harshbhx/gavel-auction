@@ -17,8 +17,8 @@ export const ENV_NAMES = [
   'DEEPGRAM_API_KEY',
   'GROQ_API_KEY',
   'LLM_API_KEY',
-  'ADMIN_TOKEN',
-  'AUCTIONEER_TOKEN_SECRET',
+  'ADMIN_KEY',
+  'TOKEN_SECRET',
   'DATABASE_URL',
 ];
 const ENV_WITH_VALUE = new RegExp(

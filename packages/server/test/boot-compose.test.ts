@@ -110,6 +110,19 @@ describe('server entry point (INT-R3-17)', () => {
     expect(await pending).toBe('finished');
   });
 
+  it('refuses a second host on the same data directory (R6-A04)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gavel-lock-'));
+    dirs.push(dir);
+    const env = { STORE: 'file', DATA_DIR: dir };
+    const first = await boot(env);
+    await expect(composeServer({ ...base, ...env }, { sink: () => undefined })).rejects.toThrow(
+      /in use by process/,
+    );
+    await first.app.close();
+    running.splice(0);
+    await boot(env);
+  });
+
   it('refuses to boot with an unavailable store', async () => {
     await expect(
       composeServer({ ...base, STORE: 'd1' }, { sink: () => undefined }),

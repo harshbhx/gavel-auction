@@ -1,0 +1,62 @@
+{
+  "create_time": "2026-11-05T01:20:41.721Z",
+  "event_type": "PAYMENT.CAPTURE.COMPLETED",
+  "event_version": "1.0",
+  "id": "WH-28A37173TF0216912-5EN36625LL8462802",
+  "links": [
+    {
+      "href": "https://api.sandbox.paypal.com/v1/notifications/webhooks-events/WH-28A37173TF0216912-5EN36625LL8462802",
+      "method": "GET",
+      "rel": "self"
+    },
+    {
+      "href": "https://api.sandbox.paypal.com/v1/notifications/webhooks-events/WH-28A37173TF0216912-5EN36625LL8462802/resend",
+      "method": "POST",
+      "rel": "resend"
+    }
+  ],
+  "resource": {
+    "amount": { "currency_code": "USD", "value": "1.00" },
+    "create_time": "2026-11-05T01:20:36Z",
+    "custom_id": "g4e-261105T012008Z-capture",
+    "disbursement_mode": "INSTANT",
+    "final_capture": true,
+    "id": "4JC955484P308134J",
+    "invoice_id": "g4e-261105T012008Z-capture",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/captures/4JC955484P308134J",
+        "method": "GET",
+        "rel": "self"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/captures/4JC955484P308134J/refund",
+        "method": "POST",
+        "rel": "refund"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/4TS73097U76285740",
+        "method": "GET",
+        "rel": "up"
+      }
+    ],
+    "payee": { "email_address": "[REDACTED]", "merchant_id": "[REDACTED]" },
+    "seller_protection": {
+      "dispute_categories": ["ITEM_NOT_RECEIVED", "UNAUTHORIZED_TRANSACTION"],
+      "status": "ELIGIBLE"
+    },
+    "seller_receivable_breakdown": {
+      "gross_amount": { "currency_code": "USD", "value": "1.00" },
+      "net_amount": { "currency_code": "USD", "value": "0.48" },
+      "paypal_fee": { "currency_code": "USD", "value": "0.52" }
+    },
+    "status": "COMPLETED",
+    "supplementary_data": {
+      "related_ids": { "authorization_id": "4TS73097U76285740", "order_id": "1KP59548VV623623B" }
+    },
+    "update_time": "2026-11-05T01:20:36Z"
+  },
+  "resource_type": "capture",
+  "resource_version": "2.0",
+  "summary": "Payment completed for $ 1.0 USD"
+}
