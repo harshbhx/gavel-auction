@@ -572,7 +572,8 @@ class Service implements AuctionService, SettlePort {
   }
 
   async acceptsHolds(auctionId: AuctionId): Promise<boolean> {
-    if (hammeredEngine(await this.room(auctionId, { settlement: true })) !== undefined) return false;
+    if (hammeredEngine(await this.room(auctionId, { settlement: true })) !== undefined)
+      return false;
     return (await this.deps.journals.load(lotIdOf(auctionId))) === null;
   }
 
@@ -608,7 +609,11 @@ class Service implements AuctionService, SettlePort {
     const released = await runVoidPhase(this.voidDeps({ releaseAllReviewHolds: true }), lotId);
     if (released.status === 'busy') return 'busy';
     await this.markReleasedHolds(released.journal);
-    await this.finishBridge(await this.room(auctionId, { settlement: true }), auctionId, released.journal);
+    await this.finishBridge(
+      await this.room(auctionId, { settlement: true }),
+      auctionId,
+      released.journal,
+    );
     return 'released';
   }
 
