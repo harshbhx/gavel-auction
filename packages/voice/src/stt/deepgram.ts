@@ -40,6 +40,8 @@ export interface DeepgramSttOptions {
   scheduler?: SttScheduler;
 }
 
+const DEFAULT_START: { keyterms: string[]; language: 'en' } = { keyterms: [], language: 'en' };
+
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
 }
@@ -131,6 +133,7 @@ export class DeepgramStt implements InstrumentedSttProvider {
   private cancelKeepAlive: (() => void) | null = null;
   private serverClosed: (() => void) | null = null;
   protected openError: SttEvent | null = null;
+  protected startOpts: { keyterms: string[]; language: 'en' } = DEFAULT_START;
 
   constructor(opts: DeepgramSttOptions) {
     this.opts = opts;
@@ -138,9 +141,10 @@ export class DeepgramStt implements InstrumentedSttProvider {
     this.scheduler = opts.scheduler ?? realSttScheduler;
   }
 
-  async start(): Promise<void> {
+  async start(opts: { keyterms: string[]; language: 'en' } = DEFAULT_START): Promise<void> {
     if (this.started || this.ended) return;
     this.started = true;
+    this.startOpts = opts;
     this.emit({ type: 'state', state: 'connecting' });
     const ok = await this.connect();
     if (ok) return;
@@ -149,7 +153,11 @@ export class DeepgramStt implements InstrumentedSttProvider {
 
   write(batch: AudioBatch): void {
     const ws = this.ws;
-    if (!this.live || !ws) return;
+    if (!this.live || !ws) {
+      // Audio during connecting or a reconnect outage is lost, and the loss is counted.
+      if (this.started && !this.ended) this.stats.addDropped();
+      return;
+    }
     try {
       this.stats.addBytes(batch.pcm.byteLength);
       if ((batch.flags & FLAG_KEEPALIVE) !== 0) return;
@@ -172,10 +180,11 @@ export class DeepgramStt implements InstrumentedSttProvider {
   async stop(): Promise<void> {
     if (this.ended) return;
     this.ended = true;
+    const wasLive = this.live;
     this.live = false;
     this.stopKeepAlive();
     const ws = this.ws;
-    if (ws) {
+    if (ws && wasLive) {
       await new Promise<void>((resolve) => {
         const cancel = this.scheduler.after(resolve, this.config.closeWaitMs);
         this.serverClosed = () => {
@@ -189,6 +198,8 @@ export class DeepgramStt implements InstrumentedSttProvider {
         }
       });
       this.serverClosed = null;
+    }
+    if (ws) {
       this.detach(ws);
       try {
         ws.close();
@@ -198,6 +209,10 @@ export class DeepgramStt implements InstrumentedSttProvider {
     }
     this.emit({ type: 'state', state: 'closed' });
     this.channel.close();
+  }
+
+  protected get isEnded(): boolean {
+    return this.ended;
   }
 
   /** Subclass hook: extra query pairs for the handshake, such as keyterms. */
