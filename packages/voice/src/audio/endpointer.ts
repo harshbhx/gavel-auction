@@ -11,9 +11,14 @@ const INITIAL_FLOOR_DB = -60;
 const MAX_FLOOR_DB = -45;
 const FLOOR_RISE = 0.02;
 const FLOOR_FALL = 0.5;
+/** Per-window rise while in speech; fast enough to leave steady noise within a few seconds. */
+const FLOOR_RISE_IN_SPEECH = 0.3;
 const HANGOVER_MS = 600;
 const MAX_CHUNK_MS = 8000;
-const MIN_CHUNK_MS = 400;
+/** Spoken yes/no answers are 200-350 ms of speech, so the minimum stays below that (R8-V06). */
+const MIN_CHUNK_MS = 150;
+/** While in speech the floor follows the quietest frame of each window of this many frames. */
+const SPEECH_FLOOR_WINDOW_FRAMES = 50;
 const PREROLL_MS = 200;
 
 const HANGOVER_SAMPLES = (SAMPLE_RATE * HANGOVER_MS) / 1000;
@@ -45,6 +50,14 @@ export class Endpointer {
   private activeSpeechLen = 0;
   private inSpeech = false;
   private silenceCount = 0;
+  private windowMinDb = Infinity;
+  private windowFrames = 0;
+  private discarded = 0;
+
+  /** Speech segments dropped for being shorter than the minimum chunk. */
+  get discardedChunks(): number {
+    return this.discarded;
+  }
 
   push(batch: AudioBatch): Chunk[] {
     const chunks: Chunk[] = [];
@@ -58,6 +71,7 @@ export class Endpointer {
       const threshold = Math.max(MIN_THRESHOLD_DB, this.noiseFloorDb + THRESHOLD_DB_ABOVE_FLOOR);
       const isSpeech = db > threshold;
       if (!isSpeech && !this.inSpeech) this.updateNoiseFloor(db);
+      if (this.inSpeech) this.trackSpeechFloor(db);
 
       if (!this.inSpeech) {
         this.preroll.push(frame);
@@ -99,6 +113,8 @@ export class Endpointer {
           const speechOnly = this.activeSpeechLen - this.silenceCount;
           if (speechOnly >= MIN_CHUNK_SAMPLES) {
             chunks.push({ pcm: this.concat(this.speech, this.speechLen) });
+          } else {
+            this.discarded += 1;
           }
           this.speech = [];
           this.speechLen = 0;
@@ -122,6 +138,8 @@ export class Endpointer {
       const speechOnly = this.activeSpeechLen - this.silenceCount;
       if (speechOnly >= MIN_CHUNK_SAMPLES) {
         chunks.push({ pcm: this.concat(this.speech, this.speechLen) });
+      } else {
+        this.discarded += 1;
       }
     }
     this.speech = [];
@@ -132,6 +150,24 @@ export class Endpointer {
     this.preroll = [];
     this.prerollLen = 0;
     return chunks;
+  }
+
+  /**
+   * Steady room noise that starts after a quiet period would otherwise hold the endpointer in
+   * speech forever, because the floor only moved outside speech (R8-V02). Real speech dips between
+   * words, so the quietest frame of each window is a safe estimate of the background level.
+   */
+  private trackSpeechFloor(frameDb: number): void {
+    this.windowMinDb = Math.min(this.windowMinDb, frameDb);
+    this.windowFrames += 1;
+    if (this.windowFrames < SPEECH_FLOOR_WINDOW_FRAMES) return;
+    if (this.windowMinDb > this.noiseFloorDb) {
+      const next =
+        this.noiseFloorDb + FLOOR_RISE_IN_SPEECH * (this.windowMinDb - this.noiseFloorDb);
+      this.noiseFloorDb = Math.min(MAX_FLOOR_DB, next);
+    }
+    this.windowMinDb = Infinity;
+    this.windowFrames = 0;
   }
 
   /** Fast to follow a quieter room, slow to follow a louder one; clamped. */

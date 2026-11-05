@@ -2,11 +2,23 @@ import { describe, expect, it } from 'vitest';
 
 // T-QA-075 (SEC-09) and T-QA-076 (SEC-10). These run against a server given by
 // GAVEL_STAGING_URL (for example the in-process server on a local port, or the deployed
-// staging site). Without it the suite is skipped.
+// staging site). Without it the suite is skipped, unless GAVEL_REQUIRE_STAGING=1 is set (a
+// pipeline that has a target must set it), in which case a missing URL fails the run instead of
+// passing with zero assertions. The in-process server emits none of these headers yet, so the
+// suite cannot run against it; the hosted site is the target.
 
 const base = process.env['GAVEL_STAGING_URL'];
 const EVIL = 'https://evil.example';
 const AUCTIONEER_PATH = process.env['GAVEL_AUCTIONEER_PATH'] ?? '/auctioneer';
+
+describe('staging target', () => {
+  it.skipIf(process.env['GAVEL_REQUIRE_STAGING'] !== '1')(
+    'is configured when the pipeline requires it',
+    () => {
+      expect(base).toBeTruthy();
+    },
+  );
+});
 
 describe.skipIf(base === undefined)('security headers (T-QA-076)', () => {
   it('sets the baseline headers on /', async () => {
