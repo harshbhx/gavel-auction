@@ -300,7 +300,9 @@ describe('verifyWebhook prechecks and call limit', () => {
       'PAYPAL-TRANSMISSION-TIME': new Date(NOW).toISOString(),
       'PAYPAL-CERT-URL': realCert,
     };
-    expect(await v.verifyWebhook(body, { ...headers, 'PAYPAL-TRANSMISSION-ID': 'tx-real' })).toEqual({
+    expect(
+      await v.verifyWebhook(body, { ...headers, 'PAYPAL-TRANSMISSION-ID': 'tx-real' }),
+    ).toEqual({
       ok: true,
     });
     const used = calls;
@@ -334,11 +336,14 @@ describe('verifyWebhook prechecks and call limit', () => {
     });
     const headers = { ...good, 'PAYPAL-TRANSMISSION-TIME': new Date(NOW).toISOString() };
     expect(await v.verifyWebhook(body, headers)).toEqual({ ok: true });
-    for (let i = 0; i < 10; i += 1) expect(await v.verifyWebhook(body, headers)).toEqual({ ok: true });
+    for (let i = 0; i < 10; i += 1)
+      expect(await v.verifyWebhook(body, headers)).toEqual({ ok: true });
     expect(calls).toBe(1);
     // The same transmission id with another body is a different delivery: PayPal is asked.
     const other = body.replace('WH-', 'XX-');
-    expect(await v.verifyWebhook(other === body ? `${body} ` : other, headers)).toEqual({ ok: true });
+    expect(await v.verifyWebhook(other === body ? `${body} ` : other, headers)).toEqual({
+      ok: true,
+    });
     expect(calls).toBe(2);
   });
 

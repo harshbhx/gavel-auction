@@ -86,7 +86,10 @@ describe('R8-P03 a webhook never makes a pending hold HELD without its authoriza
         const out = await r.base.authorizeOrder(id, req);
         const rec = await r.holds.get(holdId);
         if (rec === null) throw new Error('record');
-        webhook = observeHold(r.observe, rec, { kind: 'authorization_created', authId: out.authId });
+        webhook = observeHold(r.observe, rec, {
+          kind: 'authorization_created',
+          authId: out.authId,
+        });
         return out;
       },
     });
@@ -136,11 +139,10 @@ describe('R8-P04 hold writes do not erase each other', () => {
       },
     });
     r.core.authorizeOrder(orderId, 'x');
-    const webhook = observeHold(
-      { ...r.observe, gateway: slow.gateway },
-      stale,
-      { kind: 'authorization_created', authId: r.core.getOrder(orderId).authId ?? '' },
-    );
+    const webhook = observeHold({ ...r.observe, gateway: slow.gateway }, stale, {
+      kind: 'authorization_created',
+      authId: r.core.getOrder(orderId).authId ?? '',
+    });
     const approval = r.service.completeApproval({ holdId, orderId });
     release();
     await Promise.all([webhook, approval]);

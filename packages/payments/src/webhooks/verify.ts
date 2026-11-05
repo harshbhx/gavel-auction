@@ -184,8 +184,7 @@ export class WebhookVerifier {
     this.maxSkewMs = opts.maxSkewMs ?? 10 * 60_000;
     this.maxCalls = opts.maxCallsPerWindow ?? (this.fake ? Number.POSITIVE_INFINITY : 120);
     this.windowMs = opts.windowMs ?? 60_000;
-    this.maxCallsPerSource =
-      opts.maxCallsPerSource ?? Math.max(1, Math.ceil(this.maxCalls / 4));
+    this.maxCallsPerSource = opts.maxCallsPerSource ?? Math.max(1, Math.ceil(this.maxCalls / 4));
   }
 
   /** Checks that need no call to PayPal. */
@@ -223,7 +222,12 @@ export class WebhookVerifier {
 
   private fingerprint(
     rawEvent: string,
-    t: { certUrl: string; transmissionId: string; transmissionSig: string; transmissionTime: string },
+    t: {
+      certUrl: string;
+      transmissionId: string;
+      transmissionSig: string;
+      transmissionTime: string;
+    },
   ): string {
     return createHash('sha256')
       .update(JSON.stringify([t.transmissionId, t.transmissionSig, t.transmissionTime, t.certUrl]))

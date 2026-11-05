@@ -206,9 +206,11 @@ export class HoldService {
   completeApproval(i: CompleteApprovalInput): Promise<ApprovedHold> {
     const running = this.inflight.get(i.holdId);
     if (running !== undefined) return running;
-    const p = this.queue.run(i.holdId, () => this.complete(i.holdId, i.orderId)).finally(() => {
-      if (this.inflight.get(i.holdId) === p) this.inflight.delete(i.holdId);
-    });
+    const p = this.queue
+      .run(i.holdId, () => this.complete(i.holdId, i.orderId))
+      .finally(() => {
+        if (this.inflight.get(i.holdId) === p) this.inflight.delete(i.holdId);
+      });
     this.inflight.set(i.holdId, p);
     return p;
   }

@@ -171,7 +171,9 @@ describe('FakeGateway implements the PaymentsGateway port', () => {
       gw.capture(authId, { amountCents: 700, finalCapture: true, invoiceId: 'i', requestId: 'c' }),
     );
     expect(err).toMatchObject({ kind: 'network', outcome: 'unknown', status: 0 });
-    expect((await gw.getHoldTruth({ holdId: 'h1', authId, orderId: 'o1' })).capturedCents).toBe(700);
+    expect((await gw.getHoldTruth({ holdId: 'h1', authId, orderId: 'o1' })).capturedCents).toBe(
+      700,
+    );
   });
 
   it('http_500 is a server_error with unknown outcome and nothing applied', async () => {

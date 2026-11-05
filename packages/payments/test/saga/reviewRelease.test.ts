@@ -5,7 +5,7 @@ import { CEILINGS, makeRig, seed } from './rig.js';
 
 describe('R8-P06 a settlement that fails review releases the holds that are not in doubt', () => {
   it('after an unknown capture past the deadline the losers are voided and the winner is not', async () => {
-    const rig = makeRig(CEILINGS, { unknownDeadlineMs: 600_000 });
+    const rig = makeRig(CEILINGS);
     await seed(rig);
     rig.core.inject('capture', 'timeout_before', rig.auth['b1'] ?? '', 10);
     expect((await runSettlement(rig.deps, 'auc1')).status).toBe('pending');
@@ -24,7 +24,7 @@ describe('R8-P06 a settlement that fails review releases the holds that are not 
   });
 
   it('a later run does not void twice and keeps the review state', async () => {
-    const rig = makeRig(CEILINGS, { unknownDeadlineMs: 600_000 });
+    const rig = makeRig(CEILINGS);
     await seed(rig);
     rig.core.inject('capture', 'timeout_before', rig.auth['b1'] ?? '', 10);
     await runSettlement(rig.deps, 'auc1');
@@ -37,7 +37,7 @@ describe('R8-P06 a settlement that fails review releases the holds that are not 
   });
 
   it('a hold that is already captured is not voided', async () => {
-    const rig = makeRig(CEILINGS, { unknownDeadlineMs: 600_000 });
+    const rig = makeRig(CEILINGS);
     await seed(rig);
     rig.core.inject('capture', 'timeout_before', rig.auth['b1'] ?? '', 10);
     await runSettlement(rig.deps, 'auc1');
