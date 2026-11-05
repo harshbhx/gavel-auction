@@ -231,11 +231,11 @@ describe('PayPalV6Adapter request timeouts (R-WEB-045)', () => {
   it('reports hold_timeout when the hold request stalls after approval', async () => {
     const { sdk } = stubSdk((cb) => cb.onApprove({ orderId: 'ord-1' }));
     const fetch: FetchLike = (url) =>
-      url.endsWith('/orders')
+      url.endsWith('/api/holds')
         ? Promise.resolve({
             ok: true,
             status: 200,
-            json: () => Promise.resolve({ orderId: 'ord-1' }),
+            json: () => Promise.resolve({ holdId: 'hold-ABC123', orderId: 'ord-1' }),
           })
         : new Promise(() => {});
     const adapter = new PayPalV6Adapter({
