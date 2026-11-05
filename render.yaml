@@ -12,6 +12,8 @@ services:
     buildCommand: npm ci --include=dev
     startCommand: npm start -w @gavel/server
     healthCheckPath: /healthz
+    # Deploys come from .github/workflows/deploy-staging.yml through the deploy hook, not from pushes.
+    autoDeploy: false
     disk:
       name: gavel-data
       mountPath: /var/data
@@ -27,8 +29,13 @@ services:
         value: /var/data
       - key: PAYMENTS
         value: sandbox
+      - key: PAYPAL_ENV
+        value: sandbox
       # The public https URL of this service; set it in the dashboard after the first deploy.
       - key: PUBLIC_URL
+        sync: false
+      # Comma separated origins of the hosted web app, for example the Pages URL.
+      - key: CORS_ORIGINS
         sync: false
       - key: TOKEN_SECRET
         sync: false

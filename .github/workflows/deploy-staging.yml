@@ -1,0 +1,71 @@
+name: deploy-staging
+# Deploys the API and WebSocket host to Render and then runs scripts/smoke.sh against it.
+# Needs: environment `staging` with secrets RENDER_DEPLOY_HOOK_URL (the service's deploy hook)
+# and optional ADMIN_KEY (lets the smoke create an auction), plus variable STAGING_URL
+# (the public https URL of the Render service). Without them the job ends green with a notice.
+# Steps are in docs/DEPLOY.md. Values reach steps only through env and are never echoed.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/server/**'
+      - 'packages/shared/**'
+      - 'packages/engine/**'
+      - 'packages/payments/**'
+      - 'render.yaml'
+      - 'scripts/smoke.sh'
+      - '.github/workflows/deploy-staging.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    if: ${{ github.ref == 'refs/heads/main' && github.repository == 'harshbhx/gavel-auction' }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check configuration
+        id: cfg
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          STAGING_URL: ${{ vars.STAGING_URL }}
+        run: |
+          missing=""
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then missing="$missing secret:RENDER_DEPLOY_HOOK_URL"; fi
+          if [ -z "$STAGING_URL" ]; then missing="$missing variable:STAGING_URL"; fi
+          if [ -n "$missing" ]; then
+            echo "::notice title=Deploy skipped::Not configured, add to environment staging:$missing (see docs/DEPLOY.md)"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Trigger the Render deploy
+        if: steps.cfg.outputs.ready == 'true'
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X POST "$RENDER_DEPLOY_HOOK_URL" || true)"
+          case "$code" in
+            2??) echo "Render accepted the deploy ($code)" ;;
+            *) echo "::error title=Deploy hook::Render answered $code"; exit 1 ;;
+          esac
+      - name: Smoke
+        if: steps.cfg.outputs.ready == 'true'
+        env:
+          STAGING_URL: ${{ vars.STAGING_URL }}
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          SMOKE_RETRIES: '60'
+        run: |
+          # The old instance can answer before the new build is live, so give the deploy time first.
+          sleep 60
+          scripts/smoke.sh "$STAGING_URL"
