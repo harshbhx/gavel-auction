@@ -32,7 +32,13 @@ const config = {
   confirmConfidenceThreshold: 0.85,
 };
 
-function setup(): { app: HttpApp; rooms: Map<string, Promise<Room>>; ids: SeqIds } {
+function setup(): {
+  app: HttpApp;
+  rooms: Map<string, Promise<Room>>;
+  ids: SeqIds;
+  clock: ManualClock;
+  roomDeps: (id: AuctionId) => RoomDeps;
+} {
   const clock = new ManualClock(START);
   const ids = new SeqIds();
   const store = new MemoryStore(() => clock.now());
@@ -60,7 +66,13 @@ function setup(): { app: HttpApp; rooms: Map<string, Promise<Room>>; ids: SeqIds
     publicUrl: 'https://gavel.example.test',
     corsOrigins: [],
   };
-  return { app: createHttpApp(deps, [mountAuctions, mountInvites, mountControl]), rooms, ids };
+  return {
+    app: createHttpApp(deps, [mountAuctions, mountInvites, mountControl]),
+    rooms,
+    ids,
+    clock,
+    roomDeps,
+  };
 }
 
 const tokenOf = (link: string): string => link.split('#token=')[1] ?? '';
@@ -75,7 +87,7 @@ const post = (app: HttpApp, path: string, headers: Record<string, string>, body:
   );
 
 async function seeded() {
-  const { app, rooms, ids } = setup();
+  const { app, rooms, ids, clock, roomDeps } = setup();
   const res = await post(app, '/api/auctions', { 'x-admin-key': ADMIN }, { config });
   const b = (await res.json()) as { auctionId: string; auctioneerLink: string; screenLink: string };
   const auth = { authorization: `Bearer ${tokenOf(b.auctioneerLink)}` };
@@ -94,7 +106,16 @@ async function seeded() {
     sub: 'screen-sub',
     transport: screen,
   });
-  return { app, id: b.auctionId, auth, session, screen };
+  return {
+    app,
+    id: b.auctionId,
+    auth,
+    session,
+    screen,
+    room,
+    clock,
+    rebuild: () => Room.load(b.auctionId as AuctionId, roomDeps(b.auctionId as AuctionId)),
+  };
 }
 
 describe('control over HTTP (T-RT-078)', () => {
@@ -124,9 +145,60 @@ describe('control over HTTP (T-RT-078)', () => {
     expect((await post(s.app, path, {}, body)).status).toBe(401);
     expect((await post(s.app, path, s.auth, { controlId: '', action: 'hammer' })).status).toBe(400);
     expect((await post(s.app, path, s.auth, { controlId: 'c', action: 'boom' })).status).toBe(400);
-    expect((await post(s.app, path, s.auth, { controlId: 'c3', action: 'pause' })).status).toBe(
+    expect((await post(s.app, path, s.auth, { controlId: 'c3', action: 'extend' })).status).toBe(
       400,
     );
     expect(s.screen.messages('hammer')).toHaveLength(0);
+  });
+});
+
+describe('clock controls over HTTP (R-RT-048, R-RT-049)', () => {
+  it('pauses, resumes and extends the lot, idempotent by controlId', async () => {
+    const s = await seeded();
+    const path = `/api/auctions/${s.id}/control`;
+    const endTs = (): number => s.room.activeEngine?.view().endTs ?? 0;
+    const before = endTs();
+
+    expect((await post(s.app, path, s.auth, { controlId: 'o1', action: 'open' })).status).toBe(200);
+
+    const pause = { controlId: 'p1', action: 'pause' };
+    expect((await post(s.app, path, s.auth, pause)).status).toBe(200);
+    expect((await post(s.app, path, s.auth, pause)).status).toBe(200);
+    // A second pause with a new id is refused: the clock is already frozen.
+    expect((await post(s.app, path, s.auth, { controlId: 'p2', action: 'pause' })).status).toBe(
+      409,
+    );
+
+    s.clock.advance(60_000);
+    const resume = { controlId: 'r1', action: 'resume' };
+    expect((await post(s.app, path, s.auth, resume)).status).toBe(200);
+    expect((await post(s.app, path, s.auth, resume)).status).toBe(200);
+    expect(endTs()).toBe(before + 60_000);
+
+    const extend = { controlId: 'e1', action: 'extend', args: { extraMs: 30_000 } };
+    expect((await post(s.app, path, s.auth, extend)).status).toBe(200);
+    expect((await post(s.app, path, s.auth, extend)).status).toBe(200);
+    expect(endTs()).toBe(before + 90_000);
+  });
+
+  it('refuses a bidder token and a bad extend', async () => {
+    const s = await seeded();
+    const path = `/api/auctions/${s.id}/control`;
+    const bearer = { authorization: `Bearer ${s.session}` };
+    for (const action of ['open', 'pause', 'resume', 'extend']) {
+      const body = { controlId: `x-${action}`, action, args: { extraMs: 1000 } };
+      expect((await post(s.app, path, bearer, body)).status).toBe(403);
+    }
+    const bad = { controlId: 'e2', action: 'extend', args: { extraMs: 0 } };
+    expect((await post(s.app, path, s.auth, bad)).status).toBe(400);
+  });
+
+  it('keeps a pause across a room rebuild from the log', async () => {
+    const s = await seeded();
+    const path = `/api/auctions/${s.id}/control`;
+    await post(s.app, path, s.auth, { controlId: 'p1', action: 'pause' });
+    const rebuilt = await s.rebuild();
+    const engine = rebuilt.activeEngine as LedgerEngine | undefined;
+    expect(engine?.paused).toBe(true);
   });
 });
