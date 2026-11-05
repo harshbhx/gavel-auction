@@ -58,24 +58,16 @@ describe('QuickBid and CustomBid (T-WEB-033)', () => {
   });
 });
 
+const closedRejection = { reason: 'closed' };
+
 describe('Rejection and StateBanner (T-WEB-035)', () => {
   it('clears on a price change', () => {
     const { rerender } = render(
-      <Rejection
-        rejection={{ reason: 'closed' }}
-        priceCents={5000}
-        maxCents={null}
-        minCents={5500}
-      />,
+      <Rejection rejection={closedRejection} priceCents={5000} maxCents={null} minCents={5500} />,
     );
     expect(screen.getByRole('alert').textContent).toBe(t('bid.rej.closed'));
     rerender(
-      <Rejection
-        rejection={{ reason: 'closed' }}
-        priceCents={5500}
-        maxCents={null}
-        minCents={6000}
-      />,
+      <Rejection rejection={closedRejection} priceCents={5500} maxCents={null} minCents={6000} />,
     );
     expect(screen.queryByRole('alert')).toBeNull();
   });

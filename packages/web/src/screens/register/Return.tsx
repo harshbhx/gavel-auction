@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 
-import type { PayPalV6Adapter } from '../../payments/paypalV6Adapter';
 import type { ApprovalResult, ApprovalState } from '../../payments/port';
 import { completeApprovalReturn } from '../../payments/useApproval';
 import { Approve } from './Approve';
 
 export interface ReturnProps {
-  adapter: Pick<PayPalV6Adapter, 'completeRedirect'>;
+  adapter: Parameters<typeof completeApprovalReturn>[0];
   roomId: string;
   bidderId: string;
   /** The order token PayPal put on the return URL; empty when it is missing. */
