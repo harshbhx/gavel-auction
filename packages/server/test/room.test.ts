@@ -21,6 +21,7 @@ import { describe, expect, it } from 'vitest';
 import { RateLimiter } from '../src/limits/rate-limiter';
 import { MemoryTransport } from '../src/room/memory-transport';
 import { Room, type Connection, type RoomDeps } from '../src/room/room';
+import { LedgerEngine } from '../src/runtime/ledger-engine';
 import { MemoryStore } from '../src/store/memory-store';
 
 const START = 1_789_000_000_000;
@@ -115,18 +116,19 @@ class FlakyStore extends MemoryStore {
   }
 }
 
-const setup = async (opts: { store?: MemoryStore; limiter?: boolean } = {}) => {
+const setup = async (opts: { store?: MemoryStore; limiter?: boolean; real?: boolean } = {}) => {
   const clock = new ManualClock(START);
   const ids = new SeqIds();
   const store = opts.store ?? new MemoryStore(() => clock.now());
+  const auctionId = ids.mint<'AuctionId'>();
   const deps: RoomDeps = {
     store,
     clock,
     ids,
-    engine: (cfg) => new TestEngine(cfg),
+    engine: (cfg, createdAt) =>
+      opts.real ? new LedgerEngine(auctionId, cfg, createdAt) : new TestEngine(cfg),
     ...(opts.limiter ? { limiter: new RateLimiter(clock) } : {}),
   };
-  const auctionId = ids.mint<'AuctionId'>();
   const room = await Room.create(auctionId, config, 'auctioneer-sub', deps);
   const b1 = ids.mint<'BidderId'>();
   const b2 = ids.mint<'BidderId'>();
@@ -637,5 +639,37 @@ describe('red-team round 4 (RT-01)', () => {
     await t.connect('screen');
     const types = (await t.store.readEvents(t.auctionId, 1, 1000)).map((e) => e.type);
     expect(types).not.toContain('state_changed');
+  });
+});
+
+describe('real engine behind the room (R-RT-041, R-RT-042, R-RT-061)', () => {
+  it('a bid inside the soft-close window extends endTs and the room keeps accepting bids', async () => {
+    const t = await setup({ real: true });
+    const c1 = await t.connect('bidder', t.b1);
+    const c2 = await t.connect('bidder', t.b2);
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    t.clock.set(config.endTs - 10_000);
+    await t.room.submitBid(c2.conn, t.bid(10500));
+    const prices = c2.transport.messages('price');
+    expect(prices.at(-1)?.endTs as number).toBeGreaterThan(config.endTs);
+    t.clock.set(config.endTs + 1);
+    await t.room.close();
+    await t.room.submitBid(c1.conn, t.bid(11000));
+    expect(c1.transport.messages('bid_accepted')).toHaveLength(2);
+    expect(c1.transport.messages('state').at(-1)?.snapshot).not.toMatchObject({
+      status: 'CLOSING',
+    });
+  });
+
+  it('shows NONE in the roster for a bidder whose ceiling was revoked (R-RT-061)', async () => {
+    const t = await setup({ real: true });
+    expect(await t.room.revokeBidder(t.b2, 'declined')).toBe('applied');
+    const viewer = await t.connect('screen');
+    const roster = (viewer.transport.messages('state')[0]?.snapshot as { roster: unknown[] })
+      .roster;
+    expect(roster).toMatchObject([
+      { bidderId: t.b1, hold: 'HELD' },
+      { bidderId: t.b2, hold: 'NONE' },
+    ]);
   });
 });
