@@ -1505,3 +1505,71 @@ describe('auction service: red-team round 4 (RT-01)', () => {
     expect((await rig.stores.holds.get(created.holdId))?.status).toBe('HELD');
   });
 });
+
+describe('auction service: orphan hold when registration is refused (HRD-10, issue 704)', () => {
+  async function approvedBelowReserve(rig: Rig, auctionId: AuctionId) {
+    const bidderId = rig.ids.mint<'BidderId'>();
+    const created = await rig.holdsApi.createHoldOrder({
+      auctionId,
+      bidderId,
+      ceilingCents: 5000,
+      presetsCents: [5000],
+    });
+    rig.paypal.core.approveOrder(created.orderId);
+    await rig.holdsApi.completeApproval({ holdId: created.holdId, orderId: created.orderId });
+    const held = await rig.stores.holds.get(created.holdId);
+    return { bidderId, holdId: created.holdId, authId: held?.authId ?? '' };
+  }
+
+  it('voids the hold and audits the void when the engine refuses the ceiling', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0 });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const orphan = await approvedBelowReserve(rig, auctionId);
+    expect(rig.paypal.core.getAuthorization(orphan.authId).status).not.toBe('VOIDED');
+    await expect(
+      service.registerBidder({
+        auctionId,
+        bidderId: orphan.bidderId,
+        name: 'Low',
+        holdId: orphan.holdId,
+      }),
+    ).rejects.toMatchObject({ code: 'bad_message' });
+    expect(rig.paypal.core.getAuthorization(orphan.authId).status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(orphan.holdId))?.status).toBe('VOIDED');
+    const voids = rig.audits.filter(
+      (a) => a.kind === 'paypal_call' && a.op === 'void' && a.holdId === orphan.holdId,
+    );
+    expect(voids).toHaveLength(1);
+    await service.close();
+  });
+
+  it('is idempotent: a retry of the refused registration sends no second void', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0 });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const orphan = await approvedBelowReserve(rig, auctionId);
+    const input = { auctionId, bidderId: orphan.bidderId, name: 'Low', holdId: orphan.holdId };
+    await expect(service.registerBidder(input)).rejects.toMatchObject({ code: 'bad_message' });
+    await expect(service.registerBidder(input)).rejects.toMatchObject({ code: 'forbidden' });
+    const voids = rig.audits.filter(
+      (a) => a.kind === 'paypal_call' && a.op === 'void' && a.holdId === orphan.holdId,
+    );
+    expect(voids).toHaveLength(1);
+    expect(rig.paypal.core.getAuthorization(orphan.authId).status).toBe('VOIDED');
+    await service.close();
+  });
+
+  it('keeps the hold of a bidder whose registration succeeds', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0 });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const ok = await enroll(rig, service, room, auctionId, 'Ada', 30000);
+    expect((await rig.stores.holds.get(ok.holdId))?.status).toBe('HELD');
+    expect(rig.paypal.core.getAuthorization(ok.authId).status).not.toBe('VOIDED');
+    await service.close();
+  });
+});
