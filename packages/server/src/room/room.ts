@@ -139,6 +139,7 @@ function abortControlId(auctionId: string): string {
 export class Room {
   private tail: Promise<void> = Promise.resolve();
   private inFlight = 0;
+  private closed = false;
   private maxInFlight = 0;
   private seq = 0;
   private config: AuctionConfig | undefined;
@@ -236,7 +237,9 @@ export class Room {
     this.conns.delete(connId);
   }
 
+  /** Stop the room: later commands are refused and no timer is armed (R-RT-062). */
   async close(): Promise<void> {
+    this.closed = true;
     this.cancelTimer?.();
     this.cancelTimer = undefined;
     this.cancelHammer?.();
@@ -918,7 +921,7 @@ export class Room {
     this.cancelHammer?.();
     this.cancelHammer = undefined;
     const view = this.engine?.view();
-    if (!view || this.hammered) return;
+    if (!view || this.hammered || this.closed) return;
     if (view.state === 'CLOSING') {
       this.armAutoHammer();
       return;
@@ -1185,6 +1188,7 @@ export class Room {
   }
 
   private enqueue<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.closed) return Promise.reject(new GavelError('conflict', 'room is closed'));
     const run = this.tail.then(async () => {
       this.inFlight += 1;
       this.maxInFlight = Math.max(this.maxInFlight, this.inFlight);

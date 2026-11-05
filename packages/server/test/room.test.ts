@@ -369,7 +369,7 @@ describe('close timer (R-RT-041, R-RT-043)', () => {
     await t.room.submitBid(c1.conn, t.bid(10500));
     expect(c1.transport.messages('bid_rejected')[0]).toMatchObject({ reason: 'already_leading' });
     t.clock.set(config.endTs);
-    await t.room.close();
+    await t.connect('screen');
     const states = c1.transport.messages('state');
     expect(states.at(-1)?.snapshot).toMatchObject({ status: 'CLOSING' });
     const c2 = await t.connect('bidder', t.b2);
@@ -537,5 +537,35 @@ describe('round 3 blocking fixes (RT3)', () => {
     const strict: RoomDeps = { ...lax, engine: (cfg) => new CappedEngine(cfg) };
     const reloaded = await Room.load(auctionId, strict);
     expect(reloaded.lastSeq).toBe(room.lastSeq);
+  });
+});
+
+describe('room close, roster hold state, duplicate mid, repeat registration', () => {
+  it('stops the room on close: no timer is armed and later commands are refused (R-RT-062)', async () => {
+    const t = await setup();
+    const c1 = await t.connect('bidder', t.b1);
+    let armed = 0;
+    const setTimer = t.clock.setTimer.bind(t.clock);
+    t.clock.setTimer = (atMs, fn) => {
+      armed += 1;
+      return setTimer(atMs, fn);
+    };
+    const queued = t.room.submitBid(c1.conn, t.bid(10000));
+    const closing = t.room.close();
+    await queued;
+    await closing;
+    expect(armed).toBe(0);
+    const before = t.room.lastSeq;
+    await expect(t.room.submitBid(c1.conn, t.bid(20000))).rejects.toThrow();
+    await expect(
+      t.room.registerBidder({
+        bidderId: t.ids.mint<'BidderId'>(),
+        name: 'Late',
+        ceiling: 50000 as Cents,
+        holdRef: 'h9',
+      }),
+    ).rejects.toThrow();
+    t.clock.set(config.endTs + 1);
+    expect(t.room.lastSeq).toBe(before);
   });
 });
