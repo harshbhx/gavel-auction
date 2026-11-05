@@ -237,7 +237,13 @@ function parse(text: string, ctx: ParseContext): ParseResult {
       flags,
     });
   }
-  if (only !== undefined && speaker !== null && speaker.value !== only.paddle) {
+  // The speaker is a bidder id and the spoken label a paddle: compare through the speaker's
+  // paddle. Without it, only a context whose bidder ids are paddle labels can match.
+  if (
+    only !== undefined &&
+    speaker !== null &&
+    (ctx.speakerPaddle ?? speaker.value) !== only.paddle
+  ) {
     return result('confirm', 'multiple_bidders', {
       amountCents,
       candidates: [cand(amountCents, speaker), cand(amountCents, paddle(only.paddle))],

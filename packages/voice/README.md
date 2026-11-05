@@ -1,16 +1,23 @@
 # @gavel/voice
 
-Audio capture and framing, speech-to-text provider clients, the bid parser and the confirm-on-ambiguity pipeline.
+Audio capture and framing, speech-to-text provider clients, the bid parser, the decision step and the fault tracker.
 
-**Sandbox demo, do not speak personal data.** Vendor retention terms for Deepgram and Groq are unverified (gate G5 in `docs/GATES.md`). Audio is streamed to the vendor for real-time transcription and is not stored on our side. See `docs/PRIVACY.md` for what is kept. This notice stays until the vendor terms are verified.
+**Sandbox demo, do not speak personal data.** Vendor retention terms for Groq and the language model vendor are unverified (gate G5 in `docs/GATES.md`). Audio is streamed to the speech vendor for real-time transcription and is not stored on our side. See `docs/PRIVACY.md` for what is kept. This notice stays until the vendor terms are verified.
 
 ## What is here
 
 - `src/audio`: framing (20 ms frames, 100 ms batches), resampling, endpointing, recorder.
-- `src/stt`: provider interface with Deepgram, Groq, fake and replay providers and latency counters.
-- `src/parser`, `src/decide`, `src/pipeline`: spoken amount to a structured bid, with a confirm prompt when the amount is ambiguous.
+- `src/stt`: provider interface, the Groq client, the fake and replay providers, `FailoverStt` and latency counters.
+- `src/parser`, `src/decide`, `src/llm`: spoken amount to a structured bid, merge of the rule and model readings, and a confirm prompt when the amount is ambiguous.
+- `src/pipeline`: `pipeline.ts` turns a segment into decisions, `bid-command.ts` maps a decision to an engine PlaceBid, `faults.ts` tracks speech and model health.
 - `src/session.ts`: one session per room and lot.
 - `fixtures`: audio, text cases and the replay timeline used by tests and the replay mode.
+
+## Providers
+
+Selectable providers: `groq`, `fake`.
+
+`selectProvider` builds only those. `deepgram` and `webspeech` are accepted names with no client in this package: a `DEEPGRAM_API_KEY` alone fails startup with `none_configured`, and with both keys set Groq is used alone and a warning is logged. `replay` is not selected by name; the replay mode constructs `ReplayStt` directly. `FailoverStt` is tested but `selectProvider` does not wrap anything in it, so there is no automatic failover in a running room.
 
 ## Run the tests
 
@@ -25,13 +32,13 @@ No test calls the network; the fake provider supplies transcripts. Heavy runs ha
 
 Check in this order while the room is live.
 
-1. Provider silent or erroring. The failover wrapper moves from Deepgram to Groq when there is no event within 3 s of audio start, a non-retryable error, two retryable errors in a row, or a final transcript later than 4 s after speech end. It replays the last 5 s of audio into the fallback and keeps the primary closed for 30 s.
-2. Both providers down. The capture state becomes `degraded` or `error` and the console shows its message with a fallback action. Switch to manual entry (always available) or QR bidding.
+1. Speech provider silent or erroring. There is no automatic failover. `FaultTracker` marks speech `degraded` after 8 s and `down` after 15 s and the console shows the manual entry banner. Switch to manual entry (always available) or restart the voice session.
+2. Speech down and the language model down. `bidsAllowed` becomes false and the QR bidding banner shows. With speech down and the model up, bids stay allowed. The capture state is independent: `degraded` there only means audio frames are being dropped.
 3. Microphone denied, missing or on an insecure page. The state names the cause; there is no retry loop. Fix the browser permission or use manual entry.
 4. Wrong bid heard. Ambiguous amounts ask for confirmation before any bid is placed; reject the prompt and type the bid.
 5. Network down at the venue. Switch the demo to replay mode (below); it needs no provider.
 
-Secrets: `DEEPGRAM_API_KEY` and `GROQ_API_KEY` (names in `.env.example`). Never print them or commit them.
+Secrets: `GROQ_API_KEY` and `LLM_API_KEY` (names in `.env.example`). Never print them or commit them.
 
 ## Demo script and fallback
 

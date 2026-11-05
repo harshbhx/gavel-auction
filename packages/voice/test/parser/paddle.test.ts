@@ -73,6 +73,18 @@ describe('T-VOX-041 speaker versus paddle (R-VOX-041)', () => {
     expect(r.candidates.every((c) => c.amountCents === 30000)).toBe(true);
   });
 
+  it('a device-mic speaker naming their own paddle is a bid, not multiple_bidders', () => {
+    const own = { speakerBidderId: '01JB0000000000000000000012', speakerPaddle: '12' };
+    const r = parseBid('paddle twelve five hundred', own);
+    expect(r.status).toBe('bid');
+    expect(r.reason).toBe('ok');
+  });
+
+  it('a speaker naming another bidder paddle still confirms', () => {
+    const other = { speakerBidderId: '01JB0000000000000000000012', speakerPaddle: '12' };
+    expect(parseBid('paddle five three hundred', other).reason).toBe('multiple_bidders');
+  });
+
   it('the same paddle and speaker is a bid', () => {
     expect(parseBid('paddle 5 three hundred', { speakerBidderId: '5' }).status).toBe('bid');
   });
