@@ -19,11 +19,11 @@ function showBootError(error: unknown): void {
 
 // Validate configuration before the app loads; a bad config shows a readable list of names.
 import('./config')
-  .then(() => import('./App'))
-  .then(({ App }) => {
+  .then(async ({ config }) => ({ config, ...(await import('./App')) }))
+  .then(({ App, config }) => {
     createRoot(root).render(
       <StrictMode>
-        <App />
+        <App liveBase={config.wsBase} />
       </StrictMode>,
     );
   })
