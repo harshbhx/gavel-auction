@@ -1,4 +1,5 @@
 import type { BidderRef, Candidate, Cents, ParseContext, ParseResult } from '../types.js';
+import { isNumberToken } from './lexicon.js';
 import { tokenize } from './normalize.js';
 import { parseBid } from './parse.js';
 import { extractPaddles } from './paddle.js';
@@ -61,8 +62,26 @@ function amountsOf(text: string, ctx: ParseContext): { amounts: Cents[]; res: Pa
 }
 
 /** Both sides known and the same kind and value; an unknown side never matches. */
-function sameBidder(a: BidderRef | null, b: BidderRef | null): boolean {
-  return a !== null && b !== null && a.kind === b.kind && a.value === b.value;
+function sameBidder(a: BidderRef | null, b: BidderRef | null, ctx: ParseContext): boolean {
+  const norm = (r: BidderRef | null): BidderRef | null =>
+    r !== null &&
+    r.kind === 'speaker' &&
+    ctx.speakerPaddle !== undefined &&
+    r.value === ctx.speakerBidderId
+      ? { kind: 'paddle', value: ctx.speakerPaddle }
+      : r;
+  const x = norm(a);
+  const y = norm(b);
+  return x !== null && y !== null && x.kind === y.kind && x.value === y.value;
+}
+
+/** True when a retract cue is followed by "my", "the" or "bid" before the amount. */
+function retractsNamedBid(tail: string): boolean {
+  const words = tail.split(' ').filter((w) => w !== '');
+  const firstNumber = words.findIndex((w) => isNumberToken(w));
+  if (firstNumber < 0) return false;
+  const before = words.slice(0, firstNumber);
+  return before.some((w) => w === 'my' || w === 'the' || w === 'bid' || w === 'bids');
 }
 
 /** The bidder named by the text (a paddle) or by the microphone (the speaker), or null. */
@@ -120,7 +139,8 @@ export function parseCorrection(text: string, ctx: ParseContext = {}): Correctio
     const tail = norm.slice(cueEnd);
     const { amounts, res } = amountsOf(tail, ctx);
     const bidder = bidderFor(text, res, ctx);
-    if (amounts.length > 0) {
+    const retractsBid = retractEnd > replaceEnd && retractsNamedBid(tail);
+    if (amounts.length > 0 && !retractsBid) {
       return {
         result: correctionResult(bidder, amounts, ['correction']),
         cancelPending: false,
@@ -142,7 +162,7 @@ export function parseCorrection(text: string, ctx: ParseContext = {}): Correctio
         },
         // Only the bidder who is named or speaking can cancel: a room mic with no paddle cannot.
         cancelPending:
-          live !== undefined && sameBidder(live.bidder, explicitBidder(text, res, ctx)),
+          live !== undefined && sameBidder(live.bidder, explicitBidder(text, res, ctx), ctx),
         replacedCents: pending?.amountCents ?? null,
       };
     }

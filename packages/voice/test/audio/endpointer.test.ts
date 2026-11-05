@@ -77,12 +77,12 @@ describe('Endpointer (T-VOX-017)', () => {
     expect(firstChunk?.pcm.length).toBeLessThanOrEqual(maxSamples + SAMPLE_RATE);
   });
 
-  it('drops tone shorter than 400 ms', () => {
+  it('drops tone shorter than 150 ms and counts it', () => {
     const ep = new Endpointer();
     const silence0 = silenceSamples(SAMPLE_RATE);
     feedInFrames(ep, silence0, 0, 0);
 
-    const shortTone = sineSamples(0.8, Math.floor(SAMPLE_RATE * 0.3));
+    const shortTone = sineSamples(0.8, Math.floor(SAMPLE_RATE * 0.1));
     const trailing = silenceSamples(SAMPLE_RATE);
     const combined = new Int16Array(shortTone.length + trailing.length);
     combined.set(shortTone);
@@ -90,6 +90,26 @@ describe('Endpointer (T-VOX-017)', () => {
 
     const chunks = feedInFrames(ep, combined, 50, 1000);
     expect(chunks.length).toBe(0);
+    expect(ep.discardedChunks).toBe(1);
+  });
+
+  it('keeps a 250 ms spoken answer (R8-V06)', () => {
+    const ep = new Endpointer();
+    feedInFrames(ep, silenceSamples(SAMPLE_RATE), 0, 0);
+    const tone = sineSamples(0.8, Math.floor(SAMPLE_RATE * 0.25));
+    const combined = new Int16Array(tone.length + SAMPLE_RATE);
+    combined.set(tone);
+    expect(feedInFrames(ep, combined, 50, 1000)).toHaveLength(1);
+  });
+
+  it('recovers from steady -35 dBFS noise that starts after a quiet second (R8-V02)', () => {
+    const ep = new Endpointer();
+    feedInFrames(ep, silenceSamples(SAMPLE_RATE), 0, 0);
+    // -35 dBFS RMS: amplitude 0.0178 of full scale, times sqrt(2) for a sine peak.
+    const noise = sineSamples(0.0178 * Math.SQRT2, SAMPLE_RATE * 30);
+    const chunks = feedInFrames(ep, noise, 50, 1000);
+    // The first window may emit one chunk before the floor catches up; never a run of 8 s chunks.
+    expect(chunks.length).toBeLessThanOrEqual(1);
   });
 });
 

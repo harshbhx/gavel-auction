@@ -6,6 +6,8 @@
  */
 export interface StoredRegistration {
   clientRegistrationId: string;
+  /** The order issued for this registration, checked when the buyer returns from PayPal. */
+  orderId?: string;
 }
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -34,7 +36,11 @@ export function loadRegistration(
     if (raw === null) return null;
     const parsed: unknown = JSON.parse(raw);
     const id = (parsed as { clientRegistrationId?: unknown } | null)?.clientRegistrationId;
-    return typeof id === 'string' && id !== '' ? { clientRegistrationId: id } : null;
+    if (typeof id !== 'string' || id === '') return null;
+    const orderId = (parsed as { orderId?: unknown }).orderId;
+    return typeof orderId === 'string' && orderId !== ''
+      ? { clientRegistrationId: id, orderId }
+      : { clientRegistrationId: id };
   } catch {
     return null;
   }

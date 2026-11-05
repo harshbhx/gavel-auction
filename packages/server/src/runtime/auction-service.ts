@@ -164,7 +164,11 @@ export interface AuctionService {
   /** Admin: compares the journal, the hold records and PayPal for one auction (R-PAY-100). */
   reconcile(auctionId: AuctionId): Promise<ReconcileReport>;
   /** The webhook route's body: raw request bytes and headers in, HTTP status out. */
-  handleWebhook(rawBody: Buffer, headers: WebhookHeaders): Promise<WebhookResponse>;
+  handleWebhook(
+    rawBody: Buffer,
+    headers: WebhookHeaders,
+    source?: string,
+  ): Promise<WebhookResponse>;
   /**
    * Loads every known room (which resumes hammered ones), continues unfinished
    * settlements and applies stored webhook events. Call it at start-up and on a timer.
@@ -295,6 +299,12 @@ class Service implements AuctionService, SettlePort {
   ): Promise<Room> {
     const parsed = AuctionConfigSchema.safeParse(config);
     if (!parsed.success) throw new GavelError('bad_message', 'invalid auction config');
+    // The engine adapter runs a flat English lot with event holds, so refuse anything else
+    // rather than show clients rules that never govern the lot (R-RT-011, R-RT-012).
+    const c = parsed.data;
+    if (c.mode !== 'english' || c.holdScope === 'lot' || c.incrementLadder !== undefined) {
+      throw new GavelError('bad_message', 'unsupported mode, increment ladder or hold scope');
+    }
     if (this.rooms.has(auctionId)) throw new GavelError('conflict', 'auction exists');
     // Dry-run the engine build: a config or id it cannot run must never reach the log, or the
     // auction could not be loaded again and would block resume (R-RT-012, R-RT-059).
@@ -472,8 +482,12 @@ class Service implements AuctionService, SettlePort {
 
   // ---- webhooks
 
-  handleWebhook(rawBody: Buffer, headers: WebhookHeaders): Promise<WebhookResponse> {
-    return this.webhook.handle(rawBody, headers);
+  handleWebhook(
+    rawBody: Buffer,
+    headers: WebhookHeaders,
+    source?: string,
+  ): Promise<WebhookResponse> {
+    return this.webhook.handle(rawBody, headers, source);
   }
 
   /**

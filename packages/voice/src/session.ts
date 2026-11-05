@@ -18,12 +18,17 @@ export const AUDIO_MAX_SESSION_MS = 30 * 60 * 1000;
 export const AUDIO_MAX_STREAMS_PER_TOKEN = 2;
 export const AUDIO_MAX_STREAMS_PER_ROOM = 4;
 const RATE_WINDOW_MS = 1000;
+/** Roles allowed to open an audio stream; screens and bidders never are. */
+export const AUDIO_ROLES: readonly string[] = ['auctioneer', 'console'];
 
 export interface VoiceSessionDeps {
   /** Epoch ms from the room clock. */
   now: () => number;
-  /** The same check the join message uses; true when the token is valid for the room. */
-  verifyToken: (token: string, roomId: string) => boolean;
+  /**
+   * The same check the join message uses. Returns the token's role when it is valid for the
+   * room and null when it is not.
+   */
+  verifyToken: (token: string, roomId: string) => string | null;
   maxBytesPerSec?: number;
   maxSessionMs?: number;
   /** Most open streams one token may hold. Default 2 (R-VOX-097). */
@@ -84,7 +89,11 @@ export function createVoiceSession(deps: VoiceSessionDeps): VoiceSession {
   return {
     activeStreams: () => active.size,
     open(key, token) {
-      if (typeof token !== 'string' || token === '' || !deps.verifyToken(token, key.roomId)) {
+      if (typeof token !== 'string' || token === '') {
+        return { ok: false, error: 'AUDIO_UNAUTHORIZED' };
+      }
+      const role = deps.verifyToken(token, key.roomId);
+      if (role === null || !AUDIO_ROLES.includes(role)) {
         return { ok: false, error: 'AUDIO_UNAUTHORIZED' };
       }
       const id = slot(key);

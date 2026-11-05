@@ -1,0 +1,19 @@
+{
+  "events": [
+    "1:auction_created+0",
+    "2:bidder_registered:ada+0",
+    "3:bidder_registered:bo+0",
+    "4:bid_accepted:ada:10000+1000",
+    "5:bid_rejected:bo:below_increment+1000"
+  ],
+  "frames": {
+    "host": ["price:10000@4", "audit@4", "audit@5"]
+  },
+  "views": {
+    "host": {
+      "price": 10000,
+      "leader": "ada",
+      "minNext": 10500
+    }
+  }
+}

@@ -72,6 +72,10 @@ export interface VoidDeps extends VoidCallDeps {
   maxVoidResumes?: number;
   /** How long a pending void or an unavailable remainder is retried. Default ten minutes. */
   unknownDeadlineMs?: number;
+  /** How long a review keeps the next candidates' holds before they are released. Default 24 hours. */
+  reviewHoldMaxAgeMs?: number;
+  /** Operator release (R9-M04): a run of a settlement in review voids every hold, candidates included. */
+  releaseAllReviewHolds?: boolean;
   /** Lease owner. Default: the process id plus a fresh random suffix per run. */
   owner?: string;
 }
@@ -143,6 +147,9 @@ export async function voidHold(
   }
   return 'VOID_FAILED';
 }
+
+/** R9-M04 default: a review keeps the next candidates' holds for a day. */
+export const DEFAULT_REVIEW_HOLD_MAX_AGE_MS = 86_400_000;
 
 export class VoidPhase {
   private readonly owner: string;
@@ -261,8 +268,10 @@ class Run {
    */
   private async releaseForReview(): Promise<void> {
     const inFlight = this.j.intent?.holdId;
+    const keep = this.reviewKeepHolds();
     for (const t of this.targets()) {
       if (this.aborted) return;
+      if (keep.has(t.hold.holdId)) continue;
       if (DONE.has(this.statusOf(t.bidderId) ?? '')) continue;
       if (t.hold.holdId === inFlight) continue;
       let truth: HoldTruth;
@@ -282,6 +291,26 @@ class Run {
         d.voids[t.bidderId] = status;
       });
     }
+  }
+
+  /**
+   * R9-M04: the holds of the candidates after the cursor stay live while the review is
+   * open, so a capture that turns out never to have happened can still fall back to the
+   * next bidder. They are released once the review is older than `reviewHoldMaxAgeMs`,
+   * or by an operator run with `releaseAllReviewHolds`.
+   */
+  private reviewKeepHolds(): Set<string> {
+    if (this.deps.releaseAllReviewHolds === true) return new Set();
+    const entered = [...this.j.history].reverse().find((h) => h.to === 'FAILED_NEEDS_REVIEW');
+    const since = entered?.tsMs ?? this.now();
+    const maxAge = this.deps.reviewHoldMaxAgeMs ?? DEFAULT_REVIEW_HOLD_MAX_AGE_MS;
+    if (this.now() - since > maxAge) return new Set();
+    const keep = new Set<string>();
+    for (const c of this.j.plan.candidates.slice(this.j.cursor + 1)) {
+      const hold = this.j.holds[c.bidderId];
+      if (hold !== undefined) keep.add(hold.holdId);
+    }
+    return keep;
   }
 
   private lastReason(): string {

@@ -121,6 +121,30 @@ describe('T-VOX-033 limits (R-VOX-033)', () => {
     ).toHaveLength(1);
   });
 
+  it('VOX-85 flushes the earlier held finals before a merged window grows too long', () => {
+    const s = new Segmenter();
+    const out: SegmentEvent[] = [];
+    out.push(...s.push(final('paddle five three hundred', { startMs: 0, endMs: 4000 }), 4000));
+    out.push(...s.push(final('background talk', { startMs: 5000, endMs: 9000 }), 9000));
+    out.push(...s.push(final('more talk', { startMs: 10_000, endMs: 14_000 }), 14_000));
+    out.push(
+      ...s.push(final('last bit', { startMs: 15_000, endMs: 16_000, speechFinal: true }), 16_000),
+    );
+    expect(drops(out)).toEqual([]);
+    expect(segments(out)[0]).toContain('paddle five three hundred');
+  });
+
+  it('VOX-85 caps the number of held finals', () => {
+    const s = new Segmenter();
+    const out: SegmentEvent[] = [];
+    for (let i = 0; i < 100; i++) {
+      out.push(...s.push(final(`hm ${i}`, { startMs: i, endMs: i + 1 }), i));
+    }
+    out.push(...s.flush());
+    expect(drops(out)).toEqual([]);
+    expect(segments(out).length).toBeGreaterThan(1);
+  });
+
   it('drops whitespace-only text as empty and does not caption it', () => {
     const s = new Segmenter();
     const out = s.push(final('   ', { speechFinal: true }), 0);

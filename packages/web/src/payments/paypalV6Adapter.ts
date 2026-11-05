@@ -187,8 +187,15 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     const approved = ApproveHoldResponse.safeParse(hold.body);
     if (!approved.success) return finish('error', { errorCode: 'hold_failed' });
     this.abandonUrl = null;
+    // The amount the server confirmed must be the one this attempt asked for (WEB-R2-10).
+    if (approved.data.ceilingCents !== req.ceilingCents) {
+      return finish('error', { errorCode: 'hold_mismatch' });
+    }
     // The payments service returns the full hold id; only the last 6 characters are shown.
-    return finish('held', { holdIdSuffix: approved.data.holdId.slice(-6) });
+    return finish('held', {
+      holdIdSuffix: approved.data.holdId.slice(-6),
+      ceilingCents: approved.data.ceilingCents,
+    });
   }
 
   /** Tells the payments service the buyer walked away, so the unapproved hold is dropped. */
@@ -213,13 +220,20 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     const done = new Promise<Outcome>((resolve) => {
       settle = resolve;
     });
-    this.abandon = () => settle({ kind: 'cancelled' });
+    let abandoned = false;
+    this.abandon = () => {
+      abandoned = true;
+      settle({ kind: 'cancelled' });
+    };
     try {
       const sdk = await (this.deps.loadSdk ?? loadPayPalSdkScript)();
+      // A cancel during the load must not open a popup the buyer can no longer close.
+      if (abandoned) return { kind: 'cancelled' };
       const instance = await sdk.createInstance({
         clientId: this.deps.clientId,
         ...(clientToken === undefined ? {} : { clientToken }),
       });
+      if (abandoned) return { kind: 'cancelled' };
       const session = instance.createOneTimePaymentSession({
         // Only confirm the order this attempt created, never one the SDK hands back unasked.
         onApprove: (data) =>

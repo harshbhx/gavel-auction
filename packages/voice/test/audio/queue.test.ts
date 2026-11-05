@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { FLAG_DISCONTINUITY, FRAME_SAMPLES, type AudioBatch } from '../../src/audio/frame.js';
+import {
+  FLAG_DISCONTINUITY,
+  FLAG_END_OF_STREAM,
+  FRAME_SAMPLES,
+  type AudioBatch,
+} from '../../src/audio/frame.js';
 import { AudioQueue } from '../../src/audio/queue.js';
 
 function batch(seq: number): AudioBatch {
@@ -24,6 +29,34 @@ describe('T-VOX-007 drop oldest at capacity', () => {
     expect(q.next(0)).toBeNull();
     q.push(batch(0));
     expect((q.next(0) as AudioBatch).flags).toBe(0);
+  });
+});
+
+describe('R-VOX-020 end-of-stream batch is never dropped', () => {
+  it('keeps a lone end-of-stream batch under back-pressure', () => {
+    const q = new AudioQueue();
+    q.push({ ...batch(0), flags: FLAG_END_OF_STREAM });
+    expect(q.next(70000)).toBeNull();
+    expect(q.stats.droppedBatches).toBe(0);
+    expect((q.next(0) as AudioBatch).seq).toBe(0);
+  });
+
+  it('drops the next oldest instead of the end-of-stream batch', () => {
+    const q = new AudioQueue();
+    q.push({ ...batch(0), flags: FLAG_END_OF_STREAM });
+    q.push(batch(1));
+    expect(q.next(70000)).toBeNull();
+    expect(q.stats.droppedBatches).toBe(1);
+    expect((q.next(0) as AudioBatch).seq).toBe(0);
+  });
+
+  it('keeps it on capacity overflow', () => {
+    const q = new AudioQueue(2);
+    q.push({ ...batch(0), flags: FLAG_END_OF_STREAM });
+    q.push(batch(1));
+    q.push(batch(2));
+    expect(q.stats.length).toBe(2);
+    expect((q.next(0) as AudioBatch).seq).toBe(0);
   });
 });
 

@@ -23,7 +23,41 @@ const PATTERNS = [
   /outside (ai|evaluation)/i,
 ];
 
+// Planning notes that must not appear anywhere in tracked docs.
+const PLANNING_PATTERNS = [
+  /private (github )?repo(sitory)?/i,
+  /go-ahead before implementation/i,
+  /^#{1,6} .*(nine-day|day-by-day) schedule/im,
+  /^#{1,6} D[1-9]\b/m,
+  /\bD[1-9] (Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/,
+  /\bkill the project\b|\bkill and pick\b/i,
+];
+// Stricter rules for the top-level overview documents.
+const OVERVIEW = ['README.md', 'docs/PLAN.md', 'docs/specs/MASTER-PLAN.md'];
+const OVERVIEW_PATTERNS = [
+  /\bproject owner\b/i,
+  /\bwaves?\b/i,
+  /\bD[1-9]\b/,
+  /\bschedule\b/i,
+  /\bdeadline\b.*\b20\d\d-\d\d-\d\d\b/i,
+  /\bfreeze\b/i,
+  /\brole assignment\b/i,
+];
+
 describe('public docs', () => {
+  it('contain no schedules, role assignments or internal prerequisites', () => {
+    const hits = [];
+    for (const f of files) {
+      const text = readFileSync(join(root, f), 'utf8');
+      for (const re of PLANNING_PATTERNS) if (re.test(text)) hits.push(`${f}: ${re}`);
+    }
+    for (const f of OVERVIEW) {
+      const text = readFileSync(join(root, f), 'utf8');
+      for (const re of OVERVIEW_PATTERNS) if (re.test(text)) hits.push(`${f}: ${re}`);
+    }
+    assert.deepEqual(hits, []);
+  });
+
   it('contain no personal names or hand-off notes', () => {
     const hits = [];
     for (const f of files) {

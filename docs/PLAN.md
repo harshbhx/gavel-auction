@@ -55,36 +55,16 @@ G2 guest/card AUTHORIZE flow in JS SDK v6 (Card Fields/Fastlane docs show CAPTUR
 G3 honor period vs validity conflict: docs differ (3-day vs 29-day; one page says 3-day validity in US with one reauthorization). Test reauthorize path; design the demo so all holds are created minutes before capture.
 G4 webhooks: PASS 2026-11-05, six real sandbox events verified (docs/GATES.md); the simulator events are not accepted by PayPal, so tests use the fixtures.
 G5 STT: 20 noisy bid utterances through Deepgram+LLM; target over 90% exact amount+bidder or rely on confirm-on-ambiguity.
-If G1 or G2 fails with no workaround: switch to Orders AUTHORIZE with PayPal-wallet buyers only, or kill and pick Quake Commons.
+If G1 or G2 fails with no workaround: switch to Orders AUTHORIZE with PayPal-wallet buyers only.
 
-## 6. Nine-day schedule (submission target Nov 11 evening PST, leaving buffer)
-
-- D1 (Nov 4): Sandbox app + gate tests G1-G4; repo + license (MIT) + CI skeleton. P1 PayPal, P2 audio/STT test G5.
-- D2: Engine + ledger in TS (port of the reference implementation), WebSocket room; P2 mic capture + streaming STT.
-- D3: PayPal saga (capture/void/idempotency/webhooks) + failure injection tests; P2 bidder registration + QR bid UI.
-- D4: Auctioneer console + public screen; parse+confirm flow; audit trail view.
-- D5: Integration end to end; Playwright E2E in Actions; crash/retry tests against sandbox.
-- D6: Design polish, PayPal authorization-state ladder UI beside timeline; replay mode with recorded audio.
-- D7: Hosted deploy (Render + Cloudflare), README, run instructions, judge walkthrough; load/race tests.
-- D8: Record video (3:00 max), Devpost text, screenshots; freeze features.
-- D9 (Nov 11-12): Final fixes, submit early (before Nov 12 noon PST = Nov 13 01:30 IST), YouTube public, repo public with license visible.
-  Cut list if behind: LLM-bidder chart, NFC, second-price mode UI, AG Grid. Never cut: PayPal gate proof, audit trail, replay mode, tests, video.
-
-## 7. Video storyboard (3:00)
+## 6. Video storyboard (3:00)
 
 0:00 problem (winner never paid; paper sheets) 0:20 register two bidders, holds visible in PayPal sandbox 0:45 live bidding: voice (20 s) + QR 1:15 confirm-on-ambiguity moment 1:40 hammer: winner captured at winning price, others voided, state ladder + webhook ticks 2:15 crash mid-settlement, resume, still exactly one charge (planned: today only an in-process test hook exists, with no trigger on a hosted server) 2:35 audit trail + test count 2:50 close. Mark what is real vs recorded on screen.
 
-## 8. Submission checklist
+## 7. Submission checklist
 
 Public repo + visible OSS license; run instructions + hosted URL (not deployed yet; holds expire within days, so the hosted build needs fresh sandbox holds at test time); PayPal sandbox only; AI tool and model named in text; PayPal central; public YouTube <3 min, no copyrighted music; English; Devpost tools list; mention what changed if reused earlier work; optional early check by Nov 5.
 
-## 9. Risks and what stays unknown
+## 8. Risks and what stays unknown
 
 Weak video; rigor gap vs AP2-style entries; voice eating video; thin impact evidence (no non-payment data; interview 5-10 organizers if time); guest hold UX; PayPal sandbox quirks; legal items only matter for real product.
-
-## 10. Prerequisites
-
-1. A PayPal developer sandbox app, with credentials stored in a private file on the server (never in chat or the repository). Variable names are listed in `.env.example`.
-2. Role assignment: payments and backend, frontend, audio and video.
-3. A private GitHub repository under the MIT license.
-4. A go-ahead before implementation starts.

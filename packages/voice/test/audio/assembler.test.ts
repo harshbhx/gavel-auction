@@ -46,4 +46,26 @@ describe('T-VOX-006 frame assembler', () => {
     expect(second[1]?.flags).toBe(0);
     expect(third[0]?.seq).toBe(3);
   });
+
+  it('stamps pre-gap samples before the gap shift (R-VOX-020)', () => {
+    const a = new FrameAssembler();
+    a.push(new Int16Array(800).fill(5));
+    const padded = a.markGap(500);
+    expect(padded).toHaveLength(1);
+    expect(padded[0]?.tsMs).toBe(0);
+    expect(padded[0]?.flags).toBe(0);
+    expect(padded[0]?.pcm[0]).toBe(5);
+    expect(padded[0]?.pcm[1599]).toBe(0);
+    const next = a.push(new Int16Array(1600));
+    expect(next[0]?.tsMs).toBe(600);
+    expect(next[0]?.flags).toBe(FLAG_DISCONTINUITY);
+  });
+
+  it('clamps huge gaps so tsMs stays a safe uint32', () => {
+    const a = new FrameAssembler();
+    a.markGap(1e300);
+    const [b] = a.push(new Int16Array(1600));
+    expect(b?.tsMs).toBeLessThanOrEqual(86_400_000);
+    expect(b?.tsMs).toBeGreaterThan(0);
+  });
 });

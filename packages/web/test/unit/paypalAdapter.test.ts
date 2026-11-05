@@ -144,6 +144,51 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     expect((await pending).state).toBe('cancelled');
   });
 
+  it('treats a server-confirmed amount that differs from the request as an error (WEB-R2-10)', async () => {
+    const fetch: FetchLike = (url) =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve(
+            url.endsWith('/api/holds')
+              ? { holdId: 'hold-ABC123', orderId: 'ord-1', clientToken: 'ct' }
+              : { holdId: 'hold-ABC123', status: 'HELD', ceilingCents: 20_000 },
+          ),
+      });
+    const { sdk } = stubSdk((cb) => cb.onApprove({ orderId: 'ord-1' }));
+    const adapter = new PayPalV6Adapter({
+      apiBase: 'http://api',
+      clientId: 'client-1',
+      loadSdk: () => Promise.resolve(sdk),
+      fetch,
+    });
+    const result = await adapter.start(req, () => {});
+    expect(result).toMatchObject({ state: 'error', errorCode: 'hold_mismatch' });
+    expect(result.holdIdSuffix).toBeUndefined();
+  });
+
+  it('cancel() while the SDK is still loading never opens the popup (WEB-R2-06)', async () => {
+    const { sdk, calls } = stubSdk(() => {});
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const loadSdk = vi.fn(() => gate.then(() => sdk));
+    const adapter = new PayPalV6Adapter({
+      apiBase: 'http://api',
+      clientId: 'client-1',
+      loadSdk,
+      fetch: fakeFetch().fetch,
+    });
+    const pending = adapter.start(req, () => {});
+    await vi.waitFor(() => expect(loadSdk).toHaveBeenCalled());
+    adapter.cancel();
+    release();
+    expect((await pending).state).toBe('cancelled');
+    expect(calls).not.toContain('start');
+  });
+
   it('reports an error when the popup fails and there is the hold is dropped', async () => {
     const t = make(() => {}, undefined, true, true);
     const result = await t.adapter.start(req, () => {});

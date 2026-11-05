@@ -21,7 +21,7 @@ Include what you found, the steps to reproduce it, the affected commit or URL, a
 
 ## Handling
 
-Findings are tracked against the security review checklist in `docs/specs/quality/SPEC-quality.md` and recorded in `docs/SECURITY-REVIEW.md`. Any leaked credential is revoked first and removed from history second.
+Findings are tracked against the security review checklist in `docs/specs/quality/SPEC-quality.md`. Any leaked credential is revoked first and removed from history second.
 
 ## Supported versions
 

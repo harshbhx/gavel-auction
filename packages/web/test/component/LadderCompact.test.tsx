@@ -43,7 +43,7 @@ describe('LadderCompact', () => {
   it('never says charged or released before the server does', () => {
     const view = settlementView('BIDDING', null, [hold(1, 'Ana', 10_000, 'BIDDING')]);
     render(<LadderCompact view={view} />);
-    expect(screen.getByText('0 captured, 0 released')).toBeTruthy();
+    expect(screen.queryByText(/captured|released/)).toBeNull();
   });
 
   it('waits quietly before the first settlement update', () => {
