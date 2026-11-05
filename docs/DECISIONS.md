@@ -380,3 +380,22 @@ Consequences:
 - Without a key the public chain no longer binds redacted entries to a private hash; the auditor re-derives the whole export from the ledger instead.
 
 Evidence: packages/engine/src/ledger/public-export.ts, packages/engine/bin/verify-ledger.mjs, packages/engine/test/public-export.test.ts, SPEC-engine R-ENG-045, R-ENG-078, R-ENG-086, R-ENG-109.
+
+## D-0022: One lot per auction room; the ledger is the audit log
+
+Date: 2026-11-04
+Status: accepted
+Owner: server
+Context: The engine accepts many lots and a hold scope of lot or event, but the settlement journal, the hold store and the room are keyed by auction id with one candidate per bidder and one capture per hold. A second hammer in the same auction would be refused as a different plan (INTEGRATION-RT-08). The room log and the engine ledger are also two records of the same events (INTEGRATION-RT-10).
+Decision: A room runs exactly one lot. The server creates the lot with the room's auction id as lot id (lotIdOf), so the settlement journal key, the hold key and the lot id are the same value, and no server route adds a second lot. Multi-lot events are out of scope until journals and holds are keyed by auction and lot and a multi-win capture amount is defined. For the logs, D-0012 and D-0014 stand: the engine ledger is the hash-chained audit record and the source for the public export and verification (D-0020, D-0021); the room log is the first durable record of a room event and the replay source for a room; rejected bids, voice and confirm records live in the room log only.
+Alternatives:
+
+- Key journals and holds by auction and lot now: rejected, the demo is single lot and the change reaches payments, the store contract and the web settlement screen.
+- Persist only ledger entries and derive the room log: rejected in D-0014, a failed log append would leave ledger entries the rebuilt room does not have.
+
+Consequences:
+
+- A second lot in one auction is not a supported product path.
+- The audit export a judge verifies comes from the ledger, never from the room log.
+
+Evidence: packages/server/src/runtime/ledger-engine.ts (lotIdOf), packages/payments/src/saga/plan.ts, packages/engine/src/ledger/public-export.ts, SPEC-engine R-ENG-013, R-ENG-043, R-ENG-070, R-PAY-044.
