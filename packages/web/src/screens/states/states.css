@@ -1,0 +1,7 @@
+.gv-skeleton {
+  height: 1rem;
+  margin-block: 0.5rem;
+  border-radius: 4px;
+  background: currentColor;
+  opacity: 0.12;
+}

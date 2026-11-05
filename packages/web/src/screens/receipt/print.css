@@ -1,0 +1,12 @@
+@media print {
+  .gv-receipt__actions,
+  .gv-banner,
+  .gv-btn {
+    display: none !important;
+  }
+
+  .gv-receipt {
+    color: #000;
+    background: #fff;
+  }
+}
