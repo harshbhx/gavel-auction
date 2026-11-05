@@ -9,7 +9,7 @@ GAVEL is a hackathon project that runs against the PayPal sandbox only. It handl
 Please report privately. Do not open a public issue or pull request that describes the problem.
 
 - Use the "Report a vulnerability" button on the Security tab of the repository (private advisory), or
-- Email dhairyapatel0246@gmail.com with the subject line "GAVEL security".
+- Email bhanushaliharsh434@gmail.com with the subject line "GAVEL security".
 
 Include what you found, the steps to reproduce it, the affected commit or URL, and the impact you expect. Do not include real credentials. If you found a secret, say where it is and do not copy it elsewhere.
 
