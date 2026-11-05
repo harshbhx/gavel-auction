@@ -61,7 +61,7 @@ function emitDeclarations(ts, pkg, outDir) {
   const program = ts.createProgram([join(pkgDir, entryFor(pkg))], options, host);
   const inside = (f) => !relative(srcDir, f).startsWith('..') && !f.endsWith('.d.ts');
   for (const sf of program.getSourceFiles()) {
-    if (inside(resolve(sf.fileName))) program.emit(sf, undefined, undefined, true);
+    if (inside(resolve(sf.fileName))) program.emit(sf, undefined, undefined, true, undefined, true);
   }
 }
 

@@ -45,7 +45,7 @@ jobs:
           node -e "
           const r = JSON.parse(require('fs').readFileSync('reports/mutation/seeded/mutation.json', 'utf8'));
           const ms = Object.values(r.files).flatMap((f) => f.mutants);
-          const m = ms.find((x) => x.mutatorName === 'EqualityOperator' && x.replacement === '>');
+          const m = ms.find((x) => x.mutatorName === 'EqualityOperator' && x.replacement === 'a > b');
           if (!m || m.status !== 'Killed') { console.error('seeded mutant not killed', JSON.stringify(m)); process.exit(1); }
           console.log('seeded mutant killed');
           "
