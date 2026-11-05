@@ -813,7 +813,7 @@
     "bidder": null,
     "amountCents": null,
     "reason": "multiple bidders",
-    "candidatesCents": ["2", "3"]
+    "candidatesCents": ["4", "8"]
   },
   {
     "id": "correction-006",
@@ -939,7 +939,7 @@
     "id": "currency-005",
     "status": "bid",
     "bidder": "7",
-    "amountCents": 150000,
+    "amountCents": 320000,
     "reason": "",
     "candidatesCents": []
   },

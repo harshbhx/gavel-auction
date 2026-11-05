@@ -1,9 +1,11 @@
 /**
  * Keeps the held-out text set honest (R-VOX-077): its hash is recorded in HELDOUT.sha256 and a
  * change is only accepted together with a new dated line in CHANGELOG-HELDOUT.md that names the
- * new hash. Run: node --experimental-strip-types scripts/check-heldout.ts
+ * new hash. Run: node --experimental-strip-types scripts/check-heldout.ts [--base <git ref>]
+ * With --base the check also compares against the base branch (used by CI on pull requests).
  */
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -25,7 +27,20 @@ export interface HeldoutInputs {
   recorded: string;
   /** Content of CHANGELOG-HELDOUT.md. */
   changelog: string;
+  /**
+   * The state on the base branch. When given, a changed held-out set must replace exactly the hash
+   * recorded there (named by the changelog line before the newest one) and must not come with a
+   * change under src/parser/, so the set cannot be edited while the parser is tuned to it.
+   */
+  base?: {
+    /** HELDOUT.sha256 on the base branch. */
+    recorded: string;
+    /** Paths changed against the base branch, relative to the repository root. */
+    changedFiles: readonly string[];
+  };
 }
+
+const PARSER_PATH = /(^|\/)packages\/voice\/src\/parser\//;
 
 /** Returns the problems found; an empty list means the held-out set is untouched or properly logged. */
 export function checkHeldout(input: HeldoutInputs): string[] {
@@ -50,6 +65,23 @@ export function checkHeldout(input: HeldoutInputs): string[] {
       'the newest CHANGELOG-HELDOUT.md line does not name the hash recorded in HELDOUT.sha256',
     );
   }
+  if (input.base !== undefined) {
+    const baseHash = input.base.recorded.trim();
+    if (actual !== baseHash) {
+      const touched = input.base.changedFiles.filter((f) => PARSER_PATH.test(f));
+      if (touched.length > 0) {
+        errors.push(
+          `the held-out set changed in a change that also edits the parser (${touched.join(', ')}); split them`,
+        );
+      }
+      const previous = entries[entries.length - 2];
+      if (previous === undefined || previous[2] !== baseHash) {
+        errors.push(
+          `the changelog line before the newest one must name the replaced hash ${baseHash} recorded on the base branch`,
+        );
+      }
+    }
+  }
   const dates = entries.map((e) => e[1] ?? '');
   if (dates.some((d, i) => i > 0 && d < (dates[i - 1] ?? ''))) {
     errors.push('CHANGELOG-HELDOUT.md entries must be in date order');
@@ -57,9 +89,23 @@ export function checkHeldout(input: HeldoutInputs): string[] {
   return errors;
 }
 
+const HELDOUT_PATH = 'packages/voice/fixtures/text/HELDOUT.sha256';
+
+/** Reads the base branch state with git; throws when the ref or the file is missing (fail closed). */
+function readBase(ref: string): NonNullable<HeldoutInputs['base']> {
+  const git = (...args: string[]): string => execFileSync('git', args, { encoding: 'utf8' });
+  return {
+    recorded: git('show', `${ref}:${HELDOUT_PATH}`),
+    changedFiles: git('diff', '--name-only', ref, 'HEAD').split('\n').filter(Boolean),
+  };
+}
+
 function main(): void {
   const dir = fileURLToPath(new URL('../fixtures/text/', import.meta.url));
+  const baseIndex = process.argv.indexOf('--base');
+  const baseRef = baseIndex >= 0 ? process.argv[baseIndex + 1] : undefined;
   const errors = checkHeldout({
+    ...(baseRef === undefined ? {} : { base: readBase(baseRef) }),
     cases: JSON.parse(readFileSync(`${dir}cases.json`, 'utf8')),
     recorded: readFileSync(`${dir}HELDOUT.sha256`, 'utf8'),
     changelog: readFileSync(`${dir}CHANGELOG-HELDOUT.md`, 'utf8'),
