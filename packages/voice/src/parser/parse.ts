@@ -101,11 +101,12 @@ function parseAmounts(tokens: string[]): {
     }
     if (value === 0) continue;
     // "N dollars M cents": N*100 + M.
+    // One "and" may sit between the currency word and the cents ("three hundred dollars and fifty cents").
     const next = spans[k + 1];
     if (
       USD_WORDS.has(after) &&
       next !== undefined &&
-      next[0] === e + 1 &&
+      (next[0] === e + 1 || (tokens[e + 1] === 'and' && next[0] === e + 2)) &&
       CENT_WORDS.has(tokens[next[1]] ?? '')
     ) {
       const m = spanValue(tokens.slice(next[0], next[1]));
@@ -213,6 +214,20 @@ function parse(text: string, ctx: ParseContext): ParseResult {
     });
   }
   if (amounts.length === 0) return result('confirm', 'uninterpretable_number', { bidder });
+
+  // A cents part that was not joined to its dollars is never dropped: confirm the combined amount.
+  if (centsOnly.length > 0) {
+    const whole = distinctAmounts[0] ?? 0;
+    const sumCandidates =
+      distinctAmounts.length === 1
+        ? [...new Set(centsOnly)].sort((a, b) => a - b).map((c) => cand(whole + c, bidder))
+        : [];
+    return result('confirm', 'fractional_amount', {
+      bidder,
+      amountCents: sumCandidates[0]?.amountCents ?? null,
+      candidates: sumCandidates,
+    });
+  }
 
   if (distinctAmounts.length > 1) {
     return result('confirm', 'multiple_amounts', {
