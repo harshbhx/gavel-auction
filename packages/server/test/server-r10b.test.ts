@@ -62,6 +62,7 @@ describe('#1517 fence path behind the real FencedStore', () => {
     const t = await setup({ store: inner });
     const boss = await t.connect('auctioneer');
     const screen = await t.connect('screen');
+    await t.room.submitBid((await t.connect('bidder', t.b1)).conn, t.bid(10000));
     inner.conflictNext = true;
     await t.room.control(boss.conn, { controlId: 'p1', action: 'pause' });
     expect(t.room.isStopped).toBe(true);
@@ -84,9 +85,10 @@ describe('#1520 paused bids are not cached', () => {
     const t = await setup();
     const boss = await t.connect('auctioneer');
     const a = await t.connect('bidder', t.b1);
+    await t.room.submitBid((await t.connect('bidder', t.b2)).conn, t.bid(10000));
     await t.room.control(boss.conn, { controlId: 'p1', action: 'pause' });
     const seq = t.room.lastSeq;
-    const msg: BidMsg = t.bid(10500, t.ids.mint<'MsgId'>());
+    const msg: BidMsg = t.bid(15000, t.ids.mint<'MsgId'>());
     await t.room.submitBid(a.conn, msg);
     expect(a.transport.messages('bid_rejected')).toMatchObject([
       { reason: 'auction_paused', retryable: true },
