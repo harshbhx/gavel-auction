@@ -1,4 +1,4 @@
-import { DEFAULT_AUCTION_CONFIG } from './config.js';
+import { createdConfig } from './config.js';
 import { EngineError } from './errors.js';
 import type { LedgerEntry } from './events.js';
 import {
@@ -19,11 +19,20 @@ function setLot(s: AuctionState, lotId: string, f: (l: LotState) => LotState): A
   return { ...s, lots: dict({ ...s.lots, [lotId]: f(lot) }) };
 }
 
+/** The lot without the optional markers named, so it digests as if they were never set. */
+function without(l: LotState, ...keys: readonly ('pausedRemainingMs' | 'closingSeq')[]): LotState {
+  const kept = Object.entries(l).filter(([k]) => !(keys as readonly string[]).includes(k));
+  return Object.fromEntries(kept) as unknown as LotState;
+}
+
 /** The lot without its pause marker, so a resumed lot digests like one that was never paused. */
-function unpaused(l: LotState): LotState {
-  const copy: Record<string, unknown> = { ...l };
-  delete copy['pausedRemainingMs'];
-  return copy as unknown as LotState;
+const unpaused = (l: LotState): LotState => without(l, 'pausedRemainingMs');
+
+/** A bidder record revoked for good: the lot-only marker of an earlier revocation goes. */
+function revokedForGood(b: BidderState): BidderState {
+  const copy: Record<string, unknown> = { ...b, revoked: true };
+  delete copy['revokedLotOnly'];
+  return copy as unknown as BidderState;
 }
 
 function setBidder(s: AuctionState, key: string, f: (b: BidderState) => BidderState): AuctionState {
@@ -37,11 +46,12 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
     case 'AUCTION_CREATED':
       // A ledger has one genesis; a second AUCTION_CREATED must not overwrite config mid-auction.
       if (s.auctionId !== null) return s;
+      // Older entries hold a partial config; it is filled from frozen defaults (R12-E13).
       return {
         ...s,
         auctionId: e.auctionId,
         title: e.payload.title,
-        config: { ...DEFAULT_AUCTION_CONFIG, ...e.payload.config },
+        config: createdConfig(e.payload.config),
       };
     case 'LOT_ADDED': {
       const { lotId, lot } = e.payload;
@@ -79,12 +89,16 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
     }
     case 'CEILING_REVOKED': {
       const id = e.payload.bidderId;
+      const lotId = e.payload.lotId;
+      // Under holdScope lot the end of one lot's hold revokes that lot's record only (R12-E09).
+      if (lotId !== undefined) {
+        return setBidder(s, bidderKey(id, lotId), (b) =>
+          b.revoked ? b : { ...b, revoked: true, revokedLotOnly: true },
+        );
+      }
       const bidders = dict(
         Object.fromEntries(
-          Object.entries(s.bidders).map(([k, b]) => [
-            k,
-            b.bidderId === id ? { ...b, revoked: true } : b,
-          ]),
+          Object.entries(s.bidders).map(([k, b]) => [k, b.bidderId === id ? revokedForGood(b) : b]),
         ),
       );
       return { ...s, bidders };
@@ -130,11 +144,12 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
         extensions: e.payload.extensions,
       }));
     case 'LOT_CLOSING':
-      return setLot(s, e.payload.lotId, (l) => ({ ...l, status: 'CLOSING' }));
+      // Kept only while CLOSING, so the hammer can name this entry (R12-E11).
+      return setLot(s, e.payload.lotId, (l) => ({ ...l, status: 'CLOSING', closingSeq: e.seq }));
     case 'LOT_HAMMERED': {
       const p = e.payload;
       return setLot(s, p.lotId, (l) => ({
-        ...l,
+        ...without(l, 'closingSeq'),
         status: 'SETTLING',
         winnerId: p.winnerId,
         priceCents: p.priceCents,
@@ -167,7 +182,7 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
     }
     case 'LOT_UNSOLD':
       return setLot(s, e.payload.lotId, (l) => ({
-        ...l,
+        ...without(l, 'closingSeq'),
         status: 'DONE',
         winnerId: null,
         priceCents: null,
@@ -183,7 +198,7 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
       }));
     case 'LOT_ABORTED':
       return setLot(s, e.payload.lotId, (l) => ({
-        ...unpaused(l),
+        ...without(l, 'pausedRemainingMs', 'closingSeq'),
         status: 'DONE',
         winnerId: null,
         priceCents: null,
@@ -194,11 +209,16 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
         ...l,
         pausedRemainingMs: e.payload.remainingMs,
       }));
-    case 'LOT_RESUMED':
-      return setLot(s, e.payload.lotId, (l) => ({
-        ...unpaused(l),
-        endsAt: e.payload.endsAtAfter,
-      }));
+    case 'LOT_RESUMED': {
+      // The clock stood still for endsAtAfter - endsAtBefore ms; the hard close moves with it
+      // (R12-E08). Kept only once a pause moved the clock.
+      const shift = e.payload.endsAtAfter - e.payload.endsAtBefore;
+      return setLot(s, e.payload.lotId, (l) => {
+        const next = { ...unpaused(l), endsAt: e.payload.endsAtAfter };
+        if (shift <= 0) return next;
+        return { ...next, pausedTotalMs: (l.pausedTotalMs ?? 0) + shift };
+      });
+    }
     case 'LOT_EXTENDED':
       return setLot(s, e.payload.lotId, (l) => ({ ...l, endsAt: e.payload.endsAtAfter }));
     case 'SETTLEMENT_STATE':

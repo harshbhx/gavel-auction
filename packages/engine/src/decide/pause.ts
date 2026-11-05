@@ -1,5 +1,7 @@
+import { MAX_EXTEND_MS } from '../commands.js';
 import type { Command } from '../commands.js';
 import { EngineError } from '../errors.js';
+import { hardCloseOf } from '../rules/softclose.js';
 import type { AuctionState, LotState } from '../state.js';
 import { LIMITS } from '../types.js';
 import { assertNotInPast } from './setup.js';
@@ -47,7 +49,11 @@ export function decidePauseLot(state: AuctionState, cmd: PauseLotCommand): Decid
   };
 }
 
-/** Decides ResumeLot (RT-18): the deadline becomes the resume time plus the time left at pause. */
+/**
+ * Decides ResumeLot (RT-18): the deadline becomes the resume time plus the time left at pause.
+ * The hard close moves by the same paused time (evolve adds it to `pausedTotalMs`), so the new
+ * deadline never passes it (R-ENG-036, R12-E08).
+ */
 export function decideResumeLot(state: AuctionState, cmd: ResumeLotCommand): DecideResult {
   const lot = clockLot(state, cmd);
   if (lot.pausedRemainingMs === undefined) throw new EngineError('bad_command', 'not paused');
@@ -70,13 +76,21 @@ export function decideResumeLot(state: AuctionState, cmd: ResumeLotCommand): Dec
 /**
  * Decides ExtendLot (RT-18): an auctioneer adds time to a running lot. It does not count toward
  * the soft-close extension limit. A paused lot is resumed first; a lot past its deadline is closed
- * by Tick instead.
+ * by Tick instead. `extraMs` is checked here too, not only by `parseCommand`, and the new
+ * deadline may not pass the hard close (R-ENG-036, R12-E08).
  */
 export function decideExtendLot(state: AuctionState, cmd: ExtendLotCommand): DecideResult {
   const lot = clockLot(state, cmd);
   if (cmd.reason.length > LIMITS.text) throw new EngineError('limit_exceeded', 'reason');
+  if (!Number.isSafeInteger(cmd.extraMs) || cmd.extraMs < 1 || cmd.extraMs > MAX_EXTEND_MS) {
+    throw new EngineError('bad_command', `extraMs must be an integer in 1..${MAX_EXTEND_MS}`);
+  }
   if (lot.pausedRemainingMs !== undefined) throw new EngineError('bad_command', 'resume first');
   if (cmd.at >= lot.endsAt) throw new EngineError('lot_not_open', 'deadline passed');
+  const hard = hardCloseOf(lot);
+  if (hard !== null && lot.endsAt + cmd.extraMs > hard) {
+    throw new EngineError('bad_command', `extension passes the hard close at ${hard}`);
+  }
   return {
     events: [
       {

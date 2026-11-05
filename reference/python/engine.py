@@ -16,6 +16,7 @@ except that its `lot_not_open` is called `closed` here.
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
+from fractions import Fraction
 from typing import Optional
 
 MODES = ("english", "proxy", "second_price")
@@ -260,8 +261,15 @@ class Auction:
         self.paused_remaining = None
 
     def extend(self, now, extra):
-        """Add time to a running lot. Not a soft-close extension: `extensions` is unchanged."""
+        """Add time to a running lot. Not a soft-close extension: `extensions` is unchanged.
+
+        `extra` must be 1 ms to 600 s, which the engine checks in decide as well as in
+        parseCommand (R12-E08). The reference has no hard close, so the engine's hard close
+        cap on extend is checked by engine tests only.
+        """
         self._clock_lot()
+        if extra < Fraction(1, 1000) or extra > 600:
+            raise Rejected("bad_command", "extra out of range")
         if self.paused_remaining is not None:
             raise Rejected("bad_command", "resume first")
         if now >= self.end_ts:
