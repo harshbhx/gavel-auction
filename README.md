@@ -8,7 +8,7 @@
 
 **A live auction where every bid is a PayPal AUTHORIZE hold. Only the winning price is captured; every other hold is voided and released. A crash-safe settlement saga and a hash-chained audit trail keep the result provable.**
 
-Built for the PayPal AI Hackathon 2026. PayPal sandbox only: no real money moves.
+Built for the PayPal Hackathon 2026. PayPal sandbox only: no real money moves.
 
 ## How it works
 
