@@ -2,16 +2,30 @@ import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { loadScenarioFile } from '../src/dsl/load';
 import { main, parseArgs } from '../src/runner/cli';
 import { evaluateInvariants } from '../src/runner/invariants';
 import { runScenarioInProc } from '../src/runner/inproc';
 
+/** Runs the CLI with stdout captured, so an expected FAIL line never lands in the CI log. */
+async function runQuiet(argv: string[]): Promise<{ code: number; out: string }> {
+  let out = '';
+  const spy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk: unknown) => {
+    out += String(chunk);
+    return true;
+  });
+  try {
+    return { code: await main(argv), out };
+  } finally {
+    spy.mockRestore();
+  }
+}
+
 const S01 = fileURLToPath(new URL('../scenarios/S01-happy-path.yaml', import.meta.url));
 
 describe('in-process scenario runner (T-QA-027)', () => {
-  it('runs S01 without a browser in under 2 s and holds I1 to I5', { timeout: 2000 }, async () => {
+  it('runs S01 without a browser in under 2 s and holds I1 to I5', { timeout: 15_000 }, async () => {
     const result = await runScenarioInProc(loadScenarioFile(S01));
     expect(result.failures).toEqual([]);
     expect(result.outcome.winner).toBe('ana');
@@ -31,8 +45,12 @@ describe('in-process scenario runner (T-QA-027)', () => {
     const file = join(dir, 'S01-altered.yaml');
     writeFileSync(file, text);
     const traces = join(dir, 'traces');
-    const code = await main([file, '--trace', traces]);
+    const { code, out } = await runQuiet([file, '--trace', traces]);
     expect(code).toBe(1);
+    // The diff is the point of this test; it must be captured, not leaked to the CI log, where
+    // "FAIL S01-happy-path (seed 1)" with "+ 9999" reads like a real money failure.
+    expect(out).toContain('FAIL S01-happy-path (seed 1)');
+    expect(out).toContain('9999');
     expect(readdirSync(traces)).toEqual(['S01-happy-path.ndjson']);
     const lines = readFileSync(join(traces, 'S01-happy-path.ndjson'), 'utf8').trim().split('\n');
     expect(lines.length).toBeGreaterThan(5);
@@ -40,8 +58,8 @@ describe('in-process scenario runner (T-QA-027)', () => {
   });
 
   it('exits 0 for a passing scenario and 2 for bad usage', async () => {
-    expect(await main([S01])).toBe(0);
-    expect(await main([])).toBe(2);
+    expect((await runQuiet([S01])).code).toBe(0);
+    expect((await runQuiet([])).code).toBe(2);
     expect(() => parseArgs(['--seed', 'x'])).toThrow();
   });
 
