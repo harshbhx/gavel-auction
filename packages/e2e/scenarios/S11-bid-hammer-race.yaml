@@ -1,0 +1,105 @@
+id: S11-bid-hammer-race
+title: Twenty bids in the last 100 ms race the hammer
+modes: [inproc]
+seed: 11
+clock: { startMs: 1793750400000 }
+auction: { itemId: lot-1, reserve: 5000, minIncrement: 500, softCloseMs: 0, mode: english }
+actors:
+  b01: { funding: wallet }
+  b02: { funding: wallet }
+  b03: { funding: wallet }
+  b04: { funding: wallet }
+  b05: { funding: wallet }
+  b06: { funding: wallet }
+  b07: { funding: wallet }
+  b08: { funding: wallet }
+  b09: { funding: wallet }
+  b10: { funding: wallet }
+  b11: { funding: wallet }
+  b12: { funding: wallet }
+  b13: { funding: wallet }
+  b14: { funding: wallet }
+  b15: { funding: wallet }
+  b16: { funding: wallet }
+  b17: { funding: wallet }
+  b18: { funding: wallet }
+  b19: { funding: wallet }
+  b20: { funding: wallet }
+steps:
+  - { t: 0, actor: b01, do: register, ceiling: 20000 }
+  - { t: 0, actor: b02, do: register, ceiling: 20000 }
+  - { t: 0, actor: b03, do: register, ceiling: 20000 }
+  - { t: 0, actor: b04, do: register, ceiling: 20000 }
+  - { t: 0, actor: b05, do: register, ceiling: 20000 }
+  - { t: 0, actor: b06, do: register, ceiling: 20000 }
+  - { t: 0, actor: b07, do: register, ceiling: 20000 }
+  - { t: 0, actor: b08, do: register, ceiling: 20000 }
+  - { t: 0, actor: b09, do: register, ceiling: 20000 }
+  - { t: 0, actor: b10, do: register, ceiling: 20000 }
+  - { t: 0, actor: b11, do: register, ceiling: 20000 }
+  - { t: 0, actor: b12, do: register, ceiling: 20000 }
+  - { t: 0, actor: b13, do: register, ceiling: 20000 }
+  - { t: 0, actor: b14, do: register, ceiling: 20000 }
+  - { t: 0, actor: b15, do: register, ceiling: 20000 }
+  - { t: 0, actor: b16, do: register, ceiling: 20000 }
+  - { t: 0, actor: b17, do: register, ceiling: 20000 }
+  - { t: 0, actor: b18, do: register, ceiling: 20000 }
+  - { t: 0, actor: b19, do: register, ceiling: 20000 }
+  - { t: 0, actor: b20, do: register, ceiling: 20000 }
+  - { t: 1000, actor: auctioneer, do: open }
+  - { t: 599900, actor: b01, do: bid, amount: 6000 }
+  - { t: 599905, actor: b02, do: bid, amount: 6500 }
+  - { t: 599910, actor: b03, do: bid, amount: 7000 }
+  - { t: 599915, actor: b04, do: bid, amount: 7500 }
+  - { t: 599920, actor: b05, do: bid, amount: 8000 }
+  - { t: 599925, actor: b06, do: bid, amount: 8500 }
+  - { t: 599930, actor: b07, do: bid, amount: 9000 }
+  - { t: 599935, actor: b08, do: bid, amount: 9500 }
+  - { t: 599940, actor: b09, do: bid, amount: 10000 }
+  - { t: 599945, actor: b10, do: bid, amount: 10500 }
+  - { t: 599950, actor: b11, do: bid, amount: 11000 }
+  - { t: 599955, actor: b12, do: bid, amount: 11500 }
+  - { t: 599960, actor: b13, do: bid, amount: 12000 }
+  - { t: 599965, actor: b14, do: bid, amount: 12500 }
+  - { t: 599970, actor: b15, do: bid, amount: 13000 }
+  - { t: 599975, actor: b16, do: bid, amount: 13500 }
+  - { t: 599980, actor: b17, do: bid, amount: 14000 }
+  - { t: 599985, actor: b18, do: bid, amount: 14500 }
+  - { t: 599990, actor: b19, do: bid, amount: 15000 }
+  - { t: 599995, actor: b20, do: bid, amount: 15500 }
+  - { t: 599999, actor: auctioneer, do: hammer }
+  - { t: 599999, actor: b01, do: bid, amount: 16000 }
+expect:
+  - rejected:
+      - { actor: b01, code: auction_closed }
+  - ledger:
+      {
+        winner: b20,
+        captured: 15500,
+        released: 4500,
+        voided:
+          [
+            b01,
+            b02,
+            b03,
+            b04,
+            b05,
+            b06,
+            b07,
+            b08,
+            b09,
+            b10,
+            b11,
+            b12,
+            b13,
+            b14,
+            b15,
+            b16,
+            b17,
+            b18,
+            b19,
+          ],
+      }
+  - paypalCalls: { capture: 1, void: 19 }
+  - invariants: [I1, I2, I4, I5]
+tags: [race]

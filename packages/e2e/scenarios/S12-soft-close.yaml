@@ -1,0 +1,25 @@
+id: S12-soft-close
+title: Soft close extends five times, never shortens, then hammer
+modes: [inproc]
+seed: 12
+clock: { startMs: 1793750400000 }
+auction: { itemId: lot-1, reserve: 5000, minIncrement: 500, softCloseMs: 5000, mode: english }
+actors: { ana: { funding: wallet }, ben: { funding: wallet } }
+steps:
+  - { t: 0, actor: ana, do: register, ceiling: 50000 }
+  - { t: 0, actor: ben, do: register, ceiling: 25000 }
+  - { t: 1000, actor: auctioneer, do: open }
+  - { t: 100000, actor: ana, do: bid, amount: 5500 }
+  - { t: 596000, actor: ben, do: bid, amount: 6000 }
+  - { t: 622000, actor: ana, do: bid, amount: 6500 }
+  - { t: 648000, actor: ben, do: bid, amount: 7000 }
+  - { t: 674000, actor: ana, do: bid, amount: 7500 }
+  - { t: 700000, actor: ben, do: bid, amount: 8000 }
+  - { t: 726000, actor: ana, do: bid, amount: 8500 }
+  - { t: 731000, actor: auctioneer, do: hammer }
+expect:
+  - rejected: []
+  - ledger: { winner: ana, captured: 8500, released: 41500, voided: [ben] }
+  - paypalCalls: { capture: 1, void: 1 }
+  - invariants: [I1, I2, I3, I4, I5]
+tags: [soft-close]

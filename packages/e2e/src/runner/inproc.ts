@@ -38,6 +38,12 @@ export interface Outcome {
   rejected: Array<{ actor: string; code: string }>;
   paypalCalls: { capture: number; void: number; reauthorize: number };
   invariants: Record<Invariant, boolean>;
+  /** Soft-close extensions the lot used and the deadline it ended with (epoch ms). */
+  extensions: number;
+  endsAt: number | null;
+  /** Faults the fake PayPal fired, by operation, and the request id of each recorded capture. */
+  faultsFired: { capture: number; void: number };
+  captureRequestIds: string[];
 }
 
 export interface RunResult {
@@ -281,6 +287,18 @@ async function drive(
       reauthorize: count('reauthorize'),
     },
     invariants: evaluateInvariants({ winner, holds, entries, fakeOk }),
+    extensions: lot?.extensions ?? 0,
+    endsAt: lot?.endsAt ?? null,
+    faultsFired: {
+      capture: rig.paypal.faults.applied.filter((f) => f.op === 'capture').length,
+      void: rig.paypal.faults.applied.filter((f) => f.op === 'void').length,
+    },
+    captureRequestIds:
+      holds.length === 0
+        ? []
+        : [...bidders.values()].flatMap((b) =>
+            core.getAuthorization(b.authId).captures.map((c) => c.requestId ?? ''),
+          ),
   };
   await service.close();
   emit('result', 0, { ...outcome });
