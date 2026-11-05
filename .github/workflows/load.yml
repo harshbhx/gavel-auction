@@ -6,8 +6,9 @@ name: load
 #
 # L1 is report-only on this shared CI runner: its timings and RSS growth vary with runner load,
 # so the step is marked continue-on-error. The thresholds are enforced locally, and the measured
-# numbers are still uploaded so regressions stay visible. L2 (identical-bid race) is blocking:
-# exactly one bid may win, which does not depend on timing.
+# numbers are still uploaded so regressions stay visible. L2 (identical-bid race) stays blocking
+# on correctness: exactly one bid may win, with no lost or duplicate reply. Its latency and RSS
+# checks are report-only on CI for the same reason as L1, so a gate step reads the JSON.
 on:
   workflow_dispatch:
   pull_request:
@@ -33,9 +34,16 @@ jobs:
           GAVEL_LOAD_RUN: '1'
         run: npx vite-node packages/e2e/src/load/run.ts -- L1 --out load-latency-l1.json
       - name: L2 identical-bid race
+        continue-on-error: true
         env:
           GAVEL_LOAD_RUN: '1'
         run: npx vite-node packages/e2e/src/load/run.ts -- L2 --out load-latency-l2.json
+      - name: L2 race gate (correctness blocks, timing is report-only)
+        run: |
+          test -s load-latency-l2.json
+          jq -e '[.reports[] | select(.scenario == "L2") | .checks[]
+            | select(.ok == false and (.name | test("^(p95 ack|p99 ack|rss growth)$") | not))]
+            | length == 0' load-latency-l2.json
       - name: Upload latency JSON
         if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
