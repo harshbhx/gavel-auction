@@ -45,7 +45,12 @@ describe('T-VOX-095 empty and filler transcripts (R-VOX-087)', () => {
 
 describe('T-VOX-096 garbage and profanity (R-VOX-088)', () => {
   it('drops garbage without throwing', () => {
-    const cases = ['السلام عليكم', 'a'.repeat(24), 'x '.repeat(1250), 'three\u0000hundred'];
+    const cases = [
+      '\u0627\u0644\u0633\u0644\u0627\u0645 \u0639\u0644\u064a\u0643\u0645',
+      'a'.repeat(24),
+      'x '.repeat(1250),
+      'three\u0000hundred',
+    ];
     for (const c of cases) expect(checkTranscript(c)).toEqual({ kind: 'drop', reason: 'garbage' });
   });
 
