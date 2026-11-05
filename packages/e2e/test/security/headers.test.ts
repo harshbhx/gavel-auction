@@ -48,7 +48,8 @@ describe.skipIf(base === undefined)('evil origin (T-QA-075)', () => {
     const url = (base ?? '').replace(/^http/, 'ws');
     // A refusal only means something when a same-origin upgrade opens first.
     if ((await upgrade(url, new URL(base ?? '').origin)) !== 'open') {
-      ctx.skip('no WebSocket gateway answers a same-origin upgrade on the target');
+      console.info('no WebSocket gateway answers a same-origin upgrade on the target');
+      ctx.skip();
       return;
     }
     expect(await upgrade(url, EVIL)).toBe('rejected');

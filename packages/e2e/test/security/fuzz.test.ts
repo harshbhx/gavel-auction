@@ -67,7 +67,8 @@ describe.skipIf(base === undefined)('random frames against a deployed server', (
       });
     });
     if (!opens) {
-      ctx.skip('no WebSocket gateway answers on the target, so frames cannot be delivered');
+      console.info('no WebSocket gateway answers on the target, so frames cannot be delivered');
+      ctx.skip();
       return;
     }
     const samples = fc.sample(frame, 50);
