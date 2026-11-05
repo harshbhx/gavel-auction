@@ -403,7 +403,7 @@ describe('auction service: gauges and counters (R8-S03)', () => {
     const rig = await makeRig();
     const metrics = { bidAccepted: vi.fn(), bidRejected: vi.fn(), rateLimitHit: vi.fn() };
     const service = rig.service({ roomMetrics: metrics, resumeIntervalMs: 0 });
-    expect(service.stats()).toEqual({ rooms: 0, connections: 0 });
+    expect(service.stats()).toEqual({ rooms: 0, connections: 0, mailboxDepth: 0 });
     const auctionId = rig.ids.mint<'AuctionId'>();
     const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
     const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
