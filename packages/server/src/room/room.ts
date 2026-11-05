@@ -46,14 +46,9 @@ import {
   resolvedEvent,
   type ConfirmOutcome,
 } from './confirm-resolve';
+import { DEFAULT_CAPS, type CapLimits } from '../limits/caps';
 import type { RateLimiter } from '../limits/rate-limiter';
-import {
-  MAX_CONNECTIONS_PER_TOKEN,
-  SUPERSEDED_CODE,
-  SUPERSEDED_REASON,
-  eventFrames,
-  planResync,
-} from './resync';
+import { SUPERSEDED_CODE, SUPERSEDED_REASON, eventFrames, planResync } from './resync';
 import {
   TERMINAL_SETTLEMENT,
   canHammer,
@@ -132,6 +127,8 @@ export interface RoomDeps {
   /** Builds a fresh engine for a config; called again whenever the room is rebuilt from its log. */
   engine: (config: AuctionConfig, createdAt: EpochMs) => EnginePort;
   limiter?: RateLimiter;
+  /** Connection, roster and bid-count caps parsed from the config (R-RT-121); defaults when absent. */
+  caps?: CapLimits;
   /** Counters fed from the bid path (R-RT-122, R-RT-135). */
   metrics?: { bidAccepted(): void; bidRejected(): void; rateLimitHit(): void };
   /** Payments side of settlement; without it a hammered room stays in SETTLING. */
@@ -184,6 +181,8 @@ export class Room {
   private closed = false;
   private maxInFlight = 0;
   private seq = 0;
+  /** Bids in the log, accepted and rejected alike; bounded by `caps.bidsPerAuction`. */
+  private bidCount = 0;
   private config: AuctionConfig | undefined;
   private engine: EnginePort | undefined;
   private lastState = 'OPEN';
@@ -217,6 +216,10 @@ export class Room {
     readonly auctionId: AuctionId,
     private readonly deps: RoomDeps,
   ) {}
+
+  private get caps(): CapLimits {
+    return this.deps.caps ?? DEFAULT_CAPS;
+  }
 
   /** Create a room: appends `auction_created` as seq 1. */
   static async create(
@@ -280,6 +283,18 @@ export class Room {
    */
   attach(conn: Connection, lastSeq?: number): Promise<void> {
     return this.enqueue(async () => {
+      if (this.stopped) {
+        this.sendError(conn, 'host_fenced');
+        conn.transport.close(ERROR_TABLE.host_fenced.closeCode ?? 4010, 'host_fenced');
+        return;
+      }
+      const mine = this.sameToken(conn);
+      const supersedes = mine.length >= this.caps.connectionsPerBidder ? 1 : 0;
+      if (this.conns.size - supersedes + 1 > this.caps.connectionsPerRoom) {
+        this.sendError(conn, 'room_full');
+        conn.transport.close(ERROR_TABLE.room_full.closeCode ?? 4009, 'room_full');
+        return;
+      }
       this.supersedeOldest(conn);
       try {
         await this.ensureClean();
@@ -313,11 +328,15 @@ export class Room {
     });
   }
 
-  private supersedeOldest(next: Connection): void {
-    const mine = [...this.conns.values()].filter(
+  private sameToken(next: Connection): Connection[] {
+    return [...this.conns.values()].filter(
       (c) => c.role === next.role && c.sub === next.sub && c.bidderId === next.bidderId,
     );
-    while (mine.length >= MAX_CONNECTIONS_PER_TOKEN) {
+  }
+
+  private supersedeOldest(next: Connection): void {
+    const mine = this.sameToken(next);
+    while (mine.length >= this.caps.connectionsPerBidder) {
       const oldest = mine.shift();
       if (!oldest) break;
       this.conns.delete(oldest.id);
@@ -366,6 +385,37 @@ export class Room {
     return this.stopped;
   }
 
+  /**
+   * Every log append goes through here. A `conflict` means another host appended first, so this
+   * host lost the room (R-RT-061): stop serving, tell every connection and close them with 4010.
+   */
+  private async appendFenced(
+    auctionId: AuctionId,
+    expectedSeq: number,
+    events: RoomEvent[],
+  ): Promise<void> {
+    try {
+      await this.deps.store.appendEvents(auctionId, expectedSeq, events);
+    } catch (e) {
+      if (e instanceof GavelError && e.code === 'conflict') {
+        this.fence();
+        throw new GavelError('host_fenced', 'this host no longer owns the room');
+      }
+      throw e;
+    }
+  }
+
+  private fence(): void {
+    if (this.stopped) return;
+    this.stop();
+    const closeCode = ERROR_TABLE.host_fenced.closeCode ?? 4010;
+    for (const conn of [...this.conns.values()]) {
+      this.sendError(conn, 'host_fenced');
+      conn.transport.close(closeCode, 'host_fenced');
+    }
+    this.conns.clear();
+  }
+
   private storeError(): GavelError {
     return new GavelError(this.stopped ? 'host_fenced' : 'store_unavailable');
   }
@@ -407,7 +457,8 @@ export class Room {
       ) {
         throw new GavelError('bad_message', 'invalid registration');
       }
-      if (this.roster.size >= MAX_BIDDERS_PER_ROOM) throw new GavelError('room_full');
+      if (this.roster.size >= Math.min(this.caps.biddersPerRoom, MAX_BIDDERS_PER_ROOM))
+        throw new GavelError('room_full');
       const seq = this.seq + 1;
       const ts = this.deps.clock.now();
       const paddle = this.roster.size + 1;
@@ -436,7 +487,7 @@ export class Room {
         throw new GavelError('bad_message', 'registration refused by the engine');
       }
       try {
-        await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+        await this.appendFenced(this.auctionId, this.seq, [event]);
       } catch (e) {
         // The engine already holds the bidder; rebuild it from the stored log (R-RT-033).
         await this.recover().catch(() => undefined);
@@ -520,6 +571,10 @@ export class Room {
       this.sendError(conn, this.storeCode());
       return;
     }
+    if (this.bidCount >= this.caps.bidsPerAuction) {
+      this.sendError(conn, 'auction_full');
+      return;
+    }
     const engine = this.requireEngine();
     if (
       !confirmed &&
@@ -595,7 +650,7 @@ export class Room {
           };
 
     try {
-      await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+      await this.appendFenced(this.auctionId, this.seq, [event]);
     } catch {
       // State must not change: rebuild the engine from the log and tell the sender.
       await this.recover().catch(() => undefined);
@@ -603,6 +658,7 @@ export class Room {
       return;
     }
     this.seq = seq;
+    this.bidCount += 1;
     if (event.type === 'bid_accepted') this.deps.metrics?.bidAccepted();
     else this.deps.metrics?.bidRejected();
     this.pushAudit(audit);
@@ -705,7 +761,7 @@ export class Room {
     );
     events.push(requestedEvent(this.auctionId, held, askAudit, seq, ts));
     try {
-      await this.deps.store.appendEvents(this.auctionId, this.seq, events);
+      await this.appendFenced(this.auctionId, this.seq, events);
     } catch {
       await this.recover().catch(() => undefined);
       const conn = [...this.conns.values()].find((c) => c.bidderId === bidderId);
@@ -750,7 +806,7 @@ export class Room {
       audit,
     );
     try {
-      await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+      await this.appendFenced(this.auctionId, this.seq, [event]);
     } catch {
       await this.recover().catch(() => undefined);
       return false;
@@ -1045,7 +1101,7 @@ export class Room {
         reason,
       };
       try {
-        await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+        await this.appendFenced(this.auctionId, this.seq, [event]);
       } catch {
         await this.recover().catch(() => undefined);
         throw this.storeError();
@@ -1132,7 +1188,7 @@ export class Room {
       ranking: result.ranking,
     });
     try {
-      await this.deps.store.appendEvents(this.auctionId, this.seq, events);
+      await this.appendFenced(this.auctionId, this.seq, events);
     } catch {
       await this.recover().catch(() => undefined);
       if (by) this.sendError(by.conn, this.storeCode());
@@ -1176,7 +1232,7 @@ export class Room {
       const seq = this.seq + 1;
       const ts = this.deps.clock.now();
       try {
-        await this.deps.store.appendEvents(this.auctionId, this.seq, [
+        await this.appendFenced(this.auctionId, this.seq, [
           { type: 'settle_requested', auctionId: this.auctionId, seq, ts },
         ]);
       } catch {
@@ -1238,7 +1294,7 @@ export class Room {
       });
       if (!event.success) throw new GavelError('bad_message', 'invalid settlement update');
       try {
-        await this.deps.store.appendEvents(this.auctionId, this.seq, [event.data]);
+        await this.appendFenced(this.auctionId, this.seq, [event.data]);
       } catch {
         await this.recover().catch(() => undefined);
         throw this.storeError();
@@ -1508,7 +1564,7 @@ export class Room {
       endTs,
     };
     try {
-      await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+      await this.appendFenced(this.auctionId, this.seq, [event]);
     } catch {
       await this.recover().catch(() => undefined);
       this.retryTimer();
@@ -1548,6 +1604,7 @@ export class Room {
     this.replies = fresh.replies;
     this.audit = fresh.audit;
     this.seq = fresh.seq;
+    this.bidCount = fresh.bidCount;
     this.lastState = fresh.lastState;
     this.closingAt = fresh.closingAt;
     this.controlIds = fresh.controlIds;
@@ -1569,6 +1626,7 @@ export class Room {
     this.replies = new Map();
     this.audit = [];
     this.seq = 0;
+    this.bidCount = 0;
     this.lastState = 'OPEN';
     this.closingAt = undefined;
     this.controlIds = new Set();
@@ -1668,6 +1726,7 @@ export class Room {
   }
 
   private remember(event: Extract<RoomEvent, { type: 'bid_accepted' | 'bid_rejected' }>): void {
+    this.bidCount += 1;
     const reply = this.replyFor(event);
     if (reply) {
       const digest = bidDigest(event.audit.parsedAmount, event.audit.source);
