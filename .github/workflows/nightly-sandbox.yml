@@ -120,6 +120,7 @@ jobs:
         continue-on-error: true
         env:
           DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           G5_AUDIO_DIR: ${{ vars.G5_AUDIO_DIR }}
         run: npm run gate:g5 -w @gavel/e2e
       - name: Write the result summary

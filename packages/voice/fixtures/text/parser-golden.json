@@ -636,7 +636,7 @@
     "status": "none",
     "bidder": null,
     "amountCents": null,
-    "reason": "no amount",
+    "reason": "auctioneer/background talk",
     "candidatesCents": []
   },
   {
@@ -1350,5 +1350,53 @@
     "amountCents": 1900,
     "reason": "homophone",
     "candidatesCents": [1900, 9000]
+  },
+  {
+    "id": "non_bid-015",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "auctioneer/background talk",
+    "candidatesCents": []
+  },
+  {
+    "id": "non_bid-016",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "auctioneer/background talk",
+    "candidatesCents": []
+  },
+  {
+    "id": "non_bid-017",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "auctioneer/background talk",
+    "candidatesCents": []
+  },
+  {
+    "id": "non_bid-018",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "auctioneer/background talk",
+    "candidatesCents": []
+  },
+  {
+    "id": "non_bid-019",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "question",
+    "candidatesCents": []
+  },
+  {
+    "id": "non_bid-020",
+    "status": "none",
+    "bidder": null,
+    "amountCents": null,
+    "reason": "auctioneer/background talk",
+    "candidatesCents": []
   }
 ]

@@ -2056,5 +2056,71 @@
     "expected": {
       "status": "confirm"
     }
+  },
+  {
+    "id": "non_bid-015",
+    "set": "dev",
+    "category": "non_bid",
+    "text": "lot number twelve who'll give me five hundred",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-016",
+    "set": "dev",
+    "category": "non_bid",
+    "text": "item number three four hundred",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-017",
+    "set": "dev",
+    "category": "non_bid",
+    "text": "paddle twelve do i hear five hundred and fifty",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-018",
+    "set": "dev",
+    "category": "non_bid",
+    "text": "paddle nine can I get seven hundred",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-019",
+    "set": "dev",
+    "category": "non_bid",
+    "text": "who will give me four fifty",
+    "speaker": "6",
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
+  },
+  {
+    "id": "non_bid-020",
+    "set": "dev",
+    "category": "non_bid",
+    "text": "page number two fifty",
+    "speaker": null,
+    "currentPriceCents": null,
+    "expected": {
+      "status": "none"
+    }
   }
 ]

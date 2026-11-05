@@ -27,7 +27,7 @@ PADDLE_WORDS = {"paddle", "bidder", "number", "seat", "card", "paddy", "padel"}
 CORRECTION = re.compile(r"\b(no wait|wait no|scratch that|never ?mind|i mean|sorry|actually|make that|strike that|cancel|withdraw)\b")
 QUESTION_START = re.compile(r"^(is|did|was|what|how|who|can|could|does|do|are|why)\b")
 HEDGE = re.compile(r"\b(maybe|perhaps|thinking|about|around|roughly|between|or so|not sure|might|i guess)\b")
-NOT_BID_CTX = re.compile(r"\b(the price is|price is|it'?s at|now at|currently|reserve|starting|opening|we are at|we're at|going once|going twice|going three times|fair warning|sold|kids|years old|people)\b")
+NOT_BID_CTX = re.compile(r"\b(the price is|price is|it'?s at|now at|currently|reserve|starting|opening|we are at|we're at|(lot|item|page) number|do i hear|who(?:'|’)?ll give|who will give|will you give|can i get|going once|going twice|going three times|fair warning|sold|kids|years old|people)\b")
 
 
 @dataclass
