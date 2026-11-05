@@ -114,7 +114,12 @@ describe('server config (T-RT-089)', () => {
     expect(dump.ADMIN_KEY).toBe(REDACTED);
     expect(dump.DATABASE_URL).toBe(REDACTED);
     const text = JSON.stringify(dump);
-    for (const secret of [good.TOKEN_SECRET, good.ADMIN_KEY, 'previous-secret-value-0123456789-abcdef', 'pw@h']) {
+    for (const secret of [
+      good.TOKEN_SECRET,
+      good.ADMIN_KEY,
+      'previous-secret-value-0123456789-abcdef',
+      'pw@h',
+    ]) {
       expect(text).not.toContain(secret);
     }
     expect(dump.PUBLIC_URL).toBe(good.PUBLIC_URL);
