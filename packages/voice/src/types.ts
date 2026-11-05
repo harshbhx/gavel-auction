@@ -177,6 +177,12 @@ export const parseResultSchema = z
   .strict()
   .refine((r) => r.status !== 'bid' || r.amountCents !== null, {
     message: 'a bid needs an amount',
+  })
+  .refine((r) => r.status !== 'bid' || r.bidder !== null, {
+    message: 'a bid needs a bidder',
+  })
+  .refine((r) => (r.spans ?? []).every((s) => s.end >= s.start), {
+    message: 'a span must end at or after its start',
   });
 
 export const voiceEvidenceSchema = z
