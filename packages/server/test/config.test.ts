@@ -223,7 +223,7 @@ describe('production rules (R-RT-131)', () => {
   it('keeps development rules for localhost without NODE_ENV', () => {
     const unset = { ...good, NODE_ENV: undefined };
     for (const host of ['http://localhost:8080', 'http://127.0.0.1:8080', 'http://[::1]:8080']) {
-      const r = parseConfig({ ...unset, PUBLIC_URL: host, TOKEN_SECRET: 'a', ADMIN_KEY: 'a' });
+      const r = parseConfig({ ...unset, PUBLIC_URL: host });
       expect(r.ok && r.config.NODE_ENV).toBe('development');
     }
   });
