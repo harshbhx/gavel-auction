@@ -9,7 +9,8 @@ import type { PaymentsGateway } from '../../src/ports.js';
 import { invoiceIdFor } from '../../src/saga/capture.js';
 import { createSettlement } from '../../src/saga/create.js';
 import { runSettlement, type SettlementDeps } from '../../src/saga/void.js';
-import { MemoryJournalStore } from '../../src/stores/memory.js';
+import { reconcile } from '../../src/reconcile/reconcile.js';
+import { MemoryHoldStore, MemoryJournalStore } from '../../src/stores/memory.js';
 import { Transport } from '../../src/transport.js';
 import type { SettlementPlan } from '../../src/types.js';
 import { FRESH_HOLDS } from '../helpers/age.js';
@@ -130,6 +131,23 @@ describe('R8-P02 a clean sale through the real gateway settles', () => {
     const w = await world();
     await runSettlement(w.deps(w.real), 'auc1');
     expect(w.server.core.calls.filter((c) => c.op === 'reauthorize')).toHaveLength(0);
+  });
+});
+
+describe('R8-P01 reconcile reads captures through the journaled order id', () => {
+  it('reports no finding for a clean sale on the real gateway', async () => {
+    const w = await world();
+    await runSettlement(w.deps(w.real), 'auc1');
+    const report = await reconcile(
+      {
+        gateway: w.real,
+        journals: w.journals,
+        holds: new MemoryHoldStore(),
+        clock: { nowMs: () => START_MS },
+      },
+      'auc1',
+    );
+    expect(report.findings).toEqual([]);
   });
 });
 
