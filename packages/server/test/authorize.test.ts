@@ -154,6 +154,34 @@ describe('event export (R-RT-108)', () => {
     expect(redactEventForExport('auctioneer', registered)).not.toHaveProperty('ceiling');
     expect(redactEventForExport('admin', registered)).toHaveProperty('ceiling', 9000);
   });
+
+  it('drops the spoken amount of an over_ceiling rejection for the auctioneer', () => {
+    const rejected = {
+      ...base,
+      type: 'bid_rejected',
+      bidderId: B1,
+      mid: 'm1',
+      amount: 50000,
+      reason: 'over_ceiling',
+      audit: {
+        bidId: BID,
+        bidderId: B1,
+        source: 'voice',
+        transcript: 'five hundred dollars',
+        audioTsMs: 1200,
+        parsedAmount: 50000,
+        outcome: 'rejected',
+        reason: 'over_ceiling',
+        serverTs: 1,
+        seq: 1,
+      },
+    } as unknown as RoomEvent;
+    const out = JSON.stringify(redactEventForExport('auctioneer', rejected));
+    expect(out).not.toContain('five hundred');
+    expect(out).not.toContain('50000');
+    expect(out).not.toContain('audioTsMs');
+    expect(JSON.stringify(redactEventForExport('admin', rejected))).toContain('five hundred');
+  });
 });
 
 describe('settlement state in you (RT-91)', () => {

@@ -152,6 +152,8 @@ export function redactEventForExport(role: AuthRole, event: RoomEvent): Exported
     delete copy.amount;
     const audit: Partial<typeof event.audit> = { ...event.audit };
     delete audit.parsedAmount;
+    delete audit.transcript;
+    delete audit.audioTsMs;
     return { ...copy, audit } as typeof event;
   }
   return event;
