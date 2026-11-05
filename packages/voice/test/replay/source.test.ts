@@ -20,9 +20,7 @@ async function replay(speed: 1 | 4): Promise<{ batches: AudioBatch[]; finishedAt
   const p = src.start((b) => {
     batches.push(b);
     stt.write(b);
-  });
-  void p.then(() => {
-    finishedAt = clock.now();
+    if ((b.flags & FLAG_END_OF_STREAM) !== 0) finishedAt = clock.now();
   });
   clock.advance(10000);
   await p;
