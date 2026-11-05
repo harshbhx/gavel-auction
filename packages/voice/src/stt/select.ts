@@ -16,10 +16,7 @@ export interface SttEnv {
 }
 
 export type SttConfigErrorCode =
-  | 'unknown_provider'
-  | 'missing_key'
-  | 'unavailable'
-  | 'none_configured';
+  'unknown_provider' | 'missing_key' | 'unavailable' | 'none_configured';
 
 /** Typed startup error; the message never contains a key. */
 export class SttConfigError extends Error {
@@ -37,6 +34,11 @@ export interface SelectDeps {
   fetch?: FetchLike;
   /** Called once per selectProvider call with the chosen name. */
   log?: (message: string, fields: { provider: SttName }) => void;
+  /**
+   * Called when a provider with a configured key cannot be built and the next one is used
+   * instead. Defaults to console.warn so the fallback is never silent.
+   */
+  warn?: (message: string, fields: { provider: SttName; usedInstead?: SttName }) => void;
 }
 
 function keyFor(name: SttName, env: SttEnv): string | undefined {
@@ -62,8 +64,10 @@ export function selectProvider(env: SttEnv, deps: SelectDeps = {}): SttProvider 
   const raw = env.VOICE_STT?.trim().toLowerCase();
   let chosen: SttProvider | null = null;
   let chosenName: SttName | null = null;
+  const warn = deps.warn ?? ((message: string) => console.warn(message));
 
   if (raw === undefined || raw === '') {
+    const skipped: SttName[] = [];
     for (const name of DEFAULT_STT_ORDER) {
       if (!keyFor(name, env)) continue;
       const p = build(name, env, deps);
@@ -72,6 +76,13 @@ export function selectProvider(env: SttEnv, deps: SelectDeps = {}): SttProvider 
         chosenName = name;
         break;
       }
+      skipped.push(name);
+    }
+    for (const name of skipped) {
+      warn(
+        `STT provider ${name} has a key but is not built in this version; using ${chosenName ?? 'none'} instead`,
+        { provider: name, ...(chosenName ? { usedInstead: chosenName } : {}) },
+      );
     }
     if (!chosen) {
       throw new SttConfigError(

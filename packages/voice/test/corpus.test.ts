@@ -180,3 +180,49 @@ describe('TypeScript parser against the golden (T-VOX-036, R-VOX-036)', () => {
     expect(mismatches).toEqual([]);
   });
 });
+
+describe('TypeScript parser against the labelled expectation (T-VOX-036)', () => {
+  type Case = (typeof cases)[number];
+  const parse = (c: Case) =>
+    parseUtterance(c.text, {
+      ...(c.speaker === null ? {} : { speakerBidderId: c.speaker }),
+      ...(c.currentPriceCents === null ? {} : { currentPriceCents: c.currentPriceCents }),
+    });
+  const matchesLabel = (c: Case): boolean => {
+    const r = parse(c);
+    const e = c.expected;
+    return (
+      r.status === e.status &&
+      (e.status !== 'bid' || (r.bidder?.value === e.bidder && r.amountCents === e.amountCents))
+    );
+  };
+  /**
+   * Intended differences from the labels, which follow the prototype: R-VOX-041 (a paddle that
+   * differs from the speaker is a confirm naming both) and R-VOX-044 (a bare retraction is none).
+   */
+  const intended = (c: Case): boolean => {
+    const r = parse(c);
+    const e = c.expected;
+    if (e.status === 'confirm') return r.status === 'none' && r.reason === 'retract';
+    return (
+      e.status === 'bid' &&
+      r.reason === 'multiple_bidders' &&
+      c.speaker !== null &&
+      r.candidates.some((x) => x.bidder?.value === e.bidder) &&
+      r.candidates.some((x) => x.bidder?.value === c.speaker)
+    );
+  };
+
+  it('returns the labelled result on every case unless the difference is a named, intended one', () => {
+    const wrong = cases.filter(
+      (c) => c.knownDivergence === undefined && !matchesLabel(c) && !intended(c),
+    );
+    expect(wrong.map((c) => `${c.id} "${c.text}"`)).toEqual([]);
+  });
+
+  it('contradicts a label without an intended reason on exactly the known divergence cases', () => {
+    const contradicted = cases.filter((c) => !matchesLabel(c) && !intended(c)).map((c) => c.id);
+    const flagged = cases.filter((c) => c.knownDivergence !== undefined).map((c) => c.id);
+    expect(contradicted).toEqual(flagged);
+  });
+});

@@ -39,8 +39,9 @@ interface Run {
 const WINNING_PRICE = 25000;
 
 /**
- * Ana (ceiling 500.00), Ben and Cy (ceiling 300.00) register with holds and bid. Two bids come
- * from the voice parser, the rest are manual. Ana leads at 250.00 and the auctioneer hammers.
+ * Ana (ceiling 500.00), Ben and Cy (ceiling 300.00) register with holds and bid. Two bids are parsed
+ * from speech and sent with a high confidence (the confirm gate is tested in voice-confirm.test.ts),
+ * the rest are manual. Ana leads at 250.00 and the auctioneer hammers.
  */
 async function runToHammer(rig: Rig, service: AuctionService): Promise<Run> {
   const auctionId = rig.ids.mint<'AuctionId'>();
@@ -60,7 +61,10 @@ async function runToHammer(rig: Rig, service: AuctionService): Promise<Run> {
     expect(parsed.status).toBe('bid');
     const who = parsed.bidder === null ? undefined : paddles.get(parsed.bidder.value);
     if (who === undefined || parsed.amountCents === null) throw new Error(`no bid in "${text}"`);
-    await room.submitBid(who.conn, bidMessage(rig, parsed.amountCents, 'voice'));
+    await room.submitBid(
+      who.conn,
+      bidMessage(rig, parsed.amountCents, 'voice', { confidence: 0.95, transcript: text }),
+    );
   };
 
   await room.submitBid(ana.conn, bidMessage(rig, 10000, 'manual'));
