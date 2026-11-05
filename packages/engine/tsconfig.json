@@ -7,7 +7,8 @@
     "sourceMap": false,
     "noEmit": true,
     "module": "ESNext",
-    "moduleResolution": "Bundler"
+    "moduleResolution": "Bundler",
+    "exactOptionalPropertyTypes": false
   },
   "include": ["src", "test"]
 }
