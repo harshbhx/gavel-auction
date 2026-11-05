@@ -26,7 +26,9 @@ const EnvObject = z.object({
   /** Epoch ms after which TOKEN_SECRET_PREVIOUS is no longer accepted. */
   TOKEN_SECRET_PREVIOUS_UNTIL: int(1).optional(),
   ADMIN_KEY: z.string().min(1),
-  STORE: z.enum(['memory', 'postgres', 'd1']).default('memory'),
+  STORE: z.enum(['memory', 'file', 'postgres', 'd1']).default('memory'),
+  /** Directory for the durable files when STORE=file. */
+  DATA_DIR: z.string().min(1).default('./data'),
   DATABASE_URL: z.string().min(1).optional(),
   CORS_ORIGINS: csv.default(''),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),

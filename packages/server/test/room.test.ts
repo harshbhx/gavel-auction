@@ -322,6 +322,23 @@ describe('idempotency, failures and restart (T-RT-025, T-RT-026, R-RT-059)', () 
     expect(await t.store.lastSeq(t.auctionId)).toBe(seqBefore);
   });
 
+  it('ignores a repeat registration with a higher ceiling and keeps the first hold (D-0023)', async () => {
+    const t = await setup();
+    const seqBefore = await t.store.lastSeq(t.auctionId);
+    await t.room.registerBidder({
+      bidderId: t.b1,
+      name: 'Ada',
+      ceiling: 90000 as Cents,
+      holdRef: 'h1-raised',
+    });
+    expect(await t.store.lastSeq(t.auctionId)).toBe(seqBefore);
+    expect(t.room.holdRefs.get(t.b1)).toBe('h1');
+    const c1 = await t.connect('bidder', t.b1);
+    // The first ceiling (50000) still limits the bidder.
+    await t.room.submitBid(c1.conn, t.bid(60000));
+    expect(c1.transport.messages('bid_accepted')).toHaveLength(0);
+  });
+
   it('survives a failed append: store_unavailable, no state change, next bid works', async () => {
     const flaky = new FlakyStore();
     const t = await setup({ store: flaky });
