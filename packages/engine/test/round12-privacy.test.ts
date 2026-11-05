@@ -95,7 +95,7 @@ function forwardHashes(pub: readonly PublicEntry[], guess: readonly number[]): s
   return out;
 }
 
-describe('red team round 12 public export privacy', () => {
+describe('review round 12 public export privacy', () => {
   it('T-ENG-087 R12-E01 no later entry commits to a redacted ceiling through its private hash', () => {
     const r = recorder();
     r.apply(mk(1, { type: 'CreateAuction', title: 'Gala', config: {} }));
@@ -176,7 +176,7 @@ describe('red team round 12 public export privacy', () => {
           for (const e of pub.slice(0, from)) expect(e.fullHash).toBe(r.entries[e.seq - 1]?.hash);
         }
       }),
-      { seed: SEED, numRuns: runsFor('redteam12-privacy', 200) },
+      { seed: SEED, numRuns: runsFor('round12-privacy', 200) },
     );
   });
 

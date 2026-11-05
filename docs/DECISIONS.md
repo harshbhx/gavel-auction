@@ -576,4 +576,4 @@ Consequences:
 - Without a commit key the public chain binds to the private ledger only up to the first redaction; the auditor re-derives the export from the ledger with `matchesLedger`, as before.
 - A skipped candidate who was not revoked still tells a viewer that their ceiling did not cover their price at promotion time; hiding that would mean hiding who was promoted.
 
-Evidence: packages/engine/src/ledger/public-export.ts, packages/engine/test/redteam12-privacy.test.ts, packages/engine/test/public-export.test.ts, packages/shared/src/replay-bundle.ts, SPEC-engine R-ENG-045, R-ENG-108, R-ENG-109, D-0020, D-0021.
+Evidence: packages/engine/src/ledger/public-export.ts, packages/engine/test/round12-privacy.test.ts, packages/engine/test/public-export.test.ts, packages/shared/src/replay-bundle.ts, SPEC-engine R-ENG-045, R-ENG-108, R-ENG-109, D-0020, D-0021.
