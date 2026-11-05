@@ -1,7 +1,9 @@
 // @vitest-environment node
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { Cents, EpochMs, decodeClientMsg } from '@gavel/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { startLiveRoom, socketUrl, type LiveRoom } from '../../src/net/liveRoom';
+import { startLiveRoom, socketUrl, WS_PATH, type LiveRoom } from '../../src/net/liveRoom';
 import { WebSocketTransport, type SocketLike } from '../../src/net/wsTransport';
 import { RoomStore } from '../../src/store/roomStore';
 import { selectPrice } from '../../src/store/selectors';
@@ -157,6 +159,20 @@ describe('web client against the server contract', () => {
     expect(joins).toHaveLength(2);
     expect(joins[1]).toEqual(expect.objectContaining({ token: TOKEN, lastSeq: 2 }));
     expect(server.rejected).toEqual([]);
+  });
+
+  it('uses the socket path and control route the real server registers', () => {
+    const read = (rel: string): string =>
+      readFileSync(fileURLToPath(new URL(`../../../server/src/${rel}`, import.meta.url)), 'utf8');
+    expect(read('host/node-ws.ts')).toContain(`WS_PATH = '${WS_PATH}'`);
+    const control = read('http/control.ts');
+    const webRoute = '/api/auctions/${encodeURIComponent(deps.auctionId)}/control';
+    const web = readFileSync(
+      fileURLToPath(new URL('../../src/net/controlPort.ts', import.meta.url)),
+      'utf8',
+    );
+    expect(web).toContain(webRoute);
+    expect(control).toContain("app.post('/api/auctions/:id/control'");
   });
 
   it('refuses a room id that is not an auction id', () => {

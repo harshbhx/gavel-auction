@@ -43,6 +43,8 @@ export interface RoomState {
   confirmRequests: readonly ConfirmRequestMsg[];
   hammer: HammerMsg | null;
   audit: readonly AuditPayload[];
+  /** True when audit rows may be missing: older ones were dropped or the snapshot window was full. */
+  auditTruncated: boolean;
   lastError: { code: string; message: string; retryAfterMs: number | null } | null;
 }
 
@@ -65,6 +67,8 @@ export interface ReduceResult {
 
 const MAX_RECENT_BIDS = 50;
 const MAX_AUDIT = 200;
+/** The most audit rows a snapshot carries (the shared schema caps recentAudit at 50). */
+const SNAPSHOT_AUDIT_ROWS = 50;
 export const MAX_HELD = 200;
 
 export function initialRoomState(auctionId: string): RoomState {
@@ -82,6 +86,7 @@ export function initialRoomState(auctionId: string): RoomState {
     confirmRequests: [],
     hammer: null,
     audit: [],
+    auditTruncated: false,
     lastError: null,
   };
 }
@@ -111,6 +116,8 @@ function applySnapshot(state: RoomState, msg: Extract<ServerMessage, { t: 'state
     // The snapshot does not carry confirmations either: keep the ones that have not expired.
     confirmRequests: state.confirmRequests.filter((c) => c.expiresAt > msg.ts),
     audit: [...snap.recentAudit],
+    // The snapshot carries at most SNAPSHOT_AUDIT_ROWS rows: a full window may hide older ones.
+    auditTruncated: snap.recentAudit.length >= SNAPSHOT_AUDIT_ROWS,
   };
 }
 
@@ -181,7 +188,11 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
             },
       );
     case 'audit_event':
-      return { ...state, audit: [...state.audit, msg.audit].slice(-MAX_AUDIT) };
+      return {
+        ...state,
+        audit: [...state.audit, msg.audit].slice(-MAX_AUDIT),
+        auditTruncated: state.auditTruncated || state.audit.length + 1 > MAX_AUDIT,
+      };
     case 'error':
       return {
         ...state,

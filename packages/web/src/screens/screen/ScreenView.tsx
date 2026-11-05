@@ -27,6 +27,9 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
   const hammer = useRoom((s) => s.hammer, store);
   const leaderPaddle = useRoom((s) => s.leaderPaddle, store);
   const roster = useRoom((s) => s.snapshot?.roster ?? null, store);
+  const status = useRoom((s) => s.snapshot?.status ?? null, store);
+  const snapPrice = useRoom((s) => s.snapshot?.price ?? null, store);
+  const snapLeader = useRoom((s) => s.snapshot?.leaderId ?? null, store);
   const now = useServerNow(store);
   const [, setTick] = useState(0);
 
@@ -45,22 +48,29 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
     return () => clearInterval(id);
   }, []);
 
-  const closed = hammer !== null;
+  // A reload or a late join gets a snapshot but not the hammer message: the snapshot status and
+  // its final price and leader carry the result.
+  const snapClosed = status === 'CLOSING' || status === 'SETTLING' || status === 'DONE';
+  const closed = hammer !== null || snapClosed;
+  const finalPrice = hammer !== null ? hammer.price : snapPrice;
+  const winnerId = hammer !== null ? hammer.winnerId : snapLeader;
   const winnerPaddle =
-    hammer !== null && hammer.winnerId !== null
-      ? (roster?.find((r) => r.bidderId === hammer.winnerId)?.paddle ?? null)
-      : null;
+    winnerId !== null ? (roster?.find((r) => r.bidderId === winnerId)?.paddle ?? null) : null;
   const ticker = stream.slice(0, TICKER_SIZE);
+  const soldText = (): string => {
+    if (winnerId === null || finalPrice === null) return t('screen.passed');
+    return winnerPaddle !== null
+      ? t('screen.sold', { n: winnerPaddle, amount: formatUsd(finalPrice) })
+      : t('screen.soldUnknown', { amount: formatUsd(finalPrice) });
+  };
 
   return (
     <main className="gv-screen" aria-label={lotTitle}>
       <h1 className="gv-screen__lot">{lotTitle}</h1>
       <div className="gv-screen__stage">
-        {hammer !== null ? (
+        {closed ? (
           <p className="gv-screen__price tabular" data-closed="true">
-            {winnerPaddle !== null
-              ? t('screen.sold', { n: winnerPaddle, amount: formatUsd(hammer.price) })
-              : t('screen.passed')}
+            {soldText()}
           </p>
         ) : price === null || price.currentCents === null ? (
           <p className="gv-screen__price tabular">
