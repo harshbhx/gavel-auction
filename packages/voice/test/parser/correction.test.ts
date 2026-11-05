@@ -101,3 +101,50 @@ describe('T-VOX-050 make it (R-VOX-050)', () => {
     expect(r?.candidates.map((c) => c.amountCents)).toEqual([40000]);
   });
 });
+
+describe('VOX-81 retracting speaker against a paddle-named pending bid', () => {
+  const ctx: ParseContext = {
+    speakerBidderId: 'b-7',
+    speakerPaddle: '7',
+    pendingCandidate: {
+      id: 'p2',
+      bidder: { kind: 'paddle', value: '7' },
+      amountCents: 35000,
+      ageMs: 1000,
+    },
+  };
+
+  it('cancels when the speaker owns the pending paddle', () => {
+    expect(parseCorrection('never mind', ctx)?.cancelPending).toBe(true);
+  });
+
+  it('does not cancel when the speaker holds another paddle', () => {
+    expect(parseCorrection('never mind', { ...ctx, speakerPaddle: '9' })?.cancelPending).toBe(
+      false,
+    );
+  });
+
+  it('does not cancel from a room mic', () => {
+    const room: ParseContext = { pendingCandidate: ctx.pendingCandidate };
+    expect(parseCorrection('never mind', room)?.cancelPending).toBe(false);
+  });
+});
+
+describe('VOX-82 retract cue followed by "my ... bid"', () => {
+  it('treats a possessive or noun phrase after the cue as a retraction', () => {
+    for (const text of [
+      'cancel my four hundred bid',
+      'never mind the four hundred',
+      'withdraw my bid of four hundred',
+    ]) {
+      const o = parseCorrection(text, pending(1000));
+      expect(o?.result.reason, text).toBe('retract');
+      expect(o?.result.candidates, text).toEqual([]);
+      expect(o?.cancelPending, text).toBe(true);
+    }
+  });
+
+  it('still reads a near amount after a retract cue as a replacement', () => {
+    expect(amounts('cancel that, four hundred', pending(1000))).toEqual([40000]);
+  });
+});

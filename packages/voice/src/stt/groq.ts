@@ -1,6 +1,11 @@
 import { Endpointer } from '../audio/endpointer.js';
 import { encodeWav } from '../audio/wav.js';
-import { FLAG_END_OF_STREAM, FLAG_KEEPALIVE, type AudioBatch } from '../audio/frame.js';
+import {
+  FLAG_DISCONTINUITY,
+  FLAG_END_OF_STREAM,
+  FLAG_KEEPALIVE,
+  type AudioBatch,
+} from '../audio/frame.js';
 import {
   EventChannel,
   SttStats,
@@ -16,10 +21,18 @@ export const GROQ_DEFAULT_MODEL = 'whisper-large-v3-turbo';
 /** Confidence used when the response carries no log probability. */
 export const GROQ_FALLBACK_CONFIDENCE = 0.5;
 const MAX_PENDING_CHUNKS = 8;
+/** Per-request deadline; a hung request must not stall the drain loop. */
+export const GROQ_REQUEST_TIMEOUT_MS = 4000;
+export const GROQ_STOP_DEADLINE_MS = 8000;
 
 export type FetchLike = (
   url: string,
-  init: { method: string; headers: Record<string, string>; body: FormData },
+  init: {
+    method: string;
+    headers: Record<string, string>;
+    body: FormData;
+    signal?: AbortSignal;
+  },
 ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
 export interface GroqSttOptions {
@@ -31,6 +44,8 @@ export interface GroqSttOptions {
   /** Milliseconds clock used for latency; defaults to Date.now. */
   now?: () => number;
   maxPendingChunks?: number;
+  requestTimeoutMs?: number;
+  stopDeadlineMs?: number;
 }
 
 /** exp(avg_logprob) clamped to 0..1 and rounded to two decimals. */
@@ -88,7 +103,8 @@ export class GroqStt implements InstrumentedSttProvider {
   private readonly channel = new EventChannel<SttEvent>(1024);
   private readonly endpointer = new Endpointer();
   private pending: PendingChunk[] = [];
-  private samples = 0;
+  /** Capture-timeline end of the audio seen so far, from batch timestamps. */
+  private clockMs = 0;
   private running: Promise<void> | null = null;
   private open = false;
   private ended = false;
@@ -110,22 +126,34 @@ export class GroqStt implements InstrumentedSttProvider {
     if (!this.open) return;
     try {
       this.stats.addBytes(batch.pcm.byteLength);
-      if ((batch.flags & FLAG_KEEPALIVE) !== 0) return;
-      this.samples += batch.pcm.length;
-      const endMs = Math.round((this.samples * 1000) / SAMPLE_RATE);
-      for (const chunk of this.endpointer.push(batch)) {
-        const durMs = Math.round((chunk.pcm.length * 1000) / SAMPLE_RATE);
-        this.enqueue({
-          pcm: chunk.pcm,
-          startMs: Math.max(0, endMs - durMs),
-          endMs,
-          readyAt: this.now(),
-        });
+      if ((batch.flags & FLAG_KEEPALIVE) !== 0) {
+        this.clockMs = Math.max(this.clockMs, batch.tsMs);
+        return;
       }
-      if ((batch.flags & FLAG_END_OF_STREAM) !== 0)
-        this.emit({ type: 'utterance_end', atMs: endMs });
+      // Audio before a gap is cut at the gap, never joined to the audio after it (R7-11).
+      if ((batch.flags & FLAG_DISCONTINUITY) !== 0) this.enqueueChunks(this.endpointer.flush());
+      const endMs = batch.tsMs + Math.round((batch.pcm.length * 1000) / SAMPLE_RATE);
+      this.enqueueChunks(this.endpointer.push(batch), endMs);
+      this.clockMs = Math.max(this.clockMs, endMs);
+      if ((batch.flags & FLAG_END_OF_STREAM) !== 0) {
+        this.enqueueChunks(this.endpointer.flush());
+        this.emit({ type: 'utterance_end', atMs: this.clockMs });
+      }
     } catch {
       this.stats.addDropped();
+    }
+  }
+
+  /** Queue chunks ending at `endMs` (default: the end of the audio seen so far). */
+  private enqueueChunks(chunks: readonly { pcm: Int16Array }[], endMs = this.clockMs): void {
+    for (const chunk of chunks) {
+      const durMs = Math.round((chunk.pcm.length * 1000) / SAMPLE_RATE);
+      this.enqueue({
+        pcm: chunk.pcm,
+        startMs: Math.max(0, endMs - durMs),
+        endMs,
+        readyAt: this.now(),
+      });
     }
   }
 
@@ -137,8 +165,27 @@ export class GroqStt implements InstrumentedSttProvider {
     if (this.ended) return;
     this.ended = true;
     this.open = false;
-    if (this.running) await this.running;
-    this.pending = [];
+    // Speech still held by the endpointer and chunks still queued are sent before closing (R7-06).
+    try {
+      this.enqueueChunks(this.endpointer.flush());
+    } catch {
+      this.stats.addDropped();
+    }
+    // A stuck request is bounded by its own timeout; this deadline is the last resort.
+    const deadlineMs = this.opts.stopDeadlineMs ?? GROQ_STOP_DEADLINE_MS;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, deadlineMs);
+    });
+    while (this.running) {
+      const ran = this.running;
+      const hit = await Promise.race([ran.then(() => false), deadline.then(() => true)]);
+      if (hit) {
+        this.pending.length = 0;
+        break;
+      }
+    }
+    if (timer !== undefined) clearTimeout(timer);
     this.emit({ type: 'state', state: 'closed' });
     this.channel.close();
   }
@@ -173,18 +220,27 @@ export class GroqStt implements InstrumentedSttProvider {
     form.append('response_format', 'verbose_json');
     form.append('language', 'en');
     form.append('temperature', '0');
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<'timeout'>((resolve) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        resolve('timeout');
+      }, this.opts.requestTimeoutMs ?? GROQ_REQUEST_TIMEOUT_MS);
+    });
     try {
-      const res = await this.opts.fetch(this.opts.endpoint ?? GROQ_DEFAULT_ENDPOINT, {
-        method: 'POST',
-        headers: { authorization: `Bearer ${this.opts.apiKey}` },
-        body: form,
-      });
+      const outcome = await Promise.race([this.request(form, controller.signal), timedOut]);
+      if (outcome === 'timeout') {
+        this.emit({ type: 'error', code: 'timeout', retryable: true });
+        return;
+      }
+      const res = outcome.res;
       if (!res.ok) {
         const { code, retryable } = classifyHttpStatus(res.status);
         this.emit({ type: 'error', code, retryable });
         return;
       }
-      const parsed = parseResponse(await res.json());
+      const parsed = parseResponse(outcome.body);
       if (!parsed) {
         this.emit({ type: 'error', code: 'unknown', retryable: true });
         return;
@@ -203,8 +259,25 @@ export class GroqStt implements InstrumentedSttProvider {
         this.now() - chunk.readyAt,
       );
     } catch {
-      this.emit({ type: 'error', code: 'closed', retryable: true });
+      const code = controller.signal.aborted ? 'timeout' : 'closed';
+      this.emit({ type: 'error', code, retryable: true });
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
     }
+  }
+
+  private async request(
+    form: FormData,
+    signal: AbortSignal,
+  ): Promise<{ res: { ok: boolean; status: number }; body: unknown }> {
+    const res = await this.opts.fetch(this.opts.endpoint ?? GROQ_DEFAULT_ENDPOINT, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${this.opts.apiKey}` },
+      body: form,
+      signal,
+    });
+    const body = res.ok ? await res.json() : null;
+    return { res, body };
   }
 
   private emit(event: SttEvent, latencyMs?: number): void {

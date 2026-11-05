@@ -2,7 +2,8 @@ name: gate-g4
 # Runs sandbox gate G4 by hand: a small sandbox flow makes PayPal send real webhooks to the
 # receiver in tools/g4-receiver (a capture and a void), the log is fetched from the receiver
 # and gate G4 verifies every delivery. Before the first run set the webhook URL of the sandbox
-# app to <receiver url>/hook. Actions secrets needed: PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET,
+# app to <receiver url>/hook. The repository variable G4_RECEIVER_URL holds the receiver's
+# https URL (no trailing slash). Actions secrets needed: PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET,
 # PAYPAL_WEBHOOK_ID, SANDBOX_BUYER_EMAIL, SANDBOX_BUYER_PASSWORD, G4_LOG_TOKEN. The job runs
 # only from main, so code on a pushed branch never reads the secrets.
 on:
@@ -12,7 +13,7 @@ permissions:
   contents: read
 
 env:
-  RECEIVER_URL: https://gavel-g4-receiver.creharsh.workers.dev
+  RECEIVER_URL: ${{ vars.G4_RECEIVER_URL }}
   GATE_CURRENCY: USD
 
 jobs:
@@ -28,6 +29,12 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+      - name: Check that the receiver URL is set
+        run: |
+          case "$RECEIVER_URL" in
+            https://*) ;;
+            *) echo "Set the repository variable G4_RECEIVER_URL to the https URL of the receiver."; exit 1 ;;
+          esac
       - name: Check that the secrets exist
         env:
           PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
@@ -80,6 +87,7 @@ jobs:
           SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
           SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
+          G4_RUN_FILE: ${{ runner.temp }}/g4-run-ids.json
         run: npm run gate:g4-events -w @gavel/payments -- --out "$RUNNER_TEMP/g4-events"
       - name: Wait for the deliveries
         run: sleep 60
@@ -96,7 +104,7 @@ jobs:
           PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
           PAYPAL_WEBHOOK_ID: ${{ secrets.PAYPAL_WEBHOOK_ID }}
         run: |
-          npm run gate:g4 -w @gavel/payments -- --log "$RUNNER_TEMP/g4-receiver.jsonl" --out "$PWD/docs/evidence" --fixtures "$PWD/docs/evidence/G4/fixtures"
+          npm run gate:g4 -w @gavel/payments -- --log "$RUNNER_TEMP/g4-receiver.jsonl" --run-file "$RUNNER_TEMP/g4-run-ids.json" --out "$PWD/docs/evidence" --fixtures "$PWD/docs/evidence/G4/fixtures"
       - name: Clear the receiver log again
         if: ${{ always() }}
         env:

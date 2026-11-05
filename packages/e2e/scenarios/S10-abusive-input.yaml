@@ -1,0 +1,37 @@
+id: S10-abusive-input
+title: Malformed and hostile frames are each refused with a code
+modes: [inproc]
+seed: 10
+clock: { startMs: 1793750400000 }
+auction: { itemId: lot-1, reserve: 5000, minIncrement: 500, softCloseMs: 0, mode: english }
+actors: { mallory: { funding: wallet } }
+steps:
+  - { t: 0, actor: mallory, do: register, ceiling: 20000 }
+  - { t: 1000, actor: auctioneer, do: open }
+  - { t: 2000, actor: mallory, do: send_raw, frame: '{"v":1,"t":"bid",' }
+  - { t: 2100, actor: mallory, do: send_raw, frame: '{"v":1,"t":"hammer"}' }
+  - { t: 2200, actor: mallory, do: send_raw, frame: '{"v":1,"t":"price"}' }
+  - {
+      t: 2300,
+      actor: mallory,
+      do: send_raw,
+      frame: '{"v":1,"t":"bid","mid":"01HZX3W5Q0R6B7C8D9E0F1G2H3","source":"manual","amount":"10000"}',
+    }
+  - {
+      t: 2400,
+      actor: mallory,
+      do: send_raw,
+      frame: '{"v":1,"t":"bid","mid":"01HZX3W5Q0R6B7C8D9E0F1G2H3","source":"manual","amount":NaN}',
+    }
+  - { t: 2600, actor: mallory, do: send_raw, frame: '{"v":1,"t":"<script>alert(1)</script>"}' }
+  - { t: 9000, actor: auctioneer, do: hammer }
+expect:
+  - rejected:
+      - { actor: mallory, code: bad_message }
+      - { actor: mallory, code: bad_message }
+      - { actor: mallory, code: bad_message }
+      - { actor: mallory, code: bad_message }
+      - { actor: mallory, code: bad_message }
+      - { actor: mallory, code: bad_message }
+  - ledger: { winner: null, captured: 0, released: 0, voided: [mallory] }
+tags: [security, abuse]

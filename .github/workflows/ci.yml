@@ -245,6 +245,13 @@ jobs:
           python-version: '3.12'
       - name: Python parser golden is up to date
         run: python3 packages/voice/scripts/export-golden.py --check
+      - name: Held-out set guard against the base branch
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          npm run check:heldout -w @gavel/voice -- --base "origin/$BASE_REF"
       - name: Bundle size limit
         run: npm run size -w @gavel/voice
   e2e-fixtures:

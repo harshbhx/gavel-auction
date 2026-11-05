@@ -86,4 +86,21 @@ describe('metrics', () => {
     t += METRICS_WINDOW_MS;
     expect((await fetch(base + '/metrics', { headers: admin })).status).toBe(200);
   });
+
+  it('unauthenticated requests do not consume the operator budget (R7S-04)', async () => {
+    const collector = new MetricsCollector({
+      connections: () => 0,
+      rooms: () => 0,
+      mailboxDepth: () => 0,
+    });
+    const route = createMetricsRoute(collector, { adminKey: KEY, now: () => 1_000 });
+    const server = createServer((req, res) => void route(req, res));
+    servers.push(server);
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    const base = 'http://127.0.0.1:' + String((server.address() as AddressInfo).port);
+    for (let i = 0; i < METRICS_MAX_PER_WINDOW + 5; i++) {
+      expect((await fetch(base + '/metrics')).status).toBe(401);
+    }
+    expect((await fetch(base + '/metrics', { headers: admin })).status).toBe(200);
+  });
 });

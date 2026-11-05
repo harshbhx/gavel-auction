@@ -133,7 +133,7 @@ export async function reconcile(deps: ReconcileDeps, auctionId: string): Promise
       bidderId,
       holdId: jh.holdId,
       authId: jh.authId,
-      orderId: known?.orderId,
+      orderId: known?.orderId ?? jh.orderId,
       journalHold: jh,
     });
   }
@@ -146,7 +146,7 @@ export async function reconcile(deps: ReconcileDeps, auctionId: string): Promise
       truth = await deps.gateway.getHoldTruth({
         holdId: s.holdId,
         authId: s.authId,
-        ...(s.orderId === undefined ? {} : { orderId: s.orderId }),
+        ...(s.orderId === undefined || s.orderId === '' ? {} : { orderId: s.orderId }),
       });
     } catch {
       add('UNOBSERVABLE', s, 'truth read failed');

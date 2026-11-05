@@ -198,6 +198,42 @@ describe('event export (R-RT-108)', () => {
   });
 });
 
+describe('confirm events in the auctioneer export (R7S-03)', () => {
+  const audit = { parsedAmount: 50000, confidence: 0.4 };
+  const requested = {
+    auctionId: BID,
+    seq: 2,
+    ts: 1,
+    type: 'confirm_requested',
+    confirmId: 'c1',
+    bidderId: B1,
+    mid: 'M1',
+    amount: 50000,
+    expiresAt: 9,
+    audit,
+  } as unknown as RoomEvent;
+  const resolved = {
+    auctionId: BID,
+    seq: 3,
+    ts: 1,
+    type: 'confirm_resolved',
+    confirmId: 'c1',
+    outcome: 'accepted',
+    audit,
+  } as unknown as RoomEvent;
+
+  it('drops the held amount for the auctioneer so it cannot be matched to an over_ceiling', () => {
+    const out = redactEventForExport('auctioneer', requested) as unknown as Record<string, unknown>;
+    expect(out).not.toHaveProperty('amount');
+    expect(JSON.stringify(out)).not.toContain('50000');
+    expect(JSON.stringify(redactEventForExport('auctioneer', resolved))).not.toContain('50000');
+  });
+
+  it('keeps everything for admin', () => {
+    expect(redactEventForExport('admin', requested)).toHaveProperty('amount', 50000);
+  });
+});
+
 describe('settlement state in you (RT-91)', () => {
   it('keeps the bidder their own settlement state and hides it from screens', () => {
     const frame = { t: 'settlement_update', rev: 1, auctionState: 'CAPTURED', you: 'CAPTURED' };

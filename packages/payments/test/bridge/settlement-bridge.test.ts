@@ -95,6 +95,7 @@ async function makeRig(hasHold: readonly string[]): Promise<Rig> {
       authId: core.createAuthorization(`payer-${bidderId}`, 30000).id,
       ceilingCents: 30000,
       createdAtMs: START_MS,
+      orderId: `order-${bidderId}`,
     };
   }
   const engine = createEngineAdapter({

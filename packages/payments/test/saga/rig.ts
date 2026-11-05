@@ -58,6 +58,7 @@ export function planFor(
       authId: rig.auth[bidder] ?? '',
       ceilingCents,
       createdAtMs: START_MS,
+      orderId: `order-${bidder}`,
     };
   }
   return {

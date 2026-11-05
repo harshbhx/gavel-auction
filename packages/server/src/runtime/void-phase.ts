@@ -1,7 +1,12 @@
 import {
   PayPalError,
   buildRequestId,
+  sharedHoldQueue,
+  voidHold,
+  type AuditSink,
+  type Clock as PaymentsClock,
   type HoldStore,
+  type VoidStatus,
   type Journal,
   type PaymentsGateway,
 } from '@gavel/payments';
@@ -69,7 +74,7 @@ export async function voidSpareHolds(
         continue;
       }
     }
-    await deps.holds.put({ ...hold, status: 'VOIDED' });
+    await markVoided(deps.holds, hold.holdId);
   }
   return open;
 }
@@ -86,4 +91,56 @@ async function isGone(
     if (e instanceof PayPalError) return false;
     throw e;
   }
+}
+
+/** Refusals that prove the engine did not take the registration, so the hold has no owner. */
+const DEFINITE_REFUSALS: ReadonlySet<string> = new Set(['bad_message', 'room_full', 'conflict']);
+
+/** True when a registration error proves nothing was recorded (a store error may have been). */
+export function isDefiniteRefusal(e: unknown): boolean {
+  const code = (e as { code?: unknown } | null)?.code;
+  return typeof code === 'string' && DEFINITE_REFUSALS.has(code);
+}
+
+export interface OrphanVoidDeps {
+  gateway: PaymentsGateway;
+  holds: HoldStore;
+  audit: AuditSink;
+  clock: PaymentsClock;
+}
+
+/**
+ * Voids the one hold whose registration the engine refused (HRD-10, issue 704). The void
+ * goes through the payments `voidHold`, so the request id is the same on every retry, each
+ * PayPal call is audited, and a hold that is already gone counts as released. Safe to call
+ * twice: a hold that is no longer HELD is left alone. Returns the hold's final status, or
+ * 'pending' / 'VOID_FAILED' when the authorization may still be live (the caller reports it).
+ */
+export async function voidOrphanHold(
+  deps: OrphanVoidDeps,
+  auctionId: string,
+  holdId: string,
+): Promise<VoidStatus | 'skipped'> {
+  const hold = await deps.holds.get(holdId);
+  if (hold === null || hold.status !== 'HELD' || hold.authId === undefined) return 'skipped';
+  const status = await voidHold(deps, auctionId, {
+    holdId: hold.holdId,
+    authId: hold.authId,
+    ceilingCents: hold.ceilingCents,
+    stale: false,
+  });
+  if (status === 'voided' || status === 'released') await markVoided(deps.holds, hold.holdId);
+  return status;
+}
+
+/**
+ * Marks a hold VOIDED on the record as it is now, inside the shared hold queue: the copy read
+ * before the PayPal call may be older than a webhook capture or an approval (R9-M05).
+ */
+function markVoided(holds: HoldStore, holdId: string): Promise<void> {
+  return sharedHoldQueue.run(holdId, async () => {
+    const latest = await holds.get(holdId);
+    if (latest === null || latest.status !== 'HELD') return;
+    await holds.put({ ...latest, status: 'VOIDED' });
+  });
 }

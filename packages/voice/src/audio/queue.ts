@@ -1,5 +1,5 @@
 import type { AudioBatch } from './frame.js';
-import { FLAG_DISCONTINUITY, FRAME_SAMPLES } from './frame.js';
+import { FLAG_DISCONTINUITY, FLAG_END_OF_STREAM, FRAME_SAMPLES } from './frame.js';
 
 export const QUEUE_CAPACITY = 50;
 export const BUFFERED_AMOUNT_LIMIT = 65536;
@@ -26,17 +26,23 @@ export class AudioQueue {
     private readonly bufferedLimit: number = BUFFERED_AMOUNT_LIMIT,
   ) {}
 
-  private dropOldest(): void {
-    const old = this.items.shift();
-    if (!old) return;
+  /** Drops the oldest batch that is not the end-of-stream batch; false when none can go. */
+  private dropOldest(): boolean {
+    const at = this.items.findIndex((x) => (x.flags & FLAG_END_OF_STREAM) === 0);
+    if (at < 0) return false;
+    const [old] = this.items.splice(at, 1);
+    if (!old) return false;
     this.droppedBatches++;
     this.droppedMs += (old.pcm.length / FRAME_SAMPLES) * FRAME_MS;
     this.gap = true;
+    return true;
   }
 
   push(b: AudioBatch): void {
     this.items.push(b);
-    while (this.items.length > this.capacity) this.dropOldest();
+    while (this.items.length > this.capacity) {
+      if (!this.dropOldest()) break;
+    }
   }
 
   /**

@@ -149,3 +149,12 @@ def test_second_price_winner_pays_second_highest(seq):
         assert out.winner == r[0][0]
         assert out.price == (50 if len(r) == 1 else max(50, r[1][1]))
         assert out.price <= r[0][1]
+
+
+def test_noop_soft_close_does_not_use_up_extensions():
+    # D-0027: a late bid whose at + extension is below the current end changes nothing.
+    a = mk(soft_close_window=50, soft_close_extension=5, max_extensions=1)
+    a.place_bid("a", 100, 60)   # in the window, 65 < 100: no extension
+    assert a.end_ts == 100 and a.extensions == 0
+    a.place_bid("b", 110, 98)   # 103 > 100: the one extension
+    assert a.end_ts == 103 and a.extensions == 1

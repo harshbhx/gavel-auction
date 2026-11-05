@@ -99,13 +99,15 @@ function isBinary(v: unknown): boolean {
   return v instanceof ArrayBuffer || ArrayBuffer.isView(v);
 }
 
-function clean(value: unknown, depth: number): unknown {
+function clean(value: unknown, depth: number, allowTranscript: boolean): unknown {
   if (typeof value === 'string') return redact(value);
   if (value === null || typeof value === 'number' || typeof value === 'boolean') return value;
   if (isBinary(value)) return REDACTED;
   if (depth >= 4) return REDACTED;
-  if (Array.isArray(value)) return value.slice(0, 50).map((v) => clean(v, depth + 1));
-  if (typeof value === 'object') return cleanFields(value as LogFields, depth + 1, true);
+  if (Array.isArray(value)) {
+    return value.slice(0, 50).map((v) => clean(v, depth + 1, allowTranscript));
+  }
+  if (typeof value === 'object') return cleanFields(value as LogFields, depth + 1, allowTranscript);
   return undefined;
 }
 
@@ -118,7 +120,7 @@ function cleanFields(fields: LogFields, depth: number, allowTranscript: boolean)
     } else if (TRANSCRIPT_KEYS.has(name) && !allowTranscript) {
       continue;
     } else {
-      out[k] = clean(v, depth);
+      out[k] = clean(v, depth, allowTranscript);
     }
   }
   return out;

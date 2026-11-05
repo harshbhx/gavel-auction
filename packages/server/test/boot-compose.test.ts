@@ -1,9 +1,24 @@
 import { SystemClock } from '@gavel/shared';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { signToken } from '../src/auth/token';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { composeServer, type Composed } from '../src/boot/compose';
+
+const passedHoldMaxAge: Array<number | undefined> = [];
+const passedMetrics: unknown[] = [];
+vi.mock('../src/runtime/auction-service', async (importActual) => {
+  const actual = await importActual<typeof import('../src/runtime/auction-service')>();
+  return {
+    ...actual,
+    createAuctionService: (deps: Parameters<typeof actual.createAuctionService>[0]) => {
+      passedHoldMaxAge.push(deps.holdMaxAgeMs);
+      passedMetrics.push(deps.roomMetrics);
+      return actual.createAuctionService(deps);
+    },
+  };
+});
 
 const base = {
   PUBLIC_URL: 'http://localhost:8080',
@@ -146,5 +161,95 @@ describe('server entry point (INT-R3-17)', () => {
       ),
     ).rejects.toThrow('exit');
     expect(lines.join('\n')).toContain('TOKEN_SECRET');
+  });
+
+  it('releases the lock and stops payments even when the service close throws (R7S-07)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gavel-close-'));
+    dirs.push(dir);
+    const app = await composeServer(
+      { ...base, STORE: 'file', DATA_DIR: dir, PAYMENTS: 'fake' },
+      { sink: () => undefined },
+    );
+    expect(existsSync(join(dir, 'gavel.lock'))).toBe(true);
+    app.service.close = () => Promise.reject(new Error('boom'));
+    await expect(app.close()).rejects.toThrow('boom');
+    expect(existsSync(join(dir, 'gavel.lock'))).toBe(false);
+  });
+
+  it('warns at boot about a previous secret with no end time (R7S-06)', async () => {
+    const lines: string[] = [];
+    const app = await composeServer(
+      {
+        ...base,
+        LOG_LEVEL: 'warn',
+        TOKEN_SECRET_PREVIOUS: 'p'.repeat(40),
+      },
+      { sink: (l) => void lines.push(l) },
+    );
+    running.push(app);
+    expect(lines.join('\n')).toMatch(/TOKEN_SECRET_PREVIOUS is set with no/);
+  });
+});
+
+describe('GAVEL_HOLD_MAX_AGE_MS (R6-B01)', () => {
+  it('reaches the auction service in fake mode', async () => {
+    await boot({ GAVEL_HOLD_MAX_AGE_MS: '600000' });
+    expect(passedHoldMaxAge.at(-1)).toBe(600000);
+  });
+
+  it('falls back to the payments default when unset', async () => {
+    await boot();
+    expect(passedHoldMaxAge.at(-1)).toBe(7200000);
+  });
+
+  it('feeds the metrics gauges and counters from the service (R8-S03)', async () => {
+    const { app, url } = await boot();
+    const read = async (): Promise<{
+      rooms: number;
+      connections: number;
+      bids: { accepted: number };
+    }> =>
+      (
+        await fetch(`${url}/metrics`, { headers: { 'x-admin-key': base.ADMIN_KEY } })
+      ).json() as never;
+    expect((await read()).rooms).toBe(0);
+    await app.service.createAuction(
+      '01HZZZZZZZZZZZZZZZZZZZZZZB' as never,
+      {
+        mode: 'english',
+        currency: 'USD',
+        reserve: 10000,
+        minIncrement: 500,
+        endTs: new SystemClock().now() + 3_600_000,
+        softCloseWindowMs: 30_000,
+        softCloseExtensionMs: 30_000,
+        maxExtensions: 5,
+        ceilingPresets: [30000, 50000],
+        confirmConfidenceThreshold: 0.85,
+      } as never,
+      'auctioneer-1',
+    );
+    expect((await read()).rooms).toBe(1);
+    // The collector given to the service is the one behind /metrics.
+    const given = passedMetrics.at(-1) as { bidAccepted(): void };
+    given.bidAccepted();
+    expect((await read()).bids.accepted).toBe(1);
+  });
+
+  it('refuses an auctioneer token whose jti was denied (R8-S04)', async () => {
+    const { app, url } = await boot();
+    const aud = '01HZZZZZZZZZZZZZZZZZZZZZZC';
+    const jti = '01HZZZZZZZZZZZZZZZZZZZZZZD';
+    const nowMs = new SystemClock().now();
+    const nowS = Math.floor(nowMs / 1000);
+    const token = await signToken(
+      { kind: 'auctioneer', aud, sub: 'auctioneer-1', jti, iat: nowS, exp: nowS + 3600 },
+      base.TOKEN_SECRET,
+    );
+    const get = (): Promise<Response> =>
+      fetch(`${url}/api/auctions/${aud}/export`, { headers: { authorization: `Bearer ${token}` } });
+    expect((await get()).status).toBe(404);
+    await app.store.denyJti(jti as never, (nowMs + 3_600_000) as never);
+    expect((await get()).status).toBe(401);
   });
 });

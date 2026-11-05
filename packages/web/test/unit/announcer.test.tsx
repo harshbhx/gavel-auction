@@ -89,11 +89,43 @@ describe('partial transcripts', () => {
     expect(core.announce('polite', 'three hun', 'stt_partial')).toBe(false);
     // @ts-expect-error partial transcript keys are not announceable
     expect(core.announce('assertive', 'three hun', 'partial')).toBe(false);
-    expect(core.getState()).toEqual({ polite: '', assertive: '' });
+    expect(core.getState()).toEqual({ polite: '', assertive: '', politeSeq: 0, assertiveSeq: 0 });
   });
 
   it('ignores empty text', () => {
     expect(core.announce('polite', '   ')).toBe(false);
+  });
+});
+
+describe('Announcer component repeats', () => {
+  it('mutates the live region node for an identical assertive message', () => {
+    render(<Announcer core={core} />);
+    act(() => {
+      core.announce('assertive', 'Bid not accepted.', 'bid_rejected');
+    });
+    const first = screen.getByTestId('live-assertive').firstElementChild;
+    act(() => {
+      vi.advanceTimersByTime(5000);
+      core.announce('assertive', 'Bid not accepted.', 'bid_rejected');
+    });
+    const second = screen.getByTestId('live-assertive').firstElementChild;
+    expect(second).not.toBe(first);
+    expect(second?.textContent).toBe('Bid not accepted.');
+  });
+
+  it('mutates the polite region node for an identical keyed message', () => {
+    render(<Announcer core={core} />);
+    act(() => {
+      core.announce('polite', 'You have been outbid. Current price $460.', 'outbid');
+    });
+    const first = screen.getByTestId('live-polite').firstElementChild;
+    act(() => {
+      vi.advanceTimersByTime(2000);
+      core.announce('polite', 'You have been outbid. Current price $460.', 'outbid');
+      vi.advanceTimersByTime(2000);
+    });
+    const second = screen.getByTestId('live-polite').firstElementChild;
+    expect(second).not.toBe(first);
   });
 });
 

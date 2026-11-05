@@ -1,5 +1,6 @@
 import { PayPalError } from '../errors.js';
 import type { AuditSink, Clock, HoldStore, PaymentsGateway } from '../ports.js';
+import { buildRequestId } from '../requestId.js';
 import type { HoldRecord } from '../types.js';
 import { HoldError, toHoldError, type ApprovedHold, type HoldService } from './service.js';
 
@@ -16,6 +17,12 @@ import { HoldError, toHoldError, type ApprovedHold, type HoldService } from './s
  *     PayPal and the order is left to lapse.
  * An order the buyer has not approved is left as it is.
  *
+ * R8-P05: the authorize call is not journaled first, so a crash right after PayPal
+ * created the authorization leaves a pending record with no authorization id. When
+ * a pending hold is abandoned, or swept by `sweepStalePending`, the order is read
+ * first; a live authorization found on it is voided (auction closed) or adopted
+ * (auction open) instead of being left to lapse at PayPal.
+ *
  * `flagStaleHolds`: a hold older than GAVEL_HOLD_MAX_AGE_MS at settlement start is
  * marked `stale` and audited. A stale hold is still captured (R-PAY-072); the flag
  * is information for the operator.
@@ -30,7 +37,7 @@ export type RecoverResult =
   | { status: 'unavailable' };
 
 export interface RecoverDeps {
-  gateway: Pick<PaymentsGateway, 'getOrder'>;
+  gateway: Pick<PaymentsGateway, 'getOrder'> & Partial<Pick<PaymentsGateway, 'voidAuthorization'>>;
   holds: HoldStore;
   audit: AuditSink;
   clock: Clock;
@@ -81,8 +88,34 @@ export async function recoverOrder(deps: RecoverDeps, i: RecoverInput): Promise<
   }
 }
 
+/** Authorization statuses that still hold money at PayPal. */
+const LIVE_AUTH: ReadonlySet<string> = new Set(['CREATED', 'PENDING']);
+
 async function abandon(deps: RecoverDeps, hold: HoldRecord): Promise<RecoverResult> {
-  await deps.holds.put({ ...hold, status: 'EXPIRED' });
+  let authId: string | undefined;
+  if (deps.gateway.voidAuthorization !== undefined) {
+    try {
+      const order = await deps.gateway.getOrder(hold.orderId);
+      if (order.authId !== undefined && LIVE_AUTH.has(order.authStatus ?? 'CREATED')) {
+        await deps.gateway.voidAuthorization(
+          order.authId,
+          buildRequestId({
+            auctionId: hold.auctionId,
+            op: 'void',
+            holdId: hold.holdId,
+            amountCents: 0,
+            generation: 0,
+          }),
+        );
+      }
+      authId = order.authId;
+    } catch (e) {
+      // Not read or not voided: the record stays pending so a later sweep tries again.
+      if (e instanceof PayPalError) return { status: 'unavailable' };
+      throw e;
+    }
+  }
+  await deps.holds.put({ ...hold, ...(authId === undefined ? {} : { authId }), status: 'EXPIRED' });
   await deps.audit.append({
     kind: 'state_change',
     auctionId: hold.auctionId,
@@ -105,6 +138,42 @@ export async function sweepAuction(
     .sort((a, b) => (a.holdId < b.holdId ? -1 : 1));
   const out: Array<{ holdId: string; result: RecoverResult }> = [];
   for (const h of pending) {
+    out.push({
+      holdId: h.holdId,
+      result: await recoverOrder(deps, { auctionId, orderId: h.orderId }),
+    });
+  }
+  return out;
+}
+
+/**
+ * Finds pending holds older than `minAgeMs` whose order already carries an
+ * authorization (the crash window of R8-P05) and recovers them: adopted while the
+ * auction is open, voided and expired once it is closed. Pending holds without an
+ * authorization are left to the normal approval flow.
+ */
+export async function sweepStalePending(
+  deps: RecoverDeps,
+  auctionId: string,
+  minAgeMs: number,
+): Promise<Array<{ holdId: string; result: RecoverResult }>> {
+  const now = deps.clock.nowMs();
+  const old = (await deps.holds.listByAuction(auctionId))
+    .filter((h) => h.status === 'PENDING_APPROVAL' && now - h.createdAtMs >= minAgeMs)
+    .sort((a, b) => (a.holdId < b.holdId ? -1 : 1));
+  const out: Array<{ holdId: string; result: RecoverResult }> = [];
+  for (const h of old) {
+    let order: { authId?: string };
+    try {
+      order = await deps.gateway.getOrder(h.orderId);
+    } catch (e) {
+      if (e instanceof PayPalError) {
+        out.push({ holdId: h.holdId, result: { status: 'unavailable' } });
+        continue;
+      }
+      throw e;
+    }
+    if (order.authId === undefined) continue;
     out.push({
       holdId: h.holdId,
       result: await recoverOrder(deps, { auctionId, orderId: h.orderId }),

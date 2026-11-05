@@ -3,6 +3,7 @@ import {
   signToken,
   verifyToken,
   TOKEN_TTL_S,
+  consumeInvite,
   type JtiStore,
   type TokenPayload,
 } from '../src/auth/token';
@@ -32,6 +33,10 @@ class TestJtis implements JtiStore {
   async isRevoked(jti: string): Promise<boolean> {
     if (this.fail) throw new Error('store down');
     return this.revoked.has(jti);
+  }
+  async isUsed(jti: string): Promise<boolean> {
+    if (this.fail) throw new Error('store down');
+    return this.used.has(jti);
   }
   async consume(jti: string): Promise<boolean> {
     if (this.fail) throw new Error('store down');
@@ -187,17 +192,31 @@ describe('revocation and replay (R-RT-083, R-RT-084)', () => {
     expect(r).toMatchObject({ ok: false, code: 'unauthorized' });
   });
 
-  it('accepts an invite once, then reports invite_used', async () => {
+  it('does not consume an invite on verify, so a failed exchange can retry', async () => {
     const jtis = new TestJtis();
-    const invite: TokenPayload = {
-      ...payload,
-      kind: 'invite',
-      exp: NOW_S + TOKEN_TTL_S.invite,
-    };
+    const invite: TokenPayload = { ...payload, kind: 'invite', exp: NOW_S + TOKEN_TTL_S.invite };
     const token = await signToken(invite, SECRET);
     const o = { ...opts, kinds: ['invite'] as const, jtis };
     expect((await verifyToken(token, SECRET, o)).ok).toBe(true);
+    expect((await verifyToken(token, SECRET, o)).ok).toBe(true);
+    expect(jtis.used.size).toBe(0);
+  });
+
+  it('burns an invite only through consumeInvite, then reports invite_used', async () => {
+    const jtis = new TestJtis();
+    const invite: TokenPayload = { ...payload, kind: 'invite', exp: NOW_S + TOKEN_TTL_S.invite };
+    const token = await signToken(invite, SECRET);
+    const o = { ...opts, kinds: ['invite'] as const, jtis };
+    expect(await consumeInvite(invite, jtis)).toEqual({ ok: true });
     expect(await verifyToken(token, SECRET, o)).toMatchObject({ ok: false, code: 'invite_used' });
+    expect(await consumeInvite(invite, jtis)).toMatchObject({ ok: false, code: 'invite_used' });
+  });
+
+  it('consumeInvite fails closed when the store throws', async () => {
+    const jtis = new TestJtis();
+    jtis.fail = true;
+    const invite: TokenPayload = { ...payload, kind: 'invite', exp: NOW_S + TOKEN_TTL_S.invite };
+    expect(await consumeInvite(invite, jtis)).toMatchObject({ ok: false, code: 'unauthorized' });
   });
 
   it('does not burn an invite that fails another check', async () => {

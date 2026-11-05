@@ -96,7 +96,12 @@ export function decidePlaceBid(state: AuctionState, cmd: PlaceBidCommand): Decid
       throw new EngineError('limit_exceeded', 'rejected bids');
     }
     const events: LedgerEvent[] = [];
-    if (lot.status === 'OPEN' && lot.endsAt !== null && cmd.at >= lot.endsAt) {
+    if (
+      lot.status === 'OPEN' &&
+      lot.pausedRemainingMs === undefined &&
+      lot.endsAt !== null &&
+      cmd.at >= lot.endsAt
+    ) {
       events.push({ type: 'LOT_CLOSING', payload: { lotId: cmd.lotId, reason: 'deadline' } });
     }
     const safe = isValidAmount(cmd.amountCents);

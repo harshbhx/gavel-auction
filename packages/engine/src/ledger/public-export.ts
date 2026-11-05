@@ -69,6 +69,19 @@ function withoutKeys(rec: Rec, keys: readonly string[], dropped: Set<string>): R
   return out;
 }
 
+function withoutRankingAmounts(payload: Rec, dropped: Set<string>): Rec {
+  const ranking = payload['ranking'];
+  if (!Array.isArray(ranking)) return payload;
+  const inner = new Set<string>();
+  const next = ranking.map((r) =>
+    typeof r === 'object' && r !== null && !Array.isArray(r)
+      ? withoutKeys(r as Rec, ['amountCents'], inner)
+      : r,
+  );
+  if (inner.size > 0) dropped.add('ranking.amountCents');
+  return { ...payload, ranking: next };
+}
+
 function hashPublic(e: Omit<PublicEntry, 'hash'>, hasher: Hasher): string {
   return hasher.sha256Hex(canonicalBytes(e as unknown as JsonValue));
 }
@@ -150,6 +163,10 @@ export function publicExport(
       const lotId = payload['lotId'];
       if (typeof lotId === 'string') {
         sealed.delete(lotId);
+        // The hammer ranking holds every bidder's secret maximum; only the order and the
+        // price stay public for a proxy lot (R8-E03).
+        if (e.type === 'LOT_HAMMERED' && proxy.has(lotId))
+          pub = withoutRankingAmounts(pub, dropped);
         proxy.delete(lotId);
       }
     }

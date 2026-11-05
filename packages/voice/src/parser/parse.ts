@@ -44,6 +44,29 @@ function isColloquialHundreds(words: string[], cents: number): boolean {
   return !words.some((w) => w in SCALE || w === 'point' || /\d/.test(w));
 }
 
+/** A word right after a number that makes it a measure, not a bid ("a hundred percent", "5M"). */
+const UNIT_WORDS: ReadonlySet<string> = new Set([
+  '%',
+  'percent',
+  'pct',
+  'm',
+  'mm',
+  'bn',
+  'mile',
+  'miles',
+  'km',
+  'kg',
+  'kilos',
+  'meters',
+  'feet',
+  'inches',
+  'years',
+  'hours',
+  'minutes',
+  'seconds',
+  'days',
+]);
+
 interface Amount {
   cents: number;
   colloquial: boolean;
@@ -53,7 +76,9 @@ function parseAmounts(tokens: string[]): {
   amounts: Amount[];
   unreadable: number;
   centsOnly: number[];
+  unit: boolean;
 } {
+  let unit = false;
   const spans = findNumberSpans(tokens);
   const amounts: Amount[] = [];
   const centsOnly: number[] = [];
@@ -63,6 +88,7 @@ function parseAmounts(tokens: string[]): {
     const slice = tokens.slice(s, e);
     const value = spanValue(slice);
     const after = tokens[e] ?? '';
+    if (UNIT_WORDS.has(after)) unit = true;
     if (CENT_WORDS.has(after)) {
       // "fifty cents" on its own is a fractional amount, never a whole-dollar bid.
       if (value !== null && value > 0) centsOnly.push(Math.round(value / 100));
@@ -96,7 +122,7 @@ function parseAmounts(tokens: string[]): {
       colloquial: !half && isColloquialHundreds(slice, value),
     });
   }
-  return { amounts, unreadable, centsOnly };
+  return { amounts, unreadable, centsOnly, unit };
 }
 
 export function parseBid(text: string, ctx: ParseContext = {}): ParseResult {
@@ -121,7 +147,7 @@ function parse(text: string, ctx: ParseContext): ParseResult {
     ctx.speakerBidderId === undefined ? null : { kind: 'speaker', value: ctx.speakerBidderId };
   const scan = extractPaddles(toks);
   const rest = (skip: Set<number>): string[] => tokens.filter((_, i) => !skip.has(i));
-  const { amounts, unreadable, centsOnly } = parseAmounts(rest(scan.consumed));
+  const { amounts, unreadable, centsOnly, unit } = parseAmounts(rest(scan.consumed));
   const cand = (amountCents: number | null, bidder: BidderRef | null): Candidate => ({
     bidder,
     amountCents,
@@ -177,6 +203,7 @@ function parse(text: string, ctx: ParseContext): ParseResult {
   if (tokens.some((t) => NON_USD_WORDS.has(t))) {
     return result('confirm', 'unsupported_currency', { bidder });
   }
+  if (unit) return result('confirm', 'uninterpretable_number', { bidder });
   if (amounts.length === 0 && centsOnly.length > 0) {
     const sorted = [...new Set(centsOnly)].sort((a, b) => a - b);
     return result('confirm', 'fractional_amount', {

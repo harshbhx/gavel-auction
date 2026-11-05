@@ -173,5 +173,17 @@ export function redactEventForExport(role: AuthRole, event: RoomEvent): Exported
     delete audit.audioTsMs;
     return { ...copy, audit } as typeof event;
   }
+  if (event.type === 'confirm_requested') {
+    const copy: Partial<typeof event> = { ...event };
+    delete copy.amount;
+    const audit: Partial<typeof event.audit> = { ...event.audit };
+    delete audit.parsedAmount;
+    return { ...copy, audit } as unknown as ExportedEvent;
+  }
+  if (event.type === 'confirm_resolved') {
+    const audit: Partial<typeof event.audit> = { ...event.audit };
+    delete audit.parsedAmount;
+    return { ...event, audit } as typeof event;
+  }
   return event;
 }

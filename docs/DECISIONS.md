@@ -309,7 +309,7 @@ Date: 2026-11-04
 Status: accepted
 Owner: quality
 Context: The room log, ledger, journals, holds and webhook events are files, and each file belongs to one process with no cross-process lock. A Render web service has an ephemeral disk, so a redeploy would lose every record while the sandbox authorizations still exist at PayPal, and a rolling deploy starts the new instance before the old one stops, so two writers could share one snapshot (INT-R3-16).
-Decision: Deploy with a persistent disk mounted at /var/data and numInstances 1, both set in render.yaml. The host reads the data directory from GAVEL_DATA_DIR and every file store lives under it. Deploys must stop the old instance before the new one starts (Render: disable zero-downtime deploys for this service). Back the disk up with a snapshot before a deploy that changes a store format.
+Decision: Deploy with a persistent disk mounted at /var/data and numInstances 1, both set in render.yaml. The host reads the data directory from DATA_DIR (with STORE=file) and every file store lives under it. Deploys must stop the old instance before the new one starts (Render: disable zero-downtime deploys for this service). Back the disk up with a snapshot before a deploy that changes a store format.
 Alternatives:
 
 - Postgres or D1 for every store: deferred, it is a larger change than the demo needs.
@@ -317,7 +317,7 @@ Alternatives:
 
 Consequences:
 
-- The host entry point must create its stores under GAVEL_DATA_DIR and refuse to start when that directory is missing in hosted mode.
+- The host entry point must create its stores under DATA_DIR and refuse to start when that directory is missing in hosted mode.
 - The crash and resume segment of the demo works on the hosted URL because journals survive a restart.
 
 Evidence: docs/PLAN.md (Store), packages/payments/src/stores/file.ts header, SPEC-quality R-QA-042.
@@ -435,3 +435,59 @@ Consequences:
 - A scraper must send the admin key; unauthenticated probes see 401 only.
 
 Evidence: packages/server/src/http/metrics.ts, packages/server/test/metrics.test.ts, R-RT-135, R-RT-137.
+
+## D-0025: Pause, resume and extend are engine commands; ceiling policy lives in shared
+
+Date: 2026-11-05
+Status: accepted
+Owner: engine
+Context: The shared control events and the web console offer pause, resume and extend, but the engine had no command behind them, so a pause could not keep the time left and an extension had nothing to call (INTEGRATION-RT-18). Separately the ceiling presets, minimum and cap were three independent copies (INTEGRATION-RT-04).
+Decision: The engine gains `PauseLot`, `ResumeLot` and `ExtendLot` with ledger events `LOT_PAUSED`, `LOT_RESUMED` and `LOT_EXTENDED` (22 event types). Pause records the time left; Tick does nothing and bids are rejected as `lot_not_open` (detail `paused: true`) while paused; resume sets the deadline to the resume time plus the time left. Extend adds 1 to 600000 ms to a running lot, does not use up a soft-close extension, and is refused while paused. A paused lot cannot be hammered early, but it can still be aborted. `pausedRemainingMs` exists on a lot only while it is paused, so unpaused lots keep the same state digest. The ceiling presets, minimum and default cap are defined in `@gavel/shared` (`ceilings.ts`); engine and payments keep matching copies because neither may depend on shared, and `packages/server/test/ceiling-policy.test.ts` fails when any copy drifts.
+Alternatives:
+
+- Add `PAUSED` to the lot status: rejected, it changes every status switch and the state digest of existing ledgers.
+- Reuse `END_EXTENDED` for admin extension: rejected, that event is tied to a trigger bid and the soft-close counter.
+- Make payments and engine import the shared constants: rejected, both packages keep a tiny dependency set.
+
+Consequences:
+
+- The room and web console can map pause, resume and extend control actions onto the new commands; wiring them is a follow-up outside this change.
+- A hold created for a ceiling the engine later refuses is still not voided by the room; that part of INTEGRATION-RT-04 stays open.
+
+Evidence: packages/engine/src/decide/pause.ts, packages/engine/test/pause-lot.test.ts, packages/shared/src/ceilings.ts, packages/server/test/ceiling-policy.test.ts, R-RT-048, R-RT-049, R-ENG-014, R-ENG-040, R-PAY-031.
+
+## D-0026: Engine hardening from review round 8
+
+Date: 2026-11-05
+Status: accepted
+Owner: engine
+Context: Review round 8 found that a promotion could follow the capture, that its retry could conflict, that the public hammer entry exposed proxy maxima, that a raise on a revoked bidder was a silent no-op, and that one account could fill a lot's bid cap (R8-E01 to R8-E05).
+Decision: PromoteRunnerUp is refused with `state_continuity` while the settlement is CAPTURED, or VOIDING after a capture (SETTLED stays allowed because the settlement bridge replays a whole history before promoting to the bidder it charged),. The fallback settlement step a promotion injects is remembered as part of PromoteRunnerUp. The public export drops `ranking[].amountCents` from the hammer entry of a proxy lot. A raise on a revoked record is refused with `bad_command`. `LIMITS` gains `bidsPerBidderPerLot` (2000) and `bidsReservedForLead` (1000): one bidder may record at most 2000 bids on a lot, and the last 1000 slots of the lot cap only take a bid that takes the lead.
+Alternatives:
+
+- Clear `revoked` on a raise: rejected, re-authorisation needs a spec change and an explicit event.
+- Require a minimum step for proxy raises: rejected, it changes the price rules; the per-bidder cap bounds the abuse.
+
+Consequences:
+
+- A bidder who reaches the per-bidder cap on a lot gets `limit_exceeded` for further bids on that lot.
+- Public proxy exports no longer show each bidder's final maximum.
+
+Evidence: packages/engine/test/round8-engine.test.ts, R8-E01, R8-E02, R8-E03, R8-E04, R8-E05.
+
+## D-0027: A soft-close trigger that leaves the end unchanged is not an extension
+
+Date: 2026-11-05
+Status: accepted
+Owner: engine
+Context: The weekly rotating-seed differential run (seed 1988800899, scenario 666, field endsAt) found the TypeScript engine and the Python reference disagreeing. A late bid inside the window with `at + extensionMs` below the current `endsAt` leaves the end unchanged. The reference still incremented `extensions`, so it refused the next real extension; the engine counted only changed ends. R-ENG-034 says to increment `extensions` but R-ENG-038 and R-ENG-036 speak of an extension as something that moves the end.
+Decision: An extension happens only when `endsAt` strictly increases. A bid that triggers the window without moving the end emits no END_EXTENDED and does not consume maxExtensions. The engine already behaved this way (`extension()` returns `extended: false`); the Python reference is fixed to match, and the scenario is pinned in packages/engine/test/differential.test.ts.
+Alternatives:
+
+- Count the no-op trigger and emit END_EXTENDED with equal before and after: rejected, it changes the public event stream and wastes the extension budget on a bid that extended nothing.
+
+Consequences:
+
+- The reference and the engine agree on endsAt for any number of late bids under maxExtensions.
+
+Evidence: packages/engine/test/differential.test.ts (seed 1988800899, scenario 666), reference/python/test_engine.py.

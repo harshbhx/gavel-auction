@@ -17,7 +17,7 @@ import { fakeDemoEnv, runCrashResume, sandboxDemoEnv } from './settle-lib.js';
  * captures PayPal holds for the winner, which must be one.
  *
  * Sandbox mode needs PAYPAL_ENV=sandbox, PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET and
- * DEMO_AUTHS, a comma list of bidder:authorizationId:ceilingCents with already approved
+ * DEMO_AUTHS, a comma list of bidder:authorizationId:ceilingCents[:orderId] with already approved
  * authorizations (one per bidder, ceilings above the prices below). The sandbox guard
  * runs before any request is made.
  */

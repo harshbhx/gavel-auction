@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import { loadConfig, PaymentsConfigError, type PaymentsConfig } from '../src/config.js';
 import { assertSandboxConfig } from '../src/guard.js';
 import { redactString, registerSecret } from '../src/log.js';
-import { toJsonlLine, type EvidenceRecord } from './evidence.js';
+import { redactUrlsInText, toJsonlLine, type EvidenceRecord } from './evidence.js';
 import { RecordingHttp, type RawFetch } from './http.js';
 import { gateCurrency } from './gateUtil.js';
 
@@ -106,10 +106,25 @@ export function loadRunFile(path: string): RunFile {
   return parsed;
 }
 
+/** Redacts the query values of every URL in a run file (approve links carry the order token). */
+export function redactRunValue(value: unknown): unknown {
+  if (typeof value === 'string') return redactUrlsInText(value);
+  if (Array.isArray(value)) return value.map(redactRunValue);
+  if (value !== null && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = redactRunValue(v);
+    }
+    return out;
+  }
+  return value;
+}
+
 export function saveRunFile(path: string, run: RunFile): void {
   mkdirSync(dirname(path), { recursive: true });
   const tmp = `${path}.tmp`;
-  writeFileSync(tmp, `${JSON.stringify(run, null, 2)}\n`, 'utf8');
+  // The run file travels as a public workflow artifact: no URL query values on disk.
+  writeFileSync(tmp, `${JSON.stringify(redactRunValue(run), null, 2)}\n`, 'utf8');
   renameSync(tmp, path);
 }
 

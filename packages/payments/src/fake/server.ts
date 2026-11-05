@@ -466,7 +466,7 @@ export class FakePayPalServer {
           },
         ],
         captures: a.captures.map((c) =>
-          captureBody(c.id, c.amountCents, c.final, undefined, this.currency),
+          captureBody(c.id, c.amountCents, c.final, c.invoiceId, this.currency),
         ),
       };
     }
@@ -528,7 +528,7 @@ export class FakePayPalServer {
         : (centsFromAmount(json['amount'], this.currency) ?? 0);
     const invoice = typeof json['invoice_id'] === 'string' ? json['invoice_id'] : undefined;
     const final = json['final_capture'] === true;
-    const c = this.core_.capture(authId, cents, final, x.requestId);
+    const c = this.core_.capture(authId, cents, final, x.requestId, invoice);
     return jsonResponse(
       201,
       captureBody(c.id, c.amountCents, c.finalCapture, invoice, this.currency),
