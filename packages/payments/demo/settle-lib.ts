@@ -1,7 +1,7 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadConfig } from '../src/config.js';
+import { DEFAULT_HOLD_MAX_AGE_MS, loadConfig } from '../src/config.js';
 import { FakeClock, FakePayPalCore } from '../src/fake/core.js';
 import { FakeGateway } from '../src/fake/gateway.js';
 import { PayPalGateway } from '../src/gateway.js';
@@ -130,7 +130,12 @@ export async function runCrashResume(
     ceilings[bidderId] = h.ceilingCents;
   }
   await createSettlement(
-    { journals: env.journals },
+    {
+      journals: env.journals,
+      clock: env.clock,
+      holdMaxAgeMs: DEFAULT_HOLD_MAX_AGE_MS,
+      audit: { append: async () => undefined },
+    },
     {
       auctionId: env.auctionId,
       reserveCents: DEMO_RESERVE_CENTS,
@@ -251,7 +256,7 @@ export function sandboxDemoEnv(
   vars: Record<string, string | undefined>,
   dir: string = mkdtempSync(join(tmpdir(), 'gavel-demo-')),
 ): DemoEnv {
-  const config = loadConfig({ ...vars, GAVEL_PAYMENTS_FAKE: '' });
+  const config = loadConfig({ ...vars, GAVEL_PAYMENTS_FAKE: '' }, { requireWebhookId: false });
   const base = assertSandboxConfig(config);
   const auth = new TokenManager({
     transport: new Transport(),

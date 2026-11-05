@@ -4,13 +4,13 @@ import {
   LeaseLost,
   SettlementError,
   createSettlement,
-  newJournal,
   renewLease,
   validatePlan,
   withLease,
 } from '../../src/saga/create.js';
 import { MemoryJournalStore, VersionConflict } from '../../src/stores/memory.js';
 import type { SettlementPlan } from '../../src/types.js';
+import { FRESH_HOLDS, recordingAudit, freshJournal } from '../helpers/age.js';
 
 function plan(over: Partial<SettlementPlan> = {}): SettlementPlan {
   return {
@@ -43,7 +43,7 @@ async function code(p: Promise<unknown> | (() => unknown)): Promise<string | und
 describe('createSettlement', () => {
   it('stores a HELD journal at version 0 with every hold', async () => {
     const journals = new MemoryJournalStore();
-    const r = await createSettlement({ journals }, plan());
+    const r = await createSettlement({ journals, ...FRESH_HOLDS }, plan());
     expect(r.created).toBe(true);
     expect(r.journal).toEqual(await journals.load('a1'));
     expect(r.journal).toMatchObject({
@@ -67,46 +67,46 @@ describe('createSettlement', () => {
 
   it('is idempotent for an equal plan', async () => {
     const journals = new MemoryJournalStore();
-    const first = await createSettlement({ journals }, plan());
-    const second = await createSettlement({ journals }, plan());
+    const first = await createSettlement({ journals, ...FRESH_HOLDS }, plan());
+    const second = await createSettlement({ journals, ...FRESH_HOLDS }, plan());
     expect(second.created).toBe(false);
     expect(second.journal).toEqual(first.journal);
   });
 
   it('returns the advanced journal, not the original, on a repeat call', async () => {
     const journals = new MemoryJournalStore();
-    const { journal } = await createSettlement({ journals }, plan());
+    const { journal } = await createSettlement({ journals, ...FRESH_HOLDS }, plan());
     await journals.save({ ...journal, version: 1, state: 'BIDDING' }, 0);
-    const again = await createSettlement({ journals }, plan());
+    const again = await createSettlement({ journals, ...FRESH_HOLDS }, plan());
     expect(again.created).toBe(false);
     expect(again.journal.state).toBe('BIDDING');
   });
 
   it('T-PAY-032 a different plan is plan_mismatch and changes nothing', async () => {
     const journals = new MemoryJournalStore();
-    const first = await createSettlement({ journals }, plan());
+    const first = await createSettlement({ journals, ...FRESH_HOLDS }, plan());
     const other = plan({
       candidates: [
         { bidderId: 'b2', priceCents: 22000 },
         { bidderId: 'b1', priceCents: 21000 },
       ],
     });
-    expect(await code(createSettlement({ journals }, other))).toBe('plan_mismatch');
-    expect(await code(createSettlement({ journals }, plan({ reserveCents: 6000 })))).toBe(
-      'plan_mismatch',
-    );
+    expect(await code(createSettlement({ journals, ...FRESH_HOLDS }, other))).toBe('plan_mismatch');
+    expect(
+      await code(createSettlement({ journals, ...FRESH_HOLDS }, plan({ reserveCents: 6000 }))),
+    ).toBe('plan_mismatch');
     const moved = plan();
     moved.holds['b1'] = { holdId: 'h1', authId: 'AUTH-9', ceilingCents: 30000, createdAtMs: 1 };
-    expect(await code(createSettlement({ journals }, moved))).toBe('plan_mismatch');
+    expect(await code(createSettlement({ journals, ...FRESH_HOLDS }, moved))).toBe('plan_mismatch');
     expect(await journals.load('a1')).toEqual(first.journal);
   });
 
   it('concurrent creates with the same plan produce one journal', async () => {
     const journals = new MemoryJournalStore();
     const results = await Promise.all([
-      createSettlement({ journals }, plan()),
-      createSettlement({ journals }, plan()),
-      createSettlement({ journals }, plan()),
+      createSettlement({ journals, ...FRESH_HOLDS }, plan()),
+      createSettlement({ journals, ...FRESH_HOLDS }, plan()),
+      createSettlement({ journals, ...FRESH_HOLDS }, plan()),
     ]);
     expect(results.filter((r) => r.created)).toHaveLength(1);
   });
@@ -115,21 +115,21 @@ describe('createSettlement', () => {
     const journals = new MemoryJournalStore();
     const other = plan({ reserveCents: 1 });
     const outcomes = await Promise.all([
-      code(createSettlement({ journals }, plan())),
-      code(createSettlement({ journals }, other)),
+      code(createSettlement({ journals, ...FRESH_HOLDS }, plan())),
+      code(createSettlement({ journals, ...FRESH_HOLDS }, other)),
     ]);
     expect(outcomes.filter((c) => c === 'plan_mismatch')).toHaveLength(1);
   });
 
   it('allows a plan with no candidates (no sale)', async () => {
     const journals = new MemoryJournalStore();
-    const r = await createSettlement({ journals }, plan({ candidates: [] }));
+    const r = await createSettlement({ journals, ...FRESH_HOLDS }, plan({ candidates: [] }));
     expect(r.journal.plan.candidates).toEqual([]);
   });
 
   it('does not share objects with the caller', () => {
     const p = plan();
-    const j = newJournal(p);
+    const j = freshJournal(p);
     p.candidates[0] = { bidderId: 'zz', priceCents: 1 };
     expect(j.plan.candidates[0]?.bidderId).toBe('b1');
   });
@@ -144,7 +144,7 @@ describe('plan validation', () => {
         { bidderId: 'b1', priceCents: 21000 },
       ],
     });
-    expect(await code(createSettlement({ journals }, p))).toBe('plan_invalid');
+    expect(await code(createSettlement({ journals, ...FRESH_HOLDS }, p))).toBe('plan_invalid');
     expect(await journals.load('a1')).toBeNull();
   });
 
@@ -203,12 +203,34 @@ describe('plan validation', () => {
 
   it('flags a hold older than the maximum age when the settlement is created', async () => {
     const journals = new MemoryJournalStore();
+    const { sink, rows } = recordingAudit();
     const r = await createSettlement(
-      { journals, clock: { nowMs: () => 10_000 }, holdMaxAgeMs: 9_998 },
+      { journals, clock: { nowMs: () => 10_000 }, holdMaxAgeMs: 9_998, audit: sink },
       plan(),
     );
     expect(r.journal.holds['b1']?.stale).toBe(true); // created at 1, age 9999 > 9998
     expect(r.journal.holds['b2']?.stale).toBe(false); // created at 2, age 9998
+    // One stale_hold row for the flagged hold only, and none when the settlement already exists.
+    expect(rows.map((x) => [x.kind, x.holdId])).toEqual([
+      ['stale_hold', r.journal.holds['b1']?.holdId],
+    ]);
+    await createSettlement(
+      { journals, clock: { nowMs: () => 10_000 }, holdMaxAgeMs: 9_998, audit: sink },
+      plan(),
+    );
+    expect(rows).toHaveLength(1);
+  });
+
+  it('refuses a settlement without a usable hold age limit or a hold created at NaN', async () => {
+    const journals = new MemoryJournalStore();
+    expect(
+      await code(createSettlement({ journals, ...FRESH_HOLDS, holdMaxAgeMs: 0 }, plan())),
+    ).toBe('plan_invalid');
+    const p = plan();
+    const first = Object.values(p.holds)[0];
+    if (first === undefined) throw new Error('plan has no hold');
+    first.createdAtMs = Number.NaN;
+    expect(await code(createSettlement({ journals, ...FRESH_HOLDS }, p))).toBe('plan_invalid');
   });
 });
 
@@ -281,7 +303,7 @@ describe('lease', () => {
 
   it('T-PAY-053 lease expiry during a slow step: second runner takes over, first save conflicts', async () => {
     const { deps, journals, clock } = rig();
-    const { journal } = await createSettlement({ journals }, plan());
+    const { journal } = await createSettlement({ journals, ...FRESH_HOLDS }, plan());
 
     const first = await withLease(deps, 'a1', 'runner-1', async () => {
       const mine = (await journals.load('a1')) ?? journal;

@@ -71,8 +71,17 @@ function required(env: Env, name: string): string {
   return v;
 }
 
+export interface LoadConfigOptions {
+  /**
+   * Outside fake mode PAYPAL_WEBHOOK_ID must be set, because an empty id makes every real
+   * delivery fail verification at PayPal. Callers that never receive webhooks (the gate and
+   * demo scripts) pass false.
+   */
+  requireWebhookId?: boolean;
+}
+
 /** Parse environment variables into a typed config (R-PAY-001). */
-export function loadConfig(env: Env): PaymentsConfig {
+export function loadConfig(env: Env, opts: LoadConfigOptions = {}): PaymentsConfig {
   if (env['PAYPAL_ENV'] !== 'sandbox') {
     throw new PaymentsConfigError('payments_not_sandbox', 'PAYPAL_ENV must equal "sandbox"');
   }
@@ -84,7 +93,10 @@ export function loadConfig(env: Env): PaymentsConfig {
     clientSecret: fake
       ? (env['PAYPAL_CLIENT_SECRET'] ?? '')
       : required(env, 'PAYPAL_CLIENT_SECRET'),
-    webhookId: env['PAYPAL_WEBHOOK_ID'] ?? '',
+    webhookId:
+      fake || opts.requireWebhookId === false
+        ? (env['PAYPAL_WEBHOOK_ID'] ?? '')
+        : required(env, 'PAYPAL_WEBHOOK_ID'),
     baseUrl,
     maxCeilingCents: positiveInt(env, 'GAVEL_MAX_CEILING_CENTS', DEFAULT_MAX_CEILING_CENTS),
     fake,
