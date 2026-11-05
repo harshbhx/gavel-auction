@@ -47,8 +47,18 @@ export function scanText(text, { logs = false, canaries = [] } = {}) {
   return findings;
 }
 
+// A secret copied into a VITE_-prefixed name is the leak a bundler can really inline, so each
+// secret name is also read under that prefix.
 export function canariesFromEnv(env) {
-  return ENV_NAMES.map((n) => env[n]).filter((v) => typeof v === 'string' && v.length >= 8);
+  const names = ENV_NAMES.flatMap((n) => [n, `VITE_${n}`]);
+  return names.map((n) => env[n]).filter((v) => typeof v === 'string' && v.length >= 8);
+}
+
+// Client-exposed (VITE_) variables whose name contains a secret name must never be set.
+export function viteSecretNames(env) {
+  return Object.keys(env).filter(
+    (k) => k.startsWith('VITE_') && ENV_NAMES.some((n) => k.includes(n)),
+  );
 }
 
 function* walk(dir) {
@@ -79,6 +89,14 @@ function selfTest() {
       'inlined canary without its name caught',
       scanText(`a="${canary}"`, { canaries: [canary] }).length > 0,
     ],
+    [
+      'VITE_ prefixed canary read from env',
+      canariesFromEnv({ [`VITE_${ENV_NAMES[0]}`]: canary }).includes(canary),
+    ],
+    [
+      'VITE_ secret name flagged',
+      viteSecretNames({ [`VITE_${ENV_NAMES[0]}`]: canary, VITE_API_URL: 'x' }).length === 1,
+    ],
     ['absent canary passes', scanText('a="other"', { canaries: [canary] }).length === 0],
     ['log without token passes', scanText('{"msg":"bid accepted"}', { logs: true }).length === 0],
   ];
@@ -104,6 +122,11 @@ function main() {
     }
   }
   const problems = [];
+  if (args.includes('--canaries-from-env')) {
+    for (const k of viteSecretNames(process.env)) {
+      problems.push(`client-exposed variable ${k} carries a secret name`);
+    }
+  }
   if (existsSync(dir)) {
     // Read bytes as latin1 so binary assets and source maps are scanned without decoding loss.
     for (const f of walk(dir)) {
