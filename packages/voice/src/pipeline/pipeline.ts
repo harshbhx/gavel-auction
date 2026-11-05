@@ -411,7 +411,7 @@ export class VoicePipeline {
     const bidderId = verdict.bidderId;
     const amounts: Cents[] =
       verdict.kind === 'accept'
-        ? [verdict.amountCents]
+        : [...(verdict.candidates ?? (verdict.amountCents === null ? [] : [verdict.amountCents]))];
         : (verdict.candidates ?? (verdict.amountCents === null ? [] : [verdict.amountCents]));
     return this.openPrompt(
       seg,
