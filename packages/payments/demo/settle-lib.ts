@@ -28,7 +28,7 @@ import type { HoldStatus, Journal, SettlementPlan } from '../src/types.js';
  * captures PayPal holds for the winner, which must be one.
  *
  * Sandbox mode needs PAYPAL_ENV=sandbox, PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET and
- * DEMO_AUTHS, a comma list of bidder:authorizationId:ceilingCents with already approved
+ * DEMO_AUTHS, a comma list of bidder:authorizationId:ceilingCents[:orderId] with already approved
  * authorizations (one per bidder, ceilings above the prices below). The sandbox guard
  * runs before any request is made.
  */
@@ -46,6 +46,8 @@ export const DEMO_RESERVE_CENTS = 5000;
 export interface DemoHold {
   authId: string;
   ceilingCents: number;
+  /** The order the authorization came from; without it captures are not observable. */
+  orderId?: string;
 }
 
 export interface DemoEnv {
@@ -107,7 +109,11 @@ export function ladderLines(j: Journal): string[] {
 async function capturedAt(env: DemoEnv): Promise<Record<string, number>> {
   const out: Record<string, number> = {};
   for (const [bidderId, h] of Object.entries(env.holds)) {
-    const t = await env.gateway.getHoldTruth({ holdId: `hold-${bidderId}`, authId: h.authId });
+    const t = await env.gateway.getHoldTruth({
+      holdId: `hold-${bidderId}`,
+      authId: h.authId,
+      ...(h.orderId === undefined ? {} : { orderId: h.orderId }),
+    });
     out[bidderId] = t.capturedCents;
   }
   return out;
@@ -126,6 +132,7 @@ export async function runCrashResume(
       authId: h.authId,
       ceilingCents: h.ceilingCents,
       createdAtMs: env.clock.nowMs(),
+      ...(h.orderId === undefined ? {} : { orderId: h.orderId }),
     };
     ceilings[bidderId] = h.ceilingCents;
   }
@@ -218,10 +225,13 @@ export function fakeDemoEnv(dir: string = mkdtempSync(join(tmpdir(), 'gavel-demo
   const holds: Record<string, DemoHold> = {};
   const ceilings: Record<string, number> = { b1: 30000, b2: 25000, b3: 25000 };
   for (const [bidderId, ceilingCents] of Object.entries(ceilings)) {
-    holds[bidderId] = {
-      authId: core.createAuthorization(`payer-${bidderId}`, ceilingCents).id,
-      ceilingCents,
-    };
+    const order = core.createOrder(
+      { holdId: `hold-${bidderId}`, amountCents: ceilingCents, description: 'demo hold' },
+      `demo-order-${bidderId}`,
+    );
+    core.approveOrder(order.id);
+    const authorization = core.authorizeOrder(order.id, `demo-auth-${bidderId}`);
+    holds[bidderId] = { authId: authorization.authId, ceilingCents, orderId: order.id };
   }
   return {
     mode: 'fake',
@@ -238,12 +248,12 @@ export function fakeDemoEnv(dir: string = mkdtempSync(join(tmpdir(), 'gavel-demo
 export function parseDemoAuths(raw: string): Record<string, DemoHold> {
   const out: Record<string, DemoHold> = {};
   for (const part of raw.split(',')) {
-    const [bidderId, authId, cents] = part.trim().split(':');
+    const [bidderId, authId, cents, orderId] = part.trim().split(':');
     const ceilingCents = Number(cents);
     if (!bidderId || !authId || !Number.isInteger(ceilingCents) || ceilingCents <= 0) {
-      throw new Error('DEMO_AUTHS must look like bidder:authorizationId:ceilingCents,...');
+      throw new Error('DEMO_AUTHS must look like bidder:authorizationId:ceilingCents[:orderId],...');
     }
-    out[bidderId] = { authId, ceilingCents };
+    out[bidderId] = { authId, ceilingCents, ...(orderId ? { orderId } : {}) };
   }
   for (const [bidderId] of DEMO_CANDIDATES) {
     if (out[bidderId] === undefined) throw new Error(`DEMO_AUTHS has no entry for ${bidderId}`);
