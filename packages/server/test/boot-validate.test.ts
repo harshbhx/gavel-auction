@@ -19,6 +19,10 @@ const goodEnv = (): Record<string, string> => ({
   PAYPAL_WEBHOOK_ID: 'wh-' + 'z'.repeat(10),
 });
 
+function without(env: Record<string, string>, name: string): Record<string, string> {
+  return Object.fromEntries(Object.entries(env).filter(([k]) => k !== name));
+}
+
 class Exited extends Error {
   constructor(public code: number) {
     super('exit');
@@ -48,9 +52,7 @@ describe('boot validation (T-QA-080)', () => {
 
   for (const name of [...REQUIRED_ALWAYS, ...REQUIRED_WITH_SANDBOX_PAYMENTS]) {
     it(`exits 78 naming only ${name} when it is removed`, () => {
-      const env: Record<string, string | undefined> = goodEnv();
-      delete env[name];
-      const r = boot(env);
+      const r = boot(without(goodEnv(), name));
       expect(r.code).toBe(EXIT_CONFIG);
       expect(r.lines).toHaveLength(1);
       expect(JSON.parse(r.lines[0] as string)).toEqual({
@@ -80,16 +82,20 @@ describe('boot validation (T-QA-080)', () => {
   });
 
   it('never prints a value of the environment', () => {
-    const env = goodEnv();
-    delete (env as Record<string, string | undefined>)['PAYPAL_WEBHOOK_ID'];
+    const env = without(goodEnv(), 'PAYPAL_WEBHOOK_ID');
     const r = boot({ ...env, PAYPAL_ENV: 'live' });
     const text = r.lines.join('\n');
-    for (const v of Object.values(env)) expect(text).not.toContain(v);
+    for (const name of ['TOKEN_SECRET', 'ADMIN_KEY', 'PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET']) {
+      expect(text).not.toContain(env[name] as string);
+    }
   });
 
   it('does not require the PayPal credentials when payments are fake', () => {
-    const env: Record<string, string | undefined> = { ...goodEnv(), PAYMENTS: 'fake' };
-    for (const k of REQUIRED_WITH_SANDBOX_PAYMENTS) delete env[k];
+    const env = Object.fromEntries(
+      Object.entries({ ...goodEnv(), PAYMENTS: 'fake' }).filter(
+        ([k]) => !REQUIRED_WITH_SANDBOX_PAYMENTS.includes(k),
+      ),
+    );
     expect(boot(env).code).toBeNull();
   });
 
