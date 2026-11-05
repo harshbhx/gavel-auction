@@ -491,3 +491,21 @@ Consequences:
 - The reference and the engine agree on endsAt for any number of late bids under maxExtensions.
 
 Evidence: packages/engine/test/differential.test.ts (seed 1988800899, scenario 666), reference/python/test_engine.py.
+
+## D-0028: The room host stays Node; no Durable Object host is built
+
+Date: 2026-11-05
+Status: accepted
+Owner: realtime
+Context: R-RT-141 asks for a Durable Object versus Node comparison. R-RT-142 makes Node the default and lets a Durable Object win only by passing every row of the decision table. The spike (RT-86) ran no Durable Object room, so every Durable Object row is unmeasured.
+Decision: Keep the Node host (D-0006 stands). No Durable Object host is built. The evidence and the missing half are in packages/server/spike/HOST-DECISION.md.
+Alternatives:
+
+- Durable Object host: not chosen, no evidence on latency, recovery, storage, deploy time or free-plan limits.
+
+Consequences:
+
+- T-RT-098 is only partly satisfied: Node harnesses exist, the Durable Object side was not built.
+- The room code has no node: imports, so a later Durable Object host stays possible; reopen with a new decision ID if the revisit conditions in the spike document are met.
+
+Evidence: SPEC-realtime section 5.6, R-RT-140 to R-RT-143, D-0006, D-0018, packages/server/spike/HOST-DECISION.md.
