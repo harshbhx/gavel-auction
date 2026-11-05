@@ -8,6 +8,7 @@
     "noEmit": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "exactOptionalPropertyTypes": false,
     "types": ["node"]
   },
   "include": ["src", "test"]
