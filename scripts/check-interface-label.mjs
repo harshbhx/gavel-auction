@@ -9,7 +9,7 @@
 // report themselves. Inputs for --check: --labels or PR_LABELS (comma separated), and the
 // working tree, which must hold freshly generated reports compared against HEAD.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -141,6 +141,8 @@ async function generate() {
       result = Extractor.invoke(prepared, { localBuild: true, showVerboseMessages: false });
     } catch (err) {
       process.stderr.write(`api-extractor failed for ${pkg}\n`);
+      const dbg = join(own, pkg, 'money.d.ts');
+      if (existsSync(dbg)) process.stderr.write(`${readFileSync(dbg, 'utf8')}\n`);
       throw err;
     }
     if (!result.succeeded) failed = true;
