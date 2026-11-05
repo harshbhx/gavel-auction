@@ -856,7 +856,11 @@ export class Room {
     // A repeat returns the first result and appends nothing (R-RT-050).
     if (this.controlIds.has(cmd.controlId)) return;
     const engine = this.requireEngine();
-    if (this.hammered || engine.view().state !== 'OPEN' || !canClock(engine)) {
+    if (!canClock(engine)) {
+      this.sendError(conn, 'bad_message');
+      return;
+    }
+    if (this.hammered || engine.view().state !== 'OPEN') {
       this.sendError(conn, 'conflict');
       return;
     }

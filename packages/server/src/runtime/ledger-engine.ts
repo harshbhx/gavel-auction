@@ -283,7 +283,10 @@ export class LedgerEngine
   ): void {
     const at = Math.max(now, this.state.head.at);
     try {
-      this.run(at, kind, key, body);
+      // A command the engine rejects leaves no ledger entry; the caller must not log it as applied.
+      if (this.run(at, kind, key, body).entries.length === 0) {
+        throw new GavelError('conflict', kind);
+      }
     } catch (e) {
       if (e instanceof EngineError) throw new GavelError('conflict', e.code);
       throw e;
