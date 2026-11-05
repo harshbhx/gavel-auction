@@ -51,4 +51,9 @@ describe('config', () => {
     for (const s of ['cid-123', 'sec-456', 'wh-789']) expect(dump).not.toContain(s);
     expect(dump).toContain('[REDACTED]');
   });
+
+  it('takes fake mode from the argument before the environment variable', () => {
+    expect(loadConfig({ ...base, GAVEL_PAYMENTS_FAKE: '1' }, { fake: false }).fake).toBe(false);
+    expect(loadConfig({ PAYPAL_ENV: 'sandbox' }, { fake: true }).fake).toBe(true);
+  });
 });
