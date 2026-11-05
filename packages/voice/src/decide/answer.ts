@@ -48,6 +48,8 @@ export function answerConfirm(input: AnswerInput): AnswerOutcome {
   }
   const option = prompt.options.find((o) => o.id === optionId);
   if (option === undefined) return { kind: 'rejected', by };
+  // A prompt that forbids spoken answers cannot be confirmed by voice (R8-V10).
+  if (by === 'voice' && !prompt.spokenAnswerAllowed) return { kind: 'rejected', by };
 
   const parse: ParseResult = {
     status: 'bid',
