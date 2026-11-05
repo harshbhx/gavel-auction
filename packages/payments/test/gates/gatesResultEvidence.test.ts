@@ -15,7 +15,9 @@ describe('gates-result flags are tied to evidence (R4-G09)', () => {
   });
 
   it('rejects g2_card_authorize true while G2 has not run', () => {
-    const problems = gatesResultProblems({ ...gatesResult, g2_card_authorize: true }, md, root);
+    const notRun = md.replace(/(## G2:[\s\S]*?)^Status: PASS$/m, '$1Status: NOT RUN');
+    expect(notRun).not.toEqual(md);
+    const problems = gatesResultProblems({ ...gatesResult, g2_card_authorize: true }, notRun, root);
     expect(problems.join('\n')).toContain('G2: Status is not PASS');
   });
 
@@ -27,7 +29,8 @@ describe('gates-result flags are tied to evidence (R4-G09)', () => {
   it('rejects an edited evidence file', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'gates-ev-'));
     try {
-      for (const g of ['G1', 'G4']) mkdirSync(join(tmp, 'docs/evidence', g), { recursive: true });
+      for (const g of ['G1', 'G2', 'G4'])
+        mkdirSync(join(tmp, 'docs/evidence', g), { recursive: true });
       for (const m of md.matchAll(/^Evidence: (\S+) \(sha256/gm)) {
         const rel = m[1] as string;
         writeFileSync(join(tmp, rel), `${readFileSync(join(root, rel), 'utf8')}{"edited":1}\n`);

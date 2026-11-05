@@ -103,6 +103,15 @@ export interface G2ServerDeps {
   domain: string;
 }
 
+/**
+ * PayPal-Request-Id for a G2 call. Kept short on purpose: the evidence lint treats any run of 40
+ * or more id characters as a token, so a key that embeds the order id stops the run after PayPal
+ * has already answered. `run` is at most 14 characters, which keeps this well under 40.
+ */
+export function g2RequestId(run: string, path: G2Path, op: 'order' | 'auth', n: number): string {
+  return `g2-${run}-${path}-${op}-${n}`;
+}
+
 /** Header every /api call must carry; the served page holds the value. */
 export const G2_TOKEN_HEADER = 'x-g2-token';
 
@@ -165,6 +174,8 @@ export async function startG2Server(
     : `<meta name="g2-token" content="${pageToken}" />${page}`;
   let boundPort = 0;
   let counter = 0;
+  /** Order id to the counter it was created with, so the authorize key stays short. */
+  const orderNumbers = new Map<string, number>();
   let waiter: (() => void) | undefined;
   const settle = (): void => {
     if (g2Finished(results)) waiter?.();
@@ -196,6 +207,10 @@ export async function startG2Server(
       }
     }
     if (req.method === 'GET' && url.pathname === '/api/config') {
+      // The sandbox answers 401 invalid_domain for a loopback domain (localhost, 127.0.0.1), and
+      // accepts the request without domains[], so the domain binding is sent for real hosts only.
+      const loopback = /^(localhost|127\.\d+\.\d+\.\d+|\[?::1\]?)$/i.test(deps.domain);
+      const domains = loopback ? '' : `&domains[]=${encodeURIComponent(deps.domain)}`;
       const tokenRes = await ctx.http.request('G2.1 client token', {
         method: 'POST',
         path: '/v1/oauth2/token',
@@ -203,7 +218,7 @@ export async function startG2Server(
           Authorization: `Basic ${Buffer.from(`${ctx.config.clientId}:${ctx.config.clientSecret}`).toString('base64')}`,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: `grant_type=client_credentials&response_type=client_token&intent=sdk_init&domains[]=${encodeURIComponent(deps.domain)}`,
+        body: `grant_type=client_credentials&response_type=client_token&intent=sdk_init${domains}`,
       });
       const clientToken = str(field(tokenRes.json, 'access_token'));
       send(res, 200, { clientToken, sdkUrl: deps.sdkUrl, currency: ctx.currency });
@@ -218,7 +233,7 @@ export async function startG2Server(
       const r = await ctx.http.request(`G2.2 create order (${path})`, {
         method: 'POST',
         path: '/v2/checkout/orders',
-        headers: { ...auth, 'PayPal-Request-Id': `g2-${run}-${path}-order-${counter}` },
+        headers: { ...auth, 'PayPal-Request-Id': g2RequestId(run, path, 'order', counter) },
         body: {
           intent: 'AUTHORIZE',
           purchase_units: [
@@ -238,6 +253,7 @@ export async function startG2Server(
         };
         return send(res, 502, { error: 'order creation failed', status: r.status });
       }
+      orderNumbers.set(orderId, counter);
       return send(res, 200, { orderId });
     }
     const authorize = /^\/api\/orders\/([A-Za-z0-9_-]{1,64})\/authorize$/.exec(url.pathname);
@@ -250,7 +266,10 @@ export async function startG2Server(
       const r = await ctx.http.request(`G2.3 authorize (${path})`, {
         method: 'POST',
         path: `/v2/checkout/orders/${orderId}/authorize`,
-        headers: { ...auth, 'PayPal-Request-Id': `g2-${run}-${path}-auth-${orderId}` },
+        headers: {
+          ...auth,
+          'PayPal-Request-Id': g2RequestId(run, path, 'auth', orderNumbers.get(orderId) ?? 0),
+        },
       });
       const authId = str(firstAuthorization(r.json)['id']);
       if (r.status !== 201 || authId === '') {
@@ -542,9 +561,9 @@ export async function runG2(opts: RunG2Options): Promise<number> {
   }
 }
 
-const isEntry = process.argv
-  .slice(1)
-  .some((a) => pathToFileURL(resolve(a)).href === import.meta.url);
+const isEntry =
+  /vite-node/.test(process.argv[1] ?? '') ||
+  process.argv.slice(1).some((a) => pathToFileURL(resolve(a)).href === import.meta.url);
 if (isEntry) {
   runG2({ argv: process.argv.slice(2), env: process.env }).then(
     (code) => {

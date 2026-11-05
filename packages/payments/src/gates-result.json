@@ -1,5 +1,5 @@
 {
   "g1_remainder_mode": "A",
-  "g2_card_authorize": false,
+  "g2_card_authorize": true,
   "g4_webhooks_verified": true
 }
