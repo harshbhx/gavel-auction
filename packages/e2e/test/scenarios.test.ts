@@ -114,7 +114,9 @@ describe('scenario execution (R-QA-025, R-QA-026)', () => {
   it('fails on an expect kind or invariant the runner does not evaluate', async () => {
     const scenario = s01();
     const outcome = await runScenarioInProc(scenario, open);
-    const unknown: Scenario = { ...scenario, expect: [{ paypalCalls: { capture: 1, void: 1 } }] };
+    // R12-P06: one capture and one void (the loser); no void of the winner's remainder.
+    expect(outcome.paypalCalls).toEqual({ capture: 1, void: 1, reauthorize: 0 });
+    const unknown: Scenario = { ...scenario, expect: [{ paypalCalls: { capture: 1, void: 2 } }] };
     expect(checkExpectations(unknown, outcome)).toHaveLength(1);
     const i5: Scenario = { ...scenario, expect: [{ invariants: ['I5'] }] };
     expect(checkExpectations(i5, outcome)).toEqual(['invariant I5 is not evaluated by the runner']);

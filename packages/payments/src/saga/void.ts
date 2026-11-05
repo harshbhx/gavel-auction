@@ -9,7 +9,12 @@ import { withLease } from './create.js';
 import { truthArgs } from './truth.js';
 import { step, type SettlementEvent } from './machine.js';
 import { DEFAULT_UNKNOWN_DEADLINE_MS, unknownExpired } from './unknown.js';
-import { releaseWinnerRemainder, remainderKey, type RemainderResult } from './remainder.js';
+import {
+  releaseWinnerRemainder,
+  remainderKey,
+  type RemainderMode,
+  type RemainderResult,
+} from './remainder.js';
 
 /**
  * Void and release phase of the settlement runner (SPEC 3.5; R-PAY-057, R-PAY-058,
@@ -28,10 +33,13 @@ import { releaseWinnerRemainder, remainderKey, type RemainderResult } from './re
  * run that finds a VOID_FAILED hold uses one resume; after `maxVoidResumes` the
  * settlement goes to FAILED_NEEDS_REVIEW with reason `void_failed:<bidderId>`. A
  * `pending` hold is retried on every run and does not use the budget, but the journal
- * records when it first became pending (`pending_since:<bidderId>`); after the unknown
- * deadline the settlement goes to FAILED_NEEDS_REVIEW with reason
- * `void_unconfirmed:<bidderId>`. The same limit applies to a winner's remainder that
- * stays unavailable (`remainder_unconfirmed`). Voids are not
+ * records when it first became pending (`pending_since:<bidderId>`). Every run retries
+ * the pending voids before it looks at that age (R12-P02). A no sale whose void is still
+ * pending after the unknown deadline goes to FAILED_NEEDS_REVIEW with reason
+ * `void_unconfirmed:<bidderId>`. A sale does not: the winner has paid, so a slow release
+ * never ends it in review. It raises one `settlement_alert` (audit and metric) with that
+ * reason and keeps retrying until PayPal answers; the same holds for a winner's remainder
+ * that stays unreadable (`remainder_unconfirmed`). Voids are not
  * blocked by the kill switch (R-PAY-006, R-PAY-063).
  *
  * The journal keeps one entry per bidder in `voids`: voided, released,
@@ -47,6 +55,8 @@ export type VoidStatus = 'voided' | 'released' | 'VOID_FAILED' | 'pending';
 
 const PENDING_SINCE = 'pending_since:';
 const REMAINDER_SINCE = 'remainder_since:';
+/** `voids` key prefix of an alert already raised (R12-P02); never a bidder id. */
+const ALERTED = 'alerted:';
 
 const DONE: ReadonlySet<string> = new Set<VoidStatus>(['voided', 'released']);
 const RELEASED_KINDS: ReadonlySet<string> = new Set(['already_voided', 'expired']);
@@ -78,6 +88,8 @@ export interface VoidDeps extends VoidCallDeps {
   releaseAllReviewHolds?: boolean;
   /** Lease owner prefix; every run adds its own random suffix (R11-O05). Default: the process id. */
   owner?: string;
+  /** G1 decision for the winner's remainder (R-PAY-059, R12-P06). Default A, as recorded. */
+  remainderMode?: RemainderMode;
 }
 
 export type VoidOutcome =
@@ -379,11 +391,9 @@ class Run {
             d.voids[sinceKey] = String(this.now());
           });
         } else if (unknownExpired(since, this.now(), this.deadlineMs())) {
-          const journal = await this.apply({
-            ...this.ev('mismatch'),
-            label: 'journaled:remainder_unconfirmed',
-          } as SettlementEvent);
-          return { status: 'failed', reason: 'remainder_unconfirmed', journal };
+          // R12-P02: the winner has paid; an unreadable remainder is not a reason to end the
+          // sale in review. Raise the alert and read again on the next run.
+          await this.alertOnce('remainder_unconfirmed', winner.holdId);
         }
         return { status: 'pending', reason: 'remainder_unavailable', journal: this.j };
       }
@@ -451,7 +461,17 @@ class Run {
       });
     }
 
-    const expired = this.targets().find(
+    // R12-P02: the pending voids are tried again before their age is judged, so a run that
+    // comes after PayPal recovered releases them instead of giving up on them.
+    await this.runVoids();
+    await this.markPending();
+
+    if (this.targets().every((t) => DONE.has(this.statusOf(t.bidderId) ?? ''))) {
+      const journal = await this.apply(this.ev('all_released'));
+      return { status: 'settled', journal };
+    }
+
+    const expired = this.targets().filter(
       (t) =>
         this.statusOf(t.bidderId) === 'pending' &&
         unknownExpired(
@@ -460,23 +480,45 @@ class Run {
           this.deadlineMs(),
         ),
     );
-    if (expired !== undefined) {
+    const [first] = expired;
+    if (first !== undefined && this.j.winner === null) {
+      // No sale: nothing was paid, so the review is what tells an operator.
       const journal = await this.apply({
         type: 'void_budget_exhausted',
         tsMs: this.now(),
-        label: `journaled:void_unconfirmed:${expired.bidderId}`,
+        label: `journaled:void_unconfirmed:${first.bidderId}`,
       });
-      return { status: 'failed', reason: `void_unconfirmed:${expired.bidderId}`, journal };
+      return { status: 'failed', reason: `void_unconfirmed:${first.bidderId}`, journal };
     }
-
-    await this.runVoids();
-    await this.markPending();
-
-    if (this.targets().every((t) => DONE.has(this.statusOf(t.bidderId) ?? ''))) {
-      const journal = await this.apply(this.ev('all_released'));
-      return { status: 'settled', journal };
+    // A sale stays VOIDING and is retried on every run until every hold is released.
+    for (const t of expired) {
+      await this.alertOnce(`void_unconfirmed:${t.bidderId}`, t.hold.holdId);
     }
     return { status: 'pending', reason: 'void_incomplete', journal: this.j };
+  }
+
+  /**
+   * R12-P02: tells an operator once that a paid sale's release stays unconfirmed past the
+   * deadline: an audit entry and a metric, then a `voids` marker so later runs stay quiet.
+   * The entry is written before the marker, so a crash between them repeats it, never
+   * loses it.
+   */
+  private async alertOnce(reason: string, holdId: string): Promise<void> {
+    const marker = `${ALERTED}${reason}`;
+    if (this.j.voids[marker] !== undefined) return;
+    const now = this.now();
+    const [kind = reason] = reason.split(':');
+    this.deps.metrics?.incr('settlement_alerts_total', { reason: kind });
+    await this.deps.audit.append({
+      kind: 'settlement_alert',
+      auctionId: this.j.auctionId,
+      holdId,
+      label: reason,
+      tsMs: now,
+    });
+    await this.patch('alert', (d) => {
+      d.voids[marker] = String(now);
+    });
   }
 
   /** Records when a hold first became pending, and forgets it once the hold moves on. */

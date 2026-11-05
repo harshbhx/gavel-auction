@@ -4,6 +4,7 @@ export const COUNTER_NAMES = [
   'paypal_calls_total',
   'paypal_retries_total',
   'settlement_transitions_total',
+  'settlement_alerts_total',
   'webhook_events_total',
   'reconcile_findings_total',
 ] as const;

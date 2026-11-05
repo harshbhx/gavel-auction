@@ -28,6 +28,7 @@ import {
   type PaymentsMetrics,
   type PlanOutcome,
   type ReconcileReport,
+  type RemainderMode,
   type SettlementPlan,
   type VoidAllOutcome,
   type VoidDeps,
@@ -106,6 +107,10 @@ export interface AuctionServiceDeps {
   leaseOwner?: string;
   /** Unknown capture outcome deadline, in ms (payments default when absent). */
   unknownDeadlineMs?: number;
+  /** How long a capture PayPal reports PENDING is waited for, in ms (payments default three days). */
+  pendingCaptureDeadlineMs?: number;
+  /** G1 decision for the winner's remainder (payments default A, the recorded decision). */
+  remainderMode?: RemainderMode;
   /** Voids sent at the same time (payments default 3 when absent). */
   voidConcurrency?: number;
   /**
@@ -854,6 +859,9 @@ class Service implements AuctionService, SettlePort {
         ...(this.deps.unknownDeadlineMs !== undefined
           ? { unknownDeadlineMs: this.deps.unknownDeadlineMs }
           : {}),
+        ...(this.deps.pendingCaptureDeadlineMs !== undefined
+          ? { pendingCaptureDeadlineMs: this.deps.pendingCaptureDeadlineMs }
+          : {}),
       },
       lotId,
     );
@@ -914,6 +922,7 @@ class Service implements AuctionService, SettlePort {
       ...(this.deps.reviewHoldMaxAgeMs !== undefined
         ? { reviewHoldMaxAgeMs: this.deps.reviewHoldMaxAgeMs }
         : {}),
+      ...(this.deps.remainderMode !== undefined ? { remainderMode: this.deps.remainderMode } : {}),
       ...extra,
     };
   }

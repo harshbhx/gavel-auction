@@ -2,14 +2,19 @@ import { PayPalError } from '../errors.js';
 import type { AuditSink, Clock, JournalStore, KillSwitch, PaymentsGateway } from '../ports.js';
 import type { PaymentsMetrics } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
-import type { CaptureRef, HoldTruth, Journal } from '../types.js';
+import type { CaptureRef, HoldTruth, Journal, KillState } from '../types.js';
 import { withLease } from './create.js';
 import { truthArgs } from './truth.js';
 import { defaultLeaseOwner, runLeaseOwner } from './owner.js';
 import { step, type SettlementEvent } from './machine.js';
-import { DEFAULT_UNKNOWN_DEADLINE_MS, UNKNOWN_REVIEW_REASON, unknownExpired } from './unknown.js';
+import {
+  DEFAULT_PENDING_CAPTURE_DEADLINE_MS,
+  DEFAULT_UNKNOWN_DEADLINE_MS,
+  UNKNOWN_REVIEW_REASON,
+  unknownExpired,
+} from './unknown.js';
 
-export { DEFAULT_UNKNOWN_DEADLINE_MS };
+export { DEFAULT_PENDING_CAPTURE_DEADLINE_MS, DEFAULT_UNKNOWN_DEADLINE_MS };
 
 /**
  * Capture phase of the settlement runner (SPEC 3.5, 4.6; R-PAY-050 to R-PAY-056,
@@ -25,8 +30,13 @@ export { DEFAULT_UNKNOWN_DEADLINE_MS };
  *       unknown           -> unknownSince saved, `pending`; never the next candidate
  *
  * A capture PayPal lists as PENDING is not adopted (R11-O03): the phase waits with the
- * intent, under the unknown deadline, until PayPal reports it COMPLETED (adopt) or
- * declines it (fall back).
+ * intent until PayPal reports it COMPLETED (adopt) or declines it (fall back). Once PayPal
+ * has reported it PENDING it waits under the pending-capture deadline (default three days),
+ * not the ten-minute deadline of a lost answer (R12-P01).
+ *
+ * While the kill switch is engaged no capture can be retried, so the unknown clock stands
+ * still: the time it held is added to `unknownSince` on the first run after the release
+ * (R4-S05, R12-P05).
  *
  * Every state change is one compare-and-set save of the journal before the next
  * effect. The runner holds the auction's lease and renews it before each step.
@@ -62,6 +72,11 @@ export interface CaptureDeps {
   metrics?: PaymentsMetrics;
   /** Default 600000 (R-PAY-055). */
   unknownDeadlineMs?: number;
+  /**
+   * How long a capture PayPal reported PENDING is waited for before the settlement goes
+   * to review (R12-P01). Default three days.
+   */
+  pendingCaptureDeadlineMs?: number;
   /**
    * Lease owner prefix. Every run adds a fresh random suffix to it (R7P03, R11-O05), so two
    * runs never share a lease. Default: the process id.
@@ -172,6 +187,7 @@ interface Target {
 /** One run of the phase: the journal as last saved, and the steps that move it. */
 class Run {
   private readonly deadlineMs: number;
+  private readonly pendingDeadlineMs: number;
 
   constructor(
     private readonly deps: CaptureDeps,
@@ -179,10 +195,28 @@ class Run {
     private readonly renew: () => Promise<void>,
   ) {
     this.deadlineMs = deps.unknownDeadlineMs ?? DEFAULT_UNKNOWN_DEADLINE_MS;
+    this.pendingDeadlineMs = deps.pendingCaptureDeadlineMs ?? DEFAULT_PENDING_CAPTURE_DEADLINE_MS;
   }
 
   private now(): number {
     return this.deps.clock.nowMs();
+  }
+
+  /**
+   * The deadline of the outcome in doubt: a capture PayPal reported PENDING is PayPal
+   * deciding and waits longer than an answer that was lost (R12-P01).
+   */
+  private deadline(): number {
+    const i = this.j.intent;
+    return i !== null && i.op === 'capture' && i.pendingSinceMs !== undefined
+      ? this.pendingDeadlineMs
+      : this.deadlineMs;
+  }
+
+  private async killState(): Promise<KillState> {
+    return this.deps.killSwitch === undefined
+      ? { engaged: false }
+      : this.deps.killSwitch.isEngaged();
   }
 
   private async boundary(label: string): Promise<void> {
@@ -275,24 +309,30 @@ class Run {
 
     // R-PAY-050: truth before capture. A capture already there is adopted.
     const truth = await this.readTruth(target);
+    // R12-P05: the time the kill switch held the unknown clock is taken off before any
+    // deadline is judged. The switch only stops a new capture (below): a capture that is
+    // already there is adopted while it is engaged.
+    const kill = await this.killState();
+    if (!kill.engaged) await this.resumeUnknownClock();
     if (truth !== undefined) {
       const out = await this.judge(truth, target, null);
       if (out !== undefined) return out;
     }
 
-    // R-PAY-063: no new capture (checked first: no retry is possible, so the unknown clock must not fire) while the kill switch is engaged.
-    if (this.deps.killSwitch !== undefined && (await this.deps.killSwitch.isEngaged()).engaged) {
-      return { status: 'pending', reason: 'kill_switch', journal: j };
-    }
+    // R-PAY-063: no new capture while the kill switch is engaged. Checked before the
+    // deadline: no retry is possible, so the unknown clock stands still (R4-S05, R12-P05).
+    if (kill.engaged) return this.pauseUnknownClock(kill.sinceMs);
 
     // R-PAY-055: the outcome has been unknown for too long.
-    if (unknownExpired(j.unknownSince, this.now(), this.deadlineMs)) {
+    if (unknownExpired(this.j.unknownSince, this.now(), this.deadline())) {
       return this.fail('unknown_deadline');
     }
-    if (truth === undefined) return { status: 'pending', reason: 'truth_unavailable', journal: j };
+    if (truth === undefined) {
+      return { status: 'pending', reason: 'truth_unavailable', journal: this.j };
+    }
 
     // Write-ahead intent; a resume reuses the saved one, so the request id repeats.
-    const saved = j.intent;
+    const saved = this.j.intent;
     if (saved === null || saved.op !== 'capture' || saved.holdId !== target.holdId) {
       const requestId = buildRequestId({
         auctionId: j.auctionId,
@@ -367,7 +407,7 @@ class Run {
       case 'adopt':
         return this.won(t, v.capture.captureId, 'adopted', v.capture.amountCents);
       case 'in_doubt':
-        return this.waitForPendingCapture();
+        return this.waitForPendingCapture(t.holdId);
       case 'mismatch':
         return this.fail('mismatch');
       case 'gone':
@@ -381,26 +421,68 @@ class Run {
    * R11-O03: PayPal lists our capture as PENDING. It is neither the sale nor a failure:
    * the intent stays, no other candidate is tried and the void phase does not start, so
    * the next candidates keep their holds. A later run adopts it once PayPal says
-   * COMPLETED, or falls back once PayPal declined it. The unknown deadline applies: a
-   * capture that stays pending goes to review with its hold kept.
+   * COMPLETED, or falls back once PayPal declined it. The pending-capture deadline applies
+   * (R12-P01, default three days): only a capture that stays pending that long goes to
+   * review, with its hold kept.
    */
-  private async waitForPendingCapture(): Promise<CaptureOutcome> {
-    if (unknownExpired(this.j.unknownSince, this.now(), this.deadlineMs)) {
+  private async waitForPendingCapture(holdId: string): Promise<CaptureOutcome> {
+    await this.markPending(holdId);
+    if (unknownExpired(this.j.unknownSince, this.now(), this.deadline())) {
       return this.fail('unknown_deadline');
     }
-    if (this.j.unknownSince === null) {
-      const since = this.now();
-      await this.patch('unknown_since', (d) => {
-        d.unknownSince = since;
+    return { status: 'pending', reason: 'capture_pending', journal: this.j };
+  }
+
+  /**
+   * Saves that PayPal holds our capture on `holdId` as PENDING (R12-P01): starts the clock
+   * if it is not running and marks the intent, so every later deadline check of this
+   * capture uses the pending-capture deadline. Done once.
+   */
+  private async markPending(holdId: string): Promise<void> {
+    const ours = (i: Journal['intent']): boolean =>
+      i !== null && i.op === 'capture' && i.holdId === holdId && i.pendingSinceMs === undefined;
+    if (this.j.unknownSince !== null && !ours(this.j.intent)) return;
+    const now = this.now();
+    await this.patch('capture_pending', (d) => {
+      if (d.unknownSince === null) d.unknownSince = now;
+      if (d.intent !== null && ours(d.intent)) d.intent.pendingSinceMs = now;
+    });
+  }
+
+  /**
+   * R-PAY-063, R12-P05: the kill switch is engaged, so no capture can be retried. The
+   * unknown clock stops at the time the switch was engaged (never before the outcome
+   * became unknown) and starts again on the first run after the release.
+   */
+  private async pauseUnknownClock(engagedAtMs: number | undefined): Promise<CaptureOutcome> {
+    const since = this.j.unknownSince;
+    if (since !== null && this.j.unknownPausedAtMs === undefined) {
+      const now = this.now();
+      const at = Math.min(now, Math.max(since, engagedAtMs ?? now));
+      await this.patch('unknown_paused', (d) => {
+        d.unknownPausedAtMs = at;
       });
     }
-    return { status: 'pending', reason: 'capture_pending', journal: this.j };
+    return { status: 'pending', reason: 'kill_switch', journal: this.j };
+  }
+
+  /** R12-P05: the switch is released; the time it held the clock is not counted. */
+  private async resumeUnknownClock(): Promise<void> {
+    const paused = this.j.unknownPausedAtMs;
+    if (paused === undefined) return;
+    const held = Math.max(0, this.now() - paused);
+    await this.patch('unknown_resumed', (d) => {
+      if (d.unknownSince !== null) d.unknownSince += held;
+      delete d.unknownPausedAtMs;
+    });
   }
 
   private async afterFailure(err: PayPalError, t: Target): Promise<CaptureOutcome | null> {
     const j = this.j;
     if (err.kind === 'kill_switch_engaged') {
-      return { status: 'pending', reason: 'kill_switch', journal: j };
+      // Engaged after this run looked: nothing was sent, and the clock stops as above.
+      const kill = await this.killState();
+      return this.pauseUnknownClock(kill.engaged ? kill.sinceMs : undefined);
     }
     if (
       err.kind === 'auth_unavailable' ||
@@ -411,6 +493,12 @@ class Run {
       return { status: 'pending', reason: 'auth_unavailable', journal: j };
     }
     if (err.outcome === 'unknown') {
+      if (err.name === 'CAPTURE_PENDING') {
+        // R11-O03, R12-P01: PayPal took the capture and decides on it later. Not a lost
+        // answer: it waits under the pending-capture deadline.
+        await this.markPending(t.holdId);
+        return { status: 'pending', reason: 'capture_pending', journal: this.j };
+      }
       // R-PAY-054: never the next candidate. Remember when it started.
       if (j.unknownSince === null) {
         const since = this.now();
