@@ -109,8 +109,13 @@ describe('decide PauseLot, ResumeLot and ExtendLot', () => {
     expect(parseCommand(body).type).toBe('ExtendLot');
     expect(errCode(() => parseCommand({ ...body, extraMs: 0 }))).toBe('bad_command');
     expect(errCode(() => parseCommand({ ...body, extraMs: 600001 }))).toBe('bad_command');
-    const plain = { ...body, extraMs: undefined, reason: undefined } as Record<string, unknown>;
-    for (const k of ['extraMs', 'reason']) delete plain[k];
+    const plain = {
+      commandId: body.commandId,
+      at: body.at,
+      auctionId: body.auctionId,
+      lotId: body.lotId,
+      actor: body.actor,
+    };
     expect(parseCommand({ ...plain, type: 'PauseLot' }).type).toBe('PauseLot');
     expect(parseCommand({ ...plain, type: 'ResumeLot' }).type).toBe('ResumeLot');
   });
