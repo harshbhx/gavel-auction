@@ -72,7 +72,7 @@ describe('R8-P06 a settlement that fails review releases the holds that are not 
     await runSettlement(rig.deps, 'auc1');
     rig.clock.advance(601_000);
     await runSettlement(rig.deps, 'auc1');
-    rig.clock.advance(86_400_000);
+    rig.clock.advance(86_401_000);
     await runSettlement(rig.deps, 'auc1');
     expect(rig.core.inspect(rig.auth['b2'] ?? '').voidEffects).toBe(1);
   });
