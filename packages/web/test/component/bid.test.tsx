@@ -96,6 +96,70 @@ describe('BidScreen (T-WEB-033)', () => {
     expect(screen.getByText(t('bid.status.leading'))).toBeTruthy();
   });
 
+  it('shows the latest five bids, newest first (#1656)', () => {
+    const store = makeStore(50000);
+    act(() => {
+      for (let i = 0; i < 8; i += 1) {
+        store.dispatch({ kind: 'wire', msg: priceMsg(2 + i, 12 + (i % 2), 5000 + i * 100) }, 0);
+      }
+    });
+    render(<BidScreen store={store} onBid={() => undefined} />);
+    const rows = screen.getAllByRole('listitem');
+    expect(rows).toHaveLength(5);
+    expect(rows[0]?.textContent).toContain('$57.00');
+    expect(rows[4]?.textContent).toContain('$53.00');
+    expect(screen.queryByText('$50.00', { selector: 'li span' })).toBeNull();
+  });
+
+  it('does not show an old rejection again when the parent rebuilds the object (#1655)', () => {
+    vi.useFakeTimers();
+    const store = makeStore(50000);
+    const { rerender } = render(
+      <BidScreen
+        store={store}
+        onBid={() => undefined}
+        rejection={{ reason: 'below_increment', mid: 'm1' }}
+      />,
+    );
+    expect(screen.getByRole('alert')).toBeTruthy();
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+    expect(screen.queryByRole('alert')).toBeNull();
+    rerender(
+      <BidScreen
+        store={store}
+        onBid={() => undefined}
+        pending
+        rejection={{ reason: 'below_increment', mid: 'm1' }}
+      />,
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+    rerender(
+      <BidScreen
+        store={store}
+        onBid={() => undefined}
+        rejection={{ reason: 'below_increment', mid: 'm2' }}
+      />,
+    );
+    expect(screen.getByRole('alert')).toBeTruthy();
+  });
+
+  it('offers a resend when the latest bid was not heard back (#1657)', () => {
+    const onResend = vi.fn();
+    render(
+      <BidScreen store={makeStore(50000)} onBid={() => undefined} unsent onResend={onResend} />,
+    );
+    expect(screen.getByText(t('bid.unknown'))).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: t('bid.resend') }));
+    expect(onResend).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the bid controls until a room is joined (#1657)', () => {
+    render(<BidScreen store={makeStore(50000)} onBid={() => undefined} canSend={false} />);
+    expect(screen.queryByTestId('bid-bar')).toBeNull();
+  });
+
   it('shows a rejection and clears it after 6000 ms', () => {
     vi.useFakeTimers();
     render(

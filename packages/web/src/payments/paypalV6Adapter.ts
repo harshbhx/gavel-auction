@@ -233,6 +233,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     orderId: string,
     clientRegistrationId: string,
     on: (s: ApprovalState) => void,
+    expectedCents?: number,
   ): Promise<ApprovalResult> {
     const correlationId = `pp-${clientRegistrationId.slice(0, 8)}`;
     const finish = (state: ApprovalState, extra: Partial<ApprovalResult> = {}): ApprovalResult => {
@@ -240,7 +241,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
       return { state, correlationId, ...extra };
     };
     on('confirming');
-    return this.confirm(holdId, orderId, finish);
+    return this.confirm(holdId, orderId, finish, expectedCents);
   }
 
   private async confirm(
@@ -259,7 +260,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
       });
     }
     const approved = ApproveHoldResponse.safeParse(hold.body);
-    if (!approved.success) return finish('error', { errorCode: 'hold_failed' });
+    if (!approved.success) return finish('error', { errorCode: 'hold_failed', orderId, holdId });
     this.abandonUrl = null;
     // The amount the server confirmed must be the one this attempt asked for (WEB-R2-10).
     if (expectedCents !== undefined && approved.data.ceilingCents !== expectedCents) {

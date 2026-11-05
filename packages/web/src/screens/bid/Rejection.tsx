@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { en } from '../../copy/en';
+import { errorCopy } from '../../copy/errors';
 import { t } from '../../copy/t';
 import { formatUsd, formatUsdCompact } from '../../util/money';
 
@@ -8,6 +10,8 @@ export const REJECTION_CLEAR_MS = 6000;
 export interface BidRejection {
   /** Error code from the bid_rejected message. */
   reason: string;
+  /** The id of the rejected bid, so two identical rejections in a row are told apart. */
+  mid?: string;
 }
 
 export interface RejectionProps {
@@ -19,21 +23,17 @@ export interface RejectionProps {
 }
 
 export function rejectionText(reason: string, maxCents: number | null, minCents: number): string {
-  switch (reason) {
-    case 'over_ceiling':
-      return t('bid.rej.over_ceiling', { max: formatUsdCompact(maxCents ?? 0) });
-    case 'below_increment':
+  const { key } = errorCopy(reason);
+  switch (key) {
+    case 'bid.rej.over_ceiling':
+      return maxCents === null
+        ? t('bid.rej.over_ceiling_unknown')
+        : t('bid.rej.over_ceiling', { max: formatUsdCompact(maxCents) });
+    case 'bid.rej.below_increment':
       return t('bid.rej.below_increment', { min: formatUsd(minCents) });
-    case 'closed':
-      return t('bid.rej.closed');
-    case 'already_leading':
-      return t('bid.rej.already_leading');
-    case 'below_reserve':
-      return t('bid.rej.below_reserve');
-    case 'unregistered':
-      return t('bid.rej.unregistered');
     default:
-      return t('bid.rej.generic');
+      // The remaining keys carry no placeholders.
+      return en[key];
   }
 }
 
@@ -44,13 +44,20 @@ export function Rejection({ rejection, priceCents, maxCents, minCents }: Rejecti
   const latestPrice = useRef<number | null>(priceCents);
   latestPrice.current = priceCents;
 
+  // Keyed on the reason and the bid id, not on the object: a parent that rebuilds an equal object
+  // on every render must not show an old rejection again or restart its timer.
+  const latestRejection = useRef(rejection);
+  latestRejection.current = rejection;
+  const reason = rejection?.reason ?? null;
+  const mid = rejection?.mid ?? null;
+
   useEffect(() => {
-    setShown(rejection);
+    setShown(latestRejection.current);
     baseline.current = latestPrice.current;
-    if (rejection === null) return undefined;
+    if (reason === null) return undefined;
     const id = setTimeout(() => setShown(null), REJECTION_CLEAR_MS);
     return () => clearTimeout(id);
-  }, [rejection]);
+  }, [reason, mid]);
 
   useEffect(() => {
     if (priceCents !== baseline.current) {

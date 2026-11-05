@@ -10,6 +10,8 @@ export interface StoredRegistration {
   orderId?: string;
   /** The hold issued with that order; the approve route needs it. */
   holdId?: string;
+  /** The ceiling the buyer chose, checked against the amount the server confirms on return. */
+  ceilingCents?: number;
 }
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -41,8 +43,12 @@ export function loadRegistration(
     if (typeof id !== 'string' || id === '') return null;
     const orderId = (parsed as { orderId?: unknown }).orderId;
     const holdId = (parsed as { holdId?: unknown }).holdId;
+    const ceilingCents = (parsed as { ceilingCents?: unknown }).ceilingCents;
     return {
       clientRegistrationId: id,
+      ...(typeof ceilingCents === 'number' && Number.isSafeInteger(ceilingCents)
+        ? { ceilingCents }
+        : {}),
       ...(typeof orderId === 'string' && orderId !== '' ? { orderId } : {}),
       ...(typeof holdId === 'string' && holdId !== '' ? { holdId } : {}),
     };
