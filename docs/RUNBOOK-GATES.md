@@ -142,8 +142,8 @@ and open a pull request. Do not edit a gate to PASS by hand.
   4. Write the table to `docs/evidence/G4/` with its sha256, and set the W06 row in
      `packages/payments/src/fake/ASSUMPTIONS.md` to verified or refuted from it. Also record how
      long retries continue, if the dashboard shows it.
-  Until then the verifier keeps its documented fallback (D-0033): old transmissions up to seven
-  days take a verify call, and event ids are deduplicated.
+     Until then the verifier keeps its documented fallback (D-0033): old transmissions up to seven
+     days take a verify call, and event ids are deduplicated.
 
 ## G5: STT accuracy on noisy bids
 
