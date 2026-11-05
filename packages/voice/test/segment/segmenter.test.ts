@@ -138,7 +138,7 @@ describe('T-VOX-033 limits (R-VOX-033)', () => {
     const s = new Segmenter();
     const out: SegmentEvent[] = [];
     for (let i = 0; i < 100; i++) {
-      out.push(...s.push(final('hm', { startMs: i, endMs: i + 1 }), i));
+      out.push(...s.push(final(`hm ${i}`, { startMs: i, endMs: i + 1 }), i));
     }
     out.push(...s.flush());
     expect(drops(out)).toEqual([]);
