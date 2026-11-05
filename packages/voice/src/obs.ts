@@ -104,7 +104,9 @@ function clean(value: unknown, depth: number, allowTranscript: boolean): unknown
   if (value === null || typeof value === 'number' || typeof value === 'boolean') return value;
   if (isBinary(value)) return REDACTED;
   if (depth >= 4) return REDACTED;
-  if (Array.isArray(value)) return value.slice(0, 50).map((v) => clean(v, depth + 1, allowTranscript));
+  if (Array.isArray(value)) {
+    return value.slice(0, 50).map((v) => clean(v, depth + 1, allowTranscript));
+  }
   if (typeof value === 'object') return cleanFields(value as LogFields, depth + 1, allowTranscript);
   return undefined;
 }
