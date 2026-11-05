@@ -31,7 +31,7 @@ const evidence: VoiceEvidence = {
   llm: {
     status: 'bid',
     amountCents: 35000,
-    bidder: null,
+    bidder: { kind: 'paddle', value: '12' },
     reason: 'ok',
     candidates: [],
     flags: [],

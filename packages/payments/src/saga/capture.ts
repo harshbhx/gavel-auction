@@ -4,7 +4,8 @@ import type { PaymentsMetrics } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
 import type { CaptureRef, HoldTruth, Journal } from '../types.js';
 import { withLease } from './create.js';
-import { defaultLeaseOwner } from './owner.js';
+import { truthArgs } from './truth.js';
+import { defaultLeaseOwner, runLeaseOwner } from './owner.js';
 import { step, type SettlementEvent } from './machine.js';
 import { DEFAULT_UNKNOWN_DEADLINE_MS, UNKNOWN_REVIEW_REASON, unknownExpired } from './unknown.js';
 
@@ -36,7 +37,8 @@ export type PendingReason =
   | 'capture_outcome_unknown'
   | 'kill_switch'
   | 'truth_unavailable'
-  | 'auth_unavailable';
+  | 'auth_unavailable'
+  | 'capture_rejected_unclassified';
 
 export type CaptureOutcome =
   | { status: 'captured'; journal: Journal }
@@ -54,7 +56,7 @@ export interface CaptureDeps {
   metrics?: PaymentsMetrics;
   /** Default 600000 (R-PAY-055). */
   unknownDeadlineMs?: number;
-  /** Lease owner. Default: a random id fixed for this process. */
+  /** Lease owner. Default: the process id plus a fresh random suffix per run. */
   owner?: string;
   /**
    * Called at every crash boundary: `journaled:<event>` after a save, and
@@ -69,6 +71,20 @@ const INVARIANT_KINDS: ReadonlySet<string> = new Set([
   'invalid_request',
   'idempotency_conflict',
   'ceiling_out_of_range',
+]);
+
+/**
+ * Definite refusals that name this hold or its instrument: only these may send the
+ * settlement to the next candidate. Any other refusal (403, an unknown 4xx, an unknown
+ * 422 issue) may be a merchant-wide or request-level fault that would repeat for every
+ * bidder, so it stops the settlement instead of releasing the winning bids.
+ */
+const PER_HOLD_KINDS: ReadonlySet<string> = new Set([
+  'declined',
+  'expired',
+  'already_voided',
+  'already_captured',
+  'not_found',
 ]);
 
 const FAILED_TRUTH: ReadonlySet<HoldTruth['status']> = new Set([
@@ -110,9 +126,11 @@ type Verdict =
 
 export class CapturePhase {
   private readonly owner: string;
+  private readonly explicitOwner: boolean;
 
   constructor(private readonly deps: CaptureDeps) {
     this.owner = deps.owner ?? defaultLeaseOwner('runner');
+    this.explicitOwner = deps.owner !== undefined;
   }
 
   /** Runs, or resumes, the capture phase of one settlement. */
@@ -120,7 +138,8 @@ export class CapturePhase {
     const leased = await withLease(
       { journals: this.deps.journals, clock: this.deps.clock },
       auctionId,
-      this.owner,
+      // A default owner is unique per run, so a second run in this process gets `busy`.
+      this.explicitOwner ? this.owner : runLeaseOwner(this.owner),
       async (renew) => {
         const journal = await this.deps.journals.load(auctionId);
         if (journal === null) throw new Error(`no settlement for auction ${auctionId}`);
@@ -137,6 +156,7 @@ interface Target {
   authId: string;
   price: number;
   invoiceId: string;
+  truth: { holdId: string; authId: string; orderId?: string };
 }
 
 /** One run of the phase: the journal as last saved, and the steps that move it. */
@@ -240,6 +260,7 @@ class Run {
       authId: hold.authId,
       price,
       invoiceId: invoiceIdFor(j.auctionId, hold.holdId),
+      truth: truthArgs(hold),
     };
 
     // R-PAY-050: truth before capture. A capture already there is adopted.
@@ -312,7 +333,7 @@ class Run {
   private async readTruth(t: Target): Promise<HoldTruth | undefined> {
     try {
       await this.boundary('before:get');
-      const truth = await this.deps.gateway.getHoldTruth({ holdId: t.holdId, authId: t.authId });
+      const truth = await this.deps.gateway.getHoldTruth(t.truth);
       await this.boundary('after:get');
       return truth;
     } catch (e) {
@@ -368,11 +389,22 @@ class Run {
       return { status: 'pending', reason: 'capture_outcome_unknown', journal: this.j };
     }
     if (INVARIANT_KINDS.has(err.kind)) return this.fail('invariant');
+    if (!PER_HOLD_KINDS.has(err.kind)) {
+      // Unclassified refusal: keep the intent, surface it, and let the unknown deadline
+      // send it to review. Never the next candidate.
+      if (j.unknownSince === null) {
+        const since = this.now();
+        await this.patch('unknown_since', (d) => {
+          d.unknownSince = since;
+        });
+      }
+      return { status: 'pending', reason: 'capture_rejected_unclassified', journal: this.j };
+    }
 
     // R-PAY-053: a definite refusal falls back only after the truth says not captured.
     let truth: HoldTruth;
     try {
-      truth = await this.deps.gateway.getHoldTruth({ holdId: t.holdId, authId: t.authId });
+      truth = await this.deps.gateway.getHoldTruth(t.truth);
     } catch (e) {
       if (!(e instanceof PayPalError)) throw e;
       return { status: 'pending', reason: 'truth_unavailable', journal: j };

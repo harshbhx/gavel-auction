@@ -24,10 +24,10 @@ export function Announcer({ core = appAnnouncer }: AnnouncerProps) {
   return (
     <div style={visuallyHidden}>
       <div role="status" aria-live="polite" aria-atomic="true" data-testid="live-polite">
-        {state.polite}
+        <span key={state.politeSeq}>{state.polite}</span>
       </div>
       <div role="alert" aria-live="assertive" aria-atomic="true" data-testid="live-assertive">
-        {state.assertive}
+        <span key={state.assertiveSeq}>{state.assertive}</span>
       </div>
     </div>
   );

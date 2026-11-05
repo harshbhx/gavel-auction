@@ -72,6 +72,8 @@ export interface FakeCaptureRecord {
   amountCents: number;
   final: boolean;
   requestId: string | undefined;
+  /** The invoice_id the capture request carried; PayPal echoes it on the capture. */
+  invoiceId?: string;
 }
 
 interface AuthRecord {
@@ -436,6 +438,7 @@ export class FakePayPalCore {
     amountCents: number,
     finalCapture = true,
     requestId?: string,
+    invoiceId?: string,
   ): { id: string; status: 'COMPLETED'; amountCents: number; finalCapture: boolean } {
     return this.run(
       'capture',
@@ -459,7 +462,13 @@ export class FakePayPalCore {
           throw new FakeApiError(422, 'AUTHORIZATION_NOT_HONORED_AFTER_HONOR_PERIOD');
         }
         const id = this.nextId('CAP');
-        a.captures.push({ id, amountCents, final: finalCapture, requestId });
+        a.captures.push({
+          id,
+          amountCents,
+          final: finalCapture,
+          requestId,
+          ...(invoiceId === undefined ? {} : { invoiceId }),
+        });
         a.status = finalCapture ? 'CAPTURED' : 'PARTIALLY_CAPTURED';
         this.emit('PAYMENT.CAPTURE.COMPLETED', { authId: a.id, captureId: id, amountCents });
         return { id, status: 'COMPLETED' as const, amountCents, finalCapture };
@@ -477,7 +486,8 @@ export class FakePayPalCore {
         // Without auto-release the remainder is voided explicitly (assumption, G1).
         const remainder = a.holdCents - FakePayPalCore.capturedOf(a);
         if (this.autoReleaseRemainder || a.remainderVoided || remainder <= 0) {
-          throw new FakeApiError(422, 'AUTHORIZATION_ALREADY_CAPTURED');
+          // The verified issue name of a void after a final capture (G1, sandbox).
+          throw new FakeApiError(422, 'PREVIOUSLY_CAPTURED');
         }
         a.remainderVoided = true;
         a.voidEffects += 1;

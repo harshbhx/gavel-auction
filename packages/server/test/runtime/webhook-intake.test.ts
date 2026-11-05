@@ -143,3 +143,34 @@ describe('webhook intake unparseable events (PAY-R3-13)', () => {
     expect(all[0]?.result).toBe('unparseable');
   });
 });
+
+describe('hold writes use the record as it is now (R9-M05)', () => {
+  it('does not overwrite a write that landed during the truth read', async () => {
+    const holds = new MemoryHoldStore();
+    await holds.put(hold);
+    const intake = new WebhookIntake({
+      events: new MemoryWebhookEventStore(),
+      holds,
+      clock: { nowMs: () => 1000 },
+      truth: async (h) => {
+        // A newer write for the same hold lands while PayPal is being read.
+        await holds.put({ ...h, ceilingCents: 7777 });
+        return {
+          holdId: h.holdId,
+          authId: h.authId ?? '',
+          status: 'DENIED',
+          amountCents: h.ceilingCents,
+          capturedCents: 0,
+          captures: [],
+          observedAtMs: 1000,
+        };
+      },
+      listAuctions: async () => ['AU1'],
+      onHoldStatus: async () => undefined,
+    });
+    await intake.accept(denied);
+    const after = await holds.get('H1');
+    expect(after?.status).toBe('DENIED');
+    expect(after?.ceilingCents).toBe(7777);
+  });
+});

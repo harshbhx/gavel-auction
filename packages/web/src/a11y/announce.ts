@@ -19,6 +19,9 @@ export type AnnounceKey =
 export interface AnnouncerState {
   readonly polite: string;
   readonly assertive: string;
+  /** Bumped on every publish so an identical message still mutates the DOM. */
+  readonly politeSeq: number;
+  readonly assertiveSeq: number;
 }
 
 export interface AnnouncerDeps {
@@ -59,7 +62,7 @@ export function createAnnouncerCore(options: AnnouncerOptions = {}): AnnouncerCo
   const maxQueue = options.maxQueue ?? 3;
   const dedupeMs = options.assertiveDedupeMs ?? 5000;
 
-  let state: AnnouncerState = { polite: '', assertive: '' };
+  let state: AnnouncerState = { polite: '', assertive: '', politeSeq: 0, assertiveSeq: 0 };
   let queue: Queued[] = [];
   let lastPoliteAt: number | null = null;
   let lastAssertive: { text: string; at: number } | null = null;
@@ -76,7 +79,7 @@ export function createAnnouncerCore(options: AnnouncerOptions = {}): AnnouncerCo
     const head = queue.shift();
     if (head === undefined) return;
     lastPoliteAt = now();
-    publish({ ...state, polite: head.text });
+    publish({ ...state, polite: head.text, politeSeq: state.politeSeq + 1 });
     schedule();
   };
 
@@ -112,7 +115,7 @@ export function createAnnouncerCore(options: AnnouncerOptions = {}): AnnouncerCo
       return false;
     }
     lastAssertive = { text, at: t };
-    publish({ ...state, assertive: text });
+    publish({ ...state, assertive: text, assertiveSeq: state.assertiveSeq + 1 });
     return true;
   };
 

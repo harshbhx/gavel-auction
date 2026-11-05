@@ -4,8 +4,9 @@ import type { PaymentsMetrics } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
 import type { HoldTruth, Journal, JournalHold } from '../types.js';
 import { runCapturePhase, type CaptureDeps, type CaptureOutcome } from './capture.js';
-import { defaultLeaseOwner } from './owner.js';
+import { defaultLeaseOwner, runLeaseOwner } from './owner.js';
 import { withLease } from './create.js';
+import { truthArgs } from './truth.js';
 import { step, type SettlementEvent } from './machine.js';
 import { DEFAULT_UNKNOWN_DEADLINE_MS, unknownExpired } from './unknown.js';
 import { releaseWinnerRemainder, remainderKey, type RemainderResult } from './remainder.js';
@@ -49,6 +50,10 @@ const REMAINDER_SINCE = 'remainder_since:';
 
 const DONE: ReadonlySet<string> = new Set<VoidStatus>(['voided', 'released']);
 const RELEASED_KINDS: ReadonlySet<string> = new Set(['already_voided', 'expired']);
+const CAPTURED_TRUTH: ReadonlySet<HoldTruth['status']> = new Set([
+  'CAPTURED',
+  'PARTIALLY_CAPTURED',
+]);
 const GONE_TRUTH: ReadonlySet<HoldTruth['status']> = new Set(['VOIDED', 'EXPIRED', 'NOT_FOUND']);
 
 export interface VoidCallDeps {
@@ -67,7 +72,11 @@ export interface VoidDeps extends VoidCallDeps {
   maxVoidResumes?: number;
   /** How long a pending void or an unavailable remainder is retried. Default ten minutes. */
   unknownDeadlineMs?: number;
-  /** Lease owner. Default: a random id fixed for this process. */
+  /** How long a review keeps the next candidates' holds before they are released. Default 24 hours. */
+  reviewHoldMaxAgeMs?: number;
+  /** Operator release (R9-M04): a run of a settlement in review voids every hold, candidates included. */
+  releaseAllReviewHolds?: boolean;
+  /** Lease owner. Default: the process id plus a fresh random suffix per run. */
   owner?: string;
 }
 
@@ -126,7 +135,7 @@ export async function voidHold(
     let truth: HoldTruth;
     try {
       await deps.boundary?.('before:get');
-      truth = await deps.gateway.getHoldTruth({ holdId: hold.holdId, authId: hold.authId });
+      truth = await deps.gateway.getHoldTruth(truthArgs(hold));
       await deps.boundary?.('after:get');
     } catch (e) {
       if (e instanceof PayPalError) return 'pending';
@@ -139,11 +148,16 @@ export async function voidHold(
   return 'VOID_FAILED';
 }
 
+/** R9-M04 default: a review keeps the next candidates' holds for a day. */
+export const DEFAULT_REVIEW_HOLD_MAX_AGE_MS = 86_400_000;
+
 export class VoidPhase {
   private readonly owner: string;
+  private readonly explicitOwner: boolean;
 
   constructor(private readonly deps: VoidDeps) {
     this.owner = deps.owner ?? defaultLeaseOwner('runner');
+    this.explicitOwner = deps.owner !== undefined;
   }
 
   /** Runs, or resumes, the void phase of one settlement. */
@@ -151,7 +165,8 @@ export class VoidPhase {
     const leased = await withLease(
       { journals: this.deps.journals, clock: this.deps.clock },
       auctionId,
-      this.owner,
+      // A default owner is unique per run, so a second run in this process gets `busy`.
+      this.explicitOwner ? this.owner : runLeaseOwner(this.owner),
       async (renew) => {
         const journal = await this.deps.journals.load(auctionId);
         if (journal === null) throw new Error(`no settlement for auction ${auctionId}`);
@@ -228,7 +243,10 @@ class Run {
 
   async drive(): Promise<VoidOutcome> {
     if (this.j.state === 'SETTLED') return { status: 'settled', journal: this.j };
-    if (this.j.state === 'FAILED_NEEDS_REVIEW') return this.failed(this.lastReason());
+    if (this.j.state === 'FAILED_NEEDS_REVIEW') {
+      await this.releaseForReview();
+      return this.failed(this.lastReason());
+    }
     if (this.j.state === 'CAPTURED') {
       if (this.j.winner !== null) {
         const out = await this.remainder();
@@ -240,6 +258,59 @@ class Run {
       return { status: 'pending', reason: 'not_ready', journal: this.j };
     }
     return this.voiding();
+  }
+
+  /**
+   * R8-P06: a settlement in review must not leave the other bidders' holds live
+   * until PayPal lets them lapse. Every hold that is not the winner's, not the one
+   * a capture may still be in flight for, and provably not captured (its truth was
+   * read) is voided. Safe to repeat: finished holds are skipped.
+   */
+  private async releaseForReview(): Promise<void> {
+    const inFlight = this.j.intent?.holdId;
+    const keep = this.reviewKeepHolds();
+    for (const t of this.targets()) {
+      if (this.aborted) return;
+      if (keep.has(t.hold.holdId)) continue;
+      if (DONE.has(this.statusOf(t.bidderId) ?? '')) continue;
+      if (t.hold.holdId === inFlight) continue;
+      let truth: HoldTruth;
+      try {
+        await this.deps.boundary?.('before:get');
+        truth = await this.deps.gateway.getHoldTruth(truthArgs(t.hold));
+        await this.deps.boundary?.('after:get');
+      } catch (e) {
+        if (e instanceof PayPalError) continue;
+        throw e;
+      }
+      if (CAPTURED_TRUTH.has(truth.status)) continue;
+      const status: VoidStatus = GONE_TRUTH.has(truth.status)
+        ? 'released'
+        : await voidHold(this.deps, this.j.auctionId, t.hold);
+      await this.patch(`void_${t.bidderId}`, (d) => {
+        d.voids[t.bidderId] = status;
+      });
+    }
+  }
+
+  /**
+   * R9-M04: the holds of the candidates after the cursor stay live while the review is
+   * open, so a capture that turns out never to have happened can still fall back to the
+   * next bidder. They are released once the review is older than `reviewHoldMaxAgeMs`,
+   * or by an operator run with `releaseAllReviewHolds`.
+   */
+  private reviewKeepHolds(): Set<string> {
+    if (this.deps.releaseAllReviewHolds === true) return new Set();
+    const entered = [...this.j.history].reverse().find((h) => h.to === 'FAILED_NEEDS_REVIEW');
+    const since = entered?.tsMs ?? this.now();
+    const maxAge = this.deps.reviewHoldMaxAgeMs ?? DEFAULT_REVIEW_HOLD_MAX_AGE_MS;
+    if (this.now() - since > maxAge) return new Set();
+    const keep = new Set<string>();
+    for (const c of this.j.plan.candidates.slice(this.j.cursor + 1)) {
+      const hold = this.j.holds[c.bidderId];
+      if (hold !== undefined) keep.add(hold.holdId);
+    }
+    return keep;
   }
 
   private lastReason(): string {
@@ -444,6 +515,11 @@ export async function runSettlement(
   auctionId: string,
 ): Promise<SettlementOutcome> {
   const captured = await runCapturePhase(deps, auctionId);
+  if (captured.status === 'failed') {
+    // R8-P06: release the holds that are not in doubt before reporting the review.
+    const released = await runVoidPhase(deps, auctionId);
+    return released.status === 'failed' ? released : captured;
+  }
   if (captured.status !== 'captured' && captured.status !== 'no_sale') return captured;
   return runVoidPhase(deps, auctionId);
 }

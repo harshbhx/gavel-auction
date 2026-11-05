@@ -19,6 +19,7 @@ import {
 import { RateLimiter } from '../src/limits/rate-limiter';
 import { MemoryTransport } from '../src/room/memory-transport';
 import { Room, type Connection, type RoomDeps } from '../src/room/room';
+import type { HammerResult } from '../src/room/settle-port';
 import { MemoryStore } from '../src/store/memory-store';
 
 export const START = 1_789_000_000_000;
@@ -37,10 +38,10 @@ export const config = {
 } as unknown as AuctionConfig;
 
 /** Plain English-auction engine: enough to exercise the room, not a replacement for the real one. */
-class TestEngine implements EnginePort {
-  private readonly ceilings = new Map<BidderId, Cents>();
-  private price: Cents | null = null;
-  private leader: BidderId | null = null;
+export class TestEngine implements EnginePort {
+  protected readonly ceilings = new Map<BidderId, Cents>();
+  protected price: Cents | null = null;
+  protected leader: BidderId | null = null;
   private state: EngineState = 'OPEN';
 
   constructor(private readonly cfg: AuctionConfig) {}
@@ -66,6 +67,15 @@ class TestEngine implements EnginePort {
   tick(now: EpochMs): EngineState {
     if (this.state === 'OPEN' && now >= this.cfg.endTs) this.state = 'CLOSING';
     return this.state;
+  }
+
+  hammer(): HammerResult {
+    this.state = 'SETTLING';
+    const ranking =
+      this.leader === null || this.price === null
+        ? []
+        : [{ bidderId: this.leader, amount: this.price }];
+    return { winnerId: this.leader, price: (this.price ?? 0) as Cents, ranking };
   }
 
   view(): EngineView {
@@ -114,7 +124,12 @@ export class FlakyStore extends MemoryStore {
 }
 
 export const setup = async (
-  opts: { store?: MemoryStore; limiter?: boolean; metrics?: RoomDeps['metrics'] } = {},
+  opts: {
+    store?: MemoryStore;
+    limiter?: boolean;
+    metrics?: RoomDeps['metrics'];
+    engine?: RoomDeps['engine'];
+  } = {},
 ) => {
   const clock = new ManualClock(START);
   const ids = new SeqIds();
@@ -123,7 +138,7 @@ export const setup = async (
     store,
     clock,
     ids,
-    engine: (cfg) => new TestEngine(cfg),
+    engine: opts.engine ?? ((cfg) => new TestEngine(cfg)),
     ...(opts.limiter ? { limiter: new RateLimiter(clock) } : {}),
     ...(opts.metrics ? { metrics: opts.metrics } : {}),
   };

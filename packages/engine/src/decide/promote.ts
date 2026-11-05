@@ -29,6 +29,14 @@ export function decidePromote(state: AuctionState, cmd: PromoteCommand): DecideR
   if (lot.winnerId === null || lot.winnerId !== cmd.disqualifiedBidderId) {
     throw new EngineError('not_current_winner', cmd.disqualifiedBidderId);
   }
+  // Money already captured and not yet released belongs to the winner who paid; moving the
+  // lot to a runner-up now would book the capture to a bidder who never paid (R8-E01).
+  // The settlement bridge replays a whole history up to SETTLED and only then promotes to
+  // the bidder it charged, so SETTLED stays allowed. Any other state after a capture, FAILED_NEEDS_REVIEW
+  // included, is refused (R9-M01).
+  if (lot.captureSeen && lot.settlement !== 'SETTLED') {
+    throw new EngineError('state_continuity', `cannot promote while ${lot.settlement}`);
+  }
   const unsoldEvent = (): LedgerEvent => ({
     type: 'LOT_UNSOLD',
     payload: {

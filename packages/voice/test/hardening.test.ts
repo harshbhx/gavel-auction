@@ -143,6 +143,26 @@ describe('LLM output and result bounds (#801)', () => {
     expect(parseResultSchema.safeParse({ ...base, amountCents: -5 }).success).toBe(false);
     expect(parseResultSchema.safeParse({ ...base, amountCents: 1e30 }).success).toBe(false);
   });
+  it('does not read "no problem" or "no worries" as a negation (R-VOX-045)', () => {
+    for (const text of [
+      "no problem, I'll go three hundred",
+      'yeah no worries paddle five four hundred',
+    ]) {
+      expect(detectIntent(text).kind).not.toBe('negation');
+    }
+  });
+  it('rejects a bid result without a bidder or with an inverted span (R-VOX-071)', () => {
+    const base = {
+      ...parseBid('paddle seven three hundred', ctx),
+      status: 'bid' as const,
+      bidder: { kind: 'paddle' as const, value: '7' },
+      amountCents: 30000,
+    };
+    expect(parseResultSchema.safeParse(base).success).toBe(true);
+    expect(parseResultSchema.safeParse({ ...base, bidder: null }).success).toBe(false);
+    const spans = [{ kind: 'amount' as const, start: 9, end: 3 }];
+    expect(parseResultSchema.safeParse({ ...base, spans }).success).toBe(false);
+  });
 });
 
 describe('event channel overflow (#802)', () => {

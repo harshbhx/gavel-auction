@@ -108,6 +108,7 @@ export function newJournal(plan: SettlementPlan, age: HoldAgePolicy): Journal {
       authId: h.authId,
       ceilingCents: h.ceilingCents,
       createdAtMs: h.createdAtMs,
+      ...(h.orderId === undefined || h.orderId === '' ? {} : { orderId: h.orderId }),
       // A hold older than the maximum age at settlement start is flagged (R-PAY-034).
       stale: age.nowMs - h.createdAtMs > age.holdMaxAgeMs,
     };
@@ -175,20 +176,21 @@ export async function createSettlement(
 
   const existing = await deps.journals.load(plan.auctionId);
   if (existing !== null) return compare(existing);
+  // One audit row per stale hold, written BEFORE the journal so a crash in between cannot lose
+  // them: a retry finds no journal and writes them again (at least once). A stale hold is still
+  // captured (R-PAY-072); the flag and the row are what an operator reads.
+  for (const [bidderId, h] of Object.entries(fresh.holds)) {
+    if (h.stale !== true) continue;
+    await deps.audit.append({
+      kind: 'stale_hold',
+      auctionId: plan.auctionId,
+      holdId: h.holdId,
+      label: `age_ms=${nowMs - (h.createdAtMs ?? nowMs)} bidder=${bidderId}`,
+      tsMs: nowMs,
+    });
+  }
   try {
     await deps.journals.create(fresh);
-    // One audit row per stale hold, written once with the journal that carries the flag. A stale
-    // hold is still captured (R-PAY-072); the flag and the row are what an operator reads.
-    for (const [bidderId, h] of Object.entries(fresh.holds)) {
-      if (h.stale !== true) continue;
-      await deps.audit.append({
-        kind: 'stale_hold',
-        auctionId: plan.auctionId,
-        holdId: h.holdId,
-        label: `age_ms=${nowMs - (h.createdAtMs ?? nowMs)} bidder=${bidderId}`,
-        tsMs: nowMs,
-      });
-    }
     return { journal: fresh, created: true };
   } catch (e) {
     if (!(e instanceof JournalExists)) throw e;

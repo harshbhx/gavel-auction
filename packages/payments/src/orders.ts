@@ -35,6 +35,10 @@ export interface OrderView {
   orderId: string;
   status: string;
   authId?: string;
+  /** Status PayPal reports for that authorization (CREATED, PENDING, DENIED, ...). */
+  authStatus?: string;
+  /** Amount PayPal reports for that authorization, when present. */
+  authAmountCents?: number;
 }
 
 export const ORDERS_PATH = '/v2/checkout/orders';
@@ -181,7 +185,14 @@ export class OrdersClient {
     if (json === undefined || status === undefined) throw malformed(res, 'order');
     const view: OrderView = { orderId: nonEmpty(json['id']) ?? orderId, status };
     const authId = extractAuthorizationId(json);
-    if (authId !== undefined) view.authId = authId;
+    if (authId !== undefined) {
+      view.authId = authId;
+      const auth = firstAuthorization(json);
+      const authStatus = nonEmpty(auth?.['status']);
+      if (authStatus !== undefined) view.authStatus = authStatus;
+      const cents = centsOf(auth?.['amount']);
+      if (cents !== undefined) view.authAmountCents = cents;
+    }
     return view;
   }
 

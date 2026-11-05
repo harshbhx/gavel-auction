@@ -122,6 +122,25 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
 }
 
+const APPROVE_HOSTS: readonly string[] = ['www.sandbox.paypal.com', 'sandbox.paypal.com'];
+
+/** The redirect fallback may only go to PayPal's sandbox over https, never to a string the server picked. */
+function safeApproveUrl(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  try {
+    const url = new URL(raw);
+    const ok =
+      url.protocol === 'https:' &&
+      APPROVE_HOSTS.includes(url.hostname) &&
+      url.username === '' &&
+      url.password === '' &&
+      url.port === '';
+    return ok ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 export class PayPalV6Adapter implements PaymentApprovalPort {
   private session: PayPalSessionV6 | null = null;
   private abandon: (() => void) | null = null;
@@ -143,6 +162,17 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     };
     const roomPath = `/api/rooms/${encodeURIComponent(req.roomId)}`;
 
+    if (req.approvedOrderId !== undefined) {
+      on('confirming');
+      return this.confirm(
+        roomPath,
+        req.approvedOrderId,
+        req.clientRegistrationId,
+        finish,
+        req.ceilingCents,
+      );
+    }
+
     on('preparing');
     const order = await this.post(`${roomPath}/orders`, {
       bidderId: req.bidderId,
@@ -159,8 +189,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     if (typeof orderId !== 'string') return finish('error', { errorCode: 'order_failed' });
     const clientToken =
       typeof order.body['clientToken'] === 'string' ? order.body['clientToken'] : undefined;
-    const approveUrl =
-      typeof order.body['approveUrl'] === 'string' ? order.body['approveUrl'] : null;
+    const approveUrl = safeApproveUrl(order.body['approveUrl']);
 
     on('awaiting_buyer');
     const outcome = await this.approve(orderId, clientToken);
@@ -171,13 +200,19 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
       // Wallet-buyer fallback: approve on PayPal's own page and finish on the return route.
       if (approveUrl !== null) {
         (this.deps.redirect ?? ((url) => globalThis.location.assign(url)))(approveUrl);
-        return { state: 'awaiting_buyer', correlationId, errorCode: outcome.code };
+        return { state: 'awaiting_buyer', correlationId, errorCode: outcome.code, orderId };
       }
       return finish('error', { errorCode: outcome.code });
     }
 
     on('confirming');
-    return this.confirm(roomPath, outcome.orderId, req.clientRegistrationId, finish);
+    return this.confirm(
+      roomPath,
+      outcome.orderId,
+      req.clientRegistrationId,
+      finish,
+      req.ceilingCents,
+    );
   }
 
   /** Return route step: the buyer came back from PayPal's approval page with an order id. */
@@ -206,6 +241,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     orderId: string,
     clientRegistrationId: string,
     finish: (state: ApprovalState, extra?: Partial<ApprovalResult>) => ApprovalResult,
+    expectedCents?: number,
   ): Promise<ApprovalResult> {
     const hold = await this.post(`${roomPath}/holds`, { orderId, clientRegistrationId });
     if (!hold.ok) {
@@ -214,11 +250,19 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
       if (hold.code === 'hold_exists') return finish('held');
       return finish('error', {
         errorCode: hold.code ?? (hold.why === 'timeout' ? 'hold_timeout' : 'hold_failed'),
+        orderId,
       });
     }
     const suffix = hold.body['holdIdSuffix'];
     if (typeof suffix !== 'string') return finish('error', { errorCode: 'hold_failed' });
-    return finish('held', { holdIdSuffix: suffix });
+    const confirmed = hold.body['ceilingCents'];
+    if (typeof confirmed !== 'number' || !Number.isSafeInteger(confirmed)) {
+      return finish('error', { errorCode: 'hold_failed' });
+    }
+    if (expectedCents !== undefined && confirmed !== expectedCents) {
+      return finish('error', { errorCode: 'hold_mismatch' });
+    }
+    return finish('held', { holdIdSuffix: suffix, ceilingCents: confirmed });
   }
 
   /** Loads the SDK now (not at page load) and runs one approval session. */
@@ -227,13 +271,20 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     const done = new Promise<Outcome>((resolve) => {
       settle = resolve;
     });
-    this.abandon = () => settle({ kind: 'cancelled' });
+    let abandoned = false;
+    this.abandon = () => {
+      abandoned = true;
+      settle({ kind: 'cancelled' });
+    };
     try {
       const sdk = await (this.deps.loadSdk ?? loadPayPalSdkScript)();
+      // A cancel during the load must not open a popup the buyer can no longer close.
+      if (abandoned) return { kind: 'cancelled' };
       const instance = await sdk.createInstance({
         clientId: this.deps.clientId,
         ...(clientToken === undefined ? {} : { clientToken }),
       });
+      if (abandoned) return { kind: 'cancelled' };
       const session = instance.createOneTimePaymentSession({
         // Only confirm the order this attempt created, never one the SDK hands back unasked.
         onApprove: (data) =>

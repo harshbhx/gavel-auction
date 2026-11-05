@@ -191,6 +191,9 @@ export interface ObserveResult {
 
 const sharedQueue = new KeyedQueue();
 
+/** The queue every hold writer uses unless it is given its own (R8-P04). */
+export const sharedHoldQueue = sharedQueue;
+
 /**
  * Truth check for one known hold, then monotonic merge into its record.
  * A truth read that fails with a PayPal error is `unobservable` (retry later).
@@ -240,14 +243,36 @@ export async function observeHold(
       });
     }
 
-    const decision = mergeStatus(record.status, observed);
+    // The truth read was a network call: take the record as it is now, so a write made
+    // meanwhile (an approval storing the authorization id) is merged, not overwritten.
+    const latest = (await deps.holds.get(record.holdId)) ?? record;
+    const decision = mergeStatus(latest.status, observed);
     const base = {
-      previous: record.status,
+      previous: latest.status,
       capturedCents: truth.capturedCents,
       findings,
     };
     if (decision.apply) {
-      await deps.holds.put({ ...record, status: decision.status });
+      // R8-P03: a pending hold has no authorization id yet. HELD without one cannot be
+      // captured or voided and would lock the approval flow out, so the approval stores
+      // the authorization id and the status together; a webhook only merges terminal states.
+      if (
+        decision.status === 'HELD' &&
+        latest.status === 'PENDING_APPROVAL' &&
+        latest.authId === undefined
+      ) {
+        await deps.audit.append({
+          kind: 'state_change',
+          op: 'webhook_merge',
+          label: 'pending_left_to_approval',
+          holdId: latest.holdId,
+          from: latest.status,
+          to: decision.status,
+          tsMs: deps.clock.nowMs(),
+        });
+        return { ...base, outcome: 'unchanged' as const, status: latest.status };
+      }
+      await deps.holds.put({ ...latest, status: decision.status });
       return { ...base, outcome: 'applied' as const, status: decision.status };
     }
     if (decision.reason === 'conflict') {
@@ -255,20 +280,20 @@ export async function observeHold(
         kind: 'state_change',
         op: 'webhook_merge',
         label: 'status_conflict',
-        holdId: record.holdId,
-        from: record.status,
+        holdId: latest.holdId,
+        from: latest.status,
         to: observed,
         tsMs: deps.clock.nowMs(),
       });
-      return { ...base, outcome: 'conflict' as const, status: record.status };
+      return { ...base, outcome: 'conflict' as const, status: latest.status };
     }
     if (decision.reason === 'unobserved') {
-      return { ...base, outcome: 'unobservable' as const, status: record.status };
+      return { ...base, outcome: 'unobservable' as const, status: latest.status };
     }
     return {
       ...base,
       outcome: decision.reason === 'same' ? ('unchanged' as const) : ('stale' as const),
-      status: record.status,
+      status: latest.status,
     };
   });
 }

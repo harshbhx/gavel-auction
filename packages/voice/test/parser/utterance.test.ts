@@ -180,3 +180,43 @@ describe('red-team round 2: "for" after a spoken paddle (R-VOX-042)', () => {
     expect(r.amountCents).toBe(40000);
   });
 });
+
+describe('VOX-83 plausibility checks on corrections', () => {
+  it('turns a correction with a magnitude word into implausible_amount', () => {
+    for (const text of ['actually two million', 'no wait, three hundred million']) {
+      const r = parseUtterance(text, ctx);
+      expect(r.status, text).toBe('confirm');
+      expect(r.reason, text).toBe('implausible_amount');
+    }
+  });
+
+  it('turns a correction below the minimum into implausible_amount', () => {
+    expect(parseUtterance('actually fifty cents', ctx).reason).toBe('implausible_amount');
+  });
+
+  it('keeps a plausible correction as a correction', () => {
+    expect(parseUtterance('actually four hundred', ctx).reason).toBe('correction');
+  });
+});
+
+describe('VOX-84 amounts followed by a unit word', () => {
+  it('never bids on an amount followed by a unit', () => {
+    for (const text of [
+      'a hundred percent',
+      "I'm one hundred percent in",
+      'one hundred %',
+      '5M',
+      '2.5m',
+      'three hundred miles',
+    ]) {
+      const r = parseUtterance(text, ctx);
+      expect(r.status, text).toBe('confirm');
+      expect(r.reason, text).toBe('uninterpretable_number');
+    }
+  });
+
+  it('still bids when a dollar word or filler follows', () => {
+    expect(parseUtterance('three hundred dollars', ctx).status).toBe('bid');
+    expect(parseUtterance('three hundred please', ctx).status).toBe('bid');
+  });
+});

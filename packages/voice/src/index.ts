@@ -40,3 +40,5 @@ export type {
   VoiceSession,
   VoiceSessionDeps,
 } from './session.js';
+export { RETRACT_ADVISORY_MS, STALE_SEGMENT_MS, VoicePipeline } from './pipeline/pipeline.js';
+export type { PipelineDeps, PipelineOutput } from './pipeline/pipeline.js';

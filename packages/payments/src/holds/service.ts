@@ -6,6 +6,7 @@ import { PayPalError } from '../errors.js';
 import type { AuditSink, Clock, HoldStore, PaymentsGateway } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
 import type { HoldRecord } from '../types.js';
+import { sharedHoldQueue, type KeyedQueue } from '../webhooks/merge.js';
 
 /**
  * HoldService: the server side of the hold flow (SPEC 3.3, R-PAY-030 to R-PAY-033).
@@ -47,6 +48,11 @@ export interface HoldServiceDeps {
   newId?: () => string;
   /** How long a PENDING_APPROVAL order stays reusable. Default 3 hours (PayPal orders lapse). */
   pendingTtlMs?: number;
+  /**
+   * Serialises every write to one hold with the webhook merge (R8-P04). Share the
+   * queue the webhook processor uses; the default is the process-wide one.
+   */
+  queue?: KeyedQueue;
 }
 
 export interface CreateHoldInput {
@@ -102,6 +108,7 @@ export function toHoldError(e: unknown): HoldError {
 export class HoldService {
   private readonly newId: () => string;
   private readonly pendingTtlMs: number;
+  private readonly queue: KeyedQueue;
   private readonly inflight = new Map<string, Promise<ApprovedHold>>();
   /** Tail of the createHoldOrder queue per (auction, bidder). */
   private readonly creating = new Map<string, Promise<unknown>>();
@@ -109,6 +116,7 @@ export class HoldService {
   constructor(private readonly deps: HoldServiceDeps) {
     this.newId = deps.newId ?? (() => randomUUID());
     this.pendingTtlMs = deps.pendingTtlMs ?? DEFAULT_PENDING_TTL_MS;
+    this.queue = deps.queue ?? sharedHoldQueue;
   }
 
   /** The bidder's hold that counts: HELD or CAPTURED first, then a pending one. */
@@ -157,8 +165,7 @@ export class HoldService {
           return { holdId: existing.holdId, orderId: existing.orderId };
         }
         // A lapsed order, or one for another amount, is abandoned; no PayPal call is needed.
-        await this.deps.holds.put({ ...existing, status: 'EXPIRED' });
-        await this.audit(existing, 'PENDING_APPROVAL', 'EXPIRED', 'hold_abandoned');
+        await this.abandonPending(existing);
       }
 
       const holdId = this.newId();
@@ -199,9 +206,11 @@ export class HoldService {
   completeApproval(i: CompleteApprovalInput): Promise<ApprovedHold> {
     const running = this.inflight.get(i.holdId);
     if (running !== undefined) return running;
-    const p = this.complete(i.holdId, i.orderId).finally(() => {
-      if (this.inflight.get(i.holdId) === p) this.inflight.delete(i.holdId);
-    });
+    const p = this.queue
+      .run(i.holdId, () => this.complete(i.holdId, i.orderId))
+      .finally(() => {
+        if (this.inflight.get(i.holdId) === p) this.inflight.delete(i.holdId);
+      });
     this.inflight.set(i.holdId, p);
     return p;
   }
@@ -213,13 +222,13 @@ export class HoldService {
         throw new HoldError('order_not_found', 'no pending hold for this order');
       }
       if (hold.status === 'HELD' && hold.authId !== undefined) return approved(hold);
-      if (hold.status !== 'PENDING_APPROVAL') {
+      if (!awaitsAuthorization(hold)) {
         throw new HoldError('order_not_found', 'no pending hold for this order');
       }
       const authorization = await this.authorize(hold);
       // The record may have been abandoned while the authorize call was in flight.
       const current = await this.deps.holds.get(holdId);
-      if (current === null || current.status !== 'PENDING_APPROVAL') {
+      if (current === null || !awaitsAuthorization(current)) {
         await this.releaseAbandoned(current ?? hold, authorization.authId);
         throw new HoldError('order_not_found', 'no pending hold for this order');
       }
@@ -231,11 +240,28 @@ export class HoldService {
         status: 'HELD',
       };
       await this.deps.holds.put(held);
-      await this.audit(held, 'PENDING_APPROVAL', 'HELD', 'hold_authorized');
+      await this.audit(held, hold.status, 'HELD', 'hold_authorized');
       return approved(held);
     } catch (e) {
       throw toHoldError(e);
     }
+  }
+
+  /**
+   * Expires a pending record inside the hold's queue, from the record as it is now.
+   * A record an approval or webhook moved on meanwhile is not expired: the bidder
+   * then has a hold, and creating a second one is refused.
+   */
+  private abandonPending(existing: HoldRecord): Promise<void> {
+    return this.queue.run(existing.holdId, async () => {
+      const latest = (await this.deps.holds.get(existing.holdId)) ?? existing;
+      if (latest.status === 'EXPIRED') return;
+      if (!awaitsAuthorization(latest) || latest.authId !== undefined) {
+        throw new HoldError('hold_exists', 'the bidder already has a hold in this auction');
+      }
+      await this.deps.holds.put({ ...latest, status: 'EXPIRED' });
+      await this.audit(latest, 'PENDING_APPROVAL', 'EXPIRED', 'hold_abandoned');
+    });
   }
 
   /** Keeps the authorization id on an abandoned record and voids it at once; a failed void stays findable. */
@@ -276,7 +302,23 @@ export class HoldService {
       // The answer may have been lost: the order says whether the authorization exists.
       const order = await gateway.getOrder(hold.orderId);
       if (order.authId === undefined) throw e;
-      return { authId: order.authId, amountCents: hold.ceilingCents };
+      // Only a CREATED authorization holds money. PENDING is not held yet and DENIED never
+      // will be: adopting either would register a ceiling that reserves nothing.
+      if (order.authStatus !== 'CREATED') {
+        if (order.authStatus === 'DENIED') {
+          throw new PayPalError({
+            kind: 'declined',
+            status: 200,
+            name: 'AUTHORIZATION_DENIED',
+            message: 'the authorization was denied',
+            outcome: 'definite',
+          });
+        }
+        throw e;
+      }
+      // The amount comes from PayPal; without it nothing proves what is reserved.
+      if (order.authAmountCents === undefined) throw e;
+      return { authId: order.authId, amountCents: order.authAmountCents };
     }
   }
 
@@ -291,6 +333,14 @@ export class HoldService {
       tsMs: this.deps.clock.nowMs(),
     });
   }
+}
+
+/**
+ * True while a record still needs its authorization id: pending, or HELD without
+ * one (written by an older webhook merge, R8-P03).
+ */
+function awaitsAuthorization(h: HoldRecord): boolean {
+  return h.status === 'PENDING_APPROVAL' || (h.status === 'HELD' && h.authId === undefined);
 }
 
 function isAlreadyAuthorized(e: PayPalError): boolean {

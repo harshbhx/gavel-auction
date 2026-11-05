@@ -59,11 +59,29 @@ export class FakeGateway implements PaymentsGateway {
     return { orderId: o.id, approveUrl: o.approveUrl };
   }
 
-  async getOrder(orderId: string): Promise<{ orderId: string; status: string; authId?: string }> {
+  async getOrder(orderId: string): Promise<{
+    orderId: string;
+    status: string;
+    authId?: string;
+    authStatus?: string;
+    authAmountCents?: number;
+  }> {
     const o = this.call('GET', () => this.core.getOrder(orderId));
-    return o.authId === undefined
-      ? { orderId: o.id, status: o.status }
-      : { orderId: o.id, status: o.status, authId: o.authId };
+    if (o.authId === undefined) return { orderId: o.id, status: o.status };
+    // Read the authorization without adding to the core's call audit.
+    const kept = this.core.calls.length;
+    try {
+      const a = this.core.getAuthorization(o.authId);
+      return {
+        orderId: o.id,
+        status: o.status,
+        authId: o.authId,
+        authStatus: a.status,
+        authAmountCents: a.holdCents,
+      };
+    } finally {
+      this.core.calls.length = kept;
+    }
   }
 
   async authorizeOrder(
@@ -78,17 +96,23 @@ export class FakeGateway implements PaymentsGateway {
     const observedAtMs = this.clock.nowMs();
     try {
       const a = this.call('GET', () => this.core.getAuthorization(h.authId));
+      const observable = h.orderId !== undefined && h.orderId !== '';
       return {
         holdId: h.holdId,
         authId: h.authId,
         status: a.status,
         amountCents: a.holdCents,
-        capturedCents: a.capturedCents,
-        captures: a.captures.map((c) => ({
-          captureId: c.id,
-          amountCents: c.amountCents,
-          final: c.final,
-        })),
+        // Like PayPalGateway: captures are read from the order, so without an order
+        // id they are not observable (R8-P01).
+        capturedCents: observable ? a.capturedCents : 0,
+        captures: observable
+          ? a.captures.map((c) => ({
+              captureId: c.id,
+              amountCents: c.amountCents,
+              final: c.final,
+              ...(c.invoiceId === undefined ? {} : { invoiceId: c.invoiceId }),
+            }))
+          : null,
         observedAtMs,
       };
     } catch (e) {
@@ -112,7 +136,7 @@ export class FakeGateway implements PaymentsGateway {
     i: { amountCents: number; finalCapture: boolean; invoiceId: string; requestId: string },
   ): Promise<{ captureId: string; amountCents: number }> {
     const c = this.call('POST', () =>
-      this.core.capture(authId, i.amountCents, i.finalCapture, i.requestId),
+      this.core.capture(authId, i.amountCents, i.finalCapture, i.requestId, i.invoiceId),
     );
     return { captureId: c.id, amountCents: c.amountCents };
   }

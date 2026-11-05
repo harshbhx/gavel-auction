@@ -5,10 +5,18 @@ import { buildRequestId } from '../requestId.js';
 /**
  * Reauthorization policy and call path (SPEC 3.6, R-PAY-070 to R-PAY-072).
  *
+ * EXPLICIT CALL ONLY. Nothing in the capture, void, create or hold phases calls this
+ * module: the settlement saga never reauthorizes by itself, whatever `enabled` says
+ * (R8-P08). `enabled` only gates `reauthorizeIfDue`, which an operator or a script calls
+ * for a hold on request. A hold older than the honor period is flagged `stale`
+ * (R-PAY-034) and captured as it is; a multi-day auction therefore needs the explicit
+ * call before the capture, or PayPal may decline the capture and the saga falls back to
+ * the next candidate.
+ *
  * Off by default: the demo creates holds minutes before the capture, so the stale flag
- * (R-PAY-034) is the only control and nothing here runs. When `enabled` is set, a hold
- * whose age is above `honorSafeMs` is reauthorized once per generation, never above its
- * original ceiling. The result only says what happened; it never blocks a capture. A
+ * (R-PAY-034) is the only control and nothing here runs. When `enabled` is set, a call
+ * for a hold whose age is above `honorSafeMs` reauthorizes it once per generation, never
+ * above its original ceiling. The result only says what happened; it never blocks a capture. A
  * stale, reauthorized or refused hold goes through the same capture path as a fresh one,
  * and a refusal is left to the normal definite-failure handling (R-PAY-072, R-PAY-053).
  *
