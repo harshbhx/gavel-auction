@@ -174,7 +174,12 @@ describe('T-PAY-016 authorizeOrder', () => {
     expect(a.amountCents).toBe(8000);
 
     const order = await client.getOrder(orderId);
-    expect(order).toMatchObject({ orderId, status: 'COMPLETED', authId: a.authId, authStatus: 'CREATED' });
+    expect(order).toMatchObject({
+      orderId,
+      status: 'COMPLETED',
+      authId: a.authId,
+      authStatus: 'CREATED',
+    });
   });
 
   it('reports an unapproved order as order_not_approved (definite)', async () => {
