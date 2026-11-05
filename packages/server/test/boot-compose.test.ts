@@ -1,3 +1,4 @@
+import { SystemClock } from '@gavel/shared';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -68,7 +69,7 @@ describe('server entry point (INT-R3-17)', () => {
         currency: 'USD',
         reserve: 10000,
         minIncrement: 500,
-        endTs: Date.now() + 3_600_000,
+        endTs: new SystemClock().now() + 3_600_000,
         softCloseWindowMs: 30_000,
         softCloseExtensionMs: 30_000,
         maxExtensions: 5,
