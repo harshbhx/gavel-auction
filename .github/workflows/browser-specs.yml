@@ -53,6 +53,7 @@ jobs:
           fi
 
   e2e:
+    name: e2e (${{ matrix.project }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -94,16 +95,29 @@ jobs:
           retention-days: 7
 
   web-visual:
+    name: web-visual
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+      - name: Check for committed web baselines
+        id: baselines
+        run: |
+          if [ -n "$(find packages/web/test/visual/__screenshots__ -name '*.png' 2>/dev/null | head -n 1)" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No web screenshot baselines are committed yet; web-visual is skipped."
+          fi
       - uses: ./.github/actions/setup
+        if: steps.baselines.outputs.present == 'true' || github.event.inputs.update_baselines == 'true'
       - name: Install the browser
+        if: steps.baselines.outputs.present == 'true' || github.event.inputs.update_baselines == 'true'
         run: npx playwright install --with-deps chromium
       - name: Run the web specs
+        if: steps.baselines.outputs.present == 'true' || github.event.inputs.update_baselines == 'true'
         working-directory: packages/web
         env:
           UPDATE: ${{ github.event.inputs.update_baselines == 'true' && '--update-snapshots' || '' }}
