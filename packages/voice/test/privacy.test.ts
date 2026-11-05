@@ -2,7 +2,12 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { buildAudit } from '../src/decide/audit.js';
 import { decide, type DecideSegment } from '../src/decide/decide.js';
-import { auditRecordSchema, toAuditRecord, type BidContext, type ParseResult } from '../src/types.js';
+import {
+  auditRecordSchema,
+  toAuditRecord,
+  type BidContext,
+  type ParseResult,
+} from '../src/types.js';
 import {
   PERSISTED_VOICE_KEYS,
   PRIVACY_NOTICE,

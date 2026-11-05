@@ -315,8 +315,6 @@ describe('R9 failover fixes', () => {
     expect(r.switches).toEqual(['silent']);
     await r.feed(301);
     await r.feed(3);
-    r.fallbacks[0]?.inject({ type: 'utterance_end', atMs: 0 });
-    await flush();
     await r.feed(45);
     await flush();
     expect(r.stt.usingPrimary).toBe(true);
