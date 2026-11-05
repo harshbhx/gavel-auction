@@ -9,7 +9,8 @@
     "start": "vite-node src/main.ts",
     "bench": "vite-node bench/latency.ts",
     "test": "vitest run --passWithNoTests",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:trace": "node scripts/trace-check.mjs"
   },
   "dependencies": {
     "@gavel/engine": "0.1.0",

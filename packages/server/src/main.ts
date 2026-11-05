@@ -9,8 +9,8 @@ async function main(): Promise<void> {
   process.stdout.write(`${JSON.stringify({ msg: 'listening', port })}\n`);
   createShutdown({
     clock: new SystemClock(),
-    // app.close() drains in-flight requests, waits for settlement runs and closes every room;
-    // no websocket gateway is mounted by this entry point yet, so there are no sockets to close.
+    // app.close() closes the Node WebSocket host (its sockets), drains in-flight requests, waits
+    // for settlement runs and closes every room, so no separate rooms or sockets are tracked here.
     stopAccepting: () => app.close(),
     rooms: () => [],
     closeConnections: () => undefined,

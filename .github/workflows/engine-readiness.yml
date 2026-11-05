@@ -4,6 +4,9 @@ on:
     paths:
       - 'packages/engine/**'
       - 'docs/specs/engine/**'
+      - 'packages/server/scripts/**'
+      - 'packages/server/test/**'
+      - 'docs/specs/realtime/**'
       - '.github/workflows/engine-readiness.yml'
   push:
     branches: [main]
@@ -23,3 +26,10 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: ./.github/actions/setup
       - run: npm run check:trace -w @gavel/engine
+  trace-server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/setup
+      - run: npm run check:trace -w @gavel/server
