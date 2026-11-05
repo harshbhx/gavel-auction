@@ -13,15 +13,15 @@ async function durationOf(page: Page, testId: string): Promise<string> {
 }
 
 test.describe('reduced motion', () => {
-  test.use({ reducedMotion: 'reduce' });
-
   test('hammer and price tick have no animation time', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/gallery');
     expect(await durationOf(page, TEST_IDS.hammerStamp)).toBe('0s');
     expect(await durationOf(page, TEST_IDS.screenPrice)).toBe('0s');
   });
 
   test('the hammer stamp is shown at rest', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/gallery');
     const style = await page.getByTestId(TEST_IDS.hammerStamp).evaluate((el: Element) => ({
       opacity: getComputedStyle(el).opacity,
@@ -33,9 +33,8 @@ test.describe('reduced motion', () => {
 });
 
 test.describe('no motion preference', () => {
-  test.use({ reducedMotion: 'no-preference' });
-
   test('hammer runs 600 ms and the price tick 240 ms', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     await page.goto('/gallery');
     expect(await durationOf(page, TEST_IDS.hammerStamp)).toBe('0.6s');
     expect(await durationOf(page, TEST_IDS.screenPrice)).toBe('0.24s');
@@ -43,9 +42,8 @@ test.describe('no motion preference', () => {
 });
 
 test.describe('forced colours', () => {
-  test.use({ forcedColors: 'active' });
-
   test('the stamp and the state chips keep a visible border', async ({ page }) => {
+    await page.emulateMedia({ forcedColors: 'active' });
     await page.goto('/gallery');
     const stamp = await page
       .getByTestId(TEST_IDS.hammerStamp)
@@ -59,6 +57,7 @@ test.describe('forced colours', () => {
   });
 
   test('the focus ring is still drawn on a button', async ({ page }) => {
+    await page.emulateMedia({ forcedColors: 'active' });
     await page.goto('/gallery');
     await page.keyboard.press('Tab');
     const ring = await page.evaluate(() => {
