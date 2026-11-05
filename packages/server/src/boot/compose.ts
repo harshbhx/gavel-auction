@@ -34,6 +34,7 @@ import type { AuthRole } from '../auth/authorize';
 import { previousSecretWarning, secretSetFromConfig, verifyRotating } from '../auth/rotation';
 import type { JtiStore } from '../auth/token';
 import { loadConfig, redactConfig, type LoadHooks, type ServerConfig } from '../config';
+import { createReplayBundleHandler } from '../admin/replay-bundle';
 import { createExportHandler } from '../http/export';
 import { createHealthRoutes } from '../http/health';
 import { createMetricsRoute } from '../http/metrics';
@@ -332,6 +333,11 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
       return result.ok ? 'auctioneer' : undefined;
     },
   });
+  const replayBundleRoute = createReplayBundleHandler({
+    adminKey: config.ADMIN_KEY,
+    ledger: stores.ledger,
+    now: () => clock.now(),
+  });
   const webhookRoute = createGuardedWebhookRoute(portFromService(service), {
     log: {
       info: (m, f) => log.info(m, f),
@@ -378,6 +384,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     const path = (req.url ?? '').split('?')[0] ?? '';
     if (path === '/healthz') return health.healthz(req, res);
     if (path === '/readyz') return health.readyz(req, res);
+    if (path === '/admin/replay-bundle') return replayBundleRoute(req, res);
     if (path === '/warmup') return warmupRoute(req, res);
     if (path === '/metrics') return metricsRoute(req, res);
     if (path === '/metrics/prometheus') return prometheusRoute(req, res);
