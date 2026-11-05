@@ -6,7 +6,7 @@ describe('audio idle timeout (HRD-14)', () => {
   const mk = () =>
     createVoiceSession({
       now: () => clock.t,
-      verifyToken: (token, roomId) => token === `tok-${token.slice(4)}` && roomId !== '',
+      verifyToken: () => true,
     });
 
   it('frees slots of silent streams so a third bidder can open one', () => {
