@@ -19,6 +19,7 @@ import {
   type Journal,
   type PaymentAudit,
   type ReconcileReport,
+  type VoidAllOutcome,
 } from '@gavel/payments';
 import { DEFAULT_FAKE_WEBHOOK_ID, FakePayPalServer } from '@gavel/payments/fake';
 import {
@@ -1110,7 +1111,7 @@ describe('auction service: unfinished settlements and spare holds (RT-81)', () =
     await second.close();
   });
 
-  it('releases the other holds when the settlement ends in review (INT-R3-06)', async () => {
+  it('keeps the next candidate and releases the other holds when the settlement ends in review (INT-R3-06, R11-O01)', async () => {
     const rig = await makeRig();
     const errors: unknown[] = [];
     const service = rig.service({
@@ -1139,12 +1140,178 @@ describe('auction service: unfinished settlements and spare holds (RT-81)', () =
       expect((await journalOf(rig, auctionId)).state).toBe('FAILED_NEEDS_REVIEW');
     });
     await service.idle();
-    for (const loser of [b, c]) {
-      expect(rig.paypal.core.getAuthorization(loser.authId).status).toBe('VOIDED');
-      expect((await rig.stores.holds.get(loser.holdId))?.status).toBe('VOIDED');
-    }
+    // Cy never bid: nothing can fall back to that hold.
+    expect(rig.paypal.core.getAuthorization(c.authId).status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(c.holdId))?.status).toBe('VOIDED');
+    // R9-M04 through the composed server: Bo is the next candidate. If Ada's capture never
+    // happened the lot can still fall back to Bo, so Bo's authorization stays live.
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('CREATED');
+    expect((await rig.stores.holds.get(b.holdId))?.status).toBe('HELD');
     // The hold with the unresolved capture is not touched.
     expect(rig.paypal.core.getAuthorization(a.authId).status).not.toBe('VOIDED');
+    await service.close();
+  });
+
+  /** Ada's capture times out until the review; Bo is the next candidate. */
+  async function reviewWithRunnerUp(
+    rig: Rig,
+    extra: Partial<AuctionServiceDeps> = {},
+  ): Promise<{ service: AuctionService; auctionId: AuctionId; a: Bidder; b: Bidder }> {
+    const service = rig.service({
+      retryDelayMs: 3_600_000,
+      resumeIntervalMs: 0,
+      unknownDeadlineMs: 1_000,
+      onError: () => undefined,
+      ...extra,
+    });
+    rig.paypal.core.inject('capture', 'timeout_before', null, 1000);
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    await room.submitBid(b.conn, bid(rig, 10000));
+    await room.submitBid(a.conn, bid(rig, 11000));
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    rig.clock.set(START + 10_000);
+    await service.resume();
+    await service.idle();
+    expect((await journalOf(rig, auctionId)).state).toBe('FAILED_NEEDS_REVIEW');
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('CREATED');
+    return { service, auctionId, a, b };
+  }
+
+  it('releases the next candidate once the review is older than reviewHoldMaxAgeMs (R11-O01)', async () => {
+    const rig = await makeRig();
+    const { service, a, b } = await reviewWithRunnerUp(rig, { reviewHoldMaxAgeMs: 60_000 });
+    // Still inside the age limit: a resume leaves Bo alone.
+    rig.clock.set(START + 50_000);
+    await service.resume();
+    await service.idle();
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('CREATED');
+    rig.clock.set(START + 80_000);
+    await service.resume();
+    await service.idle();
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(b.holdId))?.status).toBe('VOIDED');
+    // The capture in doubt keeps its hold until an operator resolves it.
+    expect(rig.paypal.core.getAuthorization(a.authId).status).toBe('CREATED');
+    await service.close();
+  });
+
+  it('an operator releases the next candidate of a fresh review (R11-O01)', async () => {
+    const rig = await makeRig();
+    const { service, auctionId, a, b } = await reviewWithRunnerUp(rig);
+    expect(await service.releaseReviewHolds(auctionId, 'ops-7')).toBe('released');
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(b.holdId))?.status).toBe('VOIDED');
+    expect(rig.paypal.core.getAuthorization(a.authId).status).toBe('CREATED');
+    expect(rig.audits).toContainEqual(
+      expect.objectContaining({ kind: 'void_all', label: 'review_release', actor: 'ops-7' }),
+    );
+    await service.close();
+  });
+
+  it('releases the last candidate of a no-sale review raised in the void phase (R11-O04)', async () => {
+    const rig = await makeRig();
+    const service = rig.service({
+      retryDelayMs: 3_600_000,
+      resumeIntervalMs: 0,
+      onError: () => undefined,
+    });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    // Both captures are declined: no sale. Bo's void then fails at PayPal for a long time.
+    rig.paypal.faults.add({ kind: 'capture_declined', op: 'capture', times: 2 });
+    rig.paypal.faults.add({ kind: 'http_500', op: 'void', authId: b.authId, times: 100_000 });
+    await room.submitBid(b.conn, bid(rig, 10000));
+    await room.submitBid(a.conn, bid(rig, 11000));
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    expect((await journalOf(rig, auctionId)).state).toBe('VOIDING');
+    // Past the unknown deadline of the void: review, with Bo's authorization still live.
+    rig.clock.set(START + 700_000);
+    await service.resume();
+    await service.idle();
+    const review = await journalOf(rig, auctionId);
+    expect(review.state).toBe('FAILED_NEEDS_REVIEW');
+    expect(review.winner).toBeNull();
+    expect(review.history.at(-1)?.label).toBe('journaled:void_unconfirmed:' + b.id);
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('CREATED');
+    // PayPal recovers. No capture on Bo can be pending, so a resume releases the hold.
+    rig.paypal.faults.clear();
+    await service.resume();
+    await service.idle();
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(b.holdId))?.status).toBe('VOIDED');
+    expect(rig.paypal.core.getAuthorization(a.authId).captures).toHaveLength(0);
+    await service.close();
+  });
+
+  it('voidAll during a capture in flight is busy (R11-O05)', async () => {
+    const rig = await makeRig();
+    const ref: { service?: AuctionService; during?: VoidAllOutcome } = {};
+    const service = rig.service({
+      leaseOwner: 'host-1',
+      boundary: async (label) => {
+        const svc = ref.service;
+        if (label !== 'before:capture' || ref.during !== undefined || svc === undefined) return;
+        // An operator asks to void every hold while the winner's capture is about to go out.
+        const id = [...(await rig.stores.store.listAuctions())][0] ?? '';
+        ref.during = await svc.voidAll(id as AuctionId, 'ops-1');
+      },
+    });
+    ref.service = service;
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    const during = ref.during;
+    expect(during).toEqual({ status: 'busy' });
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    await service.close();
+  });
+
+  it('a capture PayPal holds as PENDING is not booked, and its denial falls back (R11-O03)', async () => {
+    const rig = await makeRig();
+    const service = rig.service({
+      retryDelayMs: 3_600_000,
+      resumeIntervalMs: 0,
+      onError: () => undefined,
+    });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    rig.paypal.core.inject('capture', 'capture_pending', a.authId);
+    await room.submitBid(b.conn, bid(rig, 10000));
+    await room.submitBid(a.conn, bid(rig, 11000));
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    const waiting = await journalOf(rig, auctionId);
+    expect(waiting.state).toBe('CAPTURING');
+    expect(waiting.winner).toBeNull();
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('CREATED');
+
+    // PayPal declines the pending capture and says so; the event alone starts the next run.
+    const captureId = rig.paypal.core.getAuthorization(a.authId).captures[0]?.id ?? '';
+    rig.paypal.core.denyCapture(captureId);
+    const hook = signed('WH-D1', 'PAYMENT.CAPTURE.DENIED', { authId: a.authId, captureId }, 1);
+    expect((await service.handleWebhook(hook.rawBody, hook.headers)).status).toBe(200);
+    await service.idle();
+    const done = await journalOf(rig, auctionId);
+    expect(done.state).toBe('SETTLED');
+    expect(done.winner).toMatchObject({ bidderId: b.id, amountCents: 10000 });
+    expect(done.failed).toEqual([{ bidderId: a.id, reason: 'capture_declined' }]);
+    expect(rig.paypal.core.getAuthorization(a.authId)).toMatchObject({
+      status: 'VOIDED',
+      capturedCents: 0,
+    });
+    expect(rig.paypal.core.getAuthorization(b.authId).capturedCents).toBe(10000);
+    rig.paypal.core.checkInvariants();
     await service.close();
   });
 
