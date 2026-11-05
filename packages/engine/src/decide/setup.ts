@@ -101,6 +101,9 @@ export function decideSetup(state: AuctionState, cmd: SetupCommand): DecideResul
       }
       const existing = state.bidders[bidderKey(cmd.bidderId, cmd.lotId)];
       if (existing !== undefined) {
+        // A raise cannot revive a revoked record: evolve keeps `revoked`, so the event
+        // would be accepted yet change nothing (R8-E04).
+        if (existing.revoked) throw new EngineError('bad_command', 'bidder ceiling is revoked');
         if (cmd.ceilingCents <= existing.ceilingCents) {
           throw new EngineError('cannot_lower_ceiling', String(cmd.ceilingCents));
         }
