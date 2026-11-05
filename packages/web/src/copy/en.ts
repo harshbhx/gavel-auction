@@ -176,6 +176,8 @@ export const en = {
   'controls.reason.stopped': 'The auction is stopped.',
   'controls.reason.busy': 'Waiting for the server.',
   'controls.sent': '{action} sent',
+  'controls.hammerChanged':
+    'The price or leader changed. Nothing was hammered. Review and try again.',
   'controls.failed': '{action} failed. Try again.',
   'shortcuts.help': 'Show this list',
   'shortcuts.extend': 'Extend the lot',

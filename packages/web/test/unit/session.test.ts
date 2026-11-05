@@ -85,11 +85,20 @@ describe('room identity (R-WEB-029)', () => {
   it('reads the auctioneer token once, clears the fragment and keeps it in memory', () => {
     clearAuctioneerToken();
     const win = fakeWindow('#token=abc.def');
-    expect(readAuctioneerToken(win)).toBe('abc.def');
+    expect(readAuctioneerToken('r1', win)).toBe('abc.def');
     expect(win.urls).toEqual(['/auctioneer?r=1']);
-    expect(readAuctioneerToken(fakeWindow(''))).toBe('abc.def');
+    expect(readAuctioneerToken('r1', fakeWindow(''))).toBe('abc.def');
     clearAuctioneerToken();
-    expect(readAuctioneerToken(fakeWindow(''))).toBeNull();
+    expect(readAuctioneerToken('r1', fakeWindow(''))).toBeNull();
+  });
+
+  it('keeps one token per room', () => {
+    clearAuctioneerToken();
+    expect(readAuctioneerToken('r1', fakeWindow('#token=first'))).toBe('first');
+    expect(readAuctioneerToken('r2', fakeWindow(''))).toBeNull();
+    expect(readAuctioneerToken('r2', fakeWindow('#token=second'))).toBe('second');
+    expect(readAuctioneerToken('r1', fakeWindow(''))).toBe('first');
+    clearAuctioneerToken();
   });
 
   it('still returns the token when the address bar cannot be rewritten', () => {
@@ -98,7 +107,7 @@ describe('room identity (R-WEB-029)', () => {
     win.history.replaceState = () => {
       throw new Error('blocked');
     };
-    expect(readAuctioneerToken(win)).toBe('raw-token');
+    expect(readAuctioneerToken('r1', win)).toBe('raw-token');
     clearAuctioneerToken();
   });
 });

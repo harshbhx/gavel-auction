@@ -11,13 +11,13 @@ export interface HoldButtonProps {
   readonly holdMs: number;
   readonly tone?: ButtonTone;
   readonly disabled?: boolean;
-  /** Fires once per completed hold, or once per Enter press. Never on a plain click. */
+  /** Fires once per completed hold, by pointer or by holding Enter. Never on a click or a tap of Enter. */
   readonly onComplete: () => void;
 }
 
 /**
- * Press-and-hold confirm. Releasing or leaving early cancels. Enter on the focused button is the
- * keyboard alternative (R-WEB-113). A click alone never confirms.
+ * Press-and-hold confirm. Releasing or leaving early cancels. Holding Enter on the focused button for the
+ * same time is the keyboard alternative (R-WEB-113). A click or a tap of Enter never confirms.
  */
 export function HoldButton({
   label,
@@ -51,8 +51,13 @@ export function HoldButton({
   const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>): void => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
-    if (disabled || e.repeat) return;
-    completeRef.current();
+    // Key repeat must not restart the hold; only the first press starts it.
+    if (e.repeat) return;
+    start();
+  };
+
+  const onKeyUp = (e: KeyboardEvent<HTMLButtonElement>): void => {
+    if (e.key === 'Enter') cancel();
   };
 
   return (
@@ -64,6 +69,8 @@ export function HoldButton({
       onPointerLeave={cancel}
       onPointerCancel={cancel}
       onKeyDown={onKeyDown}
+      onKeyUp={onKeyUp}
+      onBlur={cancel}
     >
       {label}
     </Button>
@@ -97,10 +104,11 @@ export function HammerDialog({ open, leader, priceCents, onConfirm, onCancel }: 
     <Dialog open={open} onClose={onCancel} title={t('console.hammer')}>
       <p>{question}</p>
       <p>{t('console.hammerHint')}</p>
-      <HoldButton label={t('console.hammerHold')} holdMs={HAMMER_HOLD_MS} onComplete={onConfirm} />
+      {/* Cancel comes first so the dialog focuses it, never the destructive control. */}
       <Button variant="outline" tone="neutral" onClick={onCancel}>
         {t('common.cancel')}
       </Button>
+      <HoldButton label={t('console.hammerHold')} holdMs={HAMMER_HOLD_MS} onComplete={onConfirm} />
     </Dialog>
   );
 }
