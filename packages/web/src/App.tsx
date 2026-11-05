@@ -15,13 +15,18 @@ import { Banner } from './design/primitives/Banner';
 import { socketUrl, startLiveRoom, type LiveRoom } from './net/liveRoom';
 import { Announcer } from './a11y/Announcer';
 import type { PaymentsMode } from './config';
-import type { SettlementView } from './ladder/ladderModel';
+import { receiptSource } from './ladder/fromWire';
 import type { Transport } from './net/transport';
 import { WebSocketTransport } from './net/wsTransport';
 import { loadSession, saveSession } from './net/session';
 import { createApprovalPort, useApproval } from './payments/useApproval';
 import { RouteScreen, matchRoute, type RouteMatch } from './routes';
 import { AuditTable } from './screens/audit/AuditTable';
+import { Export } from './screens/audit/Export';
+import { Filters, useUrlFilters } from './screens/audit/Filters';
+import { applyFilters } from './screens/audit/filters';
+import { Empty, Loading, Offline } from './screens/states/States';
+import { useOnline } from './screens/states/useOnline';
 import { BidScreen } from './screens/bid/BidScreen';
 import { LiveConsole } from './screens/console/LiveConsole';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
@@ -224,62 +229,59 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId }: LiveRouteProps)
   }
 }
 
-/** The settlement as far as the wire tells it: phase, hammer and this bidder's own hold. */
-function useSettlementView(): { view: SettlementView | null; paddle: number | null } {
-  const snap = useRoom((s) => s.snapshot);
-  const hammer = useRoom((s) => s.hammer);
-  const me = useRoom((s) => s.snapshot?.you?.bidderId ?? s.me?.bidderId ?? null);
-  const settled = snap?.settlement;
-  if (snap === null || hammer === null || settled === undefined || me === null) {
-    return { view: null, paddle: null };
-  }
-  const row = snap.roster.find((r) => r.bidderId === me);
-  if (row === undefined) return { view: null, paddle: null };
-  const state = settled.you ?? settled.auctionState;
-  const captured = hammer.winnerId === me && state === 'CAPTURED';
-  return {
-    paddle: row.paddle,
-    view: {
-      lotId: snap.auctionId,
-      phase: settled.auctionState,
-      winnerPaddle: snap.roster.find((r) => r.bidderId === hammer.winnerId)?.paddle ?? null,
-      hammerPriceCents: hammer.price,
-      holds: [
-        {
-          paddle: row.paddle,
-          name: row.name,
-          ceilingCents: snap.you?.ceiling ?? 0,
-          state,
-          capturedCents: captured ? hammer.price : 0,
-          releasedCents: 0,
-          verifiedBy: [],
-          idSuffix: '',
-        },
-      ],
-      invariants: { ok: true, violations: [] },
-    },
-  };
-}
-
-function ReceiptRoute({ roomId }: { roomId: string }) {
-  const { view, paddle } = useSettlementView();
+export function ReceiptRoute({ roomId }: { roomId: string }) {
+  const state = useRoom((s) => s);
+  const online = useOnline();
+  const { view, paddle } = useMemo(() => receiptSource(state), [state]);
   return (
     <main data-route="receipt">
-      <Receipt view={view} paddle={paddle} itemName={roomId} at={Date.now()} />
+      {!online && <Offline view="receipt" />}
+      {state.snapshot === null ? (
+        <Loading view="receipt" />
+      ) : view === null ? (
+        <Empty view="receipt" />
+      ) : (
+        <Receipt view={view} paddle={paddle} itemName={roomId} at={Date.now()} />
+      )}
     </main>
   );
 }
 
-function AuditRoute() {
+const NO_ROSTER: readonly { bidderId: string; paddle: number }[] = [];
+
+export function AuditRoute() {
   const rows = useRoom((s) => s.audit);
-  const roster = useRoom((s) => s.snapshot?.roster ?? []);
+  const loaded = useRoom((s) => s.snapshot !== null);
+  const truncated = useRoom((s) => s.auditTruncated);
+  const roomId = useRoom((s) => s.auctionId);
+  const roster = useRoom((s) => s.snapshot?.roster ?? NO_ROSTER);
+  const online = useOnline();
+  const [filters, setFilters] = useUrlFilters();
+  const paddleOf = (id: string): number | null =>
+    roster.find((r) => r.bidderId === id)?.paddle ?? null;
+  const filtered = applyFilters(rows, filters, paddleOf);
   return (
     <main data-route="audit">
       <h1 tabIndex={-1}>{t('audit.title')}</h1>
-      <AuditTable
-        rows={rows}
-        paddleOf={(id) => roster.find((r) => r.bidderId === id)?.paddle ?? null}
-      />
+      {!online && <Offline view="audit" />}
+      {!loaded ? (
+        <Loading view="audit" />
+      ) : rows.length === 0 ? (
+        <Empty view="audit" />
+      ) : (
+        <>
+          <Filters filters={filters} onChange={setFilters} />
+          <Export
+            roomId={roomId}
+            lotId={roomId}
+            filteredRows={filtered}
+            allRows={rows}
+            paddleOf={paddleOf}
+            truncated={truncated}
+          />
+          <AuditTable rows={filtered} paddleOf={paddleOf} />
+        </>
+      )}
     </main>
   );
 }
