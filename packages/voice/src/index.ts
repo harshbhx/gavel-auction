@@ -26,6 +26,7 @@ export type { UtteranceOutcome } from './parser/utterance.js';
 export {
   commandIdFromKey,
   confidenceToBps,
+  isReplayConflict,
   resolveConfirm,
   toPlaceBid,
 } from './pipeline/bid-command.js';

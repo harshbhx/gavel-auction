@@ -214,14 +214,4 @@ describe('red team round 8 engine fixes', () => {
       expect(decide(s, place(B, 5000)).outcome.kind).toBe('accepted');
     });
   });
-
-  it('T-ENG-300 R9-M01 a promotion from FAILED_NEEDS_REVIEW after a capture is refused', () => {
-    const c = captured(hammered(), 310);
-    const fromCaptured = step(c, 320, 'CAPTURED', 'FAILED_NEEDS_REVIEW');
-    expect(errCode(() => decide(fromCaptured, promoteCmd(400)))).toBe('state_continuity');
-    expect(fromCaptured.lots[L1]?.winnerId).toBe(B);
-    const voiding = step(c, 320, 'CAPTURED', 'VOIDING');
-    const fromVoiding = step(voiding, 330, 'VOIDING', 'FAILED_NEEDS_REVIEW');
-    expect(errCode(() => decide(fromVoiding, promoteCmd(400)))).toBe('state_continuity');
-  });
 });

@@ -77,6 +77,9 @@ export class FailoverStt implements InstrumentedSttProvider {
   private silenceTimer: number | null = null;
   private armed = false;
   private sawEvent = false;
+  /** Probe has answered; the swap waits for the active provider to finish its utterance (R9-V02). */
+  private recovering = false;
+  private recoverTimer: number | null = null;
   /** End of the last final already delivered; audio up to here is never replayed (R8-V04). */
   private lastFinalEndMs = -1;
   private consecutiveErrors = 0;
@@ -139,6 +142,9 @@ export class FailoverStt implements InstrumentedSttProvider {
     this.open = false;
     this.clearSilence();
     this.clearProbeTimer();
+    this.recovering = false;
+    if (this.recoverTimer !== null) this.o.clock.clearTimeout(this.recoverTimer);
+    this.recoverTimer = null;
     const probe = this.probe;
     this.probe = null;
     if (probe) await probe.stop();
@@ -183,10 +189,16 @@ export class FailoverStt implements InstrumentedSttProvider {
   private fromActive(e: SttEvent): void {
     this.emit(e);
     if (e.type === 'final') this.lastFinalEndMs = Math.max(this.lastFinalEndMs, e.endMs);
+    if (this.recovering && (e.type === 'final' || e.type === 'utterance_end')) {
+      this.completeRecovery();
+      return;
+    }
     if (!this.onPrimary || this.ended) return;
     if (e.type === 'interim' || e.type === 'final' || e.type === 'utterance_end') {
       this.sawEvent = true;
       this.clearSilence();
+      // The utterance is over: the next speech onset arms the silence timer again (R9-V01).
+      if (e.type !== 'interim') this.armed = false;
     }
     if (e.type === 'interim' || e.type === 'final') this.consecutiveErrors = 0;
     if (e.type === 'error') {
@@ -213,6 +225,7 @@ export class FailoverStt implements InstrumentedSttProvider {
 
   private armSilence(): void {
     this.armed = true;
+    this.sawEvent = false;
     this.silenceTimer = this.o.clock.setTimeout(() => {
       this.silenceTimer = null;
       if (!this.sawEvent && this.onPrimary && !this.ended) this.switchToFallback('silent');
@@ -264,9 +277,22 @@ export class FailoverStt implements InstrumentedSttProvider {
       return;
     }
     if (e.type !== 'interim' && e.type !== 'final') return;
-    const probe = this.probe;
-    if (!probe) return;
+    if (!this.probe) return;
     this.clearProbeTimer();
+    if (!this.recovering) {
+      // The probe only heard the tail of any utterance in flight, so its text is dropped and
+      // the swap waits until the active provider has delivered its own final (R9-V02).
+      this.recovering = true;
+      this.recoverTimer = this.o.clock.setTimeout(() => this.completeRecovery(), this.o.silenceMs);
+    }
+  }
+
+  private completeRecovery(): void {
+    if (this.recoverTimer !== null) this.o.clock.clearTimeout(this.recoverTimer);
+    this.recoverTimer = null;
+    const probe = this.probe;
+    if (!this.recovering || !probe || this.ended) return;
+    this.recovering = false;
     const old = this.active;
     this.probe = null;
     this.active = probe;
@@ -276,13 +302,15 @@ export class FailoverStt implements InstrumentedSttProvider {
     this.switches += 1;
     this.o.onSwitch?.({ from: old.name, to: probe.name, reason: 'recovered' });
     void old.stop().catch(() => undefined);
-    this.fromActive(e);
   }
 
   private failProbe(): void {
     const p = this.probe;
     if (!p) return;
     this.probe = null;
+    this.recovering = false;
+    if (this.recoverTimer !== null) this.o.clock.clearTimeout(this.recoverTimer);
+    this.recoverTimer = null;
     this.clearProbeTimer();
     this.circuitUntil = this.o.clock.now() + this.o.circuitMs;
     void p.stop().catch(() => undefined);

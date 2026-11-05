@@ -53,6 +53,10 @@ export class Endpointer {
   private windowMinDb = Infinity;
   private windowFrames = 0;
   private discarded = 0;
+  /** Set after a forced split: the rest of the utterance is a continuation, not a new onset. */
+  private split = false;
+  /** Speech samples seen since the last emitted chunk. */
+  private tailSpeechLen = 0;
 
   /** Speech segments dropped for being shorter than the minimum chunk. */
   get discardedChunks(): number {
@@ -85,6 +89,9 @@ export class Endpointer {
           this.inSpeech = true;
           this.silenceCount = 0;
           this.activeSpeechLen = 0;
+          this.tailSpeechLen = 0;
+          this.split = false;
+          this.resetWindow();
           for (const p of this.preroll) {
             this.speech.push(p);
             this.speechLen += p.length;
@@ -101,17 +108,22 @@ export class Endpointer {
           this.silenceCount += frame.length;
         } else {
           this.silenceCount = 0;
+          this.tailSpeechLen += frame.length;
         }
 
         if (this.speechLen >= MAX_CHUNK_SAMPLES) {
-          chunks.push({ pcm: this.concat(this.speech, this.speechLen) });
-          this.speech = [];
-          this.speechLen = 0;
-          this.activeSpeechLen = 0;
+          const pcmOut = this.concat(this.speech, this.speechLen);
+          chunks.push({ pcm: pcmOut });
+          // Carry a short overlap so the word cut by the split is heard whole in the next chunk.
+          const overlap = pcmOut.slice(Math.max(0, pcmOut.length - PREROLL_SAMPLES));
+          this.speech = [overlap];
+          this.speechLen = overlap.length;
+          this.activeSpeechLen = overlap.length;
+          this.tailSpeechLen = 0;
+          this.split = true;
           this.silenceCount = 0;
         } else if (this.silenceCount >= HANGOVER_SAMPLES) {
-          const speechOnly = this.activeSpeechLen - this.silenceCount;
-          if (speechOnly >= MIN_CHUNK_SAMPLES) {
+          if (this.tailWorthEmitting()) {
             chunks.push({ pcm: this.concat(this.speech, this.speechLen) });
           } else {
             this.discarded += 1;
@@ -120,7 +132,10 @@ export class Endpointer {
           this.speechLen = 0;
           this.activeSpeechLen = 0;
           this.inSpeech = false;
+          this.split = false;
+          this.tailSpeechLen = 0;
           this.silenceCount = 0;
+          this.resetWindow();
         }
       }
     }
@@ -135,8 +150,7 @@ export class Endpointer {
   flush(): Chunk[] {
     const chunks: Chunk[] = [];
     if (this.inSpeech) {
-      const speechOnly = this.activeSpeechLen - this.silenceCount;
-      if (speechOnly >= MIN_CHUNK_SAMPLES) {
+      if (this.tailWorthEmitting()) {
         chunks.push({ pcm: this.concat(this.speech, this.speechLen) });
       } else {
         this.discarded += 1;
@@ -146,10 +160,27 @@ export class Endpointer {
     this.speechLen = 0;
     this.activeSpeechLen = 0;
     this.inSpeech = false;
+    this.split = false;
+    this.tailSpeechLen = 0;
     this.silenceCount = 0;
+    this.resetWindow();
     this.preroll = [];
     this.prerollLen = 0;
     return chunks;
+  }
+
+  /**
+   * A fresh utterance holds at least the minimum chunk of speech. After a forced split the tail
+   * is the end of a long bid, so any speech since the split is kept (R9-V06).
+   */
+  private tailWorthEmitting(): boolean {
+    if (this.split) return this.tailSpeechLen > 0;
+    return this.activeSpeechLen - this.silenceCount >= MIN_CHUNK_SAMPLES;
+  }
+
+  private resetWindow(): void {
+    this.windowMinDb = Infinity;
+    this.windowFrames = 0;
   }
 
   /**

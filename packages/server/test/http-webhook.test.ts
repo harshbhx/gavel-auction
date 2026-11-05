@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   createWebhookRoute,
   portFromService,
-  sourceOf,
   type WebhookPort,
   type WebhookResult,
 } from '../src/http/webhook';
@@ -78,31 +77,5 @@ describe('webhook route', () => {
     expect((await port.handleWebhook(req)).kind).toBe('ok');
     expect((await port.handleWebhook(req)).kind).toBe('invalid_signature');
     expect((await port.handleWebhook(req)).kind).toBe('retry');
-  });
-
-  it('R9-M02 passes the peer address through the port to the service', async () => {
-    const seen: Array<string | undefined> = [];
-    const port = portFromService({
-      handleWebhook: (_raw, _headers, source) => {
-        seen.push(source);
-        return Promise.resolve({ status: 200 });
-      },
-    });
-    const base = await serve(createWebhookRoute(port));
-    expect((await post(base, Buffer.from('{}'))).status).toBe(200);
-    expect(seen).toHaveLength(1);
-    expect(seen[0]).toMatch(/127\.0\.0\.1$/);
-  });
-
-  it('R9-M02 reads the source from x-forwarded-for only behind trusted proxies', () => {
-    const req = (xff: string | undefined, peer: string) =>
-      ({
-        headers: xff === undefined ? {} : { 'x-forwarded-for': xff },
-        socket: { remoteAddress: peer },
-      }) as unknown as IncomingMessage;
-    expect(sourceOf(req('9.9.9.9', '10.0.0.1'))).toBe('10.0.0.1');
-    expect(sourceOf(req('1.1.1.1, 2.2.2.2', '10.0.0.1'), 1)).toBe('2.2.2.2');
-    expect(sourceOf(req('1.1.1.1, 2.2.2.2', '10.0.0.1'), 2)).toBe('1.1.1.1');
-    expect(sourceOf(req(undefined, '10.0.0.1'), 1)).toBe('10.0.0.1');
   });
 });

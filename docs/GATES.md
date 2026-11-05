@@ -92,58 +92,6 @@ Decision: n/a
 Fallback if FAIL: always show the confirm prompt for spoken bids.
 Links: n/a
 
-### G5-text: text-level run (step 1)
-
-Run by the voice-eval workflow, text mode (transcripts through the parser, no audio, no provider,
-no keys), commit 5d2e253, artifact `voice-eval-text`. Reference text goes in as recognized text, so
-this measures the parser only. It says nothing about speech-to-text accuracy.
-
-| set      | n   | bid | none | exact | wrong accept | confirm | recoverable | missed bid | false prompt |
-| -------- | --- | --- | ---- | ----- | ------------ | ------- | ----------- | ---------- | ------------ |
-| dev      | 129 | 77  | 19   | 0.948 | 0.000        | 0.264   | 0.052       | 0.000      | 0.000        |
-| held-out | 40  | 22  | 9    | 0.864 | 0.000        | 0.300   | 0.136       | 0.000      | 0.000        |
-| all      | 169 | 99  | 28   | 0.929 | 0.000        | 0.272   | 0.071       | 0.000      | 0.000        |
-
-The 169 cases cover 23 categories. Exact counts bids accepted with the right bidder and amount;
-cases whose expected outcome is confirm or none are not in the exact count, which is why
-categories made only of those show 0.000. The held-out set was not used to change the lexicon or
-thresholds.
-
-Per category (n, exact, wrong accept, confirm) for dev and held-out:
-
-| category         | dev n | dev exact | dev confirm | held-out n | held-out exact | held-out confirm |
-| ---------------- | ----- | --------- | ----------- | ---------- | -------------- | ---------------- |
-| ambiguous        | 6     | 0.000     | 1.000       | 2          | 0.000          | 1.000            |
-| asr_error        | 12    | 1.000     | 0.083       | 4          | 1.000          | 0.000            |
-| asr_prep         | 3     | 0.500     | 0.667       | 1          | 0.000          | 1.000            |
-| auctioneer       | 2     | 0.000     | 0.000       | 0          | n/a            | n/a              |
-| cents_digits     | 3     | 0.000     | 1.000       | 1          | 0.000          | 1.000            |
-| colloquial       | 9     | 1.000     | 0.000       | 3          | 1.000          | 0.000            |
-| correction       | 5     | 0.000     | 0.400       | 1          | 0.000          | 1.000            |
-| currency         | 4     | 1.000     | 0.000       | 1          | 1.000          | 0.000            |
-| extended_numbers | 10    | 1.000     | 0.000       | 2          | 1.000          | 0.000            |
-| hedged           | 3     | 0.000     | 1.000       | 1          | 0.000          | 1.000            |
-| homophone        | 7     | 1.000     | 0.429       | 2          | 1.000          | 0.500            |
-| indian_english   | 4     | 0.500     | 0.500       | 1          | 0.000          | 1.000            |
-| injection        | 3     | 0.000     | 0.000       | 1          | 0.000          | 0.000            |
-| make_it          | 5     | 1.000     | 0.400       | 1          | 0.000          | 1.000            |
-| multi            | 3     | 0.000     | 1.000       | 0          | n/a            | n/a              |
-| negation         | 3     | 0.000     | 0.000       | 1          | 0.000          | 0.000            |
-| non_bid          | 8     | 0.000     | 0.000       | 6          | 0.000          | 0.000            |
-| numeral          | 9     | 1.000     | 0.000       | 3          | 1.000          | 0.000            |
-| paddle           | 8     | 1.000     | 0.125       | 3          | 1.000          | 0.000            |
-| plain            | 13    | 1.000     | 0.000       | 3          | 0.667          | 0.333            |
-| question         | 3     | 0.000     | 0.000       | 1          | 0.000          | 0.000            |
-| teen_ty          | 2     | 0.000     | 1.000       | 1          | 0.000          | 1.000            |
-| two_bidders      | 4     | 0.000     | 1.000       | 0          | n/a            | n/a              |
-
-Wrong accept is 0.000 in every category. The AUTO threshold sweep (0.70 to 0.95) is flat at the
-text level, because the parser emits only a few confidence values (0.50, 0.95, 1.00).
-
-Not measured: audio, speech-to-text error, latency (text mode reports 0 ms), the cached and live
-modes (no recorded provider output is in the repo, no live run was done), and the AUTO and CONFIRM
-threshold calibration of issue 478. The G5 status above stays NOT RUN until the audio steps run.
-
 ## Latency targets and measured numbers
 
 Targets (R-PAY-152) against the first measurement. The run is `npm run measure -- --fake` in the `payments-evidence` workflow (50 sequential and 10 parallel cycles against the fake PayPal, 2026-11-04). The fake answers on loopback, so these numbers are the overhead of our own client and not PayPal's latency. Sandbox numbers stay UNVERIFIED (G1 measurement) until the same script runs there; the fallback is to raise the targets to the sandbox p95.
