@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { evolveAll } from '@gavel/engine';
+import { DEFAULT_FAKE_WEBHOOK_ID } from '@gavel/payments/fake';
 import type { AuctionConfig, ConnId } from '@gavel/shared';
 import type { Connection } from '@gavel/server';
 import type { Fault, Invariant, Scenario, Step } from '../dsl/types';
@@ -12,6 +14,8 @@ import {
   type Bidder,
   type Rig,
 } from '../../test/flow/rig';
+// The fake entry point does not re-export the emitter, and the package exports map hides src.
+import { WebhookEmitter } from '../../../payments/src/fake/webhooks';
 import { evaluateInvariants, type HoldView } from './invariants';
 
 /**
@@ -37,6 +41,8 @@ export interface Outcome {
   accepted: number;
   rejected: Array<{ actor: string; code: string }>;
   paypalCalls: { capture: number; void: number; reauthorize: number };
+  /** Webhook deliveries made by webhook faults: sent, answered 200, and distinct events stored. */
+  webhooks: { delivered: number; ok: number; stored: number };
   invariants: Record<Invariant, boolean>;
 }
 
@@ -54,6 +60,31 @@ export interface RunOptions {
 }
 
 const EXTEND_MS = 30_000;
+const AUDIO_DIR = new URL('../../fixtures/audio/', import.meta.url);
+
+type WebhookFault = Extract<Fault, { at: 'webhook' }>;
+
+interface AudioFixture {
+  amountCents: number;
+  transcript: string;
+  confidence: number;
+}
+
+/** Reads the recorded label and the stubbed STT answer for one fixture; no provider is called. */
+function loadAudio(id: string): AudioFixture {
+  const read = (file: string): Record<string, unknown> =>
+    JSON.parse(readFileSync(new URL(file, AUDIO_DIR), 'utf8')) as Record<string, unknown>;
+  const label = read(`${id}.json`);
+  const stt = read(`${id}.stt.json`);
+  const expected = label['expected'] as Record<string, unknown> | undefined;
+  const amount = expected?.['amountCents'];
+  if (typeof amount !== 'number') throw new Error(`audio ${id} has no expected amount`);
+  return {
+    amountCents: amount,
+    transcript: String(stt['transcript']),
+    confidence: Number(stt['confidence']),
+  };
+}
 
 export function toNdjson(trace: readonly TraceEvent[]): string {
   return trace.map((e) => JSON.stringify(e)).join('\n') + '\n';
@@ -111,6 +142,8 @@ async function drive(
   const dropped: Pending[] = [];
   let boss: { conn: Connection } | undefined;
   const ceilings = new Map<string, number>();
+  const webhookFaults: WebhookFault[] = [];
+  const answered = new Set<string>();
 
   const need = (actor: string): Bidder => {
     const b = bidders.get(actor);
@@ -154,6 +187,8 @@ async function drive(
   }
   await flushDrops(Number.MAX_SAFE_INTEGER);
   await service.idle();
+  const hooks = await deliverWebhooks();
+  await service.idle();
 
   async function runStep(step: Step): Promise<void> {
     switch (step.do) {
@@ -172,6 +207,37 @@ async function drive(
             ? bidMessage(rig, step.amount, 'voice', { confidence: 0.99, transcript: '' })
             : bidMessage(rig, step.amount, 'manual');
         await room.submitBid(who.conn, msg);
+        return;
+      }
+      case 'say': {
+        const audio = loadAudio(step.audio);
+        await room.submitBid(
+          need(step.actor).conn,
+          bidMessage(rig, audio.amountCents, 'voice', {
+            confidence: audio.confidence,
+            transcript: audio.transcript,
+          }),
+        );
+        return;
+      }
+      case 'confirm': {
+        const who = need(step.actor);
+        const asked = who.transport
+          .messages('confirm_request')
+          .map((m) => String(m['confirmId']))
+          .filter((id) => !answered.has(id));
+        const confirmId = asked.at(-1);
+        if (confirmId === undefined) {
+          throw new Error(`${scenario.id}: ${step.actor} has no confirm request to answer`);
+        }
+        answered.add(confirmId);
+        await room.respondConfirm(who.conn, {
+          v: 1,
+          t: 'confirm_response',
+          mid: rig.ids.mint<'MsgId'>(),
+          confirmId,
+          accept: step.accept,
+        } as never);
         return;
       }
       case 'open':
@@ -228,6 +294,9 @@ async function drive(
     } else if (fault.at === 'ws') {
       room.detach(need(fault.client).conn.id as ConnId);
       dropped.push({ at: t + fault.forMs, actor: fault.client });
+    } else if (fault.at === 'webhook') {
+      // Deliveries happen once the room has settled, from the fake's webhook outbox.
+      webhookFaults.push(fault);
     } else if (fault.at === 'server') {
       throw new Error(`${scenario.id}: server.kill needs the stack runner`);
     } else {
@@ -235,6 +304,45 @@ async function drive(
         `${scenario.id}: fault ${fault.at}.${fault.kind} is not supported in process`,
       );
     }
+  }
+
+  /**
+   * Sends the fake's outbox to the service's webhook entry. duplicate: every event of type
+   * `event`, `times` deliveries in all (default 2). reorder: the whole outbox, newest first.
+   * delay: the whole outbox in order, `ms` recorded in the trace (the clock is manual).
+   */
+  async function deliverWebhooks(): Promise<Outcome['webhooks']> {
+    const emitter = new WebhookEmitter({
+      webhookId: DEFAULT_FAKE_WEBHOOK_ID,
+      nowMs: () => rig.paypal.core.clock.nowMs(),
+    });
+    let delivered = 0;
+    let ok = 0;
+    for (const fault of webhookFaults) {
+      const outbox = [...rig.paypal.core.events];
+      const matching = outbox.filter((e) => e.eventType === fault.event);
+      if (matching.length === 0) {
+        throw new Error(`${scenario.id}: no ${fault.event} event to deliver`);
+      }
+      const planned =
+        fault.kind === 'duplicate'
+          ? matching.flatMap((e) => Array.from({ length: fault.times ?? 2 }, () => e))
+          : fault.kind === 'reorder'
+            ? outbox.reverse()
+            : outbox;
+      emit('fault', 0, { ...fault, deliveries: planned.length });
+      for (const event of planned) {
+        const signed = emitter.sign(event);
+        const headers = Object.fromEntries(
+          Object.entries(signed.headers).map(([k, v]) => [k.toLowerCase(), v]),
+        );
+        const { status } = await service.handleWebhook(Buffer.from(signed.rawBody), headers);
+        delivered += 1;
+        if (status === 200) ok += 1;
+      }
+    }
+    const stored = Object.keys(rig.stores.webhookEvents.snapshot().events).length;
+    return { delivered, ok, stored };
   }
 
   const entries = await rig.stores.ledger.read(ledgerKey(auctionId), 1);
@@ -280,6 +388,7 @@ async function drive(
       void: count('void'),
       reauthorize: count('reauthorize'),
     },
+    webhooks: hooks,
     invariants: evaluateInvariants({ winner, holds, entries, fakeOk }),
   };
   await service.close();

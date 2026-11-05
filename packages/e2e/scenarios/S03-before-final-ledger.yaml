@@ -1,0 +1,20 @@
+id: S03-before-final-ledger
+title: Server killed at before_final_ledger, restarted, one capture and I1 to I5 hold
+modes: [stack]
+seed: 3
+clock: { startMs: 1793750400000 }
+auction: { itemId: lot-1, reserve: 5000, minIncrement: 500, softCloseMs: 0, mode: english }
+actors: { ana: { funding: wallet }, ben: { funding: wallet } }
+steps:
+  - { t: 0, actor: ana, do: register, ceiling: 50000 }
+  - { t: 0, actor: ben, do: register, ceiling: 25000 }
+  - { t: 500, do: fault, fault: { at: server, kind: kill, checkpoint: 'before_final_ledger' } }
+  - { t: 1000, actor: auctioneer, do: open }
+  - { t: 2000, actor: ana, do: bid, amount: 6000 }
+  - { t: 3000, actor: ben, do: bid, amount: 6500 }
+  - { t: 4000, actor: ana, do: bid, amount: 8000 }
+  - { t: 5000, actor: auctioneer, do: hammer }
+expect:
+  - ledger: { winner: ana, captured: 8000, released: 42000, voided: [ben] }
+  - paypalCalls: { capture: 1, void: 1 }
+  - invariants: [I1, I2, I3, I4, I5]

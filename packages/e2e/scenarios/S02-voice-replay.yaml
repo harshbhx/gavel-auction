@@ -1,0 +1,22 @@
+id: S02-voice-replay
+title: Spoken bids from recorded audio, clear then ambiguous then declined
+modes: [inproc]
+seed: 2
+clock: { startMs: 1793750400000 }
+auction: { itemId: lot-1, reserve: 5000, minIncrement: 500, softCloseMs: 0, mode: english }
+actors: { ana: { funding: wallet }, ben: { funding: wallet } }
+steps:
+  - { t: 0, actor: ana, do: register, ceiling: 50000 }
+  - { t: 0, actor: ben, do: register, ceiling: 50000 }
+  - { t: 1000, actor: auctioneer, do: open }
+  - { t: 2000, actor: ben, do: say, audio: bid-ambiguous-004 }
+  - { t: 3000, actor: ben, do: confirm, accept: false }
+  - { t: 4000, actor: ben, do: say, audio: bid-ambiguous-004 }
+  - { t: 5000, actor: ben, do: confirm, accept: true }
+  - { t: 6000, actor: ana, do: say, audio: bid-clear-001 }
+  - { t: 7000, actor: auctioneer, do: hammer }
+expect:
+  - ledger: { winner: ana, captured: 30000, released: 20000, voided: [ben] }
+  - rejected: [{ actor: ben, code: unconfirmed }]
+  - paypalCalls: { capture: 1, void: 1 }
+  - invariants: [I1, I2, I3, I4, I5]
