@@ -57,6 +57,8 @@ function adjacent(a: TokenLike | undefined, b: TokenLike | undefined): boolean {
   return b.start - a.end === 1;
 }
 
+const LOT_WORDS: ReadonlySet<string> = new Set(['lot', 'item', 'page', 'lots']);
+
 /** Finds every paddle reference. Pass Token objects to let punctuation block digit read-outs. */
 export function extractPaddles(tokens: readonly TokenLike[]): PaddleScan {
   const n = tokens.length;
@@ -64,6 +66,8 @@ export function extractPaddles(tokens: readonly TokenLike[]): PaddleScan {
   const consumed = new Set<number>();
   for (let i = 0; i < n; i++) {
     if (!PADDLE_WORDS.has(text(tokens[i]))) continue;
+    // "lot number twelve" names the lot, not a paddle.
+    if (text(tokens[i]) === 'number' && LOT_WORDS.has(text(tokens[i - 1]))) continue;
     let j = i + 1;
     while (j < n && PADDLE_WORDS.has(text(tokens[j]))) j += 1;
     if (j >= n) continue;

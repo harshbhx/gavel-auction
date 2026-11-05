@@ -110,3 +110,15 @@ describe('R12-V04 prompt expiry uses the pipeline clock', () => {
     expect(late).toBeNull();
   });
 });
+
+describe('R12-V02 auctioneer patter is not a bid', () => {
+  for (const text of [
+    "lot number twelve who'll give me five hundred",
+    'paddle twelve do i hear five hundred and fifty',
+  ]) {
+    it(text, () => {
+      const ds = run(text, 0.95, 40000);
+      expect(ds.every((d) => d.kind !== 'accept')).toBe(true);
+    });
+  }
+});
