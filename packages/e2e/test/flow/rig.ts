@@ -164,6 +164,7 @@ export function bidMessage(rig: Rig, amount: number, source: 'manual' | 'voice')
     mid: rig.ids.mint<'MsgId'>(),
     amount,
     source,
+    ...(source === 'voice' ? { confidence: 0.95 } : {}),
   };
 }
 
