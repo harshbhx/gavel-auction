@@ -101,12 +101,12 @@ describe('Announcer component repeats', () => {
   it('mutates the live region node for an identical assertive message', () => {
     render(<Announcer core={core} />);
     act(() => {
-      core.announce('assertive', 'Bid not accepted.', 'rej');
+      core.announce('assertive', 'Bid not accepted.', 'bid_rejected');
     });
     const first = screen.getByTestId('live-assertive').firstElementChild;
     act(() => {
       vi.advanceTimersByTime(5000);
-      core.announce('assertive', 'Bid not accepted.', 'rej');
+      core.announce('assertive', 'Bid not accepted.', 'bid_rejected');
     });
     const second = screen.getByTestId('live-assertive').firstElementChild;
     expect(second).not.toBe(first);
