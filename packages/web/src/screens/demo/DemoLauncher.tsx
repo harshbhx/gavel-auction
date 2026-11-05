@@ -78,7 +78,7 @@ export function DemoLauncher({
   };
 
   return (
-    <main className="gv-demo">
+    <main className="gv-demo" data-route="demo">
       <h1>{t('landing.start')}</h1>
       <Provenance kind={mode} />
       <Button size="bid" disabled={phase === 'busy'} onClick={start}>

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { t } from '../../copy/t';
+import { useConnection } from '../../net/connection';
 import { useServerNow } from '../../net/clock';
 import { roomStore, useRoom, type RoomStore } from '../../store/roomStore';
 import { selectors } from '../../store/selectors';
 import { formatUsd } from '../../util/money';
 import { formatCountdown } from '../../util/time';
 import { QrCode } from '../join/QrCode';
+import { FrozenChip, PriceFlash, Sold, type SoldOutcome } from './Sold';
 import './screen.css';
 
 /** The ticker shows the last five accepted bids (R-WEB-075). */
@@ -31,6 +33,7 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
   const snapPrice = useRoom((s) => s.snapshot?.price ?? null, store);
   const snapLeader = useRoom((s) => s.snapshot?.leaderId ?? null, store);
   const now = useServerNow(store);
+  const connection = useConnection();
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -57,30 +60,25 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
   const winnerPaddle =
     winnerId !== null ? (roster?.find((r) => r.bidderId === winnerId)?.paddle ?? null) : null;
   const ticker = stream.slice(0, TICKER_SIZE);
-  const soldText = (): string => {
-    if (winnerId === null || finalPrice === null) return t('screen.passed');
-    return winnerPaddle !== null
-      ? t('screen.sold', { n: winnerPaddle, amount: formatUsd(finalPrice) })
-      : t('screen.soldUnknown', { amount: formatUsd(finalPrice) });
-  };
+  const outcome: SoldOutcome =
+    winnerId === null || finalPrice === null
+      ? { kind: 'passed' }
+      : { kind: 'sold', paddle: winnerPaddle, amountCents: finalPrice };
 
   return (
     <main className="gv-screen" aria-label={lotTitle}>
       <h1 className="gv-screen__lot">{lotTitle}</h1>
+      <FrozenChip disconnected={connection.offline} />
       <div className="gv-screen__stage">
         {closed ? (
-          <p className="gv-screen__price tabular" data-closed="true">
-            {soldText()}
-          </p>
+          <Sold outcome={outcome} />
         ) : price === null || price.currentCents === null ? (
           <p className="gv-screen__price tabular">
             {t('screen.opening', { amount: formatUsd(price?.nextMinCents ?? 0) })}
           </p>
         ) : (
           <>
-            <p className="gv-screen__price tabular" data-testid="screen-price">
-              {formatUsd(price.currentCents)}
-            </p>
+            <PriceFlash cents={price.currentCents} />
             <p className="gv-screen__leader tabular">
               {leaderPaddle !== null ? `${t('reg.paddle')} ${leaderPaddle}` : ''}
             </p>

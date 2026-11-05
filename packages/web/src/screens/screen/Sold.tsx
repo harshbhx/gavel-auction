@@ -6,7 +6,7 @@ import { formatUsd } from '../../util/money';
 import { useThrottledAnnounce } from './useThrottledAnnounce';
 
 export type SoldOutcome =
-  | { readonly kind: 'sold'; readonly paddle: number; readonly amountCents: number }
+  | { readonly kind: 'sold'; readonly paddle: number | null; readonly amountCents: number }
   | { readonly kind: 'passed' };
 
 export interface SettleCounts {
@@ -25,9 +25,11 @@ export function Sold({ outcome, settlement = null }: SoldProps) {
   return (
     <section data-testid="sold">
       <p className="gv-hammer-stamp gv-screen__price tabular" data-closed="true">
-        {outcome.kind === 'sold'
-          ? t('screen.sold', { n: outcome.paddle, amount: formatUsd(outcome.amountCents) })
-          : t('screen.passed')}
+        {outcome.kind === 'passed'
+          ? t('screen.passed')
+          : outcome.paddle === null
+            ? t('screen.soldUnknown', { amount: formatUsd(outcome.amountCents) })
+            : t('screen.sold', { n: outcome.paddle, amount: formatUsd(outcome.amountCents) })}
       </p>
       {settlement !== null && (
         <p className="tabular" data-testid="settle-summary">
