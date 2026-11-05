@@ -273,6 +273,14 @@ export class Room {
   attach(conn: Connection, lastSeq?: number): Promise<void> {
     return this.enqueue(async () => {
       this.supersedeOldest(conn);
+      try {
+        await this.ensureClean();
+      } catch {
+        // The engine may be ahead of the store: send nothing derived from it (R-RT-056).
+        this.conns.set(conn.id, conn);
+        this.sendError(conn, this.storeCode());
+        return;
+      }
       this.conns.set(conn.id, conn);
       const plan = planResync(lastSeq, this.seq);
       if (plan.kind === 'replay') {
@@ -359,6 +367,11 @@ export class Room {
   /** Report a payment hold: the bidder joins the roster with their private ceiling (R-RT-054). */
   registerBidder(reg: RegisterBidder): Promise<void> {
     return this.enqueue(async () => {
+      try {
+        await this.ensureClean();
+      } catch {
+        throw this.storeError();
+      }
       if (this.roster.has(reg.bidderId)) {
         // A revoked bidder cannot be backed by a second hold; the caller releases it (D-0023).
         if (
@@ -1426,6 +1439,8 @@ export class Room {
     this.done = fresh.done;
     this.dirty = false;
     this.armTimer();
+    // Whatever clients last saw may come from the engine that was ahead of the log: resend (R-RT-056).
+    for (const conn of this.conns.values()) this.sendState(conn);
   }
 
   private async replay(): Promise<void> {

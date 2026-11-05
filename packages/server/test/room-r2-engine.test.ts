@@ -134,3 +134,27 @@ describe('a malformed engine result is a rejection, not a crash (#956)', () => {
     expect((await t.events()).map((e) => e.type)).not.toContain('bid_accepted');
   });
 });
+
+describe('nothing is derived from an engine ahead of the store (#957)', () => {
+  it('sends an error instead of a phantom price to a joining connection', async () => {
+    const t = await build(() => ({ ok: true }));
+    const c1 = await t.connect('bidder', t.b1);
+    t.store.down = true;
+    await t.room.submitBid(c1.conn, t.bid(12000));
+    const late = await t.connect('screen');
+    expect(late.transport.messages('state')).toHaveLength(0);
+    expect(late.transport.messages('error')).toMatchObject([{ code: 'store_unavailable' }]);
+  });
+
+  it('broadcasts fresh state to every connection after recovery', async () => {
+    const t = await build(() => ({ ok: true }));
+    const c1 = await t.connect('bidder', t.b1);
+    const screen = await t.connect('screen');
+    t.store.down = true;
+    await t.room.submitBid(c1.conn, t.bid(12000));
+    t.store.down = false;
+    const before = screen.transport.messages('state').length;
+    await t.room.submitBid(c1.conn, t.bid(13000));
+    expect(screen.transport.messages('state').length).toBeGreaterThan(before);
+  });
+});
