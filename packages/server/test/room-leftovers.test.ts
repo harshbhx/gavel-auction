@@ -127,6 +127,28 @@ describe('pause and hammer (HRD-15, #1486, #1487)', () => {
     expect(after?.endTs).toBe(START + 590_000 + 580_000);
   });
 
+  it('keeps the paused flag and deadline on seq filler frames (R12-S06)', async () => {
+    const t = await build();
+    const a = await t.connect('bidder', t.b1);
+    const boss = await t.connect('auctioneer');
+    const screen = await t.connect('screen');
+    await t.room.submitBid(a.conn, t.bid(10000));
+    t.clock.set(START + 20_000);
+    await t.room.control(boss.conn, { controlId: 'p1', action: 'pause' });
+    t.clock.set(START + 400_000);
+    const b = await t.connect('bidder', t.b2);
+    // A low-confidence voice bid is held for confirmation; the screen only gets a seq filler.
+    await t.room.submitBid(b.conn, {
+      ...t.bid(10500),
+      source: 'voice',
+      confidence: 0.4,
+      transcript: 'ten thousand five hundred',
+    });
+    expect(b.transport.messages('confirm_request')).toHaveLength(1);
+    const last = screen.transport.messages('price').at(-1);
+    expect(last).toMatchObject({ paused: true, remainingMs: 580_000 });
+  });
+
   it('sends a snapshot with the flag when the lot is paused before any bid', async () => {
     const t = await build();
     const boss = await t.connect('auctioneer');
