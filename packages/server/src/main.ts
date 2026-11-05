@@ -9,12 +9,14 @@ async function main(): Promise<void> {
   process.stdout.write(`${JSON.stringify({ msg: 'listening', port })}\n`);
   createShutdown({
     clock: new SystemClock(),
+    // app.close() drains in-flight requests, waits for settlement runs and closes every room;
+    // no websocket gateway is mounted by this entry point yet, so there are no sockets to close.
     stopAccepting: () => app.close(),
     rooms: () => [],
     closeConnections: () => undefined,
     exit: (code) => process.exit(code),
     onError: (e) => console.error(e instanceof Error ? e.message : String(e)),
-  }).install(process);
+  }).install(process, ['SIGTERM', 'SIGINT']);
 }
 
 main().catch((e: unknown) => {

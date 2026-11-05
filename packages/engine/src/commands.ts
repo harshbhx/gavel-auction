@@ -74,7 +74,7 @@ export const COMMAND_TYPES = [
   'CloseAuction',
 ] as const satisfies readonly CommandType[];
 
-const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/;
+const ULID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const BID_SOURCES: readonly string[] = ['voice', 'manual', 'qr'];
 const REVOKE_REASONS: readonly string[] = ['declined', 'expired', 'voided', 'other'];
