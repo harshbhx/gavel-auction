@@ -1,0 +1,35 @@
+name: load
+# L1 (100 simulated bidders in rounds) and L2 (identical-bid race) from packages/e2e/src/load.
+# Pass limits: p95 ack under 250 ms, p99 under 600 ms, no lost or duplicate bid, RSS growth under
+# 150 MB. The latency JSON is uploaded. Runs on manual dispatch and on pull requests that touch
+# the harness.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'packages/e2e/src/load/**'
+      - '.github/workflows/load.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: L1 and L2
+        env:
+          GAVEL_LOAD_RUN: '1'
+        run: npx vite-node packages/e2e/src/load/run.ts -- all --out load-latency.json
+      - name: Upload latency JSON
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: load-latency
+          path: load-latency.json
+          if-no-files-found: warn
