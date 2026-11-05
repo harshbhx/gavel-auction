@@ -9,22 +9,33 @@ export interface OpsSummaryView {
   readonly paypal: Readonly<Record<string, number>>;
 }
 
+/** Visible text, supplied by the caller so the copy lives in one place. */
+export interface OpsLabels {
+  readonly title: string;
+  readonly loading: string;
+  readonly sagas: string;
+  readonly noSagas: string;
+  readonly paypal: string;
+  readonly logs: string;
+}
+
 export interface OpsViewProps {
   readonly summary: OpsSummaryView | undefined;
+  readonly labels: OpsLabels;
   readonly error?: string;
 }
 
 /** Operator page: the last log lines, saga state per lot and PayPal outcomes. */
-export function OpsView({ summary, error }: OpsViewProps) {
+export function OpsView({ summary, labels, error }: OpsViewProps) {
   if (error !== undefined) return <p role="alert">{error}</p>;
-  if (summary === undefined) return <p>Loading</p>;
+  if (summary === undefined) return <p>{labels.loading}</p>;
   return (
-    <main aria-label="Operations">
-      <h1>Operations</h1>
-      <section aria-label="Saga states">
-        <h2>Saga states</h2>
+    <main aria-label={labels.title}>
+      <h1>{labels.title}</h1>
+      <section aria-label={labels.sagas}>
+        <h2>{labels.sagas}</h2>
         {summary.sagas.length === 0 ? (
-          <p>No lots yet.</p>
+          <p>{labels.noSagas}</p>
         ) : (
           <ul>
             {summary.sagas.map((s) => (
@@ -33,16 +44,16 @@ export function OpsView({ summary, error }: OpsViewProps) {
           </ul>
         )}
       </section>
-      <section aria-label="PayPal outcomes">
-        <h2>PayPal outcomes</h2>
+      <section aria-label={labels.paypal}>
+        <h2>{labels.paypal}</h2>
         <ul>
           {Object.entries(summary.paypal).map(([k, v]) => (
             <li key={k}>{`${k}: ${String(v)}`}</li>
           ))}
         </ul>
       </section>
-      <section aria-label="Recent logs">
-        <h2>Recent logs</h2>
+      <section aria-label={labels.logs}>
+        <h2>{labels.logs}</h2>
         <pre>{summary.logs.join('\n')}</pre>
       </section>
     </main>

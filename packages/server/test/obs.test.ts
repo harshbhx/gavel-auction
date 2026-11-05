@@ -1,5 +1,6 @@
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import type { EpochMs } from '@gavel/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createLogger } from '../src/log/logger';
 import { createLogRing, maskEmails, OPS_LOG_LINES } from '../src/obs/logring';
@@ -33,7 +34,7 @@ describe('log ring', () => {
 
   it('every logger line parses with the required keys and holds no full email', () => {
     const ring = createLogRing();
-    const log = createLogger({ clock: { now: () => 1700000000000 }, sink: ring.write });
+    const log = createLogger({ clock: { now: () => 1700000000000 as EpochMs }, sink: ring.write });
     log.info('registered bidder@example.org', { reqId: 'r1', auctionId: 'a1' });
     for (const line of ring.lines()) {
       const rec = JSON.parse(line) as Record<string, unknown>;

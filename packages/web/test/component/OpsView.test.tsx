@@ -2,10 +2,20 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { fetchOpsSummary, OpsView } from '../../src/ops/OpsView';
 
+const labels = {
+  title: 'Operations',
+  loading: 'Loading',
+  sagas: 'Saga states',
+  noSagas: 'No lots yet.',
+  paypal: 'PayPal outcomes',
+  logs: 'Recent logs',
+};
+
 describe('OpsView', () => {
   it('shows sagas, PayPal outcomes and log lines', () => {
     render(
       <OpsView
+        labels={labels}
         summary={{
           logs: ['{"msg":"one"}', '{"msg":"two"}'],
           sagas: [{ auctionId: 'a1', lotId: 'l1', state: 'HOLD_PLACED' }],
@@ -19,7 +29,7 @@ describe('OpsView', () => {
   });
 
   it('shows an error and sends the key header', async () => {
-    render(<OpsView summary={undefined} error="unauthorized" />);
+    render(<OpsView labels={labels} summary={undefined} error="unauthorized" />);
     expect(screen.getByRole('alert').textContent).toBe('unauthorized');
     let seen: unknown;
     const fake = ((_u: string, init?: RequestInit) => {
