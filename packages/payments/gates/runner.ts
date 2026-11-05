@@ -161,7 +161,10 @@ export async function runGate(opts: RunGateOptions): Promise<number> {
   try {
     args = parseGateArgs(opts.argv);
     // The flag decides fake mode; GAVEL_PAYMENTS_FAKE in the environment never does.
-    config = loadConfig({ ...opts.env, GAVEL_PAYMENTS_FAKE: args.fake ? '1' : '0' });
+    config = loadConfig(
+      { ...opts.env, GAVEL_PAYMENTS_FAKE: args.fake ? '1' : '0' },
+      { requireWebhookId: false },
+    );
     assertSandboxConfig({
       env: opts.env['PAYPAL_ENV'] ?? '',
       baseUrl: config.baseUrl,

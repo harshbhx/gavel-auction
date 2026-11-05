@@ -6,6 +6,7 @@ import { createSettlement } from '../../src/saga/create.js';
 import type { SettlementDeps } from '../../src/saga/void.js';
 import { MemoryJournalStore } from '../../src/stores/memory.js';
 import type { PaymentAudit, SettlementPlan } from '../../src/types.js';
+import { FRESH_HOLDS } from '../helpers/age.js';
 
 export const START_MS = 1_800_000_000_000;
 
@@ -78,7 +79,10 @@ export async function seed(
   ],
   ceilings: Record<string, number> = CEILINGS,
 ): Promise<void> {
-  await createSettlement({ journals: rig.journals }, planFor(rig, ceilings, candidates));
+  await createSettlement(
+    { journals: rig.journals, ...FRESH_HOLDS },
+    planFor(rig, ceilings, candidates),
+  );
 }
 
 /** The same deps with some gateway methods replaced. */

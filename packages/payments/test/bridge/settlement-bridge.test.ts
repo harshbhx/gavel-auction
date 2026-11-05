@@ -21,6 +21,7 @@ import { step } from '../../src/saga/machine.js';
 import { planFromOutcome, type PlanOutcome } from '../../src/saga/plan.js';
 import { MemoryJournalStore } from '../../src/stores/memory.js';
 import type { HoldRecord, HoldRef, Journal, PaymentAudit } from '../../src/types.js';
+import { FRESH_HOLDS, freshJournal } from '../helpers/age.js';
 
 const START_MS = 1_800_000_000_000;
 const pad = (s: string): string => s.padStart(26, '0');
@@ -156,7 +157,7 @@ describe('SettlementBridge', () => {
       expect(prepared.promoted.map((p) => p.bidderId)).toEqual([A]);
       expect((await lotOf(rig)).winnerId).toBe(B);
 
-      await createSettlement({ journals: rig.journals }, prepared.plan);
+      await createSettlement({ journals: rig.journals, ...FRESH_HOLDS }, prepared.plan);
       const out = await capture(rig);
       expect(out.status).toBe('captured');
       if (out.status !== 'captured') return;
@@ -165,7 +166,7 @@ describe('SettlementBridge', () => {
 
     it('runs hammer, plan, saga, record, complete and close through the runtime', async () => {
       const prepared = await rig.bridge.prepare(AU, await outcomeOf(rig), rig.holds, 10000);
-      await createSettlement({ journals: rig.journals }, prepared.plan);
+      await createSettlement({ journals: rig.journals, ...FRESH_HOLDS }, prepared.plan);
       await capture(rig);
 
       const journal = await runSettlementTail(rig);
@@ -184,7 +185,7 @@ describe('SettlementBridge', () => {
 
     it('is safe to repeat: a second pass sends nothing new', async () => {
       const prepared = await rig.bridge.prepare(AU, await outcomeOf(rig), rig.holds, 10000);
-      await createSettlement({ journals: rig.journals }, prepared.plan);
+      await createSettlement({ journals: rig.journals, ...FRESH_HOLDS }, prepared.plan);
       await capture(rig);
 
       const journal = await runSettlementTail(rig);
@@ -199,7 +200,7 @@ describe('SettlementBridge', () => {
       const outcome = await outcomeOf(rig);
       // The engine was never told to skip A, but the saga charges B.
       const plan = planFromOutcome(outcome, rig.holds, 10000);
-      let j = newJournal(plan);
+      let j = freshJournal(plan);
       j = step(j, { type: 'start_auction', tsMs: 1 }).journal;
       j = step(j, { type: 'hammer', tsMs: 2 }).journal;
       j = step(j, { type: 'begin', tsMs: 3 }).journal;
@@ -227,7 +228,7 @@ describe('SettlementBridge', () => {
       plan: Parameters<typeof newJournal>[0],
       holds: Record<string, HoldRef>,
     ): Journal {
-      let j = newJournal(plan);
+      let j = freshJournal(plan);
       j = step(j, { type: 'start_auction', tsMs: 1 }).journal;
       j = step(j, { type: 'hammer', tsMs: 2 }).journal;
       j = step(j, { type: 'begin', tsMs: 3 }).journal;
@@ -306,7 +307,7 @@ describe('SettlementBridge', () => {
     it('turns the lot unsold when the saga ends settled with no charge', async () => {
       rig = await makeRig([A, B, C]);
       const { plan } = await rig.bridge.prepare(AU, await outcomeOf(rig), rig.holds, 10000);
-      let j = newJournal({ ...plan, candidates: [] });
+      let j = freshJournal({ ...plan, candidates: [] });
       j = step(j, { type: 'start_auction', tsMs: 1 }).journal;
       j = step(j, { type: 'hammer', tsMs: 2 }).journal;
       j = step(j, { type: 'no_candidate', tsMs: 3 }).journal;
@@ -320,7 +321,7 @@ describe('SettlementBridge', () => {
       rig = await makeRig([]);
       const { plan } = await rig.bridge.prepare(AU, await outcomeOf(rig), rig.holds, 10000);
       expect((await lotOf(rig)).settlement).toBe('VOIDING');
-      let j = newJournal({ ...plan, candidates: [] });
+      let j = freshJournal({ ...plan, candidates: [] });
       j = step(j, { type: 'start_auction', tsMs: 1 }).journal;
       j = step(j, { type: 'hammer', tsMs: 2 }).journal;
       j = step(j, { type: 'no_candidate', tsMs: 3 }).journal;
@@ -335,7 +336,7 @@ describe('SettlementBridge', () => {
     it('records the history but leaves the lot SETTLING and the auction open', async () => {
       rig = await makeRig([A, B, C]);
       const { plan } = await rig.bridge.prepare(AU, await outcomeOf(rig), rig.holds, 10000);
-      let j = newJournal(plan);
+      let j = freshJournal(plan);
       j = step(j, { type: 'start_auction', tsMs: 1 }).journal;
       j = step(j, { type: 'hammer', tsMs: 2 }).journal;
       j = step(j, { type: 'invariant', tsMs: 3 }).journal;

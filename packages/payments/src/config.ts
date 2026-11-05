@@ -89,6 +89,12 @@ export interface LoadOptions {
    * it, which the standalone gates and demos rely on.
    */
   fake?: boolean;
+  /**
+   * Outside fake mode PAYPAL_WEBHOOK_ID must be set, because an empty id makes every real
+   * delivery fail verification at PayPal. Callers that never receive webhooks (the gate and
+   * demo scripts) pass false.
+   */
+  requireWebhookId?: boolean;
 }
 
 /** Parse environment variables into a typed config (R-PAY-001). */
@@ -104,7 +110,10 @@ export function loadConfig(env: Env, opts: LoadOptions = {}): PaymentsConfig {
     clientSecret: fake
       ? (env['PAYPAL_CLIENT_SECRET'] ?? '')
       : required(env, 'PAYPAL_CLIENT_SECRET'),
-    webhookId: env['PAYPAL_WEBHOOK_ID'] ?? '',
+    webhookId:
+      fake || opts.requireWebhookId === false
+        ? (env['PAYPAL_WEBHOOK_ID'] ?? '')
+        : required(env, 'PAYPAL_WEBHOOK_ID'),
     baseUrl,
     maxCeilingCents: positiveInt(env, 'GAVEL_MAX_CEILING_CENTS', DEFAULT_MAX_CEILING_CENTS),
     fake,
