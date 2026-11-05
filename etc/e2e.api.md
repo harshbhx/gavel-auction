@@ -37,6 +37,31 @@ export type Expect = {
         reauthorize?: number;
     };
 } | {
+    bids: {
+        accepted: number;
+        price?: Cents;
+        resynced?: number;
+    };
+} | {
+    webhooks: {
+        duplicates: number;
+    };
+} | {
+    voice: {
+        bids: Cents[];
+        confirms: number;
+        candidates?: number;
+        audit?: Array<{
+            transcript: string;
+            confidenceBps: number;
+        }>;
+    };
+} | {
+    captures: {
+        committed: number;
+        requestIds: number;
+    };
+} | {
     ui?: {
         view: 'bidder' | 'auctioneer' | 'public' | 'audit';
         text?: string;
@@ -144,28 +169,143 @@ export const ExpectSchema: z.ZodUnion<[z.ZodObject<{
         reauthorize?: number | undefined;
     };
 }>, z.ZodObject<{
+    bids: z.ZodObject<{
+        accepted: z.ZodNumber;
+        price: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, number>>;
+        resynced: z.ZodOptional<z.ZodNumber>;
+    }, "strict", z.ZodTypeAny, {
+        accepted: number;
+        price?: Cents | undefined;
+        resynced?: number | undefined;
+    }, {
+        accepted: number;
+        price?: number | undefined;
+        resynced?: number | undefined;
+    }>;
+}, "strict", z.ZodTypeAny, {
+    bids: {
+        accepted: number;
+        price?: Cents | undefined;
+        resynced?: number | undefined;
+    };
+}, {
+    bids: {
+        accepted: number;
+        price?: number | undefined;
+        resynced?: number | undefined;
+    };
+}>, z.ZodObject<{
+    webhooks: z.ZodObject<{
+        duplicates: z.ZodNumber;
+    }, "strict", z.ZodTypeAny, {
+        duplicates: number;
+    }, {
+        duplicates: number;
+    }>;
+}, "strict", z.ZodTypeAny, {
+    webhooks: {
+        duplicates: number;
+    };
+}, {
+    webhooks: {
+        duplicates: number;
+    };
+}>, z.ZodObject<{
+    voice: z.ZodObject<{
+        bids: z.ZodArray<z.ZodType<Cents, z.ZodTypeDef, number>, "many">;
+        confirms: z.ZodNumber;
+        candidates: z.ZodOptional<z.ZodNumber>;
+        audit: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            transcript: z.ZodString;
+            confidenceBps: z.ZodNumber;
+        }, "strict", z.ZodTypeAny, {
+            transcript: string;
+            confidenceBps: number;
+        }, {
+            transcript: string;
+            confidenceBps: number;
+        }>, "many">>;
+    }, "strict", z.ZodTypeAny, {
+        bids: Cents[];
+        confirms: number;
+        candidates?: number | undefined;
+        audit?: {
+            transcript: string;
+            confidenceBps: number;
+        }[] | undefined;
+    }, {
+        bids: number[];
+        confirms: number;
+        candidates?: number | undefined;
+        audit?: {
+            transcript: string;
+            confidenceBps: number;
+        }[] | undefined;
+    }>;
+}, "strict", z.ZodTypeAny, {
+    voice: {
+        bids: Cents[];
+        confirms: number;
+        candidates?: number | undefined;
+        audit?: {
+            transcript: string;
+            confidenceBps: number;
+        }[] | undefined;
+    };
+}, {
+    voice: {
+        bids: number[];
+        confirms: number;
+        candidates?: number | undefined;
+        audit?: {
+            transcript: string;
+            confidenceBps: number;
+        }[] | undefined;
+    };
+}>, z.ZodObject<{
+    captures: z.ZodObject<{
+        committed: z.ZodNumber;
+        requestIds: z.ZodNumber;
+    }, "strict", z.ZodTypeAny, {
+        committed: number;
+        requestIds: number;
+    }, {
+        committed: number;
+        requestIds: number;
+    }>;
+}, "strict", z.ZodTypeAny, {
+    captures: {
+        committed: number;
+        requestIds: number;
+    };
+}, {
+    captures: {
+        committed: number;
+        requestIds: number;
+    };
+}>, z.ZodObject<{
     ui: z.ZodOptional<z.ZodObject<{
         view: z.ZodEnum<["bidder", "auctioneer", "public", "audit"]>;
         text: z.ZodOptional<z.ZodString>;
         a11y: z.ZodOptional<z.ZodLiteral<true>>;
     }, "strict", z.ZodTypeAny, {
-        view: "bidder" | "auctioneer" | "public" | "audit";
+        view: "bidder" | "auctioneer" | "audit" | "public";
         text?: string | undefined;
         a11y?: true | undefined;
     }, {
-        view: "bidder" | "auctioneer" | "public" | "audit";
+        view: "bidder" | "auctioneer" | "audit" | "public";
         text?: string | undefined;
         a11y?: true | undefined;
     }>>;
 }, "strict", z.ZodTypeAny, {
     ui?: {
-        view: "bidder" | "auctioneer" | "public" | "audit";
+        view: "bidder" | "auctioneer" | "audit" | "public";
         text?: string | undefined;
         a11y?: true | undefined;
     } | undefined;
 }, {
     ui?: {
-        view: "bidder" | "auctioneer" | "public" | "audit";
+        view: "bidder" | "auctioneer" | "audit" | "public";
         text?: string | undefined;
         a11y?: true | undefined;
     } | undefined;
@@ -550,6 +690,15 @@ export const ScenarioSchema: z.ZodObject<{
         t: number;
     }>, z.ZodObject<{
         t: z.ZodNumber;
+        do: z.ZodLiteral<"restart">;
+    }, "strict", z.ZodTypeAny, {
+        do: "restart";
+        t: number;
+    }, {
+        do: "restart";
+        t: number;
+    }>, z.ZodObject<{
+        t: z.ZodNumber;
         do: z.ZodLiteral<"fault">;
         fault: z.ZodUnion<[z.ZodObject<{
             at: z.ZodLiteral<"paypal.capture">;
@@ -845,28 +994,143 @@ export const ScenarioSchema: z.ZodObject<{
             reauthorize?: number | undefined;
         };
     }>, z.ZodObject<{
+        bids: z.ZodObject<{
+            accepted: z.ZodNumber;
+            price: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, number>>;
+            resynced: z.ZodOptional<z.ZodNumber>;
+        }, "strict", z.ZodTypeAny, {
+            accepted: number;
+            price?: Cents | undefined;
+            resynced?: number | undefined;
+        }, {
+            accepted: number;
+            price?: number | undefined;
+            resynced?: number | undefined;
+        }>;
+    }, "strict", z.ZodTypeAny, {
+        bids: {
+            accepted: number;
+            price?: Cents | undefined;
+            resynced?: number | undefined;
+        };
+    }, {
+        bids: {
+            accepted: number;
+            price?: number | undefined;
+            resynced?: number | undefined;
+        };
+    }>, z.ZodObject<{
+        webhooks: z.ZodObject<{
+            duplicates: z.ZodNumber;
+        }, "strict", z.ZodTypeAny, {
+            duplicates: number;
+        }, {
+            duplicates: number;
+        }>;
+    }, "strict", z.ZodTypeAny, {
+        webhooks: {
+            duplicates: number;
+        };
+    }, {
+        webhooks: {
+            duplicates: number;
+        };
+    }>, z.ZodObject<{
+        voice: z.ZodObject<{
+            bids: z.ZodArray<z.ZodType<Cents, z.ZodTypeDef, number>, "many">;
+            confirms: z.ZodNumber;
+            candidates: z.ZodOptional<z.ZodNumber>;
+            audit: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                transcript: z.ZodString;
+                confidenceBps: z.ZodNumber;
+            }, "strict", z.ZodTypeAny, {
+                transcript: string;
+                confidenceBps: number;
+            }, {
+                transcript: string;
+                confidenceBps: number;
+            }>, "many">>;
+        }, "strict", z.ZodTypeAny, {
+            bids: Cents[];
+            confirms: number;
+            candidates?: number | undefined;
+            audit?: {
+                transcript: string;
+                confidenceBps: number;
+            }[] | undefined;
+        }, {
+            bids: number[];
+            confirms: number;
+            candidates?: number | undefined;
+            audit?: {
+                transcript: string;
+                confidenceBps: number;
+            }[] | undefined;
+        }>;
+    }, "strict", z.ZodTypeAny, {
+        voice: {
+            bids: Cents[];
+            confirms: number;
+            candidates?: number | undefined;
+            audit?: {
+                transcript: string;
+                confidenceBps: number;
+            }[] | undefined;
+        };
+    }, {
+        voice: {
+            bids: number[];
+            confirms: number;
+            candidates?: number | undefined;
+            audit?: {
+                transcript: string;
+                confidenceBps: number;
+            }[] | undefined;
+        };
+    }>, z.ZodObject<{
+        captures: z.ZodObject<{
+            committed: z.ZodNumber;
+            requestIds: z.ZodNumber;
+        }, "strict", z.ZodTypeAny, {
+            committed: number;
+            requestIds: number;
+        }, {
+            committed: number;
+            requestIds: number;
+        }>;
+    }, "strict", z.ZodTypeAny, {
+        captures: {
+            committed: number;
+            requestIds: number;
+        };
+    }, {
+        captures: {
+            committed: number;
+            requestIds: number;
+        };
+    }>, z.ZodObject<{
         ui: z.ZodOptional<z.ZodObject<{
             view: z.ZodEnum<["bidder", "auctioneer", "public", "audit"]>;
             text: z.ZodOptional<z.ZodString>;
             a11y: z.ZodOptional<z.ZodLiteral<true>>;
         }, "strict", z.ZodTypeAny, {
-            view: "bidder" | "auctioneer" | "public" | "audit";
+            view: "bidder" | "auctioneer" | "audit" | "public";
             text?: string | undefined;
             a11y?: true | undefined;
         }, {
-            view: "bidder" | "auctioneer" | "public" | "audit";
+            view: "bidder" | "auctioneer" | "audit" | "public";
             text?: string | undefined;
             a11y?: true | undefined;
         }>>;
     }, "strict", z.ZodTypeAny, {
         ui?: {
-            view: "bidder" | "auctioneer" | "public" | "audit";
+            view: "bidder" | "auctioneer" | "audit" | "public";
             text?: string | undefined;
             a11y?: true | undefined;
         } | undefined;
     }, {
         ui?: {
-            view: "bidder" | "auctioneer" | "public" | "audit";
+            view: "bidder" | "auctioneer" | "audit" | "public";
             text?: string | undefined;
             a11y?: true | undefined;
         } | undefined;
@@ -941,6 +1205,9 @@ export const ScenarioSchema: z.ZodObject<{
         do: "advance_clock";
         t: number;
     } | {
+        do: "restart";
+        t: number;
+    } | {
         do: "fault";
         t: number;
         fault: {
@@ -1009,8 +1276,33 @@ export const ScenarioSchema: z.ZodObject<{
             reauthorize?: number | undefined;
         };
     } | {
+        bids: {
+            accepted: number;
+            price?: Cents | undefined;
+            resynced?: number | undefined;
+        };
+    } | {
+        webhooks: {
+            duplicates: number;
+        };
+    } | {
+        voice: {
+            bids: Cents[];
+            confirms: number;
+            candidates?: number | undefined;
+            audit?: {
+                transcript: string;
+                confidenceBps: number;
+            }[] | undefined;
+        };
+    } | {
+        captures: {
+            committed: number;
+            requestIds: number;
+        };
+    } | {
         ui?: {
-            view: "bidder" | "auctioneer" | "public" | "audit";
+            view: "bidder" | "auctioneer" | "audit" | "public";
             text?: string | undefined;
             a11y?: true | undefined;
         } | undefined;
@@ -1073,6 +1365,9 @@ export const ScenarioSchema: z.ZodObject<{
     } | {
         ms: number;
         do: "advance_clock";
+        t: number;
+    } | {
+        do: "restart";
         t: number;
     } | {
         do: "fault";
@@ -1139,8 +1434,33 @@ export const ScenarioSchema: z.ZodObject<{
             reauthorize?: number | undefined;
         };
     } | {
+        bids: {
+            accepted: number;
+            price?: number | undefined;
+            resynced?: number | undefined;
+        };
+    } | {
+        webhooks: {
+            duplicates: number;
+        };
+    } | {
+        voice: {
+            bids: number[];
+            confirms: number;
+            candidates?: number | undefined;
+            audit?: {
+                transcript: string;
+                confidenceBps: number;
+            }[] | undefined;
+        };
+    } | {
+        captures: {
+            committed: number;
+            requestIds: number;
+        };
+    } | {
         ui?: {
-            view: "bidder" | "auctioneer" | "public" | "audit";
+            view: "bidder" | "auctioneer" | "audit" | "public";
             text?: string | undefined;
             a11y?: true | undefined;
         } | undefined;
@@ -1191,6 +1511,9 @@ export type Step = {
     t: number;
     do: 'advance_clock';
     ms: number;
+} | {
+    t: number;
+    do: 'restart';
 } | {
     t: number;
     do: 'fault';
@@ -1318,6 +1641,15 @@ export const StepSchema: z.ZodDiscriminatedUnion<"do", [z.ZodObject<{
 }, {
     ms: number;
     do: "advance_clock";
+    t: number;
+}>, z.ZodObject<{
+    t: z.ZodNumber;
+    do: z.ZodLiteral<"restart">;
+}, "strict", z.ZodTypeAny, {
+    do: "restart";
+    t: number;
+}, {
+    do: "restart";
     t: number;
 }>, z.ZodObject<{
     t: z.ZodNumber;
