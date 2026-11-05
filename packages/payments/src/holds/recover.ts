@@ -2,6 +2,7 @@ import { PayPalError } from '../errors.js';
 import type { AuditSink, Clock, HoldStore, PaymentsGateway } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
 import type { HoldRecord } from '../types.js';
+import { sharedHoldQueue } from '../webhooks/merge.js';
 import { HoldError, toHoldError, type ApprovedHold, type HoldService } from './service.js';
 
 /**
@@ -156,12 +157,27 @@ export async function sweepStalePending(
   deps: RecoverDeps,
   auctionId: string,
   minAgeMs: number,
+  expiredLookbackMs: number = DEFAULT_EXPIRED_LOOKBACK_MS,
 ): Promise<Array<{ holdId: string; result: RecoverResult }>> {
   const now = deps.clock.nowMs();
-  const old = (await deps.holds.listByAuction(auctionId))
+  const all = await deps.holds.listByAuction(auctionId);
+  const old = all
     .filter((h) => h.status === 'PENDING_APPROVAL' && now - h.createdAtMs >= minAgeMs)
     .sort((a, b) => (a.holdId < b.holdId ? -1 : 1));
   const out: Array<{ holdId: string; result: RecoverResult }> = [];
+  // An abandoned record without an authorization id may still own a live authorization
+  // (crash between authorize and the HELD write, then a retry that expired the record).
+  const lapsed = all
+    .filter(
+      (h) =>
+        h.status === 'EXPIRED' &&
+        h.authId === undefined &&
+        now - h.createdAtMs <= expiredLookbackMs,
+    )
+    .sort((a, b) => (a.holdId < b.holdId ? -1 : 1));
+  for (const h of lapsed) {
+    out.push({ holdId: h.holdId, result: await voidLapsed(deps, h) });
+  }
   for (const h of old) {
     let order: { authId?: string };
     try {
@@ -180,6 +196,41 @@ export async function sweepStalePending(
     });
   }
   return out;
+}
+
+/** How far back the sweep looks at abandoned records that carry no authorization id. */
+export const DEFAULT_EXPIRED_LOOKBACK_MS = 3 * 60 * 60 * 1000;
+
+/** Voids a live authorization found on an expired record's order and keeps its id on the record. */
+async function voidLapsed(deps: RecoverDeps, hold: HoldRecord): Promise<RecoverResult> {
+  if (deps.gateway.voidAuthorization === undefined) return { status: 'unavailable' };
+  try {
+    return await sharedHoldQueue.run(hold.holdId, async () => {
+      const latest = (await deps.holds.get(hold.holdId)) ?? hold;
+      if (latest.status !== 'EXPIRED' || latest.authId !== undefined) {
+        return { status: 'unknown_order' } as const;
+      }
+      const order = await deps.gateway.getOrder(latest.orderId);
+      if (order.authId === undefined) return { status: 'unknown_order' } as const;
+      if (LIVE_AUTH.has(order.authStatus ?? 'CREATED')) {
+        await deps.gateway.voidAuthorization?.(
+          order.authId,
+          buildRequestId({
+            auctionId: latest.auctionId,
+            op: 'void',
+            holdId: latest.holdId,
+            amountCents: 0,
+            generation: 0,
+          }),
+        );
+      }
+      await deps.holds.put({ ...latest, authId: order.authId });
+      return { status: 'abandoned' } as const;
+    });
+  } catch (e) {
+    if (e instanceof PayPalError) return { status: 'unavailable' };
+    throw e;
+  }
 }
 
 /** True when a hold created at createdAtMs is older than maxAgeMs at nowMs. */

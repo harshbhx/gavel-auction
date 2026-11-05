@@ -134,7 +134,21 @@ describe('public audit rows (R-RT-038, R-RT-055)', () => {
     const frame = { v: 1, t: 'audit_event', seq: 3, ts: 1, audit: full };
     expect(redactForViewer('bidder', B1, frame)).toBeNull();
     expect(redactForViewer('screen', undefined, frame)).toBeNull();
-    expect(redactForViewer('auctioneer', undefined, frame)).toEqual(frame);
+    const seen = JSON.stringify(redactForViewer('auctioneer', undefined, frame));
+    expect(seen).toContain('over_ceiling');
+    expect(seen).not.toContain('60000');
+    expect(seen).not.toContain('sixty thousand');
+    expect(redactForViewer('admin', undefined, frame)).toEqual(frame);
+  });
+
+  it('scrubs over_ceiling rows in the auctioneer snapshot, keeps accepted rows', () => {
+    const snap = { snapshot: { recentAudit: [full, accepted] } };
+    const out = redactForViewer('auctioneer', undefined, snap) as {
+      snapshot: { recentAudit: Array<Record<string, unknown>> };
+    };
+    expect(out.snapshot.recentAudit[0]).not.toHaveProperty('parsedAmount');
+    expect(out.snapshot.recentAudit[0]).not.toHaveProperty('transcript');
+    expect(out.snapshot.recentAudit[1]).toHaveProperty('parsedAmount', 60000);
   });
 
   it('strips transcripts from accepted rows for non-auctioneers', () => {
@@ -170,6 +184,34 @@ describe('event export (R-RT-108)', () => {
   it('drops the ceiling for the auctioneer, keeps it for admin', () => {
     expect(redactEventForExport('auctioneer', registered)).not.toHaveProperty('ceiling');
     expect(redactEventForExport('admin', registered)).toHaveProperty('ceiling', 9000);
+  });
+
+  it('drops the spoken amount of an over_ceiling rejection for the auctioneer', () => {
+    const rejected = {
+      ...base,
+      type: 'bid_rejected',
+      bidderId: B1,
+      mid: 'm1',
+      amount: 50000,
+      reason: 'over_ceiling',
+      audit: {
+        bidId: BID,
+        bidderId: B1,
+        source: 'voice',
+        transcript: 'five hundred dollars',
+        audioTsMs: 1200,
+        parsedAmount: 50000,
+        outcome: 'rejected',
+        reason: 'over_ceiling',
+        serverTs: 1,
+        seq: 1,
+      },
+    } as unknown as RoomEvent;
+    const out = JSON.stringify(redactEventForExport('auctioneer', rejected));
+    expect(out).not.toContain('five hundred');
+    expect(out).not.toContain('50000');
+    expect(out).not.toContain('audioTsMs');
+    expect(JSON.stringify(redactEventForExport('admin', rejected))).toContain('five hundred');
   });
 });
 

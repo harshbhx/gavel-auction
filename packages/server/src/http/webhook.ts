@@ -7,11 +7,7 @@ export type WebhookResult = Awaited<ReturnType<PaymentsPort['handleWebhook']>>;
 
 /** The auction service's webhook entry: raw bytes in, an HTTP status out. */
 export interface ServiceWebhook {
-  handleWebhook(
-    rawBody: Buffer,
-    headers: Record<string, string>,
-    source?: string,
-  ): Promise<{ status: number }>;
+  handleWebhook(rawBody: Buffer, headers: Record<string, string>): Promise<{ status: number }>;
 }
 
 export type RawBody = { ok: true; body: Buffer } | { ok: false; reason: 'too_large' };
@@ -19,26 +15,6 @@ export type RawBody = { ok: true; body: Buffer } | { ok: false; reason: 'too_lar
 export interface WebhookRouteDeps {
   /** Reads the request bytes. Defaults to reading all of them; the guard adds a size limit. */
   readBody?: (req: IncomingMessage) => Promise<RawBody>;
-  /**
-   * How many reverse proxies sit in front of the server. With 0 (default) the source is
-   * the socket's peer address; with n the source is the n-th entry from the right of
-   * x-forwarded-for, the address the outermost trusted proxy saw (R9-M02).
-   */
-  trustedProxyHops?: number;
-}
-
-/** The address a delivery came from, or undefined when it is not known. */
-export function sourceOf(req: IncomingMessage, trustedProxyHops = 0): string | undefined {
-  if (trustedProxyHops > 0) {
-    const raw = req.headers['x-forwarded-for'];
-    const list = (Array.isArray(raw) ? raw.join(',') : (raw ?? ''))
-      .split(',')
-      .map((x) => x.trim())
-      .filter((x) => x !== '');
-    const hit = list[list.length - trustedProxyHops];
-    if (hit !== undefined) return hit;
-  }
-  return req.socket.remoteAddress;
 }
 
 /** R-RT-111: ok and duplicate are 200, a bad signature is 400, retry is 503. */
@@ -113,11 +89,7 @@ export function readRawBody(
 export function portFromService(service: ServiceWebhook): WebhookPort {
   return {
     async handleWebhook(req) {
-      const { status } = await service.handleWebhook(
-        Buffer.from(req.rawBody),
-        req.headers,
-        req.source,
-      );
+      const { status } = await service.handleWebhook(Buffer.from(req.rawBody), req.headers);
       if (status === 200) return { kind: 'ok' };
       if (status === 401) return { kind: 'invalid_signature' };
       return { kind: 'retry', reason: 'service_status_' + String(status) };
@@ -152,11 +124,7 @@ export function createWebhookRoute(
         return;
       }
       status = statusFor(
-        await port.handleWebhook({
-          rawBody: body.body,
-          headers: flattenHeaders(req.headers),
-          source: sourceOf(req, deps.trustedProxyHops),
-        }),
+        await port.handleWebhook({ rawBody: body.body, headers: flattenHeaders(req.headers) }),
       );
     } catch {
       status = 503;

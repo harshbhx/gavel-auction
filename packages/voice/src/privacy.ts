@@ -1,14 +1,17 @@
 export const PRIVACY_NOTICE =
   'Audio is sent to a speech service to read bids. Do not speak personal data.';
 
+/** Top-level keys of a persisted audit record; must equal the keys of `auditRecordSchema`. */
 export const PERSISTED_VOICE_KEYS: readonly string[] = [
-  'transcript',
-  'parseResult',
-  'confidence',
-  'timestampMs',
-  'provider',
   'decision',
-  'confirmOutcome',
+  'outcome',
+  'transcript',
+  'bidderId',
+  'amountCents',
+  'confidence',
+  'confirmed',
+  'reason',
+  'evidence',
 ] as const;
 
 export type CaptureState =

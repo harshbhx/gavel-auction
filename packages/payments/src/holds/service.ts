@@ -259,9 +259,38 @@ export class HoldService {
       if (!awaitsAuthorization(latest) || latest.authId !== undefined) {
         throw new HoldError('hold_exists', 'the bidder already has a hold in this auction');
       }
-      await this.deps.holds.put({ ...latest, status: 'EXPIRED' });
+      // R8-P05: a crash after PayPal authorized leaves no authId here. Ask PayPal before
+      // expiring, so a live authorization is voided instead of sitting next to a second hold.
+      // A PayPal outage stops the abandon: the record stays pending and no second order is made.
+      const found = await this.liveAuthorization(latest);
+      if (found !== undefined) await this.voidFound(latest, found);
+      await this.deps.holds.put({
+        ...latest,
+        ...(found === undefined ? {} : { authId: found }),
+        status: 'EXPIRED',
+      });
       await this.audit(latest, 'PENDING_APPROVAL', 'EXPIRED', 'hold_abandoned');
     });
+  }
+
+  /** The id of a live authorization on the record's order, if PayPal has one. */
+  private async liveAuthorization(h: HoldRecord): Promise<string | undefined> {
+    const order = await this.deps.gateway.getOrder(h.orderId);
+    if (order.authId === undefined) return undefined;
+    return LIVE_AUTH.has(order.authStatus ?? 'CREATED') ? order.authId : undefined;
+  }
+
+  private async voidFound(h: HoldRecord, authId: string): Promise<void> {
+    await this.deps.gateway.voidAuthorization(
+      authId,
+      buildRequestId({
+        auctionId: h.auctionId,
+        op: 'void',
+        holdId: h.holdId,
+        amountCents: 0,
+        generation: 0,
+      }),
+    );
   }
 
   /** Keeps the authorization id on an abandoned record and voids it at once; a failed void stays findable. */
@@ -342,6 +371,9 @@ export class HoldService {
 function awaitsAuthorization(h: HoldRecord): boolean {
   return h.status === 'PENDING_APPROVAL' || (h.status === 'HELD' && h.authId === undefined);
 }
+
+/** Authorization statuses that still hold money at PayPal. */
+const LIVE_AUTH: ReadonlySet<string> = new Set(['CREATED', 'PENDING']);
 
 function isAlreadyAuthorized(e: PayPalError): boolean {
   return e.issue === 'ORDER_ALREADY_AUTHORIZED';

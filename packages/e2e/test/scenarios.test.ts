@@ -5,7 +5,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { loadScenarioFile } from '../src/index';
 import type { Scenario } from '../src/index';
 import type { Cents } from '@gavel/shared';
-import { checkExpectations, runScenarioInProc } from './flow/scenario-runner';
+import {
+  assertSupported,
+  checkExpectations,
+  runScenarioInProc,
+  scenarioConfig,
+} from './flow/scenario-runner';
 
 const DIR = join(fileURLToPath(new URL('.', import.meta.url)), '..', 'scenarios');
 
@@ -58,6 +63,31 @@ describe('scenario execution (R-QA-025, R-QA-026)', () => {
     expect(outcome.rejected).toEqual([]);
     expect(outcome.invariants).toEqual({ I1: true, I2: true, I3: true, I4: true });
     expect(checkExpectations(scenario, outcome)).toEqual([]);
+  });
+
+  it('builds the config from the scenario fields it declares (R9-V04)', () => {
+    const scenario = s01();
+    const declared: Scenario = {
+      ...scenario,
+      clock: { startMs: scenario.clock.startMs },
+      auction: { ...scenario.auction, softCloseMs: 12_000 },
+    };
+    const config = scenarioConfig(declared) as unknown as Record<string, unknown>;
+    expect(config['softCloseWindowMs']).toBe(12_000);
+    expect(config['mode']).toBe('english');
+    expect(config['endTs']).toBe(scenario.clock.startMs + 600_000);
+    expect(config['reserve']).toBe(scenario.auction.reserve);
+  });
+
+  it('rejects a scenario that declares card funding instead of ignoring it', async () => {
+    const scenario = s01();
+    const card: Scenario = {
+      ...scenario,
+      actors: { ...scenario.actors, ben: { funding: 'card' } },
+    };
+    expect(() => assertSupported(card)).toThrow(/ben funding "card" is not supported/);
+    await expect(runScenarioInProc(card, open)).rejects.toThrow(/not supported/);
+    expect(() => assertSupported(scenario)).not.toThrow();
   });
 
   it('reports a failing comparison for a wrong expectation (not vacuous)', async () => {

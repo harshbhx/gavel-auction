@@ -57,6 +57,8 @@ export const RoomSnapshotSchema = z
     leaderId: ulid<BidderId>().nullable(),
     endTs: epochMs(),
     minNext: cents(),
+    paused: z.boolean().optional(),
+    remainingMs: z.number().int().nonnegative().optional(),
     roster: z
       .array(
         z
@@ -114,6 +116,9 @@ export const PriceSchema = message('price', {
   endTs: epochMs(),
   minNext: cents(),
   extensions: z.number().int().nonnegative(),
+  /** True while the auctioneer has frozen the lot clock; `remainingMs` is what resume restores. */
+  paused: z.boolean().optional(),
+  remainingMs: z.number().int().nonnegative().optional(),
 });
 
 export const StateSchema = message('state', { ...ev, snapshot: RoomSnapshotSchema });

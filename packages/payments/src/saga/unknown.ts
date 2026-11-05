@@ -9,10 +9,8 @@ import type { Journal } from '../types.js';
  * truth first: a capture that took effect is adopted, otherwise the saved intent
  * is sent again with the same request id. Once the outcome has stayed unknown
  * longer than the deadline the settlement goes to FAILED_NEEDS_REVIEW, with no
- * fallback. The void phase then releases the holds that are provably not
- * captured and not fallback candidates; the hold of the capture in doubt and the holds
- * of the next candidates stay until the review is resolved, is a day old, or an
- * operator releases them (R8-P06, R9-M04).
+ * fallback. The void phase then releases every other bidder's hold that is
+ * provably not captured; the hold of the capture in doubt is left alone (R8-P06).
  */
 
 /** R-PAY-055 default: ten minutes. */

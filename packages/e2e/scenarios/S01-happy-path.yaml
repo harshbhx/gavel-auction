@@ -4,7 +4,7 @@ modes: [inproc]
 seed: 1
 clock: { startMs: 1793750400000 }
 auction: { itemId: lot-1, reserve: 5000, minIncrement: 500, softCloseMs: 0, mode: english }
-actors: { ana: { funding: wallet }, ben: { funding: card } }
+actors: { ana: { funding: wallet }, ben: { funding: wallet } }
 steps:
   - { t: 0, actor: ana, do: register, ceiling: 50000 }
   - { t: 0, actor: ben, do: register, ceiling: 25000 }
