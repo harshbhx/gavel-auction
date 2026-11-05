@@ -9,7 +9,7 @@
 // report themselves. Inputs for --check: --labels or PR_LABELS (comma separated), and the
 // working tree, which must hold freshly generated reports compared against HEAD.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -72,16 +72,36 @@ function emitDeclarations(ts, pkg, outDir) {
  * branded types are written (`[centsBrand]`). The temporary declaration spells the brand as a
  * plain property instead; the committed report then shows the same public surface.
  */
-export function simplifyBrands(text) {
-  const names = [...text.matchAll(/^declare const (\w+): unique symbol;\r?\n/gm)].map((m) => m[1]);
+export function simplifyBrands(text, known = []) {
+  const names = [
+    ...new Set([
+      ...known,
+      ...[...text.matchAll(/^declare const (\w+): unique symbol;\r?\n/gm)].map((m) => m[1]),
+    ]),
+  ];
   let out = text.replace(/^declare const \w+: unique symbol;\r?\n/gm, '');
   for (const name of names) out = out.split(`[${name}]`).join(`__brand_${name}`);
   return out;
 }
 
+/** Brand symbols of every package: another file may inline a brand it does not declare. */
+const knownBrands = new Set();
+
+function collectBrands(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) collectBrands(full);
+    else if (/\.tsx?$/.test(entry.name) && !entry.name.endsWith('.d.ts')) {
+      const text = readFileSync(full, 'utf8');
+      for (const m of text.matchAll(/^declare const (\w+): unique symbol;/gm))
+        knownBrands.add(m[1]);
+    }
+  }
+}
+
 function writeDeclaration(fileName, text) {
   mkdirSync(dirname(fileName), { recursive: true });
-  writeFileSync(fileName, simplifyBrands(text));
+  writeFileSync(fileName, simplifyBrands(text, [...knownBrands]));
 }
 
 async function generate() {
@@ -107,6 +127,7 @@ async function generate() {
         .replace(/^src\//, '')
         .replace(/\.tsx?$/, '.d.ts'),
     );
+  for (const pkg of PACKAGES) collectBrands(join(root, 'packages', pkg, 'src'));
   for (const pkg of PACKAGES) {
     for (const dir of [own, cache]) {
       mkdirSync(join(dir, pkg), { recursive: true });
@@ -141,8 +162,6 @@ async function generate() {
       result = Extractor.invoke(prepared, { localBuild: true, showVerboseMessages: false });
     } catch (err) {
       process.stderr.write(`api-extractor failed for ${pkg}\n`);
-      const dbg = join(own, pkg, 'money.d.ts');
-      if (existsSync(dbg)) process.stderr.write(`${readFileSync(dbg, 'utf8')}\n`);
       throw err;
     }
     if (!result.succeeded) failed = true;
