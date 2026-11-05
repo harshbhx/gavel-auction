@@ -262,6 +262,11 @@ export class Room {
    */
   attach(conn: Connection, lastSeq?: number): Promise<void> {
     return this.enqueue(async () => {
+      if (this.stopped) {
+        this.sendError(conn, 'host_fenced');
+        conn.transport.close(ERROR_TABLE.host_fenced.closeCode, 'host_fenced');
+        return;
+      }
       this.supersedeOldest(conn);
       this.conns.set(conn.id, conn);
       const plan = planResync(lastSeq, this.seq);
@@ -338,6 +343,37 @@ export class Room {
     return this.stopped;
   }
 
+  /**
+   * Every log append goes through here. A `conflict` means another host appended first, so this
+   * host lost the room (R-RT-061): stop serving, tell every connection and close them with 4010.
+   */
+  private async appendFenced(
+    auctionId: AuctionId,
+    expectedSeq: number,
+    events: RoomEvent[],
+  ): Promise<void> {
+    try {
+      await this.deps.store.appendEvents(auctionId, expectedSeq, events);
+    } catch (e) {
+      if (e instanceof GavelError && e.code === 'conflict') {
+        this.fence();
+        throw new GavelError('host_fenced', 'this host no longer owns the room');
+      }
+      throw e;
+    }
+  }
+
+  private fence(): void {
+    if (this.stopped) return;
+    this.stop();
+    const closeCode = ERROR_TABLE.host_fenced.closeCode;
+    for (const conn of [...this.conns.values()]) {
+      this.sendError(conn, 'host_fenced');
+      conn.transport.close(closeCode, 'host_fenced');
+    }
+    this.conns.clear();
+  }
+
   private storeError(): GavelError {
     return new GavelError(this.stopped ? 'host_fenced' : 'store_unavailable');
   }
@@ -403,7 +439,7 @@ export class Room {
         throw new GavelError('bad_message', 'registration refused by the engine');
       }
       try {
-        await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+        await this.appendFenced(this.auctionId, this.seq, [event]);
       } catch (e) {
         // The engine already holds the bidder; rebuild it from the stored log (R-RT-033).
         await this.recover().catch(() => undefined);
@@ -544,7 +580,7 @@ export class Room {
           };
 
     try {
-      await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+      await this.appendFenced(this.auctionId, this.seq, [event]);
     } catch {
       // State must not change: rebuild the engine from the log and tell the sender.
       await this.recover().catch(() => undefined);
@@ -654,7 +690,7 @@ export class Room {
     );
     events.push(requestedEvent(this.auctionId, held, askAudit, seq, ts));
     try {
-      await this.deps.store.appendEvents(this.auctionId, this.seq, events);
+      await this.appendFenced(this.auctionId, this.seq, events);
     } catch {
       await this.recover().catch(() => undefined);
       const conn = [...this.conns.values()].find((c) => c.bidderId === bidderId);
@@ -699,7 +735,7 @@ export class Room {
       audit,
     );
     try {
-      await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+      await this.appendFenced(this.auctionId, this.seq, [event]);
     } catch {
       await this.recover().catch(() => undefined);
       return false;
@@ -902,7 +938,7 @@ export class Room {
         reason,
       };
       try {
-        await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+        await this.appendFenced(this.auctionId, this.seq, [event]);
       } catch {
         await this.recover().catch(() => undefined);
         throw this.storeError();
@@ -989,7 +1025,7 @@ export class Room {
       ranking: result.ranking,
     });
     try {
-      await this.deps.store.appendEvents(this.auctionId, this.seq, events);
+      await this.appendFenced(this.auctionId, this.seq, events);
     } catch {
       await this.recover().catch(() => undefined);
       if (by) this.sendError(by.conn, this.storeCode());
@@ -1033,7 +1069,7 @@ export class Room {
       const seq = this.seq + 1;
       const ts = this.deps.clock.now();
       try {
-        await this.deps.store.appendEvents(this.auctionId, this.seq, [
+        await this.appendFenced(this.auctionId, this.seq, [
           { type: 'settle_requested', auctionId: this.auctionId, seq, ts },
         ]);
       } catch {
@@ -1095,7 +1131,7 @@ export class Room {
       });
       if (!event.success) throw new GavelError('bad_message', 'invalid settlement update');
       try {
-        await this.deps.store.appendEvents(this.auctionId, this.seq, [event.data]);
+        await this.appendFenced(this.auctionId, this.seq, [event.data]);
       } catch {
         await this.recover().catch(() => undefined);
         throw this.storeError();
@@ -1347,7 +1383,7 @@ export class Room {
       endTs,
     };
     try {
-      await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+      await this.appendFenced(this.auctionId, this.seq, [event]);
     } catch {
       await this.recover().catch(() => undefined);
       this.retryTimer();
