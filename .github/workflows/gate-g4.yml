@@ -67,8 +67,11 @@ jobs:
         env:
           G4_LOG_TOKEN: ${{ secrets.G4_LOG_TOKEN }}
         run: |
-          curl -fsS -X DELETE --get --data-urlencode "token=$G4_LOG_TOKEN" "$RECEIVER_URL/log"
-          echo
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            out=$(curl -fsS -X DELETE --get --data-urlencode "token=$G4_LOG_TOKEN" "$RECEIVER_URL/log")
+            echo "$out"
+            case "$out" in *" more 0") break ;; esac
+          done
       - name: Generate sandbox events
         env:
           PAYPAL_ENV: sandbox
