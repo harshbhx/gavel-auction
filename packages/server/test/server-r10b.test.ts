@@ -1,6 +1,8 @@
 import {
   GavelError,
+  type AuctionConfig,
   type AuctionId,
+  type EpochMs,
   type BidMsg,
   type BidderId,
   type ConnId,
@@ -16,6 +18,7 @@ import { MetricsCollector } from '../src/ops/metrics';
 import { FencedStore } from '../src/room/fence';
 import { MemoryTransport } from '../src/room/memory-transport';
 import { Room, type Connection } from '../src/room/room';
+import { LedgerEngine } from '../src/runtime/ledger-engine';
 import { MemoryStore } from '../src/store/memory-store';
 import { setup } from './room-harness';
 
@@ -34,6 +37,10 @@ class ConflictStore extends MemoryStore {
     await super.appendEvents(auctionId, expectedSeq, events);
   }
 }
+
+const LOT_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAV' as AuctionId;
+/** The real engine, which can pause and resume (the harness engine cannot). */
+const engine = (cfg: AuctionConfig, createdAt: EpochMs) => new LedgerEngine(LOT_ID, cfg, createdAt);
 
 const gauges = { connections: () => 0, rooms: () => 0, mailboxDepth: () => 0 };
 
@@ -59,7 +66,7 @@ describe('#1517 fence path behind the real FencedStore', () => {
 
   it('fences on a conflict during pause, resume and extend too', async () => {
     const inner = new ConflictStore();
-    const t = await setup({ store: inner });
+    const t = await setup({ store: inner, engine });
     const boss = await t.connect('auctioneer');
     const screen = await t.connect('screen');
     await t.room.submitBid((await t.connect('bidder', t.b1)).conn, t.bid(10000));
@@ -82,7 +89,7 @@ describe('#1516 caps reach the room', () => {
 
 describe('#1520 paused bids are not cached', () => {
   it('lets the same mid through after resume and logs nothing while paused', async () => {
-    const t = await setup();
+    const t = await setup({ engine });
     const boss = await t.connect('auctioneer');
     const a = await t.connect('bidder', t.b1);
     await t.room.submitBid((await t.connect('bidder', t.b2)).conn, t.bid(10000));
