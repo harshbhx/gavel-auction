@@ -14,11 +14,11 @@ describe('audio idle timeout (HRD-14)', () => {
     const open = (token: string, source: string) => session.open({ roomId: 'r1', source }, token);
     expect(open('tok-x', 'a').ok).toBe(true);
     expect(open('tok-x', 'b').ok).toBe(true);
-    expect(open('tok-y', 'a').ok).toBe(true);
-    expect(open('tok-y', 'b').ok).toBe(true);
-    expect(open('tok-z', 'a')).toEqual({ ok: false, error: 'AUDIO_STREAM_BUSY' });
+    expect(open('tok-y', 'c').ok).toBe(true);
+    expect(open('tok-y', 'd').ok).toBe(true);
+    expect(open('tok-z', 'e')).toEqual({ ok: false, error: 'AUDIO_STREAM_BUSY' });
     clock.t += AUDIO_IDLE_MS;
-    const z = open('tok-z', 'a');
+    const z = open('tok-z', 'e');
     expect(z.ok).toBe(true);
     expect(session.activeStreams()).toBe(1);
   });

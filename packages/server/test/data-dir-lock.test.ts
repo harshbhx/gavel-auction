@@ -71,9 +71,9 @@ describe('data directory lock (R6-A04)', () => {
   it('still refuses when another live pid holds the lock (R7S-02)', () => {
     const dir = fresh();
     writeFileSync(join(dir, LOCK_FILE), JSON.stringify({ pid: 7, host: 'h', start: 1 }));
-    expect(() => acquireDataDirLock(dir, { pid: 1, isAlive: () => true })).toThrow(
-      /in use by process 7/,
-    );
+    expect(() =>
+      acquireDataDirLock(dir, { pid: 1, isAlive: () => true, sleep: () => undefined }),
+    ).toThrow(/in use by process 7/);
   });
 });
 
