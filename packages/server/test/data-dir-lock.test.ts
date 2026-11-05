@@ -97,6 +97,7 @@ describe('data directory lock across hosts (R8-S02)', () => {
       acquireDataDirLock(dir, {
         pid: 7,
         host: 'c3d4',
+        sleep: () => undefined,
         isAlive: () => {
           probed = true;
           return false;
@@ -126,5 +127,49 @@ describe('data directory lock across hosts (R8-S02)', () => {
     const dir = fresh();
     writeFileSync(join(dir, LOCK_FILE), owner('a1b2', 1000));
     acquireDataDirLock(dir, { pid: 1, host: 'a1b2', startMs: 2000, heartbeatMs: 0 }).release();
+  });
+
+  it('waits out the stale window when a restarted container finds a dead owner (HRD-14)', () => {
+    const dir = fresh();
+    const file = join(dir, LOCK_FILE);
+    writeFileSync(file, owner('a1b2', 1000));
+    const mtime = statSync(file).mtimeMs;
+    let clock = mtime + 5000;
+    const slept: number[] = [];
+    const lock = acquireDataDirLock(dir, {
+      pid: 1,
+      host: 'c3d4',
+      startMs: 2000,
+      heartbeatMs: 10_000,
+      now: () => clock,
+      sleep: (ms) => {
+        slept.push(ms);
+        clock += ms;
+      },
+    });
+    expect(slept).toEqual([25_001]);
+    expect(JSON.parse(readFileSync(file, 'utf8')).host).toBe('c3d4');
+    lock.release();
+  });
+
+  it('still refuses when the foreign owner keeps heartbeating during the wait', () => {
+    const dir = fresh();
+    const file = join(dir, LOCK_FILE);
+    writeFileSync(file, owner('a1b2', 1000));
+    const mtime = statSync(file).mtimeMs;
+    let clock = mtime + 5000;
+    expect(() =>
+      acquireDataDirLock(dir, {
+        pid: 1,
+        host: 'c3d4',
+        startMs: 2000,
+        heartbeatMs: 10_000,
+        now: () => clock,
+        sleep: (ms) => {
+          clock += ms;
+          utimesSync(file, new Date(clock), new Date(clock));
+        },
+      }),
+    ).toThrow(/in use by process 1 on a1b2/);
   });
 });
