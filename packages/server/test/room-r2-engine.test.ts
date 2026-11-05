@@ -56,13 +56,18 @@ class StubEngine implements EnginePort {
 
 class DownableStore extends MemoryStore {
   down = false;
+  commitThenFail = false;
   override async appendEvents(
     auctionId: AuctionId,
     expectedSeq: number,
     events: RoomEvent[],
   ): Promise<void> {
     if (this.down) throw new Error('store down');
-    return super.appendEvents(auctionId, expectedSeq, events);
+    await super.appendEvents(auctionId, expectedSeq, events);
+    if (this.commitThenFail) {
+      this.commitThenFail = false;
+      throw new Error('ack lost');
+    }
   }
   override async readEvents(
     auctionId: AuctionId,
@@ -150,12 +155,13 @@ describe('nothing is derived from an engine ahead of the store (#957)', () => {
     const t = await build(() => ({ ok: true }));
     const c1 = await t.connect('bidder', t.b1);
     const screen = await t.connect('screen');
-    t.store.down = true;
-    await t.room.submitBid(c1.conn, t.bid(12000));
-    t.store.down = false;
     const before = screen.transport.messages('state').length;
-    await t.room.submitBid(c1.conn, t.bid(13000));
-    expect(screen.transport.messages('state').length).toBeGreaterThan(before);
+    t.store.commitThenFail = true;
+    await t.room.submitBid(c1.conn, t.bid(12000));
+    const states = screen.transport.messages('state');
+    expect(states.length).toBeGreaterThan(before);
+    const last = states[states.length - 1] as { snapshot: { price: number } };
+    expect(last.snapshot.price).toBe(12000);
   });
 });
 

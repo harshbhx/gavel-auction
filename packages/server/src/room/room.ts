@@ -1427,6 +1427,8 @@ export class Room {
     } catch {
       throw new GavelError('store_unavailable');
     }
+    // A log longer than what clients were told means an append committed after it failed.
+    const moved = fresh.seq !== this.seq;
     this.config = fresh.config;
     this.engine = fresh.engine;
     this.roster = fresh.roster;
@@ -1443,8 +1445,8 @@ export class Room {
     this.done = fresh.done;
     this.dirty = false;
     this.armTimer();
-    // Whatever clients last saw may come from the engine that was ahead of the log: resend (R-RT-056).
-    for (const conn of this.conns.values()) this.sendState(conn);
+    // Tell everyone about events they never saw: resend the state (R-RT-056).
+    if (moved) for (const conn of this.conns.values()) this.sendState(conn);
   }
 
   private async replay(): Promise<void> {
