@@ -462,7 +462,7 @@ Date: 2026-11-05
 Status: accepted
 Owner: engine
 Context: Review round 8 found that a promotion could follow the capture, that its retry could conflict, that the public hammer entry exposed proxy maxima, that a raise on a revoked bidder was a silent no-op, and that one account could fill a lot's bid cap (R8-E01 to R8-E05).
-Decision: PromoteRunnerUp is refused with `state_continuity` once the settlement is CAPTURED, VOIDING or SETTLED, and FALLBACK_PROMOTED resets `captureSeen`. The fallback settlement step a promotion injects is remembered as part of PromoteRunnerUp. The public export drops `ranking[].amountCents` from the hammer entry of a proxy lot. A raise on a revoked record is refused with `bad_command`. `LIMITS` gains `bidsPerBidderPerLot` (2000) and `bidsReservedForLead` (1000): one bidder may record at most 2000 bids on a lot, and the last 1000 slots of the lot cap only take a bid that takes the lead.
+Decision: PromoteRunnerUp is refused with `state_continuity` while the settlement is CAPTURED, or VOIDING after a capture (SETTLED stays allowed because the settlement bridge replays a whole history before promoting to the bidder it charged),. The fallback settlement step a promotion injects is remembered as part of PromoteRunnerUp. The public export drops `ranking[].amountCents` from the hammer entry of a proxy lot. A raise on a revoked record is refused with `bad_command`. `LIMITS` gains `bidsPerBidderPerLot` (2000) and `bidsReservedForLead` (1000): one bidder may record at most 2000 bids on a lot, and the last 1000 slots of the lot cap only take a bid that takes the lead.
 Alternatives:
 
 - Clear `revoked` on a raise: rejected, re-authorisation needs a spec change and an explicit event.
