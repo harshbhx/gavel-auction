@@ -32,6 +32,12 @@ describe('motion polish', () => {
     expect(ladderReduced).toContain('transition: none');
   });
 
+  it('keeps the stamp visible in forced colors', () => {
+    const forced = motion.slice(motion.indexOf('@media (forced-colors: active)'));
+    expect(forced).toContain('.gv-hammer-stamp');
+    expect(forced).toContain('border: 2px solid CanvasText');
+  });
+
   it('tokens pull in the motion sheet', () => {
     expect(tokens).toContain("@import './motion.css';");
   });

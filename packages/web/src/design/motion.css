@@ -54,3 +54,11 @@
     transform: none;
   }
 }
+
+/* Forced colors: system colors replace ours, so give the stamp a border to stay visible. */
+@media (forced-colors: active) {
+  .gv-hammer-stamp {
+    border: 2px solid CanvasText;
+    padding: 0 0.25em;
+  }
+}
