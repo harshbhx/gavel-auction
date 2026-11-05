@@ -51,6 +51,10 @@ class TestEngine implements EnginePort {
     this.ceilings.set(bidder, ceiling);
   }
 
+  revoke(bidder: BidderId): boolean {
+    return this.ceilings.delete(bidder);
+  }
+
   placeBid(bidder: BidderId, amount: Cents, ts: EpochMs): EngineBidResult {
     if (this.state !== 'OPEN' || ts >= this.cfg.endTs) return { ok: false, code: 'closed' };
     const ceiling = this.ceilings.get(bidder);
@@ -567,5 +571,17 @@ describe('room close, roster hold state, duplicate mid, repeat registration', ()
     ).rejects.toThrow();
     t.clock.set(config.endTs + 1);
     expect(t.room.lastSeq).toBe(before);
+  });
+
+  it('reports the real hold state in the roster (R-RT-054, R-RT-055)', async () => {
+    const t = await setup();
+    await t.room.revokeBidder(t.b2, 'voided');
+    const boss = await t.connect('auctioneer');
+    const snap = boss.transport.messages('state').at(-1)?.snapshot as {
+      roster: { bidderId: string; hold: string }[];
+    };
+    const hold = (id: string) => snap.roster.find((r) => r.bidderId === id)?.hold;
+    expect(hold(t.b1)).toBe('HELD');
+    expect(hold(t.b2)).toBe('NONE');
   });
 });

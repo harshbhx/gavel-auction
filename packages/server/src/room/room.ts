@@ -873,7 +873,7 @@ export class Room {
         bidderId,
         paddle: r.paddle,
         name: r.name,
-        hold: 'HELD' as const,
+        hold: this.revoked.has(bidderId) ? ('NONE' as const) : ('HELD' as const),
       })),
       recentAudit: [...this.audit],
     };
