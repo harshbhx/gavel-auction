@@ -12,6 +12,10 @@ import {
   parseWordList,
   emptyListOutcome,
   parseArgs,
+  parseMetaArgs,
+  checkPaths,
+  checkText,
+  checkCommits,
 } from '../check-banned-words.mjs';
 import { globToRegExp } from '../lib-text-check.mjs';
 
@@ -45,6 +49,35 @@ describe('check-ascii', () => {
       'img.png': Buffer.from([0xff, 0x00, 0xc3]).toString('latin1'),
     });
     assert.deepEqual(checkAscii(dir, ['fx/u.json', 'img.png'], [globToRegExp('fx/**')]), []);
+  });
+});
+
+describe('text detection by content', () => {
+  const bom = Buffer.from([0xff, 0xfe]);
+  it('scans UTF-16 text with a byte order mark', () => {
+    const dir = tree({ 'x.md': Buffer.concat([bom, Buffer.from(`it${SMART}s`, 'utf16le')]) });
+    assert.equal(checkAscii(dir, ['x.md'], []).length, 1);
+  });
+
+  it('scans UTF-16 text without a byte order mark', () => {
+    const dir = tree({ 'y.md': Buffer.from(`hello ${SMART} world`, 'utf16le') });
+    assert.equal(checkAscii(dir, ['y.md'], []).length, 1);
+  });
+
+  it('scans printable text hidden under a media extension', () => {
+    const dir = tree({ 'notes.png': `plain ${SMART} notes\n` });
+    assert.equal(checkAscii(dir, ['notes.png'], []).length, 1);
+  });
+
+  it('scans a text file that holds one stray NUL byte', () => {
+    const dir = tree({ 'z.md': `abc\0 ${SMART} def\n` });
+    assert.equal(checkAscii(dir, ['z.md'], []).length, 1);
+  });
+
+  it('still skips real binary content under a media extension', () => {
+    const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 0, 0xff, 0xfe, 0xc3, 0, 1, 2, 3]);
+    const dir = tree({ 'real.png': bytes });
+    assert.deepEqual(checkAscii(dir, ['real.png'], []), []);
   });
 });
 
@@ -82,5 +115,50 @@ describe('check-banned-words empty list', () => {
 
   it('parses --root apart from file arguments', () => {
     assert.deepEqual(parseArgs(['--root', 'pr', 'a.md']), { target: 'pr', files: ['a.md'] });
+  });
+});
+
+describe('check-banned-words beyond file contents', () => {
+  const matcher = buildMatcher(['bazword']);
+
+  it('flags a banned word in a file path and reports no text', () => {
+    assert.deepEqual(
+      checkPaths(['docs/ok.md', 'docs/BazWord-notes.md', 'src/bazword/a.ts'], matcher),
+      [{ index: 1 }, { index: 2 }],
+    );
+    assert.deepEqual(checkPaths(['docs/ok.md', 'docs/bazwords.md'], matcher), []);
+  });
+
+  it('flags a banned word in free text with line and column', () => {
+    assert.deepEqual(checkText('PR_BODY', 'fine\nwith BazWord here', matcher), [
+      { label: 'PR_BODY', line: 2, column: 6 },
+    ]);
+    assert.deepEqual(checkText('PR_BODY', undefined, matcher), []);
+    assert.deepEqual(checkText('PR_TITLE', 'PAY-01: clean title', matcher), []);
+  });
+
+  it('flags a banned trailer in a commit message by short id only', () => {
+    const log =
+      'aaa1111\u0001fix(repo): ok\n\nBody text\n\0' +
+      'bbb2222\u0001fix(repo): ok\n\nCo-authored-by: bazword <x@y.z>\n\0';
+    const run = () => log;
+    assert.deepEqual(checkCommits('.', 'a..b', matcher, run), [{ commit: 'bbb2222' }]);
+  });
+
+  it('passes a clean history range and parses the options', () => {
+    const run = () => 'ccc3333\u0001feat(repo): clean\n\0';
+    assert.deepEqual(checkCommits('.', 'a..b', matcher, run), []);
+    assert.deepEqual(parseMetaArgs(['--text', 'A', '--git-log', 'x..y', '--text', 'B']), {
+      texts: ['A', 'B'],
+      logs: ['x..y'],
+    });
+    assert.deepEqual(parseArgs(['--text', 'A', '--git-log', 'x..y', 'f.md']), {
+      target: undefined,
+      files: ['f.md'],
+    });
+  });
+
+  it('reads a real git range without matching a clean history', () => {
+    assert.deepEqual(checkCommits('.', '-1 HEAD', matcher), []);
   });
 });

@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { cardEnabled, gatesResult, parseGatesResult } from '../src/gatesResult.js';
 
 describe('gatesResult (T-PAY-025)', () => {
-  it('ships with every flag off', () => {
+  it('ships with the G1 decision and G4 verified, card authorize off', () => {
     expect(gatesResult).toEqual({
-      g1_remainder_mode: 'unknown',
+      g1_remainder_mode: 'A',
       g2_card_authorize: false,
-      g4_webhooks_verified: false,
+      g4_webhooks_verified: true,
     });
     expect(cardEnabled()).toBe(false);
   });

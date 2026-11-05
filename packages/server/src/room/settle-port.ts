@@ -37,6 +37,8 @@ export interface BidMeta {
   transcript?: string;
   /** Parser confidence, 0 to 1. */
   confidence?: number;
+  /** True once the bidder answered a confirm request for this bid (R-RT-046). */
+  confirmed?: boolean;
 }
 
 /** An engine that records the source and the audit fields of every bid. */

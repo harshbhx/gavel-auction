@@ -10,6 +10,7 @@ import {
   type AuctionId,
   type AuditPayload,
   type BidMsg,
+  type ConfirmResponseMsg,
   type BidderId,
   type BidId,
   type CancelTimer,
@@ -29,7 +30,28 @@ import {
   type Transport,
 } from '@gavel/shared';
 import { authorize, redactForViewer } from '../auth/authorize';
+import {
+  CONFIRM_TTL_MS,
+  ConfirmBook,
+  confirmAudit,
+  needsConfirm,
+  requestedEvent,
+  type PendingConfirm,
+} from './confirm';
+import {
+  CONFIRM_REASON,
+  endsWithoutBid,
+  resolvedEvent,
+  type ConfirmOutcome,
+} from './confirm-resolve';
 import type { RateLimiter } from '../limits/rate-limiter';
+import {
+  MAX_CONNECTIONS_PER_TOKEN,
+  SUPERSEDED_CODE,
+  SUPERSEDED_REASON,
+  eventFrames,
+  planResync,
+} from './resync';
 import {
   TERMINAL_SETTLEMENT,
   canHammer,
@@ -57,24 +79,25 @@ export interface Connection {
   transport: Transport;
 }
 
-/** The source and audit fields of a bid as the room records them, live and on replay. */
 /** What a mid is bound to: the amount and the effective source (manual for the auctioneer). */
 function bidDigest(amount: unknown, source: string): string {
   return `${isCents(amount) ? amount : ''}|${source}`;
 }
 
-function bidMeta(conn: Connection, msg: BidMsg): BidMeta {
+/** The source and audit fields of a bid as the room records them, live and on replay. */
+function bidMeta(conn: Connection, msg: BidMsg, confirmed = false): BidMeta {
   if (conn.role === 'auctioneer') {
     const meta: BidMeta = {
       source: 'manual',
       transcript: `manual by ${conn.sub}`.slice(0, 120),
     };
-    if (msg.confidence !== undefined) meta.confidence = msg.confidence;
     return meta;
   }
-  const meta: BidMeta = { source: msg.source };
+  // A bidder frame may claim qr or voice only; manual is the auctioneer's entry (R-RT-039).
+  const meta: BidMeta = { source: msg.source === 'voice' ? 'voice' : 'qr' };
   if (msg.transcript !== undefined) meta.transcript = msg.transcript;
-  if (msg.confidence !== undefined) meta.confidence = msg.confidence;
+  if (meta.source === 'voice' && msg.confidence !== undefined) meta.confidence = msg.confidence;
+  if (confirmed && meta.source === 'voice') meta.confirmed = true;
   return meta;
 }
 
@@ -97,6 +120,8 @@ export interface RoomDeps {
   /** Builds a fresh engine for a config; called again whenever the room is rebuilt from its log. */
   engine: (config: AuctionConfig, createdAt: EpochMs) => EnginePort;
   limiter?: RateLimiter;
+  /** Counters fed from the bid path (R-RT-122, R-RT-135). */
+  metrics?: { bidAccepted(): void; bidRejected(): void; rateLimitHit(): void };
   /** Payments side of settlement; without it a hammered room stays in SETTLING. */
   settle?: SettlePort;
   /**
@@ -168,6 +193,11 @@ export class Room {
   private done = false;
   /** True when the engine may be ahead of the stored log and must be rebuilt first. */
   private dirty = false;
+  /** Set when this host lost the room; the room serves nothing and arms no timer. */
+  private stopped = false;
+  private cancelTimerRetry: CancelTimer | undefined;
+  /** Voice bids waiting for their bidder's answer; in memory only, the events are the record. */
+  private readonly confirms = new ConfirmBook();
   /** Count of frames dropped because they failed to encode; surfaced for metrics and tests. */
   encodeFailures = 0;
 
@@ -231,11 +261,48 @@ export class Room {
     return this.conns.size;
   }
 
-  attach(conn: Connection): Promise<void> {
+  /**
+   * Add a connection. With `lastSeq`, a client that missed at most 200 events gets those frames
+   * replayed before the snapshot; otherwise it gets the snapshot only (R-RT-057). A token may
+   * hold three connections; the oldest beyond that is closed as superseded (R-RT-058).
+   */
+  attach(conn: Connection, lastSeq?: number): Promise<void> {
     return this.enqueue(async () => {
+      this.supersedeOldest(conn);
       this.conns.set(conn.id, conn);
+      const plan = planResync(lastSeq, this.seq);
+      if (plan.kind === 'replay') {
+        let events: RoomEvent[] = [];
+        try {
+          events = await this.deps.store.readEvents(
+            this.auctionId,
+            plan.from,
+            plan.to - plan.from + 1,
+          );
+        } catch {
+          events = [];
+        }
+        const complete = events.length === plan.to - plan.from + 1;
+        if (complete) {
+          for (const event of events) {
+            for (const frame of eventFrames(event)) this.send(conn, frame);
+          }
+        }
+      }
       this.sendState(conn);
     });
+  }
+
+  private supersedeOldest(next: Connection): void {
+    const mine = [...this.conns.values()].filter(
+      (c) => c.role === next.role && c.sub === next.sub && c.bidderId === next.bidderId,
+    );
+    while (mine.length >= MAX_CONNECTIONS_PER_TOKEN) {
+      const oldest = mine.shift();
+      if (!oldest) break;
+      this.conns.delete(oldest.id);
+      oldest.transport.close(SUPERSEDED_CODE, SUPERSEDED_REASON);
+    }
   }
 
   detach(connId: ConnId): void {
@@ -249,13 +316,55 @@ export class Room {
     this.cancelTimer = undefined;
     this.cancelHammer?.();
     this.cancelHammer = undefined;
+    this.cancelTimerRetry?.();
+    this.cancelTimerRetry = undefined;
+    this.confirms.clear();
     await this.tail;
+  }
+
+  /**
+   * This host lost the room to another one (R-RT-061): cancel every timer and refuse further
+   * commands with `host_fenced`. Nothing is rebuilt or re-armed afterwards.
+   */
+  stop(): void {
+    this.stopped = true;
+    this.confirms.clear();
+    this.cancelTimer?.();
+    this.cancelTimer = undefined;
+    this.cancelHammer?.();
+    this.cancelHammer = undefined;
+    this.cancelTimerRetry?.();
+    this.cancelTimerRetry = undefined;
+  }
+
+  /** True once the settlement's final report reached the room. */
+  get isDone(): boolean {
+    return this.done;
+  }
+
+  get isStopped(): boolean {
+    return this.stopped;
+  }
+
+  private storeError(): GavelError {
+    return new GavelError(this.stopped ? 'host_fenced' : 'store_unavailable');
+  }
+
+  private storeCode(): ErrorCode {
+    return this.stopped ? 'host_fenced' : 'store_unavailable';
   }
 
   /** Report a payment hold: the bidder joins the roster with their private ceiling (R-RT-054). */
   registerBidder(reg: RegisterBidder): Promise<void> {
     return this.enqueue(async () => {
       if (this.roster.has(reg.bidderId)) {
+        // A revoked bidder cannot be backed by a second hold; the caller releases it (D-0023).
+        if (
+          this.revoked.has(reg.bidderId) &&
+          this.roster.get(reg.bidderId)?.holdRef !== reg.holdRef
+        ) {
+          throw new GavelError('conflict', 'ceiling was revoked');
+        }
         await this.makeDurable();
         return;
       }
@@ -291,7 +400,7 @@ export class Room {
       try {
         await this.ensureClean();
       } catch {
-        throw new GavelError('store_unavailable');
+        throw this.storeError();
       }
       // The engine decides first: a registration it refuses must never reach the log, or every
       // later replay would throw on it and the auction could not be loaded again (R-RT-059).
@@ -309,7 +418,8 @@ export class Room {
         throw e;
       }
       this.seq = seq;
-      await this.makeDurable();
+      // Tell everyone before the ledger write: the log append consumed the seq, and a ledger
+      // failure that makes the host retry must not leave viewers with a gap (R-RT-036).
       for (const conn of this.conns.values()) {
         if (conn.role !== 'bidder' || conn.bidderId !== reg.bidderId) {
           // The seq is consumed by this event, so everyone else gets the new roster as a snapshot
@@ -328,6 +438,7 @@ export class Room {
           role: 'bidder',
         });
       }
+      await this.makeDurable();
     });
   }
 
@@ -338,6 +449,7 @@ export class Room {
   submitBid(conn: Connection, msg: BidMsg): Promise<void> {
     const limited = this.deps.limiter?.checkBid(conn.bidderId ?? conn.id);
     if (limited && !limited.ok) {
+      this.deps.metrics?.rateLimitHit();
       this.sendError(conn, 'rate_limited', limited.retryAfterMs);
       return Promise.resolve();
     }
@@ -352,7 +464,12 @@ export class Room {
     return this.enqueue(() => this.handleBid(conn, msg, bidderId));
   }
 
-  private async handleBid(conn: Connection, msg: BidMsg, bidderId: BidderId): Promise<void> {
+  private async handleBid(
+    conn: Connection,
+    msg: BidMsg,
+    bidderId: BidderId,
+    confirmed = false,
+  ): Promise<void> {
     const key = `${bidderId}:${msg.mid}`;
     const prior = this.replies.get(key);
     if (prior && prior.digest !== bidDigest(msg.amount, bidMeta(conn, msg).source)) {
@@ -366,7 +483,7 @@ export class Room {
       try {
         await this.makeDurable();
       } catch {
-        this.sendError(conn, 'store_unavailable');
+        this.sendError(conn, this.storeCode());
         return;
       }
       this.send(conn, prior.reply);
@@ -375,10 +492,23 @@ export class Room {
     try {
       await this.ensureClean();
     } catch {
-      this.sendError(conn, 'store_unavailable');
+      this.sendError(conn, this.storeCode());
       return;
     }
     const engine = this.requireEngine();
+    if (
+      !confirmed &&
+      conn.role === 'bidder' &&
+      this.config !== undefined &&
+      isCents(msg.amount) &&
+      this.roster.has(bidderId) &&
+      !this.hammered &&
+      engine.view().state === 'OPEN' &&
+      needsConfirm(msg, this.config.confirmConfidenceThreshold)
+    ) {
+      await this.holdForConfirm(msg, bidderId);
+      return;
+    }
     const ts = this.deps.clock.now();
     const seq = this.seq + 1;
 
@@ -387,7 +517,7 @@ export class Room {
     else if (!this.roster.has(bidderId)) code = 'unregistered';
     else {
       try {
-        const res = placeBidOn(engine, bidderId, msg.amount, ts, bidMeta(conn, msg));
+        const res = placeBidOn(engine, bidderId, msg.amount, ts, bidMeta(conn, msg, confirmed));
         if (!res.ok) code = res.code;
       } catch {
         // The engine may be half-mutated: rebuild from the log before the next command (R-RT-033).
@@ -398,7 +528,7 @@ export class Room {
     }
 
     const bidId = this.deps.ids.mint<'BidId'>();
-    const audit = this.buildAudit(bidId, bidderId, msg, conn, code, ts, seq);
+    const audit = this.buildAudit(bidId, bidderId, msg, conn, code, ts, seq, confirmed);
     const event: RoomEvent =
       code === undefined
         ? {
@@ -410,7 +540,7 @@ export class Room {
             bidderId,
             mid: msg.mid,
             amount: msg.amount as Cents,
-            source: msg.source,
+            source: audit.source,
             audit,
             endTsAfter: engine.view().endTs,
           }
@@ -431,10 +561,12 @@ export class Room {
     } catch {
       // State must not change: rebuild the engine from the log and tell the sender.
       await this.recover().catch(() => undefined);
-      this.sendError(conn, 'store_unavailable');
+      this.sendError(conn, this.storeCode());
       return;
     }
     this.seq = seq;
+    if (event.type === 'bid_accepted') this.deps.metrics?.bidAccepted();
+    else this.deps.metrics?.bidRejected();
     this.pushAudit(audit);
     const reply = this.replyFor(event);
     if (reply) this.replies.set(key, { reply, digest: bidDigest(msg.amount, audit.source) });
@@ -445,12 +577,193 @@ export class Room {
       durable = false;
     }
     if (reply && durable) this.send(conn, reply);
-    else if (reply) this.sendError(conn, 'store_unavailable');
+    else if (reply) this.sendError(conn, this.storeCode());
     if (event.type === 'bid_accepted') {
       this.broadcastPrice(seq, ts);
       this.armTimer();
     }
     this.broadcastAudit(audit, seq, ts);
+  }
+
+  /**
+   * Answer to a confirm request (R-RT-046). Accept runs the normal pipeline at the server
+   * time of the answer; reject, or an answer after the deadline, is audited and places no bid.
+   */
+  respondConfirm(conn: Connection, msg: ConfirmResponseMsg): Promise<void> {
+    if (!authorize('confirm_response', conn.role).ok || conn.bidderId === undefined) {
+      this.sendError(conn, 'forbidden');
+      return Promise.resolve();
+    }
+    const bidderId = conn.bidderId;
+    return this.enqueue(async () => {
+      try {
+        await this.ensureClean();
+      } catch {
+        this.sendError(conn, this.storeCode());
+        return;
+      }
+      const held = this.confirms.get(msg.confirmId);
+      if (!held || held.bidderId !== bidderId) {
+        this.sendError(conn, 'not_found');
+        return;
+      }
+      const late = this.deps.clock.now() >= held.expiresAt;
+      const outcome: ConfirmOutcome = late ? 'expired' : msg.accept ? 'accepted' : 'rejected';
+      if (!(await this.resolveConfirm(held, outcome))) {
+        this.sendError(conn, this.storeCode());
+        return;
+      }
+      if (outcome !== 'accepted') return;
+      const bid: BidMsg = {
+        v: 1,
+        t: 'bid',
+        mid: held.mid,
+        amount: held.amount,
+        source: 'voice',
+        ...(held.transcript !== undefined ? { transcript: held.transcript } : {}),
+        ...(held.confidence !== undefined ? { confidence: held.confidence } : {}),
+      };
+      await this.handleBid(conn, bid, bidderId, true);
+    });
+  }
+
+  /** Hold a low-confidence or ambiguous voice bid and ask its bidder; the engine is not touched. */
+  private async holdForConfirm(msg: BidMsg, bidderId: BidderId): Promise<void> {
+    const ts = this.deps.clock.now();
+    const prior = this.confirms.forBidder(bidderId);
+    const held: PendingConfirm = {
+      confirmId: this.deps.ids.mint<'ConfirmId'>(),
+      bidderId,
+      mid: msg.mid,
+      amount: msg.amount as Cents,
+      ...(msg.transcript !== undefined ? { transcript: msg.transcript } : {}),
+      ...(msg.confidence !== undefined ? { confidence: msg.confidence } : {}),
+      expiresAt: (ts + CONFIRM_TTL_MS) as EpochMs,
+    };
+    const events: RoomEvent[] = [];
+    let seq = this.seq;
+    if (prior) {
+      seq += 1;
+      const audit = confirmAudit(
+        prior,
+        this.deps.ids.mint<'BidId'>(),
+        'superseded',
+        CONFIRM_REASON.superseded,
+        ts,
+        seq,
+      );
+      events.push(
+        resolvedEvent({ auctionId: this.auctionId, seq, ts }, prior.confirmId, 'superseded', audit),
+      );
+    }
+    seq += 1;
+    const askAudit = confirmAudit(
+      held,
+      this.deps.ids.mint<'BidId'>(),
+      'rejected',
+      'awaiting confirmation',
+      ts,
+      seq,
+    );
+    events.push(requestedEvent(this.auctionId, held, askAudit, seq, ts));
+    try {
+      await this.deps.store.appendEvents(this.auctionId, this.seq, events);
+    } catch {
+      await this.recover().catch(() => undefined);
+      const conn = [...this.conns.values()].find((c) => c.bidderId === bidderId);
+      if (conn) this.sendError(conn, this.storeCode());
+      return;
+    }
+    this.seq = seq;
+    if (prior) this.confirms.drop(prior.confirmId);
+    this.armConfirmTimer(held);
+    this.confirms.add(held);
+    for (const event of events) this.fanOutConfirm(event, held);
+  }
+
+  private armConfirmTimer(held: PendingConfirm, at: number = held.expiresAt): void {
+    held.cancel = this.deps.clock.setTimer(at, () => {
+      this.enqueue(async () => {
+        if (this.stopped || this.confirms.get(held.confirmId) !== held) return;
+        if (!(await this.resolveConfirm(held, 'expired'))) {
+          // The log is unavailable: keep the held bid and try again shortly.
+          this.armConfirmTimer(held, this.deps.clock.now() + AUTO_HAMMER_RETRY_MS);
+        }
+      }).catch(() => undefined);
+    });
+  }
+
+  /** Write the end of a held bid to the log and tell the room. False when the log refused it. */
+  private async resolveConfirm(held: PendingConfirm, outcome: ConfirmOutcome): Promise<boolean> {
+    const ts = this.deps.clock.now();
+    const seq = this.seq + 1;
+    const audit = confirmAudit(
+      held,
+      this.deps.ids.mint<'BidId'>(),
+      outcome,
+      CONFIRM_REASON[outcome],
+      ts,
+      seq,
+    );
+    const event = resolvedEvent(
+      { auctionId: this.auctionId, seq, ts },
+      held.confirmId,
+      outcome,
+      audit,
+    );
+    try {
+      await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+    } catch {
+      await this.recover().catch(() => undefined);
+      return false;
+    }
+    this.seq = seq;
+    this.confirms.drop(held.confirmId);
+    this.fanOutConfirm(event, held);
+    return true;
+  }
+
+  /**
+   * Send one confirm event's seq to everyone: the request goes to its bidder only, an
+   * unanswered end tells the bidder their bid was not placed, the auctioneer sees the audit row
+   * of a resolution, and every other viewer gets a frame that keeps their seq whole (R-RT-036).
+   */
+  private fanOutConfirm(event: RoomEvent, held: PendingConfirm): void {
+    for (const conn of this.conns.values()) {
+      const own = conn.role === 'bidder' && conn.bidderId === held.bidderId;
+      if (event.type === 'confirm_requested' && own) {
+        this.send(conn, {
+          v: 1,
+          t: 'confirm_request',
+          seq: event.seq,
+          ts: event.ts,
+          confirmId: event.confirmId,
+          amount: event.amount,
+          ...(held.transcript !== undefined ? { transcript: held.transcript } : {}),
+          expiresAt: event.expiresAt,
+        });
+      } else if (event.type === 'confirm_resolved' && own && endsWithoutBid(event.outcome)) {
+        this.send(conn, {
+          v: 1,
+          t: 'bid_rejected',
+          seq: event.seq,
+          ts: event.ts,
+          mid: held.mid,
+          reason: 'unconfirmed',
+          retryable: ERROR_TABLE.unconfirmed.retryable,
+        });
+      } else if (event.type === 'confirm_resolved' && conn.role === 'auctioneer') {
+        this.send(conn, {
+          v: 1,
+          t: 'audit_event',
+          seq: event.seq,
+          ts: event.ts,
+          audit: event.audit,
+        });
+      } else {
+        this.sendSeqFiller(conn, event.seq, event.ts);
+      }
+    }
   }
 
   private buildAudit(
@@ -461,6 +774,7 @@ export class Room {
     code: ErrorCode | undefined,
     ts: ReturnType<Clock['now']>,
     seq: number,
+    confirmed = false,
   ): AuditPayload {
     const audit: AuditPayload = {
       bidId,
@@ -471,7 +785,8 @@ export class Room {
       seq,
     };
     if (isCents(msg.amount)) audit.parsedAmount = msg.amount;
-    const meta = bidMeta(conn, msg);
+    const meta = bidMeta(conn, msg, confirmed);
+    if (meta.confirmed) audit.confirmed = true;
     if (meta.transcript !== undefined) audit.transcript = meta.transcript;
     if (meta.confidence !== undefined) audit.confidence = meta.confidence;
     if (code !== undefined) audit.reason = code;
@@ -522,7 +837,7 @@ export class Room {
       try {
         await this.ensureClean();
       } catch {
-        this.sendError(conn, 'store_unavailable');
+        this.sendError(conn, this.storeCode());
         return;
       }
       if (this.hammered) {
@@ -550,7 +865,7 @@ export class Room {
       try {
         await this.ensureClean();
       } catch {
-        throw new GavelError('store_unavailable');
+        throw this.storeError();
       }
       if (this.hammered || this.done) return false;
       await this.doHammer(undefined, { by });
@@ -564,14 +879,19 @@ export class Room {
    * room reproduces it. `hammered` means the room is past that point and the settlement
    * bridge handles the hold instead. Idempotent; the ledger is written on every call.
    */
-  revokeBidder(bidderId: BidderId, reason: RevokeReason): Promise<RevokeOutcome> {
+  revokeBidder(bidderId: BidderId, reason: RevokeReason, holdRef?: string): Promise<RevokeOutcome> {
     return this.enqueue(async () => {
       try {
         await this.ensureClean();
       } catch {
-        throw new GavelError('store_unavailable');
+        throw this.storeError();
       }
       if (this.hammered) return 'hammered';
+      // A hold that is not the registered one does not back the ceiling (R-ENG-044).
+      const registered = this.roster.get(bidderId)?.holdRef;
+      if (holdRef !== undefined && registered !== undefined && registered !== holdRef) {
+        return 'noop';
+      }
       if (!this.roster.has(bidderId) || this.revoked.has(bidderId)) {
         await this.makeDurable();
         return 'noop';
@@ -598,7 +918,7 @@ export class Room {
         await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
       } catch {
         await this.recover().catch(() => undefined);
-        throw new GavelError('store_unavailable');
+        throw this.storeError();
       }
       this.seq = seq;
       this.revoked.add(bidderId);
@@ -685,7 +1005,7 @@ export class Room {
       await this.deps.store.appendEvents(this.auctionId, this.seq, events);
     } catch {
       await this.recover().catch(() => undefined);
-      if (by) this.sendError(by.conn, 'store_unavailable');
+      if (by) this.sendError(by.conn, this.storeCode());
       return;
     }
     this.cancelTimer?.();
@@ -769,7 +1089,7 @@ export class Room {
       try {
         await this.ensureClean();
       } catch {
-        throw new GavelError('store_unavailable');
+        throw this.storeError();
       }
       if (!this.hammered) throw new GavelError('conflict', 'auction is not hammered');
       if (this.settlement && report.rev <= this.settlement.rev) return;
@@ -791,7 +1111,7 @@ export class Room {
         await this.deps.store.appendEvents(this.auctionId, this.seq, [event.data]);
       } catch {
         await this.recover().catch(() => undefined);
-        throw new GavelError('store_unavailable');
+        throw this.storeError();
       }
       this.seq = seq;
       this.applySettlement(report);
@@ -930,6 +1250,9 @@ export class Room {
     this.cancelTimer = undefined;
     this.cancelHammer?.();
     this.cancelHammer = undefined;
+    this.cancelTimerRetry?.();
+    this.cancelTimerRetry = undefined;
+    if (this.stopped) return;
     const view = this.engine?.view();
     if (!view || this.hammered || this.closed) return;
     if (view.state === 'CLOSING') {
@@ -939,14 +1262,33 @@ export class Room {
     if (view.state !== 'OPEN') return;
     this.cancelTimer = this.deps.clock.setTimer(view.endTs, () => {
       this.enqueue(() => this.onTimer()).catch(() => {
-        // A throwing timer body must not become an unhandled rejection; rebuild on the next command.
+        // A throwing timer body must not become an unhandled rejection; rebuild on the next
+        // command, and try the end of the lot again soon in case no command comes (R-RT-041).
         this.dirty = true;
+        this.retryTimer();
       });
     });
   }
 
+  /** The end-of-lot timer could not run (store down): try again after a short delay. */
+  private retryTimer(): void {
+    if (this.stopped || this.hammered || this.done) return;
+    this.cancelTimerRetry?.();
+    this.cancelTimerRetry = this.deps.clock.setTimer(
+      this.deps.clock.now() + AUTO_HAMMER_RETRY_MS,
+      () => {
+        this.cancelTimerRetry = undefined;
+        this.enqueue(() => this.onTimer()).catch(() => {
+          this.dirty = true;
+          this.retryTimer();
+        });
+      },
+    );
+  }
+
   /** Schedule the hammer `autoHammerDelayMs` after CLOSING began, if the config asks for it (R-RT-044). */
   private armAutoHammer(): void {
+    if (this.stopped) return;
     const delay = this.config?.autoHammerDelayMs;
     if (delay === undefined || this.closingAt === undefined) return;
     this.cancelHammer = this.deps.clock.setTimer(this.closingAt + delay, () => {
@@ -978,6 +1320,7 @@ export class Room {
   }
 
   private retryAutoHammer(): void {
+    if (this.stopped) return;
     this.cancelHammer?.();
     this.cancelHammer = this.deps.clock.setTimer(
       this.deps.clock.now() + AUTO_HAMMER_RETRY_MS,
@@ -993,6 +1336,7 @@ export class Room {
     try {
       await this.ensureClean();
     } catch {
+      this.retryTimer();
       return;
     }
     const engine = this.requireEngine();
@@ -1019,6 +1363,7 @@ export class Room {
       await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
     } catch {
       await this.recover().catch(() => undefined);
+      this.retryTimer();
       return;
     }
     this.seq = seq;
@@ -1039,6 +1384,7 @@ export class Room {
   }
 
   private async ensureClean(): Promise<void> {
+    if (this.stopped) throw new GavelError('host_fenced');
     if (!this.dirty) return;
     const fresh = new Room(this.auctionId, this.deps);
     try {
@@ -1110,6 +1456,7 @@ export class Room {
           source: event.audit.source,
           ...(event.audit.transcript !== undefined ? { transcript: event.audit.transcript } : {}),
           ...(event.audit.confidence !== undefined ? { confidence: event.audit.confidence } : {}),
+          ...(event.audit.confirmed === true ? { confirmed: true } : {}),
         });
         this.remember(event);
         break;

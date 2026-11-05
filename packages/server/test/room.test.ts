@@ -326,6 +326,23 @@ describe('idempotency, failures and restart (T-RT-025, T-RT-026, R-RT-059)', () 
     expect(await t.store.lastSeq(t.auctionId)).toBe(seqBefore);
   });
 
+  it('ignores a repeat registration with a higher ceiling and keeps the first hold (D-0023)', async () => {
+    const t = await setup();
+    const seqBefore = await t.store.lastSeq(t.auctionId);
+    await t.room.registerBidder({
+      bidderId: t.b1,
+      name: 'Ada',
+      ceiling: 90000 as Cents,
+      holdRef: 'h1-raised',
+    });
+    expect(await t.store.lastSeq(t.auctionId)).toBe(seqBefore);
+    expect(t.room.holdRefs.get(t.b1)).toBe('h1');
+    const c1 = await t.connect('bidder', t.b1);
+    // The first ceiling (50000) still limits the bidder.
+    await t.room.submitBid(c1.conn, t.bid(60000));
+    expect(c1.transport.messages('bid_accepted')).toHaveLength(0);
+  });
+
   it('survives a failed append: store_unavailable, no state change, next bid works', async () => {
     const flaky = new FlakyStore();
     const t = await setup({ store: flaky });
@@ -611,5 +628,88 @@ describe('room close, roster hold state, duplicate mid, repeat registration', ()
     const conn: Connection = { ...c1.conn, transport: again };
     await reloaded.submitBid(conn, t.bid(20000, mid));
     expect(again.messages('error')).toMatchObject([{ code: 'conflict' }]);
+  });
+});
+
+describe('registration announcement (R4-V09)', () => {
+  it('tells the bidder even when the ledger write after the log append fails', async () => {
+    const t = await setup();
+    let down = true;
+    const loaded = await Room.load(t.auctionId, {
+      ...t.deps,
+      durable: async () => {
+        if (down) throw new Error('ledger down');
+      },
+    });
+    const id = t.ids.mint<'BidderId'>();
+    const transport = new MemoryTransport();
+    await loaded.attach({
+      id: t.ids.mint<'ConnId'>() as ConnId,
+      role: 'bidder',
+      sub: id,
+      transport,
+      bidderId: id,
+    });
+    const reg = { bidderId: id, name: 'Cy', ceiling: 30000 as Cents, holdRef: 'h3' };
+    await expect(loaded.registerBidder(reg)).rejects.toThrow('ledger down');
+    expect(transport.messages('registered')).toHaveLength(1);
+
+    down = false;
+    await loaded.registerBidder(reg);
+    expect(transport.messages('registered')).toHaveLength(1);
+  });
+});
+
+class DownStore extends MemoryStore {
+  down = false;
+  override async appendEvents(
+    auctionId: AuctionId,
+    expectedSeq: number,
+    events: RoomEvent[],
+  ): Promise<void> {
+    if (this.down) throw new Error('store down');
+    return super.appendEvents(auctionId, expectedSeq, events);
+  }
+  override async readEvents(
+    auctionId: AuctionId,
+    fromSeq: number,
+    limit: number,
+  ): Promise<RoomEvent[]> {
+    if (this.down) throw new Error('store down');
+    return super.readEvents(auctionId, fromSeq, limit);
+  }
+}
+
+describe('red-team round 4 (RT-01)', () => {
+  it('ends the lot after the store comes back, with no command in between (R4-V05)', async () => {
+    const store = new DownStore();
+    const t = await setup({ store });
+    const c1 = await t.connect('bidder', t.b1);
+    const c2 = await t.connect('bidder', t.b2);
+    await t.room.submitBid(c1.conn, t.bid(10000));
+
+    // A failed append whose rebuild also fails leaves the room dirty.
+    store.down = true;
+    await t.room.submitBid(c2.conn, t.bid(10500));
+    t.clock.set(config.endTs);
+    await t.connect('screen');
+    store.down = false;
+    t.clock.set(config.endTs + 2_000);
+    await t.connect('screen');
+
+    const types = (await store.readEvents(t.auctionId, 1, 1000)).map((e) => e.type);
+    expect(types).toContain('state_changed');
+  });
+
+  it('refuses commands and arms nothing once the host is fenced (R4-V02)', async () => {
+    const t = await setup();
+    const c1 = await t.connect('bidder', t.b1);
+    t.room.stop();
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    expect(c1.transport.messages('error')).toMatchObject([{ code: 'host_fenced' }]);
+    t.clock.set(config.endTs + 1);
+    await t.connect('screen');
+    const types = (await t.store.readEvents(t.auctionId, 1, 1000)).map((e) => e.type);
+    expect(types).not.toContain('state_changed');
   });
 });

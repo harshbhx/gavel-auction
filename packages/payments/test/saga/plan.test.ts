@@ -5,6 +5,7 @@ import { createSettlement, validatePlan } from '../../src/saga/create.js';
 import { planFromOutcome, planWithSkipped } from '../../src/saga/plan.js';
 import { MemoryJournalStore } from '../../src/stores/memory.js';
 import type { HoldRef } from '../../src/types.js';
+import { FRESH_HOLDS } from '../helpers/age.js';
 
 const hold = (id: string, ceilingCents = 20000): HoldRef => ({
   holdId: id,
@@ -73,7 +74,7 @@ describe('planFromOutcome', () => {
   it('creates a settlement from real engine output', async () => {
     const journals = new MemoryJournalStore();
     const plan = planFromOutcome(proxyPayload(), holds, 1000);
-    const { journal } = await createSettlement({ journals }, plan);
+    const { journal } = await createSettlement({ journals, ...FRESH_HOLDS }, plan);
     expect(journal.auctionId).toBe('lot1');
     expect(journal.plan.candidates[1]).toEqual({ bidderId: 'b2', priceCents: 5100 });
   });

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { InMemoryLedgerStore, evolveAll, type Ulid } from '@gavel/engine';
 import {
   HoldService,
+  PayPalError,
   MemoryHoldStore,
   MemoryKillStateStore,
   PersistentKillSwitch,
@@ -33,6 +34,7 @@ import {
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryTransport } from '../../src/room/memory-transport';
 import type { Connection, Room } from '../../src/room/room';
+import { voidSpareHolds } from '../../src/runtime/void-phase';
 import { MemoryStore } from '../../src/store/memory-store';
 import { FileLedgerStore } from '../../src/store/file-ledger-store';
 import { FileRoomStore } from '../../src/store/file-room-store';
@@ -107,7 +109,7 @@ async function makeRig(core: { autoReleaseRemainder?: boolean } = {}) {
     holds: new MemoryHoldStore(),
     webhookEvents: new MemoryWebhookEventStore(),
   };
-  const verifier = new WebhookVerifier({ auth, webhookId: DEFAULT_FAKE_WEBHOOK_ID });
+  const verifier = new WebhookVerifier({ auth, webhookId: DEFAULT_FAKE_WEBHOOK_ID, fake: true });
   const holdsApi = holdService(stores.holds);
   const killSwitch = new PersistentKillSwitch({
     store: new MemoryKillStateStore(),
@@ -125,7 +127,7 @@ async function makeRig(core: { autoReleaseRemainder?: boolean } = {}) {
       killSwitch,
       ...extra,
     });
-  return { paypal, clock, ids, stores, audits, holdsApi, killSwitch, service };
+  return { paypal, clock, ids, stores, audits, holdsApi, killSwitch, service, gateway };
 }
 
 type Rig = Awaited<ReturnType<typeof makeRig>>;
@@ -1287,7 +1289,11 @@ describe('auction service: leftover red-team round 3 (PAY-73)', () => {
 });
 
 describe('auction service: void phase of the payments package (PAYMENTS-R3-03)', () => {
-  it('sends a settlement with a void that never works to review instead of pending forever', async () => {
+  // R4-S01 (#1209): a void that fails with an unknown outcome (5xx, timeout) is retried free of the
+  // resume budget. The older R3-03 expectation (FAILED_NEEDS_REVIEW after maxVoidResumes) only holds
+  // for a definite refusal, which the fake PayPal cannot produce on a void; that case is covered in
+  // packages/payments/test/saga. So the service must keep VOIDING and recover once the outage ends.
+  it('keeps retrying voids through a long outage without using the resume budget', async () => {
     const rig = await makeRig();
     const service = rig.service({
       retryDelayMs: 3_600_000,
@@ -1295,9 +1301,8 @@ describe('auction service: void phase of the payments package (PAYMENTS-R3-03)',
       maxVoidResumes: 1,
       onError: () => undefined,
     });
-    // Only the losers' voids fail; the winner's capture and remainder go through.
     const run = await runToHammer(rig, service, (bidders) => {
-      for (const b of bidders.slice(1)) rig.paypal.core.inject('void', 'http_500', b.authId, 1000);
+      for (const b of bidders.slice(1)) rig.paypal.core.inject('void', 'http_500', b.authId, 7);
     });
     await service.idle();
     expect((await journalOf(rig, run.auctionId)).state).toBe('VOIDING');
@@ -1305,13 +1310,144 @@ describe('auction service: void phase of the payments package (PAYMENTS-R3-03)',
       await service.resume();
       await service.idle();
     }
-    expect((await journalOf(rig, run.auctionId)).state).toBe('FAILED_NEEDS_REVIEW');
-    // The winner was charged once, and the room hears that the result is under review.
+    const mid = await journalOf(rig, run.auctionId);
+    expect(mid.state).not.toBe('FAILED_NEEDS_REVIEW');
+    expect(mid.resumes).toBe(0);
+    for (let i = 0; i < 6 && (await journalOf(rig, run.auctionId)).state !== 'SETTLED'; i++) {
+      await service.resume();
+      await service.idle();
+    }
+    expect((await journalOf(rig, run.auctionId)).state).toBe('SETTLED');
     expect(rig.paypal.core.getAuthorization(run.a.authId).captures).toHaveLength(1);
-    const last = (await events(rig, run.auctionId))
-      .filter((e) => e.type === 'settlement_update')
-      .at(-1);
-    expect(last).toMatchObject({ auctionState: 'FAILED_NEEDS_REVIEW' });
     await service.close();
+  });
+});
+
+describe('auction service: red-team round 4 (RT-01)', () => {
+  it('keeps a bidder whose registered hold is good when a spare hold is voided (R4-V01)', async () => {
+    const rig = await makeRig();
+    const service = rig.service();
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    // A second hold approved later and never registered, stored under Ada's id.
+    const extra = await rig.holdsApi.createHoldOrder({
+      auctionId,
+      bidderId: rig.ids.mint<'BidderId'>(),
+      ceilingCents: 30000,
+      presetsCents: config.ceilingPresets,
+    });
+    rig.paypal.core.approveOrder(extra.orderId);
+    await rig.holdsApi.completeApproval({ holdId: extra.holdId, orderId: extra.orderId });
+    const made = await rig.stores.holds.get(extra.holdId);
+    if (made === null) throw new Error('no spare hold');
+    await rig.stores.holds.put({ ...made, bidderId: a.id, createdAtMs: made.createdAtMs + 1 });
+    await room.submitBid(a.conn, bid(rig, 10000));
+
+    rig.paypal.core.void(made.authId ?? '');
+    await deliverVoids(rig, service, 0);
+
+    expect(room.activeEngine?.view()).toMatchObject({ leader: a.id, price: 10000 });
+    expect((await events(rig, auctionId)).map((e) => e.type)).not.toContain('ceiling_revoked');
+    expect(await ledgerTypes(rig, auctionId)).not.toContain('CEILING_REVOKED');
+    await service.close();
+  });
+
+  it('stops serving a room that another host won (R4-V02)', async () => {
+    const rig = await makeRig();
+    const hostA = rig.service({ resumeIntervalMs: 0 });
+    const hostB = rig.service({ resumeIntervalMs: 0, onError: () => undefined });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const roomA = await hostA.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, hostA, roomA, auctionId, 'Ada', 50000);
+    const roomB = await hostB.room(auctionId);
+    const viewer = await connect(rig, roomB, 'bidder', a.id);
+    // Host A moves the log on; host B is behind and loses its next append.
+    await roomA.submitBid(a.conn, bid(rig, 10000));
+    await roomB.submitBid(viewer.conn, bid(rig, 10500));
+
+    await vi.waitFor(() => expect(roomB.isStopped).toBe(true));
+    await expect(hostB.room(auctionId)).rejects.toMatchObject({ code: 'host_fenced' });
+    await hostB.resume();
+    expect(roomA.isStopped).toBe(false);
+    await hostA.close();
+    await hostB.close();
+  });
+
+  it('does not repeat the bridge and reconcile for a finished settlement (R4-V04)', async () => {
+    const rig = await makeRig();
+    const reports: ReconcileReport[] = [];
+    const service = rig.service({ resumeIntervalMs: 0, onReconcile: (r) => void reports.push(r) });
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    const before = reports.length;
+    expect(before).toBeGreaterThan(0);
+
+    await service.resume();
+    await service.idle();
+    await service.resume();
+    await service.idle();
+    expect(reports).toHaveLength(before);
+    await service.close();
+  });
+
+  it('voids live holds without a journal (R4-V03)', async () => {
+    const rig = await makeRig();
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const created = await rig.holdsApi.createHoldOrder({
+      auctionId,
+      bidderId: rig.ids.mint<'BidderId'>(),
+      ceilingCents: 30000,
+      presetsCents: config.ceilingPresets,
+    });
+    rig.paypal.core.approveOrder(created.orderId);
+    await rig.holdsApi.completeApproval({ holdId: created.holdId, orderId: created.orderId });
+    const hold = await rig.stores.holds.get(created.holdId);
+    expect(hold?.status).toBe('HELD');
+
+    const open = await voidSpareHolds(
+      { gateway: rig.gateway, holds: rig.stores.holds },
+      { auctionId },
+      new Set<string>(),
+    );
+
+    expect(open).toBe(0);
+    expect((await rig.stores.holds.get(created.holdId))?.status).toBe('VOIDED');
+    expect(rig.paypal.core.getAuthorization(hold?.authId ?? '').status).toBe('VOIDED');
+  });
+
+  it('keeps a hold open when a 404 void is not backed by the authorization read (R5-S02)', async () => {
+    const rig = await makeRig();
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const created = await rig.holdsApi.createHoldOrder({
+      auctionId,
+      bidderId: rig.ids.mint<'BidderId'>(),
+      ceilingCents: 30000,
+      presetsCents: config.ceilingPresets,
+    });
+    rig.paypal.core.approveOrder(created.orderId);
+    await rig.holdsApi.completeApproval({ holdId: created.holdId, orderId: created.orderId });
+    const refusing = {
+      voidAuthorization: async (): Promise<never> => {
+        throw new PayPalError({
+          kind: 'not_found',
+          status: 404,
+          name: 'not_found',
+          message: 'not found',
+          outcome: 'definite',
+        });
+      },
+      getHoldTruth: (h: { holdId: string; authId: string }) => rig.gateway.getHoldTruth(h),
+    } as unknown as typeof rig.gateway;
+
+    const open = await voidSpareHolds(
+      { gateway: refusing, holds: rig.stores.holds },
+      { auctionId },
+      new Set<string>(),
+    );
+
+    expect(open).toBe(1);
+    expect((await rig.stores.holds.get(created.holdId))?.status).toBe('HELD');
   });
 });

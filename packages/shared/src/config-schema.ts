@@ -14,7 +14,9 @@ const epochMs = z
 
 const durationMs = z.number().int().nonnegative();
 
-export const AUCTION_MODES = ['english'] as const;
+export const HOLD_SCOPES = ['event', 'lot'] as const;
+
+export const AUCTION_MODES = ['english', 'proxy', 'second_price'] as const;
 
 /** Boundary limits (R-RT-012). */
 export const MIN_RESERVE_CENTS = 100;
@@ -22,6 +24,7 @@ export const MIN_INCREMENT_CENTS = 1;
 export const MAX_SOFT_CLOSE_EXTENSION_MS = 600_000;
 export const MAX_EXTENSIONS_LIMIT = 50;
 export const MAX_CEILING_PRESETS = 8;
+export const MAX_INCREMENT_TIERS = 16;
 
 /** Per-auction settings shared by server and web. */
 export const AuctionConfigSchema = z
@@ -37,9 +40,40 @@ export const AuctionConfigSchema = z
     ceilingPresets: z.array(cents).min(1).max(MAX_CEILING_PRESETS),
     confirmConfidenceThreshold: z.number().min(0).max(1),
     autoHammerDelayMs: durationMs.optional(),
+    /** Whether one hold covers the whole event or a single lot; the engine default is event. */
+    holdScope: z.enum(HOLD_SCOPES).optional(),
+    /** Tiered increments; when set it replaces the flat minIncrement above the first tier. */
+    incrementLadder: z
+      .array(z.object({ fromCents: cents, incrementCents: cents }).strict())
+      .min(1)
+      .max(MAX_INCREMENT_TIERS)
+      .optional(),
   })
   .strict()
   .superRefine((cfg, ctx) => {
+    const ladder = cfg.incrementLadder ?? [];
+    for (let i = 0; i < ladder.length; i++) {
+      const tier = ladder[i];
+      const prev = i > 0 ? ladder[i - 1] : undefined;
+      if (tier === undefined) continue;
+      if (
+        (i === 0 && tier.fromCents !== 0) ||
+        (prev !== undefined && tier.fromCents <= prev.fromCents)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['incrementLadder', i, 'fromCents'],
+          message: 'incrementLadder must start at 0 and strictly ascend',
+        });
+      }
+      if (tier.incrementCents < MIN_INCREMENT_CENTS) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['incrementLadder', i, 'incrementCents'],
+          message: 'incrementCents must be positive',
+        });
+      }
+    }
     const presets = cfg.ceilingPresets;
     for (let i = 0; i < presets.length; i++) {
       const p = presets[i] ?? 0;

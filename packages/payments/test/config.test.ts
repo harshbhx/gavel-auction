@@ -11,7 +11,7 @@ const base = {
 describe('config', () => {
   it('applies defaults', () => {
     const c = loadConfig(base);
-    expect(c.maxCeilingCents).toBe(25000);
+    expect(c.maxCeilingCents).toBe(100000);
     expect(c.holdMaxAgeMs).toBe(7200000);
     expect(c.baseUrl).toBe('https://api-m.sandbox.paypal.com');
     expect(c.fake).toBe(false);
@@ -33,6 +33,15 @@ describe('config', () => {
     expect(loadConfig({ ...rest, GAVEL_PAYMENTS_FAKE: '1' }).fake).toBe(true);
   });
 
+  it('requires PAYPAL_WEBHOOK_ID outside fake mode', () => {
+    const rest: Record<string, string | undefined> = { ...base };
+    delete rest.PAYPAL_WEBHOOK_ID;
+    expect(() => loadConfig(rest)).toThrow(/PAYPAL_WEBHOOK_ID is required/);
+    expect(() => loadConfig({ ...rest, PAYPAL_WEBHOOK_ID: '' })).toThrow(PaymentsConfigError);
+    expect(loadConfig({ ...rest, GAVEL_PAYMENTS_FAKE: '1' }).webhookId).toBe('');
+    expect(loadConfig(rest, { requireWebhookId: false }).webhookId).toBe('');
+  });
+
   it('requires PAYPAL_ENV=sandbox', () => {
     expect(() => loadConfig({ ...base, PAYPAL_ENV: 'live' })).toThrow(/sandbox/);
   });
@@ -41,5 +50,10 @@ describe('config', () => {
     const dump = JSON.stringify(redactedConfig(loadConfig(base)));
     for (const s of ['cid-123', 'sec-456', 'wh-789']) expect(dump).not.toContain(s);
     expect(dump).toContain('[REDACTED]');
+  });
+
+  it('takes fake mode from the argument before the environment variable', () => {
+    expect(loadConfig({ ...base, GAVEL_PAYMENTS_FAKE: '1' }, { fake: false }).fake).toBe(false);
+    expect(loadConfig({ PAYPAL_ENV: 'sandbox' }, { fake: true }).fake).toBe(true);
   });
 });

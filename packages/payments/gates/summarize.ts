@@ -42,6 +42,7 @@ export function formatEntry(e: GateEntry): string {
     '| id | expected | actual | verdict |',
     '|----|----------|--------|---------|',
     ...e.rows.map((r) => `| ${r.id} | ${r.expected} | ${r.actual} | ${r.verdict} |`),
+    `Status: ${e.decision === 'FAIL' ? 'FAIL' : 'PASS'}`,
     `Evidence: ${e.evidencePath} (sha256 ${e.evidenceSha256})`,
     `Decision: ${e.decision}`,
     `Fallback adopted: ${e.fallback === '' ? 'none' : e.fallback}`,
