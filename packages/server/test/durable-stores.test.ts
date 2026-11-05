@@ -223,6 +223,7 @@ describe('FileRoomStore crash and resume (R-RT-093)', () => {
     first.io.write = write;
     await expect(first.appendEvents(AID, 1, [ev(2)])).rejects.toThrow('broken');
     expect(await first.lastSeq(AID)).toBe(1);
+    await expect(first.ping()).rejects.toThrow('broken');
     first.close();
 
     const second = await FileRoomStore.open(file);

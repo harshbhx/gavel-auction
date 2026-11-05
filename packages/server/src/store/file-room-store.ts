@@ -91,6 +91,17 @@ export class FileRoomStore extends MemoryStore {
     return store;
   }
 
+  /** Fails once a write could not be rolled back or the file is closed, so readiness reflects it. */
+  override async ping(): Promise<void> {
+    if (this.broken !== undefined) {
+      throw new Error('room store file is broken after a failed rollback; restart the host', {
+        cause: this.broken,
+      });
+    }
+    if (this.fd < 0) throw new Error('room store file is closed');
+    fstatSync(this.fd);
+  }
+
   /** Closes the file; the store must not be used afterwards. */
   close(): void {
     if (this.fd >= 0) closeSync(this.fd);
