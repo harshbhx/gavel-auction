@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { amount, errorName, field, str } from '../../payments/gates/gateUtil.js';
-import { diffLedger, type LedgerRow } from '../src/sandbox/harness.js';
-import { anyTransient, availability, begin, centsOf, finish } from '../src/sandbox/kit.js';
+import { diffLedger } from '../src/sandbox/harness.js';
+import { anyTransient, availability, begin, centsOf, env, finish } from '../src/sandbox/kit.js';
+import { ledgerFromJournal, ledgerFromTruth, settleLot, type LotHold } from '../src/sandbox/lot.js';
 import type { SandboxSession } from '../src/sandbox/session.js';
 
 // Real PayPal sandbox, specs R5 to R8 (R-QA-029, T-QA-054 to T-QA-057). Skipped without the
-// sandbox secrets. R7 and R8 run the lot at the payments layer: three holds, one winner captured
-// for the hammer price, the others voided, then our ledger is compared with what PayPal reports.
-// The drive through the deployed staging stack is not part of these specs yet.
+// sandbox secrets. R7 and R8 run the real settlement saga and PayPalGateway of @gavel/payments:
+// three holds, one winner captured for the hammer price, the others voided, then the journal is
+// compared with the amounts PayPal reports. The drive through the deployed staging stack is not
+// part of these specs yet.
 // Run: npm run test:sandbox -w @gavel/e2e
 
 const TIMEOUT = 600_000;
@@ -88,60 +90,40 @@ describe.skipIf(!availability.ok)('sandbox R5 to R8', () => {
     'R7 full lot and R8 reconciliation @gate:G1',
     async () => {
       const s = await begin('R7');
-      const holds = [
-        await s.authorize('r7a', HOLD_CENTS),
-        await s.authorize('r7b', HOLD_CENTS),
-        await s.authorize('r7c', HOLD_CENTS),
-      ];
-      const ledger: LedgerRow[] = [];
-      const winner = holds[0];
-      if (winner === undefined) throw new Error('no hold');
-      const cap = await s.call('R7 capture the winner at the hammer price', {
-        method: 'POST',
-        path: `/v2/payments/authorizations/${winner.authId}/capture`,
-        requestId: `r7-cap-${winner.authId}`,
-        body: {
-          amount: amount(HAMMER_CENTS),
-          final_capture: true,
-          invoice_id: `r7-${winner.orderId}`,
-        },
-      });
-      ledger.push({ id: 'hold-1', status: 'CAPTURED', capturedCents: HAMMER_CENTS });
-      const voids: number[] = [];
-      for (const [i, h] of holds.slice(1).entries()) {
-        const v = await s.call(`R7 void non-winner ${i + 1}`, {
-          method: 'POST',
-          path: `/v2/payments/authorizations/${h.authId}/void`,
-          requestId: `r7-void-${h.authId}`,
-        });
-        voids.push(v.status);
-        ledger.push({ id: `hold-${i + 2}`, status: 'VOIDED', capturedCents: 0 });
+      const bidders = ['r7a', 'r7b', 'r7c'];
+      const prices = [HAMMER_CENTS, 11000, 10000];
+      const holds: LotHold[] = [];
+      for (const bidderId of bidders) {
+        const h = await s.authorize(bidderId, HOLD_CENTS);
+        holds.push({ bidderId, authId: h.authId, orderId: h.orderId, ceilingCents: HOLD_CENTS });
       }
-      // R8: read every authorization back and compare with the ledger.
-      const observed: LedgerRow[] = [];
-      for (const [i, h] of holds.entries()) {
-        const r = await readAuth(s, `R8 read hold ${i + 1}`, h.authId);
-        observed.push({
-          id: `hold-${i + 1}`,
-          status: r.status,
-          capturedCents: i === 0 && r.status === 'CAPTURED' ? HAMMER_CENTS : 0,
-        });
-      }
-      const diffs = diffLedger(ledger, observed);
+      // The real saga and PayPalGateway settle the lot: capture the winner, void the others.
+      const lot = await settleLot(
+        env,
+        `qa-r7-${Date.now()}`,
+        holds,
+        bidders.map((bidderId, i) => ({ bidderId, priceCents: prices[i] ?? 0 })),
+      );
+      // R8: our ledger comes from the settlement journal, PayPal's side from the amounts PayPal
+      // returned, and the winner's amount is also pinned to the hammer price.
+      const ours = ledgerFromJournal(lot.journal);
+      const theirs = ledgerFromTruth(lot.truth);
+      const diffs = diffLedger(ours, theirs);
+      const winnerPaid = lot.truth['r7a']?.capturedCents ?? -1;
+      const exact = winnerPaid === HAMMER_CENTS;
+      const settled = lot.journal.state === 'SETTLED';
       const result = finish('R7', s, {
         gate: 'G1',
-        met: cap.status < 300 && voids.every((x) => x < 300) && diffs.length === 0,
-        transient: anyTransient(cap.status, ...voids),
-        observed: `ledger against PayPal: ${diffs.length} differences`,
-        facts: { differences: diffs.length, captureHttp: cap.status },
+        met: settled && diffs.length === 0 && exact,
+        observed: `saga ${lot.journal.state}, ledger against PayPal: ${diffs.length} differences`,
+        facts: { differences: diffs.length, winnerCapturedCents: winnerPaid, settled },
       });
       // R8 shares the run: it records the reconciliation on its own.
       finish('R8', s, {
         gate: 'G1',
-        met: diffs.length === 0,
-        transient: anyTransient(cap.status, ...voids),
-        observed: `reconciliation found ${diffs.length} differences`,
-        facts: { differences: diffs.length },
+        met: diffs.length === 0 && exact,
+        observed: `reconciliation found ${diffs.length} differences, winner captured ${winnerPaid}`,
+        facts: { differences: diffs.length, winnerCapturedCents: winnerPaid },
       });
       expect(result).not.toBe('fail');
     },
