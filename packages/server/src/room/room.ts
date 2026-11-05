@@ -566,8 +566,8 @@ export class Room {
     if (reply && durable) this.send(conn, reply);
     else if (reply) this.sendError(conn, this.storeCode());
     if (event.type === 'bid_accepted') {
-      this.broadcastPrice(seq, ts);
       this.armTimer();
+      this.broadcastPrice(seq, ts);
     }
     this.broadcastAudit(audit, seq, ts);
   }
@@ -910,8 +910,8 @@ export class Room {
       this.seq = seq;
       this.revoked.add(bidderId);
       // The leader may have changed; the price message carries the new seq, so no one sees a gap.
-      this.broadcastPrice(seq, ts);
       this.armTimer();
+      this.broadcastPrice(seq, ts);
       await this.makeDurable();
       return 'applied';
     });
@@ -1221,8 +1221,16 @@ export class Room {
     const out = redactForViewer(conn.role, conn.bidderId, msg);
     if (out === null) return;
     const enc = encodeMsg(out);
-    if (enc.ok) conn.transport.send(enc.value);
-    else this.encodeFailures += 1;
+    if (!enc.ok) {
+      this.encodeFailures += 1;
+      return;
+    }
+    try {
+      conn.transport.send(enc.value);
+    } catch {
+      // A dead socket must not stop the fan-out to the others: drop only this connection.
+      this.conns.delete(conn.id);
+    }
   }
 
   private sendError(conn: Connection, code: ErrorCode, retryAfterMs?: number): void {
