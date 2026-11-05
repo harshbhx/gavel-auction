@@ -34,6 +34,7 @@ import {
   CONFIRM_TTL_MS,
   ConfirmBook,
   confirmAudit,
+  isVoiceLike,
   needsConfirm,
   requestedEvent,
   type PendingConfirm,
@@ -89,7 +90,7 @@ function bidMeta(conn: Connection, msg: BidMsg, confirmed = false): BidMeta {
     return meta;
   }
   // A bidder frame may claim qr or voice only; manual is the auctioneer's entry (R-RT-039).
-  const meta: BidMeta = { source: msg.source === 'voice' ? 'voice' : 'qr' };
+  const meta: BidMeta = { source: isVoiceLike(msg) ? 'voice' : 'qr' };
   if (msg.transcript !== undefined) meta.transcript = msg.transcript;
   if (meta.source === 'voice' && msg.confidence !== undefined) meta.confidence = msg.confidence;
   if (confirmed && meta.source === 'voice') meta.confirmed = true;
@@ -1121,7 +1122,11 @@ export class Room {
 
   private broadcastPrice(seq: number, ts: ReturnType<Clock['now']>): void {
     const view = this.requireEngine().view();
-    if (view.price === null) return;
+    if (view.price === null) {
+      // No price frame can express "no bids" (R-RT-036): send a snapshot so seq stays gapless.
+      for (const conn of this.conns.values()) this.sendState(conn);
+      return;
+    }
     const leaderPaddle = view.leader ? (this.roster.get(view.leader)?.paddle ?? null) : null;
     for (const conn of this.conns.values()) {
       this.send(conn, {

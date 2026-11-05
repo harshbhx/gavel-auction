@@ -30,6 +30,30 @@ describe('T-VOX-022 provider selection matrix', () => {
     expect(noDeepgramBuild.name).toBe('groq');
   });
 
+  it('warns when a configured default cannot be built and the next provider is used', () => {
+    const warnings: Array<{ message: string; provider: string; usedInstead?: string }> = [];
+    const p = selectProvider(
+      { DEEPGRAM_API_KEY: 'k1', GROQ_API_KEY: 'k2' },
+      {
+        fetch: noFetch,
+        warn: (message, fields) => warnings.push({ message, ...fields }),
+      },
+    );
+    expect(p.name).toBe('groq');
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatchObject({ provider: 'deepgram', usedInstead: 'groq' });
+    expect(warnings[0]?.message).not.toContain('k1');
+  });
+
+  it('does not warn when the first provider is built', () => {
+    const warnings: string[] = [];
+    selectProvider(
+      { DEEPGRAM_API_KEY: 'k1', GROQ_API_KEY: 'k2' },
+      { factories: { deepgram: deepgramFactory }, fetch: noFetch, warn: (m) => warnings.push(m) },
+    );
+    expect(warnings).toEqual([]);
+  });
+
   it('nothing configured is a typed error', () => {
     expect(() => selectProvider({}, { fetch: noFetch })).toThrow(SttConfigError);
   });

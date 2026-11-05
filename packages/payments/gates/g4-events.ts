@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
@@ -41,6 +42,8 @@ const VOID_OK: readonly number[] = [200, 201, 204];
 export interface G4EventsDeps {
   currency?: string;
   approve: (info: { orderId: string; approveUrl: string; flow: G4Flow }) => Promise<void>;
+  /** Called with the ids a flow created, for G4 to match deliveries against (R6-E03). */
+  recordIds?: (info: { flow: G4Flow; orderId: string; authId: string }) => void;
 }
 
 function need(status: number, what: string, flow: G4Flow, ok: readonly number[] = OK): void {
@@ -137,6 +140,7 @@ async function runFlow(
     need(res.status, flow, flow, flow === 'void' ? VOID_OK : OK);
     return res.status;
   });
+  deps.recordIds?.({ flow, orderId, authId });
   ctx.log(`G4 events: ${flow} flow done`);
 }
 
@@ -183,8 +187,17 @@ export async function runG4Events(opts: RunG4EventsOptions): Promise<number> {
       const credentials = buyerCredentials(env, 'wallet');
       if (credentials === undefined) throw new Error('no wallet buyer credentials configured');
       const shotDir = join(dirname(ctx.evidencePath), 'screens');
+      const ids: Record<string, string[]> = {};
+      const runFile = env['G4_RUN_FILE'];
       await g4EventsGate(ctx, {
         currency: gateCurrency(env),
+        recordIds: ({ flow, orderId, authId }) => {
+          ids[flow === 'capture' ? 'PAYMENT.CAPTURE.COMPLETED' : 'PAYMENT.AUTHORIZATION.VOIDED'] = [
+            orderId,
+            authId,
+          ];
+          if (runFile) writeFileSync(runFile, JSON.stringify(ids), 'utf8');
+        },
         approve: async ({ approveUrl, flow }) => {
           if (!isSandboxApproveUrl(approveUrl, false)) {
             throw new Error('refusing to open an approval link outside the PayPal sandbox');
