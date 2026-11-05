@@ -106,7 +106,7 @@ async function wirePayments(
       stop: () => paypal.stop(),
     };
   }
-  const pay = loadPaymentsConfig({ ...env, PAYPAL_ENV: 'sandbox', GAVEL_PAYMENTS_FAKE: '0' });
+  const pay = loadPaymentsConfig({ ...env, PAYPAL_ENV: config.PAYPAL_ENV }, { fake: false });
   assertSandboxConfig(pay);
   const auth = new TokenManager({
     transport: new Transport(),
