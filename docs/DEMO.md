@@ -82,7 +82,7 @@ Open `/r/<roomId>/audit` from the launcher (it needs the auctioneer or reviewer 
 - A WebSocket gateway mounted by the server entry point, so bidding works over a socket in the booted process.
 - A persistent store for a hosted deploy (the file stores need a persistent disk and a single instance).
 - An adapter from the voice package to the room.
-- Real sandbox runs of gates G2 to G5 (all NOT RUN in `docs/GATES.md`); G1 is PASS-WITH-FALLBACK (wallet only; guest/card G2 pending).
+- Real sandbox runs of gates G2, G3 and G5 (all NOT RUN in `docs/GATES.md`); G1 is PASS-WITH-FALLBACK (wallet only; guest/card G2 pending) and G4 is PASS.
 - Live voice with real speech providers.
 - Recorded demo auctions for replay.
 - Card and guest checkout (depends on G2).

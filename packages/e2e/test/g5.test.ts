@@ -205,7 +205,9 @@ describe('GATES.md block', () => {
 
   it('sets the G5 fields, adds the block and leaves other sections alone', () => {
     const out = applyG5ToGates(md, done, '2026-11-05');
-    expect(out).toContain('Status: RUN');
+    expect(out).not.toContain('Status: RUN');
+    expect(out).toContain('Status: FAIL');
+    expect(out).toMatch(/^Evidence: .+/m);
     expect(out).toContain('Verdict: FAIL');
     expect(out).toContain('### G5-live');
     expect(out).toContain('text stuff');

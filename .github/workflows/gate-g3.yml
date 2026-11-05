@@ -4,8 +4,8 @@ name: gate-g3
 # signs in as the sandbox buyer and approves four orders). The scheduled runs pick the probe up
 # again and do the checks at 3.5, 4 and 5 days; the last one appends the GATES.md entry.
 # Actions secrets needed: PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, SANDBOX_BUYER_EMAIL,
-# SANDBOX_BUYER_PASSWORD. Both triggers run only from main, so code on a pushed branch never
-# reads the secrets.
+# SANDBOX_BUYER_PASSWORD. Both triggers run only from main, but the secrets are repository-level, so a
+# workflow on a pushed branch can still read them. Keep only throwaway sandbox values in them.
 on:
   workflow_dispatch:
   schedule:
