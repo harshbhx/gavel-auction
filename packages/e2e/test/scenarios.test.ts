@@ -15,9 +15,9 @@ import {
 const DIR = join(fileURLToPath(new URL('.', import.meta.url)), '..', 'scenarios');
 
 /** Scenarios that have a file and are executed here (R-QA-026). Add an id once its file exists. */
-const IMPLEMENTED = ['S01', 'S06', 'S07', 'S08', 'S09', 'S10'];
+const IMPLEMENTED = ['S01', 'S06', 'S07', 'S08', 'S09', 'S10', 'S11', 'S12', 'S13', 'S14'];
 /** Still to be written; the job lists them so a green run is never read as full coverage. */
-const PENDING = ['S02', 'S03', 'S04', 'S05', 'S11', 'S12', 'S13', 'S14', 'S15', 'S16'];
+const PENDING = ['S02', 'S03', 'S04', 'S05', 'S15', 'S16'];
 
 const open: Array<{ stop(): Promise<void> }> = [];
 afterEach(async () => {
