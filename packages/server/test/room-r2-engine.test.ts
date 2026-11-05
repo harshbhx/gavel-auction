@@ -158,3 +158,25 @@ describe('nothing is derived from an engine ahead of the store (#957)', () => {
     expect(screen.transport.messages('state').length).toBeGreaterThan(before);
   });
 });
+
+describe('the close timer keeps retrying (#958)', () => {
+  it('retries when the engine has not moved yet', async () => {
+    let allow = false;
+    const t = await build(
+      () => ({ ok: true }),
+      (now, self) => {
+        if (allow && now >= config.endTs) self.state = 'CLOSING';
+      },
+    );
+    const screen = await t.connect('screen');
+    t.clock.set(config.endTs);
+    await t.connect('screen');
+    allow = true;
+    t.clock.set(config.endTs + 2_500);
+    await t.connect('screen');
+    const states = screen.transport.messages('state');
+    const last = states[states.length - 1] as { snapshot: { status: string } };
+    expect(last.snapshot.status).toBe('CLOSING');
+    expect((await t.events()).map((e) => e.type)).toContain('state_changed');
+  });
+});

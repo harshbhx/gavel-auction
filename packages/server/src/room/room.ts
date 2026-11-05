@@ -1379,7 +1379,11 @@ export class Room {
     }
     const from = this.lastState;
     const to = engine.tick(now);
-    if (to === from) return;
+    if (to === from) {
+      // Past endTs but the engine has not moved: try again soon rather than stay OPEN (R-RT-041).
+      this.retryTimer();
+      return;
+    }
     const seq = this.seq + 1;
     const event: RoomEvent = {
       type: 'state_changed',
