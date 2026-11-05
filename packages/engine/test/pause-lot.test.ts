@@ -109,7 +109,10 @@ describe('decide PauseLot, ResumeLot and ExtendLot', () => {
     expect(parseCommand(body).type).toBe('ExtendLot');
     expect(errCode(() => parseCommand({ ...body, extraMs: 0 }))).toBe('bad_command');
     expect(errCode(() => parseCommand({ ...body, extraMs: 600001 }))).toBe('bad_command');
-    expect(parseCommand({ ...body, type: 'PauseLot' }).type).toBe('PauseLot');
+    const plain = { ...body, extraMs: undefined, reason: undefined } as Record<string, unknown>;
+    for (const k of ['extraMs', 'reason']) delete plain[k];
+    expect(parseCommand({ ...plain, type: 'PauseLot' }).type).toBe('PauseLot');
+    expect(parseCommand({ ...plain, type: 'ResumeLot' }).type).toBe('ResumeLot');
   });
 
   it('T-ENG-039 R-RT-048 a duplicate pause is deduplicated', () => {
