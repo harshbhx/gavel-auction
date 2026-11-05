@@ -1,0 +1,10 @@
+{
+  "is_bid": false,
+  "paddle": null,
+  "amount_dollars": null,
+  "currency": null,
+  "alternatives": [],
+  "is_correction": false,
+  "negated": false,
+  "confidence": 0.97
+}

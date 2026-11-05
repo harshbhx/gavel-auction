@@ -13,6 +13,8 @@ export const TEST_IDS = {
   consoleColumns: 'console-columns',
   heldBlock: 'held-block',
   screenPrice: 'screen-price',
+  hammerStamp: 'hammer-stamp',
+  dialogOpen: 'dialog-open',
 } as const;
 
 export type TestIdKey = keyof typeof TEST_IDS;

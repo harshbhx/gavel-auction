@@ -8,6 +8,26 @@ A short path through the repository for judges. Everything is PayPal sandbox onl
 - The hosted demo is not published yet. `docs/DEMO.md` lists what is available and what is not.
 - Real versus recorded: the fake PayPal demo and the replay are recorded or simulated, not live PayPal. Only gates G1 and G4 have been observed against the real sandbox. Gates G3 and G5 have not been run yet; see `docs/GATES.md` for each gate and its result.
 
+## Five minute path
+
+A judge needs a browser and nothing else; no install, no account. The walkthrough is checked by `packages/e2e/specs/judge-walkthrough.spec.ts` on the fake stack, and every night against the hosted site by `.github/workflows/judge-smoke.yml`. Both must finish within 300 s.
+
+| Step | Persona    | What to do                                          | Expected outcome                                                                                         |
+| ---- | ---------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 1    | Judge      | Open the hosted web URL.                            | The landing page shows a heading and the "Start a demo auction" button.                                  |
+| 2    | Judge      | Press "Start a demo auction".                       | A demo auction opens with a link for each role: big screen, auctioneer console, bidders and audit trail. |
+| 3    | Auctioneer | Open the auctioneer console link.                   | The console shows the lot and its controls.                                                              |
+| 4    | Bidder     | Open a bidder link in a second tab and place a bid. | The bid shows on the big screen. A bid is a hold; nothing is charged.                                    |
+| 5    | Auditor    | Open the audit trail link.                          | The ledger entries show, chained by hash.                                                                |
+
+Where to look afterwards:
+
+- Quality report: `/quality` on the hosted site (built by `.github/workflows/report.yml`); it names the commit it was built from.
+- Version: `GET /version` on the API host returns the deployed commit; it should match the report.
+- Audit export: the audit trail link in step 5, and the verification steps below.
+
+Steps 3 and 4 depend on the web UI; the automated spec covers steps 1 and 2 today.
+
 ## Run the fake-PayPal demo
 
 1. Follow the "Run it" section of `README.md` (Node 22 and npm; `npm ci` first).

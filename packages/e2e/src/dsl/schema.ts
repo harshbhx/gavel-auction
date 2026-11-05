@@ -108,6 +108,7 @@ export const StepSchema = z.discriminatedUnion('do', [
   z.object({ t: ms, actor: name, do: z.enum(['disconnect', 'reconnect']) }).strict(),
   z.object({ t: ms, actor: name, do: z.literal('send_raw'), frame: z.string() }).strict(),
   z.object({ t: ms, do: z.literal('advance_clock'), ms }).strict(),
+  z.object({ t: ms, do: z.literal('restart') }).strict(),
   z.object({ t: ms, do: z.literal('fault'), fault: FaultSchema }).strict(),
 ]);
 
@@ -151,6 +152,48 @@ export const ExpectSchema = z.union([
           capture: z.number().int().nonnegative(),
           void: z.number().int().nonnegative(),
           reauthorize: z.number().int().nonnegative().optional(),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      bids: z
+        .object({
+          accepted: z.number().int().nonnegative(),
+          price: cents.optional(),
+          resynced: z.number().int().nonnegative().optional(),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({ webhooks: z.object({ duplicates: z.number().int().nonnegative() }).strict() })
+    .strict(),
+  z
+    .object({
+      voice: z
+        .object({
+          bids: z.array(cents),
+          confirms: z.number().int().nonnegative(),
+          candidates: z.number().int().nonnegative().optional(),
+          audit: z
+            .array(
+              z
+                .object({ transcript: z.string(), confidenceBps: z.number().int().nonnegative() })
+                .strict(),
+            )
+            .optional(),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      captures: z
+        .object({
+          committed: z.number().int().nonnegative(),
+          requestIds: z.number().int().nonnegative(),
         })
         .strict(),
     })

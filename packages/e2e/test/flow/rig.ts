@@ -102,7 +102,7 @@ export async function makeRig() {
       killSwitch,
       ...extra,
     });
-  return { paypal, clock, ids, stores, holdsApi, service };
+  return { paypal, clock, ids, stores, holdsApi, gateway, service };
 }
 
 export type Rig = Awaited<ReturnType<typeof makeRig>>;

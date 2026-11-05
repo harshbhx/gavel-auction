@@ -182,6 +182,15 @@ Not measured: audio, speech-to-text error, latency (text mode reports 0 ms), the
 modes (no recorded provider output is in the repo, no live run was done), and the AUTO and CONFIRM
 threshold calibration of issue 478. The G5 status above stays NOT RUN until the audio steps run.
 
+### G5 threshold calibration (issue 478)
+
+Decision: keep the defaults AUTO 0.85 and CONFIRM 0.50 (`defaultConfig`, R-VOX-063). Rationale: the
+text-level sweep above is flat from 0.70 to 0.95 (the parser emits only 0.50, 0.95 and 1.00), wrong
+accepts are 0.000 on the dev and held-out sets, and the confirm rate is 0.272. No audio sweep exists
+yet because no live provider run was done, so the audio set cannot move the thresholds either way.
+The held-out text set was not used. Revisit after the live run: if any wrong accept shows up on the
+audio set, raise AUTO to the lowest sweep value with zero wrong accepts.
+
 Live run (not in pull request CI): `npm run gate:g5 -w @gavel/e2e -- --write-gates` sends 20 noisy
 recorded bids (`G5_AUDIO_DIR/g5-01.wav` to `g5-20.wav`, supplied privately) to the live provider
 (`DEEPGRAM_API_KEY`) and then to the rule parser, and fills this section and a `G5-live` table. It

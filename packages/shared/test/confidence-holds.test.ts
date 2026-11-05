@@ -19,6 +19,14 @@ describe('toBps', () => {
     expect(toBps(2)).toBe(10000);
     expect(toBps(Number.NaN)).toBe(0);
   });
+  it('maps every hundredth of confidence to an integer without drift', () => {
+    // 0.07 * 10000 is 700.0000000000001 in floating point; the engine rejects non-integers.
+    for (let i = 0; i <= 100; i += 1) {
+      const bps = toBps(i / 100);
+      expect(Number.isInteger(bps)).toBe(true);
+      expect(bps).toBe(i * 100);
+    }
+  });
   it('always returns an integer', () => {
     expect(Number.isInteger(toBps(0.123456))).toBe(true);
   });

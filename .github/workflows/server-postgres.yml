@@ -1,0 +1,41 @@
+name: server-postgres
+on:
+  pull_request:
+    paths:
+      - 'packages/server/src/store/**'
+      - 'packages/server/migrations/**'
+      - 'packages/server/test/store-*.ts'
+      - '.github/workflows/server-postgres.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'packages/server/src/store/**'
+      - 'packages/server/migrations/**'
+
+permissions:
+  contents: read
+
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: gavel
+          POSTGRES_DB: gavel_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/setup
+      - name: Store contract and migrations against Postgres
+        env:
+          GAVEL_TEST_DATABASE_URL: postgres://postgres:gavel@localhost:5432/gavel_test
+        run: npm test -w @gavel/server -- test/store-postgres.test.ts

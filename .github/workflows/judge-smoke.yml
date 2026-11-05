@@ -1,0 +1,47 @@
+name: judge-smoke
+# Nightly judge walkthrough against the hosted site (R-QA-055, T-QA-049). Runs the
+# judge-walkthrough spec in Chromium with GAVEL_JUDGE_URL set to the production web URL; the
+# spec must finish within 300 s. Skipped (green, with a notice) when the variable is not set.
+on:
+  schedule:
+    - cron: '45 21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  judge:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GAVEL_JUDGE_URL: ${{ vars.JUDGE_URL }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check configuration
+        id: cfg
+        run: |
+          if [ -z "$GAVEL_JUDGE_URL" ]; then
+            echo "::notice title=Judge smoke skipped::Set the repository variable JUDGE_URL to the public web URL"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: ./.github/actions/setup
+        if: steps.cfg.outputs.ready == 'true'
+      - name: Install Chromium
+        if: steps.cfg.outputs.ready == 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Run the walkthrough
+        if: steps.cfg.outputs.ready == 'true'
+        working-directory: packages/e2e
+        run: npx playwright test specs/judge-walkthrough.spec.ts --project=chromium -g hosted
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ failure() }}
+        with:
+          name: judge-smoke-traces
+          path: packages/e2e/test-results
+          retention-days: 7

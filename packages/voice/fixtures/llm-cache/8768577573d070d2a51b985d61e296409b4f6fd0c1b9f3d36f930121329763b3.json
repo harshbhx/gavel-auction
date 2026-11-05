@@ -1,0 +1,10 @@
+{
+  "is_bid": true,
+  "paddle": "4",
+  "amount_dollars": 300,
+  "currency": "USD",
+  "alternatives": [],
+  "is_correction": false,
+  "negated": false,
+  "confidence": 0.95
+}
