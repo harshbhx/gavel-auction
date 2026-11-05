@@ -1,6 +1,7 @@
 import {
   AuctionConfigSchema,
   GavelError,
+  isErrorCode,
   type AuctionId,
   type BidderId,
   type ConnId,
@@ -57,9 +58,17 @@ export async function withConnection(
     role,
     sub,
     transport,
+    internal: true,
     ...(bidderId !== undefined ? { bidderId: bidderId as BidderId } : {}),
   };
   await room.attach(conn);
+  const refused = transport.messages().find((f) => f.t === 'error');
+  if (refused !== undefined) {
+    // The room turned the connection away: run nothing and report why.
+    room.detach(conn.id);
+    const code = refused.code;
+    throw new GavelError(isErrorCode(code) ? code : 'internal', 'room refused the connection');
+  }
   try {
     if (fn !== undefined) await fn(conn);
     return transport.messages();
