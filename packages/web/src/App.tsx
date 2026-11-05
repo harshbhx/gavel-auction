@@ -419,8 +419,10 @@ function Routed({
   const live =
     id === 'bid' || id === 'screen' || id === 'console' || id === 'receipt' || id === 'audit';
   const who = live && roomId !== undefined ? tokenFor(id, roomId) : null;
-  if (id === 'landing') return <LandingRoute api={api} />;
-  if (id === 'join' && roomId !== undefined) return <JoinRoute roomId={roomId} api={api} />;
+  if (id === 'landing' && api !== undefined) return <LandingRoute api={api} />;
+  if (id === 'join' && roomId !== undefined && api !== undefined) {
+    return <JoinRoute roomId={roomId} api={api} />;
+  }
   if (id === 'register' && roomId !== undefined && api !== undefined) {
     return <RegisterRoute roomId={roomId} api={api} />;
   }
