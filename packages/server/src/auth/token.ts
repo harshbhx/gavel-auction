@@ -50,6 +50,11 @@ export type VerifyResult =
 export interface JtiStore {
   /** True when the jti is on the denylist. */
   isRevoked(jti: string): Promise<boolean>;
+  /**
+   * True when an invite jti is already used, without using it. Optional: when absent,
+   * verification cannot reject a used invite and only `consumeInvite` does.
+   */
+  isUsed?(jti: string): Promise<boolean>;
   /** Mark an invite jti as used. Resolves false when it was already used. */
   consume(jti: string, expSec: number): Promise<boolean>;
 }
@@ -121,7 +126,10 @@ const deny = (
   reason,
 });
 
-/** Verify signature, shape, audience, lifetime, kind, identity binding, revocation and replay. Never throws. */
+/**
+ * Verify signature, shape, audience, lifetime, kind, identity binding, revocation and, when the
+ * store can tell, an already used invite. Has no side effects. Never throws.
+ */
 export async function verifyToken(
   token: string,
   secrets: string | readonly string[],
@@ -180,7 +188,9 @@ export async function verifyToken(
 
   try {
     if (await opts.jtis.isRevoked(payload.jti)) return deny('unauthorized', 'revoked');
-    if (payload.kind === 'invite' && !(await opts.jtis.consume(payload.jti, payload.exp))) {
+    // Verifying never consumes: the caller burns the invite with `consumeInvite` once it has
+    // created the session, so a later failure or a copied link cannot lock the bidder out.
+    if (payload.kind === 'invite' && (await opts.jtis.isUsed?.(payload.jti)) === true) {
       return deny('invite_used', 'invite already used');
     }
   } catch {
@@ -189,4 +199,23 @@ export async function verifyToken(
   return current || list.length < 2
     ? { ok: true, payload }
     : { ok: true, payload, viaPrevious: true };
+}
+
+/**
+ * Burn a verified invite. Call it in the same step that creates the session, after every other
+ * check has passed, and only for the first use: a second call reports `invite_used`.
+ */
+export async function consumeInvite(
+  payload: TokenPayload,
+  jtis: Pick<JtiStore, 'consume'>,
+): Promise<{ ok: true } | { ok: false; code: 'unauthorized' | 'invite_used'; reason: string }> {
+  if (payload.kind !== 'invite') return { ok: true };
+  try {
+    if (!(await jtis.consume(payload.jti, payload.exp))) {
+      return { ok: false, code: 'invite_used', reason: 'invite already used' };
+    }
+  } catch {
+    return { ok: false, code: 'unauthorized', reason: 'revocation check failed' };
+  }
+  return { ok: true };
 }

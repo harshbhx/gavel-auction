@@ -5,6 +5,7 @@ import {
   TOKEN_TTL_S,
   signToken,
   verifyToken,
+  consumeInvite,
   type JtiStore,
   type TokenPayload,
 } from '@gavel/server/src/auth/token';
@@ -33,6 +34,9 @@ class MemoryJtis implements JtiStore {
   private readonly used = new Set<string>();
   isRevoked(jti: string): Promise<boolean> {
     return Promise.resolve(this.revoked.has(jti));
+  }
+  isUsed(jti: string): Promise<boolean> {
+    return Promise.resolve(this.used.has(jti));
   }
   consume(jti: string): Promise<boolean> {
     if (this.used.has(jti)) return Promise.resolve(false);
@@ -263,7 +267,11 @@ describe('token binding (T-QA-071)', () => {
       SECRET,
     );
     const inviteOpts = { aud, kinds: ['invite'] as const, nowMs: NOW, jtis };
+    const first = await verifyToken(invite, SECRET, inviteOpts);
+    expect(first).toMatchObject({ ok: true });
+    if (!first.ok) return;
     expect(await verifyToken(invite, SECRET, inviteOpts)).toMatchObject({ ok: true });
+    expect(await consumeInvite(first.payload, jtis)).toEqual({ ok: true });
     expect(await verifyToken(invite, SECRET, inviteOpts)).toMatchObject({
       ok: false,
       code: 'invite_used',
