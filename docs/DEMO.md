@@ -3,7 +3,7 @@
 How to run the hosted GAVEL demo and check that it does what it claims. Everything runs in the PayPal sandbox only. No real money moves and no real card or PayPal account is needed.
 
 Status labels used below: "available" means the code is on main today. "not available yet" means the part is specified (see `docs/specs`) but not built or not deployed, so the step cannot be followed end to end yet.
-`packages/server` has no entry point or HTTP routes yet, so the steps in sections 2, 3, 5 and 7 describe the intended flow and cannot be followed end to end today. What runs today is the engine, the settlement code against the fake PayPal, and the web components, each in its own tests.
+`packages/server` has an entry point (`npm start -w @gavel/server`, `src/main.ts`) and HTTP routes under `src/http`, but no WebSocket gateway is mounted, so bidding over a socket is not possible in the booted process. The steps in sections 2, 3, 5 and 7 that need a live socket room describe the intended flow and cannot be followed end to end today. What runs today is the engine, the settlement code against the fake PayPal, and the web components, each in its own tests.
 
 This guide is updated as those parts land.
 
@@ -79,7 +79,7 @@ Open `/r/<roomId>/audit` from the launcher (it needs the auctioneer or reviewer 
 
 - Hosted deployment and the public demo URL (QA-59 to QA-61).
 - The full web screens: the app shell is a placeholder on main today, so the console, bid screen, big screen and audit view exist as specs and tested components only.
-- A server entry point with HTTP and WebSocket routes, including the hold routes the web app calls.
+- A WebSocket gateway mounted by the server entry point, so bidding works over a socket in the booted process.
 - A persistent store for a hosted deploy (the file stores need a persistent disk and a single instance).
 - An adapter from the voice package to the room.
 - Real sandbox runs of gates G2 to G5 (all NOT RUN in `docs/GATES.md`); G1 passed for wallet buyers only.
