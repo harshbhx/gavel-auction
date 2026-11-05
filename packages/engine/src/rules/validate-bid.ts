@@ -67,6 +67,8 @@ export function validateBid(state: AuctionState, lot: LotState, cmd: BidInput): 
   if (cfg === null || lot.status !== 'OPEN' || lot.endsAt === null || cmd.at >= lot.endsAt) {
     return fail('lot_not_open', { status: lot.status });
   }
+  if (lot.pausedRemainingMs !== undefined)
+    return fail('lot_not_open', { status: lot.status, paused: true });
   const bidder = bidderFor(state, cmd.bidderId, cmd.lotId);
   if (bidder === undefined) return fail('unregistered');
   if (bidder.revoked) return fail('ceiling_revoked');
@@ -107,5 +109,18 @@ export function validateBid(state: AuctionState, lot: LotState, cmd: BidInput): 
   if (reason !== null) return fail(reason);
   if (lot.bids.length >= LIMITS.bidsPerLot)
     return fail('limit_exceeded', { max: LIMITS.bidsPerLot });
+  // One account cannot fill the lot, and the last slots stay open for a bid that takes
+  // the lead, so a rival can always answer (R8-E05).
+  let own = 0;
+  for (const b of lot.bids) if (b.bidderId === cmd.bidderId) own += 1;
+  if (own >= LIMITS.bidsPerBidderPerLot) {
+    return fail('limit_exceeded', { max: LIMITS.bidsPerBidderPerLot, scope: 'bidder' });
+  }
+  if (lot.bids.length >= LIMITS.bidsPerLot - LIMITS.bidsReservedForLead) {
+    const top = ranked[0];
+    const takesLead =
+      top === undefined || (top.bidderId !== cmd.bidderId && amount > top.amountCents);
+    if (!takesLead) return fail('limit_exceeded', { max: LIMITS.bidsPerLot, reserved: true });
+  }
   return { ok: true };
 }

@@ -52,7 +52,7 @@ import type { HammerResult, SettlePort, SettlementReport } from '../room/settle-
 import { dispatchAtHead } from './engine-dispatch';
 import { LedgerEngine, commandIdFor, lotIdOf } from './ledger-engine';
 import { reviewCodeOf } from './review-code';
-import { isReleased, voidSpareHolds } from './void-phase';
+import { isDefiniteRefusal, isReleased, voidOrphanHold, voidSpareHolds } from './void-phase';
 import { WebhookIntake } from './webhook-intake';
 
 /** Everything the service needs from the outside, as ports. */
@@ -62,6 +62,8 @@ export interface AuctionServiceDeps {
   clock: Clock;
   ids: Ids;
   limiter?: RateLimiter;
+  /** Counters fed from the room bid path (R-RT-122, R-RT-135). */
+  roomMetrics?: RoomDeps['metrics'];
   /**
    * Engine ledger store. The engine runtime appends every accepted command here before the
    * room acknowledges it (see D-0014), and the hammer flushes whatever is still missing.
@@ -140,6 +142,8 @@ export interface AuctionService {
   createAuction(auctionId: AuctionId, config: AuctionConfig, auctioneerSub: string): Promise<Room>;
   /** The room, loaded from its log on first use. */
   room(auctionId: AuctionId): Promise<Room>;
+  /** Loaded room count and open connections, for the metrics gauges. */
+  stats(): { rooms: number; connections: number };
   registerBidder(input: RegisterBidderInput): Promise<void>;
   /**
    * Kill switch before the hammer: when the switch is engaged, ends every auction that has
@@ -160,7 +164,11 @@ export interface AuctionService {
   /** Admin: compares the journal, the hold records and PayPal for one auction (R-PAY-100). */
   reconcile(auctionId: AuctionId): Promise<ReconcileReport>;
   /** The webhook route's body: raw request bytes and headers in, HTTP status out. */
-  handleWebhook(rawBody: Buffer, headers: WebhookHeaders): Promise<WebhookResponse>;
+  handleWebhook(
+    rawBody: Buffer,
+    headers: WebhookHeaders,
+    source?: string,
+  ): Promise<WebhookResponse>;
   /**
    * Loads every known room (which resumes hammered ones), continues unfinished
    * settlements and applies stored webhook events. Call it at start-up and on a timer.
@@ -195,12 +203,24 @@ function withOrderLookup(gateway: PaymentsGateway, holds: HoldStore): PaymentsGa
   };
 }
 
+/** Holds a settlement in review keeps live: the winner's and the unresolved candidate's. */
+function keptOnReview(journal: Journal): Set<string> {
+  const keep = new Set<string>();
+  if (journal.winner !== null) keep.add(journal.winner.holdId);
+  const candidate = journal.plan.candidates[journal.cursor];
+  const unresolved = candidate === undefined ? undefined : journal.holds[candidate.bidderId];
+  if (unresolved !== undefined) keep.add(unresolved.holdId);
+  return keep;
+}
+
 export function createAuctionService(deps: AuctionServiceDeps): AuctionService {
   return new Service(deps);
 }
 
 class Service implements AuctionService, SettlePort {
   private readonly rooms = new Map<string, Promise<Room>>();
+  /** The same rooms once loaded, for synchronous gauges. */
+  private readonly ready = new Map<string, Room>();
   /** Rooms this host lost to another host (R-RT-061); they are never served or resumed here. */
   private readonly fenced = new Set<string>();
   private readonly roomStore: RoomStore;
@@ -279,6 +299,12 @@ class Service implements AuctionService, SettlePort {
   ): Promise<Room> {
     const parsed = AuctionConfigSchema.safeParse(config);
     if (!parsed.success) throw new GavelError('bad_message', 'invalid auction config');
+    // The engine adapter runs a flat English lot with event holds, so refuse anything else
+    // rather than show clients rules that never govern the lot (R-RT-011, R-RT-012).
+    const c = parsed.data;
+    if (c.mode !== 'english' || c.holdScope === 'lot' || c.incrementLadder !== undefined) {
+      throw new GavelError('bad_message', 'unsupported mode, increment ladder or hold scope');
+    }
     if (this.rooms.has(auctionId)) throw new GavelError('conflict', 'auction exists');
     // Dry-run the engine build: a config or id it cannot run must never reach the log, or the
     // auction could not be loaded again and would block resume (R-RT-012, R-RT-059).
@@ -294,12 +320,34 @@ class Service implements AuctionService, SettlePort {
     }
     const created = Room.create(auctionId, parsed.data, auctioneerSub, this.roomDeps(auctionId));
     this.rooms.set(auctionId, created);
+    this.track(auctionId, created);
     try {
       return await created;
     } catch (e) {
       this.rooms.delete(auctionId);
       throw e;
     }
+  }
+
+  private track(auctionId: string, pending: Promise<Room>): void {
+    pending.then(
+      (room) => {
+        if (this.rooms.get(auctionId) === pending) this.ready.set(auctionId, room);
+      },
+      () => undefined,
+    );
+  }
+
+  /** Loaded room count and open connections, for the metrics gauges. */
+  stats(): { rooms: number; connections: number } {
+    let connections = 0;
+    let rooms = 0;
+    for (const [id, room] of this.ready) {
+      if (!this.rooms.has(id)) continue;
+      rooms += 1;
+      connections += room.connectionCount;
+    }
+    return { rooms, connections };
   }
 
   room(auctionId: AuctionId): Promise<Room> {
@@ -310,6 +358,7 @@ class Service implements AuctionService, SettlePort {
     if (known !== undefined) return known;
     const loaded = Room.load(auctionId, this.roomDeps(auctionId));
     this.rooms.set(auctionId, loaded);
+    this.track(auctionId, loaded);
     loaded.catch(() => {
       if (this.rooms.get(auctionId) === loaded) this.rooms.delete(auctionId);
     });
@@ -328,6 +377,7 @@ class Service implements AuctionService, SettlePort {
     this.retryCounts.delete(auctionId);
     const known = this.rooms.get(auctionId);
     this.rooms.delete(auctionId);
+    this.ready.delete(auctionId);
     this.deps.onError?.(auctionId, new GavelError('host_fenced'));
     if (known !== undefined) void known.then((room) => room.stop()).catch(() => undefined);
   }
@@ -341,6 +391,7 @@ class Service implements AuctionService, SettlePort {
       settle: this,
       durable: (id, engine) => this.flushLedger(id, engine, false),
       ...(this.deps.limiter !== undefined ? { limiter: this.deps.limiter } : {}),
+      ...(this.deps.roomMetrics !== undefined ? { metrics: this.deps.roomMetrics } : {}),
     };
   }
 
@@ -366,11 +417,33 @@ class Service implements AuctionService, SettlePort {
     } catch (e) {
       // A refused registration leaves a live authorization nobody uses. Once the plan is
       // cut it is not in the journal either, so it is released here (SERVICE-R3-09).
+      if (isDefiniteRefusal(e)) await this.voidOrphan(input.auctionId, hold.holdId);
       if (e instanceof GavelError && e.code === 'conflict') {
         const journal = await this.deps.journals.load(lotIdOf(input.auctionId));
         if (journal !== null) await this.releaseSpares(journal);
       }
       throw e;
+    }
+  }
+
+  /** Voids the hold of a refused registration; a failed void is reported, never masks the refusal. */
+  private async voidOrphan(auctionId: AuctionId, holdId: string): Promise<void> {
+    try {
+      const status = await voidOrphanHold(
+        {
+          gateway: this.gateway,
+          holds: this.deps.holds,
+          audit: this.deps.audit,
+          clock: this.payClock,
+        },
+        auctionId,
+        holdId,
+      );
+      if (status === 'pending' || status === 'VOID_FAILED') {
+        this.deps.onError?.(auctionId, new Error(`orphan hold ${holdId} void ${status}`));
+      }
+    } catch (e) {
+      this.deps.onError?.(auctionId, e);
     }
   }
 
@@ -409,8 +482,12 @@ class Service implements AuctionService, SettlePort {
 
   // ---- webhooks
 
-  handleWebhook(rawBody: Buffer, headers: WebhookHeaders): Promise<WebhookResponse> {
-    return this.webhook.handle(rawBody, headers);
+  handleWebhook(
+    rawBody: Buffer,
+    headers: WebhookHeaders,
+    source?: string,
+  ): Promise<WebhookResponse> {
+    return this.webhook.handle(rawBody, headers, source);
   }
 
   /**
@@ -571,7 +648,12 @@ class Service implements AuctionService, SettlePort {
   ): Promise<boolean> {
     if (journal === null) return hammeredEngine(room) !== undefined && !room.isDone;
     if (!TERMINAL.has(journal.state) || !room.isDone) return true;
-    return (await this.deps.holds.listByAuction(auctionId)).some((h) => h.status === 'HELD');
+    const keep =
+      journal.state === 'FAILED_NEEDS_REVIEW' ? keptOnReview(journal) : new Set<string>();
+    // A review keeps the winner's and the unresolved candidate's hold on purpose (R8-S06).
+    return (await this.deps.holds.listByAuction(auctionId)).some(
+      (h) => h.status === 'HELD' && !keep.has(h.holdId),
+    );
   }
 
   async close(): Promise<void> {
@@ -581,7 +663,11 @@ class Service implements AuctionService, SettlePort {
     this.retryTimers.clear();
     // A settlement run in progress finishes before its room closes; no new run starts now.
     await this.idle();
-    for (const room of this.rooms.values()) await (await room).close();
+    const results = await Promise.allSettled(
+      [...this.rooms.values()].map(async (room) => (await room).close()),
+    );
+    const failed = results.find((r) => r.status === 'rejected');
+    if (failed !== undefined) throw (failed as PromiseRejectedResult).reason;
   }
 
   private async boundary(label: string): Promise<void> {
@@ -714,11 +800,7 @@ class Service implements AuctionService, SettlePort {
    * capture is unresolved is released, so no bidder's money stays blocked until expiry.
    */
   private async releaseOnReview(journal: Journal): Promise<void> {
-    const keep = new Set<string>();
-    if (journal.winner !== null) keep.add(journal.winner.holdId);
-    const candidate = journal.plan.candidates[journal.cursor];
-    const unresolved = candidate === undefined ? undefined : journal.holds[candidate.bidderId];
-    if (unresolved !== undefined) keep.add(unresolved.holdId);
+    const keep = keptOnReview(journal);
     try {
       await voidSpareHolds({ gateway: this.gateway, holds: this.deps.holds }, journal, keep);
     } catch (e) {

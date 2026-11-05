@@ -79,4 +79,30 @@ describe('logger (R-RT-132)', () => {
     expect(line).toContain('[circular]');
     expect(line).not.toContain(FAKE_TOKEN);
   });
+
+  it('redacts the admin key, database url and similar names (R4-W06)', () => {
+    const { sink, log } = setup();
+    log.info('boot', {
+      headers: { 'x-admin-key': 'k1', 'X-Admin-Key': 'k2' },
+      env: { ADMIN_KEY: 'k3', DATABASE_URL: 'postgres://u:p@h/db', dsn: 'k4', adminKey: 'k5' },
+      credential: 'k6',
+      room: 'r1',
+    });
+    const line = sink.lines[0] ?? '';
+    for (const v of ['k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'postgres://u:p@h']) {
+      expect(line).not.toContain(v);
+    }
+    expect(line).toContain('r1');
+  });
+
+  it('redacts a password inside a connection URL in a message', () => {
+    const { sink, log } = setup();
+    log.error('connect failed postgres://svc:hunter2pass@db.internal:5432/gavel', {
+      error: new Error('mysql://root:topsecretpw@10.0.0.1/app refused'),
+    });
+    const line = sink.lines[0] ?? '';
+    expect(line).not.toContain('hunter2pass');
+    expect(line).not.toContain('topsecretpw');
+    expect(line).toContain('db.internal');
+  });
 });

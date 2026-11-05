@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { REDACTED, loadConfig, parseConfig, redactConfig } from '../src/config';
 
 const good = {
-  PUBLIC_URL: 'https://gavel.example.com',
+  PUBLIC_URL: 'http://localhost:8080',
   TOKEN_SECRET: 'super-secret-token-value-0123456789',
   ADMIN_KEY: 'admin-key-value-0123456789',
 };
@@ -104,7 +104,7 @@ describe('server config (T-RT-089)', () => {
   it('redacts secrets in the dump', () => {
     const r = parseConfig({
       ...good,
-      TOKEN_SECRET_PREVIOUS: 'previous-secret-value',
+      TOKEN_SECRET_PREVIOUS: 'previous-secret-value-0123456789-abcdef',
       DATABASE_URL: 'postgres://u:pw@h/db',
     });
     if (!r.ok) throw new Error('expected ok');
@@ -114,7 +114,12 @@ describe('server config (T-RT-089)', () => {
     expect(dump.ADMIN_KEY).toBe(REDACTED);
     expect(dump.DATABASE_URL).toBe(REDACTED);
     const text = JSON.stringify(dump);
-    for (const secret of [good.TOKEN_SECRET, good.ADMIN_KEY, 'previous-secret-value', 'pw@h']) {
+    for (const secret of [
+      good.TOKEN_SECRET,
+      good.ADMIN_KEY,
+      'previous-secret-value-0123456789-abcdef',
+      'pw@h',
+    ]) {
       expect(text).not.toContain(secret);
     }
     expect(dump.PUBLIC_URL).toBe(good.PUBLIC_URL);
@@ -173,12 +178,61 @@ describe('production rules (R-RT-131)', () => {
     expect(parseConfig({ ...prod, DATABASE_URL: undefined }).ok).toBe(false);
   });
 
-  it('keeps short secrets valid outside production', () => {
-    expect(parseConfig({ ...good, TOKEN_SECRET: 'a', ADMIN_KEY: 'a' }).ok).toBe(true);
+  it('keeps short secrets valid only under NODE_ENV=test', () => {
+    expect(parseConfig({ ...good, NODE_ENV: 'test', TOKEN_SECRET: 'a', ADMIN_KEY: 'b' }).ok).toBe(
+      true,
+    );
+    expect(parseConfig({ ...good, TOKEN_SECRET: 'a', ADMIN_KEY: 'b' }).ok).toBe(false);
+  });
+
+  it('rejects a token secret equal to the admin key', () => {
+    const same = 'same-value-same-value-same-value-0123';
+    const r = parseConfig({ ...good, TOKEN_SECRET: same, ADMIN_KEY: same });
+    expect(r.ok).toBe(false);
+    expect(r.ok ? '' : r.errors.join('\n')).toContain('ADMIN_KEY');
+  });
+
+  it('applies the production rules to a public https host with NODE_ENV unset (R4-W07)', () => {
+    const r = parseConfig({
+      ...good,
+      PUBLIC_URL: 'https://gavel.example.com',
+      TOKEN_SECRET: 'a',
+      ADMIN_KEY: 'a',
+      DEMO_MODE: '1',
+    });
+    expect(r.ok).toBe(false);
+    const text = r.ok ? '' : r.errors.join('\n');
+    for (const key of ['TOKEN_SECRET', 'ADMIN_KEY', 'STORE', 'PAYMENTS', 'DEMO_MODE']) {
+      expect(text).toContain(key);
+    }
+    expect(parseConfig({ ...good, PUBLIC_URL: 'https://gavel.example.com' }).ok).toBe(false);
+    expect(parseConfig({ ...good, PUBLIC_URL: 'https://localhost:8443' }).ok).toBe(true);
   });
 
   it('defaults the per-bidder connection cap to 3', () => {
     const r = parseConfig(good);
     expect(r.ok && r.config.MAX_CONN_PER_BIDDER).toBe(3);
+  });
+});
+
+describe('secret rules under NODE_ENV=test (R7S-05)', () => {
+  const short = { TOKEN_SECRET: 'a', ADMIN_KEY: 'b' };
+
+  it('rejects NODE_ENV=test with a public https host', () => {
+    const r = parseConfig({
+      ...good,
+      ...short,
+      NODE_ENV: 'test',
+      PUBLIC_URL: 'https://real.example',
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.join('\n')).toMatch(/NODE_ENV/);
+      expect(r.errors.join('\n')).toMatch(/TOKEN_SECRET/);
+    }
+  });
+
+  it('still allows short secrets for NODE_ENV=test on a local host', () => {
+    expect(parseConfig({ ...good, ...short, NODE_ENV: 'test' }).ok).toBe(true);
   });
 });

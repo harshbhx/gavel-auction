@@ -23,7 +23,13 @@ export interface PaymentsGateway {
     requestId: string;
   }): Promise<{ orderId: string; approveUrl?: string }>;
   /** Read. Never changes state; failures are transient. */
-  getOrder(orderId: string): Promise<{ orderId: string; status: string; authId?: string }>;
+  getOrder(orderId: string): Promise<{
+    orderId: string;
+    status: string;
+    authId?: string;
+    authStatus?: string;
+    authAmountCents?: number;
+  }>;
   /** POST. Unknown outcome: the authorization may exist; read the order. */
   authorizeOrder(
     orderId: string,

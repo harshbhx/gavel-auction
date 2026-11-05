@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { KEY_SOURCE } from './lib-issue-key.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -41,8 +42,8 @@ export function globToRegExp(glob) {
 const matches = (file, globs) => globs.some((g) => globToRegExp(g).test(file));
 
 export function parseKey(text) {
-  const m = /^\s*\[?([A-Z]{2,4})-(\d{1,3})\b/.exec(text ?? '');
-  return m ? `${m[1]}-${m[2]}` : null;
+  const m = new RegExp(`^\\s*\\[?(${KEY_SOURCE})\\b`).exec(text ?? '');
+  return m ? m[1] : null;
 }
 
 export function checkOwnership({ key, files, labels, map }) {

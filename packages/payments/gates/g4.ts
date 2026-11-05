@@ -39,6 +39,7 @@ import {
  * Fixtures keep their shape but not their bytes, so they do not verify any more.
  *
  * Flags besides the shared ones: --log <file> (receiver log; not used with --fake),
+ * --run-file <file> (ids written by g4-events; coverage then needs this run's events),
  * --fixtures <dir> (default test/fixtures/webhooks; with --fake <out>/G4/fixtures).
  * The webhook id comes from PAYPAL_WEBHOOK_ID.
  *
@@ -88,7 +89,12 @@ export interface EventSummary {
   eventType: string;
   topKeys: string[];
   resourceKeys: string[];
+  /** The resource id plus every id under supplementary_data.related_ids (order, authorization). */
+  linkedIds: string[];
 }
+
+/** Ids a run created per event type, written by g4-events (R6-E03). */
+export type RunIds = Record<string, readonly string[]>;
 
 /** Reads the parts of an event the comparison needs. Undefined when it is not an event. */
 export function summarizeEvent(rawBody: string): EventSummary | undefined {
@@ -99,11 +105,21 @@ export function summarizeEvent(rawBody: string): EventSummary | undefined {
   const id = parsed['id'];
   if (typeof type !== 'string' || typeof id !== 'string') return undefined;
   const resource = parsed['resource'];
+  const linkedIds: string[] = [];
+  if (isRecord(resource)) {
+    if (typeof resource['id'] === 'string') linkedIds.push(resource['id']);
+    const supp = resource['supplementary_data'];
+    const related = isRecord(supp) ? supp['related_ids'] : undefined;
+    if (isRecord(related)) {
+      for (const v of Object.values(related)) if (typeof v === 'string') linkedIds.push(v);
+    }
+  }
   return {
     id,
     eventType: type,
     topKeys: Object.keys(parsed).sort(),
     resourceKeys: isRecord(resource) ? Object.keys(resource).sort() : [],
+    linkedIds,
   };
 }
 
@@ -166,6 +182,11 @@ export interface G4Deps {
   fake: boolean;
   /** Overrides fetch for the verify call. */
   fetch?: typeof fetch;
+  /**
+   * Ids this run's g4-events created, by event type. When set, G4.4 counts a delivery only if
+   * it names one of them, so older runs' retried events cannot satisfy coverage.
+   */
+  runIds?: RunIds;
 }
 
 function headerOf(d: Delivery, name: string): string {
@@ -252,7 +273,14 @@ export async function g4Gate(ctx: GateContext, deps: G4Deps): Promise<void> {
       });
       continue;
     }
-    seen.add(summary.eventType);
+    const mine = deps.runIds?.[summary.eventType];
+    if (mine === undefined || summary.linkedIds.some((x) => mine.includes(x))) {
+      seen.add(summary.eventType);
+    } else {
+      ctx.http.note(`G4.4 coverage ${i + 1}`, 'verified event is not from this run', {
+        eventType: summary.eventType,
+      });
+    }
 
     // G4.2 sanitized fixture, one per delivery.
     const n = (counts.get(summary.eventType) ?? 0) + 1;
@@ -289,6 +317,7 @@ export interface RunG4Options {
 interface G4Flags {
   logFile?: string;
   fixtures?: string;
+  runFile?: string;
   rest: string[];
 }
 
@@ -296,10 +325,11 @@ function parseG4Flags(argv: readonly string[]): G4Flags {
   const flags: G4Flags = { rest: [] };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i] ?? '';
-    if (a === '--log' || a === '--fixtures') {
+    if (a === '--log' || a === '--fixtures' || a === '--run-file') {
       const v = argv[i + 1];
       if (v === undefined || v.startsWith('--')) throw new GateUsageError(`${a} needs a value`);
       if (a === '--log') flags.logFile = v;
+      else if (a === '--run-file') flags.runFile = v;
       else flags.fixtures = v;
       i += 1;
     } else flags.rest.push(a);
@@ -329,6 +359,17 @@ function fakeDeliveries(server: FakePayPalServer): Delivery[] {
     nowMs: () => core.clock.nowMs(),
   });
   return emitter.prepare(core.events).map((d) => ({ headers: d.headers, rawBody: d.rawBody }));
+}
+
+/** Reads the id file g4-events wrote: {"PAYMENT.CAPTURE.COMPLETED": ["id", ...], ...}. */
+export function readRunIds(file: string): RunIds {
+  const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
+  if (!isRecord(parsed)) throw new GateUsageError('--run-file must hold a JSON object');
+  const out: Record<string, string[]> = {};
+  for (const [k, v] of Object.entries(parsed)) {
+    out[k] = Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  }
+  return out;
 }
 
 /** Entry point. --fake generates the receiver log from the fake PayPal. */
@@ -390,7 +431,8 @@ export async function runG4(opts: RunG4Options): Promise<number> {
         const fixturesDir =
           flags.fixtures ??
           (fake ? join(dirname(ctx.evidencePath), 'fixtures') : 'test/fixtures/webhooks');
-        await g4Gate(ctx, { deliveries, fixturesDir, fake });
+        const runIds = flags.runFile ? readRunIds(flags.runFile) : undefined;
+        await g4Gate(ctx, { deliveries, fixturesDir, fake, ...(runIds ? { runIds } : {}) });
       },
     });
   } finally {

@@ -40,6 +40,9 @@ export type Command =
       reason: string;
     })
   | (Base & { type: 'AbortLot'; lotId: Ulid; reason: string; actor: string })
+  | (Base & { type: 'PauseLot'; lotId: Ulid; actor: string })
+  | (Base & { type: 'ResumeLot'; lotId: Ulid; actor: string })
+  | (Base & { type: 'ExtendLot'; lotId: Ulid; extraMs: number; reason: string; actor: string })
   | (Base & {
       type: 'CompleteLot';
       lotId: Ulid;
@@ -69,6 +72,9 @@ export const COMMAND_TYPES = [
   'RevokeCeiling',
   'PromoteRunnerUp',
   'AbortLot',
+  'PauseLot',
+  'ResumeLot',
+  'ExtendLot',
   'CompleteLot',
   'RecordSettlement',
   'CloseAuction',
@@ -97,6 +103,9 @@ const CONFIG_KEYS: readonly string[] = [
   'fallbackPolicy',
   'maxFallbackDepth',
 ];
+
+/** Largest single admin extension, matching the shared soft-close extension cap. */
+export const MAX_EXTEND_MS = 600_000;
 
 type Rec = Record<string, unknown>;
 
@@ -325,6 +334,32 @@ export function parseCommand(x: unknown): Command {
         reason: shortStr(o, 'reason', type),
         actor: shortStr(o, 'actor', type),
       };
+    case 'PauseLot':
+      return {
+        type: 'PauseLot',
+        ...base(['lotId', 'actor']),
+        lotId: ulid(o, 'lotId', type),
+        actor: shortStr(o, 'actor', type),
+      };
+    case 'ResumeLot':
+      return {
+        type: 'ResumeLot',
+        ...base(['lotId', 'actor']),
+        lotId: ulid(o, 'lotId', type),
+        actor: shortStr(o, 'actor', type),
+      };
+    case 'ExtendLot': {
+      const extraMs = int(o, 'extraMs', type);
+      if (extraMs < 1 || extraMs > MAX_EXTEND_MS) return bad(`${type}.extraMs out of range`);
+      return {
+        type: 'ExtendLot',
+        ...base(['lotId', 'extraMs', 'reason', 'actor']),
+        lotId: ulid(o, 'lotId', type),
+        extraMs,
+        reason: shortStr(o, 'reason', type),
+        actor: shortStr(o, 'actor', type),
+      };
+    }
     case 'CompleteLot':
       return {
         type: 'CompleteLot',

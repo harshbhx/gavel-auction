@@ -1,4 +1,5 @@
 import fc from 'fast-check';
+import { MIN_RUNS, SEED as PROPERTY_SEED, runsFor } from '../property-params.js';
 import { describe, expect, it } from 'vitest';
 import { hammerPrice, currentPrice } from '../../src/rules/pricing-basic.js';
 import type { PricingLot } from '../../src/rules/pricing-basic.js';
@@ -7,8 +8,8 @@ import type { BidRecord } from '../../src/rules/ranking.js';
 
 // These are toy-model checks of the mechanism logic. They say nothing about how real bidders behave.
 // Seeded ports of reference/python/test_properties.py; set GAVEL_PROPERTY_SEED to replay.
-const SEED = Number(process.env['GAVEL_PROPERTY_SEED'] ?? 20261104);
-const NUM_RUNS = Number(process.env['GAVEL_PROPERTY_RUNS'] ?? 500);
+const SEED = PROPERTY_SEED;
+const NUM_RUNS = runsFor('mechanism', 500);
 const params = { seed: SEED, numRuns: NUM_RUNS };
 
 const sealedLot = (reserveCents: number): PricingLot => ({
@@ -104,7 +105,7 @@ describe('mechanism properties (toy models)', () => {
           }
         },
       ),
-      { ...params, numRuns: Math.max(50, Math.floor(NUM_RUNS / 5)) },
+      { ...params, numRuns: Math.max(MIN_RUNS, Math.floor(NUM_RUNS / 5)) },
     );
   });
 
@@ -148,38 +149,53 @@ describe('mechanism properties (toy models)', () => {
     expect(win).toEqual({ winner: 'me', price: 500 });
   });
 
+  // Myopic bidders on a 5 cent grid: each raises by one increment while it can afford it and is not the leader.
+  const ascendingClock = (values: readonly number[]): { price: number; leader: number } => {
+    const inc = 5;
+    let price = 100 - inc;
+    let leader = -1;
+    let active = true;
+    while (active) {
+      active = false;
+      for (let i = 0; i < values.length; i += 1) {
+        const v = values[i] ?? 0;
+        if (i !== leader && price + inc <= v) {
+          price += inc;
+          leader = i;
+          active = true;
+        }
+      }
+    }
+    return { price, leader };
+  };
+
+  const checkAscendingClock = (values: readonly number[]): void => {
+    const inc = 5;
+    const { price, leader } = ascendingClock(values);
+    const sorted = [...values].sort((a, b) => b - a);
+    const top = sorted[0] ?? 0;
+    const runnerUp = sorted[1] ?? 0;
+    // The clock stops when nobody else can reach price + inc, so the leader only has to afford the price.
+    // Every value in [price, price + inc) is a possible final leader: when the top two values are within
+    // one increment the leader may even be below the runner-up (values 897, 896 and 895 all stop at 895).
+    expect(values[leader] ?? 0).toBeGreaterThanOrEqual(price);
+    if (top - runnerUp >= inc) expect(values[leader]).toBe(top);
+    expect(price).toBeGreaterThan(runnerUp - inc);
+    expect(price).toBeLessThanOrEqual(runnerUp + inc);
+  };
+
   it('T-ENG-014 R-ENG-017 ascending clock ends within one increment of the second highest value', () => {
     fc.assert(
       fc.property(
         fc.uniqueArray(fc.integer({ min: 150, max: 900 }), { minLength: 2, maxLength: 5 }),
-        (values) => {
-          const inc = 5;
-          const reserve = 100;
-          let price = reserve - inc;
-          let leader = -1;
-          let active = true;
-          while (active) {
-            active = false;
-            for (let i = 0; i < values.length; i += 1) {
-              const v = values[i] ?? 0;
-              if (i !== leader && price + inc <= v) {
-                price += inc;
-                leader = i;
-                active = true;
-              }
-            }
-          }
-          const sorted = [...values].sort((a, b) => b - a);
-          const top = sorted[0] ?? 0;
-          const runnerUp = sorted[1] ?? 0;
-          // On the increment grid the runner-up can win when the top two are within one increment.
-          if (top - runnerUp >= inc) expect(values[leader]).toBe(top);
-          else expect(values[leader] ?? 0).toBeGreaterThanOrEqual(runnerUp);
-          expect(price).toBeGreaterThan(runnerUp - inc);
-          expect(price).toBeLessThanOrEqual(runnerUp + inc);
-        },
+        (values) => checkAscendingClock(values),
       ),
       params,
     );
+  });
+
+  it('T-ENG-014 R-ENG-017 regression (seed 1178434330): top three values within one increment', () => {
+    checkAscendingClock([896, 897, 830, 895]);
+    expect(ascendingClock([896, 897, 830, 895]).price).toBe(895);
   });
 });

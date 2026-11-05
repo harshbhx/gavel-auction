@@ -26,11 +26,12 @@ import {
   SystemClock,
   UlidMinter,
   type AuctionId,
+  type Jti,
   type Logger,
   type RoomStore,
 } from '@gavel/shared';
 import type { AuthRole } from '../auth/authorize';
-import { secretSetFromConfig, verifyRotating } from '../auth/rotation';
+import { previousSecretWarning, secretSetFromConfig, verifyRotating } from '../auth/rotation';
 import type { JtiStore } from '../auth/token';
 import { loadConfig, redactConfig, type LoadHooks, type ServerConfig } from '../config';
 import { createExportHandler } from '../http/export';
@@ -84,6 +85,8 @@ export interface Composed {
 interface PaymentsWiring {
   gateway: PaymentsGateway;
   verifier: WebhookVerifier;
+  /** GAVEL_HOLD_MAX_AGE_MS, validated in both modes (R-PAY-005). */
+  holdMaxAgeMs: number;
   stop(): Promise<void>;
 }
 
@@ -94,6 +97,10 @@ async function wirePayments(
   clock: SystemClock,
 ): Promise<PaymentsWiring> {
   const payClock = { nowMs: (): number => clock.now() };
+  const holdMaxAgeMs = loadPaymentsConfig(
+    { ...env, PAYPAL_ENV: config.PAYPAL_ENV },
+    { fake: config.PAYMENTS === 'fake' },
+  ).holdMaxAgeMs;
   if (config.PAYMENTS === 'fake') {
     const { FakePayPalServer, DEFAULT_FAKE_WEBHOOK_ID } = await import('@gavel/payments/fake');
     const paypal = new FakePayPalServer({ webhookId: DEFAULT_FAKE_WEBHOOK_ID });
@@ -107,6 +114,7 @@ async function wirePayments(
     return {
       gateway: new PayPalGateway({ auth, fake: true, clock: payClock }),
       verifier: new WebhookVerifier({ auth, webhookId: DEFAULT_FAKE_WEBHOOK_ID, fake: true }),
+      holdMaxAgeMs,
       stop: () => paypal.stop(),
     };
   }
@@ -121,6 +129,7 @@ async function wirePayments(
   return {
     gateway: new PayPalGateway({ auth, fake: false, clock: payClock }),
     verifier: new WebhookVerifier({ auth, webhookId: pay.webhookId, fake: false }),
+    holdMaxAgeMs,
     stop: () => Promise.resolve(),
   };
 }
@@ -155,14 +164,21 @@ async function openStores(config: ServerConfig, clock: SystemClock): Promise<Sto
       const lock = acquireDataDirLock(dir);
       try {
         const pay = openFileStores(join(dir, 'payments'));
+        const room = await FileRoomStore.open(join(dir, 'rooms.jsonl'), now);
         return {
-          room: await FileRoomStore.open(join(dir, 'rooms.jsonl'), now),
+          room,
           ledger: new FileLedgerStore(join(dir, 'ledgers')),
           journals: pay.journals,
           holds: pay.holds,
           webhookEvents: pay.webhooks,
           kill: new FileKillStateStore(join(dir, 'kill-switch.json')),
-          release: () => lock.release(),
+          release: () => {
+            try {
+              room.close();
+            } finally {
+              lock.release();
+            }
+          },
         };
       } catch (e) {
         lock.release();
@@ -174,11 +190,13 @@ async function openStores(config: ServerConfig, clock: SystemClock): Promise<Sto
   }
 }
 
-/** Revocation lists are not kept yet: no token is revoked, and only auctioneer tokens reach here. */
-const NO_REVOCATIONS: JtiStore = {
-  isRevoked: () => Promise.resolve(false),
-  consume: () => Promise.resolve(true),
-};
+/** Revocations come from the room store's denylist; auctioneer tokens are not single use. */
+function revocationsOf(store: { isDenied(jti: Jti): Promise<boolean> }): JtiStore {
+  return {
+    isRevoked: (jti) => store.isDenied(jti as Jti),
+    consume: () => Promise.resolve(true),
+  };
+}
 
 function bearerOf(req: IncomingMessage): string | undefined {
   const h = req.headers.authorization;
@@ -224,7 +242,14 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     audit,
     clock: { nowMs: () => clock.now() },
   });
+  let serviceStats = (): { rooms: number; connections: number } => ({ rooms: 0, connections: 0 });
+  const metrics = new MetricsCollector({
+    connections: () => serviceStats().connections,
+    rooms: () => serviceStats().rooms,
+    mailboxDepth: () => 0,
+  });
   const service = createAuctionService({
+    roomMetrics: metrics,
     store: stores.room,
     clock,
     ids,
@@ -236,27 +261,33 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     gateway: payments.gateway,
     verifier: payments.verifier,
     killSwitch,
+    holdMaxAgeMs: payments.holdMaxAgeMs,
     onError: (auctionId, error) =>
       log.error('settlement stopped', {
         auctionId,
         error: error instanceof Error ? error.message : String(error),
       }),
   });
+  serviceStats = () => service.stats();
   await service.resume();
   log.info('server composed', redactConfig(config));
 
-  const metrics = new MetricsCollector({
-    connections: () => 0,
-    rooms: () => 0,
-    mailboxDepth: () => 0,
-  });
   const health = createHealthRoutes({
     pingStore: async () => {
       await stores.room.ping();
     },
     migrationsApplied: () => true,
   });
-  const secrets = secretSetFromConfig(config);
+  const baseSecrets = secretSetFromConfig(config);
+  const secrets = {
+    ...baseSecrets,
+    onPreviousUse: () => {
+      metrics.previousSecretUse();
+      log.warn('token verified under TOKEN_SECRET_PREVIOUS');
+    },
+  };
+  const prevWarning = previousSecretWarning(secrets, clock.now());
+  if (prevWarning !== undefined) log.warn(prevWarning);
   const exportRoute = createExportHandler({
     store: stores.room,
     authenticate: async (req, auctionId): Promise<AuthRole | undefined> => {
@@ -267,7 +298,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
         aud: auctionId,
         kinds: ['auctioneer'],
         nowMs: clock.now(),
-        jtis: NO_REVOCATIONS,
+        jtis: revocationsOf(stores.room),
       });
       return result.ok ? 'auctioneer' : undefined;
     },
@@ -328,9 +359,15 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
         force.unref();
         http.once('close', () => clearTimeout(force));
       });
-      await service.close();
-      await payments.stop();
-      stores.release();
+      const errors: unknown[] = [];
+      for (const step of [() => service.close(), () => payments.stop(), () => stores.release()]) {
+        try {
+          await step();
+        } catch (e) {
+          errors.push(e);
+        }
+      }
+      if (errors.length > 0) throw errors[0];
     },
   };
 }

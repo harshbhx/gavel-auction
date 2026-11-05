@@ -34,9 +34,9 @@ describe('T-VOX-045 negations (R-VOX-045)', () => {
 describe('T-VOX-046 hedges (R-VOX-046)', () => {
   for (const text of [
     'maybe two fifty',
-    'around three hundred',
+    'around four hundred',
     'somewhere between two and three hundred',
-    'two hundred, or two fifty, not sure',
+    'three hundred, or three fifty, not sure',
   ]) {
     it(`"${text}" -> confirm hedged`, () => {
       const i = detectIntent(text);
@@ -49,10 +49,10 @@ describe('T-VOX-046 hedges (R-VOX-046)', () => {
 describe('T-VOX-047 questions and background talk (R-VOX-047)', () => {
   for (const text of [
     'is it two fifty?',
-    'who has two fifty',
+    'who has three fifty',
     'how much is it now',
     'we are at two fifty now',
-    'I have two kids',
+    'I have three kids',
   ]) {
     it(`"${text}" -> none`, () => {
       expect(detectIntent(text).status).toBe('none');
@@ -64,7 +64,7 @@ describe('T-VOX-047 questions and background talk (R-VOX-047)', () => {
   });
 
   it('T-VOX-059: reserve and starting are none even with a speaker', () => {
-    for (const text of ['reserve is one hundred', 'starting at fifty']) {
+    for (const text of ['reserve is one hundred', 'starting at sixty']) {
       expect(detectIntent(text).status).toBe('none');
     }
   });

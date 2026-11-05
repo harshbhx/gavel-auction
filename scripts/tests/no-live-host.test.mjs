@@ -3,21 +3,17 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LIVE_HOST, isChecked, scanText } from '../check-no-live-host.mjs';
+import { findLiveHosts } from '../check-no-live-host.mjs';
 
 const root = join(fileURLToPath(new URL('.', import.meta.url)), '..', '..');
+const LIVE_HOST = ['https://api-m', 'paypal', 'com'].join('.');
 
 describe('check-no-live-host', () => {
-  it('flags the live host', () => {
-    assert.equal(scanText(`https://${LIVE_HOST}/v1`), true);
+  it('flags the live REST host', () => {
+    assert.notEqual(findLiveHosts(`${LIVE_HOST}/v1`).length, 0);
   });
   it('passes the sandbox host', () => {
-    assert.equal(scanText('https://api-m.sandbox.paypal.com'), false);
-  });
-  it('skips docs and allow-listed files only', () => {
-    assert.equal(isChecked('docs/specs/x.txt'), false);
-    assert.equal(isChecked('packages/payments/test/guard.test.ts'), false);
-    assert.equal(isChecked('packages/web/src/app.ts'), true);
+    assert.deepEqual(findLiveHosts('https://api-m.sandbox.paypal.com'), []);
   });
   it('passes on the current tree', () => {
     const r = spawnSync('node', [join(root, 'scripts', 'check-no-live-host.mjs')], {

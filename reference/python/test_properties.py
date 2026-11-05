@@ -90,7 +90,8 @@ def test_english_ascending_clock_matches_second_price_outcome():
         top = sorted(vals.values())
         # increment-grid artifact: if the top two values are within one increment the runner-up can win
         if top[-1] - top[-2] >= inc: assert out.winner == max(vals, key=vals.get)
-        else: assert vals[out.winner] >= top[-2]
+        # the clock stops once nobody else can reach price + inc, so the winner only has to afford the price
+        else: assert vals[out.winner] >= out.price
         assert top[-2] - inc < out.price <= top[-2] + inc
 
 

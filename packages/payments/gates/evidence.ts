@@ -120,7 +120,7 @@ function redactUrlQuery(url: string): string {
 }
 
 /** Redacts query values of every URL inside a string, for example PayPal payer-action links. */
-function redactUrlsInText(text: string): string {
+export function redactUrlsInText(text: string): string {
   return text.replace(URL_IN_TEXT, redactUrlQuery);
 }
 

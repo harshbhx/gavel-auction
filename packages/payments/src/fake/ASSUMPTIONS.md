@@ -91,3 +91,9 @@ The gateway conformance suite (`test/conformance/suite.ts`, run by `test/conform
 | W01-W05    | none                          | Webhooks are outside the gateway port; G4 covers them.                                                            |
 
 The item list of finding PAYMENTS-RT-22 maps to: (a) C08, (b) C09, (c) C02, C04, C06, C10, C12 for behaviour and none for the exact issue names, (d) C11.
+
+## Faithfulness notes (R8-P01, R8-P08)
+
+- A void of an authorization a final capture closed answers 422 `PREVIOUSLY_CAPTURED`, the verified sandbox name (G1, 2026-11-04). A second capture still answers `AUTHORIZATION_ALREADY_CAPTURED` (A04, unverified).
+- A capture stores the `invoice_id` of its request; the capture response and the captures listed on `GET /v2/checkout/orders/{id}` echo it.
+- `FakeGateway.getHoldTruth` returns `captures: null` and `capturedCents: 0` unless an order id is given, as `PayPalGateway` does, because captures are read from the order. `test/saga/realGateway.test.ts` runs the saga through `PayPalGateway` over this server.

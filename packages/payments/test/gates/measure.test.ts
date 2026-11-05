@@ -4,12 +4,14 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   MeasureReport,
+  measureGate,
   percentile,
   renderTable,
   runMeasure,
   summarize,
 } from '../../gates/measure.js';
-import { EXIT_OK, EXIT_REFUSED } from '../../gates/runner.js';
+import { EXIT_FAILED, EXIT_OK, EXIT_REFUSED, runGate } from '../../gates/runner.js';
+import type { RawFetch } from '../../gates/http.js';
 import { lintJsonl } from '../../gates/evidence.js';
 
 let out: string;
@@ -135,5 +137,36 @@ describe('npm run measure -- --fake (T-PAY-080)', { timeout: 30_000 }, () => {
       log: (m) => lines.push(m),
     });
     expect(code).toBe(EXIT_REFUSED);
+  });
+});
+
+describe('measure gate exit code (R-PAY-147)', () => {
+  it('exits non-zero when every order create fails', async () => {
+    const fetchStub: RawFetch = async (url) => {
+      const isToken = url.includes('/v1/oauth2/token');
+      const body = isToken ? { access_token: 'tok', expires_in: 100, token_type: 'Bearer' } : {};
+      return {
+        status: isToken ? 200 : 500,
+        headers: { forEach: () => undefined },
+        text: async () => JSON.stringify(body),
+      };
+    };
+    const env = {
+      PAYPAL_ENV: 'sandbox',
+      PAYPAL_BASE_URL: 'http://127.0.0.1:1',
+      MEASURE_SEQUENTIAL: '2',
+      MEASURE_PARALLEL: '2',
+    };
+    const code = await runGate({
+      gate: 'measure',
+      scriptVersion: 'test',
+      argv: ['--fake', '--out', out],
+      env,
+      log: (m) => lines.push(m),
+      fetch: fetchStub,
+      main: (ctx) => measureGate(ctx, { env, approveOrder: () => undefined }),
+    });
+    expect(code).toBe(EXIT_FAILED);
+    expect(readReport().sequential.completed).toBe(0);
   });
 });

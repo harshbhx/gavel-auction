@@ -107,8 +107,8 @@ IDs are stable. MUST = release blocker for the demo. SHOULD = expected, can slip
 
 ### 3.6 Reauthorize (conditional)
 
-- R-PAY-070 MAY be enabled only when gate G3 shows a need. Default: `reauth.enabled = false`; the demo creates holds minutes before capture and the stale flag (R-PAY-034) is the only control.
-- R-PAY-071 MUST (when enabled): reauthorization is attempted only when hold age is greater than `honorSafeMs` (default 3 days minus 6 hours), amount never above the original ceiling, one request id per generation, and the new ceiling and `startedAtMs` are persisted. UNVERIFIED (G3): the day 4..29 window and the 115% / $75 limit used by the prototype.
+- R-PAY-070 MAY be enabled only when gate G3 shows a need. Default: `reauth.enabled = false`; the demo creates holds minutes before capture and the stale flag (R-PAY-034) is the only control. Reauthorization is an explicit call (`reauthorizeIfDue`) only: the capture, void and hold phases never call it, so `enabled` does not change a settlement by itself (R8-P08). The caller persists the result and runs the call before the capture.
+- R-PAY-071 MUST (when enabled): an explicit reauthorization call attempts it only when hold age is greater than `honorSafeMs` (default 3 days minus 6 hours), amount never above the original ceiling, one request id per generation, and the new ceiling and `startedAtMs` are persisted. UNVERIFIED (G3): the day 4..29 window and the 115% / $75 limit used by the prototype.
 - R-PAY-072 MUST: A stale or reauthorized hold is captured exactly like a fresh one; there is no code path that skips capture because of age. If PayPal rejects, the normal definite-failure path (R-PAY-053) applies.
 
 ### 3.7 Webhooks

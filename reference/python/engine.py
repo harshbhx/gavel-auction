@@ -133,8 +133,10 @@ class Auction:
         self.bids.append(Bid(bidder, amount, ts, self._seq))
         if (self.mode != "second_price" and self.window and self.ext
                 and ts >= self.end_ts - self.window and self.extensions < self.max_ext):
-            self.end_ts = max(self.end_ts, ts + self.ext)
-            self.extensions += 1
+            new_end = max(self.end_ts, ts + self.ext)
+            if new_end > self.end_ts:  # D-0027: an unchanged end is not an extension
+                self.end_ts = new_end
+                self.extensions += 1
         return {"price": self.price(), "leader": self.leader(), "end_ts": self.end_ts}
 
     def hammer(self, now: float) -> Outcome:

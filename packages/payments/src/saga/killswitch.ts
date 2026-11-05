@@ -3,6 +3,7 @@ import type { Clock, JournalStore, PaymentsGateway } from '../ports.js';
 import type { AuditSink } from '../ports.js';
 import type { HoldTruth, Journal } from '../types.js';
 import { withLease } from './create.js';
+import { truthArgs } from './truth.js';
 import { defaultLeaseOwner } from './owner.js';
 import { voidHold, type VoidStatus } from './void.js';
 
@@ -71,7 +72,7 @@ export async function voidAllLiveHolds(
         let truth: HoldTruth | undefined;
         try {
           await deps.boundary?.('before:get');
-          truth = await deps.gateway.getHoldTruth({ holdId: hold.holdId, authId: hold.authId });
+          truth = await deps.gateway.getHoldTruth(truthArgs(hold));
           await deps.boundary?.('after:get');
         } catch (e) {
           if (!(e instanceof PayPalError)) throw e;

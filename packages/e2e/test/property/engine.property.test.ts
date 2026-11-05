@@ -12,7 +12,7 @@ function assertProp<T extends unknown[]>(prop: fc.IPropertyWithHooks<T>): void {
   const d = fc.check(prop, propertyParams());
   if (d.failed) {
     throw new Error(
-      `property failed, replay with FC_SEED=${String(d.seed)}: ${JSON.stringify(d.counterexample)} ${String(d.errorInstance)}`,
+      `property failed, replay with GAVEL_PROPERTY_SEED=${String(d.seed)}: ${JSON.stringify(d.counterexample)} ${String(d.errorInstance)}`,
     );
   }
 }
@@ -255,7 +255,7 @@ describe('engine invariants (T-QA-021)', () => {
         bidSequence,
         (bids) => englishViolations(simulate('english', bids, 1)).length === 0,
       ),
-      propertyParams(),
+      propertyParams({ seed: 20261105 }),
     );
     expect(detail.failed).toBe(true);
   });

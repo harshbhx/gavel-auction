@@ -398,6 +398,22 @@ describe('auction service: settlement end to end', () => {
   });
 });
 
+describe('auction service: gauges and counters (R8-S03)', () => {
+  it('counts loaded rooms and connections and hands the metrics to the rooms', async () => {
+    const rig = await makeRig();
+    const metrics = { bidAccepted: vi.fn(), bidRejected: vi.fn(), rateLimitHit: vi.fn() };
+    const service = rig.service({ roomMetrics: metrics, resumeIntervalMs: 0 });
+    expect(service.stats()).toEqual({ rooms: 0, connections: 0 });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    expect(service.stats()).toEqual({ rooms: 1, connections: 1 });
+    await room.submitBid(a.conn, bid(rig, 10000));
+    expect(metrics.bidAccepted).toHaveBeenCalledTimes(1);
+    await service.close();
+  });
+});
+
 describe('auction service: bidder registration', () => {
   it('refuses a bidder without a held hold', async () => {
     const rig = await makeRig();
@@ -690,6 +706,25 @@ describe('auction service: round 3 hardening (RT3)', () => {
     await expect(
       service.createAuction(rig.ids.mint<'AuctionId'>(), far, 'auctioneer-sub'),
     ).rejects.toMatchObject({ code: 'bad_message' });
+    expect(await rig.stores.store.listAuctions()).toHaveLength(0);
+    await service.close();
+  });
+
+  it('refuses modes, increment ladders and lot holds the engine adapter cannot run (R6-D06)', async () => {
+    const rig = await makeRig();
+    const service = rig.service();
+    const variants: Array<Record<string, unknown>> = [
+      { mode: 'proxy' },
+      { mode: 'second_price' },
+      { holdScope: 'lot' },
+      { incrementLadder: [{ fromCents: 0, incrementCents: 500 }] },
+    ];
+    for (const extra of variants) {
+      const bad = { ...config, ...extra } as unknown as AuctionConfig;
+      await expect(
+        service.createAuction(rig.ids.mint<'AuctionId'>(), bad, 'auctioneer-sub'),
+      ).rejects.toMatchObject({ code: 'bad_message' });
+    }
     expect(await rig.stores.store.listAuctions()).toHaveLength(0);
     await service.close();
   });
@@ -1113,6 +1148,44 @@ describe('auction service: unfinished settlements and spare holds (RT-81)', () =
     await service.close();
   });
 
+  it('does not run a review settlement again while its kept hold stays held (R8-S06)', async () => {
+    const rig = await makeRig();
+    const errors: unknown[] = [];
+    const service = rig.service({
+      retryDelayMs: 10,
+      resumeIntervalMs: 0,
+      unknownDeadlineMs: 1_000,
+      onError: (_id, e) => errors.push(e),
+    });
+    rig.paypal.core.inject('capture', 'timeout_before', null, 1000);
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    await room.submitBid(b.conn, bid(rig, 10000));
+    await room.submitBid(a.conn, bid(rig, 11000));
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    rig.clock.set(START + 10_000);
+    await vi.waitFor(async () => {
+      expect((await journalOf(rig, auctionId)).state).toBe('FAILED_NEEDS_REVIEW');
+    });
+    await service.idle();
+    expect((await rig.stores.holds.get(a.holdId))?.status).toBe('HELD');
+
+    const load = vi.spyOn(rig.stores.journals, 'load');
+    const before = errors.length;
+    for (let i = 0; i < 5; i++) {
+      await service.resume();
+      await service.idle();
+    }
+    // Only the resume passes read the journal; no settlement run was scheduled.
+    expect(load).toHaveBeenCalledTimes(5);
+    expect(errors).toHaveLength(before);
+    await service.close();
+  });
+
   it('charges the hold the room registered and voids the bidder second hold (INT-R3-07)', async () => {
     const rig = await makeRig();
     const service = rig.service();
@@ -1449,5 +1522,73 @@ describe('auction service: red-team round 4 (RT-01)', () => {
 
     expect(open).toBe(1);
     expect((await rig.stores.holds.get(created.holdId))?.status).toBe('HELD');
+  });
+});
+
+describe('auction service: orphan hold when registration is refused (HRD-10, issue 704)', () => {
+  async function approvedBelowReserve(rig: Rig, auctionId: AuctionId) {
+    const bidderId = rig.ids.mint<'BidderId'>();
+    const created = await rig.holdsApi.createHoldOrder({
+      auctionId,
+      bidderId,
+      ceilingCents: 5000,
+      presetsCents: [5000],
+    });
+    rig.paypal.core.approveOrder(created.orderId);
+    await rig.holdsApi.completeApproval({ holdId: created.holdId, orderId: created.orderId });
+    const held = await rig.stores.holds.get(created.holdId);
+    return { bidderId, holdId: created.holdId, authId: held?.authId ?? '' };
+  }
+
+  it('voids the hold and audits the void when the engine refuses the ceiling', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0 });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const orphan = await approvedBelowReserve(rig, auctionId);
+    expect(rig.paypal.core.getAuthorization(orphan.authId).status).not.toBe('VOIDED');
+    await expect(
+      service.registerBidder({
+        auctionId,
+        bidderId: orphan.bidderId,
+        name: 'Low',
+        holdId: orphan.holdId,
+      }),
+    ).rejects.toMatchObject({ code: 'bad_message' });
+    expect(rig.paypal.core.getAuthorization(orphan.authId).status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(orphan.holdId))?.status).toBe('VOIDED');
+    const voids = rig.audits.filter(
+      (a) => a.kind === 'paypal_call' && a.op === 'void' && a.holdId === orphan.holdId,
+    );
+    expect(voids).toHaveLength(1);
+    await service.close();
+  });
+
+  it('is idempotent: a retry of the refused registration sends no second void', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0 });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const orphan = await approvedBelowReserve(rig, auctionId);
+    const input = { auctionId, bidderId: orphan.bidderId, name: 'Low', holdId: orphan.holdId };
+    await expect(service.registerBidder(input)).rejects.toMatchObject({ code: 'bad_message' });
+    await expect(service.registerBidder(input)).rejects.toMatchObject({ code: 'forbidden' });
+    const voids = rig.audits.filter(
+      (a) => a.kind === 'paypal_call' && a.op === 'void' && a.holdId === orphan.holdId,
+    );
+    expect(voids).toHaveLength(1);
+    expect(rig.paypal.core.getAuthorization(orphan.authId).status).toBe('VOIDED');
+    await service.close();
+  });
+
+  it('keeps the hold of a bidder whose registration succeeds', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0 });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const ok = await enroll(rig, service, room, auctionId, 'Ada', 30000);
+    expect((await rig.stores.holds.get(ok.holdId))?.status).toBe('HELD');
+    expect(rig.paypal.core.getAuthorization(ok.authId).status).not.toBe('VOIDED');
+    await service.close();
   });
 });

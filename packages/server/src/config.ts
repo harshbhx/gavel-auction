@@ -1,5 +1,6 @@
 import { isAbsolute } from 'node:path';
 import { z } from 'zod';
+import { isSecretKey } from './log/logger';
 
 const flag = z.enum(['0', '1']).transform((v) => v === '1');
 const int = (min: number) =>
@@ -15,6 +16,10 @@ const csv = z.string().transform((v) =>
     .map((s) => s.trim())
     .filter((s) => s.length > 0),
 );
+
+/** Minimum TOKEN_SECRET length in bytes and ADMIN_KEY length in characters (R-RT-131). */
+const MIN_SECRET_BYTES = 32;
+const MIN_ADMIN_KEY_CHARS = 24;
 
 const byteLength = (s: string): number => new TextEncoder().encode(s).length;
 
@@ -61,6 +66,23 @@ const EnvObject = z.object({
   GAVEL_HOLD_MAX_AGE_MS: int(1).optional(),
 });
 
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '0.0.0.0']);
+
+/**
+ * True when the production rules apply: NODE_ENV=production, or a public https host
+ * (an operator who forgot NODE_ENV must not boot with weak secrets, R-RT-131).
+ */
+export function isProductionLike(env: { NODE_ENV: string; PUBLIC_URL: string }): boolean {
+  if (env.NODE_ENV === 'production') return true;
+  try {
+    const url = new URL(env.PUBLIC_URL);
+    const host = url.hostname.toLowerCase();
+    return url.protocol === 'https:' && !LOCAL_HOSTS.has(host) && !host.endsWith('.localhost');
+  } catch {
+    return false;
+  }
+}
+
 /** Every variable name the server reads; `.env.example` is checked against it. */
 export const CONFIG_KEYS: readonly string[] = Object.keys(EnvObject.shape);
 
@@ -77,15 +99,28 @@ const EnvSchema = EnvObject.superRefine((env, ctx) => {
       if (env[key] === undefined) problem(key, 'required when PAYMENTS=sandbox');
     }
   }
-  if (env.NODE_ENV !== 'production') return;
-  if (byteLength(env.TOKEN_SECRET) < 32) {
-    problem('TOKEN_SECRET', 'must be at least 32 bytes in production');
+  const prodLike = isProductionLike(env);
+  if (env.NODE_ENV === 'test' && prodLike) {
+    problem('NODE_ENV', 'test is not allowed with a non-local PUBLIC_URL');
   }
-  if (env.TOKEN_SECRET_PREVIOUS !== undefined && byteLength(env.TOKEN_SECRET_PREVIOUS) < 32) {
-    problem('TOKEN_SECRET_PREVIOUS', 'must be at least 32 bytes in production');
+  if (env.NODE_ENV !== 'test' || prodLike) {
+    if (byteLength(env.TOKEN_SECRET) < MIN_SECRET_BYTES) {
+      problem('TOKEN_SECRET', `must be at least ${MIN_SECRET_BYTES} bytes`);
+    }
+    if (
+      env.TOKEN_SECRET_PREVIOUS !== undefined &&
+      byteLength(env.TOKEN_SECRET_PREVIOUS) < MIN_SECRET_BYTES
+    ) {
+      problem('TOKEN_SECRET_PREVIOUS', `must be at least ${MIN_SECRET_BYTES} bytes`);
+    }
+    if (env.ADMIN_KEY.length < MIN_ADMIN_KEY_CHARS) {
+      problem('ADMIN_KEY', `must be at least ${MIN_ADMIN_KEY_CHARS} characters`);
+    }
   }
-  if (env.ADMIN_KEY.length < 24)
-    problem('ADMIN_KEY', 'must be at least 24 characters in production');
+  if (env.TOKEN_SECRET === env.ADMIN_KEY) {
+    problem('ADMIN_KEY', 'must differ from TOKEN_SECRET');
+  }
+  if (!isProductionLike(env)) return;
   if (env.STORE === 'memory' && !env.ALLOW_MEMORY_STORE) {
     problem('STORE', 'memory store needs ALLOW_MEMORY_STORE=1 in production');
   }
@@ -108,7 +143,7 @@ export function parseConfig(env: Readonly<Record<string, string | undefined>>): 
   if (parsed.success) {
     const c = parsed.data;
     // A durable store that silently lands in ./data is lost on the next deploy (R-RT-131).
-    if (c.NODE_ENV === 'production' && c.STORE === 'file' && !isAbsolute(cleaned.DATA_DIR ?? '')) {
+    if (isProductionLike(c) && c.STORE === 'file' && !isAbsolute(cleaned.DATA_DIR ?? '')) {
       return {
         ok: false,
         errors: ['DATA_DIR: must be set to an absolute path when STORE=file in production'],
@@ -122,22 +157,13 @@ export function parseConfig(env: Readonly<Record<string, string | undefined>>): 
   };
 }
 
-const SECRET_KEYS = [
-  'TOKEN_SECRET',
-  'TOKEN_SECRET_PREVIOUS',
-  'ADMIN_KEY',
-  'DATABASE_URL',
-  'PAYPAL_CLIENT_ID',
-  'PAYPAL_CLIENT_SECRET',
-  'PAYPAL_WEBHOOK_ID',
-] as const;
 export const REDACTED = '[redacted]';
 
 /** A copy of the config that is safe to log: secrets are replaced. */
 export function redactConfig(config: ServerConfig): Record<string, unknown> {
   const out: Record<string, unknown> = { ...config };
-  for (const key of SECRET_KEYS) {
-    if (out[key] !== undefined) out[key] = REDACTED;
+  for (const key of Object.keys(out)) {
+    if (isSecretKey(key) && out[key] !== undefined) out[key] = REDACTED;
   }
   return out;
 }

@@ -270,6 +270,39 @@ describe('registration id survives a reload and the redirect return (WEB-RT-10)'
     expect(spy.mock.calls.map((c) => c[0].clientRegistrationId)).toEqual(['reg-a', 'reg-b']);
   });
 
+  it('refuses a return whose order id is not the one issued (WEB-R2-08)', async () => {
+    saveRegistration('room-1', 'b-8', { clientRegistrationId: 'reg-r', orderId: 'ord-issued' });
+    const fetch = vi.fn();
+    const real = new PayPalV6Adapter({ apiBase: 'http://api.test', clientId: 'c', fetch });
+    const result = await completeApprovalReturn(
+      real,
+      { roomId: 'room-1', bidderId: 'b-8', orderId: 'ord-crafted' },
+      () => undefined,
+    );
+    expect(result).toMatchObject({ state: 'error', errorCode: 'order_mismatch' });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('retries a failed confirm with the approved order id, not a new order (WEB-R2-08)', async () => {
+    const results = [
+      { state: 'error' as const, errorCode: 'hold_failed', orderId: 'ord-1' },
+      { state: 'held' as const, holdIdSuffix: 'a1b2c3', ceilingCents: 50_000 },
+    ];
+    const start = vi.fn((_r: ApprovalRequest, _on: (s: ApprovalState) => void) =>
+      Promise.resolve(results.shift() ?? { state: 'error' as const }),
+    );
+    const port = { start, cancel: () => undefined };
+    const { result } = renderHook(() => useApproval({ port, roomId: 'room-9', bidderId: 'b-9' }));
+    await act(async () => {
+      await result.current.start(50_000);
+    });
+    await act(async () => {
+      await result.current.start(50_000);
+    });
+    expect(start.mock.calls[0]?.[0].approvedOrderId).toBeUndefined();
+    expect(start.mock.calls[1]?.[0].approvedOrderId).toBe('ord-1');
+  });
+
   it('completes the redirect return with the stored id', async () => {
     const posted: string[] = [];
     const fetch: FetchLike = (_url, init) => {
@@ -277,10 +310,11 @@ describe('registration id survives a reload and the redirect return (WEB-RT-10)'
       return Promise.resolve({
         ok: true,
         status: 200,
-        json: () => Promise.resolve({ holdIdSuffix: 'ZZ9988', state: 'HELD' }),
+        json: () =>
+          Promise.resolve({ holdIdSuffix: 'ZZ9988', ceilingCents: 50_000, state: 'HELD' }),
       });
     };
-    saveRegistration('room-1', 'b-7', { clientRegistrationId: 'reg-redirect' });
+    saveRegistration('room-1', 'b-7', { clientRegistrationId: 'reg-redirect', orderId: 'ord-9' });
     const real = new PayPalV6Adapter({ apiBase: 'http://api.test', clientId: 'c', fetch });
     const states: ApprovalState[] = [];
     const result = await completeApprovalReturn(

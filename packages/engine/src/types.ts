@@ -54,6 +54,10 @@ export const LIMITS = {
   lots: 200,
   bidders: 1000,
   bidsPerLot: 20000,
+  /** Most bids one bidder may record on a lot, so one account cannot fill it (R8-E05). */
+  bidsPerBidderPerLot: 2000,
+  /** Last slots of `bidsPerLot` kept for bids that take the lead (R8-E05). */
+  bidsReservedForLead: 1000,
   /** Rejected PlaceBid entries kept per lot; further rejects fail without a ledger entry. */
   rejectedPerLot: 5000,
   holdRef: 128,

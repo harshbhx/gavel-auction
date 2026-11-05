@@ -152,10 +152,12 @@ describe('flood and script text (T-QA-038)', () => {
     );
 
     const events = await rig.stores.store.readEvents(auctionId, 1, 1000);
-    for (const e of events) {
-      const transcript = (e as { audit?: { transcript?: string } }).audit?.transcript;
-      if (transcript !== undefined) expect(transcript).toBe(script);
-    }
+    const accepted = events.filter((e) => e.type === 'bid_accepted');
+    expect(accepted).toHaveLength(1);
+    expect(accepted[0]).toMatchObject({ audit: { transcript: script } });
+    expect(ana.transport.messages('bid_accepted')).toHaveLength(1);
+    expect(screen.transport.frames.length).toBeGreaterThan(0);
+    expect(screen.transport.messages().some((m) => m['t'] === 'price')).toBe(true);
     expect(screen.transport.frames.join('\n')).not.toContain('<script');
     expect(screen.transport.frames.join('\n')).not.toContain('onerror');
     for (const frame of ana.transport.frames) {

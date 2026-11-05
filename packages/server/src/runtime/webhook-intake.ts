@@ -1,13 +1,14 @@
 import { createHash } from 'node:crypto';
-import type {
-  Clock,
-  HoldRecord,
-  HoldStatus,
-  HoldStore,
-  HoldTruth,
-  StoredWebhook,
-  VerifiedWebhook,
-  WebhookEventStore,
+import {
+  sharedHoldQueue,
+  type Clock,
+  type HoldRecord,
+  type HoldStatus,
+  type HoldStore,
+  type HoldTruth,
+  type StoredWebhook,
+  type VerifiedWebhook,
+  type WebhookEventStore,
 } from '@gavel/payments';
 
 /**
@@ -192,10 +193,17 @@ export class WebhookIntake {
       await this.deps.events.markProcessed(stored.id, 'unchanged:live');
       return 'processed';
     }
-    const next: HoldRecord = { ...hold, status: target };
-    await this.deps.holds.put(next);
+    // The truth read above took time; write on the record as it is now, inside the queue every
+    // other hold writer uses, so a newer write is not overwritten by the older copy (R9-M05).
+    const next = await sharedHoldQueue.run(hold.holdId, async () => {
+      const latest = (await this.deps.holds.get(hold.holdId)) ?? hold;
+      if (latest.status !== 'HELD') return latest;
+      const merged: HoldRecord = { ...latest, status: target };
+      await this.deps.holds.put(merged);
+      return merged;
+    });
     await this.deps.onHoldStatus(next);
-    await this.deps.events.markProcessed(stored.id, `hold:${target}`);
+    await this.deps.events.markProcessed(stored.id, `hold:${next.status}`);
     return 'processed';
   }
 

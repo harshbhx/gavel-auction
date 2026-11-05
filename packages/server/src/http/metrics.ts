@@ -33,6 +33,10 @@ export function createMetricsRoute(
       sendJson(res, 405, '{"error":"method_not_allowed"}');
       return Promise.resolve();
     }
+    if (!adminKeyMatches(req, deps.adminKey)) {
+      sendJson(res, 401, '{"error":"unauthorized"}');
+      return Promise.resolve();
+    }
     const t = now();
     if (t - windowStart >= METRICS_WINDOW_MS) {
       windowStart = t;
@@ -43,10 +47,6 @@ export function createMetricsRoute(
       const wait = Math.max(1, Math.ceil((windowStart + METRICS_WINDOW_MS - t) / 1000));
       res.setHeader('retry-after', String(wait));
       sendJson(res, 429, '{"error":"rate_limited"}');
-      return Promise.resolve();
-    }
-    if (!adminKeyMatches(req, deps.adminKey)) {
-      sendJson(res, 401, '{"error":"unauthorized"}');
       return Promise.resolve();
     }
     sendJson(res, 200, JSON.stringify(collector.snapshot()));

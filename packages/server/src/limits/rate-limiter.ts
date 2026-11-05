@@ -46,7 +46,7 @@ export function limitsFromConfig(cfg: {
   };
 }
 
-/** Upper bound on live buckets; the oldest are dropped beyond it. */
+/** Upper bound on live buckets per kind; a kind at its cap refuses new keys. */
 export const MAX_BUCKETS = 50_000;
 /** How often idle buckets are pruned, in clock milliseconds. */
 const SWEEP_EVERY_MS = 60_000;
@@ -84,6 +84,7 @@ const EXEMPT_PREFIXES: readonly string[] = ['/webhooks/'];
 
 export class RateLimiter {
   private readonly buckets = new Map<string, Bucket>();
+  private readonly counts: Record<LimitKind, number> = { bid: 0, frame: 0, join: 0, http: 0 };
   /** Count of denials per kind, for metrics (R-RT-122). */
   readonly denied: Record<LimitKind, number> = { bid: 0, frame: 0, join: 0, http: 0 };
 
@@ -110,9 +111,14 @@ export class RateLimiter {
     if (now - this.lastSweepMs >= SWEEP_EVERY_MS) this.sweep();
     let b = this.buckets.get(id);
     if (!b) {
-      this.makeRoom();
+      if (!this.makeRoom(kind)) {
+        // Full of live buckets: refuse the new key instead of evicting someone else's (R-RT-120).
+        this.denied[kind] += 1;
+        return { ok: false, code: 'rate_limited', retryAfterMs: spec.refillMs };
+      }
       b = { tokens: spec.burst, lastMs: now };
       this.buckets.set(id, b);
+      this.counts[kind] += 1;
     }
     const earned = Math.floor(Math.max(0, now - b.lastMs) / spec.refillMs);
     if (earned > 0) {
@@ -161,18 +167,15 @@ export class RateLimiter {
       const spec = this.limits[kind];
       if (b.tokens + Math.floor((now - b.lastMs) / spec.refillMs) >= spec.burst) {
         this.buckets.delete(id);
+        this.counts[kind] -= 1;
       }
     }
   }
 
-  /** Make space for one more bucket: prune idle ones, then drop the oldest. */
-  private makeRoom(): void {
-    if (this.buckets.size < this.maxBuckets) return;
+  /** Make space for one bucket of `kind`: prune idle ones only. False when the kind is full. */
+  private makeRoom(kind: LimitKind): boolean {
+    if (this.counts[kind] < this.maxBuckets) return true;
     this.sweep();
-    while (this.buckets.size >= this.maxBuckets) {
-      const oldest = this.buckets.keys().next();
-      if (oldest.done) break;
-      this.buckets.delete(oldest.value);
-    }
+    return this.counts[kind] < this.maxBuckets;
   }
 }

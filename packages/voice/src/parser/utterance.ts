@@ -1,5 +1,5 @@
 import type { ParseContext, ParseResult } from '../types.js';
-import { refineAmounts } from './ambiguity.js';
+import { refineAmounts, refineCandidates } from './ambiguity.js';
 import { parseWithAsr } from './asr.js';
 import { parseCorrection } from './correction.js';
 import { detectIntent } from './intent.js';
@@ -54,7 +54,7 @@ export function parseUtteranceOutcome(text: string, ctx: ParseContext = {}): Utt
   const intent = detectIntent(text);
   if (HARD_INTENTS.has(intent.kind)) {
     return {
-      result: withSpans(text, fromIntent(intent, parseBid(text, ctx))),
+      result: withSpans(text, refineCandidates(text, fromIntent(intent, parseBid(text, ctx)))),
       cancelPending: false,
     };
   }
@@ -62,7 +62,10 @@ export function parseUtteranceOutcome(text: string, ctx: ParseContext = {}): Utt
   if (correction !== null) {
     const r = correction.result;
     return {
-      result: withSpans(text, r.status === 'bid' ? refineAmounts(text, ctx, r) : r),
+      result: withSpans(
+        text,
+        r.status === 'bid' ? refineAmounts(text, ctx, r) : refineCandidates(text, r),
+      ),
       cancelPending: correction.cancelPending,
     };
   }

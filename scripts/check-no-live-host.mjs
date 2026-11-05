@@ -1,49 +1,74 @@
 #!/usr/bin/env node
-// Fails when a tracked non-doc file mentions the live PayPal API host (R-QA-038, T-QA-040).
-// Usage: node scripts/check-no-live-host.mjs [--self-test]
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+// Fails when source or configuration names a live PayPal host (T-QA-040, R-QA-038).
+// Usage: node scripts/check-no-live-host.mjs [--root <dir>]
+// Scanned: every text file under the root except dependency, build and report folders, test
+// folders and test files (they name live hosts on purpose, to prove those hosts are refused),
+// docs, the lock file and this script. The sandbox hosts do not match: only the live API host
+// and the live checkout host do.
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { basename, join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-// Built at run time so this file does not contain the string it forbids.
-export const LIVE_HOST = ['api-m', 'paypal', 'com'].join('.');
+const HERE = fileURLToPath(import.meta.url);
+const SKIP_DIRS = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  'coverage',
+  'report',
+  'test',
+  'tests',
+  'docs',
+  'reference',
+]);
+const SKIP_FILES = new Set(['package-lock.json']);
+const MAX_BYTES = 2 * 1024 * 1024;
 
-// Files that name the live host on purpose (tests proving the sandbox guard rejects it).
-export const ALLOWED = [
-  'packages/payments/test/guard.test.ts',
-  'scripts/tests/no-live-host.test.mjs',
-];
+/** The live REST host, and the live checkout host in any position that is not a subdomain label. */
+export const LIVE_HOST_PATTERNS = [/api-m\.paypal\.com/i, /(?<![\w.-])www\.paypal\.com/i];
 
-export function isChecked(path) {
-  return !path.startsWith('docs/') && !path.endsWith('.md') && !ALLOWED.includes(path);
-}
-
-export function scanText(text) {
-  return text.includes(LIVE_HOST);
-}
-
-function main() {
-  if (process.argv.includes('--self-test')) {
-    const ok = scanText(`url = "https://${LIVE_HOST}"`) && !scanText('url = "sandbox"');
-    return ok && isChecked('packages/web/src/a.ts') && !isChecked('docs/a.txt') ? 0 : 1;
+export function findLiveHosts(text) {
+  const hits = [];
+  for (const re of LIVE_HOST_PATTERNS) {
+    const m = re.exec(text);
+    if (m) hits.push(m[0]);
   }
-  const files = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })
-    .split('\0')
-    .filter((f) => f !== '' && isChecked(f));
-  const bad = [];
-  for (const f of files) {
-    let text;
-    try {
-      text = readFileSync(f).toString('latin1');
-    } catch {
-      continue;
+  return hits;
+}
+
+function* walk(dir) {
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    const st = statSync(p);
+    if (st.isDirectory()) {
+      if (!SKIP_DIRS.has(name)) yield* walk(p);
+    } else if (st.isFile() && st.size <= MAX_BYTES) {
+      if (SKIP_FILES.has(name) || /\.test\.[cm]?[jt]sx?$/.test(name) || p === HERE) continue;
+      yield p;
     }
-    if (scanText(text)) bad.push(f);
   }
-  for (const f of bad) console.error(`live PayPal host found in ${f}`);
-  if (bad.length === 0) console.log(`check:live-host ok (${files.length} files)`);
-  return bad.length === 0 ? 0 : 1;
 }
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split(/[\\/]/).pop())) {
-  process.exit(main());
+/** Returns "path: host" for every offending file under the root. */
+export function scan(root) {
+  const found = [];
+  for (const file of walk(root)) {
+    const buf = readFileSync(file);
+    if (buf.includes(0)) continue;
+    for (const host of findLiveHosts(buf.toString('utf8'))) {
+      found.push(`${relative(root, file)}: ${host}`);
+    }
+  }
+  return found;
 }
+
+function main(argv) {
+  const i = argv.indexOf('--root');
+  const root = i >= 0 ? argv[i + 1] : '.';
+  const found = scan(root);
+  for (const line of found) console.error(`live host: ${line}`);
+  if (found.length === 0) console.log(`no live PayPal host under ${basename(root) || root}`);
+  return found.length === 0 ? 0 : 1;
+}
+
+if (process.argv[1] === HERE) process.exit(main(process.argv.slice(2)));
