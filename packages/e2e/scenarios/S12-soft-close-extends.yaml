@@ -1,0 +1,21 @@
+id: S12-soft-close-extends
+title: Bids inside the soft close window then hammer
+modes: [inproc]
+seed: 12
+clock: { startMs: 1793750400000 }
+auction: { itemId: lot-1, reserve: 5000, minIncrement: 500, softCloseMs: 2000, mode: english }
+actors: { ana: { funding: wallet }, ben: { funding: wallet } }
+steps:
+  - { t: 0, actor: ana, do: register, ceiling: 50000 }
+  - { t: 0, actor: ben, do: register, ceiling: 50000 }
+  - { t: 1000, actor: auctioneer, do: open }
+  - { t: 3000, actor: ana, do: bid, amount: 6000 }
+  - { t: 4000, actor: ben, do: bid, amount: 6500 }
+  - { t: 5000, actor: ana, do: bid, amount: 7000 }
+  - { t: 6000, actor: ben, do: bid, amount: 7500 }
+  - { t: 7000, actor: ana, do: bid, amount: 8000 }
+  - { t: 8000, actor: ben, do: bid, amount: 8500 }
+  - { t: 12000, actor: auctioneer, do: hammer }
+expect:
+  - ledger: { winner: ben, captured: 8500, released: 41500, voided: [ana] }
+  - invariants: [I1, I2, I3, I4]

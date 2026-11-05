@@ -38,6 +38,8 @@
 .gv-hammer-stamp {
   display: inline-block;
   animation: gv-hammer-stamp var(--duration-hammer) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transform-origin: center;
+  will-change: transform, opacity;
 }
 
 .gv-price-tick {
@@ -52,6 +54,7 @@
     animation: none;
     opacity: 1;
     transform: none;
+    will-change: auto;
   }
 }
 
@@ -60,5 +63,14 @@
   .gv-hammer-stamp {
     border: 2px solid CanvasText;
     padding: 0 0.25em;
+  }
+
+  .gv-chip {
+    border: 2px solid CanvasText;
+  }
+
+  .gv-btn:focus-visible,
+  .gv-input:focus-visible {
+    outline: 2px solid Highlight;
   }
 }
