@@ -81,6 +81,11 @@ export interface Connection {
   transport: Transport;
 }
 
+/** What a mid is bound to: the amount and the effective source (manual for the auctioneer). */
+function bidDigest(amount: unknown, source: string): string {
+  return `${isCents(amount) ? amount : ''}|${source}`;
+}
+
 /** The source and audit fields of a bid as the room records them, live and on replay. */
 function bidMeta(conn: Connection, msg: BidMsg, confirmed = false): BidMeta {
   if (conn.role === 'auctioneer') {
@@ -166,13 +171,14 @@ function abortControlId(auctionId: string): string {
 export class Room {
   private tail: Promise<void> = Promise.resolve();
   private inFlight = 0;
+  private closed = false;
   private maxInFlight = 0;
   private seq = 0;
   private config: AuctionConfig | undefined;
   private engine: EnginePort | undefined;
   private lastState = 'OPEN';
   private roster = new Map<BidderId, RosterEntry>();
-  private replies = new Map<string, Reply>();
+  private replies = new Map<string, { reply: Reply; digest: string }>();
   private audit: AuditPayload[] = [];
   private readonly conns = new Map<ConnId, Connection>();
   private cancelTimer: CancelTimer | undefined;
@@ -305,7 +311,9 @@ export class Room {
     this.conns.delete(connId);
   }
 
+  /** Stop the room: later commands are refused and no timer is armed (R-RT-062). */
   async close(): Promise<void> {
+    this.closed = true;
     this.cancelTimer?.();
     this.cancelTimer = undefined;
     this.cancelHammer?.();
@@ -466,6 +474,11 @@ export class Room {
   ): Promise<void> {
     const key = `${bidderId}:${msg.mid}`;
     const prior = this.replies.get(key);
+    if (prior && prior.digest !== bidDigest(msg.amount, bidMeta(conn, msg).source)) {
+      // The same mid with a different amount or submitter is not a replay (R-RT-034).
+      this.sendError(conn, 'conflict');
+      return;
+    }
     if (prior) {
       // A replay returns the original reply and appends nothing (R-RT-034). The reply is
       // only repeated once the ledger holds the bid, so an acknowledgement is never ahead of it.
@@ -475,7 +488,7 @@ export class Room {
         this.sendError(conn, this.storeCode());
         return;
       }
-      this.send(conn, prior);
+      this.send(conn, prior.reply);
       return;
     }
     try {
@@ -558,7 +571,7 @@ export class Room {
     else this.deps.metrics?.bidRejected();
     this.pushAudit(audit);
     const reply = this.replyFor(event);
-    if (reply) this.replies.set(key, reply);
+    if (reply) this.replies.set(key, { reply, digest: bidDigest(msg.amount, audit.source) });
     let durable = true;
     try {
       await this.makeDurable();
@@ -1288,7 +1301,7 @@ export class Room {
         bidderId,
         paddle: r.paddle,
         name: r.name,
-        hold: 'HELD' as const,
+        hold: this.revoked.has(bidderId) ? ('NONE' as const) : ('HELD' as const),
       })),
       recentAudit: [...this.audit],
     };
@@ -1339,7 +1352,7 @@ export class Room {
     this.cancelTimerRetry = undefined;
     if (this.stopped) return;
     const view = this.engine?.view();
-    if (!view || this.hammered) return;
+    if (!view || this.hammered || this.closed) return;
     if (view.state === 'CLOSING') {
       this.armAutoHammer();
       return;
@@ -1604,7 +1617,10 @@ export class Room {
 
   private remember(event: Extract<RoomEvent, { type: 'bid_accepted' | 'bid_rejected' }>): void {
     const reply = this.replyFor(event);
-    if (reply) this.replies.set(`${event.bidderId}:${event.mid}`, reply);
+    if (reply) {
+      const digest = bidDigest(event.audit.parsedAmount, event.audit.source);
+      this.replies.set(`${event.bidderId}:${event.mid}`, { reply, digest });
+    }
     this.pushAudit(event.audit);
   }
 
@@ -1639,6 +1655,7 @@ export class Room {
   }
 
   private enqueue<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.closed) return Promise.reject(new GavelError('conflict', 'room is closed'));
     const run = this.tail.then(async () => {
       this.inFlight += 1;
       this.maxInFlight = Math.max(this.maxInFlight, this.inFlight);
