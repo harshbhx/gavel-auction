@@ -474,3 +474,20 @@ Consequences:
 - Public proxy exports no longer show each bidder's final maximum.
 
 Evidence: packages/engine/test/round8-engine.test.ts, R8-E01, R8-E02, R8-E03, R8-E04, R8-E05.
+
+## D-0027: A soft-close trigger that leaves the end unchanged is not an extension
+
+Date: 2026-11-05
+Status: accepted
+Owner: engine
+Context: The weekly rotating-seed differential run (seed 1988800899, scenario 666, field endsAt) found the TypeScript engine and the Python reference disagreeing. A late bid inside the window with `at + extensionMs` below the current `endsAt` leaves the end unchanged. The reference still incremented `extensions`, so it refused the next real extension; the engine counted only changed ends. R-ENG-034 says to increment `extensions` but R-ENG-038 and R-ENG-036 speak of an extension as something that moves the end.
+Decision: An extension happens only when `endsAt` strictly increases. A bid that triggers the window without moving the end emits no END_EXTENDED and does not consume maxExtensions. The engine already behaved this way (`extension()` returns `extended: false`); the Python reference is fixed to match, and the scenario is pinned in packages/engine/test/differential.test.ts.
+Alternatives:
+
+- Count the no-op trigger and emit END_EXTENDED with equal before and after: rejected, it changes the public event stream and wastes the extension budget on a bid that extended nothing.
+
+Consequences:
+
+- The reference and the engine agree on endsAt for any number of late bids under maxExtensions.
+
+Evidence: packages/engine/test/differential.test.ts (seed 1988800899, scenario 666), reference/python/test_engine.py.
