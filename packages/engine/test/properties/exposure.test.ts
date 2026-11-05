@@ -1,4 +1,5 @@
 import fc from 'fast-check';
+import { SEED as PROPERTY_SEED, runsFor } from '../property-params.js';
 import { describe, expect, it } from 'vitest';
 import type { Command } from '../../src/commands.js';
 import { EngineError, InvariantError } from '../../src/errors.js';
@@ -9,8 +10,8 @@ import type { LotConfig, Mode, Ulid } from '../../src/types.js';
 import { A, B, C, L1, L2, captured, id, lotConfig, mk, nextId, run } from '../decide-helpers.js';
 
 // Seeded like the other property files; set GAVEL_PROPERTY_SEED / GAVEL_PROPERTY_RUNS to replay.
-const SEED = Number(process.env['GAVEL_PROPERTY_SEED'] ?? 20261104);
-const NUM_RUNS = Number(process.env['GAVEL_PROPERTY_RUNS'] ?? 300);
+const SEED = PROPERTY_SEED;
+const NUM_RUNS = runsFor('exposure', 300);
 const params = { seed: SEED, numRuns: NUM_RUNS };
 
 const L3 = id('M3');
