@@ -246,8 +246,6 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     const hold = await this.post(`${roomPath}/holds`, { orderId, clientRegistrationId });
     if (!hold.ok) {
       if (hold.why === 'aborted') return finish('cancelled');
-      // The hold was already created (a retry after a lost response): resume as held.
-      if (hold.code === 'hold_exists') return finish('held');
       return finish('error', {
         errorCode: hold.code ?? (hold.why === 'timeout' ? 'hold_timeout' : 'hold_failed'),
         orderId,
