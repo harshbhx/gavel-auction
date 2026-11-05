@@ -29,6 +29,8 @@ export interface SegmenterOptions {
 export const DEFAULT_HOLD_MS = 1500;
 export const MAX_SEGMENT_MS = 12_000;
 export const MAX_SEGMENT_WORDS = 40;
+/** Most finals held for merging before the earlier ones are emitted on their own. */
+export const MAX_HELD_PARTS = 32;
 
 type FinalEvent = Extract<SttEvent, { type: 'final' }>;
 
@@ -72,6 +74,12 @@ export class Segmenter {
         this.lastFinalAt = nowMs;
         this.interimSinceFinal = false;
         if (ev.speechFinal) out.push(...this.flushParts());
+        else if (this.parts.length > 1 && this.heldTooLarge()) {
+          // Emit the earlier finals as their own segment so a clear bid is not lost in a long window.
+          const newest = this.parts.pop();
+          out.push(...this.flushParts());
+          if (newest !== undefined) this.parts = [newest];
+        }
         return out;
       }
       case 'utterance_end':
@@ -93,6 +101,19 @@ export class Segmenter {
   /** Emit whatever is held, for shutdown. */
   flush(): SegmentEvent[] {
     return this.flushParts();
+  }
+
+  private heldTooLarge(): boolean {
+    const first = this.parts[0];
+    const last = this.parts[this.parts.length - 1];
+    if (first === undefined || last === undefined) return false;
+    if (this.parts.length > MAX_HELD_PARTS) return true;
+    if (last.endMs - first.startMs > this.maxDurationMs) return true;
+    const words = this.parts.reduce(
+      (n, p) => n + p.text.split(/\s+/).filter((w) => w !== '').length,
+      0,
+    );
+    return words > this.maxWords;
   }
 
   private flushParts(): SegmentEvent[] {
