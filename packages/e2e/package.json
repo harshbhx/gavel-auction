@@ -9,6 +9,7 @@
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit -p .",
     "test:sandbox": "vitest run --config vitest.sandbox.config.ts",
+    "measure:sandbox": "vite-node src/sandbox/measure-cli.ts --",
     "report:sandbox": "vite-node src/report/sandbox-cli.ts",
     "gate:g5": "vite-node src/gates/g5-cli.ts --"
   },

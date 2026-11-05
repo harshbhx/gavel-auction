@@ -6,6 +6,7 @@ import { createSettlement } from '../../../payments/src/saga/create.js';
 import { runSettlement } from '../../../payments/src/saga/void.js';
 import { MemoryJournalStore } from '../../../payments/src/stores/memory.js';
 import { Transport } from '../../../payments/src/transport.js';
+import type { PaymentsGateway } from '../../../payments/src/ports.js';
 import type { HoldTruth, Journal } from '../../../payments/src/types.js';
 import type { LedgerRow } from './harness.js';
 
@@ -48,6 +49,47 @@ export function sandboxGateway(env: Env): PayPalGateway {
   return new PayPalGateway({ auth, fake: false });
 }
 
+/** Thrown by the crash injection, standing for a process that died. */
+export class InjectedCrash extends Error {
+  constructor(readonly label: string) {
+    super(`injected crash at ${label}`);
+    this.name = 'InjectedCrash';
+  }
+}
+
+export interface CrashPlan {
+  /** Saga boundary label at which the first run dies, for example `after:capture`. */
+  label: string;
+}
+
+export interface CrashLotResult extends LotResult {
+  /** True when the first run died at the planned boundary. */
+  crashed: boolean;
+  /** The journal as the crashed run left it (what a restarted process would load). */
+  journalAtCrash: Journal;
+  /** Request id of every capture call the gateway received, in order, over both runs. */
+  captureCalls: { run: number; requestId: string }[];
+}
+
+/** Records every capture call and passes everything to the real gateway. */
+function recordCaptures(
+  inner: PaymentsGateway,
+  onCapture: (requestId: string) => void,
+): PaymentsGateway {
+  return {
+    createOrder: (i) => inner.createOrder(i),
+    getOrder: (id) => inner.getOrder(id),
+    authorizeOrder: (id, r) => inner.authorizeOrder(id, r),
+    getHoldTruth: (h) => inner.getHoldTruth(h),
+    capture: (authId, i) => {
+      onCapture(i.requestId);
+      return inner.capture(authId, i);
+    },
+    voidAuthorization: (id, r) => inner.voidAuthorization(id, r),
+    reauthorize: (id, i) => inner.reauthorize(id, i),
+  };
+}
+
 /** Creates the settlement journal, runs the saga to its end and reads PayPal's truth. */
 export async function settleLot(
   env: Env,
@@ -55,7 +97,34 @@ export async function settleLot(
   holds: readonly LotHold[],
   candidates: readonly LotCandidate[],
 ): Promise<LotResult> {
-  const gateway = sandboxGateway(env);
+  return (await runLot(env, auctionId, holds, candidates)).result;
+}
+
+/**
+ * Like settleLot, but the first run dies at the planned boundary (after the capture call
+ * returned and before the journal knows), then a second run resumes from the same journal.
+ */
+export async function settleLotWithCrash(
+  env: Env,
+  auctionId: string,
+  holds: readonly LotHold[],
+  candidates: readonly LotCandidate[],
+  crash: CrashPlan,
+): Promise<CrashLotResult> {
+  return (await runLot(env, auctionId, holds, candidates, crash)).result as CrashLotResult;
+}
+
+async function runLot(
+  env: Env,
+  auctionId: string,
+  holds: readonly LotHold[],
+  candidates: readonly LotCandidate[],
+  crash?: CrashPlan,
+): Promise<{ result: LotResult | CrashLotResult }> {
+  const real = sandboxGateway(env);
+  let run = 1;
+  const captureCalls: { run: number; requestId: string }[] = [];
+  const gateway = recordCaptures(real, (requestId) => captureCalls.push({ run, requestId }));
   const journals = new MemoryJournalStore();
   const clock = { nowMs: (): number => Date.now() };
   const audit = { append: async (): Promise<void> => undefined };
@@ -76,18 +145,40 @@ export async function settleLot(
     { journals, clock, holdMaxAgeMs: DEFAULT_HOLD_MAX_AGE_MS, audit },
     { auctionId, reserveCents: 100, candidates: [...candidates], holds: plan },
   );
-  const outcome = await runSettlement({ journals, gateway, audit, clock }, auctionId);
+  let armed = crash !== undefined;
+  const boundary = (label: string): void => {
+    if (armed && crash !== undefined && label === crash.label) {
+      armed = false;
+      throw new InjectedCrash(label);
+    }
+  };
+  let crashed = false;
+  let journalAtCrash: Journal | null = null;
+  let outcome: Awaited<ReturnType<typeof runSettlement>> | undefined;
+  for (; run <= 3; run += 1) {
+    try {
+      outcome = await runSettlement({ journals, gateway, audit, clock, boundary }, auctionId);
+      break;
+    } catch (e) {
+      if (!(e instanceof InjectedCrash)) throw e;
+      crashed = true;
+      journalAtCrash = await journals.load(auctionId);
+    }
+  }
+  if (outcome === undefined) throw new Error('settlement did not finish');
   const journal = await journals.load(auctionId);
   if (journal === null) throw new Error('settlement journal is missing');
   const truth: Record<string, HoldTruth> = {};
   for (const h of holds) {
-    truth[h.bidderId] = await gateway.getHoldTruth({
+    truth[h.bidderId] = await real.getHoldTruth({
       holdId: `hold-${h.bidderId}`,
       authId: h.authId,
       orderId: h.orderId,
     });
   }
-  return { status: outcome.status, journal, truth };
+  const base: LotResult = { status: outcome.status, journal, truth };
+  if (crash === undefined) return { result: base };
+  return { result: { ...base, crashed, journalAtCrash: journalAtCrash ?? journal, captureCalls } };
 }
 
 /** Our side of the reconciliation, built from the settlement journal only. */
