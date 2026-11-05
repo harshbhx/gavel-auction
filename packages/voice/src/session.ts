@@ -41,7 +41,8 @@ export interface StreamKey {
 export type OpenResult = { ok: true; stream: AudioStream } | { ok: false; error: AudioErrorCode };
 
 export type FrameResult =
-  { ok: true; bytes: number } | { ok: false; error: AudioErrorCode; closed: true };
+  | { ok: true; bytes: number }
+  | { ok: false; error: AudioErrorCode; closed: true };
 
 export interface AudioStream {
   /** Offer one websocket message. Anything that is not a binary frame is a violation. */
