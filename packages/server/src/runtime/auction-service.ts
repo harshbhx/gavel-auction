@@ -143,7 +143,7 @@ export interface AuctionService {
   /** The room, loaded from its log on first use. */
   room(auctionId: AuctionId): Promise<Room>;
   /** Loaded room count and open connections, for the metrics gauges. */
-  stats(): { rooms: number; connections: number };
+  stats(): { rooms: number; connections: number; mailboxDepth: number };
   registerBidder(input: RegisterBidderInput): Promise<void>;
   /**
    * Kill switch before the hammer: when the switch is engaged, ends every auction that has
@@ -335,15 +335,17 @@ class Service implements AuctionService, SettlePort {
   }
 
   /** Loaded room count and open connections, for the metrics gauges. */
-  stats(): { rooms: number; connections: number } {
+  stats(): { rooms: number; connections: number; mailboxDepth: number } {
     let connections = 0;
+    let mailboxDepth = 0;
     let rooms = 0;
     for (const [id, room] of this.ready) {
       if (!this.rooms.has(id)) continue;
       rooms += 1;
       connections += room.connectionCount;
+      mailboxDepth = Math.max(mailboxDepth, room.mailboxDepth);
     }
-    return { rooms, connections };
+    return { rooms, connections, mailboxDepth };
   }
 
   room(auctionId: AuctionId): Promise<Room> {
