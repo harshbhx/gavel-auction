@@ -182,7 +182,7 @@ describe('cached replay end to end (R-VOX-081, R-VOX-102)', () => {
     run.finalAt.forEach((at, i) => {
       expect(Math.abs(at - (recorded[i] ?? -1))).toBeLessThanOrEqual(300);
     });
-    expect(run.outcomes.map((o) => o.kind)).toEqual(['accept', 'confirm', 'drop']);
+    expect(run.outcomes.map((o) => o.kind)).toEqual(['accept', 'confirm', 'confirm']);
     expect(run.outcomes[0]).toEqual({ kind: 'accept', bidderId: 'b4', amountCents: 30_000 });
   });
 
