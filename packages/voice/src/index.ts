@@ -30,7 +30,7 @@ export {
   toPlaceBid,
 } from './pipeline/bid-command.js';
 export type { ConfirmedBy, PlaceBidCommand, PlaceBidContext } from './pipeline/bid-command.js';
-export { AUDIO_ERROR_CODES, createVoiceSession } from './session.js';
+export { AUDIO_ERROR_CODES, AUDIO_IDLE_MS, createVoiceSession } from './session.js';
 export type {
   AudioErrorCode,
   AudioStream,
