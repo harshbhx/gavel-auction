@@ -14,12 +14,14 @@ function envVars(): Map<string, string> {
 }
 
 describe('render.yaml blueprint (R8-Q01)', () => {
-  it('starts the server through its npm script, not a dist file that is never built', () => {
-    expect(text).toMatch(/startCommand: npm start -w @gavel\/server/);
+  it('builds the bundle and starts it with node through the start:prod script', () => {
+    expect(text).toMatch(/buildCommand: .*npm run build -w @gavel\/server/);
+    expect(text).toMatch(/startCommand: npm run start:prod -w @gavel\/server/);
+    expect(text).not.toMatch(/vite-node/);
     expect(text).not.toMatch(/dist\/index\.js/);
   });
 
-  it('installs dev packages because the start script runs vite-node', () => {
+  it('installs dev packages because the build script needs esbuild', () => {
     expect(text).toMatch(/buildCommand: npm ci --include=dev/);
   });
 

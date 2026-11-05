@@ -1,9 +1,12 @@
 import { composeServer } from './boot/compose';
+import { validateBootEnv } from './config/validate';
 import { createShutdown } from './ops/shutdown';
 import { SystemClock } from '@gavel/shared';
 
 /** Process entry (`npm start -w @gavel/server`): validates the environment, boots and listens. */
 async function main(): Promise<void> {
+  // Exits 78 naming each missing or invalid variable before anything else starts (R-QA-043).
+  validateBootEnv(process.env);
   const app = await composeServer(process.env);
   const port = await app.listen();
   process.stdout.write(`${JSON.stringify({ msg: 'listening', port })}\n`);

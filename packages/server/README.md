@@ -9,10 +9,10 @@ From the repo root:
 ```
 npm ci
 PUBLIC_URL=http://localhost:8080 TOKEN_SECRET=dev-token-secret ADMIN_KEY=dev-admin-key \
-  npm start -w @gavel/server
+  PAYMENTS=fake PAYPAL_ENV=sandbox npm start -w @gavel/server
 ```
 
-The process validates its environment first and exits with every problem listed if a value is missing or invalid. On success it prints one JSON line, `{"msg":"listening","port":...}`. `SIGTERM` and `SIGINT` stop accepting connections and exit.
+Production runs `npm run build -w @gavel/server` (esbuild bundle to `dist/main.js`) then `npm run start:prod -w @gavel/server`. The process validates its environment first (exit 78 naming each missing or invalid variable) and exits with every problem listed if a value is missing or invalid. On success it prints one JSON line, `{"msg":"listening","port":...}`. `SIGTERM` and `SIGINT` stop accepting connections and exit.
 
 Health: `GET /healthz` (process is up), `GET /readyz` (the room store answers a ping; payments are not probed), `GET /metrics` (JSON snapshot).
 
