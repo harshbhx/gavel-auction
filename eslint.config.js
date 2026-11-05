@@ -4,6 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 import determinism from './eslint.rules/determinism.js';
 import enginePurity from './eslint.rules/engine-purity.js';
+import roomCore from './packages/server/eslint-rules/room-core.js';
 
 export default tseslint.config(
   {
@@ -24,6 +25,7 @@ export default tseslint.config(
     },
   },
   enginePurity,
+  roomCore,
   {
     files: ['packages/web/**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks },
