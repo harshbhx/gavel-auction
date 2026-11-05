@@ -70,7 +70,7 @@ function countingGateway(): { gw: PaymentsGateway; calls: string[] } {
     },
     async reauthorize() {
       calls.push('reauthorize');
-      return { amountCents: 100 };
+      return { authId: 'A2', amountCents: 100 };
     },
   };
   return { gw, calls };

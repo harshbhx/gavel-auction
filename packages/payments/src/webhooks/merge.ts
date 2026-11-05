@@ -141,7 +141,10 @@ export function truthToStatus(t: HoldTruth): HoldStatus {
       return 'HELD';
     case 'PARTIALLY_CAPTURED':
     case 'CAPTURED':
-      return 'CAPTURED';
+      // R11-O03: a capture PayPal still lists as PENDING may yet be declined.
+      return t.captures !== null && t.captures.length > 0 && t.captures.every((c) => c.pending)
+        ? 'HELD'
+        : 'CAPTURED';
     case 'VOIDED':
     case 'EXPIRED':
     case 'DENIED':

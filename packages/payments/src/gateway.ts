@@ -49,6 +49,9 @@ const AUTH_STATUS: Readonly<Record<string, TruthStatus>> = {
 /** Capture statuses that count as money taken or on its way. */
 const COUNTED_CAPTURE: ReadonlySet<string> = new Set(['COMPLETED', 'PENDING']);
 
+/** Capture statuses where PayPal refused the capture and took nothing (R11-O03). */
+const DECLINED_CAPTURE: ReadonlySet<string> = new Set(['DECLINED', 'FAILED']);
+
 /** Capture statuses where money was taken and then returned; kept so nothing re-captures. */
 const REFUNDED_CAPTURE: ReadonlySet<string> = new Set(['REFUNDED', 'PARTIALLY_REFUNDED']);
 
@@ -75,31 +78,56 @@ function asObject(v: unknown): Json | undefined {
   return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Json) : undefined;
 }
 
-/** Captures listed on the order, or null when the order does not carry the field. */
-export function capturesOf(order: unknown): CaptureRef[] | null {
+/** The captures an order lists: those that took or may take money, and those PayPal refused. */
+interface CaptureLists {
+  captures: CaptureRef[];
+  declined: CaptureRef[];
+}
+
+function centsOrUndefined(value: unknown): number | undefined {
+  if (typeof value !== 'string') return undefined;
+  try {
+    return decimalToCents(value);
+  } catch {
+    return undefined;
+  }
+}
+
+/** Both capture lists of the order, or null when the order does not carry the field. */
+function captureListsOf(order: unknown): CaptureLists | null {
   const units = asObject(order)?.['purchase_units'];
   const unit = Array.isArray(units) ? asObject(units[0]) : undefined;
   const payments = asObject(unit?.['payments']);
   if (unit === undefined) return null;
   const list = payments?.['captures'];
-  if (list === undefined) return [];
+  const out: CaptureLists = { captures: [], declined: [] };
+  if (list === undefined) return out;
   if (!Array.isArray(list)) return null;
-  const out: CaptureRef[] = [];
   for (const raw of list) {
     const c = asObject(raw);
     const id = c?.['id'];
+    const status = c?.['status'];
+    if (typeof status === 'string' && DECLINED_CAPTURE.has(status)) {
+      // A refused capture took nothing; it is kept apart so the saga can fall back on it.
+      const cents = centsOrUndefined(asObject(c?.['amount'])?.['value']);
+      if (typeof id !== 'string' || cents === undefined) continue;
+      const refused: CaptureRef = {
+        captureId: id,
+        amountCents: cents,
+        final: c?.['final_capture'] === true,
+      };
+      const inv = c?.['invoice_id'];
+      if (typeof inv === 'string') refused.invoiceId = inv;
+      out.declined.push(refused);
+      continue;
+    }
     const amount = asObject(c?.['amount']);
     const value = amount?.['value'];
     if (c === undefined || typeof id !== 'string' || typeof value !== 'string') return null;
-    const status = c['status'];
     const refunded = typeof status === 'string' && REFUNDED_CAPTURE.has(status);
     if (typeof status === 'string' && !refunded && !COUNTED_CAPTURE.has(status)) continue;
-    let cents: number;
-    try {
-      cents = decimalToCents(value);
-    } catch {
-      return null;
-    }
+    const cents = centsOrUndefined(value);
+    if (cents === undefined) return null;
     const ref: CaptureRef = {
       captureId: id,
       amountCents: cents,
@@ -113,9 +141,16 @@ export function capturesOf(order: unknown): CaptureRef[] | null {
         ...(total === undefined ? {} : { refundedCents: total }),
       };
     }
-    out.push(ref);
+    // R11-O03: money on its way is not money taken; the saga waits for COMPLETED.
+    if (status === 'PENDING') ref.pending = true;
+    out.captures.push(ref);
   }
   return out;
+}
+
+/** Captures listed on the order, or null when the order does not carry the field. */
+export function capturesOf(order: unknown): CaptureRef[] | null {
+  return captureListsOf(order)?.captures ?? null;
 }
 
 function unreadable(status: string): PayPalError {
@@ -192,8 +227,9 @@ export class PayPalGateway implements PaymentsGateway {
     let status = AUTH_STATUS[auth.status];
     if (status === undefined) throw unreadable(auth.status);
 
-    let captures: CaptureRef[] | null = null;
-    if (h.orderId !== undefined) captures = await this.readCaptures(h.orderId);
+    let lists: CaptureLists | null = null;
+    if (h.orderId !== undefined) lists = await this.readCaptures(h.orderId);
+    const captures = lists === null ? null : lists.captures;
     const capturedCents = captures === null ? 0 : captures.reduce((s, c) => s + c.amountCents, 0);
     if (
       captures !== null &&
@@ -210,11 +246,12 @@ export class PayPalGateway implements PaymentsGateway {
       amountCents: auth.amountCents,
       capturedCents,
       captures,
+      ...(lists !== null && lists.declined.length > 0 ? { declined: lists.declined } : {}),
       observedAtMs,
     };
   }
 
-  private async readCaptures(orderId: string): Promise<CaptureRef[] | null> {
+  private async readCaptures(orderId: string): Promise<CaptureLists | null> {
     try {
       const res = await this.auth.send({
         method: 'GET',
@@ -231,7 +268,7 @@ export class PayPalGateway implements PaymentsGateway {
       } catch {
         return null;
       }
-      return capturesOf(json);
+      return captureListsOf(json);
     } catch (e) {
       if (e instanceof PayPalError && e.kind === 'not_found') return null;
       throw e;
@@ -253,7 +290,7 @@ export class PayPalGateway implements PaymentsGateway {
   async reauthorize(
     authId: string,
     i: { amountCents: number; requestId: string },
-  ): Promise<{ amountCents: number }> {
+  ): Promise<{ authId: string; amountCents: number }> {
     await this.gate();
     return this.payments.reauthorize(authId, i);
   }

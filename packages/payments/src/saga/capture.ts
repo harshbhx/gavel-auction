@@ -24,6 +24,10 @@ export { DEFAULT_UNKNOWN_DEADLINE_MS };
  *       definite failure  -> truth check -> captured ? adopt : FALLBACK_RUNNER_UP
  *       unknown           -> unknownSince saved, `pending`; never the next candidate
  *
+ * A capture PayPal lists as PENDING is not adopted (R11-O03): the phase waits with the
+ * intent, under the unknown deadline, until PayPal reports it COMPLETED (adopt) or
+ * declines it (fall back).
+ *
  * Every state change is one compare-and-set save of the journal before the next
  * effect. The runner holds the auction's lease and renews it before each step.
  * Voiding the other holds is the next phase and is not done here.
@@ -35,6 +39,8 @@ export { DEFAULT_UNKNOWN_DEADLINE_MS };
 
 export type PendingReason =
   | 'capture_outcome_unknown'
+  /** PayPal lists the capture as PENDING: not adopted until it is COMPLETED (R11-O03). */
+  | 'capture_pending'
   | 'kill_switch'
   | 'truth_unavailable'
   | 'auth_unavailable'
@@ -56,7 +62,10 @@ export interface CaptureDeps {
   metrics?: PaymentsMetrics;
   /** Default 600000 (R-PAY-055). */
   unknownDeadlineMs?: number;
-  /** Lease owner. Default: the process id plus a fresh random suffix per run. */
+  /**
+   * Lease owner prefix. Every run adds a fresh random suffix to it (R7P03, R11-O05), so two
+   * runs never share a lease. Default: the process id.
+   */
   owner?: string;
   /**
    * Called at every crash boundary: `journaled:<event>` after a save, and
@@ -120,17 +129,17 @@ function lastReason(j: Journal): string {
 /** What the truth says about the candidate's capture. */
 type Verdict =
   | { kind: 'adopt'; capture: CaptureRef }
+  /** Our capture is listed but PENDING: neither taken nor refused yet (R11-O03). */
+  | { kind: 'in_doubt' }
   | { kind: 'mismatch'; why: string }
   | { kind: 'gone'; why: string }
   | { kind: 'open' };
 
 export class CapturePhase {
   private readonly owner: string;
-  private readonly explicitOwner: boolean;
 
   constructor(private readonly deps: CaptureDeps) {
     this.owner = deps.owner ?? defaultLeaseOwner('runner');
-    this.explicitOwner = deps.owner !== undefined;
   }
 
   /** Runs, or resumes, the capture phase of one settlement. */
@@ -138,8 +147,9 @@ export class CapturePhase {
     const leased = await withLease(
       { journals: this.deps.journals, clock: this.deps.clock },
       auctionId,
-      // A default owner is unique per run, so a second run in this process gets `busy`.
-      this.explicitOwner ? this.owner : runLeaseOwner(this.owner),
+      // Every run gets its own owner, also under a configured one (R11-O05): a second run
+      // or a voidAll in this process gets `busy` and cannot free this run's lease.
+      runLeaseOwner(this.owner),
       async (renew) => {
         const journal = await this.deps.journals.load(auctionId);
         if (journal === null) throw new Error(`no settlement for auction ${auctionId}`);
@@ -356,6 +366,8 @@ class Run {
     switch (v.kind) {
       case 'adopt':
         return this.won(t, v.capture.captureId, 'adopted', v.capture.amountCents);
+      case 'in_doubt':
+        return this.waitForPendingCapture();
       case 'mismatch':
         return this.fail('mismatch');
       case 'gone':
@@ -363,6 +375,26 @@ class Run {
       case 'open':
         return undefined;
     }
+  }
+
+  /**
+   * R11-O03: PayPal lists our capture as PENDING. It is neither the sale nor a failure:
+   * the intent stays, no other candidate is tried and the void phase does not start, so
+   * the next candidates keep their holds. A later run adopts it once PayPal says
+   * COMPLETED, or falls back once PayPal declined it. The unknown deadline applies: a
+   * capture that stays pending goes to review with its hold kept.
+   */
+  private async waitForPendingCapture(): Promise<CaptureOutcome> {
+    if (unknownExpired(this.j.unknownSince, this.now(), this.deadlineMs)) {
+      return this.fail('unknown_deadline');
+    }
+    if (this.j.unknownSince === null) {
+      const since = this.now();
+      await this.patch('unknown_since', (d) => {
+        d.unknownSince = since;
+      });
+    }
+    return { status: 'pending', reason: 'capture_pending', journal: this.j };
   }
 
   private async afterFailure(err: PayPalError, t: Target): Promise<CaptureOutcome | null> {
@@ -476,24 +508,26 @@ export function verdict(truth: HoldTruth, priceCents: number, invoiceId: string)
       ? { kind: 'mismatch', why: 'captures not observable' }
       : { kind: 'open' };
   }
+  const isOurs = (c: CaptureRef): boolean =>
+    c.final &&
+    c.amountCents === priceCents &&
+    (c.invoiceId === undefined || c.invoiceId === invoiceId);
   if (truth.captures.length === 0) {
-    return truth.capturedCents > 0
-      ? { kind: 'mismatch', why: 'untracked capture' }
-      : { kind: 'open' };
+    if (truth.capturedCents > 0) return { kind: 'mismatch', why: 'untracked capture' };
+    // R11-O03: PayPal declined our capture after it was pending. Nothing was taken: this
+    // candidate failed for good, so the settlement falls back.
+    if ((truth.declined ?? []).some(isOurs)) return { kind: 'gone', why: 'capture_declined' };
+    return { kind: 'open' };
   }
   if (truth.captures.some((c) => c.refund !== undefined)) {
     // Money was taken and returned: never open, never adopted, never captured again.
     return { kind: 'mismatch', why: 'capture refunded' };
   }
-  const ours = truth.captures.filter(
-    (c) =>
-      c.final &&
-      c.amountCents === priceCents &&
-      (c.invoiceId === undefined || c.invoiceId === invoiceId),
-  );
+  const ours = truth.captures.filter(isOurs);
   const [only] = ours;
   if (ours.length === 1 && truth.captures.length === 1 && only !== undefined) {
-    return { kind: 'adopt', capture: only };
+    // R11-O03: a PENDING capture is not money taken; wait until PayPal completes it.
+    return only.pending === true ? { kind: 'in_doubt' } : { kind: 'adopt', capture: only };
   }
   return { kind: 'mismatch', why: 'captures differ from the plan' };
 }

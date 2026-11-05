@@ -55,6 +55,12 @@ export interface FakePayPalServerOptions {
   tokenTtlSec?: number;
   /** Listening port. Default 0 (ephemeral). */
   port?: number;
+  /**
+   * Answer captures and reauthorizations with the minimal body (id, status, links) even
+   * when the request sends `Prefer: return=representation`, as the G1.5 sandbox capture
+   * did for a request without the header (R11-O02). Default false: the header is honored.
+   */
+  ignorePrefer?: boolean;
 }
 
 const HOST = '127.0.0.1';
@@ -78,6 +84,8 @@ interface Ctx {
   body: string;
   json: Json | undefined;
   requestId: string | undefined;
+  /** The request asked for the full resource with `Prefer: return=representation`. */
+  representation: boolean;
 }
 
 const STATUS_NAMES: Readonly<Record<number, string>> = {
@@ -280,11 +288,16 @@ export class FakePayPalServer {
         return errorResponse(400, 'MALFORMED_REQUEST_JSON');
       }
       const reqId = req.headers['paypal-request-id'];
+      const prefer = req.headers['prefer'];
       return this.guarded(() =>
         route.run({
           body,
           json: parsed,
           requestId: typeof reqId === 'string' && reqId !== '' ? reqId : undefined,
+          representation:
+            this.opts.ignorePrefer !== true &&
+            typeof prefer === 'string' &&
+            /\breturn=representation\b/i.test(prefer),
         }),
       );
     };
@@ -455,19 +468,20 @@ export class FakePayPalServer {
       amount: amountOf(o.amountCents, this.currency),
     };
     if (o.authId !== undefined) {
-      const a = this.peekAuthorization(o.authId);
+      // Every authorization of a reauthorization chain, and every capture on any of them.
+      const chain = this.core_
+        .reauthorizationChain(o.authId)
+        .map((id) => this.peekAuthorization(id));
       unit['payments'] = {
-        authorizations: [
-          {
-            id: a.id,
-            status: a.status,
-            amount: amountOf(a.holdCents, this.currency),
-            create_time: this.iso(),
-          },
-        ],
-        captures: a.captures.map((c) =>
-          captureBody(c.id, c.amountCents, c.final, c.invoiceId, this.currency),
-        ),
+        authorizations: chain.map((a) => ({
+          id: a.id,
+          status: a.status,
+          amount: amountOf(a.holdCents, this.currency),
+          create_time: this.iso(),
+        })),
+        captures: this.core_
+          .orderCaptures(o.authId)
+          .map((c) => captureBody(c, this.currency, this.url)),
       };
     }
     return jsonResponse(200, {
@@ -529,9 +543,19 @@ export class FakePayPalServer {
     const invoice = typeof json['invoice_id'] === 'string' ? json['invoice_id'] : undefined;
     const final = json['final_capture'] === true;
     const c = this.core_.capture(authId, cents, final, x.requestId, invoice);
+    const record = {
+      id: c.id,
+      amountCents: c.amountCents,
+      final: c.finalCapture,
+      status: c.status,
+      ...(invoice === undefined ? {} : { invoiceId: invoice }),
+    };
+    // R11-O02: PayPal's default answer is the minimal body, without amount or final_capture.
     return jsonResponse(
       201,
-      captureBody(c.id, c.amountCents, c.finalCapture, invoice, this.currency),
+      x.representation
+        ? captureBody(record, this.currency, this.url)
+        : { id: c.id, status: c.status, links: captureLinks(c.id, authId, this.url) },
     );
   }
 
@@ -556,15 +580,25 @@ export class FakePayPalServer {
     return { status: 204, headers: {}, body: '' };
   }
 
+  /** R11-O06: the answer is a new authorization with its own id. */
   private reauthorize(authId: string, x: Ctx): HandlerResponse {
     const cents = centsFromAmount(x.json?.['amount'], this.currency) ?? 0;
     const r = this.core_.reauthorize(authId, cents, x.requestId);
-    return jsonResponse(201, {
-      id: r.id,
-      status: r.status,
-      amount: amountOf(r.amountCents, this.currency),
-      create_time: this.iso(),
-    });
+    const links = [
+      { href: `${this.url}/v2/payments/authorizations/${r.id}`, rel: 'self', method: 'GET' },
+    ];
+    return jsonResponse(
+      201,
+      x.representation
+        ? {
+            id: r.id,
+            status: r.status,
+            amount: amountOf(r.amountCents, this.currency),
+            create_time: this.iso(),
+            links,
+          }
+        : { id: r.id, status: r.status, links },
+    );
   }
 
   private verify(x: Ctx): HandlerResponse {
@@ -572,19 +606,37 @@ export class FakePayPalServer {
   }
 }
 
+function captureLinks(captureId: string, authId: string | undefined, base: string): Json[] {
+  return [
+    { href: `${base}/v2/payments/captures/${captureId}`, rel: 'self', method: 'GET' },
+    { href: `${base}/v2/payments/captures/${captureId}/refund`, rel: 'refund', method: 'POST' },
+    ...(authId === undefined
+      ? []
+      : [{ href: `${base}/v2/payments/authorizations/${authId}`, rel: 'up', method: 'GET' }]),
+  ];
+}
+
+/** The full capture resource, as `Prefer: return=representation` and the order list it. */
 function captureBody(
-  id: string,
-  cents: number,
-  final: boolean,
-  invoice: string | undefined,
+  c: {
+    id: string;
+    amountCents: number;
+    final: boolean;
+    invoiceId?: string;
+    status: 'COMPLETED' | 'PENDING' | 'DECLINED';
+  },
   currency: string,
+  base: string,
 ): Json {
   return {
-    id,
-    status: 'COMPLETED',
-    amount: amountOf(cents, currency),
-    final_capture: final,
-    ...(invoice === undefined ? {} : { invoice_id: invoice }),
+    id: c.id,
+    status: c.status,
+    // PayPal names why a capture waits; PENDING_REVIEW is one of its documented reasons.
+    ...(c.status === 'PENDING' ? { status_details: { reason: 'PENDING_REVIEW' } } : {}),
+    amount: amountOf(c.amountCents, currency),
+    final_capture: c.final,
+    ...(c.invoiceId === undefined ? {} : { invoice_id: c.invoiceId }),
+    links: captureLinks(c.id, undefined, base),
   };
 }
 

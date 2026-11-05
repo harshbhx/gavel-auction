@@ -47,6 +47,11 @@ export interface CaptureRef {
   invoiceId?: string;
   /** Set only when PayPal reports the capture as REFUNDED or PARTIALLY_REFUNDED. */
   refund?: { status: 'REFUNDED' | 'PARTIALLY_REFUNDED'; refundedCents?: number };
+  /**
+   * Set only when PayPal reports the capture as PENDING (R11-O03): the money is not taken
+   * yet and PayPal may still decline it, so it is never adopted as the sale.
+   */
+  pending?: boolean;
 }
 
 export interface HoldTruth {
@@ -65,6 +70,11 @@ export interface HoldTruth {
   capturedCents: number;
   /** null means not observable (UNVERIFIED G1). */
   captures: CaptureRef[] | null;
+  /**
+   * Captures PayPal declined or failed (R11-O03). They took no money and are not in
+   * `captures`; set only when the order lists at least one.
+   */
+  declined?: CaptureRef[];
   observedAtMs: number;
 }
 
@@ -101,6 +111,8 @@ export interface HoldRecord {
   status: HoldStatus;
   createdAtMs: number;
   stale?: boolean;
+  /** Authorization ids replaced by a reauthorization, oldest first (R11-O06). */
+  priorAuthIds?: string[];
 }
 
 export interface StoredWebhook {
@@ -144,6 +156,11 @@ export interface JournalHold {
   createdAtMs?: number;
   /** The PayPal order of the hold, so a resume can read its captures (R8-P01). */
   orderId?: string;
+  /**
+   * Authorization ids this hold had before a reauthorization replaced them, oldest first
+   * (R11-O06). Kept for the audit; `authId` is the one PayPal holds the funds under.
+   */
+  priorAuthIds?: string[];
   stale: boolean;
 }
 

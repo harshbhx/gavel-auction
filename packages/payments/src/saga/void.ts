@@ -2,7 +2,7 @@ import { PayPalError } from '../errors.js';
 import type { AuditSink, Clock, JournalStore, PaymentsGateway } from '../ports.js';
 import type { PaymentsMetrics } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
-import type { HoldTruth, Journal, JournalHold } from '../types.js';
+import type { HoldTruth, Journal, JournalHold, SettlementState } from '../types.js';
 import { runCapturePhase, type CaptureDeps, type CaptureOutcome } from './capture.js';
 import { defaultLeaseOwner, runLeaseOwner } from './owner.js';
 import { withLease } from './create.js';
@@ -76,7 +76,7 @@ export interface VoidDeps extends VoidCallDeps {
   reviewHoldMaxAgeMs?: number;
   /** Operator release (R9-M04): a run of a settlement in review voids every hold, candidates included. */
   releaseAllReviewHolds?: boolean;
-  /** Lease owner. Default: the process id plus a fresh random suffix per run. */
+  /** Lease owner prefix; every run adds its own random suffix (R11-O05). Default: the process id. */
   owner?: string;
 }
 
@@ -151,13 +151,61 @@ export async function voidHold(
 /** R9-M04 default: a review keeps the next candidates' holds for a day. */
 export const DEFAULT_REVIEW_HOLD_MAX_AGE_MS = 86_400_000;
 
+export interface ReviewKeepOptions {
+  nowMs: number;
+  /** Default DEFAULT_REVIEW_HOLD_MAX_AGE_MS (24 hours). */
+  reviewHoldMaxAgeMs?: number | undefined;
+  /** Operator release (R9-M04): the fallback candidates' holds go at once. */
+  releaseAll?: boolean | undefined;
+}
+
+/** States a review raised by the capture phase comes from: no sale is decided yet. */
+const CAPTURE_PHASE: ReadonlySet<SettlementState> = new Set([
+  'WINNER_SELECTED',
+  'CAPTURING',
+  'FALLBACK_RUNNER_UP',
+]);
+
+/**
+ * The holds a settlement in FAILED_NEEDS_REVIEW keeps live. It is the one keep-set of
+ * every review release: this void phase and the server's resume use it alike (R9-M04,
+ * R11-O01, R11-O04).
+ *
+ *   - A sale keeps the winner's hold, which is captured, and nothing else.
+ *   - A review raised in the capture phase, with no winner, keeps the hold of the capture
+ *     in doubt (a saved capture intent) until an operator resolves the review. While the
+ *     review is younger than `reviewHoldMaxAgeMs` and no operator released them, it also
+ *     keeps the holds of the candidate at the cursor and of the candidates after it, so the
+ *     lot can still fall back to them.
+ *   - A no-sale review raised after the capture phase (in VOIDING) keeps nothing: no
+ *     capture is in doubt, and the candidate at the cursor already failed.
+ *
+ * A candidate listed in `journal.failed` is never kept.
+ */
+export function reviewKeepHolds(j: Journal, o: ReviewKeepOptions): Set<string> {
+  const keep = new Set<string>();
+  if (j.winner !== null) {
+    keep.add(j.winner.holdId);
+    return keep;
+  }
+  const entered = [...j.history].reverse().find((h) => h.to === 'FAILED_NEEDS_REVIEW');
+  if (entered === undefined || !CAPTURE_PHASE.has(entered.from)) return keep;
+  if (j.intent !== null && j.intent.op === 'capture') keep.add(j.intent.holdId);
+  const maxAge = o.reviewHoldMaxAgeMs ?? DEFAULT_REVIEW_HOLD_MAX_AGE_MS;
+  if (o.releaseAll === true || o.nowMs - entered.tsMs > maxAge) return keep;
+  const failed = new Set(j.failed.map((f) => f.bidderId));
+  for (const c of j.plan.candidates.slice(j.cursor)) {
+    const hold = failed.has(c.bidderId) ? undefined : j.holds[c.bidderId];
+    if (hold !== undefined) keep.add(hold.holdId);
+  }
+  return keep;
+}
+
 export class VoidPhase {
   private readonly owner: string;
-  private readonly explicitOwner: boolean;
 
   constructor(private readonly deps: VoidDeps) {
     this.owner = deps.owner ?? defaultLeaseOwner('runner');
-    this.explicitOwner = deps.owner !== undefined;
   }
 
   /** Runs, or resumes, the void phase of one settlement. */
@@ -165,8 +213,9 @@ export class VoidPhase {
     const leased = await withLease(
       { journals: this.deps.journals, clock: this.deps.clock },
       auctionId,
-      // A default owner is unique per run, so a second run in this process gets `busy`.
-      this.explicitOwner ? this.owner : runLeaseOwner(this.owner),
+      // Every run gets its own owner, also under a configured one (R11-O05): a second run
+      // or a voidAll in this process gets `busy` and cannot free this run's lease.
+      runLeaseOwner(this.owner),
       async (renew) => {
         const journal = await this.deps.journals.load(auctionId);
         if (journal === null) throw new Error(`no settlement for auction ${auctionId}`);
@@ -262,13 +311,17 @@ class Run {
 
   /**
    * R8-P06: a settlement in review must not leave the other bidders' holds live
-   * until PayPal lets them lapse. Every hold that is not the winner's, not the one
-   * a capture may still be in flight for, and provably not captured (its truth was
-   * read) is voided. Safe to repeat: finished holds are skipped.
+   * until PayPal lets them lapse. Every hold that `reviewKeepHolds` does not keep,
+   * that no intent is in flight for, and that is provably not captured (its truth
+   * was read) is voided. Safe to repeat: finished holds are skipped.
    */
   private async releaseForReview(): Promise<void> {
     const inFlight = this.j.intent?.holdId;
-    const keep = this.reviewKeepHolds();
+    const keep = reviewKeepHolds(this.j, {
+      nowMs: this.now(),
+      reviewHoldMaxAgeMs: this.deps.reviewHoldMaxAgeMs,
+      releaseAll: this.deps.releaseAllReviewHolds,
+    });
     for (const t of this.targets()) {
       if (this.aborted) return;
       if (keep.has(t.hold.holdId)) continue;
@@ -287,30 +340,13 @@ class Run {
       const status: VoidStatus = GONE_TRUTH.has(truth.status)
         ? 'released'
         : await voidHold(this.deps, this.j.auctionId, t.hold);
+      // A release that keeps failing is retried on every run; the journal changes only
+      // when the result does.
+      if (this.statusOf(t.bidderId) === status) continue;
       await this.patch(`void_${t.bidderId}`, (d) => {
         d.voids[t.bidderId] = status;
       });
     }
-  }
-
-  /**
-   * R9-M04: the holds of the candidates after the cursor stay live while the review is
-   * open, so a capture that turns out never to have happened can still fall back to the
-   * next bidder. They are released once the review is older than `reviewHoldMaxAgeMs`,
-   * or by an operator run with `releaseAllReviewHolds`.
-   */
-  private reviewKeepHolds(): Set<string> {
-    if (this.deps.releaseAllReviewHolds === true) return new Set();
-    const entered = [...this.j.history].reverse().find((h) => h.to === 'FAILED_NEEDS_REVIEW');
-    const since = entered?.tsMs ?? this.now();
-    const maxAge = this.deps.reviewHoldMaxAgeMs ?? DEFAULT_REVIEW_HOLD_MAX_AGE_MS;
-    if (this.now() - since > maxAge) return new Set();
-    const keep = new Set<string>();
-    for (const c of this.j.plan.candidates.slice(this.j.cursor + 1)) {
-      const hold = this.j.holds[c.bidderId];
-      if (hold !== undefined) keep.add(hold.holdId);
-    }
-    return keep;
   }
 
   private lastReason(): string {

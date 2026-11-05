@@ -1,6 +1,9 @@
 import { PayPalError } from '../errors.js';
-import type { AuditSink, Clock, PaymentsGateway } from '../ports.js';
+import type { AuditSink, Clock, HoldStore, JournalStore, PaymentsGateway } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
+import { sharedHoldQueue } from '../webhooks/merge.js';
+import { withLease } from './create.js';
+import { defaultLeaseOwner, runLeaseOwner } from './owner.js';
 
 /**
  * Reauthorization policy and call path (SPEC 3.6, R-PAY-070 to R-PAY-072).
@@ -51,10 +54,21 @@ export interface ReauthHold {
   generation: number;
 }
 
+export interface Reauthorized {
+  status: 'reauthorized';
+  /** R11-O06: the new authorization PayPal holds the funds under; capture and void use it. */
+  authId: string;
+  /** The authorization that was reauthorized; PayPal no longer holds the funds under it. */
+  previousAuthId: string;
+  ceilingCents: number;
+  startedAtMs: number;
+  generation: number;
+}
+
 export type ReauthResult =
   | { status: 'disabled' }
   | { status: 'not_due' }
-  | { status: 'reauthorized'; ceilingCents: number; startedAtMs: number; generation: number }
+  | Reauthorized
   | { status: 'refused'; kind: string }
   | { status: 'unknown'; kind: string };
 
@@ -71,9 +85,10 @@ export function reauthDue(policy: ReauthPolicy, hold: ReauthHold, nowMs: number)
 }
 
 /**
- * Reauthorizes one hold when the policy asks for it. Returns the new `startedAtMs` and
- * `generation` for the caller to persist with the hold. Only a PayPal failure is turned
- * into a result; any other error is a bug and propagates.
+ * Reauthorizes one hold when the policy asks for it. Returns the new authorization id,
+ * `startedAtMs` and `generation` for the caller to persist with the hold
+ * (`persistReauthorization`). Only a PayPal failure is turned into a result; any other
+ * error is a bug and propagates.
  */
 export async function reauthorizeIfDue(
   deps: ReauthDeps,
@@ -94,9 +109,10 @@ export async function reauthorizeIfDue(
     generation,
   });
   let error: PayPalError | undefined;
+  let renewed: { authId: string } | undefined;
   try {
     await deps.boundary?.('before:reauth');
-    await deps.gateway.reauthorize(hold.authId, {
+    renewed = await deps.gateway.reauthorize(hold.authId, {
       amountCents: hold.ceilingCents,
       requestId,
     });
@@ -118,15 +134,82 @@ export async function reauthorizeIfDue(
     label: error === undefined ? 'reauthorized' : error.kind,
     tsMs: deps.clock.nowMs(),
   });
-  if (error === undefined) {
+  if (error === undefined && renewed !== undefined) {
     return {
       status: 'reauthorized',
+      authId: renewed.authId,
+      previousAuthId: hold.authId,
       ceilingCents: hold.ceilingCents,
       startedAtMs: deps.clock.nowMs(),
       generation,
     };
   }
+  if (error === undefined) return { status: 'unknown', kind: 'server_error' };
   return error.outcome === 'unknown'
     ? { status: 'unknown', kind: error.kind }
     : { status: 'refused', kind: error.kind };
+}
+
+export interface ReauthStoreDeps {
+  journals: JournalStore;
+  /** The hold records; the server keeps the authorization id there too. */
+  holds?: HoldStore;
+  clock: Clock;
+  /** Lease owner prefix; every call adds its own random suffix. */
+  owner?: string;
+}
+
+/**
+ * R-PAY-071, R11-O06: stores what a reauthorization changed. The journal hold (when a
+ * settlement exists) and the hold record get the new authorization id, so the capture,
+ * the voids and every truth read use the id PayPal holds the funds under; the replaced
+ * id moves to `priorAuthIds` for the audit. The journal is saved under the settlement
+ * lease, so it cannot interleave with a capture; `busy` means a run holds it, try again.
+ * Safe to repeat. Throws when the hold carries neither id of the result: it was changed
+ * by something else and must not be overwritten.
+ */
+export async function persistReauthorization(
+  deps: ReauthStoreDeps,
+  auctionId: string,
+  holdId: string,
+  result: Reauthorized,
+): Promise<'saved' | 'busy'> {
+  const moved = (authId: string | undefined, prior: string[] | undefined): string[] | null => {
+    if (authId === result.authId) return null;
+    if (authId !== result.previousAuthId) {
+      throw new Error(`hold ${holdId} is not on authorization ${result.previousAuthId}`);
+    }
+    return [...(prior ?? []), result.previousAuthId];
+  };
+  const leased = await withLease(
+    { journals: deps.journals, clock: deps.clock },
+    auctionId,
+    runLeaseOwner(deps.owner ?? defaultLeaseOwner('reauth')),
+    async (renew) => {
+      const j = await deps.journals.load(auctionId);
+      const entry =
+        j === null ? undefined : Object.entries(j.holds).find(([, h]) => h.holdId === holdId);
+      if (j !== null && entry !== undefined) {
+        const [bidderId, hold] = entry;
+        const prior = moved(hold.authId, hold.priorAuthIds);
+        if (prior !== null) {
+          const next = structuredClone(j);
+          next.holds[bidderId] = { ...hold, authId: result.authId, priorAuthIds: prior };
+          next.version = j.version + 1;
+          await renew();
+          await deps.journals.save(next, j.version);
+        }
+      }
+      const records = deps.holds;
+      if (records === undefined) return;
+      await sharedHoldQueue.run(holdId, async () => {
+        const rec = await records.get(holdId);
+        if (rec === null) return;
+        const prior = moved(rec.authId, rec.priorAuthIds);
+        if (prior !== null)
+          await records.put({ ...rec, authId: result.authId, priorAuthIds: prior });
+      });
+    },
+  );
+  return leased.status === 'busy' ? 'busy' : 'saved';
 }
