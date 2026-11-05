@@ -567,7 +567,7 @@ Decision:
 
 - Review resolution: RecordSettlement accepts FAILED_NEEDS_REVIEW to VOIDING and FAILED_NEEDS_REVIEW to SETTLED as operator steps with a non-empty ref. They are not added to `SETTLEMENT_EDGES`, which stays the saga graph. A lot that captured is then completed with CompleteLot and the auction can close.
 - Promotion reserve: the headroom of a candidate is its available ceiling minus its best active bid on every OPEN or CLOSING lot in the same scope, leading or not. Every active bid then stays within its bidder's available ceiling, so the hammer's ceiling check stays an invariant and is not turned into a skip.
-- A lot without a winner (unsold or aborted) records release steps only: HELD to BIDDING or VOIDING, BIDDING or FALLBACK_RUNNER_UP to VOIDING, VOIDING to SETTLED or FAILED_NEEDS_REVIEW, and the review resolutions. HELD to BIDDING stays because the settlement bridge replays a saga that started before the lot ended.
+- A lot without a winner (unsold or aborted) never records a capture: a RecordSettlement step to CAPTURING or CAPTURED fails `state_continuity`, also after CloseAuction. The other saga steps stay allowed, because the saga passes BIDDING and WINNER_SELECTED before it releases the holds of a lot nobody won, and the settlement bridge replays that history.
 - Hard close: a pause stops the clock, so the hard close moves by the paused time each LOT_RESUMED shows (`endsAtAfter - endsAtBefore`, kept on the lot as `pausedTotalMs`); soft close and ExtendLot are capped at that moved hard close, and an ExtendLot past it fails `bad_command`. decideExtendLot checks `extraMs` (safe integer 1..600000) itself. R-ENG-036 is amended to say so.
 - Lot-scoped revocation: under holdScope lot a RevokeCeiling whose holdRef backs lot records revokes those records only, strikes bids on those lots only, and each CEILING_REVOKED carries an optional `lotId`. Such a record (`revokedLotOnly`) does not stop the bidder from registering for another lot. A revocation without a holdRef, or under holdScope event, is bidder-wide as before, whatever the reason; a caller that wants a declined card to cover every lot omits the holdRef.
 - After a recorded capture a promotion that would end the lot unsold, including `fallbackPolicy: 'unsold'`, fails `state_continuity`.
@@ -579,6 +579,7 @@ Ledger compatibility: no new event type and no new command; the private ledger s
 Alternatives:
 
 - A new ResolveReview command and event: rejected, two extra review edges on RecordSettlement say the same with no new event type.
+- Allow only the void edges on a lot without a winner: rejected, the saga records HELD to BIDDING to WINNER_SELECTED to VOIDING for a lot nobody won, so the bridge could not record that release.
 - Strike or skip an over-ceiling top bidder at the hammer: rejected, it hides the cause; the reserve keeps the invariant at the only place it can break.
 - Cap a resumed deadline at the original hard close: rejected, a pause would eat the bidding time it was meant to protect.
 - Keep bidder-wide revocation for a declined lot hold: rejected, the other lots are backed by their own holds; the caller can still revoke everywhere.

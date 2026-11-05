@@ -198,17 +198,19 @@ describe('review round 12: settlement and money', () => {
     );
   });
 
-  it('T-ENG-312 R12-E04 a lot with no winner records only the release of its holds', () => {
+  it('T-ENG-312 R12-E04 a lot with no winner records the release of its holds but never a capture', () => {
     let aborted = open(scene(), L1);
     aborted = run(
       aborted,
       mk(200, { type: 'AbortLot', lotId: L1, reason: 'kill', actor: 'ops' }),
     ).state;
+    // The saga passes WINNER_SELECTED after the hammer even when nobody is charged.
     let s = settle(aborted, 210, 'HELD', 'BIDDING');
-    expect(errCode(() => decide(s, settleCmd(220, 'BIDDING', 'WINNER_SELECTED')))).toBe(
+    s = settle(s, 215, 'BIDDING', 'WINNER_SELECTED');
+    expect(errCode(() => decide(s, settleCmd(220, 'WINNER_SELECTED', 'CAPTURING')))).toBe(
       'state_continuity',
     );
-    s = settle(s, 220, 'BIDDING', 'VOIDING');
+    s = settle(s, 220, 'WINNER_SELECTED', 'VOIDING');
     s = settle(s, 230, 'VOIDING', 'SETTLED');
     expect(s.lots[L1]?.captureSeen).toBe(false);
 
@@ -217,10 +219,11 @@ describe('review round 12: settlement and money', () => {
     expect(u.lots[L1]?.status).toBe('DONE');
     u = run(u, close(210)).state;
     u = settle(u, 220, 'HELD', 'BIDDING');
-    expect(errCode(() => decide(u, settleCmd(230, 'BIDDING', 'WINNER_SELECTED')))).toBe(
+    u = settle(u, 225, 'BIDDING', 'WINNER_SELECTED');
+    expect(errCode(() => decide(u, settleCmd(230, 'WINNER_SELECTED', 'CAPTURING')))).toBe(
       'state_continuity',
     );
-    u = settle(u, 230, 'BIDDING', 'VOIDING');
+    u = settle(u, 230, 'WINNER_SELECTED', 'VOIDING');
     u = settle(u, 240, 'VOIDING', 'SETTLED');
     expect(u.lots[L1]?.settlement).toBe('SETTLED');
     expect(u.lots[L1]?.captureSeen).toBe(false);

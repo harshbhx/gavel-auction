@@ -26,19 +26,12 @@ const REVIEW_EDGES: readonly Edge[] = [
 ];
 
 /**
- * The only steps a lot without a winner (unsold or aborted) may record: the release of its
- * holds (R-ENG-064, R12-E04). HELD to BIDDING stays because a saga that started before the
- * lot ended releases from BIDDING. Nothing can be selected or captured for such a lot.
+ * A lot without a winner (unsold or aborted) may record the saga's steps up to the release of
+ * its holds, also after CloseAuction, but never a capture (R-ENG-064, R12-E04). The saga passes
+ * WINNER_SELECTED after the hammer even when nobody is charged, so only CAPTURING and CAPTURED
+ * are refused.
  */
-const RELEASE_EDGES: readonly Edge[] = [
-  ['HELD', 'BIDDING'],
-  ['HELD', 'VOIDING'],
-  ['BIDDING', 'VOIDING'],
-  ['FALLBACK_RUNNER_UP', 'VOIDING'],
-  ['VOIDING', 'SETTLED'],
-  ['VOIDING', 'FAILED_NEEDS_REVIEW'],
-  ...REVIEW_EDGES,
-];
+const CAPTURE_STATES: readonly string[] = ['CAPTURING', 'CAPTURED'];
 
 const hasEdge = (edges: readonly Edge[], from: string, to: string): boolean =>
   edges.some(([f, t]) => f === from && t === to);
@@ -141,7 +134,7 @@ export function decideCompleteLot(state: AuctionState, cmd: CompleteLotCommand):
 /**
  * Decides RecordSettlement (R-ENG-067): `to` is one of the fixed states and `from`
  * is the lot's last recorded state. The transition graph belongs to payments, plus the
- * operator resolutions of a review. A lot without a winner records releases only, and a
+ * operator resolutions of a review. A lot without a winner never records a capture, and a
  * ref may not start with the prefix reserved for promotions (R12-E12).
  */
 export function decideRecordSettlement(
@@ -168,10 +161,10 @@ export function decideRecordSettlement(
   if (review && cmd.ref.trim() === '') {
     throw new EngineError('bad_command', 'a review resolution needs a ref');
   }
-  if (lot.winnerId === null && !hasEdge(RELEASE_EDGES, cmd.from, cmd.to)) {
+  if (lot.winnerId === null && CAPTURE_STATES.includes(cmd.to)) {
     throw new EngineError(
       'state_continuity',
-      `${cmd.from} -> ${cmd.to}: a lot without a winner only releases its holds`,
+      `${cmd.from} -> ${cmd.to}: a lot without a winner cannot capture`,
     );
   }
   return {

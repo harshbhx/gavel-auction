@@ -20,10 +20,9 @@ function setLot(s: AuctionState, lotId: string, f: (l: LotState) => LotState): A
 }
 
 /** The lot without the optional markers named, so it digests as if they were never set. */
-function without(l: LotState, ...keys: ('pausedRemainingMs' | 'closingSeq')[]): LotState {
-  const copy: Record<string, unknown> = { ...l };
-  for (const k of keys) delete copy[k];
-  return copy as unknown as LotState;
+function without(l: LotState, ...keys: readonly ('pausedRemainingMs' | 'closingSeq')[]): LotState {
+  const kept = Object.entries(l).filter(([k]) => !(keys as readonly string[]).includes(k));
+  return Object.fromEntries(kept) as unknown as LotState;
 }
 
 /** The lot without its pause marker, so a resumed lot digests like one that was never paused. */
