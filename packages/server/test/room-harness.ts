@@ -38,10 +38,10 @@ export const config = {
 } as unknown as AuctionConfig;
 
 /** Plain English-auction engine: enough to exercise the room, not a replacement for the real one. */
-class TestEngine implements EnginePort {
-  private readonly ceilings = new Map<BidderId, Cents>();
-  private price: Cents | null = null;
-  private leader: BidderId | null = null;
+export class TestEngine implements EnginePort {
+  protected readonly ceilings = new Map<BidderId, Cents>();
+  protected price: Cents | null = null;
+  protected leader: BidderId | null = null;
   private state: EngineState = 'OPEN';
 
   constructor(private readonly cfg: AuctionConfig) {}
@@ -124,7 +124,12 @@ export class FlakyStore extends MemoryStore {
 }
 
 export const setup = async (
-  opts: { store?: MemoryStore; limiter?: boolean; metrics?: RoomDeps['metrics'] } = {},
+  opts: {
+    store?: MemoryStore;
+    limiter?: boolean;
+    metrics?: RoomDeps['metrics'];
+    engine?: RoomDeps['engine'];
+  } = {},
 ) => {
   const clock = new ManualClock(START);
   const ids = new SeqIds();
@@ -133,7 +138,7 @@ export const setup = async (
     store,
     clock,
     ids,
-    engine: (cfg) => new TestEngine(cfg),
+    engine: opts.engine ?? ((cfg) => new TestEngine(cfg)),
     ...(opts.limiter ? { limiter: new RateLimiter(clock) } : {}),
     ...(opts.metrics ? { metrics: opts.metrics } : {}),
   };

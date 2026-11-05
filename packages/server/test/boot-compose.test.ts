@@ -2,8 +2,20 @@ import { SystemClock } from '@gavel/shared';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { composeServer, type Composed } from '../src/boot/compose';
+
+const passedHoldMaxAge: Array<number | undefined> = [];
+vi.mock('../src/runtime/auction-service', async (importActual) => {
+  const actual = await importActual<typeof import('../src/runtime/auction-service')>();
+  return {
+    ...actual,
+    createAuctionService: (deps: Parameters<typeof actual.createAuctionService>[0]) => {
+      passedHoldMaxAge.push(deps.holdMaxAgeMs);
+      return actual.createAuctionService(deps);
+    },
+  };
+});
 
 const base = {
   PUBLIC_URL: 'http://localhost:8080',
@@ -173,5 +185,17 @@ describe('server entry point (INT-R3-17)', () => {
     );
     running.push(app);
     expect(lines.join('\n')).toMatch(/TOKEN_SECRET_PREVIOUS is set with no/);
+  });
+});
+
+describe('GAVEL_HOLD_MAX_AGE_MS (R6-B01)', () => {
+  it('reaches the auction service in fake mode', async () => {
+    await boot({ GAVEL_HOLD_MAX_AGE_MS: '600000' });
+    expect(passedHoldMaxAge.at(-1)).toBe(600000);
+  });
+
+  it('falls back to the payments default when unset', async () => {
+    await boot();
+    expect(passedHoldMaxAge.at(-1)).toBe(7200000);
   });
 });
