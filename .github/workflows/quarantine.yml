@@ -1,0 +1,70 @@
+name: quarantine
+# Flake tracking and quarantine (R-QA-033). Reads a flake log, records retried tests and, for a
+# test that flaked twice inside 7 days, opens one issue asking for the @quarantine tag.
+# The flake log is stored as an artifact of this workflow between runs. A test whose title
+# carries @quarantine is excluded from required checks (see packages/e2e/src/report/flakes.ts).
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quarantine
+  cancel-in-progress: false
+
+jobs:
+  flakes:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Fetch the previous flake log
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p report/in
+          id="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=flake-log&per_page=1" --jq '.artifacts[0].id // empty')"
+          if [ -n "$id" ]; then
+            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > flake-log.zip
+            unzip -o -q flake-log.zip -d report
+          fi
+      - name: Fetch retried tests of the triggering run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          # The e2e job uploads report/outcomes.json (test, retries, passed) when it ran.
+          if [ -n "$RUN_ID" ]; then
+            gh run download "$RUN_ID" -n e2e-outcomes -D report/in 2>/dev/null || echo "no outcomes artifact for run $RUN_ID"
+          fi
+          [ -f report/in/outcomes.json ] || echo '[]' > report/in/outcomes.json
+      - name: Record flakes
+        run: npx vite-node packages/e2e/src/report/flakes-cli.ts -- report/flakes.json report/in/outcomes.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: flake-log
+          path: report/flakes.json
+          retention-days: 30
+      - name: Open an issue per newly quarantined test
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -f report/newly-quarantined.txt ] || exit 0
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            gh issue create --title "Quarantine flaky test: $name" \
+              --body "This test passed only after a retry twice in 7 days. Add the @quarantine tag to its title, find the cause and remove the tag when it is fixed. Source: flake log of the quarantine workflow."
+          done < report/newly-quarantined.txt

@@ -1,0 +1,68 @@
+name: uptime
+# Probes /healthz, /readyz and /warmup of the production host every 5 minutes (R-QA-045, R-QA-048).
+# A failed round shows as an error annotation. When the previous round also failed, the job opens
+# one Needs-you issue (or comments on the open one). GitHub may delay scheduled runs; the external
+# monitor in infra/uptime.md is the primary probe.
+# Off until the repository variable UPTIME_ENABLED is 'true' and PRODUCTION_URL is set (spend
+# approval Q2, keep-alive choice D-0008).
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uptime
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  probe:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' && vars.UPTIME_ENABLED == 'true' && vars.PRODUCTION_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    env:
+      PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Probe the routes
+        id: probe
+        run: |
+          base="${PRODUCTION_URL%/}"
+          failed=""
+          for path in /healthz /readyz /warmup; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$base$path" || true)"
+            case "$code" in
+              2??) echo "ok   $path $code" ;;
+              *) echo "FAIL $path $code"; failed="$failed $path" ;;
+            esac
+          done
+          if [ -n "$failed" ]; then
+            echo "::error title=Uptime probe failed::routes failing:$failed"
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Raise an alert after two failed rounds
+        if: steps.probe.outputs.failed == 'true'
+        run: |
+          prev="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/uptime.yml/runs?per_page=2&status=completed" --jq '.workflow_runs[0].conclusion // "none"')"
+          if [ "$prev" != "failure" ]; then
+            echo "First failed round, no alert yet (previous: $prev)"
+          else
+            title="Needs you: production host is failing its uptime probe"
+            open="$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')"
+            if [ -z "$open" ]; then
+              gh issue create --title "$title" --body "Two consecutive probe rounds failed against the production host. See the uptime workflow run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID."
+            else
+              gh issue comment "$open" --body "Still failing: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            fi
+          fi
+          exit 1
