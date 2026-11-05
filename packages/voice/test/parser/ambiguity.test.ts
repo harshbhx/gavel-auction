@@ -33,7 +33,7 @@ describe('T-VOX-048 homophones (R-VOX-048)', () => {
 describe('T-VOX-049 multiples and spans (R-VOX-049)', () => {
   it('flags multiple amounts, multiple bidders and uninterpretable numbers', () => {
     expect(parseBidChecked('two fifty or three hundred', ctx).reason).toBe('multiple_amounts');
-    expect(parseBidChecked('bidder 2 six hundred bidder 3 six fifty', ctx).reason).toBe(
+    expect(parseBidChecked('bidder 2 five hundred bidder 3 five fifty', ctx).reason).toBe(
       'multiple_bidders',
     );
     expect(parseBidChecked('two twenty fifty', ctx).status).toBe('confirm');

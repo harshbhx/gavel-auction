@@ -1244,7 +1244,7 @@
     "id": "ambiguous-008",
     "set": "heldout",
     "category": "ambiguous",
-    "text": "around three hundred",
+    "text": "around five hundred",
     "speaker": "6",
     "currentPriceCents": null,
     "expected": {
@@ -1255,7 +1255,7 @@
     "id": "two_bidders-005",
     "set": "heldout",
     "category": "two_bidders",
-    "text": "bidder 2 six hundred bidder 3 six fifty",
+    "text": "bidder 4 seven hundred bidder 8 seven fifty",
     "speaker": null,
     "currentPriceCents": null,
     "expected": {
@@ -1277,7 +1277,7 @@
     "id": "non_bid-009",
     "set": "heldout",
     "category": "non_bid",
-    "text": "who has two fifty",
+    "text": "who has four hundred",
     "speaker": "6",
     "currentPriceCents": null,
     "expected": {
@@ -1439,13 +1439,13 @@
     "id": "currency-005",
     "set": "heldout",
     "category": "currency",
-    "text": "$1,500",
+    "text": "$3,200",
     "speaker": "7",
     "currentPriceCents": null,
     "expected": {
       "status": "bid",
       "bidder": "7",
-      "amountCents": 150000
+      "amountCents": 320000
     }
   },
   {

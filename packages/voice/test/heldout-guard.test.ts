@@ -51,3 +51,48 @@ describe('T-VOX-055 held-out hash guard (R-VOX-077)', () => {
     expect(checkHeldout({ cases, recorded, changelog: '' }).join()).toMatch(/no dated entry/);
   });
 });
+
+describe('base branch comparison (VOICE-RT-07)', () => {
+  const edited = (cases as Array<Record<string, unknown>>).filter((c) => c['id'] !== 'plain-016');
+  const newHash = heldoutHash(edited);
+  const base = (changedFiles: string[]) => ({ recorded, changedFiles });
+  const lines = changelog.trimEnd().split('\n');
+  const appended = `${changelog.trimEnd()}\n- 2026-11-05 ${newHash} dropped one case after review\n`;
+  const replaced = `${lines.slice(0, -1).join('\n')}\n- 2026-11-05 ${newHash} dropped one case\n`;
+
+  it('an untouched set passes whatever else changed', () => {
+    const files = ['packages/voice/src/parser/lexicon.ts'];
+    expect(checkHeldout({ cases, recorded, changelog, base: base(files) })).toEqual([]);
+  });
+
+  it('a changed set with the old hash as the previous changelog line passes', () => {
+    const files = ['packages/voice/fixtures/text/cases.json'];
+    const input = { cases: edited, recorded: newHash, changelog: appended, base: base(files) };
+    expect(checkHeldout(input)).toEqual([]);
+  });
+
+  it('a changed set in a change that also edits the parser fails', () => {
+    const files = [
+      'packages/voice/fixtures/text/cases.json',
+      'packages/voice/src/parser/intent.ts',
+    ];
+    const input = { cases: edited, recorded: newHash, changelog: appended, base: base(files) };
+    expect(checkHeldout(input).join('\n')).toMatch(/also edits the parser/);
+  });
+
+  it('a changelog line that overwrote the previous one instead of following it fails', () => {
+    const input = { cases: edited, recorded: newHash, changelog: replaced, base: base([]) };
+    expect(checkHeldout(input).join('\n')).toMatch(/must name the replaced hash/);
+  });
+
+  it('a new hash with a self-attested line fails when the base hash is not chained', () => {
+    const stranger = 'f'.repeat(64);
+    const input = {
+      cases: edited,
+      recorded: newHash,
+      changelog: appended,
+      base: { recorded: stranger, changedFiles: [] },
+    };
+    expect(checkHeldout(input).join('\n')).toMatch(/must name the replaced hash/);
+  });
+});
