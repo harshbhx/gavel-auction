@@ -32,6 +32,8 @@ const CANDIDATES: Array<[string, number]> = [
 ];
 const MAX_RUNS = 40;
 const CASES = 300;
+const DESCRIBE_NAME = 'T-QA-024 saga invariants under random fault schedules';
+const PROPERTY_NAME = `${DESCRIBE_NAME} > holds I1..I5 for ${String(CASES)} random schedules`;
 
 type FaultOp = 'capture' | 'void' | 'get';
 
@@ -169,7 +171,16 @@ async function assertProperty(): Promise<void> {
   if (!d.failed) return;
   try {
     mkdirSync(FIXTURES, { recursive: true });
-    const entry = { seed: d.seed, path: [], value: d.counterexample?.[0] ?? null };
+    const path = (d.counterexamplePath ?? '')
+      .split(':')
+      .filter((n) => n !== '')
+      .map(Number);
+    const entry = {
+      seed: d.seed,
+      path,
+      property: PROPERTY_NAME,
+      value: d.counterexample ?? [],
+    };
     writeFileSync(resolve(FIXTURES, `saga-${String(d.seed)}.json`), JSON.stringify(entry, null, 2));
   } catch {
     // The fixture is a convenience; the failure below carries the same data.
@@ -179,14 +190,15 @@ async function assertProperty(): Promise<void> {
   );
 }
 
-describe('T-QA-024 saga invariants under random fault schedules', () => {
+describe(DESCRIBE_NAME, () => {
   it(`holds I1..I5 for ${String(CASES)} random schedules`, async () => {
     await assertProperty();
   }, 120_000);
 
   it('replays every saved regression schedule', async () => {
     for (const entry of loadRegressions<Schedule>(FIXTURES)) {
-      await runSchedule(entry.value);
+      const [schedule] = entry.value;
+      await runSchedule(schedule as Schedule);
     }
   }, 60_000);
 
