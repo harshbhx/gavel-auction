@@ -10,6 +10,7 @@
  * above FAIL_ABOVE_PERCENT; the 5 percent target is reported, not enforced.
  */
 import { appendFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 
 const TARGET_PERCENT = 5;
 const FAIL_ABOVE_PERCENT = 15;
@@ -109,6 +110,17 @@ async function sample(cdp: CdpSession, seconds: number): Promise<number> {
 
 async function main(): Promise<void> {
   const pw = await loadPlaywright();
+  const server = createServer((_req, res) => {
+    res.setHeader('content-type', 'text/html');
+    res.end('<!doctype html><title>cpu</title>');
+  });
+  const port = await new Promise<number>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const addr = server.address();
+      resolve(typeof addr === 'object' && addr !== null ? addr.port : 0);
+    });
+  });
   const browser = await pw.chromium.launch({
     headless: true,
     args: [
@@ -120,7 +132,8 @@ async function main(): Promise<void> {
   try {
     const ctx = await browser.newContext({ permissions: ['microphone'] });
     const page = await ctx.newPage();
-    await page.goto('about:blank');
+    // getUserMedia needs a secure context, and http://127.0.0.1 is one while about:blank is not.
+    await page.goto(`http://127.0.0.1:${String(port)}/`);
     const cdp = await page.context().newCDPSession(page);
     const state = await page.evaluate(PAGE_SETUP);
     // Idle baseline: tone is captured but the worklet is disconnected.
@@ -161,6 +174,7 @@ async function main(): Promise<void> {
     }
   } finally {
     await browser.close();
+    server.close();
   }
 }
 

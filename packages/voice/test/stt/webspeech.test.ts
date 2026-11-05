@@ -46,8 +46,6 @@ function make(stub: StubRecognition | null = new StubRecognition()) {
   return { stub, clock, provider };
 }
 
-const START = { keyterms: ['paddle'], language: 'en' as const };
-
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -56,7 +54,7 @@ describe('WebSpeechStt (T-VOX-021)', () => {
   it('maps stub results to interim and final events, text and confidence only', async () => {
     const { stub, clock, provider } = make();
     const rec = record(provider);
-    await provider.start(START);
+    await provider.start();
     clock.t = 100;
     stub?.say('paddle', false, 0);
     clock.t = 400;
@@ -81,7 +79,7 @@ describe('WebSpeechStt (T-VOX-021)', () => {
   it('uses a fallback confidence when the browser reports none', async () => {
     const { stub, provider } = make();
     const rec = record(provider);
-    await provider.start(START);
+    await provider.start();
     stub?.say('fifty', true, 0);
     await provider.stop();
     await rec.done;
@@ -100,7 +98,7 @@ describe('WebSpeechStt (T-VOX-021)', () => {
       audioUpload: false,
       state: 'closed',
     });
-    await provider.start(START);
+    await provider.start();
     expect(provider.statePayload().state).toBe('open');
     expect(provider.statePayload().label).toBe(WEBSPEECH_LABEL);
     await provider.stop();
@@ -112,7 +110,7 @@ describe('WebSpeechStt (T-VOX-021)', () => {
     vi.stubGlobal('fetch', fetchSpy);
     vi.stubGlobal('WebSocket', socketSpy);
     const { provider } = make();
-    await provider.start(START);
+    await provider.start();
     provider.write({ seq: 1, tsMs: 0, flags: 0, pcm: new Int16Array(FRAME_SAMPLES) });
     expect(provider.stats.counters.bytesIn).toBe(0);
     await provider.stop();
@@ -122,7 +120,7 @@ describe('WebSpeechStt (T-VOX-021)', () => {
 
   it('restarts when the browser ends the session on its own', async () => {
     const { stub, provider } = make();
-    await provider.start(START);
+    await provider.start();
     stub?.onend?.();
     expect(stub?.starts).toBe(2);
     await provider.stop();
@@ -131,7 +129,7 @@ describe('WebSpeechStt (T-VOX-021)', () => {
   it('permission errors are not retryable and end the stream', async () => {
     const { stub, provider } = make();
     const rec = record(provider);
-    await provider.start(START);
+    await provider.start();
     stub?.onerror?.({ error: 'not-allowed' });
     stub?.onend?.();
     await rec.done;
@@ -143,7 +141,7 @@ describe('WebSpeechStt (T-VOX-021)', () => {
   it('no-speech is ignored and network is retryable', async () => {
     const { stub, provider } = make();
     const rec = record(provider);
-    await provider.start(START);
+    await provider.start();
     stub?.onerror?.({ error: 'no-speech' });
     stub?.onerror?.({ error: 'network' });
     await provider.stop();
@@ -155,7 +153,7 @@ describe('WebSpeechStt (T-VOX-021)', () => {
   it('without a recognizer it reports an error and closes', async () => {
     const { provider } = make(null);
     const rec = record(provider);
-    await provider.start(START);
+    await provider.start();
     await rec.done;
     expect(rec.events.map((e) => e.type)).toEqual(['state', 'error', 'state']);
   });
@@ -165,7 +163,7 @@ describe('WebSpeechStt (T-VOX-021)', () => {
     stub.endOnStop = false;
     const { clock, provider } = make(stub);
     const rec = record(provider);
-    await provider.start(START);
+    await provider.start();
     let stopped = false;
     const p = provider.stop().then(() => {
       stopped = true;
