@@ -1,5 +1,12 @@
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import {
+  createServer,
+  request as httpRequest,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse,
+} from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { MetricsCollector } from '../src/ops/metrics';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { WebhookPort } from '../src/http/webhook';
 import {
@@ -100,5 +107,59 @@ describe('webhook guard', () => {
     const res = await fetch(base + '/webhooks/paypal', { method: 'POST', body: '{"id":"E1"}' });
     expect(res.status).toBe(200);
     expect(lines[0]?.level).toBe('warn');
+  });
+
+  it('answers 413 to a chunked body over the limit and counts it', async () => {
+    const { log } = recorder();
+    const metrics = new MetricsCollector({
+      connections: () => 0,
+      rooms: () => 0,
+      mailboxDepth: () => 0,
+    });
+    const base = await serve(createGuardedWebhookRoute(okPort, { log, metrics, maxBytes: 1024 }));
+    const url = new URL(base + '/webhooks/paypal');
+    const status = await new Promise<number>((resolve, reject) => {
+      const req = httpRequest(
+        { host: url.hostname, port: url.port, path: url.pathname, method: 'POST' },
+        (res) => {
+          res.resume();
+          resolve(res.statusCode ?? 0);
+        },
+      );
+      req.on('error', reject);
+      // No content-length: the body goes out chunked.
+      for (let i = 0; i < 8; i++) req.write(Buffer.alloc(512, 0x61));
+      req.end();
+    });
+    expect(status).toBe(413);
+    expect(metrics.snapshot().webhookOutcomes.too_large).toBe(1);
+  });
+
+  it('feeds the outcome counters for handled webhooks', async () => {
+    const { log } = recorder();
+    const metrics = new MetricsCollector({
+      connections: () => 0,
+      rooms: () => 0,
+      mailboxDepth: () => 0,
+    });
+    const kinds = ['ok', 'duplicate', 'invalid_signature', 'retry'] as const;
+    let i = 0;
+    const port: WebhookPort = {
+      handleWebhook: () => {
+        const kind = kinds[i++ % kinds.length] ?? 'ok';
+        return Promise.resolve(kind === 'retry' ? { kind, reason: 'x' } : { kind });
+      },
+    };
+    const base = await serve(createGuardedWebhookRoute(port, { log, metrics }));
+    for (let n = 0; n < kinds.length; n++) {
+      await fetch(base + '/webhooks/paypal', { method: 'POST', body: '{}' });
+    }
+    expect(metrics.snapshot().webhookOutcomes).toEqual({
+      ok: 1,
+      duplicate: 1,
+      invalid_signature: 1,
+      retry: 1,
+      too_large: 0,
+    });
   });
 });

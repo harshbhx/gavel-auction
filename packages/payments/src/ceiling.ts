@@ -1,5 +1,8 @@
 import { PayPalError } from './errors.js';
 
+/** Smallest ceiling the auction engine registers (engine MIN_CEILING_CENTS). */
+export const MIN_CEILING_CENTS = 100;
+
 export interface CeilingRules {
   /** GAVEL_MAX_CEILING_CENTS. */
   maxCeilingCents: number;
@@ -30,7 +33,9 @@ export function validateCeiling(ceilingCents: number, rules: CeilingRules): numb
   if (typeof ceilingCents !== 'number' || !Number.isSafeInteger(ceilingCents)) {
     return refuse('ceiling must be an integer number of cents');
   }
-  if (ceilingCents <= 0) return refuse('ceiling must be positive');
+  if (ceilingCents < MIN_CEILING_CENTS) {
+    return refuse(`ceiling ${ceilingCents} is below the minimum of ${MIN_CEILING_CENTS}`);
+  }
   if (ceilingCents > rules.maxCeilingCents) {
     return refuse(`ceiling ${ceilingCents} exceeds the cap of ${rules.maxCeilingCents}`);
   }

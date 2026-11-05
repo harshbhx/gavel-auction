@@ -168,7 +168,7 @@ export interface AuctionService {
   resume(): Promise<void>;
   /** Resolves when no settlement run is in flight. */
   idle(): Promise<void>;
-  /** Stops rooms; in-flight settlement runs finish or stop on their own. */
+  /** Waits for in-flight settlement runs, then stops rooms. */
   close(): Promise<void>;
 }
 
@@ -579,6 +579,8 @@ class Service implements AuctionService, SettlePort {
     if (this.resumeTimer !== undefined) clearInterval(this.resumeTimer);
     for (const timer of this.retryTimers.values()) clearTimeout(timer);
     this.retryTimers.clear();
+    // A settlement run in progress finishes before its room closes; no new run starts now.
+    await this.idle();
     for (const room of this.rooms.values()) await (await room).close();
   }
 
