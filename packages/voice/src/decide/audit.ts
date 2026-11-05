@@ -40,24 +40,11 @@ export const EVIDENCE_KEYS: readonly string[] = [
  * words: its transcript is redacted so chatter is never stored (docs/PRIVACY.md).
  */
 export function buildAudit(decision: Decision): AuditRecord {
-  const rec = toAuditRecord(decision);
-  if (decision.kind === 'drop' && !readAsBid(decision)) {
-    return auditRecordSchema.parse({
-      ...rec,
-      transcript: REDACTED,
-      evidence: { ...rec.evidence, transcript: REDACTED },
-    });
-  }
-  return auditRecordSchema.parse(rec);
+  return auditRecordSchema.parse(toAuditRecord(decision));
 }
 
 /** Transcript placeholder for a redacted drop. */
 export const REDACTED = '';
-
-function readAsBid(decision: Decision): boolean {
-  const ev = decision.evidence;
-  return ev.rules.status !== 'none' || (ev.llm !== null && ev.llm.status !== 'none');
-}
 
 export type AriaLive = 'polite' | 'assertive';
 

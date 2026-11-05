@@ -281,4 +281,48 @@ describe('R9 failover fixes', () => {
     expect(r.switches).toEqual(['silent', 'recovered']);
     await r.stt.stop();
   });
+
+  it('recovery waits for a fallback final that arrives 4 s after the probe (R10-V02)', async () => {
+    const r = rig([[], [interim(200), interim(5000)]]);
+    await r.stt.start({ keyterms: [], language: 'en' });
+    await r.feed(30);
+    await r.feed(301);
+    await r.feed(3);
+    r.fallbacks[0]?.inject({ type: 'interim', text: 'one hundred', startMs: 0 });
+    await flush();
+    await r.feed(40);
+    await flush();
+    expect(r.stt.usingPrimary).toBe(false);
+    r.fallbacks[0]?.inject({
+      type: 'final',
+      text: 'one hundred for paddle twelve',
+      words: [],
+      startMs: 0,
+      endMs: 4000,
+      confidence: 0.9,
+      speechFinal: true,
+    });
+    await flush();
+    expect(r.seen.filter((e) => e.type === 'final')).toHaveLength(1);
+    expect(r.stt.usingPrimary).toBe(true);
+    await r.stt.stop();
+  });
+
+  it('a silent switch and recovery leave the silence failover armed (R10-V01)', async () => {
+    const r = rig([[], [interim(200)]]);
+    await r.stt.start({ keyterms: [], language: 'en' });
+    await r.feed(30);
+    expect(r.switches).toEqual(['silent']);
+    await r.feed(301);
+    await r.feed(3);
+    r.fallbacks[0]?.inject({ type: 'utterance_end', atMs: 0 });
+    await flush();
+    await r.feed(45);
+    await flush();
+    expect(r.stt.usingPrimary).toBe(true);
+    await r.feed(35);
+    await flush();
+    expect(r.switches).toEqual(['silent', 'recovered', 'silent']);
+    await r.stt.stop();
+  });
 });

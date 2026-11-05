@@ -56,3 +56,37 @@ describe('R9-V03 answer() expiry audit', () => {
     expect(out.some((o) => o.type === 'audit' && o.audit === 'confirm_expired')).toBe(true);
   });
 });
+
+describe('R10-V03 expired prompt pending candidate', () => {
+  it('a late answer leaves no pending candidate for a later correction', () => {
+    let now = 0;
+    let n = 0;
+    const pipeline = new VoicePipeline({
+      roomId: 'room1',
+      lotId: 'lot1',
+      clock: () => now,
+      ids: () => `seg-${++n}`,
+      context,
+      policy: { auto: 1.01, confirm: 0.5 },
+    });
+    let promptId = '';
+    now = 1100;
+    for (const o of pipeline.push(final('paddle seven three fifty', 0, 1000))) {
+      if (o.type === 'decision' && o.decision.kind === 'confirm') {
+        promptId = o.decision.prompt.promptId;
+      }
+    }
+    expect(promptId).not.toBe('');
+    now = 11500;
+    const late = pipeline.answer(promptId, 'opt-1', 'bidder');
+    expect(late).toMatchObject({ kind: 'dropped', message: 'That question expired.' });
+    now = 11600;
+    const texts: string[] = [];
+    for (const o of pipeline.push(final('make it four hundred', 10500, 11500))) {
+      if (o.type === 'decision' && o.decision.kind === 'confirm') {
+        texts.push(o.decision.prompt.text);
+      }
+    }
+    expect(texts.some((t) => t.includes('$350'))).toBe(false);
+  });
+});
