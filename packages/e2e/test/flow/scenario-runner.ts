@@ -26,8 +26,8 @@ const WINDOW_MS = 600_000;
 /**
  * The auction config a scenario declares: mode, reserve, increment, soft close and an end time
  * counted from its own clock.startMs, so none of these fields is silently ignored.
- * actors.*.funding and seed are not applied: the fake PayPal server has no wallet/card split and
- * the runner draws no random numbers.
+ * actors.*.funding is checked by {@link assertSupported}: the fake PayPal server only knows wallet
+ * buyers. seed has no consumer because the runner draws no random numbers.
  */
 export function scenarioConfig(scenario: Scenario): AuctionConfig {
   const presets = [
@@ -44,12 +44,31 @@ export function scenarioConfig(scenario: Scenario): AuctionConfig {
   } as unknown as AuctionConfig;
 }
 
+/** Throws for a declared field the runner cannot apply, so it is never skipped silently. */
+export function assertSupported(scenario: Scenario): void {
+  for (const [name, actor] of Object.entries(scenario.actors)) {
+    if (actor.funding !== 'wallet') {
+      throw new Error(
+        `${scenario.id}: actor ${name} funding "${actor.funding}" is not supported by the in-process runner (wallet only)`,
+      );
+    }
+  }
+  for (const step of scenario.steps) {
+    if (step.do === 'register' && step.funding !== undefined && step.funding !== 'wallet') {
+      throw new Error(
+        `${scenario.id}: register funding "${step.funding}" is not supported by the in-process runner (wallet only)`,
+      );
+    }
+  }
+}
+
 const SUPPORTED_STEPS = new Set(['register', 'open', 'bid', 'hammer']);
 
 export async function runScenarioInProc(
   scenario: Scenario,
   stop: Array<{ stop(): Promise<void> }>,
 ): Promise<Outcome> {
+  assertSupported(scenario);
   const rig = await makeRig();
   stop.push(rig.paypal);
   // The room refuses an end time more than a day ahead, so the clock starts where the scenario says.

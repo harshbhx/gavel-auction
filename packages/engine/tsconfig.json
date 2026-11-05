@@ -1,11 +1,14 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2022",
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "noEmit": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "skipLibCheck": true
+    "exactOptionalPropertyTypes": false
   },
   "include": ["src", "test"]
 }

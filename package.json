@@ -27,6 +27,7 @@
     "report": "echo 'report: not implemented' && exit 1",
     "check:secrets": "npm run build -w @gavel/web && node scripts/check-bundle-secrets.mjs --require-dir --canaries-from-env",
     "check:deps": "depcruise packages --config .dependency-cruiser.cjs && node scripts/check-engine-purity.mjs && npm run check:deps -w @gavel/payments",
+    "check:live-host": "node scripts/check-no-live-host.mjs",
     "check:ascii": "node scripts/check-ascii.mjs",
     "check:banned-words": "node scripts/check-banned-words.mjs",
     "check:ownership": "node scripts/check-ownership.mjs",

@@ -2,6 +2,7 @@ import {
   AuctionConfigSchema,
   GavelError,
   type AuctionId,
+  type BidderId,
   type ConnId,
   type RoomSnapshot,
 } from '@gavel/shared';
@@ -56,7 +57,7 @@ export async function withConnection(
     role,
     sub,
     transport,
-    ...(bidderId !== undefined ? { bidderId: bidderId as Connection['bidderId'] } : {}),
+    ...(bidderId !== undefined ? { bidderId: bidderId as BidderId } : {}),
   };
   await room.attach(conn);
   try {

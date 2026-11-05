@@ -255,12 +255,19 @@ export class VoicePipeline {
     if (spoken !== null) return spoken;
 
     const pending = this.segmenter.pending.get(now);
+    let speakerPaddle: string | undefined;
+    if (this.deps.speakerBidderId !== undefined) {
+      for (const [label, entry] of ctx.roster) {
+        if (entry.bidderId === this.deps.speakerBidderId) speakerPaddle = label;
+      }
+    }
     const pctx: ParseContext = {
       currentPriceCents: ctx.currentPriceCents,
       minIncrementCents: ctx.minIncrementCents,
       ...(this.deps.speakerBidderId === undefined
         ? {}
         : { speakerBidderId: this.deps.speakerBidderId }),
+      ...(speakerPaddle === undefined ? {} : { speakerPaddle }),
       ...(pending === undefined ? {} : { pendingCandidate: pending }),
       sttWordConfidence: seg.words.map((w) => ({
         word: w.word,

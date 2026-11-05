@@ -1,4 +1,5 @@
-import type { AuditRecord, Decision } from '../types.js';
+import { answerConfirm } from '../decide/answer.js';
+import type { AuditRecord, BidContext, Decision } from '../types.js';
 
 /** Crockford base32, the alphabet of a ULID. */
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
@@ -14,6 +15,11 @@ export interface PlaceBidContext {
   confirmedOptionId?: string;
   /** Who answered the confirm prompt; recorded in the audit (R-VOX-069). Default 'bidder'. */
   confirmedBy?: ConfirmedBy;
+  /**
+   * Fresh bid context at delivery. When given, a confirmed option is re-validated against it
+   * (price moved, ceiling, already high bidder, duplicate window) and a failing option gives null.
+   */
+  current?: BidContext;
   /** Confidence an `accept` needs to become a bid without a prompt, 0..1. Default 0.85. */
   autoThreshold?: number;
 }
@@ -123,6 +129,17 @@ export function toPlaceBid(decision: Decision, ctx: PlaceBidContext): PlaceBidCo
     if (ctx.confirmedBy === 'voice' && !decision.prompt.spokenAnswerAllowed) return null;
     bidderId = option.bidderId;
     amountCents = option.amountCents;
+    if (ctx.current !== undefined) {
+      const outcome = answerConfirm({
+        prompt: decision.prompt,
+        ctx: ctx.current,
+        optionId: option.id,
+        by: ctx.confirmedBy ?? 'bidder',
+      });
+      if (outcome.kind !== 'bid') return null;
+      bidderId = outcome.bidderId;
+      amountCents = outcome.amountCents;
+    }
     confirmed = true;
     confirmedBy = ctx.confirmedBy ?? 'bidder';
   } else {

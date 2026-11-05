@@ -8,6 +8,7 @@ import { composeServer, type Composed } from '../src/boot/compose';
 
 const passedHoldMaxAge: Array<number | undefined> = [];
 const passedMetrics: unknown[] = [];
+const passedLimiters: unknown[] = [];
 vi.mock('../src/runtime/auction-service', async (importActual) => {
   const actual = await importActual<typeof import('../src/runtime/auction-service')>();
   return {
@@ -15,6 +16,7 @@ vi.mock('../src/runtime/auction-service', async (importActual) => {
     createAuctionService: (deps: Parameters<typeof actual.createAuctionService>[0]) => {
       passedHoldMaxAge.push(deps.holdMaxAgeMs);
       passedMetrics.push(deps.roomMetrics);
+      passedLimiters.push(deps.limiter);
       return actual.createAuctionService(deps);
     },
   };
@@ -234,6 +236,12 @@ describe('GAVEL_HOLD_MAX_AGE_MS (R6-B01)', () => {
     const given = passedMetrics.at(-1) as { bidAccepted(): void };
     given.bidAccepted();
     expect((await read()).bids.accepted).toBe(1);
+  });
+
+  it('gives the service a rate limiter and a mailbox gauge (HRD-15)', async () => {
+    const { app } = await boot();
+    expect(passedLimiters.at(-1)).toBeDefined();
+    expect(app.service.stats()).toEqual({ rooms: 0, connections: 0, mailboxDepth: 0 });
   });
 
   it('refuses an auctioneer token whose jti was denied (R8-S04)', async () => {

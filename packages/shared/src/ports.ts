@@ -46,6 +46,9 @@ export interface EngineView {
   endTs: EpochMs;
   extensions: number;
   minNext: Cents;
+  /** Set while the lot clock is frozen; `remainingMs` is what resume restores. */
+  paused?: boolean;
+  remainingMs?: number;
 }
 
 /** What the room needs from the auction engine. */

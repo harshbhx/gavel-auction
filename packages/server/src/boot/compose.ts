@@ -42,6 +42,7 @@ import { createGuardedWebhookRoute } from '../http/webhook-guard';
 import { portFromService } from '../http/webhook';
 import { createPaymentAudit } from './payment-audit';
 import { createLogger, type LogSink } from '../log/logger';
+import { RateLimiter } from '../limits/rate-limiter';
 import { MetricsCollector } from '../ops/metrics';
 import { createAuctionService, type AuctionService } from '../runtime/auction-service';
 import { FileLedgerStore } from '../store/file-ledger-store';
@@ -242,14 +243,19 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     audit,
     clock: { nowMs: () => clock.now() },
   });
-  let serviceStats = (): { rooms: number; connections: number } => ({ rooms: 0, connections: 0 });
+  let serviceStats = (): { rooms: number; connections: number; mailboxDepth: number } => ({
+    rooms: 0,
+    connections: 0,
+    mailboxDepth: 0,
+  });
   const metrics = new MetricsCollector({
     connections: () => serviceStats().connections,
     rooms: () => serviceStats().rooms,
-    mailboxDepth: () => 0,
+    mailboxDepth: () => serviceStats().mailboxDepth,
   });
   const service = createAuctionService({
     roomMetrics: metrics,
+    limiter: new RateLimiter(clock),
     store: stores.room,
     clock,
     ids,
