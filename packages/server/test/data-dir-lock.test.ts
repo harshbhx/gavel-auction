@@ -4,6 +4,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs';
@@ -61,9 +62,9 @@ describe('data directory lock (R6-A04)', () => {
 
   it('replaces a lock that names this very pid, as after a container restart (R7S-02)', () => {
     const dir = fresh();
-    writeFileSync(join(dir, LOCK_FILE), JSON.stringify({ pid: 1, host: 'old', start: 1 }));
-    const lock = acquireDataDirLock(dir, { pid: 1, host: 'new', isAlive: () => true });
-    expect(JSON.parse(readFileSync(join(dir, LOCK_FILE), 'utf8')).host).toBe('new');
+    writeFileSync(join(dir, LOCK_FILE), JSON.stringify({ pid: 1, host: 'same', start: 1 }));
+    const lock = acquireDataDirLock(dir, { pid: 1, host: 'same', isAlive: () => true });
+    expect(JSON.parse(readFileSync(join(dir, LOCK_FILE), 'utf8')).start).not.toBe(1);
     lock.release();
   });
 
@@ -73,5 +74,57 @@ describe('data directory lock (R6-A04)', () => {
     expect(() => acquireDataDirLock(dir, { pid: 1, isAlive: () => true })).toThrow(
       /in use by process 7/,
     );
+  });
+});
+
+describe('data directory lock across hosts (R8-S02)', () => {
+  const owner = (host: string, start: number): string => JSON.stringify({ pid: 1, host, start });
+
+  it('refuses a second container that is also pid 1 on another host', () => {
+    const dir = fresh();
+    writeFileSync(join(dir, LOCK_FILE), owner('a1b2', 1000));
+    expect(() =>
+      acquireDataDirLock(dir, { pid: 1, host: 'c3d4', startMs: 2000, heartbeatMs: 0 }),
+    ).toThrow(/in use by process 1 on a1b2/);
+    expect(readFileSync(join(dir, LOCK_FILE), 'utf8')).toBe(owner('a1b2', 1000));
+  });
+
+  it('does not probe a pid of another host', () => {
+    const dir = fresh();
+    writeFileSync(join(dir, LOCK_FILE), owner('a1b2', 1000));
+    let probed = false;
+    expect(() =>
+      acquireDataDirLock(dir, {
+        pid: 7,
+        host: 'c3d4',
+        isAlive: () => {
+          probed = true;
+          return false;
+        },
+      }),
+    ).toThrow(/refusing to start/);
+    expect(probed).toBe(false);
+  });
+
+  it('takes over a lock of another host whose heartbeat stopped', () => {
+    const dir = fresh();
+    const file = join(dir, LOCK_FILE);
+    writeFileSync(file, owner('a1b2', 1000));
+    const mtime = statSync(file).mtimeMs;
+    const lock = acquireDataDirLock(dir, {
+      pid: 1,
+      host: 'c3d4',
+      startMs: 2000,
+      heartbeatMs: 1000,
+      now: () => mtime + 3500,
+    });
+    expect(JSON.parse(readFileSync(file, 'utf8')).host).toBe('c3d4');
+    lock.release();
+  });
+
+  it('replaces a same-host same-pid lock from an earlier life', () => {
+    const dir = fresh();
+    writeFileSync(join(dir, LOCK_FILE), owner('a1b2', 1000));
+    acquireDataDirLock(dir, { pid: 1, host: 'a1b2', startMs: 2000, heartbeatMs: 0 }).release();
   });
 });
