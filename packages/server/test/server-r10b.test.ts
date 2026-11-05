@@ -184,7 +184,9 @@ describe('#1519 accept with no bid in the log is asked again after a restart', (
     await t.room.respondConfirm(c1.conn, { v: 1, t: 'confirm_response', confirmId, accept: true });
     store.failBids = false;
     // The accept is one append now, so the failed write leaves the hold untouched (HRD-23).
-    expect((await store.readEvents(t.auctionId, 1, 100)).some((e) => e.type === 'confirm_resolved')).toBe(false);
+    expect(
+      (await store.readEvents(t.auctionId, 1, 100)).some((e) => e.type === 'confirm_resolved'),
+    ).toBe(false);
     // A log written before that change can still hold an accept with no bid: build one.
     const seq = t.room.lastSeq + 1;
     const ts = t.clock.now();
@@ -194,7 +196,13 @@ describe('#1519 accept with no bid in the log is asked again after a restart', (
         confirmId,
         'accepted',
         confirmAudit(
-          { confirmId, bidderId: t.b1, mid, amount: 12000 as Cents, expiresAt: (ts + 1) as EpochMs },
+          {
+            confirmId,
+            bidderId: t.b1,
+            mid,
+            amount: 12000 as Cents,
+            expiresAt: (ts + 1) as EpochMs,
+          },
           t.ids.mint<'BidId'>(),
           'accepted',
           CONFIRM_REASON.accepted,
