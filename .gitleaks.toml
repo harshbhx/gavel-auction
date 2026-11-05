@@ -10,9 +10,8 @@ regex = '''(?i)\b(?:PAYPAL_CLIENT_SECRET|DEEPGRAM_API_KEY|GROQ_API_KEY)\b[ \t]*[
 keywords = ["paypal_client_secret", "deepgram_api_key", "groq_api_key"]
 
 [allowlist]
-description = "Dependency directories and the lockfile; no project file is exempt"
+description = "The lockfile only; no project file is exempt. node_modules is untracked and CI fails if a tracked path has a node_modules segment (scripts/check-no-tracked-node-modules.mjs)"
 paths = [
-  '''(^|/)node_modules/''',
   '''(^|/)package-lock\.json$''',
 ]
 # The two fake values that earlier versions of scripts/check-bundle-secrets.mjs used in its

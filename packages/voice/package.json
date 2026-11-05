@@ -10,6 +10,7 @@
     "lint": "eslint src",
     "test": "vitest run",
     "size": "size-limit",
+    "eval": "vite-node scripts/eval.ts --",
     "check:heldout": "node --experimental-strip-types scripts/check-heldout.ts"
   },
   "dependencies": {
