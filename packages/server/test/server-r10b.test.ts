@@ -40,13 +40,13 @@ const gauges = { connections: () => 0, rooms: () => 0, mailboxDepth: () => 0 };
 describe('#1517 fence path behind the real FencedStore', () => {
   it('closes every connection with 4010 when a bid append conflicts', async () => {
     const inner = new ConflictStore();
-    let room: Room | undefined;
+    const ref: { room?: Room } = {};
     const store = new FencedStore(inner, {
       // The service does the same: fence the room one microtask after the conflict.
-      onFenced: () => void Promise.resolve().then(() => room?.fence()),
+      onFenced: () => void Promise.resolve().then(() => ref.room?.fence()),
     });
-    const t = await setup({ store });
-    room = t.room;
+    const t = await setup({ store: store as unknown as MemoryStore });
+    ref.room = t.room;
     const bidder = await t.connect('bidder', t.b1);
     const screen = await t.connect('screen');
     inner.conflictNext = true;
