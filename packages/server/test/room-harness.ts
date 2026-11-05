@@ -19,6 +19,7 @@ import {
 import { RateLimiter } from '../src/limits/rate-limiter';
 import { MemoryTransport } from '../src/room/memory-transport';
 import { Room, type Connection, type RoomDeps } from '../src/room/room';
+import type { HammerResult } from '../src/room/settle-port';
 import { MemoryStore } from '../src/store/memory-store';
 
 export const START = 1_789_000_000_000;
@@ -66,6 +67,15 @@ class TestEngine implements EnginePort {
   tick(now: EpochMs): EngineState {
     if (this.state === 'OPEN' && now >= this.cfg.endTs) this.state = 'CLOSING';
     return this.state;
+  }
+
+  hammer(): HammerResult {
+    this.state = 'SETTLING';
+    const ranking =
+      this.leader === null || this.price === null
+        ? []
+        : [{ bidderId: this.leader, amount: this.price }];
+    return { winnerId: this.leader, price: (this.price ?? 0) as Cents, ranking };
   }
 
   view(): EngineView {

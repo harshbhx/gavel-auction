@@ -34,6 +34,7 @@ import {
   CONFIRM_TTL_MS,
   ConfirmBook,
   confirmAudit,
+  isVoiceLike,
   needsConfirm,
   requestedEvent,
   type PendingConfirm,
@@ -89,7 +90,7 @@ function bidMeta(conn: Connection, msg: BidMsg, confirmed = false): BidMeta {
     return meta;
   }
   // A bidder frame may claim qr or voice only; manual is the auctioneer's entry (R-RT-039).
-  const meta: BidMeta = { source: msg.source === 'voice' ? 'voice' : 'qr' };
+  const meta: BidMeta = { source: isVoiceLike(msg) ? 'voice' : 'qr' };
   if (msg.transcript !== undefined) meta.transcript = msg.transcript;
   if (meta.source === 'voice' && msg.confidence !== undefined) meta.confidence = msg.confidence;
   if (confirmed && meta.source === 'voice') meta.confirmed = true;
