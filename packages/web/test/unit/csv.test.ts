@@ -14,6 +14,13 @@ describe('toCsv (T-WEB-005)', () => {
     expect(toCsv([['=1+1', '+2', '-3', '@x', 'ok']])).toBe("'=1+1,'+2,'-3,'@x,ok");
   });
 
+  it('also neutralises a leading tab, carriage return or space', () => {
+    expect(toCsv([['\t=1+1']])).toBe("'\t=1+1");
+    expect(toCsv([[' =1+1']])).toBe("' =1+1");
+    expect(toCsv([['\r=1+1']])).toBe('"\'\r=1+1"');
+    expect(toCsv([['a =1']])).toBe('a =1');
+  });
+
   it('leaves numbers alone', () => {
     expect(toCsv([[-5]])).toBe('-5');
   });
@@ -89,7 +96,20 @@ describe('export (T-WEB-043)', () => {
     expect(parsed.header.sha256).toMatch(/^[0-9a-f]{64}$/);
     const csv = await buildExport({ ...base, rows: rows.slice(0, 1), format: 'csv' });
     expect(csv.name).toBe('gavel-r1-l1-audit.csv');
-    expect(csv.content.split('\r\n')[0]).toBe('roomId,lotId,exportedAt,rowCount,sha256');
+    expect(csv.content.split('\r\n')[0]).toBe(
+      'roomId,lotId,exportedAt,rowCount,sha256,truncated,firstSeq,lastSeq',
+    );
+  });
+
+  it('records whether rows are missing and the seq range held', async () => {
+    const whole = await buildExport({ ...base, rows, format: 'json' });
+    const head = (JSON.parse(whole.content) as { header: Record<string, unknown> }).header;
+    expect(head.truncated).toBe(false);
+    expect([head.firstSeq, head.lastSeq]).toEqual([1, 2]);
+    const cut = await buildExport({ ...base, rows, format: 'json', truncated: true });
+    expect((JSON.parse(cut.content) as { header: { truncated: boolean } }).header.truncated).toBe(
+      true,
+    );
   });
 
   it('keeps the hash null when hashing is unavailable', async () => {

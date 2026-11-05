@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { t } from '../../src/copy/t';
-import { KillSwitch } from '../../src/screens/console/KillSwitch';
+import { KILL_HOLD_MS, KillSwitch } from '../../src/screens/console/KillSwitch';
 import { DemoLauncher, type DemoLinks } from '../../src/screens/demo/DemoLauncher';
 import { Sold } from '../../src/screens/screen/Sold';
 import { useThrottledAnnounce } from '../../src/screens/screen/useThrottledAnnounce';
@@ -109,8 +109,10 @@ describe('KillSwitch rejection', () => {
     render(<KillSwitch stopped={false} onKill={onKill} />);
     fireEvent.click(screen.getByRole('button', { name: t('kill.button') }));
     fireEvent.change(screen.getByLabelText(t('kill.type')), { target: { value: 'STOP' } });
-    fireEvent.keyDown(screen.getByRole('button', { name: t('kill.hold') }), { key: 'Enter' });
+    const hold = screen.getByRole('button', { name: t('kill.hold') });
+    fireEvent.keyDown(hold, { key: 'Enter' });
     await act(async () => {
+      vi.advanceTimersByTime(KILL_HOLD_MS);
       await Promise.resolve();
     });
     expect(onKill).toHaveBeenCalledTimes(1);

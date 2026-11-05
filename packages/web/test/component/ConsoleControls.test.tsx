@@ -111,7 +111,7 @@ describe('HammerDialog', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
-  it('cancels on early release and confirms on Enter', () => {
+  it('cancels on early release and confirms only on a held Enter', () => {
     const onConfirm = vi.fn();
     render(
       <HammerDialog
@@ -133,7 +133,31 @@ describe('HammerDialog', () => {
     });
     expect(onConfirm).not.toHaveBeenCalled();
     fireEvent.keyDown(btn, { key: 'Enter' });
+    expect(onConfirm).not.toHaveBeenCalled();
+    fireEvent.keyUp(btn, { key: 'Enter' });
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(onConfirm).not.toHaveBeenCalled();
+    fireEvent.keyDown(btn, { key: 'Enter' });
+    fireEvent.keyDown(btn, { key: 'Enter', repeat: true });
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('focuses Cancel first, not the hold button', () => {
+    render(
+      <HammerDialog
+        open
+        leader={leader}
+        priceCents={35000}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: t('common.cancel') }));
   });
 
   it('shows leader and price, or the no-sale question', () => {

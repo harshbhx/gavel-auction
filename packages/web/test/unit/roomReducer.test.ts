@@ -185,6 +185,45 @@ describe('resync (WEB-RT-05)', () => {
   });
 });
 
+describe('audit trail completeness (R13-WB11)', () => {
+  const auditRow = (n: number) =>
+    ({
+      bidId: `b${n}`,
+      bidderId: bidderId(1),
+      source: 'voice',
+      outcome: 'accepted',
+      serverTs: EpochMs(BASE_TIME + n),
+      seq: n,
+    }) as unknown as Extract<ServerMessage, { t: 'audit_event' }>['audit'];
+  const auditMsg = (n: number): ServerMessage => ({
+    v: 1,
+    t: 'audit_event',
+    seq: n,
+    ts: EpochMs(BASE_TIME + n),
+    audit: auditRow(n),
+  });
+
+  it('is complete while the held rows fit', () => {
+    const r = run([snapshot(1), auditMsg(2), auditMsg(3)]);
+    expect(r.state.auditTruncated).toBe(false);
+  });
+
+  it('marks the trail truncated once rows are dropped', () => {
+    const msgs = Array.from({ length: 205 }, (_, i) => auditMsg(i + 2));
+    const r = run([snapshot(1), ...msgs]);
+    expect(r.state.audit).toHaveLength(200);
+    expect(r.state.auditTruncated).toBe(true);
+  });
+
+  it('marks a full snapshot window truncated and a short one complete', () => {
+    const rows = Array.from({ length: 50 }, (_, i) => auditRow(i + 1));
+    const full = stateMsg(1, { ...openSnapshot(roster([1, 'A'])), recentAudit: rows });
+    expect(run([full]).state.auditTruncated).toBe(true);
+    const short = stateMsg(1, { ...openSnapshot(roster([1, 'A'])), recentAudit: rows.slice(0, 3) });
+    expect(run([short]).state.auditTruncated).toBe(false);
+  });
+});
+
 describe('snapshot keeps what only the client knows (WEB-RT-06)', () => {
   const hammer = (seq: number): ServerMessage => ({
     v: 1,

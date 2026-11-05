@@ -8,26 +8,29 @@ import {
   type ReactNode,
 } from 'react';
 import { Cents, type MsgId } from '@gavel/shared';
+import { PROTOCOL_VERSION } from './wire';
 import { t } from './copy/t';
 import { Icon } from './design/icons';
 import { Banner } from './design/primitives/Banner';
-import { startLiveRoom, type LiveRoom } from './net/liveRoom';
+import { socketUrl, startLiveRoom, type LiveRoom } from './net/liveRoom';
 import { Announcer } from './a11y/Announcer';
 import type { PaymentsMode } from './config';
 import type { SettlementView } from './ladder/ladderModel';
+import type { Transport } from './net/transport';
+import { WebSocketTransport } from './net/wsTransport';
 import { loadSession, saveSession } from './net/session';
 import { createApprovalPort, useApproval } from './payments/useApproval';
 import { RouteScreen, matchRoute, type RouteMatch } from './routes';
 import { AuditTable } from './screens/audit/AuditTable';
 import { BidScreen } from './screens/bid/BidScreen';
-import { ConsoleScreen } from './screens/console/ConsoleScreen';
+import { LiveConsole } from './screens/console/LiveConsole';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
 import { LandingScreen } from './screens/landing/LandingScreen';
 import { Receipt } from './screens/receipt/Receipt';
 import { Approve } from './screens/register/Approve';
 import { RegisterScreen, type RegistrationDraft } from './screens/register/RegisterScreen';
 import { ScreenView } from './screens/screen/ScreenView';
-import { useRoom } from './store/roomStore';
+import { roomStore, useRoom } from './store/roomStore';
 import { summarizePending, type PendingSummary } from './store/localEvents';
 import { readAuctioneerToken } from './store/session';
 
@@ -83,7 +86,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, BoundaryState> {
 
 function tokenFor(routeId: string, roomId: string): { token: string; bidderId?: string } | null {
   if (routeId === 'console' || routeId === 'audit' || routeId === 'screen') {
-    const fromFragment = readAuctioneerToken();
+    const fromFragment = readAuctioneerToken(roomId);
     if (fromFragment !== null) {
       // The fragment is cleared once read, so a reload needs the token kept for a watcher.
       if (routeId === 'screen') saveSession(roomId, { token: fromFragment });
@@ -97,27 +100,35 @@ function tokenFor(routeId: string, roomId: string): { token: string; bidderId?: 
     : { token: stored.token, bidderId: stored.bidderId };
 }
 
+interface Live {
+  room: LiveRoom | null;
+  transport: Transport | null;
+}
+
 function useLiveRoom(
   liveBase: string,
   roomId: string,
   token: string,
   bidderId: string | undefined,
-): LiveRoom | null {
-  const [room, setRoom] = useState<LiveRoom | null>(null);
+): Live {
+  const [live, setLive] = useState<Live>({ room: null, transport: null });
   useEffect(() => {
+    // The transport is built here so the screens can send a confirm_response on it.
+    const transport = new WebSocketTransport(socketUrl(liveBase));
     const started = startLiveRoom({
       wsBase: liveBase,
       roomId,
       token,
+      transport,
       ...(bidderId === undefined ? {} : { bidderId }),
     });
-    setRoom(started);
+    setLive({ room: started, transport });
     return () => {
       started?.stop();
-      setRoom(null);
+      setLive({ room: null, transport: null });
     };
   }, [liveBase, roomId, token, bidderId]);
-  return room;
+  return live;
 }
 
 /** Outcome of the latest bid this device sent: waiting, rejected, or unanswered. */
@@ -154,8 +165,15 @@ interface LiveRouteProps {
 }
 
 function LiveRoute({ match, liveBase, roomId, token, bidderId }: LiveRouteProps): ReactNode {
-  const room = useLiveRoom(liveBase, roomId, token, bidderId);
+  const { room, transport } = useLiveRoom(liveBase, roomId, token, bidderId);
   const view = usePendingView(room);
+  const myPaddle = useRoom((s) =>
+    bidderId === undefined
+      ? undefined
+      : s.snapshot?.roster.find((r) => r.bidderId === bidderId)?.paddle,
+  );
+  const respond = (confirmId: string, accept: boolean): void =>
+    transport?.send({ v: PROTOCOL_VERSION, t: 'confirm_response', confirmId, accept });
   switch (match.route.id) {
     case 'bid':
       return (
@@ -169,6 +187,7 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId }: LiveRouteProps)
             onResend={() => {
               if (view.unknownMid !== null) room?.pending.retry(view.unknownMid);
             }}
+            {...(myPaddle === undefined ? {} : { myPaddle, onConfirm: respond })}
           />
         </main>
       );
@@ -189,7 +208,17 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId }: LiveRouteProps)
     default:
       return (
         <main data-route="console">
-          <ConsoleScreen settlementView={null} />
+          <LiveConsole
+            room={room}
+            roomId={roomId}
+            token={token}
+            apiBase={liveBase.replace(/^ws/, 'http').replace(/\/+$/, '')}
+            rejection={view.rejection?.reason ?? ''}
+            onConfirmAnswer={(confirmId, accept) => {
+              respond(confirmId, accept);
+              roomStore.dispatch({ kind: 'confirm_resolved', confirmId });
+            }}
+          />
         </main>
       );
   }
@@ -331,7 +360,7 @@ function RegisterRoute({ roomId, api }: { roomId: string; api: Api }) {
   const [draft, setDraft] = useState<RegistrationDraft | null>(null);
   const [failed, setFailed] = useState(false);
 
-  const invite = who === null ? readAuctioneerToken() : null;
+  const invite = who === null ? readAuctioneerToken(roomId) : null;
   useEffect(() => {
     if (who !== null || invite === null) return;
     fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(roomId)}/join`, {
