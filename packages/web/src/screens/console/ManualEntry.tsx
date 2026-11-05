@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Cents, type BidderId } from '@gavel/shared';
 import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
@@ -23,9 +23,12 @@ export function ManualEntry({ roster, onSubmit, rejection }: ManualEntryProps) {
   const [paddle, setPaddle] = useState('');
   const [amount, setAmount] = useState('');
   const [problem, setProblem] = useState<Problem>(null);
+  const justSent = useRef(false);
 
   const submit = (ev: FormEvent<HTMLFormElement>): void => {
     ev.preventDefault();
+    // A repeat Enter after a send, before the amount is edited, is not a new bid.
+    if (justSent.current) return;
     const paddleNo = /^\d{1,6}$/.test(paddle.trim()) ? Number(paddle.trim()) : null;
     const entry = paddleNo === null ? undefined : roster.find((r) => r.paddle === paddleNo);
     if (entry === undefined) {
@@ -40,6 +43,7 @@ export function ManualEntry({ roster, onSubmit, rejection }: ManualEntryProps) {
     setProblem(null);
     // Clearing the amount means a second Enter cannot send the same bid again.
     setAmount('');
+    justSent.current = true;
     onSubmit(Cents(cents), entry.bidderId);
   };
 
@@ -59,7 +63,10 @@ export function ManualEntry({ roster, onSubmit, rejection }: ManualEntryProps) {
         inputMode="decimal"
         autoComplete="off"
         value={amount}
-        onChange={(e) => setAmount(e.target.value)}
+        onChange={(e) => {
+          justSent.current = false;
+          setAmount(e.target.value);
+        }}
         {...(problem === 'amount'
           ? { error: t('console.manual.badAmount'), errorIcon: warn }
           : problem === null && rejection !== null

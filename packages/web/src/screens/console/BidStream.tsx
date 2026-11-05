@@ -37,17 +37,17 @@ const SOURCE_ICON: Readonly<Record<BidSource, IconName>> = {
   manual: 'keyboard',
 };
 
-const SOURCE_KEY: Readonly<Record<BidSource, CopyKey>> = {
+const SOURCE_KEY = {
   voice: 'console.src.voice',
   qr: 'console.src.qr',
   manual: 'console.src.manual',
-};
+} as const satisfies Record<BidSource, CopyKey>;
 
-const STATUS_KEY: Readonly<Record<BidStreamStatus, CopyKey>> = {
+const STATUS_KEY = {
   accepted: 'console.status.accepted',
   rejected: 'console.status.rejected',
   pending: 'console.status.pending',
-};
+} as const satisfies Record<BidStreamStatus, CopyKey>;
 
 /** Reason copy for a rejected row or an inline rejection. Codes whose catalog text needs a value get a plain variant. */
 export function rejectionText(reason: string | null | undefined): string {

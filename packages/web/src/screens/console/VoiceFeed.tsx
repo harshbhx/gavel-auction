@@ -26,13 +26,13 @@ export interface VoiceFeedProps {
   entries: readonly VoiceFeedEntry[];
 }
 
-const MIC_KEY: Readonly<Record<MicState, CopyKey>> = {
+const MIC_KEY = {
   off: 'console.mic.off',
   requesting: 'console.mic.requesting',
   live: 'console.mic.live',
   error: 'console.mic.error',
   denied: 'console.mic.denied',
-};
+} as const satisfies Record<MicState, CopyKey>;
 
 /** 0.93 -> "0.93". Integer rounding first, so no float formatting surprises. */
 export function formatConfidence(confidence: number): string {
