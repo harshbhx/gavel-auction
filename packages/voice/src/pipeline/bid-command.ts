@@ -16,8 +16,9 @@ export interface PlaceBidContext {
   /** Who answered the confirm prompt; recorded in the audit (R-VOX-069). Default 'bidder'. */
   confirmedBy?: ConfirmedBy;
   /**
-   * Fresh bid context at delivery. When given, a confirmed option is re-validated against it
+   * Fresh bid context at delivery. A confirmed option is always re-validated against it
    * (price moved, ceiling, already high bidder, duplicate window) and a failing option gives null.
+   * Without it a confirmed option gives null, so a stale prompt can never bypass the engine gate.
    */
   current?: BidContext;
   /** Confidence an `accept` needs to become a bid without a prompt, 0..1. Default 0.85. */
@@ -129,17 +130,16 @@ export function toPlaceBid(decision: Decision, ctx: PlaceBidContext): PlaceBidCo
     if (ctx.confirmedBy === 'voice' && !decision.prompt.spokenAnswerAllowed) return null;
     bidderId = option.bidderId;
     amountCents = option.amountCents;
-    if (ctx.current !== undefined) {
-      const outcome = answerConfirm({
-        prompt: decision.prompt,
-        ctx: ctx.current,
-        optionId: option.id,
-        by: ctx.confirmedBy ?? 'bidder',
-      });
-      if (outcome.kind !== 'bid') return null;
-      bidderId = outcome.bidderId;
-      amountCents = outcome.amountCents;
-    }
+    if (ctx.current === undefined) return null;
+    const outcome = answerConfirm({
+      prompt: decision.prompt,
+      ctx: ctx.current,
+      optionId: option.id,
+      by: ctx.confirmedBy ?? 'bidder',
+    });
+    if (outcome.kind !== 'bid') return null;
+    bidderId = outcome.bidderId;
+    amountCents = outcome.amountCents;
     confirmed = true;
     confirmedBy = ctx.confirmedBy ?? 'bidder';
   } else {
