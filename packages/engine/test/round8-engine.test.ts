@@ -4,6 +4,7 @@ import { publicExport } from '../src/ledger/public-export.js';
 import type { LedgerEntry, LedgerEvent } from '../src/events.js';
 import { decide } from '../src/decide/index.js';
 import type { SettlementState } from '../src/events.js';
+import { initialState } from '../src/state.js';
 import { LIMITS } from '../src/types.js';
 import type { AuctionState, LotState } from '../src/state.js';
 import {
@@ -77,7 +78,16 @@ describe('red team round 8 engine fixes', () => {
   it('T-ENG-152 R8-E04 a raise on a revoked bidder is refused in both scopes', () => {
     for (const lotId of [undefined, L1]) {
       const scope = lotId === undefined ? {} : { lotId };
-      let s = scene({ config: { holdScope: lotId === undefined ? 'event' : 'lot' } });
+      let s = initialState;
+      s = run(
+        s,
+        mk(0, {
+          type: 'CreateAuction',
+          title: 'Gala',
+          config: { holdScope: lotId === undefined ? 'event' : 'lot' },
+        }),
+      ).state;
+      s = run(s, mk(0, { type: 'AddLot', lot: lotConfig(L1) })).state;
       s = run(
         s,
         mk(1, {
@@ -195,7 +205,7 @@ describe('red team round 8 engine fixes', () => {
 
     it('T-ENG-155 the reserved slots only take a bid that leads', () => {
       const bids = [
-        ...Array.from({ length: 17 }, (_v, k) => filler(1000, `F${k}`, 1000)).flat(),
+        ...Array.from({ length: 18 }, (_v, k) => filler(1000, `F${k}`, 1000)).flat(),
         ...filler(1000, A, 3000),
       ].map((b, i) => ({ ...b, bidId: `x${i}`, seq: i }));
       const s = base(bids);
