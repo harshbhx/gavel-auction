@@ -91,9 +91,12 @@ describe('receipts (T-WEB-045)', () => {
 });
 
 describe('state kit (T-WEB-050)', () => {
-  it.each(Object.entries(STATES_TABLE))('%s has copy for every state', (name, copy) => {
-    for (const key of Object.values(copy)) expect(en[key].length).toBeGreaterThan(0);
-    expect(name.length).toBeGreaterThan(0);
+  it('has copy for every state of every view', () => {
+    for (const [name, copy] of Object.entries(STATES_TABLE)) {
+      for (const key of [copy.empty, copy.loading, copy.error, copy.offline]) {
+        expect(en[key].length, name).toBeGreaterThan(0);
+      }
+    }
   });
 
   it('renders loading with text', () => {

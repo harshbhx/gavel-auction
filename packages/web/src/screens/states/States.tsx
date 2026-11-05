@@ -1,3 +1,4 @@
+import { en } from '../../copy/en';
 import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
 import { redactDetail, shortRef } from './redact';
@@ -12,7 +13,7 @@ export interface StateProps {
 export function Loading({ view, rows = 3 }: StateProps & { rows?: number }) {
   return (
     <div className="gv-state gv-state--loading" role="status" aria-busy="true">
-      <span>{t(STATES_TABLE[view].loading)}</span>
+      <span>{en[STATES_TABLE[view].loading]}</span>
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="gv-skeleton" aria-hidden="true" />
       ))}
@@ -23,7 +24,7 @@ export function Loading({ view, rows = 3 }: StateProps & { rows?: number }) {
 export function Empty({ view }: StateProps) {
   return (
     <p className="gv-state gv-state--empty" role="status">
-      {t(STATES_TABLE[view].empty)}
+      {en[STATES_TABLE[view].empty]}
     </p>
   );
 }
@@ -31,7 +32,7 @@ export function Empty({ view }: StateProps) {
 export function Offline({ view }: StateProps) {
   return (
     <p className="gv-state gv-state--offline" role="status">
-      {t(STATES_TABLE[view].offline)}
+      {en[STATES_TABLE[view].offline]}
     </p>
   );
 }
@@ -48,7 +49,7 @@ export interface ErrorPanelProps extends StateProps {
 export function ErrorPanel({ view, onRetry, code, correlationId }: ErrorPanelProps) {
   return (
     <div className="gv-state gv-state--error" role="alert">
-      <p>{t(STATES_TABLE[view].error)}</p>
+      <p>{en[STATES_TABLE[view].error]}</p>
       <Button onClick={onRetry}>{t('state.retry')}</Button>
       <details>
         <summary>{t('state.details')}</summary>
