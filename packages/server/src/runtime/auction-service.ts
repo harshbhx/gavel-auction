@@ -84,6 +84,8 @@ export interface AuctionServiceDeps {
   audit: AuditSink;
   /** GAVEL_HOLD_MAX_AGE_MS: a hold older than this at settlement start is flagged stale. */
   holdMaxAgeMs?: number;
+  /** GAVEL_MAX_CEILING_CENTS: the ceiling cap the engine enforces. Defaults to the shared cap. */
+  maxCeilingCents?: number;
   gateway: PaymentsGateway;
   /** Checks PayPal's signature on a webhook delivery. */
   verifier: Pick<WebhookVerifier, 'verifyWebhook'>;
@@ -338,7 +340,7 @@ class Service implements AuctionService, SettlePort {
       throw new GavelError('bad_message', 'end time is more than a day away');
     }
     try {
-      new LedgerEngine(auctionId, parsed.data, this.deps.clock.now());
+      new LedgerEngine(auctionId, parsed.data, this.deps.clock.now(), this.deps.maxCeilingCents);
     } catch {
       throw new GavelError('bad_message', 'auction config the engine cannot run');
     }
@@ -426,7 +428,8 @@ class Service implements AuctionService, SettlePort {
       store: this.roomStore,
       clock: this.deps.clock,
       ids: this.deps.ids,
-      engine: (config, createdAt) => new LedgerEngine(auctionId, config, createdAt),
+      engine: (config, createdAt) =>
+        new LedgerEngine(auctionId, config, createdAt, this.deps.maxCeilingCents),
       settle: this,
       durable: (id, engine) => this.flushLedger(id, engine, false),
       ...(this.deps.limiter !== undefined ? { limiter: this.deps.limiter } : {}),

@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { composeServer, type Composed } from '../src/boot/compose';
 
 const passedHoldMaxAge: Array<number | undefined> = [];
+const passedMaxCeiling: Array<number | undefined> = [];
 const passedMetrics: unknown[] = [];
 const passedLimiters: unknown[] = [];
 vi.mock('../src/runtime/auction-service', async (importActual) => {
@@ -15,6 +16,7 @@ vi.mock('../src/runtime/auction-service', async (importActual) => {
     ...actual,
     createAuctionService: (deps: Parameters<typeof actual.createAuctionService>[0]) => {
       passedHoldMaxAge.push(deps.holdMaxAgeMs);
+      passedMaxCeiling.push(deps.maxCeilingCents);
       passedMetrics.push(deps.roomMetrics);
       passedLimiters.push(deps.limiter);
       return actual.createAuctionService(deps);
@@ -197,6 +199,11 @@ describe('GAVEL_HOLD_MAX_AGE_MS (R6-B01)', () => {
   it('reaches the auction service in fake mode', async () => {
     await boot({ GAVEL_HOLD_MAX_AGE_MS: '600000' });
     expect(passedHoldMaxAge.at(-1)).toBe(600000);
+  });
+
+  it('GAVEL_MAX_CEILING_CENTS reaches the auction service (QA-99)', async () => {
+    await boot({ GAVEL_MAX_CEILING_CENTS: '25000' });
+    expect(passedMaxCeiling.at(-1)).toBe(25000);
   });
 
   it('falls back to the payments default when unset', async () => {

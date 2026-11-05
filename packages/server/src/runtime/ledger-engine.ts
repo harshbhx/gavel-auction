@@ -15,6 +15,7 @@ import {
 } from '@gavel/engine';
 import {
   CROCKFORD,
+  DEFAULT_MAX_CEILING_CENTS,
   GavelError,
   type AuctionConfig,
   type AuctionId,
@@ -45,7 +46,6 @@ export function lotIdOf(auctionId: AuctionId): string {
 const MIN_LOT_DURATION_MS = 1000;
 const MAX_LOT_DURATION_MS = 86_400_000;
 const MAX_SOFT_CLOSE_MS = 600_000;
-const MAX_CEILING_CENTS = 100_000_000;
 
 /**
  * Command id from the command's own content: a rebuilt room that applies the same
@@ -111,6 +111,8 @@ export class LedgerEngine
     private readonly auctionId: AuctionId,
     cfg: AuctionConfig,
     createdAt: EpochMs = Math.max(0, cfg.endTs - MAX_LOT_DURATION_MS) as EpochMs,
+    /** GAVEL_MAX_CEILING_CENTS: the cap the engine enforces on every bidder ceiling. */
+    maxCeilingCents: number = DEFAULT_MAX_CEILING_CENTS,
   ) {
     this.cfg = cfg;
     this.lotId = lotIdOf(auctionId) as EngineUlid;
@@ -136,7 +138,7 @@ export class LedgerEngine
       title: 'Gavel auction',
       config: {
         holdScope: 'event',
-        maxCeilingCents: MAX_CEILING_CENTS,
+        maxCeilingCents,
         confirmBelowBps: Math.round(cfg.confirmConfidenceThreshold * 10_000),
         fallbackPolicy: 'runner_up',
         maxFallbackDepth: 2,

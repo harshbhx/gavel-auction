@@ -279,6 +279,21 @@ jobs:
       - run: pip install pytest hypothesis
       - run: pytest -q
         working-directory: reference/python
+  differential:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b
+        with:
+          python-version: '3.12'
+      - uses: ./.github/actions/setup
+      - name: Export 2000 scenarios from the Python reference with the pinned seed
+        run: python3 reference/python/scenario_export.py --seed 20261104 --n 2000 > "$RUNNER_TEMP/scenarios.jsonl"
+      - name: Compare the TypeScript engine on the pinned seed
+        env:
+          GAVEL_DIFFERENTIAL_FILE: ${{ runner.temp }}/scenarios.jsonl
+        run: npx vitest run --project 'unit:engine' differential
   tools:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -305,6 +320,7 @@ jobs:
       - voice
       - e2e-fixtures
       - reference-python
+      - differential
       - tools
       - ownership
     runs-on: ubuntu-latest

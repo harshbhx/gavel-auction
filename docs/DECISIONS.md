@@ -199,7 +199,7 @@ Date: 2026-11-04
 Status: accepted
 Owner: quality
 Context: A restart must not leave the payments journal and holds pointing at a lot the engine ledger no longer knows. Three records are written by three stores: the engine ledger (LedgerStore), the room event log (RoomStore) and the payments journal (JournalStore, held in RoomStore slots).
-Decision: The engine ledger is the source of truth and is written first. The room log is derived from ledger entries and may lag; on start it is rebuilt from the ledger. The payments journal for a lot is created only after LOT_HAMMERED is in the ledger, and the bridge sends RecordSettlement and CompleteLot only after the journal step they describe is saved. A file-backed ledger and room store (one JSON line per batch, synced before the call returns, torn tail dropped on start) back the single-host crash scenarios; Postgres and D1 adapters must pass the same contract suites.
+Decision: Amended by D-0029 for the order of the first two writes. The engine ledger is the source of truth for the hash chain and is written first. The room log is derived from ledger entries and may lag; on start it is rebuilt from the ledger. The payments journal for a lot is created only after LOT_HAMMERED is in the ledger, and the bridge sends RecordSettlement and CompleteLot only after the journal step they describe is saved. A file-backed ledger and room store (one JSON line per batch, synced before the call returns, torn tail dropped on start) back the single-host crash scenarios; Postgres and D1 adapters must pass the same contract suites.
 Alternatives:
 
 - Room log as source of truth: rejected, the engine replays and verifies the hash chain from its own ledger.
@@ -387,7 +387,7 @@ Date: 2026-11-04
 Status: accepted
 Owner: server
 Context: The engine accepts many lots and a hold scope of lot or event, but the settlement journal, the hold store and the room are keyed by auction id with one candidate per bidder and one capture per hold. A second hammer in the same auction would be refused as a different plan (INTEGRATION-RT-08). The room log and the engine ledger are also two records of the same events (INTEGRATION-RT-10).
-Decision: A room runs exactly one lot. The server creates the lot with the room's auction id as lot id (lotIdOf), so the settlement journal key, the hold key and the lot id are the same value, and no server route adds a second lot. Multi-lot events are out of scope until journals and holds are keyed by auction and lot and a multi-win capture amount is defined. For the logs, D-0012 and D-0014 stand: the engine ledger is the hash-chained audit record and the source for the public export and verification (D-0020, D-0021); the room log is the first durable record of a room event and the replay source for a room; rejected bids, voice and confirm records live in the room log only.
+Decision: A room runs exactly one lot. The server creates the lot with the room's auction id as lot id (lotIdOf), so the settlement journal key, the hold key and the lot id are the same value, and no server route adds a second lot. Multi-lot events are out of scope until journals and holds are keyed by auction and lot and a multi-win capture amount is defined. For the logs, D-0014 is the current rule (D-0012 is amended by D-0029): the engine ledger is the hash-chained audit record and the source for the public export and verification (D-0020, D-0021); the room log is the first durable record of a room event and the replay source for a room; rejected bids, voice and confirm records live in the room log only.
 Alternatives:
 
 - Key journals and holds by auction and lot now: rejected, the demo is single lot and the change reaches payments, the store contract and the web settlement screen.
@@ -509,3 +509,22 @@ Consequences:
 - The room code has no node: imports, so a later Durable Object host stays possible; reopen with a new decision ID if the revisit conditions in the spike document are met.
 
 Evidence: SPEC-realtime section 5.6, R-RT-140 to R-RT-143, D-0006, D-0018, packages/server/spike/HOST-DECISION.md.
+
+## D-0029: The room log is written first; D-0012 is amended for the log order
+
+Date: 2026-11-05
+Status: accepted
+Owner: quality
+Context: D-0012 says the ledger is written first and the room log is rebuilt from it. D-0014 says the opposite in its decision text, D-0022 says both stand, and the code follows D-0014: room.ts replays only from the room store, the ledger is flushed after the room append and before the acknowledgement, and a rejected bid is never committed to the ledger (ledger-engine.ts run(), placeBidWith). DEMO.md and R-ENG-031 also described a BID_REJECTED ledger entry that the server does not write.
+Decision: The room log is the first durable record of a room event and the replay source of a room. The engine ledger follows it before the sender is acknowledged and is the hash-chained audit record for accepted bids, registrations, revocations and the hammer. A lost room log is not rebuilt from the ledger. Rejected bids live in the room log only and are not in the ledger. From D-0012 only the settlement order still stands: LOT_HAMMERED is in the ledger before the journal exists. R-ENG-031 holds for the engine core; the server runtime does not commit rejections to its ledger.
+Alternatives:
+
+- Write rejected bids to the ledger: rejected, a rebuilt room has no replay step for them, so the two records would differ.
+- Rebuild the room log from the ledger as D-0012 says: rejected, the ledger lacks rejected bids and confirmations.
+
+Consequences:
+
+- D-0012 is read together with this record; where they differ, this record and D-0014 win.
+- The public ledger export cannot show rejected bids; the room log audit screen does.
+
+Evidence: packages/server/src/runtime/ledger-engine.ts, packages/server/test/ledger-engine-contract.test.ts, R6-D03, R6-D04.

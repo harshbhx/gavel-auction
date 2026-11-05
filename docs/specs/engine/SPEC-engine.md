@@ -84,7 +84,7 @@ Requirement ids are stable; the test and issue tables refer to them.
 - **R-ENG-028** The reject reasons MUST be exported as the const array `REJECT_REASONS` and be the only values that appear in `BID_REJECTED.reason`.
 - **R-ENG-029** A bidder never registered MUST be rejected `unregistered`; a bidder whose ceiling was revoked MUST be rejected `ceiling_revoked`.
 - **R-ENG-030** A voice bid with `confidenceBps < confirmBelowBps` and `confirmed !== true` MUST be rejected `unconfirmed`. Manual and QR bids are exempt.
-- **R-ENG-031** A rejected bid MUST append exactly one `BID_REJECTED` entry and change no lot state (except an implicit closing, see val-implicit-close).
+- **R-ENG-031** A rejected bid MUST append exactly one `BID_REJECTED` entry and change no lot state (except an implicit closing, see val-implicit-close). This holds for the engine core. The server runtime does not commit a rejected bid to its ledger (D-0014, D-0029); the rejection lives in the room log only.
 - **R-ENG-032** Accepted bids are binding: no command withdraws or edits a bid. Only `BID_STRUCK` (ceiling revocation) removes a bid from ranking, and the bid stays in the ledger.
 - **R-ENG-033** A PlaceBid with `at >= endsAt` on an OPEN lot MUST append `LOT_CLOSING` (reason `deadline`) and then `BID_REJECTED(lot_not_open)` in one atomic batch.
 
