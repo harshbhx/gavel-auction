@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   FLAG_DISCONTINUITY,
   FLAG_END_OF_STREAM,
+  FLAG_END_OF_UTTERANCE,
   FLAG_KEEPALIVE,
   FRAME_SAMPLES,
   type AudioBatch,
@@ -120,5 +121,30 @@ describe('R7-11 batch timestamps, discontinuity and keepalive', () => {
     });
     const end = events.find((e) => e.type === 'utterance_end');
     expect(end?.type === 'utterance_end' && end.atMs).toBeGreaterThanOrEqual(30000);
+  });
+});
+
+describe('R12-V06 end of utterance on push-to-talk release', () => {
+  it('delivers the held chunk without another key press', async () => {
+    const f = fakeFetch();
+    const groq = new GroqStt({ apiKey: 'k', fetch: f.fetch });
+    const events: SttEvent[] = [];
+    const reader = (async () => {
+      for await (const e of groq.events()) events.push(e);
+    })();
+    await groq.start();
+    let t = 0;
+    for (let i = 0; i < 4; i++, t += BATCH_MS) groq.write(batch('quiet', t));
+    for (let i = 0; i < 6; i++, t += BATCH_MS) groq.write(batch('loud', t));
+    groq.write({
+      seq: 1,
+      tsMs: t,
+      flags: FLAG_KEEPALIVE | FLAG_END_OF_UTTERANCE,
+      pcm: new Int16Array(0),
+    });
+    for (let i = 0; i < 20; i++) await Promise.resolve();
+    expect(finals(events)).toHaveLength(1);
+    await groq.stop();
+    await reader;
   });
 });
