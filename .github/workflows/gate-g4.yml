@@ -80,6 +80,7 @@ jobs:
           SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
           SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
+          G4_RUN_FILE: ${{ runner.temp }}/g4-run-ids.json
         run: npm run gate:g4-events -w @gavel/payments -- --out "$RUNNER_TEMP/g4-events"
       - name: Wait for the deliveries
         run: sleep 60
@@ -96,7 +97,7 @@ jobs:
           PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
           PAYPAL_WEBHOOK_ID: ${{ secrets.PAYPAL_WEBHOOK_ID }}
         run: |
-          npm run gate:g4 -w @gavel/payments -- --log "$RUNNER_TEMP/g4-receiver.jsonl" --out "$PWD/docs/evidence" --fixtures "$PWD/docs/evidence/G4/fixtures"
+          npm run gate:g4 -w @gavel/payments -- --log "$RUNNER_TEMP/g4-receiver.jsonl" --run-file "$RUNNER_TEMP/g4-run-ids.json" --out "$PWD/docs/evidence" --fixtures "$PWD/docs/evidence/G4/fixtures"
       - name: Clear the receiver log again
         if: ${{ always() }}
         env:

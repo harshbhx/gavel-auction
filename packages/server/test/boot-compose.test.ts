@@ -148,3 +148,15 @@ describe('server entry point (INT-R3-17)', () => {
     expect(lines.join('\n')).toContain('TOKEN_SECRET');
   });
 });
+
+describe('GAVEL_HOLD_MAX_AGE_MS (R6-B01)', () => {
+  it('is validated at boot even with fake payments', async () => {
+    await expect(
+      composeServer({ ...base, GAVEL_HOLD_MAX_AGE_MS: 'abc' }, { sink: () => undefined }),
+    ).rejects.toThrow(/GAVEL_HOLD_MAX_AGE_MS/);
+  });
+
+  it('boots with a valid value', async () => {
+    await boot({ GAVEL_HOLD_MAX_AGE_MS: '600000' });
+  });
+});

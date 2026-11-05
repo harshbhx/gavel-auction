@@ -53,6 +53,7 @@ describe('summarizeEvent', () => {
       eventType: 'X.Y',
       topKeys: ['event_type', 'id', 'resource', 'z'],
       resourceKeys: ['a', 'b'],
+      linkedIds: [],
     });
   });
   it('rejects anything that is not an event', () => {
@@ -162,5 +163,74 @@ describe('G4 with a delivery that does not verify', () => {
     } finally {
       await server.stop();
     }
+  });
+});
+
+describe('G4 coverage needs this run (R6-E03)', () => {
+  const capture = (authId: string): string =>
+    JSON.stringify({
+      id: `WH-${authId}`,
+      event_type: 'PAYMENT.CAPTURE.COMPLETED',
+      resource: { id: `CAP-${authId}`, supplementary_data: { related_ids: { authorization_id: authId } } },
+    });
+  const voided = (authId: string): string =>
+    JSON.stringify({
+      id: `WHV-${authId}`,
+      event_type: 'PAYMENT.AUTHORIZATION.VOIDED',
+      resource: { id: authId },
+    });
+
+  async function run(
+    rawBodies: string[],
+    runIds: Record<string, string[]> | undefined,
+  ): Promise<number> {
+    const server = new FakePayPalServer();
+    await server.start();
+    try {
+      const ok = async (): Promise<Response> =>
+        new Response(JSON.stringify({ verification_status: 'SUCCESS' }), { status: 200 });
+      return await runGate({
+        gate: 'G4',
+        scriptVersion: 'test',
+        argv: ['--fake', '--out', out],
+        env: {
+          PAYPAL_ENV: 'sandbox',
+          PAYPAL_BASE_URL: server.url,
+          PAYPAL_WEBHOOK_ID: DEFAULT_FAKE_WEBHOOK_ID,
+        },
+        log,
+        main: (ctx) =>
+          g4Gate(ctx, {
+            deliveries: rawBodies.map((rawBody) => ({ headers: {}, rawBody })),
+            fixturesDir: join(out, 'fixtures'),
+            fake: true,
+            fetch: ok,
+            ...(runIds ? { runIds } : {}),
+          }),
+      });
+    } finally {
+      await server.stop();
+    }
+  }
+
+  const ids = {
+    'PAYMENT.CAPTURE.COMPLETED': ['ORD-NEW', 'AUTH-NEW'],
+    'PAYMENT.AUTHORIZATION.VOIDED': ['ORD-NEW2', 'AUTH-NEW2'],
+  };
+
+  it('fails when only an older run delivered a capture and a void', async () => {
+    expect(await run([capture('AUTH-OLD'), voided('AUTH-OLD2')], ids)).toBe(EXIT_FAILED);
+  });
+
+  it('fails when only the capture is from this run', async () => {
+    expect(await run([capture('AUTH-NEW'), voided('AUTH-OLD2')], ids)).toBe(EXIT_FAILED);
+  });
+
+  it('passes when both events name this run ids', async () => {
+    expect(await run([capture('AUTH-NEW'), voided('AUTH-NEW2')], ids)).toBe(EXIT_OK);
+  });
+
+  it('keeps the old behaviour without run ids', async () => {
+    expect(await run([capture('AUTH-OLD'), voided('AUTH-OLD2')], undefined)).toBe(EXIT_OK);
   });
 });

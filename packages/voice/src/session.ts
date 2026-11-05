@@ -15,6 +15,8 @@ export type AudioErrorCode = (typeof AUDIO_ERROR_CODES)[number];
 
 export const AUDIO_MAX_BYTES_PER_SEC = 64 * 1024;
 export const AUDIO_MAX_SESSION_MS = 30 * 60 * 1000;
+export const AUDIO_MAX_STREAMS_PER_TOKEN = 2;
+export const AUDIO_MAX_STREAMS_PER_ROOM = 4;
 const RATE_WINDOW_MS = 1000;
 
 export interface VoiceSessionDeps {
@@ -24,6 +26,10 @@ export interface VoiceSessionDeps {
   verifyToken: (token: string, roomId: string) => boolean;
   maxBytesPerSec?: number;
   maxSessionMs?: number;
+  /** Most open streams one token may hold. Default 2 (R-VOX-097). */
+  maxStreamsPerToken?: number;
+  /** Most open streams one room may hold. Default 4. */
+  maxStreamsPerRoom?: number;
 }
 
 export interface StreamKey {
@@ -62,7 +68,14 @@ function frameBytes(frame: unknown): number | null {
 export function createVoiceSession(deps: VoiceSessionDeps): VoiceSession {
   const maxRate = deps.maxBytesPerSec ?? AUDIO_MAX_BYTES_PER_SEC;
   const maxSession = deps.maxSessionMs ?? AUDIO_MAX_SESSION_MS;
-  const active = new Set<string>();
+  const perToken = deps.maxStreamsPerToken ?? AUDIO_MAX_STREAMS_PER_TOKEN;
+  const perRoom = deps.maxStreamsPerRoom ?? AUDIO_MAX_STREAMS_PER_ROOM;
+  /** Open slots with the time the session cap ends them, so a dead socket cannot hold one. */
+  const active = new Map<string, { expiresAtMs: number; roomId: string; token: string }>();
+
+  function reclaimExpired(at: number): void {
+    for (const [id, s] of active) if (at >= s.expiresAtMs) active.delete(id);
+  }
 
   function slot(key: StreamKey): string {
     return `${encodeURIComponent(key.roomId)}:${encodeURIComponent(key.source)}`;
@@ -75,17 +88,28 @@ export function createVoiceSession(deps: VoiceSessionDeps): VoiceSession {
         return { ok: false, error: 'AUDIO_UNAUTHORIZED' };
       }
       const id = slot(key);
-      if (active.has(id)) return { ok: false, error: 'AUDIO_STREAM_BUSY' };
-      active.add(id);
-
       const startedAt = deps.now();
+      reclaimExpired(startedAt);
+      if (active.has(id)) return { ok: false, error: 'AUDIO_STREAM_BUSY' };
+      let tokenCount = 0;
+      let roomCount = 0;
+      for (const s of active.values()) {
+        if (s.token === token) tokenCount += 1;
+        if (s.roomId === key.roomId) roomCount += 1;
+      }
+      if (tokenCount >= perToken || roomCount >= perRoom) {
+        return { ok: false, error: 'AUDIO_STREAM_BUSY' };
+      }
+      active.set(id, { expiresAtMs: startedAt + maxSession, roomId: key.roomId, token });
+
       const recent: Array<{ at: number; bytes: number }> = [];
       let open = true;
 
       const close = (): void => {
         if (!open) return;
         open = false;
-        active.delete(id);
+        // A reclaimed slot may now belong to a newer stream; only release our own.
+        if (active.get(id)?.expiresAtMs === startedAt + maxSession) active.delete(id);
       };
       const fail = (error: AudioErrorCode): FrameResult => {
         close();
