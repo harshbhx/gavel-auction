@@ -83,6 +83,27 @@ describe('T-VOX-003 resampler', () => {
     const b = rs.process(block);
     expect(a.buffer).toBe(b.buffer);
   });
+
+  it.each([48000, 96000])('keeps the steady gain from the first output at %i Hz', (rate) => {
+    const rs = resampleTo16k(rate);
+    rs.process(sine(rate, 300, 0.05));
+    rs.reset();
+    const out = rs.process(new Float32Array(rate * 0.02).fill(0.5));
+    expect(out.length).toBeGreaterThan(10);
+    for (let i = 0; i < 4; i++) expect(Math.abs((out[i] as number) - 0.5)).toBeLessThan(0.02);
+  });
+
+  it('matches a fresh resampler after reset', () => {
+    const input = sine(48000, 700, 0.05);
+    const fresh = resampleTo16k(48000).process(input).slice();
+    const rs = resampleTo16k(48000);
+    rs.process(sine(48000, 200, 0.03));
+    rs.reset();
+    const again = rs.process(input);
+    expect(again.length).toBe(fresh.length);
+    for (let i = 0; i < fresh.length; i++)
+      expect(again[i] as number).toBeCloseTo(fresh[i] as number, 6);
+  });
 });
 
 describe('T-VOX-004 float to int16', () => {

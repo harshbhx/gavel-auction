@@ -246,6 +246,39 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     expect((await noHold.adapter.start(req, () => {})).errorCode).toBe('hold_failed');
   });
 
+  it('keeps the payments error code of a failed order and never marks hold_exists held', async () => {
+    const withBody = (orderErr: unknown, holdErr: unknown) => {
+      const { sdk } = stubSdk((cb) => cb.onApprove({ orderId: 'ord-1' }));
+      const fetch: FetchLike = (url) => {
+        const orders = url.endsWith('/orders');
+        const err = orders ? orderErr : holdErr;
+        return Promise.resolve({
+          ok: err === null,
+          status: err === null ? 200 : 503,
+          json: () =>
+            Promise.resolve(err ?? (orders ? { orderId: 'ord-1' } : { holdIdSuffix: 'Z' })),
+        });
+      };
+      return new PayPalV6Adapter({
+        apiBase: 'http://api',
+        clientId: 'c',
+        loadSdk: () => Promise.resolve(sdk),
+        fetch,
+        redirect: () => {},
+      });
+    };
+    const killed = await withBody({ error: 'kill_switch_engaged' }, null).start(req, () => {});
+    expect(killed).toMatchObject({ state: 'error', errorCode: 'kill_switch_engaged' });
+    const capped = await withBody({ error: 'ceiling_out_of_range' }, null).start(req, () => {});
+    expect(capped.errorCode).toBe('ceiling_out_of_range');
+    // The 409 body has no ceiling, so an existing hold cannot be checked against this amount.
+    const exists = await withBody(null, { error: 'hold_exists' }).start(req, () => {});
+    expect(exists).toMatchObject({ state: 'error', errorCode: 'hold_exists' });
+    expect(exists.holdIdSuffix).toBeUndefined();
+    const odd = await withBody({ error: 'nonsense' }, null).start(req, () => {});
+    expect(odd.errorCode).toBe('order_failed');
+  });
+
   it('completes a redirect approval on the return route', async () => {
     const t = make(() => {});
     const result = await t.adapter.completeRedirect('room 1', 'ord-1', 'reg-one', (s) =>

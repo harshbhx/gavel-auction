@@ -46,7 +46,8 @@ export function authorize(op: Operation, role: AuthRole): AuthDecision {
   return allowed ? { ok: true } : { ok: false, code: 'forbidden' };
 }
 
-const CEILING_KEYS: ReadonlySet<string> = new Set(['ceiling']);
+/** Matches `ceiling` and the web wire name `ceilingCents`, not the public `ceilingPresets`. */
+const CEILING_KEY = /^ceiling(cents)?$/i;
 
 /**
  * Remove private fields from an outbound frame for one viewer (R-RT-055, R-RT-086).
@@ -116,7 +117,7 @@ function walk(
     // the room builds both per connection, so a bidder only ever holds their own.
     if (k === 'you' && !(role === 'bidder' && (typeof v === 'string' || isOwn(v, viewer))))
       continue;
-    if (CEILING_KEYS.has(k) && !mine) continue;
+    if (CEILING_KEY.test(k) && !mine) continue;
     out[k] = walk(role, viewer, v, k, fullAudit);
   }
   return out;
