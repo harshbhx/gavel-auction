@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { isAuctioneerEcho, parseUnlessEcho } from '../../src/segment/echo.js';
+import { isAuctioneerEcho, parseUnlessEcho, splitEcho, stripEcho } from '../../src/segment/echo.js';
 import { splitAtGaps } from '../../src/segment/split.js';
 import { parseBid } from '../../src/parser/parse.js';
 import type { SttWord } from '../../src/stt/provider.js';
@@ -95,5 +95,25 @@ describe('T-VOX-031 auctioneer echo (R-VOX-031)', () => {
     expect(out.dropped).toBe(false);
     expect(isAuctioneerEcho('paddle nine two fifty')).toBe(false);
     expect(isAuctioneerEcho('unsold')).toBe(false);
+  });
+});
+
+describe('splitEcho keeps a real bid next to echo (R-VOX-031, #795)', () => {
+  const hasBid = (t: string): boolean => /paddle/.test(t) && /hundred/.test(t);
+  it('classifies clean, echo and mixed texts', () => {
+    expect(splitEcho('paddle nine four hundred', hasBid)).toEqual({
+      kind: 'clean',
+      text: 'paddle nine four hundred',
+    });
+    expect(splitEcho('Going once, going twice', hasBid)).toEqual({ kind: 'echo' });
+    expect(splitEcho('going once paddle nine four hundred', hasBid)).toEqual({
+      kind: 'mixed',
+      text: 'paddle nine four hundred',
+    });
+  });
+
+  it('stripEcho keeps the spelling of the other words', () => {
+    expect(stripEcho('Paddle 9, 400 sold!')).toEqual({ text: 'Paddle 9, 400', found: true });
+    expect(stripEcho('unsold lot').found).toBe(false);
   });
 });
