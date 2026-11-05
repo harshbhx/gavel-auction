@@ -52,7 +52,7 @@ import type { HammerResult, SettlePort, SettlementReport } from '../room/settle-
 import { dispatchAtHead } from './engine-dispatch';
 import { LedgerEngine, commandIdFor, lotIdOf } from './ledger-engine';
 import { reviewCodeOf } from './review-code';
-import { isReleased, voidSpareHolds } from './void-phase';
+import { isDefiniteRefusal, isReleased, voidOrphanHold, voidSpareHolds } from './void-phase';
 import { WebhookIntake } from './webhook-intake';
 
 /** Everything the service needs from the outside, as ports. */
@@ -407,11 +407,33 @@ class Service implements AuctionService, SettlePort {
     } catch (e) {
       // A refused registration leaves a live authorization nobody uses. Once the plan is
       // cut it is not in the journal either, so it is released here (SERVICE-R3-09).
+      if (isDefiniteRefusal(e)) await this.voidOrphan(input.auctionId, hold.holdId);
       if (e instanceof GavelError && e.code === 'conflict') {
         const journal = await this.deps.journals.load(lotIdOf(input.auctionId));
         if (journal !== null) await this.releaseSpares(journal);
       }
       throw e;
+    }
+  }
+
+  /** Voids the hold of a refused registration; a failed void is reported, never masks the refusal. */
+  private async voidOrphan(auctionId: AuctionId, holdId: string): Promise<void> {
+    try {
+      const status = await voidOrphanHold(
+        {
+          gateway: this.gateway,
+          holds: this.deps.holds,
+          audit: this.deps.audit,
+          clock: this.payClock,
+        },
+        auctionId,
+        holdId,
+      );
+      if (status === 'pending' || status === 'VOID_FAILED') {
+        this.deps.onError?.(auctionId, new Error(`orphan hold ${holdId} void ${status}`));
+      }
+    } catch (e) {
+      this.deps.onError?.(auctionId, e);
     }
   }
 
