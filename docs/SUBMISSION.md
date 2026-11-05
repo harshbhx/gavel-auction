@@ -35,4 +35,4 @@ Refs #324. Deadline: Thu Nov 12 2026 12:00 PST. Internal target: submit by Nov 1
 
 Submit only when every row above is [x] or the owner has written an explicit waiver beside it with the reason. Never describe an open gate as passed, and never claim a live PayPal charge.
 
-Signed by: ______ Time: ______
+Signed by: **\_\_** Time: **\_\_**
