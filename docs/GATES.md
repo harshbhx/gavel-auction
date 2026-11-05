@@ -29,16 +29,25 @@ Saga: a void refused with PREVIOUSLY_CAPTURED on the winner's remainder is treat
 
 ## G2: card and guest AUTHORIZE
 
-Status: NOT RUN
-Run date / by: n/a
+Status: PASS
+Run date / by: 2026-11-05 by harshbhx (owner laptop, run G2-20261105T115228Z)
 Question: does an Orders v2 intent AUTHORIZE flow work for card and guest checkout buyers in the sandbox?
-Setup: n/a
-Requests: n/a
-Observed: n/a
-Verdict: n/a
-Decision: n/a
+Setup: sandbox, JS SDK v6 page served by the G2 script on localhost, script version g2-1 plus the fixes in this pull request; one US personal wallet buyer and one guest checkout with a Card Generator Visa (no passwords or card numbers recorded).
+Requests: client token, create order (AUTHORIZE 500.00 USD) per path, buyer approval in the SDK v6 popup, authorize the order on the server.
+Observed: the wallet session (`createPayPalOneTimePaymentSession`) and the guest card session (`createPayPalGuestOneTimePaymentSession` with the `paypal-basic-card-button`) both reached `onApprove`, and both authorize calls answered HTTP 201 COMPLETED with an authorization id. The first guest card attempt was cancelled at the card form (US card with a UK billing country) and a new order succeeded. The client token request with `domains[]=localhost` answers 401 `invalid_domain`; without `domains[]` it succeeds. `isEligible('basic_card')` throws "unsupported funding source"; guest card needs no eligibility key.
+Verdict: card and guest AUTHORIZE work in SDK v6.
+
+| id                  | expected                        | actual                                                                         | verdict |
+| ------------------- | ------------------------------- | ------------------------------------------------------------------------------ | ------- |
+| G2 wallet AUTHORIZE | order and authorization created | authorized, order 0TR888254R597950L, authorization 8BA74320N3059102T           | PASS    |
+| G2 card AUTHORIZE   | order and authorization created | authorized, order 5G287943928656107, authorization 07P43249E7871404E           | PASS    |
+| G2 rule             | PASS or PASS-WITH-FALLBACK      | card AUTHORIZE works in SDK v6: enable card in the UI (g2_card_authorize true) | PASS    |
+
+Decision: PASS
 Fallback if FAIL: restrict registration to wallet buyers.
-Links: n/a
+Evidence: docs/evidence/G2/G2-20261105T115228Z.jsonl (sha256 2a0e9ee97fbecfa3419647a93bf39a77369be82c7a5e624827fe0e1ebcfffdfe)
+Links: spec tags flipped: R-PAY-036, R-PAY-037. Flag: g2_card_authorize true.
+Scope: AUTHORIZE only. Capture and void for a card buyer were not part of this run, so the G1 remainder result still covers wallet buyers only (R-PAY-037 governs advertising card checkout, not capture).
 
 ## G3: honor period versus validity and reauthorize
 

@@ -27,13 +27,13 @@ Every page shows a "Sandbox: no real money moves" banner. A room is labelled "Li
    - Fake buyer: in a fake-payments room the page uses the built-in fake PayPal and approves after a short pause, with no sign-in. Faults (cancel, decline, slow, error) can be simulated to test the failure screens. A fake-payments room is the default until the sandbox proof is complete.
 4. The ladder shows your hold moving to HELD. A hold is a promise, not a charge.
 
-Card and guest checkout is untested in our sandbox (gate G2 in `docs/GATES.md` is NOT RUN). If it fails, only PayPal wallet sandbox buyers will be offered.
+Card and guest AUTHORIZE works in our sandbox (gate G2 in `docs/GATES.md` is PASS, 2026-11-05): a wallet buyer and a guest with a sandbox card were both authorized through the JS SDK v6. Capture and void for card buyers are not tested yet.
 
 ### What judges can test on the hosted demo
 
 The hosted server runs in production mode, which refuses fake payments (`packages/server/src/config.ts`). A judge therefore sees one of two things, labelled on every page:
 
-1. Live sandbox room: needs a PayPal sandbox buyer. The sandbox buyer logins and wallet-only instructions are published in the Devpost entry and the repository's judge walkthrough, never in the source tree. Card and guest checkout is offered only if gate G2 passes.
+1. Live sandbox room: needs a PayPal sandbox buyer. The sandbox buyer logins and wallet-only instructions are published in the Devpost entry and the repository's judge walkthrough, never in the source tree. Card and guest checkout may be offered: gate G2 passed (2026-11-05).
 2. Recorded replay: `/replay/:recordingId` plays a labelled recorded auction with no PayPal calls. It is the fallback when no sandbox buyer is at hand and the only path that needs no login.
 
 The scripted demo launcher uses fake payments, so it is not available on the hosted server. Run it locally to see the fake PayPal.
@@ -82,7 +82,7 @@ Open `/r/<roomId>/audit` from the launcher (it needs the auctioneer or reviewer 
 - A WebSocket gateway mounted by the server entry point, so bidding works over a socket in the booted process.
 - A persistent store for a hosted deploy (the file stores need a persistent disk and a single instance).
 - An adapter from the voice package to the room.
-- Real sandbox runs of gates G2 to G5 (all NOT RUN in `docs/GATES.md`); G1 is PASS-WITH-FALLBACK (wallet only; guest/card G2 pending).
+- Real sandbox runs of gates G3 and G5 (NOT RUN in `docs/GATES.md`); G1 is PASS-WITH-FALLBACK (wallet only); G2 and G4 are PASS.
 - Live voice with real speech providers.
 - Recorded demo auctions for replay.
-- Card and guest checkout (depends on G2).
+- Card and guest checkout in a live room (G2 PASS proves the SDK authorize flow; the room screens are not wired yet).

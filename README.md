@@ -20,7 +20,7 @@ PayPal sandbox gates (see `docs/GATES.md`):
 | Gate | Question                                      | Status                                                  |
 | ---- | --------------------------------------------- | ------------------------------------------------------- |
 | G1   | Partial capture and release of the remainder  | PASS-WITH-FALLBACK (wallet only; guest/card G2 pending) |
-| G2   | Card and guest AUTHORIZE                      | NOT RUN                                                 |
+| G2   | Card and guest AUTHORIZE                      | PASS (wallet and guest card authorized, 2026-11-05)     |
 | G3   | Honor period, validity and reauthorize        | NOT RUN                                                 |
 | G4   | Webhook signature verification on real events | PASS                                                    |
 | G5   | Speech-to-text accuracy on noisy bids         | NOT RUN                                                 |

@@ -16,7 +16,7 @@ Deadline: Thu Nov 12 2026 12:00pm PST (= Fri Nov 13 01:30 IST). Early eligibilit
 | Crash and resume                                           | in-process test hook     |                                 | trigger on a hosted server                            |
 | Hosted demo                                                |                          |                                 | Render deploy with a persistent disk                  |
 
-Gate G1: PASS-WITH-FALLBACK on the sandbox 2026-11-04 (wallet buyer only, card untested). Gates G2 to G5: NOT RUN.
+Gate G1: PASS-WITH-FALLBACK on the sandbox 2026-11-04 (wallet buyer only, card untested). Gate G2: PASS on the sandbox 2026-11-05 (wallet and guest card AUTHORIZE). Gate G4: PASS. Gates G3 and G5: NOT RUN.
 
 ## 1. Pitch (one paragraph)
 
@@ -48,7 +48,7 @@ Judge line: "Every charity auction has winners who never pay; GAVEL makes the bi
 
 register -> authorize (hold) -> active bidder -> bid parse -> confirm if low confidence -> deterministic validation (ceiling, increment, state) -> ledger -> hammer -> winner = highest valid bid -> capture winning amount (partial, final) -> void all other holds -> verify via webhook/GET -> final ledger. Fall back to the runner-up if the winner's hold expired, was declined or was voided (covered by the reference implementation's tests). Invariants: at most one capture; captured <= ceiling; each non-winner voided exactly once; captured + released = holds; idempotent under retry/duplicate/out-of-order webhooks.
 
-## 5. Gate tests (need a PayPal sandbox app; G1 PASS-WITH-FALLBACK, wallet only; G4 PASS; the rest NOT RUN)
+## 5. Gate tests (need a PayPal sandbox app; G1 PASS-WITH-FALLBACK, wallet only; G2 PASS; G4 PASS; the rest NOT RUN)
 
 G1 authorize 500 -> capture 350 final_capture=true -> is the 150 remainder auto-released or still active? void it explicitly; check via GET and webhooks. Both PayPal-wallet and card sandbox buyers.
 G2 guest/card AUTHORIZE flow in JS SDK v6 (Card Fields/Fastlane docs show CAPTURE sample; verify AUTHORIZE works). Fallback: PayPal-wallet sandbox buyers (bulk sandbox accounts).

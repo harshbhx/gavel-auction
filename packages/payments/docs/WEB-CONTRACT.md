@@ -39,14 +39,14 @@ web                         server                       PayPal
  |<-- {status:HELD} ----------|<-- authorization CREATED ---|
 ```
 
-## SDK v6 notes: UNVERIFIED (G2)
+## SDK v6 notes: VERIFIED (G2)
 
-The following names are taken from PayPal documentation and have not been exercised in the sandbox. Treat each as UNVERIFIED (G2):
+Exercised in the sandbox by gate G2 on 2026-11-05 (wallet and guest card both authorized; `docs/GATES.md`). The page that ran is `packages/payments/gates/g2/index.html`.
 
-- client token acquisition (`clientToken` in the create response is opaque)
-- `findEligibleMethods`
-- `createPayPalOneTimePaymentSession`
-- `presentationMode`
-- callbacks `onApprove`, `onCancel`, `onError`
+- client token acquisition (`clientToken` in the create response is opaque); the token request leaves out `domains[]` on localhost, where the sandbox answers 401 `invalid_domain`
+- `findEligibleMethods` with `isEligible('paypal')` for the wallet; guest card has no eligibility key (`isEligible('basic_card')` throws "unsupported funding source")
+- `createPayPalOneTimePaymentSession` (wallet) and `createPayPalGuestOneTimePaymentSession` (guest card, `paypal-basic-card-button` inside `paypal-basic-card-container`)
+- `presentationMode: 'auto'`, with the pending order passed to `start()` inside the click so the popup is not blocked
+- callback `onApprove`; `onCancel` and `onError` were wired but only cancel was seen
 
 Fallback: PayPal wallet buyers only (sandbox personal accounts). With the fallback the server contract does not change; the web client simply does not advertise guest card checkout.
