@@ -1,0 +1,61 @@
+{
+  "provider": "deepgram",
+  "utterance": 1,
+  "startMs": 2000,
+  "endMs": 4720,
+  "source": "reference-transcript",
+  "events": [
+    {
+      "atMs": 2400,
+      "event": {
+        "type": "interim",
+        "text": "bidder four,",
+        "startMs": 2000
+      }
+    },
+    {
+      "atMs": 4820,
+      "event": {
+        "type": "final",
+        "text": "Bidder four, three hundred.",
+        "words": [
+          {
+            "word": "bidder",
+            "start": 2,
+            "end": 2.68,
+            "confidence": 0.96
+          },
+          {
+            "word": "four",
+            "start": 2.68,
+            "end": 3.36,
+            "confidence": 0.96
+          },
+          {
+            "word": "three",
+            "start": 3.36,
+            "end": 4.04,
+            "confidence": 0.96
+          },
+          {
+            "word": "hundred",
+            "start": 4.04,
+            "end": 4.72,
+            "confidence": 0.96
+          }
+        ],
+        "startMs": 2000,
+        "endMs": 4720,
+        "confidence": 0.96,
+        "speechFinal": true
+      }
+    },
+    {
+      "atMs": 4970,
+      "event": {
+        "type": "utterance_end",
+        "atMs": 4720
+      }
+    }
+  ]
+}
