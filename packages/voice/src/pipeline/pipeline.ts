@@ -313,7 +313,9 @@ export class VoicePipeline {
       flags: merged.flags,
       wordConfidences: seg.words.map((w) => w.confidence),
       segmentConfidence: seg.confidence,
-      merge: hasModel && merged.flags.length === 0 ? 'agree_clean' : 'agree',
+      // No model reading means the "model unavailable" factor applies (section 8): a rules-only
+      // bid scores below the auto threshold and asks for a confirm.
+      merge: !hasModel ? 'model_unavailable' : merged.flags.length === 0 ? 'agree_clean' : 'agree',
     });
     return { ...merged, confidence: Math.min(merged.confidence, confidence) };
   }
@@ -429,7 +431,9 @@ export class VoicePipeline {
     pendingCents: Cents | undefined,
   ): PipelineOutput[] {
     const verdict = validate(merged, ctx);
-    const cls = classify(merged, this.deps.policy ?? DEFAULT_POLICY);
+    const base = classify(merged, this.deps.policy ?? DEFAULT_POLICY);
+    // Auctioneer echo was cut out of this segment: the bid next to it is never taken on its own.
+    const cls = base === 'accept' && seg.echo === true ? 'confirm' : base;
     const conf = merged.confidence;
     if (verdict.kind === 'drop') return [this.decision(seg, segmentId, rules, llm, verdict, conf)];
     if (verdict.kind === 'accept' && cls === 'accept') {
@@ -446,6 +450,7 @@ export class VoicePipeline {
       verdict.kind === 'accept'
         ? [verdict.amountCents]
         : [...(verdict.candidates ?? (verdict.amountCents === null ? [] : [verdict.amountCents]))];
+    const choices = verdict.kind === 'confirm' ? verdict.choices : undefined;
     return this.openPrompt(
       seg,
       segmentId,
@@ -457,6 +462,7 @@ export class VoicePipeline {
       bidderId,
       amounts,
       pendingCents,
+      choices,
     );
   }
 
@@ -471,10 +477,25 @@ export class VoicePipeline {
     bidderId: string | null,
     amounts: Cents[],
     pendingCents: Cents | undefined,
+    choices?: readonly { bidderId: string; amountCents: Cents }[],
   ): PipelineOutput[] {
     const evidence = this.evidence(seg, segmentId, rules, llm, merged.confidence, reason);
     const paddle = this.paddleOf(bidderId, merged, ctx);
-    const data = this.promptData(reason, amounts, paddle, ctx, seg.text, pendingCents);
+    const ca = choices?.[0];
+    const cb = choices?.[1];
+    const anon = { ...merged, bidder: null };
+    const pa = ca === undefined ? null : this.paddleOf(ca.bidderId, anon, ctx);
+    const pb = cb === undefined ? null : this.paddleOf(cb.bidderId, anon, ctx);
+    const data: PromptData =
+      ca !== undefined && cb !== undefined && pa !== null && pb !== null
+        ? {
+            kind: 'two_bidders',
+            paddleA: pa,
+            amountACents: ca.amountCents,
+            paddleB: pb,
+            amountBCents: cb.amountCents,
+          }
+        : this.promptData(reason, amounts, paddle, ctx, seg.text, pendingCents);
     const opened = this.book.open(bidderId ?? 'unknown', null);
     const audits: PipelineOutput[] = [];
     for (const a of opened.audit) {
@@ -496,14 +517,21 @@ export class VoicePipeline {
       expiresAtMs: p.expiresAtMs,
       defaultAction: 'drop',
       options:
-        bidderId === null
-          ? []
-          : amounts.map((amountCents, i) => ({
+        choices !== undefined && choices.length > 0
+          ? choices.map((c, i) => ({
               id: `opt-${i + 1}`,
-              label: formatUsd(amountCents),
-              bidderId,
-              amountCents,
-            })),
+              label: formatUsd(c.amountCents),
+              bidderId: c.bidderId,
+              amountCents: c.amountCents,
+            }))
+          : bidderId === null
+            ? []
+            : amounts.map((amountCents, i) => ({
+                id: `opt-${i + 1}`,
+                label: formatUsd(amountCents),
+                bidderId,
+                amountCents,
+              })),
       spokenAnswerAllowed:
         (this.deps.mic ?? 'room') === 'device' &&
         bidderId !== null &&

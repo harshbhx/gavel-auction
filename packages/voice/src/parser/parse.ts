@@ -177,6 +177,18 @@ function parse(text: string, ctx: ParseContext): ParseResult {
   const sharedAmount = distinctAmounts.length === 1 ? (distinctAmounts[0] ?? null) : null;
 
   if (distinctPaddles.length > 1) {
+    // "paddle seven three hundred paddle nine four hundred": one amount per paddle, in order.
+    if (
+      distinctAmounts.length > 1 &&
+      amounts.length === scan.refs.length &&
+      scan.refs.length === distinctPaddles.length
+    ) {
+      return result('confirm', 'multiple_bidders', {
+        candidates: scan.refs
+          .map((r, i) => cand(amounts[i]?.cents ?? null, paddle(r.paddle)))
+          .sort((a, b) => paddleOrder(a.bidder?.value ?? '', b.bidder?.value ?? '')),
+      });
+    }
     return result('confirm', 'multiple_bidders', {
       candidates: distinctPaddles.map((p) => cand(sharedAmount, paddle(p))),
     });

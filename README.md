@@ -25,7 +25,7 @@ PayPal sandbox gates (see `docs/GATES.md`):
 | G4   | Webhook signature verification on real events | PASS                                                    |
 | G5   | Speech-to-text accuracy on noisy bids         | NOT RUN                                                 |
 
-Voice not built yet: the Deepgram, Web Speech and replay speech-to-text clients, and failover between providers (so only Groq runs, in chunks). With both `DEEPGRAM_API_KEY` and `GROQ_API_KEY` set, provider selection skips Deepgram, uses Groq and logs a warning.
+Voice: the Deepgram, Web Speech and replay speech-to-text clients, `FailoverStt` and the push-to-talk mute controller exist in `packages/voice/src`, but provider selection builds only Groq and the fake provider, so nothing wraps them in failover in a running room. The language model reading is not wired into the pipeline either (the pipeline hook is synchronous, the client is async). With both `DEEPGRAM_API_KEY` and `GROQ_API_KEY` set, provider selection skips Deepgram, uses Groq and logs a warning.
 
 Until the gates are run, behaviour against PayPal is established only against the project's own fake server. Bids are intended to arrive by voice, QR or typed entry; see the table for what exists today.
 

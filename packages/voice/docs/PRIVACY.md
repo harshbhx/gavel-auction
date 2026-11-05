@@ -30,9 +30,13 @@ anything else is rejected on write.
 
 ## Vendor retention
 
-Vendor retention terms for Groq (speech to text) and the language model
-vendor are UNVERIFIED (gate G5). Audio is streamed to the speech vendor for
-real-time transcription and is not stored on our side. The transcript, the
-previous segment and the registered paddles are sent to the language model
-vendor to help read a bid. Until vendor terms are verified, this system is for
+Vendor retention terms for Groq and Deepgram (speech to text), the browser
+speech service used by `WebSpeechStt` (Google in Chrome, run by the browser,
+not by this code) and the language model vendor are UNVERIFIED (gate G5).
+Audio is streamed to the speech vendor for real-time transcription and is not
+stored on our side. Deepgram is first in the default provider order and the
+G5 harness sends it audio. With Web Speech the browser vendor receives the
+audio even though this code uploads none. If a language model is configured,
+the transcript, the previous segment and the registered paddles are sent to
+its vendor to help read a bid; that path is not wired into the pipeline yet. Until vendor terms are verified, this system is for
 sandbox use only.
