@@ -295,6 +295,12 @@ class Service implements AuctionService, SettlePort {
   ): Promise<Room> {
     const parsed = AuctionConfigSchema.safeParse(config);
     if (!parsed.success) throw new GavelError('bad_message', 'invalid auction config');
+    // The engine adapter runs a flat English lot with event holds, so refuse anything else
+    // rather than show clients rules that never govern the lot (R-RT-011, R-RT-012).
+    const c = parsed.data;
+    if (c.mode !== 'english' || c.holdScope === 'lot' || c.incrementLadder !== undefined) {
+      throw new GavelError('bad_message', 'unsupported mode, increment ladder or hold scope');
+    }
     if (this.rooms.has(auctionId)) throw new GavelError('conflict', 'auction exists');
     // Dry-run the engine build: a config or id it cannot run must never reach the log, or the
     // auction could not be loaded again and would block resume (R-RT-012, R-RT-059).

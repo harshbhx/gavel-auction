@@ -47,6 +47,26 @@ describe('T-VOX-106 logger (R-VOX-098)', () => {
     expect(out).toContain('[redacted]');
   });
 
+  it('drops transcripts nested in objects and arrays below debug level', () => {
+    const records: LogRecord[] = [];
+    const log = createLogger({ level: 'info', sink: (r) => records.push(r), now: () => 1 });
+    log.info('decision', {
+      evidence: { transcript: 'paddle 12 five hundred', kept: 1 },
+      list: [{ text: 'nested spoken words' }],
+    });
+    const out = JSON.stringify(records);
+    expect(out).not.toContain('paddle 12');
+    expect(out).not.toContain('nested spoken');
+    expect(out).toContain('"kept":1');
+  });
+
+  it('keeps nested transcripts at debug level', () => {
+    const records: LogRecord[] = [];
+    const log = createLogger({ level: 'debug', sink: (r) => records.push(r), now: () => 1 });
+    log.debug('decision', { evidence: { transcript: 'paddle 12 five hundred' } });
+    expect(JSON.stringify(records)).toContain('paddle 12 five hundred');
+  });
+
   it('redacts key patterns in free text', () => {
     expect(redact(`x ${String(FAKE_KEYS[0])} y`)).toBe('x [redacted] y');
     expect(redact('paddle twelve three hundred')).toBe('paddle twelve three hundred');
