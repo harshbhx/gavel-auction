@@ -10,7 +10,7 @@ export interface Token {
 /** Longest input the parser looks at (R-VOX-035). */
 export const MAX_INPUT_CHARS = 2000;
 
-const TOKEN = /[$£€₹¥]|\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?|\p{L}+(?:['’]\p{L}+)?/gu;
+const TOKEN = /[$£€₹¥%]|\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?|\p{L}+(?:['’]\p{L}+)?/gu;
 
 /**
  * Lower-cases and splits into words, numerals and currency symbols. Thousands commas are removed

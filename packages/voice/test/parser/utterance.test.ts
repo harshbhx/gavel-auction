@@ -198,3 +198,25 @@ describe('VOX-83 plausibility checks on corrections', () => {
     expect(parseUtterance('actually four hundred', ctx).reason).toBe('correction');
   });
 });
+
+describe('VOX-84 amounts followed by a unit word', () => {
+  it('never bids on an amount followed by a unit', () => {
+    for (const text of [
+      'a hundred percent',
+      "I'm one hundred percent in",
+      'one hundred %',
+      '5M',
+      '2.5m',
+      'three hundred miles',
+    ]) {
+      const r = parseUtterance(text, ctx);
+      expect(r.status, text).toBe('confirm');
+      expect(r.reason, text).toBe('uninterpretable_number');
+    }
+  });
+
+  it('still bids when a dollar word or filler follows', () => {
+    expect(parseUtterance('three hundred dollars', ctx).status).toBe('bid');
+    expect(parseUtterance('three hundred please', ctx).status).toBe('bid');
+  });
+});
