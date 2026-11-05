@@ -1,5 +1,5 @@
 import { t } from '../copy/t';
-import { buildLadder, type LadderLane, type SettlementView } from './ladderModel';
+import { buildLadder, FINAL_PHASES, type LadderLane, type SettlementView } from './ladderModel';
 
 export interface LadderCompactProps {
   /** Latest settlement view for the lot, or null before the first settlement update. */
@@ -84,7 +84,9 @@ export function LadderCompact({ view }: LadderCompactProps) {
           </li>
         ))}
       </ul>
-      <p role="status">{t('screen.settleSummary', { c: captured, r: released })}</p>
+      {model.phase !== null && FINAL_PHASES.includes(model.phase) ? (
+        <p role="status">{t('screen.settleSummary', { c: captured, r: released })}</p>
+      ) : null}
     </div>
   );
 }

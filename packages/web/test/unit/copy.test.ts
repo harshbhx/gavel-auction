@@ -151,6 +151,7 @@ describe('banned wording (R-WEB-120, R-WEB-122)', () => {
       'billed',
       'deducted',
       'a fee',
+      '{c} captured, {r} released',
     ]) {
       expect(flagged(s), s).toBe(true);
     }
@@ -158,7 +159,6 @@ describe('banned wording (R-WEB-120, R-WEB-122)', () => {
       'Held, not charged.',
       'The winner is charged only if the hammer falls',
       'Finalising winning price',
-      '{c} captured, {r} released',
       'You are charged only if you win',
       'not a payment',
       'Voice feed',
@@ -191,6 +191,7 @@ describe('banned wording (R-WEB-120, R-WEB-122)', () => {
       'ladder.state.CAPTURED',
       'receipt.failed',
       'replay.chapter.bid',
+      'screen.settleSummary',
     ]);
     expect(Object.values(wordingExemptions).every((reason) => (reason ?? '').length > 10)).toBe(
       true,

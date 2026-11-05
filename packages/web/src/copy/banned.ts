@@ -10,7 +10,7 @@ export const bannedBeforeCapture: RegExp[] = [
   /\bpaid\b/i,
   /(?<!not a )\bpayments?\b/i,
   // Money is only captured once the state is CAPTURED, so "capture" cannot describe an earlier step.
-  /\bcaptur(?:e|es|ing)\b/i,
+  /\bcaptur(?:e|es|ed|ing)\b/i,
   /\bdebit(?:ed)?\b/i,
   /\bbilled\b/i,
   /\bdeducted\b/i,
@@ -39,6 +39,7 @@ export const wordingExemptions: Readonly<Partial<Record<CopyKey, string>>> = {
   'ladder.state.CAPTURED': 'ladder state label shown only for a CAPTURED lane',
   'ladder.invariants.ok': 'settlement totals line shown only after capture',
   'ladder.fallback': 'settlement narrative shown after a failed capture attempt',
+  'screen.settleSummary': 'settlement counts line, shown only once the phase is final',
   'receipt.failed': 'receipt copy for a failed capture',
   'bid.waitingLot': 'ordinal use of "first", not a claim',
   'replay.chapter.bid': 'chapter label, ordinal use of "first"',
