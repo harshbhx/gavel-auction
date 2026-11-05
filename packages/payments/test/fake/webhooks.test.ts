@@ -164,12 +164,28 @@ describe('signing and the fake verify endpoint', () => {
   });
 
   it('eventBody carries id, type, time and resource', () => {
-    expect(JSON.parse(eventBody(ev(3), '2026-11-04T00:00:00.000Z'))).toEqual({
+    const body = JSON.parse(eventBody(ev(3), '2026-11-04T00:00:00.000Z')) as Record<
+      string,
+      unknown
+    >;
+    expect(body).toMatchObject({
       id: 'WH-3',
       event_type: 'PAYMENT.CAPTURE.COMPLETED',
       create_time: '2026-11-04T00:00:00.000Z',
       resource: { n: 3 },
     });
+  });
+
+  it('eventBody carries the top-level fields of real sandbox events', () => {
+    const body = JSON.parse(eventBody(ev(3), '2026-11-04T00:00:00.000Z')) as Record<
+      string,
+      unknown
+    >;
+    expect(body['event_version']).toBe('1.0');
+    expect(body['resource_version']).toBe('2.0');
+    expect(body['resource_type']).toBe('capture');
+    expect(typeof body['summary']).toBe('string');
+    expect(Array.isArray(body['links'])).toBe(true);
   });
 });
 
