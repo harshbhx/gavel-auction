@@ -16,6 +16,7 @@ jobs:
   g1:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: sandbox-nightly
     if: ${{ github.ref == 'refs/heads/main' }}
     concurrency:
       group: gate-g1
@@ -40,10 +41,23 @@ jobs:
             exit 2
           fi
       - uses: ./.github/actions/setup
+      - name: Cache the browser
+        id: pw-cache
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-1.49.1-chromium
       - name: Install the browser
+        env:
+          BROWSER_CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
         run: |
           npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.49.1
-          cd "$RUNNER_TEMP/pw" && npx playwright install --with-deps chromium
+          cd "$RUNNER_TEMP/pw"
+          if [ "$BROWSER_CACHE_HIT" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
       - name: Run G1
         env:
           PAYPAL_ENV: sandbox
@@ -55,6 +69,14 @@ jobs:
           SANDBOX_CARD_BUYER_PASSWORD: ${{ secrets.SANDBOX_CARD_BUYER_PASSWORD }}
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
         run: npm run gate:g1 -w @gavel/payments -- --browser --out "$PWD/docs/evidence"
+      - name: Require evidence
+        run: |
+          # The gate must leave at least one evidence file besides the GATES.md template.
+          count=$(find docs/evidence -type f ! -name GATES.md 2>/dev/null | wc -l)
+          if [ "$count" -eq 0 ]; then
+            echo "::error title=No evidence::Gate G1 produced no evidence files in docs/evidence"
+            exit 1
+          fi
       # The evidence, the screenshots (input fields masked) and the GATES.md entry are uploaded
       # even when the gate failed, so the failure can be read without rerunning.
       - name: Upload evidence
@@ -64,6 +86,7 @@ jobs:
           name: g1-evidence
           path: |
             docs/evidence
+            !docs/evidence/**/*.run.json
             docs/GATES.md
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 7

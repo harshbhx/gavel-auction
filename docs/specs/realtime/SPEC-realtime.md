@@ -141,8 +141,8 @@ Each requirement is testable and appears in the Coverage table in DEPS.md. MUST 
 
 ### 3.8 Webhook plumbing
 
-- **R-RT-110** `POST /webhooks/paypal` MUST read the raw body bytes unparsed and call `PaymentsPort.handleWebhook({rawBody, headers})`.
-- **R-RT-111** Result mapping: `ok|duplicate` -> 200, `invalid_signature` -> 400, `retry` -> 503. PayPal's retry schedule is UNVERIFIED (gate G4); the route stays correct for any schedule.
+- **R-RT-110** `POST /webhooks/paypal` MUST read the raw body bytes unparsed and pass them to the payments webhook handler. The payments API is `WebhookHandler.handle(rawBody, headers)` returning `{ status }` (200 stored, 401 failed verification, 503 retry); the server adapts it to the `PaymentsPort.handleWebhook({rawBody, headers})` shape below (`portFromService` in `packages/server/src/http/webhook.ts`), and no payments type named `handleWebhook` is required.
+- **R-RT-111** Result mapping: `ok|duplicate` -> 200, `invalid_signature` (handler status 401) -> 400, `retry` -> 503. PayPal's retry schedule is UNVERIFIED (gate G4); the route stays correct for any schedule.
 - **R-RT-112** Body limit 256 KiB; no auth beyond the verifier; the route logs event id and outcome, never the body or headers beyond an allowlist.
 - **R-RT-113** Webhook handling MUST NOT block rooms: resulting settlement updates enter the room through its mailbox.
 - **R-RT-114** A webhook for an unknown auction MUST return 200 with a warning log so the sender is not told to retry forever.

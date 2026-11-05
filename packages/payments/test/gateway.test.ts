@@ -406,6 +406,36 @@ describe('getHoldTruth edge cases', () => {
     expect(t).toMatchObject({ status: 'CREATED', capturedCents: 0, captures: [] });
   });
 
+  it('keeps refunded and partly refunded captures with their refund data', async () => {
+    const refunded = { ...completed, id: 'C2', status: 'REFUNDED' };
+    const partly = { ...completed, id: 'C3', status: 'PARTIALLY_REFUNDED' };
+    const body = {
+      id: 'O1',
+      status: 'COMPLETED',
+      purchase_units: [
+        {
+          payments: {
+            captures: [refunded, partly],
+            refunds: [{ id: 'R1', amount: { currency_code: 'USD', value: '10.50' } }],
+          },
+        },
+      ],
+    };
+    const got = capturesOf(body);
+    expect(got?.[0]?.refund).toEqual({ status: 'REFUNDED', refundedCents: 4200 });
+    expect(got?.[1]?.refund).toEqual({ status: 'PARTIALLY_REFUNDED', refundedCents: 1050 });
+    const gw = new PayPalGateway({
+      auth: scripted({
+        '/v2/payments/authorizations/A1': authBody('CREATED'),
+        '/v2/checkout/orders/O1': body,
+      }),
+      fake: true,
+    });
+    const t = await gw.getHoldTruth({ holdId: 'h', authId: 'A1', orderId: 'O1' });
+    expect(t.capturedCents).toBe(8400);
+    expect(t.captures).toHaveLength(2);
+  });
+
   it('an order that cannot be read leaves captures not observable', async () => {
     const gw = new PayPalGateway({
       auth: scripted({ '/v2/payments/authorizations/A1': authBody('CREATED') }),

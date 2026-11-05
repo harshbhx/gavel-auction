@@ -16,7 +16,7 @@ Deadline: Thu Nov 12 2026 12:00pm PST (= Fri Nov 13 01:30 IST). Early eligibilit
 | Crash and resume                                           | in-process test hook     |                                 | trigger on a hosted server                            |
 | Hosted demo                                                |                          |                                 | Render deploy with a persistent disk                  |
 
-Gates G1 to G5: NOT RUN.
+Gate G1: PASS-WITH-FALLBACK on the sandbox 2026-11-04 (wallet buyer only, card untested). Gates G2 to G5: NOT RUN.
 
 ## 1. Pitch (one paragraph)
 
@@ -48,12 +48,12 @@ Judge line: "Every charity auction has winners who never pay; GAVEL makes the bi
 
 register -> authorize (hold) -> active bidder -> bid parse -> confirm if low confidence -> deterministic validation (ceiling, increment, state) -> ledger -> hammer -> winner = highest valid bid -> capture winning amount (partial, final) -> void all other holds -> verify via webhook/GET -> final ledger. Fall back to the runner-up if the winner's hold expired, was declined or was voided (covered by the reference implementation's tests). Invariants: at most one capture; captured <= ceiling; each non-winner voided exactly once; captured + released = holds; idempotent under retry/duplicate/out-of-order webhooks.
 
-## 5. Gate tests (need a PayPal sandbox app; all NOT RUN)
+## 5. Gate tests (need a PayPal sandbox app; G1 PASS-WITH-FALLBACK, wallet only; G4 PASS; the rest NOT RUN)
 
 G1 authorize 500 -> capture 350 final_capture=true -> is the 150 remainder auto-released or still active? void it explicitly; check via GET and webhooks. Both PayPal-wallet and card sandbox buyers.
 G2 guest/card AUTHORIZE flow in JS SDK v6 (Card Fields/Fastlane docs show CAPTURE sample; verify AUTHORIZE works). Fallback: PayPal-wallet sandbox buyers (bulk sandbox accounts).
 G3 honor period vs validity conflict: docs differ (3-day vs 29-day; one page says 3-day validity in US with one reauthorization). Test reauthorize path; design the demo so all holds are created minutes before capture.
-G4 webhooks: simulator events fail signature verification, so use real sandbox events.
+G4 webhooks: PASS 2026-11-05, six real sandbox events verified (docs/GATES.md); the simulator events are not accepted by PayPal, so tests use the fixtures.
 G5 STT: 20 noisy bid utterances through Deepgram+LLM; target over 90% exact amount+bidder or rely on confirm-on-ambiguity.
 If G1 or G2 fails with no workaround: switch to Orders AUTHORIZE with PayPal-wallet buyers only, or kill and pick Quake Commons.
 

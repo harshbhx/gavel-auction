@@ -14,6 +14,7 @@ import { runCapturePhase } from '../../src/saga/capture.js';
 import { createSettlement } from '../../src/saga/create.js';
 import { MemoryHoldStore, MemoryJournalStore } from '../../src/stores/memory.js';
 import type { PaymentAudit, SettlementPlan } from '../../src/types.js';
+import { FRESH_HOLDS } from '../helpers/age.js';
 
 const START_MS = 1_800_000_000_000;
 const PRESETS = [5000, 15000, 25000];
@@ -203,7 +204,7 @@ describe('T-PAY-023 stale holds', () => {
     };
     const journals = new MemoryJournalStore();
     const created = await createSettlement(
-      { journals, clock: rig.now, holdMaxAgeMs: MAX_AGE },
+      { journals, clock: rig.now, holdMaxAgeMs: MAX_AGE, audit: FRESH_HOLDS.audit },
       plan,
     );
     expect(created.journal.holds['b1']?.stale).toBe(true);

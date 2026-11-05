@@ -2,7 +2,6 @@ import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { FakePayPalServer } from '../src/fake/server.js';
-import { centsToDecimal } from '../src/money.js';
 import {
   approveInBrowser,
   comparePayer,
@@ -10,8 +9,18 @@ import {
   loadPlaywrightLauncher,
   missingBuyerSecrets,
   type BrowserLauncher,
-  type BuyerCredentials,
 } from './buyerApproval.js';
+import {
+  amount,
+  approveLink,
+  buyerCredentials,
+  errorName,
+  field,
+  firstAuthorization,
+  payerEmail,
+  str,
+  gateCurrency,
+} from './gateUtil.js';
 import { fetchAccessToken, type GateResponse } from './http.js';
 import {
   EXIT_REFUSED,
@@ -46,8 +55,8 @@ import { appendEntry, withEvidenceHash, type Decision, type GateRow } from './su
  */
 
 export const G1_SCRIPT_VERSION = 'g1-1';
-export const G1_AUTHORIZE_CENTS = 500;
-export const G1_CAPTURE_CENTS = 350;
+export const G1_AUTHORIZE_CENTS = 50000;
+export const G1_CAPTURE_CENTS = 35000;
 
 export type BuyerLabel = 'wallet' | 'card';
 export type G1Decision = 'A' | 'B' | 'C' | 'FAIL';
@@ -72,6 +81,8 @@ export interface G1Observed {
 }
 
 export interface G1Deps {
+  /** Currency of the orders; defaults to GATE_CURRENCY from the process environment. */
+  currency?: string;
   /** Approves an order as the buyer. Absent: the run pauses and a person approves. */
   approve?: (info: { orderId: string; approveUrl: string; buyer: BuyerLabel }) => Promise<void>;
   /** Buyers to run, in order. Default: wallet only. */
@@ -84,18 +95,6 @@ export interface G1Deps {
   gatesMdPath?: string;
 }
 
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return v !== null && typeof v === 'object' && !Array.isArray(v);
-}
-
-function str(v: unknown): string {
-  return typeof v === 'string' ? v : '';
-}
-
-function field(json: unknown, key: string): unknown {
-  return isRecord(json) ? json[key] : undefined;
-}
-
 /** Statuses of an authorization that mean no part of the amount is still held. */
 const RELEASED_STATUSES: ReadonlySet<string> = new Set(['CAPTURED', 'VOIDED', 'EXPIRED']);
 
@@ -105,11 +104,16 @@ export function decideG1(o: {
   authStatusAfterCapture: string;
   voidHttp: number;
 }): { decision: G1Decision; remainderOpen: boolean } {
-  const remainderOpen = !RELEASED_STATUSES.has(o.authStatusAfterCapture);
-  if (o.captureHttp < 200 || o.captureHttp >= 300) return { decision: 'FAIL', remainderOpen };
-  if (!remainderOpen) return { decision: 'A', remainderOpen };
+  const releasedByStatus = RELEASED_STATUSES.has(o.authStatusAfterCapture);
+  if (o.captureHttp < 200 || o.captureHttp >= 300) {
+    return { decision: 'FAIL', remainderOpen: !releasedByStatus };
+  }
+  // A void is accepted only while something is still held, so an accepted void after the
+  // final capture proves the remainder was open even when the authorization reads CAPTURED.
   const voided = o.voidHttp >= 200 && o.voidHttp < 300;
-  return { decision: voided ? 'B' : 'C', remainderOpen };
+  if (voided) return { decision: 'B', remainderOpen: true };
+  if (releasedByStatus) return { decision: 'A', remainderOpen: false };
+  return { decision: 'C', remainderOpen: true };
 }
 
 /** Combines per-buyer decisions into the GATES.md decision, the fallback and the flipped tags. */
@@ -132,6 +136,15 @@ export function summarizeDecisions(observed: readonly G1Observed[]): {
     };
   }
   const flippedTags = ['R-PAY-059', 'R-PAY-051'];
+  if (card === undefined) {
+    // Guest card buyers were never exercised: the result cannot read as a full PASS.
+    return {
+      decision: 'PASS-WITH-FALLBACK',
+      fallback: 'wallet buyers only, card untested (R-PAY-037)',
+      flippedTags,
+      letters,
+    };
+  }
   if (card !== undefined && (card.decision === 'FAIL' || card.decision === 'C')) {
     return {
       decision: 'PASS-WITH-FALLBACK',
@@ -151,46 +164,26 @@ export function summarizeDecisions(observed: readonly G1Observed[]): {
   return { decision: 'PASS', fallback: '', flippedTags, letters };
 }
 
-function amount(cents: number): { currency_code: string; value: string } {
-  return { currency_code: 'USD', value: centsToDecimal(cents) };
-}
+/**
+ * Statuses accepted for a POST that creates or advances a PayPal resource. PayPal answers 201
+ * on first use of a PayPal-Request-Id and may replay the stored answer as 200 on a retry.
+ */
+export const CREATED_OR_REPLAYED: readonly number[] = [200, 201];
 
-function approveLink(json: unknown): string {
-  const links = field(json, 'links');
-  if (!Array.isArray(links)) return '';
-  for (const l of links) {
-    if (isRecord(l) && (l['rel'] === 'payer-action' || l['rel'] === 'approve')) {
-      return str(l['href']);
-    }
-  }
-  return '';
-}
+/** Order statuses that mean PayPal accepted the order and is waiting for buyer approval. */
+export const ORDER_CREATED_STATUSES: readonly string[] = ['CREATED', 'PAYER_ACTION_REQUIRED'];
 
-function firstAuthorization(json: unknown): Record<string, unknown> {
-  const units = field(json, 'purchase_units');
-  const unit = Array.isArray(units) && isRecord(units[0]) ? units[0] : {};
-  const payments = isRecord(unit['payments']) ? unit['payments'] : {};
-  const list = Array.isArray(payments['authorizations']) ? payments['authorizations'] : [];
-  return isRecord(list[0]) ? list[0] : {};
-}
-
-function errorName(json: unknown): string {
-  const details = field(json, 'details');
-  const issue = Array.isArray(details) && isRecord(details[0]) ? str(details[0]['issue']) : '';
-  return [str(field(json, 'name')), issue].filter((x) => x !== '').join(' ');
-}
-
-function payerEmail(json: unknown): string | undefined {
-  const payer = field(json, 'payer');
-  const email = isRecord(payer) ? payer['email_address'] : undefined;
-  return typeof email === 'string' ? email : undefined;
-}
-
-function must(res: GateResponse, expected: number, what: string, buyer: BuyerLabel): void {
-  if (res.status === expected) return;
+export function must(
+  res: Pick<GateResponse, 'status' | 'json'>,
+  expected: number | readonly number[],
+  what: string,
+  buyer: BuyerLabel,
+): void {
+  const accepted = typeof expected === 'number' ? [expected] : expected;
+  if (accepted.includes(res.status)) return;
   const name = errorName(res.json);
   throw new Error(
-    `G1 ${buyer}: ${what} answered HTTP ${res.status}${name === '' ? '' : ` (${name})`}, expected ${expected}`,
+    `G1 ${buyer}: ${what} answered HTTP ${res.status}${name === '' ? '' : ` (${name})`}, expected ${accepted.join(' or ')}`,
   );
 }
 
@@ -219,7 +212,7 @@ async function runBuyer(
           {
             reference_id: `g1-${run}-${buyer}`,
             custom_id: `g1-${run}-${buyer}`,
-            amount: amount(G1_AUTHORIZE_CENTS),
+            amount: amount(G1_AUTHORIZE_CENTS, deps.currency),
           },
         ],
         payment_source: {
@@ -234,11 +227,17 @@ async function runBuyer(
         },
       },
     });
-    must(res, 201, 'order creation', buyer);
+    must(res, CREATED_OR_REPLAYED, 'order creation', buyer);
     const orderId = str(field(res.json, 'id'));
     const approveUrl = approveLink(res.json);
     if (orderId === '' || approveUrl === '') {
       throw new Error(`G1 ${buyer}: order response has no id or approval link`);
+    }
+    const orderStatus = str(field(res.json, 'status'));
+    if (!ORDER_CREATED_STATUSES.includes(orderStatus)) {
+      throw new Error(
+        `G1 ${buyer}: order creation answered status '${orderStatus}', expected CREATED or PAYER_ACTION_REQUIRED`,
+      );
     }
     return { orderId, approveUrl };
   });
@@ -293,7 +292,7 @@ async function runBuyer(
       path: `/v2/checkout/orders/${orderId}/authorize`,
       headers: { ...auth, 'PayPal-Request-Id': rid('authorize') },
     });
-    must(res, 201, 'authorize', buyer);
+    must(res, CREATED_OR_REPLAYED, 'authorize', buyer);
     const id = str(firstAuthorization(res.json)['id']);
     if (id === '') throw new Error(`G1 ${buyer}: authorize answered without an authorization id`);
     return id;
@@ -317,7 +316,7 @@ async function runBuyer(
       path: `/v2/payments/authorizations/${authId}/capture`,
       headers: { ...auth, 'PayPal-Request-Id': rid('capture') },
       body: {
-        amount: amount(G1_CAPTURE_CENTS),
+        amount: amount(G1_CAPTURE_CENTS, deps.currency),
         final_capture: true,
         invoice_id: `g1-${run}-${buyer}`,
       },
@@ -332,6 +331,9 @@ async function runBuyer(
   });
   const cap = capture as { http: number; status: string; final: boolean | null; name: string };
   ctx.check('G1.5 capture 350 final', 'capture accepted', true, cap.http >= 200 && cap.http < 300);
+  if (cap.http >= 200 && cap.http < 300 && cap.status !== 'COMPLETED' && cap.status !== 'PENDING') {
+    throw new Error(`G1 ${buyer}: capture answered HTTP ${cap.http} with status '${cap.status}'`);
+  }
   if (cap.http < 200 || cap.http >= 300) {
     ctx.log(
       `G1 ${buyer}: capture of ${G1_CAPTURE_CENTS} cents with final_capture=true answered HTTP ${cap.http}${cap.name === '' ? '' : ` (${cap.name})`}`,
@@ -344,17 +346,33 @@ async function runBuyer(
     return true;
   });
   const after = await ctx.step(key('G1.6 observe remainder'), async (): Promise<Json> => {
-    const a = await http.request('G1.6 read authorization after capture', {
-      method: 'GET',
-      path: `/v2/payments/authorizations/${authId}`,
-      headers: auth,
-    });
+    const readAuth = (): Promise<GateResponse> =>
+      http.request('G1.6 read authorization after capture', {
+        method: 'GET',
+        path: `/v2/payments/authorizations/${authId}`,
+        headers: auth,
+      });
+    // Poll until two reads in a row agree (at most four reads) so an early read is not a result.
+    let a = await readAuth();
+    for (let i = 0; i < 3; i += 1) {
+      await sleep(2000);
+      const next = await readAuth();
+      const stable = str(field(next.json, 'status')) === str(field(a.json, 'status'));
+      a = next;
+      if (stable) break;
+    }
     const o = await http.request('G1.6 read order after capture', {
       method: 'GET',
       path: `/v2/checkout/orders/${orderId}`,
       headers: auth,
     });
-    return { auth: str(field(a.json, 'status')), order: str(field(o.json, 'status')) };
+    must(a, 200, 'authorization read after capture', buyer);
+    must(o, 200, 'order read after capture', buyer);
+    const authStatus = str(field(a.json, 'status'));
+    if (authStatus === '') {
+      throw new Error(`G1 ${buyer}: authorization read after capture carried no status`);
+    }
+    return { auth: authStatus, order: str(field(o.json, 'status')) };
   });
   const seen = after as { auth: string; order: string };
 
@@ -374,7 +392,10 @@ async function runBuyer(
       path: `/v2/payments/authorizations/${authId}`,
       headers: auth,
     });
-    return str(field(res.json, 'status'));
+    must(res, 200, 'authorization read after void', buyer);
+    const status = str(field(res.json, 'status'));
+    if (status === '') throw new Error(`G1 ${buyer}: authorization read after void had no status`);
+    return status;
   });
 
   const verdict = decideG1({
@@ -515,16 +536,6 @@ function parseG1Flags(argv: readonly string[]): G1Flags {
   return flags;
 }
 
-function credentialsFor(
-  env: Record<string, string | undefined>,
-  buyer: BuyerLabel,
-): BuyerCredentials | undefined {
-  const prefix = buyer === 'wallet' ? 'SANDBOX_BUYER' : 'SANDBOX_CARD_BUYER';
-  const email = env[`${prefix}_EMAIL`] ?? '';
-  const password = env[`${prefix}_PASSWORD`] ?? '';
-  return email.trim() !== '' && password !== '' ? { email, password } : undefined;
-}
-
 /** Entry point. --fake starts the fake PayPal; --browser approves in a headless browser. */
 export async function runG1(opts: RunG1Options): Promise<number> {
   const log = opts.log ?? ((m: string) => console.log(m));
@@ -543,7 +554,7 @@ export async function runG1(opts: RunG1Options): Promise<number> {
   }
 
   const buyers: BuyerLabel[] = ['wallet'];
-  if (fake || credentialsFor(opts.env, 'card') !== undefined) buyers.push('card');
+  if (fake || buyerCredentials(opts.env, 'card') !== undefined) buyers.push('card');
 
   if (flags.browser && !fake) {
     const missing = missingBuyerSecrets(opts.env);
@@ -574,7 +585,7 @@ export async function runG1(opts: RunG1Options): Promise<number> {
       env,
       log,
       main: async (ctx) => {
-        const deps: G1Deps = { buyers };
+        const deps: G1Deps = { buyers, currency: gateCurrency(env) };
         if (opts.sleep !== undefined) deps.sleep = opts.sleep;
         else if (fake) deps.sleep = () => Promise.resolve();
         const srv = server;
@@ -588,12 +599,12 @@ export async function runG1(opts: RunG1Options): Promise<number> {
           const shotDir = join(dirname(ctx.evidencePath), 'screens');
           const emails: Partial<Record<BuyerLabel, string>> = {};
           for (const b of buyers) {
-            const c = credentialsFor(env, b);
+            const c = buyerCredentials(env, b);
             if (c !== undefined) emails[b] = c.email;
           }
           deps.buyerEmails = emails;
           deps.approve = async ({ approveUrl, buyer }) => {
-            const credentials = credentialsFor(env, buyer);
+            const credentials = buyerCredentials(env, buyer);
             if (credentials === undefined) {
               throw new Error(`no credentials configured for the ${buyer} buyer`);
             }
@@ -619,9 +630,10 @@ export async function runG1(opts: RunG1Options): Promise<number> {
   }
 }
 
-const isEntry = process.argv
-  .slice(1)
-  .some((a) => pathToFileURL(resolve(a)).href === import.meta.url);
+// vite-node drops the script from argv, so its own binary name marks the entry run.
+const isEntry =
+  /vite-node/.test(process.argv[1] ?? '') ||
+  process.argv.slice(1).some((a) => pathToFileURL(resolve(a)).href === import.meta.url);
 if (isEntry) {
   runG1({ argv: process.argv.slice(2), env: process.env }).then(
     (code) => {

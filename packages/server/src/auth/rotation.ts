@@ -9,6 +9,8 @@ import {
 export interface SecretConfig {
   TOKEN_SECRET: string;
   TOKEN_SECRET_PREVIOUS?: string | undefined;
+  /** Epoch ms after which the previous secret is no longer accepted; absent means no end. */
+  TOKEN_SECRET_PREVIOUS_UNTIL?: number | undefined;
 }
 
 /** The secrets in play during a rotation (R-RT-082). */
@@ -17,6 +19,10 @@ export interface SecretSet {
   readonly current: string;
   /** Secrets accepted for verification: current first, then the previous one. */
   readonly verifying: readonly string[];
+  /** The previous secret stops verifying at this time (epoch ms); absent means it never does. */
+  readonly previousUntilMs?: number;
+  /** Called after a token verified only under the previous secret, so the host can count it. */
+  readonly onPreviousUse?: () => void;
 }
 
 /** Build the secret set from config. A previous secret equal to the current one is dropped. */
@@ -26,7 +32,12 @@ export function secretSetFromConfig(cfg: SecretConfig): SecretSet {
     prev !== undefined && prev !== '' && prev !== cfg.TOKEN_SECRET
       ? [cfg.TOKEN_SECRET, prev]
       : [cfg.TOKEN_SECRET];
-  return { current: cfg.TOKEN_SECRET, verifying };
+  const until = cfg.TOKEN_SECRET_PREVIOUS_UNTIL;
+  return {
+    current: cfg.TOKEN_SECRET,
+    verifying,
+    ...(until !== undefined && verifying.length > 1 ? { previousUntilMs: until } : {}),
+  };
 }
 
 /** Sign with the current secret only. */
@@ -35,10 +46,32 @@ export function signWithCurrent(payload: TokenPayload, secrets: SecretSet): Prom
 }
 
 /** Verify against the current and previous secrets. */
-export function verifyRotating(
+export async function verifyRotating(
   token: string,
   secrets: SecretSet,
   opts: VerifyOptions,
 ): Promise<VerifyResult> {
-  return verifyToken(token, secrets.verifying, opts);
+  // After its end time the previous secret is dropped: a leaked old secret must not outlive
+  // the longest token (R-RT-082).
+  const expired = secrets.previousUntilMs !== undefined && opts.nowMs >= secrets.previousUntilMs;
+  const list = expired ? secrets.verifying.slice(0, 1) : secrets.verifying;
+  const result = await verifyToken(token, list, opts);
+  if (result.ok && result.viaPrevious === true) secrets.onPreviousUse?.();
+  return result;
+}
+
+/**
+ * A startup warning for the host to log when a previous secret is still configured past its end
+ * time, or has no end time at all. Returns undefined when nothing needs attention.
+ */
+export function previousSecretWarning(secrets: SecretSet, nowMs: number): string | undefined {
+  if (secrets.verifying.length < 2) return undefined;
+  const until = secrets.previousUntilMs;
+  if (until === undefined) {
+    return 'TOKEN_SECRET_PREVIOUS is set with no TOKEN_SECRET_PREVIOUS_UNTIL; it is accepted indefinitely';
+  }
+  if (nowMs >= until) {
+    return 'TOKEN_SECRET_PREVIOUS is still set past TOKEN_SECRET_PREVIOUS_UNTIL; remove it';
+  }
+  return undefined;
 }

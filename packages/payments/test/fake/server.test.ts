@@ -78,6 +78,7 @@ async function authorized(tok: string): Promise<{ orderId: string; authId: strin
   server.core.approveOrder(orderId);
   const auth = await call('POST', `/v2/checkout/orders/${orderId}/authorize`, {
     token: tok,
+    body: {},
     requestId: 'rq-auth',
   });
   const units = auth.json['purchase_units'] as Array<{
@@ -185,15 +186,33 @@ describe('FakePayPalServer routes (T-PAY-074)', () => {
     expect(junk.status).toBe(400);
   });
 
+  it('authorize: a POST without a body or JSON content type is 415', async () => {
+    const tok = await token();
+    const created = await call('POST', '/v2/checkout/orders', { token: tok, body: ORDER });
+    const id = created.json['id'] as string;
+    server.core.approveOrder(id);
+    const path = `/v2/checkout/orders/${id}/authorize`;
+    const bare = await call('POST', path, { token: tok });
+    expect(bare.status).toBe(415);
+    expect(JSON.stringify(bare.json)).toContain('UNSUPPORTED_MEDIA_TYPE');
+    const noType = await call('POST', path, { token: tok, raw: '{}' });
+    expect(noType.status).toBe(415);
+    const ok = await call('POST', path, { token: tok, body: {} });
+    expect(ok.status).toBe(201);
+  });
+
   it('authorize: unapproved gives 422 ORDER_NOT_APPROVED, approved gives the authorization', async () => {
     const tok = await token();
     const created = await call('POST', '/v2/checkout/orders', { token: tok, body: ORDER });
     const id = created.json['id'] as string;
-    const early = await call('POST', `/v2/checkout/orders/${id}/authorize`, { token: tok });
+    const early = await call('POST', `/v2/checkout/orders/${id}/authorize`, {
+      token: tok,
+      body: {},
+    });
     expect(early.status).toBe(422);
     expect(JSON.stringify(early.json)).toContain('ORDER_NOT_APPROVED');
     server.core.approveOrder(id);
-    const ok = await call('POST', `/v2/checkout/orders/${id}/authorize`, { token: tok });
+    const ok = await call('POST', `/v2/checkout/orders/${id}/authorize`, { token: tok, body: {} });
     expect(ok.status).toBe(201);
     expect(ok.json).toMatchObject({
       id,

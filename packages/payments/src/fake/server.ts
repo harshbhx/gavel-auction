@@ -59,7 +59,9 @@ export interface FakePayPalServerOptions {
 
 const HOST = '127.0.0.1';
 const MAX_BODY_BYTES = 1_048_576;
-const CURRENCY = 'USD';
+const DEFAULT_CURRENCY = 'USD';
+/** Currencies the fake accepts; the first order of a run fixes the currency of the rest. */
+const SUPPORTED_CURRENCIES: readonly string[] = ['USD', 'INR'];
 export const DEFAULT_FAKE_WEBHOOK_ID = 'WH-FAKE';
 const FAKE_START_MS = Date.UTC(2026, 0, 1);
 
@@ -82,6 +84,7 @@ const STATUS_NAMES: Readonly<Record<number, string>> = {
   400: 'INVALID_REQUEST',
   401: 'AUTHENTICATION_FAILURE',
   404: 'RESOURCE_NOT_FOUND',
+  415: 'UNSUPPORTED_MEDIA_TYPE',
   422: 'UNPROCESSABLE_ENTITY',
   500: 'INTERNAL_SERVICE_ERROR',
 };
@@ -106,14 +109,14 @@ function asObject(v: unknown): Json | undefined {
   return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Json) : undefined;
 }
 
-function amountOf(cents: number): { currency_code: string; value: string } {
-  return { currency_code: CURRENCY, value: centsToDecimal(cents) };
+function amountOf(cents: number, currency: string): { currency_code: string; value: string } {
+  return { currency_code: currency, value: centsToDecimal(cents) };
 }
 
 /** Cents from a PayPal amount object; undefined when absent or malformed. */
-function centsFromAmount(v: unknown): number | undefined {
+function centsFromAmount(v: unknown, currency: string): number | undefined {
   const o = asObject(v);
-  if (o === undefined || o['currency_code'] !== CURRENCY) return undefined;
+  if (o === undefined || o['currency_code'] !== currency) return undefined;
   const value = o['value'];
   if (typeof value !== 'string') return undefined;
   try {
@@ -140,6 +143,7 @@ export class FakePayPalServer {
   private debugCount = 0;
   private server: Server | undefined;
   private baseUrl: string | undefined;
+  private currency = DEFAULT_CURRENCY;
 
   constructor(opts: FakePayPalServerOptions = {}) {
     this.opts = opts;
@@ -209,6 +213,7 @@ export class FakePayPalServer {
 
   /** New core, no faults, no tokens, counters back to zero. The listener stays up. */
   reset(): void {
+    this.currency = DEFAULT_CURRENCY;
     this.core_ = this.buildCore();
     this.faults_ = this.buildFaults();
     this.tokens.clear();
@@ -258,6 +263,18 @@ export class FakePayPalServer {
       if (isToken) return this.issueToken(header);
       const denied = this.checkBearer(header);
       if (denied !== undefined) return denied;
+      if (route.op === 'authorize') {
+        // Like PayPal: authorize needs a JSON content type and a body, else 415.
+        const ct = req.headers['content-type'];
+        const isJson = typeof ct === 'string' && /^application\/json\b/i.test(ct);
+        if (!isJson || body.trim() === '') {
+          return errorResponse(
+            415,
+            'UNSUPPORTED_MEDIA_TYPE',
+            'The request payload is not supported',
+          );
+        }
+      }
       const parsed = parseJson(body);
       if (body.trim() !== '' && parsed === undefined && route.op !== 'verify') {
         return errorResponse(400, 'MALFORMED_REQUEST_JSON');
@@ -391,12 +408,16 @@ export class FakePayPalServer {
       );
     }
     const holdId = unit['custom_id'] ?? unit['reference_id'];
-    const cents = centsFromAmount(unit['amount']);
+    const unitCurrency = asObject(unit['amount'])?.['currency_code'];
+    if (typeof unitCurrency === 'string' && SUPPORTED_CURRENCIES.includes(unitCurrency)) {
+      this.currency = unitCurrency;
+    }
+    const cents = centsFromAmount(unit['amount'], this.currency);
     if (typeof holdId !== 'string' || holdId === '' || cents === undefined) {
       return errorResponse(
         400,
         'INVALID_REQUEST',
-        'purchase unit needs custom_id and a USD amount',
+        'purchase unit needs custom_id and a USD or INR amount',
       );
     }
     const description = typeof unit['description'] === 'string' ? unit['description'] : '';
@@ -409,7 +430,7 @@ export class FakePayPalServer {
         {
           reference_id: holdId,
           custom_id: holdId,
-          amount: amountOf(cents),
+          amount: amountOf(cents, this.currency),
           ...(description === '' ? {} : { description }),
         },
       ],
@@ -431,15 +452,22 @@ export class FakePayPalServer {
     const unit: Json = {
       reference_id: o.holdId,
       custom_id: o.holdId,
-      amount: amountOf(o.amountCents),
+      amount: amountOf(o.amountCents, this.currency),
     };
     if (o.authId !== undefined) {
       const a = this.peekAuthorization(o.authId);
       unit['payments'] = {
         authorizations: [
-          { id: a.id, status: a.status, amount: amountOf(a.holdCents), create_time: this.iso() },
+          {
+            id: a.id,
+            status: a.status,
+            amount: amountOf(a.holdCents, this.currency),
+            create_time: this.iso(),
+          },
         ],
-        captures: a.captures.map((c) => captureBody(c.id, c.amountCents, c.final, undefined)),
+        captures: a.captures.map((c) =>
+          captureBody(c.id, c.amountCents, c.final, undefined, this.currency),
+        ),
       };
     }
     return jsonResponse(200, {
@@ -459,13 +487,13 @@ export class FakePayPalServer {
       intent: 'AUTHORIZE',
       purchase_units: [
         {
-          amount: amountOf(a.amountCents),
+          amount: amountOf(a.amountCents, this.currency),
           payments: {
             authorizations: [
               {
                 id: a.authId,
                 status: a.status,
-                amount: amountOf(a.amountCents),
+                amount: amountOf(a.amountCents, this.currency),
                 create_time: this.iso(),
               },
             ],
@@ -480,7 +508,7 @@ export class FakePayPalServer {
     return jsonResponse(200, {
       id: a.id,
       status: a.status,
-      amount: amountOf(a.holdCents),
+      amount: amountOf(a.holdCents, this.currency),
       create_time: this.iso(),
       links: [
         {
@@ -497,11 +525,14 @@ export class FakePayPalServer {
     const cents =
       json['amount'] === undefined
         ? this.remainder(authId)
-        : (centsFromAmount(json['amount']) ?? 0);
+        : (centsFromAmount(json['amount'], this.currency) ?? 0);
     const invoice = typeof json['invoice_id'] === 'string' ? json['invoice_id'] : undefined;
     const final = json['final_capture'] === true;
     const c = this.core_.capture(authId, cents, final, x.requestId);
-    return jsonResponse(201, captureBody(c.id, c.amountCents, c.finalCapture, invoice));
+    return jsonResponse(
+      201,
+      captureBody(c.id, c.amountCents, c.finalCapture, invoice, this.currency),
+    );
   }
 
   /** Amount left on the authorization, for a capture request without an amount. */
@@ -526,12 +557,12 @@ export class FakePayPalServer {
   }
 
   private reauthorize(authId: string, x: Ctx): HandlerResponse {
-    const cents = centsFromAmount(x.json?.['amount']) ?? 0;
+    const cents = centsFromAmount(x.json?.['amount'], this.currency) ?? 0;
     const r = this.core_.reauthorize(authId, cents, x.requestId);
     return jsonResponse(201, {
       id: r.id,
       status: r.status,
-      amount: amountOf(r.amountCents),
+      amount: amountOf(r.amountCents, this.currency),
       create_time: this.iso(),
     });
   }
@@ -541,11 +572,17 @@ export class FakePayPalServer {
   }
 }
 
-function captureBody(id: string, cents: number, final: boolean, invoice: string | undefined): Json {
+function captureBody(
+  id: string,
+  cents: number,
+  final: boolean,
+  invoice: string | undefined,
+  currency: string,
+): Json {
   return {
     id,
     status: 'COMPLETED',
-    amount: amountOf(cents),
+    amount: amountOf(cents, currency),
     final_capture: final,
     ...(invoice === undefined ? {} : { invoice_id: invoice }),
   };

@@ -11,9 +11,9 @@ import {
   MemoryWebhookEventStore,
 } from '../src/stores/memory.js';
 import { Transport } from '../src/transport.js';
-import { newJournal } from '../src/saga/create.js';
 import { WebhookHandler } from '../src/webhooks/handler.js';
 import type { HoldRecord, SettlementPlan } from '../src/types.js';
+import { freshJournal } from './helpers/age.js';
 
 const plan = (): SettlementPlan => ({
   auctionId: 'a1',
@@ -129,7 +129,7 @@ describe('stores roll back a failed write (R2-07)', () => {
     const store = new MemoryJournalStore(undefined, () => {
       if (fail) boom();
     });
-    const j = newJournal(plan());
+    const j = freshJournal(plan());
     fail = true;
     await expect(store.create(j)).rejects.toThrow('ENOSPC');
     expect(await store.load('a1')).toBeNull();

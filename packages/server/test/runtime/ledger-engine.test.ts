@@ -70,6 +70,26 @@ describe('ledger engine timeline (INT-R3-13)', () => {
   });
 });
 
+describe('ledger engine confirm gate (R6-C01)', () => {
+  it('refuses a low-confidence voice bid that nobody confirmed', () => {
+    const { engine, bidder } = build();
+    const res = engine.placeBidWith(bidder, 10000 as Cents, (NOW + 1000) as EpochMs, {
+      source: 'voice',
+      confidence: 0.05,
+    });
+    expect(res.ok).toBe(false);
+  });
+
+  it('ignores a confidence sent with a qr bid', () => {
+    const { engine, bidder } = build();
+    const res = engine.placeBidWith(bidder, 10000 as Cents, (NOW + 1000) as EpochMs, {
+      source: 'qr',
+      confidence: 0.05,
+    });
+    expect(res).toEqual({ ok: true });
+  });
+});
+
 describe('ledger engine same-millisecond bids (INT-R3-14)', () => {
   it('rejects a repeated bid of the same millisecond instead of counting it', () => {
     const { engine, bidder } = build();

@@ -12,6 +12,11 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    # bash -e -o pipefail, so a failing script is not hidden by tee.
+    shell: bash
+
 jobs:
   evidence:
     runs-on: ubuntu-latest
