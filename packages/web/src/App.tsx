@@ -7,15 +7,19 @@ import {
   type ReactNode,
 } from 'react';
 import { Cents } from '@gavel/shared';
+import { PROTOCOL_VERSION } from './wire';
 import { t } from './copy/t';
 import { Icon } from './design/icons';
 import { Banner } from './design/primitives/Banner';
-import { startLiveRoom, type LiveRoom } from './net/liveRoom';
+import { socketUrl, startLiveRoom, type LiveRoom } from './net/liveRoom';
+import type { Transport } from './net/transport';
+import { WebSocketTransport } from './net/wsTransport';
 import { loadSession } from './net/session';
 import { RouteScreen, matchRoute, type RouteMatch } from './routes';
 import { BidScreen } from './screens/bid/BidScreen';
-import { ConsoleScreen } from './screens/console/ConsoleScreen';
+import { LiveConsole } from './screens/console/LiveConsole';
 import { ScreenView } from './screens/screen/ScreenView';
+import { roomStore, useRoom } from './store/roomStore';
 import { readAuctioneerToken } from './store/session';
 
 export interface AppProps {
@@ -68,7 +72,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, BoundaryState> {
 
 function tokenFor(routeId: string, roomId: string): { token: string; bidderId?: string } | null {
   if (routeId === 'console') {
-    const fromFragment = readAuctioneerToken();
+    const fromFragment = readAuctioneerToken(roomId);
     if (fromFragment !== null) return { token: fromFragment };
   }
   const stored = loadSession(roomId);
@@ -78,27 +82,35 @@ function tokenFor(routeId: string, roomId: string): { token: string; bidderId?: 
     : { token: stored.token, bidderId: stored.bidderId };
 }
 
+interface Live {
+  room: LiveRoom | null;
+  transport: Transport | null;
+}
+
 function useLiveRoom(
   liveBase: string,
   roomId: string,
   token: string,
   bidderId: string | undefined,
-): LiveRoom | null {
-  const [room, setRoom] = useState<LiveRoom | null>(null);
+): Live {
+  const [live, setLive] = useState<Live>({ room: null, transport: null });
   useEffect(() => {
+    // The transport is built here so the screens can send a confirm_response on it.
+    const transport = new WebSocketTransport(socketUrl(liveBase));
     const started = startLiveRoom({
       wsBase: liveBase,
       roomId,
       token,
+      transport,
       ...(bidderId === undefined ? {} : { bidderId }),
     });
-    setRoom(started);
+    setLive({ room: started, transport });
     return () => {
       started?.stop();
-      setRoom(null);
+      setLive({ room: null, transport: null });
     };
   }, [liveBase, roomId, token, bidderId]);
-  return room;
+  return live;
 }
 
 /** Latest outcome of the bids this device sent: whether one is waiting, and the last rejection. */
@@ -125,8 +137,15 @@ interface LiveRouteProps {
 }
 
 function LiveRoute({ match, liveBase, roomId, token, bidderId }: LiveRouteProps): ReactNode {
-  const room = useLiveRoom(liveBase, roomId, token, bidderId);
+  const { room, transport } = useLiveRoom(liveBase, roomId, token, bidderId);
   const view = usePendingView(room);
+  const myPaddle = useRoom((s) =>
+    bidderId === undefined
+      ? undefined
+      : s.snapshot?.roster.find((r) => r.bidderId === bidderId)?.paddle,
+  );
+  const respond = (confirmId: string, accept: boolean): void =>
+    transport?.send({ v: PROTOCOL_VERSION, t: 'confirm_response', confirmId, accept });
   switch (match.route.id) {
     case 'bid':
       return (
@@ -135,6 +154,7 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId }: LiveRouteProps)
             onBid={(amount) => room?.bid(Cents(amount), 'qr')}
             pending={view.waiting}
             rejection={view.rejected === '' ? null : { reason: view.rejected }}
+            {...(myPaddle === undefined ? {} : { myPaddle, onConfirm: respond })}
           />
         </main>
       );
@@ -151,7 +171,17 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId }: LiveRouteProps)
     default:
       return (
         <main data-route="console">
-          <ConsoleScreen settlementView={null} />
+          <LiveConsole
+            room={room}
+            roomId={roomId}
+            token={token}
+            apiBase={liveBase.replace(/^ws/, 'http').replace(/\/+$/, '')}
+            rejection={view.rejected}
+            onConfirmAnswer={(confirmId, accept) => {
+              respond(confirmId, accept);
+              roomStore.dispatch({ kind: 'confirm_resolved', confirmId });
+            }}
+          />
         </main>
       );
   }

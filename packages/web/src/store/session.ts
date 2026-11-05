@@ -22,7 +22,8 @@ export interface FragmentSource {
   history: { replaceState: (data: null, unused: string, url: string) => void };
 }
 
-let auctioneerToken: string | null = null;
+// One token per room: a tab that runs two auctions must never hand room A's token to room B.
+const auctioneerTokens = new Map<string, string>();
 
 function tokenFromHash(hash: string): string | null {
   const body = hash.startsWith('#') ? hash.slice(1) : hash;
@@ -32,29 +33,34 @@ function tokenFromHash(hash: string): string | null {
 }
 
 /**
- * Reads the auctioneer token from the URL fragment on first call, clears the fragment from the
- * address bar, and keeps the token in memory. Later calls return the remembered token.
+ * Reads the auctioneer token for one room from the URL fragment, clears the fragment from the
+ * address bar, and keeps the token in memory under that room id. A fragment always wins over the
+ * remembered token; without one, the token remembered for this room (and no other) is returned.
  */
-export function readAuctioneerToken(source?: FragmentSource): string | null {
-  if (auctioneerToken !== null) return auctioneerToken;
+export function readAuctioneerToken(roomId: string, source?: FragmentSource): string | null {
   try {
     const win: FragmentSource | null = source ?? (typeof window === 'undefined' ? null : window);
-    if (win === null) return null;
-    const token = tokenFromHash(win.location.hash);
-    if (token === null) return null;
-    auctioneerToken = token;
+    const token = win === null ? null : tokenFromHash(win.location.hash);
+    if (win === null || token === null) return auctioneerTokens.get(roomId) ?? null;
+    auctioneerTokens.set(roomId, token);
     try {
       win.history.replaceState(null, '', `${win.location.pathname}${win.location.search}`);
     } catch {
       // The address bar keeps the fragment; the token is still held.
     }
-    return auctioneerToken;
+    return token;
   } catch {
-    return null;
+    return auctioneerTokens.get(roomId) ?? null;
   }
 }
 
-/** Forgets the in-memory token (sign out, and tests). */
-export function clearAuctioneerToken(): void {
-  auctioneerToken = null;
+/** Forgets the in-memory token for one room, or for every room when none is named. */
+export function clearAuctioneerToken(roomId?: string): void {
+  if (roomId === undefined) auctioneerTokens.clear();
+  else auctioneerTokens.delete(roomId);
+}
+
+/** True when this device may open the console for the room: a fragment token or a stored session. */
+export function hasAuctioneerAccess(roomId: string): boolean {
+  return readAuctioneerToken(roomId) !== null || getBidderSession(roomId) !== null;
 }

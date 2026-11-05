@@ -158,6 +158,7 @@ export const en = {
     'Bidding ends for everyone now. No winner is chosen. Holds will be released. This cannot be undone.',
   'kill.type': 'Type STOP to continue',
   'kill.hold': 'Hold to stop',
+  'kill.failed': 'The server did not accept the stop request. The auction is still running.',
   'kill.stopped': 'Auction stopped',
   'kill.holdHint': 'Hold the button, or press Enter on it, to stop the auction.',
   'common.cancel': 'Cancel',
@@ -171,6 +172,8 @@ export const en = {
   'controls.reason.stopped': 'The auction is stopped.',
   'controls.reason.busy': 'Waiting for the server.',
   'controls.sent': '{action} sent',
+  'controls.hammerChanged':
+    'The price or leader changed. Nothing was hammered. Review and try again.',
   'controls.failed': '{action} failed. Try again.',
   'shortcuts.help': 'Show this list',
   'shortcuts.extend': 'Extend the lot',

@@ -7,10 +7,16 @@ import { useServerNow } from '../../net/clock';
 import { selectConfirmQueue, selectPrice, selectStream } from '../../store/selectors';
 import { roomStore, useRoom, type RoomStore } from '../../store/roomStore';
 import { formatUsd } from '../../util/money';
+import { BidStream, rowsFromAudit } from './BidStream';
+import { ConfirmQueue } from './ConfirmQueue';
 import { PriceHeader } from './PriceHeader';
 
 /** Desktop layout from this width up (R-WEB-063). */
 export const WIDE_MIN_PX = 1024;
+
+function noAnswer(): void {
+  // No sender is wired: the queue lists requests and cannot answer them.
+}
 
 type TabId = 'lot' | 'stream' | 'side';
 
@@ -22,6 +28,8 @@ export interface ConsoleScreenProps {
   controls?: ReactNode;
   /** Voice feed content for the right column. */
   voiceFeed?: ReactNode;
+  /** Sends the auctioneer's answer to one confirmation. Without it the queue only lists. */
+  onConfirmAnswer?: (confirmId: string, accept: boolean) => void;
   /** Forces the layout; defaults to a media query on the viewport width. */
   wide?: boolean;
 }
@@ -49,6 +57,7 @@ export function ConsoleScreen({
   settlementView,
   controls,
   voiceFeed,
+  onConfirmAnswer,
   wide: forcedWide,
 }: ConsoleScreenProps) {
   const wide = useWide(forcedWide);
@@ -61,6 +70,8 @@ export function ConsoleScreen({
     (s) => s.snapshot?.roster.find((r) => r.bidderId === s.snapshot?.leaderId)?.name ?? null,
     store,
   );
+  const audit = useRoom((s) => s.audit, store);
+  const roster = useRoom((s) => s.snapshot?.roster, store);
   const now = useServerNow(store);
 
   const left = (
@@ -82,7 +93,14 @@ export function ConsoleScreen({
   const centre = (
     <section aria-label={t('console.stream')}>
       <h2>{t('console.stream')}</h2>
-      {stream.length === 0 ? (
+      {audit.length > 0 ? (
+        <BidStream
+          rows={rowsFromAudit(
+            audit,
+            (id) => roster?.find((r) => r.bidderId === id)?.paddle ?? null,
+          )}
+        />
+      ) : stream.length === 0 ? (
         <p>{t('console.noBids')}</p>
       ) : (
         <ol reversed>
@@ -102,15 +120,7 @@ export function ConsoleScreen({
       <h2>{t('console.voice')}</h2>
       {voiceFeed}
       <h2>{t('console.confirmQueue')}</h2>
-      {confirms.length === 0 ? (
-        <p>{t('console.noConfirm')}</p>
-      ) : (
-        <ul>
-          {confirms.map((c) => (
-            <li key={c.confirmId}>{formatUsd(c.amount)}</li>
-          ))}
-        </ul>
-      )}
+      <ConfirmQueue requests={confirms} now={now} onAnswer={onConfirmAnswer ?? noAnswer} />
     </section>
   );
 

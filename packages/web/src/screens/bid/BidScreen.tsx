@@ -1,6 +1,7 @@
 import { t } from '../../copy/t';
 import { Icon } from '../../design/icons';
 import { Banner } from '../../design/primitives/Banner';
+import { useServerNow } from '../../net/clock';
 import { useConnection } from '../../net/connection';
 import {
   selectCeilingUsage,
@@ -60,6 +61,7 @@ export function BidScreen({
   const reserve = useRoom((s) => s.snapshot?.config.reserve ?? 0, store);
   const auctionStatus = useRoom((s) => s.snapshot?.status ?? null, store);
   const connection = useConnection();
+  const serverNow = useServerNow(store);
 
   const status = myStatus(base, pending);
   const nextMin = price?.nextMinCents ?? reserve;
@@ -152,6 +154,7 @@ export function BidScreen({
           paddle={myPaddle}
           currentCents={price?.currentCents ?? null}
           onRespond={onConfirm}
+          now={serverNow}
         />
       )}
     </main>
