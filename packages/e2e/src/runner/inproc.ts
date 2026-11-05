@@ -363,6 +363,7 @@ async function drive(
         ...(ambiguous ? { ambiguous: true } : {}),
       }),
     );
+    await service.idle();
   }
 
   /**
