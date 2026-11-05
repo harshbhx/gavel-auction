@@ -216,11 +216,41 @@ export function acquireDataDirLock(dir: string, opts: LockOptions = {}): DataDir
         );
       }
     }
-    try {
-      if (readFileSync(file, 'utf8') === text) unlinkSync(file);
-    } catch {
-      // lost the race to another starter; the next attempt will see its lock
-    }
+    removeStale(dir, file, text, now);
   }
   throw new Error(`could not lock data directory ${dir}`);
+}
+
+/**
+ * Remove the stale lock `text` under a short-lived exclusive takeover file, so the compare and
+ * the unlink cannot interleave with another starter's (R12-S13): whoever holds the takeover
+ * file re-reads the lock, and a starter that already replaced it leaves it alone.
+ */
+function removeStale(dir: string, file: string, text: string, now: () => number): void {
+  const guard = join(dir, `${LOCK_FILE}.takeover`);
+  let fd: number;
+  try {
+    fd = openSync(guard, 'wx');
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
+    try {
+      // A starter that died inside the takeover leaves its guard behind; clear it once old.
+      if (now() - statSync(guard).mtimeMs >= LOCK_UNPARSABLE_GRACE_MS) unlinkSync(guard);
+    } catch {
+      // gone already
+    }
+    return; // another starter is taking over; the next attempt sees its result
+  }
+  try {
+    if (readFileSync(file, 'utf8') === text) unlinkSync(file);
+  } catch {
+    // already gone
+  } finally {
+    closeSync(fd);
+    try {
+      unlinkSync(guard);
+    } catch {
+      // already gone
+    }
+  }
 }

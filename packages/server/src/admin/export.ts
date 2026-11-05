@@ -3,7 +3,7 @@ import { headOf, type LedgerEntry, type LedgerStore, type Ulid } from '@gavel/en
 import { adminKeyMatches } from '../http/ops';
 
 /**
- * `GET /admin/export?auctionId=<id>` (R-QA-046): the ledger as NDJSON, one entry per line,
+ * `GET /admin/export?auction=<id>` (`auctionId` is accepted as an alias) (R-QA-046): the ledger as NDJSON, one entry per line,
  * then a last line carrying the hash chain head. Ledger entries hold ids and cents only, so
  * nothing personal is written; a verifier checks the chain and compares the head line.
  */
@@ -66,13 +66,18 @@ export function createExportHandler(
       return;
     }
     const url = new URL(req.url ?? '/', 'http://local');
-    const auctionId = url.searchParams.get('auctionId') ?? '';
+    const auctionId = url.searchParams.get('auction') ?? url.searchParams.get('auctionId') ?? '';
     if (!AUCTION_ID.test(auctionId)) {
       sendJson(res, 400, { error: 'bad_auction_id' });
       return;
     }
     deps.ledger.read(auctionId as Ulid, 1).then(
       (entries) => {
+        if (entries.length === 0) {
+          // A mistyped id must not look like an empty ledger to a backup job.
+          sendJson(res, 404, { error: 'not_found' });
+          return;
+        }
         const body = toNdjson(entries);
         res.writeHead(200, {
           'content-type': 'application/x-ndjson',

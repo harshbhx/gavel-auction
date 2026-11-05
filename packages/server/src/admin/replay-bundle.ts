@@ -18,7 +18,7 @@ import { adminKeyMatches } from '../http/ops';
 
 /**
  * `GET /admin/replay-bundle?auctionId=<id>`: the replay bundle built from the real ledger.
- * The private chain is verified first, then redacted to export v3; the bundle carries the
+ * The private chain is verified first, then redacted to export v4; the bundle carries the
  * public chain head so a client can run `verifyPublicExport` and compare it.
  */
 

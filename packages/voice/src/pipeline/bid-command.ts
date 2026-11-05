@@ -11,6 +11,12 @@ export interface PlaceBidContext {
   lotId: string;
   /** Room clock reading at delivery, epoch ms. */
   at: number;
+  /**
+   * Reading of the pipeline clock (the stream timeline, `PipelineDeps.clock`) at delivery. A
+   * prompt expires on that timeline, so the expiry is compared against this, never against the
+   * epoch `at`. Falls back to `at` only for a caller that runs both on one clock.
+   */
+  promptNowMs?: number;
   /** Bidder and amount for a `confirm` decision once the bidder picked an option. */
   confirmedOptionId?: string;
   /** Who answered the confirm prompt; recorded in the audit (R-VOX-069). Default 'bidder'. */
@@ -123,7 +129,7 @@ export function toPlaceBid(decision: Decision, ctx: PlaceBidContext): PlaceBidCo
     amountCents = decision.amountCents;
   } else if (decision.kind === 'confirm' && ctx.confirmedOptionId !== undefined) {
     // An answer after the prompt expired is dropped (R-VOX-067).
-    if (ctx.at >= decision.prompt.expiresAtMs) return null;
+    if ((ctx.promptNowMs ?? ctx.at) >= decision.prompt.expiresAtMs) return null;
     const option = decision.prompt.options.find((o) => o.id === ctx.confirmedOptionId);
     if (option === undefined) return null;
     // A prompt that forbids spoken answers cannot be confirmed by voice (R8-V10).

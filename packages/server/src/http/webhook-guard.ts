@@ -24,6 +24,8 @@ export interface WebhookGuardDeps {
   /** True when the auction exists. Without it every auction id is taken as known. */
   knownAuction?: (auctionId: string) => Promise<boolean>;
   maxBytes?: number;
+  /** Reverse proxies in front of the host, so the source is the client address (R12-S03). */
+  trustedProxyHops?: number;
   /** Counts every outcome, including too_large (R-RT-122, R-RT-135). */
   metrics?: { webhookOutcome(outcome: WebhookOutcome): void };
 }
@@ -90,6 +92,7 @@ export function createGuardedWebhookRoute(
 ): (req: IncomingMessage, res: ServerResponse) => Promise<void> {
   const max = deps.maxBytes ?? WEBHOOK_MAX_BYTES;
   return createWebhookRoute(guardWebhookPort(port, deps), {
+    ...(deps.trustedProxyHops !== undefined ? { trustedProxyHops: deps.trustedProxyHops } : {}),
     readBody: async (req: IncomingMessage): Promise<RawBody> => {
       const declared = Number(req.headers['content-length']);
       const body: RawBody =
