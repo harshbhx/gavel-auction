@@ -4,8 +4,19 @@ import { PAYMENTS_ENV_KEYS } from '@gavel/payments';
 import { describe, expect, it } from 'vitest';
 import { CONFIG_KEYS, parseConfig, redactConfig } from '../src/config';
 
-/** Voice and language model keys are read outside the server and payments packages. */
-const OTHER_KEYS = ['DEEPGRAM_API_KEY', 'GROQ_API_KEY', 'LLM_API_KEY'];
+/** Voice, language model and sandbox spec names are read outside the server and payments packages. */
+const OTHER_KEYS = [
+  'DEEPGRAM_API_KEY',
+  'GROQ_API_KEY',
+  'LLM_API_KEY',
+  'SANDBOX_BUYER_EMAIL',
+  'SANDBOX_BUYER_PASSWORD',
+  'SANDBOX_CARD_BUYER_EMAIL',
+  'SANDBOX_CARD_BUYER_PASSWORD',
+  'GAVEL_STAGING_URL',
+  'GAVEL_STAGING_ADMIN_KEY',
+  'G5_AUDIO_DIR',
+];
 
 function readExample(): Record<string, string> {
   const text = readFileSync(

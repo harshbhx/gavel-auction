@@ -144,6 +144,13 @@ Not measured: audio, speech-to-text error, latency (text mode reports 0 ms), the
 modes (no recorded provider output is in the repo, no live run was done), and the AUTO and CONFIRM
 threshold calibration of issue 478. The G5 status above stays NOT RUN until the audio steps run.
 
+Live run (not in pull request CI): `npm run gate:g5 -w @gavel/e2e -- --write-gates` sends 20 noisy
+recorded bids (`G5_AUDIO_DIR/g5-01.wav` to `g5-20.wav`, supplied privately) to the live provider
+(`DEEPGRAM_API_KEY`) and then to the rule parser, and fills this section and a `G5-live` table. It
+prints `skipped` when the key or a recording is missing. The nightly workflow
+`.github/workflows/nightly-sandbox.yml` calls it too. Verdict: PASS needs exact plus recoverable
+confirm at 0.90 or more and wrong accepts at 0.05 or less; PARTIAL needs 0.70 or more; otherwise FAIL.
+
 ## Latency targets and measured numbers
 
 Targets (R-PAY-152) against the first measurement. The run is `npm run measure -- --fake` in the `payments-evidence` workflow (50 sequential and 10 parallel cycles against the fake PayPal, 2026-11-04). The fake answers on loopback, so these numbers are the overhead of our own client and not PayPal's latency. Sandbox numbers stay UNVERIFIED (G1 measurement) until the same script runs there; the fallback is to raise the targets to the sandbox p95.
@@ -183,6 +190,12 @@ environment once:
    `SANDBOX_BUYER_EMAIL`, `SANDBOX_BUYER_PASSWORD`.
 4. Delete the repository-level copies of the same four secrets, so a workflow on any other branch
    cannot read them.
+
+The nightly workflow `.github/workflows/nightly-sandbox.yml` uses the same environment. It runs
+the real-sandbox specs R1 to R8 (`packages/e2e/sandbox`) at 20:30 UTC and on manual dispatch, then
+writes `report/sandbox.json` with one of pass, fail, inconclusive or skipped per spec. Without the
+secrets every spec is skipped and the run is green. Only the summary is uploaded (14 days); the
+transcripts stay on the runner. A spec whose gate is still open reports `inconclusive`, not `fail`.
 
 `packages/payments/src/gates-result.json` flags (`g1_remainder_mode`, `g2_card_authorize`,
 `g4_webhooks_verified`) may leave their safe value only while the matching section above is

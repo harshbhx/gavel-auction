@@ -1,0 +1,66 @@
+{
+  "status": 200,
+  "body": {
+    "create_time": "2026-11-04T23:10:48Z",
+    "id": "{{ORDER_ID}}",
+    "intent": "AUTHORIZE",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/{{ORDER_ID}}",
+        "method": "GET",
+        "rel": "self"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/{{ORDER_ID}}/authorize",
+        "method": "POST",
+        "rel": "authorize"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/{{ORDER_ID}}",
+        "method": "PATCH",
+        "rel": "update"
+      }
+    ],
+    "payer": {
+      "address": {
+        "country_code": "US"
+      },
+      "email_address": "[REDACTED]",
+      "name": {
+        "given_name": "[REDACTED]",
+        "surname": "[REDACTED]"
+      },
+      "payer_id": "[REDACTED]"
+    },
+    "payment_source": {
+      "paypal": {
+        "account_id": "[REDACTED]",
+        "account_status": "VERIFIED",
+        "address": {
+          "country_code": "US"
+        },
+        "email_address": "[REDACTED]",
+        "name": {
+          "given_name": "[REDACTED]",
+          "surname": "[REDACTED]"
+        }
+      }
+    },
+    "purchase_units": [
+      {
+        "amount": {
+          "breakdown": {},
+          "currency_code": "USD",
+          "value": "500.00"
+        },
+        "custom_id": "g1-261104T231047Z-wallet",
+        "payee": {
+          "email_address": "[REDACTED]",
+          "merchant_id": "[REDACTED]"
+        },
+        "reference_id": "g1-261104T231047Z-wallet"
+      }
+    ],
+    "status": "APPROVED"
+  }
+}

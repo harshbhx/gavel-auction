@@ -1,0 +1,20 @@
+{
+  "status": 422,
+  "body": {
+    "debug_id": "{{DEBUG_ID}}",
+    "details": [
+      {
+        "description": "Authorization has been previously captured and hence cannot be voided.",
+        "issue": "PREVIOUSLY_CAPTURED"
+      }
+    ],
+    "links": [
+      {
+        "href": "https://developer.paypal.com/docs/api/payments/v2/#error-PREVIOUSLY_CAPTURED",
+        "rel": "information_link"
+      }
+    ],
+    "message": "The requested action could not be performed, semantically incorrect, or failed business validation.",
+    "name": "UNPROCESSABLE_ENTITY"
+  }
+}
