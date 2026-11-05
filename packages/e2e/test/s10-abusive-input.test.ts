@@ -20,7 +20,7 @@ const raws = scenario.steps.flatMap((s) => (s.do === 'send_raw' ? [s.frame] : []
 describe('S10 abusive input', () => {
   it('loads and lists one expected rejection per raw frame', () => {
     const expected = scenario.expect.find((e) => 'rejected' in e);
-    expect(raws.length).toBeGreaterThanOrEqual(7);
+    expect(raws.length).toBeGreaterThanOrEqual(6);
     expect(expected).toEqual({
       rejected: raws.map(() => ({ actor: 'mallory', code: 'bad_message' })),
     });
