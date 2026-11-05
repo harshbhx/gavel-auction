@@ -44,7 +44,16 @@ export class AudioRingBuffer {
   }
 }
 
-export type RecorderRefusal = 'not_opted_in' | 'path_inside_repo' | 'not_started';
+export type RecorderRefusal =
+  | 'not_opted_in'
+  | 'path_inside_repo'
+  | 'not_started'
+  | 'relative_path'
+  | 'too_long';
+
+/** A forgotten recording must not grow without bound (R8-V09). */
+export const MAX_RECORDING_MS = 120_000;
+const MAX_RECORDING_SAMPLES = (SAMPLE_RATE * MAX_RECORDING_MS) / 1000;
 
 export class RecorderRefusedError extends Error {
   constructor(readonly code: RecorderRefusal) {
@@ -63,15 +72,35 @@ export interface OptInRecorderOptions {
   /** Injected file writer; the default pipeline never supplies one. */
   write: (path: string, data: Uint8Array) => void;
   nowMs: () => number;
+  /** Optional symlink resolver (for example fs.realpathSync); applied to both paths. */
+  realpath?: (p: string) => string;
 }
 
 function norm(p: string): string {
   return p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
 }
 
+/** True for a POSIX absolute path, a drive path or a UNC path. */
+function isAbsolute(p: string): boolean {
+  return /^([a-zA-Z]:)?[\\/]/.test(p) || /^[a-zA-Z]:$/.test(p);
+}
+
+/** Collapses `.` and `..` segments so a path cannot dodge the guard lexically. */
+function resolveDots(p: string): string {
+  const n = p.replace(/\\/g, '/');
+  const drive = /^[a-zA-Z]:/.exec(n)?.[0] ?? '';
+  const parts: string[] = [];
+  for (const seg of n.slice(drive.length).split('/')) {
+    if (seg === '' || seg === '.') continue;
+    if (seg === '..') parts.pop();
+    else parts.push(seg);
+  }
+  return `${drive}/${parts.join('/')}`;
+}
+
 function isInside(child: string, parent: string): boolean {
-  const c = norm(child);
-  const p = norm(parent);
+  const c = norm(resolveDots(child));
+  const p = norm(resolveDots(parent));
   return c === p || c.startsWith(`${p}/`);
 }
 
@@ -79,6 +108,7 @@ function isInside(child: string, parent: string): boolean {
 export class OptInRecorder {
   private readonly chunks: Int16Array[] = [];
   private active = false;
+  private samples = 0;
 
   constructor(private readonly opts: OptInRecorderOptions) {}
 
@@ -88,16 +118,25 @@ export class OptInRecorder {
 
   start(): void {
     if (this.opts.env['VOICE_RECORD'] !== '1') throw new RecorderRefusedError('not_opted_in');
-    if (isInside(this.opts.outDir, this.opts.repoRoot)) {
+    if (!isAbsolute(this.opts.outDir)) throw new RecorderRefusedError('relative_path');
+    const real = this.opts.realpath;
+    const outDir = real ? real(this.opts.outDir) : this.opts.outDir;
+    const repoRoot = real ? real(this.opts.repoRoot) : this.opts.repoRoot;
+    if (isInside(outDir, repoRoot)) {
       throw new RecorderRefusedError('path_inside_repo');
     }
     this.chunks.length = 0;
+    this.samples = 0;
     this.active = true;
     this.opts.setIndicator(true);
   }
 
   push(pcm: Int16Array): void {
     if (!this.active) throw new RecorderRefusedError('not_started');
+    if (this.samples + pcm.length > MAX_RECORDING_SAMPLES) {
+      throw new RecorderRefusedError('too_long');
+    }
+    this.samples += pcm.length;
     this.chunks.push(pcm.slice());
   }
 
@@ -115,6 +154,7 @@ export class OptInRecorder {
       at += c.length;
     }
     this.chunks.length = 0;
+    this.samples = 0;
     const safe = name.replace(/[^A-Za-z0-9_-]/g, '_');
     const path = `${this.opts.outDir.replace(/[\\/]+$/, '')}/${safe}-${this.opts.nowMs()}.wav`;
     this.opts.write(path, encodeWav(all));
