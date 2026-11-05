@@ -1,0 +1,38 @@
+# Submission checklist and submit gate
+
+Refs #324. Deadline: Thu Nov 12 2026 12:00 PST. Internal target: submit by Nov 12 04:00 PST. A box is [x] only when it was verified on `main` (checked 2026-11-05). Everything else stays [ ] until its owner acts. The owner signs the final gate; the gate script (`scripts/check-submission.mjs`) and the submit-gate workflow named in #324 do not exist yet.
+
+| Done | Item | Owner | Note |
+| --- | --- | --- | --- |
+| [x] | Repository public | repo owner | visibility PUBLIC |
+| [x] | License visible | repo owner | `LICENSE` is MIT, detected by GitHub |
+| [x] | README has run instructions | repo owner | `npm ci`, build, test, start; the README gate table is behind `docs/GATES.md` (G1 card and G2 still read as pending there): update it |
+| [x] | Sandbox-only notice | repo owner | in `README.md` and `SECURITY.md` |
+| [x] | Evidence redacted | repo owner | tokens, buyer emails and payer ids read `[REDACTED]` in G1, G2 and G4 files; re-check any new file |
+| [x] | Evidence files match recorded sha256 | repo owner | enforced by a test named in `docs/GATES.md` |
+| [x] | Gate G1 recorded | payments owner | PASS, wallet and card |
+| [x] | Gate G2 recorded | payments owner | PASS |
+| [x] | Gate G4 recorded | payments owner | PASS; tampered-event rejection fake only |
+| [ ] | Gate G0 recorded | payments owner | no G0 section in `docs/GATES.md` and no `docs/evidence/G0/` file on main |
+| [ ] | Gate G3 recorded | payments owner | running, results around 9 Nov; reads NOT RUN until recorded |
+| [ ] | Gate G5 recorded | voice owner | needs provider keys and recordings; only a text-level run exists |
+| [ ] | CI green on main | repo owner | the CI run status for main must be confirmed at submit time |
+| [ ] | README and PLAN gate tables agree with `docs/GATES.md` | docs owner | README and `docs/PLAN.md` still list G1 as wallet only |
+| [ ] | Hosted demo URL live | deploy owner | not deployed; `docs/DEMO.md` says so |
+| [ ] | Judge walkthrough and sandbox buyer instructions | demo owner | published in the Devpost entry, never in the source tree |
+| [ ] | Devpost text final | Devpost owner | draft in `docs/submission/DEVPOST.md`; fill the OWNER items |
+| [ ] | Tools, models and PayPal APIs listed on the Devpost form | Devpost owner | as the form requires |
+| [ ] | Reuse statement | Devpost owner | what was built in the period |
+| [ ] | Real-versus-simulated table matches final state | Devpost owner | table in the draft; update after G3 |
+| [ ] | Architecture diagram committed | docs owner | Mermaid in `docs/submission/ARCHITECTURE.md`; SVG still to produce (#322) |
+| [ ] | Screenshots captured | UI owner | `docs/submission/screenshots/`, #322 |
+| [ ] | Video recorded | UI owner | script in `docs/submission/VIDEO-SCRIPT.md`; UI shots to fill |
+| [ ] | Video uploaded, public, under 3:00, English, no copyrighted music | video owner | check the public link in a signed-out window |
+| [ ] | All links in the Devpost entry open | Devpost owner | repo, video, demo, walkthrough |
+| [ ] | Devpost submitted, confirmation screenshot and URL saved | submitter | by Nov 12 04:00 PST |
+
+## Submit gate
+
+Submit only when every row above is [x] or the owner has written an explicit waiver beside it with the reason. Never describe an open gate as passed, and never claim a live PayPal charge.
+
+Signed by: ______  Time: ______
