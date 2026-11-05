@@ -11,6 +11,8 @@
 //   5. Popup blocked: the redirect approval opens in this tab and the return route completes the hold.
 import type { ApprovalRequest, ApprovalResult, ApprovalState, PaymentApprovalPort } from './port';
 import type { FetchLike } from './fakeAdapter';
+import type { HoldErrorCode } from '@gavel/shared';
+import { isHoldErrorCode } from '../copy/errors';
 
 /** What this adapter needs from the SDK. UNVERIFIED (gate G2). */
 export interface PayPalSessionV6 {
@@ -104,7 +106,7 @@ export const REQUEST_TIMEOUT_MS = 15_000;
 
 type PostResult =
   | { ok: true; body: Record<string, unknown> }
-  | { ok: false; why: 'timeout' | 'aborted' | 'failed' };
+  | { ok: false; why: 'timeout' | 'aborted' | 'failed'; code?: HoldErrorCode };
 
 type Outcome =
   | { kind: 'approved'; orderId: string }
@@ -150,7 +152,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     if (!order.ok) {
       if (order.why === 'aborted') return finish('cancelled');
       return finish('error', {
-        errorCode: order.why === 'timeout' ? 'order_timeout' : 'order_failed',
+        errorCode: order.code ?? (order.why === 'timeout' ? 'order_timeout' : 'order_failed'),
       });
     }
     const orderId = order.body['orderId'];
@@ -208,8 +210,10 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     const hold = await this.post(`${roomPath}/holds`, { orderId, clientRegistrationId });
     if (!hold.ok) {
       if (hold.why === 'aborted') return finish('cancelled');
+      // The hold was already created (a retry after a lost response): resume as held.
+      if (hold.code === 'hold_exists') return finish('held');
       return finish('error', {
-        errorCode: hold.why === 'timeout' ? 'hold_timeout' : 'hold_failed',
+        errorCode: hold.code ?? (hold.why === 'timeout' ? 'hold_timeout' : 'hold_failed'),
       });
     }
     const suffix = hold.body['holdIdSuffix'];
@@ -279,7 +283,15 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
         aborted,
       ]);
       if (res === 'abort') return { ok: false, why: timedOut ? 'timeout' : 'aborted' };
-      if (!res.ok) return { ok: false, why: 'failed' };
+      if (!res.ok) {
+        // Keep the payments error code of a non-2xx body so the UI can show its copy.
+        const errBody = await Promise.race([res.json().catch(() => null), aborted]);
+        if (errBody === 'abort') return { ok: false, why: timedOut ? 'timeout' : 'aborted' };
+        const code = isRecord(errBody) ? errBody['error'] : undefined;
+        return isHoldErrorCode(code)
+          ? { ok: false, why: 'failed', code }
+          : { ok: false, why: 'failed' };
+      }
       const json = await Promise.race([res.json(), aborted]);
       if (json === 'abort') return { ok: false, why: timedOut ? 'timeout' : 'aborted' };
       return isRecord(json) ? { ok: true, body: json } : { ok: false, why: 'failed' };

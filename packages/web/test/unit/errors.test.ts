@@ -2,7 +2,13 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { en } from '../../src/copy/en';
-import { KNOWN_ERROR_CODES, errorCopy, errorCopyTable } from '../../src/copy/errors';
+import { HOLD_ERROR_CODES } from '@gavel/shared';
+import {
+  KNOWN_ERROR_CODES,
+  errorCopy,
+  errorCopyTable,
+  holdErrorCopyTable,
+} from '../../src/copy/errors';
 
 function sharedCodes(): string[] {
   const text = readFileSync(
@@ -24,6 +30,16 @@ describe('error code table (T-WEB-007)', () => {
       expect(key in en, code).toBe(true);
       expect(raw).toBe(code);
       expect(errorCopyTable[code]).toBe(key);
+    }
+  });
+
+  it('maps every payments error code to its own copy key', () => {
+    for (const code of HOLD_ERROR_CODES) {
+      const { key, raw } = errorCopy(code);
+      expect(key in en, code).toBe(true);
+      expect(key).toBe(holdErrorCopyTable[code]);
+      expect(key).not.toBe('bid.rej.generic');
+      expect(raw).toBe(code);
     }
   });
 

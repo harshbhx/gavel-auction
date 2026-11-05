@@ -190,6 +190,12 @@ export const en = {
   'err.reload': 'Reload',
   'err.tokenMissing': 'This link is missing or expired.',
   'err.newLink': 'Create a new room',
+  'err.pay.ceilingOutOfRange': 'That ceiling is outside the allowed range. Pick another amount.',
+  'err.pay.holdExists': 'Your hold is already in place.',
+  'err.pay.orderNotFound': 'We could not find that payment attempt. Start again.',
+  'err.pay.orderNotApproved': 'The payment was not approved. Approve it to continue.',
+  'err.pay.unavailable': 'Payments are unavailable right now. Try again in a moment.',
+  'err.pay.notSandbox': 'Payments are not in test mode, so bidding is closed here.',
   'err.details': 'Details: code {code}, reference {ref}',
 } as const;
 
