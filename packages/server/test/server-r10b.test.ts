@@ -5,6 +5,7 @@ import {
   type EpochMs,
   type BidMsg,
   type BidderId,
+  type Cents,
   type ConnId,
   type RoomEvent,
 } from '@gavel/shared';
@@ -15,6 +16,8 @@ import type { HttpDeps } from '../src/http/app';
 import { withConnection } from '../src/http/auctions';
 import { DEFAULT_CAPS } from '../src/limits/caps';
 import { MetricsCollector } from '../src/ops/metrics';
+import { confirmAudit } from '../src/room/confirm';
+import { CONFIRM_REASON, resolvedEvent } from '../src/room/confirm-resolve';
 import { FencedStore } from '../src/room/fence';
 import { MemoryTransport } from '../src/room/memory-transport';
 import { Room, type Connection } from '../src/room/room';
@@ -180,6 +183,26 @@ describe('#1519 accept with no bid in the log is asked again after a restart', (
     store.failBids = true;
     await t.room.respondConfirm(c1.conn, { v: 1, t: 'confirm_response', confirmId, accept: true });
     store.failBids = false;
+    // The accept is one append now, so the failed write leaves the hold untouched (HRD-23).
+    expect((await store.readEvents(t.auctionId, 1, 100)).some((e) => e.type === 'confirm_resolved')).toBe(false);
+    // A log written before that change can still hold an accept with no bid: build one.
+    const seq = t.room.lastSeq + 1;
+    const ts = t.clock.now();
+    await store.appendEvents(t.auctionId, t.room.lastSeq, [
+      resolvedEvent(
+        { auctionId: t.auctionId, seq, ts },
+        confirmId,
+        'accepted',
+        confirmAudit(
+          { confirmId, bidderId: t.b1, mid, amount: 12000 as Cents, expiresAt: (ts + 1) as EpochMs },
+          t.ids.mint<'BidId'>(),
+          'accepted',
+          CONFIRM_REASON.accepted,
+          ts,
+          seq,
+        ),
+      ),
+    ]);
     const logged = await store.readEvents(t.auctionId, 1, 100);
     expect(logged.some((e) => e.type === 'confirm_resolved')).toBe(true);
     expect(logged.some((e) => e.type === 'bid_accepted')).toBe(false);
