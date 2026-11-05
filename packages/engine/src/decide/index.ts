@@ -17,7 +17,7 @@ import type { DecideResult } from './setup.js';
 export type { DecideResult, Outcome } from './setup.js';
 export { nextDeadline } from './hammer.js';
 
-const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/;
+const ULID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 
 function assertUlid(name: string, v: unknown): void {
   if (typeof v !== 'string' || !ULID_RE.test(v)) throw new EngineError('bad_id', name);
