@@ -198,6 +198,17 @@ describe('banned wording (R-WEB-120, R-WEB-122)', () => {
     );
   });
 
+  it('does not over-promise releases or imply a charge in the stop and failed copy', () => {
+    expect(en['kill.consequence']).not.toMatch(/\ball holds are released\b/i);
+    expect(en['kill.consequence']).toMatch(/holds will be released/i);
+    expect(en['receipt.failed']).not.toMatch(/nothing more will be charged/i);
+    expect(en['receipt.failedNoCapture']).toMatch(/not charged/i);
+    expect(
+      bannedBeforeCapture.filter((r) => r.test(en['receipt.failedNoCapture'])),
+      'receipt.failedNoCapture',
+    ).toEqual([]);
+  });
+
   it('keeps the pre-registration rule text and the capture step free of charge wording', () => {
     for (const key of [
       'landing.explain',

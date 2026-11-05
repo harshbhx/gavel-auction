@@ -12,6 +12,11 @@ export function sandboxGuard(): Plugin {
       if (env['VITE_SANDBOX'] !== 'true') {
         throw new Error('Build refused: VITE_SANDBOX must be "true". This app is sandbox only.');
       }
+      if (env['VITE_PAYMENTS'] === 'fake' && env['VITE_ALLOW_FAKE'] !== 'true') {
+        throw new Error(
+          'Build refused: VITE_PAYMENTS=fake needs VITE_ALLOW_FAKE=true. Fake payments are for demos only.',
+        );
+      }
     },
   };
 }
