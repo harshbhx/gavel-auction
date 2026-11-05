@@ -4,7 +4,7 @@ import type { AuditSink } from '../ports.js';
 import type { HoldTruth, Journal } from '../types.js';
 import { withLease } from './create.js';
 import { truthArgs } from './truth.js';
-import { defaultLeaseOwner } from './owner.js';
+import { defaultLeaseOwner, runLeaseOwner } from './owner.js';
 import { voidHold, type VoidStatus } from './void.js';
 
 /**
@@ -29,6 +29,7 @@ export interface VoidAllDeps {
   gateway: PaymentsGateway;
   audit: AuditSink;
   clock: Clock;
+  /** Lease owner prefix; every call adds its own random suffix (R11-O05). */
   owner?: string;
   boundary?: (label: string) => Promise<void> | void;
 }
@@ -51,7 +52,9 @@ export async function voidAllLiveHolds(
   const leased = await withLease(
     { journals: deps.journals, clock: deps.clock },
     auctionId,
-    deps.owner ?? defaultLeaseOwner('admin'),
+    // R11-O05: an owner of its own for every call, also under a configured prefix, so a
+    // voidAll during a settlement run (or another voidAll) gets `busy`.
+    runLeaseOwner(deps.owner ?? defaultLeaseOwner('admin')),
     async (renew) => {
       let journal = await deps.journals.load(auctionId);
       if (journal === null) throw new Error(`no settlement for auction ${auctionId}`);

@@ -23,12 +23,20 @@ interface Reply {
 async function call(
   method: string,
   path: string,
-  opts: { token?: string | null; body?: unknown; requestId?: string; raw?: string } = {},
+  opts: {
+    token?: string | null;
+    body?: unknown;
+    requestId?: string;
+    raw?: string;
+    /** Sends `Prefer: return=representation`. */
+    full?: boolean;
+  } = {},
 ): Promise<Reply> {
   const headers: Record<string, string> = {};
   if (opts.token !== null && opts.token !== undefined)
     headers['Authorization'] = `Bearer ${opts.token}`;
   if (opts.requestId !== undefined) headers['PayPal-Request-Id'] = opts.requestId;
+  if (opts.full === true) headers['Prefer'] = 'return=representation';
   let body: string | undefined;
   if (opts.raw !== undefined) body = opts.raw;
   else if (opts.body !== undefined) {
@@ -266,6 +274,7 @@ describe('FakePayPalServer routes (T-PAY-074)', () => {
     const cap = await call('POST', `/v2/payments/authorizations/${authId}/capture`, {
       token: tok,
       requestId: 'rq-cap',
+      full: true,
       body: {
         amount: { currency_code: 'USD', value: '20.00' },
         final_capture: false,
@@ -297,6 +306,7 @@ describe('FakePayPalServer routes (T-PAY-074)', () => {
 
     const rest = await call('POST', `/v2/payments/authorizations/${authId}/capture`, {
       token: tok,
+      full: true,
       body: { final_capture: true },
     });
     expect(rest.json['amount']).toMatchObject({ value: '30.00' });
@@ -329,10 +339,47 @@ describe('FakePayPalServer routes (T-PAY-074)', () => {
     const tok2 = await token();
     const ok = await call('POST', `/v2/payments/authorizations/${authId}/reauthorize`, {
       token: tok2,
+      full: true,
       body: { amount: { currency_code: 'USD', value: '50.00' } },
     });
     expect(ok.status).toBe(201);
-    expect(ok.json).toMatchObject({ id: authId, amount: { value: '50.00' } });
+    // R11-O06: a new authorization with its own id; the old one is closed.
+    expect(ok.json).toMatchObject({ id: 'AUTH-2', status: 'CREATED', amount: { value: '50.00' } });
+    const old = await call('GET', `/v2/payments/authorizations/${authId}`, { token: tok2 });
+    expect(old.json['status']).toBe('VOIDED');
+  });
+
+  it('R11-O02 answers the minimal capture body unless the request asks for the resource', async () => {
+    const tok = await token();
+    const { authId } = await authorized(tok);
+    const cap = await call('POST', `/v2/payments/authorizations/${authId}/capture`, {
+      token: tok,
+      body: { amount: { currency_code: 'USD', value: '35.00' }, final_capture: true },
+    });
+    expect(cap.status).toBe(201);
+    // The shape of the G1.5 sandbox answer: no amount, no final_capture.
+    expect(Object.keys(cap.json).sort()).toEqual(['id', 'links', 'status']);
+    expect(cap.json['status']).toBe('COMPLETED');
+  });
+
+  it('R11-O03 lists a pending capture with its reason, then as declined', async () => {
+    const tok = await token();
+    const { orderId, authId } = await authorized(tok);
+    server.core.inject('capture', 'capture_pending', authId);
+    const cap = await call('POST', `/v2/payments/authorizations/${authId}/capture`, {
+      token: tok,
+      full: true,
+      body: { amount: { currency_code: 'USD', value: '35.00' }, final_capture: true },
+    });
+    expect(cap.json).toMatchObject({
+      status: 'PENDING',
+      status_details: { reason: 'PENDING_REVIEW' },
+    });
+    server.core.denyCapture(cap.json['id'] as string);
+    const order = await call('GET', `/v2/checkout/orders/${orderId}`, { token: tok });
+    const unit = (order.json['purchase_units'] as Array<Record<string, unknown>>)[0];
+    const payments = unit?.['payments'] as { captures: Array<{ status: string }> };
+    expect(payments.captures.map((c) => c.status)).toEqual(['DECLINED']);
   });
 
   it('verify-webhook-signature answers SUCCESS for a signed event and FAILURE for a changed one', async () => {

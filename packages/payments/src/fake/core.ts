@@ -60,12 +60,16 @@ export type FakeFaultKind =
   | 'http_429'
   | 'connection_reset'
   | 'forget_idempotency'
-  | 'capture_declined';
+  | 'capture_declined'
+  /** The capture is accepted as PENDING; completeCapture or denyCapture settles it later. */
+  | 'capture_pending';
 
 export type FakeOp = 'order' | 'authorize' | 'capture' | 'void' | 'reauthorize' | 'get';
 
 export type AuthStatus = 'CREATED' | 'PARTIALLY_CAPTURED' | 'CAPTURED' | 'VOIDED' | 'EXPIRED';
 export type OrderStatus = 'CREATED' | 'APPROVED' | 'COMPLETED';
+/** PENDING until PayPal completes or declines it (R11-O03); a DECLINED capture took nothing. */
+export type FakeCaptureStatus = 'COMPLETED' | 'PENDING' | 'DECLINED';
 
 export interface FakeCaptureRecord {
   id: string;
@@ -74,6 +78,7 @@ export interface FakeCaptureRecord {
   requestId: string | undefined;
   /** The invoice_id the capture request carried; PayPal echoes it on the capture. */
   invoiceId?: string;
+  status: FakeCaptureStatus;
 }
 
 interface AuthRecord {
@@ -89,6 +94,10 @@ interface AuthRecord {
   reauths: number;
   /** autoReleaseRemainder=false only: the remainder was explicitly voided. */
   remainderVoided: boolean;
+  /** A reauthorization moved the funds to this new authorization (R11-O06). */
+  reauthorizedTo?: string;
+  /** The authorization this one replaced through a reauthorization. */
+  reauthorizedFrom?: string;
 }
 
 interface OrderRecord {
@@ -211,7 +220,7 @@ export class FakePayPalCore {
 
   /** Arms a fault for the next `times` matching calls. targetId null matches any. */
   inject(op: FakeOp, kind: FakeFaultKind, targetId: string | null = null, times = 1): void {
-    if (kind === 'capture_declined' && op !== 'capture') {
+    if ((kind === 'capture_declined' || kind === 'capture_pending') && op !== 'capture') {
       throw new Error(`fault ${kind} only applies to capture, not ${op}`);
     }
     if (kind === 'forget_idempotency' && op === 'get') {
@@ -261,12 +270,17 @@ export class FakePayPalCore {
     if (fault === 'timeout_after_success') throw new FakeTimeout('get');
   }
 
+  /** Captures that took money or may still take it; a declined capture took nothing. */
+  private static live(a: AuthRecord): FakeCaptureRecord[] {
+    return a.captures.filter((c) => c.status !== 'DECLINED');
+  }
+
   private static hasFinal(a: AuthRecord): boolean {
-    return a.captures.some((c) => c.final);
+    return FakePayPalCore.live(a).some((c) => c.final);
   }
 
   private static capturedOf(a: AuthRecord): number {
-    return a.captures.reduce((sum, c) => sum + c.amountCents, 0);
+    return FakePayPalCore.live(a).reduce((sum, c) => sum + c.amountCents, 0);
   }
 
   private refresh(a: AuthRecord): void {
@@ -295,7 +309,7 @@ export class FakePayPalCore {
     id: string,
     requestId: string | undefined,
     params: string,
-    fn: () => T,
+    fn: (fault: FakeFaultKind | null) => T,
   ): T {
     this.calls.push({ op, id });
     const fault = this.takeFault(op, id);
@@ -319,7 +333,7 @@ export class FakePayPalCore {
       }
     }
     if (fault === 'capture_declined') throw new FakeApiError(422, 'INSTRUMENT_DECLINED');
-    const result = fn();
+    const result = fn(fault);
     if (key !== null) this.idem.store(key, params, result);
     if (fault === 'timeout_after_success') throw new FakeTimeout(op);
     return result;
@@ -439,13 +453,18 @@ export class FakePayPalCore {
     finalCapture = true,
     requestId?: string,
     invoiceId?: string,
-  ): { id: string; status: 'COMPLETED'; amountCents: number; finalCapture: boolean } {
+  ): {
+    id: string;
+    status: 'COMPLETED' | 'PENDING';
+    amountCents: number;
+    finalCapture: boolean;
+  } {
     return this.run(
       'capture',
       authId,
       requestId,
       JSON.stringify([amountCents, finalCapture]),
-      () => {
+      (fault) => {
         const a = this.auth(authId);
         if (a.status === 'VOIDED') throw new FakeApiError(422, 'AUTHORIZATION_VOIDED');
         if (a.status === 'EXPIRED') throw new FakeApiError(422, 'AUTHORIZATION_EXPIRED'); // [assumed name], G1
@@ -462,17 +481,91 @@ export class FakePayPalCore {
           throw new FakeApiError(422, 'AUTHORIZATION_NOT_HONORED_AFTER_HONOR_PERIOD');
         }
         const id = this.nextId('CAP');
+        // R11-O03: a pending capture holds the money for the capture until PayPal decides.
+        const status = fault === 'capture_pending' ? ('PENDING' as const) : ('COMPLETED' as const);
         a.captures.push({
           id,
           amountCents,
           final: finalCapture,
           requestId,
           ...(invoiceId === undefined ? {} : { invoiceId }),
+          status,
         });
         a.status = finalCapture ? 'CAPTURED' : 'PARTIALLY_CAPTURED';
-        this.emit('PAYMENT.CAPTURE.COMPLETED', { authId: a.id, captureId: id, amountCents });
-        return { id, status: 'COMPLETED' as const, amountCents, finalCapture };
+        this.emit(`PAYMENT.CAPTURE.${status}`, { authId: a.id, captureId: id, amountCents });
+        return { id, status, amountCents, finalCapture };
       },
+    );
+  }
+
+  private pendingCapture(captureId: string): { a: AuthRecord; c: FakeCaptureRecord } {
+    for (const a of this.auths.values()) {
+      const c = a.captures.find((x) => x.id === captureId);
+      if (c === undefined) continue;
+      if (c.status !== 'PENDING') throw new FakeApiError(422, 'CAPTURE_NOT_PENDING');
+      return { a, c };
+    }
+    throw new FakeApiError(404, 'RESOURCE_NOT_FOUND');
+  }
+
+  /** Simulates PayPal completing a pending capture (R11-O03). Not an API call. */
+  completeCapture(captureId: string): void {
+    const { a, c } = this.pendingCapture(captureId);
+    c.status = 'COMPLETED';
+    this.emit('PAYMENT.CAPTURE.COMPLETED', {
+      authId: a.id,
+      captureId: c.id,
+      amountCents: c.amountCents,
+    });
+  }
+
+  /**
+   * Simulates PayPal declining a pending capture (R11-O03): no money moves and the
+   * authorization is open again, as if the capture had never been made. Not an API call.
+   */
+  denyCapture(captureId: string): void {
+    const { a, c } = this.pendingCapture(captureId);
+    c.status = 'DECLINED';
+    const live = FakePayPalCore.live(a);
+    if (a.status === 'CAPTURED' || a.status === 'PARTIALLY_CAPTURED') {
+      a.status =
+        live.length === 0
+          ? 'CREATED'
+          : FakePayPalCore.hasFinal(a)
+            ? 'CAPTURED'
+            : 'PARTIALLY_CAPTURED';
+    }
+    this.emit('PAYMENT.CAPTURE.DENIED', {
+      authId: a.id,
+      captureId: c.id,
+      amountCents: c.amountCents,
+    });
+  }
+
+  /**
+   * Every authorization of a reauthorization chain, the first one first (R11-O06): the
+   * authorizations the order lists. Not an API call.
+   */
+  reauthorizationChain(authId: string): string[] {
+    let root = this.auths.get(authId);
+    if (root === undefined) return [];
+    while (root.reauthorizedFrom !== undefined) {
+      const prev = this.auths.get(root.reauthorizedFrom);
+      if (prev === undefined) break;
+      root = prev;
+    }
+    const chain: string[] = [];
+    for (let a: AuthRecord | undefined = root; a !== undefined; ) {
+      chain.push(a.id);
+      a = a.reauthorizedTo === undefined ? undefined : this.auths.get(a.reauthorizedTo);
+    }
+    return chain;
+  }
+
+  /** Every capture record the order of this authorization lists, declined ones too. Not an API call. */
+  orderCaptures(authId: string): FakeCaptureRecord[] {
+    return this.reauthorizationChain(authId).flatMap((id) =>
+      (this.auths.get(id)?.captures ?? []).map((c) => ({ ...c })),
     );
   }
 
@@ -497,7 +590,7 @@ export class FakePayPalCore {
       a.status = 'VOIDED';
       a.voidEffects += 1;
       // Voiding a partially captured authorization releases the open remainder (assumed, G1).
-      if (a.captures.length > 0) a.remainderVoided = true;
+      if (FakePayPalCore.live(a).length > 0) a.remainderVoided = true;
       this.emit('PAYMENT.AUTHORIZATION.VOIDED', { authId: a.id, reason: 'void' });
       return { id: a.id, status: a.status };
     });
@@ -525,10 +618,27 @@ export class FakePayPalCore {
       if (amountCents > a.ceilingCents || amountCents > this.limit(a.holdCents)) {
         throw new FakeApiError(422, 'REAUTHORIZATION_AMOUNT_EXCEEDS_LIMIT');
       }
-      a.holdCents = amountCents;
-      a.startMs = this.clock.nowMs();
+      // R11-O06 (A11): PayPal answers with a new authorization that has its own id and a new
+      // honor period; the funds are held under it from now on. The old id is closed: it
+      // reads VOIDED and refuses capture and void (assumed, gate G3).
+      const next: AuthRecord = {
+        id: this.nextId('AUTH'),
+        payer: a.payer,
+        holdCents: amountCents,
+        ceilingCents: a.ceilingCents,
+        startMs: this.clock.nowMs(),
+        status: 'CREATED',
+        captures: [],
+        voidEffects: 0,
+        reauths: a.reauths + 1,
+        remainderVoided: false,
+        reauthorizedFrom: a.id,
+      };
+      this.auths.set(next.id, next);
       a.reauths += 1;
-      return { id: a.id, status: a.status, amountCents };
+      a.reauthorizedTo = next.id;
+      a.status = 'VOIDED';
+      return { id: next.id, status: next.status, amountCents };
     });
   }
 
@@ -577,14 +687,15 @@ export class FakePayPalCore {
       if (opts.allowOverCapture !== true && captured > a.ceilingCents) {
         fail('captured above the authorized ceiling');
       }
-      if (a.captures.filter((c) => c.final).length > 1) fail('has more than one final capture');
-      const last = a.captures[a.captures.length - 1];
+      const live = FakePayPalCore.live(a);
+      if (live.filter((c) => c.final).length > 1) fail('has more than one final capture');
+      const last = live[live.length - 1];
       if (FakePayPalCore.hasFinal(a) && last !== undefined && !last.final)
         fail('capture after final');
       if (a.voidEffects > 1) fail('voided twice');
-      if (a.voidEffects > 0 && a.captures.length > 0 && !a.remainderVoided)
-        fail('voided and captured');
-      if (a.status === 'VOIDED' && a.voidEffects !== 1)
+      if (a.voidEffects > 0 && live.length > 0 && !a.remainderVoided) fail('voided and captured');
+      // A reauthorized authorization is closed by PayPal, not by a void (R11-O06).
+      if (a.status === 'VOIDED' && a.reauthorizedTo === undefined && a.voidEffects !== 1)
         fail('voided without exactly one void effect');
     }
     return true;
@@ -599,6 +710,8 @@ export class FakePayPalCore {
     const a = this.auths.get(authId);
     if (a === undefined) throw new FakeApiError(404, 'RESOURCE_NOT_FOUND');
     this.refresh(a);
+    // The funds moved to the new authorization; nothing went back to the payer (R11-O06).
+    if (a.reauthorizedTo !== undefined) return 0;
     if (a.status === 'VOIDED' || a.status === 'EXPIRED') {
       return Math.max(0, a.holdCents - FakePayPalCore.capturedOf(a));
     }

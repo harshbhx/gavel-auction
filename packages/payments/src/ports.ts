@@ -44,11 +44,14 @@ export interface PaymentsGateway {
   ): Promise<{ captureId: string; amountCents: number }>;
   /** POST. Definite on 2xx and on already_voided/expired/not_found; unknown otherwise. */
   voidAuthorization(authId: string, requestId: string): Promise<void>;
-  /** POST. Unknown outcome: the authorization amount may have changed. */
+  /**
+   * POST. Unknown outcome: the authorization amount may have changed. On success PayPal
+   * holds the funds under the returned `authId`, a new id (R11-O06); the caller persists it.
+   */
   reauthorize(
     authId: string,
     i: { amountCents: number; requestId: string },
-  ): Promise<{ amountCents: number }>;
+  ): Promise<{ authId: string; amountCents: number }>;
 }
 
 export interface JournalStore {

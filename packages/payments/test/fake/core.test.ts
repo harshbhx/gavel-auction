@@ -207,11 +207,48 @@ describe('T-PAY-077 clock, honor and validity boundaries', () => {
     const a = pp.createAuthorization('p', 1000).id;
     apiError(() => pp.reauthorize(a, 1000, 'r')); // day 0: too early
     clock.advance(5 * DAY_MS);
-    pp.reauthorize(a, 1000, 'r2');
+    const renewed = pp.reauthorize(a, 1000, 'r2');
     expect(pp.inspect(a).reauths).toBe(1);
     clock.advance(26 * DAY_MS); // 26 days after reauth (< 29): alive
-    pp.capture(a, 1000, true, 'c');
+    pp.capture(renewed.id, 1000, true, 'c');
     pp.checkInvariants();
+  });
+
+  it('R11-O06 reauthorize issues a new authorization id and closes the old one', () => {
+    const { pp, clock } = mk();
+    const a = pp.createAuthorization('p', 1000).id;
+    clock.advance(4 * DAY_MS);
+    const renewed = pp.reauthorize(a, 900, 'r');
+    expect(renewed.id).not.toBe(a);
+    expect(pp.getAuthorization(renewed.id)).toMatchObject({ status: 'CREATED', holdCents: 900 });
+    expect(pp.getAuthorization(a).status).toBe('VOIDED');
+    expect(apiError(() => pp.capture(a, 900, true, 'old')).issue).toBe('AUTHORIZATION_VOIDED');
+    expect(pp.reauthorizationChain(renewed.id)).toEqual([a, renewed.id]);
+    // The same request id replays the same answer: one new authorization only.
+    expect(pp.reauthorize(a, 900, 'r').id).toBe(renewed.id);
+    expect(pp.released(a)).toBe(0);
+    pp.capture(renewed.id, 900, true, 'new');
+    expect(pp.checkInvariants()).toBe(true);
+  });
+
+  it('R11-O03 a pending capture can complete, or be declined and leave the hold open', () => {
+    const { pp } = mk();
+    const a = pp.createAuthorization('p', 1000).id;
+    pp.inject('capture', 'capture_pending', a);
+    const c = pp.capture(a, 600, true, 'c1');
+    expect(c.status).toBe('PENDING');
+    expect(pp.getAuthorization(a).captures[0]?.status).toBe('PENDING');
+    pp.denyCapture(c.id);
+    expect(pp.getAuthorization(a)).toMatchObject({ status: 'CREATED', capturedCents: 0 });
+    expect(pp.events.map((e) => e.eventType)).toContain('PAYMENT.CAPTURE.DENIED');
+    expect(apiError(() => pp.completeCapture(c.id)).issue).toBe('CAPTURE_NOT_PENDING');
+
+    const b = pp.createAuthorization('p', 1000).id;
+    pp.inject('capture', 'capture_pending', b);
+    const d = pp.capture(b, 700, true, 'c2');
+    pp.completeCapture(d.id);
+    expect(pp.getAuthorization(b)).toMatchObject({ status: 'CAPTURED', capturedCents: 700 });
+    expect(pp.checkInvariants()).toBe(true);
   });
 
   it('a partially captured authorization with a final capture does not expire', () => {

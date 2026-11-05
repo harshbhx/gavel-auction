@@ -103,6 +103,8 @@ const RESOURCE_TYPES: Record<string, { type: string; status: string }> = {
   'PAYMENT.AUTHORIZATION.CREATED': { type: 'authorization', status: 'CREATED' },
   'PAYMENT.AUTHORIZATION.VOIDED': { type: 'authorization', status: 'VOIDED' },
   'PAYMENT.CAPTURE.COMPLETED': { type: 'capture', status: 'COMPLETED' },
+  'PAYMENT.CAPTURE.PENDING': { type: 'capture', status: 'PENDING' },
+  'PAYMENT.CAPTURE.DENIED': { type: 'capture', status: 'DECLINED' },
 };
 
 function resourceId(resource: Record<string, string | number>): string | undefined {

@@ -24,6 +24,7 @@ export * from './saga/plan.js';
 export * from './saga/bridge.js';
 export * from './saga/void.js';
 export * from './saga/killswitch.js';
+export * from './saga/reauth.js';
 export * from './saga/remainder.js';
 export * from './saga/emit.js';
 export * from './reconcile/reconcile.js';

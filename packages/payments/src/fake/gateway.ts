@@ -1,8 +1,8 @@
 import { PayPalError } from '../errors.js';
 import { classifyError, classifyNetworkError } from '../errorMap.js';
 import type { Clock, PaymentsGateway } from '../ports.js';
-import type { HoldTruth } from '../types.js';
-import { FakeApiError, FakeTimeout, type FakePayPalCore } from './core.js';
+import type { CaptureRef, HoldTruth } from '../types.js';
+import { FakeApiError, FakeTimeout, type FakeCaptureRecord, type FakePayPalCore } from './core.js';
 
 /**
  * FakeGateway: the PaymentsGateway port on top of FakePayPalCore with no HTTP
@@ -97,22 +97,20 @@ export class FakeGateway implements PaymentsGateway {
     try {
       const a = this.call('GET', () => this.core.getAuthorization(h.authId));
       const observable = h.orderId !== undefined && h.orderId !== '';
+      // Like PayPalGateway: captures are read from the order, so without an order id they
+      // are not observable (R8-P01). The order lists every capture of the hold, across a
+      // reauthorization (R11-O06); refused ones apart (R11-O03).
+      const records = observable ? this.core.orderCaptures(h.authId) : [];
+      const live = records.filter((c) => c.status !== 'DECLINED').map(captureRef);
+      const declined = records.filter((c) => c.status === 'DECLINED').map(captureRef);
       return {
         holdId: h.holdId,
         authId: h.authId,
         status: a.status,
         amountCents: a.holdCents,
-        // Like PayPalGateway: captures are read from the order, so without an order
-        // id they are not observable (R8-P01).
-        capturedCents: observable ? a.capturedCents : 0,
-        captures: observable
-          ? a.captures.map((c) => ({
-              captureId: c.id,
-              amountCents: c.amountCents,
-              final: c.final,
-              ...(c.invoiceId === undefined ? {} : { invoiceId: c.invoiceId }),
-            }))
-          : null,
+        capturedCents: live.reduce((s, c) => s + c.amountCents, 0),
+        captures: observable ? live : null,
+        ...(declined.length > 0 ? { declined } : {}),
         observedAtMs,
       };
     } catch (e) {
@@ -138,6 +136,16 @@ export class FakeGateway implements PaymentsGateway {
     const c = this.call('POST', () =>
       this.core.capture(authId, i.amountCents, i.finalCapture, i.requestId, i.invoiceId),
     );
+    if (c.status === 'PENDING') {
+      // As PaymentsApiClient: a pending capture is an unknown outcome, not a charge (R11-O03).
+      throw new PayPalError({
+        kind: 'server_error',
+        status: 201,
+        name: 'CAPTURE_PENDING',
+        message: 'capture pending at PayPal',
+        outcome: 'unknown',
+      });
+    }
     return { captureId: c.id, amountCents: c.amountCents };
   }
 
@@ -149,8 +157,18 @@ export class FakeGateway implements PaymentsGateway {
   async reauthorize(
     authId: string,
     i: { amountCents: number; requestId: string },
-  ): Promise<{ amountCents: number }> {
+  ): Promise<{ authId: string; amountCents: number }> {
     const r = this.call('POST', () => this.core.reauthorize(authId, i.amountCents, i.requestId));
-    return { amountCents: r.amountCents };
+    return { authId: r.id, amountCents: r.amountCents };
   }
+}
+
+function captureRef(c: FakeCaptureRecord): CaptureRef {
+  return {
+    captureId: c.id,
+    amountCents: c.amountCents,
+    final: c.final,
+    ...(c.invoiceId === undefined ? {} : { invoiceId: c.invoiceId }),
+    ...(c.status === 'PENDING' ? { pending: true } : {}),
+  };
 }

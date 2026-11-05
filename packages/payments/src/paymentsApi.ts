@@ -38,6 +38,12 @@ const JSON_HEADERS: Readonly<Record<string, string>> = {
   'Content-Type': 'application/json',
   Accept: 'application/json',
 };
+/**
+ * PayPal answers a capture or a reauthorization with the minimal body (id, status, links)
+ * unless the request asks for the full resource (R11-O02, G1.5 evidence). The client asks,
+ * and still accepts the minimal body.
+ */
+export const PREFER_REPRESENTATION = 'return=representation';
 
 type Json = Record<string, unknown>;
 
@@ -116,11 +122,17 @@ export class PaymentsApiClient {
 
   /**
    * POST .../capture with `amount`, `final_capture` and `invoice_id` exactly as
-   * R-PAY-051 states. Returns the capture id and the amount PayPal reports. A
-   * capture counts as taken only when PayPal says COMPLETED and reports exactly
-   * the requested amount: DECLINED or FAILED is a definite `declined`; PENDING,
-   * any other status, a missing amount or a different amount is an unknown
-   * outcome (read the authorization before acting).
+   * R-PAY-051 states, and `Prefer: return=representation`. Returns the capture id
+   * and the amount captured. A capture counts as taken only when PayPal says
+   * COMPLETED: DECLINED or FAILED is a definite `declined`; PENDING is an unknown
+   * outcome (`CAPTURE_PENDING`), as is any other status (read the authorization
+   * before acting).
+   *
+   * R11-O02: without the representation PayPal answers COMPLETED with no amount
+   * and no `final_capture` (G1.5). A COMPLETED capture of an explicit amount took
+   * that amount, so the minimal answer is a capture of the requested amount. An
+   * amount or `final_capture` that the answer does state must match the request,
+   * else the outcome is unknown.
    */
   async capture(
     authId: string,
@@ -131,7 +143,7 @@ export class PaymentsApiClient {
       path: this.path(authId, 'capture'),
       op: 'capture',
       requestId: i.requestId,
-      headers: { ...JSON_HEADERS },
+      headers: { ...JSON_HEADERS, Prefer: PREFER_REPRESENTATION },
       body: JSON.stringify({
         amount: amountBody(i.amountCents),
         final_capture: i.finalCapture,
@@ -152,11 +164,22 @@ export class PaymentsApiClient {
         outcome: 'definite',
       });
     }
-    const amountCents = centsOf(json['amount']);
-    if (status !== 'COMPLETED' || amountCents === undefined || amountCents !== i.amountCents) {
-      throw malformed(res, 'capture');
+    if (status === 'PENDING') {
+      // R11-O03: PayPal may still complete or decline it; the truth read decides later.
+      throw new PayPalError({
+        kind: 'server_error',
+        status: res.status,
+        name: 'CAPTURE_PENDING',
+        message: 'capture pending at PayPal',
+        outcome: 'unknown',
+      });
     }
-    return { captureId, amountCents };
+    if (status !== 'COMPLETED') throw malformed(res, 'capture');
+    const amount = json['amount'];
+    if (amount !== undefined && centsOf(amount) !== i.amountCents) throw malformed(res, 'capture');
+    const final = json['final_capture'];
+    if (final !== undefined && final !== i.finalCapture) throw malformed(res, 'capture');
+    return { captureId, amountCents: i.amountCents };
   }
 
   /**
@@ -180,22 +203,27 @@ export class PaymentsApiClient {
   /**
    * POST .../reauthorize with the new amount. Explicit call only: no other method
    * of this client calls it. UNVERIFIED (G3).
+   *
+   * R11-O06: PayPal answers with a new authorization resource that has its own id;
+   * the funds are held under that id from now on. The id is required: an answer
+   * without one is an unknown outcome, since the caller could not track the hold.
    */
   async reauthorize(
     authId: string,
     i: { amountCents: number; requestId: string },
-  ): Promise<{ amountCents: number }> {
+  ): Promise<{ authId: string; amountCents: number }> {
     const res = await this.auth.send({
       method: 'POST',
       path: this.path(authId, 'reauthorize'),
       op: 'reauthorize',
       requestId: i.requestId,
-      headers: { ...JSON_HEADERS },
+      headers: { ...JSON_HEADERS, Prefer: PREFER_REPRESENTATION },
       body: JSON.stringify({ amount: amountBody(i.amountCents) }),
     });
     if (!isSuccess(res.status)) throw classifyError(res.status, res.headers, res.text);
     const json = parseJson(res.text);
-    if (json === undefined) throw malformed(res, 'reauthorize');
-    return { amountCents: centsOf(json['amount']) ?? i.amountCents };
+    const newId = json === undefined ? undefined : nonEmpty(json['id']);
+    if (json === undefined || newId === undefined) throw malformed(res, 'reauthorize');
+    return { authId: newId, amountCents: centsOf(json['amount']) ?? i.amountCents };
   }
 }

@@ -158,9 +158,11 @@ describe('FakeGateway implements the PaymentsGateway port', () => {
     const early = await fails(gw.reauthorize(authId, { amountCents: 1000, requestId: 'ra1' }));
     expect(early.outcome).toBe('definite');
     clock.advance(4 * 86_400_000);
-    expect(await gw.reauthorize(authId, { amountCents: 1000, requestId: 'ra2' })).toEqual({
-      amountCents: 1000,
-    });
+    const renewed = await gw.reauthorize(authId, { amountCents: 1000, requestId: 'ra2' });
+    // R11-O06: the funds are held under a new authorization id.
+    expect(renewed.amountCents).toBe(1000);
+    expect(renewed.authId).not.toBe(authId);
+    expect(core.getAuthorization(renewed.authId).status).toBe('CREATED');
   });
 
   it('a timeout fault is a network error with unknown outcome, and the effect may have happened', async () => {
