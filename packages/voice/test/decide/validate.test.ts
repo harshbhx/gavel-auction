@@ -142,3 +142,52 @@ describe('T-VOX-072 validator (R-VOX-064)', () => {
     }
   });
 });
+
+describe('T-VOX-073 confirm parse with candidates and no single amount (R7-02)', () => {
+  const multi = (amounts: number[], reason: ParseResult['reason'] = 'multiple_amounts') =>
+    parse({
+      status: 'confirm',
+      reason,
+      amountCents: null,
+      candidates: amounts.map((a) => ({ bidder: { kind: 'paddle', value: '12' }, amountCents: a })),
+    });
+
+  for (const reason of ['multiple_amounts', 'to_for_ambiguity', 'homophone'] as const) {
+    it(`${reason}: both options reach the bidder as a confirm`, () => {
+      const v = validate(multi([40000, 50000], reason), ctx());
+      expect(v).toEqual({
+        kind: 'confirm',
+        reason,
+        bidderId: 'b-12',
+        amountCents: null,
+        candidates: [40000, 50000],
+      });
+    });
+  }
+
+  it('keeps only the candidates that pass and names the single survivor', () => {
+    const v = validate(multi([20000, 40000]), ctx());
+    expect(v).toEqual({
+      kind: 'confirm',
+      reason: 'multiple_amounts',
+      bidderId: 'b-12',
+      amountCents: 40000,
+      candidates: [40000],
+    });
+  });
+
+  it('drops with the real reason only when no candidate survives', () => {
+    expect(validate(multi([10000, 20000]), ctx())).toEqual({
+      kind: 'drop',
+      reason: 'below_minimum',
+    });
+    expect(validate(multi([2000000, 3000000]), ctx())).toEqual({
+      kind: 'drop',
+      reason: 'above_ceiling',
+    });
+  });
+
+  it('still drops a confirm parse with no candidates at all as no_amount', () => {
+    expect(validate(multi([]), ctx())).toEqual({ kind: 'drop', reason: 'no_amount' });
+  });
+});
