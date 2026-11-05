@@ -307,7 +307,7 @@ function loseCaptureAnswer(base: PaymentsGateway): PaymentsGateway {
 describe('R12-P03 an order that cannot be read is an unknown outcome', () => {
   async function capturedB1(w: World): Promise<{ authId: string; orderId: string }> {
     const hold = w.plan.holds['b1'];
-    if (hold?.orderId === undefined) throw new Error('rig');
+    if (hold === undefined || hold.orderId === undefined) throw new Error('rig');
     await w.gateway.capture(hold.authId, {
       amountCents: 22000,
       finalCapture: true,
