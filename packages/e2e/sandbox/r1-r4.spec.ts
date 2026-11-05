@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { amount, field, str } from '../../payments/gates/gateUtil.js';
 import { MemoryWebhookEventStore } from '../../payments/src/stores/memory.js';
 import { storeEvent } from '../../payments/src/webhooks/dedupe.js';
-import { cardBuyerAvailable } from '../src/sandbox/harness.js';
+import {
+  cardBuyerAvailable,
+  deliverySkipReason,
+  skippedResult,
+  writeSpecResult,
+} from '../src/sandbox/harness.js';
 import {
   anyTransient,
   availability,
@@ -10,6 +15,7 @@ import {
   centsOf,
   env,
   finish,
+  resultDir,
   sleep,
 } from '../src/sandbox/kit.js';
 
@@ -124,7 +130,13 @@ describe.skipIf(!availability.ok)('sandbox R1 to R4', () => {
 
   it(
     'R4 real webhook delivery and replay dedupe @gate:G4',
-    async () => {
+    async (ctx) => {
+      // No staging host means no delivery to observe: record the skip with its reason, do not fail.
+      const skip = deliverySkipReason(env);
+      if (skip !== undefined) {
+        writeSpecResult(resultDir, skippedResult('R4', 'G4', skip, new Date().toISOString()));
+        ctx.skip();
+      }
       const s = await begin('R4');
       const a = await s.authorize('r4', 10000);
       // The event list of the sandbox app shows what PayPal delivered. Poll it, newest first.

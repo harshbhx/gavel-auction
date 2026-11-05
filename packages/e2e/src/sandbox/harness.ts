@@ -45,6 +45,26 @@ export function stagingAvailability(env: Env): Availability {
   return { ok: missing.length === 0, missing };
 }
 
+export const NO_STAGING_HOST_REASON = 'no staging host configured (GAVEL_STAGING_URL)';
+
+/**
+ * Why R4 cannot run here, or undefined when a staging URL is set. PayPal can only deliver webhooks
+ * to a deployed host, so without one R4 has nothing to observe and is skipped, not failed.
+ */
+export function deliverySkipReason(env: Env): string | undefined {
+  return blank(env['GAVEL_STAGING_URL']) ? NO_STAGING_HOST_REASON : undefined;
+}
+
+/** The result record of a spec that did not run. It has no transcript and no facts. */
+export function skippedResult(
+  spec: SandboxSpecId,
+  gate: GateId,
+  reason: string,
+  finishedAt: string,
+): SpecResult {
+  return { spec, gate, status: 'skipped', observed: reason, facts: {}, finishedAt };
+}
+
 /** Whether a card or guest buyer is configured (G2 path). */
 export function cardBuyerAvailable(env: Env): boolean {
   return !blank(env['SANDBOX_CARD_BUYER_EMAIL']) && !blank(env['SANDBOX_CARD_BUYER_PASSWORD']);
