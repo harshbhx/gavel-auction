@@ -1,4 +1,9 @@
-import { FLAG_DISCONTINUITY, FLAG_KEEPALIVE, type AudioBatch } from '../audio/frame.js';
+import {
+  FLAG_DISCONTINUITY,
+  FLAG_END_OF_UTTERANCE,
+  FLAG_KEEPALIVE,
+  type AudioBatch,
+} from '../audio/frame.js';
 import type { CaptureState } from '../privacy.js';
 import { MAX_AUTO_RESTARTS, reduce, type CaptureEvent } from './capture-state.js';
 
@@ -91,6 +96,18 @@ export class MuteController {
     this.why = reason;
     this.apply({ type: 'mute' });
     this.startKeepalive();
+    // Push-to-talk ends its utterance in talkEnd(); entering the mode is not a release.
+    if (reason !== 'push_to_talk') this.endUtterance();
+  }
+
+  /** Tell the speech provider the speaker stopped, so a held utterance is finished now (R12-V06). */
+  private endUtterance(): void {
+    this.send({
+      seq: this.seq,
+      tsMs: this.o.now(),
+      flags: FLAG_KEEPALIVE | FLAG_END_OF_UTTERANCE,
+      pcm: new Int16Array(0),
+    });
   }
 
   unmute(): void {
@@ -116,7 +133,10 @@ export class MuteController {
 
   /** Talk key released. Ignored in open-mic mode. */
   talkEnd(): void {
-    if (this.modeNow === 'push_to_talk') this.mute('push_to_talk');
+    if (this.modeNow !== 'push_to_talk') return;
+    const wasLive = this.current === 'running' || this.current === 'degraded';
+    this.mute('push_to_talk');
+    if (wasLive) this.endUtterance();
   }
 
   /** Browser reported the AudioContext statechange; also reached by polling. */

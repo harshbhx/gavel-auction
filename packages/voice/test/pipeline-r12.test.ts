@@ -203,3 +203,28 @@ describe('R12-V02 echo next to a bid forces a confirm', () => {
     expect(ds.every((d) => d.kind !== 'accept')).toBe(true);
   });
 });
+
+describe('R12-V02 room-mic bids are confirmed', () => {
+  function runMic(mic: 'room' | 'device'): Decision[] {
+    let n = 0;
+    const pipeline = new VoicePipeline({
+      roomId: 'room1',
+      lotId: 'lot1',
+      clock: () => 1500,
+      ids: () => `seg-${++n}`,
+      context: () => context(),
+      mic,
+      llm: (t: string) => parseBid(t),
+    });
+    const out = pipeline.push(final('paddle seven five hundred', 0.95));
+    return out.flatMap((o) => (o.type === 'decision' ? [o.decision] : []));
+  }
+
+  it('does not auto-accept a clean paddle bid heard on the room mic', () => {
+    expect(runMic('room').map((d) => d.kind)).not.toContain('accept');
+  });
+
+  it('the same bid is still accepted when the mic is not declared a room mic', () => {
+    expect(runMic('device').map((d) => d.kind)).toContain('accept');
+  });
+});
