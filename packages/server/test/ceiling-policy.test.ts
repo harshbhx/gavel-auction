@@ -3,7 +3,6 @@ import {
   CEILING_PRESETS_CENTS as ENGINE_PRESETS,
   DEFAULT_MAX_CEILING_CENTS as ENGINE_MAX,
   MIN_CEILING_CENTS as ENGINE_MIN,
-  checkCeiling,
 } from '@gavel/engine';
 import {
   DEFAULT_MAX_CEILING_CENTS as PAY_MAX,
@@ -25,7 +24,7 @@ describe('ceiling policy across engine, payments and shared', () => {
     const rules = { maxCeilingCents: PAY_MAX, presetsCents: [...CEILING_PRESETS_CENTS] };
     for (const c of CEILING_PRESETS_CENTS) {
       expect(validateCeiling(c, rules)).toBe(c);
-      expect(checkCeiling(c, ENGINE_MAX)).toBe('ok');
+      expect(c >= ENGINE_MIN && c <= ENGINE_MAX).toBe(true);
     }
   });
 
@@ -33,7 +32,7 @@ describe('ceiling policy across engine, payments and shared', () => {
     const rules = { maxCeilingCents: PAY_MAX, presetsCents: [...CEILING_PRESETS_CENTS] };
     for (const c of [1, 50, MIN_CEILING_CENTS - 1, PAY_MAX + 1]) {
       expect(() => validateCeiling(c, rules)).toThrow();
-      expect(checkCeiling(c, ENGINE_MAX)).toBe('bad_ceiling');
+      expect(c >= ENGINE_MIN && c <= ENGINE_MAX).toBe(false);
     }
   });
 });

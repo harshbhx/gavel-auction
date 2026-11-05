@@ -335,9 +335,15 @@ export function parseCommand(x: unknown): Command {
         actor: shortStr(o, 'actor', type),
       };
     case 'PauseLot':
+      return {
+        type: 'PauseLot',
+        ...base(['lotId', 'actor']),
+        lotId: ulid(o, 'lotId', type),
+        actor: shortStr(o, 'actor', type),
+      };
     case 'ResumeLot':
       return {
-        type,
+        type: 'ResumeLot',
         ...base(['lotId', 'actor']),
         lotId: ulid(o, 'lotId', type),
         actor: shortStr(o, 'actor', type),

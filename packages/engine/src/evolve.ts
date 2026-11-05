@@ -19,6 +19,13 @@ function setLot(s: AuctionState, lotId: string, f: (l: LotState) => LotState): A
   return { ...s, lots: dict({ ...s.lots, [lotId]: f(lot) }) };
 }
 
+/** The lot without its pause marker, so a resumed lot digests like one that was never paused. */
+function unpaused(l: LotState): LotState {
+  const copy: Record<string, unknown> = { ...l };
+  delete copy['pausedRemainingMs'];
+  return copy as unknown as LotState;
+}
+
 function setBidder(s: AuctionState, key: string, f: (b: BidderState) => BidderState): AuctionState {
   const b = s.bidders[key];
   if (b === undefined) return s;
@@ -175,26 +182,23 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
             : l.settlement,
       }));
     case 'LOT_ABORTED':
-      return setLot(s, e.payload.lotId, (lot) => {
-        const { pausedRemainingMs: _paused, ...l } = lot;
-        return {
-          ...l,
-          status: 'DONE',
-          winnerId: null,
-          priceCents: null,
-          abortReason: e.payload.reason,
-        };
-      });
+      return setLot(s, e.payload.lotId, (l) => ({
+        ...unpaused(l),
+        status: 'DONE',
+        winnerId: null,
+        priceCents: null,
+        abortReason: e.payload.reason,
+      }));
     case 'LOT_PAUSED':
       return setLot(s, e.payload.lotId, (l) => ({
         ...l,
         pausedRemainingMs: e.payload.remainingMs,
       }));
     case 'LOT_RESUMED':
-      return setLot(s, e.payload.lotId, (l) => {
-        const { pausedRemainingMs: _paused, ...rest } = l;
-        return { ...rest, endsAt: e.payload.endsAtAfter };
-      });
+      return setLot(s, e.payload.lotId, (l) => ({
+        ...unpaused(l),
+        endsAt: e.payload.endsAtAfter,
+      }));
     case 'LOT_EXTENDED':
       return setLot(s, e.payload.lotId, (l) => ({ ...l, endsAt: e.payload.endsAtAfter }));
     case 'SETTLEMENT_STATE':
