@@ -17,6 +17,13 @@ describe('classify-change', () => {
     assert.equal(touchesCode(['docs/DECISIONS.md']), true);
   });
 
+  it('counts the docs that unit tests assert on as code', () => {
+    for (const f of ['README.md', 'SECURITY.md', 'docs/DEMO.md']) {
+      assert.equal(touchesCode([f]), true, f);
+    }
+    assert.equal(touchesCode(['docs/a.md']), false);
+  });
+
   it('counts an empty list as code', () => {
     assert.equal(touchesCode(['']), true);
   });

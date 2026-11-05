@@ -22,6 +22,12 @@ const result = (spec: SpecResult['spec'], status: SpecResult['status']): SpecRes
 const base = { generatedAt: at, sha: 'abc123' };
 
 describe('nightly sandbox report (T-QA-058)', () => {
+  it('fails every spec when the secrets are present and nothing wrote a result', () => {
+    const r = buildSandboxReport({ ...base, secretsPresent: true, results: [] });
+    expect(r.specs.every((s) => s.status === 'fail')).toBe(true);
+    expect(r.overall).toBe('fail');
+  });
+
   it('marks every spec skipped when the secrets are absent', () => {
     const r = buildSandboxReport({ ...base, secretsPresent: false, results: [] });
     expect(r.specs).toHaveLength(9);
@@ -39,8 +45,9 @@ describe('nightly sandbox report (T-QA-058)', () => {
     expect(r.specs.find((s) => s.spec === 'R1')?.status).toBe('pass');
     expect(r.specs.find((s) => s.spec === 'R2')?.status).toBe('fail');
     expect(r.specs.find((s) => s.spec === 'R3')?.status).toBe('inconclusive');
-    // With secrets present a spec that left no file did not run: inconclusive, not skipped.
-    expect(r.specs.find((s) => s.spec === 'R8')?.status).toBe('inconclusive');
+    // With secrets present a spec that left no file crashed or never loaded: fail, never green.
+    expect(r.specs.find((s) => s.spec === 'R8')?.status).toBe('fail');
+    expect(r.overall).toBe('fail');
     expect(r.overall).toBe('fail');
   });
 
