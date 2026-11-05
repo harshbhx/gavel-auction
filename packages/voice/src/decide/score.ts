@@ -6,6 +6,8 @@ export interface ScoreInput {
   flags: readonly ParseFlag[];
   /** Word confidences (0..1) over the amount and paddle spans; empty when the provider gives none. */
   wordConfidences: readonly number[];
+  /** Whole-transcript confidence (0..1) of the segment, e.g. Groq's; used when there are no word confidences. */
+  segmentConfidence?: number;
   merge: MergeOutcome;
   homophonePossible?: boolean;
   /** Number of words in the utterance. */
@@ -23,8 +25,10 @@ function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }
 
-function sttFactor(words: readonly number[]): number {
-  if (words.length === 0) return STT_UNKNOWN;
+function sttFactor(words: readonly number[], segment?: number): number {
+  if (words.length === 0) {
+    return segment === undefined ? STT_UNKNOWN : clamp01(segment / STT_REFERENCE);
+  }
   return clamp01(Math.min(...words) / STT_REFERENCE);
 }
 
@@ -47,6 +51,6 @@ function mergeFactor(merge: MergeOutcome): number {
 
 /** Section 8 confidence: deterministic, capped at 0.99, rounded to 2 decimals. */
 export function score(input: ScoreInput): number {
-  const raw = BASE * sttFactor(input.wordConfidences) * penalties(input) * mergeFactor(input.merge);
+  const raw = BASE * sttFactor(input.wordConfidences, input.segmentConfidence) * penalties(input) * mergeFactor(input.merge);
   return Math.round(Math.min(CAP, raw) * 100) / 100;
 }

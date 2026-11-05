@@ -1,6 +1,11 @@
 import { Endpointer } from '../audio/endpointer.js';
 import { encodeWav } from '../audio/wav.js';
-import { FLAG_END_OF_STREAM, FLAG_KEEPALIVE, type AudioBatch } from '../audio/frame.js';
+import {
+  FLAG_DISCONTINUITY,
+  FLAG_END_OF_STREAM,
+  FLAG_KEEPALIVE,
+  type AudioBatch,
+} from '../audio/frame.js';
 import {
   EventChannel,
   SttStats,
@@ -88,7 +93,8 @@ export class GroqStt implements InstrumentedSttProvider {
   private readonly channel = new EventChannel<SttEvent>(1024);
   private readonly endpointer = new Endpointer();
   private pending: PendingChunk[] = [];
-  private samples = 0;
+  /** Capture-timeline end of the audio seen so far, from batch timestamps. */
+  private clockMs = 0;
   private running: Promise<void> | null = null;
   private open = false;
   private ended = false;
@@ -110,22 +116,34 @@ export class GroqStt implements InstrumentedSttProvider {
     if (!this.open) return;
     try {
       this.stats.addBytes(batch.pcm.byteLength);
-      if ((batch.flags & FLAG_KEEPALIVE) !== 0) return;
-      this.samples += batch.pcm.length;
-      const endMs = Math.round((this.samples * 1000) / SAMPLE_RATE);
-      for (const chunk of this.endpointer.push(batch)) {
-        const durMs = Math.round((chunk.pcm.length * 1000) / SAMPLE_RATE);
-        this.enqueue({
-          pcm: chunk.pcm,
-          startMs: Math.max(0, endMs - durMs),
-          endMs,
-          readyAt: this.now(),
-        });
+      if ((batch.flags & FLAG_KEEPALIVE) !== 0) {
+        this.clockMs = Math.max(this.clockMs, batch.tsMs);
+        return;
       }
-      if ((batch.flags & FLAG_END_OF_STREAM) !== 0)
-        this.emit({ type: 'utterance_end', atMs: endMs });
+      // Audio before a gap is cut at the gap, never joined to the audio after it (R7-11).
+      if ((batch.flags & FLAG_DISCONTINUITY) !== 0) this.enqueueChunks(this.endpointer.flush());
+      const endMs = batch.tsMs + Math.round((batch.pcm.length * 1000) / SAMPLE_RATE);
+      this.enqueueChunks(this.endpointer.push(batch), endMs);
+      this.clockMs = Math.max(this.clockMs, endMs);
+      if ((batch.flags & FLAG_END_OF_STREAM) !== 0) {
+        this.enqueueChunks(this.endpointer.flush());
+        this.emit({ type: 'utterance_end', atMs: this.clockMs });
+      }
     } catch {
       this.stats.addDropped();
+    }
+  }
+
+  /** Queue chunks ending at `endMs` (default: the end of the audio seen so far). */
+  private enqueueChunks(chunks: readonly { pcm: Int16Array }[], endMs = this.clockMs): void {
+    for (const chunk of chunks) {
+      const durMs = Math.round((chunk.pcm.length * 1000) / SAMPLE_RATE);
+      this.enqueue({
+        pcm: chunk.pcm,
+        startMs: Math.max(0, endMs - durMs),
+        endMs,
+        readyAt: this.now(),
+      });
     }
   }
 
@@ -137,8 +155,13 @@ export class GroqStt implements InstrumentedSttProvider {
     if (this.ended) return;
     this.ended = true;
     this.open = false;
-    if (this.running) await this.running;
-    this.pending = [];
+    // Speech still held by the endpointer and chunks still queued are sent before closing (R7-06).
+    try {
+      this.enqueueChunks(this.endpointer.flush());
+    } catch {
+      this.stats.addDropped();
+    }
+    while (this.running) await this.running;
     this.emit({ type: 'state', state: 'closed' });
     this.channel.close();
   }

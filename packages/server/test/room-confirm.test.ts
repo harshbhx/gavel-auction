@@ -20,6 +20,11 @@ describe('needsConfirm (R-RT-045)', () => {
     );
   });
 
+  it('holds a voice bid that carries no confidence at all (R7-03)', () => {
+    expect(needsConfirm(voice(mid, 100), 0.85)).toBe(true);
+    expect(needsConfirm({ ...voice(mid, 100), source: 'manual' }, 0.85)).toBe(false);
+  });
+
   it('keeps one held bid per bidder and forgets a dropped one', () => {
     const book = new ConfirmBook();
     const bidderId = '01J9ZQ3A0B2C4D6F8H0J2K4M6N' as never;

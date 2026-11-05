@@ -1,7 +1,16 @@
 import type { AudioBatch } from './frame.js';
 
 const SAMPLE_RATE = 16000;
-const THRESHOLD_DB_ABOVE_FLOOR = 45;
+/** Speech must be this far above the tracked noise floor (R7-07; was 45, which no room reaches). */
+const THRESHOLD_DB_ABOVE_FLOOR = 12;
+/** Never trigger below this absolute level, so digital silence plus dither is not speech. */
+const MIN_THRESHOLD_DB = -55;
+/** Floor assumed before any audio is seen: a quiet room, so speech at stream start still counts. */
+const INITIAL_FLOOR_DB = -60;
+/** The floor never rises above this, so a loud room cannot lift the threshold past speech. */
+const MAX_FLOOR_DB = -45;
+const FLOOR_RISE = 0.02;
+const FLOOR_FALL = 0.5;
 const HANGOVER_MS = 600;
 const MAX_CHUNK_MS = 8000;
 const MIN_CHUNK_MS = 400;
@@ -28,8 +37,7 @@ function rmsDb(pcm: Int16Array): number {
 }
 
 export class Endpointer {
-  private noiseFloorDb = -90;
-  private noiseFrames = 0;
+  private noiseFloorDb = INITIAL_FLOOR_DB;
   private preroll: Int16Array[] = [];
   private prerollLen = 0;
   private speech: Int16Array[] = [];
@@ -47,12 +55,12 @@ export class Endpointer {
       const frame = pcm.slice(i, end);
       const db = rmsDb(frame);
 
-      if (!this.inSpeech) {
-        this.updateNoiseFloor(db);
-      }
-
-      const threshold = this.noiseFloorDb + THRESHOLD_DB_ABOVE_FLOOR;
+      const threshold = Math.max(
+        MIN_THRESHOLD_DB,
+        this.noiseFloorDb + THRESHOLD_DB_ABOVE_FLOOR,
+      );
       const isSpeech = db > threshold;
+      if (!isSpeech && !this.inSpeech) this.updateNoiseFloor(db);
 
       if (!this.inSpeech) {
         this.preroll.push(frame);
@@ -107,10 +115,33 @@ export class Endpointer {
     return chunks;
   }
 
+  /**
+   * Emit the speech held at the end of a stream or before a gap in the audio (R7-06, R7-11).
+   * Returns nothing when the held speech is shorter than the minimum chunk.
+   */
+  flush(): Chunk[] {
+    const chunks: Chunk[] = [];
+    if (this.inSpeech) {
+      const speechOnly = this.activeSpeechLen - this.silenceCount;
+      if (speechOnly >= MIN_CHUNK_SAMPLES) {
+        chunks.push({ pcm: this.concat(this.speech, this.speechLen) });
+      }
+    }
+    this.speech = [];
+    this.speechLen = 0;
+    this.activeSpeechLen = 0;
+    this.inSpeech = false;
+    this.silenceCount = 0;
+    this.preroll = [];
+    this.prerollLen = 0;
+    return chunks;
+  }
+
+  /** Fast to follow a quieter room, slow to follow a louder one; clamped. */
   private updateNoiseFloor(frameDb: number): void {
-    this.noiseFrames++;
-    const alpha = Math.min(0.95, 1 - 1 / this.noiseFrames);
-    this.noiseFloorDb = alpha * this.noiseFloorDb + (1 - alpha) * frameDb;
+    const alpha = frameDb < this.noiseFloorDb ? FLOOR_FALL : FLOOR_RISE;
+    const next = this.noiseFloorDb + alpha * (frameDb - this.noiseFloorDb);
+    this.noiseFloorDb = Math.min(MAX_FLOOR_DB, Math.max(-90, next));
   }
 
   private concat(parts: Int16Array[], total: number): Int16Array {
