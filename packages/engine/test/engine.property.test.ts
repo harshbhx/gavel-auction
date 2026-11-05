@@ -107,14 +107,16 @@ describe('ranking properties (R-QA-023)', () => {
     at: fc.integer({ min: 0, max: 100 }),
   });
   const toRecords = (raws: ReadonlyArray<{ bidder: number; amountCents: number; at: number }>) =>
-    raws.map((r, i): BidRecord => ({
-      bidderId: `b${r.bidder}`,
-      amountCents: r.amountCents,
-      at: r.at,
-      bidId: `id${i}`,
-      seq: i,
-      status: 'active',
-    }));
+    raws.map(
+      (r, i): BidRecord => ({
+        bidderId: `b${r.bidder}`,
+        amountCents: r.amountCents,
+        at: r.at,
+        bidId: `id${i}`,
+        seq: i,
+        status: 'active',
+      }),
+    );
 
   it('rank 1 is the highest amount with the earliest time on a tie', () => {
     fc.assert(
