@@ -646,8 +646,9 @@ export class Room {
     conn: Connection,
     msg: BidMsg,
     bidderId: BidderId,
-    confirmed = false,
+    hold?: PendingConfirm,
   ): Promise<void> {
+    const confirmed = hold !== undefined;
     const key = `${bidderId}:${msg.mid}`;
     const prior = this.replies.get(key);
     if (prior && prior.digest !== bidDigest(msg.amount, bidMeta(conn, msg).source)) {
@@ -692,7 +693,8 @@ export class Room {
       return;
     }
     const ts = this.deps.clock.now();
-    const seq = this.seq + 1;
+    // An accepted confirmation takes the seq before the bid; both land in one append.
+    const seq = this.seq + (hold ? 2 : 1);
 
     let code: ErrorCode | undefined;
     if (!isCents(msg.amount)) code = 'bad_amount';
@@ -766,15 +768,37 @@ export class Room {
             audit,
           };
 
+    let resolved: RoomEvent | undefined;
+    if (hold) {
+      const rSeq = seq - 1;
+      resolved = resolvedEvent(
+        { auctionId: this.auctionId, seq: rSeq, ts },
+        hold.confirmId,
+        'accepted',
+        confirmAudit(
+          hold,
+          this.deps.ids.mint<'BidId'>(),
+          'accepted',
+          CONFIRM_REASON.accepted,
+          ts,
+          rSeq,
+        ),
+      );
+    }
     try {
-      await this.appendFenced(this.auctionId, this.seq, [event]);
+      await this.appendFenced(this.auctionId, this.seq, resolved ? [resolved, event] : [event]);
     } catch {
-      // State must not change: rebuild the engine from the log and tell the sender.
+      // State must not change: rebuild the engine from the log and tell the sender. The hold
+      // was not consumed, so the bidder can answer the same confirmation again.
       await this.recover().catch(() => undefined);
       this.sendError(conn, this.storeCode());
       return;
     }
     this.seq = seq;
+    if (hold && resolved) {
+      this.confirms.drop(hold.confirmId);
+      this.fanOutConfirm(resolved, hold);
+    }
     if (event.type === 'bid_accepted') this.bidCount += 1;
     if (event.type === 'bid_accepted') this.deps.metrics?.bidAccepted();
     else this.deps.metrics?.bidRejected();
@@ -825,11 +849,10 @@ export class Room {
         this.sendError(conn, 'auction_full');
         return;
       }
-      if (!(await this.resolveConfirm(held, outcome))) {
-        this.sendError(conn, this.storeCode());
+      if (outcome !== 'accepted') {
+        if (!(await this.resolveConfirm(held, outcome))) this.sendError(conn, this.storeCode());
         return;
       }
-      if (outcome !== 'accepted') return;
       const bid: BidMsg = {
         v: 1,
         t: 'bid',
@@ -839,12 +862,9 @@ export class Room {
         ...(held.transcript !== undefined ? { transcript: held.transcript } : {}),
         ...(held.confidence !== undefined ? { confidence: held.confidence } : {}),
       };
-      await this.handleBid(conn, bid, bidderId, true);
-      if (!this.replies.has(`${bidderId}:${held.mid}`) && !this.stopped) {
-        // The bid did not reach the log: put the hold back so the bidder can answer again.
-        this.confirms.add(held);
-        this.armConfirmTimer(held);
-      }
+      // The accepted resolution and the bid are one log append (HRD-23): the hold is only
+      // consumed when both are written; a refusal or a store error leaves it in place.
+      await this.handleBid(conn, bid, bidderId, held);
     });
   }
 
