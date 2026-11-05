@@ -221,6 +221,37 @@ describe('plan validation', () => {
     expect(rows).toHaveLength(1);
   });
 
+  it('writes the stale_hold rows before the journal so a crash in between loses none', async () => {
+    const journals = new MemoryJournalStore();
+    const { rows } = recordingAudit();
+    const order: string[] = [];
+    const audit = {
+      append: (e: (typeof rows)[number]) => {
+        order.push('audit');
+        rows.push(e);
+        return Promise.resolve();
+      },
+    };
+    const crashing = {
+      ...journals,
+      load: journals.load.bind(journals),
+      create: () => {
+        order.push('create');
+        return Promise.reject(new Error('crash'));
+      },
+    };
+    const deps = { clock: { nowMs: () => 10_000 }, holdMaxAgeMs: 9_998, audit };
+    await expect(
+      createSettlement({ journals: crashing as unknown as typeof journals, ...deps }, plan()),
+    ).rejects.toThrow('crash');
+    expect(order).toEqual(['audit', 'create']);
+    expect(rows).toHaveLength(1);
+    // The retry finds no journal, so it audits again and creates it.
+    const r = await createSettlement({ journals, ...deps }, plan());
+    expect(r.created).toBe(true);
+    expect(rows).toHaveLength(2);
+  });
+
   it('refuses a settlement without a usable hold age limit or a hold created at NaN', async () => {
     const journals = new MemoryJournalStore();
     expect(

@@ -5,7 +5,8 @@ function setup() {
   const clock = { t: 1_000_000 };
   const session = createVoiceSession({
     now: () => clock.t,
-    verifyToken: (token, roomId) => token === `ok-${roomId}`,
+    verifyToken: (token, roomId) =>
+      token === `ok-${roomId}` ? 'auctioneer' : token === `bid-${roomId}` ? 'bidder' : null,
   });
   const open = (source = 'mic', room = 'r1'): AudioStream => {
     const res = session.open({ roomId: room, source }, `ok-${room}`);
@@ -16,6 +17,15 @@ function setup() {
 }
 
 describe('T-VOX-105 audio websocket limits (R-VOX-097)', () => {
+  it('rejects a valid token whose role may not stream audio', () => {
+    const { session } = setup();
+    expect(session.open({ roomId: 'r1', source: 'mic' }, 'bid-r1')).toEqual({
+      ok: false,
+      error: 'AUDIO_UNAUTHORIZED',
+    });
+    expect(session.activeStreams()).toBe(0);
+  });
+
   it('rejects a missing or wrong token', () => {
     const { session } = setup();
     expect(session.open({ roomId: 'r1', source: 'mic' }, undefined)).toEqual({
@@ -94,7 +104,7 @@ describe('T-VOX-105 audio websocket limits (R-VOX-097)', () => {
     const clock = { t: 1_000_000 };
     const session = createVoiceSession({
       now: () => clock.t,
-      verifyToken: () => true,
+      verifyToken: () => 'auctioneer',
       maxStreamsPerToken: 1,
       maxStreamsPerRoom: 2,
     });

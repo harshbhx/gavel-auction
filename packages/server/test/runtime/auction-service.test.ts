@@ -710,6 +710,25 @@ describe('auction service: round 3 hardening (RT3)', () => {
     await service.close();
   });
 
+  it('refuses modes, increment ladders and lot holds the engine adapter cannot run (R6-D06)', async () => {
+    const rig = await makeRig();
+    const service = rig.service();
+    const variants: Array<Record<string, unknown>> = [
+      { mode: 'proxy' },
+      { mode: 'second_price' },
+      { holdScope: 'lot' },
+      { incrementLadder: [{ fromCents: 0, incrementCents: 500 }] },
+    ];
+    for (const extra of variants) {
+      const bad = { ...config, ...extra } as unknown as AuctionConfig;
+      await expect(
+        service.createAuction(rig.ids.mint<'AuctionId'>(), bad, 'auctioneer-sub'),
+      ).rejects.toMatchObject({ code: 'bad_message' });
+    }
+    expect(await rig.stores.store.listAuctions()).toHaveLength(0);
+    await service.close();
+  });
+
   it('uses the room engine, so the settlement sees every registration (SERVICE-R3-10)', async () => {
     const rig = await makeRig();
     const service = rig.service();
