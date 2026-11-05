@@ -194,9 +194,11 @@ Saga defaults (`SAGA_DEFAULTS` in `packages/payments/src/config.ts`, equal to th
 ## Sandbox environment (required before any gate runs)
 
 The gate workflows (`.github/workflows/gate-g0.yml`, `gate-g1.yml`, `gate-g3.yml` and
-`gate-g4.yml`) declare `environment: sandbox-nightly` and only run from `main`. The environment
-does not exist until the owner creates it, so until then those jobs wait or fail. The repository owner must create that
-environment once:
+`gate-g4.yml`) declare `environment: sandbox-nightly` and their jobs only run from `main`. Today the environment
+exists but has no reviewer, no branch rule and no secrets, and the PayPal sandbox secrets are
+repository-level, so a workflow on any pushed branch can read them (issue 1597). Keep only
+throwaway sandbox values in them. To close that gap the repository owner must set the
+environment up once:
 
 1. Settings, Environments, New environment, name `sandbox-nightly`.
 2. Add a required reviewer and limit deployment branches to `main`.

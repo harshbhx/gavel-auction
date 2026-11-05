@@ -6,8 +6,8 @@ acts and what to re-run. It holds names only: no secret values, logins or buyer 
 
 ## Roles
 
-- Owner: the repository owner (harshbhx). Only the owner can approve the `sandbox-nightly`
-  environment, read or change its secrets, use the PayPal developer dashboard and run anything
+- Owner: the repository owner (harshbhx). Only the owner can change the `sandbox-nightly`
+  environment and the repository secrets, use the PayPal developer dashboard and run anything
   against the real sandbox from a laptop.
 - Contributor: anyone else. A contributor reads evidence files and workflow logs, runs the fake
   PayPal and the text-level voice eval, and opens pull requests. A contributor never receives
@@ -17,13 +17,14 @@ acts and what to re-run. It holds names only: no secret values, logins or buyer 
 
 - A gate closes only with Status PASS or FAIL, a Decision and an Evidence line (`docs/GATES.md`).
   PARTIAL stays open, and a gate without evidence reads NOT RUN.
-- Gate workflows declare `environment: sandbox-nightly` and run only from `main`. If a run waits
-  forever or fails at the environment step, the environment or its reviewer is missing: owner
-  action (see "Sandbox environment" in `docs/GATES.md`).
+- Gate workflows declare `environment: sandbox-nightly` and their jobs run only from `main`. The
+  environment has no reviewer and no branch rule today, so a run does not wait for approval and
+  the job-level `main` check does not stop a workflow on another branch from reading the
+  repository secrets (see "Sandbox environment" in `docs/GATES.md`).
 - The four repository-level Actions secrets (not yet moved into an environment, see issue 1597)
   are `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `SANDBOX_BUYER_EMAIL` and
   `SANDBOX_BUYER_PASSWORD`. A missing or expired one shows as an auth
-  error or a skipped spec. The owner rotates it in the environment settings; never paste a value
+  error or a skipped spec. The owner rotates it in the repository secret settings; never paste a value
   into an issue, a log or a pull request.
 - Gate flags in `packages/payments/src/gates-result.json` may leave their safe value only while
   the matching section in `docs/GATES.md` is closed with evidence. A test fails otherwise.
@@ -131,6 +132,18 @@ and open a pull request. Do not edit a gate to PASS by hand.
 - Who acts: owner (webhook id, receiver variable, dashboard). Contributor may add fixtures under
   `packages/payments/test/fixtures/webhooks/` from an owner-approved run.
 - Re-run: `gh workflow run gate-g4 --ref main`. Event capture alone: `gate:g4-events`.
+- Redelivery check (ASSUMPTIONS W06, UNVERIFIED until run; nothing below is known PayPal
+  behaviour). Owner, sandbox only:
+  1. Point the sandbox webhook at a receiver that answers 503 to one chosen event type.
+  2. Trigger one such event, then in the PayPal dashboard (Webhooks, recent deliveries) resend it
+     and also note any automatic retry PayPal makes.
+  3. For every delivery of that event record `PAYPAL-TRANSMISSION-ID`, `PAYPAL-TRANSMISSION-TIME`,
+     the event id, the time received and the time of the first attempt. No secrets or bodies.
+  4. Write the table to `docs/evidence/G4/` with its sha256, and set the W06 row in
+     `packages/payments/src/fake/ASSUMPTIONS.md` to verified or refuted from it. Also record how
+     long retries continue, if the dashboard shows it.
+     Until then the verifier keeps its documented fallback (D-0033): old transmissions up to seven
+     days take a verify call, and event ids are deduplicated.
 
 ## G5: STT accuracy on noisy bids
 
