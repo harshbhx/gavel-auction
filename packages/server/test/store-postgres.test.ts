@@ -39,6 +39,8 @@ run('PostgresStore (R-RT-093, R-RT-096)', () => {
 
   it('lets one of 20 parallel appends to the same seq win (T-RT-067)', async () => {
     const store = new PostgresStore(pool);
+    // Skip the low ids: the shared contract suite mints from the same sequence on this database.
+    for (let i = 0; i < 1000; i += 1) ids.mint();
     const a = ids.mint<'AuctionId'>() as AuctionId;
     const ev = { type: 'settle_requested', auctionId: a, seq: 1, ts: 1 as EpochMs } as RoomEvent;
     const results = await Promise.allSettled(
