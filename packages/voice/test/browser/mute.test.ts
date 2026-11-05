@@ -65,19 +65,22 @@ describe('MuteController', () => {
     expect(out).toHaveLength(1);
     ctl.mute();
     expect(ctl.state).toBe('muted');
+    // A user mute also sends one end-of-utterance marker batch (R12-V06), so out is 2 long.
+    expect(out).toHaveLength(2);
+    expect(out[1]?.flags).toBe(FLAG_KEEPALIVE | FLAG_END_OF_UTTERANCE);
     ctl.push(audio(20));
-    expect(out).toHaveLength(1);
+    expect(out).toHaveLength(2);
     clock.advance(4999);
-    expect(out).toHaveLength(1);
+    expect(out).toHaveLength(2);
     clock.advance(1);
     clock.advance(5000);
-    const keep = out.slice(1);
+    const keep = out.slice(2);
     expect(keep.map((b) => b.tsMs)).toEqual([5000, 10000]);
     for (const b of keep) {
       expect(b.flags & FLAG_KEEPALIVE).toBe(FLAG_KEEPALIVE);
       expect(b.pcm.length).toBe(0);
     }
-    expect(out.map((b) => b.seq)).toEqual([0, 1, 2]);
+    expect(out.map((b) => b.seq)).toEqual([0, 1, 2, 3]);
   });
 
   it('unmute resumes audio with a discontinuity flag once and stops keepalives', () => {
@@ -87,11 +90,13 @@ describe('MuteController', () => {
     ctl.unmute();
     expect(ctl.state).toBe('running');
     clock.advance(20000);
-    expect(out).toHaveLength(0);
+    // Only the end-of-utterance marker from the mute; no keepalives after unmute (R12-V06).
+    expect(out).toHaveLength(1);
+    expect(out[0]?.flags).toBe(FLAG_KEEPALIVE | FLAG_END_OF_UTTERANCE);
     ctl.push(audio(100));
     ctl.push(audio(120));
-    expect(out[0]?.flags).toBe(FLAG_DISCONTINUITY);
-    expect(out[1]?.flags).toBe(0);
+    expect(out[1]?.flags).toBe(FLAG_DISCONTINUITY);
+    expect(out[2]?.flags).toBe(0);
   });
 
   it('AudioContext suspended moves to muted(suspended) within 1 s', () => {

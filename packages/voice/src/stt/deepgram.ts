@@ -342,7 +342,7 @@ export class DeepgramStt implements InstrumentedSttProvider {
   }
 
   /** Vendor audio time (ms since this socket opened) to the capture clock of AudioBatch.tsMs. */
-  private captureMs(audioMs: number): number {
+  private captureMs(audioMs: number, edge: 'start' | 'end' = 'start'): number {
     const spans = this.spans;
     if (spans.length === 0) return audioMs;
     let hit = spans[spans.length - 1] as (typeof spans)[number];
@@ -350,7 +350,9 @@ export class DeepgramStt implements InstrumentedSttProvider {
       hit = spans[0] as (typeof spans)[number];
     else {
       for (const s of spans) {
-        if (audioMs <= s.audioMs + s.lenMs) {
+        // A start on a span boundary belongs to the span that begins there; an end to the one that ends there.
+        const end = s.audioMs + s.lenMs;
+        if (edge === 'end' ? audioMs <= end : audioMs < end) {
           hit = s;
           break;
         }
@@ -364,16 +366,16 @@ export class DeepgramStt implements InstrumentedSttProvider {
       case 'interim':
         return { ...e, startMs: this.captureMs(e.startMs) };
       case 'utterance_end':
-        return { ...e, atMs: this.captureMs(e.atMs) };
+        return { ...e, atMs: this.captureMs(e.atMs, 'end') };
       case 'final':
         return {
           ...e,
           startMs: this.captureMs(e.startMs),
-          endMs: this.captureMs(e.endMs),
+          endMs: this.captureMs(e.endMs, 'end'),
           words: e.words.map((w) => ({
             ...w,
             start: this.captureMs(Math.round(w.start * 1000)) / 1000,
-            end: this.captureMs(Math.round(w.end * 1000)) / 1000,
+            end: this.captureMs(Math.round(w.end * 1000), 'end') / 1000,
           })),
         };
       default:
