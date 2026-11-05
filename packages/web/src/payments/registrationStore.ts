@@ -8,6 +8,8 @@ export interface StoredRegistration {
   clientRegistrationId: string;
   /** The order issued for this registration, checked when the buyer returns from PayPal. */
   orderId?: string;
+  /** The hold issued with that order; the approve route needs it. */
+  holdId?: string;
 }
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -38,9 +40,12 @@ export function loadRegistration(
     const id = (parsed as { clientRegistrationId?: unknown } | null)?.clientRegistrationId;
     if (typeof id !== 'string' || id === '') return null;
     const orderId = (parsed as { orderId?: unknown }).orderId;
-    return typeof orderId === 'string' && orderId !== ''
-      ? { clientRegistrationId: id, orderId }
-      : { clientRegistrationId: id };
+    const holdId = (parsed as { holdId?: unknown }).holdId;
+    return {
+      clientRegistrationId: id,
+      ...(typeof orderId === 'string' && orderId !== '' ? { orderId } : {}),
+      ...(typeof holdId === 'string' && holdId !== '' ? { holdId } : {}),
+    };
   } catch {
     return null;
   }

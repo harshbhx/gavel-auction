@@ -37,12 +37,14 @@ export const CreateHoldRequest = z
   .strict();
 export type CreateHoldRequest = z.infer<typeof CreateHoldRequest>;
 
-/** POST /api/holds response. clientToken is opaque and UNVERIFIED (G2). */
+/** POST /api/holds response. clientToken is opaque and UNVERIFIED (G2); approveUrl is optional. */
 export const CreateHoldResponse = z
   .object({
     holdId: id,
     orderId: id,
     clientToken: z.string().min(1).optional(),
+    /** PayPal's own approval page, for the redirect fallback when the popup cannot open. */
+    approveUrl: z.string().min(1).optional(),
   })
   .strict();
 export type CreateHoldResponse = z.infer<typeof CreateHoldResponse>;

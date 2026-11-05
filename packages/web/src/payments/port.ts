@@ -17,6 +17,8 @@ export interface ApprovalRequest {
   clientRegistrationId: string;
   /** Set when PayPal already approved this order and only the hold step failed: retry just that step. */
   approvedOrderId?: string;
+  /** The hold that order belongs to; the approve route is addressed by it. */
+  approvedHoldId?: string;
 }
 
 export interface ApprovalResult {
@@ -28,6 +30,8 @@ export interface ApprovalResult {
   correlationId?: string;
   /** The order issued for this attempt; kept so a retry or the return route reuses it. */
   orderId?: string;
+  /** The hold issued for this attempt; kept with the order so a retry or the return route reuses it. */
+  holdId?: string;
 }
 
 export interface PaymentApprovalPort {

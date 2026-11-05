@@ -1,10 +1,16 @@
+import { ApproveHoldResponse, CreateHoldResponse } from '@gavel/shared';
 import type { ApprovalRequest, ApprovalResult, ApprovalState, PaymentApprovalPort } from './port';
 
 export type FakeFaultMode = 'ok' | 'cancel' | 'decline' | 'slow' | 'error';
 
 export type FetchLike = (
   input: string,
-  init: { method: 'POST'; headers: Record<string, string>; body: string; signal?: AbortSignal },
+  init: {
+    method: 'POST' | 'DELETE';
+    headers: Record<string, string>;
+    body?: string;
+    signal?: AbortSignal;
+  },
 ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
 export interface FakeAdapterDeps {
@@ -58,16 +64,16 @@ export class FakeApprovalAdapter implements PaymentApprovalPort {
     };
 
     on('preparing');
-    const order = await this.post(`/api/rooms/${encodeURIComponent(req.roomId)}/orders`, {
-      bidderId: req.bidderId,
+    const order = await this.post('/api/holds', {
+      auctionId: req.roomId,
       ceilingCents: req.ceilingCents,
-      clientRegistrationId: req.clientRegistrationId,
     });
     if (this.mode === 'error' || order === null) {
       return finish('error', { errorCode: order === null ? 'order_failed' : 'fake_error' });
     }
-    const orderId = order['orderId'];
-    if (typeof orderId !== 'string') return finish('error', { errorCode: 'order_failed' });
+    const created = CreateHoldResponse.safeParse(order);
+    if (!created.success) return finish('error', { errorCode: 'order_failed' });
+    const { holdId, orderId } = created.data;
 
     on('awaiting_buyer');
     const buyerWait = this.mode === 'slow' ? (this.deps.slowMs ?? 3000) : BUYER_MS;
@@ -76,15 +82,10 @@ export class FakeApprovalAdapter implements PaymentApprovalPort {
     if (this.mode === 'decline') return finish('declined', { errorCode: 'payer_declined' });
 
     on('confirming');
-    const hold = await this.post(`/api/rooms/${encodeURIComponent(req.roomId)}/holds`, {
-      orderId,
-      clientRegistrationId: req.clientRegistrationId,
-    });
-    const suffix = hold?.['holdIdSuffix'];
-    if (hold === null || typeof suffix !== 'string') {
-      return finish('error', { errorCode: 'hold_failed' });
-    }
-    return finish('held', { holdIdSuffix: suffix });
+    const hold = await this.post(`/api/holds/${encodeURIComponent(holdId)}/approve`, { orderId });
+    const approved = ApproveHoldResponse.safeParse(hold);
+    if (!approved.success) return finish('error', { errorCode: 'hold_failed' });
+    return finish('held', { holdIdSuffix: approved.data.holdId.slice(-6) });
   }
 
   /** Resolves true when the attempt was abandoned during the wait. */
