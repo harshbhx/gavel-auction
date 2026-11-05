@@ -367,7 +367,7 @@ The in-memory and file-backed implementations live in payments; SQL adapters are
 ```
 POST /api/holds                       (server route, owned by realtime; handler logic in payments)
 request : { "auctionId": "01JC...", "bidderId": "01JC...", "ceilingCents": 15000 }
-response: { "holdId": "01JC...", "orderId": "5O190127TN364715T", "clientToken"?: "<opaque, UNVERIFIED (G2)>" }
+response: { "holdId": "01JC...", "orderId": "5O190127TN364715T", "clientToken"?: "<opaque, observed G2>" }
 errors  : 400 ceiling_out_of_range | 409 hold_exists | 503 paypal_unavailable | 503 kill_switch_engaged
 
 POST /api/holds/{holdId}/approve
