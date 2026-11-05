@@ -26,6 +26,7 @@ import {
   SystemClock,
   UlidMinter,
   type AuctionId,
+  type Jti,
   type Logger,
   type RoomStore,
 } from '@gavel/shared';
@@ -189,11 +190,13 @@ async function openStores(config: ServerConfig, clock: SystemClock): Promise<Sto
   }
 }
 
-/** Revocation lists are not kept yet: no token is revoked, and only auctioneer tokens reach here. */
-const NO_REVOCATIONS: JtiStore = {
-  isRevoked: () => Promise.resolve(false),
-  consume: () => Promise.resolve(true),
-};
+/** Revocations come from the room store's denylist; auctioneer tokens are not single use. */
+function revocationsOf(store: { isDenied(jti: Jti): Promise<boolean> }): JtiStore {
+  return {
+    isRevoked: (jti) => store.isDenied(jti as Jti),
+    consume: () => Promise.resolve(true),
+  };
+}
 
 function bearerOf(req: IncomingMessage): string | undefined {
   const h = req.headers.authorization;
@@ -239,7 +242,14 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     audit,
     clock: { nowMs: () => clock.now() },
   });
+  let serviceStats = (): { rooms: number; connections: number } => ({ rooms: 0, connections: 0 });
+  const metrics = new MetricsCollector({
+    connections: () => serviceStats().connections,
+    rooms: () => serviceStats().rooms,
+    mailboxDepth: () => 0,
+  });
   const service = createAuctionService({
+    metrics,
     store: stores.room,
     clock,
     ids,
@@ -258,14 +268,10 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
         error: error instanceof Error ? error.message : String(error),
       }),
   });
+  serviceStats = () => service.stats();
   await service.resume();
   log.info('server composed', redactConfig(config));
 
-  const metrics = new MetricsCollector({
-    connections: () => 0,
-    rooms: () => 0,
-    mailboxDepth: () => 0,
-  });
   const health = createHealthRoutes({
     pingStore: async () => {
       await stores.room.ping();
@@ -292,7 +298,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
         aud: auctionId,
         kinds: ['auctioneer'],
         nowMs: clock.now(),
-        jtis: NO_REVOCATIONS,
+        jtis: revocationsOf(stores.room),
       });
       return result.ok ? 'auctioneer' : undefined;
     },

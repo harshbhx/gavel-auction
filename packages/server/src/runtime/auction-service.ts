@@ -62,6 +62,8 @@ export interface AuctionServiceDeps {
   clock: Clock;
   ids: Ids;
   limiter?: RateLimiter;
+  /** Counters fed from the room bid path (R-RT-122, R-RT-135). */
+  metrics?: RoomDeps['metrics'];
   /**
    * Engine ledger store. The engine runtime appends every accepted command here before the
    * room acknowledges it (see D-0014), and the hammer flushes whatever is still missing.
@@ -140,6 +142,8 @@ export interface AuctionService {
   createAuction(auctionId: AuctionId, config: AuctionConfig, auctioneerSub: string): Promise<Room>;
   /** The room, loaded from its log on first use. */
   room(auctionId: AuctionId): Promise<Room>;
+  /** Loaded room count and open connections, for the metrics gauges. */
+  stats(): { rooms: number; connections: number };
   registerBidder(input: RegisterBidderInput): Promise<void>;
   /**
    * Kill switch before the hammer: when the switch is engaged, ends every auction that has
@@ -195,12 +199,24 @@ function withOrderLookup(gateway: PaymentsGateway, holds: HoldStore): PaymentsGa
   };
 }
 
+/** Holds a settlement in review keeps live: the winner's and the unresolved candidate's. */
+function keptOnReview(journal: Journal): Set<string> {
+  const keep = new Set<string>();
+  if (journal.winner !== null) keep.add(journal.winner.holdId);
+  const candidate = journal.plan.candidates[journal.cursor];
+  const unresolved = candidate === undefined ? undefined : journal.holds[candidate.bidderId];
+  if (unresolved !== undefined) keep.add(unresolved.holdId);
+  return keep;
+}
+
 export function createAuctionService(deps: AuctionServiceDeps): AuctionService {
   return new Service(deps);
 }
 
 class Service implements AuctionService, SettlePort {
   private readonly rooms = new Map<string, Promise<Room>>();
+  /** The same rooms once loaded, for synchronous gauges. */
+  private readonly ready = new Map<string, Room>();
   /** Rooms this host lost to another host (R-RT-061); they are never served or resumed here. */
   private readonly fenced = new Set<string>();
   private readonly roomStore: RoomStore;
@@ -294,12 +310,34 @@ class Service implements AuctionService, SettlePort {
     }
     const created = Room.create(auctionId, parsed.data, auctioneerSub, this.roomDeps(auctionId));
     this.rooms.set(auctionId, created);
+    this.track(auctionId, created);
     try {
       return await created;
     } catch (e) {
       this.rooms.delete(auctionId);
       throw e;
     }
+  }
+
+  private track(auctionId: string, pending: Promise<Room>): void {
+    pending.then(
+      (room) => {
+        if (this.rooms.get(auctionId) === pending) this.ready.set(auctionId, room);
+      },
+      () => undefined,
+    );
+  }
+
+  /** Loaded room count and open connections, for the metrics gauges. */
+  stats(): { rooms: number; connections: number } {
+    let connections = 0;
+    let rooms = 0;
+    for (const [id, room] of this.ready) {
+      if (!this.rooms.has(id)) continue;
+      rooms += 1;
+      connections += room.connectionCount;
+    }
+    return { rooms, connections };
   }
 
   room(auctionId: AuctionId): Promise<Room> {
@@ -310,6 +348,7 @@ class Service implements AuctionService, SettlePort {
     if (known !== undefined) return known;
     const loaded = Room.load(auctionId, this.roomDeps(auctionId));
     this.rooms.set(auctionId, loaded);
+    this.track(auctionId, loaded);
     loaded.catch(() => {
       if (this.rooms.get(auctionId) === loaded) this.rooms.delete(auctionId);
     });
@@ -328,6 +367,7 @@ class Service implements AuctionService, SettlePort {
     this.retryCounts.delete(auctionId);
     const known = this.rooms.get(auctionId);
     this.rooms.delete(auctionId);
+    this.ready.delete(auctionId);
     this.deps.onError?.(auctionId, new GavelError('host_fenced'));
     if (known !== undefined) void known.then((room) => room.stop()).catch(() => undefined);
   }
@@ -341,6 +381,7 @@ class Service implements AuctionService, SettlePort {
       settle: this,
       durable: (id, engine) => this.flushLedger(id, engine, false),
       ...(this.deps.limiter !== undefined ? { limiter: this.deps.limiter } : {}),
+      ...(this.deps.metrics !== undefined ? { metrics: this.deps.metrics } : {}),
     };
   }
 
@@ -571,7 +612,11 @@ class Service implements AuctionService, SettlePort {
   ): Promise<boolean> {
     if (journal === null) return hammeredEngine(room) !== undefined && !room.isDone;
     if (!TERMINAL.has(journal.state) || !room.isDone) return true;
-    return (await this.deps.holds.listByAuction(auctionId)).some((h) => h.status === 'HELD');
+    const keep = journal.state === 'FAILED_NEEDS_REVIEW' ? keptOnReview(journal) : new Set<string>();
+    // A review keeps the winner's and the unresolved candidate's hold on purpose (R8-S06).
+    return (await this.deps.holds.listByAuction(auctionId)).some(
+      (h) => h.status === 'HELD' && !keep.has(h.holdId),
+    );
   }
 
   async close(): Promise<void> {
@@ -718,11 +763,7 @@ class Service implements AuctionService, SettlePort {
    * capture is unresolved is released, so no bidder's money stays blocked until expiry.
    */
   private async releaseOnReview(journal: Journal): Promise<void> {
-    const keep = new Set<string>();
-    if (journal.winner !== null) keep.add(journal.winner.holdId);
-    const candidate = journal.plan.candidates[journal.cursor];
-    const unresolved = candidate === undefined ? undefined : journal.holds[candidate.bidderId];
-    if (unresolved !== undefined) keep.add(unresolved.holdId);
+    const keep = keptOnReview(journal);
     try {
       await voidSpareHolds({ gateway: this.gateway, holds: this.deps.holds }, journal, keep);
     } catch (e) {

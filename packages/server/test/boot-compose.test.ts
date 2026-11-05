@@ -1,4 +1,5 @@
 import { SystemClock } from '@gavel/shared';
+import { signToken } from '../src/auth/token';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -6,12 +7,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { composeServer, type Composed } from '../src/boot/compose';
 
 const passedHoldMaxAge: Array<number | undefined> = [];
+const passedMetrics: unknown[] = [];
 vi.mock('../src/runtime/auction-service', async (importActual) => {
   const actual = await importActual<typeof import('../src/runtime/auction-service')>();
   return {
     ...actual,
     createAuctionService: (deps: Parameters<typeof actual.createAuctionService>[0]) => {
       passedHoldMaxAge.push(deps.holdMaxAgeMs);
+      passedMetrics.push(deps.metrics);
       return actual.createAuctionService(deps);
     },
   };
@@ -197,5 +200,53 @@ describe('GAVEL_HOLD_MAX_AGE_MS (R6-B01)', () => {
   it('falls back to the payments default when unset', async () => {
     await boot();
     expect(passedHoldMaxAge.at(-1)).toBe(7200000);
+  });
+
+  it('feeds the metrics gauges and counters from the service (R8-S03)', async () => {
+    const { app, url } = await boot();
+    const read = async (): Promise<{
+      rooms: number;
+      connections: number;
+      bids: { accepted: number };
+    }> =>
+      (await fetch(`${url}/metrics`, { headers: { 'x-admin-key': base.ADMIN_KEY } })).json() as never;
+    expect((await read()).rooms).toBe(0);
+    await app.service.createAuction(
+      '01HZZZZZZZZZZZZZZZZZZZZZZB' as never,
+      {
+        mode: 'english',
+        currency: 'USD',
+        reserve: 10000,
+        minIncrement: 500,
+        endTs: new SystemClock().now() + 3_600_000,
+        softCloseWindowMs: 30_000,
+        softCloseExtensionMs: 30_000,
+        maxExtensions: 5,
+        ceilingPresets: [30000, 50000],
+        confirmConfidenceThreshold: 0.85,
+      } as never,
+      'auctioneer-1',
+    );
+    expect((await read()).rooms).toBe(1);
+    // The collector given to the service is the one behind /metrics.
+    const given = passedMetrics.at(-1) as { bidAccepted(): void };
+    given.bidAccepted();
+    expect((await read()).bids.accepted).toBe(1);
+  });
+
+  it('refuses an auctioneer token whose jti was denied (R8-S04)', async () => {
+    const { app, url } = await boot();
+    const aud = '01HZZZZZZZZZZZZZZZZZZZZZZC';
+    const jti = '01HZZZZZZZZZZZZZZZZZZZZZZD';
+    const nowS = Math.floor(Date.now() / 1000);
+    const token = await signToken(
+      { kind: 'auctioneer', aud, sub: 'auctioneer-1', jti, iat: nowS, exp: nowS + 3600 },
+      base.TOKEN_SECRET,
+    );
+    const get = (): Promise<Response> =>
+      fetch(`${url}/api/auctions/${aud}/export`, { headers: { authorization: `Bearer ${token}` } });
+    expect((await get()).status).toBe(404);
+    await app.store.denyJti(jti as never, (Date.now() + 3_600_000) as never);
+    expect((await get()).status).toBe(401);
   });
 });
