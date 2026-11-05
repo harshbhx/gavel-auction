@@ -49,23 +49,6 @@ export function createApprovalPort(
   return mode === 'fake' ? new FakeApprovalAdapter(fake) : new PayPalV6Adapter(paypal);
 }
 
-/**
- * Return route step for a buyer who approved on PayPal's own page: finishes the hold with the
- * registration id stored when the attempt began, so the server sees the same id as before.
- */
-export function completeApprovalReturn(
-  adapter: Pick<PayPalV6Adapter, 'completeRedirect'>,
-  req: { roomId: string; bidderId: string; orderId: string },
-  on: (s: ApprovalState) => void,
-): Promise<ApprovalResult> {
-  const stored = loadRegistration(req.roomId, req.bidderId);
-  if (stored === null) {
-    on('error');
-    return Promise.resolve({ state: 'error', errorCode: 'registration_missing' });
-  }
-  return adapter.completeRedirect(req.roomId, req.orderId, stored.clientRegistrationId, on);
-}
-
 export interface UseApprovalOptions {
   port: PaymentApprovalPort;
   roomId: string;

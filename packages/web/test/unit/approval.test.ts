@@ -7,9 +7,7 @@ import {
 } from '../../src/payments/fakeAdapter';
 import { PayPalV6Adapter } from '../../src/payments/paypalV6Adapter';
 import type { ApprovalRequest, ApprovalState } from '../../src/payments/port';
-import { saveRegistration } from '../../src/payments/registrationStore';
 import {
-  completeApprovalReturn,
   createApprovalPort,
   resetApprovalMemory,
   resetAttemptMemoryOnly,
@@ -27,9 +25,9 @@ function mockFetch(): { fetch: FetchLike; calls: string[] } {
   const calls: string[] = [];
   const fetch: FetchLike = (url) => {
     calls.push(url.replace(/^.*\/api/, '/api'));
-    const body = url.endsWith('/orders')
-      ? { orderId: 'ord-1' }
-      : { holdIdSuffix: 'a1b2c3', state: 'HELD' };
+    const body = url.endsWith('/approve')
+      ? { holdId: 'hold-xxa1b2c3', status: 'HELD', ceilingCents: 50_000 }
+      : { holdId: 'hold-xxa1b2c3', orderId: 'ord-1' };
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
   };
   return { fetch, calls };
@@ -147,9 +145,9 @@ describe('port selection (R-WEB-048)', () => {
 });
 
 describe('useApproval idempotency (T-WEB-021)', () => {
-  const orders = (calls: string[]): number => calls.filter((c) => c.endsWith('/orders')).length;
+  const orders = (calls: string[]): number => calls.filter((c) => c === '/api/holds').length;
 
-  it('double click sends one POST /orders', async () => {
+  it('double click sends one POST /api/holds', async () => {
     const { fetch, calls } = mockFetch();
     const port = adapter('ok', fetch);
     const { result } = renderHook(() =>
@@ -181,7 +179,7 @@ describe('useApproval idempotency (T-WEB-021)', () => {
       await second.result.current.start(50_000);
     });
     expect(orders(calls)).toBe(1);
-    expect(calls.filter((c) => c.endsWith('/holds'))).toHaveLength(1);
+    expect(calls.filter((c) => c.endsWith('/approve'))).toHaveLength(1);
   });
 
   it('a remount during an attempt joins it instead of starting another', async () => {
@@ -268,40 +266,5 @@ describe('registration id survives a reload and the redirect return (WEB-RT-10)'
       await b.result.current.start(50_000);
     });
     expect(spy.mock.calls.map((c) => c[0].clientRegistrationId)).toEqual(['reg-a', 'reg-b']);
-  });
-
-  it('completes the redirect return with the stored id', async () => {
-    const posted: string[] = [];
-    const fetch: FetchLike = (_url, init) => {
-      posted.push(init.body);
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ holdIdSuffix: 'ZZ9988', state: 'HELD' }),
-      });
-    };
-    saveRegistration('room-1', 'b-7', { clientRegistrationId: 'reg-redirect' });
-    const real = new PayPalV6Adapter({ apiBase: 'http://api.test', clientId: 'c', fetch });
-    const states: ApprovalState[] = [];
-    const result = await completeApprovalReturn(
-      real,
-      { roomId: 'room-1', bidderId: 'b-7', orderId: 'ord-9' },
-      (s) => states.push(s),
-    );
-    expect(result).toMatchObject({ state: 'held', holdIdSuffix: 'ZZ9988' });
-    expect(JSON.parse(posted[0] ?? '{}')).toEqual({
-      orderId: 'ord-9',
-      clientRegistrationId: 'reg-redirect',
-    });
-  });
-
-  it('reports an error instead of inventing an id when nothing was stored', async () => {
-    const real = new PayPalV6Adapter({ apiBase: 'http://api.test', clientId: 'c' });
-    const result = await completeApprovalReturn(
-      real,
-      { roomId: 'room-1', bidderId: 'nobody', orderId: 'ord-9' },
-      () => undefined,
-    );
-    expect(result).toMatchObject({ state: 'error', errorCode: 'registration_missing' });
   });
 });
