@@ -7,7 +7,7 @@ import {
 } from '../../src/payments/fakeAdapter';
 import { PayPalV6Adapter } from '../../src/payments/paypalV6Adapter';
 import type { ApprovalRequest, ApprovalState } from '../../src/payments/port';
-import { saveRegistration } from '../../src/payments/registrationStore';
+import { loadRegistration, saveRegistration } from '../../src/payments/registrationStore';
 import {
   completeApprovalReturn,
   createApprovalPort,
@@ -333,6 +333,61 @@ describe('registration id survives a reload and the redirect return (WEB-RT-10)'
     );
     expect(result).toMatchObject({ state: 'held', holdIdSuffix: 'ZZ9988' });
     expect(posted).toEqual(['http://api.test/api/holds/hold-ZZ9988/approve {"orderId":"ord-9"}']);
+  });
+
+  it('refuses a return whose confirmed amount differs from the stored ceiling (#1660)', async () => {
+    const fetch: FetchLike = () =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({ holdId: 'hold-ZZ9988', status: 'HELD', ceilingCents: 99_900 }),
+      });
+    saveRegistration('room-1', 'b-6', {
+      clientRegistrationId: 'reg-redirect',
+      orderId: 'ord-9',
+      holdId: 'hold-ZZ9988',
+      ceilingCents: 25_000,
+    });
+    const real = new PayPalV6Adapter({ apiBase: 'http://api.test', clientId: 'c', fetch });
+    const result = await completeApprovalReturn(
+      real,
+      { roomId: 'room-1', bidderId: 'b-6', orderId: 'ord-9' },
+      () => undefined,
+    );
+    expect(result).toMatchObject({ state: 'error', errorCode: 'hold_mismatch' });
+  });
+
+  it('names the order and hold when the approve body fails validation (#1660)', async () => {
+    const fetch: FetchLike = () =>
+      Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ odd: 'shape' }) });
+    const real = new PayPalV6Adapter({ apiBase: 'http://api.test', clientId: 'c', fetch });
+    const result = await real.completeRedirect('hold-1', 'ord-1', 'reg-one', () => undefined);
+    expect(result).toMatchObject({
+      state: 'error',
+      errorCode: 'hold_failed',
+      orderId: 'ord-1',
+      holdId: 'hold-1',
+    });
+  });
+
+  it('keeps the ceiling in the stored registration after an attempt (#1660)', async () => {
+    const start = vi.fn((_r: ApprovalRequest, _on: (s: ApprovalState) => void) =>
+      Promise.resolve({
+        state: 'awaiting_buyer' as const,
+        orderId: 'ord-5',
+        holdId: 'hold-5',
+      }),
+    );
+    const port = { start, cancel: () => undefined };
+    const { result } = renderHook(() => useApproval({ port, roomId: 'room-c', bidderId: 'b-c' }));
+    await act(async () => {
+      await result.current.start(25_000);
+    });
+    expect(loadRegistration('room-c', 'b-c')).toMatchObject({
+      orderId: 'ord-5',
+      ceilingCents: 25_000,
+    });
   });
 
   it('reports an error instead of inventing an id when nothing was stored', async () => {

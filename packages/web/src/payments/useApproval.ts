@@ -71,7 +71,13 @@ export function completeApprovalReturn(
     on('error');
     return Promise.resolve({ state: 'error', errorCode: 'registration_missing' });
   }
-  return adapter.completeRedirect(stored.holdId, req.orderId, stored.clientRegistrationId, on);
+  return adapter.completeRedirect(
+    stored.holdId,
+    req.orderId,
+    stored.clientRegistrationId,
+    on,
+    stored.ceilingCents,
+  );
 }
 
 export interface UseApprovalOptions {
@@ -143,7 +149,10 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
         result: null,
       };
       attempts.set(key, attempt);
-      saveRegistration(roomId, bidderId, { clientRegistrationId: attempt.clientRegistrationId });
+      saveRegistration(roomId, bidderId, {
+        clientRegistrationId: attempt.clientRegistrationId,
+        ceilingCents,
+      });
       const promise = port
         .start(
           {
@@ -166,6 +175,7 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
             saveRegistration(roomId, bidderId, {
               clientRegistrationId: attempt.clientRegistrationId,
               orderId: r.orderId,
+              ceilingCents,
               ...(r.holdId === undefined ? {} : { holdId: r.holdId }),
             });
           }

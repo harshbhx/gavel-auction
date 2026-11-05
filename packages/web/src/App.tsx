@@ -7,7 +7,7 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from 'react';
-import { Cents } from '@gavel/shared';
+import { Cents, type MsgId } from '@gavel/shared';
 import { t } from './copy/t';
 import { Icon } from './design/icons';
 import { Banner } from './design/primitives/Banner';
@@ -28,6 +28,7 @@ import { Approve } from './screens/register/Approve';
 import { RegisterScreen, type RegistrationDraft } from './screens/register/RegisterScreen';
 import { ScreenView } from './screens/screen/ScreenView';
 import { useRoom } from './store/roomStore';
+import { summarizePending, type PendingSummary } from './store/localEvents';
 import { readAuctioneerToken } from './store/session';
 
 export interface AppProps {
@@ -119,19 +120,29 @@ function useLiveRoom(
   return room;
 }
 
-/** Latest outcome of the bids this device sent: whether one is waiting, and the last rejection. */
-function usePendingView(room: LiveRoom | null): { waiting: boolean; rejected: string } {
+/** Outcome of the latest bid this device sent: waiting, rejected, or unanswered. */
+function usePendingView(room: LiveRoom | null): PendingSummary {
   const read = (): string => {
     if (room === null) return '';
-    const list = room.pending.list();
-    const waiting = list.some((b) => b.status === 'pending');
-    const last = [...list].reverse().find((b) => b.status === 'rejected');
-    return `${waiting ? '1' : '0'}${last?.code ?? ''}`;
+    const s = summarizePending(room.pending.list());
+    return [
+      s.waiting ? '1' : '0',
+      s.rejection?.reason ?? '',
+      s.rejection?.mid ?? '',
+      s.unknownMid ?? '',
+    ].join('|');
   };
   const subscribe = (cb: () => void): (() => void) =>
     room === null ? () => undefined : room.pending.subscribe(cb);
   const key = useSyncExternalStore(subscribe, read);
-  return { waiting: key.startsWith('1'), rejected: key.slice(1) };
+  return useMemo(() => {
+    const [waiting = '0', reason = '', mid = '', unknown = ''] = key.split('|');
+    return {
+      waiting: waiting === '1',
+      rejection: reason === '' ? null : { reason, mid },
+      unknownMid: unknown === '' ? null : (unknown as MsgId),
+    };
+  }, [key]);
 }
 
 interface LiveRouteProps {
@@ -151,8 +162,13 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId }: LiveRouteProps)
         <main data-route="bid">
           <BidScreen
             onBid={(amount) => room?.bid(Cents(amount), 'qr')}
+            canSend={room !== null}
             pending={view.waiting}
-            rejection={view.rejected === '' ? null : { reason: view.rejected }}
+            rejection={view.rejection}
+            unsent={view.unknownMid !== null}
+            onResend={() => {
+              if (view.unknownMid !== null) room?.pending.retry(view.unknownMid);
+            }}
           />
         </main>
       );

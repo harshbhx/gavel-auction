@@ -1,6 +1,6 @@
 import { Cents, EpochMs, type MsgId } from '@gavel/shared';
 import { describe, expect, it, vi } from 'vitest';
-import { MAX_FINISHED_BIDS, PendingBids } from '../../src/store/localEvents';
+import { MAX_FINISHED_BIDS, PendingBids, summarizePending } from '../../src/store/localEvents';
 import { bidId, bidderId, msgId } from '../../src/testing/builders';
 import type { ClientMessage, ErrorCode, ServerMessage } from '../../src/wire';
 
@@ -33,6 +33,58 @@ const rejected = (mid: MsgId, reason: ErrorCode): ServerMessage => ({
   retryable: false,
 });
 const amount = (n: number) => Cents(n);
+
+describe('latest bid outcome (#1655, #1657)', () => {
+  it('shows no rejection once a newer bid is pending or accepted', () => {
+    const { bids } = setup();
+    const first = bids.submitBid(amount(35_000), 'qr');
+    bids.handle(rejected(first, 'below_increment'));
+    expect(summarizePending(bids.list()).rejection).toEqual({
+      reason: 'below_increment',
+      mid: first,
+    });
+    const second = bids.submitBid(amount(40_000), 'qr');
+    expect(summarizePending(bids.list())).toMatchObject({ waiting: true, rejection: null });
+    bids.handle(accepted(second));
+    expect(summarizePending(bids.list())).toMatchObject({ waiting: false, rejection: null });
+    vi.useRealTimers();
+  });
+
+  it('tells two identical rejections apart by bid id', () => {
+    const { bids } = setup();
+    const first = bids.submitBid(amount(35_000), 'qr');
+    bids.handle(rejected(first, 'below_increment'));
+    const second = bids.submitBid(amount(35_000), 'qr');
+    bids.handle(rejected(second, 'below_increment'));
+    expect(summarizePending(bids.list()).rejection?.mid).toBe(second);
+    vi.useRealTimers();
+  });
+
+  it('marks a bid unknown at once when the transport did not send it, and resends it', () => {
+    vi.useFakeTimers();
+    let open = false;
+    const sent: ClientMessage[] = [];
+    const bids = new PendingBids({
+      send: (m) => {
+        if (!open) return false;
+        sent.push(m);
+        return true;
+      },
+      setTimer: (fn, ms) => setTimeout(fn, ms),
+      clearTimer: (h) => clearTimeout(h as number),
+      newId: () => msgId(1),
+    });
+    const id = bids.submitBid(amount(35_000), 'qr');
+    expect(bids.get(id)?.status).toBe('unknown');
+    expect(summarizePending(bids.list()).unknownMid).toBe(id);
+    open = true;
+    expect(bids.retry(id)).toBe(true);
+    expect(bids.get(id)?.status).toBe('pending');
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({ mid: id });
+    vi.useRealTimers();
+  });
+});
 
 describe('pending bids (T-WEB-015)', () => {
   it('is pending immediately and sends the bid', () => {

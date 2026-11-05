@@ -20,11 +20,34 @@ export interface PendingBid {
   code?: string;
 }
 
+export interface PendingSummary {
+  /** A sent bid has no answer yet. */
+  waiting: boolean;
+  /** The latest bid was rejected; null when it was accepted, is still waiting, or none was sent. */
+  rejection: { reason: string; mid: string } | null;
+  /** The latest bid got no answer (or was never sent): the id to resend, else null. */
+  unknownMid: MsgId | null;
+}
+
+/** What the bidder screen shows about the bids this device sent, judged by the latest bid only. */
+export function summarizePending(list: readonly PendingBid[]): PendingSummary {
+  const latest = list.at(-1);
+  return {
+    waiting: list.some((b) => b.status === 'pending'),
+    rejection:
+      latest?.status === 'rejected' && latest.code !== undefined
+        ? { reason: latest.code, mid: latest.mid }
+        : null,
+    unknownMid: latest?.status === 'unknown' ? latest.mid : null,
+  };
+}
+
 /** Finished (accepted or rejected) bids kept for display. Older ones are dropped. */
 export const MAX_FINISHED_BIDS = 50;
 
 export interface PendingBidDeps {
-  send(msg: ClientMessage): void;
+  /** A result of exactly `false` means the frame was not sent (socket not open). */
+  send(msg: ClientMessage): unknown;
   setTimer(fn: () => void, ms: number): unknown;
   clearTimer(handle: unknown): void;
   newId(): MsgId;
@@ -140,7 +163,16 @@ export class PendingBids {
       }, this.deps.unknownAfterMs ?? 4000),
     );
     this.emit();
-    this.deps.send(msg);
+    // A transport that reports `false` did not put the frame on the wire: the bid is unknown at
+    // once, so the bidder can resend it, instead of waiting out the timer.
+    if (this.deps.send(msg) === false) {
+      this.stopTimer(mid);
+      const current = this.bids.get(mid);
+      if (current?.status === 'pending') {
+        this.bids.set(mid, { ...current, status: 'unknown' });
+        this.emit();
+      }
+    }
   }
 
   private stopTimer(mid: MsgId): void {
