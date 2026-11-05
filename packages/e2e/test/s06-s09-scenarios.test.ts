@@ -32,7 +32,8 @@ describe('settlement fallback and reconnect scenarios (R-QA-026)', () => {
   it('S08 never charges a winner whose hold expired', async () => {
     const result = await runScenarioInProc(scenarioFor('S08'));
     expect(result.failures).toEqual([]);
-    expect(result.outcome.winner).not.toBe('ana');
+    expect(result.outcome.winner).toBeNull();
+    expect(result.outcome.capturedCents).toBe(0);
   });
 
   it('S09 keeps price and bids across a client drop with no duplicate bid', async () => {

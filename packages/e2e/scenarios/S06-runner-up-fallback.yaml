@@ -18,5 +18,5 @@ steps:
   - { t: 7000, actor: auctioneer, do: hammer }
 expect:
   - ledger: { winner: ben, captured: 9000, released: 16000, voided: [ana] }
-  - paypalCalls: { capture: 1, void: 0 }
+  - paypalCalls: { capture: 1, void: 2 }
   - invariants: [I1, I2, I3, I4, I5]

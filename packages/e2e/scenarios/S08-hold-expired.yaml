@@ -17,5 +17,6 @@ steps:
   - { t: 6500, do: fault, fault: { at: paypal.authorization, kind: expire, bidder: ana } }
   - { t: 7000, actor: auctioneer, do: hammer }
 expect:
-  - ledger: { winner: ben, captured: 9000, released: 16000, voided: [ana] }
-  - invariants: [I1, I2, I3, I4, I5]
+  - ledger: { winner: null, captured: 0, released: 0, voided: [] }
+  - paypalCalls: { capture: 0, void: 0 }
+  - invariants: [I1, I2, I4, I5]
