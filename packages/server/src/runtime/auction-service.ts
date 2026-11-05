@@ -379,15 +379,20 @@ class Service implements AuctionService, SettlePort {
     if (this.rooms.size < this.caps.rooms) return;
     for (const [id, room] of [...this.ready]) {
       if (!this.rooms.has(id) || !room.isDone || room.connectionCount > 0) continue;
-      const timer = this.retryTimers.get(id);
-      if (timer !== undefined) clearTimeout(timer);
-      this.retryTimers.delete(id);
-      this.retryCounts.delete(id);
-      this.rooms.delete(id);
-      this.ready.delete(id);
-      void room.close().catch(() => undefined);
+      this.unload(id, room);
       if (this.rooms.size < this.caps.rooms) return;
     }
+  }
+
+  /** Drops a finished room from memory; it loads again from its log if anything asks for it. */
+  private unload(id: string, room: Room): void {
+    const timer = this.retryTimers.get(id);
+    if (timer !== undefined) clearTimeout(timer);
+    this.retryTimers.delete(id);
+    this.retryCounts.delete(id);
+    this.rooms.delete(id);
+    this.ready.delete(id);
+    void room.close().catch(() => undefined);
   }
 
   private track(auctionId: string, pending: Promise<Room>): void {
@@ -751,6 +756,10 @@ class Service implements AuctionService, SettlePort {
         await room.retrySettlement();
         const journal = await this.deps.journals.load(lotIdOf(id));
         if (await this.needsRun(id, room, journal)) this.schedule(id);
+        else if (room.isDone && room.connectionCount === 0 && !this.runs.has(id)) {
+          // A finished auction with a final settlement takes no slot after boot (R12-S02).
+          this.unload(id, room);
+        }
       } catch (e) {
         this.deps.onError?.(id, e);
       }

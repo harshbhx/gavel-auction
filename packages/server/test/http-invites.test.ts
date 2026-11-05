@@ -153,4 +153,15 @@ describe('invite single use (T-RT-061)', () => {
     expect(res.status).toBe(429);
     expect(res.headers.get('retry-after')).toBe('3');
   });
+
+  it('applies a default join limit when the host passes none (R12-S11)', async () => {
+    const { app } = setup();
+    const a = await created(app);
+    const [invite] = await mint(app, a.id, a.auctioneer);
+    let last = 0;
+    for (let i = 0; i < 12; i++) {
+      last = (await call(app, `/api/auctions/${a.id}/join`, null, { invite: `${invite}x` })).status;
+    }
+    expect(last).toBe(429);
+  });
 });

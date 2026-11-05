@@ -2,6 +2,7 @@ import { GavelError } from '@gavel/shared';
 import { z } from 'zod';
 import { authorize } from '../auth/authorize';
 import { consumeInvite } from '../auth/token';
+import { RateLimiter } from '../limits/rate-limiter';
 import {
   auctionIdOf,
   authenticate,
@@ -23,6 +24,21 @@ const InvitesBody = z
   .strict();
 
 const JoinBody = z.object({ invite: z.string().min(1).max(2048) }).strict();
+
+/** Fallback join limiter per host, used when the host passes no `joinLimit` (R-RT-120, R12-S11). */
+const defaultLimiters = new WeakMap<HttpDeps, RateLimiter>();
+
+function joinLimitOf(deps: HttpDeps, req: Request): ReturnType<NonNullable<HttpDeps['joinLimit']>> {
+  if (deps.joinLimit) return deps.joinLimit(req);
+  let limiter = defaultLimiters.get(deps);
+  if (!limiter) {
+    limiter = new RateLimiter(deps.clock);
+    defaultLimiters.set(deps, limiter);
+  }
+  const hops = (req.headers.get('x-forwarded-for') ?? '').split(',');
+  const source = hops[hops.length - 1]?.trim() || 'unknown';
+  return limiter.checkJoin(source);
+}
 
 function wsUrlOf(deps: HttpDeps): string {
   return deps.wsUrl ?? `${deps.publicUrl.replace(/^http/, 'ws')}/ws`;
@@ -52,7 +68,7 @@ export function mountInvites(app: HttpApp): void {
 
   app.post('/api/auctions/:id/join', async (c: Ctx) => {
     const auctionId = auctionIdOf(c);
-    const limited = c.deps.joinLimit?.(c.req);
+    const limited = joinLimitOf(c.deps, c.req);
     if (limited && !limited.ok) {
       return new Response(JSON.stringify({ error: 'rate_limited' }), {
         status: 429,
