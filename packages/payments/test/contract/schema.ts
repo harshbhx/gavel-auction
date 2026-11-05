@@ -50,6 +50,7 @@ const capture = (invoice: boolean): ObjNode =>
     amount: amount(),
     final_capture: bool(),
     invoice_id: str(!invoice),
+    links: arr(link, true),
   });
 
 const orderUnit = (payments: boolean): ObjNode =>
@@ -190,7 +191,13 @@ export const ENDPOINTS: readonly Endpoint[] = [
     path: /^\/v2\/payments\/authorizations\/[^/]+\/reauthorize$/,
     call: 0,
     status: 201,
-    response: obj({ id: str(), status: str(), amount: amount(), create_time: iso() }),
+    response: obj({
+      id: str(),
+      status: str(),
+      amount: amount(),
+      create_time: iso(),
+      links: arr(link, true),
+    }),
     request: obj({ amount: amount() }),
   },
   {
