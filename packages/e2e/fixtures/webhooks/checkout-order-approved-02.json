@@ -1,0 +1,122 @@
+{
+  "create_time": "2026-11-05T01:21:12.505Z",
+  "event_type": "CHECKOUT.ORDER.APPROVED",
+  "event_version": "1.0",
+  "id": "{{EVENT_ID}}",
+  "links": [
+    {
+      "href": "https://api.sandbox.paypal.com/v1/notifications/webhooks-events/{{EVENT_ID}}",
+      "method": "GET",
+      "rel": "self"
+    },
+    {
+      "href": "https://api.sandbox.paypal.com/v1/notifications/webhooks-events/{{EVENT_ID}}/resend",
+      "method": "POST",
+      "rel": "resend"
+    }
+  ],
+  "resource": {
+    "create_time": "2026-11-05T01:21:02Z",
+    "id": "{{ORDER_ID}}",
+    "intent": "AUTHORIZE",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/{{ORDER_ID}}",
+        "method": "GET",
+        "rel": "self"
+      }
+    ],
+    "payer": {
+      "address": {
+        "country_code": "US"
+      },
+      "email_address": "[REDACTED]",
+      "name": {
+        "given_name": "[REDACTED]",
+        "surname": "[REDACTED]"
+      },
+      "payer_id": "[REDACTED]"
+    },
+    "payment_source": {
+      "paypal": {
+        "account_id": "[REDACTED]",
+        "account_status": "VERIFIED",
+        "address": {
+          "country_code": "US"
+        },
+        "email_address": "[REDACTED]",
+        "name": {
+          "given_name": "[REDACTED]",
+          "surname": "[REDACTED]"
+        }
+      }
+    },
+    "purchase_units": [
+      {
+        "amount": {
+          "breakdown": {},
+          "currency_code": "USD",
+          "value": "1.00"
+        },
+        "custom_id": "g4e-261105T012008Z-void",
+        "payee": {
+          "email_address": "[REDACTED]",
+          "merchant_id": "[REDACTED]"
+        },
+        "payments": {
+          "authorizations": [
+            {
+              "amount": {
+                "currency_code": "USD",
+                "value": "1.00"
+              },
+              "create_time": "2026-11-05T01:21:02Z",
+              "custom_id": "g4e-261105T012008Z-void",
+              "expiration_time": "2026-12-04T01:21:02Z",
+              "id": "{{AUTH_ID}}",
+              "links": [
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/{{AUTH_ID}}",
+                  "method": "GET",
+                  "rel": "self"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/{{AUTH_ID}}/capture",
+                  "method": "POST",
+                  "rel": "capture"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/{{AUTH_ID}}/void",
+                  "method": "POST",
+                  "rel": "void"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/{{AUTH_ID}}/reauthorize",
+                  "method": "POST",
+                  "rel": "reauthorize"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/checkout/orders/{{ORDER_ID}}",
+                  "method": "GET",
+                  "rel": "up"
+                }
+              ],
+              "seller_protection": {
+                "dispute_categories": ["ITEM_NOT_RECEIVED", "UNAUTHORIZED_TRANSACTION"],
+                "status": "ELIGIBLE"
+              },
+              "status": "VOIDED",
+              "update_time": "2026-11-05T01:21:04Z"
+            }
+          ]
+        },
+        "reference_id": "g4e-261105T012008Z-void"
+      }
+    ],
+    "status": "COMPLETED",
+    "update_time": "2026-11-05T01:21:04Z"
+  },
+  "resource_type": "checkout-order",
+  "resource_version": "2.0",
+  "summary": "An order has been approved by buyer"
+}

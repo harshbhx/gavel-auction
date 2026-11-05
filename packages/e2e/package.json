@@ -7,7 +7,10 @@
   "license": "MIT",
   "scripts": {
     "test": "vitest run --passWithNoTests",
-    "typecheck": "tsc --noEmit -p ."
+    "typecheck": "tsc --noEmit -p .",
+    "test:sandbox": "vitest run --config vitest.sandbox.config.ts",
+    "report:sandbox": "vite-node src/report/sandbox-cli.ts",
+    "gate:g5": "vite-node src/gates/g5-cli.ts --"
   },
   "dependencies": {
     "@gavel/engine": "0.1.0",

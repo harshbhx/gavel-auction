@@ -1,0 +1,24 @@
+{
+  "status": 201,
+  "body": {
+    "id": "{{CAPTURE_ID}}",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/captures/{{CAPTURE_ID}}",
+        "method": "GET",
+        "rel": "self"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/captures/{{CAPTURE_ID}}/refund",
+        "method": "POST",
+        "rel": "refund"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/{{AUTH_ID}}",
+        "method": "GET",
+        "rel": "up"
+      }
+    ],
+    "status": "COMPLETED"
+  }
+}

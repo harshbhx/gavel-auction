@@ -1,0 +1,150 @@
+name: nightly-sandbox
+# Real PayPal sandbox specs R1 to R8 and the G5 speech harness (R-QA-029, R-QA-040), every night at
+# 20:30 UTC and on manual dispatch. The job runs in the `sandbox-nightly` environment, which holds
+# the secrets. Without the secrets (or in a fork) it still writes report/sandbox.json with every
+# spec marked `skipped` and ends green. The pull request job runs the same specs with no secrets
+# and no environment, to prove they skip instead of fail.
+on:
+  schedule:
+    - cron: '30 20 * * *'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/nightly-sandbox.yml'
+      - 'packages/e2e/sandbox/**'
+      - 'packages/e2e/src/sandbox/**'
+      - 'packages/e2e/src/gates/**'
+      - 'packages/e2e/src/report/sandbox*.ts'
+      - 'packages/e2e/vitest.sandbox.config.ts'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  skip-check:
+    # No secrets, no environment: every spec must be skipped and the report must say so.
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Run the specs without secrets
+        run: npm run test:sandbox -w @gavel/e2e
+      - name: Write the report
+        run: npm run report:sandbox -w @gavel/e2e
+      - name: Check that everything was skipped
+        run: |
+          overall=$(node -e "console.log(JSON.parse(require('fs').readFileSync('packages/e2e/report/sandbox.json','utf8')).overall)")
+          if [ "$overall" != "skipped" ]; then
+            echo "::error title=Specs ran without secrets::overall status is $overall, expected skipped"
+            exit 1
+          fi
+
+  nightly:
+    if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && !github.event.repository.fork }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: sandbox-nightly
+    concurrency:
+      group: nightly-sandbox
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Check which secrets exist
+        id: secrets
+        # Only the names of missing secrets are printed, never a value.
+        env:
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+        run: |
+          missing=""
+          for name in PAYPAL_CLIENT_ID PAYPAL_CLIENT_SECRET SANDBOX_BUYER_EMAIL SANDBOX_BUYER_PASSWORD; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Sandbox specs skipped::Missing secrets:$missing"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Cache the browser
+        if: ${{ steps.secrets.outputs.present == 'true' }}
+        id: pw-cache
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-1.49.1-chromium
+      - name: Install the browser
+        if: ${{ steps.secrets.outputs.present == 'true' }}
+        env:
+          BROWSER_CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.49.1
+          cd "$RUNNER_TEMP/pw"
+          if [ "$BROWSER_CACHE_HIT" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+      - name: Run the sandbox specs
+        if: ${{ steps.secrets.outputs.present == 'true' }}
+        # A failing spec must not stop the report, so the exit code is judged in the last step.
+        continue-on-error: true
+        env:
+          PAYPAL_ENV: sandbox
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          SANDBOX_CARD_BUYER_EMAIL: ${{ secrets.SANDBOX_CARD_BUYER_EMAIL }}
+          SANDBOX_CARD_BUYER_PASSWORD: ${{ secrets.SANDBOX_CARD_BUYER_PASSWORD }}
+          GAVEL_STAGING_URL: ${{ secrets.GAVEL_STAGING_URL }}
+          GAVEL_STAGING_ADMIN_KEY: ${{ secrets.GAVEL_STAGING_ADMIN_KEY }}
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
+        run: npm run test:sandbox -w @gavel/e2e
+      - name: Run the G5 harness
+        if: ${{ steps.secrets.outputs.present == 'true' }}
+        # Skips by itself without the recordings (G5_AUDIO_DIR) or the key.
+        continue-on-error: true
+        env:
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+          G5_AUDIO_DIR: ${{ vars.G5_AUDIO_DIR }}
+        run: npm run gate:g5 -w @gavel/e2e
+      - name: Write the result summary
+        if: ${{ always() }}
+        env:
+          PAYPAL_ENV: sandbox
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+        run: npm run report:sandbox -w @gavel/e2e
+      # Only the summary and the per-spec result files are uploaded. The transcripts hold order and
+      # authorization ids, so they stay on the runner (this repository is public).
+      - name: Upload the summary
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sandbox-report
+          path: |
+            packages/e2e/report/sandbox.json
+            packages/e2e/report/sandbox/results/*.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Fail on a failed spec
+        run: |
+          overall=$(node -e "console.log(JSON.parse(require('fs').readFileSync('packages/e2e/report/sandbox.json','utf8')).overall)")
+          echo "overall: $overall"
+          if [ "$overall" = "fail" ]; then exit 1; fi

@@ -47,7 +47,9 @@ import {
   type Ids,
   type RoomStore,
 } from '@gavel/shared';
+import { DEFAULT_CAPS, type CapLimits } from '../limits/caps';
 import type { RateLimiter } from '../limits/rate-limiter';
+import type { OpsRoomView } from '../http/ops';
 import { FencedStore } from '../room/fence';
 import { Room, type RoomDeps } from '../room/room';
 import type { HammerResult, SettlePort, SettlementReport } from '../room/settle-port';
@@ -67,6 +69,8 @@ export interface AuctionServiceDeps {
   clock: Clock;
   ids: Ids;
   limiter?: RateLimiter;
+  /** Connection, roster, room and bid caps from the config (R-RT-121); defaults when absent. */
+  caps?: CapLimits;
   /** Counters fed from the room bid path (R-RT-122, R-RT-135). */
   roomMetrics?: RoomDeps['metrics'];
   /**
@@ -153,6 +157,8 @@ export interface AuctionService {
   room(auctionId: AuctionId): Promise<Room>;
   /** Loaded room count and open connections, for the metrics gauges. */
   stats(): { rooms: number; connections: number; mailboxDepth: number };
+  /** The loaded rooms, for `GET /ops/rooms`. */
+  opsRooms(): OpsRoomView[];
   registerBidder(input: RegisterBidderInput): Promise<void>;
   /**
    * Kill switch before the hammer: when the switch is engaged, ends every auction that has
@@ -325,6 +331,7 @@ class Service implements AuctionService, SettlePort {
       throw new GavelError('bad_message', 'unsupported mode, increment ladder or hold scope');
     }
     if (this.rooms.has(auctionId)) throw new GavelError('conflict', 'auction exists');
+    if (this.rooms.size >= this.caps.rooms) throw new GavelError('room_cap', 'room cap reached');
     // Dry-run the engine build: a config or id it cannot run must never reach the log, or the
     // auction could not be loaded again and would block resume (R-RT-012, R-RT-059).
     // The engine lot is at most a day long and opens at creation time at the latest, so an end
@@ -358,6 +365,12 @@ class Service implements AuctionService, SettlePort {
   }
 
   /** Loaded room count and open connections, for the metrics gauges. */
+  opsRooms(): OpsRoomView[] {
+    const out: OpsRoomView[] = [];
+    for (const [id, room] of this.ready) if (this.rooms.has(id)) out.push(room.opsView());
+    return out;
+  }
+
   stats(): { rooms: number; connections: number; mailboxDepth: number } {
     let connections = 0;
     let mailboxDepth = 0;
@@ -366,7 +379,7 @@ class Service implements AuctionService, SettlePort {
       if (!this.rooms.has(id)) continue;
       rooms += 1;
       connections += room.connectionCount;
-      mailboxDepth = Math.max(mailboxDepth, room.mailboxDepth);
+      mailboxDepth += room.mailboxDepth;
     }
     return { rooms, connections, mailboxDepth };
   }
@@ -377,6 +390,9 @@ class Service implements AuctionService, SettlePort {
     }
     const known = this.rooms.get(auctionId);
     if (known !== undefined) return known;
+    if (this.rooms.size >= this.caps.rooms) {
+      return Promise.reject(new GavelError('room_cap', 'room cap reached'));
+    }
     const loaded = Room.load(auctionId, this.roomDeps(auctionId));
     this.rooms.set(auctionId, loaded);
     this.track(auctionId, loaded);
@@ -400,7 +416,11 @@ class Service implements AuctionService, SettlePort {
     this.rooms.delete(auctionId);
     this.ready.delete(auctionId);
     this.deps.onError?.(auctionId, new GavelError('host_fenced'));
-    if (known !== undefined) void known.then((room) => room.stop()).catch(() => undefined);
+    if (known !== undefined) void known.then((room) => room.fence()).catch(() => undefined);
+  }
+
+  private get caps(): CapLimits {
+    return this.deps.caps ?? DEFAULT_CAPS;
   }
 
   private roomDeps(auctionId: AuctionId): RoomDeps {
@@ -413,6 +433,7 @@ class Service implements AuctionService, SettlePort {
       settle: this,
       durable: (id, engine) => this.flushLedger(id, engine, false),
       ...(this.deps.limiter !== undefined ? { limiter: this.deps.limiter } : {}),
+      caps: this.caps,
       ...(this.deps.roomMetrics !== undefined ? { metrics: this.deps.roomMetrics } : {}),
     };
   }

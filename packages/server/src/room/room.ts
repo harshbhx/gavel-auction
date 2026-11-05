@@ -82,6 +82,11 @@ export interface Connection {
   /** Token subject, recorded in the audit trail for manual bids. */
   sub: string;
   transport: Transport;
+  /**
+   * A throwaway connection opened by an HTTP route. It skips the connection cap and never
+   * supersedes a real socket that shares its role and subject.
+   */
+  internal?: boolean;
 }
 
 /** What a mid is bound to: the amount and the effective source (manual for the auctioneer). */
@@ -137,7 +142,13 @@ export interface RoomDeps {
   /** Connection, roster and bid-count caps parsed from the config (R-RT-121); defaults when absent. */
   caps?: CapLimits;
   /** Counters fed from the bid path (R-RT-122, R-RT-135). */
-  metrics?: { bidAccepted(): void; bidRejected(): void; rateLimitHit(): void };
+  metrics?: {
+    bidAccepted(): void;
+    bidRejected(): void;
+    rateLimitHit(): void;
+    bidLatencyMs?(ms: number): void;
+    storeAppendMs?(ms: number): void;
+  };
   /** Payments side of settlement; without it a hammered room stays in SETTLING. */
   settle?: SettlePort;
   /**
@@ -205,6 +216,11 @@ export class Room {
   private controlIds = new Set<string>();
   /** Confirmations the log shows as asked and not yet answered; filled by replay (R-RT-045). */
   private openConfirms = new Map<string, PendingConfirm>();
+  /**
+   * Accepted confirmations whose bid is not in the log yet, by `bidderId:mid`. A crash between
+   * the resolution and the bid leaves one here after replay; revive asks the bidder again.
+   */
+  private acceptedWithoutBid = new Map<string, PendingConfirm>();
   private hammered: (HammerResult & { seq: number; ts: number }) | undefined;
   private settleRequested = false;
   private settleCalled = false;
@@ -272,6 +288,14 @@ export class Room {
     const now = this.deps.clock.now();
     const open = [...this.openConfirms.values()];
     this.openConfirms = new Map();
+    const orphans = [...this.acceptedWithoutBid.values()];
+    this.acceptedWithoutBid = new Map();
+    for (const held of orphans) {
+      // The accept was logged but the bid never was: the hold comes back with a fresh deadline.
+      const again: PendingConfirm = { ...held, expiresAt: (now + CONFIRM_TTL_MS) as EpochMs };
+      this.confirms.add(again);
+      this.armConfirmTimer(again);
+    }
     for (const held of open) {
       this.confirms.add(held);
       if (held.expiresAt > now) {
@@ -306,6 +330,29 @@ export class Room {
     return this.queued;
   }
 
+  /** One line for the operator room list: sequence, state, connections and mailbox depth. */
+  opsView(): {
+    auctionId: string;
+    seq: number;
+    status: string;
+    connections: number;
+    mailboxDepth: number;
+  } {
+    let status = 'LOADING';
+    try {
+      status = this.done ? 'DONE' : this.requireEngine().view().state;
+    } catch {
+      // room not built yet
+    }
+    return {
+      auctionId: this.auctionId,
+      seq: this.seq,
+      status,
+      connections: this.conns.size,
+      mailboxDepth: this.queued,
+    };
+  }
+
   get connectionCount(): number {
     return this.conns.size;
   }
@@ -324,7 +371,8 @@ export class Room {
       }
       const mine = this.sameToken(conn);
       const supersedes = mine.length >= this.caps.connectionsPerBidder ? 1 : 0;
-      if (this.conns.size - supersedes + 1 > this.caps.connectionsPerRoom) {
+      const live = [...this.conns.values()].filter((c) => c.internal !== true).length;
+      if (conn.internal !== true && live - supersedes + 1 > this.caps.connectionsPerRoom) {
         this.sendError(conn, 'room_full');
         conn.transport.close(ERROR_TABLE.room_full.closeCode ?? 4009, 'room_full');
         return;
@@ -365,11 +413,16 @@ export class Room {
 
   private sameToken(next: Connection): Connection[] {
     return [...this.conns.values()].filter(
-      (c) => c.role === next.role && c.sub === next.sub && c.bidderId === next.bidderId,
+      (c) =>
+        c.internal !== true &&
+        c.role === next.role &&
+        c.sub === next.sub &&
+        c.bidderId === next.bidderId,
     );
   }
 
   private supersedeOldest(next: Connection): void {
+    if (next.internal === true) return;
     const mine = this.sameToken(next);
     while (mine.length >= this.caps.connectionsPerBidder) {
       const oldest = mine.shift();
@@ -429,8 +482,10 @@ export class Room {
     expectedSeq: number,
     events: RoomEvent[],
   ): Promise<void> {
+    const started = this.deps.clock.now();
     try {
       await this.deps.store.appendEvents(auctionId, expectedSeq, events);
+      this.deps.metrics?.storeAppendMs?.(this.deps.clock.now() - started);
     } catch (e) {
       if (e instanceof GavelError && e.code === 'conflict') {
         this.fence();
@@ -440,7 +495,8 @@ export class Room {
     }
   }
 
-  private fence(): void {
+  /** Stop the room, tell every connection `host_fenced` and close them with 4010. Idempotent. */
+  fence(): void {
     if (this.stopped) return;
     this.stop();
     const closeCode = ERROR_TABLE.host_fenced.closeCode ?? 4010;
@@ -576,7 +632,14 @@ export class Room {
       this.sendError(conn, 'forbidden');
       return Promise.resolve();
     }
-    return this.enqueue(() => this.handleBid(conn, msg, bidderId));
+    return this.enqueue(async () => {
+      const started = this.deps.clock.now();
+      try {
+        await this.handleBid(conn, msg, bidderId);
+      } finally {
+        this.deps.metrics?.bidLatencyMs?.(this.deps.clock.now() - started);
+      }
+    });
   }
 
   private async handleBid(
@@ -657,6 +720,21 @@ export class Room {
         this.sendError(conn, 'internal');
         return;
       }
+    }
+
+    if (code === 'auction_paused') {
+      // Transient and retryable: answer without logging, counting or caching, so the same mid
+      // can be sent again once the lot resumes.
+      this.send(conn, {
+        v: 1,
+        t: 'bid_rejected',
+        seq: this.seq,
+        ts,
+        mid: msg.mid,
+        reason: code,
+        retryable: ERROR_TABLE[code].retryable,
+      });
+      return;
     }
 
     const bidId = this.deps.ids.mint<'BidId'>();
@@ -1070,7 +1148,7 @@ export class Room {
       },
     };
     try {
-      await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+      await this.appendFenced(this.auctionId, this.seq, [event]);
     } catch {
       await this.recover().catch(() => undefined);
       this.sendError(conn, this.storeCode());
@@ -1704,6 +1782,7 @@ export class Room {
     this.closingAt = undefined;
     this.controlIds = new Set();
     this.openConfirms = new Map();
+    this.acceptedWithoutBid = new Map();
     this.hammered = undefined;
     this.abortPending = false;
     this.revoked = new Set();
@@ -1792,9 +1871,14 @@ export class Room {
           expiresAt: event.expiresAt,
         });
         break;
-      case 'confirm_resolved':
+      case 'confirm_resolved': {
+        const held = this.openConfirms.get(event.confirmId);
         this.openConfirms.delete(event.confirmId);
+        if (held !== undefined && event.outcome === 'accepted') {
+          this.acceptedWithoutBid.set(`${held.bidderId}:${held.mid}`, held);
+        }
         break;
+      }
       case 'settlement_update':
         this.applySettlement(event);
         break;
@@ -1815,6 +1899,7 @@ export class Room {
 
   private remember(event: Extract<RoomEvent, { type: 'bid_accepted' | 'bid_rejected' }>): void {
     if (event.type === 'bid_accepted') this.bidCount += 1;
+    this.acceptedWithoutBid.delete(`${event.bidderId}:${event.mid}`);
     const reply = this.replyFor(event);
     if (reply) {
       const digest = bidDigest(event.audit.parsedAmount, event.audit.source);

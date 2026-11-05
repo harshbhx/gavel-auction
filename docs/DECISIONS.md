@@ -199,7 +199,7 @@ Date: 2026-11-04
 Status: accepted
 Owner: quality
 Context: A restart must not leave the payments journal and holds pointing at a lot the engine ledger no longer knows. Three records are written by three stores: the engine ledger (LedgerStore), the room event log (RoomStore) and the payments journal (JournalStore, held in RoomStore slots).
-Decision: Amended by D-0028 for the order of the first two writes. The engine ledger is the source of truth for the hash chain and is written first. The room log is derived from ledger entries and may lag; on start it is rebuilt from the ledger. The payments journal for a lot is created only after LOT_HAMMERED is in the ledger, and the bridge sends RecordSettlement and CompleteLot only after the journal step they describe is saved. A file-backed ledger and room store (one JSON line per batch, synced before the call returns, torn tail dropped on start) back the single-host crash scenarios; Postgres and D1 adapters must pass the same contract suites.
+Decision: Amended by D-0029 for the order of the first two writes. The engine ledger is the source of truth for the hash chain and is written first. The room log is derived from ledger entries and may lag; on start it is rebuilt from the ledger. The payments journal for a lot is created only after LOT_HAMMERED is in the ledger, and the bridge sends RecordSettlement and CompleteLot only after the journal step they describe is saved. A file-backed ledger and room store (one JSON line per batch, synced before the call returns, torn tail dropped on start) back the single-host crash scenarios; Postgres and D1 adapters must pass the same contract suites.
 Alternatives:
 
 - Room log as source of truth: rejected, the engine replays and verifies the hash chain from its own ledger.
@@ -387,7 +387,7 @@ Date: 2026-11-04
 Status: accepted
 Owner: server
 Context: The engine accepts many lots and a hold scope of lot or event, but the settlement journal, the hold store and the room are keyed by auction id with one candidate per bidder and one capture per hold. A second hammer in the same auction would be refused as a different plan (INTEGRATION-RT-08). The room log and the engine ledger are also two records of the same events (INTEGRATION-RT-10).
-Decision: A room runs exactly one lot. The server creates the lot with the room's auction id as lot id (lotIdOf), so the settlement journal key, the hold key and the lot id are the same value, and no server route adds a second lot. Multi-lot events are out of scope until journals and holds are keyed by auction and lot and a multi-win capture amount is defined. For the logs, D-0014 is the current rule (D-0012 is amended by D-0028): the engine ledger is the hash-chained audit record and the source for the public export and verification (D-0020, D-0021); the room log is the first durable record of a room event and the replay source for a room; rejected bids, voice and confirm records live in the room log only.
+Decision: A room runs exactly one lot. The server creates the lot with the room's auction id as lot id (lotIdOf), so the settlement journal key, the hold key and the lot id are the same value, and no server route adds a second lot. Multi-lot events are out of scope until journals and holds are keyed by auction and lot and a multi-win capture amount is defined. For the logs, D-0014 is the current rule (D-0012 is amended by D-0029): the engine ledger is the hash-chained audit record and the source for the public export and verification (D-0020, D-0021); the room log is the first durable record of a room event and the replay source for a room; rejected bids, voice and confirm records live in the room log only.
 Alternatives:
 
 - Key journals and holds by auction and lot now: rejected, the demo is single lot and the change reaches payments, the store contract and the web settlement screen.
@@ -492,7 +492,25 @@ Consequences:
 
 Evidence: packages/engine/test/differential.test.ts (seed 1988800899, scenario 666), reference/python/test_engine.py.
 
-## D-0028: The room log is written first; D-0012 is amended for the log order
+## D-0028: The room host stays Node; no Durable Object host is built
+
+Date: 2026-11-05
+Status: accepted
+Owner: realtime
+Context: R-RT-141 asks for a Durable Object versus Node comparison. R-RT-142 makes Node the default and lets a Durable Object win only by passing every row of the decision table. The spike (RT-86) ran no Durable Object room, so every Durable Object row is unmeasured.
+Decision: Keep the Node host (D-0006 stands). No Durable Object host is built. The evidence and the missing half are in packages/server/spike/HOST-DECISION.md.
+Alternatives:
+
+- Durable Object host: not chosen, no evidence on latency, recovery, storage, deploy time or free-plan limits.
+
+Consequences:
+
+- T-RT-098 is only partly satisfied: Node harnesses exist, the Durable Object side was not built.
+- The room code has no node: imports, so a later Durable Object host stays possible; reopen with a new decision ID if the revisit conditions in the spike document are met.
+
+Evidence: SPEC-realtime section 5.6, R-RT-140 to R-RT-143, D-0006, D-0018, packages/server/spike/HOST-DECISION.md.
+
+## D-0029: The room log is written first; D-0012 is amended for the log order
 
 Date: 2026-11-05
 Status: accepted
