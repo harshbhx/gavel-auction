@@ -34,6 +34,7 @@ import {
 } from '@gavel/shared';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryTransport } from '../../src/room/memory-transport';
+import { DEFAULT_CAPS } from '../../src/limits/caps';
 import type { Connection, Room } from '../../src/room/room';
 import { voidSpareHolds } from '../../src/runtime/void-phase';
 import { MemoryStore } from '../../src/store/memory-store';
@@ -395,6 +396,28 @@ describe('auction service: settlement end to end', () => {
       .filter((e) => e.type === 'settlement_update')
       .at(-1);
     expect(last).toMatchObject({ auctionState: 'SETTLED' });
+    await service.close();
+  });
+});
+
+describe('auction service: room cap counts live rooms (R12-S02)', () => {
+  it('evicts a settled, unconnected room to make space for a new auction', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ caps: { ...DEFAULT_CAPS, rooms: 1 }, resumeIntervalMs: 0 });
+    const first = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(first, config, 'auctioneer-sub');
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    expect(room.isDone).toBe(true);
+    // While someone is connected the room stays and the cap holds.
+    await expect(
+      service.createAuction(rig.ids.mint<'AuctionId'>(), config, 'auctioneer-sub'),
+    ).rejects.toMatchObject({ code: 'room_cap' });
+    room.detach(boss.conn.id);
+    const second = rig.ids.mint<'AuctionId'>();
+    await service.createAuction(second, config, 'auctioneer-sub');
+    expect(service.stats().rooms).toBe(1);
     await service.close();
   });
 });

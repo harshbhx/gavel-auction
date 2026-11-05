@@ -45,7 +45,7 @@ describe('render.yaml blueprint (R8-Q01)', () => {
       expect(vars.get(k)).toBe('sync:false');
     }
     const env: Record<string, string> = {};
-    for (const [k, v] of vars) if (v.startsWith('value:')) env[k] = v.slice(6);
+    for (const [k, v] of vars) if (v.startsWith('value:')) env[k] = v.slice(6).replace(/^'(.*)'$/, '$1');
     const r = parseConfig({
       ...env,
       PUBLIC_URL: 'https://gavel-host.example.com',

@@ -340,6 +340,7 @@ class Service implements AuctionService, SettlePort {
       throw new GavelError('bad_message', 'unsupported mode, increment ladder or hold scope');
     }
     if (this.rooms.has(auctionId)) throw new GavelError('conflict', 'auction exists');
+    this.evictFinished();
     if (this.rooms.size >= this.caps.rooms) throw new GavelError('room_cap', 'room cap reached');
     // Dry-run the engine build: a config or id it cannot run must never reach the log, or the
     // auction could not be loaded again and would block resume (R-RT-012, R-RT-059).
@@ -361,6 +362,26 @@ class Service implements AuctionService, SettlePort {
     } catch (e) {
       this.rooms.delete(auctionId);
       throw e;
+    }
+  }
+
+  /**
+   * `MAX_ROOMS` bounds live rooms, not auctions per data directory (R12-S02): when the cap is
+   * reached, rooms whose settlement is over and that no one is connected to are dropped, and
+   * loaded again from their log if anything asks for them later.
+   */
+  private evictFinished(): void {
+    if (this.rooms.size < this.caps.rooms) return;
+    for (const [id, room] of [...this.ready]) {
+      if (!this.rooms.has(id) || !room.isDone || room.connectionCount > 0) continue;
+      const timer = this.retryTimers.get(id);
+      if (timer !== undefined) clearTimeout(timer);
+      this.retryTimers.delete(id);
+      this.retryCounts.delete(id);
+      this.rooms.delete(id);
+      this.ready.delete(id);
+      void room.close().catch(() => undefined);
+      if (this.rooms.size < this.caps.rooms) return;
     }
   }
 
@@ -399,6 +420,7 @@ class Service implements AuctionService, SettlePort {
     }
     const known = this.rooms.get(auctionId);
     if (known !== undefined) return known;
+    this.evictFinished();
     if (this.rooms.size >= this.caps.rooms) {
       return Promise.reject(new GavelError('room_cap', 'room cap reached'));
     }
