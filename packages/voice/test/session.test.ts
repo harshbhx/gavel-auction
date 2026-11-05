@@ -79,4 +79,38 @@ describe('T-VOX-105 audio websocket limits (R-VOX-097)', () => {
     s.close();
     expect(session.open({ roomId: 'r1', source: 'mic' }, 'ok-r1').ok).toBe(true);
   });
+
+  it('caps streams per token and per room, however many sources are chosen (R6-C06)', () => {
+    const { session } = setup();
+    const tryOpen = (source: string, room = 'r1', token = `ok-${room}`) =>
+      session.open({ roomId: room, source }, token);
+    expect(tryOpen('a').ok).toBe(true);
+    expect(tryOpen('b').ok).toBe(true);
+    expect(tryOpen('c')).toEqual({ ok: false, error: 'AUDIO_STREAM_BUSY' });
+    expect(session.activeStreams()).toBe(2);
+  });
+
+  it('caps streams per room across tokens', () => {
+    const clock = { t: 1_000_000 };
+    const session = createVoiceSession({
+      now: () => clock.t,
+      verifyToken: () => true,
+      maxStreamsPerToken: 1,
+      maxStreamsPerRoom: 2,
+    });
+    expect(session.open({ roomId: 'r', source: 'a' }, 't1').ok).toBe(true);
+    expect(session.open({ roomId: 'r', source: 'b' }, 't2').ok).toBe(true);
+    expect(session.open({ roomId: 'r', source: 'c' }, 't3')).toEqual({
+      ok: false,
+      error: 'AUDIO_STREAM_BUSY',
+    });
+  });
+
+  it('reclaims a slot whose session cap passed without close()', () => {
+    const { session, clock } = setup();
+    expect(session.open({ roomId: 'r1', source: 'mic' }, 'ok-r1').ok).toBe(true);
+    clock.t += 30 * 60 * 1000;
+    expect(session.open({ roomId: 'r1', source: 'mic' }, 'ok-r1').ok).toBe(true);
+    expect(session.activeStreams()).toBe(1);
+  });
 });

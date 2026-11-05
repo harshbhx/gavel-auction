@@ -1121,7 +1121,11 @@ export class Room {
 
   private broadcastPrice(seq: number, ts: ReturnType<Clock['now']>): void {
     const view = this.requireEngine().view();
-    if (view.price === null) return;
+    if (view.price === null) {
+      // No price frame can express "no bids" (R-RT-036): send a snapshot so seq stays gapless.
+      for (const conn of this.conns.values()) this.sendState(conn);
+      return;
+    }
     const leaderPaddle = view.leader ? (this.roster.get(view.leader)?.paddle ?? null) : null;
     for (const conn of this.conns.values()) {
       this.send(conn, {
