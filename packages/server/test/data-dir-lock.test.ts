@@ -1,4 +1,12 @@
-import { mkdtempSync, existsSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdtempSync,
+  existsSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -28,5 +36,42 @@ describe('data directory lock (R6-A04)', () => {
     const dir = fresh();
     writeFileSync(join(dir, LOCK_FILE), '2147483646\n');
     acquireDataDirLock(dir).release();
+  });
+
+  it('treats a fresh unreadable lock as held, and an old one as stale (R7S-01)', () => {
+    const dir = fresh();
+    const file = join(dir, LOCK_FILE);
+    writeFileSync(file, '');
+    const t = Date.now();
+    expect(() => acquireDataDirLock(dir, { now: () => t })).toThrow(/refusing to start/);
+    expect(existsSync(file)).toBe(true);
+    utimesSync(file, new Date(t - 60_000), new Date(t - 60_000));
+    acquireDataDirLock(dir, { now: () => t }).release();
+    expect(existsSync(file)).toBe(false);
+  });
+
+  it('leaves no temp files and release keeps a lock that now belongs to someone else (R7S-01)', () => {
+    const dir = fresh();
+    const first = acquireDataDirLock(dir, { pid: 4001 });
+    expect(readdirSync(dir)).toEqual([LOCK_FILE]);
+    writeFileSync(join(dir, LOCK_FILE), JSON.stringify({ pid: 4002, host: 'h', start: 1 }));
+    first.release();
+    expect(JSON.parse(readFileSync(join(dir, LOCK_FILE), 'utf8')).pid).toBe(4002);
+  });
+
+  it('replaces a lock that names this very pid, as after a container restart (R7S-02)', () => {
+    const dir = fresh();
+    writeFileSync(join(dir, LOCK_FILE), JSON.stringify({ pid: 1, host: 'old', start: 1 }));
+    const lock = acquireDataDirLock(dir, { pid: 1, host: 'new', isAlive: () => true });
+    expect(JSON.parse(readFileSync(join(dir, LOCK_FILE), 'utf8')).host).toBe('new');
+    lock.release();
+  });
+
+  it('still refuses when another live pid holds the lock (R7S-02)', () => {
+    const dir = fresh();
+    writeFileSync(join(dir, LOCK_FILE), JSON.stringify({ pid: 7, host: 'h', start: 1 }));
+    expect(() => acquireDataDirLock(dir, { pid: 1, isAlive: () => true })).toThrow(
+      /in use by process 7/,
+    );
   });
 });

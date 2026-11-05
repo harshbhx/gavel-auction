@@ -99,7 +99,11 @@ const EnvSchema = EnvObject.superRefine((env, ctx) => {
       if (env[key] === undefined) problem(key, 'required when PAYMENTS=sandbox');
     }
   }
-  if (env.NODE_ENV !== 'test') {
+  const prodLike = isProductionLike(env);
+  if (env.NODE_ENV === 'test' && prodLike) {
+    problem('NODE_ENV', 'test is not allowed with a non-local PUBLIC_URL');
+  }
+  if (env.NODE_ENV !== 'test' || prodLike) {
     if (byteLength(env.TOKEN_SECRET) < MIN_SECRET_BYTES) {
       problem('TOKEN_SECRET', `must be at least ${MIN_SECRET_BYTES} bytes`);
     }
