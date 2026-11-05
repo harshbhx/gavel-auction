@@ -44,14 +44,9 @@ import {
   resolvedEvent,
   type ConfirmOutcome,
 } from './confirm-resolve';
+import { DEFAULT_CAPS, type CapLimits } from '../limits/caps';
 import type { RateLimiter } from '../limits/rate-limiter';
-import {
-  MAX_CONNECTIONS_PER_TOKEN,
-  SUPERSEDED_CODE,
-  SUPERSEDED_REASON,
-  eventFrames,
-  planResync,
-} from './resync';
+import { SUPERSEDED_CODE, SUPERSEDED_REASON, eventFrames, planResync } from './resync';
 import {
   TERMINAL_SETTLEMENT,
   canHammer,
@@ -115,6 +110,8 @@ export interface RoomDeps {
   /** Builds a fresh engine for a config; called again whenever the room is rebuilt from its log. */
   engine: (config: AuctionConfig, createdAt: EpochMs) => EnginePort;
   limiter?: RateLimiter;
+  /** Connection, roster and bid-count caps parsed from the config (R-RT-121); defaults when absent. */
+  caps?: CapLimits;
   /** Counters fed from the bid path (R-RT-122, R-RT-135). */
   metrics?: { bidAccepted(): void; bidRejected(): void; rateLimitHit(): void };
   /** Payments side of settlement; without it a hammered room stays in SETTLING. */
@@ -166,6 +163,8 @@ export class Room {
   private inFlight = 0;
   private maxInFlight = 0;
   private seq = 0;
+  /** Bids in the log, accepted and rejected alike; bounded by `caps.bidsPerAuction`. */
+  private bidCount = 0;
   private config: AuctionConfig | undefined;
   private engine: EnginePort | undefined;
   private lastState = 'OPEN';
@@ -199,6 +198,10 @@ export class Room {
     readonly auctionId: AuctionId,
     private readonly deps: RoomDeps,
   ) {}
+
+  private get caps(): CapLimits {
+    return this.deps.caps ?? DEFAULT_CAPS;
+  }
 
   /** Create a room: appends `auction_created` as seq 1. */
   static async create(
@@ -267,6 +270,13 @@ export class Room {
         conn.transport.close(ERROR_TABLE.host_fenced.closeCode, 'host_fenced');
         return;
       }
+      const mine = this.sameToken(conn);
+      const supersedes = mine.length >= this.caps.connectionsPerBidder ? 1 : 0;
+      if (this.conns.size - supersedes + 1 > this.caps.connectionsPerRoom) {
+        this.sendError(conn, 'room_full');
+        conn.transport.close(ERROR_TABLE.room_full.closeCode, 'room_full');
+        return;
+      }
       this.supersedeOldest(conn);
       this.conns.set(conn.id, conn);
       const plan = planResync(lastSeq, this.seq);
@@ -292,11 +302,15 @@ export class Room {
     });
   }
 
-  private supersedeOldest(next: Connection): void {
-    const mine = [...this.conns.values()].filter(
+  private sameToken(next: Connection): Connection[] {
+    return [...this.conns.values()].filter(
       (c) => c.role === next.role && c.sub === next.sub && c.bidderId === next.bidderId,
     );
-    while (mine.length >= MAX_CONNECTIONS_PER_TOKEN) {
+  }
+
+  private supersedeOldest(next: Connection): void {
+    const mine = this.sameToken(next);
+    while (mine.length >= this.caps.connectionsPerBidder) {
       const oldest = mine.shift();
       if (!oldest) break;
       this.conns.delete(oldest.id);
@@ -410,7 +424,8 @@ export class Room {
       ) {
         throw new GavelError('bad_message', 'invalid registration');
       }
-      if (this.roster.size >= MAX_BIDDERS_PER_ROOM) throw new GavelError('room_full');
+      if (this.roster.size >= Math.min(this.caps.biddersPerRoom, MAX_BIDDERS_PER_ROOM))
+        throw new GavelError('room_full');
       const seq = this.seq + 1;
       const ts = this.deps.clock.now();
       const paddle = this.roster.size + 1;
@@ -518,6 +533,10 @@ export class Room {
       this.sendError(conn, this.storeCode());
       return;
     }
+    if (this.bidCount >= this.caps.bidsPerAuction) {
+      this.sendError(conn, 'auction_full');
+      return;
+    }
     const engine = this.requireEngine();
     if (
       !confirmed &&
@@ -588,6 +607,7 @@ export class Room {
       return;
     }
     this.seq = seq;
+    this.bidCount += 1;
     if (event.type === 'bid_accepted') this.deps.metrics?.bidAccepted();
     else this.deps.metrics?.bidRejected();
     this.pushAudit(audit);
@@ -1421,6 +1441,7 @@ export class Room {
     this.replies = fresh.replies;
     this.audit = fresh.audit;
     this.seq = fresh.seq;
+    this.bidCount = fresh.bidCount;
     this.lastState = fresh.lastState;
     this.closingAt = fresh.closingAt;
     this.controlIds = fresh.controlIds;
@@ -1440,6 +1461,7 @@ export class Room {
     this.replies = new Map();
     this.audit = [];
     this.seq = 0;
+    this.bidCount = 0;
     this.lastState = 'OPEN';
     this.closingAt = undefined;
     this.controlIds = new Set();
@@ -1532,6 +1554,7 @@ export class Room {
   }
 
   private remember(event: Extract<RoomEvent, { type: 'bid_accepted' | 'bid_rejected' }>): void {
+    this.bidCount += 1;
     const reply = this.replyFor(event);
     if (reply) this.replies.set(`${event.bidderId}:${event.mid}`, reply);
     this.pushAudit(event.audit);
