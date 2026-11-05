@@ -107,10 +107,12 @@ export function titleFor(match: RouteMatch): string {
 
 export interface RouteScreenProps {
   match: RouteMatch;
+  /** Content shown under the main heading, for routes that have a real screen. */
+  children?: ReactNode;
 }
 
 /** Placeholder screen for a route: sets the title and moves focus to the main heading. */
-export function RouteScreen({ match }: RouteScreenProps): ReactNode {
+export function RouteScreen({ match, children }: RouteScreenProps): ReactNode {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const title = titleFor(match);
   const roomId = match.params['roomId'];
@@ -133,6 +135,7 @@ export function RouteScreen({ match }: RouteScreenProps): ReactNode {
       <h1 ref={headingRef} tabIndex={-1}>
         {blocked ? t('err.tokenMissing') : t(match.route.titleKey)}
       </h1>
+      {children}
     </main>
   );
 }
