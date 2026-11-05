@@ -10,7 +10,7 @@ import { ConsoleScreen } from './ConsoleScreen';
 import { KillSwitch } from './KillSwitch';
 import { ManualEntry } from './ManualEntry';
 import { Roster } from './Roster';
-import { VoiceFeed } from './VoiceFeed';
+import { VoiceFeed, voiceEntriesFromAudit } from './VoiceFeed';
 
 export interface LiveConsoleProps {
   readonly room: LiveRoom | null;
@@ -43,6 +43,7 @@ export function LiveConsole({
   const priceCents = useRoom((s) => s.snapshot?.price ?? 0);
   const roster = useRoom((s) => s.snapshot?.roster);
   const leaderId = useRoom((s) => s.snapshot?.leaderId ?? null);
+  const audit = useRoom((s) => s.audit);
   const [stopped, setStopped] = useState(false);
   const [killFailed, setKillFailed] = useState(false);
 
@@ -88,7 +89,16 @@ export function LiveConsole({
     <ConsoleScreen
       settlementView={null}
       controls={controls}
-      voiceFeed={<VoiceFeed mic="off" level={0} entries={[]} />}
+      voiceFeed={
+        <VoiceFeed
+          mic="off"
+          level={0}
+          entries={voiceEntriesFromAudit(
+            audit,
+            (id) => rows.find((r) => r.bidderId === id)?.paddle ?? null,
+          )}
+        />
+      }
       onConfirmAnswer={onConfirmAnswer}
     />
   );

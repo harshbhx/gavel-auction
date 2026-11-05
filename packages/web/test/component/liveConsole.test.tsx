@@ -40,4 +40,12 @@ describe('live console route', () => {
     expect(screen.getByRole('button', { name: t('kill.button') })).toBeTruthy();
     expect(screen.getByText(t('console.noConfirm'))).toBeTruthy();
   });
+
+  it('mounts the bid stream and the voice feed with the mic state and level meter', () => {
+    render(<App initialPath={`/r/${ROOM}/console`} liveBase="ws://localhost:1" />);
+    expect(screen.getByRole('region', { name: t('console.stream') })).toBeTruthy();
+    expect(screen.getByText(t('console.mic.off'))).toBeTruthy();
+    expect(screen.getByRole('meter', { name: t('console.mic.level') })).toBeTruthy();
+    expect(screen.getByText(t('console.voice.empty'))).toBeTruthy();
+  });
 });
