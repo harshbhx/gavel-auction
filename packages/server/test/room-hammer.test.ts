@@ -438,3 +438,44 @@ describe('round 3 hardening (RT3)', () => {
     ).rejects.toMatchObject({ code: 'conflict' });
   });
 });
+
+describe('round 12 server hardening (R12-S01, R12-S09)', () => {
+  it('refuses a client control id in the kill-switch namespace (R12-S01)', async () => {
+    const t = await setup();
+    const c1 = await t.connect(t.room, 'bidder', t.b1);
+    const boss = await t.connect(t.room, 'auctioneer');
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    await t.room.control(boss.conn, {
+      controlId: `abort:${t.auctionId}`,
+      action: 'hammer',
+      args: { closeNow: 1 },
+    });
+    expect(boss.transport.messages('error')).toMatchObject([{ code: 'bad_message' }]);
+    expect(types(await t.events())).not.toContain('hammered');
+    // The room is still open: a normal id still hammers the sale with the real winner.
+    await t.room.control(boss.conn, { controlId: 'c1', action: 'hammer', args: { closeNow: 1 } });
+    const restarted = await Room.load(t.auctionId, t.deps);
+    const screen = await t.connect(restarted, 'screen');
+    expect(screen.transport.messages('state').at(-1)?.snapshot).toMatchObject({
+      status: 'SETTLING',
+    });
+  });
+
+  it('does not tell the auctioneer over_ceiling for a manual bid (R12-S09)', async () => {
+    const t = await setup();
+    const boss = await t.connect(t.room, 'auctioneer');
+    // b2's ceiling is 30000; the auctioneer picks 40000 for them.
+    await t.room.submitBid(boss.conn, { ...t.bid(40000), bidderId: t.b2 });
+    const reply = boss.transport.messages('bid_rejected')[0];
+    expect(reply).toBeDefined();
+    expect(reply?.reason).not.toBe('over_ceiling');
+    // Neither the live audit rows nor the reply name over_ceiling for a manual bid.
+    for (const m of boss.transport.messages('audit_event')) {
+      expect((m.audit as { reason?: string }).reason).not.toBe('over_ceiling');
+    }
+    // The own-bid reply to the bidder is unchanged.
+    const c2 = await t.connect(t.room, 'bidder', t.b2);
+    await t.room.submitBid(c2.conn, t.bid(40000));
+    expect(c2.transport.messages('bid_rejected')[0]).toMatchObject({ reason: 'over_ceiling' });
+  });
+});

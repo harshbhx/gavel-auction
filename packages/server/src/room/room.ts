@@ -176,6 +176,9 @@ interface RosterEntry {
   holdRef: string;
 }
 
+/** Reason an auctioneer's manual bid is refused with when it is over the bidder's ceiling. */
+const MANUAL_REFUSED: ErrorCode = 'limit_exceeded';
+
 type Reply = Extract<ServerMsg, { t: 'bid_accepted' | 'bid_rejected' }>;
 
 const READ_PAGE = 1000;
@@ -183,6 +186,8 @@ const RECENT_AUDIT = 50;
 const AUTO_HAMMER_RETRY_MS = 2_000;
 
 /** The control id of a kill-switch abort; one per auction, so a repeat is a no-op. */
+const ABORT_AUDIT_REASON = 'control:abort';
+
 function abortControlId(auctionId: string): string {
   return `abort:${auctionId}`;
 }
@@ -213,7 +218,8 @@ export class Room {
   private cancelHammer: CancelTimer | undefined;
   /** When the room entered CLOSING; the auto-hammer delay counts from here (R-RT-044). */
   private closingAt: number | undefined;
-  private controlIds = new Set<string>();
+  /** Control id to the action it was first used for; reuse for another action is a conflict. */
+  private controlIds = new Map<string, string>();
   /** Confirmations the log shows as asked and not yet answered; filled by replay (R-RT-045). */
   private openConfirms = new Map<string, PendingConfirm>();
   /**
@@ -1052,14 +1058,20 @@ export class Room {
       };
     }
     if (event.type === 'bid_rejected') {
+      // The auctioneer chose the amount of a manual bid, so an over_ceiling refusal would be a
+      // ceiling probe (R-RT-055). The precise reason stays in the admin export only.
+      const reason: ErrorCode =
+        event.reason === 'over_ceiling' && event.audit.source === 'manual'
+          ? MANUAL_REFUSED
+          : event.reason;
       return {
         v: 1,
         t: 'bid_rejected',
         seq: event.seq,
         ts: event.ts,
         mid: event.mid,
-        reason: event.reason,
-        retryable: ERROR_TABLE[event.reason].retryable,
+        reason,
+        retryable: ERROR_TABLE[reason].retryable,
       };
     }
     return undefined;
@@ -1075,7 +1087,8 @@ export class Room {
       this.sendError(conn, 'forbidden');
       return Promise.resolve();
     }
-    if (cmd.controlId.length === 0) {
+    // `abort:` ids belong to the kill switch; a client must not be able to name one.
+    if (cmd.controlId.length === 0 || cmd.controlId.startsWith('abort:')) {
       this.sendError(conn, 'bad_message');
       return Promise.resolve();
     }
@@ -1092,7 +1105,7 @@ export class Room {
         this.sendHammer(conn, this.hammered);
         return;
       }
-      if (this.controlIds.has(cmd.controlId)) return;
+      if (this.controlReused(conn, cmd)) return;
       const engine = this.requireEngine();
       if (canClock(engine) && engine.paused) {
         this.sendError(conn, 'conflict');
@@ -1107,6 +1120,14 @@ export class Room {
     });
   }
 
+  /** True when the id was used before: a repeat is a no-op, another action under it a conflict. */
+  private controlReused(conn: Connection, cmd: ControlCommand): boolean {
+    const first = this.controlIds.get(cmd.controlId);
+    if (first === undefined) return false;
+    if (first !== cmd.action) this.sendError(conn, 'conflict');
+    return true;
+  }
+
   private async clockControl(conn: Connection, cmd: ControlCommand): Promise<void> {
     try {
       await this.ensureClean();
@@ -1115,7 +1136,7 @@ export class Room {
       return;
     }
     // A repeat returns the first result and appends nothing (R-RT-050).
-    if (this.controlIds.has(cmd.controlId)) return;
+    if (this.controlReused(conn, cmd)) return;
     const engine = this.requireEngine();
     if (!canClock(engine)) {
       this.sendError(conn, 'bad_message');
@@ -1175,7 +1196,7 @@ export class Room {
       return;
     }
     this.seq = seq;
-    this.controlIds.add(cmd.controlId);
+    this.controlIds.set(cmd.controlId, cmd.action);
     // The new deadline or state reaches clients in the price message; its seq leaves no gap.
     this.broadcastPrice(seq, ts);
     this.armTimer();
@@ -1334,7 +1355,7 @@ export class Room {
           bidderId: this.deps.ids.mint<'BidderId'>(),
           source: 'manual',
           outcome: 'accepted',
-          reason: abort ? 'control:abort' : `control:${by?.cmd.action ?? 'hammer'}`,
+          reason: abort ? ABORT_AUDIT_REASON : `control:${by?.cmd.action ?? 'hammer'}`,
           serverTs: ts,
           seq: first,
         },
@@ -1362,7 +1383,7 @@ export class Room {
     this.cancelHammer?.();
     this.cancelHammer = undefined;
     if (control) {
-      this.controlIds.add(control.controlId);
+      this.controlIds.set(control.controlId, 'hammer');
       // The control record consumed a seq nobody else can see; carry it so clients see no gap (R-RT-036).
       this.seq = first;
       for (const conn of this.conns.values()) this.sendSeqFiller(conn, first, ts);
@@ -1800,7 +1821,7 @@ export class Room {
     this.bidCount = 0;
     this.lastState = 'OPEN';
     this.closingAt = undefined;
-    this.controlIds = new Set();
+    this.controlIds = new Map();
     this.openConfirms = new Map();
     this.acceptedWithoutBid = new Map();
     this.hammered = undefined;
@@ -1852,7 +1873,7 @@ export class Room {
         if (event.to === 'CLOSING') this.closingAt = event.ts;
         break;
       case 'control':
-        this.controlIds.add(event.controlId);
+        this.controlIds.set(event.controlId, event.action);
         if (event.action !== 'hammer' && event.action !== 'open') {
           try {
             this.applyClock(this.requireEngine(), event.action, event.ts, event.args?.extraMs);
@@ -1860,7 +1881,13 @@ export class Room {
             // The engine refused what the live room accepted (older build); keep loading.
           }
         }
-        if (event.controlId === abortControlId(this.auctionId)) this.abortPending = true;
+        // Only the room writes the audit reason, so a client-chosen control id cannot fake it.
+        if (
+          event.controlId === abortControlId(this.auctionId) &&
+          event.audit.reason === ABORT_AUDIT_REASON
+        ) {
+          this.abortPending = true;
+        }
         break;
       case 'ceiling_revoked':
         if (this.roster.has(event.bidderId)) {
