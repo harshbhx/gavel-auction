@@ -72,7 +72,6 @@ If the process dies mid-settlement, the saga journal lets it resume: it checks t
 
 ```mermaid
 stateDiagram-v2
-  direction LR
   [*] --> BIDDING
   BIDDING --> WINNER_SELECTED: hammer
   WINNER_SELECTED --> CAPTURING
