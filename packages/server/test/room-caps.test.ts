@@ -28,8 +28,9 @@ describe('room enforces the configured caps (R-RT-058, R-RT-062)', () => {
   it('answers auction_full once MAX_BIDS_PER_AUCTION bids are in the log', async () => {
     const t = await setup({ caps: { ...DEFAULT_CAPS, bidsPerAuction: 2 } });
     const c1 = await t.connect('bidder', t.b1);
+    const c2 = await t.connect('bidder', t.b2);
     await t.room.submitBid(c1.conn, t.bid(10000));
-    await t.room.submitBid(c1.conn, t.bid(15000));
+    await t.room.submitBid(c2.conn, t.bid(15000));
     const seq = t.room.lastSeq;
     await t.room.submitBid(c1.conn, t.bid(20000));
     expect(c1.transport.messages('error').map((m) => m.code)).toEqual(['auction_full']);
@@ -41,9 +42,11 @@ describe('room enforces the configured caps (R-RT-058, R-RT-062)', () => {
     const c1 = await t.connect('bidder', t.b1);
     await t.room.submitBid(c1.conn, t.bid(10000));
     for (let i = 0; i < 5; i += 1) await t.room.submitBid(c1.conn, t.bid(10000));
-    await t.room.submitBid(c1.conn, t.bid(15000));
+    const c2 = await t.connect('bidder', t.b2);
+    await t.room.submitBid(c2.conn, t.bid(15000));
     expect(c1.transport.messages('error').map((m) => m.code)).toEqual([]);
-    expect(c1.transport.messages('bid_accepted')).toHaveLength(2);
+    expect(c2.transport.messages('error').map((m) => m.code)).toEqual([]);
+    expect(c2.transport.messages('bid_accepted')).toHaveLength(1);
   });
 
   it('caps the roster at MAX_BIDDERS_PER_ROOM', async () => {

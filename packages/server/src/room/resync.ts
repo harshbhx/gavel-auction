@@ -37,7 +37,11 @@ export function eventFrames(event: RoomEvent, fullAudit = false): ServerMsg[] {
     if (!fullAudit) return [];
     if (event.type === 'confirm_resolved' && event.outcome === 'accepted') return [];
   }
-  return [{ v: 1, t: 'audit_event', seq: event.seq, ts: event.ts, audit: fullAudit && (event.type === 'confirm_requested' || event.type === 'confirm_resolved') ? stripConfirmAudit(event.audit) : event.audit }];
+  const audit =
+    fullAudit && (event.type === 'confirm_requested' || event.type === 'confirm_resolved')
+      ? stripConfirmAudit(event.audit)
+      : event.audit;
+  return [{ v: 1, t: 'audit_event', seq: event.seq, ts: event.ts, audit }];
 }
 
 /**
@@ -45,7 +49,7 @@ export function eventFrames(event: RoomEvent, fullAudit = false): ServerMsg[] {
  * still be refused as over the bidder's ceiling (R-RT-055). Only the state of the hold is shown.
  */
 export function stripConfirmAudit<T extends object>(audit: T): T {
-  const rest: Record<string, unknown> = { ...audit };
+  const rest = { ...audit } as Record<string, unknown>;
   delete rest.parsedAmount;
   delete rest.transcript;
   delete rest.audioTsMs;
