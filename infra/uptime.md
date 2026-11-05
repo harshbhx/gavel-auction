@@ -23,5 +23,5 @@ A scheduled GitHub workflow runs every 5 minutes at best; GitHub may delay sched
 ## Open items
 
 - The scheduled workflow file is not part of this change. It needs the maintainer's go-ahead and spend approval (Q2).
-- Registering `/warmup` in `packages/server/src/boot/compose.ts` is outside this issue's file list.
+- `/healthz`, `/warmup`, `/ops/summary` and `/metrics/prometheus` are registered in `packages/server/src/boot/compose.ts`. `/warmup` and `/healthz` are open and return only step names and timings; the other two need the operator key.
 - The warmup time under 3 s after 15 minutes idle (T-QA-084) is not measured yet; it needs a staging host and the workflow.

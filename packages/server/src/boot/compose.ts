@@ -46,6 +46,9 @@ import { createPaymentAudit } from './payment-audit';
 import { createLogger, type LogSink } from '../log/logger';
 import { RateLimiter } from '../limits/rate-limiter';
 import { MetricsCollector } from '../ops/metrics';
+import { createLogRing } from '../obs/logring';
+import { createOpsSummaryRoute, createPrometheusRoute } from '../obs/ops-summary';
+import { createWarmupRoute, type WarmupStep } from '../warmup/warmup';
 import { createAuctionService, type AuctionService } from '../runtime/auction-service';
 import { FileLedgerStore } from '../store/file-ledger-store';
 import { acquireDataDirLock } from '../store/data-dir-lock';
@@ -67,6 +70,12 @@ export interface ComposeOptions {
   hooks?: LoadHooks;
   /** More routes, tried after the built-in ones and before the 404 (the auction HTTP app). */
   extraRoutes?: (service: AuctionService, store: RoomStore) => ExtraRoutes;
+  /** Clock for the /warmup report (tests). Default: Date.now. */
+  warmupNow?: () => number;
+  /** Warmup time budget in ms (tests). Default: WARMUP_BUDGET_MS. */
+  warmupBudgetMs?: number;
+  /** More warmup steps next to the built-in ones (tests). */
+  warmupSteps?: readonly WarmupStep[];
 }
 
 export interface Composed {
@@ -92,6 +101,8 @@ interface PaymentsWiring {
   holdMaxAgeMs: number;
   /** GAVEL_MAX_CEILING_CENTS, validated in both modes. */
   maxCeilingCents: number;
+  /** Fetches or reuses the PayPal access token so the first real call is fast. */
+  warmToken(): Promise<void>;
   stop(): Promise<void>;
 }
 
@@ -122,6 +133,7 @@ async function wirePayments(
       verifier: new WebhookVerifier({ auth, webhookId: DEFAULT_FAKE_WEBHOOK_ID, fake: true }),
       holdMaxAgeMs,
       maxCeilingCents,
+      warmToken: async () => void (await auth.getToken()),
       stop: () => paypal.stop(),
     };
   }
@@ -138,6 +150,7 @@ async function wirePayments(
     verifier: new WebhookVerifier({ auth, webhookId: pay.webhookId, fake: false }),
     holdMaxAgeMs,
     maxCeilingCents,
+    warmToken: async () => void (await auth.getToken()),
     stop: () => Promise.resolve(),
   };
 }
@@ -226,9 +239,10 @@ function notFound(res: ServerResponse): void {
 export async function composeServer(env: Env, opts: ComposeOptions = {}): Promise<Composed> {
   const config = opts.hooks ? loadConfig(env, opts.hooks) : loadConfig(env);
   const clock = new SystemClock();
+  const logRing = createLogRing(opts.sink ?? ((line) => void process.stdout.write(`${line}\n`)));
   const log: Logger = createLogger({
     clock,
-    sink: opts.sink ?? ((line) => void process.stdout.write(`${line}\n`)),
+    sink: logRing.write,
     level: config.LOG_LEVEL,
   });
   const ids = new UlidMinter(clock);
@@ -331,13 +345,43 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     rooms: () => service.opsRooms(),
   });
   const metricsRoute = createMetricsRoute(metrics, { adminKey: config.ADMIN_KEY });
+  const warmupRoute = createWarmupRoute({
+    steps: [
+      { name: 'database', run: () => stores.room.ping() },
+      { name: 'paypal-token', run: () => payments.warmToken() },
+      {
+        name: 'demo-auction',
+        run: async () => {
+          await stores.room.listAuctions();
+          service.opsRooms();
+        },
+      },
+      ...(opts.warmupSteps ?? []),
+    ],
+    ...(opts.warmupNow !== undefined ? { now: opts.warmupNow } : {}),
+    ...(opts.warmupBudgetMs !== undefined ? { budgetMs: opts.warmupBudgetMs } : {}),
+  });
+  const opsSummaryRoute = createOpsSummaryRoute({
+    adminKey: config.ADMIN_KEY,
+    logs: () => logRing.lines(),
+    sagas: () =>
+      service.opsRooms().map((r) => ({ auctionId: r.auctionId, lotId: '-', state: r.status })),
+    metrics: () => metrics.snapshot(),
+  });
+  const prometheusRoute = createPrometheusRoute({
+    adminKey: config.ADMIN_KEY,
+    metrics: () => metrics.snapshot(),
+  });
   const extra = opts.extraRoutes?.(service, stores.room);
 
   const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const path = (req.url ?? '').split('?')[0] ?? '';
     if (path === '/healthz') return health.healthz(req, res);
     if (path === '/readyz') return health.readyz(req, res);
+    if (path === '/warmup') return warmupRoute(req, res);
     if (path === '/metrics') return metricsRoute(req, res);
+    if (path === '/metrics/prometheus') return prometheusRoute(req, res);
+    if (path === '/ops/summary') return opsSummaryRoute(req, res);
     if (path === '/ops/rooms') return opsRoomsRoute(req, res);
     if (path === WEBHOOK_PATH) return webhookRoute(req, res);
     if (EXPORT_PATH.test(path)) return exportRoute(req, res);
