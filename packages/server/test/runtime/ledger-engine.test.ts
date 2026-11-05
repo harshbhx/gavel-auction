@@ -80,6 +80,14 @@ describe('ledger engine confirm gate (R6-C01)', () => {
     expect(res.ok).toBe(false);
   });
 
+  it('refuses a voice bid that arrives with no confidence (R7-03)', () => {
+    const { engine, bidder } = build();
+    const res = engine.placeBidWith(bidder, 10000 as Cents, (NOW + 1000) as EpochMs, {
+      source: 'voice',
+    });
+    expect(res.ok).toBe(false);
+  });
+
   it('ignores a confidence sent with a qr bid', () => {
     const { engine, bidder } = build();
     const res = engine.placeBidWith(bidder, 10000 as Cents, (NOW + 1000) as EpochMs, {
