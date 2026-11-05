@@ -1,6 +1,6 @@
 {
   "name": "abort: a lot that reached its deadline can still be aborted",
-  "parity": false,
+  "parity": true,
   "config": {
     "mode": "english",
     "reserve": 1000,

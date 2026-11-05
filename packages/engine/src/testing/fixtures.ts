@@ -10,7 +10,10 @@ export type StepOp =
   | 'promote'
   | 'revoke'
   | 'complete'
-  | 'abort';
+  | 'abort'
+  | 'pause'
+  | 'resume'
+  | 'extend';
 const OPS: readonly StepOp[] = [
   'register',
   'bid',
@@ -20,6 +23,9 @@ const OPS: readonly StepOp[] = [
   'revoke',
   'complete',
   'abort',
+  'pause',
+  'resume',
+  'extend',
 ];
 const MODES: readonly Mode[] = ['english', 'proxy', 'second_price'];
 

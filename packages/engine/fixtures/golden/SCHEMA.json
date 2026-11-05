@@ -27,7 +27,19 @@
         "required": ["op", "at"],
         "properties": {
           "op": {
-            "enum": ["register", "bid", "tick", "hammer", "promote", "revoke", "complete", "abort"]
+            "enum": [
+              "register",
+              "bid",
+              "tick",
+              "hammer",
+              "promote",
+              "revoke",
+              "complete",
+              "abort",
+              "pause",
+              "resume",
+              "extend"
+            ]
           },
           "at": { "type": "integer", "minimum": 0 },
           "bidder": { "type": "string" },

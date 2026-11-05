@@ -528,3 +528,31 @@ Consequences:
 - The public ledger export cannot show rejected bids; the room log audit screen does.
 
 Evidence: packages/server/src/runtime/ledger-engine.ts, packages/server/test/ledger-engine-contract.test.ts, R6-D03, R6-D04.
+
+## D-0030: The Python reference covers promote, revoke, abort, pause, resume and extend
+
+Date: 2026-11-05
+Status: accepted
+Owner: engine
+Context: The differential test (R-ENG-114) and the parity fixtures (R-ENG-112, R-ENG-113) only covered register, bid, tick and hammer, so the reference had no promote, revoke, abort or pause commands and the engine's fallback, strike and clock rules were checked against hand-derived fixtures only (issue #1443). Some behaviour the reference now needs is not spelled out: R-ENG-055 and R-ENG-057 do not say whether a skipped candidate counts toward the fallback depth, and D-0025 does not say what the deadline is after a pause that never resumes.
+Decision: `reference/python/engine.py` gains `revoke`, `abort`, `promote`, `pause`, `resume` and `extend`, and the fixture ops `pause`, `resume` and `extend` exist (`amount` of an extend step is the added time in ms). The reference follows the engine on every point below, and the differential generator draws these commands in about half of its scenarios.
+
+- A revoke before the hammer strikes the bidder's bids; after the hammer only the flag is set. An unknown bidder is refused `bad_command`; a repeated revoke is a no-op.
+- A hammer with no bids, an abort, and a promotion with no candidate left all end the lot DONE with no winner (winner null, price 0). A DONE lot answers bids, hammer, promote, pause, resume, extend and abort with `lot_done`; a hammered lot answers abort, pause, resume and extend with `lot_frozen`.
+- A promotion removes the disqualified, demoted and skipped bidders, prices each remaining candidate over the bids that are left, and counts a skipped candidate (revoked or priced above the ceiling) toward `maxFallbackDepth` (default 2). A depth above the limit leaves the lot unsold.
+- A paused lot keeps its old `endsAt` until it resumes; the deadline after a resume is the resume time plus the time left. Tick, bids and the hammer wait while paused (`closed` for a bid, `cannot_hammer` for the hammer). Extend adds time without using up a soft-close extension. Pause, resume and extend are refused `closed` when the lot is CLOSING or its deadline has passed, and `bad_command` for a repeated pause, a resume of a running lot and an extend of a paused lot.
+- The reference reports the engine's `lot_not_open` as `closed`, as before.
+- Seeded scenarios keep their base draws: the operator commands come from a second generator seeded from the seed and the scenario index, so seed 20261104 and the pinned scenario of D-0027 still give the same base scenarios.
+- Parity fixtures for promote, revoke, abort and the closed-lot case are now `parity: true`; fixtures that use `complete` or ladders stay `parity: false`.
+
+Alternatives:
+
+- Leave the commands out of the reference: rejected, the fallback and clock rules would have no independent check.
+- Stop counting skipped candidates in the depth: rejected, the engine counts them and R-ENG-057 bounds the whole walk.
+
+Consequences:
+
+- A divergence in these commands now fails the differential job with the scenario JSON.
+- The reference has no settlement ops, so `complete`, `RecordSettlement` and the capture guard of promote (R8-E01) are still checked by fixtures only.
+
+Evidence: reference/python/engine.py, reference/python/scenario_export.py, reference/python/test_scenario_export.py, packages/engine/test/golden-play.ts, packages/engine/fixtures/golden/pause-01-resume-shifts-deadline.json, R-ENG-044, R-ENG-054 to R-ENG-060, R-ENG-112, R-ENG-114, D-0025, D-0026.

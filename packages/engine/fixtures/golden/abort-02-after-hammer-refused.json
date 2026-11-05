@@ -1,6 +1,6 @@
 {
   "name": "abort: a hammered lot cannot be aborted",
-  "parity": false,
+  "parity": true,
   "config": {
     "mode": "english",
     "reserve": 1000,

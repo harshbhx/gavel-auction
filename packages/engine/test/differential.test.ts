@@ -6,7 +6,8 @@ import { differences, play } from './golden-play.js';
 /**
  * R-ENG-114: compares the TypeScript engine with the Python reference on seeded scenarios.
  * The scenario file comes from `python reference/python/scenario_export.py --seed 20261104
- * --n 2000`; set GAVEL_DIFFERENTIAL_FILE to its path. Without the variable the test is skipped.
+ * --n 2000`; set GAVEL_DIFFERENTIAL_FILE to its path. About half of the scenarios also use revoke,
+ * pause, resume, extend, abort and promote steps (D-0030). Without the variable the test is skipped.
  */
 const FILE = process.env['GAVEL_DIFFERENTIAL_FILE'];
 const MIN_SCENARIOS = 2000;
