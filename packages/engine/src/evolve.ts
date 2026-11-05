@@ -153,7 +153,6 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
         priceCents: p.priceCents,
         depth: p.depth,
         demoted: [...l.demoted, p.from],
-        captureSeen: false,
       }));
     }
     case 'CANDIDATE_SKIPPED': {
