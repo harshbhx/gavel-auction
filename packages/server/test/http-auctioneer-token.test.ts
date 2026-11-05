@@ -89,7 +89,7 @@ describe('auctioneer token revoke and rotate (T-RT-062)', () => {
     const path = `/api/auctions/${a.id}/invites`;
     expect((await post(app, path, bearer(a.token))).status).toBe(201);
 
-    const res = await post(app, `/api/auctions/${a.id}/auctioneer/rotate`, bearer(a.token));
+    const res = await post(app, `/api/auctions/${a.id}/auctioneer/rotate`, { 'x-admin-key': ADMIN });
     expect(res.status).toBe(200);
     const fresh = tokenOf(((await res.json()) as { auctioneerLink: string }).auctioneerLink);
 
@@ -120,9 +120,30 @@ describe('auctioneer token revoke and rotate (T-RT-062)', () => {
     expect((await post(app, `/api/auctions/${a.id}/invites`, bearer(a.token))).status).toBe(401);
   });
 
-  it('refuses rotation without an auctioneer token', async () => {
+  it('refuses rotation without the operator key, even with the auctioneer token (R12-S04)', async () => {
     const { app } = setup();
     const a = await created(app);
     expect((await post(app, `/api/auctions/${a.id}/auctioneer/rotate`, {})).status).toBe(401);
+    expect(
+      (await post(app, `/api/auctions/${a.id}/auctioneer/rotate`, bearer(a.token))).status,
+    ).toBe(401);
+    // the leaked link still works and nothing was denied
+    expect((await post(app, `/api/auctions/${a.id}/invites`, bearer(a.token))).status).toBe(201);
+  });
+
+  it('revoke-all kills every auctioneer token, including ones with unknown jtis (R12-S04)', async () => {
+    const { app, deps } = setup();
+    const a = await created(app);
+    const path = `/api/auctions/${a.id}/auctioneer/revoke-all`;
+    expect((await post(app, path, bearer(a.token))).status).toBe(401);
+    expect((await post(app, path, { 'x-admin-key': ADMIN })).status).toBe(200);
+    expect((await post(app, `/api/auctions/${a.id}/invites`, bearer(a.token))).status).toBe(401);
+    // the operator can then issue a working link within the same second
+    const res = await post(app, `/api/auctions/${a.id}/auctioneer/rotate`, { 'x-admin-key': ADMIN });
+    const fresh = tokenOf(((await res.json()) as { auctioneerLink: string }).auctioneerLink);
+    expect((await post(app, `/api/auctions/${a.id}/invites`, bearer(fresh))).status).toBe(201);
+    await expect(verifyFor(deps, a.token, a.id, ['auctioneer'])).rejects.toMatchObject({
+      code: 'unauthorized',
+    });
   });
 });
