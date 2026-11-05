@@ -158,3 +158,15 @@ def test_noop_soft_close_does_not_use_up_extensions():
     assert a.end_ts == 100 and a.extensions == 0
     a.place_bid("b", 110, 98)   # 103 > 100: the one extension
     assert a.end_ts == 103 and a.extensions == 1
+
+
+def test_extend_amount_is_range_checked():
+    """R12-E08: extend takes 1 ms to 600 s, as the engine checks in decide."""
+    from fractions import Fraction
+    a = mk()
+    for amount in (0, -5, Fraction(600001, 1000)):
+        with pytest.raises(Rejected) as e:
+            a.extend(10, amount)
+        assert e.value.code == "bad_command"
+    a.extend(10, 600)
+    assert a.end_ts == 700

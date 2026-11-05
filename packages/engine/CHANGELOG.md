@@ -15,6 +15,8 @@ All notable changes to `@gavel/engine`. Money is integer cents; the ledger forma
 
 - Public export is version 3: redacted entries no longer carry the private hash (`fullHash` is null or a keyed commitment), sealed and proxy lots lose transcripts and proxy maxima, `matchesLedger` compares full entries, and `verify-ledger --head` detects truncation (D-0021).
 
+- Round 12 fixes (D-0032): review resolution steps, release-only settlement for lots without a winner, promotion reserves trailing bids, no unsold promotion after a capture, hard close honoured by extend and resume, lot-scoped revocation by hold, `closedAtSeq` names the lot's LOT_CLOSING, `promote:` refs reserved, and AUCTION_CREATED stores the whole config.
+
 - The golden runner sends every bid to the engine, including bids past the deadline or after the hammer, and compares the engine's reason codes without folding them. `complete` takes the bidder and amount from the fixture.
 
 ## Release readiness (R-ENG-122, R-ENG-123, R-ENG-124)
