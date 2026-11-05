@@ -139,7 +139,7 @@ export const en = {
   'console.confirm.accept': 'Accept',
   'console.confirm.reject': 'Reject',
   'console.confirm.sent': 'Sent',
-  'console.confirm.hint': 'Press Y to accept or N to reject the first request.',
+  'console.confirm.hint': 'Press Y to accept or N to reject the top request.',
   'console.mic.level': 'Microphone level',
   'console.transcript.final': 'Final',
   'console.transcript.partial': 'Partial',
