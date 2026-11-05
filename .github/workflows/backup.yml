@@ -1,0 +1,66 @@
+name: backup
+# Daily ledger snapshot (R-QA-046). Lists the loaded rooms with GET /ops/rooms and downloads each
+# ledger from GET /admin/export as NDJSON with its hash chain head line, then keeps the files as a
+# workflow artifact. Run it by hand with reason=pre-freeze before the submission freeze.
+# Needs environment `production` secret ADMIN_KEY and variable PRODUCTION_URL; without them the
+# job ends green with a notice. The admin key reaches the step only through env and is never echoed.
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why this snapshot is taken'
+        type: choice
+        options: [manual, pre-freeze]
+        default: manual
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  snapshot:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Download every ledger
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+          REASON: ${{ inputs.reason || 'daily' }}
+        run: |
+          if [ -z "$ADMIN_KEY" ] || [ -z "$PRODUCTION_URL" ]; then
+            echo "::notice title=Backup skipped::Not configured, add secret ADMIN_KEY and variable PRODUCTION_URL to environment production"
+            exit 0
+          fi
+          base="${PRODUCTION_URL%/}"
+          mkdir -p snapshot
+          rooms="$(curl -sS --fail --max-time 30 -H "x-admin-key: $ADMIN_KEY" "$base/ops/rooms")"
+          printf '%s' "$rooms" | jq -r '.rooms[].auctionId' > snapshot/ids.txt
+          count=0
+          while IFS= read -r id; do
+            [ -n "$id" ] || continue
+            case "$id" in *[!0-9A-Za-z_-]*) echo "::warning::skipping unexpected id"; continue ;; esac
+            curl -sS --fail --max-time 60 -H "x-admin-key: $ADMIN_KEY" \
+              "$base/admin/export?auction=$id" -o "snapshot/$id.ndjson"
+            # The last line is the head; the file must end with it.
+            tail -n 1 "snapshot/$id.ndjson" | jq -e 'has("head")' > /dev/null
+            count=$((count + 1))
+          done < snapshot/ids.txt
+          echo "$REASON snapshot of $count ledger(s) at $(date -u +%FT%TZ)" | tee snapshot/MANIFEST.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ledger-snapshot-${{ github.run_id }}
+          path: snapshot
+          if-no-files-found: ignore
+          retention-days: 30

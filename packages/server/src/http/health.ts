@@ -37,3 +37,17 @@ export function createHealthRoutes(deps: HealthDeps): { healthz: Handler; readyz
     },
   };
 }
+
+/** Build identifier for `GET /version`: the commit the running build was made from. */
+export function resolveSha(env: Readonly<Record<string, string | undefined>>): string {
+  const raw = env['GAVEL_SHA'] ?? env['RENDER_GIT_COMMIT'] ?? '';
+  return /^[0-9a-f]{7,40}$/.test(raw) ? raw : 'unknown';
+}
+
+/** R-QA-042: `GET /version` answers the deployed sha so a deploy or rollback can be verified. */
+export function createVersionRoute(sha: string): Handler {
+  return (_req, res) => {
+    reply(res, 200, JSON.stringify({ sha }));
+    return Promise.resolve();
+  };
+}
