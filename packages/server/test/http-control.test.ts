@@ -159,7 +159,8 @@ describe('clock controls over HTTP (R-RT-048, R-RT-049)', () => {
     const endTs = (): number => s.room.activeEngine?.view().endTs ?? 0;
     const before = endTs();
 
-    expect((await post(s.app, path, s.auth, { controlId: 'o1', action: 'open' })).status).toBe(200);
+    // `open` changes nothing on an open lot, so it is refused and not audited.
+    expect((await post(s.app, path, s.auth, { controlId: 'o1', action: 'open' })).status).toBe(409);
 
     const pause = { controlId: 'p1', action: 'pause' };
     expect((await post(s.app, path, s.auth, pause)).status).toBe(200);

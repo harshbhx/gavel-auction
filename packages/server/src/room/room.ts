@@ -19,6 +19,7 @@ import {
   type ConnId,
   type EngineBidResult,
   type EnginePort,
+  type EngineView,
   type EpochMs,
   type ErrorCode,
   isErrorCode,
@@ -178,6 +179,7 @@ function abortControlId(auctionId: string): string {
 export class Room {
   private tail: Promise<void> = Promise.resolve();
   private inFlight = 0;
+  private queued = 0;
   private closed = false;
   private maxInFlight = 0;
   private seq = 0;
@@ -195,6 +197,8 @@ export class Room {
   /** When the room entered CLOSING; the auto-hammer delay counts from here (R-RT-044). */
   private closingAt: number | undefined;
   private controlIds = new Set<string>();
+  /** Confirmations the log shows as asked and not yet answered; filled by replay (R-RT-045). */
+  private openConfirms = new Map<string, PendingConfirm>();
   private hammered: (HammerResult & { seq: number; ts: number }) | undefined;
   private settleRequested = false;
   private settleCalled = false;
@@ -249,8 +253,27 @@ export class Room {
     const room = new Room(auctionId, deps);
     await room.replay();
     room.armTimer();
+    await room.reviveConfirms();
     await room.resumeSettlement();
     return room;
+  }
+
+  /**
+   * A restart loses the held bids. Put back those the log left open and re-arm their timers;
+   * resolve the ones already past their deadline as expired, so every request ends (R-RT-046).
+   */
+  private async reviveConfirms(): Promise<void> {
+    const now = this.deps.clock.now();
+    const open = [...this.openConfirms.values()];
+    this.openConfirms = new Map();
+    for (const held of open) {
+      this.confirms.add(held);
+      if (held.expiresAt > now) {
+        this.armConfirmTimer(held);
+      } else if (!(await this.enqueue(() => this.resolveConfirm(held, 'expired')))) {
+        this.armConfirmTimer(held, now + AUTO_HAMMER_RETRY_MS);
+      }
+    }
   }
 
   /** Highest number of commands ever running at once; must stay at 1. */
@@ -270,6 +293,11 @@ export class Room {
 
   get lastSeq(): number {
     return this.seq;
+  }
+
+  /** Commands queued or running in the mailbox, for the depth gauge (R-RT-122). */
+  get mailboxDepth(): number {
+    return this.queued;
   }
 
   get connectionCount(): number {
@@ -320,7 +348,8 @@ export class Room {
         const complete = events.length === plan.to - plan.from + 1;
         if (complete) {
           for (const event of events) {
-            for (const frame of eventFrames(event)) this.send(conn, frame);
+            const full = conn.role === 'auctioneer';
+            for (const frame of eventFrames(event, full)) this.send(conn, frame);
           }
         }
       }
@@ -846,7 +875,11 @@ export class Room {
           reason: 'unconfirmed',
           retryable: ERROR_TABLE.unconfirmed.retryable,
         });
-      } else if (event.type === 'confirm_resolved' && conn.role === 'auctioneer') {
+      } else if (
+        event.type === 'confirm_resolved' &&
+        event.outcome !== 'accepted' &&
+        conn.role === 'auctioneer'
+      ) {
         this.send(conn, {
           v: 1,
           t: 'audit_event',
@@ -942,7 +975,12 @@ export class Room {
         return;
       }
       if (this.controlIds.has(cmd.controlId)) return;
-      const open = this.requireEngine().view().state === 'OPEN';
+      const engine = this.requireEngine();
+      if (canClock(engine) && engine.paused) {
+        this.sendError(conn, 'conflict');
+        return;
+      }
+      const open = engine.view().state === 'OPEN';
       if (open && cmd.args?.closeNow !== 1) {
         this.sendError(conn, 'conflict');
         return;
@@ -965,7 +1003,9 @@ export class Room {
       this.sendError(conn, 'bad_message');
       return;
     }
-    if (this.hammered || engine.view().state !== 'OPEN') {
+    // `open` has no engine command: the lot is already open or cannot be opened, so nothing
+    // may be audited as accepted (R-RT-048).
+    if (cmd.action === 'open' || this.hammered || engine.view().state !== 'OPEN') {
       this.sendError(conn, 'conflict');
       return;
     }
@@ -1138,7 +1178,12 @@ export class Room {
       } else {
         result = engine.hammer(ts);
       }
-    } catch {
+    } catch (e) {
+      if (e instanceof GavelError && e.code === 'conflict') {
+        // A refused command leaves the engine untouched: a normal refusal, no rebuild.
+        if (by) this.sendError(by.conn, 'conflict');
+        return;
+      }
       // The engine may be half-mutated: rebuild from the log before the next command (R-RT-033).
       this.dirty = true;
       if (by) this.sendError(by.conn, 'internal');
@@ -1318,6 +1363,11 @@ export class Room {
     });
   }
 
+  /** While paused the deadline moves with the clock: now plus what resume will restore. */
+  private endTsFor(view: EngineView, now: ReturnType<Clock['now']>): typeof view.endTs {
+    return view.paused ? ((now + (view.remainingMs ?? 0)) as typeof view.endTs) : view.endTs;
+  }
+
   private broadcastPrice(seq: number, ts: ReturnType<Clock['now']>): void {
     const view = this.requireEngine().view();
     if (view.price === null) {
@@ -1335,9 +1385,10 @@ export class Room {
         price: view.price,
         leaderId: view.leader,
         leaderPaddle,
-        endTs: view.endTs,
+        endTs: this.endTsFor(view, ts),
         minNext: view.minNext,
         extensions: view.extensions,
+        ...(view.paused ? { paused: true, remainingMs: view.remainingMs ?? 0 } : {}),
       });
     }
   }
@@ -1387,8 +1438,9 @@ export class Room {
       status: this.done ? 'DONE' : view.state,
       price: view.price,
       leaderId: view.leader,
-      endTs: view.endTs,
+      endTs: this.endTsFor(view, this.deps.clock.now()),
       minNext: view.minNext,
+      ...(view.paused ? { paused: true, remainingMs: view.remainingMs ?? 0 } : {}),
       roster: [...this.roster].map(([bidderId, r]) => ({
         bidderId,
         paddle: r.paddle,
@@ -1472,12 +1524,13 @@ export class Room {
 
   /** The end-of-lot timer could not run (store down): try again after a short delay. */
   private retryTimer(): void {
-    if (this.stopped || this.hammered || this.done) return;
+    if (this.stopped || this.closed || this.hammered || this.done) return;
     this.cancelTimerRetry?.();
     this.cancelTimerRetry = this.deps.clock.setTimer(
       this.deps.clock.now() + AUTO_HAMMER_RETRY_MS,
       () => {
         this.cancelTimerRetry = undefined;
+        if (this.closed || this.stopped) return;
         this.enqueue(() => this.onTimer()).catch(() => {
           this.dirty = true;
           this.retryTimer();
@@ -1630,6 +1683,7 @@ export class Room {
     this.lastState = 'OPEN';
     this.closingAt = undefined;
     this.controlIds = new Set();
+    this.openConfirms = new Map();
     this.hammered = undefined;
     this.abortPending = false;
     this.revoked = new Set();
@@ -1707,6 +1761,20 @@ export class Room {
       case 'settle_requested':
         this.settleRequested = true;
         break;
+      case 'confirm_requested':
+        this.openConfirms.set(event.confirmId, {
+          confirmId: event.confirmId,
+          bidderId: event.bidderId,
+          mid: event.mid,
+          amount: event.amount,
+          ...(event.audit.transcript !== undefined ? { transcript: event.audit.transcript } : {}),
+          ...(event.audit.confidence !== undefined ? { confidence: event.audit.confidence } : {}),
+          expiresAt: event.expiresAt,
+        });
+        break;
+      case 'confirm_resolved':
+        this.openConfirms.delete(event.confirmId);
+        break;
       case 'settlement_update':
         this.applySettlement(event);
         break;
@@ -1767,6 +1835,7 @@ export class Room {
 
   private enqueue<T>(fn: () => Promise<T>): Promise<T> {
     if (this.closed) return Promise.reject(new GavelError('conflict', 'room is closed'));
+    this.queued += 1;
     const run = this.tail.then(async () => {
       this.inFlight += 1;
       this.maxInFlight = Math.max(this.maxInFlight, this.inFlight);
@@ -1774,6 +1843,7 @@ export class Room {
         return await fn();
       } finally {
         this.inFlight -= 1;
+        this.queued -= 1;
       }
     });
     this.tail = run.then(
