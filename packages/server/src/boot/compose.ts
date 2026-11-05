@@ -19,7 +19,6 @@ import {
   type HoldStore,
   type JournalStore,
   type KillStateStore,
-  type PaymentAudit,
   type PaymentsGateway,
   type WebhookEventStore,
 } from '@gavel/payments';
@@ -40,6 +39,7 @@ import { createMetricsRoute } from '../http/metrics';
 import { adminKeyMatches } from '../http/ops';
 import { createGuardedWebhookRoute } from '../http/webhook-guard';
 import { portFromService } from '../http/webhook';
+import { createPaymentAudit } from './payment-audit';
 import { createLogger, type LogSink } from '../log/logger';
 import { MetricsCollector } from '../ops/metrics';
 import { createAuctionService, type AuctionService } from '../runtime/auction-service';
@@ -73,8 +73,12 @@ export interface Composed {
   http: Server;
   /** Starts listening on PORT (or the given port; 0 picks a free one) and returns the port. */
   listen(port?: number): Promise<number>;
-  /** Stops accepting, stops the service and the in-process fake PayPal, if any. */
-  close(): Promise<void>;
+  /**
+   * Stops accepting, lets in-flight requests finish (idle keep-alive sockets are closed at
+   * once, the rest after `graceMs`, default 5000), waits for settlement runs, then stops the
+   * service and the in-process fake PayPal, if any.
+   */
+  close(graceMs?: number): Promise<void>;
 }
 
 interface PaymentsWiring {
@@ -210,12 +214,11 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     stores.release();
     throw e;
   }
-  const audit = {
-    append: (e: PaymentAudit): Promise<void> => {
-      log.info('payment audit', e);
-      return Promise.resolve();
-    },
-  };
+  const audit = createPaymentAudit({
+    clock,
+    sink: opts.sink ?? ((line) => void process.stdout.write(`${line}\n`)),
+    file: config.STORE === 'file' ? join(config.DATA_DIR, 'payment-audit.jsonl') : undefined,
+  });
   const killSwitch = new PersistentKillSwitch({
     store: stores.kill,
     audit,
@@ -315,11 +318,14 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
           resolve(typeof addr === 'object' && addr !== null ? addr.port : port);
         });
       }),
-    close: async () => {
+    close: async (graceMs = 5000) => {
       await new Promise<void>((resolve) => {
         if (!http.listening) return resolve();
         http.close(() => resolve());
-        http.closeAllConnections();
+        http.closeIdleConnections();
+        const force = setTimeout(() => http.closeAllConnections(), graceMs);
+        force.unref();
+        http.once('close', () => clearTimeout(force));
       });
       await service.close();
       await payments.stop();
