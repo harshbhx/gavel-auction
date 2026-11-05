@@ -1,3 +1,4 @@
+import { isAbsolute } from 'node:path';
 import { z } from 'zod';
 
 const flag = z.enum(['0', '1']).transform((v) => v === '1');
@@ -84,7 +85,17 @@ export function parseConfig(env: Readonly<Record<string, string | undefined>>): 
     if (v !== undefined && v !== '') cleaned[k] = v;
   }
   const parsed = EnvSchema.safeParse(cleaned);
-  if (parsed.success) return { ok: true, config: parsed.data };
+  if (parsed.success) {
+    const c = parsed.data;
+    // A durable store that silently lands in ./data is lost on the next deploy (R-RT-131).
+    if (c.NODE_ENV === 'production' && c.STORE === 'file' && !isAbsolute(cleaned.DATA_DIR ?? '')) {
+      return {
+        ok: false,
+        errors: ['DATA_DIR: must be set to an absolute path when STORE=file in production'],
+      };
+    }
+    return { ok: true, config: c };
+  }
   return {
     ok: false,
     errors: parsed.error.issues.map((i) => `${i.path.join('.') || 'env'}: ${i.message}`),
