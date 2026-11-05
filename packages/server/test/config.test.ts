@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { REDACTED, loadConfig, parseConfig, redactConfig } from '../src/config';
 
 const good = {
-  PUBLIC_URL: 'https://gavel.example.com',
+  PUBLIC_URL: 'http://localhost:8080',
   TOKEN_SECRET: 'super-secret-token-value-0123456789',
   ADMIN_KEY: 'admin-key-value-0123456789',
 };
@@ -165,8 +165,35 @@ describe('production rules (R-RT-131)', () => {
     expect(parseConfig({ ...prod, DATABASE_URL: undefined }).ok).toBe(false);
   });
 
-  it('keeps short secrets valid outside production', () => {
-    expect(parseConfig({ ...good, TOKEN_SECRET: 'a', ADMIN_KEY: 'a' }).ok).toBe(true);
+  it('keeps short secrets valid only under NODE_ENV=test', () => {
+    expect(parseConfig({ ...good, NODE_ENV: 'test', TOKEN_SECRET: 'a', ADMIN_KEY: 'b' }).ok).toBe(
+      true,
+    );
+    expect(parseConfig({ ...good, TOKEN_SECRET: 'a', ADMIN_KEY: 'b' }).ok).toBe(false);
+  });
+
+  it('rejects a token secret equal to the admin key', () => {
+    const same = 'same-value-same-value-same-value-0123';
+    const r = parseConfig({ ...good, TOKEN_SECRET: same, ADMIN_KEY: same });
+    expect(r.ok).toBe(false);
+    expect(r.ok ? '' : r.errors.join('\n')).toContain('ADMIN_KEY');
+  });
+
+  it('applies the production rules to a public https host with NODE_ENV unset (R4-W07)', () => {
+    const r = parseConfig({
+      ...good,
+      PUBLIC_URL: 'https://gavel.example.com',
+      TOKEN_SECRET: 'a',
+      ADMIN_KEY: 'a',
+      DEMO_MODE: '1',
+    });
+    expect(r.ok).toBe(false);
+    const text = r.ok ? '' : r.errors.join('\n');
+    for (const key of ['TOKEN_SECRET', 'ADMIN_KEY', 'STORE', 'PAYMENTS', 'DEMO_MODE']) {
+      expect(text).toContain(key);
+    }
+    expect(parseConfig({ ...good, PUBLIC_URL: 'https://gavel.example.com' }).ok).toBe(false);
+    expect(parseConfig({ ...good, PUBLIC_URL: 'https://localhost:8443' }).ok).toBe(true);
   });
 
   it('defaults the per-bidder connection cap to 3', () => {

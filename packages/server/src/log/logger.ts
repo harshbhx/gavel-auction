@@ -8,10 +8,17 @@ export const REDACTED = '[redacted]';
 
 /** Keys whose values are never logged, matched case-insensitively. */
 const SECRET_KEY =
-  /token|secret|authorization|password|passwd|cookie|api[-_]?key|signature|bearer/i;
+  /token|secret|authorization|password|passwd|cookie|api[-_]?key|signature|bearer|admin|key|dsn|database[-_]?url|credential/i;
+
+/** True when a field name must never be logged; config redaction uses the same list (R-RT-132). */
+export function isSecretKey(name: string): boolean {
+  return SECRET_KEY.test(name);
+}
 
 /** Values shaped like secrets are replaced wherever they appear in a string. */
 const SECRET_PATTERNS: readonly RegExp[] = [
+  // A password inside a connection URL: scheme://user:password@host.
+  /\b[a-z][a-z0-9+.-]*:\/\/[^\s:/@]*:[^\s@/]+@/gi,
   /\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/gi,
   // Signed token: base64url payload, a dot, base64url signature.
   /\b[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}(?:\.[A-Za-z0-9_-]{8,})?\b/g,
@@ -42,7 +49,7 @@ export function redact(value: unknown, depth = 0, seen: WeakSet<object> = new We
   } else {
     const rec: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value)) {
-      rec[k] = SECRET_KEY.test(k) ? REDACTED : redact(v, depth + 1, seen);
+      rec[k] = isSecretKey(k) ? REDACTED : redact(v, depth + 1, seen);
     }
     out = rec;
   }
