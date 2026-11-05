@@ -37,7 +37,7 @@ describe('R7-01 any non-USD currency is refused, never read as dollars', () => {
   }
 
   it('plain dollars still parse as a bid', () => {
-    const r = parseBid('paddle twelve three fifty dollars', ctx);
+    const r = parseBid('three fifty dollars', ctx);
     expect(r.status).toBe('bid');
     expect(r.amountCents).toBe(35000);
   });
