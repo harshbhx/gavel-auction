@@ -6,16 +6,16 @@ describe('audio idle timeout (HRD-14)', () => {
   const mk = () =>
     createVoiceSession({
       now: () => clock.t,
-      verifyToken: (token) => token.startsWith('tok-'),
+      verifyToken: (token, roomId) => token === `tok-${token.slice(4)}` && roomId !== '',
     });
 
   it('frees slots of silent streams so a third bidder can open one', () => {
     const session = mk();
     const open = (token: string, source: string) => session.open({ roomId: 'r1', source }, token);
-    expect(open('tok-x', 'a').ok).toBe(true);
-    expect(open('tok-x', 'b').ok).toBe(true);
-    expect(open('tok-y', 'c').ok).toBe(true);
-    expect(open('tok-y', 'd').ok).toBe(true);
+    expect(open('tok-x', 'a')).toMatchObject({ ok: true });
+    expect(open('tok-x', 'b')).toMatchObject({ ok: true });
+    expect(open('tok-y', 'c')).toMatchObject({ ok: true });
+    expect(open('tok-y', 'd')).toMatchObject({ ok: true });
     expect(open('tok-z', 'e')).toEqual({ ok: false, error: 'AUDIO_STREAM_BUSY' });
     clock.t += AUDIO_IDLE_MS;
     const z = open('tok-z', 'e');
