@@ -69,3 +69,11 @@ jobs:
           # The old instance can answer before the new build is live, so give the deploy time first.
           sleep 60
           scripts/smoke.sh "$STAGING_URL"
+      - uses: ./.github/actions/setup
+        if: steps.cfg.outputs.ready == 'true'
+      - name: Security checks against staging
+        if: steps.cfg.outputs.ready == 'true'
+        env:
+          GAVEL_STAGING_URL: ${{ vars.STAGING_URL }}
+          GAVEL_REQUIRE_STAGING: '1'
+        run: npx vitest run --project unit:e2e test/security/headers test/security/fuzz

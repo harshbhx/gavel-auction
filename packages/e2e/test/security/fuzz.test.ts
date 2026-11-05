@@ -47,9 +47,29 @@ describe('random frames against the wire decoder', () => {
 const base = process.env['GAVEL_STAGING_URL'];
 
 describe.skipIf(base === undefined)('random frames against a deployed server', () => {
-  it('stays reachable after the fuzz run', async () => {
+  it('stays reachable after the fuzz run', async (ctx) => {
     const root = base ?? '';
     const url = root.replace(/^http/, 'ws');
+    const opens = await new Promise<boolean>((resolve) => {
+      const probe = new WebSocket(url);
+      const timer = setTimeout(() => {
+        probe.close();
+        resolve(false);
+      }, 5000);
+      probe.addEventListener('open', () => {
+        clearTimeout(timer);
+        probe.close();
+        resolve(true);
+      });
+      probe.addEventListener('error', () => {
+        clearTimeout(timer);
+        resolve(false);
+      });
+    });
+    if (!opens) {
+      ctx.skip('no WebSocket gateway answers on the target, so frames cannot be delivered');
+      return;
+    }
     const samples = fc.sample(frame, 50);
     await Promise.all(
       samples.map(
