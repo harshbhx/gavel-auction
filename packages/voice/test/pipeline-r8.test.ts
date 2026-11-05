@@ -181,9 +181,9 @@ describe('toPlaceBid needs a fresh context for a confirmed option (R-VOX-069)', 
   it('records who confirmed the bid', () => {
     const ctx = { ...base, confirmedOptionId: 'o500', current: fresh() };
     expect(toPlaceBid(confirm(true), ctx)?.audit.confirmedBy).toBe('bidder');
-    expect(toPlaceBid(confirm(true), { ...ctx, confirmedBy: 'auctioneer' })?.audit.confirmedBy).toBe(
-      'auctioneer',
-    );
+    expect(
+      toPlaceBid(confirm(true), { ...ctx, confirmedBy: 'auctioneer' })?.audit.confirmedBy,
+    ).toBe('auctioneer');
   });
 
   it('keeps the expiry drop', () => {
