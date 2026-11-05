@@ -14,6 +14,10 @@ export interface ExportHeader {
   rowCount: number;
   /** SHA-256 of the canonical JSON of the rows only; null when the browser cannot hash. */
   sha256: string | null;
+  /** True when the browser only held part of the trail, so rows are missing from this file. */
+  truncated: boolean;
+  firstSeq: number | null;
+  lastSeq: number | null;
 }
 
 export interface ExportFile {
@@ -79,6 +83,8 @@ export interface BuildExportInput {
   format: 'csv' | 'json';
   now: number;
   subtle?: SubtleCrypto | null;
+  /** The rows come from a trail that is known to be incomplete. */
+  truncated?: boolean;
 }
 
 export async function buildExport(input: BuildExportInput): Promise<ExportFile> {
@@ -93,6 +99,9 @@ export async function buildExport(input: BuildExportInput): Promise<ExportFile> 
     exportedAt: new Date(input.now).toISOString(),
     rowCount: rows.length,
     sha256: hash,
+    truncated: input.truncated === true,
+    firstSeq: input.rows.length === 0 ? null : Math.min(...input.rows.map((r) => r.seq)),
+    lastSeq: input.rows.length === 0 ? null : Math.max(...input.rows.map((r) => r.seq)),
   };
   const name = exportFileName(input.roomId, input.lotId, input.format);
   if (input.format === 'json') {
@@ -130,6 +139,8 @@ export interface ExportProps {
   filteredRows: readonly AuditPayload[];
   allRows: readonly AuditPayload[];
   paddleOf: (bidderId: string) => number | null;
+  /** True when the room store dropped or never received older rows (`auditTruncated`). */
+  truncated?: boolean;
   now?: () => number;
   /** Receives the built file; the default saves it in the browser. */
   onFile?: (file: ExportFile) => void;
@@ -142,11 +153,12 @@ export function Export({
   filteredRows,
   allRows,
   paddleOf,
+  truncated = false,
   now = Date.now,
   onFile = download,
 }: ExportProps) {
   const run = (rows: readonly AuditPayload[], format: 'csv' | 'json'): void => {
-    void buildExport({ roomId, lotId, rows, paddleOf, format, now: now() }).then(onFile);
+    void buildExport({ roomId, lotId, rows, paddleOf, format, now: now(), truncated }).then(onFile);
   };
   return (
     <div className="gv-audit-export">
@@ -157,10 +169,10 @@ export function Export({
         {t('audit.export.jsonFiltered')}
       </Button>
       <Button variant="outline" onClick={() => run(allRows, 'csv')}>
-        {t('audit.export.csvAll')}
+        {t(truncated ? 'audit.export.csvRecent' : 'audit.export.csvAll')}
       </Button>
       <Button variant="outline" onClick={() => run(allRows, 'json')}>
-        {t('audit.export.jsonAll')}
+        {t(truncated ? 'audit.export.jsonRecent' : 'audit.export.jsonAll')}
       </Button>
     </div>
   );

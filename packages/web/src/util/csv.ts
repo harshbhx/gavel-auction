@@ -1,8 +1,8 @@
 export type CsvCell = string | number | boolean | null | undefined;
 
-const FORMULA_START = /^[=+\-@]/;
+const FORMULA_START = /^[\t\r =+\-@]/;
 
-/** One RFC 4180 field. Text starting with = + - or @ gets a leading single quote to block spreadsheet formulas. */
+/** One RFC 4180 field. Text starting with = + - @ tab, CR or space gets a leading single quote to block spreadsheet formulas. */
 export function csvField(cell: CsvCell): string {
   if (cell === null || cell === undefined) return '';
   let text = typeof cell === 'string' ? cell : String(cell);
