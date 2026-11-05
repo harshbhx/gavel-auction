@@ -81,7 +81,15 @@ export const RoomSnapshotSchema = z
       })
       .strict()
       .optional(),
-    you: z.object({ bidderId: ulid<BidderId>(), ceiling: cents() }).strict().optional(),
+    you: z
+      .object({
+        bidderId: ulid<BidderId>(),
+        ceiling: cents(),
+        /** This bidder's highest accepted amount, absent before their first accepted bid. */
+        highBid: cents().optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 

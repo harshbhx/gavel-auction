@@ -6,6 +6,7 @@ import {
   type RoomEvent,
   type RoomState,
 } from './roomReducer';
+import { loadHighBid, saveHighBid } from '../net/session';
 import type { Selector } from './selectors';
 
 export type Listener = () => void;
@@ -27,7 +28,12 @@ export class RoomStore {
   private readonly offsetSamples: number[] = [];
 
   constructor(auctionId = '') {
-    this.state = initialRoomState(auctionId);
+    this.state = this.fresh(auctionId);
+  }
+
+  private fresh(auctionId: string): RoomState {
+    const initial = initialRoomState(auctionId);
+    return auctionId === '' ? initial : { ...initial, ownHighCents: loadHighBid(auctionId) };
   }
 
   /**
@@ -58,7 +64,7 @@ export class RoomStore {
   /** Switches room. Returns false when already in that room, and keeps the state in that case. */
   enter(auctionId: string): boolean {
     if (this.state.auctionId === auctionId) return false;
-    this.state = initialRoomState(auctionId);
+    this.state = this.fresh(auctionId);
     this.offsetSamples.length = 0;
     this.emit();
     return true;
@@ -82,6 +88,9 @@ export class RoomStore {
     }
     const { state, effects } = reduce(this.state, event);
     if (state !== this.state) {
+      if (state.ownHighCents !== this.state.ownHighCents && state.auctionId !== '') {
+        saveHighBid(state.auctionId, state.ownHighCents);
+      }
       this.state = state;
       this.emit();
     }

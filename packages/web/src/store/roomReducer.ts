@@ -40,6 +40,8 @@ export interface RoomState {
   expectedBidderId: string | null;
   me: Identity | null;
   recentBids: readonly BidRecord[];
+  /** This bidder's highest accepted amount in cents; 0 when none is known. */
+  ownHighCents: number;
   confirmRequests: readonly ConfirmRequestMsg[];
   hammer: HammerMsg | null;
   audit: readonly AuditPayload[];
@@ -83,6 +85,7 @@ export function initialRoomState(auctionId: string): RoomState {
     expectedBidderId: null,
     me: null,
     recentBids: [],
+    ownHighCents: 0,
     confirmRequests: [],
     hammer: null,
     audit: [],
@@ -111,6 +114,7 @@ function applySnapshot(state: RoomState, msg: Extract<ServerMessage, { t: 'state
     leaderPaddle: snap.roster.find((r) => r.bidderId === snap.leaderId)?.paddle ?? null,
     expectedBidderId: state.expectedBidderId,
     me: state.me,
+    ownHighCents: Math.max(state.ownHighCents, snap.you?.highBid ?? 0),
     // The hammer already fell and the snapshot does not carry it, so keep it unless the lot reopened.
     hammer: open ? null : state.hammer,
     // The snapshot does not carry confirmations either: keep the ones that have not expired.
@@ -207,6 +211,8 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
         },
       };
     case 'bid_accepted':
+      // Only the sender gets this reply, so the amount is this bidder's own accepted bid.
+      return msg.amount > state.ownHighCents ? { ...state, ownHighCents: msg.amount } : state;
     case 'bid_rejected':
       // Bid results are matched by mid in the pending-bid tracker.
       return state;

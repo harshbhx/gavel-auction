@@ -113,7 +113,7 @@ export const selectMyStatus: Selector<MyStatus> = memo((s) => {
   }
   if (s.hammer !== null) return s.hammer.winnerId === you.bidderId ? 'won' : 'lost';
   if (snap?.leaderId === you.bidderId) return 'leading';
-  const hasBid = s.recentBids.some((b) => b.bidderId === you.bidderId);
+  const hasBid = s.ownHighCents > 0 || s.recentBids.some((b) => b.bidderId === you.bidderId);
   if (!hasBid) return 'none';
   return snap !== null && you.ceiling !== null && snap.minNext > you.ceiling
     ? 'atCeiling'
@@ -125,7 +125,7 @@ export const selectCeilingUsage: Selector<CeilingUsage | null> = memo((s) => {
   if (you === null || you.ceiling === null) return null;
   const usedCents = s.recentBids
     .filter((b) => b.bidderId === you.bidderId)
-    .reduce((max, b) => Math.max(max, b.amount), 0);
+    .reduce((max, b) => Math.max(max, b.amount), s.ownHighCents);
   return { usedCents, maxCents: you.ceiling };
 });
 
