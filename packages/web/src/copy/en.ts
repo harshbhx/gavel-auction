@@ -126,7 +126,7 @@ export const en = {
   'kill.button': 'Stop auction',
   'kill.title': 'Stop the auction?',
   'kill.consequence':
-    'Bidding ends for everyone now. No winner is chosen. All holds are released. This cannot be undone.',
+    'Bidding ends for everyone now. No winner is chosen. Holds will be released. This cannot be undone.',
   'kill.type': 'Type STOP to continue',
   'kill.hold': 'Hold to stop',
   'kill.stopped': 'Auction stopped',
@@ -172,7 +172,9 @@ export const en = {
   'receipt.fallback':
     'Another bidder could not be charged, so you are the winner. Charged {amount}.',
   'receipt.failed':
-    'We could not complete this payment. Nothing more will be charged until the organizer reviews it.',
+    'We could not confirm whether this payment went through. The organizer will review it and tell you the result.',
+  'receipt.failedNoCapture':
+    'We could not complete this auction for you. Your hold is held, not charged, until the organizer reviews it.',
   'receipt.none': 'No receipt for this session.',
   'receipt.download': 'Download JSON',
   'receipt.print': 'Print',
