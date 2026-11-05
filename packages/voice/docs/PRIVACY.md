@@ -4,26 +4,35 @@ This is a sandbox demo, do not speak personal data.
 
 ## What is stored
 
-| Key            | Description                         | Retention          |
-| -------------- | ----------------------------------- | ------------------ |
-| transcript     | Final transcript of decided segment | Audit trail period |
-| parseResult    | Parsed bid amount and paddle        | Audit trail period |
-| confidence     | STT confidence score                | Audit trail period |
-| timestampMs    | Server timestamp of the segment     | Audit trail period |
-| provider       | STT provider name                   | Audit trail period |
-| decision       | Engine decision for the bid         | Audit trail period |
-| confirmOutcome | Auctioneer confirm/reject result    | Audit trail period |
+One audit record per decision. Keys are exactly those of `auditRecordSchema`;
+anything else is rejected on write.
+
+| Key         | Description                                            | Retention          |
+| ----------- | ------------------------------------------------------ | ------------------ |
+| decision    | accept, confirm or drop                                | Audit trail period |
+| outcome     | accepted, pending_confirm or rejected                  | Audit trail period |
+| transcript  | Final transcript of a decided bid segment              | Audit trail period |
+| bidderId    | Bidder id of an accepted or confirmed bid              | Audit trail period |
+| amountCents | Parsed bid amount                                      | Audit trail period |
+| confidence  | Combined confidence score                              | Audit trail period |
+| confirmed   | Whether the bidder confirmed a prompt                  | Audit trail period |
+| reason      | Decision reason code                                   | Audit trail period |
+| evidence    | Segment id, audio window, provider name, parse results | Audit trail period |
 
 ## What is NOT stored
 
 - Raw audio bytes
-- Speaker identity or voice biometrics
-- Any data from non-bid utterances (questions, filler, chatter)
+- Voice biometrics. An accepted or confirmed bid does carry the bidder id.
+- The words of a drop that read no bid (questions, filler, chatter): the
+  transcript is blanked and only the reason and scores are kept. A drop of a
+  real bid attempt (for example below the minimum) keeps its transcript.
 - Device or browser fingerprints
 
 ## Vendor retention
 
-Vendor retention terms for Deepgram and Groq are UNVERIFIED (gate G5).
-Audio is streamed to the vendor for real-time transcription and is not
-stored on our side. Until vendor terms are verified, this system is for
+Vendor retention terms for Groq (speech to text) and the language model
+vendor are UNVERIFIED (gate G5). Audio is streamed to the speech vendor for
+real-time transcription and is not stored on our side. The transcript, the
+previous segment and the registered paddles are sent to the language model
+vendor to help read a bid. Until vendor terms are verified, this system is for
 sandbox use only.

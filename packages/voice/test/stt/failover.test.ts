@@ -193,7 +193,7 @@ describe('T-VOX-019 failover triggers', () => {
   });
 
   it('opens a circuit for 30 s, probes the primary, and returns on a healthy probe', async () => {
-    const r = rig([[], [interim(200)]]);
+    const r = rig([[], [interim(200), interim(4000)]]);
     await r.stt.start({ keyterms: [], language: 'en' });
     await r.feed(30);
     expect(r.switches).toEqual(['silent']);
@@ -203,7 +203,8 @@ describe('T-VOX-019 failover triggers', () => {
     await r.feed(2);
     expect(r.primaries).toHaveLength(2);
     expect(r.stt.usingPrimary).toBe(false);
-    await r.feed(3);
+    // The swap waits for the fallback to finish (or the 3 s bound) before it takes over (R9-V02).
+    await r.feed(45);
     await flush();
     expect(r.stt.usingPrimary).toBe(true);
     expect(r.switches).toEqual(['silent', 'recovered']);
@@ -236,5 +237,48 @@ describe('T-VOX-019 failover triggers', () => {
     await r.stt.stop();
     await flush();
     expect(r.seen[r.seen.length - 1]).toEqual({ type: 'state', state: 'closed' });
+  });
+});
+
+describe('R9 failover fixes', () => {
+  it('re-arms the silence timer for every utterance (R9-V01)', async () => {
+    const r = rig([[interim(100), final(400, 300)]]);
+    await r.stt.start({ keyterms: [], language: 'en' });
+    await r.feed(5);
+    expect(r.switches).toEqual([]);
+    await r.feed(28);
+    expect(r.switches).toEqual([]);
+    await r.feed(3);
+    await flush();
+    expect(r.switches).toEqual(['silent']);
+    await r.stt.stop();
+  });
+
+  it('a probe answer mid-utterance does not discard the fallback final (R9-V02)', async () => {
+    const r = rig([[], [interim(200), interim(5000)]]);
+    await r.stt.start({ keyterms: [], language: 'en' });
+    await r.feed(30);
+    await r.feed(301);
+    expect(r.primaries).toHaveLength(2);
+    // The probe answers for the tail of an utterance the fallback still holds.
+    await r.feed(3);
+    await flush();
+    expect(r.stt.usingPrimary).toBe(false);
+    r.fallbacks[0]?.inject({
+      type: 'final',
+      text: 'one hundred for paddle twelve',
+      words: [],
+      startMs: 0,
+      endMs: 1000,
+      confidence: 0.9,
+      speechFinal: true,
+    });
+    await flush();
+    const finals = r.seen.filter((e) => e.type === 'final');
+    expect(finals).toHaveLength(1);
+    expect(finals[0]?.type === 'final' && finals[0].text).toBe('one hundred for paddle twelve');
+    expect(r.stt.usingPrimary).toBe(true);
+    expect(r.switches).toEqual(['silent', 'recovered']);
+    await r.stt.stop();
   });
 });

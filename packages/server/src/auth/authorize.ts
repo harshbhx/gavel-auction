@@ -46,7 +46,8 @@ export function authorize(op: Operation, role: AuthRole): AuthDecision {
   return allowed ? { ok: true } : { ok: false, code: 'forbidden' };
 }
 
-const CEILING_KEYS: ReadonlySet<string> = new Set(['ceiling']);
+/** Matches `ceiling` and the web wire name `ceilingCents`, not the public `ceilingPresets`. */
+const CEILING_KEY = /^ceiling(cents)?$/i;
 
 /**
  * Remove private fields from an outbound frame for one viewer (R-RT-055, R-RT-086).
@@ -100,6 +101,7 @@ function walk(
     if (!fullAudit && parentKey === 'recentAudit') {
       return value.map(toPublicRow).filter((r): r is PublicAuditRow => r !== null);
     }
+    if (role === 'auctioneer' && parentKey === 'recentAudit') return value.map(scrubCeilingRow);
     return value.map((v) => walk(role, viewer, v, parentKey, fullAudit));
   }
   if (typeof value !== 'object' || value === null) return value;
@@ -107,6 +109,7 @@ function walk(
   if (!fullAudit && parentKey === 'audit') {
     return toPublicRow(value) ?? {};
   }
+  if (role === 'auctioneer' && parentKey === 'audit') return scrubCeilingRow(value);
   const obj = value as Record<string, unknown>;
   const owner = typeof obj.bidderId === 'string' ? obj.bidderId : undefined;
   const mine = role === 'bidder' && viewer !== undefined && owner === viewer;
@@ -116,9 +119,24 @@ function walk(
     // the room builds both per connection, so a bidder only ever holds their own.
     if (k === 'you' && !(role === 'bidder' && (typeof v === 'string' || isOwn(v, viewer))))
       continue;
-    if (CEILING_KEYS.has(k) && !mine) continue;
+    if (CEILING_KEY.test(k) && !mine) continue;
     out[k] = walk(role, viewer, v, k, fullAudit);
   }
+  return out;
+}
+
+/**
+ * The auctioneer holds state only (R-RT-055): an over_ceiling row loses the amount and the
+ * spoken words, because either one is a lower bound on the bidder's private ceiling.
+ */
+function scrubCeilingRow(row: unknown): unknown {
+  if (typeof row !== 'object' || row === null) return row;
+  const obj = row as Record<string, unknown>;
+  if (obj.reason !== 'over_ceiling') return row;
+  const out = { ...obj };
+  delete out.parsedAmount;
+  delete out.transcript;
+  delete out.audioTsMs;
   return out;
 }
 
@@ -152,6 +170,8 @@ export function redactEventForExport(role: AuthRole, event: RoomEvent): Exported
     delete copy.amount;
     const audit: Partial<typeof event.audit> = { ...event.audit };
     delete audit.parsedAmount;
+    delete audit.transcript;
+    delete audit.audioTsMs;
     return { ...copy, audit } as typeof event;
   }
   if (event.type === 'confirm_requested') {

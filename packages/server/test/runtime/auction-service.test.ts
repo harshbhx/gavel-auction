@@ -403,11 +403,11 @@ describe('auction service: gauges and counters (R8-S03)', () => {
     const rig = await makeRig();
     const metrics = { bidAccepted: vi.fn(), bidRejected: vi.fn(), rateLimitHit: vi.fn() };
     const service = rig.service({ roomMetrics: metrics, resumeIntervalMs: 0 });
-    expect(service.stats()).toEqual({ rooms: 0, connections: 0 });
+    expect(service.stats()).toEqual({ rooms: 0, connections: 0, mailboxDepth: 0 });
     const auctionId = rig.ids.mint<'AuctionId'>();
     const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
     const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
-    expect(service.stats()).toEqual({ rooms: 1, connections: 1 });
+    expect(service.stats()).toEqual({ rooms: 1, connections: 1, mailboxDepth: 0 });
     await room.submitBid(a.conn, bid(rig, 10000));
     expect(metrics.bidAccepted).toHaveBeenCalledTimes(1);
     await service.close();
@@ -1589,6 +1589,68 @@ describe('auction service: orphan hold when registration is refused (HRD-10, iss
     const ok = await enroll(rig, service, room, auctionId, 'Ada', 30000);
     expect((await rig.stores.holds.get(ok.holdId))?.status).toBe('HELD');
     expect(rig.paypal.core.getAuthorization(ok.authId).status).not.toBe('VOIDED');
+    await service.close();
+  });
+});
+
+describe('auction service: HRD-16 hold recovery wiring', () => {
+  it('adopts an authorization left by a crash before the HELD write, on the sweep', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0, holdSweepMinAgeMs: 60_000 });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const created = await rig.holdsApi.createHoldOrder({
+      auctionId,
+      bidderId: rig.ids.mint<'BidderId'>(),
+      ceilingCents: 30000,
+      presetsCents: config.ceilingPresets,
+    });
+    rig.paypal.core.approveOrder(created.orderId);
+    // PayPal authorizes; the process dies before the record learns the authorization id.
+    const lost = await rig.gateway.authorizeOrder(created.orderId, 'req-lost');
+    await service.resume();
+    expect((await rig.stores.holds.get(created.holdId))?.authId).toBeUndefined();
+    rig.clock.advance(120_000);
+    await service.resume();
+    const rec = await rig.stores.holds.get(created.holdId);
+    expect(rec).toMatchObject({ status: 'HELD', authId: lost.authId });
+    await service.close();
+  });
+
+  it('voids a second hold of a registered bidder and retries a failed void on the sweep', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0 });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const first = await enroll(rig, service, room, auctionId, 'Ada', 30000);
+    const other = rig.ids.mint<'BidderId'>();
+    const spare = await rig.holdsApi.createHoldOrder({
+      auctionId,
+      bidderId: other,
+      ceilingCents: 30000,
+      presetsCents: config.ceilingPresets,
+    });
+    rig.paypal.core.approveOrder(spare.orderId);
+    await rig.holdsApi.completeApproval({ holdId: spare.holdId, orderId: spare.orderId });
+    const held = await rig.stores.holds.get(spare.holdId);
+    if (held?.authId === undefined) throw new Error('spare hold not authorized');
+    await rig.stores.holds.put({ ...held, bidderId: first.id });
+    rig.paypal.core.inject('void', 'http_500', held.authId, 7);
+    await expect(
+      service.registerBidder({
+        auctionId,
+        bidderId: first.id,
+        name: 'Ada',
+        holdId: spare.holdId,
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    for (let i = 0; i < 4; i += 1) {
+      if ((await rig.stores.holds.get(spare.holdId))?.status === 'VOIDED') break;
+      await service.resume();
+    }
+    expect((await rig.stores.holds.get(spare.holdId))?.status).toBe('VOIDED');
+    expect(rig.paypal.core.getAuthorization(held.authId).status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(first.holdId))?.status).toBe('HELD');
     await service.close();
   });
 });

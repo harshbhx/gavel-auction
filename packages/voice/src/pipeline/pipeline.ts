@@ -112,6 +112,8 @@ export class VoicePipeline {
     by: 'bidder' | 'auctioneer' | 'voice',
   ): AnswerOutcome {
     const prompt = this.open.get(promptId);
+    // Expiries found here are kept for the next push or tick so none go unaudited (R9-V03).
+    for (const a of this.book.sweep()) this.audit(this.deferred, a.reason, a.promptId, a.promptId);
     const taken = this.book.take(promptId);
     this.open.delete(promptId);
     if (taken.status !== 'ok' || prompt === undefined) {
@@ -138,8 +140,10 @@ export class VoicePipeline {
     this.accepted.push({ bidderId, amountCents, atMs: this.deps.clock() });
   }
 
+  private readonly deferred: PipelineOutput[] = [];
+
   private housekeeping(now: number): PipelineOutput[] {
-    const out: PipelineOutput[] = [];
+    const out: PipelineOutput[] = this.deferred.splice(0);
     for (const a of this.book.sweep()) this.audit(out, a.reason, a.promptId, a.promptId);
     const snap = this.faults.snapshot(now);
     const llm = this.deps.llm === undefined ? 'off' : snap.llm;
@@ -251,12 +255,19 @@ export class VoicePipeline {
     if (spoken !== null) return spoken;
 
     const pending = this.segmenter.pending.get(now);
+    let speakerPaddle: string | undefined;
+    if (this.deps.speakerBidderId !== undefined) {
+      for (const [label, entry] of ctx.roster) {
+        if (entry.bidderId === this.deps.speakerBidderId) speakerPaddle = label;
+      }
+    }
     const pctx: ParseContext = {
       currentPriceCents: ctx.currentPriceCents,
       minIncrementCents: ctx.minIncrementCents,
       ...(this.deps.speakerBidderId === undefined
         ? {}
         : { speakerBidderId: this.deps.speakerBidderId }),
+      ...(speakerPaddle === undefined ? {} : { speakerPaddle }),
       ...(pending === undefined ? {} : { pendingCandidate: pending }),
       sttWordConfidence: seg.words.map((w) => ({
         word: w.word,

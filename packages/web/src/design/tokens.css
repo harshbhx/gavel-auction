@@ -20,6 +20,8 @@
  * Without the attribute the theme follows prefers-color-scheme.
  */
 
+@import './motion.css';
+
 @font-face {
   font-family: 'Inter Variable';
   font-style: normal;

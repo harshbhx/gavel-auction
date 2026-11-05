@@ -5,13 +5,19 @@
 // written against the typed internal interface `PayPalSdkV6`, so only this file changes if the
 // real SDK differs. Manual real-SDK checklist (record the outcome in docs/GATES.md under G2):
 //   1. Wallet buyer, intent AUTHORIZE: popup opens, approval returns an order id, hold is created.
-//   2. Card or guest buyer: same flow and the hold is created.
+//   2. Card or guest buyer: same flow, or the fallback redirect is used and the hold is created.
 //   3. Buyer closes the popup: the port reports `cancelled` and no hold exists.
 //   4. Declined instrument: the port reports `declined` with a human message.
-//   5. Popup blocked: the port reports an error and the unapproved hold is dropped.
+//   5. Popup blocked: the redirect approval opens in this tab and the return route completes the hold.
 import type { ApprovalRequest, ApprovalResult, ApprovalState, PaymentApprovalPort } from './port';
 import type { FetchLike } from './fakeAdapter';
-import { ABANDON_HOLD_METHOD, ApproveHoldResponse, CreateHoldResponse } from '@gavel/shared';
+import {
+  ABANDON_HOLD_METHOD,
+  ApproveHoldResponse,
+  CreateHoldResponse,
+  type HoldErrorCode,
+} from '@gavel/shared';
+import { isHoldErrorCode } from '../copy/errors';
 
 /** What this adapter needs from the SDK. UNVERIFIED (gate G2). */
 export interface PayPalSessionV6 {
@@ -95,6 +101,8 @@ export interface PayPalAdapterDeps {
   clientId: string;
   loadSdk?: SdkLoader;
   fetch?: FetchLike;
+  /** Fallback: sends this tab to PayPal's approval page. Defaults to location.assign. */
+  redirect?: (url: string) => void;
   /** How long an order or hold request may take before it is abandoned. Defaults to 15 s. */
   requestTimeoutMs?: number;
 }
@@ -103,7 +111,7 @@ export const REQUEST_TIMEOUT_MS = 15_000;
 
 type PostResult =
   | { ok: true; body: Record<string, unknown> }
-  | { ok: false; why: 'timeout' | 'aborted' | 'failed' };
+  | { ok: false; why: 'timeout' | 'aborted' | 'failed'; code?: HoldErrorCode };
 
 type Outcome =
   | { kind: 'approved'; orderId: string }
@@ -118,6 +126,27 @@ const DECLINE_CODES: readonly string[] = ['INSTRUMENT_DECLINED', 'PAYER_ACTION_D
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
 }
+
+const APPROVE_HOSTS: readonly string[] = ['www.sandbox.paypal.com', 'sandbox.paypal.com'];
+
+/** The redirect fallback may only go to PayPal's sandbox over https, never to a string the server picked. */
+function safeApproveUrl(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  try {
+    const url = new URL(raw);
+    const ok =
+      url.protocol === 'https:' &&
+      APPROVE_HOSTS.includes(url.hostname) &&
+      url.username === '' &&
+      url.password === '' &&
+      url.port === '';
+    return ok ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+const holdPath = (holdId: string): string => `/api/holds/${encodeURIComponent(holdId)}`;
 
 export class PayPalV6Adapter implements PaymentApprovalPort {
   private session: PayPalSessionV6 | null = null;
@@ -139,6 +168,12 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
       on(state);
       return { state, correlationId, ...extra };
     };
+
+    if (req.approvedOrderId !== undefined && req.approvedHoldId !== undefined) {
+      on('confirming');
+      return this.confirm(req.approvedHoldId, req.approvedOrderId, finish, req.ceilingCents);
+    }
+
     on('preparing');
     const order = await this.post('/api/holds', {
       auctionId: req.roomId,
@@ -147,13 +182,14 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     if (!order.ok) {
       if (order.why === 'aborted') return finish('cancelled');
       return finish('error', {
-        errorCode: order.why === 'timeout' ? 'order_timeout' : 'order_failed',
+        errorCode: order.code ?? (order.why === 'timeout' ? 'order_timeout' : 'order_failed'),
       });
     }
     const created = CreateHoldResponse.safeParse(order.body);
     if (!created.success) return finish('error', { errorCode: 'order_failed' });
     const { holdId, orderId, clientToken } = created.data;
-    this.abandonUrl = `/api/holds/${encodeURIComponent(holdId)}`;
+    const approveUrl = safeApproveUrl(created.data.approveUrl);
+    this.abandonUrl = holdPath(holdId);
 
     on('awaiting_buyer');
     const outcome = await this.approve(orderId, clientToken);
@@ -170,25 +206,63 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
       return finish('declined', { errorCode: outcome.code });
     }
     if (outcome.kind === 'failed') {
+      // Wallet-buyer fallback: approve on PayPal's own page and finish on the return route. The
+      // hold stays open for that route, so it is not released here.
+      if (approveUrl !== null) {
+        this.abandonUrl = null;
+        (this.deps.redirect ?? ((url) => globalThis.location.assign(url)))(approveUrl);
+        return {
+          state: 'awaiting_buyer',
+          correlationId,
+          errorCode: outcome.code,
+          orderId,
+          holdId,
+        };
+      }
       await this.release();
       return finish('error', { errorCode: outcome.code });
     }
 
     on('confirming');
-    const hold = await this.post(`/api/holds/${encodeURIComponent(holdId)}/approve`, {
-      orderId: outcome.orderId,
-    });
+    return this.confirm(holdId, outcome.orderId, finish, req.ceilingCents);
+  }
+
+  /** Return route step: the buyer came back from PayPal's approval page with an order id. */
+  async completeRedirect(
+    holdId: string,
+    orderId: string,
+    clientRegistrationId: string,
+    on: (s: ApprovalState) => void,
+  ): Promise<ApprovalResult> {
+    const correlationId = `pp-${clientRegistrationId.slice(0, 8)}`;
+    const finish = (state: ApprovalState, extra: Partial<ApprovalResult> = {}): ApprovalResult => {
+      on(state);
+      return { state, correlationId, ...extra };
+    };
+    on('confirming');
+    return this.confirm(holdId, orderId, finish);
+  }
+
+  private async confirm(
+    holdId: string,
+    orderId: string,
+    finish: (state: ApprovalState, extra?: Partial<ApprovalResult>) => ApprovalResult,
+    expectedCents?: number,
+  ): Promise<ApprovalResult> {
+    const hold = await this.post(`${holdPath(holdId)}/approve`, { orderId });
     if (!hold.ok) {
       if (hold.why === 'aborted') return finish('cancelled');
       return finish('error', {
-        errorCode: hold.why === 'timeout' ? 'hold_timeout' : 'hold_failed',
+        errorCode: hold.code ?? (hold.why === 'timeout' ? 'hold_timeout' : 'hold_failed'),
+        orderId,
+        holdId,
       });
     }
     const approved = ApproveHoldResponse.safeParse(hold.body);
     if (!approved.success) return finish('error', { errorCode: 'hold_failed' });
     this.abandonUrl = null;
     // The amount the server confirmed must be the one this attempt asked for (WEB-R2-10).
-    if (approved.data.ceilingCents !== req.ceilingCents) {
+    if (expectedCents !== undefined && approved.data.ceilingCents !== expectedCents) {
       return finish('error', { errorCode: 'hold_mismatch' });
     }
     // The payments service returns the full hold id; only the last 6 characters are shown.
@@ -283,7 +357,15 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
         aborted,
       ]);
       if (res === 'abort') return { ok: false, why: timedOut ? 'timeout' : 'aborted' };
-      if (!res.ok) return { ok: false, why: 'failed' };
+      if (!res.ok) {
+        // Keep the payments error code of a non-2xx body so the UI can show its copy.
+        const errBody = await Promise.race([res.json().catch(() => null), aborted]);
+        if (errBody === 'abort') return { ok: false, why: timedOut ? 'timeout' : 'aborted' };
+        const code = isRecord(errBody) ? errBody['error'] : undefined;
+        return isHoldErrorCode(code)
+          ? { ok: false, why: 'failed', code }
+          : { ok: false, why: 'failed' };
+      }
       const json = await Promise.race([res.json(), aborted]);
       if (json === 'abort') return { ok: false, why: timedOut ? 'timeout' : 'aborted' };
       return isRecord(json) ? { ok: true, body: json } : { ok: false, why: 'failed' };

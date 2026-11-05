@@ -174,6 +174,8 @@ export class LedgerEngine
   }
 
   placeBidWith(bidder: BidderId, amount: Cents, ts: EpochMs, meta: BidMeta): EngineBidResult {
+    // A frozen clock is not a closed lot: tell the bidder to wait (R-RT-049).
+    if (this.paused && this.lot()?.status === 'OPEN') return { ok: false, code: 'auction_paused' };
     const at = Math.max(ts, this.state.head.at);
     let outcome: ReturnType<typeof decide>['outcome'];
     try {
@@ -213,12 +215,19 @@ export class LedgerEngine
   hammer(now: EpochMs): HammerResult {
     const at = Math.max(now, this.state.head.at);
     const early = this.lot()?.status === 'OPEN';
-    const entries = this.run(at, 'Hammer', [early], {
-      type: 'Hammer',
-      lotId: this.lotId,
-      early,
-      actor: 'auctioneer',
-    }).entries;
+    let entries: ReturnType<LedgerEngine['run']>['entries'];
+    try {
+      entries = this.run(at, 'Hammer', [early], {
+        type: 'Hammer',
+        lotId: this.lotId,
+        early,
+        actor: 'auctioneer',
+      }).entries;
+    } catch (e) {
+      // A refusal (paused, wrong state) leaves the state untouched: report it as a conflict.
+      if (e instanceof EngineError) throw new GavelError('conflict', e.code);
+      throw e;
+    }
     const hammered = entries.find((e) => e.type === 'LOT_HAMMERED');
     if (hammered === undefined || hammered.type !== 'LOT_HAMMERED') {
       return { winnerId: null, price: 0 as Cents, ranking: [] };
@@ -317,6 +326,9 @@ export class LedgerEngine
       endTs: (lot?.endsAt ?? this.cfg.endTs) as EpochMs,
       extensions: lot?.extensions ?? 0,
       minNext: (price === null ? this.cfg.reserve : price + this.cfg.minIncrement) as Cents,
+      ...(lot?.pausedRemainingMs !== undefined
+        ? { paused: true, remainingMs: lot.pausedRemainingMs }
+        : {}),
     };
   }
 

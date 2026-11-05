@@ -46,6 +46,9 @@ export interface EngineView {
   endTs: EpochMs;
   extensions: number;
   minNext: Cents;
+  /** Set while the lot clock is frozen; `remainingMs` is what resume restores. */
+  paused?: boolean;
+  remainingMs?: number;
 }
 
 /** What the room needs from the auction engine. */
@@ -90,8 +93,6 @@ export interface PaymentsPort {
   handleWebhook(req: {
     rawBody: Uint8Array;
     headers: Record<string, string>;
-    /** The sender's address as the route knows it; feeds the per-source call limit (R9-M02). */
-    source?: string | undefined;
   }): Promise<
     | { kind: 'ok'; auctionId?: AuctionId }
     | { kind: 'duplicate' }

@@ -20,29 +20,67 @@ export interface Outcome {
   invariants: Partial<Record<Invariant, boolean>>;
 }
 
+/** Length of the bidding window the runner gives every scenario, counted from clock.startMs. */
+const WINDOW_MS = 600_000;
+
+/**
+ * The auction config a scenario declares: mode, reserve, increment, soft close and an end time
+ * counted from its own clock.startMs, so none of these fields is silently ignored.
+ * actors.*.funding is checked by {@link assertSupported}: the fake PayPal server only knows wallet
+ * buyers. seed has no consumer because the runner draws no random numbers.
+ */
+export function scenarioConfig(scenario: Scenario): AuctionConfig {
+  const presets = [
+    ...new Set(scenario.steps.flatMap((s) => (s.do === 'register' ? [s.ceiling] : []))),
+  ].sort((a, b) => a - b);
+  return {
+    ...CONFIG,
+    mode: scenario.auction.mode,
+    ceilingPresets: presets,
+    reserve: scenario.auction.reserve,
+    minIncrement: scenario.auction.minIncrement,
+    softCloseWindowMs: scenario.auction.softCloseMs,
+    endTs: scenario.clock.startMs + WINDOW_MS,
+  } as unknown as AuctionConfig;
+}
+
+/** Throws for a declared field the runner cannot apply, so it is never skipped silently. */
+export function assertSupported(scenario: Scenario): void {
+  for (const [name, actor] of Object.entries(scenario.actors)) {
+    if (actor.funding !== 'wallet') {
+      throw new Error(
+        `${scenario.id}: actor ${name} funding "${actor.funding}" is not supported by the in-process runner (wallet only)`,
+      );
+    }
+  }
+  for (const step of scenario.steps) {
+    if (step.do === 'register' && step.funding !== undefined && step.funding !== 'wallet') {
+      throw new Error(
+        `${scenario.id}: register funding "${step.funding}" is not supported by the in-process runner (wallet only)`,
+      );
+    }
+  }
+}
+
 const SUPPORTED_STEPS = new Set(['register', 'open', 'bid', 'hammer']);
 
 export async function runScenarioInProc(
   scenario: Scenario,
   stop: Array<{ stop(): Promise<void> }>,
 ): Promise<Outcome> {
+  assertSupported(scenario);
   const rig = await makeRig();
   stop.push(rig.paypal);
+  // The room refuses an end time more than a day ahead, so the clock starts where the scenario says.
+  rig.clock.set(scenario.clock.startMs);
   const service = rig.service();
   const auctionId = rig.ids.mint<'AuctionId'>();
-  const presets = [
-    ...new Set(scenario.steps.flatMap((s) => (s.do === 'register' ? [s.ceiling] : []))),
-  ].sort((a, b) => a - b);
-  const config = {
-    ...CONFIG,
-    ceilingPresets: presets,
-    reserve: scenario.auction.reserve,
-    minIncrement: scenario.auction.minIncrement,
-  } as unknown as AuctionConfig;
+  const config = scenarioConfig(scenario);
+  const presets = (config as unknown as { ceilingPresets: number[] }).ceilingPresets;
   const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
   const bidders = new Map<string, Bidder>();
   let boss: Awaited<ReturnType<typeof connect>> | undefined;
-  const base = rig.clock.now();
+  const base = scenario.clock.startMs;
 
   const steps = [...scenario.steps].sort((a, b) => a.t - b.t);
   for (const step of steps) {

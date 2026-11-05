@@ -34,9 +34,29 @@ export const EVIDENCE_KEYS: readonly string[] = [
   'reason',
 ] as const;
 
-/** One audit record per decision, drops included. Throws if the record leaves the allow-list. */
+/**
+ * One audit record per decision. Throws if the record leaves the allow-list. A drop that read no
+ * bid at all (a question, filler, bystander chatter) keeps its reason and scores but not the
+ * words: its transcript is redacted so chatter is never stored (docs/PRIVACY.md).
+ */
 export function buildAudit(decision: Decision): AuditRecord {
-  return auditRecordSchema.parse(toAuditRecord(decision));
+  const rec = toAuditRecord(decision);
+  if (decision.kind === 'drop' && !readAsBid(decision)) {
+    return auditRecordSchema.parse({
+      ...rec,
+      transcript: REDACTED,
+      evidence: { ...rec.evidence, transcript: REDACTED },
+    });
+  }
+  return auditRecordSchema.parse(rec);
+}
+
+/** Transcript placeholder for a redacted drop. */
+export const REDACTED = '';
+
+function readAsBid(decision: Decision): boolean {
+  const ev = decision.evidence;
+  return ev.rules.status !== 'none' || (ev.llm !== null && ev.llm.status !== 'none');
 }
 
 export type AriaLive = 'polite' | 'assertive';

@@ -48,6 +48,7 @@ function stubSdk(script: Script, opts: { startRejects?: boolean } = {}) {
 function fakeFetch(
   orderBody: unknown = { holdId: 'hold-ABC123', orderId: 'ord-1', clientToken: 'ct' },
   holdOk = true,
+  holdBody: Record<string, unknown> = { holdId: 'hold-ABC123', status: 'HELD', ceilingCents: 50_000 },
 ) {
   const urls: string[] = [];
   const bodies: unknown[] = [];
@@ -67,24 +68,32 @@ function fakeFetch(
     return Promise.resolve({
       ok: holdOk,
       status: 200,
-      json: () => Promise.resolve({ holdId: 'hold-ABC123', status: 'HELD', ceilingCents: 50_000 }),
+      json: () => Promise.resolve(holdBody),
     });
   };
   return { fetch, urls, bodies };
 }
 
-function make(script: Script, orderBody?: unknown, holdOk = true, startRejects = false) {
+function make(
+  script: Script,
+  orderBody?: unknown,
+  holdOk = true,
+  startRejects = false,
+  holdBody?: Record<string, unknown>,
+) {
   const { sdk, calls } = stubSdk(script, { startRejects });
-  const net = fakeFetch(orderBody, holdOk);
+  const net = fakeFetch(orderBody, holdOk, holdBody);
   const loadSdk = vi.fn(() => Promise.resolve(sdk));
+  const redirect = vi.fn();
   const adapter = new PayPalV6Adapter({
     apiBase: 'http://api',
     clientId: 'client-1',
     loadSdk,
     fetch: net.fetch,
+    redirect,
   });
   const states: ApprovalState[] = [];
-  return { adapter, calls, loadSdk, states, urls: net.urls, bodies: net.bodies };
+  return { adapter, calls, loadSdk, redirect, states, urls: net.urls, bodies: net.bodies };
 }
 
 describe('PayPalV6Adapter (stubbed SDK)', () => {
@@ -106,6 +115,28 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     await t.adapter.start(req, () => {});
     expect(CreateHoldRequest.safeParse(t.bodies[0]).success).toBe(true);
     expect(ApproveHoldRequest.safeParse(t.bodies[1]).success).toBe(true);
+  });
+
+  it('retries only the approve step with the approved order and hold (WEB-R2-08)', async () => {
+    const failing = make((cb) => cb.onApprove({ orderId: 'ord-1' }), undefined, false);
+    const first = await failing.adapter.start(req, () => {});
+    expect(first).toMatchObject({
+      state: 'error',
+      errorCode: 'hold_failed',
+      orderId: 'ord-1',
+      holdId: 'hold-ABC123',
+    });
+    // The failed approve must not drop the hold the retry needs.
+    expect(failing.urls.some((u) => u.startsWith('DELETE'))).toBe(false);
+
+    const retry = make(() => {});
+    const second = await retry.adapter.start(
+      { ...req, approvedOrderId: 'ord-1', approvedHoldId: 'hold-ABC123' },
+      () => {},
+    );
+    expect(second).toMatchObject({ state: 'held', holdIdSuffix: 'ABC123' });
+    expect(retry.urls).toEqual(['POST http://api/api/holds/hold-ABC123/approve']);
+    expect(retry.loadSdk).not.toHaveBeenCalled();
   });
 
   it('loads the SDK only on the approval step', async () => {
@@ -189,7 +220,58 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     expect(calls).not.toContain('start');
   });
 
-  it('reports an error when the popup fails and there is the hold is dropped', async () => {
+  it.each([
+    'https://www.paypal.com/checkoutnow?token=ord-1',
+    'javascript:alert(1)',
+    'https://user:pw@www.sandbox.paypal.com/approve',
+    'http://www.sandbox.paypal.com/approve',
+    'https://www.sandbox.paypal.com.evil.example/approve',
+  ])('refuses the redirect fallback for %s (WEB-R2-09)', async (approveUrl) => {
+    const t = make(
+      () => {},
+      { holdId: 'hold-ABC123', orderId: 'ord-1', approveUrl },
+      true,
+      true,
+    );
+    const result = await t.adapter.start(req, () => {});
+    expect(t.redirect).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ state: 'error', errorCode: 'popup_failed' });
+  });
+
+  it('falls back to redirect approval when the popup fails and keeps the hold', async () => {
+    const t = make(
+      () => {},
+      {
+        holdId: 'hold-ABC123',
+        orderId: 'ord-1',
+        approveUrl: 'https://www.sandbox.paypal.com/approve?token=ord-1',
+      },
+      true,
+      true,
+    );
+    const result = await t.adapter.start(req, (s) => t.states.push(s));
+    expect(t.redirect).toHaveBeenCalledWith('https://www.sandbox.paypal.com/approve?token=ord-1');
+    expect(result).toMatchObject({
+      state: 'awaiting_buyer',
+      errorCode: 'popup_failed',
+      orderId: 'ord-1',
+      holdId: 'hold-ABC123',
+    });
+    expect(t.urls.some((u) => u.startsWith('DELETE'))).toBe(false);
+  });
+
+  it('falls back to redirect when an SDK error is not a decline', async () => {
+    const t = make((cb) => cb.onError({ code: 'AUTHORIZE_NOT_SUPPORTED' }), {
+      holdId: 'hold-ABC123',
+      orderId: 'ord-1',
+      approveUrl: 'https://sandbox.paypal.com/approve',
+    });
+    const result = await t.adapter.start(req, () => {});
+    expect(t.redirect).toHaveBeenCalledTimes(1);
+    expect(result.errorCode).toBe('AUTHORIZE_NOT_SUPPORTED');
+  });
+
+  it('reports an error when the popup fails and there is no approval link and the hold is dropped', async () => {
     const t = make(() => {}, undefined, true, true);
     const result = await t.adapter.start(req, () => {});
     expect(result).toMatchObject({ state: 'error', errorCode: 'popup_failed' });
@@ -208,6 +290,57 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     expect((await noOrder.adapter.start(req, () => {})).errorCode).toBe('order_failed');
     const noHold = make((cb) => cb.onApprove({ orderId: 'ord-1' }), undefined, false);
     expect((await noHold.adapter.start(req, () => {})).errorCode).toBe('hold_failed');
+  });
+
+  it('keeps the payments error code of a failed hold and never marks hold_exists held', async () => {
+    const withBody = (orderErr: unknown, holdErr: unknown) => {
+      const { sdk } = stubSdk((cb) => cb.onApprove({ orderId: 'ord-1' }));
+      const fetch: FetchLike = (url, init) => {
+        if (init.method === 'DELETE') {
+          return Promise.resolve({ ok: true, status: 204, json: () => Promise.resolve(null) });
+        }
+        const creating = url.endsWith('/api/holds');
+        const err = creating ? orderErr : holdErr;
+        return Promise.resolve({
+          ok: err === null,
+          status: err === null ? 200 : 503,
+          json: () =>
+            Promise.resolve(
+              err ??
+                (creating
+                  ? { holdId: 'hold-Z', orderId: 'ord-1' }
+                  : { holdId: 'hold-Z', status: 'HELD', ceilingCents: 50_000 }),
+            ),
+        });
+      };
+      return new PayPalV6Adapter({
+        apiBase: 'http://api',
+        clientId: 'c',
+        loadSdk: () => Promise.resolve(sdk),
+        fetch,
+        redirect: () => {},
+      });
+    };
+    const killed = await withBody({ error: 'kill_switch_engaged' }, null).start(req, () => {});
+    expect(killed).toMatchObject({ state: 'error', errorCode: 'kill_switch_engaged' });
+    const capped = await withBody({ error: 'ceiling_out_of_range' }, null).start(req, () => {});
+    expect(capped.errorCode).toBe('ceiling_out_of_range');
+    const exists = await withBody(null, { error: 'hold_exists' }).start(req, () => {});
+    expect(exists).toMatchObject({ state: 'error', errorCode: 'hold_exists' });
+    expect(exists.holdIdSuffix).toBeUndefined();
+    const odd = await withBody({ error: 'nonsense' }, null).start(req, () => {});
+    expect(odd.errorCode).toBe('order_failed');
+  });
+
+  it('completes a redirect approval on the return route', async () => {
+    const t = make(() => {});
+    const result = await t.adapter.completeRedirect('hold-ABC123', 'ord-1', 'reg-one', (s) =>
+      t.states.push(s),
+    );
+    expect(result).toMatchObject({ state: 'held', holdIdSuffix: 'ABC123' });
+    expect(t.states).toEqual(['confirming', 'held']);
+    expect(t.urls).toEqual(['POST http://api/api/holds/hold-ABC123/approve']);
+    expect(t.loadSdk).not.toHaveBeenCalled();
   });
 
   it('never puts the order id or tokens in an error code', async () => {

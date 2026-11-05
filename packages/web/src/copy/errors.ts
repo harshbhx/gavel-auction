@@ -1,3 +1,4 @@
+import { HOLD_ERROR_CODES, type HoldErrorCode } from '@gavel/shared';
 import type { CopyKey } from './en';
 
 /**
@@ -71,6 +72,21 @@ export const errorCopyTable: Readonly<Record<KnownErrorCode, CopyKey>> = {
   internal: 'generic.error',
 };
 
+/** Payments error codes (HoldErrorResponse), one copy key each; exhaustive over the shared list. */
+export const holdErrorCopyTable: Readonly<Record<HoldErrorCode, CopyKey>> = {
+  ceiling_out_of_range: 'err.pay.ceilingOutOfRange',
+  hold_exists: 'err.pay.holdExists',
+  order_not_found: 'err.pay.orderNotFound',
+  order_not_approved: 'err.pay.orderNotApproved',
+  paypal_unavailable: 'err.pay.unavailable',
+  kill_switch_engaged: 'err.pay.unavailable',
+  payments_not_sandbox: 'err.pay.notSandbox',
+};
+
+export function isHoldErrorCode(code: unknown): code is HoldErrorCode {
+  return typeof code === 'string' && (HOLD_ERROR_CODES as readonly string[]).includes(code);
+}
+
 function isKnown(code: string): code is KnownErrorCode {
   return Object.prototype.hasOwnProperty.call(errorCopyTable, code);
 }
@@ -80,5 +96,6 @@ function isKnown(code: string): code is KnownErrorCode {
  * An unknown code maps to the generic bid message and keeps its raw value.
  */
 export function errorCopy(code: string): { key: CopyKey; raw: string } {
+  if (isHoldErrorCode(code)) return { key: holdErrorCopyTable[code], raw: code };
   return { key: isKnown(code) ? errorCopyTable[code] : 'bid.rej.generic', raw: code };
 }

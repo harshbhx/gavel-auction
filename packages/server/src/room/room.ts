@@ -19,6 +19,7 @@ import {
   type ConnId,
   type EngineBidResult,
   type EnginePort,
+  type EngineView,
   type EpochMs,
   type ErrorCode,
   isErrorCode,
@@ -46,14 +47,9 @@ import {
   resolvedEvent,
   type ConfirmOutcome,
 } from './confirm-resolve';
+import { DEFAULT_CAPS, type CapLimits } from '../limits/caps';
 import type { RateLimiter } from '../limits/rate-limiter';
-import {
-  MAX_CONNECTIONS_PER_TOKEN,
-  SUPERSEDED_CODE,
-  SUPERSEDED_REASON,
-  eventFrames,
-  planResync,
-} from './resync';
+import { SUPERSEDED_CODE, SUPERSEDED_REASON, eventFrames, planResync } from './resync';
 import {
   TERMINAL_SETTLEMENT,
   canHammer,
@@ -132,6 +128,8 @@ export interface RoomDeps {
   /** Builds a fresh engine for a config; called again whenever the room is rebuilt from its log. */
   engine: (config: AuctionConfig, createdAt: EpochMs) => EnginePort;
   limiter?: RateLimiter;
+  /** Connection, roster and bid-count caps parsed from the config (R-RT-121); defaults when absent. */
+  caps?: CapLimits;
   /** Counters fed from the bid path (R-RT-122, R-RT-135). */
   metrics?: { bidAccepted(): void; bidRejected(): void; rateLimitHit(): void };
   /** Payments side of settlement; without it a hammered room stays in SETTLING. */
@@ -181,9 +179,12 @@ function abortControlId(auctionId: string): string {
 export class Room {
   private tail: Promise<void> = Promise.resolve();
   private inFlight = 0;
+  private queued = 0;
   private closed = false;
   private maxInFlight = 0;
   private seq = 0;
+  /** Bids in the log, accepted and rejected alike; bounded by `caps.bidsPerAuction`. */
+  private bidCount = 0;
   private config: AuctionConfig | undefined;
   private engine: EnginePort | undefined;
   private lastState = 'OPEN';
@@ -196,6 +197,8 @@ export class Room {
   /** When the room entered CLOSING; the auto-hammer delay counts from here (R-RT-044). */
   private closingAt: number | undefined;
   private controlIds = new Set<string>();
+  /** Confirmations the log shows as asked and not yet answered; filled by replay (R-RT-045). */
+  private openConfirms = new Map<string, PendingConfirm>();
   private hammered: (HammerResult & { seq: number; ts: number }) | undefined;
   private settleRequested = false;
   private settleCalled = false;
@@ -217,6 +220,10 @@ export class Room {
     readonly auctionId: AuctionId,
     private readonly deps: RoomDeps,
   ) {}
+
+  private get caps(): CapLimits {
+    return this.deps.caps ?? DEFAULT_CAPS;
+  }
 
   /** Create a room: appends `auction_created` as seq 1. */
   static async create(
@@ -246,8 +253,27 @@ export class Room {
     const room = new Room(auctionId, deps);
     await room.replay();
     room.armTimer();
+    await room.reviveConfirms();
     await room.resumeSettlement();
     return room;
+  }
+
+  /**
+   * A restart loses the held bids. Put back those the log left open and re-arm their timers;
+   * resolve the ones already past their deadline as expired, so every request ends (R-RT-046).
+   */
+  private async reviveConfirms(): Promise<void> {
+    const now = this.deps.clock.now();
+    const open = [...this.openConfirms.values()];
+    this.openConfirms = new Map();
+    for (const held of open) {
+      this.confirms.add(held);
+      if (held.expiresAt > now) {
+        this.armConfirmTimer(held);
+      } else if (!(await this.enqueue(() => this.resolveConfirm(held, 'expired')))) {
+        this.armConfirmTimer(held, now + AUTO_HAMMER_RETRY_MS);
+      }
+    }
   }
 
   /** Highest number of commands ever running at once; must stay at 1. */
@@ -269,6 +295,11 @@ export class Room {
     return this.seq;
   }
 
+  /** Commands queued or running in the mailbox, for the depth gauge (R-RT-122). */
+  get mailboxDepth(): number {
+    return this.queued;
+  }
+
   get connectionCount(): number {
     return this.conns.size;
   }
@@ -280,6 +311,18 @@ export class Room {
    */
   attach(conn: Connection, lastSeq?: number): Promise<void> {
     return this.enqueue(async () => {
+      if (this.stopped) {
+        this.sendError(conn, 'host_fenced');
+        conn.transport.close(ERROR_TABLE.host_fenced.closeCode ?? 4010, 'host_fenced');
+        return;
+      }
+      const mine = this.sameToken(conn);
+      const supersedes = mine.length >= this.caps.connectionsPerBidder ? 1 : 0;
+      if (this.conns.size - supersedes + 1 > this.caps.connectionsPerRoom) {
+        this.sendError(conn, 'room_full');
+        conn.transport.close(ERROR_TABLE.room_full.closeCode ?? 4009, 'room_full');
+        return;
+      }
       this.supersedeOldest(conn);
       try {
         await this.ensureClean();
@@ -305,7 +348,8 @@ export class Room {
         const complete = events.length === plan.to - plan.from + 1;
         if (complete) {
           for (const event of events) {
-            for (const frame of eventFrames(event)) this.send(conn, frame);
+            const full = conn.role === 'auctioneer';
+            for (const frame of eventFrames(event, full)) this.send(conn, frame);
           }
         }
       }
@@ -313,11 +357,15 @@ export class Room {
     });
   }
 
-  private supersedeOldest(next: Connection): void {
-    const mine = [...this.conns.values()].filter(
+  private sameToken(next: Connection): Connection[] {
+    return [...this.conns.values()].filter(
       (c) => c.role === next.role && c.sub === next.sub && c.bidderId === next.bidderId,
     );
-    while (mine.length >= MAX_CONNECTIONS_PER_TOKEN) {
+  }
+
+  private supersedeOldest(next: Connection): void {
+    const mine = this.sameToken(next);
+    while (mine.length >= this.caps.connectionsPerBidder) {
       const oldest = mine.shift();
       if (!oldest) break;
       this.conns.delete(oldest.id);
@@ -366,6 +414,37 @@ export class Room {
     return this.stopped;
   }
 
+  /**
+   * Every log append goes through here. A `conflict` means another host appended first, so this
+   * host lost the room (R-RT-061): stop serving, tell every connection and close them with 4010.
+   */
+  private async appendFenced(
+    auctionId: AuctionId,
+    expectedSeq: number,
+    events: RoomEvent[],
+  ): Promise<void> {
+    try {
+      await this.deps.store.appendEvents(auctionId, expectedSeq, events);
+    } catch (e) {
+      if (e instanceof GavelError && e.code === 'conflict') {
+        this.fence();
+        throw new GavelError('host_fenced', 'this host no longer owns the room');
+      }
+      throw e;
+    }
+  }
+
+  private fence(): void {
+    if (this.stopped) return;
+    this.stop();
+    const closeCode = ERROR_TABLE.host_fenced.closeCode ?? 4010;
+    for (const conn of [...this.conns.values()]) {
+      this.sendError(conn, 'host_fenced');
+      conn.transport.close(closeCode, 'host_fenced');
+    }
+    this.conns.clear();
+  }
+
   private storeError(): GavelError {
     return new GavelError(this.stopped ? 'host_fenced' : 'store_unavailable');
   }
@@ -390,6 +469,10 @@ export class Room {
         ) {
           throw new GavelError('conflict', 'ceiling was revoked');
         }
+        // Another hold for a registered bidder is refused; the caller voids it (HRD-16).
+        if (this.roster.get(reg.bidderId)?.holdRef !== reg.holdRef) {
+          throw new GavelError('conflict', 'bidder is registered with another hold');
+        }
         await this.makeDurable();
         return;
       }
@@ -407,7 +490,8 @@ export class Room {
       ) {
         throw new GavelError('bad_message', 'invalid registration');
       }
-      if (this.roster.size >= MAX_BIDDERS_PER_ROOM) throw new GavelError('room_full');
+      if (this.roster.size >= Math.min(this.caps.biddersPerRoom, MAX_BIDDERS_PER_ROOM))
+        throw new GavelError('room_full');
       const seq = this.seq + 1;
       const ts = this.deps.clock.now();
       const paddle = this.roster.size + 1;
@@ -436,7 +520,7 @@ export class Room {
         throw new GavelError('bad_message', 'registration refused by the engine');
       }
       try {
-        await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+        await this.appendFenced(this.auctionId, this.seq, [event]);
       } catch (e) {
         // The engine already holds the bidder; rebuild it from the stored log (R-RT-033).
         await this.recover().catch(() => undefined);
@@ -520,6 +604,10 @@ export class Room {
       this.sendError(conn, this.storeCode());
       return;
     }
+    if (this.bidCount >= this.caps.bidsPerAuction) {
+      this.sendError(conn, 'auction_full');
+      return;
+    }
     const engine = this.requireEngine();
     if (
       !confirmed &&
@@ -595,7 +683,7 @@ export class Room {
           };
 
     try {
-      await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+      await this.appendFenced(this.auctionId, this.seq, [event]);
     } catch {
       // State must not change: rebuild the engine from the log and tell the sender.
       await this.recover().catch(() => undefined);
@@ -603,6 +691,7 @@ export class Room {
       return;
     }
     this.seq = seq;
+    this.bidCount += 1;
     if (event.type === 'bid_accepted') this.deps.metrics?.bidAccepted();
     else this.deps.metrics?.bidRejected();
     this.pushAudit(audit);
@@ -705,7 +794,7 @@ export class Room {
     );
     events.push(requestedEvent(this.auctionId, held, askAudit, seq, ts));
     try {
-      await this.deps.store.appendEvents(this.auctionId, this.seq, events);
+      await this.appendFenced(this.auctionId, this.seq, events);
     } catch {
       await this.recover().catch(() => undefined);
       const conn = [...this.conns.values()].find((c) => c.bidderId === bidderId);
@@ -750,7 +839,7 @@ export class Room {
       audit,
     );
     try {
-      await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+      await this.appendFenced(this.auctionId, this.seq, [event]);
     } catch {
       await this.recover().catch(() => undefined);
       return false;
@@ -790,7 +879,11 @@ export class Room {
           reason: 'unconfirmed',
           retryable: ERROR_TABLE.unconfirmed.retryable,
         });
-      } else if (event.type === 'confirm_resolved' && conn.role === 'auctioneer') {
+      } else if (
+        event.type === 'confirm_resolved' &&
+        event.outcome !== 'accepted' &&
+        conn.role === 'auctioneer'
+      ) {
         this.send(conn, {
           v: 1,
           t: 'audit_event',
@@ -886,7 +979,12 @@ export class Room {
         return;
       }
       if (this.controlIds.has(cmd.controlId)) return;
-      const open = this.requireEngine().view().state === 'OPEN';
+      const engine = this.requireEngine();
+      if (canClock(engine) && engine.paused) {
+        this.sendError(conn, 'conflict');
+        return;
+      }
+      const open = engine.view().state === 'OPEN';
       if (open && cmd.args?.closeNow !== 1) {
         this.sendError(conn, 'conflict');
         return;
@@ -909,7 +1007,9 @@ export class Room {
       this.sendError(conn, 'bad_message');
       return;
     }
-    if (this.hammered || engine.view().state !== 'OPEN') {
+    // `open` has no engine command: the lot is already open or cannot be opened, so nothing
+    // may be audited as accepted (R-RT-048).
+    if (cmd.action === 'open' || this.hammered || engine.view().state !== 'OPEN') {
       this.sendError(conn, 'conflict');
       return;
     }
@@ -1045,7 +1145,7 @@ export class Room {
         reason,
       };
       try {
-        await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+        await this.appendFenced(this.auctionId, this.seq, [event]);
       } catch {
         await this.recover().catch(() => undefined);
         throw this.storeError();
@@ -1082,7 +1182,12 @@ export class Room {
       } else {
         result = engine.hammer(ts);
       }
-    } catch {
+    } catch (e) {
+      if (e instanceof GavelError && e.code === 'conflict') {
+        // A refused command leaves the engine untouched: a normal refusal, no rebuild.
+        if (by) this.sendError(by.conn, 'conflict');
+        return;
+      }
       // The engine may be half-mutated: rebuild from the log before the next command (R-RT-033).
       this.dirty = true;
       if (by) this.sendError(by.conn, 'internal');
@@ -1132,7 +1237,7 @@ export class Room {
       ranking: result.ranking,
     });
     try {
-      await this.deps.store.appendEvents(this.auctionId, this.seq, events);
+      await this.appendFenced(this.auctionId, this.seq, events);
     } catch {
       await this.recover().catch(() => undefined);
       if (by) this.sendError(by.conn, this.storeCode());
@@ -1176,7 +1281,7 @@ export class Room {
       const seq = this.seq + 1;
       const ts = this.deps.clock.now();
       try {
-        await this.deps.store.appendEvents(this.auctionId, this.seq, [
+        await this.appendFenced(this.auctionId, this.seq, [
           { type: 'settle_requested', auctionId: this.auctionId, seq, ts },
         ]);
       } catch {
@@ -1238,7 +1343,7 @@ export class Room {
       });
       if (!event.success) throw new GavelError('bad_message', 'invalid settlement update');
       try {
-        await this.deps.store.appendEvents(this.auctionId, this.seq, [event.data]);
+        await this.appendFenced(this.auctionId, this.seq, [event.data]);
       } catch {
         await this.recover().catch(() => undefined);
         throw this.storeError();
@@ -1262,6 +1367,11 @@ export class Room {
     });
   }
 
+  /** While paused the deadline moves with the clock: now plus what resume will restore. */
+  private endTsFor(view: EngineView, now: ReturnType<Clock['now']>): typeof view.endTs {
+    return view.paused ? ((now + (view.remainingMs ?? 0)) as typeof view.endTs) : view.endTs;
+  }
+
   private broadcastPrice(seq: number, ts: ReturnType<Clock['now']>): void {
     const view = this.requireEngine().view();
     if (view.price === null) {
@@ -1279,9 +1389,10 @@ export class Room {
         price: view.price,
         leaderId: view.leader,
         leaderPaddle,
-        endTs: view.endTs,
+        endTs: this.endTsFor(view, ts),
         minNext: view.minNext,
         extensions: view.extensions,
+        ...(view.paused ? { paused: true, remainingMs: view.remainingMs ?? 0 } : {}),
       });
     }
   }
@@ -1331,8 +1442,9 @@ export class Room {
       status: this.done ? 'DONE' : view.state,
       price: view.price,
       leaderId: view.leader,
-      endTs: view.endTs,
+      endTs: this.endTsFor(view, this.deps.clock.now()),
       minNext: view.minNext,
+      ...(view.paused ? { paused: true, remainingMs: view.remainingMs ?? 0 } : {}),
       roster: [...this.roster].map(([bidderId, r]) => ({
         bidderId,
         paddle: r.paddle,
@@ -1416,12 +1528,13 @@ export class Room {
 
   /** The end-of-lot timer could not run (store down): try again after a short delay. */
   private retryTimer(): void {
-    if (this.stopped || this.hammered || this.done) return;
+    if (this.stopped || this.closed || this.hammered || this.done) return;
     this.cancelTimerRetry?.();
     this.cancelTimerRetry = this.deps.clock.setTimer(
       this.deps.clock.now() + AUTO_HAMMER_RETRY_MS,
       () => {
         this.cancelTimerRetry = undefined;
+        if (this.closed || this.stopped) return;
         this.enqueue(() => this.onTimer()).catch(() => {
           this.dirty = true;
           this.retryTimer();
@@ -1508,7 +1621,7 @@ export class Room {
       endTs,
     };
     try {
-      await this.deps.store.appendEvents(this.auctionId, this.seq, [event]);
+      await this.appendFenced(this.auctionId, this.seq, [event]);
     } catch {
       await this.recover().catch(() => undefined);
       this.retryTimer();
@@ -1548,6 +1661,7 @@ export class Room {
     this.replies = fresh.replies;
     this.audit = fresh.audit;
     this.seq = fresh.seq;
+    this.bidCount = fresh.bidCount;
     this.lastState = fresh.lastState;
     this.closingAt = fresh.closingAt;
     this.controlIds = fresh.controlIds;
@@ -1569,9 +1683,11 @@ export class Room {
     this.replies = new Map();
     this.audit = [];
     this.seq = 0;
+    this.bidCount = 0;
     this.lastState = 'OPEN';
     this.closingAt = undefined;
     this.controlIds = new Set();
+    this.openConfirms = new Map();
     this.hammered = undefined;
     this.abortPending = false;
     this.revoked = new Set();
@@ -1649,6 +1765,20 @@ export class Room {
       case 'settle_requested':
         this.settleRequested = true;
         break;
+      case 'confirm_requested':
+        this.openConfirms.set(event.confirmId, {
+          confirmId: event.confirmId,
+          bidderId: event.bidderId,
+          mid: event.mid,
+          amount: event.amount,
+          ...(event.audit.transcript !== undefined ? { transcript: event.audit.transcript } : {}),
+          ...(event.audit.confidence !== undefined ? { confidence: event.audit.confidence } : {}),
+          expiresAt: event.expiresAt,
+        });
+        break;
+      case 'confirm_resolved':
+        this.openConfirms.delete(event.confirmId);
+        break;
       case 'settlement_update':
         this.applySettlement(event);
         break;
@@ -1668,6 +1798,7 @@ export class Room {
   }
 
   private remember(event: Extract<RoomEvent, { type: 'bid_accepted' | 'bid_rejected' }>): void {
+    this.bidCount += 1;
     const reply = this.replyFor(event);
     if (reply) {
       const digest = bidDigest(event.audit.parsedAmount, event.audit.source);
@@ -1708,6 +1839,7 @@ export class Room {
 
   private enqueue<T>(fn: () => Promise<T>): Promise<T> {
     if (this.closed) return Promise.reject(new GavelError('conflict', 'room is closed'));
+    this.queued += 1;
     const run = this.tail.then(async () => {
       this.inFlight += 1;
       this.maxInFlight = Math.max(this.maxInFlight, this.inFlight);
@@ -1715,6 +1847,7 @@ export class Room {
         return await fn();
       } finally {
         this.inFlight -= 1;
+        this.queued -= 1;
       }
     });
     this.tail = run.then(

@@ -209,6 +209,25 @@ describe('production rules (R-RT-131)', () => {
     expect(parseConfig({ ...good, PUBLIC_URL: 'https://localhost:8443' }).ok).toBe(true);
   });
 
+  it('does not fall back to development rules on a public host without NODE_ENV', () => {
+    const unset = { ...good, NODE_ENV: undefined, PUBLIC_URL: 'https://gavel.example.com' };
+    const r = parseConfig({ ...unset, TOKEN_SECRET: 'a', ADMIN_KEY: 'a', DEMO_MODE: '1' });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    const text = r.errors.join('\n');
+    for (const key of ['TOKEN_SECRET', 'ADMIN_KEY', 'STORE', 'PAYMENTS', 'DEMO_MODE']) {
+      expect(text).toContain(key);
+    }
+  });
+
+  it('keeps development rules for localhost without NODE_ENV', () => {
+    const unset = { ...good, NODE_ENV: undefined };
+    for (const host of ['http://localhost:8080', 'http://127.0.0.1:8080', 'http://[::1]:8080']) {
+      const r = parseConfig({ ...unset, PUBLIC_URL: host });
+      expect(r.ok && r.config.NODE_ENV).toBe('development');
+    }
+  });
+
   it('defaults the per-bidder connection cap to 3', () => {
     const r = parseConfig(good);
     expect(r.ok && r.config.MAX_CONN_PER_BIDDER).toBe(3);

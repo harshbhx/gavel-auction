@@ -1,4 +1,5 @@
-import type { AuditRecord, Decision } from '../types.js';
+import { answerConfirm } from '../decide/answer.js';
+import type { AuditRecord, BidContext, Decision } from '../types.js';
 
 /** Crockford base32, the alphabet of a ULID. */
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
@@ -14,6 +15,11 @@ export interface PlaceBidContext {
   confirmedOptionId?: string;
   /** Who answered the confirm prompt; recorded in the audit (R-VOX-069). Default 'bidder'. */
   confirmedBy?: ConfirmedBy;
+  /**
+   * Fresh bid context at delivery. When given, a confirmed option is re-validated against it
+   * (price moved, ceiling, already high bidder, duplicate window) and a failing option gives null.
+   */
+  current?: BidContext;
   /** Confidence an `accept` needs to become a bid without a prompt, 0..1. Default 0.85. */
   autoThreshold?: number;
 }
@@ -58,10 +64,26 @@ function fnv1a(text: string, seed: number): number {
   return h;
 }
 
+/** Width of the audio-start bucket that identifies one utterance in a command id (R9-V05). */
+const ID_WINDOW_MS = 5000;
+
 /**
- * A ULID-shaped command id derived from the given key. A segment the
- * STT replays after a reconnect carries the same key, so it maps to the same id
- * and the engine's commandId dedupe drops it (R-VOX-071, R-RT-053).
+ * True when the engine refused a voice command only because the same id arrived with different
+ * evidence (another provider's transcript of the same speech). The caller treats it as a
+ * duplicate, not a failure (R9-V05).
+ */
+export function isReplayConflict(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    (err as { code?: unknown }).code === 'command_conflict'
+  );
+}
+
+/**
+ * A ULID-shaped command id derived from the given key. Speech the STT replays after a reconnect
+ * or a provider switch carries the same stable key, so it maps to the same id and the engine's
+ * commandId dedupe drops it (R-VOX-071, R-RT-053).
  */
 export function commandIdFromKey(auctionId: string, idempotencyKey: string): string {
   const text = `${auctionId}|${idempotencyKey}`;
@@ -107,6 +129,17 @@ export function toPlaceBid(decision: Decision, ctx: PlaceBidContext): PlaceBidCo
     if (ctx.confirmedBy === 'voice' && !decision.prompt.spokenAnswerAllowed) return null;
     bidderId = option.bidderId;
     amountCents = option.amountCents;
+    if (ctx.current !== undefined) {
+      const outcome = answerConfirm({
+        prompt: decision.prompt,
+        ctx: ctx.current,
+        optionId: option.id,
+        by: ctx.confirmedBy ?? 'bidder',
+      });
+      if (outcome.kind !== 'bid') return null;
+      bidderId = outcome.bidderId;
+      amountCents = outcome.amountCents;
+    }
     confirmed = true;
     confirmedBy = ctx.confirmedBy ?? 'bidder';
   } else {
@@ -114,18 +147,16 @@ export function toPlaceBid(decision: Decision, ctx: PlaceBidContext): PlaceBidCo
   }
   const ev = decision.evidence;
   const confidenceBps = confidenceToBps(ev.confidence);
-  // The engine compares the whole command body for a repeated id, so the id covers everything the
-  // body carries: an identical replay dedupes, a different amount, bidder, option or audit does
-  // not collide and make the engine throw command_conflict (R8-V03).
+  // The id is the idempotency token, so it covers the stable identity of the utterance only:
+  // lot, bidder, amount, confirmed option and the audio window. Transcript and confidence vary
+  // between providers replaying the same speech and stay in the body (R9-V05). The window is
+  // bucketed so a replay whose start differs by a few ms still maps to the same id.
   const bodyKey = [
-    ev.idempotencyKey,
+    ctx.lotId,
     bidderId,
     amountCents,
     confirmed ? `c:${ctx.confirmedOptionId ?? ''}:${confirmedBy ?? ''}` : 'a',
-    ev.transcript,
-    ev.audioStartMs,
-    ev.audioEndMs,
-    confidenceBps,
+    Math.floor(ev.audioStartMs / ID_WINDOW_MS),
   ].join('|');
   return {
     type: 'PlaceBid',

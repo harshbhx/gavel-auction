@@ -49,6 +49,31 @@ export function createApprovalPort(
   return mode === 'fake' ? new FakeApprovalAdapter(fake) : new PayPalV6Adapter(paypal);
 }
 
+/**
+ * Return route step for a buyer who approved on PayPal's own page: finishes the hold with the
+ * registration id stored when the attempt began, so the server sees the same id as before.
+ */
+export function completeApprovalReturn(
+  adapter: Pick<PayPalV6Adapter, 'completeRedirect'>,
+  req: { roomId: string; bidderId: string; orderId: string },
+  on: (s: ApprovalState) => void,
+): Promise<ApprovalResult> {
+  const stored = loadRegistration(req.roomId, req.bidderId);
+  if (stored === null) {
+    on('error');
+    return Promise.resolve({ state: 'error', errorCode: 'registration_missing' });
+  }
+  if (stored.orderId !== req.orderId) {
+    on('error');
+    return Promise.resolve({ state: 'error', errorCode: 'order_mismatch' });
+  }
+  if (stored.holdId === undefined) {
+    on('error');
+    return Promise.resolve({ state: 'error', errorCode: 'registration_missing' });
+  }
+  return adapter.completeRedirect(stored.holdId, req.orderId, stored.clientRegistrationId, on);
+}
+
 export interface UseApprovalOptions {
   port: PaymentApprovalPort;
   roomId: string;
@@ -103,6 +128,11 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
       // A declined order is dead on the server, so it needs a new id. Cancelled and error retries
       // reuse it, and so does a reload: the stored id is the one the server already saw.
       const stored = current === undefined ? loadRegistration(roomId, bidderId) : null;
+      const retryable =
+        current?.result?.errorCode === 'hold_failed' ||
+        current?.result?.errorCode === 'hold_timeout';
+      const retryOrderId = retryable ? current?.result?.orderId : undefined;
+      const retryHoldId = retryable ? current?.result?.holdId : undefined;
       const attempt: Attempt = {
         clientRegistrationId:
           current !== undefined && current.result?.state !== 'declined'
@@ -116,7 +146,15 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
       saveRegistration(roomId, bidderId, { clientRegistrationId: attempt.clientRegistrationId });
       const promise = port
         .start(
-          { roomId, bidderId, ceilingCents, clientRegistrationId: attempt.clientRegistrationId },
+          {
+            roomId,
+            bidderId,
+            ceilingCents,
+            clientRegistrationId: attempt.clientRegistrationId,
+            ...(retryOrderId === undefined || retryHoldId === undefined
+              ? {}
+              : { approvedOrderId: retryOrderId, approvedHoldId: retryHoldId }),
+          },
           (s) => {
             attempt.state = s;
             if (alive.current) setState(s);
@@ -124,6 +162,13 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
         )
         .then((r) => {
           if (r.state === 'declined') clearRegistration(roomId, bidderId);
+          else if (r.orderId !== undefined) {
+            saveRegistration(roomId, bidderId, {
+              clientRegistrationId: attempt.clientRegistrationId,
+              orderId: r.orderId,
+              ...(r.holdId === undefined ? {} : { holdId: r.holdId }),
+            });
+          }
           attempt.result = r;
           attempt.state = r.state;
           attempt.promise = null;

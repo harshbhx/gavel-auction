@@ -128,6 +128,7 @@ export const setup = async (
     store?: MemoryStore;
     limiter?: boolean;
     metrics?: RoomDeps['metrics'];
+    caps?: RoomDeps['caps'];
     engine?: RoomDeps['engine'];
   } = {},
 ) => {
@@ -141,6 +142,7 @@ export const setup = async (
     engine: opts.engine ?? ((cfg) => new TestEngine(cfg)),
     ...(opts.limiter ? { limiter: new RateLimiter(clock) } : {}),
     ...(opts.metrics ? { metrics: opts.metrics } : {}),
+    ...(opts.caps ? { caps: opts.caps } : {}),
   };
   const auctionId = ids.mint<'AuctionId'>();
   const room = await Room.create(auctionId, config, 'auctioneer-sub', deps);

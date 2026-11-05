@@ -7,6 +7,8 @@ import {
   createSettlement,
   createWebhookHandler,
   DEFAULT_HOLD_MAX_AGE_MS,
+  HoldService,
+  sweepStalePending,
   guardGateway,
   reconcile,
   voidAllLiveHolds,
@@ -56,6 +58,9 @@ import { isDefiniteRefusal, isReleased, voidOrphanHold, voidSpareHolds } from '.
 import { WebhookIntake } from './webhook-intake';
 
 /** Everything the service needs from the outside, as ports. */
+/** Pending holds younger than this are left to the normal approval flow. */
+const DEFAULT_HOLD_SWEEP_MIN_AGE_MS = 10 * 60 * 1000;
+
 export interface AuctionServiceDeps {
   /** Room event log and keyed state. */
   store: RoomStore;
@@ -112,6 +117,8 @@ export interface AuctionServiceDeps {
   retryDelayMs?: number;
   /** Longest wait between two tries of one settlement; the wait doubles up to it. Default 300000. */
   retryMaxDelayMs?: number;
+  /** A pending hold older than this is swept for a crash-window authorization, in ms (default 10 min; negative turns it off). */
+  holdSweepMinAgeMs?: number;
   /** How often `resume()` runs on its own, in ms; 0 turns the timer off. Default 60000. */
   resumeIntervalMs?: number;
   /**
@@ -143,7 +150,7 @@ export interface AuctionService {
   /** The room, loaded from its log on first use. */
   room(auctionId: AuctionId): Promise<Room>;
   /** Loaded room count and open connections, for the metrics gauges. */
-  stats(): { rooms: number; connections: number };
+  stats(): { rooms: number; connections: number; mailboxDepth: number };
   registerBidder(input: RegisterBidderInput): Promise<void>;
   /**
    * Kill switch before the hammer: when the switch is engaged, ends every auction that has
@@ -164,11 +171,7 @@ export interface AuctionService {
   /** Admin: compares the journal, the hold records and PayPal for one auction (R-PAY-100). */
   reconcile(auctionId: AuctionId): Promise<ReconcileReport>;
   /** The webhook route's body: raw request bytes and headers in, HTTP status out. */
-  handleWebhook(
-    rawBody: Buffer,
-    headers: WebhookHeaders,
-    source?: string,
-  ): Promise<WebhookResponse>;
+  handleWebhook(rawBody: Buffer, headers: WebhookHeaders): Promise<WebhookResponse>;
   /**
    * Loads every known room (which resumes hammered ones), continues unfinished
    * settlements and applies stored webhook events. Call it at start-up and on a timer.
@@ -231,6 +234,8 @@ class Service implements AuctionService, SettlePort {
   private readonly runs = new Map<string, Promise<void>>();
   private readonly retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly retryCounts = new Map<string, number>();
+  private readonly orphans = new Map<string, string>();
+  private readonly holdService: Pick<HoldService, 'completeApproval'>;
   private resumeTimer: ReturnType<typeof setInterval> | undefined;
   private resuming = false;
   private closed = false;
@@ -246,6 +251,14 @@ class Service implements AuctionService, SettlePort {
     this.payClock = { nowMs: () => deps.clock.now() };
     this.roomStore = new FencedStore(deps.store, { onFenced: (id) => this.onFenced(id) });
     this.gateway = guardGateway(withOrderLookup(deps.gateway, deps.holds), deps.killSwitch);
+    this.holdService = new HoldService({
+      gateway: this.gateway,
+      holds: deps.holds,
+      audit: deps.audit,
+      clock: this.payClock,
+      // completeApproval, the only call made here, never reads the ceiling limit.
+      maxCeilingCents: Number.MAX_SAFE_INTEGER,
+    });
     this.owner = deps.leaseOwner ?? `service-${process.pid}-${randomUUID()}`;
     this.runtime = new AuctionRuntime({ store: deps.ledger });
     this.bridge = new SettlementBridge(
@@ -339,15 +352,17 @@ class Service implements AuctionService, SettlePort {
   }
 
   /** Loaded room count and open connections, for the metrics gauges. */
-  stats(): { rooms: number; connections: number } {
+  stats(): { rooms: number; connections: number; mailboxDepth: number } {
     let connections = 0;
+    let mailboxDepth = 0;
     let rooms = 0;
     for (const [id, room] of this.ready) {
       if (!this.rooms.has(id)) continue;
       rooms += 1;
       connections += room.connectionCount;
+      mailboxDepth = Math.max(mailboxDepth, room.mailboxDepth);
     }
-    return { rooms, connections };
+    return { rooms, connections, mailboxDepth };
   }
 
   room(auctionId: AuctionId): Promise<Room> {
@@ -428,6 +443,15 @@ class Service implements AuctionService, SettlePort {
 
   /** Voids the hold of a refused registration; a failed void is reported, never masks the refusal. */
   private async voidOrphan(auctionId: AuctionId, holdId: string): Promise<void> {
+    const status = await this.voidOrphanOnce(auctionId, holdId);
+    // A void that may not have gone through is retried by the next sweep, not at the hammer.
+    if (status === 'pending' || status === 'VOID_FAILED') this.orphans.set(holdId, auctionId);
+  }
+
+  private async voidOrphanOnce(
+    auctionId: AuctionId,
+    holdId: string,
+  ): Promise<Awaited<ReturnType<typeof voidOrphanHold>>> {
     try {
       const status = await voidOrphanHold(
         {
@@ -442,8 +466,10 @@ class Service implements AuctionService, SettlePort {
       if (status === 'pending' || status === 'VOID_FAILED') {
         this.deps.onError?.(auctionId, new Error(`orphan hold ${holdId} void ${status}`));
       }
+      return status;
     } catch (e) {
       this.deps.onError?.(auctionId, e);
+      return 'VOID_FAILED';
     }
   }
 
@@ -482,12 +508,8 @@ class Service implements AuctionService, SettlePort {
 
   // ---- webhooks
 
-  handleWebhook(
-    rawBody: Buffer,
-    headers: WebhookHeaders,
-    source?: string,
-  ): Promise<WebhookResponse> {
-    return this.webhook.handle(rawBody, headers, source);
+  handleWebhook(rawBody: Buffer, headers: WebhookHeaders): Promise<WebhookResponse> {
+    return this.webhook.handle(rawBody, headers);
   }
 
   /**
@@ -634,6 +656,36 @@ class Service implements AuctionService, SettlePort {
       }
     }
     await this.intake.sweep();
+    await this.sweepHolds();
+  }
+
+  /**
+   * Crash-window recovery (R8-P05) and retry of orphan voids that did not finish (HRD-16).
+   * Each step reports through onError and never stops the others.
+   */
+  private async sweepHolds(): Promise<void> {
+    for (const [holdId, auctionId] of [...this.orphans]) {
+      const status = await this.voidOrphanOnce(auctionId as AuctionId, holdId);
+      if (status !== 'pending' && status !== 'VOID_FAILED') this.orphans.delete(holdId);
+    }
+    const minAge = this.deps.holdSweepMinAgeMs ?? DEFAULT_HOLD_SWEEP_MIN_AGE_MS;
+    if (minAge < 0) return;
+    const recover = {
+      gateway: this.gateway,
+      holds: this.deps.holds,
+      audit: this.deps.audit,
+      clock: this.payClock,
+      service: this.holdService,
+      isAuctionOpen: (id: string) => this.acceptsHolds(id as AuctionId),
+    };
+    for (const id of await this.deps.store.listAuctions()) {
+      if (this.fenced.has(id)) continue;
+      try {
+        await sweepStalePending(recover, id, minAge);
+      } catch (e) {
+        this.deps.onError?.(id, e);
+      }
+    }
   }
 
   /**

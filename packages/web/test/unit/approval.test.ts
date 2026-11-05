@@ -7,7 +7,9 @@ import {
 } from '../../src/payments/fakeAdapter';
 import { PayPalV6Adapter } from '../../src/payments/paypalV6Adapter';
 import type { ApprovalRequest, ApprovalState } from '../../src/payments/port';
+import { saveRegistration } from '../../src/payments/registrationStore';
 import {
+  completeApprovalReturn,
   createApprovalPort,
   resetApprovalMemory,
   resetAttemptMemoryOnly,
@@ -266,5 +268,82 @@ describe('registration id survives a reload and the redirect return (WEB-RT-10)'
       await b.result.current.start(50_000);
     });
     expect(spy.mock.calls.map((c) => c[0].clientRegistrationId)).toEqual(['reg-a', 'reg-b']);
+  });
+
+  it('refuses a return whose order id is not the one issued (WEB-R2-08)', async () => {
+    saveRegistration('room-1', 'b-8', {
+      clientRegistrationId: 'reg-r',
+      orderId: 'ord-issued',
+      holdId: 'hold-1',
+    });
+    const fetch = vi.fn();
+    const real = new PayPalV6Adapter({ apiBase: 'http://api.test', clientId: 'c', fetch });
+    const result = await completeApprovalReturn(
+      real,
+      { roomId: 'room-1', bidderId: 'b-8', orderId: 'ord-crafted' },
+      () => undefined,
+    );
+    expect(result).toMatchObject({ state: 'error', errorCode: 'order_mismatch' });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('retries a failed approve with the approved order and hold, not a new hold (WEB-R2-08)', async () => {
+    const results = [
+      { state: 'error' as const, errorCode: 'hold_failed', orderId: 'ord-1', holdId: 'hold-1' },
+      { state: 'held' as const, holdIdSuffix: 'a1b2c3', ceilingCents: 50_000 },
+    ];
+    const start = vi.fn((_r: ApprovalRequest, _on: (s: ApprovalState) => void) =>
+      Promise.resolve(results.shift() ?? { state: 'error' as const }),
+    );
+    const port = { start, cancel: () => undefined };
+    const { result } = renderHook(() => useApproval({ port, roomId: 'room-9', bidderId: 'b-9' }));
+    await act(async () => {
+      await result.current.start(50_000);
+    });
+    await act(async () => {
+      await result.current.start(50_000);
+    });
+    expect(start.mock.calls[0]?.[0].approvedOrderId).toBeUndefined();
+    expect(start.mock.calls[1]?.[0].approvedOrderId).toBe('ord-1');
+    expect(start.mock.calls[1]?.[0].approvedHoldId).toBe('hold-1');
+  });
+
+  it('completes the redirect return with the stored hold and order', async () => {
+    const posted: string[] = [];
+    const fetch: FetchLike = (url, init) => {
+      posted.push(`${url} ${init.body}`);
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({ holdId: 'hold-ZZ9988', status: 'HELD', ceilingCents: 50_000 }),
+      });
+    };
+    saveRegistration('room-1', 'b-7', {
+      clientRegistrationId: 'reg-redirect',
+      orderId: 'ord-9',
+      holdId: 'hold-ZZ9988',
+    });
+    const real = new PayPalV6Adapter({ apiBase: 'http://api.test', clientId: 'c', fetch });
+    const states: ApprovalState[] = [];
+    const result = await completeApprovalReturn(
+      real,
+      { roomId: 'room-1', bidderId: 'b-7', orderId: 'ord-9' },
+      (s) => states.push(s),
+    );
+    expect(result).toMatchObject({ state: 'held', holdIdSuffix: 'ZZ9988' });
+    expect(posted).toEqual([
+      'http://api.test/api/holds/hold-ZZ9988/approve {"orderId":"ord-9"}',
+    ]);
+  });
+
+  it('reports an error instead of inventing an id when nothing was stored', async () => {
+    const real = new PayPalV6Adapter({ apiBase: 'http://api.test', clientId: 'c' });
+    const result = await completeApprovalReturn(
+      real,
+      { roomId: 'room-1', bidderId: 'nobody', orderId: 'ord-9' },
+      () => undefined,
+    );
+    expect(result).toMatchObject({ state: 'error', errorCode: 'registration_missing' });
   });
 });
