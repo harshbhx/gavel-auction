@@ -277,9 +277,10 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
       info: (m, f) => log.info(m, f),
       warn: (m, f) => log.warn(m, f),
     },
+    metrics,
     knownAuction: async (id) => (await stores.room.listAuctions()).includes(id as AuctionId),
   });
-  const metricsRoute = createMetricsRoute(metrics);
+  const metricsRoute = createMetricsRoute(metrics, { adminKey: config.ADMIN_KEY });
   const extra = opts.extraRoutes?.(service, stores.room);
 
   const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {

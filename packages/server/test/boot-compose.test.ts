@@ -33,7 +33,8 @@ describe('server entry point (INT-R3-17)', () => {
     const { url } = await boot();
     expect((await fetch(`${url}/healthz`)).status).toBe(200);
     expect((await fetch(`${url}/readyz`)).status).toBe(200);
-    const metrics = await fetch(`${url}/metrics`);
+    expect((await fetch(`${url}/metrics`)).status).toBe(401);
+    const metrics = await fetch(`${url}/metrics`, { headers: { 'x-admin-key': base.ADMIN_KEY } });
     expect(metrics.status).toBe(200);
     expect(await metrics.json()).toHaveProperty('bids');
     expect((await fetch(`${url}/nope`)).status).toBe(404);
