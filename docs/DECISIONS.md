@@ -613,3 +613,33 @@ Consequences:
 - An auctioneer extension near the hard close fails instead of passing it.
 
 Evidence: packages/engine/src/decide/settlement.ts, packages/engine/src/decide/promote.ts, packages/engine/src/decide/revoke.ts, packages/engine/src/decide/pause.ts, packages/engine/src/decide/hammer.ts, packages/engine/src/decide/setup.ts, packages/engine/src/evolve.ts, packages/engine/src/config.ts, packages/engine/test/round12-engine.test.ts, reference/python/engine.py, SPEC-engine R-ENG-036, R-ENG-044, R-ENG-048, R-ENG-057, R-ENG-064, R-ENG-067, D-0025, D-0026.
+
+## D-0033: Payments round 12: a paid sale is never ended by a slow release, a PENDING capture waits days, decision A sends no remainder void
+
+Date: 2026-11-05
+Status: accepted
+Owner: payments
+Context: Round 12 review findings R12-P01 to R12-P06 (issues #1563 to #1568). One ten-minute deadline (R-PAY-055) was applied to things that are not lost answers: a capture PayPal holds as PENDING, the voids and the remainder read after a confirmed capture, and the time the kill switch was engaged. A failed order read was taken as "captures not observable", which a captured hold turns into a review. The remainder check sent a void on every sale although G1 recorded decision A. The webhook verifier refused every transmission older than ten minutes although the 503 answers rely on PayPal's redeliveries.
+Decision: Each deadline now matches what it waits for, and the recorded gate results are followed.
+
+- A capture PayPal has reported PENDING (the capture answer or a truth read) is marked on the journal intent (`pendingSinceMs`) and waits under `pendingCaptureDeadlineMs`, default three days, instead of the ten-minute unknown deadline. It is adopted once COMPLETED and falls back once declined, as before (R11-O03). Reconcile treats a capture intent as in flight only while the journal is not terminal, so a capture completed after a review is reported as EXTRA_CAPTURE.
+- A sale (winner set) never goes to FAILED_NEEDS_REVIEW because a void or the remainder read stays unconfirmed. Every run retries the pending voids before it judges their age. Past the deadline one `settlement_alert` audit entry and the `settlement_alerts_total` metric are raised (`void_unconfirmed:<bidderId>`, `remainder_unconfirmed`) and the saga keeps retrying until PayPal answers; the sale settles and is booked then. A no sale still goes to review after the retry (`void_unconfirmed`), and a void refused on a live hold still uses the resume budget (R-PAY-058).
+- `PayPalGateway.getHoldTruth` with an order id throws an unknown-outcome `ORDER_UNREADABLE` error when the order answers 404, a body that does not parse, or a capture list it cannot read. `captures: null` now only means no order id was given.
+- While the kill switch is engaged the unknown clock stands still: the run saves `unknownPausedAtMs` (the engage time, never before `unknownSince`), and the first run after the release adds the held time to `unknownSince`.
+- The winner remainder follows the G1 decision (`remainderMode`, default A as in gates-result.json): A records `remainder_released` and sends no void when the authorization reads CAPTURED with our final capture; B and `unknown` void explicitly as before; C records `remainder_unreleased` without a call.
+- The webhook verifier refuses a transmission time more than ten minutes in the future or older than `maxRedeliveryAgeMs` (default seven days). An older time inside that horizon is a possible PayPal redelivery: it goes to PayPal's verify endpoint, within a quarter of the verify-call window (`maxRedeliveryCallsPerWindow`), and the event id is deduplicated as before.
+
+Alternatives:
+
+- A review to SETTLED or review to CAPTURED transition: rejected for now, the engine and the bridge treat FAILED_NEEDS_REVIEW as final (see R12-E02); keeping a paid sale out of review needs no new transition.
+- Releasing the winner's hold when a pending capture is declined after its review: not done. Whether the authorization is open again after a decline is UNVERIFIED (A16), so the hold stays for the operator (`releaseReviewHolds`, voidAll), the safe side for the winner's funds.
+- Widening the webhook age window without a separate call share: rejected, an old transmission time costs nothing to forge.
+
+Consequences:
+
+- A capture that stays PENDING keeps every candidate's hold for up to three days; the room shows the settlement pending meanwhile.
+- A long PayPal outage after a capture leaves the lot SETTLING with an alert instead of a terminal review; it completes on its own when PayPal answers.
+- A deployment that meets an open remainder (decision B or C, for example card buyers) must set `remainderMode`; the fake's `autoReleaseRemainder: false` is tested in mode B.
+- UNVERIFIED: how long PayPal keeps a capture PENDING (A16), whether an automatic webhook retry keeps the original transmission id and time, and PayPal's retry horizon (W06, G4 recorded first deliveries only).
+
+Evidence: docs/evidence/G1/G1-20261104T231047Z.jsonl (G1.6, G1.7), docs/GATES.md G4, packages/payments/src/fake/ASSUMPTIONS.md A01, A16, H14, W06, packages/payments/test/saga/r12.test.ts, R-PAY-055, R-PAY-058, R-PAY-059, R-PAY-063, issues #1563 to #1568.

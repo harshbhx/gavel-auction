@@ -709,7 +709,11 @@ export class Room {
     let code: ErrorCode | undefined;
     if (!isCents(msg.amount)) code = 'bad_amount';
     else if (!this.roster.has(bidderId)) code = 'unregistered';
-    else {
+    else if (conn.role === 'auctioneer' && msg.amount > engine.view().minNext) {
+      // A manual bid is limited to the next increment, so a ladder of amounts cannot be used
+      // to probe a ceiling (R12-S09). Answered like a ceiling refusal, without logging.
+      code = MANUAL_REFUSED;
+    } else {
       try {
         const res: unknown = placeBidOn(
           engine,
@@ -739,6 +743,7 @@ export class Room {
     // rate limit (R12-S05). A held-bid acceptance keeps its log entries so the hold resolves.
     const unlogged =
       code === 'auction_paused' ||
+      (code === MANUAL_REFUSED && conn.role === 'auctioneer' && !confirmed) ||
       (code !== undefined &&
         !confirmed &&
         (code === 'unregistered' ||

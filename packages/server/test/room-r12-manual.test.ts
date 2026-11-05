@@ -19,4 +19,16 @@ describe('manual bid replies (R12-S09)', () => {
     await t.room.submitBid(c2.conn, t.bid(40000));
     expect(c2.transport.messages('bid_rejected')[0]).toMatchObject({ reason: 'over_ceiling' });
   });
+
+  it('limits a manual bid to the next increment (R12-S09)', async () => {
+    const t = await setup();
+    const boss = await t.connect('auctioneer');
+    // b1's ceiling is 50000, so before the fix 20000 was accepted and bound the bidder to it.
+    await t.room.submitBid(boss.conn, { ...t.bid(20000), bidderId: t.b1 });
+    expect(boss.transport.messages('bid_accepted')).toHaveLength(0);
+    expect(boss.transport.messages('bid_rejected')[0]).toMatchObject({ reason: 'limit_exceeded' });
+    // The next increment itself is still accepted.
+    await t.room.submitBid(boss.conn, { ...t.bid(10000), bidderId: t.b1 });
+    expect(boss.transport.messages('bid_accepted')).toHaveLength(1);
+  });
 });

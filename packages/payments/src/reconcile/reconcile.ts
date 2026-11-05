@@ -6,6 +6,7 @@ import type {
   PaymentsGateway,
   PaymentsMetrics,
 } from '../ports.js';
+import { TERMINAL_STATES } from '../saga/machine.js';
 import type { HoldStatus, HoldTruth, Journal, JournalHold } from '../types.js';
 
 /**
@@ -167,7 +168,14 @@ export async function reconcile(deps: ReconcileDeps, auctionId: string): Promise
     const winner = journal?.winner ?? null;
     const isWinner = winner !== null && winner.holdId === s.holdId;
     const captured = isCaptured(truth);
-    const inFlight = journal?.intent?.op === 'capture' && journal.intent.holdId === s.holdId;
+    // R12-P01: a capture intent is in flight only while the settlement can still adopt it.
+    // A capture that PayPal completed after the journal ended (a review raised while it was
+    // PENDING) is money the journal does not have: reported, not hidden.
+    const inFlight =
+      journal !== null &&
+      !TERMINAL_STATES.includes(journal.state) &&
+      journal.intent?.op === 'capture' &&
+      journal.intent.holdId === s.holdId;
     const seen = truthAsHoldStatus(truth);
     const voidedInJournal =
       journal !== null &&

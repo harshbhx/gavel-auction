@@ -1,7 +1,7 @@
 name: gate-g0
-# Runs the sandbox payment gate by hand. The PayPal sandbox secrets live in the `sandbox-nightly`
-# environment, which is limited to the main branch and needs a reviewer, so code from a pushed
-# branch can never read them.
+# Runs the sandbox payment gate by hand. The PayPal sandbox secrets are repository-level Actions
+# secrets: the `sandbox-nightly` environment has no reviewer, no branch rule and no secrets, so a
+# workflow on any pushed branch can read them. Keep only throwaway sandbox values in them.
 on:
   workflow_dispatch:
 

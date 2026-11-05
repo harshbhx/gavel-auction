@@ -17,7 +17,7 @@ Audio capture and framing, speech-to-text provider clients, the bid parser, the 
 
 Selectable providers: `groq`, `fake`.
 
-`selectProvider` builds only those. `deepgram` and `webspeech` are accepted names, and their clients exist in `src/stt`, but `selectProvider` does not build them: a `DEEPGRAM_API_KEY` alone fails startup with `none_configured`, and with both keys set Groq is used alone and a warning is logged. `replay` is not selected by name; the replay mode constructs `ReplayStt` directly. `FailoverStt` is tested but `selectProvider` does not wrap anything in it, so there is no automatic failover in a running room.
+`selectProvider` builds only those. `deepgram` and `webspeech` are accepted names. Their clients exist in this package (`src/stt/deepgram.ts`, `deepgram-reconnect.ts`, `webspeech.ts`) but are built and not selectable, because `selectProvider` has no builder for them: a `DEEPGRAM_API_KEY` alone fails startup with `none_configured`, and with both keys set Groq is used alone and a warning is logged. `replay` is not selected by name; the replay mode constructs `ReplayStt` directly. `FailoverStt` is tested but `selectProvider` does not wrap anything in it, so there is no automatic failover in a running room.
 
 ## Run the tests
 

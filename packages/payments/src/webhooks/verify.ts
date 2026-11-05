@@ -142,8 +142,25 @@ export interface WebhookVerifierOptions {
   fake?: boolean;
   /** Clock for the age check and the call limit. Defaults to Date.now. */
   nowMs?: () => number;
-  /** Largest accepted distance between transmission time and now. Default 10 minutes. */
+  /**
+   * Largest distance between transmission time and now of a fresh delivery. Default 10
+   * minutes. A transmission time further in the future is refused.
+   */
   maxSkewMs?: number;
+  /**
+   * R12-P04: oldest transmission time still sent to PayPal's verify endpoint, as a
+   * redelivery. Default 7 days. The 503 answers of the handler rely on PayPal sending a
+   * delivery again; whether such a retry keeps the original transmission headers is
+   * UNVERIFIED (G4 recorded first deliveries only), so an old transmission time is not
+   * refused by itself: PayPal's verify answer decides, and the event id is deduplicated.
+   */
+  maxRedeliveryAgeMs?: number;
+  /**
+   * Most verify calls per window for transmissions older than `maxSkewMs`. Default a
+   * quarter of `maxCallsPerWindow`, so old (or forged old) deliveries never crowd out
+   * fresh ones.
+   */
+  maxRedeliveryCallsPerWindow?: number;
   /** Most calls to PayPal's verify endpoint per window. Default 120 (live), unlimited (fake). */
   maxCallsPerWindow?: number;
   /** Length of the call-limit window. Default 60 seconds. */
@@ -162,17 +179,21 @@ export class WebhookVerifier {
   private readonly fake: boolean;
   private readonly nowMs: () => number;
   private readonly maxSkewMs: number;
+  private readonly maxRedeliveryAgeMs: number;
   private readonly maxCalls: number;
+  private readonly maxRedeliveryCalls: number;
   private readonly windowMs: number;
   private windowStartMs = 0;
   private callsInWindow = 0;
+  private redeliveryCallsInWindow = 0;
   private readonly perSource = new Map<string, number>();
   private readonly maxCallsPerSource: number;
   /**
    * Fingerprints of deliveries PayPal already answered, byte for byte (transmission id,
    * signature, time, certificate url and body), with the answer and when it lapses. A
-   * repeat is answered here without a call: PayPal retries a transmission unchanged,
-   * and a forger who repeats a request gains nothing. Bounded, oldest dropped first.
+   * repeat is answered here without a call, so a forger who repeats a request gains
+   * nothing. Whether PayPal's own retries repeat a transmission unchanged is UNVERIFIED
+   * (G4); either way a retry gets an answer. Bounded, oldest dropped first.
    */
   private readonly answered = new Map<string, { ok: boolean; untilMs: number }>();
 
@@ -182,18 +203,31 @@ export class WebhookVerifier {
     this.fake = opts.fake === true;
     this.nowMs = opts.nowMs ?? Date.now;
     this.maxSkewMs = opts.maxSkewMs ?? 10 * 60_000;
+    this.maxRedeliveryAgeMs = Math.max(this.maxSkewMs, opts.maxRedeliveryAgeMs ?? 7 * 86_400_000);
     this.maxCalls = opts.maxCallsPerWindow ?? (this.fake ? Number.POSITIVE_INFINITY : 120);
     this.windowMs = opts.windowMs ?? 60_000;
     this.maxCallsPerSource = opts.maxCallsPerSource ?? Math.max(1, Math.ceil(this.maxCalls / 4));
+    this.maxRedeliveryCalls =
+      opts.maxRedeliveryCallsPerWindow ?? Math.max(1, Math.ceil(this.maxCalls / 4));
   }
 
-  /** Checks that need no call to PayPal. */
-  private passesPrechecks(authAlgo: string, certUrl: string, transmissionTime: string): boolean {
-    if (this.fake) return true;
-    if (!PAYPAL_AUTH_ALGOS.has(authAlgo) || !isPayPalCertUrl(certUrl)) return false;
+  /**
+   * Checks that need no call to PayPal. `fresh` is a transmission time within
+   * `maxSkewMs` of now; `redelivery` one older than that but within `maxRedeliveryAgeMs`
+   * (R12-P04): PayPal retrying a delivery we answered 503 or never answered.
+   */
+  private precheck(
+    authAlgo: string,
+    certUrl: string,
+    transmissionTime: string,
+  ): 'fresh' | 'redelivery' | 'refused' {
+    if (this.fake) return 'fresh';
+    if (!PAYPAL_AUTH_ALGOS.has(authAlgo) || !isPayPalCertUrl(certUrl)) return 'refused';
     const sentMs = Date.parse(transmissionTime);
-    if (Number.isNaN(sentMs)) return false;
-    return Math.abs(this.nowMs() - sentMs) <= this.maxSkewMs;
+    if (Number.isNaN(sentMs)) return 'refused';
+    const ageMs = this.nowMs() - sentMs;
+    if (Math.abs(ageMs) <= this.maxSkewMs) return 'fresh';
+    return ageMs > 0 && ageMs <= this.maxRedeliveryAgeMs ? 'redelivery' : 'refused';
   }
 
   /**
@@ -203,20 +237,25 @@ export class WebhookVerifier {
    * use only a share of the window when the caller names it, and repeated requests
    * are answered from `answered` without a slot (R8-P07).
    */
-  private takeCallSlot(source: string | undefined): boolean {
+  private takeCallSlot(source: string | undefined, redelivery: boolean): boolean {
     const now = this.nowMs();
     if (now - this.windowStartMs >= this.windowMs || now < this.windowStartMs) {
       this.windowStartMs = now;
       this.callsInWindow = 0;
+      this.redeliveryCallsInWindow = 0;
       this.perSource.clear();
     }
     if (this.callsInWindow >= this.maxCalls) return false;
+    // R12-P04: an old transmission time is cheap to forge, so redeliveries share a smaller
+    // part of the window and cannot use up the slots of fresh deliveries.
+    if (redelivery && this.redeliveryCallsInWindow >= this.maxRedeliveryCalls) return false;
     if (source !== undefined) {
       const used = this.perSource.get(source) ?? 0;
       if (used >= this.maxCallsPerSource) return false;
       this.perSource.set(source, used + 1);
     }
     this.callsInWindow += 1;
+    if (redelivery) this.redeliveryCallsInWindow += 1;
     return true;
   }
 
@@ -238,8 +277,8 @@ export class WebhookVerifier {
 
   private remember(key: string, ok: boolean): void {
     this.answered.delete(key);
-    // A success stays as long as the delivery could still pass the age check; a failure only
-    // for a window, so a transient mistake is not remembered for long.
+    // A success stays for `maxSkewMs` (a later repeat costs one verify call again); a failure
+    // only for a window, so a transient mistake is not remembered for long.
     this.answered.set(key, { ok, untilMs: this.nowMs() + (ok ? this.maxSkewMs : this.windowMs) });
     if (this.answered.size > MAX_REMEMBERED) {
       const oldest = this.answered.keys().next().value;
@@ -277,8 +316,9 @@ export class WebhookVerifier {
     }
     const rawEvent = readRawEvent(rawBody);
     if (rawEvent === undefined) return { ok: false, reason: 'malformed_body' };
+    const age = this.precheck(authAlgo, certUrl, transmissionTime);
     if (
-      !this.passesPrechecks(authAlgo, certUrl, transmissionTime) ||
+      age === 'refused' ||
       (!this.fake &&
         (!BASE64_SHAPE.test(transmissionSig) || !TRANSMISSION_ID_SHAPE.test(transmissionId)))
     ) {
@@ -294,7 +334,9 @@ export class WebhookVerifier {
     if (seen !== undefined && seen.untilMs > this.nowMs()) {
       return seen.ok ? { ok: true } : { ok: false, reason: 'verification_failed' };
     }
-    if (!this.takeCallSlot(source)) return { ok: false, reason: 'rate_limited' };
+    if (!this.takeCallSlot(source, age === 'redelivery')) {
+      return { ok: false, reason: 'rate_limited' };
+    }
 
     const res = await this.auth.send({
       method: 'POST',

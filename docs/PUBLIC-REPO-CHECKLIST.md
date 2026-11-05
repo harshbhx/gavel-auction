@@ -9,7 +9,7 @@ Rule: an item is marked [x] only after it is verified on `main`. An item marked 
 - [x] License present: `LICENSE` (MIT), also stated in `README.md`.
 - [x] Code of conduct present: `CODE_OF_CONDUCT.md`.
 - [x] Security policy present: `SECURITY.md`, with steps for reporting a vulnerability.
-- [ ] Security contact confirmed by the owner. The contact choice is open in https://github.com/harshbhx/gavel-auction/issues/1444
+- [x] Security contact named in `SECURITY.md` and `CODE_OF_CONDUCT.md` (issue 1444 is closed).
 
 ## Run and test
 
