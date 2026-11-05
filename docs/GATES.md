@@ -77,7 +77,7 @@ Decision: PASS
 Fallback if FAIL: confirm event state by fetching the resource from the API before acting on it.
 Evidence: docs/evidence/G4/G4-20261105T012205Z.jsonl (sha256 6ce8f1d325266cc780dd74becfd07e58fcf545444c759de1eaecd5766aa5050c)
 Links: spec tags flipped: R-PAY-146, T-PAY-093. Fixtures: packages/payments/test/fixtures/webhooks/.
-Scope: tampered-event rejection was not part of this run; it is covered against the fake only. Retry schedule and PAYMENT.CAPTURE.DENIED/PENDING shapes stay UNVERIFIED. Only first deliveries were recorded, so whether a PayPal retry keeps the original PAYPAL-TRANSMISSION-ID and -TIME is UNVERIFIED too (ASSUMPTIONS W06); until a run records a retry, the verifier sends an old transmission time within seven days to the verify endpoint instead of refusing it (D-0032).
+Scope: tampered-event rejection was not part of this run; it is covered against the fake only. Retry schedule and PAYMENT.CAPTURE.DENIED/PENDING shapes stay UNVERIFIED. Only first deliveries were recorded, so whether a PayPal retry keeps the original PAYPAL-TRANSMISSION-ID and -TIME is UNVERIFIED too (ASSUMPTIONS W06); until a run records a retry, the verifier sends an old transmission time within seven days to the verify endpoint instead of refusing it (D-0033).
 
 ## G5: STT accuracy on noisy bids
 

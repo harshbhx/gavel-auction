@@ -90,7 +90,8 @@ export type LedgerEvent =
     }
   | {
       type: 'CEILING_REVOKED';
-      payload: { bidderId: Ulid; reason: RevokeReason; holdRef?: string };
+      /** `lotId` is set when only that lot's record is revoked (holdScope lot, R12-E09). */
+      payload: { bidderId: Ulid; reason: RevokeReason; holdRef?: string; lotId?: Ulid };
     }
   | { type: 'LOT_OPENED'; payload: { lotId: Ulid; endsAt: number } }
   | {

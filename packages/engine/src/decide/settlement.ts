@@ -1,6 +1,8 @@
+import { PROMOTE_REF_PREFIX } from '../commands.js';
 import type { Command } from '../commands.js';
 import { EngineError, InvariantError } from '../errors.js';
 import { SETTLEMENT_EDGES, SETTLEMENT_STATES } from '../events.js';
+import type { SettlementState } from '../events.js';
 import { bidderFor, scopeKey } from '../rules/exposure.js';
 import type { AuctionState, LotState } from '../state.js';
 import { LIMITS } from '../types.js';
@@ -9,6 +11,30 @@ import type { DecideResult } from './setup.js';
 
 export type CompleteLotCommand = Extract<Command, { type: 'CompleteLot' }>;
 export type RecordSettlementCommand = Extract<Command, { type: 'RecordSettlement' }>;
+
+type Edge = readonly [SettlementState, SettlementState];
+
+/**
+ * Operator resolutions of a settlement stopped for manual review (R12-E02). The payments saga
+ * never leaves FAILED_NEEDS_REVIEW, so these are not in SETTLEMENT_EDGES: VOIDING retries the
+ * release of the holds, SETTLED records that every hold was resolved by hand. The ref names
+ * the operator decision. A lot that captured can then be completed with CompleteLot.
+ */
+const REVIEW_EDGES: readonly Edge[] = [
+  ['FAILED_NEEDS_REVIEW', 'VOIDING'],
+  ['FAILED_NEEDS_REVIEW', 'SETTLED'],
+];
+
+/**
+ * A lot without a winner (unsold or aborted) may record the saga's steps up to the release of
+ * its holds, also after CloseAuction, but never a capture (R-ENG-064, R12-E04). The saga passes
+ * WINNER_SELECTED after the hammer even when nobody is charged, so only CAPTURING and CAPTURED
+ * are refused.
+ */
+const CAPTURE_STATES: readonly string[] = ['CAPTURING', 'CAPTURED'];
+
+const hasEdge = (edges: readonly Edge[], from: string, to: string): boolean =>
+  edges.some(([f, t]) => f === from && t === to);
 
 /**
  * A lot that was hammered and not yet settled; DONE lots accept nothing (R-ENG-068).
@@ -107,7 +133,9 @@ export function decideCompleteLot(state: AuctionState, cmd: CompleteLotCommand):
 
 /**
  * Decides RecordSettlement (R-ENG-067): `to` is one of the fixed states and `from`
- * is the lot's last recorded state. The transition graph belongs to payments.
+ * is the lot's last recorded state. The transition graph belongs to payments, plus the
+ * operator resolutions of a review. A lot without a winner never records a capture, and a
+ * ref may not start with the prefix reserved for promotions (R12-E12).
  */
 export function decideRecordSettlement(
   state: AuctionState,
@@ -116,6 +144,9 @@ export function decideRecordSettlement(
   assertNotInPast(state, cmd);
   const lot = recordableLot(state, cmd.lotId);
   if (cmd.ref.length > LIMITS.text) throw new EngineError('limit_exceeded', 'ref');
+  if (cmd.ref.startsWith(PROMOTE_REF_PREFIX)) {
+    throw new EngineError('bad_command', `ref prefix ${PROMOTE_REF_PREFIX} is reserved`);
+  }
   const known: readonly string[] = SETTLEMENT_STATES;
   if (!known.includes(cmd.to) || !known.includes(cmd.from)) {
     throw new EngineError('bad_command', 'unknown settlement state');
@@ -123,8 +154,18 @@ export function decideRecordSettlement(
   if (cmd.from !== lot.settlement) {
     throw new EngineError('state_continuity', `${cmd.from} != ${lot.settlement}`);
   }
-  if (!SETTLEMENT_EDGES.some(([f, t]) => f === cmd.from && t === cmd.to)) {
+  const review = hasEdge(REVIEW_EDGES, cmd.from, cmd.to);
+  if (!review && !hasEdge(SETTLEMENT_EDGES, cmd.from, cmd.to)) {
     throw new EngineError('state_continuity', `${cmd.from} -> ${cmd.to} is not a transition`);
+  }
+  if (review && cmd.ref.trim() === '') {
+    throw new EngineError('bad_command', 'a review resolution needs a ref');
+  }
+  if (lot.winnerId === null && CAPTURE_STATES.includes(cmd.to)) {
+    throw new EngineError(
+      'state_continuity',
+      `${cmd.from} -> ${cmd.to}: a lot without a winner cannot capture`,
+    );
   }
   return {
     events: [

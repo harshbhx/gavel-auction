@@ -107,6 +107,12 @@ const CONFIG_KEYS: readonly string[] = [
 /** Largest single admin extension, matching the shared soft-close extension cap. */
 export const MAX_EXTEND_MS = 600_000;
 
+/**
+ * Ref prefix reserved for the settlement step PromoteRunnerUp injects. A RecordSettlement ref
+ * with it would be indexed as a promotion, so it is refused (R12-E12).
+ */
+export const PROMOTE_REF_PREFIX = 'promote:';
+
 type Rec = Record<string, unknown>;
 
 function bad(msg: string): never {
@@ -369,15 +375,18 @@ export function parseCommand(x: unknown): Command {
         capturedCents: int(o, 'capturedCents', type),
         ref: shortStr(o, 'ref', type),
       };
-    case 'RecordSettlement':
+    case 'RecordSettlement': {
+      const ref = shortStr(o, 'ref', type);
+      if (ref.startsWith(PROMOTE_REF_PREFIX)) return bad(`${type}.ref prefix is reserved`);
       return {
         type: 'RecordSettlement',
         ...base(['lotId', 'from', 'to', 'ref']),
         lotId: ulid(o, 'lotId', type),
         from: oneOf(o, 'from', SETTLEMENT_STATES, type),
         to: oneOf(o, 'to', SETTLEMENT_STATES, type),
-        ref: shortStr(o, 'ref', type),
+        ref,
       };
+    }
     case 'CloseAuction':
       return { type: 'CloseAuction', ...base([]) };
   }
