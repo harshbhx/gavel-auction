@@ -35,14 +35,16 @@ export const G4_EVENTS_CENTS = 100;
 export type G4Flow = 'capture' | 'void';
 
 const OK: readonly number[] = [200, 201];
+// PayPal answers 204 No Content when an authorization is voided.
+const VOID_OK: readonly number[] = [200, 201, 204];
 
 export interface G4EventsDeps {
   currency?: string;
   approve: (info: { orderId: string; approveUrl: string; flow: G4Flow }) => Promise<void>;
 }
 
-function need(status: number, what: string, flow: G4Flow): void {
-  if (!OK.includes(status)) throw new Error(`G4 events ${flow}: ${what} answered HTTP ${status}`);
+function need(status: number, what: string, flow: G4Flow, ok: readonly number[] = OK): void {
+  if (!ok.includes(status)) throw new Error(`G4 events ${flow}: ${what} answered HTTP ${status}`);
 }
 
 async function runFlow(
@@ -131,7 +133,8 @@ async function runFlow(
             path: `/v2/payments/authorizations/${authId}/void`,
             headers: { ...auth, 'PayPal-Request-Id': rid('void') },
           });
-    need(res.status, flow, flow);
+    // The void answers 204 with an empty body, so the body is never parsed here.
+    need(res.status, flow, flow, flow === 'void' ? VOID_OK : OK);
     return res.status;
   });
   ctx.log(`G4 events: ${flow} flow done`);
