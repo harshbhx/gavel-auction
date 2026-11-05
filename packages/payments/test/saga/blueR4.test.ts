@@ -131,6 +131,8 @@ describe('round 4 settlement fixes', () => {
     const rig = makeRig(CEILINGS);
     await seed(rig);
     let engaged = false;
+    let sinceMs = 0;
+    let down = true;
     const timeout = new PayPalError({
       kind: 'network',
       status: 0,
@@ -139,14 +141,15 @@ describe('round 4 settlement fixes', () => {
       outcome: 'unknown',
     });
     const base = withGateway(rig, {
-      capture: async () => {
-        throw timeout;
+      capture: async (a, i) => {
+        if (down) throw timeout;
+        return rig.gw.capture(a, i);
       },
     });
     const deps = {
       ...base,
       killSwitch: {
-        isEngaged: async () => ({ engaged }),
+        isEngaged: async () => (engaged ? { engaged, sinceMs } : { engaged }),
         engage: async () => undefined,
         release: async () => undefined,
       },
@@ -156,11 +159,19 @@ describe('round 4 settlement fixes', () => {
       reason: 'capture_outcome_unknown',
     });
     engaged = true;
+    sinceMs = rig.clock.nowMs();
     rig.clock.advance(60 * 60 * 1000);
     expect(await runCapturePhase(deps, 'auc1')).toMatchObject({
       status: 'pending',
       reason: 'kill_switch',
     });
+    // R12-P05: after the release the hour it was engaged does not count; PayPal is back and
+    // the retry with the same request id captures.
+    engaged = false;
+    down = false;
+    const out = await runCapturePhase(deps, 'auc1');
+    expect(out.status).toBe('captured');
+    expect(rig.core.getAuthorization(rig.auth['b1'] ?? '').captures).toHaveLength(1);
     assertFakeInvariants(rig.core);
   });
 });

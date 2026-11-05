@@ -15,7 +15,7 @@ const forbidden = (): PayPalError =>
   });
 
 describe('round 5 settlement fixes', () => {
-  it('R5-S01 a hold whose void and truth read both fail goes to review after the deadline', async () => {
+  it('R5-S01 a hold whose void and truth read both fail raises an alert after the deadline', async () => {
     const rig = makeRig(CEILINGS);
     await seed(rig);
     const b2 = rig.auth['b2'] ?? '';
@@ -34,12 +34,17 @@ describe('round 5 settlement fixes', () => {
     rig.clock.advance(300_000);
     expect(await runSettlement(deps, 'auc1')).toMatchObject({ status: 'pending' });
     rig.clock.advance(400_000);
+    // R12-P02: the winner has paid, so the sale is not ended in review; an operator is told.
     const out = await runSettlement(deps, 'auc1');
-    expect(out).toMatchObject({ status: 'failed', reason: 'void_unconfirmed:b2' });
+    expect(out).toMatchObject({ status: 'pending', reason: 'void_incomplete' });
+    const alerts = rig.audits.filter((a) => a.kind === 'settlement_alert');
+    expect(alerts).toEqual([
+      expect.objectContaining({ holdId: 'hold-b2', label: 'void_unconfirmed:b2' }),
+    ]);
     assertFakeInvariants(rig.core);
   });
 
-  it('R5-S01 a winner remainder that stays unreadable goes to review after the deadline', async () => {
+  it('R5-S01 a winner remainder that stays unreadable raises an alert after the deadline', async () => {
     const rig = makeRig(CEILINGS);
     await seed(rig);
     await runCapturePhase(rig.deps, 'auc1');
@@ -56,9 +61,14 @@ describe('round 5 settlement fixes', () => {
     });
     rig.clock.advance(700_000);
     expect(await runVoidPhase(deps, 'auc1')).toMatchObject({
-      status: 'failed',
-      reason: 'remainder_unconfirmed',
+      status: 'pending',
+      reason: 'remainder_unavailable',
     });
+    expect(rig.audits.filter((a) => a.kind === 'settlement_alert').map((a) => a.label)).toEqual([
+      'remainder_unconfirmed',
+    ]);
+    // Once the authorization can be read again the sale settles.
+    expect((await runVoidPhase(rig.deps, 'auc1')).status).toBe('settled');
     assertFakeInvariants(rig.core);
   });
 });

@@ -132,7 +132,17 @@ export interface KillState {
 }
 
 export interface PaymentAudit {
-  kind: 'paypal_call' | 'state_change' | 'kill_switch' | 'stale_hold' | 'void_all';
+  /**
+   * `settlement_alert` (R12-P02): a paid sale whose releases stay unconfirmed past the
+   * deadline; the saga keeps retrying, an operator should look.
+   */
+  kind:
+    | 'paypal_call'
+    | 'state_change'
+    | 'kill_switch'
+    | 'stale_hold'
+    | 'void_all'
+    | 'settlement_alert';
   auctionId?: string;
   holdId?: string;
   op?: string;
@@ -170,6 +180,11 @@ export interface JournalIntent {
   requestId: string;
   amountCents: number;
   startedAtMs: number;
+  /**
+   * R12-P01: when PayPal first reported this capture as PENDING. From then on the capture
+   * waits under the pending-capture deadline instead of the unknown deadline.
+   */
+  pendingSinceMs?: number;
 }
 
 export interface JournalHistoryEntry {
@@ -202,6 +217,11 @@ export interface Journal {
   cursor: number;
   intent: JournalIntent | null;
   unknownSince: number | null;
+  /**
+   * R12-P05: set while the kill switch holds the unknown clock (when the hold began). The
+   * first run after the release moves `unknownSince` on by the time held and clears it.
+   */
+  unknownPausedAtMs?: number;
   winner: JournalWinner | null;
   failed: JournalFailure[];
   voids: Record<string, string>;

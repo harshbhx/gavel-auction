@@ -436,14 +436,24 @@ describe('getHoldTruth edge cases', () => {
     expect(t.captures).toHaveLength(2);
   });
 
-  it('an order that cannot be read leaves captures not observable', async () => {
+  it('R12-P03 an order that cannot be read is an unknown outcome, not "captures not observable"', async () => {
     const gw = new PayPalGateway({
-      auth: scripted({ '/v2/payments/authorizations/A1': authBody('CREATED') }),
+      auth: scripted({
+        '/v2/payments/authorizations/A1': authBody('CAPTURED'),
+        '/v2/checkout/orders/O-ODD': orderBody('x'),
+      }),
       fake: true,
     });
-    const t = await gw.getHoldTruth({ holdId: 'h', authId: 'A1', orderId: 'O-GONE' });
-    expect(t.captures).toBeNull();
-    expect(t.status).toBe('CREATED');
+    for (const orderId of ['O-GONE', 'O-ODD']) {
+      const err = await gw
+        .getHoldTruth({ holdId: 'h', authId: 'A1', orderId })
+        .catch((e: unknown) => e);
+      expect(err, orderId).toBeInstanceOf(PayPalError);
+      expect(err, orderId).toMatchObject({ outcome: 'unknown', name: 'ORDER_UNREADABLE' });
+    }
+    // Without an order id nothing is read, so the captures stay not observable.
+    const blind = await gw.getHoldTruth({ holdId: 'h', authId: 'A1', orderId: '' });
+    expect(blind.captures).toBeNull();
   });
 
   it('an unknown authorization status is an unknown outcome, not a guess', async () => {
