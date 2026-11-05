@@ -29,6 +29,7 @@ import { Empty, Loading, Offline } from './screens/states/States';
 import { useOnline } from './screens/states/useOnline';
 import { BidScreen } from './screens/bid/BidScreen';
 import { LiveConsole } from './screens/console/LiveConsole';
+import { GalleryScreen } from './screens/gallery/GalleryScreen';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
 import { LandingScreen } from './screens/landing/LandingScreen';
 import { Receipt } from './screens/receipt/Receipt';
@@ -465,6 +466,13 @@ function Routed({
   const roomId = match.params['roomId'];
   const live =
     id === 'bid' || id === 'screen' || id === 'console' || id === 'receipt' || id === 'audit';
+  if (id === 'gallery') {
+    return (
+      <RouteScreen match={match}>
+        <GalleryScreen />
+      </RouteScreen>
+    );
+  }
   const who = live && roomId !== undefined ? tokenFor(id, roomId) : null;
   if (id === 'landing' && api !== undefined) return <LandingRoute api={api} />;
   if (id === 'join' && roomId !== undefined && api !== undefined) {
@@ -503,7 +511,7 @@ export function App({ initialPath, gallery = import.meta.env.DEV, liveBase, api 
   const match = matchRoute(path, { gallery });
   return (
     <ErrorBoundary>
-      <Announcer />
+      {match.route.id !== 'gallery' && <Announcer />}
       <Routed match={match} liveBase={liveBase} api={api} />
     </ErrorBoundary>
   );
