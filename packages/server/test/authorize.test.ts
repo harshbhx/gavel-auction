@@ -117,7 +117,21 @@ describe('public audit rows (R-RT-038, R-RT-055)', () => {
     const frame = { v: 1, t: 'audit_event', seq: 3, ts: 1, audit: full };
     expect(redactForViewer('bidder', B1, frame)).toBeNull();
     expect(redactForViewer('screen', undefined, frame)).toBeNull();
-    expect(redactForViewer('auctioneer', undefined, frame)).toEqual(frame);
+    const seen = JSON.stringify(redactForViewer('auctioneer', undefined, frame));
+    expect(seen).toContain('over_ceiling');
+    expect(seen).not.toContain('60000');
+    expect(seen).not.toContain('sixty thousand');
+    expect(redactForViewer('admin', undefined, frame)).toEqual(frame);
+  });
+
+  it('scrubs over_ceiling rows in the auctioneer snapshot, keeps accepted rows', () => {
+    const snap = { snapshot: { recentAudit: [full, accepted] } };
+    const out = redactForViewer('auctioneer', undefined, snap) as {
+      snapshot: { recentAudit: Array<Record<string, unknown>> };
+    };
+    expect(out.snapshot.recentAudit[0]).not.toHaveProperty('parsedAmount');
+    expect(out.snapshot.recentAudit[0]).not.toHaveProperty('transcript');
+    expect(out.snapshot.recentAudit[1]).toHaveProperty('parsedAmount', 60000);
   });
 
   it('strips transcripts from accepted rows for non-auctioneers', () => {
