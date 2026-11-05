@@ -2,7 +2,7 @@
 
 GAVEL is a live auction in which each bid is meant to be backed by a PayPal authorization hold. Bidders approve a ceiling up front, a deterministic engine runs the auction, and at the hammer only the winning price is captured while the other holds are voided.
 
-Status: in development for the PayPal AI Hackathon 2026 (PayPal sandbox only). The pieces below are built as separate packages and tested against a fake PayPal server. They are not yet wired into a running, hosted application, and nothing has been run against the real PayPal sandbox.
+Status: in development for the PayPal AI Hackathon 2026 (PayPal sandbox only). The pieces below are built as separate packages and tested against a fake PayPal server. They are not yet wired into a running, hosted application, and only part of the payment behaviour has been run against the real PayPal sandbox: the wallet remainder release (G1) and webhook signature verification (G4) were observed there; card and guest funding (G2), honor period (G3) and speech accuracy (G5) were not.
 
 | Area                                                                                                      | Works now                | Works with the fake PayPal only | Not built yet                                         |
 | --------------------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------- | ----------------------------------------------------- |
@@ -25,9 +25,9 @@ PayPal sandbox gates (see `docs/GATES.md`):
 | G4   | Webhook signature verification on real events | PASS                                                    |
 | G5   | Speech-to-text accuracy on noisy bids         | NOT RUN                                                 |
 
-Voice not built yet: the Deepgram, Web Speech and replay speech-to-text clients, and failover between providers (so only Groq runs, in chunks). With both `DEEPGRAM_API_KEY` and `GROQ_API_KEY` set, provider selection skips Deepgram, uses Groq and logs a warning.
+Voice not wired yet: the Deepgram, Web Speech and replay speech-to-text clients and failover between providers are built but not selectable (so only Groq runs, in chunks). With both `DEEPGRAM_API_KEY` and `GROQ_API_KEY` set, provider selection skips Deepgram, uses Groq and logs a warning.
 
-Until the gates are run, behaviour against PayPal is established only against the project's own fake server. Bids are intended to arrive by voice, QR or typed entry; see the table for what exists today.
+Apart from G1 (wallet remainder release) and G4 (webhook verification), behaviour against PayPal is established only against the project's own fake server. Bids are intended to arrive by voice, QR or typed entry; see the table for what exists today.
 
 ## Run it
 
@@ -48,6 +48,6 @@ The web app takes `VITE_SANDBOX=true` (sandbox banner and sandbox-only behaviour
 
 Payment modes: with `PAYMENTS=fake` the server talks to the built-in fake PayPal and no network access is needed; with `PAYMENTS=sandbox` it calls the PayPal sandbox and needs the PayPal secrets. Production mode (`NODE_ENV=production`) refuses fake payments. Runbooks: `packages/server/README.md`, `packages/voice/README.md`. Contributing: `CONTRIBUTING.md`.
 
-Plan and architecture: `docs/PLAN.md`. Demo and test guide: `docs/DEMO.md`. The Python files in `reference/python` are a reference implementation that the TypeScript packages are checked against.
+Plan and architecture: `docs/PLAN.md`. Demo and test guide: `docs/DEMO.md`. Of the Python files in `reference/python`, only `engine.py` (golden fixtures and differential test) and `parser.py` (parser golden test) are compared with the TypeScript packages; `saga.py` and `fake_paypal.py` are not run against the TypeScript saga or fake.
 
 License: MIT.

@@ -251,7 +251,13 @@ export function applyG5ToGates(
   const set = (label: string, value: string): void => {
     section = section.replace(new RegExp(`^${label}:.*$`, 'm'), `${label}: ${value}`);
   };
-  set('Status', 'RUN');
+  // A status the docs check accepts: the verdict, never the old free-form RUN.
+  set('Status', s.verdict);
+  const evidence =
+    'G5-live table in this section (Deepgram prerecorded endpoint only, not the chunked Groq path the product runs)';
+  section = /^Evidence:/m.test(section)
+    ? section.replace(/^Evidence:.*$/m, `Evidence: ${evidence}`)
+    : section.replace(/^(Status:.*)$/m, `$1\nEvidence: ${evidence}`);
   set('Run date / by', `${date} / g5 harness`);
   set('Setup', `${s.n} noisy recordings, live Deepgram, rule parser`);
   set(

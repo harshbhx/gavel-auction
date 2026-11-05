@@ -3,8 +3,8 @@ name: gate-g1
 # remainder, try an explicit void. A headless browser signs in as the sandbox buyer to approve
 # the order. Actions secrets needed: PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, SANDBOX_BUYER_EMAIL,
 # SANDBOX_BUYER_PASSWORD (optional for a card-funded buyer: SANDBOX_CARD_BUYER_EMAIL and
-# SANDBOX_CARD_BUYER_PASSWORD). The job runs only from main, so code on a pushed branch never
-# reads the secrets. Move the secrets into an environment with a required reviewer when the
+# SANDBOX_CARD_BUYER_PASSWORD). The job runs only from main, but the secrets are repository-level, so a
+# workflow on a pushed branch can still read them. Move the secrets into an environment with a required reviewer when the
 # `sandbox-nightly` environment exists (see docs/GATES.md).
 on:
   workflow_dispatch:
