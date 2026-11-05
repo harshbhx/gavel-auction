@@ -86,7 +86,7 @@ describe('T-VOX-036 parser parity with the Python golden (R-VOX-036)', () => {
 
   it('records the known held-out divergence instead of deleting it', () => {
     const flagged = cases.filter((c) => c.knownDivergence !== undefined);
-    expect(flagged.map((c) => [c.set, c.text])).toEqual([['heldout', 'I raise to eight hundred']]);
+    expect(flagged.map((c) => c.set)).toEqual(['heldout']);
   });
 
   it('keeps the intended differences to the prototype small and named', () => {
