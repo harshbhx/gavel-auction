@@ -97,12 +97,27 @@ export type ServerConfig = z.infer<typeof EnvSchema>;
 
 export type ConfigResult = { ok: true; config: ServerConfig } | { ok: false; errors: string[] };
 
+/** True only for a parseable URL on a loopback host; anything else counts as public. */
+function isLocalUrl(raw: string | undefined): boolean {
+  if (raw === undefined) return false;
+  try {
+    const host = new URL(raw).hostname;
+    return host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+  } catch {
+    return false;
+  }
+}
+
 /** Validate an env map. Every problem is reported, not just the first. */
 export function parseConfig(env: Readonly<Record<string, string | undefined>>): ConfigResult {
   // Treat empty strings as unset so `FOO=` behaves like a missing variable.
   const cleaned: Record<string, string> = {};
   for (const [k, v] of Object.entries(env)) {
     if (v !== undefined && v !== '') cleaned[k] = v;
+  }
+  // A missing NODE_ENV on a public host must not fall open to development rules (R-RT-131).
+  if (cleaned.NODE_ENV === undefined && !isLocalUrl(cleaned.PUBLIC_URL)) {
+    cleaned.NODE_ENV = 'production';
   }
   const parsed = EnvSchema.safeParse(cleaned);
   if (parsed.success) {

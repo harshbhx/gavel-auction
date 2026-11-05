@@ -3,6 +3,7 @@ import { REDACTED, loadConfig, parseConfig, redactConfig } from '../src/config';
 
 const good = {
   PUBLIC_URL: 'https://gavel.example.com',
+  NODE_ENV: 'development',
   TOKEN_SECRET: 'super-secret-token-value-0123456789',
   ADMIN_KEY: 'admin-key-value-0123456789',
 };
@@ -175,6 +176,25 @@ describe('production rules (R-RT-131)', () => {
 
   it('keeps short secrets valid outside production', () => {
     expect(parseConfig({ ...good, TOKEN_SECRET: 'a', ADMIN_KEY: 'a' }).ok).toBe(true);
+  });
+
+  it('does not fall back to development rules on a public host without NODE_ENV', () => {
+    const unset = { ...good, NODE_ENV: undefined };
+    const r = parseConfig({ ...unset, TOKEN_SECRET: 'a', ADMIN_KEY: 'a', DEMO_MODE: '1' });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    const text = r.errors.join('\n');
+    for (const key of ['TOKEN_SECRET', 'ADMIN_KEY', 'STORE', 'PAYMENTS', 'DEMO_MODE']) {
+      expect(text).toContain(key);
+    }
+  });
+
+  it('keeps development rules for localhost without NODE_ENV', () => {
+    const unset = { ...good, NODE_ENV: undefined };
+    for (const host of ['http://localhost:8080', 'http://127.0.0.1:8080', 'http://[::1]:8080']) {
+      const r = parseConfig({ ...unset, PUBLIC_URL: host, TOKEN_SECRET: 'a', ADMIN_KEY: 'a' });
+      expect(r.ok && r.config.NODE_ENV).toBe('development');
+    }
   });
 
   it('defaults the per-bidder connection cap to 3', () => {
