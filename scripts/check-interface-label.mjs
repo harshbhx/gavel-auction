@@ -136,7 +136,13 @@ async function generate() {
       configObjectFullPath: baseFile,
       packageJsonFullPath: join(root, 'packages', pkg, 'package.json'),
     });
-    const result = Extractor.invoke(prepared, { localBuild: true, showVerboseMessages: false });
+    let result;
+    try {
+      result = Extractor.invoke(prepared, { localBuild: true, showVerboseMessages: false });
+    } catch (err) {
+      process.stderr.write(`api-extractor failed for ${pkg}\n`);
+      throw err;
+    }
     if (!result.succeeded) failed = true;
   }
   rmSync(own, { recursive: true, force: true });
