@@ -40,23 +40,49 @@ export function flattenHeaders(raw: IncomingHttpHeaders): Record<string, string>
   return out;
 }
 
-/** Reads the body as bytes, untouched. With `maxBytes` it stops reading once the limit is passed. */
-export async function readRawBody(
+/**
+ * Reads the body as bytes, untouched. With `maxBytes` it stops collecting once the limit is
+ * passed but keeps draining the stream, so the socket stays open and the caller can still
+ * answer 413 (a for-await loop left early would destroy the request and its socket).
+ */
+export function readRawBody(
   req: IncomingMessage,
   maxBytes: number = Number.POSITIVE_INFINITY,
 ): Promise<RawBody> {
-  const chunks: Buffer[] = [];
-  let size = 0;
-  for await (const chunk of req) {
-    const buf = typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : (chunk as Buffer);
-    size += buf.length;
-    if (size > maxBytes) {
-      req.resume();
-      return { ok: false, reason: 'too_large' };
-    }
-    chunks.push(buf);
-  }
-  return { ok: true, body: Buffer.concat(chunks) };
+  return new Promise<RawBody>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    let over = false;
+    let finished = false;
+    req.on('data', (chunk: Buffer | string) => {
+      if (over) return;
+      const buf = typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk;
+      size += buf.length;
+      if (size > maxBytes) {
+        over = true;
+        chunks.length = 0;
+        finished = true;
+        resolve({ ok: false, reason: 'too_large' });
+        return;
+      }
+      chunks.push(buf);
+    });
+    req.on('end', () => {
+      if (finished) return;
+      finished = true;
+      resolve({ ok: true, body: Buffer.concat(chunks) });
+    });
+    req.on('error', (err) => {
+      if (finished) return;
+      finished = true;
+      reject(err);
+    });
+    req.on('close', () => {
+      if (finished) return;
+      finished = true;
+      reject(new Error('request closed before the body ended'));
+    });
+  });
 }
 
 /** Adapts the auction service (status in, status out) to the port shape the route maps. */
@@ -73,6 +99,7 @@ export function portFromService(service: ServiceWebhook): WebhookPort {
 
 function send(res: ServerResponse, status: number): void {
   res.statusCode = status;
+  if (status === 413) res.setHeader('connection', 'close');
   res.setHeader('content-type', 'application/json');
   res.end(status === 200 ? '{"ok":true}' : '{"ok":false}');
 }

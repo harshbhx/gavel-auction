@@ -70,3 +70,24 @@ describe('bid pipeline rejection codes (T-RT-027)', () => {
     expect(restarted.lastSeq).toBe(t.room.lastSeq);
   });
 });
+
+describe('room feeds the metrics counters (R-RT-122)', () => {
+  it('counts accepted bids, rejected bids and rate limit hits', async () => {
+    const counts = { accepted: 0, rejected: 0, limited: 0 };
+    const t = await setup({
+      limiter: true,
+      metrics: {
+        bidAccepted: () => void (counts.accepted += 1),
+        bidRejected: () => void (counts.rejected += 1),
+        rateLimitHit: () => void (counts.limited += 1),
+      },
+    });
+    const c1 = await t.connect('bidder', t.b1);
+    const c2 = await t.connect('bidder', t.b2);
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    await t.room.submitBid(c2.conn, t.bid(10100));
+    expect(counts).toEqual({ accepted: 1, rejected: 1, limited: 0 });
+    for (let i = 0; i < 20; i++) await t.room.submitBid(c2.conn, t.bid(10100));
+    expect(counts.limited).toBeGreaterThan(0);
+  });
+});
