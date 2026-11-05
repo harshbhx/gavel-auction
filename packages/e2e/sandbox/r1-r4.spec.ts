@@ -135,7 +135,7 @@ describe.skipIf(!availability.ok)('sandbox R1 to R4', () => {
       const skip = deliverySkipReason(env);
       if (skip !== undefined) {
         writeSpecResult(resultDir, skippedResult('R4', 'G4', skip, new Date().toISOString()));
-        ctx.skip(skip);
+        ctx.skip();
       }
       const s = await begin('R4');
       const a = await s.authorize('r4', 10000);

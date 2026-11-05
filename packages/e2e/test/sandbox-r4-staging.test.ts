@@ -67,6 +67,6 @@ describe('R4 staging host guard', () => {
     const open = src.indexOf("begin('R4')");
     expect(guard).toBeGreaterThan(-1);
     expect(open).toBeGreaterThan(guard);
-    expect(src).toContain("ctx.skip(skip)");
+    expect(src).toContain('ctx.skip();');
   });
 });
