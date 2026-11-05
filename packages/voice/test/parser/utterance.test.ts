@@ -180,3 +180,21 @@ describe('red-team round 2: "for" after a spoken paddle (R-VOX-042)', () => {
     expect(r.amountCents).toBe(40000);
   });
 });
+
+describe('VOX-83 plausibility checks on corrections', () => {
+  it('turns a correction with a magnitude word into implausible_amount', () => {
+    for (const text of ['actually two million', 'no wait, three hundred million']) {
+      const r = parseUtterance(text, ctx);
+      expect(r.status, text).toBe('confirm');
+      expect(r.reason, text).toBe('implausible_amount');
+    }
+  });
+
+  it('turns a correction below the minimum into implausible_amount', () => {
+    expect(parseUtterance('actually fifty cents', ctx).reason).toBe('implausible_amount');
+  });
+
+  it('keeps a plausible correction as a correction', () => {
+    expect(parseUtterance('actually four hundred', ctx).reason).toBe('correction');
+  });
+});

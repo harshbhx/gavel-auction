@@ -59,6 +59,19 @@ function implausible(base: ParseResult, amountCents: Cents | null): ParseResult 
   };
 }
 
+/** Plausibility of every candidate of a correction or hedge result; never lets one through as is. */
+export function refineCandidates(text: string, base: ParseResult): ParseResult {
+  if (base.status !== 'confirm' || base.candidates.length === 0) return base;
+  const words = tokenize(text).map((t) => t.text);
+  const bad = base.candidates.some(
+    (c) =>
+      c.amountCents !== null &&
+      (c.amountCents < MIN_PLAUSIBLE_CENTS || c.amountCents > MAX_PLAUSIBLE_CENTS),
+  );
+  if (!bad && !words.some((w) => HUGE_WORDS.has(w))) return base;
+  return implausible(base, base.amountCents);
+}
+
 /** Number spans of the text outside paddle references, as token lists. */
 function amountSpans(text: string): string[][] {
   const toks = tokenize(text);
