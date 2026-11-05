@@ -32,7 +32,10 @@ describe('server trace-check', () => {
 
   it('fails on a new uncovered id but not on an allowed one', () => {
     assert.deepEqual(check(spec, [], { 'R-RT-001': 'x', 'R-RT-002': 'x' }).uncovered, ['R-RT-003']);
-    assert.deepEqual(check(spec, [], { 'R-RT-001': 'x', 'R-RT-002': 'x', 'R-RT-003': 'x' }).uncovered, []);
+    assert.deepEqual(
+      check(spec, [], { 'R-RT-001': 'x', 'R-RT-002': 'x', 'R-RT-003': 'x' }).uncovered,
+      [],
+    );
   });
 
   it('reports stale allowlist entries', () => {

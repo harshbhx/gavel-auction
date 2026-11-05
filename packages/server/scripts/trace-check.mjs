@@ -52,9 +52,7 @@ function listTests(dir) {
  * Returns { uncovered, stale, allUncovered }.
  */
 export function check(specText, tests, allow = {}) {
-  const haystack = tests
-    .flatMap((t) => [t.file, ...testTitles(t.src)])
-    .join('\n');
+  const haystack = tests.flatMap((t) => [t.file, ...testTitles(t.src)]).join('\n');
   const tIds = new Set(haystack.match(/T-RT-\d{3}/g) ?? []);
   const viaT = new Set();
   for (const [t, rs] of testMap(specText)) if (tIds.has(t)) for (const r of rs) viaT.add(r);
@@ -93,7 +91,8 @@ function main() {
     return 0;
   }
   for (const id of r.uncovered) console.log(`spec id not covered by any server test: ${id}`);
-  for (const id of r.stale) console.log(`stale allowlist entry (covered now or not in spec): ${id}`);
+  for (const id of r.stale)
+    console.log(`stale allowlist entry (covered now or not in spec): ${id}`);
   if (r.uncovered.length + r.stale.length > 0) return 1;
   console.log(`trace check passed (${tests.length} test files, ${r.allUncovered.length} allowed)`);
   return 0;
