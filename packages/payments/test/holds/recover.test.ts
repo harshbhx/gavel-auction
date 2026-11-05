@@ -7,6 +7,7 @@ import {
   isStale,
   recoverOrder,
   sweepAuction,
+  sweepStalePending,
   type RecoverDeps,
 } from '../../src/holds/recover.js';
 import { HoldService } from '../../src/holds/service.js';
@@ -80,7 +81,7 @@ describe('T-PAY-026 recover an approved but unauthorized order', () => {
     assertFakeInvariants(rig.core);
   });
 
-  it('abandons it when the auction is closed, with no PayPal call', async () => {
+  it('abandons it when the auction is closed, with only a read of the order', async () => {
     const rig = makeRig(false);
     const { holdId, orderId } = await pendingOrder(rig);
     rig.core.approveOrder(orderId);
@@ -88,7 +89,7 @@ describe('T-PAY-026 recover an approved but unauthorized order', () => {
     const out = await recoverOrder(rig.deps, { auctionId: 'a1', orderId });
     expect(out).toEqual({ status: 'abandoned' });
     expect((await rig.holds.get(holdId))?.status).toBe('EXPIRED');
-    expect(rig.core.calls).toHaveLength(0);
+    expect(rig.core.calls.filter((c) => c.op !== 'get')).toHaveLength(0);
     expect(rig.audits.at(-1)).toMatchObject({ holdId, to: 'EXPIRED', label: 'hold_abandoned' });
   });
 
@@ -226,5 +227,49 @@ describe('T-PAY-023 stale holds', () => {
     expect(await flagStaleHolds(stale, 'a1')).toEqual([]);
     rig.clock.advance(1);
     expect(await flagStaleHolds(stale, 'a1')).toEqual([holdId]);
+  });
+});
+
+describe('R8-P05 an authorization created before a crash is not left live', () => {
+  /** PayPal authorized the order, but the record never got the authorization id. */
+  async function crashedAfterAuthorize(rig: Rig): Promise<{ holdId: string; authId: string }> {
+    const { holdId, orderId } = await pendingOrder(rig);
+    rig.core.approveOrder(orderId);
+    const a = rig.core.authorizeOrder(orderId, 'lost-authorize');
+    return { holdId, authId: a.authId };
+  }
+
+  it('voids it when the auction is closed and keeps its id on the expired record', async () => {
+    const rig = makeRig(false);
+    const { holdId, authId } = await crashedAfterAuthorize(rig);
+    rig.clock.advance(10 * 60_000);
+    const out = await sweepStalePending(rig.deps, 'a1', 5 * 60_000);
+    expect(out).toEqual([{ holdId, result: { status: 'abandoned' } }]);
+    const rec = await rig.holds.get(holdId);
+    expect(rec).toMatchObject({ status: 'EXPIRED', authId });
+    expect(rig.core.inspect(authId).voidEffects).toBe(1);
+    assertFakeInvariants(rig.core);
+  });
+
+  it('adopts it while the auction is open, so the hold is tracked', async () => {
+    const rig = makeRig(true);
+    const { holdId, authId } = await crashedAfterAuthorize(rig);
+    rig.clock.advance(10 * 60_000);
+    await sweepStalePending(rig.deps, 'a1', 5 * 60_000);
+    expect(await rig.holds.get(holdId)).toMatchObject({ status: 'HELD', authId });
+    expect(rig.core.inspect(authId).voidEffects).toBe(0);
+  });
+
+  it('leaves a young pending hold and one whose order has no authorization', async () => {
+    const rig = makeRig(false);
+    const young = await crashedAfterAuthorize(rig);
+    const none = await pendingOrder(rig, 'b2');
+    const out = await sweepStalePending(rig.deps, 'a1', 5 * 60_000);
+    expect(out).toEqual([]);
+    expect((await rig.holds.get(young.holdId))?.status).toBe('PENDING_APPROVAL');
+    rig.clock.advance(10 * 60_000);
+    const later = await sweepStalePending(rig.deps, 'a1', 5 * 60_000);
+    expect(later.map((x) => x.holdId)).toEqual([young.holdId]);
+    expect((await rig.holds.get(none.holdId))?.status).toBe('PENDING_APPROVAL');
   });
 });

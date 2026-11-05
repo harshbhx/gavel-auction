@@ -49,7 +49,12 @@ export class WebhookHandler {
 
   constructor(private readonly deps: WebhookHandlerDeps) {}
 
-  async handle(rawBody: Buffer, headers: WebhookHeaders): Promise<WebhookResponse> {
+  /** `source` is the sender's address as the route knows it; it only feeds the per-source call limit. */
+  async handle(
+    rawBody: Buffer,
+    headers: WebhookHeaders,
+    source?: string,
+  ): Promise<WebhookResponse> {
     if (!Buffer.isBuffer(rawBody)) {
       throw new TypeError(
         'webhook handler needs the raw request body as a Buffer; the route parsed it first',
@@ -60,7 +65,7 @@ export class WebhookHandler {
 
     let reason: RejectReason | undefined;
     try {
-      const outcome = await verifier.verifyWebhook(rawBody, headers);
+      const outcome = await verifier.verifyWebhook(rawBody, headers, source);
       if (!outcome.ok) reason = outcome.reason;
     } catch (e) {
       if (!(e instanceof PayPalError)) throw e;

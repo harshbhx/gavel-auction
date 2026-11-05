@@ -6,6 +6,7 @@ import type { HoldTruth, Journal, JournalHold } from '../types.js';
 import { runCapturePhase, type CaptureDeps, type CaptureOutcome } from './capture.js';
 import { defaultLeaseOwner, runLeaseOwner } from './owner.js';
 import { withLease } from './create.js';
+import { truthArgs } from './truth.js';
 import { step, type SettlementEvent } from './machine.js';
 import { DEFAULT_UNKNOWN_DEADLINE_MS, unknownExpired } from './unknown.js';
 import { releaseWinnerRemainder, remainderKey, type RemainderResult } from './remainder.js';
@@ -49,6 +50,10 @@ const REMAINDER_SINCE = 'remainder_since:';
 
 const DONE: ReadonlySet<string> = new Set<VoidStatus>(['voided', 'released']);
 const RELEASED_KINDS: ReadonlySet<string> = new Set(['already_voided', 'expired']);
+const CAPTURED_TRUTH: ReadonlySet<HoldTruth['status']> = new Set([
+  'CAPTURED',
+  'PARTIALLY_CAPTURED',
+]);
 const GONE_TRUTH: ReadonlySet<HoldTruth['status']> = new Set(['VOIDED', 'EXPIRED', 'NOT_FOUND']);
 
 export interface VoidCallDeps {
@@ -126,7 +131,7 @@ export async function voidHold(
     let truth: HoldTruth;
     try {
       await deps.boundary?.('before:get');
-      truth = await deps.gateway.getHoldTruth({ holdId: hold.holdId, authId: hold.authId });
+      truth = await deps.gateway.getHoldTruth(truthArgs(hold));
       await deps.boundary?.('after:get');
     } catch (e) {
       if (e instanceof PayPalError) return 'pending';
@@ -231,7 +236,10 @@ class Run {
 
   async drive(): Promise<VoidOutcome> {
     if (this.j.state === 'SETTLED') return { status: 'settled', journal: this.j };
-    if (this.j.state === 'FAILED_NEEDS_REVIEW') return this.failed(this.lastReason());
+    if (this.j.state === 'FAILED_NEEDS_REVIEW') {
+      await this.releaseForReview();
+      return this.failed(this.lastReason());
+    }
     if (this.j.state === 'CAPTURED') {
       if (this.j.winner !== null) {
         const out = await this.remainder();
@@ -243,6 +251,37 @@ class Run {
       return { status: 'pending', reason: 'not_ready', journal: this.j };
     }
     return this.voiding();
+  }
+
+  /**
+   * R8-P06: a settlement in review must not leave the other bidders' holds live
+   * until PayPal lets them lapse. Every hold that is not the winner's, not the one
+   * a capture may still be in flight for, and provably not captured (its truth was
+   * read) is voided. Safe to repeat: finished holds are skipped.
+   */
+  private async releaseForReview(): Promise<void> {
+    const inFlight = this.j.intent?.holdId;
+    for (const t of this.targets()) {
+      if (this.aborted) return;
+      if (DONE.has(this.statusOf(t.bidderId) ?? '')) continue;
+      if (t.hold.holdId === inFlight) continue;
+      let truth: HoldTruth;
+      try {
+        await this.deps.boundary?.('before:get');
+        truth = await this.deps.gateway.getHoldTruth(truthArgs(t.hold));
+        await this.deps.boundary?.('after:get');
+      } catch (e) {
+        if (e instanceof PayPalError) continue;
+        throw e;
+      }
+      if (CAPTURED_TRUTH.has(truth.status)) continue;
+      const status: VoidStatus = GONE_TRUTH.has(truth.status)
+        ? 'released'
+        : await voidHold(this.deps, this.j.auctionId, t.hold);
+      await this.patch(`void_${t.bidderId}`, (d) => {
+        d.voids[t.bidderId] = status;
+      });
+    }
   }
 
   private lastReason(): string {
@@ -447,6 +486,11 @@ export async function runSettlement(
   auctionId: string,
 ): Promise<SettlementOutcome> {
   const captured = await runCapturePhase(deps, auctionId);
+  if (captured.status === 'failed') {
+    // R8-P06: release the holds that are not in doubt before reporting the review.
+    const released = await runVoidPhase(deps, auctionId);
+    return released.status === 'failed' ? released : captured;
+  }
   if (captured.status !== 'captured' && captured.status !== 'no_sale') return captured;
   return runVoidPhase(deps, auctionId);
 }

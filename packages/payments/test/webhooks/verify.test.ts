@@ -261,20 +261,25 @@ describe('verifyWebhook prechecks and call limit', () => {
     let now = NOW;
     const v = live({ nowMs: () => now, maxCallsPerWindow: 2, windowMs: 1000 });
     const headers = { ...good, 'PAYPAL-TRANSMISSION-TIME': new Date(NOW).toISOString() };
-    await v.verifyWebhook(body, headers);
-    await v.verifyWebhook(body, headers);
-    expect(await v.verifyWebhook(body, headers)).toEqual({ ok: false, reason: 'rate_limited' });
+    const tx = (i: number): Record<string, string> => ({
+      ...headers,
+      'PAYPAL-TRANSMISSION-ID': `tx-${i}`,
+    });
+    await v.verifyWebhook(body, tx(1));
+    await v.verifyWebhook(body, tx(2));
+    expect(await v.verifyWebhook(body, tx(3))).toEqual({ ok: false, reason: 'rate_limited' });
     expect(calls).toBe(2);
     now += 1000;
-    expect(await v.verifyWebhook(body, headers)).toMatchObject({ reason: 'verification_failed' });
+    expect(await v.verifyWebhook(body, tx(3))).toMatchObject({ reason: 'verification_failed' });
     expect(calls).toBe(3);
   });
 
-  it('forged requests with plausible headers do not starve a delivery from a proven certificate', async () => {
+  it('R8-P07 quoting the public certificate url does not reserve or buy any call slots', async () => {
     const realCert = 'https://api.paypal.com/v1/notifications/certs/CERT-REAL';
     const auth2: VerifyAuth = {
       send: async (req) => {
-        const real = typeof req.body === 'string' && req.body.includes(realCert);
+        calls += 1;
+        const real = typeof req.body === 'string' && req.body.includes('tx-real');
         return {
           status: 200,
           headers: {},
@@ -290,12 +295,82 @@ describe('verifyWebhook prechecks and call limit', () => {
       maxCallsPerWindow: 8,
       windowMs: 60_000,
     });
+    const headers = {
+      ...good,
+      'PAYPAL-TRANSMISSION-TIME': new Date(NOW).toISOString(),
+      'PAYPAL-CERT-URL': realCert,
+    };
+    expect(await v.verifyWebhook(body, { ...headers, 'PAYPAL-TRANSMISSION-ID': 'tx-real' })).toEqual({
+      ok: true,
+    });
+    const used = calls;
+    // Forged deliveries naming the real certificate url use the same slots as any other.
+    for (let i = 0; i < 20; i += 1) {
+      await v.verifyWebhook(body, { ...headers, 'PAYPAL-TRANSMISSION-ID': `tx-forged-${i}` });
+    }
+    expect(calls - used).toBe(7);
+    expect(
+      await v.verifyWebhook(body, { ...headers, 'PAYPAL-TRANSMISSION-ID': 'tx-forged-next' }),
+    ).toEqual({ ok: false, reason: 'rate_limited' });
+  });
+
+  it('R8-P07 an identical delivery is answered locally, a real retry costs no call', async () => {
+    const auth2: VerifyAuth = {
+      send: async () => {
+        calls += 1;
+        return {
+          status: 200,
+          headers: {},
+          text: '{"verification_status":"SUCCESS"}',
+          attempts: 1,
+        };
+      },
+    };
+    const v = new WebhookVerifier({
+      auth: auth2,
+      webhookId: 'WH',
+      nowMs: () => NOW,
+      maxCallsPerWindow: 2,
+    });
     const headers = { ...good, 'PAYPAL-TRANSMISSION-TIME': new Date(NOW).toISOString() };
-    const genuine = { ...headers, 'PAYPAL-CERT-URL': realCert };
-    expect(await v.verifyWebhook(body, genuine)).toEqual({ ok: true });
-    for (let i = 0; i < 20; i += 1) await v.verifyWebhook(body, headers);
-    expect(await v.verifyWebhook(body, headers)).toEqual({ ok: false, reason: 'rate_limited' });
-    expect(await v.verifyWebhook(body, genuine)).toEqual({ ok: true });
+    expect(await v.verifyWebhook(body, headers)).toEqual({ ok: true });
+    for (let i = 0; i < 10; i += 1) expect(await v.verifyWebhook(body, headers)).toEqual({ ok: true });
+    expect(calls).toBe(1);
+    // The same transmission id with another body is a different delivery: PayPal is asked.
+    const other = body.replace('WH-', 'XX-');
+    expect(await v.verifyWebhook(other === body ? `${body} ` : other, headers)).toEqual({ ok: true });
+    expect(calls).toBe(2);
+  });
+
+  it('R8-P07 a repeated forged request is answered locally and costs one call', async () => {
+    const v = live({ maxCallsPerWindow: 4 });
+    const headers = { ...good, 'PAYPAL-TRANSMISSION-TIME': new Date(NOW).toISOString() };
+    for (let i = 0; i < 50; i += 1) {
+      expect(await v.verifyWebhook(body, headers)).toEqual({
+        ok: false,
+        reason: 'verification_failed',
+      });
+    }
+    expect(calls).toBe(1);
+  });
+
+  it('R8-P07 one source cannot take more than its share of the window', async () => {
+    const v = live({ maxCallsPerWindow: 8 });
+    const headers = { ...good, 'PAYPAL-TRANSMISSION-TIME': new Date(NOW).toISOString() };
+    const tx = (i: number): Record<string, string> => ({
+      ...headers,
+      'PAYPAL-TRANSMISSION-ID': `tx-${i}`,
+    });
+    for (let i = 0; i < 6; i += 1) await v.verifyWebhook(body, tx(i), '203.0.113.9');
+    expect(calls).toBe(2);
+    expect(await v.verifyWebhook(body, tx(100), '203.0.113.9')).toEqual({
+      ok: false,
+      reason: 'rate_limited',
+    });
+    // Another source still has the rest of the window.
+    expect(await v.verifyWebhook(body, tx(101), '198.51.100.4')).toMatchObject({
+      reason: 'verification_failed',
+    });
   });
 
   it('rejects a signature or transmission id of the wrong shape without a slot', async () => {

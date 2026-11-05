@@ -2,6 +2,7 @@ import { PayPalError } from '../errors.js';
 import type { AuditSink, Clock, PaymentsGateway } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
 import type { HoldTruth, Journal } from '../types.js';
+import { truthArgs } from './truth.js';
 
 /**
  * Winner remainder policy (SPEC 3.5, R-PAY-059).
@@ -58,7 +59,7 @@ export async function releaseWinnerRemainder(
   let truth: HoldTruth;
   try {
     await deps.boundary?.('before:get');
-    truth = await deps.gateway.getHoldTruth({ holdId: hold.holdId, authId: hold.authId });
+    truth = await deps.gateway.getHoldTruth(truthArgs(hold));
     await deps.boundary?.('after:get');
   } catch (e) {
     if (e instanceof PayPalError) return { status: 'unavailable' };
