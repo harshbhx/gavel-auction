@@ -75,21 +75,35 @@ async function generate() {
   const base = ExtractorConfig.loadFile(baseFile);
   const cache = join(root, 'node_modules', '.cache', 'api-types');
   rmSync(cache, { recursive: true, force: true });
-  let failed = false;
-  for (const pkg of PACKAGES) {
-    const out = join(cache, pkg);
-    mkdirSync(out, { recursive: true });
-    emitDeclarations(ts, pkg, out);
-    const main = join(
-      out,
+  mkdirSync(join(root, 'etc'), { recursive: true });
+  const mainOf = (pkg) =>
+    join(
+      cache,
+      pkg,
       entryFor(pkg)
-        .replace(/^src[\\/]/, '')
+        .replace(/^src\//, '')
         .replace(/\.tsx?$/, '.d.ts'),
     );
+  for (const pkg of PACKAGES) {
+    mkdirSync(join(cache, pkg), { recursive: true });
+    emitDeclarations(ts, pkg, join(cache, pkg));
+  }
+  // Workspace packages resolve to their emitted declarations, so they stay external imports.
+  const paths = Object.fromEntries(
+    PACKAGES.map((p) => [`@gavel/${p}`, [mainOf(p).split(sep).join('/')]]),
+  );
+  const compiler = {
+    overrideTsconfig: {
+      compilerOptions: { ...base.compiler.overrideTsconfig.compilerOptions, paths },
+    },
+  };
+  let failed = false;
+  for (const pkg of PACKAGES) {
     const configObject = {
       ...base,
+      compiler,
       projectFolder: join(root, 'packages', pkg),
-      mainEntryPointFilePath: main,
+      mainEntryPointFilePath: mainOf(pkg),
       apiReport: { ...base.apiReport, reportFolder: join(root, 'etc') + sep },
     };
     const prepared = ExtractorConfig.prepare({
