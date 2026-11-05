@@ -1,10 +1,7 @@
 name: differential
+# The pinned-seed comparison also runs on every pull request as the `differential` job in ci.yml,
+# which is part of the `required` roll-up. This workflow adds the weekly and manual rotating seed.
 on:
-  pull_request:
-    paths:
-      - 'packages/engine/**'
-      - 'reference/python/**'
-      - '.github/workflows/differential.yml'
   push:
     branches: [main]
   schedule:
@@ -19,8 +16,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: differential-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: differential-${{ github.workflow }}-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   differential:

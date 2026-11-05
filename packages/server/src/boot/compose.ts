@@ -88,6 +88,8 @@ interface PaymentsWiring {
   verifier: WebhookVerifier;
   /** GAVEL_HOLD_MAX_AGE_MS, validated in both modes (R-PAY-005). */
   holdMaxAgeMs: number;
+  /** GAVEL_MAX_CEILING_CENTS, validated in both modes. */
+  maxCeilingCents: number;
   stop(): Promise<void>;
 }
 
@@ -98,10 +100,11 @@ async function wirePayments(
   clock: SystemClock,
 ): Promise<PaymentsWiring> {
   const payClock = { nowMs: (): number => clock.now() };
-  const holdMaxAgeMs = loadPaymentsConfig(
+  const limits = loadPaymentsConfig(
     { ...env, PAYPAL_ENV: config.PAYPAL_ENV },
     { fake: config.PAYMENTS === 'fake' },
-  ).holdMaxAgeMs;
+  );
+  const { holdMaxAgeMs, maxCeilingCents } = limits;
   if (config.PAYMENTS === 'fake') {
     const { FakePayPalServer, DEFAULT_FAKE_WEBHOOK_ID } = await import('@gavel/payments/fake');
     const paypal = new FakePayPalServer({ webhookId: DEFAULT_FAKE_WEBHOOK_ID });
@@ -116,6 +119,7 @@ async function wirePayments(
       gateway: new PayPalGateway({ auth, fake: true, clock: payClock }),
       verifier: new WebhookVerifier({ auth, webhookId: DEFAULT_FAKE_WEBHOOK_ID, fake: true }),
       holdMaxAgeMs,
+      maxCeilingCents,
       stop: () => paypal.stop(),
     };
   }
@@ -131,6 +135,7 @@ async function wirePayments(
     gateway: new PayPalGateway({ auth, fake: false, clock: payClock }),
     verifier: new WebhookVerifier({ auth, webhookId: pay.webhookId, fake: false }),
     holdMaxAgeMs,
+    maxCeilingCents,
     stop: () => Promise.resolve(),
   };
 }
@@ -268,6 +273,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     verifier: payments.verifier,
     killSwitch,
     holdMaxAgeMs: payments.holdMaxAgeMs,
+    maxCeilingCents: payments.maxCeilingCents,
     onError: (auctionId, error) =>
       log.error('settlement stopped', {
         auctionId,
