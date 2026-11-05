@@ -1,0 +1,25 @@
+[
+  { "name": "invalid-json", "frame": "{\"v\":1,\"t\":\"bid\",", "code": "bad_message" },
+  { "name": "unknown-type", "frame": "{\"v\":1,\"t\":\"hammer\"}", "code": "bad_message" },
+  { "name": "server-only-type", "frame": "{\"v\":1,\"t\":\"price\"}", "code": "bad_message" },
+  {
+    "name": "string-amount",
+    "frame": "{\"v\":1,\"t\":\"bid\",\"mid\":\"01HZX3W5Q0R6B7C8D9E0F1G2H3\",\"source\":\"manual\",\"amount\":\"10000\"}",
+    "code": "bad_message"
+  },
+  {
+    "name": "nan-amount",
+    "frame": "{\"v\":1,\"t\":\"bid\",\"mid\":\"01HZX3W5Q0R6B7C8D9E0F1G2H3\",\"source\":\"manual\",\"amount\":NaN}",
+    "code": "bad_message"
+  },
+  {
+    "name": "impersonation-field",
+    "frame": "{\"v\":1,\"t\":\"bid\",\"mid\":\"01HZX3W5Q0R6B7C8D9E0F1G2H3\",\"source\":\"manual\",\"amount\":10000,\"bidderId\":\"01HZX3W5Q0R6B7C8D9E0F1G2H4\"}",
+    "code": "bad_message"
+  },
+  {
+    "name": "script-in-type",
+    "frame": "{\"v\":1,\"t\":\"<script>alert(1)</script>\"}",
+    "code": "bad_message"
+  }
+]
