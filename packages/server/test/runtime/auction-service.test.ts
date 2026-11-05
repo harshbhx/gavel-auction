@@ -422,6 +422,33 @@ describe('auction service: room cap counts live rooms (R12-S02)', () => {
   });
 });
 
+describe('auction service: resume under a room cap (R12-S02)', () => {
+  it('loads a live auction after a restart although finished ones fill the cap', async () => {
+    const rig = await makeRig();
+    const first = rig.service({ resumeIntervalMs: 0 });
+    const done = rig.ids.mint<'AuctionId'>();
+    const doneRoom = await first.createAuction(done, config, 'auctioneer-sub');
+    const boss = await connect(rig, doneRoom, 'auctioneer');
+    await doneRoom.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await first.idle();
+    expect(doneRoom.isDone).toBe(true);
+    const live = rig.ids.mint<'AuctionId'>();
+    await first.createAuction(live, config, 'auctioneer-sub');
+    await first.close();
+    const errors: string[] = [];
+    const second = rig.service({
+      caps: { ...DEFAULT_CAPS, rooms: 1 },
+      resumeIntervalMs: 0,
+      onError: (id) => void errors.push(id),
+    });
+    await second.resume();
+    expect(errors).toEqual([]);
+    const room = await second.room(live);
+    expect(room.isDone).toBe(false);
+    await second.close();
+  });
+});
+
 describe('auction service: gauges and counters (R8-S03)', () => {
   it('counts loaded rooms and connections and hands the metrics to the rooms', async () => {
     const rig = await makeRig();
