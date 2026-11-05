@@ -64,12 +64,12 @@ function bidMeta(conn: Connection, msg: BidMsg): BidMeta {
       source: 'manual',
       transcript: `manual by ${conn.sub}`.slice(0, 120),
     };
-    if (msg.confidence !== undefined) meta.confidence = msg.confidence;
     return meta;
   }
-  const meta: BidMeta = { source: msg.source };
+  // A bidder frame may claim qr or voice only; manual is the auctioneer's entry (R-RT-039).
+  const meta: BidMeta = { source: msg.source === 'voice' ? 'voice' : 'qr' };
   if (msg.transcript !== undefined) meta.transcript = msg.transcript;
-  if (msg.confidence !== undefined) meta.confidence = msg.confidence;
+  if (meta.source === 'voice' && msg.confidence !== undefined) meta.confidence = msg.confidence;
   return meta;
 }
 
@@ -284,6 +284,13 @@ export class Room {
   registerBidder(reg: RegisterBidder): Promise<void> {
     return this.enqueue(async () => {
       if (this.roster.has(reg.bidderId)) {
+        // A revoked bidder cannot be backed by a second hold; the caller releases it (D-0023).
+        if (
+          this.revoked.has(reg.bidderId) &&
+          this.roster.get(reg.bidderId)?.holdRef !== reg.holdRef
+        ) {
+          throw new GavelError('conflict', 'ceiling was revoked');
+        }
         await this.makeDurable();
         return;
       }
@@ -435,7 +442,7 @@ export class Room {
             bidderId,
             mid: msg.mid,
             amount: msg.amount as Cents,
-            source: msg.source,
+            source: audit.source,
             audit,
             endTsAfter: engine.view().endTs,
           }

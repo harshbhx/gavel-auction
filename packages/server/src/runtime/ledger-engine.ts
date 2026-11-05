@@ -326,11 +326,18 @@ export class LedgerEngine implements AbortEnginePort, RevokeEnginePort, MetaBidE
   }
 }
 
-/** The audit fields the engine keeps. The room has already confirmed the bid, so it is marked so. */
+/**
+ * The audit fields the engine keeps. Only a voice bid carries a confidence, and the room has no
+ * confirm answer for it, so it is left unconfirmed and the engine gate decides (R-RT-045).
+ * Manual and QR bids are entered by a person and are not scored.
+ */
 function auditOf(meta: BidMeta): Extract<Command, { type: 'PlaceBid' }>['audit'] {
-  const audit: Extract<Command, { type: 'PlaceBid' }>['audit'] = { confirmed: true };
+  const scored = meta.source === 'voice' && meta.confidence !== undefined;
+  const audit: Extract<Command, { type: 'PlaceBid' }>['audit'] = scored ? {} : { confirmed: true };
   if (meta.transcript !== undefined) audit.transcript = meta.transcript.slice(0, LIMITS.transcript);
-  if (meta.confidence !== undefined) audit.confidenceBps = Math.round(meta.confidence * 10_000);
+  if (scored && meta.confidence !== undefined) {
+    audit.confidenceBps = Math.round(meta.confidence * 10_000);
+  }
   return audit;
 }
 
