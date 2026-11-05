@@ -449,6 +449,57 @@ describe('auction service: resume under a room cap (R12-S02)', () => {
   });
 });
 
+describe('auction service: settlement paths under a full room cap (HRD-30)', () => {
+  async function finished(rig: Rig, service: AuctionService): Promise<AuctionId> {
+    const id = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(id, config, 'auctioneer-sub');
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    expect(room.isDone).toBe(true);
+    room.detach(boss.conn.id);
+    return id;
+  }
+
+  it('loads a stored auction beyond the cap when every loaded room is live', async () => {
+    const rig = await makeRig();
+    const first = rig.service({ resumeIntervalMs: 0 });
+    const done = await finished(rig, first);
+    await first.close();
+    const second = rig.service({ caps: { ...DEFAULT_CAPS, rooms: 1 }, resumeIntervalMs: 0 });
+    const live = rig.ids.mint<'AuctionId'>();
+    await second.createAuction(live, config, 'auctioneer-sub');
+    // A new load for a plain caller is still refused, a settlement path is not.
+    await expect(second.room(done)).rejects.toMatchObject({ code: 'room_cap' });
+    const room = await second.room(done, { settlement: true });
+    expect(room.isDone).toBe(true);
+    expect(second.stats().rooms).toBe(2);
+    await second.close();
+  });
+
+  it('evicts the least recently used finished room before loading beyond the cap', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ caps: { ...DEFAULT_CAPS, rooms: 2 }, resumeIntervalMs: 0 });
+    const older = await finished(rig, service);
+    rig.clock.set(START + 1_000);
+    const newer = await finished(rig, service);
+    rig.clock.set(START + 2_000);
+    // Touch the older room, so the newer one is now the least recently used.
+    await service.room(older);
+    rig.clock.set(START + 3_000);
+    const live = rig.ids.mint<'AuctionId'>();
+    await service.createAuction(live, config, 'auctioneer-sub');
+    expect(service.stats().rooms).toBe(2);
+    const kept = await service.room(older);
+    expect(kept.isDone).toBe(true);
+    expect(service.stats().rooms).toBe(2);
+    // The evicted one loads again from its log for a settlement path.
+    const again = await service.room(newer, { settlement: true });
+    expect(again.isDone).toBe(true);
+    await service.close();
+  });
+});
+
 describe('auction service: gauges and counters (R8-S03)', () => {
   it('counts loaded rooms and connections and hands the metrics to the rooms', async () => {
     const rig = await makeRig();

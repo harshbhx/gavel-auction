@@ -67,7 +67,9 @@ export interface AuctionService {
     registerBidder(input: RegisterBidderInput): Promise<void>;
     releaseReviewHolds(auctionId: AuctionId, actor: string): Promise<'released' | 'busy' | 'not_in_review'>;
     resume(): Promise<void>;
-    room(auctionId: AuctionId): Promise<Room>;
+    room(auctionId: AuctionId, opts?: {
+        settlement?: boolean;
+    }): Promise<Room>;
     stats(): {
         rooms: number;
         connections: number;
