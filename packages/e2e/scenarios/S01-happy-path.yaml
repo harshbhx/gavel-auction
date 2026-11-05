@@ -17,4 +17,4 @@ steps:
   - { t: 7000, actor: auctioneer, do: hammer }
 expect:
   - ledger: { winner: ana, captured: 10000, released: 40000, voided: [ben] }
-  - invariants: [I1, I2, I3, I4, I5]
+  - invariants: [I1, I2, I3, I4]

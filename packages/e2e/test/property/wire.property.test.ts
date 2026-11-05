@@ -20,7 +20,7 @@ function assertProp<T extends unknown[]>(prop: fc.IPropertyWithHooks<T>): void {
   const d = fc.check(prop, propertyParams());
   if (d.failed) {
     throw new Error(
-      `property failed, replay with FC_SEED=${String(d.seed)}: ${JSON.stringify(d.counterexample)}`,
+      `property failed, replay with GAVEL_PROPERTY_SEED=${String(d.seed)}: ${JSON.stringify(d.counterexample)}`,
     );
   }
 }

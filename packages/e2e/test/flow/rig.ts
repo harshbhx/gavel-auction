@@ -27,6 +27,7 @@ import {
   SeqIds,
   type AuctionConfig,
   type AuctionId,
+  type BidMsg,
   type BidderId,
   type ConnId,
 } from '@gavel/shared';
@@ -157,13 +158,29 @@ export async function enroll(
   return { id, name, holdId: created.holdId, authId: hold?.authId ?? '', conn, transport };
 }
 
-export function bidMessage(rig: Rig, amount: number, source: 'manual' | 'voice') {
+/** What a voice bid carries from the parser: the confidence is required so the gate is exercised. */
+export interface VoiceFields {
+  confidence: number;
+  transcript: string;
+  ambiguous?: boolean;
+}
+
+export function bidMessage(rig: Rig, amount: number, source: 'manual'): BidMsg;
+export function bidMessage(rig: Rig, amount: number, source: 'voice', voice: VoiceFields): BidMsg;
+export function bidMessage(
+  rig: Rig,
+  amount: number,
+  source: 'manual' | 'voice',
+  voice?: VoiceFields,
+): BidMsg {
+  const base = { v: 1 as const, t: 'bid' as const, mid: rig.ids.mint<'MsgId'>(), amount };
+  if (source === 'manual' || voice === undefined) return { ...base, source: 'manual' };
   return {
-    v: 1 as const,
-    t: 'bid' as const,
-    mid: rig.ids.mint<'MsgId'>(),
-    amount,
-    source,
+    ...base,
+    source: 'voice',
+    confidence: voice.confidence,
+    transcript: voice.transcript,
+    ...(voice.ambiguous === undefined ? {} : { ambiguous: voice.ambiguous }),
   };
 }
 

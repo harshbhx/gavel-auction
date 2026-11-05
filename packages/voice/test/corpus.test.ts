@@ -180,3 +180,30 @@ describe('TypeScript parser against the golden (T-VOX-036, R-VOX-036)', () => {
     expect(mismatches).toEqual([]);
   });
 });
+
+describe('TypeScript parser against the labelled expectation (T-VOX-036)', () => {
+  const parse = (c: (typeof cases)[number]) =>
+    parseUtterance(c.text, {
+      ...(c.speaker === null ? {} : { speakerBidderId: c.speaker }),
+      ...(c.currentPriceCents === null ? {} : { currentPriceCents: c.currentPriceCents }),
+    });
+  const matchesLabel = (c: (typeof cases)[number]): boolean => {
+    const r = parse(c);
+    const e = c.expected;
+    return (
+      r.status === e.status &&
+      (e.status !== 'bid' || (r.bidder?.value === e.bidder && r.amountCents === e.amountCents))
+    );
+  };
+
+  it('returns the labelled status, bidder and amount on every case without a known divergence', () => {
+    const wrong = cases.filter((c) => c.knownDivergence === undefined && !matchesLabel(c));
+    expect(wrong.map((c) => `${c.id} "${c.text}"`)).toEqual([]);
+  });
+
+  it('contradicts a label on exactly the known divergence cases and nowhere else', () => {
+    const contradicted = cases.filter((c) => !matchesLabel(c)).map((c) => c.id);
+    const flagged = cases.filter((c) => c.knownDivergence !== undefined).map((c) => c.id);
+    expect(contradicted).toEqual(flagged);
+  });
+});
