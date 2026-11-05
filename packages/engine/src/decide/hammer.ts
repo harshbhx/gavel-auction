@@ -24,7 +24,9 @@ function openLotId(state: AuctionState): Ulid | null {
 /** R-ENG-053: the active lot's `endsAt` while OPEN, else null. */
 export function nextDeadline(state: AuctionState): number | null {
   const id = openLotId(state);
-  return id === null ? null : (state.lots[id]?.endsAt ?? null);
+  const lot = id === null ? undefined : state.lots[id];
+  // A paused clock has no deadline until the lot resumes.
+  return lot === undefined || lot.pausedRemainingMs !== undefined ? null : (lot.endsAt ?? null);
 }
 
 function assertActive(state: AuctionState): void {
@@ -57,6 +59,7 @@ export function decideHammer(state: AuctionState, cmd: HammerCommand): DecideRes
   const lot = state.lots[cmd.lotId];
   if (lot === undefined) throw new EngineError('bad_command', 'unknown lot');
   if (lot.status === 'DONE') throw new EngineError('lot_done');
+  if (lot.pausedRemainingMs !== undefined) throw new EngineError('cannot_hammer', 'paused');
   const early = lot.status === 'OPEN' && cmd.early === true;
   if (lot.status !== 'CLOSING' && !early) throw new EngineError('cannot_hammer', lot.status);
   const cfg = lot.config;

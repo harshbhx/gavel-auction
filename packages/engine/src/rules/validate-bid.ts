@@ -67,6 +67,8 @@ export function validateBid(state: AuctionState, lot: LotState, cmd: BidInput): 
   if (cfg === null || lot.status !== 'OPEN' || lot.endsAt === null || cmd.at >= lot.endsAt) {
     return fail('lot_not_open', { status: lot.status });
   }
+  if (lot.pausedRemainingMs !== undefined)
+    return fail('lot_not_open', { status: lot.status, paused: true });
   const bidder = bidderFor(state, cmd.bidderId, cmd.lotId);
   if (bidder === undefined) return fail('unregistered');
   if (bidder.revoked) return fail('ceiling_revoked');

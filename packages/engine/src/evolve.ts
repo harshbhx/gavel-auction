@@ -175,13 +175,28 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
             : l.settlement,
       }));
     case 'LOT_ABORTED':
+      return setLot(s, e.payload.lotId, (lot) => {
+        const { pausedRemainingMs: _paused, ...l } = lot;
+        return {
+          ...l,
+          status: 'DONE',
+          winnerId: null,
+          priceCents: null,
+          abortReason: e.payload.reason,
+        };
+      });
+    case 'LOT_PAUSED':
       return setLot(s, e.payload.lotId, (l) => ({
         ...l,
-        status: 'DONE',
-        winnerId: null,
-        priceCents: null,
-        abortReason: e.payload.reason,
+        pausedRemainingMs: e.payload.remainingMs,
       }));
+    case 'LOT_RESUMED':
+      return setLot(s, e.payload.lotId, (l) => {
+        const { pausedRemainingMs: _paused, ...rest } = l;
+        return { ...rest, endsAt: e.payload.endsAtAfter };
+      });
+    case 'LOT_EXTENDED':
+      return setLot(s, e.payload.lotId, (l) => ({ ...l, endsAt: e.payload.endsAtAfter }));
     case 'SETTLEMENT_STATE':
       return setLot(s, e.payload.lotId, (l) => ({
         ...l,
