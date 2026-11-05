@@ -331,12 +331,15 @@ describe('idempotency, failures and restart (T-RT-025, T-RT-026, R-RT-059)', () 
   it('ignores a repeat registration with a higher ceiling and keeps the first hold (D-0023)', async () => {
     const t = await setup();
     const seqBefore = await t.store.lastSeq(t.auctionId);
-    await t.room.registerBidder({
-      bidderId: t.b1,
-      name: 'Ada',
-      ceiling: 90000 as Cents,
-      holdRef: 'h1-raised',
-    });
+    // A second hold for a registered bidder is refused; the service voids it (HRD-16).
+    await expect(
+      t.room.registerBidder({
+        bidderId: t.b1,
+        name: 'Ada',
+        ceiling: 90000 as Cents,
+        holdRef: 'h1-raised',
+      }),
+    ).rejects.toMatchObject({ code: 'conflict' });
     expect(await t.store.lastSeq(t.auctionId)).toBe(seqBefore);
     expect(t.room.holdRefs.get(t.b1)).toBe('h1');
     const c1 = await t.connect('bidder', t.b1);

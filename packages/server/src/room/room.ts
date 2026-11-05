@@ -440,6 +440,10 @@ export class Room {
         ) {
           throw new GavelError('conflict', 'ceiling was revoked');
         }
+        // Another hold for a registered bidder is refused; the caller voids it (HRD-16).
+        if (this.roster.get(reg.bidderId)?.holdRef !== reg.holdRef) {
+          throw new GavelError('conflict', 'bidder is registered with another hold');
+        }
         await this.makeDurable();
         return;
       }
