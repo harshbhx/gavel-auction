@@ -217,9 +217,10 @@ function parse(text: string, ctx: ParseContext): ParseResult {
 
   // A cents part that was not joined to its dollars is never dropped: confirm the combined amount.
   if (centsOnly.length > 0) {
+    const whole = distinctAmounts[0] ?? 0;
     const sumCandidates =
       distinctAmounts.length === 1
-        ? [...new Set(centsOnly)].sort((a, b) => a - b).map((c) => cand((distinctAmounts[0] ?? 0) + c, bidder))
+        ? [...new Set(centsOnly)].sort((a, b) => a - b).map((c) => cand(whole + c, bidder))
         : [];
     return result('confirm', 'fractional_amount', {
       bidder,
