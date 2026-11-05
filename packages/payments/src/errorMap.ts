@@ -26,8 +26,13 @@ interface IssueRule {
   kind: ErrorKind;
 }
 
-/** 422 issue names. UNVERIFIED (G1) on every row. */
+/**
+ * 422 issue names. PREVIOUSLY_CAPTURED is verified (G1, sandbox, 2026-11-04): a void of an
+ * authorization that a final capture already closed answers 422 PREVIOUSLY_CAPTURED. The
+ * other rows are UNVERIFIED (G1).
+ */
 const ISSUE_RULES: Readonly<Record<string, IssueRule>> = {
+  PREVIOUSLY_CAPTURED: { kind: 'already_captured' },
   // UNVERIFIED (G1): AUTHORIZATION_VOIDED
   AUTHORIZATION_VOIDED: { kind: 'already_voided' },
   // UNVERIFIED (G1): AUTHORIZATION_ALREADY_VOIDED (assumed name)

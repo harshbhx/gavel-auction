@@ -24,6 +24,7 @@ const SECRET_KEYS = new Set([
   'tax_id',
   'birth_date',
   'merchant_id',
+  'app_id',
   'address_line_1',
   'address_line_2',
   'admin_area_1',
@@ -111,10 +112,23 @@ const RESPONSE_HEADER_ALLOWLIST: ReadonlySet<string> = new Set([
   'date',
 ]);
 
+const URL_IN_TEXT = /https?:\/\/[^\s"'<>]+/g;
+
+/** Replaces every query value in a URL with [REDACTED], keeping the parameter names. */
+function redactUrlQuery(url: string): string {
+  return url.replace(/([?&][^=&#]+=)[^&#]*/g, `$1${REDACTED}`);
+}
+
+/** Redacts query values of every URL inside a string, for example PayPal payer-action links. */
+function redactUrlsInText(text: string): string {
+  return text.replace(URL_IN_TEXT, redactUrlQuery);
+}
+
 /** Response body fields that carry per-response values and no evidence. */
 const RESPONSE_BODY_DROP_KEYS: ReadonlySet<string> = new Set(['nonce', 'server-timing']);
 
 function dropBodyFields(value: unknown): unknown {
+  if (typeof value === 'string') return redactUrlsInText(value);
   if (Array.isArray(value)) return value.map(dropBodyFields);
   if (value !== null && typeof value === 'object') {
     const out: Record<string, unknown> = {};
@@ -126,7 +140,7 @@ function dropBodyFields(value: unknown): unknown {
   return value;
 }
 
-/** Applies the response header allowlist and drops nonce style body fields. */
+/** Applies the response header allowlist, drops nonce fields and redacts URL query values in bodies. */
 function redactResponse(record: unknown): unknown {
   if (record === null || typeof record !== 'object') return record;
   const rec = record as Record<string, unknown>;
