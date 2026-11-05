@@ -64,10 +64,21 @@ const confirm = (spokenAnswerAllowed: boolean): Decision => ({
 
 const base = { auctionId: AUCTION, lotId: 'lot1', at: 5000 };
 
+const fresh = (over: Partial<BidContext> = {}): BidContext => ({
+  nowMs: 5000,
+  lotState: 'OPEN',
+  currentPriceCents: 30000,
+  minIncrementCents: 1000,
+  highBidderId: null,
+  roster: new Map([['7', { bidderId: 'B7', ceilingCents: 1_000_000, holdActive: true }]]),
+  recent: [],
+  ...over,
+});
+
 describe('R8-V03 command id covers the command body', () => {
   it('two options of one prompt get different ids', () => {
-    const a = toPlaceBid(confirm(true), { ...base, confirmedOptionId: 'o500' });
-    const b = toPlaceBid(confirm(true), { ...base, confirmedOptionId: 'o600' });
+    const a = toPlaceBid(confirm(true), { ...base, confirmedOptionId: 'o500', current: fresh() });
+    const b = toPlaceBid(confirm(true), { ...base, confirmedOptionId: 'o600', current: fresh() });
     expect(a?.commandId).toBeDefined();
     expect(b?.commandId).not.toBe(a?.commandId);
   });
@@ -110,7 +121,12 @@ describe('R8-V03 command id covers the command body', () => {
 
 describe('R8-V10 spoken confirmation gate', () => {
   it('toPlaceBid refuses a voice confirm when the prompt forbids spoken answers', () => {
-    const ctx = { ...base, confirmedOptionId: 'o500', confirmedBy: 'voice' as const };
+    const ctx = {
+      ...base,
+      confirmedOptionId: 'o500',
+      confirmedBy: 'voice' as const,
+      current: fresh(),
+    };
     expect(toPlaceBid(confirm(false), ctx)).toBeNull();
     expect(toPlaceBid(confirm(true), ctx)).not.toBeNull();
     expect(toPlaceBid(confirm(false), { ...ctx, confirmedBy: 'bidder' as const })).not.toBeNull();
@@ -134,17 +150,7 @@ describe('R8-V10 spoken confirmation gate', () => {
 });
 
 describe('toPlaceBid re-validation of a confirmed option (R-VOX-069)', () => {
-  const fresh = (over: Partial<BidContext> = {}): BidContext => ({
-    nowMs: 5000,
-    lotState: 'OPEN',
-    currentPriceCents: 30000,
-    minIncrementCents: 1000,
-    highBidderId: null,
-    roster: new Map([['7', { bidderId: 'B7', ceilingCents: 1_000_000, holdActive: true }]]),
-    recent: [],
-    ...over,
-  });
-  const ctx = { ...base, confirmedOptionId: 'o500' };
+  const ctx = { ...base, confirmedOptionId: 'o500', current: fresh() };
 
   it('places the bid when the option still validates', () => {
     expect(toPlaceBid(confirm(true), { ...ctx, current: fresh() })?.amountCents).toBe(50000);
@@ -164,5 +170,24 @@ describe('toPlaceBid re-validation of a confirmed option (R-VOX-069)', () => {
 
   it('refuses when the lot is no longer open', () => {
     expect(toPlaceBid(confirm(true), { ...ctx, current: fresh({ lotState: 'OTHER' }) })).toBeNull();
+  });
+});
+
+describe('toPlaceBid needs a fresh context for a confirmed option (R-VOX-069)', () => {
+  it('gives no bid without a fresh context', () => {
+    expect(toPlaceBid(confirm(true), { ...base, confirmedOptionId: 'o500' })).toBeNull();
+  });
+
+  it('records who confirmed the bid', () => {
+    const ctx = { ...base, confirmedOptionId: 'o500', current: fresh() };
+    expect(toPlaceBid(confirm(true), ctx)?.audit.confirmedBy).toBe('bidder');
+    expect(toPlaceBid(confirm(true), { ...ctx, confirmedBy: 'auctioneer' })?.audit.confirmedBy).toBe(
+      'auctioneer',
+    );
+  });
+
+  it('keeps the expiry drop', () => {
+    const ctx = { ...base, at: 9000, confirmedOptionId: 'o500', current: fresh() };
+    expect(toPlaceBid(confirm(true), ctx)).toBeNull();
   });
 });
