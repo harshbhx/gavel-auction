@@ -1,6 +1,7 @@
 import {
   PayPalError,
   buildRequestId,
+  sharedHoldQueue,
   voidHold,
   type AuditSink,
   type Clock as PaymentsClock,
@@ -73,7 +74,7 @@ export async function voidSpareHolds(
         continue;
       }
     }
-    await deps.holds.put({ ...hold, status: 'VOIDED' });
+    await markVoided(deps.holds, hold.holdId);
   }
   return open;
 }
@@ -128,8 +129,18 @@ export async function voidOrphanHold(
     ceilingCents: hold.ceilingCents,
     stale: false,
   });
-  if (status === 'voided' || status === 'released') {
-    await deps.holds.put({ ...hold, status: 'VOIDED' });
-  }
+  if (status === 'voided' || status === 'released') await markVoided(deps.holds, hold.holdId);
   return status;
+}
+
+/**
+ * Marks a hold VOIDED on the record as it is now, inside the shared hold queue: the copy read
+ * before the PayPal call may be older than a webhook capture or an approval (R9-M05).
+ */
+function markVoided(holds: HoldStore, holdId: string): Promise<void> {
+  return sharedHoldQueue.run(holdId, async () => {
+    const latest = await holds.get(holdId);
+    if (latest === null || latest.status !== 'HELD') return;
+    await holds.put({ ...latest, status: 'VOIDED' });
+  });
 }

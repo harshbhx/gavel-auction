@@ -1,0 +1,85 @@
+/* Projector layout: sized for a 1920x1080 display read from 10 m. No text under 28 px, no scrolling. */
+.gv-screen {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto 1fr auto;
+  gap: 24px;
+  width: 100vw;
+  height: 100vh;
+  padding: 32px 48px;
+  overflow: hidden;
+  font-size: 28px;
+  line-height: 1.25;
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+.gv-screen__lot {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 56px;
+}
+
+.gv-screen__stage {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.gv-screen__price {
+  margin: 0;
+  font-size: 200px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.gv-screen__price[data-closed='true'] {
+  font-size: 160px;
+}
+
+.gv-screen__leader,
+.gv-screen__clock {
+  margin: 0;
+  font-size: 56px;
+}
+
+.gv-screen__ticker {
+  grid-column: 1;
+  min-width: 0;
+}
+
+.gv-screen__ticker-title {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+.gv-screen__ticker ol {
+  display: flex;
+  gap: 32px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 32px;
+}
+
+.gv-screen__join {
+  grid-column: 2;
+  grid-row: 2 / 4;
+  align-self: end;
+  justify-self: end;
+  text-align: center;
+}
+
+.gv-screen__join p {
+  margin: 8px 0 0;
+  font-size: 28px;
+}
+
+@media (forced-colors: active) {
+  .gv-screen {
+    background: Canvas;
+    color: CanvasText;
+  }
+}

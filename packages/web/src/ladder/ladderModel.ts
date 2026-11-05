@@ -118,7 +118,7 @@ const WINNER_TRACK_STATES: readonly SettlementState[] = [
   'FALLBACK_RUNNER_UP',
   'FAILED_NEEDS_REVIEW',
 ];
-const FINAL_PHASES: readonly SettlementState[] = ['CAPTURED', 'SETTLED'];
+export const FINAL_PHASES: readonly SettlementState[] = ['CAPTURED', 'SETTLED'];
 
 function pathRungs(path: readonly SettlementState[], current: SettlementState): Rung[] {
   const at = path.indexOf(current);

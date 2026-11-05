@@ -5,10 +5,12 @@
 //           (extra keys may follow the first: "ENG-04 ENG-05: ...")
 // Inputs: --branch / BRANCH_NAME and --title / PR_TITLE. Prints a fix hint and exits 1 on failure.
 import { fileURLToPath } from 'node:url';
+import { KEY_SOURCE } from './lib-issue-key.mjs';
 
-export const BRANCH_RE =
-  /^(feat|fix|test|docs|chore|refactor|perf|ci|build)\/([A-Z]{2,4}-\d{2})-[a-z0-9-]+$/;
-const TITLE_RE = /^([A-Z]{2,4}-\d{2})(?: [A-Z]{2,4}-\d{2})*: \S/;
+export const BRANCH_RE = new RegExp(
+  `^(feat|fix|test|docs|chore|refactor|perf|ci|build)/(${KEY_SOURCE})-[a-z0-9-]+$`,
+);
+const TITLE_RE = new RegExp(`^(${KEY_SOURCE})(?: ${KEY_SOURCE})*: \\S`);
 
 /** Returns a list of problems; an empty list means the branch and title are valid. */
 export function validate(branch, title) {
@@ -18,7 +20,7 @@ export function validate(branch, title) {
     problems.push(
       `Branch "${branch}" must look like <type>/<KEY>-<slug>, for example feat/ENG-04-ledger-model. ` +
         'The type is one of feat, fix, test, docs, chore, refactor, perf, ci, build; the key is ' +
-        'upper case with two digits; the slug is lower case letters, digits and dashes.',
+        'upper case with two to four digits; the slug is lower case letters, digits and dashes.',
     );
   }
   const t = TITLE_RE.exec(title);

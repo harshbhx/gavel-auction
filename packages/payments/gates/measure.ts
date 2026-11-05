@@ -391,6 +391,14 @@ export async function measureGate(ctx: GateContext, deps: MeasureDeps): Promise<
   writeFileSync(path, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   ctx.log(table);
   ctx.log(`report: ${path}`);
+  // A run in which requests failed must not exit 0 (R-PAY-147).
+  ctx.check(
+    'measure.4 sequential',
+    'completed equals cycles',
+    sequential.cycles,
+    sequential.completed,
+  );
+  ctx.check('measure.4 parallel', 'completed equals cycles', parallel.cycles, parallel.completed);
 }
 
 export interface RunMeasureOptions {

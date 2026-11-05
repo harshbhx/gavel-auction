@@ -51,6 +51,10 @@ class TestEngine implements EnginePort {
     this.ceilings.set(bidder, ceiling);
   }
 
+  revoke(bidder: BidderId): boolean {
+    return this.ceilings.delete(bidder);
+  }
+
   placeBid(bidder: BidderId, amount: Cents, ts: EpochMs): EngineBidResult {
     if (this.state !== 'OPEN' || ts >= this.cfg.endTs) return { ok: false, code: 'closed' };
     const ceiling = this.ceilings.get(bidder);
@@ -386,7 +390,7 @@ describe('close timer (R-RT-041, R-RT-043)', () => {
     await t.room.submitBid(c1.conn, t.bid(10500));
     expect(c1.transport.messages('bid_rejected')[0]).toMatchObject({ reason: 'already_leading' });
     t.clock.set(config.endTs);
-    await t.room.close();
+    await t.connect('screen');
     const states = c1.transport.messages('state');
     expect(states.at(-1)?.snapshot).toMatchObject({ status: 'CLOSING' });
     const c2 = await t.connect('bidder', t.b2);
@@ -554,6 +558,76 @@ describe('round 3 blocking fixes (RT3)', () => {
     const strict: RoomDeps = { ...lax, engine: (cfg) => new CappedEngine(cfg) };
     const reloaded = await Room.load(auctionId, strict);
     expect(reloaded.lastSeq).toBe(room.lastSeq);
+  });
+});
+
+describe('room close, roster hold state, duplicate mid, repeat registration', () => {
+  it('stops the room on close: no timer is armed and later commands are refused (R-RT-062)', async () => {
+    const t = await setup();
+    const c1 = await t.connect('bidder', t.b1);
+    let armed = 0;
+    const setTimer = t.clock.setTimer.bind(t.clock);
+    t.clock.setTimer = (atMs, fn) => {
+      armed += 1;
+      return setTimer(atMs, fn);
+    };
+    const queued = t.room.submitBid(c1.conn, t.bid(10000));
+    const closing = t.room.close();
+    await queued;
+    await closing;
+    expect(armed).toBe(0);
+    const before = t.room.lastSeq;
+    await expect(t.room.submitBid(c1.conn, t.bid(20000))).rejects.toThrow();
+    await expect(
+      t.room.registerBidder({
+        bidderId: t.ids.mint<'BidderId'>(),
+        name: 'Late',
+        ceiling: 50000 as Cents,
+        holdRef: 'h9',
+      }),
+    ).rejects.toThrow();
+    t.clock.set(config.endTs + 1);
+    expect(t.room.lastSeq).toBe(before);
+  });
+
+  it('reports the real hold state in the roster (R-RT-054, R-RT-055)', async () => {
+    const t = await setup();
+    await t.room.revokeBidder(t.b2, 'voided');
+    const boss = await t.connect('auctioneer');
+    const snap = boss.transport.messages('state').at(-1)?.snapshot as {
+      roster: { bidderId: string; hold: string }[];
+    };
+    const hold = (id: string) => snap.roster.find((r) => r.bidderId === id)?.hold;
+    expect(hold(t.b1)).toBe('HELD');
+    expect(hold(t.b2)).toBe('NONE');
+  });
+
+  it('answers a reused mid with a different amount or submitter as conflict (R-RT-034)', async () => {
+    const t = await setup();
+    const c1 = await t.connect('bidder', t.b1);
+    const boss = await t.connect('auctioneer');
+    const mid = t.ids.mint<'MsgId'>();
+    await t.room.submitBid(c1.conn, t.bid(10000, mid));
+    const seq = t.room.lastSeq;
+    await t.room.submitBid(c1.conn, t.bid(10000, mid));
+    expect(c1.transport.messages('bid_accepted')).toHaveLength(2);
+    await t.room.submitBid(c1.conn, t.bid(20000, mid));
+    expect(c1.transport.messages('error').at(-1)).toMatchObject({ code: 'conflict' });
+    await t.room.submitBid(boss.conn, { ...t.bid(10000, mid), bidderId: t.b1 });
+    expect(boss.transport.messages('error').at(-1)).toMatchObject({ code: 'conflict' });
+    expect(t.room.lastSeq).toBe(seq);
+  });
+
+  it('keeps the duplicate-mid check after the room is reloaded (R-RT-034)', async () => {
+    const t = await setup();
+    const c1 = await t.connect('bidder', t.b1);
+    const mid = t.ids.mint<'MsgId'>();
+    await t.room.submitBid(c1.conn, t.bid(10000, mid));
+    const reloaded = await Room.load(t.auctionId, t.deps);
+    const again = new MemoryTransport();
+    const conn: Connection = { ...c1.conn, transport: again };
+    await reloaded.submitBid(conn, t.bid(20000, mid));
+    expect(again.messages('error')).toMatchObject([{ code: 'conflict' }]);
   });
 });
 

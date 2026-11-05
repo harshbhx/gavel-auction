@@ -5,7 +5,8 @@
 //   node scripts/check-coverage.mjs --skip-unchanged <ref>
 //                                                      exit 0 when no coverage-relevant file changed since <ref>
 //   node scripts/check-coverage.mjs --ratchet <ref>    fail when a threshold is lower than at <ref>
-//                                                      unless docs/DECISIONS.md gained a "coverage threshold" line
+//                                                      unless docs/DECISIONS.md gained a new D-id entry
+//                                                      naming each lowered package, metric and value
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -100,6 +101,37 @@ function checkCoverage() {
   return failed ? 1 : 0;
 }
 
+// A lowering is documented only by a newly added "## D-NNNN" entry (outside
+// fenced blocks) whose body names the package, the metric and the new value.
+export function ratchetDocumented(diff, lowered) {
+  const sections = [];
+  let fenced = false;
+  for (const raw of diff.split('\n')) {
+    if (!raw.startsWith('+') || raw.startsWith('+++')) continue;
+    const line = raw.slice(1);
+    if (/^\s*(```|~~~)/.test(line)) {
+      fenced = !fenced;
+      continue;
+    }
+    if (fenced) continue;
+    if (/^##\s+D-\d+/.test(line)) sections.push([line]);
+    else if (/^#{1,6}\s/.test(line)) sections.push(null);
+    else if (sections.length > 0 && sections[sections.length - 1]) {
+      sections[sections.length - 1].push(line);
+    }
+  }
+  const bodies = sections.filter(Boolean).map((s) => s.join('\n'));
+  const mentions = (text, word) => new RegExp(`(^|[^\\w])${word}([^\\w]|$)`, 'i').test(text);
+  return lowered.every((i) =>
+    bodies.some(
+      (b) =>
+        mentions(b, i.pkg) &&
+        mentions(b, i.metric) &&
+        mentions(b, i.next === undefined ? 'removed' : String(i.next)),
+    ),
+  );
+}
+
 function ratchet(ref) {
   let base;
   try {
@@ -109,14 +141,14 @@ function ratchet(ref) {
     return 0;
   }
   const now = readThresholds();
-  const lowered = [];
+  const items = [];
   for (const [pkg, gate] of Object.entries(base)) {
     for (const k of METRICS) {
       const next = now[pkg]?.[k];
-      if (next === undefined || next < gate[k])
-        lowered.push(`${pkg}.${k}: ${gate[k]} -> ${next ?? 'removed'}`);
+      if (next === undefined || next < gate[k]) items.push({ pkg, metric: k, from: gate[k], next });
     }
   }
+  const lowered = items.map((i) => `${i.pkg}.${i.metric}: ${i.from} -> ${i.next ?? 'removed'}`);
   if (lowered.length === 0) {
     console.log('ratchet: no threshold lowered');
     return 0;
@@ -124,7 +156,7 @@ function ratchet(ref) {
   let documented = false;
   try {
     const diff = git('diff', `${ref}...HEAD`, '--', 'docs/DECISIONS.md');
-    documented = diff.split('\n').some((l) => l.startsWith('+') && /coverage threshold/i.test(l));
+    documented = ratchetDocumented(diff, items);
   } catch {
     documented = false;
   }
@@ -135,7 +167,7 @@ function ratchet(ref) {
     return 0;
   }
   console.error(
-    `ratchet: thresholds may only be raised. Lowered without a "coverage threshold" entry in docs/DECISIONS.md:\n  ${lowered.join('\n  ')}`,
+    `ratchet: thresholds may only be raised. Lowered without a new "## D-NNNN" entry in docs/DECISIONS.md naming each package, metric and new value:\n  ${lowered.join('\n  ')}`,
   );
   return 1;
 }

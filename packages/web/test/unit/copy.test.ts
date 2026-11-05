@@ -151,6 +151,7 @@ describe('banned wording (R-WEB-120, R-WEB-122)', () => {
       'billed',
       'deducted',
       'a fee',
+      '{c} captured, {r} released',
     ]) {
       expect(flagged(s), s).toBe(true);
     }
@@ -158,7 +159,6 @@ describe('banned wording (R-WEB-120, R-WEB-122)', () => {
       'Held, not charged.',
       'The winner is charged only if the hammer falls',
       'Finalising winning price',
-      '{c} captured, {r} released',
       'You are charged only if you win',
       'not a payment',
       'Voice feed',
@@ -191,10 +191,22 @@ describe('banned wording (R-WEB-120, R-WEB-122)', () => {
       'ladder.state.CAPTURED',
       'receipt.failed',
       'replay.chapter.bid',
+      'screen.settleSummary',
     ]);
     expect(Object.values(wordingExemptions).every((reason) => (reason ?? '').length > 10)).toBe(
       true,
     );
+  });
+
+  it('does not over-promise releases or imply a charge in the stop and failed copy', () => {
+    expect(en['kill.consequence']).not.toMatch(/\ball holds are released\b/i);
+    expect(en['kill.consequence']).toMatch(/holds will be released/i);
+    expect(en['receipt.failed']).not.toMatch(/nothing more will be charged/i);
+    expect(en['receipt.failedNoCapture']).toMatch(/not charged/i);
+    expect(
+      bannedBeforeCapture.filter((r) => r.test(en['receipt.failedNoCapture'])),
+      'receipt.failedNoCapture',
+    ).toEqual([]);
   });
 
   it('keeps the pre-registration rule text and the capture step free of charge wording', () => {
