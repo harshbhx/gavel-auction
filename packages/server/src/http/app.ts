@@ -34,6 +34,8 @@ export interface HttpDeps {
   /** Override of the WebSocket URL returned by join. Defaults to PUBLIC_URL with ws scheme and /ws. */
   wsUrl?: string;
   maxBodyBytes?: number;
+  /** Per-client join limit (R-RT-120). Returns the wait in ms when the caller is over it. */
+  joinLimit?: (req: Request) => { ok: true } | { ok: false; retryAfterMs: number };
 }
 
 /** An error with a status the shared table does not carry (413, 415). */

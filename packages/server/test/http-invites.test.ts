@@ -24,7 +24,7 @@ const config = {
   confirmConfidenceThreshold: 0.85,
 };
 
-function setup(): { app: HttpApp } {
+function setup(joinLimit?: HttpDeps['joinLimit']): { app: HttpApp } {
   const clock = new ManualClock(START);
   const ids = new SeqIds();
   const store = new MemoryStore(() => clock.now());
@@ -51,6 +51,7 @@ function setup(): { app: HttpApp } {
     adminKey: ADMIN,
     publicUrl: 'https://gavel.example.test',
     corsOrigins: [],
+    ...(joinLimit ? { joinLimit } : {}),
   };
   return { app: createHttpApp(deps, [mountAuctions, mountInvites]) };
 }
@@ -142,5 +143,14 @@ describe('invite single use (T-RT-061)', () => {
     expect(statuses).toEqual([200, 409]);
     const failed = results.find((r) => r.status === 409);
     expect(((await failed?.json()) as { code: string }).code).toBe('invite_used');
+  });
+
+  it('answers 429 with retry-after when the join limit is hit (R12-S11)', async () => {
+    const { app } = setup(() => ({ ok: false, retryAfterMs: 2500 }));
+    const a = await created(app);
+    const [invite] = await mint(app, a.id, a.auctioneer);
+    const res = await call(app, `/api/auctions/${a.id}/join`, null, { invite });
+    expect(res.status).toBe(429);
+    expect(res.headers.get('retry-after')).toBe('3');
   });
 });
