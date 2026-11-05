@@ -175,7 +175,8 @@ export interface G5Deps {
 }
 
 export type G5Run =
-  { status: 'skipped'; reason: string } | { status: 'done'; rows: G5Row[]; summary: G5Summary };
+  | { status: 'skipped'; reason: string }
+  | { status: 'done'; rows: G5Row[]; summary: G5Summary };
 
 export async function runG5(deps: G5Deps): Promise<G5Run> {
   const key = deps.env['DEEPGRAM_API_KEY'] ?? '';
