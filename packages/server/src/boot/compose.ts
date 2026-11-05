@@ -40,7 +40,7 @@ import { createReplayBundleHandler } from '../admin/replay-bundle';
 import { createExportHandler } from '../http/export';
 import { createGateway } from '../host/gateway';
 import { createNodeWsHost } from '../host/node-ws';
-import { createHealthRoutes } from '../http/health';
+import { createHealthRoutes, createVersionRoute, resolveSha } from '../http/health';
 import { createMetricsRoute } from '../http/metrics';
 import { adminKeyMatches, createOpsRoomsHandler } from '../http/ops';
 import { capsFromConfig } from '../limits/caps';
@@ -398,12 +398,14 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     metrics: () => metrics.snapshot(),
   });
   const extra = opts.extraRoutes?.(service, stores.room);
+  const versionRoute = createVersionRoute(resolveSha(env));
 
   const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const path = (req.url ?? '').split('?')[0] ?? '';
     // Liveness probes come from the platform, not a client: never limit them.
     if (path === '/healthz') return health.healthz(req, res);
     if (path === '/readyz') return health.readyz(req, res);
+    if (path === '/version') return versionRoute(req, res);
     // R-RT-120: per-client HTTP limit; webhook routes are exempt inside checkHttp.
     const limited = limiter.checkHttp(sourceOf(req, config.TRUSTED_PROXY_HOPS) ?? 'unknown', path);
     if (!limited.ok) {
