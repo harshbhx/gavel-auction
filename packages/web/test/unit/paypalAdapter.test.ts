@@ -123,6 +123,18 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     expect(result.holdIdSuffix).toBeUndefined();
   });
 
+  it('retries only the confirm step with the approved order id (WEB-R2-08)', async () => {
+    const failing = make((cb) => cb.onApprove({ orderId: 'ord-1' }), undefined, false);
+    const first = await failing.adapter.start(req, () => {});
+    expect(first).toMatchObject({ state: 'error', errorCode: 'hold_failed', orderId: 'ord-1' });
+
+    const retry = make(() => {});
+    const second = await retry.adapter.start({ ...req, approvedOrderId: 'ord-1' }, () => {});
+    expect(second).toMatchObject({ state: 'held', holdIdSuffix: 'ABC123' });
+    expect(retry.urls).toEqual(['http://api/api/rooms/room%201/holds']);
+    expect(retry.loadSdk).not.toHaveBeenCalled();
+  });
+
   it('loads the SDK only on the approval step', async () => {
     const failed = make(() => {}, null);
     await failed.adapter.start(req, () => {});

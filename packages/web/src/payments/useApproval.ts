@@ -63,6 +63,10 @@ export function completeApprovalReturn(
     on('error');
     return Promise.resolve({ state: 'error', errorCode: 'registration_missing' });
   }
+  if (stored.orderId !== req.orderId) {
+    on('error');
+    return Promise.resolve({ state: 'error', errorCode: 'order_mismatch' });
+  }
   return adapter.completeRedirect(req.roomId, req.orderId, stored.clientRegistrationId, on);
 }
 
@@ -120,6 +124,11 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
       // A declined order is dead on the server, so it needs a new id. Cancelled and error retries
       // reuse it, and so does a reload: the stored id is the one the server already saw.
       const stored = current === undefined ? loadRegistration(roomId, bidderId) : null;
+      const retryOrderId =
+        current?.result?.errorCode === 'hold_failed' ||
+        current?.result?.errorCode === 'hold_timeout'
+          ? current.result.orderId
+          : undefined;
       const attempt: Attempt = {
         clientRegistrationId:
           current !== undefined && current.result?.state !== 'declined'
@@ -133,7 +142,13 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
       saveRegistration(roomId, bidderId, { clientRegistrationId: attempt.clientRegistrationId });
       const promise = port
         .start(
-          { roomId, bidderId, ceilingCents, clientRegistrationId: attempt.clientRegistrationId },
+          {
+            roomId,
+            bidderId,
+            ceilingCents,
+            clientRegistrationId: attempt.clientRegistrationId,
+            ...(retryOrderId === undefined ? {} : { approvedOrderId: retryOrderId }),
+          },
           (s) => {
             attempt.state = s;
             if (alive.current) setState(s);
@@ -141,6 +156,12 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
         )
         .then((r) => {
           if (r.state === 'declined') clearRegistration(roomId, bidderId);
+          else if (r.orderId !== undefined) {
+            saveRegistration(roomId, bidderId, {
+              clientRegistrationId: attempt.clientRegistrationId,
+              orderId: r.orderId,
+            });
+          }
           attempt.result = r;
           attempt.state = r.state;
           attempt.promise = null;

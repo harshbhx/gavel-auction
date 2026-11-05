@@ -15,6 +15,8 @@ export interface ApprovalRequest {
   bidderId: string;
   ceilingCents: number;
   clientRegistrationId: string;
+  /** Set when PayPal already approved this order and only the hold step failed: retry just that step. */
+  approvedOrderId?: string;
 }
 
 export interface ApprovalResult {
@@ -24,6 +26,8 @@ export interface ApprovalResult {
   ceilingCents?: number;
   errorCode?: string;
   correlationId?: string;
+  /** The order issued for this attempt; kept so a retry or the return route reuses it. */
+  orderId?: string;
 }
 
 export interface PaymentApprovalPort {

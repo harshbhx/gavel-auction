@@ -160,6 +160,17 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     };
     const roomPath = `/api/rooms/${encodeURIComponent(req.roomId)}`;
 
+    if (req.approvedOrderId !== undefined) {
+      on('confirming');
+      return this.confirm(
+        roomPath,
+        req.approvedOrderId,
+        req.clientRegistrationId,
+        finish,
+        req.ceilingCents,
+      );
+    }
+
     on('preparing');
     const order = await this.post(`${roomPath}/orders`, {
       bidderId: req.bidderId,
@@ -187,7 +198,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
       // Wallet-buyer fallback: approve on PayPal's own page and finish on the return route.
       if (approveUrl !== null) {
         (this.deps.redirect ?? ((url) => globalThis.location.assign(url)))(approveUrl);
-        return { state: 'awaiting_buyer', correlationId, errorCode: outcome.code };
+        return { state: 'awaiting_buyer', correlationId, errorCode: outcome.code, orderId };
       }
       return finish('error', { errorCode: outcome.code });
     }
@@ -235,6 +246,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
       if (hold.why === 'aborted') return finish('cancelled');
       return finish('error', {
         errorCode: hold.why === 'timeout' ? 'hold_timeout' : 'hold_failed',
+        orderId,
       });
     }
     const suffix = hold.body['holdIdSuffix'];
