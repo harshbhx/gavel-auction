@@ -225,13 +225,13 @@ Targets (R-PAY-152) against the sandbox measurement. Date: 2026-11-05. Workflow:
 
 Earlier, the same script ran against the fake PayPal (`npm run measure -- --fake`, 2026-11-04, 50 sequential and 10 parallel cycles). Those numbers were our client overhead on loopback, not PayPal latency, and they do not count as a sandbox measurement.
 
-| Target                                   | Value  | Measured (sandbox, n=10)                                                                 | Status                           |
-| ---------------------------------------- | ------ | ---------------------------------------------------------------------------------------- | -------------------------------- |
-| hammer to CAPTURED p95                   | 2.5 s  | capture p95 2280.66 ms (the same capture mapping the fake table used; with n=10 p95 is close to the max) | MET (sandbox, n=10)              |
-| hammer to SETTLED, 6 holds, p95          | 6 s    | void p95 1235.96 ms; the truth check that settlement also needs is not measured by this script | UNVERIFIED (G1 measurement)      |
-| webhook handler 200, without verify call | 300 ms | not part of this script (covered by T-PAY-068)                                           | UNVERIFIED (G1 measurement)      |
+| Target                                   | Value  | Measured (sandbox, n=10)                                                                                 | Status                      |
+| ---------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------- | --------------------------- |
+| hammer to CAPTURED p95                   | 2.5 s  | capture p95 2280.66 ms (the same capture mapping the fake table used; with n=10 p95 is close to the max) | MET (sandbox, n=10)         |
+| hammer to SETTLED, 6 holds, p95          | 6 s    | void p95 1235.96 ms; the truth check that settlement also needs is not measured by this script           | UNVERIFIED (G1 measurement) |
+| webhook handler 200, without verify call | 300 ms | not part of this script (covered by T-PAY-068)                                                           | UNVERIFIED (G1 measurement) |
 
-Fallback: where a target is not met on sandbox numbers, the target is raised to the sandbox p95. The CAPTURED target is met. The SETTLED target is not shown to hold: the budget below assumes each call stays under 1 s at p95, and sandbox void p95 is 1235.96 ms, so that assumption fails. The fallback therefore applies to SETTLED, and its target must be raised to the sandbox-based value (a decision for Harsh, after the truth-check latency is measured). The saga defaults below are not changed by this record.
+Fallback: where a target is not met on sandbox numbers, the target is raised to the sandbox p95. The CAPTURED target is met. The SETTLED target is not shown to hold: the budget below assumes each call stays under 1 s at p95, and sandbox void p95 is 1235.96 ms, so that assumption fails. The fallback therefore applies to SETTLED, and its target must be raised to the sandbox-based value (a decision for the owner, after the truth-check latency is measured). The saga defaults below are not changed by this record.
 
 Rate limit: 0 answers with 429 and no `Retry-After` header in 60 cycles against the fake. The real limits are UNVERIFIED (G1 measurement).
 
