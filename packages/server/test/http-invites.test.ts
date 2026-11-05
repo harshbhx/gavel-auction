@@ -143,4 +143,17 @@ describe('invite single use (T-RT-061)', () => {
     const failed = results.find((r) => r.status === 409);
     expect(((await failed?.json()) as { code: string }).code).toBe('invite_used');
   });
+
+  it('does not burn an invite when the join fails (#1232)', async () => {
+    const { app } = setup();
+    const a = await created(app);
+    const b = await created(app);
+    const [invite] = await mint(app, a.id, a.auctioneer);
+    const bad = await call(app, `/api/auctions/${b.id}/join`, null, { invite });
+    expect(bad.status).toBe(401);
+    const malformed = await call(app, `/api/auctions/${a.id}/join`, null, { invite, extra: 1 });
+    expect(malformed.status).toBe(400);
+    expect((await call(app, `/api/auctions/${a.id}/join`, null, { invite })).status).toBe(200);
+    expect((await call(app, `/api/auctions/${a.id}/join`, null, { invite })).status).toBe(409);
+  });
 });
