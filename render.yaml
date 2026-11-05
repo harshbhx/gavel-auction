@@ -8,9 +8,10 @@ services:
     runtime: node
     plan: starter
     numInstances: 1
-    # vite-node is a dev dependency and NODE_ENV=production would skip it, so ask for dev packages.
-    buildCommand: npm ci --include=dev
-    startCommand: npm start -w @gavel/server
+    # esbuild (build only) is a dev dependency and NODE_ENV=production would skip it, so ask for
+    # dev packages at build time. The runtime is plain node on the bundled dist/main.js.
+    buildCommand: npm ci --include=dev && npm run build -w @gavel/server
+    startCommand: npm run start:prod -w @gavel/server
     healthCheckPath: /healthz
     # Deploys come from .github/workflows/deploy-staging.yml through the deploy hook, not from pushes.
     autoDeploy: false
