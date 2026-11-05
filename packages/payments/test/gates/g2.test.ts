@@ -2,11 +2,12 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { lintJsonl } from '../../gates/evidence.js';
+import { lintJsonl, lintTokens } from '../../gates/evidence.js';
 import { FakePayPalServer } from '../../src/fake/server.js';
 import {
   decideG2,
   g2Finished,
+  g2RequestId,
   G2_TOKEN_HEADER,
   runG2,
   startG2Server,
@@ -139,5 +140,20 @@ describe('G2 page server access control', () => {
     expect(seen['forged']).toBeUndefined();
     expect(seen['ok']).toBe(200);
     expect(seen['currency']).toBe('INR');
+  });
+});
+
+describe('G2 PayPal-Request-Id', () => {
+  it('stays clear of the evidence token lint at the longest run id', () => {
+    // A 14-character run id is the longest startG2Server builds. The old authorize key embedded
+    // the 17-character sandbox order id, reached 47 characters and stopped the real run.
+    const run = '20261105T1146Z';
+    for (const path of ['wallet', 'card'] as const) {
+      for (const op of ['order', 'auth'] as const) {
+        const id = g2RequestId(run, path, op, 99);
+        expect(id.length).toBeLessThan(40);
+        expect(lintTokens({ headers: { 'PayPal-Request-Id': id } })).toEqual([]);
+      }
+    }
   });
 });

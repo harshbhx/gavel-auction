@@ -35,7 +35,7 @@
     </style>
   </head>
   <body>
-    <h1>Gate G2: authorize a 5.00 order with the PayPal SDK v6</h1>
+    <h1>Gate G2: authorize a 500.00 order with the PayPal SDK v6</h1>
     <p>
       Sandbox only. Use a personal sandbox buyer. Pay with the PayPal wallet in the first box and as
       a guest with a sandbox test card in the second. The page tells the server what happened; the
@@ -55,8 +55,8 @@
     </section>
 
     <script>
-      // UNVERIFIED (G2): every SDK v6 call name below comes from the v6 documentation and has not
-      // been run by us. The server contract (/api/*) does not depend on them.
+      // SDK v6 calls as run in the sandbox by G2 on 2026-11-05 (wallet and guest card authorized).
+      // The server contract (/api/*) does not depend on them.
       const $ = (id) => document.getElementById(id);
       const show = (path, text, cls) => {
         const el = $(path + '-status');
@@ -110,12 +110,13 @@
         button.addEventListener('click', async () => {
           try {
             show(path, 'creating the order');
-            const res = await post('/api/orders', { path });
-            if (res.status !== 200) throw new Error('order creation failed: HTTP ' + res.status);
-            await mk.start(
-              { presentationMode: 'auto' },
-              Promise.resolve({ orderId: res.body.orderId }),
-            );
+            // start() runs inside the click and gets the pending order, as in the v6 samples, so
+            // the browser does not block the PayPal popup.
+            const order = post('/api/orders', { path }).then((res) => {
+              if (res.status !== 200) throw new Error('order creation failed: HTTP ' + res.status);
+              return { orderId: res.body.orderId };
+            });
+            await mk.start({ presentationMode: 'auto' }, order);
           } catch (e) {
             const detail = String((e && e.message) || e).slice(0, 300);
             show(path, 'error: ' + detail, 'fail');
@@ -147,33 +148,45 @@
         });
         const eligible = await sdk.findEligibleMethods({ currencyCode: cfg.currency });
 
-        if (eligible.isEligible('paypal')) {
-          const btn = document.createElement('paypal-button');
-          btn.setAttribute('type', 'pay');
-          $('wallet-button').appendChild(btn);
-          attach(
-            btn,
-            'wallet',
-            session(sdk, 'wallet', (o) => sdk.createPayPalOneTimePaymentSession(o)),
-          );
-          show('wallet', 'ready: click the button');
-        } else {
-          show('wallet', 'the SDK does not offer PayPal here', 'fail');
-          report('wallet', 'not_offered', '');
+        // Each box is set up on its own so a failure in one does not take down the other.
+        const fail = (path, e) => {
+          const detail = String((e && e.message) || e).slice(0, 300);
+          show(path, 'error: ' + detail, 'fail');
+          report(path, 'error', detail);
+        };
+
+        try {
+          if (eligible.isEligible('paypal')) {
+            const btn = document.createElement('paypal-button');
+            btn.setAttribute('type', 'pay');
+            $('wallet-button').appendChild(btn);
+            const mk = await session(sdk, 'wallet', (o) =>
+              sdk.createPayPalOneTimePaymentSession(o),
+            );
+            attach(btn, 'wallet', mk);
+            show('wallet', 'ready: click the button');
+          } else {
+            show('wallet', 'the SDK does not offer PayPal here', 'fail');
+            report('wallet', 'not_offered', '');
+          }
+        } catch (e) {
+          fail('wallet', e);
         }
 
-        if (eligible.isEligible('basic_card') || eligible.isEligible('paypal_guest')) {
+        // v6 has no eligibility key for guest card: the PayPal guest-payments sample renders
+        // the basic card button inside its container without an isEligible check.
+        try {
+          const container = document.createElement('paypal-basic-card-container');
           const btn = document.createElement('paypal-basic-card-button');
-          $('card-button').appendChild(btn);
-          attach(
-            btn,
-            'card',
-            session(sdk, 'card', (o) => sdk.createPayPalGuestOneTimePaymentSession(o)),
+          container.appendChild(btn);
+          $('card-button').appendChild(container);
+          const mk = await session(sdk, 'card', (o) =>
+            sdk.createPayPalGuestOneTimePaymentSession(o),
           );
+          attach(btn, 'card', mk);
           show('card', 'ready: click the button');
-        } else {
-          show('card', 'the SDK does not offer guest card checkout here', 'fail');
-          report('card', 'not_offered', '');
+        } catch (e) {
+          fail('card', e);
         }
       }
 
