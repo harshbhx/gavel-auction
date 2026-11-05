@@ -6,7 +6,11 @@ import noRandom from './no-random.js';
 export default {
   files: ['**/*.test.{ts,tsx}', '**/*.property.test.ts', 'packages/e2e/src/runner/**/*.ts'],
   // time.test.ts checks the real system clock helper, so it reads the wall clock on purpose; benchmarks measure elapsed time on purpose.
-  ignores: ['packages/shared/test/time.test.ts', 'packages/web/test/**/*.bench.test.ts'],
+  ignores: [
+    'packages/shared/test/time.test.ts',
+    'packages/web/test/**/*.bench.test.ts',
+    'packages/voice/test/parser/bench.test.ts',
+  ],
   plugins: { gavel: { rules: { 'no-real-time': noRealTime, 'no-random': noRandom } } },
   rules: {
     'gavel/no-real-time': 'error',
