@@ -108,6 +108,7 @@ export function newJournal(plan: SettlementPlan, age: HoldAgePolicy): Journal {
       authId: h.authId,
       ceilingCents: h.ceilingCents,
       createdAtMs: h.createdAtMs,
+      ...(h.orderId === undefined || h.orderId === '' ? {} : { orderId: h.orderId }),
       // A hold older than the maximum age at settlement start is flagged (R-PAY-034).
       stale: age.nowMs - h.createdAtMs > age.holdMaxAgeMs,
     };

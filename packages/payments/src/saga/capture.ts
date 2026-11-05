@@ -4,6 +4,7 @@ import type { PaymentsMetrics } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
 import type { CaptureRef, HoldTruth, Journal } from '../types.js';
 import { withLease } from './create.js';
+import { truthArgs } from './truth.js';
 import { defaultLeaseOwner, runLeaseOwner } from './owner.js';
 import { step, type SettlementEvent } from './machine.js';
 import { DEFAULT_UNKNOWN_DEADLINE_MS, UNKNOWN_REVIEW_REASON, unknownExpired } from './unknown.js';
@@ -155,6 +156,7 @@ interface Target {
   authId: string;
   price: number;
   invoiceId: string;
+  truth: { holdId: string; authId: string; orderId?: string };
 }
 
 /** One run of the phase: the journal as last saved, and the steps that move it. */
@@ -258,6 +260,7 @@ class Run {
       authId: hold.authId,
       price,
       invoiceId: invoiceIdFor(j.auctionId, hold.holdId),
+      truth: truthArgs(hold),
     };
 
     // R-PAY-050: truth before capture. A capture already there is adopted.
@@ -330,7 +333,7 @@ class Run {
   private async readTruth(t: Target): Promise<HoldTruth | undefined> {
     try {
       await this.boundary('before:get');
-      const truth = await this.deps.gateway.getHoldTruth({ holdId: t.holdId, authId: t.authId });
+      const truth = await this.deps.gateway.getHoldTruth(t.truth);
       await this.boundary('after:get');
       return truth;
     } catch (e) {
@@ -401,7 +404,7 @@ class Run {
     // R-PAY-053: a definite refusal falls back only after the truth says not captured.
     let truth: HoldTruth;
     try {
-      truth = await this.deps.gateway.getHoldTruth({ holdId: t.holdId, authId: t.authId });
+      truth = await this.deps.gateway.getHoldTruth(t.truth);
     } catch (e) {
       if (!(e instanceof PayPalError)) throw e;
       return { status: 'pending', reason: 'truth_unavailable', journal: j };

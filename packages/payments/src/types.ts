@@ -78,6 +78,8 @@ export interface HoldRef {
   authId: string;
   ceilingCents: number;
   createdAtMs: number;
+  /** The PayPal order of the hold; lets truth reads observe captures (R8-P01). */
+  orderId?: string;
 }
 
 export interface SettlementPlan {
@@ -140,6 +142,8 @@ export interface JournalHold {
   ceilingCents: number;
   /** When the hold was created; lets a resume compute its age (R-PAY-034). */
   createdAtMs?: number;
+  /** The PayPal order of the hold, so a resume can read its captures (R8-P01). */
+  orderId?: string;
   stale: boolean;
 }
 

@@ -52,7 +52,7 @@ describe('FakeGateway implements the PaymentsGateway port', () => {
       requestId: 'rc1',
     });
     expect(cap.amountCents).toBe(600);
-    const truth = await gw.getHoldTruth({ holdId: 'h1', authId });
+    const truth = await gw.getHoldTruth({ holdId: 'h1', authId, orderId: 'o1' });
     expect(truth).toMatchObject({
       holdId: 'h1',
       authId,
@@ -61,7 +61,12 @@ describe('FakeGateway implements the PaymentsGateway port', () => {
       capturedCents: 600,
       observedAtMs: 5000,
     });
-    expect(truth.captures).toEqual([{ captureId: cap.captureId, amountCents: 600, final: true }]);
+    expect(truth.captures).toEqual([
+      { captureId: cap.captureId, amountCents: 600, final: true, invoiceId: 'gavel-a1-h1' },
+    ]);
+    const blind = await gw.getHoldTruth({ holdId: 'h1', authId });
+    expect(blind.captures).toBeNull();
+    expect(blind.capturedCents).toBe(0);
     expect(core.checkInvariants()).toBe(true);
   });
 
@@ -166,7 +171,9 @@ describe('FakeGateway implements the PaymentsGateway port', () => {
       gw.capture(authId, { amountCents: 700, finalCapture: true, invoiceId: 'i', requestId: 'c' }),
     );
     expect(err).toMatchObject({ kind: 'network', outcome: 'unknown', status: 0 });
-    expect((await gw.getHoldTruth({ holdId: 'h1', authId })).capturedCents).toBe(700);
+    expect((await gw.getHoldTruth({ holdId: 'h1', authId, orderId: 'o1' })).capturedCents).toBe(
+      700,
+    );
   });
 
   it('http_500 is a server_error with unknown outcome and nothing applied', async () => {

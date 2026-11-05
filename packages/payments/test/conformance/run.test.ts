@@ -23,10 +23,16 @@ async function fakeDirect(): Promise<ConformanceTarget> {
   return {
     label: 'fake (direct)',
     gateway: new FakeGateway(core),
-    newAuthorization: async (cents) => ({
-      holdId: `hold-${(payer += 1)}`,
-      authId: core.createAuthorization(`payer-${payer}`, cents).id,
-    }),
+    newAuthorization: async (cents) => {
+      const holdId = `hold-${(payer += 1)}`;
+      const order = core.createOrder(
+        { holdId, amountCents: cents, description: 'conformance' },
+        `conf-order-${payer}`,
+      );
+      core.approveOrder(order.id);
+      const auth = core.authorizeOrder(order.id, `conf-auth-${payer}`);
+      return { holdId, authId: auth.authId, orderId: order.id };
+    },
   };
 }
 
