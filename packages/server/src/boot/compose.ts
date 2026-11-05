@@ -47,6 +47,7 @@ import { capsFromConfig } from '../limits/caps';
 import { limitsFromConfig } from '../limits/rate-limiter';
 import { createGuardedWebhookRoute } from '../http/webhook-guard';
 import { portFromService, sourceOf } from '../http/webhook';
+import { boundaryFromEnv, killSelf } from './checkpoint-kill';
 import { createPaymentAudit } from './payment-audit';
 import { createLogger, type LogSink } from '../log/logger';
 import { RateLimiter } from '../limits/rate-limiter';
@@ -285,7 +286,9 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     mailboxDepth: () => serviceStats().mailboxDepth,
   });
   const limiter = new RateLimiter(clock, limitsFromConfig(config));
+  const boundary = boundaryFromEnv(env, killSelf);
   const service = createAuctionService({
+    ...(boundary === undefined ? {} : { boundary }),
     roomMetrics: metrics,
     limiter,
     caps: capsFromConfig(config),

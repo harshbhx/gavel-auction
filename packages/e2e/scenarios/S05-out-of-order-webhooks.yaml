@@ -1,0 +1,32 @@
+id: S05-out-of-order-webhooks
+title: Void before capture and a stale capture event leave the same result
+modes: [inproc]
+seed: 5
+clock: { startMs: 1793750400000 }
+auction: { itemId: lot-1, reserve: 5000, minIncrement: 500, softCloseMs: 0, mode: english }
+actors: { ana: { funding: wallet }, ben: { funding: wallet } }
+steps:
+  - { t: 0, actor: ana, do: register, ceiling: 50000 }
+  - { t: 0, actor: ben, do: register, ceiling: 25000 }
+  - { t: 1000, actor: auctioneer, do: open }
+  - { t: 2000, actor: ana, do: bid, amount: 6000 }
+  - { t: 3000, actor: ben, do: bid, amount: 6500 }
+  - { t: 4000, actor: ana, do: bid, amount: 8000 }
+  - { t: 5000, actor: ben, do: bid, amount: 9000 }
+  - { t: 6000, actor: ana, do: bid, amount: 10000 }
+  - {
+      t: 6500,
+      do: fault,
+      fault: { at: webhook, kind: reorder, event: PAYMENT.AUTHORIZATION.VOIDED },
+    }
+  - {
+      t: 6500,
+      do: fault,
+      fault: { at: webhook, kind: delay, event: PAYMENT.CAPTURE.COMPLETED, ms: 5000 },
+    }
+  - { t: 7000, actor: auctioneer, do: hammer }
+expect:
+  - ledger: { winner: ana, captured: 10000, released: 40000, voided: [ben] }
+  - paypalCalls: { capture: 1, void: 1 }
+  - webhooks: { duplicates: 0 }
+  - invariants: [I1, I2, I3, I4, I5]

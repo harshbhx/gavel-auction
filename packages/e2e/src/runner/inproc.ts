@@ -1,6 +1,13 @@
+import { readFileSync } from 'node:fs';
 import { evolveAll } from '@gavel/engine';
+import { DEFAULT_FAKE_WEBHOOK_ID } from '@gavel/payments/fake';
+import type { PaymentsGateway } from '@gavel/payments';
 import type { AuctionConfig, ConnId } from '@gavel/shared';
-import type { Connection } from '@gavel/server';
+import type { AuctionService, Connection } from '@gavel/server';
+import { checkpointBoundary } from '@gavel/server/src/boot/checkpoint-kill';
+import { parseUtterance } from '@gavel/voice';
+import type { FakeWebhookEvent } from '../../../payments/src/fake/core';
+import { WebhookEmitter } from '../../../payments/src/fake/webhooks';
 import type { Fault, Invariant, Scenario, Step } from '../dsl/types';
 import {
   CONFIG,
@@ -38,6 +45,21 @@ export interface Outcome {
   rejected: Array<{ actor: string; code: string }>;
   paypalCalls: { capture: number; void: number; reauthorize: number };
   invariants: Record<Invariant, boolean>;
+  /** Captures the fake committed, and how many distinct request ids the capture calls carried. */
+  captures: { committed: number; requestIds: number };
+  /** Simulated process deaths (server.kill) and restarts (restart step) during the run. */
+  crashes: number;
+  restarts: number;
+  /** Bidders that received a state message after the last restart. */
+  resynced: number;
+  webhooks: { delivered: number; duplicates: number; failed: number };
+  voice: {
+    bids: number[];
+    confirms: number;
+    candidates: number;
+    audit: Array<{ transcript: string; confidenceBps: number }>;
+  };
+  ledgerTypes: string[];
 }
 
 export interface RunResult {
@@ -54,6 +76,42 @@ export interface RunOptions {
 }
 
 const EXTEND_MS = 30_000;
+const AUDIO_DIR = new URL('../../fixtures/audio/', import.meta.url);
+
+interface SttFixture {
+  transcript: string;
+  confidence: number;
+  words: Array<{ word: string; startMs: number; endMs: number; confidence: number }>;
+}
+
+/** The recorded speech-to-text result of an audio fixture; no provider is ever called. */
+function readStt(audio: string): SttFixture {
+  if (!/^[a-z0-9-]+$/.test(audio)) throw new Error(`audio fixture name "${audio}" is not valid`);
+  return JSON.parse(readFileSync(new URL(`${audio}.stt.json`, AUDIO_DIR), 'utf8')) as SttFixture;
+}
+
+/** Wraps the gateway so every capture request id is on record, across restarts. */
+function recordCaptures(inner: PaymentsGateway, ids: string[]): PaymentsGateway {
+  return {
+    createOrder: (i) => inner.createOrder(i),
+    getOrder: (id) => inner.getOrder(id),
+    authorizeOrder: (id, requestId) => inner.authorizeOrder(id, requestId),
+    getHoldTruth: (h) => inner.getHoldTruth(h),
+    capture: (authId, i) => {
+      ids.push(i.requestId);
+      return inner.capture(authId, i);
+    },
+    voidAuthorization: (authId, requestId) => inner.voidAuthorization(authId, requestId),
+    reauthorize: (authId, i) => inner.reauthorize(authId, i),
+  };
+}
+
+interface WebhookRule {
+  kind: 'duplicate' | 'delay' | 'reorder';
+  event: string;
+  times: number;
+  ms: number;
+}
 
 export function toNdjson(trace: readonly TraceEvent[]): string {
   return trace.map((e) => JSON.stringify(e)).join('\n') + '\n';
@@ -91,7 +149,21 @@ async function drive(
   const startMs = scenario.clock.startMs;
   rig.clock.set(startMs);
   emit('start', 0, { id: scenario.id, seed, startMs });
-  const service = rig.service();
+  const captureIds: string[] = [];
+  const gateway = recordCaptures(rig.gateway, captureIds);
+  let boundaryHook: ((label: string) => Promise<void>) | undefined;
+  let crashes = 0;
+  let restarts = 0;
+  let resynced = 0;
+  const startService = (): AuctionService =>
+    rig.service({
+      gateway,
+      onError: () => undefined,
+      boundary: async (label) => {
+        await boundaryHook?.(label);
+      },
+    });
+  let service = startService();
   const auctionId = rig.ids.mint<'AuctionId'>();
   const presets = [
     ...new Set(scenario.steps.flatMap((s) => (s.do === 'register' ? [s.ceiling] : []))),
@@ -106,11 +178,20 @@ async function drive(
       ? { softCloseWindowMs: scenario.auction.softCloseMs }
       : {}),
   } as unknown as AuctionConfig;
-  const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+  let room = await service.createAuction(auctionId, config, 'auctioneer-sub');
   const bidders = new Map<string, Bidder>();
   const dropped: Pending[] = [];
   let boss: { conn: Connection } | undefined;
   const ceilings = new Map<string, number>();
+  const webhookRules: WebhookRule[] = [];
+  const webhooks = { delivered: 0, duplicates: 0, failed: 0 };
+  const voice = { confirms: 0, candidates: 0 };
+  const insertIfAbsent = rig.stores.webhookEvents.insertIfAbsent.bind(rig.stores.webhookEvents);
+  rig.stores.webhookEvents.insertIfAbsent = async (e) => {
+    const isNew = await insertIfAbsent(e);
+    if (!isNew) webhooks.duplicates += 1;
+    return isNew;
+  };
 
   const need = (actor: string): Bidder => {
     const b = bidders.get(actor);
@@ -154,6 +235,8 @@ async function drive(
   }
   await flushDrops(Number.MAX_SAFE_INTEGER);
   await service.idle();
+  if (crashes > restarts) await restart(true);
+  await deliverWebhooks();
 
   async function runStep(step: Step): Promise<void> {
     switch (step.do) {
@@ -178,7 +261,11 @@ async function drive(
         boss ??= await connect(rig, room, 'auctioneer');
         return;
       case 'hammer':
-        await control(step.t, 'hammer', { closeNow: 1 });
+        try {
+          await control(step.t, 'hammer', { closeNow: 1 });
+        } catch (e) {
+          if (crashes === restarts) throw e;
+        }
         return;
       case 'pause':
       case 'resume':
@@ -193,6 +280,27 @@ async function drive(
       case 'reconnect':
         await reattach(step.actor);
         return;
+      case 'restart':
+        await restart(false);
+        return;
+      case 'say':
+        await say(step.actor, step.audio);
+        return;
+      case 'confirm': {
+        const who = need(step.actor);
+        const ask = who.transport.messages('confirm_request').at(-1);
+        const confirmId = ask?.['confirmId'];
+        if (typeof confirmId !== 'string') {
+          throw new Error(`${scenario.id}: ${step.actor} has no confirm request to answer`);
+        }
+        await room.respondConfirm(who.conn, {
+          v: 1,
+          t: 'confirm_response',
+          confirmId,
+          accept: step.accept,
+        });
+        return;
+      }
       case 'advance_clock':
         rig.clock.set(rig.clock.now() + step.ms);
         return;
@@ -204,6 +312,101 @@ async function drive(
           `${scenario.id}: step "${(step as { do: string }).do}" is not supported by the in-process runner`,
         );
     }
+  }
+
+  /** A new service on the same stores, as after a process restart; a crash is not closed. */
+  async function restart(crashed: boolean): Promise<void> {
+    if (!crashed) await service.close();
+    boundaryHook = undefined;
+    restarts += 1;
+    service = startService();
+    room = await service.room(auctionId);
+    if (crashed) {
+      await service.resume();
+      await service.idle();
+      return;
+    }
+    boss = undefined;
+    resynced = 0;
+    for (const actor of bidders.keys()) {
+      await reattach(actor);
+      if (need(actor).transport.messages('state').length > 0) resynced += 1;
+    }
+  }
+
+  /** Turns a recorded transcript into a voice bid, the way the voice pipeline does. */
+  async function say(actor: string, audio: string): Promise<void> {
+    const who = need(actor);
+    const stt = readStt(audio);
+    const parsed = parseUtterance(stt.transcript, {
+      sttWordConfidence: stt.words.map((w) => ({
+        word: w.word,
+        start: w.startMs,
+        end: w.endMs,
+        confidence: w.confidence,
+      })),
+    });
+    if (parsed.status === 'none') return;
+    const amounts = [
+      ...(parsed.amountCents === null ? [] : [Number(parsed.amountCents)]),
+      ...parsed.candidates.map((c) => Number(c.amountCents)),
+    ];
+    if (amounts.length === 0) return;
+    const amount = Math.max(...amounts);
+    const ambiguous = parsed.status === 'confirm';
+    if (ambiguous) voice.candidates = Math.max(voice.candidates, parsed.candidates.length);
+    await room.submitBid(
+      who.conn,
+      bidMessage(rig, amount, 'voice', {
+        confidence: stt.confidence,
+        transcript: stt.transcript,
+        ...(ambiguous ? { ambiguous: true } : {}),
+      }),
+    );
+  }
+
+  /**
+   * Delivers the fake's outbox to the service once the settlement has run, shaped by the
+   * scenario's webhook faults: duplicates are extra copies, reorder puts the named event type
+   * first and the rest in reverse, delay holds the named type back until `ms` later.
+   */
+  async function deliverWebhooks(): Promise<void> {
+    if (webhookRules.length === 0) return;
+    const emitter = new WebhookEmitter({
+      webhookId: DEFAULT_FAKE_WEBHOOK_ID,
+      nowMs: () => rig.clock.now(),
+    });
+    const events = [...rig.paypal.core.events];
+    const named = (rule: WebhookRule, e: FakeWebhookEvent): boolean => e.eventType === rule.event;
+    const delayRule = webhookRules.find((r) => r.kind === 'delay');
+    const reorderRule = webhookRules.find((r) => r.kind === 'reorder');
+    const held = delayRule === undefined ? [] : events.filter((e) => named(delayRule, e));
+    let first = events.filter((e) => !held.includes(e));
+    if (reorderRule !== undefined) {
+      first = [
+        ...first.filter((e) => named(reorderRule, e)),
+        ...first.filter((e) => !named(reorderRule, e)).reverse(),
+      ];
+    }
+    const deliver = async (e: FakeWebhookEvent): Promise<void> => {
+      const signed = emitter.sign(e);
+      const res = await service.handleWebhook(Buffer.from(signed.rawBody), signed.headers);
+      webhooks.delivered += 1;
+      if (res.status !== 200) webhooks.failed += 1;
+    };
+    emit('step', 0, { do: 'webhooks', events: events.length });
+    for (const e of first) {
+      const dup = webhookRules.find((r) => r.kind === 'duplicate' && named(r, e));
+      const copies = dup?.times ?? 1;
+      const gap = dup === undefined ? 0 : Math.floor(dup.ms / copies);
+      for (let n = 0; n < copies; n += 1) {
+        await deliver(e);
+        if (gap > 0) rig.clock.advance(gap);
+      }
+    }
+    if (delayRule !== undefined) rig.clock.advance(delayRule.ms);
+    for (const e of held) await deliver(e);
+    await service.idle();
   }
 
   async function applyFault(fault: Fault, t: number): Promise<void> {
@@ -229,7 +432,17 @@ async function drive(
       room.detach(need(fault.client).conn.id as ConnId);
       dropped.push({ at: t + fault.forMs, actor: fault.client });
     } else if (fault.at === 'server') {
-      throw new Error(`${scenario.id}: server.kill needs the stack runner`);
+      boundaryHook = checkpointBoundary(fault.checkpoint, () => {
+        crashes += 1;
+        throw new Error('process died');
+      });
+    } else if (fault.at === 'webhook') {
+      webhookRules.push({
+        kind: fault.kind,
+        event: fault.event,
+        times: fault.times ?? 1,
+        ms: fault.ms ?? 0,
+      });
     } else {
       throw new Error(
         `${scenario.id}: fault ${fault.at}.${fault.kind} is not supported in process`,
@@ -261,6 +474,9 @@ async function drive(
   } catch {
     fakeOk = false;
   }
+  const voiceBids = entries.flatMap((e) =>
+    e.type === 'BID_RECORDED' && e.payload.source === 'voice' ? [e.payload] : [],
+  );
   const count = (op: string): number => core.calls.filter((c) => c.op === op).length;
   const outcome: Outcome = {
     winner,
@@ -281,6 +497,28 @@ async function drive(
       reauthorize: count('reauthorize'),
     },
     invariants: evaluateInvariants({ winner, holds, entries, fakeOk }),
+    captures: {
+      committed: holds.reduce((n, h) => n + h.captureCount, 0),
+      requestIds: new Set(captureIds).size,
+    },
+    crashes,
+    restarts,
+    resynced,
+    webhooks: { ...webhooks },
+    voice: {
+      bids: voiceBids.map((p) => Number(p.amountCents)),
+      confirms: [...bidders.values()].reduce(
+        (n, b) => n + b.transport.messages('confirm_request').length,
+        0,
+      ),
+      candidates: voice.candidates,
+      audit: voiceBids.flatMap((p) =>
+        p.audit.transcript === undefined || p.audit.confidenceBps === undefined
+          ? []
+          : [{ transcript: p.audit.transcript, confidenceBps: p.audit.confidenceBps }],
+      ),
+    },
+    ledgerTypes: entries.map((e) => e.type),
   };
   await service.close();
   emit('result', 0, { ...outcome });
@@ -301,6 +539,9 @@ export function checkExpectations(scenario: Scenario, outcome: Outcome): string[
       failures.push(`${what}\n- ${JSON.stringify(want)}\n+ ${JSON.stringify(got)}`);
     }
   };
+  if (outcome.webhooks.failed > 0) {
+    failures.push(`${outcome.webhooks.failed} webhook deliveries were not answered 200`);
+  }
   for (const exp of scenario.expect) {
     if ('ledger' in exp) {
       diff('ledger', exp.ledger, {
@@ -325,6 +566,25 @@ export function checkExpectations(scenario: Scenario, outcome: Outcome): string[
         capture: outcome.paypalCalls.capture,
         void: outcome.paypalCalls.void,
         ...(want.reauthorize === undefined ? {} : { reauthorize: outcome.paypalCalls.reauthorize }),
+      });
+    } else if ('bids' in exp) {
+      const want = exp.bids;
+      diff('bids', want, {
+        accepted: outcome.accepted,
+        ...(want.price === undefined ? {} : { price: outcome.priceCents }),
+        ...(want.resynced === undefined ? {} : { resynced: outcome.resynced }),
+      });
+    } else if ('webhooks' in exp) {
+      diff('webhooks', exp.webhooks, { duplicates: outcome.webhooks.duplicates });
+    } else if ('captures' in exp) {
+      diff('captures', exp.captures, outcome.captures);
+    } else if ('voice' in exp) {
+      const want = exp.voice;
+      diff('voice', want, {
+        bids: outcome.voice.bids,
+        confirms: outcome.voice.confirms,
+        ...(want.candidates === undefined ? {} : { candidates: outcome.voice.candidates }),
+        ...(want.audit === undefined ? {} : { audit: outcome.voice.audit }),
       });
     } else {
       failures.push(`expect kind "${Object.keys(exp).join(',')}" is not supported in process`);
