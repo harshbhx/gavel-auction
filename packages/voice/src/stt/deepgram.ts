@@ -1,7 +1,8 @@
 import {
   FLAG_END_OF_STREAM,
   FLAG_END_OF_UTTERANCE,
-  FLAG_KEEPALIVE,   type AudioBatch,
+  FLAG_KEEPALIVE,
+  type AudioBatch,
 } from '../audio/frame.js';
 import {
   buildDeepgramUrl,
@@ -345,7 +346,8 @@ export class DeepgramStt implements InstrumentedSttProvider {
     const spans = this.spans;
     if (spans.length === 0) return audioMs;
     let hit = spans[spans.length - 1] as (typeof spans)[number];
-    if (audioMs <= (spans[0] as (typeof spans)[number]).audioMs) hit = spans[0] as (typeof spans)[number];
+    if (audioMs <= (spans[0] as (typeof spans)[number]).audioMs)
+      hit = spans[0] as (typeof spans)[number];
     else {
       for (const s of spans) {
         if (audioMs <= s.audioMs + s.lenMs) {
