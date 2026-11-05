@@ -113,7 +113,9 @@ export class FlakyStore extends MemoryStore {
   }
 }
 
-export const setup = async (opts: { store?: MemoryStore; limiter?: boolean } = {}) => {
+export const setup = async (
+  opts: { store?: MemoryStore; limiter?: boolean; metrics?: RoomDeps['metrics'] } = {},
+) => {
   const clock = new ManualClock(START);
   const ids = new SeqIds();
   const store = opts.store ?? new MemoryStore(() => clock.now());
@@ -123,6 +125,7 @@ export const setup = async (opts: { store?: MemoryStore; limiter?: boolean } = {
     ids,
     engine: (cfg) => new TestEngine(cfg),
     ...(opts.limiter ? { limiter: new RateLimiter(clock) } : {}),
+    ...(opts.metrics ? { metrics: opts.metrics } : {}),
   };
   const auctionId = ids.mint<'AuctionId'>();
   const room = await Room.create(auctionId, config, 'auctioneer-sub', deps);

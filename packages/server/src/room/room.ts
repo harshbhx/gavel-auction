@@ -115,6 +115,8 @@ export interface RoomDeps {
   /** Builds a fresh engine for a config; called again whenever the room is rebuilt from its log. */
   engine: (config: AuctionConfig, createdAt: EpochMs) => EnginePort;
   limiter?: RateLimiter;
+  /** Counters fed from the bid path (R-RT-122, R-RT-135). */
+  metrics?: { bidAccepted(): void; bidRejected(): void; rateLimitHit(): void };
   /** Payments side of settlement; without it a hammered room stays in SETTLING. */
   settle?: SettlePort;
   /**
@@ -439,6 +441,7 @@ export class Room {
   submitBid(conn: Connection, msg: BidMsg): Promise<void> {
     const limited = this.deps.limiter?.checkBid(conn.bidderId ?? conn.id);
     if (limited && !limited.ok) {
+      this.deps.metrics?.rateLimitHit();
       this.sendError(conn, 'rate_limited', limited.retryAfterMs);
       return Promise.resolve();
     }
@@ -549,6 +552,8 @@ export class Room {
       return;
     }
     this.seq = seq;
+    if (event.type === 'bid_accepted') this.deps.metrics?.bidAccepted();
+    else this.deps.metrics?.bidRejected();
     this.pushAudit(audit);
     const reply = this.replyFor(event);
     if (reply) this.replies.set(key, reply);
