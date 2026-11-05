@@ -9,7 +9,7 @@ const good = {
 
 const paypal = {
   PAYPAL_CLIENT_ID: 'client-id-value',
-  PAYPAL_CLIENT_SECRET: 'client-secret-value',
+  PAYPAL_CLIENT_SECRET: 'cs-val',
   PAYPAL_WEBHOOK_ID: 'webhook-id-value',
 };
 
