@@ -69,6 +69,8 @@ export interface ParseResult {
 
 export interface ParseContext {
   speakerBidderId?: string;
+  /** The paddle of the speaker, when the roster knows it; lets a speaker match a paddle-named bid. */
+  speakerPaddle?: string;
   currentPriceCents?: Cents;
   minIncrementCents?: Cents;
   sttWordConfidence?: Array<{ word: string; start: number; end: number; confidence: number }>;
