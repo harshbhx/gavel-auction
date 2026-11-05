@@ -37,7 +37,9 @@ import { loadConfig, redactConfig, type LoadHooks, type ServerConfig } from '../
 import { createExportHandler } from '../http/export';
 import { createHealthRoutes } from '../http/health';
 import { createMetricsRoute } from '../http/metrics';
-import { adminKeyMatches } from '../http/ops';
+import { adminKeyMatches, createOpsRoomsHandler } from '../http/ops';
+import { capsFromConfig } from '../limits/caps';
+import { limitsFromConfig } from '../limits/rate-limiter';
 import { createGuardedWebhookRoute } from '../http/webhook-guard';
 import { portFromService } from '../http/webhook';
 import { createPaymentAudit } from './payment-audit';
@@ -255,7 +257,8 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
   });
   const service = createAuctionService({
     roomMetrics: metrics,
-    limiter: new RateLimiter(clock),
+    limiter: new RateLimiter(clock, limitsFromConfig(config)),
+    caps: capsFromConfig(config),
     store: stores.room,
     clock,
     ids,
@@ -317,6 +320,10 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     metrics,
     knownAuction: async (id) => (await stores.room.listAuctions()).includes(id as AuctionId),
   });
+  const opsRoomsRoute = createOpsRoomsHandler({
+    adminKey: config.ADMIN_KEY,
+    rooms: () => service.opsRooms(),
+  });
   const metricsRoute = createMetricsRoute(metrics, { adminKey: config.ADMIN_KEY });
   const extra = opts.extraRoutes?.(service, stores.room);
 
@@ -325,6 +332,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     if (path === '/healthz') return health.healthz(req, res);
     if (path === '/readyz') return health.readyz(req, res);
     if (path === '/metrics') return metricsRoute(req, res);
+    if (path === '/ops/rooms') return opsRoomsRoute(req, res);
     if (path === WEBHOOK_PATH) return webhookRoute(req, res);
     if (EXPORT_PATH.test(path)) return exportRoute(req, res);
     if (extra !== undefined && (await extra(req, res))) return;
