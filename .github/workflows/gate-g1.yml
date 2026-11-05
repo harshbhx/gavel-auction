@@ -68,13 +68,13 @@ jobs:
           SANDBOX_CARD_BUYER_EMAIL: ${{ secrets.SANDBOX_CARD_BUYER_EMAIL }}
           SANDBOX_CARD_BUYER_PASSWORD: ${{ secrets.SANDBOX_CARD_BUYER_PASSWORD }}
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
-        run: npm run gate:g1 -w @gavel/payments -- --browser --out "$PWD/docs/evidence"
+        run: npm run gate:g1 -w @gavel/payments -- --browser --out "$RUNNER_TEMP/g1-evidence"
       - name: Require evidence
         run: |
-          # The gate must leave at least one evidence file besides the GATES.md template.
-          count=$(find docs/evidence -type f ! -name GATES.md 2>/dev/null | wc -l)
+          # The run writes into a fresh directory, so evidence committed earlier cannot satisfy this.
+          count=$(find "$RUNNER_TEMP/g1-evidence" -type f -name 'G1-*.jsonl' 2>/dev/null | wc -l)
           if [ "$count" -eq 0 ]; then
-            echo "::error title=No evidence::Gate G1 produced no evidence files in docs/evidence"
+            echo "::error title=No evidence::Gate G1 wrote no G1-*.jsonl evidence file in this run"
             exit 1
           fi
       # The evidence, the screenshots (input fields masked) and the GATES.md entry are uploaded
@@ -85,8 +85,8 @@ jobs:
         with:
           name: g1-evidence
           path: |
-            docs/evidence
-            !docs/evidence/**/*.run.json
+            ${{ runner.temp }}/g1-evidence
+            !${{ runner.temp }}/g1-evidence/**/*.run.json
             docs/GATES.md
           if-no-files-found: warn
           retention-days: 7

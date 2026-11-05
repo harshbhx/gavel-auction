@@ -6,7 +6,8 @@ import { pathToFileURL } from 'node:url';
 
 const DOCS = /^(docs\/.*\.md|[^/]*\.md)$/;
 // These are read by tests or hold the only credential-shape scan, so they count as code.
-const SPECIAL = /^(docs\/(GATES|DECISIONS)\.md|docs\/evidence\/.*)$/;
+// README.md, SECURITY.md and docs/DEMO.md are asserted on by packages/e2e/test/repo-contracts.test.ts.
+const SPECIAL = /^(README\.md|SECURITY\.md|docs\/(GATES|DECISIONS|DEMO)\.md|docs\/evidence\/.*)$/;
 
 export function touchesCode(paths) {
   const files = paths.filter((p) => p !== '');

@@ -17,4 +17,15 @@
 /docs/specs/quality/         @harshbhx
 /docs/DECISIONS.md       @harshbhx
 /docs/GATES.md           @harshbhx
-/package.json /tsconfig.base.json /eslint.config.js   @harshbhx
+/package.json           @harshbhx
+/tsconfig.base.json      @harshbhx
+/eslint.config.js        @harshbhx
+/scripts/                @harshbhx
+/reference/              @harshbhx
+/render.yaml             @harshbhx
+/audit-waivers.json      @harshbhx
+/coverage.thresholds.json @harshbhx
+/.gitleaks.toml          @harshbhx
+/.gitleaksignore         @harshbhx
+/vitest.config.ts        @harshbhx
+/vitest.workspace.ts     @harshbhx
