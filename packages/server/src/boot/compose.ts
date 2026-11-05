@@ -234,9 +234,7 @@ function notFound(res: ServerResponse): void {
 export async function composeServer(env: Env, opts: ComposeOptions = {}): Promise<Composed> {
   const config = opts.hooks ? loadConfig(env, opts.hooks) : loadConfig(env);
   const clock = new SystemClock();
-  const logRing = createLogRing(
-    opts.sink ?? ((line) => void process.stdout.write(`${line}\n`)),
-  );
+  const logRing = createLogRing(opts.sink ?? ((line) => void process.stdout.write(`${line}\n`)));
   const log: Logger = createLogger({
     clock,
     sink: logRing.write,

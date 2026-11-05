@@ -38,7 +38,7 @@ describe('ops routes in the composed server (HRD-22)', () => {
     };
     expect(body.ok).toBe(true);
     expect(body.steps.map((s) => s.name)).toEqual(['database', 'paypal-token', 'demo-auction']);
-    for (const step of body.steps) expect(Object.keys(step).sort()).toEqual(['name', 'ok', 'ms']);
+    for (const step of body.steps) expect(Object.keys(step).sort()).toEqual(['ms', 'name', 'ok']);
     expect(Object.keys(body).sort()).toEqual(['elapsedMs', 'ok', 'steps']);
     expect(JSON.stringify(body)).not.toContain(KEY);
   });
