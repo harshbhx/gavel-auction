@@ -34,6 +34,7 @@
       "audit@11",
       "price:13000@12",
       "hammer:ada:13000@13",
+      "price:13000@14",
       "settlement:SETTLED"
     ]
   },
