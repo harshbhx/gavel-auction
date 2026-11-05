@@ -22,6 +22,7 @@ Verdict: sandbox credentials work and the app can create an AUTHORIZE order.
 Decision: PASS
 Fallback if FAIL: none for payments; hold G1 to G4 and demo on the fake PayPal.
 Evidence: no evidence file is committed under docs/evidence/G0/ and the run published no artifact; the evidence is the run log of workflow gate-g0, run 41815593520 (2026-11-04).
+Links: workflow gate-g0, run 41815593520; secrets by name below.
 Scope: connectivity, token scopes and order creation only. No buyer approval or capture was part of G0.
 Sandbox accounts: 1 business account that owns the app, and 5 personal buyer accounts, all US and USD. Buyer A, buyer B, buyer C (card), buyer D and buyer E use the emails gavel-buyer-a, gavel-buyer-b, gavel-buyer-card, gavel-buyer-d and gavel-buyer-e at personal.example.com. Passwords are not recorded in the repository.
 Secrets (names only): the app is `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET`; buyer credentials are the pairs `SANDBOX_BUYER`, `SANDBOX_BUYER2`, `SANDBOX_BUYER3` and `SANDBOX_CARD_BUYER`. The pair for buyer E (`SANDBOX_BUYER4`) is not set yet.
