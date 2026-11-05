@@ -44,7 +44,15 @@ function stubSdk(script: Script, opts: { startRejects?: boolean } = {}) {
   return { sdk, calls };
 }
 
-function fakeFetch(orderBody: unknown = { orderId: 'ord-1', clientToken: 'ct' }, holdOk = true) {
+function fakeFetch(
+  orderBody: unknown = { orderId: 'ord-1', clientToken: 'ct' },
+  holdOk = true,
+  holdBody: Record<string, unknown> = {
+    holdIdSuffix: 'ABC123',
+    ceilingCents: 50_000,
+    state: 'HELD',
+  },
+) {
   const urls: string[] = [];
   const fetch: FetchLike = (url) => {
     urls.push(url);
@@ -58,15 +66,21 @@ function fakeFetch(orderBody: unknown = { orderId: 'ord-1', clientToken: 'ct' },
     return Promise.resolve({
       ok: holdOk,
       status: 200,
-      json: () => Promise.resolve({ holdIdSuffix: 'ABC123', state: 'HELD' }),
+      json: () => Promise.resolve(holdBody),
     });
   };
   return { fetch, urls };
 }
 
-function make(script: Script, orderBody?: unknown, holdOk = true, startRejects = false) {
+function make(
+  script: Script,
+  orderBody?: unknown,
+  holdOk = true,
+  startRejects = false,
+  holdBody?: Record<string, unknown>,
+) {
   const { sdk, calls } = stubSdk(script, { startRejects });
-  const net = fakeFetch(orderBody, holdOk);
+  const net = fakeFetch(orderBody, holdOk, holdBody);
   const loadSdk = vi.fn(() => Promise.resolve(sdk));
   const redirect = vi.fn();
   const adapter = new PayPalV6Adapter({
@@ -91,6 +105,34 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
       'http://api/api/rooms/room%201/holds',
     ]);
     expect(t.calls[0]).toBe('createInstance:client-1:ct');
+  });
+
+  it('returns the amount the server confirmed (WEB-R2-10)', async () => {
+    const t = make((cb) => cb.onApprove({ orderId: 'ord-1' }));
+    const result = await t.adapter.start(req, () => {});
+    expect(result.ceilingCents).toBe(50_000);
+  });
+
+  it('treats a different confirmed amount as an error (WEB-R2-10)', async () => {
+    const t = make((cb) => cb.onApprove({ orderId: 'ord-1' }), undefined, true, false, {
+      holdIdSuffix: 'ABC123',
+      ceilingCents: 20_000,
+    });
+    const result = await t.adapter.start(req, () => {});
+    expect(result).toMatchObject({ state: 'error', errorCode: 'hold_mismatch' });
+    expect(result.holdIdSuffix).toBeUndefined();
+  });
+
+  it('retries only the confirm step with the approved order id (WEB-R2-08)', async () => {
+    const failing = make((cb) => cb.onApprove({ orderId: 'ord-1' }), undefined, false);
+    const first = await failing.adapter.start(req, () => {});
+    expect(first).toMatchObject({ state: 'error', errorCode: 'hold_failed', orderId: 'ord-1' });
+
+    const retry = make(() => {});
+    const second = await retry.adapter.start({ ...req, approvedOrderId: 'ord-1' }, () => {});
+    expect(second).toMatchObject({ state: 'held', holdIdSuffix: 'ABC123' });
+    expect(retry.urls).toEqual(['http://api/api/rooms/room%201/holds']);
+    expect(retry.loadSdk).not.toHaveBeenCalled();
   });
 
   it('loads the SDK only on the approval step', async () => {
@@ -126,15 +168,49 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     expect((await pending).state).toBe('cancelled');
   });
 
+  it('cancel() while the SDK is still loading never opens the popup (WEB-R2-06)', async () => {
+    const { sdk, calls } = stubSdk(() => {});
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const loadSdk = vi.fn(() => gate.then(() => sdk));
+    const adapter = new PayPalV6Adapter({
+      apiBase: 'http://api',
+      clientId: 'client-1',
+      loadSdk,
+      fetch: fakeFetch().fetch,
+    });
+    const pending = adapter.start(req, () => {});
+    await vi.waitFor(() => expect(loadSdk).toHaveBeenCalled());
+    adapter.cancel();
+    release();
+    expect((await pending).state).toBe('cancelled');
+    expect(calls).not.toContain('start');
+  });
+
+  it.each([
+    'https://www.paypal.com/checkoutnow?token=ord-1',
+    'javascript:alert(1)',
+    'https://user:pw@www.sandbox.paypal.com/approve',
+    'http://www.sandbox.paypal.com/approve',
+    'https://www.sandbox.paypal.com.evil.example/approve',
+  ])('refuses the redirect fallback for %s (WEB-R2-09)', async (approveUrl) => {
+    const t = make(() => {}, { orderId: 'ord-1', approveUrl }, true, true);
+    const result = await t.adapter.start(req, () => {});
+    expect(t.redirect).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ state: 'error', errorCode: 'popup_failed' });
+  });
+
   it('falls back to redirect approval when the popup fails', async () => {
     const t = make(
       () => {},
-      { orderId: 'ord-1', approveUrl: 'https://paypal.example/approve?token=ord-1' },
+      { orderId: 'ord-1', approveUrl: 'https://www.sandbox.paypal.com/approve?token=ord-1' },
       true,
       true,
     );
     const result = await t.adapter.start(req, (s) => t.states.push(s));
-    expect(t.redirect).toHaveBeenCalledWith('https://paypal.example/approve?token=ord-1');
+    expect(t.redirect).toHaveBeenCalledWith('https://www.sandbox.paypal.com/approve?token=ord-1');
     expect(result.state).toBe('awaiting_buyer');
     expect(result.errorCode).toBe('popup_failed');
   });
@@ -142,7 +218,7 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
   it('falls back to redirect when an SDK error is not a decline', async () => {
     const t = make((cb) => cb.onError({ code: 'AUTHORIZE_NOT_SUPPORTED' }), {
       orderId: 'ord-1',
-      approveUrl: 'https://paypal.example/approve',
+      approveUrl: 'https://sandbox.paypal.com/approve',
     });
     const result = await t.adapter.start(req, () => {});
     expect(t.redirect).toHaveBeenCalledTimes(1);
