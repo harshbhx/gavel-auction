@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -17,7 +16,6 @@ import { scenarioConfig } from './flow/scenario-runner';
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const scenario = loadScenarioFile(join(ROOT, 'scenarios', 'S10-abusive-input.yaml'));
 const raws = scenario.steps.flatMap((s) => (s.do === 'send_raw' ? [s.frame] : []));
-const JOIN = JSON.stringify({ v: 1, t: 'join', token: 'placeholder', auctionId: 'x' });
 
 const open: Array<{ stop(): Promise<void> }> = [];
 afterEach(async () => {
@@ -54,7 +52,7 @@ describe('S10 hostile frames through the composed server path', () => {
         if (res.value.t === 'bid') await room.submitBid(mallory.conn, res.value);
       },
     });
-    await hs.receive(JOIN);
+    await hs.receive(JSON.stringify({ v: 1, t: 'join', token: 'placeholder', auctionId }));
     expect(hs.hasJoined).toBe(true);
 
     const before = mallory.transport.messages('error').length;
