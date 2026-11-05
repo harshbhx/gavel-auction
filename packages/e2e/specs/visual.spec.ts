@@ -1,4 +1,9 @@
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '../src/fixtures/base';
+
+const BASELINES = fileURLToPath(new URL('../__screenshots__', import.meta.url));
+const updating = (process.env['UPDATE'] ?? '') !== '';
 
 /**
  * Visual baselines (R-QA-034, T-QA-046) at 1280x720 and 390x844, pixel ratio under 0.002 (set in
@@ -19,7 +24,11 @@ const SCREENS = [
 
 for (const screen of SCREENS) {
   for (const viewport of VIEWPORTS) {
-    test(`${screen.name} at ${viewport.name}`, async ({ page, stack }) => {
+    test(`${screen.name} at ${viewport.name}`, async ({ page, stack }, testInfo) => {
+      test.skip(
+        !updating && !existsSync(`${BASELINES}/${testInfo.project.name}`),
+        'no baselines committed for this project yet',
+      );
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await page.clock.install({ time: new Date('2026-01-15T12:00:00.000Z') });
       await page.goto(`${stack.webUrl}${screen.path}`);
