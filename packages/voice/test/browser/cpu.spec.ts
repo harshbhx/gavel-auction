@@ -22,11 +22,11 @@ interface CdpSession {
 }
 interface PageLike {
   evaluate(expr: string): Promise<unknown>;
-  context(): { newCDPSession(page: PageLike): Promise<CdpSession> };
   goto(url: string): Promise<unknown>;
 }
 interface BrowserLike {
   newContext(opts: { permissions: string[] }): Promise<{ newPage(): Promise<PageLike> }>;
+  newBrowserCDPSession(): Promise<CdpSession>;
   close(): Promise<void>;
 }
 interface PlaywrightLike {
@@ -134,7 +134,8 @@ async function main(): Promise<void> {
     const page = await ctx.newPage();
     // getUserMedia needs a secure context, and http://127.0.0.1 is one while about:blank is not.
     await page.goto(`http://127.0.0.1:${String(port)}/`);
-    const cdp = await page.context().newCDPSession(page);
+    // SystemInfo.getProcessInfo exists only on the browser target, not on a page session.
+    const cdp = await browser.newBrowserCDPSession();
     const state = await page.evaluate(PAGE_SETUP);
     // Idle baseline: tone is captured but the worklet is disconnected.
     await page.evaluate('window.__gavel.src.disconnect(window.__gavel.node)');
