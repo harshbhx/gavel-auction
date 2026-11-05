@@ -73,24 +73,30 @@ async function generate() {
   );
   const baseFile = join(root, 'api-extractor.json');
   const base = ExtractorConfig.loadFile(baseFile);
+  // The package under analysis lives outside node_modules (so it is analysed, not treated as an
+  // external library); the packages it imports live inside node_modules and stay external.
+  const own = join(root, '.api-types');
   const cache = join(root, 'node_modules', '.cache', 'api-types');
+  rmSync(own, { recursive: true, force: true });
   rmSync(cache, { recursive: true, force: true });
   mkdirSync(join(root, 'etc'), { recursive: true });
-  const mainOf = (pkg) =>
+  const mainOf = (dir, pkg) =>
     join(
-      cache,
+      dir,
       pkg,
       entryFor(pkg)
         .replace(/^src\//, '')
         .replace(/\.tsx?$/, '.d.ts'),
     );
   for (const pkg of PACKAGES) {
-    mkdirSync(join(cache, pkg), { recursive: true });
-    emitDeclarations(ts, pkg, join(cache, pkg));
+    for (const dir of [own, cache]) {
+      mkdirSync(join(dir, pkg), { recursive: true });
+      emitDeclarations(ts, pkg, join(dir, pkg));
+    }
   }
   // Workspace packages resolve to their emitted declarations, so they stay external imports.
   const paths = Object.fromEntries(
-    PACKAGES.map((p) => [`@gavel/${p}`, [mainOf(p).split(sep).join('/')]]),
+    PACKAGES.map((p) => [`@gavel/${p}`, [mainOf(cache, p).split(sep).join('/')]]),
   );
   const compiler = {
     overrideTsconfig: {
@@ -103,7 +109,7 @@ async function generate() {
       ...base,
       compiler,
       projectFolder: join(root, 'packages', pkg),
-      mainEntryPointFilePath: mainOf(pkg),
+      mainEntryPointFilePath: mainOf(own, pkg),
       apiReport: { ...base.apiReport, reportFolder: join(root, 'etc') + sep },
     };
     const prepared = ExtractorConfig.prepare({
@@ -114,11 +120,12 @@ async function generate() {
     const result = Extractor.invoke(prepared, { localBuild: true, showVerboseMessages: false });
     if (!result.succeeded) failed = true;
   }
+  rmSync(own, { recursive: true, force: true });
   return failed ? 1 : 0;
 }
 
 function changedReports() {
-  const out = execFileSync('git', ['status', '--porcelain', '--', 'etc'], {
+  const out = execFileSync('git', ['status', '--porcelain', '--untracked-files=all', '--', 'etc'], {
     cwd: root,
     encoding: 'utf8',
   });
