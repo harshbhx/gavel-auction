@@ -267,14 +267,14 @@ export class Room {
     return this.enqueue(async () => {
       if (this.stopped) {
         this.sendError(conn, 'host_fenced');
-        conn.transport.close(ERROR_TABLE.host_fenced.closeCode, 'host_fenced');
+        conn.transport.close(ERROR_TABLE.host_fenced.closeCode ?? 4010, 'host_fenced');
         return;
       }
       const mine = this.sameToken(conn);
       const supersedes = mine.length >= this.caps.connectionsPerBidder ? 1 : 0;
       if (this.conns.size - supersedes + 1 > this.caps.connectionsPerRoom) {
         this.sendError(conn, 'room_full');
-        conn.transport.close(ERROR_TABLE.room_full.closeCode, 'room_full');
+        conn.transport.close(ERROR_TABLE.room_full.closeCode ?? 4009, 'room_full');
         return;
       }
       this.supersedeOldest(conn);
@@ -380,7 +380,7 @@ export class Room {
   private fence(): void {
     if (this.stopped) return;
     this.stop();
-    const closeCode = ERROR_TABLE.host_fenced.closeCode;
+    const closeCode = ERROR_TABLE.host_fenced.closeCode ?? 4010;
     for (const conn of [...this.conns.values()]) {
       this.sendError(conn, 'host_fenced');
       conn.transport.close(closeCode, 'host_fenced');
