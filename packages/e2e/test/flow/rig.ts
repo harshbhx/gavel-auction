@@ -27,6 +27,7 @@ import {
   SeqIds,
   type AuctionConfig,
   type AuctionId,
+  type BidMsg,
   type BidderId,
   type ConnId,
 } from '@gavel/shared';
@@ -141,13 +142,14 @@ export async function enroll(
   auctionId: AuctionId,
   name: string,
   ceilingCents: number,
+  presetsCents: readonly number[] = CONFIG.ceilingPresets,
 ): Promise<Bidder> {
   const id = rig.ids.mint<'BidderId'>();
   const created = await rig.holdsApi.createHoldOrder({
     auctionId,
     bidderId: id,
     ceilingCents,
-    presetsCents: CONFIG.ceilingPresets,
+    presetsCents,
   });
   rig.paypal.core.approveOrder(created.orderId);
   await rig.holdsApi.completeApproval({ holdId: created.holdId, orderId: created.orderId });
@@ -157,14 +159,31 @@ export async function enroll(
   return { id, name, holdId: created.holdId, authId: hold?.authId ?? '', conn, transport };
 }
 
-export function bidMessage(rig: Rig, amount: number, source: 'manual' | 'voice') {
+/** What a voice bid carries from the parser: the confidence is required so the gate is exercised. */
+export interface VoiceFields {
+  confidence: number;
+  transcript: string;
+  ambiguous?: boolean;
+}
+
+export function bidMessage(rig: Rig, amount: number, source: 'manual'): BidMsg;
+export function bidMessage(rig: Rig, amount: number, source: 'voice', voice: VoiceFields): BidMsg;
+export function bidMessage(
+  rig: Rig,
+  amount: number,
+  source: 'manual' | 'voice',
+  voice?: VoiceFields,
+): BidMsg {
+  const base = { v: 1 as const, t: 'bid' as const, mid: rig.ids.mint<'MsgId'>(), amount };
+  if (source === 'manual') return { ...base, source: 'manual' };
+  // Main's default for a voice bid without fields: a high confidence so the gate passes.
+  if (voice === undefined) return { ...base, source: 'voice', confidence: 0.99 };
   return {
-    v: 1 as const,
-    t: 'bid' as const,
-    mid: rig.ids.mint<'MsgId'>(),
-    amount,
-    source,
-    ...(source === 'voice' ? { confidence: 0.99 } : {}),
+    ...base,
+    source: 'voice',
+    confidence: voice.confidence,
+    transcript: voice.transcript,
+    ...(voice.ambiguous === undefined ? {} : { ambiguous: voice.ambiguous }),
   };
 }
 
