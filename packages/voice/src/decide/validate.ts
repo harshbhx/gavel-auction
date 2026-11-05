@@ -13,6 +13,8 @@ export type Verdict =
       amountCents: Cents | null;
       /** Amounts that survived validation when the parse itself had several (R-VOX-065). */
       candidates?: readonly Cents[];
+      /** Per-bidder readings when the parse named several bidders (crosstalk, speaker vs paddle). */
+      choices?: readonly { bidderId: string; amountCents: Cents }[];
     }
   | { kind: 'drop'; reason: VoiceReason };
 
@@ -80,12 +82,65 @@ function validateCandidates(parse: ParseResult, ctx: BidContext, who: Resolved):
   };
 }
 
+function hasSeveralBidders(parse: ParseResult): boolean {
+  if (parse.status !== 'confirm' || parse.amountCents !== null) return false;
+  const keys = new Set<string>();
+  for (const c of parse.candidates) {
+    if (c.bidder !== null && c.amountCents !== null) keys.add(`${c.bidder.kind}:${c.bidder.value}`);
+  }
+  return keys.size > 1;
+}
+
+/**
+ * Candidates that name different bidders: each reading is checked against its own bidder, and
+ * every one that can be placed is offered, so no reading is lost (R12-V03).
+ */
+function validateBidders(parse: ParseResult, ctx: BidContext): Verdict {
+  if (ctx.lotState !== 'OPEN' && ctx.lotState !== 'CLOSING') {
+    return { kind: 'drop', reason: 'not_open' };
+  }
+  const choices: { bidderId: string; amountCents: Cents }[] = [];
+  let lastReason: VoiceReason = 'unknown_bidder';
+  for (const c of parse.candidates) {
+    if (c.bidder === null || c.amountCents === null) continue;
+    const who = resolve({ ...parse, bidder: c.bidder }, ctx);
+    if (who === null) {
+      lastReason = c.bidder.kind === 'paddle' ? 'unregistered_paddle' : 'unknown_bidder';
+      continue;
+    }
+    if (!who.holdActive) {
+      lastReason = 'not_open';
+      continue;
+    }
+    const why = rejection(c.amountCents, who, ctx);
+    if (why !== null) {
+      lastReason = why;
+      continue;
+    }
+    if (!choices.some((o) => o.bidderId === who.bidderId && o.amountCents === c.amountCents)) {
+      choices.push({ bidderId: who.bidderId, amountCents: c.amountCents });
+    }
+  }
+  const first = choices[0];
+  if (first === undefined) return { kind: 'drop', reason: lastReason };
+  return {
+    kind: 'confirm',
+    reason: parse.reason,
+    bidderId: first.bidderId,
+    amountCents: null,
+    candidates: [...new Set(choices.map((o) => o.amountCents))],
+    choices,
+  };
+}
+
 /**
  * Last-stage checks (R-VOX-064). Can only downgrade or reject: a parse that is not a clean
  * bid never becomes an accept.
  */
 export function validate(parse: ParseResult, ctx: BidContext): Verdict {
   if (parse.status === 'none') return { kind: 'drop', reason: parse.reason };
+
+  if (hasSeveralBidders(parse)) return validateBidders(parse, ctx);
 
   const who = resolve(parse, ctx);
   if (who === null) {

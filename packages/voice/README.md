@@ -7,8 +7,8 @@ Audio capture and framing, speech-to-text provider clients, the bid parser, the 
 ## What is here
 
 - `src/audio`: framing (20 ms frames, 100 ms batches), resampling, endpointing, recorder.
-- `src/stt`: provider interface, the Groq client, the fake and replay providers, `FailoverStt` and latency counters.
-- `src/parser`, `src/decide`, `src/llm`: spoken amount to a structured bid, merge of the rule and model readings, and a confirm prompt when the amount is ambiguous.
+- `src/stt`: provider interface, the Groq, Deepgram (`DeepgramStt`, `ReconnectingDeepgramStt`) and Web Speech (`WebSpeechStt`) clients, the fake and replay providers, `FailoverStt`, the push-to-talk `MuteController` (in `src/browser`) and latency counters.
+- `src/parser`, `src/decide`, `src/llm`: spoken amount to a structured bid, merge of the rule and model readings, and a confirm prompt when the amount is ambiguous. The model reading is not wired into the running pipeline: `PipelineDeps.llm` is synchronous and `createLlmClient().parse` is async, and there is no mapping from the model output (`negated`, `is_correction`, `currency`) to a parse. Without a model reading every bid scores below the auto threshold and asks for a confirm.
 - `src/pipeline`: `pipeline.ts` turns a segment into decisions, `bid-command.ts` maps a decision to an engine PlaceBid, `faults.ts` tracks speech and model health.
 - `src/session.ts`: one session per room and lot.
 - `fixtures`: audio, text cases and the replay timeline used by tests and the replay mode.

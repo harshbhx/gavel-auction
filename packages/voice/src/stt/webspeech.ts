@@ -54,8 +54,11 @@ export interface WebSpeechSttOptions {
 export interface WebSpeechStatePayload {
   provider: 'webspeech';
   label: typeof WEBSPEECH_LABEL;
-  /** Always false: the browser recognizer owns the microphone and no audio is uploaded by this code. */
-  audioUpload: false;
+  /**
+   * Always false: this code uploads no audio. The browser's own speech service (Google in
+   * Chrome) still receives it, so this is not a claim that audio stays on the device.
+   */
+  audioUploadedByThisCode: false;
   state: SttState;
 }
 
@@ -109,7 +112,7 @@ export class WebSpeechStt implements InstrumentedSttProvider {
     return {
       provider: 'webspeech',
       label: WEBSPEECH_LABEL,
-      audioUpload: false,
+      audioUploadedByThisCode: false,
       state: this.current,
     };
   }

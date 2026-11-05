@@ -25,7 +25,7 @@ function final(text: string, confidence: number): SttEvent {
   return { type: 'final', text, words: [], startMs: 0, endMs: 1000, confidence, speechFinal: true };
 }
 
-function run(text: string, confidence: number, price = 25000): Decision[] {
+function run(text: string, confidence: number, price = 25000, withModel = false): Decision[] {
   let n = 0;
   const pipeline = new VoicePipeline({
     roomId: 'room1',
@@ -33,6 +33,7 @@ function run(text: string, confidence: number, price = 25000): Decision[] {
     clock: () => 1500,
     ids: () => `seg-${++n}`,
     context: () => context(price),
+    ...(withModel ? { llm: (t: string) => parseBid(t) } : {}),
   });
   const out: PipelineOutput[] = pipeline.push(final(text, confidence));
   return out.flatMap((o) => (o.type === 'decision' ? [o.decision] : []));
@@ -60,10 +61,15 @@ describe('R12-V01 speech-to-text confidence reaches the pipeline decision', () =
     expect(d?.kind).not.toBe('accept');
   });
 
-  it('a clean bid with a good segment confidence is still accepted', () => {
-    const [d] = run('paddle seven five hundred', 0.95);
+  it('a clean bid with a good segment confidence is accepted when the model agrees', () => {
+    const [d] = run('paddle seven five hundred', 0.95, 25000, true);
     expect(d?.kind).toBe('accept');
     expect(d !== undefined && d.evidence.confidence < 1).toBe(true);
+  });
+
+  it('a clean bid with no model never auto-accepts, whatever the speech confidence', () => {
+    const [d] = run('paddle seven five hundred', 0.99);
+    expect(d?.kind).toBe('confirm');
   });
 });
 
@@ -122,4 +128,78 @@ describe('R12-V02 auctioneer patter is not a bid', () => {
       expect(ds.every((d) => d.kind !== 'accept')).toBe(true);
     });
   }
+});
+
+function twoPaddleContext(ceiling9 = 10_000_000): BidContext {
+  return {
+    ...context(25000),
+    roster: new Map([
+      ['7', { bidderId: B7, ceilingCents: 10_000_000, holdActive: true }],
+      ['9', { bidderId: 'bidder-9', ceilingCents: ceiling9, holdActive: true }],
+    ]),
+  };
+}
+
+describe('R12-V03 per-bidder candidates', () => {
+  it('two paddles with their own amounts keep each pair', () => {
+    const r = parseBid('paddle seven three hundred paddle nine four hundred');
+    expect(r.reason).toBe('multiple_bidders');
+    expect(r.candidates.map((c) => [c.bidder?.value, c.amountCents])).toEqual([
+      ['7', 30000],
+      ['9', 40000],
+    ]);
+    const v = validate(merge(r, null), twoPaddleContext());
+    expect(v.kind === 'confirm' && v.choices).toEqual([
+      { bidderId: B7, amountCents: 30000 },
+      { bidderId: 'bidder-9', amountCents: 40000 },
+    ]);
+  });
+
+  it('each reading is checked against its own bidder', () => {
+    const r = parseBid('paddle seven three hundred paddle nine four hundred');
+    const v = validate(merge(r, null), twoPaddleContext(35000));
+    expect(v.kind === 'confirm' && v.choices).toEqual([{ bidderId: B7, amountCents: 30000 }]);
+  });
+
+  it('a device mic speaker and the spoken paddle are both offered', () => {
+    const r = parseBid('paddle seven five hundred', { speakerBidderId: 'b12' });
+    expect(r.reason).toBe('multiple_bidders');
+    const ctx: BidContext = {
+      ...context(25000),
+      roster: new Map([
+        ['7', { bidderId: B7, ceilingCents: 10_000_000, holdActive: true }],
+        ['12', { bidderId: 'b12', ceilingCents: 10_000_000, holdActive: true }],
+      ]),
+    };
+    const v = validate(merge(r, null), ctx);
+    const ids = v.kind === 'confirm' ? (v.choices ?? []).map((c) => c.bidderId).sort() : [];
+    expect(ids).toEqual(['b12', B7]);
+  });
+
+  it('the pipeline prompt lists one option per bidder', () => {
+    let n = 0;
+    const pipeline = new VoicePipeline({
+      roomId: 'room1',
+      lotId: 'lot1',
+      clock: () => 1500,
+      ids: () => `seg-${++n}`,
+      context: () => twoPaddleContext(),
+    });
+    const out = pipeline.push(final('paddle seven three hundred paddle nine four hundred', 0.95));
+    const d = out.flatMap((o) => (o.type === 'decision' ? [o.decision] : []))[0];
+    expect(d?.kind).toBe('confirm');
+    if (d?.kind !== 'confirm') return;
+    expect(d.prompt.options.map((o) => [o.bidderId, o.amountCents])).toEqual([
+      [B7, 30000],
+      ['bidder-9', 40000],
+    ]);
+  });
+});
+
+describe('R12-V02 echo next to a bid forces a confirm', () => {
+  it('"fair warning, paddle seven, five hundred and fifty" never auto-accepts, even with a model', () => {
+    const ds = run('fair warning paddle seven five hundred and fifty', 0.95, 25000, true);
+    expect(ds.length).toBeGreaterThan(0);
+    expect(ds.every((d) => d.kind !== 'accept')).toBe(true);
+  });
 });

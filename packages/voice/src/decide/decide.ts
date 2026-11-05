@@ -66,6 +66,10 @@ function optionsFor(rules: ParseResult, verdict: Verdict, ctx: BidContext): Opti
       amountCents,
     });
   };
+  if (verdict.choices !== undefined && verdict.choices.length > 0) {
+    for (const c of verdict.choices) push(c.bidderId, c.amountCents);
+    return out;
+  }
   if (verdict.bidderId !== null) {
     if (verdict.candidates !== undefined) {
       for (const c of verdict.candidates) push(verdict.bidderId, c);

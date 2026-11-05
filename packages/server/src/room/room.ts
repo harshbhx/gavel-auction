@@ -1818,9 +1818,30 @@ export class Room {
     this.settlement = fresh.settlement;
     this.done = fresh.done;
     this.dirty = false;
+    if (moved) this.rebuildConfirms(fresh);
     this.armTimer();
     // Tell everyone about events they never saw: resend the state (R-RT-056).
     if (moved) for (const conn of this.conns.values()) this.sendState(conn);
+  }
+
+  /**
+   * The log moved past what this room knew, so the held bids are rebuilt from it: a hold the log
+   * already resolved goes (its timer is cancelled), a hold the log left open comes back armed.
+   * Without this a hold that was accepted could still expire later and tell the bidder a placed
+   * bid failed (R-RT-046). Expiry of an overdue hold runs through the queue, never inline.
+   */
+  private rebuildConfirms(fresh: Room): void {
+    this.confirms.clear();
+    const now = this.deps.clock.now();
+    for (const held of fresh.acceptedWithoutBid.values()) {
+      const again: PendingConfirm = { ...held, expiresAt: (now + CONFIRM_TTL_MS) as EpochMs };
+      this.confirms.add(again);
+      this.armConfirmTimer(again);
+    }
+    for (const held of fresh.openConfirms.values()) {
+      this.confirms.add(held);
+      this.armConfirmTimer(held, Math.max(held.expiresAt, now));
+    }
   }
 
   private async replay(): Promise<void> {

@@ -95,7 +95,7 @@ describe('WebSpeechStt (T-VOX-021)', () => {
     expect(provider.statePayload()).toEqual({
       provider: 'webspeech',
       label: 'Try-it mode, less accurate',
-      audioUpload: false,
+      audioUploadedByThisCode: false,
       state: 'closed',
     });
     await provider.start();
