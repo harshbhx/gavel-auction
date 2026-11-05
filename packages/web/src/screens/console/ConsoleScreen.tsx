@@ -72,6 +72,7 @@ export function ConsoleScreen({
         leaderName={leaderName}
         bidCount={stream.length}
         endTs={price?.endTs ?? 0}
+        frozenMs={price?.paused === true ? (price.remainingMs ?? null) : null}
         now={now}
         nextMinCents={price?.nextMinCents ?? reserve}
       />

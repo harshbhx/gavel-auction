@@ -24,6 +24,9 @@ export interface PriceView {
   nextMinCents: number;
   /** When bidding closes, in server time. */
   endTs: number;
+  /** The auctioneer froze the clock; `remainingMs` is what resume restores. */
+  paused: boolean;
+  remainingMs: number | null;
 }
 
 export type MyStatus =
@@ -72,7 +75,22 @@ export const selectPrice: Selector<PriceView | null> = memo((s) => {
     leaderPaddle: s.leaderPaddle,
     nextMinCents: snap.minNext,
     endTs: snap.endTs,
+    paused: snap.paused === true,
+    remainingMs: snap.remainingMs ?? null,
   };
+});
+
+/**
+ * What bidders should treat the lot as: the server reports a pause as OPEN plus `paused`, and the
+ * hammer closes the lot before any later snapshot says so.
+ */
+export const selectAuctionStatus: Selector<string | null> = memo((s) => {
+  const snap = s.snapshot;
+  if (snap === null) return null;
+  const live = snap.status === 'OPEN' || snap.status === 'PAUSED' || snap.status === 'SCHEDULED';
+  if (s.hammer !== null && live) return 'CLOSING';
+  if (snap.paused === true && snap.status === 'OPEN') return 'PAUSED';
+  return snap.status;
 });
 
 export const selectMyStatus: Selector<MyStatus> = memo((s) => {
@@ -138,6 +156,7 @@ export const selectConfirmQueue: Selector<readonly ConfirmRequestMsg[]> = memo(
 
 export const selectors = {
   price: selectPrice,
+  auctionStatus: selectAuctionStatus,
   myStatus: selectMyStatus,
   ceilingUsage: selectCeilingUsage,
   ladderRows: selectLadderRows,

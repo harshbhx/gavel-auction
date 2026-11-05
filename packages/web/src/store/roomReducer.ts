@@ -146,6 +146,10 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
           leaderId: msg.leaderId,
           endTs: msg.endTs,
           minNext: msg.minNext,
+          paused: msg.paused === true,
+          ...(msg.remainingMs === undefined ? {} : { remainingMs: msg.remainingMs }),
+          // A price frame on a lot that had not opened yet means it is open now.
+          status: s.status === 'SCHEDULED' ? 'OPEN' : s.status,
         }),
       );
     case 'registered': {

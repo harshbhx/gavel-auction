@@ -20,6 +20,8 @@ export interface PriceHeaderProps {
   nextMinCents: number;
   /** Tick period for the countdown, in ms. */
   tickMs?: number;
+  /** Set while the clock is frozen: shown as is, and the countdown stops. */
+  frozenMs?: number | null;
 }
 
 /** Fixed width tabular numerals so a price change never moves the layout (R-WEB-064). */
@@ -36,14 +38,17 @@ export function PriceHeader({
   now,
   nextMinCents,
   tickMs = 250,
+  frozenMs = null,
 }: PriceHeaderProps) {
-  const [remaining, setRemaining] = useState(() => endTs - now());
+  const [ticking, setRemaining] = useState(() => endTs - now());
+  const remaining = frozenMs ?? ticking;
 
   useEffect(() => {
+    if (frozenMs !== null) return undefined;
     setRemaining(endTs - now());
     const id = setInterval(() => setRemaining(endTs - now()), tickMs);
     return () => clearInterval(id);
-  }, [endTs, now, tickMs]);
+  }, [endTs, now, tickMs, frozenMs]);
 
   return (
     <header aria-label={t('bid.price')}>

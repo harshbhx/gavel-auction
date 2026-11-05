@@ -10,6 +10,7 @@ import {
   roster,
   stateMsg,
 } from '../../src/testing/builders';
+import { selectAuctionStatus, selectPrice } from '../../src/store/selectors';
 import type { ServerMessage } from '../../src/wire';
 
 const AUCTION = 'a1';
@@ -293,5 +294,42 @@ describe('registered (WEB-RT-15)', () => {
     });
     const r = run([snapshot(1), upd(2, 2, 'CAPTURED'), upd(3, 1, 'CAPTURING')]);
     expect(r.state.snapshot?.settlement).toEqual({ rev: 2, auctionState: 'CAPTURED' });
+  });
+});
+
+describe('lot status from price and hammer frames', () => {
+  const pausedPrice = (seq: number): ServerMessage => ({
+    ...priceMsg(seq, 1, 5_000),
+    paused: true,
+    remainingMs: 12_000,
+  });
+
+  it('shows paused from a server shaped price frame, then locks after the hammer', () => {
+    const start = run([stateMsg(1, openSnapshot(roster([1, 'A'])))]).state;
+    expect(selectAuctionStatus(start)).toBe('OPEN');
+    const paused = run([pausedPrice(2)], start).state;
+    expect(selectAuctionStatus(paused)).toBe('PAUSED');
+    expect(selectPrice(paused)?.remainingMs).toBe(12_000);
+    const closed = run(
+      [
+        {
+          v: 1,
+          t: 'hammer',
+          seq: 3,
+          ts: EpochMs(BASE_TIME + 3),
+          winnerId: bidderId(1),
+          price: Cents(5_000),
+          ranking: [],
+        },
+      ],
+      paused,
+    ).state;
+    expect(selectAuctionStatus(closed)).toBe('CLOSING');
+  });
+
+  it('treats a price frame on a scheduled lot as open', () => {
+    const start = run([stateMsg(1, openSnapshot(roster([1, 'A']), undefined, 'SCHEDULED'))]).state;
+    const opened = run([priceMsg(2, 1, 5_000)], start).state;
+    expect(selectAuctionStatus(opened)).toBe('OPEN');
   });
 });

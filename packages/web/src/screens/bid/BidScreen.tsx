@@ -6,6 +6,7 @@ import {
   selectCeilingUsage,
   selectConfirmQueue,
   selectMyStatus,
+  selectAuctionStatus,
   selectPrice,
   selectStream,
 } from '../../store/selectors';
@@ -58,7 +59,7 @@ export function BidScreen({
   const confirms = useRoom(selectConfirmQueue, store);
   const increment = useRoom((s) => s.snapshot?.config.minIncrement ?? 0, store);
   const reserve = useRoom((s) => s.snapshot?.config.reserve ?? 0, store);
-  const auctionStatus = useRoom((s) => s.snapshot?.status ?? null, store);
+  const auctionStatus = useRoom(selectAuctionStatus, store);
   const connection = useConnection();
 
   const status = myStatus(base, pending);
