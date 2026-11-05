@@ -114,3 +114,40 @@ describe('BidScreen (T-WEB-033)', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 });
+
+describe('BidScreen confirm sheet clock', () => {
+  it('uses server time, so a fast phone clock does not expire the question', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+    const store = new RoomStore();
+    const snap = {
+      ...openSnapshot(roster([12, 'Priya'])),
+      you: { bidderId: bidderId(12), ceiling: 50000 },
+    };
+    // The server reads 20 s behind this phone.
+    store.dispatch({ kind: 'wire', msg: stateMsg(1, snap as never, 980_000) }, 1_000_000);
+    store.dispatch(
+      {
+        kind: 'wire',
+        msg: {
+          v: 1,
+          t: 'confirm_request',
+          seq: 2,
+          ts: 980_000,
+          confirmId: 'c-clock',
+          amount: 35000,
+          expiresAt: 990_000,
+        } as never,
+      },
+      1_000_000,
+    );
+    render(<BidScreen store={store} onBid={vi.fn()} myPaddle={12} onConfirm={vi.fn()} />);
+    const yes = screen.getByRole('button', { name: t('confirm.yes') });
+    expect(yes.getAttribute('aria-disabled')).not.toBe('true');
+    expect(screen.queryByText(t('confirm.expired'))).toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(screen.getByText(t('confirm.expired'))).toBeTruthy();
+  });
+});

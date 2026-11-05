@@ -3,7 +3,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { t } from './copy/t';
 import { Icon } from './design/icons';
 import { Banner } from './design/primitives/Banner';
-import { loadSession } from './net/session';
+import { hasAuctioneerAccess } from './store/session';
 
 export type RouteTitleKey =
   | 'landing.start'
@@ -115,7 +115,7 @@ export function RouteScreen({ match }: RouteScreenProps): ReactNode {
   const title = titleFor(match);
   const roomId = match.params['roomId'];
   const blocked =
-    match.route.needsToken === true && (roomId === undefined || loadSession(roomId) === null);
+    match.route.needsToken === true && (roomId === undefined || !hasAuctioneerAccess(roomId));
 
   useEffect(() => {
     document.title = title;

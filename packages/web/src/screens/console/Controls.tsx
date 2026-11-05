@@ -68,7 +68,12 @@ export function Controls({
   priceCents,
 }: ControlsProps) {
   const [busy, setBusy] = useState(false);
-  const [hammerOpen, setHammerOpen] = useState(false);
+  // The leader and price the auctioneer was shown when the dialog opened. A bid that lands
+  // meanwhile must not be hammered under the old question.
+  const [shown, setShown] = useState<{
+    leader: HammerLeader | null;
+    priceCents: number;
+  } | null>(null);
   const [result, setResult] = useState('');
   const baseId = useId();
   const state: ControlState = { status, online, stopped, busy };
@@ -111,7 +116,7 @@ export function Controls({
           port.extend(extendMs),
         ),
     },
-    { name: 'hammer', label: t('console.hammer'), act: () => setHammerOpen(true) },
+    { name: 'hammer', label: t('console.hammer'), act: () => setShown({ leader, priceCents }) },
   ];
 
   return (
@@ -135,12 +140,20 @@ export function Controls({
       })}
       <p role="status">{result}</p>
       <HammerDialog
-        open={hammerOpen}
-        leader={leader}
-        priceCents={priceCents}
-        onCancel={() => setHammerOpen(false)}
+        open={shown !== null}
+        leader={shown === null ? leader : shown.leader}
+        priceCents={shown === null ? priceCents : shown.priceCents}
+        onCancel={() => setShown(null)}
         onConfirm={() => {
-          setHammerOpen(false);
+          const was = shown;
+          setShown(null);
+          if (was === null) return;
+          if (was.priceCents !== priceCents || was.leader?.paddle !== leader?.paddle) {
+            const changed = t('controls.hammerChanged');
+            setResult(changed);
+            announce('polite', changed, 'bid_rejected');
+            return;
+          }
           void run(t('console.hammer'), () => port.hammer(lotId));
         }}
       />
