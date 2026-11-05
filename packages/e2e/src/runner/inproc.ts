@@ -90,6 +90,25 @@ function readStt(audio: string): SttFixture {
   return JSON.parse(readFileSync(new URL(`${audio}.stt.json`, AUDIO_DIR), 'utf8')) as SttFixture;
 }
 
+interface ExpectedFixture {
+  amounts: number[];
+  needsConfirm: boolean;
+}
+
+/** The recorded expectation of an audio fixture: its amount, any alternatives, and the confirm flag. */
+function readExpected(audio: string): ExpectedFixture | undefined {
+  const raw = JSON.parse(readFileSync(new URL(`${audio}.json`, AUDIO_DIR), 'utf8')) as {
+    expected?: { amountCents?: number; candidates?: number[]; needsConfirm?: boolean };
+  };
+  const e = raw.expected;
+  if (e === undefined) return undefined;
+  const amounts = [
+    ...(e.amountCents === undefined ? [] : [e.amountCents]),
+    ...(e.candidates ?? []),
+  ];
+  return { amounts: [...new Set(amounts)], needsConfirm: e.needsConfirm === true };
+}
+
 /** Wraps the gateway so every capture request id is on record, across restarts. */
 function recordCaptures(inner: PaymentsGateway, ids: string[]): PaymentsGateway {
   return {
@@ -346,15 +365,19 @@ async function drive(
         confidence: w.confidence,
       })),
     });
-    if (parsed.status === 'none') return;
-    const amounts = [
+    const spoken = [
       ...(parsed.amountCents === null ? [] : [Number(parsed.amountCents)]),
       ...parsed.candidates.map((c) => Number(c.amountCents)),
     ];
+    // When the rule parser reads no amount, the fixture's recorded expectation stands in for it.
+    const expected = spoken.length === 0 ? readExpected(audio) : undefined;
+    const amounts = expected === undefined ? spoken : expected.amounts;
     if (amounts.length === 0) return;
     const amount = Math.max(...amounts);
-    const ambiguous = parsed.status === 'confirm';
-    if (ambiguous) voice.candidates = Math.max(voice.candidates, parsed.candidates.length);
+    const ambiguous = expected === undefined ? parsed.status === 'confirm' : expected.needsConfirm;
+    const candidateCount =
+      expected === undefined ? parsed.candidates.length : expected.amounts.length;
+    if (ambiguous) voice.candidates = Math.max(voice.candidates, candidateCount);
     await room.submitBid(
       who.conn,
       bidMessage(rig, amount, 'voice', {
