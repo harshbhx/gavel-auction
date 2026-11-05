@@ -33,6 +33,7 @@ describe('.env.example (INTEGRATION-R2-09)', () => {
       PUBLIC_URL: 'http://localhost:8080',
       TOKEN_SECRET: 'dev-secret',
       ADMIN_KEY: 'dev-admin-key',
+      NODE_ENV: 'test',
     });
     expect(r).toMatchObject({ ok: true });
   });
@@ -43,6 +44,7 @@ describe('payments mode switch', () => {
     PUBLIC_URL: 'http://localhost:8080',
     TOKEN_SECRET: 'dev-secret',
     ADMIN_KEY: 'dev-admin-key',
+    NODE_ENV: 'test',
   };
 
   it('refuses a PAYPAL_ENV that is not sandbox', () => {
