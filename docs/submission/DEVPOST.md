@@ -25,40 +25,40 @@ GAVEL makes each bid a PayPal AUTHORIZE hold.
 
 A TypeScript monorepo (npm workspaces, Node 22), with a Python reference implementation used for differential tests of the engine and the parser.
 
-| Package | Job |
-| --- | --- |
-| `packages/engine` | Auction rules, commands and events, hash-chained ledger, replay |
+| Package             | Job                                                                                                              |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `packages/engine`   | Auction rules, commands and events, hash-chained ledger, replay                                                  |
 | `packages/payments` | PayPal Orders v2 and Payments v2 client, hold service, settlement saga, webhook verification, fake PayPal server |
-| `packages/server` | Room and runtime service, HTTP routes, file stores, admin and ops |
-| `packages/voice` | Audio capture, speech-to-text clients, bid parser, replay of recorded audio |
-| `packages/web` | Bidder, auctioneer console, big screen, audit and replay screens |
-| `packages/shared` | Money, ids, wire types and contracts shared by the others |
-| `packages/e2e` | Property tests, sandbox specs, gate runners |
+| `packages/server`   | Room and runtime service, HTTP routes, file stores, admin and ops                                                |
+| `packages/voice`    | Audio capture, speech-to-text clients, bid parser, replay of recorded audio                                      |
+| `packages/web`      | Bidder, auctioneer console, big screen, audit and replay screens                                                 |
+| `packages/shared`   | Money, ids, wire types and contracts shared by the others                                                        |
+| `packages/e2e`      | Property tests, sandbox specs, gate runners                                                                      |
 
 Real PayPal sandbox gates (see `docs/GATES.md`, evidence files under `docs/evidence`):
 
-| Gate | Question | Status on main |
-| --- | --- | --- |
-| G0 | Sandbox connectivity | Reported passed by the team. `docs/GATES.md` has no G0 section and there is no `docs/evidence/G0/` file on main, so the owner confirms it before this row is final |
-| G1 | Authorize 500, capture 350 with final_capture: is the 150 remainder released? | PASS for wallet and card buyers (2026-11-04 wallet, 2026-11-05 card). The remainder reads released after the final capture; an explicit void then answers 422 PREVIOUSLY_CAPTURED |
-| G2 | Card and guest AUTHORIZE in the JS SDK v6 | PASS (2026-11-05): wallet and guest card both authorized, HTTP 201 |
-| G3 | Honor period versus validity, and reauthorize | Running; results expected around 9 Nov. `docs/GATES.md` reads NOT RUN until a result is recorded |
-| G4 | Webhook signature verification on real events | PASS (2026-11-05): 6 real deliveries each verified SUCCESS |
-| G5 | Speech-to-text accuracy on noisy bids | Not run yet (needs provider keys and recordings). A text-level parser run exists and says nothing about speech accuracy |
+| Gate | Question                                                                      | Status on main                                                                                                                                                                    |
+| ---- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G0   | Sandbox connectivity                                                          | Reported passed by the team. `docs/GATES.md` has no G0 section and there is no `docs/evidence/G0/` file on main, so the owner confirms it before this row is final                |
+| G1   | Authorize 500, capture 350 with final_capture: is the 150 remainder released? | PASS for wallet and card buyers (2026-11-04 wallet, 2026-11-05 card). The remainder reads released after the final capture; an explicit void then answers 422 PREVIOUSLY_CAPTURED |
+| G2   | Card and guest AUTHORIZE in the JS SDK v6                                     | PASS (2026-11-05): wallet and guest card both authorized, HTTP 201                                                                                                                |
+| G3   | Honor period versus validity, and reauthorize                                 | Running; results expected around 9 Nov. `docs/GATES.md` reads NOT RUN until a result is recorded                                                                                  |
+| G4   | Webhook signature verification on real events                                 | PASS (2026-11-05): 6 real deliveries each verified SUCCESS                                                                                                                        |
+| G5   | Speech-to-text accuracy on noisy bids                                         | Not run yet (needs provider keys and recordings). A text-level parser run exists and says nothing about speech accuracy                                                           |
 
 ## What is real versus simulated
 
-| Part | Real | Simulated or recorded | Source |
-| --- | --- | --- | --- |
-| Authorize, capture 350 with final_capture, remainder release | Observed on the PayPal sandbox for a wallet and a card buyer | Tests of the saga run against the project's fake PayPal | G1 evidence |
-| Card and guest AUTHORIZE | Observed on the sandbox in SDK v6 | n/a | G2 evidence |
-| Webhook signature verification | 6 real sandbox events verified through PayPal's endpoint | Tampered-event rejection and the retry schedule are tested against the fake only | G4 evidence |
-| Honor period and reauthorize | Not yet recorded (G3 running) | Saga reauthorize logic tested against the fake | G3 pending |
-| Settlement of a whole auction (many holds, crash and resume) | Not run end to end on the sandbox | Run against the fake PayPal, in tests | saga tests |
-| Speech-to-text accuracy | Not measured (G5 pending) | Parser measured on text transcripts only: 169 cases, wrong accepts 0.000 | G5-text |
-| Demo replay | n/a | A recorded auction played back read only, labelled "Recorded" on screen | replay player |
-| Hosted demo | OWNER: state the real deployed status when it is known | | `docs/DEMO.md` |
-| Money | No real money moves anywhere. All PayPal calls are sandbox | | all |
+| Part                                                         | Real                                                         | Simulated or recorded                                                            | Source         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | -------------------------------------------------------------------------------- | -------------- |
+| Authorize, capture 350 with final_capture, remainder release | Observed on the PayPal sandbox for a wallet and a card buyer | Tests of the saga run against the project's fake PayPal                          | G1 evidence    |
+| Card and guest AUTHORIZE                                     | Observed on the sandbox in SDK v6                            | n/a                                                                              | G2 evidence    |
+| Webhook signature verification                               | 6 real sandbox events verified through PayPal's endpoint     | Tampered-event rejection and the retry schedule are tested against the fake only | G4 evidence    |
+| Honor period and reauthorize                                 | Not yet recorded (G3 running)                                | Saga reauthorize logic tested against the fake                                   | G3 pending     |
+| Settlement of a whole auction (many holds, crash and resume) | Not run end to end on the sandbox                            | Run against the fake PayPal, in tests                                            | saga tests     |
+| Speech-to-text accuracy                                      | Not measured (G5 pending)                                    | Parser measured on text transcripts only: 169 cases, wrong accepts 0.000         | G5-text        |
+| Demo replay                                                  | n/a                                                          | A recorded auction played back read only, labelled "Recorded" on screen          | replay player  |
+| Hosted demo                                                  | OWNER: state the real deployed status when it is known       |                                                                                  | `docs/DEMO.md` |
+| Money                                                        | No real money moves anywhere. All PayPal calls are sandbox   |                                                                                  | all            |
 
 ## Challenges and what we learned
 
