@@ -214,3 +214,25 @@ describe('production rules (R-RT-131)', () => {
     expect(r.ok && r.config.MAX_CONN_PER_BIDDER).toBe(3);
   });
 });
+
+describe('secret rules under NODE_ENV=test (R7S-05)', () => {
+  const short = { TOKEN_SECRET: 'a', ADMIN_KEY: 'b' };
+
+  it('rejects NODE_ENV=test with a public https host', () => {
+    const r = parseConfig({
+      ...good,
+      ...short,
+      NODE_ENV: 'test',
+      PUBLIC_URL: 'https://real.example',
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.join('\n')).toMatch(/NODE_ENV/);
+      expect(r.errors.join('\n')).toMatch(/TOKEN_SECRET/);
+    }
+  });
+
+  it('still allows short secrets for NODE_ENV=test on a local host', () => {
+    expect(parseConfig({ ...good, ...short, NODE_ENV: 'test' }).ok).toBe(true);
+  });
+});

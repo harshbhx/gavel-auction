@@ -1,5 +1,5 @@
 import { SystemClock } from '@gavel/shared';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -146,5 +146,32 @@ describe('server entry point (INT-R3-17)', () => {
       ),
     ).rejects.toThrow('exit');
     expect(lines.join('\n')).toContain('TOKEN_SECRET');
+  });
+
+  it('releases the lock and stops payments even when the service close throws (R7S-07)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gavel-close-'));
+    dirs.push(dir);
+    const app = await composeServer(
+      { ...base, STORE: 'file', DATA_DIR: dir, PAYMENTS: 'fake' },
+      { sink: () => undefined },
+    );
+    expect(existsSync(join(dir, 'gavel.lock'))).toBe(true);
+    app.service.close = () => Promise.reject(new Error('boom'));
+    await expect(app.close()).rejects.toThrow('boom');
+    expect(existsSync(join(dir, 'gavel.lock'))).toBe(false);
+  });
+
+  it('warns at boot about a previous secret with no end time (R7S-06)', async () => {
+    const lines: string[] = [];
+    const app = await composeServer(
+      {
+        ...base,
+        LOG_LEVEL: 'warn',
+        TOKEN_SECRET_PREVIOUS: 'p'.repeat(40),
+      },
+      { sink: (l) => void lines.push(l) },
+    );
+    running.push(app);
+    expect(lines.join('\n')).toMatch(/TOKEN_SECRET_PREVIOUS is set with no/);
   });
 });

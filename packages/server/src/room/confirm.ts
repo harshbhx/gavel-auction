@@ -41,13 +41,14 @@ export function isVoiceLike(msg: BidMsg): boolean {
 
 /**
  * True when a bid must be confirmed before the engine may see it: a voice bid whose
- * confidence is below the threshold, one with no confidence at all (fail closed), or one
- * the parser flagged as ambiguous (R-RT-045).
+ * confidence is below the threshold (a missing one counts as zero), or one the parser flagged as
+ * ambiguous (R-RT-045). A bid labelled qr or manual that carries a transcript or confidence is
+ * voice too, so it is held like one.
  */
 export function needsConfirm(msg: BidMsg, threshold: number): boolean {
   if (!isVoiceLike(msg)) return false;
   if (msg.ambiguous === true) return true;
-  return msg.confidence === undefined || msg.confidence < threshold;
+  return (msg.confidence ?? 0) < threshold;
 }
 
 /** The held bids of one room, at most one per bidder. */
