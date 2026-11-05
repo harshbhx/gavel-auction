@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { validateCeiling } from '../src/ceiling.js';
+import { DEFAULT_MAX_CEILING_CENTS } from '../src/config.js';
 import { PayPalError } from '../src/errors.js';
 
-const rules = { maxCeilingCents: 25000, presetsCents: [1, 25000] };
+const rules = { maxCeilingCents: 25000, presetsCents: [100, 25000] };
 
 function refused(fn: () => unknown): boolean {
   try {
@@ -31,9 +32,26 @@ function createHold(gw: CountingGateway, ceiling: number): void {
 }
 
 describe('T-PAY-006 ceiling validator', () => {
-  it('refuses 0, -1, 25001 and accepts 25000, 1', () => {
-    const results = [0, -1, 25001, 25000, 1].map((c) => refused(() => validateCeiling(c, rules)));
-    expect(results).toEqual([true, true, true, false, false]);
+  it('refuses 0, -1, 99, 25001 and accepts 25000, 100', () => {
+    const results = [0, -1, 99, 25001, 25000, 100].map((c) =>
+      refused(() => validateCeiling(c, rules)),
+    );
+    expect(results).toEqual([true, true, true, true, false, false]);
+  });
+
+  it('refuses a ceiling below the engine minimum even when it is a listed preset', () => {
+    expect(refused(() => validateCeiling(50, { maxCeilingCents: 25000, presetsCents: [50] }))).toBe(
+      true,
+    );
+  });
+
+  it('accepts every engine preset under the default cap', () => {
+    const presets = [10000, 25000, 50000, 100000];
+    for (const c of presets) {
+      expect(
+        validateCeiling(c, { maxCeilingCents: DEFAULT_MAX_CEILING_CENTS, presetsCents: presets }),
+      ).toBe(c);
+    }
   });
 
   it('refuses non-integers and non-finite values', () => {
@@ -49,7 +67,7 @@ describe('T-PAY-006 ceiling validator', () => {
     const r = { maxCeilingCents: 25000, presetsCents: [5000, 10000] };
     expect(validateCeiling(5000, r)).toBe(5000);
     expect(refused(() => validateCeiling(7500, r))).toBe(true);
-    expect(refused(() => validateCeiling(1, { ...r, presetsCents: [] }))).toBe(true);
+    expect(refused(() => validateCeiling(100, { ...r, presetsCents: [] }))).toBe(true);
   });
 
   it('fails closed when the presets are omitted by a caller that bypasses the type', () => {

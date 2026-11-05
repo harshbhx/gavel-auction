@@ -418,3 +418,20 @@ Consequences:
 - Reopening this needs the supersede flow above, with a regression test per component.
 
 Evidence: packages/payments/src/holds/service.ts (hold_exists), packages/server/src/room/room.ts (registerBidder), packages/server/src/runtime/auction-service.ts (heldRefs), packages/server/test/room.test.ts, R-ENG-040, R-RT-054, R-PAY-031.
+
+## D-0024: /metrics needs the admin key and is rate limited
+
+Date: 2026-11-05
+Status: accepted
+Owner: server
+Context: `GET /metrics` answered anyone with connection counts, bid volume, latency and webhook and rate-limit counters, which tells an attacker when a flood takes effect.
+Decision: `/metrics` stays on the public listener but requires the `x-admin-key` header (the same constant-time check as `/ops/rooms`), answers 401 without it, and answers 429 with `retry-after` past 60 requests per minute for the whole route. Webhook outcomes, bids, rejected bids and rate limit hits are fed into the collector from the webhook guard and the room.
+Alternatives:
+
+- A separate internal listener: rejected, the host has one port and no private network on the demo deployment.
+
+Consequences:
+
+- A scraper must send the admin key; unauthenticated probes see 401 only.
+
+Evidence: packages/server/src/http/metrics.ts, packages/server/test/metrics.test.ts, R-RT-135, R-RT-137.
