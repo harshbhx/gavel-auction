@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { evaluate } from '../check-interface-label.mjs';
+import { evaluate, simplifyBrands } from '../check-interface-label.mjs';
+
+describe('brand spelling for the report', () => {
+  it('turns a unique symbol key into a plain property', () => {
+    const src =
+      'declare const centsBrand: unique symbol;\nexport type Cents = number & {\n    readonly [centsBrand]: "Cents";\n};\n';
+    const out = simplifyBrands(src);
+    assert.equal(out.includes('unique symbol'), false);
+    assert.equal(out.includes('__brand_centsBrand: "Cents"'), true);
+  });
+});
 
 describe('interface label policy', () => {
   it('passes when no report changed', () => {

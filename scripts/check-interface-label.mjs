@@ -9,7 +9,7 @@
 // report themselves. Inputs for --check: --labels or PR_LABELS (comma separated), and the
 // working tree, which must hold freshly generated reports compared against HEAD.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -61,8 +61,27 @@ function emitDeclarations(ts, pkg, outDir) {
   const program = ts.createProgram([join(pkgDir, entryFor(pkg))], options, host);
   const inside = (f) => !relative(srcDir, f).startsWith('..') && !f.endsWith('.d.ts');
   for (const sf of program.getSourceFiles()) {
-    if (inside(resolve(sf.fileName))) program.emit(sf, undefined, undefined, true, undefined, true);
+    if (inside(resolve(sf.fileName))) {
+      program.emit(sf, writeDeclaration, undefined, true, undefined, true);
+    }
   }
+}
+
+/**
+ * api-extractor cannot follow a computed key whose symbol is not exported, which is how the
+ * branded types are written (`[centsBrand]`). The temporary declaration spells the brand as a
+ * plain property instead; the committed report then shows the same public surface.
+ */
+export function simplifyBrands(text) {
+  const names = [...text.matchAll(/^declare const (\w+): unique symbol;\r?\n/gm)].map((m) => m[1]);
+  let out = text.replace(/^declare const \w+: unique symbol;\r?\n/gm, '');
+  for (const name of names) out = out.split(`[${name}]`).join(`__brand_${name}`);
+  return out;
+}
+
+function writeDeclaration(fileName, text) {
+  mkdirSync(dirname(fileName), { recursive: true });
+  writeFileSync(fileName, simplifyBrands(text));
 }
 
 async function generate() {
