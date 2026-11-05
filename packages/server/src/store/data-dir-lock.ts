@@ -7,6 +7,7 @@ import {
   readFileSync,
   statSync,
   unlinkSync,
+  utimesSync,
   writeSync,
 } from 'node:fs';
 import { hostname } from 'node:os';
@@ -29,7 +30,13 @@ export interface LockOptions {
   startMs?: number;
   now?: () => number;
   isAlive?: (pid: number) => boolean;
+  /** How often the holder refreshes the lock file's mtime; default 10 s, 0 turns it off. */
+  heartbeatMs?: number;
 }
+
+/** A lock owned by another host is stale once its mtime is this many heartbeats old. */
+const HEARTBEAT_MISSES = 3;
+const DEFAULT_HEARTBEAT_MS = 10_000;
 
 interface Owner {
   pid: number;
@@ -116,10 +123,24 @@ export function acquireDataDirLock(dir: string, opts: LockOptions = {}): DataDir
     if (!heldHere.has(file) && tryCreate()) {
       heldHere.add(file);
       let released = false;
+      const beatMs = opts.heartbeatMs ?? DEFAULT_HEARTBEAT_MS;
+      const beat =
+        beatMs > 0
+          ? setInterval(() => {
+              try {
+                const t = new Date();
+                utimesSync(file, t, t);
+              } catch {
+                // the lock is gone; release() copes with that
+              }
+            }, beatMs)
+          : undefined;
+      beat?.unref();
       return {
         release: () => {
           if (released) return;
           released = true;
+          if (beat !== undefined) clearInterval(beat);
           heldHere.delete(file);
           try {
             if (readFileSync(file, 'utf8') !== mine) return; // someone else's lock now
@@ -153,11 +174,27 @@ export function acquireDataDirLock(dir: string, opts: LockOptions = {}): DataDir
         throw new Error(`data directory ${dir} has a lock being written; refusing to start`);
       }
     } else {
-      // The recorded pid is this process's own pid: the lock is from an earlier life of the
-      // container (pid 1 on every start) and cannot be held by anyone else.
-      if (owner.pid !== me.pid && isAlive(owner.pid)) {
+      const sameHost = owner.host === '' || owner.host === me.host;
+      let live: boolean;
+      if (sameHost) {
+        // Same pid on the same host: an earlier life of this container (pid 1 on every start)
+        // unless the record says it started after us. A pid in another namespace is not probed.
+        live = owner.pid === me.pid ? owner.start > me.start : isAlive(owner.pid);
+      } else {
+        // Another host: a pid probe says nothing there. The lock is live while its owner
+        // keeps refreshing the file.
+        let age = 0;
+        try {
+          age = now() - statSync(file).mtimeMs;
+        } catch {
+          continue;
+        }
+        const beatMs = opts.heartbeatMs ?? DEFAULT_HEARTBEAT_MS;
+        live = beatMs <= 0 || age < beatMs * HEARTBEAT_MISSES;
+      }
+      if (live) {
         throw new Error(
-          `data directory ${dir} is in use by process ${String(owner.pid)}; refusing to start`,
+          `data directory ${dir} is in use by process ${String(owner.pid)} on ${owner.host}; refusing to start`,
         );
       }
     }
