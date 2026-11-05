@@ -15,7 +15,8 @@ export type LotStatus = 'PENDING' | 'OPEN' | 'CLOSING' | 'SETTLING' | 'DONE';
 export type BidSource = 'voice' | 'manual' | 'qr';
 
 export type IncrementRule =
-  { flatCents: number } | { ladder: Array<{ fromCents: number; incrementCents: number }> };
+  | { flatCents: number }
+  | { ladder: Array<{ fromCents: number; incrementCents: number }> };
 
 export interface SoftClose {
   windowMs: number;

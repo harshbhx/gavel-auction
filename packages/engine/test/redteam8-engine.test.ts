@@ -34,14 +34,14 @@ const promoteCmd = (at: number, key = id('PRK')) =>
   mk(at, { type: 'PromoteRunnerUp', lotId: L1, disqualifiedBidderId: B, reason: 'declined' }, key);
 
 describe('red team round 8 engine fixes', () => {
-  it('T-ENG-R8-01 R8-E01 a promotion after the capture is refused and keeps the winner', () => {
+  it('T-ENG-149 R8-E01 a promotion after the capture is refused and keeps the winner', () => {
     const s = captured(hammered(), 310);
     expect(s.lots[L1]?.captureSeen).toBe(true);
     expect(errCode(() => decide(s, promoteCmd(400)))).toBe('state_continuity');
     expect(s.lots[L1]?.winnerId).toBe(B);
   });
 
-  it('T-ENG-R8-01 R8-E01 a promotion while releasing is refused, one before the capture still works', () => {
+  it('T-ENG-150 R8-E01 a promotion while releasing is refused, one before the capture still works', () => {
     let s = hammered();
     s = step(s, 310, 'HELD', 'BIDDING');
     s = step(s, 320, 'BIDDING', 'WINNER_SELECTED');
@@ -54,7 +54,7 @@ describe('red team round 8 engine fixes', () => {
     expect(errCode(() => decide(voiding, promoteCmd(400)))).toBe('state_continuity');
   });
 
-  it('T-ENG-R8-02 R8-E02 a promotion that ends unsold from CAPTURING retries as a duplicate', () => {
+  it('T-ENG-151 R8-E02 a promotion that ends unsold from CAPTURING retries as a duplicate', () => {
     let s = open(scene(), L1);
     s = bid(s, 200, A, 1000).state;
     s = run(s, mk(300, { type: 'Hammer', lotId: L1, actor: 'host', early: true })).state;
@@ -74,10 +74,10 @@ describe('red team round 8 engine fixes', () => {
     expect(errCode(() => decide(first.state, cmd(B, 420)))).toBe('command_conflict');
   });
 
-  it('T-ENG-R8-03 R8-E04 a raise on a revoked bidder is refused in both scopes', () => {
+  it('T-ENG-152 R8-E04 a raise on a revoked bidder is refused in both scopes', () => {
     for (const lotId of [undefined, L1]) {
       const scope = lotId === undefined ? {} : { lotId };
-      let s = scene();
+      let s = scene({ config: { holdScope: lotId === undefined ? 'event' : 'lot' } });
       s = run(
         s,
         mk(1, {
@@ -100,7 +100,7 @@ describe('red team round 8 engine fixes', () => {
     }
   });
 
-  it('T-ENG-R8-04 R8-E03 the public hammer entry of a proxy lot drops the ranking maxima', () => {
+  it('T-ENG-153 R8-E03 the public hammer entry of a proxy lot drops the ranking maxima', () => {
     const lotId = id('M9');
     const events = [
       { type: 'AUCTION_CREATED', payload: { title: 'Gala', config: {} } },
@@ -184,7 +184,7 @@ describe('red team round 8 engine fixes', () => {
         audit: {},
       });
 
-    it('T-ENG-R8-05 one bidder cannot fill the lot', () => {
+    it('T-ENG-154 one bidder cannot fill the lot', () => {
       const s = base(filler(LIMITS.bidsPerBidderPerLot, A, 1000));
       expect(decide(s, place(A, 1100)).outcome).toEqual({
         kind: 'rejected',
@@ -193,9 +193,9 @@ describe('red team round 8 engine fixes', () => {
       expect(decide(s, place(B, 1200)).outcome.kind).toBe('accepted');
     });
 
-    it('T-ENG-R8-05 the reserved slots only take a bid that leads', () => {
+    it('T-ENG-155 the reserved slots only take a bid that leads', () => {
       const bids = [
-        ...filler(LIMITS.bidsPerLot - LIMITS.bidsReservedForLead - 1000, B, 1000),
+        ...Array.from({ length: 17 }, (_v, k) => filler(1000, `F${k}`, 1000)).flat(),
         ...filler(1000, A, 3000),
       ].map((b, i) => ({ ...b, bidId: `x${i}`, seq: i }));
       const s = base(bids);

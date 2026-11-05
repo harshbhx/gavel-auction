@@ -456,12 +456,12 @@ Consequences:
 
 Evidence: packages/engine/src/decide/pause.ts, packages/engine/test/pause-lot.test.ts, packages/shared/src/ceilings.ts, packages/server/test/ceiling-policy.test.ts, R-RT-048, R-RT-049, R-ENG-014, R-ENG-040, R-PAY-031.
 
-## D-0026: Engine hardening from red team round 8
+## D-0026: Engine hardening from review round 8
 
 Date: 2026-11-05
 Status: accepted
 Owner: engine
-Context: Round 8 found that a promotion could follow the capture, that its retry could conflict, that the public hammer entry exposed proxy maxima, that a raise on a revoked bidder was a silent no-op, and that one account could fill a lot's bid cap (R8-E01 to R8-E05).
+Context: Review round 8 found that a promotion could follow the capture, that its retry could conflict, that the public hammer entry exposed proxy maxima, that a raise on a revoked bidder was a silent no-op, and that one account could fill a lot's bid cap (R8-E01 to R8-E05).
 Decision: PromoteRunnerUp is refused with `state_continuity` once the settlement is CAPTURED, VOIDING or SETTLED, and FALLBACK_PROMOTED resets `captureSeen`. The fallback settlement step a promotion injects is remembered as part of PromoteRunnerUp. The public export drops `ranking[].amountCents` from the hammer entry of a proxy lot. A raise on a revoked record is refused with `bad_command`. `LIMITS` gains `bidsPerBidderPerLot` (2000) and `bidsReservedForLead` (1000): one bidder may record at most 2000 bids on a lot, and the last 1000 slots of the lot cap only take a bid that takes the lead.
 Alternatives:
 
