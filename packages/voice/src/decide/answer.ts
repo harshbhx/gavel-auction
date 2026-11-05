@@ -100,7 +100,7 @@ export interface SpokenContext {
 function normalizeReply(text: string): string {
   return text
     .toLowerCase()
-    .replace(/’/g, "'")
+    .replace(/\u2019/g, "'")
     .replace(/[^\p{L}\p{N}']+/gu, ' ')
     .trim();
 }
