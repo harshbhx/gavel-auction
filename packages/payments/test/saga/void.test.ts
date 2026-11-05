@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { canonicalJson, type Journal } from '../../src/types.js';
 import { assertFakeInvariants } from '../../src/fake/invariants.js';
 import { runCapturePhase } from '../../src/saga/capture.js';
-import { newJournal } from '../../src/saga/create.js';
 import { runSettlement, runVoidPhase, voidRequestId } from '../../src/saga/void.js';
 import { CEILINGS, callsOf, makeRig, planFor, refusal, seed, withGateway } from './rig.js';
+import { freshJournal } from '../helpers/age.js';
 
 describe('T-PAY-035 no sale', () => {
   it('no candidates and three holds: three voids, SETTLED, winner null', async () => {
     const rig = makeRig(CEILINGS);
-    await rig.journals.create(newJournal(planFor(rig, CEILINGS, [])));
+    await rig.journals.create(freshJournal(planFor(rig, CEILINGS, [])));
     const out = await runSettlement(rig.deps, 'auc1');
     expect(out.status).toBe('settled');
     if (out.status !== 'settled') return;
@@ -32,7 +32,7 @@ describe('T-PAY-035 no sale', () => {
   it('every candidate below the reserve is a no sale and every hold is voided', async () => {
     const rig = makeRig(CEILINGS);
     await rig.journals.create(
-      newJournal(
+      freshJournal(
         planFor(
           rig,
           CEILINGS,
@@ -169,7 +169,7 @@ describe('T-PAY-042 void outcomes', () => {
     const second = await runSettlement(rig.deps, 'auc1');
     expect(second.status).toBe('settled');
     if (second.status !== 'settled') return;
-    expect(second.journal.resumes).toBe(1);
+    expect(second.journal.resumes).toBe(0);
     expect(rig.core.inspect(rig.auth['b2'] ?? '').voidEffects).toBe(1);
     assertFakeInvariants(rig.core);
   });

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { newJournal } from '../../src/saga/create.js';
 import {
   auditEventFor,
   emittingAudit,
@@ -10,6 +9,7 @@ import {
 import { runSettlement } from '../../src/saga/void.js';
 import { canonicalJson } from '../../src/types.js';
 import { CEILINGS, makeRig, planFor, seed, type Rig } from './rig.js';
+import { freshJournal } from '../helpers/age.js';
 
 async function runWithFallback(): Promise<{
   rig: Rig;
@@ -145,7 +145,7 @@ describe('payload builders', () => {
 
   it('settlementUpdateFor shows a hold voided under its hold id as VOIDED', () => {
     const rig = makeRig(CEILINGS);
-    const j = newJournal(planFor(rig, CEILINGS, [['b1', 22000]]));
+    const j = freshJournal(planFor(rig, CEILINGS, [['b1', 22000]]));
     j.voids['hold-b2'] = 'voided';
     j.voids['constructor'] = 'voided';
     const holds = settlementUpdateFor(j, 9).holds;
@@ -155,7 +155,7 @@ describe('payload builders', () => {
 
   it('settlementUpdateFor on a fresh journal has every hold HELD and no capture', () => {
     const rig = makeRig(CEILINGS);
-    const j = newJournal(planFor(rig, CEILINGS, [['b1', 22000]]));
+    const j = freshJournal(planFor(rig, CEILINGS, [['b1', 22000]]));
     expect(settlementUpdateFor(j, 9)).toEqual({
       type: 'settlement_update',
       auctionId: 'auc1',

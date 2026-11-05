@@ -19,7 +19,12 @@ const SECRET_KEYS = new Set([
   'surname',
   'full_name',
   'payer_id',
+  'account_id',
+  'business_name',
+  'tax_id',
+  'birth_date',
   'merchant_id',
+  'app_id',
   'address_line_1',
   'address_line_2',
   'admin_area_1',
@@ -68,12 +73,27 @@ export const EvidenceRecord = z.object({
 });
 export type EvidenceRecord = z.infer<typeof EvidenceRecord>;
 
-function redactValue(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(redactValue);
+/** Objects whose plain string `name` is a person or cardholder name, not an error name. */
+const PERSONAL_PARENTS: ReadonlySet<string> = new Set([
+  'payment_source',
+  'card',
+  'paypal',
+  'payer',
+  'shipping',
+  'billing_address',
+]);
+
+function redactValue(value: unknown, personal = false): unknown {
+  if (Array.isArray(value)) return value.map((v) => redactValue(v, personal));
   if (value !== null && typeof value === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      out[k] = SECRET_KEYS.has(k.toLowerCase()) ? REDACTED : redactValue(v);
+      const key = k.toLowerCase();
+      if (SECRET_KEYS.has(key) || (personal && key === 'name' && typeof v === 'string')) {
+        out[k] = REDACTED;
+      } else {
+        out[k] = redactValue(v, personal || PERSONAL_PARENTS.has(key));
+      }
     }
     return out;
   }
@@ -82,7 +102,61 @@ function redactValue(value: unknown): unknown {
 
 /** Returns a deep copy with secret-bearing fields replaced by [REDACTED]. */
 export function redact<T>(record: T): T {
-  return redactValue(record) as T;
+  return redactResponse(redactValue(record)) as T;
+}
+
+/** Response headers that are kept as they are; every other response header is replaced. */
+const RESPONSE_HEADER_ALLOWLIST: ReadonlySet<string> = new Set([
+  'content-type',
+  'paypal-debug-id',
+  'date',
+]);
+
+const URL_IN_TEXT = /https?:\/\/[^\s"'<>]+/g;
+
+/** Replaces every query value in a URL with [REDACTED], keeping the parameter names. */
+function redactUrlQuery(url: string): string {
+  return url.replace(/([?&][^=&#]+=)[^&#]*/g, `$1${REDACTED}`);
+}
+
+/** Redacts query values of every URL inside a string, for example PayPal payer-action links. */
+function redactUrlsInText(text: string): string {
+  return text.replace(URL_IN_TEXT, redactUrlQuery);
+}
+
+/** Response body fields that carry per-response values and no evidence. */
+const RESPONSE_BODY_DROP_KEYS: ReadonlySet<string> = new Set(['nonce', 'server-timing']);
+
+function dropBodyFields(value: unknown): unknown {
+  if (typeof value === 'string') return redactUrlsInText(value);
+  if (Array.isArray(value)) return value.map(dropBodyFields);
+  if (value !== null && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = RESPONSE_BODY_DROP_KEYS.has(k.toLowerCase()) ? REDACTED : dropBodyFields(v);
+    }
+    return out;
+  }
+  return value;
+}
+
+/** Applies the response header allowlist, drops nonce fields and redacts URL query values in bodies. */
+function redactResponse(record: unknown): unknown {
+  if (record === null || typeof record !== 'object') return record;
+  const rec = record as Record<string, unknown>;
+  const res = rec['response'];
+  if (res === null || typeof res !== 'object') return record;
+  const out: Record<string, unknown> = { ...(res as Record<string, unknown>) };
+  const headers = out['headers'];
+  if (headers !== null && typeof headers === 'object') {
+    const kept: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(headers as Record<string, unknown>)) {
+      kept[k] = RESPONSE_HEADER_ALLOWLIST.has(k.toLowerCase()) ? v : REDACTED;
+    }
+    out['headers'] = kept;
+  }
+  if ('body' in out) out['body'] = dropBodyFields(out['body']);
+  return { ...rec, response: out };
 }
 
 const EMAIL_SHAPE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.[A-Za-z]{2,}/;
@@ -99,13 +173,18 @@ const TOKEN_PATTERNS: ReadonlyArray<RegExp> = [
 /** The shape of buildRequestId output: an idempotency key, not a credential. */
 const REQUEST_ID_SHAPE = /\bgv1-[A-Z2-7]{40}\b/g;
 
+/** PayPal error and issue names, for example AUTHORIZATION_NOT_HONORED_AFTER_HONOR_PERIOD. */
+const ISSUE_NAME_SHAPE = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g;
+
 /** Returns the JSON paths of string values that look like credentials. */
 export function lintTokens(record: unknown): string[] {
   const hits: string[] = [];
   const walk = (value: unknown, path: string): void => {
     if (typeof value === 'string') {
       if (value === REDACTED) return;
-      const text = value.replace(REQUEST_ID_SHAPE, 'request-id');
+      const text = value
+        .replace(REQUEST_ID_SHAPE, 'request-id')
+        .replace(ISSUE_NAME_SHAPE, 'issue-name');
       if (TOKEN_PATTERNS.some((p) => p.test(text)) || EMAIL_SHAPE.test(text)) hits.push(path);
     } else if (Array.isArray(value)) {
       value.forEach((v, i) => walk(v, `${path}[${i}]`));

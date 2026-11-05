@@ -22,7 +22,7 @@ export interface PaymentsConfig {
 
 export const DEFAULT_BASE_URL = 'https://api-m.sandbox.paypal.com';
 export const DEFAULT_FAKE_BASE_URL = 'http://127.0.0.1';
-export const DEFAULT_MAX_CEILING_CENTS = 25000;
+export const DEFAULT_MAX_CEILING_CENTS = 100000;
 export const DEFAULT_HOLD_MAX_AGE_MS = 7200000;
 
 /**
@@ -71,12 +71,38 @@ function required(env: Env, name: string): string {
   return v;
 }
 
+/** Variable names this module reads (`GAVEL_PAYMENTS_FAKE` is only a fallback, see `LoadConfigOptions`). */
+export const PAYMENTS_ENV_KEYS: readonly string[] = [
+  'PAYPAL_ENV',
+  'PAYPAL_CLIENT_ID',
+  'PAYPAL_CLIENT_SECRET',
+  'PAYPAL_WEBHOOK_ID',
+  'PAYPAL_BASE_URL',
+  'GAVEL_MAX_CEILING_CENTS',
+  'GAVEL_HOLD_MAX_AGE_MS',
+];
+
+export interface LoadConfigOptions {
+  /**
+   * Outside fake mode PAYPAL_WEBHOOK_ID must be set, because an empty id makes every real
+   * delivery fail verification at PayPal. Callers that never receive webhooks (the gate and
+   * demo scripts) pass false.
+   */
+  requireWebhookId?: boolean;
+  /**
+   * Fake mode, decided by the caller. The server passes it from its own PAYMENTS setting so
+   * one switch rules every package. When absent, GAVEL_PAYMENTS_FAKE=1 in `env` still selects
+   * it, which the standalone gates and demos rely on.
+   */
+  fake?: boolean;
+}
+
 /** Parse environment variables into a typed config (R-PAY-001). */
-export function loadConfig(env: Env): PaymentsConfig {
+export function loadConfig(env: Env, opts: LoadConfigOptions = {}): PaymentsConfig {
   if (env['PAYPAL_ENV'] !== 'sandbox') {
     throw new PaymentsConfigError('payments_not_sandbox', 'PAYPAL_ENV must equal "sandbox"');
   }
-  const fake = env['GAVEL_PAYMENTS_FAKE'] === '1';
+  const fake = opts.fake ?? env['GAVEL_PAYMENTS_FAKE'] === '1';
   const baseUrl = env['PAYPAL_BASE_URL'] || (fake ? DEFAULT_FAKE_BASE_URL : DEFAULT_BASE_URL);
   return {
     env: 'sandbox',
@@ -84,7 +110,10 @@ export function loadConfig(env: Env): PaymentsConfig {
     clientSecret: fake
       ? (env['PAYPAL_CLIENT_SECRET'] ?? '')
       : required(env, 'PAYPAL_CLIENT_SECRET'),
-    webhookId: env['PAYPAL_WEBHOOK_ID'] ?? '',
+    webhookId:
+      fake || opts.requireWebhookId === false
+        ? (env['PAYPAL_WEBHOOK_ID'] ?? '')
+        : required(env, 'PAYPAL_WEBHOOK_ID'),
     baseUrl,
     maxCeilingCents: positiveInt(env, 'GAVEL_MAX_CEILING_CENTS', DEFAULT_MAX_CEILING_CENTS),
     fake,

@@ -30,6 +30,9 @@ describe('T-VOX-032 duplicates and idempotency key (R-VOX-032)', () => {
     expect(idempotencyKey('room1', 'lot1', 1200, 'two fifty')).toBe(a);
     expect(idempotencyKey('room1', 'lot1', 1300, 'two fifty')).not.toBe(a);
     expect(idempotencyKey('room1', 'lot1', 1200, 'two sixty')).not.toBe(a);
+    expect(idempotencyKey('room1', 'lot1', 1200, 'two fifty', 'mic1')).not.toBe(
+      idempotencyKey('room1', 'lot1', 1200, 'two fifty', 'mic2'),
+    );
     expect(a).toMatch(/^room1:lot1:1200:[0-9a-f]{12}$/);
   });
 

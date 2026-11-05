@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { FakePayPalServer } from '../src/fake/server.js';
 import { fetchAccessToken, type GateResponse } from './http.js';
+import { gateCurrency } from './gateUtil.js';
 import {
   EXIT_REFUSED,
   GateUsageError,
@@ -101,7 +102,7 @@ function approveLink(json: unknown): string {
 }
 
 const AMOUNT = (value: string): { currency_code: string; value: string } => ({
-  currency_code: 'USD',
+  currency_code: gateCurrency(),
   value,
 });
 

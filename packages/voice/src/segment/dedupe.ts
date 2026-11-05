@@ -15,17 +15,22 @@ export function normalizeForDedupe(text: string): string {
     .join(' ');
 }
 
-/** Stable key: identical (room, lot, audioStartMs, text) always gives the identical key. */
+/**
+ * Stable key: identical (room, lot, audioStartMs, text) always gives the identical key. A stream
+ * source or epoch is appended when given, so two microphones at one offset do not collide.
+ */
 export function idempotencyKey(
   roomId: string,
   lotId: string,
   audioStartMs: number,
   text: string,
+  stream?: string,
 ): string {
   const norm = normalizeForDedupe(text);
   const digest = createHash('sha1').update(norm, 'utf8').digest('hex').slice(0, 12);
   // ':' inside an id is escaped, so ('a:b', 'c') and ('a', 'b:c') never collide.
-  return `${encodeURIComponent(roomId)}:${encodeURIComponent(lotId)}:${audioStartMs}:${digest}`;
+  const base = `${encodeURIComponent(roomId)}:${encodeURIComponent(lotId)}:${audioStartMs}:${digest}`;
+  return stream === undefined ? base : `${base}:${encodeURIComponent(stream)}`;
 }
 
 /** Remembers when each normalized text was last processed. Time is always passed in. */

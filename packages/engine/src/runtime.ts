@@ -20,6 +20,22 @@ import { initialState } from './state.js';
 import type { AuctionState } from './state.js';
 import type { Ulid } from './types.js';
 
+/**
+ * The head to check a replay against. When the store grew after the head was read, the
+ * entries contain that head: it is checked at its own seq and the replay needs no further
+ * anchor, so a healthy ledger is never reported as truncated. A mismatch keeps the head,
+ * which the replay then reports as truncated.
+ */
+function anchor(
+  entries: readonly LedgerEntry[],
+  head: { seq: number; hash: string } | undefined,
+): { seq: number; hash: string } | undefined {
+  if (head === undefined) return undefined;
+  const last = entries[entries.length - 1];
+  if (last === undefined || last.seq <= head.seq) return head;
+  return entries[head.seq - 1]?.hash === head.hash ? undefined : head;
+}
+
 export type RuntimeResult = DecideResult & { entries: LedgerEntry[] };
 
 export interface RuntimeOptions {
@@ -80,9 +96,11 @@ export class AuctionRuntime {
 
   /** Queues a command behind earlier ones for the same auction and resolves after the append. */
   dispatch(cmd: Command): Promise<RuntimeResult> {
-    const key = cmd.auctionId;
+    return this.enqueue(cmd.auctionId, () => this.execute(cmd));
+  }
+
+  private enqueue<T>(key: string, run: () => Promise<T>): Promise<T> {
     const tail = this.tails.get(key) ?? Promise.resolve();
-    const run = (): Promise<RuntimeResult> => this.execute(cmd);
     const next = tail.then(run, run);
     const settled = next.then(
       () => undefined,
@@ -95,24 +113,30 @@ export class AuctionRuntime {
     return next;
   }
 
-  /** Current state of an auction, after every command queued so far. */
-  async state(auctionId: Ulid): Promise<AuctionState> {
-    const tail = this.tails.get(auctionId) ?? Promise.resolve();
-    await tail;
-    return this.hydrate(auctionId);
+  /**
+   * Current state of an auction, after every command queued so far. The read runs in the
+   * same per-auction queue as commands, so it never overlaps an append from this runtime.
+   */
+  state(auctionId: Ulid): Promise<AuctionState> {
+    return this.enqueue(auctionId, () => this.hydrate(auctionId));
   }
 
   private async hydrate(auctionId: Ulid): Promise<AuctionState> {
     const cached = this.cache.get(auctionId);
     if (cached !== undefined) return cached;
+    // The head is read before the entries, so a writer that appends in between can only
+    // make the entries newer than the head, never older (R-ENG-099).
+    const head = await this.headOf(auctionId);
     const entries = await this.store.read(auctionId, 1);
     const state =
-      entries.length === 0
-        ? initialState
-        : replay(entries, this.hasher, await this.headOf(auctionId));
+      entries.length === 0 ? initialState : replay(entries, this.hasher, anchor(entries, head));
     // An auction id that has no ledger is not remembered, so random ids cannot grow the cache.
-    if (entries.length > 0) this.cache.set(auctionId, state);
-    return state;
+    // A state older than one already cached is never stored over it.
+    const newer = this.cache.get(auctionId);
+    if (entries.length > 0 && (newer === undefined || newer.head.seq < state.head.seq)) {
+      this.cache.set(auctionId, state);
+    }
+    return newer !== undefined && newer.head.seq >= state.head.seq ? newer : state;
   }
 
   private async headOf(auctionId: Ulid): Promise<{ seq: number; hash: string } | undefined> {

@@ -166,8 +166,13 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
         priceCents: null,
         unsoldReason: e.payload.reason,
         // A lot that was hammered and then lost its last candidate releases its hold (ENG-R2-11).
+        // A lot waiting for manual review keeps that state; it is never overwritten (R4-E10).
         settlement:
-          l.status === 'SETTLING' && l.settlement !== 'SETTLED' ? 'VOIDING' : l.settlement,
+          l.status === 'SETTLING' &&
+          l.settlement !== 'SETTLED' &&
+          l.settlement !== 'FAILED_NEEDS_REVIEW'
+            ? 'VOIDING'
+            : l.settlement,
       }));
     case 'LOT_ABORTED':
       return setLot(s, e.payload.lotId, (l) => ({
@@ -178,7 +183,11 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
         abortReason: e.payload.reason,
       }));
     case 'SETTLEMENT_STATE':
-      return setLot(s, e.payload.lotId, (l) => ({ ...l, settlement: e.payload.to }));
+      return setLot(s, e.payload.lotId, (l) => ({
+        ...l,
+        settlement: e.payload.to,
+        captureSeen: l.captureSeen || e.payload.to === 'CAPTURED',
+      }));
     case 'LOT_SETTLED':
       return setLot(s, e.payload.lotId, (l) => ({
         ...l,

@@ -98,13 +98,49 @@ export function signWebhook(parts: SignatureParts, key: string = FAKE_SIGNING_KE
   return mac.digest('hex');
 }
 
-/** The JSON body of a webhook event as the fake sends it. */
+const RESOURCE_TYPES: Record<string, { type: string; status: string }> = {
+  'CHECKOUT.ORDER.APPROVED': { type: 'checkout-order', status: 'APPROVED' },
+  'PAYMENT.AUTHORIZATION.CREATED': { type: 'authorization', status: 'CREATED' },
+  'PAYMENT.AUTHORIZATION.VOIDED': { type: 'authorization', status: 'VOIDED' },
+  'PAYMENT.CAPTURE.COMPLETED': { type: 'capture', status: 'COMPLETED' },
+};
+
+function resourceId(resource: Record<string, string | number>): string | undefined {
+  for (const k of ['captureId', 'authId', 'orderId']) {
+    const v = resource[k];
+    if (typeof v === 'string') return v;
+  }
+  return undefined;
+}
+
+/**
+ * The JSON body of a webhook event as the fake sends it. Carries the top-level
+ * fields real sandbox events have (event_version, resource_type, resource_version,
+ * summary, links, recorded by gate G4) and, in the resource, an id, a status and
+ * links next to the simulator-only fields the receiver reads.
+ */
 export function eventBody(event: FakeWebhookEvent, createTime: string): string {
+  const meta = RESOURCE_TYPES[event.eventType];
+  const base = 'https://api.sandbox.paypal.com/v1/notifications/webhooks-events';
+  const rid = resourceId(event.resource);
+  const resource: Record<string, unknown> = { ...event.resource };
+  if (rid !== undefined && resource['id'] === undefined) resource['id'] = rid;
+  if (meta !== undefined && resource['status'] === undefined) resource['status'] = meta.status;
+  resource['create_time'] ??= createTime;
+  resource['update_time'] ??= createTime;
   return JSON.stringify({
     id: event.id,
-    event_type: event.eventType,
+    event_version: '1.0',
     create_time: createTime,
-    resource: event.resource,
+    resource_type: meta?.type ?? 'unknown',
+    resource_version: '2.0',
+    event_type: event.eventType,
+    summary: event.eventType,
+    resource,
+    links: [
+      { href: `${base}/${event.id}`, rel: 'self', method: 'GET' },
+      { href: `${base}/${event.id}/resend`, rel: 'resend', method: 'POST' },
+    ],
   });
 }
 

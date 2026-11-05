@@ -10,10 +10,11 @@ import type { HoldTruth, Journal } from '../types.js';
  * whole hold as used or released nothing is done. When an open remainder is
  * possible it is voided explicitly and recorded `remainder_voided`.
  *
- * UNVERIFIED (G1): whether PayPal releases the remainder by itself after a final
- * capture. Fallback: the explicit void is always attempted when the hold is larger
+ * VERIFIED (G1, sandbox, wallet buyer): PayPal releases the remainder by itself after
+ * a final capture, and a void afterwards answers 422 PREVIOUSLY_CAPTURED. Card buyers
+ * are untested, so the explicit void stays as the fallback when the hold is larger
  * than the capture; a refusal that says the authorization is already captured,
- * voided or expired counts as released (no second effect). Both fake modes
+ * voided or expired counts as released (not_found is not: the hold may still be live) (no second effect). Both fake modes
  * (`autoReleaseRemainder` true and false) are tested. If the void is refused for
  * another reason the remainder is recorded `remainder_unreleased` and left to
  * expire (G1 decision C); the settlement still completes.
@@ -42,7 +43,6 @@ const RELEASED_KINDS: ReadonlySet<string> = new Set([
   'already_captured',
   'already_voided',
   'expired',
-  'not_found',
 ]);
 
 /** Checks the winner's authorization and voids an open remainder. Does not touch the journal. */

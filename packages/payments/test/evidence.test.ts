@@ -85,4 +85,94 @@ describe('evidence (T-PAY-070)', () => {
     expect(problems.map((p) => p.line)).toEqual([1, 2]);
     expect(problems[1]?.errors).toEqual(['invalid json']);
   });
+
+  it('redacts non-allowlisted response headers and nonce fields before the lint', () => {
+    const noisy = 'dc;desc=ewogICJrZXkiOiAidmFsdWUiCn0KZXhhbXBsZXZhbHVlMTIzNDU2Nzg5MDEyMzQ1Ng';
+    const record: EvidenceRecord = {
+      ...base,
+      response: {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'PayPal-Debug-Id': 'abc123',
+          Date: 'Tue, 04 Nov 2026 10:15:00 GMT',
+          'Server-Timing': noisy,
+        },
+        body: { status: 'COMPLETED', nonce: noisy, nested: { nonce: noisy } },
+      },
+    };
+    const out = redact(record);
+    expect(out.response?.headers).toEqual({
+      'Content-Type': 'application/json',
+      'PayPal-Debug-Id': 'abc123',
+      Date: 'Tue, 04 Nov 2026 10:15:00 GMT',
+      'Server-Timing': '[REDACTED]',
+    });
+    expect(out.response?.body).toEqual({
+      status: 'COMPLETED',
+      nonce: '[REDACTED]',
+      nested: { nonce: '[REDACTED]' },
+    });
+    expect(() => toJsonlLine(record)).not.toThrow();
+  });
+
+  it('keeps the lint strict for other response headers and body fields', () => {
+    const token = 'A21AAKexampleexampleexampleexample1234';
+    const out = redact({
+      ...base,
+      response: { status: 200, headers: { 'X-Other': token }, body: { note: token } },
+    });
+    expect(out.response?.headers?.['X-Other']).toBe('[REDACTED]');
+    expect(lintTokens(out)).toEqual(['response.body.note']);
+  });
+
+  it('redacts payer account ids and cardholder names but keeps error names', () => {
+    const order = {
+      payment_source: {
+        paypal: { account_id: 'ABCD1234', name: { given_name: 'A', surname: 'B' } },
+        card: { name: 'Jane Buyer', last_digits: '1111', brand: 'VISA' },
+      },
+      name: 'UNPROCESSABLE_ENTITY',
+      details: [{ issue: 'X' }],
+    };
+    const r = redact(order);
+    const text = JSON.stringify(r);
+    expect(text).not.toContain('ABCD1234');
+    expect(text).not.toContain('Jane Buyer');
+    expect(r.name).toBe('UNPROCESSABLE_ENTITY');
+    expect(r.payment_source.card.last_digits).toBe('1111');
+  });
+
+  it('redacts the query values of links in response bodies', () => {
+    const order = {
+      ...base,
+      response: {
+        status: 200,
+        body: {
+          id: 'ORDER0000000000000',
+          links: [
+            {
+              href: 'https://www.sandbox.paypal.com/checkoutnow?token=TOKEN00000000000',
+              method: 'GET',
+              rel: 'payer-action',
+            },
+            {
+              href: 'https://www.sandbox.paypal.com/webapps/x?ba_token=BA-4W123456789012345&approve=1&flow=wallet#frag',
+              method: 'GET',
+              rel: 'approve',
+            },
+          ],
+        },
+      },
+    };
+    const r = redact(order);
+    const links = (r.response?.body as { links: { href: string }[] }).links;
+    expect(links[0]?.href).toBe('https://www.sandbox.paypal.com/checkoutnow?token=[REDACTED]');
+    expect(links[1]?.href).toBe(
+      'https://www.sandbox.paypal.com/webapps/x?ba_token=[REDACTED]&approve=[REDACTED]&flow=[REDACTED]#frag',
+    );
+    expect(JSON.stringify(r)).not.toContain('TOKEN00000000000');
+    expect(lintTokens(r)).toEqual([]);
+    expect(() => toJsonlLine(order)).not.toThrow();
+  });
 });

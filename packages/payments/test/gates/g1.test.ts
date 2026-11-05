@@ -3,7 +3,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { lintJsonl, lintTokens, redact } from '../../gates/evidence.js';
-import { decideG1, runG1, summarizeDecisions, type G1Observed } from '../../gates/g1.js';
+import {
+  CREATED_OR_REPLAYED,
+  decideG1,
+  must,
+  ORDER_CREATED_STATUSES,
+  runG1,
+  summarizeDecisions,
+  type G1Observed,
+} from '../../gates/g1.js';
 import { EXIT_OK, EXIT_REFUSED } from '../../gates/runner.js';
 
 let out: string;
@@ -61,6 +69,10 @@ describe('decideG1 (SPEC 7.3)', () => {
     expect(
       decideG1({ captureHttp: 201, authStatusAfterCapture: 'CAPTURED', voidHttp: 422 }),
     ).toEqual({ decision: 'A', remainderOpen: false });
+    // The authorization reads CAPTURED but the void is accepted: the remainder was still held.
+    expect(
+      decideG1({ captureHttp: 201, authStatusAfterCapture: 'CAPTURED', voidHttp: 201 }),
+    ).toEqual({ decision: 'B', remainderOpen: true });
     expect(
       decideG1({ captureHttp: 201, authStatusAfterCapture: 'PARTIALLY_CAPTURED', voidHttp: 201 }),
     ).toEqual({ decision: 'B', remainderOpen: true });
@@ -73,11 +85,41 @@ describe('decideG1 (SPEC 7.3)', () => {
   });
 });
 
+describe('G1 status asserts', () => {
+  const reply = (status: number) => ({ status, headers: {}, text: '', json: {}, latencyMs: 1 });
+
+  it('accepts 201 and a 200 idempotent replay on order creation and authorize', () => {
+    expect(CREATED_OR_REPLAYED).toEqual([200, 201]);
+    expect(() => must(reply(201), CREATED_OR_REPLAYED, 'order creation', 'wallet')).not.toThrow();
+    expect(() => must(reply(200), CREATED_OR_REPLAYED, 'order creation', 'wallet')).not.toThrow();
+    expect(() => must(reply(200), CREATED_OR_REPLAYED, 'authorize', 'card')).not.toThrow();
+  });
+
+  it('still rejects other statuses and names every accepted one', () => {
+    expect(() => must(reply(404), CREATED_OR_REPLAYED, 'order creation', 'wallet')).toThrow(
+      'G1 wallet: order creation answered HTTP 404, expected 200 or 201',
+    );
+    expect(() => must(reply(204), 200, 'order read after approval', 'card')).toThrow(
+      'expected 200',
+    );
+  });
+
+  it('accepts only CREATED or PAYER_ACTION_REQUIRED as a fresh order status', () => {
+    expect(ORDER_CREATED_STATUSES).toEqual(['CREATED', 'PAYER_ACTION_REQUIRED']);
+    expect(ORDER_CREATED_STATUSES.includes('APPROVED')).toBe(false);
+  });
+});
+
 describe('summarizeDecisions', () => {
   it('passes when every buyer is A', () => {
     const s = summarizeDecisions([obs('wallet', 'A'), obs('card', 'A')]);
     expect(s.decision).toBe('PASS');
     expect(s.fallback).toBe('');
+  });
+  it('is not a full PASS when the card buyer was never run', () => {
+    const s = summarizeDecisions([obs('wallet', 'A')]);
+    expect(s.decision).toBe('PASS-WITH-FALLBACK');
+    expect(s.fallback).toContain('card untested');
   });
   it('is PASS-WITH-FALLBACK for B', () => {
     expect(summarizeDecisions([obs('wallet', 'B')]).decision).toBe('PASS-WITH-FALLBACK');
@@ -112,11 +154,11 @@ describe('G1 against the fake (T-PAY-079)', () => {
     expect(records.every((r) => r.assertion === undefined || r.assertion.pass)).toBe(true);
   });
 
-  it('open remainder: the fake still reports CAPTURED, so the status-based decision is A', async () => {
+  it('open remainder: the fake reads CAPTURED but accepts the void, so the decision is B', async () => {
     const code = await run(['--fake-remainder', 'open']);
     expect(code).toBe(EXIT_OK);
-    expect(lines.some((l) => l.includes('G1 decision: wallet=A, card=A'))).toBe(true);
-    expect(readFileSync(join(out, 'GATES.md'), 'utf8')).toContain('Decision: PASS');
+    expect(lines.some((l) => l.includes('G1 decision: wallet=B, card=B'))).toBe(true);
+    expect(readFileSync(join(out, 'GATES.md'), 'utf8')).toContain('Decision: PASS-WITH-FALLBACK');
   });
 });
 
@@ -164,6 +206,13 @@ describe('personal fields in evidence (PAYMENTS-R2-12)', () => {
       token: 'z',
     });
     expect(JSON.stringify(r)).not.toMatch(/example\.test|1 Road|"P1"|"M1"/);
+  });
+
+  it('lint accepts a long upper-case issue name but still rejects a mixed-case token', () => {
+    expect(
+      lintTokens({ name: 'UNPROCESSABLE_ENTITY AUTHORIZATION_NOT_HONORED_AFTER_HONOR_PERIOD' }),
+    ).toEqual([]);
+    expect(lintTokens({ note: 'AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCdEf' })).toEqual(['note']);
   });
 
   it('lint rejects an email-shaped value that was not redacted', () => {
