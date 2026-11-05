@@ -117,3 +117,78 @@ describe('WAV encoder (T-VOX-017)', () => {
     expect(view.getUint32(40, true)).toBe(pcm.length * 2);
   });
 });
+
+function noise(samples: number, amplitude: number, seed: number): Int16Array {
+  const buf = new Int16Array(samples);
+  let x = seed;
+  for (let i = 0; i < samples; i++) {
+    x = (x * 1103515245 + 12345) & 0x7fffffff;
+    buf[i] = Math.round((x / 0x7fffffff - 0.5) * 2 * amplitude);
+  }
+  return buf;
+}
+
+/** Noise at about -55 dBFS RMS with an optional 440 Hz tone at about -25 dBFS RMS on top. */
+function room(samples: number, seed: number, speech: boolean): Int16Array {
+  const n = noise(samples, 100, seed);
+  if (!speech) return n;
+  const tone = sineSamples(0.0795, samples);
+  for (let i = 0; i < samples; i++) n[i] = (n[i] ?? 0) + (tone[i] ?? 0);
+  return n;
+}
+
+function join(...parts: Int16Array[]): Int16Array {
+  const out = new Int16Array(parts.reduce((a, p) => a + p.length, 0));
+  let o = 0;
+  for (const p of parts) {
+    out.set(p, o);
+    o += p.length;
+  }
+  return out;
+}
+
+describe('Endpointer in a real room (R7-07)', () => {
+  it('detects speech at -25 dBFS over a -55 dBFS noise floor', () => {
+    const ep = new Endpointer();
+    const pcm = join(
+      room(SAMPLE_RATE, 1, false),
+      room(SAMPLE_RATE, 2, true),
+      room(SAMPLE_RATE, 3, false),
+    );
+    expect(feedInFrames(ep, pcm, 0, 0).length).toBe(1);
+  });
+
+  it('detects speech that is already playing when the stream opens', () => {
+    const ep = new Endpointer();
+    const pcm = join(room(SAMPLE_RATE, 4, true), room(SAMPLE_RATE, 5, false));
+    expect(feedInFrames(ep, pcm, 0, 0).length).toBe(1);
+  });
+
+  it('stays quiet on noise alone', () => {
+    const ep = new Endpointer();
+    expect(feedInFrames(ep, room(SAMPLE_RATE * 2, 6, false), 0, 0).length).toBe(0);
+  });
+});
+
+describe('Endpointer flush (R7-06)', () => {
+  it('emits speech cut off inside the hangover', () => {
+    const ep = new Endpointer();
+    const pcm = join(
+      silenceSamples(SAMPLE_RATE),
+      sineSamples(0.8, SAMPLE_RATE),
+      silenceSamples(Math.floor(SAMPLE_RATE * 0.2)),
+    );
+    expect(feedInFrames(ep, pcm, 0, 0).length).toBe(0);
+    const flushed = ep.flush();
+    expect(flushed.length).toBe(1);
+    expect(flushed[0]?.pcm.length).toBeGreaterThan(SAMPLE_RATE * 0.9);
+    expect(ep.flush()).toEqual([]);
+  });
+
+  it('drops held speech shorter than the minimum and is a no-op when idle', () => {
+    const ep = new Endpointer();
+    expect(ep.flush()).toEqual([]);
+    feedInFrames(ep, join(silenceSamples(SAMPLE_RATE), sineSamples(0.8, 2000)), 0, 0);
+    expect(ep.flush()).toEqual([]);
+  });
+});

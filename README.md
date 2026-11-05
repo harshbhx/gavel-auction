@@ -11,7 +11,7 @@ Status: in development for the PayPal AI Hackathon 2026 (PayPal sandbox only). T
 | Hold creation and approval service                                                                        |                          | yes                             | HTTP routes that expose it to the web app             |
 | Room and runtime service (bid intake, settlement scheduling, file stores)                                 | in tests, in one process |                                 | server entry point, HTTP and WebSocket routes, deploy |
 | Web app (routes, bid and console components, replay player)                                               | components and tests     |                                 | working screens against a live room, hosted URL       |
-| Voice (audio capture, speech-to-text clients, bid parser)                                                 | as a package, offline    |                                 | adapter that feeds bids into a room, live audio route |
+| Voice (audio capture, Groq speech-to-text client, bid parser)                                             | as a package, offline    |                                 | adapter that feeds bids into a room, live audio route |
 | Bid input by QR or typed entry                                                                            | components only          |                                 | end-to-end flow on a server                           |
 | Replay of a recorded auction                                                                              | player and bundle format |                                 | exporting a recording, a published recording          |
 
@@ -25,6 +25,8 @@ PayPal sandbox gates (see `docs/GATES.md`):
 | G4   | Webhook signature verification on real events | PASS                             |
 | G5   | Speech-to-text accuracy on noisy bids         | NOT RUN                          |
 
+Voice not built yet: the Deepgram, Web Speech and replay speech-to-text clients, and failover between providers (so only Groq runs, in chunks). With both `DEEPGRAM_API_KEY` and `GROQ_API_KEY` set, provider selection skips Deepgram, uses Groq and logs a warning.
+
 Until the gates are run, behaviour against PayPal is established only against the project's own fake server. Bids are intended to arrive by voice, QR or typed entry; see the table for what exists today.
 
 ## Run it
@@ -35,7 +37,7 @@ Needs Node 22 and npm.
 npm ci                      # install every workspace from the repo root
 npm run build               # tsc -b
 npm test                    # unit tests, every package
-npm run test:property       # property tests; each prints its seed (GAVEL_PROPERTY_SEED replays it)
+npm run test:property       # property tests; each run prints its seed; GAVEL_PROPERTY_SEED=<n> replays it (FC_SEED also works in e2e)
 npm start -w @gavel/server  # start the server
 npm run dev -w @gavel/web   # start the web dev server (separate process)
 ```

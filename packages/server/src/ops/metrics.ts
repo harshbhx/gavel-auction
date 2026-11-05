@@ -50,6 +50,8 @@ export interface MetricsSnapshot {
   storeAppendMs: HistogramSnapshot;
   webhookOutcomes: Record<WebhookOutcome, number>;
   rateLimitHits: number;
+  /** Tokens that verified only under TOKEN_SECRET_PREVIOUS. */
+  previousSecretUses: number;
 }
 
 /** In-process counters and histograms behind `GET /metrics` (R-RT-135). No labels, no personal data. */
@@ -57,6 +59,7 @@ export class MetricsCollector {
   private accepted = 0;
   private rejected = 0;
   private rateLimited = 0;
+  private previousUses = 0;
   private readonly bidLatency = new Histogram();
   private readonly storeAppend = new Histogram();
   private readonly webhooks: Record<WebhookOutcome, number> = {
@@ -78,6 +81,9 @@ export class MetricsCollector {
   rateLimitHit(): void {
     this.rateLimited += 1;
   }
+  previousSecretUse(): void {
+    this.previousUses += 1;
+  }
   bidLatencyMs(ms: number): void {
     this.bidLatency.observe(ms);
   }
@@ -98,6 +104,7 @@ export class MetricsCollector {
       storeAppendMs: this.storeAppend.snapshot(),
       webhookOutcomes: { ...this.webhooks },
       rateLimitHits: this.rateLimited,
+      previousSecretUses: this.previousUses,
     };
   }
 }

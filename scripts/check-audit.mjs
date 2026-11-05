@@ -1,68 +1,142 @@
 #!/usr/bin/env node
-// Dependency audit gate (R-QA-036, SEC-12). Usage: node scripts/check-audit.mjs [--report file]
-// Runs `npm audit --json` (or reads a saved report) and fails on any high or critical
-// advisory that has no waiver. A waiver lists the package, a reason and an expiry date
-// (YYYY-MM-DD, UTC); once the date has passed the waiver no longer counts and is reported.
-import { execFileSync } from 'node:child_process';
+// Dependency audit gate with expiring waivers (T-QA-077).
+// Usage: node scripts/check-audit.mjs [--input <audit.json>] [--waivers <file>] [--level <severity>]
+//        [--now <iso date>]
+// Without --input it runs `npm audit --json`. Exit 0 when every advisory at or above the level is
+// covered by a waiver that has not expired and no waiver has expired; exit 1 otherwise.
+// A waiver is { "advisory": "GHSA-...", "reason": "...", "expires": "YYYY-MM-DD" }.
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const BLOCKING = new Set(['high', 'critical']);
+export const SEVERITIES = ['info', 'low', 'moderate', 'high', 'critical'];
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+/** A waiver may not be written for longer than this, so none becomes permanent by accident. */
+export const MAX_WAIVER_DAYS = 90;
 
-/** Waiver is active while now is before the end of its expiry day (UTC). */
-export function activeWaivers(waivers, nowMs) {
-  const active = new Map();
-  const expired = [];
-  for (const w of waivers) {
-    const end = Date.parse(`${w.expires}T23:59:59.999Z`);
-    if (Number.isNaN(end)) throw new Error(`waiver for ${w.package}: bad expires "${w.expires}"`);
-    if (typeof w.reason !== 'string' || w.reason.trim() === '') {
-      throw new Error(`waiver for ${w.package}: reason is required`);
+function ghsaOf(url) {
+  const m = typeof url === 'string' ? /(GHSA-[a-z0-9-]+)$/i.exec(url) : null;
+  return m ? m[1].toLowerCase() : undefined;
+}
+
+/** Advisory ids behind one npm audit vulnerability entry (direct advisories only). */
+export function advisoriesOf(vuln) {
+  const ids = [];
+  for (const via of Array.isArray(vuln.via) ? vuln.via : []) {
+    if (via === null || typeof via !== 'object') continue;
+    const id = ghsaOf(via.url) ?? (via.source === undefined ? undefined : String(via.source));
+    if (id !== undefined) ids.push(id);
+  }
+  return ids;
+}
+
+/** Problems with the waiver list itself: shape, date format and the lifetime cap. */
+export function checkWaivers(waivers, nowMs) {
+  const problems = [];
+  for (const [i, w] of waivers.entries()) {
+    const label = `waiver ${i + 1}`;
+    if (w === null || typeof w !== 'object') {
+      problems.push(`${label}: not an object`);
+      continue;
     }
-    if (nowMs <= end) active.set(w.package, w);
-    else expired.push(w);
+    if (typeof w.advisory !== 'string' || w.advisory === '') problems.push(`${label}: no advisory`);
+    if (typeof w.reason !== 'string' || w.reason.trim() === '')
+      problems.push(`${label}: no reason`);
+    if (typeof w.expires !== 'string' || !DATE_ONLY.test(w.expires)) {
+      problems.push(`${label}: expires must be YYYY-MM-DD`);
+      continue;
+    }
+    const end = Date.parse(`${w.expires}T23:59:59Z`);
+    if (Number.isNaN(end)) problems.push(`${label}: expires is not a date`);
+    else if (end < nowMs) problems.push(`${label}: expired on ${w.expires} (${w.advisory})`);
+    else if (end - nowMs > MAX_WAIVER_DAYS * 86_400_000) {
+      problems.push(`${label}: expires more than ${MAX_WAIVER_DAYS} days ahead`);
+    }
   }
-  return { active, expired };
+  return problems;
 }
 
-/** Returns { ok, blocking, waived, expired } for an npm audit JSON report. */
-export function evaluateAudit(report, waivers, nowMs) {
-  const { active, expired } = activeWaivers(waivers, nowMs);
-  const vulns = Object.values(report?.vulnerabilities ?? {});
-  const blocking = [];
+/**
+ * Compares an `npm audit --json` report with the waivers.
+ * Returns { failures, waived }; failures is empty when the gate passes.
+ */
+export function evaluate(report, waivers, { nowMs, level = 'high' } = {}) {
+  const now = nowMs ?? Date.now();
+  const failures = checkWaivers(waivers, now);
+  const active = new Set(
+    waivers
+      .filter(
+        (w) =>
+          w &&
+          typeof w.advisory === 'string' &&
+          isDateOnly(w.expires) &&
+          Date.parse(`${w.expires}T23:59:59Z`) >= now,
+      )
+      .map((w) => w.advisory.toLowerCase()),
+  );
+  const min = SEVERITIES.indexOf(level);
   const waived = [];
-  for (const v of vulns) {
-    if (!BLOCKING.has(v.severity)) continue;
-    if (active.has(v.name)) waived.push(v.name);
-    else blocking.push(`${v.name} (${v.severity})`);
+  const vulns = report && typeof report === 'object' ? (report.vulnerabilities ?? {}) : {};
+  for (const [name, vuln] of Object.entries(vulns)) {
+    if (SEVERITIES.indexOf(vuln.severity) < min) continue;
+    const ids = advisoriesOf(vuln);
+    // An entry that only points at other packages is reported through those packages.
+    if (ids.length === 0) continue;
+    const open = ids.filter((id) => !active.has(id.toLowerCase()));
+    if (open.length === 0) waived.push(name);
+    else failures.push(`${name} (${vuln.severity}): ${open.join(', ')}`);
   }
-  const expiredHits = expired
-    .filter((w) => vulns.some((v) => v.name === w.package && BLOCKING.has(v.severity)))
-    .map((w) => `${w.package} (waiver expired ${w.expires})`);
-  return { ok: blocking.length === 0, blocking, waived, expired: expiredHits };
+  if (report && typeof report === 'object' && report.error) {
+    failures.push('npm audit reported an error: ' + String(report.error.summary ?? 'unknown'));
+  }
+  return { failures, waived };
 }
 
-function readReport(file) {
-  if (file) return JSON.parse(readFileSync(file, 'utf8'));
+function isDateOnly(v) {
+  return typeof v === 'string' && DATE_ONLY.test(v);
+}
+
+function arg(argv, name) {
+  const i = argv.indexOf(name);
+  return i >= 0 ? argv[i + 1] : undefined;
+}
+
+function main(argv) {
+  const waiversFile = arg(argv, '--waivers') ?? 'audit-waivers.json';
+  const level = arg(argv, '--level') ?? 'high';
+  const nowArg = arg(argv, '--now');
+  const input = arg(argv, '--input');
+  if (!SEVERITIES.includes(level)) {
+    console.error(`unknown level ${level}`);
+    return 2;
+  }
+  let waivers;
   try {
-    return JSON.parse(execFileSync('npm', ['audit', '--json'], { cwd: root, encoding: 'utf8' }));
+    const parsed = JSON.parse(readFileSync(waiversFile, 'utf8'));
+    waivers = Array.isArray(parsed.waivers) ? parsed.waivers : [];
   } catch (e) {
-    // npm audit exits non-zero when it finds something but still prints the report.
-    if (e.stdout) return JSON.parse(e.stdout);
-    throw e;
+    console.error(`cannot read ${waiversFile}: ${e instanceof Error ? e.message : String(e)}`);
+    return 2;
   }
+  let text;
+  if (input !== undefined) text = readFileSync(input, 'utf8');
+  else {
+    const run = spawnSync('npm', ['audit', '--json'], { encoding: 'utf8', maxBuffer: 64 << 20 });
+    text = run.stdout;
+  }
+  let report;
+  try {
+    report = JSON.parse(text);
+  } catch {
+    console.error('npm audit did not return JSON');
+    return 2;
+  }
+  const nowMs = nowArg === undefined ? Date.now() : Date.parse(`${nowArg}T00:00:00Z`);
+  const { failures, waived } = evaluate(report, waivers, { nowMs, level });
+  for (const w of waived) console.log(`waived: ${w}`);
+  for (const f of failures) console.error(`audit: ${f}`);
+  if (failures.length === 0) console.log('audit gate passed');
+  return failures.length === 0 ? 0 : 1;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const i = process.argv.indexOf('--report');
-  const file = i >= 0 ? process.argv[i + 1] : undefined;
-  const waivers = JSON.parse(readFileSync(join(root, 'audit-waivers.json'), 'utf8')).waivers;
-  const result = evaluateAudit(readReport(file), waivers, Date.now());
-  for (const w of result.waived) console.log(`waived: ${w}`);
-  for (const w of result.expired) console.error(`expired: ${w}`);
-  for (const b of result.blocking) console.error(`blocking: ${b}`);
-  if (!result.ok) process.exit(1);
-  console.log('audit gate: ok');
-}
+if (process.argv[1] === fileURLToPath(import.meta.url)) process.exit(main(process.argv.slice(2)));

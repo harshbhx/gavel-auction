@@ -26,13 +26,29 @@ export interface PendingConfirm {
 }
 
 /**
+ * True when the frame carries anything only the voice path produces: a voice source, a
+ * transcript, a confidence score or an ambiguity flag. A bidder cannot hide a spoken bid
+ * by labelling it qr (R-RT-045, R-ENG-084).
+ */
+export function isVoiceLike(msg: BidMsg): boolean {
+  return (
+    msg.source === 'voice' ||
+    msg.transcript !== undefined ||
+    msg.confidence !== undefined ||
+    msg.ambiguous !== undefined
+  );
+}
+
+/**
  * True when a bid must be confirmed before the engine may see it: a voice bid whose
- * confidence is below the threshold, or one the parser flagged as ambiguous (R-RT-045).
+ * confidence is below the threshold (a missing one counts as zero), or one the parser flagged as
+ * ambiguous (R-RT-045). A bid labelled qr or manual that carries a transcript or confidence is
+ * voice too, so it is held like one.
  */
 export function needsConfirm(msg: BidMsg, threshold: number): boolean {
-  if (msg.source !== 'voice') return false;
+  if (!isVoiceLike(msg)) return false;
   if (msg.ambiguous === true) return true;
-  return msg.confidence !== undefined && msg.confidence < threshold;
+  return (msg.confidence ?? 0) < threshold;
 }
 
 /** The held bids of one room, at most one per bidder. */

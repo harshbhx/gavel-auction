@@ -18,7 +18,7 @@ import { propertyParams } from '../../src/property/harness';
 // fc.assert with the shared reporter prints but does not throw, so run the check and throw.
 function fail(d: fc.RunDetails<unknown[]>): never {
   throw new Error(
-    `property failed, replay with FC_SEED=${String(d.seed)}: ${JSON.stringify(d.counterexample)} ${String(d.errorInstance)}`,
+    `property failed, replay with GAVEL_PROPERTY_SEED=${String(d.seed)}: ${JSON.stringify(d.counterexample)} ${String(d.errorInstance)}`,
   );
 }
 

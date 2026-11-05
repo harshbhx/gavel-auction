@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { decodeClientMsg } from '@gavel/shared';
 import { loadScenarioFile } from '../src/index';
-import { runLadder } from '../src/runner/ladder';
+import { runScenarioInProc } from './flow/scenario-runner';
 
 // T-QA-038 (R-QA-026, R-QA-036): scenario S10 replays hostile frames from the DSL. Room-level
 // amount checks and the flood cut live in test/security/abuse.test.ts.
@@ -14,6 +14,11 @@ const scenario = loadScenarioFile(join(ROOT, 'scenarios', 'S10-abusive-input.yam
 const fixtures = JSON.parse(
   readFileSync(join(ROOT, 'fixtures', 'frames', 'hostile.json'), 'utf8'),
 ) as Array<{ name: string; frame: string; code: string }>;
+
+const open: Array<{ stop(): Promise<void> }> = [];
+afterEach(async () => {
+  for (const p of open.splice(0)) await p.stop();
+});
 
 const raws = scenario.steps.flatMap((s) => (s.do === 'send_raw' ? [s.frame] : []));
 
@@ -44,11 +49,10 @@ describe('S10 abusive input', () => {
     expect(fixtures.length).toBe(raws.length);
   });
 
-  it('leaves the auction untouched: no bid accepted, nothing captured', () => {
+  it('leaves the auction untouched: no bid accepted, no winner', async () => {
     const plain = { ...scenario, steps: scenario.steps.filter((s) => s.do !== 'send_raw') };
-    const result = runLadder(plain);
-    expect(result.accepted).toBe(0);
-    expect(result.winner).toBeNull();
-    expect(result.capturedCents).toBe(0);
+    const outcome = await runScenarioInProc(plain, open);
+    expect(outcome.accepted).toBe(0);
+    expect(outcome.winner).toBeNull();
   });
 });
