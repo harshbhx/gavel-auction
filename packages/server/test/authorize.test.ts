@@ -92,6 +92,23 @@ describe('ceiling redaction per viewer (R-RT-055)', () => {
     expect(JSON.stringify(redactForViewer('bidder', B1, { ceiling: 5 }))).not.toContain('ceiling');
   });
 
+  it('redacts the web wire ceilingCents key for screen, auctioneer and other bidders', () => {
+    const frame = {
+      t: 'state',
+      bidders: [{ bidderId: B2, name: 'b', ceilingCents: 30000 }],
+      you: { bidderId: B2, ceilingCents: 30000 },
+    };
+    for (const [role, viewer] of [
+      ['screen', undefined],
+      ['auctioneer', undefined],
+      ['bidder', B1],
+    ] as const) {
+      expect(JSON.stringify(redactForViewer(role, viewer, frame)).toLowerCase()).not.toContain(
+        'ceiling',
+      );
+    }
+  });
+
   it('the auctioneer never sees ceilings', () => {
     expect(JSON.stringify(redactForViewer('auctioneer', undefined, registeredB2))).not.toContain(
       'ceiling',
