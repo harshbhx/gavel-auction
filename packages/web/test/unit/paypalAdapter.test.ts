@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { ApproveHoldRequest, CreateHoldRequest } from '@gavel/shared';
 import { describe, expect, it, vi } from 'vitest';
 import type { FetchLike } from '../../src/payments/fakeAdapter';
 import {
@@ -45,18 +46,23 @@ function stubSdk(script: Script, opts: { startRejects?: boolean } = {}) {
 }
 
 function fakeFetch(
-  orderBody: unknown = { orderId: 'ord-1', clientToken: 'ct' },
+  orderBody: unknown = { holdId: 'hold-ABC123', orderId: 'ord-1', clientToken: 'ct' },
   holdOk = true,
   holdBody: Record<string, unknown> = {
-    holdIdSuffix: 'ABC123',
+    holdId: 'hold-ABC123',
+    status: 'HELD',
     ceilingCents: 50_000,
-    state: 'HELD',
   },
 ) {
   const urls: string[] = [];
-  const fetch: FetchLike = (url) => {
-    urls.push(url);
-    if (url.endsWith('/orders')) {
+  const bodies: unknown[] = [];
+  const fetch: FetchLike = (url, init) => {
+    urls.push(`${init.method} ${url}`);
+    if (init.body !== undefined) bodies.push(JSON.parse(init.body));
+    if (init.method === 'DELETE') {
+      return Promise.resolve({ ok: true, status: 204, json: () => Promise.resolve(null) });
+    }
+    if (url.endsWith('/api/holds')) {
       return Promise.resolve({
         ok: orderBody !== null,
         status: 200,
@@ -69,7 +75,7 @@ function fakeFetch(
       json: () => Promise.resolve(holdBody),
     });
   };
-  return { fetch, urls };
+  return { fetch, urls, bodies };
 }
 
 function make(
@@ -91,7 +97,7 @@ function make(
     redirect,
   });
   const states: ApprovalState[] = [];
-  return { adapter, calls, loadSdk, redirect, states, urls: net.urls };
+  return { adapter, calls, loadSdk, redirect, states, urls: net.urls, bodies: net.bodies };
 }
 
 describe('PayPalV6Adapter (stubbed SDK)', () => {
@@ -101,37 +107,39 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     expect(t.states).toEqual(['preparing', 'awaiting_buyer', 'confirming', 'held']);
     expect(result).toMatchObject({ state: 'held', holdIdSuffix: 'ABC123' });
     expect(t.urls).toEqual([
-      'http://api/api/rooms/room%201/orders',
-      'http://api/api/rooms/room%201/holds',
+      'POST http://api/api/holds',
+      'POST http://api/api/holds/hold-ABC123/approve',
     ]);
+    expect(t.bodies).toEqual([{ auctionId: 'room 1', ceilingCents: 50_000 }, { orderId: 'ord-1' }]);
     expect(t.calls[0]).toBe('createInstance:client-1:ct');
   });
 
-  it('returns the amount the server confirmed (WEB-R2-10)', async () => {
+  it('sends bodies the shared hold contract accepts and names no bidder (WEB-RT-03)', async () => {
     const t = make((cb) => cb.onApprove({ orderId: 'ord-1' }));
-    const result = await t.adapter.start(req, () => {});
-    expect(result.ceilingCents).toBe(50_000);
+    await t.adapter.start(req, () => {});
+    expect(CreateHoldRequest.safeParse(t.bodies[0]).success).toBe(true);
+    expect(ApproveHoldRequest.safeParse(t.bodies[1]).success).toBe(true);
   });
 
-  it('treats a different confirmed amount as an error (WEB-R2-10)', async () => {
-    const t = make((cb) => cb.onApprove({ orderId: 'ord-1' }), undefined, true, false, {
-      holdIdSuffix: 'ABC123',
-      ceilingCents: 20_000,
-    });
-    const result = await t.adapter.start(req, () => {});
-    expect(result).toMatchObject({ state: 'error', errorCode: 'hold_mismatch' });
-    expect(result.holdIdSuffix).toBeUndefined();
-  });
-
-  it('retries only the confirm step with the approved order id (WEB-R2-08)', async () => {
+  it('retries only the approve step with the approved order and hold (WEB-R2-08)', async () => {
     const failing = make((cb) => cb.onApprove({ orderId: 'ord-1' }), undefined, false);
     const first = await failing.adapter.start(req, () => {});
-    expect(first).toMatchObject({ state: 'error', errorCode: 'hold_failed', orderId: 'ord-1' });
+    expect(first).toMatchObject({
+      state: 'error',
+      errorCode: 'hold_failed',
+      orderId: 'ord-1',
+      holdId: 'hold-ABC123',
+    });
+    // The failed approve must not drop the hold the retry needs.
+    expect(failing.urls.some((u) => u.startsWith('DELETE'))).toBe(false);
 
     const retry = make(() => {});
-    const second = await retry.adapter.start({ ...req, approvedOrderId: 'ord-1' }, () => {});
+    const second = await retry.adapter.start(
+      { ...req, approvedOrderId: 'ord-1', approvedHoldId: 'hold-ABC123' },
+      () => {},
+    );
     expect(second).toMatchObject({ state: 'held', holdIdSuffix: 'ABC123' });
-    expect(retry.urls).toEqual(['http://api/api/rooms/room%201/holds']);
+    expect(retry.urls).toEqual(['POST http://api/api/holds/hold-ABC123/approve']);
     expect(retry.loadSdk).not.toHaveBeenCalled();
   });
 
@@ -151,7 +159,10 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     const result = await t.adapter.start(req, (s) => t.states.push(s));
     expect(result.state).toBe('cancelled');
     expect(t.states).toEqual(['preparing', 'awaiting_buyer', 'cancelled']);
-    expect(t.urls).toHaveLength(1);
+    expect(t.urls).toEqual([
+      'POST http://api/api/holds',
+      'DELETE http://api/api/holds/hold-ABC123',
+    ]);
   });
 
   it('reports declined when the SDK says the instrument was declined', async () => {
@@ -166,6 +177,30 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     await vi.waitFor(() => expect(t.calls).toContain('start'));
     t.adapter.cancel();
     expect((await pending).state).toBe('cancelled');
+  });
+
+  it('treats a server-confirmed amount that differs from the request as an error (WEB-R2-10)', async () => {
+    const fetch: FetchLike = (url) =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve(
+            url.endsWith('/api/holds')
+              ? { holdId: 'hold-ABC123', orderId: 'ord-1', clientToken: 'ct' }
+              : { holdId: 'hold-ABC123', status: 'HELD', ceilingCents: 20_000 },
+          ),
+      });
+    const { sdk } = stubSdk((cb) => cb.onApprove({ orderId: 'ord-1' }));
+    const adapter = new PayPalV6Adapter({
+      apiBase: 'http://api',
+      clientId: 'client-1',
+      loadSdk: () => Promise.resolve(sdk),
+      fetch,
+    });
+    const result = await adapter.start(req, () => {});
+    expect(result).toMatchObject({ state: 'error', errorCode: 'hold_mismatch' });
+    expect(result.holdIdSuffix).toBeUndefined();
   });
 
   it('cancel() while the SDK is still loading never opens the popup (WEB-R2-06)', async () => {
@@ -196,27 +231,37 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     'http://www.sandbox.paypal.com/approve',
     'https://www.sandbox.paypal.com.evil.example/approve',
   ])('refuses the redirect fallback for %s (WEB-R2-09)', async (approveUrl) => {
-    const t = make(() => {}, { orderId: 'ord-1', approveUrl }, true, true);
+    const t = make(() => {}, { holdId: 'hold-ABC123', orderId: 'ord-1', approveUrl }, true, true);
     const result = await t.adapter.start(req, () => {});
     expect(t.redirect).not.toHaveBeenCalled();
     expect(result).toMatchObject({ state: 'error', errorCode: 'popup_failed' });
   });
 
-  it('falls back to redirect approval when the popup fails', async () => {
+  it('falls back to redirect approval when the popup fails and keeps the hold', async () => {
     const t = make(
       () => {},
-      { orderId: 'ord-1', approveUrl: 'https://www.sandbox.paypal.com/approve?token=ord-1' },
+      {
+        holdId: 'hold-ABC123',
+        orderId: 'ord-1',
+        approveUrl: 'https://www.sandbox.paypal.com/approve?token=ord-1',
+      },
       true,
       true,
     );
     const result = await t.adapter.start(req, (s) => t.states.push(s));
     expect(t.redirect).toHaveBeenCalledWith('https://www.sandbox.paypal.com/approve?token=ord-1');
-    expect(result.state).toBe('awaiting_buyer');
-    expect(result.errorCode).toBe('popup_failed');
+    expect(result).toMatchObject({
+      state: 'awaiting_buyer',
+      errorCode: 'popup_failed',
+      orderId: 'ord-1',
+      holdId: 'hold-ABC123',
+    });
+    expect(t.urls.some((u) => u.startsWith('DELETE'))).toBe(false);
   });
 
   it('falls back to redirect when an SDK error is not a decline', async () => {
     const t = make((cb) => cb.onError({ code: 'AUTHORIZE_NOT_SUPPORTED' }), {
+      holdId: 'hold-ABC123',
       orderId: 'ord-1',
       approveUrl: 'https://sandbox.paypal.com/approve',
     });
@@ -225,18 +270,18 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     expect(result.errorCode).toBe('AUTHORIZE_NOT_SUPPORTED');
   });
 
-  it('reports an error when the popup fails and there is no approval link', async () => {
+  it('reports an error when the popup fails and there is no approval link and the hold is dropped', async () => {
     const t = make(() => {}, undefined, true, true);
     const result = await t.adapter.start(req, () => {});
     expect(result).toMatchObject({ state: 'error', errorCode: 'popup_failed' });
-    expect(t.redirect).not.toHaveBeenCalled();
+    expect(t.urls).toContain('DELETE http://api/api/holds/hold-ABC123');
   });
 
   it('does not confirm an order the attempt did not create (WEB-RT-17)', async () => {
     const t = make((cb) => cb.onApprove({ orderId: 'someone-elses-order' }));
     const result = await t.adapter.start(req, () => {});
     expect(result).toMatchObject({ state: 'error', errorCode: 'order_mismatch' });
-    expect(t.urls.some((u) => u.endsWith('/holds'))).toBe(false);
+    expect(t.urls.some((u) => u.endsWith('/approve'))).toBe(false);
   });
 
   it('reports order_failed and hold_failed', async () => {
@@ -246,17 +291,25 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     expect((await noHold.adapter.start(req, () => {})).errorCode).toBe('hold_failed');
   });
 
-  it('keeps the payments error code of a failed order and never marks hold_exists held', async () => {
+  it('keeps the payments error code of a failed hold and never marks hold_exists held', async () => {
     const withBody = (orderErr: unknown, holdErr: unknown) => {
       const { sdk } = stubSdk((cb) => cb.onApprove({ orderId: 'ord-1' }));
-      const fetch: FetchLike = (url) => {
-        const orders = url.endsWith('/orders');
-        const err = orders ? orderErr : holdErr;
+      const fetch: FetchLike = (url, init) => {
+        if (init.method === 'DELETE') {
+          return Promise.resolve({ ok: true, status: 204, json: () => Promise.resolve(null) });
+        }
+        const creating = url.endsWith('/api/holds');
+        const err = creating ? orderErr : holdErr;
         return Promise.resolve({
           ok: err === null,
           status: err === null ? 200 : 503,
           json: () =>
-            Promise.resolve(err ?? (orders ? { orderId: 'ord-1' } : { holdIdSuffix: 'Z' })),
+            Promise.resolve(
+              err ??
+                (creating
+                  ? { holdId: 'hold-Z', orderId: 'ord-1' }
+                  : { holdId: 'hold-Z', status: 'HELD', ceilingCents: 50_000 }),
+            ),
         });
       };
       return new PayPalV6Adapter({
@@ -271,7 +324,6 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
     expect(killed).toMatchObject({ state: 'error', errorCode: 'kill_switch_engaged' });
     const capped = await withBody({ error: 'ceiling_out_of_range' }, null).start(req, () => {});
     expect(capped.errorCode).toBe('ceiling_out_of_range');
-    // The 409 body has no ceiling, so an existing hold cannot be checked against this amount.
     const exists = await withBody(null, { error: 'hold_exists' }).start(req, () => {});
     expect(exists).toMatchObject({ state: 'error', errorCode: 'hold_exists' });
     expect(exists.holdIdSuffix).toBeUndefined();
@@ -281,11 +333,12 @@ describe('PayPalV6Adapter (stubbed SDK)', () => {
 
   it('completes a redirect approval on the return route', async () => {
     const t = make(() => {});
-    const result = await t.adapter.completeRedirect('room 1', 'ord-1', 'reg-one', (s) =>
+    const result = await t.adapter.completeRedirect('hold-ABC123', 'ord-1', 'reg-one', (s) =>
       t.states.push(s),
     );
     expect(result).toMatchObject({ state: 'held', holdIdSuffix: 'ABC123' });
     expect(t.states).toEqual(['confirming', 'held']);
+    expect(t.urls).toEqual(['POST http://api/api/holds/hold-ABC123/approve']);
     expect(t.loadSdk).not.toHaveBeenCalled();
   });
 
@@ -355,11 +408,11 @@ describe('PayPalV6Adapter request timeouts (R-WEB-045)', () => {
   it('reports hold_timeout when the hold request stalls after approval', async () => {
     const { sdk } = stubSdk((cb) => cb.onApprove({ orderId: 'ord-1' }));
     const fetch: FetchLike = (url) =>
-      url.endsWith('/orders')
+      url.endsWith('/api/holds')
         ? Promise.resolve({
             ok: true,
             status: 200,
-            json: () => Promise.resolve({ orderId: 'ord-1' }),
+            json: () => Promise.resolve({ holdId: 'hold-ABC123', orderId: 'ord-1' }),
           })
         : new Promise(() => {});
     const adapter = new PayPalV6Adapter({

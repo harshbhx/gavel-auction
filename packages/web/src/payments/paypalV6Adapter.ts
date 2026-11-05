@@ -11,7 +11,12 @@
 //   5. Popup blocked: the redirect approval opens in this tab and the return route completes the hold.
 import type { ApprovalRequest, ApprovalResult, ApprovalState, PaymentApprovalPort } from './port';
 import type { FetchLike } from './fakeAdapter';
-import type { HoldErrorCode } from '@gavel/shared';
+import {
+  ABANDON_HOLD_METHOD,
+  ApproveHoldResponse,
+  CreateHoldResponse,
+  type HoldErrorCode,
+} from '@gavel/shared';
 import { isHoldErrorCode } from '../copy/errors';
 
 /** What this adapter needs from the SDK. UNVERIFIED (gate G2). */
@@ -141,9 +146,12 @@ function safeApproveUrl(raw: unknown): string | null {
   }
 }
 
+const holdPath = (holdId: string): string => `/api/holds/${encodeURIComponent(holdId)}`;
+
 export class PayPalV6Adapter implements PaymentApprovalPort {
   private session: PayPalSessionV6 | null = null;
   private abandon: (() => void) | null = null;
+  private abandonUrl: string | null = null;
   private readonly inFlight = new Set<AbortController>();
 
   constructor(private readonly deps: PayPalAdapterDeps) {}
@@ -160,24 +168,16 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
       on(state);
       return { state, correlationId, ...extra };
     };
-    const roomPath = `/api/rooms/${encodeURIComponent(req.roomId)}`;
 
-    if (req.approvedOrderId !== undefined) {
+    if (req.approvedOrderId !== undefined && req.approvedHoldId !== undefined) {
       on('confirming');
-      return this.confirm(
-        roomPath,
-        req.approvedOrderId,
-        req.clientRegistrationId,
-        finish,
-        req.ceilingCents,
-      );
+      return this.confirm(req.approvedHoldId, req.approvedOrderId, finish, req.ceilingCents);
     }
 
     on('preparing');
-    const order = await this.post(`${roomPath}/orders`, {
-      bidderId: req.bidderId,
+    const order = await this.post('/api/holds', {
+      auctionId: req.roomId,
       ceilingCents: req.ceilingCents,
-      clientRegistrationId: req.clientRegistrationId,
     });
     if (!order.ok) {
       if (order.why === 'aborted') return finish('cancelled');
@@ -185,39 +185,51 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
         errorCode: order.code ?? (order.why === 'timeout' ? 'order_timeout' : 'order_failed'),
       });
     }
-    const orderId = order.body['orderId'];
-    if (typeof orderId !== 'string') return finish('error', { errorCode: 'order_failed' });
-    const clientToken =
-      typeof order.body['clientToken'] === 'string' ? order.body['clientToken'] : undefined;
-    const approveUrl = safeApproveUrl(order.body['approveUrl']);
+    const created = CreateHoldResponse.safeParse(order.body);
+    if (!created.success) return finish('error', { errorCode: 'order_failed' });
+    const { holdId, orderId, clientToken } = created.data;
+    const approveUrl = safeApproveUrl(created.data.approveUrl);
+    this.abandonUrl = holdPath(holdId);
 
     on('awaiting_buyer');
     const outcome = await this.approve(orderId, clientToken);
-    if (outcome.kind === 'cancelled') return finish('cancelled');
-    if (outcome.kind === 'mismatch') return finish('error', { errorCode: 'order_mismatch' });
-    if (outcome.kind === 'declined') return finish('declined', { errorCode: outcome.code });
+    if (outcome.kind === 'cancelled') {
+      await this.release();
+      return finish('cancelled');
+    }
+    if (outcome.kind === 'mismatch') {
+      await this.release();
+      return finish('error', { errorCode: 'order_mismatch' });
+    }
+    if (outcome.kind === 'declined') {
+      await this.release();
+      return finish('declined', { errorCode: outcome.code });
+    }
     if (outcome.kind === 'failed') {
-      // Wallet-buyer fallback: approve on PayPal's own page and finish on the return route.
+      // Wallet-buyer fallback: approve on PayPal's own page and finish on the return route. The
+      // hold stays open for that route, so it is not released here.
       if (approveUrl !== null) {
+        this.abandonUrl = null;
         (this.deps.redirect ?? ((url) => globalThis.location.assign(url)))(approveUrl);
-        return { state: 'awaiting_buyer', correlationId, errorCode: outcome.code, orderId };
+        return {
+          state: 'awaiting_buyer',
+          correlationId,
+          errorCode: outcome.code,
+          orderId,
+          holdId,
+        };
       }
+      await this.release();
       return finish('error', { errorCode: outcome.code });
     }
 
     on('confirming');
-    return this.confirm(
-      roomPath,
-      outcome.orderId,
-      req.clientRegistrationId,
-      finish,
-      req.ceilingCents,
-    );
+    return this.confirm(holdId, outcome.orderId, finish, req.ceilingCents);
   }
 
   /** Return route step: the buyer came back from PayPal's approval page with an order id. */
   async completeRedirect(
-    roomId: string,
+    holdId: string,
     orderId: string,
     clientRegistrationId: string,
     on: (s: ApprovalState) => void,
@@ -228,39 +240,52 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
       return { state, correlationId, ...extra };
     };
     on('confirming');
-    return this.confirm(
-      `/api/rooms/${encodeURIComponent(roomId)}`,
-      orderId,
-      clientRegistrationId,
-      finish,
-    );
+    return this.confirm(holdId, orderId, finish);
   }
 
   private async confirm(
-    roomPath: string,
+    holdId: string,
     orderId: string,
-    clientRegistrationId: string,
     finish: (state: ApprovalState, extra?: Partial<ApprovalResult>) => ApprovalResult,
     expectedCents?: number,
   ): Promise<ApprovalResult> {
-    const hold = await this.post(`${roomPath}/holds`, { orderId, clientRegistrationId });
+    const hold = await this.post(`${holdPath(holdId)}/approve`, { orderId });
     if (!hold.ok) {
       if (hold.why === 'aborted') return finish('cancelled');
       return finish('error', {
         errorCode: hold.code ?? (hold.why === 'timeout' ? 'hold_timeout' : 'hold_failed'),
         orderId,
+        holdId,
       });
     }
-    const suffix = hold.body['holdIdSuffix'];
-    if (typeof suffix !== 'string') return finish('error', { errorCode: 'hold_failed' });
-    const confirmed = hold.body['ceilingCents'];
-    if (typeof confirmed !== 'number' || !Number.isSafeInteger(confirmed)) {
-      return finish('error', { errorCode: 'hold_failed' });
-    }
-    if (expectedCents !== undefined && confirmed !== expectedCents) {
+    const approved = ApproveHoldResponse.safeParse(hold.body);
+    if (!approved.success) return finish('error', { errorCode: 'hold_failed' });
+    this.abandonUrl = null;
+    // The amount the server confirmed must be the one this attempt asked for (WEB-R2-10).
+    if (expectedCents !== undefined && approved.data.ceilingCents !== expectedCents) {
       return finish('error', { errorCode: 'hold_mismatch' });
     }
-    return finish('held', { holdIdSuffix: suffix, ceilingCents: confirmed });
+    // The payments service returns the full hold id; only the last 6 characters are shown.
+    return finish('held', {
+      holdIdSuffix: approved.data.holdId.slice(-6),
+      ceilingCents: approved.data.ceilingCents,
+    });
+  }
+
+  /** Tells the payments service the buyer walked away, so the unapproved hold is dropped. */
+  private async release(): Promise<void> {
+    const url = this.abandonUrl;
+    this.abandonUrl = null;
+    if (url === null) return;
+    const doFetch: FetchLike = this.deps.fetch ?? ((u, init) => globalThis.fetch(u, init));
+    try {
+      await doFetch(`${this.deps.apiBase}${url}`, {
+        method: ABANDON_HOLD_METHOD,
+        headers: {},
+      });
+    } catch {
+      // Best effort: the service expires an unapproved hold on its own.
+    }
   }
 
   /** Loads the SDK now (not at page load) and runs one approval session. */

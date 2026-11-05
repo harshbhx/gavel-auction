@@ -67,7 +67,11 @@ export function completeApprovalReturn(
     on('error');
     return Promise.resolve({ state: 'error', errorCode: 'order_mismatch' });
   }
-  return adapter.completeRedirect(req.roomId, req.orderId, stored.clientRegistrationId, on);
+  if (stored.holdId === undefined) {
+    on('error');
+    return Promise.resolve({ state: 'error', errorCode: 'registration_missing' });
+  }
+  return adapter.completeRedirect(stored.holdId, req.orderId, stored.clientRegistrationId, on);
 }
 
 export interface UseApprovalOptions {
@@ -124,11 +128,11 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
       // A declined order is dead on the server, so it needs a new id. Cancelled and error retries
       // reuse it, and so does a reload: the stored id is the one the server already saw.
       const stored = current === undefined ? loadRegistration(roomId, bidderId) : null;
-      const retryOrderId =
+      const retryable =
         current?.result?.errorCode === 'hold_failed' ||
-        current?.result?.errorCode === 'hold_timeout'
-          ? current.result.orderId
-          : undefined;
+        current?.result?.errorCode === 'hold_timeout';
+      const retryOrderId = retryable ? current?.result?.orderId : undefined;
+      const retryHoldId = retryable ? current?.result?.holdId : undefined;
       const attempt: Attempt = {
         clientRegistrationId:
           current !== undefined && current.result?.state !== 'declined'
@@ -147,7 +151,9 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
             bidderId,
             ceilingCents,
             clientRegistrationId: attempt.clientRegistrationId,
-            ...(retryOrderId === undefined ? {} : { approvedOrderId: retryOrderId }),
+            ...(retryOrderId === undefined || retryHoldId === undefined
+              ? {}
+              : { approvedOrderId: retryOrderId, approvedHoldId: retryHoldId }),
           },
           (s) => {
             attempt.state = s;
@@ -160,6 +166,7 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
             saveRegistration(roomId, bidderId, {
               clientRegistrationId: attempt.clientRegistrationId,
               orderId: r.orderId,
+              ...(r.holdId === undefined ? {} : { holdId: r.holdId }),
             });
           }
           attempt.result = r;
