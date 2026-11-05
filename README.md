@@ -27,6 +27,25 @@ PayPal sandbox gates (see `docs/GATES.md`):
 
 Until the gates are run, behaviour against PayPal is established only against the project's own fake server. Bids are intended to arrive by voice, QR or typed entry; see the table for what exists today.
 
+## Run it
+
+Needs Node 22 and npm.
+
+```
+npm ci                      # install every workspace from the repo root
+npm run build               # tsc -b
+npm test                    # unit tests, every package
+npm run test:property       # property tests; each prints its seed (GAVEL_PROPERTY_SEED replays it)
+npm start -w @gavel/server  # start the server
+npm run dev -w @gavel/web   # start the web dev server (separate process)
+```
+
+Copy `.env.example` to `.env` for the secret names the project reads: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `DEEPGRAM_API_KEY`, `GROQ_API_KEY`, `LLM_API_KEY`, `ADMIN_TOKEN`, `AUCTIONEER_TOKEN_SECRET`, `DATABASE_URL`. Never commit real values. The server reads its own settings from the process environment (`PORT`, `PUBLIC_URL`, `TOKEN_SECRET`, `ADMIN_KEY`, `STORE`, `PAYMENTS` and others); they are listed in `packages/server/README.md`.
+
+The web app takes `VITE_SANDBOX=true` (sandbox banner and sandbox-only behaviour), plus `VITE_API_BASE`, `VITE_WS_BASE`, `VITE_PAYMENTS` and `VITE_PAYPAL_CLIENT_ID`.
+
+Payment modes: with `PAYMENTS=fake` the server talks to the built-in fake PayPal and no network access is needed; with `PAYMENTS=sandbox` it calls the PayPal sandbox and needs the PayPal secrets. Production mode (`NODE_ENV=production`) refuses fake payments. Runbooks: `packages/server/README.md`, `packages/voice/README.md`. Contributing: `CONTRIBUTING.md`.
+
 Plan and architecture: `docs/PLAN.md`. Demo and test guide: `docs/DEMO.md`. The Python files in `reference/python` are a reference implementation that the TypeScript packages are checked against.
 
 License: MIT.
