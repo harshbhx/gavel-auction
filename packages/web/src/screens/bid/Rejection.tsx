@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { en } from '../../copy/en';
 import { errorCopy } from '../../copy/errors';
 import { t } from '../../copy/t';
 import { formatUsd, formatUsdCompact } from '../../util/money';
@@ -31,7 +32,8 @@ export function rejectionText(reason: string, maxCents: number | null, minCents:
     case 'bid.rej.below_increment':
       return t('bid.rej.below_increment', { min: formatUsd(minCents) });
     default:
-      return t(key);
+      // The remaining keys carry no placeholders.
+      return en[key];
   }
 }
 

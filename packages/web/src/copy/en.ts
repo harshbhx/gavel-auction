@@ -91,7 +91,7 @@ export const en = {
   'bid.rej.over_ceiling_unknown': 'That is above your ceiling.',
   'bid.rej.bad_amount': 'That amount is not valid.',
   'bid.rej.not_higher_than_own_max': 'Your bid must be above your own highest bid.',
-  'bid.rej.unconfirmed': 'This bid needs a confirmation first.',
+  'bid.rej.unconfirmed': 'This bid needs a confirmation before it counts.',
   'bid.rej.rate_limited': 'You are bidding too fast. Wait a moment.',
   'bid.rej.limit_exceeded': 'You have reached the bid limit.',
   'bid.rej.ceiling_revoked': 'Your hold is no longer active. Check your hold.',
