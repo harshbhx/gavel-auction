@@ -151,6 +151,17 @@ describe('production rules (R-RT-131)', () => {
     }
   });
 
+  it('requires an explicit absolute DATA_DIR for the file store (R6-A05)', () => {
+    const file = { ...prod, STORE: 'file', DATABASE_URL: undefined };
+    for (const dir of [undefined, '', 'data', './data']) {
+      const r = parseConfig({ ...file, DATA_DIR: dir });
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.errors.join('\n')).toContain('DATA_DIR');
+    }
+    expect(parseConfig({ ...file, DATA_DIR: '/var/lib/gavel' }).ok).toBe(true);
+    expect(parseConfig({ ...good, STORE: 'file' }).ok).toBe(true);
+  });
+
   it('allows the memory store only with ALLOW_MEMORY_STORE=1', () => {
     const base = { ...prod, STORE: 'memory', DATABASE_URL: undefined };
     expect(parseConfig(base).ok).toBe(false);

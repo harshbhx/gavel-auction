@@ -44,6 +44,7 @@ import { createLogger, type LogSink } from '../log/logger';
 import { MetricsCollector } from '../ops/metrics';
 import { createAuctionService, type AuctionService } from '../runtime/auction-service';
 import { FileLedgerStore } from '../store/file-ledger-store';
+import { acquireDataDirLock } from '../store/data-dir-lock';
 import { FileRoomStore } from '../store/file-room-store';
 import { MemoryStore } from '../store/memory-store';
 
@@ -127,6 +128,8 @@ interface Stores {
   holds: HoldStore;
   webhookEvents: WebhookEventStore;
   kill: KillStateStore;
+  /** Frees the data directory lock, if one was taken. */
+  release(): void;
 }
 
 async function openStores(config: ServerConfig, clock: SystemClock): Promise<Stores> {
@@ -140,19 +143,27 @@ async function openStores(config: ServerConfig, clock: SystemClock): Promise<Sto
         holds: new MemoryHoldStore(),
         webhookEvents: new MemoryWebhookEventStore(),
         kill: new MemoryKillStateStore(),
+        release: () => undefined,
       };
     case 'file': {
       const dir = config.DATA_DIR;
       mkdirSync(dir, { recursive: true });
-      const pay = openFileStores(join(dir, 'payments'));
-      return {
-        room: await FileRoomStore.open(join(dir, 'rooms.jsonl'), now),
-        ledger: new FileLedgerStore(join(dir, 'ledgers')),
-        journals: pay.journals,
-        holds: pay.holds,
-        webhookEvents: pay.webhooks,
-        kill: new FileKillStateStore(join(dir, 'kill-switch.json')),
-      };
+      const lock = acquireDataDirLock(dir);
+      try {
+        const pay = openFileStores(join(dir, 'payments'));
+        return {
+          room: await FileRoomStore.open(join(dir, 'rooms.jsonl'), now),
+          ledger: new FileLedgerStore(join(dir, 'ledgers')),
+          journals: pay.journals,
+          holds: pay.holds,
+          webhookEvents: pay.webhooks,
+          kill: new FileKillStateStore(join(dir, 'kill-switch.json')),
+          release: () => lock.release(),
+        };
+      } catch (e) {
+        lock.release();
+        throw e;
+      }
     }
     default:
       throw new Error(`STORE=${config.STORE} is not available in this build; use memory or file`);
@@ -192,7 +203,13 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
   });
   const ids = new UlidMinter(clock);
   const stores = await openStores(config, clock);
-  const payments = await wirePayments(config, env, clock);
+  let payments: PaymentsWiring;
+  try {
+    payments = await wirePayments(config, env, clock);
+  } catch (e) {
+    stores.release();
+    throw e;
+  }
   const audit = {
     append: (e: PaymentAudit): Promise<void> => {
       log.info('payment audit', e);
@@ -232,7 +249,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
   });
   const health = createHealthRoutes({
     pingStore: async () => {
-      await stores.room.listAuctions();
+      await stores.room.ping();
     },
     migrationsApplied: () => true,
   });
@@ -306,6 +323,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
       });
       await service.close();
       await payments.stop();
+      stores.release();
     },
   };
 }

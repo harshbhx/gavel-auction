@@ -12,7 +12,16 @@ export interface PlaceBidContext {
   at: number;
   /** Bidder and amount for a `confirm` decision once the bidder picked an option. */
   confirmedOptionId?: string;
+  /** Who answered the confirm prompt; recorded in the audit (R-VOX-069). Default 'bidder'. */
+  confirmedBy?: ConfirmedBy;
+  /** Confidence an `accept` needs to become a bid without a prompt, 0..1. Default 0.85. */
+  autoThreshold?: number;
 }
+
+export type ConfirmedBy = 'bidder' | 'auctioneer' | 'voice';
+
+/** Confidence at or above which a decision is auto-accepted (R-VOX-063). */
+export const AUTO_CONFIDENCE = 0.85;
 
 /** The engine PlaceBid fields this package produces; structurally the engine command. */
 export interface PlaceBidCommand {
@@ -30,6 +39,7 @@ export interface PlaceBidCommand {
     audioEndMs: number;
     confidenceBps: number;
     confirmed: boolean;
+    confirmedBy?: ConfirmedBy;
   };
 }
 
@@ -79,15 +89,24 @@ export function toPlaceBid(decision: Decision, ctx: PlaceBidContext): PlaceBidCo
   let bidderId: string;
   let amountCents: number;
   let confirmed = false;
+  let confirmedBy: ConfirmedBy | undefined;
   if (decision.kind === 'accept') {
+    // Below the auto threshold a bid needs a confirm prompt, never a direct bid (R-VOX-063).
+    const threshold = ctx.autoThreshold ?? AUTO_CONFIDENCE;
+    if (!(decision.confidence >= threshold && decision.evidence.confidence >= threshold)) {
+      return null;
+    }
     bidderId = decision.bidderId;
     amountCents = decision.amountCents;
   } else if (decision.kind === 'confirm' && ctx.confirmedOptionId !== undefined) {
+    // An answer after the prompt expired is dropped (R-VOX-067).
+    if (ctx.at >= decision.prompt.expiresAtMs) return null;
     const option = decision.prompt.options.find((o) => o.id === ctx.confirmedOptionId);
     if (option === undefined) return null;
     bidderId = option.bidderId;
     amountCents = option.amountCents;
     confirmed = true;
+    confirmedBy = ctx.confirmedBy ?? 'bidder';
   } else {
     return null;
   }
@@ -107,6 +126,7 @@ export function toPlaceBid(decision: Decision, ctx: PlaceBidContext): PlaceBidCo
       audioEndMs: ev.audioEndMs,
       confidenceBps: confidenceToBps(ev.confidence),
       confirmed,
+      ...(confirmedBy !== undefined ? { confirmedBy } : {}),
     },
   };
 }
@@ -118,8 +138,11 @@ export function toPlaceBid(decision: Decision, ctx: PlaceBidContext): PlaceBidCo
 export function resolveConfirm(
   decision: Decision,
   answer: { optionId: string } | { accept: false },
+  at: number,
 ): AuditRecord | null {
   if (decision.kind !== 'confirm') return null;
+  // An answer after the prompt expired confirms nothing (R-VOX-067).
+  if (at >= decision.prompt.expiresAtMs) return null;
   const ev = decision.evidence;
   const option =
     'optionId' in answer

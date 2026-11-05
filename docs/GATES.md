@@ -55,16 +55,29 @@ Links: n/a
 
 ## G4: real webhook signature verification
 
-Status: NOT RUN
-Run date / by: n/a
+Status: PASS
+Run date / by: 2026-11-05 by harshbhx (workflow gate-g4, run 41947655945)
 Question: does signature verification against the sandbox webhook id accept real events and reject tampered ones?
-Setup: n/a
-Requests: n/a
-Observed: n/a
-Verdict: n/a
-Decision: n/a
+Setup: sandbox, the new app's webhook id, script version 7604ec8, no buyer credentials recorded.
+Requests: create and approve orders, authorize, capture 1.00 with final_capture, void a second authorization; collect the real deliveries and send each, as received, to POST /v1/notifications/verify-webhook-signature.
+Observed: 6 real deliveries (CHECKOUT.ORDER.APPROVED x2, PAYMENT.AUTHORIZATION.CREATED x2, PAYMENT.CAPTURE.COMPLETED, PAYMENT.AUTHORIZATION.VOIDED) each answered HTTP 200 with verification_status SUCCESS. The log holds a capture and a void event. Six sanitized fixtures are committed. Real events carry fields the fake simulator lacked (event_version, resource_type, resource_version, summary, links); real resources also carry amount, create_time, custom_id, expiration_time, links, payee, seller_protection, status, supplementary_data and update_time (capture: final_capture, disbursement_mode, seller_receivable_breakdown). The simulator-only fields are orderId, authId, captureId, amountCents and reason.
+Verdict: real events verify through PayPal's endpoint with the raw body spliced into the request.
+
+| id                                    | expected          | actual                              | verdict  |
+| ------------------------------------- | ----------------- | ----------------------------------- | -------- |
+| G4.1 verify CHECKOUT.ORDER.APPROVED   | SUCCESS (2 of 2)  | SUCCESS, SUCCESS                    | observed |
+| G4.1 verify AUTHORIZATION.CREATED     | SUCCESS (2 of 2)  | SUCCESS, SUCCESS                    | observed |
+| G4.1 verify PAYMENT.CAPTURE.COMPLETED | SUCCESS           | SUCCESS                             | observed |
+| G4.1 verify AUTHORIZATION.VOIDED      | SUCCESS           | SUCCESS                             | observed |
+| G4.2 sanitized fixtures               | written           | 6 files in test/fixtures/webhooks   | observed |
+| G4.3 shape against the simulator      | differences noted | extra top-level and resource fields | observed |
+| G4.4 log holds capture and void       | both present      | both present                        | observed |
+
+Decision: PASS
 Fallback if FAIL: confirm event state by fetching the resource from the API before acting on it.
-Links: n/a
+Evidence: docs/evidence/G4/G4-20261105T012205Z.jsonl (sha256 6ce8f1d325266cc780dd74becfd07e58fcf545444c759de1eaecd5766aa5050c)
+Links: spec tags flipped: R-PAY-146, T-PAY-093. Fixtures: packages/payments/test/fixtures/webhooks/.
+Scope: tampered-event rejection was not part of this run; it is covered against the fake only. Retry schedule and PAYMENT.CAPTURE.DENIED/PENDING shapes stay UNVERIFIED.
 
 ## G5: STT accuracy on noisy bids
 
