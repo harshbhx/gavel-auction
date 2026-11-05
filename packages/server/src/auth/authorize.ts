@@ -46,8 +46,8 @@ export function authorize(op: Operation, role: AuthRole): AuthDecision {
   return allowed ? { ok: true } : { ok: false, code: 'forbidden' };
 }
 
-/** Matches `ceiling` and the web wire name `ceilingCents`. */
-const CEILING_KEY = /^ceiling/i;
+/** Matches `ceiling` and the web wire name `ceilingCents`, not the public `ceilingPresets`. */
+const CEILING_KEY = /^ceiling(cents)?$/i;
 
 /**
  * Remove private fields from an outbound frame for one viewer (R-RT-055, R-RT-086).
