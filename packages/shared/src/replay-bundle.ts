@@ -1,16 +1,16 @@
 /**
- * Replay bundle: the redacted public export (version 3) of one auction ledger, plus the head
+ * Replay bundle: the redacted public export (version 4) of one auction ledger, plus the head
  * hash of that public chain. The server builds it from the real hash-chained ledger; a client
  * verifies `events` with the engine's `verifyPublicExport` and compares the result's
  * `headHash` with `headHash` here. Playback frames are derived from `events`, never stored
  * beside them. Private ledger hashes and ceilings are not part of a bundle.
  */
 export const REPLAY_BUNDLE_VERSION = 1;
-export const REPLAY_EXPORT_VERSION = 3;
+export const REPLAY_EXPORT_VERSION = 4;
 
 /** Structural shape of the engine's `PublicEntry` (the engine type is assignable to this). */
 export interface ReplayEvent {
-  v: 3;
+  v: 4;
   auctionId: string;
   seq: number;
   at: number;

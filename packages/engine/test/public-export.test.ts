@@ -143,14 +143,15 @@ describe('public export', () => {
   it('T-ENG-087 R-ENG-109 R5-E01: a redacted entry publishes no private hash, so amounts cannot be brute forced', () => {
     const full = ledger('second_price');
     const pub = publicExport(full);
+    // From the first redacted entry on no entry carries a private hash (R12-E01).
+    const first = pub.findIndex((e) => e.redacted.length > 0);
+    expect(first).toBe(2);
     for (const [i, e] of pub.entries()) {
-      if (e.redacted.length > 0) expect(e.fullHash).toBeNull();
+      if (i >= first) expect(e.fullHash).toBeNull();
       else expect(e.fullHash).toBe((full[i] as LedgerEntry).hash);
     }
     const text = JSON.stringify(pub);
-    for (const e of full) {
-      if ((pub[e.seq - 1] as PublicEntry).redacted.length > 0) expect(text).not.toContain(e.hash);
-    }
+    for (const e of full.slice(first)) expect(text).not.toContain(e.hash);
     // The attacker rebuilds the private entry for each small amount and compares the hash.
     const target = full[3] as LedgerEntry;
     const hits = [1999, 2000, 2001].filter((amount) => {
@@ -178,14 +179,15 @@ describe('public export', () => {
     expect(matchesLedger(pub, full)).toBe(false);
   });
 
-  it('T-ENG-087 R-ENG-109 R5-E02: the spoken transcript of a sealed lot is removed until the hammer', () => {
+  it('T-ENG-087 R-ENG-109 R5-E02 R12-E05: the spoken transcript is removed on every lot', () => {
     const spoken = { transcript: 'two hundred fifty', utteranceId: 'u1' };
     const bid = publicExport(ledger('second_price', spoken))[3] as PublicEntry;
     expect(JSON.stringify(bid)).not.toContain('two hundred fifty');
     expect(bid.payload['audit']).toEqual({ utteranceId: 'u1' });
     expect(bid.redacted).toContain('audit.transcript');
     const open = publicExport(ledger('english', spoken))[3] as PublicEntry;
-    expect(JSON.stringify(open)).toContain('two hundred fifty');
+    expect(JSON.stringify(open)).not.toContain('two hundred fifty');
+    expect(open.redacted).toContain('audit.transcript');
   });
 
   it('T-ENG-087 R-ENG-019 R-ENG-109 R5-E03: a proxy lot publishes the price but not the bid maximum', () => {

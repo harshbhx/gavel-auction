@@ -556,3 +556,24 @@ Consequences:
 - The reference has no settlement ops, so `complete`, `RecordSettlement` and the capture guard of promote (R8-E01) are still checked by fixtures only.
 
 Evidence: reference/python/engine.py, reference/python/scenario_export.py, reference/python/test_scenario_export.py, packages/engine/test/golden-play.ts, packages/engine/fixtures/golden/pause-01-resume-shifts-deadline.json, R-ENG-044, R-ENG-054 to R-ENG-060, R-ENG-112, R-ENG-114, D-0025, D-0026.
+
+## D-0031: Public export version 4 closes the round 12 privacy leaks
+
+Date: 2026-11-05
+Status: accepted
+Owner: engine
+Context: Review round 12 found four ways the version 3 public export still revealed private values. A private entry hash covers `prev`, the private hash of the entry before it, so the first unredacted entry after a redacted one committed to the redacted entry and its ceiling or sealed amount could be brute forced by hashing forward (R12-E01, issue #1550). Transcripts stayed on english lots although the spec shows them to auditors only (R12-E05, #1554). A proxy hammer kept `candidates[].priceCents`, and each runner-up price is the next lower secret maximum plus the increment (R12-E06, #1555). An `over_ceiling` rejection kept its amount and a `CANDIDATE_SKIPPED` kept its reason and price, both upper bounds on a ceiling (R12-E07, #1556).
+Decision: The public export is version 4 (`PUBLIC_EXPORT_VERSION`, and `REPLAY_EXPORT_VERSION` in shared). From the first entry that loses a field to the end of the export, every entry carries `fullHash` null, or the keyed commitment when the auditor passes a `commitKey`; entries before it keep the private hash, which a viewer can recompute from public data anyway. Every `BID_RECORDED` and `BID_REJECTED` loses `audit.transcript` whatever the mode. A proxy `LOT_HAMMERED` keeps the winner's candidate price and drops `priceCents` from every later candidate (`candidates.priceCents` in `redacted`); a charged runner-up price is still published by `FALLBACK_PROMOTED`. A `BID_REJECTED` with reason `over_ceiling` loses `amountCents` and `amountRaw`; other rejections keep their amounts, since they only show a lower bound that an accepted bid would show too. `CANDIDATE_SKIPPED` keeps `lotId`, `bidderId` and `depth` and loses `reason` and `priceCents`. The private ledger, its hash vector and the golden fixtures do not change.
+Alternatives:
+
+- Null `fullHash` on every entry: rejected, it gives up a link that leaks nothing; the sticky rule is just as safe.
+- Drop every rejected bid amount: rejected, only an over-ceiling rejection bounds a ceiling and the other amounts help a reader follow the room.
+- Keep the version number: rejected, the same version would mean two different payload sets and `matchesLedger` on an old export would fail without saying why.
+
+Consequences:
+
+- Version 3 exports and replay bundles no longer verify (`bad_version`); rebuild them from the ledger.
+- Without a commit key the public chain binds to the private ledger only up to the first redaction; the auditor re-derives the export from the ledger with `matchesLedger`, as before.
+- A skipped candidate who was not revoked still tells a viewer that their ceiling did not cover their price at promotion time; hiding that would mean hiding who was promoted.
+
+Evidence: packages/engine/src/ledger/public-export.ts, packages/engine/test/redteam12-privacy.test.ts, packages/engine/test/public-export.test.ts, packages/shared/src/replay-bundle.ts, SPEC-engine R-ENG-045, R-ENG-108, R-ENG-109, D-0020, D-0021.
