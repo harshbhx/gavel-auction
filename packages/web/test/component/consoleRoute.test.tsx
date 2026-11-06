@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
 import { loadSession, saveSession } from '../../src/net/session';
+import { roomStore } from '../../src/store/roomStore';
 import { clearAuctioneerToken } from '../../src/store/session';
 import { baseConfig, openSnapshot, priceMsg, roster, stateMsg } from '../../src/testing/builders';
 import { formatUsd } from '../../src/util/money';
@@ -90,6 +91,7 @@ afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
   clearAuctioneerToken();
+  roomStore.enter('');
   window.sessionStorage.clear();
   window.history.pushState(null, '', '/');
 });
