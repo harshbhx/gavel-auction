@@ -101,8 +101,6 @@ export function createGateway(deps: GatewayDeps): (transport: BoundedConnection)
         .then(async () => {
           const at = attached;
           if (!at) return;
-          const decoded = decodeClientMsg(raw);
-          if (!decoded.ok || decoded.value.t === 'join') return fail('bad_message');
           const t = at.conn.token;
           if (
             t !== undefined &&
@@ -110,6 +108,8 @@ export function createGateway(deps: GatewayDeps): (transport: BoundedConnection)
           ) {
             return fail('unauthorized');
           }
+          const decoded = decodeClientMsg(raw);
+          if (!decoded.ok || decoded.value.t === 'join') return fail('bad_message');
           if (decoded.value.t === 'bid') await at.room.submitBid(at.conn, decoded.value);
           else await at.room.respondConfirm(at.conn, decoded.value);
         })
