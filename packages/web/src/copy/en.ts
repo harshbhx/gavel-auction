@@ -6,6 +6,7 @@ export const en = {
   'gallery.openDialog': 'Open dialog',
   'gallery.closeDialog': 'Close dialog',
   'banner.sandbox': 'Sandbox: no real money moves',
+  'banner.fakePayments': 'Fake payments, no real money',
   'prov.live': 'Live sandbox room',
   'prov.scripted': 'Scripted demo: recorded events, no PayPal calls',
   'prov.recorded': 'Recorded: this is a replay',
@@ -207,13 +208,21 @@ export const en = {
   'controls.sent': '{action} sent',
   'controls.hammerChanged':
     'The price or leader changed. Nothing was hammered. Review and try again.',
+  'controls.hammerPriceChanged':
+    'A new bid arrived and the price changed. Nothing was hammered. Review the new price and hold again.',
+  'controls.hammerLeaderChanged':
+    'The leader changed. Nothing was hammered. Review the new leader and hold again.',
   'controls.failed': '{action} failed. Try again.',
   'controls.unknown':
     '{action}: no answer from the server. It may have gone through. Check the lot state.',
-  'kill.notAvailable': 'The server cannot stop the auction yet. The auction is still running.',
+  'kill.notAvailable': 'The server does not know this auction. The auction is still running.',
   'kill.conflict':
     'The server refused the stop because the lot state changed. Check the lot state.',
   'kill.failedDetail': 'The stop request was not accepted: {detail}. The auction is still running.',
+  'kill.unauthorized':
+    'The console is not allowed to stop this auction. The auction is still running.',
+  'kill.serverError':
+    'The server could not process the stop request. Check the lot state before trying again.',
   'kill.unknown': 'No answer to the stop request. Check the lot state before trying again.',
   'console.manual.offline': 'Offline. The bid was not sent. Reconnect to send it.',
   'console.manual.noRoom': 'Not connected to the room. The bid was not sent.',
@@ -291,6 +300,11 @@ export const en = {
   'ladder.verify.lookup': 'Confirmed by lookup at {time}',
   'ladder.verify.pending': 'Awaiting confirmation',
   'ladder.remainderVoided': 'Remainder voided',
+  'hold.remainder.none': 'No remainder to release',
+  'hold.remainder.pending': 'Releasing the rest of your hold',
+  'hold.remainder.released': 'The rest of your hold was released',
+  'hold.remainder.unreleased':
+    'The rest of your hold is not released yet. The organizer will follow up.',
   'ladder.invariants.ok': 'Totals check out: charged {c} + released {r} = holds {h}',
   'ladder.invariants.bad': 'Needs review: totals do not match',
   'ladder.fallback': 'Winner could not be charged ({reason}). Runner-up paddle {n} selected.',

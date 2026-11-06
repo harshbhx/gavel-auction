@@ -65,14 +65,14 @@ describe('store keeps yourHold and ladder counts', () => {
         ladder: { counts: counts(1, 3) },
       }),
     }).state;
-    expect(state.settlementYourHold?.idSuffix).toBe('K7Q2ZA');
-    expect(state.settlementYourHold?.remainder).toBe('released');
+    expect(state.ownHold?.idSuffix).toBe('K7Q2ZA');
+    expect(state.ownHold?.remainder).toBe('released');
     expect(state.settlementLadderCounts?.['SETTLED']).toBe(3);
     state = reduce(state, {
       kind: 'wire',
       msg: frame(3, { auctionState: 'SETTLED', you: 'SETTLED' }),
     }).state;
-    expect(state.settlementYourHold?.capturedCents).toBe(34000);
+    expect(state.ownHold?.capturedCents).toBe(34000);
     expect(state.settlementLadderCounts?.['CAPTURED']).toBe(1);
   });
 
@@ -94,7 +94,7 @@ describe('store keeps yourHold and ladder counts', () => {
         yourHold: { ...OWN, capturedCents: 0, status: 'HELD', remainder: 'none' },
       }),
     }).state;
-    expect(state.settlementYourHold?.capturedCents).toBe(34000);
+    expect(state.ownHold?.capturedCents).toBe(34000);
   });
 });
 

@@ -3,6 +3,7 @@ import type {
   ConfirmRequestMsg,
   HammerMsg,
   RoomSnapshot,
+  OwnHold,
   ServerMessage,
   SettlementUpdateMsg,
 } from '../wire';
@@ -14,9 +15,6 @@ export interface SettlementDetail {
   winnerPaddle: number | null;
   invariants: { ok: boolean; violations: string[] };
 }
-
-/** The viewer's own hold from the latest settlement_update that carried one (bidder sessions only). */
-export type OwnHoldView = NonNullable<SettlementUpdateMsg['yourHold']>;
 
 /** Public count of holds per settlement state from the latest settlement_update that carried it. */
 export type LadderCounts = NonNullable<SettlementUpdateMsg['ladder']>['counts'];
@@ -74,8 +72,8 @@ export interface RoomState {
   settlementDetail?: SettlementDetail;
   /** Server time and own captured amount from the latest settlement_update. */
   settlementMeta?: SettlementMeta;
-  /** The viewer's own hold (id suffix, status, ceiling, captured, released, remainder); absent on older servers. */
-  settlementYourHold?: OwnHoldView;
+  /** This viewer's own hold from the latest settlement_update that carried one. */
+  ownHold?: OwnHold;
   /** Holds per settlement state for every screen (ladder.counts); absent on older servers. */
   settlementLadderCounts?: LadderCounts;
   lastError: { code: string; message: string; retryAfterMs: number | null } | null;
@@ -155,9 +153,7 @@ function applySnapshot(state: RoomState, msg: Extract<ServerMessage, { t: 'state
     auditTruncated: snap.recentAudit.length >= SNAPSHOT_AUDIT_ROWS,
     ...(state.settlementDetail === undefined ? {} : { settlementDetail: state.settlementDetail }),
     ...(state.settlementMeta === undefined ? {} : { settlementMeta: state.settlementMeta }),
-    ...(state.settlementYourHold === undefined
-      ? {}
-      : { settlementYourHold: state.settlementYourHold }),
+    ...(state.ownHold === undefined ? {} : { ownHold: state.ownHold }),
     ...(state.settlementLadderCounts === undefined
       ? {}
       : { settlementLadderCounts: state.settlementLadderCounts }),
@@ -252,7 +248,7 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
       const withMeta: RoomState = {
         ...next,
         settlementMeta: meta,
-        ...(msg.yourHold === undefined ? {} : { settlementYourHold: msg.yourHold }),
+        ...(msg.yourHold === undefined ? {} : { ownHold: msg.yourHold }),
         ...(msg.ladder === undefined ? {} : { settlementLadderCounts: msg.ladder.counts }),
       };
       if (msg.holds === undefined) return withMeta;

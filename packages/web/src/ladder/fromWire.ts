@@ -38,8 +38,9 @@ export function receiptSource(state: RoomState): ReceiptSource {
   const isHammerWinner = hammer.winnerId === me;
   const detail = state.settlementDetail;
   // The server's own-hold record wins for this viewer's id suffix, status, amounts and ceiling.
-  const own = state.settlementYourHold;
+  const own = state.ownHold;
   const ownFor = own !== undefined && own.bidderId === me ? own : undefined;
+  const remainder = ownFor !== undefined ? { remainder: ownFor.remainder } : {};
   if (detail !== undefined) {
     const holds: HoldView[] = detail.holds
       .filter((h) => h.paddle === row.paddle)
@@ -57,6 +58,7 @@ export function receiptSource(state: RoomState): ReceiptSource {
           ...(v.eventType === undefined ? {} : { eventType: v.eventType }),
         })),
         idSuffix: ownFor?.idSuffix ?? h.idSuffix,
+        ...remainder,
       }));
     return {
       paddle: row.paddle,
@@ -97,6 +99,7 @@ export function receiptSource(state: RoomState): ReceiptSource {
           releasedCents: ownFor?.releasedCents ?? 0,
           verifiedBy: [],
           idSuffix: ownFor?.idSuffix ?? '',
+          ...remainder,
         },
       ],
       invariants: { ok: true, violations: [] },
