@@ -94,6 +94,15 @@ function changesHold(e: ParsedEvent): boolean {
   );
 }
 
+/** True for the event types the intake acts on; any other type is ignored. */
+export function acceptsEventType(eventType: string): boolean {
+  return (
+    eventType === 'PAYMENT.AUTHORIZATION.VOIDED' ||
+    eventType === 'PAYMENT.AUTHORIZATION.DENIED' ||
+    CAPTURE_HINTS.has(eventType)
+  );
+}
+
 /** Capture events that make the settlement read the truth again (R11-O03). */
 const CAPTURE_HINTS: ReadonlySet<string> = new Set([
   'PAYMENT.CAPTURE.PENDING',

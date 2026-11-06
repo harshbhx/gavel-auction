@@ -59,7 +59,8 @@ async function setup(verifier?: WebhookVerifier): Promise<Setup> {
     rig.paypal.core.approveOrder(order.id);
     const event = rig.paypal.core.events.at(-1);
     if (event === undefined) throw new Error('no event emitted');
-    return emitter.sign(event);
+    // A type the intake acts on: deliveries of other types are answered 200 unverified.
+    return emitter.sign({ ...event, eventType: 'PAYMENT.AUTHORIZATION.VOIDED' });
   };
   return { rig, base, signed };
 }
@@ -149,7 +150,7 @@ describe('webhook checks that need the live rules (T-QA-072)', () => {
     });
 
   function delivery(over: Record<string, string>): Delivery {
-    const rawBody = '{"id":"WH-EVT-1","event_type":"CHECKOUT.ORDER.APPROVED","resource":{}}';
+    const rawBody = '{"id":"WH-EVT-1","event_type":"PAYMENT.AUTHORIZATION.VOIDED","resource":{}}';
     return {
       rawBody,
       headers: {

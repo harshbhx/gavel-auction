@@ -1982,6 +1982,9 @@ export interface SettlementPlan {
 }
 
 // @public
+export function sourceKey(source: string): string;
+
+// @public
 export function settlementRef(lotId: string, seq: number): string;
 
 // @public (undocumented)
@@ -2386,6 +2389,7 @@ export class WebhookHandler {
 
 // @public (undocumented)
 export interface WebhookHandlerDeps {
+    acceptsEventType?: (eventType: string) => boolean;
     // (undocumented)
     audit: AuditSink;
     // (undocumented)
@@ -2448,6 +2452,7 @@ export interface WebhookVerifierOptions {
     maxCallsPerWindow?: number;
     maxRedeliveryAgeMs?: number;
     maxRedeliveryCallsPerWindow?: number;
+    maxUnprovenCalls?: number;
     maxSkewMs?: number;
     nowMs?: () => number;
     // (undocumented)

@@ -77,7 +77,7 @@ import {
   voidSpareHolds,
   type SpareVoidDeps,
 } from './void-phase';
-import { WebhookIntake } from './webhook-intake';
+import { WebhookIntake, acceptsEventType } from './webhook-intake';
 
 /** Everything the service needs from the outside, as ports. */
 /** Pending holds younger than this are left to the normal approval flow. */
@@ -429,6 +429,7 @@ class Service implements AuctionService, SettlePort {
       clock: this.payClock,
       ...(deps.metrics !== undefined ? { metrics: deps.metrics } : {}),
       onVerified: (event) => this.intake.accept(event),
+      acceptsEventType,
     });
   }
 
