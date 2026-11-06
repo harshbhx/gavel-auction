@@ -254,6 +254,42 @@ Saga defaults (`SAGA_DEFAULTS` in `packages/payments/src/config.ts`, equal to th
 | maxVoidResumes    | 5      | a void that fails five resumes goes to review instead of looping                                                                    |
 | unknownDeadlineMs | 600000 | ten minutes for an unknown capture outcome before review (R-PAY-053)                                                                |
 
+## Real-sandbox nightly run 42200708552 (2026-11-06)
+
+Run: https://github.com/harshbhx/gavel-auction/actions/runs/42200708552 (workflow `nightly-sandbox`, `workflow_dispatch`, branch `main`, head 697215148be6, started 2026-11-06 10:11 UTC). Visible to repository access only.
+Question: what did the nightly sandbox job show against the real PayPal sandbox, spec by spec?
+Setup: sandbox, all four sandbox secrets present (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `SANDBOX_BUYER_EMAIL`, `SANDBOX_BUYER_PASSWORD`), plus the `SANDBOX_BUYER2`, `SANDBOX_BUYER3` and `SANDBOX_CARD_BUYER` pairs. Values are masked in the log and not recorded here. `GAVEL_STAGING_URL` and `GAVEL_STAGING_ADMIN_KEY` were empty.
+Result: the `nightly` job concluded success, but the report the job wrote (`report/sandbox.json`, artifact `sandbox-report`, artifact id 13493479420) says overall `inconclusive`: pass 7, fail 0, inconclusive 1, skipped 2. Vitest reported 8 tests passed and 1 skipped (9 tests in 4 files). A green job does not mean every spec passed; the table is the record.
+
+| spec                                  | gate | vitest     | report status | observed                                                                                          |
+| ------------------------------------- | ---- | ---------- | ------------- | ------------------------------------------------------------------------------------------------- |
+| R1 partial capture and remainder      | G1   | pass       | pass          | captured 35000 cents, remainder released (spec's own wording; see G1)                             |
+| R2 card or guest authorize            | G2   | pass       | pass          | card buyer, authorization CREATED (authorize only; no capture)                                    |
+| R3 reauthorize after a delay          | G3   | pass       | inconclusive  | reauthorize answered HTTP 422 UNPROCESSABLE_ENTITY; G3 stays NOT RUN                              |
+| R4 staging restart                    | G4   | skipped    | skipped       | no staging host configured (`GAVEL_STAGING_URL`)                                                  |
+| R5 idempotent capture                 | G1   | pass       | pass          | second send answered 200 with the same capture                                                    |
+| R6 void each non-winner once          | G1   | pass       | pass          | both voids accepted; a repeat void on the same authorization answered 422 PREVIOUSLY_VOIDED       |
+| R7 full lot                           | G1   | pass       | pass          | saga SETTLED; ledger against PayPal 0 differences; winner captured 12500 cents                    |
+| R8 reconciliation                     | G1   | pass       | pass          | reconciliation 0 differences; winner captured 12500 cents                                         |
+| R9 three buyers                       | G1   | pass       | not in report | winner captured, runner-up and loser released (vitest only; no R9 entry in `report/sandbox.json`) |
+| R10 crash between capture and journal | G1   | pass       | pass          | one crash, one capture on the winner, losers voided                                               |
+| G5 speech harness                     | none | not a spec | skipped       | 20 of 20 recordings missing for deepgram and for groq; G5 stays NOT RUN                           |
+
+What this run changes: nothing in the status blocks above. It adds sandbox evidence for R1, R5 to R8 and R10 (partial capture, idempotent capture, void, saga settlement, reconciliation, crash resume), all on PayPal-account orders and the sandbox. R10 has now passed once in the nightly run, which is the condition the crash section sets for the repeated-capture tag; the tag itself is not changed here.
+
+What this run does not prove:
+
+- G1: the remainder release is still inferred, not read from a buyer balance (decision A stands as written).
+- G2: no guest or card capture and no void of a card authorization ran; R2 stops at CREATED.
+- G3: no honor-period or validity-window result. R3 answered 422, so reauthorize is unproven on this run.
+- G4 staging: R4 was skipped, so the real server kill after capture did not run. R10 is the in-process crash only.
+- G5: no audio ran, so no speech-to-text accuracy exists.
+- R9 is not in the report counts; its pass comes from vitest output only.
+- Latency: this run recorded no timings for the targets, so the table above is unchanged. The void p95 caveat stands: 1235.96 ms against the 1000 ms budget, and the SETTLED budget assumption (each call under 1 s at p95) still fails.
+- Only the run log and the summary artifact exist; no redacted evidence file is committed, so the figures are reported, not independently verifiable, until one is.
+
+Decision: no change. G1 PASS (decision A), G2 PASS, G3 NOT RUN, G5 NOT RUN, as before.
+
 ## Run entries
 
 `gates/summarize.ts` in `packages/payments` appends one entry per gate run below this line in the format of SPEC 7.2 (operator, date, script sha, buyer kinds without credentials, observed rows, evidence path with its sha256, decision, fallback adopted, spec tags flipped). The status blocks above change only after the matching entry exists.
