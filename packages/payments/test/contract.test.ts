@@ -9,7 +9,7 @@ import {
   HOLD_ERROR_CODES,
   HoldErrorResponse,
   holdOwnedBySession,
-} from '../src/contract/web.js';
+} from '@gavel/shared';
 
 const dir = join(import.meta.dirname, '..', 'src', 'contract', 'fixtures');
 const load = (name: string): unknown => JSON.parse(readFileSync(join(dir, name), 'utf8'));

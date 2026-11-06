@@ -1,9 +1,12 @@
 import {
   ApproveHoldRequest,
   CreateHoldRequest,
+  GavelError,
   HOLD_ERROR_STATUS,
   holdOwnedBySession,
+  type AbandonHoldResponse,
   type HoldErrorCode,
+  type HoldViewResponse,
 } from '@gavel/shared';
 import { HoldError, toHoldError, type HoldService, type HoldStore } from '@gavel/payments';
 import { authenticate, json, parseBody, type Ctx, type HttpApp, type Mount } from './app';
@@ -13,6 +16,12 @@ import { roomFor, snapshotFor } from './auctions';
 export interface HoldsPort {
   service: Pick<HoldService, 'createHoldOrder' | 'completeApproval' | 'abandonHold'>;
   store: Pick<HoldStore, 'get'>;
+  /**
+   * True while the auction may still take holds: not hammered and no settlement yet. A new
+   * order or an approval after that is refused, so no authorization appears that the cut
+   * settlement plan does not know (`AuctionService.acceptsHolds`).
+   */
+  acceptsHolds: (auctionId: string) => Promise<boolean>;
 }
 
 function holdFailure(code: HoldErrorCode, message: string): Response {
@@ -22,6 +31,12 @@ function holdFailure(code: HoldErrorCode, message: string): Response {
 /** A guessed id and somebody else's id look the same to the caller (R-PAY-035). */
 function notFound(): Response {
   return holdFailure('order_not_found', 'no such hold');
+}
+
+async function requireOpen(port: HoldsPort, auctionId: string): Promise<void> {
+  if (!(await port.acceptsHolds(auctionId))) {
+    throw new GavelError('closed', 'the auction no longer takes holds');
+  }
 }
 
 async function guarded(run: () => Promise<Response>): Promise<Response> {
@@ -59,6 +74,7 @@ export function mountHolds(port: HoldsPort): Mount {
         const who = await authenticate(c, body.auctionId, ['session']);
         if (who.bidderId === undefined) return notFound();
         const room = await roomFor(c.deps, body.auctionId);
+        await requireOpen(port, body.auctionId);
         const { snapshot } = await snapshotFor(c.deps, room, 'screen', 'holds');
         const created = await port.service.createHoldOrder({
           auctionId: body.auctionId,
@@ -78,6 +94,7 @@ export function mountHolds(port: HoldsPort): Mount {
         if (hold === null) return notFound();
         const who = await authenticate(c, hold.auctionId, ['session']);
         if (!holdOwnedBySession(hold.bidderId, who.bidderId)) return notFound();
+        await requireOpen(port, hold.auctionId);
         const approved = await port.service.completeApproval({ holdId, orderId: body.orderId });
         return json(200, approved);
       }),
@@ -90,11 +107,12 @@ export function mountHolds(port: HoldsPort): Mount {
         if (hold === null) return notFound();
         const who = await authenticate(c, hold.auctionId, ['session']);
         if (!holdOwnedBySession(hold.bidderId, who.bidderId)) return notFound();
-        return json(200, {
+        const view: HoldViewResponse = {
           holdId: hold.holdId,
           status: hold.status,
           ceilingCents: hold.ceilingCents,
-        });
+        };
+        return json(200, view);
       }),
     );
 
@@ -109,7 +127,8 @@ export function mountHolds(port: HoldsPort): Mount {
         if (!abandoned) {
           return holdFailure('hold_exists', 'the hold is already authorized and was not released');
         }
-        return json(200, { holdId, released: true });
+        const released: AbandonHoldResponse = { holdId, released: true };
+        return json(200, released);
       }),
     );
   };

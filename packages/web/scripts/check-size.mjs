@@ -46,8 +46,20 @@ export function entriesOf(html) {
   return found;
 }
 
-/** The inline script blocks and the CSP of an HTML file, as problems. */
-export function cspProblems(html) {
+/** The origin of an absolute URL, or null. */
+function originOf(value) {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The inline script blocks and the CSP of an HTML file, as problems. When VITE_API_BASE or
+ * VITE_WS_BASE is set in env, connect-src must list that origin (R-WEB-004); it never has a wildcard.
+ */
+export function cspProblems(html, env = process.env) {
   const problems = [];
   const meta = html.match(/<meta\b[^>]*http-equiv="Content-Security-Policy"[^>]*>/i);
   if (meta === null) return ['index.html has no Content-Security-Policy meta tag'];
@@ -57,7 +69,19 @@ export function cspProblems(html) {
   if (script === '') problems.push('CSP has no script-src directive');
   if (/'unsafe-inline'|'unsafe-eval'/.test(script))
     problems.push('CSP script-src allows unsafe code');
-  if (!/connect-src/.test(policy)) problems.push('CSP has no connect-src directive');
+  const connect = policy.split(';').find((d) => d.trim().startsWith('connect-src'));
+  if (connect === undefined) {
+    problems.push('CSP has no connect-src directive');
+  } else {
+    const sources = connect.trim().split(/\s+/).slice(1);
+    if (sources.some((source) => source.includes('*')))
+      problems.push('CSP connect-src has a wildcard origin');
+    for (const name of ['VITE_API_BASE', 'VITE_WS_BASE']) {
+      const origin = originOf(env[name] ?? '');
+      if (origin !== null && !sources.includes(origin))
+        problems.push(`CSP connect-src does not allow ${name} origin ${origin}`);
+    }
+  }
   if (/<script(?![^>]*\bsrc=)[^>]*>\s*\S/i.test(html))
     problems.push('index.html has an inline script');
   return problems;
