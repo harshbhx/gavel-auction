@@ -14,7 +14,7 @@ import { AFTER_CAPTURE_KEYS, en, type CopyKey } from '../../src/copy/en';
 const SRC = new URL('../../src/', import.meta.url).pathname;
 
 /** Files that predate the catalog rule. Remove each entry when the file moves to catalog keys. */
-const LITERAL_ALLOWLIST: readonly string[] = ['App.tsx'];
+const LITERAL_ALLOWLIST: readonly string[] = [];
 
 function listSource(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

@@ -1,9 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 
 import { t } from './copy/t';
-import { Icon } from './design/icons';
-import { Banner } from './design/primitives/Banner';
-import { hasAuctioneerAccess } from './store/session';
+import { hasAuctioneerAccess, hasReviewerAccess } from './store/session';
 
 export type RouteTitleKey =
   | 'landing.start'
@@ -42,6 +40,8 @@ export interface RouteDef {
   readonly titleKey: RouteTitleKey;
   /** The route needs a stored session token for its room. */
   readonly needsToken?: boolean;
+  /** Who the token is for; a missing role means the auctioneer. */
+  readonly tokenRole?: 'auctioneer' | 'reviewer';
   /** Only present in dev and preview builds. */
   readonly devOnly?: boolean;
 }
@@ -57,7 +57,13 @@ export const ROUTES: readonly RouteDef[] = [
   { id: 'receipt', path: '/r/:roomId/receipt', titleKey: 'receipt.none' },
   { id: 'console', path: '/r/:roomId/console', titleKey: 'demo.roleConsole', needsToken: true },
   { id: 'screen', path: '/r/:roomId/screen', titleKey: 'demo.roleScreen' },
-  { id: 'audit', path: '/r/:roomId/audit', titleKey: 'audit.title' },
+  {
+    id: 'audit',
+    path: '/r/:roomId/audit',
+    titleKey: 'audit.title',
+    needsToken: true,
+    tokenRole: 'reviewer',
+  },
   { id: 'ops', path: '/ops', titleKey: 'ops.title' },
   { id: 'replay', path: '/replay/:recordingId', titleKey: 'replay.readonly' },
   { id: 'gallery', path: '/gallery', titleKey: 'app.name', devOnly: true },
@@ -121,22 +127,16 @@ export function RouteScreen({ match, children }: RouteScreenProps): ReactNode {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const title = titleFor(match);
   const roomId = match.params['roomId'];
-  const blocked =
-    match.route.needsToken === true && (roomId === undefined || !hasAuctioneerAccess(roomId));
+  const hasAccess = match.route.tokenRole === 'reviewer' ? hasReviewerAccess : hasAuctioneerAccess;
+  const blocked = match.route.needsToken === true && (roomId === undefined || !hasAccess(roomId));
 
   useEffect(() => {
     document.title = title;
     headingRef.current?.focus();
   }, [title, match.route.id]);
 
-  const showBanner = match.route.id === 'notFound' || blocked;
   return (
     <main data-route={match.route.id}>
-      {showBanner && (
-        <Banner tone="info" icon={<Icon name="lock" />}>
-          {t('banner.sandbox')}
-        </Banner>
-      )}
       <h1 ref={headingRef} tabIndex={-1}>
         {blocked ? t('err.tokenMissing') : t(match.route.titleKey)}
       </h1>
