@@ -1,4 +1,4 @@
-import type { BidderId, MsgId, Cents } from '@gavel/shared';
+import type { BidderId, MsgId, Cents, RoomSnapshot } from '@gavel/shared';
 import {
   PROTOCOL_VERSION,
   type BidMsg,
@@ -27,6 +27,8 @@ export interface PendingSummary {
   rejection: { reason: string; mid: string } | null;
   /** The latest bid got no answer (or was never sent): the id to resend, else null. */
   unknownMid: MsgId | null;
+  /** The amount that resending the unanswered bid would send, else null. */
+  unknownAmount: Cents | null;
 }
 
 /** What the bidder screen shows about the bids this device sent, judged by the latest bid only. */
@@ -39,6 +41,7 @@ export function summarizePending(list: readonly PendingBid[]): PendingSummary {
         ? { reason: latest.code, mid: latest.mid }
         : null,
     unknownMid: latest?.status === 'unknown' ? latest.mid : null,
+    unknownAmount: latest?.status === 'unknown' ? latest.amount : null,
   };
 }
 
@@ -107,6 +110,28 @@ export class PendingBids {
     );
     this.evictFinished();
     this.emit();
+  }
+
+  /**
+   * After a (re)join, settles unanswered bids from the snapshot: when the server already holds
+   * an accepted bid of this bidder at or above the amount, the answer was lost in the gap, so
+   * the bid counts as accepted and the bidder is not asked to resend it.
+   */
+  reconcile(snapshot: RoomSnapshot): void {
+    const high = snapshot.you?.highBid;
+    if (high === undefined) return;
+    let changed = false;
+    for (const bid of [...this.bids.values()]) {
+      if ((bid.status === 'unknown' || bid.status === 'pending') && bid.amount <= high) {
+        this.stopTimer(bid.mid);
+        this.bids.set(bid.mid, { ...bid, status: 'accepted' });
+        changed = true;
+      }
+    }
+    if (changed) {
+      this.evictFinished();
+      this.emit();
+    }
   }
 
   get(mid: MsgId): PendingBid | undefined {

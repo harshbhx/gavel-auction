@@ -23,6 +23,10 @@ export interface RegisterScreenProps {
   minCents: number;
   maxCents: number;
   presetsCents?: readonly number[];
+  /** Paddles other bidders already hold; typing one of them shows the taken message. */
+  takenPaddles?: readonly number[];
+  /** What the bidder entered before going back from the approval step; shown again as typed. */
+  initial?: RegistrationDraft;
   onApprove: (draft: RegistrationDraft) => void;
 }
 
@@ -36,26 +40,38 @@ export function RegisterScreen({
   minCents,
   maxCents,
   presetsCents = DEFAULT_PRESETS,
+  takenPaddles = [],
+  initial,
   onApprove,
 }: RegisterScreenProps) {
-  const [step, setStep] = useState<1 | 2>(1);
-  const [name, setName] = useState('');
-  const [paddleText, setPaddleText] = useState(String(suggestedPaddle));
+  const initialPreset = initial !== undefined && presetsCents.includes(initial.ceilingCents);
+  const [step, setStep] = useState<1 | 2>(initial === undefined ? 1 : 2);
+  const [name, setName] = useState(initial?.name ?? '');
+  const [paddleText, setPaddleText] = useState(String(initial?.paddle ?? suggestedPaddle));
   const [touched, setTouched] = useState(false);
-  const [choice, setChoice] = useState<string | null>(null);
-  const [customText, setCustomText] = useState('');
+  const [choice, setChoice] = useState<string | null>(
+    initial === undefined ? null : initialPreset ? String(initial.ceilingCents) : CUSTOM,
+  );
+  const [customText, setCustomText] = useState(
+    initial === undefined || initialPreset ? '' : String(initial.ceilingCents / 100),
+  );
   const [customTouched, setCustomTouched] = useState(false);
 
   const paddle = parsePaddle(paddleText);
-  const takenHit = paddleTaken !== undefined && paddle === paddleTaken.taken;
+  const taken =
+    paddleTaken ??
+    (paddle !== null && takenPaddles.includes(paddle)
+      ? { taken: paddle, suggested: suggestedPaddle }
+      : undefined);
+  const takenHit = taken !== undefined && paddle === taken.taken;
   const nameOk = validName(name);
   const paddleOk = paddle !== null && !takenHit;
   const stepOneValid = nameOk && paddleOk;
 
   const nameError = touched && !nameOk ? t('generic.error') : undefined;
   let paddleError: string | undefined;
-  if (paddleTaken !== undefined && takenHit) {
-    paddleError = t('reg.paddleTaken', { n: paddleTaken.taken, m: paddleTaken.suggested });
+  if (taken !== undefined && takenHit) {
+    paddleError = t('reg.paddleTaken', { n: taken.taken, m: taken.suggested });
   } else if (touched && paddle === null) {
     paddleError = t('generic.error');
   }
@@ -130,6 +146,7 @@ export function RegisterScreen({
   return (
     <main>
       <h1 tabIndex={-1}>{t('reg.step2')}</h1>
+      {paddle !== null && <p>{t('reg.summary', { name: name.trim(), n: paddle })}</p>}
       <form onSubmit={submitStepTwo} noValidate>
         <div role="radiogroup" aria-label={t('reg.step2')}>
           {presetsCents.map((cents) => (

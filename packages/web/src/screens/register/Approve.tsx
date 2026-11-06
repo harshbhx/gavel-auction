@@ -1,3 +1,7 @@
+import { useEffect, useState } from 'react';
+
+import { en, type CopyKey } from '../../copy/en';
+import { holdErrorCopyTable, isHoldErrorCode } from '../../copy/errors';
 import { t } from '../../copy/t';
 import { Icon } from '../../design/icons';
 import { Banner } from '../../design/primitives/Banner';
@@ -27,11 +31,56 @@ export function holdSuffix(id: string): string {
   return id.slice(-SUFFIX_LENGTH);
 }
 
-/** Copy key for an error result, or null when the generic one applies. */
-export function errorKey(code: string | undefined): 'reg.popupBlocked' | 'reg.expired' | null {
-  if (code === 'popup_blocked') return 'reg.popupBlocked';
-  if (code === 'registration_missing' || code === 'order_mismatch') return 'reg.expired';
-  return null;
+/** What the buyer can do next after an error. */
+export type ErrorAction = 'retry' | 'back' | 'continue' | 'wait';
+
+export interface ErrorView {
+  key: CopyKey;
+  action: ErrorAction;
+}
+
+/** How long Try again stays off after the payments side said it is unavailable. */
+export const UNAVAILABLE_RETRY_MS = 5000;
+
+/** Copy and recovery for an error result: every payments code has its own text and next step. */
+export function errorView(code: string | undefined): ErrorView {
+  if (code === 'popup_blocked' || code === 'popup_failed') {
+    return { key: 'reg.popupBlocked', action: 'retry' };
+  }
+  if (code === 'registration_missing' || code === 'order_mismatch') {
+    return { key: 'reg.expired', action: 'back' };
+  }
+  if (code !== undefined && isHoldErrorCode(code)) {
+    const key = holdErrorCopyTable[code];
+    switch (code) {
+      case 'hold_exists':
+        return { key, action: 'continue' };
+      case 'order_not_approved':
+        return { key, action: 'retry' };
+      case 'paypal_unavailable':
+      case 'kill_switch_engaged':
+        return { key, action: 'wait' };
+      case 'ceiling_out_of_range':
+      case 'order_not_found':
+      case 'payments_not_sandbox':
+        return { key, action: 'back' };
+    }
+  }
+  return { key: 'generic.error', action: 'retry' };
+}
+
+/** Try again that stays off for a short while, so a closed service is not hammered. */
+function DelayedRetry({ onRetry }: { onRetry: () => void }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setReady(true), UNAVAILABLE_RETRY_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  return (
+    <Button disabled={!ready} onClick={onRetry}>
+      {t('generic.retry')}
+    </Button>
+  );
 }
 
 /** Registration step 3: the eight approval states with a recovery action each (R-WEB-045). */
@@ -102,14 +151,26 @@ export function Approve({
         </section>
       );
     case 'error': {
-      const key = errorKey(result?.errorCode);
+      const view = errorView(result?.errorCode);
       return (
         <section>
-          <p role="alert">{t(key ?? 'generic.error')}</p>
-          {key === 'reg.expired' ? (
-            <Button onClick={onBackToCeiling}>{t('generic.back')}</Button>
-          ) : (
-            <Button onClick={onRetry}>{t('generic.retry')}</Button>
+          <p role="alert">{en[view.key]}</p>
+          {view.action === 'retry' && <Button onClick={onRetry}>{t('generic.retry')}</Button>}
+          {view.action === 'wait' && <DelayedRetry onRetry={onRetry} />}
+          {view.action === 'continue' && (
+            <>
+              <Button size="bid" onClick={onContinue}>
+                {t('reg.continue')}
+              </Button>
+              <Button variant="outline" onClick={onBackToCeiling}>
+                {t('reg.startAgain')}
+              </Button>
+            </>
+          )}
+          {view.action === 'back' && (
+            <Button onClick={onBackToCeiling}>
+              {t(view.key === 'err.pay.orderNotFound' ? 'reg.startAgain' : 'generic.back')}
+            </Button>
           )}
         </section>
       );

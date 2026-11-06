@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { clearSession, loadSession, saveSession, type StorageLike } from '../../src/net/session';
+import {
+  clearSession,
+  loadHighBid,
+  loadSession,
+  saveHighBid,
+  saveSession,
+  type StorageLike,
+} from '../../src/net/session';
 import {
   clearAuctioneerToken,
   getBidderSession,
@@ -51,9 +58,27 @@ describe('session storage (R-WEB-029)', () => {
   it('ignores damaged entries', () => {
     const store = memory();
     for (const raw of ['not json', 'null', '"x"', '{}', '{"token":""}', '{"token":5}']) {
-      store.data.set('gavel:session:a1', raw);
+      store.data.set('gavel:session:a1:bidder', raw);
       expect(loadSession('a1', store)).toBeNull();
     }
+  });
+
+  it('keeps a screen token apart from the bidder token', () => {
+    const store = memory();
+    saveSession('a1', { token: 'bidder-token', bidderId: 'b1' }, store);
+    saveSession('a1', { token: 'screen-token' }, store, 'screen');
+    expect(loadSession('a1', store)).toEqual({ token: 'bidder-token', bidderId: 'b1' });
+    expect(loadSession('a1', store, 'screen')).toEqual({ token: 'screen-token' });
+    clearSession('a1', store, 'screen');
+    expect(loadSession('a1', store, 'screen')).toBeNull();
+    expect(loadSession('a1', store)).toEqual({ token: 'bidder-token', bidderId: 'b1' });
+  });
+
+  it('keys the own high bid by bidder', () => {
+    const store = memory();
+    saveHighBid('a1', 'b1', 30000, store);
+    expect(loadHighBid('a1', 'b1', store)).toBe(30000);
+    expect(loadHighBid('a1', 'b2', store)).toBe(0);
   });
 
   it('works without storage', () => {

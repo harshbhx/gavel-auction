@@ -60,7 +60,16 @@ export function clearAuctioneerToken(roomId?: string): void {
   else auctioneerTokens.delete(roomId);
 }
 
-/** True when this device may open the console for the room: a fragment token or a stored session. */
+/**
+ * The stored token the console and audit routes may use when no fragment token is held: a
+ * session that belongs to no bidder. A bidder token is never presented on those routes.
+ */
+export function getStaffSession(roomId: string): StoredSession | null {
+  const stored = getBidderSession(roomId);
+  return stored === null || stored.bidderId !== undefined ? null : stored;
+}
+
+/** True when this device may open the console for the room: a fragment token or a staff session. */
 export function hasAuctioneerAccess(roomId: string): boolean {
-  return readAuctioneerToken(roomId) !== null || getBidderSession(roomId) !== null;
+  return readAuctioneerToken(roomId) !== null || getStaffSession(roomId) !== null;
 }

@@ -1,3 +1,6 @@
+import { useEffect } from 'react';
+
+import { announce } from '../../a11y/announce';
 import { t } from '../../copy/t';
 import { Icon } from '../../design/icons';
 import { Banner } from '../../design/primitives/Banner';
@@ -19,7 +22,7 @@ import { ConfirmSheet } from './ConfirmSheet';
 import { CustomBid } from './CustomBid';
 import { QuickBid, useSendGuard } from './QuickBid';
 import { Rejection, REJECTION_CLEAR_MS, type BidRejection } from './Rejection';
-import { StateBanner, bidsLocked } from './StateBanner';
+import { StateBanner, bidsLocked, bidsNotice } from './StateBanner';
 import { myStatus, StatusChip } from './StatusChip';
 import { useOutbid } from './useOutbid';
 
@@ -42,6 +45,8 @@ export interface BidScreenProps {
   unsent?: boolean;
   /** Sends the unanswered bid again under its original id. */
   onResend?: () => void;
+  /** The amount a resend would send; shown next to the button. */
+  unsentCents?: number | null;
   /** This bidder's paddle; with onConfirm it enables the confirm sheet. */
   myPaddle?: number;
   /** Sends one confirm_response. */
@@ -59,6 +64,7 @@ export function BidScreen({
   canSend = true,
   unsent = false,
   onResend,
+  unsentCents = null,
   myPaddle,
   onConfirm,
   stopped = false,
@@ -82,13 +88,31 @@ export function BidScreen({
     base !== 'watching' && !bidsLocked(auctionStatus, stopped) && canSend && !connection.offline;
 
   const { vibrate, setVibrate } = useOutbid(base, price?.currentCents ?? 0);
-  const send = useSendGuard(onBid, pending);
+  // A bid with no answer keeps new bids locked until it is answered or resent, so two amounts
+  // can never both stand.
+  const send = useSendGuard(onBid, pending || unsent);
+
+  const notice = bidsNotice(auctionStatus, stopped);
+  useEffect(() => {
+    if (notice !== null) announce('assertive', t(notice), 'stop');
+  }, [notice]);
+
+  const offline = connection.offline;
+  useEffect(() => {
+    if (offline) announce('assertive', t('net.offline'), 'offline');
+  }, [offline]);
 
   const leader =
     price?.leaderPaddle === null || price === null
       ? null
       : t('bid.leader', { n: price.leaderPaddle });
   const request = confirms[0] ?? null;
+  const requestId = request?.confirmId ?? null;
+  const requestAmount = request?.amount ?? null;
+  useEffect(() => {
+    if (requestId === null || requestAmount === null || myPaddle === undefined) return;
+    announce('assertive', t('confirm.title', { amount: formatUsd(requestAmount), n: myPaddle }));
+  }, [requestId, requestAmount, myPaddle]);
 
   return (
     <main>
@@ -124,7 +148,7 @@ export function BidScreen({
         <span>{t('bid.vibrate')}</span>
       </label>
 
-      {canBid && (
+      {canBid && !unsent && (
         <section
           data-testid="bid-bar"
           style={{
@@ -155,7 +179,9 @@ export function BidScreen({
           <p>{t('bid.unknown')}</p>
           {onResend !== undefined && (
             <Button disabled={connection.offline} onClick={onResend}>
-              {t('bid.resend')}
+              {unsentCents === null
+                ? t('bid.resend')
+                : t('bid.resendAmount', { amount: formatUsd(unsentCents) })}
             </Button>
           )}
         </div>

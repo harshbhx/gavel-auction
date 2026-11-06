@@ -19,6 +19,8 @@ export interface ApprovalRequest {
   approvedOrderId?: string;
   /** The hold that order belongs to; the approve route is addressed by it. */
   approvedHoldId?: string;
+  /** Called once the server issued the order, so a reload can find it again. */
+  onOrder?: (order: { orderId: string; holdId: string }) => void;
 }
 
 export interface ApprovalResult {
