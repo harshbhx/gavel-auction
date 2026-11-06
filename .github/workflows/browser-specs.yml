@@ -1,7 +1,8 @@
 name: browser-specs
 # Browser specs in CI only (R-QA-031, R-QA-034, R-WEB-124; T-QA-045, T-QA-046, T-WEB-056).
 # - e2e: the five-project matrix from packages/e2e/playwright.config.ts, one job per project.
-# - web-visual: the web app screenshots from packages/web/playwright.config.ts.
+# - web-visual: the web app specs from packages/web/playwright.config.ts. The accessibility specs
+#   (a11y, keyboard, motion, responsive) always run; screenshots run once baselines are committed.
 # - baseline-guard: a PR that changes screenshot baselines needs the visual-update label.
 # - workflow_dispatch with update_baselines=true rewrites baselines and uploads them as an artifact
 #   to review and commit in a PR that carries the visual-update label.
