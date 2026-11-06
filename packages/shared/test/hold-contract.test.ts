@@ -96,6 +96,6 @@ describe('bidder name invisible characters (issue 1881)', () => {
       );
     }
     expect(ApproveHoldRequest.safeParse({ orderId: 'o-1', name: 'Alice' }).success).toBe(true);
-    expect(BIDDER_NAME_FORBIDDEN_PATTERN.test('Zoë 山田')).toBe(false);
+    expect(BIDDER_NAME_FORBIDDEN_PATTERN.test('Zo\u00EB \u5C71\u7530')).toBe(false);
   });
 });
