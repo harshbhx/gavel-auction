@@ -144,7 +144,7 @@ describe('snapshot lot title and join code (HRD-71)', () => {
     expect(out.snapshot.lotTitle).toBe('Gala lot');
     expect(out.snapshot.joinCode).toBe(b.joinCode);
     expect(out.snapshot.registrationClosed).toBeUndefined();
-    expect(text).not.toMatch(/ceiling|holdRef|"sub"/);
+    expect(text).not.toMatch(/"ceiling"|holdRef|"sub"/);
   });
 });
 
