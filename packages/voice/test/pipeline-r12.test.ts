@@ -240,7 +240,7 @@ describe('R12-V02b auctioneer patter on a bidder device mic is confirmed', () =>
       context: () => context(),
       mic: 'device',
       speakerBidderId: B7,
-      llm: (t: string) => parseBid(t, { speakerBidderId: B7 }),
+      llm: (t: string) => parseBid(t, { speakerBidderId: B7, speakerPaddle: '7' }),
     });
     const out = pipeline.push(final(text, 0.99));
     return out.flatMap((o) => (o.type === 'decision' ? [o.decision] : []));
