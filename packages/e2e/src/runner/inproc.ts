@@ -342,6 +342,8 @@ async function drive(
         return;
       }
       case 'advance_clock':
+        // A settlement already under way reaches its first answer before the clock moves.
+        await service.idle();
         rig.clock.set(rig.clock.now() + step.ms);
         return;
       case 'fault':
