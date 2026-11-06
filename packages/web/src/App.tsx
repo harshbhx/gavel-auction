@@ -18,6 +18,7 @@ import { SettlementPanel } from './ladder/SettlementPanel';
 import type { Transport } from './net/transport';
 import { WebSocketTransport } from './net/wsTransport';
 import { clearSession, loadSession, saveSession, type SessionRole } from './net/session';
+import { loadRegistration } from './payments/registrationStore';
 import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
 import { RouteScreen, matchRoute, type RouteMatch } from './routes';
 import { AuditTable } from './screens/audit/AuditTable';
@@ -174,6 +175,7 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId, api }: LiveRouteP
       ? undefined
       : s.snapshot?.roster.find((r) => r.bidderId === bidderId)?.paddle,
   );
+  const stopped = useRoom((s) => s.snapshot?.stopped ?? false);
   const respond = (confirmId: string, accept: boolean): void =>
     transport?.send({ v: PROTOCOL_VERSION, t: 'confirm_response', confirmId, accept });
   if (refused !== null) {
@@ -211,6 +213,12 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId, api }: LiveRouteP
             onResend={() => {
               if (view.unknownMid !== null) room?.pending.retry(view.unknownMid);
             }}
+            onReplace={(amount) => {
+              // The price moved past the unanswered bid: drop it and bid the current minimum.
+              if (view.unknownMid !== null) room?.pending.cancel(view.unknownMid);
+              room?.bid(Cents(amount), 'qr');
+            }}
+            stopped={stopped}
             {...(myPaddle === undefined ? {} : { myPaddle, onConfirm: respond })}
           />
         </div>
@@ -517,15 +525,10 @@ function RegisterRoute({
   }
   if (draft === null || !approving) {
     const presets = snapshot?.config.ceilingPresets;
-    const others = (snapshot?.roster ?? []).filter((r) => r.bidderId !== who.bidderId);
-    const mine = snapshot?.roster.find((r) => r.bidderId === who.bidderId)?.paddle;
-    const paddles = others.map((r) => r.paddle);
     return (
       // RegisterScreen renders the page's one main landmark.
       <div data-route="register">
         <RegisterScreen
-          suggestedPaddle={mine ?? Math.max(0, ...paddles) + 1}
-          takenPaddles={paddles}
           minCents={presets === undefined ? CEILING_MIN_CENTS : Math.min(...presets)}
           maxCents={presets === undefined ? CEILING_MAX_CENTS : Math.max(...presets)}
           {...(presets === undefined ? {} : { presetsCents: presets })}
@@ -545,6 +548,8 @@ function RegisterRoute({
       token={who.token}
       api={api}
       ceilingCents={draft.ceilingCents}
+      name={draft.name}
+      paddle={snapshot?.roster.find((r) => r.bidderId === who.bidderId)?.paddle}
       onBack={() => setApproving(false)}
     />
   );
@@ -556,9 +561,12 @@ function ApproveRoute(props: {
   token: string;
   api: Api;
   ceilingCents: number;
+  name: string;
+  /** The paddle the server assigned, read from the room roster. */
+  paddle: number | undefined;
   onBack: () => void;
 }) {
-  const { roomId, bidderId, token, api, ceilingCents } = props;
+  const { roomId, bidderId, token, api, ceilingCents, name, paddle } = props;
   const port = useMemo(
     () =>
       createApprovalPort(
@@ -572,16 +580,17 @@ function ApproveRoute(props: {
   const { start } = approval;
   useEffect(() => {
     // One attempt per mount; the hook de-duplicates a running one.
-    void start(ceilingCents);
-  }, [start, ceilingCents]);
+    void start(ceilingCents, name);
+  }, [start, ceilingCents, name]);
   return (
     <main data-route="register">
       <Approve
         state={approval.state}
         result={approval.result}
         ceilingCents={ceilingCents}
+        {...(paddle === undefined ? {} : { paddle })}
         onBackToCeiling={props.onBack}
-        onRetry={() => void start(ceilingCents)}
+        onRetry={() => void start(ceilingCents, name)}
         onContinue={() => navigate(`/r/${encodeURIComponent(roomId)}/bid`)}
       />
     </main>
@@ -600,10 +609,27 @@ function ReturnRoute({ roomId, api }: { roomId: string; api: Api }) {
       }),
     [api, stored?.token],
   );
+  const bidderOfSession = stored?.bidderId;
+  const ceilingCents =
+    bidderOfSession === undefined
+      ? undefined
+      : loadRegistration(roomId, bidderOfSession)?.ceilingCents;
+  const missingCeiling = bidderOfSession !== undefined && ceilingCents === undefined;
+  useEffect(() => {
+    // No ceiling was stored with the registration: start again rather than guess one.
+    if (missingCeiling) navigate(`/r/${encodeURIComponent(roomId)}/register`);
+  }, [missingCeiling, roomId]);
   if (stored === null || stored.bidderId === undefined) {
     return (
       <main data-route="return">
         <p role="alert">{t('reg.expired')}</p>
+      </main>
+    );
+  }
+  if (ceilingCents === undefined) {
+    return (
+      <main data-route="return">
+        <p role="status">{t('reg.confirming')}</p>
       </main>
     );
   }
@@ -614,7 +640,7 @@ function ReturnRoute({ roomId, api }: { roomId: string; api: Api }) {
       roomId={roomId}
       bidderId={stored.bidderId}
       orderId={orderId}
-      ceilingCents={CEILING_MIN_CENTS}
+      ceilingCents={ceilingCents}
       onBackToCeiling={() => navigate(`/r/${encodeURIComponent(roomId)}/register`)}
       onContinue={() => navigate(`/r/${encodeURIComponent(roomId)}/bid`)}
     />
