@@ -2104,6 +2104,8 @@ describe('auction service: payments wiring (HRD-52)', () => {
     const afterSettle = reports.length;
     expect(afterSettle).toBeGreaterThan(1);
     await service.close();
+    // A pass already running when the service closed may still report; no new one starts.
+    await new Promise((r) => setTimeout(r, 100));
     const stopped = reports.length;
     await new Promise((r) => setTimeout(r, 150));
     expect(reports.length).toBe(stopped);
