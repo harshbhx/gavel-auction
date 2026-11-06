@@ -181,6 +181,12 @@ export interface Connection {
     // (undocumented)
     role: 'auctioneer' | 'bidder' | 'screen';
     sub: string;
+    token?: {
+        jti: string;
+        iat: number;
+        exp: number;
+        kind: string;
+    };
     // (undocumented)
     transport: Transport;
 }
@@ -295,6 +301,7 @@ export class Room {
     static create(auctionId: AuctionId, config: AuctionConfig, auctioneerSub: string, deps: RoomDeps): Promise<Room>;
     // (undocumented)
     detach(connId: ConnId): void;
+    dropDeadTokens(): Promise<number>;
     encodeFailures: number;
     fence(): void;
     get holdRefs(): ReadonlyMap<BidderId, string>;

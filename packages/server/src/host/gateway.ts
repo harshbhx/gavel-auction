@@ -11,7 +11,7 @@ import {
   type JoinMsg,
   type RoomStore,
 } from '@gavel/shared';
-import { auctioneerTokenLive } from '../auth/auctioneer-floor';
+import { auctioneerTokenLive, connectionTokenLive } from '../auth/auctioneer-floor';
 import { verifyRotating, type SecretSet } from '../auth/rotation';
 import type { JtiStore } from '../auth/token';
 import type { RateLimiter } from '../limits/rate-limiter';
@@ -54,6 +54,12 @@ export function createGateway(deps: GatewayDeps): (transport: BoundedConnection)
       transport.close(ERROR_TABLE[code].closeCode ?? 1008, code);
     };
 
+    let cancelExpiry: (() => void) | undefined;
+    const onExpiry = async (): Promise<void> => {
+      const at = attached;
+      if (at) await at.room.dropDeadTokens().catch(() => undefined);
+    };
+
     const onJoin = (msg: JoinMsg): Promise<void> => {
       chain = chain
         .then(async () => {
@@ -76,11 +82,15 @@ export function createGateway(deps: GatewayDeps): (transport: BoundedConnection)
             role,
             sub: p.sub,
             transport,
+            token: { jti: p.jti, iat: p.iat, exp: p.exp, kind: p.kind },
             ...(p.bidderId !== undefined ? { bidderId: p.bidderId as BidderId } : {}),
           };
           if (transport.isClosed) return;
           attached = { room, conn };
           await room.attach(conn, msg.lastSeq);
+          cancelExpiry = deps.clock.setTimer(p.exp * 1000, () => {
+            void onExpiry();
+          });
         })
         .catch(() => fail('internal'));
       return chain;
@@ -93,6 +103,13 @@ export function createGateway(deps: GatewayDeps): (transport: BoundedConnection)
           if (!at) return;
           const decoded = decodeClientMsg(raw);
           if (!decoded.ok || decoded.value.t === 'join') return fail('bad_message');
+          const t = at.conn.token;
+          if (
+            t !== undefined &&
+            !(await connectionTokenLive(deps.store, at.room.auctionId, t, deps.clock.now()))
+          ) {
+            return fail('unauthorized');
+          }
           if (decoded.value.t === 'bid') await at.room.submitBid(at.conn, decoded.value);
           else await at.room.respondConfirm(at.conn, decoded.value);
         })
@@ -104,7 +121,10 @@ export function createGateway(deps: GatewayDeps): (transport: BoundedConnection)
       onJoin,
       onFrame,
       admit: () => deps.limiter.checkFrame(connId).ok,
-      onClosed: () => attached?.room.detach(connId),
+      onClosed: () => {
+        cancelExpiry?.();
+        attached?.room.detach(connId);
+      },
     };
   };
 }
