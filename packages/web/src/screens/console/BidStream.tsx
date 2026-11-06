@@ -5,6 +5,10 @@ import { Icon, type IconName } from '../../design/icons';
 import type { AuditPayload, BidSource } from '../../wire';
 import { formatUsdCompact } from '../../util/money';
 
+/** Actions that can appear as a control row. Stop is only listed: its route is the owner's. */
+export const STREAM_CONTROLS = ['open', 'pause', 'resume', 'extend', 'hammer', 'stop'] as const;
+export type StreamControl = (typeof STREAM_CONTROLS)[number];
+
 export type BidStreamStatus = 'accepted' | 'rejected' | 'pending';
 
 export interface BidStreamRow {
@@ -21,6 +25,8 @@ export interface BidStreamRow {
   status: BidStreamStatus;
   /** Wire error code or reason text for a rejected row. */
   reason: string | null;
+  /** Set on a row that echoes a control command instead of a bid. */
+  control?: StreamControl;
 }
 
 /** Row height in px. Fixed, so the window of visible rows is plain arithmetic. */
@@ -42,6 +48,15 @@ const SOURCE_KEY = {
   qr: 'console.src.qr',
   manual: 'console.src.manual',
 } as const satisfies Record<BidSource, CopyKey>;
+
+const CONTROL_KEY = {
+  open: 'console.echo.open',
+  pause: 'console.echo.pause',
+  resume: 'console.echo.resume',
+  extend: 'console.echo.extend',
+  hammer: 'console.echo.hammer',
+  stop: 'console.echo.stop',
+} as const satisfies Record<StreamControl, CopyKey>;
 
 const STATUS_KEY = {
   accepted: 'console.status.accepted',
@@ -77,6 +92,13 @@ export function rejectionText(reason: string | null | undefined): string {
   }
 }
 
+/** The control action an audit record echoes, or null for a bid record. */
+function controlOf(a: AuditPayload): StreamControl | null {
+  if (a.reason === undefined || !a.reason.startsWith('control:')) return null;
+  const action = a.reason.slice('control:'.length);
+  return STREAM_CONTROLS.find((c) => c === action) ?? null;
+}
+
 /**
  * Builds stream rows from audit records, newest first. A voice record that was superseded
  * before the auctioneer answered shows as pending.
@@ -87,6 +109,21 @@ export function rowsFromAudit(
 ): BidStreamRow[] {
   return audit
     .map((a): BidStreamRow => {
+      const control = controlOf(a);
+      if (control !== null) {
+        return {
+          id: a.bidId,
+          serverTs: Number(a.serverTs),
+          seq: a.seq,
+          paddle: null,
+          amountCents: null,
+          source: a.source,
+          confidence: null,
+          status: a.outcome === 'accepted' ? 'accepted' : 'rejected',
+          reason: a.outcome === 'accepted' ? null : (a.reason ?? null),
+          control,
+        };
+      }
       const status: BidStreamStatus =
         a.outcome === 'accepted'
           ? 'accepted'
@@ -131,6 +168,23 @@ export function formatServerTime(ts: number): string {
 function Row({ row, top }: { row: BidStreamRow; top: number | null }): ReactNode {
   const style =
     top === null ? undefined : { position: 'absolute' as const, top, height: ROW_HEIGHT };
+  if (row.control !== undefined) {
+    return (
+      <li
+        className="gv-stream__row"
+        data-kind="control"
+        data-control={row.control}
+        data-status={row.status}
+        style={style}
+      >
+        <time className="tabular" dateTime={new Date(row.serverTs).toISOString()}>
+          {formatServerTime(row.serverTs)}
+        </time>
+        <span>{t(CONTROL_KEY[row.control])}</span>
+        <span>{t(STATUS_KEY[row.status])}</span>
+      </li>
+    );
+  }
   return (
     <li className="gv-stream__row" data-status={row.status} data-source={row.source} style={style}>
       <time className="tabular" dateTime={new Date(row.serverTs).toISOString()}>
