@@ -113,7 +113,7 @@ export const REQUEST_TIMEOUT_MS = 15_000;
 
 type PostResult =
   | { ok: true; body: Record<string, unknown> }
-  | { ok: false; why: 'timeout' | 'aborted' | 'failed'; code?: HoldErrorCode };
+  | { ok: false; why: 'timeout' | 'aborted' | 'failed'; code?: HoldErrorCode; status?: number };
 
 type Outcome =
   | { kind: 'approved'; orderId: string }
@@ -267,6 +267,10 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     );
     if (!hold.ok) {
       if (hold.why === 'aborted') return finish('cancelled');
+      // The server refuses a name with a forbidden character by a 400 on this request.
+      if (hold.status === 400 && name !== undefined) {
+        return finish('error', { errorCode: 'name_rejected', orderId, holdId });
+      }
       return finish('error', {
         errorCode: hold.code ?? (hold.why === 'timeout' ? 'hold_timeout' : 'hold_failed'),
         orderId,
@@ -382,8 +386,8 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
         if (errBody === 'abort') return { ok: false, why: timedOut ? 'timeout' : 'aborted' };
         const code = isRecord(errBody) ? errBody['error'] : undefined;
         return isHoldErrorCode(code)
-          ? { ok: false, why: 'failed', code }
-          : { ok: false, why: 'failed' };
+          ? { ok: false, why: 'failed', code, status: res.status }
+          : { ok: false, why: 'failed', status: res.status };
       }
       const json = await Promise.race([res.json(), aborted]);
       if (json === 'abort') return { ok: false, why: timedOut ? 'timeout' : 'aborted' };

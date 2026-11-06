@@ -7,7 +7,7 @@ import { Icon } from '../../design/icons';
 import { Button } from '../../design/primitives/Button';
 import { Field } from '../../design/primitives/Field';
 import { formatUsdCompact } from '../../util/money';
-import { customCeilingCents, validName } from './validate';
+import { customCeilingCents, nameHasForbidden, validName } from './validate';
 
 export interface RegistrationDraft {
   name: string;
@@ -59,7 +59,10 @@ export function RegisterScreen({
   const nameOk = validName(name);
   const stepOneValid = nameOk;
 
-  const nameError = touched && !nameOk ? t('generic.error') : undefined;
+  const nameError =
+    touched && !nameOk
+      ? t(nameHasForbidden(name) ? 'reg.nameInvalid' : 'generic.error')
+      : undefined;
 
   const customCents = customCeilingCents(customText, minCents, maxCents);
   let ceilingCents: number | null = null;
@@ -77,7 +80,7 @@ export function RegisterScreen({
       setStep(2);
       return;
     }
-    announce('assertive', t('generic.error'));
+    announce('assertive', t(nameHasForbidden(name) ? 'reg.nameInvalid' : 'generic.error'));
   };
 
   const submitStepTwo = (e: FormEvent): void => {

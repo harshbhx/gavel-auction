@@ -49,6 +49,7 @@ export function errorView(code: string | undefined): ErrorView {
   if (code === 'popup_blocked' || code === 'popup_failed') {
     return { key: 'reg.popupBlocked', action: 'retry' };
   }
+  if (code === 'name_rejected') return { key: 'reg.nameInvalid', action: 'back' };
   if (code === 'registration_missing' || code === 'order_mismatch') {
     return { key: 'reg.expired', action: 'back' };
   }

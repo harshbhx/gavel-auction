@@ -16,6 +16,9 @@ export interface SettlementDetail {
   invariants: { ok: boolean; violations: string[] };
 }
 
+/** Public count of holds per settlement state from the latest settlement_update that carried it. */
+export type LadderCounts = NonNullable<SettlementUpdateMsg['ladder']>['counts'];
+
 /** What the server said about this bidder's own hold, and when (server clock, epoch ms). */
 export interface SettlementMeta {
   state: SettlementUpdateMsg['auctionState'];
@@ -71,6 +74,8 @@ export interface RoomState {
   settlementMeta?: SettlementMeta;
   /** This viewer's own hold from the latest settlement_update that carried one. */
   ownHold?: OwnHold;
+  /** Holds per settlement state for every screen (ladder.counts); absent on older servers. */
+  settlementLadderCounts?: LadderCounts;
   lastError: { code: string; message: string; retryAfterMs: number | null } | null;
 }
 
@@ -149,6 +154,9 @@ function applySnapshot(state: RoomState, msg: Extract<ServerMessage, { t: 'state
     ...(state.settlementDetail === undefined ? {} : { settlementDetail: state.settlementDetail }),
     ...(state.settlementMeta === undefined ? {} : { settlementMeta: state.settlementMeta }),
     ...(state.ownHold === undefined ? {} : { ownHold: state.ownHold }),
+    ...(state.settlementLadderCounts === undefined
+      ? {}
+      : { settlementLadderCounts: state.settlementLadderCounts }),
   };
 }
 
@@ -241,6 +249,7 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
         ...next,
         settlementMeta: meta,
         ...(msg.yourHold === undefined ? {} : { ownHold: msg.yourHold }),
+        ...(msg.ladder === undefined ? {} : { settlementLadderCounts: msg.ladder.counts }),
       };
       if (msg.holds === undefined) return withMeta;
       return {
