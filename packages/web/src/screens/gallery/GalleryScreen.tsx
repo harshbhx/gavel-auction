@@ -16,6 +16,8 @@ import { TEST_IDS } from '../../testing/testids';
  */
 export function GalleryScreen() {
   const [open, setOpen] = useState(false);
+  // The ladder specimen shows only with ?ladder, so the committed gallery baselines stay as they are.
+  const withLadder = new URLSearchParams(window.location.search).has('ladder');
   return (
     <section>
       <Announcer />
@@ -38,7 +40,7 @@ export function GalleryScreen() {
         <Chip state="current" label={t('app.name')} icon={<Icon name="current" />} />
         <Chip state="hollow" label={t('app.name')} icon={<Icon name="hollow" />} tone="warning" />
       </div>
-      <Ladder view={happy.settlementViews?.[1] ?? null} />
+      {withLadder && <Ladder view={happy.settlementViews?.[1] ?? null} />}
       <p className="gv-hammer-stamp" data-testid={TEST_IDS.hammerStamp}>
         {t('screen.passed')}
       </p>

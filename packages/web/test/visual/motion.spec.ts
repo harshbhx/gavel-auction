@@ -82,7 +82,7 @@ test.describe('forced colours on the settlement ladder', () => {
     page,
   }, testInfo) => {
     await page.emulateMedia({ forcedColors: 'active' });
-    await page.goto('/gallery');
+    await page.goto('/gallery?ladder');
     const ladder = page.locator('.gv-ladder');
     await ladder.waitFor();
     const rungs = await ladder.locator('.gv-ladder__rung').evaluateAll((els) =>
