@@ -20,7 +20,7 @@ import { WebSocketTransport } from './net/wsTransport';
 import { ScenarioTransport } from './net/scenarioTransport';
 import { readScriptedRequest, type ScriptedRequest } from './net/scriptedMode';
 import { Provenance } from './design/Provenance';
-import { SCRIPTED_ROOM_ID, loadScriptedRoom, type ScriptedRoom } from './testing/scriptedRoom';
+import { loadScriptedRoom, type ScriptedRoom } from './testing/scriptedRoom';
 import { clearSession, type SessionRole } from './net/session';
 import { loadRegistration } from './payments/registrationStore';
 import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
@@ -132,7 +132,7 @@ function useLiveRoom(
     const transport: Transport = scriptedTransport ?? new WebSocketTransport(socketUrl(liveBase));
     const started = startLiveRoom({
       wsBase: liveBase,
-      roomId: scripted === null ? roomId : SCRIPTED_ROOM_ID,
+      roomId: scripted === null ? roomId : scripted.room.roomId,
       token,
       transport,
       ...(bidderId === undefined ? {} : { bidderId }),

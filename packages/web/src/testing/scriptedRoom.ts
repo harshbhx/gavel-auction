@@ -1,10 +1,12 @@
 import type { Scenario } from '../net/transport';
 
-/** The room id the scripted transport joins; the address room id is only a label there. */
+/** Room id used when a scenario has no state frame to take one from. */
 export const SCRIPTED_ROOM_ID = '01HZZZZZZZZZZZZZZZZZZZZZZZ';
 
 export interface ScriptedRoom {
   readonly scenario: Scenario;
+  /** The auction id the scenario's own snapshot carries; the store only accepts that room. */
+  readonly roomId: string;
   /** The first bidder on the scripted roster, who stands in for this device on the bid route. */
   readonly bidderId: string | undefined;
 }
@@ -32,8 +34,12 @@ export async function loadScriptedRoom(name: string): Promise<ScriptedRoom | nul
   const scenario = await load();
   for (const step of scenario.steps) {
     if (step.emit?.t === 'state') {
-      return { scenario, bidderId: step.emit.snapshot.roster[0]?.bidderId };
+      return {
+        scenario,
+        roomId: step.emit.snapshot.auctionId,
+        bidderId: step.emit.snapshot.roster[0]?.bidderId,
+      };
     }
   }
-  return { scenario, bidderId: undefined };
+  return { scenario, roomId: SCRIPTED_ROOM_ID, bidderId: undefined };
 }
