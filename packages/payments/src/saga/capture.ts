@@ -516,7 +516,7 @@ class Run {
   private async unstalled(): Promise<void> {
     if (this.j.voids[STALLED_SINCE] === undefined) return;
     await this.patch('stalled_cleared', (d) => {
-      delete d.voids[STALLED_SINCE];
+      d.voids = Object.fromEntries(Object.entries(d.voids).filter(([k]) => k !== STALLED_SINCE));
     });
   }
 

@@ -44,9 +44,11 @@ describe('R8-P06 a settlement that fails review releases the holds that are not 
     const rig = makeRig(CEILINGS);
     await seed(rig, TWO);
     rig.core.inject('capture', 'timeout_before', rig.auth['b1'] ?? '', 10);
-    await runSettlement(rig.deps, 'auc1');
-    // An outside capture on b3 (an operator in the PayPal dashboard).
+    // An outside capture on b3 (an operator in the PayPal dashboard). It comes before the
+    // first run: b3 is no candidate, so the run that waits for b1 would release it otherwise
+    // (RT4-saga-03). Neither that release nor the review release may void a captured hold.
     rig.core.capture(rig.auth['b3'] ?? '', 20000, true);
+    await runSettlement(rig.deps, 'auc1');
     rig.clock.advance(601_000);
     await runSettlement(rig.deps, 'auc1');
     expect(rig.core.inspect(rig.auth['b3'] ?? '').voidEffects).toBe(0);
