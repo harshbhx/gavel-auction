@@ -19,8 +19,11 @@ import {
 
 const RELEASED_KINDS: ReadonlySet<string> = new Set(['already_voided', 'expired']);
 
-/** What a read of the authorization must say before a refused void counts as released. */
-const GONE_TRUTH: ReadonlySet<string> = new Set(['VOIDED', 'EXPIRED', 'NOT_FOUND']);
+/**
+ * What a read of the authorization must say before a refused void counts as released.
+ * NOT_FOUND is not enough (HRD-46): the hold may still be live, so the void stays open.
+ */
+const GONE_TRUTH: ReadonlySet<string> = new Set(['VOIDED', 'EXPIRED']);
 
 /** Journal record values that mean the authorization is gone (VOID_FAILED and pending are not). */
 const RELEASED_RECORDS: ReadonlySet<string> = new Set(['voided', 'released']);

@@ -306,6 +306,10 @@ class Run {
       invoiceId: invoiceIdFor(j.auctionId, hold.holdId),
       truth: truthArgs(hold),
     };
+    // HRD-46: a saved capture intent for this hold means a capture may already have been
+    // sent (a lost answer, a crash after the call), so its outcome is not known.
+    const inDoubt =
+      j.intent !== null && j.intent.op === 'capture' && j.intent.holdId === hold.holdId;
 
     // R-PAY-050: truth before capture. A capture already there is adopted.
     const truth = await this.readTruth(target);
@@ -314,7 +318,12 @@ class Run {
     // already there is adopted while it is engaged.
     const kill = await this.killState();
     if (!kill.engaged) await this.resumeUnknownClock();
-    if (truth !== undefined) {
+    // HRD-46: PayPal not finding the hold says nothing about a capture in doubt on it. It
+    // is no answer: the intent stays, no other candidate is tried, and the unknown
+    // deadline sends the settlement to review with this hold kept.
+    const unseen = inDoubt && truth?.status === 'NOT_FOUND';
+    if (unseen) await this.startUnknownClock();
+    if (truth !== undefined && !unseen) {
       const out = await this.judge(truth, target, null);
       if (out !== undefined) return out;
     }
@@ -327,6 +336,7 @@ class Run {
     if (unknownExpired(this.j.unknownSince, this.now(), this.deadline())) {
       return this.fail('unknown_deadline');
     }
+    if (unseen) return { status: 'pending', reason: 'capture_outcome_unknown', journal: this.j };
     if (truth === undefined) {
       return { status: 'pending', reason: 'truth_unavailable', journal: this.j };
     }
@@ -377,7 +387,16 @@ class Run {
       if (captured.amountCents !== price) return this.fail('mismatch');
       return this.won(target, captured.captureId, 'capture_ok');
     }
-    return this.afterFailure(failure as PayPalError, target);
+    return this.afterFailure(failure as PayPalError, target, inDoubt);
+  }
+
+  /** Starts the unknown clock if it is not running (R-PAY-054). */
+  private async startUnknownClock(): Promise<void> {
+    if (this.j.unknownSince !== null) return;
+    const since = this.now();
+    await this.patch('unknown_since', (d) => {
+      d.unknownSince = since;
+    });
   }
 
   private async readTruth(t: Target): Promise<HoldTruth | undefined> {
@@ -477,7 +496,15 @@ class Run {
     });
   }
 
-  private async afterFailure(err: PayPalError, t: Target): Promise<CaptureOutcome | null> {
+  /**
+   * `inDoubt`: a capture intent for this hold was saved before this run's call, so an
+   * earlier capture may have reached PayPal (HRD-46).
+   */
+  private async afterFailure(
+    err: PayPalError,
+    t: Target,
+    inDoubt: boolean,
+  ): Promise<CaptureOutcome | null> {
     const j = this.j;
     if (err.kind === 'kill_switch_engaged') {
       // Engaged after this run looked: nothing was sent, and the clock stops as above.
@@ -500,24 +527,14 @@ class Run {
         return { status: 'pending', reason: 'capture_pending', journal: this.j };
       }
       // R-PAY-054: never the next candidate. Remember when it started.
-      if (j.unknownSince === null) {
-        const since = this.now();
-        await this.patch('unknown_since', (d) => {
-          d.unknownSince = since;
-        });
-      }
+      await this.startUnknownClock();
       return { status: 'pending', reason: 'capture_outcome_unknown', journal: this.j };
     }
     if (INVARIANT_KINDS.has(err.kind)) return this.fail('invariant');
     if (!PER_HOLD_KINDS.has(err.kind)) {
       // Unclassified refusal: keep the intent, surface it, and let the unknown deadline
       // send it to review. Never the next candidate.
-      if (j.unknownSince === null) {
-        const since = this.now();
-        await this.patch('unknown_since', (d) => {
-          d.unknownSince = since;
-        });
-      }
+      await this.startUnknownClock();
       return { status: 'pending', reason: 'capture_rejected_unclassified', journal: this.j };
     }
 
@@ -528,6 +545,12 @@ class Run {
     } catch (e) {
       if (!(e instanceof PayPalError)) throw e;
       return { status: 'pending', reason: 'truth_unavailable', journal: j };
+    }
+    if (inDoubt && truth.status === 'NOT_FOUND') {
+      // HRD-46: an earlier capture on this hold may have been taken; a hold PayPal cannot
+      // find is no proof that it was not. Never the next candidate.
+      await this.startUnknownClock();
+      return { status: 'pending', reason: 'capture_outcome_unknown', journal: this.j };
     }
     const out = await this.judge(truth, t, err);
     if (out !== undefined) return out;

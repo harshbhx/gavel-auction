@@ -3,7 +3,7 @@ import { PayPalError } from './errors.js';
 import { assertNotEngaged } from './killswitch.js';
 import { ORDERS_PATH, OrdersClient, type CreateOrderInput, type OrderView } from './orders.js';
 import type { TokenManager } from './oauth.js';
-import { PaymentsApiClient } from './paymentsApi.js';
+import { PaymentsApiClient, type AuthorizationView } from './paymentsApi.js';
 import { decimalToCents } from './money.js';
 import type { Clock, KillSwitch, PaymentsGateway } from './ports.js';
 import type { CaptureRef, HoldTruth } from './types.js';
@@ -179,6 +179,50 @@ function orderUnreadable(status: number, why: string, debugId?: string): PayPalE
   });
 }
 
+/**
+ * HRD-46: how many times an authorization that answers 404 is read before the 404 is
+ * believed. One 404 can be a read hiccup, a misrouted request or a proxy answer.
+ */
+const NOT_FOUND_READS = 3;
+
+/**
+ * HRD-46: the authorization answers 404 but its order does not confirm that the hold is
+ * gone. Like an unreadable order (R12-P03) it is an unknown outcome: the caller reads again
+ * later, and never takes the hold as voided, released or free to fall back from.
+ */
+function notFoundUnconfirmed(why: string, debugId?: string): PayPalError {
+  return new PayPalError({
+    kind: 'server_error',
+    status: 404,
+    name: 'AUTHORIZATION_NOT_FOUND_UNCONFIRMED',
+    message: `authorization answered 404 but ${why}`,
+    outcome: 'unknown',
+    ...(debugId === undefined ? {} : { debugId }),
+  });
+}
+
+/**
+ * True when the order lists no authorization and no capture, so a 404 on the
+ * authorization is confirmed; false when it lists either; null when the body has no
+ * readable purchase unit.
+ */
+function orderHoldsNothing(order: unknown): boolean | null {
+  const units = asObject(order)?.['purchase_units'];
+  const unit = Array.isArray(units) ? asObject(units[0]) : undefined;
+  if (unit === undefined) return null;
+  const payments = unit['payments'];
+  if (payments === undefined) return true;
+  const p = asObject(payments);
+  if (p === undefined) return null;
+  for (const field of ['authorizations', 'captures']) {
+    const list = p[field];
+    if (list === undefined) continue;
+    if (!Array.isArray(list)) return null;
+    if (list.length > 0) return false;
+  }
+  return true;
+}
+
 export class PayPalGateway implements PaymentsGateway {
   private readonly auth: GatewayAuth;
   private readonly orders: OrdersClient;
@@ -217,7 +261,8 @@ export class PayPalGateway implements PaymentsGateway {
 
   /**
    * GET the authorization (status, amount) and, when the order id is known, GET
-   * the order for its captures. A missing authorization is `NOT_FOUND`. Without
+   * the order for its captures. A missing authorization is `NOT_FOUND` only once the
+   * 404 is confirmed (HRD-46): see `readAuthorization`. Without
    * an order id `captures` is null (not observable) and `capturedCents` is 0. With an
    * order id the captures are always read: an order that answers 404, a body that does
    * not parse or a capture list of an unknown shape throws an unknown-outcome
@@ -226,22 +271,17 @@ export class PayPalGateway implements PaymentsGateway {
    */
   async getHoldTruth(h: { holdId: string; authId: string; orderId?: string }): Promise<HoldTruth> {
     const observedAtMs = this.clock.nowMs();
-    let auth;
-    try {
-      auth = await this.payments.getAuthorization(h.authId);
-    } catch (e) {
-      if (e instanceof PayPalError && e.kind === 'not_found') {
-        return {
-          holdId: h.holdId,
-          authId: h.authId,
-          status: 'NOT_FOUND',
-          amountCents: 0,
-          capturedCents: 0,
-          captures: [],
-          observedAtMs,
-        };
-      }
-      throw e;
+    const auth = await this.readAuthorization(h);
+    if (auth === null) {
+      return {
+        holdId: h.holdId,
+        authId: h.authId,
+        status: 'NOT_FOUND',
+        amountCents: 0,
+        capturedCents: 0,
+        captures: [],
+        observedAtMs,
+      };
     }
     let status = AUTH_STATUS[auth.status];
     if (status === undefined) throw unreadable(auth.status);
@@ -268,6 +308,54 @@ export class PayPalGateway implements PaymentsGateway {
       ...(lists !== null && lists.declined.length > 0 ? { declined: lists.declined } : {}),
       observedAtMs,
     };
+  }
+
+  /**
+   * HRD-46: the authorization, or null when it is confirmed missing. A 404 is read again
+   * up to NOT_FOUND_READS times. When it persists and the order id is known, the order is
+   * read: only an order that lists no authorization and no capture confirms the 404. An
+   * order that cannot be read, or that lists an authorization or a capture (also a PENDING
+   * one), means the hold may be live or charged, and the read throws an unknown outcome.
+   */
+  private async readAuthorization(h: {
+    authId: string;
+    orderId?: string;
+  }): Promise<AuthorizationView | null> {
+    let lastDebugId: string | undefined;
+    for (let read = 1; read <= NOT_FOUND_READS; read += 1) {
+      try {
+        return await this.payments.getAuthorization(h.authId);
+      } catch (e) {
+        if (!(e instanceof PayPalError) || e.kind !== 'not_found') throw e;
+        lastDebugId = e.debugId;
+      }
+    }
+    if (h.orderId === undefined || h.orderId === '') return null;
+    const res = await this.auth.send({
+      method: 'GET',
+      path: `${ORDERS_PATH}/${encodeURIComponent(h.orderId)}`,
+      op: 'get',
+      headers: { Accept: 'application/json' },
+    });
+    if (res.status < 200 || res.status >= 300) {
+      const err = classifyError(res.status, res.headers, res.text);
+      throw notFoundUnconfirmed(
+        `the order read answered ${res.status}`,
+        err.debugId ?? lastDebugId,
+      );
+    }
+    let json: unknown;
+    try {
+      json = JSON.parse(res.text);
+    } catch {
+      throw notFoundUnconfirmed('the order body is not JSON', lastDebugId);
+    }
+    const nothing = orderHoldsNothing(json);
+    if (nothing === null) throw notFoundUnconfirmed('the order cannot be read', lastDebugId);
+    if (!nothing) {
+      throw notFoundUnconfirmed('the order lists an authorization or a capture', lastDebugId);
+    }
+    return null;
   }
 
   private async readCaptures(orderId: string): Promise<CaptureLists> {
