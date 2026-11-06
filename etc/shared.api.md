@@ -1386,15 +1386,6 @@ export type ConfigRuleResult = {
 };
 
 // @public (undocumented)
-export type ConfigRuleResult = {
-    ok: true;
-    config: AuctionConfig;
-} | {
-    ok: false;
-    errors: string[];
-};
-
-// @public (undocumented)
 export const ConfirmRequestedEvent: z.ZodObject<{
     type: z.ZodLiteral<"confirm_requested">;
     auctionId: z.ZodType<AuctionId, z.ZodTypeDef, AuctionId>;
