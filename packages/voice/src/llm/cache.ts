@@ -80,7 +80,7 @@ export interface DirFs {
   existsSync(path: string): boolean;
 }
 
-/** One `<key>.json` file per entry under `dir` (fixtures/llm-cache). */
+/** One `<key>.json` file per entry under `dir` (fixtures/model-cache). */
 export function createDirStore(dir: string, fs: DirFs): LlmCacheStore {
   const pathOf = (key: string): string => `${dir}/${key}.json`;
   return {

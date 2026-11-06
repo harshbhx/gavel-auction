@@ -62,7 +62,7 @@ packages/voice/
     text/cases.json  text/parser-golden.json
     audio/*.wav  audio/labels.json  audio/LICENSES.md  audio/noise/
     stt-cache/<provider>/<id>.json   recorded provider output
-    llm-cache/*.json                 recorded structured outputs
+    model-cache/*.json                 recorded structured outputs
     replay/auction-demo.wav  replay/timeline.json
   test/  (mirrors src)
 ```
@@ -763,7 +763,7 @@ Notation: T-VOX-nnn (reqs): input -> expected. Unless said, tests are unit tests
 
 - T-VOX-081 (R-VOX-073): labels.json validation: count at least 24, categories at least 8, noise conditions at least 3, voices at least 3, expected-confirm at least 4, none at least 3; every file exists, is 16 kHz mono s16le, and 0.5 to 6 s long.
 - T-VOX-082 (R-VOX-074): harness on a hand-made 10-item result set -> exact metrics (include wrong-accept, recoverable, missed, false prompt each at least once) equal expected numbers.
-- T-VOX-083 (R-VOX-075): text mode run needs no env and no network (network disabled in test); cached mode reads stt-cache and llm-cache; live mode without keys exits code 2 with message.
+- T-VOX-083 (R-VOX-075): text mode run needs no env and no network (network disabled in test); cached mode reads stt-cache and model-cache; live mode without keys exits code 2 with message.
 - T-VOX-084 (R-VOX-076): gate evaluation function: (exact+recoverable)/bid = 0.90 and wrongAccept 0.05 -> pass; 0.89 -> fail; 0.06 -> fail; fail output includes assist-mode notice.
 - T-VOX-085 (R-VOX-077): corpus size at least 150, dev and held-out disjoint ids, categories at least 12.
 - T-VOX-086 (R-VOX-078): report produced twice from same inputs -> byte-identical report.json; report.md contains the per-category table, sweep table of 6 rows, sha line.

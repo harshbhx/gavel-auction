@@ -145,13 +145,27 @@ export class VoicePipeline {
   }
 
   private noteAccepted(bidderId: string, amountCents: Cents): void {
-    this.accepted.push({ bidderId, amountCents, atMs: this.deps.clock() });
+    const now = this.deps.clock();
+    this.pruneAccepted(now);
+    this.accepted.push({ bidderId, amountCents, atMs: now });
+  }
+
+  /** A retraction only looks RETRACT_ADVISORY_MS back, so older entries are dropped. */
+  private pruneAccepted(now: number): void {
+    let drop = 0;
+    while (drop < this.accepted.length) {
+      const a = this.accepted[drop];
+      if (a !== undefined && now - a.atMs >= RETRACT_ADVISORY_MS) drop += 1;
+      else break;
+    }
+    if (drop > 0) this.accepted.splice(0, drop);
   }
 
   private readonly deferred: PipelineOutput[] = [];
 
   private housekeeping(now: number): PipelineOutput[] {
     const out: PipelineOutput[] = this.deferred.splice(0);
+    this.pruneAccepted(now);
     for (const a of this.book.sweep()) this.audit(out, a.reason, a.promptId, a.promptId);
     const snap = this.faults.snapshot(now);
     const llm = this.deps.llm === undefined ? 'off' : snap.llm;

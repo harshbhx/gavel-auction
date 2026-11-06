@@ -9,8 +9,10 @@ services:
     plan: starter
     numInstances: 1
     # esbuild (build only) is a dev dependency and NODE_ENV=production would skip it, so ask for
-    # dev packages at build time. The runtime is plain node on the bundled dist/main.js.
-    buildCommand: npm ci --include=dev && npm run build -w @gavel/server
+    # dev packages at build time. Install scripts stay off because the service secrets are in the
+    # build environment; esbuild ships its binary through optional packages and needs no script.
+    # The runtime is plain node on the bundled dist/main.js.
+    buildCommand: npm ci --include=dev --ignore-scripts && npm run build -w @gavel/server
     startCommand: npm run start:prod -w @gavel/server
     healthCheckPath: /healthz
     # Deploys come from .github/workflows/deploy-staging.yml through the deploy hook, not from pushes.

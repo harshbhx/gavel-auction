@@ -41,6 +41,9 @@ export interface PromptBookConfig {
  * Open confirm prompts: ttl expiry never confirms, one open prompt per bidder key (a newer one
  * supersedes), and per rate window at most rateMax prompts per key and roomMax per room. Clock is injected.
  */
+/** Expired prompt ids remembered so a late answer is told apart from an unknown id. */
+export const EXPIRED_ID_LIMIT = 256;
+
 export class PromptBook<T = unknown> {
   private readonly open_ = new Map<string, OpenPrompt<T>>();
   private shown: Array<{ at: number; key: string; promptId: string }> = [];
@@ -64,6 +67,11 @@ export class PromptBook<T = unknown> {
   /** Candidates dropped by the rate limit so far. */
   get rateLimited(): number {
     return this.droppedCount;
+  }
+
+  /** Expired ids currently remembered (bounded by EXPIRED_ID_LIMIT). */
+  get expiredRemembered(): number {
+    return this.expired.size;
   }
 
   get size(): number {
@@ -114,6 +122,11 @@ export class PromptBook<T = unknown> {
       if (t >= p.expiresAtMs) {
         this.open_.delete(key);
         this.expired.add(p.promptId);
+        // Only the most recent ids are remembered; an older late answer reads as unknown.
+        if (this.expired.size > EXPIRED_ID_LIMIT) {
+          const oldest = this.expired.values().next();
+          if (!oldest.done) this.expired.delete(oldest.value);
+        }
         out.push({ promptId: p.promptId, key, reason: 'confirm_expired', atMs: t });
       }
     }

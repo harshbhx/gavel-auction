@@ -19,7 +19,9 @@ concurrency:
 
 jobs:
   flakes:
-    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    # Only runs of this repository count; a fork pull request whose branch is called main also
+    # matches the branches filter, so the event and the head repository are checked as well.
+    if: ${{ github.repository == 'harshbhx/gavel-auction' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_branch == 'main')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     continue-on-error: true
@@ -37,19 +39,35 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p report/in
-          id="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=flake-log&per_page=1" --jq '.artifacts[0].id // empty')"
-          if [ -n "$id" ]; then
+          # Take the newest flake log written by a run of this workflow on main in this repository.
+          want="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=flake-log&per_page=30" \
+            --jq '.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main") | "\(.id) \(.workflow_run.id)"')"
+          while read -r id rid; do
+            [ -n "$id" ] || continue
+            info="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$rid" --jq '[.path, .head_branch, .head_repository.full_name] | @tsv')"
+            if [ "$info" != "$(printf '.github/workflows/quarantine.yml\tmain\t%s' "$GITHUB_REPOSITORY")" ]; then
+              echo "Skipping artifact $id from run $rid ($info)"
+              continue
+            fi
             gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > flake-log.zip
             unzip -o -q flake-log.zip -d report
-          fi
+            break
+          done <<< "$want"
       - name: Fetch retried tests of the triggering run
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.event.workflow_run.id }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          # The e2e job uploads report/outcomes.json (test, retries, passed) when it ran.
+          # The e2e job uploads report/outcomes.json (test, retries, passed) when it ran. It is read
+          # only from a push run of the ci workflow on main in this repository at the triggering commit.
           if [ -n "$RUN_ID" ]; then
-            gh run download "$RUN_ID" -n e2e-outcomes -D report/in 2>/dev/null || echo "no outcomes artifact for run $RUN_ID"
+            info="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" --jq '[.path, .event, .head_branch, .head_repository.full_name, .head_sha] | @tsv')"
+            if [ "$info" = "$(printf '.github/workflows/ci.yml\tpush\tmain\t%s\t%s' "$GITHUB_REPOSITORY" "$HEAD_SHA")" ]; then
+              gh run download "$RUN_ID" -n e2e-outcomes -D report/in 2>/dev/null || echo "no outcomes artifact for run $RUN_ID"
+            else
+              echo "Ignoring run $RUN_ID ($info)"
+            fi
           fi
           [ -f report/in/outcomes.json ] || echo '[]' > report/in/outcomes.json
       - name: Record flakes
@@ -65,6 +83,8 @@ jobs:
         run: |
           [ -f report/newly-quarantined.txt ] || exit 0
           while IFS= read -r name; do
+            # Names come from an artifact: keep printable ASCII only and cap the length.
+            name="$(printf '%s' "$name" | LC_ALL=C tr -cd '[:print:]' | cut -c1-120)"
             [ -n "$name" ] || continue
             gh issue create --title "Quarantine flaky test: $name" \
               --body "This test passed only after a retry twice in 7 days. Add the @quarantine tag to its title, find the cause and remove the tag when it is fixed. Source: flake log of the quarantine workflow."
