@@ -183,7 +183,7 @@ describe('sessions per role', () => {
     const socket = joinLive(`/r/${ROOM}/screen`);
     expect(socket.frames('join')[0]?.['token']).toBe('otter');
     expect(loadSession(ROOM)).toEqual({ token: 'heron', bidderId: ME });
-    expect(loadSession(ROOM, undefined, 'screen')).toEqual({ token: 'otter' });
+    expect(loadSession(ROOM, undefined, 'screen')).toBeNull();
   });
 
   it('never presents a bidder token on the screen route', () => {

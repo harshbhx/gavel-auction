@@ -67,23 +67,13 @@ export function navigate(to: string): void {
   window.dispatchEvent(new Event(NAVIGATE_EVENT));
 }
 
-/** Which stored slot a route reads: the screen has its own, so it never touches a bidder token. */
+/** Which stored slot a refused token is cleared from; the screen token is never stored. */
 function roleOf(routeId: string): SessionRole {
   return routeId === 'screen' ? 'screen' : 'bidder';
 }
 
 function tokenFor(routeId: string, roomId: string): { token: string; bidderId?: string } | null {
-  if (routeId === 'screen') {
-    const fromFragment = readAuctioneerToken(roomId);
-    if (fromFragment !== null) {
-      // The fragment is cleared once read, so a reload needs the token kept for a watcher.
-      saveSession(roomId, { token: fromFragment }, undefined, 'screen');
-      return { token: fromFragment };
-    }
-    const watcher = loadSession(roomId, undefined, 'screen');
-    return watcher === null ? null : { token: watcher.token };
-  }
-  if (routeId === 'console' || routeId === 'audit') {
+  if (routeId === 'console' || routeId === 'audit' || routeId === 'screen') {
     // These routes take a fragment or in-memory token only: a bidder session is never used here.
     const fromFragment = readAuctioneerToken(roomId);
     return fromFragment === null ? null : { token: fromFragment };

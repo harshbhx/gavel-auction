@@ -78,7 +78,7 @@ describe('public screen route', () => {
       'fetch',
       vi.fn(() => Promise.resolve(jsonResponse({ title: 'Walnut sideboard', status: 'OPEN' }))),
     );
-    saveSession(ROOM, { token: 'pelican' }, undefined, 'screen');
+    window.history.pushState(null, '', `/r/${ROOM}/screen#token=pelican`);
   });
   afterEach(() => {
     vi.useRealTimers();
