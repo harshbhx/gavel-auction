@@ -1,6 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { t } from '../../copy/t';
-import { SandboxBanner } from '../../design/SandboxBanner';
 
 export type GateRole = 'auctioneer' | 'reviewer';
 
@@ -28,7 +27,6 @@ export function TokenGate({ role, token, launcherHref = '/demo', children }: Tok
   if (allowed) return <>{children}</>;
   return (
     <main data-route="token-gate" data-role={role}>
-      <SandboxBanner />
       <h1 ref={heading} tabIndex={-1}>
         {t('err.tokenMissing')}
       </h1>

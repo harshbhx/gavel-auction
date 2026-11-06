@@ -120,9 +120,6 @@ export function BidScreen({
   return (
     <main>
       <div>
-        <Banner tone="info" icon={<Icon name="lock" />}>
-          {t('banner.sandbox')}
-        </Banner>
         {connection.offline && (
           <Banner tone="warn" icon={<Icon name="warning" />}>
             {t('net.offline')}
