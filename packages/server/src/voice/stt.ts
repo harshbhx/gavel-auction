@@ -91,6 +91,8 @@ export function chooseStt(env: SttChoiceEnv, deps: SttChoiceDeps = {}): SttChoic
       new FailoverStt({
         primary: () => selectProvider(selectEnv, selectDeps),
         fallback: replay,
+        // With no recorded timeline the cached provider is mute; never swap a live one for it.
+        fallbackTranscribes: deps.timeline !== undefined,
         clock: deps.failoverClock ?? realClock,
       }),
   };
