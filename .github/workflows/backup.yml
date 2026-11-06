@@ -1,5 +1,7 @@
 name: backup
-# Daily ledger snapshot (R-QA-046). Lists every stored auction with GET /admin/export?list=1
+# Daily ledger snapshot (R-QA-046), extended by HRD-79 with the payment state the ledgers do not
+# hold: settlement journals, hold records, processed webhook ids, the kill switch and the room
+# event log, all through the same admin export route and the same encrypted file. Lists every stored auction with GET /admin/export?list=1
 # (finished auctions included, not only loaded rooms), downloads each ledger from
 # GET /admin/export as NDJSON with its hash chain head line, encrypts the set with a public key and
 # keeps only the encrypted file as a workflow artifact. The ledger is private (ceilings, hold
@@ -42,7 +44,7 @@ jobs:
       contents: read
       issues: write
     steps:
-      - name: Download and encrypt every ledger
+      - name: Download and encrypt every ledger and the payment state
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           BACKUP_GPG_PUBLIC_KEY: ${{ secrets.BACKUP_GPG_PUBLIC_KEY }}
@@ -59,7 +61,7 @@ jobs:
           fi
           base="${PRODUCTION_URL%/}"
           work="$RUNNER_TEMP/ledgers"
-          mkdir -p "$work" out
+          mkdir -p "$work/payments" "$work/roomlog" out
           listing="$(curl -sS --fail --max-time 30 -H "x-admin-key: $ADMIN_KEY" "$base/admin/export?list=1")"
           printf '%s' "$listing" | jq -r '.auctions[]' > "$work/ids.txt"
           expected="$(wc -l < "$work/ids.txt")"
@@ -82,8 +84,31 @@ jobs:
               failed="$failed $id"
               continue
             fi
+            # Payment journal and holds, and the room log, of the same auction (HRD-79). A miss is
+            # recorded like a missing ledger so the run ends red.
+            if ! curl -sS --fail --max-time 60 -H "x-admin-key: $ADMIN_KEY" \
+                "$base/admin/export?kind=payments&auction=$id" -o "$work/payments/$id.json" \
+              || ! jq -e 'has("holds")' "$work/payments/$id.json" > /dev/null; then
+              echo "::error::payment state export of auction $id failed"
+              rm -f "$work/payments/$id.json"
+              failed="$failed payments-$id"
+            fi
+            if ! curl -sS --fail --max-time 60 -H "x-admin-key: $ADMIN_KEY" \
+                "$base/admin/export?kind=roomlog&auction=$id" -o "$work/roomlog/$id.ndjson" \
+              || ! tail -n 1 "$work/roomlog/$id.ndjson" | jq -e 'has("end")' > /dev/null; then
+              echo "::error::room log export of auction $id failed"
+              rm -f "$work/roomlog/$id.ndjson"
+              failed="$failed roomlog-$id"
+            fi
             count=$((count + 1))
           done < "$work/ids.txt"
+          if ! curl -sS --fail --max-time 60 -H "x-admin-key: $ADMIN_KEY" \
+              "$base/admin/export?kind=payments-global" -o "$work/payments-global.json" \
+            || ! jq -e 'has("webhooks")' "$work/payments-global.json" > /dev/null; then
+            echo "::error::webhook id and kill switch export failed"
+            rm -f "$work/payments-global.json"
+            failed="$failed payments-global"
+          fi
           if [ -n "$failed" ]; then
             printf '%s\n' "$failed" | tr ' ' '\n' | sed '/^$/d' > "$work/FAILED.txt"
             echo "Ledgers not saved:$failed" >> "$GITHUB_STEP_SUMMARY"
