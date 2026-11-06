@@ -29,6 +29,7 @@ import {
   type RoomSnapshot,
   type RoomStore,
   type ServerMsg,
+  type SettlementState,
   type Transport,
 } from '@gavel/shared';
 import { authorize, redactForViewer } from '../auth/authorize';
@@ -782,6 +783,34 @@ export class Room {
     return this.submitBid(conn, { ...msg, source: 'voice' });
   }
 
+  /**
+   * Record a spoken utterance that never became a bid or a confirm (hedged, no bidder). The
+   * event takes a seq of its own and is not broadcast; the transcript is never stored.
+   */
+  recordVoiceDrop(drop: Extract<RoomEvent, { type: 'voice_dropped' }>['drop']): Promise<void> {
+    return this.enqueue(async () => {
+      if (this.stopped || this.done) return;
+      try {
+        await this.ensureClean();
+      } catch {
+        return;
+      }
+      const seq = this.seq + 1;
+      const ts = this.deps.clock.now();
+      const event: RoomEvent = { type: 'voice_dropped', auctionId: this.auctionId, seq, ts, drop };
+      try {
+        await this.appendFenced(this.auctionId, this.seq, [event]);
+      } catch {
+        await this.recover().catch(() => undefined);
+        return;
+      }
+      this.seq = seq;
+      // The record consumed a seq nobody sees; carry it so clients see no gap (R-RT-036).
+      for (const conn of this.conns.values()) this.sendSeqFiller(conn, seq, ts);
+      await this.makeDurable();
+    });
+  }
+
   private async handleBid(
     conn: Connection,
     msg: BidMsg,
@@ -1242,6 +1271,10 @@ export class Room {
     if (meta.confirmed) audit.confirmed = true;
     if (meta.transcript !== undefined) audit.transcript = meta.transcript;
     if (meta.confidence !== undefined) audit.confidence = meta.confidence;
+    if (meta.source === 'voice') {
+      if (msg.audioTsMs !== undefined) audit.audioTsMs = msg.audioTsMs;
+      if (msg.audioEndMs !== undefined) audit.audioEndMs = msg.audioEndMs;
+    }
     if (code !== undefined) audit.reason = code;
     return audit;
   }
@@ -1694,6 +1727,9 @@ export class Room {
         report.winnerId === undefined
           ? undefined
           : this.roster.get(report.winnerId as BidderId)?.paddle;
+      const counts: Partial<Record<SettlementState, number>> = {};
+      for (const state of Object.values(report.perBidder)) counts[state] = (counts[state] ?? 0) + 1;
+      const ladder = Object.keys(counts).length > 0 ? { counts } : undefined;
       for (const conn of this.conns.values()) {
         const you = conn.bidderId ? report.perBidder[conn.bidderId] : undefined;
         // A bidder's own hold goes to that bidder only, never to a screen or the auctioneer.
@@ -1712,6 +1748,7 @@ export class Room {
           ...(report.amountCaptured !== undefined ? { amountCaptured: report.amountCaptured } : {}),
           ...(report.note !== undefined ? { note: report.note } : {}),
           ...(winnerPaddle !== undefined ? { winnerPaddle } : {}),
+          ...(ladder !== undefined ? { ladder } : {}),
           ...(own !== undefined && conn.bidderId !== undefined
             ? { yourHold: { ...own, bidderId: conn.bidderId } }
             : {}),

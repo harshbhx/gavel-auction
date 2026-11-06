@@ -238,4 +238,54 @@ describe('hold routes in the production composition (HRD-69, issue 1074)', () =>
     expect(late.status).toBe(409);
     expect(((await late.json()) as { code: string }).code).toBe('closed');
   });
+
+  it('registers the bidder in the room once, when the approval names them (issue 1074)', async () => {
+    const { url, paypal } = await boot();
+    const { auctionId, auctioneer, ada, bo } = await auctionWithBidders(url);
+    const created = await call(url, 'POST', '/api/holds', ada.sessionToken, {
+      auctionId,
+      ceilingCents: 30000,
+    });
+    const order = CreateHoldResponse.parse(await created.json());
+    const approvePath = `/api/holds/${encodeURIComponent(order.holdId)}/approve`;
+    paypal.core.approveOrder(order.orderId);
+
+    const registered = async (): Promise<Array<{ bidderId: string; name: string }>> => {
+      const res = await call(url, 'GET', `/api/auctions/${auctionId}/events?after=0`, auctioneer);
+      const body = (await res.json()) as {
+        events: Array<{ type?: string; bidderId?: string; name?: string }>;
+      };
+      return body.events.flatMap((e) =>
+        e.type === 'bidder_registered' && e.bidderId !== undefined && e.name !== undefined
+          ? [{ bidderId: e.bidderId, name: e.name }]
+          : [],
+      );
+    };
+
+    // Without a name only the hold is approved.
+    expect(await registered()).toEqual([]);
+    // A blank name is refused; another bidder's token cannot register this hold.
+    const blank = await call(url, 'POST', approvePath, ada.sessionToken, {
+      orderId: order.orderId,
+      name: '  ',
+    });
+    expect(blank.status).toBe(400);
+    const stolen = await call(url, 'POST', approvePath, bo.sessionToken, {
+      orderId: order.orderId,
+      name: 'Mallory',
+    });
+    expect(stolen.status).toBe(404);
+    expect(await registered()).toEqual([]);
+
+    // Approve with a name, twice: one registration, never two.
+    for (let i = 0; i < 2; i += 1) {
+      const approved = await call(url, 'POST', approvePath, ada.sessionToken, {
+        orderId: order.orderId,
+        name: 'Ada',
+      });
+      expect(approved.status).toBe(200);
+      expect(ApproveHoldResponse.parse(await approved.json()).status).toBe('HELD');
+    }
+    expect(await registered()).toEqual([{ bidderId: ada.bidderId, name: 'Ada' }]);
+  });
 });

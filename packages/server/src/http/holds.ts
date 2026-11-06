@@ -22,6 +22,17 @@ export interface HoldsPort {
    * settlement plan does not know (`AuctionService.acceptsHolds`).
    */
   acceptsHolds: (auctionId: string) => Promise<boolean>;
+  /**
+   * Puts the session bidder in the room once their hold is authorized. Idempotent: a second
+   * call for the same hold changes nothing. Called by the approve route when the body names
+   * the bidder.
+   */
+  registerBidder?: (input: {
+    auctionId: string;
+    bidderId: string;
+    holdId: string;
+    name: string;
+  }) => Promise<void>;
 }
 
 function holdFailure(code: HoldErrorCode, message: string): Response {
@@ -96,6 +107,14 @@ export function mountHolds(port: HoldsPort): Mount {
         if (!holdOwnedBySession(hold.bidderId, who.bidderId)) return notFound();
         await requireOpen(port, hold.auctionId);
         const approved = await port.service.completeApproval({ holdId, orderId: body.orderId });
+        if (body.name !== undefined && port.registerBidder !== undefined) {
+          await port.registerBidder({
+            auctionId: hold.auctionId,
+            bidderId: hold.bidderId,
+            holdId,
+            name: body.name,
+          });
+        }
         return json(200, approved);
       }),
     );

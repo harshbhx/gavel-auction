@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_NAME_CHARS } from './wire/envelope';
 
 export const HOLD_ERROR_CODES = [
   'ceiling_out_of_range',
@@ -50,7 +51,16 @@ export const CreateHoldResponse = z
 export type CreateHoldResponse = z.infer<typeof CreateHoldResponse>;
 
 /** POST /api/holds/{holdId}/approve request. */
-export const ApproveHoldRequest = z.object({ orderId: id }).strict();
+export const ApproveHoldRequest = z
+  .object({
+    orderId: id,
+    /**
+     * Display name of the bidder. When present the server also registers the bidder in the
+     * room once the hold is authorized (idempotent); absent, only the hold is approved.
+     */
+    name: z.string().trim().min(1).max(MAX_NAME_CHARS).optional(),
+  })
+  .strict();
 export type ApproveHoldRequest = z.infer<typeof ApproveHoldRequest>;
 
 /** POST /api/holds/{holdId}/approve response. */

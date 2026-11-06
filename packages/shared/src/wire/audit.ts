@@ -15,6 +15,8 @@ export const AuditPayloadSchema = z
     bidderId: z.custom<BidderId>(isUlid, 'invalid id'),
     source: z.enum(BID_SOURCES),
     audioTsMs: z.number().int().nonnegative().optional(),
+    /** End of the spoken bid in the audio stream; start is `audioTsMs`. */
+    audioEndMs: z.number().int().nonnegative().optional(),
     transcript: z.string().max(MAX_TRANSCRIPT_CHARS).optional(),
     parsedAmount: z.custom<Cents>(isCents, 'must be integer cents').optional(),
     confidence: z.number().min(0).max(1).optional(),

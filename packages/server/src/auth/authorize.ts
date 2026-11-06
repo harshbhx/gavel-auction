@@ -139,6 +139,7 @@ function scrubCeilingRow(row: unknown): unknown {
   delete out.parsedAmount;
   delete out.transcript;
   delete out.audioTsMs;
+  delete out.audioEndMs;
   // The auctioneer picked the amount of a manual bid: the reason would be a ceiling probe.
   if (obj.source === 'manual') out.reason = 'limit_exceeded';
   return out;
@@ -176,6 +177,7 @@ export function redactEventForExport(role: AuthRole, event: RoomEvent): Exported
     delete audit.parsedAmount;
     delete audit.transcript;
     delete audit.audioTsMs;
+    delete audit.audioEndMs;
     if (event.audit.source === 'manual') {
       copy.reason = 'limit_exceeded';
       audit.reason = 'limit_exceeded';
@@ -189,6 +191,7 @@ export function redactEventForExport(role: AuthRole, event: RoomEvent): Exported
     delete audit.parsedAmount;
     delete audit.transcript;
     delete audit.audioTsMs;
+    delete audit.audioEndMs;
     return { ...copy, audit } as unknown as ExportedEvent;
   }
   if (event.type === 'confirm_resolved') {
@@ -196,7 +199,15 @@ export function redactEventForExport(role: AuthRole, event: RoomEvent): Exported
     delete audit.parsedAmount;
     delete audit.transcript;
     delete audit.audioTsMs;
+    delete audit.audioEndMs;
     return { ...event, audit } as typeof event;
+  }
+  if (event.type === 'voice_dropped') {
+    // Who was named and which amount was heard stay with the operator key.
+    const drop: Partial<typeof event.drop> = { ...event.drop };
+    delete drop.bidderId;
+    delete drop.parsedCents;
+    return { ...event, drop } as typeof event;
   }
   return event;
 }

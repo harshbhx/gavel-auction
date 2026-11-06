@@ -214,6 +214,14 @@ export const SettlementUpdateSchema = message('settlement_update', {
     .object({ ok: z.boolean(), violations: z.array(z.string().max(120)).max(20) })
     .strict()
     .optional(),
+  /**
+   * Public-safe ladder summary for every screen: how many holds sit in each settlement state.
+   * No names, paddles, amounts or hold ids; the per-hold lanes stay with their owner.
+   */
+  ladder: z
+    .object({ counts: z.record(settlementState, z.number().int().nonnegative()) })
+    .strict()
+    .optional(),
   /** The receiving bidder's own hold. Absent for screens, the auctioneer and older servers. */
   yourHold: OwnHoldSchema.optional(),
 });
