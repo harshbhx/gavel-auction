@@ -33,6 +33,7 @@ import { KillSwitch } from '@gavel/payments';
 import { LedgerStore } from '@gavel/engine';
 import { PaymentsGateway } from '@gavel/payments';
 import { PaymentsMetrics } from '@gavel/payments';
+import { ReauthPolicy } from '@gavel/payments';
 import { ReconcileReport } from '@gavel/payments';
 import { RemainderMode } from '@gavel/payments';
 import { RoomStore } from '@gavel/shared';
@@ -112,6 +113,9 @@ export interface AuctionServiceDeps {
     onReconcile?: (report: ReconcileReport) => Promise<void> | void;
     orphanWindowMs?: number;
     pendingCaptureDeadlineMs?: number;
+    reauthPolicy?: ReauthPolicy;
+    reconcileIntervalMs?: number;
+    reconcileRepair?: boolean;
     remainderMode?: RemainderMode;
     resumeIntervalMs?: number;
     retryDelayMs?: number;
