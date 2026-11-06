@@ -282,6 +282,36 @@ describe('verifyWebhook prechecks and call limit', () => {
     expect(calls).toBe(3);
   });
 
+  it('RT4-sec-04 a 400 from PayPal is a failed verification, remembered, not an outage', async () => {
+    const auth2: VerifyAuth = {
+      send: async () => {
+        calls += 1;
+        return { status: 400, headers: {}, text: '{"name":"INVALID_REQUEST"}', attempts: 1 };
+      },
+    };
+    const v = new WebhookVerifier({
+      auth: auth2,
+      webhookId: 'WH',
+      nowMs: () => NOW,
+      maxCallsPerWindow: 8,
+      windowMs: 60_000,
+    });
+    const headers = {
+      ...good,
+      'PAYPAL-TRANSMISSION-TIME': new Date(NOW).toISOString(),
+    };
+    const before = calls;
+    expect(await v.verifyWebhook(body, headers)).toEqual({
+      ok: false,
+      reason: 'verification_failed',
+    });
+    expect(await v.verifyWebhook(body, headers)).toEqual({
+      ok: false,
+      reason: 'verification_failed',
+    });
+    expect(calls - before).toBe(1);
+  });
+
   it('R8-P07 quoting the public certificate url does not reserve or buy any call slots', async () => {
     const realCert = 'https://api.paypal.com/v1/notifications/certs/CERT-REAL';
     const auth2: VerifyAuth = {

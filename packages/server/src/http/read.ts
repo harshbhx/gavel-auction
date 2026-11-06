@@ -8,6 +8,16 @@ import { redactPersonal } from './export';
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 1000;
 
+/** Event types with a public form; a screen sees every other event as a bare seq. */
+const SCREEN_EVENTS: ReadonlySet<string> = new Set([
+  'auction_created',
+  'bidder_registered',
+  'bid_accepted',
+  'control',
+  'state_changed',
+  'hammered',
+]);
+
 const Query = z
   .object({
     after: z.coerce.number().int().min(0).default(0),
@@ -37,6 +47,9 @@ export function mountRead(app: HttpApp): void {
     await roomFor(c.deps, auctionId);
     const events = await c.deps.store.readEvents(auctionId as AuctionId, after + 1, limit);
     const out = events.map((e) => {
+      // Rejections, holds, revokes and settlement carry per-bidder facts the live wire never
+      // gives a screen: keep the seq so the log stays whole and nothing else.
+      if (role === 'screen' && !SCREEN_EVENTS.has(e.type)) return { seq: e.seq };
       // Never more than the NDJSON export gives the same role: no ceilings, transcripts,
       // hold references or auctioneer subject.
       const personal = redactPersonal(role, e);

@@ -37,6 +37,12 @@ export interface NodeWsHostOptions {
   accept(transport: BoundedConnection): SocketHandlers;
   path?: string;
   maxPayload?: number;
+  /**
+   * Asked for every upgrade that passed the path and Origin checks, before the handshake.
+   * Return a release callback to admit the socket (called once when it closes), or
+   * undefined to answer 429 (R-RT-120).
+   */
+  admitUpgrade?: (req: IncomingMessage) => (() => void) | undefined;
 }
 
 export interface NodeWsHost {
@@ -67,7 +73,15 @@ export function createNodeWsHost(opts: NodeWsHostOptions): NodeWsHost {
       refuse(socket, 403, 'Forbidden');
       return;
     }
-    wss.handleUpgrade(req, socket, head, (ws) => bind(ws, opts));
+    const release = opts.admitUpgrade ? opts.admitUpgrade(req) : () => undefined;
+    if (release === undefined) {
+      refuse(socket, 429, 'Too Many Requests');
+      return;
+    }
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      ws.once('close', release);
+      bind(ws, opts);
+    });
   };
   opts.server.on('upgrade', onUpgrade);
 

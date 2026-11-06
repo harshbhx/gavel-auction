@@ -23,7 +23,7 @@ Requirements: R-QA-042 (deploy), R-QA-044 (webhook registration). Hosting choice
    - secret `RENDER_DEPLOY_HOOK_URL`
    - secret `ADMIN_KEY` (same value as on Render; optional, enables the create-auction smoke)
    - variable `STAGING_URL` (the same https URL as `PUBLIC_URL`)
-5. In the PayPal developer dashboard (sandbox app), Webhooks, add `https://<api-host>/webhooks/paypal` with the events the app uses: `CHECKOUT.ORDER.APPROVED`, `PAYMENT.AUTHORIZATION.CREATED`, `PAYMENT.AUTHORIZATION.VOIDED`, `PAYMENT.CAPTURE.COMPLETED`. Copy the webhook id into `PAYPAL_WEBHOOK_ID` on Render only. Never commit it.
+5. In the PayPal developer dashboard (sandbox app), Webhooks, add `https://<api-host>/webhooks/paypal` with the events the app uses: `PAYMENT.AUTHORIZATION.VOIDED`, `PAYMENT.AUTHORIZATION.DENIED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.DECLINED`. Other event types are acknowledged and ignored, so subscribing to them only spends verification calls. Copy the webhook id into `PAYPAL_WEBHOOK_ID` on Render only. Never commit it.
 6. Run the workflow `deploy-staging` by hand and read the smoke output.
 7. Web: create a Cloudflare Pages project, build `npm ci && npm run build -w @gavel/web` with the API origin passed in `VITE_API_BASE` and `VITE_WS_BASE`, and add the Pages origin to `CORS_ORIGINS`. A workflow for this is not part of this change.
 

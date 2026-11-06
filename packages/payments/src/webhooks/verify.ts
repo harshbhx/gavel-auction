@@ -349,6 +349,19 @@ export class WebhookVerifier {
         this.webhookId,
       ),
     });
+    // A 4xx other than a timeout or throttle means PayPal refused this delivery itself, so it
+    // is a failed verification (401, remembered), not an outage that invites a retry.
+    if (
+      res.status >= 400 &&
+      res.status < 500 &&
+      res.status !== 401 &&
+      res.status !== 403 &&
+      res.status !== 408 &&
+      res.status !== 429
+    ) {
+      this.remember(key, false);
+      return { ok: false, reason: 'verification_failed' };
+    }
     if (res.status < 200 || res.status >= 300)
       throw classifyError(res.status, res.headers, res.text);
     let status: unknown;

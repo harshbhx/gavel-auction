@@ -1,4 +1,4 @@
-import { GavelError } from '@gavel/shared';
+import { GavelError, type BidderId } from '@gavel/shared';
 import { z } from 'zod';
 import { authorize } from '../auth/authorize';
 import { consumeInvite } from '../auth/token';
@@ -64,6 +64,27 @@ export function mountInvites(app: HttpApp): void {
       });
     }
     return json(201, { invites });
+  });
+
+  // A bidder who lost their tab gets a fresh single-use invite for the same bidderId from the
+  // auctioneer, so the hold and the bids stay theirs and the burned invite is never replayed.
+  app.post('/api/auctions/:id/bidders/:bidderId/invite', async (c: Ctx) => {
+    const auctionId = auctionIdOf(c);
+    const who = await authenticate(c, auctionId, ['auctioneer', 'session', 'screen']);
+    if (!authorize('invites_rotate', who.kind === 'auctioneer' ? 'auctioneer' : 'bidder').ok) {
+      throw new GavelError('forbidden', 'only the auctioneer may re-issue an invite');
+    }
+    const bidderId = c.params.bidderId;
+    const room = await roomFor(c.deps, auctionId);
+    if (bidderId === undefined || !room.holdRefs.has(bidderId as BidderId)) {
+      throw new GavelError('not_found', 'no such bidder');
+    }
+    const m = await mintToken(c.deps, 'invite', auctionId, bidderId, bidderId);
+    return json(201, {
+      bidderId,
+      expiresAt: m.exp * 1000,
+      link: linkFor(c.deps, auctionId, 'register', m.token),
+    });
   });
 
   app.post('/api/auctions/:id/join', async (c: Ctx) => {
