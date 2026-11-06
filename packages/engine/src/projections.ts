@@ -178,8 +178,11 @@ export function projectAuditor(
     delete payload['amountRaw'];
     const audit: Record<string, unknown> = { ...e.payload.audit };
     // Anything that repeats the amount or ties the bid to a recording stays private too.
-    for (const k of ['transcript', 'parsedCents', 'utteranceId', 'audioStartMs', 'audioEndMs'])
-      delete audit[k];
+    delete audit['transcript'];
+    delete audit['parsedCents'];
+    delete audit['utteranceId'];
+    delete audit['audioStartMs'];
+    delete audit['audioEndMs'];
     payload['audit'] = audit;
     return { ...e, payload, redacted: true } as AuditorEntry;
   });
