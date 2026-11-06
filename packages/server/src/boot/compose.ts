@@ -547,6 +547,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
             config: () => demoAuctionConfig(clock.now()),
             auctioneerSub: 'demo-auctioneer',
             holdFor: createDemoHoldSource(stores.holds, () => clock.now()),
+            maxRooms: config.DEMO_MAX_ROOMS,
           }),
         )
       : undefined;

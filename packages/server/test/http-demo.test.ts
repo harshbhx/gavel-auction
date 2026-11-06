@@ -51,6 +51,7 @@ function setup(over: Partial<DemoDeps> = {}) {
     retire: async (id) => {
       retired.push(id);
     },
+    maxRooms: 20,
     ...over,
   };
   return { handler: createDemoHandler(deps), created, registered, retired };
@@ -144,5 +145,17 @@ describe('demo routes (T-RT-079)', () => {
     });
     await call(handler, 'POST', '/api/demo/rooms', admin);
     expect(seen).toEqual([created[0], created[0], created[0]]);
+  });
+
+  it('rooms answers 429 demo_room_cap once DEMO_MAX_ROOMS live rooms exist', async () => {
+    const { handler, created, registered } = setup({ maxRooms: 2 });
+    const a = await call(handler, 'POST', '/api/demo/rooms', admin);
+    const b = await call(handler, 'POST', '/api/demo/rooms', admin);
+    expect(a).toMatchObject({ status: 200, body: { auctionId: created[0], bidders: 3 } });
+    expect(b).toMatchObject({ status: 200, body: { auctionId: created[1], bidders: 3 } });
+    const c = await call(handler, 'POST', '/api/demo/rooms', admin);
+    expect(c).toEqual({ status: 429, body: { error: 'demo_room_cap' } });
+    expect(created).toHaveLength(2);
+    expect(registered).toHaveLength(6);
   });
 });

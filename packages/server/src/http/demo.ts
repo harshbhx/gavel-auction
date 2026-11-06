@@ -33,6 +33,8 @@ export interface DemoDeps {
   holdFor: (bidderId: BidderId, ceiling: Cents, auctionId: AuctionId) => Promise<string>;
   /** Drops the previous demo room, if the host keeps one. */
   retire?: (auctionId: AuctionId) => Promise<void>;
+  /** Most live demo rooms the rooms route keeps (DEMO_MAX_ROOMS). */
+  maxRooms: number;
 }
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
@@ -50,15 +52,27 @@ export function createDemoHandler(
   deps: DemoDeps,
 ): (req: IncomingMessage, res: ServerResponse) => Promise<void> {
   let current: AuctionId | undefined;
+  /** Demo rooms this handler created and has not retired; the rooms cap counts these. */
+  const live = new Set<AuctionId>();
 
   const create = async (): Promise<AuctionId> => {
     const id = deps.ids.mint<'AuctionId'>();
-    const config = typeof deps.config === 'function' ? deps.config() : deps.config;
-    await deps.service.createAuction(id, config, deps.auctioneerSub);
+    // Reserve the slot before the first await so concurrent creates cannot overshoot the cap.
+    live.add(id);
+    try {
+      const config = typeof deps.config === 'function' ? deps.config() : deps.config;
+      await deps.service.createAuction(id, config, deps.auctioneerSub);
+    } catch (err) {
+      live.delete(id);
+      throw err;
+    }
     return id;
   };
   const fresh = async (): Promise<AuctionId> => {
-    if (current !== undefined) await deps.retire?.(current);
+    if (current !== undefined) {
+      live.delete(current);
+      await deps.retire?.(current);
+    }
     current = await create();
     return current;
   };
@@ -77,6 +91,10 @@ export function createDemoHandler(
     }
     if (!adminKeyMatches(req, deps.adminKey)) {
       sendJson(res, 401, { error: 'unauthorized' });
+      return;
+    }
+    if (path === DEMO_ROOMS_PATH && live.size >= deps.maxRooms) {
+      sendJson(res, 429, { error: 'demo_room_cap' });
       return;
     }
     try {
