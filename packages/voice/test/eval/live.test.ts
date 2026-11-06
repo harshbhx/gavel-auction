@@ -108,7 +108,7 @@ describe('transcribeLive groq', () => {
 describe('retry and errors', () => {
   it('retries 429 then 503 and succeeds, with growing delays', async () => {
     const { fetch, calls } = fakeFetch([429, 503, 200], { text: 'ok' });
-    const sleep = vi.fn(noSleep);
+    const sleep = vi.fn((_ms: number) => Promise.resolve());
     const out = await transcribeLive('groq', tone, KEY, { fetch, sleep, backoffMs: 10 });
     expect(out.text).toBe('ok');
     expect(calls).toHaveLength(3);
