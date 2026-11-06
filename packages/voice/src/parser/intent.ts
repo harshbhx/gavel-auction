@@ -7,7 +7,12 @@ import { findNumberSpans, tokenize } from './normalize.js';
  */
 
 export type IntentKind =
-  'bid_like' | 'withdraw' | 'negation' | 'hedged' | 'question' | 'background';
+  | 'bid_like'
+  | 'withdraw'
+  | 'negation'
+  | 'hedged'
+  | 'question'
+  | 'background';
 
 export interface Intent {
   kind: IntentKind;

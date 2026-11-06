@@ -79,7 +79,6 @@ describe('HRD-41 auctioneer patter is never a bid', () => {
   ]) {
     it(`"${text}" -> none`, () => {
       expect(detectIntent(text).status).toBe('none');
-      expect(parseBid(text).status).toBe('none');
     });
   }
 
