@@ -63,6 +63,19 @@ describe('rate limiter (T-RT-087)', () => {
     expect(rl.checkJoin('5.6.7.8').ok).toBe(true);
   });
 
+  it('counts joins and HTTP calls from one IPv6 /64 together', () => {
+    const { clock, rl } = setup();
+    for (let i = 0; i < 40; i++) {
+      expect(rl.checkJoin(`2001:db8:1:2::${i + 1}`).ok).toBe(true);
+      clock.advance(10);
+    }
+    expect(rl.checkJoin('2001:db8:1:2:ffff::1').ok).toBe(false);
+    expect(rl.checkJoin('2001:db8:1:3::1').ok).toBe(true);
+    for (let i = 0; i < 60; i++)
+      expect(rl.checkHttp(`2001:db8:9:9::${i + 1}`, '/api/x').ok).toBe(true);
+    expect(rl.checkHttp('2001:db8:9:9:1:2:3:4', '/api/x').ok).toBe(false);
+  });
+
   it('limits HTTP at 60 per IP but exempts webhooks', () => {
     const { rl } = setup();
     for (let i = 0; i < 60; i++) expect(rl.checkHttp('1.1.1.1', '/api/x').ok).toBe(true);
