@@ -1,7 +1,8 @@
 name: backup
 # Daily ledger snapshot (R-QA-046), extended by HRD-79 with the payment state the ledgers do not
 # hold: settlement journals, hold records, processed webhook ids, the kill switch and the room
-# event log, all through the same admin export route and the same encrypted file. Lists every stored auction with GET /admin/export?list=1
+# event log, all through the same admin export route and the same encrypted file. Lists every
+# stored auction with GET /admin/export?list=1
 # (finished auctions included, not only loaded rooms), downloads each ledger from
 # GET /admin/export as NDJSON with its hash chain head line, encrypts the set with a public key and
 # keeps only the encrypted file as a workflow artifact. The ledger is private (ceilings, hold
@@ -70,22 +71,9 @@ jobs:
           while IFS= read -r id; do
             [ -n "$id" ] || continue
             case "$id" in *[!0-9A-Za-z_-]*) echo "::error::unexpected auction id"; failed="$failed bad-id"; continue ;; esac
-            if ! curl -sS --fail --max-time 60 -H "x-admin-key: $ADMIN_KEY" \
-              "$base/admin/export?auction=$id" -o "$work/$id.ndjson"; then
-              echo "::error::export of auction $id failed"
-              rm -f "$work/$id.ndjson"
-              failed="$failed $id"
-              continue
-            fi
-            # The last line is the head; the file must end with it.
-            if ! tail -n 1 "$work/$id.ndjson" | jq -e 'has("head")' > /dev/null; then
-              echo "::error::ledger of auction $id has no head line"
-              rm -f "$work/$id.ndjson"
-              failed="$failed $id"
-              continue
-            fi
-            # Payment journal and holds, and the room log, of the same auction (HRD-79). A miss is
-            # recorded like a missing ledger so the run ends red.
+            # Payment journal and holds, and the room log, of the same auction (HRD-79). Fetched
+            # before the ledger so a ledger failure does not skip them. A miss is recorded like a
+            # missing ledger so the run ends red.
             if ! curl -sS --fail --max-time 60 -H "x-admin-key: $ADMIN_KEY" \
                 "$base/admin/export?kind=payments&auction=$id" -o "$work/payments/$id.json" \
               || ! jq -e 'has("holds")' "$work/payments/$id.json" > /dev/null; then
@@ -99,6 +87,20 @@ jobs:
               echo "::error::room log export of auction $id failed"
               rm -f "$work/roomlog/$id.ndjson"
               failed="$failed roomlog-$id"
+            fi
+            if ! curl -sS --fail --max-time 60 -H "x-admin-key: $ADMIN_KEY" \
+              "$base/admin/export?auction=$id" -o "$work/$id.ndjson"; then
+              echo "::error::export of auction $id failed"
+              rm -f "$work/$id.ndjson"
+              failed="$failed $id"
+              continue
+            fi
+            # The last line is the head; the file must end with it.
+            if ! tail -n 1 "$work/$id.ndjson" | jq -e 'has("head")' > /dev/null; then
+              echo "::error::ledger of auction $id has no head line"
+              rm -f "$work/$id.ndjson"
+              failed="$failed $id"
+              continue
             fi
             count=$((count + 1))
           done < "$work/ids.txt"

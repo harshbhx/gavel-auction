@@ -45,6 +45,8 @@ describe('backup workflow', () => {
     assert.match(text, /admin\/export\?kind=roomlog&auction=\$id/);
     assert.match(text, /admin\/export\?kind=payments-global/);
     assert.match(text, /failed="\$failed payments-\$id"/);
+    // A failed ledger download must not skip the payment state of that auction.
+    assert.ok(text.indexOf('kind=payments&auction=$id') < text.indexOf('export?auction=$id"'));
     assert.equal((text.match(/--encrypt/g) ?? []).length, 1);
   });
 

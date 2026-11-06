@@ -210,4 +210,22 @@ describe('admin export of payment state (HRD-79)', () => {
       l: [{ Password: '[redacted]' }],
     });
   });
+
+  it('redactSecrets also covers webhook signatures, session ids and emails', () => {
+    expect(
+      redactSecrets({
+        'paypal-transmission-sig': 'g',
+        payerEmail: 'e',
+        sessionId: 'i',
+        holdId: 'h1',
+        orderId: 'O-1',
+      }),
+    ).toEqual({
+      'paypal-transmission-sig': '[redacted]',
+      payerEmail: '[redacted]',
+      sessionId: '[redacted]',
+      holdId: 'h1',
+      orderId: 'O-1',
+    });
+  });
 });

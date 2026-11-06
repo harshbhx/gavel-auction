@@ -52,8 +52,29 @@ export interface ExportHeadLine {
 }
 
 const AUCTION_ID = /^[0-9A-Za-z_-]{1,64}$/;
-const SECRET_KEY =
-  /secret|password|passcode|token|authorization|api[-_]?key|private[-_]?key|cookie/i;
+/**
+ * Key names whose values never leave through an export, matched anywhere in the key: PayPal
+ * credentials and tokens, webhook signature headers, session ids and contact details.
+ */
+const SECRET_KEY = new RegExp(
+  [
+    'secret',
+    'password',
+    'passcode',
+    'token',
+    'authorization',
+    'api[-_]?key',
+    'private[-_]?key',
+    'cookie',
+    'signature',
+    'transmission[-_]?sig',
+    'credential',
+    'bearer',
+    'session',
+    'e[-_]?mail',
+  ].join('|'),
+  'i',
+);
 const ROOM_LOG_PAGE = 1000;
 
 /** Copy of a JSON value with the value of every secret-looking key replaced. */
