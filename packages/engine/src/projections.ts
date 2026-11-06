@@ -149,8 +149,10 @@ export interface AuditorOptions {
 }
 
 /**
- * R-ENG-108: the whole ledger. Amounts of bids on a sealed lot, and the spoken
- * transcript that may repeat them, are withheld until that lot is hammered.
+ * R-ENG-108: the whole ledger. Amounts of bids on a sealed lot, and the audit
+ * fields that repeat them or identify the recording (transcript, parsedCents,
+ * utteranceId, audio offsets), are withheld until that lot is hammered.
+ * Library only: no server path calls this yet.
  */
 export function projectAuditor(
   entries: readonly LedgerEntry[],
@@ -175,7 +177,9 @@ export function projectAuditor(
     const payload: Record<string, unknown> = { ...e.payload, amountCents: null };
     delete payload['amountRaw'];
     const audit: Record<string, unknown> = { ...e.payload.audit };
-    delete audit['transcript'];
+    // Anything that repeats the amount or ties the bid to a recording stays private too.
+    for (const k of ['transcript', 'parsedCents', 'utteranceId', 'audioStartMs', 'audioEndMs'])
+      delete audit[k];
     payload['audit'] = audit;
     return { ...e, payload, redacted: true } as AuditorEntry;
   });
