@@ -76,3 +76,52 @@ test.describe('forced colours', () => {
     expect(ring.width).toBeGreaterThanOrEqual(2);
   });
 });
+
+test.describe('forced colours on the settlement ladder', () => {
+  test('rungs keep an icon and a label, the current rung a Highlight border', async ({
+    page,
+  }, testInfo) => {
+    await page.emulateMedia({ forcedColors: 'active' });
+    await page.goto('/gallery?ladder');
+    const ladder = page.locator('.gv-ladder');
+    await ladder.waitFor();
+    const rungs = await ladder.locator('.gv-ladder__rung').evaluateAll((els) =>
+      els.map((el) => ({
+        status: el.getAttribute('data-status') ?? '',
+        hasIcon: el.querySelector('.gv-ladder__icon svg') !== null,
+        label: (el.querySelector('.gv-ladder__label')?.textContent ?? '').trim(),
+      })),
+    );
+    expect(rungs.length).toBeGreaterThan(0);
+    for (const rung of rungs) {
+      expect(rung.hasIcon, `icon on a ${rung.status} rung`).toBe(true);
+      expect(rung.label.length, `label on a ${rung.status} rung`).toBeGreaterThan(0);
+    }
+    expect(rungs.some((r) => r.status === 'current')).toBe(true);
+    const current = await ladder
+      .locator('.gv-ladder__rung[data-status="current"]')
+      .first()
+      .evaluate((el: Element) => {
+        const s = getComputedStyle(el);
+        const probe = document.createElement('span');
+        probe.style.color = 'Highlight';
+        document.body.appendChild(probe);
+        const highlight = getComputedStyle(probe).color;
+        probe.remove();
+        return {
+          width: parseFloat(s.borderTopWidth),
+          style: s.borderTopStyle,
+          color: s.borderTopColor,
+          highlight,
+        };
+      });
+    expect(current.style).toBe('solid');
+    expect(current.width).toBeGreaterThanOrEqual(2);
+    expect(current.color).toBe(current.highlight);
+    // The checks above are computed; the picture is kept as a report attachment for a human.
+    await testInfo.attach('ladder-forced-colors', {
+      body: await ladder.screenshot(),
+      contentType: 'image/png',
+    });
+  });
+});
