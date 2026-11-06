@@ -1349,7 +1349,7 @@ export interface UtteranceOutcome {
 }
 
 // @public (undocumented)
-export const VOICE_REASONS: readonly ["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable"];
+export const VOICE_REASONS: readonly ["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable", "prompt_rate_limited", "stale_segment"];
 
 // @public (undocumented)
 export interface VoiceEvidence {
@@ -2028,7 +2028,7 @@ export interface VoiceSessionDeps {
 
 // Warnings were encountered during analysis:
 //
-// /home/runner/work/gavel-auction/gavel-auction/.api-types/voice/pipeline/pipeline.d.ts:27:5 - (ae-forgotten-export) The symbol "AnswerOutcome" needs to be exported by the entry point index.d.ts
+// /home/runner/work/gavel-auction/gavel-auction/.api-types/voice/pipeline/pipeline.d.ts:29:5 - (ae-forgotten-export) The symbol "AnswerOutcome" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 
