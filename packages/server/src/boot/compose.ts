@@ -25,6 +25,7 @@ import {
   type KillStateStore,
   type PaymentsGateway,
   type SettlementPayload,
+  type StoredWebhook,
   type WebhookEventStore,
 } from '@gavel/payments';
 import {
@@ -494,6 +495,19 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     adminKey: config.ADMIN_KEY,
     ledger: stores.ledger,
     listAuctions: () => stores.room.listAuctions(),
+    payments: {
+      journal: (id) => stores.journals.load(id),
+      holds: (id) => stores.holds.listByAuction(id),
+      webhooks: async () => {
+        const snap = (
+          stores.webhookEvents as { snapshot?: () => { events: Record<string, StoredWebhook> } }
+        ).snapshot;
+        if (snap === undefined) throw new Error('webhook store cannot be listed');
+        return Object.values(snap.call(stores.webhookEvents).events);
+      },
+      kill: () => stores.kill.load(),
+    },
+    roomLog: (id, from, limit) => stores.room.readEvents(id as AuctionId, from, limit),
   });
   const webhookRoute = createGuardedWebhookRoute(portFromService(service), {
     trustedProxyHops: config.TRUSTED_PROXY_HOPS,
