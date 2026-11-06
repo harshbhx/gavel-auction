@@ -13,7 +13,6 @@ const MAX_BIDDER_NAME_CHARS = 64;
  */
 export const BIDDER_NAME_FORBIDDEN_PATTERN = new RegExp(
   // Control and invisible characters (ZWJ and ZWNJ are judged separately below) and angle brackets.
-  // eslint-disable-next-line no-control-regex -- control characters are what this pattern forbids
   '[\\u0000-\\u001F\\u007F-\\u009F\\u061C\\u200B\\u200E\\u200F\\u2028-\\u202F\\u2060-\\u206F\\uFEFF<>]' +
     // ZWJ (U+200D) and ZWNJ (U+200C) hold joined emoji and some Persian and Indic names, so they
     // are allowed only between two characters that are neither space nor invisible.
