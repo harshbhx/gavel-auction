@@ -103,7 +103,7 @@ afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
   window.sessionStorage.clear();
-  window.location.hash = '';
+  window.history.replaceState(null, '', '/');
   clearAuctioneerToken();
   roomStore.enter('');
   resetApprovalMemory();
@@ -150,7 +150,7 @@ describe('server refusals on the live routes', () => {
   });
 
   it('says the room is full on the screen route', () => {
-    window.location.hash = '#token=otter';
+    window.history.replaceState(null, '', '/#token=otter');
     const socket = joinLive(`/r/${ROOM}/screen`);
     act(() => socket.receive({ v: 1, t: 'error', code: 'room_full', message: 'full' }));
     expect(screen.getByText(t('err.room.full'))).toBeTruthy();
@@ -179,7 +179,7 @@ describe('server refusals on the live routes', () => {
 describe('sessions per role', () => {
   it('keeps the bidder session when the same tab opens the screen route', () => {
     saveSession(ROOM, { token: 'heron', bidderId: ME });
-    window.location.hash = '#token=otter';
+    window.history.replaceState(null, '', '/#token=otter');
     const socket = joinLive(`/r/${ROOM}/screen`);
     expect(socket.frames('join')[0]?.['token']).toBe('otter');
     expect(loadSession(ROOM)).toEqual({ token: 'heron', bidderId: ME });
@@ -240,7 +240,7 @@ describe('bid screen', () => {
     act(() => socket.receive(stateMsg(1, snapshot())));
     expect(document.querySelectorAll('main')).toHaveLength(1);
     cleanup();
-    window.location.hash = '#token=otter';
+    window.history.replaceState(null, '', '/#token=otter');
     joinLive(`/r/${ROOM}/screen`);
     expect(document.querySelectorAll('main')).toHaveLength(1);
   });
