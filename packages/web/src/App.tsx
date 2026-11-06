@@ -854,10 +854,11 @@ function ScriptedRoute({
   liveBase: string | undefined;
 }) {
   const { name, at } = request;
+  const asBidder = match.route.id === 'bid';
   const [loaded, setLoaded] = useState<ScriptedRoom | null | undefined>(undefined);
   useEffect(() => {
     let live = true;
-    loadScriptedRoom(name).then(
+    loadScriptedRoom(name, asBidder).then(
       (room) => {
         if (live) setLoaded(room);
       },
@@ -868,7 +869,7 @@ function ScriptedRoute({
     return () => {
       live = false;
     };
-  }, [name]);
+  }, [name, asBidder]);
   const scripted = useMemo(
     () => (loaded === undefined || loaded === null ? null : { room: loaded, at }),
     [loaded, at],

@@ -1,7 +1,11 @@
+import { Cents, type BidderId } from '@gavel/shared';
 import type { Scenario } from '../net/transport';
 
 /** Room id used when a scenario has no state frame to take one from. */
 export const SCRIPTED_ROOM_ID = '01HZZZZZZZZZZZZZZZZZZZZZZZ';
+
+/** The ceiling the scripted bidder holds, in cents. */
+const BIDDER_CEILING_CENTS = 50_000;
 
 export interface ScriptedRoom {
   readonly scenario: Scenario;
@@ -28,18 +32,38 @@ const LOADERS: Readonly<Record<string, () => Promise<Scenario>>> = {
 };
 
 /** Loads a scripted scenario by name, or null when there is no such scenario. */
-export async function loadScriptedRoom(name: string): Promise<ScriptedRoom | null> {
+export async function loadScriptedRoom(
+  name: string,
+  asBidder = false,
+): Promise<ScriptedRoom | null> {
   const load = Object.prototype.hasOwnProperty.call(LOADERS, name) ? LOADERS[name] : undefined;
   if (load === undefined) return null;
-  const scenario = await load();
-  for (const step of scenario.steps) {
-    if (step.emit?.t === 'state') {
-      return {
-        scenario,
-        roomId: step.emit.snapshot.auctionId,
-        bidderId: step.emit.snapshot.roster[0]?.bidderId,
-      };
-    }
+  const loaded = await load();
+  const first = loaded.steps.find((step) => step.emit?.t === 'state')?.emit;
+  if (first === undefined || first.t !== 'state') {
+    return { scenario: loaded, roomId: SCRIPTED_ROOM_ID, bidderId: undefined };
   }
-  return { scenario, roomId: SCRIPTED_ROOM_ID, bidderId: undefined };
+  const bidderId = first.snapshot.roster[0]?.bidderId;
+  // A bidder device is told who it is: each state frame carries the first rostered bidder.
+  const scenario: Scenario =
+    asBidder && bidderId !== undefined
+      ? {
+          ...loaded,
+          steps: loaded.steps.map((step) =>
+            step.emit?.t === 'state'
+              ? {
+                  ...step,
+                  emit: {
+                    ...step.emit,
+                    snapshot: {
+                      ...step.emit.snapshot,
+                      you: { bidderId: bidderId as BidderId, ceiling: Cents(BIDDER_CEILING_CENTS) },
+                    },
+                  },
+                }
+              : step,
+          ),
+        }
+      : loaded;
+  return { scenario, roomId: first.snapshot.auctionId, bidderId };
 }
