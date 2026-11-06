@@ -422,6 +422,41 @@ describe('auction service: room cap counts live rooms (R12-S02)', () => {
   });
 });
 
+describe('auction service: eviction never drops unsettled rooms (HRD-42)', () => {
+  it('keeps a finished room that still has a live hold and refuses the new auction', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ caps: { ...DEFAULT_CAPS, rooms: 1 }, resumeIntervalMs: 0 });
+    const first = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(first, config, 'auctioneer-sub');
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    expect(room.isDone).toBe(true);
+    room.detach(boss.conn.id);
+    // A hold that is still live after the settlement keeps the room loaded.
+    const made = await rig.holdsApi.createHoldOrder({
+      auctionId: first,
+      bidderId: rig.ids.mint<'BidderId'>(),
+      ceilingCents: 30000,
+      presetsCents: config.ceilingPresets,
+    });
+    rig.paypal.core.approveOrder(made.orderId);
+    await rig.holdsApi.completeApproval({ holdId: made.holdId, orderId: made.orderId });
+    await expect(
+      service.createAuction(rig.ids.mint<'AuctionId'>(), config, 'auctioneer-sub'),
+    ).rejects.toMatchObject({ code: 'room_cap' });
+    expect(service.stats().rooms).toBe(1);
+    expect((await service.room(first)).isDone).toBe(true);
+    // Once the hold is closed the room may go.
+    const hold = await rig.stores.holds.get(made.holdId);
+    if (hold === null) throw new Error('no hold');
+    await rig.stores.holds.put({ ...hold, status: 'VOIDED' });
+    await service.createAuction(rig.ids.mint<'AuctionId'>(), config, 'auctioneer-sub');
+    expect(service.stats().rooms).toBe(1);
+    await service.close();
+  });
+});
+
 describe('auction service: resume under a room cap (R12-S02)', () => {
   it('loads a live auction after a restart although finished ones fill the cap', async () => {
     const rig = await makeRig();
