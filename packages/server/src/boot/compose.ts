@@ -51,6 +51,7 @@ import {
 import { capsFromConfig } from '../limits/caps';
 import { limitsFromConfig } from '../limits/rate-limiter';
 import { createGuardedWebhookRoute } from '../http/webhook-guard';
+import { SECURITY_HEADERS } from '../http/security-headers';
 import { portFromService, sourceOf } from '../http/webhook';
 import { boundaryFromEnv, killSelf } from './checkpoint-kill';
 import { createPaymentAudit } from './payment-audit';
@@ -76,6 +77,8 @@ import { MemoryStore } from '../store/memory-store';
 
 export const WEBHOOK_PATH = '/webhooks/paypal';
 const EXPORT_PATH = /^\/api\/auctions\/([^/]+)\/export\/?$/;
+/** R-RT-120: most sockets one source address may hold open at once. */
+const MAX_SOCKETS_PER_SOURCE = 20;
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -466,7 +469,10 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     if (await extra(req, res)) return;
     notFound(res);
   };
+  /** R-RT-120: open sockets per source address, released on close. */
+  const socketsBySource = new Map<string, number>();
   const http = createServer((req, res) => {
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(name, value);
     if (wsHost.handleRequest(req, res)) return;
     handle(req, res).catch((error: unknown) => {
       log.error('request failed', {
@@ -483,6 +489,21 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     server: http,
     clock,
     allowedOrigins: wsOrigins(config),
+    admitUpgrade: (req) => {
+      const source = sourceOf(req, config.TRUSTED_PROXY_HOPS) ?? 'unknown';
+      if (!limiter.checkJoin(source).ok) return undefined;
+      const open = socketsBySource.get(source) ?? 0;
+      if (open >= MAX_SOCKETS_PER_SOURCE) return undefined;
+      socketsBySource.set(source, open + 1);
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        const left = (socketsBySource.get(source) ?? 1) - 1;
+        if (left <= 0) socketsBySource.delete(source);
+        else socketsBySource.set(source, left);
+      };
+    },
     accept: createGateway({
       service,
       store: stores.room,

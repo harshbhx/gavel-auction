@@ -144,4 +144,44 @@ describe('events route redaction (R12-S07)', () => {
       expect(text).not.toContain('25000');
     }
   });
+
+  it('shows a screen only a seq for rejections, revokes and confirm outcomes (RT4-sec-05)', async () => {
+    const { app, deps } = setup();
+    const res = await app.fetch(
+      new Request('http://h.test/api/auctions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-admin-key': ADMIN },
+        body: JSON.stringify({ config }),
+      }),
+    );
+    const b = (await res.json()) as { auctionId: string; screenLink: string };
+    const id = b.auctionId as AuctionId;
+    const base = { auctionId: id, ts: START as EpochMs };
+    const extra: RoomEvent[] = [
+      {
+        ...base,
+        seq: 2,
+        type: 'bid_rejected',
+        bidderId,
+        reason: 'over_ceiling',
+        amount: 52000 as Cents,
+        audit: audit(2, { outcome: 'rejected', reason: 'over_ceiling' }),
+      } as unknown as RoomEvent,
+      { ...base, seq: 3, type: 'ceiling_revoked', bidderId, reason: 'declined' } as RoomEvent,
+    ];
+    await deps.store.appendEvents(id, await deps.store.lastSeq(id), extra);
+    const r = await app.fetch(
+      new Request(`http://h.test/api/auctions/${id}/events?limit=50`, {
+        headers: bearer(tokenOf(b.screenLink)),
+      }),
+    );
+    const body = (await r.json()) as { events: Record<string, unknown>[] };
+    const text = JSON.stringify(body);
+    expect(text).not.toContain('over_ceiling');
+    expect(text).not.toContain('declined');
+    expect(text).not.toContain(bidderId);
+    expect(body.events.filter((e) => Object.keys(e).join() === 'seq').map((e) => e.seq)).toEqual([
+      2, 3,
+    ]);
+  });
 });
