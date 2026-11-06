@@ -12,7 +12,9 @@ import { truthArgs } from './truth.js';
  * decision (SPEC 7.3), `remainderMode`:
  *
  *   A        the authorization reads CAPTURED with our final capture: PayPal released the
- *            remainder. Recorded `remainder_released`, no void is sent (R12-P06).
+ *            remainder. Recorded `remainder_closed_by_paypal` (release is inferred, not observed), no
+ *            void is sent (R12-P06). Journals saved before the rename hold `remainder_released`;
+ *            nothing reads the value, only the key, so they stay valid.
  *   B        an open remainder is voided explicitly and recorded `remainder_voided`.
  *   C        the remainder cannot be voided; recorded `remainder_unreleased`, left to expire.
  *   unknown  as B.

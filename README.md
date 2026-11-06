@@ -36,7 +36,7 @@ Online auctions have a trust problem at the hammer: the winner may never pay, an
 |                         | A typical online auction           | GAVEL                                                                                                                   |
 | ----------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | When a bidder commits   | After winning, if they pay at all  | Before the first bid: PayPal holds their ceiling                                                                        |
-| What a losing bid costs | Nothing, but nothing guarantees it | Nothing: the hold is voided and released                                                                                |
+| What a losing bid costs | Nothing, but nothing guarantees it | Nothing: the hold is voided, never captured                                                                             |
 | What the winner pays    | Whatever the invoice says          | The winning price only, never the ceiling                                                                               |
 | If the server crashes   | Manual clean-up                    | The saga resumes from its journal and checks PayPal first (verified against the fake PayPal; sandbox crash run pending) |
 | Proof of the result     | Trust the operator                 | A hash-chained ledger anyone can verify from a public export                                                            |
