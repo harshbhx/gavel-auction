@@ -4,6 +4,8 @@
 
 ```ts
 
+import { HoldErrorCode } from '@gavel/shared';
+
 // @public
 export function allowedTransitions(): Array<{
     from: SettlementState;
@@ -624,8 +626,6 @@ export interface HoldAgePolicy {
 // @public
 export class HoldError extends Error {
     constructor(code: HoldErrorCode, message: string, cause?: unknown);
-    // Warning: (ae-forgotten-export) The symbol "HoldErrorCode" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     code: HoldErrorCode;
 }
