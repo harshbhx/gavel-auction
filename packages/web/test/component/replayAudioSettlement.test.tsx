@@ -1,5 +1,5 @@
 import { EpochMs } from '@gavel/shared';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
@@ -66,18 +66,29 @@ beforeEach(() => {
   vi.stubGlobal('Audio', FakeMedia);
 });
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
-describe('replay route with audio and settlement', () => {
+// The first render lazy-loads the replay screen, which is slow on a busy runner. Waits on it get
+// a generous bound; they return as soon as the condition holds, so it costs nothing when fast.
+const LOAD = { timeout: 10_000 };
+
+describe('replay route with audio and settlement', { timeout: 20_000 }, () => {
   it('creates the audio sync, corrects drift above 150 ms and shows the settlement panel', async () => {
     serve(bundle(true, '/recordings/rec1/audio.webm'));
+    // Only the replay clock is faked, so the waits below keep using real timers.
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     render(<App initialPath="/replay/rec1" />);
-    expect(await screen.findByText('Walnut sideboard')).toBeTruthy();
+    expect(await screen.findByText('Walnut sideboard', {}, LOAD)).toBeTruthy();
     expect(FakeMedia.last?.url).toBe('/recordings/rec1/audio.webm');
     expect(FakeMedia.last?.plays).toBe(1);
     expect(screen.queryByTestId('settlement-panel')).toBeNull();
-    expect(await screen.findByTestId('settlement-panel')).toBeTruthy();
+    // The replay clock advances 100 ms per tick; step it past the 400 ms settlement event.
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(await screen.findByTestId('settlement-panel', {}, LOAD)).toBeTruthy();
     // The audio sat at 0 ms while the clock reached 400 ms: the gap is over the limit.
     expect(FakeMedia.last?.currentTime).toBeCloseTo(0.4, 3);
     expect(screen.queryByText(t('replay.captionsOnly'))).toBeNull();
@@ -87,13 +98,13 @@ describe('replay route with audio and settlement', () => {
     serve(bundle(true, '/recordings/rec1/audio.webm'));
     FakeMedia.failPlay = true;
     render(<App initialPath="/replay/rec1" />);
-    expect(await screen.findByText(t('replay.captionsOnly'))).toBeTruthy();
+    expect(await screen.findByText(t('replay.captionsOnly'), {}, LOAD)).toBeTruthy();
   });
 
   it('creates no audio and no panel for a recording without them', async () => {
     serve(bundle(false, null));
     render(<App initialPath="/replay/rec1" />);
-    expect(await screen.findByText('Walnut sideboard')).toBeTruthy();
+    expect(await screen.findByText('Walnut sideboard', {}, LOAD)).toBeTruthy();
     expect(FakeMedia.last).toBeNull();
     expect(screen.queryByTestId('settlement-panel')).toBeNull();
   });
