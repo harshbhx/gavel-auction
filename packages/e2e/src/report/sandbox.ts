@@ -49,6 +49,7 @@ const DEFAULT_GATE: Record<SandboxSpecId, GateId> = {
   R6: 'G1',
   R7: 'G1',
   R8: 'G1',
+  R10: 'G1',
   G5: 'none',
 };
 
