@@ -10,9 +10,15 @@ export const DEFAULT_SCENARIO = 'happy';
 
 /**
  * Reads the address query. `?scripted=1` or `?transport=scenario` turn it on; `scenario=<name>`
- * picks the script and `at=<ms>` holds it at one moment. Anything else leaves the real connection.
+ * picks the script and `at=<ms>` holds it at one moment. Anything else, and every production
+ * build, leaves the real connection.
  */
-export function readScriptedRequest(search: string): ScriptedRequest | null {
+export function readScriptedRequest(
+  search: string,
+  /** Development and test builds only: a production build never honours the flag. */
+  allowed: boolean = import.meta.env.DEV,
+): ScriptedRequest | null {
+  if (!allowed) return null;
   const params = new URLSearchParams(search);
   const on = params.get('scripted') === '1' || params.get('transport') === 'scenario';
   if (!on) return null;
