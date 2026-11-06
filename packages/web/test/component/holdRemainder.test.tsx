@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Cents, EpochMs } from '@gavel/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReceiptRoute } from '../../src/App';
@@ -119,6 +119,8 @@ describe('fake payments label', () => {
   it('shows on the register approve step', () => {
     vi.stubEnv('VITE_PAYMENTS', 'fake');
     render(<RegisterScreen minCents={10000} maxCents={100000} onApprove={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
+    fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
     expect(screen.getByTestId('fake-payments-label')).toBeTruthy();
   });
 
