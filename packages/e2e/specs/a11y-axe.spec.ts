@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import type { Page, TestInfo } from '@playwright/test';
 import { expect, test } from '../src/fixtures/base';
-import { seedRoom, seedSession } from '../src/fixtures/room';
+import { seedRoom } from '../src/fixtures/room';
 
 /**
  * axe-core over the views the web app serves on the real stack (R-QA-037, T-QA-047): zero serious
@@ -96,7 +96,15 @@ for (const theme of THEMES) {
     await setTheme(page, theme);
     // A real room with a joined bidder, whose session stands in for the invite step.
     const room = await seedRoom(stack);
-    await seedSession(page, room);
+    // Stored from a loaded page of the same origin: with the CSP bypass on, WebKit does not run
+    // the init script that the keyboard spec uses before the app reads the session.
+    await page.goto(`${stack.webUrl}/gallery`);
+    await page.evaluate(
+      ({ id, token, bidderId }) => {
+        sessionStorage.setItem(`gavel:session:${id}:bidder`, JSON.stringify({ token, bidderId }));
+      },
+      { id: room.auctionId, token: room.token, bidderId: room.bidderId },
+    );
     await page.goto(`${stack.webUrl}/r/${room.auctionId}/register`);
     await page.locator('form').waitFor();
     await sweep(page, testInfo, `register-step1-${theme}`);
