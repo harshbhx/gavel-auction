@@ -2,7 +2,7 @@ import { GavelError, type AuctionId } from '@gavel/shared';
 import { z } from 'zod';
 import { authorize, redactForViewer } from '../auth/authorize';
 import { auctionIdOf, authenticate, json, parseBody, type Ctx, type HttpApp } from './app';
-import { roomFor, snapshotFor } from './auctions';
+import { auctionMeta, roomFor, snapshotFor, withMeta } from './auctions';
 import { redactPersonal } from './export';
 
 const DEFAULT_LIMIT = 100;
@@ -34,8 +34,9 @@ export function mountRead(app: HttpApp): void {
       who.kind === 'session' ? 'bidder' : who.kind === 'screen' ? 'screen' : 'auctioneer';
     if (!authorize('snapshot', role).ok) throw new GavelError('forbidden', 'not allowed');
     const room = await roomFor(c.deps, auctionId);
-    const { frame } = await snapshotFor(c.deps, room, role, who.sub, who.bidderId);
-    return json(200, frame);
+    const { frame, snapshot } = await snapshotFor(c.deps, room, role, who.sub, who.bidderId);
+    const meta = await auctionMeta(c.deps, auctionId);
+    return json(200, { ...frame, snapshot: withMeta(snapshot, meta) });
   });
 
   app.get('/api/auctions/:id/events', async (c: Ctx) => {
