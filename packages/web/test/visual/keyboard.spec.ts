@@ -33,7 +33,8 @@ async function readRing(page: Page): Promise<RingReading> {
     if (el === null) return { tag: 'none', widthPx: 0, contrast: 0 };
     const style = getComputedStyle(el);
     let bg: [number, number, number, number] = [255, 255, 255, 1];
-    for (let node: Element | null = el; node !== null; node = node.parentElement) {
+    // The ring is drawn outside the element (outline-offset), so measure against its parent.
+    for (let node: Element | null = el.parentElement; node !== null; node = node.parentElement) {
       const c = parse(getComputedStyle(node).backgroundColor);
       if (c[3] > 0.99) {
         bg = c;
