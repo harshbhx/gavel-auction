@@ -122,3 +122,31 @@ test('axe on the gallery with the dialog open', async ({ page, stack }, testInfo
   await page.getByRole('dialog').waitFor();
   await sweep(page, testInfo, 'gallery-dialog');
 });
+
+/**
+ * Bid, console, public screen and receipt on the scripted scenarios, reached with `?scripted=1`
+ * (`at` holds the scenario at one moment). Bid paused and bid stopped are not reachable: no
+ * scripted scenario pauses a lot or stops a room with a flag on the snapshot. The audit view is
+ * not reachable either: it needs a reviewer link and the scripted routes do not mount it.
+ */
+const SCRIPTED_VIEWS = [
+  { name: 'bid-open', path: '/r/demo/bid', query: 'at=3000' },
+  { name: 'bid-closed', path: '/r/demo/bid', query: 'scenario=kill_switch&at=5500' },
+  { name: 'console', path: '/r/demo/console', query: 'at=5000' },
+  { name: 'screen-live', path: '/r/demo/screen', query: 'at=5000' },
+  { name: 'screen-sold', path: '/r/demo/screen', query: 'at=16000' },
+  { name: 'receipt-held', path: '/r/demo/receipt', query: 'at=16500' },
+  { name: 'receipt-settled', path: '/r/demo/receipt', query: 'at=18500' },
+] as const;
+
+for (const view of SCRIPTED_VIEWS) {
+  for (const theme of THEMES) {
+    test(`axe scripted ${view.name} in ${theme}`, async ({ page, stack }, testInfo) => {
+      await setTheme(page, theme);
+      await page.goto(`${stack.webUrl}${view.path}?scripted=1&${view.query}`);
+      await page.locator('[data-provenance="scripted"]').waitFor();
+      await page.locator('main, [data-route]').first().waitFor({ state: 'attached' });
+      await sweep(page, testInfo, `scripted-${view.name}-${theme}`);
+    });
+  }
+}

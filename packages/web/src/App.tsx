@@ -17,6 +17,10 @@ import { receiptSource } from './ladder/fromWire';
 import { SettlementPanel } from './ladder/SettlementPanel';
 import type { Transport } from './net/transport';
 import { WebSocketTransport } from './net/wsTransport';
+import { ScenarioTransport } from './net/scenarioTransport';
+import { readScriptedRequest, type ScriptedRequest } from './net/scriptedMode';
+import { Provenance } from './design/Provenance';
+import { loadScriptedRoom, type ScriptedRoom } from './testing/scriptedRoom';
 import { clearSession, type SessionRole } from './net/session';
 import { loadRegistration } from './payments/registrationStore';
 import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
@@ -96,6 +100,12 @@ function tokenFor(routeId: string, roomId: string): { token: string; bidderId?: 
     : { token: stored.token, bidderId: stored.bidderId };
 }
 
+/** A loaded scenario and where to start it. */
+interface ScriptedPlay {
+  readonly room: ScriptedRoom;
+  readonly at: number | null;
+}
+
 interface Live {
   room: LiveRoom | null;
   transport: Transport | null;
@@ -110,25 +120,33 @@ function useLiveRoom(
   attempt = 0,
   /** False keeps the hook idle, for a route that has no live server to join. */
   enabled = true,
+  /** Set only in explicit scripted mode: the scenario plays instead of a socket. */
+  scripted: ScriptedPlay | null = null,
 ): Live {
   const [live, setLive] = useState<Live>({ room: null, transport: null });
   useEffect(() => {
     if (!enabled) return undefined;
     // The transport is built here so the screens can send a confirm_response on it.
-    const transport = new WebSocketTransport(socketUrl(liveBase));
+    const scriptedTransport =
+      scripted === null ? null : new ScenarioTransport(scripted.room.scenario);
+    const transport: Transport = scriptedTransport ?? new WebSocketTransport(socketUrl(liveBase));
     const started = startLiveRoom({
       wsBase: liveBase,
-      roomId,
+      roomId: scripted === null ? roomId : scripted.room.roomId,
       token,
       transport,
       ...(bidderId === undefined ? {} : { bidderId }),
     });
+    if (scripted !== null && scriptedTransport !== null) {
+      if (scripted.at === null) scriptedTransport.autoplay();
+      else scriptedTransport.advance(scripted.at);
+    }
     setLive({ room: started, transport });
     return () => {
       started?.stop();
       setLive({ room: null, transport: null });
     };
-  }, [liveBase, roomId, token, bidderId, attempt, enabled]);
+  }, [liveBase, roomId, token, bidderId, attempt, enabled, scripted]);
   return live;
 }
 
@@ -166,11 +184,29 @@ interface LiveRouteProps {
   token: string;
   bidderId: string | undefined;
   api: Api | undefined;
+  /** Explicit scripted mode only. */
+  scripted?: ScriptedPlay;
 }
 
-function LiveRoute({ match, liveBase, roomId, token, bidderId, api }: LiveRouteProps): ReactNode {
+function LiveRoute({
+  match,
+  liveBase,
+  roomId,
+  token,
+  bidderId,
+  api,
+  scripted,
+}: LiveRouteProps): ReactNode {
   const [attempt, setAttempt] = useState(0);
-  const { room, transport } = useLiveRoom(liveBase, roomId, token, bidderId, attempt);
+  const { room, transport } = useLiveRoom(
+    liveBase,
+    roomId,
+    token,
+    bidderId,
+    attempt,
+    true,
+    scripted ?? null,
+  );
   const view = usePendingView(room);
   const lastError = useRoom((s) => s.lastError);
   const refused = lastError !== null && isHaltingError(lastError.code) ? lastError : null;
@@ -805,6 +841,57 @@ function DemoRoute({ api }: { api: Api | undefined }) {
   );
 }
 
+/** The bid, screen, console and receipt routes on a scripted scenario, marked as such. */
+function ScriptedRoute({
+  match,
+  roomId,
+  request,
+  liveBase,
+}: {
+  match: RouteMatch;
+  roomId: string;
+  request: ScriptedRequest;
+  liveBase: string | undefined;
+}) {
+  const { name, at } = request;
+  const asBidder = match.route.id === 'bid';
+  const [loaded, setLoaded] = useState<ScriptedRoom | null | undefined>(undefined);
+  useEffect(() => {
+    let live = true;
+    loadScriptedRoom(name, asBidder).then(
+      (room) => {
+        if (live) setLoaded(room);
+      },
+      () => {
+        if (live) setLoaded(null);
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [name, asBidder]);
+  const scripted = useMemo(
+    () => (loaded === undefined || loaded === null ? null : { room: loaded, at }),
+    [loaded, at],
+  );
+  if (loaded === null) return <NotFound />;
+  if (scripted === null) return <p role="status">{t('net.resyncing')}</p>;
+  return (
+    <>
+      <Provenance kind="scripted" />
+      <LiveRoute
+        match={match}
+        liveBase={liveBase ?? window.location.origin}
+        roomId={roomId}
+        token="scripted"
+        bidderId={match.route.id === 'bid' ? scripted.room.bidderId : undefined}
+        api={undefined}
+        scripted={scripted}
+      />
+    </>
+  );
+}
+
 function Routed({
   match,
   liveBase,
@@ -823,6 +910,16 @@ function Routed({
       <RouteScreen match={match}>
         <GalleryScreen />
       </RouteScreen>
+    );
+  }
+  const scriptedRequest = readScriptedRequest(window.location.search);
+  if (
+    scriptedRequest !== null &&
+    roomId !== undefined &&
+    (id === 'bid' || id === 'screen' || id === 'console' || id === 'receipt')
+  ) {
+    return (
+      <ScriptedRoute match={match} roomId={roomId} request={scriptedRequest} liveBase={liveBase} />
     );
   }
   const who = live && roomId !== undefined ? tokenFor(id, roomId) : null;

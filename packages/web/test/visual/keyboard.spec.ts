@@ -176,6 +176,57 @@ test('register walk: name, ceiling and approve with the keyboard alone', async (
   expect(ring.contrast).toBeGreaterThanOrEqual(3);
 });
 
+test('scripted bid: Tab reaches the bid button, Enter sends, focus stays on it, no trap', async ({
+  page,
+}) => {
+  await page.goto('/r/demo/bid?scripted=1&at=3000');
+  await page.locator('[data-route="bid"]').waitFor();
+  const reached = await tabUntil(
+    page,
+    (el) => el.tagName === 'BUTTON' && /^Bid /.test(el.textContent ?? ''),
+    20,
+  );
+  expect(reached, 'Tab presses to reach the bid button').toBeGreaterThan(0);
+  const label = await page.evaluate(() => document.activeElement?.textContent ?? '');
+  await page.keyboard.press('Enter');
+  // The tap guard holds the button for a moment; after the result the focus has not moved.
+  await page.waitForTimeout(800);
+  const after = await page.evaluate(() => ({
+    tag: document.activeElement?.tagName ?? '',
+    text: document.activeElement?.textContent ?? '',
+  }));
+  expect(after.tag).toBe('BUTTON');
+  expect(after.text).toBe(label);
+  // Tab keeps moving: the page is not a keyboard trap.
+  const seen = new Set<string>();
+  for (let i = 0; i < 6; i += 1) {
+    await page.keyboard.press('Tab');
+    seen.add(await page.evaluate(() => document.activeElement?.textContent ?? 'body'));
+  }
+  expect(seen.size).toBeGreaterThan(1);
+});
+
+test('scripted console: Enter on the hammer opens a confirm dialog that traps focus', async ({
+  page,
+}) => {
+  await page.goto('/r/demo/console?scripted=1&at=5000');
+  const hammer = page.getByRole('button', { name: t('console.hammer') });
+  await expect(hammer).toBeEnabled();
+  await hammer.focus();
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  for (let i = 0; i < 4; i += 1) {
+    await page.keyboard.press('Tab');
+    expect(
+      await page.evaluate(() => document.activeElement?.closest('[role="dialog"]') !== null),
+    ).toBe(true);
+  }
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(hammer).toBeFocused();
+});
+
 test('route change puts focus on the main heading', async ({ page }) => {
   await page.goto('/nowhere');
   await expect(page.locator('h1')).toBeFocused();

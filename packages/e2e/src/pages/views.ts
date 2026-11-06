@@ -60,6 +60,45 @@ export class AuctioneerView {
   }
 }
 
+/**
+ * A bid, console, screen or receipt route played from a scripted scenario (`?scripted=1`), with
+ * no seeded room and no token. `at` holds the scenario at one moment; leaving it out plays the
+ * scenario in real time from its start. The audit page has no scripted route.
+ */
+export class ScriptedView {
+  constructor(
+    private readonly page: Page,
+    private readonly stack: BrowserStack,
+    private readonly route: 'bid' | 'console' | 'screen' | 'receipt',
+  ) {}
+
+  async open(at?: number): Promise<void> {
+    const hold = at === undefined ? '' : `&at=${at}`;
+    await this.page.goto(`${this.stack.webUrl}/r/demo/${this.route}?scripted=1${hold}`);
+    await this.provenance.waitFor();
+  }
+
+  get provenance(): Locator {
+    return this.page.locator('[data-provenance="scripted"]');
+  }
+
+  get price(): Locator {
+    return this.page.getByTestId('screen-price');
+  }
+
+  get sold(): Locator {
+    return this.page.getByTestId('sold');
+  }
+
+  get quickBid(): Locator {
+    return this.page.getByRole('button', { name: /^Bid / }).first();
+  }
+
+  get hammer(): Locator {
+    return this.page.getByRole('button', { name: 'Hammer', exact: true });
+  }
+}
+
 /** The bidder register form at /r/:id/register, behind the session stored by the invite step. */
 export class BidderView {
   constructor(
