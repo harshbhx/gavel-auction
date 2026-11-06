@@ -203,3 +203,92 @@ describe('clock controls over HTTP (R-RT-048, R-RT-049)', () => {
     expect(engine?.paused).toBe(true);
   });
 });
+
+describe('kill over HTTP (HRD-71)', () => {
+  const kill = { confirm: 'STOP' };
+
+  it('stops the auction, answers the new state and repeats as a no-op', async () => {
+    const s = await seeded();
+    const path = `/api/auctions/${s.id}/kill`;
+    const res = await post(s.app, path, s.auth, { controlId: 'k1', ...kill });
+    expect(res.status).toBe(200);
+    const out = (await res.json()) as {
+      ok: boolean;
+      state: { status: string; stopped: boolean; registrationClosed: boolean };
+    };
+    expect(out.ok).toBe(true);
+    expect(out.state.stopped).toBe(true);
+    expect(out.state.registrationClosed).toBe(true);
+    expect(out.state.status).not.toBe('OPEN');
+    const hammers = s.screen.messages('hammer');
+    expect(hammers).toHaveLength(1);
+    expect(hammers[0]).toMatchObject({ stopped: true, registrationClosed: true });
+
+    const again = await post(s.app, path, s.auth, kill);
+    expect(again.status).toBe(200);
+    expect(((await again.json()) as { state: { stopped: boolean } }).state.stopped).toBe(true);
+    expect(s.screen.messages('hammer')).toHaveLength(1);
+  });
+
+  it('refuses a bidder token, no token and a body without the STOP confirmation', async () => {
+    const s = await seeded();
+    const path = `/api/auctions/${s.id}/kill`;
+    expect((await post(s.app, path, { authorization: `Bearer ${s.session}` }, kill)).status).toBe(
+      403,
+    );
+    expect((await post(s.app, path, {}, kill)).status).toBe(401);
+    expect((await post(s.app, path, s.auth, {})).status).toBe(400);
+    expect((await post(s.app, path, s.auth, { confirm: 'stop' })).status).toBe(400);
+    expect(s.screen.messages('hammer')).toHaveLength(0);
+  });
+});
+
+describe('hammer expectations over HTTP (HRD-71)', () => {
+  const closeNow = { closeNow: 1 };
+
+  it('refuses a hammer whose expected price is stale and applies nothing', async () => {
+    const s = await seeded();
+    const path = `/api/auctions/${s.id}/control`;
+    const res = await post(s.app, path, s.auth, {
+      controlId: 'h1',
+      action: 'hammer',
+      args: { ...closeNow, expectedPriceCents: 40_000, expectedLeaderPaddle: 0 },
+    });
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { code: string; message: string };
+    expect(body.code).toBe('conflict');
+    expect(body.message).toBe('price_changed');
+    expect(s.screen.messages('hammer')).toHaveLength(0);
+  });
+
+  it('refuses a hammer whose expected leader is stale', async () => {
+    const s = await seeded();
+    const path = `/api/auctions/${s.id}/control`;
+    const res = await post(s.app, path, s.auth, {
+      controlId: 'h2',
+      action: 'hammer',
+      args: { ...closeNow, expectedPriceCents: 0, expectedLeaderPaddle: 3 },
+    });
+    expect(res.status).toBe(409);
+    expect(((await res.json()) as { message: string }).message).toBe('leader_changed');
+    expect(s.screen.messages('hammer')).toHaveLength(0);
+  });
+
+  it('hammers when the expectation matches, and a retry under a new id works after a refusal', async () => {
+    const s = await seeded();
+    const path = `/api/auctions/${s.id}/control`;
+    const stale = {
+      controlId: 'h3',
+      action: 'hammer',
+      args: { ...closeNow, expectedPriceCents: 1 },
+    };
+    expect((await post(s.app, path, s.auth, stale)).status).toBe(409);
+    const ok = {
+      controlId: 'h4',
+      action: 'hammer',
+      args: { ...closeNow, expectedPriceCents: 0, expectedLeaderPaddle: 0 },
+    };
+    expect((await post(s.app, path, s.auth, ok)).status).toBe(200);
+    expect(s.screen.messages('hammer')).toHaveLength(1);
+  });
+});

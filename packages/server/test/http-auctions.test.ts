@@ -79,7 +79,15 @@ describe('create auction (T-RT-073)', () => {
     const res = await create(app, { title: 'Gala lot', config: validConfig });
     expect(res.status).toBe(201);
     const body = (await res.json()) as Record<string, string>;
-    expect(Object.keys(body).sort()).toEqual(['auctionId', 'auctioneerLink', 'screenLink']);
+    expect(Object.keys(body).sort()).toEqual([
+      'auctionId',
+      'auctioneerLink',
+      'joinCode',
+      'lotTitle',
+      'screenLink',
+    ]);
+    expect(body.lotTitle).toBe('Gala lot');
+    expect(body.joinCode).toMatch(/^[A-HJ-NP-Z2-9]{6}$/);
     expect(body.auctioneerLink).toContain(`/r/${body.auctionId}/console#token=`);
     expect(body.screenLink).toContain(`/r/${body.auctionId}/screen#token=`);
     expect(await store.lastSeq(body.auctionId as AuctionId)).toBe(1);
@@ -107,6 +115,7 @@ describe('public summary (T-RT-074)', () => {
     const { app } = setup();
     const made = (await (await create(app, { title: 'Gala lot', config: validConfig })).json()) as {
       auctionId: string;
+      joinCode: string;
     };
     const res = await app.fetch(new Request(`http://h.test/api/auctions/${made.auctionId}`));
     expect(res.status).toBe(200);
@@ -114,12 +123,40 @@ describe('public summary (T-RT-074)', () => {
     expect(body).toEqual({
       auctionId: made.auctionId,
       title: 'Gala lot',
+      joinCode: made.joinCode,
       status: 'OPEN',
       endTs: START + 600_000,
       bidderCount: 0,
     });
     const text = JSON.stringify(body);
     expect(text).not.toMatch(/ceiling|token|sub/i);
+  });
+
+  it('resolves a join code, in any case, to the same summary', async () => {
+    const { app } = setup();
+    const made = (await (await create(app, { title: 'Gala lot', config: validConfig })).json()) as {
+      auctionId: string;
+      joinCode: string;
+    };
+    const res = await app.fetch(
+      new Request(`http://h.test/api/auctions/${made.joinCode.toLowerCase()}`),
+    );
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { auctionId: string }).auctionId).toBe(made.auctionId);
+    const miss = await app.fetch(new Request('http://h.test/api/auctions/ZZZZZZ'));
+    expect(miss.status).toBe(404);
+  });
+
+  it('gives every auction its own join code', async () => {
+    const { app } = setup();
+    const codes = new Set<string>();
+    for (let i = 0; i < 25; i++) {
+      const made = (await (await create(app, { config: validConfig })).json()) as {
+        joinCode: string;
+      };
+      codes.add(made.joinCode);
+    }
+    expect(codes.size).toBe(25);
   });
 
   it('answers an unknown or malformed id with 404', async () => {

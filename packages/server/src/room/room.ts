@@ -1309,6 +1309,12 @@ export class Room {
       }
       if (this.controlReused(conn, cmd)) return;
       const engine = this.requireEngine();
+      const stale = this.staleHammer(engine.view(), cmd.args);
+      if (stale !== undefined) {
+        // The auctioneer decided on a head that has moved: nothing is hammered or logged.
+        this.sendError(conn, 'conflict', undefined, stale);
+        return;
+      }
       if (canClock(engine) && engine.paused) {
         this.sendError(conn, 'conflict');
         return;
@@ -1320,6 +1326,24 @@ export class Room {
       }
       await this.doHammer({ conn, cmd });
     });
+  }
+
+  /**
+   * The hammer carries the price and leader the auctioneer saw (`expectedPriceCents`,
+   * `expectedLeaderPaddle`, 0 for no leader). A request without them is applied as before.
+   */
+  private staleHammer(
+    view: EngineView,
+    args: Record<string, number> | undefined,
+  ): string | undefined {
+    const price = args?.expectedPriceCents;
+    if (price !== undefined && price !== (view.price ?? 0)) return 'price_changed';
+    const paddle = args?.expectedLeaderPaddle;
+    if (paddle !== undefined) {
+      const now = view.leader ? (this.roster.get(view.leader)?.paddle ?? 0) : 0;
+      if (paddle !== now) return 'leader_changed';
+    }
+    return undefined;
   }
 
   /** True when the id was used before: a repeat is a no-op, another action under it a conflict. */
@@ -1608,6 +1632,7 @@ export class Room {
       price: h.price,
       ranking: h.ranking,
       ...(this.endedByAuctioneer ? { stopped: true } : {}),
+      registrationClosed: true,
     });
   }
 
@@ -1790,6 +1815,7 @@ export class Room {
       minNext: view.minNext,
       ...(view.paused ? { paused: true, remainingMs: view.remainingMs ?? 0 } : {}),
       ...(this.hammered && this.endedByAuctioneer ? { stopped: true } : {}),
+      ...(this.hammered || this.done ? { registrationClosed: true } : {}),
       roster: [...this.roster].map(([bidderId, r]) => ({
         bidderId,
         paddle: r.paddle,
@@ -1844,8 +1870,13 @@ export class Room {
     }
   }
 
-  private sendError(conn: Connection, code: ErrorCode, retryAfterMs?: number): void {
-    const msg: ServerMsg = { v: 1, t: 'error', code, message: code };
+  private sendError(
+    conn: Connection,
+    code: ErrorCode,
+    retryAfterMs?: number,
+    message: string = code,
+  ): void {
+    const msg: ServerMsg = { v: 1, t: 'error', code, message };
     if (retryAfterMs !== undefined) msg.retryAfterMs = retryAfterMs;
     this.send(conn, msg);
   }

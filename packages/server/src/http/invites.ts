@@ -15,7 +15,7 @@ import {
   type HttpApp,
   type HttpDeps,
 } from './app';
-import { linkFor, roomFor } from './auctions';
+import { auctionIdOrCode, linkFor, roomFor } from './auctions';
 
 const MAX_INVITES = 50;
 
@@ -88,7 +88,8 @@ export function mountInvites(app: HttpApp): void {
   });
 
   app.post('/api/auctions/:id/join', async (c: Ctx) => {
-    const auctionId = auctionIdOf(c);
+    // The path carries the auction id or its short join code.
+    const auctionId = await auctionIdOrCode(c);
     const limited = joinLimitOf(c.deps, c.req);
     if (limited && !limited.ok) {
       return new Response(JSON.stringify({ error: 'rate_limited' }), {

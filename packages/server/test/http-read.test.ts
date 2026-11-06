@@ -125,6 +125,29 @@ async function seeded(): Promise<{
   };
 }
 
+describe('snapshot lot title and join code (HRD-71)', () => {
+  it('carries the title and join code to the screen without private data', async () => {
+    const { app } = setup();
+    const res = await app.fetch(
+      new Request('http://h.test/api/auctions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-admin-key': ADMIN },
+        body: JSON.stringify({ title: 'Gala lot', config }),
+      }),
+    );
+    const b = (await res.json()) as { auctionId: string; screenLink: string; joinCode: string };
+    const snap = await get(app, `/api/auctions/${b.auctionId}/snapshot`, tokenOf(b.screenLink));
+    const text = await snap.text();
+    const decoded = decodeServerMsg(text);
+    expect(decoded.ok).toBe(true);
+    const out = JSON.parse(text) as { snapshot: Record<string, unknown> };
+    expect(out.snapshot.lotTitle).toBe('Gala lot');
+    expect(out.snapshot.joinCode).toBe(b.joinCode);
+    expect(out.snapshot.registrationClosed).toBeUndefined();
+    expect(text).not.toMatch(/ceiling|holdRef|"sub"/);
+  });
+});
+
 describe('snapshot and events (T-RT-076)', () => {
   it('returns a schema-valid snapshot for each role, with the ceiling only for the owner', async () => {
     const s = await seeded();
