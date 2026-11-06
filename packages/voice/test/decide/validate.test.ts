@@ -191,3 +191,66 @@ describe('T-VOX-073 confirm parse with candidates and no single amount (R7-02)',
     expect(validate(multi([]), ctx())).toEqual({ kind: 'drop', reason: 'no_amount' });
   });
 });
+
+describe('HRD-84 minimum applies per candidate', () => {
+  const two = (reason: ParseResult['reason'], status: ParseResult['status'] = 'confirm') =>
+    parse({
+      status,
+      reason,
+      amountCents: 31000,
+      candidates: [31000, 50000].map((a) => ({
+        bidder: { kind: 'paddle', value: '12' },
+        amountCents: a,
+      })),
+    });
+
+  it('drops only the reading below the minimum and keeps the other as a confirm', () => {
+    // price 30000, increment 2500: 31000 is below the minimum, 50000 is valid.
+    const v = validate(two('homophone'), ctx());
+    expect(v).toEqual({
+      kind: 'confirm',
+      reason: 'homophone',
+      bidderId: 'b-12',
+      amountCents: 50000,
+      candidates: [50000],
+    });
+  });
+
+  it('never accepts a multi-candidate utterance, even when one reading is clean', () => {
+    expect(validate(two('multiple_amounts', 'bid'), ctx()).kind).not.toBe('accept');
+  });
+
+  it('drops the utterance only when no candidate remains', () => {
+    const p = parse({
+      status: 'confirm',
+      reason: 'homophone',
+      amountCents: 31000,
+      candidates: [31000, 32000].map((a) => ({
+        bidder: { kind: 'paddle', value: '12' },
+        amountCents: a,
+      })),
+    });
+    expect(validate(p, ctx())).toEqual({ kind: 'drop', reason: 'below_minimum' });
+  });
+});
+
+describe('HRD-84 currency utterance keeps its own reason', () => {
+  const currency = (bidder: ParseResult['bidder']) =>
+    parse({ status: 'confirm', reason: 'unsupported_currency', amountCents: null, bidder });
+
+  it('without a known bidder it is a confirm, not unknown_bidder', () => {
+    expect(validate(currency(null), ctx())).toMatchObject({
+      kind: 'confirm',
+      reason: 'unsupported_currency',
+      amountCents: null,
+    });
+  });
+
+  it('with a known bidder it is a confirm, not a no_amount drop', () => {
+    expect(validate(currency({ kind: 'paddle', value: '12' }), ctx())).toMatchObject({
+      kind: 'confirm',
+      reason: 'unsupported_currency',
+      bidderId: 'b-12',
+    });
+  });
+});

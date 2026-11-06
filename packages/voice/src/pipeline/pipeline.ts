@@ -611,7 +611,11 @@ export class VoicePipeline {
   ): PromptData {
     const a = amounts[0];
     const b = amounts[1];
-    if (a === undefined) return { kind: 'low_confidence' };
+    if (a === undefined) {
+      return reason === 'unsupported_currency'
+        ? { kind: 'currency_unparsed' }
+        : { kind: 'low_confidence' };
+    }
     switch (reason) {
       case 'correction':
         if (paddle === null) break;

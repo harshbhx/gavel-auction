@@ -34,6 +34,10 @@ const TEMPLATES: Array<[PromptData, string]> = [
   [{ kind: 'currency', amountCents: 35000 }, 'Heard $350 in another currency. Bid $350 USD?'],
   [{ kind: 'large_jump', times: 5, amountCents: 500000 }, 'That is 5 times the price. Bid $5,000?'],
   [{ kind: 'fractional', amountCents: 250050, exact: '$2,500.50' }, 'Bid $2,500.50 ($2,500.50)?'],
+  [
+    { kind: 'currency_unparsed' },
+    'That amount was not understood in USD. Please say it in dollars.',
+  ],
   [{ kind: 'low_confidence' }, 'Did not catch that.'],
 ];
 
@@ -71,6 +75,7 @@ describe('T-VOX-074 confirm wording (R-VOX-066)', () => {
         { kind: 'homophone', text: 'x'.repeat(next() % 200), amountACents: a, amountBCents: b },
         { kind: 'correction', paddle: p, amountCents: a, fromCents: b },
         { kind: 'currency', amountCents: a },
+        { kind: 'currency_unparsed' },
         { kind: 'large_jump', times: (next() % 1000) / 10, amountCents: a },
         { kind: 'fractional', amountCents: a, exact: formatUsd(b) },
       ];

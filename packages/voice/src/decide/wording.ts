@@ -20,6 +20,7 @@ export type PromptData =
   | { kind: 'homophone'; text: string; amountACents: Cents; amountBCents: Cents }
   | { kind: 'correction'; paddle: string; amountCents: Cents; fromCents?: Cents }
   | { kind: 'currency'; amountCents: Cents }
+  | { kind: 'currency_unparsed' }
   | { kind: 'large_jump'; times: number; amountCents: Cents }
   | { kind: 'fractional'; amountCents: Cents; exact: string }
   | { kind: 'low_confidence' };
@@ -69,6 +70,8 @@ export function promptText(data: PromptData): string {
         : `Change paddle ${data.paddle} from ${formatUsd(data.fromCents)} to ${formatUsd(data.amountCents)}?`;
     case 'currency':
       return `Heard ${formatUsd(data.amountCents)} in another currency. Bid ${formatUsd(data.amountCents)} USD?`;
+    case 'currency_unparsed':
+      return 'That amount was not understood in USD. Please say it in dollars.';
     case 'large_jump':
       return `That is ${formatTimes(data.times)} times the price. Bid ${formatUsd(data.amountCents)}?`;
     case 'fractional':

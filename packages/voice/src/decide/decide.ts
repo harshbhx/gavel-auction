@@ -122,6 +122,7 @@ function promptData(
     }
     return { kind: 'single', amountCents: a.amountCents, paddle: paddleOf(ctx, a.bidderId) };
   }
+  if (reason === 'unsupported_currency') return { kind: 'currency_unparsed' };
   if (verdict.kind === 'confirm' && verdict.amountCents !== null) {
     return { kind: 'unknown_bidder', amountCents: verdict.amountCents };
   }
