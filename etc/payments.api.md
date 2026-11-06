@@ -1470,6 +1470,15 @@ export interface PayPalGatewayOptions {
 }
 
 // @public
+export class PendingReadBackoff {
+    constructor(baseMs?: number, capMs?: number, lateCapMs?: number, lapseAfterMs?: number);
+    due(holdId: string, nowMs: number): boolean;
+    forget(holdId: string): void;
+    read(holdId: string, nowMs: number, ageMs: number): void;
+    get size(): number;
+}
+
+// @public
 export type PendingReason = 'capture_outcome_unknown'
 /** PayPal lists the capture as PENDING: not adopted until it is COMPLETED (R11-O03). */
 | 'capture_pending' | 'kill_switch' | 'truth_unavailable' | 'auth_unavailable' | 'capture_rejected_unclassified';
@@ -2160,6 +2169,12 @@ export function sweepOrphans(deps: ProcessorDeps & {
 }, nowMs: number): Promise<SweepResult>;
 
 // @public (undocumented)
+export interface SweepPendingOptions {
+    pendingTtlMs?: number;
+    reads?: PendingReadBackoff;
+}
+
+// @public (undocumented)
 export interface SweepResult {
     // (undocumented)
     expired: number;
@@ -2172,7 +2187,7 @@ export interface SweepResult {
 }
 
 // @public
-export function sweepStalePending(deps: RecoverDeps, auctionId: string, minAgeMs: number, expiredLookbackMs?: number): Promise<Array<{
+export function sweepStalePending(deps: RecoverDeps, auctionId: string, minAgeMs: number, expiredLookbackMs?: number, opts?: SweepPendingOptions): Promise<Array<{
     holdId: string;
     result: RecoverResult;
 }>>;
