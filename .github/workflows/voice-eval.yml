@@ -60,7 +60,7 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Cached mode (recorded STT and model outputs, deterministic)
         run: |
-          if [ ! -d packages/voice/fixtures/stt-cache/deepgram ] || [ ! -d packages/voice/fixtures/llm-cache ]; then
+          if [ ! -d packages/voice/fixtures/stt-cache/deepgram ] || [ ! -d packages/voice/fixtures/model-cache ]; then
             echo "No recorded outputs in the repo yet; cached mode skipped." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi

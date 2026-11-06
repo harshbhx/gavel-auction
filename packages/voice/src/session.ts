@@ -3,6 +3,7 @@
  * feeds this adapter; it holds no socket and no timers, and reads time only from
  * the injected clock, so every limit is testable with a fake clock.
  */
+import { decodeBatch } from './audio/frame.js';
 
 export const AUDIO_ERROR_CODES = [
   'AUDIO_UNAUTHORIZED',
@@ -14,6 +15,8 @@ export const AUDIO_ERROR_CODES = [
 export type AudioErrorCode = (typeof AUDIO_ERROR_CODES)[number];
 
 export const AUDIO_MAX_BYTES_PER_SEC = 64 * 1024;
+/** Most messages one stream may send per second (50 are expected at 20 ms per message). */
+export const AUDIO_MAX_FRAMES_PER_SEC = 100;
 export const AUDIO_MAX_SESSION_MS = 30 * 60 * 1000;
 export const AUDIO_MAX_STREAMS_PER_TOKEN = 2;
 export const AUDIO_MAX_STREAMS_PER_ROOM = 4;
@@ -32,6 +35,8 @@ export interface VoiceSessionDeps {
    */
   verifyToken: (token: string, roomId: string) => string | null;
   maxBytesPerSec?: number;
+  /** Most messages per second on one stream. Default 100. */
+  maxFramesPerSec?: number;
   maxSessionMs?: number;
   /** Most open streams one token may hold. Default 2 (R-VOX-097). */
   maxStreamsPerToken?: number;
@@ -68,14 +73,24 @@ export interface VoiceSession {
   activeStreams(): number;
 }
 
+/** Byte length of a binary message that passes the frame codec, otherwise null. */
 function frameBytes(frame: unknown): number | null {
-  if (frame instanceof ArrayBuffer) return frame.byteLength;
-  if (ArrayBuffer.isView(frame)) return frame.byteLength;
-  return null;
+  let view: Uint8Array;
+  if (frame instanceof ArrayBuffer) view = new Uint8Array(frame);
+  else if (ArrayBuffer.isView(frame)) {
+    view = new Uint8Array(frame.buffer, frame.byteOffset, frame.byteLength);
+  } else return null;
+  try {
+    decodeBatch(view);
+  } catch {
+    return null;
+  }
+  return view.byteLength;
 }
 
 export function createVoiceSession(deps: VoiceSessionDeps): VoiceSession {
   const maxRate = deps.maxBytesPerSec ?? AUDIO_MAX_BYTES_PER_SEC;
+  const maxFrames = deps.maxFramesPerSec ?? AUDIO_MAX_FRAMES_PER_SEC;
   const maxSession = deps.maxSessionMs ?? AUDIO_MAX_SESSION_MS;
   const perToken = deps.maxStreamsPerToken ?? AUDIO_MAX_STREAMS_PER_TOKEN;
   const perRoom = deps.maxStreamsPerRoom ?? AUDIO_MAX_STREAMS_PER_ROOM;
@@ -109,7 +124,13 @@ export function createVoiceSession(deps: VoiceSessionDeps): VoiceSession {
       const id = slot(key);
       const startedAt = deps.now();
       reclaimExpired(startedAt);
-      if (active.has(id)) return { ok: false, error: 'AUDIO_STREAM_BUSY' };
+      // The same token reconnecting replaces its own stale stream (the old socket may not
+      // have been seen to close yet); any other token still finds the slot busy.
+      const held = active.get(id);
+      if (held !== undefined) {
+        if (held.token !== token) return { ok: false, error: 'AUDIO_STREAM_BUSY' };
+        active.delete(id);
+      }
       let tokenCount = 0;
       let roomCount = 0;
       for (const s of active.values()) {
@@ -128,6 +149,8 @@ export function createVoiceSession(deps: VoiceSessionDeps): VoiceSession {
       active.set(id, entry);
 
       const recent: Array<{ at: number; bytes: number }> = [];
+      let head = 0;
+      let windowBytes = 0;
       let open = true;
 
       const close = (): void => {
@@ -153,10 +176,21 @@ export function createVoiceSession(deps: VoiceSessionDeps): VoiceSession {
           entry.lastSeenMs = at;
           const bytes = frameBytes(frame);
           if (bytes === null || bytes === 0) return fail('AUDIO_BAD_FRAME');
-          while (recent.length > 0 && at - (recent[0]?.at ?? at) >= RATE_WINDOW_MS) recent.shift();
-          const inWindow = recent.reduce((sum, r) => sum + r.bytes, 0);
-          if (inWindow + bytes > maxRate) return fail('AUDIO_RATE_LIMIT');
+          let oldest = recent[head];
+          while (oldest !== undefined && at - oldest.at >= RATE_WINDOW_MS) {
+            windowBytes -= oldest.bytes;
+            head += 1;
+            oldest = recent[head];
+          }
+          if (head > 64 && head * 2 > recent.length) {
+            recent.splice(0, head);
+            head = 0;
+          }
+          if (windowBytes + bytes > maxRate || recent.length - head >= maxFrames) {
+            return fail('AUDIO_RATE_LIMIT');
+          }
           recent.push({ at, bytes });
+          windowBytes += bytes;
           return { ok: true, bytes };
         },
       };

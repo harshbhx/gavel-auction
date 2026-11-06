@@ -256,6 +256,8 @@ jobs:
         run: |
           git fetch --no-tags --depth=1 origin "$BASE_REF"
           npm run check:heldout -w @gavel/voice -- --base "origin/$BASE_REF"
+      - name: Vendor key scan of the voice package
+        run: npm run scan:secrets -w @gavel/voice
       - name: Bundle size limit
         run: npm run size -w @gavel/voice
   e2e-fixtures:

@@ -125,7 +125,7 @@ describe('stt cache fixtures (R-VOX-082)', () => {
 });
 
 describe('T-VOX-067 llm cache fixtures (R-VOX-060)', () => {
-  const dir = new URL('llm-cache', fixtures).pathname;
+  const dir = new URL('model-cache', fixtures).pathname;
   const fs = {
     readFileSync: (p: string, e: 'utf8') => readFileSync(p, e),
     writeFileSync: (p: string, d: string) => {
