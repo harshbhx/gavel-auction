@@ -68,6 +68,17 @@ export async function migrate(
   return applied;
 }
 
+/**
+ * JSON text for a jsonb column. Postgres refuses the escape for NUL (22P05), so it is dropped
+ * from every string; the file and memory stores see the same text from the room, which already
+ * strips control characters from client strings.
+ */
+export function jsonbText(value: unknown): string {
+  return JSON.stringify(value, (_key, v: unknown) =>
+    typeof v === 'string' && v.includes('\u0000') ? v.split('\u0000').join('') : v,
+  );
+}
+
 function isUniqueViolation(e: unknown): boolean {
   return typeof e === 'object' && e !== null && (e as { code?: unknown }).code === UNIQUE_VIOLATION;
 }
@@ -106,7 +117,7 @@ export class PostgresStore implements RoomStore {
           await client.query('INSERT INTO events (auction_id, seq, body) VALUES ($1, $2, $3)', [
             auctionId,
             e.seq,
-            JSON.stringify(e),
+            jsonbText(e),
           ]);
         }
         await client.query('COMMIT');
@@ -138,10 +149,15 @@ export class PostgresStore implements RoomStore {
   }
 
   async saveSnapshot(auctionId: AuctionId, seq: number, state: unknown): Promise<void> {
+    // A snapshot ahead of the log would be trusted on load, so it is refused.
+    const last = await this.lastSeq(auctionId);
+    if (seq > last) throw new GavelError('conflict', `snapshot seq ${seq} is ahead of log ${last}`);
+    // Monotonic: a slow writer never replaces a newer snapshot with an older one.
     await this.pool.query(
       `INSERT INTO snapshots (auction_id, seq, state) VALUES ($1, $2, $3)
-       ON CONFLICT (auction_id) DO UPDATE SET seq = EXCLUDED.seq, state = EXCLUDED.state`,
-      [auctionId, seq, JSON.stringify(state)],
+       ON CONFLICT (auction_id) DO UPDATE SET seq = EXCLUDED.seq, state = EXCLUDED.state
+       WHERE snapshots.seq < EXCLUDED.seq`,
+      [auctionId, seq, jsonbText(state)],
     );
   }
 
@@ -189,7 +205,7 @@ export class PostgresStore implements RoomStore {
   }
 
   async putJournal(key: string, expectedVersion: number, value: unknown): Promise<void> {
-    const body = JSON.stringify(value);
+    const body = jsonbText(value);
     const r =
       expectedVersion === 0
         ? await this.pool.query(

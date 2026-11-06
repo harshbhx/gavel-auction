@@ -26,7 +26,7 @@ function harness(extra: Record<string, string> = {}, env: Record<string, string>
   const written = new Map<string, string>();
   const reads: string[] = [];
   const files = new Map<string, string>(Object.entries(extra));
-  const dirs = new Set(['fixtures/stt-cache/deepgram', 'fixtures/llm-cache']);
+  const dirs = new Set(['fixtures/stt-cache/deepgram', 'fixtures/model-cache']);
   const deps: CliDeps = {
     readFile: (p) => {
       reads.push(p);

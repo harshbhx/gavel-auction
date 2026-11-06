@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  STALE_HARD_MS,
   STALE_SEGMENT_MS,
   VoicePipeline,
   type PipelineOutput,
@@ -49,16 +50,16 @@ function decisions(out: PipelineOutput[]) {
 }
 
 describe('T-VOX-101 stale segment rule (R-VOX-093)', () => {
-  it('drops a segment decided 5100 ms after audioEnd and processes one at 4900 ms', () => {
+  it('asks about a late segment instead of dropping it, and processes one at 4900 ms', () => {
     expect(STALE_SEGMENT_MS).toBe(5000);
 
-    const late = rig();
+    const late = rig({ auto: 0.5 });
     late.setNow(1000 + 5100);
     const lateOut = late.pipeline.push(final('paddle seven three fifty', 0, 1000));
-    const [dropped] = decisions(lateOut);
-    expect(dropped?.kind).toBe('drop');
-    if (dropped?.kind === 'drop') expect(dropped.reason).toBe('low_confidence');
-    expect(lateOut.some((o) => o.type === 'audit' && o.audit === 'stale_segment')).toBe(true);
+    const [asked] = decisions(lateOut);
+    // Never auto-accepted, never silently dropped: the bidder is asked.
+    expect(asked?.kind).toBe('confirm');
+    expect(lateOut.some((o) => o.type === 'audit' && o.audit === 'stale_segment')).toBe(false);
 
     const ok = rig();
     ok.setNow(1000 + 4900);
@@ -67,6 +68,16 @@ describe('T-VOX-101 stale segment rule (R-VOX-093)', () => {
     const [kept] = decisions(okOut);
     expect(kept).toBeDefined();
     expect(kept?.evidence.reason).not.toBe('low_confidence');
+  });
+
+  it('drops replayed or very old audio with its own reason', () => {
+    const old = rig();
+    old.setNow(1000 + STALE_HARD_MS + 1);
+    const oldOut = old.pipeline.push(final('paddle seven three fifty', 0, 1000));
+    const [dropped] = decisions(oldOut);
+    expect(dropped?.kind).toBe('drop');
+    if (dropped?.kind === 'drop') expect(dropped.reason).toBe('stale_segment');
+    expect(oldOut.some((o) => o.type === 'audit' && o.audit === 'stale_segment')).toBe(true);
   });
 });
 
@@ -119,11 +130,19 @@ describe('T-VOX-114 corrections flow (R-VOX-034, 044)', () => {
     expect(correction.prompt.options.map((o) => o.amountCents)).toEqual([40000]);
 
     setNow(4000);
-    const outcome = pipeline.answer(correction.prompt.promptId, 'opt-1', 'bidder');
+    const outcome = pipeline.answer(
+      correction.prompt.promptId,
+      correction.prompt.options[0]?.id ?? '',
+      'bidder',
+      B7,
+    );
     expect(outcome).toMatchObject({ kind: 'bid', bidderId: B7, amountCents: 40000 });
 
     // The superseded $350 prompt can no longer place anything.
-    expect(pipeline.answer(pending.prompt.promptId, 'opt-1', 'bidder').kind).not.toBe('bid');
+    expect(
+      pipeline.answer(pending.prompt.promptId, pending.prompt.options[0]?.id ?? '', 'bidder', B7)
+        .kind,
+    ).not.toBe('bid');
     expect(decisions(all).some((d) => d.kind === 'accept')).toBe(false);
   });
 });
@@ -140,7 +159,10 @@ describe('retract cancels pending only', () => {
     expect(out.some((o) => o.type === 'confirm_cancelled')).toBe(true);
     expect(out.some((o) => o.type === 'advisory')).toBe(false);
     if (prompt?.kind === 'confirm') {
-      expect(pipeline.answer(prompt.prompt.promptId, 'opt-1', 'bidder').kind).not.toBe('bid');
+      expect(
+        pipeline.answer(prompt.prompt.promptId, prompt.prompt.options[0]?.id ?? '', 'bidder', B7)
+          .kind,
+      ).not.toBe('bid');
     }
   });
 

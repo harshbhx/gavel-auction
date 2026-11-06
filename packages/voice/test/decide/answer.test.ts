@@ -42,6 +42,7 @@ describe('T-VOX-077 answerConfirm (R-VOX-069)', () => {
       ctx: ctx({ currentPriceCents: 36000 }),
       optionId: 'o1',
       by: 'bidder',
+      answeringBidderId: 'B7',
     });
     expect(out).toMatchObject({ kind: 'dropped', reason: 'below_minimum' });
     expect(out.kind === 'dropped' && out.message.length > 0).toBe(true);
@@ -52,11 +53,18 @@ describe('T-VOX-077 answerConfirm (R-VOX-069)', () => {
       kind: 'rejected',
       by: 'voice',
     });
-    expect(answerConfirm({ prompt, ctx: ctx(), optionId: 'zz', by: 'bidder' }).kind).toBe(
-      'rejected',
-    );
     expect(
-      answerConfirm({ prompt, ctx: ctx({ nowMs: 9000 }), optionId: 'o1', by: 'bidder' }).kind,
+      answerConfirm({ prompt, ctx: ctx(), optionId: 'zz', by: 'bidder', answeringBidderId: 'B7' })
+        .kind,
+    ).toBe('rejected');
+    expect(
+      answerConfirm({
+        prompt,
+        ctx: ctx({ nowMs: 9000 }),
+        optionId: 'o1',
+        by: 'bidder',
+        answeringBidderId: 'B7',
+      }).kind,
     ).toBe('dropped');
   });
 
@@ -65,9 +73,15 @@ describe('T-VOX-077 answerConfirm (R-VOX-069)', () => {
       ...prompt,
       options: [{ id: 'o1', label: 'Yes', bidderId: 'B7', amountCents: 300000 }],
     };
-    expect(answerConfirm({ prompt: jump, ctx: ctx(), optionId: 'o1', by: 'bidder' })).toMatchObject(
-      { kind: 'bid', amountCents: 300000, confirmed: true },
-    );
+    expect(
+      answerConfirm({
+        prompt: jump,
+        ctx: ctx(),
+        optionId: 'o1',
+        by: 'bidder',
+        answeringBidderId: 'B7',
+      }),
+    ).toMatchObject({ kind: 'bid', amountCents: 300000, confirmed: true });
   });
 });
 

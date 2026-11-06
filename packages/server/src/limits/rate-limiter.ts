@@ -8,11 +8,11 @@ export interface BucketSpec {
   readonly burst: number;
 }
 
-/** R-RT-120: bids 3/s burst 5; frames 20/s burst 40; joins 10/min; HTTP 60/min. */
+/** R-RT-120: bids 3/s burst 5; frames 20/s burst 40; joins 10/min burst 40; HTTP 60/min. */
 export const LIMITS: Readonly<Record<LimitKind, BucketSpec>> = {
   bid: { refillMs: 333, burst: 5 },
   frame: { refillMs: 50, burst: 40 },
-  join: { refillMs: 6000, burst: 10 },
+  join: { refillMs: 6000, burst: 40 },
   http: { refillMs: 1000, burst: 60 },
 };
 

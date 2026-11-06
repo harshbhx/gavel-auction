@@ -9,8 +9,10 @@ import {
   MemoryKillStateStore,
   MemoryWebhookEventStore,
   PayPalGateway,
+  DEFAULT_HONOR_SAFE_MS,
   PersistentKillSwitch,
   TokenManager,
+  emittingAudit,
   Transport,
   WebhookVerifier,
   assertSandboxConfig,
@@ -20,6 +22,7 @@ import {
   type JournalStore,
   type KillStateStore,
   type PaymentsGateway,
+  type SettlementPayload,
   type WebhookEventStore,
 } from '@gavel/payments';
 import {
@@ -42,10 +45,16 @@ import { createGateway } from '../host/gateway';
 import { createNodeWsHost } from '../host/node-ws';
 import { createHealthRoutes, createVersionRoute, resolveSha } from '../http/health';
 import { createMetricsRoute } from '../http/metrics';
-import { adminKeyMatches, createOpsRoomsHandler } from '../http/ops';
+import {
+  OPS_SETTLEMENT_PATH,
+  adminKeyMatches,
+  createOpsRoomsHandler,
+  createOpsSettlementHandler,
+} from '../http/ops';
 import { capsFromConfig } from '../limits/caps';
 import { limitsFromConfig } from '../limits/rate-limiter';
 import { createGuardedWebhookRoute } from '../http/webhook-guard';
+import { SECURITY_HEADERS } from '../http/security-headers';
 import { portFromService, sourceOf } from '../http/webhook';
 import { boundaryFromEnv, killSelf } from './checkpoint-kill';
 import { createPaymentAudit } from './payment-audit';
@@ -56,6 +65,7 @@ import { createLogRing } from '../obs/logring';
 import { createOpsSummaryRoute, createPrometheusRoute } from '../obs/ops-summary';
 import { createWarmupRoute, type WarmupStep } from '../warmup/warmup';
 import { createAuctionService, type AuctionService } from '../runtime/auction-service';
+import { lotIdOf } from '../runtime/ledger-engine';
 import { FileLedgerStore } from '../store/file-ledger-store';
 import { createHttpApp } from '../http/app';
 import { mountAuctions } from '../http/auctions';
@@ -66,10 +76,14 @@ import { nodeRoutesFor } from '../http/node-bridge';
 import { mountRead } from '../http/read';
 import { acquireDataDirLock } from '../store/data-dir-lock';
 import { FileRoomStore } from '../store/file-room-store';
+import { migrate, PostgresStore } from '../store/postgres';
+import { RoomJournalStore } from '../store/room-journal-store';
 import { MemoryStore } from '../store/memory-store';
 
 export const WEBHOOK_PATH = '/webhooks/paypal';
 const EXPORT_PATH = /^\/api\/auctions\/([^/]+)\/export\/?$/;
+/** R-RT-120: most sockets one source address may hold open at once. */
+const MAX_SOCKETS_PER_SOURCE = 20;
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -83,6 +97,8 @@ export interface ComposeOptions {
   hooks?: LoadHooks;
   /** More routes, tried after the built-in ones and before the 404 (the auction HTTP app). */
   extraRoutes?: (service: AuctionService, store: RoomStore) => ExtraRoutes;
+  /** Receives every settlement payload and its canonical JSON (tests, a future feed). */
+  onSettlementPayload?: (payload: SettlementPayload, json: string) => Promise<void> | void;
   /** Clock for the /warmup report (tests). Default: Date.now. */
   warmupNow?: () => number;
   /** Warmup time budget in ms (tests). Default: WARMUP_BUDGET_MS. */
@@ -192,35 +208,62 @@ async function openStores(config: ServerConfig, clock: SystemClock): Promise<Sto
         kill: new MemoryKillStateStore(),
         release: () => undefined,
       };
-    case 'file': {
+    case 'file':
+    case 'postgres': {
       const dir = config.DATA_DIR;
       mkdirSync(dir, { recursive: true });
       const lock = acquireDataDirLock(dir);
+      let pool: { end: () => Promise<void> } | undefined;
       try {
         const pay = openFileStores(join(dir, 'payments'));
-        const room = await FileRoomStore.open(join(dir, 'rooms.jsonl'), now);
+        let room: RoomStore;
+        let journals: JournalStore;
+        let closeRoom = (): void => undefined;
+        if (config.STORE === 'postgres') {
+          // The room log, snapshots, token denylist and payment journals live in Postgres. The
+          // ledgers, holds, webhook ids and kill switch stay in the data directory, which this
+          // host locks, so one host owns them.
+          const { default: pg } = await import('pg');
+          const url = config.DATABASE_URL;
+          if (url === undefined) throw new Error('DATABASE_URL is required when STORE=postgres');
+          const p = new pg.Pool({ connectionString: url });
+          pool = p;
+          await migrate(p);
+          const pgStore = new PostgresStore(p, now);
+          room = pgStore;
+          journals = new RoomJournalStore(pgStore);
+        } else {
+          const fileRoom = await FileRoomStore.open(join(dir, 'rooms.jsonl'), now);
+          room = fileRoom;
+          journals = pay.journals;
+          closeRoom = () => fileRoom.close();
+        }
         return {
           room,
           ledger: new FileLedgerStore(join(dir, 'ledgers')),
-          journals: pay.journals,
+          journals,
           holds: pay.holds,
           webhookEvents: pay.webhooks,
           kill: new FileKillStateStore(join(dir, 'kill-switch.json')),
           release: () => {
             try {
-              room.close();
+              closeRoom();
+              if (pool !== undefined) void pool.end().catch(() => undefined);
             } finally {
               lock.release();
             }
           },
         };
       } catch (e) {
+        if (pool !== undefined) void pool.end().catch(() => undefined);
         lock.release();
         throw e;
       }
     }
     default:
-      throw new Error(`STORE=${config.STORE} is not available in this build; use memory or file`);
+      throw new Error(
+        `STORE=${config.STORE} is not available in this build; use memory, file or postgres`,
+      );
   }
 }
 
@@ -272,10 +315,25 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     stores.release();
     throw e;
   }
-  const audit = createPaymentAudit({
+  const baseAudit = createPaymentAudit({
     clock,
     sink: opts.sink ?? ((line) => void process.stdout.write(`${line}\n`)),
-    file: config.STORE === 'file' ? join(config.DATA_DIR, 'payment-audit.jsonl') : undefined,
+    file:
+      config.STORE === 'file' || config.STORE === 'postgres'
+        ? join(config.DATA_DIR, 'payment-audit.jsonl')
+        : undefined,
+  });
+  // Every audit entry also yields its wire payload (a settlement_update per state change).
+  const audit = emittingAudit({
+    journals: stores.journals,
+    inner: baseAudit,
+    publish: (payload, json) => {
+      if (opts.onSettlementPayload !== undefined) return opts.onSettlementPayload(payload, json);
+      if (payload.type === 'settlement_update') {
+        log.debug('settlement update', { auctionId: payload.auctionId, state: payload.state });
+      }
+      return undefined;
+    },
   });
   const killSwitch = new PersistentKillSwitch({
     store: stores.kill,
@@ -311,6 +369,14 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     verifier: payments.verifier,
     killSwitch,
     holdMaxAgeMs: payments.holdMaxAgeMs,
+    ...(config.GAVEL_RECONCILE_INTERVAL_MS !== undefined && config.GAVEL_RECONCILE_INTERVAL_MS > 0
+      ? { reconcileIntervalMs: config.GAVEL_RECONCILE_INTERVAL_MS }
+      : {}),
+    reconcileRepair: config.GAVEL_RECONCILE_REPAIR,
+    reauthPolicy: {
+      enabled: config.GAVEL_REAUTH,
+      honorSafeMs: config.GAVEL_REAUTH_HONOR_SAFE_MS ?? DEFAULT_HONOR_SAFE_MS,
+    },
     maxCeilingCents: payments.maxCeilingCents,
     onError: (auctionId, error) =>
       log.error('settlement stopped', {
@@ -376,6 +442,13 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
   const opsRoomsRoute = createOpsRoomsHandler({
     adminKey: config.ADMIN_KEY,
     rooms: () => service.opsRooms(),
+  });
+  const opsSettlementRoute = createOpsSettlementHandler({
+    adminKey: config.ADMIN_KEY,
+    exists: async (id) => (await stores.room.listAuctions()).includes(id as AuctionId),
+    hasSettlement: async (id) => (await stores.journals.load(lotIdOf(id as AuctionId))) !== null,
+    voidAll: (id, actor) => service.voidAll(id as AuctionId, actor),
+    releaseReviewHolds: (id, actor) => service.releaseReviewHolds(id as AuctionId, actor),
   });
   const metricsRoute = createMetricsRoute(metrics, { adminKey: config.ADMIN_KEY });
   const warmupRoute = createWarmupRoute({
@@ -447,12 +520,16 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     if (path === '/metrics/prometheus') return prometheusRoute(req, res);
     if (path === '/ops/summary') return opsSummaryRoute(req, res);
     if (path === '/ops/rooms') return opsRoomsRoute(req, res);
+    if (OPS_SETTLEMENT_PATH.test(path)) return opsSettlementRoute(req, res, path);
     if (path === WEBHOOK_PATH) return webhookRoute(req, res);
     if (EXPORT_PATH.test(path)) return exportRoute(req, res);
     if (await extra(req, res)) return;
     notFound(res);
   };
+  /** R-RT-120: open sockets per source address, released on close. */
+  const socketsBySource = new Map<string, number>();
   const http = createServer((req, res) => {
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(name, value);
     if (wsHost.handleRequest(req, res)) return;
     handle(req, res).catch((error: unknown) => {
       log.error('request failed', {
@@ -469,6 +546,21 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     server: http,
     clock,
     allowedOrigins: wsOrigins(config),
+    admitUpgrade: (req) => {
+      const source = sourceOf(req, config.TRUSTED_PROXY_HOPS) ?? 'unknown';
+      if (!limiter.checkJoin(source).ok) return undefined;
+      const open = socketsBySource.get(source) ?? 0;
+      if (open >= MAX_SOCKETS_PER_SOURCE) return undefined;
+      socketsBySource.set(source, open + 1);
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        const left = (socketsBySource.get(source) ?? 1) - 1;
+        if (left <= 0) socketsBySource.delete(source);
+        else socketsBySource.set(source, left);
+      };
+    },
     accept: createGateway({
       service,
       store: stores.room,

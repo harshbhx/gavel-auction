@@ -1,6 +1,6 @@
 import { ManualClock } from '@gavel/shared';
 import { describe, expect, it } from 'vitest';
-import { CLOSE_GOING_AWAY, createShutdown } from '../src/ops/shutdown';
+import { CLOSE_GOING_AWAY, createShutdown, SHUTDOWN_DEADLINE_MS } from '../src/ops/shutdown';
 
 function setup(opts: { roomClose?: () => Promise<void> } = {}) {
   const clock = new ManualClock(1_789_000_000_000);
@@ -51,11 +51,11 @@ describe('graceful shutdown (T-RT-095)', () => {
     expect(exits).toEqual([0]);
   });
 
-  it('forces exit 1 at the 10 s deadline when a room never drains', async () => {
+  it('forces exit 1 at the shutdown deadline when a room never drains', async () => {
     const { clock, sd, exits, closes } = setup({ roomClose: () => new Promise<void>(() => {}) });
     const done = sd.run();
     await Promise.resolve();
-    clock.advance(9_999);
+    clock.advance(SHUTDOWN_DEADLINE_MS - 1);
     expect(exits).toEqual([]);
     clock.advance(1);
     await expect(done).resolves.toBe(1);

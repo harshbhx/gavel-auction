@@ -56,6 +56,8 @@ describe('AuctionConfig boundaries (R-RT-012)', () => {
   it('rejects unbounded soft-close extension', () => {
     expect(bad({ softCloseExtensionMs: 4_000_000_000 })).toBe(false);
     expect(bad({ softCloseExtensionMs: 600_000 })).toBe(true);
+    expect(bad({ softCloseWindowMs: 600_000 })).toBe(true);
+    expect(bad({ softCloseWindowMs: 600_001 })).toBe(false);
     expect(bad({ maxExtensions: 1_000_000 })).toBe(false);
     expect(bad({ maxExtensions: 50 })).toBe(true);
   });

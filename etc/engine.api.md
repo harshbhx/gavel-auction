@@ -295,6 +295,9 @@ export function evolve(s: AuctionState, e: LedgerEntry): AuctionState;
 export function evolveAll(entries: readonly LedgerEntry[]): AuctionState;
 
 // @public
+export function evolveOwned(s: AuctionState, entries: readonly LedgerEntry[]): AuctionState;
+
+// @public
 export function exportJsonl(entries: readonly LedgerEntry[]): string;
 
 // @public
@@ -762,6 +765,7 @@ export type PublicVerifyResult = {
     ok: true;
     count: number;
     headHash: string;
+    closed: boolean;
 } | {
     ok: false;
     firstBadIndex: number;
@@ -898,6 +902,7 @@ export type VerifyResult = {
     ok: true;
     count: number;
     headHash: string;
+    closed: boolean;
 } | {
     ok: false;
     firstBadIndex: number;

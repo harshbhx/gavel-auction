@@ -56,7 +56,7 @@ describe('VersionConflict', () => {
 });
 
 describe('file stores survive a restart', () => {
-  it('a new instance on the same directory sees journals, leases, webhooks and holds', async () => {
+  it('a new instance on the same directory sees journals, webhooks and holds', async () => {
     const dir = freshDir();
     const a = openFileStores(dir);
     await a.journals.create(makeJournal('a1', 0));
@@ -76,7 +76,8 @@ describe('file stores survive a restart', () => {
 
     const b = openFileStores(dir);
     expect((await b.journals.load('a1'))?.state).toBe('BIDDING');
-    expect(await b.journals.acquireLease('a1', 'r2', 30000, 2000)).toBe(false);
+    // RT4-saga-02: the lease of the process that died is not carried over.
+    expect(await b.journals.acquireLease('a1', 'r2', 30000, 2000)).toBe(true);
     await expect(b.journals.save(makeJournal('a1', 5), 0)).rejects.toBeInstanceOf(VersionConflict);
     expect((await b.webhooks.listOrphans(0)).map((e) => e.id)).toEqual(['e1']);
     expect(

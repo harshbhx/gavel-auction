@@ -48,6 +48,7 @@ export function buildReplayBundle(
     generatedAt,
     count: events.length,
     headHash: events.length === 0 ? null : pub.headHash,
+    closed: pub.closed,
     events,
   };
 }

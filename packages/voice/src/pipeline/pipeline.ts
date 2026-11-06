@@ -25,6 +25,8 @@ import { checkTranscript, FaultTracker } from './faults.js';
 
 /** A segment decided later than this after its audio ended is dropped (R-VOX-093). */
 export const STALE_SEGMENT_MS = 5000;
+/** Beyond this age speech is treated as replayed audio and dropped visibly. */
+export const STALE_HARD_MS = 60000;
 /** A retraction reaches an accepted bid within this window only as an advisory (R-VOX-044). */
 export const RETRACT_ADVISORY_MS = 8000;
 
@@ -83,6 +85,7 @@ export class VoicePipeline {
   private readonly faults = new FaultTracker();
   private readonly accepted: Accepted[] = [];
   private lastStatus = '';
+  private lateSegment = false;
 
   constructor(private readonly deps: PipelineDeps) {
     this.segmenter = new Segmenter(deps.segmenter);
@@ -112,6 +115,8 @@ export class VoicePipeline {
     promptId: string,
     optionId: string | null,
     by: 'bidder' | 'auctioneer' | 'voice',
+    answeringBidderId?: string | null,
+    echo?: { bidderId: string; amountCents: Cents },
   ): AnswerOutcome {
     const prompt = this.open.get(promptId);
     // Expiries found here are kept for the next push or tick so none go unaudited (R9-V03).
@@ -128,6 +133,8 @@ export class VoicePipeline {
       ctx: this.freshContext(),
       optionId,
       by,
+      ...(answeringBidderId === undefined ? {} : { answeringBidderId }),
+      ...(echo === undefined ? {} : { echo }),
     });
     if (outcome.kind === 'bid') this.noteAccepted(outcome.bidderId, outcome.amountCents);
     return outcome;
@@ -138,13 +145,27 @@ export class VoicePipeline {
   }
 
   private noteAccepted(bidderId: string, amountCents: Cents): void {
-    this.accepted.push({ bidderId, amountCents, atMs: this.deps.clock() });
+    const now = this.deps.clock();
+    this.pruneAccepted(now);
+    this.accepted.push({ bidderId, amountCents, atMs: now });
+  }
+
+  /** A retraction only looks RETRACT_ADVISORY_MS back, so older entries are dropped. */
+  private pruneAccepted(now: number): void {
+    let drop = 0;
+    while (drop < this.accepted.length) {
+      const a = this.accepted[drop];
+      if (a !== undefined && now - a.atMs >= RETRACT_ADVISORY_MS) drop += 1;
+      else break;
+    }
+    if (drop > 0) this.accepted.splice(0, drop);
   }
 
   private readonly deferred: PipelineOutput[] = [];
 
   private housekeeping(now: number): PipelineOutput[] {
     const out: PipelineOutput[] = this.deferred.splice(0);
+    this.pruneAccepted(now);
     for (const a of this.book.sweep()) this.audit(out, a.reason, a.promptId, a.promptId);
     const snap = this.faults.snapshot(now);
     const llm = this.deps.llm === undefined ? 'off' : snap.llm;
@@ -164,7 +185,7 @@ export class VoicePipeline {
 
   private audit(
     out: PipelineOutput[],
-    reason: 'confirm_expired' | 'superseded' | 'low_confidence',
+    reason: 'confirm_expired' | 'superseded' | 'rate_limited',
     promptId: string,
     id: string,
   ): void {
@@ -239,9 +260,13 @@ export class VoicePipeline {
   }
 
   private decide(seg: Segment, now: number): PipelineOutput[] {
-    // Stale audio (before a restart or reconnect) is never replayed (R-VOX-093).
-    if (now - seg.endMs > STALE_SEGMENT_MS) {
-      const dropped = this.drop(seg, 'low_confidence', this.none('low_confidence'));
+    // Replayed audio (before a restart or reconnect) is never booked (R-VOX-093). Fresh speech
+    // that only arrived late (a slow provider, a backlog) is never auto-accepted but is asked
+    // about, so the bidder sees a prompt instead of a silent drop.
+    const age = now - seg.endMs;
+    this.lateSegment = age > STALE_SEGMENT_MS;
+    if (this.lateSegment && (this.deps.replay === true || age > STALE_HARD_MS)) {
+      const dropped = this.drop(seg, 'stale_segment', this.none('stale_segment'));
       const id = dropped.type === 'decision' ? dropped.decision.evidence.segmentId : '';
       return [dropped, { type: 'audit', audit: 'stale_segment', id }];
     }
@@ -388,7 +413,7 @@ export class VoicePipeline {
       {
         type: 'answer',
         promptId: prompt.promptId,
-        outcome: this.answer(prompt.promptId, optionId, 'voice'),
+        outcome: this.answer(prompt.promptId, optionId, 'voice', this.deps.speakerBidderId ?? null),
       },
     ];
   }
@@ -442,7 +467,8 @@ export class VoicePipeline {
       (isAuctioneerPatter(seg.text) ||
         (this.deps.mic === 'device' && merged.bidder?.kind === 'speaker'));
     const cls =
-      base === 'accept' && (seg.echo === true || this.deps.mic === 'room' || deviceDoubt)
+      base === 'accept' &&
+      (seg.echo === true || this.deps.mic === 'room' || deviceDoubt || this.lateSegment)
         ? 'confirm'
         : base;
     const conf = merged.confidence;
@@ -507,7 +533,11 @@ export class VoicePipeline {
             amountBCents: cb.amountCents,
           }
         : this.promptData(reason, amounts, paddle, ctx, seg.text, pendingCents);
-    const opened = this.book.open(bidderId ?? 'unknown', null);
+    const opened = this.book.open(
+      bidderId ?? `unknown:${segmentId}`,
+      null,
+      evidence.idempotencyKey,
+    );
     const audits: PipelineOutput[] = [];
     for (const a of opened.audit) {
       if (a.reason === 'superseded') this.open.delete(a.promptId);
@@ -517,7 +547,11 @@ export class VoicePipeline {
     }
     if (!opened.opened) {
       audits.push({ type: 'audit', audit: 'rate_limited', id: segmentId });
-      const rejected: Decision = { kind: 'drop', reason: 'low_confidence', evidence };
+      const rejected: Decision = {
+        kind: 'drop',
+        reason: 'prompt_rate_limited',
+        evidence: { ...evidence, reason: 'prompt_rate_limited' },
+      };
       return [...audits, { type: 'decision', decision: rejected }];
     }
     const p = opened.prompt;
@@ -530,7 +564,7 @@ export class VoicePipeline {
       options:
         choices !== undefined && choices.length > 0
           ? choices.map((c, i) => ({
-              id: `opt-${i + 1}`,
+              id: `${p.promptId}-opt-${i + 1}`,
               label: formatUsd(c.amountCents),
               bidderId: c.bidderId,
               amountCents: c.amountCents,
@@ -538,11 +572,12 @@ export class VoicePipeline {
           : bidderId === null
             ? []
             : amounts.map((amountCents, i) => ({
-                id: `opt-${i + 1}`,
+                id: `${p.promptId}-opt-${i + 1}`,
                 label: formatUsd(amountCents),
                 bidderId,
                 amountCents,
               })),
+      targetBidderId: bidderId ?? this.deps.speakerBidderId ?? null,
       spokenAnswerAllowed:
         (this.deps.mic ?? 'room') === 'device' &&
         bidderId !== null &&

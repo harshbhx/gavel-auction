@@ -159,7 +159,7 @@ describe('invite single use (T-RT-061)', () => {
     const a = await created(app);
     const [invite] = await mint(app, a.id, a.auctioneer);
     let last = 0;
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 42; i++) {
       last = (await call(app, `/api/auctions/${a.id}/join`, null, { invite: `${invite}x` })).status;
     }
     expect(last).toBe(429);

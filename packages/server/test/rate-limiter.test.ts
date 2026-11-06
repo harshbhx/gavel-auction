@@ -53,11 +53,11 @@ describe('rate limiter (T-RT-087)', () => {
     expect(rl.checkFrame('c2').ok).toBe(true);
   });
 
-  it('limits the 11th join per minute per IP', () => {
+  it('limits the 41st join per minute per IP', () => {
     const { clock, rl } = setup();
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 40; i++) {
       expect(rl.checkJoin('1.2.3.4').ok).toBe(true);
-      clock.advance(100);
+      clock.advance(10);
     }
     expect(rl.checkJoin('1.2.3.4').ok).toBe(false);
     expect(rl.checkJoin('5.6.7.8').ok).toBe(true);

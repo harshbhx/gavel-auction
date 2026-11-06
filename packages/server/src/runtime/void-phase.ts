@@ -1,5 +1,4 @@
 import {
-  PayPalError,
   buildRequestId,
   sharedHoldQueue,
   voidHold,
@@ -16,14 +15,6 @@ import {
  * holds what the service adds around it: reading a journal's release records and voiding the
  * holds the journal does not keep.
  */
-
-const RELEASED_KINDS: ReadonlySet<string> = new Set(['already_voided', 'expired']);
-
-/**
- * What a read of the authorization must say before a refused void counts as released.
- * NOT_FOUND is not enough (HRD-46): the hold may still be live, so the void stays open.
- */
-const GONE_TRUTH: ReadonlySet<string> = new Set(['VOIDED', 'EXPIRED']);
 
 /** Journal record values that mean the authorization is gone (VOID_FAILED and pending are not). */
 const RELEASED_RECORDS: ReadonlySet<string> = new Set(['voided', 'released']);
@@ -45,6 +36,8 @@ export function voidRequestId(journal: Pick<Journal, 'auctionId'>, holdId: strin
 }
 
 export interface SpareVoidDeps {
+  audit: AuditSink;
+  clock: PaymentsClock;
   gateway: PaymentsGateway;
   holds: HoldStore;
 }
@@ -52,9 +45,12 @@ export interface SpareVoidDeps {
 /**
  * Voids every live hold of the auction that the settlement does not keep: a second hold a
  * bidder approved after registering, a hold of a bidder who never registered, or, when the
- * settlement ends in review, every hold but the one with an unresolved capture. The request
- * id comes from the hold, so a repeat is applied once by PayPal. Returns how many voids are
- * still unconfirmed; a later run repeats them.
+ * settlement ends in review, every hold but the one with an unresolved capture. Each void goes
+ * through the payments `voidHold`: the request id comes from the hold, so a repeat is applied
+ * once by PayPal, every PayPal call writes its `paypal_call` audit row (R-PAY-132,
+ * RT4-saga-04), and a refused void counts as released only after the authorization read says
+ * it is gone (R-PAY-058). Returns how many voids are still unconfirmed; a later run repeats
+ * them.
  */
 export async function voidSpareHolds(
   deps: SpareVoidDeps,
@@ -65,35 +61,19 @@ export async function voidSpareHolds(
   for (const hold of await deps.holds.listByAuction(journal.auctionId)) {
     const authId = hold.authId;
     if (hold.status !== 'HELD' || authId === undefined || keep.has(hold.holdId)) continue;
-    try {
-      await deps.gateway.voidAuthorization(authId, voidRequestId(journal, hold.holdId));
-    } catch (e) {
-      if (!(e instanceof PayPalError)) throw e;
-      if (
-        !RELEASED_KINDS.has(e.kind) &&
-        !(await isGone(deps.gateway, { holdId: hold.holdId, authId }))
-      ) {
-        open += 1;
-        continue;
-      }
+    const status = await voidHold(deps, journal.auctionId, {
+      holdId: hold.holdId,
+      authId,
+      ceilingCents: hold.ceilingCents,
+      stale: false,
+    });
+    if (status !== 'voided' && status !== 'released') {
+      open += 1;
+      continue;
     }
     await markVoided(deps.holds, hold.holdId);
   }
   return open;
-}
-
-/** R-PAY-058: a refused void is trusted only after the authorization read says it is gone. */
-async function isGone(
-  gateway: PaymentsGateway,
-  hold: { holdId: string; authId: string },
-): Promise<boolean> {
-  try {
-    const truth = await gateway.getHoldTruth({ holdId: hold.holdId, authId: hold.authId });
-    return GONE_TRUTH.has(truth.status);
-  } catch (e) {
-    if (e instanceof PayPalError) return false;
-    throw e;
-  }
 }
 
 /** Refusals that prove the engine did not take the registration, so the hold has no owner. */

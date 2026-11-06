@@ -22,6 +22,13 @@ export interface AnswerInput {
   /** The chosen option, or null for a decline. */
   optionId: string | null;
   by: AnsweredBy;
+  /**
+   * The bidder who gave the answer. A bidder (or voice) answer only places that bidder's own
+   * option; only the auctioneer may pick another bidder's option.
+   */
+  answeringBidderId?: string | null;
+  /** What the answerer saw: when given it must match the stored option exactly. */
+  echo?: { bidderId: string; amountCents: Cents };
 }
 
 const DROP_MESSAGES: Partial<Record<VoiceReason, string>> = {
@@ -50,6 +57,20 @@ export function answerConfirm(input: AnswerInput): AnswerOutcome {
   if (option === undefined) return { kind: 'rejected', by };
   // A prompt that forbids spoken answers cannot be confirmed by voice (R8-V10).
   if (by === 'voice' && !prompt.spokenAnswerAllowed) return { kind: 'rejected', by };
+  // Nobody but the auctioneer confirms a bid for somebody else (R-VOX-069).
+  if (by !== 'auctioneer') {
+    const who = input.answeringBidderId;
+    if (who === undefined || who === null || option.bidderId !== who) {
+      return { kind: 'rejected', by };
+    }
+  }
+  const echo = input.echo;
+  if (
+    echo !== undefined &&
+    (echo.bidderId !== option.bidderId || echo.amountCents !== option.amountCents)
+  ) {
+    return { kind: 'rejected', by };
+  }
 
   const parse: ParseResult = {
     status: 'bid',

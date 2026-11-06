@@ -9,6 +9,10 @@ import {
   DEFAULT_HOLD_MAX_AGE_MS,
   HoldService,
   sweepStalePending,
+  flagStaleHolds,
+  persistReauthorization,
+  reauthorizeIfDue,
+  startReconcileTimer,
   guardGateway,
   reconcile,
   voidAllLiveHolds,
@@ -16,6 +20,8 @@ import {
   reviewKeepHolds,
   runCapturePhase,
   runVoidPhase,
+  step as stepSettlement,
+  withLease,
   type AuditSink,
   type EngineEnvelope,
   type HoldRecord,
@@ -27,8 +33,12 @@ import {
   type PaymentsGateway,
   type PaymentsMetrics,
   type PlanOutcome,
+  type ReauthPolicy,
+  type Reauthorized,
+  type ReconcileTimer,
   type ReconcileReport,
   type RemainderMode,
+  type SettlementEvent,
   type SettlementPlan,
   type VoidAllOutcome,
   type VoidDeps,
@@ -59,7 +69,13 @@ import type { HammerResult, SettlePort, SettlementReport } from '../room/settle-
 import { dispatchAtHead } from './engine-dispatch';
 import { LedgerEngine, commandIdFor, lotIdOf } from './ledger-engine';
 import { reviewCodeOf } from './review-code';
-import { isDefiniteRefusal, isReleased, voidOrphanHold, voidSpareHolds } from './void-phase';
+import {
+  isDefiniteRefusal,
+  isReleased,
+  voidOrphanHold,
+  voidSpareHolds,
+  type SpareVoidDeps,
+} from './void-phase';
 import { WebhookIntake } from './webhook-intake';
 
 /** Everything the service needs from the outside, as ports. */
@@ -145,6 +161,18 @@ export interface AuctionServiceDeps {
    * only reads; a failed read is passed to `onError` and never blocks the settlement.
    */
   onReconcile?: (report: ReconcileReport) => Promise<void> | void;
+  /**
+   * How often the periodic reconcile pass runs over settled auctions, in ms. Off (the
+   * default) when absent or 0, so nothing changes unless an operator asks for it.
+   */
+  reconcileIntervalMs?: number;
+  /** Let the periodic reconcile pass void holds that are still live after SETTLED. Default off. */
+  reconcileRepair?: boolean;
+  /**
+   * Reauthorization policy (R-PAY-071): before the capture, a hold older than the honor
+   * window is reauthorized once. Disabled when absent.
+   */
+  reauthPolicy?: ReauthPolicy;
   /** Told when a settlement run stops with an error. The run is not retried until `resume()`. */
   onError?: (auctionId: string, error: unknown) => void;
 }
@@ -224,6 +252,28 @@ export interface AuctionService {
 const TERMINAL: ReadonlySet<string> = new Set(['SETTLED', 'FAILED_NEEDS_REVIEW']);
 
 /**
+ * Settlement states in which no capture has succeeded yet, so a reauthorization can still
+ * matter. A settlement opened at the hammer stays HELD until the capture phase records the
+ * hammer; CAPTURED and later states never reauthorize.
+ */
+const REAUTH_STATES: ReadonlySet<string> = new Set([
+  'HELD',
+  'BIDDING',
+  'WINNER_SELECTED',
+  'CAPTURING',
+  'FALLBACK_RUNNER_UP',
+]);
+
+/** Passes in a row a hold's reauthorization may end unknown before the settlement goes to review. */
+const MAX_REAUTH_UNKNOWN = 5;
+
+/** History label of a review raised because a reauthorization stayed unknown. */
+const REAUTH_REVIEW_LABEL = 'journaled:reauth_unknown';
+
+/** How far back the periodic reconcile looks: lots settled within the last day. */
+const RECONCILE_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+
+/**
  * The saga reads a hold's truth by authorization id alone, but only the order lists
  * the captures made on it. Adding the order id from the hold record lets a restart
  * after a capture recognise that capture instead of sending the winner to review.
@@ -244,6 +294,9 @@ function withOrderLookup(gateway: PaymentsGateway, holds: HoldStore): PaymentsGa
   };
 }
 
+/** How long a room a client just asked for is kept from being unloaded. */
+const CLIENT_TOUCH_GRACE_MS = 30_000;
+
 export function createAuctionService(deps: AuctionServiceDeps): AuctionService {
   return new Service(deps);
 }
@@ -254,6 +307,10 @@ class Service implements AuctionService, SettlePort {
   private readonly ready = new Map<string, Room>();
   /** When each loaded room was last asked for, to evict the least recently used first. */
   private readonly lastUsed = new Map<string, number>();
+  /** Last time a client path (not a settlement pass) asked for each room. */
+  private readonly clientTouched = new Map<string, number>();
+  /** Auctions seen finished with a final settlement; the resume pass no longer reloads them. */
+  private readonly finalIds = new Set<string>();
   /** Rooms this host lost to another host (R-RT-061); they are never served or resumed here. */
   private readonly fenced = new Set<string>();
   private readonly roomStore: RoomStore;
@@ -267,6 +324,13 @@ class Service implements AuctionService, SettlePort {
   private readonly orphans = new Map<string, string>();
   private readonly holdService: Pick<HoldService, 'completeApproval'>;
   private resumeTimer: ReturnType<typeof setInterval> | undefined;
+  private reconcileTimer: ReconcileTimer | undefined;
+  /** Reauthorizations PayPal made whose save found the settlement busy, per lot and hold. */
+  private readonly reauthUnsaved = new Map<string, Reauthorized>();
+  /** Passes in a row whose reauthorization of a hold ended unknown, per lot and hold. */
+  private readonly reauthUnknown = new Map<string, number>();
+  /** Lots settled before the reconcile look-back; their journals are not read again. */
+  private readonly reconcileAged = new Set<string>();
   private resuming = false;
   private closed = false;
   private readonly runtime: AuctionRuntime;
@@ -325,6 +389,38 @@ class Service implements AuctionService, SettlePort {
     if (every > 0) {
       this.resumeTimer = setInterval(() => void this.tick(), every);
       this.resumeTimer.unref();
+    }
+    const reconcileEvery = deps.reconcileIntervalMs ?? 0;
+    if (reconcileEvery > 0) {
+      this.reconcileTimer = startReconcileTimer(
+        {
+          gateway: this.gateway,
+          journals: deps.journals,
+          holds: deps.holds,
+          clock: this.payClock,
+          audit: deps.audit,
+          ...(deps.metrics !== undefined ? { metrics: deps.metrics } : {}),
+          listAuctions: (sinceMs) => this.settledAuctions(sinceMs),
+        },
+        {
+          intervalMs: reconcileEvery,
+          // Only lots settled within the look-back are read at PayPal, so a pass does not
+          // grow with every auction ever settled.
+          sinceMs: () => this.payClock.nowMs() - RECONCILE_LOOKBACK_MS,
+          ...(deps.reconcileRepair === true ? { repair: 'void_live_holds' as const } : {}),
+          isActive: async () => !this.closed,
+          onReport: ({ reports, errors }) => {
+            for (const e of errors) this.deps.onError?.(e.auctionId, new Error(e.message));
+            for (const r of reports)
+              void Promise.resolve(this.deps.onReconcile?.(r)).catch(() => undefined);
+          },
+          setInterval: (fn, ms) => {
+            const handle = setInterval(fn, ms);
+            handle.unref();
+            return handle;
+          },
+        },
+      );
     }
     this.webhook = createWebhookHandler({
       verifier: deps.verifier,
@@ -416,6 +512,15 @@ class Service implements AuctionService, SettlePort {
     }
   }
 
+  /**
+   * A joining socket gets its room from `room()` and attaches a moment later, so a room asked
+   * for by a client in the last few seconds is not dropped even when no connection shows yet.
+   */
+  private recentlyTouched(id: string): boolean {
+    const at = this.clientTouched.get(id);
+    return at !== undefined && this.deps.clock.now() - at < CLIENT_TOUCH_GRACE_MS;
+  }
+
   /** Drops a finished room from memory; it loads again from its log if anything asks for it. */
   private unload(id: string, room: Room): void {
     const timer = this.retryTimers.get(id);
@@ -425,6 +530,7 @@ class Service implements AuctionService, SettlePort {
     this.rooms.delete(id);
     this.ready.delete(id);
     this.lastUsed.delete(id);
+    this.clientTouched.delete(id);
     void room.close().catch(() => undefined);
   }
 
@@ -461,6 +567,7 @@ class Service implements AuctionService, SettlePort {
     if (this.fenced.has(auctionId)) {
       throw new GavelError('host_fenced', 'this host no longer owns the room');
     }
+    if (opts.settlement !== true) this.clientTouched.set(auctionId, this.deps.clock.now());
     const known = this.rooms.get(auctionId);
     if (known !== undefined) {
       this.lastUsed.set(auctionId, this.deps.clock.now());
@@ -607,7 +714,7 @@ class Service implements AuctionService, SettlePort {
   }
 
   async voidAll(auctionId: AuctionId, actor: string): Promise<VoidAllOutcome> {
-    return voidAllLiveHolds(
+    const out = await voidAllLiveHolds(
       {
         journals: this.deps.journals,
         gateway: this.gateway,
@@ -619,6 +726,8 @@ class Service implements AuctionService, SettlePort {
       lotIdOf(auctionId),
       actor,
     );
+    if (out.status === 'done') await this.markReleasedHolds(out.journal);
+    return out;
   }
 
   async releaseReviewHolds(
@@ -800,6 +909,24 @@ class Service implements AuctionService, SettlePort {
     }
     for (const id of await this.deps.store.listAuctions()) {
       if (this.fenced.has(id)) continue;
+      // A finished auction is recognised from its last event and journal, so a restart does not
+      // replay the whole log of every old auction just to find out it is over (#1749).
+      if (!this.finalIds.has(id) && !this.ready.has(id) && (await this.probeFinal(id)))
+        this.finalIds.add(id);
+      if (this.finalIds.has(id)) {
+        // Known final: never reloaded here, but a copy a client loaded since goes again once idle.
+        const loaded = this.ready.get(id);
+        if (
+          loaded !== undefined &&
+          loaded.isDone &&
+          loaded.connectionCount === 0 &&
+          !this.runs.has(id) &&
+          !this.recentlyTouched(id)
+        ) {
+          this.unload(id, loaded);
+        }
+        continue;
+      }
       // One unloadable auction must not stop the others from resuming.
       try {
         const room = await this.room(id, { settlement: true });
@@ -808,8 +935,15 @@ class Service implements AuctionService, SettlePort {
         await room.retrySettlement();
         const journal = await this.deps.journals.load(lotIdOf(id));
         if (await this.needsRun(id, room, journal)) this.schedule(id);
-        else if (room.isDone && room.connectionCount === 0 && !this.runs.has(id)) {
-          // A finished auction with a final settlement takes no slot after boot (R12-S02).
+        else if (
+          room.isDone &&
+          room.connectionCount === 0 &&
+          !this.runs.has(id) &&
+          !this.recentlyTouched(id)
+        ) {
+          // A finished auction with a final settlement takes no slot after boot (R12-S02) and
+          // is not reloaded by later passes.
+          this.finalIds.add(id);
           this.unload(id, room);
         }
       } catch (e) {
@@ -850,6 +984,54 @@ class Service implements AuctionService, SettlePort {
   }
 
   /**
+   * True when the log ends with a final settlement report, the journal is final and no hold is
+   * left to release: nothing for resume to drive. Reads one event, the journal and the holds,
+   * never the whole log. Any doubt or read failure answers false and the room loads as before.
+   */
+  private async probeFinal(id: string): Promise<boolean> {
+    try {
+      const auctionId = id as AuctionId;
+      const last = await this.deps.store.lastSeq(auctionId);
+      if (last < 1) return false;
+      const [event] = await this.deps.store.readEvents(auctionId, last, 1);
+      if (event?.type !== 'settlement_update' || !TERMINAL.has(event.auctionState)) return false;
+      const journal = await this.deps.journals.load(lotIdOf(auctionId));
+      return journal !== null && !(await this.holdsLeft(auctionId, journal));
+    } catch {
+      return false;
+    }
+  }
+
+  /** True when a terminal settlement still has a hold the release must free. */
+  private async holdsLeft(auctionId: AuctionId, journal: Journal): Promise<boolean> {
+    if (!TERMINAL.has(journal.state)) return true;
+    const keep =
+      journal.state === 'FAILED_NEEDS_REVIEW' ? this.reviewKeep(journal) : new Set<string>();
+    return (await this.deps.holds.listByAuction(auctionId)).some(
+      (h) => h.status === 'HELD' && !keep.has(h.holdId),
+    );
+  }
+
+  /**
+   * Unfenced lots whose settlement became SETTLED at or after `sinceMs`: the ones the periodic
+   * reconcile reads at PayPal. SETTLED is final, so a lot settled before the look-back is
+   * remembered and its journal is not loaded again.
+   */
+  private async settledAuctions(sinceMs: number): Promise<string[]> {
+    const out: string[] = [];
+    for (const id of await this.deps.store.listAuctions()) {
+      const lotId = lotIdOf(id as AuctionId);
+      if (this.fenced.has(id) || this.reconcileAged.has(lotId)) continue;
+      const journal = await this.deps.journals.load(lotId);
+      if (journal?.state !== 'SETTLED') continue;
+      const settledAtMs = [...journal.history].reverse().find((h) => h.to === 'SETTLED')?.tsMs;
+      if (settledAtMs !== undefined && settledAtMs >= sinceMs) out.push(lotId);
+      else this.reconcileAged.add(lotId);
+    }
+    return out;
+  }
+
+  /**
    * Whether a resume pass has to drive the settlement of this auction. A settlement that is
    * final and already reported to the room is left alone unless a live hold remains, so the
    * bridge and the PayPal reconcile do not repeat every minute for every finished auction.
@@ -860,20 +1042,17 @@ class Service implements AuctionService, SettlePort {
     journal: Journal | null,
   ): Promise<boolean> {
     if (journal === null) return hammeredEngine(room) !== undefined && !room.isDone;
-    if (!TERMINAL.has(journal.state) || !room.isDone) return true;
+    if (!room.isDone) return true;
     // A review keeps some holds on purpose (R8-S06): the same set the release uses, so a
     // kept hold does not rerun the settlement and a hold the release must free does
     // (R11-O01, R11-O04). The next candidates leave the set once the review is old.
-    const keep =
-      journal.state === 'FAILED_NEEDS_REVIEW' ? this.reviewKeep(journal) : new Set<string>();
-    return (await this.deps.holds.listByAuction(auctionId)).some(
-      (h) => h.status === 'HELD' && !keep.has(h.holdId),
-    );
+    return this.holdsLeft(auctionId, journal);
   }
 
   async close(): Promise<void> {
     this.closed = true;
     if (this.resumeTimer !== undefined) clearInterval(this.resumeTimer);
+    this.reconcileTimer?.stop();
     for (const timer of this.retryTimers.values()) clearTimeout(timer);
     this.retryTimers.clear();
     // A settlement run in progress finishes before its room closes; no new run starts now.
@@ -909,11 +1088,7 @@ class Service implements AuctionService, SettlePort {
         // live hold now, keeping none, before the room goes final (R-PAY-037).
         let open = 0;
         try {
-          open = await voidSpareHolds(
-            { gateway: this.gateway, holds: this.deps.holds },
-            { auctionId: lotId },
-            new Set<string>(),
-          );
+          open = await voidSpareHolds(this.spareDeps(), { auctionId: lotId }, new Set<string>());
         } catch (voidError) {
           this.deps.onError?.(auctionId, voidError);
           open = 1;
@@ -940,6 +1115,15 @@ class Service implements AuctionService, SettlePort {
     await this.report(room, journal);
     if ((await this.releaseSpares(journal)) > 0) retry = true;
 
+    // PayPal closes the old authorization when it reauthorizes (A11): while a reauthorization
+    // is unsettled no capture or void may run on the old id.
+    const reauth = await this.reauthorizeDue(auctionId, journal);
+    if (reauth.status === 'again') return 'again';
+    if (reauth.status === 'review') {
+      const reviewed = await this.releaseOnReview(reauth.journal);
+      await this.finishBridge(room, auctionId, reviewed);
+      return 'done';
+    }
     const captured = await runCapturePhase(
       {
         journals: this.deps.journals,
@@ -967,8 +1151,14 @@ class Service implements AuctionService, SettlePort {
       await this.finishBridge(room, auctionId, reviewed);
       return 'done';
     }
+    if (captured.status === 'pending') {
+      // RT4-saga-03: the capture phase waits (kill switch, a PENDING capture, PayPal reads or
+      // OAuth failing). The holds nobody can be charged on any more are released now; the
+      // winner's and the fallback candidates' holds stay.
+      await this.report(room, await this.releaseOnReview(captured.journal));
+      return 'again';
+    }
     await this.report(room, captured.journal);
-    if (captured.status === 'pending') return 'again';
     if (captured.status === 'captured') await this.markCaptured(captured.journal);
     await this.boundary('after:capture-phase');
 
@@ -989,12 +1179,158 @@ class Service implements AuctionService, SettlePort {
   }
 
   /**
+   * Reauthorizes the holds still in play past the honor window, before the capture, when the
+   * policy is on: the candidates from the cursor on that have not failed, while no capture
+   * has succeeded yet (REAUTH_STATES). A hold that already has a prior authorization was
+   * reauthorized once and is left alone, and so is a hold whose capture is in doubt.
+   *
+   * PayPal closes the old authorization when it reauthorizes (A11), so the capture waits
+   * (`again`) while a reauthorization is unsettled: an unknown outcome, a save that found the
+   * settlement busy, or an error. The next pass sends the same request id, so PayPal replays
+   * a reauthorization it made; a result that could not be saved is kept and saved first.
+   * When one hold's reauthorization ends unknown on MAX_REAUTH_UNKNOWN passes in a row, the
+   * settlement goes to review (`review`) and `onError` is told. The count is kept in memory.
+   */
+  private async reauthorizeDue(
+    auctionId: AuctionId,
+    journal: Journal,
+  ): Promise<{ status: 'ready' | 'again' } | { status: 'review'; journal: Journal }> {
+    const policy = this.deps.reauthPolicy;
+    if (policy === undefined || !policy.enabled) return { status: 'ready' };
+    if (!REAUTH_STATES.has(journal.state)) return { status: 'ready' };
+    const lotId = lotIdOf(auctionId);
+    const failed = new Set(journal.failed.map((f) => f.bidderId));
+    const inDoubt = journal.intent?.op === 'capture' ? journal.intent.holdId : undefined;
+    let blocked = false;
+    for (const cand of journal.plan.candidates.slice(journal.cursor)) {
+      const hold = journal.holds[cand.bidderId];
+      if (hold === undefined || failed.has(cand.bidderId) || hold.holdId === inDoubt) continue;
+      const key = `${lotId}|${hold.holdId}`;
+      try {
+        let result = this.reauthUnsaved.get(key);
+        if (result === undefined) {
+          if ((hold.priorAuthIds?.length ?? 0) > 0) continue;
+          const out = await reauthorizeIfDue(
+            { gateway: this.gateway, audit: this.deps.audit, clock: this.payClock },
+            lotId,
+            {
+              holdId: hold.holdId,
+              authId: hold.authId,
+              ceilingCents: hold.ceilingCents,
+              startedAtMs: hold.createdAtMs ?? this.payClock.nowMs(),
+              generation: hold.priorAuthIds?.length ?? 0,
+            },
+            policy,
+          );
+          if (out.status === 'unknown') {
+            const unknown = (this.reauthUnknown.get(key) ?? 0) + 1;
+            this.reauthUnknown.set(key, unknown);
+            if (unknown >= MAX_REAUTH_UNKNOWN) {
+              return await this.reviewReauth(auctionId, hold.holdId, out.kind);
+            }
+            blocked = true;
+            continue;
+          }
+          this.reauthUnknown.delete(key);
+          if (out.status !== 'reauthorized') continue;
+          result = out;
+          this.reauthUnsaved.set(key, result);
+        }
+        const saved = await persistReauthorization(
+          {
+            journals: this.deps.journals,
+            holds: this.deps.holds,
+            clock: this.payClock,
+            owner: this.owner,
+          },
+          lotId,
+          hold.holdId,
+          result,
+        );
+        if (saved === 'busy') blocked = true;
+        else this.reauthUnsaved.delete(key);
+      } catch (e) {
+        this.deps.onError?.(auctionId, e);
+        blocked = true;
+      }
+    }
+    return { status: blocked ? 'again' : 'ready' };
+  }
+
+  /**
+   * Sends a settlement to review because the reauthorization of `holdId` stayed unknown: the
+   * funds may now be held under an authorization id this service never learned, so no
+   * capture is tried on the old one. The lifecycle steps the capture phase would record come
+   * first. `again` when the settlement is busy or has moved on.
+   */
+  private async reviewReauth(
+    auctionId: AuctionId,
+    holdId: string,
+    kind: string,
+  ): Promise<{ status: 'again' } | { status: 'review'; journal: Journal }> {
+    const lotId = lotIdOf(auctionId);
+    const leased = await withLease(
+      { journals: this.deps.journals, clock: this.payClock },
+      lotId,
+      `${this.owner}-reauth-${randomUUID()}`,
+      async (renew) => {
+        const loaded = await this.deps.journals.load(lotId);
+        if (loaded === null || !REAUTH_STATES.has(loaded.state)) return null;
+        let j: Journal = loaded;
+        const types: Array<'start_auction' | 'hammer' | 'invariant'> = [];
+        if (j.state === 'HELD') types.push('start_auction');
+        if (j.state === 'HELD' || j.state === 'BIDDING') types.push('hammer');
+        types.push('invariant');
+        const tsMs = this.payClock.nowMs();
+        for (const type of types) {
+          const label = type === 'invariant' ? REAUTH_REVIEW_LABEL : `journaled:${type}`;
+          const event: SettlementEvent = { type, tsMs, label };
+          const next = stepSettlement(j, event).journal;
+          await renew();
+          await this.deps.journals.save(next, j.version);
+          await this.deps.audit.append({
+            kind: 'state_change',
+            auctionId: lotId,
+            from: j.state,
+            to: next.state,
+            label,
+            tsMs,
+          });
+          j = next;
+        }
+        return j;
+      },
+    );
+    if (leased.status === 'busy' || leased.value === null) return { status: 'again' };
+    for (const map of [this.reauthUnknown, this.reauthUnsaved]) {
+      for (const key of [...map.keys()]) if (key.startsWith(`${lotId}|`)) map.delete(key);
+    }
+    this.deps.onError?.(
+      auctionId,
+      new Error(
+        `reauthorization of hold ${holdId} stayed unknown (${kind}) on ${MAX_REAUTH_UNKNOWN} passes; settlement sent to review`,
+      ),
+    );
+    return { status: 'review', journal: leased.value };
+  }
+
+  /**
    * Voids the live holds the settlement does not keep: a bidder's second hold, a hold of
    * someone who never registered. Returns how many voids are still unconfirmed.
    */
   private async releaseSpares(journal: Journal): Promise<number> {
     const keep = new Set(Object.values(journal.holds).map((h) => h.holdId));
-    return voidSpareHolds({ gateway: this.gateway, holds: this.deps.holds }, journal, keep);
+    return voidSpareHolds(this.spareDeps(), journal, keep);
+  }
+
+  /** What `voidSpareHolds` needs: every void it sends is audited (R-PAY-132). */
+  private spareDeps(): SpareVoidDeps {
+    return {
+      audit: this.deps.audit,
+      clock: this.payClock,
+      gateway: this.gateway,
+      holds: this.deps.holds,
+    };
   }
 
   /** The payments void phase as the service runs it: normal settlements and review releases. */
@@ -1037,6 +1373,10 @@ class Service implements AuctionService, SettlePort {
    * `reviewHoldMaxAgeMs` old. Every other hold of the journal is voided after a truth read,
    * so no bidder's money stays blocked until expiry. Holds outside the journal are left to
    * `releaseSpares`. Returns the journal as the release left it.
+   *
+   * The same call serves a capture phase that is waiting (RT4-saga-03): there the void phase
+   * keeps the hold of an intent in flight and the holds of the candidate at the cursor and
+   * after it, and releases the rest.
    */
   private async releaseOnReview(journal: Journal): Promise<Journal> {
     let latest = journal;
@@ -1119,6 +1459,20 @@ class Service implements AuctionService, SettlePort {
       plan = (await this.bridge.prepare(auctionId, outcome, holds, reserveCents)).plan;
     }
     await this.boundary('after:prepare');
+    // Mark live holds older than the maximum age on their records; they stay capturable.
+    try {
+      await flagStaleHolds(
+        {
+          holds: this.deps.holds,
+          audit: this.deps.audit,
+          clock: this.payClock,
+          holdMaxAgeMs: this.deps.holdMaxAgeMs ?? DEFAULT_HOLD_MAX_AGE_MS,
+        },
+        lotId,
+      );
+    } catch (e) {
+      this.deps.onError?.(auctionId, e);
+    }
     const created = await createSettlement(
       {
         journals: this.deps.journals,

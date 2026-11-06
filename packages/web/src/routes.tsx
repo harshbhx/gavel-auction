@@ -14,6 +14,7 @@ export type RouteTitleKey =
   | 'demo.roleConsole'
   | 'demo.roleScreen'
   | 'audit.title'
+  | 'ops.title'
   | 'replay.readonly'
   | 'app.name'
   | 'err.notFound';
@@ -29,6 +30,7 @@ export type RouteId =
   | 'console'
   | 'screen'
   | 'audit'
+  | 'ops'
   | 'replay'
   | 'gallery'
   | 'notFound';
@@ -56,6 +58,7 @@ export const ROUTES: readonly RouteDef[] = [
   { id: 'console', path: '/r/:roomId/console', titleKey: 'demo.roleConsole', needsToken: true },
   { id: 'screen', path: '/r/:roomId/screen', titleKey: 'demo.roleScreen' },
   { id: 'audit', path: '/r/:roomId/audit', titleKey: 'audit.title' },
+  { id: 'ops', path: '/ops', titleKey: 'ops.title' },
   { id: 'replay', path: '/replay/:recordingId', titleKey: 'replay.readonly' },
   { id: 'gallery', path: '/gallery', titleKey: 'app.name', devOnly: true },
   { id: 'notFound', path: '*', titleKey: 'err.notFound' },

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Verifies a ledger export without any server (R-ENG-078).
-//   verify-ledger [--head <seq>:<hash>] [--allow-empty] ledger.jsonl
-// --head fails a shortened export as truncated; an empty file fails unless --allow-empty is given.
+//   verify-ledger [--head <seq>:<hash>] [--allow-empty] [--require-closed] ledger.jsonl
+// --head fails a shortened export as truncated; --require-closed fails one that does not end in an anchored AUCTION_CLOSED; an empty file fails unless --allow-empty is given.
 // Prints the entry count and head hash and exits 0, or prints the first bad index and exits 1.
 // The verifier is TypeScript; esbuild bundles src/ledger/export.ts in memory on each run (see D-0019).
 import { Buffer } from 'node:buffer';
@@ -26,13 +26,16 @@ async function loadVerifier() {
 }
 
 async function main(argv) {
-  const usage = 'usage: verify-ledger [--head <seq>:<hash>] [--allow-empty] <ledger.jsonl>';
+  const usage =
+    'usage: verify-ledger [--head <seq>:<hash>] [--allow-empty] [--require-closed] <ledger.jsonl>';
   let expectedHead;
   let allowEmpty = false;
+  let requireClosed = false;
   const files = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--allow-empty') allowEmpty = true;
+    else if (a === '--require-closed') requireClosed = true;
     else if (a === '--head') {
       const m = /^(\d+):([0-9a-f]{64})$/.exec(argv[++i] ?? '');
       if (m === null) {
@@ -63,6 +66,13 @@ async function main(argv) {
   if (r.ok) {
     console.log(`OK ${r.count} entries`);
     console.log(`head ${r.headHash}`);
+    console.log(`seq ${r.count}`);
+    if (!r.closed) {
+      console.log(
+        'NOT CLOSED: the last entry is not an anchored AUCTION_CLOSED; open or cut short',
+      );
+      if (requireClosed) return 1;
+    }
     return 0;
   }
   console.log(`FAIL first bad index ${r.firstBadIndex} (line ${r.firstBadIndex + 1}): ${r.reason}`);

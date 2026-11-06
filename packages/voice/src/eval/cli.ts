@@ -217,7 +217,8 @@ function audioItem(
 function cachedItems(deps: CliDeps, provider: Provider): ReportItem[] | string {
   const dir = `fixtures/stt-cache/${provider}`;
   if (!deps.exists(dir)) return `no recorded provider output at ${dir}`;
-  if (!deps.exists('fixtures/llm-cache')) return 'no recorded model output at fixtures/llm-cache';
+  if (!deps.exists('fixtures/model-cache'))
+    return 'no recorded model output at fixtures/model-cache';
   const items: ReportItem[] = [];
   for (const c of audioCases(deps)) {
     const path = `${dir}/${c.id}.json`;

@@ -4,7 +4,7 @@ import type { Clock } from './clock.js';
 import { EngineError } from './errors.js';
 import { decide } from './decide/index.js';
 import type { DecideResult } from './decide/index.js';
-import { evolve } from './evolve.js';
+import { evolveOwned } from './evolve.js';
 import type { LedgerEntry } from './events.js';
 import type { Hasher } from './hasher.js';
 import { sealBatch } from './ledger/chain.js';
@@ -201,7 +201,7 @@ export class AuctionRuntime {
         this.announce(auctionId, outcome.entries);
         return { ...result, entries: outcome.entries };
       }
-      this.cache.set(auctionId, entries.reduce(evolve, state));
+      this.cache.set(auctionId, evolveOwned(state, entries));
       this.announce(auctionId, entries);
       return { ...result, entries };
     }

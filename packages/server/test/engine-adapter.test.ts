@@ -78,3 +78,37 @@ describe('EngineAdapter drives @gavel/engine through EnginePort (T-RT-108)', () 
     expect(codes.size).toBeGreaterThan(0);
   });
 });
+
+describe('LedgerEngine runs the configured lot (HRD-55)', () => {
+  type Inspect = { state: { lots: Record<string, { config: unknown }> } };
+  const lotOf = (e: LedgerEngine) => {
+    const lot = Object.values((e as unknown as Inspect).state.lots)[0];
+    return lot?.config as {
+      hammer: string;
+      durationMs: number;
+      softClose: { windowMs: number; hardCloseMs?: number };
+    };
+  };
+  const make = (over: Record<string, unknown>) =>
+    new LedgerEngine(
+      new SeqIds().mint<'AuctionId'>() as AuctionId,
+      { ...config, ...over } as AuctionConfig,
+      START as EpochMs,
+    );
+
+  it('refuses a soft close window it cannot run instead of shortening it', () => {
+    expect(() => make({ softCloseWindowMs: 3_600_000 })).toThrow(RangeError);
+  });
+
+  it('records hammer auto when the room auto hammers and manual otherwise', () => {
+    expect(lotOf(make({})).hammer).toBe('manual');
+    expect(lotOf(make({ autoHammerDelayMs: 5000 })).hammer).toBe('auto');
+  });
+
+  it('sets a hard close past the end by a bounded margin', () => {
+    const lot = lotOf(make({ softCloseExtensionMs: 600_000, maxExtensions: 50 }));
+    expect(lot.softClose.hardCloseMs).toBe(lot.durationMs + 3_600_000);
+    const small = lotOf(make({ softCloseExtensionMs: 30_000, maxExtensions: 5 }));
+    expect(small.softClose.hardCloseMs).toBe(small.durationMs + 150_000);
+  });
+});

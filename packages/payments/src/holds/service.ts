@@ -7,6 +7,7 @@ import type { AuditSink, Clock, HoldStore, PaymentsGateway } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
 import type { HoldRecord } from '../types.js';
 import { sharedHoldQueue, type KeyedQueue } from '../webhooks/merge.js';
+import { auditedCall } from './audited.js';
 
 /**
  * HoldService: the server side of the hold flow (SPEC 3.3, R-PAY-030 to R-PAY-033).
@@ -176,12 +177,17 @@ export class HoldService {
         amountCents: i.ceilingCents,
         generation: 0,
       });
-      const order = await this.deps.gateway.createOrder({
-        holdId,
-        ceilingCents: i.ceilingCents,
-        description: `Gavel hold for auction ${i.auctionId}`,
-        requestId,
-      });
+      const order = await auditedCall(
+        this.deps,
+        { auctionId: i.auctionId, holdId, op: 'order', requestId },
+        () =>
+          this.deps.gateway.createOrder({
+            holdId,
+            ceilingCents: i.ceilingCents,
+            description: `Gavel hold for auction ${i.auctionId}`,
+            requestId,
+          }),
+      );
       const record: HoldRecord = {
         holdId,
         auctionId: i.auctionId,
@@ -280,16 +286,22 @@ export class HoldService {
     return LIVE_AUTH.has(order.authStatus ?? 'CREATED') ? order.authId : undefined;
   }
 
-  private async voidFound(h: HoldRecord, authId: string): Promise<void> {
-    await this.deps.gateway.voidAuthorization(
-      authId,
-      buildRequestId({
-        auctionId: h.auctionId,
-        op: 'void',
-        holdId: h.holdId,
-        amountCents: 0,
-        generation: 0,
-      }),
+  /**
+   * Voids an authorization of the hold under its fixed void request id, with its
+   * `paypal_call` audit row (RT4-saga-04).
+   */
+  private voidFound(h: HoldRecord, authId: string): Promise<void> {
+    const requestId = buildRequestId({
+      auctionId: h.auctionId,
+      op: 'void',
+      holdId: h.holdId,
+      amountCents: 0,
+      generation: 0,
+    });
+    return auditedCall(
+      this.deps,
+      { auctionId: h.auctionId, holdId: h.holdId, op: 'void', requestId },
+      () => this.deps.gateway.voidAuthorization(authId, requestId),
     );
   }
 
@@ -298,16 +310,7 @@ export class HoldService {
     await this.deps.holds.put({ ...record, authId, status: 'EXPIRED' });
     await this.audit(record, record.status, 'EXPIRED', 'hold_authorized_after_abandon');
     try {
-      await this.deps.gateway.voidAuthorization(
-        authId,
-        buildRequestId({
-          auctionId: record.auctionId,
-          op: 'void',
-          holdId: record.holdId,
-          amountCents: 0,
-          generation: 0,
-        }),
-      );
+      await this.voidFound(record, authId);
     } catch (e) {
       if (!(e instanceof PayPalError)) throw e;
     }
@@ -324,7 +327,11 @@ export class HoldService {
       generation: 0,
     });
     try {
-      return await gateway.authorizeOrder(hold.orderId, requestId);
+      return await auditedCall(
+        this.deps,
+        { auctionId: hold.auctionId, holdId: hold.holdId, op: 'authorize', requestId },
+        () => gateway.authorizeOrder(hold.orderId, requestId),
+      );
     } catch (e) {
       const lost = e instanceof PayPalError && (e.outcome === 'unknown' || isAlreadyAuthorized(e));
       if (!lost) throw e;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { setup } from './room-harness';
+import { acceptLatestConfirm, setup } from './room-harness';
 
 describe('bidder identity (T-RT-031)', () => {
   it('ignores a spoofed bidderId from a bidder and honours the token', async () => {
@@ -13,8 +13,12 @@ describe('bidder identity (T-RT-031)', () => {
   it('records source manual and the auctioneer sub for a manual bid', async () => {
     const t = await setup();
     const boss = await t.connect('auctioneer');
+    const c1 = await t.connect('bidder', t.b1);
     await t.room.submitBid(boss.conn, { ...t.bid(10000), bidderId: t.b1 });
-    const events = await t.store.readEvents(t.auctionId, 4, 1);
+    await acceptLatestConfirm(t.room, c1);
+    const events = (await t.store.readEvents(t.auctionId, 4, 10)).filter(
+      (e) => e.type === 'bid_accepted',
+    );
     expect(events[0]).toMatchObject({
       bidderId: t.b1,
       audit: { source: 'manual', transcript: `manual by ${boss.conn.sub}` },
@@ -37,8 +41,12 @@ describe('bidder identity (T-RT-031)', () => {
     await t.room.submitBid(c1.conn, { ...t.bid(10000), source: 'manual' });
     const boss = await t.connect('auctioneer');
     t.clock.set(t.clock.now() + 1000);
+    const c2 = await t.connect('bidder', t.b2);
     await t.room.submitBid(boss.conn, { ...t.bid(10500), bidderId: t.b2, source: 'qr' });
-    const events = await t.store.readEvents(t.auctionId, 4, 2);
+    await acceptLatestConfirm(t.room, c2);
+    const events = (await t.store.readEvents(t.auctionId, 4, 10)).filter(
+      (e) => e.type === 'bid_accepted',
+    );
     expect(events[0]).toMatchObject({ source: 'qr', audit: { source: 'qr' } });
     expect(events[1]).toMatchObject({ source: 'manual', audit: { source: 'manual' } });
   });

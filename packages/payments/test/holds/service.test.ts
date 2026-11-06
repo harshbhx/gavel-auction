@@ -177,8 +177,20 @@ describe('T-PAY-020 create, approve, complete', () => {
     expect(rig.server.core.getOrder(orderId).amountCents).toBe(25000);
     await rig.approve(orderId);
     await rig.service.completeApproval({ holdId, orderId });
-    expect(rig.audits.map((a) => a.label)).toEqual(['hold_created', 'hold_authorized']);
-    expect(rig.audits[1]).toMatchObject({ holdId, from: 'PENDING_APPROVAL', to: 'HELD' });
+    const changes = rig.audits.filter((a) => a.kind === 'state_change');
+    expect(changes.map((a) => a.label)).toEqual(['hold_created', 'hold_authorized']);
+    expect(changes[1]).toMatchObject({ holdId, from: 'PENDING_APPROVAL', to: 'HELD' });
+    // RT4-saga-04: each money call has its own row, written before the state change it led to.
+    expect(rig.audits.map((a) => [a.kind, a.op ?? a.label])).toEqual([
+      ['paypal_call', 'order'],
+      ['state_change', 'hold_created'],
+      ['paypal_call', 'authorize'],
+      ['state_change', 'hold_authorized'],
+    ]);
+    for (const call of rig.audits.filter((a) => a.kind === 'paypal_call')) {
+      expect(call).toMatchObject({ auctionId: 'a1', holdId, outcome: 'definite', label: 'ok' });
+      expect(call.requestId).toMatch(/\S/);
+    }
   });
 
   it('refuses a ceiling outside the cap or the presets before any PayPal call', async () => {
