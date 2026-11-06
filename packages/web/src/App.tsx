@@ -450,6 +450,8 @@ function ReturnRoute({ roomId, api }: { roomId: string; api: Api }) {
       onBackToCeiling={() => navigate(`/r/${encodeURIComponent(roomId)}/register`)}
       onContinue={() => navigate(`/r/${encodeURIComponent(roomId)}/bid`)}
     />
+  );
+}
 
 function OpsRoute({ api }: { api: Api | undefined }) {
   const [key, setKey] = useState('');
