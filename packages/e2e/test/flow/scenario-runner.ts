@@ -1,5 +1,6 @@
 import { evolveAll } from '@gavel/engine';
-import type { AuctionConfig } from '@gavel/shared';
+import { Handshake } from '@gavel/server/src/transport/handshake';
+import { decodeClientMsg, encodeMsg, type AuctionConfig } from '@gavel/shared';
 import type { Invariant, Scenario } from '../../src/index';
 import { CONFIG, bidMessage, connect, enroll, ledgerKey, makeRig, type Bidder } from './rig';
 
@@ -17,6 +18,8 @@ export interface Outcome {
   voided: string[];
   accepted: number;
   rejected: Array<{ actor: string; reason: string }>;
+  /** Error frames the server answered to send_raw steps, in step order. */
+  frameErrors: Array<{ actor: string; code: string }>;
   invariants: Partial<Record<Invariant, boolean>>;
 }
 
@@ -62,7 +65,7 @@ export function assertSupported(scenario: Scenario): void {
   }
 }
 
-const SUPPORTED_STEPS = new Set(['register', 'open', 'bid', 'hammer']);
+const SUPPORTED_STEPS = new Set(['register', 'open', 'bid', 'hammer', 'send_raw']);
 
 export async function runScenarioInProc(
   scenario: Scenario,
@@ -81,6 +84,33 @@ export async function runScenarioInProc(
   const bidders = new Map<string, Bidder>();
   let boss: Awaited<ReturnType<typeof connect>> | undefined;
   const base = scenario.clock.startMs;
+  const frameErrors: Outcome['frameErrors'] = [];
+  const handshakes = new Map<string, Handshake>();
+
+  /** The raw-frame path a socket host runs: Handshake.receive, then decode and dispatch. */
+  const handshakeFor = async (actor: string, who: Bidder): Promise<Handshake> => {
+    const known = handshakes.get(actor);
+    if (known !== undefined) return known;
+    const hs = new Handshake({
+      clock: rig.clock,
+      send: (t) => who.transport.send(t),
+      close: () => undefined,
+      ping: () => undefined,
+      onJoin: () => undefined,
+      onFrame: async (raw) => {
+        const res = decodeClientMsg(raw);
+        if (!res.ok) {
+          const out = encodeMsg({ v: 1, t: 'error', code: res.code, message: res.code });
+          if (out.ok) who.transport.send(out.value);
+          return;
+        }
+        if (res.value.t === 'bid') await room.submitBid(who.conn, res.value);
+      },
+    });
+    await hs.receive(JSON.stringify({ v: 1, t: 'join', token: 'placeholder', auctionId }));
+    handshakes.set(actor, hs);
+    return hs;
+  };
 
   const steps = [...scenario.steps].sort((a, b) => a.t - b.t);
   for (const step of steps) {
@@ -103,6 +133,16 @@ export async function runScenarioInProc(
       if (who === undefined)
         throw new Error(`${scenario.id}: ${step.actor} bids before registering`);
       await room.submitBid(who.conn, bidMessage(rig, step.amount, 'manual'));
+    } else if (step.do === 'send_raw') {
+      const who = bidders.get(step.actor);
+      if (who === undefined)
+        throw new Error(`${scenario.id}: ${step.actor} sends a frame before registering`);
+      const hs = await handshakeFor(step.actor, who);
+      const before = who.transport.messages('error').length;
+      await hs.receive(step.frame);
+      for (const m of who.transport.messages('error').slice(before)) {
+        frameErrors.push({ actor: step.actor, code: String(m['code']) });
+      }
     } else if (step.do === 'hammer') {
       if (boss === undefined) throw new Error(`${scenario.id}: hammer before open`);
       await room.control(boss.conn, {
@@ -167,8 +207,10 @@ export async function runScenarioInProc(
     rejected: [...bidders].flatMap(([actor, b]) =>
       b.transport.messages('bid_rejected').map((m) => ({ actor, reason: String(m['reason']) })),
     ),
+    frameErrors,
     invariants,
   };
+  for (const hs of handshakes.values()) hs.stop();
   await service.close();
   return outcome;
 }
@@ -188,6 +230,10 @@ export function checkExpectations(scenario: Scenario, outcome: Outcome): string[
       if (JSON.stringify(want) !== JSON.stringify(got)) {
         failures.push(`ledger: expected ${JSON.stringify(want)}, got ${JSON.stringify(got)}`);
       }
+    } else if ('rejected' in exp) {
+      const want = JSON.stringify(exp.rejected);
+      const got = JSON.stringify(outcome.frameErrors);
+      if (want !== got) failures.push(`rejected: expected ${want}, got ${got}`);
     } else if ('invariants' in exp) {
       for (const id of exp.invariants) {
         const ok = outcome.invariants[id];
