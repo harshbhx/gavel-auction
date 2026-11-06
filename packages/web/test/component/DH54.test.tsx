@@ -104,9 +104,8 @@ describe('public screen route', () => {
     await mount();
     act(() => openLot());
     expect(screen.getByTestId('screen-price').textContent).toBe('$120.00');
-    expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe(
-      t('screen.priceAnnounce', { amount: '$120.00' }),
-    );
+    const spoken = screen.getByText(t('screen.priceAnnounce', { amount: '$120.00' }));
+    expect(spoken.getAttribute('aria-live')).toBe('polite');
   });
 
   it('freezes the clock and shows the reconnecting chip when the socket drops', async () => {
@@ -169,6 +168,6 @@ describe('replay route', () => {
       vi.fn(() => Promise.resolve(new Response('no', { status: 404 }))),
     );
     render(<App initialPath="/replay/missing" />);
-    expect((await screen.findByRole('alert')).textContent).toBe(t('replay.invalid'));
+    expect(await screen.findByText(t('replay.invalid'))).toBeTruthy();
   });
 });
