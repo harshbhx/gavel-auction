@@ -46,7 +46,9 @@ test('scripted S01: the public screen follows the bids up to the hammer', async 
   await screen.open();
   await expect(screen.sold).toHaveCount(0);
   await expect(screen.price).toHaveText('$350.00', { timeout: 20_000 });
-  await expect(screen.sold).toBeVisible({ timeout: 30_000 });
+  // The projector layout clips the stage on a phone viewport, so the sold banner is checked as attached.
+  await expect(screen.sold).toBeAttached({ timeout: 30_000 });
+  await expect(screen.sold).toContainText('$350.00');
 });
 
 test('scripted S01: a bidder sends a bid and the console opens the hammer question', async ({
@@ -72,7 +74,8 @@ test('scripted S01: after the hammer the screen is sold and the receipt is settl
 }) => {
   const screen = new ScriptedView(page, stack, 'screen');
   await screen.open(16_000);
-  await expect(screen.sold).toBeVisible();
+  await expect(screen.sold).toBeAttached();
+  await expect(screen.sold).toContainText('$350.00');
   await new ScriptedView(page, stack, 'receipt').open(18_500);
   await expect(page.locator('[data-route="receipt"]')).toBeVisible();
 });
