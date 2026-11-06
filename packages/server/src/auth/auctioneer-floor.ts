@@ -43,3 +43,27 @@ export async function auctioneerTokenLive(
   if (payload.kind !== 'auctioneer') return true;
   return payload.iat >= (await readAuctioneerFloor(store, payload.aud));
 }
+
+/** The token facts a socket keeps from its join, so it can be re-checked later. */
+export interface ConnectionToken {
+  jti: string;
+  iat: number;
+  exp: number;
+  kind: string;
+}
+
+/**
+ * True while the token behind an open socket is still good: not expired, its jti not on the
+ * denylist, and (for an auctioneer token) issued at or after the current floor.
+ */
+export async function connectionTokenLive(
+  store: FloorStore & Pick<RoomStore, 'isDenied'>,
+  auctionId: string,
+  token: ConnectionToken,
+  nowMs: number,
+): Promise<boolean> {
+  if (token.exp * 1000 <= nowMs) return false;
+  if (await store.isDenied(token.jti as Parameters<RoomStore['isDenied']>[0])) return false;
+  if (token.kind !== 'auctioneer') return true;
+  return token.iat >= (await readAuctioneerFloor(store, auctionId));
+}

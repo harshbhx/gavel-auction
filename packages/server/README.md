@@ -47,7 +47,7 @@ With `PAYMENTS=sandbox` the payments layer also reads `PAYPAL_CLIENT_ID`, `PAYPA
 2. Set `TOKEN_SECRET` to the new value and restart. Tokens signed with either secret are accepted until the deadline.
 3. After the deadline remove the two `PREVIOUS` settings and restart.
 4. Rotate `ADMIN_KEY` by changing it and restarting; rotate PayPal credentials in the PayPal developer dashboard first, then update the environment.
-5. A leaked auctioneer link is revoked with the auctioneer rotate endpoint, which issues a new link and raises a per-auction floor so every earlier auctioneer token stops working on HTTP and on socket join (live sockets are not closed). Rotate, `auctioneer/revoke-all` and `auctioneer/revoke` need the admin key.
+5. A leaked auctioneer link is revoked with the auctioneer rotate endpoint, which issues a new link and raises a per-auction floor so every earlier auctioneer token stops working on HTTP and on socket join and closes every open socket of the revoked token with 4401; a socket also closes when its token expires, and the token is re-checked on every bid or confirm frame. Rotate, `auctioneer/revoke-all` and `auctioneer/revoke` need the admin key.
 
 ## Demo reset
 

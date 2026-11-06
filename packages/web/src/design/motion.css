@@ -65,12 +65,12 @@
     padding: 0 0.25em;
   }
 
-  .gv-chip {
+  :root .gv-chip {
     border: 2px solid CanvasText;
   }
 
-  .gv-btn:focus-visible,
-  .gv-input:focus-visible {
+  :root .gv-btn:focus-visible,
+  :root .gv-input:focus-visible {
     outline: 2px solid Highlight;
   }
 }
