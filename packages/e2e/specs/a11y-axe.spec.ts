@@ -11,6 +11,7 @@ import { expect, test } from '../src/fixtures/base';
  * session, and the gallery with its dialog open. NOT covered: the bid, console, public screen and
  * receipt routes with a live room behind them, because a browser cannot reach those states
  * without a session for a seeded room; the web package's unit axe tests cover those states.
+ * The list of blocked views is kept in docs/A11Y.md under Known gaps.
  */
 const AXE_PATH = createRequire(import.meta.url).resolve('axe-core');
 
