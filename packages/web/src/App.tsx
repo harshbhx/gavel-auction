@@ -32,6 +32,7 @@ import { LiveConsole } from './screens/console/LiveConsole';
 import { GalleryScreen } from './screens/gallery/GalleryScreen';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
 import { LandingScreen } from './screens/landing/LandingScreen';
+import { fetchOpsSummary, OpsView, type OpsSummaryView } from './ops/OpsView';
 import { Receipt } from './screens/receipt/Receipt';
 import { Approve } from './screens/register/Approve';
 import { RegisterScreen, type RegistrationDraft } from './screens/register/RegisterScreen';
@@ -453,6 +454,51 @@ function ApproveRoute(props: {
   );
 }
 
+function OpsRoute({ api }: { api: Api | undefined }) {
+  const [key, setKey] = useState('');
+  const [summary, setSummary] = useState<OpsSummaryView | undefined>(undefined);
+  const [error, setError] = useState<string | undefined>(undefined);
+  const labels = {
+    title: t('ops.title'),
+    loading: t('ops.loading'),
+    sagas: t('ops.sagas'),
+    noSagas: t('ops.noSagas'),
+    paypal: t('ops.paypal'),
+    logs: t('ops.logs'),
+  };
+  const load = (): void => {
+    if (api === undefined) return;
+    setError(undefined);
+    fetchOpsSummary(api.apiBase, key)
+      .then(setSummary)
+      .catch(() => setError(t('ops.failed')));
+  };
+  return (
+    <main data-route="ops">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          load();
+        }}
+      >
+        <label>
+          {t('ops.keyLabel')}
+          <input
+            type="password"
+            autoComplete="off"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+          />
+        </label>
+        <button type="submit">{t('ops.load')}</button>
+      </form>
+      {(summary !== undefined || error !== undefined) && (
+        <OpsView labels={labels} summary={summary} error={error} />
+      )}
+    </main>
+  );
+}
+
 function Routed({
   match,
   liveBase,
@@ -474,6 +520,7 @@ function Routed({
     );
   }
   const who = live && roomId !== undefined ? tokenFor(id, roomId) : null;
+  if (id === 'ops') return <OpsRoute api={api} />;
   if (id === 'landing' && api !== undefined) return <LandingRoute api={api} />;
   if (id === 'join' && roomId !== undefined && api !== undefined) {
     return <JoinRoute roomId={roomId} api={api} />;
