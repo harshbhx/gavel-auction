@@ -59,7 +59,11 @@ test.describe('forced colours', () => {
   test('the focus ring is still drawn on a button', async ({ page }) => {
     await page.emulateMedia({ forcedColors: 'active' });
     await page.goto('/gallery');
-    await page.keyboard.press('Tab');
+    for (let i = 0; i < 12; i += 1) {
+      await page.keyboard.press('Tab');
+      if (await page.evaluate(() => document.activeElement?.classList.contains('gv-btn') === true))
+        break;
+    }
     const ring = await page.evaluate(() => {
       const el = document.activeElement;
       if (el === null) return { style: 'none', width: 0 };
