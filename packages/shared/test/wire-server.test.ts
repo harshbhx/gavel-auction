@@ -188,6 +188,6 @@ describe('error frames and room-size limits (R-RT-017, R-RT-121)', () => {
   it('keeps stopped optional so older frames still decode', () => {
     const decoded = dec(fixtures.hammer);
     expect(decoded.ok).toBe(true);
-    if (decoded.ok) expect(decoded.msg).not.toHaveProperty('stopped');
+    if (decoded.ok) expect(decoded.value).not.toHaveProperty('stopped');
   });
 });
