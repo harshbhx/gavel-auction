@@ -84,9 +84,33 @@ describe('receipts (T-WEB-045)', () => {
     expect(container.textContent).toContain('you are the winner. Charged $300.00');
   });
 
-  it('downloads exactly the settlement view', () => {
+  it('downloads only the viewer own hold, never another bidder', () => {
+    const v = view('SETTLED', [
+      hold(1, 'CAPTURED', { capturedCents: 35000 }),
+      hold(2, 'SETTLED', { releasedCents: 50000 }),
+    ]);
+    const parsed = JSON.parse(receiptJson(v, 2, 1_700_000_000_000)) as {
+      holds: { paddle: number }[];
+      at: string;
+    };
+    expect(parsed.holds.map((h) => h.paddle)).toEqual([2]);
+    expect(parsed.at).toBe('2023-11-14T22:13:20.000Z');
+    expect(receiptJson(v, 2, null)).not.toContain('"at"');
+    expect(receiptJson(v, 2, null)).not.toContain('P1');
+  });
+
+  it('says confirming, not held-not-charged, after capture without an amount', () => {
+    const v = view('SETTLED', [hold(1, 'SETTLED', { idSuffix: '' })]);
+    const { container } = render(<Receipt {...base} view={v} paddle={1} />);
+    expect(container.textContent).toContain(en['receipt.confirming']);
+    expect(container.textContent).not.toMatch(/held, not charged/);
+    expect(container.textContent).not.toMatch(/Charged/);
+  });
+
+  it('shows no time row when the server time is unknown', () => {
     const v = view('CAPTURED', [hold(1, 'CAPTURED', { capturedCents: 35000 })]);
-    expect(JSON.parse(receiptJson(v))).toEqual(v);
+    const { container } = render(<Receipt {...base} at={null} view={v} paddle={1} />);
+    expect(container.querySelector('time')).toBeNull();
   });
 });
 

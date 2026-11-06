@@ -6,6 +6,7 @@ import { socketUrl, startLiveRoom, type LiveRoom } from './net/liveRoom';
 import { Announcer } from './a11y/Announcer';
 import type { PaymentsMode } from './config';
 import { receiptSource } from './ladder/fromWire';
+import { SettlementPanel } from './ladder/SettlementPanel';
 import type { Transport } from './net/transport';
 import { WebSocketTransport } from './net/wsTransport';
 import { loadSession, saveSession } from './net/session';
@@ -197,7 +198,7 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId }: LiveRouteProps)
 export function ReceiptRoute({ roomId }: { roomId: string }) {
   const state = useRoom((s) => s);
   const online = useOnline();
-  const { view, paddle } = useMemo(() => receiptSource(state), [state]);
+  const { view, paddle, at, runnerUp, detail } = useMemo(() => receiptSource(state), [state]);
   return (
     <main data-route="receipt">
       {!online && <Offline view="receipt" />}
@@ -206,7 +207,14 @@ export function ReceiptRoute({ roomId }: { roomId: string }) {
       ) : view === null ? (
         <Empty view="receipt" />
       ) : (
-        <Receipt view={view} paddle={paddle} itemName={roomId} at={Date.now()} />
+        <>
+          <Receipt view={view} paddle={paddle} itemName={roomId} at={at} runnerUp={runnerUp} />
+          <SettlementPanel
+            view={view}
+            detail={detail}
+            auditHref={`/r/${encodeURIComponent(roomId)}/audit`}
+          />
+        </>
       )}
     </main>
   );

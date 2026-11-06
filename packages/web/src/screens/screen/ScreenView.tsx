@@ -6,6 +6,8 @@ import { roomStore, useRoom, type RoomStore } from '../../store/roomStore';
 import { selectors } from '../../store/selectors';
 import { formatUsd } from '../../util/money';
 import { formatCountdown } from '../../util/time';
+import { publicSource } from '../../ladder/fromWire';
+import { SettlementPanel } from '../../ladder/SettlementPanel';
 import { QrCode } from '../join/QrCode';
 import { FrozenChip, PriceFlash, Sold, type SoldOutcome } from './Sold';
 import './screen.css';
@@ -32,6 +34,7 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
   const status = useRoom((s) => s.snapshot?.status ?? null, store);
   const snapPrice = useRoom((s) => s.snapshot?.price ?? null, store);
   const snapLeader = useRoom((s) => s.snapshot?.leaderId ?? null, store);
+  const settlementState = useRoom((s) => s, store);
   const now = useServerNow(store);
   const connection = useConnection();
   const [, setTick] = useState(0);
@@ -103,6 +106,12 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
           ))}
         </ol>
       </section>
+      {closed && (
+        <SettlementPanel
+          view={publicSource(settlementState)}
+          auditHref={`/r/${encodeURIComponent(code)}/audit`}
+        />
+      )}
       {!closed && (
         <aside className="gv-screen__join">
           <QrCode url={joinUrl} size={200} />
