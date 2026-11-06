@@ -10,8 +10,11 @@ import {
   HoldService,
   sweepStalePending,
   flagStaleHolds,
+  lookupUnknownReauths,
   persistReauthorization,
   reauthorizeIfDue,
+  recoverTrail,
+  stateChangeRow,
   startReconcileTimer,
   guardGateway,
   reconcile,
@@ -34,6 +37,7 @@ import {
   type PaymentsMetrics,
   type PlanOutcome,
   type ReauthPolicy,
+  type ReauthUnknown,
   type Reauthorized,
   type ReconcileTimer,
   type ReconcileReport,
@@ -270,6 +274,11 @@ const MAX_REAUTH_UNKNOWN = 5;
 
 /** History label of a review raised because a reauthorization stayed unknown. */
 const REAUTH_REVIEW_LABEL = 'journaled:reauth_unknown';
+
+/** True while a hold of the settlement has a reauthorization in doubt (RT4-saga-05). */
+function reauthInDoubt(journal: Journal): boolean {
+  return Object.values(journal.holds).some((h) => h.reauthInDoubt !== undefined);
+}
 
 /** How far back the periodic reconcile looks: lots settled within the last day. */
 const RECONCILE_LOOKBACK_MS = 24 * 60 * 60 * 1000;
@@ -716,6 +725,10 @@ class Service implements AuctionService, SettlePort {
   }
 
   async voidAll(auctionId: AuctionId, actor: string): Promise<VoidAllOutcome> {
+    // RT4-saga-05: a hold whose reauthorization is in doubt is moved to the authorization
+    // PayPal made first, so the void reaches the funds.
+    const before = await this.deps.journals.load(lotIdOf(auctionId));
+    if (before !== null && reauthInDoubt(before)) await this.lookupReauths(lotIdOf(auctionId));
     const out = await voidAllLiveHolds(
       {
         journals: this.deps.journals,
@@ -746,6 +759,7 @@ class Service implements AuctionService, SettlePort {
       actor,
       tsMs: this.payClock.nowMs(),
     });
+    if (reauthInDoubt(journal)) await this.lookupReauths(lotId);
     const released = await runVoidPhase(this.voidDeps({ releaseAllReviewHolds: true }), lotId);
     if (released.status === 'busy') return 'busy';
     await this.markReleasedHolds(released.journal);
@@ -1007,6 +1021,8 @@ class Service implements AuctionService, SettlePort {
   /** True when a terminal settlement still has a hold the release must free. */
   private async holdsLeft(auctionId: AuctionId, journal: Journal): Promise<boolean> {
     if (!TERMINAL.has(journal.state)) return true;
+    // A reauthorization in doubt is looked up on the next run (RT4-saga-05).
+    if (reauthInDoubt(journal)) return true;
     const keep =
       journal.state === 'FAILED_NEEDS_REVIEW' ? this.reviewKeep(journal) : new Set<string>();
     return (await this.deps.holds.listByAuction(auctionId)).some(
@@ -1112,7 +1128,7 @@ class Service implements AuctionService, SettlePort {
       await this.markReleasedHolds(journal);
       const open = await this.releaseSpares(journal);
       await this.finishBridge(room, auctionId, journal);
-      return open > 0 ? 'again' : 'done';
+      return open > 0 || reauthInDoubt(journal) ? 'again' : 'done';
     }
     await this.report(room, journal);
     if ((await this.releaseSpares(journal)) > 0) retry = true;
@@ -1124,7 +1140,8 @@ class Service implements AuctionService, SettlePort {
     if (reauth.status === 'review') {
       const reviewed = await this.releaseOnReview(reauth.journal);
       await this.finishBridge(room, auctionId, reviewed);
-      return 'done';
+      // RT4-saga-05: the lot runs again until PayPal has answered the lookup.
+      return reauthInDoubt(reviewed) ? 'again' : 'done';
     }
     const captured = await runCapturePhase(
       {
@@ -1228,7 +1245,7 @@ class Service implements AuctionService, SettlePort {
             const unknown = (this.reauthUnknown.get(key) ?? 0) + 1;
             this.reauthUnknown.set(key, unknown);
             if (unknown >= MAX_REAUTH_UNKNOWN) {
-              return await this.reviewReauth(auctionId, hold.holdId, out.kind);
+              return await this.reviewReauth(auctionId, hold.holdId, out);
             }
             blocked = true;
             continue;
@@ -1263,12 +1280,16 @@ class Service implements AuctionService, SettlePort {
    * Sends a settlement to review because the reauthorization of `holdId` stayed unknown: the
    * funds may now be held under an authorization id this service never learned, so no
    * capture is tried on the old one. The lifecycle steps the capture phase would record come
-   * first. `again` when the settlement is busy or has moved on.
+   * first. The review is saved with the reauthorization's request id on the hold
+   * (`reauthInDoubt`, RT4-saga-05), so the review release looks the authorization up instead
+   * of releasing the old one, and the alert names the order and the request. Each step's
+   * `state_change` row is written after its save and recovered from the history after a
+   * crash (RT4-saga-04). `again` when the settlement is busy or has moved on.
    */
   private async reviewReauth(
     auctionId: AuctionId,
     holdId: string,
-    kind: string,
+    out: ReauthUnknown,
   ): Promise<{ status: 'again' } | { status: 'review'; journal: Journal }> {
     const lotId = lotIdOf(auctionId);
     const leased = await withLease(
@@ -1278,6 +1299,7 @@ class Service implements AuctionService, SettlePort {
       async (renew) => {
         const loaded = await this.deps.journals.load(lotId);
         if (loaded === null || !REAUTH_STATES.has(loaded.state)) return null;
+        let audited = await recoverTrail(this.deps.audit, loaded);
         let j: Journal = loaded;
         const types: Array<'start_auction' | 'hammer' | 'invariant'> = [];
         if (j.state === 'HELD') types.push('start_auction');
@@ -1288,29 +1310,41 @@ class Service implements AuctionService, SettlePort {
           const label = type === 'invariant' ? REAUTH_REVIEW_LABEL : `journaled:${type}`;
           const event: SettlementEvent = { type, tsMs, label };
           const next = stepSettlement(j, event).journal;
+          next.auditedSeq = audited;
+          if (type === 'invariant') {
+            for (const h of Object.values(next.holds)) {
+              if (h.holdId === holdId) {
+                h.reauthInDoubt = { requestId: out.requestId, amountCents: out.amountCents };
+              }
+            }
+          }
           await renew();
           await this.deps.journals.save(next, j.version);
-          await this.deps.audit.append({
-            kind: 'state_change',
-            auctionId: lotId,
-            from: j.state,
-            to: next.state,
-            label,
-            tsMs,
-          });
           j = next;
+          const entry = next.history[next.history.length - 1];
+          if (entry !== undefined) {
+            await this.deps.audit.append(stateChangeRow(lotId, entry));
+            audited = entry.seq;
+          }
         }
-        return j;
+        const done = structuredClone(j);
+        done.auditedSeq = audited;
+        done.version = j.version + 1;
+        await renew();
+        await this.deps.journals.save(done, j.version);
+        return done;
       },
     );
     if (leased.status === 'busy' || leased.value === null) return { status: 'again' };
     for (const map of [this.reauthUnknown, this.reauthUnsaved]) {
       for (const key of [...map.keys()]) if (key.startsWith(`${lotId}|`)) map.delete(key);
     }
+    const journalHold = Object.values(leased.value.holds).find((h) => h.holdId === holdId);
+    const orderId = journalHold?.orderId ?? (await this.deps.holds.get(holdId))?.orderId;
     this.deps.onError?.(
       auctionId,
       new Error(
-        `reauthorization of hold ${holdId} stayed unknown (${kind}) on ${MAX_REAUTH_UNKNOWN} passes; settlement sent to review`,
+        `reauthorization of hold ${holdId} (order ${orderId ?? 'unknown'}, request ${out.requestId}) stayed unknown (${out.kind}) on ${MAX_REAUTH_UNKNOWN} passes; settlement sent to review`,
       ),
     );
     return { status: 'review', journal: leased.value };
@@ -1382,6 +1416,7 @@ class Service implements AuctionService, SettlePort {
    */
   private async releaseOnReview(journal: Journal): Promise<Journal> {
     let latest = journal;
+    if (reauthInDoubt(journal)) await this.lookupReauths(journal.auctionId);
     try {
       const released = await runVoidPhase(this.voidDeps(), journal.auctionId);
       if (released.status !== 'busy') latest = released.journal;
@@ -1390,6 +1425,30 @@ class Service implements AuctionService, SettlePort {
     }
     await this.markReleasedHolds(latest);
     return latest;
+  }
+
+  /**
+   * RT4-saga-05: looks up the authorization PayPal may have made for a reauthorization the
+   * review saved as in doubt, and records it on the hold, so the review keeps and releases it
+   * like the known holds. Until PayPal answers, the hold is not released and the lot is run
+   * again.
+   */
+  private async lookupReauths(lotId: string): Promise<void> {
+    try {
+      await lookupUnknownReauths(
+        {
+          journals: this.deps.journals,
+          holds: this.deps.holds,
+          gateway: this.gateway,
+          audit: this.deps.audit,
+          clock: this.payClock,
+          owner: this.owner,
+        },
+        lotId,
+      );
+    } catch (e) {
+      this.deps.onError?.(lotId, e);
+    }
   }
 
   /** The ledger holds every command of the room engine, then `synced` is set for this process. */

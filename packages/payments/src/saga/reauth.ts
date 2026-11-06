@@ -1,9 +1,12 @@
 import { PayPalError } from '../errors.js';
+import { auditedCall } from '../holds/audited.js';
 import type { AuditSink, Clock, HoldStore, JournalStore, PaymentsGateway } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
+import type { HoldTruth, JournalHold } from '../types.js';
 import { sharedHoldQueue } from '../webhooks/merge.js';
 import { withLease } from './create.js';
 import { defaultLeaseOwner, runLeaseOwner } from './owner.js';
+import { truthArgs } from './truth.js';
 
 /**
  * Reauthorization policy and call path (SPEC 3.6, R-PAY-070 to R-PAY-072).
@@ -65,12 +68,23 @@ export interface Reauthorized {
   generation: number;
 }
 
+/**
+ * A reauthorization PayPal may or may not have made. `requestId` and `amountCents` are what
+ * it was sent with: the same request replays it (RT4-saga-05).
+ */
+export interface ReauthUnknown {
+  status: 'unknown';
+  kind: string;
+  requestId: string;
+  amountCents: number;
+}
+
 export type ReauthResult =
   | { status: 'disabled' }
   | { status: 'not_due' }
   | Reauthorized
   | { status: 'refused'; kind: string }
-  | { status: 'unknown'; kind: string };
+  | ReauthUnknown;
 
 export interface ReauthDeps {
   gateway: Pick<PaymentsGateway, 'reauthorize'>;
@@ -144,9 +158,10 @@ export async function reauthorizeIfDue(
       generation,
     };
   }
-  if (error === undefined) return { status: 'unknown', kind: 'server_error' };
+  const sent = { requestId, amountCents: hold.ceilingCents };
+  if (error === undefined) return { status: 'unknown', kind: 'server_error', ...sent };
   return error.outcome === 'unknown'
-    ? { status: 'unknown', kind: error.kind }
+    ? { status: 'unknown', kind: error.kind, ...sent }
     : { status: 'refused', kind: error.kind };
 }
 
@@ -174,13 +189,8 @@ export async function persistReauthorization(
   holdId: string,
   result: Reauthorized,
 ): Promise<'saved' | 'busy'> {
-  const moved = (authId: string | undefined, prior: string[] | undefined): string[] | null => {
-    if (authId === result.authId) return null;
-    if (authId !== result.previousAuthId) {
-      throw new Error(`hold ${holdId} is not on authorization ${result.previousAuthId}`);
-    }
-    return [...(prior ?? []), result.previousAuthId];
-  };
+  const moved = (authId: string | undefined, prior: string[] | undefined): string[] | null =>
+    movedAuthIds(holdId, result, authId, prior);
   const leased = await withLease(
     { journals: deps.journals, clock: deps.clock },
     auctionId,
@@ -200,16 +210,200 @@ export async function persistReauthorization(
           await deps.journals.save(next, j.version);
         }
       }
-      const records = deps.holds;
-      if (records === undefined) return;
-      await sharedHoldQueue.run(holdId, async () => {
-        const rec = await records.get(holdId);
-        if (rec === null) return;
-        const prior = moved(rec.authId, rec.priorAuthIds);
-        if (prior !== null)
-          await records.put({ ...rec, authId: result.authId, priorAuthIds: prior });
-      });
+      if (deps.holds !== undefined) await moveHoldRecord(deps.holds, holdId, result);
     },
   );
   return leased.status === 'busy' ? 'busy' : 'saved';
+}
+
+/**
+ * The `priorAuthIds` a hold on `authId` gets when it moves to the result's authorization, or
+ * null when it is on that authorization already. Throws when it is on neither.
+ */
+function movedAuthIds(
+  holdId: string,
+  result: Pick<Reauthorized, 'authId' | 'previousAuthId'>,
+  authId: string | undefined,
+  prior: string[] | undefined,
+): string[] | null {
+  if (authId === result.authId) return null;
+  if (authId !== result.previousAuthId) {
+    throw new Error(`hold ${holdId} is not on authorization ${result.previousAuthId}`);
+  }
+  return [...(prior ?? []), result.previousAuthId];
+}
+
+/** Moves the hold record to the result's authorization. Safe to repeat. */
+async function moveHoldRecord(
+  records: HoldStore,
+  holdId: string,
+  result: Pick<Reauthorized, 'authId' | 'previousAuthId'>,
+): Promise<void> {
+  await sharedHoldQueue.run(holdId, async () => {
+    const rec = await records.get(holdId);
+    if (rec === null) return;
+    const prior = movedAuthIds(holdId, result, rec.authId, rec.priorAuthIds);
+    if (prior !== null) await records.put({ ...rec, authId: result.authId, priorAuthIds: prior });
+  });
+}
+
+/** Truth that shows an authorization PayPal still holds or charged: it was not reauthorized (A11). */
+const NOT_REPLACED: ReadonlySet<HoldTruth['status']> = new Set([
+  'CREATED',
+  'PENDING',
+  'PARTIALLY_CAPTURED',
+  'CAPTURED',
+]);
+
+/**
+ * PayPal's refusals of a replayed reauthorization that mean no authorization was made under
+ * its request id, when PayPal's answer is definite. The kind alone is not enough: HTTP 408,
+ * 409 (the same request still in progress) and 425 are `rejected` with an unknown outcome.
+ * Anything else keeps the hold in doubt: an unknown outcome, a request that never left (kill
+ * switch, OAuth), or a request id PayPal knows with other parameters.
+ */
+const NO_REAUTH_KINDS: ReadonlySet<string> = new Set([
+  'rejected',
+  'not_found',
+  'already_voided',
+  'expired',
+  'already_captured',
+  'declined',
+]);
+
+export interface ReauthLookupDeps extends ReauthStoreDeps {
+  gateway: Pick<PaymentsGateway, 'getHoldTruth' | 'reauthorize'>;
+  audit: AuditSink;
+}
+
+/** A reauthorization that is still in doubt after a lookup, for the operator alert. */
+export interface ReauthStillInDoubt {
+  bidderId: string;
+  holdId: string;
+  orderId?: string;
+  requestId: string;
+}
+
+export type ReauthLookupResult =
+  | {
+      status: 'done';
+      /** Holds moved to the authorization PayPal made for them. */
+      recorded: Array<{ bidderId: string; holdId: string; authId: string }>;
+      /** Holds whose lookup PayPal did not answer; looked up again on the next call. */
+      open: ReauthStillInDoubt[];
+    }
+  | { status: 'busy' };
+
+/**
+ * RT4-saga-05: settles the reauthorizations a settlement in review saved as in doubt
+ * (`JournalHold.reauthInDoubt`). PayPal closes an authorization when it reauthorizes it
+ * (A11), so for each such hold:
+ *
+ *   - the hold's authorization is read; when it is still live or charged, PayPal made no
+ *     reauthorization and the hold stays as it is;
+ *   - otherwise the reauthorization is sent again with its saved request id. A closed
+ *     authorization cannot be reauthorized again, so this only replays the authorization
+ *     PayPal made for that request: the hold moves to it in the journal and the hold
+ *     record, the old id goes to `priorAuthIds`, and from then on the review keeps and
+ *     releases it like any other hold. Only a definite refusal of the request means no
+ *     authorization was made under that request id.
+ *
+ * Nothing is voided here. A read or a replay PayPal does not answer leaves the hold in
+ * doubt (`open`), and the void phase does not release a hold in doubt. Under the
+ * settlement lease; `busy` when a run holds it. Safe to repeat.
+ */
+export async function lookupUnknownReauths(
+  deps: ReauthLookupDeps,
+  auctionId: string,
+): Promise<ReauthLookupResult> {
+  const recorded: Array<{ bidderId: string; holdId: string; authId: string }> = [];
+  const open: ReauthStillInDoubt[] = [];
+  const moves: Array<{ holdId: string; authId: string; previousAuthId: string }> = [];
+  const leased = await withLease(
+    { journals: deps.journals, clock: deps.clock },
+    auctionId,
+    runLeaseOwner(deps.owner ?? defaultLeaseOwner('reauth')),
+    async (renew) => {
+      const j = await deps.journals.load(auctionId);
+      if (j === null) return;
+      const next = structuredClone(j);
+      let changed = false;
+      for (const bidderId of Object.keys(j.holds).sort()) {
+        const hold = j.holds[bidderId];
+        const doubt = hold?.reauthInDoubt;
+        if (hold === undefined || doubt === undefined) continue;
+        const stillOpen: ReauthStillInDoubt = {
+          bidderId,
+          holdId: hold.holdId,
+          ...(hold.orderId === undefined ? {} : { orderId: hold.orderId }),
+          requestId: doubt.requestId,
+        };
+        const found = await replayedAuthorization(deps, auctionId, hold, doubt);
+        if (found.kind === 'unknown') {
+          open.push(stillOpen);
+          continue;
+        }
+        const settled: JournalHold = { ...hold };
+        delete settled.reauthInDoubt;
+        if (found.kind === 'made') {
+          settled.authId = found.authId;
+          settled.priorAuthIds = [...(hold.priorAuthIds ?? []), hold.authId];
+          recorded.push({ bidderId, holdId: hold.holdId, authId: found.authId });
+          moves.push({ holdId: hold.holdId, authId: found.authId, previousAuthId: hold.authId });
+        }
+        next.holds[bidderId] = settled;
+        changed = true;
+      }
+      if (!changed) return;
+      next.version = j.version + 1;
+      await renew();
+      await deps.journals.save(next, j.version);
+      const records = deps.holds;
+      if (records === undefined) return;
+      for (const m of moves) await moveHoldRecord(records, m.holdId, m);
+    },
+  );
+  return leased.status === 'busy' ? { status: 'busy' } : { status: 'done', recorded, open };
+}
+
+/** What PayPal says about a reauthorization in doubt. */
+type Replayed = { kind: 'made'; authId: string } | { kind: 'none' } | { kind: 'unknown' };
+
+/**
+ * The authorization PayPal made for a reauthorization in doubt (`made`), `none` when PayPal
+ * made none, or `unknown` when PayPal did not answer.
+ */
+async function replayedAuthorization(
+  deps: ReauthLookupDeps,
+  auctionId: string,
+  hold: JournalHold,
+  doubt: { requestId: string; amountCents: number },
+): Promise<Replayed> {
+  let truth: HoldTruth;
+  try {
+    truth = await deps.gateway.getHoldTruth(truthArgs(hold));
+  } catch (e) {
+    if (e instanceof PayPalError) return { kind: 'unknown' };
+    throw e;
+  }
+  if (NOT_REPLACED.has(truth.status)) return { kind: 'none' };
+  try {
+    const renewed = await auditedCall(
+      { audit: deps.audit, clock: deps.clock },
+      { auctionId, holdId: hold.holdId, op: 'reauth', requestId: doubt.requestId },
+      () =>
+        deps.gateway.reauthorize(hold.authId, {
+          amountCents: doubt.amountCents,
+          requestId: doubt.requestId,
+        }),
+    );
+    return renewed.authId === hold.authId
+      ? { kind: 'none' }
+      : { kind: 'made', authId: renewed.authId };
+  } catch (e) {
+    if (!(e instanceof PayPalError)) throw e;
+    return e.outcome === 'definite' && NO_REAUTH_KINDS.has(e.kind)
+      ? { kind: 'none' }
+      : { kind: 'unknown' };
+  }
 }

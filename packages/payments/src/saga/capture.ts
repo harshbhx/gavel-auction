@@ -7,6 +7,7 @@ import { withLease } from './create.js';
 import { truthArgs } from './truth.js';
 import { defaultLeaseOwner, runLeaseOwner } from './owner.js';
 import { step, type SettlementEvent } from './machine.js';
+import { auditedThrough, recoverTrail, stateChangeRow } from './trail.js';
 import {
   DEFAULT_PENDING_CAPTURE_DEADLINE_MS,
   DEFAULT_UNKNOWN_DEADLINE_MS,
@@ -46,7 +47,9 @@ export { DEFAULT_PENDING_CAPTURE_DEADLINE_MS, DEFAULT_UNKNOWN_DEADLINE_MS };
  * so a crash between the capture and its audit row cannot lose it (RT4-saga-04).
  *
  * Every state change is one compare-and-set save of the journal before the next
- * effect. The runner holds the auction's lease and renews it before each step.
+ * effect. The runner holds the auction's lease and renews it before each step. Its
+ * `state_change` row is written after the save and is recovered from the journal history
+ * when a crash came in between (trail.ts).
  * Voiding the other holds is the next phase and is not done here.
  *
  * UNVERIFIED (G1): that the order lists captures with their invoice id. When the
@@ -211,6 +214,8 @@ interface Target {
 class Run {
   private readonly deadlineMs: number;
   private readonly pendingDeadlineMs: number;
+  /** The history seq through which this run knows the `state_change` rows written. */
+  private audited: number;
 
   constructor(
     private readonly deps: CaptureDeps,
@@ -219,6 +224,7 @@ class Run {
   ) {
     this.deadlineMs = deps.unknownDeadlineMs ?? DEFAULT_UNKNOWN_DEADLINE_MS;
     this.pendingDeadlineMs = deps.pendingCaptureDeadlineMs ?? DEFAULT_PENDING_CAPTURE_DEADLINE_MS;
+    this.audited = auditedThrough(j);
   }
 
   private now(): number {
@@ -246,22 +252,23 @@ class Run {
     await this.deps.boundary?.(label);
   }
 
-  /** One state transition: step, compare-and-set save, audit. */
+  /**
+   * One state transition: step, compare-and-set save, audit. The save records the rows
+   * written so far, so a crash before this row is appended leaves it to the next run.
+   */
   private async apply(event: SettlementEvent): Promise<Journal> {
     await this.renew();
     const from = this.j;
     const next = step(from, event).journal;
+    next.auditedSeq = this.audited;
     await this.deps.journals.save(next, from.version);
     this.j = next;
     this.deps.metrics?.incr('settlement_transitions_total', { to: next.state });
-    await this.deps.audit.append({
-      kind: 'state_change',
-      auctionId: next.auctionId,
-      from: from.state,
-      to: next.state,
-      label: event.label ?? `journaled:${event.type}`,
-      tsMs: event.tsMs,
-    });
+    const entry = next.history[next.history.length - 1];
+    if (entry !== undefined) {
+      await this.deps.audit.append(stateChangeRow(next.auctionId, entry));
+      this.audited = entry.seq;
+    }
     await this.boundary(`journaled:${event.type}`);
     return next;
   }
@@ -272,6 +279,7 @@ class Run {
     const from = this.j;
     const next = structuredClone(from);
     change(next);
+    if (this.audited > auditedThrough(from)) next.auditedSeq = this.audited;
     next.version = from.version + 1;
     await this.deps.journals.save(next, from.version);
     this.j = next;
@@ -279,11 +287,23 @@ class Run {
     return next;
   }
 
+  /**
+   * RT4-saga-04: the run first writes the rows a crash after an earlier save lost, and ends
+   * by saving how far the rows are written when its last save came before a row.
+   */
+  async drive(): Promise<CaptureOutcome> {
+    this.audited = await recoverTrail(this.deps.audit, this.j);
+    const out = await this.steps();
+    if (this.audited <= auditedThrough(this.j)) return out;
+    await this.patch('audited', () => undefined);
+    return out.status === 'busy' ? out : { ...out, journal: this.j };
+  }
+
   private ev(type: SettlementEvent['type']): SettlementEvent {
     return { type, tsMs: this.now() } as SettlementEvent;
   }
 
-  async drive(): Promise<CaptureOutcome> {
+  private async steps(): Promise<CaptureOutcome> {
     // The settlement is created at the hammer; record the two lifecycle steps.
     if (this.j.state === 'HELD') await this.apply(this.ev('start_auction'));
     if (this.j.state === 'BIDDING') await this.apply(this.ev('hammer'));
