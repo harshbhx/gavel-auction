@@ -2071,3 +2071,27 @@ describe('auction service: HRD-16 hold recovery wiring', () => {
     await service.close();
   });
 });
+
+describe('auction service: resume keeps a room a client just asked for (#1749)', () => {
+  it('does not unload a finished room under a joining socket', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0 });
+    const id = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(id, config, 'auctioneer-sub');
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    room.detach(boss.conn.id);
+    await service.resume();
+    expect(service.stats().rooms).toBe(0);
+    // A viewer asks for the room; the attach has not run yet when the next pass starts.
+    await service.room(id);
+    expect(service.stats().rooms).toBe(1);
+    await service.resume();
+    expect(service.stats().rooms).toBe(1);
+    rig.clock.set(START + 60_000);
+    await service.resume();
+    expect(service.stats().rooms).toBe(0);
+    await service.close();
+  });
+});

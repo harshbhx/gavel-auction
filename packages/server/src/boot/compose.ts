@@ -66,6 +66,8 @@ import { nodeRoutesFor } from '../http/node-bridge';
 import { mountRead } from '../http/read';
 import { acquireDataDirLock } from '../store/data-dir-lock';
 import { FileRoomStore } from '../store/file-room-store';
+import { migrate, PostgresStore } from '../store/postgres';
+import { RoomJournalStore } from '../store/room-journal-store';
 import { MemoryStore } from '../store/memory-store';
 
 export const WEBHOOK_PATH = '/webhooks/paypal';
@@ -192,35 +194,62 @@ async function openStores(config: ServerConfig, clock: SystemClock): Promise<Sto
         kill: new MemoryKillStateStore(),
         release: () => undefined,
       };
-    case 'file': {
+    case 'file':
+    case 'postgres': {
       const dir = config.DATA_DIR;
       mkdirSync(dir, { recursive: true });
       const lock = acquireDataDirLock(dir);
+      let pool: { end: () => Promise<void> } | undefined;
       try {
         const pay = openFileStores(join(dir, 'payments'));
-        const room = await FileRoomStore.open(join(dir, 'rooms.jsonl'), now);
+        let room: RoomStore;
+        let journals: JournalStore;
+        let closeRoom = (): void => undefined;
+        if (config.STORE === 'postgres') {
+          // The room log, snapshots, token denylist and payment journals live in Postgres. The
+          // ledgers, holds, webhook ids and kill switch stay in the data directory, which this
+          // host locks, so one host owns them.
+          const { default: pg } = await import('pg');
+          const url = config.DATABASE_URL;
+          if (url === undefined) throw new Error('DATABASE_URL is required when STORE=postgres');
+          const p = new pg.Pool({ connectionString: url });
+          pool = p;
+          await migrate(p);
+          const pgStore = new PostgresStore(p, now);
+          room = pgStore;
+          journals = new RoomJournalStore(pgStore);
+        } else {
+          const fileRoom = await FileRoomStore.open(join(dir, 'rooms.jsonl'), now);
+          room = fileRoom;
+          journals = pay.journals;
+          closeRoom = () => fileRoom.close();
+        }
         return {
           room,
           ledger: new FileLedgerStore(join(dir, 'ledgers')),
-          journals: pay.journals,
+          journals,
           holds: pay.holds,
           webhookEvents: pay.webhooks,
           kill: new FileKillStateStore(join(dir, 'kill-switch.json')),
           release: () => {
             try {
-              room.close();
+              closeRoom();
+              if (pool !== undefined) void pool.end().catch(() => undefined);
             } finally {
               lock.release();
             }
           },
         };
       } catch (e) {
+        if (pool !== undefined) void pool.end().catch(() => undefined);
         lock.release();
         throw e;
       }
     }
     default:
-      throw new Error(`STORE=${config.STORE} is not available in this build; use memory or file`);
+      throw new Error(
+        `STORE=${config.STORE} is not available in this build; use memory, file or postgres`,
+      );
   }
 }
 
@@ -275,7 +304,10 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
   const audit = createPaymentAudit({
     clock,
     sink: opts.sink ?? ((line) => void process.stdout.write(`${line}\n`)),
-    file: config.STORE === 'file' ? join(config.DATA_DIR, 'payment-audit.jsonl') : undefined,
+    file:
+      config.STORE === 'file' || config.STORE === 'postgres'
+        ? join(config.DATA_DIR, 'payment-audit.jsonl')
+        : undefined,
   });
   const killSwitch = new PersistentKillSwitch({
     store: stores.kill,

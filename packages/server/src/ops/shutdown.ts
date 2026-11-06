@@ -2,8 +2,11 @@ import type { Clock } from '@gavel/shared';
 
 /** WebSocket close code for a server going away (R-RT-136). */
 export const CLOSE_GOING_AWAY = 1001;
-/** Total time allowed from the signal to exit. */
-export const SHUTDOWN_DEADLINE_MS = 10_000;
+/**
+ * Total time allowed from the signal to exit. Settlement runs make PayPal calls with retries,
+ * so this is longer than one step; SHUTDOWN_DEADLINE_MS in the environment overrides it.
+ */
+export const SHUTDOWN_DEADLINE_MS = 30_000;
 
 export interface ShutdownDeps {
   clock: Clock;

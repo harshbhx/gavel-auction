@@ -244,6 +244,9 @@ function withOrderLookup(gateway: PaymentsGateway, holds: HoldStore): PaymentsGa
   };
 }
 
+/** How long a room a client just asked for is kept from being unloaded. */
+const CLIENT_TOUCH_GRACE_MS = 30_000;
+
 export function createAuctionService(deps: AuctionServiceDeps): AuctionService {
   return new Service(deps);
 }
@@ -254,6 +257,10 @@ class Service implements AuctionService, SettlePort {
   private readonly ready = new Map<string, Room>();
   /** When each loaded room was last asked for, to evict the least recently used first. */
   private readonly lastUsed = new Map<string, number>();
+  /** Last time a client path (not a settlement pass) asked for each room. */
+  private readonly clientTouched = new Map<string, number>();
+  /** Auctions seen finished with a final settlement; the resume pass no longer reloads them. */
+  private readonly finalIds = new Set<string>();
   /** Rooms this host lost to another host (R-RT-061); they are never served or resumed here. */
   private readonly fenced = new Set<string>();
   private readonly roomStore: RoomStore;
@@ -416,6 +423,15 @@ class Service implements AuctionService, SettlePort {
     }
   }
 
+  /**
+   * A joining socket gets its room from `room()` and attaches a moment later, so a room asked
+   * for by a client in the last few seconds is not dropped even when no connection shows yet.
+   */
+  private recentlyTouched(id: string): boolean {
+    const at = this.clientTouched.get(id);
+    return at !== undefined && this.deps.clock.now() - at < CLIENT_TOUCH_GRACE_MS;
+  }
+
   /** Drops a finished room from memory; it loads again from its log if anything asks for it. */
   private unload(id: string, room: Room): void {
     const timer = this.retryTimers.get(id);
@@ -425,6 +441,7 @@ class Service implements AuctionService, SettlePort {
     this.rooms.delete(id);
     this.ready.delete(id);
     this.lastUsed.delete(id);
+    this.clientTouched.delete(id);
     void room.close().catch(() => undefined);
   }
 
@@ -461,6 +478,7 @@ class Service implements AuctionService, SettlePort {
     if (this.fenced.has(auctionId)) {
       throw new GavelError('host_fenced', 'this host no longer owns the room');
     }
+    if (opts.settlement !== true) this.clientTouched.set(auctionId, this.deps.clock.now());
     const known = this.rooms.get(auctionId);
     if (known !== undefined) {
       this.lastUsed.set(auctionId, this.deps.clock.now());
@@ -799,7 +817,7 @@ class Service implements AuctionService, SettlePort {
       this.deps.onError?.('kill-switch', e);
     }
     for (const id of await this.deps.store.listAuctions()) {
-      if (this.fenced.has(id)) continue;
+      if (this.fenced.has(id) || this.finalIds.has(id)) continue;
       // One unloadable auction must not stop the others from resuming.
       try {
         const room = await this.room(id, { settlement: true });
@@ -808,8 +826,15 @@ class Service implements AuctionService, SettlePort {
         await room.retrySettlement();
         const journal = await this.deps.journals.load(lotIdOf(id));
         if (await this.needsRun(id, room, journal)) this.schedule(id);
-        else if (room.isDone && room.connectionCount === 0 && !this.runs.has(id)) {
-          // A finished auction with a final settlement takes no slot after boot (R12-S02).
+        else if (
+          room.isDone &&
+          room.connectionCount === 0 &&
+          !this.runs.has(id) &&
+          !this.recentlyTouched(id)
+        ) {
+          // A finished auction with a final settlement takes no slot after boot (R12-S02) and
+          // is not reloaded by later passes.
+          this.finalIds.add(id);
           this.unload(id, room);
         }
       } catch (e) {

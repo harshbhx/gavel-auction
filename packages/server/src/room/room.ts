@@ -97,6 +97,19 @@ function bidDigest(amount: unknown, source: string): string {
   return `${isCents(amount) ? amount : ''}|${source}`;
 }
 
+/** True when the text holds a control character (U+0000 to U+001F); Postgres jsonb refuses NUL. */
+function hasControlChar(text: string): boolean {
+  for (let i = 0; i < text.length; i++) if (text.charCodeAt(i) < 0x20) return true;
+  return false;
+}
+
+/** The text without control characters, so every store receives the same input. */
+function stripControlChars(text: string): string {
+  let out = '';
+  for (let i = 0; i < text.length; i++) if (text.charCodeAt(i) >= 0x20) out += text[i];
+  return out;
+}
+
 /** The source and audit fields of a bid as the room records them, live and on replay. */
 function bidMeta(conn: Connection, msg: BidMsg, confirmed = false): BidMeta {
   if (conn.role === 'auctioneer') {
@@ -108,7 +121,7 @@ function bidMeta(conn: Connection, msg: BidMsg, confirmed = false): BidMeta {
   }
   // A bidder frame may claim qr or voice only; manual is the auctioneer's entry (R-RT-039).
   const meta: BidMeta = { source: isVoiceLike(msg) ? 'voice' : 'qr' };
-  if (msg.transcript !== undefined) meta.transcript = msg.transcript;
+  if (msg.transcript !== undefined) meta.transcript = stripControlChars(msg.transcript);
   if (meta.source === 'voice' && msg.confidence !== undefined) meta.confidence = msg.confidence;
   if (confirmed && meta.source === 'voice') meta.confirmed = true;
   return meta;
@@ -583,6 +596,7 @@ export class Room {
       if (
         name.length === 0 ||
         name.length > MAX_NAME_CHARS ||
+        hasControlChar(name) ||
         !isCents(reg.ceiling) ||
         reg.ceiling < (this.config?.reserve ?? 0) ||
         reg.holdRef.length === 0 ||
@@ -656,7 +670,9 @@ export class Room {
    * check, schema (already decoded), registered, engine validation.
    */
   submitBid(conn: Connection, msg: BidMsg): Promise<void> {
-    const limited = this.deps.limiter?.checkBid(conn.bidderId ?? conn.id);
+    // An auctioneer has no bidder id; its bucket follows the token holder, so opening a new
+    // socket does not give a fresh allowance.
+    const limited = this.deps.limiter?.checkBid(conn.bidderId ?? `${conn.role}:${conn.sub}`);
     if (limited && !limited.ok) {
       this.deps.metrics?.rateLimitHit();
       this.sendError(conn, 'rate_limited', limited.retryAfterMs);
@@ -933,7 +949,7 @@ export class Room {
       bidderId,
       mid: msg.mid,
       amount: msg.amount as Cents,
-      ...(msg.transcript !== undefined ? { transcript: msg.transcript } : {}),
+      ...(msg.transcript !== undefined ? { transcript: stripControlChars(msg.transcript) } : {}),
       ...(msg.confidence !== undefined ? { confidence: msg.confidence } : {}),
       expiresAt: (ts + CONFIRM_TTL_MS) as EpochMs,
     };

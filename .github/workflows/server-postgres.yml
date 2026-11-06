@@ -5,6 +5,8 @@ on:
       - 'packages/server/src/store/**'
       - 'packages/server/migrations/**'
       - 'packages/server/test/store-*.ts'
+      - 'packages/server/test/boot-postgres.test.ts'
+      - 'packages/server/src/boot/**'
       - '.github/workflows/server-postgres.yml'
   push:
     branches: [main]
@@ -38,4 +40,4 @@ jobs:
       - name: Store contract and migrations against Postgres
         env:
           GAVEL_TEST_DATABASE_URL: postgres://postgres:gavel@localhost:5432/gavel_test
-        run: npm test -w @gavel/server -- test/store-postgres.test.ts
+        run: npm test -w @gavel/server -- test/store-postgres.test.ts test/boot-postgres.test.ts
