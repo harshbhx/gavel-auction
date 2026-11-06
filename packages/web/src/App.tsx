@@ -17,7 +17,7 @@ import { receiptSource } from './ladder/fromWire';
 import { SettlementPanel } from './ladder/SettlementPanel';
 import type { Transport } from './net/transport';
 import { WebSocketTransport } from './net/wsTransport';
-import { clearSession, loadSession, saveSession, type SessionRole } from './net/session';
+import { clearSession, type SessionRole } from './net/session';
 import { loadRegistration } from './payments/registrationStore';
 import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
 import { RouteScreen, matchRoute, type RouteMatch } from './routes';
@@ -47,10 +47,13 @@ import { RoomError, isHaltingError, isTerminalError } from './screens/states/Roo
 import { roomStore, useRoom } from './store/roomStore';
 import { summarizePending, type PendingSummary } from './store/localEvents';
 import {
+  clearBidderSession,
+  getBidderSession,
   hasAuctioneerAccess,
   hasReviewerAccess,
   readAuctioneerToken,
   readInviteToken,
+  rememberBidderSession,
 } from './store/session';
 
 export interface AppProps {
@@ -85,7 +88,7 @@ function tokenFor(routeId: string, roomId: string): { token: string; bidderId?: 
     const fromFragment = readAuctioneerToken(roomId);
     return fromFragment === null ? null : { token: fromFragment };
   }
-  const stored = loadSession(roomId);
+  const stored = getBidderSession(roomId);
   if (stored === null) return null;
   return stored.bidderId === undefined
     ? { token: stored.token }
@@ -174,7 +177,9 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId, api }: LiveRouteP
   const role = roleOf(match.route.id);
   useEffect(() => {
     // A refused token is dead: forget it, so a reload does not reuse it.
-    if (dead) clearSession(roomId, undefined, role);
+    if (!dead) return;
+    clearSession(roomId, undefined, role);
+    if (role === 'bidder') clearBidderSession(roomId);
   }, [dead, roomId, role]);
   const myPaddle = useRoom((s) =>
     bidderId === undefined
@@ -446,7 +451,7 @@ function RegisterRoute({
   liveBase: string | undefined;
 }) {
   const [who, setWho] = useState<{ token: string; bidderId: string } | null>(() => {
-    const stored = loadSession(roomId);
+    const stored = getBidderSession(roomId);
     return stored?.bidderId === undefined
       ? null
       : { token: stored.token, bidderId: stored.bidderId };
@@ -455,6 +460,8 @@ function RegisterRoute({
   // The draft is kept when the buyer goes back, so the name and paddle they typed are still there.
   const [approving, setApproving] = useState(false);
   const [failed, setFailed] = useState(false);
+  // True when the browser refused to store the session: the tab itself holds it until it closes.
+  const [notSaved, setNotSaved] = useState(false);
   // The room's own limits and roster come from its snapshot, over the same socket the bid screen uses.
   useLiveRoom(
     liveBase ?? '',
@@ -480,7 +487,11 @@ function RegisterRoute({
         if (typeof got.sessionToken !== 'string' || typeof got.bidderId !== 'string') {
           throw new Error('bad join');
         }
-        saveSession(roomId, { token: got.sessionToken, bidderId: got.bidderId });
+        const kept = rememberBidderSession(roomId, {
+          token: got.sessionToken,
+          bidderId: got.bidderId,
+        });
+        if (!kept) setNotSaved(true);
         setWho({ token: got.sessionToken, bidderId: got.bidderId });
       })
       .catch(() => setFailed(true));
@@ -497,6 +508,7 @@ function RegisterRoute({
       </main>
     );
   }
+  const sessionNotice = notSaved ? <p role="status">{t('reg.sessionNotSaved')}</p> : null;
   const live = liveBase !== undefined;
   if (live && snapshot === null) {
     return (
@@ -534,10 +546,12 @@ function RegisterRoute({
     return (
       // RegisterScreen renders the page's one main landmark.
       <div data-route="register">
+        {sessionNotice}
         <RegisterScreen
           minCents={presets === undefined ? CEILING_MIN_CENTS : Math.min(...presets)}
           maxCents={presets === undefined ? CEILING_MAX_CENTS : Math.max(...presets)}
           {...(presets === undefined ? {} : { presetsCents: presets })}
+          allowCustom={presets === undefined}
           {...(draft === null ? {} : { initial: draft })}
           onApprove={(next) => {
             setDraft(next);
@@ -548,16 +562,19 @@ function RegisterRoute({
     );
   }
   return (
-    <ApproveRoute
-      roomId={roomId}
-      bidderId={who.bidderId}
-      token={who.token}
-      api={api}
-      ceilingCents={draft.ceilingCents}
-      name={draft.name}
-      paddle={snapshot?.roster.find((r) => r.bidderId === who.bidderId)?.paddle}
-      onBack={() => setApproving(false)}
-    />
+    <>
+      {sessionNotice}
+      <ApproveRoute
+        roomId={roomId}
+        bidderId={who.bidderId}
+        token={who.token}
+        api={api}
+        ceilingCents={draft.ceilingCents}
+        name={draft.name}
+        paddle={snapshot?.roster.find((r) => r.bidderId === who.bidderId)?.paddle}
+        onBack={() => setApproving(false)}
+      />
+    </>
   );
 }
 
@@ -605,7 +622,7 @@ function ApproveRoute(props: {
 
 /** Where a buyer lands after approving on PayPal's own page; finishes the hold once. */
 function ReturnRoute({ roomId, api }: { roomId: string; api: Api }) {
-  const stored = loadSession(roomId);
+  const stored = getBidderSession(roomId);
   const adapter = useMemo(
     () =>
       createReturnAdapter({
