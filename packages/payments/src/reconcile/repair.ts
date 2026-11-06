@@ -1,4 +1,5 @@
 import { PayPalError } from '../errors.js';
+import { auditedCall } from '../holds/audited.js';
 import type { AuditSink } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
 import { reconcile, type ReconcileDeps, type ReconcileReport } from './reconcile.js';
@@ -9,7 +10,9 @@ import { reconcile, type ReconcileDeps, type ReconcileReport } from './reconcile
  * Reconciliation is read-only by default. With `repair: 'void_live_holds'` it also
  * voids holds that are still live after the settlement is SETTLED. It never
  * captures and never touches the journal: the only money call it can make is
- * `voidAuthorization`, and it never voids the winner's hold.
+ * `voidAuthorization`, and it never voids the winner's hold. Each void writes its
+ * `paypal_call` row (request id, outcome, status, debug id) like every other money call
+ * (R-PAY-132, RT4-saga-04).
  */
 
 export type RepairMode = 'void_live_holds';
@@ -75,15 +78,17 @@ export async function reconcileWithRepair(
         ...(orderId === undefined || orderId === '' ? {} : { orderId }),
       });
       if ((LIVE as readonly string[]).includes(truth.status)) {
-        await deps.gateway.voidAuthorization(
-          authId,
-          buildRequestId({
-            auctionId,
-            op: 'void',
-            holdId: f.holdId,
-            amountCents: 0,
-            generation: 0,
-          }),
+        const requestId = buildRequestId({
+          auctionId,
+          op: 'void',
+          holdId: f.holdId,
+          amountCents: 0,
+          generation: 0,
+        });
+        await auditedCall(
+          { audit: deps.audit, clock: deps.clock },
+          { auctionId, holdId: f.holdId, op: 'void', requestId },
+          () => deps.gateway.voidAuthorization(authId, requestId),
         );
         action.result = 'voided';
         deps.metrics?.incr('reconcile_findings_total', { code: 'REPAIR_VOIDED' });

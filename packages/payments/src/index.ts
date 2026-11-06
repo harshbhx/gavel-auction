@@ -27,6 +27,7 @@ export * from './saga/killswitch.js';
 export * from './saga/reauth.js';
 export * from './saga/remainder.js';
 export * from './saga/emit.js';
+export * from './saga/trail.js';
 export * from './reconcile/reconcile.js';
 export * from './reconcile/repair.js';
 export * from './holds/recover.js';

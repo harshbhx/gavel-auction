@@ -155,6 +155,11 @@ export interface PaymentAudit {
   to?: string;
   label?: string;
   actor?: string;
+  /**
+   * RT4-saga-04: on a settlement's `state_change` row, the journal history entry it records.
+   * A row written again after a crash carries the same seq, so a sink can drop the repeat.
+   */
+  seq?: number;
   tsMs: number;
 }
 
@@ -171,6 +176,12 @@ export interface JournalHold {
    * (R11-O06). Kept for the audit; `authId` is the one PayPal holds the funds under.
    */
   priorAuthIds?: string[];
+  /**
+   * RT4-saga-05: a reauthorization of this hold whose outcome stayed unknown when the
+   * settlement went to review. PayPal may hold the funds under an authorization the journal
+   * does not know yet, so the hold is not released until `lookupUnknownReauths` settles it.
+   */
+  reauthInDoubt?: { requestId: string; amountCents: number };
   stale: boolean;
 }
 
@@ -227,6 +238,13 @@ export interface Journal {
   voids: Record<string, string>;
   resumes: number;
   history: JournalHistoryEntry[];
+  /**
+   * RT4-saga-04: the history seq through which the `state_change` rows are in the audit
+   * sink. A transition is saved first and its row appended after, so a crash in between
+   * leaves the rows above this seq to the next run, which appends them before anything else.
+   * Absent on a journal saved before it existed: its rows count as written.
+   */
+  auditedSeq?: number;
 }
 
 function canon(value: unknown): unknown {

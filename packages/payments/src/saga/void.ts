@@ -8,6 +8,7 @@ import { defaultLeaseOwner, runLeaseOwner } from './owner.js';
 import { withLease } from './create.js';
 import { truthArgs } from './truth.js';
 import { step, type SettlementEvent } from './machine.js';
+import { auditedThrough, recoverTrail, stateChangeRow } from './trail.js';
 import { DEFAULT_UNKNOWN_DEADLINE_MS, unknownExpired } from './unknown.js';
 import {
   releaseWinnerRemainder,
@@ -278,12 +279,16 @@ export class VoidPhase {
 class Run {
   private aborted = false;
   private chain: Promise<unknown> = Promise.resolve();
+  /** The history seq through which this run knows the `state_change` rows written. */
+  private audited: number;
 
   constructor(
     private readonly deps: VoidDeps,
     private j: Journal,
     private readonly renew: () => Promise<void>,
-  ) {}
+  ) {
+    this.audited = auditedThrough(j);
+  }
 
   private now(): number {
     return this.deps.clock.nowMs();
@@ -299,22 +304,21 @@ class Run {
     return result;
   }
 
+  /** One state transition: step, save with the rows written so far, then its row (RT4-saga-04). */
   private apply(event: SettlementEvent): Promise<Journal> {
     return this.serial(async () => {
       await this.renew();
       const from = this.j;
       const next = step(from, event).journal;
+      next.auditedSeq = this.audited;
       await this.deps.journals.save(next, from.version);
       this.j = next;
       this.deps.metrics?.incr('settlement_transitions_total', { to: next.state });
-      await this.deps.audit.append({
-        kind: 'state_change',
-        auctionId: next.auctionId,
-        from: from.state,
-        to: next.state,
-        label: event.label ?? `journaled:${event.type}`,
-        tsMs: event.tsMs,
-      });
+      const entry = next.history[next.history.length - 1];
+      if (entry !== undefined) {
+        await this.deps.audit.append(stateChangeRow(next.auctionId, entry));
+        this.audited = entry.seq;
+      }
       await this.deps.boundary?.(`journaled:${event.type}`);
       return next;
     });
@@ -326,6 +330,7 @@ class Run {
       const from = this.j;
       const next = structuredClone(from);
       change(next);
+      if (this.audited > auditedThrough(from)) next.auditedSeq = this.audited;
       next.version = from.version + 1;
       await this.deps.journals.save(next, from.version);
       this.j = next;
@@ -338,7 +343,19 @@ class Run {
     return { type, tsMs: this.now() } as SettlementEvent;
   }
 
+  /**
+   * RT4-saga-04: the run first writes the rows a crash after an earlier save lost, and ends
+   * by saving how far the rows are written when its last save came before a row.
+   */
   async drive(): Promise<VoidOutcome> {
+    this.audited = await recoverTrail(this.deps.audit, this.j);
+    const out = await this.steps();
+    if (this.audited <= auditedThrough(this.j)) return out;
+    await this.patch('audited', () => undefined);
+    return out.status === 'busy' ? out : { ...out, journal: this.j };
+  }
+
+  private async steps(): Promise<VoidOutcome> {
     if (this.j.state === 'SETTLED') return { status: 'settled', journal: this.j };
     if (this.j.state === 'FAILED_NEEDS_REVIEW') {
       await this.releaseForReview();
@@ -380,9 +397,9 @@ class Run {
   }
 
   /**
-   * Voids every hold not in `keep` that no intent is in flight for and whose truth was read
-   * and is not captured. Safe to repeat: finished holds are skipped, and a hold whose read
-   * fails is left for the next run.
+   * Voids every hold not in `keep` that no intent is in flight for, whose reauthorization
+   * is not in doubt, and whose truth was read and is not captured. Safe to repeat: finished
+   * holds are skipped, and a hold whose read fails is left for the next run.
    */
   private async releaseExcept(keep: ReadonlySet<string>): Promise<void> {
     const inFlight = this.j.intent?.holdId;
@@ -391,6 +408,9 @@ class Run {
       if (keep.has(t.hold.holdId)) continue;
       if (DONE.has(this.statusOf(t.bidderId) ?? '')) continue;
       if (t.hold.holdId === inFlight) continue;
+      // RT4-saga-05: after a reauthorization in doubt the old authorization reads closed while
+      // PayPal may hold the funds under a new one; nothing is recorded until it is looked up.
+      if (t.hold.reauthInDoubt !== undefined) continue;
       let truth: HoldTruth;
       try {
         await this.deps.boundary?.('before:get');

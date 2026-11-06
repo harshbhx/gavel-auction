@@ -3,6 +3,7 @@ import { PayPalError } from '../../src/errors.js';
 import { FakeClock, FakePayPalCore } from '../../src/fake/core.js';
 import { FakeGateway } from '../../src/fake/gateway.js';
 import type { PaymentsGateway } from '../../src/ports.js';
+import { buildRequestId } from '../../src/requestId.js';
 import {
   reconcileAll,
   reconcileWithRepair,
@@ -157,6 +158,41 @@ describe('T-PAY-072 reconciler repair', () => {
     expect(r.repairs).toEqual([
       { holdId: 'h2', bidderId: 'b2', result: 'failed', detail: 'server_error' },
     ]);
+    // RT4-saga-04: the refused call is in the trail with its outcome.
+    expect(rig.audits.filter((a) => a.kind === 'paypal_call')).toEqual([
+      expect.objectContaining({
+        op: 'void',
+        holdId: 'h2',
+        outcome: 'unknown',
+        status: 500,
+        label: 'server_error',
+      }),
+    ]);
+  });
+
+  it('writes the paypal_call row of the repair void before its state change (RT4-saga-04)', async () => {
+    const rig = await makeRig();
+    await reconcileWithRepair(rig.deps, AUCTION, { repair: 'void_live_holds' });
+    const requestId = buildRequestId({
+      auctionId: AUCTION,
+      op: 'void',
+      holdId: 'h2',
+      amountCents: 0,
+      generation: 0,
+    });
+    expect(rig.audits.map((a) => a.kind)).toEqual(['paypal_call', 'state_change']);
+    expect(rig.audits[0]).toMatchObject({
+      kind: 'paypal_call',
+      auctionId: AUCTION,
+      holdId: 'h2',
+      op: 'void',
+      requestId,
+      outcome: 'definite',
+      status: 200,
+      label: 'ok',
+    });
+    // The void went to PayPal with the same request id the row names.
+    expect(callsOn(rig, rig.auth.b2, 'void')).toBe(1);
   });
 });
 

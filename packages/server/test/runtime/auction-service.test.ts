@@ -2397,9 +2397,90 @@ describe('auction service: reauthorization and reconcile safety (HRD-52 review)'
     await service.idle();
     const review = await journalOf(rig, auctionId);
     expect(review.history.at(-1)?.label).toBe('journaled:reauth_unknown');
-    expect(reauthCalls(rig).filter((e) => e.holdId === a.holdId)).toHaveLength(5);
+    // The five passes before the review; the review's lookups of the request follow them.
+    expect(reauthCalls(rig).filter((e) => e.holdId === a.holdId && e.attempt === 1)).toHaveLength(
+      5,
+    );
     expect(rig.paypal.core.calls.filter((c) => c.op === 'capture')).toEqual([]);
     expect(errors.some((e) => e instanceof Error && /stayed unknown/.test(e.message))).toBe(true);
+    await service.close();
+  });
+
+  it('looks up the authorization an unknown reauthorization made and releases it in review (RT4-saga-05)', async () => {
+    const rig = await makeRig();
+    const errors: unknown[] = [];
+    const service = rig.service({
+      resumeIntervalMs: 0,
+      retryDelayMs: 5,
+      retryMaxDelayMs: 10,
+      reviewHoldMaxAgeMs: 0,
+      onError: (_id, e) => errors.push(e),
+      reauthPolicy,
+    });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    const core = rig.paypal.core;
+    // PayPal reauthorizes Ada's hold, every answer is lost, and the lot goes to review.
+    await pastHonor(rig, a);
+    rig.paypal.faults.add({
+      kind: 'timeout_after_success',
+      op: 'reauthorize',
+      authId: a.authId,
+      times: 100_000,
+    });
+    await room.submitBid(b.conn, bid(rig, 10000));
+    await room.submitBid(a.conn, bid(rig, 11000));
+    rig.clock.advance(120_000);
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await vi.waitFor(
+      async () => expect((await journalOf(rig, auctionId)).state).toBe('FAILED_NEEDS_REVIEW'),
+      { timeout: 10_000 },
+    );
+    await service.idle();
+    const [, made] = core.reauthorizationChain(a.authId);
+    if (made === undefined) throw new Error('PayPal made no reauthorization');
+
+    // The review saved the request on the hold, the alert names the order and the request, and
+    // the new authorization is not taken as released while PayPal does not answer.
+    const review = await journalOf(rig, auctionId);
+    const doubt = review.holds[a.id]?.reauthInDoubt;
+    expect(doubt?.amountCents).toBe(50000);
+    const requestId = doubt?.requestId ?? 'missing';
+    const orderId = (await rig.stores.holds.get(a.holdId))?.orderId ?? 'missing';
+    expect(
+      errors.some(
+        (e) =>
+          e instanceof Error &&
+          e.message.includes(`order ${orderId}`) &&
+          e.message.includes(`request ${requestId}`),
+      ),
+    ).toBe(true);
+    rig.clock.advance(1_000);
+    await service.resume();
+    await service.idle();
+    const waiting = await journalOf(rig, auctionId);
+    expect(waiting.holds[a.id]?.authId).toBe(a.authId);
+    expect(waiting.voids[a.id]).toBeUndefined();
+    expect(core.getAuthorization(made).status).toBe('CREATED');
+
+    // PayPal answers again: the replayed request names the authorization, the hold moves to it
+    // and the review release frees it like the known holds.
+    rig.paypal.faults.clear();
+    await service.resume();
+    await vi.waitFor(async () => expect(core.getAuthorization(made).status).toBe('VOIDED'), {
+      timeout: 10_000,
+    });
+    await service.idle();
+    const released = await journalOf(rig, auctionId);
+    expect(released.holds[a.id]).toMatchObject({ authId: made, priorAuthIds: [a.authId] });
+    expect(released.holds[a.id]?.reauthInDoubt).toBeUndefined();
+    expect((await rig.stores.holds.get(a.holdId))?.authId).toBe(made);
+    expect(core.getAuthorization(released.holds[b.id]?.authId ?? '').status).toBe('VOIDED');
+    expect(core.calls.filter((c) => c.op === 'capture')).toEqual([]);
+    core.checkInvariants();
     await service.close();
   });
 
