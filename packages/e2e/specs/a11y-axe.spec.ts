@@ -92,7 +92,9 @@ for (const view of VIEWS) {
 for (const theme of THEMES) {
   test(`axe register form steps one and two in ${theme}`, async ({ page, stack }, testInfo) => {
     await setTheme(page, theme);
-    await page.addInitScript(() => {
+    // Store the session from a loaded page of the same origin, then open the form.
+    await page.goto(`${stack.webUrl}/gallery`);
+    await page.evaluate(() => {
       sessionStorage.setItem(
         'gavel:session:room1',
         JSON.stringify({ token: 'walnut', bidderId: 'bidder-one' }),
