@@ -46,14 +46,18 @@ describe('PromptBook', () => {
     expect(book.size).toBe(1);
   });
 
-  it('T-VOX-076: more than 3 in 10 s are dropped and counted', () => {
-    const { book, at } = setup();
+  it('T-VOX-076: more than the room cap in 10 s are dropped and counted', () => {
+    const t = { v: 0 };
+    const book = new PromptBook<string>(() => t.v, { roomMax: 3 });
+    const at = (ms: number): void => {
+      t.v = ms;
+    };
     expect(book.open('k1', 'a').opened).toBe(true);
     expect(book.open('k2', 'a').opened).toBe(true);
     expect(book.open('k3', 'a').opened).toBe(true);
     const fourth = book.open('k4', 'a');
     expect(fourth.opened).toBe(false);
-    expect(fourth.audit[0]?.reason).toBe('low_confidence');
+    expect(fourth.audit[0]?.reason).toBe('rate_limited');
     expect(book.open('k5', 'a').opened).toBe(false);
     expect(book.rateLimited).toBe(2);
     at(10001);

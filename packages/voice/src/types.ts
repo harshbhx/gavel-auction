@@ -35,6 +35,8 @@ export const VOICE_REASONS = [
   'too_long',
   'garbage',
   'stt_unavailable',
+  'prompt_rate_limited',
+  'stale_segment',
 ] as const;
 export type VoiceReason = (typeof VOICE_REASONS)[number];
 
@@ -117,6 +119,8 @@ export interface ConfirmPrompt {
   defaultAction: 'drop';
   options: Array<{ id: string; label: string; bidderId: string; amountCents: Cents }>;
   spokenAnswerAllowed: boolean;
+  /** The bidder this question is addressed to; only that bidder answers for themselves. */
+  targetBidderId?: string | null;
 }
 
 export type Decision =
@@ -278,5 +282,11 @@ export function toAuditRecord(d: Decision): AuditRecord {
 function dropKeepsWords(d: Extract<Decision, { kind: 'drop' }>): boolean {
   const ev = d.evidence;
   const readAsBid = ev.rules.status !== 'none' || (ev.llm !== null && ev.llm.status !== 'none');
-  return readAsBid || d.reason === 'stt_unavailable' || d.reason === 'low_confidence';
+  return (
+    readAsBid ||
+    d.reason === 'stt_unavailable' ||
+    d.reason === 'low_confidence' ||
+    d.reason === 'prompt_rate_limited' ||
+    d.reason === 'stale_segment'
+  );
 }

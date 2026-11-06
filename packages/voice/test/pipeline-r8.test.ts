@@ -62,7 +62,7 @@ const confirm = (spokenAnswerAllowed: boolean): Decision => ({
   prompt: prompt(spokenAnswerAllowed),
 });
 
-const base = { auctionId: AUCTION, lotId: 'lot1', at: 5000 };
+const base = { auctionId: AUCTION, lotId: 'lot1', at: 5000, answeringBidderId: 'B7' };
 
 const fresh = (over: Partial<BidContext> = {}): BidContext => ({
   nowMs: 5000,
