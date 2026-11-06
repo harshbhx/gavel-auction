@@ -91,7 +91,8 @@ describe('bidder name invisible characters (issue 1881)', () => {
         true,
       );
       expect(ApproveHoldRequest.safeParse({ orderId: 'o-1', name: mark }).success).toBe(false);
-      expect(ApproveHoldRequest.safeParse({ orderId: 'o-1', name: `Alice${mark}` }).success).toBe(
+      // Inside the name: a trailing mark that trim() strips is harmless, an inner one is not.
+      expect(ApproveHoldRequest.safeParse({ orderId: 'o-1', name: `Al${mark}ice` }).success).toBe(
         false,
       );
     }
