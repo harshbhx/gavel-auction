@@ -15,7 +15,6 @@ import {
   C,
   L1,
   bid,
-  errCode,
   mk,
   open,
   run,
@@ -74,7 +73,7 @@ function closedLedger(): LedgerEntry[] {
 }
 
 describe('HRD-55 closed ledger anchor (#1753)', () => {
-  it('a full ledger is closed and a cut tail is not, in the chain, jsonl and public verifiers', () => {
+  it('T-ENG-161 R-ENG-064 a full ledger is closed and a cut tail is not, in the chain, jsonl and public verifiers', () => {
     const entries = closedLedger();
     expect(entries.at(-1)?.type).toBe('AUCTION_CLOSED');
     expect(verifyChain(entries)).toMatchObject({ ok: true, closed: true });
@@ -91,7 +90,7 @@ describe('HRD-55 closed ledger anchor (#1753)', () => {
 });
 
 describe('HRD-55 public export hides the private head hash (#1754)', () => {
-  it('AUCTION_CLOSED names the previous public hash and no private hash is published', () => {
+  it('T-ENG-162 R-ENG-064 AUCTION_CLOSED names the previous public hash and no private hash is published', () => {
     const entries = closedLedger();
     const pub = publicExport(entries);
     const last = pub[pub.length - 1];
@@ -105,7 +104,7 @@ describe('HRD-55 public export hides the private head hash (#1754)', () => {
   });
 });
 
-describe('HRD-55 promotion needs a state that can still charge (#1755)', () => {
+describe('HRD-55 promotion in a state that cannot charge ends unsold (#1755)', () => {
   const hammered = (): AuctionState => {
     let s = open(scene(), L1);
     s = bid(s, 200, A, 1000).state;
@@ -127,16 +126,16 @@ describe('HRD-55 promotion needs a state that can still charge (#1755)', () => {
   const promote = (at: number) =>
     mk(at, { type: 'PromoteRunnerUp', lotId: L1, disqualifiedBidderId: C, reason: 'hold_failed' });
 
-  it('refuses a promotion in VOIDING and FAILED_NEEDS_REVIEW without a capture', () => {
+  it('T-ENG-163 R-ENG-054 ends the lot unsold in VOIDING and FAILED_NEEDS_REVIEW without a capture', () => {
     const voiding = settle(hammered(), 310, 'HELD', 'VOIDING');
-    expect(errCode(() => decide(voiding, promote(400)))).toBe('state_continuity');
+    expect(decide(voiding, promote(400)).events.map((e) => e.type)).toEqual(['LOT_UNSOLD']);
     let failed = settle(hammered(), 310, 'HELD', 'BIDDING');
     failed = settle(failed, 311, 'BIDDING', 'WINNER_SELECTED');
     failed = settle(failed, 312, 'WINNER_SELECTED', 'FAILED_NEEDS_REVIEW');
-    expect(errCode(() => decide(failed, promote(400)))).toBe('state_continuity');
+    expect(decide(failed, promote(400)).events.map((e) => e.type)).toEqual(['LOT_UNSOLD']);
   });
 
-  it('still promotes from HELD and from WINNER_SELECTED', () => {
+  it('T-ENG-164 R-ENG-054 still promotes from HELD and from WINNER_SELECTED', () => {
     const held = decide(hammered(), promote(400));
     expect(held.events.map((e) => e.type)).toEqual(['FALLBACK_PROMOTED']);
     let sel = settle(hammered(), 310, 'HELD', 'BIDDING');
@@ -167,7 +166,7 @@ describe('HRD-55 evolveOwned keeps the cost of one entry flat (#1757)', () => {
     return r.entries;
   };
 
-  it('gives the same state as folding evolve', () => {
+  it('T-ENG-165 R-ENG-118 gives the same state as folding evolve', () => {
     const entries = plays();
     let owned = initialState;
     for (const e of entries) owned = evolveOwned(owned, [e]);
@@ -175,7 +174,7 @@ describe('HRD-55 evolveOwned keeps the cost of one entry flat (#1757)', () => {
     expect(initialState.commands).toEqual({});
   });
 
-  it('extends the seen-command index and the bid list in place after the first call', () => {
+  it('T-ENG-166 R-ENG-118 extends the seen-command index and the bid list in place after the first call', () => {
     const entries = plays();
     const first = evolveOwned(initialState, entries.slice(0, 10));
     const second = evolveOwned(first, entries.slice(10, 20));

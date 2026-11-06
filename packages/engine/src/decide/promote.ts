@@ -49,7 +49,8 @@ export function decidePromote(state: AuctionState, cmd: PromoteCommand): DecideR
   }
   // Without a capture, VOIDING, SETTLED and FAILED_NEEDS_REVIEW have no edge back to a state that
   // can charge a new winner; naming one would leave the lot in SETTLING with its amount reserved.
-  // Only a release (unsold) or the operator review edges lead out of them.
+  // Only a release (unsold) or the operator review edges lead out of them, so a promotion there
+  // ends the lot unsold instead of naming a winner nobody can charge.
   const canCharge = lot.captureSeen
     ? lot.settlement === 'SETTLED'
     : PROMOTABLE_SETTLEMENTS.has(lot.settlement);
@@ -91,6 +92,8 @@ export function decidePromote(state: AuctionState, cmd: PromoteCommand): DecideR
   const max = state.config.maxFallbackDepth;
   if (state.config.fallbackPolicy === 'unsold') return unsold();
 
+  if (!canCharge) return unsold();
+
   const excluded = new Set<string>([cmd.disqualifiedBidderId, ...lot.demoted]);
   for (const s of lot.skipped) excluded.add(s.bidderId);
   const next = candidates(lot, excluded, max);
@@ -120,9 +123,6 @@ export function decidePromote(state: AuctionState, cmd: PromoteCommand): DecideR
         },
       });
       continue;
-    }
-    if (!canCharge) {
-      throw new EngineError('state_continuity', `cannot promote while ${lot.settlement}`);
     }
     events.push({
       type: 'FALLBACK_PROMOTED',
