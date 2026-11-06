@@ -23,7 +23,7 @@ Built for the PayPal Hackathon 2026. PayPal sandbox only: no real money moves.
 <table>
   <tr>
     <td align="center" width="25%"><h3>7</h3>packages, one strict<br>TypeScript monorepo</td>
-    <td align="center" width="25%"><h3>500+</h3>test files: unit, property,<br>fixture and scenario</td>
+    <td align="center" width="25%"><h3>480+</h3>test files: unit, property,<br>fixture and scenario</td>
     <td align="center" width="25%"><h3>15</h3>end-to-end scenarios,<br>from happy path to retries</td>
     <td align="center" width="25%"><h3>4 of 6</h3>PayPal sandbox gates passed<br>(3 with committed evidence)</td>
   </tr>

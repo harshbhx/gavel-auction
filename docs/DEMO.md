@@ -79,7 +79,6 @@ Open `/r/<roomId>/audit` from the launcher (it needs the auctioneer or reviewer 
 
 - Hosted deployment and the public demo URL (QA-59 to QA-61).
 - The full web screens: the app shell is a placeholder on main today, so the console, bid screen, big screen and audit view exist as specs and tested components only.
-- A WebSocket gateway mounted by the server entry point, so bidding works over a socket in the booted process.
 - A persistent store for a hosted deploy (the file stores need a persistent disk and a single instance).
 - An adapter from the voice package to the room.
 - Real sandbox runs of gates G3 and G5 (NOT RUN in `docs/GATES.md`); G0, G1, G2 and G4 are PASS (guest card capture not covered).

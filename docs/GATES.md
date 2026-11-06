@@ -275,8 +275,11 @@ environment up once:
    cannot read them.
 
 The nightly workflow `.github/workflows/nightly-sandbox.yml` uses the same environment. It runs
-the real-sandbox specs R1 to R8 and R10 (`packages/e2e/sandbox`) at 20:30 UTC and on manual dispatch, then
-writes `report/sandbox.json` with one of pass, fail, inconclusive or skipped per spec. Without the
+every spec file in `packages/e2e/sandbox` through `npm run test:sandbox` (R1 to R4, R5 to R8, R9 and R10)
+at 20:30 UTC and on manual dispatch. R9 is skipped unless the second and third sandbox buyer secrets
+(`SANDBOX_BUYER2_*` and `SANDBOX_BUYER3_*`) are also set. The same job then runs the G5 speech harness
+(`npm run gate:g5`), which skips each provider whose key or audio recordings are missing; G5 stays NOT RUN
+until a real run exists. The job then writes `report/sandbox.json` with one of pass, fail, inconclusive or skipped per spec. Without the
 secrets every spec is skipped and the run is green, so a green nightly run alone does not show that any sandbox spec ran: read `report/sandbox.json`. Only the summary is uploaded (14 days); the
 transcripts stay on the runner. A spec whose gate is still open reports `inconclusive`, not `fail`.
 
