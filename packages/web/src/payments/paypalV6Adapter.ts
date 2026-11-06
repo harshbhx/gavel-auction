@@ -99,6 +99,8 @@ export function loadPayPalSdkScript(): Promise<PayPalSdkV6> {
 export interface PayPalAdapterDeps {
   apiBase: string;
   clientId: string;
+  /** Session bearer token sent on every hold request; the server names the bidder from it. */
+  token?: string;
   loadSdk?: SdkLoader;
   fetch?: FetchLike;
   /** Fallback: sends this tab to PayPal's approval page. Defaults to location.assign. */
@@ -273,6 +275,10 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     });
   }
 
+  private authHeaders(): Record<string, string> {
+    return this.deps.token === undefined ? {} : { authorization: `Bearer ${this.deps.token}` };
+  }
+
   /** Tells the payments service the buyer walked away, so the unapproved hold is dropped. */
   private async release(): Promise<void> {
     const url = this.abandonUrl;
@@ -282,7 +288,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     try {
       await doFetch(`${this.deps.apiBase}${url}`, {
         method: ABANDON_HOLD_METHOD,
-        headers: {},
+        headers: this.authHeaders(),
       });
     } catch {
       // Best effort: the service expires an unapproved hold on its own.
@@ -351,7 +357,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
       const res = await Promise.race([
         doFetch(`${this.deps.apiBase}${path}`, {
           method: 'POST',
-          headers: { 'content-type': 'application/json' },
+          headers: { 'content-type': 'application/json', ...this.authHeaders() },
           body: JSON.stringify(body),
           signal: controller.signal,
         }),
