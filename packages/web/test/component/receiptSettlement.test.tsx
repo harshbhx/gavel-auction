@@ -177,7 +177,15 @@ describe('receipt route with per-hold data', () => {
     render(<ReceiptRoute roomId="lot1" />);
     fireEvent.click(screen.getByText('Download JSON'));
     expect(click).toHaveBeenCalled();
-    const body = saved === null ? '' : await (saved as Blob).text();
+    const blob = saved as Blob | null;
+    const body =
+      blob === null
+        ? ''
+        : await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.readAsText(blob);
+          });
     const parsed = JSON.parse(body) as { holds: { paddle: number }[]; hammerPriceCents?: number };
     expect(parsed.holds.map((h) => h.paddle)).toEqual([2]);
     expect(parsed.hammerPriceCents).toBeUndefined();
