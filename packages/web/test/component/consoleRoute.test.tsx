@@ -118,11 +118,11 @@ describe('console route access (#1777)', () => {
     expect(FakeSocket.last).toBeNull();
   });
 
-  it('keeps the screen token out of session storage', () => {
+  it('keeps the screen token out of the bidder session slot', () => {
     window.history.pushState(null, '', `/r/${ROOM}/screen#token=pelican`);
     render(<App initialPath={`/r/${ROOM}/screen`} liveBase="ws://localhost:1" />);
     expect(loadSession(ROOM)).toBeNull();
-    expect(window.sessionStorage.length).toBe(0);
+    expect(loadSession(ROOM, undefined, 'screen')?.token).toBe('pelican');
   });
 });
 
