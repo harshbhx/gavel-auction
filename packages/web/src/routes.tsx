@@ -23,6 +23,7 @@ export type RouteId =
   | 'demo'
   | 'join'
   | 'register'
+  | 'return'
   | 'bid'
   | 'receipt'
   | 'console'
@@ -49,6 +50,7 @@ export const ROUTES: readonly RouteDef[] = [
   { id: 'demo', path: '/demo', titleKey: 'landing.start' },
   { id: 'join', path: '/join/:roomId', titleKey: 'landing.join' },
   { id: 'register', path: '/r/:roomId/register', titleKey: 'reg.step1' },
+  { id: 'return', path: '/r/:roomId/return', titleKey: 'reg.step1' },
   { id: 'bid', path: '/r/:roomId/bid', titleKey: 'bid.price' },
   { id: 'receipt', path: '/r/:roomId/receipt', titleKey: 'receipt.none' },
   { id: 'console', path: '/r/:roomId/console', titleKey: 'demo.roleConsole', needsToken: true },
