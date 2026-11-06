@@ -46,6 +46,9 @@ export function assertSandboxEnv(env: string | undefined): void;
 export function assertSandboxUrl(url: string, opts: GuardOptions): URL;
 
 // @public
+export function auditedThrough(j: Journal): number;
+
+// @public
 export function auditEventFor(e: PaymentAudit): AuditEventPayload;
 
 // @public (undocumented)
@@ -783,6 +786,7 @@ export function isStale(createdAtMs: number, nowMs: number, maxAgeMs: number): b
 export interface Journal {
     // (undocumented)
     auctionId: string;
+    auditedSeq?: number;
     // (undocumented)
     cursor: number;
     // (undocumented)
@@ -853,6 +857,10 @@ export interface JournalHold {
     holdId: string;
     orderId?: string;
     priorAuthIds?: string[];
+    reauthInDoubt?: {
+        requestId: string;
+        amountCents: number;
+    };
     // (undocumented)
     stale: boolean;
 }
@@ -1015,6 +1023,9 @@ export function logPayment(event: PaymentLogEvent): void;
 
 // @public (undocumented)
 export type LogSink = (line: string) => void;
+
+// @public
+export function lookupUnknownReauths(deps: ReauthLookupDeps, auctionId: string): Promise<ReauthLookupResult>;
 
 // @public
 export const MAX_DESCRIPTION_LENGTH = 127;
@@ -1225,6 +1236,7 @@ export interface PaymentAudit {
     outcome?: Outcome;
     // (undocumented)
     requestId?: string;
+    seq?: number;
     // (undocumented)
     status?: number;
     // (undocumented)
@@ -1592,6 +1604,27 @@ export interface ReauthHold {
 }
 
 // @public (undocumented)
+export interface ReauthLookupDeps extends ReauthStoreDeps {
+    // (undocumented)
+    audit: AuditSink;
+    // (undocumented)
+    gateway: Pick<PaymentsGateway, 'getHoldTruth' | 'reauthorize'>;
+}
+
+// @public (undocumented)
+export type ReauthLookupResult = {
+    status: 'done';
+    recorded: Array<{
+        bidderId: string;
+        holdId: string;
+        authId: string;
+    }>;
+    open: ReauthStillInDoubt[];
+} | {
+    status: 'busy';
+};
+
+// @public (undocumented)
 export interface Reauthorized {
     authId: string;
     // (undocumented)
@@ -1624,10 +1657,19 @@ export type ReauthResult = {
 } | Reauthorized | {
     status: 'refused';
     kind: string;
-} | {
-    status: 'unknown';
-    kind: string;
-};
+} | ReauthUnknown;
+
+// @public
+export interface ReauthStillInDoubt {
+    // (undocumented)
+    bidderId: string;
+    // (undocumented)
+    holdId: string;
+    // (undocumented)
+    orderId?: string;
+    // (undocumented)
+    requestId: string;
+}
 
 // @public (undocumented)
 export interface ReauthStoreDeps {
@@ -1637,6 +1679,18 @@ export interface ReauthStoreDeps {
     // (undocumented)
     journals: JournalStore;
     owner?: string;
+}
+
+// @public
+export interface ReauthUnknown {
+    // (undocumented)
+    amountCents: number;
+    // (undocumented)
+    kind: string;
+    // (undocumented)
+    requestId: string;
+    // (undocumented)
+    status: 'unknown';
 }
 
 // @public
@@ -1752,6 +1806,9 @@ export type RecoverResult = {
 } | {
     status: 'unavailable';
 };
+
+// @public
+export function recoverTrail(audit: AuditSink, j: Journal): Promise<number>;
 
 // @public (undocumented)
 export const REDACTED = "[REDACTED]";
@@ -1982,9 +2039,6 @@ export interface SettlementPlan {
 }
 
 // @public
-export function sourceKey(source: string): string;
-
-// @public
 export function settlementRef(lotId: string, seq: number): string;
 
 // @public (undocumented)
@@ -2041,6 +2095,9 @@ export interface SkippedCandidate {
     reason: 'no_hold' | 'price_above_hold';
 }
 
+// @public
+export function sourceKey(source: string): string;
+
 // @public (undocumented)
 export interface StaleDeps {
     // (undocumented)
@@ -2054,6 +2111,9 @@ export interface StaleDeps {
 
 // @public
 export function startReconcileTimer(deps: ReconcileAllDeps, opts?: ReconcileTimerOptions): ReconcileTimer;
+
+// @public
+export function stateChangeRow(auctionId: string, h: JournalHistoryEntry): PaymentAudit;
 
 // @public
 export function step(journal: Journal, event: SettlementEvent): StepResult;
@@ -2452,8 +2512,8 @@ export interface WebhookVerifierOptions {
     maxCallsPerWindow?: number;
     maxRedeliveryAgeMs?: number;
     maxRedeliveryCallsPerWindow?: number;
-    maxUnprovenCalls?: number;
     maxSkewMs?: number;
+    maxUnprovenCalls?: number;
     nowMs?: () => number;
     // (undocumented)
     webhookId: string;
