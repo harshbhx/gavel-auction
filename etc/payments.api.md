@@ -4,6 +4,8 @@
 
 ```ts
 
+import { HoldErrorCode } from '@gavel/shared';
+
 // @public
 export function allowedTransitions(): Array<{
     from: SettlementState;
@@ -624,8 +626,6 @@ export interface HoldAgePolicy {
 // @public
 export class HoldError extends Error {
     constructor(code: HoldErrorCode, message: string, cause?: unknown);
-    // Warning: (ae-forgotten-export) The symbol "HoldErrorCode" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     code: HoldErrorCode;
 }
@@ -1982,6 +1982,9 @@ export interface SettlementPlan {
 }
 
 // @public
+export function sourceKey(source: string): string;
+
+// @public
 export function settlementRef(lotId: string, seq: number): string;
 
 // @public (undocumented)
@@ -2386,6 +2389,7 @@ export class WebhookHandler {
 
 // @public (undocumented)
 export interface WebhookHandlerDeps {
+    acceptsEventType?: (eventType: string) => boolean;
     // (undocumented)
     audit: AuditSink;
     // (undocumented)
@@ -2448,6 +2452,7 @@ export interface WebhookVerifierOptions {
     maxCallsPerWindow?: number;
     maxRedeliveryAgeMs?: number;
     maxRedeliveryCallsPerWindow?: number;
+    maxUnprovenCalls?: number;
     maxSkewMs?: number;
     nowMs?: () => number;
     // (undocumented)

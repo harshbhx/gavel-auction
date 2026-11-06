@@ -46,6 +46,8 @@ export interface BidAudit {
   audioEndMs?: number;
   transcript?: string;
   confidenceBps?: number;
+  /** Amount the parser heard, in cents; differs from the bid amount when a confirm changed it. */
+  parsedCents?: number;
   confirmed?: boolean;
   parserVersion?: string;
   clientTs?: number;

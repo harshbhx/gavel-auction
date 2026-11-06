@@ -12,7 +12,8 @@ import { Transport } from '../src/transport.js';
  *  1. no token-shaped string in fixtures, evidence, docs or production sources;
  *  2. nothing secret reaches the log sink on a real client flow;
  *  3. zero runtime dependencies except zod, and no production import of anything
- *     else than zod and Node built-ins.
+ *     else than zod and Node built-ins. The one exception is a type-only import of
+ *     the shared hold contract (`@gavel/shared`), which is erased before run time.
  *
  * Test sources are not scanned for tokens on purpose: the redaction tests plant
  * fake tokens there to prove they are removed.
@@ -76,6 +77,9 @@ function walk(dir: string, keep: (file: string) => boolean): string[] {
 const PLANTED = ['Q1w2', 'E3r4', 'T5y6', 'U7i8'].join('');
 
 const isCode = (f: string): boolean => /\.(ts|tsx|js|mjs|cjs)$/.test(f);
+
+/** `import type { ... } from 'x'` and `export type { ... } from 'x'`, possibly over several lines. */
+const TYPE_ONLY = /^\s*(?:import|export)\s+type\s+\{[^}]*\}\s+from\s+['"]([^'"]+)['"];?/gm;
 
 describe('token shapes in committed files', () => {
   it('the detector recognizes every planted shape', () => {
@@ -198,7 +202,8 @@ describe('dependency policy', () => {
   it('production sources import only relative modules, node: built-ins and zod', () => {
     const offenders: string[] = [];
     for (const file of walk(join(PKG, 'src'), isCode)) {
-      const text = readFileSync(file, 'utf8');
+      // Type-only statements are erased before run time; the next test checks them.
+      const text = readFileSync(file, 'utf8').replace(TYPE_ONLY, '');
       for (const m of text.matchAll(
         /(?:\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*)['"]([^'"]+)['"]/g,
       )) {
@@ -208,5 +213,32 @@ describe('dependency policy', () => {
       }
     }
     expect(offenders).toEqual([]);
+  });
+
+  it('type-only imports name nothing but local, built-in, zod and shared contract types', () => {
+    const offenders: string[] = [];
+    let shared = 0;
+    for (const file of walk(join(PKG, 'src'), isCode)) {
+      for (const m of readFileSync(file, 'utf8').matchAll(TYPE_ONLY)) {
+        const spec = m[1] ?? '';
+        if (spec === '@gavel/shared') shared += 1;
+        else if (!spec.startsWith('.') && !spec.startsWith('node:') && spec !== 'zod') {
+          offenders.push(`${relative(PKG, file)}: ${spec}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+    // The contract module re-exports the shared hold contract (issue 896).
+    expect(shared).toBeGreaterThan(0);
+  });
+
+  it('strips only type-only statements', () => {
+    const text = [
+      "import type { A } from '@gavel/shared';",
+      "export type {\n  B,\n  C,\n} from '@gavel/shared';",
+      "import { type D, e } from 'left';",
+    ].join('\n');
+    expect(text.replace(TYPE_ONLY, '')).not.toContain('@gavel/shared');
+    expect(text.replace(TYPE_ONLY, '')).toContain("'left'");
   });
 });

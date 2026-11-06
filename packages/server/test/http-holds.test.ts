@@ -32,7 +32,16 @@ interface Calls {
   abandoned: string[];
 }
 
-function setup(): { app: HttpApp; deps: HttpDeps; calls: Calls; records: Map<string, HoldRecord> } {
+interface Setup {
+  app: HttpApp;
+  deps: HttpDeps;
+  calls: Calls;
+  records: Map<string, HoldRecord>;
+  /** Auctions the stub says no longer take holds. */
+  closed: Set<string>;
+}
+
+function setup(): Setup {
   const clock = new ManualClock(START);
   const ids = new SeqIds();
   const store = new MemoryStore(() => clock.now());
@@ -68,6 +77,7 @@ function setup(): { app: HttpApp; deps: HttpDeps; calls: Calls; records: Map<str
   };
   const calls: Calls = { created: [], approved: [], abandoned: [] };
   const records = new Map<string, HoldRecord>();
+  const closed = new Set<string>();
   const port: HoldsPort = {
     service: {
       createHoldOrder: async (i) => {
@@ -90,8 +100,15 @@ function setup(): { app: HttpApp; deps: HttpDeps; calls: Calls; records: Map<str
       },
     },
     store: { get: async (id) => records.get(id) ?? null },
+    acceptsHolds: async (id) => !closed.has(id),
   };
-  return { app: createHttpApp(deps, [mountAuctions, mountHolds(port)]), deps, calls, records };
+  return {
+    app: createHttpApp(deps, [mountAuctions, mountHolds(port)]),
+    deps,
+    calls,
+    records,
+    closed,
+  };
 }
 
 async function newAuction(app: HttpApp): Promise<string> {
@@ -250,5 +267,42 @@ describe('hold routes (INT-R3-20)', () => {
       expect(body).not.toHaveProperty('ceilingCents');
       expect(records.get('hold-1')?.status).toBe(status);
     }
+  });
+
+  it('refuses a new order and an approval once the auction no longer takes holds', async () => {
+    const { app, deps, calls, records, closed } = setup();
+    const auctionId = await newAuction(app);
+    const owner = deps.ids.mint<'BidderId'>();
+    const mine = await mintToken(deps, 'session', auctionId, owner, owner);
+    records.set('hold-1', {
+      holdId: 'hold-1',
+      auctionId,
+      bidderId: owner,
+      orderId: 'order-1',
+      ceilingCents: 30000,
+      status: 'PENDING_APPROVAL',
+      createdAtMs: START,
+    });
+    closed.add(auctionId);
+    const created = await post(app, '/api/holds', { auctionId, ceilingCents: 30000 }, mine.token);
+    expect(created.status).toBe(409);
+    expect(((await created.json()) as { code: string }).code).toBe('closed');
+    const approved = await post(
+      app,
+      '/api/holds/hold-1/approve',
+      { orderId: 'order-1' },
+      mine.token,
+    );
+    expect(approved.status).toBe(409);
+    expect(calls.created).toEqual([]);
+    expect(calls.approved).toEqual([]);
+    // Abandoning still works: it only ever releases.
+    const released = await app.fetch(
+      new Request('http://h.test/api/holds/hold-1', {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${mine.token}` },
+      }),
+    );
+    expect(released.status).toBe(200);
   });
 });

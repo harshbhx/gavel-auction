@@ -204,7 +204,7 @@ describe('ManualEntry (T-WEB-038)', () => {
   const roster = [{ bidderId: 'bidder-12' as BidderId, paddle: 12 }];
 
   it('sends one manual bid on Enter and shows a rejection beside the field', () => {
-    const onSubmit = vi.fn();
+    const onSubmit = vi.fn((): 'sent' => 'sent');
     const { rerender } = render(
       <ManualEntry roster={roster} onSubmit={onSubmit} rejection={null} />,
     );
@@ -223,7 +223,7 @@ describe('ManualEntry (T-WEB-038)', () => {
   });
 
   it('flags an unknown paddle and a missing amount without sending', () => {
-    const onSubmit = vi.fn();
+    const onSubmit = vi.fn((): 'sent' => 'sent');
     render(<ManualEntry roster={roster} onSubmit={onSubmit} rejection={null} />);
     fireEvent.change(screen.getByLabelText(en['console.manual.paddle']), {
       target: { value: '99' },

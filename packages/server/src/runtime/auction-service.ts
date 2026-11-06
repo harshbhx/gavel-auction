@@ -68,6 +68,7 @@ import { Room, type RoomDeps } from '../room/room';
 import type { HammerResult, SettlePort, SettlementReport } from '../room/settle-port';
 import { dispatchAtHead } from './engine-dispatch';
 import { LedgerEngine, commandIdFor, lotIdOf } from './ledger-engine';
+import { ownHoldsOf } from './own-holds';
 import { reviewCodeOf } from './review-code';
 import {
   isDefiniteRefusal,
@@ -76,7 +77,7 @@ import {
   voidSpareHolds,
   type SpareVoidDeps,
 } from './void-phase';
-import { WebhookIntake } from './webhook-intake';
+import { WebhookIntake, acceptsEventType } from './webhook-intake';
 
 /** Everything the service needs from the outside, as ports. */
 /** Pending holds younger than this are left to the normal approval flow. */
@@ -428,6 +429,7 @@ class Service implements AuctionService, SettlePort {
       clock: this.payClock,
       ...(deps.metrics !== undefined ? { metrics: deps.metrics } : {}),
       onVerified: (event) => this.intake.accept(event),
+      acceptsEventType,
     });
   }
 
@@ -1585,6 +1587,8 @@ class Service implements AuctionService, SettlePort {
     const terminal = TERMINAL.has(journal.state);
     if (terminal && opts.final !== true) return;
     const note = opts.note;
+    // Per-hold detail from the same projection the settlement payload emitter publishes.
+    const own = ownHoldsOf(journal, this.deps.clock.now());
     const report: SettlementReport = {
       // A review report sorts just below the report for the same journal version, so a
       // corrected report after the operator fixed the cause is never dropped as stale.
@@ -1595,6 +1599,8 @@ class Service implements AuctionService, SettlePort {
         ? { amountCaptured: journal.winner.amountCents as Cents }
         : {}),
       ...(note !== undefined ? { note } : {}),
+      holds: own.holds,
+      ...(own.winnerId !== undefined ? { winnerId: own.winnerId } : {}),
     };
     await room.reportSettlement(report);
     await this.boundary('after:report');
