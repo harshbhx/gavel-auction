@@ -120,6 +120,15 @@ async function tabUntil(page: Page, match: (el: Element) => boolean, max: number
 }
 
 test('register walk: name, ceiling and approve with the keyboard alone', async ({ page }) => {
+  // SKIPPED ON PURPOSE (QA-86): since the register route waits for the room snapshot over the
+  // socket, the form never renders here, where no server runs and "room1" is not a room id. A
+  // stored session alone no longer stands in for the invite step. The same walk (Tab reach, ring
+  // width) runs against a real seeded room in packages/e2e/specs/a11y-keyboard.spec.ts. Restore
+  // this test once it can feed the page a room snapshot (page.routeWebSocket with a ULID room).
+  test.skip(
+    true,
+    'register form needs a live room snapshot; covered by the e2e a11y-keyboard spec',
+  );
   // A stored session stands in for the invite step, so the form renders without a server.
   await page.addInitScript(() => {
     sessionStorage.setItem(
