@@ -1932,6 +1932,9 @@ export interface ReviewKeepOptions {
 }
 
 // @public
+export function reviewKeepShrinksAt(j: Journal, o: ReviewKeepOptions): number | null;
+
+// @public
 export function revokeReasonFor(status: HoldRecord['status']): 'declined' | 'expired' | 'voided' | null;
 
 // @public

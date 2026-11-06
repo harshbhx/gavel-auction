@@ -17,6 +17,8 @@ export interface ReplayBundle {
   durationMs: number;
   roomConfig: AuctionConfig;
   events: ReplayEvent[];
+  /** Address of the recorded audio, when the recording has any. */
+  audioUrl?: string;
 }
 
 export type BundleError = 'not_object' | 'version' | 'events' | 'event' | 'order' | 'no_state';
@@ -63,6 +65,9 @@ export function parseBundle(raw: unknown): BundleResult {
       durationMs: previous,
       roomConfig: firstState.snapshot.config,
       events,
+      ...(typeof raw['audioUrl'] === 'string' && raw['audioUrl'] !== ''
+        ? { audioUrl: raw['audioUrl'] }
+        : {}),
     },
   };
 }

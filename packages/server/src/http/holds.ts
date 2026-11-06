@@ -33,6 +33,12 @@ export interface HoldsPort {
     holdId: string;
     name: string;
   }) => Promise<void>;
+  /**
+   * Told once an approval wrote the hold HELD (`AuctionService.holdApproved`). An approval that
+   * passed the open check before the hammer may return after the plan was cut and the auction
+   * was seen final; the service then runs the settlement again so the hold is voided (HRD-76).
+   */
+  approved?: (holdId: string) => Promise<void>;
 }
 
 function holdFailure(code: HoldErrorCode, message: string): Response {
@@ -107,13 +113,18 @@ export function mountHolds(port: HoldsPort): Mount {
         if (!holdOwnedBySession(hold.bidderId, who.bidderId)) return notFound();
         await requireOpen(port, hold.auctionId);
         const approved = await port.service.completeApproval({ holdId, orderId: body.orderId });
-        if (body.name !== undefined && port.registerBidder !== undefined) {
-          await port.registerBidder({
-            auctionId: hold.auctionId,
-            bidderId: hold.bidderId,
-            holdId,
-            name: body.name,
-          });
+        try {
+          if (body.name !== undefined && port.registerBidder !== undefined) {
+            await port.registerBidder({
+              auctionId: hold.auctionId,
+              bidderId: hold.bidderId,
+              holdId,
+              name: body.name,
+            });
+          }
+        } finally {
+          // Also when the registration was refused: the authorization exists either way.
+          await port.approved?.(holdId);
         }
         return json(200, approved);
       }),

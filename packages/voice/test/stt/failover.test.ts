@@ -5,9 +5,9 @@ import { FakeStt, VirtualClock, type ScriptStep } from '../../src/stt/fake.js';
 import type { SttEvent } from '../../src/stt/provider.js';
 import { runConformance } from './conformance.js';
 
-function batch(seq: number, quiet = false): AudioBatch {
+function batch(seq: number, quiet = false, level = 8000): AudioBatch {
   const pcm = new Int16Array(5 * FRAME_SAMPLES);
-  if (!quiet) pcm.fill(8000);
+  if (!quiet) pcm.fill(level);
   return { seq, tsMs: seq * 100, flags: 0, pcm };
 }
 
@@ -98,6 +98,50 @@ runConformance('FailoverStt', () => {
       return Promise.resolve();
     },
   };
+});
+
+describe('issue 1862 noise and mute fallbacks', () => {
+  it('steady room noise (about -45 dBFS) never arms the silence switch', async () => {
+    const r = rig([[]]);
+    await r.stt.start({ keyterms: [], language: 'en' });
+    for (let i = 0; i < 100; i++) {
+      r.stt.write(batch(i, false, 180));
+      r.clock.advance(100);
+      await flush();
+    }
+    expect(r.switches).toEqual([]);
+    expect(r.fallbacks).toHaveLength(0);
+    await r.stt.stop();
+  });
+
+  it('keeps a silent primary and reports a hold when the fallback cannot transcribe', async () => {
+    const clock = new VirtualClock();
+    const switches: SwitchReason[] = [];
+    const holds: SwitchReason[] = [];
+    let fallbacks = 0;
+    const stt = new FailoverStt({
+      clock,
+      primary: () => new FakeStt({ clock }),
+      fallback: () => {
+        fallbacks += 1;
+        return new FakeStt({ clock });
+      },
+      fallbackTranscribes: false,
+      onSwitch: (i) => switches.push(i.reason),
+      onHold: (i) => holds.push(i.reason),
+    });
+    await stt.start({ keyterms: [], language: 'en' });
+    for (let i = 0; i < 40; i++) {
+      stt.write(batch(i));
+      clock.advance(100);
+      await flush();
+    }
+    expect(switches).toEqual([]);
+    expect(fallbacks).toBe(0);
+    expect(holds).toEqual(['silent']);
+    expect(stt.usingPrimary).toBe(true);
+    await stt.stop();
+  });
 });
 
 describe('T-VOX-019 failover triggers', () => {

@@ -6,25 +6,18 @@ import { Icon } from '../../design/icons';
 import { Button } from '../../design/primitives/Button';
 import { Field } from '../../design/primitives/Field';
 import { formatUsdCompact } from '../../util/money';
-import { customCeilingCents, parsePaddle, validName } from './validate';
+import { customCeilingCents, validName } from './validate';
 
 export interface RegistrationDraft {
   name: string;
-  paddle: number;
   ceilingCents: number;
 }
 
 export interface RegisterScreenProps {
-  /** Paddle the server suggested; the bidder may edit it. */
-  suggestedPaddle: number;
-  /** Set when the server rejected a paddle as taken, with the number it suggests instead. */
-  paddleTaken?: { taken: number; suggested: number };
   /** Room minimum and maximum cap (room.config.maxCeilingCents), in cents. */
   minCents: number;
   maxCents: number;
   presetsCents?: readonly number[];
-  /** Paddles other bidders already hold; typing one of them shows the taken message. */
-  takenPaddles?: readonly number[];
   /** What the bidder entered before going back from the approval step; shown again as typed. */
   initial?: RegistrationDraft;
   onApprove: (draft: RegistrationDraft) => void;
@@ -35,19 +28,15 @@ const CUSTOM = 'custom';
 
 /** Registration steps 1 and 2 (R-WEB-040..042, R-WEB-116). */
 export function RegisterScreen({
-  suggestedPaddle,
-  paddleTaken,
   minCents,
   maxCents,
   presetsCents = DEFAULT_PRESETS,
-  takenPaddles = [],
   initial,
   onApprove,
 }: RegisterScreenProps) {
   const initialPreset = initial !== undefined && presetsCents.includes(initial.ceilingCents);
   const [step, setStep] = useState<1 | 2>(initial === undefined ? 1 : 2);
   const [name, setName] = useState(initial?.name ?? '');
-  const [paddleText, setPaddleText] = useState(String(initial?.paddle ?? suggestedPaddle));
   const [touched, setTouched] = useState(false);
   const [choice, setChoice] = useState<string | null>(
     initial === undefined ? null : initialPreset ? String(initial.ceilingCents) : CUSTOM,
@@ -57,24 +46,10 @@ export function RegisterScreen({
   );
   const [customTouched, setCustomTouched] = useState(false);
 
-  const paddle = parsePaddle(paddleText);
-  const taken =
-    paddleTaken ??
-    (paddle !== null && takenPaddles.includes(paddle)
-      ? { taken: paddle, suggested: suggestedPaddle }
-      : undefined);
-  const takenHit = taken !== undefined && paddle === taken.taken;
   const nameOk = validName(name);
-  const paddleOk = paddle !== null && !takenHit;
-  const stepOneValid = nameOk && paddleOk;
+  const stepOneValid = nameOk;
 
   const nameError = touched && !nameOk ? t('generic.error') : undefined;
-  let paddleError: string | undefined;
-  if (taken !== undefined && takenHit) {
-    paddleError = t('reg.paddleTaken', { n: taken.taken, m: taken.suggested });
-  } else if (touched && paddle === null) {
-    paddleError = t('generic.error');
-  }
 
   const customCents = customCeilingCents(customText, minCents, maxCents);
   let ceilingCents: number | null = null;
@@ -92,13 +67,13 @@ export function RegisterScreen({
       setStep(2);
       return;
     }
-    announce('assertive', paddleError ?? t('generic.error'));
+    announce('assertive', t('generic.error'));
   };
 
   const submitStepTwo = (e: FormEvent): void => {
     e.preventDefault();
     setCustomTouched(true);
-    if (ceilingCents === null || paddle === null) {
+    if (ceilingCents === null) {
       announce(
         'assertive',
         customError ??
@@ -109,7 +84,7 @@ export function RegisterScreen({
       );
       return;
     }
-    onApprove({ name: name.trim(), paddle, ceilingCents });
+    onApprove({ name: name.trim(), ceilingCents });
   };
 
   if (step === 1) {
@@ -127,14 +102,6 @@ export function RegisterScreen({
             onBlur={() => setTouched(true)}
             {...(nameError === undefined ? {} : { error: nameError })}
           />
-          <Field
-            label={t('reg.paddle')}
-            value={paddleText}
-            inputMode="numeric"
-            onChange={(e) => setPaddleText(e.target.value)}
-            onBlur={() => setTouched(true)}
-            {...(paddleError === undefined ? {} : { error: paddleError })}
-          />
           <Button type="submit" size="bid" disabled={!stepOneValid}>
             {t('reg.continue')}
           </Button>
@@ -146,7 +113,7 @@ export function RegisterScreen({
   return (
     <main>
       <h1 tabIndex={-1}>{t('reg.step2')}</h1>
-      {paddle !== null && <p>{t('reg.summary', { name: name.trim(), n: paddle })}</p>}
+      <p>{t('reg.summary', { name: name.trim() })}</p>
       <form onSubmit={submitStepTwo} noValidate>
         <div role="radiogroup" aria-label={t('reg.step2')}>
           {presetsCents.map((cents) => (

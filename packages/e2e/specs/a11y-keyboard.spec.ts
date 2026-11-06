@@ -1,5 +1,5 @@
-import type { Page } from '@playwright/test';
 import { expect, test } from '../src/fixtures/base';
+import { seedRoom, seedSession } from '../src/fixtures/room';
 
 /**
  * Keyboard and live region checks on the real stack (R-QA-037, T-QA-047): the register form is
@@ -7,25 +7,17 @@ import { expect, test } from '../src/fixtures/base';
  * update lands within 200 ms of the announcement.
  *
  * The live region is driven through the app's own announcer module (the dev server serves it as a
- * module), because the screens that announce need a live room. The register form is shown with a
- * stored session, which stands in for the invite step.
+ * module). The register form needs a real room, so each test seeds one over HTTP and stores the
+ * joined bidder's session, which stands in for the invite step.
  */
 
 const MAX_TABS = 8;
 const LIVE_REGION_BUDGET_MS = 200;
 
-async function seedSession(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    sessionStorage.setItem(
-      'gavel:session:room1',
-      JSON.stringify({ token: 'walnut', bidderId: 'bidder-one' }),
-    );
-  });
-}
-
 test('the register form is reachable within eight Tab presses', async ({ page, stack }) => {
-  await seedSession(page);
-  await page.goto(`${stack.webUrl}/r/room1/register`);
+  const room = await seedRoom(stack);
+  await seedSession(page, room);
+  await page.goto(`${stack.webUrl}/r/${room.auctionId}/register`);
   await page.locator('form').waitFor();
   let presses = 0;
   let onName = false;
@@ -41,13 +33,14 @@ test('the register form is reachable within eight Tab presses', async ({ page, s
 });
 
 test('the focused field and button show a ring at least 2 px wide', async ({ page, stack }) => {
-  await seedSession(page);
-  await page.goto(`${stack.webUrl}/r/room1/register`);
+  const room = await seedRoom(stack);
+  await seedSession(page, room);
+  await page.goto(`${stack.webUrl}/r/${room.auctionId}/register`);
   await page.locator('form').waitFor();
   await page.keyboard.press('Tab');
   await page.locator('input[autocomplete="nickname"]').focus();
   await page.keyboard.type('Walnut');
-  await page.keyboard.press('Tab');
+  // The name field is followed directly by the submit button.
   await page.keyboard.press('Tab');
   const ring = await page.evaluate(() => {
     const el = document.activeElement;

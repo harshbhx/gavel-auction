@@ -12,6 +12,25 @@ export interface DemoLinks {
   readonly audit: string;
 }
 
+/** Why the server refused to make a room; the launcher shows a message for each. */
+export type DemoFailure = 'demoOff' | 'unauthorized' | 'roomCap';
+
+/** Rejection from `createRoom` when the server answered with a known refusal. */
+export class DemoRoomError extends Error {
+  readonly reason: DemoFailure;
+  constructor(reason: DemoFailure) {
+    super(reason);
+    this.reason = reason;
+  }
+}
+
+function failureText(reason: DemoFailure | null): string {
+  if (reason === 'demoOff') return t('demo.failedOff');
+  if (reason === 'unauthorized') return t('demo.failedKey');
+  if (reason === 'roomCap') return t('demo.failedCap');
+  return t('demo.failed');
+}
+
 export interface DemoLauncherProps {
   /** Creates a room on the server. Rejects when the server cannot be reached. */
   readonly createRoom: () => Promise<DemoLinks>;
@@ -53,6 +72,7 @@ export function DemoLauncher({
   const [mode, setMode] = useState<DemoMode>(initialMode);
   const [links, setLinks] = useState<DemoLinks | null>(null);
   const [copied, setCopied] = useState<keyof DemoLinks | null>(null);
+  const [failure, setFailure] = useState<DemoFailure | null>(null);
 
   const finish = (next: DemoLinks, how: DemoMode): void => {
     setMode(how);
@@ -69,9 +89,13 @@ export function DemoLauncher({
       return;
     }
     setPhase('busy');
+    setFailure(null);
     createRoom().then(
       (next) => finish(next, 'live'),
-      () => setPhase('failed'),
+      (error: unknown) => {
+        setFailure(error instanceof DemoRoomError ? error.reason : null);
+        setPhase('failed');
+      },
     );
   };
 
@@ -93,7 +117,7 @@ export function DemoLauncher({
       </Button>
       {phase === 'failed' && (
         <div role="alert">
-          <p>{t('demo.failed')}</p>
+          <p>{failureText(failure)}</p>
           <Button variant="outline" onClick={scripted}>
             {t('demo.scriptedInstead')}
           </Button>

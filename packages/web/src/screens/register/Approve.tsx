@@ -18,6 +18,8 @@ export interface ApproveProps {
   ceilingCents: number;
   /** Registration is closed (room already bidding and late entry is off). */
   closed?: boolean;
+  /** The paddle the server assigned to this bidder, once the roster shows it. */
+  paddle?: number;
   /** Watch-only link target, offered when registration is closed. */
   watchHref?: string;
   /** Back to the ceiling step with the choice kept. */
@@ -89,6 +91,7 @@ export function Approve({
   result,
   ceilingCents,
   closed = false,
+  paddle,
   watchHref = '/',
   onBackToCeiling,
   onRetry,
@@ -124,6 +127,7 @@ export function Approve({
             <strong>{t('reg.held', { amount: formatUsdCompact(amount) })}</strong>
           </p>
           <p>{t('reg.heldRef', { suffix })}</p>
+          {paddle !== undefined && <p>{t('reg.yourPaddle', { n: paddle })}</p>}
           {full !== undefined && (
             <details>
               <summary>{t('generic.details')}</summary>

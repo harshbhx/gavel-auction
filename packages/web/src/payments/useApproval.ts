@@ -84,6 +84,7 @@ export function completeApprovalReturn(
     stored.clientRegistrationId,
     on,
     stored.ceilingCents,
+    stored.name,
   );
 }
 
@@ -99,7 +100,7 @@ export interface UseApproval {
   state: ApprovalState;
   result: ApprovalResult | null;
   /** Starts an attempt. Calls while one is running, or after a hold exists, create nothing new. */
-  start(ceilingCents: number): Promise<ApprovalResult>;
+  start(ceilingCents: number, name?: string): Promise<ApprovalResult>;
   cancel(): void;
 }
 
@@ -133,7 +134,7 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
   }, [key]);
 
   const start = useCallback(
-    (ceilingCents: number): Promise<ApprovalResult> => {
+    (ceilingCents: number, name?: string): Promise<ApprovalResult> => {
       const current = attempts.get(key);
       if (current?.promise != null) return current.promise;
       if (current?.result?.state === 'held') return Promise.resolve(current.result);
@@ -164,9 +165,12 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
         result: null,
       };
       attempts.set(key, attempt);
+      const typedName = name ?? stored?.name;
+      const nameField = typedName === undefined ? {} : { name: typedName };
       saveRegistration(roomId, bidderId, {
         clientRegistrationId: attempt.clientRegistrationId,
         ceilingCents,
+        ...nameField,
       });
       const promise = port
         .start(
@@ -175,6 +179,7 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
             bidderId,
             ceilingCents,
             clientRegistrationId: attempt.clientRegistrationId,
+            ...nameField,
             ...(retryOrderId === undefined || retryHoldId === undefined
               ? {}
               : { approvedOrderId: retryOrderId, approvedHoldId: retryHoldId }),
@@ -184,6 +189,7 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
                 orderId: order.orderId,
                 holdId: order.holdId,
                 ceilingCents,
+                ...nameField,
               }),
           },
           (s) => {
@@ -199,6 +205,7 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
             saveRegistration(roomId, bidderId, {
               clientRegistrationId: attempt.clientRegistrationId,
               ceilingCents,
+              ...nameField,
               ...(r.orderId === undefined ? {} : { orderId: r.orderId }),
               ...(r.orderId === undefined || r.holdId === undefined ? {} : { holdId: r.holdId }),
             });

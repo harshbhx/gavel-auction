@@ -10,8 +10,12 @@ import {
 const SAMPLE_RATE = 16000;
 
 /** Timer source; VirtualClock satisfies it, so tests never sleep. */
-/** Mean-square level above about -50 dBFS counts as speech for arming the silence timer. */
-const SPEECH_MEAN_SQUARE = (32768 * 10 ** (-50 / 20)) ** 2;
+/**
+ * Mean-square level above about -35 dBFS counts as speech for arming the silence timer. Ordinary
+ * room noise sits well below this, so ambient sound never reads as a provider that heard speech
+ * and said nothing (issue 1862).
+ */
+const SPEECH_MEAN_SQUARE = (32768 * 10 ** (-35 / 20)) ** 2;
 
 function hasSpeech(pcm: Int16Array): boolean {
   if (pcm.length === 0) return false;
@@ -50,6 +54,14 @@ export interface FailoverOptions {
   circuitMs?: number;
   /** Audio replayed into the fallback (default 5000). */
   replayMs?: number;
+  /**
+   * False when the fallback cannot produce text (an empty recording). A silent or late primary is
+   * then kept running and reported through `onHold` instead of being swapped for a mute provider.
+   * Default true.
+   */
+  fallbackTranscribes?: boolean;
+  /** Called when a switch was withheld because the fallback cannot transcribe. */
+  onHold?: (info: { reason: SwitchReason }) => void;
   onSwitch?: (info: { from: string; to: string; reason: SwitchReason }) => void;
 }
 
@@ -62,8 +74,8 @@ export class FailoverStt implements InstrumentedSttProvider {
   readonly stats = new SttStats();
   switches = 0;
 
-  private readonly o: Required<Omit<FailoverOptions, 'onSwitch'>> &
-    Pick<FailoverOptions, 'onSwitch'>;
+  private readonly o: Required<Omit<FailoverOptions, 'onSwitch' | 'onHold'>> &
+    Pick<FailoverOptions, 'onSwitch' | 'onHold'>;
   private readonly channel = new EventChannel<SttEvent>(1024);
   private active: SttProvider;
   private onPrimary = true;
@@ -95,6 +107,7 @@ export class FailoverStt implements InstrumentedSttProvider {
       lateFinalMs: 4000,
       circuitMs: 30000,
       replayMs: 5000,
+      fallbackTranscribes: true,
       ...opts,
     };
     this.active = this.o.primary();
@@ -243,6 +256,11 @@ export class FailoverStt implements InstrumentedSttProvider {
 
   private switchToFallback(reason: SwitchReason): void {
     if (!this.onPrimary || this.ended) return;
+    // A fallback that cannot transcribe is worse than a quiet primary: keep the primary and say so.
+    if (!this.o.fallbackTranscribes && (reason === 'silent' || reason === 'late_final')) {
+      this.o.onHold?.({ reason });
+      return;
+    }
     const from = this.active;
     const to = this.o.fallback();
     this.onPrimary = false;

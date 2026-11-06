@@ -8,6 +8,7 @@ import { t } from '../../src/copy/t';
 import { loadSession, saveHighBid, saveSession } from '../../src/net/session';
 import { resetApprovalMemory } from '../../src/payments/useApproval';
 import { saveRegistration } from '../../src/payments/registrationStore';
+import { REJECTION_CLEAR_MS } from '../../src/screens/bid/BidScreen';
 import { UNAVAILABLE_RETRY_MS } from '../../src/screens/register/Approve';
 import { roomStore } from '../../src/store/roomStore';
 import { clearAuctioneerToken } from '../../src/store/session';
@@ -307,6 +308,96 @@ describe('bid screen', () => {
   });
 });
 
+describe('bid screen states and unanswered bids', () => {
+  const bidBar = (): HTMLElement | null => screen.queryByTestId('bid-bar');
+  const rejectFirstBid = (socket: FakeSocket): void => {
+    const mid = socket.frames('bid')[0]?.['mid'];
+    act(() =>
+      socket.receive({
+        v: 1,
+        t: 'bid_rejected',
+        seq: 2,
+        ts: BASE_TIME + 2,
+        mid,
+        reason: 'below_increment',
+        retryable: false,
+      }),
+    );
+  };
+
+  it.each([
+    ['paused', 'bid.paused', 'PAUSED', false],
+    ['closed', 'bid.closedBanner', 'CLOSING', false],
+    ['stopped', 'bid.stoppedBanner', 'OPEN', true],
+  ] as const)('shows the %s banner and turns the controls off', (_name, key, status, stopped) => {
+    saveSession(ROOM, { token: 'heron', bidderId: ME });
+    const socket = joinLive(`/r/${ROOM}/bid`);
+    act(() => socket.receive(stateMsg(1, snapshot())));
+    expect(bidBar()).not.toBeNull();
+    act(() =>
+      socket.receive(stateMsg(2, { ...snapshot({ status }), ...(stopped ? { stopped } : {}) })),
+    );
+    expect(screen.getAllByText(t(key)).length).toBeGreaterThan(0);
+    expect(bidBar()).toBeNull();
+    expect(screen.queryByRole('button', { name: t('bid.quick', { amount: '$50' }) })).toBeNull();
+  });
+
+  it('keeps a rejection until 6000 ms have passed', () => {
+    vi.useFakeTimers();
+    saveSession(ROOM, { token: 'heron', bidderId: ME });
+    const socket = joinLive(`/r/${ROOM}/bid`);
+    act(() => socket.receive(stateMsg(1, snapshot())));
+    fireEvent.click(screen.getByRole('button', { name: t('bid.quick', { amount: '$50' }) }));
+    rejectFirstBid(socket);
+    expect(rejection()).toHaveLength(1);
+    act(() => {
+      vi.advanceTimersByTime(REJECTION_CLEAR_MS - 100);
+    });
+    expect(rejection()).toHaveLength(1);
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(rejection()).toHaveLength(0);
+  });
+
+  it('clears a rejection when the price changes', () => {
+    vi.useFakeTimers();
+    saveSession(ROOM, { token: 'heron', bidderId: ME });
+    const socket = joinLive(`/r/${ROOM}/bid`);
+    act(() => socket.receive(stateMsg(1, snapshot())));
+    fireEvent.click(screen.getByRole('button', { name: t('bid.quick', { amount: '$50' }) }));
+    rejectFirstBid(socket);
+    expect(rejection()).toHaveLength(1);
+    act(() => socket.receive(priceMsg(3, 2, 8000)));
+    expect(rejection()).toHaveLength(0);
+  });
+
+  it('offers the current minimum instead of an old amount once the price moved above it', () => {
+    vi.useFakeTimers();
+    saveSession(ROOM, { token: 'heron', bidderId: ME });
+    const socket = joinLive(`/r/${ROOM}/bid`);
+    act(() => socket.receive(stateMsg(1, snapshot())));
+    fireEvent.click(screen.getByRole('button', { name: t('bid.quick', { amount: '$50' }) }));
+    act(() => {
+      vi.advanceTimersByTime(4100);
+    });
+    const old = t('bid.resendAmount', { amount: '$50.00' });
+    expect(screen.getByRole('button', { name: old })).toBeTruthy();
+    act(() => socket.receive(priceMsg(2, 2, 8000)));
+    expect(screen.queryByRole('button', { name: old })).toBeNull();
+    fireEvent.click(
+      screen.getByRole('button', { name: t('bid.resendCurrent', { amount: '$130.00' }) }),
+    );
+    const bids = socket.frames('bid');
+    expect(bids).toHaveLength(2);
+    expect(bids[1]?.['amount']).toBe(13_000);
+    expect(bids[1]?.['mid']).not.toBe(bids[0]?.['mid']);
+    expect(
+      screen.queryByRole('button', { name: t('bid.resendCurrent', { amount: '$130.00' }) }),
+    ).toBeNull();
+  });
+});
+
 function stubHolds(
   handler: (url: string) => { status: number; body: unknown },
 ): Array<{ url: string; body: string }> {
@@ -330,6 +421,10 @@ function fillAndApprove(preset: string): void {
   fireEvent.click(screen.getByRole('button', { name: t('reg.approve') }));
 }
 
+/** The inline rejection text; the shared announcer region also has role alert and is left out. */
+const rejection = (): HTMLElement[] =>
+  screen.queryAllByRole('alert').filter((el) => el.dataset['testid'] !== 'live-assertive');
+
 const flush = async (ms = 50): Promise<void> => {
   await act(async () => {
     await vi.advanceTimersByTimeAsync(ms);
@@ -341,7 +436,7 @@ describe('register route', () => {
     saveSession(ROOM, { token: 'heron', bidderId: ME });
   });
 
-  it('offers the ceilings and the paddle of the room and keeps what was typed after a refusal', async () => {
+  it('offers the ceilings of the room and keeps what was typed after a refusal', async () => {
     vi.useFakeTimers();
     saveSession(ROOM, { token: 'heron', bidderId: bidderId(9) });
     const calls = stubHolds(() => ({ status: 400, body: { error: 'ceiling_out_of_range' } }));
@@ -356,10 +451,7 @@ describe('register route', () => {
       ),
     );
     expect(document.querySelectorAll('main')).toHaveLength(1);
-    expect((screen.getByLabelText(t('reg.paddle')) as HTMLInputElement).value).toBe('2');
-    fireEvent.change(screen.getByLabelText(t('reg.paddle')), { target: { value: '1' } });
-    expect(screen.getByText(t('reg.paddleTaken', { n: 1, m: 2 }))).toBeTruthy();
-    fireEvent.change(screen.getByLabelText(t('reg.paddle')), { target: { value: '2' } });
+    expect(screen.queryByLabelText(t('reg.paddle'))).toBeNull();
     fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
     fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
     expect(screen.queryByRole('radio', { name: '$100' })).toBeNull();
@@ -370,7 +462,7 @@ describe('register route', () => {
     expect(JSON.parse(calls[0]?.body ?? '{}')).toEqual({ auctionId: ROOM, ceilingCents: 50_000 });
     expect(screen.getByText(en[holdErrorCopyTable.ceiling_out_of_range])).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: t('generic.back') }));
-    expect(screen.getByText(t('reg.summary', { name: 'Priya', n: 2 }))).toBeTruthy();
+    expect(screen.getByText(t('reg.summary', { name: 'Priya' }))).toBeTruthy();
     expect((screen.getByRole('radio', { name: '$500' }) as HTMLInputElement).checked).toBe(true);
   });
 
@@ -431,6 +523,79 @@ describe('register route', () => {
     await flush();
     expect(calls.map((c) => c.url)).toEqual(['http://api.test/api/holds/hold-ABC123/approve']);
     expect(screen.getByTestId('held-card')).toBeTruthy();
+  });
+
+  it('sends the typed name with the approval and shows the paddle the room assigned', async () => {
+    vi.useFakeTimers();
+    saveRegistration(ROOM, ME, {
+      clientRegistrationId: 'reg-one',
+      orderId: 'order-one',
+      holdId: 'hold-ABC123',
+      ceilingCents: 10_000,
+    });
+    const calls = stubHolds(() => ({
+      status: 200,
+      body: { holdId: 'hold-ABC123', status: 'HELD', ceilingCents: 10_000 },
+    }));
+    const socket = joinLive(`/r/${ROOM}/register`, { api: API });
+    act(() => socket.receive(stateMsg(1, snapshot({ others: [[7, 'Ana']] }))));
+    expect(screen.queryByLabelText(t('reg.paddle'))).toBeNull();
+    fillAndApprove('$100');
+    await flush();
+    expect(calls).toHaveLength(1);
+    expect(JSON.parse(calls[0]?.body ?? '{}')).toEqual({ orderId: 'order-one', name: 'Priya' });
+    expect(screen.getByTestId('held-card')).toBeTruthy();
+    expect(screen.queryByText(t('reg.yourPaddle', { n: 1 }))).toBeNull();
+    act(() =>
+      socket.receive(
+        stateMsg(
+          2,
+          snapshot({
+            others: [
+              [7, 'Ana'],
+              [1, 'Priya'],
+            ],
+          }),
+        ),
+      ),
+    );
+    expect(screen.getByText(t('reg.yourPaddle', { n: 1 }))).toBeTruthy();
+  });
+
+  it('finishes on the return route with the ceiling stored at registration', async () => {
+    vi.useFakeTimers();
+    saveRegistration(ROOM, ME, {
+      clientRegistrationId: 'reg-one',
+      orderId: 'order-one',
+      holdId: 'hold-ABC123',
+      ceilingCents: 25_000,
+      name: 'Priya',
+    });
+    const calls = stubHolds(() => ({
+      status: 200,
+      body: { holdId: 'hold-ABC123', status: 'HELD', ceilingCents: 25_000 },
+    }));
+    window.history.replaceState(null, '', `/r/${ROOM}/return?token=order-one`);
+    render(<App initialPath={`/r/${ROOM}/return`} api={API} />);
+    await flush();
+    expect(calls.map((c) => c.url)).toEqual(['http://api.test/api/holds/hold-ABC123/approve']);
+    expect(JSON.parse(calls[0]?.body ?? '{}')).toEqual({ orderId: 'order-one', name: 'Priya' });
+    expect(screen.getByText(t('reg.held', { amount: '$250' }))).toBeTruthy();
+  });
+
+  it('sends the buyer back to register when the return has no stored ceiling', async () => {
+    vi.useFakeTimers();
+    saveRegistration(ROOM, ME, {
+      clientRegistrationId: 'reg-one',
+      orderId: 'order-one',
+      holdId: 'hold-ABC123',
+    });
+    const calls = stubHolds(() => ({ status: 200, body: {} }));
+    window.history.replaceState(null, '', `/r/${ROOM}/return?token=order-one`);
+    render(<App initialPath={`/r/${ROOM}/return`} api={API} />);
+    await flush();
+    expect(window.location.pathname).toBe(`/r/${ROOM}/register`);
+    expect(calls).toHaveLength(0);
   });
 
   const CODES = [

@@ -84,3 +84,8 @@ export function clearAuctioneerToken(roomId?: string): void {
 export function hasAuctioneerAccess(roomId: string): boolean {
   return readAuctioneerToken(roomId) !== null;
 }
+
+/** True when this device holds a token that opens the audit view: a reviewer or auctioneer link. */
+export function hasReviewerAccess(roomId: string): boolean {
+  return readAuctioneerToken(roomId) !== null;
+}
