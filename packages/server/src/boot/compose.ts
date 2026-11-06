@@ -42,7 +42,12 @@ import { createGateway } from '../host/gateway';
 import { createNodeWsHost } from '../host/node-ws';
 import { createHealthRoutes, createVersionRoute, resolveSha } from '../http/health';
 import { createMetricsRoute } from '../http/metrics';
-import { adminKeyMatches, createOpsRoomsHandler } from '../http/ops';
+import {
+  OPS_SETTLEMENT_PATH,
+  adminKeyMatches,
+  createOpsRoomsHandler,
+  createOpsSettlementHandler,
+} from '../http/ops';
 import { capsFromConfig } from '../limits/caps';
 import { limitsFromConfig } from '../limits/rate-limiter';
 import { createGuardedWebhookRoute } from '../http/webhook-guard';
@@ -56,6 +61,7 @@ import { createLogRing } from '../obs/logring';
 import { createOpsSummaryRoute, createPrometheusRoute } from '../obs/ops-summary';
 import { createWarmupRoute, type WarmupStep } from '../warmup/warmup';
 import { createAuctionService, type AuctionService } from '../runtime/auction-service';
+import { lotIdOf } from '../runtime/ledger-engine';
 import { FileLedgerStore } from '../store/file-ledger-store';
 import { createHttpApp } from '../http/app';
 import { mountAuctions } from '../http/auctions';
@@ -377,6 +383,13 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     adminKey: config.ADMIN_KEY,
     rooms: () => service.opsRooms(),
   });
+  const opsSettlementRoute = createOpsSettlementHandler({
+    adminKey: config.ADMIN_KEY,
+    exists: async (id) => (await stores.room.listAuctions()).includes(id as AuctionId),
+    hasSettlement: async (id) => (await stores.journals.load(lotIdOf(id as AuctionId))) !== null,
+    voidAll: (id, actor) => service.voidAll(id as AuctionId, actor),
+    releaseReviewHolds: (id, actor) => service.releaseReviewHolds(id as AuctionId, actor),
+  });
   const metricsRoute = createMetricsRoute(metrics, { adminKey: config.ADMIN_KEY });
   const warmupRoute = createWarmupRoute({
     steps: [
@@ -447,6 +460,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     if (path === '/metrics/prometheus') return prometheusRoute(req, res);
     if (path === '/ops/summary') return opsSummaryRoute(req, res);
     if (path === '/ops/rooms') return opsRoomsRoute(req, res);
+    if (OPS_SETTLEMENT_PATH.test(path)) return opsSettlementRoute(req, res, path);
     if (path === WEBHOOK_PATH) return webhookRoute(req, res);
     if (EXPORT_PATH.test(path)) return exportRoute(req, res);
     if (await extra(req, res)) return;

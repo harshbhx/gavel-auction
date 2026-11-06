@@ -42,6 +42,12 @@ import {
  * that stays unreadable (`remainder_unconfirmed`). Voids are not
  * blocked by the kill switch (R-PAY-006, R-PAY-063).
  *
+ * While the capture phase waits (kill switch, a PENDING capture, PayPal reads or OAuth
+ * failing) a run releases the holds no candidate can be charged on any more (RT4-saga-03):
+ * bidders outside the plan's candidates and candidates that already failed for good. The
+ * hold of a capture in flight and the holds of the candidate at the cursor and of every
+ * candidate after it are kept, so the winner and the runner-up fallback are untouched.
+ *
  * The journal keeps one entry per bidder in `voids`: voided, released,
  * VOID_FAILED or pending. The winner's remainder is kept under `remainder:<id>`.
  */
@@ -212,11 +218,34 @@ export function reviewKeepHolds(j: Journal, o: ReviewKeepOptions): Set<string> {
   if (j.intent !== null && j.intent.op === 'capture') keep.add(j.intent.holdId);
   const maxAge = o.reviewHoldMaxAgeMs ?? DEFAULT_REVIEW_HOLD_MAX_AGE_MS;
   if (o.releaseAll === true || o.nowMs - entered.tsMs > maxAge) return keep;
+  for (const holdId of candidateHolds(j)) keep.add(holdId);
+  return keep;
+}
+
+/**
+ * The holds the capture phase can still charge: the candidate at the cursor and every
+ * candidate after it, minus those listed in `journal.failed`. A failed candidate and a
+ * bidder outside the plan are never charged by this settlement (the plan is fixed when the
+ * settlement is created and the cursor only moves forward).
+ */
+function candidateHolds(j: Journal): string[] {
   const failed = new Set(j.failed.map((f) => f.bidderId));
+  const out: string[] = [];
   for (const c of j.plan.candidates.slice(j.cursor)) {
     const hold = failed.has(c.bidderId) ? undefined : j.holds[c.bidderId];
-    if (hold !== undefined) keep.add(hold.holdId);
+    if (hold !== undefined) out.push(hold.holdId);
   }
+  return out;
+}
+
+/**
+ * RT4-saga-03: the holds a settlement whose capture phase is waiting keeps live. The hold of
+ * any saved intent (a capture or reauthorization that may be in flight) and the holds the
+ * capture phase can still charge; everything else can be released at once.
+ */
+function waitingKeepHolds(j: Journal): Set<string> {
+  const keep = new Set<string>(candidateHolds(j));
+  if (j.intent !== null) keep.add(j.intent.holdId);
   return keep;
 }
 
@@ -315,6 +344,12 @@ class Run {
       await this.releaseForReview();
       return this.failed(this.lastReason());
     }
+    if (CAPTURE_PHASE.has(this.j.state)) {
+      // RT4-saga-03: the capture phase is waiting. Holds nobody can be charged on go now;
+      // the winner's and the fallback candidates' holds stay.
+      await this.releaseExcept(waitingKeepHolds(this.j));
+      return { status: 'pending', reason: 'not_ready', journal: this.j };
+    }
     if (this.j.state === 'CAPTURED') {
       if (this.j.winner !== null) {
         const out = await this.remainder();
@@ -335,12 +370,22 @@ class Run {
    * was read) is voided. Safe to repeat: finished holds are skipped.
    */
   private async releaseForReview(): Promise<void> {
+    await this.releaseExcept(
+      reviewKeepHolds(this.j, {
+        nowMs: this.now(),
+        reviewHoldMaxAgeMs: this.deps.reviewHoldMaxAgeMs,
+        releaseAll: this.deps.releaseAllReviewHolds,
+      }),
+    );
+  }
+
+  /**
+   * Voids every hold not in `keep` that no intent is in flight for and whose truth was read
+   * and is not captured. Safe to repeat: finished holds are skipped, and a hold whose read
+   * fails is left for the next run.
+   */
+  private async releaseExcept(keep: ReadonlySet<string>): Promise<void> {
     const inFlight = this.j.intent?.holdId;
-    const keep = reviewKeepHolds(this.j, {
-      nowMs: this.now(),
-      reviewHoldMaxAgeMs: this.deps.reviewHoldMaxAgeMs,
-      releaseAll: this.deps.releaseAllReviewHolds,
-    });
     for (const t of this.targets()) {
       if (this.aborted) return;
       if (keep.has(t.hold.holdId)) continue;
@@ -593,7 +638,8 @@ export type SettlementOutcome =
 /**
  * Runs, or resumes, a settlement from the hammer to SETTLED: the capture phase
  * (with the runner-up fallback), then the winner's remainder and the voids. A
- * capture phase that stops with `pending` or `failed` is returned as is.
+ * capture phase that stops with `pending` or `failed` is returned as is, after the
+ * holds nobody can be charged on any more are released.
  */
 export async function runSettlement(
   deps: SettlementDeps,
@@ -604,6 +650,11 @@ export async function runSettlement(
     // R8-P06: release the holds that are not in doubt before reporting the review.
     const released = await runVoidPhase(deps, auctionId);
     return released.status === 'failed' ? released : captured;
+  }
+  if (captured.status === 'pending') {
+    // RT4-saga-03: the wait can be long; the holds no candidate can be charged on go now.
+    const released = await runVoidPhase(deps, auctionId);
+    return released.status === 'busy' ? captured : { ...captured, journal: released.journal };
   }
   if (captured.status !== 'captured' && captured.status !== 'no_sale') return captured;
   return runVoidPhase(deps, auctionId);

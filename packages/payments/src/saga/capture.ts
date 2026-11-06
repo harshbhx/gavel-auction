@@ -38,6 +38,13 @@ export { DEFAULT_PENDING_CAPTURE_DEADLINE_MS, DEFAULT_UNKNOWN_DEADLINE_MS };
  * still: the time it held is added to `unknownSince` on the first run after the release
  * (R4-S05, R12-P05).
  *
+ * A wait that nothing ends by itself is reported (RT4-saga-03): when the truth read or the
+ * OAuth token keeps failing for longer than the unknown deadline, and when PayPal keeps a
+ * capture PENDING for longer than it, one `settlement_alert` (audit and metric) is raised.
+ * The phase keeps waiting; nothing is sent to review or released for it. A capture adopted
+ * from the truth on a resume writes the `paypal_call` row of the request that took the money,
+ * so a crash between the capture and its audit row cannot lose it (RT4-saga-04).
+ *
  * Every state change is one compare-and-set save of the journal before the next
  * effect. The runner holds the auction's lease and renews it before each step.
  * Voiding the other holds is the next phase and is not done here.
@@ -117,6 +124,22 @@ const FAILED_TRUTH: ReadonlySet<HoldTruth['status']> = new Set([
   'DENIED',
   'NOT_FOUND',
 ]);
+
+/** Errors that mean no OAuth token could be had: nothing was sent to PayPal. */
+const AUTH_KINDS: ReadonlySet<string> = new Set([
+  'auth_unavailable',
+  'auth_failed',
+  'auth_expired',
+]);
+
+/**
+ * `voids` key holding when the phase first could not read the truth or get a token
+ * (RT4-saga-03); never a bidder id. The void phase's alert markers use `alerted:`.
+ */
+const STALLED_SINCE = 'stalled_since:capture';
+const ALERTED = 'alerted:';
+
+type StallReason = 'truth_unavailable' | 'auth_unavailable';
 
 export function invoiceIdFor(auctionId: string, holdId: string): string {
   return `gavel-${auctionId}-${holdId}`;
@@ -343,9 +366,7 @@ class Run {
       return this.fail('unknown_deadline');
     }
     if (unseen) return { status: 'pending', reason: 'capture_outcome_unknown', journal: this.j };
-    if (truth === undefined) {
-      return { status: 'pending', reason: 'truth_unavailable', journal: this.j };
-    }
+    if (truth === undefined) return this.stalled('truth_unavailable', target);
 
     // Write-ahead intent; a resume reuses the saved one, so the request id repeats.
     const saved = this.j.intent;
@@ -388,6 +409,8 @@ class Run {
       failure = e;
     }
     await this.auditCall(target, requestId, captured, failure);
+    // PayPal answered the capture: the truth and the token work again.
+    if (failure === undefined || !AUTH_KINDS.has(failure.kind)) await this.unstalled();
 
     if (captured !== undefined) {
       if (captured.amountCents !== price) return this.fail('mismatch');
@@ -432,7 +455,7 @@ class Run {
       case 'adopt':
         return this.won(t, v.capture.captureId, 'adopted', v.capture.amountCents);
       case 'in_doubt':
-        return this.waitForPendingCapture(t.holdId);
+        return this.waitForPendingCapture(t);
       case 'mismatch':
         return this.fail('mismatch');
       case 'gone':
@@ -450,12 +473,74 @@ class Run {
    * (R12-P01, default three days): only a capture that stays pending that long goes to
    * review, with its hold kept.
    */
-  private async waitForPendingCapture(holdId: string): Promise<CaptureOutcome> {
-    await this.markPending(holdId);
+  private async waitForPendingCapture(t: Target): Promise<CaptureOutcome> {
+    await this.markPending(t.holdId);
     if (unknownExpired(this.j.unknownSince, this.now(), this.deadline())) {
       return this.fail('unknown_deadline');
     }
+    await this.alertIfPendingLong(t);
     return { status: 'pending', reason: 'capture_pending', journal: this.j };
+  }
+
+  /**
+   * RT4-saga-03: a capture PayPal keeps PENDING past the deadline of a lost answer is still
+   * waited for (R12-P01), but an operator is told once per candidate.
+   */
+  private async alertIfPendingLong(t: Target): Promise<void> {
+    if (unknownExpired(this.j.unknownSince, this.now(), this.deadlineMs)) {
+      await this.alertOnce(`capture_pending:${t.bidderId}`, t.holdId);
+    }
+  }
+
+  /**
+   * RT4-saga-03: the truth cannot be read or no OAuth token can be had, so nothing can be
+   * decided. The first such run saves when it started; once that is older than the unknown
+   * deadline one `settlement_alert` is raised. The phase keeps waiting either way: nothing
+   * was sent, so nothing is in doubt and no hold is released for it.
+   */
+  private async stalled(reason: StallReason, t: Target): Promise<CaptureOutcome> {
+    const raw = this.j.voids[STALLED_SINCE];
+    const since = raw === undefined ? NaN : Number(raw);
+    const now = this.now();
+    if (!Number.isFinite(since)) {
+      await this.patch('stalled_since', (d) => {
+        d.voids[STALLED_SINCE] = String(now);
+      });
+    } else if (unknownExpired(since, now, this.deadlineMs)) {
+      await this.alertOnce(`${reason}:${t.bidderId}`, t.holdId);
+    }
+    return { status: 'pending', reason, journal: this.j };
+  }
+
+  /** PayPal answered again: a later outage starts its own clock. */
+  private async unstalled(): Promise<void> {
+    if (this.j.voids[STALLED_SINCE] === undefined) return;
+    await this.patch('stalled_cleared', (d) => {
+      d.voids = Object.fromEntries(Object.entries(d.voids).filter(([k]) => k !== STALLED_SINCE));
+    });
+  }
+
+  /**
+   * Tells an operator once (audit entry and metric), then saves a `voids` marker so later
+   * runs stay quiet. The entry is written before the marker: a crash between them repeats
+   * the alert, never loses it (as the void phase's alerts, R12-P02).
+   */
+  private async alertOnce(reason: string, holdId: string): Promise<void> {
+    const marker = `${ALERTED}${reason}`;
+    if (this.j.voids[marker] !== undefined) return;
+    const now = this.now();
+    const [kind = reason] = reason.split(':');
+    this.deps.metrics?.incr('settlement_alerts_total', { reason: kind });
+    await this.deps.audit.append({
+      kind: 'settlement_alert',
+      auctionId: this.j.auctionId,
+      holdId,
+      label: reason,
+      tsMs: now,
+    });
+    await this.patch('alert', (d) => {
+      d.voids[marker] = String(now);
+    });
   }
 
   /**
@@ -511,25 +596,21 @@ class Run {
     t: Target,
     inDoubt: boolean,
   ): Promise<CaptureOutcome | null> {
-    const j = this.j;
     if (err.kind === 'kill_switch_engaged') {
       // Engaged after this run looked: nothing was sent, and the clock stops as above.
       const kill = await this.killState();
       return this.pauseUnknownClock(kill.engaged ? kill.sinceMs : undefined);
     }
-    if (
-      err.kind === 'auth_unavailable' ||
-      err.kind === 'auth_failed' ||
-      err.kind === 'auth_expired'
-    ) {
+    if (AUTH_KINDS.has(err.kind)) {
       // Nothing was sent: the winner is not charged and not failed. Retry later with the same intent.
-      return { status: 'pending', reason: 'auth_unavailable', journal: j };
+      return this.stalled('auth_unavailable', t);
     }
     if (err.outcome === 'unknown') {
       if (err.name === 'CAPTURE_PENDING') {
         // R11-O03, R12-P01: PayPal took the capture and decides on it later. Not a lost
         // answer: it waits under the pending-capture deadline.
         await this.markPending(t.holdId);
+        await this.alertIfPendingLong(t);
         return { status: 'pending', reason: 'capture_pending', journal: this.j };
       }
       // R-PAY-054: never the next candidate. Remember when it started.
@@ -550,7 +631,7 @@ class Run {
       truth = await this.deps.gateway.getHoldTruth(t.truth);
     } catch (e) {
       if (!(e instanceof PayPalError)) throw e;
-      return { status: 'pending', reason: 'truth_unavailable', journal: j };
+      return this.stalled('truth_unavailable', t);
     }
     if (inDoubt && truth.status === 'NOT_FOUND') {
       // HRD-46: an earlier capture on this hold may have been taken; a hold PayPal cannot
@@ -570,6 +651,7 @@ class Run {
     type: 'capture_ok' | 'adopted',
     amountCents: number = t.price,
   ): Promise<CaptureOutcome> {
+    if (type === 'adopted') await this.auditAdopted(t);
     const journal = await this.apply({
       type,
       tsMs: this.now(),
@@ -579,6 +661,8 @@ class Run {
   }
 
   private async definiteFail(bidderId: string, reason: string): Promise<null> {
+    // The next candidate's wait, if any, starts its own clock.
+    await this.unstalled();
     await this.apply({ type: 'definite_fail', tsMs: this.now(), failure: { bidderId, reason } });
     return null;
   }
@@ -592,6 +676,28 @@ class Run {
         : this.ev(kind);
     const journal = await this.apply(event);
     return { status: 'failed', reason, journal };
+  }
+
+  /**
+   * RT4-saga-04: a capture adopted from the truth was taken by our saved request, whose
+   * answer was lost, possibly with its audit row (a crash right after the call). That row is
+   * written now, before the transition is saved, so a crash cannot lose the money call. At
+   * least once: when the row was written before the crash this one repeats it, labelled
+   * `adopted`.
+   */
+  private async auditAdopted(t: Target): Promise<void> {
+    const i = this.j.intent;
+    if (i === null || i.op !== 'capture' || i.holdId !== t.holdId) return;
+    await this.deps.audit.append({
+      kind: 'paypal_call',
+      auctionId: this.j.auctionId,
+      holdId: t.holdId,
+      op: 'capture',
+      requestId: i.requestId,
+      outcome: 'definite',
+      label: 'adopted',
+      tsMs: this.now(),
+    });
   }
 
   private async auditCall(
