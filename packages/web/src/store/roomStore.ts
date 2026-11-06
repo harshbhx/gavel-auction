@@ -32,8 +32,8 @@ export class RoomStore {
   }
 
   private fresh(auctionId: string): RoomState {
-    const initial = initialRoomState(auctionId);
-    return auctionId === '' ? initial : { ...initial, ownHighCents: loadHighBid(auctionId) };
+    // The own high bid is loaded once the bidder is known, because it is stored per bidder.
+    return initialRoomState(auctionId);
   }
 
   /**
@@ -86,10 +86,21 @@ export class RoomStore {
         if (this.offsetSamples.length > OFFSET_SAMPLES) this.offsetSamples.shift();
       }
     }
-    const { state, effects } = reduce(this.state, event);
+    const reduced = reduce(this.state, event);
+    const { effects } = reduced;
+    let { state } = reduced;
+    if (event.kind === 'identify' && state.auctionId !== '') {
+      const stored = event.bidderId === null ? 0 : loadHighBid(state.auctionId, event.bidderId);
+      if (stored !== state.ownHighCents) state = { ...state, ownHighCents: stored };
+    }
     if (state !== this.state) {
-      if (state.ownHighCents !== this.state.ownHighCents && state.auctionId !== '') {
-        saveHighBid(state.auctionId, state.ownHighCents);
+      if (
+        state.ownHighCents !== this.state.ownHighCents &&
+        state.auctionId !== '' &&
+        state.expectedBidderId !== null &&
+        event.kind !== 'identify'
+      ) {
+        saveHighBid(state.auctionId, state.expectedBidderId, state.ownHighCents);
       }
       this.state = state;
       this.emit();

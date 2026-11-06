@@ -192,6 +192,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     const { holdId, orderId, clientToken } = created.data;
     const approveUrl = safeApproveUrl(created.data.approveUrl);
     this.abandonUrl = holdPath(holdId);
+    req.onOrder?.({ orderId, holdId });
 
     on('awaiting_buyer');
     const outcome = await this.approve(orderId, clientToken);

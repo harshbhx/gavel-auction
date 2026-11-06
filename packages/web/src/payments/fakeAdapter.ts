@@ -76,6 +76,7 @@ export class FakeApprovalAdapter implements PaymentApprovalPort {
     const created = CreateHoldResponse.safeParse(order);
     if (!created.success) return finish('error', { errorCode: 'order_failed' });
     const { holdId, orderId } = created.data;
+    req.onOrder?.({ orderId, holdId });
 
     on('awaiting_buyer');
     const buyerWait = this.mode === 'slow' ? (this.deps.slowMs ?? 3000) : BUYER_MS;
