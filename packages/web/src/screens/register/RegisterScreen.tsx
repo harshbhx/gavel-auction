@@ -18,6 +18,8 @@ export interface RegisterScreenProps {
   minCents: number;
   maxCents: number;
   presetsCents?: readonly number[];
+  /** False when the room takes only its presets: the Custom option and its range hint are left out. */
+  allowCustom?: boolean;
   /** What the bidder entered before going back from the approval step; shown again as typed. */
   initial?: RegistrationDraft;
   onApprove: (draft: RegistrationDraft) => void;
@@ -31,16 +33,23 @@ export function RegisterScreen({
   minCents,
   maxCents,
   presetsCents = DEFAULT_PRESETS,
+  allowCustom = true,
   initial,
   onApprove,
 }: RegisterScreenProps) {
   const initialPreset = initial !== undefined && presetsCents.includes(initial.ceilingCents);
+  const initialChoice =
+    initial === undefined
+      ? null
+      : initialPreset
+        ? String(initial.ceilingCents)
+        : allowCustom
+          ? CUSTOM
+          : null;
   const [step, setStep] = useState<1 | 2>(initial === undefined ? 1 : 2);
   const [name, setName] = useState(initial?.name ?? '');
   const [touched, setTouched] = useState(false);
-  const [choice, setChoice] = useState<string | null>(
-    initial === undefined ? null : initialPreset ? String(initial.ceilingCents) : CUSTOM,
-  );
+  const [choice, setChoice] = useState<string | null>(initialChoice);
   const [customText, setCustomText] = useState(
     initial === undefined || initialPreset ? '' : String(initial.ceilingCents / 100),
   );
@@ -74,6 +83,7 @@ export function RegisterScreen({
     e.preventDefault();
     setCustomTouched(true);
     if (ceilingCents === null) {
+      if (!allowCustom) return;
       announce(
         'assertive',
         customError ??
@@ -127,15 +137,17 @@ export function RegisterScreen({
               <span>{formatUsdCompact(cents)}</span>
             </label>
           ))}
-          <label>
-            <input
-              type="radio"
-              name="ceiling"
-              checked={choice === CUSTOM}
-              onChange={() => setChoice(CUSTOM)}
-            />
-            <span>{t('reg.custom')}</span>
-          </label>
+          {allowCustom && (
+            <label>
+              <input
+                type="radio"
+                name="ceiling"
+                checked={choice === CUSTOM}
+                onChange={() => setChoice(CUSTOM)}
+              />
+              <span>{t('reg.custom')}</span>
+            </label>
+          )}
         </div>
         {choice === CUSTOM && (
           <Field
