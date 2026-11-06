@@ -351,7 +351,8 @@ class Service implements AuctionService, SettlePort {
       throw new GavelError('bad_message', 'unsupported mode, increment ladder or hold scope');
     }
     if (this.rooms.has(auctionId)) throw new GavelError('conflict', 'auction exists');
-    this.evictFinished();
+    await this.evictFinished();
+    if (this.rooms.has(auctionId)) throw new GavelError('conflict', 'auction exists');
     if (this.rooms.size >= this.caps.rooms) throw new GavelError('room_cap', 'room cap reached');
     // Dry-run the engine build: a config or id it cannot run must never reach the log, or the
     // auction could not be loaded again and would block resume (R-RT-012, R-RT-059).
@@ -382,12 +383,33 @@ class Service implements AuctionService, SettlePort {
    * reached, rooms whose settlement is over and that no one is connected to are dropped, and
    * loaded again from their log if anything asks for them later.
    */
-  private evictFinished(): void {
+  private async evictFinished(): Promise<void> {
     if (this.rooms.size < this.caps.rooms) return;
     const candidates = [...this.ready]
-      .filter(([id, room]) => this.rooms.has(id) && room.isDone && room.connectionCount === 0)
+      .filter(
+        ([id, room]) =>
+          this.rooms.has(id) &&
+          room.isDone &&
+          room.connectionCount === 0 &&
+          !this.runs.has(id) &&
+          !this.retryTimers.has(id),
+      )
       .sort((a, b) => (this.lastUsed.get(a[0]) ?? 0) - (this.lastUsed.get(b[0]) ?? 0));
     for (const [id, room] of candidates) {
+      // Never drop a room whose settlement is unfinished or that still has live holds: the
+      // webhook, hold sweep and kill switch act on it through the loaded room.
+      let busy = true;
+      try {
+        busy = await this.needsRun(
+          id as AuctionId,
+          room,
+          await this.deps.journals.load(lotIdOf(id)),
+        );
+      } catch {
+        busy = true;
+      }
+      // The room may have gained a connection or a run while the store was read.
+      if (busy || room.connectionCount > 0 || this.runs.has(id) || !this.rooms.has(id)) continue;
       this.unload(id, room);
       if (this.rooms.size < this.caps.rooms) return;
     }
@@ -434,21 +456,27 @@ class Service implements AuctionService, SettlePort {
     return { rooms, connections, mailboxDepth };
   }
 
-  room(auctionId: AuctionId, opts: { settlement?: boolean } = {}): Promise<Room> {
+  async room(auctionId: AuctionId, opts: { settlement?: boolean } = {}): Promise<Room> {
     if (this.fenced.has(auctionId)) {
-      return Promise.reject(new GavelError('host_fenced', 'this host no longer owns the room'));
+      throw new GavelError('host_fenced', 'this host no longer owns the room');
     }
     const known = this.rooms.get(auctionId);
     if (known !== undefined) {
       this.lastUsed.set(auctionId, this.deps.clock.now());
       return known;
     }
-    this.evictFinished();
+    await this.evictFinished();
+    // Another caller may have loaded it, or the host may have been fenced, meanwhile.
+    const raced = this.rooms.get(auctionId);
+    if (raced !== undefined) return raced;
+    if (this.fenced.has(auctionId)) {
+      throw new GavelError('host_fenced', 'this host no longer owns the room');
+    }
     // Settlement-critical paths (settlement, webhooks, recovery, kill switch) act on an auction
     // that already exists, so the cap meant for new auctions must not refuse them: with no
     // finished room left to evict they load beyond the cap.
     if (opts.settlement !== true && this.rooms.size >= this.caps.rooms) {
-      return Promise.reject(new GavelError('room_cap', 'room cap reached'));
+      throw new GavelError('room_cap', 'room cap reached');
     }
     this.lastUsed.set(auctionId, this.deps.clock.now());
     const loaded = Room.load(auctionId, this.roomDeps(auctionId));
