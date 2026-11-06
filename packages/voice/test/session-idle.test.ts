@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { encodeBatch, FLAG_KEEPALIVE } from '../src/audio/frame.js';
 import { AUDIO_IDLE_MS, createVoiceSession } from '../src/index.js';
+
+const ka = (): Uint8Array =>
+  encodeBatch({ seq: 0, tsMs: 0, flags: FLAG_KEEPALIVE, pcm: new Int16Array(0) });
 
 describe('audio idle timeout (HRD-14)', () => {
   const clock = { t: 5_000_000 };
@@ -23,16 +27,28 @@ describe('audio idle timeout (HRD-14)', () => {
     expect(session.activeStreams()).toBe(1);
   });
 
+  it('treats keepalive frames as activity so a quiet stream keeps its slot (HRD-57)', () => {
+    const session = mk();
+    const a = session.open({ roomId: 'r3', source: 'a' }, 'tok-q');
+    if (!a.ok) throw new Error(a.error);
+    for (let i = 0; i < 5; i++) {
+      clock.t += AUDIO_IDLE_MS - 1;
+      expect(a.stream.accept(ka()).ok).toBe(true);
+    }
+    expect(session.open({ roomId: 'r3', source: 'b' }, 'tok-r')).toMatchObject({ ok: true });
+    expect(a.stream.accept(ka()).ok).toBe(true);
+  });
+
   it('keeps a stream alive while frames arrive and ends a swept one', () => {
     const session = mk();
     const a = session.open({ roomId: 'r2', source: 'a' }, 'tok-x');
     const b = session.open({ roomId: 'r2', source: 'b' }, 'tok-x');
     if (!a.ok || !b.ok) throw new Error('open failed');
     clock.t += AUDIO_IDLE_MS - 1;
-    expect(a.stream.accept(new Uint8Array(10)).ok).toBe(true);
+    expect(a.stream.accept(ka()).ok).toBe(true);
     clock.t += AUDIO_IDLE_MS - 1;
-    expect(a.stream.accept(new Uint8Array(10)).ok).toBe(true);
+    expect(a.stream.accept(ka()).ok).toBe(true);
     expect(session.open({ roomId: 'r2', source: 'c' }, 'tok-x')).toMatchObject({ ok: true });
-    expect(b.stream.accept(new Uint8Array(10))).toMatchObject({ ok: false, closed: true });
+    expect(b.stream.accept(ka())).toMatchObject({ ok: false, closed: true });
   });
 });

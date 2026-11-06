@@ -3,7 +3,7 @@
 - `stt-cache/<provider>-u<n>.json`: recorded speech-to-text events for utterance `n` of
   `replay/auction-demo.wav`, one file per provider (`deepgram`, `groq`). `atMs` is the offset from the
   start of the clip. Cached replay mode (R-VOX-082) plays these without keys or network.
-- `llm-cache/<key>.json`: recorded model output, keyed by `sha256(transcript + "\n" + canonical json of
+- `model-cache/<key>.json`: recorded model output, keyed by `sha256(transcript + "\n" + canonical json of
 the prompt context)` (R-VOX-060). Replay mode throws `LlmCacheMissError` on a miss; it never calls
   the network.
 

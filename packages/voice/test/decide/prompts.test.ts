@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PromptBook } from '../../src/decide/prompts.js';
+import { EXPIRED_ID_LIMIT, PromptBook } from '../../src/decide/prompts.js';
 
 function setup() {
   let t = 0;
@@ -25,6 +25,20 @@ describe('PromptBook', () => {
     expect(audit[0]?.reason).toBe('confirm_expired');
     expect(book.take(r.prompt.promptId).status).toBe('expired');
     expect(book.size).toBe(0);
+  });
+
+  it('remembers only a bounded number of expired ids (HRD-57)', () => {
+    const { book, at } = setup();
+    const first = book.open('k:0', 'x');
+    if (!first.opened) throw new Error('expected open');
+    for (let i = 1; i <= EXPIRED_ID_LIMIT + 50; i++) {
+      at(i * 20_000);
+      book.open(`k:${i}`, 'x');
+    }
+    at((EXPIRED_ID_LIMIT + 60) * 20_000);
+    book.sweep();
+    expect(book.expiredRemembered).toBe(EXPIRED_ID_LIMIT);
+    expect(book.take(first.prompt.promptId).status).toBe('unknown');
   });
 
   it('answer inside the ttl is accepted once', () => {

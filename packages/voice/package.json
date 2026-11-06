@@ -11,6 +11,7 @@
     "test": "vitest run",
     "size": "size-limit",
     "eval": "vite-node scripts/eval.ts --",
+    "scan:secrets": "node --experimental-strip-types scripts/secret-scan.ts",
     "check:heldout": "node --experimental-strip-types scripts/check-heldout.ts"
   },
   "dependencies": {
