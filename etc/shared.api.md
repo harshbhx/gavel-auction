@@ -1386,15 +1386,6 @@ export type ConfigRuleResult = {
 };
 
 // @public (undocumented)
-export type ConfigRuleResult = {
-    ok: true;
-    config: AuctionConfig;
-} | {
-    ok: false;
-    errors: string[];
-};
-
-// @public (undocumented)
 export const ConfirmRequestedEvent: z.ZodObject<{
     type: z.ZodLiteral<"confirm_requested">;
     auctionId: z.ZodType<AuctionId, z.ZodTypeDef, AuctionId>;
@@ -4059,6 +4050,20 @@ export const RoomSnapshotSchema: z.ZodObject<{
     remainingMs: z.ZodOptional<z.ZodNumber>;
     stopped: z.ZodOptional<z.ZodBoolean>;
     registrationClosed: z.ZodOptional<z.ZodBoolean>;
+    hammer: z.ZodOptional<z.ZodObject<{
+        winnerId: z.ZodNullable<z.ZodType<BidderId, z.ZodTypeDef, BidderId>>;
+        price: z.ZodType<Cents, z.ZodTypeDef, Cents>;
+    }, "strict", z.ZodTypeAny, {
+        winnerId: BidderId | null;
+        price: number & {
+            readonly __brand_centsBrand: "Cents";
+        };
+    }, {
+        winnerId: BidderId | null;
+        price: number & {
+            readonly __brand_centsBrand: "Cents";
+        };
+    }>>;
     lotTitle: z.ZodOptional<z.ZodString>;
     joinCode: z.ZodOptional<z.ZodString>;
     roster: z.ZodEffects<z.ZodArray<z.ZodObject<{
@@ -4186,14 +4191,73 @@ export const RoomSnapshotSchema: z.ZodObject<{
         rev: z.ZodNumber;
         auctionState: z.ZodEnum<["HELD", "BIDDING", "WINNER_SELECTED", "CAPTURING", "CAPTURED", "VOIDING", "SETTLED", "FALLBACK_RUNNER_UP", "FAILED_NEEDS_REVIEW"]>;
         you: z.ZodOptional<z.ZodEnum<["HELD", "BIDDING", "WINNER_SELECTED", "CAPTURING", "CAPTURED", "VOIDING", "SETTLED", "FALLBACK_RUNNER_UP", "FAILED_NEEDS_REVIEW"]>>;
+        yourHold: z.ZodOptional<z.ZodObject<{
+            bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
+            idSuffix: z.ZodString;
+            status: z.ZodEnum<["PENDING_APPROVAL", "HELD", "CAPTURED", "VOIDED", "EXPIRED", "DENIED", "UNKNOWN"]>;
+            ceilingCents: z.ZodType<Cents, z.ZodTypeDef, Cents>;
+            capturedCents: z.ZodNumber;
+            releasedCents: z.ZodNumber;
+            remainder: z.ZodEnum<["none", "pending", "released", "unreleased"]>;
+        }, "strict", z.ZodTypeAny, {
+            status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+            bidderId: string & {
+                readonly __brand_brand: "BidderId";
+            };
+            ceilingCents: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+            idSuffix: string;
+            capturedCents: number;
+            releasedCents: number;
+            remainder: "released" | "none" | "pending" | "unreleased";
+        }, {
+            status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+            bidderId: string & {
+                readonly __brand_brand: "BidderId";
+            };
+            ceilingCents: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+            idSuffix: string;
+            capturedCents: number;
+            releasedCents: number;
+            remainder: "released" | "none" | "pending" | "unreleased";
+        }>>;
     }, "strict", z.ZodTypeAny, {
         rev: number;
         auctionState: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
         you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+        yourHold?: {
+            status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+            bidderId: string & {
+                readonly __brand_brand: "BidderId";
+            };
+            ceilingCents: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+            idSuffix: string;
+            capturedCents: number;
+            releasedCents: number;
+            remainder: "released" | "none" | "pending" | "unreleased";
+        } | undefined;
     }, {
         rev: number;
         auctionState: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
         you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+        yourHold?: {
+            status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+            bidderId: string & {
+                readonly __brand_brand: "BidderId";
+            };
+            ceilingCents: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+            idSuffix: string;
+            capturedCents: number;
+            releasedCents: number;
+            remainder: "released" | "none" | "pending" | "unreleased";
+        } | undefined;
     }>>;
     you: z.ZodOptional<z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
@@ -4300,6 +4364,12 @@ export const RoomSnapshotSchema: z.ZodObject<{
         seq: number;
         parsedAmount?: Cents | undefined;
     })[];
+    hammer?: {
+        winnerId: BidderId | null;
+        price: number & {
+            readonly __brand_centsBrand: "Cents";
+        };
+    } | undefined;
     paused?: boolean | undefined;
     remainingMs?: number | undefined;
     stopped?: boolean | undefined;
@@ -4319,6 +4389,19 @@ export const RoomSnapshotSchema: z.ZodObject<{
         rev: number;
         auctionState: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
         you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+        yourHold?: {
+            status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+            bidderId: string & {
+                readonly __brand_brand: "BidderId";
+            };
+            ceilingCents: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+            idSuffix: string;
+            capturedCents: number;
+            releasedCents: number;
+            remainder: "released" | "none" | "pending" | "unreleased";
+        } | undefined;
     } | undefined;
 }, {
     status: "SCHEDULED" | "OPEN" | "PAUSED" | "CLOSING" | "SETTLING" | "DONE";
@@ -4388,6 +4471,12 @@ export const RoomSnapshotSchema: z.ZodObject<{
         seq: number;
         parsedAmount?: Cents | undefined;
     })[];
+    hammer?: {
+        winnerId: BidderId | null;
+        price: number & {
+            readonly __brand_centsBrand: "Cents";
+        };
+    } | undefined;
     paused?: boolean | undefined;
     remainingMs?: number | undefined;
     stopped?: boolean | undefined;
@@ -4407,6 +4496,19 @@ export const RoomSnapshotSchema: z.ZodObject<{
         rev: number;
         auctionState: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
         you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+        yourHold?: {
+            status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+            bidderId: string & {
+                readonly __brand_brand: "BidderId";
+            };
+            ceilingCents: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+            idSuffix: string;
+            capturedCents: number;
+            releasedCents: number;
+            remainder: "released" | "none" | "pending" | "unreleased";
+        } | undefined;
     } | undefined;
 }>;
 
@@ -4749,6 +4851,20 @@ export const serverSchemas: {
             remainingMs: z.ZodOptional<z.ZodNumber>;
             stopped: z.ZodOptional<z.ZodBoolean>;
             registrationClosed: z.ZodOptional<z.ZodBoolean>;
+            hammer: z.ZodOptional<z.ZodObject<{
+                winnerId: z.ZodNullable<z.ZodType<BidderId, z.ZodTypeDef, BidderId>>;
+                price: z.ZodType<Cents, z.ZodTypeDef, Cents>;
+            }, "strict", z.ZodTypeAny, {
+                winnerId: BidderId | null;
+                price: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+            }, {
+                winnerId: BidderId | null;
+                price: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+            }>>;
             lotTitle: z.ZodOptional<z.ZodString>;
             joinCode: z.ZodOptional<z.ZodString>;
             roster: z.ZodEffects<z.ZodArray<z.ZodObject<{
@@ -4876,14 +4992,73 @@ export const serverSchemas: {
                 rev: z.ZodNumber;
                 auctionState: z.ZodEnum<["HELD", "BIDDING", "WINNER_SELECTED", "CAPTURING", "CAPTURED", "VOIDING", "SETTLED", "FALLBACK_RUNNER_UP", "FAILED_NEEDS_REVIEW"]>;
                 you: z.ZodOptional<z.ZodEnum<["HELD", "BIDDING", "WINNER_SELECTED", "CAPTURING", "CAPTURED", "VOIDING", "SETTLED", "FALLBACK_RUNNER_UP", "FAILED_NEEDS_REVIEW"]>>;
+                yourHold: z.ZodOptional<z.ZodObject<{
+                    bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
+                    idSuffix: z.ZodString;
+                    status: z.ZodEnum<["PENDING_APPROVAL", "HELD", "CAPTURED", "VOIDED", "EXPIRED", "DENIED", "UNKNOWN"]>;
+                    ceilingCents: z.ZodType<Cents, z.ZodTypeDef, Cents>;
+                    capturedCents: z.ZodNumber;
+                    releasedCents: z.ZodNumber;
+                    remainder: z.ZodEnum<["none", "pending", "released", "unreleased"]>;
+                }, "strict", z.ZodTypeAny, {
+                    status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+                    bidderId: string & {
+                        readonly __brand_brand: "BidderId";
+                    };
+                    ceilingCents: number & {
+                        readonly __brand_centsBrand: "Cents";
+                    };
+                    idSuffix: string;
+                    capturedCents: number;
+                    releasedCents: number;
+                    remainder: "released" | "none" | "pending" | "unreleased";
+                }, {
+                    status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+                    bidderId: string & {
+                        readonly __brand_brand: "BidderId";
+                    };
+                    ceilingCents: number & {
+                        readonly __brand_centsBrand: "Cents";
+                    };
+                    idSuffix: string;
+                    capturedCents: number;
+                    releasedCents: number;
+                    remainder: "released" | "none" | "pending" | "unreleased";
+                }>>;
             }, "strict", z.ZodTypeAny, {
                 rev: number;
                 auctionState: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
                 you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+                yourHold?: {
+                    status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+                    bidderId: string & {
+                        readonly __brand_brand: "BidderId";
+                    };
+                    ceilingCents: number & {
+                        readonly __brand_centsBrand: "Cents";
+                    };
+                    idSuffix: string;
+                    capturedCents: number;
+                    releasedCents: number;
+                    remainder: "released" | "none" | "pending" | "unreleased";
+                } | undefined;
             }, {
                 rev: number;
                 auctionState: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
                 you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+                yourHold?: {
+                    status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+                    bidderId: string & {
+                        readonly __brand_brand: "BidderId";
+                    };
+                    ceilingCents: number & {
+                        readonly __brand_centsBrand: "Cents";
+                    };
+                    idSuffix: string;
+                    capturedCents: number;
+                    releasedCents: number;
+                    remainder: "released" | "none" | "pending" | "unreleased";
+                } | undefined;
             }>>;
             you: z.ZodOptional<z.ZodObject<{
                 bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
@@ -4990,6 +5165,12 @@ export const serverSchemas: {
                 seq: number;
                 parsedAmount?: Cents | undefined;
             })[];
+            hammer?: {
+                winnerId: BidderId | null;
+                price: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+            } | undefined;
             paused?: boolean | undefined;
             remainingMs?: number | undefined;
             stopped?: boolean | undefined;
@@ -5009,6 +5190,19 @@ export const serverSchemas: {
                 rev: number;
                 auctionState: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
                 you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+                yourHold?: {
+                    status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+                    bidderId: string & {
+                        readonly __brand_brand: "BidderId";
+                    };
+                    ceilingCents: number & {
+                        readonly __brand_centsBrand: "Cents";
+                    };
+                    idSuffix: string;
+                    capturedCents: number;
+                    releasedCents: number;
+                    remainder: "released" | "none" | "pending" | "unreleased";
+                } | undefined;
             } | undefined;
         }, {
             status: "SCHEDULED" | "OPEN" | "PAUSED" | "CLOSING" | "SETTLING" | "DONE";
@@ -5078,6 +5272,12 @@ export const serverSchemas: {
                 seq: number;
                 parsedAmount?: Cents | undefined;
             })[];
+            hammer?: {
+                winnerId: BidderId | null;
+                price: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+            } | undefined;
             paused?: boolean | undefined;
             remainingMs?: number | undefined;
             stopped?: boolean | undefined;
@@ -5097,6 +5297,19 @@ export const serverSchemas: {
                 rev: number;
                 auctionState: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
                 you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+                yourHold?: {
+                    status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+                    bidderId: string & {
+                        readonly __brand_brand: "BidderId";
+                    };
+                    ceilingCents: number & {
+                        readonly __brand_centsBrand: "Cents";
+                    };
+                    idSuffix: string;
+                    capturedCents: number;
+                    releasedCents: number;
+                    remainder: "released" | "none" | "pending" | "unreleased";
+                } | undefined;
             } | undefined;
         }>;
         seq: z.ZodNumber;
@@ -5192,6 +5405,12 @@ export const serverSchemas: {
                 seq: number;
                 parsedAmount?: Cents | undefined;
             })[];
+            hammer?: {
+                winnerId: BidderId | null;
+                price: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+            } | undefined;
             paused?: boolean | undefined;
             remainingMs?: number | undefined;
             stopped?: boolean | undefined;
@@ -5211,6 +5430,19 @@ export const serverSchemas: {
                 rev: number;
                 auctionState: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
                 you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+                yourHold?: {
+                    status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+                    bidderId: string & {
+                        readonly __brand_brand: "BidderId";
+                    };
+                    ceilingCents: number & {
+                        readonly __brand_centsBrand: "Cents";
+                    };
+                    idSuffix: string;
+                    capturedCents: number;
+                    releasedCents: number;
+                    remainder: "released" | "none" | "pending" | "unreleased";
+                } | undefined;
             } | undefined;
         };
     }, {
@@ -5286,6 +5518,12 @@ export const serverSchemas: {
                 seq: number;
                 parsedAmount?: Cents | undefined;
             })[];
+            hammer?: {
+                winnerId: BidderId | null;
+                price: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+            } | undefined;
             paused?: boolean | undefined;
             remainingMs?: number | undefined;
             stopped?: boolean | undefined;
@@ -5305,6 +5543,19 @@ export const serverSchemas: {
                 rev: number;
                 auctionState: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
                 you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+                yourHold?: {
+                    status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+                    bidderId: string & {
+                        readonly __brand_brand: "BidderId";
+                    };
+                    ceilingCents: number & {
+                        readonly __brand_centsBrand: "Cents";
+                    };
+                    idSuffix: string;
+                    capturedCents: number;
+                    releasedCents: number;
+                    remainder: "released" | "none" | "pending" | "unreleased";
+                } | undefined;
             } | undefined;
         };
     }>;
@@ -5447,10 +5698,10 @@ export const serverSchemas: {
             }>, "many">;
         }, "strict", z.ZodTypeAny, {
             paddle: number;
-            state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
             idSuffix: string;
             capturedCents: number;
             releasedCents: number;
+            state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
             verifiedBy: {
                 at: number;
                 eventId: string;
@@ -5459,10 +5710,10 @@ export const serverSchemas: {
             }[];
         }, {
             paddle: number;
-            state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
             idSuffix: string;
             capturedCents: number;
             releasedCents: number;
+            state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
             verifiedBy: {
                 at: number;
                 eventId: string;
@@ -5535,12 +5786,25 @@ export const serverSchemas: {
         amountCaptured?: Cents | undefined;
         note?: string | undefined;
         you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
-        holds?: {
-            paddle: number;
-            state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
+        yourHold?: {
+            status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+            bidderId: string & {
+                readonly __brand_brand: "BidderId";
+            };
+            ceilingCents: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
             idSuffix: string;
             capturedCents: number;
             releasedCents: number;
+            remainder: "released" | "none" | "pending" | "unreleased";
+        } | undefined;
+        holds?: {
+            paddle: number;
+            idSuffix: string;
+            capturedCents: number;
+            releasedCents: number;
+            state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
             verifiedBy: {
                 at: number;
                 eventId: string;
@@ -5555,19 +5819,6 @@ export const serverSchemas: {
         } | undefined;
         ladder?: {
             counts: Partial<Record<"HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW", number>>;
-        } | undefined;
-        yourHold?: {
-            status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
-            bidderId: string & {
-                readonly __brand_brand: "BidderId";
-            };
-            ceilingCents: number & {
-                readonly __brand_centsBrand: "Cents";
-            };
-            idSuffix: string;
-            capturedCents: number;
-            releasedCents: number;
-            remainder: "released" | "none" | "pending" | "unreleased";
         } | undefined;
     }, {
         v: 1;
@@ -5579,12 +5830,25 @@ export const serverSchemas: {
         amountCaptured?: Cents | undefined;
         note?: string | undefined;
         you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
-        holds?: {
-            paddle: number;
-            state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
+        yourHold?: {
+            status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+            bidderId: string & {
+                readonly __brand_brand: "BidderId";
+            };
+            ceilingCents: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
             idSuffix: string;
             capturedCents: number;
             releasedCents: number;
+            remainder: "released" | "none" | "pending" | "unreleased";
+        } | undefined;
+        holds?: {
+            paddle: number;
+            idSuffix: string;
+            capturedCents: number;
+            releasedCents: number;
+            state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
             verifiedBy: {
                 at: number;
                 eventId: string;
@@ -5599,19 +5863,6 @@ export const serverSchemas: {
         } | undefined;
         ladder?: {
             counts: Partial<Record<"HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW", number>>;
-        } | undefined;
-        yourHold?: {
-            status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
-            bidderId: string & {
-                readonly __brand_brand: "BidderId";
-            };
-            ceilingCents: number & {
-                readonly __brand_centsBrand: "Cents";
-            };
-            idSuffix: string;
-            capturedCents: number;
-            releasedCents: number;
-            remainder: "released" | "none" | "pending" | "unreleased";
         } | undefined;
     }>;
     readonly audit_event: z.ZodObject<{
@@ -5894,10 +6145,10 @@ export const SettlementUpdateSchema: z.ZodObject<{
         }>, "many">;
     }, "strict", z.ZodTypeAny, {
         paddle: number;
-        state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
         idSuffix: string;
         capturedCents: number;
         releasedCents: number;
+        state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
         verifiedBy: {
             at: number;
             eventId: string;
@@ -5906,10 +6157,10 @@ export const SettlementUpdateSchema: z.ZodObject<{
         }[];
     }, {
         paddle: number;
-        state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
         idSuffix: string;
         capturedCents: number;
         releasedCents: number;
+        state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
         verifiedBy: {
             at: number;
             eventId: string;
@@ -5982,12 +6233,25 @@ export const SettlementUpdateSchema: z.ZodObject<{
     amountCaptured?: Cents | undefined;
     note?: string | undefined;
     you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
-    holds?: {
-        paddle: number;
-        state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
+    yourHold?: {
+        status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+        bidderId: string & {
+            readonly __brand_brand: "BidderId";
+        };
+        ceilingCents: number & {
+            readonly __brand_centsBrand: "Cents";
+        };
         idSuffix: string;
         capturedCents: number;
         releasedCents: number;
+        remainder: "released" | "none" | "pending" | "unreleased";
+    } | undefined;
+    holds?: {
+        paddle: number;
+        idSuffix: string;
+        capturedCents: number;
+        releasedCents: number;
+        state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
         verifiedBy: {
             at: number;
             eventId: string;
@@ -6002,19 +6266,6 @@ export const SettlementUpdateSchema: z.ZodObject<{
     } | undefined;
     ladder?: {
         counts: Partial<Record<"HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW", number>>;
-    } | undefined;
-    yourHold?: {
-        status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
-        bidderId: string & {
-            readonly __brand_brand: "BidderId";
-        };
-        ceilingCents: number & {
-            readonly __brand_centsBrand: "Cents";
-        };
-        idSuffix: string;
-        capturedCents: number;
-        releasedCents: number;
-        remainder: "released" | "none" | "pending" | "unreleased";
     } | undefined;
 }, {
     v: 1;
@@ -6026,12 +6277,25 @@ export const SettlementUpdateSchema: z.ZodObject<{
     amountCaptured?: Cents | undefined;
     note?: string | undefined;
     you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
-    holds?: {
-        paddle: number;
-        state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
+    yourHold?: {
+        status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+        bidderId: string & {
+            readonly __brand_brand: "BidderId";
+        };
+        ceilingCents: number & {
+            readonly __brand_centsBrand: "Cents";
+        };
         idSuffix: string;
         capturedCents: number;
         releasedCents: number;
+        remainder: "released" | "none" | "pending" | "unreleased";
+    } | undefined;
+    holds?: {
+        paddle: number;
+        idSuffix: string;
+        capturedCents: number;
+        releasedCents: number;
+        state: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
         verifiedBy: {
             at: number;
             eventId: string;
@@ -6046,19 +6310,6 @@ export const SettlementUpdateSchema: z.ZodObject<{
     } | undefined;
     ladder?: {
         counts: Partial<Record<"HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW", number>>;
-    } | undefined;
-    yourHold?: {
-        status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
-        bidderId: string & {
-            readonly __brand_brand: "BidderId";
-        };
-        ceilingCents: number & {
-            readonly __brand_centsBrand: "Cents";
-        };
-        idSuffix: string;
-        capturedCents: number;
-        releasedCents: number;
-        remainder: "released" | "none" | "pending" | "unreleased";
     } | undefined;
 }>;
 
@@ -6257,6 +6508,20 @@ export const StateSchema: z.ZodObject<{
         remainingMs: z.ZodOptional<z.ZodNumber>;
         stopped: z.ZodOptional<z.ZodBoolean>;
         registrationClosed: z.ZodOptional<z.ZodBoolean>;
+        hammer: z.ZodOptional<z.ZodObject<{
+            winnerId: z.ZodNullable<z.ZodType<BidderId, z.ZodTypeDef, BidderId>>;
+            price: z.ZodType<Cents, z.ZodTypeDef, Cents>;
+        }, "strict", z.ZodTypeAny, {
+            winnerId: BidderId | null;
+            price: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+        }, {
+            winnerId: BidderId | null;
+            price: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+        }>>;
         lotTitle: z.ZodOptional<z.ZodString>;
         joinCode: z.ZodOptional<z.ZodString>;
         roster: z.ZodEffects<z.ZodArray<z.ZodObject<{
@@ -6384,14 +6649,73 @@ export const StateSchema: z.ZodObject<{
             rev: z.ZodNumber;
             auctionState: z.ZodEnum<["HELD", "BIDDING", "WINNER_SELECTED", "CAPTURING", "CAPTURED", "VOIDING", "SETTLED", "FALLBACK_RUNNER_UP", "FAILED_NEEDS_REVIEW"]>;
             you: z.ZodOptional<z.ZodEnum<["HELD", "BIDDING", "WINNER_SELECTED", "CAPTURING", "CAPTURED", "VOIDING", "SETTLED", "FALLBACK_RUNNER_UP", "FAILED_NEEDS_REVIEW"]>>;
+            yourHold: z.ZodOptional<z.ZodObject<{
+                bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
+                idSuffix: z.ZodString;
+                status: z.ZodEnum<["PENDING_APPROVAL", "HELD", "CAPTURED", "VOIDED", "EXPIRED", "DENIED", "UNKNOWN"]>;
+                ceilingCents: z.ZodType<Cents, z.ZodTypeDef, Cents>;
+                capturedCents: z.ZodNumber;
+                releasedCents: z.ZodNumber;
+                remainder: z.ZodEnum<["none", "pending", "released", "unreleased"]>;
+            }, "strict", z.ZodTypeAny, {
+                status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+                bidderId: string & {
+                    readonly __brand_brand: "BidderId";
+                };
+                ceilingCents: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+                idSuffix: string;
+                capturedCents: number;
+                releasedCents: number;
+                remainder: "released" | "none" | "pending" | "unreleased";
+            }, {
+                status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+                bidderId: string & {
+                    readonly __brand_brand: "BidderId";
+                };
+                ceilingCents: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+                idSuffix: string;
+                capturedCents: number;
+                releasedCents: number;
+                remainder: "released" | "none" | "pending" | "unreleased";
+            }>>;
         }, "strict", z.ZodTypeAny, {
             rev: number;
             auctionState: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
             you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+            yourHold?: {
+                status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+                bidderId: string & {
+                    readonly __brand_brand: "BidderId";
+                };
+                ceilingCents: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+                idSuffix: string;
+                capturedCents: number;
+                releasedCents: number;
+                remainder: "released" | "none" | "pending" | "unreleased";
+            } | undefined;
         }, {
             rev: number;
             auctionState: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
             you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+            yourHold?: {
+                status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+                bidderId: string & {
+                    readonly __brand_brand: "BidderId";
+                };
+                ceilingCents: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+                idSuffix: string;
+                capturedCents: number;
+                releasedCents: number;
+                remainder: "released" | "none" | "pending" | "unreleased";
+            } | undefined;
         }>>;
         you: z.ZodOptional<z.ZodObject<{
             bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
@@ -6498,6 +6822,12 @@ export const StateSchema: z.ZodObject<{
             seq: number;
             parsedAmount?: Cents | undefined;
         })[];
+        hammer?: {
+            winnerId: BidderId | null;
+            price: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+        } | undefined;
         paused?: boolean | undefined;
         remainingMs?: number | undefined;
         stopped?: boolean | undefined;
@@ -6517,6 +6847,19 @@ export const StateSchema: z.ZodObject<{
             rev: number;
             auctionState: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
             you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+            yourHold?: {
+                status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+                bidderId: string & {
+                    readonly __brand_brand: "BidderId";
+                };
+                ceilingCents: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+                idSuffix: string;
+                capturedCents: number;
+                releasedCents: number;
+                remainder: "released" | "none" | "pending" | "unreleased";
+            } | undefined;
         } | undefined;
     }, {
         status: "SCHEDULED" | "OPEN" | "PAUSED" | "CLOSING" | "SETTLING" | "DONE";
@@ -6586,6 +6929,12 @@ export const StateSchema: z.ZodObject<{
             seq: number;
             parsedAmount?: Cents | undefined;
         })[];
+        hammer?: {
+            winnerId: BidderId | null;
+            price: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+        } | undefined;
         paused?: boolean | undefined;
         remainingMs?: number | undefined;
         stopped?: boolean | undefined;
@@ -6605,6 +6954,19 @@ export const StateSchema: z.ZodObject<{
             rev: number;
             auctionState: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
             you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+            yourHold?: {
+                status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+                bidderId: string & {
+                    readonly __brand_brand: "BidderId";
+                };
+                ceilingCents: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+                idSuffix: string;
+                capturedCents: number;
+                releasedCents: number;
+                remainder: "released" | "none" | "pending" | "unreleased";
+            } | undefined;
         } | undefined;
     }>;
     seq: z.ZodNumber;
@@ -6700,6 +7062,12 @@ export const StateSchema: z.ZodObject<{
             seq: number;
             parsedAmount?: Cents | undefined;
         })[];
+        hammer?: {
+            winnerId: BidderId | null;
+            price: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+        } | undefined;
         paused?: boolean | undefined;
         remainingMs?: number | undefined;
         stopped?: boolean | undefined;
@@ -6719,6 +7087,19 @@ export const StateSchema: z.ZodObject<{
             rev: number;
             auctionState: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
             you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+            yourHold?: {
+                status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+                bidderId: string & {
+                    readonly __brand_brand: "BidderId";
+                };
+                ceilingCents: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+                idSuffix: string;
+                capturedCents: number;
+                releasedCents: number;
+                remainder: "released" | "none" | "pending" | "unreleased";
+            } | undefined;
         } | undefined;
     };
 }, {
@@ -6794,6 +7175,12 @@ export const StateSchema: z.ZodObject<{
             seq: number;
             parsedAmount?: Cents | undefined;
         })[];
+        hammer?: {
+            winnerId: BidderId | null;
+            price: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+        } | undefined;
         paused?: boolean | undefined;
         remainingMs?: number | undefined;
         stopped?: boolean | undefined;
@@ -6813,6 +7200,19 @@ export const StateSchema: z.ZodObject<{
             rev: number;
             auctionState: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW";
             you?: "HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW" | undefined;
+            yourHold?: {
+                status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
+                bidderId: string & {
+                    readonly __brand_brand: "BidderId";
+                };
+                ceilingCents: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+                idSuffix: string;
+                capturedCents: number;
+                releasedCents: number;
+                remainder: "released" | "none" | "pending" | "unreleased";
+            } | undefined;
         } | undefined;
     };
 }>;

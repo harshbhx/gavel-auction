@@ -1,4 +1,4 @@
-import { ManualClock, SeqIds, type AuctionConfig, type AuctionId } from '@gavel/shared';
+import { GavelError, ManualClock, SeqIds, type AuctionConfig, type AuctionId } from '@gavel/shared';
 import { HoldError, type HoldRecord } from '@gavel/payments';
 import { describe, expect, it } from 'vitest';
 import { secretSetFromConfig } from '../src/auth/rotation';
@@ -30,6 +30,8 @@ interface Calls {
   created: unknown[];
   approved: unknown[];
   abandoned: string[];
+  /** Holds the service was told about after their approval. */
+  told: string[];
 }
 
 interface Setup {
@@ -41,7 +43,7 @@ interface Setup {
   closed: Set<string>;
 }
 
-function setup(): Setup {
+function setup(extra: Partial<HoldsPort> = {}): Setup {
   const clock = new ManualClock(START);
   const ids = new SeqIds();
   const store = new MemoryStore(() => clock.now());
@@ -75,7 +77,7 @@ function setup(): Setup {
     publicUrl: 'https://gavel.example.test',
     corsOrigins: [],
   };
-  const calls: Calls = { created: [], approved: [], abandoned: [] };
+  const calls: Calls = { created: [], approved: [], abandoned: [], told: [] };
   const records = new Map<string, HoldRecord>();
   const closed = new Set<string>();
   const port: HoldsPort = {
@@ -101,6 +103,10 @@ function setup(): Setup {
     },
     store: { get: async (id) => records.get(id) ?? null },
     acceptsHolds: async (id) => !closed.has(id),
+    approved: async (id) => {
+      calls.told.push(id);
+    },
+    ...extra,
   };
   return {
     app: createHttpApp(deps, [mountAuctions, mountHolds(port)]),
@@ -304,5 +310,61 @@ describe('hold routes (INT-R3-20)', () => {
       }),
     );
     expect(released.status).toBe(200);
+  });
+  it('tells the service once a hold is approved, and not when the approval is refused (HRD-76)', async () => {
+    const { app, deps, calls, records, closed } = setup();
+    const auctionId = await newAuction(app);
+    const owner = deps.ids.mint<'BidderId'>();
+    const mine = await mintToken(deps, 'session', auctionId, owner, owner);
+    records.set('hold-1', {
+      holdId: 'hold-1',
+      auctionId,
+      bidderId: owner,
+      orderId: 'order-1',
+      ceilingCents: 30000,
+      status: 'PENDING_APPROVAL',
+      createdAtMs: START,
+    });
+    const ok = await post(app, '/api/holds/hold-1/approve', { orderId: 'order-1' }, mine.token);
+    expect(ok.status).toBe(200);
+    expect(calls.told).toEqual(['hold-1']);
+    closed.add(auctionId);
+    const refused = await post(
+      app,
+      '/api/holds/hold-1/approve',
+      { orderId: 'order-1' },
+      mine.token,
+    );
+    expect(refused.status).toBe(409);
+    expect(calls.told).toEqual(['hold-1']);
+  });
+
+  it('tells the service about the approval when the registration after it is refused (HRD-76)', async () => {
+    const { app, deps, calls, records } = setup({
+      registerBidder: async () => {
+        throw new GavelError('conflict', 'auction is hammered');
+      },
+    });
+    const auctionId = await newAuction(app);
+    const owner = deps.ids.mint<'BidderId'>();
+    const mine = await mintToken(deps, 'session', auctionId, owner, owner);
+    records.set('hold-1', {
+      holdId: 'hold-1',
+      auctionId,
+      bidderId: owner,
+      orderId: 'order-1',
+      ceilingCents: 30000,
+      status: 'PENDING_APPROVAL',
+      createdAtMs: START,
+    });
+    const res = await post(
+      app,
+      '/api/holds/hold-1/approve',
+      { orderId: 'order-1', name: 'Late Bidder' },
+      mine.token,
+    );
+    expect(res.status).not.toBe(200);
+    expect(calls.approved).toHaveLength(1);
+    expect(calls.told).toEqual(['hold-1']);
   });
 });

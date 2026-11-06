@@ -55,6 +55,33 @@ export function dropOf(d: Decision): VoiceDropRecord {
   };
 }
 
+/**
+ * What the bridge forwards to the auctioneer's audio socket besides decisions. Each is one JSON
+ * text frame with `t` set to the type; clients that do not know them ignore them.
+ */
+export type VoiceFeedMsg =
+  | {
+      t: 'status';
+      stt: 'ok' | 'degraded' | 'down';
+      llm: 'ok' | 'down' | 'off';
+      droppedFrames: number;
+    }
+  | { t: 'caption'; text: string; final: boolean }
+  | { t: 'confirm_expired'; promptId: string };
+
+/** Mean-square level above about -35 dBFS counts as speech for the speech health watch. */
+const SPEECH_MEAN_SQUARE = (32768 * 10 ** (-35 / 20)) ** 2;
+
+function loud(pcm: Int16Array): boolean {
+  if (pcm.length === 0) return false;
+  let sum = 0;
+  for (let i = 0; i < pcm.length; i++) {
+    const v = pcm[i] ?? 0;
+    sum += v * v;
+  }
+  return sum / pcm.length > SPEECH_MEAN_SQUARE;
+}
+
 export interface VoiceBridgeDeps {
   auctionId: AuctionId;
   room: VoiceRoomPort;
@@ -62,6 +89,8 @@ export interface VoiceBridgeDeps {
   clock: Clock;
   /** Period of the pipeline housekeeping tick. Default 250 ms. */
   tickMs?: number;
+  /** Receives status, caption and confirm_expired outputs of the pipeline. */
+  onFeed?: (msg: VoiceFeedMsg) => void;
   log?: (message: string, fields?: Record<string, string>) => void;
 }
 
@@ -197,8 +226,28 @@ export function startVoiceBridge(deps: VoiceBridgeDeps): VoiceBridge {
     return null;
   };
 
+  const feed = (msg: VoiceFeedMsg): void => {
+    try {
+      deps.onFeed?.(msg);
+    } catch (e) {
+      deps.log?.('voice feed failed', { error: e instanceof Error ? e.message : String(e) });
+    }
+  };
+
   const handle = (outputs: PipelineOutput[]): void => {
     for (const out of outputs) {
+      if (out.type === 'status') {
+        feed({ t: 'status', stt: out.stt, llm: out.llm, droppedFrames: out.droppedFrames });
+        continue;
+      }
+      if (out.type === 'caption') {
+        feed({ t: 'caption', text: out.text, final: out.final });
+        continue;
+      }
+      if (out.type === 'confirm_expired') {
+        feed({ t: 'confirm_expired', promptId: out.promptId });
+        continue;
+      }
       if (out.type !== 'decision') continue;
       record(out.decision);
       const bid = toBid(out.decision);
@@ -255,7 +304,10 @@ export function startVoiceBridge(deps: VoiceBridgeDeps): VoiceBridge {
     done,
     latency: () => budgetCheck(samples, 'rules_only'),
     write: (batch) => {
-      if (!closed) stt.write(batch);
+      if (closed) return;
+      // The level meter drives the speech health status (R-VOX-086).
+      if (loud(batch.pcm)) pipeline.noteSpeech();
+      stt.write(batch);
     },
     close: async () => {
       if (closed) return done;

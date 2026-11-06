@@ -2,7 +2,9 @@
 # Post-deploy smoke for the API host (R-QA-042, R-QA-044, T-QA-083).
 # Usage: scripts/smoke.sh <base-url>
 # Optional env: ADMIN_KEY (enables the create-auction check), SMOKE_TIMEOUT (seconds, default 15),
-#               SMOKE_RETRIES (health attempts, default 12, 5 s apart; a cold host needs time).
+#               SMOKE_RETRIES (health attempts, default 12, 5 s apart; a cold host needs time),
+#               SMOKE_ALLOW_MISSING_ROUTES=1 (local or no-server runs only: a 404 on /warmup or
+#               /api/auctions is skipped instead of failing; never set it for a deploy gate).
 # Exits non-zero on the first failed check. No secret value is ever printed.
 set -u
 
@@ -12,6 +14,7 @@ if [ -z "$base" ]; then
   exit 2
 fi
 base="${base%/}"
+allow_missing="${SMOKE_ALLOW_MISSING_ROUTES:-0}"
 timeout_s="${SMOKE_TIMEOUT:-15}"
 retries="${SMOKE_RETRIES:-12}"
 
@@ -40,11 +43,15 @@ done
 [ "$code" = "200" ] || fail "GET /healthz answered $code, want 200"
 echo "ok   GET /healthz 200"
 
-# 2. /warmup: 200 when warm. 404 means the route is not registered in this build yet.
+# 2. /warmup must answer 200. A 404 means the route is missing and fails unless the explicit
+# local opt-in SMOKE_ALLOW_MISSING_ROUTES=1 is set.
 code="$(status GET /warmup)"
 case "$code" in
   200) echo "ok   GET /warmup 200" ;;
-  404) echo "skip GET /warmup 404 (route not registered in this build)" ;;
+  404)
+    [ "$allow_missing" = "1" ] || fail "GET /warmup answered 404, want 200 (route not registered)"
+    echo "skip GET /warmup 404 (SMOKE_ALLOW_MISSING_ROUTES=1)"
+    ;;
   *) fail "GET /warmup answered $code, want 200" ;;
 esac
 
@@ -53,11 +60,12 @@ code="$(status POST /webhooks/paypal -H 'content-type: application/json' --data 
 [ "$code" = "400" ] || fail "unsigned POST /webhooks/paypal answered $code, want 400"
 echo "ok   POST /webhooks/paypal unsigned 400"
 
-# 4. Create-auction route: refused without the admin key, created with it. A build that does
-# not mount the auction routes (main.ts has no extraRoutes yet, #722) answers 404: skip.
+# 4. Create-auction route: refused without the admin key, created with it. A 404 means the
+# route is not mounted and fails unless SMOKE_ALLOW_MISSING_ROUTES=1 is set (local runs only).
 code="$(status POST /api/auctions -H 'content-type: application/json' --data '{}')"
 if [ "$code" = "404" ]; then
-  echo "skip POST /api/auctions 404 (route not registered in this build)"
+  [ "$allow_missing" = "1" ] || fail "POST /api/auctions answered 404, want 401 (route not registered)"
+  echo "skip POST /api/auctions 404 (SMOKE_ALLOW_MISSING_ROUTES=1)"
   echo "smoke passed for $base"
   exit 0
 fi

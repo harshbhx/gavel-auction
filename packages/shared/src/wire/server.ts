@@ -52,6 +52,30 @@ const MAX_LOT_TITLE_CHARS = 120;
 /** Fields every server frame after a successful join carries. */
 const ev = { seq, ts: epochMs() };
 
+/** What happened to the part of a captured hold beyond the price (none when nothing is left). */
+export const REMAINDER_STATES = ['none', 'pending', 'released', 'unreleased'] as const;
+export type RemainderState = (typeof REMAINDER_STATES)[number];
+
+/**
+ * The viewer's own hold after the hammer (`yourHold`). The server builds it per connection and
+ * sends it only to the bidder named by `bidderId`; screens, the auctioneer and other bidders
+ * never receive it, so no viewer learns another bidder's hold or ceiling.
+ */
+export const OwnHoldSchema = z
+  .object({
+    bidderId: ulid<BidderId>(),
+    /** Last 6 characters of the hold id only. */
+    idSuffix: z.string().max(6),
+    status: z.enum(HOLD_STATUSES),
+    /** What the hold reserves: this bidder's own ceiling. */
+    ceilingCents: cents(),
+    capturedCents: z.number().int().nonnegative(),
+    releasedCents: z.number().int().nonnegative(),
+    remainder: z.enum(REMAINDER_STATES),
+  })
+  .strict();
+export type OwnHold = z.infer<typeof OwnHoldSchema>;
+
 export const RoomSnapshotSchema = z
   .object({
     auctionId: ulid<AuctionId>(),
@@ -67,6 +91,11 @@ export const RoomSnapshotSchema = z
     stopped: z.boolean().optional(),
     /** True once the room no longer takes registrations (the lot was hammered or the auction is done). */
     registrationClosed: z.boolean().optional(),
+    /**
+     * The hammer outcome, present once the lot was hammered, so a joining or reconnecting client
+     * can show the result without having seen the hammer frame. The winner and price are public.
+     */
+    hammer: z.object({ winnerId: ulid<BidderId>().nullable(), price: cents() }).strict().optional(),
     /** Public lot title, set by the HTTP snapshot route; never carries private data. */
     lotTitle: z.string().max(MAX_LOT_TITLE_CHARS).optional(),
     /** Short human join code of the auction, set by the HTTP snapshot route. */
@@ -90,6 +119,8 @@ export const RoomSnapshotSchema = z
         rev: z.number().int(),
         auctionState: settlementState,
         you: settlementState.optional(),
+        /** The viewing bidder's own hold; never present for screens, the auctioneer or other bidders. */
+        yourHold: OwnHoldSchema.optional(),
       })
       .strict()
       .optional(),
@@ -186,30 +217,6 @@ const settlementHold = z
       .max(10),
   })
   .strict();
-
-/** What happened to the part of a captured hold beyond the price (none when nothing is left). */
-export const REMAINDER_STATES = ['none', 'pending', 'released', 'unreleased'] as const;
-export type RemainderState = (typeof REMAINDER_STATES)[number];
-
-/**
- * The viewer's own hold after the hammer (`yourHold`). The server builds it per connection and
- * sends it only to the bidder named by `bidderId`; screens, the auctioneer and other bidders
- * never receive it, so no viewer learns another bidder's hold or ceiling.
- */
-export const OwnHoldSchema = z
-  .object({
-    bidderId: ulid<BidderId>(),
-    /** Last 6 characters of the hold id only. */
-    idSuffix: z.string().max(6),
-    status: z.enum(HOLD_STATUSES),
-    /** What the hold reserves: this bidder's own ceiling. */
-    ceilingCents: cents(),
-    capturedCents: z.number().int().nonnegative(),
-    releasedCents: z.number().int().nonnegative(),
-    remainder: z.enum(REMAINDER_STATES),
-  })
-  .strict();
-export type OwnHold = z.infer<typeof OwnHoldSchema>;
 
 export const SettlementUpdateSchema = message('settlement_update', {
   ...ev,

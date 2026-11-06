@@ -48,7 +48,7 @@ No test calls the network; the fake provider supplies transcripts. Heavy runs ha
 
 Check in this order while the room is live.
 
-1. Speech provider silent or erroring. With a live provider the server fails over to the cached one. `FaultTracker` marks speech `degraded` after 8 s and `down` after 15 s and the console shows the manual entry banner. Switch to manual entry (always available) or restart the voice session.
+1. Speech provider silent or erroring. With a live provider the server fails over to the cached one. `FaultTracker` marks speech `degraded` after 8 s and `down` after 15 s of loud audio with no transcript; the server forwards these as `{"t":"status",...}` text frames on the auctioneer's `/audio` socket (with `caption` and `confirm_expired` frames), so a client can raise the manual entry banner from them. The web console does not render these frames yet; until it does, watch the speech state in the server log and switch to manual entry yourself. A failover is only made to a cached provider that has a recording to play; with no recording the live provider is kept running. Switch to manual entry (always available) or restart the voice session.
 2. Speech down and the language model down. `bidsAllowed` becomes false and the QR bidding banner shows. With speech down and the model up, bids stay allowed. The capture state is independent: `degraded` there only means audio frames are being dropped.
 3. Microphone denied, missing or on an insecure page. The state names the cause; there is no retry loop. Fix the browser permission or use manual entry.
 4. Wrong bid heard. Ambiguous amounts ask for confirmation before any bid is placed; reject the prompt and type the bid.

@@ -148,7 +148,7 @@ and open a pull request. Do not edit a gate to PASS by hand.
 ## G5: STT accuracy on noisy bids
 
 - Failure signals: exact plus recoverable confirm under 0.90 or wrong accepts above 0.05 (PARTIAL
-  needs 0.70; below that FAIL); the live run prints `skipped` (key or recordings missing);
+  needs 0.70; below that FAIL); the live run prints `NOT RUN` and exits non-zero (key or recordings missing);
   `voice-eval` red.
 - Check: the `voice-eval` run summary and the `voice-eval-text` artifact (parser only, says
   nothing about speech-to-text); the G5-text and G5-live tables in `docs/GATES.md`.

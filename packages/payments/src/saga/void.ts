@@ -2,7 +2,13 @@ import { PayPalError } from '../errors.js';
 import type { AuditSink, Clock, JournalStore, PaymentsGateway } from '../ports.js';
 import type { PaymentsMetrics } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
-import type { HoldTruth, Journal, JournalHold, SettlementState } from '../types.js';
+import type {
+  HoldTruth,
+  Journal,
+  JournalHistoryEntry,
+  JournalHold,
+  SettlementState,
+} from '../types.js';
 import { runCapturePhase, type CaptureDeps, type CaptureOutcome } from './capture.js';
 import { defaultLeaseOwner, runLeaseOwner } from './owner.js';
 import { withLease } from './create.js';
@@ -214,13 +220,34 @@ export function reviewKeepHolds(j: Journal, o: ReviewKeepOptions): Set<string> {
     keep.add(j.winner.holdId);
     return keep;
   }
-  const entered = [...j.history].reverse().find((h) => h.to === 'FAILED_NEEDS_REVIEW');
-  if (entered === undefined || !CAPTURE_PHASE.has(entered.from)) return keep;
+  const entered = captureReviewEntry(j);
+  if (entered === undefined) return keep;
   if (j.intent !== null && j.intent.op === 'capture') keep.add(j.intent.holdId);
   const maxAge = o.reviewHoldMaxAgeMs ?? DEFAULT_REVIEW_HOLD_MAX_AGE_MS;
   if (o.releaseAll === true || o.nowMs - entered.tsMs > maxAge) return keep;
   for (const holdId of candidateHolds(j)) keep.add(holdId);
   return keep;
+}
+
+/**
+ * When `reviewKeepHolds` stops keeping the next candidates' holds with nobody acting: the
+ * first moment the review is older than `reviewHoldMaxAgeMs`. Null when the keep-set never
+ * shrinks on its own (a sale, a review raised outside the capture phase, an operator release)
+ * or has already shrunk at `nowMs`. The server's resume pass looks at a finished review again
+ * at that moment, so the release runs although nobody is connected (HRD-76).
+ */
+export function reviewKeepShrinksAt(j: Journal, o: ReviewKeepOptions): number | null {
+  if (j.winner !== null || o.releaseAll === true) return null;
+  const entered = captureReviewEntry(j);
+  if (entered === undefined) return null;
+  const at = entered.tsMs + (o.reviewHoldMaxAgeMs ?? DEFAULT_REVIEW_HOLD_MAX_AGE_MS) + 1;
+  return at > o.nowMs ? at : null;
+}
+
+/** The history entry of the last move to review, when the capture phase raised it. */
+function captureReviewEntry(j: Journal): JournalHistoryEntry | undefined {
+  const entered = [...j.history].reverse().find((h) => h.to === 'FAILED_NEEDS_REVIEW');
+  return entered !== undefined && CAPTURE_PHASE.has(entered.from) ? entered : undefined;
 }
 
 /**

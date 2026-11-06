@@ -12,12 +12,14 @@ import { renderReport, type ReportItem } from './report.js';
  *   npm run eval -- --mode cached --provider deepgram
  *   npm run eval -- --mode live --provider deepgram
  *
- * Exit codes: 0 done, 1 bad input or failed run, 2 live mode without keys.
+ * Exit codes: 0 done, 1 bad input or failed run, 2 live mode without keys, 3 live mode not run
+ * because recordings are missing (nothing was scored, so it must never read as a pass).
  */
 
 export const EXIT_OK = 0;
 export const EXIT_FAILED = 1;
 export const EXIT_NO_KEYS = 2;
+export const EXIT_NOT_RUN = 3;
 
 /** At most this many provider calls run at once in live mode. */
 export const LIVE_CONCURRENCY = 2;
@@ -215,12 +217,10 @@ function audioItem(
   };
 }
 
-/** Recorded provider output and model outputs through the parser; deterministic and offline. */
+/** Recorded provider transcripts through the parser; deterministic and offline. */
 function cachedItems(deps: CliDeps, provider: Provider): ReportItem[] | string {
   const dir = `fixtures/stt-cache/${provider}`;
   if (!deps.exists(dir)) return `no recorded provider output at ${dir}`;
-  if (!deps.exists('fixtures/model-cache'))
-    return 'no recorded model output at fixtures/model-cache';
   const items: ReportItem[] = [];
   for (const c of audioCases(deps)) {
     const path = `${dir}/${c.id}.json`;
@@ -306,8 +306,8 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<nu
         const ids = audioCases(deps).map((c) => c.id);
         const missing = ids.filter((id) => deps.recordingExists?.(id) !== true).length;
         if (missing > 0) {
-          log(`eval: skipped: ${missing} of ${ids.length} recordings missing`);
-          return EXIT_OK;
+          log(`eval: NOT RUN: ${missing} of ${ids.length} recordings missing, nothing was scored`);
+          return EXIT_NOT_RUN;
         }
       }
       items = await liveItems(deps, opts.provider, key, deps.transcribe);

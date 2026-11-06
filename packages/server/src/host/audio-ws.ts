@@ -279,6 +279,9 @@ export function createAudioHost(opts: AudioHostOptions): AudioHost {
         room,
         stt: opts.makeStt(),
         clock: opts.clock,
+        onFeed: (msg) => {
+          if (!ended && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
+        },
         ...(opts.log !== undefined ? { log: opts.log } : {}),
       });
     } catch {
