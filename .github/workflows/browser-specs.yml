@@ -150,5 +150,7 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Build the web app
         run: npm run build -w @gavel/web
+        env:
+          VITE_SANDBOX: 'true'
       - name: Bundle budget, lazy chunks and CSP (R-WEB-003, R-WEB-004, R-WEB-009)
         run: node packages/web/scripts/check-size.mjs packages/web/dist
