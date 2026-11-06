@@ -60,6 +60,13 @@ export interface Outcome {
     audit: Array<{ transcript: string; confidenceBps: number }>;
   };
   ledgerTypes: string[];
+  /** Waits the payment transport asked for between retries, in ms, in order. */
+  backoffMs: number[];
+  /** End time after each accepted bid, and how often the soft close moved it. */
+  endTsAfter: number[];
+  softClose: { extensions: number; shortened: boolean };
+  /** Last settlement state of the auction and of each bidder, by actor name. */
+  settlement: { auction: string; bidders: Record<string, string> } | null;
 }
 
 export interface RunResult {
@@ -76,6 +83,7 @@ export interface RunOptions {
 }
 
 const EXTEND_MS = 30_000;
+const FINAL_STATES: ReadonlySet<string> = new Set(['SETTLED', 'FAILED_NEEDS_REVIEW']);
 const AUDIO_DIR = new URL('../../fixtures/audio/', import.meta.url);
 
 interface SttFixture {
@@ -255,7 +263,20 @@ async function drive(
   await flushDrops(Number.MAX_SAFE_INTEGER);
   await service.idle();
   if (crashes > restarts) await restart(true);
+  // A settlement still waiting after the clock was moved is run again, as the retry timer would.
+  if (steps.some((s) => s.do === 'advance_clock')) {
+    const waiting = await lastSettlement();
+    if (waiting !== undefined && !FINAL_STATES.has(waiting.auctionState)) {
+      await service.resume();
+      await service.idle();
+    }
+  }
   await deliverWebhooks();
+
+  async function lastSettlement() {
+    const events = await rig.stores.store.readEvents(auctionId, 1, 100_000);
+    return events.flatMap((e) => (e.type === 'settlement_update' ? [e] : [])).at(-1);
+  }
 
   async function runStep(step: Step): Promise<void> {
     switch (step.do) {
@@ -498,6 +519,12 @@ async function drive(
   } catch {
     fakeOk = false;
   }
+  const roomEvents = await rig.stores.store.readEvents(auctionId, 1, 100_000);
+  const endTsAfter = roomEvents.flatMap((e) =>
+    e.type === 'bid_accepted' ? [Number(e.endTsAfter)] : [],
+  );
+  const ends = [config.endTs as number, ...endTsAfter];
+  const lastUpdate = await lastSettlement();
   const voiceBids = entries.flatMap((e) =>
     e.type === 'BID_RECORDED' && e.payload.source === 'voice' ? [e.payload] : [],
   );
@@ -543,6 +570,24 @@ async function drive(
       ),
     },
     ledgerTypes: entries.map((e) => e.type),
+    backoffMs: [...rig.sleeps],
+    endTsAfter,
+    softClose: {
+      extensions: ends.filter((v, i) => i > 0 && v > (ends[i - 1] as number)).length,
+      shortened: ends.some((v, i) => i > 0 && v < (ends[i - 1] as number)),
+    },
+    settlement:
+      lastUpdate === undefined
+        ? null
+        : {
+            auction: lastUpdate.auctionState,
+            bidders: Object.fromEntries(
+              Object.entries(lastUpdate.perBidder).map(([id, state]) => [
+                byId.get(id) ?? id,
+                state,
+              ]),
+            ),
+          },
   };
   await service.close();
   emit('result', 0, { ...outcome });
@@ -600,6 +645,18 @@ export function checkExpectations(scenario: Scenario, outcome: Outcome): string[
       });
     } else if ('webhooks' in exp) {
       diff('webhooks', exp.webhooks, { duplicates: outcome.webhooks.duplicates });
+    } else if ('settlement' in exp) {
+      const got = outcome.settlement;
+      diff(
+        'settlement',
+        exp.settlement,
+        Object.fromEntries(
+          Object.keys(exp.settlement).map((k) => [
+            k,
+            k === 'auction' ? got?.auction : got?.bidders[k],
+          ]),
+        ),
+      );
     } else if ('captures' in exp) {
       diff('captures', exp.captures, outcome.captures);
     } else if ('voice' in exp) {

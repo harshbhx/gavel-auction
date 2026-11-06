@@ -15,7 +15,14 @@ steps:
   - { t: 6000, actor: ben, do: bid, amount: 7500 }
   - { t: 7000, actor: ana, do: bid, amount: 8000 }
   - { t: 8000, actor: ben, do: bid, amount: 8500 }
-  - { t: 12000, actor: auctioneer, do: hammer }
+  - { t: 599000, actor: ana, do: bid, amount: 9000 }
+  - { t: 628900, actor: ben, do: bid, amount: 9500 }
+  - { t: 658800, actor: ana, do: bid, amount: 10000 }
+  - { t: 688700, actor: ben, do: bid, amount: 10500 }
+  - { t: 718600, actor: ana, do: bid, amount: 11000 }
+  - { t: 748500, actor: ben, do: bid, amount: 11500 }
+  - { t: 749000, actor: auctioneer, do: hammer }
 expect:
-  - ledger: { winner: ben, captured: 8500, released: 41500, voided: [ana] }
+  - ledger: { winner: ben, captured: 11500, released: 38500, voided: [ana] }
+  - bids: { accepted: 12, price: 11500 }
   - invariants: [I1, I2, I3, I4]
