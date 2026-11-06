@@ -41,8 +41,8 @@ function killMessage(err: unknown): string {
     if (err.status === 401 || err.status === 403) return t('kill.unauthorized');
     if (err.status === 404) return t('kill.notAvailable');
     if (err.status === 409) return t('kill.conflict');
-    if (err.status >= 500) return t('kill.serverError');
     if (err.detail !== null) return t('kill.failedDetail', { detail: err.detail });
+    if (err.status >= 500) return t('kill.serverError');
   }
   return t('kill.failed');
 }
