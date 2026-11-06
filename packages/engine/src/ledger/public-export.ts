@@ -53,7 +53,7 @@ export interface PublicExportOptions {
 }
 
 export type PublicVerifyResult =
-  | { ok: true; count: number; headHash: string }
+  | { ok: true; count: number; headHash: string; closed: boolean }
   | { ok: false; firstBadIndex: number; reason: PublicVerifyFailure };
 
 type Rec = Record<string, JsonValue>;
@@ -206,6 +206,13 @@ export function publicExport(
         proxy.delete(lotId);
       }
     }
+    // The closing entry names the hash of the entry before it. Once a field was lost that is a
+    // private hash, which must not be published (R5-E01, R12-E01); the public hash of the
+    // previous public entry takes its place and anchors the closed chain the same way.
+    if (e.type === 'AUCTION_CLOSED' && hidden) {
+      pub = { ...pub, headHash: prev };
+      dropped.add('headHash');
+    }
     if (dropped.size > 0) hidden = true;
     const body: Omit<PublicEntry, 'hash'> = {
       v: PUBLIC_EXPORT_VERSION,
@@ -262,7 +269,25 @@ export function verifyPublicExport(
       return { ok: false, firstBadIndex: entries.length, reason: 'truncated' };
     }
   }
-  return { ok: true, count: entries.length, headHash: prev };
+  return {
+    ok: true,
+    count: entries.length,
+    headHash: prev,
+    closed: isAnchoredPublicClose(entries),
+  };
+}
+
+/** The last entry is AUCTION_CLOSED and names the entry before it (public hash once redacted). */
+function isAnchoredPublicClose(entries: readonly PublicEntry[]): boolean {
+  const last = entries[entries.length - 1];
+  const before = entries[entries.length - 2];
+  if (last === undefined || before === undefined || last.type !== 'AUCTION_CLOSED') return false;
+  const named = (last.payload as unknown as Rec)['headHash'];
+  const anchor =
+    Array.isArray(last.redacted) && last.redacted.includes('headHash')
+      ? before.hash
+      : before.fullHash;
+  return typeof named === 'string' && named === anchor;
 }
 
 /**

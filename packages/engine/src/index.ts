@@ -1,7 +1,7 @@
 /** Public entry point of @gavel/engine: the pure decide/evolve core, ledger and replay. */
 export { decide } from './decide/index.js';
 export type { DecideResult, Outcome } from './decide/index.js';
-export { evolve, evolveAll } from './evolve.js';
+export { evolve, evolveAll, evolveOwned } from './evolve.js';
 export { initialState, commandBody, entryBody } from './state.js';
 export type { AuctionState, LotState, BidderState, SeenCommand } from './state.js';
 export { parseCommand, confidenceToBps, COMMAND_TYPES } from './commands.js';

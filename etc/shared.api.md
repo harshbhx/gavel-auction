@@ -2236,6 +2236,9 @@ export const MAX_SERVER_FRAME_BYTES: number;
 export const MAX_SOFT_CLOSE_EXTENSION_MS = 600000;
 
 // @public
+export const MAX_SOFT_CLOSE_WINDOW_MS = 600000;
+
+// @public
 export const MAX_TIMEOUT_MS = 2147483647;
 
 // @public (undocumented)
@@ -2477,6 +2480,7 @@ export const REPLAY_EXPORT_VERSION = 4;
 export interface ReplayBundle {
     // (undocumented)
     auctionId: string;
+    closed?: boolean;
     count: number;
     // (undocumented)
     events: ReplayEvent[];

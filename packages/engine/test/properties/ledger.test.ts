@@ -265,7 +265,7 @@ describe('ledger properties', () => {
               if (head === undefined) throw new Error('empty ledger');
               const expectedHead = { seq: head.seq, hash: head.hash };
               const ok = verifyChain(entries, { expectedHead });
-              expect(ok).toEqual({ ok: true, count: entries.length, headHash: head.hash });
+              expect(ok).toMatchObject({ ok: true, count: entries.length, headHash: head.hash });
 
               const bad = damage(entries, kind, pick);
               const res = verifyChain(bad, { expectedHead });

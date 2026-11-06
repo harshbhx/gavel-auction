@@ -30,7 +30,7 @@ export type VerifyFailure =
   | 'truncated';
 
 export type VerifyResult =
-  | { ok: true; count: number; headHash: string }
+  | { ok: true; count: number; headHash: string; closed: boolean }
   | { ok: false; firstBadIndex: number; reason: VerifyFailure };
 
 export function deepFreeze<T>(value: T): T {
@@ -96,6 +96,18 @@ export function headOf(entries: readonly LedgerEntry[]): { seq: number; hash: st
 }
 
 /**
+ * True when the ledger ends with AUCTION_CLOSED and that entry names the hash of the one before
+ * it. A prefix of a finished auction is not closed, so a cut tail shows up as `closed: false`
+ * even when no head was published elsewhere.
+ */
+function isAnchoredClose(entries: readonly LedgerEntry[]): boolean {
+  const last = entries[entries.length - 1];
+  const before = entries[entries.length - 2];
+  if (last === undefined || before === undefined || last.type !== 'AUCTION_CLOSED') return false;
+  return (last.payload as { headHash?: unknown }).headHash === before.hash;
+}
+
+/**
  * Verifies a whole ledger from genesis (R-ENG-073, R-ENG-074, R-ENG-080).
  * With `expectedHead` a shortened or rewritten tail fails as `truncated`.
  */
@@ -138,5 +150,5 @@ export function verifyChain(
       return { ok: false, firstBadIndex: entries.length, reason: 'truncated' };
     }
   }
-  return { ok: true, count: entries.length, headHash: prevHash };
+  return { ok: true, count: entries.length, headHash: prevHash, closed: isAnchoredClose(entries) };
 }

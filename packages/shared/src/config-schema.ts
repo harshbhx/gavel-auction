@@ -22,6 +22,8 @@ export const AUCTION_MODES = ['english', 'proxy', 'second_price'] as const;
 export const MIN_RESERVE_CENTS = 100;
 export const MIN_INCREMENT_CENTS = 1;
 export const MAX_SOFT_CLOSE_EXTENSION_MS = 600_000;
+/** The engine runs a window up to this long; a longer one is refused, never shortened. */
+export const MAX_SOFT_CLOSE_WINDOW_MS = 600_000;
 export const MAX_EXTENSIONS_LIMIT = 50;
 export const MAX_CEILING_PRESETS = 8;
 export const MAX_INCREMENT_TIERS = 16;
@@ -34,7 +36,7 @@ export const AuctionConfigSchema = z
     reserve: cents.refine((c) => c >= MIN_RESERVE_CENTS, 'reserve must be at least 100 cents'),
     minIncrement: cents.refine((c) => c >= MIN_INCREMENT_CENTS, 'minIncrement must be positive'),
     endTs: epochMs,
-    softCloseWindowMs: durationMs,
+    softCloseWindowMs: durationMs.max(MAX_SOFT_CLOSE_WINDOW_MS),
     softCloseExtensionMs: durationMs.max(MAX_SOFT_CLOSE_EXTENSION_MS),
     maxExtensions: z.number().int().nonnegative().max(MAX_EXTENSIONS_LIMIT),
     ceilingPresets: z.array(cents).min(1).max(MAX_CEILING_PRESETS),

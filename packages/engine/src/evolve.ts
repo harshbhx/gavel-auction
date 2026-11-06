@@ -41,7 +41,7 @@ function setBidder(s: AuctionState, key: string, f: (b: BidderState) => BidderSt
   return { ...s, bidders: dict({ ...s.bidders, [key]: f(b) }) };
 }
 
-function apply(s: AuctionState, e: LedgerEntry): AuctionState {
+function apply(s: AuctionState, e: LedgerEntry, inPlace = false): AuctionState {
   switch (e.type) {
     case 'AUCTION_CREATED':
       // A ledger has one genesis; a second AUCTION_CREATED must not overwrite config mid-auction.
@@ -123,6 +123,7 @@ function apply(s: AuctionState, e: LedgerEntry): AuctionState {
             seq: e.seq,
             status: 'active',
           },
+          inPlace,
         ),
       );
     }
@@ -249,6 +250,30 @@ export function evolve(s: AuctionState, e: LedgerEntry): AuctionState {
   const next = apply(s, e);
   const commands = recordCommand(next.commands, e);
   return { ...next, commands, head: { seq: e.seq, at: e.at, hash: e.hash } };
+}
+
+/** Seen-command indexes created by `evolveOwned`; only these are ever mutated. */
+const ownedCommands = new WeakSet<object>();
+
+/**
+ * Folds new entries into a state the caller owns and keeps (a cached live state). The
+ * seen-command index and each lot's bid list are extended in place after the first call, so
+ * the cost of one entry does not grow with the history. The state passed in is consumed: do not
+ * keep an earlier snapshot of it and expect it to stay unchanged. Result equals `entries.reduce(evolve, s)`.
+ */
+export function evolveOwned(s: AuctionState, entries: readonly LedgerEntry[]): AuctionState {
+  const last = entries[entries.length - 1];
+  if (last === undefined) return s;
+  const commands: Record<string, SeenCommand> = ownedCommands.has(s.commands)
+    ? s.commands
+    : dict({ ...s.commands });
+  ownedCommands.add(commands);
+  let next = s;
+  for (const e of entries) {
+    next = apply(next, e, true);
+    recordCommandInto(commands, e);
+  }
+  return { ...next, commands, head: { seq: last.seq, at: last.at, hash: last.hash } };
 }
 
 /**
