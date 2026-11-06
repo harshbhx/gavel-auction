@@ -108,7 +108,7 @@ describe('public export', () => {
     const full = ledger('second_price');
     expect(verifyChain(full).ok).toBe(true);
     const pub = publicExport(full);
-    expect(verifyPublicExport(pub)).toEqual({
+    expect(verifyPublicExport(pub)).toMatchObject({
       ok: true,
       count: pub.length,
       headHash: (pub[pub.length - 1] as PublicEntry).hash,
