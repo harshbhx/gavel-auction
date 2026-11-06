@@ -1,3 +1,4 @@
+import { SystemClock } from '@gavel/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { composeServer, type Composed } from '../src/boot/compose';
 
@@ -28,7 +29,7 @@ function auctionConfig(): Record<string, unknown> {
     currency: 'USD',
     reserve: 10000,
     minIncrement: 500,
-    endTs: Date.now() + 600_000,
+    endTs: new SystemClock().now() + 600_000,
     softCloseWindowMs: 30_000,
     softCloseExtensionMs: 30_000,
     maxExtensions: 5,
