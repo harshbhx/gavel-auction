@@ -92,6 +92,7 @@ const AUDIT_KEYS = [
   'audioEndMs',
   'transcript',
   'confidenceBps',
+  'parsedCents',
   'parserVersion',
   'clientTs',
 ] as const;
@@ -201,6 +202,7 @@ function parseAudit(x: unknown): BidAudit {
     } else {
       const n = int(o, k, 'audit');
       if (k === 'confidenceBps' && (n < 0 || n > 10000)) bad('audit.confidenceBps out of range');
+      if (k === 'parsedCents' && n < 0) bad('audit.parsedCents out of range');
       out[k] = n;
     }
   }
