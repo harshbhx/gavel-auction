@@ -35,6 +35,11 @@ const fetchMock = vi.fn((_url: string, _init: FetchInit): Promise<FetchReply> =>
   return Promise.resolve({ ok: true, status: 200 });
 });
 
+/** Text of every element with a live role: a message is shown inline and announced too. */
+function texts(role: 'status' | 'alert'): string[] {
+  return screen.getAllByRole(role).map((el) => el.textContent ?? '');
+}
+
 function deliver(msg: unknown): void {
   act(() => {
     FakeSocket.last?.onmessage?.({ data: JSON.stringify(msg) });
@@ -138,7 +143,7 @@ describe('hammer expectation (#1772)', () => {
     fetchMock.mockResolvedValueOnce({ ok: false, status: 409 });
     renderConsole();
     holdHammer();
-    await waitFor(() => expect(screen.getByText(t('controls.hammerChanged'))).toBeTruthy(), {
+    await waitFor(() => expect(texts('status')).toContain(t('controls.hammerChanged')), {
       timeout: 3000,
     });
   });
@@ -168,7 +173,7 @@ describe('control timeout (#1773)', () => {
     });
     const first = JSON.parse(fetchMock.mock.calls[0]?.[1].body ?? '{}') as { controlId: string };
     expect(lastCall().body['controlId']).toBe(first.controlId);
-    expect(screen.getByText(t('controls.unknown', { action: t('console.pause') }))).toBeTruthy();
+    expect(texts('status')).toContain(t('controls.unknown', { action: t('console.pause') }));
     expect(
       screen
         .getByRole('button', { name: t('console.extend', { s: 30 }) })
@@ -228,12 +233,9 @@ describe('stop request (#1717)', () => {
     fetchMock.mockResolvedValueOnce({ ok: false, status: 404 });
     renderConsole();
     stop();
-    await waitFor(
-      () => expect(screen.getByRole('alert').textContent).toBe(t('kill.notAvailable')),
-      {
-        timeout: 3000,
-      },
-    );
+    await waitFor(() => expect(texts('alert')).toContain(t('kill.notAvailable')), {
+      timeout: 3000,
+    });
     expect(lastCall().url).toContain('/kill');
   });
 
@@ -241,7 +243,7 @@ describe('stop request (#1717)', () => {
     fetchMock.mockResolvedValueOnce({ ok: false, status: 409 });
     renderConsole();
     stop();
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe(t('kill.conflict')), {
+    await waitFor(() => expect(texts('alert')).toContain(t('kill.conflict')), {
       timeout: 3000,
     });
   });
@@ -256,9 +258,7 @@ describe('stop request (#1717)', () => {
     stop();
     await waitFor(
       () =>
-        expect(screen.getByRole('alert').textContent).toBe(
-          t('kill.failedDetail', { detail: 'store unavailable' }),
-        ),
+        expect(texts('alert')).toContain(t('kill.failedDetail', { detail: 'store unavailable' })),
       { timeout: 3000 },
     );
   });
