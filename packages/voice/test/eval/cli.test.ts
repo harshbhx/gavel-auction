@@ -19,6 +19,7 @@ interface Harness {
   logs: string[];
   written: Map<string, string>;
   reads: string[];
+  dirs: Set<string>;
 }
 
 function harness(extra: Record<string, string> = {}, env: Record<string, string> = {}): Harness {
@@ -42,7 +43,7 @@ function harness(extra: Record<string, string> = {}, env: Record<string, string>
     gitSha: () => 'abc1234',
     log: (line) => logs.push(line),
   };
-  return { deps, logs, written, reads };
+  return { deps, logs, written, reads, dirs };
 }
 
 afterEach(() => {
@@ -118,6 +119,15 @@ describe('T-VOX-083 modes (R-VOX-075)', () => {
     const code = await runCli(['--mode', 'cached'], h.deps);
     expect(code).toBe(EXIT_FAILED);
     expect(h.logs.join('\n')).toMatch(/missing fixtures\/stt-cache\/deepgram\//);
+  });
+
+  it('cached mode fails, never passes, when the recorded provider directory is absent', async () => {
+    const h = harness();
+    h.dirs.delete('fixtures/stt-cache/deepgram');
+    const code = await runCli(['--mode', 'cached'], h.deps);
+    expect(code).toBe(EXIT_FAILED);
+    expect(h.logs.join('\n')).toMatch(/no recorded provider output/);
+    expect(h.written.size).toBe(0);
   });
 
   it('live mode without a key exits with code 2 and names the variable', async () => {
