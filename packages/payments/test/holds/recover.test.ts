@@ -251,6 +251,27 @@ describe('R8-P05 an authorization created before a crash is not left live', () =
     assertFakeInvariants(rig.core);
   });
 
+  it('audits the void of the authorization it finds (RT4-saga-04)', async () => {
+    const rig = makeRig(false);
+    const { holdId } = await crashedAfterAuthorize(rig);
+    rig.clock.advance(10 * 60_000);
+    await sweepStalePending(rig.deps, 'a1', 5 * 60_000);
+    const calls = rig.audits.filter((a) => a.kind === 'paypal_call' && a.op === 'void');
+    expect(calls).toEqual([
+      expect.objectContaining({
+        auctionId: 'a1',
+        holdId,
+        op: 'void',
+        outcome: 'definite',
+        label: 'ok',
+        requestId: expect.stringMatching(/\S/),
+      }),
+    ]);
+    // The row of the call comes before the state change it led to.
+    const kinds = rig.audits.filter((a) => a.holdId === holdId).map((a) => a.kind);
+    expect(kinds.slice(-2)).toEqual(['paypal_call', 'state_change']);
+  });
+
   it('adopts it while the auction is open, so the hold is tracked', async () => {
     const rig = makeRig(true);
     const { holdId, authId } = await crashedAfterAuthorize(rig);

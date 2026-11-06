@@ -17,6 +17,12 @@ import {
  * owns a file; there is no cross-process locking, and a second writer on the same
  * path overwrites the first. A new instance on the same path sees the saved state,
  * which is how tests model a restart.
+ *
+ * Saga leases are not carried over (RT4-saga-02): a lease belongs to the process that
+ * took it, and one process owns the file (the server takes the data directory lock
+ * before it opens the stores). A lease found in the file was left by a process that
+ * was killed before its `finally` ran, so honouring it would only block the restarted
+ * process from resuming the settlement until the lease expired.
  */
 
 function readJson<T>(path: string, empty: T): T {
@@ -42,9 +48,8 @@ function writeJsonAtomic(path: string, value: unknown): void {
 
 export class FileJournalStore extends MemoryJournalStore {
   constructor(readonly path: string) {
-    super(readJson<JournalSnapshot>(path, { journals: {}, leases: {} }), (s) =>
-      writeJsonAtomic(path, s),
-    );
+    const saved = readJson<JournalSnapshot>(path, { journals: {}, leases: {} });
+    super({ journals: saved.journals, leases: {} }, (s) => writeJsonAtomic(path, s));
   }
 }
 

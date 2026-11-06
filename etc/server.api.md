@@ -376,6 +376,10 @@ export interface SettlePort {
 // @public (undocumented)
 export interface SpareVoidDeps {
     // (undocumented)
+    audit: AuditSink;
+    // (undocumented)
+    clock: Clock_2;
+    // (undocumented)
     gateway: PaymentsGateway;
     // (undocumented)
     holds: HoldStore;

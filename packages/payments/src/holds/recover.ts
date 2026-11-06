@@ -3,6 +3,7 @@ import type { AuditSink, Clock, HoldStore, PaymentsGateway } from '../ports.js';
 import { buildRequestId } from '../requestId.js';
 import type { HoldRecord } from '../types.js';
 import { sharedHoldQueue } from '../webhooks/merge.js';
+import { auditedCall } from './audited.js';
 import { HoldError, toHoldError, type ApprovedHold, type HoldService } from './service.js';
 
 /**
@@ -92,22 +93,33 @@ export async function recoverOrder(deps: RecoverDeps, i: RecoverInput): Promise<
 /** Authorization statuses that still hold money at PayPal. */
 const LIVE_AUTH: ReadonlySet<string> = new Set(['CREATED', 'PENDING']);
 
+/**
+ * Voids a live authorization found on a hold's order under the hold's fixed void request
+ * id, with its `paypal_call` audit row (RT4-saga-04). A gateway without voids does nothing.
+ */
+async function voidAudited(deps: RecoverDeps, hold: HoldRecord, authId: string): Promise<void> {
+  const { gateway } = deps;
+  if (gateway.voidAuthorization === undefined) return;
+  const requestId = buildRequestId({
+    auctionId: hold.auctionId,
+    op: 'void',
+    holdId: hold.holdId,
+    amountCents: 0,
+    generation: 0,
+  });
+  const ref = { auctionId: hold.auctionId, holdId: hold.holdId, op: 'void' as const, requestId };
+  await auditedCall(deps, ref, async () => {
+    await gateway.voidAuthorization?.(authId, requestId);
+  });
+}
+
 async function abandon(deps: RecoverDeps, hold: HoldRecord): Promise<RecoverResult> {
   let authId: string | undefined;
   if (deps.gateway.voidAuthorization !== undefined) {
     try {
       const order = await deps.gateway.getOrder(hold.orderId);
       if (order.authId !== undefined && LIVE_AUTH.has(order.authStatus ?? 'CREATED')) {
-        await deps.gateway.voidAuthorization(
-          order.authId,
-          buildRequestId({
-            auctionId: hold.auctionId,
-            op: 'void',
-            holdId: hold.holdId,
-            amountCents: 0,
-            generation: 0,
-          }),
-        );
+        await voidAudited(deps, hold, order.authId);
       }
       authId = order.authId;
     } catch (e) {
@@ -213,16 +225,7 @@ async function voidLapsed(deps: RecoverDeps, hold: HoldRecord): Promise<RecoverR
       const order = await deps.gateway.getOrder(latest.orderId);
       if (order.authId === undefined) return { status: 'unknown_order' } as const;
       if (LIVE_AUTH.has(order.authStatus ?? 'CREATED')) {
-        await deps.gateway.voidAuthorization?.(
-          order.authId,
-          buildRequestId({
-            auctionId: latest.auctionId,
-            op: 'void',
-            holdId: latest.holdId,
-            amountCents: 0,
-            generation: 0,
-          }),
-        );
+        await voidAudited(deps, latest, order.authId);
       }
       await deps.holds.put({ ...latest, authId: order.authId });
       return { status: 'abandoned' } as const;
