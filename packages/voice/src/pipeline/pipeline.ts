@@ -171,7 +171,7 @@ export class VoicePipeline {
 
   private audit(
     out: PipelineOutput[],
-    reason: 'confirm_expired' | 'superseded' | 'low_confidence',
+    reason: 'confirm_expired' | 'superseded' | 'rate_limited',
     promptId: string,
     id: string,
   ): void {
