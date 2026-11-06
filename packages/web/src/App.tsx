@@ -33,7 +33,7 @@ import { NotFound } from './screens/states/NotFound';
 import { TokenGate } from './screens/states/TokenGate';
 import { roomStore, useRoom } from './store/roomStore';
 import { summarizePending, type PendingSummary } from './store/localEvents';
-import { hasAuctioneerAccess, readAuctioneerToken } from './store/session';
+import { hasAuctioneerAccess, readAuctioneerToken, readInviteToken } from './store/session';
 
 export interface AppProps {
   /** Starting path. Defaults to the browser location; tests pass their own. */
@@ -56,12 +56,9 @@ export function navigate(to: string): void {
 
 function tokenFor(routeId: string, roomId: string): { token: string; bidderId?: string } | null {
   if (routeId === 'console' || routeId === 'audit' || routeId === 'screen') {
+    // These routes take a fragment or in-memory token only: a bidder session is never used here.
     const fromFragment = readAuctioneerToken(roomId);
-    if (fromFragment !== null) {
-      // The fragment is cleared once read, so a reload needs the token kept for a watcher.
-      if (routeId === 'screen') saveSession(roomId, { token: fromFragment });
-      return { token: fromFragment };
-    }
+    return fromFragment === null ? null : { token: fromFragment };
   }
   const stored = loadSession(roomId);
   if (stored === null) return null;
@@ -327,7 +324,7 @@ function RegisterRoute({ roomId, api }: { roomId: string; api: Api }) {
   const [draft, setDraft] = useState<RegistrationDraft | null>(null);
   const [failed, setFailed] = useState(false);
 
-  const invite = who === null ? readAuctioneerToken(roomId) : null;
+  const invite = who === null ? readInviteToken(roomId) : null;
   useEffect(() => {
     if (who !== null || invite === null) return;
     fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(roomId)}/join`, {
