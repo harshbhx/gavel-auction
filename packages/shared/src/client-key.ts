@@ -3,7 +3,8 @@
  * limiter, webhook budget). An IPv6 client owns a whole /64, so the key is its first four
  * groups; an IPv4-mapped IPv6 address counts as the IPv4 address; anything else is
  * returned trimmed and lower-cased, so one client cannot dodge a limit by rotating
- * addresses inside its prefix.
+ * addresses inside its prefix. The payments package must not import this package at run time,
+ * so it keeps a copy (`sourceKey`); a server test keeps the two equal.
  */
 export function clientKey(source: string): string {
   let a = source.trim().toLowerCase();
