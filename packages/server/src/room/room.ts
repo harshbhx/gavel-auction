@@ -1853,6 +1853,9 @@ export class Room {
       ...(view.paused ? { paused: true, remainingMs: view.remainingMs ?? 0 } : {}),
       ...(this.hammered && this.endedByAuctioneer ? { stopped: true } : {}),
       ...(this.hammered || this.done ? { registrationClosed: true } : {}),
+      ...(this.hammered
+        ? { hammer: { winnerId: this.hammered.winnerId, price: this.hammered.price } }
+        : {}),
       roster: [...this.roster].map(([bidderId, r]) => ({
         bidderId,
         paddle: r.paddle,
@@ -1863,10 +1866,16 @@ export class Room {
     };
     if (this.settlement) {
       const own = conn.bidderId ? this.settlement.perBidder[conn.bidderId] : undefined;
+      // Only a bidder's own connection ever gets a hold, never a screen or the auctioneer.
+      const ownHold =
+        conn.role === 'bidder' && conn.bidderId
+          ? this.settlement.holds?.[conn.bidderId]
+          : undefined;
       snapshot.settlement = {
         rev: this.settlement.rev,
         auctionState: this.settlement.auctionState,
         ...(own ? { you: own } : {}),
+        ...(ownHold && conn.bidderId ? { yourHold: { ...ownHold, bidderId: conn.bidderId } } : {}),
       };
     }
     if (conn.bidderId && you) {
@@ -2319,6 +2328,7 @@ export class Room {
       rev: report.rev,
       auctionState: report.auctionState,
       perBidder: report.perBidder,
+      ...(report.holds !== undefined ? { holds: report.holds } : {}),
       ...(report.amountCaptured !== undefined ? { amountCaptured: report.amountCaptured } : {}),
       ...(report.note !== undefined ? { note: report.note } : {}),
     };
