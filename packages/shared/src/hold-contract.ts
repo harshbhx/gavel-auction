@@ -5,8 +5,10 @@ const MAX_BIDDER_NAME_CHARS = 64;
 
 /**
  * Characters a bidder name may never hold: control characters (U+0000-U+001F, U+007F-U+009F),
- * bidi overrides and isolates (U+202A-U+202E, U+2066-U+2069) and angle brackets. The room's
- * own rule (no control characters) is a subset, so a name that passes here is never refused later.
+ * zero-width and direction marks (U+200B-U+200F, U+2028-U+202F, U+2060-U+206F, U+FEFF, U+061C;
+ * this covers the bidi overrides and isolates) and angle brackets. The room reuses this pattern,
+ * so a name that passes here is never refused later, and a name made only of invisible
+ * characters cannot register as a blank or look-alike bidder.
  */
 export const BIDDER_NAME_FORBIDDEN_PATTERN =
   // eslint-disable-next-line no-control-regex -- control characters are what this pattern forbids
