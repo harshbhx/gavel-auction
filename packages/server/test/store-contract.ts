@@ -68,8 +68,12 @@ export function runStoreContract(factory: StoreFactory, name = 'adapter'): void 
       const s = await factory();
       const a = newAuction();
       expect(await s.loadSnapshot(a)).toBeNull();
+      await s.appendEvents(a, 0, batch(a, 1, 5));
       await s.saveSnapshot(a, 2, { n: 1 });
       await s.saveSnapshot(a, 5, { n: 2 });
+      expect(await s.loadSnapshot(a)).toEqual({ seq: 5, state: { n: 2 } });
+      // An older snapshot never replaces a newer one.
+      await s.saveSnapshot(a, 3, { n: 9 });
       expect(await s.loadSnapshot(a)).toEqual({ seq: 5, state: { n: 2 } });
     });
 

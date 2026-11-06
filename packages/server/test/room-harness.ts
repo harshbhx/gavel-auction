@@ -171,3 +171,12 @@ export const setup = async (
   });
   return { clock, ids, store, deps, auctionId, room, b1, b2, connect, bid };
 };
+
+/** Answers the newest confirm request a bidder connection holds with an accept. */
+export async function acceptLatestConfirm(
+  room: Room,
+  bidder: { conn: Connection; transport: MemoryTransport },
+): Promise<void> {
+  const confirmId = String(bidder.transport.messages('confirm_request').at(-1)?.confirmId);
+  await room.respondConfirm(bidder.conn, { v: 1, t: 'confirm_response', confirmId, accept: true });
+}

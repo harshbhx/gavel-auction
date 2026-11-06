@@ -294,6 +294,9 @@ function withOrderLookup(gateway: PaymentsGateway, holds: HoldStore): PaymentsGa
   };
 }
 
+/** How long a room a client just asked for is kept from being unloaded. */
+const CLIENT_TOUCH_GRACE_MS = 30_000;
+
 export function createAuctionService(deps: AuctionServiceDeps): AuctionService {
   return new Service(deps);
 }
@@ -304,6 +307,10 @@ class Service implements AuctionService, SettlePort {
   private readonly ready = new Map<string, Room>();
   /** When each loaded room was last asked for, to evict the least recently used first. */
   private readonly lastUsed = new Map<string, number>();
+  /** Last time a client path (not a settlement pass) asked for each room. */
+  private readonly clientTouched = new Map<string, number>();
+  /** Auctions seen finished with a final settlement; the resume pass no longer reloads them. */
+  private readonly finalIds = new Set<string>();
   /** Rooms this host lost to another host (R-RT-061); they are never served or resumed here. */
   private readonly fenced = new Set<string>();
   private readonly roomStore: RoomStore;
@@ -505,6 +512,15 @@ class Service implements AuctionService, SettlePort {
     }
   }
 
+  /**
+   * A joining socket gets its room from `room()` and attaches a moment later, so a room asked
+   * for by a client in the last few seconds is not dropped even when no connection shows yet.
+   */
+  private recentlyTouched(id: string): boolean {
+    const at = this.clientTouched.get(id);
+    return at !== undefined && this.deps.clock.now() - at < CLIENT_TOUCH_GRACE_MS;
+  }
+
   /** Drops a finished room from memory; it loads again from its log if anything asks for it. */
   private unload(id: string, room: Room): void {
     const timer = this.retryTimers.get(id);
@@ -514,6 +530,7 @@ class Service implements AuctionService, SettlePort {
     this.rooms.delete(id);
     this.ready.delete(id);
     this.lastUsed.delete(id);
+    this.clientTouched.delete(id);
     void room.close().catch(() => undefined);
   }
 
@@ -550,6 +567,7 @@ class Service implements AuctionService, SettlePort {
     if (this.fenced.has(auctionId)) {
       throw new GavelError('host_fenced', 'this host no longer owns the room');
     }
+    if (opts.settlement !== true) this.clientTouched.set(auctionId, this.deps.clock.now());
     const known = this.rooms.get(auctionId);
     if (known !== undefined) {
       this.lastUsed.set(auctionId, this.deps.clock.now());
@@ -891,6 +909,24 @@ class Service implements AuctionService, SettlePort {
     }
     for (const id of await this.deps.store.listAuctions()) {
       if (this.fenced.has(id)) continue;
+      // A finished auction is recognised from its last event and journal, so a restart does not
+      // replay the whole log of every old auction just to find out it is over (#1749).
+      if (!this.finalIds.has(id) && !this.ready.has(id) && (await this.probeFinal(id)))
+        this.finalIds.add(id);
+      if (this.finalIds.has(id)) {
+        // Known final: never reloaded here, but a copy a client loaded since goes again once idle.
+        const loaded = this.ready.get(id);
+        if (
+          loaded !== undefined &&
+          loaded.isDone &&
+          loaded.connectionCount === 0 &&
+          !this.runs.has(id) &&
+          !this.recentlyTouched(id)
+        ) {
+          this.unload(id, loaded);
+        }
+        continue;
+      }
       // One unloadable auction must not stop the others from resuming.
       try {
         const room = await this.room(id, { settlement: true });
@@ -899,8 +935,15 @@ class Service implements AuctionService, SettlePort {
         await room.retrySettlement();
         const journal = await this.deps.journals.load(lotIdOf(id));
         if (await this.needsRun(id, room, journal)) this.schedule(id);
-        else if (room.isDone && room.connectionCount === 0 && !this.runs.has(id)) {
-          // A finished auction with a final settlement takes no slot after boot (R12-S02).
+        else if (
+          room.isDone &&
+          room.connectionCount === 0 &&
+          !this.runs.has(id) &&
+          !this.recentlyTouched(id)
+        ) {
+          // A finished auction with a final settlement takes no slot after boot (R12-S02) and
+          // is not reloaded by later passes.
+          this.finalIds.add(id);
           this.unload(id, room);
         }
       } catch (e) {
@@ -941,6 +984,35 @@ class Service implements AuctionService, SettlePort {
   }
 
   /**
+   * True when the log ends with a final settlement report, the journal is final and no hold is
+   * left to release: nothing for resume to drive. Reads one event, the journal and the holds,
+   * never the whole log. Any doubt or read failure answers false and the room loads as before.
+   */
+  private async probeFinal(id: string): Promise<boolean> {
+    try {
+      const auctionId = id as AuctionId;
+      const last = await this.deps.store.lastSeq(auctionId);
+      if (last < 1) return false;
+      const [event] = await this.deps.store.readEvents(auctionId, last, 1);
+      if (event?.type !== 'settlement_update' || !TERMINAL.has(event.auctionState)) return false;
+      const journal = await this.deps.journals.load(lotIdOf(auctionId));
+      return journal !== null && !(await this.holdsLeft(auctionId, journal));
+    } catch {
+      return false;
+    }
+  }
+
+  /** True when a terminal settlement still has a hold the release must free. */
+  private async holdsLeft(auctionId: AuctionId, journal: Journal): Promise<boolean> {
+    if (!TERMINAL.has(journal.state)) return true;
+    const keep =
+      journal.state === 'FAILED_NEEDS_REVIEW' ? this.reviewKeep(journal) : new Set<string>();
+    return (await this.deps.holds.listByAuction(auctionId)).some(
+      (h) => h.status === 'HELD' && !keep.has(h.holdId),
+    );
+  }
+
+  /**
    * Unfenced lots whose settlement became SETTLED at or after `sinceMs`: the ones the periodic
    * reconcile reads at PayPal. SETTLED is final, so a lot settled before the look-back is
    * remembered and its journal is not loaded again.
@@ -970,15 +1042,11 @@ class Service implements AuctionService, SettlePort {
     journal: Journal | null,
   ): Promise<boolean> {
     if (journal === null) return hammeredEngine(room) !== undefined && !room.isDone;
-    if (!TERMINAL.has(journal.state) || !room.isDone) return true;
+    if (!room.isDone) return true;
     // A review keeps some holds on purpose (R8-S06): the same set the release uses, so a
     // kept hold does not rerun the settlement and a hold the release must free does
     // (R11-O01, R11-O04). The next candidates leave the set once the review is old.
-    const keep =
-      journal.state === 'FAILED_NEEDS_REVIEW' ? this.reviewKeep(journal) : new Set<string>();
-    return (await this.deps.holds.listByAuction(auctionId)).some(
-      (h) => h.status === 'HELD' && !keep.has(h.holdId),
-    );
+    return this.holdsLeft(auctionId, journal);
   }
 
   async close(): Promise<void> {

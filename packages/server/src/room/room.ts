@@ -32,6 +32,7 @@ import {
   type Transport,
 } from '@gavel/shared';
 import { authorize, redactForViewer } from '../auth/authorize';
+import { SnapshotPolicy } from './snapshot-policy';
 import { connectionTokenLive } from '../auth/auctioneer-floor';
 import {
   CONFIRM_TTL_MS,
@@ -97,18 +98,33 @@ function bidDigest(amount: unknown, source: string): string {
   return `${isCents(amount) ? amount : ''}|${source}`;
 }
 
+/** True when the text holds a control character (U+0000 to U+001F); Postgres jsonb refuses NUL. */
+function hasControlChar(text: string): boolean {
+  for (let i = 0; i < text.length; i++) if (text.charCodeAt(i) < 0x20) return true;
+  return false;
+}
+
+/** The text without control characters, so every store receives the same input. */
+function stripControlChars(text: string): string {
+  let out = '';
+  for (let i = 0; i < text.length; i++) if (text.charCodeAt(i) >= 0x20) out += text[i];
+  return out;
+}
+
 /** The source and audit fields of a bid as the room records them, live and on replay. */
-function bidMeta(conn: Connection, msg: BidMsg, confirmed = false): BidMeta {
-  if (conn.role === 'auctioneer') {
+function bidMeta(conn: Connection, msg: BidMsg, confirmed = false, manualBy?: string): BidMeta {
+  const by = manualBy ?? (conn.role === 'auctioneer' ? conn.sub : undefined);
+  if (by !== undefined) {
     const meta: BidMeta = {
       source: 'manual',
-      transcript: `manual by ${conn.sub}`.slice(0, 120),
+      transcript: `manual by ${by}`.slice(0, 120),
     };
+    if (confirmed) meta.confirmed = true;
     return meta;
   }
   // A bidder frame may claim qr or voice only; manual is the auctioneer's entry (R-RT-039).
   const meta: BidMeta = { source: isVoiceLike(msg) ? 'voice' : 'qr' };
-  if (msg.transcript !== undefined) meta.transcript = msg.transcript;
+  if (msg.transcript !== undefined) meta.transcript = stripControlChars(msg.transcript);
   if (meta.source === 'voice' && msg.confidence !== undefined) meta.confidence = msg.confidence;
   if (confirmed && meta.source === 'voice') meta.confirmed = true;
   return meta;
@@ -182,6 +198,16 @@ interface RosterEntry {
 /** Reason an auctioneer's manual bid is refused with when it is over the bidder's ceiling. */
 const MANUAL_REFUSED: ErrorCode = 'limit_exceeded';
 
+/** Most manual bids one auctioneer token may enter in a lot; each also needs the bidder's confirmation. */
+export const MAX_MANUAL_BIDS_PER_LOT = 25;
+
+/** The auctioneer subject of a manual audit row (`manual by <sub>`), or undefined for any other. */
+function manualSubject(audit: AuditPayload): string | undefined {
+  const prefix = 'manual by ';
+  if (audit.source !== 'manual' || audit.transcript?.startsWith(prefix) !== true) return undefined;
+  return audit.transcript.slice(prefix.length);
+}
+
 type Reply = Extract<ServerMsg, { t: 'bid_accepted' | 'bid_rejected' }>;
 
 const READ_PAGE = 1000;
@@ -251,6 +277,9 @@ export class Room {
   private dirty = false;
   /** Set when this host lost the room; the room serves nothing and arms no timer. */
   private stopped = false;
+  private snapshotPolicy: SnapshotPolicy | undefined;
+  /** Manual bids each auctioneer token has asked a bidder to confirm in this lot (#1751). */
+  private manualCounts = new Map<string, number>();
   private cancelTimerRetry: CancelTimer | undefined;
   /** Voice bids waiting for their bidder's answer; in memory only, the events are the record. */
   private readonly confirms = new ConfirmBook();
@@ -528,6 +557,7 @@ export class Room {
     try {
       await this.deps.store.appendEvents(auctionId, expectedSeq, events);
       this.deps.metrics?.storeAppendMs?.(this.deps.clock.now() - started);
+      await this.maybeSnapshot(auctionId, events);
     } catch (e) {
       if (e instanceof GavelError && e.code === 'conflict') {
         this.fence();
@@ -535,6 +565,18 @@ export class Room {
       }
       throw e;
     }
+  }
+
+  /** Saves a snapshot when the policy says so (every 100 events); best effort, never fails a command. */
+  private async maybeSnapshot(auctionId: AuctionId, events: RoomEvent[]): Promise<void> {
+    const last = events[events.length - 1];
+    if (!last) return;
+    this.snapshotPolicy ??= new SnapshotPolicy(this.deps.store, auctionId);
+    await this.snapshotPolicy.afterCommit(last.seq, false, () => ({
+      seq: last.seq,
+      savedAt: this.deps.clock.now(),
+      bidders: this.roster.size,
+    }));
   }
 
   /** Stop the room, tell every connection `host_fenced` and close them with 4010. Idempotent. */
@@ -587,6 +629,7 @@ export class Room {
       if (
         name.length === 0 ||
         name.length > MAX_NAME_CHARS ||
+        hasControlChar(name) ||
         !isCents(reg.ceiling) ||
         reg.ceiling < (this.config?.reserve ?? 0) ||
         reg.holdRef.length === 0 ||
@@ -660,7 +703,9 @@ export class Room {
    * check, schema (already decoded), registered, engine validation.
    */
   submitBid(conn: Connection, msg: BidMsg): Promise<void> {
-    const limited = this.deps.limiter?.checkBid(conn.bidderId ?? conn.id);
+    // An auctioneer has no bidder id; its bucket follows the token holder, so opening a new
+    // socket does not give a fresh allowance.
+    const limited = this.deps.limiter?.checkBid(conn.bidderId ?? `${conn.role}:${conn.sub}`);
     if (limited && !limited.ok) {
       this.deps.metrics?.rateLimitHit();
       this.sendError(conn, 'rate_limited', limited.retryAfterMs);
@@ -691,9 +736,14 @@ export class Room {
     hold?: PendingConfirm,
   ): Promise<void> {
     const confirmed = hold !== undefined;
+    // A manual bid is entered by the auctioneer and only placed after the bidder confirms it.
+    const manualBy = hold?.manualBy ?? (conn.role === 'auctioneer' ? conn.sub : undefined);
     const key = `${bidderId}:${msg.mid}`;
     const prior = this.replies.get(key);
-    if (prior && prior.digest !== bidDigest(msg.amount, bidMeta(conn, msg).source)) {
+    if (
+      prior &&
+      prior.digest !== bidDigest(msg.amount, bidMeta(conn, msg, false, manualBy).source)
+    ) {
       // The same mid with a different amount or submitter is not a replay (R-RT-034).
       this.sendError(conn, 'conflict');
       return;
@@ -721,6 +771,26 @@ export class Room {
       return;
     }
     const engine = this.requireEngine();
+    if (
+      !confirmed &&
+      conn.role === 'auctioneer' &&
+      this.config !== undefined &&
+      isCents(msg.amount) &&
+      this.roster.has(bidderId) &&
+      !this.hammered &&
+      engine.view().state === 'OPEN' &&
+      msg.amount <= engine.view().minNext
+    ) {
+      // No bid is placed for a bidder who has not agreed: ask them first (#1751). The number of
+      // manual bids one auctioneer may enter in a lot is capped, so a leaked token cannot walk a
+      // bidder up their ceiling.
+      if ((this.manualCounts.get(conn.sub) ?? 0) >= MAX_MANUAL_BIDS_PER_LOT) {
+        this.sendError(conn, 'limit_exceeded');
+        return;
+      }
+      await this.holdForConfirm(msg, bidderId, conn.sub);
+      return;
+    }
     if (
       !confirmed &&
       conn.role === 'bidder' &&
@@ -751,7 +821,7 @@ export class Room {
     let code: ErrorCode | undefined;
     if (!isCents(msg.amount)) code = 'bad_amount';
     else if (!this.roster.has(bidderId)) code = 'unregistered';
-    else if (conn.role === 'auctioneer' && msg.amount > engine.view().minNext) {
+    else if (manualBy !== undefined && msg.amount > engine.view().minNext) {
       // A manual bid is limited to the next increment, so a ladder of amounts cannot be used
       // to probe a ceiling (R12-S09). Answered like a ceiling refusal, without logging.
       code = MANUAL_REFUSED;
@@ -762,7 +832,7 @@ export class Room {
           bidderId,
           msg.amount,
           ts,
-          bidMeta(conn, msg, confirmed),
+          bidMeta(conn, msg, confirmed, manualBy),
         );
         const outcome = bidOutcome(res);
         if (outcome === 'malformed') {
@@ -807,7 +877,7 @@ export class Room {
     }
 
     const bidId = this.deps.ids.mint<'BidId'>();
-    const audit = this.buildAudit(bidId, bidderId, msg, conn, code, ts, seq, confirmed);
+    const audit = this.buildAudit(bidId, bidderId, msg, conn, code, ts, seq, confirmed, manualBy);
     const event: RoomEvent =
       code === undefined
         ? {
@@ -928,7 +998,7 @@ export class Room {
         t: 'bid',
         mid: held.mid,
         amount: held.amount,
-        source: 'voice',
+        source: held.manualBy !== undefined ? 'manual' : 'voice',
         ...(held.transcript !== undefined ? { transcript: held.transcript } : {}),
         ...(held.confidence !== undefined ? { confidence: held.confidence } : {}),
       };
@@ -939,7 +1009,7 @@ export class Room {
   }
 
   /** Hold a low-confidence or ambiguous voice bid and ask its bidder; the engine is not touched. */
-  private async holdForConfirm(msg: BidMsg, bidderId: BidderId): Promise<void> {
+  private async holdForConfirm(msg: BidMsg, bidderId: BidderId, manualBy?: string): Promise<void> {
     const ts = this.deps.clock.now();
     const prior = this.confirms.forBidder(bidderId);
     const held: PendingConfirm = {
@@ -947,8 +1017,14 @@ export class Room {
       bidderId,
       mid: msg.mid,
       amount: msg.amount as Cents,
-      ...(msg.transcript !== undefined ? { transcript: msg.transcript } : {}),
-      ...(msg.confidence !== undefined ? { confidence: msg.confidence } : {}),
+      ...(manualBy !== undefined
+        ? { manualBy }
+        : {
+            ...(msg.transcript !== undefined
+              ? { transcript: stripControlChars(msg.transcript) }
+              : {}),
+            ...(msg.confidence !== undefined ? { confidence: msg.confidence } : {}),
+          }),
       expiresAt: (ts + CONFIRM_TTL_MS) as EpochMs,
     };
     const events: RoomEvent[] = [];
@@ -989,6 +1065,8 @@ export class Room {
     this.rejectedCount += 1;
     this.holdsBy.set(bidderId, (this.holdsBy.get(bidderId) ?? 0) + 1);
     if (prior) this.confirms.drop(prior.confirmId);
+    if (manualBy !== undefined)
+      this.manualCounts.set(manualBy, (this.manualCounts.get(manualBy) ?? 0) + 1);
     this.armConfirmTimer(held);
     this.confirms.add(held);
     for (const event of events) this.fanOutConfirm(event, held);
@@ -1052,7 +1130,11 @@ export class Room {
           ts: event.ts,
           confirmId: event.confirmId,
           amount: event.amount,
-          ...(held.transcript !== undefined ? { transcript: held.transcript } : {}),
+          ...(held.manualBy !== undefined
+            ? { transcript: 'Entered for you by the auctioneer' }
+            : held.transcript !== undefined
+              ? { transcript: held.transcript }
+              : {}),
           expiresAt: event.expiresAt,
         });
       } else if (event.type === 'confirm_resolved' && own && endsWithoutBid(event.outcome)) {
@@ -1092,17 +1174,18 @@ export class Room {
     ts: ReturnType<Clock['now']>,
     seq: number,
     confirmed = false,
+    manualBy?: string,
   ): AuditPayload {
     const audit: AuditPayload = {
       bidId,
       bidderId,
-      source: bidMeta(conn, msg).source,
+      source: bidMeta(conn, msg, false, manualBy).source,
       outcome: code === undefined ? 'accepted' : 'rejected',
       serverTs: ts,
       seq,
     };
     if (isCents(msg.amount)) audit.parsedAmount = msg.amount;
-    const meta = bidMeta(conn, msg, confirmed);
+    const meta = bidMeta(conn, msg, confirmed, manualBy);
     if (meta.confirmed) audit.confirmed = true;
     if (meta.transcript !== undefined) audit.transcript = meta.transcript;
     if (meta.confidence !== undefined) audit.confidence = meta.confidence;
@@ -1905,6 +1988,7 @@ export class Room {
     this.roster = new Map();
     this.highBids = new Map();
     this.replies = new Map();
+    this.manualCounts = new Map();
     this.audit = [];
     this.seq = 0;
     this.bidCount = 0;
@@ -1999,17 +2083,29 @@ export class Room {
         this.settleRequested = true;
         break;
       case 'confirm_requested':
-        this.rejectedCount += 1;
-        this.holdsBy.set(event.bidderId, (this.holdsBy.get(event.bidderId) ?? 0) + 1);
-        this.openConfirms.set(event.confirmId, {
-          confirmId: event.confirmId,
-          bidderId: event.bidderId,
-          mid: event.mid,
-          amount: event.amount,
-          ...(event.audit.transcript !== undefined ? { transcript: event.audit.transcript } : {}),
-          ...(event.audit.confidence !== undefined ? { confidence: event.audit.confidence } : {}),
-          expiresAt: event.expiresAt,
-        });
+        {
+          this.rejectedCount += 1;
+          this.holdsBy.set(event.bidderId, (this.holdsBy.get(event.bidderId) ?? 0) + 1);
+          const by = manualSubject(event.audit);
+          if (by !== undefined) this.manualCounts.set(by, (this.manualCounts.get(by) ?? 0) + 1);
+          this.openConfirms.set(event.confirmId, {
+            confirmId: event.confirmId,
+            bidderId: event.bidderId,
+            mid: event.mid,
+            amount: event.amount,
+            ...(by !== undefined
+              ? { manualBy: by }
+              : {
+                  ...(event.audit.transcript !== undefined
+                    ? { transcript: event.audit.transcript }
+                    : {}),
+                  ...(event.audit.confidence !== undefined
+                    ? { confidence: event.audit.confidence }
+                    : {}),
+                }),
+            expiresAt: event.expiresAt,
+          });
+        }
         break;
       case 'confirm_resolved': {
         const held = this.openConfirms.get(event.confirmId);

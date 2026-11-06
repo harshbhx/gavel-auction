@@ -21,6 +21,8 @@ export interface PendingConfirm {
   readonly amount: Cents;
   readonly transcript?: string;
   readonly confidence?: number;
+  /** Token subject of the auctioneer who entered this bid for the bidder; absent for a spoken bid. */
+  readonly manualBy?: string;
   readonly expiresAt: EpochMs;
   cancel?: CancelTimer;
 }
@@ -102,14 +104,15 @@ export function confirmAudit(
   const audit: AuditPayload = {
     bidId,
     bidderId: p.bidderId,
-    source: 'voice',
+    source: p.manualBy !== undefined ? 'manual' : 'voice',
     parsedAmount: p.amount,
     outcome,
     reason,
     serverTs,
     seq,
   };
-  if (p.transcript !== undefined) audit.transcript = p.transcript;
+  if (p.manualBy !== undefined) audit.transcript = `manual by ${p.manualBy}`.slice(0, 120);
+  else if (p.transcript !== undefined) audit.transcript = p.transcript;
   if (p.confidence !== undefined) audit.confidence = p.confidence;
   if (outcome === 'accepted') audit.confirmed = true;
   return audit;

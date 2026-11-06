@@ -494,6 +494,50 @@ describe('auction service: resume under a room cap (R12-S02)', () => {
   });
 });
 
+describe('auction service: resume skips finished auctions from the first pass (#1749)', () => {
+  async function finishOne(rig: Rig): Promise<AuctionId> {
+    const first = rig.service({ resumeIntervalMs: 0 });
+    const id = rig.ids.mint<'AuctionId'>();
+    const room = await first.createAuction(id, config, 'auctioneer-sub');
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await first.idle();
+    expect(room.isDone).toBe(true);
+    await first.close();
+    return id;
+  }
+
+  it('does not replay a finished auction log in the first or later passes', async () => {
+    const rig = await makeRig();
+    await finishOne(rig);
+    const replays: number[] = [];
+    const read = rig.stores.store.readEvents.bind(rig.stores.store);
+    rig.stores.store.readEvents = (id, from, limit) => {
+      if (from === 1) replays.push(from);
+      return read(id, from, limit);
+    };
+    const second = rig.service({ resumeIntervalMs: 0 });
+    await second.resume();
+    await second.resume();
+    expect(replays).toEqual([]);
+    expect(second.stats().rooms).toBe(0);
+    await second.close();
+  });
+
+  it('keeps a finished auction that a client is connected to', async () => {
+    const rig = await makeRig();
+    const id = await finishOne(rig);
+    const second = rig.service({ resumeIntervalMs: 0 });
+    const room = await second.room(id);
+    const viewer = await connect(rig, room, 'screen');
+    await second.resume();
+    await second.resume();
+    expect(second.stats().rooms).toBe(1);
+    expect(viewer.transport.closed).toBeUndefined();
+    await second.close();
+  });
+});
+
 describe('auction service: settlement paths under a full room cap (HRD-30)', () => {
   async function finished(rig: Rig, service: AuctionService): Promise<AuctionId> {
     const id = rig.ids.mint<'AuctionId'>();
@@ -2113,6 +2157,30 @@ describe('auction service: HRD-16 hold recovery wiring', () => {
     expect((await rig.stores.holds.get(spare.holdId))?.status).toBe('VOIDED');
     expect(rig.paypal.core.getAuthorization(held.authId).status).toBe('VOIDED');
     expect((await rig.stores.holds.get(first.holdId))?.status).toBe('HELD');
+    await service.close();
+  });
+});
+
+describe('auction service: resume keeps a room a client just asked for (#1749)', () => {
+  it('does not unload a finished room under a joining socket', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0 });
+    const id = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(id, config, 'auctioneer-sub');
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    room.detach(boss.conn.id);
+    await service.resume();
+    expect(service.stats().rooms).toBe(0);
+    // A viewer asks for the room; the attach has not run yet when the next pass starts.
+    await service.room(id);
+    expect(service.stats().rooms).toBe(1);
+    await service.resume();
+    expect(service.stats().rooms).toBe(1);
+    rig.clock.set(START + 60_000);
+    await service.resume();
+    expect(service.stats().rooms).toBe(0);
     await service.close();
   });
 });

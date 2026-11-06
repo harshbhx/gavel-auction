@@ -69,6 +69,8 @@ export class MemoryStore implements RoomStore {
   }
 
   async saveSnapshot(auctionId: AuctionId, seq: number, state: unknown): Promise<void> {
+    const cur = this.snapshots.get(auctionId);
+    if (cur !== undefined && cur.seq >= seq) return;
     this.snapshots.set(auctionId, { seq, state });
   }
 
