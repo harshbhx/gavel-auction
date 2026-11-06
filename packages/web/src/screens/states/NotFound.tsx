@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { t } from '../../copy/t';
-import { SandboxBanner } from '../../design/SandboxBanner';
 
 export interface NotFoundProps {
   readonly homeHref?: string;
@@ -14,7 +13,6 @@ export function NotFound({ homeHref = '/' }: NotFoundProps) {
   }, []);
   return (
     <main data-route="notFound">
-      <SandboxBanner />
       <h1 ref={heading} tabIndex={-1}>
         {t('err.notFound')}
       </h1>

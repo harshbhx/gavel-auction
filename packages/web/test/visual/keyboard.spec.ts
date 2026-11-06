@@ -125,7 +125,7 @@ test('register walk: name, paddle, ceiling and approve with the keyboard alone',
   // A stored session stands in for the invite step, so the form renders without a server.
   await page.addInitScript(() => {
     sessionStorage.setItem(
-      'gavel:session:room1',
+      'gavel:session:room1:bidder',
       JSON.stringify({ token: 'walnut', bidderId: 'bidder-one' }),
     );
   });
