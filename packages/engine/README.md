@@ -54,6 +54,8 @@ npx verify-ledger ledger.jsonl
 # head <hash>
 ```
 
+The CLI exits 1 when the last entry is not an anchored `AUCTION_CLOSED` (an export cut short looks the same as an auction in progress); pass `--allow-open` to accept an open ledger. Truncation is detected only against a head published elsewhere (`--head <seq>:<hash>`), since a prefix of a chain is itself a valid chain.
+
 On failure the CLI prints `FAIL first bad index <n> (line <n+1>): <reason>` and exits 1. `tamperAt(text, index)` changes one entry of an export, for the tamper demonstration.
 
 ## Hash vector

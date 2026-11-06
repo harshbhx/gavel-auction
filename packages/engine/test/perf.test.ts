@@ -100,4 +100,22 @@ describe('performance budget', () => {
     expect(state.head.seq).toBe(10_000);
     expect(ms).toBeLessThan(500 * SCALE);
   }, 120_000);
+
+  it('R-ENG-117: the cost of one bid does not grow with 20000 bids of history', () => {
+    const d = driver();
+    const sample = (from: number, n: number): number => {
+      const times: number[] = [];
+      for (let k = from; k < from + n; k += 1) times.push(d.bid(k));
+      times.sort((a, b) => a - b);
+      return percentile(times, 0.5);
+    };
+    for (let k = 0; k < 200; k += 1) d.bid(k);
+    const early = sample(200, 200);
+    for (let k = 400; k < 19_600; k += 1) d.bid(k);
+    const late = sample(19_600, 200);
+    console.log(`per-bid median early=${early.toFixed(3)}ms late=${late.toFixed(3)}ms`);
+    expect(d.state.lots[L1]?.bids.length).toBe(19_800);
+    // Linear growth would make the late median about 100 times the early one; allow 20 times.
+    expect(late).toBeLessThan(Math.max(early, 0.05) * 20);
+  }, 300_000);
 });
