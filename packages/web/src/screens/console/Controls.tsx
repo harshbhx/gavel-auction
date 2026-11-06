@@ -47,6 +47,13 @@ export function disabledReason(name: ControlName, s: ControlState): ReasonKey | 
   return null;
 }
 
+/** The words for a refused hammer: a new price, a new leader, or a generic change. */
+function hammerConflict(detail: string | null): string {
+  if (detail === 'price_changed') return t('controls.hammerPriceChanged');
+  if (detail === 'leader_changed') return t('controls.hammerLeaderChanged');
+  return t('controls.hammerChanged');
+}
+
 export interface ControlsProps {
   readonly port: ControlPort;
   readonly lotId: string;
@@ -93,7 +100,7 @@ export function Controls({
         err instanceof ControlTimeoutError
           ? t('controls.unknown', { action: label })
           : err instanceof ControlError && err.status === 409 && label === t('console.hammer')
-            ? t('controls.hammerChanged')
+            ? hammerConflict(err.detail)
             : t('controls.failed', { action: label });
       setResult(failed);
       announce('polite', failed, 'bid_rejected');
