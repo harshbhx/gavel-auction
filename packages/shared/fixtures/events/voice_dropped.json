@@ -1,0 +1,13 @@
+{
+  "auctionId": "01J9ZQ4Y6Z8K3M5N7P9R1S3T5V",
+  "seq": 8,
+  "ts": 1789000000008,
+  "type": "voice_dropped",
+  "drop": {
+    "segmentId": "seg-1",
+    "audioStartMs": 1200,
+    "audioEndMs": 2100,
+    "confidenceBps": 700,
+    "reason": "hedged"
+  }
+}

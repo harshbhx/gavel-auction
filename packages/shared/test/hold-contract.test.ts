@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   AbandonHoldResponse,
+  ApproveHoldRequest,
+  MAX_NAME_CHARS,
   CreateHoldResponse,
   HOLD_STATUSES,
   HoldViewResponse,
@@ -53,5 +55,16 @@ describe('hold read and abandon responses (HRD-69, issue 896)', () => {
   it('answers an abandon with the released hold only', () => {
     expect(AbandonHoldResponse.safeParse({ holdId: 'h-1', released: true }).success).toBe(true);
     expect(AbandonHoldResponse.safeParse({ holdId: 'h-1', released: false }).success).toBe(false);
+  });
+});
+
+describe('ApproveHoldRequest name (issue 1074)', () => {
+  it('stays valid without a name and bounds the name like the wire does', () => {
+    expect(ApproveHoldRequest.safeParse({ orderId: 'o-1' }).success).toBe(true);
+    expect(ApproveHoldRequest.safeParse({ orderId: 'o-1', name: 'Ada' }).success).toBe(true);
+    expect(ApproveHoldRequest.safeParse({ orderId: 'o-1', name: ' ' }).success).toBe(false);
+    const edge = 'a'.repeat(MAX_NAME_CHARS);
+    expect(ApproveHoldRequest.safeParse({ orderId: 'o-1', name: edge }).success).toBe(true);
+    expect(ApproveHoldRequest.safeParse({ orderId: 'o-1', name: `${edge}a` }).success).toBe(false);
   });
 });

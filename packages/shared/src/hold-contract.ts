@@ -1,5 +1,7 @@
 import { z } from 'zod';
-import { MAX_NAME_CHARS } from './wire/envelope';
+
+/** Same limit as MAX_NAME_CHARS in the wire envelope (a test keeps them equal); no import so payments stays self-contained. */
+const MAX_BIDDER_NAME_CHARS = 64;
 
 export const HOLD_ERROR_CODES = [
   'ceiling_out_of_range',
@@ -58,7 +60,7 @@ export const ApproveHoldRequest = z
      * Display name of the bidder. When present the server also registers the bidder in the
      * room once the hold is authorized (idempotent); absent, only the hold is approved.
      */
-    name: z.string().trim().min(1).max(MAX_NAME_CHARS).optional(),
+    name: z.string().trim().min(1).max(MAX_BIDDER_NAME_CHARS).optional(),
   })
   .strict();
 export type ApproveHoldRequest = z.infer<typeof ApproveHoldRequest>;

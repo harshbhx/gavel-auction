@@ -250,14 +250,14 @@ describe('hold routes in the production composition (HRD-69, issue 1074)', () =>
     const approvePath = `/api/holds/${encodeURIComponent(order.holdId)}/approve`;
     paypal.core.approveOrder(order.orderId);
 
-    const registered = async (): Promise<Array<{ bidderId: string; name: string }>> => {
+    const registered = async (): Promise<Array<{ bidderId: string; paddle: number }>> => {
       const res = await call(url, 'GET', `/api/auctions/${auctionId}/events?after=0`, auctioneer);
       const body = (await res.json()) as {
-        events: Array<{ type?: string; bidderId?: string; name?: string }>;
+        events: Array<{ type?: string; bidderId?: string; paddle?: number }>;
       };
       return body.events.flatMap((e) =>
-        e.type === 'bidder_registered' && e.bidderId !== undefined && e.name !== undefined
-          ? [{ bidderId: e.bidderId, name: e.name }]
+        e.type === 'bidder_registered' && e.bidderId !== undefined && e.paddle !== undefined
+          ? [{ bidderId: e.bidderId, paddle: e.paddle }]
           : [],
       );
     };
@@ -286,6 +286,6 @@ describe('hold routes in the production composition (HRD-69, issue 1074)', () =>
       expect(approved.status).toBe(200);
       expect(ApproveHoldResponse.parse(await approved.json()).status).toBe('HELD');
     }
-    expect(await registered()).toEqual([{ bidderId: ada.bidderId, name: 'Ada' }]);
+    expect(await registered()).toEqual([{ bidderId: ada.bidderId, paddle: 1 }]);
   });
 });
