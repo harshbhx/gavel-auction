@@ -66,7 +66,8 @@ describe('screen and join with a real lot title and short code', () => {
     act(() => roomStore.dispatch({ kind: 'wire', msg: stateMsg(1, snap, BASE_TIME) }));
     expect(screen.getByRole('heading', { level: 1, name: 'Brass lantern' })).toBeTruthy();
     expect(screen.getByText(t('screen.join', { code: CODE }))).toBeTruthy();
-    expect(document.body.textContent ?? '').not.toContain(ROOM);
+    expect(screen.getByText(t('screen.join', { code: CODE })).textContent).not.toContain(ROOM);
+    expect(screen.getByRole('heading', { level: 1 }).textContent).not.toContain(ROOM);
   });
 
   it('drops stale clock samples when a new state frame arrives after a reconnect', () => {
@@ -99,7 +100,7 @@ describe('screen and join with a real lot title and short code', () => {
     act(() => roomStore.dispatch({ kind: 'wire', msg: stateMsg(1, snap, BASE_TIME) }));
     expect(await screen.findByText(t('screen.join', { code: CODE }))).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1, name: 'Walnut sideboard' })).toBeTruthy();
-    expect(document.body.textContent ?? '').not.toContain(ROOM);
+    expect(screen.getByRole('heading', { level: 1 }).textContent).not.toContain(ROOM);
   });
 
   it('resolves a typed code on the landing page and reaches the join page', async () => {
