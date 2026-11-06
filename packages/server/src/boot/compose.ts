@@ -53,7 +53,9 @@ import { createExportHandler as createLedgerExportHandler } from '../admin/expor
 import { createReplayBundleHandler } from '../admin/replay-bundle';
 import { createExportHandler } from '../http/export';
 import { createGateway } from '../host/gateway';
+import { createAudioHost, AUDIO_PATH } from '../host/audio-ws';
 import { createNodeWsHost } from '../host/node-ws';
+import { chooseStt } from '../voice/stt';
 import { createHealthRoutes, createVersionRoute, resolveSha } from '../http/health';
 import { createMetricsRoute } from '../http/metrics';
 import {
@@ -645,25 +647,27 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     });
   });
 
+  const admitUpgrade = (req: IncomingMessage): (() => void) | undefined => {
+    const source = sourceOf(req, config.TRUSTED_PROXY_HOPS) ?? 'unknown';
+    if (!limiter.checkJoin(source).ok) return undefined;
+    const open = socketsBySource.get(source) ?? 0;
+    if (open >= MAX_SOCKETS_PER_SOURCE) return undefined;
+    socketsBySource.set(source, open + 1);
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      const left = (socketsBySource.get(source) ?? 1) - 1;
+      if (left <= 0) socketsBySource.delete(source);
+      else socketsBySource.set(source, left);
+    };
+  };
   const wsHost = createNodeWsHost({
     server: http,
     clock,
     allowedOrigins: wsOrigins(config),
-    admitUpgrade: (req) => {
-      const source = sourceOf(req, config.TRUSTED_PROXY_HOPS) ?? 'unknown';
-      if (!limiter.checkJoin(source).ok) return undefined;
-      const open = socketsBySource.get(source) ?? 0;
-      if (open >= MAX_SOCKETS_PER_SOURCE) return undefined;
-      socketsBySource.set(source, open + 1);
-      let released = false;
-      return () => {
-        if (released) return;
-        released = true;
-        const left = (socketsBySource.get(source) ?? 1) - 1;
-        if (left <= 0) socketsBySource.delete(source);
-        else socketsBySource.set(source, left);
-      };
-    },
+    passPaths: [AUDIO_PATH],
+    admitUpgrade,
     accept: createGateway({
       service,
       store: stores.room,
@@ -672,6 +676,23 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
       secrets,
       limiter,
     }),
+  });
+
+  // Cached transcripts unless VOICE_STT names a live provider whose key is set (no key needed).
+  const stt = chooseStt(
+    { VOICE_STT: config.VOICE_STT, GROQ_API_KEY: env['GROQ_API_KEY'] },
+    { log: (message, fields) => log.warn(message, fields) },
+  );
+  const audioHost = createAudioHost({
+    server: http,
+    clock,
+    allowedOrigins: wsOrigins(config),
+    secrets,
+    store: stores.room,
+    service,
+    makeStt: stt.make,
+    admitUpgrade,
+    log: (message, fields) => log.warn(message, fields),
   });
 
   return {
@@ -689,6 +710,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
         });
       }),
     close: async (graceMs = 5000) => {
+      await audioHost.close();
       await wsHost.close();
       await new Promise<void>((resolve) => {
         if (!http.listening) return resolve();

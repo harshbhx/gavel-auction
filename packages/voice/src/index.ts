@@ -43,3 +43,12 @@ export type {
 } from './session.js';
 export { RETRACT_ADVISORY_MS, STALE_SEGMENT_MS, VoicePipeline } from './pipeline/pipeline.js';
 export type { PipelineDeps, PipelineOutput } from './pipeline/pipeline.js';
+export { decodeBatch, encodeBatch, VoiceFrameError } from './audio/frame.js';
+export type { AudioBatch } from './audio/frame.js';
+export type { SttEvent, SttProvider } from './stt/provider.js';
+export { SttConfigError, STT_NAMES, selectProvider } from './stt/select.js';
+export type { SelectDeps, SttEnv, SttName } from './stt/select.js';
+export { FailoverStt, realClock } from './stt/failover.js';
+export type { FailoverClock, FailoverOptions } from './stt/failover.js';
+export { ReplayStt, parseTimeline } from './stt/replay.js';
+export type { ReplayScheduler, Timeline } from './stt/replay.js';
