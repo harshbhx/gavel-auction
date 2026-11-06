@@ -78,6 +78,7 @@ export interface BidAudit {
     confidenceBps?: number;
     // (undocumented)
     confirmed?: boolean;
+    parsedCents?: number;
     // (undocumented)
     parserVersion?: string;
     // (undocumented)
@@ -913,9 +914,9 @@ export type VerifyResult = {
 //
 // /home/runner/work/gavel-auction/gavel-auction/.api-types/engine/commands.d.ts:42:5 - (ae-forgotten-export) The symbol "RevokeReason" needs to be exported by the entry point index.d.ts
 // /home/runner/work/gavel-auction/gavel-auction/.api-types/engine/commands.d.ts:77:5 - (ae-forgotten-export) The symbol "SettlementState" needs to be exported by the entry point index.d.ts
-// /home/runner/work/gavel-auction/gavel-auction/.api-types/engine/events.d.ts:131:9 - (ae-forgotten-export) The symbol "CloseReason" needs to be exported by the entry point index.d.ts
-// /home/runner/work/gavel-auction/gavel-auction/.api-types/engine/events.d.ts:140:9 - (ae-forgotten-export) The symbol "RankedEntry" needs to be exported by the entry point index.d.ts
-// /home/runner/work/gavel-auction/gavel-auction/.api-types/engine/events.d.ts:170:9 - (ae-forgotten-export) The symbol "UnsoldReason" needs to be exported by the entry point index.d.ts
+// /home/runner/work/gavel-auction/gavel-auction/.api-types/engine/events.d.ts:133:9 - (ae-forgotten-export) The symbol "CloseReason" needs to be exported by the entry point index.d.ts
+// /home/runner/work/gavel-auction/gavel-auction/.api-types/engine/events.d.ts:142:9 - (ae-forgotten-export) The symbol "RankedEntry" needs to be exported by the entry point index.d.ts
+// /home/runner/work/gavel-auction/gavel-auction/.api-types/engine/events.d.ts:172:9 - (ae-forgotten-export) The symbol "UnsoldReason" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 
