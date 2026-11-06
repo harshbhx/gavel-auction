@@ -6,8 +6,10 @@ name: backup
 # references, transcripts) and this repository is public, so plaintext is never uploaded. The
 # private key stays offline with the owner. See docs/RUNBOOK-BACKUP.md.
 # Needs environment `production`: secret ADMIN_KEY, secret BACKUP_GPG_PUBLIC_KEY (armored public
-# key) and variable PRODUCTION_URL. Without all three the job does nothing and ends green with a
-# notice. Secrets reach steps only through env and are never echoed.
+# key) and variable PRODUCTION_URL. Without all three a manual run ends green with a notice and a
+# scheduled run fails, so a backup that was never configured does not look healthy. A ledger that
+# cannot be downloaded is recorded and skipped, the rest are still encrypted and uploaded, and the
+# job then fails and opens an issue. Secrets reach steps only through env and are never echoed.
 on:
   schedule:
     - cron: '17 3 * * *'
@@ -36,6 +38,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
+    permissions:
+      contents: read
+      issues: write
     steps:
       - name: Download and encrypt every ledger
         env:
@@ -43,10 +48,13 @@ jobs:
           BACKUP_GPG_PUBLIC_KEY: ${{ secrets.BACKUP_GPG_PUBLIC_KEY }}
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
           REASON: ${{ inputs.reason || 'daily' }}
+          EVENT: ${{ github.event_name }}
         run: |
           if [ -z "$ADMIN_KEY" ] || [ -z "$PRODUCTION_URL" ] || [ -z "$BACKUP_GPG_PUBLIC_KEY" ]; then
             echo "::notice title=Backup skipped::Nothing was downloaded or uploaded. Add secrets ADMIN_KEY and BACKUP_GPG_PUBLIC_KEY and variable PRODUCTION_URL to environment production"
             echo "Backup skipped: no encryption key or target configured, nothing uploaded" >> "$GITHUB_STEP_SUMMARY"
+            # A scheduled run that cannot back anything up must be red.
+            if [ "$EVENT" = "schedule" ]; then exit 1; fi
             exit 0
           fi
           base="${PRODUCTION_URL%/}"
@@ -56,17 +64,32 @@ jobs:
           printf '%s' "$listing" | jq -r '.auctions[]' > "$work/ids.txt"
           expected="$(wc -l < "$work/ids.txt")"
           count=0
+          failed=""
           while IFS= read -r id; do
             [ -n "$id" ] || continue
-            case "$id" in *[!0-9A-Za-z_-]*) echo "::error::unexpected auction id"; exit 1 ;; esac
-            curl -sS --fail --max-time 60 -H "x-admin-key: $ADMIN_KEY" \
-              "$base/admin/export?auction=$id" -o "$work/$id.ndjson"
+            case "$id" in *[!0-9A-Za-z_-]*) echo "::error::unexpected auction id"; failed="$failed bad-id"; continue ;; esac
+            if ! curl -sS --fail --max-time 60 -H "x-admin-key: $ADMIN_KEY" \
+              "$base/admin/export?auction=$id" -o "$work/$id.ndjson"; then
+              echo "::error::export of auction $id failed"
+              rm -f "$work/$id.ndjson"
+              failed="$failed $id"
+              continue
+            fi
             # The last line is the head; the file must end with it.
-            tail -n 1 "$work/$id.ndjson" | jq -e 'has("head")' > /dev/null
+            if ! tail -n 1 "$work/$id.ndjson" | jq -e 'has("head")' > /dev/null; then
+              echo "::error::ledger of auction $id has no head line"
+              rm -f "$work/$id.ndjson"
+              failed="$failed $id"
+              continue
+            fi
             count=$((count + 1))
           done < "$work/ids.txt"
-          if [ "$count" -ne "$expected" ]; then
-            echo "::error::Downloaded $count ledger(s), the store lists $expected"
+          if [ -n "$failed" ]; then
+            printf '%s\n' "$failed" | tr ' ' '\n' | sed '/^$/d' > "$work/FAILED.txt"
+            echo "Ledgers not saved:$failed" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ "$count" -eq 0 ] && [ "$expected" -gt 0 ]; then
+            echo "::error::No ledger could be downloaded"
             exit 1
           fi
           echo "$REASON snapshot of $count ledger(s) at $(date -u +%FT%TZ)" > "$work/MANIFEST.txt"
@@ -79,10 +102,30 @@ jobs:
           gpg --batch --yes --trust-model always --recipient "$fpr" \
             --output out/ledger-snapshot.tgz.gpg --encrypt "$RUNNER_TEMP/ledgers.tgz"
           rm -rf "$work" "$RUNNER_TEMP/ledgers.tgz"
-          echo "$REASON snapshot of $count ledger(s) at $(date -u +%FT%TZ), encrypted" >> "$GITHUB_STEP_SUMMARY"
+          echo "$REASON snapshot of $count of $expected ledger(s) at $(date -u +%FT%TZ), encrypted" >> "$GITHUB_STEP_SUMMARY"
+          # The partial snapshot is encrypted and uploaded above; the run still ends red.
+          if [ -n "$failed" ]; then
+            echo "::error::Snapshot is incomplete, $count of $expected ledger(s) saved"
+            exit 1
+          fi
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
           name: ledger-snapshot-${{ github.run_id }}
           path: out/ledger-snapshot.tgz.gpg
           if-no-files-found: ignore
           retention-days: 30
+      - name: Open an issue when the snapshot failed
+        if: ${{ failure() && github.event_name == 'schedule' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          title="Backup failed"
+          open="$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')"
+          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [ -z "$open" ]; then
+            gh issue create --title "$title" --body "The scheduled ledger snapshot failed or was incomplete. See $url and docs/RUNBOOK-BACKUP.md."
+          else
+            gh issue comment "$open" --body "Still failing: $url"
+          fi

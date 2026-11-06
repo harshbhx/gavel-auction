@@ -131,6 +131,8 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Fail on tracked node_modules paths
         run: node scripts/check-no-tracked-node-modules.mjs
+      - name: Fail on live host references
+        run: npm run check:live-host
       - name: Scan commits for secrets
         uses: gitleaks/gitleaks-action@83373cf2f8c4db6e24b41c1a9b086bb9619e9cd3
         env:
@@ -171,7 +173,9 @@ jobs:
         run: node trusted/scripts/check-banned-words.mjs --root .
         env:
           BANNED_WORDS: ${{ secrets.BANNED_WORDS }}
-          # Pull requests from forks never receive the secret; the same check runs on main.
+          # Pull requests from forks never receive the secret; the same check runs on main. The secret is
+          # repository-level, so a pull request from this repository whose workflow file is changed can
+          # read it; it holds only the banned-word list, not a credential.
           BANNED_WORDS_ALLOW_EMPTY: ${{ github.event.pull_request.head.repo.fork == true }}
       # Commit messages (body and trailers), the pull request title and description and the branch
       # name are checked too, because they reach the public history. The text is passed through
