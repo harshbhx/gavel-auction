@@ -46,7 +46,7 @@ const EnvObject = z.object({
   RATE_BID_PER_S: int(1).default('3'),
   RATE_BID_BURST: int(1).default('5'),
   RATE_JOIN_PER_MIN: int(1).default('10'),
-  RATE_JOIN_BURST: int(1).default('10'),
+  RATE_JOIN_BURST: int(1).default('40'),
   RATE_HTTP_PER_MIN: int(1).default('60'),
   RATE_HTTP_BURST: int(1).default('60'),
   /** Reverse proxies in front of the host; the client address is read from x-forwarded-for. */

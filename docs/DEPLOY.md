@@ -35,6 +35,10 @@ ADMIN_KEY=... scripts/smoke.sh https://<api-host>
 
 A real signed event reaching the host once G4 runs is checked in the PayPal webhook event list, not by the smoke.
 
+## Rate limits behind one address
+
+Socket upgrades and HTTP joins share one per-address bucket, and every reconnect spends a token. `RATE_JOIN_BURST` (default 40) is the bucket size and `RATE_JOIN_PER_MIN` (default 10) the refill. A venue where many judges share one NAT address can raise `RATE_JOIN_BURST`. Each address may also hold at most 20 open sockets.
+
 ## Known limits
 
 - The smoke may pass against the old instance if it answers before the new build is live. The workflow waits 60 seconds first.

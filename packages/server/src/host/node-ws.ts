@@ -39,7 +39,7 @@ export interface NodeWsHostOptions {
   maxPayload?: number;
   /**
    * Asked for every upgrade that passed the path and Origin checks, before the handshake.
-   * Return a release callback to admit the socket (called once when it closes), or
+   * Return an idempotent release callback to admit the socket (called when it closes), or
    * undefined to answer 429 (R-RT-120).
    */
   admitUpgrade?: (req: IncomingMessage) => (() => void) | undefined;
@@ -78,6 +78,9 @@ export function createNodeWsHost(opts: NodeWsHostOptions): NodeWsHost {
       refuse(socket, 429, 'Too Many Requests');
       return;
     }
+    // The handshake callback never runs when the peer drops mid-handshake or sends a bad
+    // key or version, so the slot is tied to the raw socket. `release` must be idempotent.
+    socket.once('close', release);
     wss.handleUpgrade(req, socket, head, (ws) => {
       ws.once('close', release);
       bind(ws, opts);

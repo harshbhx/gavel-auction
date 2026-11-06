@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { connect } from 'node:net';
 import WebSocket from 'ws';
 import { composeServer, type Composed } from '../src/boot/compose';
 
@@ -76,5 +77,32 @@ describe('socket upgrades are limited per address (RT4-sec-09)', () => {
     const codes: number[] = [];
     for (let i = 0; i < 5; i += 1) codes.push(await upgrade(port));
     expect(codes).toEqual([101, 101, 101, 429, 429]);
+  });
+
+  /** Raw upgrade with a bad Sec-WebSocket-Key: the server refuses it and closes. */
+  const badUpgrade = (port: number): Promise<void> =>
+    new Promise((resolve) => {
+      const sock = connect(port, '127.0.0.1', () => {
+        sock.write(
+          'GET /ws HTTP/1.1\r\nHost: x\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n' +
+            `Origin: ${ORIGIN}\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: bad\r\n\r\n`,
+        );
+      });
+      sock.on('error', () => undefined);
+      sock.on('close', () => resolve());
+    });
+
+  it('does not leak slots on failed handshakes', async () => {
+    const port = await boot({ RATE_JOIN_BURST: '1000' });
+    for (let i = 0; i < 25; i += 1) await badUpgrade(port);
+    expect(await upgrade(port)).toBe(101);
+  });
+
+  it('caps open sockets at 20 per address', async () => {
+    const port = await boot({ RATE_JOIN_BURST: '1000' });
+    const codes: number[] = [];
+    for (let i = 0; i < 21; i += 1) codes.push(await upgrade(port));
+    expect(codes.slice(0, 20).every((c) => c === 101)).toBe(true);
+    expect(codes[20]).toBe(429);
   });
 });
