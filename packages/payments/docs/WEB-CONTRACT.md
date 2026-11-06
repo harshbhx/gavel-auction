@@ -1,6 +1,6 @@
 # Web contract for holds
 
-Schemas live in `src/contract/web.ts`; one example per message is in `src/contract/fixtures/`. The server route handlers and the web client both import the schemas. The HTTP contract below is fixed and does not depend on SDK details.
+Schemas live in `@gavel/shared` (`packages/shared/src/hold-contract.ts`), the one copy the web client, the server route handlers and payments all import; `src/contract/web.ts` re-exports its types only, so payments keeps zod as its only runtime dependency. One example per message is in `src/contract/fixtures/`. The HTTP contract below is fixed and does not depend on SDK details. The routes are mounted in the production host (`packages/server/src/boot/compose.ts`) and authenticated by the bidder's session bearer token.
 
 ## Endpoints
 
@@ -16,8 +16,14 @@ POST /api/holds/{holdId}/approve
   response: { holdId, status: "HELD", ceilingCents }     ApproveHoldResponse
   errors  : 404 order_not_found | 409 order_not_approved | 503 paypal_unavailable
 
+GET /api/holds/{holdId}
+  response: { holdId, status, ceilingCents }             HoldViewResponse
+
 DELETE /api/holds/{holdId}        (browser onCancel / onError; only an unapproved hold is released: PayPal is asked for a live authorization first and it is voided; a hold that is already authorized or captured answers 409 hold_exists)
+  response: { holdId, released: true }                   AbandonHoldResponse
 ```
+
+Once the auction is hammered or its settlement has started, `POST /api/holds` and `approve` answer `409 closed`, so no authorization appears that the settlement plan does not know; `DELETE` still releases.
 
 Every error response has the body `{ "error": <code> }` (`HoldErrorResponse`). Codes: `ceiling_out_of_range`, `hold_exists`, `order_not_found`, `order_not_approved`, `paypal_unavailable`, `kill_switch_engaged`, `payments_not_sandbox`.
 

@@ -1638,8 +1638,18 @@ export class Room {
       }
       this.seq = seq;
       this.applySettlement(report);
+      // The paddle of the captured winner is public, like the hammer that named them.
+      const winnerPaddle =
+        report.winnerId === undefined
+          ? undefined
+          : this.roster.get(report.winnerId as BidderId)?.paddle;
       for (const conn of this.conns.values()) {
         const you = conn.bidderId ? report.perBidder[conn.bidderId] : undefined;
+        // A bidder's own hold goes to that bidder only, never to a screen or the auctioneer.
+        const own =
+          conn.role === 'bidder' && conn.bidderId !== undefined
+            ? report.holds?.[conn.bidderId]
+            : undefined;
         this.send(conn, {
           v: 1,
           t: 'settlement_update',
@@ -1650,6 +1660,10 @@ export class Room {
           ...(you ? { you } : {}),
           ...(report.amountCaptured !== undefined ? { amountCaptured: report.amountCaptured } : {}),
           ...(report.note !== undefined ? { note: report.note } : {}),
+          ...(winnerPaddle !== undefined ? { winnerPaddle } : {}),
+          ...(own !== undefined && conn.bidderId !== undefined
+            ? { yourHold: { ...own, bidderId: conn.bidderId } }
+            : {}),
         });
       }
     });

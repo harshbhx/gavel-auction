@@ -7,6 +7,7 @@ import type {
   EngineBidResult,
   EnginePort,
   EpochMs,
+  OwnHold,
   SettlementState,
 } from '@gavel/shared';
 
@@ -102,6 +103,13 @@ export interface SettlementReport {
   perBidder: Record<string, SettlementState>;
   amountCaptured?: Cents | undefined;
   note?: string | undefined;
+  /**
+   * Each bidder's own hold, keyed by bidder id. The room sends an entry only to the bidder it
+   * belongs to (`yourHold`) and never stores it in the log.
+   */
+  holds?: Readonly<Record<string, Omit<OwnHold, 'bidderId'>>> | undefined;
+  /** The bidder whose hold was captured, once there is one; the room sends only their paddle. */
+  winnerId?: string | undefined;
 }
 
 /** An auctioneer control command (R-RT-048); the host maps its HTTP route onto this. */

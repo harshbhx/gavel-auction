@@ -1,52 +1,84 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { HoldError, toHoldError, PayPalError, type HoldStatus } from '@gavel/payments';
+import type * as local from '@gavel/payments/contract/web';
 import * as shared from '@gavel/shared';
 import { describe, expect, it } from 'vitest';
-import * as local from '@gavel/payments/contract/web';
 
 const dir = new URL('../../payments/src/contract/fixtures/', import.meta.url).pathname;
 const fixtures = readdirSync(dir)
   .filter((f) => f.endsWith('.json'))
   .map((f) => [f, JSON.parse(readFileSync(join(dir, f), 'utf8')) as unknown] as const);
 
+/** True only when the two types are the same type. */
+type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+
+// Compile-time: the payments contract names the shared types, so they cannot drift (issue 896).
+const sameTypes: readonly true[] = [
+  true satisfies Same<local.HoldErrorCode, shared.HoldErrorCode>,
+  true satisfies Same<local.CreateHoldRequest, shared.CreateHoldRequest>,
+  true satisfies Same<local.CreateHoldResponse, shared.CreateHoldResponse>,
+  true satisfies Same<local.ApproveHoldRequest, shared.ApproveHoldRequest>,
+  true satisfies Same<local.ApproveHoldResponse, shared.ApproveHoldResponse>,
+  true satisfies Same<local.HoldErrorResponse, shared.HoldErrorResponse>,
+  true satisfies Same<local.HoldViewResponse, shared.HoldViewResponse>,
+  true satisfies Same<local.AbandonHoldResponse, shared.AbandonHoldResponse>,
+  true satisfies Same<HoldStatus, shared.HoldStatusName>,
+  true satisfies Same<HoldError['code'], shared.HoldErrorCode>,
+];
+
 /**
- * The web client imports the hold contract from @gavel/shared, the server from here. The two
- * copies must agree on codes, statuses and on what each schema accepts (R-PAY-030, R-PAY-035).
+ * One hold contract (R-PAY-030, R-PAY-035, issue 896): web, server and payments all take it from
+ * @gavel/shared. The payments module only re-exports its types, so it holds no copy that could
+ * accept a body the shared schema refuses.
  */
-describe('hold contract: payments copy against @gavel/shared', () => {
-  it('lists the same error codes and statuses', () => {
-    expect([...local.HOLD_ERROR_CODES]).toEqual([...shared.HOLD_ERROR_CODES]);
-    expect(local.HOLD_ERROR_STATUS).toEqual(shared.HOLD_ERROR_STATUS);
+describe('hold contract: one copy in @gavel/shared', () => {
+  it('the payments contract module carries no schemas of its own', async () => {
+    const mod = (await import('@gavel/payments/contract/web')) as Record<string, unknown>;
+    for (const name of [
+      'CreateHoldRequest',
+      'CreateHoldResponse',
+      'ApproveHoldRequest',
+      'ApproveHoldResponse',
+      'HoldErrorResponse',
+      'HOLD_ERROR_CODES',
+      'HOLD_ERROR_STATUS',
+      'holdOwnedBySession',
+    ]) {
+      expect(mod[name], name).toBeUndefined();
+    }
+    expect(sameTypes.every(Boolean)).toBe(true);
   });
 
-  it('uses the same abandon method', () => {
-    expect(local.ABANDON_HOLD_METHOD).toBe(shared.ABANDON_HOLD_METHOD);
-  });
-
-  const pairs = [
-    ['CreateHoldRequest', local.CreateHoldRequest, shared.CreateHoldRequest],
-    ['CreateHoldResponse', local.CreateHoldResponse, shared.CreateHoldResponse],
-    ['ApproveHoldRequest', local.ApproveHoldRequest, shared.ApproveHoldRequest],
-    ['ApproveHoldResponse', local.ApproveHoldResponse, shared.ApproveHoldResponse],
-    ['HoldErrorResponse', local.HoldErrorResponse, shared.HoldErrorResponse],
-  ] as const;
-
-  it.each(pairs)('%s accepts and rejects the same bodies', (_name, a, b) => {
-    const bodies: unknown[] = [
-      ...fixtures.map(([, body]) => body),
-      {},
-      { auctionId: 'a', ceilingCents: 100, bidderId: 'b' },
-      { auctionId: 'a', ceilingCents: 100, approveUrl: 'https://example.test/approve' },
+  it('accepts every payments fixture in a shared schema', () => {
+    const schemas = [
+      shared.CreateHoldRequest,
+      shared.CreateHoldResponse,
+      shared.ApproveHoldRequest,
+      shared.ApproveHoldResponse,
+      shared.HoldErrorResponse,
     ];
-    for (const body of bodies) {
-      expect(a.safeParse(body).success).toBe(b.safeParse(body).success);
+    for (const [file, body] of fixtures) {
+      expect(
+        schemas.some((s) => s.safeParse(body).success),
+        file,
+      ).toBe(true);
     }
   });
 
-  it('accepts every payments fixture in at least one shared schema', () => {
-    for (const [file, body] of fixtures) {
-      const ok = pairs.some(([, , s]) => s.safeParse(body).success);
-      expect(ok, file).toBe(true);
+  it('maps every payments failure to a shared error code with a shared status', () => {
+    const failure = (kind: PayPalError['kind'], status: number): PayPalError =>
+      new PayPalError({ kind, status, name: kind, message: kind, outcome: 'definite' });
+    const failures = [
+      failure('kill_switch_engaged', 0),
+      failure('ceiling_out_of_range', 0),
+      failure('not_found', 404),
+      failure('server_error', 500),
+    ];
+    for (const e of failures) {
+      const code = toHoldError(e).code;
+      expect(shared.HOLD_ERROR_CODES).toContain(code);
+      expect(shared.HOLD_ERROR_STATUS[code]).toBeGreaterThanOrEqual(400);
     }
   });
 });
