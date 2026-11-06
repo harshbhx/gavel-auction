@@ -8,19 +8,7 @@ import { exportJsonl, verifyJsonl } from '../src/ledger/export.js';
 import { publicExport, verifyPublicExport } from '../src/ledger/public-export.js';
 import { initialState } from '../src/state.js';
 import type { AuctionState } from '../src/state.js';
-import {
-  A,
-  AU,
-  B,
-  C,
-  L1,
-  bid,
-  mk,
-  open,
-  run,
-  scene,
-  lotConfig,
-} from './decide-helpers.js';
+import { A, AU, B, C, L1, bid, mk, open, run, scene, lotConfig } from './decide-helpers.js';
 
 function recorder(): { apply: (cmd: Command) => void; entries: LedgerEntry[] } {
   let s = initialState;
