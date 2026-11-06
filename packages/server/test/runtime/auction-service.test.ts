@@ -2131,6 +2131,15 @@ describe('auction service: reauthorization and reconcile safety (HRD-52 review)'
   const reauthCalls = (rig: Rig): PaymentAudit[] =>
     rig.audits.filter((e) => e.kind === 'paypal_call' && e.op === 'reauth');
 
+  /**
+   * Moves PayPal's clock past the honor period of the holds made so far, then makes one read
+   * so the OAuth token the jump expired is renewed before any fault is armed.
+   */
+  async function pastHonor(rig: Rig, hold: Bidder): Promise<void> {
+    rig.paypal.core.clock.advance(4 * DAY_MS);
+    await rig.gateway.getHoldTruth({ holdId: hold.holdId, authId: hold.authId });
+  }
+
   /** A buyer of the lot approves a hold after it settled: a live hold nobody else releases. */
   async function strayHold(rig: Rig, auctionId: AuctionId): Promise<{ authId: string }> {
     const created = await rig.holdsApi.createHoldOrder({
@@ -2159,7 +2168,7 @@ describe('auction service: reauthorization and reconcile safety (HRD-52 review)'
     const core = rig.paypal.core;
     // PayPal's honor period has passed. It reauthorizes Ada's hold, so her old authorization is
     // closed (A11), but every answer is lost on the way back.
-    core.clock.advance(4 * DAY_MS);
+    await pastHonor(rig, a);
     rig.paypal.faults.add({
       kind: 'timeout_after_success',
       op: 'reauthorize',
@@ -2214,7 +2223,7 @@ describe('auction service: reauthorization and reconcile safety (HRD-52 review)'
     const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
     const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
     const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
-    rig.paypal.core.clock.advance(4 * DAY_MS);
+    await pastHonor(rig, a);
     rig.paypal.faults.add({
       kind: 'timeout_after_success',
       op: 'reauthorize',
@@ -2253,7 +2262,7 @@ describe('auction service: reauthorization and reconcile safety (HRD-52 review)'
     const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
     // Ada's and Bo's holds are past PayPal's honor period. Cy's is new there, so PayPal
     // refuses to reauthorize it. Di registers and never bids.
-    rig.paypal.core.clock.advance(4 * DAY_MS);
+    await pastHonor(rig, a);
     const c = await enroll(rig, service, room, auctionId, 'Cy', 30000);
     const d = await enroll(rig, service, room, auctionId, 'Di', 30000);
     // Di's release stays unconfirmed, so the settlement is still VOIDING after the capture.
