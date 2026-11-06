@@ -66,8 +66,8 @@ jobs:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           SMOKE_RETRIES: '60'
         run: |
-          # The old instance can answer before the new build is live, so give the deploy time first.
-          sleep 60
+          # The old instance can answer before the new build is live, so wait until /version serves this commit.
+          bash scripts/wait-version.sh "$STAGING_URL" "$GITHUB_SHA" 900
           scripts/smoke.sh "$STAGING_URL"
       - uses: ./.github/actions/setup
         if: steps.cfg.outputs.ready == 'true'

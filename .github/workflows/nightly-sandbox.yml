@@ -1,8 +1,10 @@
 name: nightly-sandbox
 # Real PayPal sandbox specs R1 to R8 and the G5 speech harness (R-QA-029, R-QA-040), every night at
-# 20:30 UTC and on manual dispatch. The job runs in the `sandbox-nightly` environment, which has no
-# reviewer, no branch rule and no secrets; the secrets are repository-level. Without the secrets (or in a fork) it still writes report/sandbox.json with every
-# spec marked `skipped` and ends green. The pull request job runs the same specs with no secrets
+# 20:30 UTC and on manual dispatch. The job names the `sandbox-nightly` environment, but that
+# environment has no reviewer, no branch rule and no secrets, so it protects nothing yet: the secrets
+# are repository-level and a workflow file on any pushed branch can read them. Only throwaway sandbox
+# values belong in them (docs/GATES.md, section Sandbox environment). Without the secrets (or in a
+# fork) it still writes report/sandbox.json with every spec marked `skipped` and ends green. The pull request job runs the same specs with no secrets
 # and no environment, to prove they skip instead of fail.
 on:
   schedule:
