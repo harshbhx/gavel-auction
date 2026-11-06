@@ -12,7 +12,7 @@ const MAX_BIDDER_NAME_CHARS = 64;
  */
 export const BIDDER_NAME_FORBIDDEN_PATTERN =
   // eslint-disable-next-line no-control-regex -- control characters are what this pattern forbids
-  /[\u0000-\u001F\u007F-\u009F\u202A-\u202E\u2066-\u2069<>]/u;
+  /[\u0000-\u001F\u007F-\u009F\u061C\u200B-\u200F\u2028-\u202F\u2060-\u206F\uFEFF<>]/u;
 
 export const HOLD_ERROR_CODES = [
   'ceiling_out_of_range',
