@@ -1,7 +1,7 @@
-import { Cents, EpochMs, type MsgId } from '@gavel/shared';
+import { Cents, EpochMs, type MsgId, type RoomSnapshot } from '@gavel/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { MAX_FINISHED_BIDS, PendingBids, summarizePending } from '../../src/store/localEvents';
-import { bidId, bidderId, msgId } from '../../src/testing/builders';
+import { bidId, bidderId, msgId, openSnapshot, roster } from '../../src/testing/builders';
 import type { ClientMessage, ErrorCode, ServerMessage } from '../../src/wire';
 
 function setup() {
@@ -197,6 +197,70 @@ describe('pending bids (T-WEB-015)', () => {
       bids.handle(accepted(bids.submitBid(amount(2_000 + i), 'qr')));
     }
     expect(bids.get(first)?.status).toBe('pending');
+    vi.useRealTimers();
+  });
+});
+
+const seen = (highBid?: number): RoomSnapshot => ({
+  ...openSnapshot(roster([1, 'Priya'])),
+  you: {
+    bidderId: bidderId(1),
+    ceiling: Cents(100_000),
+    ...(highBid === undefined ? {} : { highBid: Cents(highBid) }),
+  },
+});
+
+describe('unanswered bids (#1785)', () => {
+  it('keeps the bid unknown, and the screen locked, until it is resolved or cancelled', () => {
+    const { bids } = setup();
+    const id = bids.submitBid(amount(35_000), 'qr');
+    vi.advanceTimersByTime(4100);
+    expect(summarizePending(bids.list())).toMatchObject({ waiting: false, unknownMid: id });
+    vi.advanceTimersByTime(60_000);
+    expect(summarizePending(bids.list())).toMatchObject({ unknownMid: id, unknownAmount: 35_000 });
+    expect(bids.cancel(id)).toBe(true);
+    expect(summarizePending(bids.list()).unknownMid).toBeNull();
+    expect(bids.cancel(id)).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it('does not cancel a bid that is still waiting for its answer', () => {
+    const { bids } = setup();
+    const id = bids.submitBid(amount(35_000), 'qr');
+    expect(bids.cancel(id)).toBe(false);
+    expect(bids.get(id)?.status).toBe('pending');
+    vi.useRealTimers();
+  });
+
+  it('marks an unknown bid accepted when the snapshot shows the high bid reached it', () => {
+    const { bids } = setup();
+    const id = bids.submitBid(amount(35_000), 'qr');
+    vi.advanceTimersByTime(4100);
+    bids.reconcile(seen(35_000));
+    expect(bids.get(id)?.status).toBe('accepted');
+    expect(summarizePending(bids.list()).unknownMid).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('marks an unknown bid accepted when the snapshot shows this bidder leading at its amount', () => {
+    const { bids } = setup();
+    const id = bids.submitBid(amount(35_000), 'qr');
+    vi.advanceTimersByTime(4100);
+    const lead = { ...seen(), leaderId: bidderId(1), price: Cents(35_000) };
+    bids.reconcile({ ...lead, price: Cents(30_000) });
+    expect(bids.get(id)?.status).toBe('unknown');
+    bids.reconcile(lead);
+    expect(bids.get(id)?.status).toBe('accepted');
+    vi.useRealTimers();
+  });
+
+  it('leaves an unknown bid unknown when the snapshot shows a lower or no high bid', () => {
+    const { bids } = setup();
+    const id = bids.submitBid(amount(35_000), 'qr');
+    vi.advanceTimersByTime(4100);
+    bids.reconcile(seen(30_000));
+    bids.reconcile(seen());
+    expect(bids.get(id)?.status).toBe('unknown');
     vi.useRealTimers();
   });
 });

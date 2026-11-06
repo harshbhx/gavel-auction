@@ -47,6 +47,8 @@ export interface BidScreenProps {
   onResend?: () => void;
   /** The amount a resend would send; shown next to the button. */
   unsentCents?: number | null;
+  /** Replaces the unanswered bid with a new one when the price has moved above it. */
+  onReplace?: (amountCents: number) => void;
   /** This bidder's paddle; with onConfirm it enables the confirm sheet. */
   myPaddle?: number;
   /** Sends one confirm_response. */
@@ -65,6 +67,7 @@ export function BidScreen({
   unsent = false,
   onResend,
   unsentCents = null,
+  onReplace,
   myPaddle,
   onConfirm,
   stopped = false,
@@ -117,9 +120,6 @@ export function BidScreen({
   return (
     <main>
       <div>
-        <Banner tone="info" icon={<Icon name="lock" />}>
-          {t('banner.sandbox')}
-        </Banner>
         {connection.offline && (
           <Banner tone="warn" icon={<Icon name="warning" />}>
             {t('net.offline')}
@@ -177,12 +177,18 @@ export function BidScreen({
       {unsent && !pending && (
         <div role="status">
           <p>{t('bid.unknown')}</p>
-          {onResend !== undefined && (
-            <Button disabled={connection.offline} onClick={onResend}>
-              {unsentCents === null
-                ? t('bid.resend')
-                : t('bid.resendAmount', { amount: formatUsd(unsentCents) })}
+          {unsentCents !== null && unsentCents < nextMin && onReplace !== undefined ? (
+            <Button disabled={connection.offline} onClick={() => onReplace(nextMin)}>
+              {t('bid.resendCurrent', { amount: formatUsd(nextMin) })}
             </Button>
+          ) : (
+            onResend !== undefined && (
+              <Button disabled={connection.offline} onClick={onResend}>
+                {unsentCents === null
+                  ? t('bid.resend')
+                  : t('bid.resendAmount', { amount: formatUsd(unsentCents) })}
+              </Button>
+            )
           )}
         </div>
       )}

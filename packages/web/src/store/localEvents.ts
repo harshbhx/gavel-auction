@@ -96,6 +96,16 @@ export class PendingBids {
     return true;
   }
 
+  /** Drops an unanswered bid the bidder no longer wants sent, so it stops locking new bids. */
+  cancel(mid: MsgId): boolean {
+    const bid = this.bids.get(mid);
+    if (bid === undefined || bid.status !== 'unknown') return false;
+    this.stopTimer(mid);
+    this.bids.delete(mid);
+    this.emit();
+    return true;
+  }
+
   /** Feed every server message here. Only bid_accepted and bid_rejected matter. */
   handle(msg: ServerMessage): void {
     if (msg.t !== 'bid_accepted' && msg.t !== 'bid_rejected') return;
@@ -118,8 +128,13 @@ export class PendingBids {
    * the bid counts as accepted and the bidder is not asked to resend it.
    */
   reconcile(snapshot: RoomSnapshot): void {
-    const high = snapshot.you?.highBid;
-    if (high === undefined) return;
+    // The leader price counts too: when this bidder leads, that price is their own accepted bid.
+    const leading =
+      snapshot.you !== undefined && snapshot.leaderId === snapshot.you.bidderId
+        ? (snapshot.price ?? undefined)
+        : undefined;
+    const high = Math.max(snapshot.you?.highBid ?? -1, leading ?? -1);
+    if (high < 0) return;
     let changed = false;
     for (const bid of [...this.bids.values()]) {
       if ((bid.status === 'unknown' || bid.status === 'pending') && bid.amount <= high) {

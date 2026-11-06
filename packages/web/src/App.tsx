@@ -18,6 +18,7 @@ import { SettlementPanel } from './ladder/SettlementPanel';
 import type { Transport } from './net/transport';
 import { WebSocketTransport } from './net/wsTransport';
 import { clearSession, loadSession, saveSession, type SessionRole } from './net/session';
+import { loadRegistration } from './payments/registrationStore';
 import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
 import { RouteScreen, matchRoute, type RouteMatch } from './routes';
 import { AuditTable } from './screens/audit/AuditTable';
@@ -32,7 +33,8 @@ import { GalleryScreen } from './screens/gallery/GalleryScreen';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
 import { LandingScreen } from './screens/landing/LandingScreen';
 import { fetchOpsSummary, OpsView, type OpsSummaryView } from './ops/OpsView';
-import { DemoLauncher, type DemoLinks } from './screens/demo/DemoLauncher';
+import { DemoLauncher, DemoRoomError, type DemoLinks } from './screens/demo/DemoLauncher';
+import { SandboxBanner } from './design/SandboxBanner';
 import { Receipt } from './screens/receipt/Receipt';
 import { Approve } from './screens/register/Approve';
 import { Return } from './screens/register/Return';
@@ -44,7 +46,12 @@ import { TokenGate } from './screens/states/TokenGate';
 import { RoomError, isHaltingError, isTerminalError } from './screens/states/RoomError';
 import { roomStore, useRoom } from './store/roomStore';
 import { summarizePending, type PendingSummary } from './store/localEvents';
-import { hasAuctioneerAccess, readAuctioneerToken, readInviteToken } from './store/session';
+import {
+  hasAuctioneerAccess,
+  hasReviewerAccess,
+  readAuctioneerToken,
+  readInviteToken,
+} from './store/session';
 
 export interface AppProps {
   /** Starting path. Defaults to the browser location; tests pass their own. */
@@ -174,6 +181,7 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId, api }: LiveRouteP
       ? undefined
       : s.snapshot?.roster.find((r) => r.bidderId === bidderId)?.paddle,
   );
+  const stopped = useRoom((s) => s.snapshot?.stopped ?? false);
   const respond = (confirmId: string, accept: boolean): void =>
     transport?.send({ v: PROTOCOL_VERSION, t: 'confirm_response', confirmId, accept });
   if (refused !== null) {
@@ -211,6 +219,12 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId, api }: LiveRouteP
             onResend={() => {
               if (view.unknownMid !== null) room?.pending.retry(view.unknownMid);
             }}
+            onReplace={(amount) => {
+              // The price moved past the unanswered bid: drop it and bid the current minimum.
+              if (view.unknownMid !== null) room?.pending.cancel(view.unknownMid);
+              room?.bid(Cents(amount), 'qr');
+            }}
+            stopped={stopped}
             {...(myPaddle === undefined ? {} : { myPaddle, onConfirm: respond })}
           />
         </div>
@@ -517,15 +531,10 @@ function RegisterRoute({
   }
   if (draft === null || !approving) {
     const presets = snapshot?.config.ceilingPresets;
-    const others = (snapshot?.roster ?? []).filter((r) => r.bidderId !== who.bidderId);
-    const mine = snapshot?.roster.find((r) => r.bidderId === who.bidderId)?.paddle;
-    const paddles = others.map((r) => r.paddle);
     return (
       // RegisterScreen renders the page's one main landmark.
       <div data-route="register">
         <RegisterScreen
-          suggestedPaddle={mine ?? Math.max(0, ...paddles) + 1}
-          takenPaddles={paddles}
           minCents={presets === undefined ? CEILING_MIN_CENTS : Math.min(...presets)}
           maxCents={presets === undefined ? CEILING_MAX_CENTS : Math.max(...presets)}
           {...(presets === undefined ? {} : { presetsCents: presets })}
@@ -545,6 +554,8 @@ function RegisterRoute({
       token={who.token}
       api={api}
       ceilingCents={draft.ceilingCents}
+      name={draft.name}
+      paddle={snapshot?.roster.find((r) => r.bidderId === who.bidderId)?.paddle}
       onBack={() => setApproving(false)}
     />
   );
@@ -556,9 +567,12 @@ function ApproveRoute(props: {
   token: string;
   api: Api;
   ceilingCents: number;
+  name: string;
+  /** The paddle the server assigned, read from the room roster. */
+  paddle: number | undefined;
   onBack: () => void;
 }) {
-  const { roomId, bidderId, token, api, ceilingCents } = props;
+  const { roomId, bidderId, token, api, ceilingCents, name, paddle } = props;
   const port = useMemo(
     () =>
       createApprovalPort(
@@ -572,16 +586,17 @@ function ApproveRoute(props: {
   const { start } = approval;
   useEffect(() => {
     // One attempt per mount; the hook de-duplicates a running one.
-    void start(ceilingCents);
-  }, [start, ceilingCents]);
+    void start(ceilingCents, name);
+  }, [start, ceilingCents, name]);
   return (
     <main data-route="register">
       <Approve
         state={approval.state}
         result={approval.result}
         ceilingCents={ceilingCents}
+        {...(paddle === undefined ? {} : { paddle })}
         onBackToCeiling={props.onBack}
-        onRetry={() => void start(ceilingCents)}
+        onRetry={() => void start(ceilingCents, name)}
         onContinue={() => navigate(`/r/${encodeURIComponent(roomId)}/bid`)}
       />
     </main>
@@ -600,10 +615,27 @@ function ReturnRoute({ roomId, api }: { roomId: string; api: Api }) {
       }),
     [api, stored?.token],
   );
+  const bidderOfSession = stored?.bidderId;
+  const ceilingCents =
+    bidderOfSession === undefined
+      ? undefined
+      : loadRegistration(roomId, bidderOfSession)?.ceilingCents;
+  const missingCeiling = bidderOfSession !== undefined && ceilingCents === undefined;
+  useEffect(() => {
+    // No ceiling was stored with the registration: start again rather than guess one.
+    if (missingCeiling) navigate(`/r/${encodeURIComponent(roomId)}/register`);
+  }, [missingCeiling, roomId]);
   if (stored === null || stored.bidderId === undefined) {
     return (
       <main data-route="return">
         <p role="alert">{t('reg.expired')}</p>
+      </main>
+    );
+  }
+  if (ceilingCents === undefined) {
+    return (
+      <main data-route="return">
+        <p role="status">{t('reg.confirming')}</p>
       </main>
     );
   }
@@ -614,10 +646,25 @@ function ReturnRoute({ roomId, api }: { roomId: string; api: Api }) {
       roomId={roomId}
       bidderId={stored.bidderId}
       orderId={orderId}
-      ceilingCents={CEILING_MIN_CENTS}
+      ceilingCents={ceilingCents}
       onBackToCeiling={() => navigate(`/r/${encodeURIComponent(roomId)}/register`)}
       onContinue={() => navigate(`/r/${encodeURIComponent(roomId)}/bid`)}
     />
+  );
+}
+
+/** The operator key input, shared by the ops page and the demo launcher. It is never stored. */
+function OperatorKeyField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <label>
+      {t('ops.keyLabel')}
+      <input
+        type="password"
+        autoComplete="off"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
   );
 }
 
@@ -648,15 +695,7 @@ function OpsRoute({ api }: { api: Api | undefined }) {
           load();
         }}
       >
-        <label>
-          {t('ops.keyLabel')}
-          <input
-            type="password"
-            autoComplete="off"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-          />
-        </label>
+        <OperatorKeyField value={key} onChange={setKey} />
         <button type="submit">{t('ops.load')}</button>
       </form>
       {(summary !== undefined || error !== undefined) && (
@@ -676,15 +715,37 @@ function roomLinks(roomId: string): DemoLinks {
   };
 }
 
-/** The server has no demo room route yet, so live creation fails and offers the scripted demo. */
+/** Makes a demo room on the server. A demo mode that is off (404) falls back to the scripted demo. */
+async function createDemoRoom(apiBase: string, key: string): Promise<DemoLinks> {
+  const res = await fetch(`${apiBase}/api/demo/rooms`, {
+    method: 'POST',
+    headers: { 'x-admin-key': key },
+  });
+  if (res.status === 404) throw new DemoRoomError('demoOff');
+  if (res.status === 401) throw new DemoRoomError('unauthorized');
+  if (res.status === 429) throw new DemoRoomError('roomCap');
+  if (res.status !== 200) throw new Error('demo room failed');
+  const body = (await res.json()) as unknown;
+  const auctionId =
+    typeof body === 'object' && body !== null ? (body as { auctionId?: unknown }).auctionId : null;
+  if (typeof auctionId !== 'string' || auctionId === '') throw new Error('bad demo room');
+  return roomLinks(auctionId);
+}
+
 function DemoRoute({ api }: { api: Api | undefined }) {
+  const [key, setKey] = useState('');
   return (
-    <DemoLauncher
-      initialMode={api === undefined ? 'scripted' : 'live'}
-      createRoom={() => Promise.reject(new Error('no demo room route'))}
-      startScripted={() => roomLinks('demo')}
-      openConsole={navigate}
-    />
+    <>
+      {api !== undefined && <OperatorKeyField value={key} onChange={setKey} />}
+      <DemoLauncher
+        initialMode={api === undefined ? 'scripted' : 'live'}
+        createRoom={() =>
+          api === undefined ? Promise.reject(new Error('no api')) : createDemoRoom(api.apiBase, key)
+        }
+        startScripted={() => roomLinks('demo')}
+        openConsole={navigate}
+      />
+    </>
   );
 }
 
@@ -714,6 +775,13 @@ function Routed({
   if (id === 'demo') return <DemoRoute api={api} />;
   if (id === 'notFound') return <NotFound />;
   if (id === 'replay') return <ReplayRoute match={match} />;
+  if (id === 'audit' && roomId !== undefined && who === null && !hasReviewerAccess(roomId)) {
+    return (
+      <TokenGate role="reviewer" token={null}>
+        {null}
+      </TokenGate>
+    );
+  }
   if (
     id === 'console' &&
     liveBase !== undefined &&
@@ -768,6 +836,7 @@ export function App({ initialPath, gallery = import.meta.env.DEV, liveBase, api 
   const match = matchRoute(path, { gallery });
   return (
     <ErrorBoundary>
+      {match.route.id !== 'gallery' && <SandboxBanner />}
       {match.route.id !== 'gallery' && <Announcer />}
       <Routed match={match} liveBase={liveBase} api={api} />
     </ErrorBoundary>

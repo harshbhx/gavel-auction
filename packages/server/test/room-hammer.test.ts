@@ -554,3 +554,65 @@ describe('round 12 server hardening (R12-S01)', () => {
     });
   });
 });
+
+describe('hammer outcome on join (HRD-75)', () => {
+  const ownHold = {
+    idSuffix: 'abc123',
+    status: 'CAPTURED',
+    ceilingCents: 50000 as Cents,
+    capturedCents: 10000,
+    releasedCents: 40000,
+    remainder: 'released',
+  } as const;
+
+  it('gives a bidder who connects after the hammer the outcome and only their own hold', async () => {
+    const t = await setup();
+    const c1 = await t.connect(t.room, 'bidder', t.b1);
+    const boss = await t.connect(t.room, 'auctioneer');
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    await t.room.control(boss.conn, { controlId: 'c1', action: 'hammer', args: { closeNow: 1 } });
+    await t.room.reportSettlement({
+      rev: 1,
+      auctionState: 'CAPTURED',
+      perBidder: { [t.b1]: 'CAPTURED', [t.b2]: 'VOIDING' },
+      holds: { [t.b1]: ownHold },
+      winnerId: t.b1,
+    });
+
+    const winner = await t.connect(t.room, 'bidder', t.b1);
+    const snap = winner.transport.messages('state').at(-1)?.snapshot as Record<string, unknown>;
+    expect(snap).toMatchObject({
+      hammer: { winnerId: t.b1, price: 10000 },
+      settlement: { auctionState: 'CAPTURED', you: 'CAPTURED', yourHold: { idSuffix: 'abc123' } },
+    });
+
+    const other = await t.connect(t.room, 'bidder', t.b2);
+    const otherSnap = other.transport.messages('state').at(-1)?.snapshot as {
+      hammer?: unknown;
+      settlement?: Record<string, unknown>;
+    };
+    expect(otherSnap.hammer).toMatchObject({ winnerId: t.b1, price: 10000 });
+    expect(otherSnap.settlement).not.toHaveProperty('yourHold');
+
+    for (const role of ['screen', 'auctioneer'] as const) {
+      const viewer = await t.connect(t.room, role);
+      const s = viewer.transport.messages('state').at(-1)?.snapshot as {
+        settlement?: Record<string, unknown>;
+      };
+      expect(s.settlement).not.toHaveProperty('yourHold');
+    }
+  });
+
+  it('keeps the hammer outcome in the snapshot after a restart', async () => {
+    const t = await setup();
+    const c1 = await t.connect(t.room, 'bidder', t.b1);
+    const boss = await t.connect(t.room, 'auctioneer');
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    await t.room.control(boss.conn, { controlId: 'c1', action: 'hammer', args: { closeNow: 1 } });
+    const restarted = await Room.load(t.auctionId, t.deps);
+    const again = await t.connect(restarted, 'bidder', t.b2);
+    expect(again.transport.messages('state').at(-1)?.snapshot).toMatchObject({
+      hammer: { winnerId: t.b1, price: 10000 },
+    });
+  });
+});

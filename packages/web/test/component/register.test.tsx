@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { t } from '../../src/copy/t';
 import { RegisterScreen } from '../../src/screens/register/RegisterScreen';
-import { customCeilingCents, parsePaddle, validName } from '../../src/screens/register/validate';
+import { customCeilingCents, validName } from '../../src/screens/register/validate';
 
 function continueButton(): HTMLElement {
   return screen.getByRole('button', { name: t('reg.continue') });
@@ -10,28 +10,16 @@ function continueButton(): HTMLElement {
 
 function setup(props: Partial<Parameters<typeof RegisterScreen>[0]> = {}) {
   const onApprove = vi.fn();
-  render(
-    <RegisterScreen
-      suggestedPaddle={12}
-      minCents={10000}
-      maxCents={100000}
-      onApprove={onApprove}
-      {...props}
-    />,
-  );
+  render(<RegisterScreen minCents={10000} maxCents={100000} onApprove={onApprove} {...props} />);
   return onApprove;
 }
 
 describe('registration validation (T-WEB-031)', () => {
-  it('validates names and paddles', () => {
+  it('validates names', () => {
     expect(validName('')).toBe(false);
     expect(validName('   ')).toBe(false);
     expect(validName('a'.repeat(24))).toBe(true);
     expect(validName('a'.repeat(25))).toBe(false);
-    expect(parsePaddle('0')).toBeNull();
-    expect(parsePaddle('1')).toBe(1);
-    expect(parsePaddle('999')).toBe(999);
-    expect(parsePaddle('1000')).toBeNull();
   });
 
   it('accepts a custom ceiling only inside the room range', () => {
@@ -41,22 +29,12 @@ describe('registration validation (T-WEB-031)', () => {
     expect(customCeilingCents('1001', 10000, 100000)).toBeNull();
   });
 
-  it('enables Continue only when name and paddle are valid', () => {
+  it('enables Continue only when the name is valid and has no paddle field', () => {
     setup();
     expect(continueButton().getAttribute('aria-disabled')).toBe('true');
     fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
     expect(continueButton().getAttribute('aria-disabled')).toBeNull();
-    fireEvent.change(screen.getByLabelText(t('reg.paddle')), { target: { value: '1000' } });
-    expect(continueButton().getAttribute('aria-disabled')).toBe('true');
-  });
-
-  it('shows a taken paddle error tied to the field by aria-describedby', () => {
-    setup({ paddleTaken: { taken: 12, suggested: 13 } });
-    const input = screen.getByLabelText(t('reg.paddle'));
-    const text = t('reg.paddleTaken', { n: 12, m: 13 });
-    const error = screen.getByText(text);
-    expect(input.getAttribute('aria-invalid')).toBe('true');
-    expect(input.getAttribute('aria-describedby')).toContain(error.parentElement?.id ?? 'missing');
+    expect(screen.queryByLabelText(t('reg.paddle'))).toBeNull();
   });
 
   it('shows the held block with the amount before approval is enabled', () => {
@@ -75,7 +53,7 @@ describe('registration validation (T-WEB-031)', () => {
     expect(approve.getAttribute('aria-disabled')).toBeNull();
 
     fireEvent.click(approve);
-    expect(onApprove).toHaveBeenCalledWith({ name: 'Priya', paddle: 12, ceilingCents: 25000 });
+    expect(onApprove).toHaveBeenCalledWith({ name: 'Priya', ceilingCents: 25000 });
   });
 
   it('shows an inline range error for an out of range custom ceiling', () => {

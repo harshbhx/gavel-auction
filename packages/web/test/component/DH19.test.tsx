@@ -69,7 +69,6 @@ describe('states', () => {
       </TokenGate>,
     );
     expect(screen.getByRole('heading', { name: t('err.tokenMissing') })).toBeTruthy();
-    expect(screen.getByText(t('banner.sandbox'))).toBeTruthy();
     expect(screen.getByRole('link', { name: t('err.newLink') })).toBeTruthy();
     rerender(
       <TokenGate role="reviewer" token={['tok', 'en', 'value', '1'].join('-')}>
@@ -79,9 +78,10 @@ describe('states', () => {
     expect(screen.getByText('inside')).toBeTruthy();
   });
 
-  it('404 shows the sandbox banner', () => {
+  it('404 shows the not found heading and a way home', () => {
     render(<NotFound />);
-    expect(screen.getByText(t('banner.sandbox'))).toBeTruthy();
+    expect(screen.getByRole('heading', { name: t('err.notFound') })).toBeTruthy();
+    expect(screen.getByRole('link', { name: t('err.home') })).toBeTruthy();
   });
 
   it('boundary shows id, reload and the banner', () => {
@@ -97,7 +97,7 @@ describe('states', () => {
     );
     quiet.mockRestore();
     expect(screen.getByText(t('err.boundaryId', { id: 'e-1' }))).toBeTruthy();
-    expect(screen.getByText(t('banner.sandbox'))).toBeTruthy();
+    expect(screen.getAllByText(t('banner.sandbox'))).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: t('err.reload') }));
     expect(onReload).toHaveBeenCalledTimes(1);
   });
