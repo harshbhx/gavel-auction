@@ -17,9 +17,10 @@ import { voidHold, type VoidStatus } from './void.js';
  *
  * `voidAllLiveHolds` is the separate admin operation: it voids every hold of the
  * auction that is not captured, writes each result to the journal, and audits one
- * `void_all` entry per hold with the actor. Voiding a hold that a settlement still
- * wants to capture is the operator's decision; the capture phase then reads the
- * hold as gone and falls back or ends with no sale.
+ * `void_all` entry per hold with the actor. A hold whose reauthorization is in doubt
+ * is not voided: it is reported `pending` and left for the lookup. Voiding a hold that
+ * a settlement still wants to capture is the operator's decision; the capture phase
+ * then reads the hold as gone and falls back or ends with no sale.
  */
 
 export type VoidAllHoldResult = VoidStatus | 'captured';
@@ -70,6 +71,14 @@ export async function voidAllLiveHolds(
         }
         if (journal.winner?.holdId === hold.holdId) {
           holds[bidderId] = 'captured';
+          continue;
+        }
+        // RT4-saga-05: after a reauthorization in doubt the old authorization may read closed
+        // while PayPal holds the funds under a new one. Voiding the old one would record the
+        // bidder released and leave the new hold live, so the hold stays in doubt for the
+        // lookup (`lookupUnknownReauths`), as in the review release.
+        if (hold.reauthInDoubt !== undefined) {
+          holds[bidderId] = 'pending';
           continue;
         }
         let truth: HoldTruth | undefined;

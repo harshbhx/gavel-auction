@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { t } from '../../src/copy/t';
 import { TEST_IDS } from '../../src/testing/testids';
 
 /**
@@ -104,6 +105,72 @@ test('gallery: a button opens the dialog with Enter and with Space', async ({ pa
   await opener.focus();
   await page.keyboard.press('Space');
   await expect(page.getByRole('dialog')).toBeVisible();
+});
+
+/** Presses Tab until `match` is true for the focused element; returns how many presses it took. */
+async function tabUntil(page: Page, match: (el: Element) => boolean, max: number): Promise<number> {
+  for (let presses = 1; presses <= max; presses += 1) {
+    await page.keyboard.press('Tab');
+    const hit = await page.evaluate(
+      `(${match.toString()})(document.activeElement ?? document.body)`,
+    );
+    if (hit === true) return presses;
+  }
+  return -1;
+}
+
+test('register walk: name, paddle, ceiling and approve with the keyboard alone', async ({
+  page,
+}) => {
+  // A stored session stands in for the invite step, so the form renders without a server.
+  await page.addInitScript(() => {
+    sessionStorage.setItem(
+      'gavel:session:room1',
+      JSON.stringify({ token: 'walnut', bidderId: 'bidder-one' }),
+    );
+  });
+  await page.goto('/r/room1/register');
+  await expect(page.locator('h1')).toHaveText(t('reg.step1'));
+
+  const toName = await tabUntil(
+    page,
+    (el) => el.tagName === 'INPUT' && el.getAttribute('autocomplete') === 'nickname',
+    8,
+  );
+  expect(toName, 'Tab presses to reach the name field').toBeGreaterThan(0);
+  expect(toName).toBeLessThanOrEqual(8);
+  let ring = await readRing(page);
+  expect(ring.widthPx).toBeGreaterThanOrEqual(2);
+  expect(ring.contrast).toBeGreaterThanOrEqual(3);
+
+  await page.keyboard.type('Walnut');
+  await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => document.activeElement?.getAttribute('inputmode'))).toBe(
+    'numeric',
+  );
+  await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => document.activeElement?.getAttribute('type'))).toBe('submit');
+  ring = await readRing(page);
+  expect(ring.widthPx).toBeGreaterThanOrEqual(2);
+  expect(ring.contrast).toBeGreaterThanOrEqual(3);
+  await page.keyboard.press('Enter');
+
+  await expect(page.locator('h1')).toHaveText(t('reg.step2'));
+  const toRadio = await tabUntil(
+    page,
+    (el) => el.tagName === 'INPUT' && el.getAttribute('type') === 'radio',
+    8,
+  );
+  expect(toRadio, 'Tab presses to reach the ceiling choices').toBeGreaterThan(0);
+  await page.keyboard.press('Space');
+  await expect(page.getByTestId(TEST_IDS.heldBlock)).toBeVisible();
+  await page.keyboard.press('Tab');
+  const approve = page.getByRole('button', { name: t('reg.approve') });
+  await expect(approve).toBeFocused();
+  await expect(approve).toBeEnabled();
+  ring = await readRing(page);
+  expect(ring.widthPx).toBeGreaterThanOrEqual(2);
+  expect(ring.contrast).toBeGreaterThanOrEqual(3);
 });
 
 test('route change puts focus on the main heading', async ({ page }) => {

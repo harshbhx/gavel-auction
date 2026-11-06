@@ -322,7 +322,8 @@ export function reduce(state: RoomState, ev: RoomEvent): ReduceResult {
         effects: [],
       };
     case 'identify':
-      return { state: { ...state, expectedBidderId: ev.bidderId }, effects: [] };
+      // A new session starts clean: an error from the previous token must not carry over.
+      return { state: { ...state, expectedBidderId: ev.bidderId, lastError: null }, effects: [] };
     case 'confirm_resolved':
       return {
         state: {

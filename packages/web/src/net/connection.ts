@@ -9,6 +9,17 @@ export const JITTER = 0.2;
 /** Time disconnected before the offline banner shows (R-WEB-024). */
 export const OFFLINE_AFTER_MS = 2000;
 
+/** Refusals that end the session: the token is dead, so the bidder must join again. */
+export const TERMINAL_ERRORS: readonly string[] = ['unauthorized', 'forbidden', 'invite_used'];
+/** Refusals that need a wait: the connection stops until the bidder asks to try again. */
+export const WAIT_ERRORS: readonly string[] = [
+  'room_full',
+  'auction_full',
+  'room_cap',
+  'rate_limited',
+];
+const HALTING_ERRORS: readonly string[] = [...TERMINAL_ERRORS, ...WAIT_ERRORS];
+
 export interface ConnectionSnapshot {
   status: TransportStatus;
   offline: boolean;
@@ -52,6 +63,8 @@ export class ConnectionManager {
   private offlineTimer: unknown = null;
   private stableTimer: unknown = null;
   private running = false;
+  /** True once the server accepted the join on the current socket (it sent a snapshot). */
+  private joined = false;
   private unsubscribers: Array<() => void> = [];
   private readonly random: () => number;
   private readonly setTimer: (fn: () => void, ms: number) => unknown;
@@ -79,8 +92,13 @@ export class ConnectionManager {
     this.unsubscribers = [
       transport.onStatus((s) => this.handleStatus(s)),
       transport.onMessage((m) => {
-        if (m.t === 'state') this.attempt = 0;
+        if (m.t === 'state') {
+          this.attempt = 0;
+          this.joined = true;
+        }
         this.deps.onMessage(m);
+        // The server refused this join. Retrying with the same token cannot succeed, so stop.
+        if (m.t === 'error' && !this.joined && HALTING_ERRORS.includes(m.code)) this.stop();
       }),
     ];
     transport.connect();
@@ -100,6 +118,7 @@ export class ConnectionManager {
   private handleStatus(status: TransportStatus): void {
     if (!this.running) return;
     if (status === 'open') {
+      this.joined = false;
       this.clearReconnect();
       this.clearOffline();
       this.clearStable();

@@ -144,8 +144,16 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
       const retryable =
         current?.result?.errorCode === 'hold_failed' ||
         current?.result?.errorCode === 'hold_timeout';
-      const retryOrderId = retryable ? current?.result?.orderId : undefined;
-      const retryHoldId = retryable ? current?.result?.holdId : undefined;
+      // After a reload the order the server already issued for this ceiling is the one to finish,
+      // so the buyer is not sent through PayPal's approval again.
+      const reloaded =
+        stored?.orderId !== undefined &&
+        stored.holdId !== undefined &&
+        stored.ceilingCents === ceilingCents
+          ? { orderId: stored.orderId, holdId: stored.holdId }
+          : null;
+      const retryOrderId = retryable ? current?.result?.orderId : reloaded?.orderId;
+      const retryHoldId = retryable ? current?.result?.holdId : reloaded?.holdId;
       const attempt: Attempt = {
         clientRegistrationId:
           current !== undefined && current.result?.state !== 'declined'
@@ -170,6 +178,13 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
             ...(retryOrderId === undefined || retryHoldId === undefined
               ? {}
               : { approvedOrderId: retryOrderId, approvedHoldId: retryHoldId }),
+            onOrder: (order) =>
+              saveRegistration(roomId, bidderId, {
+                clientRegistrationId: attempt.clientRegistrationId,
+                orderId: order.orderId,
+                holdId: order.holdId,
+                ceilingCents,
+              }),
           },
           (s) => {
             attempt.state = s;
@@ -178,12 +193,14 @@ export function useApproval(options: UseApprovalOptions): UseApproval {
         )
         .then((r) => {
           if (r.state === 'declined') clearRegistration(roomId, bidderId);
-          else if (r.orderId !== undefined) {
+          else {
+            // An order the attempt did not hand back is finished or released: a reload must not
+            // try to confirm it again.
             saveRegistration(roomId, bidderId, {
               clientRegistrationId: attempt.clientRegistrationId,
-              orderId: r.orderId,
               ceilingCents,
-              ...(r.holdId === undefined ? {} : { holdId: r.holdId }),
+              ...(r.orderId === undefined ? {} : { orderId: r.orderId }),
+              ...(r.orderId === undefined || r.holdId === undefined ? {} : { holdId: r.holdId }),
             });
           }
           attempt.result = r;

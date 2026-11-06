@@ -14,6 +14,17 @@ export function bidsLocked(status: string | null, stopped = false): boolean {
   return stopped || status !== 'OPEN';
 }
 
+/** Copy key of the banner shown for this state, or null when bidding is open. */
+export function bidsNotice(
+  status: string | null,
+  stopped = false,
+): 'bid.stoppedBanner' | 'bid.paused' | 'bid.closedBanner' | null {
+  if (stopped) return 'bid.stoppedBanner';
+  if (status === 'PAUSED') return 'bid.paused';
+  if (status === 'CLOSING' || status === 'SETTLING' || status === 'DONE') return 'bid.closedBanner';
+  return null;
+}
+
 /** Banner that explains why bidding is off: paused, lot closed or auction stopped. */
 export function StateBanner({ status, stopped = false }: StateBannerProps) {
   if (stopped) {

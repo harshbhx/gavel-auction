@@ -245,11 +245,16 @@ describe('T-PAY-042 void outcomes', () => {
 });
 
 describe('crash and resume in the void phase (T-PAY-044 shape)', () => {
-  /** Canonical bytes of a journal, ignoring the resume counter, timestamps and capture-or-adopt labels. */
+  /**
+   * Canonical bytes of a journal, ignoring the resume counter, timestamps and capture-or-adopt
+   * labels, and the version: a count of saves, which includes the save a resume makes for the
+   * audit rows it recovered (RT4-saga-04), as in the crash harness.
+   */
   function shape(j: Journal | null): string {
     if (j === null) throw new Error('no journal');
     const copy = structuredClone(j);
     copy.resumes = 0;
+    copy.version = 0;
     copy.history = copy.history.map((h) => ({ ...h, tsMs: 0, label: '' }));
     return canonicalJson(copy);
   }

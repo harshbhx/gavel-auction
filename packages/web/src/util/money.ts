@@ -1,16 +1,17 @@
-function assertCents(cents: number): void {
-  if (!Number.isSafeInteger(cents) || cents < 0) {
-    throw new RangeError('cents must be a non-negative safe integer');
-  }
+/** Shown in place of an amount that is not a non-negative whole number of cents. */
+export const NO_AMOUNT = String.fromCharCode(0x2014);
+
+function isCents(cents: number): boolean {
+  return Number.isSafeInteger(cents) && cents >= 0;
 }
 
 function group(dollars: number): string {
   return String(dollars).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-/** 35000 -> "$350.00". Integer arithmetic only. */
+/** 35000 -> "$350.00". Integer arithmetic only. A bad amount gives a dash and never throws. */
 export function formatUsd(cents: number): string {
-  assertCents(cents);
+  if (!isCents(cents)) return NO_AMOUNT;
   const dollars = Math.floor(cents / 100);
   const rest = cents % 100;
   return `$${group(dollars)}.${String(rest).padStart(2, '0')}`;

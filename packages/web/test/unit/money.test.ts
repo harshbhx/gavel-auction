@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { formatUsd, formatUsdCompact, parseUsdToCents } from '../../src/util/money';
+import { NO_AMOUNT, formatUsd, formatUsdCompact, parseUsdToCents } from '../../src/util/money';
 
 describe('parseUsdToCents', () => {
   it.each([
@@ -33,9 +33,11 @@ describe('formatUsd', () => {
     expect(formatUsd(123456789)).toBe('$1,234,567.89');
   });
 
-  it('rejects non-integer or negative cents', () => {
-    expect(() => formatUsd(1.5)).toThrow(RangeError);
-    expect(() => formatUsd(-1)).toThrow(RangeError);
+  it('shows a dash for non-integer or negative cents and never throws', () => {
+    for (const bad of [1.5, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(formatUsd(bad)).toBe(NO_AMOUNT);
+      expect(formatUsdCompact(bad)).toBe(NO_AMOUNT);
+    }
   });
 
   it('compact variant drops .00 only', () => {

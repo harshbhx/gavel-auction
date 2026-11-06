@@ -83,6 +83,8 @@ export function startLiveRoom(opts: LiveRoomOptions): LiveRoom | null {
     onMessage: (msg) => {
       store.dispatch({ kind: 'wire', msg });
       pending.handle(msg);
+      // A snapshot after a gap tells which unanswered bids the server did accept.
+      if (msg.t === 'state') pending.reconcile(msg.snapshot);
     },
   });
   const unbind = bindResync(store, { sendJoin: () => connection.sendJoin() });

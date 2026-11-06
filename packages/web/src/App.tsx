@@ -17,7 +17,7 @@ import { receiptSource } from './ladder/fromWire';
 import { SettlementPanel } from './ladder/SettlementPanel';
 import type { Transport } from './net/transport';
 import { WebSocketTransport } from './net/wsTransport';
-import { loadSession, saveSession } from './net/session';
+import { clearSession, loadSession, saveSession, type SessionRole } from './net/session';
 import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
 import { RouteScreen, matchRoute, type RouteMatch } from './routes';
 import { AuditTable } from './screens/audit/AuditTable';
@@ -41,6 +41,7 @@ import { ScreenView } from './screens/screen/ScreenView';
 import { ErrorBoundary } from './screens/states/ErrorBoundary';
 import { NotFound } from './screens/states/NotFound';
 import { TokenGate } from './screens/states/TokenGate';
+import { RoomError, isHaltingError, isTerminalError } from './screens/states/RoomError';
 import { roomStore, useRoom } from './store/roomStore';
 import { summarizePending, type PendingSummary } from './store/localEvents';
 import { hasAuctioneerAccess, readAuctioneerToken, readInviteToken } from './store/session';
@@ -66,6 +67,11 @@ export function navigate(to: string): void {
   window.dispatchEvent(new Event(NAVIGATE_EVENT));
 }
 
+/** Which stored slot a refused token is cleared from; the screen token is never stored. */
+function roleOf(routeId: string): SessionRole {
+  return routeId === 'screen' ? 'screen' : 'bidder';
+}
+
 function tokenFor(routeId: string, roomId: string): { token: string; bidderId?: string } | null {
   if (routeId === 'console' || routeId === 'audit' || routeId === 'screen') {
     // These routes take a fragment or in-memory token only: a bidder session is never used here.
@@ -89,9 +95,14 @@ function useLiveRoom(
   roomId: string,
   token: string,
   bidderId: string | undefined,
+  /** Bumped to open the connection again after a refusal that only needed a wait. */
+  attempt = 0,
+  /** False keeps the hook idle, for a route that has no live server to join. */
+  enabled = true,
 ): Live {
   const [live, setLive] = useState<Live>({ room: null, transport: null });
   useEffect(() => {
+    if (!enabled) return undefined;
     // The transport is built here so the screens can send a confirm_response on it.
     const transport = new WebSocketTransport(socketUrl(liveBase));
     const started = startLiveRoom({
@@ -106,7 +117,7 @@ function useLiveRoom(
       started?.stop();
       setLive({ room: null, transport: null });
     };
-  }, [liveBase, roomId, token, bidderId]);
+  }, [liveBase, roomId, token, bidderId, attempt, enabled]);
   return live;
 }
 
@@ -120,17 +131,19 @@ function usePendingView(room: LiveRoom | null): PendingSummary {
       s.rejection?.reason ?? '',
       s.rejection?.mid ?? '',
       s.unknownMid ?? '',
+      s.unknownAmount ?? '',
     ].join('|');
   };
   const subscribe = (cb: () => void): (() => void) =>
     room === null ? () => undefined : room.pending.subscribe(cb);
   const key = useSyncExternalStore(subscribe, read);
   return useMemo(() => {
-    const [waiting = '0', reason = '', mid = '', unknown = ''] = key.split('|');
+    const [waiting = '0', reason = '', mid = '', unknown = '', amount = ''] = key.split('|');
     return {
       waiting: waiting === '1',
       rejection: reason === '' ? null : { reason, mid },
       unknownMid: unknown === '' ? null : (unknown as MsgId),
+      unknownAmount: amount === '' ? null : Cents(Number(amount)),
     };
   }, [key]);
 }
@@ -145,8 +158,17 @@ interface LiveRouteProps {
 }
 
 function LiveRoute({ match, liveBase, roomId, token, bidderId, api }: LiveRouteProps): ReactNode {
-  const { room, transport } = useLiveRoom(liveBase, roomId, token, bidderId);
+  const [attempt, setAttempt] = useState(0);
+  const { room, transport } = useLiveRoom(liveBase, roomId, token, bidderId, attempt);
   const view = usePendingView(room);
+  const lastError = useRoom((s) => s.lastError);
+  const refused = lastError !== null && isHaltingError(lastError.code) ? lastError : null;
+  const dead = refused !== null && isTerminalError(refused.code);
+  const role = roleOf(match.route.id);
+  useEffect(() => {
+    // A refused token is dead: forget it, so a reload does not reuse it.
+    if (dead) clearSession(roomId, undefined, role);
+  }, [dead, roomId, role]);
   const myPaddle = useRoom((s) =>
     bidderId === undefined
       ? undefined
@@ -154,36 +176,64 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId, api }: LiveRouteP
   );
   const respond = (confirmId: string, accept: boolean): void =>
     transport?.send({ v: PROTOCOL_VERSION, t: 'confirm_response', confirmId, accept });
+  if (refused !== null) {
+    // The connection is stopped; the bid screen would only say it is waiting for a lot.
+    return (
+      <main data-route={match.route.id}>
+        <RoomError
+          error={refused}
+          rejoinHref={`/join/${encodeURIComponent(roomId)}`}
+          onRetry={() => setAttempt((n) => n + 1)}
+        />
+      </main>
+    );
+  }
+  const other = lastError !== null && !isHaltingError(lastError.code) ? lastError : null;
+  const notice = (
+    <RoomError
+      error={other}
+      rejoinHref={`/join/${encodeURIComponent(roomId)}`}
+      onRetry={() => setAttempt((n) => n + 1)}
+    />
+  );
   switch (match.route.id) {
     case 'bid':
       return (
-        <main data-route="bid">
+        <div data-route="bid">
+          {notice}
           <BidScreen
             onBid={(amount) => room?.bid(Cents(amount), 'qr')}
             canSend={room !== null}
             pending={view.waiting}
             rejection={view.rejection}
             unsent={view.unknownMid !== null}
+            unsentCents={view.unknownAmount}
             onResend={() => {
               if (view.unknownMid !== null) room?.pending.retry(view.unknownMid);
             }}
             {...(myPaddle === undefined ? {} : { myPaddle, onConfirm: respond })}
           />
-        </main>
+        </div>
       );
     case 'receipt':
-      return <ReceiptRoute roomId={roomId} />;
+      return (
+        <>
+          {notice}
+          <ReceiptRoute roomId={roomId} />
+        </>
+      );
     case 'audit':
       return <AuditRoute />;
     case 'screen':
       return (
-        <main data-route="screen">
+        <div data-route="screen">
+          {notice}
           <ScreenRoute roomId={roomId} api={api} />
-        </main>
+        </div>
       );
     default:
       return (
-        <main data-route="console">
+        <div data-route="console">
           <LiveConsole
             room={room}
             roomId={roomId}
@@ -195,7 +245,7 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId, api }: LiveRouteP
               roomStore.dispatch({ kind: 'confirm_resolved', confirmId });
             }}
           />
-        </main>
+        </div>
       );
   }
 }
@@ -369,7 +419,18 @@ function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
 const CEILING_MIN_CENTS = 10000;
 const CEILING_MAX_CENTS = 100000;
 
-function RegisterRoute({ roomId, api }: { roomId: string; api: Api }) {
+/** Room states in which the hammer has fallen, so the server no longer takes a registration. */
+const REGISTRATION_CLOSED = ['CLOSING', 'SETTLING', 'DONE'];
+
+function RegisterRoute({
+  roomId,
+  api,
+  liveBase,
+}: {
+  roomId: string;
+  api: Api;
+  liveBase: string | undefined;
+}) {
   const [who, setWho] = useState<{ token: string; bidderId: string } | null>(() => {
     const stored = loadSession(roomId);
     return stored?.bidderId === undefined
@@ -377,7 +438,20 @@ function RegisterRoute({ roomId, api }: { roomId: string; api: Api }) {
       : { token: stored.token, bidderId: stored.bidderId };
   });
   const [draft, setDraft] = useState<RegistrationDraft | null>(null);
+  // The draft is kept when the buyer goes back, so the name and paddle they typed are still there.
+  const [approving, setApproving] = useState(false);
   const [failed, setFailed] = useState(false);
+  // The room's own limits and roster come from its snapshot, over the same socket the bid screen uses.
+  useLiveRoom(
+    liveBase ?? '',
+    roomId,
+    who?.token ?? '',
+    who?.bidderId,
+    0,
+    liveBase !== undefined && who !== null,
+  );
+  const snapshot = useRoom((s) => (s.snapshot?.auctionId === roomId ? s.snapshot : null));
+  const roomError = useRoom((s) => s.lastError);
 
   const invite = who === null ? readInviteToken(roomId) : null;
   useEffect(() => {
@@ -409,16 +483,59 @@ function RegisterRoute({ roomId, api }: { roomId: string; api: Api }) {
       </main>
     );
   }
-  if (draft === null) {
+  const live = liveBase !== undefined;
+  if (live && snapshot === null) {
     return (
       <main data-route="register">
-        <RegisterScreen
-          suggestedPaddle={1}
-          minCents={CEILING_MIN_CENTS}
-          maxCents={CEILING_MAX_CENTS}
-          onApprove={setDraft}
+        {roomError === null ? (
+          <p role="status">{t('reg.confirming')}</p>
+        ) : (
+          <RoomError
+            error={roomError}
+            rejoinHref={`/join/${encodeURIComponent(roomId)}`}
+            onRetry={() => window.location.reload()}
+          />
+        )}
+      </main>
+    );
+  }
+  if (snapshot !== null && REGISTRATION_CLOSED.includes(snapshot.status)) {
+    return (
+      <main data-route="register">
+        <Approve
+          state="idle"
+          result={null}
+          ceilingCents={0}
+          closed
+          watchHref={`/r/${encodeURIComponent(roomId)}/bid`}
+          onBackToCeiling={() => undefined}
+          onRetry={() => undefined}
+          onContinue={() => undefined}
         />
       </main>
+    );
+  }
+  if (draft === null || !approving) {
+    const presets = snapshot?.config.ceilingPresets;
+    const others = (snapshot?.roster ?? []).filter((r) => r.bidderId !== who.bidderId);
+    const mine = snapshot?.roster.find((r) => r.bidderId === who.bidderId)?.paddle;
+    const paddles = others.map((r) => r.paddle);
+    return (
+      // RegisterScreen renders the page's one main landmark.
+      <div data-route="register">
+        <RegisterScreen
+          suggestedPaddle={mine ?? Math.max(0, ...paddles) + 1}
+          takenPaddles={paddles}
+          minCents={presets === undefined ? CEILING_MIN_CENTS : Math.min(...presets)}
+          maxCents={presets === undefined ? CEILING_MAX_CENTS : Math.max(...presets)}
+          {...(presets === undefined ? {} : { presetsCents: presets })}
+          {...(draft === null ? {} : { initial: draft })}
+          onApprove={(next) => {
+            setDraft(next);
+            setApproving(true);
+          }}
+        />
+      </div>
     );
   }
   return (
@@ -428,7 +545,7 @@ function RegisterRoute({ roomId, api }: { roomId: string; api: Api }) {
       token={who.token}
       api={api}
       ceilingCents={draft.ceilingCents}
-      onBack={() => setDraft(null)}
+      onBack={() => setApproving(false)}
     />
   );
 }
@@ -615,7 +732,7 @@ function Routed({
     return <JoinRoute roomId={roomId} api={api} />;
   }
   if (id === 'register' && roomId !== undefined && api !== undefined) {
-    return <RegisterRoute roomId={roomId} api={api} />;
+    return <RegisterRoute roomId={roomId} api={api} liveBase={liveBase} />;
   }
   if (id === 'return' && roomId !== undefined && api !== undefined) {
     return <ReturnRoute roomId={roomId} api={api} />;
