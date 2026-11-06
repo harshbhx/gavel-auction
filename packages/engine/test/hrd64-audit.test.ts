@@ -34,7 +34,7 @@ describe('bid audit record carries the parsed amount', () => {
   it('T-ENG-083 R-ENG-083 the engine records parsedCents next to a different bid amount', () => {
     const s = open(scene(), L1);
     const r = bid(s, 200, A, 2000, undefined, { audit: { parsedCents: 2500 } });
-    const ev = r.events.find((e) => e.type === 'BID_RECORDED');
+    const ev = r.entries.find((e) => e.type === 'BID_RECORDED');
     expect(ev?.type === 'BID_RECORDED' && ev.payload.audit.parsedCents).toBe(2500);
     expect(ev?.type === 'BID_RECORDED' && ev.payload.amountCents).toBe(2000);
   });

@@ -1,5 +1,4 @@
 // Node-only helpers (R-ENG-120). Not part of the core entry point; import from '@gavel/engine/node'.
-// eslint-disable-next-line no-restricted-imports -- src/node is the one place allowed Node I/O (R-ENG-120)
 import { readFileSync, writeFileSync } from 'node:fs';
 import { exportJsonl, verifyJsonl } from '../ledger/export.js';
 import type { VerifyResult } from '../ledger/chain.js';
