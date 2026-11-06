@@ -49,10 +49,10 @@ describe('stack mode', () => {
       body: JSON.stringify({ kind: 'http_500', op: 'capture', times: 2 }),
     });
     expect(armed.status).toBe(200);
-    const state = async (): Promise<{ pendingFaults: unknown[] }> =>
-      (await (await fetch(`${control}/__fake/state`)).json()) as { pendingFaults: unknown[] };
+    const state = async (): Promise<{ pendingFaults: number }> =>
+      (await (await fetch(`${control}/__fake/state`)).json()) as { pendingFaults: number };
     const before = await state();
-    expect(before.pendingFaults).toHaveLength(1);
+    expect(before.pendingFaults).toBe(1);
 
     await stack.killServer();
     expect(stack.alive()).toEqual(['fake-paypal']);

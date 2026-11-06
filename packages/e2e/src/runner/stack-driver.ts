@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { evolveAll } from '@gavel/engine';
 import { parseNdjson } from '@gavel/server/src/admin/export';
-import type { AuctionId } from '@gavel/shared';
+import { SystemClock, type AuctionId } from '@gavel/shared';
 import type { Checkpoint, Scenario, Step } from '../dsl/types';
 import { checkExpectations, type Outcome, type RunResult, type TraceEvent } from './inproc';
 import { evaluateInvariants, type HoldView } from './invariants';
@@ -19,13 +19,15 @@ import { startStack, type Stack } from './stack';
  */
 
 const SERVER_DIR = fileURLToPath(new URL('../../../server', import.meta.url));
+const clock = new SystemClock();
+const now = (): number => clock.now();
 const REAL_TIMEOUT_MS = 60_000;
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 const EXTEND_MS = 30_000;
 
 /** A ULID: the wire protocol takes only that for message ids. */
 function ulid(): string {
-  let t = Date.now();
+  let t = now();
   let head = '';
   for (let i = 0; i < 10; i += 1) {
     head = (ALPHABET[t % 32] ?? '0') + head;
@@ -91,8 +93,8 @@ class Client {
   }
 
   async waitFor(match: (f: Frame) => boolean, what: string, ms = 15_000): Promise<Frame> {
-    const until = Date.now() + ms;
-    while (Date.now() < until) {
+    const until = now() + ms;
+    while (now() < until) {
       const hit = this.frames.find(match);
       if (hit !== undefined) return hit;
       await sleep(25);
@@ -188,7 +190,7 @@ async function drive(
           currency: 'USD',
           reserve: scenario.auction.reserve,
           minIncrement: scenario.auction.minIncrement,
-          endTs: Date.now() + 600_000,
+          endTs: now() + 600_000,
           softCloseWindowMs:
             scenario.auction.softCloseMs > 0 ? scenario.auction.softCloseMs : 30_000,
           softCloseExtensionMs: 30_000,
@@ -417,13 +419,13 @@ async function drive(
   // The settlement is done when the fake shows every hold captured or voided and the ledger has
   // recorded the capture the fake committed.
   if (hammered) {
-    const until = Date.now() + REAL_TIMEOUT_MS;
+    const until = now() + REAL_TIMEOUT_MS;
     for (;;) {
       const snap = await snapshot();
       const fakeDone = snap.authorizations.every((a) => a.captureCount > 0 || a.voided);
       const fakeCaptured = snap.authorizations.reduce((n, a) => n + a.capturedCents, 0);
       if (fakeDone && fakeCaptured === ((await ledger()).lot?.capturedCents ?? 0)) break;
-      if (Date.now() > until) {
+      if (now() > until) {
         throw new Error(`${scenario.id}: settlement did not finish: ${JSON.stringify(snap)}`);
       }
       await sleep(250);
