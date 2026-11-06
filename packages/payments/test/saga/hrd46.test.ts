@@ -37,7 +37,7 @@ const NOT_FOUND_ANSWER: TransportResult = {
   attempts: 1,
 };
 
-const AUTH_PATH = /^\/v2\/payments\/authorizations\/([^/]+)$/;
+const READ_PATH = /^\/v2\/(?:payments\/authorizations|checkout\/orders)\/([^/]+)$/;
 
 interface World {
   server: FakePayPalServer;
@@ -47,8 +47,8 @@ interface World {
   deps: SettlementDeps;
   auth: (bidder: string) => string;
   order: (bidder: string) => string;
-  /** The next `times` reads of this authorization answer 404 (Infinity: every read). */
-  missing: (authId: string, times: number) => void;
+  /** The next `times` reads of this authorization or order answer 404 (Infinity: every read). */
+  missing: (id: string, times: number) => void;
 }
 
 const open: FakePayPalServer[] = [];
@@ -74,7 +74,7 @@ async function world(): Promise<World> {
   const left = new Map<string, number>();
   const auth: GatewayAuth = {
     send: async (req) => {
-      const raw = AUTH_PATH.exec(req.path)?.[1];
+      const raw = READ_PATH.exec(req.path)?.[1];
       const id = raw === undefined ? undefined : decodeURIComponent(raw);
       const n = id === undefined ? 0 : (left.get(id) ?? 0);
       if (req.method === 'GET' && id !== undefined && n > 0) {
@@ -121,7 +121,7 @@ async function world(): Promise<World> {
     deps: { journals, gateway, audit: { append: async () => undefined }, clock: payClock },
     auth: (bidder) => holds[bidder]?.authId ?? '',
     order: (bidder) => holds[bidder]?.orderId ?? '',
-    missing: (authId, times) => void left.set(authId, times),
+    missing: (id, times) => void left.set(id, times),
   };
 }
 
@@ -246,6 +246,48 @@ describe('HRD-46 a capture in doubt is never followed by the runner-up', () => {
     expect(review?.winner).toBeNull();
     expect(review?.failed).toEqual([]);
     expect(review?.voids['b1']).toBeUndefined();
+    expect(captureCallsOn(w, w.auth('b2'))).toBe(0);
+    expect(w.server.core.inspect(w.auth('b2')).voidEffects).toBe(0);
+    assertFakeInvariants(w.server.core);
+  });
+
+  it('a crash after the capture call then a hold and order that read 404 reach review', async () => {
+    const w = await world();
+    let crash = true;
+    const deps: SettlementDeps = {
+      ...w.deps,
+      boundary: (label) => {
+        if (crash && label === 'after:capture') {
+          crash = false;
+          throw new Error('crash');
+        }
+      },
+    };
+    // PayPal takes the capture; the process dies before the clock or the call is saved.
+    await expect(runSettlement(deps, 'auc1')).rejects.toThrow('crash');
+    expect(w.server.core.inspect(w.auth('b1')).capturedCents).toBe(22000);
+    const crashed = await w.journals.load('auc1');
+    expect(crashed?.intent).toMatchObject({ op: 'capture', holdId: 'hold-b1' });
+    expect(crashed?.unknownSince).toBeNull();
+
+    // It comes back reading another account: the authorization and the order answer 404.
+    w.missing(w.auth('b1'), Number.POSITIVE_INFINITY);
+    w.missing(w.order('b1'), Number.POSITIVE_INFINITY);
+    expect(await runSettlement(deps, 'auc1')).toMatchObject({ status: 'pending' });
+    const waiting = await w.journals.load('auc1');
+    expect(waiting?.state).toBe('CAPTURING');
+    expect(waiting?.unknownSince).toBe(START_MS);
+    expect(waiting?.intent).toMatchObject({ op: 'capture', holdId: 'hold-b1' });
+
+    w.clock.advance(11 * MIN);
+    const out = await runSettlement(deps, 'auc1');
+    expect(out).toMatchObject({ status: 'failed', reason: 'capture_outcome_unknown' });
+    const review = await w.journals.load('auc1');
+    expect(review?.state).toBe('FAILED_NEEDS_REVIEW');
+    expect(review?.winner).toBeNull();
+    expect(review?.failed).toEqual([]);
+    expect(review?.voids['b1']).toBeUndefined();
+    expect(w.server.core.inspect(w.auth('b1')).voidEffects).toBe(0);
     expect(captureCallsOn(w, w.auth('b2'))).toBe(0);
     expect(w.server.core.inspect(w.auth('b2')).voidEffects).toBe(0);
     assertFakeInvariants(w.server.core);

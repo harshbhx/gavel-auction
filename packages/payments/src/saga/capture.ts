@@ -323,6 +323,12 @@ class Run {
     // deadline sends the settlement to review with this hold kept.
     const unseen = inDoubt && truth?.status === 'NOT_FOUND';
     if (unseen) await this.startUnknownClock();
+    // A truth that cannot be read is no answer either (a 404 the order does not confirm,
+    // credentials for another account, an outage). A crash right after the capture call
+    // leaves the intent saved but not the clock, so the clock starts here too: otherwise
+    // the run would wait for a readable truth forever instead of reaching review under the
+    // unknown deadline (the pending-capture deadline once PayPal listed it PENDING).
+    if (inDoubt && truth === undefined) await this.startUnknownClock();
     if (truth !== undefined && !unseen) {
       const out = await this.judge(truth, target, null);
       if (out !== undefined) return out;
