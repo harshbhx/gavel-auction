@@ -113,10 +113,11 @@ jobs:
             echo "::notice::No web screenshot baselines are committed yet; web-visual is skipped."
           fi
       - uses: ./.github/actions/setup
-        if: steps.baselines.outputs.present == 'true' || github.event.inputs.update_baselines == 'true'
       - name: Install the browser
-        if: steps.baselines.outputs.present == 'true' || github.event.inputs.update_baselines == 'true'
         run: npx playwright install --with-deps chromium
+      - name: Run the accessibility specs
+        working-directory: packages/web
+        run: npm run test:a11y
       - name: Run the web specs
         if: steps.baselines.outputs.present == 'true' || github.event.inputs.update_baselines == 'true'
         working-directory: packages/web
