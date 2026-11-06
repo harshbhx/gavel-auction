@@ -25,6 +25,8 @@ export interface VoiceFeedProps {
   /** Input level 0..1. */
   level: number;
   entries: readonly VoiceFeedEntry[];
+  /** True when this build has no audio path to the server: no microphone state or level shows. */
+  unavailable?: boolean;
 }
 
 const MIC_KEY = {
@@ -54,22 +56,26 @@ function clampLevel(level: number): number {
 }
 
 /** Partial and final transcripts, parse results and the microphone state (R-WEB-066). */
-export function VoiceFeed({ mic, level, entries }: VoiceFeedProps) {
+export function VoiceFeed({ mic, level, entries, unavailable = false }: VoiceFeedProps) {
   const shown = clampLevel(level);
   const problem = mic === 'error' || mic === 'denied';
   return (
     <section className="gv-voice" aria-label={t('console.voice')}>
-      <div className="gv-voice__mic" data-state={mic}>
-        <Icon name={problem ? 'warning' : 'mic'} size={16} />
-        <span role="status">{t(MIC_KEY[mic])}</span>
-        <meter
-          className="gv-voice__level"
-          min={0}
-          max={1}
-          value={shown}
-          aria-label={t('console.mic.level')}
-        />
-      </div>
+      {unavailable ? (
+        <p role="status">{t('console.mic.unavailable')}</p>
+      ) : (
+        <div className="gv-voice__mic" data-state={mic}>
+          <Icon name={problem ? 'warning' : 'mic'} size={16} />
+          <span role="status">{t(MIC_KEY[mic])}</span>
+          <meter
+            className="gv-voice__level"
+            min={0}
+            max={1}
+            value={shown}
+            aria-label={t('console.mic.level')}
+          />
+        </div>
+      )}
       {entries.length === 0 ? (
         <p>{t('console.voice.empty')}</p>
       ) : (

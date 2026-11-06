@@ -1,4 +1,5 @@
 import { t } from '../copy/t';
+import { SETTLEMENT_STATES } from '../wire';
 import { buildLadder, FINAL_PHASES, type LadderLane, type SettlementView } from './ladderModel';
 
 export interface LadderCompactProps {
@@ -65,6 +66,7 @@ function Dot({ kind }: { kind: DotClass }) {
 export function LadderCompact({ view }: LadderCompactProps) {
   const model = buildLadder(view);
   if (model.waiting) return <p role="status">{t('ladder.waiting')}</p>;
+  const counts = view?.counts;
   const kinds = model.lanes.map(classOf);
   const captured = kinds.filter((k) => k === 'captured').length;
   const released = kinds.filter((k) => k === 'released').length;
@@ -84,6 +86,14 @@ export function LadderCompact({ view }: LadderCompactProps) {
           </li>
         ))}
       </ul>
+      {model.lanes.length === 0 && counts !== undefined && (
+        <ul aria-label={t('ladder.counts')} style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          {SETTLEMENT_STATES.flatMap((s) => {
+            const n = counts[s] ?? 0;
+            return n > 0 ? [<li key={s}>{`${n} ${t(`ladder.state.${s}`)}`}</li>] : [];
+          })}
+        </ul>
+      )}
       {model.phase !== null && FINAL_PHASES.includes(model.phase) ? (
         <p role="status">{t('screen.settleSummary', { c: captured, r: released })}</p>
       ) : null}

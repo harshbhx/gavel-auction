@@ -136,6 +136,10 @@ export const en = {
   'console.mic.stop': 'Turn off microphone',
   'console.mic.requesting': 'Asking for microphone access',
   'console.mic.live': 'Listening',
+  'console.mic.unavailable': 'Voice is not available in this build. Use manual entry.',
+  'console.settlement.needsReview':
+    'Settlement failed and needs review. Contact the winner or move to the runner-up.',
+  'console.settlement.inProgress': 'Settlement is in progress.',
   'console.mic.denied': 'Microphone blocked. Use manual entry.',
   'console.notBid': 'Not a bid',
   'console.confirmQueue': 'Confirm queue',
@@ -286,6 +290,7 @@ export const en = {
   'audit.export.hashUnavailable': 'Checksum unavailable in this browser',
   'ladder.title': 'PayPal hold status',
   'ladder.waiting': 'Waiting for settlement',
+  'ladder.counts': 'Holds by state',
   'ladder.state.HELD': 'Held',
   'ladder.state.BIDDING': 'In the auction',
   'ladder.state.WINNER_SELECTED': 'Winner selected',
