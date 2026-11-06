@@ -88,7 +88,8 @@ describe('store keeps yourHold and ladder counts', () => {
     }).state;
     state = reduce(state, {
       kind: 'wire',
-      msg: frame(2, {
+      msg: frame(6, {
+        rev: 2,
         auctionState: 'CAPTURING',
         yourHold: { ...OWN, capturedCents: 0, status: 'HELD', remainder: 'none' },
       }),
