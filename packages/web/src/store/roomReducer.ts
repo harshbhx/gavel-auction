@@ -4,7 +4,16 @@ import type {
   HammerMsg,
   RoomSnapshot,
   ServerMessage,
+  SettlementUpdateMsg,
 } from '../wire';
+
+/** Per-hold settlement data from the latest settlement_update that carried it. */
+export interface SettlementDetail {
+  rev: number;
+  holds: NonNullable<SettlementUpdateMsg['holds']>;
+  winnerPaddle: number | null;
+  invariants: { ok: boolean; violations: string[] };
+}
 
 export interface BidRecord {
   seq: number;
@@ -40,11 +49,15 @@ export interface RoomState {
   expectedBidderId: string | null;
   me: Identity | null;
   recentBids: readonly BidRecord[];
+  /** This bidder's highest accepted amount in cents; 0 when none is known. */
+  ownHighCents: number;
   confirmRequests: readonly ConfirmRequestMsg[];
   hammer: HammerMsg | null;
   audit: readonly AuditPayload[];
   /** True when audit rows may be missing: older ones were dropped or the snapshot window was full. */
   auditTruncated: boolean;
+  /** Absent until the server sends per-hold settlement data. */
+  settlementDetail?: SettlementDetail;
   lastError: { code: string; message: string; retryAfterMs: number | null } | null;
 }
 
@@ -83,6 +96,7 @@ export function initialRoomState(auctionId: string): RoomState {
     expectedBidderId: null,
     me: null,
     recentBids: [],
+    ownHighCents: 0,
     confirmRequests: [],
     hammer: null,
     audit: [],
@@ -111,6 +125,7 @@ function applySnapshot(state: RoomState, msg: Extract<ServerMessage, { t: 'state
     leaderPaddle: snap.roster.find((r) => r.bidderId === snap.leaderId)?.paddle ?? null,
     expectedBidderId: state.expectedBidderId,
     me: state.me,
+    ownHighCents: Math.max(state.ownHighCents, snap.you?.highBid ?? 0),
     // The hammer already fell and the snapshot does not carry it, so keep it unless the lot reopened.
     hammer: open ? null : state.hammer,
     // The snapshot does not carry confirmations either: keep the ones that have not expired.
@@ -118,6 +133,7 @@ function applySnapshot(state: RoomState, msg: Extract<ServerMessage, { t: 'state
     audit: [...snap.recentAudit],
     // The snapshot carries at most SNAPSHOT_AUDIT_ROWS rows: a full window may hide older ones.
     auditTruncated: snap.recentAudit.length >= SNAPSHOT_AUDIT_ROWS,
+    ...(state.settlementDetail === undefined ? {} : { settlementDetail: state.settlementDetail }),
   };
 }
 
@@ -178,9 +194,11 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
       };
     case 'hammer':
       return { ...state, hammer: msg };
-    case 'settlement_update':
-      return withSnapshot(state, (s) =>
-        s.settlement !== undefined && msg.rev < s.settlement.rev
+    case 'settlement_update': {
+      const stale =
+        state.snapshot?.settlement !== undefined && msg.rev < state.snapshot.settlement.rev;
+      const next = withSnapshot(state, (s) =>
+        stale
           ? s
           : {
               ...s,
@@ -191,6 +209,17 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
               },
             },
       );
+      if (stale || msg.holds === undefined) return next;
+      return {
+        ...next,
+        settlementDetail: {
+          rev: msg.rev,
+          holds: msg.holds,
+          winnerPaddle: msg.winnerPaddle ?? null,
+          invariants: msg.invariants ?? { ok: true, violations: [] },
+        },
+      };
+    }
     case 'audit_event':
       return {
         ...state,
@@ -207,6 +236,8 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
         },
       };
     case 'bid_accepted':
+      // Only the sender gets this reply, so the amount is this bidder's own accepted bid.
+      return msg.amount > state.ownHighCents ? { ...state, ownHighCents: msg.amount } : state;
     case 'bid_rejected':
       // Bid results are matched by mid in the pending-bid tracker.
       return state;

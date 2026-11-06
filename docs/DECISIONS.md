@@ -499,6 +499,7 @@ Status: accepted
 Owner: realtime
 Context: R-RT-141 asks for a Durable Object versus Node comparison. R-RT-142 makes Node the default and lets a Durable Object win only by passing every row of the decision table. The spike (RT-86) ran no Durable Object room, so every Durable Object row is unmeasured.
 Decision: Keep the Node host (D-0006 stands). No Durable Object host is built. The evidence and the missing half are in packages/server/spike/HOST-DECISION.md.
+Shipped path: the Node host is the only host that ships and the one every test, deploy and demo uses. The Durable Object side of the spike was not built, so it is neither a fallback nor a supported target.
 Alternatives:
 
 - Durable Object host: not chosen, no evidence on latency, recovery, storage, deploy time or free-plan limits.

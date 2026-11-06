@@ -1,0 +1,35 @@
+id: S11-last-100ms-race
+title: Twenty bids in the last 100 ms then hammer
+modes: [inproc]
+seed: 11
+clock: { startMs: 1793750400000 }
+auction: { itemId: lot-1, reserve: 5000, minIncrement: 500, softCloseMs: 0, mode: english }
+actors: { ana: { funding: wallet }, ben: { funding: wallet } }
+steps:
+  - { t: 0, actor: ana, do: register, ceiling: 50000 }
+  - { t: 0, actor: ben, do: register, ceiling: 50000 }
+  - { t: 1000, actor: auctioneer, do: open }
+  - { t: 9900, actor: ana, do: bid, amount: 6000 }
+  - { t: 9905, actor: ben, do: bid, amount: 6500 }
+  - { t: 9910, actor: ana, do: bid, amount: 7000 }
+  - { t: 9915, actor: ben, do: bid, amount: 7500 }
+  - { t: 9920, actor: ana, do: bid, amount: 8000 }
+  - { t: 9925, actor: ben, do: bid, amount: 8500 }
+  - { t: 9930, actor: ana, do: bid, amount: 9000 }
+  - { t: 9935, actor: ben, do: bid, amount: 9500 }
+  - { t: 9940, actor: ana, do: bid, amount: 10000 }
+  - { t: 9945, actor: ben, do: bid, amount: 10500 }
+  - { t: 9950, actor: ana, do: bid, amount: 11000 }
+  - { t: 9955, actor: ben, do: bid, amount: 11500 }
+  - { t: 9960, actor: ana, do: bid, amount: 12000 }
+  - { t: 9965, actor: ben, do: bid, amount: 12500 }
+  - { t: 9970, actor: ana, do: bid, amount: 13000 }
+  - { t: 9975, actor: ben, do: bid, amount: 13500 }
+  - { t: 9980, actor: ana, do: bid, amount: 14000 }
+  - { t: 9985, actor: ben, do: bid, amount: 14500 }
+  - { t: 9990, actor: ana, do: bid, amount: 15000 }
+  - { t: 9995, actor: ben, do: bid, amount: 15500 }
+  - { t: 10000, actor: auctioneer, do: hammer }
+expect:
+  - ledger: { winner: ben, captured: 15500, released: 34500, voided: [ana] }
+  - invariants: [I1, I2, I3, I4]

@@ -7,7 +7,7 @@ import { defineConfig, devices } from '@playwright/test';
  * chosen by GAVEL_MODE: "fake" (default, the fake payments backend) or "sandbox" (PayPal sandbox,
  * CI only). Sharding is the stock flag: `--shard=1/3`. One retry, trace kept on the first retry,
  * screenshots and video kept on failure. The voice path uses a fake media device in each browser
- * that supports one. Browsers are installed in CI only.
+ * that supports one; the microphone permission is granted on the Chromium-based projects only. Browsers are installed in CI only.
  */
 const chromiumFakeMedia = ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'];
 
@@ -29,12 +29,15 @@ export default defineConfig({
     video: 'retain-on-failure',
     timezoneId: 'UTC',
     locale: 'en-US',
-    permissions: ['microphone'],
   },
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'], launchOptions: { args: chromiumFakeMedia } },
+      use: {
+        ...devices['Desktop Chrome'],
+        permissions: ['microphone'],
+        launchOptions: { args: chromiumFakeMedia },
+      },
     },
     {
       name: 'firefox',
@@ -55,7 +58,11 @@ export default defineConfig({
     },
     {
       name: 'pixel-7',
-      use: { ...devices['Pixel 7'], launchOptions: { args: chromiumFakeMedia } },
+      use: {
+        ...devices['Pixel 7'],
+        permissions: ['microphone'],
+        launchOptions: { args: chromiumFakeMedia },
+      },
     },
   ],
 });

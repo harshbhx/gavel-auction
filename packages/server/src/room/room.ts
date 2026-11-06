@@ -215,6 +215,8 @@ export class Room {
   private engine: EnginePort | undefined;
   private lastState = 'OPEN';
   private roster = new Map<BidderId, RosterEntry>();
+  /** Each bidder's highest accepted amount, so a snapshot can restore their own high bid. */
+  private highBids = new Map<BidderId, Cents>();
   private replies = new Map<string, { reply: Reply; digest: string }>();
   private audit: AuditPayload[] = [];
   private readonly conns = new Map<ConnId, Connection>();
@@ -824,8 +826,10 @@ export class Room {
       this.confirms.drop(hold.confirmId);
       this.fanOutConfirm(resolved, hold);
     }
-    if (event.type === 'bid_accepted') this.bidCount += 1;
-    else this.rejectedCount += 1;
+    if (event.type === 'bid_accepted') {
+      this.bidCount += 1;
+      this.noteHighBid(event.bidderId, event.amount);
+    } else this.rejectedCount += 1;
     if (event.type === 'bid_accepted') this.deps.metrics?.bidAccepted();
     else this.deps.metrics?.bidRejected();
     this.pushAudit(audit);
@@ -1607,7 +1611,14 @@ export class Room {
         ...(own ? { you: own } : {}),
       };
     }
-    if (conn.bidderId && you) snapshot.you = { bidderId: conn.bidderId, ceiling: you.ceiling };
+    if (conn.bidderId && you) {
+      const high = this.highBids.get(conn.bidderId);
+      snapshot.you = {
+        bidderId: conn.bidderId,
+        ceiling: you.ceiling,
+        ...(high !== undefined ? { highBid: high } : {}),
+      };
+    }
     return snapshot;
   }
 
@@ -1804,6 +1815,7 @@ export class Room {
     this.config = fresh.config;
     this.engine = fresh.engine;
     this.roster = fresh.roster;
+    this.highBids = fresh.highBids;
     this.replies = fresh.replies;
     this.audit = fresh.audit;
     this.seq = fresh.seq;
@@ -1848,6 +1860,7 @@ export class Room {
     this.config = undefined;
     this.engine = undefined;
     this.roster = new Map();
+    this.highBids = new Map();
     this.replies = new Map();
     this.audit = [];
     this.seq = 0;
@@ -1989,9 +2002,15 @@ export class Room {
     }
   }
 
+  private noteHighBid(bidderId: BidderId, amount: Cents): void {
+    if (amount > (this.highBids.get(bidderId) ?? 0)) this.highBids.set(bidderId, amount);
+  }
+
   private remember(event: Extract<RoomEvent, { type: 'bid_accepted' | 'bid_rejected' }>): void {
-    if (event.type === 'bid_accepted') this.bidCount += 1;
-    else this.rejectedCount += 1;
+    if (event.type === 'bid_accepted') {
+      this.bidCount += 1;
+      this.noteHighBid(event.bidderId, event.amount);
+    } else this.rejectedCount += 1;
     this.acceptedWithoutBid.delete(`${event.bidderId}:${event.mid}`);
     const reply = this.replyFor(event);
     if (reply) {

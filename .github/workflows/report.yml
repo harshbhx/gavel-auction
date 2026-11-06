@@ -1,0 +1,46 @@
+name: report
+# Builds the quality report for a commit on main after the ci workflow succeeded (R-QA-032),
+# and attaches it as the quality-report artifact. The folder infra/pages/quality holds the page
+# builder; the hosted site serves the artifact's index.html at /quality. The page carries the commit
+# sha, so it can be matched to GET /version of the deploy.
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: report
+  cancel-in-progress: true
+
+jobs:
+  report:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    env:
+      GAVEL_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          # The builder script lives on the default branch. The commit under report is only
+          # named by GAVEL_SHA, because older commits do not carry the script.
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Build the report
+        run: npx vite-node infra/pages/quality/build.mjs -- quality-out
+      - name: Add the sha file
+        run: printf '%s\n' "$GAVEL_SHA" > quality-out/sha.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: quality-report
+          path: quality-out
+          retention-days: 30
+      - name: Summary
+        run: |
+          echo "Quality report for $GAVEL_SHA attached as the quality-report artifact." >> "$GITHUB_STEP_SUMMARY"

@@ -182,6 +182,15 @@ Not measured: audio, speech-to-text error, latency (text mode reports 0 ms), the
 modes (no recorded provider output is in the repo, no live run was done), and the AUTO and CONFIRM
 threshold calibration of issue 478. The G5 status above stays NOT RUN until the audio steps run.
 
+### G5 threshold calibration (issue 478)
+
+Decision: keep the defaults AUTO 0.85 and CONFIRM 0.50 (`defaultConfig`, R-VOX-063). Rationale: the
+text-level sweep above is flat from 0.70 to 0.95 (the parser emits only 0.50, 0.95 and 1.00), wrong
+accepts are 0.000 on the dev and held-out sets, and the confirm rate is 0.272. No audio sweep exists
+yet because no live provider run was done, so the audio set cannot move the thresholds either way.
+The held-out text set was not used. Revisit after the live run: if any wrong accept shows up on the
+audio set, raise AUTO to the lowest sweep value with zero wrong accepts.
+
 Live run (not in pull request CI): `npm run gate:g5 -w @gavel/e2e -- --write-gates` sends 20 noisy
 recorded bids (`G5_AUDIO_DIR/g5-01.wav` to `g5-20.wav`, supplied privately) to the live provider
 (`DEEPGRAM_API_KEY`) and then to the rule parser, and fills this section and a `G5-live` table. It
@@ -266,7 +275,7 @@ environment up once:
    cannot read them.
 
 The nightly workflow `.github/workflows/nightly-sandbox.yml` uses the same environment. It runs
-the real-sandbox specs R1 to R8 (`packages/e2e/sandbox`) at 20:30 UTC and on manual dispatch, then
+the real-sandbox specs R1 to R8 and R10 (`packages/e2e/sandbox`) at 20:30 UTC and on manual dispatch, then
 writes `report/sandbox.json` with one of pass, fail, inconclusive or skipped per spec. Without the
 secrets every spec is skipped and the run is green. Only the summary is uploaded (14 days); the
 transcripts stay on the runner. A spec whose gate is still open reports `inconclusive`, not `fail`.
@@ -281,3 +290,19 @@ The sandbox accounts must be US accounts. PayPal rejects INR orders for the sand
 Until the environment exists, GitHub creates it on first use with no reviewer and no branch rule,
 so do not run a gate before step 2 is done. The gate workflows are manual and main-only, so CI is
 not affected in the meantime.
+
+## Crash between capture and journal save (T-PAY-094, R-PAY-060)
+
+`packages/e2e/sandbox/r10.spec.ts` (R10, gate G1) runs in the nightly sandbox job with the same four
+secrets as R1 to R8. The real settlement saga and PayPal gateway settle a lot of three holds, the
+first run dies at the `after:capture` boundary (capture answered, journal not saved), a second run
+resumes from the journal. The spec checks one capture on the winner for the hammer price, the
+same request id on every capture call, losers voided and a journal that matches PayPal. A failed
+expectation leaves no result file, which the report counts as fail.
+
+Not covered without staging: killing a real server process with `GAVEL_CHECKPOINT_KILL=after_capture_request_before_response`
+on a deployed host. That needs `GAVEL_STAGING_URL` and `GAVEL_STAGING_ADMIN_KEY`, a staging server
+that is allowed to start with the hook (it is refused when `NODE_ENV=production`) and a way to
+restart it on the same store. Until the owner provides that, the in-process crash in R10 is the
+evidence, and the SPEC tag for PayPal's repeated-capture answer stays UNVERIFIED until R10 has
+passed once in the nightly run.

@@ -34,6 +34,8 @@ export interface PaddleScan {
   consumed: Set<number>;
 }
 
+const LOT_WORDS: ReadonlySet<string> = new Set(['lot', 'item', 'page']);
+
 type TokenLike = string | Token;
 
 const text = (t: TokenLike | undefined): string => (typeof t === 'string' ? t : (t?.text ?? ''));
@@ -64,6 +66,8 @@ export function extractPaddles(tokens: readonly TokenLike[]): PaddleScan {
   const consumed = new Set<number>();
   for (let i = 0; i < n; i++) {
     if (!PADDLE_WORDS.has(text(tokens[i]))) continue;
+    // "lot number twelve" names a lot, not a paddle.
+    if (text(tokens[i]) === 'number' && LOT_WORDS.has(text(tokens[i - 1]))) continue;
     let j = i + 1;
     while (j < n && PADDLE_WORDS.has(text(tokens[j]))) j += 1;
     if (j >= n) continue;

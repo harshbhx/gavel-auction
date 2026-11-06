@@ -54,14 +54,15 @@ const ROUNDS = 3;
 const LADDER_STEPS = 40;
 const MB = 1024 * 1024;
 
-interface Field {
+export interface Field {
   rig: Rig;
   room: Awaited<ReturnType<AuctionService['createAuction']>>;
   bidders: SimulatedBidder[];
 }
 
-async function setUp(deps: LoadDeps): Promise<Field> {
-  const rig = await makeRig();
+/** Opens one auction with `bidders` registered, holding bidders on `rig` (a fresh rig by default). */
+export async function setUp(deps: LoadDeps, shared?: Rig): Promise<Field> {
+  const rig = shared ?? (await makeRig());
   const service = rig.service();
   const auctionId: AuctionId = rig.ids.mint<'AuctionId'>();
   const room = await service.createAuction(auctionId, CONFIG, 'auctioneer-sub');

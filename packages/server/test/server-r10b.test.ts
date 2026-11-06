@@ -281,6 +281,37 @@ describe('#1516 and #1522 compose wiring', () => {
     expect(body.rooms.map((r) => r.auctionId)).toEqual(['01HZZZZZZZZZZZZZZZZZZZZZZA']);
   });
 
+  it('creates MAX_ROOMS + 1 auctions in sequence, finishing each, then restarts (HRD-42)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gavel-rooms-seq-'));
+    const env = {
+      PUBLIC_URL: 'http://localhost:8080',
+      TOKEN_SECRET: 'test-secret-test-secret-test-secret-0123',
+      ADMIN_KEY: 'test-admin-key-test-admin-key',
+      PAYMENTS: 'fake',
+      LOG_LEVEL: 'error',
+      STORE: 'file',
+      DATA_DIR: dir,
+      MAX_ROOMS: '2',
+    };
+    const first = await composeServer(env, { sink: () => undefined });
+    const ids = ['A', 'B', 'C'].map((c) => `01HZZZZZZZZZZZZZZZZZZZZZZ${c}`);
+    for (const id of ids) {
+      await first.service.createAuction(id as never, lot(), 'a1');
+      await (await first.service.room(id as never)).abort('test');
+      await first.service.idle();
+    }
+    expect(first.service.stats().rooms).toBeLessThanOrEqual(2);
+    await first.close();
+    const second = await composeServer(env, { sink: () => undefined });
+    running.push(second);
+    await second.service.idle();
+    await second.service.resume();
+    expect(second.service.stats().rooms).toBe(0);
+    await second.service.createAuction('01HZZZZZZZZZZZZZZZZZZZZZZD' as never, lot(), 'a1');
+    expect(second.service.stats().rooms).toBe(1);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   it('does not keep finished auctions loaded after a restart (R12-S02)', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'gavel-rooms-'));
     const env = {

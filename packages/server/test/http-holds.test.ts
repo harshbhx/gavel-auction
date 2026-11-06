@@ -1,0 +1,180 @@
+import { ManualClock, SeqIds, type AuctionConfig, type AuctionId } from '@gavel/shared';
+import { HoldError, type HoldRecord } from '@gavel/payments';
+import { describe, expect, it } from 'vitest';
+import { secretSetFromConfig } from '../src/auth/rotation';
+import { createHttpApp, mintToken, type HttpApp, type HttpDeps } from '../src/http/app';
+import { mountAuctions } from '../src/http/auctions';
+import { mountHolds, type HoldsPort } from '../src/http/holds';
+import { Room, type RoomDeps } from '../src/room/room';
+import { LedgerEngine } from '../src/runtime/ledger-engine';
+import { MemoryStore } from '../src/store/memory-store';
+
+const START = 1_789_000_000_000;
+const ADMIN = 'fake-admin-key';
+const SECRET = 'fake-secret-fake-secret-fake-0000';
+
+const config = {
+  mode: 'english',
+  currency: 'USD',
+  reserve: 10000,
+  minIncrement: 500,
+  endTs: START + 600_000,
+  softCloseWindowMs: 30_000,
+  softCloseExtensionMs: 30_000,
+  maxExtensions: 5,
+  ceilingPresets: [30000, 50000],
+  confirmConfidenceThreshold: 0.85,
+};
+
+interface Calls {
+  created: unknown[];
+  approved: unknown[];
+}
+
+function setup(): { app: HttpApp; deps: HttpDeps; calls: Calls; records: Map<string, HoldRecord> } {
+  const clock = new ManualClock(START);
+  const ids = new SeqIds();
+  const store = new MemoryStore(() => clock.now());
+  const rooms = new Map<string, Promise<Room>>();
+  const roomDeps = (id: AuctionId): RoomDeps => ({
+    store,
+    clock,
+    ids,
+    engine: (cfg) => new LedgerEngine(id, cfg),
+  });
+  const deps: HttpDeps = {
+    service: {
+      createAuction: (id, cfg: AuctionConfig, sub) => {
+        const p = Room.create(id, cfg, sub, roomDeps(id));
+        rooms.set(id, p);
+        return p;
+      },
+      room: (id) => {
+        const known = rooms.get(id);
+        if (known !== undefined) return known;
+        const p = Room.load(id, roomDeps(id));
+        rooms.set(id, p);
+        return p;
+      },
+    },
+    store,
+    clock,
+    ids,
+    secrets: secretSetFromConfig({ TOKEN_SECRET: SECRET }),
+    adminKey: ADMIN,
+    publicUrl: 'https://gavel.example.test',
+    corsOrigins: [],
+  };
+  const calls: Calls = { created: [], approved: [] };
+  const records = new Map<string, HoldRecord>();
+  const port: HoldsPort = {
+    service: {
+      createHoldOrder: async (i) => {
+        calls.created.push(i);
+        if (i.ceilingCents === 12345) throw new HoldError('ceiling_out_of_range', 'not a preset');
+        return { holdId: 'hold-1', orderId: 'order-1' };
+      },
+      completeApproval: async (i) => {
+        calls.approved.push(i);
+        return { holdId: i.holdId, status: 'HELD', ceilingCents: 30000 };
+      },
+    },
+    store: { get: async (id) => records.get(id) ?? null },
+  };
+  return { app: createHttpApp(deps, [mountAuctions, mountHolds(port)]), deps, calls, records };
+}
+
+async function newAuction(app: HttpApp): Promise<string> {
+  const res = await app.fetch(
+    new Request('http://h.test/api/auctions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-admin-key': ADMIN },
+      body: JSON.stringify({ title: 'Gala lot', config }),
+    }),
+  );
+  return ((await res.json()) as { auctionId: string }).auctionId;
+}
+
+const post = (app: HttpApp, path: string, body: unknown, token: string | null) =>
+  app.fetch(
+    new Request(`http://h.test${path}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(token === null ? {} : { authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify(body),
+    }),
+  );
+
+describe('hold routes (INT-R3-20)', () => {
+  it('creates a hold order for the session bidder with the auction presets', async () => {
+    const { app, deps, calls } = setup();
+    const auctionId = await newAuction(app);
+    const bidder = deps.ids.mint<'BidderId'>();
+    const m = await mintToken(deps, 'session', auctionId, bidder, bidder);
+    const res = await post(app, '/api/holds', { auctionId, ceilingCents: 30000 }, m.token);
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({ holdId: 'hold-1', orderId: 'order-1' });
+    expect(calls.created).toEqual([
+      { auctionId, bidderId: bidder, ceilingCents: 30000, presetsCents: [30000, 50000] },
+    ]);
+  });
+
+  it('refuses a body that names a bidder and a request with no token', async () => {
+    const { app, deps } = setup();
+    const auctionId = await newAuction(app);
+    const bidder = deps.ids.mint<'BidderId'>();
+    const m = await mintToken(deps, 'session', auctionId, bidder, bidder);
+    const named = await post(
+      app,
+      '/api/holds',
+      { auctionId, ceilingCents: 30000, bidderId: 'x' },
+      m.token,
+    );
+    expect(named.status).toBe(400);
+    const anon = await post(app, '/api/holds', { auctionId, ceilingCents: 30000 }, null);
+    expect(anon.status).toBe(401);
+  });
+
+  it('answers a payments error with the contract status and code', async () => {
+    const { app, deps } = setup();
+    const auctionId = await newAuction(app);
+    const bidder = deps.ids.mint<'BidderId'>();
+    const m = await mintToken(deps, 'session', auctionId, bidder, bidder);
+    const res = await post(app, '/api/holds', { auctionId, ceilingCents: 12345 }, m.token);
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toBe('ceiling_out_of_range');
+  });
+
+  it('approves only for the owner and answers anyone else as not found', async () => {
+    const { app, deps, calls, records } = setup();
+    const auctionId = await newAuction(app);
+    const owner = deps.ids.mint<'BidderId'>();
+    const other = deps.ids.mint<'BidderId'>();
+    records.set('hold-1', {
+      holdId: 'hold-1',
+      auctionId,
+      bidderId: owner,
+      orderId: 'order-1',
+      ceilingCents: 30000,
+      status: 'PENDING_APPROVAL',
+      createdAtMs: START,
+    });
+    const mine = await mintToken(deps, 'session', auctionId, owner, owner);
+    const theirs = await mintToken(deps, 'session', auctionId, other, other);
+    const denied = await post(
+      app,
+      '/api/holds/hold-1/approve',
+      { orderId: 'order-1' },
+      theirs.token,
+    );
+    expect(denied.status).toBe(404);
+    expect(calls.approved).toEqual([]);
+    const ok = await post(app, '/api/holds/hold-1/approve', { orderId: 'order-1' }, mine.token);
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ holdId: 'hold-1', status: 'HELD', ceilingCents: 30000 });
+    const unknown = await post(app, '/api/holds/nope/approve', { orderId: 'order-1' }, mine.token);
+    expect(unknown.status).toBe(404);
+  });
+});

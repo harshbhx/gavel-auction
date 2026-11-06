@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { diffLedger } from '../src/sandbox/harness.js';
-import { availability, env, newRunId, sleep } from '../src/sandbox/kit.js';
+import { availability, env, finish, newRunId, sleep } from '../src/sandbox/kit.js';
 import {
   ledgerFromJournal,
   ledgerFromTruth,
@@ -79,6 +79,15 @@ describe.skipIf(!availability.ok)(
           expect(lot.truth[loser]?.capturedCents).toBe(0);
         }
         expect(diffLedger(ledgerFromJournal(lot.journal), ledgerFromTruth(lot.truth))).toEqual([]);
+
+        // Every expectation above held; record it for the nightly report (a thrown expectation
+        // leaves no result file, which the report counts as a fail).
+        finish('R10', s, {
+          gate: 'G1',
+          met: true,
+          observed: 'resume adopted the capture: one capture on the winner, losers voided',
+          facts: { crashes: 1, captures: win?.captures?.length ?? 0 },
+        });
       },
       TIMEOUT,
     );
