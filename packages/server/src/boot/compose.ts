@@ -582,6 +582,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
             holdId: input.holdId,
             name: input.name,
           }),
+        approved: (holdId) => service.holdApproved(holdId),
       }),
     ],
   );

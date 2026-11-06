@@ -16,7 +16,12 @@ import {
   persistReauthorization,
   reauthorizeIfDue,
 } from '../../src/saga/reauth.js';
-import { reviewKeepHolds, runSettlement, type SettlementDeps } from '../../src/saga/void.js';
+import {
+  reviewKeepHolds,
+  reviewKeepShrinksAt,
+  runSettlement,
+  type SettlementDeps,
+} from '../../src/saga/void.js';
 import { MemoryHoldStore, MemoryJournalStore } from '../../src/stores/memory.js';
 import { Transport } from '../../src/transport.js';
 import type { Journal, PaymentAudit, SettlementPlan } from '../../src/types.js';
@@ -330,6 +335,30 @@ describe('R11-O01, R11-O04 one keep-set for every review release', () => {
     expect(reviewKeepHolds(j, { nowMs: now, releaseAll: true })).toEqual(new Set(['hold-b1']));
   });
 
+  it('names the moment a review in doubt lets the next candidates go (HRD-76)', async () => {
+    const rig = makeRig(RIG_CEILINGS);
+    await seed(rig, TWO);
+    rig.core.inject('capture', 'timeout_before', rig.auth['b1'] ?? '', 10);
+    await runSettlement(rig.deps, 'auc1');
+    rig.clock.advance(601_000);
+    await runSettlement(rig.deps, 'auc1');
+    const j = await rig.journals.load('auc1');
+    if (j === null) throw new Error('journal');
+    const now = rig.clock.nowMs();
+    const at = reviewKeepShrinksAt(j, { nowMs: now }) ?? 0;
+    // A day after the review began, and not a moment earlier, only the capture in doubt stays.
+    expect(at).toBeGreaterThan(now);
+    expect(at).toBeLessThanOrEqual(now + 86_400_001);
+    expect(reviewKeepHolds(j, { nowMs: at - 1 })).toEqual(new Set(['hold-b1', 'hold-b2']));
+    expect(reviewKeepHolds(j, { nowMs: at })).toEqual(new Set(['hold-b1']));
+    expect(reviewKeepShrinksAt(j, { nowMs: at })).toBeNull();
+    expect(reviewKeepShrinksAt(j, { nowMs: now, reviewHoldMaxAgeMs: 60_000 })).toBe(
+      at - 86_400_000 + 60_000,
+    );
+    // An operator release has already let them go.
+    expect(reviewKeepShrinksAt(j, { nowMs: now, releaseAll: true })).toBeNull();
+  });
+
   it('never keeps a candidate that already failed', async () => {
     const rig = makeRig(RIG_CEILINGS);
     await seed(rig);
@@ -361,6 +390,7 @@ describe('R11-O01, R11-O04 one keep-set for every review release', () => {
     if (j === null) throw new Error('journal');
     expect(j.cursor).toBe(1);
     expect(reviewKeepHolds(j, { nowMs: rig.clock.nowMs() })).toEqual(new Set());
+    expect(reviewKeepShrinksAt(j, { nowMs: rig.clock.nowMs() })).toBeNull();
     // The next run releases b2: no capture on it can be pending.
     await runSettlement(rig.deps, 'auc1');
     expect(rig.core.inspect(rig.auth['b2'] ?? '').voidEffects).toBe(1);
@@ -389,5 +419,6 @@ describe('R11-O01, R11-O04 one keep-set for every review release', () => {
     const j = await rig.journals.load('auc1');
     if (j === null) throw new Error('journal');
     expect(reviewKeepHolds(j, { nowMs: rig.clock.nowMs() })).toEqual(new Set(['hold-b1']));
+    expect(reviewKeepShrinksAt(j, { nowMs: rig.clock.nowMs() })).toBeNull();
   });
 });
