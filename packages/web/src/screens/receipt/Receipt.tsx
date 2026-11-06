@@ -14,20 +14,40 @@ export interface ReceiptProps {
   /** This viewer's paddle. */
   paddle: number | null;
   itemName: string;
-  /** Epoch ms shown on the receipt. */
-  at: number;
+  /** Server epoch ms of the settle event. Null hides the time: the render time is never shown. */
+  at: number | null;
   /** True when this winner is the runner-up promoted after the first winner could not be charged. */
   runnerUp?: boolean;
   contact?: ReactNode;
 }
 
-/** The JSON file content: exactly the settlement view, no remote call (R-WEB-099). */
-export function receiptJson(view: SettlementView): string {
-  return JSON.stringify(view, null, 2);
+/**
+ * The JSON file content, no remote call (R-WEB-099): the lot, the hammer price when this is the
+ * original winner's receipt, the settle time and the viewer's own hold. No other bidder appears.
+ */
+export function receiptJson(
+  view: SettlementView,
+  paddle: number | null,
+  at: number | null,
+): string {
+  const own = view.holds.find((h) => h.paddle === paddle);
+  return JSON.stringify(
+    {
+      lotId: view.lotId,
+      phase: view.phase,
+      ...(view.hammerPriceCents === undefined ? {} : { hammerPriceCents: view.hammerPriceCents }),
+      ...(at === null ? {} : { at: new Date(at).toISOString() }),
+      holds: own === undefined ? [] : [own],
+    },
+    null,
+    2,
+  );
 }
 
-function saveJson(view: SettlementView): void {
-  const url = URL.createObjectURL(new Blob([receiptJson(view)], { type: 'application/json' }));
+function saveJson(view: SettlementView, paddle: number | null, at: number | null): void {
+  const url = URL.createObjectURL(
+    new Blob([receiptJson(view, paddle, at)], { type: 'application/json' }),
+  );
   const a = document.createElement('a');
   a.href = url;
   a.download = `gavel-receipt-${view.lotId.replace(/[^A-Za-z0-9_-]/g, '')}.json`;
@@ -51,7 +71,8 @@ function Body({
     return <Failed uncertain={isWinner} reference={hold.idSuffix} contact={props.contact} />;
   }
   if (!isWinner) return <NonWinner hold={hold} itemName={props.itemName} at={props.at} />;
-  const price = view.hammerPriceCents ?? hold.capturedCents;
+  // The hammer price belongs to the original winner's receipt only.
+  const price = props.runnerUp === true ? null : (view.hammerPriceCents ?? null);
   if (props.runnerUp === true && isCaptured(hold)) {
     return (
       <Fallback
@@ -79,7 +100,7 @@ export function Receipt(props: ReceiptProps) {
         <Button variant="outline" onClick={() => window.print()}>
           {t('receipt.print')}
         </Button>
-        <Button variant="outline" onClick={() => saveJson(view)}>
+        <Button variant="outline" onClick={() => saveJson(view, paddle, props.at)}>
           {t('receipt.download')}
         </Button>
       </div>

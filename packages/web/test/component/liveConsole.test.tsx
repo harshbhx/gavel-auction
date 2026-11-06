@@ -2,7 +2,6 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
-import { saveSession } from '../../src/net/session';
 import { clearAuctioneerToken } from '../../src/store/session';
 
 const ROOM = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
@@ -24,12 +23,13 @@ class QuietSocket {
 describe('live console route', () => {
   beforeEach(() => {
     vi.stubGlobal('WebSocket', QuietSocket);
-    saveSession(ROOM, { token: 'pelican' });
+    window.location.hash = '#token=pelican';
   });
   afterEach(() => {
     vi.unstubAllGlobals();
     clearAuctioneerToken();
     window.sessionStorage.clear();
+    window.location.hash = '';
   });
 
   it('mounts the lot controls, manual entry, confirm queue and stop switch', () => {
