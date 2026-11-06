@@ -63,6 +63,37 @@ export const ApproveHoldResponse = z
   .strict();
 export type ApproveHoldResponse = z.infer<typeof ApproveHoldResponse>;
 
+/** Lifecycle of one hold as the payments hold store records it (payments `HoldStatus`). */
+export const HOLD_STATUSES = [
+  'PENDING_APPROVAL',
+  'HELD',
+  'CAPTURED',
+  'VOIDED',
+  'EXPIRED',
+  'DENIED',
+  'UNKNOWN',
+] as const;
+export type HoldStatusName = (typeof HOLD_STATUSES)[number];
+
+/** GET /api/holds/{holdId} response: the session bidder's own hold, nobody else's. */
+export const HoldViewResponse = z
+  .object({
+    holdId: id,
+    status: z.enum(HOLD_STATUSES),
+    ceilingCents: z.number().int().positive(),
+  })
+  .strict();
+export type HoldViewResponse = z.infer<typeof HoldViewResponse>;
+
+/** DELETE /api/holds/{holdId} response when the unapproved hold is released (now or before). */
+export const AbandonHoldResponse = z
+  .object({
+    holdId: id,
+    released: z.literal(true),
+  })
+  .strict();
+export type AbandonHoldResponse = z.infer<typeof AbandonHoldResponse>;
+
 /** Error body for every non-2xx response of the hold routes. */
 export const HoldErrorResponse = z
   .object({

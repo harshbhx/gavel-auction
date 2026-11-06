@@ -176,3 +176,36 @@ describe('error frames and room-size limits (R-RT-017, R-RT-121)', () => {
     expect(dec({ ...(fixtures.hammer as object), ranking }).ok).toBe(false);
   });
 });
+
+describe('settlement_update own hold (HRD-69, issue 712)', () => {
+  const own = {
+    bidderId: B1,
+    idSuffix: 'HOLD-1',
+    status: 'CAPTURED',
+    ceilingCents: 50000,
+    capturedCents: 13000,
+    releasedCents: 37000,
+    remainder: 'released',
+  };
+  const update = (extra: Record<string, unknown>) =>
+    dec({ ...(fixtures.settlement_update as object), ...extra });
+
+  it('carries the receiving bidder hold and the public winner paddle', () => {
+    expect(update({ yourHold: own, winnerPaddle: 12 }).ok).toBe(true);
+    expect(update({ yourHold: { ...own, status: 'VOIDED', remainder: 'none' } }).ok).toBe(true);
+  });
+
+  it('is optional, so an update without it still decodes', () => {
+    expect(update({}).ok).toBe(true);
+  });
+
+  it('rejects unknown fields, unknown states, fractional cents and a long id suffix', () => {
+    expect(update({ yourHold: { ...own, extra: 1 } }).ok).toBe(false);
+    expect(update({ yourHold: { ...own, status: 'SPENT' } }).ok).toBe(false);
+    expect(update({ yourHold: { ...own, remainder: 'gone' } }).ok).toBe(false);
+    expect(update({ yourHold: { ...own, capturedCents: 1.5 } }).ok).toBe(false);
+    expect(update({ yourHold: { ...own, releasedCents: -1 } }).ok).toBe(false);
+    expect(update({ yourHold: { ...own, idSuffix: 'HOLD-12' } }).ok).toBe(false);
+    expect(update({ yourHold: { ...own, bidderId: 'not-a-ulid' } }).ok).toBe(false);
+  });
+});

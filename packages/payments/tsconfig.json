@@ -6,7 +6,8 @@
     "declarationMap": false,
     "sourceMap": false,
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": { "@gavel/shared": ["../shared/src/hold-contract.ts"] }
   },
   "include": ["src", "test", "vitest.config.ts"]
 }

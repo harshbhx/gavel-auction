@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { InMemoryLedgerStore, type LedgerStore } from '@gavel/engine';
 import {
   FileKillStateStore,
+  HoldService,
   MemoryHoldStore,
   MemoryJournalStore,
   MemoryKillStateStore,
@@ -13,6 +14,7 @@ import {
   PersistentKillSwitch,
   TokenManager,
   emittingAudit,
+  guardGateway,
   Transport,
   WebhookVerifier,
   assertSandboxConfig,
@@ -71,6 +73,7 @@ import { createHttpApp } from '../http/app';
 import { mountAuctions } from '../http/auctions';
 import { mountAuctioneerToken } from '../http/auctioneer-token';
 import { mountControl } from '../http/control';
+import { mountHolds } from '../http/holds';
 import { mountInvites } from '../http/invites';
 import { nodeRoutesFor } from '../http/node-bridge';
 import { mountRead } from '../http/read';
@@ -287,6 +290,25 @@ function wsOrigins(config: { PUBLIC_URL: string; CORS_ORIGINS: readonly string[]
   return [...new Set([new URL(config.PUBLIC_URL).origin, ...config.CORS_ORIGINS])];
 }
 
+/**
+ * The gateway the hold routes get: orders, order reads, authorization and the void of an
+ * abandoned hold, all behind the kill switch. Capture and reauthorization stay with the
+ * settlement saga; a hold route that tried either would fail here before reaching PayPal.
+ */
+function holdRouteGateway(gateway: PaymentsGateway): PaymentsGateway {
+  const settlementOnly = (op: string): Promise<never> =>
+    Promise.reject(new Error(`${op} runs only in the settlement saga`));
+  return {
+    createOrder: (i) => gateway.createOrder(i),
+    getOrder: (id) => gateway.getOrder(id),
+    authorizeOrder: (id, requestId) => gateway.authorizeOrder(id, requestId),
+    getHoldTruth: (h) => gateway.getHoldTruth(h),
+    voidAuthorization: (authId, requestId) => gateway.voidAuthorization(authId, requestId),
+    capture: () => settlementOnly('capture'),
+    reauthorize: () => settlementOnly('reauthorize'),
+  };
+}
+
 function notFound(res: ServerResponse): void {
   res.writeHead(404, { 'content-type': 'application/json' });
   res.end('{"error":"not_found"}');
@@ -478,6 +500,16 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     adminKey: config.ADMIN_KEY,
     metrics: () => metrics.snapshot(),
   });
+  // The web approval flow (R-PAY-030, issue 1074): the same hold store, audit sink and kill
+  // switch as the settlement, so every PayPal call is audited and refused while payments are
+  // paused; the bidder always comes from the session token.
+  const holdService = new HoldService({
+    gateway: holdRouteGateway(guardGateway(payments.gateway, killSwitch)),
+    holds: stores.holds,
+    audit,
+    clock: { nowMs: () => clock.now() },
+    maxCeilingCents: payments.maxCeilingCents,
+  });
   const apiApp = createHttpApp(
     {
       service,
@@ -489,7 +521,18 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
       publicUrl: config.PUBLIC_URL,
       corsOrigins: config.CORS_ORIGINS,
     },
-    [mountAuctions, mountInvites, mountRead, mountControl, mountAuctioneerToken],
+    [
+      mountAuctions,
+      mountInvites,
+      mountRead,
+      mountControl,
+      mountAuctioneerToken,
+      mountHolds({
+        service: holdService,
+        store: stores.holds,
+        acceptsHolds: (auctionId) => service.acceptsHolds(auctionId as AuctionId),
+      }),
+    ],
   );
   const apiRoutes = nodeRoutesFor(apiApp, config.PUBLIC_URL);
   const hostExtra = opts.extraRoutes?.(service, stores.room);
