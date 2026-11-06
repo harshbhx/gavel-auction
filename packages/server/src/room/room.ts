@@ -270,6 +270,8 @@ export class Room {
   private settleRequested = false;
   private settleCalled = false;
   private abortPending = false;
+  /** True when the auctioneer (control or kill switch) ended the lot rather than the timer. */
+  private endedByAuctioneer = false;
   private revoked = new Set<BidderId>();
   private settlement: SettlementReport | undefined;
   private done = false;
@@ -1539,6 +1541,7 @@ export class Room {
     }
     this.seq = hammerSeq;
     this.lastState = 'SETTLING';
+    this.endedByAuctioneer = by !== undefined || abort !== undefined;
     this.hammered = { ...result, seq: hammerSeq, ts };
     for (const conn of this.conns.values()) this.sendHammer(conn, this.hammered);
     await this.requestSettle();
@@ -1553,6 +1556,7 @@ export class Room {
       winnerId: h.winnerId,
       price: h.price,
       ranking: h.ranking,
+      ...(this.endedByAuctioneer ? { stopped: true } : {}),
     });
   }
 
@@ -1734,6 +1738,7 @@ export class Room {
       endTs: this.endTsFor(view, this.deps.clock.now()),
       minNext: view.minNext,
       ...(view.paused ? { paused: true, remainingMs: view.remainingMs ?? 0 } : {}),
+      ...(this.hammered && this.endedByAuctioneer ? { stopped: true } : {}),
       roster: [...this.roster].map(([bidderId, r]) => ({
         bidderId,
         paddle: r.paddle,
@@ -1965,6 +1970,7 @@ export class Room {
     this.closingAt = fresh.closingAt;
     this.controlIds = fresh.controlIds;
     this.hammered = fresh.hammered;
+    this.endedByAuctioneer = fresh.endedByAuctioneer;
     this.revoked = fresh.revoked;
     this.settleRequested = fresh.settleRequested;
     this.settlement = fresh.settlement;
@@ -2015,6 +2021,7 @@ export class Room {
     this.acceptedWithoutBid = new Map();
     this.hammered = undefined;
     this.abortPending = false;
+    this.endedByAuctioneer = false;
     this.revoked = new Set();
     this.settleRequested = false;
     this.settlement = undefined;
@@ -2063,6 +2070,7 @@ export class Room {
         break;
       case 'control':
         this.controlIds.set(event.controlId, event.action);
+        if (event.action === 'hammer') this.endedByAuctioneer = true;
         if (event.action !== 'hammer' && event.action !== 'open') {
           try {
             this.applyClock(this.requireEngine(), event.action, event.ts, event.args?.extraMs);

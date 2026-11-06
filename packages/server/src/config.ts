@@ -42,6 +42,8 @@ const EnvObject = z.object({
   CORS_ORIGINS: csv.default(''),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   DEMO_MODE: flag.default('0'),
+  /** Most live demo rooms the demo rooms route keeps; further creates answer 429. */
+  DEMO_MAX_ROOMS: int(1).default('20'),
   ALLOW_MEMORY_STORE: flag.default('0'),
   RATE_BID_PER_S: int(1).default('3'),
   RATE_BID_BURST: int(1).default('5'),

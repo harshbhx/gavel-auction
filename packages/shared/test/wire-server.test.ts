@@ -175,6 +175,21 @@ describe('error frames and room-size limits (R-RT-017, R-RT-121)', () => {
     const ranking = Array.from({ length: 201 }, () => ({ bidderId: B1, amount: 1 }));
     expect(dec({ ...(fixtures.hammer as object), ranking }).ok).toBe(false);
   });
+
+  it('accepts the optional stopped flag on hammer and snapshot, and refuses a non-boolean', () => {
+    const hammer = fixtures.hammer as object;
+    expect(dec({ ...hammer, stopped: true }).ok).toBe(true);
+    expect(dec({ ...hammer, stopped: 'yes' }).ok).toBe(false);
+    const state = { ...ev, t: 'state' };
+    expect(dec({ ...state, snapshot: { ...snapshot, stopped: true } }).ok).toBe(true);
+    expect(dec({ ...state, snapshot: { ...snapshot, stopped: 1 } }).ok).toBe(false);
+  });
+
+  it('keeps stopped optional so older frames still decode', () => {
+    const decoded = dec(fixtures.hammer);
+    expect(decoded.ok).toBe(true);
+    if (decoded.ok) expect(decoded.value).not.toHaveProperty('stopped');
+  });
 });
 
 describe('settlement_update own hold (HRD-69, issue 712)', () => {

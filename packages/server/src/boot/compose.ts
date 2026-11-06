@@ -28,9 +28,12 @@ import {
   type WebhookEventStore,
 } from '@gavel/payments';
 import {
+  EpochMs,
   SystemClock,
   UlidMinter,
+  type AuctionConfig,
   type AuctionId,
+  type Cents,
   type Jti,
   type Logger,
   type RoomStore,
@@ -39,7 +42,13 @@ import type { AuthRole } from '../auth/authorize';
 import { auctioneerTokenLive } from '../auth/auctioneer-floor';
 import { previousSecretWarning, secretSetFromConfig, verifyRotating } from '../auth/rotation';
 import type { JtiStore } from '../auth/token';
-import { loadConfig, redactConfig, type LoadHooks, type ServerConfig } from '../config';
+import {
+  isProductionLike,
+  loadConfig,
+  redactConfig,
+  type LoadHooks,
+  type ServerConfig,
+} from '../config';
 import { createExportHandler as createLedgerExportHandler } from '../admin/export';
 import { createReplayBundleHandler } from '../admin/replay-bundle';
 import { createExportHandler } from '../http/export';
@@ -70,6 +79,8 @@ import { createAuctionService, type AuctionService } from '../runtime/auction-se
 import { lotIdOf } from '../runtime/ledger-engine';
 import { FileLedgerStore } from '../store/file-ledger-store';
 import { createHttpApp } from '../http/app';
+import { createDemoHandler, DEMO_RESET_PATH, DEMO_ROOMS_PATH, DEMO_SEED_PATH } from '../http/demo';
+import { createDemoHoldSource } from '../http/demo-holds';
 import { mountAuctions } from '../http/auctions';
 import { mountAuctioneerToken } from '../http/auctioneer-token';
 import { mountControl } from '../http/control';
@@ -92,6 +103,35 @@ type Env = Readonly<Record<string, string | undefined>>;
 
 /** A route the host adds on top of the built-in ones; returns true when it answered. */
 export type ExtraRoutes = (req: IncomingMessage, res: ServerResponse) => Promise<boolean>;
+
+const DEMO_PATHS: readonly string[] = [DEMO_RESET_PATH, DEMO_SEED_PATH, DEMO_ROOMS_PATH];
+
+function demoRoutesFor(
+  handler: (req: IncomingMessage, res: ServerResponse) => Promise<void>,
+): ExtraRoutes {
+  return async (req, res) => {
+    const path = (req.url ?? '').split('?')[0] ?? '';
+    if (!DEMO_PATHS.includes(path)) return false;
+    await handler(req, res);
+    return true;
+  };
+}
+
+/** Scripted demo lot: ten minutes from creation, whole-cent amounts. */
+function demoAuctionConfig(nowMs: number): AuctionConfig {
+  return {
+    mode: 'english',
+    currency: 'USD',
+    reserve: 10_000 as Cents,
+    minIncrement: 500 as Cents,
+    endTs: EpochMs(nowMs + 600_000),
+    softCloseWindowMs: 30_000,
+    softCloseExtensionMs: 30_000,
+    maxExtensions: 5,
+    ceilingPresets: [30_000 as Cents, 50_000 as Cents],
+    confirmConfidenceThreshold: 0.85,
+  };
+}
 
 export interface ComposeOptions {
   /** Where log lines go. Default: standard output. */
@@ -536,8 +576,28 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
   );
   const apiRoutes = nodeRoutesFor(apiApp, config.PUBLIC_URL);
   const hostExtra = opts.extraRoutes?.(service, stores.room);
+  // Demo routes exist only with DEMO_MODE=1 on the fake payments adapter; config refuses the
+  // flag under production-like settings, and the handler checks that again per request.
+  const demoRoutes: ExtraRoutes | undefined =
+    config.DEMO_MODE && config.PAYMENTS === 'fake'
+      ? demoRoutesFor(
+          createDemoHandler({
+            enabled: true,
+            production: isProductionLike(config),
+            adminKey: config.ADMIN_KEY,
+            ids,
+            service,
+            config: () => demoAuctionConfig(clock.now()),
+            auctioneerSub: 'demo-auctioneer',
+            holdFor: createDemoHoldSource(stores.holds, () => clock.now()),
+            maxRooms: config.DEMO_MAX_ROOMS,
+          }),
+        )
+      : undefined;
   const extra: ExtraRoutes = async (req, res) =>
-    (await apiRoutes(req, res)) || (hostExtra !== undefined && (await hostExtra(req, res)));
+    (demoRoutes !== undefined && (await demoRoutes(req, res))) ||
+    (await apiRoutes(req, res)) ||
+    (hostExtra !== undefined && (await hostExtra(req, res)));
   const versionRoute = createVersionRoute(resolveSha(env));
 
   const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {

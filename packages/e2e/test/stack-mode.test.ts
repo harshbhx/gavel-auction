@@ -38,6 +38,34 @@ describe('stack mode', () => {
     expect(existsSync(dir)).toBe(false);
   }, 90_000);
 
+  it('keeps the fake PayPal and its state alive when the server is killed', async () => {
+    const stack = await startStack({ externalFake: true });
+    running.push(stack);
+    expect(stack.alive().sort()).toEqual(['fake-paypal', 'server']);
+    const control = stack.fakeControlUrl ?? '';
+    const armed = await fetch(`${control}/__fake/inject`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ kind: 'http_500', op: 'capture', times: 2 }),
+    });
+    expect(armed.status).toBe(200);
+    const state = async (): Promise<{ pendingFaults: number }> =>
+      (await (await fetch(`${control}/__fake/state`)).json()) as { pendingFaults: number };
+    const before = await state();
+    expect(before.pendingFaults).toBe(1);
+
+    await stack.killServer();
+    expect(stack.alive()).toEqual(['fake-paypal']);
+    expect(await state()).toEqual(before);
+
+    await stack.restartServer();
+    expect(await healthy(stack.serverUrl)).toBe(true);
+    expect(await state()).toEqual(before);
+
+    await stack.stop();
+    expect(stack.alive()).toEqual([]);
+  }, 90_000);
+
   it('refuses to boot on a checkpoint name it does not know', async () => {
     await expect(startStack({ env: { GAVEL_CHECKPOINT_KILL: 'after_lunch' } })).rejects.toThrow(
       /GAVEL_CHECKPOINT_KILL/,

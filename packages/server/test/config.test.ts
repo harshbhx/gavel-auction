@@ -22,6 +22,7 @@ describe('server config (T-RT-089)', () => {
       STORE: 'memory',
       LOG_LEVEL: 'info',
       DEMO_MODE: false,
+      DEMO_MAX_ROOMS: 20,
       ALLOW_MEMORY_STORE: false,
       RATE_BID_PER_S: 3,
       RATE_BID_BURST: 5,

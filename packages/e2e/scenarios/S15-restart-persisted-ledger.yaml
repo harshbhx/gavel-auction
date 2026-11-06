@@ -1,6 +1,6 @@
 id: S15-restart-persisted-ledger
 title: Server restart keeps registered bidders, bids and price
-modes: [inproc]
+modes: [inproc, stack]
 seed: 15
 clock: { startMs: 1793750400000 }
 auction: { itemId: lot-1, reserve: 5000, minIncrement: 500, softCloseMs: 0, mode: english }
