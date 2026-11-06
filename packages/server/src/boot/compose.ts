@@ -57,6 +57,13 @@ import { createOpsSummaryRoute, createPrometheusRoute } from '../obs/ops-summary
 import { createWarmupRoute, type WarmupStep } from '../warmup/warmup';
 import { createAuctionService, type AuctionService } from '../runtime/auction-service';
 import { FileLedgerStore } from '../store/file-ledger-store';
+import { createHttpApp } from '../http/app';
+import { mountAuctions } from '../http/auctions';
+import { mountAuctioneerToken } from '../http/auctioneer-token';
+import { mountControl } from '../http/control';
+import { mountInvites } from '../http/invites';
+import { nodeRoutesFor } from '../http/node-bridge';
+import { mountRead } from '../http/read';
 import { acquireDataDirLock } from '../store/data-dir-lock';
 import { FileRoomStore } from '../store/file-room-store';
 import { MemoryStore } from '../store/memory-store';
@@ -398,7 +405,23 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     adminKey: config.ADMIN_KEY,
     metrics: () => metrics.snapshot(),
   });
-  const extra = opts.extraRoutes?.(service, stores.room);
+  const apiApp = createHttpApp(
+    {
+      service,
+      store: stores.room,
+      clock,
+      ids,
+      secrets,
+      adminKey: config.ADMIN_KEY,
+      publicUrl: config.PUBLIC_URL,
+      corsOrigins: config.CORS_ORIGINS,
+    },
+    [mountAuctions, mountInvites, mountRead, mountControl, mountAuctioneerToken],
+  );
+  const apiRoutes = nodeRoutesFor(apiApp, config.PUBLIC_URL);
+  const hostExtra = opts.extraRoutes?.(service, stores.room);
+  const extra: ExtraRoutes = async (req, res) =>
+    (await apiRoutes(req, res)) || (hostExtra !== undefined && (await hostExtra(req, res)));
   const versionRoute = createVersionRoute(resolveSha(env));
 
   const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
@@ -426,7 +449,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     if (path === '/ops/rooms') return opsRoomsRoute(req, res);
     if (path === WEBHOOK_PATH) return webhookRoute(req, res);
     if (EXPORT_PATH.test(path)) return exportRoute(req, res);
-    if (extra !== undefined && (await extra(req, res))) return;
+    if (await extra(req, res)) return;
     notFound(res);
   };
   const http = createServer((req, res) => {
