@@ -48,13 +48,22 @@ export const CONFIG = {
 } as unknown as AuctionConfig;
 
 const noSleep = async (): Promise<void> => undefined;
+/** Jitter draw of the payment transport: fixed, so a retry waits just under its ceiling. */
+const TOP_OF_RANGE = 0.999;
 
 /** One fake PayPal server plus every store that has to outlive a restart of the service. */
 export async function makeRig() {
   const paypal = new FakePayPalServer({ timers: { sleep: noSleep } });
   await paypal.start();
+  /** Every wait the payment transport asked for, in ms; nothing really sleeps. */
+  const sleeps: number[] = [];
   const auth = new TokenManager({
-    transport: new Transport({ sleep: noSleep }),
+    transport: new Transport({
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+      random: () => TOP_OF_RANGE,
+    }),
     baseUrl: paypal.url,
     clientId: 'fake-client',
     clientSecret: 'fake-secret-value',
@@ -102,7 +111,7 @@ export async function makeRig() {
       killSwitch,
       ...extra,
     });
-  return { paypal, clock, ids, stores, holdsApi, gateway, service };
+  return { paypal, clock, ids, stores, holdsApi, gateway, service, sleeps };
 }
 
 export type Rig = Awaited<ReturnType<typeof makeRig>>;
