@@ -6,11 +6,11 @@ A short path through the repository for judges. Everything is PayPal sandbox onl
 
 - The web UI is owned by a contributor and may still be in progress. See `README.md` for the current run instructions instead of relying on any step written here.
 - The hosted demo is not published yet. `docs/DEMO.md` lists what is available and what is not.
-- Real versus recorded: the fake PayPal demo and the replay are recorded or simulated, not live PayPal. Only gates G1 and G4 have been observed against the real sandbox. Gates G3 and G5 have not been run yet; see `docs/GATES.md` for each gate and its result.
+- Real versus recorded: the fake PayPal demo and the replay are recorded or simulated, not live PayPal. Gates G0, G1, G2 and G4 have run against the real sandbox; G3 (a timed probe still running, no result recorded) and G5 have not produced a result. Committed run logs exist for G1, G2 and G4 only; G0 is an Actions run log. See `docs/GATES.md` for each gate and its result. Settlement of a whole auction and crash recovery have been exercised against the fake PayPal only.
 
 ## Five minute path
 
-A judge needs a browser and nothing else; no install, no account. The walkthrough is checked by `packages/e2e/specs/judge-walkthrough.spec.ts` on the fake stack, and every night against the hosted site by `.github/workflows/judge-smoke.yml`. Both must finish within 300 s.
+This table is the target behaviour. It cannot be followed today: no hosted demo URL is published (see `docs/DEMO.md`). `packages/e2e/specs/judge-walkthrough.spec.ts` covers steps 1 and 2 on the fake stack only. The nightly `.github/workflows/judge-smoke.yml` runs that spec against the hosted site only when the repository variable `JUDGE_URL` is set; while it is unset the job ends green with a notice and has tested nothing. Steps 3 to 5 have no automated check.
 
 | Step | Persona    | What to do                                          | Expected outcome                                                                                         |
 | ---- | ---------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
@@ -26,7 +26,7 @@ Where to look afterwards:
 - Version: `GET /version` on the API host returns the deployed commit; it should match the report.
 - Audit export: the audit trail link in step 5, and the verification steps below.
 
-Steps 3 and 4 depend on the web UI; the automated spec covers steps 1 and 2 today.
+Steps 3 and 4 depend on the web UI and are not covered by any automated check; the spec covers steps 1 and 2 only.
 
 ## Run the fake-PayPal demo
 

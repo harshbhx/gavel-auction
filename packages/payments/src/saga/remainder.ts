@@ -17,12 +17,13 @@ import { truthArgs } from './truth.js';
  *   C        the remainder cannot be voided; recorded `remainder_unreleased`, left to expire.
  *   unknown  as B.
  *
- * VERIFIED (G1, sandbox 2026-11-04, wallet buyer): decision A. The authorization keeps its
+ * OBSERVED (G1, sandbox 2026-11-04 wallet and 2026-11-05 card runs, both PayPal-account orders): decision A. The authorization keeps its
  * original amount (G1.6: amount 500.00, CAPTURED, captured 350.00), so the amount cannot
  * tell a released remainder from an open one, and a void afterwards always answers 422
  * PREVIOUSLY_CAPTURED (G1.7). The default is therefore A, the decision recorded in
- * `gates-result.json` (a test keeps the two equal). Card buyers are untested and card
- * checkout is off (G2); a deployment that meets an open remainder runs mode B, which the
+ * `gates-result.json` (a test keeps the two equal). Release of the remainder is inferred
+ * from CAPTURED and the 422, not read from a buyer balance, and capture of a guest card order
+ * was not run on the sandbox; a deployment that meets an open remainder runs mode B, which the
  * fake models with `autoReleaseRemainder: false`. In mode A a hold whose order does not
  * list our final capture also takes the explicit void.
  *
