@@ -337,6 +337,9 @@ export class Room {
     revokeBidder(bidderId: BidderId, reason: RevokeReason, holdRef?: string): Promise<RevokeOutcome>;
     stop(): void;
     submitBid(conn: Connection, msg: BidMsg): Promise<void>;
+    submitVoiceBid(bidderId: BidderId, msg: BidMsg): Promise<void>;
+    // Warning: (ae-forgotten-export) The symbol "VoiceView" needs to be exported by the entry point index.d.ts
+    voiceView(): VoiceView | undefined;
 }
 
 // @public (undocumented)

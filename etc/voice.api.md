@@ -13,6 +13,18 @@ export const AUDIO_ERROR_CODES: readonly ["AUDIO_UNAUTHORIZED", "AUDIO_BAD_FRAME
 export const AUDIO_IDLE_MS = 15000;
 
 // @public (undocumented)
+export interface AudioBatch {
+    // (undocumented)
+    flags: number;
+    // (undocumented)
+    pcm: Int16Array;
+    // (undocumented)
+    seq: number;
+    // (undocumented)
+    tsMs: number;
+}
+
+// @public (undocumented)
 export type AudioErrorCode = (typeof AUDIO_ERROR_CODES)[number];
 
 // @public (undocumented)
@@ -883,6 +895,69 @@ export type Decision = {
 };
 
 // @public (undocumented)
+export function decodeBatch(buf: Uint8Array): AudioBatch;
+
+// @public (undocumented)
+export function encodeBatch(b: AudioBatch): Uint8Array;
+
+// @public (undocumented)
+export interface FailoverClock {
+    // (undocumented)
+    clearTimeout(id: number): void;
+    // (undocumented)
+    now(): number;
+    // (undocumented)
+    setTimeout(fn: () => void, ms: number): number;
+}
+
+// @public (undocumented)
+export interface FailoverOptions {
+    circuitMs?: number;
+    // (undocumented)
+    clock: FailoverClock;
+    // (undocumented)
+    fallback: () => SttProvider;
+    lateFinalMs?: number;
+    // (undocumented)
+    onSwitch?: (info: {
+        from: string;
+        to: string;
+        reason: SwitchReason;
+    }) => void;
+    primary: () => SttProvider;
+    replayMs?: number;
+    silenceMs?: number;
+}
+
+// Warning: (ae-forgotten-export) The symbol "InstrumentedSttProvider" needs to be exported by the entry point index.d.ts
+//
+// @public
+export class FailoverStt implements InstrumentedSttProvider {
+    constructor(opts: FailoverOptions);
+    // (undocumented)
+    events(): AsyncIterable<SttEvent>;
+    // (undocumented)
+    get name(): SttProvider['name'];
+    // (undocumented)
+    start(opts: {
+        keyterms: string[];
+        language: 'en';
+    }): Promise<void>;
+    // Warning: (ae-forgotten-export) The symbol "SttStats" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    readonly stats: SttStats;
+    // (undocumented)
+    stop(): Promise<void>;
+    // (undocumented)
+    switches: number;
+    // (undocumented)
+    get usingPrimary(): boolean;
+    // (undocumented)
+    write(batch: AudioBatch): void;
+}
+
+// @public (undocumented)
 export type FrameResult = {
     ok: true;
     bytes: number;
@@ -919,7 +994,7 @@ export interface ParseContext {
         bidder: BidderRef | null;
         amountCents: Cents;
         ageMs: number;
-    };
+    } | undefined;
     // (undocumented)
     speakerBidderId?: string;
     speakerPaddle?: string;
@@ -1201,6 +1276,9 @@ export const parseResultSchema: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodObje
 }>;
 
 // @public
+export function parseTimeline(input: unknown): Timeline;
+
+// @public
 export function parseUtterance(text: string, ctx?: ParseContext): ParseResult;
 
 // @public
@@ -1315,6 +1393,32 @@ export interface PlaceBidContext {
     promptNowMs?: number;
 }
 
+// @public (undocumented)
+export const realClock: FailoverClock;
+
+// @public
+export interface ReplayScheduler {
+    // (undocumented)
+    clearTimeout(id: number): void;
+    // (undocumented)
+    setTimeout(fn: () => void, ms: number): number;
+}
+
+// @public
+export class ReplayStt implements SttProvider {
+    constructor(timeline: Timeline, scheduler: ReplayScheduler);
+    // (undocumented)
+    events(): AsyncIterable<SttEvent>;
+    // (undocumented)
+    readonly name: "replay";
+    // (undocumented)
+    start(): Promise<void>;
+    // (undocumented)
+    stop(): Promise<void>;
+    // (undocumented)
+    write(): void;
+}
+
 // @public
 export function resolveConfirm(decision: Decision, answer: {
     optionId: string;
@@ -1325,6 +1429,25 @@ export function resolveConfirm(decision: Decision, answer: {
 // @public
 export const RETRACT_ADVISORY_MS = 8000;
 
+// @public (undocumented)
+export interface SelectDeps {
+    factories?: Partial<Record<SttName, (env: SttEnv) => SttProvider>>;
+    // Warning: (ae-forgotten-export) The symbol "FetchLike" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    fetch?: FetchLike;
+    log?: (message: string, fields: {
+        provider: SttName;
+    }) => void;
+    warn?: (message: string, fields: {
+        provider: SttName;
+        usedInstead?: SttName;
+    }) => void;
+}
+
+// @public
+export function selectProvider(env: SttEnv, deps?: SelectDeps): SttProvider;
+
 // @public
 export const STALE_SEGMENT_MS = 5000;
 
@@ -1334,6 +1457,76 @@ export interface StreamKey {
     roomId: string;
     source: string;
 }
+
+// @public (undocumented)
+export const STT_NAMES: readonly ["deepgram", "groq", "webspeech", "fake", "replay"];
+
+// @public
+export class SttConfigError extends Error {
+    constructor(code: SttConfigErrorCode, message: string);
+    // Warning: (ae-forgotten-export) The symbol "SttConfigErrorCode" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    readonly code: SttConfigErrorCode;
+}
+
+// @public
+export interface SttEnv {
+    // (undocumented)
+    DEEPGRAM_API_KEY?: string;
+    // (undocumented)
+    GROQ_API_KEY?: string;
+    // (undocumented)
+    VOICE_STT?: string;
+}
+
+// @public (undocumented)
+export type SttEvent = {
+    type: 'interim';
+    text: string;
+    startMs: number;
+} | {
+    type: 'final';
+    text: string;
+    words: SttWord[];
+    startMs: number;
+    endMs: number;
+    confidence: number;
+    speechFinal: boolean;
+} | {
+    type: 'utterance_end';
+    atMs: number;
+} | {
+    type: 'error';
+    code: SttErrorCode;
+    retryable: boolean;
+} | {
+    type: 'state';
+    state: SttState;
+};
+
+// @public (undocumented)
+export type SttName = (typeof STT_NAMES)[number];
+
+// @public (undocumented)
+export interface SttProvider {
+    // (undocumented)
+    events(): AsyncIterable<SttEvent>;
+    // (undocumented)
+    readonly name: 'deepgram' | 'groq' | 'webspeech' | 'fake' | 'replay';
+    // (undocumented)
+    start(opts: {
+        keyterms: string[];
+        language: 'en';
+    }): Promise<void>;
+    stop(): Promise<void>;
+    write(batch: AudioBatch): void;
+}
+
+// Warning: (ae-forgotten-export) The symbol "timelineSchema" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export type Timeline = z.infer<typeof timelineSchema>;
 
 // @public
 export function toAuditRecord(d: Decision): AuditRecord;
@@ -1990,6 +2183,15 @@ export const voiceEvidenceSchema: z.ZodObject<{
     replay: boolean;
 }>;
 
+// @public (undocumented)
+export class VoiceFrameError extends Error {
+    constructor(code: VoiceFrameErrorCode, message?: string);
+    // Warning: (ae-forgotten-export) The symbol "VoiceFrameErrorCode" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    readonly code: VoiceFrameErrorCode;
+}
+
 // @public
 export class VoicePipeline {
     constructor(deps: PipelineDeps);
@@ -1998,7 +2200,6 @@ export class VoicePipeline {
         amountCents: Cents;
     }): AnswerOutcome;
     noteSpeech(): void;
-    // Warning: (ae-forgotten-export) The symbol "SttEvent" needs to be exported by the entry point index.d.ts
     push(ev: SttEvent): PipelineOutput[];
     tick(): PipelineOutput[];
 }
@@ -2030,6 +2231,10 @@ export interface VoiceSessionDeps {
 // Warnings were encountered during analysis:
 //
 // /home/runner/work/gavel-auction/gavel-auction/.api-types/voice/pipeline/pipeline.d.ts:29:5 - (ae-forgotten-export) The symbol "AnswerOutcome" needs to be exported by the entry point index.d.ts
+// /home/runner/work/gavel-auction/gavel-auction/.api-types/voice/stt/failover.d.ts:26:9 - (ae-forgotten-export) The symbol "SwitchReason" needs to be exported by the entry point index.d.ts
+// /home/runner/work/gavel-auction/gavel-auction/.api-types/voice/stt/provider.d.ts:18:5 - (ae-forgotten-export) The symbol "SttWord" needs to be exported by the entry point index.d.ts
+// /home/runner/work/gavel-auction/gavel-auction/.api-types/voice/stt/provider.d.ts:28:5 - (ae-forgotten-export) The symbol "SttErrorCode" needs to be exported by the entry point index.d.ts
+// /home/runner/work/gavel-auction/gavel-auction/.api-types/voice/stt/provider.d.ts:32:5 - (ae-forgotten-export) The symbol "SttState" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 
