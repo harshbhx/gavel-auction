@@ -171,6 +171,43 @@ export interface WebhookVerifierOptions {
    * Only applied when a source is given.
    */
   maxCallsPerSource?: number;
+  /**
+   * Most calls per window that sources without a recent successful verification may use
+   * together. Default half of `maxCallsPerWindow`. A source that PayPal has verified for
+   * (a real sender) may use the rest of the window, so many forging sources can never use
+   * up the whole budget.
+   */
+  maxUnprovenCalls?: number;
+}
+
+/** How long a source stays proven after PayPal verified one of its deliveries. */
+const PROVEN_TTL_MS = 10 * 60_000;
+
+/**
+ * The key a source is counted under. An IPv6 client owns a whole /64, so the key is its
+ * first four groups; an IPv4-mapped IPv6 address counts as the IPv4 address.
+ */
+export function sourceKey(source: string): string {
+  let a = source.trim().toLowerCase();
+  const zone = a.indexOf('%');
+  if (zone >= 0) a = a.slice(0, zone);
+  if (a.startsWith('[') && a.endsWith(']')) a = a.slice(1, -1);
+  if (!a.includes(':')) return a;
+  const mapped = /^(?:0{0,4}:){0,5}:?ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(a);
+  if (mapped?.[1] !== undefined) return mapped[1];
+  let groups: string[];
+  const dbl = a.indexOf('::');
+  if (dbl >= 0) {
+    const head = a.slice(0, dbl) === '' ? [] : a.slice(0, dbl).split(':');
+    const tail = a.slice(dbl + 2) === '' ? [] : a.slice(dbl + 2).split(':');
+    const fill = Array<string>(Math.max(0, 8 - head.length - tail.length)).fill('0');
+    groups = [...head, ...fill, ...tail];
+  } else {
+    groups = a.split(':');
+  }
+  if (groups.length !== 8 || groups.some((g) => !/^[0-9a-f]{1,4}$/.test(g))) return a;
+  const first = groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, ''));
+  return first.join(':') + '::/64';
 }
 
 export class WebhookVerifier {
@@ -187,6 +224,10 @@ export class WebhookVerifier {
   private callsInWindow = 0;
   private redeliveryCallsInWindow = 0;
   private readonly perSource = new Map<string, number>();
+  private readonly maxUnproven: number;
+  private unprovenCallsInWindow = 0;
+  /** Sources PayPal verified a delivery for, with when that lapses. Bounded. */
+  private readonly proven = new Map<string, number>();
   private readonly maxCallsPerSource: number;
   /**
    * Fingerprints of deliveries PayPal already answered, byte for byte (transmission id,
@@ -207,6 +248,7 @@ export class WebhookVerifier {
     this.maxCalls = opts.maxCallsPerWindow ?? (this.fake ? Number.POSITIVE_INFINITY : 120);
     this.windowMs = opts.windowMs ?? 60_000;
     this.maxCallsPerSource = opts.maxCallsPerSource ?? Math.max(1, Math.ceil(this.maxCalls / 4));
+    this.maxUnproven = opts.maxUnprovenCalls ?? Math.max(1, Math.ceil(this.maxCalls / 2));
     this.maxRedeliveryCalls =
       opts.maxRedeliveryCallsPerWindow ?? Math.max(1, Math.ceil(this.maxCalls / 4));
   }
@@ -237,22 +279,47 @@ export class WebhookVerifier {
    * use only a share of the window when the caller names it, and repeated requests
    * are answered from `answered` without a slot (R8-P07).
    */
-  private takeCallSlot(source: string | undefined, redelivery: boolean): boolean {
+  private isProven(key: string): boolean {
+    const until = this.proven.get(key);
+    if (until === undefined) return false;
+    if (until <= this.nowMs()) {
+      this.proven.delete(key);
+      return false;
+    }
+    return true;
+  }
+
+  private markProven(key: string): void {
+    this.proven.delete(key);
+    this.proven.set(key, this.nowMs() + PROVEN_TTL_MS);
+    if (this.proven.size > MAX_REMEMBERED) {
+      const oldest = this.proven.keys().next().value;
+      if (oldest !== undefined) this.proven.delete(oldest);
+    }
+  }
+
+  private takeCallSlot(sourceRaw: string | undefined, redelivery: boolean): boolean {
+    const source = sourceRaw === undefined ? undefined : sourceKey(sourceRaw);
     const now = this.nowMs();
     if (now - this.windowStartMs >= this.windowMs || now < this.windowStartMs) {
       this.windowStartMs = now;
       this.callsInWindow = 0;
       this.redeliveryCallsInWindow = 0;
+      this.unprovenCallsInWindow = 0;
       this.perSource.clear();
     }
     if (this.callsInWindow >= this.maxCalls) return false;
     // R12-P04: an old transmission time is cheap to forge, so redeliveries share a smaller
     // part of the window and cannot use up the slots of fresh deliveries.
     if (redelivery && this.redeliveryCallsInWindow >= this.maxRedeliveryCalls) return false;
-    if (source !== undefined) {
+    // A source PayPal has verified for may use the whole window (PayPal sends bursts from a
+    // few addresses); every other source shares the unproven part, one share each.
+    if (source !== undefined && !this.isProven(source)) {
+      if (this.unprovenCallsInWindow >= this.maxUnproven) return false;
       const used = this.perSource.get(source) ?? 0;
       if (used >= this.maxCallsPerSource) return false;
       this.perSource.set(source, used + 1);
+      this.unprovenCallsInWindow += 1;
     }
     this.callsInWindow += 1;
     if (redelivery) this.redeliveryCallsInWindow += 1;
@@ -375,6 +442,7 @@ export class WebhookVerifier {
       return { ok: false, reason: 'verification_failed' };
     }
     this.remember(key, true);
+    if (source !== undefined) this.markProven(sourceKey(source));
     return { ok: true };
   }
 }

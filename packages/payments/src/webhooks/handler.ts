@@ -39,6 +39,24 @@ export interface WebhookHandlerDeps {
    * is answered with 503 so PayPal redelivers the event (R-PAY-093).
    */
   onVerified: (event: VerifiedWebhook) => Promise<void>;
+  /**
+   * True for the event types the intake acts on. A delivery of any other type is answered
+   * 200 without asking PayPal to verify it, so it costs no verify call; nothing of it is
+   * stored or processed. Left out, every delivery is verified.
+   */
+  acceptsEventType?: (eventType: string) => boolean;
+}
+
+/** The `event_type` of a body that is one JSON object, or undefined. */
+function eventTypeOf(rawBody: Buffer): string | undefined {
+  try {
+    const parsed: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(rawBody));
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined;
+    const t = (parsed as { event_type?: unknown }).event_type;
+    return typeof t === 'string' ? t : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** At most one `webhook_rejected` audit row per this many milliseconds. */
@@ -62,6 +80,15 @@ export class WebhookHandler {
     }
     const { audit, clock, metrics, verifier } = this.deps;
     const receivedAtMs = clock.nowMs();
+
+    const accepts = this.deps.acceptsEventType;
+    if (accepts !== undefined) {
+      const type = eventTypeOf(rawBody);
+      if (type !== undefined && !accepts(type)) {
+        metrics?.incr('webhook_events_total', { result: 'ignored_type' });
+        return { status: 200 };
+      }
+    }
 
     let reason: RejectReason | undefined;
     try {
