@@ -2576,3 +2576,188 @@ describe('auction service: reauthorization and reconcile safety (HRD-52 review)'
     await service.close();
   });
 });
+
+describe('auction service: holds left after the auction is seen final (HRD-76)', () => {
+  const DAY_MS = 86_400_000;
+  const quiet = {
+    retryDelayMs: 3_600_000,
+    resumeIntervalMs: 0,
+    unknownDeadlineMs: 1_000,
+    onError: () => undefined,
+  };
+
+  /**
+   * Ada's capture stays unknown until the review; Bo is the next candidate and keeps his hold.
+   * Then every bidder and the auctioneer close their tabs.
+   */
+  async function reviewAlone(
+    rig: Rig,
+    service: AuctionService,
+  ): Promise<{ auctionId: AuctionId; a: Bidder; b: Bidder; reviewAtMs: number }> {
+    rig.paypal.core.inject('capture', 'timeout_before', null, 1000);
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    await room.submitBid(b.conn, bid(rig, 10000));
+    await room.submitBid(a.conn, bid(rig, 11000));
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    rig.clock.set(START + 10_000);
+    await service.resume();
+    await service.idle();
+    const review = await journalOf(rig, auctionId);
+    expect(review.state).toBe('FAILED_NEEDS_REVIEW');
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('CREATED');
+    for (const conn of [a.conn, b.conn, boss.conn]) room.detach(conn.id);
+    expect(service.stats().connections).toBe(0);
+    const entered = [...review.history].reverse().find((h) => h.to === 'FAILED_NEEDS_REVIEW');
+    return { auctionId, a, b, reviewAtMs: entered?.tsMs ?? START + 10_000 };
+  }
+
+  /** Ada wins at 11000 and the lot settles; then every socket closes. */
+  async function settledAlone(rig: Rig, service: AuctionService): Promise<AuctionId> {
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    await room.submitBid(b.conn, bid(rig, 10000));
+    await room.submitBid(a.conn, bid(rig, 11000));
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    expect((await journalOf(rig, auctionId)).state).toBe('SETTLED');
+    for (const conn of [a.conn, b.conn, boss.conn]) room.detach(conn.id);
+    expect(service.stats().connections).toBe(0);
+    return auctionId;
+  }
+
+  /** An approval that passed the open check before the hammer and returns only now. */
+  async function approveLate(
+    rig: Rig,
+    auctionId: AuctionId,
+  ): Promise<{ holdId: string; authId: string }> {
+    const created = await rig.holdsApi.createHoldOrder({
+      auctionId,
+      bidderId: rig.ids.mint<'BidderId'>(),
+      ceilingCents: 30000,
+      presetsCents: config.ceilingPresets,
+    });
+    rig.paypal.core.approveOrder(created.orderId);
+    await rig.holdsApi.completeApproval({ holdId: created.holdId, orderId: created.orderId });
+    const held = await rig.stores.holds.get(created.holdId);
+    expect(held?.status).toBe('HELD');
+    return { holdId: created.holdId, authId: held?.authId ?? '' };
+  }
+
+  it('releases the runner-up hold a day into the review with no socket open (#1888)', async () => {
+    const rig = await makeRig();
+    const service = rig.service(quiet);
+    const { auctionId, a, b, reviewAtMs } = await reviewAlone(rig, service);
+    // Nobody is connected: the pass sets the room aside until the keep-set lets Bo go.
+    rig.clock.set(START + 60_000);
+    await service.resume();
+    await service.idle();
+    expect(service.stats().rooms).toBe(0);
+
+    // Passes within the day read neither the journal nor PayPal for it.
+    const load = vi.spyOn(rig.stores.journals, 'load');
+    const calls = rig.paypal.core.calls.length;
+    rig.clock.set(reviewAtMs + DAY_MS);
+    await service.resume();
+    await service.idle();
+    expect(load).not.toHaveBeenCalled();
+    expect(rig.paypal.core.calls.length).toBe(calls);
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('CREATED');
+
+    // The first pass after the day releases Bo, still with nobody connected.
+    rig.clock.set(reviewAtMs + DAY_MS + 60_000);
+    await service.resume();
+    await service.idle();
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(b.holdId))?.status).toBe('VOIDED');
+    // The capture in doubt keeps its hold until an operator resolves the review.
+    expect(rig.paypal.core.getAuthorization(a.authId).status).toBe('CREATED');
+    expect((await journalOf(rig, auctionId)).state).toBe('FAILED_NEEDS_REVIEW');
+
+    // Nothing is left for the passes to release, so the room is set aside for good.
+    rig.clock.set(reviewAtMs + DAY_MS + 120_000);
+    await service.resume();
+    await service.idle();
+    expect(service.stats().rooms).toBe(0);
+    await service.close();
+  });
+
+  it('releases it after a restart within the day without loading the room early (#1888)', async () => {
+    const rig = await makeRig();
+    const first = rig.service(quiet);
+    const { a, b, reviewAtMs } = await reviewAlone(rig, first);
+    await first.close();
+
+    const second = rig.service(quiet);
+    rig.clock.set(START + 3_600_000);
+    await second.resume();
+    await second.idle();
+    expect(second.stats().rooms).toBe(0);
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('CREATED');
+
+    rig.clock.set(reviewAtMs + DAY_MS + 60_000);
+    await second.resume();
+    await second.idle();
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(b.holdId))?.status).toBe('VOIDED');
+    expect(rig.paypal.core.getAuthorization(a.authId).status).toBe('CREATED');
+    await second.close();
+  });
+
+  it('voids an approval that returns after the settled auction was seen final (#1888)', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0 });
+    const auctionId = await settledAlone(rig, service);
+    rig.clock.set(START + 60_000);
+    await service.resume();
+    await service.idle();
+    expect(service.stats().rooms).toBe(0);
+
+    const late = await approveLate(rig, auctionId);
+    // A pass alone skips the auction it has seen final.
+    await service.resume();
+    await service.idle();
+    expect(rig.paypal.core.getAuthorization(late.authId).status).toBe('CREATED');
+
+    await service.holdApproved(late.holdId);
+    await service.idle();
+    expect(rig.paypal.core.getAuthorization(late.authId).status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(late.holdId))?.status).toBe('VOIDED');
+
+    rig.clock.set(START + 120_000);
+    await service.resume();
+    await service.idle();
+    expect(service.stats().rooms).toBe(0);
+    await service.close();
+  });
+
+  it('runs once more when an approval returns while the last run is in flight (#1888)', async () => {
+    const rig = await makeRig();
+    const ref: { service?: AuctionService; late?: { holdId: string; authId: string } } = {};
+    const service = rig.service({
+      resumeIntervalMs: 0,
+      boundary: async (label) => {
+        const svc = ref.service;
+        if (label !== 'before:bridge' || ref.late !== undefined || svc === undefined) return;
+        // The run has made its last spare release when the approval returns.
+        const id = [...(await rig.stores.store.listAuctions())][0] ?? '';
+        ref.late = await approveLate(rig, id as AuctionId);
+        await svc.holdApproved(ref.late.holdId);
+      },
+    });
+    ref.service = service;
+    await settledAlone(rig, service);
+    const late = ref.late;
+    if (late === undefined) throw new Error('the approval did not come back');
+    expect(rig.paypal.core.getAuthorization(late.authId).status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(late.holdId))?.status).toBe('VOIDED');
+    await service.close();
+  });
+});

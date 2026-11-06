@@ -62,6 +62,7 @@ export interface AuctionService {
     close(): Promise<void>;
     createAuction(auctionId: AuctionId, config: AuctionConfig, auctioneerSub: string): Promise<Room>;
     handleWebhook(rawBody: Buffer, headers: WebhookHeaders, source?: string): Promise<WebhookResponse>;
+    holdApproved(holdId: string): Promise<void>;
     idle(): Promise<void>;
     // Warning: (ae-forgotten-export) The symbol "OpsRoomView" needs to be exported by the entry point index.d.ts
     opsRooms(): OpsRoomView[];
