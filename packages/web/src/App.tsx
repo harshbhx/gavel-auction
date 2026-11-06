@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
 import { Cents, type MsgId } from '@gavel/shared';
 import { PROTOCOL_VERSION } from './wire';
 import { t } from './copy/t';
@@ -9,7 +17,7 @@ import { receiptSource } from './ladder/fromWire';
 import type { Transport } from './net/transport';
 import { WebSocketTransport } from './net/wsTransport';
 import { loadSession, saveSession } from './net/session';
-import { createApprovalPort, useApproval } from './payments/useApproval';
+import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
 import { RouteScreen, matchRoute, type RouteMatch } from './routes';
 import { AuditTable } from './screens/audit/AuditTable';
 import { Export } from './screens/audit/Export';
@@ -26,6 +34,7 @@ import { fetchOpsSummary, OpsView, type OpsSummaryView } from './ops/OpsView';
 import { DemoLauncher, type DemoLinks } from './screens/demo/DemoLauncher';
 import { Receipt } from './screens/receipt/Receipt';
 import { Approve } from './screens/register/Approve';
+import { Return } from './screens/register/Return';
 import { RegisterScreen, type RegistrationDraft } from './screens/register/RegisterScreen';
 import { ScreenView } from './screens/screen/ScreenView';
 import { ErrorBoundary } from './screens/states/ErrorBoundary';
@@ -45,6 +54,8 @@ export interface AppProps {
   /** HTTP side of the server and the payment mode. When set, join, register and landing use it. */
   api?: { apiBase: string; payments: PaymentsMode; paypalClientId: string };
 }
+
+const ReplayScreen = lazy(() => import('./screens/replay/ReplayScreen'));
 
 const NAVIGATE_EVENT = 'gavel:navigate';
 
@@ -132,9 +143,10 @@ interface LiveRouteProps {
   roomId: string;
   token: string;
   bidderId: string | undefined;
+  api: Api | undefined;
 }
 
-function LiveRoute({ match, liveBase, roomId, token, bidderId }: LiveRouteProps): ReactNode {
+function LiveRoute({ match, liveBase, roomId, token, bidderId, api }: LiveRouteProps): ReactNode {
   const { room, transport } = useLiveRoom(liveBase, roomId, token, bidderId);
   const view = usePendingView(room);
   const myPaddle = useRoom((s) =>
@@ -168,11 +180,7 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId }: LiveRouteProps)
     case 'screen':
       return (
         <main data-route="screen">
-          <ScreenView
-            lotTitle={roomId}
-            code={roomId}
-            joinUrl={`${window.location.origin}/join/${encodeURIComponent(roomId)}`}
-          />
+          <ScreenRoute roomId={roomId} api={api} />
         </main>
       );
     default:
@@ -192,6 +200,45 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId }: LiveRouteProps)
         </main>
       );
   }
+}
+
+/** Lot title from the auction info; the server has no short join code, so none is shown. */
+function ScreenRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
+  const [title, setTitle] = useState<string | null>(null);
+  useEffect(() => {
+    if (api === undefined) return undefined;
+    let live = true;
+    fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(roomId)}`)
+      .then((body) => {
+        const got = (body as { title?: unknown }).title;
+        if (live && typeof got === 'string' && got !== '') setTitle(got);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [api, roomId]);
+  return (
+    <ScreenView
+      lotTitle={title ?? t('screen.untitled')}
+      code={null}
+      joinUrl={`${window.location.origin}/join/${encodeURIComponent(roomId)}`}
+    />
+  );
+}
+
+/** Replay of a recording: the bundle is fetched from the recording folder. */
+function ReplayRoute({ match }: { match: RouteMatch }) {
+  const recordingId = match.params['recordingId'];
+  return (
+    <RouteScreen match={match}>
+      {recordingId !== undefined && (
+        <Suspense fallback={<p role="status">{t('net.resyncing')}</p>}>
+          <ReplayScreen recordingId={recordingId} />
+        </Suspense>
+      )}
+    </RouteScreen>
+  );
 }
 
 export function ReceiptRoute({ roomId }: { roomId: string }) {
@@ -419,6 +466,39 @@ function ApproveRoute(props: {
   );
 }
 
+/** Where a buyer lands after approving on PayPal's own page; finishes the hold once. */
+function ReturnRoute({ roomId, api }: { roomId: string; api: Api }) {
+  const stored = loadSession(roomId);
+  const adapter = useMemo(
+    () =>
+      createReturnAdapter({
+        apiBase: api.apiBase,
+        clientId: api.paypalClientId,
+        token: stored?.token ?? '',
+      }),
+    [api, stored?.token],
+  );
+  if (stored === null || stored.bidderId === undefined) {
+    return (
+      <main data-route="return">
+        <p role="alert">{t('reg.expired')}</p>
+      </main>
+    );
+  }
+  const orderId = new URLSearchParams(window.location.search).get('token') ?? '';
+  return (
+    <Return
+      adapter={adapter}
+      roomId={roomId}
+      bidderId={stored.bidderId}
+      orderId={orderId}
+      ceilingCents={CEILING_MIN_CENTS}
+      onBackToCeiling={() => navigate(`/r/${encodeURIComponent(roomId)}/register`)}
+      onContinue={() => navigate(`/r/${encodeURIComponent(roomId)}/bid`)}
+    />
+  );
+}
+
 function OpsRoute({ api }: { api: Api | undefined }) {
   const [key, setKey] = useState('');
   const [summary, setSummary] = useState<OpsSummaryView | undefined>(undefined);
@@ -511,6 +591,7 @@ function Routed({
   if (id === 'landing' && api !== undefined) return <LandingRoute api={api} />;
   if (id === 'demo') return <DemoRoute api={api} />;
   if (id === 'notFound') return <NotFound />;
+  if (id === 'replay') return <ReplayRoute match={match} />;
   if (
     id === 'console' &&
     liveBase !== undefined &&
@@ -531,6 +612,9 @@ function Routed({
   if (id === 'register' && roomId !== undefined && api !== undefined) {
     return <RegisterRoute roomId={roomId} api={api} />;
   }
+  if (id === 'return' && roomId !== undefined && api !== undefined) {
+    return <ReturnRoute roomId={roomId} api={api} />;
+  }
   if (liveBase === undefined || roomId === undefined || who === null) {
     return <RouteScreen match={match} />;
   }
@@ -541,6 +625,7 @@ function Routed({
       roomId={roomId}
       token={who.token}
       bidderId={who.bidderId}
+      api={api}
     />
   );
 }
