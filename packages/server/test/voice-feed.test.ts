@@ -33,6 +33,18 @@ const final: SttEvent = {
   speechFinal: true,
 };
 
+/** A recording whose only event is far in the future, so the stream stays open and mute. */
+const MUTE = parseTimeline({
+  utterances: [
+    {
+      startMs: 0,
+      endMs: 500,
+      expected: { kind: 'accept', bidderId: null, amountCents: null },
+      events: [{ atMs: 10_000_000, event: final }],
+    },
+  ],
+});
+
 function rig(timeline: Timeline) {
   const clock = new ManualClock(1_789_000_000_000);
   const timers = new Map<number, () => void>();
@@ -89,7 +101,7 @@ describe('voice bridge feed (issue 1863)', () => {
   });
 
   it('reports speech degraded then down when loud audio gets no transcript', async () => {
-    const r = rig(parseTimeline({ utterances: [] }));
+    const r = rig(MUTE);
     for (let i = 0; i < 170; i++) await r.step(100, 8000);
     await r.bridge.close();
     const states = r.feed.flatMap((m) => (m.t === 'status' ? [m.stt] : []));
@@ -98,7 +110,7 @@ describe('voice bridge feed (issue 1863)', () => {
   });
 
   it('stays ok for a quiet room', async () => {
-    const r = rig(parseTimeline({ utterances: [] }));
+    const r = rig(MUTE);
     for (let i = 0; i < 170; i++) await r.step(100, 0);
     await r.bridge.close();
     expect(r.feed.filter((m) => m.t === 'status' && m.stt !== 'ok')).toEqual([]);

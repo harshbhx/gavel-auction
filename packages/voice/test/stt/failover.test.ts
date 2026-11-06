@@ -105,7 +105,7 @@ describe('issue 1862 noise and mute fallbacks', () => {
     const r = rig([[]]);
     await r.stt.start({ keyterms: [], language: 'en' });
     for (let i = 0; i < 100; i++) {
-      r.stt.write(batch(i, false, 1800));
+      r.stt.write(batch(i, false, 180));
       r.clock.advance(100);
       await flush();
     }
