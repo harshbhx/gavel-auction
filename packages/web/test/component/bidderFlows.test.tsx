@@ -475,6 +475,37 @@ describe('register route', () => {
     );
   });
 
+  it('refuses a name with an angle bracket before anything is sent', () => {
+    const calls = stubHolds(() => ({ status: 200, body: {} }));
+    render(<App initialPath={`/r/${ROOM}/register`} api={API} />);
+    const field = screen.getByLabelText(t('reg.name'));
+    fireEvent.change(field, { target: { value: '<b>Priya' } });
+    fireEvent.blur(field);
+    expect(screen.getAllByText(t('reg.nameInvalid')).length).toBeGreaterThan(0);
+    const next = screen.getByRole('button', { name: t('reg.continue') });
+    expect((next as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(next);
+    expect(screen.queryByRole('radio', { name: '$100' })).toBeNull();
+    expect(calls).toHaveLength(0);
+  });
+
+  it('shows the name message when the server refuses the approval with a 400', async () => {
+    vi.useFakeTimers();
+    saveRegistration(ROOM, ME, {
+      clientRegistrationId: 'reg-one',
+      orderId: 'order-one',
+      holdId: 'hold-ABC123',
+      ceilingCents: 10_000,
+    });
+    const calls = stubHolds(() => ({ status: 400, body: { error: 'bad_request' } }));
+    render(<App initialPath={`/r/${ROOM}/register`} api={API} />);
+    fillAndApprove('$100');
+    await flush();
+    expect(JSON.parse(calls[0]?.body ?? '{}')).toEqual({ orderId: 'order-one', name: 'Priya' });
+    expect(screen.getAllByText(t('reg.nameInvalid')).length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('held-card')).toBeNull();
+  });
+
   it('finishes the stored order after a reload instead of asking PayPal again', async () => {
     vi.useFakeTimers();
     saveRegistration(ROOM, ME, {

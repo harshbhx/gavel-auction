@@ -1,8 +1,15 @@
+import { BIDDER_NAME_FORBIDDEN_PATTERN } from '@gavel/shared';
+
 export const NAME_MAX = 24;
+
+/** True when the name holds a character the server refuses (control, invisible, < or >). */
+export function nameHasForbidden(raw: string): boolean {
+  return BIDDER_NAME_FORBIDDEN_PATTERN.test(raw);
+}
 
 export function validName(raw: string): boolean {
   const n = raw.trim().length;
-  return n >= 1 && n <= NAME_MAX;
+  return n >= 1 && n <= NAME_MAX && !nameHasForbidden(raw.trim());
 }
 
 /** Whole dollars only. Returns cents, or null when the text is not a whole dollar amount. */
