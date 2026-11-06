@@ -41,6 +41,7 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
   const price = useRoom(selectors.price, store);
   const stream = useRoom(selectors.stream, store);
   const hammer = useRoom((s) => s.hammer, store);
+  const stopped = useRoom(selectors.stopped, store);
   const leaderPaddle = useRoom((s) => s.leaderPaddle, store);
   const roster = useRoom((s) => s.snapshot?.roster ?? null, store);
   const status = useRoom((s) => s.snapshot?.status ?? null, store);
@@ -99,6 +100,7 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
     <main className="gv-screen" aria-label={lotTitle}>
       <h1 className="gv-screen__lot">{lotTitle}</h1>
       <FrozenChip disconnected={connection.offline} />
+      {stopped && <p role="status">{t('screen.stopped')}</p>}
       <div className="gv-screen__stage">
         {closed ? (
           <Sold outcome={outcome} settlement={settlement} />

@@ -471,8 +471,39 @@ describe('register route', () => {
     act(() => socket.receive(stateMsg(1, snapshot({ status: 'DONE' }))));
     expect(screen.getByText(t('reg.closed'))).toBeTruthy();
     expect(screen.getByRole('link', { name: t('reg.watch') }).getAttribute('href')).toBe(
-      `/r/${ROOM}/bid`,
+      `/r/${ROOM}/screen`,
     );
+  });
+
+  it('closes registration from the snapshot flag while the lot is still open', () => {
+    const socket = joinLive(`/r/${ROOM}/register`, { api: API });
+    act(() => socket.receive(stateMsg(1, snapshot())));
+    expect(screen.queryByText(t('reg.closed'))).toBeNull();
+    act(() => socket.receive(stateMsg(2, { ...snapshot(), registrationClosed: true })));
+    expect(screen.getByText(t('reg.closed'))).toBeTruthy();
+    expect(screen.getByRole('link', { name: t('reg.watch') }).getAttribute('href')).toBe(
+      `/r/${ROOM}/screen`,
+    );
+  });
+
+  it('switches a live registration page to the closed card on the hammer frame', () => {
+    const socket = joinLive(`/r/${ROOM}/register`, { api: API });
+    act(() => socket.receive(stateMsg(1, snapshot())));
+    expect(screen.getByLabelText(t('reg.name'))).toBeTruthy();
+    act(() =>
+      socket.receive({
+        v: 1,
+        t: 'hammer',
+        seq: 2,
+        ts: BASE_TIME + 2,
+        winnerId: null,
+        price: Cents(0),
+        ranking: [],
+        registrationClosed: true,
+      }),
+    );
+    expect(screen.getByText(t('reg.closed'))).toBeTruthy();
+    expect(screen.queryByLabelText(t('reg.name'))).toBeNull();
   });
 
   it('finishes the stored order after a reload instead of asking PayPal again', async () => {

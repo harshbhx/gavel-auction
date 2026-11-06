@@ -205,13 +205,21 @@ export const en = {
   'controls.sent': '{action} sent',
   'controls.hammerChanged':
     'The price or leader changed. Nothing was hammered. Review and try again.',
+  'controls.hammerPriceChanged':
+    'A new bid arrived and the price changed. Nothing was hammered. Review the new price and hold again.',
+  'controls.hammerLeaderChanged':
+    'The leader changed. Nothing was hammered. Review the new leader and hold again.',
   'controls.failed': '{action} failed. Try again.',
   'controls.unknown':
     '{action}: no answer from the server. It may have gone through. Check the lot state.',
-  'kill.notAvailable': 'The server cannot stop the auction yet. The auction is still running.',
+  'kill.notAvailable': 'The server does not know this auction. The auction is still running.',
   'kill.conflict':
     'The server refused the stop because the lot state changed. Check the lot state.',
   'kill.failedDetail': 'The stop request was not accepted: {detail}. The auction is still running.',
+  'kill.unauthorized':
+    'The console is not allowed to stop this auction. The auction is still running.',
+  'kill.serverError':
+    'The server could not process the stop request. Check the lot state before trying again.',
   'kill.unknown': 'No answer to the stop request. Check the lot state before trying again.',
   'console.manual.offline': 'Offline. The bid was not sent. Reconnect to send it.',
   'console.manual.noRoom': 'Not connected to the room. The bid was not sent.',
