@@ -41,7 +41,7 @@ function journal(over: Partial<Journal> = {}): Journal {
 describe('own hold detail from the settlement payload (issue 712)', () => {
   it('gives the winner the capture and the remainder, the others their release', () => {
     const own = ownHoldsOf(
-      journal({ voids: { [B]: 'voided', [remainderKey(A)]: 'remainder_released' } }),
+      journal({ voids: { [B]: 'voided', [remainderKey(A)]: 'remainder_closed_by_paypal' } }),
       1,
     );
     expect(own.winnerId).toBe(A);
@@ -84,6 +84,13 @@ describe('own hold detail from the settlement payload (issue 712)', () => {
     });
     const left = ownHoldsOf(journal({ voids: { [remainderKey(A)]: 'remainder_unreleased' } }), 1);
     expect(left.holds[A]).toMatchObject({ remainder: 'unreleased', releasedCents: 0 });
+  });
+
+  it('reads the remainder records of older journals and of an explicit void', () => {
+    for (const record of ['remainder_released', 'remainder_voided']) {
+      const own = ownHoldsOf(journal({ voids: { [remainderKey(A)]: record } }), 1);
+      expect(own.holds[A], record).toMatchObject({ remainder: 'released', releasedCents: 37000 });
+    }
   });
 
   it('has no remainder when the price took the whole hold, and no winner before a capture', () => {

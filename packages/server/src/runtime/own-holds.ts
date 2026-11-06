@@ -11,8 +11,16 @@ export interface OwnHolds {
   winnerId?: string;
 }
 
-/** Journal `voids` values that mean PayPal let go of the winner's remainder (void phase). */
-const REMAINDER_RELEASED: ReadonlySet<string> = new Set(['remainder_released', 'remainder_voided']);
+/**
+ * Journal `voids` values that mean the winner's remainder no longer reserves money (void
+ * phase): closed by PayPal with the final capture (`remainder_released` in journals saved
+ * before the rename), or voided explicitly.
+ */
+const REMAINDER_RELEASED: ReadonlySet<string> = new Set([
+  'remainder_closed_by_paypal',
+  'remainder_released',
+  'remainder_voided',
+]);
 const REMAINDER_LEFT = 'remainder_unreleased';
 
 /** Statuses whose whole hold no longer reserves money. */
