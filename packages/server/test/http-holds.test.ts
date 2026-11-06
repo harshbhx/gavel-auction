@@ -29,6 +29,7 @@ const config = {
 interface Calls {
   created: unknown[];
   approved: unknown[];
+  abandoned: string[];
 }
 
 function setup(): { app: HttpApp; deps: HttpDeps; calls: Calls; records: Map<string, HoldRecord> } {
@@ -65,7 +66,7 @@ function setup(): { app: HttpApp; deps: HttpDeps; calls: Calls; records: Map<str
     publicUrl: 'https://gavel.example.test',
     corsOrigins: [],
   };
-  const calls: Calls = { created: [], approved: [] };
+  const calls: Calls = { created: [], approved: [], abandoned: [] };
   const records = new Map<string, HoldRecord>();
   const port: HoldsPort = {
     service: {
@@ -77,6 +78,9 @@ function setup(): { app: HttpApp; deps: HttpDeps; calls: Calls; records: Map<str
       completeApproval: async (i) => {
         calls.approved.push(i);
         return { holdId: i.holdId, status: 'HELD', ceilingCents: 30000 };
+      },
+      abandonHold: async (id) => {
+        calls.abandoned.push(id);
       },
     },
     store: { get: async (id) => records.get(id) ?? null },
@@ -176,5 +180,40 @@ describe('hold routes (INT-R3-20)', () => {
     expect(await ok.json()).toEqual({ holdId: 'hold-1', status: 'HELD', ceilingCents: 30000 });
     const unknown = await post(app, '/api/holds/nope/approve', { orderId: 'order-1' }, mine.token);
     expect(unknown.status).toBe(404);
+  });
+
+  it('abandons a hold for its owner only and answers anyone else as not found', async () => {
+    const { app, deps, calls, records } = setup();
+    const auctionId = await newAuction(app);
+    const owner = deps.ids.mint<'BidderId'>();
+    const other = deps.ids.mint<'BidderId'>();
+    records.set('hold-1', {
+      holdId: 'hold-1',
+      auctionId,
+      bidderId: owner,
+      orderId: 'order-1',
+      ceilingCents: 30000,
+      status: 'PENDING_APPROVAL',
+      createdAtMs: START,
+    });
+    const mine = await mintToken(deps, 'session', auctionId, owner, owner);
+    const theirs = await mintToken(deps, 'session', auctionId, other, other);
+    const del = (path: string, token: string | null) =>
+      app.fetch(
+        new Request(`http://h.test${path}`, {
+          method: 'DELETE',
+          headers: token === null ? {} : { authorization: `Bearer ${token}` },
+        }),
+      );
+    expect((await del('/api/holds/hold-1', null)).status).toBe(401);
+    expect((await del('/api/holds/hold-1', theirs.token)).status).toBe(404);
+    expect((await del('/api/holds/nope', mine.token)).status).toBe(404);
+    expect(calls.abandoned).toEqual([]);
+    const ok = await del('/api/holds/hold-1', mine.token);
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ holdId: 'hold-1', released: true });
+    const again = await del('/api/holds/hold-1', mine.token);
+    expect(again.status).toBe(200);
+    expect(calls.abandoned).toEqual(['hold-1', 'hold-1']);
   });
 });

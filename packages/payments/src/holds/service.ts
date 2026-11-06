@@ -206,6 +206,23 @@ export class HoldService {
   }
 
   /**
+   * Drops a hold the bidder walked away from (cancel, decline, mismatch). Idempotent:
+   * a missing, already expired or already authorized hold is left as it is, so a late
+   * or repeated call never voids a hold an approval has since settled.
+   */
+  async abandonHold(holdId: string): Promise<void> {
+    const hold = await this.deps.holds.get(holdId);
+    if (hold === null || hold.status !== 'PENDING_APPROVAL') return;
+    try {
+      await this.abandonPending(hold);
+    } catch (e) {
+      // An approval won the race: the bidder has a hold now, nothing to abandon.
+      if (e instanceof HoldError && e.code === 'hold_exists') return;
+      throw e;
+    }
+  }
+
+  /**
    * Authorizes the approved order and stores the authorization id (R-PAY-033).
    * Repeated and concurrent calls for one hold share one authorize request.
    */
