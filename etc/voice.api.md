@@ -831,6 +831,37 @@ export interface BidderRef {
 }
 
 // @public (undocumented)
+export const BUDGET_LIMITS_MS: Record<BudgetMode, {
+    p50: number;
+    p95: number;
+}>;
+
+// @public
+export function budgetCheck(samples: readonly LatencySample[], mode?: BudgetMode): BudgetReport;
+
+// @public (undocumented)
+export type BudgetMode = 'model' | 'rules_only';
+
+// @public (undocumented)
+export interface BudgetReport {
+    // (undocumented)
+    count: number;
+    // (undocumented)
+    p50: number;
+    // (undocumented)
+    p50Pass: boolean;
+    // (undocumented)
+    p95: number;
+    // (undocumented)
+    p95Pass: boolean;
+    // (undocumented)
+    pass: boolean;
+}
+
+// @public
+export function buildAudit(decision: Decision): AuditRecord;
+
+// @public (undocumented)
 export interface Candidate {
     // (undocumented)
     amountCents: Cents | null;
@@ -846,6 +877,9 @@ export function commandIdFromKey(auctionId: string, idempotencyKey: string): str
 
 // @public
 export function confidenceToBps(fraction: number): number;
+
+// @public (undocumented)
+export const CONFIRM_TTL_MS = 8000;
 
 // @public (undocumented)
 export type ConfirmedBy = 'bidder' | 'auctioneer' | 'voice';
@@ -879,6 +913,30 @@ export function createLiveTranscriber(readAudio: (id: string) => Uint8Array | un
 
 // @public (undocumented)
 export function createVoiceSession(deps: VoiceSessionDeps): VoiceSession;
+
+// @public
+export function decide(seg: DecideSegment, rules: ParseResult, llm: ParseResult | null, ctx: BidContext): Decision;
+
+// @public
+export interface DecideSegment {
+    // (undocumented)
+    audioEndMs: number;
+    // (undocumented)
+    audioStartMs: number;
+    // (undocumented)
+    idempotencyKey: string;
+    // (undocumented)
+    replay: boolean;
+    // (undocumented)
+    segmentId: string;
+    // (undocumented)
+    sttConfidence: number;
+    // (undocumented)
+    sttProvider: string;
+    // (undocumented)
+    transcript: string;
+    wordConfidences?: readonly number[];
+}
 
 // @public (undocumented)
 export type Decision = {
@@ -974,6 +1032,17 @@ export type FrameResult = {
 export function isReplayConflict(err: unknown): boolean;
 
 // @public
+export function latencyOf(sample: LatencySample): number;
+
+// @public (undocumented)
+export interface LatencySample {
+    // (undocumented)
+    decisionMs: number;
+    // (undocumented)
+    speechEndMs: number;
+}
+
+// @public
 export interface LiveDeps {
     backoffMs?: number;
     fetch: LiveFetch;
@@ -996,6 +1065,7 @@ export type LiveProvider = 'deepgram' | 'groq';
 export interface LiveRequestInit {
     body: Uint8Array | FormData;
     headers: Record<string, string>;
+    // (undocumented)
     method: string;
     signal?: AbortSignal;
 }
@@ -1328,6 +1398,9 @@ export function parseUtterance(text: string, ctx?: ParseContext): ParseResult;
 // @public
 export function parseUtteranceOutcome(text: string, ctx?: ParseContext): UtteranceOutcome;
 
+// @public
+export function percentile(values: readonly number[], p: number): number;
+
 // @public (undocumented)
 export interface PipelineDeps {
     clock: () => number;
@@ -1440,6 +1513,11 @@ export interface PlaceBidContext {
 // @public (undocumented)
 export const realClock: FailoverClock;
 
+// Warning: (ae-forgotten-export) The symbol "AnsweredBy" needs to be exported by the entry point index.d.ts
+//
+// @public
+export function rejectPrompt(decision: Decision, ctx: BidContext, by: AnsweredBy): Decision | null;
+
 // @public
 export interface ReplayScheduler {
     // (undocumented)
@@ -1483,6 +1561,7 @@ export interface SelectDeps {
     log?: (message: string, fields: {
         provider: SttName;
     }) => void;
+    socket?: WsFactory;
     warn?: (message: string, fields: {
         provider: SttName;
         usedInstead?: SttName;
@@ -2273,6 +2352,30 @@ export interface VoiceSessionDeps {
     maxStreamsPerToken?: number;
     now: () => number;
     verifyToken: (token: string, roomId: string) => string | null;
+}
+
+// @public
+export type WsFactory = (url: string, protocols: string[]) => WsLike;
+
+// @public
+export interface WsLike {
+    readonly bufferedAmount: number;
+    // (undocumented)
+    close(): void;
+    // (undocumented)
+    onclose: ((ev: {
+        code: number;
+    }) => void) | null;
+    // (undocumented)
+    onerror: (() => void) | null;
+    // (undocumented)
+    onmessage: ((ev: {
+        data: unknown;
+    }) => void) | null;
+    // (undocumented)
+    onopen: (() => void) | null;
+    // (undocumented)
+    send(data: string | Uint8Array): void;
 }
 
 // Warnings were encountered during analysis:
