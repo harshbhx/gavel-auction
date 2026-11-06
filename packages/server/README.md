@@ -16,7 +16,7 @@ Production runs `npm run build -w @gavel/server` (esbuild bundle to `dist/main.j
 
 Health: `GET /healthz` (process is up), `GET /readyz` (the room store answers a ping; payments are not probed), `GET /metrics` (JSON snapshot).
 
-The booted process serves the ops, webhook and admin routes (`/admin/export?auction=<id>`, `/admin/replay-bundle`, `/warmup`, `/metrics`, `/ops/*`, `/webhooks/paypal`). The auction, invite, join, control, read and token routes are not mounted by `main.ts` yet (#722). Every route but `/healthz`, `/readyz` and the webhook is limited per client by `RATE_HTTP_*`; set `TRUSTED_PROXY_HOPS` to the number of proxies in front of the host (1 on Render) so the client address is read from `x-forwarded-for`.
+The booted process serves the ops, webhook and admin routes (`/admin/export?auction=<id>`, `/admin/replay-bundle`, `/warmup`, `/metrics`, `/ops/*`, `/webhooks/paypal`). The auction, invite, join, control, read and token routes under `/api/` are mounted by `composeServer`, so `main.ts` serves them (create needs `x-admin-key`); the scripted `/api/demo/*` routes are not mounted yet. Every route but `/healthz`, `/readyz` and the webhook is limited per client by `RATE_HTTP_*`; set `TRUSTED_PROXY_HOPS` to the number of proxies in front of the host (1 on Render) so the client address is read from `x-forwarded-for`.
 
 ## Configure
 
