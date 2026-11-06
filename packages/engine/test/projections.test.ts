@@ -83,4 +83,30 @@ describe('projections', () => {
       leaderAlias: 'Bob',
     });
   });
+
+  it('T-ENG-079 R-ENG-108 sealed voice bids drop parsedCents and recording ids until the hammer', () => {
+    const sealed = lotConfig(L1, { mode: 'second_price', reserveCents: 500 });
+    const s = open(scene({ lots: [sealed] }), L1);
+    const r = bid(s, 200, A, 12345, L1, {
+      audit: {
+        parsedCents: 12345,
+        transcript: 'one twenty three forty five',
+        utteranceId: 'utt-1',
+        audioStartMs: 10,
+        audioEndMs: 20,
+      },
+    });
+    const lotAdded = {
+      type: 'LOT_ADDED',
+      payload: { lotId: L1, lot: sealed },
+    } as unknown as LedgerEntry;
+    const hidden = JSON.stringify(projectAuditor([lotAdded, ...r.entries]));
+    expect(hidden).not.toContain('12345');
+    expect(hidden).not.toContain('parsedCents');
+    expect(hidden).not.toContain('utt-1');
+    expect(hidden).not.toContain('audioStartMs');
+    expect(JSON.stringify(projectAuditor([lotAdded, ...r.entries], { full: true }))).toContain(
+      'parsedCents',
+    );
+  });
 });

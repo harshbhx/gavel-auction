@@ -8,7 +8,7 @@ Scripts (run from the repository root):
 - `npm run typecheck -w @gavel/engine`
 - `npm run lint -w @gavel/engine` eslint and the import boundary check
 - `npm run check:bundle -w @gavel/engine` browser bundle without `node:` imports
-- `npm run check:trace -w @gavel/engine` every `R-ENG-` id is named by a test
+- `npm run check:trace -w @gavel/engine` blocks new `R-ENG-` ids that no test title names; ids listed in `scripts/trace-baseline.json` (`missingIds`) are known gaps, so a pass does not show that every rule is tagged
 
 ## Commands
 
@@ -33,7 +33,7 @@ Every command carries `type`, `commandId` (ULID), `at` (integer epoch ms) and `a
 | `RecordSettlement` | Record a settlement state edge (for example HELD to CAPTURING) |
 | `CloseAuction`     | Close the auction                                              |
 
-`decide` returns an outcome (`ok`, `rejected`, `duplicate` or an error) and the entries to append. A rejected bid is itself a ledger entry (`BID_REJECTED`) with a reason from `REJECT_REASONS`.
+`decide` returns an outcome with `kind` `accepted`, `rejected`, `noop` or `duplicate` and the entries to append. A rejected bid is itself a ledger entry (`BID_REJECTED`) with a reason from `REJECT_REASONS`.
 
 ## Ledger format
 
@@ -45,7 +45,7 @@ Export and verify without a server:
 import { exportJsonl, verifyJsonl } from '@gavel/engine';
 
 const text = exportJsonl(entries); // one canonical JSON entry per line
-verifyJsonl(text); // { ok: true, count, headHash } or { ok: false, firstBadIndex, reason }
+verifyJsonl(text); // { ok: true, count, headHash, closed } or { ok: false, firstBadIndex, reason }
 ```
 
 ```sh
