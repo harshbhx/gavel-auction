@@ -1,17 +1,7 @@
-import {
-  Component,
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-  type ErrorInfo,
-  type ReactNode,
-} from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Cents, type MsgId } from '@gavel/shared';
 import { PROTOCOL_VERSION } from './wire';
 import { t } from './copy/t';
-import { Icon } from './design/icons';
-import { Banner } from './design/primitives/Banner';
 import { socketUrl, startLiveRoom, type LiveRoom } from './net/liveRoom';
 import { Announcer } from './a11y/Announcer';
 import type { PaymentsMode } from './config';
@@ -32,13 +22,17 @@ import { LiveConsole } from './screens/console/LiveConsole';
 import { GalleryScreen } from './screens/gallery/GalleryScreen';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
 import { LandingScreen } from './screens/landing/LandingScreen';
+import { DemoLauncher, type DemoLinks } from './screens/demo/DemoLauncher';
 import { Receipt } from './screens/receipt/Receipt';
 import { Approve } from './screens/register/Approve';
 import { RegisterScreen, type RegistrationDraft } from './screens/register/RegisterScreen';
 import { ScreenView } from './screens/screen/ScreenView';
+import { ErrorBoundary } from './screens/states/ErrorBoundary';
+import { NotFound } from './screens/states/NotFound';
+import { TokenGate } from './screens/states/TokenGate';
 import { roomStore, useRoom } from './store/roomStore';
 import { summarizePending, type PendingSummary } from './store/localEvents';
-import { readAuctioneerToken } from './store/session';
+import { hasAuctioneerAccess, readAuctioneerToken } from './store/session';
 
 export interface AppProps {
   /** Starting path. Defaults to the browser location; tests pass their own. */
@@ -57,37 +51,6 @@ const NAVIGATE_EVENT = 'gavel:navigate';
 export function navigate(to: string): void {
   window.history.pushState(null, '', to);
   window.dispatchEvent(new Event(NAVIGATE_EVENT));
-}
-
-interface BoundaryState {
-  failed: boolean;
-}
-
-class ErrorBoundary extends Component<{ children: ReactNode }, BoundaryState> {
-  override state: BoundaryState = { failed: false };
-
-  static getDerivedStateFromError(): BoundaryState {
-    return { failed: true };
-  }
-
-  override componentDidCatch(_error: Error, _info: ErrorInfo): void {
-    // The fallback below is the whole response; details go to the audit trail, not the console.
-  }
-
-  override render(): ReactNode {
-    if (!this.state.failed) return this.props.children;
-    return (
-      <main>
-        <Banner tone="info" icon={<Icon name="lock" />}>
-          {t('banner.sandbox')}
-        </Banner>
-        <h1 tabIndex={-1}>{t('err.boundary')}</h1>
-        <button type="button" onClick={() => window.location.reload()}>
-          {t('err.reload')}
-        </button>
-      </main>
-    );
-  }
 }
 
 function tokenFor(routeId: string, roomId: string): { token: string; bidderId?: string } | null {
@@ -409,6 +372,7 @@ function RegisterRoute({ roomId, api }: { roomId: string; api: Api }) {
     <ApproveRoute
       roomId={roomId}
       bidderId={who.bidderId}
+      token={who.token}
       api={api}
       ceilingCents={draft.ceilingCents}
       onBack={() => setDraft(null)}
@@ -419,19 +383,20 @@ function RegisterRoute({ roomId, api }: { roomId: string; api: Api }) {
 function ApproveRoute(props: {
   roomId: string;
   bidderId: string;
+  token: string;
   api: Api;
   ceilingCents: number;
   onBack: () => void;
 }) {
-  const { roomId, bidderId, api, ceilingCents } = props;
+  const { roomId, bidderId, token, api, ceilingCents } = props;
   const port = useMemo(
     () =>
       createApprovalPort(
         api.payments,
-        { apiBase: api.apiBase },
-        { apiBase: api.apiBase, clientId: api.paypalClientId },
+        { apiBase: api.apiBase, token },
+        { apiBase: api.apiBase, clientId: api.paypalClientId, token },
       ),
-    [api],
+    [api, token],
   );
   const approval = useApproval({ port, roomId, bidderId });
   const { start } = approval;
@@ -450,6 +415,28 @@ function ApproveRoute(props: {
         onContinue={() => navigate(`/r/${encodeURIComponent(roomId)}/bid`)}
       />
     </main>
+  );
+}
+
+function roomLinks(roomId: string): DemoLinks {
+  const base = `/r/${encodeURIComponent(roomId)}`;
+  return {
+    console: `${base}/console`,
+    screen: `${base}/screen`,
+    bidder: `/join/${encodeURIComponent(roomId)}`,
+    audit: `${base}/audit`,
+  };
+}
+
+/** The server has no demo room route yet, so live creation fails and offers the scripted demo. */
+function DemoRoute({ api }: { api: Api | undefined }) {
+  return (
+    <DemoLauncher
+      initialMode={api === undefined ? 'scripted' : 'live'}
+      createRoom={() => Promise.reject(new Error('no demo room route'))}
+      startScripted={() => roomLinks('demo')}
+      openConsole={navigate}
+    />
   );
 }
 
@@ -475,6 +462,22 @@ function Routed({
   }
   const who = live && roomId !== undefined ? tokenFor(id, roomId) : null;
   if (id === 'landing' && api !== undefined) return <LandingRoute api={api} />;
+  if (id === 'demo') return <DemoRoute api={api} />;
+  if (id === 'notFound') return <NotFound />;
+  if (
+    id === 'console' &&
+    liveBase !== undefined &&
+    roomId !== undefined &&
+    roomId !== 'demo' &&
+    who === null &&
+    !hasAuctioneerAccess(roomId)
+  ) {
+    return (
+      <TokenGate role="auctioneer" token={null}>
+        {null}
+      </TokenGate>
+    );
+  }
   if (id === 'join' && roomId !== undefined && api !== undefined) {
     return <JoinRoute roomId={roomId} api={api} />;
   }

@@ -10,6 +10,32 @@ export const ECHO_PHRASES: readonly string[] = [
   'the price is',
 ];
 
+/** Auctioneer solicitations and calls for the next increment; heard on a bidder's own device mic they are not a bid. */
+export const PATTER_PHRASES: readonly string[] = [
+  'who will give me',
+  'who will give',
+  'who ll give me',
+  'do i hear',
+  'do i have',
+  'can i get',
+  'can i have',
+  'anyone',
+  'anybody',
+  'any advance',
+  'any more',
+  'looking for',
+  'i have',
+  'i m bid',
+  'i am bid',
+  'all done',
+  'all in',
+  'give me',
+  'will you give',
+  'come on',
+  'it s against you',
+  'new bidder',
+];
+
 function words(text: string): string[] {
   return text
     .toLowerCase()
@@ -23,6 +49,58 @@ export function isAuctioneerEcho(text: string): boolean {
   const joined = ` ${words(text).join(' ')} `;
   return ECHO_PHRASES.some((p) => joined.includes(` ${p} `));
 }
+
+/**
+ * True when the text sounds like auctioneer patter: a solicitation phrase, an echo phrase, or the
+ * same number called out more than once ("six hundred, six hundred"). Such text on a device mic may
+ * come from the room rather than from the phone owner, so it is never auto-accepted.
+ */
+export function isAuctioneerPatter(text: string): boolean {
+  if (isAuctioneerEcho(text)) return true;
+  const joined = ` ${text
+    .toLowerCase()
+    .replace(/[\u2019']/g, ' ')
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w !== '')
+    .join(' ')} `;
+  if (PATTER_PHRASES.some((p) => joined.includes(` ${p} `))) return true;
+  if (/\?\s*$/.test(text.trim())) return true;
+  // Repeated phrase: "six hundred six hundred", "600 600".
+  const w = joined.trim().split(' ');
+  for (let n = 1; n <= 3; n += 1) {
+    for (let i = 0; i + 2 * n <= w.length; i += 1) {
+      if (w.slice(i, i + n).join(' ') === w.slice(i + n, i + 2 * n).join(' ')) {
+        const unit = w.slice(i, i + n);
+        if (unit.some((x) => /^\d/.test(x) || NUMWORDS.has(x))) return true;
+      }
+    }
+  }
+  return false;
+}
+
+const NUMWORDS = new Set([
+  'one',
+  'two',
+  'three',
+  'four',
+  'five',
+  'six',
+  'seven',
+  'eight',
+  'nine',
+  'ten',
+  'twenty',
+  'thirty',
+  'forty',
+  'fifty',
+  'sixty',
+  'seventy',
+  'eighty',
+  'ninety',
+  'hundred',
+  'thousand',
+  'grand',
+]);
 
 export type EchoGate<T> =
   | { dropped: true; reason: Extract<VoiceReason, 'auctioneer_talk'> }
