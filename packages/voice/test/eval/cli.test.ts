@@ -58,6 +58,9 @@ describe('T-VOX-083 modes (R-VOX-075)', () => {
       set: 'dev',
     });
     expect(parseArgs(['--mode', 'fast'])).toMatch(/--mode/);
+    expect(parseArgs(['--mic', 'device'])).toMatchObject({ mic: 'device' });
+    expect(parseArgs([])).toMatchObject({ mic: 'room' });
+    expect(parseArgs(['--mic', 'hall'])).toMatch(/--mic/);
     expect(parseArgs(['--set'])).toMatch(/missing value/);
     expect(parseArgs(['--nope', 'x'])).toMatch(/unknown flag/);
   });

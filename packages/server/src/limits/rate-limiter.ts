@@ -1,4 +1,4 @@
-import type { Clock } from '@gavel/shared';
+import { clientKey, type Clock } from '@gavel/shared';
 
 export type LimitKind = 'bid' | 'frame' | 'join' | 'http';
 
@@ -148,14 +148,14 @@ export class RateLimiter {
   }
 
   checkJoin(ip: string): RateResult {
-    return this.check('join', ip);
+    return this.check('join', clientKey(ip));
   }
 
   /** HTTP limit per IP; webhook routes are exempt. */
   checkHttp(ip: string, path: string): RateResult {
     const normal = normalizePath(path);
     if (normal !== null && EXEMPT_PREFIXES.some((p) => normal.startsWith(p))) return { ok: true };
-    return this.check('http', ip);
+    return this.check('http', clientKey(ip));
   }
 
   /** Drop buckets that have fully refilled, to bound memory. */

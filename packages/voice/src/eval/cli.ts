@@ -3,6 +3,7 @@ import { parseUtterance } from '../parser/utterance.js';
 import type { ParseResult } from '../types.js';
 import type { Actual, Expected, Pair } from './metrics.js';
 import { evaluate } from './metrics.js';
+import { gateUtterance, type GateMic } from './gate.js';
 import { renderReport, type ReportItem } from './report.js';
 
 /**
@@ -10,7 +11,12 @@ import { renderReport, type ReportItem } from './report.js';
  *
  *   npm run eval -- --mode text [--set dev|heldout|all] [--out dir]
  *   npm run eval -- --mode cached --provider deepgram
+ *   (add --mic room|device: the microphone rule of the gate; room is what the room runs)
  *   npm run eval -- --mode live --provider deepgram
+ *
+ * Every item is scored twice: the bare parser (parse accuracy) and the room pipeline (AUTO,
+ * CONFIRM or DROP after rescoring, validation, policy and the mic rule). When a recording has no
+ * speech-to-text confidence the gate input is marked neutral_assumed; nothing is invented.
  *
  * Exit codes: 0 done, 1 bad input or failed run, 2 live mode without keys, 3 live mode not run
  * because recordings are missing (nothing was scored, so it must never read as a pass).
@@ -39,10 +45,17 @@ export interface CliOptions {
   provider: Provider;
   set: EvalSet;
   out: string;
+  mic: GateMic;
 }
 
 export function parseArgs(argv: readonly string[]): CliOptions | string {
-  const opts: CliOptions = { mode: 'text', provider: 'deepgram', set: 'all', out: 'eval-out' };
+  const opts: CliOptions = {
+    mode: 'text',
+    provider: 'deepgram',
+    set: 'all',
+    out: 'eval-out',
+    mic: 'room',
+  };
   for (let i = 0; i < argv.length; i += 2) {
     const flag = argv[i];
     const value = argv[i + 1];
@@ -60,6 +73,10 @@ export function parseArgs(argv: readonly string[]): CliOptions | string {
         return `--set must be dev, heldout or all, got ${value}`;
       }
       opts.set = value;
+    } else if (flag === '--mic') {
+      if (value !== 'room' && value !== 'device')
+        return `--mic must be room or device, got ${value}`;
+      opts.mic = value;
     } else if (flag === '--out') {
       opts.out = value;
     } else {
@@ -73,6 +90,8 @@ export function parseArgs(argv: readonly string[]): CliOptions | string {
 const sttCacheSchema = z.object({
   text: z.string(),
   latencyMs: z.number().nonnegative().default(0),
+  /** Recorded segment confidence; absent when the recording did not keep one. */
+  confidence: z.number().min(0).max(1).optional(),
 });
 
 const manifestSchema = z.array(
@@ -122,7 +141,11 @@ export interface CliDeps {
    * Live transcription of one audio fixture; absent when no provider adapter is wired in.
    * Receives the key so the adapter never reads the environment itself.
    */
-  transcribe?: (id: string, provider: Provider, key: string) => Promise<{ text: string }>;
+  transcribe?: (
+    id: string,
+    provider: Provider,
+    key: string,
+  ) => Promise<{ text: string; confidence?: number }>;
   /** True when the recording of a clip is available to the live adapter. */
   recordingExists?: (id: string) => boolean;
 }
@@ -151,7 +174,7 @@ function toActual(r: ParseResult, speaker: string | null | undefined): Actual {
   return { kind: 'none' };
 }
 
-function textItems(deps: CliDeps, set: EvalSet): ReportItem[] {
+function textItems(deps: CliDeps, set: EvalSet, mic: GateMic): ReportItem[] {
   const cases = casesSchema.parse(JSON.parse(deps.readFile('fixtures/text/cases.json')));
   return cases
     .filter((c) => set === 'all' || c.set === set)
@@ -172,6 +195,13 @@ function textItems(deps: CliDeps, set: EvalSet): ReportItem[] {
         confidence: r.confidence,
         expected,
         actual: toActual(r, c.speaker),
+        gate: gateUtterance({
+          text: c.text,
+          speaker: c.speaker,
+          currentPriceCents: c.currentPriceCents,
+          minIncrementCents: null,
+          mic,
+        }),
         latencyMs: 0,
         provider: 'text',
         referenceText: c.text,
@@ -202,6 +232,8 @@ function audioItem(
   recognized: string,
   latencyMs: number,
   provider: string,
+  mic: GateMic,
+  sttConfidence?: number,
 ): ReportItem {
   const r = parseUtterance(recognized, ctxOf(c.speakerBidderId, c.context.currentPriceCents));
   return {
@@ -210,6 +242,14 @@ function audioItem(
     confidence: r.confidence,
     expected: audioExpected(c),
     actual: toActual(r, c.speakerBidderId),
+    gate: gateUtterance({
+      text: recognized,
+      speaker: c.speakerBidderId ?? null,
+      currentPriceCents: c.context.currentPriceCents ?? null,
+      minIncrementCents: c.context.minIncrementCents ?? null,
+      ...(sttConfidence === undefined ? {} : { sttConfidence }),
+      mic,
+    }),
     latencyMs,
     provider,
     referenceText: c.text,
@@ -218,7 +258,7 @@ function audioItem(
 }
 
 /** Recorded provider transcripts through the parser; deterministic and offline. */
-function cachedItems(deps: CliDeps, provider: Provider): ReportItem[] | string {
+function cachedItems(deps: CliDeps, provider: Provider, mic: GateMic): ReportItem[] | string {
   const dir = `fixtures/stt-cache/${provider}`;
   if (!deps.exists(dir)) return `no recorded provider output at ${dir}`;
   const items: ReportItem[] = [];
@@ -226,7 +266,7 @@ function cachedItems(deps: CliDeps, provider: Provider): ReportItem[] | string {
     const path = `${dir}/${c.id}.json`;
     if (!deps.exists(path)) return `missing ${path}`;
     const rec = sttCacheSchema.parse(JSON.parse(deps.readFile(path)));
-    items.push(audioItem(c, rec.text, rec.latencyMs, provider));
+    items.push(audioItem(c, rec.text, rec.latencyMs, provider, mic, rec.confidence));
   }
   return items;
 }
@@ -265,12 +305,13 @@ async function liveItems(
   provider: Provider,
   key: string,
   transcribe: NonNullable<CliDeps['transcribe']>,
+  mic: GateMic,
 ): Promise<ReportItem[]> {
   const cases = audioCases(deps);
   return mapLimited(cases, LIVE_CONCURRENCY, async (c) => {
     const started = Date.now();
-    const { text } = await transcribe(c.id, provider, key);
-    return audioItem(c, text, Date.now() - started, provider);
+    const { text, confidence } = await transcribe(c.id, provider, key);
+    return audioItem(c, text, Date.now() - started, provider, mic, confidence);
   });
 }
 
@@ -289,9 +330,9 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<nu
   let setLabel: string = opts.set;
   try {
     if (opts.mode === 'text') {
-      items = textItems(deps, opts.set);
+      items = textItems(deps, opts.set, opts.mic);
     } else if (opts.mode === 'cached') {
-      items = cachedItems(deps, opts.provider);
+      items = cachedItems(deps, opts.provider, opts.mic);
       setLabel = 'audio';
     } else {
       if (key === '') {
@@ -310,7 +351,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<nu
           return EXIT_NOT_RUN;
         }
       }
-      items = await liveItems(deps, opts.provider, key, deps.transcribe);
+      items = await liveItems(deps, opts.provider, key, deps.transcribe, opts.mic);
       setLabel = 'audio';
     }
   } catch (err) {
@@ -327,6 +368,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<nu
     mode: opts.mode,
     set: setLabel,
     provider: opts.mode === 'text' ? 'none' : opts.provider,
+    mic: opts.mic,
     items,
   });
   deps.writeFile(`${opts.out}/report.json`, report.json);

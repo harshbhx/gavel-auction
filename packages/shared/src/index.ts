@@ -18,5 +18,6 @@ export * from './wire/server';
 export * from './ports';
 export * from './confidence';
 export * from './hold-contract';
+export * from './client-key';
 export * from './ceilings';
 export * from './replay-bundle';

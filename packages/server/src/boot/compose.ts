@@ -29,6 +29,7 @@ import {
   type WebhookEventStore,
 } from '@gavel/payments';
 import {
+  clientKey,
   EpochMs,
   SystemClock,
   UlidMinter,
@@ -675,7 +676,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
   });
 
   const admitUpgrade = (req: IncomingMessage): (() => void) | undefined => {
-    const source = sourceOf(req, config.TRUSTED_PROXY_HOPS) ?? 'unknown';
+    const source = clientKey(sourceOf(req, config.TRUSTED_PROXY_HOPS) ?? 'unknown');
     if (!limiter.checkJoin(source).ok) return undefined;
     const open = socketsBySource.get(source) ?? 0;
     if (open >= MAX_SOCKETS_PER_SOURCE) return undefined;

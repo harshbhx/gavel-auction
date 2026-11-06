@@ -10,12 +10,15 @@ import {
   type Metrics,
 } from './metrics.js';
 import { gateG5 } from './harness.js';
+import type { GateRecord } from './gate.js';
 
 /** One evaluated utterance with the fields the report groups and sweeps by. */
 export interface ReportItem extends EvalResult {
   category: string;
   /** Parser confidence 0..1, used by the threshold sweep. */
   confidence: number;
+  /** What the room pipeline did with this utterance (AUTO, CONFIRM or DROP); absent for parser-only runs. */
+  gate?: GateRecord;
 }
 
 export interface ReportMeta {
@@ -24,6 +27,8 @@ export interface ReportMeta {
   /** Free-form label of the input set, for example "dev" or "audio". */
   set: string;
   provider: string;
+  /** Microphone rule the gate ran under; reported with the gated section. */
+  mic?: string;
   items: readonly ReportItem[];
 }
 
@@ -156,6 +161,40 @@ function utteranceRows(items: readonly ReportItem[]): Array<Record<string, unkno
   }));
 }
 
+/** Items as the room gate decided them, so the metrics and the sweep describe the policy that runs. */
+function gatedItems(items: readonly ReportItem[]): ReportItem[] {
+  return items.flatMap((i) => {
+    const { gate, ...rest } = i;
+    return gate === undefined
+      ? []
+      : [{ ...rest, actual: gate.actual, confidence: gate.confidence }];
+  });
+}
+
+function gatedSection(
+  items: readonly ReportItem[],
+  mic: string | undefined,
+): Record<string, unknown> | null {
+  const gated = gatedItems(items);
+  if (gated.length === 0) return null;
+  const records = items.flatMap((i) => (i.gate === undefined ? [] : [i.gate]));
+  const count = (d: GateRecord['decision']): number =>
+    records.filter((r) => r.decision === d).length;
+  return {
+    note: 'Outcome after the room pipeline: rules parse, rescoring, validation, AUTO/CONFIRM policy and mic rule.',
+    mic: mic ?? 'room',
+    assumptions:
+      'Roster of paddles 1 to 99 with active holds; price 0 and minimum increment 100 cents where the fixture gives none; neutral speech-to-text confidence where none was recorded; model off, so every bid is rules-only.',
+    outcomes: { auto: count('auto'), confirm: count('confirm'), drop: count('drop') },
+    sttConfidence: {
+      recorded: records.filter((r) => r.sttSource === 'recorded').length,
+      neutralAssumed: records.filter((r) => r.sttSource === 'neutral_assumed').length,
+    },
+    metrics: roundMetrics(evaluate(gated)),
+    sweep: sweep(gated),
+  };
+}
+
 const fmt = (n: unknown): string => (typeof n === 'number' ? n.toFixed(3) : String(n));
 
 function table(headers: string[], rows: string[][]): string[] {
@@ -177,6 +216,7 @@ export function renderReport(metrics: Metrics, meta: ReportMeta): Report {
   const rows = sweep(meta.items);
   const confusions = confusion(meta.items);
   const summary = roundMetrics(metrics);
+  const gated = gatedSection(meta.items, meta.mic);
 
   const doc = {
     gitSha: meta.gitSha,
@@ -193,6 +233,7 @@ export function renderReport(metrics: Metrics, meta: ReportMeta): Report {
     },
     categories,
     sweep: rows,
+    ...(gated === null ? {} : { gated }),
     confusion: confusions,
     utterances,
   };
@@ -237,6 +278,50 @@ export function renderReport(metrics: Metrics, meta: ReportMeta): Report {
       rows.map((r) => [r.threshold.toFixed(2), fmt(r.wrongAcceptRate), fmt(r.confirmRate)]),
     ),
     '',
+    ...(gated === null
+      ? []
+      : [
+          '## Room gate (AUTO/CONFIRM)',
+          '',
+          String(gated['note']),
+          '',
+          `Mic rule: ${String(gated['mic'])}. ${String(gated['assumptions'])}`,
+          '',
+          ...table(
+            ['outcome', 'n'],
+            Object.entries(gated['outcomes'] as Record<string, number>).map(([k, v]) => [
+              k,
+              String(v),
+            ]),
+          ),
+          '',
+          ...table(
+            ['stt confidence', 'n'],
+            Object.entries(gated['sttConfidence'] as Record<string, number>).map(([k, v]) => [
+              k,
+              String(v),
+            ]),
+          ),
+          '',
+          ...table(
+            ['metric', 'value'],
+            Object.entries(gated['metrics'] as Record<string, unknown>)
+              .filter(([, v]) => typeof v === 'number')
+              .map(([k, v]) => [k, fmt(v)]),
+          ),
+          '',
+          '### Threshold sweep after the gate',
+          '',
+          ...table(
+            ['threshold', 'wrong accept', 'confirm'],
+            (gated['sweep'] as SweepRow[]).map((r) => [
+              r.threshold.toFixed(2),
+              fmt(r.wrongAcceptRate),
+              fmt(r.confirmRate),
+            ]),
+          ),
+          '',
+        ]),
     '## Confusions',
     '',
     ...(confusions.length === 0
