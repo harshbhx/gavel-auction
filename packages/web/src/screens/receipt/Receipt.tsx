@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { t } from '../../copy/t';
+import { FakePaymentsLabel } from '../../design/FakePaymentsLabel';
 import { Button } from '../../design/primitives/Button';
 import type { HoldView, SettlementView } from '../../ladder/ladderModel';
 import { Failed } from './Failed';
@@ -82,6 +83,7 @@ function Body({
         chargedCents={hold.capturedCents}
         idSuffix={hold.idSuffix}
         at={props.at}
+        {...(hold.remainder === undefined ? {} : { remainder: hold.remainder })}
       />
     );
   }
@@ -111,6 +113,7 @@ export function Receipt(props: ReceiptProps) {
   return (
     <article className="gv-receipt" aria-labelledby="gv-receipt-title">
       <h2 id="gv-receipt-title">{t('receipt.title')}</h2>
+      <FakePaymentsLabel />
       <Body view={view} hold={hold} props={props} />
       <div className="gv-receipt__actions">
         <Button variant="outline" onClick={() => window.print()}>

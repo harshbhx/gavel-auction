@@ -1,6 +1,7 @@
 import { t } from '../copy/t';
 import { Icon } from '../design/icons';
 import { formatUsd } from '../util/money';
+import { RemainderNote } from './RemainderNote';
 import {
   buildLadder,
   type LadderLane,
@@ -77,8 +78,12 @@ function Lane({ lane, verification }: { lane: LadderLane; verification: boolean 
             {t('ladder.state.SETTLED')} {formatUsd(lane.releasedCents)}
           </span>
         )}
-        {lane.remainderVoided && (
-          <span className="gv-ladder__note">{t('ladder.remainderVoided')}</span>
+        {lane.remainder !== null ? (
+          <RemainderNote remainder={lane.remainder} className="gv-ladder__note" />
+        ) : (
+          lane.remainderVoided && (
+            <span className="gv-ladder__note">{t('ladder.remainderVoided')}</span>
+          )
         )}
       </div>
       <ol className="gv-ladder__rungs">

@@ -1,5 +1,6 @@
 import { t } from '../../copy/t';
 import type { HoldView } from '../../ladder/ladderModel';
+import { RemainderNote } from '../../ladder/RemainderNote';
 import { formatUsd } from '../../util/money';
 
 export interface WinnerProps {
@@ -79,6 +80,11 @@ export function Winner({ hold, itemName, priceCents, at }: WinnerProps) {
           <progress aria-label={t('receipt.capturing')} />
           <p>{heldLine(hold.ceilingCents, priceCents)}</p>
         </>
+      )}
+      {hold.remainder !== undefined && (
+        <p data-testid="receipt-remainder">
+          <RemainderNote remainder={hold.remainder} />
+        </p>
       )}
     </section>
   );

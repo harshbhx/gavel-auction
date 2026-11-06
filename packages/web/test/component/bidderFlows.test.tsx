@@ -483,7 +483,7 @@ describe('register route', () => {
     fireEvent.blur(field);
     expect(screen.getAllByText(t('reg.nameInvalid')).length).toBeGreaterThan(0);
     const next = screen.getByRole('button', { name: t('reg.continue') });
-    expect((next as HTMLButtonElement).disabled).toBe(true);
+    expect(next.getAttribute('aria-disabled')).toBe('true');
     fireEvent.click(next);
     expect(screen.queryByRole('radio', { name: '$100' })).toBeNull();
     expect(calls).toHaveLength(0);

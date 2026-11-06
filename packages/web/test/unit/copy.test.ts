@@ -185,6 +185,7 @@ describe('banned wording (R-WEB-120, R-WEB-122)', () => {
 
   it('pins the exempt keys: each is shown only after money is charged (WEB-RT-11, WEB-RT-12)', () => {
     expect(Object.keys(wordingExemptions).sort()).toEqual([
+      'banner.fakePayments',
       'bid.waitingLot',
       'ladder.fallback',
       'ladder.invariants.ok',
