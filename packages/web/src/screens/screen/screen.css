@@ -83,3 +83,20 @@
     color: CanvasText;
   }
 }
+
+.gv-screen__frozen {
+  display: inline-block;
+  animation: gv-screen-frozen 1600ms ease-in-out infinite;
+}
+
+@keyframes gv-screen-frozen {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-screen__frozen {
+    animation: none;
+  }
+}

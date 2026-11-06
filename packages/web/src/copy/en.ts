@@ -204,6 +204,8 @@ export const en = {
   'screen.join': 'Join: {code}',
   'screen.settleSummary': '{c} captured, {r} released',
   'screen.stopped': 'Auction stopped',
+  'screen.clockFrozen': 'last known, reconnecting',
+  'screen.untitled': 'Live auction',
   'screen.priceAnnounce': 'Current bid {amount}',
   'audit.title': 'Audit trail',
   'ops.title': 'Operations',

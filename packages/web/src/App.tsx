@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
 import { Cents, type MsgId } from '@gavel/shared';
 import { PROTOCOL_VERSION } from './wire';
 import { t } from './copy/t';
@@ -46,6 +54,8 @@ export interface AppProps {
   /** HTTP side of the server and the payment mode. When set, join, register and landing use it. */
   api?: { apiBase: string; payments: PaymentsMode; paypalClientId: string };
 }
+
+const ReplayScreen = lazy(() => import('./screens/replay/ReplayScreen'));
 
 const NAVIGATE_EVENT = 'gavel:navigate';
 
@@ -133,9 +143,10 @@ interface LiveRouteProps {
   roomId: string;
   token: string;
   bidderId: string | undefined;
+  api: Api | undefined;
 }
 
-function LiveRoute({ match, liveBase, roomId, token, bidderId }: LiveRouteProps): ReactNode {
+function LiveRoute({ match, liveBase, roomId, token, bidderId, api }: LiveRouteProps): ReactNode {
   const { room, transport } = useLiveRoom(liveBase, roomId, token, bidderId);
   const view = usePendingView(room);
   const myPaddle = useRoom((s) =>
@@ -169,11 +180,7 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId }: LiveRouteProps)
     case 'screen':
       return (
         <main data-route="screen">
-          <ScreenView
-            lotTitle={roomId}
-            code={roomId}
-            joinUrl={`${window.location.origin}/join/${encodeURIComponent(roomId)}`}
-          />
+          <ScreenRoute roomId={roomId} api={api} />
         </main>
       );
     default:
@@ -193,6 +200,45 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId }: LiveRouteProps)
         </main>
       );
   }
+}
+
+/** Lot title from the auction info; the server has no short join code, so none is shown. */
+function ScreenRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
+  const [title, setTitle] = useState<string | null>(null);
+  useEffect(() => {
+    if (api === undefined) return undefined;
+    let live = true;
+    fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(roomId)}`)
+      .then((body) => {
+        const got = (body as { title?: unknown }).title;
+        if (live && typeof got === 'string' && got !== '') setTitle(got);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [api, roomId]);
+  return (
+    <ScreenView
+      lotTitle={title ?? t('screen.untitled')}
+      code={null}
+      joinUrl={`${window.location.origin}/join/${encodeURIComponent(roomId)}`}
+    />
+  );
+}
+
+/** Replay of a recording: the bundle is fetched from the recording folder. */
+function ReplayRoute({ match }: { match: RouteMatch }) {
+  const recordingId = match.params['recordingId'];
+  return (
+    <RouteScreen match={match}>
+      {recordingId !== undefined && (
+        <Suspense fallback={<p role="status">{t('net.resyncing')}</p>}>
+          <ReplayScreen recordingId={recordingId} />
+        </Suspense>
+      )}
+    </RouteScreen>
+  );
 }
 
 export function ReceiptRoute({ roomId }: { roomId: string }) {
@@ -545,6 +591,7 @@ function Routed({
   if (id === 'landing' && api !== undefined) return <LandingRoute api={api} />;
   if (id === 'demo') return <DemoRoute api={api} />;
   if (id === 'notFound') return <NotFound />;
+  if (id === 'replay') return <ReplayRoute match={match} />;
   if (
     id === 'console' &&
     liveBase !== undefined &&
@@ -578,6 +625,7 @@ function Routed({
       roomId={roomId}
       token={who.token}
       bidderId={who.bidderId}
+      api={api}
     />
   );
 }
