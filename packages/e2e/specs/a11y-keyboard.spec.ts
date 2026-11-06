@@ -40,7 +40,7 @@ test('the focused field and button show a ring at least 2 px wide', async ({ pag
   await page.keyboard.press('Tab');
   await page.locator('input[autocomplete="nickname"]').focus();
   await page.keyboard.type('Walnut');
-  await page.keyboard.press('Tab');
+  // The name field is followed directly by the submit button.
   await page.keyboard.press('Tab');
   const ring = await page.evaluate(() => {
     const el = document.activeElement;

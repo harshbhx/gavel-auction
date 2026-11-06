@@ -83,7 +83,8 @@ for (const view of VIEWS) {
     test(`axe ${view} in ${theme}`, async ({ page, stack }, testInfo) => {
       await setTheme(page, theme);
       await page.goto(`${stack.webUrl}${view}`);
-      await page.waitForLoadState('networkidle');
+      // 'load', not 'networkidle': a page with an open room socket is never idle.
+      await page.waitForLoadState('load');
       await page.locator('main, h1').first().waitFor({ state: 'attached' });
       await sweep(page, testInfo, `${view.replace(/\W+/g, '_')}-${theme}`);
     });
