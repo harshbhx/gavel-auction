@@ -9,8 +9,7 @@ import { receiptSource } from './ladder/fromWire';
 import type { Transport } from './net/transport';
 import { WebSocketTransport } from './net/wsTransport';
 import { loadSession, saveSession } from './net/session';
-import { PayPalV6Adapter } from './payments/paypalV6Adapter';
-import { createApprovalPort, useApproval } from './payments/useApproval';
+import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
 import { RouteScreen, matchRoute, type RouteMatch } from './routes';
 import { AuditTable } from './screens/audit/AuditTable';
 import { Export } from './screens/audit/Export';
@@ -425,7 +424,7 @@ function ReturnRoute({ roomId, api }: { roomId: string; api: Api }) {
   const stored = loadSession(roomId);
   const adapter = useMemo(
     () =>
-      new PayPalV6Adapter({
+      createReturnAdapter({
         apiBase: api.apiBase,
         clientId: api.paypalClientId,
         token: stored?.token ?? '',
