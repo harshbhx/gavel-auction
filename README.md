@@ -16,16 +16,16 @@
 
 <br>
 
-> **A live auction where every bid is a PayPal AUTHORIZE hold.** Only the winning price is captured; every other hold is voided and released. A crash-safe settlement saga and a hash-chained audit trail keep the result provable.
+> **A live auction where every bid is a PayPal AUTHORIZE hold.** Only the winning price is captured; every other hold is voided and released. A journaled settlement saga (crash recovery verified against the fake PayPal only) and a hash-chained audit trail keep the result checkable.
 
 Built for the PayPal Hackathon 2026. PayPal sandbox only: no real money moves.
 
 <table>
   <tr>
     <td align="center" width="25%"><h3>7</h3>packages, one strict<br>TypeScript monorepo</td>
-    <td align="center" width="25%"><h3>452</h3>test files: unit, property,<br>fixture and scenario</td>
-    <td align="center" width="25%"><h3>10</h3>end-to-end scenarios,<br>from happy path to retries</td>
-    <td align="center" width="25%"><h3>4 of 6</h3>PayPal sandbox gates<br>passed with recorded evidence</td>
+    <td align="center" width="25%"><h3>500+</h3>test files: unit, property,<br>fixture and scenario</td>
+    <td align="center" width="25%"><h3>15</h3>end-to-end scenarios,<br>from happy path to retries</td>
+    <td align="center" width="25%"><h3>4 of 6</h3>PayPal sandbox gates passed<br>(3 with committed evidence)</td>
   </tr>
 </table>
 
@@ -33,13 +33,13 @@ Built for the PayPal Hackathon 2026. PayPal sandbox only: no real money moves.
 
 Online auctions have a trust problem at the hammer: the winner may never pay, and every losing bidder wonders what happened to their money. GAVEL moves the money question to the start.
 
-|                         | A typical online auction           | GAVEL                                                        |
-| ----------------------- | ---------------------------------- | ------------------------------------------------------------ |
-| When a bidder commits   | After winning, if they pay at all  | Before the first bid: PayPal holds their ceiling             |
-| What a losing bid costs | Nothing, but nothing guarantees it | Nothing: the hold is voided and released                     |
-| What the winner pays    | Whatever the invoice says          | The winning price only, never the ceiling                    |
-| If the server crashes   | Manual clean-up                    | The saga resumes from its journal and checks PayPal first    |
-| Proof of the result     | Trust the operator                 | A hash-chained ledger anyone can verify from a public export |
+|                         | A typical online auction           | GAVEL                                                                                                                   |
+| ----------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| When a bidder commits   | After winning, if they pay at all  | Before the first bid: PayPal holds their ceiling                                                                        |
+| What a losing bid costs | Nothing, but nothing guarantees it | Nothing: the hold is voided and released                                                                                |
+| What the winner pays    | Whatever the invoice says          | The winning price only, never the ceiling                                                                               |
+| If the server crashes   | Manual clean-up                    | The saga resumes from its journal and checks PayPal first (verified against the fake PayPal; sandbox crash run pending) |
+| Proof of the result     | Trust the operator                 | A hash-chained ledger anyone can verify from a public export                                                            |
 
 ## How it works
 
@@ -66,9 +66,9 @@ sequenceDiagram
   G->>G: Journal closes, audit trail is sealed
 ```
 
-### Settlement that survives a crash
+### Settlement that is designed to survive a crash
 
-If the process dies mid-settlement, the saga journal lets it resume: it checks the truth at PayPal, then continues the capture and the voids instead of repeating them. When PayPal's answer is unknown, the settlement stops for review rather than guessing. Simplified:
+This is verified against the project's fake PayPal only. No whole-auction settlement and no real crash and restart has run on the PayPal sandbox (see [docs/GATES.md](docs/GATES.md)). If the process dies mid-settlement, the saga journal lets it resume: it checks the truth at PayPal, then continues the capture and the voids instead of repeating them. When PayPal's answer is unknown, the settlement stops for review rather than guessing. Simplified:
 
 ```mermaid
 stateDiagram-v2
@@ -158,7 +158,7 @@ Every pull request runs tests, type checks, lint and the other quality checks in
 
 ## What works today
 
-The packages are built and tested separately, mostly against the fake PayPal. The booted server serves the ops, webhook, admin and auction HTTP routes (create, invites, join, read, control, auctioneer token) and a WebSocket gateway; the scripted `/api/demo/*` routes are not mounted yet, and no hosted demo is published. See [docs/DEMO.md](docs/DEMO.md) for the exact state.
+The packages are built and tested separately, mostly against the fake PayPal. The booted server serves the ops, webhook, admin and auction HTTP routes (create, invites, join, read, control, auctioneer token) and a WebSocket gateway; the scripted `/api/demo/*` routes are not mounted (the handler exists in `packages/server/src/http/demo.ts`), and no hosted demo is published. See [docs/DEMO.md](docs/DEMO.md) for the exact state.
 
 | Area                      | Status                                                                                                                                                          |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -171,16 +171,16 @@ The packages are built and tested separately, mostly against the fake PayPal. Th
 
 ## PayPal sandbox gates
 
-Each gate is a recorded run against the real PayPal sandbox. Source of truth: [docs/GATES.md](docs/GATES.md); raw run logs are in [`docs/evidence/`](docs/evidence).
+Each gate is a run against the real PayPal sandbox. Source of truth: [docs/GATES.md](docs/GATES.md). Committed raw run logs ([`docs/evidence/`](docs/evidence)) exist for G1, G2 and G4; G0 is recorded only as a GitHub Actions run log (no committed file).
 
-| Gate | Question                                      | Result                                                                       | Notes                                                             |
-| ---- | --------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| G0   | Sandbox app and buyer accounts work           | ![PASS](https://img.shields.io/badge/-PASS-2ea44f?style=flat-square)         | Connectivity and order creation only                              |
-| G1   | Partial capture and release of the remainder  | ![PASS](https://img.shields.io/badge/-PASS-2ea44f?style=flat-square)         | Wallet and card buyers; guest capture not covered                 |
-| G2   | Card and guest AUTHORIZE                      | ![PASS](https://img.shields.io/badge/-PASS-2ea44f?style=flat-square)         | Wallet and guest card authorized, PayPal JS SDK v6                |
-| G3   | Honor period, validity and reauthorize        | ![NOT RUN](https://img.shields.io/badge/-NOT%20RUN-8b949e?style=flat-square) |                                                                   |
-| G4   | Webhook signature verification on real events | ![PASS](https://img.shields.io/badge/-PASS-2ea44f?style=flat-square)         | 6 real deliveries verified; tampered-event rejection is fake-only |
-| G5   | Speech-to-text accuracy on noisy bids         | ![NOT RUN](https://img.shields.io/badge/-NOT%20RUN-8b949e?style=flat-square) |                                                                   |
+| Gate | Question                                      | Result                                                                       | Notes                                                                                                                                                                                                                                                       |
+| ---- | --------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G0   | Sandbox app and buyer accounts work           | ![PASS](https://img.shields.io/badge/-PASS-2ea44f?style=flat-square)         | Connectivity and order creation only; no committed evidence file (Actions run log only)                                                                                                                                                                     |
+| G1   | Partial capture and release of the remainder  | ![PASS](https://img.shields.io/badge/-PASS-2ea44f?style=flat-square)         | PayPal-account orders for both buyers (the "card" buyer is a PayPal account funded by a card); guest-card capture not covered. Release of the remainder is inferred from the authorization reading CAPTURED and the 422 on a void, not from a buyer balance |
+| G2   | Card and guest AUTHORIZE                      | ![PASS](https://img.shields.io/badge/-PASS-2ea44f?style=flat-square)         | Wallet and guest card authorized, PayPal JS SDK v6                                                                                                                                                                                                          |
+| G3   | Honor period, validity and reauthorize        | ![NOT RUN](https://img.shields.io/badge/-NOT%20RUN-8b949e?style=flat-square) | Timed probe still running on a schedule (`gate-g3.yml`); no result recorded yet                                                                                                                                                                             |
+| G4   | Webhook signature verification on real events | ![PASS](https://img.shields.io/badge/-PASS-2ea44f?style=flat-square)         | 6 real deliveries verified; tampered-event rejection is fake-only                                                                                                                                                                                           |
+| G5   | Speech-to-text accuracy on noisy bids         | ![NOT RUN](https://img.shields.io/badge/-NOT%20RUN-8b949e?style=flat-square) |                                                                                                                                                                                                                                                             |
 
 Behaviour not covered by a passed gate is established only against the project's own fake PayPal.
 

@@ -21,7 +21,7 @@ Verdict: sandbox credentials work and the app can create an AUTHORIZE order.
 
 Decision: PASS
 Fallback if FAIL: none for payments; hold G1 to G4 and demo on the fake PayPal.
-Evidence: no evidence file is committed under docs/evidence/G0/ and the run published no artifact; the evidence is the run log of workflow gate-g0, run 41815593520 (2026-11-04).
+Evidence: no evidence file is committed under docs/evidence/G0/ and the run published no artifact; the only record is the run log of workflow gate-g0, run 41815593520 (2026-11-04), which expires with the Actions log retention and is visible only with repository access. The run was made from branch gate/g0, before the main-only guard. Treat G0 as reported, not independently verifiable, until redacted evidence is committed.
 Links: workflow gate-g0, run 41815593520; secrets by name below.
 Scope: connectivity, token scopes and order creation only. No buyer approval or capture was part of G0.
 Sandbox accounts: 1 business account that owns the app, and 5 personal buyer accounts, all US and USD. Buyer A, buyer B, buyer C (card), buyer D and buyer E use the emails gavel-buyer-a, gavel-buyer-b, gavel-buyer-card, gavel-buyer-d and gavel-buyer-e at personal.example.com. Passwords are not recorded in the repository.
@@ -32,28 +32,28 @@ Secrets (names only): the app is `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET`; 
 Status: PASS
 Run date / by: 2026-11-04 by harshbhx (wallet); 2026-11-05 by harshbhx (card, run G1-20261105T123116Z)
 Question: after authorize 500.00 and capture 350.00 with final_capture=true, is the 150.00 remainder released or still active?
-Setup: sandbox, wallet buyer (script version 7e83b05) and card buyer (run G1-20261105T123116Z, script version 3a1fe9c); no passwords or card numbers recorded.
+Setup: sandbox, two buyers (script version 7e83b05 and run G1-20261105T123116Z, script version 3a1fe9c); every order in both runs is created with payment_source.paypal, so both are PayPal-account orders. The second buyer ("card") is a personal sandbox account named card, funded by a card; it is not a guest card checkout. No passwords or card numbers recorded.
 Requests: create order (AUTHORIZE 500.00), buyer approval, authorize, capture 350.00 with final_capture, read the authorization and order, then an explicit void of the remainder.
 Observed: after the final capture the authorization reads CAPTURED and the order COMPLETED for both buyers, so the remainder is released without a void. An explicit void afterwards answers HTTP 422 PREVIOUSLY_CAPTURED for both. The wallet capture accepted `invoice_id` and the order lists it on the capture.
-Verdict: remainder released for wallet and card (decision A).
+Verdict: the authorization closes as CAPTURED and the order COMPLETED after the final capture, and a later void is refused with PREVIOUSLY_CAPTURED. That the 150.00 remainder is released is inferred from this and from PayPal's documentation; no run read a buyer balance or available funds (decision A). The authorization keeps amount 500.00, so the evidence cannot tell a released remainder from an open one.
 
 | id                                               | expected             | actual                                                                         | verdict  |
 | ------------------------------------------------ | -------------------- | ------------------------------------------------------------------------------ | -------- |
 | G1.5 wallet capture 350 with final_capture       | accepted             | HTTP 201 COMPLETED                                                             | observed |
-| G1.6 wallet remainder status after final capture | open or released     | authorization CAPTURED, order COMPLETED: released                              | observed |
+| G1.6 wallet remainder status after final capture | open or released     | authorization CAPTURED, order COMPLETED (release inferred)                     | observed |
 | G1.7 wallet explicit void of the remainder       | accepted or rejected | HTTP 422 UNPROCESSABLE_ENTITY PREVIOUSLY_CAPTURED, authorization then CAPTURED | observed |
 | G1.8 wallet decision                             | A, B or C            | A                                                                              | observed |
 | G1.5 card capture 350 with final_capture         | accepted             | HTTP 201 COMPLETED                                                             | observed |
-| G1.6 card remainder status after final capture   | open or released     | authorization CAPTURED, order COMPLETED: released                              | observed |
+| G1.6 card remainder status after final capture   | open or released     | authorization CAPTURED, order COMPLETED (release inferred)                     | observed |
 | G1.7 card explicit void of the remainder         | accepted or rejected | HTTP 422 UNPROCESSABLE_ENTITY PREVIOUSLY_CAPTURED, authorization then CAPTURED | observed |
 | G1.8 card decision                               | A, B or C            | A                                                                              | observed |
 
-Decision: PASS (wallet and card)
+Decision: PASS (two PayPal-account buyers; remainder release inferred)
 Fallback if FAIL: wallet buyers only, card path off (R-PAY-037).
 Evidence: docs/evidence/G1/G1-20261104T231047Z.jsonl (sha256 8ac39be0454bcab5c7e2764d87d1d09566ac384681fc3e361285f78c70422bb8)
 Evidence: docs/evidence/G1/G1-20261105T123116Z.jsonl (sha256 2c8ff2e139b0ecf66a1a273761ff8031f385f199f44dd0d2111cc54b10b7d4cb)
 Links: spec tags flipped: R-PAY-059, R-PAY-051.
-Scope: sandbox wallet and card buyers. Guest checkout capture was not part of this run.
+Scope: PayPal-account buyers only. Capture of a guest card order (the G2 guest AUTHORIZE) was never run on the sandbox.
 Saga: a void refused with PREVIOUSLY_CAPTURED on the winner's remainder is treated as released (packages/payments/src/errorMap.ts, saga/remainder.ts).
 
 ## G2: card and guest AUTHORIZE
@@ -76,12 +76,12 @@ Decision: PASS
 Fallback if FAIL: restrict registration to wallet buyers.
 Evidence: docs/evidence/G2/G2-20261105T115228Z.jsonl (sha256 2a0e9ee97fbecfa3419647a93bf39a77369be82c7a5e624827fe0e1ebcfffdfe)
 Links: spec tags flipped: R-PAY-036, R-PAY-037. Flag: g2_card_authorize true.
-Scope: AUTHORIZE only. Capture and void for a card buyer are covered by G1 (run G1-20261105T123116Z).
+Scope: AUTHORIZE only. Capture and void of the guest card authorization were not run; G1 (run G1-20261105T123116Z) captured a PayPal-account order only.
 
 ## G3: honor period versus validity and reauthorize
 
 Status: NOT RUN
-Run date / by: n/a
+Run date / by: n/a (a timed probe, `.github/workflows/gate-g3.yml`, runs on a schedule every 6 hours and on dispatch; its runs since 2026-11-04 are green but no result is recorded here, so the gate stays NOT RUN)
 Question: how long does an authorization stay capturable, and does reauthorize extend it?
 Setup: n/a
 Requests: n/a
@@ -205,9 +205,9 @@ Interim decision: GO, with documented fallbacks. This is not a final go: G3 and 
 Verified, with evidence above:
 
 - Wallet and card AUTHORIZE work (G2), so the card and guest path is on (`g2_card_authorize` true).
-- Partial capture with `final_capture` releases the remainder for wallet and card buyers (G1, decision A).
+- Partial capture with `final_capture` closes the authorization as CAPTURED for two PayPal-account buyers (G1, decision A); that the remainder is released is inferred, not observed.
 - Real webhooks verify through PayPal's endpoint (G4). Tampered-event rejection is covered against the fake only.
-- The sandbox app and buyer accounts work (G0).
+- The sandbox app and buyer accounts work (G0; Actions run log only, no committed evidence file).
 
 Not run, results pending:
 
@@ -223,7 +223,7 @@ What changes the decision:
 
 ## Latency targets and measured numbers
 
-Targets (R-PAY-152) against the sandbox measurement. Date: 2026-11-05. Workflow: `measure-sandbox`, run 42047543821 (https://github.com/harshbhx/gavel-auction/actions/runs/42047543821). Real PayPal sandbox, 10 sequential cycles, 0 failures, so n=10 per call. The raw evidence is not committed; the run log is the record.
+Targets (R-PAY-152) against the sandbox measurement. Date: 2026-11-05. Workflow: `measure-sandbox`, run 42047543821 (https://github.com/harshbhx/gavel-auction/actions/runs/42047543821). Real PayPal sandbox, 10 sequential cycles, 0 failures, so n=10 per call. The raw evidence is not committed; the run log is the only record and it expires with the Actions log retention. These numbers are not independently verifiable until a redacted log is committed.
 
 | Call      | p50 (ms) | p95 (ms) | max (ms) |
 | --------- | -------- | -------- | -------- |
@@ -234,13 +234,13 @@ Targets (R-PAY-152) against the sandbox measurement. Date: 2026-11-05. Workflow:
 
 Earlier, the same script ran against the fake PayPal (`npm run measure -- --fake`, 2026-11-04, 50 sequential and 10 parallel cycles). Those numbers were our client overhead on loopback, not PayPal latency, and they do not count as a sandbox measurement.
 
-| Target                                   | Value  | Measured (sandbox, n=10)                                                                                 | Status                      |
-| ---------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------- | --------------------------- |
-| hammer to CAPTURED p95                   | 2.5 s  | capture p95 2280.66 ms (the same capture mapping the fake table used; with n=10 p95 is close to the max) | MET (sandbox, n=10)         |
-| hammer to SETTLED, 6 holds, p95          | 6 s    | void p95 1235.96 ms; the truth check that settlement also needs is not measured by this script           | UNVERIFIED (G1 measurement) |
-| webhook handler 200, without verify call | 300 ms | not part of this script (covered by T-PAY-068)                                                           | UNVERIFIED (G1 measurement) |
+| Target                                   | Value  | Measured (sandbox, n=10)                                                                                 | Status                                          |
+| ---------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| hammer to CAPTURED p95                   | 2.5 s  | capture p95 2280.66 ms (the same capture mapping the fake table used; with n=10 p95 is close to the max) | UNVERIFIED end to end (capture call only, n=10) |
+| hammer to SETTLED, 6 holds, p95          | 6 s    | void p95 1235.96 ms; the truth check that settlement also needs is not measured by this script           | UNVERIFIED (G1 measurement)                     |
+| webhook handler 200, without verify call | 300 ms | not part of this script (covered by T-PAY-068)                                                           | UNVERIFIED (G1 measurement)                     |
 
-Fallback: where a target is not met on sandbox numbers, the target is raised to the sandbox p95. The CAPTURED target is met. The SETTLED target is not shown to hold: the budget below assumes each call stays under 1 s at p95, and sandbox void p95 is 1235.96 ms, so that assumption fails. The fallback therefore applies to SETTLED, and its target must be raised to the sandbox-based value (a decision for the owner, after the truth-check latency is measured). The saga defaults below are not changed by this record.
+Fallback: where a target is not met on sandbox numbers, the target is raised to the sandbox p95 (a decision for the owner; targets are not raised automatically). The 2.5 s target covers hammer to CAPTURED (truth check, journal writes and capture); only the capture call was measured, in 10 samples where p95 equals the max, so the CAPTURED target is not shown to be met end to end. It needs an end-to-end saga measurement with at least 30 samples. The SETTLED target is not shown to hold: the budget below assumes each call stays under 1 s at p95, and sandbox void p95 is 1235.96 ms, so that assumption fails. The fallback therefore applies to SETTLED, and its target must be raised to the sandbox-based value (a decision for the owner, after the truth-check latency is measured). The saga defaults below are not changed by this record.
 
 Rate limit: 0 answers with 429 and no `Retry-After` header in 60 cycles against the fake. The real limits are UNVERIFIED (G1 measurement).
 
@@ -277,7 +277,7 @@ environment up once:
 The nightly workflow `.github/workflows/nightly-sandbox.yml` uses the same environment. It runs
 the real-sandbox specs R1 to R8 and R10 (`packages/e2e/sandbox`) at 20:30 UTC and on manual dispatch, then
 writes `report/sandbox.json` with one of pass, fail, inconclusive or skipped per spec. Without the
-secrets every spec is skipped and the run is green. Only the summary is uploaded (14 days); the
+secrets every spec is skipped and the run is green, so a green nightly run alone does not show that any sandbox spec ran: read `report/sandbox.json`. Only the summary is uploaded (14 days); the
 transcripts stay on the runner. A spec whose gate is still open reports `inconclusive`, not `fail`.
 
 `packages/payments/src/gates-result.json` flags (`g1_remainder_mode`, `g2_card_authorize`,
@@ -288,8 +288,7 @@ when the evidence file no longer matches its recorded sha256.
 The sandbox accounts must be US accounts. PayPal rejects INR orders for the sandbox buyers with `422 CURRENCY_NOT_SUPPORTED`, and India sandbox buyers fail at the buyer approval page with USD. Gates send USD by default; set `GATE_CURRENCY` only to override it for a specific run.
 
 Until the environment exists, GitHub creates it on first use with no reviewer and no branch rule,
-so do not run a gate before step 2 is done. The gate workflows are manual and main-only, so CI is
-not affected in the meantime.
+so do not run a gate before step 2 is done. The gate workflows run only from `main`. G0, G1 and G4 are manual; `gate-g3.yml` also runs on a schedule (every 6 hours) because it is a timed probe, so it uses the sandbox secrets without a manual trigger. CI is not affected in the meantime.
 
 ## Crash between capture and journal save (T-PAY-094, R-PAY-060)
 
@@ -306,3 +305,5 @@ that is allowed to start with the hook (it is refused when `NODE_ENV=production`
 restart it on the same store. Until the owner provides that, the in-process crash in R10 is the
 evidence, and the SPEC tag for PayPal's repeated-capture answer stays UNVERIFIED until R10 has
 passed once in the nightly run.
+
+Status of crash safety: whole-auction settlement and crash recovery are verified against the fake PayPal only. No whole-auction settlement ran on the real sandbox, R10 stays UNVERIFIED until it has passed once, and G3 (authorization validity and reauthorize) is NOT RUN, so holds in an auction longer than minutes may expire before capture.
