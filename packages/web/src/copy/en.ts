@@ -48,6 +48,8 @@ export const en = {
   'reg.yourPaddle': 'Your paddle is {n}',
   'reg.step2': 'Choose your ceiling',
   'reg.custom': 'Custom amount',
+  'reg.sessionNotSaved':
+    'Your browser blocked storage. Keep this tab open: reloading will end this session.',
   'reg.customRange': 'Enter a whole dollar amount from {min} to {max}.',
   'reg.heldNotCharged': 'Held, not charged.',
   'reg.heldExplain':
