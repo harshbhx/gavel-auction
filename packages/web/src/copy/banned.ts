@@ -36,6 +36,7 @@ export const superlativeFirst: RegExp = /\bfirst\b/i;
  * with "charged only if".
  */
 export const wordingExemptions: Readonly<Partial<Record<CopyKey, string>>> = {
+  'banner.fakePayments': 'provenance label that says payments are fake, no claim of a charge',
   'ladder.state.CAPTURED': 'ladder state label shown only for a CAPTURED lane',
   'ladder.invariants.ok': 'settlement totals line shown only after capture',
   'ladder.fallback': 'settlement narrative shown after a failed capture attempt',

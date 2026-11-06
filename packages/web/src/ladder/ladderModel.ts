@@ -1,4 +1,4 @@
-import type { SettlementState } from '../wire';
+import type { RemainderState, SettlementState } from '../wire';
 
 export interface HoldVerification {
   eventId: string;
@@ -19,6 +19,8 @@ export interface HoldView {
   verifiedBy: HoldVerification[];
   /** Last 6 characters only. */
   idSuffix: string;
+  /** What the server says happened to the part of the hold beyond the price. Absent when unknown. */
+  remainder?: RemainderState;
 }
 
 export interface SettlementView {
@@ -64,6 +66,8 @@ export interface LadderLane {
   canSayReleased: boolean;
   /** Winner lane whose uncaptured remainder the server reports as released. Shown as "Remainder voided". */
   remainderVoided: boolean;
+  /** The server's remainder state for this hold, when it sent one. */
+  remainder: RemainderState | null;
 }
 
 export interface LadderInvariants {
@@ -196,6 +200,7 @@ function buildLane(hold: HoldView, winnerPaddle: number | null): LadderLane {
     reason: hold.reason ?? null,
     verification: verificationOf(hold),
     canSayReleased: hold.state === 'SETTLED',
+    remainder: hold.remainder ?? null,
     remainderVoided:
       onWinnerTrack &&
       hold.state === 'CAPTURED' &&

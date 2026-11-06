@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { t } from '../../copy/t';
+import { FakePaymentsLabel } from '../../design/FakePaymentsLabel';
 import { LadderCompact } from '../../ladder/LadderCompact';
 import type { SettlementView } from '../../ladder/ladderModel';
 import { useServerNow } from '../../net/clock';
@@ -134,6 +135,7 @@ export function ConsoleScreen({
   if (wide) {
     return (
       <main data-layout="wide">
+        <FakePaymentsLabel />
         <div
           style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}
           data-testid="console-columns"
@@ -154,6 +156,7 @@ export function ConsoleScreen({
   ];
   return (
     <main data-layout="stacked">
+      <FakePaymentsLabel />
       <div role="tablist">
         {tabs.map((x) => (
           <button

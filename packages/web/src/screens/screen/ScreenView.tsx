@@ -36,11 +36,17 @@ export function settleCounts(holds: readonly SettlementHold[]): SettleCounts {
   return { captured, released };
 }
 
+/** Ladder summary from the server's public per-state counts (ladder.counts). */
+export function countsToSettle(counts: Readonly<Record<string, number>>): SettleCounts {
+  return { captured: counts['CAPTURED'] ?? 0, released: counts['SETTLED'] ?? 0 };
+}
+
 /** Projector view: no controls, no personal data beyond the paddle number. */
 export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: ScreenViewProps) {
   const price = useRoom(selectors.price, store);
   const stream = useRoom(selectors.stream, store);
   const hammer = useRoom((s) => s.hammer, store);
+  const stopped = useRoom(selectors.stopped, store);
   const leaderPaddle = useRoom((s) => s.leaderPaddle, store);
   const roster = useRoom((s) => s.snapshot?.roster ?? null, store);
   const status = useRoom((s) => s.snapshot?.status ?? null, store);
@@ -76,7 +82,14 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
   const winnerId = hammer !== null ? hammer.winnerId : snapLeader;
   const winnerPaddle =
     winnerId !== null ? (roster?.find((r) => r.bidderId === winnerId)?.paddle ?? null) : null;
-  const settlement = detail === null ? null : settleCounts(detail.holds);
+  // The server's own counts win; the per-hold derivation is only for frames without them.
+  const serverCounts = useRoom((s) => s.settlementLadderCounts ?? null, store);
+  const settlement =
+    serverCounts !== null
+      ? countsToSettle(serverCounts)
+      : detail === null
+        ? null
+        : settleCounts(detail.holds);
   const liveRemaining =
     price === null
       ? null
@@ -99,6 +112,7 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
     <main className="gv-screen" aria-label={lotTitle}>
       <h1 className="gv-screen__lot">{lotTitle}</h1>
       <FrozenChip disconnected={connection.offline} />
+      {stopped && <p role="status">{t('screen.stopped')}</p>}
       <div className="gv-screen__stage">
         {closed ? (
           <Sold outcome={outcome} settlement={settlement} />

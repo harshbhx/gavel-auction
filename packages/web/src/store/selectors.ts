@@ -93,6 +93,27 @@ export const selectAuctionStatus: Selector<string | null> = memo((s) => {
   return snap.status;
 });
 
+/**
+ * The auctioneer stopped the room with no winner. The snapshot and the hammer frame both carry
+ * the flag; a lot hammered to a winner is a sale, not a stop.
+ */
+export const selectStopped: Selector<boolean> = memo((s) => {
+  if (s.hammer !== null && s.hammer.winnerId !== null) return false;
+  return s.snapshot?.stopped === true || s.hammer?.stopped === true;
+});
+
+/** Registration is over: the flag on the snapshot or the hammer frame, or a status past bidding. */
+export const selectRegistrationClosed: Selector<boolean> = memo((s) => {
+  const status = s.snapshot?.status;
+  return (
+    s.snapshot?.registrationClosed === true ||
+    s.hammer?.registrationClosed === true ||
+    status === 'CLOSING' ||
+    status === 'SETTLING' ||
+    status === 'DONE'
+  );
+});
+
 export const selectMyStatus: Selector<MyStatus> = memo((s) => {
   const you = youOf(s);
   if (you === null) return 'watching';
@@ -155,6 +176,8 @@ export const selectConfirmQueue: Selector<readonly ConfirmRequestMsg[]> = memo(
 );
 
 export const selectors = {
+  stopped: selectStopped,
+  registrationClosed: selectRegistrationClosed,
   price: selectPrice,
   auctionStatus: selectAuctionStatus,
   myStatus: selectMyStatus,

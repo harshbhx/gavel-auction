@@ -170,7 +170,7 @@ export function createControlPort(deps: ControlPortDeps): ControlPort {
             },
       );
     },
-    // The kill route belongs to the server side. Until it exists the server answers 404.
+    // The stop route: the server refuses any confirm text other than STOP.
     kill: (confirm) => post('kill', { confirm }, false),
   };
 }

@@ -114,7 +114,14 @@ function Cell({
     case 'serverTs':
       return <>{new Date(row.serverTs).toISOString().slice(11, 23)}</>;
     case 'audioTsMs':
-      return <>{row.audioTsMs === undefined ? null : formatOffset(row.audioTsMs)}</>;
+      if (row.audioTsMs === undefined) return null;
+      // Start of the spoken bid, then its end when the server sent one.
+      return (
+        <>
+          {formatOffset(row.audioTsMs)}
+          {row.audioEndMs === undefined ? null : ` \u2013 ${formatOffset(row.audioEndMs)}`}
+        </>
+      );
     case 'transcript':
       return <>{row.transcript}</>;
     case 'paddle':
