@@ -35,7 +35,11 @@ const final = (text: string, confidence: number): SttEvent => ({
 });
 
 /** Cached provider on the manual clock: events play at their recorded offsets. */
-async function run(events: Array<{ atMs: number; event: SttEvent }>, current: VoiceView = view) {
+async function run(
+  events: Array<{ atMs: number; event: SttEvent }>,
+  current: VoiceView = view,
+  seen?: { logs: Array<[string, Record<string, string> | undefined]>; latencyCount: () => number },
+) {
   const clock = new ManualClock(1_789_000_000_000);
   const bids: Array<{ bidderId: BidderId; msg: BidMsg }> = [];
   const room: VoiceRoomPort = {
@@ -67,7 +71,18 @@ async function run(events: Array<{ atMs: number; event: SttEvent }>, current: Vo
       clearTimeout: (id) => timers.get(id)?.(),
     },
   );
-  const bridge = startVoiceBridge({ auctionId: AUCTION, room, stt, clock });
+  const logs: Array<[string, Record<string, string> | undefined]> = [];
+  const bridge = startVoiceBridge({
+    auctionId: AUCTION,
+    room,
+    stt,
+    clock,
+    log: (m, f) => logs.push([m, f]),
+  });
+  if (seen !== undefined) {
+    seen.logs = logs;
+    seen.latencyCount = () => bridge.latency().count;
+  }
   for (let i = 0; i < 40; i++) {
     clock.advance(100);
     await new Promise((r) => setImmediate(r));
@@ -109,5 +124,15 @@ describe('voice bridge (HRD-67)', () => {
     expect(
       await run([{ atMs: 600, event: final('paddle seven three fifty', 0.95) }], closed),
     ).toHaveLength(0);
+  });
+
+  it('audits every decision and counts it for the latency budget (R-VOX-071, R-VOX-101)', async () => {
+    const seen = { logs: [], latencyCount: () => 0 } as Parameters<typeof run>[2] & object;
+    await run([{ atMs: 600, event: final('paddle seven three fifty', 0.95) }], view, seen);
+    const decisions = seen.logs.filter(([m]) => m === 'voice decision');
+    expect(decisions).toHaveLength(1);
+    expect(decisions[0]?.[1]).toMatchObject({ outcome: 'accepted', reason: 'ok' });
+    expect(seen.latencyCount()).toBe(1);
+    expect(JSON.stringify(seen.logs)).not.toContain('three fifty');
   });
 });

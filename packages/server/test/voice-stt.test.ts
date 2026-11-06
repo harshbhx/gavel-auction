@@ -1,3 +1,4 @@
+import type { WsFactory } from '@gavel/voice';
 import { describe, expect, it } from 'vitest';
 import { chooseStt } from '../src/voice/stt';
 import { parseConfig } from '../src/config';
@@ -41,5 +42,16 @@ describe('speech provider choice (HRD-67)', () => {
     expect(parseConfig(base).ok).toBe(true);
     expect(parseConfig({ ...base, VOICE_STT: 'groq' }).ok).toBe(true);
     expect(parseConfig({ ...base, VOICE_STT: 'nope' }).ok).toBe(false);
+  });
+
+  it('runs deepgram behind failover when its key is set and a socket is available', () => {
+    const socket: WsFactory = () => {
+      throw new Error('no network in tests');
+    };
+    const choice = chooseStt({ VOICE_STT: 'deepgram', DEEPGRAM_API_KEY: 'k' }, { socket });
+    expect(choice.name).toBe('deepgram');
+    expect(choice.make().name).toBe('deepgram');
+    const missing = chooseStt({ VOICE_STT: 'deepgram' }, { socket });
+    expect(missing.name).toBe('replay');
   });
 });

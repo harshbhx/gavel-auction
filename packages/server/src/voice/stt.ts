@@ -11,12 +11,15 @@ import {
   type SttEnv,
   type SttProvider,
   type Timeline,
+  type WsFactory,
 } from '@gavel/voice';
+import { platformSocketFactory } from './deepgram-socket';
 
 /** Variables the speech choice reads. No key is ever required. */
 export interface SttChoiceEnv {
   VOICE_STT?: string | undefined;
   GROQ_API_KEY?: string | undefined;
+  DEEPGRAM_API_KEY?: string | undefined;
 }
 
 export interface SttChoiceDeps {
@@ -25,6 +28,8 @@ export interface SttChoiceDeps {
   scheduler?: ReplayScheduler;
   failoverClock?: FailoverClock;
   fetch?: SelectDeps['fetch'];
+  /** WebSocket transport for Deepgram; defaults to the runtime's own. */
+  socket?: WsFactory;
   log?: (message: string, fields: Record<string, string>) => void;
 }
 
@@ -59,8 +64,12 @@ export function chooseStt(env: SttChoiceEnv, deps: SttChoiceDeps = {}): SttChoic
   const selectEnv: SttEnv = { VOICE_STT: raw };
   const liveKey = env.GROQ_API_KEY;
   if (liveKey !== undefined) selectEnv.GROQ_API_KEY = liveKey;
+  const deepgramKey = env.DEEPGRAM_API_KEY;
+  if (deepgramKey !== undefined) selectEnv.DEEPGRAM_API_KEY = deepgramKey;
+  const socket = deps.socket ?? platformSocketFactory();
   const selectDeps: SelectDeps = {
     ...(deps.fetch !== undefined ? { fetch: deps.fetch } : {}),
+    ...(socket !== undefined ? { socket } : {}),
     ...(deps.log !== undefined ? { log: (m, f) => deps.log?.(m, f) } : {}),
     warn: () => undefined,
   };

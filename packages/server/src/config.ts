@@ -68,9 +68,10 @@ const EnvObject = z.object({
   PAYPAL_BASE_URL: z.string().url().optional(),
   /**
    * Speech provider for the /audio route. Unset or `replay` plays cached transcripts and needs no
-   * key; `groq` needs GROQ_API_KEY and falls back to the cached provider when it fails.
+   * key; `groq` needs GROQ_API_KEY and `deepgram` needs DEEPGRAM_API_KEY. Both fall back to the
+   * cached provider when they fail.
    */
-  VOICE_STT: z.enum(['replay', 'fake', 'groq']).optional(),
+  VOICE_STT: z.enum(['replay', 'fake', 'groq', 'deepgram']).optional(),
   GAVEL_MAX_CEILING_CENTS: int(1).optional(),
   GAVEL_HOLD_MAX_AGE_MS: int(1).optional(),
   /** Period of the reconcile pass over settled auctions, in ms; unset or 0 turns it off. */

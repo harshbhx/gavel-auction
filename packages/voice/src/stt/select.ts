@@ -1,3 +1,5 @@
+import type { WsFactory } from './deepgram.js';
+import { ReconnectingDeepgramStt } from './deepgram-reconnect.js';
 import { FakeStt, VirtualClock } from './fake.js';
 import { GroqStt, type FetchLike } from './groq.js';
 import type { SttProvider } from './provider.js';
@@ -35,6 +37,8 @@ export interface SelectDeps {
   /** Builders by provider name; a provider without a builder is unavailable. */
   factories?: Partial<Record<SttName, (env: SttEnv) => SttProvider>>;
   fetch?: FetchLike;
+  /** WebSocket transport for Deepgram; without it Deepgram is not built (R-VOX-014). */
+  socket?: WsFactory;
   /** Called once per selectProvider call with the chosen name. */
   log?: (message: string, fields: { provider: SttName }) => void;
   /**
@@ -57,6 +61,11 @@ function build(name: SttName, env: SttEnv, deps: SelectDeps): SttProvider | null
     const f = deps.fetch ?? (globalThis.fetch as FetchLike | undefined);
     if (!apiKey || !f) return null;
     return new GroqStt({ apiKey, fetch: f });
+  }
+  if (name === 'deepgram') {
+    const apiKey = env.DEEPGRAM_API_KEY;
+    if (!apiKey || !deps.socket) return null;
+    return new ReconnectingDeepgramStt({ apiKey, socket: deps.socket });
   }
   if (name === 'fake') return new FakeStt({ clock: new VirtualClock() });
   return null;

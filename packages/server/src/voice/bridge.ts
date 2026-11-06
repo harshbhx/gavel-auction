@@ -1,4 +1,13 @@
-import { commandIdFromKey, toPlaceBid, VoicePipeline, type PipelineOutput } from '@gavel/voice';
+import {
+  budgetCheck,
+  buildAudit,
+  commandIdFromKey,
+  toPlaceBid,
+  VoicePipeline,
+  type BudgetReport,
+  type LatencySample,
+  type PipelineOutput,
+} from '@gavel/voice';
 import type { AudioBatch, BidContext, Decision, SttProvider } from '@gavel/voice';
 import {
   MAX_TRANSCRIPT_CHARS,
@@ -31,6 +40,8 @@ export interface VoiceBridge {
   write(batch: AudioBatch): void;
   /** Stop the provider and the tick. Safe to call twice. */
   close(): Promise<void>;
+  /** Speech end to decision latency against the R-VOX-101 budget, over the decisions so far. */
+  latency(): BudgetReport;
   /** Resolves when the provider has ended and every pending bid was handed to the room. */
   readonly done: Promise<void>;
 }
@@ -92,6 +103,21 @@ export function startVoiceBridge(deps: VoiceBridgeDeps): VoiceBridge {
 
   let pending: Promise<void> = Promise.resolve();
   let closed = false;
+  const samples: LatencySample[] = [];
+
+  /**
+   * Every decision gets its audit record (R-VOX-071) and a latency sample (R-VOX-101). The log
+   * line carries the outcome and reason only, never the transcript.
+   */
+  const record = (decision: Decision): void => {
+    samples.push({ speechEndMs: decision.evidence.audioEndMs, decisionMs: elapsed() });
+    try {
+      const audit = buildAudit(decision);
+      deps.log?.('voice decision', { outcome: audit.outcome, reason: audit.reason });
+    } catch (e) {
+      deps.log?.('voice audit failed', { error: e instanceof Error ? e.message : String(e) });
+    }
+  };
 
   const toBid = (decision: Decision): { bidderId: string; msg: BidMsg } | null => {
     const view = room.voiceView();
@@ -142,6 +168,7 @@ export function startVoiceBridge(deps: VoiceBridgeDeps): VoiceBridge {
   const handle = (outputs: PipelineOutput[]): void => {
     for (const out of outputs) {
       if (out.type !== 'decision') continue;
+      record(out.decision);
       const bid = toBid(out.decision);
       if (bid === null) continue;
       pending = pending
@@ -181,6 +208,7 @@ export function startVoiceBridge(deps: VoiceBridgeDeps): VoiceBridge {
 
   return {
     done,
+    latency: () => budgetCheck(samples, 'rules_only'),
     write: (batch) => {
       if (!closed) stt.write(batch);
     },

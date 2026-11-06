@@ -6,11 +6,13 @@ import {
   type Clock,
   type ErrorCode,
   type Ids,
+  type Logger,
   type RoomStore,
 } from '@gavel/shared';
 import type { z } from 'zod';
 import { signWithCurrent, verifyRotating, type SecretSet } from '../auth/rotation';
 import { TOKEN_TTL_S, type JtiStore, type TokenKind, type TokenPayload } from '../auth/token';
+import { withLogContext } from '../log/context';
 import { auctioneerTokenLive } from '../auth/auctioneer-floor';
 import type { AuctionService } from '../runtime/auction-service';
 import { securityHeaders } from './security-headers';
@@ -35,6 +37,8 @@ export interface HttpDeps {
   /** Override of the WebSocket URL returned by join. Defaults to PUBLIC_URL with ws scheme and /ws. */
   wsUrl?: string;
   maxBodyBytes?: number;
+  /** Request log (R-RT-133): one line per request stamped with the request id. */
+  log?: Logger;
   /** Per-client join limit (R-RT-120). Returns the wait in ms when the caller is over it. */
   joinLimit?: (req: Request) => { ok: true } | { ok: false; retryAfterMs: number };
 }
@@ -113,6 +117,13 @@ export class HttpApp {
       res = await this.dispatch(req, requestId, allowed);
     } catch (e) {
       res = errorResponse(e);
+    }
+    if (this.deps.log !== undefined) {
+      withLogContext(this.deps.log, { reqId: requestId }).info('http request', {
+        method: req.method,
+        path: new URL(req.url).pathname,
+        status: res.status,
+      });
     }
     const out = new Response(res.body, res);
     out.headers.set('x-request-id', requestId);

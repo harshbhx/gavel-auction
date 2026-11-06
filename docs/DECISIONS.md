@@ -644,3 +644,30 @@ Consequences:
 - UNVERIFIED: how long PayPal keeps a capture PENDING (A16), whether an automatic webhook retry keeps the original transmission id and time, and PayPal's retry horizon (W06, G4 recorded first deliveries only).
 
 Evidence: docs/evidence/G1/G1-20261104T231047Z.jsonl and docs/evidence/G1/G1-20261105T123116Z.jsonl (G1.6, G1.7; release inferred, not read from a buyer balance), docs/GATES.md G4, packages/payments/src/fake/ASSUMPTIONS.md A01, A16, H14, W06, packages/payments/test/saga/r12.test.ts, R-PAY-055, R-PAY-058, R-PAY-059, R-PAY-063, issues #1563 to #1568.
+
+## D-0034: Unused modules from the audit: wire what a requirement needs, delete what the service replaced
+
+Date: 2026-11-06
+Status: accepted
+Owner: server
+Context: Issues #1709, #1712, #1714 and #1716 found modules that only tests imported. Each was checked against the spec and against what the host already does.
+
+Decision:
+
+- `room/registry.ts` (RoomRegistry) and `room/recover-resume.ts` (startRecovery) are deleted with their tests. `AuctionService` already loads rooms lazily, enforces `MAX_ROOMS`, evicts finished rooms with no connections (least recently used first) and runs `resume()` at start-up and on its own timer, so R-RT-060 and R-RT-062 are met there. A second registry would hold a second copy of the room map.
+- `log/context.ts`: the HTTP app now writes one request line per request through `withLogContext` with the request id the response carries (R-RT-133). `requestIdFrom` and `requestContext` stay for node handlers that do not go through `HttpApp`.
+- `room/replay-feed.ts` (ReplayFeed) stays: R-RT-108 names it. The web replay screen drives its own playback from the export bundle, so the feed has no server caller; it is not exported from the package.
+- Voice: `buildAudit` and the latency budget now run on every decision in the server voice bridge (R-VOX-071, R-VOX-101); the log line carries outcome and reason, never the transcript. Deepgram is selectable through `selectProvider` once a socket factory is given; the server passes the runtime WebSocket, so `VOICE_STT=deepgram` with `DEEPGRAM_API_KEY` runs it behind the cached fallback. `decide`, `rejectPrompt`, `budgetCheck` and `buildAudit` are exported from the package index.
+- Not done here: the pipeline still composes score, merge, policy and validate inline instead of calling `decide()`; moving it is a larger change with its own risk to the recorded corpus. The browser modules (`MuteController`, `DropMonitor`, `CaptureController`, the capture worklet) and the redacting logger in `obs.ts` belong to the web host and stay for that work. The fake-payments provenance label and the per-hold release state (#1714) are web screens under `packages/web/src`, which this change does not touch.
+
+Alternatives:
+
+- Keep RoomRegistry and call it from the service: rejected, it duplicates eviction the service already has and tests.
+- Delete `decide()` as superseded: rejected, R-VOX-071 describes that composition and the exported function is the reference the pipeline must keep matching.
+
+Consequences:
+
+- Eviction and recovery behavior is unchanged; the tests for them remain in the service suites.
+- Every HTTP request now produces an info log line; it holds the method, path (no query) and status.
+
+Evidence: git grep for each module name under packages/\*/src before this change.
