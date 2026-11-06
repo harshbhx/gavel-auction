@@ -6,7 +6,7 @@
 
 import { z } from 'zod';
 
-// @public
+// @public (undocumented)
 export const AUDIO_ERROR_CODES: readonly ["AUDIO_UNAUTHORIZED", "AUDIO_BAD_FRAME", "AUDIO_RATE_LIMIT", "AUDIO_SESSION_LIMIT", "AUDIO_STREAM_BUSY"];
 
 // @public
@@ -2018,6 +2018,7 @@ export interface VoiceSessionDeps {
     idleMs?: number;
     // (undocumented)
     maxBytesPerSec?: number;
+    maxFramesPerSec?: number;
     // (undocumented)
     maxSessionMs?: number;
     maxStreamsPerRoom?: number;
