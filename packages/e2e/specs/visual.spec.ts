@@ -50,9 +50,14 @@ const ROOM_SCREENS = [
 for (const screen of ROOM_SCREENS) {
   for (const viewport of VIEWPORTS) {
     test(`${screen.name} at ${viewport.name}`, async ({ page, stack }, testInfo) => {
+      // These screens are new: a project with older baselines has none for them until the
+      // visual-update run writes them, so the check is per file.
       test.skip(
-        !updating && !existsSync(`${BASELINES}/${testInfo.project.name}`),
-        'no baselines committed for this project yet',
+        !updating &&
+          !existsSync(
+            `${BASELINES}/${testInfo.project.name}/visual.spec.ts/${screen.name}-${viewport.name}.png`,
+          ),
+        'no baseline committed for this screen yet',
       );
       const room = await seedRoom(stack);
       if (screen.hammer) await hammerRoom(stack, room);

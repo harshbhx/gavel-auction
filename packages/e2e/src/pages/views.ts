@@ -52,11 +52,11 @@ export class AuctioneerView {
     await this.page.goto(
       `${this.stack.webUrl}/r/${this.room.auctionId}/console#token=${this.room.auctioneerToken}`,
     );
-    await this.columns.waitFor();
+    await this.root.waitFor();
   }
 
-  get columns(): Locator {
-    return this.page.getByTestId('console-columns');
+  get root(): Locator {
+    return this.page.locator('[data-route="console"]');
   }
 }
 
