@@ -69,3 +69,20 @@ describe('T-VOX-047 questions and background talk (R-VOX-047)', () => {
     }
   });
 });
+
+describe('HRD-41 auctioneer patter is never a bid', () => {
+  for (const text of [
+    "lot number twelve who'll give me five hundred",
+    'item number twelve looking for five hundred',
+    'paddle twelve do I hear five hundred and fifty',
+    'I have paddle twelve with you at five hundred',
+  ]) {
+    it(`"${text}" -> none`, () => {
+      expect(detectIntent(text).status).toBe('none');
+    });
+  }
+
+  it('"lot number twelve five hundred" names no paddle', () => {
+    expect(parseBid('lot number twelve five hundred').bidder).toBeNull();
+  });
+});

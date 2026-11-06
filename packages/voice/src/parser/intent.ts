@@ -26,7 +26,7 @@ const WITHDRAW =
 const HEDGE =
   /(^| )(maybe|perhaps|probably|thinking|about|around|roughly|between|or so|not sure|might|i guess|if|hold on|hang on|let me think|stop at|stopping at|my limit|my max|my maximum|my budget|my ceiling|my cap)( |$)/;
 const BACKGROUND =
-  /(^| )(the price is|price is|it's at|now at|currently|reserve|starting|opening|we are at|we're at|(lot|item|page) number|do i hear|who'll give|who will give|wholl give|will you give|can i get|going once|going twice|going three times|fair warning|sold|kids|years old|people)( |$)/;
+  /(^| )(the price is|price is|it's at|now at|currently|reserve|starting|opening|we are at|we're at|(lot|item|page) number|do i hear|who'll give|who will give|wholl give|will you give|can i get|looking for|with you at|going once|going twice|going three times|fair warning|sold|kids|years old|people)( |$)/;
 const QUESTION_START = new Set([
   'is',
   'did',
