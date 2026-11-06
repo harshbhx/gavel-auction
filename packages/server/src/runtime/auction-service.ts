@@ -548,10 +548,7 @@ class Service implements AuctionService, SettlePort {
 
   /** Drops a finished room from memory; it loads again from its log if anything asks for it. */
   private unload(id: string, room: Room): void {
-    const timer = this.retryTimers.get(id);
-    if (timer !== undefined) clearTimeout(timer);
-    this.retryTimers.delete(id);
-    this.retryCounts.delete(id);
+    this.dropRetry(id);
     this.rooms.delete(id);
     this.ready.delete(id);
     this.lastUsed.delete(id);
@@ -627,10 +624,7 @@ class Service implements AuctionService, SettlePort {
    */
   private onFenced(auctionId: string): void {
     this.fenced.add(auctionId);
-    const timer = this.retryTimers.get(auctionId);
-    if (timer !== undefined) clearTimeout(timer);
-    this.retryTimers.delete(auctionId);
-    this.retryCounts.delete(auctionId);
+    this.dropRetry(auctionId);
     const known = this.rooms.get(auctionId);
     this.rooms.delete(auctionId);
     this.ready.delete(auctionId);
@@ -877,7 +871,8 @@ class Service implements AuctionService, SettlePort {
     const run = this.settlementRun(auctionId as AuctionId)
       .then((outcome) => {
         if (outcome === 'again') this.armRetry(auctionId);
-        else this.retryCounts.delete(auctionId);
+        // The last run decides: a retry an earlier run armed has nothing left to wait for.
+        else this.dropRetry(auctionId);
       })
       .catch((e: unknown) => this.deps.onError?.(auctionId, e))
       .finally(() => {
@@ -935,6 +930,13 @@ class Service implements AuctionService, SettlePort {
     this.retryTimers.set(auctionId, timer);
   }
 
+  private dropRetry(auctionId: string): void {
+    const timer = this.retryTimers.get(auctionId);
+    if (timer !== undefined) clearTimeout(timer);
+    this.retryTimers.delete(auctionId);
+    this.retryCounts.delete(auctionId);
+  }
+
   async idle(): Promise<void> {
     while (this.runs.size > 0) await Promise.all([...this.runs.values()]);
   }
@@ -972,7 +974,12 @@ class Service implements AuctionService, SettlePort {
       if (until !== undefined && until <= this.deps.clock.now()) this.finalIds.delete(id);
       // A finished auction is recognised from its last event and journal, so a restart does not
       // replay the whole log of every old auction just to find out it is over (#1749).
-      if (!this.finalIds.has(id) && !this.ready.has(id) && !this.runs.has(id)) {
+      if (
+        !this.finalIds.has(id) &&
+        !this.ready.has(id) &&
+        !this.runs.has(id) &&
+        !this.retryTimers.has(id)
+      ) {
         const quiet = await this.probeFinal(id);
         if (quiet !== null) this.finalIds.set(id, quiet);
       }
@@ -1036,10 +1043,17 @@ class Service implements AuctionService, SettlePort {
     }
   }
 
-  /** A finished room nobody uses: no socket, no run in flight, no client asking for it now. */
+  /**
+   * A finished room nobody uses: no socket, no run in flight, no retry armed (unloading cancels
+   * it, #1889) and no client asking for it now.
+   */
   private idleFinished(id: string, room: Room): boolean {
     return (
-      room.isDone && room.connectionCount === 0 && !this.runs.has(id) && !this.recentlyTouched(id)
+      room.isDone &&
+      room.connectionCount === 0 &&
+      !this.runs.has(id) &&
+      !this.retryTimers.has(id) &&
+      !this.recentlyTouched(id)
     );
   }
 
@@ -1056,7 +1070,9 @@ class Service implements AuctionService, SettlePort {
       const [event] = await this.deps.store.readEvents(auctionId, last, 1);
       if (event?.type !== 'settlement_update' || !TERMINAL.has(event.auctionState)) return null;
       const journal = await this.deps.journals.load(lotIdOf(auctionId));
-      return journal === null ? null : await this.finalUntil(auctionId, journal);
+      // #1889: the plan was never cut and the review voids every live hold, keeping none.
+      if (journal === null) return (await this.heldLeft(auctionId)) ? null : Infinity;
+      return await this.finalUntil(auctionId, journal);
     } catch {
       return null;
     }
@@ -1087,6 +1103,11 @@ class Service implements AuctionService, SettlePort {
     if (shrinksAt === null) return Infinity;
     const later = this.reviewKeep(journal, shrinksAt);
     return held.some((h) => !later.has(h.holdId)) ? shrinksAt : Infinity;
+  }
+
+  /** True while a hold record of the auction is still HELD. */
+  private async heldLeft(auctionId: AuctionId): Promise<boolean> {
+    return (await this.deps.holds.listByAuction(auctionId)).some((h) => h.status === 'HELD');
   }
 
   /**
@@ -1128,8 +1149,13 @@ class Service implements AuctionService, SettlePort {
     room: Room,
     journal: Journal | null,
   ): Promise<number | null> {
-    if (journal === null)
-      return hammeredEngine(room) !== undefined && !room.isDone ? null : Infinity;
+    if (journal === null) {
+      if (hammeredEngine(room) === undefined) return Infinity;
+      if (!room.isDone) return null;
+      // #1889: the plan could not be built and the review is reported. Every live hold is
+      // voided, so one whose void did not confirm is still HELD and the run goes on.
+      return (await this.heldLeft(auctionId)) ? null : Infinity;
+    }
     if (!room.isDone) return null;
     // A review keeps some holds on purpose (R8-S06): the same set the release uses, so a
     // kept hold does not rerun the settlement and a hold the release must free does
@@ -1166,21 +1192,16 @@ class Service implements AuctionService, SettlePort {
 
     let journal = await this.deps.journals.load(lotId);
     if (journal === null) {
+      // #1889: the plan could not be built and the room already shows the review. A later run
+      // only repeats the voids that did not confirm; no plan is cut after that report.
+      if (room.isDone) return (await this.voidUnplanned(auctionId)) > 0 ? 'again' : 'done';
       try {
         journal = await this.openSettlement(auctionId, engine, room);
       } catch (e) {
         if (!(e instanceof BridgeError)) throw e;
         // Not retried silently: the room shows the review state and the host hears the code.
         this.deps.onError?.(auctionId, e);
-        // No journal exists, so nothing else would ever release the bidders' money: void every
-        // live hold now, keeping none, before the room goes final (R-PAY-037).
-        let open = 0;
-        try {
-          open = await voidSpareHolds(this.spareDeps(), { auctionId: lotId }, new Set<string>());
-        } catch (voidError) {
-          this.deps.onError?.(auctionId, voidError);
-          open = 1;
-        }
+        const open = await this.voidUnplanned(auctionId);
         await room.reportSettlement({
           rev: 1,
           auctionState: 'FAILED_NEEDS_REVIEW',
@@ -1418,6 +1439,24 @@ class Service implements AuctionService, SettlePort {
       ),
     );
     return { status: 'review', journal: leased.value };
+  }
+
+  /**
+   * No journal exists, so nothing else would ever release the bidders' money: every live hold
+   * is voided, keeping none, before and after the room goes final (R-PAY-037). Returns how many
+   * voids are still unconfirmed; their records stay HELD, so resume runs again (#1889).
+   */
+  private async voidUnplanned(auctionId: AuctionId): Promise<number> {
+    try {
+      return await voidSpareHolds(
+        this.spareDeps(),
+        { auctionId: lotIdOf(auctionId) },
+        new Set<string>(),
+      );
+    } catch (e) {
+      this.deps.onError?.(auctionId, e);
+      return 1;
+    }
   }
 
   /**

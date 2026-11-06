@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { InMemoryLedgerStore, evolveAll, type Ulid } from '@gavel/engine';
 import {
+  BridgeError,
   HoldService,
   PayPalError,
   MemoryHoldStore,
@@ -2759,5 +2760,97 @@ describe('auction service: holds left after the auction is seen final (HRD-76)',
     expect(rig.paypal.core.getAuthorization(late.authId).status).toBe('VOIDED');
     expect((await rig.stores.holds.get(late.holdId))?.status).toBe('VOIDED');
     await service.close();
+  });
+  /** The bridge refuses the plan once, at the hammer, as when the engine has diverged. */
+  function diverging(): Pick<AuctionServiceDeps, 'boundary'> {
+    let once = true;
+    return {
+      boundary: (label) => {
+        if (label !== 'after:prepare' || !once) return;
+        once = false;
+        throw new BridgeError('engine_diverged', 'engine winner is not the planned one');
+      },
+    };
+  }
+
+  /**
+   * The plan cannot be built at the hammer, so every hold is voided and the room shows the
+   * review. PayPal answers Bo's void with a 500, so it is not confirmed. Then every socket closes.
+   */
+  async function unplannedAlone(
+    rig: Rig,
+    service: AuctionService,
+  ): Promise<{ auctionId: AuctionId; a: Bidder; b: Bidder }> {
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    rig.paypal.faults.add({ kind: 'http_500', op: 'void', authId: b.authId, times: 100_000 });
+    await room.submitBid(b.conn, bid(rig, 10000));
+    await room.submitBid(a.conn, bid(rig, 11000));
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    expect(await rig.stores.journals.load(auctionId)).toBeNull();
+    expect(room.isDone).toBe(true);
+    expect(rig.paypal.core.getAuthorization(a.authId).status).toBe('VOIDED');
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('CREATED');
+    expect((await rig.stores.holds.get(b.holdId))?.status).toBe('HELD');
+    for (const conn of [a.conn, b.conn, boss.conn]) room.detach(conn.id);
+    expect(service.stats().connections).toBe(0);
+    return { auctionId, a, b };
+  }
+
+  it('retries a void of a plan never cut through resume with no socket open (#1889)', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ ...quiet, ...diverging() });
+    const { auctionId, a, b } = await unplannedAlone(rig, service);
+    // PayPal still fails: the pass keeps the room and its retry instead of unloading them.
+    rig.clock.set(START + 60_000);
+    await service.resume();
+    await service.idle();
+    expect(service.stats().rooms).toBe(1);
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('CREATED');
+
+    rig.paypal.faults.clear();
+    await service.resume();
+    await service.idle();
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(b.holdId))?.status).toBe('VOIDED');
+    // No plan is cut after the room showed the review, so nobody is charged.
+    expect(await rig.stores.journals.load(auctionId)).toBeNull();
+    expect(rig.paypal.core.getAuthorization(a.authId).captures).toHaveLength(0);
+    expect(rig.paypal.core.getAuthorization(b.authId).captures).toHaveLength(0);
+
+    // Nothing is left to void: the next pass sets the room aside.
+    rig.clock.set(START + 120_000);
+    await service.resume();
+    await service.idle();
+    expect(service.stats().rooms).toBe(0);
+    await service.close();
+  });
+
+  it('retries a void of a plan never cut after a restart (#1889)', async () => {
+    const rig = await makeRig();
+    const first = rig.service({ ...quiet, ...diverging() });
+    const { auctionId, a, b } = await unplannedAlone(rig, first);
+    await first.close();
+
+    const second = rig.service(quiet);
+    rig.clock.set(START + 60_000);
+    await second.resume();
+    await second.idle();
+    expect(second.stats().rooms).toBe(1);
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('CREATED');
+
+    rig.paypal.faults.clear();
+    await second.resume();
+    await second.idle();
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(b.holdId))?.status).toBe('VOIDED');
+    expect(await rig.stores.journals.load(auctionId)).toBeNull();
+    expect(rig.paypal.core.getAuthorization(a.authId).captures).toHaveLength(0);
+    expect(rig.paypal.core.getAuthorization(b.authId).captures).toHaveLength(0);
+    await second.close();
   });
 });
