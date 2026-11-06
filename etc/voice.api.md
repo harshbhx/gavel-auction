@@ -978,7 +978,9 @@ export interface LiveDeps {
     backoffMs?: number;
     fetch: LiveFetch;
     maxAttempts?: number;
+    requestTimeoutMs?: number;
     sleep?: (ms: number) => Promise<void>;
+    totalTimeoutMs?: number;
 }
 
 // @public
@@ -995,6 +997,7 @@ export interface LiveRequestInit {
     body: Uint8Array | FormData;
     headers: Record<string, string>;
     method: string;
+    signal?: AbortSignal;
 }
 
 // @public

@@ -34,6 +34,8 @@ export interface LiveRequestInit {
   /** Carries the key; never logged. */
   headers: Record<string, string>;
   method: string;
+  /** Aborts the request when the per-request or total deadline passes. */
+  signal?: AbortSignal;
 }
 
 /** The subset of fetch the live adapters use; tests pass a mock. */
@@ -48,8 +50,12 @@ export interface LiveDeps {
   backoffMs?: number;
   /** HTTP client. */
   fetch: LiveFetch;
+  /** Timeout of one request in milliseconds; defaults to LIVE_REQUEST_TIMEOUT_MS. */
+  requestTimeoutMs?: number;
   /** Total attempts per clip, first try included. */
   maxAttempts?: number;
+  /** Deadline across all attempts in milliseconds; defaults to LIVE_TOTAL_TIMEOUT_MS. */
+  totalTimeoutMs?: number;
   /** Waits between attempts; defaults to a timer. */
   sleep?: (ms: number) => Promise<void>;
 }
@@ -60,6 +66,8 @@ export const LIVE_GROQ_URL = 'https://api.groq.com/openai/v1/audio/transcription
 export const LIVE_GROQ_MODEL = 'whisper-large-v3-turbo';
 export const LIVE_MAX_ATTEMPTS = 3;
 export const LIVE_BACKOFF_MS = 400;
+export const LIVE_REQUEST_TIMEOUT_MS = 60_000;
+export const LIVE_TOTAL_TIMEOUT_MS = 180_000;
 const FALLBACK_CONFIDENCE = 0.5;
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
@@ -151,7 +159,17 @@ function buildRequest(
 
 const retryable = (status: number): boolean => status === 429 || status >= 500;
 
-/** Transcribes one WAV clip; retries 429 and 5xx a bounded number of times. */
+/** Rejects as soon as the signal aborts, even if the wrapped promise never settles. */
+function untilAborted<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = (): void => reject(new Error('aborted'));
+    if (signal.aborted) return onAbort();
+    signal.addEventListener('abort', onAbort, { once: true });
+    work.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+  });
+}
+
+/** Transcribes one WAV clip; retries 429, 5xx and timeouts within a total deadline. */
 export async function transcribeLive(
   provider: LiveProvider,
   audio: Uint8Array,
@@ -160,25 +178,34 @@ export async function transcribeLive(
 ): Promise<LiveTranscript> {
   const attempts = Math.max(1, deps.maxAttempts ?? LIVE_MAX_ATTEMPTS);
   const backoff = deps.backoffMs ?? LIVE_BACKOFF_MS;
+  const requestTimeout = deps.requestTimeoutMs ?? LIVE_REQUEST_TIMEOUT_MS;
+  const deadline = Date.now() + (deps.totalTimeoutMs ?? LIVE_TOTAL_TIMEOUT_MS);
   const sleep = deps.sleep ?? ((d: number) => new Promise<void>((r) => setTimeout(r, d)));
+  const timedOut = (): Error => new Error(`${provider} speech-to-text timed out`);
   let lastStatus = 0;
+  let lastTimedOut = false;
   for (let attempt = 1; attempt <= attempts; attempt++) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw timedOut();
     // A new request per attempt: a form body is consumed by the first send.
     const { url, init } = buildRequest(provider, audio, key);
+    const signal = AbortSignal.timeout(Math.min(requestTimeout, remaining));
     let status: number;
     let body: unknown = null;
     try {
-      const res = await deps.fetch(url, init);
+      const res = await untilAborted(deps.fetch(url, { ...init, signal }), signal);
       status = res.status;
-      if (status === 200) body = await res.json();
+      if (status === 200) body = await untilAborted(res.json(), signal);
     } catch {
       status = 0;
     }
+    lastTimedOut = status === 0 && signal.aborted;
     if (status === 200) return provider === 'deepgram' ? mapDeepgram(body) : mapGroq(body);
     lastStatus = status;
     if (status !== 0 && !retryable(status)) break;
     if (attempt < attempts) await sleep(backoff * 2 ** (attempt - 1));
   }
+  if (lastTimedOut) throw timedOut();
   throw new Error(
     lastStatus === 0
       ? `${provider} speech-to-text request failed`

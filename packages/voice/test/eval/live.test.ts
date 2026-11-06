@@ -144,6 +144,25 @@ describe('retry and errors', () => {
     expect((err as Error).message).toBe('groq speech-to-text request failed');
   });
 
+  it('times out a hung provider within the deadline and never leaks the key', async () => {
+    const calls: number[] = [];
+    const hung: LiveFetch = () => {
+      calls.push(calls.length);
+      return new Promise<never>(() => undefined);
+    };
+    const err = await transcribeLive('deepgram', tone, KEY, {
+      fetch: hung,
+      sleep: noSleep,
+      maxAttempts: 2,
+      requestTimeoutMs: 10,
+      totalTimeoutMs: 1000,
+    }).catch((e: unknown) => e);
+    expect(calls).toHaveLength(2);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toBe('deepgram speech-to-text timed out');
+    expect((err as Error).message).not.toContain(KEY);
+  });
+
   it('createLiveTranscriber reports a missing recording by id', async () => {
     const { fetch } = fakeFetch([200], {});
     const t = createLiveTranscriber(() => undefined, { fetch });
