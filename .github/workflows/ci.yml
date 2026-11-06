@@ -315,8 +315,17 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: ./.github/actions/setup
-      # Package-level guard that the root lint does not read: the trace baseline.
-      - run: npm run check:trace -w @gavel/engine
+      # Package-level guards that the root lint does not read: each package's own lint (the
+      # engine import ban and the voice clock-free and import zones), the engine import check,
+      # and the trace baselines. The held-out guard runs in the voice job (it needs the base ref).
+      - name: Engine lint and import check
+        run: npm run lint -w @gavel/engine
+      - name: Voice lint
+        run: npm run lint -w @gavel/voice
+      - name: Engine trace baseline
+        run: npm run check:trace -w @gavel/engine
+      - name: Server trace baseline
+        run: npm run check:trace -w @gavel/server
   prod-build:
     needs: [changes]
     if: ${{ needs.changes.outputs.code == 'true' }}
