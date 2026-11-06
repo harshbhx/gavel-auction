@@ -64,8 +64,8 @@ export function chooseStt(env: SttChoiceEnv, deps: SttChoiceDeps = {}): SttChoic
   const selectEnv: SttEnv = { VOICE_STT: raw };
   const liveKey = env.GROQ_API_KEY;
   if (liveKey !== undefined) selectEnv.GROQ_API_KEY = liveKey;
-  const deepgramKey = env.DEEPGRAM_API_KEY;
-  if (deepgramKey !== undefined) selectEnv.DEEPGRAM_API_KEY = deepgramKey;
+  const { DEEPGRAM_API_KEY } = env;
+  if (DEEPGRAM_API_KEY !== undefined) Object.assign(selectEnv, { DEEPGRAM_API_KEY });
   const socket = deps.socket ?? platformSocketFactory();
   const selectDeps: SelectDeps = {
     ...(deps.fetch !== undefined ? { fetch: deps.fetch } : {}),
