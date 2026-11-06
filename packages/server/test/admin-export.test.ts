@@ -83,4 +83,16 @@ describe('admin export (T-QA-085)', () => {
     const short = all.slice(0, 1);
     expect(verifyChain(short, head ? { expectedHead: head } : {}).ok).toBe(false);
   });
+
+  it('lists every stored auction id, not only loaded rooms', async () => {
+    const h = createExportHandler({
+      adminKey: 'k',
+      ledger: await seeded(),
+      listAuctions: async () => ['B2', 'A1'],
+    });
+    expect((await call(h, '/admin/export?list=1')).status).toBe(401);
+    const out = await call(h, '/admin/export?list=1', 'k');
+    expect(out.status).toBe(200);
+    expect(JSON.parse(out.body)).toEqual({ auctions: ['A1', 'B2'] });
+  });
 });
