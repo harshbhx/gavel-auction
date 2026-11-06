@@ -45,7 +45,7 @@ export async function runL4(deliveries: number = STORM_DELIVERIES): Promise<Stor
       webhookId: DEFAULT_FAKE_WEBHOOK_ID,
       nowMs: () => rig.paypal.core.clock.nowMs(),
     });
-    const signed = emitter.sign(event);
+    const signed = emitter.sign({ ...event, eventType: 'PAYMENT.AUTHORIZATION.VOIDED' });
     const codes = await Promise.all(
       Array.from({ length: deliveries }, async () => {
         const res = await fetch(`${base}/webhooks/paypal`, {

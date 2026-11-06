@@ -116,10 +116,14 @@ function hashPublic(e: Omit<PublicEntry, 'hash'>, hasher: Hasher): string {
 function withoutTranscript(payload: Rec, dropped: Set<string>): Rec {
   const audit = payload['audit'];
   if (typeof audit !== 'object' || audit === null || Array.isArray(audit)) return payload;
-  if (!('transcript' in audit)) return payload;
+  const keys: string[] = [];
+  if ('transcript' in audit) keys.push('transcript');
+  // What the parser heard can exceed a ceiling the bid was rejected for, so it stays private.
+  if ('parsedCents' in audit) keys.push('parsedCents');
+  if (keys.length === 0) return payload;
   const inner = new Set<string>();
-  dropped.add('audit.transcript');
-  return { ...payload, audit: withoutKeys(audit, ['transcript'], inner) };
+  for (const k of keys) dropped.add(`audit.${k}`);
+  return { ...payload, audit: withoutKeys(audit, keys, inner) };
 }
 
 function linkFor(

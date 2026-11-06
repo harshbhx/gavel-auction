@@ -3,6 +3,7 @@ import { announce } from '../../a11y/announce';
 import { t } from '../../copy/t';
 import type { CopyKey } from '../../copy/en';
 import { Button } from '../../design/primitives/Button';
+import { ControlError, ControlTimeoutError } from '../../net/controlPort';
 import type { ControlPort } from '../../net/transport';
 import type { AuctionStatus } from '../../wire';
 import { HammerDialog, type HammerLeader } from './HammerDialog';
@@ -40,7 +41,8 @@ export interface ControlState {
 export function disabledReason(name: ControlName, s: ControlState): ReasonKey | null {
   if (s.stopped) return 'controls.reason.stopped';
   if (!s.online) return 'controls.reason.offline';
-  if (s.busy) return 'controls.reason.busy';
+  // A slow request never blocks the hammer: the lot clock keeps running meanwhile.
+  if (s.busy && name !== 'hammer') return 'controls.reason.busy';
   if (s.status !== REQUIRED_STATUS[name]) return WRONG_STATE_REASON[name];
   return null;
 }
@@ -55,6 +57,8 @@ export interface ControlsProps {
   readonly extendMs?: number;
   readonly leader: HammerLeader | null;
   readonly priceCents: number;
+  /** Highest message seq the console has applied. Sent with the hammer so a late bid is refused. */
+  readonly seq?: number;
 }
 
 export function Controls({
@@ -66,6 +70,7 @@ export function Controls({
   extendMs = DEFAULT_EXTEND_MS,
   leader,
   priceCents,
+  seq = 0,
 }: ControlsProps) {
   const [busy, setBusy] = useState(false);
   // The leader and price the auctioneer was shown when the dialog opened. A bid that lands
@@ -83,8 +88,13 @@ export function Controls({
     try {
       await call();
       setResult(t('controls.sent', { action: label }));
-    } catch {
-      const failed = t('controls.failed', { action: label });
+    } catch (err) {
+      const failed =
+        err instanceof ControlTimeoutError
+          ? t('controls.unknown', { action: label })
+          : err instanceof ControlError && err.status === 409 && label === t('console.hammer')
+            ? t('controls.hammerChanged')
+            : t('controls.failed', { action: label });
       setResult(failed);
       announce('polite', failed, 'bid_rejected');
     } finally {
@@ -154,7 +164,13 @@ export function Controls({
             announce('polite', changed, 'bid_rejected');
             return;
           }
-          void run(t('console.hammer'), () => port.hammer(lotId));
+          void run(t('console.hammer'), () =>
+            port.hammer(lotId, {
+              priceCents: was.priceCents,
+              leaderPaddle: was.leader?.paddle ?? 0,
+              seq,
+            }),
+          );
         }}
       />
     </div>

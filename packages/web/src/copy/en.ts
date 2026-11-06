@@ -194,6 +194,20 @@ export const en = {
   'controls.hammerChanged':
     'The price or leader changed. Nothing was hammered. Review and try again.',
   'controls.failed': '{action} failed. Try again.',
+  'controls.unknown':
+    '{action}: no answer from the server. It may have gone through. Check the lot state.',
+  'kill.notAvailable': 'The server cannot stop the auction yet. The auction is still running.',
+  'kill.conflict':
+    'The server refused the stop because the lot state changed. Check the lot state.',
+  'kill.failedDetail': 'The stop request was not accepted: {detail}. The auction is still running.',
+  'kill.unknown': 'No answer to the stop request. Check the lot state before trying again.',
+  'console.manual.offline': 'Offline. The bid was not sent. Reconnect to send it.',
+  'console.manual.noRoom': 'Not connected to the room. The bid was not sent.',
+  'console.manual.sendFailed': 'The bid could not be sent. Try again.',
+  'console.manual.pending': 'Bid sent. Waiting for the server.',
+  'console.manual.accepted': 'Bid accepted.',
+  'console.manual.unknown': 'No answer yet. The bid may not have been placed.',
+  'console.manual.retry': 'Retry bid',
   'shortcuts.help': 'Show this list',
   'shortcuts.extend': 'Extend the lot',
   'shortcuts.close': 'Close',
@@ -269,6 +283,7 @@ export const en = {
   'ladder.failed': 'Settlement stopped for review. See the audit trail.',
   'receipt.capturing': 'Finalising your hold',
   'receipt.charged': 'Charged {amount}',
+  'receipt.confirming': 'We are confirming the amount. Reload this page in a moment.',
   'receipt.releasing': 'Releasing your hold',
   'receipt.released': 'You did not win. Your {amount} hold was released.',
   'receipt.fallback':

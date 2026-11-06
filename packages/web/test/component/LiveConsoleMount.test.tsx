@@ -12,6 +12,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 function renderConsole() {
@@ -46,7 +47,23 @@ describe('LiveConsole mounts every console piece', () => {
     expect(resume.getAttribute('aria-disabled')).toBe('true');
   });
 
+  it('keeps the typed bid and says it was not sent when there is no room', () => {
+    renderConsole();
+    fireEvent.change(screen.getByLabelText(t('console.manual.paddle')), {
+      target: { value: '12' },
+    });
+    fireEvent.change(screen.getByLabelText(t('console.manual.amount')), {
+      target: { value: '500' },
+    });
+    fireEvent.submit(screen.getByRole('form', { name: t('console.manual') }));
+    expect((screen.getByLabelText(t('console.manual.amount')) as HTMLInputElement).value).toBe(
+      '500',
+    );
+    expect(screen.getByText(t('console.manual.noRoom'))).toBeTruthy();
+  });
+
   it('says the stop failed because the server has no stop route', async () => {
+    vi.stubGlobal('fetch', () => Promise.resolve({ ok: false, status: 404 }));
     renderConsole();
     fireEvent.click(screen.getByRole('button', { name: t('kill.button') }));
     fireEvent.change(screen.getByLabelText(t('kill.type')), { target: { value: 'STOP' } });
@@ -58,7 +75,7 @@ describe('LiveConsole mounts every console piece', () => {
       await Promise.resolve();
     });
     const alerts = screen.getAllByRole('alert').map((a) => a.textContent);
-    expect(alerts).toContain(t('kill.failed'));
+    expect(alerts).toContain(t('kill.notAvailable'));
     expect(screen.queryByText(t('kill.stopped'))).toBeNull();
   });
 });

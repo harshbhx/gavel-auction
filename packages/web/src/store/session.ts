@@ -24,6 +24,29 @@ export interface FragmentSource {
 
 // One token per room: a tab that runs two auctions must never hand room A's token to room B.
 const auctioneerTokens = new Map<string, string>();
+// The invite slot is separate, so a single-use invite is never read as an auctioneer token.
+const inviteTokens = new Map<string, string>();
+
+function readSlot(
+  slot: Map<string, string>,
+  roomId: string,
+  source: FragmentSource | undefined,
+): string | null {
+  try {
+    const win: FragmentSource | null = source ?? (typeof window === 'undefined' ? null : window);
+    const token = win === null ? null : tokenFromHash(win.location.hash);
+    if (win === null || token === null) return slot.get(roomId) ?? null;
+    slot.set(roomId, token);
+    try {
+      win.history.replaceState(null, '', `${win.location.pathname}${win.location.search}`);
+    } catch {
+      // The address bar keeps the fragment; the token is still held.
+    }
+    return token;
+  } catch {
+    return slot.get(roomId) ?? null;
+  }
+}
 
 function tokenFromHash(hash: string): string | null {
   const body = hash.startsWith('#') ? hash.slice(1) : hash;
@@ -38,38 +61,26 @@ function tokenFromHash(hash: string): string | null {
  * remembered token; without one, the token remembered for this room (and no other) is returned.
  */
 export function readAuctioneerToken(roomId: string, source?: FragmentSource): string | null {
-  try {
-    const win: FragmentSource | null = source ?? (typeof window === 'undefined' ? null : window);
-    const token = win === null ? null : tokenFromHash(win.location.hash);
-    if (win === null || token === null) return auctioneerTokens.get(roomId) ?? null;
-    auctioneerTokens.set(roomId, token);
-    try {
-      win.history.replaceState(null, '', `${win.location.pathname}${win.location.search}`);
-    } catch {
-      // The address bar keeps the fragment; the token is still held.
-    }
-    return token;
-  } catch {
-    return auctioneerTokens.get(roomId) ?? null;
-  }
+  return readSlot(auctioneerTokens, roomId, source);
+}
+
+/** Same as readAuctioneerToken, for the single-use invite on the register route. */
+export function readInviteToken(roomId: string, source?: FragmentSource): string | null {
+  return readSlot(inviteTokens, roomId, source);
 }
 
 /** Forgets the in-memory token for one room, or for every room when none is named. */
 export function clearAuctioneerToken(roomId?: string): void {
-  if (roomId === undefined) auctioneerTokens.clear();
-  else auctioneerTokens.delete(roomId);
+  if (roomId === undefined) {
+    auctioneerTokens.clear();
+    inviteTokens.clear();
+  } else {
+    auctioneerTokens.delete(roomId);
+    inviteTokens.delete(roomId);
+  }
 }
 
-/**
- * The stored token the console and audit routes may use when no fragment token is held: a
- * session that belongs to no bidder. A bidder token is never presented on those routes.
- */
-export function getStaffSession(roomId: string): StoredSession | null {
-  const stored = getBidderSession(roomId);
-  return stored === null || stored.bidderId !== undefined ? null : stored;
-}
-
-/** True when this device may open the console for the room: a fragment token or a staff session. */
+/** True when this device holds an auctioneer token for the room. A bidder session never counts. */
 export function hasAuctioneerAccess(roomId: string): boolean {
-  return readAuctioneerToken(roomId) !== null || getStaffSession(roomId) !== null;
+  return readAuctioneerToken(roomId) !== null;
 }

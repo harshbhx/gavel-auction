@@ -6,6 +6,7 @@ import { AuctionConfigSchema } from '../config-schema';
 import { isCents, type Cents } from '../money';
 import { EpochMs } from '../time';
 import { scrubMessage } from '../api-error';
+import { HOLD_STATUSES } from '../hold-contract';
 import { AuditPayloadSchema, PublicAuditRowSchema } from './audit';
 import {
   MAX_BIDDERS_PER_ROOM,
@@ -175,6 +176,30 @@ const settlementHold = z
   })
   .strict();
 
+/** What happened to the part of a captured hold beyond the price (none when nothing is left). */
+export const REMAINDER_STATES = ['none', 'pending', 'released', 'unreleased'] as const;
+export type RemainderState = (typeof REMAINDER_STATES)[number];
+
+/**
+ * The viewer's own hold after the hammer (`yourHold`). The server builds it per connection and
+ * sends it only to the bidder named by `bidderId`; screens, the auctioneer and other bidders
+ * never receive it, so no viewer learns another bidder's hold or ceiling.
+ */
+export const OwnHoldSchema = z
+  .object({
+    bidderId: ulid<BidderId>(),
+    /** Last 6 characters of the hold id only. */
+    idSuffix: z.string().max(6),
+    status: z.enum(HOLD_STATUSES),
+    /** What the hold reserves: this bidder's own ceiling. */
+    ceilingCents: cents(),
+    capturedCents: z.number().int().nonnegative(),
+    releasedCents: z.number().int().nonnegative(),
+    remainder: z.enum(REMAINDER_STATES),
+  })
+  .strict();
+export type OwnHold = z.infer<typeof OwnHoldSchema>;
+
 export const SettlementUpdateSchema = message('settlement_update', {
   ...ev,
   rev: z.number().int(),
@@ -189,6 +214,8 @@ export const SettlementUpdateSchema = message('settlement_update', {
     .object({ ok: z.boolean(), violations: z.array(z.string().max(120)).max(20) })
     .strict()
     .optional(),
+  /** The receiving bidder's own hold. Absent for screens, the auctioneer and older servers. */
+  yourHold: OwnHoldSchema.optional(),
 });
 
 export const AuditEventSchema = message('audit_event', { ...ev, audit: auditRow });

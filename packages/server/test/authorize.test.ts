@@ -258,3 +258,42 @@ describe('settlement state in you (RT-91)', () => {
     expect(JSON.stringify(redactForViewer('screen', undefined, frame))).not.toContain('you');
   });
 });
+
+describe('own hold in a settlement frame (HRD-69, issue 712)', () => {
+  const yourHold = {
+    bidderId: B1,
+    idSuffix: 'HOLD-1',
+    status: 'VOIDED',
+    ceilingCents: 30000,
+    capturedCents: 0,
+    releasedCents: 30000,
+    remainder: 'none',
+  };
+  const frame = {
+    t: 'settlement_update',
+    rev: 3,
+    auctionState: 'VOIDING',
+    you: 'SETTLED',
+    winnerPaddle: 7,
+    yourHold,
+  };
+
+  it('keeps the hold, with its ceiling, for the bidder it names', () => {
+    expect(redactForViewer('bidder', B1, frame)).toEqual(frame);
+  });
+
+  it('drops it for another bidder, a screen, the auctioneer and admin', () => {
+    for (const [role, viewer] of [
+      ['bidder', B2],
+      ['screen', undefined],
+      ['auctioneer', undefined],
+      ['admin', undefined],
+    ] as const) {
+      const out = redactForViewer(role, viewer, frame);
+      expect(out).not.toHaveProperty('yourHold');
+      expect(JSON.stringify(out)).not.toContain('30000');
+      // The winner's paddle is public, like the hammer.
+      expect(out).toHaveProperty('winnerPaddle', 7);
+    }
+  });
+});

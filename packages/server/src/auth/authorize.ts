@@ -54,7 +54,7 @@ const CEILING_KEY = /^ceiling(cents)?$/i;
  *
  * - Auctioneer, screen and admin never receive a `ceiling` (auctioneers see hold
  *   state), and screens never receive `you`.
- * - A bidder keeps `you` and `ceiling` only where the surrounding object names
+ * - A bidder keeps `you`, `yourHold` and `ceiling` only where the object names
  *   the viewer's own bidderId; anything else is dropped (fail closed).
  * - Everyone but the auctioneer and admin sees public audit rows only: accepted
  *   bids, no transcripts, no reject reasons (R-RT-038).
@@ -119,6 +119,8 @@ function walk(
     // the room builds both per connection, so a bidder only ever holds their own.
     if (k === 'you' && !(role === 'bidder' && (typeof v === 'string' || isOwn(v, viewer))))
       continue;
+    // `yourHold` names its bidder: only that bidder may receive it (fail closed).
+    if (k === 'yourHold' && !(role === 'bidder' && isOwn(v, viewer))) continue;
     if (CEILING_KEY.test(k) && !mine) continue;
     out[k] = walk(role, viewer, v, k, fullAudit);
   }

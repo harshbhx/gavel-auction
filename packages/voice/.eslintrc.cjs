@@ -83,5 +83,32 @@ module.exports = {
         ],
       },
     },
+    {
+      // Known exceptions inside the clock-free zones, kept to the engine and payments import guards:
+      // failover.ts and groq.ts hold the one default real clock; dedupe.ts hashes with node:crypto
+      // (a browser-safe hash is a follow-up, see issue 942).
+      files: ['src/segment/dedupe.ts', 'src/stt/failover.ts', 'src/stt/groq.ts'],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector:
+              'ImportDeclaration[importKind!="type"]:matches([source.value=/^@gavel\\/(engine|payments)(\\/|$)/], [source.value=/(^|\\/)packages\\/(engine|payments)(\\/|$)/])',
+            message:
+              'packages/voice may import packages/engine and packages/payments as types only (use "import type").',
+          },
+          {
+            selector:
+              'ExportNamedDeclaration[exportKind!="type"][source.value=/^@gavel\\/(engine|payments)(\\/|$)/]',
+            message: 'Re-exporting values from engine or payments is not allowed.',
+          },
+          {
+            selector:
+              'ExportAllDeclaration[exportKind!="type"][source.value=/^@gavel\\/(engine|payments)(\\/|$)/]',
+            message: 'Re-exporting values from engine or payments is not allowed.',
+          },
+        ],
+      },
+    },
   ],
 };

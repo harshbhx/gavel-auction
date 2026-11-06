@@ -1,9 +1,16 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Cents } from '@gavel/shared';
+import { Cents, EpochMs } from '@gavel/shared';
 import { ScreenView } from '../../src/screens/screen/ScreenView';
 import { RoomStore } from '../../src/store/roomStore';
-import { bidderId, openSnapshot, roster, stateMsg } from '../../src/testing/builders';
+import {
+  BASE_TIME,
+  auctionId,
+  bidderId,
+  openSnapshot,
+  roster,
+  stateMsg,
+} from '../../src/testing/builders';
 
 function closedStore(options: { leader: number | null; inRoster: boolean }): RoomStore {
   const store = new RoomStore();
@@ -39,5 +46,71 @@ describe('public screen after the hammer (reload or late join)', () => {
   it('says passed only when nobody led', () => {
     view(closedStore({ leader: null, inRoster: true }));
     expect(screen.getByText('Passed')).toBeTruthy();
+  });
+});
+
+describe('public screen settlement ladder', () => {
+  it('builds the audit link from the room id when there is no join code', () => {
+    const store = closedStore({ leader: 7, inRoster: true });
+    store.dispatch({
+      kind: 'wire',
+      msg: {
+        v: 1,
+        t: 'settlement_update',
+        seq: 6,
+        ts: EpochMs(BASE_TIME + 6),
+        rev: 1,
+        auctionState: 'FAILED_NEEDS_REVIEW',
+        winnerPaddle: 7,
+        holds: [],
+        invariants: { ok: true, violations: [] },
+      },
+    });
+    const { container } = render(
+      <ScreenView lotTitle="Lot" code={null} joinUrl="https://x.test/j" store={store} />,
+    );
+    const link = container.querySelector('.gv-settlement a');
+    expect(link?.getAttribute('href')).toBe(`/r/${encodeURIComponent(auctionId())}/audit`);
+    expect(container.innerHTML).not.toContain('/r/null/');
+  });
+
+  it('mounts the ladder with the winner lane only, no names', () => {
+    const store = closedStore({ leader: 7, inRoster: true });
+    store.dispatch({
+      kind: 'wire',
+      msg: {
+        v: 1,
+        t: 'settlement_update',
+        seq: 6,
+        ts: EpochMs(BASE_TIME + 6),
+        rev: 1,
+        auctionState: 'SETTLED',
+        winnerPaddle: 7,
+        holds: [
+          {
+            paddle: 7,
+            state: 'CAPTURED',
+            capturedCents: 25_000,
+            releasedCents: 0,
+            idSuffix: 'AB12CD',
+            verifiedBy: [],
+          },
+          {
+            paddle: 8,
+            state: 'SETTLED',
+            capturedCents: 0,
+            releasedCents: 9_000,
+            idSuffix: 'EF34GH',
+            verifiedBy: [],
+          },
+        ],
+        invariants: { ok: true, violations: [] },
+      },
+    });
+    const { container } = view(store);
+    expect(screen.getByTestId('settlement-panel')).toBeTruthy();
+    expect(container.querySelectorAll('.gv-ladder__lane')).toHaveLength(1);
+    expect(container.textContent).not.toContain('Eve');
+    expect(container.textContent).not.toContain('AB12CD');
   });
 });
