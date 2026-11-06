@@ -78,6 +78,12 @@ function connect(
     const qs = new URLSearchParams(query).toString();
     const ws = new WebSocket(`ws://127.0.0.1:${port}/audio?${qs}`, origin ? { origin } : {});
     sockets.push(ws);
+    closes.set(
+      ws,
+      new Promise((res) =>
+        ws.on('close', (code, reason) => res({ code, reason: reason.toString('utf8') })),
+      ),
+    );
     ws.on('error', () => undefined);
     ws.on('open', () => resolve({ ws }));
     ws.on('unexpected-response', (_req, res) => {
@@ -87,7 +93,7 @@ function connect(
   });
 }
 
-/** Opens the socket and sends the first-frame auth message with `tok`. */
+/** Opens the socket, sends the first-frame auth message and waits for `ready` or a close. */
 async function open(
   port: number,
   tok: string,
@@ -95,14 +101,21 @@ async function open(
 ): Promise<WebSocket> {
   const out = await connect(port, query);
   if (!('ws' in out)) throw new Error(`refused with ${out.status}`);
+  const ready = new Promise<void>((resolve) => {
+    out.ws.once('message', () => resolve());
+    out.ws.once('close', () => resolve());
+  });
   out.ws.send(JSON.stringify({ t: 'auth', token: tok }));
+  await ready;
   return out.ws;
 }
 
+const closes = new WeakMap<WebSocket, Promise<{ code: number; reason: string }>>();
+
 function closed(ws: WebSocket): Promise<{ code: number; reason: string }> {
-  return new Promise((resolve) =>
-    ws.on('close', (code, reason) => resolve({ code, reason: reason.toString('utf8') })),
-  );
+  const seen = closes.get(ws);
+  if (seen) return seen;
+  throw new Error('socket was not opened by connect()');
 }
 
 const frame = (): Uint8Array =>
@@ -190,7 +203,6 @@ describe('/audio route (HRD-67)', () => {
   it('allows one stream per room and source: a second token on the same source is busy', async () => {
     const port = await boot();
     const first = await open(port, await token(), { auction: AUCTION, source: 'mic' });
-    await new Promise((r) => setTimeout(r, 100));
     const second = await open(port, await token({ jti: JTI_B }), {
       auction: AUCTION,
       source: 'mic',

@@ -52,7 +52,8 @@ Request: a binary WebSocket path `/audio`. The server owns the route; voice owns
   bit2 end of stream), byte 3 reserved 0, bytes 4 to 7 `seq` (u32), bytes 8 to 11 `tsMs` (u32).
 - The URL carries `auction` (and an optional `source`) only. The first message must be the text frame
   `{"t":"auth","token":...}` with the auctioneer token `join` uses, sent within 5 s; a missing, late,
-  malformed or invalid auth message, or audio before auth, closes the socket with 4401. Text frames
+  malformed or invalid auth message, or audio before auth, closes the socket with 4401. The server answers `{"t":"ready"}` when the stream is open; the
+  client streams audio after that. Text frames
   after auth are rejected.
 - Limits: 64 KiB/s per stream, 30 minutes per session, one stream per (room, source).
 - A violation closes the stream with a typed error code from the list below.

@@ -104,7 +104,8 @@ function refuse(socket: Duplex, status: number, text: string): void {
  * within `authDeadlineMs`; the token is the auctioneer token the room join uses, checked against
  * the same secrets, denylist and floor. Any other first message, a late or invalid token, or an
  * audio frame before auth closes the socket with 4401. Only after auth does the voice session
- * open and the bridge start. Binary frames only afterwards; the voice session enforces rate,
+ * open and the bridge start; the server then sends `{"t":"ready"}` and the client may stream.
+ * Binary frames only afterwards; the voice session enforces rate,
  * size, duration and one stream per (room, source).
  *
  * Room-mic design: the token is an AUCTIONEER token, the microphone is the room's. The bidder of
@@ -251,6 +252,8 @@ export function createAudioHost(opts: AudioHostOptions): AudioHost {
     }
     const stream = opened.stream;
     held.stream = stream;
+    // Tells the client it may start sending audio; frames sent before this are refused.
+    ws.send(JSON.stringify({ t: 'ready' }));
 
     ws.on('message', (data, isBinary) => {
       if (ended) return;
