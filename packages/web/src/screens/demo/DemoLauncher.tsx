@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { t } from '../../copy/t';
 import { Provenance } from '../../design/Provenance';
 import { Button } from '../../design/primitives/Button';
@@ -44,6 +44,11 @@ export function DemoLauncher({
   initialMode = 'live',
   writeClipboard = (text) => navigator.clipboard.writeText(text),
 }: DemoLauncherProps) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    document.title = t('landing.start');
+    heading.current?.focus();
+  }, []);
   const [phase, setPhase] = useState<Phase>('idle');
   const [mode, setMode] = useState<DemoMode>(initialMode);
   const [links, setLinks] = useState<DemoLinks | null>(null);
@@ -78,8 +83,10 @@ export function DemoLauncher({
   };
 
   return (
-    <main className="gv-demo">
-      <h1>{t('landing.start')}</h1>
+    <main className="gv-demo" data-route="demo">
+      <h1 ref={heading} tabIndex={-1}>
+        {t('landing.start')}
+      </h1>
       <Provenance kind={mode} />
       <Button size="bid" disabled={phase === 'busy'} onClick={start}>
         {phase === 'busy' ? t('demo.creating') : t('landing.start')}
