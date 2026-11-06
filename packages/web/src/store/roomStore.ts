@@ -81,6 +81,8 @@ export class RoomStore {
       ) {
         return;
       }
+      // A state frame opens a new connection epoch: samples from before it may carry a stale skew.
+      if (msg.t === 'state') this.offsetSamples.length = 0;
       if ('ts' in msg) {
         this.offsetSamples.push(msg.ts - receivedAt);
         if (this.offsetSamples.length > OFFSET_SAMPLES) this.offsetSamples.shift();
