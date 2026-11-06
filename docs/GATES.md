@@ -256,7 +256,7 @@ Saga defaults (`SAGA_DEFAULTS` in `packages/payments/src/config.ts`, equal to th
 
 ## Real-sandbox nightly run 42200708552 (2026-11-06)
 
-Run: https://github.com/harshbhx/gavel-auction/actions/runs/42200708552 (workflow `nightly-sandbox`, `workflow_dispatch`, branch `main`, head 697215148be6, started 2026-11-06 10:11 UTC). Visible to repository access only.
+Run: https://github.com/harshbhx/gavel-auction/actions/runs/42200708552 (workflow `nightly-sandbox`, `workflow_dispatch`, branch `main`, head 697215148be6, started 2026-11-06 10:11 UTC).
 Question: what did the nightly sandbox job show against the real PayPal sandbox, spec by spec?
 Setup: sandbox, all four sandbox secrets present (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `SANDBOX_BUYER_EMAIL`, `SANDBOX_BUYER_PASSWORD`), plus the `SANDBOX_BUYER2`, `SANDBOX_BUYER3` and `SANDBOX_CARD_BUYER` pairs. Values are masked in the log and not recorded here. `GAVEL_STAGING_URL` and `GAVEL_STAGING_ADMIN_KEY` were empty.
 Result: the `nightly` job concluded success, but the report the job wrote (`report/sandbox.json`, artifact `sandbox-report`, artifact id 13493479420) says overall `inconclusive`: pass 7, fail 0, inconclusive 1, skipped 2. Vitest reported 8 tests passed and 1 skipped (9 tests in 4 files). A green job does not mean every spec passed; the table is the record.
@@ -281,7 +281,7 @@ What this run does not prove:
 
 - G1: the remainder release is still inferred, not read from a buyer balance (decision A stands as written).
 - G2: no guest or card capture and no void of a card authorization ran; R2 stops at CREATED.
-- G3: no honor-period or validity-window result. R3 answered 422, so reauthorize is unproven on this run.
+- G3: no honor-period or validity-window result; those results are still pending (planned 8 and 9 November). R3 answered 422, so reauthorize is unproven on this run.
 - G4 staging: R4 was skipped, so the real server kill after capture did not run. R10 is the in-process crash only.
 - G5: no audio ran, so no speech-to-text accuracy exists.
 - R9 is not in the report counts; its pass comes from vitest output only.
