@@ -32,6 +32,7 @@ import {
   type Transport,
 } from '@gavel/shared';
 import { authorize, redactForViewer } from '../auth/authorize';
+import { connectionTokenLive } from '../auth/auctioneer-floor';
 import {
   CONFIRM_TTL_MS,
   ConfirmBook,
@@ -87,6 +88,8 @@ export interface Connection {
    * supersedes a real socket that shares its role and subject.
    */
   internal?: boolean;
+  /** Facts of the token the socket joined with, re-checked on rotate, revoke and expiry. */
+  token?: { jti: string; iat: number; exp: number; kind: string };
 }
 
 /** What a mid is bound to: the amount and the effective source (manual for the auctioneer). */
@@ -446,6 +449,29 @@ export class Room {
 
   detach(connId: ConnId): void {
     this.conns.delete(connId);
+  }
+
+  /**
+   * Close every open socket whose token is no longer good (rotated or revoked auctioneer
+   * token, denied jti, expired). Called after the token routes write the store. Returns how
+   * many sockets were closed.
+   */
+  async dropDeadTokens(): Promise<number> {
+    let dropped = 0;
+    for (const conn of [...this.conns.values()]) {
+      const token = conn.token;
+      if (token === undefined || conn.internal === true) continue;
+      const live = await connectionTokenLive(
+        this.deps.store,
+        this.auctionId,
+        token,
+        this.deps.clock.now(),
+      );
+      if (live || !this.conns.delete(conn.id)) continue;
+      dropped++;
+      conn.transport.close(ERROR_TABLE.unauthorized.closeCode ?? 4401, 'unauthorized');
+    }
+    return dropped;
   }
 
   /** Stop the room: later commands are refused and no timer is armed (R-RT-062). */

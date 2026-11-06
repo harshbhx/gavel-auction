@@ -31,6 +31,7 @@ export function mountAuctioneerToken(app: HttpApp): void {
     if (created?.type !== 'auction_created') throw new GavelError('not_found', 'no such auction');
     const nowSec = Math.floor(c.deps.clock.now() / 1000);
     const floor = await raiseAuctioneerFloor(c.deps.store, auctionId, nowSec + 1);
+    await (await roomFor(c.deps, auctionId)).dropDeadTokens();
     const next = await mintToken(
       c.deps,
       'auctioneer',
@@ -49,6 +50,7 @@ export function mountAuctioneerToken(app: HttpApp): void {
     await roomFor(c.deps, auctionId);
     const nowSec = Math.floor(c.deps.clock.now() / 1000);
     await raiseAuctioneerFloor(c.deps.store, auctionId, nowSec + 1);
+    await (await roomFor(c.deps, auctionId)).dropDeadTokens();
     return json(200, { revoked: true });
   });
 
@@ -60,6 +62,7 @@ export function mountAuctioneerToken(app: HttpApp): void {
     await roomFor(c.deps, auctionId);
     const until = c.deps.clock.now() + TOKEN_TTL_S.auctioneer * 1000;
     await c.deps.store.denyJti(jti as Jti, until as EpochMs);
+    await (await roomFor(c.deps, auctionId)).dropDeadTokens();
     return json(200, { revoked: true });
   });
 }
