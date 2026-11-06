@@ -138,3 +138,19 @@ jobs:
           path: packages/web/test/visual/__screenshots__
           if-no-files-found: ignore
           retention-days: 7
+
+  web-budget:
+    name: web-budget
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Build the web app
+        run: npm run build -w @gavel/web
+        env:
+          VITE_SANDBOX: 'true'
+      - name: Bundle budget, lazy chunks and CSP (R-WEB-003, R-WEB-004, R-WEB-009)
+        run: node packages/web/scripts/check-size.mjs packages/web/dist
