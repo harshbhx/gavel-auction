@@ -12,7 +12,8 @@
     "test:visual": "playwright test",
     "test:a11y": "playwright test a11y keyboard motion responsive",
     "lint": "eslint . --max-warnings 0",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:size": "node scripts/check-size.mjs dist"
   },
   "dependencies": {
     "@gavel/shared": "0.1.0",
