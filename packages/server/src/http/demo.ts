@@ -8,11 +8,11 @@ export const DEMO_SEED_PATH = '/api/demo/seed';
 /** Creates one more seeded demo room without retiring the earlier ones. */
 export const DEMO_ROOMS_PATH = '/api/demo/rooms';
 
-/** Scripted bidders: fixed fake names, whole-cent ceilings. No personal data. */
+/** Scripted bidders: fixed fake names, whole-cent ceilings under the default payments cap. */
 export const DEMO_BIDDERS: ReadonlyArray<{ name: string; ceiling: number }> = [
   { name: 'Demo Bidder 1', ceiling: 50_000 },
   { name: 'Demo Bidder 2', ceiling: 80_000 },
-  { name: 'Demo Bidder 3', ceiling: 120_000 },
+  { name: 'Demo Bidder 3', ceiling: 95_000 },
 ];
 
 export interface DemoDeps {
