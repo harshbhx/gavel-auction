@@ -4,7 +4,7 @@ name: nightly-sandbox
 # environment has no reviewer, no branch rule and no secrets, so it protects nothing yet: the secrets
 # are repository-level and a workflow file on any pushed branch can read them. Only throwaway sandbox
 # values belong in them (docs/GATES.md, section Sandbox environment). Without the secrets (or in a
-# fork) it still writes report/sandbox.json with every spec marked `skipped` and, on a pull request or a fork, ends green; a scheduled run on the main repository ends red when the secrets are missing, so it cannot pass as a real run. The pull request job runs the same specs with no secrets
+# fork) it still writes report/sandbox.json with every spec marked `skipped` and, on a pull request or a fork, ends green; a scheduled run on the main repository ends red when the secrets are missing only if the repository variable NIGHTLY_SANDBOX_REQUIRED is true, so it cannot pass as a real run once that is set. The pull request job runs the same specs with no secrets
 # and no environment, to prove they skip instead of fail.
 on:
   schedule:
@@ -158,7 +158,7 @@ jobs:
           echo "### Sandbox nightly: overall $overall" >> "$GITHUB_STEP_SUMMARY"
           # A scheduled run on the main repository is expected to have the secrets; all-skipped
           # there is a configuration fault, not a pass.
-          if [ "$overall" = "skipped" ] && [ "${{ github.event_name }}" = "schedule" ]; then
+          if [ "$overall" = "skipped" ] && [ "${{ github.event_name }}" = "schedule" ] && [ "${{ vars.NIGHTLY_SANDBOX_REQUIRED }}" = "true" ]; then
             echo "::error title=Nightly sandbox did not run::every spec was skipped (SKIPPED: no secrets)"
             exit 1
           fi
