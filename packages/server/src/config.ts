@@ -160,16 +160,10 @@ export function parseConfig(env: Readonly<Record<string, string | undefined>>): 
   if (parsed.success) {
     const c = parsed.data;
     // A durable store that silently lands in ./data is lost on the next deploy (R-RT-131).
-    if (
-      isProductionLike(c) &&
-      (c.STORE === 'file' || c.STORE === 'postgres') &&
-      !isAbsolute(cleaned.DATA_DIR ?? '')
-    ) {
+    if (isProductionLike(c) && c.STORE === 'file' && !isAbsolute(cleaned.DATA_DIR ?? '')) {
       return {
         ok: false,
-        errors: [
-          'DATA_DIR: must be set to an absolute path when STORE=file or STORE=postgres in production',
-        ],
+        errors: ['DATA_DIR: must be set to an absolute path when STORE=file in production'],
       };
     }
     return { ok: true, config: c };

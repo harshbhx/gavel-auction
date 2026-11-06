@@ -817,7 +817,21 @@ class Service implements AuctionService, SettlePort {
       this.deps.onError?.('kill-switch', e);
     }
     for (const id of await this.deps.store.listAuctions()) {
-      if (this.fenced.has(id) || this.finalIds.has(id)) continue;
+      if (this.fenced.has(id)) continue;
+      if (this.finalIds.has(id)) {
+        // Known final: never reloaded here, but a copy a client loaded since goes again once idle.
+        const loaded = this.ready.get(id);
+        if (
+          loaded !== undefined &&
+          loaded.isDone &&
+          loaded.connectionCount === 0 &&
+          !this.runs.has(id) &&
+          !this.recentlyTouched(id)
+        ) {
+          this.unload(id, loaded);
+        }
+        continue;
+      }
       // One unloadable auction must not stop the others from resuming.
       try {
         const room = await this.room(id, { settlement: true });
