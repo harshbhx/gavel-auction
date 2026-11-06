@@ -306,6 +306,7 @@ export const en = {
   'receipt.title': 'Receipt',
   'receipt.heldNotCharged': 'Your {amount} is held, not charged, until the sale is finalised.',
   'receipt.item': 'Item',
+  'receipt.untitled': 'Auction lot',
   'receipt.winningPrice': 'Winning price',
   'receipt.amount': 'Amount',
   'receipt.reference': 'Reference ending {suffix}',

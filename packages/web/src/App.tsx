@@ -264,16 +264,25 @@ function LiveRoute({ match, liveBase, roomId, token, bidderId, api }: LiveRouteP
   }
 }
 
-/** Lot title from the auction info; the server has no short join code, so none is shown. */
+/** Lot title and short join code: from the snapshot when it has them, else the public summary. */
 function ScreenRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
-  const [title, setTitle] = useState<string | null>(null);
+  const snapTitle = useRoom((s) => s.snapshot?.lotTitle ?? null);
+  const snapCode = useRoom((s) => s.snapshot?.joinCode ?? null);
+  const [fetched, setFetched] = useState<{ title: string | null; code: string | null }>({
+    title: null,
+    code: null,
+  });
   useEffect(() => {
     if (api === undefined) return undefined;
     let live = true;
     fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(roomId)}`)
       .then((body) => {
-        const got = (body as { title?: unknown }).title;
-        if (live && typeof got === 'string' && got !== '') setTitle(got);
+        const got = body as { title?: unknown; joinCode?: unknown };
+        if (!live) return;
+        setFetched({
+          title: typeof got.title === 'string' && got.title !== '' ? got.title : null,
+          code: typeof got.joinCode === 'string' && got.joinCode !== '' ? got.joinCode : null,
+        });
       })
       .catch(() => undefined);
     return () => {
@@ -282,8 +291,8 @@ function ScreenRoute({ roomId, api }: { roomId: string; api: Api | undefined }) 
   }, [api, roomId]);
   return (
     <ScreenView
-      lotTitle={title ?? t('screen.untitled')}
-      code={null}
+      lotTitle={snapTitle ?? fetched.title ?? t('screen.untitled')}
+      code={snapCode ?? fetched.code}
       joinUrl={`${window.location.origin}/join/${encodeURIComponent(roomId)}`}
     />
   );
@@ -307,6 +316,7 @@ export function ReceiptRoute({ roomId }: { roomId: string }) {
   const state = useRoom((s) => s);
   const online = useOnline();
   const { view, paddle, at, runnerUp, detail } = useMemo(() => receiptSource(state), [state]);
+  const itemName = state.snapshot?.lotTitle ?? t('receipt.untitled');
   return (
     <main data-route="receipt">
       {!online && <Offline view="receipt" />}
@@ -316,7 +326,7 @@ export function ReceiptRoute({ roomId }: { roomId: string }) {
         <Empty view="receipt" />
       ) : (
         <>
-          <Receipt view={view} paddle={paddle} itemName={roomId} at={at} runnerUp={runnerUp} />
+          <Receipt view={view} paddle={paddle} itemName={itemName} at={at} runnerUp={runnerUp} />
           <SettlementPanel
             view={view}
             detail={detail}
@@ -382,12 +392,16 @@ function LandingRoute({ api }: { api: Api | undefined }) {
       onScripted={() => navigate('/demo')}
       onJoin={async (code) => {
         if (api === undefined) return false;
+        let id: string;
         try {
-          await fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(code)}`);
+          const body = (await fetchJson(
+            `${api.apiBase}/api/auctions/${encodeURIComponent(code)}`,
+          )) as { auctionId?: unknown };
+          id = typeof body.auctionId === 'string' && body.auctionId !== '' ? body.auctionId : code;
         } catch {
           return false;
         }
-        navigate(`/join/${encodeURIComponent(code)}`);
+        navigate(`/join/${encodeURIComponent(id)}`);
         return true;
       }}
     />
@@ -395,9 +409,16 @@ function LandingRoute({ api }: { api: Api | undefined }) {
 }
 
 function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
-  const [found, setFound] = useState<{ state: JoinState; title: string | null }>({
+  const [found, setFound] = useState<{
+    state: JoinState;
+    title: string | null;
+    id: string;
+    code: string | null;
+  }>({
     state: api === undefined ? 'open' : 'loading',
     title: api === undefined ? roomId : null,
+    id: roomId,
+    code: null,
   });
   useEffect(() => {
     if (api === undefined) return undefined;
@@ -405,14 +426,21 @@ function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
     fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(roomId)}`)
       .then((body) => {
         if (!live) return;
-        const info = body as { title?: unknown; status?: unknown };
+        const info = body as {
+          title?: unknown;
+          status?: unknown;
+          auctionId?: unknown;
+          joinCode?: unknown;
+        };
         setFound({
           state: info.status === 'DONE' ? 'ended' : 'open',
           title: typeof info.title === 'string' ? info.title : roomId,
+          id: typeof info.auctionId === 'string' && info.auctionId !== '' ? info.auctionId : roomId,
+          code: typeof info.joinCode === 'string' && info.joinCode !== '' ? info.joinCode : null,
         });
       })
       .catch(() => {
-        if (live) setFound({ state: 'notFound', title: null });
+        if (live) setFound({ state: 'notFound', title: null, id: roomId, code: null });
       });
     return () => {
       live = false;
@@ -420,9 +448,9 @@ function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
   }, [api, roomId]);
   return (
     <JoinScreen
-      roomId={roomId}
+      roomId={found.id}
       roomName={found.title}
-      shortCode={null}
+      shortCode={found.code}
       state={found.state}
       origin={window.location.origin}
       onNavigate={navigate}
