@@ -13,6 +13,9 @@ const BANNED_CALLS = [
 
 export default tseslint.config(
   { ignores: ['**/node_modules/**', '**/coverage/**', 'fixtures/**'] },
+  // The root config bans node imports in src and src/node carries the matching disable comment;
+  // this package config has no such rule, so that comment is not reported as unused here.
+  { linterOptions: { reportUnusedDisableDirectives: 'off' } },
   js.configs.recommended,
   ...tseslint.configs.strict,
   {
