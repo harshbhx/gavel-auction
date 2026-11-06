@@ -34,7 +34,7 @@ export const auditRecordSchema: z.ZodObject<{
     amountCents: z.ZodNullable<z.ZodNumber>;
     confidence: z.ZodNumber;
     confirmed: z.ZodBoolean;
-    reason: z.ZodEnum<["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable"]>;
+    reason: z.ZodEnum<["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable", "prompt_rate_limited", "stale_segment"]>;
     evidence: z.ZodObject<{
         segmentId: z.ZodString;
         idempotencyKey: z.ZodString;
@@ -57,7 +57,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             }>>;
             amountCents: z.ZodNullable<z.ZodNumber>;
-            reason: z.ZodEnum<["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable"]>;
+            reason: z.ZodEnum<["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable", "prompt_rate_limited", "stale_segment"]>;
             candidates: z.ZodArray<z.ZodObject<{
                 bidder: z.ZodNullable<z.ZodObject<{
                     kind: z.ZodEnum<["paddle", "speaker"]>;
@@ -106,7 +106,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -129,7 +129,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -152,7 +152,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -175,7 +175,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -198,7 +198,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -221,7 +221,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -244,7 +244,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -267,7 +267,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -297,7 +297,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             }>>;
             amountCents: z.ZodNullable<z.ZodNumber>;
-            reason: z.ZodEnum<["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable"]>;
+            reason: z.ZodEnum<["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable", "prompt_rate_limited", "stale_segment"]>;
             candidates: z.ZodArray<z.ZodObject<{
                 bidder: z.ZodNullable<z.ZodObject<{
                     kind: z.ZodEnum<["paddle", "speaker"]>;
@@ -346,7 +346,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -369,7 +369,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -392,7 +392,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -415,7 +415,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -438,7 +438,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -461,7 +461,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -484,7 +484,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -507,7 +507,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -525,9 +525,9 @@ export const auditRecordSchema: z.ZodObject<{
             }[] | undefined;
         }>>;
         confidence: z.ZodNumber;
-        reason: z.ZodEnum<["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable"]>;
+        reason: z.ZodEnum<["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable", "prompt_rate_limited", "stale_segment"]>;
     }, "strict", z.ZodTypeAny, {
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         confidence: number;
         rules: {
             status: "bid" | "confirm" | "none";
@@ -536,7 +536,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -560,7 +560,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -586,7 +586,7 @@ export const auditRecordSchema: z.ZodObject<{
         sttConfidence: number;
         replay: boolean;
     }, {
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         confidence: number;
         rules: {
             status: "bid" | "confirm" | "none";
@@ -595,7 +595,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -619,7 +619,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -647,7 +647,7 @@ export const auditRecordSchema: z.ZodObject<{
     }>;
 }, "strict", z.ZodTypeAny, {
     amountCents: number | null;
-    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
     confidence: number;
     transcript: string;
     decision: "confirm" | "accept" | "drop";
@@ -655,7 +655,7 @@ export const auditRecordSchema: z.ZodObject<{
     bidderId: string | null;
     confirmed: boolean;
     evidence: {
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         confidence: number;
         rules: {
             status: "bid" | "confirm" | "none";
@@ -664,7 +664,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -688,7 +688,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -716,7 +716,7 @@ export const auditRecordSchema: z.ZodObject<{
     };
 }, {
     amountCents: number | null;
-    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
     confidence: number;
     transcript: string;
     decision: "confirm" | "accept" | "drop";
@@ -724,7 +724,7 @@ export const auditRecordSchema: z.ZodObject<{
     bidderId: string | null;
     confirmed: boolean;
     evidence: {
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         confidence: number;
         rules: {
             status: "bid" | "confirm" | "none";
@@ -733,7 +733,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -757,7 +757,7 @@ export const auditRecordSchema: z.ZodObject<{
                 kind: "paddle" | "speaker";
             } | null;
             amountCents: number | null;
-            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+            reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
             candidates: {
                 bidder: {
                     value: string;
@@ -855,6 +855,7 @@ export interface ConfirmPrompt {
     promptId: string;
     // (undocumented)
     spokenAnswerAllowed: boolean;
+    targetBidderId?: string | null;
     // (undocumented)
     text: string;
     // (undocumented)
@@ -971,7 +972,7 @@ export const parseResultSchema: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodObje
         kind: "paddle" | "speaker";
     }>>;
     amountCents: z.ZodNullable<z.ZodNumber>;
-    reason: z.ZodEnum<["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable"]>;
+    reason: z.ZodEnum<["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable", "prompt_rate_limited", "stale_segment"]>;
     candidates: z.ZodArray<z.ZodObject<{
         bidder: z.ZodNullable<z.ZodObject<{
             kind: z.ZodEnum<["paddle", "speaker"]>;
@@ -1020,7 +1021,7 @@ export const parseResultSchema: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodObje
         kind: "paddle" | "speaker";
     } | null;
     amountCents: number | null;
-    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
     candidates: {
         bidder: {
             value: string;
@@ -1043,7 +1044,7 @@ export const parseResultSchema: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodObje
         kind: "paddle" | "speaker";
     } | null;
     amountCents: number | null;
-    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
     candidates: {
         bidder: {
             value: string;
@@ -1066,7 +1067,7 @@ export const parseResultSchema: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodObje
         kind: "paddle" | "speaker";
     } | null;
     amountCents: number | null;
-    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
     candidates: {
         bidder: {
             value: string;
@@ -1089,7 +1090,7 @@ export const parseResultSchema: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodObje
         kind: "paddle" | "speaker";
     } | null;
     amountCents: number | null;
-    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
     candidates: {
         bidder: {
             value: string;
@@ -1112,7 +1113,7 @@ export const parseResultSchema: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodObje
         kind: "paddle" | "speaker";
     } | null;
     amountCents: number | null;
-    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
     candidates: {
         bidder: {
             value: string;
@@ -1135,7 +1136,7 @@ export const parseResultSchema: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodObje
         kind: "paddle" | "speaker";
     } | null;
     amountCents: number | null;
-    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
     candidates: {
         bidder: {
             value: string;
@@ -1158,7 +1159,7 @@ export const parseResultSchema: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodObje
         kind: "paddle" | "speaker";
     } | null;
     amountCents: number | null;
-    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
     candidates: {
         bidder: {
             value: string;
@@ -1181,7 +1182,7 @@ export const parseResultSchema: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodObje
         kind: "paddle" | "speaker";
     } | null;
     amountCents: number | null;
-    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
     candidates: {
         bidder: {
             value: string;
@@ -1301,6 +1302,7 @@ export interface PlaceBidCommand {
 
 // @public
 export interface PlaceBidContext {
+    answeringBidderId?: string | null;
     at: number;
     // (undocumented)
     auctionId: string;
@@ -1399,7 +1401,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         }>>;
         amountCents: z.ZodNullable<z.ZodNumber>;
-        reason: z.ZodEnum<["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable"]>;
+        reason: z.ZodEnum<["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable", "prompt_rate_limited", "stale_segment"]>;
         candidates: z.ZodArray<z.ZodObject<{
             bidder: z.ZodNullable<z.ZodObject<{
                 kind: z.ZodEnum<["paddle", "speaker"]>;
@@ -1448,7 +1450,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1471,7 +1473,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1494,7 +1496,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1517,7 +1519,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1540,7 +1542,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1563,7 +1565,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1586,7 +1588,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1609,7 +1611,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1639,7 +1641,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         }>>;
         amountCents: z.ZodNullable<z.ZodNumber>;
-        reason: z.ZodEnum<["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable"]>;
+        reason: z.ZodEnum<["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable", "prompt_rate_limited", "stale_segment"]>;
         candidates: z.ZodArray<z.ZodObject<{
             bidder: z.ZodNullable<z.ZodObject<{
                 kind: z.ZodEnum<["paddle", "speaker"]>;
@@ -1688,7 +1690,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1711,7 +1713,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1734,7 +1736,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1757,7 +1759,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1780,7 +1782,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1803,7 +1805,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1826,7 +1828,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1849,7 +1851,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1867,9 +1869,9 @@ export const voiceEvidenceSchema: z.ZodObject<{
         }[] | undefined;
     }>>;
     confidence: z.ZodNumber;
-    reason: z.ZodEnum<["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable"]>;
+    reason: z.ZodEnum<["ok", "empty", "no_amount", "question", "auctioneer_talk", "negation", "withdraw", "correction", "retract", "hedged", "multiple_amounts", "multiple_bidders", "uninterpretable_number", "unknown_bidder", "unregistered_paddle", "homophone", "to_for_ambiguity", "unsupported_currency", "fractional_amount", "implausible_amount", "large_jump", "below_minimum", "above_ceiling", "not_open", "already_high_bidder", "duplicate", "low_confidence", "llm_disagree", "too_long", "garbage", "stt_unavailable", "prompt_rate_limited", "stale_segment"]>;
 }, "strict", z.ZodTypeAny, {
-    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
     confidence: number;
     rules: {
         status: "bid" | "confirm" | "none";
@@ -1878,7 +1880,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1902,7 +1904,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1928,7 +1930,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
     sttConfidence: number;
     replay: boolean;
 }, {
-    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+    reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
     confidence: number;
     rules: {
         status: "bid" | "confirm" | "none";
@@ -1937,7 +1939,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1961,7 +1963,7 @@ export const voiceEvidenceSchema: z.ZodObject<{
             kind: "paddle" | "speaker";
         } | null;
         amountCents: number | null;
-        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable";
+        reason: "ok" | "empty" | "no_amount" | "question" | "auctioneer_talk" | "negation" | "withdraw" | "correction" | "retract" | "hedged" | "multiple_amounts" | "multiple_bidders" | "uninterpretable_number" | "unknown_bidder" | "unregistered_paddle" | "homophone" | "to_for_ambiguity" | "unsupported_currency" | "fractional_amount" | "implausible_amount" | "large_jump" | "below_minimum" | "above_ceiling" | "not_open" | "already_high_bidder" | "duplicate" | "low_confidence" | "llm_disagree" | "too_long" | "garbage" | "stt_unavailable" | "prompt_rate_limited" | "stale_segment";
         candidates: {
             bidder: {
                 value: string;
@@ -1991,7 +1993,10 @@ export const voiceEvidenceSchema: z.ZodObject<{
 // @public
 export class VoicePipeline {
     constructor(deps: PipelineDeps);
-    answer(promptId: string, optionId: string | null, by: 'bidder' | 'auctioneer' | 'voice'): AnswerOutcome;
+    answer(promptId: string, optionId: string | null, by: 'bidder' | 'auctioneer' | 'voice', answeringBidderId?: string | null, echo?: {
+        bidderId: string;
+        amountCents: Cents;
+    }): AnswerOutcome;
     noteSpeech(): void;
     // Warning: (ae-forgotten-export) The symbol "SttEvent" needs to be exported by the entry point index.d.ts
     push(ev: SttEvent): PipelineOutput[];

@@ -102,6 +102,7 @@ describe('R12-V04 prompt expiry uses the pipeline clock', () => {
       at: 1_700_000_000_000,
       promptNowMs: 2000,
       confirmedOptionId: option?.id ?? '',
+      answeringBidderId: option?.bidderId ?? '',
       current: { ...context(), nowMs: 2000 },
     });
     expect(cmd).not.toBeNull();

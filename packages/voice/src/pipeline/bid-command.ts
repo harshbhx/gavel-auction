@@ -21,6 +21,8 @@ export interface PlaceBidContext {
   confirmedOptionId?: string;
   /** Who answered the confirm prompt; recorded in the audit (R-VOX-069). Default 'bidder'. */
   confirmedBy?: ConfirmedBy;
+  /** The bidder who answered; a bidder answer must pick that bidder's own option. */
+  answeringBidderId?: string | null;
   /**
    * Fresh bid context at delivery. A confirmed option is always re-validated against it
    * (price moved, ceiling, already high bidder, duplicate window) and a failing option gives null.
@@ -142,6 +144,7 @@ export function toPlaceBid(decision: Decision, ctx: PlaceBidContext): PlaceBidCo
       ctx: ctx.current,
       optionId: option.id,
       by: ctx.confirmedBy ?? 'bidder',
+      ...(ctx.answeringBidderId === undefined ? {} : { answeringBidderId: ctx.answeringBidderId }),
     });
     if (outcome.kind !== 'bid') return null;
     bidderId = outcome.bidderId;

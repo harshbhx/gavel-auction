@@ -25,6 +25,11 @@ const MAX_PENDING_CHUNKS = 8;
 /** Per-request deadline; a hung request must not stall the drain loop. */
 export const GROQ_REQUEST_TIMEOUT_MS = 4000;
 export const GROQ_STOP_DEADLINE_MS = 8000;
+/** A chunk that failed with a retryable error is tried again this many times at most. */
+export const GROQ_MAX_RETRIES = 2;
+/** Retries stop once the chunk is older than this, since late speech is only asked about. */
+export const GROQ_RETRY_WINDOW_MS = 5000;
+export const GROQ_RETRY_BACKOFF_MS = 150;
 
 export type FetchLike = (
   url: string,
@@ -47,6 +52,8 @@ export interface GroqSttOptions {
   maxPendingChunks?: number;
   requestTimeoutMs?: number;
   stopDeadlineMs?: number;
+  /** Base delay before a retry; grows with each attempt. */
+  retryBackoffMs?: number;
 }
 
 /** exp(avg_logprob) clamped to 0..1 and rounded to two decimals. */
@@ -92,6 +99,7 @@ interface PendingChunk {
   startMs: number;
   endMs: number;
   readyAt: number;
+  attempts?: number;
 }
 
 /** Chunked fallback provider: endpointer chunks are sent as WAV and answered with final events only. */
@@ -196,12 +204,10 @@ export class GroqStt implements InstrumentedSttProvider {
   }
 
   private enqueue(chunk: PendingChunk): void {
-    this.pending.push(chunk);
     const max = this.opts.maxPendingChunks ?? MAX_PENDING_CHUNKS;
-    while (this.pending.length > max) {
-      this.pending.shift();
-      this.stats.addDropped();
-    }
+    // On overflow the newest chunk is the one refused: the oldest holds the earliest bid of a burst.
+    if (this.pending.length >= max) this.stats.addDropped();
+    else this.pending.push(chunk);
     if (!this.running) {
       this.running = this.drain().finally(() => {
         this.running = null;
@@ -213,11 +219,24 @@ export class GroqStt implements InstrumentedSttProvider {
     for (;;) {
       const chunk = this.pending.shift();
       if (!chunk) return;
-      await this.transcribe(chunk);
+      const retry = await this.transcribe(chunk);
+      if (retry) {
+        const attempts = (chunk.attempts ?? 0) + 1;
+        const fresh = this.now() - chunk.readyAt <= GROQ_RETRY_WINDOW_MS;
+        if (attempts <= GROQ_MAX_RETRIES && fresh) {
+          const base = this.opts.retryBackoffMs ?? GROQ_RETRY_BACKOFF_MS;
+          await new Promise<void>((resolve) => setTimeout(resolve, base * attempts));
+          // Back at the head: it is the oldest audio, so order is kept.
+          this.pending.unshift({ ...chunk, attempts });
+        } else {
+          this.stats.addDropped();
+        }
+      }
     }
   }
 
-  private async transcribe(chunk: PendingChunk): Promise<void> {
+  /** Resolves true when the chunk failed with an error that is worth retrying. */
+  private async transcribe(chunk: PendingChunk): Promise<boolean> {
     const form = new FormData();
     const wav = encodeWav(chunk.pcm);
     form.append('file', new Blob([wav.slice().buffer], { type: 'audio/wav' }), 'chunk.wav');
@@ -237,20 +256,20 @@ export class GroqStt implements InstrumentedSttProvider {
       const outcome = await Promise.race([this.request(form, controller.signal), timedOut]);
       if (outcome === 'timeout') {
         this.emit({ type: 'error', code: 'timeout', retryable: true });
-        return;
+        return true;
       }
       const res = outcome.res;
       if (!res.ok) {
         const { code, retryable } = classifyHttpStatus(res.status);
         this.emit({ type: 'error', code, retryable });
-        return;
+        return retryable;
       }
       const parsed = parseResponse(outcome.body);
       if (!parsed) {
         this.emit({ type: 'error', code: 'unknown', retryable: true });
-        return;
+        return true;
       }
-      if (parsed.text === '') return;
+      if (parsed.text === '') return false;
       this.emit(
         {
           type: 'final',
@@ -263,9 +282,11 @@ export class GroqStt implements InstrumentedSttProvider {
         },
         this.now() - chunk.readyAt,
       );
+      return false;
     } catch {
       const code = controller.signal.aborted ? 'timeout' : 'closed';
       this.emit({ type: 'error', code, retryable: true });
+      return true;
     } finally {
       if (timer !== undefined) clearTimeout(timer);
     }
