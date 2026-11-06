@@ -16,6 +16,8 @@ export type PaymentsMode = 'fake' | 'sandbox';
 export interface BrowserStack {
   readonly serverUrl: string;
   readonly webUrl: string;
+  /** Admin key the server was started with, for seeding rooms over HTTP. */
+  readonly adminKey: string;
 }
 
 const ROOT = resolve(fileURLToPath(new URL('../../../..', import.meta.url)));
@@ -57,7 +59,7 @@ async function startBrowserStack(): Promise<{ stack: BrowserStack; stop: () => P
     throw e;
   }
   return {
-    stack: { serverUrl: server.serverUrl, webUrl },
+    stack: { serverUrl: server.serverUrl, webUrl, adminKey: server.adminKey },
     stop: async () => {
       await web.kill();
       await server.stop();

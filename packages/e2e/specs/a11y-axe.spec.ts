@@ -1,13 +1,14 @@
 import { createRequire } from 'node:module';
 import type { Page, TestInfo } from '@playwright/test';
 import { expect, test } from '../src/fixtures/base';
+import { seedRoom, seedSession } from '../src/fixtures/room';
 
 /**
  * axe-core over the views the web app serves on the real stack (R-QA-037, T-QA-047): zero serious
  * or critical violations in the light and projector themes, with the full result attached to the
  * report. The engine is the axe-core already installed for the web package, injected as a script.
  *
- * Covered: every route in the route table, the register form (step one and two) behind a stored
+ * Covered: every route in the route table, the register form (step one and two) in a seeded room behind its stored
  * session, and the gallery with its dialog open. NOT covered: the bid, console, public screen and
  * receipt routes with a live room behind them, because a browser cannot reach those states
  * without a session for a seeded room; the web package's unit axe tests cover those states.
@@ -92,15 +93,10 @@ for (const view of VIEWS) {
 for (const theme of THEMES) {
   test(`axe register form steps one and two in ${theme}`, async ({ page, stack }, testInfo) => {
     await setTheme(page, theme);
-    // Store the session from a loaded page of the same origin, then open the form.
-    await page.goto(`${stack.webUrl}/gallery`);
-    await page.evaluate(() => {
-      sessionStorage.setItem(
-        'gavel:session:room1',
-        JSON.stringify({ token: 'walnut', bidderId: 'bidder-one' }),
-      );
-    });
-    await page.goto(`${stack.webUrl}/r/room1/register`);
+    // A real room with a joined bidder, whose session stands in for the invite step.
+    const room = await seedRoom(stack);
+    await seedSession(page, room);
+    await page.goto(`${stack.webUrl}/r/${room.auctionId}/register`);
     await page.locator('form').waitFor();
     await sweep(page, testInfo, `register-step1-${theme}`);
     await page.locator('input[autocomplete="nickname"]').fill('Walnut');
