@@ -24,6 +24,7 @@ const AUDIT_FIELD_TYPES: Readonly<Record<string, 'string' | 'number' | 'boolean'
   audioEndMs: 'number',
   transcript: 'string',
   confidenceBps: 'number',
+  parsedCents: 'number',
   confirmed: 'boolean',
   parserVersion: 'string',
   clientTs: 'number',
@@ -51,11 +52,14 @@ function assertBidShape(cmd: PlaceBidCommand): void {
   if (a.transcript !== undefined && a.transcript.length > LIMITS.transcript) {
     throw new EngineError('limit_exceeded', 'transcript');
   }
-  for (const k of ['audioStartMs', 'audioEndMs', 'clientTs'] as const) {
+  for (const k of ['audioStartMs', 'audioEndMs', 'clientTs', 'parsedCents'] as const) {
     const v = a[k];
     if (v !== undefined && (!Number.isSafeInteger(v) || Object.is(v, -0))) {
       throw new EngineError('bad_command', `audit.${k}`);
     }
+  }
+  if (a.parsedCents !== undefined && a.parsedCents < 0) {
+    throw new EngineError('bad_command', 'audit.parsedCents');
   }
   for (const k of ['utteranceId', 'parserVersion'] as const) {
     const v = a[k];

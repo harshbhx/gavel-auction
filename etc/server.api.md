@@ -31,6 +31,7 @@ import { Journal } from '@gavel/payments';
 import { JournalStore } from '@gavel/payments';
 import { KillSwitch } from '@gavel/payments';
 import { LedgerStore } from '@gavel/engine';
+import type { OwnHold } from '@gavel/shared';
 import { PaymentsGateway } from '@gavel/payments';
 import { PaymentsMetrics } from '@gavel/payments';
 import { ReauthPolicy } from '@gavel/payments';
@@ -129,6 +130,9 @@ export interface AuctionServiceDeps {
     // (undocumented)
     webhookEvents: WebhookEventStore;
 }
+
+// @public
+export function acceptsEventType(eventType: string): boolean;
 
 // @public
 export function authIdOf(e: {
@@ -364,12 +368,14 @@ export interface SettlementReport {
     amountCaptured?: Cents | undefined;
     // (undocumented)
     auctionState: SettlementState;
+    holds?: Readonly<Record<string, Omit<OwnHold, 'bidderId'>>> | undefined;
     // (undocumented)
     note?: string | undefined;
     // (undocumented)
     perBidder: Record<string, SettlementState>;
     // (undocumented)
     rev: number;
+    winnerId?: string | undefined;
 }
 
 // @public
