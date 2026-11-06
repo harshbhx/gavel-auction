@@ -115,12 +115,21 @@ describe('receipt route for a promoted runner-up', () => {
   beforeEach(() => setup(2));
 
   it('shows the charge, not a non-winner receipt, and no winning price', () => {
-    update(3, 'SETTLED', { amountCaptured: Cents(30000) });
+    update(3, 'CAPTURED', { you: 'CAPTURED', amountCaptured: Cents(30000) });
     const { container } = render(<ReceiptRoute roomId="lot1" />);
     const text = receipt(container).textContent ?? '';
     expect(text).toContain('you are the winner. Charged $300.00');
     expect(text).not.toContain('Winning price');
     expect(text).not.toMatch(/did not win/);
+  });
+
+  it('never shows a charge to a loser when the lot-level amount is set', () => {
+    update(3, 'SETTLED', { you: 'SETTLED', amountCaptured: Cents(34000) });
+    const { container } = render(<ReceiptRoute roomId="lot1" />);
+    const text = receipt(container).textContent ?? '';
+    expect(text).not.toMatch(/Charged/);
+    expect(text).not.toMatch(/you are the winner/);
+    expect(text).toContain('hold was released');
   });
 });
 

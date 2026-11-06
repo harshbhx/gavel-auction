@@ -72,7 +72,7 @@ export function receiptSource(state: RoomState): ReceiptSource {
   }
   // No per-hold data: only the captured amount the server named counts as charged.
   const capturedCents = meta?.capturedCents ?? 0;
-  const promoted = !isHammerWinner && (capturedCents > 0 || ownState === 'CAPTURED');
+  const promoted = !isHammerWinner && ownState === 'CAPTURED';
   const wins = isHammerWinner || promoted;
   return {
     paddle: row.paddle,

@@ -3,7 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { Cents, EpochMs } from '@gavel/shared';
 import { ScreenView } from '../../src/screens/screen/ScreenView';
 import { RoomStore } from '../../src/store/roomStore';
-import { BASE_TIME, bidderId, openSnapshot, roster, stateMsg } from '../../src/testing/builders';
+import {
+  BASE_TIME,
+  auctionId,
+  bidderId,
+  openSnapshot,
+  roster,
+  stateMsg,
+} from '../../src/testing/builders';
 
 function closedStore(options: { leader: number | null; inRoster: boolean }): RoomStore {
   const store = new RoomStore();
@@ -43,6 +50,30 @@ describe('public screen after the hammer (reload or late join)', () => {
 });
 
 describe('public screen settlement ladder', () => {
+  it('builds the audit link from the room id when there is no join code', () => {
+    const store = closedStore({ leader: 7, inRoster: true });
+    store.dispatch({
+      kind: 'wire',
+      msg: {
+        v: 1,
+        t: 'settlement_update',
+        seq: 6,
+        ts: EpochMs(BASE_TIME + 6),
+        rev: 1,
+        auctionState: 'FAILED_NEEDS_REVIEW',
+        winnerPaddle: 7,
+        holds: [],
+        invariants: { ok: true, violations: [] },
+      },
+    });
+    const { container } = render(
+      <ScreenView lotTitle="Lot" code={null} joinUrl="https://x.test/j" store={store} />,
+    );
+    const link = container.querySelector('.gv-settlement a');
+    expect(link?.getAttribute('href')).toBe(`/r/${encodeURIComponent(auctionId())}/audit`);
+    expect(container.innerHTML).not.toContain('/r/null/');
+  });
+
   it('mounts the ladder with the winner lane only, no names', () => {
     const store = closedStore({ leader: 7, inRoster: true });
     store.dispatch({
