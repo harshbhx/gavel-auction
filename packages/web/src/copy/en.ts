@@ -134,7 +134,7 @@ export const en = {
   'console.mic.live': 'Listening',
   'console.mic.unavailable': 'Voice is not available in this build. Use manual entry.',
   'console.settlement.needsReview':
-    'Capture failed and needs review. Contact the winner or move to the runner-up.',
+    'Settlement failed and needs review. Contact the winner or move to the runner-up.',
   'console.settlement.inProgress': 'Settlement is in progress.',
   'console.mic.denied': 'Microphone blocked. Use manual entry.',
   'console.notBid': 'Not a bid',
