@@ -48,17 +48,19 @@ Real PayPal sandbox gates (see `docs/GATES.md`, evidence files under `docs/evide
 
 ## What is real versus simulated
 
-| Part                                                         | Real                                                         | Simulated or recorded                                                            | Source         |
-| ------------------------------------------------------------ | ------------------------------------------------------------ | -------------------------------------------------------------------------------- | -------------- |
-| Authorize, capture 350 with final_capture, remainder release | Observed on the PayPal sandbox for a wallet and a card buyer | Tests of the saga run against the project's fake PayPal                          | G1 evidence    |
-| Card and guest AUTHORIZE                                     | Observed on the sandbox in SDK v6                            | n/a                                                                              | G2 evidence    |
-| Webhook signature verification                               | 6 real sandbox events verified through PayPal's endpoint     | Tampered-event rejection and the retry schedule are tested against the fake only | G4 evidence    |
-| Honor period and reauthorize                                 | Not yet recorded (G3 running)                                | Saga reauthorize logic tested against the fake                                   | G3 pending     |
-| Settlement of a whole auction (many holds, crash and resume) | Not run end to end on the sandbox                            | Run against the fake PayPal, in tests                                            | saga tests     |
-| Speech-to-text accuracy                                      | Not measured (G5 pending)                                    | Parser measured on text transcripts only: 169 cases, wrong accepts 0.000         | G5-text        |
-| Demo replay                                                  | n/a                                                          | A recorded auction played back read only, labelled "Recorded" on screen          | replay player  |
-| Hosted demo                                                  | OWNER: state the real deployed status when it is known       |                                                                                  | `docs/DEMO.md` |
-| Money                                                        | No real money moves anywhere. All PayPal calls are sandbox   |                                                                                  | all            |
+| Part                                                         | Real                                                                                                                                                  | Simulated or recorded                                                            | Source         |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------- |
+| Authorize, capture 350 with final_capture, remainder release | Authorization reads CAPTURED after the final capture on the PayPal sandbox, for a wallet and a card-funded PayPal account; remainder release inferred | Tests of the saga run against the project's fake PayPal                          | G1 evidence    |
+| Card and guest AUTHORIZE                                     | Observed on the sandbox in SDK v6                                                                                                                     | n/a                                                                              | G2 evidence    |
+| Webhook signature verification                               | 6 real sandbox events verified through PayPal's endpoint                                                                                              | Tampered-event rejection and the retry schedule are tested against the fake only | G4 evidence    |
+| Honor period and reauthorize                                 | Not yet recorded (G3 running)                                                                                                                         | Saga reauthorize logic tested against the fake                                   | G3 pending     |
+| Settlement of a whole auction (many holds, crash and resume) | Not run end to end on the sandbox                                                                                                                     | Run against the fake PayPal, in tests                                            | saga tests     |
+| Speech-to-text accuracy                                      | Not measured (G5 pending)                                                                                                                             | Parser measured on text transcripts only: 169 cases, wrong accepts 0.000         | G5-text        |
+| Demo replay                                                  | n/a                                                                                                                                                   | A recorded auction played back read only, labelled "Recorded" on screen          | replay player  |
+| Hosted demo                                                  | OWNER: state the real deployed status when it is known                                                                                                |                                                                                  | `docs/DEMO.md` |
+| Money                                                        | No real money moves anywhere. All PayPal calls are sandbox                                                                                            |                                                                                  | all            |
+
+Latency is the open risk. Sandbox void p95 is 1235.96 ms (n=10 per call, 2026-11-05), above the 1 s per-call budget the 6 s SETTLED target assumes. The target is not shown to hold, and the run log is not committed. See `docs/GATES.md`.
 
 ## Challenges and what we learned
 
@@ -73,7 +75,7 @@ Real PayPal sandbox gates (see `docs/GATES.md`, evidence files under `docs/evide
 
 - Record the G3 result and set the reauthorize behaviour from it.
 - Run G5 on noisy recorded bids with real speech-to-text and calibrate the confirm thresholds.
-- Wire voice into a live room, mount the WebSocket gateway, and deploy a hosted demo with a persistent disk.
+- Record a live speech run through the `/audio` socket (gate G5), bring the latency targets within budget, and deploy a hosted demo with a persistent disk.
 - Publish a recorded replay and the screenshots.
 - Run a full many-bidder settlement, including a crash and resume, on the sandbox.
 

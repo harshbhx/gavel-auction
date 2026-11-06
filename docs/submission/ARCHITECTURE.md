@@ -53,7 +53,7 @@ flowchart LR
   SHARED -.- Server
 ```
 
-Not wired yet (see `docs/PLAN.md` section 0): the adapter from voice into a room and a mounted WebSocket gateway.
+Mounted in `packages/server/src/boot/compose.ts`: the room WebSocket gateway (`createGateway`) and the `/audio` voice socket (`createAudioHost`), which feeds each decision into the room through `Room.submitVoiceBid`. The speech provider is cached transcripts unless `VOICE_STT` names a live provider with its key. No live speech run is recorded (gate G5 NOT RUN).
 
 ## Settlement flow
 
