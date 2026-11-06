@@ -1472,9 +1472,12 @@ export interface PayPalGatewayOptions {
 // @public
 export class PendingReadBackoff {
     constructor(baseMs?: number, capMs?: number, lateCapMs?: number, lapseAfterMs?: number);
+    // (undocumented)
     due(holdId: string, nowMs: number): boolean;
+    // (undocumented)
     forget(holdId: string): void;
     read(holdId: string, nowMs: number, ageMs: number): void;
+    // (undocumented)
     get size(): number;
 }
 
