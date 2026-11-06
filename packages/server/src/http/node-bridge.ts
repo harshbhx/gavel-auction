@@ -24,7 +24,9 @@ export function nodeRoutesFor(app: HttpApp, origin: string): ExtraRoutes {
     const hasBody = method !== 'GET' && method !== 'HEAD';
     const init: RequestInit & { duplex?: 'half' } = { method, headers };
     if (hasBody) {
-      init.body = Readable.toWeb(req) as WebReadableStream as unknown as RequestInit['body'];
+      init.body = Readable.toWeb(req) as WebReadableStream as unknown as NonNullable<
+        RequestInit['body']
+      >;
       init.duplex = 'half';
     }
     const out = await app.fetch(new Request(new URL(target, origin), init));
