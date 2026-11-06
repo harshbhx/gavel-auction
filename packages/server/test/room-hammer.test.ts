@@ -559,7 +559,7 @@ describe('hammer outcome on join (HRD-75)', () => {
   const ownHold = {
     idSuffix: 'abc123',
     status: 'CAPTURED',
-    ceilingCents: 50000,
+    ceilingCents: 50000 as Cents,
     capturedCents: 10000,
     releasedCents: 40000,
     remainder: 'released',
