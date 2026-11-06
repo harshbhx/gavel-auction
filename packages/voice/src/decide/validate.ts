@@ -82,6 +82,12 @@ function validateCandidates(parse: ParseResult, ctx: BidContext, who: Resolved):
   };
 }
 
+function distinctAmounts(parse: ParseResult): number {
+  const seen = new Set<Cents>();
+  for (const c of parse.candidates) if (c.amountCents !== null) seen.add(c.amountCents);
+  return seen.size;
+}
+
 function hasSeveralBidders(parse: ParseResult): boolean {
   if (parse.status !== 'confirm' || parse.amountCents !== null) return false;
   const keys = new Set<string>();
@@ -144,6 +150,8 @@ export function validate(parse: ParseResult, ctx: BidContext): Verdict {
 
   const who = resolve(parse, ctx);
   if (who === null) {
+    // A currency utterance keeps its own reason: relabelling it hides why no amount is offered.
+    if (parse.reason === 'unsupported_currency') return confirm(parse, parse.reason, null);
     const reason = parse.bidder?.kind === 'paddle' ? 'unregistered_paddle' : 'unknown_bidder';
     return confirm(parse, reason, null);
   }
@@ -153,7 +161,15 @@ export function validate(parse: ParseResult, ctx: BidContext): Verdict {
   }
 
   const amount = parse.amountCents;
+  if (amount === null && parse.reason === 'unsupported_currency') {
+    return confirm(parse, 'unsupported_currency', who.bidderId);
+  }
   if (amount === null) return validateCandidates(parse, ctx, who);
+  // Several distinct readings (e.g. 'fifteen' as 1500 or 5000): the minimum applies per
+  // candidate, so a reading that cannot be placed never hides one that can.
+  if (parse.status === 'confirm' && distinctAmounts(parse) > 1) {
+    return validateCandidates(parse, ctx, who);
+  }
 
   const price = ctx.currentPriceCents;
   if (amount <= price) {

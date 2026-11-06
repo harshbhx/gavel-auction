@@ -103,3 +103,34 @@ describe('eval cli reports parse accuracy and gate outcome', () => {
     expect(gated.outcomes.auto).toBe(0);
   });
 });
+
+describe('gateUtterance candidates and currency (HRD-84)', () => {
+  it('keeps the valid reading of "fifteen" when the other is below the minimum', () => {
+    const g = gateUtterance({
+      text: 'fifteen',
+      speaker: '7',
+      currentPriceCents: 4_000,
+      minIncrementCents: 500,
+      mic: 'device',
+      sttConfidence: 0.99,
+    });
+    expect(g.decision).toBe('confirm');
+    expect(g.actual).toEqual({
+      kind: 'confirm',
+      candidates: [{ who: '7', amountCents: 5_000 }],
+    });
+  });
+
+  it('labels a currency utterance unsupported_currency and says so in the prompt', () => {
+    const g = gateUtterance({
+      text: 'three fifty rupees',
+      speaker: '7',
+      currentPriceCents: 10_000,
+      minIncrementCents: 1_000,
+      mic: 'room',
+      sttConfidence: 0.99,
+    });
+    expect(g.decision).toBe('confirm');
+    expect(g.reason).toBe('unsupported_currency');
+  });
+});
