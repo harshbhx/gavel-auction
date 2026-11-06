@@ -36,6 +36,8 @@ export interface NodeWsHostOptions {
   /** Called for every accepted socket; `transport` is the bounded outbound side. */
   accept(transport: BoundedConnection): SocketHandlers;
   path?: string;
+  /** Upgrade paths another listener on the same server serves; this host leaves them alone. */
+  passPaths?: readonly string[];
   maxPayload?: number;
   /**
    * Asked for every upgrade that passed the path and Origin checks, before the handshake.
@@ -65,6 +67,7 @@ export function createNodeWsHost(opts: NodeWsHostOptions): NodeWsHost {
 
   const onUpgrade = (req: IncomingMessage, socket: Duplex, head: Buffer): void => {
     if (pathOf(req) !== path) {
+      if (opts.passPaths?.includes(pathOf(req)) === true) return;
       refuse(socket, 404, 'Not Found');
       return;
     }

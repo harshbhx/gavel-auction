@@ -76,12 +76,14 @@ export interface ParseContext {
   currentPriceCents?: Cents;
   minIncrementCents?: Cents;
   sttWordConfidence?: Array<{ word: string; start: number; end: number; confidence: number }>;
-  pendingCandidate?: {
-    id: string;
-    bidder: BidderRef | null;
-    amountCents: Cents;
-    ageMs: number;
-  };
+  pendingCandidate?:
+    | {
+        id: string;
+        bidder: BidderRef | null;
+        amountCents: Cents;
+        ageMs: number;
+      }
+    | undefined;
 }
 
 export interface BidContext {

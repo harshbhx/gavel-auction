@@ -93,6 +93,17 @@ export interface Connection {
   token?: { jti: string; iat: number; exp: number; kind: string };
 }
 
+/** Read-only room facts for the voice adapter (see Room.voiceView). */
+export interface VoiceView {
+  open: boolean;
+  price: Cents;
+  minNext: Cents;
+  minIncrement: Cents;
+  leader: BidderId | null;
+  confirmThreshold: number;
+  roster: Array<{ bidderId: BidderId; paddle: string }>;
+}
+
 /** What a mid is bound to: the amount and the effective source (manual for the auctioneer). */
 function bidDigest(amount: unknown, source: string): string {
   return `${isCents(amount) ? amount : ''}|${source}`;
@@ -729,6 +740,46 @@ export class Room {
         this.deps.metrics?.bidLatencyMs?.(this.deps.clock.now() - started);
       }
     });
+  }
+
+  /**
+   * Facts the voice adapter needs to judge a spoken bid. Ceilings stay inside the room: the
+   * adapter sees paddles and bidder ids only, and the engine remains the judge of every bid.
+   */
+  voiceView(): VoiceView | undefined {
+    const engine = this.engine;
+    if (engine === undefined || this.config === undefined) return undefined;
+    const view = engine.view();
+    return {
+      open: view.state === 'OPEN' && !this.hammered,
+      price: view.price ?? (0 as Cents),
+      minNext: view.minNext,
+      minIncrement: this.config.minIncrement,
+      leader: view.leader,
+      confirmThreshold: this.config.confirmConfidenceThreshold,
+      roster: [...this.roster].map(([bidderId, r]) => ({ bidderId, paddle: String(r.paddle) })),
+    };
+  }
+
+  /**
+   * Submit a bid the voice adapter heard for a registered bidder. Room mic design: the audio
+   * token is the auctioneer's, the bidder is the spoken paddle. The throwaway connection has
+   * the bidder role, so it can only place a bid; `internal` skips just the connection cap and
+   * supersede. It takes the same path as a bid the bidder sent with source voice: the rate
+   * limit, the confidence gate and the confirm hold apply, and the engine decides last. The
+   * reply goes nowhere because no socket belongs to this call.
+   */
+  submitVoiceBid(bidderId: BidderId, msg: BidMsg): Promise<void> {
+    const sink: Transport = { send: () => undefined, close: () => undefined };
+    const conn: Connection = {
+      id: this.deps.ids.mint<'ConnId'>() as ConnId,
+      role: 'bidder',
+      bidderId,
+      sub: bidderId,
+      transport: sink,
+      internal: true,
+    };
+    return this.submitBid(conn, { ...msg, source: 'voice' });
   }
 
   private async handleBid(
