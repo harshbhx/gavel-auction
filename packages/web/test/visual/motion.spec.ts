@@ -59,18 +59,20 @@ test.describe('forced colours', () => {
   test('the focus ring is still drawn on a button', async ({ page }) => {
     await page.emulateMedia({ forcedColors: 'active' });
     await page.goto('/gallery');
-    for (let i = 0; i < 12; i += 1) {
-      await page.keyboard.press('Tab');
-      if (await page.evaluate(() => document.activeElement?.classList.contains('gv-btn') === true))
-        break;
-    }
+    // One key press sets keyboard modality, then the button takes focus so :focus-visible applies.
+    await page.keyboard.press('Tab');
+    await page.getByTestId(TEST_IDS.dialogOpen).focus();
     const ring = await page.evaluate(() => {
       const el = document.activeElement;
-      if (el === null) return { style: 'none', width: 0 };
+      if (el === null) return { style: 'none', width: 0, tag: 'none' };
       const s = getComputedStyle(el);
-      return { style: s.outlineStyle, width: parseFloat(s.outlineWidth) };
+      return {
+        style: s.outlineStyle,
+        width: parseFloat(s.outlineWidth),
+        tag: `${el.tagName}.${el.className}`,
+      };
     });
-    expect(ring.style).not.toBe('none');
+    expect(ring.style, `outline style, active ${ring.tag}`).not.toBe('none');
     expect(ring.width).toBeGreaterThanOrEqual(2);
   });
 });
