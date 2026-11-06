@@ -120,6 +120,7 @@ export class GroqStt implements InstrumentedSttProvider {
 
   constructor(opts: GroqSttOptions) {
     this.opts = opts;
+    // eslint-disable-next-line no-restricted-syntax -- default clock when the caller injects none
     this.now = opts.now ?? Date.now;
   }
 

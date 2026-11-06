@@ -30,6 +30,7 @@ export interface FailoverClock {
 }
 
 export const realClock: FailoverClock = {
+  // eslint-disable-next-line no-restricted-syntax -- the one real clock, injected everywhere else
   now: () => Date.now(),
   setTimeout: (fn, ms) => Number(setTimeout(fn, ms)),
   clearTimeout: (id) => clearTimeout(id),
