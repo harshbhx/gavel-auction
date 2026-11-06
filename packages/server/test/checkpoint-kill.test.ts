@@ -60,4 +60,21 @@ describe('GAVEL_CHECKPOINT_KILL', () => {
       'function',
     );
   });
+
+  it('refuses on a public https host even when NODE_ENV is unset', () => {
+    const kill = (): void => undefined;
+    const env = { GAVEL_CHECKPOINT_KILL: 'before_capture_request' };
+    expect(() =>
+      boundaryFromEnv(env, kill, {
+        NODE_ENV: 'development',
+        PUBLIC_URL: 'https://auction.example.org',
+      }),
+    ).toThrow(/public host/);
+    expect(() =>
+      boundaryFromEnv({ ...env, PUBLIC_URL: 'https://auction.example.org' }, kill),
+    ).toThrow(/public host/);
+    expect(
+      boundaryFromEnv(env, kill, { NODE_ENV: 'development', PUBLIC_URL: 'http://localhost:8080' }),
+    ).toBeTypeOf('function');
+  });
 });
