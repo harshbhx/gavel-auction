@@ -684,7 +684,7 @@ export interface HoldRef {
 // @public (undocumented)
 export class HoldService {
     constructor(deps: HoldServiceDeps);
-    abandonHold(holdId: string): Promise<void>;
+    abandonHold(holdId: string): Promise<boolean>;
     completeApproval(i: CompleteApprovalInput): Promise<ApprovedHold>;
     createHoldOrder(i: CreateHoldInput): Promise<CreatedHold>;
 }

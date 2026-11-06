@@ -208,16 +208,20 @@ export class HoldService {
   /**
    * Drops a hold the bidder walked away from (cancel, decline, mismatch). Idempotent:
    * a missing, already expired or already authorized hold is left as it is, so a late
-   * or repeated call never voids a hold an approval has since settled.
+   * or repeated call never voids a hold an approval has since settled. Resolves true
+   * when the hold is expired (now or before), false when it was left in place.
    */
-  async abandonHold(holdId: string): Promise<void> {
+  async abandonHold(holdId: string): Promise<boolean> {
     const hold = await this.deps.holds.get(holdId);
-    if (hold === null || hold.status !== 'PENDING_APPROVAL') return;
+    if (hold === null) return false;
+    if (hold.status === 'EXPIRED') return true;
+    if (hold.status !== 'PENDING_APPROVAL') return false;
     try {
       await this.abandonPending(hold);
+      return true;
     } catch (e) {
       // An approval won the race: the bidder has a hold now, nothing to abandon.
-      if (e instanceof HoldError && e.code === 'hold_exists') return;
+      if (e instanceof HoldError && e.code === 'hold_exists') return false;
       throw e;
     }
   }

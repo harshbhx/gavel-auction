@@ -24,7 +24,7 @@ describe('abandonHold (browser cancel, decline, mismatch)', () => {
   it('expires a pending hold and lets the bidder start a fresh one', async () => {
     const r = rig();
     const first = await r.service.createHoldOrder(input);
-    await r.service.abandonHold(first.holdId);
+    expect(await r.service.abandonHold(first.holdId)).toBe(true);
     expect((await r.holds.get(first.holdId))?.status).toBe('EXPIRED');
     const second = await r.service.createHoldOrder(input);
     expect(second.holdId).not.toBe(first.holdId);
@@ -33,9 +33,9 @@ describe('abandonHold (browser cancel, decline, mismatch)', () => {
   it('is idempotent and ignores an unknown hold', async () => {
     const r = rig();
     const { holdId } = await r.service.createHoldOrder(input);
-    await r.service.abandonHold(holdId);
-    await r.service.abandonHold(holdId);
-    await r.service.abandonHold('nope');
+    expect(await r.service.abandonHold(holdId)).toBe(true);
+    expect(await r.service.abandonHold(holdId)).toBe(true);
+    expect(await r.service.abandonHold('nope')).toBe(false);
     expect((await r.holds.get(holdId))?.status).toBe('EXPIRED');
   });
 
@@ -44,7 +44,7 @@ describe('abandonHold (browser cancel, decline, mismatch)', () => {
     const { holdId, orderId } = await r.service.createHoldOrder(input);
     r.core.approveOrder(orderId);
     await r.service.completeApproval({ holdId, orderId });
-    await r.service.abandonHold(holdId);
+    expect(await r.service.abandonHold(holdId)).toBe(false);
     expect((await r.holds.get(holdId))?.status).toBe('HELD');
   });
 });

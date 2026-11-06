@@ -105,7 +105,10 @@ export function mountHolds(port: HoldsPort): Mount {
         if (hold === null) return notFound();
         const who = await authenticate(c, hold.auctionId, ['session']);
         if (!holdOwnedBySession(hold.bidderId, who.bidderId)) return notFound();
-        await port.service.abandonHold(holdId);
+        const abandoned = await port.service.abandonHold(holdId);
+        if (!abandoned) {
+          return holdFailure('hold_exists', 'the hold is already authorized and was not released');
+        }
         return json(200, { holdId, released: true });
       }),
     );
