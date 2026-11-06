@@ -15,6 +15,14 @@ export interface SettlementDetail {
   invariants: { ok: boolean; violations: string[] };
 }
 
+/** What the server said about this bidder's own hold, and when (server clock, epoch ms). */
+export interface SettlementMeta {
+  state: SettlementUpdateMsg['auctionState'];
+  at: number;
+  /** The amount the server reports as captured for this bidder, when it sent one. */
+  capturedCents?: number;
+}
+
 export interface BidRecord {
   seq: number;
   bidderId: string;
@@ -58,6 +66,8 @@ export interface RoomState {
   auditTruncated: boolean;
   /** Absent until the server sends per-hold settlement data. */
   settlementDetail?: SettlementDetail;
+  /** Server time and own captured amount from the latest settlement_update. */
+  settlementMeta?: SettlementMeta;
   lastError: { code: string; message: string; retryAfterMs: number | null } | null;
 }
 
@@ -134,6 +144,7 @@ function applySnapshot(state: RoomState, msg: Extract<ServerMessage, { t: 'state
     // The snapshot carries at most SNAPSHOT_AUDIT_ROWS rows: a full window may hide older ones.
     auditTruncated: snap.recentAudit.length >= SNAPSHOT_AUDIT_ROWS,
     ...(state.settlementDetail === undefined ? {} : { settlementDetail: state.settlementDetail }),
+    ...(state.settlementMeta === undefined ? {} : { settlementMeta: state.settlementMeta }),
   };
 }
 
@@ -209,9 +220,23 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
               },
             },
       );
-      if (stale || msg.holds === undefined) return next;
+      if (stale) return next;
+      const ownState = msg.you ?? msg.auctionState;
+      const prev = state.settlementMeta;
+      // The time is when the server first reported this state, so repeats do not move it.
+      const meta: SettlementMeta = {
+        state: ownState,
+        at: prev !== undefined && prev.state === ownState ? prev.at : msg.ts,
+        ...(msg.amountCaptured === undefined
+          ? prev !== undefined && prev.capturedCents !== undefined
+            ? { capturedCents: prev.capturedCents }
+            : {}
+          : { capturedCents: msg.amountCaptured }),
+      };
+      const withMeta: RoomState = { ...next, settlementMeta: meta };
+      if (msg.holds === undefined) return withMeta;
       return {
-        ...next,
+        ...withMeta,
         settlementDetail: {
           rev: msg.rev,
           holds: msg.holds,

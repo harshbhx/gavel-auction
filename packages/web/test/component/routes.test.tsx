@@ -4,6 +4,7 @@ import { App, navigate } from '../../src/App';
 import { t } from '../../src/copy/t';
 import { matchRoute } from '../../src/routes';
 import { saveSession } from '../../src/net/session';
+import { clearAuctioneerToken } from '../../src/store/session';
 
 afterEach(() => {
   window.sessionStorage.clear();
@@ -47,10 +48,17 @@ describe('routes', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(t('err.tokenMissing'));
   });
 
-  it('opens the console when a session token exists', () => {
-    saveSession('r1', { token: 'tok' });
+  it('opens the console when the link carries an auctioneer token', () => {
+    window.location.hash = '#token=pelican';
     render(<App initialPath="/r/r1/console" />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(t('demo.roleConsole'));
+    clearAuctioneerToken();
+  });
+
+  it('keeps the console closed for a bidder session', () => {
+    saveSession('r1', { token: 'bidderword', bidderId: 'bidder-1' });
+    render(<App initialPath="/r/r1/console" />);
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(t('err.tokenMissing'));
   });
 
   it('shows the sandbox banner on the 404 page', () => {
