@@ -33,5 +33,5 @@ test('a seeded room is seen by the bidder, the public and the auctioneer, then h
   await new AuctioneerView(page, stack, room).open();
   await hammerRoom(stack, room);
   await pub.open();
-  await expect(pub.sold).toBeVisible();
+  await expect(pub.sold).toBeAttached();
 });

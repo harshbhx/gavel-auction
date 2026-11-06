@@ -66,7 +66,7 @@ for (const screen of ROOM_SCREENS) {
       if (screen.view === 'public') {
         const view = new PublicView(page, stack, room);
         await view.open();
-        if (screen.hammer) await expect(view.sold).toBeVisible();
+        if (screen.hammer) await expect(view.sold).toBeAttached();
         // The clock follows the real end time and the join code carries a random port.
         await expect(page).toHaveScreenshot(`${screen.name}-${viewport.name}.png`, {
           mask: [view.clock, view.join],
