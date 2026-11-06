@@ -228,3 +228,39 @@ describe('R12-V02 room-mic bids are confirmed', () => {
     expect(runMic('device').map((d) => d.kind)).toContain('accept');
   });
 });
+
+describe('R12-V02b auctioneer patter on a bidder device mic is confirmed', () => {
+  function runDevice(text: string): Decision[] {
+    let n = 0;
+    const pipeline = new VoicePipeline({
+      roomId: 'room1',
+      lotId: 'lot1',
+      clock: () => 1500,
+      ids: () => `seg-${++n}`,
+      context: () => context(),
+      mic: 'device',
+      speakerBidderId: B7,
+      llm: (t: string) => parseBid(t, { speakerBidderId: B7 }),
+    });
+    const out = pipeline.push(final(text, 0.99));
+    return out.flatMap((o) => (o.type === 'decision' ? [o.decision] : []));
+  }
+
+  for (const text of [
+    'six hundred, six hundred, who will give me six hundred',
+    'do I hear six hundred',
+    'anyone for six hundred',
+    'six hundred six hundred',
+    'six hundred',
+  ]) {
+    it(`never auto-accepts "${text}"`, () => {
+      const ds = runDevice(text);
+      expect(ds.length).toBeGreaterThan(0);
+      expect(ds.every((d) => d.kind !== 'accept')).toBe(true);
+    });
+  }
+
+  it('a spoken paddle bid on the device mic is still accepted', () => {
+    expect(runDevice('paddle seven six hundred').map((d) => d.kind)).toContain('accept');
+  });
+});
