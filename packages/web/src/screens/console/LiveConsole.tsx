@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
 import { announce } from '../../a11y/announce';
+import type { AudioFrameSink } from '../../audio/micCapture';
+import { useMic } from '../../audio/useMic';
+import { Button } from '../../design/primitives/Button';
 import { t } from '../../copy/t';
 import { useConnection } from '../../net/connection';
 import { createControlPort } from '../../net/controlPort';
@@ -23,7 +26,11 @@ export interface LiveConsoleProps {
   readonly onConfirmAnswer: (confirmId: string, accept: boolean) => void;
   /** Error code of the last rejected bid this console sent, or an empty string. */
   readonly rejection: string;
+  /** Receives microphone PCM chunks. Chunks are dropped when absent. */
+  readonly audioSink?: AudioFrameSink;
 }
+
+const DROP_FRAMES: AudioFrameSink = { push: () => undefined };
 
 /** The live auctioneer console: lot controls, voice feed, confirm queue, manual entry, kill switch. */
 export function LiveConsole({
@@ -33,7 +40,10 @@ export function LiveConsole({
   apiBase,
   onConfirmAnswer,
   rejection,
+  audioSink = DROP_FRAMES,
 }: LiveConsoleProps) {
+  const mic = useMic(audioSink);
+  const micOn = mic.state === 'live' || mic.state === 'requesting';
   const port = useMemo(
     () => createControlPort({ auctionId: roomId, token, baseUrl: apiBase }),
     [roomId, token, apiBase],
@@ -90,14 +100,19 @@ export function LiveConsole({
       settlementView={null}
       controls={controls}
       voiceFeed={
-        <VoiceFeed
-          mic="off"
-          level={0}
-          entries={voiceEntriesFromAudit(
-            audit,
-            (id) => rows.find((r) => r.bidderId === id)?.paddle ?? null,
-          )}
-        />
+        <>
+          <Button variant="outline" onClick={micOn ? mic.stop : mic.start}>
+            {t(micOn ? 'console.mic.stop' : 'console.mic.start')}
+          </Button>
+          <VoiceFeed
+            mic={mic.state}
+            level={mic.level}
+            entries={voiceEntriesFromAudit(
+              audit,
+              (id) => rows.find((r) => r.bidderId === id)?.paddle ?? null,
+            )}
+          />
+        </>
       }
       onConfirmAnswer={onConfirmAnswer}
     />
