@@ -462,7 +462,14 @@ function Routed({
   if (id === 'landing' && api !== undefined) return <LandingRoute api={api} />;
   if (id === 'demo') return <DemoRoute api={api} />;
   if (id === 'notFound') return <NotFound />;
-  if (id === 'console' && roomId !== undefined && who === null && !hasAuctioneerAccess(roomId)) {
+  if (
+    id === 'console' &&
+    liveBase !== undefined &&
+    roomId !== undefined &&
+    roomId !== 'demo' &&
+    who === null &&
+    !hasAuctioneerAccess(roomId)
+  ) {
     return (
       <TokenGate role="auctioneer" token={null}>
         {null}
