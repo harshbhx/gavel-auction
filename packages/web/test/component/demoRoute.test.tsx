@@ -12,14 +12,21 @@ const fetchMock = vi.fn(
     Promise.reject(new Error('unset')),
 );
 
+const realPush = window.history.pushState;
+const pushed = vi.fn();
+
 beforeEach(() => {
   fetchMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);
+  // Stay on the launcher so its links can be read; the console opening is checked on the spy.
+  window.history.pushState(null, '', '/demo');
+  pushed.mockReset();
+  window.history.pushState = pushed;
 });
 
 afterEach(() => {
+  window.history.pushState = realPush;
   vi.unstubAllGlobals();
-  window.history.pushState(null, '', '/');
 });
 
 function start(): void {
@@ -29,7 +36,7 @@ function start(): void {
 }
 
 async function expectFallback(message: string): Promise<void> {
-  await waitFor(() => expect(screen.getByRole('alert').textContent).toContain(message));
+  await waitFor(() => expect(screen.getAllByText(message).length).toBeGreaterThan(0));
   expect(screen.getByRole('button', { name: t('demo.scriptedInstead') })).toBeTruthy();
   expect(screen.queryByRole('region', { name: t('demo.linksTitle') })).toBeNull();
 }
@@ -49,6 +56,7 @@ describe('demo launcher on the real route (R-WEB-036..038)', () => {
     expect(call?.[1]?.method).toBe('POST');
     expect(call?.[1]?.headers?.['x-admin-key']).toBe(OPERATOR_KEY);
     expect(screen.getByText(t('prov.live'))).toBeTruthy();
+    expect(pushed).toHaveBeenLastCalledWith(null, '', '/r/room-9/console');
     expect(screen.getByRole('link', { name: '/r/room-9/audit' })).toBeTruthy();
     expect(screen.getByRole('link', { name: '/join/room-9' })).toBeTruthy();
   });
@@ -64,7 +72,7 @@ describe('demo launcher on the real route (R-WEB-036..038)', () => {
     start();
     await expectFallback(t('demo.failedOff'));
     fireEvent.click(screen.getByRole('button', { name: t('demo.scriptedInstead') }));
-    expect(window.location.pathname).toBe('/r/demo/console');
+    expect(pushed).toHaveBeenLastCalledWith(null, '', '/r/demo/console');
   });
 
   it('explains a 401 and offers the scripted demo', async () => {
