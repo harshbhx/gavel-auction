@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 
 import { announce } from '../../a11y/announce';
 import { t } from '../../copy/t';
+import { FakePaymentsLabel } from '../../design/FakePaymentsLabel';
 import { Icon } from '../../design/icons';
 import { Button } from '../../design/primitives/Button';
 import { Field } from '../../design/primitives/Field';
@@ -169,6 +170,7 @@ export function RegisterScreen({
             <p>{t('reg.holdIsNotPayment')}</p>
           </section>
         )}
+        <FakePaymentsLabel />
         <Button type="submit" size="bid" disabled={ceilingCents === null}>
           {t('reg.approve')}
         </Button>

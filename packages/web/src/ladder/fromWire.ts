@@ -37,6 +37,8 @@ export function receiptSource(state: RoomState): ReceiptSource {
   const hammerPaddle = snap.roster.find((r) => r.bidderId === hammer.winnerId)?.paddle ?? null;
   const isHammerWinner = hammer.winnerId === me;
   const detail = state.settlementDetail;
+  const own = state.ownHold;
+  const remainder = own !== undefined && own.bidderId === me ? { remainder: own.remainder } : {};
   if (detail !== undefined) {
     const holds: HoldView[] = detail.holds
       .filter((h) => h.paddle === row.paddle)
@@ -54,6 +56,7 @@ export function receiptSource(state: RoomState): ReceiptSource {
           ...(v.eventType === undefined ? {} : { eventType: v.eventType }),
         })),
         idSuffix: h.idSuffix,
+        ...remainder,
       }));
     return {
       paddle: row.paddle,
@@ -94,6 +97,7 @@ export function receiptSource(state: RoomState): ReceiptSource {
           releasedCents: 0,
           verifiedBy: [],
           idSuffix: '',
+          ...remainder,
         },
       ],
       invariants: { ok: true, violations: [] },

@@ -1,5 +1,6 @@
 import { t } from '../../copy/t';
 import type { HoldView } from '../../ladder/ladderModel';
+import { RemainderNote } from '../../ladder/RemainderNote';
 import { formatUsd } from '../../util/money';
 
 export interface WinnerProps {
@@ -66,6 +67,11 @@ export function Winner({ hold, itemName, priceCents, at }: WinnerProps) {
             {t('receipt.heldNotCharged', { amount: formatUsd(priceCents ?? hold.ceilingCents) })}
           </p>
         </>
+      )}
+      {hold.remainder !== undefined && (
+        <p data-testid="receipt-remainder">
+          <RemainderNote remainder={hold.remainder} />
+        </p>
       )}
     </section>
   );
