@@ -562,6 +562,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
       adminKey: config.ADMIN_KEY,
       publicUrl: config.PUBLIC_URL,
       corsOrigins: config.CORS_ORIGINS,
+      log,
     },
     [
       mountAuctions,
@@ -680,7 +681,11 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
 
   // Cached transcripts unless VOICE_STT names a live provider whose key is set (no key needed).
   const stt = chooseStt(
-    { VOICE_STT: config.VOICE_STT, GROQ_API_KEY: env['GROQ_API_KEY'] },
+    {
+      VOICE_STT: config.VOICE_STT,
+      GROQ_API_KEY: env['GROQ_API_KEY'],
+      DEEPGRAM_API_KEY: env['DEEPGRAM_API_KEY'],
+    },
     { log: (message, fields) => log.warn(message, fields) },
   );
   const audioHost = createAudioHost({

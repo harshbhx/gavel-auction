@@ -4,3 +4,4 @@ c754bef16ff69b670f509166c38a174948418b0c:packages/e2e/test/security/sandbox.test
 0943def775c3b89f67996deee22af5976971aa33:packages/voice/test/stt/select.test.ts:gavel-env-secret-with-value:60
 0943def775c3b89f67996deee22af5976971aa33:packages/voice/test/stt/select.test.ts:gavel-env-secret-with-value:79
 b3224c0070872b22c82415cfefe1fcb07221e179:docs/evidence/G2/G2-20261105T115228Z.jsonl:generic-api-key:5
+5f33b3d5924886ec8d44e0a9261917eca2789ecc:packages/server/src/voice/stt.ts:gavel-env-secret-with-value:68

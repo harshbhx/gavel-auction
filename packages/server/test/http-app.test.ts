@@ -1,12 +1,13 @@
 import { ERROR_CODES, ERROR_TABLE, GavelError, ManualClock, SeqIds } from '@gavel/shared';
 import { describe, expect, it } from 'vitest';
+import { createLogger, MemorySink } from '../src/log/logger';
 import { secretSetFromConfig } from '../src/auth/rotation';
 import { createHttpApp, json, MAX_BODY_BYTES, type HttpDeps } from '../src/http/app';
 import { MemoryStore } from '../src/store/memory-store';
 
 const ORIGIN = 'https://app.example.test';
 
-function setup(): ReturnType<typeof createHttpApp> {
+function setup(log?: HttpDeps['log']): ReturnType<typeof createHttpApp> {
   const clock = new ManualClock(1_789_000_000_000);
   const deps: HttpDeps = {
     service: {
@@ -20,6 +21,7 @@ function setup(): ReturnType<typeof createHttpApp> {
     adminKey: 'fake-admin-key',
     publicUrl: 'https://gavel.example.test',
     corsOrigins: [ORIGIN],
+    ...(log !== undefined ? { log } : {}),
   };
   return createHttpApp(deps, [
     (app) => {
@@ -160,5 +162,25 @@ describe('http app security headers and CORS (T-QA-075, T-QA-076)', () => {
       new Request('http://h.test/nope', { headers: { origin: 'https://evil.example' } }),
     );
     expect(evil.headers.get('access-control-allow-origin')).toBeNull();
+  });
+});
+
+describe('http request log context (R-RT-133, T-RT-092)', () => {
+  it('logs one line per request stamped with the request id the response carries', async () => {
+    const sink = new MemorySink();
+    const app = setup(
+      createLogger({ clock: new ManualClock(1_789_000_000_000), sink: sink.write }),
+    );
+    const res = await app.fetch(
+      new Request('http://h.test/t/err/not_found', { headers: { 'x-request-id': 'req-77' } }),
+    );
+    expect(res.headers.get('x-request-id')).toBe('req-77');
+    const line = sink.records().find((r) => r.msg === 'http request');
+    expect(line?.context).toMatchObject({
+      reqId: 'req-77',
+      method: 'GET',
+      path: '/t/err/not_found',
+      status: 404,
+    });
   });
 });
