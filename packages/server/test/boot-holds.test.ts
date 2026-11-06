@@ -288,4 +288,25 @@ describe('hold routes in the production composition (HRD-69, issue 1074)', () =>
     }
     expect(await registered()).toEqual([{ bidderId: ada.bidderId, paddle: 1 }]);
   });
+
+  it('refuses a name with control characters before any authorization', async () => {
+    const { url, paypal } = await boot();
+    const { auctionId, ada } = await auctionWithBidders(url);
+    const created = await call(url, 'POST', '/api/holds', ada.sessionToken, {
+      auctionId,
+      ceilingCents: 30000,
+    });
+    const order = CreateHoldResponse.parse(await created.json());
+    const approvePath = `/api/holds/${encodeURIComponent(order.holdId)}/approve`;
+    paypal.core.approveOrder(order.orderId);
+
+    const before = paypal.core.calls.filter((c) => c.op === 'authorize' || c.op === 'void').length;
+    const bad = await call(url, 'POST', approvePath, ada.sessionToken, {
+      orderId: order.orderId,
+      name: 'Ada\tLovelace',
+    });
+    expect(bad.status).toBe(400);
+    const after = paypal.core.calls.filter((c) => c.op === 'authorize' || c.op === 'void').length;
+    expect(after - before).toBe(0);
+  });
 });
