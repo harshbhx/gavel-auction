@@ -121,6 +121,8 @@ export interface CliDeps {
    * Receives the key so the adapter never reads the environment itself.
    */
   transcribe?: (id: string, provider: Provider, key: string) => Promise<{ text: string }>;
+  /** True when the recording of a clip is available to the live adapter. */
+  recordingExists?: (id: string) => boolean;
 }
 
 const ctxOf = (speaker: string | null | undefined, price: number | null | undefined) => ({
@@ -299,6 +301,14 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<nu
       if (deps.transcribe === undefined) {
         log(`eval: no live adapter for ${opts.provider} is available in this build`);
         return EXIT_FAILED;
+      }
+      if (deps.recordingExists !== undefined) {
+        const ids = audioCases(deps).map((c) => c.id);
+        const missing = ids.filter((id) => deps.recordingExists?.(id) !== true).length;
+        if (missing > 0) {
+          log(`eval: skipped: ${missing} of ${ids.length} recordings missing`);
+          return EXIT_OK;
+        }
       }
       items = await liveItems(deps, opts.provider, key, deps.transcribe);
       setLabel = 'audio';

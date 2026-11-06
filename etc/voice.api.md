@@ -874,6 +874,9 @@ export interface ConfirmPrompt {
     ttlMs: number;
 }
 
+// @public
+export function createLiveTranscriber(readAudio: (id: string) => Uint8Array | undefined, deps: LiveDeps): (id: string, provider: LiveProvider, key: string) => Promise<LiveTranscript>;
+
 // @public (undocumented)
 export function createVoiceSession(deps: VoiceSessionDeps): VoiceSession;
 
@@ -969,6 +972,44 @@ export type FrameResult = {
 
 // @public
 export function isReplayConflict(err: unknown): boolean;
+
+// @public
+export interface LiveDeps {
+    backoffMs?: number;
+    fetch: LiveFetch;
+    maxAttempts?: number;
+    sleep?: (ms: number) => Promise<void>;
+}
+
+// @public
+export type LiveFetch = (url: string, init: LiveRequestInit) => Promise<{
+    status: number;
+    json(): Promise<unknown>;
+}>;
+
+// @public
+export type LiveProvider = 'deepgram' | 'groq';
+
+// @public
+export interface LiveRequestInit {
+    body: Uint8Array | FormData;
+    headers: Record<string, string>;
+    method: string;
+}
+
+// @public
+export interface LiveSegment {
+    confidence: number;
+    endMs: number;
+    startMs: number;
+    text: string;
+}
+
+// @public
+export interface LiveTranscript {
+    segments: LiveSegment[];
+    text: string;
+}
 
 // @public (undocumented)
 export type OpenResult = {
@@ -1533,6 +1574,9 @@ export function toAuditRecord(d: Decision): AuditRecord;
 
 // @public
 export function toPlaceBid(decision: Decision, ctx: PlaceBidContext): PlaceBidCommand | null;
+
+// @public
+export function transcribeLive(provider: LiveProvider, audio: Uint8Array, key: string, deps: LiveDeps): Promise<LiveTranscript>;
 
 // @public
 export interface UtteranceOutcome {

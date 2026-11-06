@@ -25,6 +25,16 @@ Selectable providers: `groq`, `fake`.
 
 `selectProvider` builds only those. `deepgram` and `webspeech` are accepted names. Their clients exist in this package (`src/stt/deepgram.ts`, `deepgram-reconnect.ts`, `webspeech.ts`) but are built and not selectable, because `selectProvider` has no builder for them: a `DEEPGRAM_API_KEY` alone fails startup with `none_configured`, and with both keys set Groq is used alone and a warning is logged. `replay` is not selected by name; the replay mode constructs `ReplayStt` directly. `selectProvider` itself does not wrap anything in `FailoverStt`; the server does, around the live provider.
 
+## Live evaluation against the real providers
+
+`npm run eval -w @gavel/voice -- --mode live --provider <deepgram|groq> --out eval-out/live` sends each evaluation clip to the provider's prerecorded endpoint (`src/eval/live.ts`, also exported as `transcribeLive`) and scores the transcript through the parser. The same adapters back `npm run gate:g5 -w @gavel/e2e`. Cached and text modes are unchanged and need no key.
+
+- Recordings: one `<id>.wav` per clip listed in `fixtures/audio/manifest.json`, in the directory named by `G5_AUDIO_DIR` (default `packages/voice/fixtures/audio/recordings`). The recordings are not in the repository and must not be committed.
+- Missing recordings: if any are absent the run prints `eval: skipped: N of M recordings missing` and exits 0 without a report.
+- Consent: record only people who agreed to have their voice sent to the speech vendors for this evaluation, and no personal data.
+- Keys: `DEEPGRAM_API_KEY` or `GROQ_API_KEY`, supplied only through repository secrets or the shell environment. Without the key the run exits 2 and names the missing variable. Key values are never printed or written to reports.
+- Failures: HTTP 429 and 5xx answers and network errors are retried up to 3 attempts in total with a doubling delay; other statuses fail at once with the provider name and status.
+
 ## Run the tests
 
 ```
