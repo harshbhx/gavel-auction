@@ -45,6 +45,7 @@ import { NotFound } from './screens/states/NotFound';
 import { TokenGate } from './screens/states/TokenGate';
 import { RoomError, isHaltingError, isTerminalError } from './screens/states/RoomError';
 import { roomStore, useRoom } from './store/roomStore';
+import { selectors } from './store/selectors';
 import { summarizePending, type PendingSummary } from './store/localEvents';
 import {
   clearBidderSession,
@@ -320,11 +321,13 @@ function ReplayRoute({ match }: { match: RouteMatch }) {
 export function ReceiptRoute({ roomId }: { roomId: string }) {
   const state = useRoom((s) => s);
   const online = useOnline();
+  const stopped = useRoom(selectors.stopped);
   const { view, paddle, at, runnerUp, detail } = useMemo(() => receiptSource(state), [state]);
   const itemName = state.snapshot?.lotTitle ?? t('receipt.untitled');
   return (
     <main data-route="receipt">
       {!online && <Offline view="receipt" />}
+      {stopped && <p role="status">{t('screen.stopped')}</p>}
       {state.snapshot === null ? (
         <Loading view="receipt" />
       ) : view === null ? (
@@ -466,9 +469,6 @@ function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
 const CEILING_MIN_CENTS = 10000;
 const CEILING_MAX_CENTS = 100000;
 
-/** Room states in which the hammer has fallen, so the server no longer takes a registration. */
-const REGISTRATION_CLOSED = ['CLOSING', 'SETTLING', 'DONE'];
-
 function RegisterRoute({
   roomId,
   api,
@@ -501,6 +501,7 @@ function RegisterRoute({
   );
   const snapshot = useRoom((s) => (s.snapshot?.auctionId === roomId ? s.snapshot : null));
   const roomError = useRoom((s) => s.lastError);
+  const registrationClosed = useRoom(selectors.registrationClosed);
 
   const invite = who === null ? readInviteToken(roomId) : null;
   useEffect(() => {
@@ -553,7 +554,7 @@ function RegisterRoute({
       </main>
     );
   }
-  if (snapshot !== null && REGISTRATION_CLOSED.includes(snapshot.status)) {
+  if (snapshot !== null && registrationClosed) {
     return (
       <main data-route="register">
         <Approve
@@ -561,7 +562,7 @@ function RegisterRoute({
           result={null}
           ceilingCents={0}
           closed
-          watchHref={`/r/${encodeURIComponent(roomId)}/bid`}
+          watchHref={`/r/${encodeURIComponent(roomId)}/screen`}
           onBackToCeiling={() => undefined}
           onRetry={() => undefined}
           onContinue={() => undefined}

@@ -2,6 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import { Cents, EpochMs } from '@gavel/shared';
 import { describe, expect, it } from 'vitest';
 import { ReceiptRoute } from '../../src/App';
+import { t } from '../../src/copy/t';
 import { roomStore } from '../../src/store/roomStore';
 import { BASE_TIME, bidderId, openSnapshot, roster, stateMsg } from '../../src/testing/builders';
 import type { SettlementUpdateMsg } from '../../src/wire';
@@ -67,5 +68,18 @@ describe('receipt route from per-hold settlement data', () => {
     expect(container.textContent).not.toMatch(/Charged/);
     act(() => roomStore.dispatch({ kind: 'wire', msg: update(4, 'SETTLED') }));
     expect(container.textContent).toMatch(/hold was released/);
+  });
+});
+
+describe('receipt route after a stop (#537)', () => {
+  it('says the auction was stopped when the snapshot carries the flag', () => {
+    const snap = {
+      ...openSnapshot(roster([1, 'Ana'], [2, 'Ben'])),
+      you: { bidderId: bidderId(2), ceiling: Cents(30000) },
+      stopped: true,
+    };
+    act(() => roomStore.dispatch({ kind: 'wire', msg: stateMsg(1, snap) }));
+    render(<ReceiptRoute roomId="room-stop" />);
+    expect(screen.getByText(t('screen.stopped'))).toBeTruthy();
   });
 });

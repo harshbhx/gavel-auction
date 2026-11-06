@@ -10,6 +10,8 @@ export interface SeededRoom {
   readonly auctionId: string;
   readonly token: string;
   readonly bidderId: string;
+  /** Auctioneer token from the room's own link, for the console, the screen and control calls. */
+  readonly auctioneerToken: string;
 }
 
 async function ok<T>(res: Response, what: string): Promise<T> {
@@ -59,7 +61,27 @@ export async function seedRoom(stack: BrowserStack): Promise<SeededRoom> {
     }),
     'join room',
   );
-  return { auctionId: created.auctionId, token: joined.sessionToken, bidderId: joined.bidderId };
+  return {
+    auctionId: created.auctionId,
+    token: joined.sessionToken,
+    bidderId: joined.bidderId,
+    auctioneerToken,
+  };
+}
+
+/** Hammers the lot with no bids, through the server's own control route: the room ends unsold. */
+export async function hammerRoom(stack: BrowserStack, room: SeededRoom): Promise<void> {
+  await ok<{ ok: boolean }>(
+    await fetch(`${stack.serverUrl}/api/auctions/${room.auctionId}/control`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${room.auctioneerToken}`,
+      },
+      body: JSON.stringify({ controlId: 'hammer-1', action: 'hammer', args: { closeNow: 1 } }),
+    }),
+    'hammer room',
+  );
 }
 
 /** Stores the bidder session before any page script runs, for every page the test opens. */
