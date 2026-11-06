@@ -96,7 +96,8 @@ describe('console stream echoes control results (#535)', () => {
   it.each(cases)('adds a %s row with its time and result', (action, key) => {
     renderConsole();
     deliver(controlFrame(3, action, 'accepted'));
-    const stream = screen.getByRole('region', { name: t('console.stream') });
+    const stream = screen.getAllByRole('region', { name: t('console.stream') })[0];
+    if (stream === undefined) throw new Error('stream missing');
     const item = within(stream).getByText(t(key)).closest('li');
     if (item === null) throw new Error('row missing');
     expect(item.getAttribute('data-kind')).toBe('control');
