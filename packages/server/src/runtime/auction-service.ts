@@ -818,6 +818,10 @@ class Service implements AuctionService, SettlePort {
     }
     for (const id of await this.deps.store.listAuctions()) {
       if (this.fenced.has(id)) continue;
+      // A finished auction is recognised from its last event and journal, so a restart does not
+      // replay the whole log of every old auction just to find out it is over (#1749).
+      if (!this.finalIds.has(id) && !this.ready.has(id) && (await this.probeFinal(id)))
+        this.finalIds.add(id);
       if (this.finalIds.has(id)) {
         // Known final: never reloaded here, but a copy a client loaded since goes again once idle.
         const loaded = this.ready.get(id);
@@ -889,6 +893,35 @@ class Service implements AuctionService, SettlePort {
   }
 
   /**
+   * True when the log ends with a final settlement report, the journal is final and no hold is
+   * left to release: nothing for resume to drive. Reads one event, the journal and the holds,
+   * never the whole log. Any doubt or read failure answers false and the room loads as before.
+   */
+  private async probeFinal(id: string): Promise<boolean> {
+    try {
+      const auctionId = id as AuctionId;
+      const last = await this.deps.store.lastSeq(auctionId);
+      if (last < 1) return false;
+      const [event] = await this.deps.store.readEvents(auctionId, last, 1);
+      if (event?.type !== 'settlement_update' || !TERMINAL.has(event.auctionState)) return false;
+      const journal = await this.deps.journals.load(lotIdOf(auctionId));
+      return journal !== null && !(await this.holdsLeft(auctionId, journal));
+    } catch {
+      return false;
+    }
+  }
+
+  /** True when a terminal settlement still has a hold the release must free. */
+  private async holdsLeft(auctionId: AuctionId, journal: Journal): Promise<boolean> {
+    if (!TERMINAL.has(journal.state)) return true;
+    const keep =
+      journal.state === 'FAILED_NEEDS_REVIEW' ? this.reviewKeep(journal) : new Set<string>();
+    return (await this.deps.holds.listByAuction(auctionId)).some(
+      (h) => h.status === 'HELD' && !keep.has(h.holdId),
+    );
+  }
+
+  /**
    * Whether a resume pass has to drive the settlement of this auction. A settlement that is
    * final and already reported to the room is left alone unless a live hold remains, so the
    * bridge and the PayPal reconcile do not repeat every minute for every finished auction.
@@ -899,15 +932,11 @@ class Service implements AuctionService, SettlePort {
     journal: Journal | null,
   ): Promise<boolean> {
     if (journal === null) return hammeredEngine(room) !== undefined && !room.isDone;
-    if (!TERMINAL.has(journal.state) || !room.isDone) return true;
+    if (!room.isDone) return true;
     // A review keeps some holds on purpose (R8-S06): the same set the release uses, so a
     // kept hold does not rerun the settlement and a hold the release must free does
     // (R11-O01, R11-O04). The next candidates leave the set once the review is old.
-    const keep =
-      journal.state === 'FAILED_NEEDS_REVIEW' ? this.reviewKeep(journal) : new Set<string>();
-    return (await this.deps.holds.listByAuction(auctionId)).some(
-      (h) => h.status === 'HELD' && !keep.has(h.holdId),
-    );
+    return this.holdsLeft(auctionId, journal);
   }
 
   async close(): Promise<void> {

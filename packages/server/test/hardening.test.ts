@@ -33,6 +33,26 @@ describe('fatal process handlers (#1750)', () => {
   });
 });
 
+describe('fatal handler redaction (#1750)', () => {
+  it('does not log a secret carried in the error text or stack', async () => {
+    const handlers = new Map<string, (err: unknown) => void>();
+    const logs: string[] = [];
+    installFatalHandlers(
+      { on: (event, fn) => void handlers.set(event, fn) },
+      {
+        onError: (m) => void logs.push(m),
+        shutdown: () => Promise.resolve(0),
+        exit: () => undefined,
+      },
+    );
+    handlers.get('uncaughtException')?.(
+      new Error('connect failed postgres://gavel:hunter2pass@db.internal:5432/gavel'),
+    );
+    expect(logs[0]).toContain('uncaughtException');
+    expect(logs[0]).not.toContain('hunter2pass');
+  });
+});
+
 describe('storage input (#1752)', () => {
   it('drops NUL from jsonb text and keeps a literal backslash sequence', () => {
     const text = jsonbText({ name: 'a\u0000b', note: '\\u0000' });

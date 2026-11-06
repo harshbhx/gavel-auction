@@ -1,3 +1,5 @@
+import { redactString } from '../log/logger';
+
 /** The process events that end a Node process when nothing handles them. */
 export interface FatalProc {
   on: (event: 'unhandledRejection' | 'uncaughtException', fn: (err: unknown) => void) => unknown;
@@ -19,7 +21,7 @@ export interface FatalDeps {
 export function installFatalHandlers(proc: FatalProc, deps: FatalDeps): void {
   let handling = false;
   const handle = (kind: string) => (err: unknown) => {
-    const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
+    const detail = redactString(err instanceof Error ? (err.stack ?? err.message) : String(err));
     deps.onError(`${kind}: ${detail}`);
     if (handling) return;
     handling = true;
