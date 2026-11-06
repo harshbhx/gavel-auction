@@ -11,6 +11,11 @@ import { ManagedProcess, ProcessGroup, freePort, waitForHttp } from './process';
  * child processes on free ports. The server can be killed with SIGKILL and started again on the
  * same data folder. `checkpointKill` is passed to the server as GAVEL_CHECKPOINT_KILL; the server
  * must read that variable to die at a named checkpoint.
+ *
+ * With `externalFake` the fake PayPal runs as its own process, so a SIGKILL of the server leaves
+ * the fake and everything it holds (orders, authorizations, captures, idempotency keys) alive.
+ * The server then starts through `server-entry.ts`, which points the fake PayPal adapter at that
+ * process and adds the test-only enrol route.
  */
 
 export interface StackOptions {
@@ -19,12 +24,20 @@ export interface StackOptions {
   /** Reuse a data folder to restart on the same store; a fresh temp folder otherwise. */
   dataDir?: string;
   env?: Record<string, string>;
+  /** Run the fake PayPal in a process of its own, outside the server process. */
+  externalFake?: boolean;
 }
 
 export interface Stack {
   readonly serverUrl: string;
   readonly webUrl: string | undefined;
   readonly dataDir: string;
+  /** Admin key the server was started with. */
+  readonly adminKey: string;
+  /** Base URL of the fake PayPal control and snapshot routes; set with `externalFake`. */
+  readonly fakeControlUrl: string | undefined;
+  /** Resolves when the current server process has exited, for a checkpoint kill. */
+  serverExited(): Promise<number | null>;
   /** SIGKILL the server process and wait for it to exit. */
   killServer(): Promise<void>;
   /** Start the server again on the same data folder and port, without the checkpoint kill. */
@@ -34,6 +47,7 @@ export interface Stack {
   alive(): string[];
 }
 
+const E2E_DIR = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const ROOT = resolve(fileURLToPath(new URL('../../../..', import.meta.url)));
 const SECRET = 'e2e-token-secret-0123456789-abcdefghij';
 const ADMIN = 'e2e-admin-key-0123456789-abcdef';
@@ -50,6 +64,13 @@ export async function startStack(opts: StackOptions = {}): Promise<Stack> {
   const serverUrl = `http://127.0.0.1:${serverPort}`;
   const serverDir = join(ROOT, 'packages', 'server');
 
+  const viteNode = bin(serverDir, 'vite-node/vite-node.mjs');
+  const external = opts.externalFake === true;
+  const fakePort = external ? await freePort() : 0;
+  const controlPort = external ? await freePort() : 0;
+  const fakeUrl = external ? `http://127.0.0.1:${fakePort}` : undefined;
+  const fakeControlUrl = external ? `http://127.0.0.1:${controlPort}` : undefined;
+
   const serverEnv = (checkpoint: Checkpoint | undefined): NodeJS.ProcessEnv => ({
     ...process.env,
     NODE_ENV: 'test',
@@ -61,6 +82,9 @@ export async function startStack(opts: StackOptions = {}): Promise<Stack> {
     DATA_DIR: dataDir,
     PAYMENTS: 'fake',
     PAYPAL_ENV: 'sandbox',
+    ...(external && fakeUrl !== undefined && fakeControlUrl !== undefined
+      ? { GAVEL_E2E_FAKE_URL: fakeUrl, GAVEL_E2E_FAKE_CONTROL_URL: fakeControlUrl }
+      : {}),
     ...opts.env,
     ...(checkpoint === undefined ? {} : { GAVEL_CHECKPOINT_KILL: checkpoint }),
   });
@@ -68,8 +92,10 @@ export async function startStack(opts: StackOptions = {}): Promise<Stack> {
     new ManagedProcess({
       name: 'server',
       command: process.execPath,
-      args: [bin(serverDir, 'vite-node/vite-node.mjs'), 'src/main.ts'],
-      cwd: serverDir,
+      args: external
+        ? [viteNode, join(E2E_DIR, 'src', 'runner', 'server-entry.ts')]
+        : [viteNode, 'src/main.ts'],
+      cwd: external ? E2E_DIR : serverDir,
       env: serverEnv(checkpoint),
     });
 
@@ -82,6 +108,23 @@ export async function startStack(opts: StackOptions = {}): Promise<Stack> {
   };
 
   try {
+    if (external) {
+      const fake = group.add(
+        new ManagedProcess({
+          name: 'fake-paypal',
+          command: process.execPath,
+          args: [viteNode, join(E2E_DIR, 'src', 'runner', 'fake-process.ts')],
+          cwd: E2E_DIR,
+          env: {
+            ...process.env,
+            GAVEL_E2E_FAKE_PORT: String(fakePort),
+            GAVEL_E2E_CONTROL_PORT: String(controlPort),
+          },
+        }),
+      );
+      fake.start();
+      await waitForHttp(`${fakeControlUrl ?? ''}/__fake/state`, fake);
+    }
     server.start();
     await waitForHttp(`${serverUrl}/healthz`, server);
     if (opts.withWeb === true) {
@@ -115,6 +158,9 @@ export async function startStack(opts: StackOptions = {}): Promise<Stack> {
     serverUrl,
     webUrl,
     dataDir,
+    adminKey: ADMIN,
+    fakeControlUrl,
+    serverExited: () => server.exited(),
     killServer: () => server.kill(),
     restartServer: async () => {
       await server.kill();

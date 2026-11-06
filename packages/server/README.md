@@ -35,6 +35,7 @@ Settings come from the process environment (`src/config.ts`).
 | `DATABASE_URL`                                                  | unset         | required when `STORE=postgres`                                                          |
 | `PAYMENTS`                                                      | fake          | `fake` or `sandbox`; `fake` is refused in production                                    |
 | `DEMO_MODE`                                                     | 0             | `1` enables the demo reset and seed endpoints; refused in production                    |
+| `DEMO_MAX_ROOMS`                                                | 20            | most live demo rooms `POST /api/demo/rooms` keeps; further creates return 429           |
 | `CORS_ORIGINS`                                                  | empty         | comma separated origins                                                                 |
 | `LOG_LEVEL`                                                     | info          | `debug`, `info`, `warn`, `error`                                                        |
 | `RATE_*`, `MAX_CONN_PER_*`, `MAX_ROOMS`, `MAX_BIDS_PER_AUCTION` | see config.ts | per-client rate limits and room limits                                                  |

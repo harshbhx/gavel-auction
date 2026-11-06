@@ -1,6 +1,6 @@
 id: S03-crash-resume
 title: Server dies during settlement and the restart finishes it with one capture
-modes: [inproc]
+modes: [inproc, stack]
 seed: 3
 clock: { startMs: 1793750400000 }
 auction: { itemId: lot-1, reserve: 5000, minIncrement: 500, softCloseMs: 0, mode: english }

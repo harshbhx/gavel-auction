@@ -48,13 +48,13 @@ export default function ReplayScreen({
   }, [recordingId, loadBundle]);
 
   return (
-    <main>
+    <div>
       <p role="status">{t('prov.recorded')}</p>
       <p>{t('replay.readonly')}</p>
       {phase.kind === 'loading' && <p role="status">{t('net.resyncing')}</p>}
       {phase.kind === 'invalid' && <p role="alert">{t('replay.invalid')}</p>}
       {phase.kind === 'ready' && <ReplayView bundle={phase.bundle} autoplay={autoplay} />}
-    </main>
+    </div>
   );
 }
 
@@ -79,7 +79,7 @@ function ReplayView({ bundle, autoplay }: { bundle: ReplayBundle; autoplay: bool
   const snapshot = state?.snapshot ?? null;
   return (
     <section>
-      <h1>{bundle.title}</h1>
+      <h2>{bundle.title}</h2>
       {snapshot !== null && snapshot.price !== null && (
         <p className="tabular">{formatUsd(snapshot.price)}</p>
       )}

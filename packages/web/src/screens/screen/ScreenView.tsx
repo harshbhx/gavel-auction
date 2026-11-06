@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { t } from '../../copy/t';
 import { useConnection } from '../../net/connection';
 import { useServerNow } from '../../net/clock';
@@ -9,7 +9,10 @@ import { formatCountdown } from '../../util/time';
 import { publicSource } from '../../ladder/fromWire';
 import { SettlementPanel } from '../../ladder/SettlementPanel';
 import { QrCode } from '../join/QrCode';
-import { FrozenChip, PriceFlash, Sold, type SoldOutcome } from './Sold';
+import { FrozenChip, PriceFlash, Sold, type SettleCounts, type SoldOutcome } from './Sold';
+import type { SettlementDetail } from '../../store/roomReducer';
+
+type SettlementHold = SettlementDetail['holds'][number];
 import './screen.css';
 
 /** The ticker shows the last five accepted bids (R-WEB-075). */
@@ -17,11 +20,20 @@ export const TICKER_SIZE = 5;
 
 export interface ScreenViewProps {
   lotTitle: string;
-  /** Short join code shown beside the QR code. */
-  code: string;
+  /** Short join code shown beside the QR code; null when the server has none to show. */
+  code: string | null;
   /** Address encoded in the QR code. */
   joinUrl: string;
   store?: RoomStore;
+}
+
+/** Ladder summary counts from the latest per-hold settlement data. */
+export function settleCounts(holds: readonly SettlementHold[]): SettleCounts {
+  const captured = holds.filter((h) => h.capturedCents > 0).length;
+  const released = holds.filter(
+    (h) => h.capturedCents === 0 && (h.releasedCents > 0 || h.state === 'SETTLED'),
+  ).length;
+  return { captured, released };
 }
 
 /** Projector view: no controls, no personal data beyond the paddle number. */
@@ -35,6 +47,8 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
   const snapPrice = useRoom((s) => s.snapshot?.price ?? null, store);
   const snapLeader = useRoom((s) => s.snapshot?.leaderId ?? null, store);
   const settlementState = useRoom((s) => s, store);
+  const detail = useRoom((s) => s.settlementDetail ?? null, store);
+  const roomId = useRoom((s) => s.auctionId, store);
   const now = useServerNow(store);
   const connection = useConnection();
   const [, setTick] = useState(0);
@@ -62,6 +76,19 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
   const winnerId = hammer !== null ? hammer.winnerId : snapLeader;
   const winnerPaddle =
     winnerId !== null ? (roster?.find((r) => r.bidderId === winnerId)?.paddle ?? null) : null;
+  const settlement = detail === null ? null : settleCounts(detail.holds);
+  const liveRemaining =
+    price === null
+      ? null
+      : price.paused && price.remainingMs !== null
+        ? price.remainingMs
+        : price.endTs - now();
+  // While the connection is down the clock keeps the last value it showed: a local count down
+  // could read 0:00 for a lot the server has already extended.
+  const frozenRemaining = useRef<number | null>(null);
+  if (!connection.offline) frozenRemaining.current = null;
+  else if (frozenRemaining.current === null) frozenRemaining.current = liveRemaining;
+  const remaining = frozenRemaining.current ?? liveRemaining;
   const ticker = stream.slice(0, TICKER_SIZE);
   const outcome: SoldOutcome =
     winnerId === null || finalPrice === null
@@ -74,7 +101,7 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
       <FrozenChip disconnected={connection.offline} />
       <div className="gv-screen__stage">
         {closed ? (
-          <Sold outcome={outcome} />
+          <Sold outcome={outcome} settlement={settlement} />
         ) : price === null || price.currentCents === null ? (
           <p className="gv-screen__price tabular">
             {t('screen.opening', { amount: formatUsd(price?.nextMinCents ?? 0) })}
@@ -87,11 +114,13 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
             </p>
           </>
         )}
-        {!closed && price !== null && (
-          <p className="gv-screen__clock tabular">
-            {formatCountdown(
-              price.paused && price.remainingMs !== null ? price.remainingMs : price.endTs - now(),
-            )}
+        {!closed && remaining !== null && (
+          <p
+            className="gv-screen__clock tabular"
+            data-frozen={connection.offline ? 'true' : 'false'}
+          >
+            {formatCountdown(remaining)}
+            {connection.offline && <span> {t('screen.clockFrozen')}</span>}
           </p>
         )}
       </div>
@@ -109,13 +138,13 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
       {closed && (
         <SettlementPanel
           view={publicSource(settlementState)}
-          auditHref={`/r/${encodeURIComponent(code)}/audit`}
+          auditHref={`/r/${encodeURIComponent(roomId)}/audit`}
         />
       )}
       {!closed && (
         <aside className="gv-screen__join">
           <QrCode url={joinUrl} size={200} />
-          <p className="tabular">{t('screen.join', { code })}</p>
+          {code !== null && <p className="tabular">{t('screen.join', { code })}</p>}
         </aside>
       )}
     </main>
