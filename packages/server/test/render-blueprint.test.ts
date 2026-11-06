@@ -25,6 +25,10 @@ describe('render.yaml blueprint (R8-Q01)', () => {
     expect(text).toMatch(/buildCommand: npm ci --include=dev/);
   });
 
+  it('keeps install scripts off in the build, where the service secrets are in the environment', () => {
+    expect(text).toMatch(/buildCommand: npm ci [^\n]*--ignore-scripts/);
+  });
+
   it('sets only names the server config reads', () => {
     const known = new Set<string>(CONFIG_KEYS);
     for (const key of envVars().keys()) {
