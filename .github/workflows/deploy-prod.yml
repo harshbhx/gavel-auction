@@ -3,7 +3,9 @@ name: deploy-prod
 # Runs on a v* tag or by hand. The job uses the `production` environment, which carries the
 # required reviewer, so nothing deploys until a reviewer approves it.
 # Rollback: dispatch with rollback=true; the job redeploys the deploy that was live before the
-# current one, using the Render API. See infra/rollback.md.
+# current one, using the Render API. A deploy run builds only the head of main: it stops early when
+# the tagged or dispatched commit is not that head, waits until /version serves it and rolls back
+# to the previously live deploy when it never does. See infra/rollback.md.
 # Needs, in environment production: secrets RENDER_API_KEY and RENDER_DEPLOY_HOOK_URL, variables
 # RENDER_SERVICE_ID and PRODUCTION_URL. Without them the job ends green with a notice.
 on:
@@ -15,6 +17,10 @@ on:
         description: 'Redeploy the previous live deploy instead of building a new one'
         type: boolean
         default: false
+      rollback_deploy_id:
+        description: 'Rollback only: Render deploy id to restore (default: the newest older deploy with another commit)'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -37,6 +43,16 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+      - name: Require the head of main
+        if: ${{ !inputs.rollback }}
+        run: |
+          # The deploy hook builds the branch head, so any other commit would ship code that was not
+          # tagged or reviewed. Stop before anything is changed.
+          head="$(git ls-remote "https://github.com/$GITHUB_REPOSITORY" refs/heads/main | cut -f1)"
+          if [ -z "$head" ] || [ "$head" != "$GITHUB_SHA" ]; then
+            echo "::error title=Not main head::$GITHUB_SHA is not the head of main (${head:-unknown}); tag or dispatch from the current head"
+            exit 1
+          fi
       - name: Check configuration
         id: cfg
         env:
@@ -62,13 +78,28 @@ jobs:
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_ID: ${{ vars.RENDER_SERVICE_ID }}
+          ROLLBACK_ID: ${{ inputs.rollback_deploy_id }}
         run: |
           list="$(curl -sS --max-time 30 -H "authorization: Bearer $RENDER_API_KEY" \
             "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys?limit=20")"
           live="$(printf '%s' "$list" | jq -r '[.[].deploy | select(.status == "live")] | .[0].id // empty')"
-          previous="$(printf '%s' "$list" | jq -r '[.[].deploy | select(.status == "deactivated")] | .[0].id // empty')"
+          livecommit="$(printf '%s' "$list" | jq -r '[.[].deploy | select(.status == "live")] | .[0].commit.id // empty')"
+          livetrigger="$(printf '%s' "$list" | jq -r '[.[].deploy | select(.status == "live")] | .[0].trigger // empty')"
+          # The restore target is the newest deactivated deploy built from another commit than the
+          # live one. After a rollback the deactivated list starts with the bad build, so a second
+          # rollback needs the id passed in by hand instead of guessing.
+          previous="$(printf '%s' "$list" | jq -r --arg lc "$livecommit" \
+            '[.[].deploy | select(.status == "deactivated" and (.commit.id // "") != $lc)] | .[0].id // empty')"
+          if [ -n "$ROLLBACK_ID" ]; then
+            case "$ROLLBACK_ID" in *[!0-9A-Za-z_-]*) echo "::error::rollback_deploy_id has unexpected characters"; exit 1 ;; esac
+            previous="$ROLLBACK_ID"
+          fi
+          previouscommit="$(printf '%s' "$list" | jq -r --arg id "$previous" \
+            '[.[].deploy | select(.id == $id)] | .[0].commit.id // empty')"
           echo "live=$live" >> "$GITHUB_OUTPUT"
+          echo "livetrigger=$livetrigger" >> "$GITHUB_OUTPUT"
           echo "previous=$previous" >> "$GITHUB_OUTPUT"
+          echo "previouscommit=$previouscommit" >> "$GITHUB_OUTPUT"
           echo "Live deploy before this run: ${live:-none}; previous: ${previous:-none}" >> "$GITHUB_STEP_SUMMARY"
       - name: Deploy the new build
         if: steps.cfg.outputs.ready == 'true' && !inputs.rollback
@@ -86,9 +117,15 @@ jobs:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_ID: ${{ vars.RENDER_SERVICE_ID }}
           PREVIOUS: ${{ steps.before.outputs.previous }}
+          LIVE_TRIGGER: ${{ steps.before.outputs.livetrigger }}
+          EXPLICIT: ${{ inputs.rollback_deploy_id }}
         run: |
           if [ -z "$PREVIOUS" ]; then
             echo "::error title=Rollback::no previous deploy is recorded for this service"
+            exit 1
+          fi
+          if [ "$LIVE_TRIGGER" = "rollback" ] && [ -z "$EXPLICIT" ]; then
+            echo "::error title=Rollback::the live deploy is already a rollback; pass rollback_deploy_id so the bad build is not redeployed"
             exit 1
           fi
           code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X POST \
@@ -99,20 +136,38 @@ jobs:
             2??) echo "Rolled back to $PREVIOUS ($code)" >> "$GITHUB_STEP_SUMMARY" ;;
             *) echo "::error title=Rollback::Render answered $code"; exit 1 ;;
           esac
-      - name: Smoke and version check
+      - name: Wait for the expected version and smoke
         if: steps.cfg.outputs.ready == 'true'
+        id: verify
         env:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
           SMOKE_RETRIES: '60'
+          ROLLBACK: ${{ inputs.rollback }}
+          TARGET_COMMIT: ${{ steps.before.outputs.previouscommit }}
         run: |
-          # The old instance can answer before the new build is live, so give the deploy time first.
-          sleep 60
+          # The old instance can answer before the new build is live, so wait for the served sha
+          # to equal the expected commit instead of sleeping.
+          if [ "$ROLLBACK" = "true" ]; then expected="$TARGET_COMMIT"; else expected="$GITHUB_SHA"; fi
+          if [ -z "$expected" ]; then
+            echo "::error title=Version::no expected commit is known"
+            exit 1
+          fi
+          bash scripts/wait-version.sh "$PRODUCTION_URL" "$expected" 900
           scripts/smoke.sh "$PRODUCTION_URL"
           sha="$(curl -sS --max-time 15 "${PRODUCTION_URL%/}/version" | jq -r '.sha // empty')"
           echo "Production now serves sha: ${sha:-unknown}" >> "$GITHUB_STEP_SUMMARY"
-          if [ "${{ inputs.rollback }}" != "true" ] && [ "${GITHUB_REF_TYPE}" = "tag" ]; then
-            case "$GITHUB_SHA" in
-              "$sha"*) echo "Version matches the tag" ;;
-              *) echo "::error title=Version::served sha ${sha:-unknown} does not match $GITHUB_SHA"; exit 1 ;;
-            esac
-          fi
+      - name: Roll back automatically after a failed deploy
+        if: ${{ failure() && steps.verify.outcome == 'failure' && !inputs.rollback && steps.before.outputs.live != '' }}
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ vars.RENDER_SERVICE_ID }}
+          LIVE: ${{ steps.before.outputs.live }}
+        run: |
+          code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X POST \
+            -H "authorization: Bearer $RENDER_API_KEY" -H 'content-type: application/json' \
+            --data "{\"deployId\":\"$LIVE\"}" \
+            "https://api.render.com/v1/services/$RENDER_SERVICE_ID/rollback" || true)"
+          case "$code" in
+            2??) echo "The new build did not serve $GITHUB_SHA; restored deploy $LIVE ($code)" >> "$GITHUB_STEP_SUMMARY" ;;
+            *) echo "::error title=Auto rollback::Render answered $code, restore deploy $LIVE by hand"; exit 1 ;;
+          esac
