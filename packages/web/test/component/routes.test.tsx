@@ -18,7 +18,6 @@ const CASES: ReadonlyArray<[string, string]> = [
   ['/r/r1/bid', 'bid'],
   ['/r/r1/receipt', 'receipt'],
   ['/r/r1/screen', 'screen'],
-  ['/r/r1/audit', 'audit'],
   ['/replay/abc', 'replay'],
   ['/gallery', 'gallery'],
   ['/nope/at/all', 'notFound'],
@@ -31,6 +30,14 @@ describe('routes', () => {
     const h1 = screen.getByRole('heading', { level: 1 });
     expect(document.activeElement).toBe(h1);
     expect(document.title.length).toBeGreaterThan(0);
+  });
+
+  it('maps the audit path to the audit route, behind a token', () => {
+    expect(matchRoute('/r/r1/audit', { gallery: false }).route).toMatchObject({
+      id: 'audit',
+      needsToken: true,
+      tokenRole: 'reviewer',
+    });
   });
 
   it('puts the room name in the title', () => {
@@ -63,7 +70,7 @@ describe('routes', () => {
 
   it('shows the sandbox banner on the 404 page', () => {
     render(<App initialPath="/missing/page" />);
-    expect(screen.getByText(t('banner.sandbox'))).toBeTruthy();
+    expect(screen.getAllByText(t('banner.sandbox'))).toHaveLength(1);
   });
 
   it('moves focus and title after navigation', () => {

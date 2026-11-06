@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Cents } from '@gavel/shared';
 import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
@@ -9,8 +9,16 @@ import { bidderId, openSnapshot, roster, stateMsg } from '../../src/testing/buil
 
 const API = { apiBase: 'http://localhost:1', payments: 'fake', paypalClientId: 'none' } as const;
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe('routes mount the state screens', () => {
   it('shows the launcher at /demo with its provenance label and a scripted fallback', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new Error('offline'))),
+    );
     render(<App initialPath="/demo" api={API} />);
     expect(screen.getByText(t('prov.live'))).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: t('landing.start') }));
@@ -22,13 +30,13 @@ describe('routes mount the state screens', () => {
     render(<App initialPath="/r/nowhere/console" liveBase="ws://localhost:1" />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(t('err.tokenMissing'));
     expect(screen.getByRole('link', { name: t('err.newLink') })).toBeTruthy();
-    expect(screen.getByText(t('banner.sandbox'))).toBeTruthy();
+    expect(screen.getAllByText(t('banner.sandbox'))).toHaveLength(1);
   });
 
   it('shows the not found screen with the sandbox banner and a way home', () => {
     render(<App initialPath="/nope/at/all" />);
     expect(screen.getByText(t('err.notFound'))).toBeTruthy();
-    expect(screen.getByText(t('banner.sandbox'))).toBeTruthy();
+    expect(screen.getAllByText(t('banner.sandbox'))).toHaveLength(1);
     expect(screen.getByRole('link', { name: t('err.home') })).toBeTruthy();
   });
 });
