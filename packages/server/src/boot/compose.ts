@@ -90,7 +90,7 @@ import { mountAuctioneerToken } from '../http/auctioneer-token';
 import { mountControl } from '../http/control';
 import { mountHolds } from '../http/holds';
 import { mountInvites } from '../http/invites';
-import { nodeRoutesFor } from '../http/node-bridge';
+import { nodeRoutesFor, requestSources } from '../http/node-bridge';
 import { mountRead } from '../http/read';
 import { acquireDataDirLock } from '../store/data-dir-lock';
 import { FileRoomStore } from '../store/file-room-store';
@@ -417,7 +417,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     mailboxDepth: () => serviceStats().mailboxDepth,
   });
   const limiter = new RateLimiter(clock, limitsFromConfig(config));
-  const boundary = boundaryFromEnv(env, killSelf);
+  const boundary = boundaryFromEnv(env, killSelf, config);
   const service = createAuctionService({
     ...(boundary === undefined ? {} : { boundary }),
     roomMetrics: metrics,
@@ -578,6 +578,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
       publicUrl: config.PUBLIC_URL,
       corsOrigins: config.CORS_ORIGINS,
       log,
+      joinLimit: (req) => limiter.checkJoin(requestSources.get(req) ?? 'unknown'),
     },
     [
       mountAuctions,
@@ -600,7 +601,9 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
       }),
     ],
   );
-  const apiRoutes = nodeRoutesFor(apiApp, config.PUBLIC_URL);
+  const apiRoutes = nodeRoutesFor(apiApp, config.PUBLIC_URL, (req) =>
+    sourceOf(req, config.TRUSTED_PROXY_HOPS),
+  );
   const hostExtra = opts.extraRoutes?.(service, stores.room);
   // Demo routes exist only with DEMO_MODE=1 on the fake payments adapter; config refuses the
   // flag under production-like settings, and the handler checks that again per request.

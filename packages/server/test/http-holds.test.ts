@@ -211,6 +211,32 @@ describe('hold routes (INT-R3-20)', () => {
     expect(unknown.status).toBe(404);
   });
 
+  it('rejects a name with invisible characters with 400 before any authorization', async () => {
+    const { app, deps, calls, records } = setup();
+    const auctionId = await newAuction(app);
+    const owner = deps.ids.mint<'BidderId'>();
+    records.set('hold-1', {
+      holdId: 'hold-1',
+      auctionId,
+      bidderId: owner,
+      orderId: 'order-1',
+      ceilingCents: 30000,
+      status: 'PENDING_APPROVAL',
+      createdAtMs: START,
+    });
+    const mine = await mintToken(deps, 'session', auctionId, owner, owner);
+    for (const name of ['\u200B', 'Alice\u200B', '\u202Eeva', 'a\u2060b', '\uFEFF']) {
+      const res = await post(
+        app,
+        '/api/holds/hold-1/approve',
+        { orderId: 'order-1', name },
+        mine.token,
+      );
+      expect(res.status, JSON.stringify(name)).toBe(400);
+    }
+    expect(calls.approved).toEqual([]);
+  });
+
   it('abandons a hold for its owner only and answers anyone else as not found', async () => {
     const { app, deps, calls, records } = setup();
     const auctionId = await newAuction(app);

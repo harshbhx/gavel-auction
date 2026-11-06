@@ -5,6 +5,8 @@
  * normal path. The hook is refused in production.
  */
 
+import { isProductionLike } from '../config';
+
 export const CHECKPOINT_ENV = 'GAVEL_CHECKPOINT_KILL';
 
 export type CheckpointKillSpec =
@@ -57,16 +59,19 @@ export function checkpointBoundary(
 
 /**
  * The boundary callback for this process, or undefined when the variable is unset. A bad value
- * or a production environment throws, so a misspelled checkpoint never runs unarmed.
+ * or a production-like environment throws, so a misspelled checkpoint never runs unarmed.
  */
 export function boundaryFromEnv(
   env: Readonly<Record<string, string | undefined>>,
   kill: () => Promise<void> | void,
+  config?: { NODE_ENV: string; PUBLIC_URL: string },
 ): ((label: string) => Promise<void>) | undefined {
   const raw = env[CHECKPOINT_ENV];
   if (raw === undefined || raw === '') return undefined;
-  if (env['NODE_ENV'] === 'production') {
-    throw new Error(`${CHECKPOINT_ENV} is not allowed when NODE_ENV is production`);
+  // The parsed config also treats a public https host as production when NODE_ENV is unset.
+  const probe = config ?? { NODE_ENV: env['NODE_ENV'] ?? '', PUBLIC_URL: env['PUBLIC_URL'] ?? '' };
+  if (isProductionLike(probe)) {
+    throw new Error(`${CHECKPOINT_ENV} is not allowed in production or on a public host`);
   }
   const spec = parseCheckpoint(raw);
   if (spec === null) throw new Error(`${CHECKPOINT_ENV} names an unknown checkpoint`);

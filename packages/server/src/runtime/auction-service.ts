@@ -9,6 +9,7 @@ import {
   DEFAULT_HOLD_MAX_AGE_MS,
   HoldService,
   sweepStalePending,
+  PendingReadBackoff,
   flagStaleHolds,
   lookupUnknownReauths,
   persistReauthorization,
@@ -333,6 +334,8 @@ class Service implements AuctionService, SettlePort {
    * review's keep-set lets a live hold go (HRD-76). Until then the pass does not reload them.
    */
   private readonly finalIds = new Map<string, number>();
+  /** Spacing of the hold sweep's PayPal reads of abandoned checkouts (HRD-81). */
+  private readonly pendingReads = new PendingReadBackoff();
   /** Auctions whose run in flight may have read the holds before one was written HELD. */
   private readonly rerun = new Set<string>();
   /** Rooms this host lost to another host (R-RT-061); they are never served or resumed here. */
@@ -947,6 +950,18 @@ class Service implements AuctionService, SettlePort {
     const aborted: string[] = [];
     for (const id of await this.deps.store.listAuctions()) {
       if (this.fenced.has(id)) continue;
+      // Same rule as resume (#1749): a finished auction is not replayed to find out it cannot be
+      // aborted; it is recognised from its last event and journal.
+      const until = this.finalIds.get(id);
+      if (until !== undefined && until <= this.deps.clock.now()) this.finalIds.delete(id);
+      if (this.finalIds.has(id)) continue;
+      if (!this.ready.has(id) && !this.runs.has(id) && !this.retryTimers.has(id)) {
+        const quiet = await this.probeFinal(id);
+        if (quiet !== null) {
+          this.finalIds.set(id, quiet);
+          continue;
+        }
+      }
       // One auction that cannot be aborted now must not keep the others open.
       try {
         const room = await this.room(id, { settlement: true });
@@ -1034,7 +1049,9 @@ class Service implements AuctionService, SettlePort {
     for (const id of await this.deps.store.listAuctions()) {
       if (this.fenced.has(id)) continue;
       try {
-        const swept = await sweepStalePending(recover, id, minAge);
+        const swept = await sweepStalePending(recover, id, minAge, undefined, {
+          reads: this.pendingReads,
+        });
         // An adopted authorization is a HELD write like an approval (HRD-76).
         if (swept.some((s) => s.result.status === 'authorized')) await this.afterHeld(id);
       } catch (e) {
