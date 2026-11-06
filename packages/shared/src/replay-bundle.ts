@@ -33,6 +33,11 @@ export interface ReplayBundle {
   count: number;
   /** Hash of the last public event, or null for an empty ledger. */
   headHash: string | null;
+  /**
+   * True when the last event is AUCTION_CLOSED and names the event before it. False means the
+   * bundle is open or not anchored: a cut tail cannot be told from a running auction.
+   */
+  closed?: boolean;
   events: ReplayEvent[];
 }
 
@@ -45,5 +50,6 @@ export function isReplayBundle(x: unknown): x is ReplayBundle {
   if (typeof b.auctionId !== 'string' || typeof b.generatedAt !== 'number') return false;
   if (!Array.isArray(b.events) || b.count !== b.events.length) return false;
   if (b.headHash !== null && typeof b.headHash !== 'string') return false;
+  if (b.closed !== undefined && typeof b.closed !== 'boolean') return false;
   return (b.headHash === null) === (b.events.length === 0);
 }

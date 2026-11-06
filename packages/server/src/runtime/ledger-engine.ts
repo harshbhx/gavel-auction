@@ -3,7 +3,7 @@ import {
   LIMITS,
   EngineError,
   decide,
-  evolve,
+  evolveOwned,
   initialState,
   sealBatch,
   type AuctionState,
@@ -46,6 +46,8 @@ export function lotIdOf(auctionId: AuctionId): string {
 const MIN_LOT_DURATION_MS = 1000;
 const MAX_LOT_DURATION_MS = 86_400_000;
 const MAX_SOFT_CLOSE_MS = 600_000;
+/** Longest the lot may run past its end time through extensions. */
+const MAX_HARD_CLOSE_MARGIN_MS = 3_600_000;
 
 /**
  * Command id from the command's own content: a rebuilt room that applies the same
@@ -114,6 +116,13 @@ export class LedgerEngine
     /** GAVEL_MAX_CEILING_CENTS: the cap the engine enforces on every bidder ceiling. */
     maxCeilingCents: number = DEFAULT_MAX_CEILING_CENTS,
   ) {
+    // The engine runs exactly the configured rules: a window or extension it cannot run is
+    // refused instead of being shortened.
+    if (cfg.softCloseWindowMs > MAX_SOFT_CLOSE_MS || cfg.softCloseExtensionMs > MAX_SOFT_CLOSE_MS) {
+      throw new RangeError(
+        `soft close window and extension may not exceed ${MAX_SOFT_CLOSE_MS} ms`,
+      );
+    }
     this.cfg = cfg;
     this.lotId = lotIdOf(auctionId) as EngineUlid;
     this.openAt = Math.max(0, Math.min(createdAt, cfg.endTs - MIN_LOT_DURATION_MS));
@@ -126,11 +135,16 @@ export class LedgerEngine
       increment: { flatCents: cfg.minIncrement },
       durationMs,
       softClose: {
-        windowMs: Math.min(cfg.softCloseWindowMs, MAX_SOFT_CLOSE_MS),
-        extensionMs: Math.min(cfg.softCloseExtensionMs, MAX_SOFT_CLOSE_MS),
+        windowMs: cfg.softCloseWindowMs,
+        extensionMs: cfg.softCloseExtensionMs,
         maxExtensions: cfg.maxExtensions,
+        // The lot may not run past its end by more than the extensions it could still earn,
+        // and never by more than a fixed margin (R-ENG-036).
+        hardCloseMs:
+          durationMs +
+          Math.min(cfg.maxExtensions * cfg.softCloseExtensionMs, MAX_HARD_CLOSE_MARGIN_MS),
       },
-      hammer: 'manual',
+      hammer: cfg.autoHammerDelayMs === undefined ? 'manual' : 'auto',
     };
     const at = this.openAt;
     this.run(at, 'CreateAuction', [], {
@@ -382,7 +396,7 @@ export class LedgerEngine
       cmd.at,
       cmd.commandId,
     );
-    this.state = entries.reduce(evolve, this.state);
+    this.state = evolveOwned(this.state, entries);
     this.applied.push(cmd);
     return { outcome: result.outcome, entries };
   }

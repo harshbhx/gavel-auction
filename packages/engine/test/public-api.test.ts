@@ -50,7 +50,7 @@ describe('ledger export', () => {
     const text = exportJsonl(entries);
     expect(text.split('\n')).toHaveLength(entries.length + 1);
     const r = verifyJsonl(text);
-    expect(r).toEqual({ ok: true, count: 3, headHash: headOf(entries)?.hash });
+    expect(r).toEqual({ ok: true, count: 3, headHash: headOf(entries)?.hash, closed: false });
     expect(verifyJsonl(text + '\n\n')).toEqual(r);
     expect(verifyJsonl('')).toMatchObject({ ok: true, count: 0 });
   });

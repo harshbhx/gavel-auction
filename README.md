@@ -94,7 +94,7 @@ stateDiagram-v2
     </td>
     <td valign="top" width="50%">
       <h4>Hash-chained ledger</h4>
-      Every event is linked to the one before it. A redacted public export and a verifier detect an edited or truncated chain.
+      Every event is linked to the one before it. A redacted public export and a verifier detect an edited chain. A cut tail shows as not closed, and is proven only against a head hash published elsewhere.
     </td>
   </tr>
   <tr>

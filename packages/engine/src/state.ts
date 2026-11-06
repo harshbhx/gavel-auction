@@ -183,12 +183,30 @@ export function withBids(lot: LotState, bids: readonly BidRecord[]): LotState {
   return { ...lot, bids, best, leaderId: top === undefined ? null : (top.bidderId as Ulid) };
 }
 
+/** Bid arrays a caller of `evolveOwned` created, so a later append may push into them. */
+const ownedBids = new WeakSet<readonly BidRecord[]>();
+
+/** Appends a bid; with `inPlace` it pushes into an array this module created, else copies once. */
+function appendBid(
+  bids: readonly BidRecord[],
+  bid: BidRecord,
+  inPlace: boolean,
+): readonly BidRecord[] {
+  if (inPlace && ownedBids.has(bids)) {
+    (bids as BidRecord[]).push(bid);
+    return bids;
+  }
+  const next = [...bids, bid];
+  if (inPlace) ownedBids.add(next);
+  return next;
+}
+
 /**
  * Appends one active bid and updates the derived indexes without re-ranking the
  * whole list: a new bid can only improve its bidder's best and possibly take the lead.
  */
-export function withNewBid(lot: LotState, bid: BidRecord): LotState {
-  const bids = [...lot.bids, bid];
+export function withNewBid(lot: LotState, bid: BidRecord, inPlace = false): LotState {
+  const bids = appendBid(lot.bids, bid, inPlace);
   const cur = lot.best[bid.bidderId];
   if (cur !== undefined && !better(bid, cur)) return { ...lot, bids };
   const best = { ...lot.best, [bid.bidderId]: bid };

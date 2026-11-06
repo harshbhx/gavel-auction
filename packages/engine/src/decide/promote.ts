@@ -8,6 +8,15 @@ import type { AuctionState } from '../state.js';
 import { assertNotInPast } from './setup.js';
 import type { DecideResult } from './setup.js';
 
+/** Settlement states from which a promoted winner can still be charged when nothing was captured. */
+const PROMOTABLE_SETTLEMENTS: ReadonlySet<string> = new Set([
+  'HELD',
+  'BIDDING',
+  'WINNER_SELECTED',
+  'CAPTURING',
+  'FALLBACK_RUNNER_UP',
+]);
+
 export type PromoteCommand = Extract<Command, { type: 'PromoteRunnerUp' }>;
 
 /**
@@ -38,6 +47,12 @@ export function decidePromote(state: AuctionState, cmd: PromoteCommand): DecideR
   if (lot.captureSeen && lot.settlement !== 'SETTLED') {
     throw new EngineError('state_continuity', `cannot promote while ${lot.settlement}`);
   }
+  // Without a capture, VOIDING, SETTLED and FAILED_NEEDS_REVIEW have no edge back to a state that
+  // can charge a new winner; naming one would leave the lot in SETTLING with its amount reserved.
+  // Only a release (unsold) or the operator review edges lead out of them.
+  const canCharge = lot.captureSeen
+    ? lot.settlement === 'SETTLED'
+    : PROMOTABLE_SETTLEMENTS.has(lot.settlement);
   const unsoldEvent = (): LedgerEvent => ({
     type: 'LOT_UNSOLD',
     payload: {
@@ -105,6 +120,9 @@ export function decidePromote(state: AuctionState, cmd: PromoteCommand): DecideR
         },
       });
       continue;
+    }
+    if (!canCharge) {
+      throw new EngineError('state_continuity', `cannot promote while ${lot.settlement}`);
     }
     events.push({
       type: 'FALLBACK_PROMOTED',
