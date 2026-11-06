@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
 import { announce } from '../../a11y/announce';
+import type { AudioFrameSink } from '../../audio/micCapture';
+import { useMic } from '../../audio/useMic';
+import { Button } from '../../design/primitives/Button';
 import { t } from '../../copy/t';
 import { useConnection } from '../../net/connection';
 import { createControlPort } from '../../net/controlPort';
@@ -10,7 +13,7 @@ import { ConsoleScreen } from './ConsoleScreen';
 import { KillSwitch } from './KillSwitch';
 import { ManualEntry } from './ManualEntry';
 import { Roster } from './Roster';
-import { VoiceFeed } from './VoiceFeed';
+import { VoiceFeed, voiceEntriesFromAudit } from './VoiceFeed';
 
 export interface LiveConsoleProps {
   readonly room: LiveRoom | null;
@@ -23,7 +26,11 @@ export interface LiveConsoleProps {
   readonly onConfirmAnswer: (confirmId: string, accept: boolean) => void;
   /** Error code of the last rejected bid this console sent, or an empty string. */
   readonly rejection: string;
+  /** Receives microphone PCM chunks. Chunks are dropped when absent. */
+  readonly audioSink?: AudioFrameSink;
 }
+
+const DROP_FRAMES: AudioFrameSink = { push: () => undefined };
 
 /** The live auctioneer console: lot controls, voice feed, confirm queue, manual entry, kill switch. */
 export function LiveConsole({
@@ -33,7 +40,10 @@ export function LiveConsole({
   apiBase,
   onConfirmAnswer,
   rejection,
+  audioSink = DROP_FRAMES,
 }: LiveConsoleProps) {
+  const mic = useMic(audioSink);
+  const micOn = mic.state === 'live' || mic.state === 'requesting';
   const port = useMemo(
     () => createControlPort({ auctionId: roomId, token, baseUrl: apiBase }),
     [roomId, token, apiBase],
@@ -43,6 +53,7 @@ export function LiveConsole({
   const priceCents = useRoom((s) => s.snapshot?.price ?? 0);
   const roster = useRoom((s) => s.snapshot?.roster);
   const leaderId = useRoom((s) => s.snapshot?.leaderId ?? null);
+  const audit = useRoom((s) => s.audit);
   const [stopped, setStopped] = useState(false);
   const [killFailed, setKillFailed] = useState(false);
 
@@ -88,7 +99,21 @@ export function LiveConsole({
     <ConsoleScreen
       settlementView={null}
       controls={controls}
-      voiceFeed={<VoiceFeed mic="off" level={0} entries={[]} />}
+      voiceFeed={
+        <>
+          <Button variant="outline" onClick={micOn ? mic.stop : mic.start}>
+            {t(micOn ? 'console.mic.stop' : 'console.mic.start')}
+          </Button>
+          <VoiceFeed
+            mic={mic.state}
+            level={mic.level}
+            entries={voiceEntriesFromAudit(
+              audit,
+              (id) => rows.find((r) => r.bidderId === id)?.paddle ?? null,
+            )}
+          />
+        </>
+      }
       onConfirmAnswer={onConfirmAnswer}
     />
   );

@@ -121,6 +121,8 @@ export const en = {
   'console.noBids': 'No bids yet',
   'console.voice': 'Voice feed',
   'console.mic.off': 'Microphone off',
+  'console.mic.start': 'Turn on microphone',
+  'console.mic.stop': 'Turn off microphone',
   'console.mic.requesting': 'Asking for microphone access',
   'console.mic.live': 'Listening',
   'console.mic.denied': 'Microphone blocked. Use manual entry.',

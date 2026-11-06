@@ -1,4 +1,5 @@
 import { t } from '../../copy/t';
+import type { AuditPayload } from '../../wire';
 import type { CopyKey } from '../../copy/en';
 import { Chip } from '../../design/primitives/Chip';
 import { Icon } from '../../design/icons';
@@ -106,4 +107,32 @@ export function VoiceFeed({ mic, level, entries }: VoiceFeedProps) {
       )}
     </section>
   );
+}
+
+/**
+ * Voice rows from audit records, oldest first. The wire carries the final transcript with the
+ * parse outcome on the audit record, so every row here is final.
+ */
+export function voiceEntriesFromAudit(
+  audit: readonly AuditPayload[],
+  paddleOf: (bidderId: string) => number | null,
+): VoiceFeedEntry[] {
+  const out: VoiceFeedEntry[] = [];
+  for (const a of audit) {
+    if (a.source !== 'voice' || a.transcript === undefined) continue;
+    const paddle = paddleOf(a.bidderId);
+    const amount = a.parsedAmount;
+    out.push({
+      id: a.bidId,
+      text: a.transcript,
+      final: true,
+      parse: {
+        bid:
+          amount !== undefined && paddle !== null
+            ? { paddle, amountCents: Number(amount), confidence: a.confidence ?? 0 }
+            : null,
+      },
+    });
+  }
+  return out;
 }
