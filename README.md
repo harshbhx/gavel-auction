@@ -158,16 +158,16 @@ Every pull request runs tests, type checks, lint and the other quality checks in
 
 ## What works today
 
-The packages are built and tested separately, mostly against the fake PayPal. The booted server serves the ops, webhook and admin routes; the auction routes and a WebSocket gateway are not mounted yet, and no hosted demo is published. See [docs/DEMO.md](docs/DEMO.md) for the exact state.
+The packages are built and tested separately, mostly against the fake PayPal. The booted server serves the ops, webhook, admin and auction HTTP routes (create, invites, join, read, control, auctioneer token) and a WebSocket gateway; the scripted `/api/demo/*` routes are not mounted yet, and no hosted demo is published. See [docs/DEMO.md](docs/DEMO.md) for the exact state.
 
-| Area                      | Status                                                                                                                                               |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Auction engine and ledger | ![works](https://img.shields.io/badge/-works-2ea44f?style=flat-square) Covered by unit, property and fixture tests                                   |
-| Settlement saga and holds | ![works](https://img.shields.io/badge/-works-2ea44f?style=flat-square) Against the fake PayPal; sandbox gates below                                  |
-| Webhook verification      | ![verified](https://img.shields.io/badge/-verified-2ea44f?style=flat-square) Against real sandbox events (gate G4)                                   |
-| Server                    | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) Ops, webhook and admin routes; auction routes and sockets not mounted yet |
-| Voice                     | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) Groq speech-to-text only; not wired into a room yet                       |
-| Web client                | See [packages/web/README.md](packages/web/README.md)                                                                                                 |
+| Area                      | Status                                                                                                                                                          |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auction engine and ledger | ![works](https://img.shields.io/badge/-works-2ea44f?style=flat-square) Covered by unit, property and fixture tests                                              |
+| Settlement saga and holds | ![works](https://img.shields.io/badge/-works-2ea44f?style=flat-square) Against the fake PayPal; sandbox gates below                                             |
+| Webhook verification      | ![verified](https://img.shields.io/badge/-verified-2ea44f?style=flat-square) Against real sandbox events (gate G4)                                              |
+| Server                    | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) Ops, webhook, admin and auction HTTP routes and sockets; demo routes not mounted yet |
+| Voice                     | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) Groq speech-to-text only; not wired into a room yet                                  |
+| Web client                | See [packages/web/README.md](packages/web/README.md)                                                                                                            |
 
 ## PayPal sandbox gates
 

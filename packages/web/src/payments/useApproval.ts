@@ -44,7 +44,7 @@ function newId(): string {
 export function createApprovalPort(
   mode: PaymentsMode,
   fake: FakeAdapterDeps,
-  paypal: Pick<PayPalAdapterDeps, 'apiBase' | 'clientId'>,
+  paypal: Pick<PayPalAdapterDeps, 'apiBase' | 'clientId' | 'token'>,
 ): PaymentApprovalPort {
   return mode === 'fake' ? new FakeApprovalAdapter(fake) : new PayPalV6Adapter(paypal);
 }

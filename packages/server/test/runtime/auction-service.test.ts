@@ -1898,6 +1898,48 @@ describe('auction service: red-team round 4 (RT-01)', () => {
     expect(open).toBe(1);
     expect((await rig.stores.holds.get(created.holdId))?.status).toBe('HELD');
   });
+
+  it('keeps a hold open when the authorization read answers NOT_FOUND (HRD-46)', async () => {
+    const rig = await makeRig();
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const created = await rig.holdsApi.createHoldOrder({
+      auctionId,
+      bidderId: rig.ids.mint<'BidderId'>(),
+      ceilingCents: 30000,
+      presetsCents: config.ceilingPresets,
+    });
+    rig.paypal.core.approveOrder(created.orderId);
+    await rig.holdsApi.completeApproval({ holdId: created.holdId, orderId: created.orderId });
+    const missing = {
+      voidAuthorization: async (): Promise<never> => {
+        throw new PayPalError({
+          kind: 'not_found',
+          status: 404,
+          name: 'not_found',
+          message: 'not found',
+          outcome: 'definite',
+        });
+      },
+      getHoldTruth: async (h: { holdId: string; authId: string }) => ({
+        holdId: h.holdId,
+        authId: h.authId,
+        status: 'NOT_FOUND' as const,
+        amountCents: 0,
+        capturedCents: 0,
+        captures: [],
+        observedAtMs: 0,
+      }),
+    } as unknown as typeof rig.gateway;
+
+    const open = await voidSpareHolds(
+      { gateway: missing, holds: rig.stores.holds },
+      { auctionId },
+      new Set<string>(),
+    );
+
+    expect(open).toBe(1);
+    expect((await rig.stores.holds.get(created.holdId))?.status).toBe('HELD');
+  });
 });
 
 describe('auction service: orphan hold when registration is refused (HRD-10, issue 704)', () => {

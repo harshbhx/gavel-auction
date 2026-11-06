@@ -64,7 +64,12 @@ const CAPTURED_TRUTH: ReadonlySet<HoldTruth['status']> = new Set([
   'CAPTURED',
   'PARTIALLY_CAPTURED',
 ]);
-const GONE_TRUTH: ReadonlySet<HoldTruth['status']> = new Set(['VOIDED', 'EXPIRED', 'NOT_FOUND']);
+/**
+ * Truth that proves a hold released. NOT_FOUND is not in it (HRD-46): a hold PayPal cannot
+ * find may still be live under another account or after a misrouted read, so it is never
+ * recorded released.
+ */
+const GONE_TRUTH: ReadonlySet<HoldTruth['status']> = new Set(['VOIDED', 'EXPIRED']);
 
 export interface VoidCallDeps {
   gateway: PaymentsGateway;
@@ -154,6 +159,8 @@ export async function voidHold(
       throw e;
     }
     if (GONE_TRUTH.has(truth.status)) return 'released';
+    // HRD-46: a hold PayPal cannot find is not known to be released; retried on later runs.
+    if (truth.status === 'NOT_FOUND') return 'pending';
     if (error.outcome === 'unknown') return 'pending';
     // A definite refusal on a live hold: one more try, then VOID_FAILED.
   }

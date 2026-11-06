@@ -6,6 +6,7 @@ import { PromptBook } from '../decide/prompts.js';
 import { validate, type Verdict } from '../decide/validate.js';
 import { formatUsd, promptText, type PromptData } from '../decide/wording.js';
 import { parseUtteranceOutcome } from '../parser/utterance.js';
+import { isAuctioneerPatter } from '../segment/echo.js';
 import { idempotencyKey } from '../segment/dedupe.js';
 import { Segmenter, type Segment, type SegmenterOptions } from '../segment/segmenter.js';
 import type { SttEvent } from '../stt/provider.js';
@@ -434,8 +435,16 @@ export class VoicePipeline {
     const base = classify(merged, this.deps.policy ?? DEFAULT_POLICY);
     // Auctioneer echo was cut out of this segment: the bid next to it is never taken on its own.
     // A shared room microphone also hears the auctioneer, so a bid on it is confirmed first (R12-V02).
+    // On a bidder's own device mic the room can leak in: patter, or an amount with no spoken paddle,
+    // is confirmed with the phone owner instead of being booked as their bid (R12-V02b).
+    const deviceDoubt =
+      this.deps.mic !== 'room' &&
+      (isAuctioneerPatter(seg.text) ||
+        (this.deps.mic === 'device' && merged.bidder?.kind === 'speaker'));
     const cls =
-      base === 'accept' && (seg.echo === true || this.deps.mic === 'room') ? 'confirm' : base;
+      base === 'accept' && (seg.echo === true || this.deps.mic === 'room' || deviceDoubt)
+        ? 'confirm'
+        : base;
     const conf = merged.confidence;
     if (verdict.kind === 'drop') return [this.decision(seg, segmentId, rules, llm, verdict, conf)];
     if (verdict.kind === 'accept' && cls === 'accept') {

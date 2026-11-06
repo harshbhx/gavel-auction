@@ -16,7 +16,7 @@ Production runs `npm run build -w @gavel/server` (esbuild bundle to `dist/main.j
 
 Health: `GET /healthz` (process is up), `GET /readyz` (the room store answers a ping; payments are not probed), `GET /metrics` (JSON snapshot).
 
-The booted process serves the ops, webhook and admin routes (`/admin/export?auction=<id>`, `/admin/replay-bundle`, `/warmup`, `/metrics`, `/ops/*`, `/webhooks/paypal`). The auction, invite, join, control, read and token routes are not mounted by `main.ts` yet (#722). Every route but `/healthz`, `/readyz` and the webhook is limited per client by `RATE_HTTP_*`; set `TRUSTED_PROXY_HOPS` to the number of proxies in front of the host (1 on Render) so the client address is read from `x-forwarded-for`.
+The booted process serves the ops, webhook and admin routes (`/admin/export?auction=<id>`, `/admin/replay-bundle`, `/warmup`, `/metrics`, `/ops/*`, `/webhooks/paypal`). The auction, invite, join, control, read and token routes under `/api/` are mounted by `composeServer`, so `main.ts` serves them (create needs `x-admin-key`); the scripted `/api/demo/*` routes are not mounted yet. Every route but `/healthz`, `/readyz` and the webhook is limited per client by `RATE_HTTP_*`; set `TRUSTED_PROXY_HOPS` to the number of proxies in front of the host (1 on Render) so the client address is read from `x-forwarded-for`.
 
 ## Configure
 
@@ -47,7 +47,7 @@ With `PAYMENTS=sandbox` the payments layer also reads `PAYPAL_CLIENT_ID`, `PAYPA
 2. Set `TOKEN_SECRET` to the new value and restart. Tokens signed with either secret are accepted until the deadline.
 3. After the deadline remove the two `PREVIOUS` settings and restart.
 4. Rotate `ADMIN_KEY` by changing it and restarting; rotate PayPal credentials in the PayPal developer dashboard first, then update the environment.
-5. A leaked auctioneer link is revoked with the auctioneer rotate endpoint, which issues a new link and raises a per-auction floor so every earlier auctioneer token stops working on HTTP and on socket join (live sockets are not closed). Rotate, `auctioneer/revoke-all` and `auctioneer/revoke` need the admin key.
+5. A leaked auctioneer link is revoked with the auctioneer rotate endpoint, which issues a new link and raises a per-auction floor so every earlier auctioneer token stops working on HTTP and on socket join and closes every open socket of the revoked token with 4401; a socket also closes when its token expires, and the token is re-checked on every bid or confirm frame. Rotate, `auctioneer/revoke-all` and `auctioneer/revoke` need the admin key.
 
 ## Demo reset
 

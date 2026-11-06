@@ -23,6 +23,8 @@ export default defineConfig({
     reducedMotion: 'reduce',
     timezoneId: 'UTC',
     locale: 'en-US',
+    // axe-core is injected as an inline script, which the page CSP refuses.
+    bypassCSP: true,
   },
   projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
   webServer: {
