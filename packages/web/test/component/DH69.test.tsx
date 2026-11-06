@@ -186,7 +186,7 @@ describe('real settlement frame, non-winner', () => {
     expect(receiptText(pending.container)).not.toContain('was released');
     pending.unmount();
     setup(2, 50000);
-    send(frame(4, { auctionState: 'SETTLED', you: 'SETTLED' }));
+    send(frame(3, { auctionState: 'SETTLED', you: 'SETTLED' }));
     const bare = render(<ReceiptRoute roomId="lot1" />);
     expect(receiptText(bare.container)).toContain(t('receipt.releasedNoAmount'));
     expect(receiptText(bare.container)).not.toContain('$0.00');
