@@ -19,7 +19,7 @@ describe('routes mount the state screens', () => {
   });
 
   it('shows the token gate with a link to the launcher on the console without a token', () => {
-    render(<App initialPath="/r/nowhere/console" />);
+    render(<App initialPath="/r/nowhere/console" liveBase="ws://localhost:1" />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(t('err.tokenMissing'));
     expect(screen.getByRole('link', { name: t('err.newLink') })).toBeTruthy();
     expect(screen.getByText(t('banner.sandbox'))).toBeTruthy();
