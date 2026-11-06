@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AbandonHoldResponse,
   ApproveHoldRequest,
+  BIDDER_NAME_FORBIDDEN_PATTERN,
   MAX_NAME_CHARS,
   CreateHoldResponse,
   HOLD_STATUSES,
@@ -66,5 +67,36 @@ describe('ApproveHoldRequest name (issue 1074)', () => {
     const edge = 'a'.repeat(MAX_NAME_CHARS);
     expect(ApproveHoldRequest.safeParse({ orderId: 'o-1', name: edge }).success).toBe(true);
     expect(ApproveHoldRequest.safeParse({ orderId: 'o-1', name: `${edge}a` }).success).toBe(false);
+  });
+});
+
+describe('bidder name invisible characters (issue 1881)', () => {
+  it('forbids zero-width and direction marks and names that are blank without them', () => {
+    const marks = [
+      '\u200B',
+      '\u200D',
+      '\u200E',
+      '\u200F',
+      '\u2028',
+      '\u2029',
+      '\u202F',
+      '\u2060',
+      '\u2064',
+      '\u206F',
+      '\uFEFF',
+      '\u061C',
+    ];
+    for (const mark of marks) {
+      expect(BIDDER_NAME_FORBIDDEN_PATTERN.test(mark), mark.codePointAt(0)?.toString(16)).toBe(
+        true,
+      );
+      expect(ApproveHoldRequest.safeParse({ orderId: 'o-1', name: mark }).success).toBe(false);
+      // Inside the name: a trailing mark that trim() strips is harmless, an inner one is not.
+      expect(ApproveHoldRequest.safeParse({ orderId: 'o-1', name: `Al${mark}ice` }).success).toBe(
+        false,
+      );
+    }
+    expect(ApproveHoldRequest.safeParse({ orderId: 'o-1', name: 'Alice' }).success).toBe(true);
+    expect(BIDDER_NAME_FORBIDDEN_PATTERN.test('Zo\u00EB \u5C71\u7530')).toBe(false);
   });
 });

@@ -3,6 +3,7 @@ import {
   GavelError,
   MAX_BIDDERS_PER_ROOM,
   MAX_HOLD_REF_CHARS,
+  BIDDER_NAME_FORBIDDEN_PATTERN,
   MAX_NAME_CHARS,
   encodeMsg,
   isCents,
@@ -644,6 +645,7 @@ export class Room {
         name.length === 0 ||
         name.length > MAX_NAME_CHARS ||
         hasControlChar(name) ||
+        BIDDER_NAME_FORBIDDEN_PATTERN.test(name) ||
         !isCents(reg.ceiling) ||
         reg.ceiling < (this.config?.reserve ?? 0) ||
         reg.holdRef.length === 0 ||
