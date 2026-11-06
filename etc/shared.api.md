@@ -1243,6 +1243,9 @@ export type Cents = number & {
 // @public
 export function checkAuctionConfig(input: unknown, nowMs: number): ConfigRuleResult;
 
+// @public
+export function clientKey(source: string): string;
+
 // @public (undocumented)
 export type ClientMsg = JoinMsg | BidMsg | ConfirmResponseMsg;
 
