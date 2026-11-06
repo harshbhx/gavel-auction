@@ -15,6 +15,12 @@ export interface SettlementDetail {
   invariants: { ok: boolean; violations: string[] };
 }
 
+/** The viewer's own hold from the latest settlement_update that carried one (bidder sessions only). */
+export type OwnHoldView = NonNullable<SettlementUpdateMsg['yourHold']>;
+
+/** Public count of holds per settlement state from the latest settlement_update that carried it. */
+export type LadderCounts = NonNullable<SettlementUpdateMsg['ladder']>['counts'];
+
 /** What the server said about this bidder's own hold, and when (server clock, epoch ms). */
 export interface SettlementMeta {
   state: SettlementUpdateMsg['auctionState'];
@@ -68,6 +74,10 @@ export interface RoomState {
   settlementDetail?: SettlementDetail;
   /** Server time and own captured amount from the latest settlement_update. */
   settlementMeta?: SettlementMeta;
+  /** The viewer's own hold (id suffix, status, ceiling, captured, released, remainder); absent on older servers. */
+  settlementYourHold?: OwnHoldView;
+  /** Holds per settlement state for every screen (ladder.counts); absent on older servers. */
+  settlementLadderCounts?: LadderCounts;
   lastError: { code: string; message: string; retryAfterMs: number | null } | null;
 }
 
@@ -145,6 +155,12 @@ function applySnapshot(state: RoomState, msg: Extract<ServerMessage, { t: 'state
     auditTruncated: snap.recentAudit.length >= SNAPSHOT_AUDIT_ROWS,
     ...(state.settlementDetail === undefined ? {} : { settlementDetail: state.settlementDetail }),
     ...(state.settlementMeta === undefined ? {} : { settlementMeta: state.settlementMeta }),
+    ...(state.settlementYourHold === undefined
+      ? {}
+      : { settlementYourHold: state.settlementYourHold }),
+    ...(state.settlementLadderCounts === undefined
+      ? {}
+      : { settlementLadderCounts: state.settlementLadderCounts }),
   };
 }
 
@@ -233,7 +249,12 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
             : {}
           : { capturedCents: msg.amountCaptured }),
       };
-      const withMeta: RoomState = { ...next, settlementMeta: meta };
+      const withMeta: RoomState = {
+        ...next,
+        settlementMeta: meta,
+        ...(msg.yourHold === undefined ? {} : { settlementYourHold: msg.yourHold }),
+        ...(msg.ladder === undefined ? {} : { settlementLadderCounts: msg.ladder.counts }),
+      };
       if (msg.holds === undefined) return withMeta;
       return {
         ...withMeta,

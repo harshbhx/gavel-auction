@@ -37,23 +37,26 @@ export function receiptSource(state: RoomState): ReceiptSource {
   const hammerPaddle = snap.roster.find((r) => r.bidderId === hammer.winnerId)?.paddle ?? null;
   const isHammerWinner = hammer.winnerId === me;
   const detail = state.settlementDetail;
+  // The server's own-hold record wins for this viewer's id suffix, status, amounts and ceiling.
+  const own = state.settlementYourHold;
+  const ownFor = own !== undefined && own.bidderId === me ? own : undefined;
   if (detail !== undefined) {
     const holds: HoldView[] = detail.holds
       .filter((h) => h.paddle === row.paddle)
       .map((h) => ({
         paddle: h.paddle,
         name: row.name,
-        ceilingCents: snap.you?.ceiling ?? 0,
+        ceilingCents: ownFor?.ceilingCents ?? snap.you?.ceiling ?? 0,
         state: h.state,
-        capturedCents: h.capturedCents,
-        releasedCents: h.releasedCents,
+        capturedCents: ownFor?.capturedCents ?? h.capturedCents,
+        releasedCents: ownFor?.releasedCents ?? h.releasedCents,
         verifiedBy: h.verifiedBy.map((v) => ({
           eventId: v.eventId,
           kind: v.kind,
           at: v.at,
           ...(v.eventType === undefined ? {} : { eventType: v.eventType }),
         })),
-        idSuffix: h.idSuffix,
+        idSuffix: ownFor?.idSuffix ?? h.idSuffix,
       }));
     return {
       paddle: row.paddle,
@@ -71,7 +74,7 @@ export function receiptSource(state: RoomState): ReceiptSource {
     };
   }
   // No per-hold data: only the captured amount the server named counts as charged.
-  const capturedCents = meta?.capturedCents ?? 0;
+  const capturedCents = ownFor?.capturedCents ?? meta?.capturedCents ?? 0;
   const promoted = !isHammerWinner && ownState === 'CAPTURED';
   const wins = isHammerWinner || promoted;
   return {
@@ -88,12 +91,12 @@ export function receiptSource(state: RoomState): ReceiptSource {
         {
           paddle: row.paddle,
           name: row.name,
-          ceilingCents: snap.you?.ceiling ?? 0,
+          ceilingCents: ownFor?.ceilingCents ?? snap.you?.ceiling ?? 0,
           state: ownState,
           capturedCents: wins ? capturedCents : 0,
-          releasedCents: 0,
+          releasedCents: ownFor?.releasedCents ?? 0,
           verifiedBy: [],
-          idSuffix: '',
+          idSuffix: ownFor?.idSuffix ?? '',
         },
       ],
       invariants: { ok: true, violations: [] },

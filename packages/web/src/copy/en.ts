@@ -44,6 +44,8 @@ export const en = {
   'reg.step1': 'Your name',
   'reg.name': 'Display name',
   'reg.nameHint': 'Shown to the room.',
+  'reg.nameInvalid':
+    'Use letters and numbers only. Angle brackets and control characters are not allowed.',
   'reg.paddle': 'Paddle number',
   'reg.yourPaddle': 'Your paddle is {n}',
   'reg.step2': 'Choose your ceiling',
