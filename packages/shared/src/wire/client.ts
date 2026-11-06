@@ -33,6 +33,7 @@ export const BidSchema = message('bid', {
   confidence: z.number().min(0).max(1).optional(),
   ambiguous: z.boolean().optional(),
   audioTsMs: z.number().int().nonnegative().optional(),
+  audioEndMs: z.number().int().nonnegative().optional(),
   clientTs: z
     .number()
     .int()

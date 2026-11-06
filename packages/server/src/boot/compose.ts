@@ -33,6 +33,7 @@ import {
   UlidMinter,
   type AuctionConfig,
   type AuctionId,
+  type BidderId,
   type Cents,
   type Jti,
   type Logger,
@@ -574,6 +575,13 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
         service: holdService,
         store: stores.holds,
         acceptsHolds: (auctionId) => service.acceptsHolds(auctionId as AuctionId),
+        registerBidder: (input) =>
+          service.registerBidder({
+            auctionId: input.auctionId as AuctionId,
+            bidderId: input.bidderId as BidderId,
+            holdId: input.holdId,
+            name: input.name,
+          }),
       }),
     ],
   );

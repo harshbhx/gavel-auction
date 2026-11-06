@@ -37,6 +37,7 @@ import { PaymentsMetrics } from '@gavel/payments';
 import { ReauthPolicy } from '@gavel/payments';
 import { ReconcileReport } from '@gavel/payments';
 import { RemainderMode } from '@gavel/payments';
+import { RoomEvent } from '@gavel/shared';
 import { RoomStore } from '@gavel/shared';
 import type { SettlementState } from '@gavel/shared';
 import { Transport } from '@gavel/shared';
@@ -325,6 +326,9 @@ export class Room {
         connections: number;
         mailboxDepth: number;
     };
+    recordVoiceDrop(drop: Extract<RoomEvent, {
+        type: 'voice_dropped';
+    }>['drop']): Promise<void>;
     // Warning: (ae-forgotten-export) The symbol "RegisterBidder" needs to be exported by the entry point index.d.ts
     registerBidder(reg: RegisterBidder): Promise<void>;
     reportSettlement(report: SettlementReport): Promise<void>;

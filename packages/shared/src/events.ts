@@ -6,7 +6,7 @@ import { isUlid, type AuctionId, type BidderId, type BidId, type MsgId } from '.
 import { isCents, type Cents } from './money';
 import { EpochMs } from './time';
 import { AuditPayloadSchema } from './wire/audit';
-import { MAX_NAME_CHARS } from './wire/envelope';
+import { MAX_NAME_CHARS, MAX_REASON_CHARS } from './wire/envelope';
 
 export const MAX_HOLD_REF_CHARS = 128;
 
@@ -79,6 +79,24 @@ export const ConfirmResolvedEvent = record('confirm_resolved', {
   audit: AuditPayloadSchema,
 });
 
+/**
+ * A spoken utterance that never became a bid or a confirm: hedged, no bidder, a question.
+ * Kept so the audit trail has every voice decision (R-VOX-071). The transcript is never stored.
+ */
+export const VoiceDroppedEvent = record('voice_dropped', {
+  drop: z
+    .object({
+      segmentId: z.string().min(1).max(64),
+      audioStartMs: z.number().int().nonnegative().optional(),
+      audioEndMs: z.number().int().nonnegative().optional(),
+      confidenceBps: z.number().int().min(0).max(10_000),
+      reason: z.string().min(1).max(MAX_REASON_CHARS),
+      bidderId: ulid<BidderId>().optional(),
+      parsedCents: cents().optional(),
+    })
+    .strict(),
+});
+
 export const ControlEvent = record('control', {
   controlId: z.string().min(1),
   action: z.enum(CONTROL_ACTIONS),
@@ -123,6 +141,7 @@ export const RoomEventSchema = z.discriminatedUnion('type', [
   BidRejectedEvent,
   ConfirmRequestedEvent,
   ConfirmResolvedEvent,
+  VoiceDroppedEvent,
   ControlEvent,
   StateChangedEvent,
   HammeredEvent,

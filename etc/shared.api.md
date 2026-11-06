@@ -48,10 +48,13 @@ export const ApiErrorSchema: z.ZodObject<{
 // @public
 export const ApproveHoldRequest: z.ZodObject<{
     orderId: z.ZodString;
+    name: z.ZodOptional<z.ZodEffects<z.ZodString, string, string>>;
 }, "strict", z.ZodTypeAny, {
     orderId: string;
+    name?: string | undefined;
 }, {
     orderId: string;
+    name?: string | undefined;
 }>;
 
 // @public (undocumented)
@@ -419,6 +422,7 @@ export const AuditEventSchema: z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
         source: z.ZodEnum<["voice", "qr", "manual"]>;
         audioTsMs: z.ZodOptional<z.ZodNumber>;
+        audioEndMs: z.ZodOptional<z.ZodNumber>;
         transcript: z.ZodOptional<z.ZodString>;
         parsedAmount: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
         confidence: z.ZodOptional<z.ZodNumber>;
@@ -441,6 +445,7 @@ export const AuditEventSchema: z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -458,6 +463,7 @@ export const AuditEventSchema: z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -521,6 +527,7 @@ export const AuditEventSchema: z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -558,6 +565,7 @@ export const AuditEventSchema: z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -590,6 +598,7 @@ export const AuditPayloadSchema: z.ZodObject<{
     bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
     source: z.ZodEnum<["voice", "qr", "manual"]>;
     audioTsMs: z.ZodOptional<z.ZodNumber>;
+    audioEndMs: z.ZodOptional<z.ZodNumber>;
     transcript: z.ZodOptional<z.ZodString>;
     parsedAmount: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
     confidence: z.ZodOptional<z.ZodNumber>;
@@ -612,6 +621,7 @@ export const AuditPayloadSchema: z.ZodObject<{
     };
     seq: number;
     audioTsMs?: number | undefined;
+    audioEndMs?: number | undefined;
     transcript?: string | undefined;
     parsedAmount?: Cents | undefined;
     confidence?: number | undefined;
@@ -629,12 +639,19 @@ export const AuditPayloadSchema: z.ZodObject<{
     serverTs: number;
     seq: number;
     audioTsMs?: number | undefined;
+    audioEndMs?: number | undefined;
     transcript?: string | undefined;
     parsedAmount?: Cents | undefined;
     confidence?: number | undefined;
     confirmed?: boolean | undefined;
     reason?: string | undefined;
 }>;
+
+// @public
+export function auditRecordsFromEvents(events: readonly RoomEvent[]): BidAuditRecord[];
+
+// @public (undocumented)
+export const BID_AUDIT_OUTCOMES: readonly ["accepted", "rejected", "expired", "superseded", "pending_confirm", "dropped"];
 
 // @public (undocumented)
 export const BID_SOURCES: readonly ["voice", "qr", "manual"];
@@ -656,6 +673,7 @@ export const BidAcceptedEvent: z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
         source: z.ZodEnum<["voice", "qr", "manual"]>;
         audioTsMs: z.ZodOptional<z.ZodNumber>;
+        audioEndMs: z.ZodOptional<z.ZodNumber>;
         transcript: z.ZodOptional<z.ZodString>;
         parsedAmount: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
         confidence: z.ZodOptional<z.ZodNumber>;
@@ -678,6 +696,7 @@ export const BidAcceptedEvent: z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -695,6 +714,7 @@ export const BidAcceptedEvent: z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -738,6 +758,7 @@ export const BidAcceptedEvent: z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -779,6 +800,7 @@ export const BidAcceptedEvent: z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -832,6 +854,57 @@ export const BidAcceptedSchema: z.ZodObject<{
         readonly __brand_centsBrand: "Cents";
     };
 }>;
+
+// @public (undocumented)
+export type BidAuditOutcome = (typeof BID_AUDIT_OUTCOMES)[number];
+
+// @public (undocumented)
+export type BidAuditRecord = z.infer<typeof BidAuditRecordSchema>;
+
+// @public
+export const BidAuditRecordSchema: z.ZodObject<{
+    bidderId: z.ZodOptional<z.ZodType<BidderId, z.ZodTypeDef, BidderId>>;
+    source: z.ZodEnum<["voice", "qr", "manual"]>;
+    audioStartMs: z.ZodOptional<z.ZodNumber>;
+    audioEndMs: z.ZodOptional<z.ZodNumber>;
+    transcript: z.ZodOptional<z.ZodString>;
+    confidenceBps: z.ZodOptional<z.ZodNumber>;
+    parsedCents: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
+    confirmed: z.ZodBoolean;
+    outcome: z.ZodEnum<["accepted", "rejected", "expired", "superseded", "pending_confirm", "dropped"]>;
+    reason: z.ZodOptional<z.ZodString>;
+    seq: z.ZodNumber;
+    serverTs: z.ZodNumber;
+}, "strict", z.ZodTypeAny, {
+    source: "voice" | "qr" | "manual";
+    confirmed: boolean;
+    outcome: "accepted" | "rejected" | "expired" | "superseded" | "pending_confirm" | "dropped";
+    serverTs: number;
+    seq: number;
+    bidderId?: BidderId | undefined;
+    audioEndMs?: number | undefined;
+    transcript?: string | undefined;
+    reason?: string | undefined;
+    audioStartMs?: number | undefined;
+    confidenceBps?: number | undefined;
+    parsedCents?: Cents | undefined;
+}, {
+    source: "voice" | "qr" | "manual";
+    confirmed: boolean;
+    outcome: "accepted" | "rejected" | "expired" | "superseded" | "pending_confirm" | "dropped";
+    serverTs: number;
+    seq: number;
+    bidderId?: BidderId | undefined;
+    audioEndMs?: number | undefined;
+    transcript?: string | undefined;
+    reason?: string | undefined;
+    audioStartMs?: number | undefined;
+    confidenceBps?: number | undefined;
+    parsedCents?: Cents | undefined;
+}>;
+
+// @public
+export const BIDDER_NAME_FORBIDDEN_PATTERN: RegExp;
 
 // @public (undocumented)
 export type BidderId = Ulid<'BidderId'>;
@@ -906,6 +979,7 @@ export const BidRejectedEvent: z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
         source: z.ZodEnum<["voice", "qr", "manual"]>;
         audioTsMs: z.ZodOptional<z.ZodNumber>;
+        audioEndMs: z.ZodOptional<z.ZodNumber>;
         transcript: z.ZodOptional<z.ZodString>;
         parsedAmount: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
         confidence: z.ZodOptional<z.ZodNumber>;
@@ -928,6 +1002,7 @@ export const BidRejectedEvent: z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -945,6 +1020,7 @@ export const BidRejectedEvent: z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -981,6 +1057,7 @@ export const BidRejectedEvent: z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -1014,6 +1091,7 @@ export const BidRejectedEvent: z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -1076,6 +1154,7 @@ export const BidSchema: z.ZodObject<{
     confidence: z.ZodOptional<z.ZodNumber>;
     ambiguous: z.ZodOptional<z.ZodBoolean>;
     audioTsMs: z.ZodOptional<z.ZodNumber>;
+    audioEndMs: z.ZodOptional<z.ZodNumber>;
     clientTs: z.ZodOptional<z.ZodEffects<z.ZodNumber, EpochMs, number>>;
 }, "strict", z.ZodTypeAny, {
     v: 1;
@@ -1087,6 +1166,7 @@ export const BidSchema: z.ZodObject<{
     amount: number;
     bidderId?: BidderId | undefined;
     audioTsMs?: number | undefined;
+    audioEndMs?: number | undefined;
     transcript?: string | undefined;
     confidence?: number | undefined;
     ambiguous?: boolean | undefined;
@@ -1101,6 +1181,7 @@ export const BidSchema: z.ZodObject<{
     amount: number;
     bidderId?: BidderId | undefined;
     audioTsMs?: number | undefined;
+    audioEndMs?: number | undefined;
     transcript?: string | undefined;
     confidence?: number | undefined;
     ambiguous?: boolean | undefined;
@@ -1221,6 +1302,7 @@ export const clientSchemas: {
         confidence: z.ZodOptional<z.ZodNumber>;
         ambiguous: z.ZodOptional<z.ZodBoolean>;
         audioTsMs: z.ZodOptional<z.ZodNumber>;
+        audioEndMs: z.ZodOptional<z.ZodNumber>;
         clientTs: z.ZodOptional<z.ZodEffects<z.ZodNumber, EpochMs, number>>;
     }, "strict", z.ZodTypeAny, {
         v: 1;
@@ -1232,6 +1314,7 @@ export const clientSchemas: {
         amount: number;
         bidderId?: BidderId | undefined;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         confidence?: number | undefined;
         ambiguous?: boolean | undefined;
@@ -1246,6 +1329,7 @@ export const clientSchemas: {
         amount: number;
         bidderId?: BidderId | undefined;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         confidence?: number | undefined;
         ambiguous?: boolean | undefined;
@@ -1289,6 +1373,18 @@ export type CodecResult<T> = {
     error: GavelError;
 };
 
+// @public
+export function confidenceToBps(fraction: number): number;
+
+// @public (undocumented)
+export type ConfigRuleResult = {
+    ok: true;
+    config: AuctionConfig;
+} | {
+    ok: false;
+    errors: string[];
+};
+
 // @public (undocumented)
 export type ConfigRuleResult = {
     ok: true;
@@ -1315,6 +1411,7 @@ export const ConfirmRequestedEvent: z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
         source: z.ZodEnum<["voice", "qr", "manual"]>;
         audioTsMs: z.ZodOptional<z.ZodNumber>;
+        audioEndMs: z.ZodOptional<z.ZodNumber>;
         transcript: z.ZodOptional<z.ZodString>;
         parsedAmount: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
         confidence: z.ZodOptional<z.ZodNumber>;
@@ -1337,6 +1434,7 @@ export const ConfirmRequestedEvent: z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -1354,6 +1452,7 @@ export const ConfirmRequestedEvent: z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -1392,6 +1491,7 @@ export const ConfirmRequestedEvent: z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -1430,6 +1530,7 @@ export const ConfirmRequestedEvent: z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -1496,6 +1597,7 @@ export const ConfirmResolvedEvent: z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
         source: z.ZodEnum<["voice", "qr", "manual"]>;
         audioTsMs: z.ZodOptional<z.ZodNumber>;
+        audioEndMs: z.ZodOptional<z.ZodNumber>;
         transcript: z.ZodOptional<z.ZodString>;
         parsedAmount: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
         confidence: z.ZodOptional<z.ZodNumber>;
@@ -1518,6 +1620,7 @@ export const ConfirmResolvedEvent: z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -1535,6 +1638,7 @@ export const ConfirmResolvedEvent: z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -1565,6 +1669,7 @@ export const ConfirmResolvedEvent: z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -1592,6 +1697,7 @@ export const ConfirmResolvedEvent: z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -1648,6 +1754,7 @@ export const ControlEvent: z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
         source: z.ZodEnum<["voice", "qr", "manual"]>;
         audioTsMs: z.ZodOptional<z.ZodNumber>;
+        audioEndMs: z.ZodOptional<z.ZodNumber>;
         transcript: z.ZodOptional<z.ZodString>;
         parsedAmount: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
         confidence: z.ZodOptional<z.ZodNumber>;
@@ -1670,6 +1777,7 @@ export const ControlEvent: z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -1687,6 +1795,7 @@ export const ControlEvent: z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -1716,6 +1825,7 @@ export const ControlEvent: z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -1745,6 +1855,7 @@ export const ControlEvent: z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -2526,6 +2637,22 @@ export const PublicAuditRowSchema: z.ZodObject<{
 }>;
 
 // @public
+export interface PublicBidAuditRecord {
+    // (undocumented)
+    bidderId?: BidderId;
+    // (undocumented)
+    outcome: 'accepted';
+    // (undocumented)
+    parsedCents?: Cents;
+    // (undocumented)
+    seq: number;
+    // (undocumented)
+    serverTs: number;
+    // (undocumented)
+    source: BidAuditRecord['source'];
+}
+
+// @public
 export type RandomBytes = (buf: Uint8Array) => void;
 
 // @public (undocumented)
@@ -2880,6 +3007,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
         source: z.ZodEnum<["voice", "qr", "manual"]>;
         audioTsMs: z.ZodOptional<z.ZodNumber>;
+        audioEndMs: z.ZodOptional<z.ZodNumber>;
         transcript: z.ZodOptional<z.ZodString>;
         parsedAmount: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
         confidence: z.ZodOptional<z.ZodNumber>;
@@ -2902,6 +3030,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -2919,6 +3048,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -2962,6 +3092,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3003,6 +3134,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3025,6 +3157,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
         source: z.ZodEnum<["voice", "qr", "manual"]>;
         audioTsMs: z.ZodOptional<z.ZodNumber>;
+        audioEndMs: z.ZodOptional<z.ZodNumber>;
         transcript: z.ZodOptional<z.ZodString>;
         parsedAmount: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
         confidence: z.ZodOptional<z.ZodNumber>;
@@ -3047,6 +3180,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3064,6 +3198,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3100,6 +3235,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3133,6 +3269,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3156,6 +3293,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
         source: z.ZodEnum<["voice", "qr", "manual"]>;
         audioTsMs: z.ZodOptional<z.ZodNumber>;
+        audioEndMs: z.ZodOptional<z.ZodNumber>;
         transcript: z.ZodOptional<z.ZodString>;
         parsedAmount: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
         confidence: z.ZodOptional<z.ZodNumber>;
@@ -3178,6 +3316,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3195,6 +3334,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3233,6 +3373,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3271,6 +3412,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3292,6 +3434,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
         source: z.ZodEnum<["voice", "qr", "manual"]>;
         audioTsMs: z.ZodOptional<z.ZodNumber>;
+        audioEndMs: z.ZodOptional<z.ZodNumber>;
         transcript: z.ZodOptional<z.ZodString>;
         parsedAmount: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
         confidence: z.ZodOptional<z.ZodNumber>;
@@ -3314,6 +3457,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3331,6 +3475,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3361,6 +3506,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3388,6 +3534,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3395,6 +3542,71 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         reason?: string | undefined;
     };
     confirmId: string;
+}>, z.ZodObject<{
+    type: z.ZodLiteral<"voice_dropped">;
+    auctionId: z.ZodType<AuctionId, z.ZodTypeDef, AuctionId>;
+    seq: z.ZodNumber;
+    ts: z.ZodEffects<z.ZodNumber, EpochMs, number>;
+} & {
+    drop: z.ZodObject<{
+        segmentId: z.ZodString;
+        audioStartMs: z.ZodOptional<z.ZodNumber>;
+        audioEndMs: z.ZodOptional<z.ZodNumber>;
+        confidenceBps: z.ZodNumber;
+        reason: z.ZodString;
+        bidderId: z.ZodOptional<z.ZodType<BidderId, z.ZodTypeDef, BidderId>>;
+        parsedCents: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
+    }, "strict", z.ZodTypeAny, {
+        reason: string;
+        segmentId: string;
+        confidenceBps: number;
+        bidderId?: BidderId | undefined;
+        audioEndMs?: number | undefined;
+        audioStartMs?: number | undefined;
+        parsedCents?: Cents | undefined;
+    }, {
+        reason: string;
+        segmentId: string;
+        confidenceBps: number;
+        bidderId?: BidderId | undefined;
+        audioEndMs?: number | undefined;
+        audioStartMs?: number | undefined;
+        parsedCents?: Cents | undefined;
+    }>;
+}, "strict", z.ZodTypeAny, {
+    type: "voice_dropped";
+    seq: number;
+    auctionId: string & {
+        readonly __brand_brand: "AuctionId";
+    };
+    ts: number & {
+        readonly __brand_epochBrand: "EpochMs";
+    };
+    drop: {
+        reason: string;
+        segmentId: string;
+        confidenceBps: number;
+        bidderId?: BidderId | undefined;
+        audioEndMs?: number | undefined;
+        audioStartMs?: number | undefined;
+        parsedCents?: Cents | undefined;
+    };
+}, {
+    type: "voice_dropped";
+    seq: number;
+    auctionId: string & {
+        readonly __brand_brand: "AuctionId";
+    };
+    ts: number;
+    drop: {
+        reason: string;
+        segmentId: string;
+        confidenceBps: number;
+        bidderId?: BidderId | undefined;
+        audioEndMs?: number | undefined;
+        audioStartMs?: number | undefined;
+        parsedCents?: Cents | undefined;
+    };
 }>, z.ZodObject<{
     type: z.ZodLiteral<"control">;
     auctionId: z.ZodType<AuctionId, z.ZodTypeDef, AuctionId>;
@@ -3410,6 +3622,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
         source: z.ZodEnum<["voice", "qr", "manual"]>;
         audioTsMs: z.ZodOptional<z.ZodNumber>;
+        audioEndMs: z.ZodOptional<z.ZodNumber>;
         transcript: z.ZodOptional<z.ZodString>;
         parsedAmount: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
         confidence: z.ZodOptional<z.ZodNumber>;
@@ -3432,6 +3645,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3449,6 +3663,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3478,6 +3693,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3507,6 +3723,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3883,6 +4100,7 @@ export const RoomSnapshotSchema: z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
         source: z.ZodEnum<["voice", "qr", "manual"]>;
         audioTsMs: z.ZodOptional<z.ZodNumber>;
+        audioEndMs: z.ZodOptional<z.ZodNumber>;
         transcript: z.ZodOptional<z.ZodString>;
         parsedAmount: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
         confidence: z.ZodOptional<z.ZodNumber>;
@@ -3905,6 +4123,7 @@ export const RoomSnapshotSchema: z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -3922,6 +4141,7 @@ export const RoomSnapshotSchema: z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -4059,6 +4279,7 @@ export const RoomSnapshotSchema: z.ZodObject<{
         };
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -4148,6 +4369,7 @@ export const RoomSnapshotSchema: z.ZodObject<{
         serverTs: number;
         seq: number;
         audioTsMs?: number | undefined;
+        audioEndMs?: number | undefined;
         transcript?: string | undefined;
         parsedAmount?: Cents | undefined;
         confidence?: number | undefined;
@@ -4568,6 +4790,7 @@ export const serverSchemas: {
                 bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
                 source: z.ZodEnum<["voice", "qr", "manual"]>;
                 audioTsMs: z.ZodOptional<z.ZodNumber>;
+                audioEndMs: z.ZodOptional<z.ZodNumber>;
                 transcript: z.ZodOptional<z.ZodString>;
                 parsedAmount: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
                 confidence: z.ZodOptional<z.ZodNumber>;
@@ -4590,6 +4813,7 @@ export const serverSchemas: {
                 };
                 seq: number;
                 audioTsMs?: number | undefined;
+                audioEndMs?: number | undefined;
                 transcript?: string | undefined;
                 parsedAmount?: Cents | undefined;
                 confidence?: number | undefined;
@@ -4607,6 +4831,7 @@ export const serverSchemas: {
                 serverTs: number;
                 seq: number;
                 audioTsMs?: number | undefined;
+                audioEndMs?: number | undefined;
                 transcript?: string | undefined;
                 parsedAmount?: Cents | undefined;
                 confidence?: number | undefined;
@@ -4744,6 +4969,7 @@ export const serverSchemas: {
                 };
                 seq: number;
                 audioTsMs?: number | undefined;
+                audioEndMs?: number | undefined;
                 transcript?: string | undefined;
                 parsedAmount?: Cents | undefined;
                 confidence?: number | undefined;
@@ -4833,6 +5059,7 @@ export const serverSchemas: {
                 serverTs: number;
                 seq: number;
                 audioTsMs?: number | undefined;
+                audioEndMs?: number | undefined;
                 transcript?: string | undefined;
                 parsedAmount?: Cents | undefined;
                 confidence?: number | undefined;
@@ -4944,6 +5171,7 @@ export const serverSchemas: {
                 };
                 seq: number;
                 audioTsMs?: number | undefined;
+                audioEndMs?: number | undefined;
                 transcript?: string | undefined;
                 parsedAmount?: Cents | undefined;
                 confidence?: number | undefined;
@@ -5039,6 +5267,7 @@ export const serverSchemas: {
                 serverTs: number;
                 seq: number;
                 audioTsMs?: number | undefined;
+                audioEndMs?: number | undefined;
                 transcript?: string | undefined;
                 parsedAmount?: Cents | undefined;
                 confidence?: number | undefined;
@@ -5252,6 +5481,13 @@ export const serverSchemas: {
             ok: boolean;
             violations: string[];
         }>>;
+        ladder: z.ZodOptional<z.ZodObject<{
+            counts: z.ZodRecord<z.ZodEnum<["HELD", "BIDDING", "WINNER_SELECTED", "CAPTURING", "CAPTURED", "VOIDING", "SETTLED", "FALLBACK_RUNNER_UP", "FAILED_NEEDS_REVIEW"]>, z.ZodNumber>;
+        }, "strict", z.ZodTypeAny, {
+            counts: Partial<Record<"HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW", number>>;
+        }, {
+            counts: Partial<Record<"HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW", number>>;
+        }>>;
         yourHold: z.ZodOptional<z.ZodObject<{
             bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
             idSuffix: z.ZodString;
@@ -5317,6 +5553,9 @@ export const serverSchemas: {
             ok: boolean;
             violations: string[];
         } | undefined;
+        ladder?: {
+            counts: Partial<Record<"HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW", number>>;
+        } | undefined;
         yourHold?: {
             status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
             bidderId: string & {
@@ -5358,6 +5597,9 @@ export const serverSchemas: {
             ok: boolean;
             violations: string[];
         } | undefined;
+        ladder?: {
+            counts: Partial<Record<"HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW", number>>;
+        } | undefined;
         yourHold?: {
             status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
             bidderId: string & {
@@ -5381,6 +5623,7 @@ export const serverSchemas: {
             bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
             source: z.ZodEnum<["voice", "qr", "manual"]>;
             audioTsMs: z.ZodOptional<z.ZodNumber>;
+            audioEndMs: z.ZodOptional<z.ZodNumber>;
             transcript: z.ZodOptional<z.ZodString>;
             parsedAmount: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
             confidence: z.ZodOptional<z.ZodNumber>;
@@ -5403,6 +5646,7 @@ export const serverSchemas: {
             };
             seq: number;
             audioTsMs?: number | undefined;
+            audioEndMs?: number | undefined;
             transcript?: string | undefined;
             parsedAmount?: Cents | undefined;
             confidence?: number | undefined;
@@ -5420,6 +5664,7 @@ export const serverSchemas: {
             serverTs: number;
             seq: number;
             audioTsMs?: number | undefined;
+            audioEndMs?: number | undefined;
             transcript?: string | undefined;
             parsedAmount?: Cents | undefined;
             confidence?: number | undefined;
@@ -5483,6 +5728,7 @@ export const serverSchemas: {
             };
             seq: number;
             audioTsMs?: number | undefined;
+            audioEndMs?: number | undefined;
             transcript?: string | undefined;
             parsedAmount?: Cents | undefined;
             confidence?: number | undefined;
@@ -5520,6 +5766,7 @@ export const serverSchemas: {
             serverTs: number;
             seq: number;
             audioTsMs?: number | undefined;
+            audioEndMs?: number | undefined;
             transcript?: string | undefined;
             parsedAmount?: Cents | undefined;
             confidence?: number | undefined;
@@ -5681,6 +5928,13 @@ export const SettlementUpdateSchema: z.ZodObject<{
         ok: boolean;
         violations: string[];
     }>>;
+    ladder: z.ZodOptional<z.ZodObject<{
+        counts: z.ZodRecord<z.ZodEnum<["HELD", "BIDDING", "WINNER_SELECTED", "CAPTURING", "CAPTURED", "VOIDING", "SETTLED", "FALLBACK_RUNNER_UP", "FAILED_NEEDS_REVIEW"]>, z.ZodNumber>;
+    }, "strict", z.ZodTypeAny, {
+        counts: Partial<Record<"HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW", number>>;
+    }, {
+        counts: Partial<Record<"HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW", number>>;
+    }>>;
     yourHold: z.ZodOptional<z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
         idSuffix: z.ZodString;
@@ -5746,6 +6000,9 @@ export const SettlementUpdateSchema: z.ZodObject<{
         ok: boolean;
         violations: string[];
     } | undefined;
+    ladder?: {
+        counts: Partial<Record<"HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW", number>>;
+    } | undefined;
     yourHold?: {
         status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
         bidderId: string & {
@@ -5786,6 +6043,9 @@ export const SettlementUpdateSchema: z.ZodObject<{
     invariants?: {
         ok: boolean;
         violations: string[];
+    } | undefined;
+    ladder?: {
+        counts: Partial<Record<"HELD" | "BIDDING" | "WINNER_SELECTED" | "CAPTURING" | "CAPTURED" | "VOIDING" | "SETTLED" | "FALLBACK_RUNNER_UP" | "FAILED_NEEDS_REVIEW", number>>;
     } | undefined;
     yourHold?: {
         status: "HELD" | "CAPTURED" | "PENDING_APPROVAL" | "VOIDED" | "EXPIRED" | "DENIED" | "UNKNOWN";
@@ -6038,6 +6298,7 @@ export const StateSchema: z.ZodObject<{
             bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
             source: z.ZodEnum<["voice", "qr", "manual"]>;
             audioTsMs: z.ZodOptional<z.ZodNumber>;
+            audioEndMs: z.ZodOptional<z.ZodNumber>;
             transcript: z.ZodOptional<z.ZodString>;
             parsedAmount: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
             confidence: z.ZodOptional<z.ZodNumber>;
@@ -6060,6 +6321,7 @@ export const StateSchema: z.ZodObject<{
             };
             seq: number;
             audioTsMs?: number | undefined;
+            audioEndMs?: number | undefined;
             transcript?: string | undefined;
             parsedAmount?: Cents | undefined;
             confidence?: number | undefined;
@@ -6077,6 +6339,7 @@ export const StateSchema: z.ZodObject<{
             serverTs: number;
             seq: number;
             audioTsMs?: number | undefined;
+            audioEndMs?: number | undefined;
             transcript?: string | undefined;
             parsedAmount?: Cents | undefined;
             confidence?: number | undefined;
@@ -6214,6 +6477,7 @@ export const StateSchema: z.ZodObject<{
             };
             seq: number;
             audioTsMs?: number | undefined;
+            audioEndMs?: number | undefined;
             transcript?: string | undefined;
             parsedAmount?: Cents | undefined;
             confidence?: number | undefined;
@@ -6303,6 +6567,7 @@ export const StateSchema: z.ZodObject<{
             serverTs: number;
             seq: number;
             audioTsMs?: number | undefined;
+            audioEndMs?: number | undefined;
             transcript?: string | undefined;
             parsedAmount?: Cents | undefined;
             confidence?: number | undefined;
@@ -6414,6 +6679,7 @@ export const StateSchema: z.ZodObject<{
             };
             seq: number;
             audioTsMs?: number | undefined;
+            audioEndMs?: number | undefined;
             transcript?: string | undefined;
             parsedAmount?: Cents | undefined;
             confidence?: number | undefined;
@@ -6509,6 +6775,7 @@ export const StateSchema: z.ZodObject<{
             serverTs: number;
             seq: number;
             audioTsMs?: number | undefined;
+            audioEndMs?: number | undefined;
             transcript?: string | undefined;
             parsedAmount?: Cents | undefined;
             confidence?: number | undefined;
@@ -6562,6 +6829,9 @@ export class SystemClock implements Clock {
 }
 
 // @public
+export function toBidAuditRecord(audit: AuditPayload, outcome?: BidAuditOutcome): BidAuditRecord;
+
+// @public
 export function toBps(fraction: number): number;
 
 // @public (undocumented)
@@ -6594,6 +6864,9 @@ export interface TokenSigner {
 // @public
 export function toPublicAudit(row: AuditPayload): PublicAuditRow | null;
 
+// @public (undocumented)
+export function toPublicBidAuditRecord(rec: BidAuditRecord): PublicBidAuditRecord | null;
+
 // @public
 export interface Transport {
     close(code: number, reason: string): void;
@@ -6614,6 +6887,74 @@ export class UlidMinter implements Ids {
     // (undocumented)
     mint<B extends string = string>(): Ulid<B>;
 }
+
+// @public
+export const VoiceDroppedEvent: z.ZodObject<{
+    type: z.ZodLiteral<"voice_dropped">;
+    auctionId: z.ZodType<AuctionId, z.ZodTypeDef, AuctionId>;
+    seq: z.ZodNumber;
+    ts: z.ZodEffects<z.ZodNumber, EpochMs, number>;
+} & {
+    drop: z.ZodObject<{
+        segmentId: z.ZodString;
+        audioStartMs: z.ZodOptional<z.ZodNumber>;
+        audioEndMs: z.ZodOptional<z.ZodNumber>;
+        confidenceBps: z.ZodNumber;
+        reason: z.ZodString;
+        bidderId: z.ZodOptional<z.ZodType<BidderId, z.ZodTypeDef, BidderId>>;
+        parsedCents: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
+    }, "strict", z.ZodTypeAny, {
+        reason: string;
+        segmentId: string;
+        confidenceBps: number;
+        bidderId?: BidderId | undefined;
+        audioEndMs?: number | undefined;
+        audioStartMs?: number | undefined;
+        parsedCents?: Cents | undefined;
+    }, {
+        reason: string;
+        segmentId: string;
+        confidenceBps: number;
+        bidderId?: BidderId | undefined;
+        audioEndMs?: number | undefined;
+        audioStartMs?: number | undefined;
+        parsedCents?: Cents | undefined;
+    }>;
+}, "strict", z.ZodTypeAny, {
+    type: "voice_dropped";
+    seq: number;
+    auctionId: string & {
+        readonly __brand_brand: "AuctionId";
+    };
+    ts: number & {
+        readonly __brand_epochBrand: "EpochMs";
+    };
+    drop: {
+        reason: string;
+        segmentId: string;
+        confidenceBps: number;
+        bidderId?: BidderId | undefined;
+        audioEndMs?: number | undefined;
+        audioStartMs?: number | undefined;
+        parsedCents?: Cents | undefined;
+    };
+}, {
+    type: "voice_dropped";
+    seq: number;
+    auctionId: string & {
+        readonly __brand_brand: "AuctionId";
+    };
+    ts: number;
+    drop: {
+        reason: string;
+        segmentId: string;
+        confidenceBps: number;
+        bidderId?: BidderId | undefined;
+        audioEndMs?: number | undefined;
+        audioStartMs?: number | undefined;
+        parsedCents?: Cents | undefined;
+    };
+}>;
 
 // @public (undocumented)
 export type WireMsg = ClientMsg | ServerMsg;

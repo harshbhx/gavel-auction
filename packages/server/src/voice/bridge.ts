@@ -14,8 +14,10 @@ import {
   type AuctionId,
   type BidMsg,
   type BidderId,
+  type Cents,
   type Clock,
   type MsgId,
+  confidenceToBps,
 } from '@gavel/shared';
 import type { VoiceView } from '../room/room';
 
@@ -23,6 +25,34 @@ import type { VoiceView } from '../room/room';
 export interface VoiceRoomPort {
   voiceView(): VoiceView | undefined;
   submitVoiceBid(bidderId: BidderId, msg: BidMsg): Promise<void>;
+  /** Persist a decision that became no bid, so the audit trail has every voice decision. */
+  recordVoiceDrop?(drop: VoiceDropRecord): Promise<void>;
+}
+
+/** What the room stores of a spoken decision that produced no bid. */
+export interface VoiceDropRecord {
+  segmentId: string;
+  audioStartMs?: number;
+  audioEndMs?: number;
+  confidenceBps: number;
+  reason: string;
+  parsedCents?: Cents;
+}
+
+/** The drop record of a decision that gave no bid. The transcript is deliberately left out. */
+export function dropOf(d: Decision): VoiceDropRecord {
+  const ev = d.evidence;
+  const amount = ev.rules.amountCents;
+  return {
+    segmentId: ev.segmentId.slice(0, 64),
+    audioStartMs: Math.max(0, Math.trunc(ev.audioStartMs)),
+    audioEndMs: Math.max(0, Math.trunc(ev.audioEndMs)),
+    confidenceBps: confidenceToBps(ev.confidence),
+    reason: (d.kind === 'drop' ? d.reason : ev.reason).slice(0, 120),
+    ...(amount !== null && Number.isSafeInteger(amount) && amount >= 0
+      ? { parsedCents: amount as Cents }
+      : {}),
+  };
 }
 
 export interface VoiceBridgeDeps {
@@ -140,6 +170,7 @@ export function startVoiceBridge(deps: VoiceBridgeDeps): VoiceBridge {
           transcript: cmd.audit.transcript.slice(0, MAX_TRANSCRIPT_CHARS),
           confidence: cmd.audit.confidenceBps / 10_000,
           audioTsMs: Math.max(0, Math.trunc(cmd.audit.audioStartMs)),
+          audioEndMs: Math.max(0, Math.trunc(cmd.audit.audioEndMs)),
         },
       };
     }
@@ -159,6 +190,7 @@ export function startVoiceBridge(deps: VoiceBridgeDeps): VoiceBridge {
           confidence: Math.min(Math.max(ev.confidence, 0), 1),
           ambiguous: true,
           audioTsMs: Math.max(0, Math.trunc(ev.audioStartMs)),
+          audioEndMs: Math.max(0, Math.trunc(ev.audioEndMs)),
         },
       };
     }
@@ -170,7 +202,20 @@ export function startVoiceBridge(deps: VoiceBridgeDeps): VoiceBridge {
       if (out.type !== 'decision') continue;
       record(out.decision);
       const bid = toBid(out.decision);
-      if (bid === null) continue;
+      if (bid === null) {
+        const record = room.recordVoiceDrop;
+        if (record !== undefined) {
+          const drop = dropOf(out.decision);
+          pending = pending
+            .then(() => record.call(room, drop))
+            .catch((e: unknown) => {
+              deps.log?.('voice drop not recorded', {
+                error: e instanceof Error ? e.message : String(e),
+              });
+            });
+        }
+        continue;
+      }
       pending = pending
         .then(() => room.submitVoiceBid(bid.bidderId as BidderId, bid.msg))
         .catch((e: unknown) => {

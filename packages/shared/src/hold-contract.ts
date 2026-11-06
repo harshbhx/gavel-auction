@@ -1,5 +1,17 @@
 import { z } from 'zod';
 
+/** Same limit as MAX_NAME_CHARS in the wire envelope (a test keeps them equal); no import so payments stays self-contained. */
+const MAX_BIDDER_NAME_CHARS = 64;
+
+/**
+ * Characters a bidder name may never hold: control characters (U+0000-U+001F, U+007F-U+009F),
+ * bidi overrides and isolates (U+202A-U+202E, U+2066-U+2069) and angle brackets. The room's
+ * own rule (no control characters) is a subset, so a name that passes here is never refused later.
+ */
+export const BIDDER_NAME_FORBIDDEN_PATTERN =
+  // eslint-disable-next-line no-control-regex -- control characters are what this pattern forbids
+  /[\u0000-\u001F\u007F-\u009F\u202A-\u202E\u2066-\u2069<>]/u;
+
 export const HOLD_ERROR_CODES = [
   'ceiling_out_of_range',
   'hold_exists',
@@ -50,7 +62,22 @@ export const CreateHoldResponse = z
 export type CreateHoldResponse = z.infer<typeof CreateHoldResponse>;
 
 /** POST /api/holds/{holdId}/approve request. */
-export const ApproveHoldRequest = z.object({ orderId: id }).strict();
+export const ApproveHoldRequest = z
+  .object({
+    orderId: id,
+    /**
+     * Display name of the bidder. When present the server also registers the bidder in the
+     * room once the hold is authorized (idempotent); absent, only the hold is approved.
+     */
+    name: z
+      .string()
+      .trim()
+      .min(1)
+      .max(MAX_BIDDER_NAME_CHARS)
+      .refine((v) => !BIDDER_NAME_FORBIDDEN_PATTERN.test(v), 'name holds a forbidden character')
+      .optional(),
+  })
+  .strict();
 export type ApproveHoldRequest = z.infer<typeof ApproveHoldRequest>;
 
 /** POST /api/holds/{holdId}/approve response. */

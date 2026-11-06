@@ -53,5 +53,6 @@ export function stripConfirmAudit<T extends object>(audit: T): T {
   delete rest.parsedAmount;
   delete rest.transcript;
   delete rest.audioTsMs;
+  delete rest.audioEndMs;
   return rest as T;
 }

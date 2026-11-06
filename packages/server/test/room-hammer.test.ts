@@ -403,6 +403,19 @@ describe('settlement (R-RT-051..053, R-RT-060)', () => {
     expect(screen.transport.messages('settlement_update')[0]?.you).toBeUndefined();
   });
 
+  it('sends every viewer a ladder of counts with no names, holds or amounts (issue 712)', async () => {
+    const { t, c1, screen } = await hammered();
+    const per = { [t.b1]: 'CAPTURED', [t.b2]: 'VOIDING' } as const;
+    await t.room.reportSettlement({ rev: 1, auctionState: 'CAPTURED', perBidder: per });
+    for (const tr of [c1.transport, screen.transport]) {
+      const frame = tr.messages('settlement_update')[0];
+      expect(frame?.ladder).toEqual({ counts: { CAPTURED: 1, VOIDING: 1 } });
+      expect(JSON.stringify(frame?.ladder)).not.toContain(t.b1);
+    }
+    await t.room.reportSettlement({ rev: 2, auctionState: 'SETTLED', perBidder: {} });
+    expect(screen.transport.messages('settlement_update')[1]?.ladder).toBeUndefined();
+  });
+
   it('reaches DONE only on SETTLED or FAILED_NEEDS_REVIEW', async () => {
     const { t, screen } = await hammered();
     await t.room.reportSettlement({ rev: 1, auctionState: 'CAPTURED', perBidder: {} });

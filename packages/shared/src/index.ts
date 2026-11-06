@@ -10,6 +10,7 @@ export * from './events';
 export * from './ids-mint';
 export * from './money-format';
 export * from './wire/audit';
+export * from './audit-record';
 export * from './wire/client';
 export * from './wire/codec';
 export * from './wire/envelope';
