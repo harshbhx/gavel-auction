@@ -14,7 +14,7 @@ function setup() {
   const session = createVoiceSession({
     now: () => clock.t,
     verifyToken: (token, roomId) =>
-      token === `ok-${roomId}` ? 'auctioneer' : token === `bid-${roomId}` ? 'bidder' : null,
+      token.startsWith(`ok-${roomId}`) ? 'auctioneer' : token === `bid-${roomId}` ? 'bidder' : null,
   });
   const open = (source = 'mic', room = 'r1'): AudioStream => {
     const res = session.open({ roomId: room, source }, `ok-${room}`);
@@ -109,7 +109,7 @@ describe('T-VOX-105 audio websocket limits (R-VOX-097)', () => {
   it('allows one stream per (room, source) and frees the slot on close', () => {
     const { session, open } = setup();
     const s = open('mic', 'r1');
-    expect(session.open({ roomId: 'r1', source: 'mic' }, 'other')).toEqual({
+    expect(session.open({ roomId: 'r1', source: 'mic' }, 'ok-r1-other')).toEqual({
       ok: false,
       error: 'AUDIO_STREAM_BUSY',
     });
