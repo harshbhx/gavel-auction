@@ -46,6 +46,9 @@ const hasUnique = (items: readonly object[], key: 'paddle' | 'bidderId'): boolea
   return true;
 };
 
+/** Longest lot title a snapshot carries. */
+const MAX_LOT_TITLE_CHARS = 120;
+
 /** Fields every server frame after a successful join carries. */
 const ev = { seq, ts: epochMs() };
 
@@ -62,6 +65,12 @@ export const RoomSnapshotSchema = z
     remainingMs: z.number().int().nonnegative().optional(),
     /** True once the auctioneer ended the lot (hammer or kill switch) instead of the timer. */
     stopped: z.boolean().optional(),
+    /** True once the room no longer takes registrations (the lot was hammered or the auction is done). */
+    registrationClosed: z.boolean().optional(),
+    /** Public lot title, set by the HTTP snapshot route; never carries private data. */
+    lotTitle: z.string().max(MAX_LOT_TITLE_CHARS).optional(),
+    /** Short human join code of the auction, set by the HTTP snapshot route. */
+    joinCode: z.string().min(4).max(12).optional(),
     roster: z
       .array(
         z
@@ -151,6 +160,8 @@ export const HammerSchema = message('hammer', {
     .max(MAX_BIDDERS_PER_ROOM),
   /** True when the auctioneer ended the lot; absent when the timer did. */
   stopped: z.boolean().optional(),
+  /** True on the hammer frame: registration closes with the hammer. */
+  registrationClosed: z.boolean().optional(),
 });
 
 /** One hold in the settlement ladder. Amounts are integer cents; idSuffix is the last 6 characters only. */

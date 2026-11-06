@@ -132,9 +132,6 @@ export interface AuctionServiceDeps {
 }
 
 // @public
-export function acceptsEventType(eventType: string): boolean;
-
-// @public
 export function authIdOf(e: {
     eventType: string;
     resource: Json;

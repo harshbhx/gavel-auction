@@ -808,6 +808,23 @@ describe('auction service: round 3 blocking fixes (RT3)', () => {
     await service.close();
   });
 
+  it('refuses a config whose end time is not in the future (checkAuctionConfig)', async () => {
+    const rig = await makeRig();
+    const service = rig.service();
+    for (const endTs of [START, START - 1_000]) {
+      const id = rig.ids.mint<'AuctionId'>();
+      await expect(
+        service.createAuction(
+          id,
+          { ...config, endTs } as unknown as AuctionConfig,
+          'auctioneer-sub',
+        ),
+      ).rejects.toMatchObject({ code: 'bad_message', message: 'invalid auction config' });
+    }
+    expect(await rig.stores.store.listAuctions()).toHaveLength(0);
+    await service.close();
+  });
+
   it('resumes the other auctions when one cannot be loaded (SERVICE-R3-02)', async () => {
     const rig = await makeRig();
     const first = rig.service({

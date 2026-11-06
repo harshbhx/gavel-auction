@@ -2,17 +2,14 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   applyG5ToGates,
-  deepgramTranscribe,
   evidenceName,
-  groqTranscribe,
   renderEvidenceFile,
   runG5,
   sha256Hex,
-  type G5Fetch,
-  type G5FormFetch,
   type G5Provider,
   type G5Run,
 } from './g5.js';
+import { transcribeLive, type LiveFetch } from '@gavel/voice';
 import { writeSpecResult } from '../sandbox/harness.js';
 
 // Manual and nightly entry point of the G5 harness. From packages/e2e:
@@ -32,13 +29,15 @@ const base = {
   },
   now: () => Date.now(),
 };
+// The same live adapters as `npm run eval -w @gavel/voice -- --mode live`: bounded retry on 429/5xx.
+const live = { fetch: fetch as unknown as LiveFetch };
 const runs = new Map<G5Provider, G5Run>();
 runs.set(
   'deepgram',
   await runG5(
     {
       ...base,
-      transcribe: (audio, key) => deepgramTranscribe(audio, key, fetch as unknown as G5Fetch),
+      transcribe: async (audio, key) => (await transcribeLive('deepgram', audio, key, live)).text,
     },
     'deepgram',
   ),
@@ -48,7 +47,7 @@ runs.set(
   await runG5(
     {
       ...base,
-      transcribe: (audio, key) => groqTranscribe(audio, key, fetch as unknown as G5FormFetch),
+      transcribe: async (audio, key) => (await transcribeLive('groq', audio, key, live)).text,
     },
     'groq',
   ),

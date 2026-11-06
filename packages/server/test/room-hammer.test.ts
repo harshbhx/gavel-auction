@@ -207,6 +207,52 @@ describe('hammer and auto-hammer (R-RT-044, R-RT-050, R-RT-051)', () => {
     });
   });
 
+  it('signals registration closed on the hammer frame, the snapshot and after reload', async () => {
+    const t = await setup();
+    const c1 = await t.connect(t.room, 'bidder', t.b1);
+    const boss = await t.connect(t.room, 'auctioneer');
+    const early = await t.connect(t.room, 'screen');
+    expect(early.transport.messages('state').at(-1)?.snapshot).not.toHaveProperty(
+      'registrationClosed',
+    );
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    await t.room.control(boss.conn, { controlId: 'rc1', action: 'hammer', args: { closeNow: 1 } });
+    expect(c1.transport.messages('hammer')[0]).toMatchObject({ registrationClosed: true });
+    const restarted = await Room.load(t.auctionId, t.deps);
+    const after = await t.connect(restarted, 'screen');
+    expect(after.transport.messages('state').at(-1)).toMatchObject({
+      snapshot: { registrationClosed: true },
+    });
+  });
+
+  it('refuses a hammer whose expected price or leader moved, and applies nothing', async () => {
+    const t = await setup();
+    const c1 = await t.connect(t.room, 'bidder', t.b1);
+    const boss = await t.connect(t.room, 'auctioneer');
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    await t.room.control(boss.conn, {
+      controlId: 'st1',
+      action: 'hammer',
+      args: { closeNow: 1, expectedPriceCents: 5000, expectedLeaderPaddle: 1 },
+    });
+    await t.room.control(boss.conn, {
+      controlId: 'st2',
+      action: 'hammer',
+      args: { closeNow: 1, expectedPriceCents: 10000, expectedLeaderPaddle: 2 },
+    });
+    expect(boss.transport.messages('error').map((m) => m.message)).toEqual([
+      'price_changed',
+      'leader_changed',
+    ]);
+    expect(types(await t.events())).not.toContain('hammered');
+    await t.room.control(boss.conn, {
+      controlId: 'st3',
+      action: 'hammer',
+      args: { closeNow: 1, expectedPriceCents: 10000, expectedLeaderPaddle: 1 },
+    });
+    expect(types(await t.events())).toContain('hammered');
+  });
+
   it('leaves stopped off when the timer ended the lot', async () => {
     const t = await setup({ autoHammerDelayMs: 3000 });
     const c1 = await t.connect(t.room, 'bidder', t.b1);

@@ -59,3 +59,12 @@ export { BUDGET_LIMITS_MS, budgetCheck, latencyOf, percentile } from './pipeline
 export type { BudgetMode, BudgetReport, LatencySample } from './pipeline/latency.js';
 export { rejectPrompt } from './pipeline/reject.js';
 export type { WsFactory, WsLike } from './stt/deepgram.js';
+export { createLiveTranscriber, transcribeLive } from './eval/live.js';
+export type {
+  LiveDeps,
+  LiveFetch,
+  LiveProvider,
+  LiveRequestInit,
+  LiveSegment,
+  LiveTranscript,
+} from './eval/live.js';

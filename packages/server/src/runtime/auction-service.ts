@@ -53,8 +53,8 @@ import {
   type WebhookVerifier,
 } from '@gavel/payments';
 import {
-  AuctionConfigSchema,
   GavelError,
+  checkAuctionConfig,
   type AuctionConfig,
   type AuctionId,
   type BidderId,
@@ -449,11 +449,11 @@ class Service implements AuctionService, SettlePort {
     config: AuctionConfig,
     auctioneerSub: string,
   ): Promise<Room> {
-    const parsed = AuctionConfigSchema.safeParse(config);
-    if (!parsed.success) throw new GavelError('bad_message', 'invalid auction config');
+    const parsed = checkAuctionConfig(config, this.deps.clock.now());
+    if (!parsed.ok) throw new GavelError('bad_message', 'invalid auction config');
     // The engine adapter runs a flat English lot with event holds, so refuse anything else
     // rather than show clients rules that never govern the lot (R-RT-011, R-RT-012).
-    const c = parsed.data;
+    const c = parsed.config;
     if (c.mode !== 'english' || c.holdScope === 'lot' || c.incrementLadder !== undefined) {
       throw new GavelError('bad_message', 'unsupported mode, increment ladder or hold scope');
     }
@@ -465,15 +465,15 @@ class Service implements AuctionService, SettlePort {
     // auction could not be loaded again and would block resume (R-RT-012, R-RT-059).
     // The engine lot is at most a day long and opens at creation time at the latest, so an end
     // time further away could not be settled early (bad_time at the ledger sync).
-    if (parsed.data.endTs - this.deps.clock.now() > MAX_LOT_AHEAD_MS) {
+    if (parsed.config.endTs - this.deps.clock.now() > MAX_LOT_AHEAD_MS) {
       throw new GavelError('bad_message', 'end time is more than a day away');
     }
     try {
-      new LedgerEngine(auctionId, parsed.data, this.deps.clock.now(), this.deps.maxCeilingCents);
+      new LedgerEngine(auctionId, parsed.config, this.deps.clock.now(), this.deps.maxCeilingCents);
     } catch {
       throw new GavelError('bad_message', 'auction config the engine cannot run');
     }
-    const created = Room.create(auctionId, parsed.data, auctioneerSub, this.roomDeps(auctionId));
+    const created = Room.create(auctionId, parsed.config, auctioneerSub, this.roomDeps(auctionId));
     this.rooms.set(auctionId, created);
     this.lastUsed.set(auctionId, this.deps.clock.now());
     this.track(auctionId, created);
