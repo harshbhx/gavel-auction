@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-restricted-syntax -- known gap: pipeline is server-side today; move to a browser-safe hash before bundling it (#942)
 import { createHash } from 'node:crypto';
 import { PENDING_MAX_AGE_MS } from '../parser/correction.js';
 import type { BidderRef, Cents, ParseContext } from '../types.js';
