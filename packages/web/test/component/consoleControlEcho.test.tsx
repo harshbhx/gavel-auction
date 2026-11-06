@@ -95,19 +95,19 @@ describe('console stream echoes control results (#535)', () => {
 
   it.each(cases)('adds a %s row with its time and result', (action, key) => {
     renderConsole();
-    deliver(controlFrame(5, action, 'accepted'));
+    deliver(controlFrame(3, action, 'accepted'));
     const stream = screen.getByRole('region', { name: t('console.stream') });
     const item = within(stream).getByText(t(key)).closest('li');
     if (item === null) throw new Error('row missing');
     expect(item.getAttribute('data-kind')).toBe('control');
     expect(item.getAttribute('data-control')).toBe(action);
-    expect(within(item).getByText(formatServerTime(BASE_TIME + 5))).toBeTruthy();
+    expect(within(item).getByText(formatServerTime(BASE_TIME + 3))).toBeTruthy();
     expect(within(item).getByText(t('console.status.accepted'))).toBeTruthy();
   });
 
   it('shows a refused control as rejected', () => {
     renderConsole();
-    deliver(controlFrame(6, 'pause', 'rejected'));
+    deliver(controlFrame(3, 'pause', 'rejected'));
     const item = screen.getByText(t('console.echo.pause')).closest('li');
     if (item === null) throw new Error('row missing');
     expect(within(item).getByText(t('console.status.rejected'))).toBeTruthy();

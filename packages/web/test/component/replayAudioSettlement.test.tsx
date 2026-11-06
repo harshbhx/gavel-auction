@@ -42,7 +42,6 @@ function bundle(withSettlement: boolean, audioUrl: string | null): unknown {
     ts: EpochMs(BASE_TIME + 400),
     rev: 1,
     auctionState: 'SETTLED',
-    perBidder: {},
     winnerPaddle: 7,
     holds: [{ ...hold, paddle: 7, state: 'CAPTURED', capturedCents: 25_000, releasedCents: 0 }],
   };
