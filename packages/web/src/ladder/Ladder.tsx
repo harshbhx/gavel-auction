@@ -13,6 +13,11 @@ import './ladder.css';
 export interface LadderProps {
   /** Latest settlement view for the lot, or null before the first settlement update. */
   view: SettlementView | null;
+  /**
+   * 'all' (default) also prints the invariant, branch and totals notes. 'lanes' leaves them to
+   * the caller, which mounts InvariantBanner and Branches itself.
+   */
+  parts?: 'all' | 'lanes';
 }
 
 function clock(at: number): string {
@@ -87,8 +92,9 @@ function Lane({ lane }: { lane: LadderLane }) {
 }
 
 /** Settlement ladder: one lane per hold, a table on wide screens and a stepper on phones. */
-export function Ladder({ view }: LadderProps) {
+export function Ladder({ view, parts = 'all' }: LadderProps) {
   const model = buildLadder(view);
+  const notes = parts === 'all';
   const inv = model.invariants;
   return (
     <section className="gv-ladder" aria-labelledby="gv-ladder-title">
@@ -103,13 +109,13 @@ export function Ladder({ view }: LadderProps) {
           </ol>
         </>
       )}
-      {inv !== null && inv.violated && (
+      {notes && inv !== null && inv.violated && (
         <p role="alert" className="gv-ladder__banner" data-tone="danger">
           <Icon name="warning" />
           {t('ladder.invariants.bad')}
         </p>
       )}
-      {model.fallback !== null && (
+      {notes && model.fallback !== null && (
         <p className="gv-ladder__note" data-kind="fallback">
           {t('ladder.fallback', {
             reason: model.fallback.reason ?? '',
@@ -117,7 +123,7 @@ export function Ladder({ view }: LadderProps) {
           })}
         </p>
       )}
-      {model.failed !== null && (
+      {notes && model.failed !== null && (
         <p className="gv-ladder__note" data-kind="failed">
           {t('ladder.failed')}
         </p>
@@ -127,7 +133,7 @@ export function Ladder({ view }: LadderProps) {
           <Lane key={lane.paddle} lane={lane} />
         ))}
       </ul>
-      {inv !== null && !inv.violated && inv.totalsMatch && view?.phase === 'SETTLED' && (
+      {notes && inv !== null && !inv.violated && inv.totalsMatch && view?.phase === 'SETTLED' && (
         <p className="gv-ladder__note" data-kind="totals">
           {t('ladder.invariants.ok', {
             c: formatUsd(inv.capturedCents),

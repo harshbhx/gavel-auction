@@ -266,6 +266,7 @@ export const en = {
   'ladder.failed': 'Settlement stopped for review. See the audit trail.',
   'receipt.capturing': 'Finalising your hold',
   'receipt.charged': 'Charged {amount}',
+  'receipt.confirming': 'We are confirming the amount. Reload this page in a moment.',
   'receipt.releasing': 'Releasing your hold',
   'receipt.released': 'You did not win. Your {amount} hold was released.',
   'receipt.fallback':
