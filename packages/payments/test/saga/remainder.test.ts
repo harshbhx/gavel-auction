@@ -36,7 +36,7 @@ describe('T-PAY-043 winner remainder', () => {
         // call at all (R12-P06, G1.7: it could only be refused).
         expect(rig.core.inspect(b1).voidEffects).toBe(0);
         expect(callsOf(rig, b1, 'void')).toBe(0);
-        expect(out.journal.voids[key]).toBe('remainder_released');
+        expect(out.journal.voids[key]).toBe('remainder_closed_by_paypal');
       } else {
         expect(rig.core.inspect(b1).voidEffects).toBe(1);
         expect(out.journal.voids[key]).toBe('remainder_voided');
@@ -140,7 +140,7 @@ describe('T-PAY-043 winner remainder', () => {
     const out = await runSettlement(deps, 'auc1');
     expect(out.status).toBe('settled');
     if (out.status !== 'settled') return;
-    expect(out.journal.voids[remainderKey('b1')]).toBe('remainder_released');
+    expect(out.journal.voids[remainderKey('b1')]).toBe('remainder_closed_by_paypal');
   });
 
   it('decision C leaves an open remainder to expire without a void; unknown voids as B', async () => {

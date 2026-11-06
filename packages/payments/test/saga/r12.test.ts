@@ -274,7 +274,7 @@ describe('R12-P02 a slow release never ends a paid sale in review', () => {
     const out = await runVoidPhase(w.deps, 'auc1');
     expect(out.status).toBe('settled');
     if (out.status !== 'settled') return;
-    expect(out.journal.voids[remainderKey('b1')]).toBe('remainder_released');
+    expect(out.journal.voids[remainderKey('b1')]).toBe('remainder_closed_by_paypal');
     assertFakeInvariants(w.server.core);
   });
 });
@@ -427,7 +427,7 @@ describe('R12-P06 decision A: no remainder void after a verified final capture',
     const out = await runSettlement(w.deps, 'auc1');
     expect(out.status).toBe('settled');
     if (out.status !== 'settled') return;
-    expect(out.journal.voids[remainderKey('b1')]).toBe('remainder_released');
+    expect(out.journal.voids[remainderKey('b1')]).toBe('remainder_closed_by_paypal');
     // G1.7: that void could only be refused with PREVIOUSLY_CAPTURED.
     expect(voidCallsOn(w, w.auth('b1'))).toBe(0);
     expect(w.audits.filter((a) => a.op === 'void' && a.holdId === 'hold-b1')).toEqual([]);

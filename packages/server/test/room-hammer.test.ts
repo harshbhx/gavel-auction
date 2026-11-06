@@ -187,6 +187,40 @@ describe('hammer and auto-hammer (R-RT-044, R-RT-050, R-RT-051)', () => {
     expect(t.payments.calls).toHaveLength(1);
   });
 
+  it('flags a lot the auctioneer ended as stopped, on the frame, the snapshot and after reload', async () => {
+    const t = await setup();
+    const c1 = await t.connect(t.room, 'bidder', t.b1);
+    const boss = await t.connect(t.room, 'auctioneer');
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    await t.room.control(boss.conn, {
+      controlId: 'stop1',
+      action: 'hammer',
+      args: { closeNow: 1 },
+    });
+    expect(c1.transport.messages('hammer')[0]).toMatchObject({ stopped: true });
+    const late = await t.connect(t.room, 'screen');
+    expect(late.transport.messages('state').at(-1)).toMatchObject({ snapshot: { stopped: true } });
+    const restarted = await Room.load(t.auctionId, t.deps);
+    const after = await t.connect(restarted, 'screen');
+    expect(after.transport.messages('state').at(-1)).toMatchObject({
+      snapshot: { stopped: true },
+    });
+  });
+
+  it('leaves stopped off when the timer ended the lot', async () => {
+    const t = await setup({ autoHammerDelayMs: 3000 });
+    const c1 = await t.connect(t.room, 'bidder', t.b1);
+    await t.room.submitBid(c1.conn, t.bid(10000));
+    t.clock.set(START + 600_000);
+    await t.flush();
+    t.clock.set(START + 603_000);
+    await t.flush();
+    expect(c1.transport.messages('hammer')).toHaveLength(1);
+    expect(c1.transport.messages('hammer')[0]).not.toHaveProperty('stopped');
+    const late = await t.connect(t.room, 'screen');
+    expect(late.transport.messages('state').at(-1)?.snapshot).not.toHaveProperty('stopped');
+  });
+
   it('does not auto-hammer when no delay is configured', async () => {
     const t = await setup();
     t.clock.set(START + 700_000);
