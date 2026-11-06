@@ -5,6 +5,7 @@ export * from './time';
 export * from './enums';
 export * from './api-error';
 export * from './config-schema';
+export * from './config-rules';
 export * from './events';
 export * from './ids-mint';
 export * from './money-format';

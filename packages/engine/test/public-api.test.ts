@@ -79,7 +79,10 @@ describe('ledger export', () => {
       const bad = join(dir, 'bad.jsonl');
       writeFileSync(good, exportJsonl(entries));
       writeFileSync(bad, tamperAt(exportJsonl(entries), 2));
-      const ok = node('bin/verify-ledger.mjs', [good]);
+      const open = node('bin/verify-ledger.mjs', [good]);
+      expect(open.code).toBe(1);
+      expect(open.out).toContain('not closed');
+      const ok = node('bin/verify-ledger.mjs', ['--allow-open', good]);
       expect(ok.code).toBe(0);
       expect(ok.out).toContain(headOf(entries)?.hash);
       expect(verifyLedgerFile(good)).toMatchObject({ ok: true, count: 3 });
@@ -89,7 +92,9 @@ describe('ledger export', () => {
       expect(node('bin/verify-ledger.mjs', []).code).toBe(2);
       const head = headOf(entries);
       const goodHead = `${head?.seq}:${head?.hash}`;
-      expect(node('bin/verify-ledger.mjs', ['--head', goodHead, good]).code).toBe(0);
+      expect(node('bin/verify-ledger.mjs', ['--allow-open', '--head', goodHead, good]).code).toBe(
+        0,
+      );
       const cut = join(dir, 'cut.jsonl');
       writeFileSync(cut, exportJsonl(entries.slice(0, 2)));
       const trunc = node('bin/verify-ledger.mjs', ['--head', goodHead, cut]);
@@ -98,7 +103,7 @@ describe('ledger export', () => {
       const empty = join(dir, 'empty.jsonl');
       writeFileSync(empty, '');
       expect(node('bin/verify-ledger.mjs', [empty]).code).toBe(1);
-      expect(node('bin/verify-ledger.mjs', ['--allow-empty', empty]).code).toBe(0);
+      expect(node('bin/verify-ledger.mjs', ['--allow-empty', '--allow-open', empty]).code).toBe(0);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

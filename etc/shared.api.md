@@ -1159,6 +1159,9 @@ export type Cents = number & {
     readonly __brand_centsBrand: 'Cents';
 };
 
+// @public
+export function checkAuctionConfig(input: unknown, nowMs: number): ConfigRuleResult;
+
 // @public (undocumented)
 export type ClientMsg = JoinMsg | BidMsg | ConfirmResponseMsg;
 
@@ -1284,6 +1287,15 @@ export type CodecResult<T> = {
 } | {
     ok: false;
     error: GavelError;
+};
+
+// @public (undocumented)
+export type ConfigRuleResult = {
+    ok: true;
+    config: AuctionConfig;
+} | {
+    ok: false;
+    errors: string[];
 };
 
 // @public (undocumented)
@@ -1906,6 +1918,9 @@ export const ErrorSchema: z.ZodObject<{
 
 // @public (undocumented)
 export type EventId = Ulid<'EventId'>;
+
+// @public
+export function formatPath(path: readonly (string | number)[]): string;
 
 // @public
 export function formatUsd(cents: Cents): string;
