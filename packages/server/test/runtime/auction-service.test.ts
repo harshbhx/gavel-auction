@@ -2179,6 +2179,132 @@ describe('auction service: HRD-16 hold recovery wiring', () => {
   });
 });
 
+describe('auction service: kill switch does not replay finished auctions (HRD-81)', () => {
+  it('aborts the open auction and leaves finished ones unread, pass after pass', async () => {
+    const rig = await makeRig();
+    const first = rig.service({ resumeIntervalMs: 0 });
+    const finished = rig.ids.mint<'AuctionId'>();
+    const room = await first.createAuction(finished, config, 'auctioneer-sub');
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await first.idle();
+    expect(room.isDone).toBe(true);
+    const open = rig.ids.mint<'AuctionId'>();
+    await first.createAuction(open, config, 'auctioneer-sub');
+    await first.close();
+
+    await rig.killSwitch.engage('operator stop', 'ops');
+    const replays: string[] = [];
+    const read = rig.stores.store.readEvents.bind(rig.stores.store);
+    rig.stores.store.readEvents = (id, from, limit) => {
+      if (from === 1) replays.push(id);
+      return read(id, from, limit);
+    };
+    const second = rig.service({ resumeIntervalMs: 0, killSwitch: rig.killSwitch });
+    expect(await second.abortOpenLots()).toEqual([open]);
+    for (let i = 0; i < 3; i += 1) {
+      rig.clock.advance(60_000);
+      await second.resume();
+    }
+    expect(replays).not.toContain(finished);
+    expect(second.stats().rooms).toBeLessThanOrEqual(1);
+    await second.close();
+  });
+});
+
+describe('auction service: abandoned checkouts are read with back-off and expire (HRD-81)', () => {
+  const quiet = { resumeIntervalMs: 0, holdSweepMinAgeMs: 60_000, onError: () => undefined };
+  const MIN = 60_000;
+
+  function readsOf(rig: Rig, orderId: string): number {
+    return rig.paypal.core.calls.filter((c) => c.op === 'get' && c.id === orderId).length;
+  }
+
+  async function abandoned(
+    rig: Rig,
+    auctionId: AuctionId,
+  ): Promise<{ holdId: string; orderId: string }> {
+    const created = await rig.holdsApi.createHoldOrder({
+      auctionId,
+      bidderId: rig.ids.mint<'BidderId'>(),
+      ceilingCents: 30000,
+      presetsCents: config.ceilingPresets,
+    });
+    return { holdId: created.holdId, orderId: created.orderId };
+  }
+
+  it('reads an unapproved order far less than once a minute, then expires it', async () => {
+    const rig = await makeRig();
+    const service = rig.service(quiet);
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const { holdId, orderId } = await abandoned(rig, auctionId);
+    for (let m = 1; m <= 170; m += 1) {
+      rig.clock.set(START + m * MIN);
+      await service.resume();
+    }
+    expect(readsOf(rig, orderId)).toBeLessThanOrEqual(12);
+    expect((await rig.stores.holds.get(holdId))?.status).toBe('PENDING_APPROVAL');
+    for (let m = 171; m <= 600; m += 1) {
+      rig.clock.set(START + m * MIN);
+      await service.resume();
+    }
+    expect((await rig.stores.holds.get(holdId))?.status).toBe('EXPIRED');
+    const after = readsOf(rig, orderId);
+    for (let m = 601; m <= 700; m += 1) {
+      rig.clock.set(START + m * MIN);
+      await service.resume();
+    }
+    expect(readsOf(rig, orderId)).toBe(after);
+    await service.close();
+  });
+
+  it('still releases a HELD runner-up hold of a review while checkouts back off', async () => {
+    const rig = await makeRig();
+    const service = rig.service({
+      retryDelayMs: 3_600_000,
+      resumeIntervalMs: 0,
+      unknownDeadlineMs: 1_000,
+      holdSweepMinAgeMs: 60_000,
+      onError: () => undefined,
+    });
+    rig.paypal.core.inject('capture', 'timeout_before', null, 1000);
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    await room.submitBid(b.conn, bid(rig, 10000));
+    await room.submitBid(a.conn, bid(rig, 11000));
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    rig.clock.set(START + 10_000);
+    await service.resume();
+    await service.idle();
+    const review = await journalOf(rig, auctionId);
+    expect(review.state).toBe('FAILED_NEEDS_REVIEW');
+    for (const conn of [a.conn, b.conn, boss.conn]) room.detach(conn.id);
+    const entered = [...review.history].reverse().find((h) => h.to === 'FAILED_NEEDS_REVIEW');
+    const reviewAtMs = entered?.tsMs ?? START + 10_000;
+    const { holdId, orderId } = await abandoned(rig, auctionId);
+
+    for (let t = START + 5 * MIN; t < reviewAtMs + 24 * 60 * MIN; t += 5 * MIN) {
+      rig.clock.set(t);
+      await service.resume();
+      await service.idle();
+    }
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('CREATED');
+    expect(readsOf(rig, orderId)).toBeLessThanOrEqual(20);
+    expect((await rig.stores.holds.get(holdId))?.status).toBe('EXPIRED');
+    rig.clock.set(reviewAtMs + 24 * 60 * MIN + 2 * MIN);
+    await service.resume();
+    await service.idle();
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(b.holdId))?.status).toBe('VOIDED');
+    await service.close();
+  });
+});
+
 describe('auction service: resume keeps a room a client just asked for (#1749)', () => {
   it('does not unload a finished room under a joining socket', async () => {
     const rig = await makeRig();
