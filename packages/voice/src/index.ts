@@ -52,3 +52,12 @@ export { FailoverStt, realClock } from './stt/failover.js';
 export type { FailoverClock, FailoverOptions } from './stt/failover.js';
 export { ReplayStt, parseTimeline } from './stt/replay.js';
 export type { ReplayScheduler, Timeline } from './stt/replay.js';
+export { createLiveTranscriber, transcribeLive } from './eval/live.js';
+export type {
+  LiveDeps,
+  LiveFetch,
+  LiveProvider,
+  LiveRequestInit,
+  LiveSegment,
+  LiveTranscript,
+} from './eval/live.js';
