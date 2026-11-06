@@ -6,7 +6,7 @@ export interface FallbackProps {
   /** Final amount charged to the runner-up who became the winner. */
   chargedCents: number;
   idSuffix: string;
-  at: number;
+  at: number | null;
 }
 
 /** Receipt for a runner-up who became the winner after the first winner could not be charged (R-WEB-097). Show only after CAPTURED. */
@@ -16,15 +16,19 @@ export function Fallback({ itemName, chargedCents, idSuffix, at }: FallbackProps
       <dl className="gv-receipt__rows">
         <dt>{t('receipt.item')}</dt>
         <dd>{itemName}</dd>
-        <dt>{t('receipt.time')}</dt>
-        <dd>
-          <time dateTime={new Date(at).toISOString()}>{new Date(at).toISOString()}</time>
-        </dd>
+        {at !== null && (
+          <>
+            <dt>{t('receipt.time')}</dt>
+            <dd>
+              <time dateTime={new Date(at).toISOString()}>{new Date(at).toISOString()}</time>
+            </dd>
+          </>
+        )}
       </dl>
       <p className="gv-receipt__status">
         {t('receipt.fallback', { amount: formatUsd(chargedCents) })}
       </p>
-      <p>{t('receipt.reference', { suffix: idSuffix })}</p>
+      {idSuffix !== '' && <p>{t('receipt.reference', { suffix: idSuffix })}</p>}
     </section>
   );
 }

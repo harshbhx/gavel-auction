@@ -13,13 +13,20 @@ export interface Transport {
   close(): void;
 }
 
+/** The price, leader paddle (0 for none) and seq the auctioneer saw when confirming a hammer. */
+export interface HammerExpectation {
+  priceCents: number;
+  leaderPaddle: number;
+  seq: number;
+}
+
 /** Auctioneer-only commands (HTTP, OQ-WEB-2). */
 export interface ControlPort {
   open(lotId: string): Promise<void>;
   pause(): Promise<void>;
   resume(): Promise<void>;
   extend(ms: number): Promise<void>;
-  hammer(lotId: string): Promise<void>;
+  hammer(lotId: string, expected?: HammerExpectation): Promise<void>;
   kill(confirm: 'STOP'): Promise<void>;
 }
 

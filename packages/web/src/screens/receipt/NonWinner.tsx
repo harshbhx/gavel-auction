@@ -5,7 +5,7 @@ import { formatUsd } from '../../util/money';
 export interface NonWinnerProps {
   hold: HoldView;
   itemName: string;
-  at: number;
+  at: number | null;
 }
 
 /** True only once the hold has been voided and released. */
@@ -24,10 +24,14 @@ export function NonWinner({ hold, itemName, at }: NonWinnerProps) {
       <dl className="gv-receipt__rows">
         <dt>{t('receipt.item')}</dt>
         <dd>{itemName}</dd>
-        <dt>{t('receipt.time')}</dt>
-        <dd>
-          <time dateTime={new Date(at).toISOString()}>{new Date(at).toISOString()}</time>
-        </dd>
+        {at !== null && (
+          <>
+            <dt>{t('receipt.time')}</dt>
+            <dd>
+              <time dateTime={new Date(at).toISOString()}>{new Date(at).toISOString()}</time>
+            </dd>
+          </>
+        )}
       </dl>
       {released ? (
         <p className="gv-receipt__status">{t('receipt.released', { amount })}</p>
