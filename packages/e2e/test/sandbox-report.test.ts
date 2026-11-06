@@ -30,10 +30,10 @@ describe('nightly sandbox report (T-QA-058)', () => {
 
   it('marks every spec skipped when the secrets are absent', () => {
     const r = buildSandboxReport({ ...base, secretsPresent: false, results: [] });
-    expect(r.specs).toHaveLength(9);
+    expect(r.specs).toHaveLength(10);
     expect(r.specs.every((s) => s.status === 'skipped')).toBe(true);
     expect(r.overall).toBe('skipped');
-    expect(r.counts).toEqual({ pass: 0, fail: 0, inconclusive: 0, skipped: 9 });
+    expect(r.counts).toEqual({ pass: 0, fail: 0, inconclusive: 0, skipped: 10 });
   });
 
   it('records pass, fail, inconclusive and skipped side by side', () => {
@@ -63,7 +63,7 @@ describe('nightly sandbox report (T-QA-058)', () => {
     writeFileSync(join(dir, 'R2.json'), '{not json');
     writeFileSync(
       join(dir, 'R3.json'),
-      JSON.stringify({ spec: 'R9', status: 'pass', observed: '' }),
+      JSON.stringify({ spec: 'R99', status: 'pass', observed: '' }),
     );
     expect(readResults(dir).map((r) => r.spec)).toEqual(['R1']);
     expect(readResults(join(dir, 'missing'))).toEqual([]);

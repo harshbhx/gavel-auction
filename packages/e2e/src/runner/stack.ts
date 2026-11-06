@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Checkpoint } from '../dsl/types';
 import { ManagedProcess, ProcessGroup, freePort, waitForHttp } from './process';
@@ -60,6 +60,7 @@ export async function startStack(opts: StackOptions = {}): Promise<Stack> {
     STORE: 'file',
     DATA_DIR: dataDir,
     PAYMENTS: 'fake',
+    PAYPAL_ENV: 'sandbox',
     ...opts.env,
     ...(checkpoint === undefined ? {} : { GAVEL_CHECKPOINT_KILL: checkpoint }),
   });
@@ -92,7 +93,7 @@ export async function startStack(opts: StackOptions = {}): Promise<Stack> {
           name: 'web',
           command: process.execPath,
           args: [
-            bin(webDir, 'vite/bin/vite.js'),
+            join(dirname(bin(webDir, 'vite/package.json')), 'bin', 'vite.js'),
             '--host',
             '127.0.0.1',
             '--port',

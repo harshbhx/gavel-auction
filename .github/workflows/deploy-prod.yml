@@ -1,0 +1,118 @@
+name: deploy-prod
+# Production deploy of the API and WebSocket host (R-QA-042, R-QA-049).
+# Runs on a v* tag or by hand. The job uses the `production` environment, which carries the
+# required reviewer, so nothing deploys until a reviewer approves it.
+# Rollback: dispatch with rollback=true; the job redeploys the deploy that was live before the
+# current one, using the Render API. See infra/rollback.md.
+# Needs, in environment production: secrets RENDER_API_KEY and RENDER_DEPLOY_HOOK_URL, variables
+# RENDER_SERVICE_ID and PRODUCTION_URL. Without them the job ends green with a notice.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      rollback:
+        description: 'Redeploy the previous live deploy instead of building a new one'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check configuration
+        id: cfg
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          RENDER_SERVICE_ID: ${{ vars.RENDER_SERVICE_ID }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+        run: |
+          missing=""
+          [ -n "$RENDER_API_KEY" ] || missing="$missing secret:RENDER_API_KEY"
+          [ -n "$RENDER_DEPLOY_HOOK_URL" ] || missing="$missing secret:RENDER_DEPLOY_HOOK_URL"
+          [ -n "$RENDER_SERVICE_ID" ] || missing="$missing variable:RENDER_SERVICE_ID"
+          [ -n "$PRODUCTION_URL" ] || missing="$missing variable:PRODUCTION_URL"
+          if [ -n "$missing" ]; then
+            echo "::notice title=Deploy skipped::Not configured, add to environment production:$missing (see infra/rollback.md)"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Record the live deploy before changing anything
+        if: steps.cfg.outputs.ready == 'true'
+        id: before
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ vars.RENDER_SERVICE_ID }}
+        run: |
+          list="$(curl -sS --max-time 30 -H "authorization: Bearer $RENDER_API_KEY" \
+            "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys?limit=20")"
+          live="$(printf '%s' "$list" | jq -r '[.[].deploy | select(.status == "live")] | .[0].id // empty')"
+          previous="$(printf '%s' "$list" | jq -r '[.[].deploy | select(.status == "deactivated")] | .[0].id // empty')"
+          echo "live=$live" >> "$GITHUB_OUTPUT"
+          echo "previous=$previous" >> "$GITHUB_OUTPUT"
+          echo "Live deploy before this run: ${live:-none}; previous: ${previous:-none}" >> "$GITHUB_STEP_SUMMARY"
+      - name: Deploy the new build
+        if: steps.cfg.outputs.ready == 'true' && !inputs.rollback
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X POST "$RENDER_DEPLOY_HOOK_URL" || true)"
+          case "$code" in
+            2??) echo "Render accepted the deploy ($code)" ;;
+            *) echo "::error title=Deploy hook::Render answered $code"; exit 1 ;;
+          esac
+      - name: Roll back to the previous deploy
+        if: steps.cfg.outputs.ready == 'true' && inputs.rollback
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ vars.RENDER_SERVICE_ID }}
+          PREVIOUS: ${{ steps.before.outputs.previous }}
+        run: |
+          if [ -z "$PREVIOUS" ]; then
+            echo "::error title=Rollback::no previous deploy is recorded for this service"
+            exit 1
+          fi
+          code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X POST \
+            -H "authorization: Bearer $RENDER_API_KEY" -H 'content-type: application/json' \
+            --data "{\"deployId\":\"$PREVIOUS\"}" \
+            "https://api.render.com/v1/services/$RENDER_SERVICE_ID/rollback" || true)"
+          case "$code" in
+            2??) echo "Rolled back to $PREVIOUS ($code)" >> "$GITHUB_STEP_SUMMARY" ;;
+            *) echo "::error title=Rollback::Render answered $code"; exit 1 ;;
+          esac
+      - name: Smoke and version check
+        if: steps.cfg.outputs.ready == 'true'
+        env:
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+          SMOKE_RETRIES: '60'
+        run: |
+          # The old instance can answer before the new build is live, so give the deploy time first.
+          sleep 60
+          scripts/smoke.sh "$PRODUCTION_URL"
+          sha="$(curl -sS --max-time 15 "${PRODUCTION_URL%/}/version" | jq -r '.sha // empty')"
+          echo "Production now serves sha: ${sha:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ inputs.rollback }}" != "true" ] && [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            case "$GITHUB_SHA" in
+              "$sha"*) echo "Version matches the tag" ;;
+              *) echo "::error title=Version::served sha ${sha:-unknown} does not match $GITHUB_SHA"; exit 1 ;;
+            esac
+          fi

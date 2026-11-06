@@ -35,6 +35,7 @@ export type Step =
   | { t: number; actor: string; do: 'disconnect' | 'reconnect' }
   | { t: number; actor: string; do: 'send_raw'; frame: string }
   | { t: number; do: 'advance_clock'; ms: number }
+  | { t: number; do: 'restart' }
   | { t: number; do: 'fault'; fault: Fault };
 
 export type SettlementState =
@@ -56,6 +57,17 @@ export type Expect =
   | { invariants: Invariant[] }
   | { rejected: Array<{ actor: string; code: ErrorCode }> }
   | { paypalCalls: { capture: number; void: number; reauthorize?: number } }
+  | { bids: { accepted: number; price?: Cents; resynced?: number } }
+  | { webhooks: { duplicates: number } }
+  | {
+      voice: {
+        bids: Cents[];
+        confirms: number;
+        candidates?: number;
+        audit?: Array<{ transcript: string; confidenceBps: number }>;
+      };
+    }
+  | { captures: { committed: number; requestIds: number } }
   | { ui?: { view: 'bidder' | 'auctioneer' | 'public' | 'audit'; text?: string; a11y?: true } };
 
 export interface Scenario {

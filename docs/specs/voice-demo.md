@@ -22,3 +22,17 @@ Sandbox demo, do not speak personal data. Vendor retention terms for the speech 
 3. Say out loud which mode is on screen; never present a recording as live.
 
 Runbook for provider outages: `packages/voice/README.md`.
+
+## Rehearsal plan and notes (issue 490)
+
+Status: cached path verified in CI only; hosted live rehearsals NOT DONE (no provider key and no hosted build available to the author). Fill the table during each rehearsal.
+
+Cached path in CI: `packages/voice/test/replay/cache-fixtures.test.ts` replays `fixtures/stt-cache` through the real parser and decision code on a virtual clock, checks each final lands within 300 ms of its recorded offset, and runs twice for identical decisions. Expected outcomes: utterance 1 accept (paddle 4, $300), utterance 2 confirm, utterance 3 drop.
+
+| Run | Mode                 | Source label shown | Utt 1 at (s) | Utt 2 confirm tapped (s) | Fallback used | Notes |
+| --- | -------------------- | ------------------ | ------------ | ------------------------ | ------------- | ----- |
+| 1   | live                 |                    |              |                          |               |       |
+| 2   | live                 |                    |              |                          |               |       |
+| 3   | cached (network off) |                    |              |                          |               |       |
+
+Checks per run: the label reads "Live" for microphone audio and "Recorded audio replay" for the cached clip; the recorded run needs no key; switching to manual entry on the console works with voice disabled; the total stays within 20 s of speech.

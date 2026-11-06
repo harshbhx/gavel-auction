@@ -3,7 +3,7 @@ import { ManagedProcess, freePort, waitForHttp } from '../runner/process';
 import { startStack, type Stack } from '../runner/stack';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 /**
  * Base fixtures for the browser specs (R-QA-033, T-QA-045). A worker-scoped `stack` starts the real
@@ -30,7 +30,11 @@ async function startBrowserStack(): Promise<{ stack: BrowserStack; stop: () => P
   const port = await freePort();
   const webUrl = `http://127.0.0.1:${port}`;
   const wsUrl = server.serverUrl.replace(/^http/, 'ws');
-  const viteBin = createRequire(join(webDir, 'package.json')).resolve('vite/bin/vite.js');
+  const viteBin = join(
+    dirname(createRequire(join(webDir, 'package.json')).resolve('vite/package.json')),
+    'bin',
+    'vite.js',
+  );
   const web = new ManagedProcess({
     name: 'web',
     command: process.execPath,

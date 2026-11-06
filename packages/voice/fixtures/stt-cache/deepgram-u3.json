@@ -1,0 +1,85 @@
+{
+  "provider": "deepgram",
+  "utterance": 3,
+  "startMs": 17000,
+  "endMs": 19695,
+  "source": "reference-transcript",
+  "events": [
+    {
+      "atMs": 17400,
+      "event": {
+        "type": "interim",
+        "text": "let me",
+        "startMs": 17000
+      }
+    },
+    {
+      "atMs": 19795,
+      "event": {
+        "type": "final",
+        "text": "Let me think about that for a moment.",
+        "words": [
+          {
+            "word": "let",
+            "start": 17,
+            "end": 17.337,
+            "confidence": 0.94
+          },
+          {
+            "word": "me",
+            "start": 17.337,
+            "end": 17.674,
+            "confidence": 0.94
+          },
+          {
+            "word": "think",
+            "start": 17.674,
+            "end": 18.011,
+            "confidence": 0.94
+          },
+          {
+            "word": "about",
+            "start": 18.011,
+            "end": 18.348,
+            "confidence": 0.94
+          },
+          {
+            "word": "that",
+            "start": 18.348,
+            "end": 18.684,
+            "confidence": 0.94
+          },
+          {
+            "word": "for",
+            "start": 18.684,
+            "end": 19.021,
+            "confidence": 0.94
+          },
+          {
+            "word": "a",
+            "start": 19.021,
+            "end": 19.358,
+            "confidence": 0.94
+          },
+          {
+            "word": "moment",
+            "start": 19.358,
+            "end": 19.695,
+            "confidence": 0.94
+          }
+        ],
+        "startMs": 17000,
+        "endMs": 19695,
+        "confidence": 0.94,
+        "speechFinal": true
+      }
+    },
+    {
+      "atMs": 19945,
+      "event": {
+        "type": "utterance_end",
+        "atMs": 19695
+      }
+    }
+  ]
+}
