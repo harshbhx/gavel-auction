@@ -3,6 +3,7 @@ import type {
   ConfirmRequestMsg,
   HammerMsg,
   RoomSnapshot,
+  OwnHold,
   ServerMessage,
   SettlementUpdateMsg,
 } from '../wire';
@@ -68,6 +69,8 @@ export interface RoomState {
   settlementDetail?: SettlementDetail;
   /** Server time and own captured amount from the latest settlement_update. */
   settlementMeta?: SettlementMeta;
+  /** This viewer's own hold from the latest settlement_update that carried one. */
+  ownHold?: OwnHold;
   lastError: { code: string; message: string; retryAfterMs: number | null } | null;
 }
 
@@ -145,6 +148,7 @@ function applySnapshot(state: RoomState, msg: Extract<ServerMessage, { t: 'state
     auditTruncated: snap.recentAudit.length >= SNAPSHOT_AUDIT_ROWS,
     ...(state.settlementDetail === undefined ? {} : { settlementDetail: state.settlementDetail }),
     ...(state.settlementMeta === undefined ? {} : { settlementMeta: state.settlementMeta }),
+    ...(state.ownHold === undefined ? {} : { ownHold: state.ownHold }),
   };
 }
 
@@ -233,7 +237,11 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
             : {}
           : { capturedCents: msg.amountCaptured }),
       };
-      const withMeta: RoomState = { ...next, settlementMeta: meta };
+      const withMeta: RoomState = {
+        ...next,
+        settlementMeta: meta,
+        ...(msg.yourHold === undefined ? {} : { ownHold: msg.yourHold }),
+      };
       if (msg.holds === undefined) return withMeta;
       return {
         ...withMeta,
