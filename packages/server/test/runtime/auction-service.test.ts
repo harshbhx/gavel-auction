@@ -2124,3 +2124,193 @@ describe('auction service: payments wiring (HRD-52)', () => {
     await service.close();
   });
 });
+
+describe('auction service: reauthorization and reconcile safety (HRD-52 review)', () => {
+  const DAY_MS = 86_400_000;
+  const reauthPolicy = { enabled: true, honorSafeMs: 60_000 };
+  const reauthCalls = (rig: Rig): PaymentAudit[] =>
+    rig.audits.filter((e) => e.kind === 'paypal_call' && e.op === 'reauth');
+
+  /** A buyer of the lot approves a hold after it settled: a live hold nobody else releases. */
+  async function strayHold(rig: Rig, auctionId: AuctionId): Promise<{ authId: string }> {
+    const created = await rig.holdsApi.createHoldOrder({
+      auctionId,
+      bidderId: rig.ids.mint<'BidderId'>(),
+      ceilingCents: 30000,
+      presetsCents: config.ceilingPresets,
+    });
+    rig.paypal.core.approveOrder(created.orderId);
+    await rig.holdsApi.completeApproval({ holdId: created.holdId, orderId: created.orderId });
+    return { authId: (await rig.stores.holds.get(created.holdId))?.authId ?? '' };
+  }
+
+  it('runs no capture or void while a reauthorization outcome is unknown', async () => {
+    const rig = await makeRig();
+    const service = rig.service({
+      resumeIntervalMs: 0,
+      retryDelayMs: 3_600_000,
+      onError: () => undefined,
+      reauthPolicy,
+    });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    const core = rig.paypal.core;
+    // PayPal's honor period has passed. It reauthorizes Ada's hold, so her old authorization is
+    // closed (A11), but every answer is lost on the way back.
+    core.clock.advance(4 * DAY_MS);
+    rig.paypal.faults.add({
+      kind: 'timeout_after_success',
+      op: 'reauthorize',
+      authId: a.authId,
+      times: 100_000,
+    });
+    await room.submitBid(b.conn, bid(rig, 10000));
+    await room.submitBid(a.conn, bid(rig, 11000));
+    rig.clock.advance(120_000);
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+
+    // The capture waits: Ada is not failed on her closed authorization and Bo is not charged.
+    expect(core.calls.filter((c) => c.op === 'capture' || c.op === 'void')).toEqual([]);
+    const waiting = await journalOf(rig, auctionId);
+    expect(waiting.winner).toBeNull();
+    expect(waiting.failed).toEqual([]);
+    expect(core.getAuthorization(a.authId).status).toBe('VOIDED');
+
+    // The answers come back: the same request id replays the reauthorization and Ada is
+    // charged on the authorization PayPal holds her funds under.
+    rig.paypal.faults.clear();
+    await service.resume();
+    await service.idle();
+    const settled = await journalOf(rig, auctionId);
+    expect(settled.state).toBe('SETTLED');
+    expect(settled.winner).toMatchObject({ bidderId: a.id, amountCents: 11000 });
+    const adaNow = settled.holds[a.id]?.authId ?? '';
+    const boNow = settled.holds[b.id]?.authId ?? '';
+    expect(adaNow).not.toBe(a.authId);
+    expect(core.getAuthorization(adaNow).capturedCents).toBe(11000);
+    expect(core.getAuthorization(a.authId).captures).toHaveLength(0);
+    expect(core.getAuthorization(boNow).status).toBe('VOIDED');
+    expect(core.getAuthorization(boNow).captures).toHaveLength(0);
+    expect(core.getAuthorization(b.authId).captures).toHaveLength(0);
+    core.checkInvariants();
+    await service.close();
+  });
+
+  it('sends the lot to review when a reauthorization stays unknown', async () => {
+    const rig = await makeRig();
+    const errors: unknown[] = [];
+    const service = rig.service({
+      resumeIntervalMs: 0,
+      retryDelayMs: 5,
+      retryMaxDelayMs: 10,
+      onError: (_id, e) => errors.push(e),
+      reauthPolicy,
+    });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    rig.paypal.core.clock.advance(4 * DAY_MS);
+    rig.paypal.faults.add({
+      kind: 'timeout_after_success',
+      op: 'reauthorize',
+      authId: a.authId,
+      times: 100_000,
+    });
+    await room.submitBid(b.conn, bid(rig, 10000));
+    await room.submitBid(a.conn, bid(rig, 11000));
+    rig.clock.advance(120_000);
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await vi.waitFor(
+      async () => expect((await journalOf(rig, auctionId)).state).toBe('FAILED_NEEDS_REVIEW'),
+      { timeout: 10_000 },
+    );
+    await service.idle();
+    const review = await journalOf(rig, auctionId);
+    expect(review.history.at(-1)?.label).toBe('journaled:reauth_unknown');
+    expect(reauthCalls(rig).filter((e) => e.holdId === a.holdId)).toHaveLength(5);
+    expect(rig.paypal.core.calls.filter((c) => c.op === 'capture')).toEqual([]);
+    expect(errors.some((e) => e instanceof Error && /stayed unknown/.test(e.message))).toBe(true);
+    await service.close();
+  });
+
+  it('reauthorizes only the candidates still in play, and only before a capture', async () => {
+    const rig = await makeRig();
+    const service = rig.service({
+      resumeIntervalMs: 0,
+      retryDelayMs: 3_600_000,
+      onError: () => undefined,
+      reauthPolicy,
+    });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    // Ada's and Bo's holds are past PayPal's honor period. Cy's is new there, so PayPal
+    // refuses to reauthorize it. Di registers and never bids.
+    rig.paypal.core.clock.advance(4 * DAY_MS);
+    const c = await enroll(rig, service, room, auctionId, 'Cy', 30000);
+    const d = await enroll(rig, service, room, auctionId, 'Di', 30000);
+    // Di's release stays unconfirmed, so the settlement is still VOIDING after the capture.
+    rig.paypal.faults.add({ kind: 'http_500', op: 'void', authId: d.authId, times: 100_000 });
+    await room.submitBid(b.conn, bid(rig, 10000));
+    await room.submitBid(c.conn, bid(rig, 10500));
+    await room.submitBid(a.conn, bid(rig, 11000));
+    rig.clock.advance(120_000);
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+
+    const journal = await journalOf(rig, auctionId);
+    expect(journal.state).toBe('VOIDING');
+    expect(journal.winner).toMatchObject({ bidderId: a.id, amountCents: 11000 });
+    const first = reauthCalls(rig).map((e) => e.holdId);
+    expect([...first].sort()).toEqual([a.holdId, b.holdId, c.holdId].sort());
+
+    // A pass after the capture reauthorizes nothing, not even the hold PayPal refused.
+    await service.resume();
+    await service.idle();
+    expect((await journalOf(rig, auctionId)).state).toBe('VOIDING');
+    expect(reauthCalls(rig)).toHaveLength(first.length);
+    expect(rig.paypal.core.getAuthorization(d.authId).status).toBe('CREATED');
+    await service.close();
+  });
+
+  it('repairs only a stray live hold of a lot settled within the look-back', async () => {
+    const rig = await makeRig();
+    const service = rig.service({
+      resumeIntervalMs: 0,
+      reconcileIntervalMs: 20,
+      reconcileRepair: true,
+    });
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    const core = rig.paypal.core;
+    const settledCalls = core.calls.length;
+
+    const stray = await strayHold(rig, run.auctionId);
+    await vi.waitFor(() => {
+      const voids = core.calls.slice(settledCalls).filter((c) => c.op === 'void');
+      expect(voids.map((c) => c.id)).toEqual([stray.authId]);
+    });
+    expect(core.getAuthorization(stray.authId).status).toBe('VOIDED');
+    expect(core.getAuthorization(run.a.authId).capturedCents).toBe(13000);
+
+    // A day later the lot is outside the look-back: the pass reads nothing at PayPal for it,
+    // so a hold approved now is left to the resume pass.
+    rig.clock.advance(25 * 3_600_000);
+    await new Promise((r) => setTimeout(r, 100));
+    const late = await strayHold(rig, run.auctionId);
+    const before = core.calls.length;
+    await new Promise((r) => setTimeout(r, 200));
+    expect(core.calls.slice(before)).toEqual([]);
+    expect(core.getAuthorization(late.authId).status).toBe('CREATED');
+    await service.close();
+  });
+});
