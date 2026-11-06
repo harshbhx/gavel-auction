@@ -30,7 +30,8 @@ export interface SettlementView {
   /** The price the hammer fell at. When present, the winning lane must be charged exactly this. */
   hammerPriceCents?: number;
   holds: HoldView[];
-  invariants: { ok: boolean; violations: string[] };
+  /** `unreported` is set when the server sent no invariants: the check result is then unknown, not ok. */
+  invariants: { ok: boolean; violations: string[]; unreported?: boolean };
   /** Hold counts per state, for views that get no per-hold lanes. */
   counts?: Readonly<Partial<Record<SettlementState, number>>>;
 }
@@ -79,6 +80,8 @@ export interface LadderInvariants {
   /** Always true until the phase is final; totals only have to balance once everything has settled. */
   totalsMatch: boolean;
   serverOk: boolean;
+  /** True when the server sent no invariants; there is no result to show, green or red. */
+  unreported: boolean;
   integerCents: boolean;
   /** Any violated invariant. Drives the red "Needs review" banner. */
   violated: boolean;
@@ -234,6 +237,7 @@ function buildInvariants(view: SettlementView): LadderInvariants {
         : // Only the winning price may be charged, never the ceiling (R-WEB-091). Until the capture
           // lands nothing is captured yet, which is not a violation.
           capturedCents === 0 || capturedCents === view.hammerPriceCents;
+  const unreported = view.invariants.unreported === true;
   const totalsMatch =
     !FINAL_PHASES.includes(view.phase) || capturedCents + releasedCents === holdsCents;
   return {
@@ -244,8 +248,12 @@ function buildInvariants(view: SettlementView): LadderInvariants {
     capturedWithinCeiling,
     totalsMatch,
     serverOk: view.invariants.ok,
+    unreported,
     integerCents,
-    violated: !view.invariants.ok || !integerCents || !capturedWithinCeiling || !totalsMatch,
+    // Without a server result and per-hold data the totals cannot be judged either way.
+    violated:
+      !unreported &&
+      (!view.invariants.ok || !integerCents || !capturedWithinCeiling || !totalsMatch),
     serverViolations: [...view.invariants.violations],
   };
 }

@@ -322,7 +322,10 @@ export function ReceiptRoute({ roomId }: { roomId: string }) {
   const state = useRoom((s) => s);
   const online = useOnline();
   const stopped = useRoom(selectors.stopped);
-  const { view, paddle, at, runnerUp, detail } = useMemo(() => receiptSource(state), [state]);
+  const { view, paddle, at, runnerUp, detail, noHold } = useMemo(
+    () => receiptSource(state),
+    [state],
+  );
   const itemName = state.snapshot?.lotTitle ?? t('receipt.untitled');
   return (
     <main data-route="receipt">
@@ -334,7 +337,14 @@ export function ReceiptRoute({ roomId }: { roomId: string }) {
         <Empty view="receipt" />
       ) : (
         <>
-          <Receipt view={view} paddle={paddle} itemName={itemName} at={at} runnerUp={runnerUp} />
+          <Receipt
+            view={view}
+            paddle={paddle}
+            itemName={itemName}
+            at={at}
+            runnerUp={runnerUp}
+            noHold={noHold}
+          />
           <SettlementPanel
             view={view}
             detail={detail}

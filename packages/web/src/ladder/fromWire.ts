@@ -12,9 +12,21 @@ export interface ReceiptSource {
   runnerUp: boolean;
   /** True when the server sent per-hold data (ids, confirmations, invariants). */
   detail: boolean;
+  /** True when the server named no hold for this viewer: nothing was held and nothing was charged. */
+  noHold: boolean;
 }
 
-const NONE: ReceiptSource = { view: null, paddle: null, at: null, runnerUp: false, detail: false };
+const NONE: ReceiptSource = {
+  view: null,
+  paddle: null,
+  at: null,
+  runnerUp: false,
+  detail: false,
+  noHold: false,
+};
+
+/** The server sent no invariants: the result is unknown, never ok. */
+const UNREPORTED: SettlementView['invariants'] = { ok: false, violations: [], unreported: true };
 
 const FINAL: readonly SettlementState[] = ['CAPTURED', 'SETTLED'];
 
@@ -31,9 +43,11 @@ export function receiptSource(state: RoomState): ReceiptSource {
   if (snap === null || hammer === null || settled === undefined || me === null) return NONE;
   const row = snap.roster.find((r) => r.bidderId === me);
   if (row === undefined) return NONE;
-  const ownState = settled.you ?? settled.auctionState;
+  // The viewer's own state only: the auction-wide state says nothing about this bidder's hold.
+  const ownState = settled.you;
   const meta = state.settlementMeta;
-  const at = meta !== undefined && FINAL.includes(meta.state) ? meta.at : null;
+  const at =
+    meta !== undefined && meta.state !== null && FINAL.includes(meta.state) ? meta.at : null;
   const hammerPaddle = snap.roster.find((r) => r.bidderId === hammer.winnerId)?.paddle ?? null;
   const isHammerWinner = hammer.winnerId === me;
   const detail = state.settlementDetail;
@@ -65,6 +79,7 @@ export function receiptSource(state: RoomState): ReceiptSource {
       at,
       runnerUp: detail.winnerPaddle === row.paddle && !isHammerWinner,
       detail: true,
+      noHold: false,
       view: {
         lotId: snap.auctionId,
         phase: settled.auctionState,
@@ -72,6 +87,24 @@ export function receiptSource(state: RoomState): ReceiptSource {
         ...(isHammerWinner ? { hammerPriceCents: hammer.price } : {}),
         holds,
         invariants: detail.invariants,
+      },
+    };
+  }
+  // No `you` for a bidder who is not the hammer winner: the server has no hold of theirs in the
+  // journal, so there is no promotion, no charge claim and no lane for them.
+  if (ownState === undefined && !isHammerWinner) {
+    return {
+      paddle: row.paddle,
+      at: null,
+      runnerUp: false,
+      detail: false,
+      noHold: true,
+      view: {
+        lotId: snap.auctionId,
+        phase: settled.auctionState,
+        winnerPaddle: hammerPaddle,
+        holds: [],
+        invariants: UNREPORTED,
       },
     };
   }
@@ -84,6 +117,7 @@ export function receiptSource(state: RoomState): ReceiptSource {
     at,
     runnerUp: promoted,
     detail: false,
+    noHold: false,
     view: {
       lotId: snap.auctionId,
       phase: settled.auctionState,
@@ -94,7 +128,7 @@ export function receiptSource(state: RoomState): ReceiptSource {
           paddle: row.paddle,
           name: row.name,
           ceilingCents: ownFor?.ceilingCents ?? snap.you?.ceiling ?? 0,
-          state: ownState,
+          state: ownState ?? settled.auctionState,
           capturedCents: wins ? capturedCents : 0,
           releasedCents: ownFor?.releasedCents ?? 0,
           verifiedBy: [],
@@ -102,7 +136,7 @@ export function receiptSource(state: RoomState): ReceiptSource {
           ...remainder,
         },
       ],
-      invariants: { ok: true, violations: [] },
+      invariants: UNREPORTED,
     },
   };
 }
@@ -127,7 +161,7 @@ export function publicSource(state: RoomState, summary = false): SettlementView 
       phase: settled.auctionState,
       winnerPaddle: meta.winnerPaddle ?? hammerPaddle,
       holds: [],
-      invariants: { ok: true, violations: [] },
+      invariants: UNREPORTED,
       ...(state.settlementLadderCounts === undefined
         ? {}
         : { counts: state.settlementLadderCounts }),

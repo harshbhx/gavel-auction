@@ -22,6 +22,16 @@ export function isConfirming(hold: HoldView): boolean {
   return (hold.state === 'CAPTURED' || hold.state === 'SETTLED') && hold.capturedCents === 0;
 }
 
+/** Held is the ceiling, to be charged is the hammer price: two different amounts, never swapped. */
+function heldLine(ceilingCents: number, priceCents: number | null): string {
+  if (priceCents === null) return t('receipt.heldOwn', { amount: formatUsd(ceilingCents) });
+  if (ceilingCents <= 0) return t('receipt.priceToCharge', { price: formatUsd(priceCents) });
+  return t('receipt.heldNotCharged', {
+    ceiling: formatUsd(ceilingCents),
+    price: formatUsd(priceCents),
+  });
+}
+
 /** Winner receipt (R-WEB-095). The word "Charged" appears only after CAPTURED; before that the amount is held. */
 export function Winner({ hold, itemName, priceCents, at }: WinnerProps) {
   const captured = isCaptured(hold);
@@ -54,18 +64,21 @@ export function Winner({ hold, itemName, priceCents, at }: WinnerProps) {
           {hold.idSuffix !== '' && <p>{t('receipt.reference', { suffix: hold.idSuffix })}</p>}
         </>
       ) : confirming ? (
-        <p className="gv-receipt__status" role="status">
-          {t('receipt.confirming')}
-        </p>
+        <>
+          <p className="gv-receipt__status" role="status">
+            {t('receipt.confirming')}
+          </p>
+          {priceCents !== null && (
+            <p>{t('receipt.priceToCharge', { price: formatUsd(priceCents) })}</p>
+          )}
+        </>
       ) : (
         <>
           <p className="gv-receipt__status" role="status" aria-busy="true">
             {t('receipt.capturing')}
           </p>
           <progress aria-label={t('receipt.capturing')} />
-          <p>
-            {t('receipt.heldNotCharged', { amount: formatUsd(priceCents ?? hold.ceilingCents) })}
-          </p>
+          <p>{heldLine(hold.ceilingCents, priceCents)}</p>
         </>
       )}
       {hold.remainder !== undefined && (

@@ -40,7 +40,8 @@ describe('receipts (T-WEB-045)', () => {
     const { container } = render(<Receipt {...base} view={v} paddle={1} />);
     expect(container.textContent).not.toMatch(/Charged/);
     expect(screen.getByText(en['receipt.capturing'], { selector: 'p' })).toBeTruthy();
-    expect(container.textContent).toContain('held, not charged');
+    expect(container.textContent).toContain('Held $500.00');
+    expect(container.textContent).toContain('winning price $350.00 will be charged only if');
   });
 
   it('shows Charged after CAPTURED', () => {

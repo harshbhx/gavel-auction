@@ -13,7 +13,7 @@ export interface SettlementDetail {
   rev: number;
   holds: NonNullable<SettlementUpdateMsg['holds']>;
   winnerPaddle: number | null;
-  invariants: { ok: boolean; violations: string[] };
+  invariants: { ok: boolean; violations: string[]; unreported?: boolean };
 }
 
 /** Public count of holds per settlement state from the latest settlement_update that carried it. */
@@ -21,7 +21,10 @@ export type LadderCounts = NonNullable<SettlementUpdateMsg['ladder']>['counts'];
 
 /** What the server said about this bidder's own hold, and when (server clock, epoch ms). */
 export interface SettlementMeta {
-  state: SettlementUpdateMsg['auctionState'];
+  /** This viewer's own state; null when the server named none (the viewer has no hold in the journal). */
+  state: SettlementUpdateMsg['auctionState'] | null;
+  /** The auction-wide state, never reported as the bidder's own. */
+  auctionState: SettlementUpdateMsg['auctionState'];
   at: number;
   /** The amount the server reports as captured for this bidder, when it sent one. */
   capturedCents?: number;
@@ -235,11 +238,12 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
             },
       );
       if (stale) return next;
-      const ownState = msg.you ?? msg.auctionState;
+      const ownState = msg.you ?? null;
       const prev = state.settlementMeta;
       // The time is when the server first reported this state, so repeats do not move it.
       const meta: SettlementMeta = {
         state: ownState,
+        auctionState: msg.auctionState,
         at: prev !== undefined && prev.state === ownState ? prev.at : msg.ts,
         ...(msg.amountCaptured === undefined
           ? prev !== undefined && prev.capturedCents !== undefined
@@ -261,7 +265,7 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
           rev: msg.rev,
           holds: msg.holds,
           winnerPaddle: msg.winnerPaddle ?? null,
-          invariants: msg.invariants ?? { ok: true, violations: [] },
+          invariants: msg.invariants ?? { ok: false, violations: [], unreported: true },
         },
       };
     }

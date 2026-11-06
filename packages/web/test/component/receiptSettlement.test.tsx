@@ -57,7 +57,8 @@ describe('receipt route after capture', () => {
   it('says held, not charged only before capture', () => {
     update(3, 'CAPTURING');
     const { container } = render(<ReceiptRoute roomId="lot1" />);
-    expect(receipt(container).textContent).toContain('held, not charged');
+    expect(receipt(container).textContent).toContain('Held $500.00');
+    expect(receipt(container).textContent).toContain('winning price $350.00 will be charged only');
     expect(receipt(container).textContent).not.toMatch(/Charged/);
   });
 
