@@ -11,7 +11,7 @@ import { roomFor, snapshotFor } from './auctions';
 
 /** What the hold routes call: the payments hold service and its store. Both exist already. */
 export interface HoldsPort {
-  service: Pick<HoldService, 'createHoldOrder' | 'completeApproval'>;
+  service: Pick<HoldService, 'createHoldOrder' | 'completeApproval' | 'abandonHold'>;
   store: Pick<HoldStore, 'get'>;
 }
 
@@ -49,6 +49,7 @@ async function guarded(run: () => Promise<Response>): Promise<Response> {
  *   POST /api/holds                    create the hold order
  *   POST /api/holds/:holdId/approve    authorize the approved order
  *   GET  /api/holds/:holdId            read the hold of this session
+ *   DELETE /api/holds/:holdId          abandon an unapproved hold (idempotent)
  */
 export function mountHolds(port: HoldsPort): Mount {
   return (app: HttpApp): void => {
@@ -94,6 +95,18 @@ export function mountHolds(port: HoldsPort): Mount {
           status: hold.status,
           ceilingCents: hold.ceilingCents,
         });
+      }),
+    );
+
+    app.route('DELETE', '/api/holds/:holdId', (c: Ctx) =>
+      guarded(async () => {
+        const holdId = c.params.holdId ?? '';
+        const hold = await port.store.get(holdId);
+        if (hold === null) return notFound();
+        const who = await authenticate(c, hold.auctionId, ['session']);
+        if (!holdOwnedBySession(hold.bidderId, who.bidderId)) return notFound();
+        await port.service.abandonHold(holdId);
+        return json(200, { holdId, released: true });
       }),
     );
   };
