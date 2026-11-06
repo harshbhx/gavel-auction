@@ -77,7 +77,7 @@ export interface FrozenChipProps {
 export function FrozenChip({ disconnected }: FrozenChipProps) {
   if (!disconnected) return null;
   return (
-    <span role="status">
+    <span role="status" className="gv-screen__frozen">
       <Chip
         state="reconnecting"
         label={t('net.reconnecting')}

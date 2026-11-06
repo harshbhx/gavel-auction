@@ -49,6 +49,13 @@ export function createApprovalPort(
   return mode === 'fake' ? new FakeApprovalAdapter(fake) : new PayPalV6Adapter(paypal);
 }
 
+/** The adapter the return route needs; kept here so only this module imports the adapter. */
+export function createReturnAdapter(
+  paypal: Pick<PayPalAdapterDeps, 'apiBase' | 'clientId' | 'token'>,
+): Pick<PayPalV6Adapter, 'completeRedirect'> {
+  return new PayPalV6Adapter(paypal);
+}
+
 /**
  * Return route step for a buyer who approved on PayPal's own page: finishes the hold with the
  * registration id stored when the attempt began, so the server sees the same id as before.
