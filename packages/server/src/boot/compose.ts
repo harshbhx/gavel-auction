@@ -42,10 +42,16 @@ import { createGateway } from '../host/gateway';
 import { createNodeWsHost } from '../host/node-ws';
 import { createHealthRoutes, createVersionRoute, resolveSha } from '../http/health';
 import { createMetricsRoute } from '../http/metrics';
-import { adminKeyMatches, createOpsRoomsHandler } from '../http/ops';
+import {
+  OPS_SETTLEMENT_PATH,
+  adminKeyMatches,
+  createOpsRoomsHandler,
+  createOpsSettlementHandler,
+} from '../http/ops';
 import { capsFromConfig } from '../limits/caps';
 import { limitsFromConfig } from '../limits/rate-limiter';
 import { createGuardedWebhookRoute } from '../http/webhook-guard';
+import { SECURITY_HEADERS } from '../http/security-headers';
 import { portFromService, sourceOf } from '../http/webhook';
 import { boundaryFromEnv, killSelf } from './checkpoint-kill';
 import { createPaymentAudit } from './payment-audit';
@@ -56,6 +62,7 @@ import { createLogRing } from '../obs/logring';
 import { createOpsSummaryRoute, createPrometheusRoute } from '../obs/ops-summary';
 import { createWarmupRoute, type WarmupStep } from '../warmup/warmup';
 import { createAuctionService, type AuctionService } from '../runtime/auction-service';
+import { lotIdOf } from '../runtime/ledger-engine';
 import { FileLedgerStore } from '../store/file-ledger-store';
 import { createHttpApp } from '../http/app';
 import { mountAuctions } from '../http/auctions';
@@ -72,6 +79,8 @@ import { MemoryStore } from '../store/memory-store';
 
 export const WEBHOOK_PATH = '/webhooks/paypal';
 const EXPORT_PATH = /^\/api\/auctions\/([^/]+)\/export\/?$/;
+/** R-RT-120: most sockets one source address may hold open at once. */
+const MAX_SOCKETS_PER_SOURCE = 20;
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -409,6 +418,13 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     adminKey: config.ADMIN_KEY,
     rooms: () => service.opsRooms(),
   });
+  const opsSettlementRoute = createOpsSettlementHandler({
+    adminKey: config.ADMIN_KEY,
+    exists: async (id) => (await stores.room.listAuctions()).includes(id as AuctionId),
+    hasSettlement: async (id) => (await stores.journals.load(lotIdOf(id as AuctionId))) !== null,
+    voidAll: (id, actor) => service.voidAll(id as AuctionId, actor),
+    releaseReviewHolds: (id, actor) => service.releaseReviewHolds(id as AuctionId, actor),
+  });
   const metricsRoute = createMetricsRoute(metrics, { adminKey: config.ADMIN_KEY });
   const warmupRoute = createWarmupRoute({
     steps: [
@@ -479,12 +495,16 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     if (path === '/metrics/prometheus') return prometheusRoute(req, res);
     if (path === '/ops/summary') return opsSummaryRoute(req, res);
     if (path === '/ops/rooms') return opsRoomsRoute(req, res);
+    if (OPS_SETTLEMENT_PATH.test(path)) return opsSettlementRoute(req, res, path);
     if (path === WEBHOOK_PATH) return webhookRoute(req, res);
     if (EXPORT_PATH.test(path)) return exportRoute(req, res);
     if (await extra(req, res)) return;
     notFound(res);
   };
+  /** R-RT-120: open sockets per source address, released on close. */
+  const socketsBySource = new Map<string, number>();
   const http = createServer((req, res) => {
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(name, value);
     if (wsHost.handleRequest(req, res)) return;
     handle(req, res).catch((error: unknown) => {
       log.error('request failed', {
@@ -501,6 +521,21 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     server: http,
     clock,
     allowedOrigins: wsOrigins(config),
+    admitUpgrade: (req) => {
+      const source = sourceOf(req, config.TRUSTED_PROXY_HOPS) ?? 'unknown';
+      if (!limiter.checkJoin(source).ok) return undefined;
+      const open = socketsBySource.get(source) ?? 0;
+      if (open >= MAX_SOCKETS_PER_SOURCE) return undefined;
+      socketsBySource.set(source, open + 1);
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        const left = (socketsBySource.get(source) ?? 1) - 1;
+        if (left <= 0) socketsBySource.delete(source);
+        else socketsBySource.set(source, left);
+      };
+    },
     accept: createGateway({
       service,
       store: stores.room,

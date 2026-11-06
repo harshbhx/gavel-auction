@@ -22,7 +22,7 @@ export interface OpsLabels {
 export interface OpsViewProps {
   readonly summary: OpsSummaryView | undefined;
   readonly labels: OpsLabels;
-  readonly error?: string;
+  readonly error?: string | undefined;
 }
 
 /** Operator page: the last log lines, saga state per lot and PayPal outcomes. */

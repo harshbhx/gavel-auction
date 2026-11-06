@@ -214,6 +214,8 @@ const READ_PAGE = 1000;
 const RECENT_AUDIT = 50;
 /** Bid replies kept for idempotent replay; older ones fall out. */
 const MAX_REPLIES = 10_000;
+/** Most voice holds one bidder may request in a lot (RT4-sec-03). */
+const MAX_HOLDS_PER_BIDDER = 50;
 const AUTO_HAMMER_RETRY_MS = 2_000;
 
 /** The control id of a kill-switch abort; one per auction, so a repeat is a no-op. */
@@ -240,6 +242,8 @@ export class Room {
   private bidCount = 0;
   /** Rejected bids in the log; bounded by `caps.bidsPerAuction` too (R12-S05). */
   private rejectedCount = 0;
+  /** Voice holds requested per bidder; capped so one paddle cannot grow the log (RT4-sec-03). */
+  private holdsBy = new Map<BidderId, number>();
   private config: AuctionConfig | undefined;
   private engine: EnginePort | undefined;
   private lastState = 'OPEN';
@@ -795,8 +799,18 @@ export class Room {
       this.roster.has(bidderId) &&
       !this.hammered &&
       engine.view().state === 'OPEN' &&
+      msg.amount >= engine.view().minNext &&
       needsConfirm(msg, this.config.confirmConfidenceThreshold)
     ) {
+      // Holds spend the same budget as logged refusals and a per-bidder one, and past either
+      // the bid is answered without a log entry (RT4-sec-03).
+      if (
+        this.rejectedCount >= this.caps.bidsPerAuction ||
+        (this.holdsBy.get(bidderId) ?? 0) >= MAX_HOLDS_PER_BIDDER
+      ) {
+        this.sendError(conn, 'rate_limited');
+        return;
+      }
       await this.holdForConfirm(msg, bidderId);
       return;
     }
@@ -1048,6 +1062,8 @@ export class Room {
       return;
     }
     this.seq = seq;
+    this.rejectedCount += 1;
+    this.holdsBy.set(bidderId, (this.holdsBy.get(bidderId) ?? 0) + 1);
     if (prior) this.confirms.drop(prior.confirmId);
     if (manualBy !== undefined)
       this.manualCounts.set(manualBy, (this.manualCounts.get(manualBy) ?? 0) + 1);
@@ -1930,6 +1946,7 @@ export class Room {
     this.seq = fresh.seq;
     this.bidCount = fresh.bidCount;
     this.rejectedCount = fresh.rejectedCount;
+    this.holdsBy = fresh.holdsBy;
     this.lastState = fresh.lastState;
     this.closingAt = fresh.closingAt;
     this.controlIds = fresh.controlIds;
@@ -1976,6 +1993,7 @@ export class Room {
     this.seq = 0;
     this.bidCount = 0;
     this.rejectedCount = 0;
+    this.holdsBy = new Map();
     this.lastState = 'OPEN';
     this.closingAt = undefined;
     this.controlIds = new Map();
@@ -2066,6 +2084,8 @@ export class Room {
         break;
       case 'confirm_requested':
         {
+          this.rejectedCount += 1;
+          this.holdsBy.set(event.bidderId, (this.holdsBy.get(event.bidderId) ?? 0) + 1);
           const by = manualSubject(event.audit);
           if (by !== undefined) this.manualCounts.set(by, (this.manualCounts.get(by) ?? 0) + 1);
           this.openConfirms.set(event.confirmId, {

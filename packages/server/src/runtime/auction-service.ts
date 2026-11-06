@@ -59,7 +59,13 @@ import type { HammerResult, SettlePort, SettlementReport } from '../room/settle-
 import { dispatchAtHead } from './engine-dispatch';
 import { LedgerEngine, commandIdFor, lotIdOf } from './ledger-engine';
 import { reviewCodeOf } from './review-code';
-import { isDefiniteRefusal, isReleased, voidOrphanHold, voidSpareHolds } from './void-phase';
+import {
+  isDefiniteRefusal,
+  isReleased,
+  voidOrphanHold,
+  voidSpareHolds,
+  type SpareVoidDeps,
+} from './void-phase';
 import { WebhookIntake } from './webhook-intake';
 
 /** Everything the service needs from the outside, as ports. */
@@ -625,7 +631,7 @@ class Service implements AuctionService, SettlePort {
   }
 
   async voidAll(auctionId: AuctionId, actor: string): Promise<VoidAllOutcome> {
-    return voidAllLiveHolds(
+    const out = await voidAllLiveHolds(
       {
         journals: this.deps.journals,
         gateway: this.gateway,
@@ -637,6 +643,8 @@ class Service implements AuctionService, SettlePort {
       lotIdOf(auctionId),
       actor,
     );
+    if (out.status === 'done') await this.markReleasedHolds(out.journal);
+    return out;
   }
 
   async releaseReviewHolds(
@@ -977,11 +985,7 @@ class Service implements AuctionService, SettlePort {
         // live hold now, keeping none, before the room goes final (R-PAY-037).
         let open = 0;
         try {
-          open = await voidSpareHolds(
-            { gateway: this.gateway, holds: this.deps.holds },
-            { auctionId: lotId },
-            new Set<string>(),
-          );
+          open = await voidSpareHolds(this.spareDeps(), { auctionId: lotId }, new Set<string>());
         } catch (voidError) {
           this.deps.onError?.(auctionId, voidError);
           open = 1;
@@ -1035,8 +1039,14 @@ class Service implements AuctionService, SettlePort {
       await this.finishBridge(room, auctionId, reviewed);
       return 'done';
     }
+    if (captured.status === 'pending') {
+      // RT4-saga-03: the capture phase waits (kill switch, a PENDING capture, PayPal reads or
+      // OAuth failing). The holds nobody can be charged on any more are released now; the
+      // winner's and the fallback candidates' holds stay.
+      await this.report(room, await this.releaseOnReview(captured.journal));
+      return 'again';
+    }
     await this.report(room, captured.journal);
-    if (captured.status === 'pending') return 'again';
     if (captured.status === 'captured') await this.markCaptured(captured.journal);
     await this.boundary('after:capture-phase');
 
@@ -1062,7 +1072,17 @@ class Service implements AuctionService, SettlePort {
    */
   private async releaseSpares(journal: Journal): Promise<number> {
     const keep = new Set(Object.values(journal.holds).map((h) => h.holdId));
-    return voidSpareHolds({ gateway: this.gateway, holds: this.deps.holds }, journal, keep);
+    return voidSpareHolds(this.spareDeps(), journal, keep);
+  }
+
+  /** What `voidSpareHolds` needs: every void it sends is audited (R-PAY-132). */
+  private spareDeps(): SpareVoidDeps {
+    return {
+      audit: this.deps.audit,
+      clock: this.payClock,
+      gateway: this.gateway,
+      holds: this.deps.holds,
+    };
   }
 
   /** The payments void phase as the service runs it: normal settlements and review releases. */
@@ -1105,6 +1125,10 @@ class Service implements AuctionService, SettlePort {
    * `reviewHoldMaxAgeMs` old. Every other hold of the journal is voided after a truth read,
    * so no bidder's money stays blocked until expiry. Holds outside the journal are left to
    * `releaseSpares`. Returns the journal as the release left it.
+   *
+   * The same call serves a capture phase that is waiting (RT4-saga-03): there the void phase
+   * keeps the hold of an intent in flight and the holds of the candidate at the cursor and
+   * after it, and releases the rest.
    */
   private async releaseOnReview(journal: Journal): Promise<Journal> {
     let latest = journal;

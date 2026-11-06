@@ -36,7 +36,7 @@ import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryTransport } from '../../src/room/memory-transport';
 import { DEFAULT_CAPS } from '../../src/limits/caps';
 import type { Connection, Room } from '../../src/room/room';
-import { voidSpareHolds } from '../../src/runtime/void-phase';
+import { voidSpareHolds, type SpareVoidDeps } from '../../src/runtime/void-phase';
 import { MemoryStore } from '../../src/store/memory-store';
 import { FileLedgerStore } from '../../src/store/file-ledger-store';
 import { FileRoomStore } from '../../src/store/file-room-store';
@@ -133,6 +133,16 @@ async function makeRig(core: { autoReleaseRemainder?: boolean } = {}) {
 }
 
 type Rig = Awaited<ReturnType<typeof makeRig>>;
+
+/** What `voidSpareHolds` needs, with the rig's audit rows and clock. */
+function spareDeps(rig: Rig): SpareVoidDeps {
+  return {
+    audit: { append: async (e) => void rig.audits.push(e) },
+    clock: { nowMs: () => rig.clock.now() },
+    gateway: rig.gateway,
+    holds: rig.stores.holds,
+  };
+}
 
 interface Bidder {
   id: BidderId;
@@ -1527,6 +1537,37 @@ describe('auction service: unfinished settlements and spare holds (RT-81)', () =
     await service.close();
   });
 
+  it('frees the hold nobody can be charged on while a capture is PENDING (RT4-saga-03)', async () => {
+    const rig = await makeRig();
+    const service = rig.service({
+      retryDelayMs: 3_600_000,
+      resumeIntervalMs: 0,
+      onError: () => undefined,
+    });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    const c = await enroll(rig, service, room, auctionId, 'Cy', 30000);
+    rig.paypal.core.inject('capture', 'capture_pending', a.authId);
+    await room.submitBid(b.conn, bid(rig, 10000));
+    await room.submitBid(a.conn, bid(rig, 11000));
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.control(boss.conn, { controlId: 'h', action: 'hammer', args: { closeNow: 1 } });
+    await service.idle();
+    const waiting = await journalOf(rig, auctionId);
+    expect(waiting.state).toBe('CAPTURING');
+    expect(waiting.winner).toBeNull();
+    // Cy never bid: no capture and no fallback can reach that hold, so it is freed now.
+    expect(rig.paypal.core.getAuthorization(c.authId).status).toBe('VOIDED');
+    expect((await rig.stores.holds.get(c.holdId))?.status).toBe('VOIDED');
+    // The capture in doubt and the runner-up keep theirs.
+    expect(rig.paypal.core.getAuthorization(b.authId).status).toBe('CREATED');
+    expect((await rig.stores.holds.get(b.holdId))?.status).toBe('HELD');
+    expect(rig.paypal.core.getAuthorization(a.authId).status).not.toBe('VOIDED');
+    await service.close();
+  });
+
   it('a capture PayPal holds as PENDING for hours is booked once PayPal completes it (R12-P01)', async () => {
     const rig = await makeRig();
     const service = rig.service({
@@ -1898,15 +1939,19 @@ describe('auction service: red-team round 4 (RT-01)', () => {
     const hold = await rig.stores.holds.get(created.holdId);
     expect(hold?.status).toBe('HELD');
 
-    const open = await voidSpareHolds(
-      { gateway: rig.gateway, holds: rig.stores.holds },
-      { auctionId },
-      new Set<string>(),
-    );
+    const open = await voidSpareHolds(spareDeps(rig), { auctionId }, new Set<string>());
 
     expect(open).toBe(0);
     expect((await rig.stores.holds.get(created.holdId))?.status).toBe('VOIDED');
     expect(rig.paypal.core.getAuthorization(hold?.authId ?? '').status).toBe('VOIDED');
+    // RT4-saga-04: the void is a money call and has its own audit row.
+    expect(
+      rig.audits.filter(
+        (a) => a.kind === 'paypal_call' && a.op === 'void' && a.holdId === created.holdId,
+      ),
+    ).toEqual([
+      expect.objectContaining({ auctionId, outcome: 'definite', label: 'ok', attempt: 1 }),
+    ]);
   });
 
   it('keeps a hold open when a 404 void is not backed by the authorization read (R5-S02)', async () => {
@@ -1934,7 +1979,7 @@ describe('auction service: red-team round 4 (RT-01)', () => {
     } as unknown as typeof rig.gateway;
 
     const open = await voidSpareHolds(
-      { gateway: refusing, holds: rig.stores.holds },
+      { ...spareDeps(rig), gateway: refusing },
       { auctionId },
       new Set<string>(),
     );
@@ -1976,7 +2021,7 @@ describe('auction service: red-team round 4 (RT-01)', () => {
     } as unknown as typeof rig.gateway;
 
     const open = await voidSpareHolds(
-      { gateway: missing, holds: rig.stores.holds },
+      { ...spareDeps(rig), gateway: missing },
       { auctionId },
       new Set<string>(),
     );
