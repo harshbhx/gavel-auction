@@ -16,7 +16,7 @@ POST /api/holds/{holdId}/approve
   response: { holdId, status: "HELD", ceilingCents }     ApproveHoldResponse
   errors  : 404 order_not_found | 409 order_not_approved | 503 paypal_unavailable
 
-DELETE /api/holds/{holdId}        (browser onCancel / onError; no PayPal call, the order expires)
+DELETE /api/holds/{holdId}        (browser onCancel / onError; only an unapproved hold is released: PayPal is asked for a live authorization first and it is voided; a hold that is already authorized or captured answers 409 hold_exists)
 ```
 
 Every error response has the body `{ "error": <code> }` (`HoldErrorResponse`). Codes: `ceiling_out_of_range`, `hold_exists`, `order_not_found`, `order_not_approved`, `paypal_unavailable`, `kill_switch_engaged`, `payments_not_sandbox`.
