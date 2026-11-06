@@ -643,4 +643,4 @@ Consequences:
 - A deployment that meets an open remainder (decision B or C, for example card buyers) must set `remainderMode`; the fake's `autoReleaseRemainder: false` is tested in mode B.
 - UNVERIFIED: how long PayPal keeps a capture PENDING (A16), whether an automatic webhook retry keeps the original transmission id and time, and PayPal's retry horizon (W06, G4 recorded first deliveries only).
 
-Evidence: docs/evidence/G1/G1-20261104T231047Z.jsonl (G1.6, G1.7), docs/GATES.md G4, packages/payments/src/fake/ASSUMPTIONS.md A01, A16, H14, W06, packages/payments/test/saga/r12.test.ts, R-PAY-055, R-PAY-058, R-PAY-059, R-PAY-063, issues #1563 to #1568.
+Evidence: docs/evidence/G1/G1-20261104T231047Z.jsonl and docs/evidence/G1/G1-20261105T123116Z.jsonl (G1.6, G1.7; release inferred, not read from a buyer balance), docs/GATES.md G4, packages/payments/src/fake/ASSUMPTIONS.md A01, A16, H14, W06, packages/payments/test/saga/r12.test.ts, R-PAY-055, R-PAY-058, R-PAY-059, R-PAY-063, issues #1563 to #1568.

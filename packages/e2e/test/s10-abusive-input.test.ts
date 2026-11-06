@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { decodeClientMsg } from '@gavel/shared';
 import { loadScenarioFile } from '../src/index';
-import { runScenarioInProc } from './flow/scenario-runner';
+import { checkExpectations, runScenarioInProc } from './flow/scenario-runner';
 
 // T-QA-038 (R-QA-026, R-QA-036): scenario S10 replays hostile frames from the DSL. Room-level
 // amount checks and the flood cut live in test/security/abuse.test.ts.
@@ -49,10 +49,19 @@ describe('S10 abusive input', () => {
     expect(fixtures.length).toBe(raws.length);
   });
 
-  it('leaves the auction untouched: no bid accepted, no winner', async () => {
-    const plain = { ...scenario, steps: scenario.steps.filter((s) => s.do !== 'send_raw') };
-    const outcome = await runScenarioInProc(plain, open);
+  it('drives every hostile frame through the server path and meets its own expectations', async () => {
+    const outcome = await runScenarioInProc(scenario, open);
+    expect(outcome.frameErrors).toEqual(
+      raws.map(() => ({ actor: 'mallory', code: 'bad_message' })),
+    );
     expect(outcome.accepted).toBe(0);
     expect(outcome.winner).toBeNull();
+    expect(checkExpectations(scenario, outcome)).toEqual([]);
+  });
+
+  it('fails the scenario when a frame is not refused as expected', async () => {
+    const outcome = await runScenarioInProc(scenario, open);
+    const lenient = { ...outcome, frameErrors: outcome.frameErrors.slice(1) };
+    expect(checkExpectations(scenario, lenient)[0]).toMatch(/^rejected: expected/);
   });
 });

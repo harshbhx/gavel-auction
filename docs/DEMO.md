@@ -3,7 +3,7 @@
 How to run the hosted GAVEL demo and check that it does what it claims. Everything runs in the PayPal sandbox only. No real money moves and no real card or PayPal account is needed.
 
 Status labels used below: "available" means the code is on main today. "not available yet" means the part is specified (see `docs/specs`) but not built or not deployed, so the step cannot be followed end to end yet.
-`packages/server` has an entry point (`npm start -w @gavel/server`, `src/main.ts`) and HTTP routes under `src/http`, but no WebSocket gateway is mounted, so bidding over a socket is not possible in the booted process. The steps in sections 2, 3, 5 and 7 that need a live socket room describe the intended flow and cannot be followed end to end today. What runs today is the engine, the settlement code against the fake PayPal, and the web components, each in its own tests.
+`packages/server` has an entry point (`npm start -w @gavel/server`, `src/main.ts`), the auction HTTP routes under `src/http` and a WebSocket gateway (`createGateway`, mounted in `src/boot/compose.ts`). The scripted `/api/demo/*` routes (`src/http/demo.ts`) are not mounted, no hosted demo is published and the web UI is a separate state, so the steps in sections 2, 3, 5 and 7 that need a hosted room describe the intended flow and cannot be followed end to end today. What runs today is the engine, the settlement code against the fake PayPal, and the web components, each in its own tests.
 
 This guide is updated as those parts land.
 
@@ -27,7 +27,7 @@ Every page shows a "Sandbox: no real money moves" banner. A room is labelled "Li
    - Fake buyer: in a fake-payments room the page uses the built-in fake PayPal and approves after a short pause, with no sign-in. Faults (cancel, decline, slow, error) can be simulated to test the failure screens. A fake-payments room is the default until the sandbox proof is complete.
 4. The ladder shows your hold moving to HELD. A hold is a promise, not a charge.
 
-Card and guest AUTHORIZE works in our sandbox (gate G2 in `docs/GATES.md` is PASS, 2026-11-05): a wallet buyer and a guest with a sandbox card were both authorized through the JS SDK v6. Capture and void for card buyers are not tested yet.
+Card and guest AUTHORIZE works in our sandbox (gate G2 in `docs/GATES.md` is PASS, 2026-11-05): a wallet buyer and a guest with a sandbox card were both authorized through the JS SDK v6. Capture of a guest card authorization was not run; the G1 capture used PayPal-account orders only.
 
 ### What judges can test on the hosted demo
 
@@ -59,17 +59,17 @@ When the auctioneer hammers, check that:
 3. The ladder shows HELD, then CAPTURED for the winner and VOIDED for the others, with the source of each confirmation (PayPal webhook or lookup).
 4. Exactly one capture happens even if the server stops mid-settlement and resumes. If PayPal's answer is unknown the settlement stops for review rather than guessing.
 
-The settlement logic is built and tested against the fake PayPal only. Remainder release after a partial capture is proven on the PayPal sandbox for wallet buyers only. Gate G1 is PASS-WITH-FALLBACK (wallet only). Gate G2 has since passed (2026-11-05): a wallet buyer and a guest card buyer were both authorized; capture and void for card buyers are not tested. Webhook signature verification is proven on the PayPal sandbox (gate G4 PASS, 2026-11-05): six real events, including a capture and a void, each verified SUCCESS through PayPal's endpoint.
+The settlement logic is built and tested against the fake PayPal only. Gate G1 passed for two PayPal-account buyers (2026-11-04 and 2026-11-05): after a partial capture with final_capture the authorization reads CAPTURED and a void answers 422 PREVIOUSLY_CAPTURED; the release of the remainder is inferred from that, not read from a buyer balance. Gate G2 passed (2026-11-05): a wallet buyer and a guest card buyer were both authorized; capture of a guest card authorization was not run. Webhook signature verification is proven on the PayPal sandbox (gate G4 PASS, 2026-11-05): six real events, including a capture and a void, each verified SUCCESS through PayPal's endpoint.
 
 ## 6. What is real and what is recorded
 
-| Part                                     | Mode                                                                                                                                                                                                                                                            |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Auction rules, price, soft close, hammer | Real code, deterministic engine, same in every mode                                                                                                                                                                                                             |
-| PayPal calls                             | Real sandbox only in a sandbox room and only once the gates pass (not available yet); remainder release after a final capture is proven on the sandbox for wallet buyers only, card buyers untested; otherwise the fake PayPal, shown as such in the room label |
-| Scripted demo                            | Recorded events, no PayPal calls, labelled on screen                                                                                                                                                                                                            |
-| Voice                                    | Replay uses recorded audio; live speech to text is not available yet                                                                                                                                                                                            |
-| Speech accuracy numbers                  | Measured on a labelled test set (gate G5 is NOT RUN)                                                                                                                                                                                                            |
+| Part                                     | Mode                                                                                                                                                                                                                                                                 |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auction rules, price, soft close, hammer | Real code, deterministic engine, same in every mode                                                                                                                                                                                                                  |
+| PayPal calls                             | Real sandbox only in a sandbox room and only once the gates pass (not available yet); after a final capture the authorization closes as CAPTURED for PayPal-account buyers (guest card capture untested); otherwise the fake PayPal, shown as such in the room label |
+| Scripted demo                            | Recorded events, no PayPal calls, labelled on screen                                                                                                                                                                                                                 |
+| Voice                                    | Replay uses recorded audio; live speech to text is not available yet                                                                                                                                                                                                 |
+| Speech accuracy numbers                  | Measured on a labelled test set (gate G5 is NOT RUN)                                                                                                                                                                                                                 |
 
 ## 7. Audit trail
 
@@ -79,10 +79,9 @@ Open `/r/<roomId>/audit` from the launcher (it needs the auctioneer or reviewer 
 
 - Hosted deployment and the public demo URL (QA-59 to QA-61).
 - The full web screens: the app shell is a placeholder on main today, so the console, bid screen, big screen and audit view exist as specs and tested components only.
-- A WebSocket gateway mounted by the server entry point, so bidding works over a socket in the booted process.
 - A persistent store for a hosted deploy (the file stores need a persistent disk and a single instance).
 - An adapter from the voice package to the room.
-- Real sandbox runs of gates G3 and G5 (NOT RUN in `docs/GATES.md`); G1 is PASS-WITH-FALLBACK (wallet only); G2 and G4 are PASS.
+- Real sandbox runs of gates G3 and G5 (NOT RUN in `docs/GATES.md`); G0, G1, G2 and G4 are PASS (guest card capture not covered).
 - Live voice with real speech providers.
 - Recorded demo auctions for replay.
 - Card and guest checkout in a live room (G2 PASS proves the SDK authorize flow; the room screens are not wired yet).
