@@ -15,10 +15,9 @@ export function isReleased(hold: HoldView): boolean {
 
 /** Non-winner receipt (R-WEB-096). "Hold was released" shows only after the void; before that the hold is shown as held. */
 export function NonWinner({ hold, itemName, at }: NonWinnerProps) {
-  const released = isReleased(hold);
-  const amount = formatUsd(
-    released && hold.releasedCents > 0 ? hold.releasedCents : hold.ceilingCents,
-  );
+  // "Released" only once the server says so and no remainder is still pending.
+  const released = isReleased(hold) && hold.remainder !== 'pending';
+  const amount = formatUsd(hold.ceilingCents);
   return (
     <section className="gv-receipt__body">
       <dl className="gv-receipt__rows">
@@ -34,13 +33,17 @@ export function NonWinner({ hold, itemName, at }: NonWinnerProps) {
         )}
       </dl>
       {released ? (
-        <p className="gv-receipt__status">{t('receipt.released', { amount })}</p>
+        <p className="gv-receipt__status">
+          {hold.releasedCents > 0
+            ? t('receipt.released', { amount: formatUsd(hold.releasedCents) })
+            : t('receipt.releasedNoAmount')}
+        </p>
       ) : (
         <>
           <p className="gv-receipt__status" role="status" aria-busy="true">
             {t('receipt.releasing')}
           </p>
-          <p>{t('receipt.heldNotCharged', { amount })}</p>
+          <p>{t('receipt.heldOwn', { amount })}</p>
         </>
       )}
     </section>

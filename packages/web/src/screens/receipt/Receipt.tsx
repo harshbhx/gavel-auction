@@ -18,6 +18,8 @@ export interface ReceiptProps {
   at: number | null;
   /** True when this winner is the runner-up promoted after the first winner could not be charged. */
   runnerUp?: boolean;
+  /** True when the server named no hold for this viewer. */
+  noHold?: boolean;
   contact?: ReactNode;
 }
 
@@ -88,6 +90,20 @@ function Body({
 
 export function Receipt(props: ReceiptProps) {
   const { view, paddle } = props;
+  if (view !== null && props.noHold === true) {
+    return (
+      <article className="gv-receipt" aria-labelledby="gv-receipt-title">
+        <h2 id="gv-receipt-title">{t('receipt.title')}</h2>
+        <section className="gv-receipt__body">
+          <dl className="gv-receipt__rows">
+            <dt>{t('receipt.item')}</dt>
+            <dd>{props.itemName}</dd>
+          </dl>
+          <p className="gv-receipt__status">{t('receipt.noHold')}</p>
+        </section>
+      </article>
+    );
+  }
   const hold = view === null ? undefined : view.holds.find((h) => h.paddle === paddle);
   if (view === null || hold === undefined) {
     return <p role="status">{t('receipt.none')}</p>;

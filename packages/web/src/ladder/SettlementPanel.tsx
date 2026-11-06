@@ -8,7 +8,7 @@ export interface SettlementPanelProps {
   view: SettlementView | null;
   /** Link target for the audit view, shown on the needs-review banner. */
   auditHref: string;
-  /** False when the server sent no per-hold data: totals are unknown, so no invariant banner. */
+  /** False when the server sent no per-hold data: the banner then says the check was not reported. */
   detail?: boolean;
 }
 
@@ -17,9 +17,9 @@ export function SettlementPanel({ view, auditHref, detail = true }: SettlementPa
   const model = buildLadder(view);
   return (
     <div className="gv-settlement" data-testid="settlement-panel">
-      <Ladder view={view} parts="lanes" />
+      <Ladder view={view} parts="lanes" verification={detail} />
       <Branches model={model} auditHref={auditHref} />
-      {detail && <InvariantBanner invariants={model.invariants} />}
+      <InvariantBanner invariants={model.invariants} />
       <EventLog events={model.events} />
     </div>
   );

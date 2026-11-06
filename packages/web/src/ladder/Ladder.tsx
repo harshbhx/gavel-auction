@@ -18,6 +18,8 @@ export interface LadderProps {
    * the caller, which mounts InvariantBanner and Branches itself.
    */
   parts?: 'all' | 'lanes';
+  /** False hides the confirmation line of each lane (no per-hold data was sent, so none is pending). */
+  verification?: boolean;
 }
 
 function clock(at: number): string {
@@ -55,7 +57,7 @@ function RungItem({ rung, canSayReleased }: { rung: Rung; canSayReleased: boolea
   );
 }
 
-function Lane({ lane }: { lane: LadderLane }) {
+function Lane({ lane, verification }: { lane: LadderLane; verification: boolean }) {
   const showCaptured = lane.state === 'CAPTURED' && lane.capturedCents > 0;
   return (
     <li className="gv-ladder__lane" data-paddle={lane.paddle} data-winner={lane.isWinner}>
@@ -84,15 +86,17 @@ function Lane({ lane }: { lane: LadderLane }) {
           <RungItem key={rung.state} rung={rung} canSayReleased={lane.canSayReleased} />
         ))}
       </ol>
-      <p className="gv-ladder__verify" data-verification={lane.verification.kind}>
-        {verificationText(lane.verification)}
-      </p>
+      {verification && (
+        <p className="gv-ladder__verify" data-verification={lane.verification.kind}>
+          {verificationText(lane.verification)}
+        </p>
+      )}
     </li>
   );
 }
 
 /** Settlement ladder: one lane per hold, a table on wide screens and a stepper on phones. */
-export function Ladder({ view, parts = 'all' }: LadderProps) {
+export function Ladder({ view, parts = 'all', verification = true }: LadderProps) {
   const model = buildLadder(view);
   const notes = parts === 'all';
   const inv = model.invariants;
@@ -130,18 +134,23 @@ export function Ladder({ view, parts = 'all' }: LadderProps) {
       )}
       <ul className="gv-ladder__lanes">
         {model.lanes.map((lane) => (
-          <Lane key={lane.paddle} lane={lane} />
+          <Lane key={lane.paddle} lane={lane} verification={verification} />
         ))}
       </ul>
-      {notes && inv !== null && !inv.violated && inv.totalsMatch && view?.phase === 'SETTLED' && (
-        <p className="gv-ladder__note" data-kind="totals">
-          {t('ladder.invariants.ok', {
-            c: formatUsd(inv.capturedCents),
-            r: formatUsd(inv.releasedCents),
-            h: formatUsd(inv.holdsCents),
-          })}
-        </p>
-      )}
+      {notes &&
+        inv !== null &&
+        !inv.unreported &&
+        !inv.violated &&
+        inv.totalsMatch &&
+        view?.phase === 'SETTLED' && (
+          <p className="gv-ladder__note" data-kind="totals">
+            {t('ladder.invariants.ok', {
+              c: formatUsd(inv.capturedCents),
+              r: formatUsd(inv.releasedCents),
+              h: formatUsd(inv.holdsCents),
+            })}
+          </p>
+        )}
     </section>
   );
 }

@@ -8,7 +8,15 @@ export interface InvariantBannerProps {
 
 /** Red "Needs review" banner. A violated invariant is always shown, never hidden (R-WEB-091). */
 export function InvariantBanner({ invariants }: InvariantBannerProps) {
-  if (invariants === null || !invariants.violated) return null;
+  if (invariants === null) return null;
+  if (invariants.unreported) {
+    return (
+      <p role="status" className="gv-ladder__note" data-kind="invariant-unreported">
+        {t('ladder.invariantsNotReported')}
+      </p>
+    );
+  }
+  if (!invariants.violated) return null;
   return (
     <div role="alert" className="gv-ladder__banner" data-tone="danger" data-kind="invariant">
       <p>

@@ -292,6 +292,7 @@ export const en = {
   'ladder.verify.pending': 'Awaiting confirmation',
   'ladder.remainderVoided': 'Remainder voided',
   'ladder.invariants.ok': 'Totals check out: charged {c} + released {r} = holds {h}',
+  'ladder.invariantsNotReported': 'Check result not reported',
   'ladder.invariants.bad': 'Needs review: totals do not match',
   'ladder.fallback': 'Winner could not be charged ({reason}). Runner-up paddle {n} selected.',
   'ladder.failed': 'Settlement stopped for review. See the audit trail.',
@@ -308,7 +309,13 @@ export const en = {
     'We could not complete this auction for you. Your hold is held, not charged, until the organizer reviews it.',
   'receipt.none': 'No receipt for this session.',
   'receipt.title': 'Receipt',
-  'receipt.heldNotCharged': 'Your {amount} is held, not charged, until the sale is finalised.',
+  'receipt.heldNotCharged':
+    'Held {ceiling}. The winning price {price} will be charged only if the sale is finalised.',
+  'receipt.priceToCharge':
+    'The winning price {price} will be charged only if the sale is finalised.',
+  'receipt.heldOwn': 'Your {amount} is held, not charged, until the sale is finalised.',
+  'receipt.releasedNoAmount': 'You did not win. Your hold was released.',
+  'receipt.noHold': 'You had no hold on this sale. You were not charged.',
   'receipt.item': 'Item',
   'receipt.winningPrice': 'Winning price',
   'receipt.amount': 'Amount',
