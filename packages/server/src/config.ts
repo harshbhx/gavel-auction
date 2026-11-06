@@ -66,6 +66,14 @@ const EnvObject = z.object({
   PAYPAL_BASE_URL: z.string().url().optional(),
   GAVEL_MAX_CEILING_CENTS: int(1).optional(),
   GAVEL_HOLD_MAX_AGE_MS: int(1).optional(),
+  /** Period of the reconcile pass over settled auctions, in ms; unset or 0 turns it off. */
+  GAVEL_RECONCILE_INTERVAL_MS: int(0).optional(),
+  /** With the reconcile pass on, void holds still live after SETTLED. */
+  GAVEL_RECONCILE_REPAIR: flag.default('0'),
+  /** Reauthorize holds older than the honor window before the capture. */
+  GAVEL_REAUTH: flag.default('0'),
+  /** Age after which a hold is reauthorized, in ms; payments default when unset. */
+  GAVEL_REAUTH_HONOR_SAFE_MS: int(1).optional(),
 });
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '0.0.0.0']);

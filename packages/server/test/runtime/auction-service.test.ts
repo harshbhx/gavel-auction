@@ -2029,3 +2029,110 @@ describe('auction service: HRD-16 hold recovery wiring', () => {
     await service.close();
   });
 });
+
+describe('auction service: payments wiring (HRD-52)', () => {
+  it('flags a stale hold on its record when the settlement starts (issue 1725)', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0, holdMaxAgeMs: 60_000 });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.submitBid(a.conn, bid(rig, 10000));
+    await room.submitBid(b.conn, bid(rig, 10500));
+    rig.clock.advance(120_000);
+    await room.control(boss.conn, {
+      controlId: 'hammer-1',
+      action: 'hammer',
+      args: { closeNow: 1 },
+    });
+    await service.idle();
+    expect((await rig.stores.holds.get(a.holdId))?.stale).toBe(true);
+    expect(rig.audits.some((e) => e.kind === 'stale_hold' && e.holdId === a.holdId)).toBe(true);
+    await service.close();
+  });
+
+  it('reauthorizes an old hold once before the capture when the policy is on (issue 1725)', async () => {
+    const rig = await makeRig();
+    const service = rig.service({
+      resumeIntervalMs: 0,
+      reauthPolicy: { enabled: true, honorSafeMs: 60_000 },
+    });
+    const auctionId = rig.ids.mint<'AuctionId'>();
+    const room = await service.createAuction(auctionId, config, 'auctioneer-sub');
+    const a = await enroll(rig, service, room, auctionId, 'Ada', 50000);
+    const b = await enroll(rig, service, room, auctionId, 'Bo', 30000);
+    const boss = await connect(rig, room, 'auctioneer');
+    await room.submitBid(a.conn, bid(rig, 10000));
+    await room.submitBid(b.conn, bid(rig, 10500));
+    rig.clock.advance(120_000);
+    await room.control(boss.conn, {
+      controlId: 'hammer-1',
+      action: 'hammer',
+      args: { closeNow: 1 },
+    });
+    await service.idle();
+    const reauths = rig.audits.filter((e) => e.kind === 'paypal_call' && e.op === 'reauth');
+    expect(reauths.length).toBeGreaterThan(0);
+    expect((await journalOf(rig, auctionId)).state).toBe('SETTLED');
+    await service.close();
+  });
+
+  it('does not reauthorize while the policy is off (issue 1725)', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0 });
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    expect(run.auctionId).toBeDefined();
+    expect(rig.audits.some((e) => e.op === 'reauth')).toBe(false);
+    await service.close();
+  });
+
+  it('runs the periodic reconcile over settled auctions when it is on (issue 1724)', async () => {
+    vi.useFakeTimers();
+    try {
+      const rig = await makeRig();
+      const reports: ReconcileReport[] = [];
+      const service = rig.service({
+        resumeIntervalMs: 0,
+        reconcileIntervalMs: 1_000,
+        onReconcile: (r) => void reports.push(r),
+      });
+      const run = await runToHammer(rig, service);
+      await vi.advanceTimersByTimeAsync(0);
+      await service.idle();
+      await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+      const before = reports.length;
+      await vi.advanceTimersByTimeAsync(2_500);
+      expect(reports.length).toBeGreaterThan(before);
+      await service.close();
+      const after = reports.length;
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(reports.length).toBe(after);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not start the periodic reconcile by default (issue 1724)', async () => {
+    vi.useFakeTimers();
+    try {
+      const rig = await makeRig();
+      const reports: ReconcileReport[] = [];
+      const service = rig.service({
+        resumeIntervalMs: 0,
+        onReconcile: (r) => void reports.push(r),
+      });
+      const run = await runToHammer(rig, service);
+      await service.idle();
+      await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+      const before = reports.length;
+      await vi.advanceTimersByTimeAsync(300_000);
+      expect(reports.length).toBe(before);
+      await service.close();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

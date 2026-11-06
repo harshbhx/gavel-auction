@@ -9,6 +9,10 @@ import {
   DEFAULT_HOLD_MAX_AGE_MS,
   HoldService,
   sweepStalePending,
+  flagStaleHolds,
+  persistReauthorization,
+  reauthorizeIfDue,
+  startReconcileTimer,
   guardGateway,
   reconcile,
   voidAllLiveHolds,
@@ -27,6 +31,8 @@ import {
   type PaymentsGateway,
   type PaymentsMetrics,
   type PlanOutcome,
+  type ReauthPolicy,
+  type ReconcileTimer,
   type ReconcileReport,
   type RemainderMode,
   type SettlementPlan,
@@ -145,6 +151,18 @@ export interface AuctionServiceDeps {
    * only reads; a failed read is passed to `onError` and never blocks the settlement.
    */
   onReconcile?: (report: ReconcileReport) => Promise<void> | void;
+  /**
+   * How often the periodic reconcile pass runs over settled auctions, in ms. Off (the
+   * default) when absent or 0, so nothing changes unless an operator asks for it.
+   */
+  reconcileIntervalMs?: number;
+  /** Let the periodic reconcile pass void holds that are still live after SETTLED. Default off. */
+  reconcileRepair?: boolean;
+  /**
+   * Reauthorization policy (R-PAY-071): before the capture, a hold older than the honor
+   * window is reauthorized once. Disabled when absent.
+   */
+  reauthPolicy?: ReauthPolicy;
   /** Told when a settlement run stops with an error. The run is not retried until `resume()`. */
   onError?: (auctionId: string, error: unknown) => void;
 }
@@ -267,6 +285,7 @@ class Service implements AuctionService, SettlePort {
   private readonly orphans = new Map<string, string>();
   private readonly holdService: Pick<HoldService, 'completeApproval'>;
   private resumeTimer: ReturnType<typeof setInterval> | undefined;
+  private reconcileTimer: ReconcileTimer | undefined;
   private resuming = false;
   private closed = false;
   private readonly runtime: AuctionRuntime;
@@ -325,6 +344,35 @@ class Service implements AuctionService, SettlePort {
     if (every > 0) {
       this.resumeTimer = setInterval(() => void this.tick(), every);
       this.resumeTimer.unref();
+    }
+    const reconcileEvery = deps.reconcileIntervalMs ?? 0;
+    if (reconcileEvery > 0) {
+      this.reconcileTimer = startReconcileTimer(
+        {
+          gateway: this.gateway,
+          journals: deps.journals,
+          holds: deps.holds,
+          clock: this.payClock,
+          audit: deps.audit,
+          ...(deps.metrics !== undefined ? { metrics: deps.metrics } : {}),
+          listAuctions: () => this.settledAuctions(),
+        },
+        {
+          intervalMs: reconcileEvery,
+          ...(deps.reconcileRepair === true ? { repair: 'void_live_holds' as const } : {}),
+          isActive: async () => !this.closed,
+          onReport: ({ reports, errors }) => {
+            for (const e of errors) this.deps.onError?.(e.auctionId, new Error(e.message));
+            for (const r of reports)
+              void Promise.resolve(this.deps.onReconcile?.(r)).catch(() => undefined);
+          },
+          setInterval: (fn, ms) => {
+            const handle = setInterval(fn, ms);
+            handle.unref();
+            return handle;
+          },
+        },
+      );
     }
     this.webhook = createWebhookHandler({
       verifier: deps.verifier,
@@ -849,6 +897,17 @@ class Service implements AuctionService, SettlePort {
     }
   }
 
+  /** Unfenced auctions whose settlement is SETTLED: the ones the periodic reconcile looks at. */
+  private async settledAuctions(): Promise<string[]> {
+    const out: string[] = [];
+    for (const id of await this.deps.store.listAuctions()) {
+      if (this.fenced.has(id)) continue;
+      const journal = await this.deps.journals.load(lotIdOf(id as AuctionId));
+      if (journal?.state === 'SETTLED') out.push(lotIdOf(id as AuctionId));
+    }
+    return out;
+  }
+
   /**
    * Whether a resume pass has to drive the settlement of this auction. A settlement that is
    * final and already reported to the room is left alone unless a live hold remains, so the
@@ -874,6 +933,7 @@ class Service implements AuctionService, SettlePort {
   async close(): Promise<void> {
     this.closed = true;
     if (this.resumeTimer !== undefined) clearInterval(this.resumeTimer);
+    this.reconcileTimer?.stop();
     for (const timer of this.retryTimers.values()) clearTimeout(timer);
     this.retryTimers.clear();
     // A settlement run in progress finishes before its room closes; no new run starts now.
@@ -940,6 +1000,7 @@ class Service implements AuctionService, SettlePort {
     await this.report(room, journal);
     if ((await this.releaseSpares(journal)) > 0) retry = true;
 
+    journal = await this.reauthorizeDue(auctionId, journal);
     const captured = await runCapturePhase(
       {
         journals: this.deps.journals,
@@ -986,6 +1047,51 @@ class Service implements AuctionService, SettlePort {
     if ((await this.releaseSpares(released.journal)) > 0) retry = true;
     await this.finishBridge(room, auctionId, released.journal);
     return retry ? 'again' : 'done';
+  }
+
+  /**
+   * Reauthorizes holds past the honor window before the capture, when the policy is on. A
+   * hold that already has a prior authorization was reauthorized once and is left alone.
+   * A refusal or an unknown outcome never stops the settlement; the capture reads the truth.
+   */
+  private async reauthorizeDue(auctionId: AuctionId, journal: Journal): Promise<Journal> {
+    const policy = this.deps.reauthPolicy;
+    if (policy === undefined || !policy.enabled) return journal;
+    const lotId = lotIdOf(auctionId);
+    let changed = false;
+    for (const hold of Object.values(journal.holds)) {
+      if ((hold.priorAuthIds?.length ?? 0) > 0) continue;
+      try {
+        const result = await reauthorizeIfDue(
+          { gateway: this.gateway, audit: this.deps.audit, clock: this.payClock },
+          lotId,
+          {
+            holdId: hold.holdId,
+            authId: hold.authId,
+            ceilingCents: hold.ceilingCents,
+            startedAtMs: hold.createdAtMs ?? this.payClock.nowMs(),
+            generation: hold.priorAuthIds?.length ?? 0,
+          },
+          policy,
+        );
+        if (result.status !== 'reauthorized') continue;
+        const saved = await persistReauthorization(
+          {
+            journals: this.deps.journals,
+            holds: this.deps.holds,
+            clock: this.payClock,
+            owner: this.owner,
+          },
+          lotId,
+          hold.holdId,
+          result,
+        );
+        if (saved === 'saved') changed = true;
+      } catch (e) {
+        this.deps.onError?.(auctionId, e);
+      }
+    }
+    return changed ? ((await this.deps.journals.load(lotId)) ?? journal) : journal;
   }
 
   /**
@@ -1119,6 +1225,20 @@ class Service implements AuctionService, SettlePort {
       plan = (await this.bridge.prepare(auctionId, outcome, holds, reserveCents)).plan;
     }
     await this.boundary('after:prepare');
+    // Mark live holds older than the maximum age on their records; they stay capturable.
+    try {
+      await flagStaleHolds(
+        {
+          holds: this.deps.holds,
+          audit: this.deps.audit,
+          clock: this.payClock,
+          holdMaxAgeMs: this.deps.holdMaxAgeMs ?? DEFAULT_HOLD_MAX_AGE_MS,
+        },
+        lotId,
+      );
+    } catch (e) {
+      this.deps.onError?.(auctionId, e);
+    }
     const created = await createSettlement(
       {
         journals: this.deps.journals,
