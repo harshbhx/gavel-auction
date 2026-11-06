@@ -422,6 +422,9 @@ export const DEFAULT_PENDING_TTL_MS: number;
 // @public (undocumented)
 export const DEFAULT_REAUTH_POLICY: ReauthPolicy;
 
+// @public (undocumented)
+export const DEFAULT_RECONCILE_INTERVAL_MS = 60000;
+
 // @public
 export const DEFAULT_REMAINDER_MODE: RemainderMode;
 
@@ -1638,6 +1641,26 @@ export interface ReauthStoreDeps {
 // @public
 export function reconcile(deps: ReconcileDeps, auctionId: string): Promise<ReconcileReport>;
 
+// @public
+export function reconcileAll(deps: ReconcileAllDeps, opts?: ReconcileAllOptions): Promise<{
+    reports: RepairedReport[];
+    errors: Array<{
+        auctionId: string;
+        message: string;
+    }>;
+}>;
+
+// @public (undocumented)
+export interface ReconcileAllDeps extends RepairDeps {
+    listAuctions(sinceMs: number): Promise<readonly string[]>;
+}
+
+// @public (undocumented)
+export interface ReconcileAllOptions extends RepairOptions {
+    // (undocumented)
+    sinceMs?: number;
+}
+
 // @public (undocumented)
 export interface ReconcileDeps {
     audit?: AuditSink;
@@ -1661,6 +1684,30 @@ export interface ReconcileReport {
     journalState: Journal['state'] | null;
     observedAt: number;
 }
+
+// @public (undocumented)
+export interface ReconcileTimer {
+    runNow(): Promise<boolean>;
+    // (undocumented)
+    stop(): void;
+}
+
+// @public (undocumented)
+export interface ReconcileTimerOptions extends RepairOptions {
+    // (undocumented)
+    clearInterval?: (handle: unknown) => void;
+    // (undocumented)
+    intervalMs?: number;
+    isActive?: () => Promise<boolean>;
+    // (undocumented)
+    onReport?: (r: Awaited<ReturnType<typeof reconcileAll>>) => void;
+    // (undocumented)
+    setInterval?: (fn: () => void, ms: number) => unknown;
+    sinceMs?: () => number;
+}
+
+// @public
+export function reconcileWithRepair(deps: RepairDeps, auctionId: string, opts?: RepairOptions): Promise<RepairedReport>;
 
 // @public (undocumented)
 export interface RecoverDeps {
@@ -1760,6 +1807,38 @@ export type RemainderResult = {
 
 // @public
 export function renewLease(deps: LeaseDeps, auctionId: string, owner: string, ttlMs?: number): Promise<void>;
+
+// @public (undocumented)
+export interface RepairAction {
+    // (undocumented)
+    bidderId: string | null;
+    // (undocumented)
+    detail?: string;
+    // (undocumented)
+    holdId: string;
+    // (undocumented)
+    result: 'voided' | 'not_live' | 'failed';
+}
+
+// @public (undocumented)
+export interface RepairDeps extends ReconcileDeps {
+    // (undocumented)
+    audit: AuditSink;
+}
+
+// @public (undocumented)
+export interface RepairedReport extends ReconcileReport {
+    repairs: RepairAction[];
+}
+
+// @public
+export type RepairMode = 'void_live_holds';
+
+// @public (undocumented)
+export interface RepairOptions {
+    // (undocumented)
+    repair?: RepairMode;
+}
 
 // @public (undocumented)
 export const REQUEST_ID_HEADER = "PayPal-Request-Id";
@@ -1968,6 +2047,9 @@ export interface StaleDeps {
     // (undocumented)
     holds: HoldStore;
 }
+
+// @public
+export function startReconcileTimer(deps: ReconcileAllDeps, opts?: ReconcileTimerOptions): ReconcileTimer;
 
 // @public
 export function step(journal: Journal, event: SettlementEvent): StepResult;

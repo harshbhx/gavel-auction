@@ -9,6 +9,9 @@ import { composeServer, type Composed } from '../src/boot/compose';
 const passedHoldMaxAge: Array<number | undefined> = [];
 const passedMaxCeiling: Array<number | undefined> = [];
 const passedMetrics: unknown[] = [];
+const passedDeps: Array<
+  Parameters<typeof import('../src/runtime/auction-service').createAuctionService>[0]
+> = [];
 const passedLimiters: unknown[] = [];
 vi.mock('../src/runtime/auction-service', async (importActual) => {
   const actual = await importActual<typeof import('../src/runtime/auction-service')>();
@@ -18,6 +21,7 @@ vi.mock('../src/runtime/auction-service', async (importActual) => {
       passedHoldMaxAge.push(deps.holdMaxAgeMs);
       passedMaxCeiling.push(deps.maxCeilingCents);
       passedMetrics.push(deps.roomMetrics);
+      passedDeps.push(deps);
       passedLimiters.push(deps.limiter);
       return actual.createAuctionService(deps);
     },
@@ -46,6 +50,47 @@ async function boot(env: Record<string, string> = {}): Promise<{ app: Composed; 
   const port = await app.listen(0);
   return { app, url: `http://127.0.0.1:${port}` };
 }
+
+describe('payments wiring in the composition (HRD-52)', () => {
+  it('hands the service an audit sink that also publishes wire payloads (issue 1721)', async () => {
+    const seen: string[] = [];
+    const app = await composeServer(
+      { ...base },
+      { sink: () => undefined, onSettlementPayload: (p) => void seen.push(p.type) },
+    );
+    running.push(app);
+    const deps = passedDeps[passedDeps.length - 1];
+    await deps?.audit.append({ kind: 'kill_switch', op: 'engage', tsMs: 1 });
+    expect(seen).toEqual(['audit_event']);
+  });
+
+  it('leaves reconcile, repair and reauthorization off by default (issues 1724, 1725)', async () => {
+    const app = await composeServer({ ...base }, { sink: () => undefined });
+    running.push(app);
+    const deps = passedDeps[passedDeps.length - 1];
+    expect(deps?.reconcileIntervalMs).toBeUndefined();
+    expect(deps?.reconcileRepair).toBe(false);
+    expect(deps?.reauthPolicy?.enabled).toBe(false);
+  });
+
+  it('turns them on from the environment (issues 1724, 1725)', async () => {
+    const app = await composeServer(
+      {
+        ...base,
+        GAVEL_RECONCILE_INTERVAL_MS: '30000',
+        GAVEL_RECONCILE_REPAIR: '1',
+        GAVEL_REAUTH: '1',
+        GAVEL_REAUTH_HONOR_SAFE_MS: '1000',
+      },
+      { sink: () => undefined },
+    );
+    running.push(app);
+    const deps = passedDeps[passedDeps.length - 1];
+    expect(deps?.reconcileIntervalMs).toBe(30000);
+    expect(deps?.reconcileRepair).toBe(true);
+    expect(deps?.reauthPolicy).toEqual({ enabled: true, honorSafeMs: 1000 });
+  });
+});
 
 describe('server entry point (INT-R3-17)', () => {
   it('answers the health and metrics routes', async () => {

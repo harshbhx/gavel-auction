@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FakeClock, FakePayPalCore } from '../../src/fake/core.js';
 import { FakeGateway } from '../../src/fake/gateway.js';
 import { assertFakeInvariants } from '../../src/fake/invariants.js';
@@ -15,6 +15,7 @@ import { runCapturePhase } from '../../src/saga/capture.js';
 import { createSettlement } from '../../src/saga/create.js';
 import { MemoryHoldStore, MemoryJournalStore } from '../../src/stores/memory.js';
 import type { PaymentAudit, SettlementPlan } from '../../src/types.js';
+import { sharedHoldQueue } from '../../src/webhooks/merge.js';
 import { FRESH_HOLDS } from '../helpers/age.js';
 
 const START_MS = 1_800_000_000_000;
@@ -227,6 +228,26 @@ describe('T-PAY-023 stale holds', () => {
     expect(await flagStaleHolds(stale, 'a1')).toEqual([]);
     rig.clock.advance(1);
     expect(await flagStaleHolds(stale, 'a1')).toEqual([holdId]);
+  });
+
+  it('keeps a webhook update made after the holds were listed (HRD-52)', async () => {
+    const rig = makeRig(true);
+    const holdId = await heldHold(rig);
+    rig.clock.advance(2 * HOUR + 60_000);
+    // A webhook voids the hold through the shared queue just after the stale pass listed it.
+    const list = rig.holds.listByAuction.bind(rig.holds);
+    vi.spyOn(rig.holds, 'listByAuction').mockImplementationOnce(async (auctionId) => {
+      const listed = await list(auctionId);
+      await sharedHoldQueue.run(holdId, async () => {
+        const current = await rig.holds.get(holdId);
+        if (current !== null) await rig.holds.put({ ...current, status: 'VOIDED' });
+      });
+      return listed;
+    });
+    const stale = { holds: rig.holds, audit: rig.audit, clock: rig.now, holdMaxAgeMs: MAX_AGE };
+    expect(await flagStaleHolds(stale, 'a1')).toEqual([]);
+    expect((await rig.holds.get(holdId))?.status).toBe('VOIDED');
+    expect(rig.audits.filter((a) => a.kind === 'stale_hold')).toHaveLength(0);
   });
 });
 

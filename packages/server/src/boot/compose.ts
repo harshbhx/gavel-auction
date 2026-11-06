@@ -9,8 +9,10 @@ import {
   MemoryKillStateStore,
   MemoryWebhookEventStore,
   PayPalGateway,
+  DEFAULT_HONOR_SAFE_MS,
   PersistentKillSwitch,
   TokenManager,
+  emittingAudit,
   Transport,
   WebhookVerifier,
   assertSandboxConfig,
@@ -20,6 +22,7 @@ import {
   type JournalStore,
   type KillStateStore,
   type PaymentsGateway,
+  type SettlementPayload,
   type WebhookEventStore,
 } from '@gavel/payments';
 import {
@@ -94,6 +97,8 @@ export interface ComposeOptions {
   hooks?: LoadHooks;
   /** More routes, tried after the built-in ones and before the 404 (the auction HTTP app). */
   extraRoutes?: (service: AuctionService, store: RoomStore) => ExtraRoutes;
+  /** Receives every settlement payload and its canonical JSON (tests, a future feed). */
+  onSettlementPayload?: (payload: SettlementPayload, json: string) => Promise<void> | void;
   /** Clock for the /warmup report (tests). Default: Date.now. */
   warmupNow?: () => number;
   /** Warmup time budget in ms (tests). Default: WARMUP_BUDGET_MS. */
@@ -310,13 +315,25 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     stores.release();
     throw e;
   }
-  const audit = createPaymentAudit({
+  const baseAudit = createPaymentAudit({
     clock,
     sink: opts.sink ?? ((line) => void process.stdout.write(`${line}\n`)),
     file:
       config.STORE === 'file' || config.STORE === 'postgres'
         ? join(config.DATA_DIR, 'payment-audit.jsonl')
         : undefined,
+  });
+  // Every audit entry also yields its wire payload (a settlement_update per state change).
+  const audit = emittingAudit({
+    journals: stores.journals,
+    inner: baseAudit,
+    publish: (payload, json) => {
+      if (opts.onSettlementPayload !== undefined) return opts.onSettlementPayload(payload, json);
+      if (payload.type === 'settlement_update') {
+        log.debug('settlement update', { auctionId: payload.auctionId, state: payload.state });
+      }
+      return undefined;
+    },
   });
   const killSwitch = new PersistentKillSwitch({
     store: stores.kill,
@@ -352,6 +369,14 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     verifier: payments.verifier,
     killSwitch,
     holdMaxAgeMs: payments.holdMaxAgeMs,
+    ...(config.GAVEL_RECONCILE_INTERVAL_MS !== undefined && config.GAVEL_RECONCILE_INTERVAL_MS > 0
+      ? { reconcileIntervalMs: config.GAVEL_RECONCILE_INTERVAL_MS }
+      : {}),
+    reconcileRepair: config.GAVEL_RECONCILE_REPAIR,
+    reauthPolicy: {
+      enabled: config.GAVEL_REAUTH,
+      honorSafeMs: config.GAVEL_REAUTH_HONOR_SAFE_MS ?? DEFAULT_HONOR_SAFE_MS,
+    },
     maxCeilingCents: payments.maxCeilingCents,
     onError: (auctionId, error) =>
       log.error('settlement stopped', {
