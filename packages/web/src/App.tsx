@@ -409,6 +409,7 @@ function RegisterRoute({ roomId, api }: { roomId: string; api: Api }) {
     <ApproveRoute
       roomId={roomId}
       bidderId={who.bidderId}
+      token={who.token}
       api={api}
       ceilingCents={draft.ceilingCents}
       onBack={() => setDraft(null)}
@@ -419,19 +420,20 @@ function RegisterRoute({ roomId, api }: { roomId: string; api: Api }) {
 function ApproveRoute(props: {
   roomId: string;
   bidderId: string;
+  token: string;
   api: Api;
   ceilingCents: number;
   onBack: () => void;
 }) {
-  const { roomId, bidderId, api, ceilingCents } = props;
+  const { roomId, bidderId, token, api, ceilingCents } = props;
   const port = useMemo(
     () =>
       createApprovalPort(
         api.payments,
-        { apiBase: api.apiBase },
-        { apiBase: api.apiBase, clientId: api.paypalClientId },
+        { apiBase: api.apiBase, token },
+        { apiBase: api.apiBase, clientId: api.paypalClientId, token },
       ),
-    [api],
+    [api, token],
   );
   const approval = useApproval({ port, roomId, bidderId });
   const { start } = approval;

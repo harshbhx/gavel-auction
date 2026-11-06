@@ -15,6 +15,8 @@ export type FetchLike = (
 
 export interface FakeAdapterDeps {
   apiBase: string;
+  /** Session bearer token sent on every hold request. */
+  token?: string;
   mode?: FakeFaultMode;
   fetch?: FetchLike;
   /** Wait used for the buyer step. Defaults to setTimeout. */
@@ -119,7 +121,10 @@ export class FakeApprovalAdapter implements PaymentApprovalPort {
     try {
       const res = await doFetch(`${this.deps.apiBase}${path}`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          ...(this.deps.token === undefined ? {} : { authorization: `Bearer ${this.deps.token}` }),
+        },
         body: JSON.stringify(body),
       });
       if (!res.ok) return null;
