@@ -27,10 +27,12 @@ export function modeFromEnv(value: string | undefined): PaymentsMode {
 }
 
 async function startBrowserStack(): Promise<{ stack: BrowserStack; stop: () => Promise<void> }> {
-  const server: Stack = await startStack();
-  const webDir = join(ROOT, 'packages', 'web');
+  // The page opens a socket to the server, which only accepts its own origin and CORS_ORIGINS, so
+  // the web origin is chosen first and handed to the server.
   const port = await freePort();
   const webUrl = `http://127.0.0.1:${port}`;
+  const server: Stack = await startStack({ env: { CORS_ORIGINS: webUrl } });
+  const webDir = join(ROOT, 'packages', 'web');
   const wsUrl = server.serverUrl.replace(/^http/, 'ws');
   const viteBin = join(
     dirname(createRequire(join(webDir, 'package.json')).resolve('vite/package.json')),
