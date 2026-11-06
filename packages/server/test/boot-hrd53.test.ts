@@ -89,6 +89,7 @@ describe('socket upgrades are limited per address (RT4-sec-09)', () => {
         );
       });
       sock.on('error', () => undefined);
+      sock.resume();
       sock.on('close', () => resolve());
     });
 
