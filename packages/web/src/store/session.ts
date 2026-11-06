@@ -1,4 +1,4 @@
-import { loadSession, type StorageLike, type StoredSession } from '../net/session';
+import { loadSession, saveSession, type StorageLike, type StoredSession } from '../net/session';
 
 /**
  * Who this device is in a room (R-WEB-029). The bidder identity comes from sessionStorage and
@@ -10,10 +10,36 @@ export function getBidderSession(
   storage?: StorageLike | null,
 ): StoredSession | null {
   try {
-    return storage === undefined ? loadSession(roomId) : loadSession(roomId, storage);
+    const stored = storage === undefined ? loadSession(roomId) : loadSession(roomId, storage);
+    return stored ?? bidderSessions.get(roomId) ?? null;
   } catch {
-    return null;
+    return bidderSessions.get(roomId) ?? null;
   }
+}
+
+// The in-memory copy of a bidder session, so a tab whose storage is blocked still reaches the bid screen.
+const bidderSessions = new Map<string, StoredSession>();
+
+/** Keeps the session in memory first, then tries storage. Returns false when storage refused it. */
+export function rememberBidderSession(
+  roomId: string,
+  session: StoredSession,
+  storage?: StorageLike | null,
+): boolean {
+  bidderSessions.set(roomId, session);
+  try {
+    return storage === undefined
+      ? saveSession(roomId, session)
+      : saveSession(roomId, session, storage);
+  } catch {
+    return false;
+  }
+}
+
+/** Forgets the in-memory bidder session for one room, or for every room when none is named. */
+export function clearBidderSession(roomId?: string): void {
+  if (roomId === undefined) bidderSessions.clear();
+  else bidderSessions.delete(roomId);
 }
 
 /** Minimal view of the browser location that the fragment reader needs. */
@@ -74,9 +100,11 @@ export function clearAuctioneerToken(roomId?: string): void {
   if (roomId === undefined) {
     auctioneerTokens.clear();
     inviteTokens.clear();
+    bidderSessions.clear();
   } else {
     auctioneerTokens.delete(roomId);
     inviteTokens.delete(roomId);
+    bidderSessions.delete(roomId);
   }
 }
 
