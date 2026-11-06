@@ -1,6 +1,6 @@
 id: S09-reconnect
 title: Bidder drops during bidding and resumes without losing state
-modes: [inproc]
+modes: [inproc, stack]
 seed: 9
 clock: { startMs: 1793750400000 }
 auction: { itemId: lot-1, reserve: 5000, minIncrement: 500, softCloseMs: 0, mode: english }
