@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const ENV_ALLOWED = new Set(['.env.example', '.env.sample', '.env.template']);
 const KEY_FILE = /(^|\/)(id_rsa|id_ed25519)$|\.(pem|p12|pfx|key|keystore|jks)$/i;
-const REQUIRED = ['LICENSE', 'docs/PUBLIC-REPO-CHECKLIST.md', 'docs/JUDGES.md'];
+export const REQUIRED = ['LICENSE', 'docs/PUBLIC-REPO-CHECKLIST.md', 'docs/JUDGES.md'];
 
 export function isEnvFile(path) {
   const base = path.split('/').pop();
