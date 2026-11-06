@@ -184,7 +184,7 @@ function gatedSection(
     note: 'Outcome after the room pipeline: rules parse, rescoring, validation, AUTO/CONFIRM policy and mic rule.',
     mic: mic ?? 'room',
     assumptions:
-      'Roster of paddles 1 to 99 with active holds; price 0 and minimum increment 100 cents where the fixture gives none; neutral speech-to-text confidence where none was recorded.',
+      'Roster of paddles 1 to 99 with active holds; price 0 and minimum increment 100 cents where the fixture gives none; neutral speech-to-text confidence where none was recorded; model off, so every bid is rules-only.',
     outcomes: { auto: count('auto'), confirm: count('confirm'), drop: count('drop') },
     sttConfidence: {
       recorded: records.filter((r) => r.sttSource === 'recorded').length,

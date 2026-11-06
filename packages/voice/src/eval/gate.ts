@@ -1,6 +1,6 @@
 import { VoicePipeline, type PipelineOutput } from '../pipeline/pipeline.js';
 import type { SttWord } from '../stt/provider.js';
-import type { BidContext, Decision } from '../types.js';
+import type { BidContext, Decision, ParseContext, ParseResult } from '../types.js';
 import type { Actual } from './metrics.js';
 
 /**
@@ -32,6 +32,8 @@ export interface GateInput {
   /** Recorded word confidences. */
   words?: readonly SttWord[];
   mic: GateMic;
+  /** Model reading of the transcript; absent means the model is off and the bid is rules-only. */
+  llm?: (text: string, ctx: ParseContext) => ParseResult | null;
 }
 
 export interface GateRecord {
@@ -121,6 +123,7 @@ export function gateUtterance(input: GateInput): GateRecord {
     ids: () => `eval-${++n}`,
     context: () => context(input),
     mic: input.mic,
+    ...(input.llm === undefined ? {} : { llm: input.llm }),
     ...(input.speaker === null ? {} : { speakerBidderId: input.speaker }),
   });
   const recorded = input.sttConfidence !== undefined;

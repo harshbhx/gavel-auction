@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+// Payments sees this file alone (its path alias), so the shared client key helper is reached from here.
+export { clientKey } from './client-key';
+
 /** Same limit as MAX_NAME_CHARS in the wire envelope (a test keeps them equal); no import so payments stays self-contained. */
 const MAX_BIDDER_NAME_CHARS = 64;
 
