@@ -74,7 +74,6 @@ describe('bidder name invisible characters (issue 1881)', () => {
   it('forbids zero-width and direction marks and names that are blank without them', () => {
     const marks = [
       '\u200B',
-      '\u200D',
       '\u200E',
       '\u200F',
       '\u2028',
@@ -98,5 +97,38 @@ describe('bidder name invisible characters (issue 1881)', () => {
     }
     expect(ApproveHoldRequest.safeParse({ orderId: 'o-1', name: 'Alice' }).success).toBe(true);
     expect(BIDDER_NAME_FORBIDDEN_PATTERN.test('Zo\u00EB \u5C71\u7530')).toBe(false);
+  });
+});
+
+describe('bidder name ZWJ and ZWNJ (issue 1905)', () => {
+  const ok = (name: string): boolean =>
+    ApproveHoldRequest.safeParse({ orderId: 'o-1', name }).success;
+  it('allows joined emoji and a Persian name with ZWNJ', () => {
+    const family = '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}';
+    const flag = '\u{1F3F3}\uFE0F\u200D\u{1F308}';
+    const persian = '\u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645';
+    for (const name of [family, flag, persian, `Al ${family}`]) {
+      expect(BIDDER_NAME_FORBIDDEN_PATTERN.test(name)).toBe(false);
+      expect(ok(name)).toBe(true);
+    }
+  });
+  it('rejects ZWJ or ZWNJ at an edge, next to space or another invisible, or alone', () => {
+    const bad = [
+      '\u200Dalice',
+      'alice\u200D',
+      '\u200Calice',
+      'alice\u200C',
+      'a \u200Db',
+      'a\u200D b',
+      'a\u200D\u200Db',
+      'a\u200D\u200Bb',
+      '\u200D',
+      '\u200C',
+      '\u200D\u200C',
+    ];
+    for (const name of bad) {
+      expect(BIDDER_NAME_FORBIDDEN_PATTERN.test(name), JSON.stringify(name)).toBe(true);
+      expect(ok(name), JSON.stringify(name)).toBe(false);
+    }
   });
 });

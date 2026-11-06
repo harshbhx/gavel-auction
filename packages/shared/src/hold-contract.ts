@@ -6,13 +6,21 @@ const MAX_BIDDER_NAME_CHARS = 64;
 /**
  * Characters a bidder name may never hold: control characters (U+0000-U+001F, U+007F-U+009F),
  * zero-width and direction marks (U+200B-U+200F, U+2028-U+202F, U+2060-U+206F, U+FEFF, U+061C;
- * this covers the bidi overrides and isolates) and angle brackets. The room reuses this pattern,
+ * this covers the bidi overrides and isolates) and angle brackets. U+200C and U+200D are
+ * allowed only between two non-space, non-invisible characters (joined emoji, Persian, Indic). The room reuses this pattern,
  * so a name that passes here is never refused later, and a name made only of invisible
  * characters cannot register as a blank or look-alike bidder.
  */
-export const BIDDER_NAME_FORBIDDEN_PATTERN =
+export const BIDDER_NAME_FORBIDDEN_PATTERN = new RegExp(
+  // Control and invisible characters (ZWJ and ZWNJ are judged separately below) and angle brackets.
   // eslint-disable-next-line no-control-regex -- control characters are what this pattern forbids
-  /[\u0000-\u001F\u007F-\u009F\u061C\u200B-\u200F\u2028-\u202F\u2060-\u206F\uFEFF<>]/u;
+  '[\\u0000-\\u001F\\u007F-\\u009F\\u061C\\u200B\\u200E\\u200F\\u2028-\\u202F\\u2060-\\u206F\\uFEFF<>]' +
+    // ZWJ (U+200D) and ZWNJ (U+200C) hold joined emoji and some Persian and Indic names, so they
+    // are allowed only between two characters that are neither space nor invisible.
+    '|(?<![^\\s\\u0000-\\u001F\\u007F-\\u009F\\u061C\\u200B-\\u200F\\u2028-\\u202F\\u2060-\\u206F\\uFEFF<>])[\\u200C\\u200D]' +
+    '|[\\u200C\\u200D](?![^\\s\\u0000-\\u001F\\u007F-\\u009F\\u061C\\u200B-\\u200F\\u2028-\\u202F\\u2060-\\u206F\\uFEFF<>])',
+  'u',
+);
 
 export const HOLD_ERROR_CODES = [
   'ceiling_out_of_range',
