@@ -5,6 +5,8 @@ import { adminKeyMatches } from './ops';
 
 export const DEMO_RESET_PATH = '/api/demo/reset';
 export const DEMO_SEED_PATH = '/api/demo/seed';
+/** Creates one more seeded demo room without retiring the earlier ones. */
+export const DEMO_ROOMS_PATH = '/api/demo/rooms';
 
 /** Scripted bidders: fixed fake names, whole-cent ceilings. No personal data. */
 export const DEMO_BIDDERS: ReadonlyArray<{ name: string; ceiling: number }> = [
@@ -21,14 +23,14 @@ export interface DemoDeps {
   adminKey: string;
   ids: Ids;
   service: Pick<AuctionService, 'createAuction' | 'registerBidder'>;
-  /** Scripted auction settings. */
-  config: AuctionConfig;
+  /** Scripted auction settings; a function lets the deadline be computed per room. */
+  config: AuctionConfig | (() => AuctionConfig);
   auctioneerSub: string;
   /**
    * Returns an already-approved hold id for a scripted bidder. The host backs it
    * with the fake payments adapter; this module never talks to PayPal.
    */
-  holdFor: (bidderId: BidderId, ceiling: Cents) => Promise<string>;
+  holdFor: (bidderId: BidderId, ceiling: Cents, auctionId: AuctionId) => Promise<string>;
   /** Drops the previous demo room, if the host keeps one. */
   retire?: (auctionId: AuctionId) => Promise<void>;
 }
@@ -43,23 +45,27 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(text);
 }
 
-/** Handles `POST /api/demo/reset` and `POST /api/demo/seed` (R-RT-107). */
+/** Handles `POST /api/demo/reset`, `/seed` and `/rooms` (R-RT-107). */
 export function createDemoHandler(
   deps: DemoDeps,
 ): (req: IncomingMessage, res: ServerResponse) => Promise<void> {
   let current: AuctionId | undefined;
 
+  const create = async (): Promise<AuctionId> => {
+    const id = deps.ids.mint<'AuctionId'>();
+    const config = typeof deps.config === 'function' ? deps.config() : deps.config;
+    await deps.service.createAuction(id, config, deps.auctioneerSub);
+    return id;
+  };
   const fresh = async (): Promise<AuctionId> => {
     if (current !== undefined) await deps.retire?.(current);
-    const id = deps.ids.mint<'AuctionId'>();
-    await deps.service.createAuction(id, deps.config, deps.auctioneerSub);
-    current = id;
-    return id;
+    current = await create();
+    return current;
   };
 
   return async (req, res) => {
     const path = (req.url ?? '').split('?')[0];
-    const known = path === DEMO_RESET_PATH || path === DEMO_SEED_PATH;
+    const known = path === DEMO_RESET_PATH || path === DEMO_SEED_PATH || path === DEMO_ROOMS_PATH;
     if (!deps.enabled || deps.production || !known) {
       sendJson(res, 404, { error: 'not_found' });
       return;
@@ -74,12 +80,12 @@ export function createDemoHandler(
       return;
     }
     try {
-      const auctionId = await fresh();
+      const auctionId = path === DEMO_ROOMS_PATH ? await create() : await fresh();
       let bidders = 0;
-      if (path === DEMO_SEED_PATH) {
+      if (path !== DEMO_RESET_PATH) {
         for (const b of DEMO_BIDDERS) {
           const bidderId = deps.ids.mint<'BidderId'>();
-          const holdId = await deps.holdFor(bidderId, b.ceiling as Cents);
+          const holdId = await deps.holdFor(bidderId, b.ceiling as Cents, auctionId);
           await deps.service.registerBidder({ auctionId, bidderId, name: b.name, holdId });
           bidders += 1;
         }

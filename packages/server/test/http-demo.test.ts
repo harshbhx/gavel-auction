@@ -110,4 +110,39 @@ describe('demo routes (T-RT-079)', () => {
     const r = await call(handler, 'POST', '/api/demo/seed', admin);
     expect(r).toEqual({ status: 500, body: { error: 'demo_failed' } });
   });
+
+  it('rooms makes a seeded room each call and never retires an earlier one', async () => {
+    const { handler, created, registered, retired } = setup();
+    const a = await call(handler, 'POST', '/api/demo/rooms', admin);
+    const b = await call(handler, 'POST', '/api/demo/rooms', admin);
+    expect(a).toMatchObject({ status: 200, body: { auctionId: created[0], bidders: 3 } });
+    expect(b.body.auctionId).toBe(created[1]);
+    expect(created[0]).not.toBe(created[1]);
+    expect(registered).toHaveLength(6);
+    expect(retired).toEqual([]);
+  });
+
+  it('rooms is gated like the other demo routes', async () => {
+    const off = setup({ enabled: false });
+    expect((await call(off.handler, 'POST', '/api/demo/rooms', admin)).status).toBe(404);
+    const prod = setup({ production: true });
+    expect((await call(prod.handler, 'POST', '/api/demo/rooms', admin)).status).toBe(404);
+    const open = setup();
+    expect((await call(open.handler, 'POST', '/api/demo/rooms', {})).status).toBe(401);
+    expect((await call(open.handler, 'GET', '/api/demo/rooms', admin)).status).toBe(405);
+    expect(open.created).toEqual([]);
+  });
+
+  it('passes the room id to the hold source and accepts a per-room config function', async () => {
+    const seen: string[] = [];
+    const { handler, created } = setup({
+      config: () => ({}) as AuctionConfig,
+      holdFor: async (bidderId, _ceiling, auctionId) => {
+        seen.push(auctionId);
+        return `h-${bidderId}`;
+      },
+    });
+    await call(handler, 'POST', '/api/demo/rooms', admin);
+    expect(seen).toEqual([created[0], created[0], created[0]]);
+  });
 });
