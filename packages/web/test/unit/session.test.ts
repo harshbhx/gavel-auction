@@ -10,6 +10,8 @@ import {
 import {
   clearAuctioneerToken,
   getBidderSession,
+  hasAuctioneerAccess,
+  readInviteToken,
   readAuctioneerToken,
   type FragmentSource,
 } from '../../src/store/session';
@@ -115,6 +117,14 @@ describe('room identity (R-WEB-029)', () => {
     expect(readAuctioneerToken('r1', fakeWindow(''))).toBe('abc.def');
     clearAuctioneerToken();
     expect(readAuctioneerToken('r1', fakeWindow(''))).toBeNull();
+  });
+
+  it('keeps the invite slot apart from the auctioneer slot and ignores bidder sessions', () => {
+    clearAuctioneerToken();
+    expect(readInviteToken('r1', fakeWindow('#token=invite-word'))).toBe('invite-word');
+    expect(readAuctioneerToken('r1', fakeWindow(''))).toBeNull();
+    expect(hasAuctioneerAccess('r1')).toBe(false);
+    clearAuctioneerToken();
   });
 
   it('keeps one token per room', () => {

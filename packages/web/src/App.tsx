@@ -14,6 +14,7 @@ import { socketUrl, startLiveRoom, type LiveRoom } from './net/liveRoom';
 import { Announcer } from './a11y/Announcer';
 import type { PaymentsMode } from './config';
 import { receiptSource } from './ladder/fromWire';
+import { SettlementPanel } from './ladder/SettlementPanel';
 import type { Transport } from './net/transport';
 import { WebSocketTransport } from './net/wsTransport';
 import { clearSession, loadSession, saveSession, type SessionRole } from './net/session';
@@ -43,7 +44,7 @@ import { TokenGate } from './screens/states/TokenGate';
 import { RoomError, isHaltingError, isTerminalError } from './screens/states/RoomError';
 import { roomStore, useRoom } from './store/roomStore';
 import { summarizePending, type PendingSummary } from './store/localEvents';
-import { getStaffSession, hasAuctioneerAccess, readAuctioneerToken } from './store/session';
+import { hasAuctioneerAccess, readAuctioneerToken, readInviteToken } from './store/session';
 
 export interface AppProps {
   /** Starting path. Defaults to the browser location; tests pass their own. */
@@ -83,11 +84,9 @@ function tokenFor(routeId: string, roomId: string): { token: string; bidderId?: 
     return watcher === null ? null : { token: watcher.token };
   }
   if (routeId === 'console' || routeId === 'audit') {
+    // These routes take a fragment or in-memory token only: a bidder session is never used here.
     const fromFragment = readAuctioneerToken(roomId);
-    if (fromFragment !== null) return { token: fromFragment };
-    // A bidder token is never presented on these routes.
-    const staff = getStaffSession(roomId);
-    return staff === null ? null : { token: staff.token };
+    return fromFragment === null ? null : { token: fromFragment };
   }
   const stored = loadSession(roomId);
   if (stored === null) return null;
@@ -303,7 +302,7 @@ function ReplayRoute({ match }: { match: RouteMatch }) {
 export function ReceiptRoute({ roomId }: { roomId: string }) {
   const state = useRoom((s) => s);
   const online = useOnline();
-  const { view, paddle } = useMemo(() => receiptSource(state), [state]);
+  const { view, paddle, at, runnerUp, detail } = useMemo(() => receiptSource(state), [state]);
   return (
     <main data-route="receipt">
       {!online && <Offline view="receipt" />}
@@ -312,7 +311,14 @@ export function ReceiptRoute({ roomId }: { roomId: string }) {
       ) : view === null ? (
         <Empty view="receipt" />
       ) : (
-        <Receipt view={view} paddle={paddle} itemName={roomId} at={Date.now()} />
+        <>
+          <Receipt view={view} paddle={paddle} itemName={roomId} at={at} runnerUp={runnerUp} />
+          <SettlementPanel
+            view={view}
+            detail={detail}
+            auditHref={`/r/${encodeURIComponent(roomId)}/audit`}
+          />
+        </>
       )}
     </main>
   );
@@ -457,7 +463,7 @@ function RegisterRoute({
   const snapshot = useRoom((s) => (s.snapshot?.auctionId === roomId ? s.snapshot : null));
   const roomError = useRoom((s) => s.lastError);
 
-  const invite = who === null ? readAuctioneerToken(roomId) : null;
+  const invite = who === null ? readInviteToken(roomId) : null;
   useEffect(() => {
     if (who !== null || invite === null) return;
     fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(roomId)}/join`, {

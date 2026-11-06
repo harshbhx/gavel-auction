@@ -1,17 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
+import type { BidderId, Cents, MsgId } from '@gavel/shared';
 import { announce } from '../../a11y/announce';
 import type { AudioFrameSink } from '../../audio/micCapture';
 import { useMic } from '../../audio/useMic';
 import { Button } from '../../design/primitives/Button';
 import { t } from '../../copy/t';
 import { useConnection } from '../../net/connection';
-import { createControlPort } from '../../net/controlPort';
+import { ControlError, ControlTimeoutError, createControlPort } from '../../net/controlPort';
 import type { LiveRoom } from '../../net/liveRoom';
 import { useRoom } from '../../store/roomStore';
 import { Controls } from './Controls';
 import { ConsoleScreen } from './ConsoleScreen';
 import { KillSwitch } from './KillSwitch';
-import { ManualEntry } from './ManualEntry';
+import { ManualEntry, type ManualSendResult } from './ManualEntry';
 import { Roster } from './Roster';
 import { VoiceFeed, voiceEntriesFromAudit } from './VoiceFeed';
 
@@ -31,6 +32,17 @@ export interface LiveConsoleProps {
 }
 
 const DROP_FRAMES: AudioFrameSink = { push: () => undefined };
+
+/** The words for a refused or unanswered stop request. */
+function killMessage(err: unknown): string {
+  if (err instanceof ControlTimeoutError) return t('kill.unknown');
+  if (err instanceof ControlError) {
+    if (err.status === 404) return t('kill.notAvailable');
+    if (err.status === 409) return t('kill.conflict');
+    if (err.detail !== null) return t('kill.failedDetail', { detail: err.detail });
+  }
+  return t('kill.failed');
+}
 
 /** The live auctioneer console: lot controls, voice feed, confirm queue, manual entry, kill switch. */
 export function LiveConsole({
@@ -55,22 +67,47 @@ export function LiveConsole({
   const leaderId = useRoom((s) => s.snapshot?.leaderId ?? null);
   const audit = useRoom((s) => s.audit);
   const [stopped, setStopped] = useState(false);
-  const [killFailed, setKillFailed] = useState(false);
+  const [killFailed, setKillFailed] = useState('');
+  const seq = useRoom((s) => s.lastSeq);
+  const [manualMid, setManualMid] = useState<MsgId | null>(null);
+  const manualBid = useSyncExternalStore(
+    (cb) => (room === null ? () => undefined : room.pending.subscribe(cb)),
+    () => {
+      const bid = manualMid === null || room === null ? undefined : room.pending.get(manualMid);
+      return bid === undefined ? '' : bid.status;
+    },
+  );
 
   const rows = roster ?? [];
   const lead = rows.find((r) => r.bidderId === leaderId);
   const leader = lead === undefined ? null : { paddle: lead.paddle, name: lead.name };
 
   const kill = (): void => {
-    setKillFailed(false);
+    setKillFailed('');
     port.kill('STOP').then(
       () => setStopped(true),
-      () => {
-        // The server has no stop route yet: say so instead of pretending the auction stopped.
-        setKillFailed(true);
-        announce('assertive', t('kill.failed'), 'stop');
+      (err: unknown) => {
+        // Say what the server said instead of pretending the auction stopped.
+        const message = killMessage(err);
+        setKillFailed(message);
+        announce('assertive', message, 'stop');
       },
     );
+  };
+
+  const online = !connection.offline && connection.status === 'open';
+  const sendManual = (amount: Cents, bidderId: BidderId): ManualSendResult => {
+    if (room === null) return 'noRoom';
+    if (!online) return 'offline';
+    try {
+      setManualMid(room.bid(amount, 'manual', bidderId));
+      return 'sent';
+    } catch {
+      return 'failed';
+    }
+  };
+  const retryManual = (): void => {
+    if (room !== null && manualMid !== null) room.pending.retry(manualMid);
   };
 
   const controls = (
@@ -79,19 +116,23 @@ export function LiveConsole({
         port={port}
         lotId={roomId}
         status={status}
-        online={!connection.offline && connection.status === 'open'}
+        online={online}
         stopped={stopped}
         leader={leader}
         priceCents={priceCents}
+        seq={seq}
       />
       <ManualEntry
         roster={rows}
         rejection={rejection === '' ? null : rejection}
-        onSubmit={(amount, bidderId) => room?.bid(amount, 'manual', bidderId)}
+        offline={!online}
+        status={manualBid === '' ? null : manualBid}
+        onSubmit={sendManual}
+        onRetry={retryManual}
       />
       <Roster roster={rows} connected={rows.length} />
       <KillSwitch stopped={stopped} onKill={kill} />
-      {killFailed && <p role="alert">{t('kill.failed')}</p>}
+      {killFailed !== '' && <p role="alert">{killFailed}</p>}
     </>
   );
 

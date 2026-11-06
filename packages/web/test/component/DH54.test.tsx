@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Cents, EpochMs } from '@gavel/shared';
 import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
-import { saveSession } from '../../src/net/session';
+import { clearAuctioneerToken } from '../../src/store/session';
 import { roomStore } from '../../src/store/roomStore';
 import {
   BASE_TIME,
@@ -83,7 +83,9 @@ describe('public screen route', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    clearAuctioneerToken();
     window.sessionStorage.clear();
+    window.history.pushState(null, '', '/');
   });
 
   async function mount(): Promise<void> {
