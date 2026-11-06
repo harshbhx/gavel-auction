@@ -349,15 +349,15 @@ describe('bid screen states and unanswered bids', () => {
     act(() => socket.receive(stateMsg(1, snapshot())));
     fireEvent.click(screen.getByRole('button', { name: t('bid.quick', { amount: '$50' }) }));
     rejectFirstBid(socket);
-    expect(screen.getByRole('alert')).toBeTruthy();
+    expect(rejection()).toHaveLength(1);
     act(() => {
       vi.advanceTimersByTime(REJECTION_CLEAR_MS - 100);
     });
-    expect(screen.getByRole('alert')).toBeTruthy();
+    expect(rejection()).toHaveLength(1);
     act(() => {
       vi.advanceTimersByTime(200);
     });
-    expect(screen.queryByRole('alert')).toBeNull();
+    expect(rejection()).toHaveLength(0);
   });
 
   it('clears a rejection when the price changes', () => {
@@ -367,9 +367,9 @@ describe('bid screen states and unanswered bids', () => {
     act(() => socket.receive(stateMsg(1, snapshot())));
     fireEvent.click(screen.getByRole('button', { name: t('bid.quick', { amount: '$50' }) }));
     rejectFirstBid(socket);
-    expect(screen.getByRole('alert')).toBeTruthy();
+    expect(rejection()).toHaveLength(1);
     act(() => socket.receive(priceMsg(3, 2, 8000)));
-    expect(screen.queryByRole('alert')).toBeNull();
+    expect(rejection()).toHaveLength(0);
   });
 
   it('offers the current minimum instead of an old amount once the price moved above it', () => {
@@ -420,6 +420,10 @@ function fillAndApprove(preset: string): void {
   fireEvent.click(screen.getByRole('radio', { name: preset }));
   fireEvent.click(screen.getByRole('button', { name: t('reg.approve') }));
 }
+
+/** The inline rejection text; the shared announcer region also has role alert and is left out. */
+const rejection = (): HTMLElement[] =>
+  screen.queryAllByRole('alert').filter((el) => el.dataset['testid'] !== 'live-assertive');
 
 const flush = async (ms = 50): Promise<void> => {
   await act(async () => {
@@ -541,7 +545,7 @@ describe('register route', () => {
       body: { holdId: 'hold-ABC123', status: 'HELD', ceilingCents: 25_000 },
     }));
     window.history.replaceState(null, '', `/r/${ROOM}/return?token=order-one`);
-    render(<App initialPath={`/r/${ROOM}/return?token=order-one`} api={API} />);
+    render(<App initialPath={`/r/${ROOM}/return`} api={API} />);
     await flush();
     expect(calls.map((c) => c.url)).toEqual(['http://api.test/api/holds/hold-ABC123/approve']);
     expect(JSON.parse(calls[0]?.body ?? '{}')).toEqual({ orderId: 'order-one', name: 'Priya' });
@@ -557,7 +561,7 @@ describe('register route', () => {
     });
     const calls = stubHolds(() => ({ status: 200, body: {} }));
     window.history.replaceState(null, '', `/r/${ROOM}/return?token=order-one`);
-    render(<App initialPath={`/r/${ROOM}/return?token=order-one`} api={API} />);
+    render(<App initialPath={`/r/${ROOM}/return`} api={API} />);
     await flush();
     expect(window.location.pathname).toBe(`/r/${ROOM}/register`);
     expect(calls).toHaveLength(0);
