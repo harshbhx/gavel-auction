@@ -33,6 +33,13 @@ describe('routes mount the state screens', () => {
   });
 });
 
+describe('return route', () => {
+  it('shows the expired message when this device has no registration for the room', () => {
+    render(<App initialPath="/r/nowhere/return" api={API} />);
+    expect(screen.getByText(t('reg.expired'))).toBeTruthy();
+  });
+});
+
 describe('public screen states', () => {
   it('flashes the live price and keeps a polite region for it', () => {
     const store = new RoomStore();

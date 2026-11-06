@@ -9,7 +9,7 @@ import { receiptSource } from './ladder/fromWire';
 import type { Transport } from './net/transport';
 import { WebSocketTransport } from './net/wsTransport';
 import { loadSession, saveSession } from './net/session';
-import { createApprovalPort, useApproval } from './payments/useApproval';
+import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
 import { RouteScreen, matchRoute, type RouteMatch } from './routes';
 import { AuditTable } from './screens/audit/AuditTable';
 import { Export } from './screens/audit/Export';
@@ -26,6 +26,7 @@ import { fetchOpsSummary, OpsView, type OpsSummaryView } from './ops/OpsView';
 import { DemoLauncher, type DemoLinks } from './screens/demo/DemoLauncher';
 import { Receipt } from './screens/receipt/Receipt';
 import { Approve } from './screens/register/Approve';
+import { Return } from './screens/register/Return';
 import { RegisterScreen, type RegistrationDraft } from './screens/register/RegisterScreen';
 import { ScreenView } from './screens/screen/ScreenView';
 import { ErrorBoundary } from './screens/states/ErrorBoundary';
@@ -419,6 +420,39 @@ function ApproveRoute(props: {
   );
 }
 
+/** Where a buyer lands after approving on PayPal's own page; finishes the hold once. */
+function ReturnRoute({ roomId, api }: { roomId: string; api: Api }) {
+  const stored = loadSession(roomId);
+  const adapter = useMemo(
+    () =>
+      createReturnAdapter({
+        apiBase: api.apiBase,
+        clientId: api.paypalClientId,
+        token: stored?.token ?? '',
+      }),
+    [api, stored?.token],
+  );
+  if (stored === null || stored.bidderId === undefined) {
+    return (
+      <main data-route="return">
+        <p role="alert">{t('reg.expired')}</p>
+      </main>
+    );
+  }
+  const orderId = new URLSearchParams(window.location.search).get('token') ?? '';
+  return (
+    <Return
+      adapter={adapter}
+      roomId={roomId}
+      bidderId={stored.bidderId}
+      orderId={orderId}
+      ceilingCents={CEILING_MIN_CENTS}
+      onBackToCeiling={() => navigate(`/r/${encodeURIComponent(roomId)}/register`)}
+      onContinue={() => navigate(`/r/${encodeURIComponent(roomId)}/bid`)}
+    />
+  );
+}
+
 function OpsRoute({ api }: { api: Api | undefined }) {
   const [key, setKey] = useState('');
   const [summary, setSummary] = useState<OpsSummaryView | undefined>(undefined);
@@ -530,6 +564,9 @@ function Routed({
   }
   if (id === 'register' && roomId !== undefined && api !== undefined) {
     return <RegisterRoute roomId={roomId} api={api} />;
+  }
+  if (id === 'return' && roomId !== undefined && api !== undefined) {
+    return <ReturnRoute roomId={roomId} api={api} />;
   }
   if (liveBase === undefined || roomId === undefined || who === null) {
     return <RouteScreen match={match} />;
