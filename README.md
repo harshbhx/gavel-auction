@@ -158,16 +158,18 @@ Every pull request runs tests, type checks, lint and the other quality checks in
 
 ## What works today
 
-The packages are built and tested separately, mostly against the fake PayPal. The booted server serves the ops, webhook, admin and auction HTTP routes (create, invites, join, read, control, auctioneer token) and a WebSocket gateway; the scripted `/api/demo/*` routes are not mounted (the handler exists in `packages/server/src/http/demo.ts`), and no hosted demo is published. See [docs/DEMO.md](docs/DEMO.md) for the exact state.
+The packages are built and tested separately, mostly against the fake PayPal. The booted server serves the ops, webhook, admin and auction HTTP routes (create, invites, join, read, control, auctioneer token), the room WebSocket gateway and the `/audio` voice socket. The scripted `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake`, which config refuses under production-like settings, so no hosted server has them, and no hosted demo is published. See [docs/DEMO.md](docs/DEMO.md) for the exact state.
 
-| Area                      | Status                                                                                                                                                          |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Auction engine and ledger | ![works](https://img.shields.io/badge/-works-2ea44f?style=flat-square) Covered by unit, property and fixture tests                                              |
-| Settlement saga and holds | ![works](https://img.shields.io/badge/-works-2ea44f?style=flat-square) Against the fake PayPal; sandbox gates below                                             |
-| Webhook verification      | ![verified](https://img.shields.io/badge/-verified-2ea44f?style=flat-square) Against real sandbox events (gate G4)                                              |
-| Server                    | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) Ops, webhook, admin and auction HTTP routes and sockets; demo routes not mounted yet |
-| Voice                     | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) Groq speech-to-text only; not wired into a room yet                                  |
-| Web client                | See [packages/web/README.md](packages/web/README.md)                                                                                                            |
+Latency is not yet within budget. On the PayPal sandbox (`measure-sandbox`, 2026-11-05, n=10 per call) the void p95 is 1235.96 ms, above the 1 s per-call budget that the 6 s SETTLED target assumes, so that target is not shown to hold. The raw log is not committed. See [docs/GATES.md](docs/GATES.md) for the numbers and the fallback.
+
+| Area                      | Status                                                                                                                                                                                                                                                          |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auction engine and ledger | ![works](https://img.shields.io/badge/-works-2ea44f?style=flat-square) Covered by unit, property and fixture tests                                                                                                                                              |
+| Settlement saga and holds | ![works](https://img.shields.io/badge/-works-2ea44f?style=flat-square) Against the fake PayPal; sandbox gates below                                                                                                                                             |
+| Webhook verification      | ![verified](https://img.shields.io/badge/-verified-2ea44f?style=flat-square) Against real sandbox events (gate G4)                                                                                                                                              |
+| Server                    | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) Ops, webhook, admin and auction HTTP routes, room WebSocket gateway and `/audio` socket mounted; scripted demo routes only with `DEMO_MODE=1` and fake payments                      |
+| Voice                     | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) `/audio` socket feeds decisions into the room. Speech is cached transcripts by default, Groq only with `VOICE_STT=groq` and `GROQ_API_KEY`; no live speech run recorded (G5 NOT RUN) |
+| Web client                | See [packages/web/README.md](packages/web/README.md)                                                                                                                                                                                                            |
 
 ## PayPal sandbox gates
 
@@ -195,7 +197,7 @@ flowchart LR
   server --> payments["payments<br/>holds, saga, webhooks"]
   payments --> engine
   payments --> paypal[("PayPal sandbox<br/>or fake PayPal")]
-  voice["voice<br/>speech-to-text, bid parser"] -. not wired yet .-> server
+  voice["voice<br/>speech-to-text, bid parser"] -. audio socket .-> server
   e2e["e2e<br/>scenario DSL and runner"] -. drives .-> server
 ```
 
