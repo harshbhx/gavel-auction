@@ -4,13 +4,18 @@ import { adminKeyMatches } from '../http/ops';
 
 /**
  * `GET /admin/export?auction=<id>` (`auctionId` is accepted as an alias) (R-QA-046): the ledger as NDJSON, one entry per line,
- * then a last line carrying the hash chain head. Ledger entries hold ids and cents only, so
- * nothing personal is written; a verifier checks the chain and compares the head line.
+ * then a last line carrying the hash chain head. This is the private engine ledger: it carries
+ * every bidder's ceiling, hold reference and bid transcript, so the output must never reach a
+ * public place (see docs/RUNBOOK-BACKUP.md). `GET /admin/export?list=1` returns every auction id
+ * the store holds, finished ones included, as `{ auctions: [...] }`. A verifier checks the chain
+ * and compares the head line.
  */
 
 export interface ExportDeps {
   adminKey: string;
   ledger: LedgerStore;
+  /** Every auction id in the store, loaded or not. */
+  listAuctions?: () => Promise<readonly string[]>;
 }
 
 export interface ExportHeadLine {
@@ -66,6 +71,17 @@ export function createExportHandler(
       return;
     }
     const url = new URL(req.url ?? '/', 'http://local');
+    if (url.searchParams.get('list') === '1') {
+      if (deps.listAuctions === undefined) {
+        sendJson(res, 501, { error: 'list_unsupported' });
+        return;
+      }
+      deps.listAuctions().then(
+        (ids) => sendJson(res, 200, { auctions: [...ids].sort() }),
+        () => sendJson(res, 500, { error: 'list_failed' }),
+      );
+      return;
+    }
     const auctionId = url.searchParams.get('auction') ?? url.searchParams.get('auctionId') ?? '';
     if (!AUCTION_ID.test(auctionId)) {
       sendJson(res, 400, { error: 'bad_auction_id' });

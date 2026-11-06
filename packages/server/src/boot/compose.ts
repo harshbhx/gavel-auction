@@ -355,6 +355,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
   const ledgerExportRoute = createLedgerExportHandler({
     adminKey: config.ADMIN_KEY,
     ledger: stores.ledger,
+    listAuctions: () => stores.room.listAuctions(),
   });
   const webhookRoute = createGuardedWebhookRoute(portFromService(service), {
     trustedProxyHops: config.TRUSTED_PROXY_HOPS,

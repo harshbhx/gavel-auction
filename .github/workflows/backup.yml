@@ -1,9 +1,13 @@
 name: backup
-# Daily ledger snapshot (R-QA-046). Lists the loaded rooms with GET /ops/rooms and downloads each
-# ledger from GET /admin/export as NDJSON with its hash chain head line, then keeps the files as a
-# workflow artifact. Run it by hand with reason=pre-freeze before the submission freeze.
-# Needs environment `production` secret ADMIN_KEY and variable PRODUCTION_URL; without them the
-# job ends green with a notice. The admin key reaches the step only through env and is never echoed.
+# Daily ledger snapshot (R-QA-046). Lists every stored auction with GET /admin/export?list=1
+# (finished auctions included, not only loaded rooms), downloads each ledger from
+# GET /admin/export as NDJSON with its hash chain head line, encrypts the set with a public key and
+# keeps only the encrypted file as a workflow artifact. The ledger is private (ceilings, hold
+# references, transcripts) and this repository is public, so plaintext is never uploaded. The
+# private key stays offline with the owner. See docs/RUNBOOK-BACKUP.md.
+# Needs environment `production`: secret ADMIN_KEY, secret BACKUP_GPG_PUBLIC_KEY (armored public
+# key) and variable PRODUCTION_URL. Without all three the job does nothing and ends green with a
+# notice. Secrets reach steps only through env and are never echoed.
 on:
   schedule:
     - cron: '17 3 * * *'
@@ -33,34 +37,52 @@ jobs:
     timeout-minutes: 15
     environment: production
     steps:
-      - name: Download every ledger
+      - name: Download and encrypt every ledger
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          BACKUP_GPG_PUBLIC_KEY: ${{ secrets.BACKUP_GPG_PUBLIC_KEY }}
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
           REASON: ${{ inputs.reason || 'daily' }}
         run: |
-          if [ -z "$ADMIN_KEY" ] || [ -z "$PRODUCTION_URL" ]; then
-            echo "::notice title=Backup skipped::Not configured, add secret ADMIN_KEY and variable PRODUCTION_URL to environment production"
+          if [ -z "$ADMIN_KEY" ] || [ -z "$PRODUCTION_URL" ] || [ -z "$BACKUP_GPG_PUBLIC_KEY" ]; then
+            echo "::notice title=Backup skipped::Nothing was downloaded or uploaded. Add secrets ADMIN_KEY and BACKUP_GPG_PUBLIC_KEY and variable PRODUCTION_URL to environment production"
+            echo "Backup skipped: no encryption key or target configured, nothing uploaded" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           base="${PRODUCTION_URL%/}"
-          mkdir -p snapshot
-          rooms="$(curl -sS --fail --max-time 30 -H "x-admin-key: $ADMIN_KEY" "$base/ops/rooms")"
-          printf '%s' "$rooms" | jq -r '.rooms[].auctionId' > snapshot/ids.txt
+          work="$RUNNER_TEMP/ledgers"
+          mkdir -p "$work" out
+          listing="$(curl -sS --fail --max-time 30 -H "x-admin-key: $ADMIN_KEY" "$base/admin/export?list=1")"
+          printf '%s' "$listing" | jq -r '.auctions[]' > "$work/ids.txt"
+          expected="$(wc -l < "$work/ids.txt")"
           count=0
           while IFS= read -r id; do
             [ -n "$id" ] || continue
-            case "$id" in *[!0-9A-Za-z_-]*) echo "::warning::skipping unexpected id"; continue ;; esac
+            case "$id" in *[!0-9A-Za-z_-]*) echo "::error::unexpected auction id"; exit 1 ;; esac
             curl -sS --fail --max-time 60 -H "x-admin-key: $ADMIN_KEY" \
-              "$base/admin/export?auction=$id" -o "snapshot/$id.ndjson"
+              "$base/admin/export?auction=$id" -o "$work/$id.ndjson"
             # The last line is the head; the file must end with it.
-            tail -n 1 "snapshot/$id.ndjson" | jq -e 'has("head")' > /dev/null
+            tail -n 1 "$work/$id.ndjson" | jq -e 'has("head")' > /dev/null
             count=$((count + 1))
-          done < snapshot/ids.txt
-          echo "$REASON snapshot of $count ledger(s) at $(date -u +%FT%TZ)" | tee snapshot/MANIFEST.txt >> "$GITHUB_STEP_SUMMARY"
+          done < "$work/ids.txt"
+          if [ "$count" -ne "$expected" ]; then
+            echo "::error::Downloaded $count ledger(s), the store lists $expected"
+            exit 1
+          fi
+          echo "$REASON snapshot of $count ledger(s) at $(date -u +%FT%TZ)" > "$work/MANIFEST.txt"
+          export GNUPGHOME="$RUNNER_TEMP/gnupg"
+          mkdir -m 700 "$GNUPGHOME"
+          printf '%s\n' "$BACKUP_GPG_PUBLIC_KEY" | gpg --batch --import
+          fpr="$(gpg --batch --list-keys --with-colons | awk -F: '$1=="fpr"{print $10; exit}')"
+          [ -n "$fpr" ] || { echo "::error::BACKUP_GPG_PUBLIC_KEY holds no usable public key"; exit 1; }
+          tar -C "$work" -czf "$RUNNER_TEMP/ledgers.tgz" .
+          gpg --batch --yes --trust-model always --recipient "$fpr" \
+            --output out/ledger-snapshot.tgz.gpg --encrypt "$RUNNER_TEMP/ledgers.tgz"
+          rm -rf "$work" "$RUNNER_TEMP/ledgers.tgz"
+          echo "$REASON snapshot of $count ledger(s) at $(date -u +%FT%TZ), encrypted" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ledger-snapshot-${{ github.run_id }}
-          path: snapshot
+          path: out/ledger-snapshot.tgz.gpg
           if-no-files-found: ignore
           retention-days: 30
