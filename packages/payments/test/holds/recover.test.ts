@@ -364,4 +364,51 @@ describe('HRD-81 bounded reads of abandoned checkouts', () => {
     expect(reads(rig, held.orderId)).toBe(heldReads);
     expect((await rig.holds.get(held.holdId))?.status).toBe('HELD');
   });
+
+  it('does not expire away an authorization made after the first read (R8-P05)', async () => {
+    const rig = makeRig(false);
+    const { holdId, orderId } = await pendingOrder(rig);
+    rig.clock.advance(3 * HOUR + MIN);
+    // An approval authorizes at PayPal just after the sweep's read and never writes HELD.
+    const get = rig.gateway.getOrder.bind(rig.gateway);
+    vi.spyOn(rig.gateway, 'getOrder').mockImplementationOnce(async (id) => {
+      const seen = await get(id);
+      rig.core.approveOrder(orderId);
+      rig.core.authorizeOrder(orderId, 'lost-authorize');
+      return seen;
+    });
+    const out = await sweepStalePending(rig.deps, 'a1', 5 * MIN, undefined, {
+      reads: new PendingReadBackoff(),
+    });
+    expect(out).toEqual([{ holdId, result: { status: 'abandoned' } }]);
+    const rec = await rig.holds.get(holdId);
+    expect(rec?.status).toBe('EXPIRED');
+    const authId = rec?.authId;
+    expect(authId).toBeDefined();
+    if (authId !== undefined) expect(rig.core.inspect(authId).voidEffects).toBe(1);
+    assertFakeInvariants(rig.core);
+  });
+
+  it('checks an expired record at once, whatever wait its pending reads left', async () => {
+    const rig = makeRig(false);
+    const { holdId, orderId } = await pendingOrder(rig);
+    const backoff = new PendingReadBackoff();
+    const sweep = () => sweepStalePending(rig.deps, 'a1', 5 * MIN, undefined, { reads: backoff });
+    for (let m = 1; m <= 160; m += 1) {
+      rig.clock.advance(MIN);
+      await sweep();
+    }
+    // An authorization the record never got, then an abandon that did not ask PayPal.
+    rig.core.approveOrder(orderId);
+    const { authId } = rig.core.authorizeOrder(orderId, 'lost-authorize');
+    const pending = await rig.holds.get(holdId);
+    if (pending === null) throw new Error('missing record');
+    await rig.holds.put({ ...pending, status: 'EXPIRED' });
+    for (let m = 161; m <= 180; m += 1) {
+      rig.clock.advance(MIN);
+      await sweep();
+    }
+    expect(rig.core.inspect(authId).voidEffects).toBe(1);
+    expect((await rig.holds.get(holdId))?.authId).toBe(authId);
+  });
 });

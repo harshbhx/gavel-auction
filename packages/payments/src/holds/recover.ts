@@ -197,9 +197,11 @@ export async function sweepStalePending(
     )
     .sort((a, b) => (a.holdId < b.holdId ? -1 : 1));
   for (const h of lapsed) {
-    if (reads !== undefined && !reads.due(h.holdId, now)) continue;
+    // Own key: the wait left from the record's pending reads must not delay its first check.
+    const key = `expired:${h.holdId}`;
+    if (reads !== undefined && !reads.due(key, now)) continue;
     const result = await voidLapsed(deps, h);
-    reads?.read(h.holdId, now, now - h.createdAtMs);
+    reads?.read(key, now, now - h.createdAtMs);
     out.push({ holdId: h.holdId, result });
   }
   for (const h of old) {
@@ -219,11 +221,20 @@ export async function sweepStalePending(
     if (order.authId === undefined) {
       // Past the lifetime of an unapproved order the record lapses, as HoldService treats it,
       // and leaves the sweep. Younger ones are read again later, further apart each time.
-      if (age >= ttlMs && (await expirePending(deps, h))) {
+      const step = age >= ttlMs ? await expirePending(deps, h) : 'kept';
+      if (step === 'expired') {
         reads?.forget(h.holdId);
         out.push({ holdId: h.holdId, result: { status: 'abandoned' } });
-      } else reads?.read(h.holdId, now, age);
-      continue;
+        continue;
+      }
+      if (step !== 'authorized') {
+        reads?.read(h.holdId, now, age);
+        if (step === 'unavailable') {
+          out.push({ holdId: h.holdId, result: { status: 'unavailable' } });
+        }
+        continue;
+      }
+      // An authorization appeared after the first read: it is recovered like any other below.
     }
     reads?.forget(h.holdId);
     out.push({
@@ -280,26 +291,39 @@ export class PendingReadBackoff {
   }
 }
 
+type ExpireStep = 'expired' | 'kept' | 'authorized' | 'unavailable';
+
 /**
  * Expires a pending record whose order PayPal shows without an authorization, inside the
- * hold's queue and from the record as it is now. False when an approval or webhook moved it on.
+ * hold's queue and from the record as it is now. The order is read again inside the queue,
+ * as HoldService.abandonPending does: an approval may have authorized since the sweep's read
+ * and failed to write HELD (R8-P05), and an expired record this old is past the look-back of
+ * the lapsed check, so its authorization would never be found. `kept` when an approval or
+ * webhook moved the record on, `authorized` when the order now carries an authorization.
  */
-async function expirePending(deps: RecoverDeps, hold: HoldRecord): Promise<boolean> {
-  return sharedHoldQueue.run(hold.holdId, async () => {
-    const latest = (await deps.holds.get(hold.holdId)) ?? hold;
-    if (latest.status !== 'PENDING_APPROVAL' || latest.authId !== undefined) return false;
-    await deps.holds.put({ ...latest, status: 'EXPIRED' });
-    await deps.audit.append({
-      kind: 'state_change',
-      auctionId: latest.auctionId,
-      holdId: latest.holdId,
-      from: 'PENDING_APPROVAL',
-      to: 'EXPIRED',
-      label: 'hold_abandoned',
-      tsMs: deps.clock.nowMs(),
+async function expirePending(deps: RecoverDeps, hold: HoldRecord): Promise<ExpireStep> {
+  try {
+    return await sharedHoldQueue.run<ExpireStep>(hold.holdId, async () => {
+      const latest = (await deps.holds.get(hold.holdId)) ?? hold;
+      if (latest.status !== 'PENDING_APPROVAL' || latest.authId !== undefined) return 'kept';
+      const order = await deps.gateway.getOrder(latest.orderId);
+      if (order.authId !== undefined) return 'authorized';
+      await deps.holds.put({ ...latest, status: 'EXPIRED' });
+      await deps.audit.append({
+        kind: 'state_change',
+        auctionId: latest.auctionId,
+        holdId: latest.holdId,
+        from: 'PENDING_APPROVAL',
+        to: 'EXPIRED',
+        label: 'hold_abandoned',
+        tsMs: deps.clock.nowMs(),
+      });
+      return 'expired';
     });
-    return true;
-  });
+  } catch (e) {
+    if (e instanceof PayPalError) return 'unavailable';
+    throw e;
+  }
 }
 
 /** How far back the sweep looks at abandoned records that carry no authorization id. */
