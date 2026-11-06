@@ -28,6 +28,8 @@ export interface SettlementMeta {
   at: number;
   /** The amount the server reports as captured for this bidder, when it sent one. */
   capturedCents?: number;
+  /** The winner paddle the server named; absent when it named none. */
+  winnerPaddle?: number | null;
 }
 
 export interface BidRecord {
@@ -248,6 +250,7 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
             ? { capturedCents: prev.capturedCents }
             : {}
           : { capturedCents: msg.amountCaptured }),
+        ...(msg.winnerPaddle === undefined ? {} : { winnerPaddle: msg.winnerPaddle }),
       };
       const withMeta: RoomState = {
         ...next,

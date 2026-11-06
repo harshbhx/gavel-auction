@@ -8,6 +8,7 @@ import { t } from '../../copy/t';
 import { useConnection } from '../../net/connection';
 import { ControlError, ControlTimeoutError, createControlPort } from '../../net/controlPort';
 import type { LiveRoom } from '../../net/liveRoom';
+import { publicSource } from '../../ladder/fromWire';
 import { useRoom } from '../../store/roomStore';
 import { selectors } from '../../store/selectors';
 import { Controls } from './Controls';
@@ -15,7 +16,7 @@ import { ConsoleScreen } from './ConsoleScreen';
 import { KillSwitch } from './KillSwitch';
 import { ManualEntry, type ManualSendResult } from './ManualEntry';
 import { Roster } from './Roster';
-import { VoiceFeed, voiceEntriesFromAudit } from './VoiceFeed';
+import { VoiceFeed, voiceEntriesFromAudit, type VoiceFeedEntry } from './VoiceFeed';
 
 export interface LiveConsoleProps {
   readonly room: LiveRoom | null;
@@ -28,11 +29,39 @@ export interface LiveConsoleProps {
   readonly onConfirmAnswer: (confirmId: string, accept: boolean) => void;
   /** Error code of the last rejected bid this console sent, or an empty string. */
   readonly rejection: string;
-  /** Receives microphone PCM chunks. Chunks are dropped when absent. */
+  /** Receives microphone PCM chunks. Without it the microphone is shown as not available. */
   readonly audioSink?: AudioFrameSink;
 }
 
-const DROP_FRAMES: AudioFrameSink = { push: () => undefined };
+/** Microphone button and feed for a build that has an audio path to the server. */
+function LiveVoice({
+  sink,
+  entries,
+}: {
+  readonly sink: AudioFrameSink;
+  readonly entries: readonly VoiceFeedEntry[];
+}) {
+  const mic = useMic(sink);
+  const micOn = mic.state === 'live' || mic.state === 'requesting';
+  return (
+    <>
+      <Button variant="outline" onClick={micOn ? mic.stop : mic.start}>
+        {t(micOn ? 'console.mic.stop' : 'console.mic.start')}
+      </Button>
+      <VoiceFeed mic={mic.state} level={mic.level} entries={entries} />
+    </>
+  );
+}
+
+/** What the auctioneer must know about a capture that is not done or has failed. */
+function SettlementNotice() {
+  const phase = useRoom((s) => s.snapshot?.settlement?.auctionState ?? null);
+  if (phase === 'FAILED_NEEDS_REVIEW')
+    return <p role="alert">{t('console.settlement.needsReview')}</p>;
+  if (phase === 'VOIDING' || phase === 'CAPTURING')
+    return <p role="status">{t('console.settlement.inProgress')}</p>;
+  return null;
+}
 
 /** The words for a refused or unanswered stop request. */
 function killMessage(err: unknown): string {
@@ -55,10 +84,8 @@ export function LiveConsole({
   apiBase,
   onConfirmAnswer,
   rejection,
-  audioSink = DROP_FRAMES,
+  audioSink,
 }: LiveConsoleProps) {
-  const mic = useMic(audioSink);
-  const micOn = mic.state === 'live' || mic.state === 'requesting';
   const port = useMemo(
     () => createControlPort({ auctionId: roomId, token, baseUrl: apiBase }),
     [roomId, token, apiBase],
@@ -66,6 +93,8 @@ export function LiveConsole({
   const connection = useConnection();
   const status = useRoom((s) => s.snapshot?.status ?? 'SCHEDULED');
   const priceCents = useRoom((s) => s.snapshot?.price ?? 0);
+  const roomState = useRoom((s) => s);
+  const settlementView = useMemo(() => publicSource(roomState, true), [roomState]);
   const roster = useRoom((s) => s.snapshot?.roster);
   const leaderId = useRoom((s) => s.snapshot?.leaderId ?? null);
   const audit = useRoom((s) => s.audit);
@@ -141,26 +170,31 @@ export function LiveConsole({
     </>
   );
 
+  const voiceEntries = voiceEntriesFromAudit(
+    audit,
+    (id) => rows.find((r) => r.bidderId === id)?.paddle ?? null,
+  );
+
   return (
-    <ConsoleScreen
-      settlementView={null}
-      controls={controls}
-      voiceFeed={
-        <>
-          <Button variant="outline" onClick={micOn ? mic.stop : mic.start}>
-            {t(micOn ? 'console.mic.stop' : 'console.mic.start')}
-          </Button>
-          <VoiceFeed
-            mic={mic.state}
-            level={mic.level}
-            entries={voiceEntriesFromAudit(
-              audit,
-              (id) => rows.find((r) => r.bidderId === id)?.paddle ?? null,
-            )}
-          />
-        </>
-      }
-      onConfirmAnswer={onConfirmAnswer}
-    />
+    <>
+      <SettlementNotice />
+      <ConsoleScreen
+        settlementView={settlementView}
+        controls={controls}
+        voiceFeed={
+          audioSink === undefined ? (
+            <>
+              <Button variant="outline" disabled>
+                {t('console.mic.start')}
+              </Button>
+              <VoiceFeed mic="off" level={0} entries={voiceEntries} unavailable />
+            </>
+          ) : (
+            <LiveVoice sink={audioSink} entries={voiceEntries} />
+          )
+        }
+        onConfirmAnswer={onConfirmAnswer}
+      />
+    </>
   );
 }

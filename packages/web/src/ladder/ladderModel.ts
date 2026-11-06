@@ -32,6 +32,8 @@ export interface SettlementView {
   holds: HoldView[];
   /** `unreported` is set when the server sent no invariants: the check result is then unknown, not ok. */
   invariants: { ok: boolean; violations: string[]; unreported?: boolean };
+  /** Hold counts per state, for views that get no per-hold lanes. */
+  counts?: Readonly<Partial<Record<SettlementState, number>>>;
 }
 
 export type RungStatus = 'done' | 'current' | 'pending';
