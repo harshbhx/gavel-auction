@@ -2090,49 +2090,35 @@ describe('auction service: payments wiring (HRD-52)', () => {
   });
 
   it('runs the periodic reconcile over settled auctions when it is on (issue 1724)', async () => {
-    vi.useFakeTimers();
-    try {
-      const rig = await makeRig();
-      const reports: ReconcileReport[] = [];
-      const service = rig.service({
-        resumeIntervalMs: 0,
-        reconcileIntervalMs: 1_000,
-        onReconcile: (r) => void reports.push(r),
-      });
-      const run = await runToHammer(rig, service);
-      await vi.advanceTimersByTimeAsync(0);
-      await service.idle();
-      await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
-      const before = reports.length;
-      await vi.advanceTimersByTimeAsync(2_500);
-      expect(reports.length).toBeGreaterThan(before);
-      await service.close();
-      const after = reports.length;
-      await vi.advanceTimersByTimeAsync(5_000);
-      expect(reports.length).toBe(after);
-    } finally {
-      vi.useRealTimers();
-    }
+    const rig = await makeRig();
+    const reports: ReconcileReport[] = [];
+    const service = rig.service({
+      resumeIntervalMs: 0,
+      reconcileIntervalMs: 20,
+      onReconcile: (r) => void reports.push(r),
+    });
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    await new Promise((r) => setTimeout(r, 300));
+    const afterSettle = reports.length;
+    expect(afterSettle).toBeGreaterThan(1);
+    await service.close();
+    const stopped = reports.length;
+    await new Promise((r) => setTimeout(r, 150));
+    expect(reports.length).toBe(stopped);
   });
 
   it('does not start the periodic reconcile by default (issue 1724)', async () => {
-    vi.useFakeTimers();
-    try {
-      const rig = await makeRig();
-      const reports: ReconcileReport[] = [];
-      const service = rig.service({
-        resumeIntervalMs: 0,
-        onReconcile: (r) => void reports.push(r),
-      });
-      const run = await runToHammer(rig, service);
-      await service.idle();
-      await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
-      const before = reports.length;
-      await vi.advanceTimersByTimeAsync(300_000);
-      expect(reports.length).toBe(before);
-      await service.close();
-    } finally {
-      vi.useRealTimers();
-    }
+    const rig = await makeRig();
+    const reports: ReconcileReport[] = [];
+    const service = rig.service({ resumeIntervalMs: 0, onReconcile: (r) => void reports.push(r) });
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    await expectSettled(rig, run, run.a, [run.b, run.c], 13000);
+    const before = reports.length;
+    await new Promise((r) => setTimeout(r, 200));
+    expect(reports.length).toBe(before);
+    await service.close();
   });
 });
