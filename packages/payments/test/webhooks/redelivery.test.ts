@@ -135,4 +135,29 @@ describe('R12-P04 PayPal redeliveries older than ten minutes', () => {
     }
     expect(paypal.calls()).toBe(0);
   });
+
+  it('a redelivery two hours old is accepted once, and a tampered copy of it is refused', async () => {
+    let calls = 0;
+    const auth: VerifyAuth = {
+      send: async (req): Promise<TransportResult> => {
+        calls += 1;
+        const genuine = String(req.body).includes('"resource":{}}}');
+        return {
+          status: 200,
+          headers: {},
+          text: JSON.stringify({ verification_status: genuine ? 'SUCCESS' : 'FAILURE' }),
+          attempts: 1,
+        };
+      },
+    };
+    const v = verifier(auth, () => NOW);
+    const headers = headersAt(NOW - 120 * MIN);
+    expect(await v.verifyWebhook(BODY, headers)).toEqual({ ok: true });
+    const tampered = BODY.replace('"resource":{}', '"resource":{"amount":"1.00"}');
+    expect(await v.verifyWebhook(tampered, headers)).toEqual({
+      ok: false,
+      reason: 'verification_failed',
+    });
+    expect(calls).toBe(2);
+  });
 });
