@@ -256,9 +256,11 @@ const NOT_REPLACED: ReadonlySet<HoldTruth['status']> = new Set([
 ]);
 
 /**
- * PayPal's definite refusals of a replayed reauthorization: no authorization was made under
- * its request id. Anything else keeps the hold in doubt: an unknown outcome, a request that
- * never left (kill switch, OAuth), or a request id PayPal knows with other parameters.
+ * PayPal's refusals of a replayed reauthorization that mean no authorization was made under
+ * its request id, when PayPal's answer is definite. The kind alone is not enough: HTTP 408,
+ * 409 (the same request still in progress) and 425 are `rejected` with an unknown outcome.
+ * Anything else keeps the hold in doubt: an unknown outcome, a request that never left (kill
+ * switch, OAuth), or a request id PayPal knows with other parameters.
  */
 const NO_REAUTH_KINDS: ReadonlySet<string> = new Set([
   'rejected',
@@ -303,7 +305,7 @@ export type ReauthLookupResult =
  *     authorization cannot be reauthorized again, so this only replays the authorization
  *     PayPal made for that request: the hold moves to it in the journal and the hold
  *     record, the old id goes to `priorAuthIds`, and from then on the review keeps and
- *     releases it like any other hold. PayPal refusing the request means no
+ *     releases it like any other hold. Only a definite refusal of the request means no
  *     authorization was made under that request id.
  *
  * Nothing is voided here. A read or a replay PayPal does not answer leaves the hold in
@@ -400,6 +402,8 @@ async function replayedAuthorization(
       : { kind: 'made', authId: renewed.authId };
   } catch (e) {
     if (!(e instanceof PayPalError)) throw e;
-    return NO_REAUTH_KINDS.has(e.kind) ? { kind: 'none' } : { kind: 'unknown' };
+    return e.outcome === 'definite' && NO_REAUTH_KINDS.has(e.kind)
+      ? { kind: 'none' }
+      : { kind: 'unknown' };
   }
 }

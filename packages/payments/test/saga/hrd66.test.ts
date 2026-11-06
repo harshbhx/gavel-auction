@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { classifyError } from '../../src/errorMap.js';
 import { PayPalError } from '../../src/errors.js';
 import { DAY_MS } from '../../src/fake/core.js';
 import { assertFakeInvariants } from '../../src/fake/invariants.js';
 import type { AuditSink } from '../../src/ports.js';
+import { voidAllLiveHolds } from '../../src/saga/killswitch.js';
 import { step } from '../../src/saga/machine.js';
 import {
   DEFAULT_HONOR_SAFE_MS,
@@ -13,7 +15,7 @@ import {
 } from '../../src/saga/reauth.js';
 import { runSettlement, runVoidPhase } from '../../src/saga/void.js';
 import type { Journal, PaymentAudit } from '../../src/types.js';
-import { CEILINGS, START_MS, makeRig, seed, withGateway, type Rig } from './rig.js';
+import { CEILINGS, START_MS, callsOf, makeRig, seed, withGateway, type Rig } from './rig.js';
 
 const AUCTION = 'auc1';
 
@@ -290,5 +292,103 @@ describe('RT4-saga-05 a review after a reauthorization that stayed unknown', () 
     const found = await lookupUnknownReauths(engaged, AUCTION);
     expect(found).toMatchObject({ status: 'done', recorded: [], open: [{ holdId: 'hold-b1' }] });
     expect((await journalOf(rig)).holds['b1']?.reauthInDoubt?.requestId).toBe(out.requestId);
+  });
+
+  // HTTP 409 (the same request still in progress) and 408 are `rejected` with an unknown
+  // outcome: PayPal did not say whether it made the authorization.
+  it.each([409, 408])(
+    'a replay answered HTTP %i keeps the hold in doubt and the lot in review',
+    async (status) => {
+      const rig = makeRig(CEILINGS);
+      await seed(rig);
+      rig.core.inject('reauthorize', 'timeout_after_success', oldAuth(rig), 1);
+      const out = await unknownReauth(rig);
+      await reviewWithDoubt(rig, out);
+      const [, made] = rig.core.reauthorizationChain(oldAuth(rig));
+      if (made === undefined) throw new Error('PayPal made no reauthorization');
+      const answer = classifyError(status, undefined, '');
+      expect(answer).toMatchObject({ kind: 'rejected', outcome: 'unknown' });
+      const unanswered = withGateway(rig, {
+        reauthorize: async () => {
+          throw answer;
+        },
+      });
+      const before = await journalOf(rig);
+
+      const found = await lookupUnknownReauths(unanswered, AUCTION);
+      expect(found).toEqual({
+        status: 'done',
+        recorded: [],
+        open: [
+          { bidderId: 'b1', holdId: 'hold-b1', orderId: 'order-b1', requestId: out.requestId },
+        ],
+      });
+      expect(await journalOf(rig)).toEqual(before);
+      const replay = rig.audits.filter((a) => a.kind === 'paypal_call' && a.op === 'reauth');
+      expect(replay.at(-1)).toMatchObject({
+        requestId: out.requestId,
+        outcome: 'unknown',
+        status,
+        label: 'rejected',
+      });
+
+      // The review release reads the old authorization closed, but records nothing for b1
+      // and leaves the new authorization alone.
+      const release = await runVoidPhase({ ...rig.deps, releaseAllReviewHolds: true }, AUCTION);
+      expect(release.status).toBe('failed');
+      let j = await journalOf(rig);
+      expect(j.state).toBe('FAILED_NEEDS_REVIEW');
+      expect(j.voids['b1']).toBeUndefined();
+      expect(j.holds['b1']).toMatchObject({
+        authId: oldAuth(rig),
+        reauthInDoubt: { requestId: out.requestId },
+      });
+      expect(rig.core.getAuthorization(made).status).toBe('CREATED');
+      expect(callsOf(rig, oldAuth(rig), 'void') + callsOf(rig, made, 'void')).toBe(0);
+
+      // Once PayPal answers, the hold moves to the new authorization and the release frees it.
+      expect(await lookupUnknownReauths(rig.deps, AUCTION)).toMatchObject({
+        recorded: [{ bidderId: 'b1', authId: made }],
+      });
+      await runVoidPhase({ ...rig.deps, releaseAllReviewHolds: true }, AUCTION);
+      j = await journalOf(rig);
+      expect(j.voids['b1']).toBe('voided');
+      expect(rig.core.getAuthorization(made).status).toBe('VOIDED');
+      assertFakeInvariants(rig.core);
+    },
+  );
+
+  it('void all leaves a hold in doubt to the lookup, so its new authorization is released', async () => {
+    const rig = makeRig(CEILINGS);
+    await seed(rig);
+    rig.core.inject('reauthorize', 'timeout_after_success', oldAuth(rig), 1);
+    const out = await unknownReauth(rig);
+    await reviewWithDoubt(rig, out);
+    const [, made] = rig.core.reauthorizationChain(oldAuth(rig));
+    if (made === undefined) throw new Error('PayPal made no reauthorization');
+
+    // The operator voids every hold while the lookup is still unanswered: b1's old
+    // authorization reads closed, so voiding it would release nothing.
+    const all = await voidAllLiveHolds(rig.deps, AUCTION, 'ops');
+    expect(all).toMatchObject({
+      status: 'done',
+      holds: { b1: 'pending', b2: 'voided', b3: 'voided' },
+    });
+    let j = await journalOf(rig);
+    expect(j.voids['b1']).toBeUndefined();
+    expect(j.holds['b1']?.reauthInDoubt?.requestId).toBe(out.requestId);
+    expect(callsOf(rig, oldAuth(rig), 'void')).toBe(0);
+    expect(rig.core.getAuthorization(made).status).toBe('CREATED');
+
+    // The lookup finds the new authorization; the review release then voids it.
+    expect(await lookupUnknownReauths(rig.deps, AUCTION)).toMatchObject({
+      recorded: [{ bidderId: 'b1', authId: made }],
+    });
+    await runVoidPhase({ ...rig.deps, releaseAllReviewHolds: true }, AUCTION);
+    j = await journalOf(rig);
+    expect(j.holds['b1']?.authId).toBe(made);
+    expect(j.voids['b1']).toBe('voided');
+    expect(rig.core.getAuthorization(made).status).toBe('VOIDED');
+    assertFakeInvariants(rig.core);
   });
 });
