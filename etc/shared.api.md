@@ -2038,6 +2038,7 @@ export const HammerSchema: z.ZodObject<{
         };
     }>, "many">;
     stopped: z.ZodOptional<z.ZodBoolean>;
+    registrationClosed: z.ZodOptional<z.ZodBoolean>;
     seq: z.ZodNumber;
     ts: z.ZodEffects<z.ZodNumber, EpochMs, number>;
 }, "strict", z.ZodTypeAny, {
@@ -2060,6 +2061,7 @@ export const HammerSchema: z.ZodObject<{
         };
     }[];
     stopped?: boolean | undefined;
+    registrationClosed?: boolean | undefined;
 }, {
     v: 1;
     t: "hammer";
@@ -2078,6 +2080,7 @@ export const HammerSchema: z.ZodObject<{
         };
     }[];
     stopped?: boolean | undefined;
+    registrationClosed?: boolean | undefined;
 }>;
 
 // @public (undocumented)
@@ -3823,6 +3826,9 @@ export const RoomSnapshotSchema: z.ZodObject<{
     paused: z.ZodOptional<z.ZodBoolean>;
     remainingMs: z.ZodOptional<z.ZodNumber>;
     stopped: z.ZodOptional<z.ZodBoolean>;
+    registrationClosed: z.ZodOptional<z.ZodBoolean>;
+    lotTitle: z.ZodOptional<z.ZodString>;
+    joinCode: z.ZodOptional<z.ZodString>;
     roster: z.ZodEffects<z.ZodArray<z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
         paddle: z.ZodNumber;
@@ -4061,6 +4067,9 @@ export const RoomSnapshotSchema: z.ZodObject<{
     paused?: boolean | undefined;
     remainingMs?: number | undefined;
     stopped?: boolean | undefined;
+    registrationClosed?: boolean | undefined;
+    lotTitle?: string | undefined;
+    joinCode?: string | undefined;
     you?: {
         bidderId: string & {
             readonly __brand_brand: "BidderId";
@@ -4145,6 +4154,9 @@ export const RoomSnapshotSchema: z.ZodObject<{
     paused?: boolean | undefined;
     remainingMs?: number | undefined;
     stopped?: boolean | undefined;
+    registrationClosed?: boolean | undefined;
+    lotTitle?: string | undefined;
+    joinCode?: string | undefined;
     you?: {
         bidderId: string & {
             readonly __brand_brand: "BidderId";
@@ -4499,6 +4511,9 @@ export const serverSchemas: {
             paused: z.ZodOptional<z.ZodBoolean>;
             remainingMs: z.ZodOptional<z.ZodNumber>;
             stopped: z.ZodOptional<z.ZodBoolean>;
+            registrationClosed: z.ZodOptional<z.ZodBoolean>;
+            lotTitle: z.ZodOptional<z.ZodString>;
+            joinCode: z.ZodOptional<z.ZodString>;
             roster: z.ZodEffects<z.ZodArray<z.ZodObject<{
                 bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
                 paddle: z.ZodNumber;
@@ -4737,6 +4752,9 @@ export const serverSchemas: {
             paused?: boolean | undefined;
             remainingMs?: number | undefined;
             stopped?: boolean | undefined;
+            registrationClosed?: boolean | undefined;
+            lotTitle?: string | undefined;
+            joinCode?: string | undefined;
             you?: {
                 bidderId: string & {
                     readonly __brand_brand: "BidderId";
@@ -4821,6 +4839,9 @@ export const serverSchemas: {
             paused?: boolean | undefined;
             remainingMs?: number | undefined;
             stopped?: boolean | undefined;
+            registrationClosed?: boolean | undefined;
+            lotTitle?: string | undefined;
+            joinCode?: string | undefined;
             you?: {
                 bidderId: string & {
                     readonly __brand_brand: "BidderId";
@@ -4931,6 +4952,9 @@ export const serverSchemas: {
             paused?: boolean | undefined;
             remainingMs?: number | undefined;
             stopped?: boolean | undefined;
+            registrationClosed?: boolean | undefined;
+            lotTitle?: string | undefined;
+            joinCode?: string | undefined;
             you?: {
                 bidderId: string & {
                     readonly __brand_brand: "BidderId";
@@ -5021,6 +5045,9 @@ export const serverSchemas: {
             paused?: boolean | undefined;
             remainingMs?: number | undefined;
             stopped?: boolean | undefined;
+            registrationClosed?: boolean | undefined;
+            lotTitle?: string | undefined;
+            joinCode?: string | undefined;
             you?: {
                 bidderId: string & {
                     readonly __brand_brand: "BidderId";
@@ -5099,6 +5126,7 @@ export const serverSchemas: {
             };
         }>, "many">;
         stopped: z.ZodOptional<z.ZodBoolean>;
+        registrationClosed: z.ZodOptional<z.ZodBoolean>;
         seq: z.ZodNumber;
         ts: z.ZodEffects<z.ZodNumber, EpochMs, number>;
     }, "strict", z.ZodTypeAny, {
@@ -5121,6 +5149,7 @@ export const serverSchemas: {
             };
         }[];
         stopped?: boolean | undefined;
+        registrationClosed?: boolean | undefined;
     }, {
         v: 1;
         t: "hammer";
@@ -5139,6 +5168,7 @@ export const serverSchemas: {
             };
         }[];
         stopped?: boolean | undefined;
+        registrationClosed?: boolean | undefined;
     }>;
     readonly settlement_update: z.ZodObject<{
         v: z.ZodLiteral<1>;
@@ -5951,6 +5981,9 @@ export const StateSchema: z.ZodObject<{
         paused: z.ZodOptional<z.ZodBoolean>;
         remainingMs: z.ZodOptional<z.ZodNumber>;
         stopped: z.ZodOptional<z.ZodBoolean>;
+        registrationClosed: z.ZodOptional<z.ZodBoolean>;
+        lotTitle: z.ZodOptional<z.ZodString>;
+        joinCode: z.ZodOptional<z.ZodString>;
         roster: z.ZodEffects<z.ZodArray<z.ZodObject<{
             bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
             paddle: z.ZodNumber;
@@ -6189,6 +6222,9 @@ export const StateSchema: z.ZodObject<{
         paused?: boolean | undefined;
         remainingMs?: number | undefined;
         stopped?: boolean | undefined;
+        registrationClosed?: boolean | undefined;
+        lotTitle?: string | undefined;
+        joinCode?: string | undefined;
         you?: {
             bidderId: string & {
                 readonly __brand_brand: "BidderId";
@@ -6273,6 +6309,9 @@ export const StateSchema: z.ZodObject<{
         paused?: boolean | undefined;
         remainingMs?: number | undefined;
         stopped?: boolean | undefined;
+        registrationClosed?: boolean | undefined;
+        lotTitle?: string | undefined;
+        joinCode?: string | undefined;
         you?: {
             bidderId: string & {
                 readonly __brand_brand: "BidderId";
@@ -6383,6 +6422,9 @@ export const StateSchema: z.ZodObject<{
         paused?: boolean | undefined;
         remainingMs?: number | undefined;
         stopped?: boolean | undefined;
+        registrationClosed?: boolean | undefined;
+        lotTitle?: string | undefined;
+        joinCode?: string | undefined;
         you?: {
             bidderId: string & {
                 readonly __brand_brand: "BidderId";
@@ -6473,6 +6515,9 @@ export const StateSchema: z.ZodObject<{
         paused?: boolean | undefined;
         remainingMs?: number | undefined;
         stopped?: boolean | undefined;
+        registrationClosed?: boolean | undefined;
+        lotTitle?: string | undefined;
+        joinCode?: string | undefined;
         you?: {
             bidderId: string & {
                 readonly __brand_brand: "BidderId";
