@@ -9,6 +9,7 @@ import { useConnection } from '../../net/connection';
 import { ControlError, ControlTimeoutError, createControlPort } from '../../net/controlPort';
 import type { LiveRoom } from '../../net/liveRoom';
 import { useRoom } from '../../store/roomStore';
+import { selectors } from '../../store/selectors';
 import { Controls } from './Controls';
 import { ConsoleScreen } from './ConsoleScreen';
 import { KillSwitch } from './KillSwitch';
@@ -37,8 +38,10 @@ const DROP_FRAMES: AudioFrameSink = { push: () => undefined };
 function killMessage(err: unknown): string {
   if (err instanceof ControlTimeoutError) return t('kill.unknown');
   if (err instanceof ControlError) {
+    if (err.status === 401 || err.status === 403) return t('kill.unauthorized');
     if (err.status === 404) return t('kill.notAvailable');
     if (err.status === 409) return t('kill.conflict');
+    if (err.status >= 500) return t('kill.serverError');
     if (err.detail !== null) return t('kill.failedDetail', { detail: err.detail });
   }
   return t('kill.failed');
@@ -66,7 +69,9 @@ export function LiveConsole({
   const roster = useRoom((s) => s.snapshot?.roster);
   const leaderId = useRoom((s) => s.snapshot?.leaderId ?? null);
   const audit = useRoom((s) => s.audit);
-  const [stopped, setStopped] = useState(false);
+  const [stoppedHere, setStoppedHere] = useState(false);
+  const roomStopped = useRoom(selectors.stopped);
+  const stopped = stoppedHere || roomStopped;
   const [killFailed, setKillFailed] = useState('');
   const seq = useRoom((s) => s.lastSeq);
   const [manualMid, setManualMid] = useState<MsgId | null>(null);
@@ -85,7 +90,7 @@ export function LiveConsole({
   const kill = (): void => {
     setKillFailed('');
     port.kill('STOP').then(
-      () => setStopped(true),
+      () => setStoppedHere(true),
       (err: unknown) => {
         // Say what the server said instead of pretending the auction stopped.
         const message = killMessage(err);

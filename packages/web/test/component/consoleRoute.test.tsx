@@ -1,11 +1,12 @@
 import type { AuctionId } from '@gavel/shared';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
 import { loadSession, saveSession } from '../../src/net/session';
 import { clearAuctioneerToken } from '../../src/store/session';
 import { baseConfig, openSnapshot, priceMsg, roster, stateMsg } from '../../src/testing/builders';
+import { formatUsd } from '../../src/util/money';
 
 const ROOM = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 const CONSOLE = `/r/${ROOM}/console`;
@@ -261,5 +262,170 @@ describe('stop request (#1717)', () => {
         expect(texts('alert')).toContain(t('kill.failedDetail', { detail: 'store unavailable' })),
       { timeout: 3000 },
     );
+  });
+});
+
+describe('stop switch through the console route (T-WEB-040)', () => {
+  const stopButton = (): HTMLElement => screen.getByRole('button', { name: t('kill.hold') });
+  function openStopDialog(): void {
+    fireEvent.click(screen.getByRole('button', { name: t('kill.button') }));
+  }
+  function type(text: string): void {
+    fireEvent.change(screen.getByLabelText(t('kill.type')), { target: { value: text } });
+  }
+  const killCalls = (): number => fetchMock.mock.calls.filter((c) => c[0].endsWith('/kill')).length;
+
+  it('keeps Stop disabled until STOP is typed exactly', () => {
+    renderConsole();
+    openStopDialog();
+    expect(stopButton().getAttribute('aria-disabled')).toBe('true');
+    type('stop');
+    expect(stopButton().getAttribute('aria-disabled')).toBe('true');
+    type('STOP ');
+    expect(stopButton().getAttribute('aria-disabled')).toBe('true');
+    type('STOP');
+    expect(stopButton().getAttribute('aria-disabled')).not.toBe('true');
+  });
+
+  it('sends nothing after 1499 ms and one request after 1500 ms', async () => {
+    vi.useFakeTimers();
+    renderConsole();
+    openStopDialog();
+    type('STOP');
+    fireEvent.pointerDown(stopButton());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1499);
+    });
+    fireEvent.pointerUp(stopButton());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    fireEvent.pointerDown(stopButton());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(lastCall().url).toBe(`/api/auctions/${ROOM}/kill`);
+    expect(lastCall().auth).toBe('Bearer pelican');
+    expect(lastCall().body).toEqual({ controlId: expect.any(String), confirm: 'STOP' });
+    expect(killCalls()).toBe(1);
+  });
+
+  it('shows the stopped state and announces it once after a 200', async () => {
+    vi.useFakeTimers();
+    renderConsole();
+    openStopDialog();
+    type('STOP');
+    fireEvent.pointerDown(stopButton());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+    expect(screen.queryByRole('button', { name: t('kill.button') })).toBeNull();
+    expect(screen.getAllByText(t('kill.stopped')).length).toBeGreaterThan(0);
+    expect(screen.getByTestId('live-assertive').textContent).toBe(t('kill.stopped'));
+    const pause = screen.getByRole('button', { name: t('console.pause') });
+    expect(pause.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('cancels on Escape and sends nothing', () => {
+    renderConsole();
+    openStopDialog();
+    type('STOP');
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('opens the confirm dialog from the keyboard and never sends on Enter alone', () => {
+    renderConsole();
+    const open = screen.getByRole('button', { name: t('kill.button') });
+    fireEvent.click(open);
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('gives each refusal its own words', async () => {
+    const cases: Array<[number, string]> = [
+      [401, t('kill.unauthorized')],
+      [403, t('kill.unauthorized')],
+      [500, t('kill.serverError')],
+    ];
+    for (const [status, words] of cases) {
+      fetchMock.mockResolvedValueOnce({ ok: false, status });
+      renderConsole();
+      openStopDialog();
+      type('STOP');
+      fireEvent.keyDown(stopButton(), { key: 'Enter' });
+      await waitFor(() => expect(texts('alert')).toContain(words), { timeout: 3000 });
+      cleanup();
+      window.history.pushState(null, '', '/');
+    }
+  });
+
+  it('shows the stopped state from the snapshot flag on the console and the screen view', () => {
+    const stoppedSnapshot = {
+      ...openSnapshot(roster([12, 'Priya']), baseConfig, 'SETTLING', ROOM as AuctionId),
+      stopped: true,
+    };
+    renderConsole();
+    deliver(stateMsg(3, stoppedSnapshot));
+    expect(screen.queryByRole('button', { name: t('kill.button') })).toBeNull();
+    expect(screen.getAllByText(t('kill.stopped')).length).toBeGreaterThan(0);
+    cleanup();
+    window.history.pushState(null, '', `/r/${ROOM}/screen#token=pelican`);
+    render(<App initialPath={`/r/${ROOM}/screen`} liveBase="ws://localhost:1" />);
+    act(() => {
+      FakeSocket.last?.onopen?.();
+    });
+    deliver(stateMsg(1, stoppedSnapshot));
+    expect(screen.getByText(t('screen.stopped'))).toBeTruthy();
+  });
+});
+
+describe('hammer conflict messages (#1772)', () => {
+  const conflict = (message: string): FetchReply => ({
+    ok: false,
+    status: 409,
+    text: () => Promise.resolve(JSON.stringify({ error: { code: 'conflict', message } })),
+  });
+  const sentText = t('controls.sent', { action: t('console.hammer') });
+
+  it('tells a changed price from a changed leader and reopens with the new values', async () => {
+    fetchMock.mockResolvedValueOnce(conflict('price_changed'));
+    renderConsole();
+    holdHammer();
+    await waitFor(() => expect(texts('status')).toContain(t('controls.hammerPriceChanged')), {
+      timeout: 3000,
+    });
+    expect(lastCall().body['args']).toMatchObject({
+      expectedPriceCents: 40_000,
+      expectedLeaderPaddle: 12,
+    });
+    expect(texts('status')).not.toContain(sentText);
+    deliver(priceMsg(3, 12, 45_000));
+    fireEvent.click(screen.getByRole('button', { name: t('console.hammer') }));
+    expect(screen.getByRole('dialog').textContent).toContain(formatUsd(45_000));
+    fireEvent.click(screen.getByRole('button', { name: t('common.cancel') }));
+
+    fetchMock.mockResolvedValueOnce(conflict('leader_changed'));
+    holdHammer();
+    await waitFor(() => expect(texts('status')).toContain(t('controls.hammerLeaderChanged')), {
+      timeout: 3000,
+    });
+    expect(lastCall().body['args']).toMatchObject({
+      expectedPriceCents: 45_000,
+      expectedLeaderPaddle: 12,
+    });
+    expect(texts('status')).not.toContain(sentText);
+  });
+
+  it('keeps the generic message for any other conflict', async () => {
+    fetchMock.mockResolvedValueOnce(conflict('wrong_state'));
+    renderConsole();
+    holdHammer();
+    await waitFor(() => expect(texts('status')).toContain(t('controls.hammerChanged')), {
+      timeout: 3000,
+    });
   });
 });
