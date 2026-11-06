@@ -455,8 +455,8 @@ class Run {
         return { status: 'failed', reason: 'mismatch', journal };
       }
       case 'auto_released':
-        await this.patch('remainder_released', (d) => {
-          d.voids[key] = 'remainder_released';
+        await this.patch('remainder_closed_by_paypal', (d) => {
+          d.voids[key] = 'remainder_closed_by_paypal';
         });
         return null;
       case 'remainder_voided':
