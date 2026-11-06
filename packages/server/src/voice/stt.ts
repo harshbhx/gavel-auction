@@ -55,10 +55,7 @@ export function chooseStt(env: SttChoiceEnv, deps: SttChoiceDeps = {}): SttChoic
   const raw = env.VOICE_STT?.trim().toLowerCase();
   if (raw === undefined || raw === '' || raw === 'replay') return cached;
 
-  const selectEnv = {
-    VOICE_STT: raw,
-    ...(env.GROQ_API_KEY !== undefined ? { GROQ_API_KEY: env.GROQ_API_KEY } : {}),
-  };
+  const selectEnv: SttChoiceEnv = { ...env, VOICE_STT: raw };
   const selectDeps: SelectDeps = {
     ...(deps.fetch !== undefined ? { fetch: deps.fetch } : {}),
     ...(deps.log !== undefined ? { log: (m, f) => deps.log?.(m, f) } : {}),

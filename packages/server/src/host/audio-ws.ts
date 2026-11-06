@@ -172,14 +172,14 @@ export function createAudioHost(opts: AudioHostOptions): AudioHost {
     sockets.add(ws);
     ws.on('error', () => undefined);
     let bridge: VoiceBridge | undefined;
-    let stream: AudioStream | undefined;
+    let active: AudioStream | undefined;
     const timers: Array<CancelTimer | undefined> = [];
     let ended = false;
     const end = (code: number, reason: string): void => {
       if (ended) return;
       ended = true;
       for (const cancel of timers) cancel?.();
-      stream?.close();
+      active?.close();
       void bridge?.close();
       sockets.delete(ws);
       if (ws.readyState === ws.OPEN || ws.readyState === ws.CONNECTING) ws.close(code, reason);
@@ -187,7 +187,7 @@ export function createAudioHost(opts: AudioHostOptions): AudioHost {
     ws.once('close', () => {
       ended = true;
       for (const cancel of timers) cancel?.();
-      stream?.close();
+      active?.close();
       void bridge?.close();
       sockets.delete(ws);
     });
@@ -199,13 +199,13 @@ export function createAudioHost(opts: AudioHostOptions): AudioHost {
       end(AUDIO_CLOSE_CODES[opened.error], opened.error);
       return;
     }
-    const active = opened.stream;
-    stream = active;
+    const stream = opened.stream;
+    active = stream;
 
     ws.on('message', (data, isBinary) => {
       if (ended) return;
       const frame: unknown = isBinary ? (Array.isArray(data) ? Buffer.concat(data) : data) : 'text';
-      const res = active.accept(frame);
+      const res = stream.accept(frame);
       if (!res.ok) {
         end(AUDIO_CLOSE_CODES[res.error], res.error);
         return;
@@ -233,7 +233,7 @@ export function createAudioHost(opts: AudioHostOptions): AudioHost {
       return;
     }
 
-    const stopAt = Math.min(active.expiresAtMs, payload.exp * 1000);
+    const stopAt = Math.min(stream.expiresAtMs, payload.exp * 1000);
     timers[0] = opts.clock.setTimer(stopAt, () => {
       end(AUDIO_CLOSE_CODES.AUDIO_SESSION_LIMIT, 'AUDIO_SESSION_LIMIT');
     });
