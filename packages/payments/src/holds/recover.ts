@@ -4,7 +4,13 @@ import { buildRequestId } from '../requestId.js';
 import type { HoldRecord } from '../types.js';
 import { sharedHoldQueue } from '../webhooks/merge.js';
 import { auditedCall } from './audited.js';
-import { HoldError, toHoldError, type ApprovedHold, type HoldService } from './service.js';
+import {
+  DEFAULT_PENDING_TTL_MS,
+  HoldError,
+  toHoldError,
+  type ApprovedHold,
+  type HoldService,
+} from './service.js';
 
 /**
  * Hold recovery and the stale flag (SPEC 8.1, R-PAY-034).
@@ -170,8 +176,11 @@ export async function sweepStalePending(
   auctionId: string,
   minAgeMs: number,
   expiredLookbackMs: number = DEFAULT_EXPIRED_LOOKBACK_MS,
+  opts: SweepPendingOptions = {},
 ): Promise<Array<{ holdId: string; result: RecoverResult }>> {
   const now = deps.clock.nowMs();
+  const ttlMs = opts.pendingTtlMs ?? DEFAULT_PENDING_TTL_MS;
+  const reads = opts.reads;
   const all = await deps.holds.listByAuction(auctionId);
   const old = all
     .filter((h) => h.status === 'PENDING_APPROVAL' && now - h.createdAtMs >= minAgeMs)
@@ -188,26 +197,133 @@ export async function sweepStalePending(
     )
     .sort((a, b) => (a.holdId < b.holdId ? -1 : 1));
   for (const h of lapsed) {
-    out.push({ holdId: h.holdId, result: await voidLapsed(deps, h) });
+    // Own key: the wait left from the record's pending reads must not delay its first check.
+    const key = `expired:${h.holdId}`;
+    if (reads !== undefined && !reads.due(key, now)) continue;
+    const result = await voidLapsed(deps, h);
+    reads?.read(key, now, now - h.createdAtMs);
+    out.push({ holdId: h.holdId, result });
   }
   for (const h of old) {
+    if (reads !== undefined && !reads.due(h.holdId, now)) continue;
+    const age = now - h.createdAtMs;
     let order: { authId?: string };
     try {
       order = await deps.gateway.getOrder(h.orderId);
     } catch (e) {
       if (e instanceof PayPalError) {
+        reads?.read(h.holdId, now, age);
         out.push({ holdId: h.holdId, result: { status: 'unavailable' } });
         continue;
       }
       throw e;
     }
-    if (order.authId === undefined) continue;
+    if (order.authId === undefined) {
+      // Past the lifetime of an unapproved order the record lapses, as HoldService treats it,
+      // and leaves the sweep. Younger ones are read again later, further apart each time.
+      const step = age >= ttlMs ? await expirePending(deps, h) : 'kept';
+      if (step === 'expired') {
+        reads?.forget(h.holdId);
+        out.push({ holdId: h.holdId, result: { status: 'abandoned' } });
+        continue;
+      }
+      if (step !== 'authorized') {
+        reads?.read(h.holdId, now, age);
+        if (step === 'unavailable') {
+          out.push({ holdId: h.holdId, result: { status: 'unavailable' } });
+        }
+        continue;
+      }
+      // An authorization appeared after the first read: it is recovered like any other below.
+    }
+    reads?.forget(h.holdId);
     out.push({
       holdId: h.holdId,
       result: await recoverOrder(deps, { auctionId, orderId: h.orderId }),
     });
   }
   return out;
+}
+
+export interface SweepPendingOptions {
+  /** Age after which a pending hold without an authorization is expired. Default 3 h. */
+  pendingTtlMs?: number;
+  /** Back-off between reads of the same hold; without it every sweep reads every hold. */
+  reads?: PendingReadBackoff;
+}
+
+/**
+ * Spacing of the sweep's PayPal reads per hold: each read that finds nothing to do (or fails)
+ * doubles the wait, from `baseMs` up to `capMs`. A hold older than `lapseAfterMs` waits up to
+ * `lateCapMs`. Kept in memory; a restart starts every hold again from the first wait.
+ */
+export class PendingReadBackoff {
+  private readonly next = new Map<string, { tries: number; atMs: number }>();
+
+  constructor(
+    private readonly baseMs: number = 60_000,
+    private readonly capMs: number = 30 * 60_000,
+    private readonly lateCapMs: number = 6 * 60 * 60_000,
+    private readonly lapseAfterMs: number = DEFAULT_PENDING_TTL_MS,
+  ) {}
+
+  due(holdId: string, nowMs: number): boolean {
+    const n = this.next.get(holdId);
+    return n === undefined || nowMs >= n.atMs;
+  }
+
+  /** Records a read that did not settle the hold. */
+  read(holdId: string, nowMs: number, ageMs: number): void {
+    const tries = (this.next.get(holdId)?.tries ?? 0) + 1;
+    const cap = ageMs >= this.lapseAfterMs ? this.lateCapMs : this.capMs;
+    this.next.set(holdId, {
+      tries,
+      atMs: nowMs + Math.min(cap, this.baseMs * 2 ** Math.min(tries, 30)),
+    });
+  }
+
+  forget(holdId: string): void {
+    this.next.delete(holdId);
+  }
+
+  get size(): number {
+    return this.next.size;
+  }
+}
+
+type ExpireStep = 'expired' | 'kept' | 'authorized' | 'unavailable';
+
+/**
+ * Expires a pending record whose order PayPal shows without an authorization, inside the
+ * hold's queue and from the record as it is now. The order is read again inside the queue,
+ * as HoldService.abandonPending does: an approval may have authorized since the sweep's read
+ * and failed to write HELD (R8-P05), and an expired record this old is past the look-back of
+ * the lapsed check, so its authorization would never be found. `kept` when an approval or
+ * webhook moved the record on, `authorized` when the order now carries an authorization.
+ */
+async function expirePending(deps: RecoverDeps, hold: HoldRecord): Promise<ExpireStep> {
+  try {
+    return await sharedHoldQueue.run<ExpireStep>(hold.holdId, async () => {
+      const latest = (await deps.holds.get(hold.holdId)) ?? hold;
+      if (latest.status !== 'PENDING_APPROVAL' || latest.authId !== undefined) return 'kept';
+      const order = await deps.gateway.getOrder(latest.orderId);
+      if (order.authId !== undefined) return 'authorized';
+      await deps.holds.put({ ...latest, status: 'EXPIRED' });
+      await deps.audit.append({
+        kind: 'state_change',
+        auctionId: latest.auctionId,
+        holdId: latest.holdId,
+        from: 'PENDING_APPROVAL',
+        to: 'EXPIRED',
+        label: 'hold_abandoned',
+        tsMs: deps.clock.nowMs(),
+      });
+      return 'expired';
+    });
+  } catch (e) {
+    if (e instanceof PayPalError) return 'unavailable';
+    throw e;
+  }
 }
 
 /** How far back the sweep looks at abandoned records that carry no authorization id. */

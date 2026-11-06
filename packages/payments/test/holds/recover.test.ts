@@ -8,6 +8,7 @@ import {
   recoverOrder,
   sweepAuction,
   sweepStalePending,
+  PendingReadBackoff,
   type RecoverDeps,
 } from '../../src/holds/recover.js';
 import { HoldService } from '../../src/holds/service.js';
@@ -313,5 +314,101 @@ describe('R8-P05 an authorization created before a crash is not left live', () =
     const later = await sweepStalePending(rig.deps, 'a1', 5 * 60_000);
     expect(later.map((x) => x.holdId)).toEqual([young.holdId]);
     expect((await rig.holds.get(none.holdId))?.status).toBe('PENDING_APPROVAL');
+  });
+});
+
+describe('HRD-81 bounded reads of abandoned checkouts', () => {
+  const MIN = 60_000;
+  const reads = (rig: Rig, orderId: string) =>
+    rig.core.calls.filter((c) => c.op === 'get' && c.id === orderId).length;
+
+  it('backs off between reads and expires the record after the pending lifetime', async () => {
+    const rig = makeRig(true);
+    const { holdId, orderId } = await pendingOrder(rig);
+    const backoff = new PendingReadBackoff();
+    const sweep = () => sweepStalePending(rig.deps, 'a1', 5 * MIN, undefined, { reads: backoff });
+    for (let m = 1; m <= 170; m += 1) {
+      rig.clock.advance(MIN);
+      await sweep();
+    }
+    expect(reads(rig, orderId)).toBeLessThanOrEqual(10);
+    expect((await rig.holds.get(holdId))?.status).toBe('PENDING_APPROVAL');
+    for (let m = 171; m <= 400; m += 1) {
+      rig.clock.advance(MIN);
+      await sweep();
+    }
+    expect((await rig.holds.get(holdId))?.status).toBe('EXPIRED');
+    const after = reads(rig, orderId);
+    rig.clock.advance(10 * HOUR);
+    expect(await sweep()).toEqual([]);
+    expect(reads(rig, orderId)).toBe(after);
+    expect(backoff.size).toBe(0);
+  });
+
+  it('keeps reading a failing order, at the late cap, and never touches a HELD hold', async () => {
+    const rig = makeRig(true);
+    const held = await pendingOrder(rig, 'b1');
+    rig.core.approveOrder(held.orderId);
+    await rig.service.completeApproval({ holdId: held.holdId, orderId: held.orderId });
+    const heldReads = reads(rig, held.orderId);
+    const gone = await pendingOrder(rig, 'b2');
+    rig.core.inject('get', 'http_500', gone.orderId, 1000);
+    const backoff = new PendingReadBackoff();
+    rig.clock.advance(4 * HOUR);
+    for (let m = 0; m < 24 * 60; m += 1) {
+      rig.clock.advance(MIN);
+      await sweepStalePending(rig.deps, 'a1', 5 * MIN, undefined, { reads: backoff });
+    }
+    expect(reads(rig, gone.orderId)).toBeLessThanOrEqual(14);
+    expect((await rig.holds.get(gone.holdId))?.status).toBe('PENDING_APPROVAL');
+    expect(reads(rig, held.orderId)).toBe(heldReads);
+    expect((await rig.holds.get(held.holdId))?.status).toBe('HELD');
+  });
+
+  it('does not expire away an authorization made after the first read (R8-P05)', async () => {
+    const rig = makeRig(false);
+    const { holdId, orderId } = await pendingOrder(rig);
+    rig.clock.advance(3 * HOUR + MIN);
+    // An approval authorizes at PayPal just after the sweep's read and never writes HELD.
+    const get = rig.gateway.getOrder.bind(rig.gateway);
+    vi.spyOn(rig.gateway, 'getOrder').mockImplementationOnce(async (id) => {
+      const seen = await get(id);
+      rig.core.approveOrder(orderId);
+      rig.core.authorizeOrder(orderId, 'lost-authorize');
+      return seen;
+    });
+    const out = await sweepStalePending(rig.deps, 'a1', 5 * MIN, undefined, {
+      reads: new PendingReadBackoff(),
+    });
+    expect(out).toEqual([{ holdId, result: { status: 'abandoned' } }]);
+    const rec = await rig.holds.get(holdId);
+    expect(rec?.status).toBe('EXPIRED');
+    const authId = rec?.authId;
+    expect(authId).toBeDefined();
+    if (authId !== undefined) expect(rig.core.inspect(authId).voidEffects).toBe(1);
+    assertFakeInvariants(rig.core);
+  });
+
+  it('checks an expired record at once, whatever wait its pending reads left', async () => {
+    const rig = makeRig(false);
+    const { holdId, orderId } = await pendingOrder(rig);
+    const backoff = new PendingReadBackoff();
+    const sweep = () => sweepStalePending(rig.deps, 'a1', 5 * MIN, undefined, { reads: backoff });
+    for (let m = 1; m <= 160; m += 1) {
+      rig.clock.advance(MIN);
+      await sweep();
+    }
+    // An authorization the record never got, then an abandon that did not ask PayPal.
+    rig.core.approveOrder(orderId);
+    const { authId } = rig.core.authorizeOrder(orderId, 'lost-authorize');
+    const pending = await rig.holds.get(holdId);
+    if (pending === null) throw new Error('missing record');
+    await rig.holds.put({ ...pending, status: 'EXPIRED' });
+    for (let m = 161; m <= 180; m += 1) {
+      rig.clock.advance(MIN);
+      await sweep();
+    }
+    expect(rig.core.inspect(authId).voidEffects).toBe(1);
+    expect((await rig.holds.get(holdId))?.authId).toBe(authId);
   });
 });
