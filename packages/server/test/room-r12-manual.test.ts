@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { setup } from './room-harness';
+import { acceptLatestConfirm, setup } from './room-harness';
 
 describe('manual bid replies (R12-S09)', () => {
   it('does not tell the auctioneer over_ceiling for a manual bid (R12-S09)', async () => {
@@ -23,12 +23,16 @@ describe('manual bid replies (R12-S09)', () => {
   it('limits a manual bid to the next increment (R12-S09)', async () => {
     const t = await setup();
     const boss = await t.connect('auctioneer');
+    const c1 = await t.connect('bidder', t.b1);
     // b1's ceiling is 50000, so before the fix 20000 was accepted and bound the bidder to it.
     await t.room.submitBid(boss.conn, { ...t.bid(20000), bidderId: t.b1 });
     expect(boss.transport.messages('bid_accepted')).toHaveLength(0);
     expect(boss.transport.messages('bid_rejected')[0]).toMatchObject({ reason: 'limit_exceeded' });
-    // The next increment itself is still accepted.
+    expect(c1.transport.messages('confirm_request')).toHaveLength(0);
+    // The next increment itself is held until the bidder confirms it, then accepted.
     await t.room.submitBid(boss.conn, { ...t.bid(10000), bidderId: t.b1 });
-    expect(boss.transport.messages('bid_accepted')).toHaveLength(1);
+    expect(c1.transport.messages('confirm_request')).toHaveLength(1);
+    await acceptLatestConfirm(t.room, c1);
+    expect(c1.transport.messages('bid_accepted')).toHaveLength(1);
   });
 });

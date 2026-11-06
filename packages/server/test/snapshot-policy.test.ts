@@ -70,3 +70,23 @@ describe('snapshot policy (R-RT-095)', () => {
     );
   });
 });
+
+describe('the room saves snapshots through the policy (#1729)', () => {
+  it('saves a snapshot once 100 events are committed and not before', async () => {
+    const t = await setup();
+    const c1 = await t.connect('bidder', t.b1);
+    const c2 = await t.connect('bidder', t.b2);
+    let price = 10000;
+    const next = async (): Promise<void> => {
+      await t.room.submitBid(c1.conn, t.bid(price));
+      price += 500;
+      await t.room.submitBid(c2.conn, t.bid(price));
+      price += 500;
+    };
+    while (t.room.lastSeq < 90) await next();
+    expect(await t.store.loadSnapshot(t.auctionId)).toBeNull();
+    while (t.room.lastSeq < 100) await next();
+    const snap = await t.store.loadSnapshot(t.auctionId);
+    expect(snap?.seq).toBeGreaterThanOrEqual(100);
+  });
+});

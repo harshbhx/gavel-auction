@@ -23,6 +23,7 @@ import { MemoryTransport } from '../src/room/memory-transport';
 import { Room, type Connection, type RoomDeps } from '../src/room/room';
 import { LedgerEngine } from '../src/runtime/ledger-engine';
 import { MemoryStore } from '../src/store/memory-store';
+import { acceptLatestConfirm } from './room-harness';
 
 const START = 1_789_000_000_000;
 
@@ -261,8 +262,12 @@ describe('rejections and privacy (R-RT-035, R-RT-037, R-RT-055)', () => {
   it('lets the auctioneer bid for a registered bidder as source manual', async () => {
     const t = await setup();
     const boss = await t.connect('auctioneer');
+    const c1 = await t.connect('bidder', t.b1);
     await t.room.submitBid(boss.conn, { ...t.bid(10000), bidderId: t.b1 });
-    const events = await t.store.readEvents(t.auctionId, 4, 1);
+    await acceptLatestConfirm(t.room, c1);
+    const events = (await t.store.readEvents(t.auctionId, 4, 10)).filter(
+      (e) => e.type === 'bid_accepted',
+    );
     expect(events[0]).toMatchObject({ type: 'bid_accepted', bidderId: t.b1 });
     expect(events[0]).toMatchObject({ audit: { source: 'manual' } });
   });
