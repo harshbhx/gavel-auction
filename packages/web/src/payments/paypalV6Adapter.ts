@@ -173,7 +173,13 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
 
     if (req.approvedOrderId !== undefined && req.approvedHoldId !== undefined) {
       on('confirming');
-      return this.confirm(req.approvedHoldId, req.approvedOrderId, finish, req.ceilingCents);
+      return this.confirm(
+        req.approvedHoldId,
+        req.approvedOrderId,
+        finish,
+        req.ceilingCents,
+        req.name,
+      );
     }
 
     on('preparing');
@@ -227,7 +233,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     }
 
     on('confirming');
-    return this.confirm(holdId, outcome.orderId, finish, req.ceilingCents);
+    return this.confirm(holdId, outcome.orderId, finish, req.ceilingCents, req.name);
   }
 
   /** Return route step: the buyer came back from PayPal's approval page with an order id. */
@@ -237,6 +243,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     clientRegistrationId: string,
     on: (s: ApprovalState) => void,
     expectedCents?: number,
+    name?: string,
   ): Promise<ApprovalResult> {
     const correlationId = `pp-${clientRegistrationId.slice(0, 8)}`;
     const finish = (state: ApprovalState, extra: Partial<ApprovalResult> = {}): ApprovalResult => {
@@ -244,7 +251,7 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
       return { state, correlationId, ...extra };
     };
     on('confirming');
-    return this.confirm(holdId, orderId, finish, expectedCents);
+    return this.confirm(holdId, orderId, finish, expectedCents, name);
   }
 
   private async confirm(
@@ -252,8 +259,12 @@ export class PayPalV6Adapter implements PaymentApprovalPort {
     orderId: string,
     finish: (state: ApprovalState, extra?: Partial<ApprovalResult>) => ApprovalResult,
     expectedCents?: number,
+    name?: string,
   ): Promise<ApprovalResult> {
-    const hold = await this.post(`${holdPath(holdId)}/approve`, { orderId });
+    const hold = await this.post(
+      `${holdPath(holdId)}/approve`,
+      name === undefined ? { orderId } : { orderId, name },
+    );
     if (!hold.ok) {
       if (hold.why === 'aborted') return finish('cancelled');
       return finish('error', {

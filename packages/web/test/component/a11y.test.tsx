@@ -195,12 +195,7 @@ describe('axe on the landing and join screens', () => {
 describe('axe on the registration and bid screens', () => {
   it('registration', async () => {
     const { container } = render(
-      <RegisterScreen
-        suggestedPaddle={12}
-        minCents={10000}
-        maxCents={100000}
-        onApprove={vi.fn()}
-      />,
+      <RegisterScreen minCents={10000} maxCents={100000} onApprove={vi.fn()} />,
     );
     expect(await seriousViolations(container)).toEqual([]);
   });

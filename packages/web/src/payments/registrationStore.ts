@@ -12,6 +12,8 @@ export interface StoredRegistration {
   holdId?: string;
   /** The ceiling the buyer chose, checked against the amount the server confirms on return. */
   ceilingCents?: number;
+  /** The display name typed at registration; sent with the approval so the room can list it. */
+  name?: string;
 }
 
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -44,11 +46,13 @@ export function loadRegistration(
     const orderId = (parsed as { orderId?: unknown }).orderId;
     const holdId = (parsed as { holdId?: unknown }).holdId;
     const ceilingCents = (parsed as { ceilingCents?: unknown }).ceilingCents;
+    const name = (parsed as { name?: unknown }).name;
     return {
       clientRegistrationId: id,
       ...(typeof ceilingCents === 'number' && Number.isSafeInteger(ceilingCents)
         ? { ceilingCents }
         : {}),
+      ...(typeof name === 'string' && name !== '' ? { name } : {}),
       ...(typeof orderId === 'string' && orderId !== '' ? { orderId } : {}),
       ...(typeof holdId === 'string' && holdId !== '' ? { holdId } : {}),
     };

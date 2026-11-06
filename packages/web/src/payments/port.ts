@@ -15,6 +15,8 @@ export interface ApprovalRequest {
   bidderId: string;
   ceilingCents: number;
   clientRegistrationId: string;
+  /** The display name the buyer typed; sent with the approval so the server registers it. */
+  name?: string;
   /** Set when PayPal already approved this order and only the hold step failed: retry just that step. */
   approvedOrderId?: string;
   /** The hold that order belongs to; the approve route is addressed by it. */

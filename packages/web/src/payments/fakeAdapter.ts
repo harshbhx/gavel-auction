@@ -85,7 +85,10 @@ export class FakeApprovalAdapter implements PaymentApprovalPort {
     if (this.mode === 'decline') return finish('declined', { errorCode: 'payer_declined' });
 
     on('confirming');
-    const hold = await this.post(`/api/holds/${encodeURIComponent(holdId)}/approve`, { orderId });
+    const hold = await this.post(`/api/holds/${encodeURIComponent(holdId)}/approve`, {
+      orderId,
+      ...(req.name === undefined ? {} : { name: req.name }),
+    });
     const approved = ApproveHoldResponse.safeParse(hold);
     if (!approved.success) return finish('error', { errorCode: 'hold_failed' });
     return finish('held', { holdIdSuffix: approved.data.holdId.slice(-6) });

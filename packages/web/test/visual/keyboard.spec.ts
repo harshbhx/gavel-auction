@@ -119,9 +119,7 @@ async function tabUntil(page: Page, match: (el: Element) => boolean, max: number
   return -1;
 }
 
-test('register walk: name, paddle, ceiling and approve with the keyboard alone', async ({
-  page,
-}) => {
+test('register walk: name, ceiling and approve with the keyboard alone', async ({ page }) => {
   // A stored session stands in for the invite step, so the form renders without a server.
   await page.addInitScript(() => {
     sessionStorage.setItem(
@@ -144,10 +142,6 @@ test('register walk: name, paddle, ceiling and approve with the keyboard alone',
   expect(ring.contrast).toBeGreaterThanOrEqual(3);
 
   await page.keyboard.type('Walnut');
-  await page.keyboard.press('Tab');
-  expect(await page.evaluate(() => document.activeElement?.getAttribute('inputmode'))).toBe(
-    'numeric',
-  );
   await page.keyboard.press('Tab');
   expect(await page.evaluate(() => document.activeElement?.getAttribute('type'))).toBe('submit');
   ring = await readRing(page);

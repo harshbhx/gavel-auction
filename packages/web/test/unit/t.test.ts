@@ -9,7 +9,9 @@ describe('copy catalog', () => {
   });
 
   it('interpolates every placeholder', () => {
-    expect(t('reg.paddleTaken', { n: 12, m: 13 })).toBe('Paddle 12 is taken. Try 13.');
+    expect(t('confirm.title', { amount: '$5.00', n: 12 })).toBe(
+      'Did you mean $5.00 for paddle 12?',
+    );
     expect(t('bid.plus', { amount: '$5.00' })).toBe('+$5.00');
     expect(t('ladder.invariants.ok', { c: '$1', r: '$2', h: '$3' })).toBe(
       'Totals check out: charged $1 + released $2 = holds $3',
@@ -20,9 +22,9 @@ describe('copy catalog', () => {
     // Never called: these lines exist so the type checker proves the errors.
     const compileOnly = (): void => {
       // @ts-expect-error params are required for keys with placeholders
-      t('reg.paddleTaken');
+      t('confirm.title');
       // @ts-expect-error every placeholder must be supplied
-      t('reg.paddleTaken', { n: 1 });
+      t('confirm.title', { n: 1 });
       // @ts-expect-error unknown keys are rejected
       t('no.such.key');
     };
