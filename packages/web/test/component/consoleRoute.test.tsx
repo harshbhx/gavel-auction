@@ -51,7 +51,8 @@ function openRoom(): void {
 }
 
 function renderConsole(): void {
-  window.location.hash = '#token=pelican';
+  // The address bar must already show the route: reading the fragment rewrites it.
+  window.history.pushState(null, '', `${CONSOLE}#token=pelican`);
   render(<App initialPath={CONSOLE} liveBase="ws://localhost:1" />);
   openRoom();
 }
@@ -84,7 +85,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   clearAuctioneerToken();
   window.sessionStorage.clear();
-  window.location.hash = '';
+  window.history.pushState(null, '', '/');
 });
 
 describe('console route access (#1777)', () => {
@@ -113,7 +114,7 @@ describe('console route access (#1777)', () => {
   });
 
   it('keeps the screen token out of session storage', () => {
-    window.location.hash = '#token=pelican';
+    window.history.pushState(null, '', `/r/${ROOM}/screen#token=pelican`);
     render(<App initialPath={`/r/${ROOM}/screen`} liveBase="ws://localhost:1" />);
     expect(loadSession(ROOM)).toBeNull();
     expect(window.sessionStorage.length).toBe(0);

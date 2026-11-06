@@ -108,10 +108,10 @@ export function ManualEntry({
         }}
         {...(problem === 'amount'
           ? { error: t('console.manual.badAmount'), errorIcon: warn }
-          : offline
-            ? { error: t('console.manual.offline'), errorIcon: warn }
-            : sendProblem !== null
-              ? { error: sendProblem, errorIcon: warn }
+          : sendProblem !== null
+            ? { error: sendProblem, errorIcon: warn }
+            : offline
+              ? { error: t('console.manual.offline'), errorIcon: warn }
               : problem === null && rejection !== null
                 ? { error: rejectionText(rejection), errorIcon: warn }
                 : {})}

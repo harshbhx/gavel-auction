@@ -104,7 +104,9 @@ export function createControlPort(deps: ControlPortDeps): ControlPort {
     deps.fetch ?? ((url, init) => globalThis.fetch(url, init) as Promise<Response>);
   const newId = deps.newControlId ?? defaultControlId;
   const timeoutMs = deps.timeoutMs ?? CONTROL_TIMEOUT_MS;
-  const root = `${deps.baseUrl ?? ''}/api/auctions/${encodeURIComponent(deps.auctionId)}`;
+  const base = deps.baseUrl ?? '';
+  const controlUrl = `${base}/api/auctions/${encodeURIComponent(deps.auctionId)}/control`;
+  const killUrl = `${base}/api/auctions/${encodeURIComponent(deps.auctionId)}/kill`;
 
   const attempt = async (url: string, body: string): Promise<void> => {
     const abort = new AbortController();
@@ -136,7 +138,7 @@ export function createControlPort(deps: ControlPortDeps): ControlPort {
     payload: Record<string, unknown>,
     retryOnTimeout: boolean,
   ): Promise<void> => {
-    const url = `${root}/${path}`;
+    const url = path === 'kill' ? killUrl : controlUrl;
     const body = JSON.stringify({ controlId: newId(), ...payload });
     try {
       await attempt(url, body);
