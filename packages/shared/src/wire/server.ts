@@ -59,6 +59,8 @@ export const RoomSnapshotSchema = z
     minNext: cents(),
     paused: z.boolean().optional(),
     remainingMs: z.number().int().nonnegative().optional(),
+    /** True once the auctioneer ended the lot (hammer or kill switch) instead of the timer. */
+    stopped: z.boolean().optional(),
     roster: z
       .array(
         z
@@ -146,6 +148,8 @@ export const HammerSchema = message('hammer', {
   ranking: z
     .array(z.object({ bidderId: ulid<BidderId>(), amount: cents() }).strict())
     .max(MAX_BIDDERS_PER_ROOM),
+  /** True when the auctioneer ended the lot; absent when the timer did. */
+  stopped: z.boolean().optional(),
 });
 
 /** One hold in the settlement ladder. Amounts are integer cents; idSuffix is the last 6 characters only. */
