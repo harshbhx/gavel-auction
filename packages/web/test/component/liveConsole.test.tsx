@@ -41,11 +41,11 @@ describe('live console route', () => {
     expect(screen.getByText(t('console.noConfirm'))).toBeTruthy();
   });
 
-  it('mounts the bid stream and the voice feed with the mic state and level meter', () => {
+  it('mounts the bid stream and a voice feed that says voice is not available', () => {
     render(<App initialPath={`/r/${ROOM}/console`} liveBase="ws://localhost:1" />);
     expect(screen.getByRole('region', { name: t('console.stream') })).toBeTruthy();
-    expect(screen.getByText(t('console.mic.off'))).toBeTruthy();
-    expect(screen.getByRole('meter', { name: t('console.mic.level') })).toBeTruthy();
+    expect(screen.getByText(t('console.mic.unavailable'))).toBeTruthy();
+    expect(screen.queryByRole('meter')).toBeNull();
     expect(screen.getByText(t('console.voice.empty'))).toBeTruthy();
   });
 });

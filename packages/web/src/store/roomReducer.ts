@@ -21,7 +21,12 @@ export interface SettlementMeta {
   at: number;
   /** The amount the server reports as captured for this bidder, when it sent one. */
   capturedCents?: number;
+  /** The winner paddle the server named; absent when it named none. */
+  winnerPaddle?: number | null;
 }
+
+/** How many holds sit in each settlement state, as the server counts them (no names or amounts). */
+export type LadderCounts = Readonly<Partial<Record<SettlementUpdateMsg['auctionState'], number>>>;
 
 export interface BidRecord {
   seq: number;
@@ -68,6 +73,8 @@ export interface RoomState {
   settlementDetail?: SettlementDetail;
   /** Server time and own captured amount from the latest settlement_update. */
   settlementMeta?: SettlementMeta;
+  /** Hold counts per state from the latest settlement_update that carried them. */
+  ladderCounts?: LadderCounts;
   lastError: { code: string; message: string; retryAfterMs: number | null } | null;
 }
 
@@ -145,6 +152,7 @@ function applySnapshot(state: RoomState, msg: Extract<ServerMessage, { t: 'state
     auditTruncated: snap.recentAudit.length >= SNAPSHOT_AUDIT_ROWS,
     ...(state.settlementDetail === undefined ? {} : { settlementDetail: state.settlementDetail }),
     ...(state.settlementMeta === undefined ? {} : { settlementMeta: state.settlementMeta }),
+    ...(state.ladderCounts === undefined ? {} : { ladderCounts: state.ladderCounts }),
   };
 }
 
@@ -232,8 +240,13 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
             ? { capturedCents: prev.capturedCents }
             : {}
           : { capturedCents: msg.amountCaptured }),
+        ...(msg.winnerPaddle === undefined ? {} : { winnerPaddle: msg.winnerPaddle }),
       };
-      const withMeta: RoomState = { ...next, settlementMeta: meta };
+      const withMeta: RoomState = {
+        ...next,
+        settlementMeta: meta,
+        ...(msg.ladder === undefined ? {} : { ladderCounts: msg.ladder.counts }),
+      };
       if (msg.holds === undefined) return withMeta;
       return {
         ...withMeta,

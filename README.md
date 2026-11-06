@@ -114,7 +114,7 @@ stateDiagram-v2
     </td>
     <td valign="top">
       <h4>Replay and testing</h4>
-      A replay player and bundle format for recorded auctions, a built-in fake PayPal for offline tests, and a scenario DSL with property tests that print replayable seeds.
+      A replay player and bundle format for recorded auctions (controls, ladder and big screen views; no hosted recording yet), a built-in fake PayPal for offline tests, and a scenario DSL with property tests that print replayable seeds.
     </td>
   </tr>
 </table>

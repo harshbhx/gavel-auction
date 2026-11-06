@@ -29,6 +29,8 @@ export interface SettlementView {
   hammerPriceCents?: number;
   holds: HoldView[];
   invariants: { ok: boolean; violations: string[] };
+  /** Hold counts per state, for views that get no per-hold lanes. */
+  counts?: Readonly<Partial<Record<SettlementState, number>>>;
 }
 
 export type RungStatus = 'done' | 'current' | 'pending';

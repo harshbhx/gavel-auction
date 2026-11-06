@@ -105,11 +105,26 @@ export function receiptSource(state: RoomState): ReceiptSource {
  * The public screen view: only the winning lane, with no name and no confirmation ids, so the
  * projector never shows more than a paddle number.
  */
-export function publicSource(state: RoomState): SettlementView | null {
+export function publicSource(state: RoomState, summary = false): SettlementView | null {
   const snap = state.snapshot;
   const settled = snap?.settlement;
   const detail = state.settlementDetail;
-  if (snap === null || settled === undefined || detail === undefined) return null;
+  if (snap === null || settled === undefined) return null;
+  if (detail === undefined) {
+    // The server sends no per-hold lanes to this client: show the state, winner and counts only.
+    const meta = state.settlementMeta;
+    if (!summary || meta === undefined) return null;
+    const hammerPaddle =
+      snap.roster.find((r) => r.bidderId === state.hammer?.winnerId)?.paddle ?? null;
+    return {
+      lotId: snap.auctionId,
+      phase: settled.auctionState,
+      winnerPaddle: meta.winnerPaddle ?? hammerPaddle,
+      holds: [],
+      invariants: { ok: true, violations: [] },
+      ...(state.ladderCounts === undefined ? {} : { counts: state.ladderCounts }),
+    };
+  }
   const holds: HoldView[] = detail.holds
     .filter((h) => h.paddle === detail.winnerPaddle)
     .map((h) => ({
