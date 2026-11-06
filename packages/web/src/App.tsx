@@ -307,10 +307,12 @@ function ReplayRoute({ match }: { match: RouteMatch }) {
 export function ReceiptRoute({ roomId }: { roomId: string }) {
   const state = useRoom((s) => s);
   const online = useOnline();
+  const stopped = useRoom(selectors.stopped);
   const { view, paddle, at, runnerUp, detail } = useMemo(() => receiptSource(state), [state]);
   return (
     <main data-route="receipt">
       {!online && <Offline view="receipt" />}
+      {stopped && <p role="status">{t('screen.stopped')}</p>}
       {state.snapshot === null ? (
         <Loading view="receipt" />
       ) : view === null ? (
