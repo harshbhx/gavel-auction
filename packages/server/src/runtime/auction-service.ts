@@ -400,10 +400,11 @@ class Service implements AuctionService, SettlePort {
       // webhook, hold sweep and kill switch act on it through the loaded room.
       let busy = true;
       try {
+        const auctionId = id as AuctionId;
         busy = await this.needsRun(
-          id as AuctionId,
+          auctionId,
           room,
-          await this.deps.journals.load(lotIdOf(id)),
+          await this.deps.journals.load(lotIdOf(auctionId)),
         );
       } catch {
         busy = true;
