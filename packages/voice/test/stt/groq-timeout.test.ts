@@ -24,7 +24,7 @@ function batches(): AudioBatch[] {
 
 async function run(
   fetch: FetchLike,
-  extra: { requestTimeoutMs?: number; stopDeadlineMs?: number },
+  extra: { requestTimeoutMs?: number; stopDeadlineMs?: number; retryBackoffMs?: number },
 ) {
   const groq = new GroqStt({ apiKey: 'k'.repeat(8), fetch, ...extra });
   const events: SttEvent[] = [];
@@ -45,7 +45,11 @@ describe('R8-V01 groq request timeout', () => {
       signal = init.signal;
       return new Promise(() => undefined);
     };
-    const events = await run(fetch, { requestTimeoutMs: 20, stopDeadlineMs: 500 });
+    const events = await run(fetch, {
+      requestTimeoutMs: 20,
+      stopDeadlineMs: 500,
+      retryBackoffMs: 1,
+    });
     expect(events).toContainEqual({ type: 'error', code: 'timeout', retryable: true });
     expect(signal?.aborted).toBe(true);
     expect(events[events.length - 1]).toEqual({ type: 'state', state: 'closed' });
