@@ -15,6 +15,7 @@ import {
   type HttpApp,
   type HttpDeps,
 } from './app';
+import { requestSources } from './node-bridge';
 import { auctionIdOrCode, linkFor, roomFor } from './auctions';
 
 const MAX_INVITES = 50;
@@ -35,9 +36,8 @@ function joinLimitOf(deps: HttpDeps, req: Request): ReturnType<NonNullable<HttpD
     limiter = new RateLimiter(deps.clock);
     defaultLimiters.set(deps, limiter);
   }
-  const hops = (req.headers.get('x-forwarded-for') ?? '').split(',');
-  const source = hops[hops.length - 1]?.trim() || 'unknown';
-  return limiter.checkJoin(source);
+  // Fail closed: forwarded headers are never trusted here; the host supplies `joinLimit`.
+  return limiter.checkJoin(requestSources.get(req) ?? 'unknown');
 }
 
 function wsUrlOf(deps: HttpDeps): string {

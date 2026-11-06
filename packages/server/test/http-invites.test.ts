@@ -165,3 +165,22 @@ describe('invite single use (T-RT-061)', () => {
     expect(last).toBe(429);
   });
 });
+
+describe('join limiter fallback (issue 1866)', () => {
+  it('ignores a spoofed x-forwarded-for and shares one bucket', async () => {
+    const { app } = setup();
+    const ghost = '01J9ZQ4Y6Z8K3M5N7P9R1S3T5V';
+    let limited = 0;
+    for (let i = 0; i < 45; i++) {
+      const res = await app.fetch(
+        new Request(`http://h.test/api/auctions/${ghost}/join`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-forwarded-for': `10.0.0.${i}` },
+          body: JSON.stringify({ invite: 'x' }),
+        }),
+      );
+      if (res.status === 429) limited += 1;
+    }
+    expect(limited).toBeGreaterThan(0);
+  });
+});
