@@ -762,9 +762,12 @@ export class Room {
   }
 
   /**
-   * Submit a bid the voice adapter heard for a registered bidder. It takes the same path as a
-   * bid the bidder sent with source voice: the confidence gate and the confirm hold apply, and
-   * the engine decides last. The reply goes nowhere because no socket belongs to this call.
+   * Submit a bid the voice adapter heard for a registered bidder. Room mic design: the audio
+   * token is the auctioneer's, the bidder is the spoken paddle. The throwaway connection has
+   * the bidder role, so it can only place a bid; `internal` skips just the connection cap and
+   * supersede. It takes the same path as a bid the bidder sent with source voice: the rate
+   * limit, the confidence gate and the confirm hold apply, and the engine decides last. The
+   * reply goes nowhere because no socket belongs to this call.
    */
   submitVoiceBid(bidderId: BidderId, msg: BidMsg): Promise<void> {
     const sink: Transport = { send: () => undefined, close: () => undefined };

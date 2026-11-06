@@ -19,6 +19,8 @@ import { startVoiceBridge, type VoiceBridge } from '../voice/bridge';
 export const AUDIO_PATH = '/audio';
 /** Largest audio message: 12 byte header and ten 640 byte frames, with room to spare. */
 export const AUDIO_MAX_PAYLOAD_BYTES = 8 * 1024;
+/** How long a new socket may stay open without sending its auth message. */
+export const AUDIO_AUTH_DEADLINE_MS = 5_000;
 /** How often an open stream re-checks that its token is still good. */
 const LIVENESS_MS = 10_000;
 
@@ -53,6 +55,8 @@ export interface AudioHostOptions {
       | 'idleMs'
     >
   >;
+  /** Time allowed between the upgrade and the auth message. Defaults to AUDIO_AUTH_DEADLINE_MS. */
+  authDeadlineMs?: number;
   log?: (message: string, fields?: Record<string, string>) => void;
 }
 
@@ -75,17 +79,40 @@ function parseQuery(req: IncomingMessage): { path: string; params: URLSearchPara
   };
 }
 
+/** The token of an `{t:'auth', token}` text message, or undefined for anything else. */
+function parseAuth(text: string | undefined): string | undefined {
+  if (text === undefined) return undefined;
+  try {
+    const v: unknown = JSON.parse(text);
+    if (typeof v !== 'object' || v === null) return undefined;
+    const m = v as { t?: unknown; token?: unknown };
+    return m.t === 'auth' && typeof m.token === 'string' && m.token !== '' ? m.token : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function refuse(socket: Duplex, status: number, text: string): void {
   socket.write(`HTTP/1.1 ${status} ${text}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
   socket.destroy();
 }
 
 /**
- * The /audio WebSocket (SPEC-voice section 5, voice-contracts section 2). The upgrade must carry
- * `auction`, `token` and optionally `source` in the query: the token is the auctioneer token the
- * room join uses, checked against the same secrets, denylist and floor. Binary frames only; the
- * voice session enforces rate, size, duration and one stream per (room, source). Decisions go to
- * the room through the voice bridge, so they meet the room's own confirm gate and the engine.
+ * The /audio WebSocket (SPEC-voice section 5, voice-contracts section 2). The upgrade URL carries
+ * `auction` and optionally `source`, never a credential, so nothing secret reaches proxy or
+ * access logs. The first message on the socket must be the text frame `{"t":"auth","token":...}`
+ * within `authDeadlineMs`; the token is the auctioneer token the room join uses, checked against
+ * the same secrets, denylist and floor. Any other first message, a late or invalid token, or an
+ * audio frame before auth closes the socket with 4401. Only after auth does the voice session
+ * open and the bridge start. Binary frames only afterwards; the voice session enforces rate,
+ * size, duration and one stream per (room, source).
+ *
+ * Room-mic design: the token is an AUCTIONEER token, the microphone is the room's. The bidder of
+ * a spoken bid comes from the paddle the pipeline heard, never from the token, and decisions go
+ * to the room through the voice bridge into `Room.submitVoiceBid`. That call runs as a throwaway
+ * bidder connection that can only place a bid: the room's rate limit, confidence gate, confirm
+ * hold, roster check and the engine all still apply, and it has no path to pause, stop, hammer
+ * or enter a bid for another bidder.
  */
 export function createAudioHost(opts: AudioHostOptions): AudioHost {
   const wss = new WebSocketServer({ noServer: true, maxPayload: AUDIO_MAX_PAYLOAD_BYTES });
@@ -140,57 +167,80 @@ export function createAudioHost(opts: AudioHostOptions): AudioHost {
     }
     socket.once('close', release);
     const auctionId = params.get('auction') ?? '';
-    const token = params.get('token') ?? '';
     const source = (params.get('source') ?? 'mic').slice(0, 64) || 'mic';
-    if (auctionId === '' || token === '') {
-      refuse(socket, 401, 'Unauthorized');
+    if (auctionId === '') {
+      refuse(socket, 400, 'Bad Request');
       return;
     }
-    authenticate(auctionId, token)
-      .then((auth) => {
-        if (socket.destroyed) return;
-        if (!auth.ok) {
-          refuse(socket, auth.status, auth.status === 404 ? 'Not Found' : 'Unauthorized');
-          return;
-        }
-        wss.handleUpgrade(req, socket, head, (ws) => {
-          ws.once('close', release);
-          void bind(ws, auctionId, source, token, auth.payload);
-        });
-      })
-      .catch(() => refuse(socket, 500, 'Internal Server Error'));
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      ws.once('close', release);
+      void bind(ws, auctionId, source);
+    });
   };
   opts.server.on('upgrade', onUpgrade);
 
-  async function bind(
-    ws: WebSocket,
-    auctionId: string,
-    source: string,
-    token: string,
-    payload: TokenPayload,
-  ): Promise<void> {
+  async function bind(ws: WebSocket, auctionId: string, source: string): Promise<void> {
     sockets.add(ws);
     ws.on('error', () => undefined);
     let bridge: VoiceBridge | undefined;
     const held: { stream?: AudioStream } = {};
     const timers: Array<CancelTimer | undefined> = [];
     let ended = false;
+    const teardown = (): void => {
+      ended = true;
+      for (const cancel of timers) cancel?.();
+      held.stream?.close();
+      void bridge?.close();
+      sockets.delete(ws);
+    };
     const end = (code: number, reason: string): void => {
       if (ended) return;
-      ended = true;
-      for (const cancel of timers) cancel?.();
-      held.stream?.close();
-      void bridge?.close();
-      sockets.delete(ws);
+      teardown();
       if (ws.readyState === ws.OPEN || ws.readyState === ws.CONNECTING) ws.close(code, reason);
     };
-    ws.once('close', () => {
-      ended = true;
-      for (const cancel of timers) cancel?.();
-      held.stream?.close();
-      void bridge?.close();
-      sockets.delete(ws);
+    ws.once('close', teardown);
+
+    // Until the auth message has been verified, no stream exists and no audio is accepted.
+    const deadline = opts.authDeadlineMs ?? AUDIO_AUTH_DEADLINE_MS;
+    timers[2] = opts.clock.setTimer(opts.clock.now() + deadline, () => {
+      end(AUDIO_CLOSE_CODES.AUDIO_UNAUTHORIZED, 'AUDIO_UNAUTHORIZED');
     });
+    let authed = false;
+    let gotFirst = false;
+    const first = await new Promise<string | undefined>((resolve) => {
+      ws.on('message', (data, isBinary) => {
+        if (authed) return;
+        // A second frame while the token is still being checked is audio before auth.
+        if (gotFirst) return end(AUDIO_CLOSE_CODES.AUDIO_UNAUTHORIZED, 'AUDIO_UNAUTHORIZED');
+        gotFirst = true;
+        if (isBinary) return resolve(undefined);
+        resolve(Array.isArray(data) ? Buffer.concat(data).toString('utf8') : data.toString('utf8'));
+      });
+      ws.once('close', () => resolve(undefined));
+    });
+    const token = parseAuth(first);
+    if (ended) return;
+    if (token === undefined) {
+      end(AUDIO_CLOSE_CODES.AUDIO_UNAUTHORIZED, 'AUDIO_UNAUTHORIZED');
+      return;
+    }
+    let payload: TokenPayload;
+    try {
+      const auth = await authenticate(auctionId, token);
+      if (ended) return;
+      if (!auth.ok) {
+        if (auth.status === 404) end(4404, 'not_found');
+        else end(AUDIO_CLOSE_CODES.AUDIO_UNAUTHORIZED, 'AUDIO_UNAUTHORIZED');
+        return;
+      }
+      payload = auth.payload;
+    } catch {
+      end(1011, 'internal');
+      return;
+    }
+    timers[2]?.();
+    timers[2] = undefined;
+    authed = true;
 
     pending = { token, roomId: auctionId, role: 'auctioneer' };
     const opened = session.open({ roomId: auctionId, source }, token);
