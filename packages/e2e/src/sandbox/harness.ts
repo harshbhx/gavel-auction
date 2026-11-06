@@ -8,7 +8,18 @@ import { join } from 'node:path';
 export type SandboxStatus = 'pass' | 'fail' | 'inconclusive' | 'skipped';
 export type GateId = 'G1' | 'G2' | 'G3' | 'G4' | 'none';
 
-export const SANDBOX_SPEC_IDS = ['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8', 'R10', 'G5'] as const;
+export const SANDBOX_SPEC_IDS = [
+  'R1',
+  'R2',
+  'R3',
+  'R4',
+  'R5',
+  'R6',
+  'R7',
+  'R8',
+  'R10',
+  'G5',
+] as const;
 export type SandboxSpecId = (typeof SANDBOX_SPEC_IDS)[number];
 
 /** Secrets every wallet-buyer spec needs. */
