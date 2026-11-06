@@ -978,7 +978,11 @@ export interface FailoverOptions {
     clock: FailoverClock;
     // (undocumented)
     fallback: () => SttProvider;
+    fallbackTranscribes?: boolean;
     lateFinalMs?: number;
+    onHold?: (info: {
+        reason: SwitchReason;
+    }) => void;
     // (undocumented)
     onSwitch?: (info: {
         from: string;
@@ -2381,7 +2385,7 @@ export interface WsLike {
 // Warnings were encountered during analysis:
 //
 // /home/runner/work/gavel-auction/gavel-auction/.api-types/voice/pipeline/pipeline.d.ts:29:5 - (ae-forgotten-export) The symbol "AnswerOutcome" needs to be exported by the entry point index.d.ts
-// /home/runner/work/gavel-auction/gavel-auction/.api-types/voice/stt/failover.d.ts:26:9 - (ae-forgotten-export) The symbol "SwitchReason" needs to be exported by the entry point index.d.ts
+// /home/runner/work/gavel-auction/gavel-auction/.api-types/voice/stt/failover.d.ts:31:9 - (ae-forgotten-export) The symbol "SwitchReason" needs to be exported by the entry point index.d.ts
 // /home/runner/work/gavel-auction/gavel-auction/.api-types/voice/stt/provider.d.ts:18:5 - (ae-forgotten-export) The symbol "SttWord" needs to be exported by the entry point index.d.ts
 // /home/runner/work/gavel-auction/gavel-auction/.api-types/voice/stt/provider.d.ts:28:5 - (ae-forgotten-export) The symbol "SttErrorCode" needs to be exported by the entry point index.d.ts
 // /home/runner/work/gavel-auction/gavel-auction/.api-types/voice/stt/provider.d.ts:32:5 - (ae-forgotten-export) The symbol "SttState" needs to be exported by the entry point index.d.ts

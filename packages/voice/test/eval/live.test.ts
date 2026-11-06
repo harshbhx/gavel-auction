@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { EXIT_NO_KEYS, EXIT_OK, runCli, type CliDeps } from '../../src/eval/cli.js';
+import { EXIT_NO_KEYS, EXIT_NOT_RUN, EXIT_OK, runCli, type CliDeps } from '../../src/eval/cli.js';
 import {
   LIVE_DEEPGRAM_URL,
   LIVE_GROQ_MODEL,
@@ -201,10 +201,11 @@ describe('eval CLI live mode', () => {
     expect(logs.join('\n')).toContain('GROQ_API_KEY');
   });
 
-  it('skips when recordings are missing', async () => {
+  it('exits non-zero and says NOT RUN when recordings are missing', async () => {
     const { d, logs } = deps(false, { DEEPGRAM_API_KEY: KEY });
-    expect(await runCli(['--mode', 'live', '--provider', 'deepgram'], d)).toBe(EXIT_OK);
-    expect(logs).toEqual(['eval: skipped: 1 of 1 recordings missing']);
+    expect(await runCli(['--mode', 'live', '--provider', 'deepgram'], d)).toBe(EXIT_NOT_RUN);
+    expect(EXIT_NOT_RUN).not.toBe(EXIT_OK);
+    expect(logs).toEqual(['eval: NOT RUN: 1 of 1 recordings missing, nothing was scored']);
   });
 
   it('runs when recordings exist', async () => {
