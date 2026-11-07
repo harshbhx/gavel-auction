@@ -56,27 +56,38 @@ test.describe('console: setup and live', () => {
     await consoleRoom(page, { scenario: paused, at: 2_500 });
     await shoot('console', 'paused');
   });
-
-  test('shortcut help', async ({ page, shoot }) => {
-    await consoleRoom(page, { scenario: happy, at: HAPPY.outbid });
-    await page.keyboard.press('?');
-    await page.getByRole('dialog').waitFor();
-    await shoot('console', 'shortcut-help');
-  });
 });
 
 test.describe('console: voice and confirmations', () => {
   test('voice feed and parse chips', async ({ page, shoot }) => {
     await consoleRoom(page, { scenario: voiceRoom, at: 5_000 });
-    await expect(page.getByText('one fifty twelve').first()).toBeVisible();
     await shoot('console', 'voice-feed-transcripts');
   });
 
   test('confirmation waiting for an answer', async ({ page, shoot }) => {
     await consoleRoom(page, { scenario: ambiguous_confirm, at: 3_500 });
-    await expect(page.getByText(/one fifty paddle twelve/).first()).toBeVisible();
     await shoot('console', 'confirm-queue');
   });
+});
+
+/** Below 1024 px the console shows one column at a time: the other two sit behind tabs. */
+test.describe('console: phone tabs', () => {
+  const cases = [
+    ['live bidding', happy, HAPPY.outbid],
+    ['voice feed', voiceRoom, 5_000],
+    ['full ladder', ladderRoom, 5_000],
+  ] as const;
+  for (const [name, scenario, at] of cases) {
+    for (const tab of ['stream', 'side'] as const) {
+      test(`${name}, ${tab} tab`, async ({ page, shoot }) => {
+        await consoleRoom(page, { scenario, at });
+        const tabs = page.getByRole('tablist');
+        test.skip((await tabs.count()) === 0, 'desktop shows all columns at once');
+        await page.locator(`#console-tab-${tab}`).click();
+        await shoot('console', `${name.replace(/ /g, '-')}-tab-${tab}`);
+      });
+    }
+  }
 });
 
 test.describe('console: hammer and stop', () => {

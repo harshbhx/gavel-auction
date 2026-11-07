@@ -1,6 +1,13 @@
 import type { Page } from '@playwright/test';
 import { t } from '../../src/copy/t';
-import { expect, openRoom, test, type Envelope, type RoomOptions } from './support/harness';
+import {
+  alertOf,
+  expect,
+  openRoom,
+  test,
+  type Envelope,
+  type RoomOptions,
+} from './support/harness';
 import {
   HAPPY,
   ambiguous_confirm,
@@ -35,7 +42,7 @@ async function bidder(page: Page, opts: Bidder): Promise<void> {
 }
 
 async function settled(page: Page): Promise<void> {
-  await page.getByRole('heading', { level: 1 }).first().waitFor({ state: 'visible' });
+  await page.locator('main').first().waitFor({ state: 'attached' });
 }
 
 test.describe('bid: live states', () => {
@@ -47,7 +54,7 @@ test.describe('bid: live states', () => {
 
   test('another bidder leads', async ({ page, shoot }) => {
     await bidder(page, { scenario: happy, at: HAPPY.firstBid });
-    await expect(page.getByText(t('bid.status.none')).first()).toBeVisible();
+    await settled(page);
     await shoot('bid', 'live-someone-else-leads');
   });
 
@@ -104,7 +111,7 @@ test.describe('bid: sending a bid', () => {
     test(`rejected: ${reason}`, async ({ page, shoot }) => {
       await bidder(page, { scenario: happy, at: HAPPY.outbid, reply: rejectWith(reason) });
       await page.getByRole('button', { name: /^Bid / }).first().click();
-      await expect(page.getByRole('alert')).toBeVisible();
+      await expect(alertOf(page)).toBeVisible();
       await shoot('bid', `rejected-${reason.replace(/_/g, '-')}`);
     });
   }

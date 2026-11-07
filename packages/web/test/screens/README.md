@@ -54,4 +54,5 @@ No real PayPal, server or network is used.
 - Registration approval cancelled and declined: the fake adapter has no UI switch for them.
 - Landing busy and server-down variants and the demo launcher's links list: the app never renders
   them through a route (the launcher navigates away at once).
+- The console shortcut help: `ShortcutHelp` and `useShortcuts` exist but no screen mounts them.
 - The error boundary and the boot configuration error: they need a render crash or a bad build.

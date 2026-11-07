@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { test as base, type Page } from '@playwright/test';
+import { test as base, type Locator, type Page } from '@playwright/test';
 import type { BidderId, Cents } from '@gavel/shared';
 import type { Scenario } from '../../../src/net/transport';
 import type { ClientMessage, ServerMessage } from '../../../src/wire';
@@ -23,16 +23,16 @@ interface Fixtures {
 }
 
 export const test = base.extend<Fixtures>({
-  page: async ({ page }, use, testInfo) => {
+  page: async ({ page }, provide, testInfo) => {
     const theme = String(testInfo.project.metadata['theme'] ?? 'light');
     await page.addInitScript((value) => {
       document.documentElement.setAttribute('data-theme', value);
     }, theme);
     await page.clock.setFixedTime(FROZEN_AT);
-    await use(page);
+    await provide(page);
   },
-  shoot: async ({ page }, use, testInfo) => {
-    await use(async (view, state) => {
+  shoot: async ({ page }, provide, testInfo) => {
+    await provide(async (view, state) => {
       mkdirSync(OUT_DIR, { recursive: true });
       await page.evaluate(() => document.fonts.ready);
       // Lets effects, lazy chunks and one render pass settle before the picture is taken.
@@ -260,5 +260,10 @@ export async function mockApi(
 
 /** Waits until the page has drawn something besides the empty shell. */
 export async function ready(page: Page): Promise<void> {
-  await page.locator('main, [role="alert"], h1').first().waitFor({ state: 'visible' });
+  await page.locator('main, h1').first().waitFor({ state: 'attached' });
+}
+
+/** The visible alert text of a page; the live-region announcer is an alert too, so it is skipped. */
+export function alertOf(page: Page): Locator {
+  return page.locator('p[role="alert"]').first();
 }

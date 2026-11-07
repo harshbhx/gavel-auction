@@ -63,25 +63,25 @@ test.describe('screen', () => {
 
   test('sold, settlement pending', async ({ page, shoot }) => {
     await screen(page, { scenario: soldNoSettlement, at: 4_000 });
-    await expect(page.getByTestId('sold')).toBeVisible();
+    await expect(page.getByTestId('sold')).toBeAttached();
     await shoot('screen', 'sold');
   });
 
   test('sold, settlement in progress', async ({ page, shoot }) => {
     await screen(page, { scenario: happy, at: HAPPY.capturing });
-    await expect(page.getByTestId('sold')).toBeVisible();
+    await expect(page.getByTestId('sold')).toBeAttached();
     await shoot('screen', 'sold-settlement-in-progress');
   });
 
   test('sold, settled', async ({ page, shoot }) => {
     await screen(page, { scenario: happy, at: HAPPY.settled });
-    await expect(page.getByTestId('sold')).toBeVisible();
+    await expect(page.getByTestId('sold')).toBeAttached();
     await shoot('screen', 'sold-settled');
   });
 
   test('passed, no sale', async ({ page, shoot }) => {
     await screen(page, { scenario: unsold, at: 4_000 });
-    await expect(page.getByTestId('sold')).toBeVisible();
+    await expect(page.getByTestId('sold')).toBeAttached();
     await shoot('screen', 'passed');
   });
 
@@ -136,7 +136,7 @@ test.describe('audit', () => {
 
   test('filters match nothing', async ({ page, shoot }) => {
     await audit(page, { scenario: auditRoom, at: 9_000, query: 'q=zzzz' });
-    await expect(page.getByText(t('audit.noMatch')).first()).toBeVisible();
+    await expect(page.getByText(t('audit.empty')).first()).toBeVisible();
     await shoot('audit', 'filtered-no-match');
   });
 

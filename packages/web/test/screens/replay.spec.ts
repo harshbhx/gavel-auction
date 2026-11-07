@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './support/harness';
+import { alertOf, expect, test } from './support/harness';
 import { happy } from './support/frames';
 
 /**
@@ -56,14 +56,14 @@ test.describe('replay', () => {
   test('recording not found', async ({ page, shoot }) => {
     await serveBundle(page, 'missing');
     await page.goto(`/replay/${ID}`);
-    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(alertOf(page)).toBeVisible();
     await shoot('replay', 'not-found');
   });
 
   test('recording unreadable', async ({ page, shoot }) => {
     await serveBundle(page, 'invalid');
     await page.goto(`/replay/${ID}`);
-    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(alertOf(page)).toBeVisible();
     await shoot('replay', 'unreadable');
   });
 

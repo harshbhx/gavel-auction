@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { t } from '../../src/copy/t';
-import { expect, mockApi, ready, serveRoom, test, type ApiReply } from './support/harness';
+import { alertOf, expect, mockApi, ready, serveRoom, test, type ApiReply } from './support/harness';
 import { REGISTER_ROOM_ID, bidderId, registrationRoom } from './support/frames';
 
 /**
@@ -170,14 +170,14 @@ test.describe('register: approval with the fake adapter', () => {
   test('order could not be created', async ({ page, shoot }) => {
     await openRegister(page, { holds: { status: 500 } });
     await toApproval(page);
-    await expect(page.getByRole('alert')).toBeVisible({ timeout: 10_000 });
+    await expect(alertOf(page)).toBeVisible({ timeout: 10_000 });
     await shoot('register', 'approve-error-order');
   });
 
   test('hold could not be confirmed', async ({ page, shoot }) => {
     await openRegister(page, { approve: { status: 500 } });
     await toApproval(page);
-    await expect(page.getByRole('alert')).toBeVisible({ timeout: 10_000 });
+    await expect(alertOf(page)).toBeVisible({ timeout: 10_000 });
     await shoot('register', 'approve-error-hold');
   });
 });
@@ -255,14 +255,14 @@ test.describe('return from PayPal', () => {
   for (const [state, status, code] of HOLD_ERRORS) {
     test(`error ${state}`, async ({ page, shoot }) => {
       await openReturn(page, { status, json: { error: code } });
-      await expect(page.getByRole('alert')).toBeVisible();
+      await expect(alertOf(page)).toBeVisible();
       await shoot('return', `error-${state}`);
     });
   }
 
   test('error generic server failure', async ({ page, shoot }) => {
     await openReturn(page, { status: 500 });
-    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(alertOf(page)).toBeVisible();
     await shoot('return', 'error-server-failure');
   });
 
@@ -271,32 +271,32 @@ test.describe('return from PayPal', () => {
       status: 200,
       json: { holdId: HOLD_ID, status: 'HELD', ceilingCents: 10_000 },
     });
-    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(alertOf(page)).toBeVisible();
     await shoot('return', 'error-amount-mismatch');
   });
 
   test('error name refused', async ({ page, shoot }) => {
     await openReturn(page, { status: 400 }, { name: 'Priya' });
-    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(alertOf(page)).toBeVisible();
     await shoot('return', 'error-name-refused');
   });
 
   test('error order token does not match', async ({ page, shoot }) => {
     await openReturn(page, { status: 200 }, { query: '?token=some-other-order' });
-    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(alertOf(page)).toBeVisible();
     await shoot('return', 'error-order-mismatch');
   });
 
   test('error no order token in the address', async ({ page, shoot }) => {
     await openReturn(page, { status: 200 }, { query: '' });
-    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(alertOf(page)).toBeVisible();
     await shoot('return', 'error-no-order-token');
   });
 
   test('no session', async ({ page, shoot }) => {
     await openReturn(page, { status: 200 }, { session: false, registration: false });
     await ready(page);
-    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(alertOf(page)).toBeVisible();
     await shoot('return', 'no-session');
   });
 });
