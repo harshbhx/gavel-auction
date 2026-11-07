@@ -69,6 +69,34 @@ for (const route of ROUTES) {
   }
 }
 
+/** Live room states, driven by the scripted transport so no server is needed. */
+const LIVE_STATES = [
+  {
+    name: 'bidder room mid auction',
+    url: '/r/demo/bid?scripted=1&at=3000',
+    ready: '[data-route="bid"]',
+  },
+  {
+    name: 'auctioneer console with the ladder',
+    url: '/r/demo/console?scripted=1&at=5000',
+    ready: '[data-route="console"]',
+  },
+  { name: 'public screen', url: '/r/demo/screen?scripted=1', ready: 'main.gv-screen' },
+] as const;
+
+for (const state of LIVE_STATES) {
+  for (const theme of THEMES) {
+    test(`axe ${state.name} in ${theme}`, async ({ page }) => {
+      await page.addInitScript((value) => {
+        document.documentElement.setAttribute('data-theme', value);
+      }, theme);
+      await page.goto(state.url);
+      await page.locator(state.ready).waitFor();
+      expect(await seriousViolations(page)).toEqual([]);
+    });
+  }
+}
+
 test('axe on the gallery with the dialog open', async ({ page }) => {
   await page.goto('/gallery');
   await page.getByTestId(TEST_IDS.dialogOpen).click();
