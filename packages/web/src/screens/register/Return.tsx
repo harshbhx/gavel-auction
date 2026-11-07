@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { ApprovalResult, ApprovalState } from '../../payments/port';
 import { completeApprovalReturn } from '../../payments/useApproval';
+import '../flows.css';
 import { Approve } from './Approve';
 
 export interface ReturnProps {
@@ -43,7 +44,7 @@ export function Return({
   }, [adapter, roomId, bidderId, orderId]);
 
   return (
-    <main>
+    <main className="gv-flow" data-route="return">
       <Approve
         state={state}
         result={result}

@@ -1,0 +1,107 @@
+/* Receipt (Scoreboard): a settlement document. Ruled ledger rows, one status line whose edge colour
+ * follows data-outcome (charged, released, held, review) and the shared HoldCard for the amount.
+ * Status is always words first; the edge colour only backs it up. */
+.gv-receipt {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 40rem;
+  margin-inline: auto;
+  padding: var(--space-5);
+  border: var(--border-width-strong) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-2);
+  color: var(--color-fg);
+}
+
+.gv-receipt > h2 {
+  margin: 0;
+  padding-block-end: var(--space-3);
+  border-block-end: var(--border-width-strong) solid var(--color-rule);
+  font-family: var(--font-display);
+  font-size: var(--font-size-6);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.gv-receipt__body {
+  --receipt-edge: var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.gv-receipt__body[data-outcome='charged'] {
+  --receipt-edge: var(--color-charged);
+}
+
+.gv-receipt__body[data-outcome='released'] {
+  --receipt-edge: var(--color-released);
+}
+
+.gv-receipt__body[data-outcome='held'],
+.gv-receipt__body[data-outcome='confirming'],
+.gv-receipt__body[data-outcome='releasing'] {
+  --receipt-edge: var(--color-held);
+}
+
+.gv-receipt__body[data-outcome='review'] {
+  --receipt-edge: var(--color-danger);
+}
+
+.gv-receipt__body p {
+  margin: 0;
+}
+
+.gv-receipt__rows {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0 var(--space-5);
+  margin: 0;
+}
+
+.gv-receipt__rows dt,
+.gv-receipt__rows dd {
+  margin: 0;
+  padding-block: var(--space-2);
+  border-block-end: var(--border-width) solid var(--color-rule);
+}
+
+.gv-receipt__rows dt {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+}
+
+.gv-receipt__rows dd {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.gv-receipt__status {
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 6px solid var(--receipt-edge);
+  background: var(--color-raised);
+  font-size: var(--font-size-4);
+  font-weight: 700;
+}
+
+.gv-receipt__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-block-start: var(--space-3);
+  border-block-start: var(--border-width) solid var(--color-rule);
+}
+
+@media (forced-colors: active) {
+  .gv-receipt,
+  .gv-receipt__status {
+    border-color: CanvasText;
+  }
+}

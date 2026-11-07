@@ -14,7 +14,7 @@ export interface FailedProps {
 /** Receipt for FAILED_NEEDS_REVIEW (R-WEB-098). It never reads as a charge. */
 export function Failed({ uncertain, reference, contact }: FailedProps) {
   return (
-    <section className="gv-receipt__body" role="alert">
+    <section className="gv-receipt__body" data-outcome="review" role="alert">
       <p className="gv-receipt__status">
         {uncertain ? t('receipt.failed') : t('receipt.failedNoCapture')}
       </p>

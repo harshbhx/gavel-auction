@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 
 import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
+import '../flows.css';
 import { getBidderSession } from '../../store/session';
 
 const QrCode = lazy(() => import('./QrCode'));
@@ -48,21 +49,23 @@ export function JoinScreen({
 
   if (state === 'notFound') {
     return (
-      <main>
+      <main className="gv-flow" data-state="not-found">
+        <p className="ui-kicker">{t('app.name')}</p>
         <h1 tabIndex={-1}>{t('join.notFound')}</h1>
       </main>
     );
   }
   if (state === 'loading' || roomName === null) {
     return (
-      <main aria-busy="true">
+      <main className="gv-flow" aria-busy="true">
         <h1 tabIndex={-1}>{t('app.name')}</h1>
       </main>
     );
   }
   if (state === 'ended') {
     return (
-      <main>
+      <main className="gv-flow" data-state="ended">
+        <p className="ui-kicker">{t('app.name')}</p>
         <h1 tabIndex={-1}>{t('join.title', { room: roomName })}</h1>
         <p>{t('join.ended')}</p>
         <Button onClick={() => onNavigate(bidPath)}>{t('join.watch')}</Button>
@@ -72,12 +75,15 @@ export function JoinScreen({
 
   const url = joinUrl(origin, roomId, shortCode);
   return (
-    <main>
+    <main className="gv-flow" data-state="open">
+      <p className="ui-kicker">{t('app.name')}</p>
       <h1 tabIndex={-1}>{t('join.title', { room: roomName })}</h1>
-      <Suspense fallback={null}>
-        <QrCode url={url} size={192} />
-      </Suspense>
-      {shortCode !== null && <p>{t('join.code', { code: shortCode })}</p>}
+      <div className="gv-flow__qr">
+        <Suspense fallback={null}>
+          <QrCode url={url} size={192} />
+        </Suspense>
+      </div>
+      {shortCode !== null && <p className="gv-flow__code">{t('join.code', { code: shortCode })}</p>}
       <Button size="bid" onClick={() => onNavigate(`/r/${encodeURIComponent(roomId)}/register`)}>
         {t('join.asBidder')}
       </Button>

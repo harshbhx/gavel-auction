@@ -111,7 +111,9 @@ describe('screen and join with a real lot title and short code', () => {
     vi.stubGlobal('fetch', fetchSpy);
     window.history.pushState(null, '', '/');
     render(<App initialPath="/" api={API} />);
-    fireEvent.change(screen.getByLabelText(t('landing.join')), { target: { value: CODE } });
+    fireEvent.change(screen.getByLabelText(t('ui.code.char', { n: 1, length: 6 })), {
+      target: { value: CODE },
+    });
     fireEvent.click(screen.getByRole('button', { name: t('landing.join') }));
     expect(
       await screen.findByRole('heading', { name: t('join.title', { room: 'Walnut sideboard' }) }),

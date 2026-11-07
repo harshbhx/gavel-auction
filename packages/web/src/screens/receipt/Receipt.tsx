@@ -8,6 +8,7 @@ import { Failed } from './Failed';
 import { Fallback } from './Fallback';
 import { NonWinner } from './NonWinner';
 import { Winner, isCaptured } from './Winner';
+import './receipt.css';
 import './print.css';
 
 export interface ReceiptProps {
@@ -96,7 +97,7 @@ export function Receipt(props: ReceiptProps) {
     return (
       <article className="gv-receipt" aria-labelledby="gv-receipt-title">
         <h2 id="gv-receipt-title">{t('receipt.title')}</h2>
-        <section className="gv-receipt__body">
+        <section className="gv-receipt__body" data-outcome="nohold">
           <dl className="gv-receipt__rows">
             <dt>{t('receipt.item')}</dt>
             <dd>{props.itemName}</dd>

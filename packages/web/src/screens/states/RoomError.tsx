@@ -1,4 +1,5 @@
 import { t } from '../../copy/t';
+import '../flows.css';
 import { Icon } from '../../design/icons';
 import { Banner } from '../../design/primitives/Banner';
 import { Button } from '../../design/primitives/Button';
@@ -42,11 +43,15 @@ export function RoomError({ error, rejoinHref, onRetry }: RoomErrorProps) {
   const terminal = isTerminalError(error.code);
   const waiting = !terminal && isHaltingError(error.code);
   return (
-    <div role="alert" data-testid="room-error">
+    <div className="gv-flow__error" role="alert" data-testid="room-error" data-kind={error.code}>
       <Banner tone="danger" icon={<Icon name="warning" />}>
         {messageFor(error)}
       </Banner>
-      {terminal && <a href={rejoinHref}>{t('err.rejoin')}</a>}
+      {terminal && (
+        <a className="gv-flow__action" href={rejoinHref}>
+          {t('err.rejoin')}
+        </a>
+      )}
       {waiting && <Button onClick={onRetry}>{t('generic.retry')}</Button>}
     </div>
   );
