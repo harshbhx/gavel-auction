@@ -47,12 +47,30 @@ No real PayPal, server or network is used.
   `replay.spec.ts`: the screens.
 - `build-index.mjs`: writes the index from the file names.
 
+## States drawn on a component page
+
+Some states are not reached by any route: the app passes no props or inputs that produce them.
+They are drawn by `components.spec.ts` on `support/pages/harness.html`, a page served by the same
+dev server that renders the real component with the props the routes never pass. The page lives in
+`test/screens/support/pages`, is imported by nothing under `src` and is not part of any build, so
+production code is unchanged (no file under `src` was edited).
+
+| View and state                                                               | How                                                                                                   |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| landing `busy`, `server-down`                                                | `LandingScreen` with `status` set                                                                     |
+| demo `links`                                                                 | `DemoLauncher`, start clicked, the navigation after it left out                                       |
+| console `shortcut-help`                                                      | `ShortcutHelp` open                                                                                   |
+| console `voice-requesting`, `voice-listening`, `voice-denied`, `voice-error` | `VoiceFeed` with each microphone state                                                                |
+| register `approve-cancelled`, `approve-declined`                             | the real `FakeApprovalAdapter` in `cancel` and `decline` mode, through `useApproval` and `Approve`    |
+| error `boundary`                                                             | `ErrorBoundary` around a component that throws                                                        |
+| boot `config-error`                                                          | a second dev server (port 4175) started without `VITE_SANDBOX`, so `src/main.tsx` shows its own error |
+
+These are component renders, not whole routes: the page around them is the sandbox banner only.
+
 ## States not reachable
 
-- Voice listening, muted and outage banners: the app has no microphone wiring on the bidder or
-  console routes (`audioSink` is never passed), so only the transcript feed and confirmations show.
-- Registration approval cancelled and declined: the fake adapter has no UI switch for them.
-- Landing busy and server-down variants and the demo launcher's links list: the app never renders
-  them through a route (the launcher navigates away at once).
-- The console shortcut help: `ShortcutHelp` and `useShortcuts` exist but no screen mounts them.
-- The error boundary and the boot configuration error: they need a render crash or a bad build.
+- Muted and outage banners (bidder and console): the app has no such banner. There is no copy,
+  component or state for them in `src`, and the console voice feed shows microphone states only
+  (covered above as `voice-denied` and `voice-error`). Drawing them would need a new UI.
+- The console and bidder routes still never mount the microphone (`audioSink` is not passed) and
+  never mount `ShortcutHelp`; the component page shows those components, not the routes.
