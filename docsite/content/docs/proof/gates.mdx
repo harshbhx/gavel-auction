@@ -8,7 +8,9 @@ A gate is **closed** only when its status is PASS or FAIL with a recorded decisi
 
 <GatesTable />
 
-## G0: sandbox app and buyer accounts <GateBadge id="G0" />
+## G0: sandbox app and buyer accounts
+
+<GateBadge id="G0" />
 
 The sandbox app authenticates (HTTP 200, payments scope) and can create an AUTHORIZE order (HTTP 201 CREATED). Run 4 Nov 2026.
 
@@ -18,7 +20,9 @@ No evidence file is committed for G0. The only record is the Actions run log of 
 
 </NotVerified>
 
-## G1: partial capture and remainder release <GateBadge id="G1" />
+## G1: partial capture and remainder release
+
+<GateBadge id="G1" />
 
 After a final capture the authorization closes as CAPTURED and the order COMPLETED, and a later void is refused with `PREVIOUSLY_CAPTURED`. Run for a wallet buyer on 4 Nov and a card-funded PayPal account on 5 Nov 2026.
 
@@ -28,11 +32,15 @@ No run read a buyer balance or available funds, so that the 150.00 remainder is 
 
 </NotVerified>
 
-## G2: card and guest AUTHORIZE <GateBadge id="G2" />
+## G2: card and guest AUTHORIZE
+
+<GateBadge id="G2" />
 
 A wallet buyer and a guest with a sandbox card were both authorized through the PayPal JS SDK v6 (5 Nov 2026). Authorize only: no capture and no void of a card authorization ran.
 
-## G3: honor period versus validity and reauthorize <GateBadge id="G3" />
+## G3: honor period versus validity and reauthorize
+
+<GateBadge id="G3" />
 
 <Held title="In progress">
 
@@ -42,11 +50,15 @@ A real probe started on 7 Nov 2026 at 03:06 UTC. Checkpoints are at 3.5, 4 and 5
 
 The planned fallback if the window is short: capture within the verified validity window and reauthorize before the hammer. That is the plan, not a result.
 
-## G4: real webhook signature verification <GateBadge id="G4" />
+## G4: real webhook signature verification
+
+<GateBadge id="G4" />
 
 Six real deliveries, including a capture and a void, each verified SUCCESS through PayPal's verification endpoint with the raw body spliced into the request (5 Nov 2026). Rejecting a tampered event is covered against the fake only.
 
-## G5: speech accuracy on noisy bids <GateBadge id="G5" />
+## G5: speech accuracy on noisy bids
+
+<GateBadge id="G5" />
 
 <SpeechTable />
 
