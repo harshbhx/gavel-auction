@@ -679,6 +679,10 @@ export async function scenario8(
     `day 0 to ${SOAK_DAYS}: ${SOAK_LOTS} lots, ${SOAK_BIDDERS} bidders, 3% crash chance at every boundary, outages of 1 to 4 days in 5% of crashes, random PayPal faults`,
   );
 
+  r.timeline.push(
+    'lots that end in review are listed in the measures with their last PayPal calls; the known cause of the two in this run is https://github.com/harshbhx/gavel-auction/issues/1937',
+  );
+
   // Everything left open must be released by PayPal's own expiry within the validity period.
   w.atDay(SOAK_DAYS + 60);
   w.core.sweep();
