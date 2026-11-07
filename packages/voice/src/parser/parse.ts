@@ -231,6 +231,15 @@ function parse(text: string, ctx: ParseContext): ParseResult {
     });
   }
   if (amounts.length === 0) return result('confirm', 'uninterpretable_number', { bidder });
+  // A number the parser could not read next to one it could ("two fifteen o eight three hundred"):
+  // the readable amount is only a guess at what was said, so it is asked about, never booked.
+  if (unreadable > 0) {
+    const readable = [...new Set(amounts.map((a) => a.cents))].sort((a, b) => a - b);
+    return result('confirm', 'uninterpretable_number', {
+      bidder,
+      candidates: readable.map((c) => cand(c, bidder)),
+    });
+  }
 
   // A cents part that was not joined to its dollars is never dropped: confirm the combined amount.
   if (centsOnly.length > 0) {

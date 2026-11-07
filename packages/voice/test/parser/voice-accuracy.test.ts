@@ -129,3 +129,14 @@ describe('number grammar of the spoken amounts in the clips', () => {
     });
   }
 });
+
+describe('a number that could not be read next to one that could', () => {
+  it('"two fifteen o eight three hundred" is asked about, never booked', () => {
+    const r = parseUtterance('two fifteen o eight three hundred', {
+      speakerBidderId: '7',
+      currentPriceCents: 20000,
+    });
+    expect(r.status).toBe('confirm');
+    expect(r.reason).toBe('uninterpretable_number');
+  });
+});
