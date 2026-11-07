@@ -5,7 +5,9 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { renderReport } from './report.js';
 import { ALL_SCENARIOS, type ScenarioResult } from './scenarios.js';
 
-const REPORT = fileURLToPath(new URL('../../../../docs/evidence/SIM/SIM-MULTIDAY.md', import.meta.url));
+const REPORT = fileURLToPath(
+  new URL('../../../../docs/evidence/SIM/SIM-MULTIDAY.md', import.meta.url),
+);
 
 const results: ScenarioResult[] = [];
 
