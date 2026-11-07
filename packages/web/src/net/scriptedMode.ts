@@ -8,6 +8,9 @@ export interface ScriptedRequest {
 
 export const DEFAULT_SCENARIO = 'happy';
 
+/** In-app route that plays the default scenario in every build; it never reads the query flag. */
+export const SCRIPTED_DEMO_PATH = '/demo/scripted';
+
 /**
  * Reads the address query. `?scripted=1` or `?transport=scenario` turn it on; `scenario=<name>`
  * picks the script and `at=<ms>` holds it at one moment. Anything else, and every production

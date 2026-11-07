@@ -51,7 +51,7 @@ export function TryScreen({ onStart }: TryScreenProps) {
       <section aria-label={t('try.tourTitle')}>
         <h2>{t('try.tourTitle')}</h2>
         <p>{t('try.tourBody')}</p>
-        <a href="/r/demo/screen?scripted=1">{t('try.tourLink')}</a>
+        <a href="/demo/scripted">{t('try.tourLink')}</a>
       </section>
     </main>
   );

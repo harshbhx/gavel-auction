@@ -22,6 +22,7 @@ export type RouteId =
   | 'landing'
   | 'demo'
   | 'try'
+  | 'scriptedDemo'
   | 'join'
   | 'register'
   | 'return'
@@ -52,6 +53,7 @@ export interface RouteDef {
 export const ROUTES: readonly RouteDef[] = [
   { id: 'landing', path: '/', titleKey: 'app.name' },
   { id: 'demo', path: '/demo', titleKey: 'landing.start' },
+  { id: 'scriptedDemo', path: '/demo/scripted', titleKey: 'app.name' },
   { id: 'try', path: '/try', titleKey: 'try.title' },
   { id: 'join', path: '/join/:roomId', titleKey: 'landing.join' },
   { id: 'register', path: '/r/:roomId/register', titleKey: 'reg.step1' },
