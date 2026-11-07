@@ -42,7 +42,7 @@ export function Roster({ roster, connected, leaderId = null, highBids, ceilings 
                 <span className="gv-console-ladder__who">{`${r.paddle} ${r.name}`}</span>
                 {high !== undefined && (
                   <span className="gv-console-ladder__amt">
-                    {t('console.ladder.best', { amount: formatUsdCompact(high) })}
+                    {t('console.ladder.high', { amount: formatUsdCompact(high) })}
                   </span>
                 )}
                 {ceiling !== undefined && (

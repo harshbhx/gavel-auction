@@ -213,7 +213,7 @@ export const en = {
   'console.echo.stop': 'Auction stopped',
   'console.ladder.leading': 'Leading',
   'console.ladder.held': 'Hold held',
-  'console.ladder.best': 'Best {amount}',
+  'console.ladder.high': 'High {amount}',
   'console.ladder.ceiling': 'Ceiling {amount}',
   'console.hammerHold': 'Hold to hammer',
   'console.hammerDesk': 'Hold 3 seconds to close the lot',
