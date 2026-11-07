@@ -26,8 +26,8 @@ voice_of() {
 }
 
 jq -r '.[] | [.id, .voice, .text] | @tsv' "$manifest" | while IFS=$'\t' read -r id voice text; do
-  espeak-ng -v "$(voice_of "$voice")" -s 150 -w "$tmp/$id.raw.wav" "$text"
-  ffmpeg -y -v error -i "$tmp/$id.raw.wav" -af "adelay=300|300,apad=pad_dur=0.3" \
+  espeak-ng -v "$(voice_of "$voice")" -s 150 -w "$tmp/$id.raw.wav" "$text" </dev/null
+  ffmpeg -nostdin -y -v error -i "$tmp/$id.raw.wav" -af "adelay=300|300,apad=pad_dur=0.3" \
     -ar 16000 -ac 1 -c:a pcm_s16le -fflags +bitexact -flags:a +bitexact -map_metadata -1 \
     "$out/$id.wav"
 done
