@@ -1,86 +1,262 @@
-/* Projector layout: sized for a 1920x1080 display read from 10 m. No text under 28 px, no scrolling. */
+/* Projector layout (Scoreboard): one huge price, a calm ladder on the side, a large QR code. Sized
+ * for a 1920x1080 display read from 10 m, no scrolling. State colour comes from data-state on the
+ * root: leading, soft (final seconds), sold, unsold, paused and lobby. Colour is never the only
+ * signal: the paddle, the clock and the SOLD or Passed words always say it too. */
 .gv-screen {
+  --screen-state: var(--color-accent);
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-rows: auto 1fr auto;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 30vw);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-6);
   width: 100vw;
   height: 100vh;
-  padding: 32px 48px;
+  padding: var(--space-6) var(--space-7);
   overflow: hidden;
+  font-family: var(--font-sans);
   font-size: 28px;
   line-height: 1.25;
   background: var(--color-bg);
   color: var(--color-fg);
 }
 
-.gv-screen__lot {
+.gv-screen[data-state='soft'] {
+  --screen-state: var(--color-warning);
+}
+
+.gv-screen[data-state='sold'] {
+  --screen-state: var(--color-win);
+}
+
+.gv-screen[data-state='unsold'] {
+  --screen-state: var(--color-out);
+}
+
+.gv-screen[data-state='paused'] {
+  --screen-state: var(--color-held);
+}
+
+.gv-screen[data-state='lobby'] {
+  --screen-state: var(--color-border);
+}
+
+.gv-screen__head {
   grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+  padding-block-end: var(--space-4);
+  border-block-end: var(--border-width-strong) solid var(--color-rule);
+}
+
+.gv-screen__lot {
   margin: 0;
+  font-family: var(--font-display);
   font-size: 56px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.gv-screen__notice {
+  margin: 0;
+  padding: var(--space-1) var(--space-4);
+  border: var(--border-width) solid var(--color-held);
+  color: var(--color-held);
+  font-family: var(--font-mono);
 }
 
 .gv-screen__stage {
   display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.gv-screen__board {
+  display: flex;
+  flex: 1;
   flex-direction: column;
   justify-content: center;
+  gap: var(--space-4);
   min-width: 0;
+  padding: var(--space-6) var(--space-7);
+  border: var(--border-width-strong) solid var(--screen-state);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-2);
 }
 
 .gv-screen__price {
   margin: 0;
-  font-size: 200px;
+  font-family: var(--font-display);
+  font-size: min(30vh, 11vw);
+  font-weight: 800;
   line-height: 1;
+  color: var(--color-fg);
+}
+
+.gv-screen__opening {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: min(14vh, 5.5vw);
   font-weight: 700;
+  line-height: 1.05;
 }
 
-.gv-screen__price[data-closed='true'] {
-  font-size: 160px;
+.gv-screen__leader {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 56px;
+  font-weight: 700;
+  color: var(--color-accent);
 }
 
-.gv-screen__leader,
+.gv-screen__leader:empty {
+  display: none;
+}
+
 .gv-screen__clock {
   margin: 0;
+  font-family: var(--font-mono);
   font-size: 56px;
+  color: var(--color-fg-muted);
+}
+
+.gv-screen__clock[data-soft='true'] {
+  color: var(--color-warning);
+}
+
+.gv-screen__sold {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.gv-screen__stamp {
+  margin: 0;
+  align-self: flex-start;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  font-size: min(16vh, 6.4vw);
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.gv-screen__sold[data-kind='sold'] .gv-screen__stamp {
+  background: var(--color-win);
+  color: var(--color-on-win);
+}
+
+.gv-screen__sold[data-kind='passed'] .gv-screen__stamp {
+  background: var(--color-out);
+  color: var(--color-on-out);
+}
+
+.gv-screen__settle {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 32px;
+}
+
+/* Hammer moment: the board takes one hard hit. Off under reduced motion. */
+.gv-screen[data-state='sold'] .gv-screen__board,
+.gv-screen[data-state='unsold'] .gv-screen__board {
+  animation: gv-screen-slam var(--duration-hammer) var(--ease-out) both;
+}
+
+@keyframes gv-screen-slam {
+  0% {
+    transform: translate(0, 0);
+  }
+
+  30% {
+    transform: translate(6px, 8px);
+  }
+
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+.gv-screen__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .gv-screen__ticker {
-  grid-column: 1;
   min-width: 0;
 }
 
 .gv-screen__ticker-title {
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-mono);
   font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
 }
 
 .gv-screen__ticker ol {
   display: flex;
-  gap: 32px;
+  flex-direction: column;
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 32px;
+  font-family: var(--font-mono);
+  font-size: 36px;
+}
+
+.gv-screen__ticker li {
+  padding-block: var(--space-2);
+  border-block-end: var(--border-width) solid var(--color-rule);
+  color: var(--color-fg-muted);
+}
+
+.gv-screen__ticker li:first-child {
+  color: var(--color-fg);
+  font-weight: 700;
 }
 
 .gv-screen__join {
-  grid-column: 2;
-  grid-row: 2 / 4;
-  align-self: end;
-  justify-self: end;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+  margin-block-start: auto;
+  padding: var(--space-4);
+  border: var(--border-width-strong) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-2);
   text-align: center;
 }
 
 .gv-screen__join p {
-  margin: 8px 0 0;
-  font-size: 28px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 @media (forced-colors: active) {
   .gv-screen {
     background: Canvas;
     color: CanvasText;
+  }
+
+  .gv-screen__board,
+  .gv-screen__join {
+    border-color: CanvasText;
   }
 }
 
@@ -96,7 +272,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gv-screen__frozen {
+  .gv-screen__frozen,
+  .gv-screen[data-state='sold'] .gv-screen__board,
+  .gv-screen[data-state='unsold'] .gv-screen__board {
     animation: none;
   }
 }
