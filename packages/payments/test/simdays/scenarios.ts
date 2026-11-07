@@ -571,6 +571,7 @@ export async function scenario8(
   type Ev = { at: number; order: number; run: () => Promise<void> };
   const events: Ev[] = [];
   const held = new Map<string, HoldRef[]>();
+  const reviews: Array<[string, string]> = [];
   const numbers: SoakNumbers = {
     lots: SOAK_LOTS,
     settled: 0,
@@ -640,6 +641,18 @@ export async function scenario8(
           },
         });
         numbers.crashes += res.crashes;
+        if (res.status !== 'settled') {
+          const last = res.journal?.history[res.journal.history.length - 1]?.label ?? 'none';
+          const reauthed = Object.values(res.journal?.holds ?? {}).filter(
+            (h) => (h.priorAuthIds?.length ?? 0) > 0,
+          ).length;
+          const failedWhy =
+            res.journal?.failed.map((f) => `${f.bidderId}:${f.reason}`).join(',') ?? '';
+          reviews.push([
+            lot.id,
+            `closed day ${lot.closeAt.toFixed(2)}, down ${(res.downMs / DAY_MS).toFixed(2)} days, last step ${last}, reauthorized holds ${reauthed}, failed ${failedWhy}`,
+          ]);
+        }
         if (res.status === 'settled') numbers.settled += 1;
         else numbers.review += 1;
         if (res.journal !== null && res.journal.winner !== null) numbers.sold += 1;
@@ -704,6 +717,7 @@ export async function scenario8(
   r.stat('captured', dollars(ledger.capturedCents));
   r.stat('released', dollars(ledger.releasedCents));
   r.stat('still open', dollars(ledger.openCents));
+  for (const [lotId, why] of reviews) r.stat(`lot in review: ${lotId}`, why);
   r.stat('seed', seed);
   return { ...r.result('S8', '30 simulated days, 100 bidders, random crashes'), numbers };
 }

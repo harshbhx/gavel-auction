@@ -87,6 +87,8 @@ export interface SettleResult {
   status: 'settled' | 'failed' | 'stuck';
   passes: number;
   crashes: number;
+  /** Total simulated time the process was down. */
+  downMs: number;
   journal: Journal | null;
 }
 
@@ -288,6 +290,7 @@ export class World {
     };
     let passes = 0;
     let crashes = 0;
+    let downMs = 0;
     let status: SettleResult['status'] = 'stuck';
     while (passes < maxPasses) {
       passes += 1;
@@ -307,12 +310,14 @@ export class World {
         if (!(e instanceof SimCrash)) throw e;
         crashes += 1;
         const down = o.downMs?.(rand) ?? DEFAULT_LEASE_TTL_MS + HOUR_MS;
-        this.clock.advance(Math.max(down, DEFAULT_LEASE_TTL_MS + MIN_MS));
+        const waited = Math.max(down, DEFAULT_LEASE_TTL_MS + MIN_MS);
+        downMs += waited;
+        this.clock.advance(waited);
         this.restartProcess();
         if (o.forgetIdempotency === true) this.core.forgetIdempotency();
       }
     }
-    return { status, passes, crashes, journal: await this.journals.load(auctionId) };
+    return { status, passes, crashes, downMs, journal: await this.journals.load(auctionId) };
   }
 
   /** The chain of authorizations of one hold, first to last. */
