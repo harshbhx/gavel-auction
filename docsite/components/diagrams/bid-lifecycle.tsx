@@ -164,8 +164,8 @@ export function BidLifecycleDiagram() {
           {/* held band: confirm gate, steps 4 and 5 */}
           <g style={stepStyle(steps, 3)}>
             <rect x={X.B - 50} y={296} width={X.R - X.B + 100} height={104} fill={hatch(p)} className="fill-hatch-edge" />
-            <rect x={X.B + 20} y={302} width={170} height={16} className="panel" />
-            <T x={X.B + 26} y={314} cls="t-small t-ink">held: engine has not seen it</T>
+            <rect x={X.B - 50} y={274} width={190} height={20} className="panel" />
+            <T x={X.B - 43} y={288} cls="t-small t-ink">held: engine has not seen it</T>
           </g>
 
           {lanes.map((l) => (
@@ -179,7 +179,7 @@ export function BidLifecycleDiagram() {
 
           {notes.map((n) => (
             <g key={n.text} style={stepStyle(steps, n.step)}>
-              <rect x={X[n.lane] + 6} y={n.y} width={n.w} height={24} rx={2} className="node" />
+              <rect x={X[n.lane] + 6} y={n.y} width={Math.max(n.w, n.text.length * 6.6 + 24)} height={24} rx={2} className="node" />
               <T x={X[n.lane] + 14} y={n.y + 16} cls="t-small">{n.text}</T>
               {steps.index === n.step && <Badge x={X[n.lane] - 26} y={n.y + 2} n={n.step + 1} />}
             </g>

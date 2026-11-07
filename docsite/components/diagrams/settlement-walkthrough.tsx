@@ -266,16 +266,16 @@ export function SettlementWalkthroughDiagram() {
           <T x={730} y={186} cls="t-small t-muted">
             Ledger (cents)
           </T>
-          <rect x={730} y={194} width={340} height={96} rx={2} className="panel" />
+          <rect x={730} y={194} width={340} height={116} rx={2} className="panel" />
           <T x={744} y={218}>held</T>
           <T x={1056} y={218} anchor="end">{t.held}</T>
           <T x={744} y={244}>charged</T>
           <T x={1056} y={244} anchor="end">{t.charged}</T>
           <T x={744} y={270}>released</T>
           <T x={1056} y={270} anchor="end">{t.released}</T>
-          <line x1={744} y1={278} x2={1056} y2={278} className="guide" />
-          <T x={744} y={286} cls="t-small t-muted">total</T>
-          <T x={1056} y={286} anchor="end" cls="t-small t-muted">{t.held + t.charged + t.released}</T>
+          <line x1={744} y1={282} x2={1056} y2={282} className="guide" />
+          <T x={744} y={299} cls="t-small t-muted">total</T>
+          <T x={1056} y={299} anchor="end" cls="t-small t-muted">{t.held + t.charged + t.released}</T>
 
           {/* journal */}
           <T x={30} y={376} cls="t-small t-muted">

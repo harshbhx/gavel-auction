@@ -4,6 +4,7 @@ export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
   'strict-transport-security': 'max-age=31536000; includeSubDomains',
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'no-referrer',
+  'permissions-policy': 'camera=(), geolocation=(), microphone=()',
 };
 
 /** Sets every baseline header on `headers`, replacing any value already present. */
