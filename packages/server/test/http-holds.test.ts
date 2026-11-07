@@ -1,4 +1,11 @@
-import { GavelError, ManualClock, SeqIds, type AuctionConfig, type AuctionId } from '@gavel/shared';
+import {
+  CreateHoldResponse,
+  GavelError,
+  ManualClock,
+  SeqIds,
+  type AuctionConfig,
+  type AuctionId,
+} from '@gavel/shared';
 import { HoldError, type HoldRecord } from '@gavel/payments';
 import { describe, expect, it } from 'vitest';
 import { secretSetFromConfig } from '../src/auth/rotation';
@@ -152,6 +159,24 @@ describe('hold routes (INT-R3-20)', () => {
     expect(calls.created).toEqual([
       { auctionId, bidderId: bidder, ceilingCents: 30000, presetsCents: [30000, 50000] },
     ]);
+  });
+
+  it('hands the PayPal approval link back so the redirect fallback can run (issue 1778)', async () => {
+    const approveUrl = 'https://pay.example.test/approve/order-1';
+    const { app, deps } = setup({
+      service: {
+        createHoldOrder: async () => ({ holdId: 'hold-1', orderId: 'order-1', approveUrl }),
+        completeApproval: async (i) => ({ holdId: i.holdId, status: 'HELD', ceilingCents: 30000 }),
+        abandonHold: async () => false,
+      },
+    });
+    const auctionId = await newAuction(app);
+    const bidder = deps.ids.mint<'BidderId'>();
+    const m = await mintToken(deps, 'session', auctionId, bidder, bidder);
+    const res = await post(app, '/api/holds', { auctionId, ceilingCents: 30000 }, m.token);
+    expect(res.status).toBe(201);
+    const body = CreateHoldResponse.parse(await res.json());
+    expect(body).toEqual({ holdId: 'hold-1', orderId: 'order-1', approveUrl });
   });
 
   it('refuses a body that names a bidder and a request with no token', async () => {

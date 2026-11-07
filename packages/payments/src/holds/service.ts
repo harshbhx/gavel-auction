@@ -67,6 +67,11 @@ export interface CreateHoldInput {
 export interface CreatedHold {
   holdId: string;
   orderId: string;
+  /**
+   * PayPal's own approval page for the order, when PayPal named one. The browser falls back to
+   * it when the approval popup cannot open (issue 1778).
+   */
+  approveUrl?: string;
 }
 
 export interface CompleteApprovalInput {
@@ -113,6 +118,8 @@ export class HoldService {
   private readonly inflight = new Map<string, Promise<ApprovedHold>>();
   /** Tail of the createHoldOrder queue per (auction, bidder). */
   private readonly creating = new Map<string, Promise<unknown>>();
+  /** Approval link per pending hold, so a repeated create hands back the same one. */
+  private readonly approveUrls = new Map<string, string>();
 
   constructor(private readonly deps: HoldServiceDeps) {
     this.newId = deps.newId ?? (() => randomUUID());
@@ -163,7 +170,7 @@ export class HoldService {
         }
         const fresh = now - existing.createdAtMs <= this.pendingTtlMs;
         if (fresh && existing.ceilingCents === i.ceilingCents) {
-          return { holdId: existing.holdId, orderId: existing.orderId };
+          return this.created(existing.holdId, existing.orderId);
         }
         // A lapsed order, or one for another amount, is abandoned; no PayPal call is needed.
         await this.abandonPending(existing);
@@ -199,10 +206,18 @@ export class HoldService {
       };
       await this.deps.holds.put(record);
       await this.audit(record, '', 'PENDING_APPROVAL', 'hold_created');
-      return { holdId, orderId: order.orderId };
+      if (order.approveUrl !== undefined && order.approveUrl !== '') {
+        this.approveUrls.set(holdId, order.approveUrl);
+      }
+      return this.created(holdId, order.orderId);
     } catch (e) {
       throw toHoldError(e);
     }
+  }
+
+  private created(holdId: string, orderId: string): CreatedHold {
+    const approveUrl = this.approveUrls.get(holdId);
+    return approveUrl === undefined ? { holdId, orderId } : { holdId, orderId, approveUrl };
   }
 
   /**
@@ -267,6 +282,7 @@ export class HoldService {
         status: 'HELD',
       };
       await this.deps.holds.put(held);
+      this.approveUrls.delete(holdId);
       await this.audit(held, hold.status, 'HELD', 'hold_authorized');
       return approved(held);
     } catch (e) {
@@ -296,6 +312,7 @@ export class HoldService {
         ...(found === undefined ? {} : { authId: found }),
         status: 'EXPIRED',
       });
+      this.approveUrls.delete(latest.holdId);
       await this.audit(latest, 'PENDING_APPROVAL', 'EXPIRED', 'hold_abandoned');
     });
   }

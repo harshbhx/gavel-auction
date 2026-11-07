@@ -5,6 +5,7 @@ import {
   HOLD_ERROR_STATUS,
   holdOwnedBySession,
   type AbandonHoldResponse,
+  type CreateHoldResponse,
   type HoldErrorCode,
   type HoldViewResponse,
 } from '@gavel/shared';
@@ -99,7 +100,14 @@ export function mountHolds(port: HoldsPort): Mount {
           ceilingCents: body.ceilingCents,
           presetsCents: snapshot.config.ceilingPresets,
         });
-        return json(201, { holdId: created.holdId, orderId: created.orderId });
+        // The approval link lets the browser fall back to PayPal's own page when the popup
+        // cannot open (issue 1778). The client token stays out until a server source exists (G2).
+        const response: CreateHoldResponse = {
+          holdId: created.holdId,
+          orderId: created.orderId,
+          ...(created.approveUrl === undefined ? {} : { approveUrl: created.approveUrl }),
+        };
+        return json(201, response);
       }),
     );
 
