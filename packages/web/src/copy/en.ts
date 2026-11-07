@@ -33,7 +33,34 @@ export const en = {
   'demo.failedOff': 'Live demo rooms are turned off on this server.',
   'demo.failedKey': 'The operator key was not accepted.',
   'demo.failedCap': 'The server is at its demo room limit. Try again soon.',
+  'demo.failedBusy':
+    'Judge rooms are busy or switched off right now. Try again soon, or run the scripted demo.',
   'demo.scriptedInstead': 'Run scripted demo instead',
+  'try.title': 'Try a real auction in two minutes',
+  'try.lead': 'This build talks to the PayPal sandbox. No real money moves.',
+  'try.step1.title': 'Start a room',
+  'try.step1.body':
+    'Choose Start a demo auction. The server opens a short room for you and takes you to the auctioneer console.',
+  'try.step2.title': 'Invite a bidder',
+  'try.step2.body':
+    'Open the big screen link in a second window, or scan its QR code with a phone. The bidder link works in another tab too.',
+  'try.step3.title': 'Approve a hold',
+  'try.step3.body':
+    'Enter a display name and pick a ceiling. PayPal opens its sandbox login. Sign in with a sandbox buyer account and approve the hold.',
+  'try.step4.title': 'Bid, then hammer',
+  'try.step4.body':
+    'Place a bid from the bidder view. In the console press hammer. The winning amount settles from the hold and every other hold is released.',
+  'try.credsTitle': 'Sandbox buyer credentials',
+  'try.credsBody':
+    'See the Devpost testing instructions for the sandbox buyer logins. They are not shown on this page.',
+  'try.expectTitle': 'What you should see',
+  'try.expectBody':
+    'Your hold shows as held while bidding. After the hammer the console and the audit trail show the settlement and the released holds.',
+  'try.limits':
+    'A room lasts about thirty minutes and the host limits how many run at once. If it is busy, the scripted demo still works.',
+  'try.tourTitle': 'Ninety second guided tour',
+  'try.tourBody': 'No sandbox login needed. This replays a recorded room in your browser.',
+  'try.tourLink': 'Watch the guided tour',
   'demo.roleConsole': 'Auctioneer console',
   'demo.roleScreen': 'Big screen',
   'demo.roleBidder': 'Bidder QR',

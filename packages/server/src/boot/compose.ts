@@ -87,6 +87,7 @@ import { createHttpApp } from '../http/app';
 import { createDemoHandler, DEMO_RESET_PATH, DEMO_ROOMS_PATH, DEMO_SEED_PATH } from '../http/demo';
 import { createDemoHoldSource } from '../http/demo-holds';
 import { mountAuctions } from '../http/auctions';
+import { createJudgeRooms, JUDGE_ROOM_DEFAULTS } from '../http/judge-rooms';
 import { mountAuctioneerToken } from '../http/auctioneer-token';
 import { mountControl } from '../http/control';
 import { mountHolds } from '../http/holds';
@@ -568,6 +569,18 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     clock: { nowMs: () => clock.now() },
     maxCeilingCents: payments.maxCeilingCents,
   });
+  // Judge rooms (R-JRM): key-less real sandbox rooms behind JUDGE_ROOMS=1; config refuses the
+  // flag with live PayPal. The create route is mounted always and answers 404 while it is off.
+  const judgeRooms = createJudgeRooms({
+    enabled: config.JUDGE_ROOMS,
+    paused: config.JUDGE_ROOMS_PAUSED,
+    maxLive: config.JUDGE_ROOMS_MAX,
+    ttlMs: config.JUDGE_ROOM_TTL_MS,
+    perIpPerHour: config.JUDGE_ROOMS_PER_IP_HOUR,
+    globalPerHour: config.JUDGE_ROOMS_PER_HOUR,
+    maxCeilingCents: payments.maxCeilingCents,
+    lotWindowMs: JUDGE_ROOM_DEFAULTS.lotWindowMs,
+  });
   const apiApp = createHttpApp(
     {
       service,
@@ -587,6 +600,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
       mountRead,
       mountControl,
       mountAuctioneerToken,
+      judgeRooms.mount,
       mountHolds({
         service: holdService,
         store: stores.holds,
@@ -602,6 +616,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
       }),
     ],
   );
+  judgeRooms.start();
   const apiRoutes = nodeRoutesFor(apiApp, config.PUBLIC_URL, (req) =>
     sourceOf(req, config.TRUSTED_PROXY_HOPS),
   );
@@ -742,6 +757,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
         });
       }),
     close: async (graceMs = 5000) => {
+      judgeRooms.stop();
       await audioHost.close();
       await wsHost.close();
       await new Promise<void>((resolve) => {

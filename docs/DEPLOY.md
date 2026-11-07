@@ -34,6 +34,21 @@ Requirements: R-QA-042 (deploy), R-QA-044 (webhook registration). Hosting choice
 
    Then add the Worker origin (for example `https://gavel-web.creharsh.workers.dev`) to `CORS_ORIGINS` on Render, with no trailing slash. The API checks both browser requests and WebSocket upgrades against that list. The web app builds its join links and return route from `window.location.origin`, so `PUBLIC_URL` on Render stays the API origin. The operator key for `/ops` and the demo launcher is typed into the page and is never part of the build.
 
+## Judge rooms (optional, sandbox hosts only)
+
+A judge with no setup can run a real sandbox auction when the API runs with `JUDGE_ROOMS=true`. The web app asks `GET /api/judge/capabilities` and uses `POST /api/judge/rooms` (no operator key) for "Start a demo auction"; without the flag it falls back to the operator-key demo route and then to the scripted demo. Boot validation refuses the flag unless `PAYPAL_ENV=sandbox`, `PAYPAL_BASE_URL` (when set) is the PayPal sandbox and, on a production-like host, `PAYMENTS=sandbox`. `DEMO_MODE` stays refused in production. Names only, set on Render:
+
+| Variable                  | Default | Meaning                                                          |
+| ------------------------- | ------- | ---------------------------------------------------------------- |
+| `JUDGE_ROOMS`             | off     | `true` turns the routes on. Off answers 404.                     |
+| `JUDGE_ROOMS_PAUSED`      | off     | Boot with creation switched off (the runtime switch is below).   |
+| `JUDGE_ROOMS_MAX`         | 5       | Most rooms live at once (at most 50).                            |
+| `JUDGE_ROOM_TTL_MS`       | 1800000 | Room lifetime before the sweeper ends it (at most 7200000).      |
+| `JUDGE_ROOMS_PER_IP_HOUR` | 4       | Creates per source address per hour. Judges on one NAT share it. |
+| `JUDGE_ROOMS_PER_HOUR`    | 40      | Creates for the whole host per hour.                             |
+
+Kill switch at runtime: `curl -X POST -H "x-admin-key: $ADMIN_KEY" -H 'content-type: application/json' -d '{"paused":true}' https://<api-host>/api/judge/pause` (send `false` to resume; the state survives a restart). Rooms still running when you pause finish normally or expire at their lifetime. The sandbox buyer logins are not part of the build; they go in the Devpost testing instructions.
+
 ## Settings the hosted checks need
 
 These workflows stay quiet or fail until the settings exist. Names only, values never go in the repository.

@@ -51,7 +51,7 @@ describe('demo launcher on the real route (R-WEB-036..038)', () => {
     await waitFor(() =>
       expect(screen.getAllByRole('button', { name: t('generic.copy') })).toHaveLength(4),
     );
-    const call = fetchMock.mock.calls[0];
+    const call = fetchMock.mock.calls.find(([url]) => url.endsWith('/api/demo/rooms'));
     expect(call?.[0]).toBe('http://localhost:1/api/demo/rooms');
     expect(call?.[1]?.method).toBe('POST');
     expect(call?.[1]?.headers?.['x-admin-key']).toBe(OPERATOR_KEY);
@@ -91,5 +91,60 @@ describe('demo launcher on the real route (R-WEB-036..038)', () => {
     fetchMock.mockRejectedValue(new Error('down'));
     start();
     await expectFallback(t('demo.failed'));
+  });
+
+  describe('when the host offers judge rooms', () => {
+    const room = {
+      auctionId: 'room-7',
+      auctioneerToken: 'auc-token',
+      screenToken: 'scr-token',
+    };
+    const answer = (create: Reply): void => {
+      fetchMock.mockImplementation((url) => {
+        if (url.endsWith('/api/judge/capabilities')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ judgeRooms: true, accepting: true }),
+          } as Reply);
+        }
+        return Promise.resolve(create);
+      });
+    };
+    const startKeyless = async (): Promise<void> => {
+      render(<App initialPath="/demo" api={API} />);
+      await waitFor(() => expect(screen.queryByLabelText(t('ops.keyLabel'))).toBeNull());
+      fireEvent.click(screen.getByRole('button', { name: t('landing.start') }));
+    };
+
+    it('creates a room with no operator key and opens the console with its token', async () => {
+      answer({ status: 201, json: () => Promise.resolve(room) });
+      await startKeyless();
+      await waitFor(() =>
+        expect(screen.getAllByRole('button', { name: t('generic.copy') })).toHaveLength(4),
+      );
+      const call = fetchMock.mock.calls.find(([url]) => url.endsWith('/api/judge/rooms'));
+      expect(call?.[1]?.method).toBe('POST');
+      expect(call?.[1]?.headers?.['x-admin-key']).toBeUndefined();
+      expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/api/demo/rooms'))).toBe(false);
+      expect(pushed).toHaveBeenLastCalledWith(null, '', '/r/room-7/console#token=auc-token');
+      expect(screen.getByRole('link', { name: '/join/room-7' })).toBeTruthy();
+    });
+
+    it('says the host is busy and offers the scripted demo on 429', async () => {
+      answer({ status: 429 });
+      await startKeyless();
+      await expectFallback(t('demo.failedBusy'));
+    });
+  });
+
+  it('falls back to the operator-key route when the capability probe fails', async () => {
+    fetchMock.mockImplementation((url) =>
+      url.endsWith('/api/judge/capabilities')
+        ? Promise.reject(new Error('down'))
+        : Promise.resolve({ status: 404 } as Reply),
+    );
+    start();
+    await expectFallback(t('demo.failedOff'));
   });
 });

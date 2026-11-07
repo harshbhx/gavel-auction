@@ -10,6 +10,7 @@ import {
 import { Cents, type MsgId } from '@gavel/shared';
 import { PROTOCOL_VERSION } from './wire';
 import { t } from './copy/t';
+import { createJudgeRoom, judgeRoomsAvailable } from './net/judgeRooms';
 import { socketUrl, startLiveRoom, type LiveRoom } from './net/liveRoom';
 import { Announcer } from './a11y/Announcer';
 import type { PaymentsMode } from './config';
@@ -36,6 +37,7 @@ import { LiveConsole } from './screens/console/LiveConsole';
 import { GalleryScreen } from './screens/gallery/GalleryScreen';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
 import { LandingScreen } from './screens/landing/LandingScreen';
+import { TryScreen } from './screens/try/TryScreen';
 import { fetchOpsSummary, OpsView, type OpsSummaryView } from './ops/OpsView';
 import { DemoLauncher, DemoRoomError, type DemoLinks } from './screens/demo/DemoLauncher';
 import { SandboxBanner } from './design/SandboxBanner';
@@ -826,14 +828,33 @@ async function createDemoRoom(apiBase: string, key: string): Promise<DemoLinks> 
 
 function DemoRoute({ api }: { api: Api | undefined }) {
   const [key, setKey] = useState('');
+  // Judge rooms need no operator key; the host says whether it offers them. Until it answers,
+  // and when it does not, the operator-key demo route is used as before.
+  const probe = useMemo(
+    () => (api === undefined ? undefined : judgeRoomsAvailable(api.apiBase)),
+    [api],
+  );
+  const [judge, setJudge] = useState(false);
+  useEffect(() => {
+    let live = true;
+    probe?.then((ok) => {
+      if (live) setJudge(ok);
+    });
+    return () => {
+      live = false;
+    };
+  }, [probe]);
   return (
     <>
-      {api !== undefined && <OperatorKeyField value={key} onChange={setKey} />}
+      {api !== undefined && !judge && <OperatorKeyField value={key} onChange={setKey} />}
       <DemoLauncher
         initialMode={api === undefined ? 'scripted' : 'live'}
-        createRoom={() =>
-          api === undefined ? Promise.reject(new Error('no api')) : createDemoRoom(api.apiBase, key)
-        }
+        createRoom={async () => {
+          if (api === undefined) throw new Error('no api');
+          return (await probe) === true
+            ? createJudgeRoom(api.apiBase)
+            : createDemoRoom(api.apiBase, key);
+        }}
         startScripted={() => roomLinks('demo')}
         openConsole={navigate}
       />
@@ -926,6 +947,7 @@ function Routed({
   if (id === 'ops') return <OpsRoute api={api} />;
   if (id === 'landing' && api !== undefined) return <LandingRoute api={api} />;
   if (id === 'demo') return <DemoRoute api={api} />;
+  if (id === 'try') return <TryScreen onStart={() => navigate('/demo')} />;
   if (id === 'notFound') return <NotFound />;
   if (id === 'replay') return <ReplayRoute match={match} />;
   if (id === 'audit' && roomId !== undefined && who === null && !hasReviewerAccess(roomId)) {
