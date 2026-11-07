@@ -52,33 +52,35 @@ export function KillSwitch({ stopped, onKill }: KillSwitchProps) {
       </Button>
       {failed && <p role="alert">{t('kill.failed')}</p>}
       <Dialog open={open} onClose={close} title={t('kill.title')}>
-        <p>{t('kill.consequence')}</p>
-        <Field
-          label={t('kill.type')}
-          type="text"
-          value={typed}
-          autoComplete="off"
-          onChange={(e) => setTyped(e.target.value)}
-        />
-        <p>{t('kill.holdHint')}</p>
-        <HoldButton
-          label={t('kill.hold')}
-          holdMs={KILL_HOLD_MS}
-          disabled={!ready}
-          onComplete={() => {
-            close();
-            setFailed(false);
-            try {
-              const pending = onKill();
-              if (pending instanceof Promise) pending.catch(() => setFailed(true));
-            } catch {
-              setFailed(true);
-            }
-          }}
-        />
-        <Button variant="outline" tone="neutral" onClick={close}>
-          {t('common.cancel')}
-        </Button>
+        <div className="gv-console-dialog">
+          <p>{t('kill.consequence')}</p>
+          <Field
+            label={t('kill.type')}
+            type="text"
+            value={typed}
+            autoComplete="off"
+            onChange={(e) => setTyped(e.target.value)}
+          />
+          <p>{t('kill.holdHint')}</p>
+          <HoldButton
+            label={t('kill.hold')}
+            holdMs={KILL_HOLD_MS}
+            disabled={!ready}
+            onComplete={() => {
+              close();
+              setFailed(false);
+              try {
+                const pending = onKill();
+                if (pending instanceof Promise) pending.catch(() => setFailed(true));
+              } catch {
+                setFailed(true);
+              }
+            }}
+          />
+          <Button variant="outline" tone="neutral" onClick={close}>
+            {t('common.cancel')}
+          </Button>
+        </div>
       </Dialog>
     </>
   );

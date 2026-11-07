@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { t } from '../../copy/t';
 import { Icon } from '../../design/icons';
+import { PriceRoll } from '../../ui';
 import { formatUsd } from '../../util/money';
 import { formatCountdown } from '../../util/time';
 
@@ -51,22 +52,34 @@ export function PriceHeader({
   }, [endTs, now, tickMs, frozenMs]);
 
   return (
-    <header aria-label={t('bid.price')}>
-      <p style={{ ...NUMERIC, minWidth: '10ch', margin: 0 }} data-field="price">
-        {formatUsd(priceCents ?? reserveCents)}
+    <header className="gv-console-board" aria-label={t('bid.price')}>
+      <p
+        className="gv-console-board__price"
+        style={{ ...NUMERIC, minWidth: '10ch', margin: 0 }}
+        data-field="price"
+      >
+        <PriceRoll cents={priceCents ?? reserveCents} />
       </p>
-      <p data-field="leader" style={{ minHeight: '1.5em', margin: 0 }}>
+      <p
+        className="gv-console-board__leader"
+        data-field="leader"
+        style={{ minHeight: '1.5em', margin: 0 }}
+      >
         {leaderPaddle === null ? null : t('bid.leader', { n: leaderPaddle })}
         {leaderName === null ? null : <span> {leaderName}</span>}
       </p>
-      <p style={{ ...NUMERIC, margin: 0 }} data-field="count">
+      <p className="gv-console-board__stat" style={{ ...NUMERIC, margin: 0 }} data-field="count">
         {bidCount}
       </p>
-      <p style={{ ...NUMERIC, minWidth: '6ch', margin: 0 }} data-field="countdown">
+      <p
+        className="gv-console-board__stat"
+        style={{ ...NUMERIC, minWidth: '6ch', margin: 0 }}
+        data-field="countdown"
+      >
         <Icon name="clock" />
         <span>{formatCountdown(remaining)}</span>
       </p>
-      <p style={{ ...NUMERIC, margin: 0 }} data-field="next">
+      <p className="gv-console-board__stat" style={{ ...NUMERIC, margin: 0 }} data-field="next">
         {t('bid.quick', { amount: formatUsd(nextMinCents) })}
       </p>
     </header>

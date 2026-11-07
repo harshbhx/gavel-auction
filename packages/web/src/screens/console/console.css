@@ -1,0 +1,251 @@
+/* Auctioneer console, Scoreboard design. Tokens only: no colour, size or duration is hard-coded here. */
+
+.gv-console {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-5);
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+.gv-console-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.gv-console-panel {
+  min-width: 0;
+  padding: var(--space-4);
+  background: var(--color-raised, var(--color-surface));
+  color: var(--color-fg);
+  border: var(--border-width, 2px) solid var(--color-rule, var(--color-border));
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+
+.gv-console-panel > h2 {
+  margin: 0 0 var(--space-3);
+}
+
+.gv-console-panel ul,
+.gv-console-panel ol {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+/* Lot header: the price is the biggest thing on the desk. */
+
+.gv-console-board {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2) var(--space-4);
+  align-items: end;
+  padding-bottom: var(--space-4);
+  border-bottom: var(--border-width, 2px) solid var(--color-rule, var(--color-border));
+}
+
+.gv-console-board__price {
+  grid-column: 1 / -1;
+  font-family: var(--font-display);
+  font-size: var(--font-size-8);
+  line-height: 1;
+  color: var(--color-fg);
+}
+
+.gv-console-board__leader {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-3);
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.gv-console-board__stat {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+  color: var(--color-fg-muted);
+}
+
+.gv-console-board__stat[data-field='countdown'] {
+  font-size: var(--font-size-5);
+  font-weight: 700;
+  color: var(--color-fg);
+}
+
+/* Controls and the hammer. */
+
+.gv-console-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+}
+
+.gv-console-controls__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-size-1);
+  color: var(--color-fg-muted);
+}
+
+.gv-console-controls > [role='status'] {
+  flex-basis: 100%;
+  margin: 0;
+  min-height: 1.5em;
+}
+
+.gv-console-hammer {
+  flex-basis: 100%;
+  order: 10;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: var(--border-width-strong, 3px) solid var(--color-rule, var(--color-border));
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-fg);
+}
+
+.gv-console-hammer__alt {
+  margin: 0;
+  font-size: var(--font-size-1);
+  color: var(--color-fg-muted);
+}
+
+/* Bidder ladder. */
+
+.gv-console-ladder {
+  padding-top: var(--space-4);
+}
+
+.gv-console-ladder__list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.gv-console-ladder__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width, 2px) solid var(--color-rule, var(--color-border));
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-fg);
+}
+
+.gv-console-ladder__row[data-leader='true'] {
+  border-color: var(--color-win);
+  box-shadow: var(--shadow-1);
+}
+
+.gv-console-ladder__row[data-hold='none'] {
+  border-style: dashed;
+}
+
+.gv-console-ladder__who {
+  flex: 1 1 8ch;
+  font-weight: 600;
+}
+
+.gv-console-ladder__amt {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-fg-muted);
+}
+
+/* Voice transcript feed and the confirm queue. */
+
+.gv-confirm__list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.gv-confirm__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width, 2px) solid var(--color-rule, var(--color-border));
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-fg);
+}
+
+.gv-confirm__item[data-selected='true'] {
+  border-color: var(--color-action);
+  box-shadow: var(--shadow-1);
+}
+
+/* Settled ladder strip under the columns. */
+
+.gv-console-strip {
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  border: var(--border-width, 2px) solid var(--color-rule, var(--color-border));
+  border-radius: var(--radius-md);
+  background: var(--color-raised, var(--color-surface));
+  color: var(--color-fg);
+}
+
+/* Phone and narrow laptop: one panel at a time under tabs. */
+
+.gv-console-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.gv-console-tabs [role='tab'] {
+  flex: 1;
+  padding: var(--space-3);
+  border: var(--border-width, 2px) solid var(--color-rule, var(--color-border));
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gv-console-tabs [role='tab'][aria-selected='true'] {
+  background: var(--color-action);
+  color: var(--color-on-action);
+  border-color: var(--color-action);
+}
+
+.gv-console-tabs [role='tab']:focus-visible {
+  outline: var(--border-width-strong, 3px) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+[data-layout='stacked'].gv-console {
+  padding: var(--space-3);
+}
+
+[data-layout='stacked'] .gv-console-board__price {
+  font-size: var(--font-size-7);
+}
+
+/* Dialogs keep a solid panel: text and background never share a colour. */
+
+.gv-console-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  background: var(--color-surface);
+  color: var(--color-fg);
+}
+
+.gv-console-dialog p {
+  margin: 0;
+  color: var(--color-fg);
+}

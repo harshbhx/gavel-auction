@@ -102,13 +102,19 @@ export function HammerDialog({ open, leader, priceCents, onConfirm, onCancel }: 
         });
   return (
     <Dialog open={open} onClose={onCancel} title={t('console.hammer')}>
-      <p>{question}</p>
-      <p>{t('console.hammerHint')}</p>
-      {/* Cancel comes first so the dialog focuses it, never the destructive control. */}
-      <Button variant="outline" tone="neutral" onClick={onCancel}>
-        {t('common.cancel')}
-      </Button>
-      <HoldButton label={t('console.hammerHold')} holdMs={HAMMER_HOLD_MS} onComplete={onConfirm} />
+      <div className="gv-console-dialog">
+        <p>{question}</p>
+        <p>{t('console.hammerHint')}</p>
+        {/* Cancel comes first so the dialog focuses it, never the destructive control. */}
+        <Button variant="outline" tone="neutral" onClick={onCancel}>
+          {t('common.cancel')}
+        </Button>
+        <HoldButton
+          label={t('console.hammerHold')}
+          holdMs={HAMMER_HOLD_MS}
+          onComplete={onConfirm}
+        />
+      </div>
     </Dialog>
   );
 }
