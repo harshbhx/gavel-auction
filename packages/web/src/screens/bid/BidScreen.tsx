@@ -159,7 +159,7 @@ export function BidScreen({
             <Skeleton height="3.5rem" width="70%" />
           </SkeletonGroup>
         ) : (
-          <PriceRoll cents={price.currentCents} className="bid__price" />
+          <PriceRoll cents={price.currentCents ?? reserve}className="bid__price" />
         )}
         {leader !== null && <p className="bid__leader">{leader}</p>}
       </section>
