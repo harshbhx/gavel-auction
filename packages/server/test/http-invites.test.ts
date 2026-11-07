@@ -24,10 +24,27 @@ const config = {
   confirmConfidenceThreshold: 0.85,
 };
 
-function setup(joinLimit?: HttpDeps['joinLimit']): { app: HttpApp } {
+/** A memory store whose single-use writes can fail once and that records each ttl it gets. */
+class JtiSpyStore extends MemoryStore {
+  failNextConsume = false;
+  readonly ttls: number[] = [];
+  override async consumeJti(...args: Parameters<MemoryStore['consumeJti']>): Promise<boolean> {
+    this.ttls.push(args[1]);
+    if (this.failNextConsume) {
+      this.failNextConsume = false;
+      throw new Error('store offline');
+    }
+    return super.consumeJti(...args);
+  }
+}
+
+function setup(
+  joinLimit?: HttpDeps['joinLimit'],
+  makeStore?: (now: () => number) => MemoryStore,
+): { app: HttpApp } {
   const clock = new ManualClock(START);
   const ids = new SeqIds();
-  const store = new MemoryStore(() => clock.now());
+  const store = makeStore?.(() => clock.now()) ?? new MemoryStore(() => clock.now());
   const rooms = new Map<string, Promise<Room>>();
   const roomDeps = (id: AuctionId): RoomDeps => ({
     store,
@@ -163,6 +180,53 @@ describe('invite single use (T-RT-061)', () => {
       last = (await call(app, `/api/auctions/${a.id}/join`, null, { invite: `${invite}x` })).status;
     }
     expect(last).toBe(429);
+  });
+});
+
+describe('invite consumed only by a join that succeeds (issue 986)', () => {
+  it('keeps the invite after a refused or failed join, then refuses it once used', async () => {
+    let limited = true;
+    // The clock of these tests never moves, so the store reads START as now.
+    const spy = new JtiSpyStore(() => START);
+    const { app } = setup(
+      () => (limited ? { ok: false, retryAfterMs: 1000 } : { ok: true }),
+      () => spy,
+    );
+    const a = await created(app);
+    const [invite] = await mint(app, a.id, a.auctioneer);
+    const join = () => call(app, `/api/auctions/${a.id}/join`, null, { invite });
+
+    expect((await join()).status).toBe(429);
+    limited = false;
+    spy.failNextConsume = true;
+    // consumeInvite reports a store outage as unauthorized, and the invite stays unused.
+    expect((await join()).status).toBe(401);
+
+    const retry = await join();
+    expect(retry.status).toBe(200);
+    expect(((await retry.json()) as { sessionToken: string }).sessionToken).toBeTruthy();
+
+    const reuse = await join();
+    expect(reuse.status).toBe(409);
+    expect(((await reuse.json()) as { code: string }).code).toBe('invite_used');
+  });
+
+  it('stores the single-use mark for the time left on the invite, in milliseconds', async () => {
+    const spy = new JtiSpyStore(() => START);
+    const { app } = setup(undefined, () => spy);
+    const a = await created(app);
+    const res = await call(app, `/api/auctions/${a.id}/invites`, a.auctioneer, { count: 1 });
+    const { invites } = (await res.json()) as {
+      invites: Array<{ link: string; expiresAt: number }>;
+    };
+    const [first] = invites;
+    if (first === undefined) throw new Error('no invite');
+    const joined = await call(app, `/api/auctions/${a.id}/join`, null, {
+      invite: tokenOf(first.link),
+    });
+    expect(joined.status).toBe(200);
+    // expiresAt is exp in seconds times 1000; the store takes a ttl from now, not a timestamp.
+    expect(spy.ttls).toEqual([first.expiresAt - START]);
   });
 });
 
