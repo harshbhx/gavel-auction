@@ -14,7 +14,7 @@ export function NotFound({ homeHref = '/' }: NotFoundProps) {
   }, []);
   return (
     <main className="gv-flow" data-route="notFound">
-      <p className="ui-kicker">404</p>
+      <p className="ui-kicker">{t('app.name')}</p>
       <h1 ref={heading} tabIndex={-1}>
         {t('err.notFound')}
       </h1>
