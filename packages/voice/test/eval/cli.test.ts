@@ -61,6 +61,8 @@ describe('T-VOX-083 modes (R-VOX-075)', () => {
     expect(parseArgs(['--mic', 'device'])).toMatchObject({ mic: 'device' });
     expect(parseArgs([])).toMatchObject({ mic: 'room' });
     expect(parseArgs(['--mic', 'hall'])).toMatch(/--mic/);
+    expect(parseArgs(['--model', 'agree'])).toMatchObject({ model: 'agree' });
+    expect(parseArgs(['--model', 'big'])).toMatch(/--model/);
     expect(parseArgs(['--set'])).toMatch(/missing value/);
     expect(parseArgs(['--nope', 'x'])).toMatch(/unknown flag/);
   });

@@ -96,6 +96,14 @@ jobs:
             npm run eval -w @gavel/voice -- --mode cached --provider "$p" --clips human --mic device \
               --out "eval-out/cached-device-human/$p"
           done
+      - name: Cached mode on a device microphone with a second reading that always agrees (upper bound on AUTO)
+        run: |
+          for p in deepgram groq; do
+            npm run eval -w @gavel/voice -- --mode cached --provider "$p" --mic device --model agree \
+              --out "eval-out/cached-device-agree/$p"
+            npm run eval -w @gavel/voice -- --mode cached --provider "$p" --clips human --mic device \
+              --model agree --out "eval-out/cached-device-agree-human/$p"
+          done
       - name: Job summary
         if: always()
         run: |
@@ -116,6 +124,8 @@ jobs:
             packages/voice/eval-out/cached-human
             packages/voice/eval-out/cached-device
             packages/voice/eval-out/cached-device-human
+            packages/voice/eval-out/cached-device-agree
+            packages/voice/eval-out/cached-device-agree-human
           if-no-files-found: ignore
 
   record:
