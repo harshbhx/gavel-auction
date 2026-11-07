@@ -21,16 +21,20 @@ The speech provider comes from `VOICE_STT`. Unset or `replay` plays cached trans
 
 ## Providers
 
-Selectable providers: `groq`, `fake`.
+Selectable providers: `deepgram`, `groq`, `fake`.
 
-`selectProvider` builds only those. `deepgram` and `webspeech` are accepted names. Their clients exist in this package (`src/stt/deepgram.ts`, `deepgram-reconnect.ts`, `webspeech.ts`) but are built and not selectable, because `selectProvider` has no builder for them: a `DEEPGRAM_API_KEY` alone fails startup with `none_configured`, and with both keys set Groq is used alone and a warning is logged. `replay` is not selected by name; the replay mode constructs `ReplayStt` directly. `selectProvider` itself does not wrap anything in `FailoverStt`; the server does, around the live provider.
+`selectProvider` (`src/stt/select.ts`) builds Deepgram as `ReconnectingDeepgramStt` when `DEEPGRAM_API_KEY` and a WebSocket factory are both present (the server passes the platform socket), Groq as `GroqStt` when `GROQ_API_KEY` and a fetch function are present, and `fake` for tests. With `VOICE_STT` unset it tries `deepgram` then `groq` in that order and uses the first one that has a key and can be built; a provider with a key that cannot be built (for example Deepgram without a socket) is skipped with a warning and the next one is used. With nothing usable it throws `none_configured`. With `VOICE_STT` set to a name, that provider is used or startup fails: `unknown_provider` for a name outside `deepgram`, `groq`, `webspeech`, `fake`, `replay`; `missing_key` when its key is absent; `unavailable` when it has no builder, which is the case for `webspeech` (a browser client) and `replay`. There is no cross-provider fallback when a name is set.
+
+The server does not use the unset default: `chooseStt` (`packages/server/src/voice/stt.ts`) treats an unset `VOICE_STT` as the cached provider, and wraps a live provider in `FailoverStt` with the cached provider as the fallback. The fallback only takes over when a recording exists to play; with no recorded timeline the live provider is kept running. The replay mode constructs `ReplayStt` directly.
+
+What the evidence covers: the G5 clips are synthetic, noise-free speech (20 clips). Deepgram parsed 11 of 11 with no wrong accepts and Groq 9 of 11. There has been no real-room or noisy-audio test, so these numbers do not support a claim about a live room.
 
 ## Live evaluation against the real providers
 
-`npm run eval -w @gavel/voice -- --mode live --provider <deepgram|groq> --out eval-out/live` sends each evaluation clip to the provider's prerecorded endpoint (`src/eval/live.ts`, also exported as `transcribeLive`) and scores the transcript through the parser. The same adapters back `npm run gate:g5 -w @gavel/e2e`. Cached and text modes are unchanged and need no key.
+`npm run eval -w @gavel/voice -- --mode live --provider <deepgram|groq> --out eval-out/live` sends each evaluation clip to the provider's prerecorded endpoint (`src/eval/live.ts`, also exported as `transcribeLive`) and scores the transcript through the parser. The same adapters back `npm run gate:g5 -w @gavel/e2e`. Cached and text modes are unchanged and need no key. Cached mode reads `fixtures/stt-cache/<provider>/<clip id>.json`; that directory is not in the repository (the flat `deepgram-u*.json` and `groq-u*.json` files there are replay timelines, a different format), so the cached CI job reports NOT RUN with a warning and scores no clip. A green cached job is not evidence of a pass.
 
 - Recordings: one `<id>.wav` per clip listed in `fixtures/audio/manifest.json`, in the directory named by `G5_AUDIO_DIR` (default `packages/voice/fixtures/audio/recordings`). The recordings are not in the repository and must not be committed.
-- Missing recordings: if any are absent the run prints `eval: skipped: N of M recordings missing` and exits 0 without a report.
+- Missing recordings: if any are absent the run prints `eval: NOT RUN: N of M recordings missing, nothing was scored` and exits 3 without a report, so the live job fails rather than passing without scores.
 - Consent: record only people who agreed to have their voice sent to the speech vendors for this evaluation, and no personal data.
 - Keys: `DEEPGRAM_API_KEY` or `GROQ_API_KEY`, supplied only through repository secrets or the shell environment. Without the key the run exits 2 and names the missing variable. Key values are never printed or written to reports.
 - Failures: HTTP 429 and 5xx answers and network errors are retried up to 3 attempts in total with a doubling delay; other statuses fail at once with the provider name and status.
