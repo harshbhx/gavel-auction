@@ -8,6 +8,16 @@ import { motion, type Transition, type Easing } from 'motion/react';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { useReduced } from '../use-reduced';
 
+// Progressive enhancement: the server HTML and the first client render show the plain, fully
+// visible text. Only after mount, and only without reduced motion, does the blur animation start.
+function useEnhance(): boolean {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) setOn(true);
+  }, []);
+  return on;
+}
+
 type BlurTextProps = {
   text?: string;
   delay?: number;
@@ -57,6 +67,7 @@ const BlurText: React.FC<BlurTextProps> = ({
   startDelay = 0
 }) => {
   const reduce = useReduced();
+  const enhance = useEnhance();
   const elements = animateBy === 'words' ? text.split(' ') : text.split('');
   const [inView, setInView] = useState(false);
   const ref = useRef<HTMLElement>(null);
@@ -102,7 +113,13 @@ const BlurText: React.FC<BlurTextProps> = ({
   const times = Array.from({ length: stepCount }, (_, i) => (stepCount === 1 ? 0 : i / (stepCount - 1)));
 
   // Reduced motion: plain, fully visible text with no animation.
-  if (reduce) return <Tag className={className}>{text}</Tag>;
+  if (reduce || !enhance) {
+    return (
+      <Tag ref={ref as React.RefObject<never>} className={`blur-text ${className} flex flex-wrap`}>
+        {text}
+      </Tag>
+    );
+  }
 
   return (
     <Tag ref={ref as React.RefObject<never>} className={`blur-text ${className} flex flex-wrap`}>

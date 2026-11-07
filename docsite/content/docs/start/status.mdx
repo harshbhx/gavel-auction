@@ -22,8 +22,8 @@ Four words are used with care on this site.
 | Partial capture with `final_capture` | Real on the sandbox | Gate G1 PASS for two PayPal-account buyers. Guest card capture was not run. |
 | Remainder release | Inferred | The authorization reads CAPTURED and a void answers 422 PREVIOUSLY_CAPTURED. No buyer balance was read. |
 | Webhook signature verification | Real on the sandbox | Gate G4 PASS: six real deliveries verified. Rejecting a tampered event is fake-only. |
-| Whole-auction settlement | Fake | Settlement saga against the fake PayPal. The nightly sandbox run also records one full lot (spec R7), reported in `docs/GATES.md` as a run log only. |
-| Crash recovery | Fake | Injected crashes against the fake PayPal. One in-process crash is reported in the nightly sandbox run. |
+| Whole-auction settlement | Fake, plus one sandbox lot | Settlement saga against the fake PayPal. Nightly sandbox specs R7 and R8 settled one lot of three holds on the real sandbox (runs 42200708552 and 42317068784, redacted reports committed). No auction driven through a server. |
+| Crash recovery | Fake, plus one sandbox crash | Injected crashes against the fake PayPal. Spec R10 recovered from one in-process crash on the sandbox. No real process kill. |
 | Honor period and reauthorize | Not known | Gate G3 is a real probe in progress. The 30 day run is simulated. |
 | Voice | Recorded | Cached transcripts by default. Live speech only with `VOICE_STT` set. Gate G5 FAIL on synthetic audio. |
 | Hosted demo | Not available | No hosted URL is published. |

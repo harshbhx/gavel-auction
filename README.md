@@ -16,7 +16,7 @@
 
 <br>
 
-> **A live auction where every bid is a PayPal AUTHORIZE hold.** Only the winning price is captured; every other hold is voided and released. A journaled settlement saga (crash recovery verified against the fake PayPal only) and a hash-chained audit trail keep the result checkable.
+> **A live auction where every bid is a PayPal AUTHORIZE hold.** Only the winning price is captured; every other hold is voided and released. A journaled settlement saga (crash recovery verified with injected crashes against the fake PayPal, plus one in-process crash on the PayPal sandbox) and a hash-chained audit trail keep the result checkable.
 
 Built for the PayPal Hackathon 2026. PayPal sandbox only: no real money moves.
 
@@ -33,13 +33,13 @@ Built for the PayPal Hackathon 2026. PayPal sandbox only: no real money moves.
 
 Online auctions have a trust problem at the hammer: the winner may never pay, and every losing bidder wonders what happened to their money. GAVEL moves the money question to the start.
 
-|                         | A typical online auction           | GAVEL                                                                                                                   |
-| ----------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| When a bidder commits   | After winning, if they pay at all  | Before the first bid: PayPal holds their ceiling                                                                        |
-| What a losing bid costs | Nothing, but nothing guarantees it | Nothing: the hold is voided, never captured                                                                             |
-| What the winner pays    | Whatever the invoice says          | The winning price only, never the ceiling                                                                               |
-| If the server crashes   | Manual clean-up                    | The saga resumes from its journal and checks PayPal first (verified against the fake PayPal; sandbox crash run pending) |
-| Proof of the result     | Trust the operator                 | A hash-chained ledger anyone can verify from a public export                                                            |
+|                         | A typical online auction           | GAVEL                                                                                                                                                               |
+| ----------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| When a bidder commits   | After winning, if they pay at all  | Before the first bid: PayPal holds their ceiling                                                                                                                    |
+| What a losing bid costs | Nothing, but nothing guarantees it | Nothing: the hold is voided, never captured                                                                                                                         |
+| What the winner pays    | Whatever the invoice says          | The winning price only, never the ceiling                                                                                                                           |
+| If the server crashes   | Manual clean-up                    | The saga resumes from its journal and checks PayPal first (injected crashes against the fake PayPal; one in-process crash on the sandbox; no real process kill yet) |
+| Proof of the result     | Trust the operator                 | A hash-chained ledger anyone can verify from a public export                                                                                                        |
 
 ## How it works
 
@@ -68,7 +68,7 @@ sequenceDiagram
 
 ### Settlement that is designed to survive a crash
 
-This is verified against the project's fake PayPal only. No whole-auction settlement and no real crash and restart has run on the PayPal sandbox (see [docs/GATES.md](docs/GATES.md)). If the process dies mid-settlement, the saga journal lets it resume: it checks the truth at PayPal, then continues the capture and the voids instead of repeating them. When PayPal's answer is unknown, the settlement stops for review rather than guessing. Simplified:
+Crash recovery is verified with injected crashes against the project's fake PayPal. On the PayPal sandbox the nightly run (specs R7, R8 and R10; runs [42200708552](https://github.com/harshbhx/gavel-auction/actions/runs/42200708552) on 6 Nov 2026 and [42317068784](https://github.com/harshbhx/gavel-auction/actions/runs/42317068784) on 7 Nov 2026; redacted reports in [docs/evidence/nightly](docs/evidence/nightly)) settled one lot of three holds with the real saga and recovered from one in-process crash with one capture on the winner. No auction driven through a deployed server and no real process kill and restart has run on the sandbox (see [docs/GATES.md](docs/GATES.md)). If the process dies mid-settlement, the saga journal lets it resume: it checks the truth at PayPal, then continues the capture and the voids instead of repeating them. When PayPal's answer is unknown, the settlement stops for review rather than guessing. Simplified:
 
 ```mermaid
 stateDiagram-v2
@@ -165,7 +165,7 @@ Latency is not yet within budget. On the PayPal sandbox (`measure-sandbox`, 2026
 | Area                      | Status                                                                                                                                                                                                                                                                                                                         |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Auction engine and ledger | ![works](https://img.shields.io/badge/-works-2ea44f?style=flat-square) Covered by unit, property and fixture tests                                                                                                                                                                                                             |
-| Settlement saga and holds | ![works](https://img.shields.io/badge/-works-2ea44f?style=flat-square) Against the fake PayPal; sandbox gates below                                                                                                                                                                                                            |
+| Settlement saga and holds | ![works](https://img.shields.io/badge/-works-2ea44f?style=flat-square) Fake PayPal, plus nightly sandbox specs R7, R8, R10; gates below                                                                                                                                                                                        |
 | Webhook verification      | ![verified](https://img.shields.io/badge/-verified-2ea44f?style=flat-square) Against real sandbox events (gate G4)                                                                                                                                                                                                             |
 | Server                    | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) Ops, webhook, admin and auction HTTP routes, room WebSocket gateway and `/audio` socket mounted; scripted demo routes only with `DEMO_MODE=1` and fake payments                                                                                     |
 | Voice                     | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) `/audio` socket feeds decisions into the room. Speech is cached transcripts by default, Groq only with `VOICE_STT=groq` and `GROQ_API_KEY`; no live speech run recorded (G5: FAIL on synthetic eSpeak clips, so spoken bids use the confirm prompt) |

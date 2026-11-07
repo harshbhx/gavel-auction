@@ -67,8 +67,8 @@ export function CrashDiagram() {
         <>
           Verified with injected crashes at these boundaries against the fake PayPal (the simulation
           scenario S6 runs 10 crash points, each with and without the idempotency table). One in-process
-          crash at the same place is reported as passing in the nightly sandbox run of 6 Nov (run log only,
-          not independently verifiable). No real server kill and restart has run on a hosted host.
+          crash at the same place (spec R10) passed on the real sandbox in the nightly runs of 6 and 7 Nov
+          (redacted reports committed). No real server kill and restart has run on a hosted host.
         </>
       }
       transcript={

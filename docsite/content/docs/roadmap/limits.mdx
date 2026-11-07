@@ -7,7 +7,7 @@ icon: CircleSlash
 Nothing here is hidden elsewhere. Each item points to the page with the detail.
 
 - **No hosted demo.** No URL is published. The runnable path is a local run on the fake PayPal. ([demo guide](/docs/start/demo))
-- **Whole-auction settlement and crash recovery are fake-PayPal results.** The sandbox gates cover single calls and the nightly specs. No real server kill has run on a hosted host. ([crash recovery](/docs/how-it-works/crash-recovery))
+- **Whole-auction settlement and crash recovery are mostly fake-PayPal results.** On the real sandbox only the nightly specs R7, R8 and R10 ran (one lot of three holds, one in-process crash). No auction driven through a server and no real process kill has run. ([crash recovery](/docs/how-it-works/crash-recovery))
 - **The 30 day run is simulated.** It shows the code is consistent with a model of PayPal, not that PayPal behaves like the model. ([simulation](/docs/proof/simulation))
 - **G3 is not finished.** The honor period and validity window are unknown until the probe ends. A hold older than 2 hours is flagged stale; it is still captured.
 - **The remainder release is inferred.** No buyer balance was read; guest card capture was not run. ([gates](/docs/proof/gates))
@@ -18,8 +18,8 @@ Nothing here is hidden elsewhere. Each item points to the page with the detail.
 - **Accessibility manual pass not done.** ([accessibility](/docs/proof/accessibility))
 - **Card and guest checkout in a live room.** G2 proves the SDK authorize flow only; no live-room checkout run is recorded.
 
-<NotVerified title="Where the repo docs disagree with each other">
+<NotVerified title="What exactly ran on the sandbox, beyond the gates">
 
-Two statements in `docs/GATES.md` are in tension: its nightly-run section records spec R7 (a full lot) and R10 (an in-process crash) passing on the sandbox, while its closing paragraph and the README call whole-auction settlement and crash recovery fake-PayPal only. This site states both: the sandbox runs exist as a run log, and no committed evidence file backs them.
+The `nightly-sandbox` workflow on `main` ran specs R7 (one lot of three holds: winner captured 12500 cents, others voided, saga SETTLED, 0 differences against PayPal), R8 and R10 (one in-process crash at `after:capture`, the resume adopted the capture, one capture) in run [42200708552](https://github.com/harshbhx/gavel-auction/actions/runs/42200708552) on 6 Nov 2026 and in the scheduled run [42317068784](https://github.com/harshbhx/gavel-auction/actions/runs/42317068784) on 7 Nov 2026. Redacted copies of the reports are committed under `docs/evidence/nightly`. R10 throws an exception in the test process; it is not a process kill.
 
 </NotVerified>

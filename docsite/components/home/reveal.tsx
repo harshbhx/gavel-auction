@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'motion/react';
+import { useEffect, useState } from 'react';
 import { useReduced } from './use-reduced';
 import type { ReactNode } from 'react';
 
@@ -17,7 +18,10 @@ export function Reveal({
   y?: number;
 }) {
   const reduce = useReduced();
-  if (reduce) return <div className={className}>{children}</div>;
+  // Content is visible in the server HTML and without JavaScript; the entrance only enhances.
+  const [enhance, setEnhance] = useState(false);
+  useEffect(() => setEnhance(true), []);
+  if (reduce || !enhance) return <div className={className}>{children}</div>;
   return (
     <motion.div
       className={className}
