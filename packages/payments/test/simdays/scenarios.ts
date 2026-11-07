@@ -524,7 +524,9 @@ interface Lot {
   members: Array<{ bidder: string; joinAt: number; ceiling: number }>;
   /**
    * Every fifth lot: two injected 429s on its first capture, and a process restart at the capture
-   * boundary followed by a 3-day outage, which is past the unknown deadline.
+   * boundary followed by a 2-hour outage, which is past the 10-minute unknown deadline. The outage
+   * is kept short on purpose: a multi-day one lapses the honor period of an in-doubt hold, and
+   * that refusal is a separate cause, not a 429.
    */
   storm: boolean;
 }
@@ -661,7 +663,7 @@ export async function scenario8(
         const first = sorted[0];
         if (lot.storm) {
           // Two 429s on the first capture. They start no unknown clock, so the restart below
-          // (3 days down, past the unknown deadline) must not send the lot to review.
+          // (2 hours down, past the unknown deadline) must not send the lot to review.
           if (first !== undefined) {
             w.core.inject('capture', 'http_429', first.authId, 2);
             numbers.faultsArmed += 1;
@@ -686,7 +688,7 @@ export async function scenario8(
         const res = await w.settle(
           lot.id,
           lot.storm
-            ? { rand, crashOnce: ['before:capture'], downMs: () => 3 * DAY_MS }
+            ? { rand, crashOnce: ['before:capture'], downMs: () => 2 * HOUR_MS }
             : {
                 rand,
                 crashProb: 0.03,
@@ -740,7 +742,7 @@ export async function scenario8(
     await ev.run();
   }
   r.timeline.push(
-    `day 0 to ${SOAK_DAYS}: ${SOAK_LOTS} lots, ${SOAK_BIDDERS} bidders, 3% crash chance at every boundary, outages of 1 to 4 days in 5% of crashes, random PayPal faults; every fifth lot (${numbers.storms} lots) gets two injected 429s on its first capture and a restart after a 3-day outage, past the unknown deadline`,
+    `day 0 to ${SOAK_DAYS}: ${SOAK_LOTS} lots, ${SOAK_BIDDERS} bidders, 3% crash chance at every boundary, outages of 1 to 4 days in 5% of crashes, random PayPal faults; every fifth lot (${numbers.storms} lots) gets two injected 429s on its first capture and a restart after a 2-hour outage, past the unknown deadline`,
   );
   r.timeline.push(
     `the 429 bug is fixed (https://github.com/harshbhx/gavel-auction/issues/1937, PR https://github.com/harshbhx/gavel-auction/pull/1938): a 429 starts no unknown clock, and ${numbers.review429} lots in this run reached review because of one. A timeout, a 5xx or a lost answer followed by an outage longer than the unknown deadline still reaches review by design: ${numbers.reviewAmbiguous} of the ${numbers.review} lots in review began that way. The cause of each lot in review is listed in the measures.`,
