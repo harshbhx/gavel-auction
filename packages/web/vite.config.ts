@@ -51,7 +51,8 @@ export function connectSources(env: EnvMap, dev: boolean): string[] {
 export function buildCsp(env: EnvMap, dev: boolean): string {
   return [
     "default-src 'self'",
-    "script-src 'self' https://www.sandbox.paypal.com",
+    // blob: is for the microphone worklet, which is loaded from a blob URL (audio/worklet.ts).
+    "script-src 'self' blob: https://www.sandbox.paypal.com",
     `connect-src ${connectSources(env, dev).join(' ')}`,
     'frame-src https://www.sandbox.paypal.com',
     "img-src 'self' data:",

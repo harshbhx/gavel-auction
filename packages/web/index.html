@@ -4,9 +4,71 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Content-Security-Policy" content="__GAVEL_CSP__" />
-    <title>GAVEL</title>
+    <title>GAVEL: live auctions where every bid is a PayPal hold</title>
+    <meta
+      name="description"
+      content="GAVEL is a live auction where every bid is a PayPal AUTHORIZE hold. Only the winning price is captured and every other hold is released. PayPal sandbox only."
+    />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="canonical" href="https://gavel-web.creharsh.workers.dev/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GAVEL" />
+    <meta property="og:title" content="GAVEL: live auctions where every bid is a PayPal hold" />
+    <meta
+      property="og:description"
+      content="Every bid is a PayPal hold. Only the winner pays. PayPal sandbox only."
+    />
+    <meta property="og:url" content="https://gavel-web.creharsh.workers.dev/" />
+    <meta property="og:image" content="https://gavel-web.creharsh.workers.dev/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="GAVEL logo: a hatched ring, and the line Every bid is a PayPal hold. Only the winner pays."
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="GAVEL: live auctions where every bid is a PayPal hold" />
+    <meta
+      name="twitter:description"
+      content="Every bid is a PayPal hold. Only the winner pays. PayPal sandbox only."
+    />
+    <meta name="twitter:image" content="https://gavel-web.creharsh.workers.dev/og.png" />
+    <meta
+      name="twitter:image:alt"
+      content="GAVEL logo: a hatched ring, and the line Every bid is a PayPal hold. Only the winner pays."
+    />
   </head>
   <body>
+    <noscript>
+      <main
+        style="
+          font-family: system-ui, sans-serif;
+          max-width: 40rem;
+          margin: 2rem auto;
+          padding: 0 1rem;
+          line-height: 1.5;
+        "
+      >
+        <h1>GAVEL</h1>
+        <p>
+          GAVEL is a live auction where every bid is a PayPal AUTHORIZE hold. Only the winning price
+          is captured; every other hold is voided and released. It runs on the PayPal sandbox only,
+          so no real money moves.
+        </p>
+        <p>
+          The auction screens need JavaScript. To read how GAVEL settles an auction and what has
+          been proven on the sandbox, see the
+          <a href="https://gavel-docs.creharsh.workers.dev/docs">GAVEL docs</a>.
+        </p>
+      </main>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
