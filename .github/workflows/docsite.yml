@@ -85,7 +85,7 @@ jobs:
     name: Screenshots
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
@@ -112,9 +112,10 @@ jobs:
         run: |
           npx serve out -l 4173 > "$RUNNER_TEMP/serve.log" 2>&1 &
           for i in $(seq 1 30); do curl -fs http://localhost:4173/ > /dev/null && break; sleep 1; done
-          node scripts/shots.mjs http://localhost:4173 shots
+          node scripts/shots.mjs http://localhost:4173 shots out
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: docsite-shots
           path: docsite/shots

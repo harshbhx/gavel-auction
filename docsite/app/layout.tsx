@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Banner } from 'fumadocs-ui/components/banner';
 import { Provider } from '@/components/provider';
 import { archivo, martian } from '@/lib/fonts';
 import { siteUrl } from '@/lib/shared';
@@ -34,15 +35,15 @@ export default function Layout({ children }: LayoutProps<'/'>) {
         <a href="#main" className="hl-skip">
           Skip to content
         </a>
-        <div
-          role="note"
-          className="hl-hatch-fill border-b border-[var(--hl-signal-ink)] bg-[var(--hl-panel)]"
-        >
-          <p className="bg-[color-mix(in_oklab,var(--hl-panel)_88%,transparent)] px-4 py-1.5 text-center font-mono text-xs font-bold tracking-wide uppercase">
-            PayPal sandbox only. No real money moves.
-          </p>
-        </div>
         <Provider>
+          <Banner
+            height="2.25rem"
+            className="hl-hatch-fill border-b border-[var(--hl-signal-ink)] bg-[var(--hl-panel)] text-[var(--hl-fg)]"
+          >
+            <p className="bg-[color-mix(in_oklab,var(--hl-panel)_88%,transparent)] px-4 py-1 text-center font-mono text-[0.68rem] font-bold tracking-wide uppercase sm:text-xs">
+              PayPal sandbox only. No real money moves.
+            </p>
+          </Banner>
           <div id="main" className="flex flex-1 flex-col">
             {children}
           </div>
