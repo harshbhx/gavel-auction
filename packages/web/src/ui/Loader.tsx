@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
+import { t } from '../copy/t';
 
 export interface LoaderProps {
   /** Text for assistive technology and the visible caption. */
@@ -6,7 +7,7 @@ export interface LoaderProps {
 }
 
 /** A small busy indicator with a text label. The spin stops under reduced motion. */
-export function Loader({ label = 'Loading' }: LoaderProps) {
+export function Loader({ label = t('state.loading') }: LoaderProps) {
   return (
     <span className="ui-loader" role="status" aria-live="polite">
       <span className="ui-loader__dot" aria-hidden="true" />
@@ -43,7 +44,7 @@ export interface SkeletonGroupProps {
 }
 
 /** Marks a group of skeletons as busy and gives it one accessible name. */
-export function SkeletonGroup({ label = 'Loading', children }: SkeletonGroupProps) {
+export function SkeletonGroup({ label = t('state.loading'), children }: SkeletonGroupProps) {
   return (
     <div className="ui-skeleton-group" role="status" aria-busy="true" aria-label={label}>
       {children}

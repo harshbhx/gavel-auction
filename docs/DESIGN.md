@@ -35,7 +35,7 @@ Old token names keep working: `--color-bg`, `--color-surface`, `--color-fg`, `--
 
 Without `data-pal`, light is A and dark is B. The projector theme is B on black, large, and ignores the switch on purpose. Put `<PaletteSwitch />` anywhere to let a person choose.
 
-To add a palette: add a block to `palettes.css` with every `--color-*` token, add its key to `PALETTES` and `PALETTE_LABELS` in `src/ui/palette.ts`. The contrast test fails until every pair passes.
+To add a palette: add a block to `palettes.css` with every `--color-*` token, add its key to `PALETTES` in `src/ui/palette.ts`, and a `ui.palette.*` entry in the copy catalog. The contrast test fails until every pair passes.
 
 ## Contrast rules
 

@@ -1,11 +1,12 @@
 import { useRef, type ClipboardEvent, type KeyboardEvent } from 'react';
+import { t } from '../copy/t';
 
 export interface JoinCodeInputProps {
   /** The characters typed so far, without the prefix. */
   value: string;
   onChange: (code: string) => void;
   /** Called once when every slot is filled. */
-  onComplete?: (code: string) => void;
+  onComplete?: ((code: string) => void) | undefined;
   /** Number of characters after the prefix. Default 4. */
   length?: number;
   /** Shown before the slots and stripped from pasted text. Default "GVL-". */
@@ -87,11 +88,7 @@ export function JoinCodeInput({
 
   return (
     <div className="ui-otp" data-invalid={invalid ? 'true' : undefined}>
-      <div
-        className="ui-otp__row"
-        role="group"
-        aria-label={`Room code, ${length} characters after ${prefix}`}
-      >
+      <div className="ui-otp__row" role="group" aria-label={t('ui.code.group', { length, prefix })}>
         <span className="ui-otp__prefix" aria-hidden="true">
           {prefix}
         </span>
@@ -110,7 +107,7 @@ export function JoinCodeInput({
             maxLength={length}
             value={chars[i] === ' ' ? '' : chars[i]}
             disabled={disabled}
-            aria-label={`Character ${i + 1} of ${length}`}
+            aria-label={t('ui.code.char', { n: i + 1, length })}
             aria-invalid={invalid ? true : undefined}
             onChange={(e) => {
               replaceAt(i, e.target.value);

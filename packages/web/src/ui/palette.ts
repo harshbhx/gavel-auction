@@ -4,12 +4,6 @@ export type PaletteName = (typeof PALETTES)[number];
 
 export const PALETTE_STORAGE_KEY = 'gavel.palette';
 
-export const PALETTE_LABELS: Readonly<Record<PaletteName, string>> = {
-  a: 'Newsprint and Signal',
-  b: 'Night Board',
-  c: 'Salon',
-};
-
 export function isPalette(value: unknown): value is PaletteName {
   return typeof value === 'string' && (PALETTES as readonly string[]).includes(value);
 }

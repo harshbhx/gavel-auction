@@ -1,4 +1,5 @@
 import { useId, useRef, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
+import { t } from '../copy/t';
 import { formatUsdCompact } from '../util/money';
 import { snapToStep } from './format';
 
@@ -24,7 +25,7 @@ export function CeilingSlider({
   max,
   step,
   majorEvery,
-  label = 'Price ceiling',
+  label = t('ui.slider.label'),
   disabled = false,
 }: CeilingSliderProps) {
   const labelId = useId();

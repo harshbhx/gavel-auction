@@ -7,6 +7,7 @@ import {
   type CSSProperties,
   type KeyboardEvent,
 } from 'react';
+import { t } from '../copy/t';
 import { prefersReducedMotion } from './format';
 
 export const HOLD_MS = 3000;
@@ -135,15 +136,17 @@ export function HoldButton({
   };
 
   const seconds = Math.round(holdMs / 1000);
+  const holdingText =
+    left === 1 ? t('ui.hold.statusHoldingOne') : t('ui.hold.statusHoldingMany', { left });
   const status =
     phase === 'holding'
-      ? `Holding. ${left} ${left === 1 ? 'second' : 'seconds'} to go.`
+      ? holdingText
       : phase === 'done'
-        ? 'Done.'
+        ? t('ui.hold.statusDone')
         : phase === 'cancelled'
-          ? 'Released too early. Nothing happened.'
+          ? t('ui.hold.statusCancelled')
           : phase === 'armed'
-            ? 'Tap confirm again to finish.'
+            ? t('ui.hold.statusArmed')
             : '';
 
   return (
@@ -184,7 +187,7 @@ export function HoldButton({
         </span>
       </button>
       <span className="ui-hold__note" id={noteId}>
-        {`Press and hold for ${seconds} seconds. Let go to cancel.`}
+        {t('ui.hold.note', { seconds })}
       </span>
       {confirmAlternative && (
         <button
@@ -193,7 +196,7 @@ export function HoldButton({
           aria-disabled={disabled ? true : undefined}
           onClick={confirmByTaps}
         >
-          {phase === 'armed' ? 'Tap again to confirm' : 'Cannot hold? Confirm with two taps'}
+          {phase === 'armed' ? t('ui.hold.altArmed') : t('ui.hold.alt')}
         </button>
       )}
       <span className="ui-hold__status" role="status" aria-live="polite">

@@ -6,11 +6,4 @@ export { JoinCodeInput, normalizeCode, type JoinCodeInputProps } from './JoinCod
 export { Loader, Skeleton, SkeletonGroup, type LoaderProps, type SkeletonProps } from './Loader';
 export { StatusPill, type PillTone, type StatusPillProps } from './StatusPill';
 export { PaletteSwitch } from './PaletteSwitch';
-export {
-  PALETTES,
-  PALETTE_LABELS,
-  initPalette,
-  setPalette,
-  clearPalette,
-  type PaletteName,
-} from './palette';
+export { PALETTES, initPalette, setPalette, clearPalette, type PaletteName } from './palette';

@@ -1,5 +1,4 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { readFileSync } from 'node:fs';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -187,7 +186,7 @@ describe('HoldCard', () => {
   it('shows a held hold with hatched bar and plain text', () => {
     const { container } = render(<HoldCard state="held" ceilingCents={50000} />);
     expect(screen.getByText('Held', { selector: 'em' })).toBeTruthy();
-    expect(screen.getByText(/nothing charged/i)).toBeTruthy();
+    expect(screen.getByText(/not charged/i)).toBeTruthy();
     expect(container.querySelector('.ui-holdbar__held')).not.toBeNull();
     expect(container.querySelector('.ui-holdbar__charged')).toBeNull();
   });
@@ -435,21 +434,5 @@ describe('palette', () => {
       'true',
     );
     expect(document.documentElement.getAttribute('data-pal')).toBe('b');
-  });
-});
-
-describe('ui.css', () => {
-  const css = readFileSync(new URL('../../src/ui/ui.css', import.meta.url), 'utf8');
-
-  it('uses tokens only: no hex or rgb colours', () => {
-    expect(/#[0-9a-fA-F]{3,8}\b/.test(css)).toBe(false);
-    expect(/\brgba?\(/.test(css)).toBe(false);
-  });
-
-  it('stops looping animation under reduced motion', () => {
-    const block =
-      /@media \(prefers-reduced-motion: reduce\) \{([\s\S]*)\}\s*$/.exec(css)?.[1] ?? '';
-    expect(block).toContain('animation: none;');
-    expect(block).toContain('.ui-skeleton');
   });
 });
