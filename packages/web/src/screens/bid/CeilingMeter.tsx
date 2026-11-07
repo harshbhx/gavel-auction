@@ -17,7 +17,7 @@ export function CeilingMeter({ usedCents, maxCents }: CeilingMeterProps) {
     max: formatUsdCompact(maxCents),
   });
   return (
-    <div>
+    <div className="bid__meter">
       <p>{text}</p>
       <div
         role="meter"
@@ -29,16 +29,9 @@ export function CeilingMeter({ usedCents, maxCents }: CeilingMeterProps) {
         aria-valuemin={0}
         aria-valuemax={maxCents}
         aria-valuetext={text}
-        style={{ height: 8, background: 'var(--gv-border, #ccc)', borderRadius: 4 }}
+        className="bid__meterbar"
       >
-        <div
-          style={{
-            width: `${percent}%`,
-            height: '100%',
-            background: 'var(--gv-accent, #0050d0)',
-            borderRadius: 4,
-          }}
-        />
+        <div className="bid__meterfill" style={{ width: `${percent}%` }} />
       </div>
     </div>
   );

@@ -71,7 +71,7 @@ describe('BidScreen (T-WEB-033)', () => {
     vi.useFakeTimers();
     const onBid = vi.fn();
     render(<BidScreen store={makeStore(50000)} onBid={onBid} />);
-    expect(screen.getByText('$1.00')).toBeTruthy();
+    expect(screen.getByRole('img', { name: '$1.00' })).toBeTruthy();
     expect(screen.getByText(t('bid.status.none'))).toBeTruthy();
     const quick = screen.getByRole('button', { name: t('bid.quick', { amount: '$50' }) });
     fireEvent.click(quick);
