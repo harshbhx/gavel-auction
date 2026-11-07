@@ -1,7 +1,7 @@
 name: sim-multiday
 # Multi-day simulated-clock suite: our settlement code against the fake PayPal's model of
 # authorization time (honor period, validity, reauthorize). No secrets, no network. It does not
-# replace the real G3 probe. The suite writes docs/evidence/SIM-MULTIDAY.md; the job fails when the
+# replace the real G3 probe. The suite writes docs/evidence/SIM/SIM-MULTIDAY.md; the job fails when the
 # committed copy is not the one the suite produces.
 on:
   pull_request:
@@ -9,7 +9,7 @@ on:
       - '.github/workflows/sim-multiday.yml'
       - 'packages/payments/src/**'
       - 'packages/payments/test/simdays/**'
-      - 'docs/evidence/SIM-MULTIDAY.md'
+      - 'docs/evidence/SIM/SIM-MULTIDAY.md'
   workflow_dispatch:
 
 permissions:
@@ -33,17 +33,17 @@ jobs:
           SIM_MULTIDAY_WRITE: '1'
         run: npm exec -w @gavel/payments -- vitest run test/simdays
       - name: Format the report like every other markdown file
-        run: npx prettier --write docs/evidence/SIM-MULTIDAY.md
+        run: npx prettier --write docs/evidence/SIM/SIM-MULTIDAY.md
       - name: Keep the generated report
         if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: sim-multiday-report
-          path: docs/evidence/SIM-MULTIDAY.md
+          path: docs/evidence/SIM/SIM-MULTIDAY.md
           if-no-files-found: warn
       - name: The committed report is the generated one
         run: |
-          if ! git diff --quiet -- docs/evidence/SIM-MULTIDAY.md || [ -n "$(git ls-files --others --exclude-standard -- docs/evidence/SIM-MULTIDAY.md)" ]; then
-            echo "docs/evidence/SIM-MULTIDAY.md differs from the generated report. Download the sim-multiday-report artifact and commit it."
+          if ! git diff --quiet -- docs/evidence/SIM/SIM-MULTIDAY.md || [ -n "$(git ls-files --others --exclude-standard -- docs/evidence/SIM/SIM-MULTIDAY.md)" ]; then
+            echo "docs/evidence/SIM/SIM-MULTIDAY.md differs from the generated report. Download the sim-multiday-report artifact and commit it."
             exit 1
           fi
