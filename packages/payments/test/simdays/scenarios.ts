@@ -1,7 +1,7 @@
 import type { FakeFaultKind } from '../../src/fake/core.js';
 import { createHoldFinder, processEvent, sweepOrphans } from '../../src/webhooks/orphans.js';
 import { MemoryWebhookEventStore } from '../../src/stores/memory.js';
-import type { HoldRecord, StoredWebhook } from '../../src/types.js';
+import type { HoldRecord, PaymentAudit, StoredWebhook } from '../../src/types.js';
 import { prng } from '../helpers/crashHarness.js';
 import {
   DAY_MS,
@@ -522,6 +522,40 @@ interface Lot {
   id: string;
   closeAt: number;
   members: Array<{ bidder: string; joinAt: number; ceiling: number }>;
+  /**
+   * Every fifth lot: two injected 429s on its first capture, and a process restart at the capture
+   * boundary followed by a 2-hour outage, which is past the 10-minute unknown deadline. The outage
+   * is kept short on purpose: a multi-day one lapses the honor period of an in-doubt hold, and
+   * that refusal is a separate cause, not a 429.
+   */
+  storm: boolean;
+}
+
+/** The cause of a lot that did not settle, read from PayPal's call log. */
+const CAUSE_429 = 'rate limited (429)';
+const CAUSE_OTHER = 'other (no PayPal failure, or a definite refusal)';
+
+/**
+ * An ambiguous capture or void (timeout, 5xx, lost answer) starts the unknown clock, so it is the
+ * cause whenever one happened. A 429 starts no clock: a lot whose only PayPal failures are 429s
+ * has no ambiguous cause, and a review among them would be the bug of issue 1937.
+ */
+function reviewCause(audits: readonly PaymentAudit[], auctionId: string): string {
+  const calls = audits.filter((a) => a.auctionId === auctionId && a.kind === 'paypal_call');
+  // A 429 is a stall, not a failure of the lot: it is left out until no other cause exists.
+  const failed = calls.filter(
+    (a) => a.label !== 'ok' && a.label !== 'rate_limited' && a.status !== 429,
+  );
+  const ambiguous = failed.find((a) => a.outcome === 'unknown');
+  if (ambiguous !== undefined) {
+    return `ambiguous ${ambiguous.op ?? 'call'} outcome (${ambiguous.label ?? 'error'})`;
+  }
+  const refused = failed.find((a) => a.outcome === 'definite');
+  if (refused !== undefined) {
+    return `definite refusal (${refused.label ?? 'error'}, ${refused.status ?? 0})`;
+  }
+  if (calls.some((a) => a.label === 'rate_limited' || a.status === 429)) return CAUSE_429;
+  return CAUSE_OTHER;
 }
 
 export interface SoakNumbers {
@@ -536,6 +570,16 @@ export interface SoakNumbers {
   reauths: number;
   holds: number;
   faultsArmed: number;
+  /** Lots that got the injected 429 storm. */
+  storms: number;
+  /** Storm lots that settled after at least one restart. */
+  stormSurvived: number;
+  /** Lots in review whose cause is a 429. Must be zero. */
+  review429: number;
+  /** Lots in review whose cause is an ambiguous capture or void. */
+  reviewAmbiguous: number;
+  /** Lots in review that began with a definite refusal (not a 429, not an ambiguous outcome). */
+  reviewRefused: number;
 }
 
 export async function scenario8(
@@ -566,13 +610,19 @@ export async function scenario8(
         ceiling: int(20, 200) * 500,
       });
     }
-    lots.push({ id: `soak${String(i + 1).padStart(2, '0')}`, closeAt: start + duration, members });
+    lots.push({
+      id: `soak${String(i + 1).padStart(2, '0')}`,
+      closeAt: start + duration,
+      members,
+      storm: i % 5 === 0,
+    });
   }
 
   type Ev = { at: number; order: number; run: () => Promise<void> };
   const events: Ev[] = [];
   const held = new Map<string, HoldRef[]>();
   const reviews: Array<[string, string]> = [];
+  const causes = new Map<string, number>();
   const numbers: SoakNumbers = {
     lots: SOAK_LOTS,
     settled: 0,
@@ -585,6 +635,11 @@ export async function scenario8(
     reauths: 0,
     holds: 0,
     faultsArmed: 0,
+    storms: 0,
+    stormSurvived: 0,
+    review429: 0,
+    reviewAmbiguous: 0,
+    reviewRefused: 0,
   };
 
   for (const lot of lots) {
@@ -615,34 +670,55 @@ export async function scenario8(
         }
         await w.close(w.planFor(lot.id, holds, candidates));
         const first = sorted[0];
-        if (first !== undefined && rand() < 0.12) {
-          w.core.inject('capture', 'capture_declined', first.authId, 1);
-          numbers.faultsArmed += 1;
+        if (lot.storm) {
+          // Two 429s on the first capture. They start no unknown clock, so the restart below
+          // (2 hours down, past the unknown deadline) must not send the lot to review.
+          if (first !== undefined) {
+            w.core.inject('capture', 'http_429', first.authId, 2);
+            numbers.faultsArmed += 1;
+            numbers.storms += 1;
+          }
+        } else {
+          if (first !== undefined && rand() < 0.12) {
+            w.core.inject('capture', 'capture_declined', first.authId, 1);
+            numbers.faultsArmed += 1;
+          }
+          if (rand() < 0.3) {
+            const kind = CAPTURE_FAULTS[int(0, CAPTURE_FAULTS.length - 1)] as FakeFaultKind;
+            w.core.inject('capture', kind, null, 1);
+            numbers.faultsArmed += 1;
+          }
+          if (rand() < 0.2) {
+            const kind = VOID_FAULTS[int(0, VOID_FAULTS.length - 1)] as FakeFaultKind;
+            w.core.inject('void', kind, null, 1);
+            numbers.faultsArmed += 1;
+          }
         }
-        if (rand() < 0.3) {
-          const kind = CAPTURE_FAULTS[int(0, CAPTURE_FAULTS.length - 1)] as FakeFaultKind;
-          w.core.inject('capture', kind, null, 1);
-          numbers.faultsArmed += 1;
-        }
-        if (rand() < 0.2) {
-          const kind = VOID_FAULTS[int(0, VOID_FAULTS.length - 1)] as FakeFaultKind;
-          w.core.inject('void', kind, null, 1);
-          numbers.faultsArmed += 1;
-        }
-        const res = await w.settle(lot.id, {
-          rand,
-          crashProb: 0.03,
-          forgetIdempotency: rand() < 0.25,
-          downMs: (rnd) => {
-            const x = rnd();
-            if (x < 0.7) return int(2, 40) * MIN_MS;
-            if (x < 0.95) return int(1, 12) * HOUR_MS;
-            numbers.outages += 1;
-            return int(1, 4) * DAY_MS;
-          },
-        });
+        const res = await w.settle(
+          lot.id,
+          lot.storm
+            ? { rand, crashOnce: ['before:capture'], downMs: () => 2 * HOUR_MS }
+            : {
+                rand,
+                crashProb: 0.03,
+                forgetIdempotency: rand() < 0.25,
+                downMs: (rnd) => {
+                  const x = rnd();
+                  if (x < 0.7) return int(2, 40) * MIN_MS;
+                  if (x < 0.95) return int(1, 12) * HOUR_MS;
+                  numbers.outages += 1;
+                  return int(1, 4) * DAY_MS;
+                },
+              },
+        );
         numbers.crashes += res.crashes;
+        if (lot.storm && res.status === 'settled' && res.crashes >= 1) numbers.stormSurvived += 1;
         if (res.status !== 'settled') {
+          const cause = reviewCause(w.audits, lot.id);
+          causes.set(cause, (causes.get(cause) ?? 0) + 1);
+          if (cause === CAUSE_429) numbers.review429 += 1;
+          if (cause.startsWith('ambiguous')) numbers.reviewAmbiguous += 1;
+          if (cause.startsWith('definite refusal')) numbers.reviewRefused += 1;
           const last = res.journal?.history[res.journal.history.length - 1]?.label ?? 'none';
           const reauthed = Object.values(res.journal?.holds ?? {}).filter(
             (h) => (h.priorAuthIds?.length ?? 0) > 0,
@@ -659,7 +735,7 @@ export async function scenario8(
             .join(' ');
           reviews.push([
             lot.id,
-            `closed day ${lot.closeAt.toFixed(2)}, down ${(res.downMs / DAY_MS).toFixed(2)} days, last step ${last}, reauthorized holds ${reauthed}, failed ${failedWhy}, passes ${res.passes}, crashes ${res.crashes}, last calls ${tail}`,
+            `cause ${cause}; closed day ${lot.closeAt.toFixed(2)}, down ${(res.downMs / DAY_MS).toFixed(2)} days, last step ${last}, reauthorized holds ${reauthed}, failed ${failedWhy}, passes ${res.passes}, crashes ${res.crashes}, last calls ${tail}`,
           ]);
         }
         if (res.status === 'settled') numbers.settled += 1;
@@ -676,11 +752,10 @@ export async function scenario8(
     await ev.run();
   }
   r.timeline.push(
-    `day 0 to ${SOAK_DAYS}: ${SOAK_LOTS} lots, ${SOAK_BIDDERS} bidders, 3% crash chance at every boundary, outages of 1 to 4 days in 5% of crashes, random PayPal faults`,
+    `day 0 to ${SOAK_DAYS}: ${SOAK_LOTS} lots, ${SOAK_BIDDERS} bidders, 3% crash chance at every boundary, outages of 1 to 4 days in 5% of crashes, random PayPal faults; every fifth lot (${numbers.storms} lots) gets two injected 429s on its first capture and a restart after a 2-hour outage, past the unknown deadline`,
   );
-
   r.timeline.push(
-    'lots that end in review are listed in the measures with their last PayPal calls; the known cause of the two in this run is https://github.com/harshbhx/gavel-auction/issues/1937',
+    `the 429 bug is fixed (https://github.com/harshbhx/gavel-auction/issues/1937, PR https://github.com/harshbhx/gavel-auction/pull/1938): a 429 starts no unknown clock, and ${numbers.review429} lots in this run reached review because of one. A timeout, a 5xx or a lost answer followed by an outage longer than the unknown deadline still reaches review by design: ${numbers.reviewAmbiguous} of the ${numbers.review} lots in review began that way. ${numbers.reviewRefused} lots began with a definite refusal (not a 429 and not an ambiguous outcome): PayPal refused the capture and the saga, which does not classify that refusal, keeps the lot under the unknown deadline. The cause of each lot in review is listed in the measures.`,
   );
 
   // Everything left open must be released by PayPal's own expiry within the validity period.
@@ -695,6 +770,16 @@ export async function scenario8(
     'every lot ends terminal',
     numbers.settled + numbers.review === SOAK_LOTS,
     `${numbers.settled} settled, ${numbers.review} in review`,
+  );
+  r.check(
+    'no lot ends in FAILED_NEEDS_REVIEW because of a 429',
+    numbers.review429 === 0,
+    `${numbers.review429} of ${numbers.review} lots in review have a 429 as their cause`,
+  );
+  r.check(
+    'injected 429s on capture are survived across a restart past the unknown deadline',
+    numbers.storms > 0 && numbers.stormSurvived > 0,
+    `${numbers.stormSurvived} of ${numbers.storms} storm lots settled after a restart`,
   );
   r.check(
     'no double capture',
@@ -730,6 +815,12 @@ export async function scenario8(
   r.stat('captured', dollars(ledger.capturedCents));
   r.stat('released', dollars(ledger.releasedCents));
   r.stat('still open', dollars(ledger.openCents));
+  r.stat('lots in review because of a 429', numbers.review429);
+  for (const cause of [...causes.keys()].sort()) {
+    r.stat(`lots in review, cause: ${cause}`, causes.get(cause) ?? 0);
+  }
+  r.stat('429 storm lots (injected)', numbers.storms);
+  r.stat('429 storm lots settled after a restart', numbers.stormSurvived);
   for (const [lotId, why] of reviews) r.stat(`lot in review: ${lotId}`, why);
   r.stat('seed', seed);
   return { ...r.result('S8', '30 simulated days, 100 bidders, random crashes'), numbers };
