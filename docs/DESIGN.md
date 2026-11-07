@@ -52,6 +52,37 @@ Body text needs 4.5:1, large text and UI indicators 3:1 (WCAG AA). `test/unit/co
 - `StatusPill`: short status label; tone is a dot, the text carries the meaning.
 - `PaletteSwitch`: three buttons that call `setPalette`.
 
+## Build record (7 Nov 2026)
+
+The redesign shipped as six slices, each one merged pull request, then extras that sit on the same tokens and components.
+
+| Slice | Issue  | Pull request                                                 | What it covers                                                    |
+| ----- | ------ | ------------------------------------------------------------ | ----------------------------------------------------------------- |
+| S0    | UIX-00 | [#1979](https://github.com/harshbhx/gavel-auction/pull/1979) | Tokens, three palettes, themes and the shared `src/ui` components |
+| S1    | UIX-01 | [#1980](https://github.com/harshbhx/gavel-auction/pull/1980) | Bidder room                                                       |
+| S2    | UIX-02 | [#1981](https://github.com/harshbhx/gavel-auction/pull/1981) | Auctioneer console                                                |
+| S3    | UIX-03 | [#1982](https://github.com/harshbhx/gavel-auction/pull/1982) | Public projector screen                                           |
+| S4    | UIX-04 | [#1983](https://github.com/harshbhx/gavel-auction/pull/1983) | Receipt as a settlement document                                  |
+| S5    | UIX-05 | [#1984](https://github.com/harshbhx/gavel-auction/pull/1984) | Landing, join and register                                        |
+
+Extras on top of the slices:
+
+| Issue  | Pull request                                                 | What it adds                                                                                                                 |
+| ------ | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| UX-04  | [#1991](https://github.com/harshbhx/gavel-auction/pull/1991) | Outbid, win and sold alerts, a gavel sound on the projector and a mute toggle (`src/alerts`)                                 |
+| UX-01  | [#1992](https://github.com/harshbhx/gavel-auction/pull/1992) | Hold explainer sheet and a six-step first-visit guided tour (`src/help`); the tour record is `gavel.tour.v1` in localStorage |
+| UX-02  | [#1993](https://github.com/harshbhx/gavel-auction/pull/1993) | Fundraiser thermometer on the projector screen; only captured money counts as raised                                         |
+| UX-05  | [#1996](https://github.com/harshbhx/gavel-auction/pull/1996) | Shareable receipt link with QR code, copy button and print layout                                                            |
+| JRM-01 | [#1965](https://github.com/harshbhx/gavel-auction/pull/1965) | The `/try` page for judge rooms (the rooms need the host flag `JUDGE_ROOMS`)                                                 |
+| DH-83  | [#1994](https://github.com/harshbhx/gavel-auction/pull/1994) | Axe accessibility sweep over scripted bid, console and screen states                                                         |
+
+Known gaps, stated plainly:
+
+- `PaletteSwitch` is built and tested, but no screen mounts it yet. The palette is chosen only if `gavel.palette` is already in localStorage.
+- The help layer (`HelpLayer`) is on the landing, join, register, bid and receipt routes, not on the console or the projector screen.
+- `?scripted=1` (see `src/net/scriptedMode.ts`) is honoured only by development builds. The hosted production build ignores it.
+- No recorded click-through of the redesigned screens against the hosted site exists, and the manual screen-reader and zoom passes in `docs/A11Y.md` have not been performed.
+
 ## Fonts and CSP
 
 Fonts are self-hosted woff2 files under `src/design/fonts` (licences next to them) and load from the same origin, so the existing `default-src 'self'` covers them and the Content-Security-Policy is unchanged. No third-party font host is used.

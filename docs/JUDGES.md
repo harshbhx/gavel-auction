@@ -4,7 +4,8 @@ A short path through the repository for judges. Everything is PayPal sandbox onl
 
 ## Status, stated plainly
 
-- The web UI is owned by a contributor and may still be in progress. See `README.md` for the current run instructions instead of relying on any step written here.
+- The web UI was redesigned on 7 Nov 2026 in the Scoreboard design (`docs/DESIGN.md`). See `README.md` for the current run instructions.
+- G5 is PARTIAL and G3 is in progress; latency is PARTIAL (hammer to SETTLED p95 5591 ms meets the 6 s target, hammer to CAPTURED p95 3010 ms misses the 2.5 s target, both on the real sandbox, n=20). The 30-day run is a simulation on a fake clock (`docs/evidence/SIM/SIM-MULTIDAY.md`). The Hugging Face datasets are prepared and not published.
 - The web app is hosted at https://gavel-web.creharsh.workers.dev with its API at https://gavel-auction-aufz.onrender.com, in sandbox mode. Storage there is temporary until a disk is added. `docs/DEMO.md` lists what is available and what is not.
 - Real versus recorded: the fake PayPal demo and the replay are recorded or simulated, not live PayPal. Gates G0, G1, G2 and G4 have run against the real sandbox; G3 (a real probe in progress since 7 Nov 2026 03:06 UTC, final about 12 Nov 06:17 UTC, no result recorded) and G5 is PARTIAL (wrong accept 0.000 on 24 synthetic, noise-free clips per set after fixes chosen on those same clips, so it is not a pass; no real-room or noisy-room test; spoken bids always use the confirm prompt); neither has a real-world result. Committed run logs exist for G1, G2 and G4 only; G0 is an Actions run log. See `docs/GATES.md` for each gate and its result. Settlement of a whole auction and crash recovery have been exercised against the fake PayPal; on the real sandbox only the nightly specs R7, R8 and R10 ran (one lot of three holds, one in-process crash; runs 42200708552 and 42317068784), not an auction driven through a server and not a real process kill.
 
@@ -18,7 +19,14 @@ The hosted site offers a short real room on the PayPal sandbox with no operator 
 4. Place a bid from the bidder view, then press hammer in the console.
 5. You should see the hold show as held while bidding, then the settlement after the hammer and the other holds released. The audit trail link shows the ledger chained by hash.
 
-For a 90 second tour that needs no login, open `/r/demo/screen?scripted=1`; it replays a recorded room in the browser and makes no PayPal calls. Nothing on this path is a live-money action: the host refuses to start judge rooms unless it is on the PayPal sandbox.
+Along the way, check these parts of the interface (each is covered by tests in CI, none by a recorded click-through of the hosted site):
+
+- The help button (landing, join, register, bid and receipt screens) opens the hold explainer or replays the six-step guided tour; the tour also opens by itself on a first visit.
+- Approving the ceiling uses a press-and-hold button (3 seconds, Space or Enter on a keyboard, with a two-tap alternative); the hold card shows hatched for held, solid for charged, hollow for released.
+- On the big screen, a lot with a fundraiser goal shows a thermometer that counts only captured money.
+- After the hammer the receipt can mint a share link with a QR code, and has a print layout.
+
+For a tour that needs no login, run the web app in development (`npm run dev -w @gavel/web`) and open `/r/demo/screen?scripted=1`; it replays a recorded room in the browser and makes no PayPal calls. Only development builds honour `scripted=1`: on the hosted site a production build ignores it, so the "Watch the guided tour" link on `/try` does not play a scenario there. Nothing on this path is a live-money action: the host refuses to start judge rooms unless it is on the PayPal sandbox.
 
 ## Five minute path
 

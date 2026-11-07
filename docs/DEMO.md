@@ -7,12 +7,25 @@ Status labels used below: "available" means the code is on main today. "not avai
 
 This guide is updated as those parts land.
 
+## Two-minute path
+
+Pick the first line that applies. Nothing here has been walked end to end against the hosted site and recorded; the steps describe what the code does.
+
+1. No setup, no login (local, development build): `npm ci`, then `npm run dev -w @gavel/web`, then open `/r/demo/screen?scripted=1`. The flag plays a recorded scenario in the browser with no server and no PayPal calls; the provenance tag says Scripted. Also try `/r/demo/bid?scripted=1&at=3000` (bidder room in the middle of the scenario), `/r/demo/console?scripted=1&at=5000` and `/r/demo/receipt?scripted=1`; `scenario=<name>` picks another script (for example `outbid_race`, `soft_close` or `kill_switch`; the list is in `packages/web/src/testing/scenarios`). Only development builds honour `scripted=1`; a production build, including the hosted site, ignores it, so on the hosted site `/try` links to the same URL but plays no scenario.
+2. Key-less sandbox room (hosted, only when the host runs with `JUDGE_ROOMS=true`, see `docs/DEPLOY.md`): open the web app, press "Start a demo auction" and follow the page `/try`, which lists the steps and the limits. If the flag is off the button falls back to the operator-key demo route and `/try` says so.
+3. Bidder phone: open the join link or enter the room code in the code field (one slot per character; a pasted `GVL-` prefix is dropped), register with a name, set a ceiling on the slider and press and hold the approve button for 3 seconds. The two-tap alternative is offered below it.
+4. Help: the help button on the landing, join, register, bid and receipt screens opens the hold explainer (hatched held, solid charged, hollow released) or replays the six-step guided tour (join, ceiling, hold, bid, hammer, receipt). The tour opens by itself on a first visit; `?tour=1` forces it and `?tour=0` suppresses it. Automated browsers skip it unless `?tour=1`.
+5. After the hammer, the receipt shows the outcome as a settlement document with a share link, a QR code and a print layout. On the projector screen, a lot with a fundraiser goal shows a thermometer that counts only captured money.
+
+Outbid, win and sold alerts sound on the bidder phone (mute toggle on the bid screen) and the projector plays a gavel sound at the hammer; browsers play sound only after a first tap on the page.
+
 ## 1. What to open
 
 | Item                          | Where                                                                                                                                  | Status                                                                                                                                                    |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Hosted demo (web)             | https://gavel-web.creharsh.workers.dev (API: https://gavel-auction-aufz.onrender.com)                                                  | available in sandbox mode; storage is temporary until a disk is added                                                                                     |
-| Landing page `/`              | Explains the promise: a bid is a PayPal hold, nothing is charged until the hammer. Buttons: "Start a demo auction", "Join with a code" | route built in `packages/web/src/App.tsx`; no hosted deployment yet                                                                                       |
+| Landing page `/`              | Explains the promise: a bid is a PayPal hold, nothing is charged until the hammer. Buttons: "Start a demo auction", "Join with a code" | route built in `packages/web/src/App.tsx`; served at the hosted address                                                                                   |
+| Judge page `/try`             | The two-minute steps for a key-less sandbox room, the limits, and a link to the scripted tour                                          | route built; the room itself needs the host flag `JUDGE_ROOMS=true`; the tour link plays a scenario only in a development build                           |
 | Demo launcher `/demo`         | Creates a room and gives four links: auctioneer console, big screen, bidder QR, audit trail                                            | route built in `packages/web/src/App.tsx`; scripted fake-payments mode is local only, not on the hosted server                                            |
 | Replay `/replay/:recordingId` | Plays a recorded auction, read only                                                                                                    | the player and bundle format exist in `packages/web/src/screens/replay` with transport controls and three views; hosting a recording is not available yet |
 

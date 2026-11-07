@@ -18,11 +18,17 @@ The web app is at [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.wo
 | Item | Status |
 | --- | --- |
 | Landing page `/` | Route built in the web package and served at the hosted address |
+| Judge page `/try` | Steps for a key-less sandbox room and a link to the scripted tour; the room needs the host flag `JUDGE_ROOMS=true` |
+| Help button | Opens the hold explainer or replays a six-step guided tour; present on the landing, join, register, bid and receipt screens |
 | Demo launcher `/demo` | Creates a room and gives four links; scripted mode is local only |
 | Replay `/replay/:recordingId` | Player and bundle format exist; no recording is hosted yet |
 | Auctioneer console, bidder screen, big screen, audit | Routes built; they need a running server (the hosted API runs in sandbox mode) |
 
 Every page shows a "Sandbox: no real money moves" banner. A room is labelled "Live sandbox room", "Scripted demo: recorded events, no PayPal calls" or "Recorded: this is a replay".
+
+## The scripted tour
+
+Run the web app in development (`npm run dev -w @gavel/web`) and open `/r/demo/screen?scripted=1`. The flag plays a recorded scenario in the browser with no server and no PayPal calls, and the provenance tag says Scripted. Add `at=<ms>` to hold the scenario at one moment, for example `/r/demo/bid?scripted=1&at=3000`. Only development builds honour the flag: the hosted production build ignores it, so the tour link on `/try` does not play a scenario on the hosted site.
 
 ## Join as a bidder
 
@@ -30,6 +36,8 @@ Every page shows a "Sandbox: no real money moves" banner. A room is labelled "Li
 2. Choose "Join as bidder" and pick a ceiling. The page creates a PayPal order with intent AUTHORIZE for that amount.
 3. Approve it. A sandbox buyer signs in with a sandbox personal account; in a fake-payments room the page approves after a short pause with no sign-in.
 4. The ladder shows your hold as HELD. A hold is a promise, not a charge.
+
+The ceiling is set on a slider and approved with a press-and-hold button (3 seconds, or Space or Enter on a keyboard, with a two-tap alternative). The help button explains the hold: hatched is held, solid is charged, hollow is released.
 
 ## Bid
 
