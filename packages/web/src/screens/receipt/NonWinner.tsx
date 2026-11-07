@@ -1,5 +1,6 @@
 import { t } from '../../copy/t';
 import type { HoldView } from '../../ladder/ladderModel';
+import { HoldCard } from '../../ui';
 import { formatUsd } from '../../util/money';
 
 export interface NonWinnerProps {
@@ -19,7 +20,7 @@ export function NonWinner({ hold, itemName, at }: NonWinnerProps) {
   const released = isReleased(hold) && hold.remainder !== 'pending';
   const amount = formatUsd(hold.ceilingCents);
   return (
-    <section className="gv-receipt__body">
+    <section className="gv-receipt__body" data-outcome={released ? 'released' : 'releasing'}>
       <dl className="gv-receipt__rows">
         <dt>{t('receipt.item')}</dt>
         <dd>{itemName}</dd>
@@ -46,6 +47,10 @@ export function NonWinner({ hold, itemName, at }: NonWinnerProps) {
           <p>{t('receipt.heldOwn', { amount })}</p>
         </>
       )}
+      <HoldCard
+        state={released ? 'released' : 'held'}
+        ceilingCents={released && hold.releasedCents > 0 ? hold.releasedCents : hold.ceilingCents}
+      />
     </section>
   );
 }
