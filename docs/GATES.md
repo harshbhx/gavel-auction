@@ -80,8 +80,8 @@ Scope: AUTHORIZE only. Capture and void of the guest card authorization were not
 
 ## G3: honor period versus validity and reauthorize
 
-Status: NOT RUN / IN PROGRESS
-Run date / by: real probe, day 0 was 7 Nov 2026 03:06 UTC (`.github/workflows/gate-g3.yml`; the earlier attempts on 4-7 Nov never ran, so no earlier day is claimed). Checkpoints at 3.5, 4 and 5 days; the final reading is about 12 Nov 06:17 UTC. Until those results exist the gate reads NOT RUN / IN PROGRESS.
+Status: NOT RUN
+Run date / by: IN PROGRESS, real probe, day 0 was 7 Nov 2026 03:06 UTC (`.github/workflows/gate-g3.yml`; the earlier attempts on 4-7 Nov never ran, so no earlier day is claimed). Checkpoints at 3.5, 4 and 5 days; the final reading is about 12 Nov 06:17 UTC. Until those results exist the gate reads NOT RUN / IN PROGRESS.
 Early evidence: Additional early reading (not the full 5-day result): two older G2 authorizations are probed by `gate-g3-early.yml` (PR #1929, not yet on main).
 Simulated, not real: We simulated 30 days of auctions with a fake clock: holds, honor-period expiry, reauthorization, crashes and recovery, with the ledger balancing to the cent. This is a simulation, not a real sandbox result; PayPal's 29-day validity was not verified in the real sandbox. (docs/evidence/SIM-MULTIDAY.md will be linked once it is on main.)
 Question: how long does an authorization stay capturable, and does reauthorize extend it?
@@ -121,8 +121,8 @@ Scope: tampered-event rejection was not part of this run; it is covered against 
 
 ## G5: STT accuracy on noisy bids
 
-Status: NOT RUN for real-room and noisy audio (synthetic noise-free evidence only)
-Run date / by: n/a for noisy audio. G5 on synthetic noise-free speech, 20 clips, Deepgram 11/11 parsed, 0 wrong accepts; Groq 9/11; no real-room or noisy-room test.
+Status: NOT RUN
+Run date / by: n/a for real-room or noisy audio (synthetic noise-free evidence only). G5 on synthetic noise-free speech, 20 clips, Deepgram 11/11 parsed, 0 wrong accepts; Groq 9/11; no real-room or noisy-room test.
 Question: is the speech-to-text accuracy on noisy bid audio high enough to accept bids without manual confirmation?
 Setup: n/a
 Requests: n/a
