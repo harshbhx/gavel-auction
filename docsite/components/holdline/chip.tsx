@@ -29,6 +29,6 @@ export function GateBadge({ id }: { id: string }) {
   const g = gateById(id);
   const inProgress = g.id === 'G3' && g.status === 'NOT RUN';
   const label = inProgress ? 'IN PROGRESS' : g.status;
-  const kind = g.status === 'PASS' ? 'solid' : g.status === 'FAIL' ? 'stop' : inProgress ? 'hatched' : 'hollow';
+  const kind = g.status === 'PASS' ? 'solid' : g.status === 'FAIL' ? 'stop' : inProgress || g.status === 'PARTIAL' ? 'hatched' : 'hollow';
   return <Chip kind={kind}>{`${g.id} ${label}`}</Chip>;
 }

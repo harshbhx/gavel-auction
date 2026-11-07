@@ -44,7 +44,7 @@ Timing. A hold older than 2 hours (`GAVEL_HOLD_MAX_AGE_MS`, 7,200,000 ms) when t
 
 - QR: the big screen shows a QR code that opens `/join/<roomId>?c=<code>` on your phone. After joining, the bid screen at `/r/<roomId>/bid` has a quick-bid button, +increment buttons and a custom amount field. Bids above your ceiling are blocked.
 - Typed entry: the auctioneer console at `/r/<roomId>/console` has "Manual entry" to place a bid for a registered bidder. It is recorded with source `manual`.
-- Voice: the server `/audio` socket turns a spoken bid into a structured bid and asks for confirmation when the amount is ambiguous. The web console has no audio sender to that socket yet, so its microphone button is disabled and says voice is not available in this build; use manual entry. Live speech needs `VOICE_STT=groq` and `GROQ_API_KEY` on that server, and no live speech run is recorded (gate G5 is NOT RUN), so on a hosted server use the replay below.
+- Voice: the server `/audio` socket turns a spoken bid into a structured bid and asks for confirmation when the amount is ambiguous. The web console has no audio sender to that socket yet, so its microphone button is disabled and says voice is not available in this build; use manual entry. Live speech needs `VOICE_STT=groq` and `GROQ_API_KEY` on that server, and no live speech run is recorded (gate G5 is PARTIAL, synthetic audio only), so on a hosted server use the replay below.
 
 ## 4. Replay mode for voice
 
@@ -63,13 +63,13 @@ The settlement logic is built and tested against the fake PayPal; the nightly sa
 
 ## 6. What is real and what is recorded
 
-| Part                                     | Mode                                                                                                                                                                                                                                                                 |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Auction rules, price, soft close, hammer | Real code, deterministic engine, same in every mode                                                                                                                                                                                                                  |
-| PayPal calls                             | Real sandbox only in a sandbox room and only once the gates pass (not available yet); after a final capture the authorization closes as CAPTURED for PayPal-account buyers (guest card capture untested); otherwise the fake PayPal, shown as such in the room label |
-| Scripted demo                            | Recorded events, no PayPal calls, labelled on screen                                                                                                                                                                                                                 |
-| Voice                                    | Replay uses recorded audio; live speech to text runs only with `VOICE_STT=groq` and a key, and no live speech run is recorded                                                                                                                                        |
-| Speech accuracy numbers                  | Synthetic eSpeak speech (noise-free, robotic), 24 clips: Deepgram nova-2 wrong-accept 0.125, Groq whisper-large-v3-turbo 0.083 against a 0.05 limit, so spoken bids go through the confirm prompt; no real-room or noisy-room test                                   |
+| Part                                     | Mode                                                                                                                                                                                                                                                                                  |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auction rules, price, soft close, hammer | Real code, deterministic engine, same in every mode                                                                                                                                                                                                                                   |
+| PayPal calls                             | Real sandbox only in a sandbox room and only once the gates pass (not available yet); after a final capture the authorization closes as CAPTURED for PayPal-account buyers (guest card capture untested); otherwise the fake PayPal, shown as such in the room label                  |
+| Scripted demo                            | Recorded events, no PayPal calls, labelled on screen                                                                                                                                                                                                                                  |
+| Voice                                    | Replay uses recorded audio; live speech to text runs only with `VOICE_STT=groq` and a key, and no live speech run is recorded                                                                                                                                                         |
+| Speech accuracy numbers                  | Gate G5 PARTIAL. Synthetic, noise-free speech, 24 clips in two sets: Deepgram nova-3 and Groq whisper-large-v3-turbo wrong-accept 0.000 against a 0.05 limit, after fixes chosen on the same clips; spoken bids always go through the confirm prompt; no real-room or noisy-room test |
 
 ## 7. Audit trail
 
@@ -81,7 +81,7 @@ Open `/r/<roomId>/audit` from the launcher (it needs the auctioneer or reviewer 
 - Sandbox latency inside budget. The void p95 of 1235.96 ms (n=10) is above the 1 s per-call budget behind the 6 s SETTLED target (`docs/GATES.md`).
 - A full judge click-through on the hosted app. The web app is served at https://gavel-web.creharsh.workers.dev, but no end-to-end walkthrough against it is recorded yet. A live room screen without a stored room token shows the placeholder screen.
 - A persistent store for the hosted deploy (the file stores need a persistent disk and a single instance; today storage is temporary).
-- A recorded live voice run through the `/audio` socket into a room (G5 FAILED on synthetic speech; voice bids use the confirm prompt).
+- A recorded live voice run through the `/audio` socket into a room (G5 is PARTIAL on synthetic speech; voice bids always use the confirm prompt).
 - A real-sandbox G3 result (in progress, final about 12 Nov 06:17 UTC) and a real-room or noisy-room G5 test (neither done; see `docs/GATES.md`); G0, G1, G2 and G4 are PASS (guest card capture not covered).
 - Live voice with real speech providers.
 - Recorded demo auctions for replay.
