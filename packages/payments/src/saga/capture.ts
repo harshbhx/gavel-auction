@@ -64,6 +64,8 @@ export type PendingReason =
   | 'kill_switch'
   | 'truth_unavailable'
   | 'auth_unavailable'
+  /** PayPal refused to run the capture (HTTP 429): nothing was applied, retried later. */
+  | 'rate_limited'
   | 'capture_rejected_unclassified';
 
 export type CaptureOutcome =
@@ -142,7 +144,7 @@ const AUTH_KINDS: ReadonlySet<string> = new Set([
 const STALLED_SINCE = 'stalled_since:capture';
 const ALERTED = 'alerted:';
 
-type StallReason = 'truth_unavailable' | 'auth_unavailable';
+type StallReason = 'truth_unavailable' | 'auth_unavailable' | 'rate_limited';
 
 export function invoiceIdFor(auctionId: string, holdId: string): string {
   return `gavel-${auctionId}-${holdId}`;
@@ -430,7 +432,12 @@ class Run {
     }
     await this.auditCall(target, requestId, captured, failure);
     // PayPal answered the capture: the truth and the token work again.
-    if (failure === undefined || !AUTH_KINDS.has(failure.kind)) await this.unstalled();
+    if (
+      failure === undefined ||
+      !(AUTH_KINDS.has(failure.kind) || failure.kind === 'rate_limited')
+    ) {
+      await this.unstalled();
+    }
 
     if (captured !== undefined) {
       if (captured.amountCents !== price) return this.fail('mismatch');
@@ -624,6 +631,13 @@ class Run {
     if (AUTH_KINDS.has(err.kind)) {
       // Nothing was sent: the winner is not charged and not failed. Retry later with the same intent.
       return this.stalled('auth_unavailable', t);
+    }
+    if (err.kind === 'rate_limited') {
+      // HTTP 429: PayPal refused to run the request, so this call applied nothing and no
+      // unknown clock starts for it (a restart must not age it into review). The intent
+      // stays; the next pass reads the truth first and retries with the same request id.
+      // A 429 that follows an earlier ambiguous attempt leaves that attempt's clock as it is.
+      return this.stalled('rate_limited', t);
     }
     if (err.outcome === 'unknown') {
       if (err.name === 'CAPTURE_PENDING') {
