@@ -62,6 +62,33 @@ describe('race, soft close and payment retry scenarios (R-QA-026, R-QA-030)', ()
     expect(result.outcome.capturedCents).toBe(0);
   });
 
+  it('S13 manual resolve needs the admin key and only works in review', async () => {
+    const base = scenarioFor('S13');
+    const steps = base.steps.map((s) =>
+      s.do === 'fault' && s.fault.at === 'paypal.capture' && s.fault.kind === 'http'
+        ? { ...s, fault: { ...s.fault, times: 99 } }
+        : s,
+    );
+    const resolved: Scenario = {
+      ...base,
+      steps: [
+        { t: 6900, do: 'ops_release', key: 'valid' },
+        ...steps,
+        { t: 7100, do: 'advance_clock', ms: 600_001 },
+        { t: 7200, do: 'ops_release', key: 'missing' },
+        { t: 7300, do: 'ops_release', key: 'wrong' },
+        { t: 7400, do: 'ops_release', key: 'valid' },
+      ],
+      expect: [
+        { ops: { statuses: [409, 401, 401, 200] } },
+        { captures: { committed: 0, requestIds: 1 } },
+      ],
+    };
+    const result = await runScenarioInProc(resolved);
+    expect(result.failures).toEqual([]);
+    expect(result.outcome.capturedCents).toBe(0);
+  });
+
   it('S14 releases the losing hold after three void failures', async () => {
     const result = await runScenarioInProc(scenarioFor('S14'));
     expect(result.failures).toEqual([]);
