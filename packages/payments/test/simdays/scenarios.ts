@@ -7,6 +7,7 @@ import {
   DAY_MS,
   HOUR_MS,
   MIN_MS,
+  START_MS,
   STRICT_MODEL,
   World,
   auditWorld,
@@ -648,6 +649,14 @@ export async function scenario8(
           ).length;
           const failedWhy =
             res.journal?.failed.map((f) => `${f.bidderId}:${f.reason}`).join(',') ?? '';
+          const tail = w.audits
+            .filter((a) => a.auctionId === lot.id && a.kind === 'paypal_call')
+            .slice(-8)
+            .map(
+              (a) =>
+                `${a.op ?? ''}/${a.label ?? ''}/${a.outcome ?? ''}/${a.status ?? ''}@${((a.tsMs - START_MS) / DAY_MS).toFixed(3)}`,
+            )
+            .join(' ');
           reviews.push([
             lot.id,
             `closed day ${lot.closeAt.toFixed(2)}, down ${(res.downMs / DAY_MS).toFixed(2)} days, last step ${last}, reauthorized holds ${reauthed}, failed ${failedWhy}`,
