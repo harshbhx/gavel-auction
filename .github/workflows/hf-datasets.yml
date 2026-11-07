@@ -1,0 +1,154 @@
+name: hf-datasets
+# Builds the open datasets (scripts/hf) from the evidence committed in this repository, checks them
+# for personal data and secrets, and uploads them as the artifact `hf-datasets`. Nothing is pushed to
+# Hugging Face unless dry_run is false AND the repository secret HF_TOKEN and the repository variable
+# HF_NAMESPACE both exist; otherwise the job says so and ends green. The token is only passed through
+# env to the upload step and is never printed.
+on:
+  # A pull request that changes the build runs it as a dry run, so the build is checked in CI.
+  pull_request:
+    paths:
+      - '.github/workflows/hf-datasets.yml'
+      - 'scripts/hf/**'
+      - 'packages/payments/test/simdays/**'
+  workflow_dispatch:
+    inputs:
+      dataset:
+        description: 'Dataset name (gavel-stt-bids, gavel-sim-30d, gavel-latency, gavel-audit-demo, gavel-gates) or all'
+        required: false
+        default: all
+      dry_run:
+        description: 'true builds and uploads only the artifact; false also pushes to Hugging Face'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  issues: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATASET: ${{ inputs.dataset || 'all' }}
+      # Only a manual run with dry_run unticked can push; a pull request never does.
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == false && 'false' || 'true' }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b
+        with:
+          python-version: '3.12'
+      - name: Check the dataset input
+        run: |
+          case "$DATASET" in
+            all|gavel-stt-bids|gavel-sim-30d|gavel-latency|gavel-audit-demo|gavel-gates) ;;
+            *) echo "unknown dataset: $DATASET"; exit 1 ;;
+          esac
+      - name: Export the simulated 30-day run
+        if: ${{ env.DATASET == 'all' || env.DATASET == 'gavel-sim-30d' }}
+        env:
+          SIM_EXPORT_DIR: ${{ runner.temp }}/sim
+        run: npm exec -w @gavel/payments -- vitest run test/simdays
+      - name: Run the demo scenarios and keep their traces
+        if: ${{ env.DATASET == 'all' || env.DATASET == 'gavel-audit-demo' }}
+        run: npm exec -w @gavel/e2e -- vite-node src/runner/cli.ts -- "$GITHUB_WORKSPACE/packages/e2e/scenarios" --trace "$RUNNER_TEMP/traces"
+      - name: Count the red-team and audit findings (aggregates only)
+        if: ${{ env.DATASET == 'all' || env.DATASET == 'gavel-gates' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/hf/fetch-assurance.mjs "$RUNNER_TEMP/assurance.jsonl"
+      - name: Install pyarrow
+        run: python -m pip install --quiet pyarrow
+      - name: Build, validate, write manifests and scan (one command)
+        env:
+          # A public name; it only appears in the dataset cards.
+          HF_NAMESPACE: ${{ vars.HF_NAMESPACE }}
+          SIM_DIR: ${{ runner.temp }}/sim
+          TRACE_DIR: ${{ runner.temp }}/traces
+          ASSURANCE_FILE: ${{ runner.temp }}/assurance.jsonl
+        run: |
+          [ -d "$SIM_DIR" ] || unset SIM_DIR
+          [ -d "$TRACE_DIR" ] || unset TRACE_DIR
+          [ -f "$ASSURANCE_FILE" ] || unset ASSURANCE_FILE
+          scripts/hf/build.sh "$RUNNER_TEMP/hf" "$DATASET"
+          cp "$RUNNER_TEMP"/hf/quality-report.md "$RUNNER_TEMP"/hf/data-dictionary.md "$RUNNER_TEMP"/ 2>/dev/null || true
+      - name: Prove the build is reproducible (second build, same manifests)
+        env:
+          HF_NAMESPACE: ${{ vars.HF_NAMESPACE }}
+          SIM_DIR: ${{ runner.temp }}/sim
+          TRACE_DIR: ${{ runner.temp }}/traces
+          ASSURANCE_FILE: ${{ runner.temp }}/assurance.jsonl
+        run: |
+          [ -d "$SIM_DIR" ] || unset SIM_DIR
+          [ -d "$TRACE_DIR" ] || unset TRACE_DIR
+          [ -f "$ASSURANCE_FILE" ] || unset ASSURANCE_FILE
+          scripts/hf/build.sh "$RUNNER_TEMP/hf2" "$DATASET"
+          status=0
+          for m in "$RUNNER_TEMP"/hf/*/MANIFEST.json; do
+            d="$(basename "$(dirname "$m")")"
+            if cmp -s "$m" "$RUNNER_TEMP/hf2/$d/MANIFEST.json"; then
+              echo "reproducible: $d"
+            else
+              echo "DIFFERENT manifests for $d"; diff "$m" "$RUNNER_TEMP/hf2/$d/MANIFEST.json" | head -20; status=1
+            fi
+          done
+          exit $status
+      - name: Prove the scan can fail
+        run: |
+          mkdir -p "$RUNNER_TEMP/scan-selftest"
+          printf 'contact someone@example.org\n' > "$RUNNER_TEMP/scan-selftest/a.csv"
+          if node scripts/hf/scan-outputs.mjs "$RUNNER_TEMP/scan-selftest"; then
+            echo "the scan did not catch a planted email"; exit 1
+          fi
+      - name: Summary
+        run: |
+          {
+            echo '### Datasets built (row counts)'
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/hf/summary.json"
+            echo '```'
+            echo
+            cat "$RUNNER_TEMP/hf/quality-report.md"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the datasets
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hf-datasets
+          path: ${{ runner.temp }}/hf
+          if-no-files-found: warn
+      - name: Check the Hugging Face settings
+        id: hf
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_NAMESPACE: ${{ vars.HF_NAMESPACE }}
+        run: |
+          missing=""
+          [ -z "$HF_TOKEN" ] && missing="$missing HF_TOKEN (secret)"
+          [ -z "$HF_NAMESPACE" ] && missing="$missing HF_NAMESPACE (variable)"
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "push=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Dry run::Built and scanned; nothing was pushed to Hugging Face."
+          elif [ -n "$missing" ]; then
+            echo "push=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Push skipped::Missing:$missing"
+          else
+            echo "push=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Push to Hugging Face
+        if: ${{ steps.hf.outputs.push == 'true' }}
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_NAMESPACE: ${{ vars.HF_NAMESPACE }}
+        run: |
+          python -m pip install --quiet huggingface_hub
+          python scripts/hf/push.py "$RUNNER_TEMP/hf"
