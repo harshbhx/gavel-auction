@@ -17,22 +17,22 @@ Source legend: UI = needs the web app (to be filled by the UI owner); TERM = ter
 | 7   | 1:55-2:15 | Terminal: the G1 and G4 evidence lines and the GATES status table                               | EVID, TERM        | Real sandbox evidence                                   | "These are real sandbox runs: capture 350 of a 500 hold released the remainder, and six real webhooks verified."         |
 | 8   | 2:15-2:30 | Crash mid-settlement then resume, still one capture                                             | FAKE              | Fake PayPal, test run                                   | "Stop the server mid-settlement and resume: still exactly one capture. This is shown against our fake PayPal."           |
 | 9   | 2:30-2:42 | Ledger verify output and the audit screen                                                       | TERM or UI        | UI owner fills for the screen                           | "Every accepted bid sits in a hash-chained ledger anyone can re-verify."                                                 |
-| 10  | 2:42-2:50 | Closing card with repo URL and the honest status line                                           | TERM (title card) | Gates G3 and G5 not yet run                             | "GAVEL: PayPal sandbox, open source, MIT. Two gates are still open, and we say so."                                      |
+| 10  | 2:42-2:50 | Closing card with repo URL and the honest status line                                           | TERM (title card) | G3 in progress, G5 failed on synthetic speech           | "GAVEL: PayPal sandbox, open source, MIT. Two gates are still open, and we say so."                                      |
 
 Timings sum to 2:50 (170 s).
 
 ## Real versus recorded label sheet
 
-| Claim shown                           | Label on screen             | Truth                                          |
-| ------------------------------------- | --------------------------- | ---------------------------------------------- |
-| Hold, capture 350, remainder released | Real sandbox, evidence file | G1 PASS, wallet and card                       |
-| Card and guest authorize              | Real sandbox                | G2 PASS                                        |
-| Webhook verification                  | Real sandbox, 6 events      | G4 PASS; tampered-event rejection is fake only |
-| Full multi-bidder settlement          | Fake PayPal                 | Not run end to end on the sandbox              |
-| Crash and resume                      | Fake PayPal, test hook      | In-process hook; no trigger on a hosted server |
-| Voice bid                             | Recorded replay             | Speech accuracy not measured (G5 not run)      |
-| Honor period and reauthorize          | Not shown as a result       | G3 not recorded yet                            |
-| Any money                             | Never a live charge         | Sandbox only                                   |
+| Claim shown                           | Label on screen             | Truth                                                           |
+| ------------------------------------- | --------------------------- | --------------------------------------------------------------- |
+| Hold, capture 350, remainder released | Real sandbox, evidence file | G1 PASS, wallet and card                                        |
+| Card and guest authorize              | Real sandbox                | G2 PASS                                                         |
+| Webhook verification                  | Real sandbox, 6 events      | G4 PASS; tampered-event rejection is fake only                  |
+| Full multi-bidder settlement          | Fake PayPal                 | Not run end to end on the sandbox                               |
+| Crash and resume                      | Fake PayPal, test hook      | In-process hook; no trigger on a hosted server                  |
+| Voice bid                             | Recorded replay             | G5 failed on synthetic clips; confirm prompt; no real-room test |
+| Honor period and reauthorize          | Not shown as a result       | G3 in progress                                                  |
+| Any money                             | Never a live charge         | Sandbox only                                                    |
 
 ## Open items for the UI owner
 
