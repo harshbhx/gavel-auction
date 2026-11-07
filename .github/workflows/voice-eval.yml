@@ -77,6 +77,12 @@ jobs:
           for p in deepgram groq; do
             npm run eval -w @gavel/voice -- --mode cached --provider "$p" --out "eval-out/cached/$p"
           done
+      - name: Cached mode, human-like synthetic voice set (second clip set, same 24 utterances)
+        run: |
+          for p in deepgram groq; do
+            npm run eval -w @gavel/voice -- --mode cached --provider "$p" --clips human \
+              --out "eval-out/cached-human/$p"
+          done
       - name: Job summary
         if: always()
         run: |
@@ -84,12 +90,17 @@ jobs:
             if [ -f "packages/voice/eval-out/cached/$p/report.md" ]; then
               cat "packages/voice/eval-out/cached/$p/report.md" >> "$GITHUB_STEP_SUMMARY"
             fi
+            if [ -f "packages/voice/eval-out/cached-human/$p/report.md" ]; then
+              cat "packages/voice/eval-out/cached-human/$p/report.md" >> "$GITHUB_STEP_SUMMARY"
+            fi
           done
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: voice-eval-cached
-          path: packages/voice/eval-out/cached
+          path: |
+            packages/voice/eval-out/cached
+            packages/voice/eval-out/cached-human
           if-no-files-found: ignore
 
   record:
