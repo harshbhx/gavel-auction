@@ -23,14 +23,16 @@ describe('/demo/scripted', () => {
 
   it('plays the scenario with no socket and the scripted label', async () => {
     const sockets: string[] = [];
-    vi.stubGlobal(
-      'WebSocket',
-      class {
-        constructor(url: string) {
-          sockets.push(url);
-        }
-      },
-    );
+    class Spy {
+      readonly readyState = 0;
+      constructor(url: string) {
+        sockets.push(url);
+      }
+      close(): void {
+        // Nothing to close.
+      }
+    }
+    vi.stubGlobal('WebSocket', Spy);
     render(<App initialPath="/demo/scripted" gallery={false} />);
     await waitFor(() => expect(screen.getByText(t('prov.scripted'))).toBeTruthy());
     expect(sockets).toEqual([]);
