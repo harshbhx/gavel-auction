@@ -15,7 +15,7 @@ Rule: an item is marked [x] only after it is verified on `main`. An item marked 
 
 - [x] README has run instructions: `npm ci`, `npm run build`, `npm test`, `npm start -w @gavel/server`.
 - [ ] Tests run in GitHub Actions only. `README.md` still says to run `npm test` locally; the owner decides the wording.
-- [x] Demo guide present: `docs/DEMO.md`. The hosted demo is not deployed yet.
+- [x] Demo guide present: `docs/DEMO.md`. The hosted web app, API and docs site are deployed in sandbox mode (see the README top section).
 
 ## Secrets and payments
 
@@ -27,7 +27,7 @@ Rule: an item is marked [x] only after it is verified on `main`. An item marked 
 
 ## CI
 
-- [ ] CI status green on `main`. The run for the latest commit was still in progress when this list was written. `README.md` has no CI badge.
+- [ ] CI status green on `main`. `README.md` has a CI badge; confirm the run for the final commit at submit time.
 - [x] Gitleaks history scan passes on `main`.
 
 ## Docs
@@ -38,5 +38,5 @@ Rule: an item is marked [x] only after it is verified on `main`. An item marked 
 
 - [x] Gate G2 (card and guest AUTHORIZE) passed on the sandbox: PASS in `docs/GATES.md`.
 - [x] Gate G3 (honor period, validity and reauthorize) is UNVERIFIED: NOT RUN in `docs/GATES.md`.
-- [x] Gate G5 (speech-to-text accuracy on noisy bids) is UNVERIFIED: NOT RUN in `docs/GATES.md`.
-- [x] Hosted demo and WebSocket room flow are not available yet (see `docs/DEMO.md`).
+- [x] Gate G5 (speech-to-text accuracy on noisy bids) is PARTIAL in `docs/GATES.md`: synthetic, noise-free speech only, fixes chosen on the same clips, no real-room test.
+- [x] The hosted demo is in sandbox mode with temporary storage; a judge cannot start a live room without the operator key, and no whole hosted auction has been recorded (see `docs/DEMO.md`).

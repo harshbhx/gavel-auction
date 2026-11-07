@@ -1,6 +1,6 @@
 # Contributing to GAVEL
 
-This guide covers everything needed to make a change: set up the repository, run the checks, follow the branch and commit rules, and know who owns which files. The delivery plan lives in [docs/MASTER-PLAN.md](docs/MASTER-PLAN.md); read it first to see which wave an issue belongs to.
+This guide covers everything needed to make a change: set up the repository, run the checks, follow the branch and commit rules, and know who owns which files. The delivery plan lives in [docs/specs/MASTER-PLAN.md](docs/specs/MASTER-PLAN.md); read it first to see which wave an issue belongs to.
 
 ## Setup
 
@@ -74,7 +74,7 @@ Exported symbols are contracts between areas. A change to an exported type, func
 
 ## Wave plan
 
-Work is ordered in waves. [docs/MASTER-PLAN.md](docs/MASTER-PLAN.md) lists each wave, its issues and their dependencies. Start an issue only when everything under its "Depends on" heading is merged.
+Work is ordered in waves. [docs/specs/MASTER-PLAN.md](docs/specs/MASTER-PLAN.md) lists each wave, its issues and their dependencies. Start an issue only when everything under its "Depends on" heading is merged.
 
 ## Add a scenario
 

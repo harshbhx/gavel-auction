@@ -20,6 +20,8 @@
 
 Built for the PayPal Hackathon 2026. PayPal sandbox only: no real money moves.
 
+**Live links (sandbox mode):** web app [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev) | documentation [gavel-docs.creharsh.workers.dev](https://gavel-docs.creharsh.workers.dev) | API on Render ([`/healthz`](https://gavel-auction-aufz.onrender.com/healthz); the first request after idle can take about 30 seconds while the service wakes). A judge cannot start a live room without the operator key yet; see [docs/DEMO.md](docs/DEMO.md) for what is verified.
+
 <table>
   <tr>
     <td align="center" width="25%"><h3>7</h3>packages, one strict<br>TypeScript monorepo</td>
