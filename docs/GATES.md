@@ -80,8 +80,10 @@ Scope: AUTHORIZE only. Capture and void of the guest card authorization were not
 
 ## G3: honor period versus validity and reauthorize
 
-Status: NOT RUN
-Run date / by: n/a (a timed probe, `.github/workflows/gate-g3.yml`, runs on a schedule every 6 hours and on dispatch; its runs since 2026-11-04 are green but no result is recorded here, so the gate stays NOT RUN)
+Status: NOT RUN / IN PROGRESS
+Run date / by: real probe, day 0 was 7 Nov 2026 03:06 UTC (`.github/workflows/gate-g3.yml`; the earlier attempts on 4-7 Nov never ran, so no earlier day is claimed). Checkpoints at 3.5, 4 and 5 days; the final reading is about 12 Nov 06:17 UTC. Until those results exist the gate reads NOT RUN / IN PROGRESS.
+Early evidence: Additional early reading (not the full 5-day result): two older G2 authorizations are probed by `gate-g3-early.yml` (PR #1929, not yet on main).
+Simulated, not real: We simulated 30 days of auctions with a fake clock: holds, honor-period expiry, reauthorization, crashes and recovery, with the ledger balancing to the cent. This is a simulation, not a real sandbox result; PayPal's 29-day validity was not verified in the real sandbox. (docs/evidence/SIM-MULTIDAY.md will be linked once it is on main.)
 Question: how long does an authorization stay capturable, and does reauthorize extend it?
 Setup: n/a
 Requests: n/a
@@ -119,8 +121,8 @@ Scope: tampered-event rejection was not part of this run; it is covered against 
 
 ## G5: STT accuracy on noisy bids
 
-Status: NOT RUN
-Run date / by: n/a
+Status: NOT RUN for real-room and noisy audio (synthetic noise-free evidence only)
+Run date / by: n/a for noisy audio. G5 on synthetic noise-free speech, 20 clips, Deepgram 11/11 parsed, 0 wrong accepts; Groq 9/11; no real-room or noisy-room test.
 Question: is the speech-to-text accuracy on noisy bid audio high enough to accept bids without manual confirmation?
 Setup: n/a
 Requests: n/a
@@ -200,7 +202,7 @@ confirm at 0.90 or more and wrong accepts at 0.05 or less; PARTIAL needs 0.70 or
 
 ## Decision
 
-Interim decision: GO, with documented fallbacks. This is not a final go: G3 and G5 are NOT RUN.
+Interim decision: GO, with documented fallbacks. This is not a final go: G3 is IN PROGRESS and G5 has no real-room or noisy-room test.
 
 Verified, with evidence above:
 
@@ -211,8 +213,8 @@ Verified, with evidence above:
 
 Not run, results pending:
 
-- G3 (honor period, validity and reauthorize): NOT RUN. Fallback: capture within the verified validity window and use the reauthorize path (spec R3, T-QA-052) before hammer. R3 is the plan, not a result: it is not verified until G3 runs.
-- G5 (speech-to-text accuracy on noisy bids): NOT RUN. Fallback: always show the confirm prompt for spoken bids.
+- G3 (honor period, validity and reauthorize): NOT RUN / IN PROGRESS (day 0 7 Nov 2026 03:06 UTC, final about 12 Nov 06:17 UTC). Fallback: capture within the verified validity window and use the reauthorize path (spec R3, T-QA-052) before hammer. R3 is the plan, not a result: it is not verified until G3 runs.
+- G5 (speech-to-text accuracy on noisy bids): not run on noisy or real-room audio. Synthetic result: G5 on synthetic noise-free speech, 20 clips, Deepgram 11/11 parsed, 0 wrong accepts; Groq 9/11; no real-room or noisy-room test. Fallback: always show the confirm prompt for spoken bids.
 
 What changes the decision:
 
@@ -239,6 +241,8 @@ Earlier, the same script ran against the fake PayPal (`npm run measure -- --fake
 | hammer to CAPTURED p95                   | 2.5 s  | capture p95 2280.66 ms (the same capture mapping the fake table used; with n=10 p95 is close to the max) | UNVERIFIED end to end (capture call only, n=10) |
 | hammer to SETTLED, 6 holds, p95          | 6 s    | void p95 1235.96 ms; the truth check that settlement also needs is not measured by this script           | UNVERIFIED (G1 measurement)                     |
 | webhook handler 200, without verify call | 300 ms | not part of this script (covered by T-PAY-068)                                                           | UNVERIFIED (G1 measurement)                     |
+
+Staging security tests and load tests stay UNVERIFIED until the Render URL exists. The judge smoke test has not run against a live site.
 
 Fallback: where a target is not met on sandbox numbers, the target is raised to the sandbox p95 (a decision for the owner; targets are not raised automatically). The 2.5 s target covers hammer to CAPTURED (truth check, journal writes and capture); only the capture call was measured, in 10 samples where p95 equals the max, so the CAPTURED target is not shown to be met end to end. It needs an end-to-end saga measurement with at least 30 samples. The SETTLED target is not shown to hold: the budget below assumes each call stays under 1 s at p95, and sandbox void p95 is 1235.96 ms, so that assumption fails. The fallback therefore applies to SETTLED, and its target must be raised to the sandbox-based value (a decision for the owner, after the truth-check latency is measured). The saga defaults below are not changed by this record.
 
@@ -288,7 +292,7 @@ What this run does not prove:
 - Latency: this run recorded no timings for the targets, so the table above is unchanged. The void p95 caveat stands: 1235.96 ms against the 1000 ms budget, and the SETTLED budget assumption (each call under 1 s at p95) still fails.
 - Only the run log and the summary artifact exist; no redacted evidence file is committed, so the figures are reported, not independently verifiable, until one is.
 
-Decision: no change. G1 PASS (decision A), G2 PASS, G3 NOT RUN, G5 NOT RUN, as before.
+Decision: no change. G1 PASS (decision A), G2 PASS, G3 NOT RUN / IN PROGRESS, G5 no noisy or real-room test, as before.
 
 ## Run entries
 
@@ -345,4 +349,4 @@ restart it on the same store. Until the owner provides that, the in-process cras
 evidence, and the SPEC tag for PayPal's repeated-capture answer stays UNVERIFIED until R10 has
 passed once in the nightly run.
 
-Status of crash safety: whole-auction settlement and crash recovery are verified against the fake PayPal only. No whole-auction settlement ran on the real sandbox, R10 stays UNVERIFIED until it has passed once, and G3 (authorization validity and reauthorize) is NOT RUN, so holds in an auction longer than minutes may expire before capture.
+Status of crash safety: whole-auction settlement and crash recovery are verified against the fake PayPal only. No whole-auction settlement ran on the real sandbox, R10 stays UNVERIFIED until it has passed once, and G3 (authorization validity and reauthorize) is NOT RUN / IN PROGRESS, so holds in an auction longer than minutes may expire before capture.
