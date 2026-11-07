@@ -28,6 +28,8 @@ export interface SttChoiceDeps {
   scheduler?: ReplayScheduler;
   failoverClock?: FailoverClock;
   fetch?: SelectDeps['fetch'];
+  /** Provider builders for tests; a name present here replaces the real client. */
+  factories?: SelectDeps['factories'];
   /** WebSocket transport for Deepgram; defaults to the runtime's own. */
   socket?: WsFactory;
   log?: (message: string, fields: Record<string, string>) => void;
@@ -50,8 +52,11 @@ const EMPTY_TIMELINE: Timeline = parseTimeline({ utterances: [] });
 /**
  * Choose the speech provider from config (R-VOX-022). With no VOICE_STT the cached provider runs,
  * so nothing needs a key. A live provider is used only when named and its key is present; it runs
- * behind a failover to the cached provider. A named provider whose key is missing is logged and
- * the cached provider is used instead, so a missing key never stops the host.
+ * behind a failover chain that ends at the cached provider. With VOICE_STT=deepgram and a Groq key
+ * the chain is Deepgram, then Groq, then cached (R-VOX-019 applied twice), and Deepgram is tried
+ * again after the circuit window. A named provider whose key is missing is logged and the next
+ * one with a key is used (Groq for a missing Deepgram key), else the cached provider, so a
+ * missing key never stops the host.
  */
 export function chooseStt(env: SttChoiceEnv, deps: SttChoiceDeps = {}): SttChoice {
   const timeline = deps.timeline ?? EMPTY_TIMELINE;
@@ -62,22 +67,42 @@ export function chooseStt(env: SttChoiceEnv, deps: SttChoiceDeps = {}): SttChoic
   if (raw === undefined || raw === '' || raw === 'replay') return cached;
 
   const selectEnv: SttEnv = { VOICE_STT: raw };
-  const liveKey = env.GROQ_API_KEY;
-  if (liveKey !== undefined) selectEnv.GROQ_API_KEY = liveKey;
-  const { DEEPGRAM_API_KEY } = env;
-  if (DEEPGRAM_API_KEY !== undefined) Object.assign(selectEnv, { DEEPGRAM_API_KEY });
+  const { GROQ_API_KEY, DEEPGRAM_API_KEY } = env;
   const socket = deps.socket ?? platformSocketFactory();
   const selectDeps: SelectDeps = {
     ...(deps.fetch !== undefined ? { fetch: deps.fetch } : {}),
+    ...(deps.factories !== undefined ? { factories: deps.factories } : {}),
     ...(socket !== undefined ? { socket } : {}),
     ...(deps.log !== undefined ? { log: (m, f) => deps.log?.(m, f) } : {}),
     warn: () => undefined,
   };
+  const hasGroq = GROQ_API_KEY !== undefined && GROQ_API_KEY !== '';
+  const clock = deps.failoverClock ?? realClock;
+  // With no recorded timeline the cached provider is mute; never swap a live one for it.
+  const replayTranscribes = deps.timeline !== undefined;
+  const pick = (name: 'deepgram' | 'groq'): SttProvider => {
+    const e: SttEnv = { VOICE_STT: name };
+    if (GROQ_API_KEY !== undefined) e.GROQ_API_KEY = GROQ_API_KEY;
+    if (DEEPGRAM_API_KEY !== undefined) e.DEEPGRAM_API_KEY = DEEPGRAM_API_KEY;
+    return selectProvider(e, selectDeps);
+  };
+  const groqThenCached = (): SttProvider =>
+    new FailoverStt({
+      primary: () => pick('groq'),
+      fallback: replay,
+      fallbackTranscribes: replayTranscribes,
+      clock,
+    });
+
   let first: SttProvider;
   try {
     first = selectProvider(selectEnv, selectDeps);
   } catch (e) {
     if (e instanceof SttConfigError) {
+      if (raw === 'deepgram' && hasGroq) {
+        deps.log?.('deepgram not usable, using groq', { reason: e.code });
+        return { name: 'groq', make: groqThenCached };
+      }
       deps.log?.('stt provider not usable, using cached provider', { reason: e.code });
       return cached;
     }
@@ -85,15 +110,27 @@ export function chooseStt(env: SttChoiceEnv, deps: SttChoiceDeps = {}): SttChoic
   }
   if (first.name === 'fake')
     return { name: 'fake', make: () => selectProvider(selectEnv, selectDeps) };
+  if (raw === 'deepgram' && hasGroq) {
+    return {
+      name: first.name,
+      make: () =>
+        new FailoverStt({
+          primary: () => pick('deepgram'),
+          fallback: groqThenCached,
+          // Groq transcribes live, so a silent or late Deepgram can always be swapped out.
+          fallbackTranscribes: true,
+          clock,
+        }),
+    };
+  }
   return {
     name: first.name,
     make: () =>
       new FailoverStt({
         primary: () => selectProvider(selectEnv, selectDeps),
         fallback: replay,
-        // With no recorded timeline the cached provider is mute; never swap a live one for it.
-        fallbackTranscribes: deps.timeline !== undefined,
-        clock: deps.failoverClock ?? realClock,
+        fallbackTranscribes: replayTranscribes,
+        clock,
       }),
   };
 }
