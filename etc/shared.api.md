@@ -4068,6 +4068,17 @@ export const RoomSnapshotSchema: z.ZodObject<{
         };
     }>>;
     lotTitle: z.ZodOptional<z.ZodString>;
+    fundraiser: z.ZodOptional<z.ZodObject<{
+        goalCents: z.ZodEffects<z.ZodType<Cents, z.ZodTypeDef, Cents>, Cents, Cents>;
+    }, "strict", z.ZodTypeAny, {
+        goalCents: number & {
+            readonly __brand_centsBrand: "Cents";
+        };
+    }, {
+        goalCents: number & {
+            readonly __brand_centsBrand: "Cents";
+        };
+    }>>;
     joinCode: z.ZodOptional<z.ZodString>;
     roster: z.ZodEffects<z.ZodArray<z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
@@ -4378,6 +4389,11 @@ export const RoomSnapshotSchema: z.ZodObject<{
     stopped?: boolean | undefined;
     registrationClosed?: boolean | undefined;
     lotTitle?: string | undefined;
+    fundraiser?: {
+        goalCents: number & {
+            readonly __brand_centsBrand: "Cents";
+        };
+    } | undefined;
     joinCode?: string | undefined;
     you?: {
         bidderId: string & {
@@ -4485,6 +4501,11 @@ export const RoomSnapshotSchema: z.ZodObject<{
     stopped?: boolean | undefined;
     registrationClosed?: boolean | undefined;
     lotTitle?: string | undefined;
+    fundraiser?: {
+        goalCents: number & {
+            readonly __brand_centsBrand: "Cents";
+        };
+    } | undefined;
     joinCode?: string | undefined;
     you?: {
         bidderId: string & {
@@ -4869,6 +4890,17 @@ export const serverSchemas: {
                 };
             }>>;
             lotTitle: z.ZodOptional<z.ZodString>;
+            fundraiser: z.ZodOptional<z.ZodObject<{
+                goalCents: z.ZodEffects<z.ZodType<Cents, z.ZodTypeDef, Cents>, Cents, Cents>;
+            }, "strict", z.ZodTypeAny, {
+                goalCents: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+            }, {
+                goalCents: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+            }>>;
             joinCode: z.ZodOptional<z.ZodString>;
             roster: z.ZodEffects<z.ZodArray<z.ZodObject<{
                 bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
@@ -5179,6 +5211,11 @@ export const serverSchemas: {
             stopped?: boolean | undefined;
             registrationClosed?: boolean | undefined;
             lotTitle?: string | undefined;
+            fundraiser?: {
+                goalCents: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+            } | undefined;
             joinCode?: string | undefined;
             you?: {
                 bidderId: string & {
@@ -5286,6 +5323,11 @@ export const serverSchemas: {
             stopped?: boolean | undefined;
             registrationClosed?: boolean | undefined;
             lotTitle?: string | undefined;
+            fundraiser?: {
+                goalCents: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+            } | undefined;
             joinCode?: string | undefined;
             you?: {
                 bidderId: string & {
@@ -5419,6 +5461,11 @@ export const serverSchemas: {
             stopped?: boolean | undefined;
             registrationClosed?: boolean | undefined;
             lotTitle?: string | undefined;
+            fundraiser?: {
+                goalCents: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+            } | undefined;
             joinCode?: string | undefined;
             you?: {
                 bidderId: string & {
@@ -5532,6 +5579,11 @@ export const serverSchemas: {
             stopped?: boolean | undefined;
             registrationClosed?: boolean | undefined;
             lotTitle?: string | undefined;
+            fundraiser?: {
+                goalCents: number & {
+                    readonly __brand_centsBrand: "Cents";
+                };
+            } | undefined;
             joinCode?: string | undefined;
             you?: {
                 bidderId: string & {
@@ -6526,6 +6578,17 @@ export const StateSchema: z.ZodObject<{
             };
         }>>;
         lotTitle: z.ZodOptional<z.ZodString>;
+        fundraiser: z.ZodOptional<z.ZodObject<{
+            goalCents: z.ZodEffects<z.ZodType<Cents, z.ZodTypeDef, Cents>, Cents, Cents>;
+        }, "strict", z.ZodTypeAny, {
+            goalCents: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+        }, {
+            goalCents: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+        }>>;
         joinCode: z.ZodOptional<z.ZodString>;
         roster: z.ZodEffects<z.ZodArray<z.ZodObject<{
             bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
@@ -6836,6 +6899,11 @@ export const StateSchema: z.ZodObject<{
         stopped?: boolean | undefined;
         registrationClosed?: boolean | undefined;
         lotTitle?: string | undefined;
+        fundraiser?: {
+            goalCents: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+        } | undefined;
         joinCode?: string | undefined;
         you?: {
             bidderId: string & {
@@ -6943,6 +7011,11 @@ export const StateSchema: z.ZodObject<{
         stopped?: boolean | undefined;
         registrationClosed?: boolean | undefined;
         lotTitle?: string | undefined;
+        fundraiser?: {
+            goalCents: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+        } | undefined;
         joinCode?: string | undefined;
         you?: {
             bidderId: string & {
@@ -7076,6 +7149,11 @@ export const StateSchema: z.ZodObject<{
         stopped?: boolean | undefined;
         registrationClosed?: boolean | undefined;
         lotTitle?: string | undefined;
+        fundraiser?: {
+            goalCents: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+        } | undefined;
         joinCode?: string | undefined;
         you?: {
             bidderId: string & {
@@ -7189,6 +7267,11 @@ export const StateSchema: z.ZodObject<{
         stopped?: boolean | undefined;
         registrationClosed?: boolean | undefined;
         lotTitle?: string | undefined;
+        fundraiser?: {
+            goalCents: number & {
+                readonly __brand_centsBrand: "Cents";
+            };
+        } | undefined;
         joinCode?: string | undefined;
         you?: {
             bidderId: string & {

@@ -1,5 +1,6 @@
 import {
   AuctionConfigSchema,
+  Cents,
   GavelError,
   isErrorCode,
   type AuctionId,
@@ -26,6 +27,8 @@ const CreateBody = z
   .object({
     title: z.string().trim().min(1).max(120).default('Untitled auction'),
     config: AuctionConfigSchema,
+    /** Optional fundraiser goal in integer cents; the projector shows a thermometer only when set. */
+    fundraiserGoalCents: z.number().int().positive().max(1_000_000_000_00).optional(),
   })
   .strict();
 
@@ -84,15 +87,24 @@ export async function auctionIdOrCode(c: Ctx): Promise<string> {
 export interface AuctionMeta {
   title: string | undefined;
   joinCode: string | undefined;
+  fundraiserGoalCents: number | undefined;
 }
 
 /** Public facts kept beside the log: the title and the join code. Older auctions have no code. */
 export async function auctionMeta(deps: HttpDeps, auctionId: string): Promise<AuctionMeta> {
   const stored = await deps.store.getJournal(titleKey(auctionId));
-  const v = stored?.value as { title?: unknown; joinCode?: unknown } | undefined;
+  const v = stored?.value as
+    | { title?: unknown; joinCode?: unknown; fundraiserGoalCents?: unknown }
+    | undefined;
   return {
     title: typeof v?.title === 'string' ? v.title : undefined,
     joinCode: typeof v?.joinCode === 'string' ? v.joinCode : undefined,
+    fundraiserGoalCents:
+      typeof v?.fundraiserGoalCents === 'number' &&
+      Number.isSafeInteger(v.fundraiserGoalCents) &&
+      v.fundraiserGoalCents > 0
+        ? v.fundraiserGoalCents
+        : undefined,
   };
 }
 
@@ -102,6 +114,9 @@ export function withMeta(snapshot: RoomSnapshot, meta: AuctionMeta): RoomSnapsho
     ...snapshot,
     ...(meta.title !== undefined ? { lotTitle: meta.title } : {}),
     ...(meta.joinCode !== undefined ? { joinCode: meta.joinCode } : {}),
+    ...(meta.fundraiserGoalCents !== undefined
+      ? { fundraiser: { goalCents: Cents(meta.fundraiserGoalCents) } }
+      : {}),
   };
 }
 
@@ -169,12 +184,16 @@ export async function snapshotFor(
 export function mountAuctions(app: HttpApp): void {
   app.post('/api/auctions', async (c: Ctx) => {
     requireAdmin(c);
-    const { title, config } = parseBody(CreateBody, await c.body());
+    const { title, config, fundraiserGoalCents } = parseBody(CreateBody, await c.body());
     const { deps } = c;
     const auctionId = deps.ids.mint<'AuctionId'>();
     const auctioneerSub = deps.ids.mint<'Jti'>();
     const joinCode = await reserveJoinCode(deps, auctionId);
-    await deps.store.putJournal(titleKey(auctionId), 0, { title, joinCode });
+    await deps.store.putJournal(titleKey(auctionId), 0, {
+      title,
+      joinCode,
+      ...(fundraiserGoalCents === undefined ? {} : { fundraiserGoalCents }),
+    });
     await deps.service.createAuction(auctionId, config, auctioneerSub);
     const auctioneer = await mintToken(deps, 'auctioneer', auctionId, auctioneerSub);
     const screen = await mintToken(deps, 'screen', auctionId, deps.ids.mint<'Jti'>());

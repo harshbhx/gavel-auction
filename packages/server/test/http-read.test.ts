@@ -148,6 +148,49 @@ describe('snapshot lot title and join code (HRD-71)', () => {
   });
 });
 
+describe('snapshot fundraiser goal (UX-02)', () => {
+  async function snapshotWith(extra: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const { app } = setup();
+    const res = await app.fetch(
+      new Request('http://h.test/api/auctions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-admin-key': ADMIN },
+        body: JSON.stringify({ title: 'Gala lot', config, ...extra }),
+      }),
+    );
+    expect(res.status).toBe(201);
+    const b = (await res.json()) as { auctionId: string; screenLink: string };
+    const snap = await get(app, `/api/auctions/${b.auctionId}/snapshot`, tokenOf(b.screenLink));
+    const text = await snap.text();
+    expect(decodeServerMsg(text).ok).toBe(true);
+    return (JSON.parse(text) as { snapshot: Record<string, unknown> }).snapshot;
+  }
+
+  it('carries an optional goal in integer cents', async () => {
+    const snap = await snapshotWith({ fundraiserGoalCents: 2_500_000 });
+    expect(snap.fundraiser).toEqual({ goalCents: 2_500_000 });
+  });
+
+  it('has no fundraiser field when no goal was set', async () => {
+    const snap = await snapshotWith({});
+    expect(snap.fundraiser).toBeUndefined();
+  });
+
+  it('refuses a fractional or non-positive goal', async () => {
+    const { app } = setup();
+    for (const goal of [0, -1, 10.5]) {
+      const res = await app.fetch(
+        new Request('http://h.test/api/auctions', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-admin-key': ADMIN },
+          body: JSON.stringify({ title: 'Gala lot', config, fundraiserGoalCents: goal }),
+        }),
+      );
+      expect(res.status).toBe(400);
+    }
+  });
+});
+
 describe('snapshot and events (T-RT-076)', () => {
   it('returns a schema-valid snapshot for each role, with the ceiling only for the owner', async () => {
     const s = await seeded();
