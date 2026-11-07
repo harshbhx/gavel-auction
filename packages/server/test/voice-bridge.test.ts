@@ -157,7 +157,7 @@ describe('voice bridge (HRD-67)', () => {
   });
 
   it('audits every decision and counts it for the latency budget (R-VOX-071, R-VOX-101)', async () => {
-    const seen = { logs: [], latencyCount: () => 0 } as Parameters<typeof run>[2] & object;
+    const seen = { logs: [], latencyCount: () => 0 } as Parameters<typeof run>[3] & object;
     await run(
       [{ atMs: 600, event: final('paddle seven three fifty', 0.95) }],
       view,
