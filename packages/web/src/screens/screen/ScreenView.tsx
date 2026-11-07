@@ -18,6 +18,9 @@ import './screen.css';
 /** The ticker shows the last five accepted bids (R-WEB-075). */
 export const TICKER_SIZE = 5;
 
+/** The clock turns to the soft close colour in the last ten seconds. */
+const SOFT_CLOSE_MS = 10_000;
+
 export interface ScreenViewProps {
   lotTitle: string;
   /** Short join code shown beside the QR code; null when the server has none to show. */
@@ -108,59 +111,83 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
       ? { kind: 'passed' }
       : { kind: 'sold', paddle: winnerPaddle, amountCents: finalPrice };
 
+  const soft = !closed && remaining !== null && remaining <= SOFT_CLOSE_MS;
+  const screenState = closed
+    ? outcome.kind === 'sold'
+      ? 'sold'
+      : 'unsold'
+    : stopped || price?.paused === true
+      ? 'paused'
+      : price === null || price.currentCents === null
+        ? 'lobby'
+        : soft
+          ? 'soft'
+          : 'leading';
+
   return (
-    <main className="gv-screen" aria-label={lotTitle}>
-      <h1 className="gv-screen__lot">{lotTitle}</h1>
-      <FrozenChip disconnected={connection.offline} />
-      {stopped && <p role="status">{t('screen.stopped')}</p>}
-      <div className="gv-screen__stage">
-        {closed ? (
-          <Sold outcome={outcome} settlement={settlement} />
-        ) : price === null || price.currentCents === null ? (
-          <p className="gv-screen__price tabular">
-            {t('screen.opening', { amount: formatUsd(price?.nextMinCents ?? 0) })}
+    <main className="gv-screen" aria-label={lotTitle} data-state={screenState}>
+      <header className="gv-screen__head">
+        <h1 className="gv-screen__lot">{lotTitle}</h1>
+        <FrozenChip disconnected={connection.offline} />
+        {stopped && (
+          <p role="status" className="gv-screen__notice">
+            {t('screen.stopped')}
           </p>
-        ) : (
-          <>
-            <PriceFlash cents={price.currentCents} />
-            <p className="gv-screen__leader tabular">
-              {leaderPaddle !== null ? `${t('reg.paddle')} ${leaderPaddle}` : ''}
-            </p>
-          </>
         )}
-        {!closed && remaining !== null && (
-          <p
-            className="gv-screen__clock tabular"
-            data-frozen={connection.offline ? 'true' : 'false'}
-          >
-            {formatCountdown(remaining)}
-            {connection.offline && <span> {t('screen.clockFrozen')}</span>}
-          </p>
+      </header>
+      <div className="gv-screen__stage">
+        <div className="gv-screen__board">
+          {closed ? (
+            <Sold outcome={outcome} settlement={settlement} />
+          ) : price === null || price.currentCents === null ? (
+            <p className="gv-screen__opening tabular">
+              {t('screen.opening', { amount: formatUsd(price?.nextMinCents ?? 0) })}
+            </p>
+          ) : (
+            <>
+              <PriceFlash cents={price.currentCents} />
+              <p className="gv-screen__leader tabular">
+                {leaderPaddle !== null ? `${t('reg.paddle')} ${leaderPaddle}` : ''}
+              </p>
+            </>
+          )}
+          {!closed && remaining !== null && (
+            <p
+              className="gv-screen__clock tabular"
+              data-frozen={connection.offline ? 'true' : 'false'}
+              data-soft={soft ? 'true' : 'false'}
+            >
+              {formatCountdown(remaining)}
+              {connection.offline && <span> {t('screen.clockFrozen')}</span>}
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="gv-screen__side">
+        <section className="gv-screen__ticker" aria-label={t('screen.latest')}>
+          <h2 className="gv-screen__ticker-title">{t('screen.latest')}</h2>
+          <ol>
+            {ticker.map((bid) => (
+              <li key={bid.seq} className="tabular">
+                {bid.paddle !== null ? `${bid.paddle}  ` : ''}
+                {formatUsd(bid.amount)}
+              </li>
+            ))}
+          </ol>
+        </section>
+        {closed && (
+          <SettlementPanel
+            view={publicSource(settlementState)}
+            auditHref={`/r/${encodeURIComponent(roomId)}/audit`}
+          />
+        )}
+        {!closed && (
+          <aside className="gv-screen__join">
+            <QrCode url={joinUrl} size={260} />
+            {code !== null && <p className="tabular">{t('screen.join', { code })}</p>}
+          </aside>
         )}
       </div>
-      <section className="gv-screen__ticker" aria-label={t('screen.latest')}>
-        <h2 className="gv-screen__ticker-title">{t('screen.latest')}</h2>
-        <ol>
-          {ticker.map((bid) => (
-            <li key={bid.seq} className="tabular">
-              {bid.paddle !== null ? `${bid.paddle}  ` : ''}
-              {formatUsd(bid.amount)}
-            </li>
-          ))}
-        </ol>
-      </section>
-      {closed && (
-        <SettlementPanel
-          view={publicSource(settlementState)}
-          auditHref={`/r/${encodeURIComponent(roomId)}/audit`}
-        />
-      )}
-      {!closed && (
-        <aside className="gv-screen__join">
-          <QrCode url={joinUrl} size={200} />
-          {code !== null && <p className="tabular">{t('screen.join', { code })}</p>}
-        </aside>
-      )}
     </main>
   );
 }

@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { t } from '../../copy/t';
+import { PriceRoll } from '../../ui';
 import { Icon } from '../../design/icons';
 import { Chip } from '../../design/primitives/Chip';
 import { formatUsd } from '../../util/money';
@@ -23,8 +24,8 @@ export interface SoldProps {
 /** SOLD or Passed banner with a compact settlement summary (R-WEB-078). */
 export function Sold({ outcome, settlement = null }: SoldProps) {
   return (
-    <section data-testid="sold">
-      <p className="gv-hammer-stamp gv-screen__price tabular" data-closed="true">
+    <section data-testid="sold" className="gv-screen__sold" data-kind={outcome.kind}>
+      <p className="gv-hammer-stamp gv-screen__stamp tabular" data-closed="true">
         {outcome.kind === 'passed'
           ? t('screen.passed')
           : outcome.paddle === null
@@ -32,7 +33,7 @@ export function Sold({ outcome, settlement = null }: SoldProps) {
             : t('screen.sold', { n: outcome.paddle, amount: formatUsd(outcome.amountCents) })}
       </p>
       {settlement !== null && (
-        <p className="tabular" data-testid="settle-summary">
+        <p className="gv-screen__settle tabular" data-testid="settle-summary">
           {t('screen.settleSummary', { c: settlement.captured, r: settlement.released })}
         </p>
       )}
@@ -59,8 +60,8 @@ export function PriceFlash({ cents }: PriceFlashProps) {
   const spoken = useThrottledAnnounce(t('screen.priceAnnounce', { amount: text }));
   return (
     <>
-      <p key={cents} className="gv-price-tick gv-screen__price tabular" data-testid="screen-price">
-        {text}
+      <p className="gv-screen__price tabular" data-testid="screen-price">
+        <PriceRoll cents={cents} />
       </p>
       <p aria-live="polite" style={HIDDEN}>
         {spoken}
