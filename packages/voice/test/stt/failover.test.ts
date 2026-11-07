@@ -368,3 +368,42 @@ describe('R9 failover fixes', () => {
     await r.stt.stop();
   });
 });
+
+describe('a primary that goes away', () => {
+  it('switches at once when the primary reports its connection closed', async () => {
+    const r = rig([[]]);
+    await r.stt.start({ keyterms: [], language: 'en' });
+    await r.feed(2);
+    r.primaries[0]?.inject({ type: 'state', state: 'closed' });
+    await flush();
+    expect(r.switches).toEqual(['closed']);
+    expect(r.fallbacks).toHaveLength(1);
+    expect(r.stt.usingPrimary).toBe(false);
+    await r.stt.stop();
+  });
+
+  it('switches when the primary throws from start', async () => {
+    const clock = new VirtualClock();
+    const switches: SwitchReason[] = [];
+    const fallbacks: FakeStt[] = [];
+    const stt = new FailoverStt({
+      clock,
+      primary: () => {
+        const p = new FakeStt({ clock });
+        p.start = () => Promise.reject(new Error('connect refused'));
+        return p;
+      },
+      fallback: () => {
+        const f = new FakeStt({ clock });
+        fallbacks.push(f);
+        return f;
+      },
+      onSwitch: (i) => switches.push(i.reason),
+    });
+    await stt.start({ keyterms: [], language: 'en' });
+    await flush();
+    expect(switches).toEqual(['fatal']);
+    expect(fallbacks).toHaveLength(1);
+    await stt.stop();
+  });
+});
