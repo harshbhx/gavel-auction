@@ -130,7 +130,7 @@ Observed: Deepgram nova-2 exact 0.615, wrong-accept 0.125, confirm 0.417. Groq w
 Verdict: both providers miss the threshold (wrong-accept 0.05 or less), on speech that is noise-free but robotic and so harder than real speech. There is no real-room or noisy-room test.
 Decision: FAIL for unconfirmed voice bids: spoken bids always go through the confirm prompt (assist mode). The payments decision is unchanged.
 Fallback if FAIL: always show the confirm prompt for spoken bids.
-Evidence: PR #1940 (24 synthetic clips and the recorded provider outputs; the files are on main once it merges)
+Evidence: PR #1940 (merged): 24 synthetic clips under packages/voice/fixtures/audio and the recorded provider outputs under packages/voice/fixtures/stt-cache/deepgram and /groq
 Links: issue #1864
 
 ### G5-text: text-level run (step 1)
