@@ -32,6 +32,13 @@ describe('voice, webhook, crash and restart scenarios (R-QA-026, R-QA-027)', () 
     expect(result.outcome.voice.confirms).toBe(2);
   });
 
+  it('S02 gives identical decisions on a second run (R-VOX-102)', async () => {
+    const first = await runScenarioInProc(scenarioFor('S02'));
+    const second = await runScenarioInProc(scenarioFor('S02'));
+    expect(second.failures).toEqual([]);
+    expect(second.outcome.voice).toEqual(first.outcome.voice);
+  });
+
   it('S02 fails when the expected audit row is altered', async () => {
     const scenario = scenarioFor('S02');
     const altered: Scenario = {
