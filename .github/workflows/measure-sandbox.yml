@@ -12,6 +12,19 @@ on:
         description: 'Sequential cycles (1 to 50)'
         required: false
         default: '10'
+      mode:
+        description: 'calls (per-call latency) or settlement (hammer to CAPTURED and SETTLED)'
+        type: choice
+        options: [calls, settlement]
+        default: calls
+      settlements:
+        description: 'Settlement mode: number of settlements (1 to 30)'
+        required: false
+        default: '20'
+      holds:
+        description: 'Settlement mode: holds per settlement (2 to 6, one winner)'
+        required: false
+        default: '6'
 
 permissions:
   contents: read
@@ -24,7 +37,7 @@ jobs:
   measure:
     if: ${{ github.ref == 'refs/heads/main' && !github.event.repository.fork }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 240
     environment: sandbox-nightly
     concurrency:
       group: measure-sandbox
@@ -68,8 +81,16 @@ jobs:
           SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
           SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
           MEASURE_SANDBOX_CYCLES: ${{ inputs.cycles }}
+          MEASURE_SETTLEMENTS: ${{ inputs.settlements }}
+          MEASURE_SETTLE_HOLDS: ${{ inputs.holds }}
+          MEASURE_MODE: ${{ inputs.mode }}
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
-        run: npm run measure:sandbox -w @gavel/e2e -- --out "$RUNNER_TEMP/measure" | tee "$RUNNER_TEMP/measure.txt"
+        run: |
+          if [ "$MEASURE_MODE" = "settlement" ]; then
+            npm run measure:settlement -w @gavel/e2e -- --out "$RUNNER_TEMP/measure" | tee "$RUNNER_TEMP/measure.txt"
+          else
+            npm run measure:sandbox -w @gavel/e2e -- --out "$RUNNER_TEMP/measure" | tee "$RUNNER_TEMP/measure.txt"
+          fi
       - name: Upload the numbers
         if: ${{ steps.secrets.outputs.present == 'true' && always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -78,5 +99,7 @@ jobs:
           path: |
             ${{ runner.temp }}/measure/measure-sandbox.json
             ${{ runner.temp }}/measure/measure-sandbox.md
+            ${{ runner.temp }}/measure/measure-settlement.json
+            ${{ runner.temp }}/measure/measure-settlement.md
           if-no-files-found: warn
           retention-days: 30
