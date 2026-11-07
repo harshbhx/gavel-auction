@@ -1,0 +1,59 @@
+name: ui-screens
+# Screen tour (WEB-99): opens every screen of the web app in every state it can reach, in a phone
+# viewport, a desktop viewport and the dark and projector themes, and uploads one PNG per state with
+# an index. Informational: it is not part of the required roll-up in ci.yml and uses no secrets.
+# The specs live in packages/web/test/screens and run with packages/web/playwright.screens.config.ts,
+# so the visual regression and accessibility specs are untouched.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'packages/web/test/screens/**'
+      - 'packages/web/playwright.screens.config.ts'
+      - '.github/workflows/ui-screens.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-screens-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  screens:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+      - name: Run the screen specs
+        run: npm run test:screens -w @gavel/web
+      - name: Build the index
+        if: always()
+        run: |
+          node packages/web/test/screens/build-index.mjs packages/web/ui-screens-out
+          {
+            echo '## UI screens'
+            echo
+            echo "PNG files: $(find packages/web/ui-screens-out -name '*.png' | wc -l)"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the screenshots and the index
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ui-screens
+          path: packages/web/ui-screens-out
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload failure output
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ui-screens-failures
+          path: packages/web/test-results
+          if-no-files-found: ignore
+          retention-days: 7

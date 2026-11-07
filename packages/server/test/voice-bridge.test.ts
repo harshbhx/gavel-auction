@@ -9,7 +9,7 @@ import {
 import { ReplayStt, parseTimeline, type SttEvent } from '@gavel/voice';
 import { describe, expect, it } from 'vitest';
 import type { VoiceView } from '../src/room/room';
-import { startVoiceBridge, type VoiceRoomPort } from '../src/voice/bridge';
+import { startVoiceBridge, type VoiceDropRecord, type VoiceRoomPort } from '../src/voice/bridge';
 
 const AUCTION = '01J9ZQ5A0B2C4D6F8H0J2K4M6N' as AuctionId;
 const B7 = '01J9ZQ3A0B2C4D6F8H0J2K4M6N' as BidderId;
@@ -38,6 +38,7 @@ const final = (text: string, confidence: number): SttEvent => ({
 async function run(
   events: Array<{ atMs: number; event: SttEvent }>,
   current: VoiceView = view,
+  drops?: VoiceDropRecord[],
   seen?: { logs: Array<[string, Record<string, string> | undefined]>; latencyCount: () => number },
 ) {
   const clock = new ManualClock(1_789_000_000_000);
@@ -48,6 +49,14 @@ async function run(
       bids.push({ bidderId, msg });
       return Promise.resolve();
     },
+    ...(drops === undefined
+      ? {}
+      : {
+          recordVoiceDrop: (d: VoiceDropRecord) => {
+            drops.push(d);
+            return Promise.resolve();
+          },
+        }),
   };
   const timers = new Map<number, ReturnType<typeof clock.setTimer>>();
   let next = 0;
@@ -126,9 +135,35 @@ describe('voice bridge (HRD-67)', () => {
     ).toHaveLength(0);
   });
 
+  it('records the option of a two-bidder confirm that is not held as a drop', async () => {
+    const B9 = '01J9ZQ3A0B2C4D6F8H0J2K4M6P' as BidderId;
+    const two: VoiceView = {
+      ...view,
+      roster: [
+        { bidderId: B7, paddle: '7' },
+        { bidderId: B9, paddle: '9' },
+      ],
+    };
+    const drops: VoiceDropRecord[] = [];
+    const bids = await run(
+      [{ atMs: 600, event: final('paddle seven three fifty paddle nine four hundred', 0.95) }],
+      two,
+      drops,
+    );
+    expect(bids.length).toBeLessThanOrEqual(1);
+    expect(bids.length + drops.length).toBe(2);
+    expect(drops.every((d) => d.reason === 'confirm_option_not_held')).toBe(true);
+    expect(JSON.stringify(drops)).not.toContain('paddle');
+  });
+
   it('audits every decision and counts it for the latency budget (R-VOX-071, R-VOX-101)', async () => {
-    const seen = { logs: [], latencyCount: () => 0 } as Parameters<typeof run>[2] & object;
-    await run([{ atMs: 600, event: final('paddle seven three fifty', 0.95) }], view, seen);
+    const seen = { logs: [], latencyCount: () => 0 } as Parameters<typeof run>[3] & object;
+    await run(
+      [{ atMs: 600, event: final('paddle seven three fifty', 0.95) }],
+      view,
+      undefined,
+      seen,
+    );
     const decisions = seen.logs.filter(([m]) => m === 'voice decision');
     expect(decisions).toHaveLength(1);
     expect(['accepted', 'pending_confirm']).toContain(decisions[0]?.[1]?.outcome);

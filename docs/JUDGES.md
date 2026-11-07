@@ -10,9 +10,9 @@ A short path through the repository for judges. Everything is PayPal sandbox onl
 
 ## Five minute path
 
-The table below is TARGET behaviour: steps 1 and 2 need a deployed staging URL (the `JUDGE_URL` repository variable), and until that is configured the nightly smoke reports SKIPPED and tests nothing.
+The table below is TARGET behaviour: steps 1 and 2 need a deployed staging URL (the `JUDGE_URL` repository variable), and until that is configured the nightly smoke fails red (it never reports a skipped pass).
 
-This path cannot be followed today: no hosted demo URL is published (see `docs/DEMO.md`). `packages/e2e/specs/judge-walkthrough.spec.ts` covers steps 1 and 2 on the fake stack only. The nightly `.github/workflows/judge-smoke.yml` runs that spec against the hosted site only when `JUDGE_URL` is set; while it is unset the job stays green unless the repository variable `JUDGE_SMOKE_REQUIRED` is `true`. Steps 3 to 5 have no automated check.
+This path cannot be followed today: no hosted demo URL is published (see `docs/DEMO.md`). `packages/e2e/specs/judge-walkthrough.spec.ts` covers steps 1 and 2 on the fake stack only. The nightly `.github/workflows/judge-smoke.yml` runs that spec against the hosted site and fails when the repository variable `JUDGE_URL` is unset, so a night that tested nothing cannot look like a pass. Steps 3 to 5 have no automated check.
 
 | Step | Persona    | What to do                                          | Expected outcome                                                                                         |
 | ---- | ---------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
