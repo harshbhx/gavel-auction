@@ -1,0 +1,58 @@
+name: gate-g3-early
+# Early G3 evidence from the two sandbox authorizations created by the G2 run (5 Nov 2026), which
+# are older than the timed probe in gate-g3.yml. This workflow never touches the g3-probe-state
+# artifact. A manual run picks the mode; a pull request touching this file only reads statuses.
+# Probe mode tries a 1.00 partial capture and a reauthorization once an authorization reaches its
+# checkpoint age (3.0 days for G2-wallet, 3.5 days for G2-card) and records the outcome.
+# Actions secrets needed: PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET (throwaway sandbox values).
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: read (status only) or probe (capture 1.00 and reauthorize when due)
+        type: choice
+        options: [read, probe]
+        default: read
+  pull_request:
+    paths:
+      - '.github/workflows/gate-g3-early.yml'
+      - 'scripts/gate-g3-early.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  early:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: sandbox-nightly
+    concurrency:
+      group: gate-g3-early
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: 22
+      - name: Read or probe the old authorizations
+        env:
+          PAYPAL_ENV: sandbox
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'read' }}
+        run: |
+          mkdir -p early
+          if [ -z "$PAYPAL_CLIENT_ID" ] || [ -z "$PAYPAL_CLIENT_SECRET" ]; then
+            echo "::notice title=Skipped::sandbox secrets are not available in this run"
+            exit 0
+          fi
+          node scripts/gate-g3-early.mjs "$MODE" "early/g3-early-$(date -u +%Y%m%dT%H%M%SZ)-$MODE.json" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Keep the evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g3-early-evidence
+          path: early
+          if-no-files-found: ignore
+          retention-days: 30
