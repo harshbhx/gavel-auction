@@ -180,12 +180,20 @@ function gatedSection(
   const records = items.flatMap((i) => (i.gate === undefined ? [] : [i.gate]));
   const count = (d: GateRecord['decision']): number =>
     records.filter((r) => r.decision === d).length;
+  // System level: of the bids the room would book with no confirm prompt (AUTO), how many were
+  // not the bid that was spoken. The rate is 0 when nothing was auto-accepted, which is by
+  // construction on a shared room microphone (every bid is confirmed first).
+  const auto = gated.filter((i) => i.actual.kind === 'accept');
+  const autoWrong = auto.filter(isWrongAccept).length;
   return {
     note: 'Outcome after the room pipeline: rules parse, rescoring, validation, AUTO/CONFIRM policy and mic rule.',
     mic: mic ?? 'room',
     assumptions:
       'Roster of paddles 1 to 99 with active holds; price 0 and minimum increment 100 cents where the fixture gives none; neutral speech-to-text confidence where none was recorded; model off, so every bid is rules-only.',
     outcomes: { auto: count('auto'), confirm: count('confirm'), drop: count('drop') },
+    autoAccepted: auto.length,
+    autoWrongAccepts: autoWrong,
+    autoWrongAcceptRate: auto.length === 0 ? 0 : autoWrong / auto.length,
     sttConfidence: {
       recorded: records.filter((r) => r.sttSource === 'recorded').length,
       neutralAssumed: records.filter((r) => r.sttSource === 'neutral_assumed').length,
@@ -294,6 +302,8 @@ export function renderReport(metrics: Metrics, meta: ReportMeta): Report {
               String(v),
             ]),
           ),
+          '',
+          `Auto-accepted bids: ${String(gated['autoAccepted'])}, of which wrong: ${String(gated['autoWrongAccepts'])} (rate ${fmt(gated['autoWrongAcceptRate'])}, 0 when nothing was auto-accepted).`,
           '',
           ...table(
             ['stt confidence', 'n'],

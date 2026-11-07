@@ -35,7 +35,9 @@ export const DEEPGRAM_DEFAULT_CONFIG: DeepgramConfig = {
     channels: 1,
     interim_results: true,
     punctuate: true,
-    smart_format: true,
+    // Off: smart_format writes amounts as digits and symbols ("$350", "2.50") and scored lower in
+    // the G5 option trials than the spoken words (docs/GATES.md).
+    smart_format: false,
     endpointing: 300,
     utterance_end_ms: 1000,
     language: 'en',

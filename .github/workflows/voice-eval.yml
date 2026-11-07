@@ -24,6 +24,16 @@ on:
         options:
           - espeak
           - human
+      trials:
+        description: 'Option trials: record both clip sets with each Deepgram and Groq option variant (uploads an artifact, no keys in it, nothing is committed)'
+        required: false
+        default: false
+        type: boolean
+      only:
+        description: 'With trials: only run the variants whose name matches this extended regular expression (empty runs all)'
+        required: false
+        default: ''
+        type: string
       record:
         description: 'Render the synthetic clips and record both providers into stt-cache (uploads an artifact, no keys in it)'
         required: false
@@ -83,6 +93,22 @@ jobs:
             npm run eval -w @gavel/voice -- --mode cached --provider "$p" --clips human \
               --out "eval-out/cached-human/$p"
           done
+      - name: Cached mode on a bidder's own device microphone (the one setting where bids can be auto-accepted)
+        run: |
+          for p in deepgram groq; do
+            npm run eval -w @gavel/voice -- --mode cached --provider "$p" --mic device \
+              --out "eval-out/cached-device/$p"
+            npm run eval -w @gavel/voice -- --mode cached --provider "$p" --clips human --mic device \
+              --out "eval-out/cached-device-human/$p"
+          done
+      - name: Cached mode on a device microphone with a second reading that always agrees (upper bound on AUTO)
+        run: |
+          for p in deepgram groq; do
+            npm run eval -w @gavel/voice -- --mode cached --provider "$p" --mic device --model agree \
+              --out "eval-out/cached-device-agree/$p"
+            npm run eval -w @gavel/voice -- --mode cached --provider "$p" --clips human --mic device \
+              --model agree --out "eval-out/cached-device-agree-human/$p"
+          done
       - name: Job summary
         if: always()
         run: |
@@ -101,10 +127,14 @@ jobs:
           path: |
             packages/voice/eval-out/cached
             packages/voice/eval-out/cached-human
+            packages/voice/eval-out/cached-device
+            packages/voice/eval-out/cached-device-human
+            packages/voice/eval-out/cached-device-agree
+            packages/voice/eval-out/cached-device-agree-human
           if-no-files-found: ignore
 
   record:
-    if: github.event_name == 'workflow_dispatch' && inputs.record && inputs.clips != 'human'
+    if: github.event_name == 'workflow_dispatch' && inputs.record && !inputs.trials && inputs.clips != 'human'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -152,7 +182,7 @@ jobs:
           if-no-files-found: ignore
 
   record-human:
-    if: github.event_name == 'workflow_dispatch' && inputs.record && inputs.clips == 'human'
+    if: github.event_name == 'workflow_dispatch' && inputs.record && !inputs.trials && inputs.clips == 'human'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -206,7 +236,7 @@ jobs:
           if-no-files-found: ignore
 
   live:
-    if: github.event_name == 'workflow_dispatch' && !inputs.record
+    if: github.event_name == 'workflow_dispatch' && !inputs.record && !inputs.trials
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -229,4 +259,85 @@ jobs:
         with:
           name: voice-eval-live
           path: packages/voice/eval-out/live
+          if-no-files-found: ignore
+
+  trials:
+    # Option trials for the speech-to-text providers: every variant records both clip sets and is
+    # scored with the same parser. Nothing is written to the committed caches; the winner is chosen
+    # on both sets together and then recorded with the record jobs above.
+    if: github.event_name == 'workflow_dispatch' && inputs.trials
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/setup
+      - name: Install speech synthesizer and ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq espeak-ng ffmpeg jq
+      - name: Render the eSpeak clips and convert the human-like clips (noise-free, not a real-room test)
+        run: |
+          bash packages/voice/scripts/render-clips.sh
+          mkdir -p "$RUNNER_TEMP/human-wav"
+          for f in packages/voice/fixtures/audio-human/*.mp3; do
+            id="$(basename "$f" .mp3)"
+            ffmpeg -nostdin -y -v error -i "$f" -af "adelay=300|300,apad=pad_dur=0.3" \
+              -ar 16000 -ac 1 -c:a pcm_s16le "$RUNNER_TEMP/human-wav/$id.wav"
+          done
+      - name: Record and score every variant on both clip sets
+        env:
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          HUMAN_WAV: ${{ runner.temp }}/human-wav
+          ONLY: ${{ inputs.only }}
+        run: |
+          DG_BASE='language=en&punctuate=false&smart_format=false'
+          KEYTERMS='keyterm=paddle&keyterm=bidder&keyterm=hundred&keyterm=thousand&keyterm=fifty&keyterm=fifteen&keyterm=seventy%20five'
+          KEYWORDS='keywords=paddle:2&keywords=bidder:2&keywords=hundred:2&keywords=thousand:2&keywords=fifty:2&keywords=fifteen:2'
+          HINT='Spoken bids at an auction: paddle eight, six hundred dollars. Bidder number twenty, two thousand. Amounts are said in words.'
+          run_variant() {
+            name="$1"; provider="$2"
+            if [ -n "$ONLY" ] && ! printf '%s' "$name" | grep -Eq "$ONLY"; then return 0; fi
+            for set in espeak human; do
+              if [ "$set" = human ]; then dir="$HUMAN_WAV"; else dir="$PWD/packages/voice/fixtures/audio/recordings"; fi
+              for attempt in 1 2 3 4 5 6; do
+                if G5_AUDIO_DIR="$dir" npm run eval -w @gavel/voice -- --mode live --provider "$provider" \
+                  --record "fixtures/stt-cache-trial/$set-$name" --resume true \
+                  --out "eval-out/trials/$set-$name/$provider"; then
+                  break
+                fi
+                [ "$attempt" = 6 ] && { echo "variant $name ($set) failed"; return 0; }
+                sleep 65
+              done
+            done
+          }
+          G5_DEEPGRAM_QUERY="model=nova-2&$DG_BASE" run_variant dg-nova2-base deepgram
+          G5_DEEPGRAM_QUERY="model=nova-3&$DG_BASE" run_variant dg-nova3-plain deepgram
+          G5_DEEPGRAM_QUERY="model=nova-3&language=en&punctuate=true&smart_format=true" run_variant dg-nova3-prod deepgram
+          G5_DEEPGRAM_QUERY="model=nova-3&language=en&punctuate=true&smart_format=true&numerals=true" run_variant dg-nova3-numerals deepgram
+          G5_DEEPGRAM_QUERY="model=nova-3&$DG_BASE&$KEYTERMS" run_variant dg-nova3-keyterm deepgram
+          G5_DEEPGRAM_QUERY="model=nova-2&$DG_BASE&$KEYWORDS" run_variant dg-nova2-keywords deepgram
+          G5_DEEPGRAM_QUERY="model=nova-3&language=en&punctuate=true&smart_format=false" run_variant dg-nova3-punct deepgram
+          run_variant gq-turbo-base groq
+          G5_GROQ_TEMPERATURE=0 run_variant gq-turbo-temp0 groq
+          G5_GROQ_MODEL=whisper-large-v3 run_variant gq-large-v3 groq
+          G5_GROQ_PROMPT="$HINT" G5_GROQ_TEMPERATURE=0 run_variant gq-turbo-prompt groq
+          G5_GROQ_MODEL=whisper-large-v3 G5_GROQ_PROMPT="$HINT" G5_GROQ_TEMPERATURE=0 run_variant gq-large-v3-prompt groq
+          G5_GROQ_PROMPT='Auction bidding. Words heard: paddle, bidder number, dollars, hundred, thousand.' run_variant gq-turbo-prompt-b groq
+          G5_GROQ_PROMPT='Bid at an auction, spoken as words.' run_variant gq-turbo-prompt-c groq
+      - name: Trial summary
+        if: always()
+        run: |
+          echo '| variant | provider | exact | wrong accept | recoverable | missed | confirm | auto wrong (room) |' >> "$GITHUB_STEP_SUMMARY"
+          echo '| --- | --- | --- | --- | --- | --- | --- | --- |' >> "$GITHUB_STEP_SUMMARY"
+          for f in packages/voice/eval-out/trials/*/*/report.json; do
+            [ -f "$f" ] || continue
+            v="$(basename "$(dirname "$(dirname "$f")")")"; p="$(basename "$(dirname "$f")")"
+            jq -r --arg v "$v" --arg p "$p" '"| \($v) | \($p) | \(.metrics.exactRate) | \(.metrics.wrongAcceptRate) | \(.metrics.recoverableRate) | \(.metrics.missedBidRate) | \(.metrics.confirmRate) | \(.gated.autoWrongAcceptRate) |"' "$f" >> "$GITHUB_STEP_SUMMARY"
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: voice-stt-trials
+          path: |
+            packages/voice/fixtures/stt-cache-trial
+            packages/voice/eval-out/trials
           if-no-files-found: ignore
