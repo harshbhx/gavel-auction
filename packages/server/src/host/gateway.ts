@@ -75,7 +75,12 @@ export function createGateway(deps: GatewayDeps): (transport: BoundedConnection)
             return fail('not_found');
           const room = await deps.service.room(msg.auctionId as AuctionId);
           const p = r.payload;
-          const role = p.kind === 'session' ? 'bidder' : p.kind === 'invite' ? undefined : p.kind;
+          const role =
+            p.kind === 'session'
+              ? 'bidder'
+              : p.kind === 'invite' || p.kind === 'receipt'
+                ? undefined
+                : p.kind;
           if (role === undefined) return fail('unauthorized');
           const conn: Connection = {
             id: connId,
