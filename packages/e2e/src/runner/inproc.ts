@@ -294,16 +294,21 @@ async function drive(
     });
     const headers = key === 'missing' ? {} : { 'x-admin-key': key === 'valid' ? OPS_KEY : 'wrong' };
     let status = 0;
+    let body = '';
     const res = {
       setHeader: () => undefined,
       writeHead: (code: number) => {
         status = code;
       },
-      end: () => undefined,
+      end: (b: string) => {
+        body = b;
+      },
     } as unknown as ServerResponse;
     const req = { method: 'POST', headers } as unknown as IncomingMessage;
     await handler(req, res, `/ops/auctions/${encodeURIComponent(auctionId)}/release-review`);
     await service.idle();
+    if (key === 'valid' && status === 409 && opsStatuses.length >= 3)
+      throw new Error(`DEBUGOPS ${body}`);
     return status;
   }
 
