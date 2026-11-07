@@ -1,10 +1,10 @@
 name: judge-smoke
 # Nightly judge walkthrough against the hosted site (R-QA-055, T-QA-049). Runs the
 # judge-walkthrough spec in Chromium with GAVEL_JUDGE_URL set to the production web URL; the
-# spec must finish within 300 s. When the JUDGE_URL repository variable is not set the run is
-# reported SKIPPED in the step summary and stays green. Set the repository variable
-# JUDGE_SMOKE_REQUIRED to true to make a scheduled skip fail, so a nightly that tested nothing
-# cannot look like a pass once the hosted site is configured.
+# spec must finish within 300 s. The repository variable JUDGE_URL (Settings, Secrets and
+# variables, Actions, Variables) must hold the public web origin, for example
+# https://gavel.pages.dev. A run with JUDGE_URL empty or missing FAILS, so a nightly that tested
+# nothing can never look like a pass. Set JUDGE_URL as soon as the hosted web app exists.
 on:
   schedule:
     - cron: '45 21 * * *'
@@ -25,27 +25,16 @@ jobs:
         with:
           persist-credentials: false
       - name: Check configuration
-        id: cfg
         run: |
           if [ -z "$GAVEL_JUDGE_URL" ]; then
-            echo "::notice title=Judge smoke skipped::Set the repository variable JUDGE_URL to the public web URL"
-            echo "### SKIPPED: no JUDGE_URL (set JUDGE_SMOKE_REQUIRED=true to make a skip fail)" >> "$GITHUB_STEP_SUMMARY"
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "::error title=Judge smoke did not run::The repository variable JUDGE_URL is not set. Set it to the public web URL of the hosted site."
+            echo "### FAILED: no JUDGE_URL, nothing was tested" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
           fi
-      - name: Fail a scheduled run that was skipped
-        if: ${{ steps.cfg.outputs.ready != 'true' && github.event_name == 'schedule' && vars.JUDGE_SMOKE_REQUIRED == 'true' }}
-        run: |
-          echo "::error title=Judge smoke did not run::JUDGE_URL is not set (SKIPPED)"
-          exit 1
       - uses: ./.github/actions/setup
-        if: steps.cfg.outputs.ready == 'true'
       - name: Install Chromium
-        if: steps.cfg.outputs.ready == 'true'
         run: npx playwright install --with-deps chromium
       - name: Run the walkthrough
-        if: steps.cfg.outputs.ready == 'true'
         working-directory: packages/e2e
         run: npx playwright test specs/judge-walkthrough.spec.ts --project=chromium -g hosted
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
