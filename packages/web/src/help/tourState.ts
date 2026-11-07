@@ -94,6 +94,7 @@ export function shouldAutoStart({ search, seen, automated }: AutoStartInput): bo
 
 export function isAutomatedBrowser(): boolean {
   try {
+    if (import.meta.env.MODE === 'test') return true;
     return typeof navigator !== 'undefined' && navigator.webdriver === true;
   } catch {
     return false;
@@ -103,7 +104,9 @@ export function isAutomatedBrowser(): boolean {
 /** Sheet state: closed, the help menu, or the hold explainer. */
 export type HelpView = 'closed' | 'menu' | 'hold';
 export type HelpAction =
-  { readonly type: 'openMenu' } | { readonly type: 'openHold' } | { readonly type: 'close' };
+  | { readonly type: 'openMenu' }
+  | { readonly type: 'openHold' }
+  | { readonly type: 'close' };
 
 export function helpReducer(_state: HelpView, action: HelpAction): HelpView {
   switch (action.type) {

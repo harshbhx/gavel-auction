@@ -451,7 +451,7 @@ export const en = {
   'help.open.tour': 'Replay the tour',
   'help.hold.title': 'What is a hold?',
   'help.hold.intro':
-    'A hold sets money aside, up to your ceiling, while you bid. It is not a charge.',
+    'A hold sets money aside, up to your ceiling, while you bid. It does not take the money.',
   'help.hold.heldTitle': 'Hatched: held',
   'help.hold.held': 'While you bid, your ceiling is held on PayPal. No money is taken yet.',
   'help.hold.chargedTitle': 'Solid: charged only if you win',
