@@ -20,7 +20,18 @@ describe('gate entry scripts', () => {
     expect(res.status).toBe(2);
   });
 
-  it.each(['g1', 'measure', 'idempotency'])('%s detects a vite-node entry run', (name) => {
+  it('g3 run through vite-node does not exit silently when secrets are missing', () => {
+    const bin = join(dirname(require.resolve('vite-node/package.json')), 'vite-node.mjs');
+    const res = spawnSync(process.execPath, [bin, 'gates/g3.ts', '--', '--browser'], {
+      cwd: pkgDir,
+      encoding: 'utf8',
+      env: { PATH: process.env['PATH'], HOME: process.env['HOME'] },
+    });
+    expect(res.stdout).toContain('refused: missing secret');
+    expect(res.status).toBe(2);
+  });
+
+  it.each(['g1', 'g3', 'measure', 'idempotency'])('%s detects a vite-node entry run', (name) => {
     const src = readFileSync(join(pkgDir, 'gates', `${name}.ts`), 'utf8');
     expect(src).toContain("/vite-node/.test(process.argv[1] ?? '')");
   });
