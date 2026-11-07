@@ -163,6 +163,9 @@ function rig(env: Record<string, string>, timeline: Timeline | undefined = RECOR
       log: (m) => logs.push(m),
     },
   );
+  // chooseStt builds one throwaway provider to learn the name; only make() streams count.
+  deepgrams.length = 0;
+  groqs.length = 0;
   return { clock, choice, deepgrams, groqs, logs };
 }
 
