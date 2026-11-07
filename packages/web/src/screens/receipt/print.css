@@ -1,5 +1,6 @@
 @media print {
   .gv-receipt__actions,
+  .gv-receipt__hint,
   .gv-banner,
   .gv-btn,
   .ui-holdcard .ui-link {

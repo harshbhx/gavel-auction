@@ -30,11 +30,13 @@ export function navigate(to: string): void;
 // @public (undocumented)
 export function ReceiptRoute(input: {
     roomId: string;
+    share?: MintReceiptLink;
 }): JSX_2.Element;
 
 // Warnings were encountered during analysis:
 //
-// /home/runner/work/gavel-auction/gavel-auction/.api-types/web/App.d.ts:12:9 - (ae-forgotten-export) The symbol "PaymentsMode" needs to be exported by the entry point App.d.ts
+// /home/runner/work/gavel-auction/gavel-auction/.api-types/web/App.d.ts:13:9 - (ae-forgotten-export) The symbol "PaymentsMode" needs to be exported by the entry point App.d.ts
+// /home/runner/work/gavel-auction/gavel-auction/.api-types/web/App.d.ts:21:5 - (ae-forgotten-export) The symbol "MintReceiptLink" needs to be exported by the entry point App.d.ts
 
 // (No @packageDocumentation comment for this package)
 

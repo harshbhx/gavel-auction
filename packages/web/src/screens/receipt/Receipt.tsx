@@ -7,6 +7,7 @@ import type { HoldView, SettlementView } from '../../ladder/ladderModel';
 import { Failed } from './Failed';
 import { Fallback } from './Fallback';
 import { NonWinner } from './NonWinner';
+import { ShareControls, type MintReceiptLink } from './ShareControls';
 import { Winner, isCaptured } from './Winner';
 import './receipt.css';
 import './print.css';
@@ -23,6 +24,8 @@ export interface ReceiptProps {
   /** True when the server named no hold for this viewer. */
   noHold?: boolean;
   contact?: ReactNode;
+  /** Makes a share link for this receipt. Absent on a shared (read-only) receipt. */
+  share?: MintReceiptLink;
 }
 
 /**
@@ -124,6 +127,8 @@ export function Receipt(props: ReceiptProps) {
           {t('receipt.download')}
         </Button>
       </div>
+      <p className="gv-receipt__hint">{t('receipt.printHint')}</p>
+      {props.share !== undefined && <ShareControls mint={props.share} />}
     </article>
   );
 }

@@ -2,15 +2,19 @@ import { isUlid } from '@gavel/shared';
 import type { ErrorCode } from '@gavel/shared';
 import { z } from 'zod';
 
-export const TOKEN_KINDS = ['invite', 'session', 'auctioneer', 'screen'] as const;
+export const TOKEN_KINDS = ['invite', 'session', 'auctioneer', 'screen', 'receipt'] as const;
 export type TokenKind = (typeof TOKEN_KINDS)[number];
 
-/** Lifetimes in seconds: invite 24 h, session 4 h, auctioneer 12 h, screen 12 h. */
+/**
+ * Lifetimes in seconds: invite 24 h, session 4 h, auctioneer 12 h, screen 12 h, receipt 4 h (the
+ * bidder session lifetime, so a shared receipt link lives as long as the room's bidder tokens).
+ */
 export const TOKEN_TTL_S: Readonly<Record<TokenKind, number>> = {
   invite: 24 * 3600,
   session: 4 * 3600,
   auctioneer: 12 * 3600,
   screen: 12 * 3600,
+  receipt: 4 * 3600,
 };
 
 const ulid = z.string().refine(isUlid, 'invalid id');
@@ -181,6 +185,11 @@ export async function verifyToken(
   if (!opts.kinds.includes(payload.kind)) return deny('unauthorized', 'wrong token kind');
   if (payload.kind === 'session' && payload.bidderId === undefined) {
     return deny('unauthorized', 'session token without bidderId');
+  }
+  // A receipt token names its bidder in `sub` alone: it carries no bidderId, so it can never pass
+  // for a session, and its subject must be a real bidder id.
+  if (payload.kind === 'receipt' && (payload.bidderId !== undefined || !isUlid(payload.sub))) {
+    return deny('unauthorized', 'malformed receipt token');
   }
   if (payload.bidderId !== undefined && payload.sub !== payload.bidderId) {
     return deny('unauthorized', 'sub does not match bidderId');

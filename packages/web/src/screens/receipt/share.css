@@ -1,0 +1,64 @@
+/* Share controls on the receipt: a link field, a copy button and a QR code. */
+.gv-share {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-block-start: var(--space-3);
+  border-block-start: var(--border-width) solid var(--color-rule);
+}
+
+.gv-share > h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-4);
+  text-transform: uppercase;
+}
+
+.gv-share__link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.gv-share__field {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-2, 0.875rem);
+}
+
+.gv-share__qr svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.gv-share__note,
+.gv-share__status {
+  margin: 0;
+}
+
+.gv-share__status:empty {
+  display: none;
+}
+
+/* On paper the link text and the QR code stay, the buttons go. */
+@media print {
+  .gv-share .gv-share__row,
+  .gv-share > button,
+  .gv-share__status {
+    display: none !important;
+  }
+
+  .gv-share,
+  .gv-share__field {
+    border-color: #000;
+    color: #000;
+    background: #fff;
+  }
+}
