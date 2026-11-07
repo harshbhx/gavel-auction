@@ -47,7 +47,10 @@ export function NonWinner({ hold, itemName, at }: NonWinnerProps) {
           <p>{t('receipt.heldOwn', { amount })}</p>
         </>
       )}
-      <HoldCard state={released ? 'released' : 'held'} ceilingCents={hold.ceilingCents} />
+      <HoldCard
+        state={released ? 'released' : 'held'}
+        ceilingCents={released && hold.releasedCents > 0 ? hold.releasedCents : hold.ceilingCents}
+      />
     </section>
   );
 }
