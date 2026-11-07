@@ -32,6 +32,8 @@ jobs:
         env:
           SIM_MULTIDAY_WRITE: '1'
         run: npm exec -w @gavel/payments -- vitest run test/simdays
+      - name: Format the report like every other markdown file
+        run: npx prettier --write docs/evidence/SIM-MULTIDAY.md
       - name: Keep the generated report
         if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
