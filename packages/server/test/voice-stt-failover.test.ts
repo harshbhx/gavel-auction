@@ -325,6 +325,11 @@ describe('voice bridge across a provider switch', () => {
       r.groqs[0]?.drop();
     }
     for (let i = 0; i < opts.seconds * 10; i++) {
+      // A live Groq keeps answering the room's talk; only the second case has no provider left.
+      if (opts.groqHears && i % 10 === 0) {
+        const at = 1000 + i * 100;
+        r.groqs[0]?.emit(final('hello everyone', at, at + 400, 0.9));
+      }
       bridge.write(loud(seq++));
       await step();
     }
