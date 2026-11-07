@@ -34,3 +34,12 @@ am not sure." (confirm), "Let me think about that for a moment." (none).
 software; the generated speech is not a copy of third-party audio). All 24 clips use eSpeak voices
 (`en-us`, `en-gb`, `en-gb-x-rp+f3`, `en-us+m3`, `en-us+f2`); the voice ids in the manifest select which.
 No person was recorded, so no consent is needed. The noise beds above are not mixed in.
+
+## Human-like synthetic clips (audio-human)
+
+`../audio-human/a01.mp3` to `a24.mp3` speak the same 24 utterances as the manifest (clip id equals
+manifest id) with one general-purpose English text-to-speech voice (ElevenLabs, voice "Kiora",
+model eleven_multilingual_v2), one generation per clip, mono mp3. The speech is synthetic and
+noise-free; the manifest noise field is not applied. Generated under the account's service terms; no
+person was recorded, so no consent is needed. The workflow converts them to 16 kHz mono wav before
+the live run.
