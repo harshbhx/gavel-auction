@@ -10,7 +10,7 @@ describe('/try page', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(4);
     expect(screen.getByText(t('try.credsBody'))).toBeTruthy();
     expect(screen.getByRole('link', { name: t('try.tourLink') }).getAttribute('href')).toBe(
-      '/r/demo/screen?scripted=1',
+      '/demo/scripted',
     );
     expect(screen.getByRole('button', { name: t('landing.start') })).toBeTruthy();
   });

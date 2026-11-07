@@ -26,7 +26,7 @@ Along the way, check these parts of the interface (each is covered by tests in C
 - On the big screen, a lot with a fundraiser goal shows a thermometer that counts only captured money.
 - After the hammer the receipt can mint a share link with a QR code, and has a print layout.
 
-For a tour that needs no login, run the web app in development (`npm run dev -w @gavel/web`) and open `/r/demo/screen?scripted=1`; it replays a recorded room in the browser and makes no PayPal calls. Only development builds honour `scripted=1`: on the hosted site a production build ignores it, so the "Watch the guided tour" link on `/try` does not play a scenario there. Nothing on this path is a live-money action: the host refuses to start judge rooms unless it is on the PayPal sandbox.
+For a tour that needs no login, run the web app in development (`npm run dev -w @gavel/web`) and open `/r/demo/screen?scripted=1`; it replays a recorded room in the browser and makes no PayPal calls. Only development builds honour `scripted=1`: on the hosted site a production build ignores it. To try the scripted demo on the hosted site, open `/demo/scripted` (the "Watch the guided tour" link on `/try` goes there): it plays the recorded room in the tab with no server connection. Nothing on this path is a live-money action: the host refuses to start judge rooms unless it is on the PayPal sandbox.
 
 ## Five minute path
 

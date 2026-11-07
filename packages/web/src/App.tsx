@@ -17,9 +17,14 @@ import type { PaymentsMode } from './config';
 import type { Transport } from './net/transport';
 import { WebSocketTransport } from './net/wsTransport';
 import { ScenarioTransport } from './net/scenarioTransport';
-import { readScriptedRequest, type ScriptedRequest } from './net/scriptedMode';
+import {
+  DEFAULT_SCENARIO,
+  SCRIPTED_DEMO_PATH,
+  readScriptedRequest,
+  type ScriptedRequest,
+} from './net/scriptedMode';
 import { Provenance } from './design/Provenance';
-import { loadScriptedRoom, type ScriptedRoom } from './testing/scriptedRoom';
+import { SCRIPTED_ROOM_ID, loadScriptedRoom, type ScriptedRoom } from './testing/scriptedRoom';
 import { clearSession, type SessionRole } from './net/session';
 import { loadRegistration } from './payments/registrationStore';
 import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
@@ -419,7 +424,7 @@ function LandingRoute({ api }: { api: Api | undefined }) {
   return (
     <LandingScreen
       onStart={() => navigate('/demo')}
-      onScripted={() => navigate('/demo')}
+      onScripted={() => navigate(SCRIPTED_DEMO_PATH)}
       onJoin={async (code) => {
         if (api === undefined) return false;
         let id: string;
@@ -887,6 +892,25 @@ function ScriptedRoute({
   );
 }
 
+/** The big screen on the recorded scenario. The route itself is the in-memory switch: the query flag stays development only. */
+const SCRIPTED_SCREEN_MATCH: RouteMatch = {
+  route: { id: 'screen', path: '/r/:roomId/screen', titleKey: 'demo.roleScreen' },
+  params: { roomId: SCRIPTED_ROOM_ID },
+};
+const SCRIPTED_REQUEST: ScriptedRequest = { name: DEFAULT_SCENARIO, at: null };
+
+/** /demo/scripted: plays the scripted demo in this tab, in every build, with no server connection. */
+function InMemoryScriptedDemo({ liveBase }: { liveBase: string | undefined }) {
+  return (
+    <ScriptedRoute
+      match={SCRIPTED_SCREEN_MATCH}
+      roomId={SCRIPTED_ROOM_ID}
+      request={SCRIPTED_REQUEST}
+      liveBase={liveBase}
+    />
+  );
+}
+
 function Routed({
   match,
   liveBase,
@@ -928,6 +952,7 @@ function Routed({
   if (id === 'ops') return <OpsRoute api={api} />;
   if (id === 'landing' && api !== undefined) return <LandingRoute api={api} />;
   if (id === 'demo') return <DemoRoute api={api} />;
+  if (id === 'scriptedDemo') return <InMemoryScriptedDemo liveBase={liveBase} />;
   if (id === 'try') return <TryScreen onStart={() => navigate('/demo')} />;
   if (id === 'notFound') return <NotFound />;
   if (id === 'replay') return <ReplayRoute match={match} />;
