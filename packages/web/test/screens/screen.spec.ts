@@ -80,13 +80,20 @@ test.describe('screen', () => {
     await shoot('screen', 'sold-settled');
   });
 
-  test('fundraiser thermometer: live, on hold and raised', async ({ page, shoot }) => {
+  test('fundraiser thermometer, live', async ({ page, shoot }) => {
     await screen(page, { scenario: fundraiser, at: HAPPY.winning });
     await expect(page.getByText('Raised $0.00 of $1,000.00')).toBeVisible();
     await shoot('screen', 'fundraiser-live');
+  });
+
+  test('fundraiser thermometer, amount on hold', async ({ page, shoot }) => {
     await screen(page, { scenario: fundraiser, at: HAPPY.capturing });
     await expect(page.getByText('On hold: $350.00')).toBeVisible();
+    await expect(page.getByText('Raised $0.00 of $1,000.00')).toBeVisible();
     await shoot('screen', 'fundraiser-on-hold');
+  });
+
+  test('fundraiser thermometer, raised after capture', async ({ page, shoot }) => {
     await screen(page, { scenario: fundraiser, at: HAPPY.settled });
     await expect(page.getByText('Raised $350.00 of $1,000.00')).toBeVisible();
     await shoot('screen', 'fundraiser-raised');
