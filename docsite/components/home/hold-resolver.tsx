@@ -52,7 +52,7 @@ export function HoldResolver() {
       data-phase={phase}
     >
       <div className="flex items-baseline justify-between gap-3 border-b border-[var(--hl-hairline)] px-4 py-2.5">
-        <p className="hl-eyebrow">Lot 14 · first-edition poster, 1962</p>
+        <p className="hl-eyebrow">Lot 14 | first-edition poster, 1962</p>
         <p className="hl-eyebrow">An example, not a record</p>
       </div>
 
@@ -65,7 +65,7 @@ export function HoldResolver() {
               <div className="mb-1.5 flex items-baseline justify-between gap-3 font-mono text-[0.78rem]">
                 <span>
                   <b className="hl-display text-base not-italic">{b.key}</b>&nbsp; {b.name}
-                  <span className="text-[var(--hl-fg-muted)]"> · hold ${b.hold}</span>
+                  <span className="text-[var(--hl-fg-muted)]"> | hold ${b.hold}</span>
                 </span>
                 <span
                   className={cn(
@@ -103,7 +103,7 @@ export function HoldResolver() {
           aria-atomic="true"
         >
           <span className="text-[var(--hl-fg-muted)]">ledger, in cents </span>
-          held {held * 100} · charged {charged * 100} · released {released * 100}
+          held {held * 100} | charged {charged * 100} | released {released * 100}
           <span className="text-[var(--hl-fg-muted)]"> = {total * 100}</span>
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-3">

@@ -14,7 +14,7 @@ export function Hero() {
     <section aria-labelledby="hero-title" className="border-b border-[var(--hl-border)] px-4 pt-10 pb-14 md:pt-16 md:pb-20">
       <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-12 lg:gap-6 [&>*]:min-w-0">
         <div className="lg:col-span-7 lg:pt-6">
-          <p className="hl-eyebrow">PayPal hackathon 2026 · documentation, sandbox only</p>
+          <p className="hl-eyebrow">PayPal hackathon 2026 | documentation, sandbox only</p>
           <h1 id="hero-title" className="hl-display mt-5 text-[clamp(3rem,8.5vw,6.6rem)]">
             The hammer falls.
             <br />

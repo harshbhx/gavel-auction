@@ -16,7 +16,7 @@ export async function GET(_req: Request, { params }: RouteContext<'/og/docs/[...
   return ogImage({
     title: page.data.title,
     description: page.data.description,
-    kicker: status ? `${section} · ${status}` : section,
+    kicker: status ? `${section} | ${status}` : section,
   });
 }
 
