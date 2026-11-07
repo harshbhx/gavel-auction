@@ -7,6 +7,7 @@ export default function Layout({ children }: LayoutProps<'/docs'>) {
     <DocsLayout
       tree={source.getPageTree()}
       {...baseOptions()}
+      tabMode="top"
       sidebar={{
         footer: (
           <p className="mt-2 font-mono text-[0.65rem] text-fd-muted-foreground">

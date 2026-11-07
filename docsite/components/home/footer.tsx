@@ -16,8 +16,10 @@ export function Footer() {
           <Link href="/docs/start" className="hover:underline">Start here</Link>
           <Link href="/docs/how-it-works" className="hover:underline">How it works</Link>
           <Link href="/docs/proof" className="hover:underline">Proof</Link>
+          <Link href="/docs/judges" className="hover:underline">For judges</Link>
+          <Link href="/docs/builders" className="hover:underline">Builders</Link>
           <Link href="/docs/safety" className="hover:underline">Safety</Link>
-          <Link href="/docs/run" className="hover:underline">Run it yourself</Link>
+          <Link href="/docs/run" className="hover:underline">Operators</Link>
           <Link href="/docs/roadmap" className="hover:underline">Roadmap and limits</Link>
           <a href={repoUrl} target="_blank" rel="noreferrer noopener" className="hover:underline">GitHub repository</a>
           <a href="/llms.txt" className="hover:underline">llms.txt</a>
