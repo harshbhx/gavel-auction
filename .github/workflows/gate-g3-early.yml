@@ -25,6 +25,7 @@ jobs:
   early:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: sandbox-nightly
     concurrency:
       group: gate-g3-early
       cancel-in-progress: false
