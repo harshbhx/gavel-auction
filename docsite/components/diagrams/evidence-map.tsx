@@ -218,7 +218,7 @@ function Pill({ x, y, status, p }: { x: number; y: number; status: EvStatus; p: 
 }
 
 function fit(s: string, max: number): string {
-  return s.length <= max ? s : `${s.slice(0, max - 1)}…`;
+  return s.length <= max ? s : `${s.slice(0, max - 1)}...`;
 }
 
 export function EvidenceMapDiagram() {
