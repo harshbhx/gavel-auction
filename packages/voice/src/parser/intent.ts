@@ -1,4 +1,5 @@
 import type { VoiceReason } from '../types.js';
+import { PADDLE_WORDS, USD_WORDS } from './lexicon.js';
 import { findNumberSpans, tokenize } from './normalize.js';
 
 /**
@@ -27,6 +28,8 @@ const HEDGE =
   /(^| )(maybe|perhaps|probably|thinking|about|around|roughly|between|or so|not sure|might|i guess|if|hold on|hang on|let me think|stop at|stopping at|my limit|my max|my maximum|my budget|my ceiling|my cap)( |$)/;
 const BACKGROUND =
   /(^| )(the price is|price is|it's at|now at|currently|reserve|starting|opening|we are at|we're at|(lot|item|page) number|do i hear|who'll give|who will give|wholl give|will you give|can i get|looking for|with you at|going once|going twice|going three times|fair warning|sold|kids|years old|people)( |$)/;
+/** "it is two fifty": the price being stated by the auctioneer, not a bid; confirmed, never booked. */
+const STATEMENT_START = /^(it is|it's|that is|that's|this is|which is) /;
 const QUESTION_START = new Set([
   'is',
   'did',
@@ -146,6 +149,15 @@ function negationCounts(text: string): { negated: number; affirmative: number } 
   return { negated, affirmative };
 }
 
+/** Only amounts, paddle words and currency words: "$2.50?" and "paddle 7 350?" are bids said with a rising tone. */
+function isBareAmount(tokens: string[]): boolean {
+  const spans = findNumberSpans(tokens);
+  if (spans.length === 0) return false;
+  const inSpan = new Set<number>();
+  for (const [s, e] of spans) for (let k = s; k < e; k++) inSpan.add(k);
+  return tokens.every((t, k) => inSpan.has(k) || USD_WORDS.has(t) || PADDLE_WORDS.has(t));
+}
+
 export function detectIntent(text: string): Intent {
   const tokens = tokenize(text).map((t) => t.text);
   const norm = tokens.join(' ');
@@ -153,10 +165,17 @@ export function detectIntent(text: string): Intent {
   if (HEDGE.test(norm)) return intent('hedged', 'confirm', 'hedged');
   const first = tokens[0] ?? '';
   const doNot = first === 'do' && tokens[1] === 'not';
-  if (text.includes('?') || (QUESTION_START.has(first) && !doNot)) {
+  const asks = QUESTION_START.has(first) && !doNot;
+  if (asks || (text.includes('?') && !isBareAmount(tokens))) {
     return intent('question', 'none', 'question');
   }
+  // A bare amount with a question mark is a bid said with a rising tone (speech-to-text adds the
+  // mark): ask the bidder instead of dropping it.
+  if (text.includes('?')) return intent('hedged', 'confirm', 'hedged');
   if (BACKGROUND.test(norm)) return intent('background', 'none', 'auctioneer_talk');
+  if (STATEMENT_START.test(norm) && findNumberSpans(tokens).length > 0) {
+    return intent('background', 'confirm', 'auctioneer_talk');
+  }
   const { negated, affirmative } = negationCounts(text);
   if (negated > 0) {
     return affirmative > 0
