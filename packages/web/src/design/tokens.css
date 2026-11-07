@@ -1,52 +1,89 @@
 /*
- * Design tokens. Every colour, type, space, radius, shadow and motion value is a CSS custom property.
- * Components reference these properties and never hard-code colours.
+ * Design tokens (HOLDLINE). Every colour, type, space, radius, shadow and motion value is a CSS
+ * custom property. Components reference these properties and never hard-code colours.
+ * Daylight (light) is the base here; Dusk (dark) and Floodlight (projector) override in themes.css.
  *
- * Colour (semantic, per theme; light is the base here, dark and projector override in themes.css):
+ * Colour (semantic, per theme). Names that existed before HOLDLINE are kept:
  *   --color-bg, --color-surface, --color-fg, --color-fg-muted, --color-border,
  *   --color-accent, --color-on-accent, --color-success, --color-warning, --color-danger,
  *   --color-focus
+ * Added by HOLDLINE:
+ *   --color-panel (same value as --color-surface), --color-panel-2 (raised rows),
+ *   --color-hairline (decorative separators only, never the sole boundary of a control),
+ *   --color-signal (brass FILL), --color-on-signal (text on a brass fill),
+ *   --color-signal-ink (brass as text or a thin line; on Daylight it is a dark brass),
+ *   --color-go (= success), --color-stop (= danger), --color-info (voice and system status)
+ *   Rule: never use var(--color-signal) in a color or border-color declaration (on Daylight it
+ *   fails contrast); use --color-signal-ink for brass text and lines.
+ *   On Daylight --color-accent is the dark brass (it is used as text and borders by components);
+ *   on Dusk and Floodlight it is the brass signal.
  * Type:
- *   --font-sans, --type-scale (1 for light and dark, 2 for projector),
- *   --font-size-1..6 (12, 14, 16, 20, 28, 40 px times --type-scale), --line-height-body (1.5)
- * Space:   --space-1..8 (4px grid)
- * Radius:  --radius-sm, --radius-md, --radius-lg, --radius-pill
+ *   --font-sans (Archivo Variable), --font-mono (Martian Mono Variable), --type-scale (1 for
+ *   Daylight and Dusk, 2 for Floodlight), --font-size-1..6 (12, 14, 16, 20, 28, 40 px times
+ *   --type-scale), --font-size-label, --font-size-price-phone|console|screen (not scaled),
+ *   --line-height-body (1.5), --line-height-title, --line-height-price, --tracking-label,
+ *   --tracking-price
+ * Space:   --space-1..10 (4px grid, then 96 and 128)
+ * Radius:  --radius-sm, --radius-md, --radius-lg, --radius-pill, --radius-sheet
  * Shadow:  --shadow-1, --shadow-2
+ * State fills: --hatch (held), --fill-charged, --fill-released-width (see holdline.css)
  * Motion:  --duration-micro (120ms), --duration-standard (240ms), --duration-hammer (600ms),
- *          --duration-fade (opacity fades; 80ms under reduced motion), --hammer-static (0 or 1)
+ *          --duration-fade (opacity fades; 80ms under reduced motion), --hammer-static (0 or 1),
+ *          --ease-out, --ease-in-out, --ease-lock
  * Utility: .tabular enables tabular figures for money and paddle numbers.
  *
- * Theme switch: set data-theme="light" | "dark" | "projector" on the root element.
+ * Theme switch: set data-theme="light" | "dark" | "projector" on the root element
+ * (light = Daylight, dark = Dusk, projector = Floodlight).
  * Without the attribute the theme follows prefers-color-scheme.
  */
 
 @import './motion.css';
+@import './holdline.css';
 
 @font-face {
-  font-family: 'Inter Variable';
+  font-family: 'Archivo Variable';
   font-style: normal;
   font-weight: 100 900;
+  font-stretch: 62% 125%;
   font-display: swap;
-  src: url('./fonts/inter-latin-wght-normal.woff2') format('woff2-variations');
+  src: url('./fonts/archivo-latin-wdth-normal.woff2') format('woff2-variations');
+}
+
+@font-face {
+  font-family: 'Martian Mono Variable';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('./fonts/martian-mono-latin-wght-normal.woff2') format('woff2-variations');
 }
 
 :root {
-  /* colour: light */
-  --color-bg: #ffffff;
-  --color-surface: #f3f4f6;
-  --color-fg: #14161a;
-  --color-fg-muted: #4b5563;
-  --color-border: #6b7280;
-  --color-accent: #1d4ed8;
+  /* colour: Daylight (light) */
+  --color-bg: #f6f4ee;
+  --color-surface: #ffffff;
+  --color-panel: #ffffff;
+  --color-panel-2: #ece9e0;
+  --color-fg: #121715;
+  --color-fg-muted: #4a524f;
+  --color-border: #6b726f;
+  --color-hairline: #cfcabb;
+  --color-accent: #7a4600;
   --color-on-accent: #ffffff;
-  --color-success: #067647;
-  --color-warning: #8a4b00;
-  --color-danger: #b42318;
-  --color-focus: #1d4ed8;
+  --color-signal: #ffb224;
+  --color-on-signal: #121715;
+  --color-signal-ink: #7a4600;
+  --color-success: #0b6b3a;
+  --color-go: #0b6b3a;
+  --color-warning: #7a4600;
+  --color-danger: #b3261e;
+  --color-stop: #b3261e;
+  --color-info: #0a5e73;
+  --color-focus: #121715;
 
   /* type */
-  --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+  --font-sans: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
     Arial, sans-serif;
+  --font-mono: 'Martian Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
   --type-scale: 1;
   --font-size-1: calc(12px * var(--type-scale));
   --font-size-2: calc(14px * var(--type-scale));
@@ -55,6 +92,14 @@
   --font-size-5: calc(28px * var(--type-scale));
   --font-size-6: calc(40px * var(--type-scale));
   --line-height-body: 1.5;
+  --line-height-title: 1.15;
+  --line-height-price: 0.9;
+  --font-size-label: 11px;
+  --tracking-label: 0.14em;
+  --tracking-price: -0.02em;
+  --font-size-price-phone: clamp(72px, 24vw, 112px);
+  --font-size-price-console: clamp(88px, 8vw, 144px);
+  --font-size-price-screen: clamp(160px, 26vw, 420px);
 
   /* space */
   --space-1: 4px;
@@ -65,16 +110,19 @@
   --space-6: 32px;
   --space-7: 48px;
   --space-8: 64px;
+  --space-9: 96px;
+  --space-10: 128px;
 
   /* radius */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 16px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
   --radius-pill: 999px;
+  --radius-sheet: 16px 16px 0 0;
 
   /* shadow */
-  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.12);
-  --shadow-2: 0 8px 24px rgb(0 0 0 / 0.18);
+  --shadow-1: 0 1px 0 rgb(18 23 21 / 0.12), 0 1px 2px rgb(18 23 21 / 0.1);
+  --shadow-2: 0 12px 32px rgb(18 23 21 / 0.18);
 
   /* motion */
   --duration-micro: 120ms;
@@ -82,6 +130,15 @@
   --duration-hammer: 600ms;
   --duration-fade: 120ms;
   --hammer-static: 0;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.6, 0, 0.2, 1);
+  --ease-lock: cubic-bezier(0.3, 1.5, 0.5, 1);
+
+  /* state fills: held = hatched, charged = solid, released = hollow */
+  --hatch: repeating-linear-gradient(45deg, var(--color-border) 0 2px, transparent 2px 6px);
+  --fill-charged: var(--color-go);
+  --fill-released-width: 1.5px;
+  --notch: 6px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -96,6 +153,7 @@
 
 body {
   font-family: var(--font-sans);
+  font-stretch: 100%;
   font-size: var(--font-size-3);
   line-height: var(--line-height-body);
   color: var(--color-fg);

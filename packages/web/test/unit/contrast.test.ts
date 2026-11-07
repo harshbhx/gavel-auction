@@ -9,7 +9,7 @@ const themes = read('../../src/design/themes.css');
 
 function declarations(block: string | undefined): Map<string, string> {
   const out = new Map<string, string>();
-  for (const m of (block ?? '').matchAll(/(--color-[a-z-]+):\s*(#[0-9a-fA-F]{6})\s*;/g)) {
+  for (const m of (block ?? '').matchAll(/(--color-[a-z0-9-]+):\s*(#[0-9a-fA-F]{6})\s*;/g)) {
     const [, name, value] = m;
     if (name !== undefined && value !== undefined) out.set(name, value);
   }
