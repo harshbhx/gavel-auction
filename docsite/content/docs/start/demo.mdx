@@ -1,0 +1,59 @@
+---
+title: Demo guide
+description: What you can try today, what needs a hosted server, and what is not built yet.
+icon: Play
+status: unverified
+---
+
+Status labels: "available" means the code is on `main` today. "not available yet" means the part is specified but not built or not deployed, so the step cannot be followed end to end.
+
+<Held title="No hosted demo is published">
+
+The hosted server runs in production mode, which refuses the fake PayPal. The scripted `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake`, which config refuses under production-like settings. The local fake-payments run is the runnable path today.
+
+</Held>
+
+## What exists
+
+| Item | Status |
+| --- | --- |
+| Landing page `/` | Route built in the web package; no hosted deployment yet |
+| Demo launcher `/demo` | Creates a room and gives four links; scripted mode is local only |
+| Replay `/replay/:recordingId` | Player and bundle format exist; no recording is hosted yet |
+| Auctioneer console, bidder screen, big screen, audit | Routes built; they need a running server |
+
+Every page shows a "Sandbox: no real money moves" banner. A room is labelled "Live sandbox room", "Scripted demo: recorded events, no PayPal calls" or "Recorded: this is a replay".
+
+## Join as a bidder
+
+1. Open the QR link from the launcher, or `/join/<roomId>` and type the six-character code.
+2. Choose "Join as bidder" and pick a ceiling. The page creates a PayPal order with intent AUTHORIZE for that amount.
+3. Approve it. A sandbox buyer signs in with a sandbox personal account; in a fake-payments room the page approves after a short pause with no sign-in.
+4. The ladder shows your hold as HELD. A hold is a promise, not a charge.
+
+## Bid
+
+- QR: after joining, the bid screen has a quick-bid button, increment buttons and a custom amount. Bids above your ceiling are blocked.
+- Typed entry: the auctioneer console has "Manual entry" to place a bid for a registered bidder.
+- Voice: the `/audio` socket turns a spoken bid into a structured bid and asks for confirmation. The console has no audio sender yet, so its microphone button is disabled.
+
+## Expected result at the hammer
+
+1. The winner's hold is captured for the **winning price only**. A $500 ceiling and a $350 winning bid captures $350.
+2. Every other hold is voided. The winner's unused remainder is closed by PayPal (inferred, not observed).
+3. The ladder shows HELD, then CAPTURED for the winner and VOIDED for the others, with the source of each confirmation (webhook or lookup).
+4. Exactly one capture happens even if the server stops mid-settlement and resumes. If PayPal's answer is unknown, the settlement stops for review.
+
+<NotVerified title="Timing">
+
+A hold older than 2 hours (`GAVEL_HOLD_MAX_AGE_MS`, 7,200,000 ms) when settlement starts is flagged stale, and a stale hold is still captured. PayPal's honor period is unproven (gate G3), so register, bid and hammer within one sitting.
+
+</NotVerified>
+
+<CodePaths
+  paths={[
+    { path: 'docs/DEMO.md', note: 'the guide this page is distilled from' },
+    { path: 'packages/web/src/App.tsx', note: 'routes' },
+    { path: 'packages/server/src/http/demo.ts', note: 'scripted demo routes (DEMO_MODE=1 and fake payments only)' },
+  ]}
+/>

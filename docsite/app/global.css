@@ -1,0 +1,394 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+/*
+ * HOLDLINE for the docs site. Token names and values follow the product design system
+ * (docs: "Hatched means held. Solid means charged. Hollow means released.").
+ * Themes: Daylight (light), Dusk (dark, default for the demo) and Floodlight (projector,
+ * data-floodlight on <html>, always on top of dark).
+ */
+html {
+  scrollbar-gutter: stable;
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}
+
+/* ---------- tokens ---------- */
+:root {
+  /* Daylight */
+  --hl-bg: #f6f4ee;
+  --hl-panel: #ffffff;
+  --hl-panel-2: #ece9e0;
+  --hl-fg: #121715;
+  --hl-fg-muted: #4a524f;
+  --hl-border: #6b726f;
+  --hl-hairline: #cfcabb;
+  --hl-signal: #ffb224; /* brass: fills only on Daylight */
+  --hl-on-signal: #121715;
+  --hl-signal-ink: #7a4600; /* brass as text or thin line */
+  --hl-go: #0b6b3a;
+  --hl-stop: #b3261e;
+  --hl-info: #0a5e73;
+  --hl-focus: #121715;
+
+  --color-fd-background: var(--hl-bg);
+  --color-fd-foreground: var(--hl-fg);
+  --color-fd-muted: var(--hl-panel-2);
+  --color-fd-muted-foreground: var(--hl-fg-muted);
+  --color-fd-popover: var(--hl-panel);
+  --color-fd-popover-foreground: var(--hl-fg);
+  --color-fd-card: var(--hl-panel);
+  --color-fd-card-foreground: var(--hl-fg);
+  --color-fd-border: var(--hl-hairline);
+  --color-fd-primary: var(--hl-signal-ink);
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-secondary: var(--hl-panel-2);
+  --color-fd-secondary-foreground: var(--hl-fg);
+  --color-fd-accent: var(--hl-panel-2);
+  --color-fd-accent-foreground: var(--hl-fg);
+  --color-fd-ring: var(--hl-focus);
+}
+
+.dark {
+  /* Dusk */
+  --hl-bg: #0b0f10;
+  --hl-panel: #121819;
+  --hl-panel-2: #1a2326;
+  --hl-fg: #e8eeeb;
+  --hl-fg-muted: #a3b1ad;
+  --hl-border: #5f7377;
+  --hl-hairline: #2e3d40;
+  --hl-signal: #ffb224;
+  --hl-on-signal: #0b0f10;
+  --hl-signal-ink: #ffb224;
+  --hl-go: #62e39a;
+  --hl-stop: #ff8073;
+  --hl-info: #72d6ea;
+  --hl-focus: #f5f7f6;
+
+  --color-fd-primary-foreground: #0b0f10;
+}
+
+:root[data-floodlight='1'] {
+  /* Floodlight (projector) */
+  --hl-bg: #000000;
+  --hl-panel: #0a0a0a;
+  --hl-panel-2: #141414;
+  --hl-fg: #ffffff;
+  --hl-fg-muted: #d4dad7;
+  --hl-border: #9aa9a5;
+  --hl-hairline: #3a4a4d;
+  --hl-signal: #ffc94d;
+  --hl-on-signal: #000000;
+  --hl-signal-ink: #ffc94d;
+  --hl-go: #7bf0ae;
+  --hl-stop: #ff9c90;
+  --hl-info: #8fe3f5;
+  --hl-focus: #ffffff;
+
+  --color-fd-primary-foreground: #000000;
+}
+
+body {
+  background: var(--hl-bg);
+  color: var(--hl-fg);
+  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  font-stretch: 100%;
+  line-height: 1.65;
+}
+
+/* prose measure and size from the design system: 68 characters, 17px, 1.65 */
+.prose {
+  font-size: 1.0625rem;
+}
+
+code,
+kbd,
+pre,
+.font-mono {
+  font-family: var(--font-martian), ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+
+/* display voice: Archivo condensed, heavy */
+.hl-display {
+  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  font-stretch: 75%;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.02;
+}
+
+/* focus ring from tokens, never removed */
+:focus-visible {
+  outline: 2px solid var(--hl-focus);
+  outline-offset: 2px;
+}
+
+/* skip link */
+.hl-skip {
+  position: absolute;
+  left: 0.75rem;
+  top: -4rem;
+  z-index: 100;
+  background: var(--hl-signal);
+  color: var(--hl-on-signal);
+  padding: 0.5rem 0.75rem;
+  font-weight: 700;
+}
+.hl-skip:focus {
+  top: 0.75rem;
+}
+
+/* ---------- the three fills ---------- */
+/* Held: diagonal hatch, 45 degrees, 2px lines on a 6px pitch. */
+.hl-hatch-fill {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--hl-signal-ink) 0,
+    var(--hl-signal-ink) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+}
+.hl-hatch-chip {
+  color: var(--hl-fg);
+  border: 1px solid var(--hl-signal-ink);
+  background-color: var(--hl-panel);
+  background-image: repeating-linear-gradient(
+    45deg,
+    color-mix(in oklab, var(--hl-signal-ink) 45%, transparent) 0,
+    color-mix(in oklab, var(--hl-signal-ink) 45%, transparent) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+}
+/* Charged: solid. */
+.hl-solid-chip {
+  background: var(--hl-go);
+  color: var(--hl-bg);
+  border: 1px solid var(--hl-go);
+}
+/* Released: hollow outline, 1.5px. */
+.hl-hollow-chip {
+  background: transparent;
+  color: var(--hl-fg-muted);
+  border: 1.5px solid var(--hl-border);
+}
+/* Needs review / failed: stop, solid with a stripe. */
+.hl-stop-chip {
+  background: var(--hl-stop);
+  color: var(--hl-bg);
+  border: 1px solid var(--hl-stop);
+}
+
+/* ---------- callouts ---------- */
+.hl-callout {
+  position: relative;
+  margin: 1.5rem 0;
+  border: 1px solid var(--hl-hairline);
+  background: var(--hl-panel);
+  border-radius: 2px;
+  padding: 0.9rem 1rem 0.9rem 1.5rem;
+}
+.hl-callout::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 10px;
+}
+.hl-callout--held::before {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--hl-signal-ink) 0,
+    var(--hl-signal-ink) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+  border-right: 1px solid var(--hl-signal-ink);
+}
+.hl-callout--charged::before {
+  background: var(--hl-go);
+}
+.hl-callout--released::before {
+  border: 1.5px solid var(--hl-border);
+  border-left: 0;
+  background: transparent;
+  width: 10px;
+}
+.hl-callout--review {
+  border-color: var(--hl-stop);
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+}
+.hl-callout--review::before {
+  background: var(--hl-stop);
+}
+.hl-callout__label {
+  font-family: var(--font-martian), ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+  color: var(--hl-fg);
+}
+.hl-callout > :last-child {
+  margin-bottom: 0;
+}
+
+/* ---------- landing ---------- */
+@keyframes shiny-text {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.hl-eyebrow {
+  font-family: var(--font-martian), ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hl-fg-muted);
+}
+
+.hl-grid-bg {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--hl-hairline) 60%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--hl-hairline) 60%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+@media (forced-colors: active) {
+  .hl-callout,
+  .hl-hatch-chip,
+  .hl-solid-chip,
+  .hl-hollow-chip,
+  .hl-stop-chip {
+    border: 2px solid CanvasText;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* ---------- diagrams (inline SVG, Holdline fills) ---------- */
+.dg text {
+  font-family: var(--font-martian), ui-monospace, monospace;
+  font-stretch: 75%;
+  font-size: 12.5px;
+  fill: var(--hl-fg);
+}
+.dg .t-muted {
+  fill: var(--hl-fg-muted);
+}
+.dg .t-small {
+  font-size: 11px;
+}
+.dg .t-big {
+  font-size: 15px;
+  font-weight: 700;
+}
+.dg .t-stop {
+  fill: var(--hl-stop);
+  font-weight: 700;
+}
+.dg .t-go {
+  fill: var(--hl-go);
+  font-weight: 700;
+}
+.dg .t-ink {
+  fill: var(--hl-signal-ink);
+  font-weight: 700;
+}
+.dg .node {
+  fill: var(--hl-panel);
+  stroke: var(--hl-border);
+  stroke-width: 1.5;
+}
+.dg .node-term {
+  fill: var(--hl-panel-2);
+  stroke: var(--hl-fg);
+  stroke-width: 2;
+}
+.dg .node-stop {
+  fill: var(--hl-panel);
+  stroke: var(--hl-stop);
+  stroke-width: 2;
+}
+.dg .rule-money {
+  fill: var(--hl-signal-ink);
+}
+.dg .edge {
+  fill: none;
+  stroke: var(--hl-fg-muted);
+  stroke-width: 1.5;
+}
+.dg .edge-thick {
+  fill: none;
+  stroke: var(--hl-fg);
+  stroke-width: 3;
+}
+.dg .edge-stop {
+  fill: none;
+  stroke: var(--hl-stop);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+.dg .edge-dash {
+  fill: none;
+  stroke: var(--hl-fg-muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+.dg .guide {
+  stroke: var(--hl-hairline);
+  stroke-width: 1;
+}
+.dg .guide-dash {
+  stroke: var(--hl-border);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+.dg .fill-solid {
+  fill: var(--hl-go);
+  stroke: var(--hl-go);
+}
+.dg .fill-hollow {
+  fill: none;
+  stroke: var(--hl-border);
+  stroke-width: 1.5;
+}
+.dg .fill-hatch-edge {
+  stroke: var(--hl-signal-ink);
+  stroke-width: 1.5;
+}
+.dg .fill-stop {
+  fill: var(--hl-stop);
+}
+.dg .panel {
+  fill: var(--hl-panel);
+  stroke: var(--hl-hairline);
+  stroke-width: 1;
+}
+.dg .panel-2 {
+  fill: var(--hl-panel-2);
+}
+@media (forced-colors: active) {
+  .dg text {
+    fill: CanvasText;
+  }
+  .dg .node,
+  .dg .panel {
+    fill: Canvas;
+    stroke: CanvasText;
+  }
+}

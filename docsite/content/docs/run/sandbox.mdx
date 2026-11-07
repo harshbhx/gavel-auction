@@ -1,0 +1,28 @@
+---
+title: Use the real PayPal sandbox
+description: The settings that switch GAVEL from the fake PayPal to the sandbox.
+icon: Plug
+---
+
+<Chip kind="sandbox">Sandbox</Chip>
+
+Set `PAYMENTS=sandbox` and provide `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` and `PAYPAL_WEBHOOK_ID`. The names are in `.env.example`; keep the values in your local `.env` and never commit them.
+
+```bash
+# names only: values live in your .env, never in the repository
+PAYMENTS=sandbox
+PAYPAL_ENV=sandbox
+PAYPAL_CLIENT_ID=
+PAYPAL_CLIENT_SECRET=
+PAYPAL_WEBHOOK_ID=
+```
+
+Sandbox buyer accounts are created in the PayPal developer dashboard. Credentials are never stored in this repository; organisers hand out a test buyer at the event. Never use a real account.
+
+<Held title="Timing">
+
+PayPal's honor period for an authorization is unproven (gate G3). Register, bid and hammer within one sitting.
+
+</Held>
+
+The gate runbook shows how each sandbox run is recorded: see [re-running a gate](/docs/run/gate-runbook).

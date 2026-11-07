@@ -1,0 +1,43 @@
+---
+title: Architecture
+description: Seven packages in one strict TypeScript monorepo, and the dependency rule between them.
+icon: Boxes
+status: verified
+---
+
+```mermaid
+flowchart LR
+  web["web<br/>React + Vite client"] -. HTTP .-> server["server<br/>HTTP host, rooms, settlement"]
+  web --> shared["shared<br/>money, ids, wire types"]
+  server --> shared
+  server --> engine["engine<br/>auction core, ledger"]
+  server --> payments["payments<br/>holds, saga, webhooks"]
+  payments --> engine
+  payments --> paypal[("PayPal sandbox<br/>or fake PayPal")]
+  voice["voice<br/>speech-to-text, bid parser"] -. audio socket .-> server
+  e2e["e2e<br/>scenario DSL and runner"] -. drives .-> server
+```
+
+| Package | Purpose |
+| --- | --- |
+| `packages/shared` | Money in integer cents, ids, wire types, replay bundle format |
+| `packages/engine` | Pure auction core and hash-chained ledger |
+| `packages/payments` | Hold service, settlement saga, webhook verification, fake PayPal, gate scripts |
+| `packages/voice` | Audio capture, speech-to-text clients, bid parser, decision step |
+| `packages/server` | Single-process host: HTTP routes, room runtime, settlement scheduling, file stores |
+| `packages/e2e` | Scenario DSL, runner and end-to-end specs |
+| `packages/web` | Browser client (React and Vite) |
+
+Money is always integer cents. The dependency rules are enforced in CI by `dependency-cruiser` and an engine purity check.
+
+## Where the pieces mount
+
+`packages/server/src/boot/compose.ts` mounts the room WebSocket gateway and the `/audio` voice socket, which feeds each decision into the room. The speech provider is cached transcripts unless `VOICE_STT` names a live provider with its key.
+
+<CodePaths
+  paths={[
+    { path: 'docs/submission/ARCHITECTURE.md', note: 'the full diagram and details' },
+    { path: 'packages/server/src/boot/compose.ts', note: 'where everything is wired' },
+    { path: '.dependency-cruiser.cjs', note: 'the dependency rules' },
+  ]}
+/>

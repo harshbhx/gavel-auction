@@ -1,0 +1,36 @@
+---
+title: Saga states and events
+description: Every state and every legal move of the settlement saga, from the transition table in the code.
+icon: Table
+status: verified
+---
+
+The table below is `TRANSITIONS` in `packages/payments/src/saga/machine.ts`. Any event outside it throws `IllegalTransition`. `TERMINAL_STATES` are `SETTLED` and `FAILED_NEEDS_REVIEW`.
+
+| Event | From | To |
+| --- | --- | --- |
+| `start_auction` | HELD | BIDDING |
+| `cancel` | HELD, BIDDING | VOIDING |
+| `hammer` | BIDDING | WINNER_SELECTED |
+| `no_candidate` | WINNER_SELECTED | VOIDING |
+| `begin` | WINNER_SELECTED | CAPTURING |
+| `capture_ok`, `adopted` | CAPTURING | CAPTURED |
+| `definite_fail` | CAPTURING | FALLBACK_RUNNER_UP |
+| `next_candidate` | FALLBACK_RUNNER_UP | CAPTURING |
+| `no_candidates_left` | FALLBACK_RUNNER_UP | VOIDING |
+| `begin_void` | CAPTURED | VOIDING |
+| `all_released` | VOIDING | SETTLED |
+| `invariant` | WINNER_SELECTED, CAPTURING, FALLBACK_RUNNER_UP | FAILED_NEEDS_REVIEW |
+| `unknown_deadline` | CAPTURING | FAILED_NEEDS_REVIEW |
+| `mismatch` | CAPTURING, CAPTURED | FAILED_NEEDS_REVIEW |
+| `void_budget_exhausted` | VOIDING | FAILED_NEEDS_REVIEW |
+
+## Effects
+
+A transition can return effects that the runner executes after it saves the journal: `capture` (cursor, bidder, hold, authorization id, amount), `void_holds` (every hold except the winner's, sorted by id) and `flag_review` (with a reason).
+
+## Crash boundaries
+
+The runner reports a boundary at every save (`journaled:<event>`) and around each PayPal call: `before:capture`, `after:capture`, `before:get`, `after:get`, `after:void`. The simulation and the `GAVEL_CHECKPOINT_KILL` test hook use these labels.
+
+<CodePaths paths={['packages/payments/src/saga/machine.ts', 'packages/payments/src/types.ts', 'packages/server/src/boot/checkpoint-kill.ts']} />

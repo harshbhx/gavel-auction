@@ -1,0 +1,32 @@
+---
+title: Configuration
+description: The settings of the server, by name. Values never appear here.
+icon: Settings
+status: verified
+---
+
+From `packages/server/src/config.ts` and the deploy guide. The server validates its environment at start and refuses to boot with a message naming the variable.
+
+| Name | Values | Notes |
+| --- | --- | --- |
+| `PUBLIC_URL` | https URL | Required. A non-local host turns production rules on |
+| `NODE_ENV` | development, test, production | Production refuses fake payments and weak secrets |
+| `TOKEN_SECRET` | string | Required; at least 32 bytes in production |
+| `TOKEN_SECRET_PREVIOUS` | string | Optional, for rotation |
+| `ADMIN_KEY` | string | Required; at least 24 characters in production |
+| `STORE` | memory, file, postgres, d1 | Default memory |
+| `DATA_DIR` | path | Default `./data` |
+| `PAYMENTS` | fake, sandbox | Default fake |
+| `PAYPAL_ENV` | sandbox | The only accepted value |
+| `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID` | string | Needed for `PAYMENTS=sandbox` |
+| `VOICE_STT` | replay, fake, groq, deepgram | Unset means cached transcripts |
+| `DEMO_MODE` | 0 or 1 | Scripted demo routes; only with fake payments |
+| `CORS_ORIGINS` | list of origins | The web origin |
+| `GAVEL_HOLD_MAX_AGE_MS` | integer | Default 7200000: a hold older than this is flagged stale |
+| `RATE_JOIN_BURST`, `RATE_JOIN_PER_MIN` | integers | Defaults 40 and 10 |
+| `TRUSTED_PROXY_HOPS` | 0 to 10 | Default 0 |
+| `LOG_LEVEL` | debug, info, warn, error | Default info |
+
+<Chip kind="fake">Fake PayPal</Chip> is the default. <Chip kind="sandbox">Sandbox</Chip> needs the three PayPal values.
+
+<CodePaths paths={['packages/server/src/config.ts', 'packages/server/README.md', '.env.example']} />

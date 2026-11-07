@@ -1,0 +1,35 @@
+---
+title: Latency
+description: Measured PayPal sandbox latency and the targets it does not meet.
+icon: Timer
+status: unverified
+---
+
+Measured on the real PayPal sandbox on 5 Nov 2026 (workflow `measure-sandbox`, 10 sequential cycles, 0 failures, so n=10 per call).
+
+<LatencyTable />
+
+<NotVerified title="Small sample, no committed raw log">
+
+With n=10 the p95 is close to the maximum. The raw log is not committed; the Actions run log is the only record and it expires with log retention. These numbers are reported, not independently verifiable.
+
+</NotVerified>
+
+## Targets
+
+| Target | Value | Status |
+| --- | --- | --- |
+| hammer to CAPTURED, p95 | 2.5 s | Unverified end to end. The capture call alone has p95 2280.66 ms. |
+| hammer to SETTLED, 6 holds, p95 | 6 s | Not shown to hold. The budget assumes each call stays under 1 s at p95, and the void p95 is 1235.96 ms. |
+| webhook handler 200, without the verify call | 300 ms | Not measured by this script. |
+
+A settlement of six holds is one truth check, one capture and five voids. With three voids at a time that is two void waves. Using sandbox p95 for the capture and void calls alone gives 2 x 1235.96 + 2280.66 = 4752.58 ms before the truth check, which is not measured yet, so the 6 s target is not shown to hold with margin.
+
+An end-to-end settlement measurement exists (`npm run measure:settlement -w @gavel/e2e`) and runs only through the `measure-sandbox` workflow from `main`. Its status in `docs/GATES.md` at the time of writing is UNVERIFIED, NOT RUN.
+
+<CodePaths
+  paths={[
+    { path: 'docs/GATES.md', note: 'section "Latency targets and measured numbers"' },
+    { path: 'packages/e2e/src/sandbox/measure-settlement-cli.ts', note: 'end to end settlement measurement' },
+  ]}
+/>

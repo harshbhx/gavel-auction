@@ -1,0 +1,49 @@
+---
+title: Voice and the confirm gate
+description: Speech never becomes a bid by itself. The pipeline, the gate and the failed accuracy gate.
+icon: Mic
+status: unverified
+full: true
+---
+
+Voice is one input among several. The engine, the PayPal hold ladder and the audit trail are the core of the product; manual entry and tap to bid always work if speech fails.
+
+<VoiceDiagram />
+
+## The pipeline
+
+1. **Segment.** Audio is cut into speech segments.
+2. **Speech to text.** The default build plays cached transcripts. A live provider (Groq or Deepgram) runs only when `VOICE_STT` is set and its key exists.
+3. **Parse.** A rule parser reads amount, paddle and intent.
+4. **Decide.** The step merges parser opinions, scores confidence and validates the bid against the room. The result is `accept`, `confirm` or `drop`.
+5. **Confirm.** A question goes to the bidder (for example "Did you mean $150 for paddle 12?"). A yes is checked again against the live price before a bid is placed. A no or an expiry places nothing and is logged.
+
+Some situations always confirm, whatever the confidence: a correction, a hedged phrase, several amounts or bidders, an unregistered paddle, a large jump, an implausible amount.
+
+<NotVerified title="Speech accuracy gate G5 FAILED">
+
+Both providers miss the 0.05 wrong-accept limit on synthetic audio, on two clip sets of 24 clips. There is no real-room or noisy-room test, and no live speech run is recorded.
+
+<SpeechTable />
+
+</NotVerified>
+
+<NotVerified title="Always-confirm is a decision, not yet a code switch">
+
+`docs/GATES.md` records the decision that spoken bids always go through the confirm prompt (assist mode). The code keeps the default thresholds (auto 0.85, confirm 0.50): a clean parse that two parsers agree on, at 0.85 or more, can be accepted without the gate. Without a second parser opinion the score tops out at 0.82, so such a bid confirms. The room also holds any voice bid below 0.85 or flagged ambiguous.
+
+</NotVerified>
+
+## Where this lives in the code
+
+<CodePaths
+  paths={[
+    { path: 'packages/voice/src/decide/policy.ts', note: 'accept, confirm or drop; the hard flags' },
+    { path: 'packages/voice/src/decide/decide.ts', note: 'the decision' },
+    { path: 'packages/voice/src/decide/score.ts', note: 'confidence scoring' },
+    { path: 'packages/voice/src/decide/answer.ts', note: 'answering a confirm prompt' },
+    { path: 'packages/voice/src/pipeline/pipeline.ts', note: 'the pipeline' },
+    { path: 'packages/server/src/voice/bridge.ts', note: 'audio socket to room' },
+    { path: 'packages/server/src/room/confirm.ts', note: 'held voice bids' },
+  ]}
+/>

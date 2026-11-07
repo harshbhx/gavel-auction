@@ -1,0 +1,39 @@
+---
+title: Real, simulated, recorded
+description: One table that says what is real PayPal sandbox, what is the fake PayPal, what is simulated and what is recorded.
+icon: Scale
+---
+
+Four words are used with care on this site.
+
+| Word | Meaning |
+| --- | --- |
+| Real | A call to the PayPal sandbox, with committed evidence or a run log. |
+| Fake | The project's built-in fake PayPal, a test double. Behaviour there says nothing about PayPal. |
+| Simulated | The code run over simulated days with a fake clock against a model of PayPal. |
+| Recorded | A replay of recorded events or cached speech outputs. |
+
+## By area
+
+| Area | Status | Basis |
+| --- | --- | --- |
+| Auction rules, price, soft close, hammer | Real code | Deterministic engine, the same in every mode. Covered by unit, property and fixture tests. |
+| Hold creation (AUTHORIZE) | Real on the sandbox | Gate G2 PASS: wallet buyer and guest card authorized with the PayPal JS SDK v6. |
+| Partial capture with `final_capture` | Real on the sandbox | Gate G1 PASS for two PayPal-account buyers. Guest card capture was not run. |
+| Remainder release | Inferred | The authorization reads CAPTURED and a void answers 422 PREVIOUSLY_CAPTURED. No buyer balance was read. |
+| Webhook signature verification | Real on the sandbox | Gate G4 PASS: six real deliveries verified. Rejecting a tampered event is fake-only. |
+| Whole-auction settlement | Fake, plus one sandbox lot | Settlement saga against the fake PayPal. Nightly sandbox specs R7 and R8 settled one lot of three holds on the real sandbox (runs 42200708552 and 42317068784, redacted reports committed). No auction driven through a server. |
+| Crash recovery | Fake, plus one sandbox crash | Injected crashes against the fake PayPal. Spec R10 recovered from one in-process crash on the sandbox. No real process kill. |
+| Honor period and reauthorize | Not known | Gate G3 is a real probe in progress. The 30 day run is simulated. |
+| Voice | Recorded | Cached transcripts by default. Live speech only with `VOICE_STT` set. Gate G5 FAIL on synthetic audio. |
+| Hosted demo | Not available | No hosted URL is published. |
+
+<NotVerified title="Reading the table">
+
+When this table and a gate disagree, the gate record in `docs/GATES.md` wins. The [gates page](/docs/proof/gates) is generated from it.
+
+</NotVerified>
+
+## The gates at a glance
+
+<GatesTable />

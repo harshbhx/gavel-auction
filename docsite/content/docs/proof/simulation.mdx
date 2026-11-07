@@ -1,0 +1,35 @@
+---
+title: The 30 day simulation
+description: Eight scenarios on a fake PayPal and a fake clock. Labelled SIMULATED.
+icon: CalendarClock
+status: simulated
+full: true
+---
+
+<TimelineDiagram />
+
+## What it is
+
+The settlement saga, the reauthorization pass, the journal stores and the webhook merge run over simulated days against a **model** of PayPal's authorization rules, in seconds, with an injected clock. The model is the fake PayPal with these assumptions: honor period 3 days, authorization valid 29 days, reauthorize allowed only after the honor period and answered with a new authorization id, capture after validity fails.
+
+<NotVerified title="What this proves, and what it does not">
+
+A passing run says our code behaves correctly **if PayPal follows this model**. It says nothing about whether PayPal does. That is gate G3, a real probe that is still in progress. Where G3 disagrees with the model, the model changes and the suite reruns.
+
+</NotVerified>
+
+<SimScenarioTable />
+
+## S8: thirty days, a hundred bidders, random crashes
+
+Forty lots, 100 bidders, a 3 percent crash chance at every boundary, outages of 1 to 4 days in 5 percent of crashes, and random PayPal faults. Every fifth lot gets two injected rate-limit (429) answers on its first capture and a restart after a two hour outage. The figures on the timeline above are read from the committed file.
+
+Process crashes in this suite are exceptions at a saga boundary: they are not real process kills.
+
+<CodePaths
+  paths={[
+    { path: 'docs/evidence/SIM/SIM-MULTIDAY.md', note: 'generated file; do not edit by hand' },
+    { path: 'packages/payments/test/simdays/multiday.test.ts', note: 'the suite that generates it' },
+    { path: '.github/workflows/sim-multiday.yml', note: 'the CI job' },
+  ]}
+/>

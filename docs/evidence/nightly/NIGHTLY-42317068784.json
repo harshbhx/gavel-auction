@@ -1,0 +1,84 @@
+{
+  "generatedAt": "2026-11-07T00:24:02.826Z",
+  "sha": "0177df7c1ae3",
+  "secretsPresent": true,
+  "overall": "inconclusive",
+  "counts": {
+    "pass": 7,
+    "fail": 0,
+    "inconclusive": 1,
+    "skipped": 2
+  },
+  "specs": [
+    {
+      "spec": "R1",
+      "gate": "G1",
+      "status": "pass",
+      "observed": "captured 35000 cents, remainder released",
+      "finishedAt": "2026-11-07T00:17:12.661Z"
+    },
+    {
+      "spec": "R2",
+      "gate": "G2",
+      "status": "pass",
+      "observed": "card buyer, authorization CREATED",
+      "finishedAt": "2026-11-07T00:17:40.747Z"
+    },
+    {
+      "spec": "R3",
+      "gate": "G3",
+      "status": "inconclusive",
+      "observed": "reauthorize answered 422 UNPROCESSABLE_ENTITY",
+      "finishedAt": "2026-11-07T00:18:08.047Z"
+    },
+    {
+      "spec": "R4",
+      "gate": "G4",
+      "status": "skipped",
+      "observed": "no staging host configured (GAVEL_STAGING_URL)",
+      "finishedAt": "2026-11-07T00:18:08.047Z"
+    },
+    {
+      "spec": "R5",
+      "gate": "G1",
+      "status": "pass",
+      "observed": "second send answered 200, same capture true",
+      "finishedAt": "2026-11-07T00:18:38.880Z"
+    },
+    {
+      "spec": "R6",
+      "gate": "G1",
+      "status": "pass",
+      "observed": "both voids accepted, second void on the same authorization: UNPROCESSABLE_ENTITY PREVIOUSLY_VOIDED",
+      "finishedAt": "2026-11-07T00:19:34.750Z"
+    },
+    {
+      "spec": "R7",
+      "gate": "G1",
+      "status": "pass",
+      "observed": "saga SETTLED, ledger against PayPal: 0 differences",
+      "finishedAt": "2026-11-07T00:21:11.653Z"
+    },
+    {
+      "spec": "R8",
+      "gate": "G1",
+      "status": "pass",
+      "observed": "reconciliation found 0 differences, winner captured 12500",
+      "finishedAt": "2026-11-07T00:21:11.653Z"
+    },
+    {
+      "spec": "R10",
+      "gate": "G1",
+      "status": "pass",
+      "observed": "resume adopted the capture: one capture on the winner, losers voided",
+      "finishedAt": "2026-11-07T00:22:37.131Z"
+    },
+    {
+      "spec": "G5",
+      "gate": "none",
+      "status": "skipped",
+      "observed": "deepgram: 20 of 20 recordings missing; groq: 20 of 20 recordings missing",
+      "finishedAt": "2026-11-07T00:24:02.441Z"
+    }
+  ]
+}

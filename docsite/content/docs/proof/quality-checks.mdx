@@ -1,0 +1,30 @@
+---
+title: Quality checks
+description: What CI runs on every change.
+icon: ListChecks
+status: verified
+---
+
+Heavy work runs in GitHub Actions, not on a laptop. Every pull request goes through the `ci` workflow, and a final `required` job fails unless every job succeeded.
+
+| Job | What it checks |
+| --- | --- |
+| typecheck, lint, format-check | Strict TypeScript, ESLint with zero warnings, Prettier |
+| unit, coverage, property, scenarios | Unit tests, coverage thresholds that may only be raised, property tests with replayable seeds, the scenario DSL |
+| deps | Dependency rules between packages and the engine purity check |
+| secrets | Tracked `node_modules`, live host references, a secret scan of the history, and a bundle scan with canary secrets |
+| ascii-banned | ASCII-only text and the banned-word list, run from the base commit |
+| docs-format | The formats of `docs/DECISIONS.md` and `docs/GATES.md`, and the gates result |
+| commitlint, ownership | Conventional commit headers and one-area ownership of each change |
+| voice, e2e-fixtures | Parser golden files, held-out set guard, bundle size, audio fixtures |
+| reference-python, differential | A Python reference of the engine, compared on 2000 scenarios with a pinned seed |
+| package-checks, prod-build | Package-level lint and trace baselines, and a production build with a smoke test |
+
+Property tests print their seed; `GAVEL_PROPERTY_SEED=<n>` replays a run.
+
+<CodePaths
+  paths={[
+    { path: '.github/workflows/ci.yml', note: 'the workflow' },
+    { path: 'README.md', note: 'test commands' },
+  ]}
+/>
