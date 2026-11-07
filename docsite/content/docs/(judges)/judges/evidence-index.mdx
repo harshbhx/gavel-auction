@@ -23,18 +23,13 @@ Where the only record is a GitHub Actions run log (G0, the latency measurement),
 | Six real webhooks, including a capture and a void, each verify SUCCESS through PayPal's endpoint | <Chip kind="solid">PASS</Chip> | [`docs/evidence/G4`](https://github.com/harshbhx/gavel-auction/tree/main/docs/evidence/G4): `G4-20261105T012205Z.jsonl`; workflow run 41947655945 |
 | Rejection of a tampered webhook | <Chip kind="fake">FAKE ONLY</Chip> | Tested against the fake PayPal. Not run on the sandbox. |
 | How long an authorization stays capturable, and whether reauthorize extends it | <Chip kind="hatched">IN PROGRESS</Chip> | Gate G3, [`gate-g3.yml`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/gate-g3.yml). Day 0 was 7 Nov 2026 03:06 UTC; final reading about 12 Nov 06:17 UTC. No result recorded. |
-| Spoken bids are accurate enough to accept without confirmation | <Chip kind="stop">FAIL</Chip> | Gate G5, synthetic audio only. Numbers below. |
+| Spoken bids are accurate enough to accept without confirmation | <Chip kind="hatched">PARTIAL</Chip> | Gate G5, synthetic audio only; fixes chosen on the same clips. Numbers below. |
 
 ## Gate G5 numbers (24 clips each, synthetic and noise-free)
 
-| Clip set | Provider | Exact | Wrong accept | Confirm |
-| --- | --- | --- | --- | --- |
-| eSpeak (robotic) | Deepgram nova-2 | 0.615 | 0.125 | 0.417 |
-| eSpeak (robotic) | Groq whisper-large-v3-turbo | 0.615 | 0.083 | 0.375 |
-| Human-like synthetic voice | Deepgram nova-2 | 0.692 | 0.083 | 0.375 |
-| Human-like synthetic voice | Groq whisper-large-v3-turbo | 0.615 | 0.167 | 0.250 |
+<SpeechTable />
 
-The limit is a wrong-accept rate of 0.05 or less. Every row is above it. The recorded provider outputs are in [`packages/voice/fixtures/stt-cache`](https://github.com/harshbhx/gavel-auction/tree/main/packages/voice/fixtures/stt-cache) and [`stt-cache-human`](https://github.com/harshbhx/gavel-auction/tree/main/packages/voice/fixtures/stt-cache-human); the clips are under [`packages/voice/fixtures/audio`](https://github.com/harshbhx/gavel-auction/tree/main/packages/voice/fixtures/audio). The human-like set was recorded by voice-eval run 42342379648. With 24 clips, one clip moves a rate by 0.042, so differences between the two sets are within noise. There is no real-room or noisy-room test.
+The limit is a wrong-accept rate of 0.05 or less. Every row is within it, but the first run (Deepgram nova-2, Groq without a prompt) was above it at 0.083 to 0.167, and the fixes were chosen on these same clips, so the gate stays PARTIAL. The recorded provider outputs are in [`packages/voice/fixtures/stt-cache`](https://github.com/harshbhx/gavel-auction/tree/main/packages/voice/fixtures/stt-cache) and [`stt-cache-human`](https://github.com/harshbhx/gavel-auction/tree/main/packages/voice/fixtures/stt-cache-human); the clips are under [`packages/voice/fixtures/audio`](https://github.com/harshbhx/gavel-auction/tree/main/packages/voice/fixtures/audio). The human-like set was first recorded by voice-eval run 42342379648; the current recordings come from the option trials of VOI-02. With 24 clips, one clip moves a rate by 0.042, so differences between the two sets are within noise. There is no real-room or noisy-room test.
 
 ## Settlement, crash recovery and simulation
 

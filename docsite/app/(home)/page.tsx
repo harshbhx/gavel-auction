@@ -77,7 +77,7 @@ const faq = [
   },
   {
     q: 'Does voice bidding work?',
-    a: 'It exists, but the speech accuracy gate (G5) failed on synthetic audio, so spoken bids are designed to wait for a confirmation. No live speech run is recorded.',
+    a: 'It exists, but the speech accuracy gate (G5) is only PARTIAL: wrong accepts are 0.000 on 24 synthetic, noise-free clips after fixes chosen on those same clips, and there is no real-room test. Spoken bids always wait for a confirmation. No live speech run is recorded.',
   },
   {
     q: 'Is there a hosted demo?',
@@ -91,7 +91,7 @@ export default function HomePage() {
     {
       value: gatesPassed(),
       of: ' of 6',
-      label: 'PayPal sandbox gates passed: G0, G1, G2, G4. G3 is in progress, G5 failed.',
+      label: 'PayPal sandbox gates passed: G0, G1, G2, G4. G3 is in progress, G5 is partial (synthetic audio only).',
       chip: <Chip kind="solid">Sandbox, PASS</Chip>,
     },
     {

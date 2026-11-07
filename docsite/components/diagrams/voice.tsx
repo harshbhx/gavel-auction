@@ -1,6 +1,6 @@
 'use client';
 
-import { Chip } from '@/components/holdline/chip';
+import { GateBadge } from '@/components/holdline/chip';
 import { repoData } from '@/lib/repo-data';
 import { DiagramFrame } from './frame';
 import { Defs, Legend, Node, T } from './kit';
@@ -15,14 +15,14 @@ export function VoiceDiagram() {
   return (
     <DiagramFrame
       title="Voice pipeline and the confirm gate"
-      desc="Audio goes from the microphone through a segmenter, speech to text, a parser and a decision step. The decision is accept, confirm or drop. Confirm goes to the confirm gate: the bidder is asked a question, yes places the bid after it is checked again, no or expiry places nothing. Drop is logged and places nothing. Manual entry and tap to bid skip speech and enter at the engine. A dashed path shows that a clean, high confidence parse can be accepted without the gate; the default build keeps scores below that line. Speech accuracy gate G5 failed on synthetic audio."
+      desc="Audio goes from the microphone through a segmenter, speech to text, a parser and a decision step. The decision is accept, confirm or drop. Confirm goes to the confirm gate: the bidder is asked a question, yes places the bid after it is checked again, no or expiry places nothing. Drop is logged and places nothing. Manual entry and tap to bid skip speech and enter at the engine. A dashed path shows that a clean, high confidence parse can be accepted without the gate; the default build keeps scores below that line. Speech accuracy gate G5 is PARTIAL: synthetic, noise-free audio only."
       width={1200}
       height={660}
-      badge={<Chip kind="stop">G5 FAIL</Chip>}
+      badge={<GateBadge id="G5" />}
       caption={
         <>
-          Speech accuracy gate G5 failed on synthetic audio, which is why spoken bids are designed to wait
-          for a confirmation. The dashed path is what the code allows today: a spoken bid with a clean
+          Speech accuracy gate G5 is PARTIAL (synthetic, noise-free audio, no real-room test), which is why spoken bids
+          always wait for a confirmation. The dashed path is what the code allows today: a spoken bid with a clean
           parse that two parsers agree on and a confidence of 0.85 or more is accepted without the gate.
           Without a second parser opinion the score tops out at 0.82 (see{' '}
           <code>packages/voice/src/decide/score.ts</code>), so such a bid confirms. A stricter always-confirm
@@ -43,7 +43,7 @@ export function VoiceDiagram() {
             <li>The engine accepts or rejects the bid and an accepted bid is appended to the hash-chained ledger.</li>
           </ol>
           <p>
-            Gate G5: wrong-accept {lo} to {hi} on 24 synthetic clips per set, against a limit of 0.05. No real-room or noisy-room test exists.
+            Gate G5 is PARTIAL: wrong-accept {lo} to {hi} on 24 synthetic, noise-free clips per set (limit 0.05), after fixes chosen on those same clips. No real-room or noisy-room test exists, and spoken bids always confirm.
           </p>
         </>
       }
@@ -126,11 +126,11 @@ export function VoiceDiagram() {
           {/* honesty block, on the figure */}
           <rect x={20} y={380} width={660} height={160} className="panel" style={{ stroke: 'var(--hl-stop)', strokeWidth: 2 }} />
           <polygon points="666,380 680,380 680,394" className="fill-stop" />
-          <T x={36} y={404} cls="t-big t-stop">G5: speech accuracy FAILED on synthetic audio</T>
-          <T x={36} y={428} cls="t-small">{`Wrong-accept ${lo} to ${hi} on 24 clips per set, against a limit of 0.05.`}</T>
+          <T x={36} y={404} cls="t-big t-stop">G5 PARTIAL: synthetic audio only</T>
+          <T x={36} y={428} cls="t-small">{`Wrong-accept ${lo} to ${hi} on 24 synthetic clips per set (limit 0.05).`}</T>
           <T x={36} y={448} cls="t-small">Default build plays cached transcripts. Live speech to text runs only</T>
           <T x={36} y={463} cls="t-small">with VOICE_STT set (groq or deepgram) and its key.</T>
-          <T x={36} y={483} cls="t-small">No real-room or noisy-room test exists. No accuracy claim is made.</T>
+          <T x={36} y={483} cls="t-small">Fixes were chosen on these same clips. No real-room test. Bids confirm.</T>
           <T x={36} y={503} cls="t-small t-muted">Hard flags always confirm: correction, hedged, large jump, several amounts</T>
           <T x={36} y={518} cls="t-small t-muted">or bidders, unregistered paddle, implausible amount.</T>
 
