@@ -2,7 +2,6 @@
 title: Tough questions
 description: Honest answers about voice accuracy, gate G3, the fake PayPal, production readiness and the security review.
 icon: MessageCircleQuestion
-status: in progress
 ---
 
 Each answer says what is known, what is not, and where the evidence is. Where this page and `docs/GATES.md` disagree, the gate record wins.
@@ -48,8 +47,8 @@ Inferred, not observed. After the final capture the authorization reads CAPTURED
 
 No. The list is on [Roadmap and limits](/docs/roadmap/limits). In short:
 
-- No hosted demo URL is published; the runnable path is local, on the fake PayPal.
-- The file stores need a persistent disk and a single instance; there is no persistent store for a hosted deploy yet.
+- The hosted app (https://gavel-web.creharsh.workers.dev, sandbox mode) has not been walked end to end; the verified runnable path is local, on the fake PayPal.
+- The file stores need a persistent disk and a single instance; the hosted API uses temporary storage until a disk is added.
 - Latency is not shown to be inside budget: the sandbox void p95 is 1235.96 ms (n=10), above the 1 s per-call budget behind the 6 s SETTLED target, and hammer to CAPTURED was measured on the capture call only. The raw measurement log is not committed.
 - Whole-auction settlement was not driven through a deployed server, and no real process kill ran on the sandbox.
 - Rejected bids are kept in the room log only, not in the ledger.

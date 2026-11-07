@@ -3,7 +3,7 @@
 How to run the hosted GAVEL demo and check that it does what it claims. Everything runs in the PayPal sandbox only. No real money moves and no real card or PayPal account is needed.
 
 Status labels used below: "available" means the code is on main today. "not available yet" means the part is specified (see `docs/specs`) but not built or not deployed, so the step cannot be followed end to end yet.
-`packages/server` has an entry point (`npm start -w @gavel/server`, `src/main.ts`), the auction HTTP routes under `src/http` and a WebSocket gateway (`createGateway`, mounted in `src/boot/compose.ts`). The `/audio` voice socket is mounted in the same file (`createAudioHost`). The scripted `/api/demo/*` routes (`src/http/demo.ts`) are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake`, which config refuses under production-like settings, so no hosted server serves them. No hosted demo is published, so the steps in sections 2, 3, 5 and 7 that need a hosted room describe the intended flow and cannot be followed end to end today; the local fake-payments demo is the runnable path. What runs today is the engine, the settlement code against the fake PayPal, and the web components, each in its own tests.
+`packages/server` has an entry point (`npm start -w @gavel/server`, `src/main.ts`), the auction HTTP routes under `src/http` and a WebSocket gateway (`createGateway`, mounted in `src/boot/compose.ts`). The `/audio` voice socket is mounted in the same file (`createAudioHost`). The scripted `/api/demo/*` routes (`src/http/demo.ts`) are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake`, which config refuses under production-like settings, so no hosted server serves them. The web app is hosted at https://gavel-web.creharsh.workers.dev and the API at https://gavel-auction-aufz.onrender.com, both in sandbox mode with temporary storage until a persistent disk is added. The steps in sections 2, 3, 5 and 7 that need a room have not been re-checked end to end against that host, so they describe the intended flow; the local fake-payments demo is the runnable path. What runs today is the engine, the settlement code against the fake PayPal, and the web components, each in its own tests.
 
 This guide is updated as those parts land.
 
@@ -11,7 +11,7 @@ This guide is updated as those parts land.
 
 | Item                          | Where                                                                                                                                  | Status                                                                                                                                                    |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hosted demo (web)             | URL to be published here and in the Devpost entry                                                                                      | not available yet (deployment issues QA-59 to QA-61 are open)                                                                                             |
+| Hosted demo (web)             | https://gavel-web.creharsh.workers.dev (API: https://gavel-auction-aufz.onrender.com)                                                  | available in sandbox mode; storage is temporary until a disk is added                                                                                     |
 | Landing page `/`              | Explains the promise: a bid is a PayPal hold, nothing is charged until the hammer. Buttons: "Start a demo auction", "Join with a code" | route built in `packages/web/src/App.tsx`; no hosted deployment yet                                                                                       |
 | Demo launcher `/demo`         | Creates a room and gives four links: auctioneer console, big screen, bidder QR, audit trail                                            | route built in `packages/web/src/App.tsx`; scripted fake-payments mode is local only, not on the hosted server                                            |
 | Replay `/replay/:recordingId` | Plays a recorded auction, read only                                                                                                    | the player and bundle format exist in `packages/web/src/screens/replay` with transport controls and three views; hosting a recording is not available yet |
@@ -31,7 +31,7 @@ Card and guest AUTHORIZE works in our sandbox (gate G2 in `docs/GATES.md` is PAS
 
 ### What judges can test on the hosted demo
 
-The hosted server runs in production mode, which refuses fake payments (`packages/server/src/config.ts`). A judge therefore sees one of two things, labelled on every page:
+The hosted server runs in sandbox mode and refuses fake payments (`packages/server/src/config.ts`). A judge therefore sees one of two things, labelled on every page:
 
 1. Live sandbox room: needs a PayPal sandbox buyer. The sandbox buyer logins and wallet-only instructions are published in the Devpost entry and the repository's judge walkthrough, never in the source tree. Card and guest checkout may be offered: gate G2 passed (2026-11-05).
 2. Recorded replay: `/replay/:recordingId` plays a labelled recorded auction with no PayPal calls. It is the fallback when no sandbox buyer is at hand and the only path that needs no login.
@@ -77,10 +77,10 @@ Open `/r/<roomId>/audit` from the launcher (it needs the auctioneer or reviewer 
 
 ## 8. Not built yet
 
-- Hosted deployment and the public demo URL (QA-59 to QA-61).
+- A persistent disk for the hosted API. The web app and API are hosted in sandbox mode (https://gavel-web.creharsh.workers.dev, https://gavel-auction-aufz.onrender.com) with temporary storage.
 - Sandbox latency inside budget. The void p95 of 1235.96 ms (n=10) is above the 1 s per-call budget behind the 6 s SETTLED target (`docs/GATES.md`).
-- A hosted web deployment. The routes and screens are built in `packages/web/src/App.tsx`, but no hosted server serves them. A live room screen without a stored room token shows the placeholder screen.
-- A persistent store for a hosted deploy (the file stores need a persistent disk and a single instance).
+- A full judge click-through on the hosted app. The web app is served at https://gavel-web.creharsh.workers.dev, but no end-to-end walkthrough against it is recorded yet. A live room screen without a stored room token shows the placeholder screen.
+- A persistent store for the hosted deploy (the file stores need a persistent disk and a single instance; today storage is temporary).
 - A recorded live voice run through the `/audio` socket into a room (G5 FAILED on synthetic speech; voice bids use the confirm prompt).
 - A real-sandbox G3 result (in progress, final about 12 Nov 06:17 UTC) and a real-room or noisy-room G5 test (neither done; see `docs/GATES.md`); G0, G1, G2 and G4 are PASS (guest card capture not covered).
 - Live voice with real speech providers.
