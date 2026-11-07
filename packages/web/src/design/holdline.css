@@ -1,0 +1,124 @@
+/*
+ * HOLDLINE base styles: the money-state fills and the giant numeral. Tokens only, no hex colours.
+ * Hatched means held. Solid means charged. Hollow means released.
+ *
+ * State fills (apply to any bar, chip, swatch or panel edge):
+ *   .gv-fill-held      diagonal hatch (45deg, 2px lines, 6px pitch) over the panel colour
+ *   .gv-fill-charged   solid --color-go
+ *   .gv-fill-released  hollow: transparent with a 1.5px outline
+ *   .gv-fill-review    solid with a notched top-right corner and a 2px stripe (a human must look)
+ * Each class sets --gv-fill-line (the outline and hatch colour) so a caller can change the tone.
+ * The state is also readable without colour: hatch, solid and outline are three different shapes.
+ *
+ * Numeral: .gv-numeral is the giant price. Sizes: .gv-numeral--phone, --console, --screen.
+ * .gv-numeral__cents is the small ".00" part. Put aria-label on the group, aria-hidden on the pieces.
+ * Label: .gv-label is the mono caps label above a value.
+ */
+
+.gv-fill-held {
+  --gv-fill-line: var(--color-border);
+  background-color: var(--color-panel);
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--gv-fill-line) 0 2px,
+    transparent 2px 6px
+  );
+}
+
+.gv-fill-charged {
+  --gv-fill-line: var(--fill-charged);
+  background-color: var(--fill-charged);
+  background-image: none;
+}
+
+.gv-fill-released {
+  --gv-fill-line: var(--color-border);
+  background-color: transparent;
+  background-image: none;
+  box-shadow: inset 0 0 0 var(--fill-released-width) var(--gv-fill-line);
+}
+
+.gv-fill-review {
+  --gv-fill-line: var(--color-stop);
+  background-color: var(--color-stop);
+  background-image: none;
+  border-top: 2px solid var(--color-fg);
+  clip-path: polygon(0 0, calc(100% - var(--notch)) 0, 100% var(--notch), 100% 100%, 0 100%);
+}
+
+/* The label above a readout. */
+.gv-label {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  line-height: var(--line-height-title);
+  color: var(--color-fg-muted);
+}
+
+/* The giant price numeral: Archivo at width 75 and weight 800, tabular, tight, fixed line box. */
+.gv-numeral {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  font-stretch: 75%;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: var(--tracking-price);
+  line-height: var(--line-height-price);
+  font-size: var(--font-size-price-phone);
+  color: var(--color-fg);
+}
+
+.gv-numeral--phone {
+  font-size: var(--font-size-price-phone);
+}
+
+.gv-numeral--console {
+  font-size: var(--font-size-price-console);
+}
+
+.gv-numeral--screen {
+  font-size: var(--font-size-price-screen);
+}
+
+/* Cents sit small at 0.4em, same weight family, muted. */
+.gv-numeral__cents {
+  font-size: 0.4em;
+  font-weight: 600;
+  vertical-align: 0.9em;
+  color: var(--color-fg-muted);
+}
+
+/* Optional 8px dot grid for the landing hero and the big screen. Never behind text blocks. */
+.gv-dotgrid {
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    var(--color-hairline) 1px,
+    transparent 1.5px
+  );
+  background-size: 8px 8px;
+}
+
+@media (forced-colors: active) {
+  .gv-fill-held,
+  .gv-fill-charged,
+  .gv-fill-review {
+    forced-color-adjust: none;
+    background-color: Canvas;
+    border: 2px solid CanvasText;
+  }
+
+  .gv-fill-held {
+    background-image: repeating-linear-gradient(45deg, CanvasText 0 2px, transparent 2px 6px);
+  }
+
+  .gv-fill-charged {
+    background-color: CanvasText;
+  }
+
+  .gv-fill-released {
+    border: 1.5px solid CanvasText;
+    box-shadow: none;
+  }
+}

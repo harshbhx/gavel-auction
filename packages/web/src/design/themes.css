@@ -1,55 +1,85 @@
 /*
- * Theme overrides for tokens.css. Light values live in tokens.css.
- * Dark applies when data-theme="dark", or when no data-theme is set and the system prefers dark.
- * Projector is dark with maximum contrast and a type scale of 2.0; it is forced on the public screen.
+ * Theme overrides for tokens.css. Daylight (light) values live in tokens.css.
+ * Dusk (dark) applies when data-theme="dark", or when no data-theme is set and the system prefers dark.
+ * Floodlight (projector) is dark with maximum contrast and a type scale of 2.0; it is forced on the
+ * public screen. The data-theme values (light, dark, projector) are unchanged; only the names differ.
+ * Dusk and Floodlight have no cast shadows (they vanish on dark): elevation is the panel step plus
+ * a 1px inner highlight, and dialogs add a scrim.
  */
 
 :root[data-theme='dark'] {
-  --color-bg: #0f1115;
-  --color-surface: #1a1d24;
-  --color-fg: #f3f4f6;
-  --color-fg-muted: #a8b0bd;
-  --color-border: #8a93a3;
-  --color-accent: #8fb4ff;
-  --color-on-accent: #0b1020;
-  --color-success: #6ee7a0;
-  --color-warning: #fbbf24;
-  --color-danger: #ff9b8f;
-  --color-focus: #8fb4ff;
-  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.5);
-  --shadow-2: 0 8px 24px rgb(0 0 0 / 0.6);
+  --color-bg: #0b0f10;
+  --color-surface: #121819;
+  --color-panel: #121819;
+  --color-panel-2: #1a2326;
+  --color-fg: #e8eeeb;
+  --color-fg-muted: #a3b1ad;
+  --color-border: #5f7377;
+  --color-hairline: #2e3d40;
+  --color-accent: #ffb224;
+  --color-on-accent: #0b0f10;
+  --color-signal: #ffb224;
+  --color-on-signal: #0b0f10;
+  --color-signal-ink: #ffb224;
+  --color-success: #62e39a;
+  --color-go: #62e39a;
+  --color-warning: #ffb224;
+  --color-danger: #ff8073;
+  --color-stop: #ff8073;
+  --color-info: #72d6ea;
+  --color-focus: #f5f7f6;
+  --shadow-1: inset 0 1px 0 rgb(255 255 255 / 0.05);
+  --shadow-2: none;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    --color-bg: #0f1115;
-    --color-surface: #1a1d24;
-    --color-fg: #f3f4f6;
-    --color-fg-muted: #a8b0bd;
-    --color-border: #8a93a3;
-    --color-accent: #8fb4ff;
-    --color-on-accent: #0b1020;
-    --color-success: #6ee7a0;
-    --color-warning: #fbbf24;
-    --color-danger: #ff9b8f;
-    --color-focus: #8fb4ff;
-    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.5);
-    --shadow-2: 0 8px 24px rgb(0 0 0 / 0.6);
+    --color-bg: #0b0f10;
+    --color-surface: #121819;
+    --color-panel: #121819;
+    --color-panel-2: #1a2326;
+    --color-fg: #e8eeeb;
+    --color-fg-muted: #a3b1ad;
+    --color-border: #5f7377;
+    --color-hairline: #2e3d40;
+    --color-accent: #ffb224;
+    --color-on-accent: #0b0f10;
+    --color-signal: #ffb224;
+    --color-on-signal: #0b0f10;
+    --color-signal-ink: #ffb224;
+    --color-success: #62e39a;
+    --color-go: #62e39a;
+    --color-warning: #ffb224;
+    --color-danger: #ff8073;
+    --color-stop: #ff8073;
+    --color-info: #72d6ea;
+    --color-focus: #f5f7f6;
+    --shadow-1: inset 0 1px 0 rgb(255 255 255 / 0.05);
+    --shadow-2: none;
   }
 }
 
 :root[data-theme='projector'] {
   --type-scale: 2;
   --color-bg: #000000;
-  --color-surface: #0d0d0d;
+  --color-surface: #0a0a0a;
+  --color-panel: #0a0a0a;
+  --color-panel-2: #141414;
   --color-fg: #ffffff;
-  --color-fg-muted: #d1d5db;
-  --color-border: #b5bcc8;
-  --color-accent: #9ec1ff;
+  --color-fg-muted: #d4dad7;
+  --color-border: #9aa9a5;
+  --color-hairline: #3a4a4d;
+  --color-accent: #ffc94d;
   --color-on-accent: #000000;
-  --color-success: #8cf0b4;
-  --color-warning: #ffd66b;
-  --color-danger: #ffb4a9;
+  --color-signal: #ffc94d;
+  --color-on-signal: #000000;
+  --color-signal-ink: #ffc94d;
+  --color-success: #7bf0ae;
+  --color-go: #7bf0ae;
+  --color-warning: #ffc94d;
+  --color-danger: #ff9c90;
+  --color-stop: #ff9c90;
+  --color-info: #8fe3f5;
   --color-focus: #ffffff;
   --shadow-1: none;
   --shadow-2: none;

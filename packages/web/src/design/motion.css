@@ -48,7 +48,96 @@
   animation: gv-price-tick var(--duration-standard) ease-out both;
 }
 
+/* HOLDLINE motions. Durations and easings come from tokens.css only. */
+
+@keyframes gv-lead-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--color-go);
+    opacity: 1;
+  }
+
+  100% {
+    box-shadow: 0 0 0 0.75em transparent;
+    opacity: 1;
+  }
+}
+
+@keyframes gv-outbid-underline {
+  0% {
+    background-size: 0% 3px;
+  }
+
+  100% {
+    background-size: 100% 3px;
+  }
+}
+
+@keyframes gv-strip-wipe {
+  0% {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  100% {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes gv-hammer-bar-left {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes gv-hammer-bar-right {
+  0% {
+    transform: translateX(100%);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.gv-lead-pulse {
+  animation: gv-lead-pulse var(--duration-hammer) var(--ease-out) 1 both;
+  border-radius: inherit;
+}
+
+.gv-outbid-underline {
+  background-image: linear-gradient(var(--color-stop), var(--color-stop));
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 3px;
+  animation: gv-outbid-underline var(--duration-standard) var(--ease-in-out) 1 both;
+}
+
+.gv-strip-wipe {
+  animation: gv-strip-wipe var(--duration-standard) var(--ease-in-out) 1 both;
+}
+
+.gv-hammer-bar--left {
+  animation: gv-hammer-bar-left var(--duration-hammer) var(--ease-lock) 1 both;
+}
+
+.gv-hammer-bar--right {
+  animation: gv-hammer-bar-right var(--duration-hammer) var(--ease-lock) 1 both;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .gv-lead-pulse,
+  .gv-outbid-underline,
+  .gv-strip-wipe,
+  .gv-hammer-bar--left,
+  .gv-hammer-bar--right {
+    animation: none;
+    transform: none;
+    clip-path: none;
+  }
+
   .gv-hammer-stamp,
   .gv-price-tick {
     animation: none;

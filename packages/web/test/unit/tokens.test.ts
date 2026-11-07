@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const read = (rel: string): string => readFileSync(new URL(rel, import.meta.url), 'utf8');
@@ -66,13 +66,43 @@ describe('themes', () => {
 });
 
 describe('fonts', () => {
-  it('self-hosts the variable font next to its licence', () => {
-    expect(
-      existsSync(new URL('../../src/design/fonts/inter-latin-wght-normal.woff2', import.meta.url)),
-    ).toBe(true);
-    expect(existsSync(new URL('../../src/design/fonts/LICENSE-Inter.txt', import.meta.url))).toBe(
-      true,
-    );
+  const font = (name: string): URL => new URL(`../../src/design/fonts/${name}`, import.meta.url);
+
+  it('self-hosts Archivo and Martian Mono next to their licences', () => {
+    expect(existsSync(font('archivo-latin-wdth-normal.woff2'))).toBe(true);
+    expect(existsSync(font('martian-mono-latin-wght-normal.woff2'))).toBe(true);
+    expect(existsSync(font('LICENSE-Archivo.txt'))).toBe(true);
+    expect(existsSync(font('LICENSE-Martian-Mono.txt'))).toBe(true);
+    expect(tokens).toContain("font-family: 'Archivo Variable'");
+    expect(tokens).toContain("font-family: 'Martian Mono Variable'");
     expect(tokens).not.toMatch(/https?:\/\//);
+  });
+
+  it('keeps the two font files within the 140 KB budget', () => {
+    const total = ['archivo-latin-wdth-normal.woff2', 'martian-mono-latin-wght-normal.woff2']
+      .map((n) => statSync(font(n)).size)
+      .reduce((a, b) => a + b, 0);
+    expect(total).toBeLessThanOrEqual(140 * 1024);
+  });
+});
+
+describe('holdline tokens', () => {
+  it('adds the state fills, easings and price sizes beside the old names', () => {
+    for (const name of [
+      '--hatch',
+      '--ease-out',
+      '--ease-in-out',
+      '--ease-lock',
+      '--font-size-price-screen',
+      '--color-signal-ink',
+      '--radius-sheet',
+    ]) {
+      expect(tokens, name).toContain(`${name}:`);
+    }
+  });
+
+  it('never uses the brass fill colour as text or a line colour', () => {
+    const css = [tokens, themes, read('../../src/design/holdline.css')].join('\n');
+    expect(css).not.toMatch(/(?:^|[\s;{])(?:color|border-color)\s*:\s*var\(--color-signal\)/);
   });
 });
