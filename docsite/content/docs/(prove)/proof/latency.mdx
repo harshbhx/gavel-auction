@@ -2,7 +2,7 @@
 title: Latency
 description: Measured PayPal sandbox latency and the targets it does not meet.
 icon: Timer
-status: unverified
+status: in progress
 ---
 
 Measured on the real PayPal sandbox on 5 Nov 2026 (workflow `measure-sandbox`, 10 sequential cycles, 0 failures, so n=10 per call).
@@ -11,7 +11,7 @@ Measured on the real PayPal sandbox on 5 Nov 2026 (workflow `measure-sandbox`, 1
 
 <NotVerified title="Small sample, no committed raw log">
 
-With n=10 the p95 is close to the maximum. The raw log is not committed; the Actions run log is the only record and it expires with log retention. These numbers are reported, not independently verifiable.
+With n=10 the call-table p95 is close to the maximum, and its raw log is not committed; the Actions run log is the only record and it expires with log retention. The settlement run has n=20 and a committed redacted copy, but it is still one run.
 
 </NotVerified>
 
@@ -19,13 +19,13 @@ With n=10 the p95 is close to the maximum. The raw log is not committed; the Act
 
 | Target | Value | Status |
 | --- | --- | --- |
-| hammer to CAPTURED, p95 | 2.5 s | Unverified end to end. The capture call alone has p95 2280.66 ms. |
-| hammer to SETTLED, 6 holds, p95 | 6 s | Not shown to hold. The budget assumes each call stays under 1 s at p95, and the void p95 is 1235.96 ms. |
+| hammer to CAPTURED, p95 | 2.5 s | Missed. End to end, n=20 with 6 holds: p95 3010.04 ms. The capture call alone has p95 2280.66 ms (n=10, 5 Nov), which leaves little room for the truth check and journal writes. |
+| hammer to SETTLED, 6 holds, p95 | 6 s | Met. End to end, n=20 with 6 holds: p95 5591.30 ms. |
 | webhook handler 200, without the verify call | 300 ms | Not measured by this script. |
 
-A settlement of six holds is one truth check, one capture and five voids. With three voids at a time that is two void waves. Using sandbox p95 for the capture and void calls alone gives 2 x 1235.96 + 2280.66 = 4752.58 ms before the truth check, which is not measured yet, so the 6 s target is not shown to hold with margin.
+A settlement of six holds is one truth check, one capture and five voids. With three voids at a time that is two void waves. Using sandbox p95 for the capture and void calls alone gives 2 x 1235.96 + 2280.66 = 4752.58 ms before the truth check. The end-to-end run includes the truth check and came in at 5591.30 ms p95, inside the 6 s target with about 0.4 s of margin on this sample of 20.
 
-An end-to-end settlement measurement exists (`npm run measure:settlement -w @gavel/e2e`) and runs only through the `measure-sandbox` workflow from `main`. Its status in `docs/GATES.md` at the time of writing is UNVERIFIED, NOT RUN.
+The end-to-end settlement measurement (`npm run measure:settlement -w @gavel/e2e`) runs only through the `measure-sandbox` workflow from `main`, in mode `settlement`. Run 42346811713 (20 settlements of 6 holds, 0 failed) has a redacted copy under `docs/evidence/measure/`. Its status in `docs/GATES.md` is PARTIAL: one target met, one missed.
 
 <CodePaths
   paths={[

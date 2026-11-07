@@ -49,7 +49,7 @@ No. The list is on [Roadmap and limits](/docs/roadmap/limits). In short:
 
 - The hosted app (https://gavel-web.creharsh.workers.dev, sandbox mode) has not been walked end to end; the verified runnable path is local, on the fake PayPal.
 - The file stores need a persistent disk and a single instance; the hosted API uses temporary storage until a disk is added.
-- Latency is not shown to be inside budget: the sandbox void p95 is 1235.96 ms (n=10), above the 1 s per-call budget behind the 6 s SETTLED target, and hammer to CAPTURED was measured on the capture call only. The raw measurement log is not committed.
+- Latency is only partly inside budget: end to end on the sandbox (n=20, 6 holds), hammer to SETTLED has p95 5591.30 ms, inside 6 s, and hammer to CAPTURED has p95 3010.04 ms, above the 2.5 s target. The 5 Nov per-call numbers (n=10) are not committed as raw logs; the settlement run has a redacted copy.
 - Whole-auction settlement was not driven through a deployed server, and no real process kill ran on the sandbox.
 - Rejected bids are kept in the room log only, not in the ledger.
 - The web console has no audio sender to the `/audio` socket yet.
@@ -70,7 +70,7 @@ Accepted bids go into a hash-chained ledger. A public export can be checked with
 </Accordion>
 <Accordion title="Why should I trust the latency numbers?">
 
-You should not rely on them yet. They come from one Actions run (42047543821, 10 cycles, 0 failures) whose raw log is not committed. They are single-call numbers, and the end-to-end settlement measurement is recorded as NOT RUN in `docs/GATES.md`. See [latency](/docs/proof/latency).
+You should not rely on them yet. The per-call numbers come from one Actions run (42047543821, 10 cycles, 0 failures) whose raw log is not committed. The end-to-end settlement numbers come from one run (42346811713, 20 settlements of 6 holds, 0 failed) with a redacted copy committed under `docs/evidence/measure/`. Both are sandbox numbers from single runs. See [latency](/docs/proof/latency).
 
 </Accordion>
 </Accordions>

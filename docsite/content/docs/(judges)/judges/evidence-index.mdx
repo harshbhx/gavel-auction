@@ -45,7 +45,7 @@ The limit is a wrong-accept rate of 0.05 or less. Every row is within it, but th
 | Claim | Status | Evidence |
 | --- | --- | --- |
 | Sandbox call latency, 10 cycles, 0 failures: order p95 758.5 ms, authorize p95 2268.65 ms, capture p95 2280.66 ms, void p95 1235.96 ms | Measured, not committed | Actions run 42047543821 (`measure-sandbox`). The raw log is not committed, so this is not independently verifiable. |
-| Hammer to CAPTURED within 2.5 s and hammer to SETTLED within 6 s | UNVERIFIED | Only single calls were measured, with n=10. The void p95 is above the 1 s per-call budget behind the 6 s target. |
+| Hammer to CAPTURED within 2.5 s: MISSED, end-to-end p95 3010.04 ms (n=20, 6 holds). Hammer to SETTLED within 6 s: MET, p95 5591.30 ms (same run) | Measured, committed (redacted) | Actions run 42346811713 (`measure-sandbox`, mode `settlement`); `docs/evidence/measure/measure-settlement.json`. One sandbox run. |
 
 ## Safety and process
 

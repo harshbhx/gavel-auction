@@ -12,7 +12,7 @@ Nothing here is hidden elsewhere. Each item points to the page with the detail.
 - **G3 is not finished.** The honor period and validity window are unknown until the probe ends. A hold older than 2 hours is flagged stale; it is still captured.
 - **The remainder release is inferred.** No buyer balance was read; guest card capture was not run. ([gates](/docs/proof/gates))
 - **Voice is behind a confirm prompt.** G5 is only PARTIAL (synthetic audio, fixes chosen on the same clips); there is no real-room test and no live speech run. The web console has no audio sender yet. ([voice](/docs/how-it-works/voice-and-confirm))
-- **Latency is not within budget.** The void p95 of 1235.96 ms (n=10) is above the 1 s per-call budget behind the 6 s SETTLED target. ([latency](/docs/proof/latency))
+- **Hammer to CAPTURED is over its target.** End-to-end p95 is 3010.04 ms against 2.5 s (n=20, sandbox). The 6 s SETTLED target is met at p95 5591.30 ms. ([latency](/docs/proof/latency))
 - **Rejected bids are not in the ledger.** They are kept in the room log only, so the ledger cannot prove them. ([engine and ledger](/docs/how-it-works/engine-and-ledger))
 - **Security review is unsigned.** All 18 items are open. ([security review](/docs/safety/security-review))
 - **Accessibility manual pass not done.** ([accessibility](/docs/proof/accessibility))
