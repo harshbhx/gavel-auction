@@ -1,0 +1,101 @@
+name: deploy-web
+# Builds the real web app (packages/web, not the mock server) against the hosted API and uploads
+# it as the artifact `web-dist`. When the repository secrets CLOUDFLARE_API_TOKEN and
+# CLOUDFLARE_ACCOUNT_ID are both set it also deploys the build as the Worker `gavel-web`
+# (infra/web/wrangler.toml); otherwise it ends green with a notice and the artifact is deployed by hand.
+# Only public values go into the build: the API origins and the PayPal sandbox client id.
+# Steps are in docs/DEPLOY.md.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/web/**'
+      - 'packages/shared/**'
+      - 'infra/web/**'
+      - '.github/workflows/deploy-web.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+env:
+  VITE_API_BASE: https://gavel-auction-aufz.onrender.com
+  VITE_WS_BASE: wss://gavel-auction-aufz.onrender.com
+  VITE_SANDBOX: 'true'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Build the web app
+        env:
+          VITE_PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+        run: npm run build -w @gavel/web
+      - name: Check the build
+        run: |
+          test -f packages/web/dist/index.html
+          if grep -rq "localhost:8787" packages/web/dist; then
+            echo "::error::The build still points at localhost"; exit 1
+          fi
+          grep -rlq "gavel-auction-aufz.onrender.com" packages/web/dist
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: web-dist
+          path: packages/web/dist
+          if-no-files-found: error
+          retention-days: 14
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: ${{ github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check configuration
+        id: gate
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$CF_TOKEN" ] && [ -n "$CF_ACCOUNT" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Deploy skipped"
+              echo "The repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not both set."
+              echo "The build is the artifact \`web-dist\` of this run: download it into infra/web/dist"
+              echo "and run \`npx wrangler deploy\` in infra/web."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice::Cloudflare secrets are not set; deploy skipped. The artifact web-dist holds the build."
+          fi
+      - if: steps.gate.outputs.enabled == 'true'
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
+        with:
+          name: web-dist
+          path: infra/web/dist
+      - if: steps.gate.outputs.enabled == 'true'
+        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: infra/web
+          command: deploy

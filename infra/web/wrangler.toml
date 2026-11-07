@@ -1,0 +1,11 @@
+# Hosts the static GAVEL web build as a Cloudflare Worker with static assets.
+# Put the built site in infra/web/dist (the artifact `web-dist` of the deploy-web workflow), then:
+#   cd infra/web && npx wrangler deploy
+# The site is served at https://gavel-web.<account-subdomain>.workers.dev.
+name = "gavel-web"
+compatibility_date = "2025-09-01"
+
+[assets]
+directory = "./dist"
+# Unknown paths such as /join/<room> or /r/<room>/bid answer with index.html.
+not_found_handling = "single-page-application"
