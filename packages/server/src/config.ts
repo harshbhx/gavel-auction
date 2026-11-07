@@ -54,13 +54,13 @@ const EnvObject = z.object({
   /** Boot-time state of the judge rooms kill switch; the admin route flips it at runtime. */
   JUDGE_ROOMS_PAUSED: boolFlag.default('0'),
   /** Most judge rooms live at once. */
-  JUDGE_ROOMS_MAX: int(1).max(50).default('5'),
+  JUDGE_ROOMS_MAX: int(1).pipe(z.number().max(50)).default('5'),
   /** Lifetime of a judge room in ms before the sweeper ends it (at most 2 hours). */
   JUDGE_ROOM_TTL_MS: int(60_000).pipe(z.number().max(7_200_000)).default('1800000'),
   /** Judge rooms one source address may create per hour. */
-  JUDGE_ROOMS_PER_IP_HOUR: int(1).max(100).default('4'),
+  JUDGE_ROOMS_PER_IP_HOUR: int(1).pipe(z.number().max(100)).default('4'),
   /** Judge rooms the whole host may create per hour. */
-  JUDGE_ROOMS_PER_HOUR: int(1).max(1000).default('40'),
+  JUDGE_ROOMS_PER_HOUR: int(1).pipe(z.number().max(1000)).default('40'),
   ALLOW_MEMORY_STORE: flag.default('0'),
   RATE_BID_PER_S: int(1).default('3'),
   RATE_BID_BURST: int(1).default('5'),
