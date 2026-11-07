@@ -98,6 +98,7 @@ export function LiveConsole({
   const roster = useRoom((s) => s.snapshot?.roster);
   const leaderId = useRoom((s) => s.snapshot?.leaderId ?? null);
   const audit = useRoom((s) => s.audit);
+  const recentBids = useRoom(selectors.stream);
   const [stoppedHere, setStoppedHere] = useState(false);
   const roomStopped = useRoom(selectors.stopped);
   const stopped = stoppedHere || roomStopped;
@@ -113,6 +114,18 @@ export function LiveConsole({
   );
 
   const rows = roster ?? [];
+  const highBids = useMemo(() => {
+    const high: Record<number, number> = {};
+    for (const b of recentBids) {
+      if (b.paddle !== null && b.amount > (high[b.paddle] ?? 0)) high[b.paddle] = b.amount;
+    }
+    return high;
+  }, [recentBids]);
+  const ceilings = useMemo(() => {
+    const out: Record<number, number> = {};
+    for (const h of settlementView?.holds ?? []) out[h.paddle] = h.ceilingCents;
+    return out;
+  }, [settlementView]);
   const lead = rows.find((r) => r.bidderId === leaderId);
   const leader = lead === undefined ? null : { paddle: lead.paddle, name: lead.name };
 
@@ -164,7 +177,13 @@ export function LiveConsole({
         onSubmit={sendManual}
         onRetry={retryManual}
       />
-      <Roster roster={rows} connected={rows.length} />
+      <Roster
+        roster={rows}
+        connected={rows.length}
+        leaderId={leaderId}
+        highBids={highBids}
+        ceilings={ceilings}
+      />
       <KillSwitch stopped={stopped} onKill={kill} />
       {killFailed !== '' && <p role="alert">{killFailed}</p>}
     </>

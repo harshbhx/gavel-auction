@@ -70,6 +70,8 @@ describe('ConsoleScreen', () => {
     act(() => {
       store.dispatch({ kind: 'wire', msg: priceMsg(2, 12, 5000) }, 0);
     });
-    expect(document.querySelector('[data-field="price"]')?.textContent).toBe('$50.00');
+    expect(
+      document.querySelector('[data-field="price"] [role="img"]')?.getAttribute('aria-label'),
+    ).toBe('$50.00');
   });
 });

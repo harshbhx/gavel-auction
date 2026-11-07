@@ -11,6 +11,7 @@ import { formatUsd } from '../../util/money';
 import { BidStream, rowsFromAudit } from './BidStream';
 import { ConfirmQueue } from './ConfirmQueue';
 import { PriceHeader } from './PriceHeader';
+import './console.css';
 
 /** Desktop layout from this width up (R-WEB-063). */
 export const WIDE_MIN_PX = 1024;
@@ -76,7 +77,7 @@ export function ConsoleScreen({
   const now = useServerNow(store);
 
   const left = (
-    <section aria-label={t('bid.price')}>
+    <section className="gv-console-panel gv-console-panel--lot" aria-label={t('bid.price')}>
       <PriceHeader
         priceCents={price?.currentCents ?? null}
         reserveCents={reserve}
@@ -93,8 +94,8 @@ export function ConsoleScreen({
   );
 
   const centre = (
-    <section aria-label={t('console.stream')}>
-      <h2>{t('console.stream')}</h2>
+    <section className="gv-console-panel" aria-label={t('console.stream')}>
+      <h2 className="ui-kicker">{t('console.stream')}</h2>
       {audit.length > 0 ? (
         <BidStream
           rows={rowsFromAudit(
@@ -118,28 +119,25 @@ export function ConsoleScreen({
   );
 
   const right = (
-    <section aria-label={t('console.voice')}>
-      <h2>{t('console.voice')}</h2>
+    <section className="gv-console-panel" aria-label={t('console.voice')}>
+      <h2 className="ui-kicker">{t('console.voice')}</h2>
       {voiceFeed}
-      <h2>{t('console.confirmQueue')}</h2>
+      <h2 className="ui-kicker">{t('console.confirmQueue')}</h2>
       <ConfirmQueue requests={confirms} now={now} onAnswer={onConfirmAnswer ?? noAnswer} />
     </section>
   );
 
   const strip = (
-    <footer aria-label={t('ladder.title')}>
+    <footer className="gv-console-strip" aria-label={t('ladder.title')}>
       <LadderCompact view={settlementView} />
     </footer>
   );
 
   if (wide) {
     return (
-      <main data-layout="wide">
+      <main className="gv-console" data-layout="wide">
         <FakePaymentsLabel />
-        <div
-          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}
-          data-testid="console-columns"
-        >
+        <div className="gv-console-columns" data-testid="console-columns">
           {left}
           {centre}
           {right}
@@ -155,9 +153,9 @@ export function ConsoleScreen({
     { id: 'side', label: t('console.voice') },
   ];
   return (
-    <main data-layout="stacked">
+    <main className="gv-console" data-layout="stacked">
       <FakePaymentsLabel />
-      <div role="tablist">
+      <div className="gv-console-tabs" role="tablist">
         {tabs.map((x) => (
           <button
             key={x.id}

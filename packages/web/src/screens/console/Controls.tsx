@@ -3,6 +3,7 @@ import { announce } from '../../a11y/announce';
 import { t } from '../../copy/t';
 import type { CopyKey } from '../../copy/en';
 import { Button } from '../../design/primitives/Button';
+import { HoldButton as DeskHold } from '../../ui';
 import { ControlError, ControlTimeoutError } from '../../net/controlPort';
 import type { ControlPort } from '../../net/transport';
 import type { AuctionStatus } from '../../wire';
@@ -87,8 +88,11 @@ export function Controls({
     priceCents: number;
   } | null>(null);
   const [result, setResult] = useState('');
+  // The desk hold stays done after it completes; a new key makes it usable again.
+  const [holdRound, setHoldRound] = useState(0);
   const baseId = useId();
   const state: ControlState = { status, online, stopped, busy };
+  const hammerReason = disabledReason('hammer', state);
 
   const run = async (label: string, call: () => Promise<void>): Promise<void> => {
     setBusy(true);
@@ -136,13 +140,31 @@ export function Controls({
     { name: 'hammer', label: t('console.hammer'), act: () => setShown({ leader, priceCents }) },
   ];
 
+  /** One path for the dialog and the desk hold: a bid that landed after the question was shown refuses. */
+  const hammerNow = (was: { leader: HammerLeader | null; priceCents: number } | null): void => {
+    if (was === null) return;
+    if (was.priceCents !== priceCents || was.leader?.paddle !== leader?.paddle) {
+      const changed = t('controls.hammerChanged');
+      setResult(changed);
+      announce('polite', changed, 'bid_rejected');
+      return;
+    }
+    void run(t('console.hammer'), () =>
+      port.hammer(lotId, {
+        priceCents: was.priceCents,
+        leaderPaddle: was.leader?.paddle ?? 0,
+        seq,
+      }),
+    );
+  };
+
   return (
     <div className="gv-console-controls">
       {items.map((item) => {
         const reason = disabledReason(item.name, state);
         const reasonId = `${baseId}-${item.name}`;
         return (
-          <div key={item.name}>
+          <div key={item.name} className="gv-console-controls__item" data-control={item.name}>
             <Button
               tone={item.name === 'hammer' ? 'danger' : 'accent'}
               disabled={reason !== null}
@@ -155,6 +177,20 @@ export function Controls({
           </div>
         );
       })}
+      <div className="gv-console-hammer">
+        <DeskHold
+          key={holdRound}
+          label={t('console.hammerDesk')}
+          hint={t('console.hammerDeskHint')}
+          disabled={hammerReason !== null}
+          confirmAlternative={false}
+          onConfirm={() => {
+            hammerNow({ leader, priceCents });
+            setHoldRound((n) => n + 1);
+          }}
+        />
+        <p className="gv-console-hammer__alt">{t('console.hammerDialogHint')}</p>
+      </div>
       <p role="status">{result}</p>
       <HammerDialog
         open={shown !== null}
@@ -164,20 +200,7 @@ export function Controls({
         onConfirm={() => {
           const was = shown;
           setShown(null);
-          if (was === null) return;
-          if (was.priceCents !== priceCents || was.leader?.paddle !== leader?.paddle) {
-            const changed = t('controls.hammerChanged');
-            setResult(changed);
-            announce('polite', changed, 'bid_rejected');
-            return;
-          }
-          void run(t('console.hammer'), () =>
-            port.hammer(lotId, {
-              priceCents: was.priceCents,
-              leaderPaddle: was.leader?.paddle ?? 0,
-              seq,
-            }),
-          );
+          hammerNow(was);
         }}
       />
     </div>
