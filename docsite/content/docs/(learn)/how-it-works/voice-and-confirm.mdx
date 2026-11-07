@@ -1,12 +1,23 @@
 ---
 title: Voice and the confirm gate
-description: Speech never becomes a bid by itself. The pipeline, the gate and the failed accuracy gate.
+description: Speech never becomes a bid by itself. The pipeline, the gate and where the accuracy gate stands.
 icon: Mic
-status: unverified
+status: code-checked
+evidence: 'Read against packages/voice/src/decide/, packages/server/src/voice/bridge.ts and packages/server/src/room/confirm.ts (PR #1954). Accuracy is a separate question: see the G5 table below, read from docs/GATES.md.'
 full: true
 ---
 
-Voice is one input among several. The engine, the PayPal hold ladder and the audit trail are the core of the product; manual entry and tap to bid always work if speech fails.
+## In plain words
+
+A bidder can say a number instead of tapping it. Three things stay true however well that goes:
+
+- **Speech never bids by itself.** A spoken bid is a suggestion until the room has checked it, and by default the bidder is asked "did you mean $150?" first.
+- **The engine decides, not the microphone.** Whatever speech produces goes through the same rules as a tap: price, increment, ceiling.
+- **Speech can fail without stopping the auction.** Manual entry and tap to bid never depend on it.
+
+Whether speech is accurate enough to skip the question is the open part. It is not, on the audio we tried; the numbers are [further down](#how-accurate-is-it).
+
+## The path a spoken bid takes
 
 <VoiceDiagram />
 
@@ -76,9 +87,13 @@ The drop monitor watches the browser's send queue. The queue holds 50 batches an
   </Accordion>
 </Accordions>
 
-<NotVerified title="Speech accuracy gate G5 FAILED">
+## How accurate is it?
 
-Both providers miss the 0.05 wrong-accept limit on synthetic audio, on two clip sets of 24 clips. There is no real-room or noisy-room test, and no live speech run is recorded.
+<GateBadge id="G5" />
+
+<NotVerified title="Speech accuracy gate G5">
+
+The result is read from `docs/GATES.md` when the site is built. At the last update both providers missed the 0.05 wrong-accept limit on synthetic audio, on two clip sets of 24 clips; the table below is the live record. There is no real-room or noisy-room test, and no live speech run is recorded.
 
 <SpeechTable />
 

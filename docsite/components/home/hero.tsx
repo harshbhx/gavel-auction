@@ -1,80 +1,54 @@
 import Link from 'next/link';
-import { ArrowRight, ShieldCheck } from 'lucide-react';
-import BlurText from './reactbits/BlurText';
-import ShinyText from './reactbits/ShinyText';
-import { BorderBeam } from './magicui/border-beam';
+import { ArrowRight } from 'lucide-react';
 import { FillLegend } from '@/components/holdline/legend';
+import { HoldResolver } from './hold-resolver';
 import { btnPrimary, btnSecondary } from './section';
 
-/** A specimen of the thesis: three holds, one winning price, in the three fills. */
-function Specimen() {
-  const bar = 'h-7 rounded-[2px]';
-  return (
-    <div className="relative overflow-hidden border-[1.5px] border-[var(--hl-border)] bg-fd-card p-5">
-      <BorderBeam size={220} duration={9} colorFrom="var(--hl-signal)" colorTo="var(--hl-go)" />
-      <p className="hl-eyebrow">Example: three holds, one winning price of $350</p>
-      <div className="mt-5 space-y-4" role="img" aria-label="Bidder A holds 500 dollars, of which 350 is charged and 150 released. Bidder B holds 300 dollars, released. Bidder C holds 200 dollars, released.">
-        <div>
-          <div className="mb-1 flex justify-between font-mono text-xs">
-            <span>A  hold $500</span>
-            <span className="font-bold text-[var(--hl-go)]">charged $350</span>
-          </div>
-          <div className="flex">
-            <div className={`${bar} hl-solid-chip`} style={{ width: '70%' }} />
-            <div className={`${bar} hl-hollow-chip`} style={{ width: '30%' }} />
-          </div>
-        </div>
-        <div>
-          <div className="mb-1 flex justify-between font-mono text-xs">
-            <span>B  hold $300</span>
-            <span className="text-fd-muted-foreground">released</span>
-          </div>
-          <div className={`${bar} hl-hollow-chip`} style={{ width: '60%' }} />
-        </div>
-        <div>
-          <div className="mb-1 flex justify-between font-mono text-xs">
-            <span>C  hold $200</span>
-            <span className="text-fd-muted-foreground">released</span>
-          </div>
-          <div className={`${bar} hl-hollow-chip`} style={{ width: '40%' }} />
-        </div>
-        <div>
-          <div className="mb-1 font-mono text-xs text-fd-muted-foreground">Before the hammer, every hold looks like this:</div>
-          <div className={`${bar} hl-hatch-chip`} style={{ width: '100%' }} />
-        </div>
-      </div>
-      <FillLegend className="mt-5" />
-    </div>
-  );
-}
-
+/**
+ * First screen: the thesis in one sentence, who it is for, and the object that proves it.
+ * The layout is deliberately lopsided: a wide left column of type and a lot card that
+ * overhangs the grid on the right.
+ */
 export function Hero() {
   return (
-    <section aria-labelledby="hero-title" className="hl-grid-bg border-b border-[var(--hl-hairline)] px-4 py-14 md:py-24">
-      <div className="mx-auto grid w-full max-w-6xl items-center gap-10 lg:grid-cols-[1.15fr_1fr] [&>*]:min-w-0">
-        <div>
-          <p className="hl-eyebrow flex items-center gap-2">
-            <ShieldCheck className="size-4 text-fd-primary" aria-hidden />
-            <ShinyText speed={4}>PayPal sandbox hackathon project, documentation</ShinyText>
-          </p>
-          <h1 id="hero-title" className="hl-display mt-4 text-5xl sm:text-6xl md:text-7xl">
-            <BlurText as="span" text="Every bid is a PayPal hold." delay={90} animateBy="words" />
+    <section aria-labelledby="hero-title" className="border-b border-[var(--hl-border)] px-4 pt-10 pb-14 md:pt-16 md:pb-20">
+      <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-12 lg:gap-6 [&>*]:min-w-0">
+        <div className="lg:col-span-7 lg:pt-6">
+          <p className="hl-eyebrow">PayPal hackathon 2026 · documentation, sandbox only</p>
+          <h1 id="hero-title" className="hl-display mt-5 text-[clamp(3rem,8.5vw,6.6rem)]">
+            The hammer falls.
+            <br />
+            <span className="text-[var(--hl-signal-ink)]">Only the winner pays.</span>
           </h1>
-          <p className="mt-6 max-w-2xl text-lg text-fd-muted-foreground">
-            Only the winning price is captured. Every other hold is voided and released. A journaled
-            settlement saga and a hash-chained audit trail keep the result checkable, and these docs say
-            exactly which parts have been proven on the PayPal sandbox and which have not.
+          <p className="mt-7 max-w-[34rem] font-[family-name:var(--font-newsreader)] text-[1.3rem] leading-snug">
+            Every online auction has one ugly moment: the gavel comes down and the winner has gone quiet.
+            GAVEL asks for the money first. A bid is a PayPal hold, so when the hammer falls we charge the
+            winning price and let everything else go.
+          </p>
+          <p className="mt-4 max-w-[34rem] text-[0.95rem] text-fd-muted-foreground">
+            These pages are the receipts. Each claim points at a file or a run, and what has only been
+            tried on a fake or a simulation says so.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/docs/start" className={btnPrimary}>
-              Start here: the judge path <ArrowRight className="size-4" aria-hidden />
+            <Link href="/docs/judges" className={btnPrimary}>
+              Start with the judge guide <ArrowRight className="size-4" aria-hidden />
             </Link>
             <Link href="/docs/proof" className={btnSecondary}>
               See the proof
             </Link>
           </div>
         </div>
-        <Specimen />
+
+        <div className="lg:col-span-5 lg:col-start-8 lg:-mr-6 lg:mt-14">
+          <div className="lg:-rotate-[0.6deg]">
+            <HoldResolver />
+          </div>
+          <FillLegend className="mt-4" />
+          <p className="mt-3 max-w-sm text-[0.8rem] text-fd-muted-foreground">
+            Try it: drag the price, or replay the hammer. Three bidders, one winner; the same rule the
+            ledger follows, in whole cents.
+          </p>
+        </div>
       </div>
     </section>
   );

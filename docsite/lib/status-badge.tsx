@@ -5,6 +5,7 @@ import { cn } from './cn';
 // only signal: solid = verified, hatched = in progress or unverified, hollow = not done.
 const styles: Record<string, string> = {
   verified: 'hl-solid-chip',
+  'code-checked': 'hl-checked-chip',
   pass: 'hl-solid-chip',
   simulated: 'hl-hatch-chip',
   'in progress': 'hl-hatch-chip',

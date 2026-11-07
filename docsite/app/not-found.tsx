@@ -17,22 +17,19 @@ const starts: Record<string, string> = {
 export default function NotFound() {
   return (
     <HomeLayout {...baseOptions()}>
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 px-4 py-16">
-        <p className="hl-hatch-chip w-fit rounded-[2px] px-2 py-0.5 font-mono text-xs font-bold uppercase">
-          404, released
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-4 py-16">
+        <p className="hl-eyebrow">Error 404</p>
+        <h1 className="hl-display text-[clamp(3.5rem,12vw,8rem)]">Released.</h1>
+        {/* a hold that was let go: only the outline is left */}
+        <div role="img" aria-label="A hollow bar: a hold that was released" className="hl-hold__bar max-w-md" />
+        <p className="max-w-[34rem] font-[family-name:var(--font-newsreader)] text-xl leading-snug">
+          This page is gone, or was never here. Like a hold that was released, nothing was charged. Try
+          search (Ctrl or Cmd plus K), or start from one of these.
         </p>
-        <h1 className="text-3xl font-bold">This page is not here.</h1>
-        <p className="text-fd-muted-foreground">
-          Like a hold that was released, the page was removed or never existed. Nothing was charged. Try
-          search (Ctrl or Cmd plus K) or start from one of the sections.
-        </p>
-        <ul className="grid gap-2 sm:grid-cols-2">
+        <ul className="grid gap-3 sm:grid-cols-2">
           {sections.map((s) => (
             <li key={s.id}>
-              <Link
-                href={starts[s.id]}
-                className="block rounded-[2px] border border-[var(--hl-hairline)] bg-fd-card px-3 py-2 font-mono text-sm font-bold hover:bg-fd-accent"
-              >
+              <Link href={starts[s.id]} className="hl-card block px-4 py-3 font-mono text-sm font-bold">
                 {s.title}
               </Link>
             </li>

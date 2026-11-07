@@ -56,15 +56,15 @@ export function DiagramFrame({
   );
 
   return (
-    <figure className="not-prose my-8 border border-[var(--hl-hairline)] bg-fd-card">
+    <figure className="hl-fig not-prose my-8 border-[1.5px] border-[var(--hl-border)] bg-fd-card">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--hl-hairline)] px-3 py-2">
-        <p className="font-mono text-[0.7rem] font-bold tracking-wide uppercase">{title}</p>
+        <p className="hl-fig__title font-mono text-[0.7rem] font-bold tracking-wide uppercase">{title}</p>
         <div className="flex items-center gap-2">
           {badge}
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-[2px] border px-2 py-1 font-mono text-[0.68rem] font-bold uppercase hover:bg-fd-accent"
+            className="hl-noprint inline-flex items-center gap-1.5 rounded-[2px] border px-2 py-1 font-mono text-[0.68rem] font-bold uppercase hover:bg-fd-accent"
           >
             <Maximize2 className="size-3.5" aria-hidden />
             Open full size
@@ -74,8 +74,13 @@ export function DiagramFrame({
       <div className="fd-scroll-container overflow-x-auto" role="region" aria-label={`${title}, scrollable`} tabIndex={0}>
         {svg(uid, minWidth)}
       </div>
+      <p className="hl-fig__hint border-t border-[var(--hl-hairline)] px-3 py-1.5 font-mono text-[0.66rem] text-fd-muted-foreground">
+        Scroll the figure sideways, or open it full size.
+      </p>
       {toolbar && <div className="border-t border-[var(--hl-hairline)] px-3 py-2 text-sm">{toolbar}</div>}
-      <figcaption className="border-t border-[var(--hl-hairline)] px-3 py-3 text-sm">{caption}</figcaption>
+      <figcaption className="border-t border-[var(--hl-hairline)] px-3 py-3 text-[0.85rem] leading-relaxed text-fd-muted-foreground [&_code]:text-[0.78rem] [&_code]:text-[var(--hl-fg)]">
+        {caption}
+      </figcaption>
       <details className="border-t border-[var(--hl-hairline)] px-3 py-2 text-sm">
         <summary className="cursor-pointer font-mono text-[0.7rem] font-bold uppercase">Text version of this diagram</summary>
         <div className="mt-2 space-y-2 [&_li]:my-1 [&_ol]:list-decimal [&_ol]:ps-5 [&_ul]:list-disc [&_ul]:ps-5">{transcript}</div>

@@ -21,6 +21,8 @@ const key = [
   ['settlement-saga', '/docs/how-it-works/settlement-saga'],
   ['crash-recovery', '/docs/how-it-works/crash-recovery'],
   ['voice', '/docs/how-it-works/voice-and-confirm'],
+  ['rubric-map', '/docs/judges/rubric-map'],
+  ['gate-g5', '/docs/proof/gate-g5'],
   ['gates', '/docs/proof/gates'],
   ['evidence-map', '/docs/proof/evidence-map'],
   ['simulation', '/docs/proof/simulation'],
@@ -116,6 +118,32 @@ for (const [name, url] of key) {
   await shoot(`${name}-daylight-desktop`, url, { scheme: 'light', viewport: { width: 1280, height: 900 } });
 }
 await shoot('home-floodlight-desktop', '/', { ...dusk, floodlight: true });
+await shoot('voice-floodlight-desktop', '/docs/how-it-works/voice-and-confirm', { ...dusk, floodlight: true });
+await shoot('home-daylight-1440', '/', { scheme: 'light', viewport: { width: 1440, height: 900 } });
+await shoot('voice-daylight-1440', '/docs/how-it-works/voice-and-confirm', { scheme: 'light', viewport: { width: 1440, height: 900 } });
+await shoot('home-dusk-1440', '/', { scheme: 'dark', viewport: { width: 1440, height: 900 } });
+
+// Print layout, the 404 page and the Open Graph cards.
+{
+  const context = await browser.newContext({ colorScheme: 'dark', viewport: { width: 900, height: 1200 } });
+  const page = await context.newPage();
+  await page.goto(base + '/docs/how-it-works/voice-and-confirm', { waitUntil: 'networkidle' });
+  await page.emulateMedia({ media: 'print' });
+  await page.screenshot({ path: join(outDir, 'print-voice.png'), fullPage: true });
+  await page.emulateMedia({ media: 'screen' });
+  await page.goto(base + '/docs/does-not-exist', { waitUntil: 'networkidle' });
+  await page.screenshot({ path: join(outDir, '404-desktop.png') });
+  for (const [n, u] of [['site', '/og/site/image.png'], ['voice', '/og/docs/how-it-works/voice-and-confirm/image.png']]) {
+    const r = await page.goto(base + u);
+    if (!r || !r.ok()) {
+      console.error(`FAIL ${u}: HTTP ${r?.status()}`);
+      failures += 1;
+    } else {
+      await page.screenshot({ path: join(outDir, `og-${n}.png`) });
+    }
+  }
+  await context.close();
+}
 
 // Phone: every docs page.
 for (const url of listDocs(exportDir)) {
