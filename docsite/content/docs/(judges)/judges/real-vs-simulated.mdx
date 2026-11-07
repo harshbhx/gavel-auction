@@ -1,0 +1,65 @@
+---
+title: Real, simulated, recorded
+description: What each claim in the video and on this site is backed by. Mirrors the video label sheet.
+icon: Tags
+status: in progress
+---
+
+This is the label sheet from `docs/submission/VIDEO-SCRIPT.md`, with each row linked to its evidence. Every shot in the video carries one of these labels on screen.
+
+## The label sheet
+
+| Claim shown | Label on screen | Truth |
+| --- | --- | --- |
+| Hold, capture 350, remainder released | Real sandbox, evidence file | G1 PASS, wallet and card |
+| Card and guest authorize | Real sandbox | G2 PASS |
+| Webhook verification | Real sandbox, 6 events | G4 PASS; tampered-event rejection is fake only |
+| Full multi-bidder settlement | Fake PayPal | Not run end to end on the sandbox |
+| Crash and resume | Fake PayPal, test hook | In-process hook; no trigger on a hosted server |
+| Voice bid | Recorded replay | G5 failed on synthetic clips; confirm prompt; no real-room test |
+| Honor period and reauthorize | Not shown as a result | G3 in progress |
+| Any money | Never a live charge | Sandbox only |
+
+## The source labels used on shots
+
+| Source | Meaning |
+| --- | --- |
+| UI | The web app |
+| TERM | A terminal on the repository, or a title card |
+| EVID | Evidence files under `docs/evidence` |
+| FAKE | The fake PayPal, as a replay or in tests |
+| REC | A recorded replay |
+
+## The four words
+
+| Word | Meaning | Example |
+| --- | --- | --- |
+| Real | A call to the PayPal sandbox with committed evidence or a run log | G1, G2, G4 |
+| Fake | The built-in fake PayPal, a test double | Whole-auction settlement tests |
+| Simulated | Our code over simulated days on a fake clock against a model of PayPal | The 30-day run |
+| Recorded | A replay of recorded events or cached speech outputs | The voice replay, G5 |
+
+## By area
+
+| Area | Mode | Page |
+| --- | --- | --- |
+| Auction rules, price, soft close, hammer | Real code, deterministic, the same in every mode | [Engine and ledger](/docs/how-it-works/engine-and-ledger) |
+| Authorize, partial capture, remainder | Real sandbox; remainder release inferred | [Gate G1](/docs/proof/gate-g1) |
+| Card and guest authorize | Real sandbox, authorize only | [Gate G2](/docs/proof/gate-g2) |
+| Webhook signatures | Real sandbox for valid events; fake for tampered ones | [Gate G4](/docs/proof/gate-g4) |
+| Settlement of a whole auction | Fake, plus one lot of three holds on the sandbox | [Settlement saga](/docs/how-it-works/settlement-saga) |
+| Crash recovery | Fake, plus one in-process crash on the sandbox | [Crash recovery](/docs/how-it-works/crash-recovery) |
+| Honor period | Unknown until G3 ends; the 30-day run is simulated | [Gate G3](/docs/proof/gate-g3), [simulation](/docs/proof/simulation) |
+| Voice | Recorded transcripts and cached provider outputs; G5 FAIL | [Gate G5](/docs/proof/gate-g5) |
+| Replay | Recorded events, read only, labelled on screen | [Demo](/docs/start/demo) |
+| Hosted demo | Not published | [Demo](/docs/start/demo) |
+
+<NotVerified title="The label sheet is a script note, not a result">
+
+The sheet describes the planned video. The video itself is an open item in `docs/SUBMISSION.md`. If the video and this page ever differ, the gate record in `docs/GATES.md` decides.
+
+</NotVerified>
+
+## The SIMULATED scenarios, as generated
+
+<SimScenarioTable />

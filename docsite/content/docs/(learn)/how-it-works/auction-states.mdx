@@ -1,0 +1,127 @@
+---
+title: Auction states and soft close
+description: The states a lot moves through, who can hammer it, and how the soft-close clock extends the end.
+icon: Timer
+status: verified
+full: true
+---
+
+An auction in GAVEL is one **lot** at a time, and a lot has a clock. This page shows the states a lot can be in, which event moves it from one to the next, and exactly how the clock can be extended when someone bids at the last moment.
+
+<Callout type="info" title="Verified against the code, not measured">
+  States and rules come from the engine and the room host. The clock numbers in the simulator are the demo lot of the server, not a general setting. Nothing here is a timing measurement; for latency see [Latency](/docs/proof/latency).
+</Callout>
+
+<AuctionStatesDiagram />
+
+## The five states
+
+| State | Entered by | What is allowed |
+| --- | --- | --- |
+| `PENDING` | `LOT_ADDED` | Nothing yet. Lots open one at a time, in lot order. |
+| `OPEN` | `LOT_OPENED` (`OpenLot`) | Bids. Pause, resume and extend by the auctioneer. |
+| `CLOSING` | `LOT_CLOSING` | No bids. The hammer. |
+| `SETTLING` | `LOT_HAMMERED` | Nothing on the auction side: the lot is frozen and the [settlement saga](/docs/how-it-works/settlement-saga) runs. |
+| `DONE` | `LOT_SETTLED`, `LOT_UNSOLD` or `LOT_ABORTED` | Nothing. |
+
+Two things that look like states are not:
+
+- **Paused** is a flag on an `OPEN` lot. `LOT_PAUSED` records how much time was left, `LOT_RESUMED` restores it. While paused, a bid is answered `auction_paused` (retryable) and the clock does not tick.
+- **SCHEDULED** and **PAUSED** appear in the shared status list, but the server never sends them as the status of a room. The web client shows PAUSED when the snapshot says `paused: true` on an `OPEN` room.
+
+## How a lot ends
+
+<Steps>
+  <Step>
+    **The deadline passes.** The room arms a timer for `endTs`. When it fires, the room ticks the engine, which writes `LOT_CLOSING` if the deadline has passed. A bid that arrives after the deadline but before the timer is also rejected, and writes `LOT_CLOSING` first.
+  </Step>
+  <Step>
+    **The lot is hammered.** From `CLOSING` (or from `OPEN`, if the auctioneer closes early), the hammer ranks the bids, takes the top one as the winner, prices it and lists the fallback candidates. The result is `LOT_HAMMERED`. With no bids at all it is `LOT_UNSOLD` and the lot goes straight to `DONE`.
+  </Step>
+  <Step>
+    **Money starts.** After the hammer the room asks the payments side to settle, once per process, after saving the request. Registration for the room closes at the hammer.
+  </Step>
+</Steps>
+
+### Who hammers
+
+<Tabs items={['Auctioneer', 'Timer', 'Kill switch']}>
+  <Tab value="Auctioneer">
+
+The auctioneer console posts a `hammer` control to the HTTP control route (it is not a WebSocket frame). The control carries a `controlId`, so a repeat returns the same result and appends nothing. It may also carry the price and the leader paddle the auctioneer saw; if either has moved, the hammer is refused with `conflict` (`price_changed` or `leader_changed`) and nothing is hammered. Hammering an `OPEN` lot needs the explicit close-now argument; a paused lot cannot be hammered.
+
+  </Tab>
+  <Tab value="Timer">
+
+If the room config sets `autoHammerDelayMs`, the room hammers by itself that long after `CLOSING` began, and retries every two seconds if the store is down. The demo config sets none, so there the auctioneer hammers.
+
+  </Tab>
+  <Tab value="Kill switch">
+
+The Stop control ends the lot as an unsold hammer, so settlement voids every hold. In the engine this is `AbortLot`: allowed from `PENDING`, `OPEN` or `CLOSING`, refused once the lot is `SETTLING` or `DONE`. Bids stay in the ledger.
+
+  </Tab>
+</Tabs>
+
+## The soft-close clock
+
+Soft close stops a lot from ending on a last-second bid by giving rivals time to answer. The rule is small and exact (`extension()` in the engine):
+
+1. It applies to an **accepted** bid only. A rejected bid never moves the clock.
+2. If the bid time is earlier than `endsAt - windowMs`, nothing happens.
+3. Otherwise the new end is `max(endsAt, bidTime + extensionMs)`, never later than the hard close.
+4. It stops once `maxExtensions` extensions have been used.
+
+So with a 30 second window and a 30 second extension, a bid 1 second before the end moves the end by 29 seconds, and a bid exactly 30 seconds before the end changes nothing.
+
+<TypeTable
+  type={{
+    windowMs: {
+      description: 'How close to the end a bid must be to extend the lot. 0 turns soft close off.',
+      type: 'integer, 0 to 600000',
+      default: '0 (engine default)',
+    },
+    extensionMs: {
+      description: 'The end moves to the bid time plus this, at least.',
+      type: 'integer, 0 to 600000',
+      default: '0 (engine default)',
+    },
+    maxExtensions: {
+      description: 'How many times soft close may extend one lot.',
+      type: 'integer, 0 to 50',
+      default: '10 (engine default)',
+    },
+    hardCloseMs: {
+      description: 'Latest end, counted from the opening, at least the lot duration. Moves later by the time the clock was paused.',
+      type: 'integer, optional',
+    },
+  }}
+/>
+
+The server derives the hard close for a room as the lot duration plus the smaller of `maxExtensions x extensionMs` and one hour. For the demo lot (a ten minute lot, 30 second window, 30 second extension, at most five extensions) that is 750 seconds after opening. With those numbers the five-extension limit stops the clock before the hard close.
+
+<Accordions type="multiple">
+  <Accordion title="Pause, resume and extend by the auctioneer">
+    **Pause** freezes the clock and records the time left; a lot already past its deadline cannot be paused. **Resume** sets the end to now plus the time left, and the hard close moves later by the paused time, because nobody could bid. **Extend** adds 1 to 600000 milliseconds to a running lot. It does not count towards the soft-close limit, and it is refused if it would pass the hard close. All three are audited as control records and replayed after a restart.
+  </Accordion>
+  <Accordion title="Sealed lots cannot soft close">
+    The engine supports a sealed second-price mode, and a config with a soft-close window on a sealed lot is rejected. Sealed lots reveal neither the leader nor the rank before the hammer. The room host as shipped runs the English (open ascending) mode only.
+  </Accordion>
+  <Accordion title="What the price frame says about time">
+    The `price` frame carries `endTs`, the extension count so far and `minNext`. While the lot is paused it also carries `paused: true` and `remainingMs`, and the room computes `endTs` as now plus the time left. The snapshot carries `endTs`, `paused` and `remainingMs` too.
+  </Accordion>
+</Accordions>
+
+<CodePaths
+  paths={[
+    { path: 'packages/engine/src/types.ts', note: 'LotStatus, SoftClose' },
+    { path: 'packages/engine/src/evolve.ts', note: 'which entry sets which status' },
+    { path: 'packages/engine/src/rules/softclose.ts', note: 'the extension rule and the hard close' },
+    { path: 'packages/engine/src/decide/hammer.ts', note: 'Tick, Hammer' },
+    { path: 'packages/engine/src/decide/pause.ts', note: 'pause, resume, extend' },
+    { path: 'packages/engine/src/decide/abort-lot.ts', note: 'the kill switch' },
+    { path: 'packages/server/src/room/room.ts', note: 'timers, auto hammer, control, abort' },
+    { path: 'packages/server/src/runtime/ledger-engine.ts', note: 'hard close margin, status mapping' },
+    { path: 'packages/server/src/boot/compose.ts', note: 'the demo lot numbers' },
+  ]}
+/>

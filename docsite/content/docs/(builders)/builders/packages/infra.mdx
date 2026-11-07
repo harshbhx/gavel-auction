@@ -1,0 +1,152 @@
+---
+title: Infra and tooling
+description: Workflows, deploy configuration, repository scripts and the root tooling that enforce the rules.
+icon: Wrench
+status: verified
+full: true
+---
+
+There is no `packages/infra`. What this page calls infra is the repository's delivery layer: `.github/workflows`, `infra/`, `render.yaml`, `scripts/`, and the root tooling (ESLint, Prettier, dependency-cruiser, commitlint, husky, coverage thresholds). By the ownership map these paths belong to the QA area (`packages/e2e/**`, `infra/**`, `.github/**`, `scripts/**` and the root tooling files).
+
+Heavy work (builds, test suites, browsers, screenshots) runs in GitHub Actions. This page says what runs where; the full workflow map is in [Operators: CI and deploy pipeline](/docs/run/ci-pipeline).
+
+## Root tooling
+
+<TypeTable
+  type={{
+    'eslint.config.js': { description: 'ESLint 9 flat config. no-explicit-any is an error, zero warnings allowed. Adds the engine purity block, determinism rules, the room-core rule from the server package and the React hooks rules for the web package.', type: 'tooling' },
+    '.prettierrc.json': { description: 'printWidth 100, single quotes, trailing commas everywhere, LF line endings. Prettier 3.3.3.', type: 'tooling' },
+    '.dependency-cruiser.cjs': { description: 'The package dependency direction and the engine no-IO rule.', type: 'tooling' },
+    'commitlint.config.cjs': { description: 'Commit header rules: type list, scope list, at most 72 characters, no full stop.', type: 'tooling' },
+    'lint-staged.config.cjs': { description: 'On staged files only: Prettier and ESLint, plus the ASCII and banned-word checks. Never runs tests.', type: 'tooling' },
+    'coverage.thresholds.json': { description: 'Per-package line and branch floors, checked by scripts/check-coverage.mjs. A floor may only be raised.', type: 'tooling' },
+    'stryker.config.mjs': { description: 'Mutation testing configuration, run by the mutation workflow.', type: 'tooling' },
+    'api-extractor.json': { description: 'Public API reports, written to etc/<package>.api.md.', type: 'tooling' },
+    'audit-waivers.json': { description: 'Expiring waivers for the dependency audit gate.', type: 'tooling' },
+  }}
+/>
+
+### The dependency rule
+
+`.dependency-cruiser.cjs` allows these imports and treats every other cross-package import as an error:
+
+| Package | May import |
+| --- | --- |
+| `shared` | nothing |
+| `engine` | `shared` |
+| `payments` | `shared`, `engine` |
+| `voice` | `shared` |
+| `server` | `shared`, `engine`, `payments`, `voice` |
+| `web` | `shared`, `voice` |
+
+A second rule, `engine-no-node-io`, stops the engine from importing `fs`, `net`, `http`, `child_process`, `os` and the other I/O modules (except under `src/testing` and `src/node`). `npm run check:deps` runs the cruiser, then `scripts/check-engine-purity.mjs` (no direct wall-clock or randomness in the engine) and the payments package's own dependency check. The `e2e` package is not in the rule.
+
+## Scripts
+
+| Script | What it checks or does |
+| --- | --- |
+| `check-ascii.mjs` | Fails on a non-ASCII character in checked files |
+| `check-banned-words.mjs` | Fails on a banned word; the list comes from a CI secret or a local file |
+| `check-branch-pr.mjs` | Branch name and pull request title rules (see [Contributing](/docs/builders/contributing)) |
+| `check-ownership.mjs` | A pull request may touch one area only, unless it has the `cross-area` label |
+| `check-interface-label.mjs` | Regenerates the API reports; a changed report needs the `interface` label |
+| `check-bundle-secrets.mjs` | Scans a built web bundle for secret names with values, token-like strings and canary values |
+| `check-no-live-host.mjs` | Fails when source or configuration names a live PayPal host |
+| `check-engine-purity.mjs` | No direct clock or randomness in engine sources |
+| `check-coverage.mjs` | Per-package coverage floors |
+| `check-docs-format.mjs` | Lints `docs/DECISIONS.md` and `docs/GATES.md` against their formats |
+| `check-gates-result.mjs` | A flag in `gates-result.json` may be on only with a closed entry in `docs/GATES.md` |
+| `check-fixtures.mjs` | Audio sidecars, WAV format and size, recorded speech results |
+| `check-audit.mjs` | Dependency audit with expiring waivers |
+| `classify-change.mjs` | Decides whether a pull request changes only documentation |
+| `smoke.sh` and `smoke-dist.mjs` | Post-deploy smoke of the API host; smoke of the built server |
+| `gate-g3-early.mjs` | Early G3 evidence from older sandbox authorizations (read, or probe) |
+
+The scripts have their own tests (`scripts/tests`, `eslint.rules/tests`), run by `npm run test:tools`.
+
+## Workflows
+
+The workflow files are in `.github/workflows`. Grouped by purpose, with the trigger as written in the file:
+
+<Tabs items={['Every pull request', 'Scheduled', 'Manual and gates', 'Deploy', 'Docs site']}>
+<Tab value="Every pull request">
+
+| Workflow | What it does |
+| --- | --- |
+| `ci` | The main pipeline. Jobs: changes, typecheck, lint, format-check, unit, coverage, property, scenarios, deps, secrets, ascii-banned, docs-format, commitlint, ownership, voice, e2e-fixtures, reference-python, differential, tools, package-checks, prod-build and the `required` roll-up. On a documentation-only change the build, test and type jobs are skipped and the cheap checks still run |
+| `pr-meta` | Validates branch name and title using the script from the base branch; the pull request code is never checked out |
+| `interface-check` | API reports and the `interface` label |
+| `quality-tools` | Runs when scripts, lint rules, hooks or root `package.json` change |
+| `audit` | Dependency audit on lockfile changes, on main, and weekly |
+| `engine-readiness`, `server-postgres`, `payments-evidence`, `sim-multiday`, `load`, `voice-eval`, `voice-browser`, `browser-specs`, `ui-screens` | Path-filtered: each runs when the files it covers change |
+
+</Tab>
+<Tab value="Scheduled">
+
+| Workflow | Schedule (UTC) |
+| --- | --- |
+| `uptime` | every 5 minutes; stays off until the repository variable `UPTIME_ENABLED` is true |
+| `gate-g3` | every 6 hours at minute 17 |
+| `nightly-sandbox` | 20:30 daily |
+| `judge-smoke` | 21:45 daily |
+| `backup` | 03:17 daily |
+| `mutation` and `load-soak` | Sundays, 03:00 and 04:00 |
+| `audit`, `gitleaks-history` | Mondays |
+| `clean-clone`, `differential` | Mondays 04:41 |
+
+</Tab>
+<Tab value="Manual and gates">
+
+`gate-g0`, `gate-g1`, `gate-g3`, `gate-g3-early`, `gate-g4`, `measure-sandbox`, `ui-screens-live`, `report` and `quarantine` can be started by hand (some also run on a trigger). The gate workflows use PayPal sandbox secrets from repository or environment secrets. Their results are the entries in `docs/GATES.md`; read the gate pages under [Proof](/docs/proof/gates) for what each one showed.
+
+</Tab>
+<Tab value="Deploy">
+
+`deploy-staging` runs on pushes to main that touch the server, shared, engine or payments packages (or `render.yaml`) and calls the Render deploy hook, then runs `scripts/smoke.sh`. `deploy-prod` runs on a `v*` tag or by hand, waits for approval on the `production` environment, refuses to deploy a commit that is not the head of main, polls `GET /version` until the new commit is served and rolls back automatically if it never appears. Both end green with a notice when their secrets are missing. Details: `infra/rollback.md` and [Operators: deploy](/docs/run/deploy).
+
+</Tab>
+<Tab value="Docs site">
+
+`docsite` builds this site (Fumadocs on a Next.js static export), type checks it, takes screenshots in CI and publishes it to Cloudflare Pages when the two Cloudflare secrets exist. It also rebuilds when `docs/GATES.md` or `docs/evidence/SIM` change, because the site reads its numbers from them.
+
+</Tab>
+</Tabs>
+
+<NotVerified title="The sandbox-nightly environment">
+
+`infra/environments.md` describes the `sandbox-nightly` environment as having a required reviewer and branch limits. The header comment of `nightly-sandbox.yml` says the environment currently has no reviewer, no branch rule and no secrets, and that the secrets are repository-level. The workflow comment is the more recent statement; treat the sandbox secrets as readable by a workflow on any pushed branch and keep only throwaway sandbox values in them.
+
+</NotVerified>
+
+## Deploy configuration
+
+`render.yaml` is the Render blueprint for the single Node host: one instance (`numInstances: 1`) because the stores are files owned by one process, a persistent disk of 1 GB mounted at `/var/data`, health check `/healthz`, and `autoDeploy: false` (deploys come from the workflows through the deploy hook). The build is `npm ci --include=dev --ignore-scripts && npm run build -w @gavel/server`; the start command is `npm run start:prod -w @gavel/server`.
+
+The server validates its environment before it starts. A missing or empty required variable, or a `PAYPAL_ENV` other than `sandbox`, ends the process with exit code 78 and one JSON line per problem that names the variable and the reason, never a value. Required everywhere: `PUBLIC_URL`, `TOKEN_SECRET`, `ADMIN_KEY`, `PAYMENTS`, `PAYPAL_ENV`; with `PAYMENTS=sandbox` also `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` and `PAYPAL_WEBHOOK_ID`.
+
+Three GitHub environments exist: `staging`, `production` and `sandbox-nightly`. Secrets live in environment secrets and in the Render and Cloudflare dashboards; `.env.example` lists names with empty values.
+
+## Invariants
+
+- **Secrets are never printed or committed.** Workflow values reach steps through `env` only. `gitleaks-history`, the `secrets` job in `ci`, and `check-bundle-secrets.mjs` scan for them.
+- **Only the PayPal sandbox.** `check-no-live-host.mjs` fails on a live PayPal host and the server refuses any `PAYPAL_ENV` other than `sandbox`.
+- **A gate flag follows its record.** `check-gates-result.mjs` ties `gates-result.json` to a closed entry in `docs/GATES.md`.
+- **Coverage floors only rise.** The coverage job fails when a threshold is lowered.
+- **Workflows are pinned.** Third-party actions are referenced by commit hash.
+
+## Tests that guard it
+
+`scripts/tests/*.test.mjs` and `eslint.rules/tests/*.test.mjs` (run by `npm run test:tools` in the `tools` job of `ci`), and `packages/e2e/test/repo-contracts.test.ts`, which reads workflow and script files to check they stay wired.
+
+<CodePaths
+  paths={[
+    { path: '.github/workflows/ci.yml', note: 'the main pipeline and the required roll-up' },
+    { path: '.dependency-cruiser.cjs', note: 'package dependency rule' },
+    { path: 'commitlint.config.cjs', note: 'commit header rules' },
+    { path: 'scripts/ownership.map.json', note: 'which paths belong to which area' },
+    { path: 'render.yaml', note: 'Render blueprint' },
+    { path: 'infra/environments.md', note: 'environments and secrets by name' },
+    { path: 'infra/rollback.md', note: 'production deploy and rollback' },
+    { path: 'infra/uptime.md', note: 'uptime probe and warmup' },
+  ]}
+/>

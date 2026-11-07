@@ -1,0 +1,117 @@
+---
+title: Contributing
+description: Branch and pull request naming, commit rules, labels, ownership and the checks a change must pass.
+icon: GitPullRequest
+status: verified
+---
+
+The authoritative text is `CONTRIBUTING.md` in the repository. This page restates the rules with the checks that enforce them.
+
+## The flow
+
+<Steps>
+<Step>
+
+### Start from fresh main
+
+Fetch, then branch from the current `origin/main`. Work in your own branch or worktree.
+
+</Step>
+<Step>
+
+### Name the branch and the pull request
+
+Branch: `<type>/<KEY>-<slug>`, for example `feat/ENG-04-ledger-model`. The key is two to four upper-case letters, a dash and two to four digits. The slug is lower case letters, digits and dashes. The type is one of `feat`, `fix`, `test`, `docs`, `chore`, `refactor`, `perf`, `ci`, `build`.
+
+Title: starts with the same key, then a colon: `ENG-04: append-only ledger model`. Extra keys may follow the first (`ENG-04 ENG-05: ...`). The `pr-meta` workflow runs `scripts/check-branch-pr.mjs` from the base branch and fails the check on a mismatch.
+
+</Step>
+<Step>
+
+### Write conventional commits
+
+`type(scope): subject`. Allowed scopes: `shared`, `engine`, `payments`, `voice`, `server`, `web`, `e2e`, `infra`, `docs`, `repo`. The header is lower case, has no full stop and is at most 72 characters. `commitlint.config.cjs` enforces this, locally through the husky `commit-msg` hook and in CI.
+
+</Step>
+<Step>
+
+### Check what you can locally
+
+Run prettier on the files you changed. The pre-commit hook runs Prettier and ESLint on staged files plus the ASCII and banned-word checks; it never runs tests. Heavy checks run in CI (see [Run and test](/docs/builders/run-and-test)).
+
+</Step>
+<Step>
+
+### Open the pull request
+
+Use the template: issue link (`Closes #<n>`), Summary, How to test, Sandbox verification, Interfaces changed, Tests added and the checklist. Add the labels below if they apply, then follow the checks until they are green.
+
+</Step>
+</Steps>
+
+## Labels
+
+| Label | When |
+| --- | --- |
+| `cross-area` | The change touches files owned by more than one area. A maintainer applies it. It bypasses the ownership check |
+| `interface` | The change alters an exported symbol or wire message. The pull request updates `etc/<package>.api.md` and merges before the code that depends on it |
+
+## File ownership
+
+The ownership check (`scripts/check-ownership.mjs`) reads the area from the issue key and compares it with the changed files, using `scripts/ownership.map.json`.
+
+| Area | Paths |
+| --- | --- |
+| ENG | `packages/engine/**`, `docs/specs/engine/**` |
+| PAY | `packages/payments/**`, `docs/GATES.md`, `docs/specs/payments/**` |
+| RT | `packages/shared/**`, `packages/server/**`, `docs/specs/realtime/**` |
+| VOI, VOX | `packages/voice/**`, `docs/specs/voice/**` |
+| WEB | `packages/web/**`, `docs/specs/web/**` |
+| QA | `packages/e2e/**`, `infra/**`, `.github/**`, `scripts/**`, root tooling files, `docs/DECISIONS.md`, `docs/GATES.md`, `CONTRIBUTING.md` |
+
+Reviewers come from `.github/CODEOWNERS`. Exempt from the check: `package-lock.json`, build info files, `dist`, declaration files and `etc/*.api.md`.
+
+## Rules that are easy to trip over
+
+- Money is integer cents.
+- No `any`, no unused variables, no non-null assertions: the root lint rejects them.
+- Files are plain ASCII. The `check-ascii` job fails on any other character, in code and in docs.
+- The banned-word check also reads commit messages and pull request text.
+- Never commit a key, token or secret. Use sandbox values only; the secret scanners run on every pull request.
+- Do not force-push a shared branch. If main moved, merge it into your branch (`chore(repo): merge main`).
+- `package-lock.json` must stay in sync with the workspaces. After a dependency change, run `npm install --package-lock-only` and commit the lockfile.
+
+## Add things
+
+<Tabs items={['A scenario', 'A fixture', 'A gate run']}>
+<Tab value="A scenario">
+
+Scenarios are YAML files in `packages/e2e/scenarios/`, named `S<nn>-<slug>.yaml` and validated by `packages/e2e/src/dsl/schema.ts`. Copy `S01-happy-path.yaml`, change the id, steps and expectations, keep time and randomness explicit, then run `npm run test:scenarios`.
+
+</Tab>
+<Tab value="A fixture">
+
+Fixtures live in `packages/<name>/fixtures/` next to the code they feed. Keep them small, deterministic and free of secrets. Script-built fixtures (the audio set) come from their generator and are regenerated, not edited. Run `node scripts/check-fixtures.mjs` afterwards.
+
+</Tab>
+<Tab value="A gate run">
+
+A gate is a recorded question about PayPal sandbox behaviour. Follow the Setup and Requests lines in `docs/GATES.md` with sandbox credentials, fill in Observed, Verdict, Decision and Links, and set the date and name. A gate is closed only when its status is PASS or FAIL with a recorded decision. Read the procedure in [the gate runbook](/docs/run/gate-runbook).
+
+</Tab>
+</Tabs>
+
+## Security and conduct
+
+Do not open a public issue for a vulnerability; follow `SECURITY.md`. Participation is governed by `CODE_OF_CONDUCT.md`.
+
+<CodePaths
+  paths={[
+    { path: 'CONTRIBUTING.md', note: 'the full guide' },
+    { path: 'scripts/check-branch-pr.mjs', note: 'branch and title rules' },
+    { path: 'scripts/ownership.map.json', note: 'area map' },
+    { path: 'commitlint.config.cjs', note: 'commit header rules' },
+    { path: '.github/pull_request_template.md', note: 'the template' },
+    { path: '.github/CODEOWNERS', note: 'reviewers' },
+  ]}
+/>

@@ -1,0 +1,111 @@
+---
+title: Voice and the confirm gate
+description: Speech never becomes a bid by itself. The pipeline, the gate and the failed accuracy gate.
+icon: Mic
+status: unverified
+full: true
+---
+
+Voice is one input among several. The engine, the PayPal hold ladder and the audit trail are the core of the product; manual entry and tap to bid always work if speech fails.
+
+<VoiceDiagram />
+
+## The pipeline
+
+1. **Segment.** Audio is cut into speech segments.
+2. **Speech to text.** The default build plays cached transcripts. A live provider (Groq or Deepgram) runs only when `VOICE_STT` is set and its key exists.
+3. **Parse.** A rule parser reads amount, paddle and intent.
+4. **Decide.** The step merges parser opinions, scores confidence and validates the bid against the room. The result is `accept`, `confirm` or `drop`.
+5. **Confirm.** A question goes to the bidder (for example "Did you mean $150 for paddle 12?"). A yes is checked again against the live price before a bid is placed. A no or an expiry places nothing and is logged.
+
+Some situations always confirm, whatever the confidence: a correction, a hedged phrase, several amounts or bidders, an unregistered paddle, a large jump, an implausible amount.
+
+## The pipeline in detail
+
+Step through it, or hover and focus a box to see what it does and which file implements it.
+
+<VoicePipelineDiagram />
+
+### Which speech provider runs
+
+<Tabs items={['Default build', 'Deepgram with a Groq key', 'Groq only']}>
+  <Tab value="Default build">
+    With `VOICE_STT` unset (or `replay`) the cached provider plays recorded transcripts. No key is needed and nothing leaves the host.
+  </Tab>
+  <Tab value="Deepgram with a Groq key">
+    `VOICE_STT=deepgram` with `DEEPGRAM_API_KEY` and `GROQ_API_KEY` set builds the chain Deepgram, then Groq, then cached replay. A provider is replaced when it stays silent for 3 seconds after audio starts, delivers a final more than 4 seconds after speech ends, errors twice in a row, fails fatally or closes. The last 5 seconds of audio are replayed into the next provider, and Deepgram is tried again after 30 seconds.
+  </Tab>
+  <Tab value="Groq only">
+    `VOICE_STT=groq` with `GROQ_API_KEY` runs Groq behind a failover to the cached provider. A named provider whose key is missing is logged and the next one with a key is used, so a missing key never stops the host.
+  </Tab>
+</Tabs>
+
+### AUTO or CONFIRM
+
+<Steps>
+  <Step>
+    **The decision step classifies the segment.** Confidence at or above 0.85 with no hard flag is accept. From 0.50 up to 0.85 is confirm. Below 0.50, or nothing that looks like a bid, is drop. Hard flags (correction, hedged phrase, several amounts or bidders, homophone, unsupported currency, fractional amount, large jump, unregistered paddle, implausible amount, model disagreement) always confirm.
+  </Step>
+  <Step>
+    **The bridge hands it to the room.** An accept becomes a voice bid carrying its confidence. A confirm becomes a voice bid flagged ambiguous. A drop is written to the audit trail without the transcript.
+  </Step>
+  <Step>
+    **The room gate applies.** A voice bid below 0.85, or flagged ambiguous, is held for 15 seconds and its bidder is asked. A clean bid at 0.85 or more goes straight to the engine, which still checks price, increment and ceiling.
+  </Step>
+  <Step>
+    **The answer is checked again.** A yes runs the normal bid pipeline at the server time of the answer. A no, or no answer within 15 seconds, places nothing and is audited.
+  </Step>
+</Steps>
+
+<Callout type="warn" title="Two timers, two layers">
+  The decision step keeps its own prompt for 8 seconds (`CONFIRM_TTL_MS` in `packages/voice/src/decide/decide.ts`). The room holds a bid for 15 seconds (`CONFIRM_TTL_MS` in `packages/server/src/room/confirm.ts`). The bridge submits a confirm decision to the room, so the room's 15 second hold is the one a bidder meets.
+</Callout>
+
+### Mute and the drop monitor
+
+Muting is a safety control as well as a convenience. While muted, no audio is sent: the browser sends an empty keepalive every 5 seconds so the stream stays open, and muting tells the provider the utterance has ended. Push to talk starts muted and opens the microphone only while the talk key is held. If the microphone track ends (device unplugged) one automatic restart is tried before the state becomes an error.
+
+The drop monitor watches the browser's send queue. The queue holds 50 batches and drops the oldest when it is full. If more than 2 seconds of audio are dropped inside 10 seconds, capture moves to a degraded state and the person sees "Connection is slow, voice bids may be missed. Use manual entry." Ten seconds without a new drop returns it to running. Manual entry and tap to bid are never affected.
+
+<Accordions>
+  <Accordion title="What does the audio socket check?">
+    The upgrade checks the origin against the allowed list. The first message must be an auth frame with the auctioneer token within 5 seconds; the token is never in the URL. After that the voice session enforces 64 KiB per second, 100 frames per second, 30 minutes per stream, 2 streams per token and 4 per room. The microphone is the room's: the bidder of a spoken bid comes from the paddle that was heard, never from the token.
+  </Accordion>
+  <Accordion title="Can a spoken bid reach PayPal without the engine?">
+    No. The voice path ends at the room, and the room calls the engine like any other bid. Holds and capture are the payments package's job and run on the settlement path described in the money flow page.
+  </Accordion>
+</Accordions>
+
+<NotVerified title="Speech accuracy gate G5 FAILED">
+
+Both providers miss the 0.05 wrong-accept limit on synthetic audio, on two clip sets of 24 clips. There is no real-room or noisy-room test, and no live speech run is recorded.
+
+<SpeechTable />
+
+</NotVerified>
+
+<NotVerified title="Always-confirm is a decision, not yet a code switch">
+
+`docs/GATES.md` records the decision that spoken bids always go through the confirm prompt (assist mode). The code keeps the default thresholds (auto 0.85, confirm 0.50): a clean parse that two parsers agree on, at 0.85 or more, can be accepted without the gate. Without a second parser opinion the score tops out at 0.82, so such a bid confirms. The room also holds any voice bid below 0.85 or flagged ambiguous.
+
+</NotVerified>
+
+## Where this lives in the code
+
+<CodePaths
+  paths={[
+    { path: 'packages/voice/src/decide/policy.ts', note: 'accept, confirm or drop; the hard flags' },
+    { path: 'packages/voice/src/decide/decide.ts', note: 'the decision' },
+    { path: 'packages/voice/src/decide/score.ts', note: 'confidence scoring' },
+    { path: 'packages/voice/src/decide/answer.ts', note: 'answering a confirm prompt' },
+    { path: 'packages/voice/src/pipeline/pipeline.ts', note: 'the pipeline' },
+    { path: 'packages/server/src/voice/bridge.ts', note: 'audio socket to room' },
+    { path: 'packages/server/src/room/confirm.ts', note: 'held voice bids' },
+    { path: 'packages/server/src/host/audio-ws.ts', note: 'the /audio socket and its auth message' },
+    { path: 'packages/server/src/voice/stt.ts', note: 'provider choice and the Deepgram, Groq, cached chain' },
+    { path: 'packages/voice/src/stt/failover.ts', note: 'switch triggers and the 30 second circuit' },
+    { path: 'packages/voice/src/browser/mute.ts', note: 'mute, push to talk, keepalive' },
+    { path: 'packages/voice/src/browser/degraded.ts', note: 'the drop monitor' },
+    { path: 'packages/voice/src/audio/queue.ts', note: 'the bounded send queue' },
+  ]}
+/>

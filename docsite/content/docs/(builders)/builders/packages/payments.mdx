@@ -1,0 +1,176 @@
+---
+title: payments
+description: PayPal holds, the settlement saga, webhooks, reconciliation and the fake PayPal.
+icon: CreditCard
+status: verified
+---
+
+`@gavel/payments` (`packages/payments`) is everything that talks to PayPal, and the fake PayPal that stands in for it in tests. Its one runtime dependency is `zod`; it uses `node:crypto` and `node:fs` itself. PayPal is the sandbox only: `loadConfig` throws `payments_not_sandbox` unless `PAYPAL_ENV` is exactly `sandbox`, and `guard.ts` refuses any host other than the sandbox API and approve hosts (loopback only in fake mode).
+
+## Responsibilities
+
+- **A gateway to PayPal.** `PaymentsGateway` (`ports.ts`) has `createOrder`, `getOrder`, `authorizeOrder`, `getHoldTruth`, `capture`, `voidAuthorization` and `reauthorize`. Its comment states the rule the saga builds on: a `PayPalError` with outcome `definite` means the request provably did not take effect; outcome `unknown` means it may have, and the caller must read the truth first.
+- **Transport with retry.** `transport.ts` retries network errors and the statuses 429, 500, 502, 503 and 504; every attempt of one logical request carries the same request id. The per-attempt timeout defaults to 10 seconds.
+- **Holds.** `HoldService` (`holds/service.ts`) creates a bidder's hold order, completes the approval and returns the same order for a double click or a second tab, because calls for one auction and bidder run one after the other.
+- **The settlement saga.** A pure state machine (`saga/machine.ts`) driven by runners for create, capture, fallback, unknown outcome, void, remainder, reauthorization and the kill switch. Each transition is saved to a journal before the effect runs.
+- **Idempotency.** `buildRequestId` (`requestId.ts`) derives `gv1-` plus a hash of auction id, operation (`order`, `authorize`, `capture`, `void`, `reauth`), hold id, amount in cents and a generation. The generation changes only when parameters change, never on retry or resume.
+- **Webhooks.** `webhooks/verify.ts` checks the signature with PayPal's own verification call on the original bytes; `dedupe.ts` keys events by PayPal's event id; `merge.ts` and `orphans.ts` make the final hold status independent of delivery order.
+- **Reconciliation.** `reconcile/reconcile.ts` compares journal and hold records with what PayPal reports and returns findings (`AMOUNT_MISMATCH`, `EXTRA_CAPTURE`, `LIVE_HOLD_AFTER_SETTLED`, `MISSING_CAPTURE`, `REFUNDED_CAPTURE`, `STATUS_CONFLICT`, `STATUS_DRIFT`, `UNOBSERVABLE`). It only reads. `repair.ts` is the separate step that acts.
+- **Bridge to the engine.** `bridge/settlement-bridge.ts` turns saga progress into engine commands (`PromoteRunnerUp`, `RecordSettlement`, `CompleteLot`, `CloseAuction`), reading the engine first so a retry never sends a command twice.
+- **Kill switch and stores.** `killswitch.ts` persists the engaged state and wraps a gateway so money-moving calls throw `kill_switch_engaged` before the network; voids and reads pass. `stores/` holds the in-memory stores and JSON-file stores written with fsync, rename and directory fsync.
+- **The fake PayPal.** `src/fake/` is an HTTP server and in-process gateway with fault injection, idempotency and webhooks. `src/fake/ASSUMPTIONS.md` lists what the fake assumes about PayPal without having observed it in the sandbox, each row naming the gate that confirms or corrects it.
+
+## Public interface
+
+`package.json` exports three entries.
+
+| Entry | Points at | Use |
+| --- | --- | --- |
+| `@gavel/payments` | `src/index.ts` | gateway, holds, saga, webhooks, stores, bridge |
+| `@gavel/payments/fake` | `src/fake/server.ts` | the fake PayPal server |
+| `@gavel/payments/contract/web` | `src/contract/web.ts` | type-only re-export of the hold route contract that lives in `@gavel/shared` |
+
+<TypeTable
+  type={{
+    SAGA_DEFAULTS_voidConcurrency: { description: 'Most voids in flight at once.', type: 'number', default: '3' },
+    SAGA_DEFAULTS_maxVoidResumes: { description: 'A void that fails this many resumes goes to review.', type: 'number', default: '5' },
+    SAGA_DEFAULTS_unknownDeadlineMs: { description: 'How long a capture may stay unknown before FAILED_NEEDS_REVIEW.', type: 'number', default: '600000' },
+    DEFAULT_HOLD_MAX_AGE_MS: { description: 'Age after which a hold is treated as stale (GAVEL_HOLD_MAX_AGE_MS).', type: 'number', default: '7200000' },
+    DEFAULT_MAX_CEILING_CENTS: { description: 'Cap on a ceiling (GAVEL_MAX_CEILING_CENTS).', type: 'number', default: '100000' },
+    DEFAULT_HONOR_SAFE_MS: { description: 'Age above which an explicit reauthorization call renews a hold: three days minus six hours.', type: 'number', default: '237600000' },
+    DEFAULT_PENDING_TTL_MS: { description: 'How long a hold waits for the buyer to approve.', type: 'number', default: '10800000' },
+  }}
+/>
+
+The names with `SAGA_DEFAULTS_` stand for the fields of `SAGA_DEFAULTS` in `src/config.ts`. Environment names read by `loadConfig` are `PAYPAL_ENV`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_BASE_URL`, `GAVEL_MAX_CEILING_CENTS` and `GAVEL_HOLD_MAX_AGE_MS`. See [configuration](/docs/reference/configuration).
+
+## Key files
+
+<Files>
+  <Folder name="packages/payments" defaultOpen>
+    <Folder name="src" defaultOpen>
+      <Folder name="saga">
+        <File name="machine.ts" />
+        <File name="create.ts" />
+        <File name="capture.ts" />
+        <File name="fallback.ts" />
+        <File name="unknown.ts" />
+        <File name="void.ts" />
+        <File name="remainder.ts" />
+        <File name="reauth.ts" />
+        <File name="plan.ts" />
+      </Folder>
+      <Folder name="holds">
+        <File name="service.ts" />
+        <File name="recover.ts" />
+      </Folder>
+      <Folder name="webhooks">
+        <File name="verify.ts" />
+        <File name="handler.ts" />
+        <File name="dedupe.ts" />
+        <File name="merge.ts" />
+        <File name="orphans.ts" />
+      </Folder>
+      <Folder name="reconcile">
+        <File name="reconcile.ts" />
+        <File name="repair.ts" />
+      </Folder>
+      <Folder name="bridge">
+        <File name="settlement-bridge.ts" />
+      </Folder>
+      <Folder name="fake">
+        <File name="core.ts" />
+        <File name="server.ts" />
+        <File name="faults.ts" />
+        <File name="ASSUMPTIONS.md" />
+      </Folder>
+      <Folder name="stores">
+        <File name="atomic.ts" />
+        <File name="file.ts" />
+        <File name="memory.ts" />
+      </Folder>
+      <File name="transport.ts" />
+      <File name="requestId.ts" />
+      <File name="guard.ts" />
+      <File name="killswitch.ts" />
+      <File name="config.ts" />
+    </Folder>
+    <Folder name="gates">
+      <File name="g0.ts, g1.ts, g3.ts, g4.ts" />
+      <File name="g2/server.ts" />
+    </Folder>
+  </Folder>
+</Files>
+
+| File | Note |
+| --- | --- |
+| `saga/machine.ts` | `step(journal, event)` is pure: no I/O, no clock, no randomness; returns a new journal and the effects to run after it is saved |
+| `saga/unknown.ts` | an unknown capture stays CAPTURING, never moves to the next bidder |
+| `saga/fallback.ts` | after a definite failure, read the truth first, then move to the next candidate at that candidate's own price |
+| `saga/remainder.ts` | what to do with the winner's unused authorization, by the G1 `remainderMode` |
+| `saga/reauth.ts` | reauthorization is an explicit call only; the saga never calls it |
+| `webhooks/verify.ts` | the five transmission headers, your webhook id and the event, spliced as original bytes |
+| `holds/recover.ts` | brings hold records back after a crash |
+| `gates/*.ts` | the sandbox gate scripts, run with the `gate:*` scripts in `package.json` |
+
+## Invariants and the tests that guard them
+
+<Accordions type="multiple">
+<Accordion title="The saga is deterministic and journal-first">
+The same seed gives byte-identical journals; each transition is one compare-and-set save before the next effect. Tests: `test/saga/determinism.test.ts`, `test/saga/machine.test.ts`, `test/saga/property.test.ts`, `test/saga/crash.test.ts`, `test/saga/crashChain.test.ts`, `test/holds/crashWindow.test.ts`.
+</Accordion>
+<Accordion title="An unknown outcome is never treated as a failure">
+Timeouts and 5xx on a POST leave the settlement CAPTURING with an unknown clock (a 429 is not unknown: PayPal refused to run the request, so no clock starts, see the header of `saga/unknown.ts`); the truth is read before acting; after the deadline it goes to review. Tests: `test/saga/unknown.test.ts`, `test/saga/rateLimited.test.ts`, `test/timeout.test.ts`, `test/saga/capture.test.ts`.
+</Accordion>
+<Accordion title="Only a definite refusal falls back to the next bidder">
+Tests: `test/saga/fallback.test.ts`, `test/saga/hrd04.test.ts`, `test/saga/hrd46.test.ts`.
+</Accordion>
+<Accordion title="A retry repeats the same call">
+Request ids do not change on retry or resume. Tests: `test/requestId.test.ts`, `test/transport.test.ts`, `test/fake/idempotency.test.ts`, `test/gates/idempotency.test.ts`.
+</Accordion>
+<Accordion title="Only the winner pays, the rest is released">
+Tests: `test/saga/void.test.ts`, `test/saga/remainder.test.ts`, `test/saga/reviewRelease.test.ts`, `test/saga/capture.test.ts`.
+</Accordion>
+<Accordion title="A webhook changes nothing unless verified, and the order of delivery does not matter">
+Failed verification answers 401 and leaves an audit row; PayPal unreachable answers 503 so it redelivers; a duplicate event id has no effect and still answers 200; an early event is parked for 10 minutes. Tests: `test/webhooks/verify.test.ts`, `test/webhooks/dedupe.test.ts`, `test/webhooks/order.test.ts`, `test/webhooks/redelivery.test.ts`, `test/webhooks/merge.test.ts`, `test/webhooks/budget.test.ts`, `test/webhooks/fast.test.ts`.
+</Accordion>
+<Accordion title="Only the sandbox is ever called">
+Tests: `test/config.test.ts`, `test/guard.test.ts`, `test/security.test.ts`, `test/killswitch.test.ts`, `test/saga/killswitch.test.ts`.
+</Accordion>
+<Accordion title="Holds respect the ceiling and a double click does not create a second order">
+Tests: `test/ceiling.test.ts`, `test/holds/service.test.ts`, `test/holds/hrd07Races.test.ts`, `test/holds/abandonHold.test.ts`, `test/holds/abandonRace.test.ts`.
+</Accordion>
+<Accordion title="The fake behaves like the sandbox where it has been observed">
+`test/conformance/run.test.ts` is the conformance suite that can run against the fake and the sandbox; differences are appended to `src/fake/ASSUMPTIONS.md` when `CONFORMANCE_ASSUMPTIONS` is set. Tests of the fake itself: `test/fake/*.test.ts`.
+</Accordion>
+</Accordions>
+
+## Gates in this package
+
+The gate scripts live in `packages/payments/gates/` and run against the PayPal sandbox when invoked with credentials. Their status is read from `docs/GATES.md` at build time.
+
+| Script | Gate | Status |
+| --- | --- | --- |
+| `gate:g0` | G0 | <GateBadge id="G0" /> |
+| `gate:g1` | G1 | <GateBadge id="G1" /> |
+| `gate:g2` | G2 | <GateBadge id="G2" /> |
+| `gate:g3` | G3 | <GateBadge id="G3" /> |
+| `gate:g4` | G4 | <GateBadge id="G4" /> |
+
+Saga behaviour is verified against the fake PayPal; the sandbox gates cover single calls. Read [gates](/docs/proof/gates) for the method and limits of each, and [simulation](/docs/proof/simulation) for the multi-day run, which is simulated (`test/simdays/`).
+
+## Where it sits
+
+`payments` may import `shared` and `engine` (`ALLOWED.payments` in `.dependency-cruiser.cjs`). In `src` it imports `@gavel/shared` types only (`contract/web.ts`, erased at run time) and nothing from the engine: the saga reads the engine's hammer result through the structural type `PlanOutcome`. `server` imports payments and wires it in `boot/compose.ts`; `web` does not import it. See [Settlement saga](/docs/how-it-works/settlement-saga), [Money flow](/docs/how-it-works/money-flow) and [Webhooks](/docs/safety/webhooks).
+
+<CodePaths
+  paths={[
+    { path: 'packages/payments/src/index.ts', note: 'public exports' },
+    { path: 'packages/payments/src/saga/machine.ts', note: 'the transition table and step()' },
+    { path: 'packages/payments/src/requestId.ts', note: 'deterministic request ids' },
+    { path: 'packages/payments/src/webhooks/handler.ts', note: 'the webhook route handler' },
+    { path: 'packages/payments/src/transport.ts', note: 'retry rules' },
+    { path: 'packages/payments/src/fake/ASSUMPTIONS.md', note: 'what the fake assumes' },
+    { path: 'packages/payments/gates', note: 'sandbox gate scripts' },
+  ]}
+/>

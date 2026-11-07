@@ -1,0 +1,50 @@
+---
+title: Keyboard shortcuts
+description: Every keyboard shortcut on this site, including the diagram controls, and how to use the site without a mouse.
+icon: Keyboard
+status: verified
+---
+
+## Site
+
+| Keys | What happens |
+| --- | --- |
+| `Ctrl` + `K` (Windows, Linux) or `Cmd` + `K` (macOS) | Opens search |
+| `Esc` | Closes search, the full-size diagram view and other dialogs |
+| `Tab` | Moves focus. The first stop on every page is the **Skip to content** link |
+| `Enter` or `Space` | Activates the focused button or link |
+
+## Diagrams
+
+Diagrams are made of buttons and focusable regions, so everything is reachable by keyboard.
+
+| Keys | What happens |
+| --- | --- |
+| `Tab` to the diagram area | Focuses the scrollable region. Arrow keys scroll it when it is wider than the screen |
+| `Tab` to **Open full size**, then `Enter` | Opens the diagram in a full-screen view. `Esc` or the Close button leaves it |
+| `Tab` to a step control, then `Right` or `Down` | Next step (step-through diagrams) |
+| `Left` or `Up` | Previous step |
+| `Home` | Back to the first step |
+| `Tab` to a box in a diagram, then `Enter` | Shows the details of that box (hover details work on focus and click too) |
+
+Focus the step buttons first: the arrow keys only act while focus is inside the step controls. Nothing on the diagrams moves by itself, so there is nothing to turn off for reduced motion.
+
+Every diagram also has a **Text version of this diagram** section that opens with `Enter`.
+
+## Themes
+
+The theme switch in the top bar offers three themes. Tab to it and press `Enter` on one:
+
+- **Daylight**: light.
+- **Dusk**: dark.
+- **Floodlight**: high-contrast black for projectors, always on top of dark.
+
+The choice is remembered in the browser when storage is allowed.
+
+<CodePaths
+  paths={[
+    { path: 'docsite/components/theme-switch.tsx', note: 'the three themes' },
+    { path: 'docsite/components/diagrams/frame.tsx', note: 'full-size view and focus handling' },
+    { path: 'docsite/components/diagrams/interactive.tsx', note: 'step controls and hover details' },
+  ]}
+/>

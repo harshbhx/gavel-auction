@@ -1,0 +1,188 @@
+---
+title: Webhooks
+description: How a PayPal webhook is verified, stored once, matched to a hold and merged, and why a lost or repeated one does no harm.
+icon: Webhook
+status: verified
+full: true
+---
+
+A webhook is PayPal knocking on GAVEL's door to say "something happened to a hold". GAVEL never takes the knock at its word. It checks who knocked, writes the message down once, asks PayPal what the hold looks like now, and only then updates its own record. The settlement also reads the truth at PayPal itself, so a webhook that never arrives cannot stall a settlement.
+
+<WebhookDiagram />
+
+<Charged title="Verified on the sandbox (gate G4)">
+
+Six real deliveries, including a capture and a void, each came back SUCCESS from PayPal's verification endpoint. The raw body was sent to PayPal as received. See [gates](/docs/proof/gates).
+
+</Charged>
+
+## In plain words
+
+<Steps>
+<Step>
+
+### Check who sent it
+
+Anyone on the internet can POST to a public URL. GAVEL hands the original bytes and five PayPal headers to PayPal's own verify call and accepts only `SUCCESS`. A forged request is answered 400 and changes nothing.
+
+</Step>
+<Step>
+
+### Write it down once
+
+PayPal gives every event an id. GAVEL stores the event under that id, and a second delivery of the same id is dropped. PayPal does send the same event more than once, so this is routine.
+
+</Step>
+<Step>
+
+### Ask PayPal, do not trust the body
+
+The event only says which hold to look at. The new status is read from PayPal. The amount in the event body is never written anywhere.
+
+</Step>
+<Step>
+
+### Only move forward
+
+A hold that is still HELD can become voided, expired, denied or captured, as PayPal reports it. A hold that is no longer HELD is not changed by an event, so an old event arriving late is harmless.
+
+</Step>
+</Steps>
+
+## What each answer means
+
+<TypeTable
+  type={{
+    '200': {
+      description:
+        'The event is stored, or it needs no work: an event type the app ignores, a repeat id, or an event about a hold GAVEL does not know (it is stored and parked). PayPal stops sending it.',
+      type: 'stored or nothing to do',
+    },
+    '400': {
+      description:
+        'The signature did not verify, a header is missing, or the body is not one JSON object. Nothing is stored and no hold changes.',
+      type: 'rejected',
+    },
+    '413': {
+      description: 'The body is over 256 KB (WEBHOOK_MAX_BYTES).',
+      type: 'too large',
+    },
+    '503': {
+      description:
+        'GAVEL could not check the event (PayPal unreachable, or the call budget used up) or could not store it. PayPal sends it again.',
+      type: 'send it again',
+    },
+  }}
+/>
+
+The payments handler returns 401 for a failed verification; the HTTP route maps that to 400 (`statusFor` in `packages/server/src/http/webhook.ts`).
+
+## Which events are acted on
+
+<Tabs items={['Acted on', 'Ignored']}>
+<Tab value="Acted on">
+
+`PAYMENT.AUTHORIZATION.VOIDED` and `PAYMENT.AUTHORIZATION.DENIED` can change a hold. `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED` and `PAYMENT.CAPTURE.DECLINED` make the settlement read the truth again, which adopts a completed capture or falls back on a declined one. A capture `COMPLETED` event can also move the hold to CAPTURED.
+
+</Tab>
+<Tab value="Ignored">
+
+Every other type, for example `CHECKOUT.ORDER.APPROVED` or `PAYMENT.AUTHORIZATION.CREATED`, is answered 200 before any verify call, so it costs nothing and is not stored. Subscribing to more types in the PayPal dashboard only spends verification calls.
+
+</Tab>
+</Tabs>
+
+## Ordering, repeats and strangers
+
+<Accordions>
+<Accordion title="Two copies of one event">
+
+The second copy finds its id already stored and stops. It is still answered 200. This is the insert-if-absent step in `packages/server/src/runtime/webhook-intake.ts`; the simulated scenario S7 checks that a duplicate delivery is dropped.
+
+</Accordion>
+<Accordion title="An event arrives before GAVEL knows the hold">
+
+The authorization id matches no hold yet, so the event is parked for 10 minutes. Every resume pass (default every 60 seconds) tries stored events again. After the window it is closed as dropped.
+
+</Accordion>
+<Accordion title="A late event about an old authorization">
+
+After a reauthorization the hold record points at the new authorization. An event for the old one matches nothing and is parked, so it cannot void the live hold. In the simulation (S7) the late event for the old authorization is parked and the reauthorized hold stays HELD.
+
+</Accordion>
+<Accordion title="The event says one thing, PayPal says another">
+
+PayPal wins. The status written to the hold comes from the truth read, never from the event body, and the intake does not read an amount from the body at all.
+
+</Accordion>
+<Accordion title="GAVEL dies after storing the event">
+
+The event is stored and has no result, so the next sweep applies it. The answer to PayPal is 200 once the event is stored, whether or not applying it worked.
+
+</Accordion>
+<Accordion title="A flood of forged requests">
+
+Verification calls go to PayPal, so they are budgeted. By default 120 calls per minute, with a smaller share for one source and for deliveries with an old timestamp, so forged traffic cannot crowd out real events. An identical repeated request is answered from memory without a new call. Over budget is answered 503.
+
+</Accordion>
+</Accordions>
+
+## The verification limits
+
+<TypeTable
+  type={{
+    maxSkewMs: {
+      description: 'How far a transmission time may be from now to count as fresh.',
+      type: 'number',
+      default: '10 minutes',
+    },
+    maxRedeliveryAgeMs: {
+      description:
+        'Oldest transmission time still sent to PayPal as a redelivery. PayPal decides; the event id is de-duplicated either way.',
+      type: 'number',
+      default: '7 days',
+    },
+    maxCallsPerWindow: {
+      description: 'Most calls to the verify endpoint per window.',
+      type: 'number',
+      default: '120 (live)',
+    },
+    windowMs: { description: 'Length of the call window.', type: 'number', default: '60 seconds' },
+    maxCallsPerSource: {
+      description: 'Most calls per window one source may use.',
+      type: 'number',
+      default: 'a quarter of the window',
+    },
+    maxUnprovenCalls: {
+      description: 'Calls per window for sources PayPal has not yet verified for, shared.',
+      type: 'number',
+      default: 'half of the window',
+    },
+  }}
+/>
+
+The certificate URL must be https on `paypal.com` or a subdomain, and the signature algorithm must be one PayPal documents. Both are checked before PayPal is called.
+
+## Setting it up
+
+Registering the webhook is a manual step in the PayPal developer dashboard. The webhook id goes into `PAYPAL_WEBHOOK_ID` on the host only; it is never committed. The route is `POST /webhooks/paypal`. Steps are in the [deploy guide](/docs/run/deploy).
+
+<NotVerified title="What the sandbox has and has not shown">
+
+Rejecting a tampered event is covered against the fake PayPal only; gate G4 did not send a tampered event. Whether a PayPal retry keeps its original transmission id and time is UNVERIFIED, because only first deliveries were recorded; until a run records a retry, an old transmission time within seven days is sent to PayPal rather than refused. The shapes of `PAYMENT.CAPTURE.DENIED` and `PENDING` events and PayPal's retry schedule are UNVERIFIED as well. Parking and ordering are shown by the simulated scenario S7, not by the sandbox.
+
+</NotVerified>
+
+## Where this lives in the code
+
+<CodePaths
+  paths={[
+    { path: 'packages/server/src/http/webhook.ts', note: 'the route, raw body, status mapping' },
+    { path: 'packages/server/src/http/webhook-guard.ts', note: 'size limit and logging' },
+    { path: 'packages/payments/src/webhooks/handler.ts', note: 'type filter, verify, 200, 401 and 503' },
+    { path: 'packages/payments/src/webhooks/verify.ts', note: 'signature check and the call budget' },
+    { path: 'packages/server/src/runtime/webhook-intake.ts', note: 'store, find hold, park, truth, merge, sweep' },
+    { path: 'packages/payments/src/webhooks/merge.ts', note: 'the per-hold write queue the intake shares with other hold writers' },
+    { path: 'docs/DEPLOY.md', note: 'registration steps' },
+  ]}
+/>

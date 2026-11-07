@@ -1,0 +1,141 @@
+---
+title: System architecture, end to end
+description: Every part of GAVEL from the browser to PayPal and the disk, and how a bid, a hold, a voice bid and a webhook travel through them.
+icon: Network
+status: verified
+full: true
+---
+
+If you have never seen the code, read this page first. It answers one question: when someone bids, which programs run, where do they run, and where does the money part sit?
+
+<ArchitectureDiagram />
+
+## The short version
+
+- **One browser app** for bidders, the auctioneer and the big screen. It is static files.
+- **One server process** (a single Node program) that owns everything stateful: the live rooms, the auction engine, the payment logic and the files on its disk.
+- **PayPal** is called only by the server, and only by two parts of it: the hold service (to create and authorize a hold) and the settlement saga (to capture the winner and release the rest). The only direct contact between a browser and PayPal is the approval popup.
+- **Speech to text** also runs on the server. The microphone sends audio frames and the server turns them into a bid decision.
+
+<Callout type="info" title="Why one process and one instance">
+`render.yaml` pins `numInstances: 1` and puts the data directory on a persistent disk. The room log, the ledger, the journals and the holds are files owned by one process, and a data directory lock stops a second host from opening them. The price is that GAVEL does not scale out; the benefit is that the order of writes, which the money logic depends on, is easy to reason about.
+</Callout>
+
+## Four journeys through the boxes
+
+Use the buttons under the diagram to light each one up.
+
+<Steps>
+<Step>
+
+### A tap or typed bid
+
+The web app sends a bid message on the room socket (`/ws`). The room runtime checks it with the engine (ascending price, the bidder's ceiling, the lot state). The event goes into the room log first; the engine ledger is written before the event is acknowledged. Everyone in the room then receives the update.
+
+</Step>
+<Step>
+
+### Registration and the hold
+
+The bidder registers with a ceiling. The HTTP API creates a PayPal order with intent AUTHORIZE through the hold service. The bidder approves in the PayPal popup (which talks to PayPal directly). The host then authorizes the order, stores the hold and registers the bidder. See [Registration and holds](/docs/how-it-works/registration-and-holds).
+
+</Step>
+<Step>
+
+### A voice bid
+
+Audio frames go to the `/audio` socket. The speech chain turns them into text (Deepgram, then Groq, then cached replay), a parser reads an amount and a decision step decides whether to ask for confirmation. A decision reaches the room through `Room.submitVoiceBid`. See [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm).
+
+</Step>
+<Step>
+
+### Settlement and the webhook
+
+After the hammer the room starts the settlement saga. The hammer is already in the engine ledger; the saga saves its journal, then captures the winning price and voids every other hold. PayPal later posts events to `/webhooks/paypal`; the host verifies the signature with PayPal, stores the event id once and hands the event to the settlement service. See [Settlement saga](/docs/how-it-works/settlement-saga) and [Webhooks](/docs/safety/webhooks).
+
+</Step>
+</Steps>
+
+## Where each thing runs
+
+<Tabs items={['Render', 'Cloudflare', 'GitHub Actions', 'PayPal and speech']}>
+<Tab value="Render">
+
+The service `gavel-host` (`render.yaml`): one instance, Node 22, a health check on `/healthz`, a 1 GB disk at `/var/data`, `STORE=file`, `PAYMENTS=sandbox`, `PAYPAL_ENV=sandbox`. Auto deploy is off; deploys come from the deploy workflows through the Render deploy hook.
+
+</Tab>
+<Tab value="Cloudflare">
+
+`docs/DEPLOY.md` (step 7) hosts the web app on a Cloudflare Pages project built with the API origin in `VITE_API_BASE` and `VITE_WS_BASE`. This documentation site is a static export published to Cloudflare by `docsite.yml`.
+
+<NotVerified title="Web app hosting">
+The repository has no workflow that deploys the web app. The hosting choice is documented, not automated here.
+</NotVerified>
+
+</Tab>
+<Tab value="GitHub Actions">
+
+All builds, tests, gate runs and deploys. See the [CI and deployment map](/docs/run/ci-pipeline). Heavy work (browsers, full test suites) runs there and never on a developer machine.
+
+</Tab>
+<Tab value="PayPal and speech">
+
+The PayPal **sandbox** (Orders v2, Payments v2 and the webhook verify call). Deepgram and Groq for live speech; with no `VOICE_STT` set the server runs only cached transcripts and needs no key.
+
+</Tab>
+</Tabs>
+
+## What is on the disk
+
+<Files>
+  <Folder name="/var/data" defaultOpen>
+    <File name="rooms.jsonl" />
+    <Folder name="ledgers" defaultOpen>
+      <File name="<auctionId>.ledger.jsonl" />
+    </Folder>
+    <Folder name="payments" defaultOpen>
+      <File name="journals.json" />
+      <File name="holds.json" />
+      <File name="webhooks.json" />
+    </Folder>
+    <File name="payment-audit.jsonl" />
+    <File name="kill-switch.json" />
+  </Folder>
+</Files>
+
+With `STORE=postgres` the room log, snapshots, token denylist and journals live in Postgres; the ledgers, holds, webhook ids and the kill switch stay in the data directory. The [data and ledger model](/docs/reference/data-model) explains each record.
+
+## Entry points the server exposes
+
+<TypeTable
+  type={{
+    '/ws': { description: 'Room socket: join, bid and confirm in; room events out. Origin checked against CORS_ORIGINS and the public origin.', type: 'WebSocket' },
+    '/audio': { description: 'Voice socket: audio frames in. Shares the address admission of the room socket.', type: 'WebSocket' },
+    '/api/*': { description: 'Auctions, invites and join, holds, control, snapshot and events, auctioneer token rotation.', type: 'HTTP' },
+    '/webhooks/paypal': { description: 'PayPal events. Raw body, 256 KiB cap, signature verified by PayPal, exempt from the per-address limit.', type: 'HTTP POST' },
+    '/healthz, /readyz, /version, /warmup': { description: 'Probes. /readyz pings the store; /version returns the commit sha.', type: 'HTTP GET' },
+    '/admin/export, /admin/replay-bundle': { description: 'Operator export of the private ledger and the public replay bundle. Needs the admin key.', type: 'HTTP GET' },
+  }}
+/>
+
+<NotVerified title="What has and has not been run">
+
+The architecture runs end to end against the fake PayPal in the test suites. The PayPal sandbox gates in `docs/GATES.md` (G0, G1, G2, G4 pass; G3 is in progress, day 0 was 7 Nov 2026 03:06 UTC, final reading about 12 Nov) cover single calls and the nightly specs, not one complete hosted auction. Speech accuracy gate G5 is FAIL on synthetic audio; see [Gates](/docs/proof/gates).
+
+</NotVerified>
+
+## Where this lives in the code
+
+<CodePaths
+  paths={[
+    { path: 'packages/server/src/boot/compose.ts', note: 'wires stores, PayPal, rooms, HTTP routes and both sockets' },
+    { path: 'packages/server/src/host/node-ws.ts', note: 'the /ws path and the upgrade handling' },
+    { path: 'packages/server/src/host/audio-ws.ts', note: 'the /audio socket' },
+    { path: 'packages/server/src/voice/stt.ts', note: 'chooseStt: Deepgram, Groq, cached replay' },
+    { path: 'packages/server/src/http/holds.ts', note: 'hold routes and the gateway they are allowed to use' },
+    { path: 'packages/server/src/http/webhook-guard.ts', note: 'webhook size cap and logging' },
+    { path: 'render.yaml', note: 'the Render service and its disk' },
+    { path: 'docs/DEPLOY.md', note: 'deploy steps and the settings the checks need' },
+    { path: 'docs/submission/ARCHITECTURE.md', note: 'the package diagram and the settlement sequence' },
+  ]}
+/>

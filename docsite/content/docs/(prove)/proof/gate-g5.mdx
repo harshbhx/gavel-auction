@@ -1,0 +1,63 @@
+---
+title: 'Gate G5: speech accuracy'
+description: Is speech-to-text accurate enough to accept bids without confirmation? It is not, on synthetic audio. Real numbers, method and limits.
+icon: Mic
+status: fail
+---
+
+<GateBadge id="G5" />
+
+## Question
+
+Is speech-to-text accuracy on noisy bid audio high enough to accept bids without a manual confirm?
+
+## Result
+
+<Held title="FAIL for unconfirmed voice bids">
+
+Both providers miss the threshold (wrong accept 0.05 or less) on synthetic speech, on both clip sets. Spoken bids therefore always go through the confirm prompt (assist mode). The payments decision is unchanged. There is no real-room or noisy-room test.
+
+</Held>
+
+## Method
+
+- Cached eval: 24 clips (24 utterances) were sent to each provider once and the outputs recorded; the cached eval scores the recorded outputs through the rule parser. It runs in the [`voice-eval`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/voice-eval.yml) workflow (text and cached modes run on pull requests with no keys; live mode is manual).
+- Clip set one: synthetic eSpeak speech, noise-free and robotic (PR #1940).
+- Clip set two: the same 24 utterances spoken by one natural text-to-speech voice (PR VOI-01), recorded by voice-eval run 42342379648. Still synthetic and noise-free.
+- Providers: Deepgram nova-2 and Groq whisper-large-v3-turbo.
+- Pass rule for the live run (`npm run gate:g5 -w @gavel/e2e -- --write-gates`, 20 private noisy recordings, `DEEPGRAM_API_KEY`): PASS needs exact plus recoverable confirm at 0.90 or more and wrong accepts at 0.05 or less; PARTIAL needs 0.70 or more; otherwise FAIL.
+
+## Numbers, from docs/GATES.md
+
+<SpeechTable />
+
+With 24 clips one clip moves a rate by 0.042, so the differences between the two clip sets are within noise. Groq writes numbers as digits ("Paddle 12, 350."), which the rule parser reads differently from spelled-out words, and it missed two bids the parser then dropped.
+
+## Parser only: the text-level run
+
+Reference text goes in as recognized text, so this measures the parser and nothing about speech-to-text. On 169 cases in 23 categories (commit 5d2e253, artifact `voice-eval-text`): exact 0.929, wrong accept 0.000, confirm 0.272. The held-out 40 cases were not used to change the lexicon or thresholds. Thresholds stay at AUTO 0.85 and CONFIRM 0.50 (issue 478): the sweep from 0.70 to 0.95 is flat because the parser emits only 0.50, 0.95 and 1.00.
+
+## Evidence
+
+- 24 clips under [packages/voice/fixtures/audio](https://github.com/harshbhx/gavel-auction/tree/main/packages/voice/fixtures/audio) and recorded outputs under [stt-cache](https://github.com/harshbhx/gavel-auction/tree/main/packages/voice/fixtures/stt-cache) (Deepgram, Groq) and `stt-cache-human`.
+- [docs/GATES.md](https://github.com/harshbhx/gavel-auction/blob/main/docs/GATES.md), section G5.
+
+## Limits
+
+- Synthetic audio only, noise-free. No real room, no noisy room, no accents beyond the parser's text cases.
+- The 24-clip sample is small.
+- Latency is not measured by the text mode.
+- The nightly harness skipped G5 (20 of 20 private recordings missing), so no live G5 run exists.
+
+## What GAVEL does about it
+
+A spoken bid is never accepted silently: it goes through the confirm gate. See [voice and confirm](/docs/how-it-works/voice-and-confirm). For demos, use the recorded replay, which makes no PayPal call.
+
+<CodePaths
+  paths={[
+    { path: 'packages/e2e/src/gates/g5.ts', note: 'the G5 harness' },
+    { path: 'packages/e2e/src/gates/g5-cli.ts', note: 'the live run command' },
+    { path: 'packages/voice/fixtures', note: 'clips and recorded provider outputs' },
+    { path: '.github/workflows/voice-eval.yml', note: 'text, cached and live modes' },
+  ]}
+/>

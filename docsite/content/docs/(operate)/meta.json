@@ -1,0 +1,1 @@
+{ "title": "Operators", "description": "Deploy, secrets, runbooks, incidents", "icon": "Terminal", "root": true, "pages": ["run", "safety"] }

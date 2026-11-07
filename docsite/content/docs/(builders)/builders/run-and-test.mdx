@@ -1,0 +1,172 @@
+---
+title: Run and test
+description: Every package script, what runs in CI, and where heavy work belongs.
+icon: Play
+status: verified
+---
+
+<Held title="Heavy work belongs in GitHub Actions">
+
+Builds, full test suites, browser runs, screenshot jobs and docs preview servers are meant to run in GitHub Actions. The commands below are the exact ones the repository defines; use them on a workstation that can take the load, or push a branch and let the workflow run them. Light checks (format, a single lint file, a single test file) are fine anywhere.
+
+</Held>
+
+## Setup
+
+Node 22 (pinned in `.nvmrc`) and npm. Install once at the repository root; do not run `npm install` inside a package.
+
+```bash
+git clone https://github.com/harshbhx/gavel-auction.git
+cd gavel-auction
+nvm use
+npm ci
+```
+
+Copy `.env.example` to `.env` only when a task needs configuration, with PayPal sandbox values only.
+
+## Root scripts
+
+| Script | Purpose |
+| --- | --- |
+| `npm run build` | `tsc -b`, all packages with project references |
+| `npm run typecheck` | Root and per-package type checks |
+| `npm run lint` | ESLint, zero warnings |
+| `npm run format:check` | Prettier check (`npm run format` rewrites) |
+| `npm test` | Unit tests of every package (`vitest run --project 'unit:*'`) |
+| `npm run test:pkg -- unit:engine` | Unit tests of one package: replace the project name |
+| `npm run test:coverage` | Unit tests with coverage, then the per-package floors |
+| `npm run test:property` | Property tests (`property:*` projects) |
+| `npm run test:scenarios` | The in-process scenarios (`unit:e2e`) |
+| `npm run test:tools` | Tests of the repository scripts and lint rules |
+| `npm run check:deps` | Dependency rule, engine purity, payments dependencies |
+| `npm run check:secrets` | Builds the web app with canary values and scans the bundle |
+| `npm run check:ascii`, `check:banned-words`, `check:live-host`, `check:ownership`, `check:audit`, `check:gates-result` | The repository checks described in [Infra](/docs/builders/packages/infra) |
+
+`test:e2e`, `test:e2e:sandbox`, `test:load` and `report` at the root are placeholders that print "not implemented" and exit 1. The real commands are the package scripts under the e2e tab below.
+
+## Package scripts
+
+<Tabs items={['shared', 'engine', 'payments', 'server', 'voice', 'web', 'e2e']}>
+<Tab value="shared">
+
+| Command | What it does |
+| --- | --- |
+| `npm run test -w @gavel/shared` | Vitest |
+| `npm run typecheck -w @gavel/shared` | `tsc --noEmit` |
+
+</Tab>
+<Tab value="engine">
+
+| Command | What it does |
+| --- | --- |
+| `npm run test -w @gavel/engine` | Vitest |
+| `npm run test:coverage -w @gavel/engine` | Vitest with coverage |
+| `npm run lint -w @gavel/engine` | ESLint, then `scripts/check-imports.mjs` |
+| `npm run check:trace -w @gavel/engine` | Requirement trace check |
+| `npm run check:bundle -w @gavel/engine` | Bundle check |
+
+</Tab>
+<Tab value="payments">
+
+| Command | What it does |
+| --- | --- |
+| `npm run test -w @gavel/payments` | Vitest against the fake PayPal |
+| `npm run check:deps -w @gavel/payments` | Fails on any runtime dependency other than `zod` |
+| `npm run demo:settle -w @gavel/payments` | Settlement demo with a crash and a resume |
+| `npm run gate:g0`, `gate:g1`, `gate:g2`, `gate:g3`, `gate:g4`, `gate:g4-events`, `gate:idem` | Gate scripts. They call the PayPal sandbox and need sandbox credentials; normally started through their workflows |
+| `npm run measure -w @gavel/payments` | Sandbox latency measurement |
+
+</Tab>
+<Tab value="server">
+
+| Command | What it does |
+| --- | --- |
+| `npm run start -w @gavel/server` | Start the host with `vite-node` |
+| `npm run build -w @gavel/server` | Bundle to `dist/main.js` |
+| `npm run start:prod -w @gavel/server` | Run the bundle (what Render runs) |
+| `npm run test -w @gavel/server` | Vitest |
+| `npm run bench -w @gavel/server` | Latency benchmark |
+| `npm run check:trace -w @gavel/server` | Requirement trace check |
+
+</Tab>
+<Tab value="voice">
+
+| Command | What it does |
+| --- | --- |
+| `npm run test -w @gavel/voice` | Vitest |
+| `npm run eval -w @gavel/voice -- --mode live --provider deepgram` | Live provider scoring; needs a key. Cached and text modes need none |
+| `npm run scan:secrets -w @gavel/voice` | Vendor key pattern scan |
+| `npm run check:heldout -w @gavel/voice` | Held-out set guard |
+| `npm run size -w @gavel/voice` | Bundle size limit |
+
+</Tab>
+<Tab value="web">
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev -w @gavel/web` | Vite dev server |
+| `npm run build -w @gavel/web` | Type check and bundle |
+| `npm run test -w @gavel/web` | Unit and component tests |
+| `npm run test:a11y -w @gavel/web` | Accessibility and keyboard specs (browser) |
+| `npm run test:visual -w @gavel/web` | All Playwright specs |
+| `npm run test:screens -w @gavel/web` | Screen tour |
+| `npm run check:size -w @gavel/web` | Initial-route size gate |
+
+</Tab>
+<Tab value="e2e">
+
+| Command | What it does |
+| --- | --- |
+| `npm run test -w @gavel/e2e` | Vitest: DSL, runners, scenarios, harnesses |
+| `npm run test:browser -w @gavel/e2e` | Playwright, five browser projects |
+| `npm run test:sandbox -w @gavel/e2e` | Real-sandbox specs; skipped without secrets |
+| `npm run measure:sandbox`, `measure:settlement`, `report:sandbox`, `gate:g5` | Measurement and report tools |
+
+</Tab>
+</Tabs>
+
+## What CI runs
+
+<Steps>
+<Step>
+
+### On every pull request
+
+`ci` runs the checks that make up the required roll-up: typecheck, lint, format, unit, coverage floors, property, scenarios, dependency rules, secret scans, ASCII and banned words, docs format, commit messages, ownership, the voice checks, fixture validation, the Python reference tests, the differential test, tool tests, package checks and a production build of the server with a smoke run. A documentation-only change skips the build, test and type jobs.
+
+</Step>
+<Step>
+
+### On the paths a change touches
+
+Path-filtered workflows run only when relevant: `engine-readiness`, `server-postgres`, `payments-evidence`, `sim-multiday`, `load`, `voice-eval`, `voice-browser`, `browser-specs`, `ui-screens`, `interface-check`, `audit` and `docsite`.
+
+</Step>
+<Step>
+
+### On a schedule and by hand
+
+The nightly sandbox specs, the G3 probe, the judge smoke, the daily backup and the weekly checks run on a schedule. Gates and measurements run by hand. See the workflow tabs on [Infra](/docs/builders/packages/infra).
+
+</Step>
+</Steps>
+
+## Reading CI results
+
+```bash
+gh pr checks <number>
+gh run watch <run-id>
+gh run view <run-id> --log-failed
+gh run download <run-id> -n <artifact-name>
+```
+
+Screenshots, reports and evidence are uploaded as artifacts (for example `ui-screens`, `docsite-shots` and the nightly sandbox report).
+
+<CodePaths
+  paths={[
+    { path: 'package.json', note: 'root scripts' },
+    { path: 'vitest.workspace.ts', note: 'the unit and property projects' },
+    { path: '.github/workflows/ci.yml', note: 'the pull request pipeline' },
+    { path: 'CONTRIBUTING.md', note: 'the contribution guide' },
+  ]}
+/>

@@ -1,0 +1,179 @@
+---
+title: Registration and holds
+description: How a buyer joins an auction, what a hold is in plain words, and every step from choosing a ceiling to HELD.
+icon: CreditCard
+status: verified
+full: true
+---
+
+## In plain words
+
+A **hold** is a reservation on a buyer's PayPal funds. PayPal calls it an *authorization*. It is not a payment: nothing leaves the buyer's account when the hold is placed. Think of a hotel asking for a card at check-in. The hotel reserves an amount, and only charges what you actually owe when you leave.
+
+In GAVEL every buyer places one hold before bidding, for a **ceiling** they choose: the most they can ever be charged in that auction. Bids are checked against that ceiling. When the hammer falls, only the winner is charged, and only the winning price. Everyone else's hold is released.
+
+<Held title="Held means reserved, not charged">
+A hold that is HELD has moved no money. It is shown hatched everywhere in these docs.
+</Held>
+
+## The flow, step by step
+
+<HoldFlowDiagram />
+
+<Steps>
+<Step>
+
+### The buyer picks a name and a ceiling
+
+The register screen asks for a display name and one of the room's ceiling presets. The web default presets are 10000, 25000, 50000 and 100000 cents (100, 250, 500 and 1,000 dollars); a room can set its own list, and the server accepts only a ceiling from the auction's list whatever the screen offers. The screen explains the choice: the amount is held, not charged.
+
+</Step>
+<Step>
+
+### The browser asks for a hold order
+
+`POST /api/holds` carries the auction id and the ceiling in cents. It carries **no bidder id**: the server reads the bidder from the session token, so a buyer can never ask for a hold in someone else's name. The route refuses an auction that no longer takes holds (hammered, or a settlement already exists).
+
+</Step>
+<Step>
+
+### The server checks the ceiling and creates an AUTHORIZE order
+
+`validateCeiling` runs before any PayPal call. The ceiling must be a whole number of cents, at least 100, at most the configured cap (`GAVEL_MAX_CEILING_CENTS`) and one of the auction presets. Then the server creates an Orders v2 order with intent `AUTHORIZE` for exactly that amount, under a request id derived from the auction, the hold and the amount, and stores a hold in `PENDING_APPROVAL`. The browser contributes nothing to the amount except the choice among presets.
+
+</Step>
+<Step>
+
+### The buyer approves in the PayPal popup
+
+The browser loads the PayPal SDK (sandbox host only) when it is needed, not at page load, and opens a one-time payment session for that order. The buyer chooses how to pay inside the popup.
+
+</Step>
+<Step>
+
+### The browser asks the server to authorize
+
+`POST /api/holds/:holdId/approve` carries the order id and the name. The server checks that the session owns the hold and the auction still takes holds, then authorizes the order and stores the authorization id PayPal returns. The record becomes `HELD`. Its ceiling is the smaller of the ceiling asked for and the amount PayPal authorized: a hold never exceeds what PayPal reserved.
+
+</Step>
+<Step>
+
+### The bidder is registered in the room
+
+When the approval names the buyer, the room registers the bidder with the hold. The browser shows only the amount the server confirmed; a different amount is treated as an error (`hold_mismatch`).
+
+</Step>
+</Steps>
+
+## Wallet or guest card
+
+Both ways of paying go through exactly the same server flow. The code does not branch on the funding choice: it is made inside PayPal's popup.
+
+<Tabs items={['Wallet buyer', 'Guest card buyer']}>
+<Tab value="Wallet buyer">
+
+The buyer signs in to PayPal and approves. Evidence: gate G2 on the sandbox (5 Nov 2026) reached `onApprove` and authorized an order for a wallet buyer. Gate G1 captured with PayPal-account buyers (one funded by a card, but still a PayPal account).
+
+</Tab>
+<Tab value="Guest card buyer">
+
+The buyer pays by card without a PayPal account. Evidence: gate G2 reached `onApprove` and authorized for a guest card buyer through the SDK v6 guest session. That is **AUTHORIZE only**. Capture and void of a guest card authorization have **not** been run on the sandbox, so settlement of a guest card winner is not verified end to end.
+
+</Tab>
+</Tabs>
+
+<NotVerified title="Guest card settlement">
+
+The G2 run proves a guest card hold can be created. G1 captured PayPal-account orders only. Until a run captures a guest card authorization, treat that path as authorize-only evidence.
+
+</NotVerified>
+
+## What if something goes wrong
+
+<Accordions type="multiple">
+<Accordion title="The buyer closes the popup, or the card is declined">
+
+The web adapter reports `cancelled` or `declined` and calls `DELETE /api/holds/:holdId`. The service marks the unapproved hold `EXPIRED`. If PayPal already holds an authorization on that order (a lost answer), it is voided first. The call is safe to repeat: an already authorized hold is left alone and the route says so.
+
+</Accordion>
+<Accordion title="PayPal hands back a different order id">
+
+`onApprove` is accepted only for the order this attempt created. Any other id ends the attempt with `order_mismatch` and releases the unapproved hold.
+
+</Accordion>
+<Accordion title="Double click, second tab, or a reload">
+
+Calls for one auction and bidder run one after the other, so a second call sees the first one's record and gets the same order back instead of creating a second authorization. The web app keeps the registration, order and hold ids in `sessionStorage` per room, so a reload or the return from PayPal reuses them.
+
+</Accordion>
+<Accordion title="The authorize answer is lost">
+
+The service reads the order back. An authorization with status `CREATED` and a known amount is adopted; `PENDING` is not held yet and `DENIED` never will be, so neither is adopted. A repeated `approve` call for the same hold shares one authorize request.
+
+</Accordion>
+<Accordion title="The popup is blocked">
+
+The adapter can send the buyer to PayPal's own approval page and finish on the return route (`/r/:roomId/return`). That path needs an approve link in the order answer, and the `POST /api/holds` route returns only `holdId` and `orderId` today, so the redirect fallback has no link to follow unless `approveUrl` is added. This is an open item, not a verified path.
+
+</Accordion>
+<Accordion title="The auction closes while the buyer is approving">
+
+An approval that passed the open check just before the hammer may return after the settlement plan was cut. The server tells the auction service the hold was written HELD, and the service runs the settlement again so that hold is voided.
+
+</Accordion>
+</Accordions>
+
+## The four routes
+
+| Route | What it does | Who may call |
+| --- | --- | --- |
+| `POST /api/holds` | Creates the hold order. Answers 201 with `holdId` and `orderId`. | the session bidder |
+| `POST /api/holds/:holdId/approve` | Authorizes the approved order; answers the HELD hold. | the session that owns the hold |
+| `GET /api/holds/:holdId` | Reads `holdId`, `status`, `ceilingCents`. | the session that owns the hold |
+| `DELETE /api/holds/:holdId` | Abandons an unapproved hold. Idempotent. | the session that owns the hold |
+
+A guessed id and somebody else's id look the same to the caller: both answer `order_not_found`.
+
+| Error code | HTTP status |
+| --- | --- |
+| `ceiling_out_of_range` | 400 |
+| `hold_exists` | 409 |
+| `order_not_found` | 404 |
+| `order_not_approved` | 409 |
+| `paypal_unavailable` | 503 |
+| `kill_switch_engaged` | 503 |
+| `payments_not_sandbox` | 503 |
+
+## Hold states
+
+<TypeTable
+  type={{
+    PENDING_APPROVAL: { description: 'The order exists; nothing is held. A pending order is reused for up to 3 hours when the same ceiling is asked for again, and abandoned otherwise.', type: 'hatched' },
+    HELD: { description: 'PayPal returned an authorization. Money is reserved, not charged.', type: 'hatched' },
+    CAPTURED: { description: 'The winner was charged the winning price.', type: 'solid' },
+    VOIDED: { description: 'The authorization was released. Final.', type: 'hollow' },
+    EXPIRED: { description: 'An unapproved order was abandoned, or PayPal reports expiry. Final.', type: 'hollow' },
+    DENIED: { description: 'PayPal denied the authorization. Final.', type: 'needs review' },
+    UNKNOWN: { description: 'PayPal could not find the authorization when asked. Not applied on its own; the next real reading replaces it.', type: 'needs review' },
+  }}
+/>
+
+Webhooks and reconciliation merge in later readings in a fixed order: PENDING_APPROVAL, then HELD, then CAPTURED; VOIDED, EXPIRED and DENIED are final, and CAPTURED against a final state is a conflict that is not applied. See [Webhooks](/docs/safety/webhooks) and [Settlement saga](/docs/how-it-works/settlement-saga).
+
+## Where this lives in the code
+
+<CodePaths
+  paths={[
+    { path: 'packages/server/src/http/holds.ts', note: 'the four /api/holds routes and their checks' },
+    { path: 'packages/payments/src/holds/service.ts', note: 'createHoldOrder, completeApproval, abandonHold' },
+    { path: 'packages/payments/src/ceiling.ts', note: 'validateCeiling' },
+    { path: 'packages/payments/src/orders.ts', note: 'the Orders v2 client (AUTHORIZE order)' },
+    { path: 'packages/shared/src/hold-contract.ts', note: 'request, response and error codes shared with the web app' },
+    { path: 'packages/web/src/payments/paypalV6Adapter.ts', note: 'the only file that knows the PayPal SDK v6' },
+    { path: 'packages/web/src/screens/register/RegisterScreen.tsx', note: 'name and ceiling' },
+    { path: 'packages/web/src/payments/registrationStore.ts', note: 'reload and return handling' },
+    { path: 'packages/payments/src/webhooks/merge.ts', note: 'the order of hold states' },
+  ]}
+/>
+
+Next: [Settlement walkthrough](/docs/how-it-works/settlement-walkthrough) shows what happens to these holds at the hammer.

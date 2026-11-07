@@ -1,0 +1,86 @@
+---
+title: Evidence map
+description: Every claim on this site, the status it holds, what it ran on, and the file or workflow behind it.
+icon: Network
+status: verified
+full: true
+---
+
+A claim without a file behind it is an opinion. This page lists the claims GAVEL makes, gives each one a status, says what it ran on, and links the file or workflow that backs it. Use the filter to show one status at a time. Hover, focus or tap a row for its limits.
+
+<EvidenceMapDiagram />
+
+## How to read the statuses
+
+<Tabs items={['PASS', 'FAIL', 'IN PROGRESS', 'SIMULATED', 'OPEN', 'CI']}>
+  <Tab value="PASS">
+    A recorded run on the PayPal sandbox passed and the evidence is in the repository or in a named run. The limit of each pass is stated on its row. A pass on one buyer type says nothing about another.
+  </Tab>
+  <Tab value="FAIL">
+    A recorded run failed. Today that is G5: speech to text missed the wrong-accept limit of 0.05 on synthetic audio. The stated fallback is in force: spoken bids go through the confirm prompt.
+  </Tab>
+  <Tab value="IN PROGRESS">
+    A real run is under way and has no result. Today that is G3, the honor period and reauthorize probe on the sandbox. Day 0 was 7 November 2026 at 03:06 UTC, the checkpoints are at 3.5, 4 and 5 days, and the final reading is about 12 November at 06:17 UTC. Nothing is claimed until those readings exist.
+  </Tab>
+  <Tab value="SIMULATED">
+    The 30 day run uses a fake clock and a model of PayPal authorization rules (`packages/payments/src/fake`). It proves our code behaves as designed if PayPal follows the model. It does not prove PayPal follows it.
+  </Tab>
+  <Tab value="OPEN">
+    Evidence exists but the claim is not concluded, or a sign-off by a second person has not happened. The nightly sandbox report, the latency targets, the security checklist and the hosted-site walkthrough are here.
+  </Tab>
+  <Tab value="CI">
+    A test or workflow in CI checks the property. There is no recorded run in the documentation, so the current result lives in the workflow run, not on this page.
+  </Tab>
+</Tabs>
+
+<Callout type="info" title="Sandbox is not the fake">
+  Sandbox means real calls to the PayPal sandbox. Fake PayPal means an in-process model in `packages/payments/src/fake`. A row says which one it ran on. Nothing here ran against live PayPal and no real money moved.
+</Callout>
+
+## Where the numbers come from
+
+<Steps>
+  <Step>
+    **Gate statuses** are read from `docs/GATES.md` by `docsite/scripts/gen-repo-data.mjs` when the site is built, so the map cannot say PASS where the file says FAIL.
+  </Step>
+  <Step>
+    **Limits** are copied from the Scope, Verdict and Evidence lines of the same file, from `docs/evidence/SIM/SIM-MULTIDAY.md` and from `docs/SECURITY-REVIEW.md`.
+  </Step>
+  <Step>
+    **Paths** are real files on main. If a path is removed or renamed the row must be updated in the same change.
+  </Step>
+</Steps>
+
+## What the map does not claim
+
+<NotVerified title="Gaps that remain">
+
+- Reported, not independently verifiable: G0 has only an Actions run log.
+- G1 remainder release is inferred from the authorization state, not read from a buyer balance.
+- Guest card capture and void were never run on the sandbox.
+- No real-room or noisy-room speech test exists.
+- The hammer to CAPTURED and SETTLED latency targets are unverified end to end.
+- No security checklist item has been signed off.
+
+</NotVerified>
+
+## Go deeper
+
+<Cards>
+  <Card title="Gates G0 to G5" href="/docs/proof/gates" description="Each gate, its result and its caveat." />
+  <Card title="The 30 day simulation" href="/docs/proof/simulation" description="Eight scenarios, labelled SIMULATED." />
+  <Card title="Latency" href="/docs/proof/latency" description="Measured sandbox numbers and the targets they do not meet." />
+  <Card title="Security review" href="/docs/safety/security-review" description="The SEC-01 to SEC-18 checklist and its open items." />
+</Cards>
+
+## Where this lives in the code
+
+<CodePaths
+  paths={[
+    { path: 'docs/GATES.md', note: 'gate status, observed rows, decisions' },
+    { path: 'docs/evidence/SIM/SIM-MULTIDAY.md', note: 'the simulated 30 day run' },
+    { path: 'docs/evidence/nightly/NIGHTLY-42200708552.json', note: 'redacted nightly sandbox report' },
+    { path: 'docs/SECURITY-REVIEW.md', note: 'checklist, all items still OPEN' },
+    { path: 'docsite/scripts/gen-repo-data.mjs', note: 'reads the gate and simulation data at build time' },
+  ]}
+/>

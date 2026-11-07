@@ -1,0 +1,62 @@
+---
+title: 'Gate G3: honor period and reauthorize'
+description: How long an authorization stays capturable, and whether reauthorize extends it. In progress, with a simulation beside it.
+icon: Hourglass
+status: in progress
+---
+
+<GateBadge id="G3" />
+
+## Question
+
+How long does a PayPal authorization stay capturable, and does reauthorize extend it? This decides how long an auction may run between a bid (a hold) and the hammer (the capture).
+
+## Status
+
+<Held title="In progress, not a result">
+
+This is a real sandbox probe that is still running. Day 0 was 7 Nov 2026 03:06 UTC; the earlier attempts on 4 to 7 Nov never ran, so no earlier day is claimed. Checkpoints are at 3.5, 4 and 5 days, and the final reading is about 12 Nov 06:17 UTC. Until those results exist the gate reads NOT RUN, shown on this site as IN PROGRESS.
+
+</Held>
+
+## Method
+
+- Workflow: [`gate-g3`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/gate-g3.yml). A manual run on `main` starts the probe (day 0: a headless browser signs in as the sandbox buyer and approves four orders). It also runs on a schedule, every 6 hours, to pick the probe up again and do the checks at each checkpoint. The last run appends the entry to `docs/GATES.md`.
+- Scripts: `gates/g3.ts` and `gates/g3-timed.ts` in `packages/payments`.
+- Early reading: [`gate-g3-early`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/gate-g3-early.yml) probes two older G2 authorizations (a 1.00 partial capture and a reauthorization once an authorization reaches its checkpoint age, 3.0 days for the wallet one and 3.5 for the card one). It never touches the G3 probe state. It is an extra early reading, not the full 5-day result.
+- Secrets by name: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `SANDBOX_BUYER_EMAIL`, `SANDBOX_BUYER_PASSWORD`.
+
+## What the nightly run said so far
+
+The nightly spec R3 (reauthorize after a delay) answered HTTP 422 UNPROCESSABLE_ENTITY and reported `inconclusive`. Reauthorize is therefore unproven on that run. See the [nightly record](https://github.com/harshbhx/gavel-auction/blob/main/docs/evidence/nightly/NIGHTLY-42200708552.json).
+
+## Simulated, not real
+
+<NotVerified title="The 30-day run is a simulation">
+
+We simulated 30 days of auctions with a fake clock: holds, honor-period expiry, reauthorization, crashes and recovery, with the ledger balancing to the cent. It runs our code against a model of PayPal's authorization rules (honor period 3 days, validity 29 days, assumptions A07 to A11 in the fake's `ASSUMPTIONS.md`). It says our code behaves correctly if PayPal follows that model, and nothing about whether PayPal does. PayPal's 29-day validity was not verified on the real sandbox. See [the simulation](/docs/proof/simulation) and [SIM-MULTIDAY.md](https://github.com/harshbhx/gavel-auction/blob/main/docs/evidence/SIM/SIM-MULTIDAY.md).
+
+</NotVerified>
+
+<SimScenarioTable />
+
+## Limits
+
+- No result yet; nothing here may be quoted as a pass.
+- It uses PayPal-account sandbox orders created by the probe, not a deployed auction.
+- The expected failure modes it will confirm or correct are listed in the simulation file: whether a capture after 3 days still works, the exact error name, whether reauthorize inside the honor period is refused, whether it returns a new id, and whether PayPal sends a webhook on expiry.
+
+## What changes the decision
+
+- A validity window shorter than the longest planned auction, or reauthorize that does not extend it: auctions are capped to the window and the demo stays short, or long auctions become no-go.
+- A window that covers the planned auctions: go for card and wallet.
+- Fallback in the meantime: keep auctions shorter than the validity window and reauthorize before the hammer. That is a plan, not a result.
+
+<CodePaths
+  paths={[
+    { path: '.github/workflows/gate-g3.yml', note: 'the timed probe' },
+    { path: '.github/workflows/gate-g3-early.yml', note: 'the early reading' },
+    { path: 'packages/payments/gates/g3-timed.ts', note: 'checkpoint logic' },
+    { path: 'docs/evidence/SIM/SIM-MULTIDAY.md', note: 'the simulated 30 days' },
+  ]}
+/>

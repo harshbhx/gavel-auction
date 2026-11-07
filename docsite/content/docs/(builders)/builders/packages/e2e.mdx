@@ -1,0 +1,171 @@
+---
+title: "@gavel/e2e"
+description: The scenario language and runner, property tests, load harness, browser specs and the real-sandbox specs.
+icon: TestTubes
+status: verified
+full: true
+---
+
+`packages/e2e` tests the packages together. It has a small YAML scenario language, two runners (in process and as separate processes), property tests, a load harness, browser specs and the specs that talk to the real PayPal sandbox.
+
+It sits outside the package dependency rule: it may import every other package, and nothing imports it.
+
+<Held title="Fake PayPal versus sandbox">
+
+The in-process scenarios and the stack runner use the fake PayPal server. Only the specs in `sandbox/` talk to the PayPal sandbox, and only with sandbox secrets present (otherwise every spec is skipped). What each gate and nightly run proved is in [Proof](/docs/proof).
+
+</Held>
+
+## Responsibilities
+
+<Tabs items={['Scenarios', 'Property tests', 'Load', 'Browser specs', 'Sandbox specs']}>
+<Tab value="Scenarios">
+
+Fifteen scenarios, `S01` to `S15`, in `scenarios/*.yaml`. Each file declares an auction, actors, timed steps, faults and expectations. The schema in `src/dsl/schema.ts` rejects a file that does not match, and a step or fault a runner cannot drive throws; it is never skipped.
+
+- **In process** (`src/runner/inproc.ts`): the real engine, room, settlement saga and the fake PayPal server on a manual clock. No browser, no real sleeping.
+- **Stack** (`src/runner/stack.ts`): the real server (fake payments, file store) as a child process, killed with SIGKILL and restarted on the same data folder. `externalFake` runs the fake PayPal in its own process so a server kill leaves orders and idempotency keys alive. Scenarios `S03`, `S09` and `S15` declare `modes: [inproc, stack]`; the others run in process only.
+
+</Tab>
+<Tab value="Property tests">
+
+`test/property/*.property.test.ts` for the engine, the saga, money and ledger arithmetic and the wire codec. `src/property/harness.ts` pins the seed with `GAVEL_PROPERTY_SEED` (or the older alias `FC_SEED`); a run without one picks a fresh seed and prints it so it can be replayed. The default is 200 runs per property.
+
+</Tab>
+<Tab value="Load">
+
+`src/load` has the load cases: L1 (100 simulated bidders bidding at once), L2 (all send the identical bid; exactly one may win) and L5, a 30 minute soak with 20 bidders. The limits are in `LIMITS`: p95 acknowledgement 250 ms, p99 600 ms and resident memory growth of at most 150 MB. Bidders talk to the room in process; the engine, ledger and fake PayPal are the real code. Workflows `load.yml` and `load-soak.yml` run it.
+
+</Tab>
+<Tab value="Browser specs">
+
+`specs/*.spec.ts` (Playwright): happy path, public screen, a judge walkthrough, accessibility with axe and keyboard, visual regression and a matrix. Five projects: Chromium, Firefox, WebKit, iPhone 14 and Pixel 7. Browsers are installed in CI only; payments mode comes from `GAVEL_MODE` (`fake` by default).
+
+</Tab>
+<Tab value="Sandbox specs">
+
+`sandbox/r1-r4.spec.ts`, `r5-r8.spec.ts`, `r9.spec.ts` and `r10.spec.ts` run against the PayPal sandbox with a separate Vitest config. Secrets are read by name and no value is written to a result. The shared harness `src/sandbox/harness.ts` defines the spec ids and the statuses `pass`, `fail`, `inconclusive` and `skipped`. The G5 harness in `src/gates` and the measurement CLIs (`measure-cli.ts`, `measure-settlement-cli.ts`) live here too.
+
+</Tab>
+</Tabs>
+
+## Scenario files
+
+| Id | Title in the file |
+| --- | --- |
+| `S01-happy-path` | Full auction happy path |
+| `S02-voice-replay` | Spoken bids with a clear utterance, a declined and a confirmed ambiguous one |
+| `S03-crash-resume` | Server dies during settlement and the restart finishes it with one capture (also stack mode) |
+| `S04-duplicate-webhooks` | Fifty copies of one capture webhook change nothing |
+| `S05-out-of-order-webhooks` | Void before capture and a stale capture event leave the same result |
+| `S06-runner-up-fallback` | Winner hold voided externally, runner-up is charged |
+| `S07-hold-voided-all-invalid` | Every hold voided externally, nothing is charged |
+| `S08-hold-expired` | Winner hold expires before the hammer |
+| `S09-reconnect` | Bidder drops during bidding and resumes without losing state (also stack mode) |
+| `S10-abusive-input` | Malformed and hostile frames are each refused with a code |
+| `S11-last-100ms-race` | Twenty bids in the last 100 ms then hammer |
+| `S12-soft-close-extends` | Bids inside the soft close window then hammer |
+| `S13-capture-5xx-retry` | Capture fails with 503 twice then succeeds |
+| `S14-void-failure-retry` | Void of the losing hold fails three times then succeeds |
+| `S15-restart-persisted-ledger` | Server restart keeps registered bidders, bids and price (also stack mode) |
+
+The titles are the `title` field of each file; open the YAML for the exact steps.
+
+## The five invariants
+
+After a run, `src/runner/invariants.ts` evaluates five checks on what was observed:
+
+| Id | Check |
+| --- | --- |
+| I1 | At most one capture across all holds, and the fake PayPal's own invariant check passed |
+| I2 | Nothing captured above the winner's ceiling |
+| I3 | Every loser hold is voided and never captured |
+| I4 | Held money equals captured plus released |
+| I5 | The ledger hash chain verifies |
+
+A scenario lists the invariants it expects in its `expect` block next to ledger, settlement, rejection, PayPal call count and bid count expectations.
+
+## Scenario shape
+
+```yaml
+id: S04-duplicate-webhooks
+modes: [inproc]
+seed: 4
+clock: { startMs: 1793750400000 }
+auction: { itemId: lot-1, reserve: 5000, minIncrement: 500, softCloseMs: 0, mode: english }
+actors: { ana: { funding: wallet }, ben: { funding: wallet } }
+steps:
+  - { t: 0, actor: ana, do: register, ceiling: 50000 }
+  - { t: 2000, actor: ana, do: bid, amount: 6000 }
+  - { t: 7000, actor: auctioneer, do: hammer }
+expect:
+  - ledger: { winner: ana, captured: 10000, released: 40000, voided: [ben] }
+```
+
+(Abridged from `scenarios/S04-duplicate-webhooks.yaml`.) Faults available in the language: PayPal capture errors (500, 502, 503, 429) and a timeout after commit, void failures, authorization expiry, external void or decline, webhook duplicate, delay and reorder, a server kill at a named checkpoint, speech-to-text timeout, garbage or low confidence, and a WebSocket drop.
+
+## Public interface
+
+`src/index.ts` exports the DSL types, `ScenarioSchema`, `StepSchema`, `FaultSchema`, `ExpectSchema` and the loaders `loadScenarioFile`, `parseScenarioYaml`, `validateScenario` with `ScenarioError`. The runners are used through their CLI (`src/runner/cli.ts`) and by the tests.
+
+## Key files
+
+<Files>
+  <Folder name="packages/e2e" defaultOpen>
+    <Folder name="scenarios" />
+    <Folder name="src" defaultOpen>
+      <Folder name="dsl" />
+      <Folder name="runner" defaultOpen>
+        <File name="inproc.ts" />
+        <File name="stack.ts" />
+        <File name="invariants.ts" />
+        <File name="cli.ts" />
+      </Folder>
+      <Folder name="property" />
+      <Folder name="load" />
+      <Folder name="sandbox" />
+      <Folder name="gates" />
+      <Folder name="report" />
+    </Folder>
+    <Folder name="test" />
+    <Folder name="specs" />
+    <Folder name="sandbox" />
+    <Folder name="fixtures" />
+  </Folder>
+</Files>
+
+## Scripts
+
+| Script | What it does |
+| --- | --- |
+| `npm run test -w @gavel/e2e` | Unit tests of the DSL, runners, report and harnesses |
+| `npm run test:browser -w @gavel/e2e` | Playwright specs (CI) |
+| `npm run test:sandbox -w @gavel/e2e` | Real-sandbox specs; skipped without secrets |
+| `npm run measure:sandbox -w @gavel/e2e` | Per-call latency against the sandbox |
+| `npm run measure:settlement -w @gavel/e2e` | Hammer to captured and settled on the sandbox |
+| `npm run report:sandbox -w @gavel/e2e` | Builds the redacted sandbox report |
+| `npm run gate:g5 -w @gavel/e2e` | The G5 live harness; needs recordings and a provider key |
+
+From the repository root, `npm run test:scenarios` runs the project `unit:e2e` and `npm run test:property` runs the property projects.
+
+## Tests that guard it
+
+`test/dsl.test.ts` (schema), `runner-inproc.test.ts` and `runner-process.test.ts` (the runners), `scenarios.test.ts`, `s02-s05-s15-scenarios.test.ts`, `s06-s09-scenarios.test.ts`, `s11-s14-scenarios.test.ts` and `s10-abusive-input.test.ts` (the scenarios), `stack-mode.test.ts` and `stack-scenarios.test.ts` (child-process mode), `property-harness.test.ts`, `sandbox-harness.test.ts`, `sandbox-report.test.ts`, `flakes.test.ts` and `repo-contracts.test.ts`, which reads the repo files to check that workflows and scripts stay wired (for example that the dependency audit runs and stays outside the required roll-up).
+
+<NotVerified title="The G5 harness and the committed G5 numbers">
+
+The e2e G5 harness (`src/gates/g5.ts`) defines 20 noisy utterances and runs them through a live provider. The numbers recorded in `docs/GATES.md` for gate G5 come from the voice package's cached eval over 24 synthetic clips and a second human-like synthetic set (see [@gavel/voice](/docs/builders/packages/voice)). G5 is FAIL; neither is a real-room test.
+
+</NotVerified>
+
+<CodePaths
+  paths={[
+    { path: 'packages/e2e/src/dsl/schema.ts', note: 'the scenario schema' },
+    { path: 'packages/e2e/src/runner/inproc.ts', note: 'in-process runner' },
+    { path: 'packages/e2e/src/runner/stack.ts', note: 'child-process runner with kill and restart' },
+    { path: 'packages/e2e/src/runner/invariants.ts', note: 'I1 to I5' },
+    { path: 'packages/e2e/scenarios', note: 'the fifteen scenarios' },
+    { path: 'packages/e2e/playwright.config.ts', note: 'browser projects' },
+    { path: 'packages/e2e/vitest.sandbox.config.ts', note: 'sandbox spec config' },
+  ]}
+/>

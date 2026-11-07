@@ -1,0 +1,153 @@
+---
+title: engine
+description: "The pure auction core: decide, evolve, the hash-chained ledger and the redacted public export."
+icon: Cpu
+status: verified
+---
+
+`@gavel/engine` (`packages/engine`) decides what an auction does. It has no clock, no randomness, no network and no disk in its core: a command goes in, ledger entries come out, and the state of the auction is a fold over those entries. It has no runtime dependencies.
+
+## Responsibilities
+
+- **Decide.** `decide(state, command)` returns either entries to append or a rejection with a reason from `REJECT_REASONS`. Every command type has its own file under `src/decide/` (`place-bid.ts`, `hammer.ts`, `open-lot.ts`, `abort-lot.ts`, `pause.ts`, `promote.ts`, `revoke.ts`, `settlement.ts`, `setup.ts`, `close-auction.ts`).
+- **Evolve.** `evolve(state, entry)` folds one entry into the state. `replay` rebuilds the state from a verified chain.
+- **Rules.** Pricing for the three modes (`english`, `proxy`, `second_price`), increments, soft close, exposure against a bidder's ceiling, ranking and the fallback candidate list live in `src/rules/`.
+- **Ledger.** Each entry is hashed with the hash of the entry before it (`ledger/chain.ts`). `verifyChain` finds the first bad entry; `exportJsonl` and `verifyJsonl` write and check a file; the `verify-ledger` binary checks an export without a server.
+- **Projections.** `projectPublic`, `projectBidder` and `projectAuditor` decide who may see what. Sealed bids stay hidden until the hammer.
+- **Public export.** `publicExport` writes a second, redacted chain (version 4) that anyone can verify; `matchesLedger` lets an auditor holding the private ledger check it.
+- **Runtime.** `AuctionRuntime` runs commands of one auction one after another, rebuilds state from the store by verified replay on first use, and tells observers only after the store acknowledged the append.
+
+## Public interface
+
+Exported from `packages/engine/src/index.ts`; a second entry `@gavel/engine/node` (`src/node/index.ts`) holds Node-only helpers.
+
+| Export | Role |
+| --- | --- |
+| `decide`, `evolve`, `evolveAll`, `initialState` | the pure core |
+| `parseCommand`, `COMMAND_TYPES` | validates an incoming command |
+| `AuctionRuntime`, `LedgerStore`, `InMemoryLedgerStore`, `LedgerConflict` | single-writer orchestration over a store |
+| `replay`, `stateDigest`, `verifyChain`, `sealBatch`, `headOf`, `genesisHead` | chain and replay |
+| `exportJsonl`, `verifyJsonl`, `tamperAt` | file export, check, and a test helper that damages an entry |
+| `publicExport`, `verifyPublicExport`, `matchesLedger`, `PUBLIC_EXPORT_VERSION` | redacted public chain |
+| `projectPublic`, `projectBidder`, `projectAuditor` | views |
+| `candidates` | ordered fallback list of winner and runners-up, each priced as if earlier ones were out |
+| `validateAuctionConfig`, `validateLotConfig`, `DEFAULT_AUCTION_CONFIG`, `LIMITS` | configuration and caps |
+| `SETTLEMENT_STATES`, `SETTLEMENT_EDGES` | the edges the settlement saga may record |
+
+<TypeTable
+  type={{
+    'LIMITS.bidsPerLot': { description: 'Most bids recorded per lot.', type: 'number', default: '20000' },
+    'LIMITS.bidsPerBidderPerLot': { description: 'Most bids one bidder may record on a lot, so one account cannot fill it.', type: 'number', default: '2000' },
+    'LIMITS.bidsReservedForLead': { description: 'Last slots of bidsPerLot kept for bids that take the lead.', type: 'number', default: '1000' },
+    'LIMITS.rejectedPerLot': { description: 'Rejected PlaceBid entries kept per lot; further rejects fail without a ledger entry.', type: 'number', default: '5000' },
+    'LIMITS.lots': { description: 'Most lots per auction.', type: 'number', default: '200' },
+    'LIMITS.bidders': { description: 'Most bidders per auction.', type: 'number', default: '1000' },
+    MAX_AMOUNT_CENTS: { description: 'Largest bid amount, reserve or increment accepted.', type: 'number', default: '100000000' },
+    DEFAULT_MAX_CLOCK_SKEW_MS: { description: 'How far past the runtime clock a command time may be (AuctionRuntime option maxClockSkewMs).', type: 'number', default: '60000' },
+  }}
+/>
+
+## Key files
+
+<Files>
+  <Folder name="packages/engine" defaultOpen>
+    <Folder name="src" defaultOpen>
+      <Folder name="decide">
+        <File name="index.ts" />
+        <File name="place-bid.ts" />
+        <File name="hammer.ts" />
+        <File name="settlement.ts" />
+      </Folder>
+      <Folder name="rules">
+        <File name="validate-bid.ts" />
+        <File name="exposure.ts" />
+        <File name="softclose.ts" />
+        <File name="pricing-basic.ts" />
+        <File name="pricing-proxy.ts" />
+        <File name="ranking.ts" />
+        <File name="candidates.ts" />
+      </Folder>
+      <Folder name="ledger">
+        <File name="chain.ts" />
+        <File name="public-export.ts" />
+        <File name="export.ts" />
+        <File name="store.ts" />
+        <File name="memory-store.ts" />
+      </Folder>
+      <File name="evolve.ts" />
+      <File name="state.ts" />
+      <File name="replay.ts" />
+      <File name="projections.ts" />
+      <File name="runtime.ts" />
+      <File name="canonical.ts" />
+      <File name="reasons.ts" />
+    </Folder>
+    <File name="bin/verify-ledger.mjs" />
+    <File name="scripts/check-imports.mjs" />
+  </Folder>
+</Files>
+
+| File | Note |
+| --- | --- |
+| `decide/index.ts` | checks ids and time for every command type, answers a repeated `commandId` from state, then dispatches |
+| `rules/exposure.ts` | `committed`: sum of hammer prices of lots the bidder holds within the hold scope key |
+| `rules/softclose.ts` | `extension` and `hardCloseOf`: when an accepted bid extends the lot and the latest end it may reach |
+| `ledger/chain.ts` | genesis `prev` of 64 zeros, `sealBatch`, `verifyChain` and its failure reasons |
+| `ledger/public-export.ts` | redaction rules and the keyed commitment for entries after the first redaction |
+| `runtime.ts` | the per-auction queue and the store-acknowledged-before-observers rule |
+| `canonical.ts` | deterministic bytes that are hashed |
+| `bin/verify-ledger.mjs` | verifies an export without any server; `--head` catches a shortened file |
+
+## Invariants and the tests that guard them
+
+<Accordions type="multiple">
+<Accordion title="Same inputs, same ledger (determinism and replay)">
+`decide` and `evolve` take time and ids from the command. Replaying a ledger gives the same state digest. Tests: `test/replay.test.ts`, `test/properties/ledger.test.ts`, `test/properties/invariance.test.ts`, `test/golden.test.ts` (fixtures under `fixtures/golden`).
+</Accordion>
+<Accordion title="A repeated command is answered, not applied twice">
+`decide/index.ts` looks the `commandId` up in `state.commands`; the same id with a different type or body is refused. Tests: `test/decide.test.ts` (duplicate of an implicit close), `test/commands.test.ts`, `test/runtime-recovery.test.ts`.
+</Accordion>
+<Accordion title="The ledger detects any change">
+Each entry commits to the one before; `verifyChain` reports `bad_hash`, `bad_prev`, `bad_seq`, `bad_time`, `bad_genesis`, `bad_auction`, `unsupported_version` or `truncated`. Tests: `test/chain.test.ts`, `test/replay.test.ts`, `test/public-export.test.ts` (truncated export), `test/fault/runtime-faults.test.ts`.
+</Accordion>
+<Accordion title="A bid cannot exceed what the bidder has put on hold">
+`over_ceiling` and the exposure sum across lots in the hold scope. Tests: `test/exposure.test.ts`, `test/properties/exposure.test.ts`, `test/validate-bid.test.ts`, `test/place-bid.test.ts`.
+</Accordion>
+<Accordion title="Soft close extends only accepted bids and never past the hard close">
+Rejected bids are not passed to `extension`; a sealed (`second_price`) lot never extends. Tests: `test/softclose.test.ts`, `test/properties/softclose.test.ts`.
+</Accordion>
+<Accordion title="A runner-up is never charged at its own maximum">
+`candidates` prices each candidate as if the earlier ones were out. Tests: `test/candidates.test.ts`, `test/pricing.test.ts`, `test/ranking.test.ts`, `test/properties/pricing.test.ts`, `test/properties/mechanism.test.ts` (toy-model checks of mechanism logic, not bidder behaviour).
+</Accordion>
+<Accordion title="Private data never leaves in a public export">
+Ceilings and private hashes are removed rather than hashed; entries after the first redaction publish no private hash. Tests: `test/public-export.test.ts`, `test/projections.test.ts`, `test/round12-privacy.test.ts`.
+</Accordion>
+<Accordion title="The core is pure">
+No Node I/O outside `src/node` and `src/testing`, and no runtime dependency. Guards: rule `engine-no-node-io` in `.dependency-cruiser.cjs`, `scripts/check-imports.mjs`, `npm run check:bundle`, and the public API test `test/package.test.ts`.
+</Accordion>
+<Accordion title="One writer per auction, observers see only stored entries">
+Commands of an auction run one after another; a result and the observer callbacks come only after the store acknowledged. Tests: `test/runtime.test.ts`, `test/runtime-recovery.test.ts`, `test/runtime-subscribe.test.ts`, `test/runtime-time-bound.test.ts`.
+</Accordion>
+</Accordions>
+
+<Held title="Reference implementation check">
+`test/differential.test.ts` compares this engine with the Python reference on 2000 seeded scenarios, but it only runs when `GAVEL_DIFFERENTIAL_FILE` points at the exported scenario file; without it the test is skipped. The `differential` job in `ci.yml` exports 2000 scenarios with the pinned seed 20261104 and runs it on every pull request; `differential.yml` adds a weekly and manual rotating seed.
+</Held>
+
+## Where it sits
+
+`engine` may import `shared` (`ALLOWED.engine = ['shared']` in `.dependency-cruiser.cjs`). In practice it imports nothing from `@gavel/shared` at run time: `src/types.ts` declares its own `Cents` and `EpochMs`, and `test/contract/shared.test.ts` compares the engine's constants (config limits, ceiling presets, reject reasons) with the shared copies. `payments` and `server` import the engine; `web` does not.
+
+The engine records settlement states but does not own the transitions: `SETTLEMENT_EDGES` in `src/events.ts` is the same set as the payments state machine, and `RecordSettlement` refuses any other pair. See [Settlement saga](/docs/how-it-works/settlement-saga) and [Engine and ledger](/docs/how-it-works/engine-and-ledger).
+
+<CodePaths
+  paths={[
+    { path: 'packages/engine/src/index.ts', note: 'public exports' },
+    { path: 'packages/engine/src/decide/index.ts', note: 'command dispatch' },
+    { path: 'packages/engine/src/ledger/chain.ts', note: 'hash chain and verification' },
+    { path: 'packages/engine/src/ledger/public-export.ts', note: 'redacted public chain' },
+    { path: 'packages/engine/src/runtime.ts', note: 'single-writer runtime' },
+    { path: 'packages/engine/bin/verify-ledger.mjs', note: 'verify an export without a server' },
+    { path: 'packages/engine/test', note: 'unit, property, golden and fault tests' },
+  ]}
+/>

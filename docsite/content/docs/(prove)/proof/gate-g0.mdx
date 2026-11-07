@@ -1,0 +1,54 @@
+---
+title: 'Gate G0: sandbox connectivity'
+description: Does the sandbox app authenticate, and can it create an AUTHORIZE order? Method, evidence and limits.
+icon: PlugZap
+status: verified
+---
+
+<GateBadge id="G0" />
+
+## Question
+
+Does the PayPal sandbox app authenticate, and can it create an order with intent `AUTHORIZE`? Every later real-sandbox gate depends on this, so it runs first.
+
+## Method
+
+- Workflow: [`gate-g0`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/gate-g0.yml), started by hand (`workflow_dispatch`). The job declares the `sandbox-nightly` environment and runs only from `main`.
+- Script: `gates/g0.ts` in `packages/payments` (package script `gate:g0`). It makes a client-credentials token request, then creates one order with intent AUTHORIZE, and checks that the approve link is present.
+- Secrets used, by name: `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET`. Values are never recorded.
+- Sandbox accounts behind the gates: one business account that owns the app and five personal US buyer accounts, all in USD.
+
+| Check | Expected | Observed |
+| --- | --- | --- |
+| G0.1 token | HTTP 200, payments scope | HTTP 200, payments scope |
+| G0.2 create AUTHORIZE order | HTTP 201 CREATED | HTTP 201 CREATED, intent as sent |
+| G0.3 approve link | present | present |
+
+## Evidence
+
+<Held title="Reported, not independently verifiable">
+
+No evidence file is committed under `docs/evidence/G0/`, and the run published no artifact. The only record is the run log of workflow `gate-g0`, run 41815593520 (4 Nov 2026), which is visible only with repository access and expires with the Actions log retention. The run was made from branch `gate/g0`, before the main-only guard. Treat G0 as reported until redacted evidence is committed.
+
+</Held>
+
+The result is stated in [docs/GATES.md](https://github.com/harshbhx/gavel-auction/blob/main/docs/GATES.md). The badge above is read from that file when the site is built.
+
+## Limits
+
+- It proves connectivity, token scopes and order creation only.
+- No buyer approval and no capture were part of G0.
+- It says nothing about card or guest buyers ([G2](/docs/proof/gate-g2)), partial capture ([G1](/docs/proof/gate-g1)) or webhooks ([G4](/docs/proof/gate-g4)).
+
+## If it fails
+
+There is no fallback for payments. Hold G1 to G4 and demo on the fake PayPal, labelled as fake. See the [operator runbook](/docs/run/operator-runbook) and [gate runbook](/docs/run/gate-runbook).
+
+<CodePaths
+  paths={[
+    { path: 'docs/GATES.md', note: 'the gate record this page reads' },
+    { path: 'docs/RUNBOOK-GATES.md', note: 'what to do when the gate fails' },
+    { path: 'packages/payments/gates/g0.ts', note: 'the G0 script' },
+    { path: '.github/workflows/gate-g0.yml', note: 'the workflow' },
+  ]}
+/>

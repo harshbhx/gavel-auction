@@ -1,0 +1,105 @@
+---
+title: Beginner path
+description: What an auction hold is, in plain words, and a six step route through the docs for someone new to all of it.
+icon: Footprints
+status: verified
+---
+
+## The idea in one minute
+
+Think of a hotel. When you check in, the hotel does not take the money for your stay. It puts a **hold** on your card for an amount that covers the stay. The money is still yours, but you cannot spend that part, and the hotel is promised it. When you check out, the hotel takes the real amount, and the rest of the hold goes away.
+
+GAVEL runs an auction the same way. When you join, you choose a ceiling (the most you are willing to bid). PayPal puts a hold for that ceiling. Every bid you make is inside it. When the hammer falls, only the winner is charged, and only the winning price. Everyone else's hold is released, so they never pay.
+
+<Held title="A hold is not a payment">
+
+A hold is a promise that the money is there. Nothing has been charged. "Charged" means the winning price was captured at the hammer.
+
+</Held>
+
+<Charged title="Why this matters">
+
+Because only the winning price is taken, a bidder can bid freely up to the ceiling without paying for every bid.
+
+</Charged>
+
+The three pictures used on every page: hatched means held, solid means charged, hollow means released.
+
+## Six steps
+
+<Steps>
+<Step>
+
+### Read the promise
+
+Open [Start here](/docs/start) for the one-page version of what GAVEL does and what it does not do.
+
+</Step>
+<Step>
+
+### Learn six words
+
+Read [concepts](/docs/start/concepts): bid, hold, hammer, capture, void and journal.
+
+</Step>
+<Step>
+
+### Watch a bid happen
+
+Follow the [money flow](/docs/how-it-works/money-flow) to see a hold become a charge for the winner and a release for everyone else.
+
+</Step>
+<Step>
+
+### See what happens when things break
+
+[Crash recovery](/docs/how-it-works/crash-recovery) explains how a server that stops in the middle of a settlement picks up without charging twice.
+
+</Step>
+<Step>
+
+### Check what is proven
+
+[Status](/docs/start/status) and the [gates](/docs/proof/gates) say which parts ran on the PayPal sandbox, which ran only against a fake PayPal, and which were simulated.
+
+</Step>
+<Step>
+
+### Try it or go deeper
+
+The [demo guide](/docs/start/demo) walks through a room. The [architecture](/docs/reference/architecture) and the [glossary](/docs/reference/glossary) are next.
+
+</Step>
+</Steps>
+
+<NotVerified title="Sandbox only">
+
+Everything here uses the PayPal sandbox. No real money moves. Some results are from a fake PayPal or a simulation, and each page says which.
+
+</NotVerified>
+
+## Words you will meet
+
+<Accordions type="multiple">
+<Accordion title="Ceiling">
+The most a bidder may bid in one auction. The hold is for this amount.
+</Accordion>
+<Accordion title="Sandbox">
+PayPal's practice environment. It behaves like PayPal but moves no real money.
+</Accordion>
+<Accordion title="Fake PayPal">
+A stand-in written for tests. Results against it say how our code behaves, not how PayPal behaves.
+</Accordion>
+<Accordion title="Soft close">
+A bid near the end extends the lot, so an auction does not end on a last-second bid.
+</Accordion>
+<Accordion title="Saga">
+The step-by-step settlement after the hammer: read the truth, capture the winner, void the rest. It saves its state before each step so a crash does not lose its place.
+</Accordion>
+<Accordion title="Idempotent">
+Safe to repeat. Each PayPal call carries a request id, so sending it twice has the effect of once.
+</Accordion>
+<Accordion title="Confirm prompt">
+Spoken bids are not accepted silently. The bidder is asked to confirm, because speech-to-text accuracy did not clear gate G5.
+</Accordion>
+</Accordions>

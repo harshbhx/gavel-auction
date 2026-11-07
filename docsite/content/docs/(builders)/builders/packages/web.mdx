@@ -1,0 +1,159 @@
+---
+title: "@gavel/web"
+description: "The browser client: routes, the transport seam, the payment approval port, the copy rules and the bundle gate."
+icon: Monitor
+status: verified
+full: true
+---
+
+`packages/web` is the browser client: React 18, Vite and strict TypeScript. It renders the bidder, auctioneer console, public screen, audit and replay views from the wire types in `@gavel/shared`. All money is integer cents. All user text lives in `src/copy`.
+
+It holds no business rules. Whether a bid stands, who wins and what is charged are decided by the engine and the payments saga on the server; the client shows the state it receives and sends commands.
+
+## Responsibilities
+
+- **Routes.** `src/routes.tsx` is the route table (first match wins, catch-all last). Routes that need a stored session token are marked `needsToken`; the audit route needs a reviewer token.
+- **Live state.** `src/net` wraps the WebSocket behind a `Transport` interface; `connection.ts` reconnects with backoff and `resync.ts` asks for a fresh snapshot after a gap. `src/store` reduces server messages into room state.
+- **Payment approval.** `src/payments` hides PayPal behind `PaymentApprovalPort`; there is a fake adapter and a PayPal sandbox adapter (`paypalV6Adapter.ts`).
+- **Voice input.** `src/audio` captures the microphone and sends it to the `/audio` socket for the auctioneer console.
+- **Design system.** `src/design` holds tokens, themes (including the projector theme), primitives and the sandbox and fake-payments labels.
+- **Accessibility.** `src/a11y` holds the announcer and focus helpers.
+
+## Routes
+
+| Route | Screen | Token |
+| --- | --- | --- |
+| `/` | Landing | none |
+| `/demo` | Demo launcher | none |
+| `/join/:roomId` | Join | none |
+| `/r/:roomId/register` and `/r/:roomId/return` | Register and the return from PayPal approval | none |
+| `/r/:roomId/bid` | Bidder screen | none |
+| `/r/:roomId/receipt` | Receipt | none |
+| `/r/:roomId/console` | Auctioneer console | auctioneer token |
+| `/r/:roomId/screen` | Public screen | none |
+| `/r/:roomId/audit` | Audit table and export | reviewer token |
+| `/ops` | Operations view | none |
+| `/replay/:recordingId` | Read-only replay | none |
+| `/gallery` | Component gallery | dev and preview builds only |
+
+## Public interfaces
+
+The package is an application, not a library, and exports nothing for other packages. Its seams are internal and are what the tests replace:
+
+- `Transport` (`src/net/transport.ts`): `connect`, `send`, `onMessage`, `onStatus`, `close`. The app never touches a WebSocket directly. A scenario transport and a scripted mode feed the same interface in tests and demos.
+- `ControlPort` (same file): the auctioneer commands `open`, `pause`, `resume`, `extend`, `hammer` and `kill('STOP')`, sent over HTTP.
+- `PaymentApprovalPort` (`src/payments/port.ts`): approval states `idle`, `preparing`, `awaiting_buyer`, `confirming`, `held`, `cancelled`, `declined`, `error`.
+- `src/wire/index.ts`: the single import seam for wire types, re-exported from `@gavel/shared`, so the client and the server cannot drift apart.
+
+## Key files
+
+<Files>
+  <Folder name="packages/web" defaultOpen>
+    <Folder name="src" defaultOpen>
+      <File name="main.tsx" />
+      <File name="App.tsx" />
+      <File name="routes.tsx" />
+      <File name="config.ts" />
+      <Folder name="net" defaultOpen>
+        <File name="transport.ts" />
+        <File name="wsTransport.ts" />
+        <File name="connection.ts" />
+        <File name="resync.ts" />
+      </Folder>
+      <Folder name="store" />
+      <Folder name="payments" />
+      <Folder name="screens" defaultOpen>
+        <Folder name="bid" />
+        <Folder name="console" />
+        <Folder name="register" />
+        <Folder name="receipt" />
+        <Folder name="audit" />
+        <Folder name="replay" />
+      </Folder>
+      <Folder name="ladder" />
+      <Folder name="design" />
+      <Folder name="copy" />
+      <Folder name="a11y" />
+      <Folder name="wire" />
+    </Folder>
+    <Folder name="test" defaultOpen>
+      <Folder name="component" />
+      <Folder name="visual" />
+      <Folder name="screens" />
+    </Folder>
+    <File name="vite.config.ts" />
+    <Folder name="scripts" />
+  </Folder>
+</Files>
+
+| File | What it holds |
+| --- | --- |
+| `src/config.ts` | Reads the `VITE_*` variables at start. A missing or invalid value stops the app with a `ConfigError` that lists names only. An endpoint must be the secure scheme; the plain scheme is accepted only for a loopback host |
+| `src/net/connection.ts` | Reconnect backoff 500, 1000, 2000, 4000, 8000 ms with 20 percent jitter; the offline banner shows after 2 s. `unauthorized`, `forbidden` and `invite_used` end the session; `room_full`, `auction_full`, `room_cap` and `rate_limited` stop reconnecting until the bidder asks again |
+| `src/net/resync.ts` | Re-sends the join with the stored token and last seq until a snapshot arrives (retry every 3 s) |
+| `src/screens/console/shortcuts.ts` | Confirm queue keys Y, N, J and K; ignored while a field has focus or a modifier is held |
+| `src/copy/banned.ts` | Wording rules: before the CAPTURED state no catalog string may say charged, pay, paid, payment, capture, debit, billed, deducted or fee (a negation such as "not charged" is allowed) |
+| `vite.config.ts` | The sandbox guard and the Content-Security-Policy generator |
+| `scripts/check-size.mjs` | The initial-route size gate |
+
+## Configuration
+
+<TypeTable
+  type={{
+    VITE_API_BASE: { description: 'HTTP base of the server.', type: 'URL', required: true },
+    VITE_WS_BASE: { description: 'WebSocket base of the server.', type: 'URL', required: true },
+    VITE_SANDBOX: { description: 'Must be the text true; a build without it is refused.', type: "'true'", required: true },
+    VITE_PAYMENTS: { description: 'fake for the in-process fake PayPal, paypal for the PayPal sandbox. Keep it in line with PAYMENTS on the server.', type: "'fake' | 'paypal'", required: true },
+    VITE_PAYPAL_CLIENT_ID: { description: 'Sandbox client id, needed when VITE_PAYMENTS is paypal. A public id, not a secret.', type: 'string' },
+    VITE_ALLOW_FAKE: { description: 'Must be true for a production build with VITE_PAYMENTS=fake.', type: "'true'" },
+  }}
+/>
+
+## Invariants
+
+- **Sandbox only.** The Vite plugin `gavel-sandbox-guard` fails a production build unless `VITE_SANDBOX` is exactly `true`, and refuses `VITE_PAYMENTS=fake` without `VITE_ALLOW_FAKE=true`.
+- **A fixed Content-Security-Policy.** `buildCsp` generates the policy from the same config: scripts only from self and the PayPal sandbox, `connect-src` limited to self, the configured API and WS origins and the two PayPal sandbox origins, no objects, no inline script allowance.
+- **A small first load.** `check-size.mjs` fails the build when the gzip size of the initial route is over 180 KB, or when the PayPal SDK loader, the QR encoder or the replay player is part of that initial graph. The replay screen is loaded lazily.
+- **No secret in the bundle.** The root check `npm run check:secrets` builds the web app with canary values and scans the output (see [Infra](/docs/builders/packages/infra)).
+- **One wire source.** Wire types come only through `src/wire`, which re-exports `@gavel/shared`. The web source imports `@gavel/shared`; the dependency rule would also allow `@gavel/voice`, but no web source file imports it today.
+- **Honest wording.** The banned-wording rules above are applied to the copy catalog by `test/unit/copy.test.ts`.
+
+## Tests that guard it
+
+| Area | Test files |
+| --- | --- |
+| Routing and shell | `test/component/routes.test.tsx`, `mountedRoutes.test.tsx`, `App.test.tsx`, `shellBanner.test.tsx`, `boundaryRoute.test.tsx` |
+| Bidding | `test/component/bid.test.tsx`, `bidderFlow.test.tsx`, `bidderFlows.test.tsx`, `Ladder.test.tsx` |
+| Registration and approval | `test/component/register.test.tsx`, `registerRouteBearer.test.tsx`, `registerPresetsSession.test.tsx`, `join.test.tsx` |
+| Console and voice | `test/component/consoleRoute.test.tsx`, `ConsoleControls.test.tsx`, `consoleGate.test.tsx`, `liveConsole.test.tsx`, `micAudio.test.ts` |
+| Settlement and receipt | `test/component/receipt.test.tsx`, `receiptSettlement.test.tsx`, `holdRemainder.test.tsx`, `replayAudioSettlement.test.tsx` |
+| Audit and replay | `test/component/auditRoute.test.tsx`, `auditExport.test.tsx`, `replayPlayer.test.tsx`, `ReplayScreen.test.tsx` |
+| Server contract | `test/component/serverContract.test.ts` |
+| Copy rules | `test/unit/copy.test.ts` |
+| Accessibility | `test/component/a11y.test.tsx`; browser specs `test/visual/a11y.spec.ts`, `keyboard.spec.ts`, `motion.spec.ts`, `responsive.spec.ts` |
+| Screen tour | `test/screens/*.spec.ts` (one image per reachable state, no pixel assertions) |
+
+Coverage floor from `coverage.thresholds.json`: 70 percent lines and 60 percent branches.
+
+## Scripts
+
+| Script | What it does |
+| --- | --- |
+| `npm run dev -w @gavel/web` | Vite dev server (run it on your own machine, not on a shared one) |
+| `npm run build -w @gavel/web` | Type check, then the Vite bundle |
+| `npm run test -w @gavel/web` | Unit and component tests |
+| `npm run test:a11y -w @gavel/web` | axe-core and keyboard specs in a browser (CI) |
+| `npm run test:screens -w @gavel/web` | The screen tour (CI workflow `ui-screens`) |
+| `npm run check:size -w @gavel/web` | The initial-route size gate after a build |
+
+<CodePaths
+  paths={[
+    { path: 'packages/web/README.md', note: 'setup and variables' },
+    { path: 'packages/web/src/routes.tsx', note: 'the route table' },
+    { path: 'packages/web/src/net/transport.ts', note: 'the transport seam' },
+    { path: 'packages/web/src/payments/port.ts', note: 'the payment approval port' },
+    { path: 'packages/web/vite.config.ts', note: 'sandbox guard and CSP' },
+    { path: 'packages/web/scripts/check-size.mjs', note: 'bundle gate' },
+    { path: 'docs/A11Y.md', note: 'what accessibility checks run, and what still needs a person' },
+  ]}
+/>

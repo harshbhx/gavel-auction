@@ -1,0 +1,134 @@
+---
+title: Bid lifecycle
+description: From a tap or a spoken bid to an accepted or rejected bid, with the confirm gate in the middle.
+icon: Gavel
+status: verified
+full: true
+---
+
+A bid in GAVEL is a small message with an amount in cents. It can come from a tap on a phone or from speech in the room. Either way it passes the same short chain: the **room** decides whether it needs a human yes, the **engine** decides whether the bid is legal, and only then does it reach the event log and the other screens.
+
+<Callout type="info" title="Verified against the code, not measured">
+  This page describes code paths that were read in the repository. It makes no speed or accuracy claim. Speech accuracy is a separate, failed gate: see the note on G5 below.
+</Callout>
+
+## In plain words
+
+1. You tap a number, or you say "paddle twelve, three hundred".
+2. The room checks that it is really you and that you are not sending too fast.
+3. If the bid came from speech and the system is not sure, it **holds** the bid and asks you "Did you mean $300?" for up to 15 seconds. Nothing has happened to the auction yet.
+4. The engine checks the rules: is the lot open, are you registered, is the amount under your ceiling, is it high enough.
+5. The result is written to the log first. Only then are you told, and everyone else sees the new price.
+
+## Step through it
+
+<BidLifecycleDiagram />
+
+## Two ways in
+
+<Tabs items={['Tap', 'Voice']}>
+  <Tab value="Tap">
+
+The web app sends a `bid` frame with `source: "qr"`, a fresh message id (`mid`) and the amount in cents. The bidder is whoever the session token says it is. A tap is never held: it goes straight to the engine.
+
+If the network drops before an answer, the client marks the bid as unknown after four seconds and lets the bidder send it again with the same `mid`, so a retry cannot place the bid twice.
+
+  </Tab>
+  <Tab value="Voice">
+
+The auctioneer's microphone feeds the `/audio` socket. The voice bridge runs each speech segment through the pipeline and gets `accept`, `confirm` or `drop`. The spoken paddle picks the bidder, so the bridge submits the bid on behalf of that bidder over an internal connection that has only the bidder role. It takes the same path as a tap: rate limit, confirm gate, engine.
+
+A drop is written to the log as a `voice_dropped` record (reason and confidence, never the transcript) and no bid exists.
+
+  </Tab>
+</Tabs>
+
+<Held title="Spoken bids and the failed accuracy gate">
+  <GateBadge id="G5" /> Speech accuracy missed the threshold on synthetic audio, and there is no real-room test. The recorded decision is that spoken bids go through the confirm prompt. In the code as wired, the voice bridge has no second parser, so a clean reading scores at most 0.82, below the 0.85 auto line, and every spoken bid arrives as a confirm. The code does not have a separate switch for this. See [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) and [Gates](/docs/proof/gates).
+</Held>
+
+## The confirm gate
+
+The gate sits in the room, before the engine. A frame is held when it is **voice-like** (source voice, or it carries a transcript, a confidence or an ambiguity flag) and either the parser flagged it ambiguous or its confidence is under the room threshold. A missing confidence counts as zero. Labelling a spoken bid as `qr` does not escape the gate.
+
+<TypeTable
+  type={{
+    CONFIRM_TTL_MS: {
+      description: 'How long a held bid waits for its bidder. After that it is resolved as expired and places no bid.',
+      type: 'number',
+      default: '15000',
+    },
+    confirmConfidenceThreshold: {
+      description: 'Room threshold as a fraction. The engine gets the same value as basis points (confirmBelowBps).',
+      type: 'number',
+      default: '0.85 (demo config)',
+    },
+    'one hold per bidder': {
+      description: 'A newer held bid supersedes the older one, which is logged as superseded.',
+      type: 'rule',
+    },
+    MAX_HOLDS_PER_BIDDER: {
+      description: 'Past this many holds a bidder is answered with rate_limited and nothing is logged.',
+      type: 'number',
+      default: '50',
+    },
+  }}
+/>
+
+A held bid is not seen by the engine. The auctioneer's console never sees its amount or transcript either, because the bid might still be refused as over the bidder's ceiling and the amount would leak it.
+
+<Accordions type="multiple">
+  <Accordion title="What happens on accept, reject and timeout">
+    On **accept** the room replays the held bid through the normal path at the server time of the answer, with `audit.confirmed` set. The resolution and the bid are written in one append, so the hold is consumed only if the bid is written. On **reject**, a **late answer** or the **timer**, the hold ends as rejected or expired, an audit row is written and the bidder is told the bid was not placed. Code: `respondConfirm`, `resolveConfirm` and `armConfirmTimer` in `packages/server/src/room/room.ts`.
+  </Accordion>
+  <Accordion title="Why the engine checks confirmation again">
+    The engine does not trust the room. A voice bid whose confidence is under `confirmBelowBps` and that is not marked confirmed is rejected as `unconfirmed`, and a voice bid with no confidence counts as zero. Only the server may set `audit.confirmed`. So a bug in the room cannot turn an unconfirmed low-confidence spoken bid into an accepted one.
+  </Accordion>
+  <Accordion title="What if the same bid arrives twice">
+    The room remembers the reply for each bidder and message id. A repeat with the same amount and source gets the original reply and appends nothing; the reply is sent again only once the log holds the bid. The same id with another amount is a `conflict`. Replies are kept in a bounded map.
+  </Accordion>
+  <Accordion title="Which refusals are not logged">
+    A refusal that costs nothing to decide is answered to the sender only, with no log entry: an unregistered bidder, a bad amount, a paused lot, and an auctioneer's manual bid beyond the next increment. Otherwise any joined client could grow the log at its rate limit. Other refusals are written as `bid_rejected`, up to a per-lot cap.
+  </Accordion>
+</Accordions>
+
+## What the engine checks
+
+The engine runs these checks in a fixed order and reports the first failure. The wire code is what the sender sees; several engine reasons share one code.
+
+| Order | Engine reason | Wire code | Retryable |
+| --- | --- | --- | --- |
+| 1 | `lot_not_open` (also: lot paused, deadline passed) | `closed` | no |
+| 2 | `unregistered` | `unregistered` | no |
+| 3 | `ceiling_revoked` | `unregistered` | no |
+| 4 | `bad_amount` | `bad_amount` | no |
+| 5 | `unconfirmed` | `bad_message` | no |
+| 6 | `over_ceiling` | `over_ceiling` | no |
+| 7 | `below_reserve` | `below_reserve` | no |
+| 8 | `below_increment` | `below_increment` | no |
+| 9 | `already_leading`, `not_higher_than_own_max`, `already_bid` | `already_leading` | no |
+| 10 | `limit_exceeded` | `room_cap` | no |
+
+Before the engine, the room can also answer `rate_limited` (retryable), `forbidden`, `auction_full`, `conflict` and `not_found`. While the clock is paused the room answers `auction_paused`, which is retryable with the same `mid`.
+
+<Callout type="warn" title="Manual bids are narrower">
+  An auctioneer can enter a bid for a bidder, but only up to the next minimum, the bidder must confirm it first, and one auctioneer can enter at most 25 per lot. A refusal over the bidder's ceiling is reported as `limit_exceeded` so the amounts cannot be used to probe a ceiling.
+</Callout>
+
+## After the engine accepts
+
+1. The room builds `bid_accepted` with a fresh bid id and appends it to the log with the expected sequence number. If another host already owns the room, the append fails and this host stops serving it.
+2. The sender gets `bid_accepted` once the log holds it. If persisting fails the sender gets a store error instead, never an acknowledgement that is ahead of the log.
+3. Everyone gets a `price` frame and a redacted `audit_event` under the same sequence number. The end-of-lot timer is re-armed, because a bid in the soft-close window can move the end. See [Auction states and soft close](/docs/how-it-works/auction-states).
+
+<CodePaths
+  paths={[
+    { path: 'packages/server/src/room/room.ts', note: 'submitBid, handleBid, holdForConfirm, respondConfirm' },
+    { path: 'packages/server/src/room/confirm.ts', note: 'needsConfirm, CONFIRM_TTL_MS, the hold book' },
+    { path: 'packages/server/src/voice/bridge.ts', note: 'voice decision to bid frame, drop records' },
+    { path: 'packages/voice/src/decide/policy.ts', note: 'accept, confirm or drop' },
+    { path: 'packages/engine/src/rules/validate-bid.ts', note: 'the check order' },
+    { path: 'packages/engine/src/decide/place-bid.ts', note: 'BID_RECORDED, BID_REJECTED, END_EXTENDED' },
+    { path: 'packages/shared/src/wire/client.ts', note: 'the bid frame' },
+  ]}
+/>

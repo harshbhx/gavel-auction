@@ -1,0 +1,133 @@
+---
+title: Retries and unknown outcomes
+description: What the saga does when a capture is refused, rate limited, times out or never gets an answer.
+icon: GitBranch
+status: unverified
+full: true
+---
+
+A capture call can end in four very different ways, and charging the wrong person depends on telling them apart.
+
+<Cards>
+  <Card title="Taken" description="PayPal answers COMPLETED. Money moved. The settlement goes on." />
+  <Card title="Refused" description="PayPal says no and says why (declined, expired). Nothing moved. Safe to try the runner-up, once the truth confirms it." />
+  <Card title="Not run" description="HTTP 429. PayPal refused to run the request. Nothing moved and nothing is in doubt. Wait and repeat the same call." />
+  <Card title="Unknown" description="A timeout, a network failure or a 5xx. The capture may or may not have happened. Never charge the runner-up on a maybe." />
+</Cards>
+
+Pick an answer in the diagram to follow its path.
+
+<RetryDecisionDiagram />
+
+## The order of the checks
+
+<Steps>
+<Step>
+
+### The transport retries first
+
+Network errors and the statuses 429, 500, 502, 503 and 504 are retried inside one request: at most four attempts of ten seconds each, full-jitter backoff from 250 ms up to four seconds, and a `Retry-After` header is honored up to 30 seconds. Every attempt has the same request id (see [idempotency](/docs/how-it-works/idempotency)). When the attempts run out the last failure is raised as a typed error, never a raw network error.
+
+</Step>
+<Step>
+
+### The error map labels the answer
+
+Each status gets a kind and an outcome, either `definite` (PayPal said so) or `unknown` (the effect cannot be known from here).
+
+</Step>
+<Step>
+
+### The capture phase decides
+
+In this order: kill switch, no token, 429, other unknown outcomes, invariant faults, then refusals that name the hold, and finally every other refusal.
+
+</Step>
+</Steps>
+
+## How statuses are labelled
+
+| Answer | Kind | Outcome | Why |
+| --- | --- | --- | --- |
+| 401 | auth expired or auth failed | definite | The request was not accepted at all |
+| 404 | not found | definite | PayPal does not know the resource |
+| 400 | invalid request | definite | A bug or a bad configuration |
+| 429 | rate limited | unknown in the map, handled as not run by the saga | See below |
+| 5xx | server error | unknown | The capture may have been taken |
+| 408, 409, 425 | rejected | unknown | A timeout or an in-flight conflict proves nothing |
+| 422 with a known issue | declined, expired, already voided, already captured | definite | Names this hold |
+| 422 with an unknown issue, other 4xx | rejected | definite | Not known to name this hold |
+| network failure, timeout | network | unknown | No answer exists |
+
+The 422 issue names other than `PREVIOUSLY_CAPTURED` are UNVERIFIED on the sandbox (gate G1). The saga is built so a wrong name is harmless: it always reads the truth before it falls back.
+
+## What changed on 7 Nov 2026
+
+<Accordions>
+<Accordion title="A 429 is not an unknown outcome (PR 1938)">
+
+Before this change a capture that kept getting 429 was treated like a timeout: the ten minute unknown clock started, and a restart after a long outage could push the settlement into review. A 429 means PayPal declined to run the request, so now it starts no clock. The capture waits as `rate_limited`, keeps its intent, and the next pass reads the truth first and repeats the same request id. A 429 that follows an earlier ambiguous attempt leaves that attempt's clock as it was.
+
+Issue: https://github.com/harshbhx/gavel-auction/issues/1937. Fix: https://github.com/harshbhx/gavel-auction/pull/1938.
+
+</Accordion>
+<Accordion title="A refusal after a 429 stall is still a refusal (PR 1947)">
+
+A capture that PayPal refuses because the authorization is older than its honor period names this hold, not the merchant. After a 429 stall such a refusal, and a declined or expired one, is classified like a first refusal: the truth is read and the settlement falls back to the runner-up at once, instead of waiting for the ten minute deadline. The honor-period issue name `AUTHORIZATION_NOT_HONORED_AFTER_HONOR_PERIOD` is UNVERIFIED (gate G3).
+
+Issue: https://github.com/harshbhx/gavel-auction/issues/1946. Fix: https://github.com/harshbhx/gavel-auction/pull/1947.
+
+</Accordion>
+<Accordion title="The soak fails on any 429-caused review (PR 1945)">
+
+The soak test now fails if any settlement reaches review because of a 429. https://github.com/harshbhx/gavel-auction/pull/1945
+
+</Accordion>
+</Accordions>
+
+## The clocks
+
+<TypeTable
+  type={{
+    unknownDeadlineMs: {
+      description: 'How long an unknown capture outcome may last before the settlement goes to FAILED_NEEDS_REVIEW.',
+      type: 'number',
+      default: '10 minutes',
+    },
+    pendingCaptureDeadlineMs: {
+      description: 'How long a capture that PayPal lists as PENDING is waited for. PayPal is deciding, which can take hours.',
+      type: 'number',
+      default: '3 days',
+    },
+    voidConcurrency: { description: 'Voids in flight at once in the void phase.', type: 'number', default: '3' },
+  }}
+/>
+
+While the kill switch is engaged the unknown clock stands still; the time it held the clock is not counted afterwards.
+
+<Callout type="info" title="Why never the next bidder on a maybe">
+
+If the first capture did happen and the runner-up is charged as well, two people paid for one lot. That is the one mistake the saga must not make, so every maybe waits or goes to a person.
+
+</Callout>
+
+## What is proven
+
+<NotVerified title="Fake PayPal and simulation only">
+
+The behaviour is tested against the fake PayPal, including the 429 cases in `packages/payments/test/saga/rateLimited.test.ts`, and in the simulated 30-day run, where eight lots get two injected 429s on their first capture and a restart after a two hour outage. The fake showed 0 answers with 429 in 60 cycles; PayPal's real rate limits are UNVERIFIED (gate G1 measurement), so how often a real run would meet a 429 is not known. See [the simulation](/docs/proof/simulation).
+
+</NotVerified>
+
+## Where this lives in the code
+
+<CodePaths
+  paths={[
+    { path: 'packages/payments/src/transport.ts', note: 'retry statuses, backoff, Retry-After, timeouts' },
+    { path: 'packages/payments/src/errorMap.ts', note: 'status to kind and outcome' },
+    { path: 'packages/payments/src/saga/capture.ts', note: 'afterFailure(): the order of the checks' },
+    { path: 'packages/payments/src/saga/unknown.ts', note: 'the 10 minute and 3 day deadlines' },
+    { path: 'packages/payments/src/saga/fallback.ts', note: 'runner-up fallback facts' },
+    { path: 'packages/payments/test/saga/rateLimited.test.ts', note: 'the 429 and honor-period cases' },
+  ]}
+/>

@@ -1,0 +1,51 @@
+---
+title: For judges
+description: Two paths, a rubric map, an evidence index and honest answers. Everything is PayPal sandbox only.
+icon: Gavel
+status: in progress
+---
+
+This section is written for someone who has to score GAVEL without running it. Every page links to the committed file or run behind each claim, and says plainly what is real, what is simulated and what is still open.
+
+<Held title="Two things are open, and we say so">
+
+Gate G3 (how long a PayPal authorization stays capturable) is a real probe in progress: day 0 was 7 Nov 2026 03:06 UTC, the final reading is about 12 Nov 06:17 UTC. Gate G5 (speech accuracy) is a FAIL on synthetic audio, so spoken bids always go through a confirm prompt. No real money moves anywhere.
+
+</Held>
+
+<GatesTable />
+
+<Cards>
+  <Card title="Two-minute path" href="/docs/judges/two-minute-path">
+    Five clicks on this site. What to open and what you should see.
+  </Card>
+  <Card title="Ten-minute path" href="/docs/judges/ten-minute-path">
+    The deep path: evidence files, the ledger check, the fake demo.
+  </Card>
+  <Card title="Rubric map" href="/docs/judges/rubric-map">
+    The five Stage Two criteria, each pointed at concrete pages.
+  </Card>
+  <Card title="Evidence index" href="/docs/judges/evidence-index">
+    Every claim, its status and the file or run that backs it.
+  </Card>
+  <Card title="Tough questions" href="/docs/judges/tough-questions">
+    Honest answers about voice, G3, the fake PayPal and production readiness.
+  </Card>
+  <Card title="Real, simulated, recorded" href="/docs/judges/real-vs-simulated">
+    The same label sheet the video uses.
+  </Card>
+  <Card title="Demo script" href="/docs/judges/demo-script">
+    The three-minute video, shot by shot, with the label on each shot.
+  </Card>
+</Cards>
+
+## How to read a status
+
+| Word | Meaning here |
+| --- | --- |
+| PASS | A real PayPal sandbox run with committed evidence or a named run log. |
+| FAIL | Measured and below the limit. The fallback is in place. |
+| IN PROGRESS | A real run that has started and has no final result yet. |
+| SIMULATED | Our code over a model of PayPal on a fake clock. It says nothing about PayPal itself. |
+
+When a page here and `docs/GATES.md` disagree, the gate record wins. The gate table above is generated from it when the site is built.
