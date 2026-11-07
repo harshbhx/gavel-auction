@@ -12,6 +12,7 @@
     "test:visual": "playwright test",
     "test:a11y": "playwright test a11y keyboard motion responsive",
     "test:screens": "playwright test -c playwright.screens.config.ts",
+    "test:screens:live": "playwright test -c playwright.screens.live.config.ts",
     "screens:index": "node test/screens/build-index.mjs ui-screens-out",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
