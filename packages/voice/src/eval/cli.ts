@@ -132,6 +132,8 @@ const manifestSchema = z.array(
     expected: z.object({
       outcome: z.enum(['bid', 'confirm', 'none']),
       amountCents: z.number().int().optional(),
+      /** Paddle the clip names aloud; the label the manifest carries for clips with no speaker id. */
+      paddle: z.string().optional(),
     }),
   }),
 );
@@ -245,7 +247,11 @@ function audioExpected(c: AudioCase): Expected {
   if (c.expected.outcome === 'bid') {
     return {
       outcome: 'bid',
-      pair: { who: c.speakerBidderId ?? '', amountCents: c.expected.amountCents ?? 0 },
+      // A clip that names a paddle aloud expects that paddle; the speaker id is the fallback.
+      pair: {
+        who: c.expected.paddle ?? c.speakerBidderId ?? '',
+        amountCents: c.expected.amountCents ?? 0,
+      },
     };
   }
   if (c.expected.outcome === 'confirm') return { outcome: 'confirm', acceptableConfirm: [] };
