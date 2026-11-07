@@ -262,7 +262,8 @@ describe('CeilingSlider', () => {
     const slider = screen.getByRole('slider');
     slider.getBoundingClientRect = () =>
       ({ left: 0, width: 200, top: 0, height: 56, right: 200, bottom: 56, x: 0, y: 0 }) as DOMRect;
-    fireEvent.pointerDown(slider, { clientX: 100, pointerId: 1 });
+    // jsdom has no PointerEvent with coordinates, so a mouse event of the pointer type stands in.
+    fireEvent(slider, new MouseEvent('pointerdown', { clientX: 100, bubbles: true }));
     expect(onChange).toHaveBeenLastCalledWith(55000);
   });
 
