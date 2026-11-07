@@ -905,7 +905,7 @@ function buildAudit(ctx) {
         ],
         labels: ['synthetic', 'simulated'],
         verify: [
-          'Check out the repository at the commit above, run the in-process runner (`vite-node packages/e2e/src/runner/cli.ts -- packages/e2e/scenarios --trace DIR`) and rebuild with `node scripts/hf/build-datasets.mjs`; seeds are fixed, so the rows match.',
+          'Check out the repository at the commit above, run the in-process runner as the workflow `hf-datasets` does (`scripts/hf/run-traces.mjs`) and rebuild with `node scripts/hf/build-datasets.mjs`; seeds are fixed, so the rows match.',
         ],
         labelNote:
           'Records of scripted demo auctions run by the repository end-to-end tests against a fake payment provider. No real people, no real money.',

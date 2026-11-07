@@ -18,7 +18,7 @@ export const RULES = [
   ['private key block', /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
   [
     'secret-looking assignment',
-    /\b(?:client_secret|api_key|apikey|access_token|password|passwd|secret)["']?\s*[:=]\s*["']?(?!\[REDACTED\]|null|false|true)[A-Za-z0-9_.\/+-]{12,}/i,
+    /\b(?:client_secret|api_key|apikey|access_token|password|passwd|secret)["']?\s*[:=]\s*["']?(?!\[REDACTED\]|null|false|true)[A-Za-z0-9_./+-]{12,}/i,
   ],
   ['ipv4 address', /\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b/],
   [

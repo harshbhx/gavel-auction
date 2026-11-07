@@ -16,19 +16,19 @@ Description (paste into the collection):
 
 ## Order and descriptions
 
-| #   | Dataset                        | Label                         | Rows                                                                      | License   |
-| --- | ------------------------------ | ----------------------------- | ------------------------------------------------------------------------- | --------- |
-| 1   | `<namespace>/gavel-gates`      | real sandbox, synthetic audio | 6 gates, evidence file hashes, nightly results, red-team and audit counts | CC-BY-4.0 |
-| 2   | `<namespace>/gavel-latency`    | real sandbox                  | summary statistics                                                        | CC-BY-4.0 |
-| 3   | `<namespace>/gavel-sim-30d`    | simulated                     | per lot and per hold                                                      | CC-BY-4.0 |
-| 4   | `<namespace>/gavel-stt-bids`   | synthetic audio               | 24 clips, 96 provider outputs                                             | CC-BY-4.0 |
-| 5   | `<namespace>/gavel-audit-demo` | synthetic, simulated          | scripted scenario traces                                                  | CC-BY-4.0 |
+| #   | Dataset                        | Label                         | Rows                                                                                | License   |
+| --- | ------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------- | --------- |
+| 1   | `<namespace>/gavel-gates`      | real sandbox, synthetic audio | 6 gates, evidence file hashes, nightly results, adversarial-review and audit counts | CC-BY-4.0 |
+| 2   | `<namespace>/gavel-latency`    | real sandbox                  | summary statistics                                                                  | CC-BY-4.0 |
+| 3   | `<namespace>/gavel-sim-30d`    | simulated                     | per lot and per hold                                                                | CC-BY-4.0 |
+| 4   | `<namespace>/gavel-stt-bids`   | synthetic audio               | 24 clips, 96 provider outputs                                                       | CC-BY-4.0 |
+| 5   | `<namespace>/gavel-audit-demo` | synthetic, simulated          | scripted scenario traces                                                            | CC-BY-4.0 |
 
 Exact row counts are in each dataset's `MANIFEST.json` and in the summary of the `hf-datasets` run.
 
 ### 1. gavel-gates
 
-Short description: Index of the six go/no-go experiments (G0 to G5): status, date, method, workflow run links, and a sha256 and link for every evidence file, plus aggregate counts of red-team and audit findings (found, closed, open, by label, severity and area; no issue text).
+Short description: Index of the six go/no-go experiments (G0 to G5): status, date, method, workflow run links, and a sha256 and link for every evidence file, plus aggregate counts of adversarial-review and audit findings (found, closed, open, by label, severity and area; no issue text).
 
 Tags: evidence, sandbox, payments, verification, checksums.
 

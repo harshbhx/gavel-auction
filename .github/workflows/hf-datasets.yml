@@ -59,7 +59,9 @@ jobs:
         run: npm exec -w @gavel/payments -- vitest run test/simdays
       - name: Run the demo scenarios and keep their traces
         if: ${{ env.DATASET == 'all' || env.DATASET == 'gavel-audit-demo' }}
-        run: npm exec -w @gavel/e2e -- vite-node src/runner/cli.ts -- "$GITHUB_WORKSPACE/packages/e2e/scenarios" --trace "$RUNNER_TEMP/traces"
+        run: |
+          npm exec -w @gavel/e2e -- vite-node ../../scripts/hf/run-traces.mjs -- "$GITHUB_WORKSPACE/packages/e2e/scenarios" --trace "$RUNNER_TEMP/traces"
+          ls "$RUNNER_TEMP/traces" | wc -l
       - name: Count the red-team and audit findings (aggregates only)
         if: ${{ env.DATASET == 'all' || env.DATASET == 'gavel-gates' }}
         env:
