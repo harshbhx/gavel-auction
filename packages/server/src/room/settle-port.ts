@@ -52,6 +52,11 @@ export interface BidMeta {
   confidence?: number;
   /** True once the bidder answered a confirm request for this bid (R-RT-046). */
   confirmed?: boolean;
+  /** Start and end of the spoken bid in the audio stream; voice bids only. */
+  audioStartMs?: number;
+  audioEndMs?: number;
+  /** The amount the parser heard, in cents; voice bids only. */
+  parsedCents?: Cents;
 }
 
 /** An engine that records the source and the audit fields of every bid. */

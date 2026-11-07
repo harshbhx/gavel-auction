@@ -141,8 +141,12 @@ export function authIdOf(e: {
 
 // @public
 export interface BidMeta {
+    // (undocumented)
+    audioEndMs?: number;
+    audioStartMs?: number;
     confidence?: number;
     confirmed?: boolean;
+    parsedCents?: Cents;
     // (undocumented)
     source: BidSource;
     // (undocumented)

@@ -140,6 +140,26 @@ function bidMeta(conn: Connection, msg: BidMsg, confirmed = false, manualBy?: st
   if (msg.transcript !== undefined) meta.transcript = stripControlChars(msg.transcript);
   if (meta.source === 'voice' && msg.confidence !== undefined) meta.confidence = msg.confidence;
   if (confirmed && meta.source === 'voice') meta.confirmed = true;
+  if (meta.source === 'voice') {
+    // The audit record of docs/PLAN.md 2.4 reaches the ledger: when it was said and what was heard.
+    if (msg.audioTsMs !== undefined) meta.audioStartMs = msg.audioTsMs;
+    if (msg.audioEndMs !== undefined) meta.audioEndMs = msg.audioEndMs;
+    if (isCents(msg.amount)) meta.parsedCents = msg.amount;
+  }
+  return meta;
+}
+
+/** The engine meta of a logged accepted bid; the same fields `bidMeta` gave it live. */
+function metaFromAudit(audit: AuditPayload): BidMeta {
+  const meta: BidMeta = { source: audit.source };
+  if (audit.transcript !== undefined) meta.transcript = audit.transcript;
+  if (audit.confidence !== undefined) meta.confidence = audit.confidence;
+  if (audit.confirmed === true) meta.confirmed = true;
+  if (audit.source === 'voice') {
+    if (audit.audioTsMs !== undefined) meta.audioStartMs = audit.audioTsMs;
+    if (audit.audioEndMs !== undefined) meta.audioEndMs = audit.audioEndMs;
+    if (audit.parsedAmount !== undefined) meta.parsedCents = audit.parsedAmount;
+  }
   return meta;
 }
 
@@ -1085,6 +1105,8 @@ export class Room {
         source: held.manualBy !== undefined ? 'manual' : 'voice',
         ...(held.transcript !== undefined ? { transcript: held.transcript } : {}),
         ...(held.confidence !== undefined ? { confidence: held.confidence } : {}),
+        ...(held.audioTsMs !== undefined ? { audioTsMs: held.audioTsMs } : {}),
+        ...(held.audioEndMs !== undefined ? { audioEndMs: held.audioEndMs } : {}),
       };
       // The accepted resolution and the bid are one log append (HRD-23): the hold is only
       // consumed when both are written; a refusal or a store error leaves it in place.
@@ -1108,6 +1130,8 @@ export class Room {
               ? { transcript: stripControlChars(msg.transcript) }
               : {}),
             ...(msg.confidence !== undefined ? { confidence: msg.confidence } : {}),
+            ...(msg.audioTsMs !== undefined ? { audioTsMs: msg.audioTsMs } : {}),
+            ...(msg.audioEndMs !== undefined ? { audioEndMs: msg.audioEndMs } : {}),
           }),
       expiresAt: (ts + CONFIRM_TTL_MS) as EpochMs,
     };
@@ -2182,12 +2206,13 @@ export class Room {
         }
         break;
       case 'bid_accepted':
-        placeBidOn(this.requireEngine(), event.bidderId, event.amount, event.ts, {
-          source: event.audit.source,
-          ...(event.audit.transcript !== undefined ? { transcript: event.audit.transcript } : {}),
-          ...(event.audit.confidence !== undefined ? { confidence: event.audit.confidence } : {}),
-          ...(event.audit.confirmed === true ? { confirmed: true } : {}),
-        });
+        placeBidOn(
+          this.requireEngine(),
+          event.bidderId,
+          event.amount,
+          event.ts,
+          metaFromAudit(event.audit),
+        );
         this.remember(event);
         break;
       case 'bid_rejected':
@@ -2253,6 +2278,12 @@ export class Room {
                     : {}),
                   ...(event.audit.confidence !== undefined
                     ? { confidence: event.audit.confidence }
+                    : {}),
+                  ...(event.audit.audioTsMs !== undefined
+                    ? { audioTsMs: event.audit.audioTsMs }
+                    : {}),
+                  ...(event.audit.audioEndMs !== undefined
+                    ? { audioEndMs: event.audit.audioEndMs }
                     : {}),
                 }),
             expiresAt: event.expiresAt,

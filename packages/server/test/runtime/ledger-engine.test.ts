@@ -68,6 +68,42 @@ describe('ledger engine timeline (INT-R3-13)', () => {
       audit: { transcript: 'ten thousand', confidenceBps: 9000 },
     });
   });
+
+  it('records the audio span, the parsed amount and integer basis points (issue 710)', () => {
+    const { engine, bidder } = build();
+    const res = engine.placeBidWith(bidder, 10000 as Cents, (NOW + 1000) as EpochMs, {
+      source: 'voice',
+      confidence: 0.07,
+      confirmed: true,
+      audioStartMs: 4200,
+      audioEndMs: 5100,
+      parsedCents: 10000 as Cents,
+    });
+    expect(res).toEqual({ ok: true });
+    expect(engine.commands.at(-1)).toMatchObject({
+      type: 'PlaceBid',
+      audit: {
+        confidenceBps: 700,
+        confirmed: true,
+        audioStartMs: 4200,
+        audioEndMs: 5100,
+        parsedCents: 10000,
+      },
+    });
+  });
+
+  it('leaves the audio span out of a qr bid', () => {
+    const { engine, bidder } = build();
+    engine.placeBidWith(bidder, 10000 as Cents, (NOW + 1000) as EpochMs, {
+      source: 'qr',
+      audioStartMs: 4200,
+      audioEndMs: 5100,
+    });
+    const cmd = engine.commands.at(-1);
+    const audit = cmd?.type === 'PlaceBid' ? cmd.audit : undefined;
+    expect(audit?.audioStartMs).toBeUndefined();
+    expect(audit?.audioEndMs).toBeUndefined();
+  });
 });
 
 describe('ledger engine confirm gate (R6-C01)', () => {

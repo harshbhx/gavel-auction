@@ -17,6 +17,7 @@ import {
   CROCKFORD,
   DEFAULT_MAX_CEILING_CENTS,
   GavelError,
+  confidenceToBps,
   type AuctionConfig,
   type AuctionId,
   type BidderId,
@@ -414,7 +415,13 @@ function auditOf(meta: BidMeta): Extract<Command, { type: 'PlaceBid' }>['audit']
     scored && meta.confirmed !== true ? {} : { confirmed: true };
   if (meta.transcript !== undefined) audit.transcript = meta.transcript.slice(0, LIMITS.transcript);
   if (scored && meta.confidence !== undefined) {
-    audit.confidenceBps = Math.round(meta.confidence * 10_000);
+    // The single conversion point to integer basis points (issue 710).
+    audit.confidenceBps = confidenceToBps(meta.confidence);
+  }
+  if (scored) {
+    if (meta.audioStartMs !== undefined) audit.audioStartMs = meta.audioStartMs;
+    if (meta.audioEndMs !== undefined) audit.audioEndMs = meta.audioEndMs;
+    if (meta.parsedCents !== undefined) audit.parsedCents = meta.parsedCents;
   }
   return audit;
 }
