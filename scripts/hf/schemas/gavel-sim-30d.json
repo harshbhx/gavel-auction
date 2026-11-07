@@ -1,0 +1,102 @@
+{
+  "dataset": "gavel-sim-30d",
+  "version": "1.0.0",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "note": "First release: S8 per-lot and per-hold rows, S1 to S8 check counts."
+    }
+  ],
+  "tables": {
+    "lots.jsonl": {
+      "source": "packages/payments/test/simdays/scenarios.ts (scenario 8, SIM_EXPORT_DIR)",
+      "rows": {
+        "exact": 40
+      },
+      "primaryKey": ["lot_id"],
+      "fields": {
+        "scenario": "string",
+        "lot_id": "string",
+        "close_day": "number",
+        "holds": "integer",
+        "storm": "boolean",
+        "status": "string",
+        "journal_state": "string",
+        "sold": "boolean",
+        "winner_bidder": "string?",
+        "winner_cents": "integer?",
+        "runner_up_fallback": "boolean",
+        "crashes": "integer",
+        "passes": "integer",
+        "down_days": "number",
+        "review_cause": "string?",
+        "faults": "string",
+        "held_cents": "integer",
+        "captured_cents": "integer",
+        "released_cents": "integer",
+        "open_cents": "integer"
+      },
+      "min": {
+        "close_day": 0,
+        "holds": 0,
+        "crashes": 0,
+        "passes": 0,
+        "down_days": 0,
+        "winner_cents": 1,
+        "held_cents": 0,
+        "captured_cents": 0,
+        "released_cents": 0,
+        "open_cents": 0
+      },
+      "max": {
+        "close_day": 30
+      },
+      "enum": {
+        "status": ["settled", "review"]
+      }
+    },
+    "holds.jsonl": {
+      "source": "packages/payments/test/simdays/scenarios.ts (scenario 8, SIM_EXPORT_DIR)",
+      "rows": {
+        "min": 40
+      },
+      "primaryKey": ["hold_id"],
+      "fields": {
+        "hold_id": "string",
+        "lot_id": "string",
+        "bidder": "string",
+        "ceiling_cents": "integer",
+        "opened_day": "number",
+        "captured_cents": "integer",
+        "released_cents": "integer",
+        "open_cents": "integer",
+        "authorizations_in_chain": "integer"
+      },
+      "min": {
+        "ceiling_cents": 1,
+        "opened_day": 0,
+        "captured_cents": 0,
+        "released_cents": 0,
+        "open_cents": 0,
+        "authorizations_in_chain": 1
+      }
+    },
+    "scenarios.jsonl": {
+      "source": "packages/payments/test/simdays/multiday.test.ts (results of S1 to S8)",
+      "rows": {
+        "exact": 8
+      },
+      "primaryKey": ["scenario"],
+      "fields": {
+        "scenario": "string",
+        "title": "string",
+        "checks": "integer",
+        "checks_passed": "integer"
+      },
+      "min": {
+        "checks": 1,
+        "checks_passed": 0
+      }
+    }
+  }
+}
