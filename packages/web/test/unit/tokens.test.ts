@@ -54,7 +54,7 @@ describe('themes', () => {
   });
 
   it('overrides every colour token in each non-light theme', () => {
-    const names = [...tokens.matchAll(/^\s+(--color-[a-z-]+):/gm)].map((m) => m[1]);
+    const names = [...tokens.matchAll(/^\s+(--color-[a-z0-9-]+):/gm)].map((m) => m[1]);
     expect(names.length).toBeGreaterThan(8);
     const dark = /:root\[data-theme='dark'\] \{([\s\S]*?)\n\}/.exec(themes)?.[1] ?? '';
     const projector = /:root\[data-theme='projector'\] \{([\s\S]*?)\n\}/.exec(themes)?.[1] ?? '';
