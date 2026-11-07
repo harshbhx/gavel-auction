@@ -33,7 +33,7 @@ Thorough, skilled use of the PayPal platform and AI, a genuine and non-trivial i
 | [Gates G0 to G5](/docs/proof/gates) | Real sandbox runs for authorize, partial capture, card and guest authorize and webhook verification | PASS for G0, G1, G2, G4 |
 | [Settlement saga](/docs/how-it-works/settlement-saga), [Idempotency](/docs/how-it-works/idempotency) | A pure state machine, a journal saved before each call, deterministic request ids | Tested against the fake PayPal; one lot of three holds and one in-process crash on the real sandbox |
 | [Webhooks](/docs/safety/webhooks) | Signature verification through PayPal's endpoint | PASS on six real events (G4); tampered-event rejection is fake only |
-| [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) | Speech-to-text, a parser and a validator that never decides a winner or moves money | G5 FAIL on synthetic audio; confirm prompt is the fallback |
+| [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) | Speech-to-text, a parser and a validator that never decides a winner or moves money | G5 PARTIAL, synthetic audio only; every spoken bid confirms |
 | [Quality checks](/docs/proof/quality-checks) | Unit, property, scenario and differential checks run in CI | See the page for what is and is not measured |
 
 ### 2. Design
@@ -78,5 +78,5 @@ The video shows it working end to end, and the pitch states the problem, the aud
 ## Where the evidence is thin
 
 - The hosted app (gavel-web.creharsh.workers.dev, sandbox mode, temporary storage) has not been walked end to end. A judge can open it, read the evidence, and run the fake-PayPal demo locally.
-- G3 has no result yet. G5 failed on synthetic speech and there is no real-room test.
+- G3 has no result yet. G5 is PARTIAL: wrong accept 0.000 on synthetic, noise-free clips after fixes chosen on the same clips, and there is no real-room test.
 - The security review checklist (SEC-01 to SEC-18) has no sign-off recorded. See [Tough questions](/docs/judges/tough-questions).

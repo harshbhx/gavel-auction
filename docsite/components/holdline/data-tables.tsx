@@ -71,7 +71,7 @@ export function SpeechTable() {
     <Scroll label="Speech to text accuracy, gate G5">
       <table className={table}>
         <caption className="sr-only">
-          Speech to text accuracy on 24 synthetic clips per set. The limit for wrong accepts is 0.05.
+          Speech to text accuracy on 24 synthetic clips per set. The limit for wrong accepts is 0.05. A row within the limit is still synthetic, noise-free audio, scored on the same clips the fixes were chosen on.
         </caption>
         <thead>
           <tr>
@@ -92,7 +92,12 @@ export function SpeechTable() {
               <td className={`${td} font-mono`}>{r.n}</td>
               <td className={`${td} font-mono`}>{r.exact}</td>
               <td className={`${td} font-mono font-bold`}>
-                {r.wrongAccept} <span className="text-[var(--hl-stop)]">over limit</span>
+                {r.wrongAccept}{' '}
+                {Number(r.wrongAccept) > 0.05 ? (
+                  <span className="text-[var(--hl-stop)]">over limit</span>
+                ) : (
+                  <span className="text-fd-muted-foreground">within limit</span>
+                )}
               </td>
               <td className={`${td} font-mono`}>{r.confirm}</td>
               <td className={`${td} font-mono`}>{r.missedBid}</td>

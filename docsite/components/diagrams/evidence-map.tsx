@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { Chip } from '@/components/holdline/chip';
+import { GateBadge } from '@/components/holdline/chip';
 import { gateById, repoData } from '@/lib/repo-data';
 import { DiagramFrame } from './frame';
 import { DetailPanel, useHot } from './interactive';
@@ -18,7 +18,7 @@ import { Defs, T, hatch } from './kit';
 
 const codeUrl = (path: string) => `https://github.com/harshbhx/gavel-auction/blob/main/${path}`;
 
-export type EvStatus = 'PASS' | 'FAIL' | 'IN PROGRESS' | 'SIMULATED' | 'OPEN' | 'CI';
+export type EvStatus = 'PASS' | 'FAIL' | 'PARTIAL' | 'IN PROGRESS' | 'SIMULATED' | 'OPEN' | 'CI';
 
 type Row = {
   id: string;
@@ -33,6 +33,7 @@ function gateStatus(id: string): EvStatus {
   const g = gateById(id);
   if (g.status === 'PASS') return 'PASS';
   if (g.status === 'FAIL') return 'FAIL';
+  if (g.status === 'PARTIAL') return 'PARTIAL';
   return 'IN PROGRESS';
 }
 
@@ -87,7 +88,7 @@ function rows(): Row[] {
       status: gateStatus('G5'),
       ranOn: 'Recorded provider outputs, synthetic audio',
       evidence: ['docs/GATES.md', 'packages/voice/fixtures/stt-cache', 'packages/voice/fixtures/stt-cache-human', '.github/workflows/voice-eval.yml'],
-      limit: `Wrong-accept ${lo} to ${hi} on 24 synthetic clips per set against a limit of 0.05, for both providers. No real-room or noisy-room test. Spoken bids go through the confirm prompt.`,
+      limit: `Wrong-accept ${lo} to ${hi} on 24 synthetic, noise-free clips per set (limit 0.05), for both providers, after fixes chosen on those same clips (the 15 hold-out clips only check for regressions). No real-room or noisy-room test. Spoken bids always go through the confirm prompt.`,
     },
     {
       id: 'sim',
@@ -172,11 +173,12 @@ function rows(): Row[] {
   ];
 }
 
-const ORDER: EvStatus[] = ['PASS', 'FAIL', 'IN PROGRESS', 'SIMULATED', 'OPEN', 'CI'];
+const ORDER: EvStatus[] = ['PASS', 'FAIL', 'PARTIAL', 'IN PROGRESS', 'SIMULATED', 'OPEN', 'CI'];
 
 const MEANING: Record<EvStatus, string> = {
   PASS: 'a recorded sandbox run passed, with evidence',
   FAIL: 'a recorded run failed; the fallback is in force',
+  PARTIAL: 'a run exists but does not close the gate question (for example synthetic data only)',
   'IN PROGRESS': 'a real run is under way; no result yet',
   SIMULATED: 'a simulation with a fake clock, not a PayPal result',
   OPEN: 'evidence exists but the claim is not concluded or not signed off',
@@ -194,11 +196,11 @@ function Pill({ x, y, status, p }: { x: number; y: number; status: EvStatus; p: 
     <g>
       {status === 'PASS' && <rect x={x} y={y} width={w} height={h} rx={2} className="fill-solid" />}
       {status === 'FAIL' && <rect x={x} y={y} width={w} height={h} rx={2} className="node-stop" />}
-      {status === 'IN PROGRESS' && <rect x={x} y={y} width={w} height={h} rx={2} fill={hatch(p)} className="fill-hatch-edge" />}
+      {(status === 'IN PROGRESS' || status === 'PARTIAL') && <rect x={x} y={y} width={w} height={h} rx={2} fill={hatch(p)} className="fill-hatch-edge" />}
       {status === 'SIMULATED' && <rect x={x} y={y} width={w} height={h} rx={2} className="edge-dash" />}
       {status === 'OPEN' && <rect x={x} y={y} width={w} height={h} rx={2} className="fill-hollow" />}
       {status === 'CI' && <rect x={x} y={y} width={w} height={h} rx={2} className="panel-2" style={{ stroke: 'var(--hl-hairline)' }} />}
-      {status === 'IN PROGRESS' && <rect x={x + 8} y={y + 5} width={w - 16} height={h - 10} rx={1} style={{ fill: 'var(--hl-panel)' }} />}
+      {(status === 'IN PROGRESS' || status === 'PARTIAL') && <rect x={x + 8} y={y + 5} width={w - 16} height={h - 10} rx={1} style={{ fill: 'var(--hl-panel)' }} />}
       <text
         x={x + w / 2}
         y={y + 17.5}
@@ -255,11 +257,11 @@ export function EvidenceMapDiagram() {
   return (
     <DiagramFrame
       title="Evidence map: claim, status, evidence"
-      desc={`A table of ${data.length} claims. Each row has the claim, a status (PASS, FAIL, IN PROGRESS, SIMULATED, OPEN or CI), what it ran on, and the first file or workflow that backs it. Gates G0, G1, G2 and G4 pass on the PayPal sandbox, G3 is in progress, G5 fails on synthetic audio, the 30 day run is simulated, and the security checklist is not signed off.`}
+      desc={`A table of ${data.length} claims. Each row has the claim, a status (PASS, FAIL, PARTIAL, IN PROGRESS, SIMULATED, OPEN or CI), what it ran on, and the first file or workflow that backs it. Gates G0, G1, G2 and G4 pass on the PayPal sandbox, G3 is in progress, G5 is partial (synthetic audio only), the 30 day run is simulated, and the security checklist is not signed off.`}
       width={1200}
       height={height}
       minWidth={1000}
-      badge={<Chip kind="stop">G5 FAIL</Chip>}
+      badge={<GateBadge id="G5" />}
       toolbar={
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter claims by status">
