@@ -7,6 +7,7 @@ import { defineConfig } from '@playwright/test';
  * `npm run test:screens -w @gavel/web`; browsers are installed in CI only.
  */
 const PORT = 4174;
+const BAD_CONFIG_PORT = 4175;
 
 export default defineConfig({
   testDir: 'test/screens',
@@ -54,17 +55,32 @@ export default defineConfig({
       use: { browserName: 'chromium', viewport: { width: 1440, height: 900 } },
     },
   ],
-  webServer: {
-    command: `npm run dev -- --host 127.0.0.1 --port ${PORT} --strictPort`,
-    url: `http://127.0.0.1:${PORT}`,
-    reuseExistingServer: false,
-    timeout: 60_000,
-    env: {
-      VITE_API_BASE: 'http://localhost:8787',
-      VITE_WS_BASE: 'ws://localhost:8787',
-      VITE_PAYPAL_CLIENT_ID: 'sandbox-client',
-      VITE_SANDBOX: 'true',
-      VITE_PAYMENTS: 'fake',
+  webServer: [
+    {
+      command: `npm run dev -- --host 127.0.0.1 --port ${PORT} --strictPort`,
+      url: `http://127.0.0.1:${PORT}`,
+      reuseExistingServer: false,
+      timeout: 60_000,
+      env: {
+        VITE_API_BASE: 'http://localhost:8787',
+        VITE_WS_BASE: 'ws://localhost:8787',
+        VITE_PAYPAL_CLIENT_ID: 'sandbox-client',
+        VITE_SANDBOX: 'true',
+        VITE_PAYMENTS: 'fake',
+      },
     },
-  },
+    {
+      // Same app with VITE_SANDBOX left out: the boot configuration error screen.
+      command: `npm run dev -- --host 127.0.0.1 --port ${BAD_CONFIG_PORT} --strictPort`,
+      url: `http://127.0.0.1:${BAD_CONFIG_PORT}`,
+      reuseExistingServer: false,
+      timeout: 60_000,
+      env: {
+        VITE_API_BASE: 'http://localhost:8787',
+        VITE_WS_BASE: 'ws://localhost:8787',
+        VITE_PAYPAL_CLIENT_ID: 'sandbox-client',
+        VITE_PAYMENTS: 'fake',
+      },
+    },
+  ],
 });
