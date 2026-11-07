@@ -1,11 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import type { WsFactory } from '../../src/stt/deepgram.js';
 import { FakeStt, VirtualClock } from '../../src/stt/fake.js';
 import { classifyHttpStatus, type FetchLike } from '../../src/stt/groq.js';
 import type { SttProvider } from '../../src/stt/provider.js';
 import { SttConfigError, selectProvider, type SttName } from '../../src/stt/select.js';
 import { scanText } from '../../scripts/secret-scan.js';
 
+const noSocket: WsFactory = () => {
+  throw new Error('no network in tests');
+};
 const noFetch: FetchLike = () => Promise.reject(new Error('no network in tests'));
 
 function stub(name: SttName): SttProvider {
@@ -144,13 +148,17 @@ describe('README provider list matches selectProvider', () => {
     const names = [...line.matchAll(/`(\w+)`/g)].map((m) => m[1] ?? '');
     expect(names.length).toBeGreaterThan(0);
     for (const name of names) {
-      const p = selectProvider({ VOICE_STT: name, GROQ_API_KEY: 'k' }, { fetch: noFetch });
+      const p = selectProvider(
+        { VOICE_STT: name, GROQ_API_KEY: 'k', DEEPGRAM_API_KEY: 'k' },
+        { fetch: noFetch, socket: noSocket },
+      );
       expect(p.name).toBe(name);
     }
   });
 
   it('does not document a provider selectProvider cannot build', () => {
     expect(readme).not.toMatch(/Deepgram provider|moves from Deepgram/);
+    // Deepgram needs a WebSocket factory as well as a key; without one it is not built.
     expect(() => selectProvider({ VOICE_STT: 'deepgram', DEEPGRAM_API_KEY: 'k' })).toThrow(
       SttConfigError,
     );
