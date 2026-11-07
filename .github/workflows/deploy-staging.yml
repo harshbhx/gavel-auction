@@ -76,4 +76,4 @@ jobs:
         env:
           GAVEL_STAGING_URL: ${{ vars.STAGING_URL }}
           GAVEL_REQUIRE_STAGING: '1'
-        run: npx vitest run --project unit:e2e test/security/headers test/security/fuzz
+        run: npx vitest run --project unit:e2e test/security/headers test/security/fuzz test/security/staging

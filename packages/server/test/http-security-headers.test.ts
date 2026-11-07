@@ -8,6 +8,7 @@ describe('securityHeaders (T-QA-076)', () => {
     expect(h.get('strict-transport-security')).toMatch(/max-age=\d+/);
     expect(h.get('x-content-type-options')).toBe('nosniff');
     expect(h.get('referrer-policy')).toBe('no-referrer');
+    expect(h.get('permissions-policy')).toContain('microphone=()');
   });
 
   it('replaces a weaker value already present', () => {
