@@ -147,6 +147,8 @@ export const en = {
   'bid.announce.price': 'Price is now {amount}. Paddle {n} is leading.',
   'bid.announce.outbid': 'You have been outbid. Current price {amount}.',
   'bid.vibrate': 'Vibrate when outbid',
+  'alerts.mute': 'Mute alerts',
+  'alerts.unmute': 'Unmute alerts',
   'confirm.title': 'Did you mean {amount} for paddle {n}?',
   'confirm.yes': 'Yes, that is my bid',
   'confirm.no': 'No',
