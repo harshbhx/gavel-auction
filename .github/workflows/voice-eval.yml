@@ -92,7 +92,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: ./.github/actions/setup
       - name: Install speech synthesizer
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq espeak-ng jq
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq espeak-ng ffmpeg jq
       - name: Render synthetic clips (noise-free, not a real-room test)
         run: bash packages/voice/scripts/render-clips.sh
       - name: Live eval against both providers, recording provider output
