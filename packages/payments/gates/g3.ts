@@ -71,6 +71,21 @@ export interface G3Deps {
   gatesMdPath?: string;
 }
 
+/** PayPal answers 200 or 201 to an order create (as g1 accepts) with a CREATED or PAYER_ACTION_REQUIRED order. */
+export function orderCreationOk(
+  http: number,
+  orderStatus: string,
+  orderId: string,
+  approveUrl: string,
+): boolean {
+  return (
+    (http === 200 || http === 201) &&
+    (orderStatus === 'CREATED' || orderStatus === 'PAYER_ACTION_REQUIRED') &&
+    orderId !== '' &&
+    approveUrl !== ''
+  );
+}
+
 async function newAuthorization(
   ctx: GateContext,
   deps: G3Deps,
@@ -110,7 +125,7 @@ async function newAuthorization(
     });
     const orderId = str(field(res.json, 'id'));
     const approveUrl = approveLink(res.json);
-    if (res.status !== 201 || orderId === '' || approveUrl === '') {
+    if (!orderCreationOk(res.status, str(field(res.json, 'status')), orderId, approveUrl)) {
       throw fail('order creation', res.status, res.json);
     }
     return { orderId, approveUrl };
