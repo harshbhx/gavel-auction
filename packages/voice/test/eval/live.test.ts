@@ -215,3 +215,29 @@ describe('eval CLI live mode', () => {
     expect(logs.join('\n')).not.toContain(KEY);
   });
 });
+
+describe('transcribeLive request options', () => {
+  it('writes a Deepgram query override and Groq model, prompt and temperature into the request', async () => {
+    const dg = fakeFetch([200], deepgramBody);
+    await transcribeLive('deepgram', tone, KEY, {
+      fetch: dg.fetch,
+      sleep: noSleep,
+      options: { deepgramQuery: 'model=nova-3&numerals=true' },
+    });
+    expect(dg.calls[0]?.url).toBe('https://api.deepgram.com/v1/listen?model=nova-3&numerals=true');
+    const gq = fakeFetch([200], { text: 'x' });
+    await transcribeLive('groq', tone, KEY, {
+      fetch: gq.fetch,
+      sleep: noSleep,
+      options: {
+        groqModel: 'whisper-large-v3',
+        groqPrompt: 'Paddle 12, 350.',
+        groqTemperature: '0',
+      },
+    });
+    const form = gq.calls[0]?.init.body as FormData;
+    expect(form.get('model')).toBe('whisper-large-v3');
+    expect(form.get('prompt')).toBe('Paddle 12, 350.');
+    expect(form.get('temperature')).toBe('0');
+  });
+});
