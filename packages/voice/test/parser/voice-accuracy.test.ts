@@ -106,7 +106,7 @@ describe('statements and questions', () => {
   });
 
   it('a question mark after words that are not a bid still drops', () => {
-    expect(parseUtterance('what about the three vases?', ctx).status).toBe('none');
+    expect(parseUtterance('what are those three vases?', ctx).status).toBe('none');
   });
 });
 
