@@ -1,6 +1,6 @@
 # Submission checklist and submit gate
 
-Refs #324. Deadline: Thu Nov 12 2026 12:00 PST. Internal target: submit by Nov 12 04:00 PST. A box is [x] only when it was verified on `main` (checked 2026-11-05). Everything else stays [ ] until its owner acts. The owner signs the final gate; the gate script (`scripts/check-submission.mjs`) and the submit-gate workflow named in #324 do not exist yet.
+Refs #324. Deadline: Thu Nov 12 2026 12:00 PST. Internal target: submit by Nov 12 04:00 PST. A box is [x] only when it was verified on `main` (checked 2026-11-05). Everything else stays [ ] until its owner acts. The owner signs the final gate; run the gate with `node scripts/check-submission.mjs` (no secrets, Node only) or the `submit-gate` workflow (workflow_dispatch); it prints a report and writes it to the job summary. An unchecked row counts as open unless the row carries a written waiver. `--strict-devpost` also fails on empty OWNER fields.
 
 | Done | Item                                                              | Owner          | Note                                                                                                                                                                                                              |
 | ---- | ----------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
