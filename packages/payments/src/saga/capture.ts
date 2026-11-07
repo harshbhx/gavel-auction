@@ -123,6 +123,18 @@ const PER_HOLD_KINDS: ReadonlySet<string> = new Set([
   'not_found',
 ]);
 
+/**
+ * A capture PayPal refuses because the authorization is older than its honor period names this
+ * hold, not the merchant: 422 `AUTHORIZATION_NOT_HONORED_AFTER_HONOR_PERIOD`. It carries no
+ * kind of its own in the error map (it arrives as `rejected`), so it is recognised here by its
+ * issue name. UNVERIFIED (G3): the exact name PayPal uses.
+ */
+const HONOR_PERIOD_ISSUE = 'AUTHORIZATION_NOT_HONORED_AFTER_HONOR_PERIOD';
+
+function isHonorPeriodRefusal(err: PayPalError): boolean {
+  return err.status === 422 && err.outcome === 'definite' && err.issue === HONOR_PERIOD_ISSUE;
+}
+
 const FAILED_TRUTH: ReadonlySet<HoldTruth['status']> = new Set([
   'VOIDED',
   'EXPIRED',
@@ -652,7 +664,8 @@ class Run {
       return { status: 'pending', reason: 'capture_outcome_unknown', journal: this.j };
     }
     if (INVARIANT_KINDS.has(err.kind)) return this.fail('invariant');
-    if (!PER_HOLD_KINDS.has(err.kind)) {
+    const honorRefusal = isHonorPeriodRefusal(err);
+    if (!PER_HOLD_KINDS.has(err.kind) && !honorRefusal) {
       // Unclassified refusal: keep the intent, surface it, and let the unknown deadline
       // send it to review. Never the next candidate.
       await this.startUnknownClock();
@@ -676,7 +689,7 @@ class Run {
     const out = await this.judge(truth, t, err);
     if (out !== undefined) return out;
     if (err.kind === 'already_captured') return this.fail('mismatch');
-    return this.definiteFail(t.bidderId, err.kind);
+    return this.definiteFail(t.bidderId, honorRefusal ? 'honor_period_expired' : err.kind);
   }
 
   private async won(
