@@ -12,7 +12,9 @@ import { renderReport, type ReportItem } from './report.js';
  *   npm run eval -- --mode text [--set dev|heldout|all] [--out dir]
  *   npm run eval -- --mode cached --provider deepgram
  *   (add --mic room|device: the microphone rule of the gate; room is what the room runs)
- *   npm run eval -- --mode live --provider deepgram
+ *   npm run eval -- --mode live --provider deepgram [--record fixtures/stt-cache]
+ *   (--record writes the provider text, latency and confidence per clip, never a key, so the
+ *   cached mode can replay the run)
  *
  * Every item is scored twice: the bare parser (parse accuracy) and the room pipeline (AUTO,
  * CONFIRM or DROP after rescoring, validation, policy and the mic rule). When a recording has no
@@ -46,6 +48,8 @@ export interface CliOptions {
   set: EvalSet;
   out: string;
   mic: GateMic;
+  /** Live mode only: directory (package-relative) that receives <provider>/<clip id>.json. */
+  record?: string;
 }
 
 export function parseArgs(argv: readonly string[]): CliOptions | string {
@@ -79,6 +83,8 @@ export function parseArgs(argv: readonly string[]): CliOptions | string {
       opts.mic = value;
     } else if (flag === '--out') {
       opts.out = value;
+    } else if (flag === '--record') {
+      opts.record = value;
     } else {
       return `unknown flag ${String(flag)}`;
     }
@@ -306,12 +312,18 @@ async function liveItems(
   key: string,
   transcribe: NonNullable<CliDeps['transcribe']>,
   mic: GateMic,
+  record?: string,
 ): Promise<ReportItem[]> {
   const cases = audioCases(deps);
   return mapLimited(cases, LIVE_CONCURRENCY, async (c) => {
     const started = Date.now();
     const { text, confidence } = await transcribe(c.id, provider, key);
-    return audioItem(c, text, Date.now() - started, provider, mic, confidence);
+    const latencyMs = Date.now() - started;
+    if (record !== undefined) {
+      const rec = { text, latencyMs, ...(confidence === undefined ? {} : { confidence }) };
+      deps.writeFile(`${record}/${provider}/${c.id}.json`, `${JSON.stringify(rec, null, 2)}\n`);
+    }
+    return audioItem(c, text, latencyMs, provider, mic, confidence);
   });
 }
 
@@ -351,7 +363,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<nu
           return EXIT_NOT_RUN;
         }
       }
-      items = await liveItems(deps, opts.provider, key, deps.transcribe, opts.mic);
+      items = await liveItems(deps, opts.provider, key, deps.transcribe, opts.mic, opts.record);
       setLabel = 'audio';
     }
   } catch (err) {
