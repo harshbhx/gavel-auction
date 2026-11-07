@@ -56,7 +56,7 @@ Short description: 24 synthetic bid utterances (audio, intended text, expected p
 
 Tags: synthetic, speech-to-text, bid-parsing, espeak-ng.
 
-Why this data matters: spoken numbers ("two fifty no wait three hundred") are hard for transcription services, and the project failed its own accuracy gate on them, which is why spoken bids always go through a confirm step. The data lets anyone replay that result offline and compare services. It is synthetic and noise-free, so it says nothing about a real room.
+Why this data matters: spoken numbers ("two fifty no wait three hundred") are hard for transcription services, and the project's accuracy gate on them (G5) is PARTIAL, not passed: the numbers are measured in sample on 24 noise-free synthetic clips, so spoken bids always go through a confirm step. The data lets anyone replay that result offline and compare services. It is synthetic and noise-free, so it says nothing about a real room.
 
 ### 5. gavel-audit-demo
 
