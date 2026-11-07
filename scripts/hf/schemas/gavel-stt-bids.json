@@ -1,0 +1,107 @@
+{
+  "dataset": "gavel-stt-bids",
+  "version": "1.0.0",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "note": "First release: 24 synthetic clips, provider outputs for two clip sets (human set text only), scores."
+    }
+  ],
+  "tables": {
+    "audio/metadata.jsonl": {
+      "source": "packages/voice/fixtures/audio/manifest.json; packages/voice/fixtures/audio/recordings/*.wav",
+      "rows": {
+        "exact": 24
+      },
+      "primaryKey": ["id"],
+      "fields": {
+        "file_name": "string",
+        "id": "string",
+        "text": "string",
+        "category": "string",
+        "voice_id": "string",
+        "speaker_bidder_id": "string?",
+        "seed": "integer",
+        "context_min_increment_cents": "integer",
+        "context_current_price_cents": "integer",
+        "expected_outcome": "string",
+        "expected_amount_cents": "integer?",
+        "acceptable_confirm": "json",
+        "duration_s": "number"
+      },
+      "min": {
+        "duration_s": 0.1,
+        "seed": 0,
+        "context_min_increment_cents": 1,
+        "context_current_price_cents": 0,
+        "expected_amount_cents": 0
+      },
+      "max": {
+        "duration_s": 30
+      },
+      "enum": {
+        "expected_outcome": ["bid", "confirm", "none"]
+      },
+      "pattern": {
+        "id": "^a[0-9]{2}$"
+      }
+    },
+    "provider_outputs.jsonl": {
+      "source": "packages/voice/fixtures/stt-cache/*/*.json; packages/voice/fixtures/stt-cache-human/*/*.json",
+      "rows": {
+        "exact": 96
+      },
+      "primaryKey": ["clip_set", "id", "provider"],
+      "fields": {
+        "clip_set": "string",
+        "id": "string",
+        "provider": "string",
+        "model": "string",
+        "reference_text": "string",
+        "provider_text": "string",
+        "latency_ms": "integer",
+        "wer": "number",
+        "exact_match": "boolean",
+        "output_has_digits": "boolean",
+        "category": "string",
+        "expected_outcome": "string"
+      },
+      "min": {
+        "latency_ms": 0,
+        "wer": 0
+      },
+      "enum": {
+        "clip_set": ["espeak", "human"],
+        "provider": ["deepgram", "groq"],
+        "expected_outcome": ["bid", "confirm", "none"]
+      }
+    },
+    "scores.jsonl": {
+      "source": "derived from provider_outputs.jsonl",
+      "rows": {
+        "exact": 4
+      },
+      "primaryKey": ["clip_set", "provider"],
+      "fields": {
+        "clip_set": "string",
+        "provider": "string",
+        "model": "string",
+        "clips": "integer",
+        "mean_wer": "number",
+        "exact_match_rate": "number",
+        "clips_with_digits_in_output": "integer",
+        "latency_p50_ms": "integer",
+        "latency_p95_ms": "integer"
+      },
+      "min": {
+        "clips": 1,
+        "mean_wer": 0,
+        "exact_match_rate": 0,
+        "latency_p50_ms": 0
+      },
+      "max": {
+        "exact_match_rate": 1
+      }
+    }
+  }
+}

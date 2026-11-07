@@ -1,0 +1,10 @@
+{
+  "name": "GAVEL",
+  "short_name": "GAVEL",
+  "description": "A live auction where every bid is a PayPal hold. Only the winning price is captured. PayPal sandbox only.",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

@@ -10,7 +10,7 @@ full: true
 A bid in GAVEL is a small message with an amount in cents. It can come from a tap on a phone or from speech in the room. Either way it passes the same short chain: the **room** decides whether it needs a human yes, the **engine** decides whether the bid is legal, and only then does it reach the event log and the other screens.
 
 <Callout type="info" title="Verified against the code, not measured">
-  This page describes code paths that were read in the repository. It makes no speed or accuracy claim. Speech accuracy is a separate, failed gate: see the note on G5 below.
+  This page describes code paths that were read in the repository. It makes no speed or accuracy claim. Speech accuracy is a separate, still partial gate: see the note on G5 below.
 </Callout>
 
 ## In plain words
@@ -44,8 +44,8 @@ A drop is written to the log as a `voice_dropped` record (reason and confidence,
   </Tab>
 </Tabs>
 
-<Held title="Spoken bids and the failed accuracy gate">
-  <GateBadge id="G5" /> Speech accuracy missed the threshold on synthetic audio, and there is no real-room test. The recorded decision is that spoken bids go through the confirm prompt. In the code as wired, the voice bridge has no second parser, so a clean reading scores at most 0.82, below the 0.85 auto line, and every spoken bid arrives as a confirm. The code does not have a separate switch for this. See [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) and [Gates](/docs/proof/gates).
+<Held title="Spoken bids and the partial accuracy gate">
+  <GateBadge id="G5" /> Speech accuracy is within the threshold only on synthetic, noise-free audio, with fixes chosen on those same clips, and there is no real-room test. The recorded decision is that spoken bids go through the confirm prompt. In the code as wired, the voice bridge has no second parser, so a clean reading scores at most 0.82, below the 0.85 auto line, and every spoken bid arrives as a confirm. The code does not have a separate switch for this. See [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) and [Gates](/docs/proof/gates).
 </Held>
 
 ## The confirm gate

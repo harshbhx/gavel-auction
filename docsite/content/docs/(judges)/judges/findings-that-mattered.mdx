@@ -1,0 +1,249 @@
+---
+title: Findings that mattered
+description: The six critical red-team findings with their fixes and tests, the high findings by theme, and what is still open.
+icon: Bug
+status: in progress
+---
+
+The repository was reviewed in repeated adversarial passes: red-team rounds 1 to 13, plus separate audit passes. Every finding is a GitHub issue with a file, a line, a scenario and a suggested fix. This page shows the six findings labelled critical, the 96 labelled high grouped by theme, and the numbers behind both. It is a snapshot taken on 7 Nov 2026. Titles are quoted from the issues; nothing here is secret, because the issues are public.
+
+## The numbers
+
+Counted with `gh` on 7 Nov 2026 (queries at the end of the page).
+
+- 606 issues carry the `red-team` label. 589 are closed and 17 are open.
+- Of those 606, 37 are batch or epic issues that track the fix work (their titles start with `FEATURE:` or `EPIC`). The other 569 are individual findings: 560 closed, 9 open.
+- Severity labels on the 569 findings: 6 critical (6 closed), 96 high (93 closed), 210 medium (208 closed), 97 low (95 closed). 160 findings have no severity label (158 closed). Later rounds mostly did not set one.
+- Three further label sets are separate from `red-team` and are not in the 606: `audit-r1` has 27 issues (23 closed), `audit-r2` has 33 (all closed) and `redteam-r4` has 68 (67 closed).
+
+"Closed" means the issue is closed after a fix PR merged. The count does not separate issues closed by a code change from any closed as a duplicate or as not real, so it is not a count of code changes.
+
+### Found and fixed per round
+
+A round is the tag in the issue title: `RT` for the first pass, then `R2` to `R13`. The three labelled sets are shown at the bottom.
+
+<div style={{ overflowX: 'auto' }}>
+<svg role="img" aria-labelledby="chart-rounds-title chart-rounds-desc" viewBox="0 0 720 492" width="100%" style={{ minWidth: 560, maxWidth: 720, height: "auto" }} xmlns="http://www.w3.org/2000/svg">
+<title id="chart-rounds-title">Findings raised and fixed in each review round</title>
+<desc id="chart-rounds-desc">Horizontal bars, one row per round. Round 1 (RT): 141 found, 137 fixed; Round 2 (R2): 104 found, 102 fixed; Round 3 (R3): 65 found, 64 fixed; Round 4 (R4): 46 found, 46 fixed; Round 5 (R5): 15 found, 15 fixed; Round 6 (R6): 23 found, 23 fixed; Round 7 (R7): 25 found, 25 fixed; Round 8 (R8): 37 found, 37 fixed; Round 9 (R9): 16 found, 16 fixed; Round 10 (R10): 17 found, 17 fixed; Round 11 (R11): 6 found, 6 fixed; Round 12 (R12): 53 found, 51 fixed; Round 13 (R13): 19 found, 19 fixed; Untagged: 2 found, 2 fixed; audit-r1 label: 27 found, 23 fixed; audit-r2 label: 33 found, 33 fixed; redteam-r4 label: 68 found, 67 fixed.</desc>
+<rect x="170" y="14" width="14" height="10" style={{ fill: "var(--hl-border)" }} />
+<text x="190" y="23" fontSize="12" style={{ fill: "var(--hl-fg)" }}>found</text>
+<rect x="250" y="14" width="14" height="10" style={{ fill: "var(--hl-go)" }} />
+<text x="270" y="23" fontSize="12" style={{ fill: "var(--hl-fg)" }}>fixed (issue closed)</text>
+<text x="162" y="57" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>Round 1 (RT)</text>
+<rect x="170" y="44" width="440.0" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="48" width="427.5" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="616.0" y="57" fontSize="12" style={{ fill: "var(--hl-fg)" }}>137 of 141</text>
+<text x="162" y="81" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>Round 2 (R2)</text>
+<rect x="170" y="68" width="324.5" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="72" width="318.3" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="500.5" y="81" fontSize="12" style={{ fill: "var(--hl-fg)" }}>102 of 104</text>
+<text x="162" y="105" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>Round 3 (R3)</text>
+<rect x="170" y="92" width="202.8" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="96" width="199.7" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="378.8" y="105" fontSize="12" style={{ fill: "var(--hl-fg)" }}>64 of 65</text>
+<text x="162" y="129" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>Round 4 (R4)</text>
+<rect x="170" y="116" width="143.5" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="120" width="143.5" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="319.5" y="129" fontSize="12" style={{ fill: "var(--hl-fg)" }}>46 of 46</text>
+<text x="162" y="153" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>Round 5 (R5)</text>
+<rect x="170" y="140" width="46.8" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="144" width="46.8" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="222.8" y="153" fontSize="12" style={{ fill: "var(--hl-fg)" }}>15 of 15</text>
+<text x="162" y="177" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>Round 6 (R6)</text>
+<rect x="170" y="164" width="71.8" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="168" width="71.8" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="247.8" y="177" fontSize="12" style={{ fill: "var(--hl-fg)" }}>23 of 23</text>
+<text x="162" y="201" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>Round 7 (R7)</text>
+<rect x="170" y="188" width="78.0" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="192" width="78.0" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="254.0" y="201" fontSize="12" style={{ fill: "var(--hl-fg)" }}>25 of 25</text>
+<text x="162" y="225" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>Round 8 (R8)</text>
+<rect x="170" y="212" width="115.5" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="216" width="115.5" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="291.5" y="225" fontSize="12" style={{ fill: "var(--hl-fg)" }}>37 of 37</text>
+<text x="162" y="249" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>Round 9 (R9)</text>
+<rect x="170" y="236" width="49.9" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="240" width="49.9" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="225.9" y="249" fontSize="12" style={{ fill: "var(--hl-fg)" }}>16 of 16</text>
+<text x="162" y="273" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>Round 10 (R10)</text>
+<rect x="170" y="260" width="53.0" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="264" width="53.0" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="229.0" y="273" fontSize="12" style={{ fill: "var(--hl-fg)" }}>17 of 17</text>
+<text x="162" y="297" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>Round 11 (R11)</text>
+<rect x="170" y="284" width="18.7" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="288" width="18.7" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="194.7" y="297" fontSize="12" style={{ fill: "var(--hl-fg)" }}>6 of 6</text>
+<text x="162" y="321" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>Round 12 (R12)</text>
+<rect x="170" y="308" width="165.4" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="312" width="159.1" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="341.4" y="321" fontSize="12" style={{ fill: "var(--hl-fg)" }}>51 of 53</text>
+<text x="162" y="345" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>Round 13 (R13)</text>
+<rect x="170" y="332" width="59.3" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="336" width="59.3" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="235.3" y="345" fontSize="12" style={{ fill: "var(--hl-fg)" }}>19 of 19</text>
+<text x="162" y="369" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>Untagged</text>
+<rect x="170" y="356" width="6.2" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="360" width="6.2" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="182.2" y="369" fontSize="12" style={{ fill: "var(--hl-fg)" }}>2 of 2</text>
+<text x="162" y="393" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>audit-r1 label</text>
+<rect x="170" y="380" width="84.3" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="384" width="71.8" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="260.3" y="393" fontSize="12" style={{ fill: "var(--hl-fg)" }}>23 of 27</text>
+<text x="162" y="417" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>audit-r2 label</text>
+<rect x="170" y="404" width="103.0" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="408" width="103.0" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="279.0" y="417" fontSize="12" style={{ fill: "var(--hl-fg)" }}>33 of 33</text>
+<text x="162" y="441" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>redteam-r4 label</text>
+<rect x="170" y="428" width="212.2" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="432" width="209.1" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="388.2" y="441" fontSize="12" style={{ fill: "var(--hl-fg)" }}>67 of 68</text>
+</svg>
+</div>
+
+### Severity split
+
+<div style={{ overflowX: 'auto' }}>
+<svg role="img" aria-labelledby="chart-sev-title chart-sev-desc" viewBox="0 0 720 170" width="100%" style={{ minWidth: 560, maxWidth: 720, height: "auto" }} xmlns="http://www.w3.org/2000/svg">
+<title id="chart-sev-title">Red-team findings by severity label, found and fixed</title>
+<desc id="chart-sev-desc">critical: 6 found, 6 fixed; high: 96 found, 93 fixed; medium: 210 found, 208 fixed; low: 97 found, 95 fixed; no severity label: 160 found, 158 fixed.</desc>
+<rect x="170" y="14" width="14" height="10" style={{ fill: "var(--hl-border)" }} />
+<text x="190" y="23" fontSize="12" style={{ fill: "var(--hl-fg)" }}>found</text>
+<rect x="250" y="14" width="14" height="10" style={{ fill: "var(--hl-go)" }} />
+<text x="270" y="23" fontSize="12" style={{ fill: "var(--hl-fg)" }}>fixed (issue closed)</text>
+<text x="162" y="53" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>critical</text>
+<rect x="170" y="40" width="12.6" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="44" width="12.6" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="188.6" y="53" fontSize="12" style={{ fill: "var(--hl-fg)" }}>6 of 6</text>
+<text x="162" y="77" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>high</text>
+<rect x="170" y="64" width="201.1" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="68" width="194.9" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="377.1" y="77" fontSize="12" style={{ fill: "var(--hl-fg)" }}>93 of 96</text>
+<text x="162" y="101" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>medium</text>
+<rect x="170" y="88" width="440.0" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="92" width="435.8" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="616.0" y="101" fontSize="12" style={{ fill: "var(--hl-fg)" }}>208 of 210</text>
+<text x="162" y="125" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>low</text>
+<rect x="170" y="112" width="203.2" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="116" width="199.0" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="379.2" y="125" fontSize="12" style={{ fill: "var(--hl-fg)" }}>95 of 97</text>
+<text x="162" y="149" fontSize="12" textAnchor="end" style={{ fill: "var(--hl-fg)" }}>no severity label</text>
+<rect x="170" y="136" width="335.2" height="16" style={{ fill: "var(--hl-border)" }} />
+<rect x="170" y="140" width="331.0" height="8" style={{ fill: "var(--hl-go)" }} />
+<text x="511.2" y="149" fontSize="12" style={{ fill: "var(--hl-fg)" }}>158 of 160</text>
+</svg>
+</div>
+
+## The six critical findings
+
+There are six critical issues but five distinct defects, because #698 and #700 report the same break. All six issues were found by reading the code in a red-team round, and each cites file and line. All six are closed. None was found by a failing test; in the web cases the existing tests passed because they only used the web package's own copy of the contract.
+
+### 1. The web app could not talk to the server
+
+- What was wrong: the web package kept its own copy of the wire protocol. Every frame it sent lacked the `v` field and used different names, so the server closed the socket. Every frame the server sent failed the web guard and was dropped without an error. A live room could never render and no bid could be placed.
+- Found: red-team round 1, on 4 Nov 2026.
+- Issue: [#700](https://github.com/harshbhx/gavel-auction/issues/700), and the same break seen from the integration side in [#698](https://github.com/harshbhx/gavel-auction/issues/698).
+- Fix: [PR #869](https://github.com/harshbhx/gavel-auction/pull/869) deletes the local copy and builds on `@gavel/shared`. #698 was closed by [PR #1477](https://github.com/harshbhx/gavel-auction/pull/1477).
+- Regression test: `delivers frames encoded by the shared codec` and `does not send a message the shared schema rejects` in [`packages/web/test/unit/connection.test.tsx`](https://github.com/harshbhx/gavel-auction/blob/main/packages/web/test/unit/connection.test.tsx).
+- Evidence: [issue #700](https://github.com/harshbhx/gavel-auction/issues/700), [issue #698](https://github.com/harshbhx/gavel-auction/issues/698), [PR #869](https://github.com/harshbhx/gavel-auction/pull/869).
+
+### 2. Registration called hold routes that did not exist
+
+- What was wrong: the web adapter posted to `/api/rooms/{roomId}/orders` and `/holds`, but the payments contract defines `POST /api/holds` and `POST /api/holds/{holdId}/approve`. Every registration would have hit a 404 and shown `order_failed`. The adapter also sent the bidder id and the ceiling from the browser, so the browser chose the hold amount.
+- Found: red-team round 1, on 4 Nov 2026.
+- Issue: [#699](https://github.com/harshbhx/gavel-auction/issues/699).
+- Fix: [PR #1477](https://github.com/harshbhx/gavel-auction/pull/1477), merged 5 Nov 2026. The adapters call the contract routes with the shared schemas and send no bidder id.
+- Regression test: `sends bodies the shared hold contract accepts and names no bidder (WEB-RT-03)` in [`packages/web/test/unit/paypalAdapter.test.ts`](https://github.com/harshbhx/gavel-auction/blob/main/packages/web/test/unit/paypalAdapter.test.ts), plus the schema tests in [`packages/shared/test/hold-contract.test.ts`](https://github.com/harshbhx/gavel-auction/blob/main/packages/shared/test/hold-contract.test.ts).
+- Evidence: [issue #699](https://github.com/harshbhx/gavel-auction/issues/699), [PR #1477](https://github.com/harshbhx/gavel-auction/pull/1477).
+
+### 3. Three frames shared one sequence number and all but one were dropped
+
+- What was wrong: the server sends `bid_accepted`, `price` and `audit_event` with the same `seq`. The web reducer discarded any frame with `seq <= lastSeq`, so after the first one the others were lost. A bidder's own screen kept the old price and showed the wrong status. Other clients never received a live audit row. An existing test, `replay of seq [1,2,2,3] equals [1,2,3]`, encoded the wrong rule.
+- Found: red-team round 2, on 4 Nov 2026.
+- Issue: [#890](https://github.com/harshbhx/gavel-auction/issues/890).
+- Fix: [PR #1017](https://github.com/harshbhx/gavel-auction/pull/1017). The reducer dedupes on the pair (seq, type), not on seq alone.
+- Regression test: `applies bid_accepted, price and audit_event that share one seq` in [`packages/web/test/unit/roundTwoBlocking.test.ts`](https://github.com/harshbhx/gavel-auction/blob/main/packages/web/test/unit/roundTwoBlocking.test.ts). A second test in the same file, `still drops a repeat of the same type at one seq`, keeps the original protection.
+- Evidence: [issue #890](https://github.com/harshbhx/gavel-auction/issues/890), [PR #1017](https://github.com/harshbhx/gavel-auction/pull/1017).
+
+### 4. A fallback sale could be charged but never booked
+
+- What was wrong: when the winner's capture was declined, the saga captured the runner-up. The engine still had the first bidder as winner, so `SettlementBridge.finish` threw `winner_mismatch`. The runner-up had been charged, the lot stayed in SETTLING forever, `CloseAuction` was never sent and every resume repeated the same error.
+- Found: red-team round 3, on 4 Nov 2026.
+- Issue: [#1060](https://github.com/harshbhx/gavel-auction/issues/1060).
+- Fix: [PR #1134](https://github.com/harshbhx/gavel-auction/pull/1134), merged 4 Nov 2026. `finish()` promotes the engine through the journal's failed bidders until the engine winner equals the charged bidder.
+- Regression test: `promotes the engine to the charged runner-up, completes the lot and closes` and `resumes after a crash that happened between the promote and CompleteLot` in [`packages/payments/test/bridge/settlement-bridge.test.ts`](https://github.com/harshbhx/gavel-auction/blob/main/packages/payments/test/bridge/settlement-bridge.test.ts).
+- Evidence: [issue #1060](https://github.com/harshbhx/gavel-auction/issues/1060), [PR #1134](https://github.com/harshbhx/gavel-auction/pull/1134).
+
+### 5. One bad registration could make an auction impossible to load
+
+- What was wrong: `Room.registerBidder` appended the registration to the log first and asked the engine afterwards. A ceiling the engine refuses (above its maximum) was therefore stored, the call threw, and every later replay hit the same throw. The room could never load again, and neither could its settlement or any other bidder's hold.
+- Found: red-team round 3, on 4 Nov 2026.
+- Issue: [#1061](https://github.com/harshbhx/gavel-auction/issues/1061).
+- Fix: [PR #1139](https://github.com/harshbhx/gavel-auction/pull/1139), merged 4 Nov 2026. The engine registration runs before the append, and replay skips a stored registration the engine refuses so an already poisoned log still loads.
+- Regression test: `does not store a registration the engine refuses, so replay still loads (SERVICE-R3-01)` and `skips an already stored registration the engine refuses instead of failing the load (SERVICE-R3-01)` in [`packages/server/test/room.test.ts`](https://github.com/harshbhx/gavel-auction/blob/main/packages/server/test/room.test.ts).
+- Evidence: [issue #1061](https://github.com/harshbhx/gavel-auction/issues/1061), [PR #1139](https://github.com/harshbhx/gavel-auction/pull/1139).
+
+## High findings by theme
+
+The 96 high findings are grouped by the main thing each one was about. Each issue is counted once, so the groups add up to 96. Two readers could file a few of them differently, so treat the split as a guide. The "open" column counts issues still open today.
+
+| Theme | High | Open | Two examples | Filter |
+| --- | --- | --- | --- | --- |
+| Money (holds, captures, prices, voids, remainders) | 19 | 0 | [#718](https://github.com/harshbhx/gavel-auction/issues/718): Fake invariant allows capturing above the hold the buyer authorized<br />[#1082](https://github.com/harshbhx/gavel-auction/issues/1082): Check and release the winner's authorization remainder after capture | [filtered list](https://github.com/harshbhx/gavel-auction/issues?q=is%3Aissue+label%3Ared-team+label%3Aseverity%3Ahigh+capture+OR+hold+OR+void+OR+price+OR+remainder) |
+| Idempotency, retry and crash safety | 12 | 0 | [#892](https://github.com/harshbhx/gavel-auction/issues/892): Stop PromoteRunnerUp retries from failing with command_conflict when the promotion ends unsold<br />[#1081](https://github.com/harshbhx/gavel-auction/issues/1081): Recover the ledger file from a failed partial write and fail on mid-file corruption | [filtered list](https://github.com/harshbhx/gavel-auction/issues?q=is%3Aissue+label%3Ared-team+label%3Aseverity%3Ahigh+retry+OR+idempotent+OR+resume+OR+crash) |
+| Auth, tokens and privacy of ceilings | 6 | 0 | [#727](https://github.com/harshbhx/gavel-auction/issues/727): Check jti replay and denylist, which verifyToken never consults<br />[#724](https://github.com/harshbhx/gavel-auction/issues/724): Redact ceilings for every non-owner, not only for screens | [filtered list](https://github.com/harshbhx/gavel-auction/issues?q=is%3Aissue+label%3Ared-team+label%3Aseverity%3Ahigh+token+OR+ceiling+OR+redact+OR+secret) |
+| Webhooks and settlement events | 3 | 0 | [#1064](https://github.com/harshbhx/gavel-auction/issues/1064): Make webhook application crash-safe: hold status is saved before the engine revoke, so a crash drops the revoke permanently<br />[#717](https://github.com/harshbhx/gavel-auction/issues/717): The settlement runner, hold service, real PayPal client, reconciler, webhook processor and fake HTTP server do not exist | [filtered list](https://github.com/harshbhx/gavel-auction/issues?q=is%3Aissue+label%3Ared-team+label%3Aseverity%3Ahigh+webhook) |
+| Voice | 12 | 0 | [#731](https://github.com/harshbhx/gavel-auction/issues/731): Gate ASR repair so a trailing 'for'/'to' after a number is not turned into a digit<br />[#1327](https://github.com/harshbhx/gavel-auction/issues/1327): The room marks every bid as confirmed before it reaches the engine, so a voice bid with any confidence skips the confirm gate | [filtered list](https://github.com/harshbhx/gavel-auction/issues?q=is%3Aissue+label%3Ared-team+label%3Aseverity%3Ahigh+voice+OR+ASR+OR+transcription) |
+| Realtime and the web client | 17 | 0 | [#722](https://github.com/harshbhx/gavel-auction/issues/722): Ship the room host, HTTP routes, store and ports that the spec requires<br />[#911](https://github.com/harshbhx/gavel-auction/issues/911): Private frames consume global seqs, so every rejected bid or registration forces all other clients to resync | [filtered list](https://github.com/harshbhx/gavel-auction/issues?q=is%3Aissue+label%3Ared-team+label%3Aseverity%3Ahigh+seq+OR+snapshot+OR+resync+OR+frame+OR+room) |
+| CI and tests | 7 | 0 | [#719](https://github.com/harshbhx/gavel-auction/issues/719): Required CI jobs pass vacuously: secrets, scenarios and e2e are echo stubs<br />[#901](https://github.com/harshbhx/gavel-auction/issues/901): Make the sandbox secrets unreachable: they are repository secrets and the protecting environment does not exist | [filtered list](https://github.com/harshbhx/gavel-auction/issues?q=is%3Aissue+label%3Ared-team+label%3Aseverity%3Ahigh+CI+OR+required+OR+workflow+OR+secrets) |
+| Wire contract and integration | 18 | 3 | [#708](https://github.com/harshbhx/gavel-auction/issues/708): Engine cannot record or settle: five commands throw bad_command<br />[#896](https://github.com/harshbhx/gavel-auction/issues/896): Move the hold route schemas into shared: web cannot import the payments contract the docs say it uses | [filtered list](https://github.com/harshbhx/gavel-auction/issues?q=is%3Aissue+label%3Ared-team+label%3Aseverity%3Ahigh+contract+OR+shared+OR+integration) |
+| Engine and ledger | 2 | 0 | [#1063](https://github.com/harshbhx/gavel-auction/issues/1063): Wire AbortLot to a caller: nothing sends the kill-switch cancel, so the pre-hammer void path does not exist at runtime<br />[#1188](https://github.com/harshbhx/gavel-auction/issues/1188): The ledger export, verifyJsonl and the verify-ledger command in the spec do not exist | [filtered list](https://github.com/harshbhx/gavel-auction/issues?q=is%3Aissue+label%3Ared-team+label%3Aseverity%3Ahigh+engine+OR+ledger) |
+
+The filter links open the GitHub issue list for high red-team issues with a keyword match. A keyword match is looser than the grouping above, so its count will not equal the table. The exact issue numbers per theme:
+
+- Money (holds, captures, prices, voids, remainders): #701, #704, #706, #707, #715, #718, #736, #737, #900, #914, #1062, #1066, #1067, #1068, #1071, #1076, #1082, #1217, #1378
+- Idempotency, retry and crash safety: #891, #892, #898, #905, #1065, #1070, #1075, #1077, #1079, #1080, #1081, #1209
+- Auth, tokens and privacy of ceilings: #724, #725, #726, #727, #728, #1273
+- Webhooks and settlement events: #717, #894, #1064
+- Voice: #702, #731, #732, #733, #734, #735, #908, #909, #910, #1327, #1445, #1447
+- Realtime and the web client: #722, #723, #729, #730, #738, #739, #740, #904, #906, #907, #911, #912, #913, #915, #916, #1069, #1078
+- CI and tests: #719, #720, #721, #901, #902, #903, #1271
+- Wire contract and integration: #703, #705, #708, #709, #710, #711, #712, #713, #714, #716, #893, #895, #896, #897, #899, #1072, #1073, #1074
+- Engine and ledger: #1063, #1188
+
+Money, realtime state and the wire contract between packages hold most of the high findings. Webhooks are a small group (3). Seven were about CI that passed without testing anything, which is the kind of problem a green badge hides.
+
+## What is still open
+
+Open today: 17 `red-team` issues, of which 8 are batch trackers and 9 are findings. The 9 findings are 3 high ([#710](https://github.com/harshbhx/gavel-auction/issues/710), [#712](https://github.com/harshbhx/gavel-auction/issues/712), [#1074](https://github.com/harshbhx/gavel-auction/issues/1074)), 2 medium ([#760](https://github.com/harshbhx/gavel-auction/issues/760), [#959](https://github.com/harshbhx/gavel-auction/issues/959)), 2 low ([#824](https://github.com/harshbhx/gavel-auction/issues/824), [#986](https://github.com/harshbhx/gavel-auction/issues/986)) and 2 with no severity label ([#1598](https://github.com/harshbhx/gavel-auction/issues/1598), [#1602](https://github.com/harshbhx/gavel-auction/issues/1602)).
+
+Outside the `red-team` label, 4 `audit-r1` issues and 1 `redteam-r4` issue are open. One of them is rated high: [#1708](https://github.com/harshbhx/gavel-auction/issues/1708), the auction HTTP routes are not mounted in the running server. These are gaps between modules that exist and what the running server wires up, not hidden defects.
+
+Closed does not mean proven correct. A closed finding has a merged fix and, where the issue asked for one, a regression test. It has not been checked by an independent reviewer, and the real PayPal sandbox gates are tracked separately in the [evidence index](/docs/judges/evidence-index).
+
+## How these numbers were computed
+
+All counts come from the GitHub issue tracker with the `gh` CLI, run on 7 Nov 2026:
+
+```bash
+R=harshbhx/gavel-auction
+# totals and open counts per label
+gh issue list -R $R -l red-team -s all  -L 2000 --json number --jq length   # 606
+gh issue list -R $R -l red-team -s open -L 2000 --json number --jq length   # 17
+for l in audit-r1 audit-r2 redteam-r4; do
+  gh issue list -R $R -l $l -s all  -L 2000 --json number --jq length
+  gh issue list -R $R -l $l -s open -L 2000 --json number --jq length
+done
+# severity, within red-team
+for s in critical high medium low; do
+  gh issue list -R $R -l red-team -l severity:$s -s all  -L 2000 --json number --jq length
+  gh issue list -R $R -l red-team -l severity:$s -s open -L 2000 --json number --jq length
+done
+# every red-team issue with its title, state and dates, used for the rounds and trackers
+gh issue list -R $R -l red-team -s all -L 2000 --json number,title,state,labels,createdAt,closedAt
+# fix PRs: the cross-referenced events on each critical issue
+gh api repos/$R/issues/<n>/timeline --paginate
+gh pr view <pr> -R $R --json title,state,mergedAt,body
+```
+
+Rules applied to that data: batch issues are those whose title starts with `FEATURE:` or `EPIC`; the round is the first tag in the title (`RT`, `R2` to `R13`, and `R7P` counted in round 7); an issue counts as fixed when it is closed. The theme of each high finding was assigned by reading its title and body. Test names were read from the added lines of each fix PR's diff and checked against `main`.

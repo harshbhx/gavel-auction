@@ -1,0 +1,112 @@
+{
+  "dataset": "gavel-audit-demo",
+  "version": "1.0.0",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "note": "First release: step, outcome, ledger and rejection tables of the 15 scripted scenarios."
+    }
+  ],
+  "tables": {
+    "events.jsonl": {
+      "source": "packages/e2e/scenarios/*.yaml run by packages/e2e/src/runner/cli.ts --trace",
+      "rows": {
+        "min": 15
+      },
+      "primaryKey": ["scenario", "seq"],
+      "fields": {
+        "scenario": "string",
+        "seq": "integer",
+        "t_ms": "integer",
+        "kind": "string",
+        "action": "string?",
+        "actor": "string?",
+        "amount_cents": "integer?",
+        "ceiling_cents": "integer?",
+        "fault_at": "string?",
+        "fault_kind": "string?",
+        "detail": "json"
+      },
+      "min": {
+        "seq": 0,
+        "t_ms": 0,
+        "amount_cents": 0,
+        "ceiling_cents": 0
+      },
+      "enum": {
+        "kind": ["step", "fault"]
+      },
+      "pattern": {
+        "scenario": "^S[0-9]{2}$"
+      }
+    },
+    "outcomes.jsonl": {
+      "source": "result events of the same traces",
+      "rows": {
+        "min": 1
+      },
+      "primaryKey": ["scenario"],
+      "fields": {
+        "scenario": "string",
+        "seed": "integer",
+        "winner": "string?",
+        "price_cents": "integer?",
+        "captured_cents": "integer",
+        "released_cents": "integer",
+        "voided": "string",
+        "bids_accepted": "integer",
+        "bids_rejected": "integer",
+        "paypal_capture_calls": "integer",
+        "paypal_void_calls": "integer",
+        "paypal_reauthorize_calls": "integer",
+        "crashes": "integer",
+        "restarts": "integer",
+        "webhooks_delivered": "integer",
+        "webhooks_duplicate": "integer",
+        "soft_close_extensions": "integer",
+        "final_auction_state": "string?",
+        "invariant_i1": "boolean",
+        "invariant_i2": "boolean",
+        "invariant_i3": "boolean",
+        "invariant_i4": "boolean",
+        "invariant_i5": "boolean"
+      },
+      "min": {
+        "price_cents": 0,
+        "captured_cents": 0,
+        "released_cents": 0,
+        "bids_accepted": 0,
+        "bids_rejected": 0,
+        "crashes": 0,
+        "restarts": 0
+      }
+    },
+    "ledger_events.jsonl": {
+      "source": "ledger event types in the result events of the same traces",
+      "rows": {
+        "min": 15
+      },
+      "primaryKey": ["scenario", "seq"],
+      "fields": {
+        "scenario": "string",
+        "seq": "integer",
+        "event_type": "string"
+      },
+      "min": {
+        "seq": 0
+      }
+    },
+    "rejections.jsonl": {
+      "source": "rejected bids in the result events of the same traces",
+      "rows": {
+        "min": 0
+      },
+      "primaryKey": [],
+      "fields": {
+        "scenario": "string",
+        "actor": "string?",
+        "reason_code": "string"
+      }
+    }
+  }
+}

@@ -15,7 +15,7 @@ This is the label sheet from `docs/submission/VIDEO-SCRIPT.md`, with each row li
 | Webhook verification | Real sandbox, 6 events | G4 PASS; tampered-event rejection is fake only |
 | Full multi-bidder settlement | Fake PayPal | Not run end to end on the sandbox |
 | Crash and resume | Fake PayPal, test hook | In-process hook; no trigger on a hosted server |
-| Voice bid | Recorded replay | G5 failed on synthetic clips; confirm prompt; no real-room test |
+| Voice bid | Recorded replay | G5 partial, synthetic clips only; confirm prompt; no real-room test |
 | Honor period and reauthorize | Not shown as a result | G3 in progress |
 | Any money | Never a live charge | Sandbox only |
 
@@ -49,7 +49,7 @@ This is the label sheet from `docs/submission/VIDEO-SCRIPT.md`, with each row li
 | Settlement of a whole auction | Fake, plus one lot of three holds on the sandbox | [Settlement saga](/docs/how-it-works/settlement-saga) |
 | Crash recovery | Fake, plus one in-process crash on the sandbox | [Crash recovery](/docs/how-it-works/crash-recovery) |
 | Honor period | Unknown until G3 ends; the 30-day run is simulated | [Gate G3](/docs/proof/gate-g3), [simulation](/docs/proof/simulation) |
-| Voice | Recorded transcripts and cached provider outputs; G5 FAIL | [Gate G5](/docs/proof/gate-g5) |
+| Voice | Recorded transcripts and cached provider outputs; G5 PARTIAL | [Gate G5](/docs/proof/gate-g5) |
 | Replay | Recorded events, read only, labelled on screen | [Demo](/docs/start/demo) |
 | Hosted demo | Hosted, sandbox mode, temporary storage; no end-to-end walk recorded | [Demo](/docs/start/demo) |
 

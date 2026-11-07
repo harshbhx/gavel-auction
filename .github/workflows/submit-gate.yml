@@ -1,0 +1,35 @@
+name: submit-gate
+# Read-only final check before submitting (issue 324). Runs scripts/check-submission.mjs, which
+# needs no secrets: it calls public GitHub and site URLs and reads docs/SUBMISSION.md and
+# docs/submission/DEVPOST.md. The report goes to the job summary. Run it on demand.
+on:
+  workflow_dispatch:
+    inputs:
+      strict_devpost:
+        description: 'Fail when docs/submission/DEVPOST.md still has OWNER fields'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version-file: .nvmrc
+      - name: Run the submit gate
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          STRICT_DEVPOST: ${{ inputs.strict_devpost }}
+        run: |
+          flags=""
+          if [ "$STRICT_DEVPOST" = "true" ]; then flags="--strict-devpost"; fi
+          node scripts/check-submission.mjs $flags

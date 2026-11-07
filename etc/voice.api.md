@@ -1051,6 +1051,8 @@ export interface LiveDeps {
     backoffMs?: number;
     fetch: LiveFetch;
     maxAttempts?: number;
+    // Warning: (ae-forgotten-export) The symbol "LiveOptions" needs to be exported by the entry point index.d.ts
+    options?: LiveOptions;
     requestTimeoutMs?: number;
     sleep?: (ms: number) => Promise<void>;
     totalTimeoutMs?: number;

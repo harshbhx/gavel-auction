@@ -1,0 +1,64 @@
+[
+  {
+    "v": 1,
+    "env": "sandbox",
+    "settlements": 3,
+    "holdsPerSettlement": 6,
+    "voidConcurrency": 3,
+    "authorizationsUsed": 18,
+    "hammerToCaptured": {
+      "count": 3,
+      "failures": 0,
+      "min": 2416.68,
+      "p50": 2568.58,
+      "p95": 2856.05,
+      "p99": 2856.05,
+      "max": 2856.05
+    },
+    "hammerToSettled": {
+      "count": 3,
+      "failures": 0,
+      "min": 4643.37,
+      "p50": 5192.34,
+      "p95": 5504.41,
+      "p99": 5504.41,
+      "max": 5504.41
+    },
+    "mismatches": 0,
+    "errors": 0,
+    "runId": 42346020463,
+    "label": "pilot",
+    "date": "2026-11-07"
+  },
+  {
+    "v": 1,
+    "env": "sandbox",
+    "settlements": 20,
+    "holdsPerSettlement": 6,
+    "voidConcurrency": 3,
+    "authorizationsUsed": 120,
+    "hammerToCaptured": {
+      "count": 20,
+      "failures": 0,
+      "min": 2375.87,
+      "p50": 2558.73,
+      "p95": 3010.04,
+      "p99": 3251.97,
+      "max": 3251.97
+    },
+    "hammerToSettled": {
+      "count": 20,
+      "failures": 0,
+      "min": 4495.14,
+      "p50": 4937.13,
+      "p95": 5591.3,
+      "p99": 5724.31,
+      "max": 5724.31
+    },
+    "mismatches": 0,
+    "errors": 0,
+    "runId": 42346811713,
+    "label": "main",
+    "date": "2026-11-07"
+  }
+]

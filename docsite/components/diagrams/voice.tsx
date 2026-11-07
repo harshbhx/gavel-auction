@@ -1,7 +1,7 @@
 'use client';
 
-import { Chip } from '@/components/holdline/chip';
-import { gateById, repoData } from '@/lib/repo-data';
+import { GateBadge } from '@/components/holdline/chip';
+import { repoData } from '@/lib/repo-data';
 import { DiagramFrame } from './frame';
 import { Defs, Legend, Node, T } from './kit';
 
@@ -12,14 +12,13 @@ export function VoiceDiagram() {
   const wrong = repoData.speech.map((r) => Number(r.wrongAccept));
   const lo = Math.min(...wrong).toFixed(3);
   const hi = Math.max(...wrong).toFixed(3);
-  const g5 = gateById('G5');
   return (
     <DiagramFrame
       title="Voice pipeline and the confirm gate"
       desc="Audio goes from the microphone through a segmenter, speech to text, a parser and a decision step. The decision is accept, confirm or drop. Confirm goes to the confirm gate: the bidder is asked a question, yes places the bid after it is checked again, no or expiry places nothing. Drop is logged and places nothing. Manual entry and tap to bid skip speech and enter at the engine. A dashed path shows that a clean, high confidence parse can be accepted without the gate; the default build keeps scores below that line."
       width={1200}
       height={470}
-      badge={<Chip kind={g5.status === 'FAIL' ? 'stop' : g5.status === 'PASS' ? 'solid' : 'hatched'}>{`G5 ${g5.status}`}</Chip>}
+      badge={<GateBadge id="G5" />}
       caption={
         <>
           Read from <code>packages/voice/src/decide/policy.ts</code>, <code>decide.ts</code>, <code>score.ts</code>,{' '}
@@ -42,7 +41,7 @@ export function VoiceDiagram() {
             <li>The engine accepts or rejects the bid and an accepted bid is appended to the hash-chained ledger.</li>
           </ol>
           <p>
-            Gate G5 reads {g5.status} in docs/GATES.md. Wrong-accept {lo} to {hi} on 24 synthetic clips per set, against a limit of 0.05. No real-room or noisy-room test exists.
+            Gate G5 is PARTIAL: wrong-accept {lo} to {hi} on 24 synthetic, noise-free clips per set (limit 0.05), after fixes chosen on those same clips. No real-room or noisy-room test exists, and spoken bids always confirm.
           </p>
         </>
       }

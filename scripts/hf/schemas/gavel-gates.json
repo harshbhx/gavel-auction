@@ -1,0 +1,112 @@
+{
+  "dataset": "gavel-gates",
+  "version": "1.0.0",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "note": "First release: gate index, evidence file hashes, nightly results and the assurance (red-team and audit) aggregates."
+    }
+  ],
+  "tables": {
+    "gates.jsonl": {
+      "source": "docs/GATES.md (status lines)",
+      "rows": {
+        "exact": 6
+      },
+      "primaryKey": ["gate"],
+      "fields": {
+        "gate": "string",
+        "title": "string",
+        "status": "string",
+        "status_note": "string?",
+        "decision": "string?",
+        "date_utc": "string?",
+        "method": "string",
+        "label": "string",
+        "workflow_run_urls": "string",
+        "evidence_files": "string",
+        "gates_doc_url": "string"
+      },
+      "enum": {
+        "status": ["PASS", "FAIL", "PARTIAL", "NOT RUN", "IN PROGRESS"]
+      },
+      "pattern": {
+        "gate": "^G[0-5]$"
+      }
+    },
+    "evidence_files.jsonl": {
+      "source": "docs/evidence/**",
+      "rows": {
+        "min": 1
+      },
+      "primaryKey": ["path"],
+      "fields": {
+        "gate": "string",
+        "path": "string",
+        "bytes": "integer",
+        "sha256": "string",
+        "sha256_claimed_in_gates_md": "string?",
+        "matches_claim": "boolean?",
+        "url_at_commit": "string"
+      },
+      "min": {
+        "bytes": 1
+      },
+      "pattern": {
+        "sha256": "^[0-9a-f]{64}$"
+      }
+    },
+    "nightly_results.jsonl": {
+      "source": "docs/evidence/nightly/NIGHTLY-*.json",
+      "rows": {
+        "min": 1
+      },
+      "primaryKey": ["run_id", "spec"],
+      "fields": {
+        "run_id": "string",
+        "run_url": "string?",
+        "generated_at": "string",
+        "built_from_sha": "string",
+        "spec": "string",
+        "gate": "string",
+        "status": "string",
+        "observed": "string",
+        "finished_at": "string"
+      },
+      "enum": {
+        "status": ["pass", "fail", "inconclusive", "skipped"]
+      }
+    },
+    "assurance.jsonl": {
+      "source": "GitHub issues API, aggregated by scripts/hf/fetch-assurance.mjs (counts only, no issue text)",
+      "rows": {
+        "min": 1
+      },
+      "primaryKey": ["dimension", "key"],
+      "fields": {
+        "dimension": "string",
+        "key": "string",
+        "found": "integer",
+        "closed": "integer",
+        "open": "integer",
+        "closed_rate": "number",
+        "median_hours_to_close": "number?",
+        "query_url": "string",
+        "as_of_utc": "string"
+      },
+      "min": {
+        "found": 0,
+        "closed": 0,
+        "open": 0,
+        "closed_rate": 0
+      },
+      "max": {
+        "closed_rate": 1
+      },
+      "enum": {
+        "dimension": ["overall", "label", "severity", "area"]
+      },
+      "optional": true
+    }
+  }
+}

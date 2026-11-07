@@ -1,37 +1,37 @@
 ---
 title: Security review
-description: "The 18 item checklist and where it stands: every item is open."
+description: "The 18 item checklist and where it stands: all eight P0 items pass, three lower items are still open."
 icon: ClipboardCheck
-status: unverified
+status: in progress
 ---
 
-Checklist SEC-01 to SEC-18. Each item is PASS, FAIL (with an issue link) or N/A. A P0 FAIL blocks submission. The reviewer of an item is never its author. **Status OPEN means nobody has signed the item off yet.**
+Checklist SEC-01 to SEC-18. Each item is PASS, FAIL (with an issue link), ACCEPTED (a risk kept on purpose, with a justification) or N/A. A P0 FAIL blocks submission. The reviewer of an item is never its author. **Status OPEN means nobody has signed the item off yet.**
 
-<NotVerified title="No item is signed off">
+<NotVerified title="Reviewed independently of the authors, not yet signed by the owner">
 
-All 18 items are OPEN. The automated check named on each row exists; the sign-off by a second person does not. No FAIL is recorded. Submission is allowed when no P0 item is FAIL or OPEN, so the P0 items still need a reviewer.
+All eight P0 items (SEC-01 to SEC-07 and SEC-18) are PASS as of 2026-11-07, reviewed by someone who did not write the code, from the code, CI and read-only requests to the live hosts. SEC-10 and SEC-17 stay open until the web headers are deployed and checked, and SEC-15 (log scan) has not been run. SEC-11 is an accepted risk (speech vendor retention unverified, see the privacy notice). No FAIL is recorded. A human second look at the P0 rows is still advisable.
 
 </NotVerified>
 
 | ID | Priority | Area | Status | Automated check |
 | --- | --- | --- | --- | --- |
-| SEC-01 | P0 | Access control on auctioneer actions | OPEN | `packages/e2e/test/security/access.test.ts` |
-| SEC-02 | P0 | Bidder identity and token binding | OPEN | `access.test.ts` |
-| SEC-03 | P0 | Webhook authenticity | OPEN | `webhook.test.ts` |
-| SEC-04 | P0 | Secrets in repo, logs and bundle | OPEN | gitleaks workflow, bundle scan |
-| SEC-05 | P0 | Sandbox-only guard and boot validation | OPEN | `sandbox.test.ts` |
-| SEC-06 | P0 | Money integrity (integer cents, ledger) | OPEN | engine and payments tests |
-| SEC-07 | P0 | Injection and rendering of untrusted text | OPEN | `fuzz.test.ts` |
-| SEC-08 | P1 | Abusive input caps | OPEN | `abuse.test.ts` |
-| SEC-09 | P1 | CORS and origin allowlist | OPEN | T-QA-075 |
+| SEC-01 | P0 | Access control on auctioneer actions | PASS | `packages/e2e/test/security/access.test.ts` |
+| SEC-02 | P0 | Bidder identity and token binding | PASS | `access.test.ts` |
+| SEC-03 | P0 | Webhook authenticity | PASS | `webhook.test.ts` |
+| SEC-04 | P0 | Secrets in repo, logs and bundle | PASS | gitleaks workflow, bundle scan |
+| SEC-05 | P0 | Sandbox-only guard and boot validation | PASS | `sandbox.test.ts` |
+| SEC-06 | P0 | Money integrity (integer cents, ledger) | PASS | engine and payments tests |
+| SEC-07 | P0 | Injection and rendering of untrusted text | PASS | `fuzz.test.ts` |
+| SEC-08 | P1 | Abusive input caps | PASS | `abuse.test.ts` |
+| SEC-09 | P1 | CORS and origin allowlist | PASS | T-QA-075 |
 | SEC-10 | P1 | Transport and security headers, CSP | OPEN | `headers.test.ts`, web `network.spec.ts` |
-| SEC-11 | P1 | Audio and personal data | OPEN | manual review |
-| SEC-12 | P1 | Dependency risk | OPEN | `audit.yml`, `audit-waivers.json` |
-| SEC-13 | P1 | SSRF | OPEN | `webhook.test.ts` (certificate URL host allowlist) |
-| SEC-14 | P1 | Denial of service on the parse path | OPEN | `dos.test.ts` |
+| SEC-11 | P1 | Audio and personal data | ACCEPTED | manual review |
+| SEC-12 | P1 | Dependency risk | PASS | `audit.yml`, `audit-waivers.json` |
+| SEC-13 | P1 | SSRF | PASS | `webhook.test.ts` (certificate URL host allowlist) |
+| SEC-14 | P1 | Denial of service on the parse path | PASS | `dos.test.ts` |
 | SEC-15 | P2 | Logging hygiene | OPEN | log scan after scenario S01 |
-| SEC-16 | P2 | Admin and ops pages | OPEN | manual review |
+| SEC-16 | P2 | Admin and ops pages | PASS | manual review |
 | SEC-17 | P2 | Clickjacking and PayPal return URL redirect | OPEN | manual review |
-| SEC-18 | P0 | Server time is authoritative | OPEN | T-QA-079 |
+| SEC-18 | P0 | Server time is authoritative | PASS | T-QA-079 |
 
 <CodePaths paths={[{ path: 'docs/SECURITY-REVIEW.md', note: 'the checklist and how to record a result' }]} />
