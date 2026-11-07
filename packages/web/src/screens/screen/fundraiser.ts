@@ -22,15 +22,27 @@ function whole(n: number): number {
 }
 
 /**
+ * The captured total for a lot: the amount the server reported as captured (it reaches screens,
+ * which never get per-hold amounts), else the sum of per-hold captured cents when those are known.
+ */
+export function capturedTotal(
+  reportedCents: number | undefined,
+  holds: readonly { capturedCents: number }[] | undefined,
+): number {
+  if (reportedCents !== undefined) return whole(reportedCents);
+  return (holds ?? []).reduce((sum, h) => sum + whole(h.capturedCents), 0);
+}
+
+/**
  * What one lot has raised. `holds` are the per-hold settlement rows; `winningCents` is the hammer
  * price (null while the lot is open or passed); `auctionState` is the settlement state.
  */
 export function lotRaise(
-  holds: readonly { capturedCents: number }[],
+  capturedCents: number,
   winningCents: number | null,
   auctionState: string | null,
 ): LotRaise {
-  const raisedCents = holds.reduce((sum, h) => sum + whole(h.capturedCents), 0);
+  const raisedCents = whole(capturedCents);
   const pending =
     winningCents !== null && auctionState !== null && ON_HOLD_STATES.includes(auctionState)
       ? Math.max(0, whole(winningCents) - raisedCents)

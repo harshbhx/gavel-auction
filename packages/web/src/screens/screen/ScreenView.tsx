@@ -10,7 +10,7 @@ import { formatCountdown } from '../../util/time';
 import { publicSource } from '../../ladder/fromWire';
 import { SettlementPanel } from '../../ladder/SettlementPanel';
 import { QrCode } from '../join/QrCode';
-import { lotRaise, thermometer } from './fundraiser';
+import { capturedTotal, lotRaise, thermometer } from './fundraiser';
 import { FundraiserThermometer } from './Thermometer';
 import { FrozenChip, PriceFlash, Sold, type SettleCounts, type SoldOutcome } from './Sold';
 import type { SettlementDetail } from '../../store/roomReducer';
@@ -115,9 +115,14 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
     (s) => s.settlementMeta?.auctionState ?? s.snapshot?.settlement?.auctionState ?? null,
     store,
   );
+  const reportedCaptured = useRoom((s) => s.settlementMeta?.capturedCents, store);
   const thermo = thermometer(
     goalCents,
-    lotRaise(detail?.holds ?? [], closed && winnerId !== null ? finalPrice : null, auctionState),
+    lotRaise(
+      capturedTotal(reportedCaptured, detail?.holds),
+      closed && winnerId !== null ? finalPrice : null,
+      auctionState,
+    ),
   );
   const ticker = stream.slice(0, TICKER_SIZE);
   const outcome: SoldOutcome =

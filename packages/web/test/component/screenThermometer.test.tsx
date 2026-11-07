@@ -68,6 +68,26 @@ describe('fundraiser thermometer on the projector screen', () => {
     expect(screen.getByText('On hold: $400.00')).toBeTruthy();
   });
 
+  it('reads the captured total a screen receives on the wire (no per-hold detail)', () => {
+    const store = storeWith(100_000);
+    store.dispatch({
+      kind: 'wire',
+      msg: {
+        v: 1,
+        t: 'settlement_update',
+        seq: 6,
+        ts: EpochMs(BASE_TIME + 6),
+        rev: 6,
+        auctionState: 'CAPTURED',
+        amountCaptured: Cents(40_000),
+        winnerPaddle: 7,
+      },
+    } as Frame);
+    view(store);
+    expect(screen.getByText('Raised $400.00 of $1,000.00')).toBeTruthy();
+    expect(screen.queryByText(/On hold/)).toBeNull();
+  });
+
   it('moves the amount to raised once it is captured', () => {
     const store = storeWith(100_000);
     view(store);

@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { lotRaise, thermometer, totalRaise } from '../../src/screens/screen/fundraiser';
+import {
+  capturedTotal,
+  lotRaise,
+  thermometer,
+  totalRaise,
+} from '../../src/screens/screen/fundraiser';
 
 const holds = (...captured: number[]) => captured.map((capturedCents) => ({ capturedCents }));
 
 describe('fundraiser cents math', () => {
   it('is hidden when no goal is set', () => {
-    const raise = lotRaise(holds(5_000), null, null);
+    const raise = lotRaise(5_000, null, null);
     expect(thermometer(null, raise)).toBeNull();
     expect(thermometer(undefined, raise)).toBeNull();
     expect(thermometer(0, raise)).toBeNull();
@@ -13,13 +18,16 @@ describe('fundraiser cents math', () => {
     expect(thermometer(10.5, raise)).toBeNull();
   });
 
-  it('sums only captured cents as raised', () => {
-    const raise = lotRaise(holds(12_000, 0, 3_050), null, 'BIDDING');
-    expect(raise).toEqual({ raisedCents: 15_050, onHoldCents: 0 });
+  it('counts the reported captured amount, else the per-hold sum, and ignores bad values', () => {
+    expect(capturedTotal(35_000, holds(1))).toBe(35_000);
+    expect(capturedTotal(undefined, holds(12_000, 0, 3_050))).toBe(15_050);
+    expect(capturedTotal(undefined, undefined)).toBe(0);
+    expect(capturedTotal(-5, undefined)).toBe(0);
+    expect(capturedTotal(undefined, holds(10.5))).toBe(0);
   });
 
   it('keeps a held amount apart from raised', () => {
-    const raise = lotRaise(holds(0), 40_000, 'CAPTURING');
+    const raise = lotRaise(0, 40_000, 'CAPTURING');
     expect(raise).toEqual({ raisedCents: 0, onHoldCents: 40_000 });
     const t = thermometer(100_000, raise);
     expect(t?.fill).toBe(0);
@@ -27,14 +35,14 @@ describe('fundraiser cents math', () => {
   });
 
   it('shows nothing on hold once the money is captured, released or failed', () => {
-    expect(lotRaise(holds(40_000), 40_000, 'CAPTURED').onHoldCents).toBe(0);
-    expect(lotRaise(holds(0), 40_000, 'SETTLED').onHoldCents).toBe(0);
-    expect(lotRaise(holds(0), 40_000, 'FAILED_NEEDS_REVIEW').onHoldCents).toBe(0);
-    expect(lotRaise(holds(0), null, 'WINNER_SELECTED').onHoldCents).toBe(0);
+    expect(lotRaise(40_000, 40_000, 'CAPTURED').onHoldCents).toBe(0);
+    expect(lotRaise(0, 40_000, 'SETTLED').onHoldCents).toBe(0);
+    expect(lotRaise(0, 40_000, 'FAILED_NEEDS_REVIEW').onHoldCents).toBe(0);
+    expect(lotRaise(0, null, 'WINNER_SELECTED').onHoldCents).toBe(0);
   });
 
   it('puts only the uncaptured remainder on hold', () => {
-    expect(lotRaise(holds(10_000), 40_000, 'CAPTURING')).toEqual({
+    expect(lotRaise(10_000, 40_000, 'CAPTURING')).toEqual({
       raisedCents: 10_000,
       onHoldCents: 30_000,
     });
