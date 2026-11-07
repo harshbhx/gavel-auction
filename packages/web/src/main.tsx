@@ -2,6 +2,11 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './design/tokens.css';
 import './design/themes.css';
+import './design/palettes.css';
+import './ui/ui.css';
+import { initPalette } from './ui/palette';
+
+initPalette();
 
 const container = document.getElementById('root');
 if (container === null) {

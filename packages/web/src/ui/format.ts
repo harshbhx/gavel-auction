@@ -1,0 +1,27 @@
+import { formatUsd } from '../util/money';
+
+/** Splits a formatted amount into one entry per character, so each digit can roll on its own. */
+export function priceChars(cents: number): string[] {
+  return [...formatUsd(cents)];
+}
+
+/** Indexes of the characters that differ between two amounts; all of them when the length changes. */
+export function changedIndexes(from: number, to: number): number[] {
+  const a = priceChars(from);
+  const b = priceChars(to);
+  if (a.length !== b.length) return b.map((_, i) => i);
+  return b.flatMap((ch, i) => (ch === a[i] ? [] : [i]));
+}
+
+/** Clamps to [min, max] and snaps to the nearest step counted from min. */
+export function snapToStep(value: number, min: number, max: number, step: number): number {
+  const clamped = Math.min(max, Math.max(min, value));
+  const snapped = min + Math.round((clamped - min) / step) * step;
+  return Math.min(max, snapped);
+}
+
+/** True when the user asks for reduced motion. Safe where matchMedia is missing. */
+export function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
