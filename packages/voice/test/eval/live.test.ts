@@ -1,3 +1,4 @@
+import { GROQ_BID_PROMPT } from '../../src/stt/groq.js';
 import { describe, expect, it, vi } from 'vitest';
 import { EXIT_NO_KEYS, EXIT_NOT_RUN, EXIT_OK, runCli, type CliDeps } from '../../src/eval/cli.js';
 import {
@@ -239,5 +240,18 @@ describe('transcribeLive request options', () => {
     expect(form.get('model')).toBe('whisper-large-v3');
     expect(form.get('prompt')).toBe('Paddle 12, 350.');
     expect(form.get('temperature')).toBe('0');
+  });
+
+  it('sends the bid-words hint by default and nothing when the prompt is null', async () => {
+    const dflt = fakeFetch([200], { text: 'x' });
+    await transcribeLive('groq', tone, KEY, { fetch: dflt.fetch, sleep: noSleep });
+    expect((dflt.calls[0]?.init.body as FormData).get('prompt')).toBe(GROQ_BID_PROMPT);
+    const none = fakeFetch([200], { text: 'x' });
+    await transcribeLive('groq', tone, KEY, {
+      fetch: none.fetch,
+      sleep: noSleep,
+      options: { groqPrompt: null },
+    });
+    expect((none.calls[0]?.init.body as FormData).has('prompt')).toBe(false);
   });
 });

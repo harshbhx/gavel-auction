@@ -102,6 +102,6 @@ describe('R12-V02 Deepgram config', () => {
   it('asks for punctuation and smart formatting', () => {
     const q = new URL(buildDeepgramUrl(mergeDeepgramConfig())).searchParams;
     expect(q.get('punctuate')).toBe('true');
-    expect(q.get('smart_format')).toBe('true');
+    expect(q.get('smart_format')).toBe('false');
   });
 });

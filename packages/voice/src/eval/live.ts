@@ -1,3 +1,5 @@
+import { GROQ_BID_PROMPT } from '../stt/groq.js';
+
 /**
  * Live batch transcription of evaluation clips (R-VOX-080). One WAV goes to the provider's
  * prerecorded endpoint and comes back as text plus segments. The key is used only in a request
@@ -68,14 +70,15 @@ export interface LiveOptions {
   deepgramQuery?: string;
   /** Groq model name. */
   groqModel?: string;
-  /** Groq prompt (vocabulary hint). */
-  groqPrompt?: string;
+  /** Groq prompt (vocabulary hint); null sends none. Defaults to GROQ_BID_PROMPT. */
+  groqPrompt?: string | null;
   /** Groq temperature, as the string the API takes. */
   groqTemperature?: string;
 }
 
+/** The Deepgram settings the room runs (see DEEPGRAM_DEFAULT_CONFIG): nova-3, words not digits. */
 export const LIVE_DEEPGRAM_URL =
-  'https://api.deepgram.com/v1/listen?model=nova-2&language=en-US&punctuate=false&smart_format=false';
+  'https://api.deepgram.com/v1/listen?model=nova-3&language=en&punctuate=true&smart_format=false';
 export const LIVE_GROQ_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 export const LIVE_GROQ_MODEL = 'whisper-large-v3-turbo';
 export const LIVE_MAX_ATTEMPTS = 3;
@@ -169,7 +172,8 @@ function buildRequest(
   form.append('model', options.groqModel ?? LIVE_GROQ_MODEL);
   form.append('response_format', 'verbose_json');
   form.append('language', 'en');
-  if (options.groqPrompt !== undefined) form.append('prompt', options.groqPrompt);
+  const prompt = options.groqPrompt === undefined ? GROQ_BID_PROMPT : options.groqPrompt;
+  if (prompt !== null) form.append('prompt', prompt);
   if (options.groqTemperature !== undefined) form.append('temperature', options.groqTemperature);
   return {
     url: LIVE_GROQ_URL,

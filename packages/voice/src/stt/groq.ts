@@ -19,6 +19,12 @@ const SAMPLE_RATE = 16000;
 /** Model id and endpoint are UNVERIFIED until gate G5; both are overridable. */
 export const GROQ_DEFAULT_ENDPOINT = 'https://api.groq.com/openai/v1/audio/transcriptions';
 export const GROQ_DEFAULT_MODEL = 'whisper-large-v3-turbo';
+/**
+ * Vocabulary hint sent with every request: bid words only, no amounts, so a silent or noisy chunk
+ * cannot come back as a made-up bid. Chosen in the G5 option trials (docs/GATES.md).
+ */
+export const GROQ_BID_PROMPT =
+  'Auction bidding. Words heard: paddle, bidder number, dollars, hundred, thousand.';
 /** Confidence used when the response carries no log probability. */
 export const GROQ_FALLBACK_CONFIDENCE = 0.5;
 const MAX_PENDING_CHUNKS = 8;
@@ -46,6 +52,8 @@ export interface GroqSttOptions {
   apiKey: string;
   fetch: FetchLike;
   model?: string;
+  /** Vocabulary hint; null sends none. Defaults to GROQ_BID_PROMPT. */
+  prompt?: string | null;
   endpoint?: string;
   /** Milliseconds clock used for latency; defaults to Date.now. */
   now?: () => number;
@@ -244,6 +252,8 @@ export class GroqStt implements InstrumentedSttProvider {
     form.append('response_format', 'verbose_json');
     form.append('language', 'en');
     form.append('temperature', '0');
+    const prompt = this.opts.prompt === undefined ? GROQ_BID_PROMPT : this.opts.prompt;
+    if (prompt !== null) form.append('prompt', prompt);
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timedOut = new Promise<'timeout'>((resolve) => {

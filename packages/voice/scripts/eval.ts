@@ -31,7 +31,7 @@ function liveOptions(): LiveOptions {
   const temperature = env['G5_GROQ_TEMPERATURE'];
   if (query !== undefined && query !== '') out.deepgramQuery = query;
   if (model !== undefined && model !== '') out.groqModel = model;
-  if (prompt !== undefined && prompt !== '') out.groqPrompt = prompt;
+  if (prompt !== undefined && prompt !== '') out.groqPrompt = prompt === 'none' ? null : prompt;
   if (temperature !== undefined && temperature !== '') out.groqTemperature = temperature;
   return out;
 }
