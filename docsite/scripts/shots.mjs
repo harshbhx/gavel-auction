@@ -88,9 +88,9 @@ async function interact(url) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
   const page = await context.newPage();
   await page.goto(base + url, { waitUntil: 'networkidle' });
-  const next = page.getByRole('button', { name: 'Next' }).first();
+  const next = page.getByRole('button', { name: 'Next', exact: true }).first();
   if (await next.count()) {
-    const live = page.locator('[aria-live="polite"]').first();
+    const live = page.locator('[role="group"][aria-label$="through the diagram"] [aria-live="polite"]').first();
     const before = await live.innerText();
     await next.click();
     const after = await live.innerText();
