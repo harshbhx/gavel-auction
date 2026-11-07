@@ -36,6 +36,24 @@ export const HAPPY = {
   settled: 18_500,
 } as const;
 
+/** The happy scenario in a room whose auctioneer set a $1,000.00 fundraiser goal. */
+export const fundraiser: Scenario = {
+  ...happy,
+  name: 'fundraiser',
+  description: 'Happy path with a fundraiser goal on the snapshot',
+  steps: happy.steps.map((step) =>
+    step.emit?.t === 'state'
+      ? {
+          ...step,
+          emit: {
+            ...step.emit,
+            snapshot: { ...step.emit.snapshot, fundraiser: { goalCents: Cents(100_000) } },
+          },
+        }
+      : step,
+  ),
+};
+
 /** A room that has not opened its lot yet (the auctioneer console is in setup). */
 export const scheduled: Scenario = new Script()
   .state(0, snap({ status: 'SCHEDULED' }))

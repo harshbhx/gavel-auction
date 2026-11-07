@@ -10,6 +10,8 @@ import { formatCountdown } from '../../util/time';
 import { publicSource } from '../../ladder/fromWire';
 import { SettlementPanel } from '../../ladder/SettlementPanel';
 import { QrCode } from '../join/QrCode';
+import { lotRaise, thermometer } from './fundraiser';
+import { FundraiserThermometer } from './Thermometer';
 import { FrozenChip, PriceFlash, Sold, type SettleCounts, type SoldOutcome } from './Sold';
 import type { SettlementDetail } from '../../store/roomReducer';
 
@@ -107,6 +109,16 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
   if (!connection.offline) frozenRemaining.current = null;
   else if (frozenRemaining.current === null) frozenRemaining.current = liveRemaining;
   const remaining = frozenRemaining.current ?? liveRemaining;
+  // Hidden unless the auctioneer set a goal. Only captured holds count as raised.
+  const goalCents = useRoom((s) => s.snapshot?.fundraiser?.goalCents ?? null, store);
+  const auctionState = useRoom(
+    (s) => s.settlementMeta?.auctionState ?? s.snapshot?.settlement?.auctionState ?? null,
+    store,
+  );
+  const thermo = thermometer(
+    goalCents,
+    lotRaise(detail?.holds ?? [], closed && winnerId !== null ? finalPrice : null, auctionState),
+  );
   const ticker = stream.slice(0, TICKER_SIZE);
   const outcome: SoldOutcome =
     winnerId === null || finalPrice === null
@@ -166,6 +178,7 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
         </div>
       </div>
       <div className="gv-screen__side">
+        {thermo !== null && <FundraiserThermometer data={thermo} />}
         <section className="gv-screen__ticker" aria-label={t('screen.latest')}>
           <h2 className="gv-screen__ticker-title">{t('screen.latest')}</h2>
           <ol>

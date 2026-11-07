@@ -4,6 +4,7 @@ import { expect, openRoom, test, type RoomOptions } from './support/harness';
 import {
   HAPPY,
   auditRoom,
+  fundraiser,
   happy,
   noBids,
   paused,
@@ -77,6 +78,23 @@ test.describe('screen', () => {
     await screen(page, { scenario: happy, at: HAPPY.settled });
     await expect(page.getByTestId('sold')).toBeAttached();
     await shoot('screen', 'sold-settled');
+  });
+
+  test('fundraiser thermometer: live, on hold and raised', async ({ page, shoot }) => {
+    await screen(page, { scenario: fundraiser, at: HAPPY.winning });
+    await expect(page.getByText('Raised $0.00 of $1,000.00')).toBeVisible();
+    await shoot('screen', 'fundraiser-live');
+    await screen(page, { scenario: fundraiser, at: HAPPY.capturing });
+    await expect(page.getByText('On hold: $350.00')).toBeVisible();
+    await shoot('screen', 'fundraiser-on-hold');
+    await screen(page, { scenario: fundraiser, at: HAPPY.settled });
+    await expect(page.getByText('Raised $350.00 of $1,000.00')).toBeVisible();
+    await shoot('screen', 'fundraiser-raised');
+  });
+
+  test('no thermometer without a goal', async ({ page }) => {
+    await screen(page, { scenario: happy, at: HAPPY.settled });
+    await expect(page.getByText(/Raised/)).toHaveCount(0);
   });
 
   test('passed, no sale', async ({ page, shoot }) => {

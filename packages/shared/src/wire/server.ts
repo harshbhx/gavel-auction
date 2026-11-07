@@ -98,6 +98,11 @@ export const RoomSnapshotSchema = z
     hammer: z.object({ winnerId: ulid<BidderId>().nullable(), price: cents() }).strict().optional(),
     /** Public lot title, set by the HTTP snapshot route; never carries private data. */
     lotTitle: z.string().max(MAX_LOT_TITLE_CHARS).optional(),
+    /** Optional fundraiser goal. Absent means no thermometer; older servers never send it. */
+    fundraiser: z
+      .object({ goalCents: cents().refine((c) => c > 0, 'goal must be positive') })
+      .strict()
+      .optional(),
     /** Short human join code of the auction, set by the HTTP snapshot route. */
     joinCode: z.string().min(4).max(12).optional(),
     roster: z
