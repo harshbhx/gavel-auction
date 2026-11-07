@@ -318,6 +318,7 @@ export const COUNTER_NAMES: readonly ["paypal_calls_total", "paypal_retries_tota
 
 // @public (undocumented)
 export interface CreatedHold {
+    approveUrl?: string;
     // (undocumented)
     holdId: string;
     // (undocumented)
