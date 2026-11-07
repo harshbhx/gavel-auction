@@ -9,6 +9,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Mermaid } from '@/components/mermaid';
 import { Charged, Held, NotVerified, Released } from '@/components/holdline/callout';
 import { Chip, GateBadge } from '@/components/holdline/chip';
+import { JudgeProgress, Scorecard } from '@/components/holdline/judge-guide';
 import { CodePaths } from '@/components/holdline/code-paths';
 import { GatesTable, LatencyTable, SimScenarioTable, SpeechTable } from '@/components/holdline/data-tables';
 import { SagaDiagram } from '@/components/diagrams/saga';
@@ -69,6 +70,8 @@ export function getMDXComponents(components?: MDXComponents) {
     Chip,
     GateBadge,
     CodePaths,
+    JudgeProgress,
+    Scorecard,
     // data read from the repo evidence at build time
     GatesTable,
     SpeechTable,

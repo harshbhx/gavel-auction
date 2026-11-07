@@ -13,9 +13,13 @@ import { StatusBadge } from './status-badge';
 const docs = defineDocs({
   dir: 'content/docs',
   docs: {
-    // `status: verified | simulated | in progress | unverified | fail | planned` adds a sidebar badge.
+    // `status: verified | code-checked | simulated | in progress | unverified | fail | planned` adds a
+    // sidebar badge. `verified` needs a real run or committed evidence; `code-checked` means the page was
+    // read against the code it describes (nothing was run); `evidence` says which.
     schema: pageSchema.extend({
       status: z.string().optional(),
+      // One line saying what the status rests on (the files read, the run, the gate).
+      evidence: z.string().optional(),
     }),
     // ```mermaid code blocks render as diagrams (see components/mermaid.tsx).
     mdxOptions: applyMdxPreset({ remarkPlugins: [remarkMdxMermaid] }),

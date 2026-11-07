@@ -11,7 +11,6 @@ import {
 import { Hero } from '@/components/home/hero';
 import { HoldBeam } from '@/components/home/hold-beam';
 import { Section, SectionHeading, btnPrimary, btnSecondary } from '@/components/home/section';
-import SpotlightCard from '@/components/home/reactbits/SpotlightCard';
 import CountUp from '@/components/home/reactbits/CountUp';
 import { Reveal } from '@/components/home/reveal';
 import { GatesTable } from '@/components/holdline/data-tables';
@@ -117,20 +116,20 @@ export default function HomePage() {
       <Hero />
 
       <Section labelledBy="stats-title" className="border-b border-[var(--hl-hairline)]">
-        <SectionHeading id="stats-title" eyebrow="Status, stated plainly" title="What is proven, and how.">
+        <SectionHeading id="stats-title" eyebrow="Status, stated plainly" title="What we can prove, and how.">
           Numbers come from the committed gate record and the simulation output, read at build time.
         </SectionHeading>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((s) => (
             <Reveal key={s.label} className="h-full">
-              <SpotlightCard className="flex h-full flex-col rounded-[2px] p-5">
+              <div className="hl-card flex h-full flex-col p-5">
                 <div>{s.chip}</div>
                 <p className="hl-display mt-4 text-6xl">
                   <CountUp to={s.value} duration={1.6} />
                   {s.of && <span className="text-3xl text-fd-muted-foreground">{s.of}</span>}
                 </p>
                 <p className="mt-3 text-sm text-fd-muted-foreground">{s.label}</p>
-              </SpotlightCard>
+              </div>
             </Reveal>
           ))}
         </div>
@@ -144,7 +143,7 @@ export default function HomePage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {paths.map((p, i) => (
             <Reveal key={p.href} delay={i * 0.05} className="h-full">
-              <SpotlightCard className="h-full rounded-[2px]">
+              <div className="hl-card h-full">
                 <Link href={p.href} className="flex h-full flex-col p-6 focus-visible:outline-2">
                   <p.icon className="size-6 text-fd-primary" aria-hidden />
                   <h3 className="hl-display mt-4 text-2xl">{p.title}</h3>
@@ -153,7 +152,7 @@ export default function HomePage() {
                     Open <ArrowRight className="size-4" aria-hidden />
                   </span>
                 </Link>
-              </SpotlightCard>
+              </div>
             </Reveal>
           ))}
         </div>

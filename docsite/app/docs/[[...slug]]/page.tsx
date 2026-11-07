@@ -11,6 +11,7 @@ import {
 } from 'fumadocs-ui/layouts/docs/page';
 import { notFound } from 'next/navigation';
 import { getMDXComponents } from '@/components/mdx';
+import { PageMeta } from '@/components/holdline/page-meta';
 import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getPageEditUrl, getPageImageUrl, getPageMarkdownUrl } from '@/lib/shared';
@@ -35,7 +36,13 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
     >
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
-      <div className="flex flex-row flex-wrap gap-2 items-center border-b pb-6">
+      <PageMeta
+        slugs={page.slugs}
+        status={page.data.status}
+        evidence={page.data.evidence}
+        changed={lastModified ? new Date(lastModified) : null}
+      />
+      <div className="flex flex-row flex-wrap gap-2 items-center border-b pb-6 pt-4">
         <MarkdownCopyButton markdownUrl={markdownUrl} />
         <ViewOptionsPopover markdownUrl={markdownUrl} githubUrl={editUrl} />
       </div>

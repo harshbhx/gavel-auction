@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Banner } from 'fumadocs-ui/components/banner';
 import { Provider } from '@/components/provider';
-import { archivo, martian } from '@/lib/fonts';
+import { archivo, martian, newsreader } from '@/lib/fonts';
 import { siteUrl } from '@/lib/shared';
 import './global.css';
 
@@ -14,6 +14,13 @@ export const metadata: Metadata = {
   description:
     'Every bid is a PayPal hold; only the winner pays. How GAVEL settles an auction, what has been proven on the PayPal sandbox, and what has not.',
   icons: { icon: '/icon.svg' },
+  openGraph: {
+    title: 'GAVEL docs',
+    description:
+      'Every bid is a PayPal hold; only the winner pays. What is proven on the PayPal sandbox, and what is not.',
+    images: '/og/site/image.png',
+  },
+  twitter: { card: 'summary_large_image', images: '/og/site/image.png' },
 };
 
 // Restores the Floodlight (projector) choice before first paint. Daylight and Dusk are
@@ -25,7 +32,7 @@ export default function Layout({ children }: LayoutProps<'/'>) {
   return (
     <html
       lang="en"
-      className={`${archivo.variable} ${martian.variable}`}
+      className={`${archivo.variable} ${martian.variable} ${newsreader.variable}`}
       suppressHydrationWarning
     >
       <head>

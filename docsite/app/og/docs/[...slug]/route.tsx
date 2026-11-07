@@ -1,7 +1,8 @@
 import { source } from '@/lib/source';
 import { notFound } from 'next/navigation';
-import { generateOGImage } from 'fumadocs-ui/og';
-import { appName, getPageImageUrl } from '@/lib/shared';
+import { ogImage } from '@/lib/og';
+import { getPageImageUrl } from '@/lib/shared';
+import { sections, sectionOf } from '@/lib/sections';
 
 export const revalidate = false;
 
@@ -10,10 +11,12 @@ export async function GET(_req: Request, { params }: RouteContext<'/og/docs/[...
   const page = source.getPage(slug.slice(0, -1));
   if (!page) notFound();
 
-  return generateOGImage({
+  const status = (page.data as { status?: string }).status;
+  const section = sections.find((x) => x.id === sectionOf(page.slugs))?.title ?? 'Docs';
+  return ogImage({
     title: page.data.title,
     description: page.data.description,
-    site: appName,
+    kicker: status ? `${section} | ${status}` : section,
   });
 }
 
