@@ -1,0 +1,191 @@
+---
+title: WebSocket protocol
+description: Every frame a client may send, every frame the room sends, the sequence numbers and the close codes.
+icon: Radio
+status: verified
+full: true
+---
+
+The live auction runs over one WebSocket per client at `/ws`. Frames are JSON text, one object per frame. This page is the contract: the shapes come from `packages/shared/src/wire/`, and the behaviour from the room host in `packages/server`.
+
+<Callout type="info" title="Verified against the code, not measured">
+  Shapes and limits are read from the shared schemas and the server host. This is a description of the protocol, not a claim about load or latency.
+</Callout>
+
+<WsProtocolDiagram />
+
+## The envelope
+
+Every frame is a strict object: `{ "v": 1, "t": "<type>", ... }`. A frame with an unknown `t`, an extra field, bad JSON, a non-object, or a version other than 1 is rejected.
+
+<TypeTable
+  type={{
+    v: { description: 'Protocol version. Always the number 1.', type: '1', required: true },
+    t: { description: 'Message type, one of the types below.', type: 'string', required: true },
+    seq: { description: 'On server frames after a join: the room sequence number this frame belongs to.', type: 'integer, 1 or more' },
+    ts: { description: 'On server frames after a join: server time in epoch milliseconds.', type: 'integer' },
+    'client frame cap': { description: 'Largest frame a client may send.', type: 'bytes', default: '16 KiB' },
+    'server frame cap': { description: 'Largest frame the server may send. A full snapshot or hammer ranking fits.', type: 'bytes', default: '256 KiB' },
+  }}
+/>
+
+## Frames a client may send
+
+After the join a client may send only `bid` and `confirm_response`. Auctioneer controls such as hammer, pause and extend are **HTTP** requests, not frames.
+
+<Tabs items={['join', 'bid', 'confirm_response']}>
+  <Tab value="join">
+
+Must be the first frame. A frame before it gets an `error` with `not_joined`.
+
+```json
+{ "v": 1, "t": "join", "token": "<session token>", "auctionId": "<ULID>", "lastSeq": 41 }
+```
+
+<TypeTable
+  type={{
+    token: { description: 'Session, auctioneer or screen token for this auction.', type: 'string', required: true },
+    auctionId: { description: 'ULID of the auction to join.', type: 'string', required: true },
+    lastSeq: { description: 'Highest seq the client has applied. Lets the room replay what was missed.', type: 'integer, 0 or more' },
+    client: { description: 'Optional name (up to 64 characters) and version (up to 32).', type: '{ name, version }' },
+  }}
+/>
+
+  </Tab>
+  <Tab value="bid">
+
+Bidders send their own bid; the identity comes from the token. An auctioneer may name a bidder with `bidderId`.
+
+```json
+{ "v": 1, "t": "bid", "mid": "<ULID>", "amount": 35000, "source": "qr" }
+```
+
+<TypeTable
+  type={{
+    mid: { description: 'Client-chosen message id. A retry reuses it, so a bid cannot be placed twice.', type: 'ULID', required: true },
+    amount: { description: 'Integer cents. Any finite number decodes; a value that is not whole cents is answered with bad_amount instead of closing the socket.', type: 'number', required: true },
+    source: { description: 'voice, qr (a tap) or manual (an auctioneer entry).', type: "'voice' | 'qr' | 'manual'", required: true },
+    bidderId: { description: 'Only an auctioneer may name a bidder.', type: 'ULID' },
+    transcript: { description: 'Voice only. Up to 500 characters.', type: 'string' },
+    confidence: { description: 'Voice only. 0 to 1.', type: 'number' },
+    ambiguous: { description: 'Voice only. Forces the confirm gate.', type: 'boolean' },
+    audioTsMs: { description: 'Start of the audio, for the audit row.', type: 'integer' },
+    audioEndMs: { description: 'End of the audio, for the audit row.', type: 'integer' },
+    clientTs: { description: 'Client clock, stored for audit only. Ordering uses the server time and seq.', type: 'integer' },
+  }}
+/>
+
+  </Tab>
+  <Tab value="confirm_response">
+
+The answer to a `confirm_request`. Only a bidder may send it, and only for their own hold.
+
+```json
+{ "v": 1, "t": "confirm_response", "confirmId": "<id from the request>", "accept": true }
+```
+
+A late answer is treated as expired whatever it says. An unknown or foreign `confirmId` gets `not_found`.
+
+  </Tab>
+</Tabs>
+
+## Frames the room sends
+
+<Tabs items={['Bidding', 'Settlement', 'Housekeeping']}>
+  <Tab value="Bidding">
+
+| `t` | Sent to | Carries |
+| --- | --- | --- |
+| `bid_accepted` | the sender | `mid`, `bidId`, `amount` |
+| `bid_rejected` | the sender | `mid`, `reason` (an error code), `retryable`, optional `retryAfterMs` |
+| `price` | everyone | `price`, `leaderId`, `leaderPaddle`, `endTs`, `minNext`, `extensions`, optional `paused` and `remainingMs` |
+| `confirm_request` | that bidder only | `confirmId`, `amount`, optional `transcript`, `expiresAt` |
+| `audit_event` | everyone, redacted | one audit row; the auctioneer sees full rows, others public rows |
+| `hammer` | everyone | `winnerId` (or null), `price`, `ranking`, optional `stopped`, `registrationClosed` |
+
+  </Tab>
+  <Tab value="Settlement">
+
+| `t` | Sent to | Carries |
+| --- | --- | --- |
+| `settlement_update` | everyone | `rev`, `auctionState`, optional `you`, `amountCaptured`, `note`, `holds`, `winnerPaddle`, `invariants`, and a public `ladder` of counts per state |
+| `settlement_update.yourHold` | the owning bidder only | last six characters of the hold id, status, ceiling, captured and released cents, remainder state |
+
+The per-hold lanes stay with their owner. A screen, the auctioneer or another bidder never receives another bidder's hold or ceiling. See [Settlement walkthrough](/docs/how-it-works/settlement-walkthrough).
+
+  </Tab>
+  <Tab value="Housekeeping">
+
+| `t` | Sent to | Carries |
+| --- | --- | --- |
+| `state` | the joining client, and on changes it cannot express as a price | a full redacted snapshot: status, price, leader, `endTs`, `minNext`, roster, recent audit, settlement, and for a bidder their own `you` block |
+| `registered` | the registered bidder | `bidderId`, `paddle`, `ceiling`, `role`. Registration itself is an HTTP call; the frame confirms it on the socket |
+| `error` | the sender | `code`, a scrubbed `message`, optional `retryAfterMs`, optional `seq` |
+
+  </Tab>
+</Tabs>
+
+## Sequence numbers
+
+The room numbers every event it logs. A client that keeps the highest `seq` it has applied can always resume.
+
+1. **One bid, one seq.** `bid_accepted`, `price` and `audit_event` for the same bid share a seq. A client must not count them as three events.
+2. **No gaps.** An event a viewer may not see still consumes a seq, so the room sends that viewer a filler (a repeat of the current price, or a snapshot when there is no price yet). A hidden confirm hold, a voice drop and a control record all work this way.
+3. **Resume.** A join with `lastSeq` gets the missed audit frames when the gap is 200 events or fewer, then a `state` snapshot. A client that is current, ahead, or more than 200 behind gets the snapshot only.
+4. **The web client** ignores a seq it has already applied, and a seq more than one ahead is a gap: it keeps what arrives, asks for a fresh snapshot by joining again with its `lastSeq`, and accepts that snapshot at any seq.
+
+## Who may do what
+
+| Operation | auctioneer | bidder | screen |
+| --- | --- | --- | --- |
+| Join the socket | yes | yes | yes |
+| Bid as themselves | no | yes | no |
+| Bid for a bidder (manual) | yes | no | no |
+| Answer a confirm | no | yes | no |
+| Control the clock, hammer, rotate invites | yes (HTTP) | no | no |
+
+Three limits keep one client from hurting the room: connections per token (3, the oldest is closed with 4011), connections per room (500) and a bid rate limit per bidder. Every frame, joined or not, also takes a token from the connection's frame bucket.
+
+## Errors and close codes
+
+An `error` frame carries one of the shared codes. Some also close the socket.
+
+| Close code | Reason | When |
+| --- | --- | --- |
+| 4001 | `join_timeout` | no join within 5 seconds |
+| 1008 | `bad_message` | a malformed join, or a bad frame after the join |
+| 4401 | `unauthorized` | the token fails for this auction, expired or was revoked while connected |
+| 4009 | `room_full` | the room is at its connection cap |
+| 4010 | `host_fenced` | another host owns the room now |
+| 4011 | `superseded` | a newer connection on the same token pushed this one out |
+| 4008 | `slow_consumer` | 256 frames queued, or a write undrained for 5 seconds |
+| 1001 | `heartbeat_lost` | two missed pongs (the host pings every 20 seconds) |
+| 1011 | `internal` | an unexpected failure |
+
+<Accordions type="multiple">
+  <Accordion title="Which errors should a client retry">
+    Each code is marked retryable in `packages/shared/src/errors.ts`. The retryable ones are `rate_limited`, `room_full`, `unconfirmed`, `auction_paused` and `store_unavailable`. The web client treats `unauthorized`, `forbidden` and `invite_used` as the end of the session, and waits for the bidder before retrying after `room_full`, `auction_full`, `room_cap` or `rate_limited`. After a socket closes for any other reason it reconnects with a back-off of 0.5, 1, 2, 4 and then 8 seconds, plus or minus 20 percent.
+  </Accordion>
+  <Accordion title="What a bidder never sees">
+    A bidder's frames are redacted by role. Ceilings, holds and `you` blocks appear only where they name the viewer. Everyone except the auctioneer sees public audit rows only: accepted bids, no transcripts and no rejection reasons. A held bid's amount and transcript never reach the auctioneer either.
+  </Accordion>
+  <Accordion title="Where the socket path and Origin check are enforced">
+    The host answers an upgrade only on `/ws`, refuses an upgrade with no `Origin` or one that is not on the allowed list with HTTP 403, and can refuse with 429 when too many upgrades arrive. A plain GET on `/ws` is answered with 426. The voice audio socket is a separate path, `/audio`, and uses the auctioneer's token.
+  </Accordion>
+</Accordions>
+
+<CodePaths
+  paths={[
+    { path: 'packages/shared/src/wire/envelope.ts', note: 'the envelope, caps, decodeFrame' },
+    { path: 'packages/shared/src/wire/client.ts', note: 'join, bid, confirm_response' },
+    { path: 'packages/shared/src/wire/server.ts', note: 'every server frame and the snapshot' },
+    { path: 'packages/shared/src/errors.ts', note: 'error codes, close codes, retryable' },
+    { path: 'packages/server/src/host/gateway.ts', note: 'join verification, frame loop' },
+    { path: 'packages/server/src/host/node-ws.ts', note: '/ws path, Origin check' },
+    { path: 'packages/server/src/transport/handshake.ts', note: 'join deadline, ping' },
+    { path: 'packages/server/src/transport/connections.ts', note: 'bounded queue, slow consumer' },
+    { path: 'packages/server/src/room/resync.ts', note: 'replay window, connection caps' },
+    { path: 'packages/server/src/auth/authorize.ts', note: 'role matrix and redaction' },
+    { path: 'packages/web/src/net/connection.ts', note: 'reconnect and back-off' },
+  ]}
+/>

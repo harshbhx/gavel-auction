@@ -1,0 +1,161 @@
+---
+title: Data and ledger model
+description: The four stores, the order they are written in, what each record holds and which view hides which field.
+icon: Database
+status: verified
+full: true
+---
+
+GAVEL keeps its truth in a few append-only or compare-and-set files. This page names every record, says who writes it and when, and shows what is hidden from whom.
+
+<DataModelDiagram />
+
+## Beginner view: why more than one log
+
+A live auction needs two different kinds of memory.
+
+1. **What happened in the room** (who joined, which bids came in, what the screen showed). That is the **room log**: ordered events, numbered 1, 2, 3 with no gaps, so a reconnecting screen can ask for "everything after 41".
+2. **What the auction rules decided** (who leads, who won). That is the **engine ledger**: each entry carries the hash of the entry before it, so changing an old entry breaks every hash after it. Anyone holding the chain can check it.
+
+Money gets its own record, the **payment journal**, because settlement has to survive a crash halfway through a PayPal call. The journal says what GAVEL intends to do before it does it.
+
+## The write order
+
+<Steps>
+<Step>
+
+The room log holds the event first.
+
+</Step>
+<Step>
+
+The engine ledger is written before the event is acknowledged.
+
+</Step>
+<Step>
+
+The payment journal is saved only after `LOT_HAMMERED` is in the ledger.
+
+</Step>
+<Step>
+
+Every saga transition is one compare-and-set save of the journal; its audit row is appended after the save and carries the journal history `seq`, so a crash between the two is repaired from the journal on the next run.
+
+</Step>
+</Steps>
+
+The first three lines are the note in `packages/server/src/store/file-ledger-store.ts` (decisions D-0012 and D-0014). The last is the contract in `packages/payments/src/saga/trail.ts`.
+
+## Records
+
+<Tabs items={['Room event', 'Ledger entry', 'Journal', 'Hold', 'Audit row']}>
+<Tab value="Room event">
+
+`RoomEvent` is a discriminated union in `packages/shared/src/events.ts`. The store port (`RoomStore`) appends events from `expectedSeq + 1` with no gap and throws `conflict` when the stored last seq differs.
+
+Types: `auction_created`, `bidder_registered`, `bid_accepted`, `bid_rejected`, `confirm_requested`, `confirm_resolved`, `voice_dropped`, `control`, `state_changed`, `hammered`, `ceiling_revoked`, `settle_requested`, `settlement_update`.
+
+The same store keeps snapshots, the single-use token ids (`jti`) and the denylist. In Postgres these are the tables `events`, `snapshots`, `jti_used`, `jti_denied` and `journals`.
+
+</Tab>
+<Tab value="Ledger entry">
+
+<TypeTable
+  type={{
+    v: { description: 'Entry format version.', type: '1' },
+    auctionId: { description: 'The auction (and the lot: one lot per room).', type: 'Ulid' },
+    seq: { description: 'Starts at 1, no gaps.', type: 'number' },
+    at: { description: 'Time of the command, shared by the entries of one batch.', type: 'number' },
+    type: { description: 'For example BID_RECORDED, LOT_HAMMERED, SETTLEMENT_STATE, AUCTION_CLOSED.', type: 'LedgerEventType' },
+    cmd: { description: 'The command id, derived from the command content so replaying a command never writes an entry twice.', type: 'Ulid | null' },
+    payload: { description: 'The event body.', type: 'object' },
+    prev: { description: 'Hash of the entry before; 64 zeros for the first.', type: 'string' },
+    hash: { description: 'SHA-256 of the canonical JSON of the entry without the hash field.', type: 'string' },
+  }}
+/>
+
+`verifyChain` reports the first bad index and one of: `bad_hash`, `bad_prev`, `bad_seq`, `bad_time`, `bad_genesis`, `bad_auction`, `unsupported_version`, `truncated`. A batch is written as one synced line, so a crash leaves a whole batch or none.
+
+</Tab>
+<Tab value="Journal">
+
+<TypeTable
+  type={{
+    state: { description: 'One of the nine settlement states, HELD to FAILED_NEEDS_REVIEW.', type: 'SettlementState' },
+    plan: { description: 'Reserve and the ranked candidates, best first.', type: '{ reserveCents, candidates }' },
+    holds: { description: 'Per bidder: hold id, authorization id, ceiling, order id, prior authorization ids, stale flag.', type: 'Record<string, JournalHold>' },
+    cursor: { description: 'Which candidate the saga is on.', type: 'number' },
+    intent: { description: 'The PayPal call about to be made or in flight: op (capture, void, reauth), hold, request id, amount in cents.', type: 'JournalIntent | null' },
+    unknownSince: { description: 'When an unknown capture outcome started; the deadline runs from here.', type: 'number | null' },
+    winner: { description: 'Bidder, hold, capture id and amount once captured.', type: 'JournalWinner | null' },
+    failed: { description: 'Candidates that were refused, with the reason.', type: 'JournalFailure[]' },
+    voids: { description: 'Per hold: the recorded result of its void.', type: 'Record<string, string>' },
+    history: { description: 'Every transition: seq, time, from, to, label.', type: 'JournalHistoryEntry[]' },
+    version: { description: 'Compare-and-set counter; a stale save throws a version conflict.', type: 'number' },
+  }}
+/>
+
+Money is in integer cents everywhere. The journal store also grants a lease per auction (`acquireLease`) so two runners cannot drive one settlement. See [Settlement saga](/docs/how-it-works/settlement-saga) and [Crash recovery](/docs/how-it-works/crash-recovery).
+
+</Tab>
+<Tab value="Hold">
+
+`HoldRecord` (`packages/payments/src/types.ts`): `holdId`, `auctionId`, `bidderId`, `orderId`, `authId`, `ceilingCents`, `status`, `createdAtMs`, `stale`, `priorAuthIds`.
+
+`HoldStatus` is one of `PENDING_APPROVAL`, `HELD`, `CAPTURED`, `VOIDED`, `EXPIRED`, `DENIED`, `UNKNOWN`. See [Registration and holds](/docs/how-it-works/registration-and-holds).
+
+</Tab>
+<Tab value="Audit row">
+
+`PaymentAudit` rows have a `kind`: `paypal_call`, `state_change`, `kill_switch`, `stale_hold`, `void_all` or `settlement_alert`. A PayPal call row carries the operation, request id, attempt, HTTP status, outcome (definite or unknown) and PayPal debug id. A `state_change` row carries `from`, `to`, `label` and the journal history `seq`. They are written to `payment-audit.jsonl`.
+
+</Tab>
+</Tabs>
+
+## Who sees which field
+
+<Callout type="warn" title="Exports are not public">
+`GET /admin/export` returns the private ledger with ceilings, hold references and transcripts. It needs the admin key and must never reach a public place. See [Backup](/docs/safety/backup).
+</Callout>
+
+| Field | Operator (admin key) | Auctioneer export | Public replay bundle | Auditor projection |
+| --- | --- | --- | --- | --- |
+| Bidder ceiling | shown | withheld | withheld | shown |
+| Over-ceiling rejection amount | shown | withheld | withheld | shown |
+| Hold reference | shown | withheld | withheld | shown |
+| Bidder display name | shown | withheld | not in the ledger | not in the ledger |
+| Voice transcript | shown | withheld | withheld | shown |
+
+- **Auctioneer export** (`GET /api/auctions/:id/export`, roles auctioneer and admin): `redactEventForExport` drops the ceiling and the amount of ceiling rejections; `redactPersonal` drops names, hold references, the auctioneer subject and transcripts for everyone but the admin key.
+- **Public replay bundle** (`GET /admin/replay-bundle`, built from the verified ledger): export version 4. Ceilings, hold references, leader fields, transcripts and the amount of an over-ceiling rejection are removed rather than hashed, because a ceiling is a small number and a hash of it can be guessed. After the first removed field, entries carry `fullHash: null` (or a keyed commitment when an auditor passes a key), so a viewer cannot test amounts by hashing forward. Anyone can verify the public chain with `verifyPublicExport`.
+- **Auditor projection** (`projectAuditor`) is a library function; no server route calls it yet.
+
+### Sealed lots
+
+In the `second_price` mode bids are sealed until the hammer. `projectPublic` shows a null price and leader; `projectAuditor` withholds the amount, transcript, parsed amount, utterance id and audio offsets until the lot is hammered or unsold; the public export drops sealed amounts until the hammer. Proxy lots drop each bid amount (the bidder's secret maximum) for good.
+
+<NotVerified title="Live sockets">
+
+Frames sent over the room socket are filtered per role by the code in `packages/server/src/auth/authorize.ts`; that is a separate path from the stored-record views above. The [WebSocket protocol](/docs/reference/websocket-protocol) page covers it.
+
+</NotVerified>
+
+## Where this lives in the code
+
+<CodePaths
+  paths={[
+    { path: 'packages/engine/src/events.ts', note: 'ledger event types and LedgerEntry' },
+    { path: 'packages/engine/src/ledger/chain.ts', note: 'sealBatch, hashEntry, verifyChain' },
+    { path: 'packages/engine/src/ledger/public-export.ts', note: 'the redacted public chain (version 4)' },
+    { path: 'packages/engine/src/projections.ts', note: 'projectPublic, projectBidder, projectAuditor' },
+    { path: 'packages/shared/src/events.ts', note: 'RoomEvent' },
+    { path: 'packages/shared/src/ports.ts', note: 'RoomStore' },
+    { path: 'packages/server/src/store/file-ledger-store.ts', note: 'one file per auction, write order' },
+    { path: 'packages/server/src/store/file-room-store.ts', note: 'the room log file' },
+    { path: 'packages/server/migrations/0001_init.sql', note: 'Postgres tables' },
+    { path: 'packages/payments/src/types.ts', note: 'Journal, HoldRecord, PaymentAudit' },
+    { path: 'packages/payments/src/saga/trail.ts', note: 'audit rows recovered from the journal' },
+    { path: 'packages/server/src/http/export.ts', note: 'auctioneer export and redactPersonal' },
+    { path: 'packages/server/src/admin/replay-bundle.ts', note: 'public replay bundle' },
+  ]}
+/>

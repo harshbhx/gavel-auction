@@ -1,0 +1,91 @@
+---
+title: Repository layout
+description: What is in the repository, folder by folder, and which area owns it.
+icon: FolderTree
+status: verified
+---
+
+One strict TypeScript monorepo (npm workspaces over `packages/*`, Node 22) plus the tooling, evidence and docs around it. Per-package pages: [engine](/docs/builders/packages/engine), [shared](/docs/builders/packages/shared), [payments](/docs/builders/packages/payments), [server](/docs/builders/packages/server), [voice](/docs/builders/packages/voice), [web](/docs/builders/packages/web), [e2e](/docs/builders/packages/e2e), [infra](/docs/builders/packages/infra).
+
+<Files>
+  <Folder name="packages" defaultOpen>
+    <Folder name="shared" />
+    <Folder name="engine" />
+    <Folder name="payments" />
+    <Folder name="voice" />
+    <Folder name="server" />
+    <Folder name="web" />
+    <Folder name="e2e" />
+  </Folder>
+  <Folder name=".github" defaultOpen>
+    <Folder name="workflows" />
+    <Folder name="actions" />
+    <Folder name="ISSUE_TEMPLATE" />
+    <File name="CODEOWNERS" />
+    <File name="pull_request_template.md" />
+  </Folder>
+  <Folder name="docs" defaultOpen>
+    <Folder name="evidence" />
+    <Folder name="specs" />
+    <Folder name="submission" />
+    <File name="GATES.md" />
+    <File name="DECISIONS.md" />
+    <File name="DEPLOY.md" />
+    <File name="RUNBOOK-GATES.md" />
+    <File name="RUNBOOK-BACKUP.md" />
+    <File name="SECURITY-REVIEW.md" />
+    <File name="JUDGES.md" />
+    <File name="DEMO.md" />
+    <File name="A11Y.md" />
+  </Folder>
+  <Folder name="docsite" />
+  <Folder name="scripts" />
+  <Folder name="infra" />
+  <Folder name="etc" />
+  <Folder name="reference" />
+  <Folder name="tools" />
+  <File name="render.yaml" />
+  <File name="package.json" />
+  <File name="tsconfig.base.json" />
+  <File name="eslint.config.js" />
+  <File name=".dependency-cruiser.cjs" />
+  <File name="CONTRIBUTING.md" />
+  <File name="SECURITY.md" />
+  <File name="LICENSE" />
+</Files>
+
+## What each top-level folder is
+
+| Folder | Contents | Owner area |
+| --- | --- | --- |
+| `packages/shared` | Money in integer cents, ids, errors, events, the wire types and codecs, the replay bundle format | RT |
+| `packages/engine` | The pure auction core: commands, rules, the hash-chained ledger, projections, replay | ENG |
+| `packages/payments` | Holds, the settlement saga, webhook verification, the fake PayPal, the gate scripts under `gates/` | PAY |
+| `packages/voice` | Audio framing, speech-to-text clients, the parser, the decision step, evaluation tooling, fixtures | VOI |
+| `packages/server` | The single-process host: HTTP routes, the room runtime, WebSocket gateways, stores, boot and config | RT |
+| `packages/web` | The browser client | WEB |
+| `packages/e2e` | Scenarios, runners, property and load tests, browser and sandbox specs | QA |
+| `.github` | Workflows, the shared setup action, issue and pull request templates, CODEOWNERS | QA |
+| `docs` | Evidence and written documentation: `GATES.md`, `DECISIONS.md`, runbooks, `evidence/`, `specs/`, `submission/` | `GATES.md` is listed under PAY and QA, `DECISIONS.md` under QA; specs by area |
+| `docsite` | This documentation website (Fumadocs on a Next.js static export) | not in the ownership map |
+| `scripts` | Repository checks and smoke scripts | QA |
+| `infra` | Environments, uptime and rollback notes | QA |
+| `etc` | The committed API report of each package (`<package>.api.md`) | exempt from the ownership check |
+| `reference` | An offline Python reference implementation (engine, fake PayPal, saga, parser) used by the differential and golden tests | not in the ownership map |
+| `tools` | The `g4-receiver` helper for the webhook gate | not in the ownership map |
+
+The ownership map is `scripts/ownership.map.json`. A pull request that touches more than one area needs the `cross-area` label (see [Contributing](/docs/builders/contributing)).
+
+## Evidence in the repository
+
+Committed evidence lives under `docs/evidence`: `G1`, `G2`, `G4` (gate runs as redacted JSONL), `nightly` (redacted nightly sandbox reports) and `SIM` (the simulated multi-day run). `docs/GATES.md` is the record that ties each gate to its result; this site reads its gate and simulation tables from that file and from `docs/evidence/SIM/SIM-MULTIDAY.md` at build time.
+
+<CodePaths
+  paths={[
+    { path: 'package.json', note: 'workspaces and root scripts' },
+    { path: 'scripts/ownership.map.json', note: 'area ownership' },
+    { path: '.github/CODEOWNERS', note: 'reviewers by path' },
+    { path: 'docs/GATES.md', note: 'the gate record' },
+    { path: 'docs/submission/ARCHITECTURE.md', note: 'the architecture write-up' },
+  ]}
+/>

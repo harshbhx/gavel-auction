@@ -1,0 +1,82 @@
+---
+title: Incident response
+description: What to do, in order, when money state looks wrong. Built only from what the repository documents.
+icon: Siren
+status: unverified
+---
+
+<NotVerified title="Not a tested procedure">
+
+The repository has no incident-response document and no severity scale for live incidents. This page orders the controls that do exist (the kill switch, review state, the ops routes, audit records, backups). It has not been exercised in a drill. The only priority scheme in the repo is P0 to P2 on the open [security review](/docs/safety/security-review) items.
+
+</NotVerified>
+
+## Who does what
+
+| Who | Does |
+| --- | --- |
+| Owner | Everything that needs secrets, the PayPal dashboard, environments or the Render service |
+| Contributor | Reads logs and evidence, reports error text without values, prepares a fix as a pull request |
+
+## Steps
+
+<Steps>
+<Step>
+
+### Stop new money calls
+
+The kill switch is a persisted state (`kill-switch.json` in the data directory) that wraps the payments gateway: `createOrder`, `authorizeOrder`, `capture` and `reauthorize` throw `kill_switch_engaged` before reaching the network, while voids and reads pass through. Engage and release are audited with the actor. The state survives a restart. I did not find an HTTP route that engages it; engaging it is a code or data-directory action by the owner.
+
+</Step>
+<Step>
+
+### Find out what PayPal knows
+
+Compare PayPal with the journal. The saga's first move on every run is a truth read, so a resume is safe. Export the state with the admin key: `GET /admin/export?kind=payments&auction=<id>` and `kind=roomlog`.
+
+</Step>
+<Step>
+
+### Release holds that should not stand
+
+`POST /ops/auctions/<auctionId>/void-all` (every hold of a hammered auction that is not captured) or `POST /ops/auctions/<auctionId>/release-review` (holds a review keeps). Admin key required, POST only, audited as actor `admin`. A 409 `busy` means a run holds the settlement lease: wait and retry.
+
+</Step>
+<Step>
+
+### Capture evidence before changing anything
+
+Keep the ledger export (its hash chain verifies), the payments journal, the room log, the processed webhook ids and the workflow run links. The audit records of money calls are in `payment-audit.jsonl` on the server disk, which the backup snapshot does not include. No secrets, no webhook bodies.
+
+</Step>
+<Step>
+
+### Recover
+
+Restart on the same data directory, or roll back the release, or restore from the latest encrypted snapshot. After any restore, reconcile against PayPal and void every authorization that no record accounts for. See the [operator runbook](/docs/run/operator-runbook).
+
+</Step>
+<Step>
+
+### Record it
+
+Write down what happened, the run ids and the decision. For payment gates, commit the evidence file and the `docs/GATES.md` section on a branch and open a pull request.
+
+</Step>
+</Steps>
+
+## Evidence to capture
+
+- Auction id, settlement state and the journal export.
+- The PayPal authorization and capture ids involved (ids only).
+- The workflow run ids and links.
+- Times in UTC.
+
+<CodePaths
+  paths={[
+    { path: 'packages/payments/src/killswitch.ts', note: 'kill switch and guardGateway' },
+    { path: 'packages/server/src/http/ops.ts', note: 'void-all and release-review' },
+    { path: 'packages/server/src/admin/export.ts', note: 'admin exports' },
+    { path: 'docs/RUNBOOK-BACKUP.md', note: 'snapshot and restore' },
+  ]}
+/>

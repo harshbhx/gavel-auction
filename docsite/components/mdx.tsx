@@ -16,6 +16,22 @@ import { MoneyFlowDiagram } from '@/components/diagrams/money-flow';
 import { VoiceDiagram } from '@/components/diagrams/voice';
 import { TimelineDiagram } from '@/components/diagrams/timeline';
 import { CrashDiagram } from '@/components/diagrams/crash';
+import { ArchitectureDiagram } from '@/components/diagrams/architecture';
+import { DataModelDiagram } from '@/components/diagrams/data-model';
+import { CiPipelineDiagram } from '@/components/diagrams/ci-pipeline';
+import { BidLifecycleDiagram } from '@/components/diagrams/bid-lifecycle';
+import { AuctionStatesDiagram } from '@/components/diagrams/auction-states';
+import { WsProtocolDiagram } from '@/components/diagrams/ws-protocol';
+import { HoldFlowDiagram } from '@/components/diagrams/hold-flow';
+import { SettlementWalkthroughDiagram } from '@/components/diagrams/settlement-walkthrough';
+import { HonorTimelineDiagram } from '@/components/diagrams/honor-timeline';
+import { WebhookDiagram } from '@/components/diagrams/webhook';
+import { IdempotencyDiagram } from '@/components/diagrams/idempotency';
+import { RecoveryTimelineDiagram } from '@/components/diagrams/recovery-timeline';
+import { RetryDecisionDiagram } from '@/components/diagrams/retry-decision';
+import { VoicePipelineDiagram } from '@/components/diagrams/voice-pipeline';
+import { EvidenceMapDiagram } from '@/components/diagrams/evidence-map';
+import { ThreatModelDiagram } from '@/components/diagrams/threat-model';
 import type { MDXComponents } from 'mdx/types';
 import type { ComponentProps } from 'react';
 
@@ -58,12 +74,28 @@ export function getMDXComponents(components?: MDXComponents) {
     SpeechTable,
     LatencyTable,
     SimScenarioTable,
-    // the five diagrams
+    // the diagrams
     SagaDiagram,
     MoneyFlowDiagram,
     VoiceDiagram,
     TimelineDiagram,
     CrashDiagram,
+    ArchitectureDiagram,
+    DataModelDiagram,
+    CiPipelineDiagram,
+    BidLifecycleDiagram,
+    AuctionStatesDiagram,
+    WsProtocolDiagram,
+    HoldFlowDiagram,
+    SettlementWalkthroughDiagram,
+    HonorTimelineDiagram,
+    WebhookDiagram,
+    IdempotencyDiagram,
+    RecoveryTimelineDiagram,
+    RetryDecisionDiagram,
+    VoicePipelineDiagram,
+    EvidenceMapDiagram,
+    ThreatModelDiagram,
     ...components,
   } satisfies MDXComponents;
 }

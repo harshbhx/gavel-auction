@@ -1,0 +1,141 @@
+---
+title: Idempotency and request ids
+description: How GAVEL can repeat a money call after a timeout or a crash without charging twice.
+icon: Fingerprint
+status: unverified
+full: true
+---
+
+Pressing a lift button twice does not call two lifts. The second press carries the same intent as the first, and the system treats them as one. PayPal offers the same thing for money calls: a header named `PayPal-Request-Id`. If GAVEL sends the same id twice, PayPal does the work once and answers the repeat with the first result.
+
+That only helps if GAVEL sends the **same** id on every try of one call, and a **different** id for a genuinely different call. This page shows how the id is made and where it is reused.
+
+<IdempotencyDiagram />
+
+## How the id is made
+
+The id is a fingerprint of the call, not a random number. Five parts go into a JSON array, which is hashed with SHA-256 and written in base32. The first 40 characters get the prefix `gv1-`, so every id is 44 characters long.
+
+| Part | Example | Why it is in the fingerprint |
+| --- | --- | --- |
+| `auctionId` | `auc1` | A call in one auction never matches another auction |
+| `op` | `capture` | An authorize and a capture of one hold get different ids |
+| `holdId` | `hold-1` | Each bidder's hold has its own calls |
+| `amountCents` | `35000` | A call for another amount is another call |
+| `generation` | `0` | The only part that changes on purpose, see below |
+
+Hashing a JSON array, not a joined string, means no choice of ids can produce the same input as another tuple.
+
+## Where each operation uses it
+
+<TypeTable
+  type={{
+    order: {
+      description: 'Creates the PayPal order for a hold. The amount is the bidder ceiling.',
+      type: 'amountCents = ceiling, generation 0',
+    },
+    authorize: {
+      description: 'Turns the approved order into an authorization (the hold).',
+      type: 'amountCents = ceiling, generation 0',
+    },
+    capture: {
+      description: 'Takes the winning price. The id is built once and saved in the journal with the intent.',
+      type: 'amountCents = price, generation 0',
+    },
+    void: {
+      description: 'Releases a hold that did not win. The settlement, the sweep and the repair all use the same id for the same hold.',
+      type: 'amountCents = 0, generation 0',
+    },
+    reauth: {
+      description: 'Renews an old authorization. The only operation whose generation goes up.',
+      type: 'amountCents = ceiling, generation + 1',
+    },
+  }}
+/>
+
+## Same id on every try
+
+<Steps>
+<Step>
+
+### Save the intent, then call
+
+The capture saves its intent in the journal first: operation, hold, amount and request id. If the process dies after that, the intent survives.
+
+</Step>
+<Step>
+
+### Retry inside one request
+
+The HTTP transport retries network errors and the statuses 429, 500, 502, 503 and 504, up to four attempts of ten seconds each. The wait between attempts is random between zero and the smaller of four seconds and 250 ms times two to the power of the retry number. A `Retry-After` header is honored up to 30 seconds. Every attempt carries the same `PayPal-Request-Id`.
+
+</Step>
+<Step>
+
+### Restart and resume
+
+A resume finds the saved intent and sends it again, with the same id. Before it sends anything it reads the truth of the hold at PayPal: a capture that is already there is adopted and no second call is made.
+
+</Step>
+<Step>
+
+### A new id only for a new call
+
+If the parameters change, the id changes. A reauthorization raises the generation by one. The generation never changes on a retry or a resume.
+
+</Step>
+</Steps>
+
+## Why the id is not the only guard
+
+<Callout type="warn" title="An id only helps while PayPal remembers it">
+
+If PayPal had forgotten the id, a repeated capture could run again. GAVEL therefore reads the truth before every capture and adopts what is already there. The simulation scenario S6 forgets the fake's id table at each crash point and still ends with one charge. How long the real PayPal remembers a request id has not been measured in this project.
+
+</Callout>
+
+If the same id is ever sent with different parameters, the fake PayPal answers with a conflict. The saga treats that as an invariant fault, a bug or a configuration problem, and stops in `FAILED_NEEDS_REVIEW` instead of trying another bidder.
+
+## What is proven
+
+<Tabs items={['Sandbox', 'Fake PayPal', 'Simulation']}>
+<Tab value="Sandbox">
+
+<Charged title="Repeat capture (R5)">
+
+In the nightly run 42200708552 (6 Nov 2026) a second capture send with the same request id answered HTTP 200 with the same capture. One crash between capture and journal (R10) ended with one capture on the winner. See [the gates](/docs/proof/gates).
+
+</Charged>
+
+</Tab>
+<Tab value="Fake PayPal">
+
+The fake keeps an idempotency table keyed by operation, resource and request id. The same key with equal parameters replays the stored result; different parameters conflict. It can also forget the table on purpose (the `forget_idempotency` fault) to model a lost record.
+
+</Tab>
+<Tab value="Simulation">
+
+<NotVerified title="Simulated, not a real host">
+
+Scenario S6 crashes at 5 capture boundaries, each with and without the id table forgotten, and every restart ends with one charge. This runs our code against a model of PayPal. See [the simulation](/docs/proof/simulation).
+
+</NotVerified>
+
+</Tab>
+</Tabs>
+
+More on how failures are sorted: [retries and unknown outcomes](/docs/how-it-works/retries-and-unknown-outcomes) and [crash recovery](/docs/how-it-works/crash-recovery).
+
+## Where this lives in the code
+
+<CodePaths
+  paths={[
+    { path: 'packages/payments/src/requestId.ts', note: 'buildRequestId and the five parts' },
+    { path: 'packages/payments/src/transport.ts', note: 'retries, backoff, the same header on every attempt' },
+    { path: 'packages/payments/src/saga/capture.ts', note: 'write-ahead intent, reuse on resume' },
+    { path: 'packages/payments/src/saga/reauth.ts', note: 'generation + 1' },
+    { path: 'packages/payments/src/holds/service.ts', note: 'order, authorize and void ids' },
+    { path: 'packages/payments/src/fake/idempotency.ts', note: 'replay and conflict in the fake' },
+    { path: 'packages/payments/test/saga/crash.test.ts', note: 'crash boundaries' },
+  ]}
+/>

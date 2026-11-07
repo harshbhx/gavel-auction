@@ -1,0 +1,73 @@
+---
+title: 'Gate G1: partial capture and remainder'
+description: Authorize 500.00, capture 350.00 with final_capture, then look at the 150.00 remainder. Method, evidence and limits.
+icon: Scissors
+status: verified
+---
+
+<GateBadge id="G1" />
+
+## Question
+
+After authorizing 500.00 and capturing 350.00 with `final_capture=true`, is the 150.00 remainder released, or still active? GAVEL charges only the winning price, so this decides whether the saga must void the remainder itself.
+
+## Method
+
+- Workflow: [`gate-g1`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/gate-g1.yml), by hand, `main` only. A headless browser signs in as the sandbox buyer to approve the order.
+- Script: `gates/g1.ts` in `packages/payments` (package script `gate:g1`).
+- Steps: create order (AUTHORIZE 500.00), buyer approval, authorize, capture 350.00 with `final_capture`, read the authorization and the order, then try an explicit void of the remainder.
+- Two buyers, two runs: a wallet buyer (4 Nov) and a second buyer funded by a card (5 Nov, run `G1-20261105T123116Z`). Both orders use `payment_source.paypal`, so both are PayPal-account orders. The second buyer is a personal sandbox account, not a guest card checkout.
+
+## Observed
+
+<Tabs items={['Wallet buyer', 'Card-funded buyer']}>
+<Tab value="Wallet buyer">
+
+| Step | Result |
+| --- | --- |
+| capture 350.00 with final_capture | HTTP 201 COMPLETED |
+| authorization and order afterwards | authorization CAPTURED, order COMPLETED |
+| explicit void of the remainder | HTTP 422 PREVIOUSLY_CAPTURED |
+| decision | A |
+
+</Tab>
+<Tab value="Card-funded buyer">
+
+| Step | Result |
+| --- | --- |
+| capture 350.00 with final_capture | HTTP 201 COMPLETED |
+| authorization and order afterwards | authorization CAPTURED, order COMPLETED |
+| explicit void of the remainder | HTTP 422 PREVIOUSLY_CAPTURED |
+| decision | A |
+
+</Tab>
+</Tabs>
+
+Decision A means the saga treats a void refused with `PREVIOUSLY_CAPTURED` on the winner's remainder as already released (`packages/payments/src/errorMap.ts` and `saga/remainder.ts`).
+
+## Evidence
+
+- [G1-20261104T231047Z.jsonl](https://github.com/harshbhx/gavel-auction/blob/main/docs/evidence/G1/G1-20261104T231047Z.jsonl), sha256 `8ac39be0...22bb8`.
+- [G1-20261105T123116Z.jsonl](https://github.com/harshbhx/gavel-auction/blob/main/docs/evidence/G1/G1-20261105T123116Z.jsonl), sha256 `2c8ff2e1...4cb`.
+- A test, `test/gates/gatesResultEvidence.test.ts`, fails when an evidence file no longer matches its recorded sha256, and when a gate flag leaves its safe value without a closed section.
+- The nightly sandbox job adds R1, R5 to R8 and R10 on the same gate; see the [nightly record](https://github.com/harshbhx/gavel-auction/blob/main/docs/evidence/nightly/NIGHTLY-42200708552.json).
+
+## Limits
+
+<NotVerified title="The remainder release is inferred">
+
+No run read a buyer balance or available funds. The authorization keeps amount 500.00 after the capture, so the evidence cannot tell a released remainder from an open one. Release is inferred from the CAPTURED status, the 422 on the later void and PayPal's documentation.
+
+</NotVerified>
+
+- PayPal-account buyers only. Capture of a guest card order was never run on the sandbox.
+- It does not measure latency or webhooks.
+
+<CodePaths
+  paths={[
+    { path: 'packages/payments/gates/g1.ts', note: 'the G1 script' },
+    { path: 'packages/payments/src/errorMap.ts', note: 'PREVIOUSLY_CAPTURED handling' },
+    { path: 'packages/payments/src/saga/remainder.ts', note: 'remainder treated as released' },
+    { path: 'packages/payments/src/gates-result.json', note: 'the flags that depend on gates' },
+  ]}
+/>

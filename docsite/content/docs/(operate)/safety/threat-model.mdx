@@ -1,0 +1,185 @@
+---
+title: Threat model
+description: Who can do what, where the trust boundaries are, and what each secret protects. Names only, never values.
+icon: ShieldAlert
+status: unverified
+full: true
+---
+
+A threat model answers three questions: what are we protecting, who might attack it, and what stops them. This page is a design map of GAVEL, read from the code. It is not an audit. The security checklist has 18 items and none is signed off yet (see [the security review](/docs/safety/security-review)).
+
+Everything here is the PayPal **sandbox**. No real money moves.
+
+<ThreatModelDiagram />
+
+## For a beginner: the two secrets that matter most
+
+Think of GAVEL as a building with two kinds of keys.
+
+<Tabs items={['TOKEN_SECRET', 'ADMIN_KEY']}>
+  <Tab value="TOKEN_SECRET">
+    **TOKEN_SECRET is the stamp the host uses to sign tickets.** When you join an auction you are given a link that contains a ticket (a token). The ticket says who you are, which auction it is for, what you may do and when it expires. The host signs it with TOKEN_SECRET, so it can later tell a real ticket from a forged or edited one.
+
+    - Only the host knows the stamp. Browsers carry tickets, never the stamp.
+    - If someone learns TOKEN_SECRET they can print a valid ticket for anyone, including an auctioneer. That is why it must be at least 32 bytes in production and why it is rotated with a grace period (below).
+    - Tickets are short lived: invite 24 hours (single use), session 4 hours, auctioneer 12 hours, screen 12 hours.
+  </Tab>
+  <Tab value="ADMIN_KEY">
+    **ADMIN_KEY is the operator's master password.** It is not a ticket and not tied to an auction. It is sent in the `x-admin-key` header and checked on its own.
+
+    - It can create an auction, replace an auctioneer link, list rooms, void every hold of an auction, release a settlement from review, read metrics and export the ledger.
+    - It is compared in constant time, must be at least 24 characters in production and must differ from TOKEN_SECRET, so one leak does not hand over both.
+    - A leaked auctioneer link is not an admin problem: the operator uses ADMIN_KEY to issue a new link, which kills every earlier auctioneer token.
+  </Tab>
+</Tabs>
+
+<Callout type="warn" title="Why two secrets and not one">
+  A ticket can be copied from a browser or a screen share. The admin key never goes to a browser. Keeping them separate means a stolen ticket can never create auctions or move money, and a stolen admin key does not let anyone forge tickets. Both can be rotated on their own.
+</Callout>
+
+## Every secret, by name
+
+The values live only in the host's environment (Render marks them as not synced from the repository) and in GitHub repository secrets. They are never committed, logged or shown.
+
+<TypeTable
+  type={{
+    TOKEN_SECRET: {
+      description: 'Signs and verifies every bidder, auctioneer and screen token (HMAC-SHA256).',
+      type: 'string',
+      required: true,
+      default: 'at least 32 bytes in production',
+    },
+    TOKEN_SECRET_PREVIOUS: {
+      description: 'The old signing secret, accepted for verification only, during a rotation.',
+      type: 'string',
+    },
+    TOKEN_SECRET_PREVIOUS_UNTIL: {
+      description: 'Epoch milliseconds after which the previous secret stops verifying.',
+      type: 'integer',
+    },
+    ADMIN_KEY: {
+      description: 'Operator password in the x-admin-key header. Create auctions, rotate links, ops routes, exports, metrics.',
+      type: 'string',
+      required: true,
+      default: 'at least 24 characters in production',
+    },
+    PAYPAL_CLIENT_ID: {
+      description: 'With the secret below, lets the host get an OAuth token for the PayPal sandbox API.',
+      type: 'string',
+    },
+    PAYPAL_CLIENT_SECRET: {
+      description: 'The sandbox app secret. Required when PAYMENTS=sandbox.',
+      type: 'string',
+    },
+    PAYPAL_WEBHOOK_ID: {
+      description: 'Identifies the webhook so PayPal can verify that an event is genuine.',
+      type: 'string',
+    },
+    DEEPGRAM_API_KEY: {
+      description: 'Lets the host send audio to Deepgram when VOICE_STT=deepgram.',
+      type: 'string',
+    },
+    GROQ_API_KEY: {
+      description: 'Lets the host send audio to Groq when VOICE_STT=groq or as the second provider.',
+      type: 'string',
+    },
+    DATABASE_URL: {
+      description: 'Connection string for Postgres when STORE=postgres. It carries a password.',
+      type: 'string',
+    },
+    SANDBOX_BUYER: {
+      description: 'GitHub secret pair (and SANDBOX_BUYER2, SANDBOX_BUYER3, SANDBOX_CARD_BUYER) for the sandbox buyer accounts the gates use.',
+      type: 'string',
+    },
+  }}
+/>
+
+## Trust boundaries
+
+A trust boundary is a line where data passes from something we do not control to something we do. Every crossing has a check.
+
+| Crossing | What is trusted | What is checked | Where |
+| --- | --- | --- | --- |
+| Browser to host (HTTP and WebSocket) | Nothing | Origin allowlist, rate limits, body caps, then a signed token with audience, lifetime, kind and revocation | `packages/server/src/auth/token.ts`, `host`, `http` |
+| Operator to host | The holder of ADMIN_KEY | Constant-time key check on every ops, export, create and rotate route | `packages/server/src/http/ops.ts` |
+| Audio socket | The auctioneer token, once | Token as the first message within 5 seconds; rate, size and duration limits; the bidder comes from the paddle heard, not the token | `packages/server/src/host/audio-ws.ts` |
+| PayPal to host (webhook) | Nothing in the body until verified | Raw body verified through PayPal's endpoint; certificate host must be paypal.com; 256 KiB cap | `packages/payments/src/webhooks/verify.ts`, `http/webhook-guard.ts` |
+| Host to PayPal | The sandbox API host only | Exact host match on api-m.sandbox.paypal.com over https; `PAYPAL_ENV` must be sandbox | `packages/payments/src/guard.ts` |
+| Host to speech provider | The provider, for the audio it is sent | Only when `VOICE_STT` names it and its key is set; the product warns people not to speak personal data | `packages/server/src/voice/stt.ts` |
+| Host to disk or Postgres | The host's own storage | Files on one persistent disk, or a database; memory store refused in production unless allowed | `packages/server/src/config.ts`, `render.yaml` |
+| CI to PayPal | Repository secrets | Gate workflows run in the `sandbox-nightly` environment and only from main | `.github/workflows/gate-g*.yml` |
+
+## What an attacker can try
+
+<Accordions>
+  <Accordion title="I have a bidder link that is not mine">
+    A token is bound to one auction and one bidder identity. An invite is single use and burned when the session is created. A session token expires after 4 hours. A bidder sees only their own ceiling: the room removes every other ceiling from what it sends (`redactForViewer`).
+  </Accordion>
+  <Accordion title="I edited a token to become the auctioneer">
+    The signature no longer matches, so the host answers unauthorized. The payload is strict: an unknown field, including an `alg` field, is rejected, so there is no algorithm to downgrade.
+  </Accordion>
+  <Accordion title="I found the auctioneer link in a screen recording">
+    The operator rotates the link with ADMIN_KEY. That raises a per-auction floor: every earlier auctioneer token stops working on HTTP and on the socket, and open sockets of the revoked token close with 4401. The floor is stored, so it survives a restart.
+  </Accordion>
+  <Accordion title="I send a fake webhook to credit myself">
+    The body is verified through PayPal before anything is read from it. A tampered event is rejected in tests against the fake PayPal. On the real sandbox, six real deliveries verified (G4); a tampered event was not part of that run.
+  </Accordion>
+  <Accordion title="I flood the host">
+    Per-source rate limits for joins, bids and HTTP, connection limits per bidder and per room, a cap on bids per auction and size caps on bodies and audio frames. The defaults are in `packages/server/src/config.ts`. The limits are covered by the abuse and denial-of-service tests in `packages/e2e/test/security`.
+  </Accordion>
+  <Accordion title="I speak a bid for someone else">
+    The microphone is the room's, so a spoken bid names a paddle. It still passes the room gate and the engine: the bidder must be on the roster, the amount must be valid, and a low confidence or ambiguous bid is held and the real bidder is asked. G5 failed on synthetic audio, so spoken bids go through the confirm prompt.
+  </Accordion>
+</Accordions>
+
+## Rotating a secret
+
+<Steps>
+  <Step>
+    **TOKEN_SECRET.** Set `TOKEN_SECRET_PREVIOUS` to the current value and `TOKEN_SECRET_PREVIOUS_UNTIL` to a deadline in epoch milliseconds. Set `TOKEN_SECRET` to the new value and restart. Tokens signed with either are accepted until the deadline. After it, remove the two `PREVIOUS` settings and restart.
+  </Step>
+  <Step>
+    **ADMIN_KEY.** Change it in the host environment and restart. Update the GitHub secret that holds the same value if a workflow uses it.
+  </Step>
+  <Step>
+    **PayPal credentials.** Rotate in the PayPal developer dashboard first, then update the environment.
+  </Step>
+  <Step>
+    **A leaked auctioneer link.** Call the auctioneer rotate endpoint with the admin key. Details are in the [operator runbook](/docs/run/operator-runbook).
+  </Step>
+</Steps>
+
+## What is not covered
+
+<NotVerified title="This is a design map, not a sign-off">
+
+- All 18 items of the security checklist (SEC-01 to SEC-18) are OPEN. Automated checks exist for most of them; a second person has not signed any item off.
+- Tampered-webhook rejection is tested against the fake PayPal only. Retry behaviour of real PayPal deliveries is unverified.
+- The sandbox accounts hold no real money, so the stakes of a leaked sandbox secret are low, but they are still kept out of the repository, logs and the web bundle.
+- Staging security tests and load tests stay unverified until a staging URL exists.
+
+</NotVerified>
+
+<Held title="Report a problem">
+
+Report a vulnerability privately as described in `SECURITY.md`. Do not include real credentials.
+
+</Held>
+
+## Where this lives in the code
+
+<CodePaths
+  paths={[
+    { path: 'packages/server/src/auth/token.ts', note: 'token format, kinds, lifetimes and verification' },
+    { path: 'packages/server/src/auth/rotation.ts', note: 'TOKEN_SECRET and TOKEN_SECRET_PREVIOUS' },
+    { path: 'packages/server/src/auth/authorize.ts', note: 'role table and per-viewer redaction' },
+    { path: 'packages/server/src/http/ops.ts', note: 'the admin key check and ops routes' },
+    { path: 'packages/server/src/http/auctioneer-token.ts', note: 'rotate and revoke auctioneer links' },
+    { path: 'packages/server/src/config.ts', note: 'secret length rules and production rules' },
+    { path: 'packages/server/src/http/security-headers.ts', note: 'baseline response headers' },
+    { path: 'packages/payments/src/guard.ts', note: 'sandbox host only' },
+    { path: 'packages/payments/src/webhooks/verify.ts', note: 'webhook verification' },
+    { path: 'docs/SECURITY-REVIEW.md', note: 'the checklist, all items OPEN' },
+    { path: 'SECURITY.md', note: 'how to report a vulnerability' },
+  ]}
+/>

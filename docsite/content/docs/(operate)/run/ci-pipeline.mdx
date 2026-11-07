@@ -1,0 +1,112 @@
+---
+title: CI and deployment map
+description: Every workflow that checks, proves, deploys or watches GAVEL, when it runs, what it needs by name and what it leaves behind.
+icon: GitBranch
+status: verified
+full: true
+---
+
+All heavy work runs in GitHub Actions: builds, test suites, browsers, screenshots, gate runs and deploys. Nothing in this project asks you to run them on a laptop.
+
+<CiPipelineDiagram />
+
+## Reading the map
+
+The five lanes group workflows by what starts them. Hover or focus a box for its cron line, the secrets and variables it needs (names only), the artifacts it leaves and its evidence label.
+
+<Cards>
+  <Card title="Checks on every change" description="ci and docsite. A roll-up job named required collects the results." />
+  <Card title="Evidence workflows" description="nightly-sandbox, gate-g3, gate-g3-early (sandbox) and sim-multiday (simulated)." href="/docs/proof/gates" />
+  <Card title="Deploys" description="deploy-staging, deploy-prod and the docs site publish." href="/docs/run/deploy" />
+  <Card title="Watchers" description="uptime, judge-smoke and backup run on a schedule and fail loudly when not configured." href="/docs/run/operator-runbook" />
+</Cards>
+
+## Evidence labels
+
+| Workflow | What it proves | Label |
+| --- | --- | --- |
+| `nightly-sandbox` | Real PayPal sandbox specs R1 to R10 and the G5 speech harness | Sandbox |
+| `gate-g3` | Whether an authorization stays capturable past the honor period | Sandbox, in progress |
+| `gate-g3-early` | An additional early reading from older G2 authorizations | Sandbox, partial |
+| `sim-multiday` | The settlement code against the fake PayPal on a simulated clock | Simulated |
+| `ci` | Types, lint, unit, property and scenario tests, the fake PayPal | Fake PayPal |
+
+<NotVerified title="G3 is not finished">
+
+The G3 probe started on 7 Nov 2026 at 03:06 UTC (day 0). Checks run at 3.5, 4 and 5 days and the final reading is about 12 Nov 06:17 UTC. Until then the gate reads NOT RUN, shown on this site as IN PROGRESS. The 30 day run in `sim-multiday` is a simulation, not a sandbox result.
+
+</NotVerified>
+
+## Secrets and variables, by name
+
+Values never go in the repository. Only throwaway sandbox values belong in the sandbox secrets.
+
+<TypeTable
+  type={{
+    PAYPAL_CLIENT_ID: { description: 'Sandbox app credential. nightly-sandbox, gate-g3, gate-g3-early.', type: 'secret' },
+    PAYPAL_CLIENT_SECRET: { description: 'Sandbox app credential. Also keys the tag that protects the G3 probe state artifact.', type: 'secret' },
+    SANDBOX_BUYER_EMAIL: { description: 'Sandbox buyer account. nightly-sandbox, gate-g3.', type: 'secret' },
+    SANDBOX_BUYER_PASSWORD: { description: 'Sandbox buyer account. nightly-sandbox, gate-g3.', type: 'secret' },
+    RENDER_DEPLOY_HOOK_URL: { description: 'deploy-staging and deploy-prod.', type: 'secret' },
+    RENDER_API_KEY: { description: 'deploy-prod, to record the live deploy and roll back.', type: 'secret' },
+    RENDER_SERVICE_ID: { description: 'deploy-prod.', type: 'variable' },
+    STAGING_URL: { description: 'deploy-staging smoke target.', type: 'variable' },
+    PRODUCTION_URL: { description: 'deploy-prod, uptime and backup.', type: 'variable' },
+    UPTIME_ENABLED: { description: 'The uptime probe runs only when this is true.', type: 'variable' },
+    JUDGE_URL: { description: 'judge-smoke target; empty makes the run fail on purpose.', type: 'variable' },
+    NIGHTLY_SANDBOX_REQUIRED: { description: 'When true, a scheduled nightly-sandbox run without secrets ends red.', type: 'variable' },
+    CLOUDFLARE_API_TOKEN: { description: 'Docs site deploy. Without both Cloudflare values the deploy job ends green with a notice.', type: 'secret' },
+    CLOUDFLARE_ACCOUNT_ID: { description: 'Docs site deploy.', type: 'secret' },
+    GAVEL_STAGING_ADMIN_KEY: { description: 'ui-screens-live, for the screens that need a room.', type: 'secret' },
+    ADMIN_KEY: { description: 'backup (production environment) and the optional staging smoke.', type: 'secret' },
+    BACKUP_GPG_PUBLIC_KEY: { description: 'backup: the public key the ledger export is encrypted to.', type: 'secret' },
+  }}
+/>
+
+<Callout type="warn" title="The sandbox environment protects nothing yet">
+The job names the GitHub environment `sandbox-nightly`, but it has no reviewer, no branch rule and no secrets of its own. The secrets are repository-level, so a workflow file on any pushed branch can read them. That is why only throwaway sandbox values are allowed in them.
+</Callout>
+
+## When a check goes red
+
+<Steps>
+<Step>
+
+Open the failed run and read the failing job: `gh run view <run-id> --log-failed`.
+
+</Step>
+<Step>
+
+If it is `required`, the failing job is named in its log; fix that job, not the roll-up.
+
+</Step>
+<Step>
+
+If a scheduled evidence workflow ended red because secrets are missing, that is by design: a night that tested nothing must not look like a pass. Add the secrets named in its notice.
+
+</Step>
+<Step>
+
+Download artifacts with `gh run download <run-id> -n <artifact-name>`: `sandbox-report`, `g3-probe-state`, `g3-entry`, `g3-early-evidence`, `sim-multiday-report`, `ui-screens`, `judge-smoke-traces`, `docsite`, `docsite-shots`.
+
+</Step>
+</Steps>
+
+## Where this lives in the repository
+
+<CodePaths
+  paths={[
+    { path: '.github/workflows/ci.yml', note: 'the checks and the required roll-up' },
+    { path: '.github/workflows/nightly-sandbox.yml', note: 'sandbox specs and the G5 harness, 20:30 UTC' },
+    { path: '.github/workflows/gate-g3.yml', note: 'the 5 day honor period probe' },
+    { path: '.github/workflows/gate-g3-early.yml', note: 'early G3 reading' },
+    { path: '.github/workflows/sim-multiday.yml', note: 'simulated multi-day suite' },
+    { path: '.github/workflows/judge-smoke.yml', note: 'nightly judge walkthrough on the hosted app' },
+    { path: '.github/workflows/uptime.yml', note: 'health probes every 5 minutes' },
+    { path: '.github/workflows/ui-screens.yml', note: 'screen tour in CI' },
+    { path: '.github/workflows/deploy-staging.yml', note: 'Render deploy hook and smoke' },
+    { path: '.github/workflows/deploy-prod.yml', note: 'tagged production deploy and rollback' },
+    { path: '.github/workflows/docsite.yml', note: 'this site' },
+    { path: 'docs/DEPLOY.md', note: 'the settings the hosted checks need' },
+  ]}
+/>

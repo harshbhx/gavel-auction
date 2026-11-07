@@ -1,0 +1,57 @@
+---
+title: 'Gate G2: card and guest AUTHORIZE'
+description: Does an Orders v2 AUTHORIZE flow work for wallet and guest card buyers in SDK v6? Method, evidence and limits.
+icon: CreditCard
+status: verified
+---
+
+<GateBadge id="G2" />
+
+## Question
+
+Does an Orders v2 intent AUTHORIZE flow work for card and guest-checkout buyers on the sandbox, so that registration can offer a card and not only a PayPal wallet?
+
+## Method
+
+- There is no `gate-g2` workflow. G2 runs on the owner's laptop, with sandbox credentials in the shell: `PAYPAL_ENV=sandbox npm run gate:g2 -w @gavel/payments` (script `gates/g2/server.ts`).
+- The script serves a JS SDK v6 page on localhost. A person approves one wallet order and one guest card order (a Card Generator Visa) in the SDK popup; the server then authorizes each order.
+- Run `G2-20261105T115228Z`, 5 Nov 2026.
+
+## Observed
+
+| Path | Result |
+| --- | --- |
+| wallet (`createPayPalOneTimePaymentSession`) | `onApprove` reached, authorize answered HTTP 201 COMPLETED with an authorization id |
+| guest card (`createPayPalGuestOneTimePaymentSession`, `paypal-basic-card-button`) | `onApprove` reached, authorize answered HTTP 201 COMPLETED with an authorization id |
+
+Findings worth knowing:
+
+- The first guest card attempt was cancelled at the card form (a US card with a UK billing country); a new order succeeded.
+- The client token request with `domains[]=localhost` answers 401 `invalid_domain`; without `domains[]` it succeeds.
+- `isEligible('basic_card')` throws "unsupported funding source"; the guest card needs no eligibility key.
+
+Decision: the card path is on (`g2_card_authorize` is true in `packages/payments/src/gates-result.json`). The fallback, if it had failed, was to restrict registration to wallet buyers.
+
+## Evidence
+
+- [G2-20261105T115228Z.jsonl](https://github.com/harshbhx/gavel-auction/blob/main/docs/evidence/G2/G2-20261105T115228Z.jsonl), sha256 `2a0e9ee9...fdfe`.
+- The two authorizations from this run are the ones the early [G3](/docs/proof/gate-g3) probe reads.
+
+## Limits
+
+<NotVerified title="AUTHORIZE only">
+
+Capture and void of the guest card authorization were not run. G1 captured a PayPal-account order only, and the nightly R2 spec stops at the authorization (status CREATED). A guest card capture is therefore not shown on the sandbox.
+
+</NotVerified>
+
+- Needs a person with a browser, so it cannot run in a headless workflow.
+- US accounts and USD only.
+
+<CodePaths
+  paths={[
+    { path: 'packages/payments/gates/g2/server.ts', note: 'the G2 page and server' },
+    { path: 'packages/payments/src/gates-result.json', note: 'g2_card_authorize flag' },
+    { path: 'docs/RUNBOOK-GATES.md', note: 'what to do if G2 fails' },
+  ]}
+/>

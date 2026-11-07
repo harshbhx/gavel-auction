@@ -1,0 +1,167 @@
+---
+title: server
+description: The single process that hosts the rooms, the HTTP API, the WebSocket gateway and settlement.
+icon: Server
+status: verified
+---
+
+`@gavel/server` (`packages/server`) is where everything meets. One Node process owns the rooms, the HTTP routes, the `/ws` room socket, the `/audio` voice socket, the stores and the settlement runner. A Render blueprint for it is in `render.yaml`.
+
+## Responsibilities
+
+- **Compose.** `boot/compose.ts` builds the stores, the engine runtime, the payments gateway (fake or sandbox), the room and the HTTP server, and mounts the sockets. `main.ts` starts it; `config.ts` validates the environment before anything starts.
+- **Rooms.** `room/room.ts` runs one live auction: join, bid, confirm, hammer, soft close, resync. It talks to the engine only through the ports in `@gavel/shared` and `room/settle-port.ts`.
+- **The confirm gate.** A voice-like bid is held in `room/confirm.ts` until its bidder answers; it waits `CONFIRM_TTL_MS` (15 seconds) and the engine does not see it meanwhile. `isVoiceLike` catches a spoken bid labelled as another source.
+- **HTTP.** Routes under `http/`: auctions, control and kill, invites, holds, webhook, read (snapshot and events), demo, ops, health and metrics.
+- **Auth.** `auth/token.ts` defines four token kinds (`invite`, `session`, `auctioneer`, `screen`) with lifetimes of 24 h, 4 h, 12 h and 12 h; the payload schema is strict and an `alg` field is rejected. `ADMIN_KEY` is the operator key, not a token role. See [threat model](/docs/safety/threat-model).
+- **Settlement host.** `runtime/auction-service.ts` and the files beside it call the payments package: hold service, settlement bridge, webhook intake, reconcile and void phase.
+- **Stores.** `store/` has memory, file (`file-ledger-store.ts`, `file-room-store.ts`, with a data directory lock) and Postgres (`postgres.ts` with forward-only migrations from `migrations/`).
+- **Limits.** `limits/rate-limiter.ts` keeps token buckets per client key: bids, frames, joins, HTTP.
+- **Voice host.** `host/audio-ws.ts` and `voice/` connect the `/audio` socket to the voice pipeline and its speech-to-text providers.
+- **Operations.** `ops/` (shutdown, fatal errors, metrics), `obs/` (log ring, Prometheus text) and `warmup/`.
+
+## Public interface
+
+`src/index.ts` is small: it re-exports `ErrorCode`, the settle port (`room/settle-port.ts`) and `runtime/index.ts`. The real entry points are processes and routes, not library calls.
+
+| Surface | Where |
+| --- | --- |
+| Process start | `src/main.ts` (`npm run start`, or `start:prod` on the built `dist/main.js`) |
+| Room socket | `/ws` (`host/node-ws.ts`, `WS_PATH`) |
+| Voice socket | `/audio` (`host/audio-ws.ts`, `AUDIO_PATH`) |
+| Health and metrics | `/healthz`, `/metrics`, `/metrics/prometheus` (`boot/compose.ts`) |
+| API | `/api/auctions`, `/api/holds`, `/api/demo/*` and the routes in `src/http/` |
+
+See [WebSocket protocol](/docs/reference/websocket-protocol) for the messages.
+
+## Configuration
+
+Names only, read from `src/config.ts`; the server stops at boot with one JSON line per problem. Production-like environments need `TOKEN_SECRET` of at least 32 bytes and `ADMIN_KEY` of at least 24 characters, and the two must differ.
+
+<TypeTable
+  type={{
+    PAYMENTS: { description: 'The one payments switch: fake runs the in-process fake PayPal, sandbox runs the PayPal sandbox.', type: "'fake' | 'sandbox'", default: "'fake'" },
+    STORE: { description: 'Where the ledger and room state live. The schema also lists d1, but compose.ts refuses it in this build.', type: "'memory' | 'file' | 'postgres'", default: "'memory'" },
+    VOICE_STT: { description: 'Speech provider for /audio. Unset or replay plays cached transcripts and needs no key; groq and deepgram fall back to the cached provider when they fail.', type: "'replay' | 'fake' | 'groq' | 'deepgram'" },
+    RATE_BID_PER_S: { description: 'Bid refill rate per client.', type: 'number', default: '3' },
+    RATE_BID_BURST: { description: 'Bid burst per client.', type: 'number', default: '5' },
+    MAX_CONN_PER_BIDDER: { description: 'Concurrent sockets per bidder.', type: 'number', default: '3' },
+    MAX_BIDDERS_PER_ROOM: { description: 'Room size.', type: 'number', default: '200' },
+    MAX_ROOMS: { description: 'Rooms served by one process.', type: 'number', default: '20' },
+    GAVEL_REAUTH: { description: 'Reauthorize holds older than the honor window before the capture.', type: 'flag', default: "'0'" },
+    GAVEL_RECONCILE_INTERVAL_MS: { description: 'Period of the reconcile pass; unset or 0 turns it off.', type: 'number' },
+  }}
+/>
+
+The full table is in [configuration](/docs/reference/configuration). The names `TOKEN_SECRET`, `ADMIN_KEY` and `PAYPAL_CLIENT_SECRET` are secrets: never commit a value.
+
+## Key files
+
+<Files>
+  <Folder name="packages/server" defaultOpen>
+    <Folder name="src" defaultOpen>
+      <Folder name="boot">
+        <File name="compose.ts" />
+        <File name="checkpoint-kill.ts" />
+      </Folder>
+      <Folder name="room">
+        <File name="room.ts" />
+        <File name="confirm.ts" />
+        <File name="fence.ts" />
+        <File name="resync.ts" />
+        <File name="snapshot-policy.ts" />
+      </Folder>
+      <Folder name="runtime">
+        <File name="auction-service.ts" />
+        <File name="engine-dispatch.ts" />
+        <File name="ledger-engine.ts" />
+        <File name="webhook-intake.ts" />
+        <File name="void-phase.ts" />
+      </Folder>
+      <Folder name="http">
+        <File name="app.ts" />
+        <File name="holds.ts" />
+        <File name="webhook.ts" />
+        <File name="webhook-guard.ts" />
+      </Folder>
+      <Folder name="store">
+        <File name="file-ledger-store.ts" />
+        <File name="postgres.ts" />
+        <File name="data-dir-lock.ts" />
+      </Folder>
+      <Folder name="auth">
+        <File name="token.ts" />
+        <File name="rotation.ts" />
+      </Folder>
+      <File name="config.ts" />
+      <File name="main.ts" />
+    </Folder>
+    <File name="migrations/0001_init.sql" />
+  </Folder>
+</Files>
+
+| File | Note |
+| --- | --- |
+| `boot/compose.ts` | the single wiring point; chooses the store and the payments mode |
+| `room/fence.ts` | `FencedStore`: a stale expected sequence fences this host, and later appends fail with `host_fenced` without touching the store |
+| `room/resync.ts` | a reconnecting client gets a replay of at most 200 missed events; one token holds at most 3 connections; the oldest is closed with code 4011 `superseded` |
+| `room/snapshot-policy.ts` | a snapshot on a state change, or after 100 events |
+| `runtime/webhook-intake.ts` | stores a verified event, then applies it at most once per event id; an event for an unknown hold is parked and retried by a sweep |
+| `http/webhook-guard.ts` | webhook body limit of 256 KiB; only an event id and an outcome are logged |
+| `store/data-dir-lock.ts` | one process owns the data directory |
+| `ops/shutdown.ts` | going-away close code 1001 and a 30 second default deadline (`SHUTDOWN_DEADLINE_MS` overrides) |
+
+## Invariants and the tests that guard them
+
+<Accordions type="multiple">
+<Accordion title="A voice bid needs its bidder's answer, and a held bid never reaches the engine">
+Tests: `test/room-confirm.test.ts`, `test/room-confirm-atomic.test.ts`, `test/room-confirm-recover.test.ts`, `test/room-confirm-resolve.test.ts`, `test/room-confirm-supersede.test.ts`, `test/room-manual-consent.test.ts`, `test/confirm-audit-scrub.test.ts`.
+</Accordion>
+<Accordion title="Only one host serves a room">
+Tests: `test/room-fence.test.ts`, `test/data-dir-lock.test.ts`, `test/race.test.ts`.
+</Accordion>
+<Accordion title="A restart loses nothing that was acknowledged">
+Tests: `test/room-wal.test.ts`, `test/bench-recover.test.ts`, `test/durable-stores.test.ts`, `test/store-contract.memory.test.ts`, `test/store-postgres.test.ts`, `test/checkpoint-kill.test.ts`.
+</Accordion>
+<Accordion title="Tokens are strict, revocable and single-use where they must be">
+Tests: `test/token.test.ts`, `test/token-fuzz.test.ts`, `test/rotation.test.ts`, `test/authorize.test.ts`, `test/ws-token-recheck.test.ts`, `test/http-auctioneer-token.test.ts`, `test/http-invites.test.ts`.
+</Accordion>
+<Accordion title="Floods are limited per client, not per socket">
+Tests: `test/rate-limiter.test.ts`, `test/flood-rate-limited.test.ts`, `test/caps.test.ts`, `test/boot-join-limit.test.ts`, `test/client-key-parity.test.ts`.
+</Accordion>
+<Accordion title="Private data does not leave through events or exports">
+Tests: `test/http-events-redaction.test.ts`, `test/admin-export.test.ts`, `test/replay-bundle.test.ts`, `test/store-export.test.ts`, `test/room-audit.test.ts`.
+</Accordion>
+<Accordion title="A webhook is verified before it is applied, and the body is the original bytes">
+Tests: `test/http-webhook.test.ts`, `test/http-webhook-guard.test.ts`, `test/http-webhook-dispatch.test.ts`, `runtime/webhook-intake.test.ts`.
+</Accordion>
+<Accordion title="Bad configuration stops the boot">
+Tests: `test/config.test.ts`, `test/boot-validate.test.ts`, `test/env-example.test.ts` (the example file names exactly the variables the server reads), `test/render-blueprint.test.ts`.
+</Accordion>
+<Accordion title="The room follows the engine, settlement follows the saga">
+Tests: `test/room-hammer.test.ts`, `test/room-soft-close.test.ts`, `test/room-auto-hammer.test.ts`, `test/http-ops-settlement.test.ts`, `runtime/settlement-own-hold.test.ts`, `runtime/void-phase-queue.test.ts`, `test/scenario-runner.test.ts` with the golden scenarios in `test/scenarios/`.
+</Accordion>
+<Accordion title="Ceiling policy and shared contracts match the other packages">
+Tests: `test/ceiling-policy.test.ts`, `test/contract-shared-drift.test.ts`, `test/ledger-engine-contract.test.ts`.
+</Accordion>
+</Accordions>
+
+<NotVerified title="Latency numbers">
+`bench/latency.ts` and `test/latency-bench.test.ts` measure the room and engine in process. They are not PayPal numbers; see [latency](/docs/proof/latency) for what is measured against the sandbox.
+</NotVerified>
+
+## Where it sits
+
+`server` may import `shared`, `engine`, `payments` and `voice` (`ALLOWED.server` in `.dependency-cruiser.cjs`) and is imported by nothing; the browser reaches it over HTTP and WebSocket. It declares `pg` and `ws` as its own runtime dependencies. `npm run check:trace -w @gavel/server` runs in CI beside the engine's check.
+
+<CodePaths
+  paths={[
+    { path: 'packages/server/src/boot/compose.ts', note: 'wiring of all packages' },
+    { path: 'packages/server/src/config.ts', note: 'every environment variable the server reads' },
+    { path: 'packages/server/src/room/room.ts', note: 'one live auction' },
+    { path: 'packages/server/src/room/confirm.ts', note: 'the confirm gate' },
+    { path: 'packages/server/src/runtime/auction-service.ts', note: 'settlement host' },
+    { path: 'packages/server/src/store/postgres.ts', note: 'Postgres store and migrations' },
+    { path: 'render.yaml', note: 'the Render blueprint' },
+  ]}
+/>

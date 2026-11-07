@@ -13,6 +13,7 @@ export function DiagramFrame({
   height,
   minWidth = 1000,
   badge,
+  toolbar,
   caption,
   transcript,
   render,
@@ -23,6 +24,8 @@ export function DiagramFrame({
   height: number;
   minWidth?: number;
   badge?: ReactNode;
+  /** Optional controls under the figure (step buttons, detail panel). Shared by both copies of the SVG. */
+  toolbar?: ReactNode;
   caption: ReactNode;
   transcript: ReactNode;
   render: (idPrefix: string) => ReactNode;
@@ -71,6 +74,7 @@ export function DiagramFrame({
       <div className="fd-scroll-container overflow-x-auto" role="region" aria-label={`${title}, scrollable`} tabIndex={0}>
         {svg(uid, minWidth)}
       </div>
+      {toolbar && <div className="border-t border-[var(--hl-hairline)] px-3 py-2 text-sm">{toolbar}</div>}
       <figcaption className="border-t border-[var(--hl-hairline)] px-3 py-3 text-sm">{caption}</figcaption>
       <details className="border-t border-[var(--hl-hairline)] px-3 py-2 text-sm">
         <summary className="cursor-pointer font-mono text-[0.7rem] font-bold uppercase">Text version of this diagram</summary>

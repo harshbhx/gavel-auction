@@ -1,0 +1,69 @@
+---
+title: Two-minute path
+description: Five clicks on this site that show what GAVEL claims, what is proven and what is not.
+icon: Timer
+status: in progress
+---
+
+<NotVerified title="No hosted demo is published">
+
+`docs/DEMO.md` lists the hosted demo as not available yet, and `docs/JUDGES.md` says the click-through path against a hosted URL cannot be followed today. This path therefore reads the evidence on this site. The runnable demo is the local one on the fake PayPal, in the [ten-minute path](/docs/judges/ten-minute-path).
+
+</NotVerified>
+
+<Steps>
+<Step>
+
+### Read the promise and the status
+
+Open [Start here](/docs/start) and then [Real, simulated, recorded](/docs/start/status).
+
+Expected: one sentence (every bid is a PayPal authorization hold, only the winning price is captured, every other hold is voided) and a table that labels each area as real sandbox, fake, simulated, recorded or not available.
+
+</Step>
+<Step>
+
+### Open the gates
+
+Open [Gates G0 to G5](/docs/proof/gates).
+
+Expected: a table with G0, G1, G2 and G4 as PASS, G5 as FAIL and G3 as IN PROGRESS. The table is generated from `docs/GATES.md`, so it cannot differ from the repository.
+
+</Step>
+<Step>
+
+### See why voice goes through a confirm prompt
+
+Open [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm).
+
+Expected: the speech accuracy numbers, both providers above the 0.05 wrong-accept limit, and the decision that every spoken bid is confirmed before it counts.
+
+</Step>
+<Step>
+
+### See the money path
+
+Open [Settlement walkthrough](/docs/how-it-works/settlement-walkthrough) or [Money flow](/docs/how-it-works/money-flow).
+
+Expected: hatched means held, solid means charged, hollow means released. One winner is captured at the winning price and the other holds are released.
+
+</Step>
+<Step>
+
+### Check what is simulated
+
+Open [The 30-day simulation](/docs/proof/simulation).
+
+Expected: eight scenarios, all PASS, each labelled simulated. They run our code against a model of PayPal on a fake clock, so they do not replace gate G3.
+
+</Step>
+</Steps>
+
+## What you have seen
+
+- Real on the PayPal sandbox: gates G0, G1, G2 and G4.
+- Failed, with the fallback in place: gate G5 on synthetic speech.
+- In progress: gate G3, final reading about 12 Nov 06:17 UTC.
+- Simulated: the multi-day run and whole-auction settlement on the fake PayPal, plus one lot of three holds on the real sandbox.
+
+Next: the [rubric map](/docs/judges/rubric-map) points each judging criterion at its evidence.

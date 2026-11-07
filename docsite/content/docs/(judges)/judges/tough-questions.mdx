@@ -1,0 +1,77 @@
+---
+title: Tough questions
+description: Honest answers about voice accuracy, gate G3, the fake PayPal, production readiness and the security review.
+icon: MessageCircleQuestion
+status: in progress
+---
+
+Each answer says what is known, what is not, and where the evidence is. Where this page and `docs/GATES.md` disagree, the gate record wins.
+
+<Accordions type="multiple">
+<Accordion title="Voice accuracy failed. Why is voice still in the product?">
+
+Gate G5 is a FAIL. On 24 synthetic eSpeak clips, Deepgram nova-2 had a wrong-accept rate of 0.125 and Groq whisper-large-v3-turbo 0.083. On a second set of 24 clips in a human-like synthetic voice, Deepgram had 0.083 and Groq 0.167. The limit was 0.05 or less, so all four results fail. The clips are synthetic and noise-free; there is no real-room or noisy-room test, and no live speech run is recorded.
+
+The decision recorded in `docs/GATES.md` is that spoken bids always go through the confirm prompt. The parser never decides a winner and never moves money; typed entry and QR bids are the other input paths, so the auction works if speech fails. At the text level (transcripts through the parser, no audio) wrong accepts are 0.000 on 169 cases, but that measures the parser only and says nothing about speech-to-text accuracy.
+
+See [voice and the confirm gate](/docs/how-it-works/voice-and-confirm).
+
+</Accordion>
+<Accordion title="Gate G3 has no result. What if the hold expires?">
+
+G3 is a real probe in progress. Day 0 was 7 Nov 2026 03:06 UTC; checkpoints are at 3.5, 4 and 5 days and the final reading is about 12 Nov 06:17 UTC. Earlier attempts on 4 to 7 Nov never ran, so no earlier day is claimed. Until the readings exist the gate reads NOT RUN / IN PROGRESS.
+
+PayPal's documentation disagrees with itself about the honor period (3 days) and the validity window (29 days, with one reauthorization), so GAVEL does not assume either. The plan if the window is short is to capture within the verified window and reauthorize before the hammer. That is a plan, not a result. Meanwhile holds older than two hours at settlement are flagged stale, and a stale hold is still captured.
+
+The 30-day run is a simulation on a fake clock against a model of PayPal. It shows our code is consistent with that model; it does not show PayPal follows it.
+
+See [honor period](/docs/how-it-works/honor-period) and [gate G3](/docs/proof/gate-g3).
+
+</Accordion>
+<Accordion title="Is any of this real PayPal, or is it all the fake?">
+
+Both exist and they are labelled. Real on the PayPal sandbox: G0 (Actions run log only), G1 (authorize 500, capture 350 with final capture, two PayPal-account buyers, one funded by a card), G2 (wallet and guest card authorize), G4 (six real webhooks verified) and one lot of three holds plus one in-process crash in the nightly specs R7, R8 and R10.
+
+Fake: whole-auction settlement with many holds, crash and resume, and rejection of a tampered webhook. The fake PayPal is a test double in `packages/payments/src/fake/`; it says nothing about the real PayPal.
+
+Never real: money. Every PayPal call is against the sandbox.
+
+See [real, simulated, recorded](/docs/judges/real-vs-simulated).
+
+</Accordion>
+<Accordion title="Is the remainder of a partial capture really released?">
+
+Inferred, not observed. After the final capture the authorization reads CAPTURED and an explicit void answers 422 `PREVIOUSLY_CAPTURED`. No run read a buyer balance or available funds. Capture of a guest card authorization was not run (G1 used PayPal-account orders).
+
+</Accordion>
+<Accordion title="Is it production ready?">
+
+No. The list is on [Roadmap and limits](/docs/roadmap/limits). In short:
+
+- No hosted demo URL is published; the runnable path is local, on the fake PayPal.
+- The file stores need a persistent disk and a single instance; there is no persistent store for a hosted deploy yet.
+- Latency is not shown to be inside budget: the sandbox void p95 is 1235.96 ms (n=10), above the 1 s per-call budget behind the 6 s SETTLED target, and hammer to CAPTURED was measured on the capture call only. The raw measurement log is not committed.
+- Whole-auction settlement was not driven through a deployed server, and no real process kill ran on the sandbox.
+- Rejected bids are kept in the room log only, not in the ledger.
+- The web console has no audio sender to the `/audio` socket yet.
+- Accessibility: automated checks run; the manual pass has not been done.
+
+</Accordion>
+<Accordion title="What is open in the security review?">
+
+`docs/SECURITY-REVIEW.md` lists SEC-01 to SEC-18. All 18 are OPEN: nobody has signed an item off, and the reviewer of an item is never its author. No FAIL is recorded. Automated checks exist for many items (access control, webhook authenticity and SSRF, sandbox-only guard, abusive input, headers and denial of service tests live in `packages/e2e/test/security`), and CI runs a secret scan and a dependency audit. The document's own rule is that submission is allowed when no P0 item is FAIL or OPEN, so the eight P0 items (SEC-01 to SEC-07 and SEC-18) still need a sign-off.
+
+See [security review](/docs/safety/security-review) and the [threat model](/docs/safety/threat-model).
+
+</Accordion>
+<Accordion title="How do I know the audit trail was not edited?">
+
+Accepted bids go into a hash-chained ledger. A public export can be checked with `verifyPublicExport` or the `verify-ledger` command in `packages/engine`; an edited entry fails at its index and a cut chain fails with `truncated` when the expected head is passed. The limit: rejected bids are not in the ledger, so it cannot prove them.
+
+</Accordion>
+<Accordion title="Why should I trust the latency numbers?">
+
+You should not rely on them yet. They come from one Actions run (42047543821, 10 cycles, 0 failures) whose raw log is not committed. They are single-call numbers, and the end-to-end settlement measurement is recorded as NOT RUN in `docs/GATES.md`. See [latency](/docs/proof/latency).
+
+</Accordion>
+</Accordions>

@@ -1,0 +1,111 @@
+---
+title: shared
+description: The vocabulary every package agrees on: money, ids, wire messages, ports, config schema.
+icon: Package
+status: verified
+---
+
+`@gavel/shared` (`packages/shared`) is the bottom of the dependency graph. It imports nothing from the workspace and has one runtime dependency, `zod`. Its job is to give every other package one copy of the things they must agree on, so that two packages cannot drift apart.
+
+## Responsibilities
+
+- **Money and time as branded numbers.** `Cents` is an integer from 0 to `MAX_CENTS` (99 999 999 999); `Cents(x)` throws `bad_amount` for a float, NaN, a negative or an out-of-range value, and `add` and `sub` re-check the result. `EpochMs` is an integer millisecond timestamp.
+- **Branded ULIDs.** `AuctionId`, `BidderId`, `BidId`, `MsgId`, `ConnId`, `EventId` and `Jti` are 26-character Crockford ULIDs; `parseId` rejects anything else with `bad_message`.
+- **Time as a port.** `Clock` has `now()` and `setTimer()`. `SystemClock` is the only place `Date.now` is read in this package, so tests inject a fake clock.
+- **The wire protocol.** Strict zod schemas for client and server messages (`wire/client.ts`, `wire/server.ts`), the envelope with its size limits (`wire/envelope.ts`) and `encodeMsg` / `decodeMsg` (`wire/codec.ts`). See the [WebSocket protocol](/docs/reference/websocket-protocol).
+- **Ports.** Interfaces only, no implementation: `RoomStore`, `EnginePort`, `PaymentsPort`, `Transport`, `TokenSigner`, `Logger` (`ports.ts`).
+- **Error codes.** `ERROR_CODES` and `ERROR_TABLE`, plus the HTTP error body `ApiError` (`api-error.ts`).
+- **Cross-package contracts.** The hold route contract (`hold-contract.ts`), the ceiling policy (`ceilings.ts`), the auction config schema (`config-schema.ts`), the replay bundle format (`replay-bundle.ts`) and the per-client rate-limit key (`client-key.ts`).
+
+## Public interface
+
+Everything is exported from `packages/shared/src/index.ts`; `package.json` has a single export `.` that points at the TypeScript source.
+
+| Area | Main exports |
+| --- | --- |
+| Money | `Cents`, `isCents`, `MAX_CENTS`, `add`, `sub`, `cmp`, money formatting |
+| Ids | `Ulid`, `AuctionId`, `BidderId`, `isUlid`, `parseId`, `UlidMinter` (`ids-mint.ts`) |
+| Time | `EpochMs`, `Clock`, `SystemClock`, `MAX_TIMEOUT_MS` |
+| Wire | `PROTOCOL_VERSION`, `MAX_FRAME_BYTES`, `MAX_SERVER_FRAME_BYTES`, `encodeMsg`, `decodeMsg`, client and server message schemas |
+| Config | `AuctionConfigSchema`, `AUCTION_MODES`, `HOLD_SCOPES`, `endsInFuture` |
+| Audit | `AuditPayload`, `AUDIT_OUTCOMES`, audit record helpers |
+| Confidence | `toBps`, `confidenceToBps`, `MAX_CONFIDENCE_BPS` |
+| Policy | `CEILING_PRESETS_CENTS`, `MIN_CEILING_CENTS`, `DEFAULT_MAX_CEILING_CENTS` |
+| Replay | `REPLAY_BUNDLE_VERSION`, `REPLAY_EXPORT_VERSION`, `isReplayBundle` |
+
+<TypeTable
+  type={{
+    MAX_FRAME_BYTES: { description: 'Largest frame a client may send, in bytes.', type: 'number', default: '16384' },
+    MAX_SERVER_FRAME_BYTES: { description: 'Largest frame the server may send; a full snapshot or hammer ranking must fit.', type: 'number', default: '262144' },
+    MAX_BIDDERS_PER_ROOM: { description: 'Room size limit shared by the schemas and the server defaults.', type: 'number', default: '200' },
+    MAX_NAME_CHARS: { description: 'Longest bidder name.', type: 'number', default: '64' },
+    MIN_CEILING_CENTS: { description: 'Smallest ceiling a bidder can register or hold.', type: 'number', default: '100' },
+    DEFAULT_MAX_CEILING_CENTS: { description: 'Default cap on a ceiling; the largest preset must fit under it.', type: 'number', default: '100000' },
+    CEILING_PRESETS_CENTS: { description: 'Ceiling presets offered to bidders ($100, $250, $500, $1000).', type: 'readonly number[]', default: '[10000, 25000, 50000, 100000]' },
+  }}
+/>
+
+## Key files
+
+<Files>
+  <Folder name="packages/shared/src" defaultOpen>
+    <File name="money.ts" />
+    <File name="ids.ts" />
+    <File name="ids-mint.ts" />
+    <File name="time.ts" />
+    <File name="errors.ts" />
+    <File name="api-error.ts" />
+    <File name="enums.ts" />
+    <File name="config-schema.ts" />
+    <File name="config-rules.ts" />
+    <File name="ceilings.ts" />
+    <File name="events.ts" />
+    <File name="ports.ts" />
+    <File name="hold-contract.ts" />
+    <File name="client-key.ts" />
+    <File name="replay-bundle.ts" />
+    <File name="audit-record.ts" />
+    <Folder name="wire">
+      <File name="envelope.ts" />
+      <File name="client.ts" />
+      <File name="server.ts" />
+      <File name="audit.ts" />
+      <File name="codec.ts" />
+    </Folder>
+  </Folder>
+</Files>
+
+| File | What it holds |
+| --- | --- |
+| `money.ts` | The `Cents` brand and checked arithmetic |
+| `ids.ts`, `ids-mint.ts` | ULID validation and the minting port with its implementation |
+| `events.ts` | `RoomEventSchema`, the events the room stores |
+| `wire/envelope.ts` | `{v:1, t, ...}` strict message builder and the size and text limits |
+| `hold-contract.ts` | Request and response schemas of the hold routes, plus the bidder-name rule |
+| `ceilings.ts` | The ceiling policy copy that engine, payments and the room must keep equal |
+| `client-key.ts` | `clientKey`: an IPv6 client is counted by its first four groups |
+| `replay-bundle.ts` | The redacted public export wrapped with its head hash |
+
+## Invariants
+
+1. **Money is never a float.** Anything branded `Cents` passed `isCents`. Tests: `packages/shared/test/money.test.ts`, `money-format.test.ts`.
+2. **Ids are valid ULIDs or they are refused.** Tests: `ids.test.ts`, `ids-mint.test.ts`.
+3. **Wire messages are strict.** Each schema is `.strict()` and carries `v: 1`; unknown fields are rejected. Tests: `wire-envelope.test.ts`, `wire-client.test.ts`, `wire-server.test.ts`, `wire-codec.test.ts`, `golden.test.ts`.
+4. **A bidder name cannot hide in invisible characters.** `BIDDER_NAME_FORBIDDEN_PATTERN` rejects control, zero-width and direction characters and angle brackets. Tests: `hold-contract.test.ts`.
+5. **A client cannot dodge a rate limit by rotating addresses in its prefix.** `clientKey` maps a whole /64 to one key and an IPv4-mapped address to the IPv4 address. Tests: `client-key.test.ts`; the server test `packages/server/test/client-key-parity.test.ts` keeps payments' own copy equal.
+6. **Copies stay equal.** The ceiling policy is copied into the engine, payments and the room config; `packages/server/test/ceiling-policy.test.ts` fails when a copy drifts, and `packages/engine/test/contract/shared.test.ts` compares the engine's constants with this package. The hold contract has one copy here; `packages/server/test/contract-shared-drift.test.ts` guards the server side.
+
+## Where it sits
+
+`shared` may import nothing from the workspace (`no-shared-to-forbidden` in `.dependency-cruiser.cjs`). It is imported by every other package. The engine copies a few constants instead of importing them, and a test keeps them equal.
+
+<CodePaths
+  paths={[
+    { path: 'packages/shared/src/index.ts', note: 'the full export list' },
+    { path: 'packages/shared/src/money.ts', note: 'Cents and checked arithmetic' },
+    { path: 'packages/shared/src/wire/envelope.ts', note: 'message builder and limits' },
+    { path: 'packages/shared/src/ports.ts', note: 'port interfaces' },
+    { path: 'packages/shared/src/config-schema.ts', note: 'AuctionConfigSchema' },
+    { path: 'packages/shared/test', note: 'the tests named above' },
+  ]}
+/>

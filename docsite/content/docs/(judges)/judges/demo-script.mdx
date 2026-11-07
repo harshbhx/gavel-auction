@@ -1,0 +1,115 @@
+---
+title: Demo script
+description: The three-minute video, shot by shot, with the on-screen label and the truth behind each shot.
+icon: Clapperboard
+status: planned
+---
+
+<NotVerified title="Script, not a recording">
+
+This is the shot list from `docs/submission/VIDEO-SCRIPT.md`. `docs/SUBMISSION.md` lists the video as not recorded, and the UI shots (3, 4, 6 and 9) need the real screens against a seeded room. Target runtime is 2:50; the limit is 3:00. Nothing shows or says a live charge.
+
+</NotVerified>
+
+<Steps>
+<Step>
+
+### 0:00 to 0:15, the problem
+
+Title card. Label: Problem.
+
+"At a live auction, bidders hold back when a card is charged first. And when bids are unsecured, winners can walk away."
+
+</Step>
+<Step>
+
+### 0:15 to 0:30, the promise
+
+Title card. Label: GAVEL: sandbox only.
+
+"GAVEL makes every bid a PayPal authorization hold. The hammer is the payment."
+
+</Step>
+<Step>
+
+### 0:30 to 0:50, register and hold
+
+Register two bidders and pick ceilings; holds show as HELD. Source: UI. Label: Live sandbox or Recorded.
+
+"A bidder approves a ceiling. It is held, not charged."
+
+</Step>
+<Step>
+
+### 0:50 to 1:10, bids
+
+Typed and QR bids on the console and bid screen. Source: UI.
+
+"Bids above a ceiling are refused. Typed, QR and voice all feed the same rules."
+
+</Step>
+<Step>
+
+### 1:10 to 1:30, a spoken bid and the confirm prompt
+
+Source: REC. Label: Recorded: this is a replay.
+
+"A spoken bid becomes a structured bid. When it is ambiguous, GAVEL asks first."
+
+</Step>
+<Step>
+
+### 1:30 to 1:55, the hammer
+
+Winner captured at the winning price, others voided; the ladder goes from HELD to CAPTURED and VOIDED. Source: UI or FAKE. Label: Fake PayPal if the replay is used.
+
+"At the hammer only the winning price is captured. The other holds are voided."
+
+</Step>
+<Step>
+
+### 1:55 to 2:15, real sandbox evidence
+
+Terminal: the G1 and G4 evidence lines and the gates status table. Source: EVID and TERM. Label: Real sandbox evidence.
+
+"These are real sandbox runs: capture 350 of a 500 hold released the remainder, and six real webhooks verified."
+
+The remainder release is inferred from the authorization reading CAPTURED; the voiceover and the [evidence index](/docs/judges/evidence-index) both rest on that, and it should not be described as read from a buyer balance.
+
+</Step>
+<Step>
+
+### 2:15 to 2:30, crash and resume
+
+Source: FAKE. Label: Fake PayPal, test run.
+
+"Stop the server mid-settlement and resume: still exactly one capture. This is shown against our fake PayPal."
+
+</Step>
+<Step>
+
+### 2:30 to 2:42, the ledger
+
+Ledger verify output and the audit screen. Source: TERM or UI.
+
+"Every accepted bid sits in a hash-chained ledger anyone can re-verify."
+
+</Step>
+<Step>
+
+### 2:42 to 2:50, the honest close
+
+Closing card with the repository URL and the status line. Label: G3 in progress, G5 failed on synthetic speech.
+
+"GAVEL: PayPal sandbox, open source, MIT. Two gates are still open, and we say so."
+
+</Step>
+</Steps>
+
+## Cut order if over time
+
+Cut shot 9 (the ledger) first, then shot 4, then shot 5.
+
+## Labels that must stay on screen
+
+See the [label sheet](/docs/judges/real-vs-simulated). In short: real sandbox evidence is labelled as such, the fake PayPal is labelled Fake PayPal, the voice replay is labelled Recorded, and G3 is never shown as a result.

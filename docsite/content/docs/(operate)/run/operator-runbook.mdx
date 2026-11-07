@@ -1,0 +1,184 @@
+---
+title: Operator runbook
+description: Deploy, set secrets by name, check the result, and what to do when something goes wrong. Names only, never values.
+icon: ClipboardList
+status: unverified
+---
+
+This page is for the person who runs the server. It is built from [docs/DEPLOY.md](https://github.com/harshbhx/gavel-auction/blob/main/docs/DEPLOY.md), [docs/RUNBOOK-GATES.md](https://github.com/harshbhx/gavel-auction/blob/main/docs/RUNBOOK-GATES.md), [docs/RUNBOOK-BACKUP.md](https://github.com/harshbhx/gavel-auction/blob/main/docs/RUNBOOK-BACKUP.md) and `infra/`. Everything points at the PayPal sandbox.
+
+<NotVerified title="Written, not rehearsed">
+
+Staging deploy, production rollback and disk restore are documented but have not been rehearsed against a live Render service. The rollback rehearsal table in `infra/rollback.md` is empty, and the backup runbook says the restore procedure is documented, not exercised.
+
+</NotVerified>
+
+## Roles
+
+| Role | Can do |
+| --- | --- |
+| Owner | Change repository secrets and the `sandbox-nightly`, `staging` and `production` environments, use the PayPal developer dashboard, run anything against the real sandbox from a laptop |
+| Contributor | Read evidence and workflow logs, run the fake PayPal and the text-level voice eval, open pull requests. Never receives secrets |
+
+## Deploy
+
+<Steps>
+<Step>
+
+### Apply the blueprint
+
+In Render choose New, Blueprint, pick the repository and apply `render.yaml`. It describes one web service, `gavel-host`, with one instance and a 1 GB disk at `/var/data`. Health check path `/healthz`. Auto deploy is off. The plan must allow a persistent disk.
+
+</Step>
+<Step>
+
+### Fill the variables the blueprint leaves empty
+
+Names only, set in the service Environment tab (see the table below).
+
+</Step>
+<Step>
+
+### Wire GitHub to Render
+
+Copy the Render deploy hook. In GitHub, environment `staging`: secret `RENDER_DEPLOY_HOOK_URL`, optional secret `ADMIN_KEY` (same value as on Render, enables the create-auction smoke check), variable `STAGING_URL`.
+
+</Step>
+<Step>
+
+### Register the webhook
+
+In the PayPal developer dashboard (sandbox app, Webhooks) add `https://<api-host>/webhooks/paypal` for `PAYMENT.AUTHORIZATION.VOIDED`, `PAYMENT.AUTHORIZATION.DENIED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED` and `PAYMENT.CAPTURE.DECLINED`. Other types are acknowledged and ignored. Copy the webhook id into `PAYPAL_WEBHOOK_ID` on Render only.
+
+</Step>
+<Step>
+
+### Run the deploy workflow and read the smoke output
+
+Run `deploy-staging` by hand. It calls the deploy hook, waits 60 seconds, then runs `scripts/smoke.sh`.
+
+</Step>
+<Step>
+
+### Deploy the web app
+
+Create a Cloudflare Pages project, build with `npm ci && npm run build -w @gavel/web` and pass `VITE_API_BASE` and `VITE_WS_BASE`. Add the Pages origin to `CORS_ORIGINS`.
+
+</Step>
+</Steps>
+
+Production uses the `deploy-prod` workflow: tag the commit or run it by hand, approval on the `production` environment (needs a required reviewer), deploy only if the commit is the head of `main`, poll `GET /version` until it serves the commit, then run the smoke test. If the commit never appears, the previous deploy is restored. Details: [infra/rollback.md](https://github.com/harshbhx/gavel-auction/blob/main/infra/rollback.md).
+
+## Secrets and variables, by name
+
+<TypeTable
+  type={{
+    TOKEN_SECRET: { description: 'Server. At least 32 random bytes. Signs bidder tokens.', type: 'secret' },
+    ADMIN_KEY: { description: 'Server. At least 24 random characters, different from TOKEN_SECRET. Sent as the x-admin-key header on admin and ops routes.', type: 'secret' },
+    PAYPAL_CLIENT_ID: { description: 'PayPal sandbox app id.', type: 'secret' },
+    PAYPAL_CLIENT_SECRET: { description: 'PayPal sandbox app secret.', type: 'secret' },
+    PAYPAL_WEBHOOK_ID: { description: 'Id of the registered sandbox webhook. Set on Render only.', type: 'secret' },
+    PUBLIC_URL: { description: 'The https URL Render gives the service. Set after the first deploy, then redeploy.', type: 'variable' },
+    CORS_ORIGINS: { description: 'Origin of the hosted web app.', type: 'variable' },
+    RENDER_DEPLOY_HOOK_URL: { description: 'GitHub environment secret (staging and production).', type: 'secret' },
+    RENDER_API_KEY: { description: 'GitHub production environment secret, used for rollback.', type: 'secret' },
+    RENDER_SERVICE_ID: { description: 'GitHub production environment variable.', type: 'variable' },
+    PRODUCTION_URL: { description: 'GitHub variable: the https API origin, used by uptime and backup.', type: 'variable' },
+    BACKUP_GPG_PUBLIC_KEY: { description: 'GitHub production secret: the public half of the backup key. The private half stays off GitHub.', type: 'secret' },
+    DEEPGRAM_API_KEY: { description: 'Live speech provider key (also GROQ_API_KEY). Without a key the voice socket uses cached transcripts.', type: 'secret' },
+  }}
+/>
+
+The full list the server reads is `.env.example` in the repository root. Never paste a value into an issue, a log or a pull request.
+
+## Post-deploy checks
+
+| Check | Expected |
+| --- | --- |
+| `GET /healthz` | 200 while the process runs |
+| `GET /readyz` | 200 when migrations are applied and the store answers, else 503 |
+| `GET /warmup` | 200 when the warm steps finish within 3000 ms, else 503 with a per-step report |
+| `GET /version` | `{"sha":"<commit>"}` of the deployed commit |
+| unsigned `POST /webhooks/paypal` | 400 |
+| `POST /api/auctions` without a key | 401 (201 with the admin key) |
+
+By hand: `ADMIN_KEY=... scripts/smoke.sh https://<api-host>`. The smoke can pass against the old instance if it answers before the new build is live.
+
+The `uptime` workflow probes the three health routes every 5 minutes. It stays off until the variables `UPTIME_ENABLED` (`true`) and `PRODUCTION_URL` are set. Two failed rounds in a row raise an alert.
+
+## What to do when
+
+<Accordions type="multiple">
+<Accordion title="Webhook calls fail or never arrive">
+
+1. Check the webhook list in the PayPal developer dashboard: the URL, the subscribed events and recent deliveries.
+2. Confirm `PAYPAL_WEBHOOK_ID` on Render is the id of that webhook. A mismatch makes every verification fail.
+3. An unsigned post must answer 400. A real event that fails verification is rejected, so a missing id shows up as rejected deliveries.
+4. Event ids are deduplicated, so a redelivery is safe. How the server treats events: [webhooks](/docs/safety/webhooks).
+5. The retry behaviour of PayPal is UNVERIFIED ([G4](/docs/proof/gate-g4)).
+
+</Accordion>
+<Accordion title="A settlement is in review (FAILED_NEEDS_REVIEW)">
+
+Review means the saga stopped on something it will not decide alone (an invariant break, an unknown capture that outlived ten minutes, a mismatch, or a void that failed five resumes). See [saga states](/docs/reference/saga-states).
+
+1. Read what PayPal knows. List the authorizations of the sandbox account and compare with the journal export (`GET /admin/export?kind=payments&auction=<id>`, admin key).
+2. To release holds the review is keeping, call `POST /ops/auctions/<auctionId>/release-review` with the admin key. To void every hold of a hammered auction that is not captured, call `POST /ops/auctions/<auctionId>/void-all`. Both are audited with the actor `admin`, and answer 409 `busy` while a run holds the settlement lease.
+3. Do not edit the journal by hand.
+
+</Accordion>
+<Accordion title="A capture is stuck in CAPTURING (unknown outcome)">
+
+A timeout or 5xx on capture is an unknown answer, not a failure. The saga keeps the settlement in CAPTURING, never moves to the next bidder, and sends the same request id on every retry. After `unknownDeadlineMs` (600000, ten minutes) it goes to review. Wait for the deadline, then handle it as a review. See [crash recovery](/docs/how-it-works/crash-recovery).
+
+</Accordion>
+<Accordion title="The server restarted or crashed mid-settlement">
+
+Restart it on the same data directory (`DATA_DIR`, the disk at `/var/data`). The journal is saved before each effect, so the runner resumes. A resume that was cut off while holding the settlement lease waits for the lease time instead of losing it. Check `/readyz`, then the journal export.
+
+</Accordion>
+<Accordion title="A speech provider is down or a key is missing">
+
+Voice bids always go through the confirm prompt ([G5](/docs/proof/gate-g5)). Without `DEEPGRAM_API_KEY` or `GROQ_API_KEY` the `/audio` socket falls back to cached transcripts (`VOICE_STT` unset means replay). For a demo use `/replay/:recordingId`, which makes no PayPal call. See [voice and confirm](/docs/how-it-works/voice-and-confirm).
+
+</Accordion>
+<Accordion title="Uptime alert, or /warmup is slow">
+
+Two failed rounds raise the alert. Check `/healthz` first (process alive), then `/readyz` (store), then `/warmup` (it reports which step is cold). On the free tier the host sleeps; the keep-alive choice is decision D-0008 in `infra/uptime.md`. Warmup under 3 s after 15 minutes idle is not measured yet.
+
+</Accordion>
+<Accordion title="Bad release: roll back">
+
+Run `deploy-prod` by hand with `rollback` set to true (or pass `rollback_deploy_id`). The job restores the newest earlier deploy built from a different commit and waits until `/version` serves it. The disk is not rolled back: a release that changed the stored data format also needs a data restore.
+
+</Accordion>
+<Accordion title="Restore after a disk loss">
+
+1. Stop the server. Download the newest `ledger-snapshot.tgz.gpg` artifact from the `backup` workflow and decrypt it with the private key kept off GitHub: `gpg --decrypt ledger-snapshot.tgz.gpg | tar -xz`.
+2. The snapshot holds ledgers (`<auctionId>.ndjson`, chain-checkable), `payments/<id>.json` (journal and holds), `roomlog/<id>.ndjson` and `payments-global.json` (processed webhook ids, kill switch state). It is a JSON view, not a byte copy: rebuild `journals.json`, `holds.json` and `webhooks.json` by hand or script. There is no import route.
+3. The snapshot can be a day old. After a restore, reconcile against PayPal and void every authorization no restored record accounts for. Keep the kill switch engaged until then.
+4. This procedure is documented, not exercised. See [backup](/docs/safety/backup).
+
+</Accordion>
+<Accordion title="A gate workflow fails or reads stale">
+
+Use the per-gate steps in the [gate runbook](/docs/run/gate-runbook), and the gate pages: [G0](/docs/proof/gate-g0), [G1](/docs/proof/gate-g1), [G2](/docs/proof/gate-g2), [G3](/docs/proof/gate-g3), [G4](/docs/proof/gate-g4), [G5](/docs/proof/gate-g5). Never edit a gate to PASS by hand.
+
+</Accordion>
+<Accordion title="Many judges behind one network address are refused">
+
+Socket upgrades and HTTP joins share one per-address bucket. Raise `RATE_JOIN_BURST` (default 40; refill `RATE_JOIN_PER_MIN`, default 10). Each address may hold at most 20 open sockets.
+
+</Accordion>
+</Accordions>
+
+<CodePaths
+  paths={[
+    { path: 'docs/DEPLOY.md', note: 'staging deploy' },
+    { path: 'infra/rollback.md', note: 'production deploy and rollback' },
+    { path: 'infra/uptime.md', note: 'probes and alert rule' },
+    { path: 'render.yaml', note: 'the Render blueprint' },
+    { path: '.env.example', note: 'every variable name the project reads' },
+    { path: 'packages/server/src/http/ops.ts', note: 'admin ops routes' },
+  ]}
+/>
