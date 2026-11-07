@@ -718,3 +718,9 @@ figure.hl-fig .hl-fig__title::before {
     transform: none;
   }
 }
+
+/* callout labels stay in the label face even though the callout body is set in the reading face */
+#nd-page .prose .hl-callout .hl-callout__label,
+.hl-callout__label {
+  font-family: var(--font-martian), ui-monospace, monospace;
+}

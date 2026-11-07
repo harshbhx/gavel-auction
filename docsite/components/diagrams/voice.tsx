@@ -52,38 +52,38 @@ export function VoiceDiagram() {
 
           {/* the speech steps */}
           <Node x={20} y={110} w={120} h={56} label="MICROPHONE" sub="audio" />
-          <Node x={180} y={110} w={120} h={56} label="SEGMENTER" sub="speech segments" />
-          <Node x={340} y={110} w={120} h={56} label="STT" sub="cached by default" />
-          <Node x={500} y={110} w={120} h={56} label="PARSER" sub="amount, paddle" />
-          <Node x={660} y={110} w={120} h={56} label="DECIDE" sub="score, classify" />
-          {[140, 300, 460, 620].map((x) => (
-            <path key={x} d={`M${x} 138 H${x + 40}`} className="edge" markerEnd={`url(#${p}-arrow)`} />
+          <Node x={170} y={110} w={120} h={56} label="SEGMENTER" sub="speech segments" />
+          <Node x={320} y={110} w={120} h={56} label="STT" sub="cached by default" />
+          <Node x={470} y={110} w={120} h={56} label="PARSER" sub="amount, paddle" />
+          <Node x={620} y={110} w={120} h={56} label="DECIDE" sub="score, classify" />
+          {[140, 290, 440, 590].map((x) => (
+            <path key={x} d={`M${x} 138 H${x + 30}`} className="edge" markerEnd={`url(#${p}-arrow)`} />
           ))}
 
           {/* confirm: the normal road */}
-          <path d="M780 138 H820" className="edge-thick" markerEnd={`url(#${p}-arrow-dark)`} />
-          <T x={800} y={158} anchor="middle" cls="t-small t-muted">confirm</T>
+          <path d="M740 138 H820" className="edge-thick" markerEnd={`url(#${p}-arrow-dark)`} />
+          <T x={780} y={128} anchor="middle" cls="t-small t-muted">confirm</T>
           <path d="M820 96 H990 L1000 106 V180 H820 Z" className="node" style={{ strokeWidth: 3, stroke: 'var(--hl-signal-ink)' }} />
-          <rect x={820} y={96} width={180} height={7} className="rule-money" />
+          <rect x={822} y={98} width={166} height={5} className="rule-money" />
           <T x={910} y={134} anchor="middle" cls="t-big">CONFIRM GATE</T>
           <T x={910} y={152} anchor="middle" cls="t-small t-muted">the bidder answers</T>
           <T x={910} y={167} anchor="middle" cls="t-small t-muted">before the engine sees it</T>
           <path d="M1000 138 H1090" className="edge-thick" markerEnd={`url(#${p}-arrow-dark)`} />
-          <Node x={1090} y={110} w={90} h={56} label="ENGINE" sub="then the ledger" kind="term" />
+          <Node x={1090} y={110} w={90} h={56} label="ENGINE" sub="then ledger" kind="term" />
 
           {/* accept: the dashed bypass, above everything else so nothing crosses it */}
-          <path d="M720 110 V58 H1135 V110" className="edge-stop" markerEnd={`url(#${p}-arrow-stop)`} />
-          <polygon points="720,110 734,110 734,96" className="fill-stop" />
-          <rect x={760} y={44} width={330} height={20} style={{ fill: 'var(--hl-bg)' }} />
+          <path d="M680 110 V58 H1135 V110" className="edge-stop" markerEnd={`url(#${p}-arrow-stop)`} />
+          <polygon points="680,110 694,110 694,96" className="fill-stop" />
+          <rect x={725} y={44} width={400} height={20} style={{ fill: 'var(--hl-bg)' }} />
           <T x={925} y={58} anchor="middle" cls="t-small t-stop">accept: skips the gate (two parsers agree, 0.85 or more)</T>
           <T x={925} y={82} anchor="middle" cls="t-small t-muted">not the default build: its scores stay under 0.85</T>
 
           {/* drop */}
-          <path d="M700 166 V250" className="edge" markerEnd={`url(#${p}-arrow)`} />
-          <T x={712} y={214} cls="t-small t-muted">drop</T>
-          <rect x={590} y={250} width={220} height={56} rx={2} className="node" />
-          <T x={700} y={273} anchor="middle" cls="t-small">not a bid, or too uncertain</T>
-          <T x={700} y={290} anchor="middle" cls="t-small t-muted">logged, nothing placed</T>
+          <path d="M680 166 V250" className="edge" markerEnd={`url(#${p}-arrow)`} />
+          <T x={692} y={214} cls="t-small t-muted">drop</T>
+          <rect x={570} y={250} width={220} height={56} rx={2} className="node" />
+          <T x={680} y={273} anchor="middle" cls="t-small">not a bid, or too uncertain</T>
+          <T x={680} y={290} anchor="middle" cls="t-small t-muted">logged, nothing placed</T>
 
           {/* the prompt and its two exits */}
           <path d="M910 180 V230" className="edge-thick" markerEnd={`url(#${p}-arrow-dark)`} />
@@ -103,10 +103,10 @@ export function VoiceDiagram() {
           <T x={910} y={388} anchor="middle" cls="t-small t-muted">logged</T>
 
           {/* explicit sources skip speech */}
-          <rect x={1030} y={330} width={150} height={70} rx={2} className="node" />
-          <T x={1105} y={351} anchor="middle" cls="t-small">Manual entry</T>
-          <T x={1105} y={367} anchor="middle" cls="t-small">Tap to bid (QR)</T>
-          <T x={1105} y={388} anchor="middle" cls="t-small t-muted">skip the speech steps</T>
+          <rect x={1050} y={330} width={130} height={70} rx={2} className="node" />
+          <T x={1115} y={351} anchor="middle" cls="t-small">Manual entry</T>
+          <T x={1115} y={367} anchor="middle" cls="t-small">Tap to bid (QR)</T>
+          <T x={1115} y={388} anchor="middle" cls="t-small t-muted">skip speech</T>
           <path d="M1165 330 V166" className="edge" markerEnd={`url(#${p}-arrow)`} />
 
           <Legend p={p} x={20} y={436} />
