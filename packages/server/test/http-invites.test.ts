@@ -199,7 +199,8 @@ describe('invite consumed only by a join that succeeds (issue 986)', () => {
     expect((await join()).status).toBe(429);
     limited = false;
     spy.failNextConsume = true;
-    expect((await join()).status).toBeGreaterThanOrEqual(500);
+    // consumeInvite reports a store outage as unauthorized, and the invite stays unused.
+    expect((await join()).status).toBe(401);
 
     const retry = await join();
     expect(retry.status).toBe(200);
