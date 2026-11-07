@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { lintJsonl } from '../../gates/evidence.js';
-import { runG3 } from '../../gates/g3.js';
+import { orderCreationOk, runG3 } from '../../gates/g3.js';
 import {
   CHECKPOINTS,
   DAY_MS,
@@ -134,5 +134,19 @@ describe('G3 refusals', () => {
   });
   it('rejects a bad flag value', async () => {
     expect(await run(['--fake-after-honor', 'maybe'])).toBe(EXIT_REFUSED);
+  });
+});
+
+describe('G3 order creation status', () => {
+  it('accepts HTTP 200 and 201 with a CREATED or PAYER_ACTION_REQUIRED order', () => {
+    expect(orderCreationOk(200, 'PAYER_ACTION_REQUIRED', 'O1', 'https://x')).toBe(true);
+    expect(orderCreationOk(201, 'CREATED', 'O1', 'https://x')).toBe(true);
+  });
+
+  it('rejects other statuses, missing ids and approved or failed orders', () => {
+    expect(orderCreationOk(422, 'CREATED', 'O1', 'https://x')).toBe(false);
+    expect(orderCreationOk(200, 'APPROVED', 'O1', 'https://x')).toBe(false);
+    expect(orderCreationOk(200, 'CREATED', '', 'https://x')).toBe(false);
+    expect(orderCreationOk(200, 'CREATED', 'O1', '')).toBe(false);
   });
 });
