@@ -1428,8 +1428,7 @@ export interface PipelineDeps {
     segmenter?: SegmenterOptions;
     // (undocumented)
     speakerBidderId?: string;
-    // (undocumented)
-    sttProvider?: string;
+    sttProvider?: string | (() => string);
 }
 
 // @public (undocumented)

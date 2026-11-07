@@ -180,7 +180,7 @@ export function startVoiceBridge(deps: VoiceBridgeDeps): VoiceBridge {
     clock: elapsed,
     ids: () => `seg-${(n += 1)}`,
     context: () => contextOf(room.voiceView(), elapsed()),
-    sttProvider: stt.name,
+    sttProvider: () => stt.name,
     replay: stt.name === 'replay',
     mic: 'room',
   });
