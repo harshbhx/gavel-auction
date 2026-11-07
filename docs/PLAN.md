@@ -1,22 +1,22 @@
 # GAVEL: design plan (PayPal AI Hackathon 2026)
 
-Deadline: Thu Nov 12 2026 12:00pm PST (= Fri Nov 13 01:30 IST). Early eligibility check if submitted by Nov 5 (optional). Scope: PayPal sandbox only. Behaviour against the real PayPal sandbox and real speech-to-text is not yet verified: the gate tests in section 5 have not been run (all NOT RUN in `docs/GATES.md`). Settlement is tested against the project's fake PayPal server only.
+Deadline: Thu Nov 12 2026 12:00pm PST (= Fri Nov 13 01:30 IST). Early eligibility check if submitted by Nov 5 (optional). Scope: PayPal sandbox only. Behaviour against the real PayPal sandbox is verified only for the single calls in gates G0, G1, G2 and G4; G3 is an in-progress probe and G5 is PARTIAL on synthetic speech (see `docs/GATES.md`). Whole-auction settlement is tested against the project's fake PayPal server.
 
 ## 0. Current status
 
-| Area                                                       | Works now                | Works with the fake PayPal only | Not built yet                                         |
-| ---------------------------------------------------------- | ------------------------ | ------------------------------- | ----------------------------------------------------- |
-| Engine and hash-chained ledger                             | yes                      |                                 | ledger verify command                                 |
-| Settlement saga (capture, void, journal, resume, webhooks) |                          | yes                             | run against the real sandbox                          |
-| Hold creation and approval service                         |                          | yes                             | HTTP routes for the web app                           |
-| Room and runtime service with file stores                  | in tests, one process    |                                 | server entry point, HTTP and WebSocket routes, deploy |
-| Web components, routes and replay player                   | components and tests     |                                 | working screens against a live room                   |
-| Voice package (capture, STT clients, parser)               | offline                  |                                 | adapter into a room, live audio route                 |
-| Replay of recorded audio                                   | player and bundle format |                                 | recording export, published recording                 |
-| Crash and resume                                           | in-process test hook     |                                 | trigger on a hosted server                            |
-| Hosted demo                                                |                          |                                 | Render deploy with a persistent disk                  |
+| Area                                                       | Works now                                                    | Works with the fake PayPal only          | Not done yet                                                    |
+| ---------------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------- | --------------------------------------------------------------- |
+| Engine and hash-chained ledger                             | yes                                                          |                                          | ledger verify command                                           |
+| Settlement saga (capture, void, journal, resume, webhooks) | single sandbox calls (G1, G2, G4) and nightly R7, R8, R10    | whole-auction settlement, crash recovery | a whole auction driven through a deployed server on the sandbox |
+| Hold creation and approval service                         | HTTP routes mounted in the server                            | yes, in tests                            | a recorded hold and approval through the hosted web app         |
+| Room and runtime service with file stores                  | server entry point, HTTP and WebSocket routes, Render deploy |                                          | a persistent disk on the hosted service                         |
+| Web components, routes and replay player                   | deployed Worker (https://gavel-web.creharsh.workers.dev)     |                                          | a recorded walk of all screens against a live hosted room       |
+| Voice package (capture, STT clients, parser)               | `/audio` socket feeds decisions into the room                |                                          | audio sender in the web console, a live speech run              |
+| Replay of recorded audio                                   | player and bundle format                                     |                                          | recording export, published recording                           |
+| Crash and resume                                           | in-process test hook, one in-process crash on the sandbox    |                                          | trigger on a hosted server                                      |
+| Hosted demo                                                | web, API (Render) and docs site are up in sandbox mode       |                                          | persistent disk; a judge-startable live room; a full hosted run |
 
-Gate G1: PASS on the sandbox 2026-11-04 and 2026-11-05 (two PayPal-account buyers; guest card capture not covered). Gate G2: PASS on the sandbox 2026-11-05 (wallet and guest card AUTHORIZE). Gate G4: PASS. Gates G3 and G5: NOT RUN.
+Gate G0, G1, G2 and G4: PASS on the sandbox (G1: two PayPal-account buyers, guest card capture not covered; G2: wallet and guest card AUTHORIZE). Gate G3: NOT RUN / IN PROGRESS (a real probe, day 0 7 Nov 2026 03:06 UTC). Gate G5: PARTIAL (synthetic, noise-free speech only, fixes chosen on the same clips, no real-room test; spoken bids always confirm). `docs/GATES.md` is the source of truth.
 
 ## 1. Pitch (one paragraph)
 
@@ -48,7 +48,7 @@ Judge line: "Every charity auction has winners who never pay; GAVEL makes the bi
 
 register -> authorize (hold) -> active bidder -> bid parse -> confirm if low confidence -> deterministic validation (ceiling, increment, state) -> ledger -> hammer -> winner = highest valid bid -> capture winning amount (partial, final) -> void all other holds -> verify via webhook/GET -> final ledger. Fall back to the runner-up if the winner's hold expired, was declined or was voided (covered by the reference implementation's tests). Invariants: at most one capture; captured <= ceiling; each non-winner voided exactly once; captured + released = holds; idempotent under retry/duplicate/out-of-order webhooks.
 
-## 5. Gate tests (need a PayPal sandbox app; G1 PASS (PayPal-account buyers, guest capture not covered); G2 PASS; G4 PASS; the rest NOT RUN)
+## 5. Gate tests (need a PayPal sandbox app; G0, G1 (PayPal-account buyers, guest capture not covered), G2 and G4 PASS; G3 in progress; G5 PARTIAL)
 
 G1 authorize 500 -> capture 350 final_capture=true -> is the 150 remainder auto-released or still active? void it explicitly; check via GET and webhooks. Both PayPal-wallet and card sandbox buyers.
 G2 guest/card AUTHORIZE flow in JS SDK v6 (Card Fields/Fastlane docs show CAPTURE sample; verify AUTHORIZE works). Fallback: PayPal-wallet sandbox buyers (bulk sandbox accounts).
@@ -63,7 +63,7 @@ If G1 or G2 fails with no workaround: switch to Orders AUTHORIZE with PayPal-wal
 
 ## 7. Submission checklist
 
-Public repo + visible OSS license; run instructions + hosted URL (not deployed yet; holds expire within days, so the hosted build needs fresh sandbox holds at test time); PayPal sandbox only; AI tool and model named in text; PayPal central; public YouTube <3 min, no copyrighted music; English; Devpost tools list; mention what changed if reused earlier work; optional early check by Nov 5.
+Public repo + visible OSS license; run instructions + hosted URL (web https://gavel-web.creharsh.workers.dev, API on Render, docs https://gavel-docs.creharsh.workers.dev; holds expire within days, so the hosted build needs fresh sandbox holds at test time); PayPal sandbox only; AI tool and model named in text; PayPal central; public YouTube <3 min, no copyrighted music; English; Devpost tools list; mention what changed if reused earlier work; optional early check by Nov 5.
 
 ## 8. Risks and what stays unknown
 
