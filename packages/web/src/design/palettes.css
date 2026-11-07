@@ -1,0 +1,106 @@
+/*
+ * Palettes. A palette overrides the same --color-* tokens the themes set, so every component follows
+ * it. Switch with data-pal="a" | "b" | "c" on the root element (src/ui/palette.ts persists the pick).
+ * Without data-pal the theme decides: light is A, dark is B, projector is B on black.
+ *   a  Newsprint and Signal: paper, ink, signal orange (warm, printed)
+ *   b  Night Board: navy, cream, mint and amber (reads at a distance)
+ *   c  Salon: ivory, deep green, copper (calm)
+ * The projector theme is excluded on purpose: the public screen stays high contrast and large.
+ * To add a palette see docs/DESIGN.md. Every pair is checked in test/unit/contrast.test.ts.
+ */
+
+:root[data-pal='a']:not([data-theme='projector']) {
+  --color-bg: #efe6d3;
+  --color-surface: #f8f2e4;
+  --color-raised: #e6dac1;
+  --color-fg: #1d1712;
+  --color-fg-muted: #5a4d3f;
+  --color-border: #7a6a57;
+  --color-rule: #d3c5a8;
+  --color-accent: #a33a06;
+  --color-on-accent: #f8f2e4;
+  --color-action: #ff6a1f;
+  --color-on-action: #1a0a00;
+  --color-held: #a33a06;
+  --color-charged: #1d1712;
+  --color-on-charged: #f8f2e4;
+  --color-released: #5a4d3f;
+  --color-success: #256b3a;
+  --color-warning: #a33a06;
+  --color-danger: #b3261e;
+  --color-on-danger: #ffffff;
+  --color-focus: #1d1712;
+  --color-ring: #1a0a00;
+  --color-sheet: #1d1712;
+  --color-on-sheet: #f8f2e4;
+  --color-win: #1f6b3a;
+  --color-on-win: #ffffff;
+  --color-out: #b3261e;
+  --color-on-out: #ffffff;
+  --color-shadow: #1d1712;
+  --color-slider-fill: #f5b488;
+}
+
+:root[data-pal='b']:not([data-theme='projector']) {
+  --color-bg: #0c1624;
+  --color-surface: #132238;
+  --color-raised: #1b2f4b;
+  --color-fg: #f0ebdd;
+  --color-fg-muted: #a9b6c8;
+  --color-border: #6c86a8;
+  --color-rule: #2a3f5e;
+  --color-accent: #8fd3b0;
+  --color-on-accent: #0c1624;
+  --color-action: #8fd3b0;
+  --color-on-action: #0c1624;
+  --color-held: #e3b766;
+  --color-charged: #8fd3b0;
+  --color-on-charged: #0c1624;
+  --color-released: #a9b6c8;
+  --color-success: #8fd3b0;
+  --color-warning: #e3b766;
+  --color-danger: #ff9c88;
+  --color-on-danger: #0c1624;
+  --color-focus: #e3b766;
+  --color-ring: #0c1624;
+  --color-sheet: #1b2f4b;
+  --color-on-sheet: #f0ebdd;
+  --color-win: #8fd3b0;
+  --color-on-win: #0c1624;
+  --color-out: #ff9c88;
+  --color-on-out: #0c1624;
+  --color-shadow: #7e6b47;
+  --color-slider-fill: #2c5b55;
+}
+
+:root[data-pal='c']:not([data-theme='projector']) {
+  --color-bg: #f1ebdd;
+  --color-surface: #faf6ec;
+  --color-raised: #e4dcc8;
+  --color-fg: #14301f;
+  --color-fg-muted: #4b5b4f;
+  --color-border: #5e7263;
+  --color-rule: #d2c8ae;
+  --color-accent: #9a4a1d;
+  --color-on-accent: #f1ebdd;
+  --color-action: #14301f;
+  --color-on-action: #f1ebdd;
+  --color-held: #9a4a1d;
+  --color-charged: #14301f;
+  --color-on-charged: #f1ebdd;
+  --color-released: #4b5b4f;
+  --color-success: #14602f;
+  --color-warning: #9a4a1d;
+  --color-danger: #a8321f;
+  --color-on-danger: #ffffff;
+  --color-focus: #b8602a;
+  --color-ring: #e8a56e;
+  --color-sheet: #14301f;
+  --color-on-sheet: #f1ebdd;
+  --color-win: #14301f;
+  --color-on-win: #f1ebdd;
+  --color-out: #9a4a1d;
+  --color-on-out: #ffffff;
+  --color-shadow: #b8602a;
+  --color-slider-fill: #d9c3a0;
+}
