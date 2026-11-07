@@ -1776,6 +1776,7 @@ export class Room {
           ...(report.note !== undefined ? { note: report.note } : {}),
           ...(winnerPaddle !== undefined ? { winnerPaddle } : {}),
           ...(ladder !== undefined ? { ladder } : {}),
+          ...(report.invariants !== undefined ? { invariants: report.invariants } : {}),
           ...(own !== undefined && conn.bidderId !== undefined
             ? { yourHold: { ...own, bidderId: conn.bidderId } }
             : {}),

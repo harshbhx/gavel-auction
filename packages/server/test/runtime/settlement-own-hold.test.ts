@@ -218,5 +218,10 @@ describe('settlement_update carries only the viewer own hold (HRD-69, issue 712)
         winnerPaddle: 1,
       });
     }
+
+    // Every viewer gets the invariant check for the ladder: one capture, within its ceiling.
+    for (const t of [a.transport, b.transport, screen.transport, boss.transport]) {
+      expect(updates(t).at(-1)).toMatchObject({ invariants: { ok: true, violations: [] } });
+    }
   });
 });

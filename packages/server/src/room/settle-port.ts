@@ -110,6 +110,8 @@ export interface SettlementReport {
   holds?: Readonly<Record<string, Omit<OwnHold, 'bidderId'>>> | undefined;
   /** The bidder whose hold was captured, once there is one; the room sends only their paddle. */
   winnerId?: string | undefined;
+  /** Money checks over every hold, as codes; public, so every viewer receives them. */
+  invariants?: { ok: boolean; violations: string[] } | undefined;
 }
 
 /** An auctioneer control command (R-RT-048); the host maps its HTTP route onto this. */
