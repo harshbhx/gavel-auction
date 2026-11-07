@@ -181,7 +181,12 @@ export interface JournalHold {
    * settlement went to review. PayPal may hold the funds under an authorization the journal
    * does not know yet, so the hold is not released until `lookupUnknownReauths` settles it.
    */
-  reauthInDoubt?: { requestId: string; amountCents: number };
+  reauthInDoubt?: {
+    requestId: string;
+    amountCents: number;
+    /** RT4-saga-06: when a lookup first read the old authorization as live; see `lookupUnknownReauths`. */
+    liveSeenAtMs?: number;
+  };
   stale: boolean;
 }
 

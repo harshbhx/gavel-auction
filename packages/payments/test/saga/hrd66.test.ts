@@ -9,6 +9,7 @@ import { step } from '../../src/saga/machine.js';
 import {
   DEFAULT_HONOR_SAFE_MS,
   lookupUnknownReauths,
+  REAUTH_LIVE_RECHECK_MS,
   reauthorizeIfDue,
   type ReauthHold,
   type ReauthUnknown,
@@ -240,6 +241,11 @@ describe('RT4-saga-05 a review after a reauthorization that stayed unknown', () 
     await reviewWithDoubt(rig, out);
     expect(rig.core.getAuthorization(oldAuth(rig)).status).toBe('CREATED');
 
+    // RT4-saga-06: the first read of a live authorization only starts the wait.
+    const first = await lookupUnknownReauths(rig.deps, AUCTION);
+    expect(first).toMatchObject({ status: 'done', recorded: [], open: [{ holdId: 'hold-b1' }] });
+    expect((await journalOf(rig)).holds['b1']?.reauthInDoubt?.liveSeenAtMs).toBe(rig.clock.nowMs());
+    rig.clock.advance(REAUTH_LIVE_RECHECK_MS);
     const found = await lookupUnknownReauths(rig.deps, AUCTION);
     expect(found).toEqual({ status: 'done', recorded: [], open: [] });
     const j = await journalOf(rig);
@@ -251,6 +257,29 @@ describe('RT4-saga-05 a review after a reauthorization that stayed unknown', () 
     await runVoidPhase({ ...rig.deps, releaseAllReviewHolds: true }, AUCTION);
     expect(rig.core.getAuthorization(oldAuth(rig)).status).toBe('VOIDED');
     assertFakeInvariants(rig.core);
+  });
+
+  it('RT4-saga-06 a reauthorization PayPal finishes after a live read is still recorded', async () => {
+    const rig = makeRig(CEILINGS);
+    await seed(rig);
+    rig.core.inject('reauthorize', 'timeout_before', oldAuth(rig), 1);
+    const out = await unknownReauth(rig);
+    await reviewWithDoubt(rig, out);
+
+    // PayPal is still processing: the old authorization reads live, the hold stays in doubt.
+    const first = await lookupUnknownReauths(rig.deps, AUCTION);
+    expect(first).toMatchObject({ recorded: [], open: [{ holdId: 'hold-b1' }] });
+    expect((await journalOf(rig)).holds['b1']?.reauthInDoubt?.requestId).toBe(out.requestId);
+
+    // PayPal finishes the request, then the next lookup finds the new authorization.
+    const made = await rig.gw.reauthorize(oldAuth(rig), {
+      amountCents: out.amountCents,
+      requestId: out.requestId,
+    });
+    rig.clock.advance(REAUTH_LIVE_RECHECK_MS);
+    const second = await lookupUnknownReauths(rig.deps, AUCTION);
+    expect(second).toMatchObject({ recorded: [{ bidderId: 'b1', authId: made.authId }], open: [] });
+    expect((await journalOf(rig)).holds['b1']?.authId).toBe(made.authId);
   });
 
   it('a lookup PayPal does not answer keeps the hold in doubt and names order and request', async () => {
