@@ -3,7 +3,7 @@ import type { Journal } from '../types.js';
 /**
  * Unknown capture outcome (SPEC 3.5; R-PAY-054, R-PAY-055).
  *
- * A capture whose outcome is unknown (timeout, 5xx, 429 after retries) is never
+ * A capture whose outcome is unknown (timeout, 5xx) is never
  * answered with the next candidate. The settlement stays CAPTURING with
  * `unknownSince` set and the runner reports `pending`. A resume reads the hold's
  * truth first: a capture that took effect is adopted, otherwise the saved intent
@@ -15,6 +15,9 @@ import type { Journal } from '../types.js';
  * captured and not fallback candidates; the hold of the capture in doubt and the holds
  * of the next candidates stay until the review is resolved, is a day old, or an
  * operator releases them (R8-P06, R9-M04).
+ *
+ * A 429 is not an unknown outcome: PayPal refused to run the request, so no clock starts. The
+ * capture waits (`rate_limited`) and is retried after the truth read, with the same request id.
  */
 
 /** R-PAY-055 default: ten minutes. */

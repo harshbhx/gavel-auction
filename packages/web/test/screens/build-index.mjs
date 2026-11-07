@@ -11,6 +11,23 @@ const PROJECTS = [
   ['desktop-projector', 'Desktop 1440x900, projector'],
 ];
 
+// States drawn on the component page (support/pages/harness.tsx) rather than on a route.
+const COMPONENT_PAGE = new Set([
+  'landing/busy',
+  'landing/server-down',
+  'demo/links',
+  'console/shortcut-help',
+  'console/voice-requesting',
+  'console/voice-listening',
+  'console/voice-denied',
+  'console/voice-error',
+  'register/approve-cancelled',
+  'register/approve-declined',
+  'error/boundary',
+  'boot/config-error',
+]);
+const mark = (view, state) => (COMPONENT_PAGE.has(`${view}/${state}`) ? ' (component page)' : '');
+
 const dir = resolve(process.argv[2] ?? 'ui-screens-out');
 mkdirSync(dir, { recursive: true });
 
@@ -44,7 +61,7 @@ md += 'Columns: ' + PROJECTS.map(([, text]) => text).join('; ') + '.\n\n';
 for (const [view, states] of tree) {
   md += `## ${view}\n\n| State | ${PROJECTS.map(([, text]) => text).join(' | ')} |\n|---|${PROJECTS.map(() => '---').join('|')}|\n`;
   for (const [state, files] of states) {
-    md += `| ${state} | ${PROJECTS.map(([p]) => (files.has(p) ? `[png](${files.get(p)})` : '-')).join(' | ')} |\n`;
+    md += `| ${state}${mark(view, state)} | ${PROJECTS.map(([p]) => (files.has(p) ? `[png](${files.get(p)})` : '-')).join(' | ')} |\n`;
   }
   md += '\n';
 }
@@ -60,7 +77,7 @@ html += '</nav>';
 for (const [view, states] of tree) {
   html += `<h2 id="${esc(view)}">${esc(view)}</h2>`;
   for (const [state, files] of states) {
-    html += `<div class="state"><strong>${esc(state)}</strong><div class="row">`;
+    html += `<div class="state"><strong>${esc(state)}${esc(mark(view, state))}</strong><div class="row">`;
     for (const [p] of PROJECTS) {
       const file = files.get(p);
       if (file === undefined) continue;

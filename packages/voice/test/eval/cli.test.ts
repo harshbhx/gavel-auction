@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   EXIT_FAILED,
@@ -179,6 +179,50 @@ describe('T-VOX-088 live limits (R-VOX-080)', () => {
     expect(peak).toBeLessThanOrEqual(LIVE_CONCURRENCY);
     expect(h.logs.join('\n')).not.toContain(key);
     expect(h.logs.join('\n')).toContain('[redacted]');
+  });
+
+  it('live --record writes provider text per clip and no key', async () => {
+    const key = ['zz', 'rec', 'marker', '7'].join('-');
+    const h = harness({}, { DEEPGRAM_API_KEY: key });
+    h.deps.transcribe = async () => ({ text: 'three hundred', confidence: 0.9 });
+    const code = await runCli(
+      ['--mode', 'live', '--record', 'fixtures/stt-cache', '--out', 'o'],
+      h.deps,
+    );
+    expect(code).toBe(EXIT_OK);
+    const rec = h.written.get('fixtures/stt-cache/deepgram/a01.json') ?? '';
+    expect(JSON.parse(rec)).toMatchObject({ text: 'three hundred', confidence: 0.9 });
+    expect([...h.written.values()].join('\n')).not.toContain(key);
+    expect([...h.written.keys()].filter((k) => k.includes('stt-cache'))).toHaveLength(24);
+  });
+
+  it('live --resume reuses recorded clips and asks the provider only for the rest', async () => {
+    const h = harness(
+      { 'fixtures/stt-cache/deepgram/a01.json': '{"text":"three hundred","latencyMs":5}' },
+      { DEEPGRAM_API_KEY: 'k' },
+    );
+    const asked: string[] = [];
+    h.deps.transcribe = async (id) => {
+      asked.push(id);
+      return { text: 'two fifty' };
+    };
+    const code = await runCli(
+      ['--mode', 'live', '--record', 'fixtures/stt-cache', '--resume', 'true'],
+      h.deps,
+    );
+    expect(code).toBe(EXIT_OK);
+    expect(asked).toHaveLength(23);
+    expect(asked).not.toContain('a01');
+  });
+
+  it('committed provider cache scores every audio clip for both providers', async () => {
+    for (const provider of ['deepgram', 'groq'] as const) {
+      const h = harness();
+      h.deps.exists = (p) => existsSync(new URL(`../../${p}`, import.meta.url));
+      const code = await runCli(['--mode', 'cached', '--provider', provider, '--out', 'o'], h.deps);
+      expect(code).toBe(EXIT_OK);
+      expect(h.logs.join('\n')).toContain('24 utterances');
+    }
   });
 
   it('redact removes every occurrence and ignores empty secrets', () => {

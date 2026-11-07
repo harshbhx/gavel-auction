@@ -16,6 +16,11 @@ on:
         options:
           - deepgram
           - groq
+      record:
+        description: 'Render the synthetic clips and record both providers into stt-cache (uploads an artifact, no keys in it)'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -58,21 +63,20 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: ./.github/actions/setup
-      - name: Cached mode (recorded STT and model outputs, deterministic)
+      - name: Cached mode (recorded STT outputs through the parser, deterministic)
+        # Fails when a provider directory or a clip is missing: a green run always scored every clip.
         run: |
-          if [ ! -d packages/voice/fixtures/stt-cache/deepgram ]; then
-            msg="Cached eval NOT RUN: packages/voice/fixtures/stt-cache/deepgram/<clip id>.json is absent, so no clip was scored. This is not a pass."
-            echo "::warning title=Cached eval NOT RUN::$msg"
-            printf '## Cached eval: NOT RUN\n\n%s\n' "$msg" >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          npm run eval -w @gavel/voice -- --mode cached --provider deepgram --out eval-out/cached
+          for p in deepgram groq; do
+            npm run eval -w @gavel/voice -- --mode cached --provider "$p" --out "eval-out/cached/$p"
+          done
       - name: Job summary
         if: always()
         run: |
-          if [ -f packages/voice/eval-out/cached/report.md ]; then
-            cat packages/voice/eval-out/cached/report.md >> "$GITHUB_STEP_SUMMARY"
-          fi
+          for p in deepgram groq; do
+            if [ -f "packages/voice/eval-out/cached/$p/report.md" ]; then
+              cat "packages/voice/eval-out/cached/$p/report.md" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -80,8 +84,56 @@ jobs:
           path: packages/voice/eval-out/cached
           if-no-files-found: ignore
 
+  record:
+    if: github.event_name == 'workflow_dispatch' && inputs.record
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/setup
+      - name: Install speech synthesizer
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq espeak-ng ffmpeg jq
+      - name: Render synthetic clips (noise-free, not a real-room test)
+        run: bash packages/voice/scripts/render-clips.sh
+      - name: Live eval against both providers, recording provider output
+        env:
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        # The Groq free tier answers 429 after a burst; --resume keeps what is recorded and the loop
+        # waits a minute before asking for the rest.
+        run: |
+          rm -rf packages/voice/fixtures/stt-cache/deepgram packages/voice/fixtures/stt-cache/groq
+          for p in deepgram groq; do
+            for attempt in 1 2 3 4 5 6; do
+              if npm run eval -w @gavel/voice -- --mode live --provider "$p" \
+                --record fixtures/stt-cache --resume true --out "eval-out/live/$p"; then
+                break
+              fi
+              [ "$attempt" = 6 ] && exit 1
+              sleep 65
+            done
+          done
+      - name: Job summary
+        if: always()
+        run: |
+          for p in deepgram groq; do
+            if [ -f "packages/voice/eval-out/live/$p/report.md" ]; then
+              cat "packages/voice/eval-out/live/$p/report.md" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: voice-stt-record
+          path: |
+            packages/voice/fixtures/audio/recordings
+            packages/voice/fixtures/stt-cache/deepgram
+            packages/voice/fixtures/stt-cache/groq
+            packages/voice/eval-out/live
+          if-no-files-found: ignore
+
   live:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && !inputs.record
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
