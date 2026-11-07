@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Chip } from '@/components/holdline/chip';
+import { GateBadge } from '@/components/holdline/chip';
 import { repoData } from '@/lib/repo-data';
 import { DiagramFrame } from './frame';
 import { DetailPanel, StepControls, stepStyle, useHot, useSteps, type Steps } from './interactive';
@@ -295,7 +295,7 @@ export function VoicePipelineDiagram() {
       desc="Four bands from top to bottom. Browser: microphone, mute controller, a 50 batch audio queue, a drop monitor and the degraded state. Server: the audio socket with a token in the first message, then speech to text through Deepgram, Groq and cached replay, then a segmenter. Decide: rule parser, score and classify into accept, confirm or drop. Room: the room gate holds low confidence or ambiguous bids for 15 seconds and asks the bidder; a yes goes to the engine, a clean bid at 0.85 or more goes straight to the engine, a drop is recorded without its transcript."
       width={1200}
       height={590}
-      badge={<Chip kind="stop">G5 FAIL</Chip>}
+      badge={<GateBadge id="G5" />}
       toolbar={
         <div className="space-y-3">
           <StepControls steps={steps} labels={stepLabels} />
@@ -307,7 +307,7 @@ export function VoicePipelineDiagram() {
           Read from <code>packages/voice/src/browser</code> (mute, queue, drop monitor), <code>packages/server/src/host/audio-ws.ts</code>,{' '}
           <code>packages/server/src/voice/stt.ts</code>, <code>packages/voice/src/stt/failover.ts</code>, <code>packages/voice/src/decide/policy.ts</code>,{' '}
           <code>packages/server/src/voice/bridge.ts</code> and <code>packages/server/src/room/confirm.ts</code>. The default build plays cached transcripts;
-          a live provider needs <code>VOICE_STT</code> and its key. Speech accuracy gate G5 failed on synthetic audio (wrong-accept {lo} to {hi} against a limit of 0.05, 24 clips per set); there is
+          a live provider needs <code>VOICE_STT</code> and its key. Speech accuracy gate G5 is PARTIAL: wrong-accept {lo} to {hi} on 24 synthetic, noise-free clips per set (limit 0.05), after fixes chosen on those same clips; there is
           no real-room or noisy-room test. A clean bid at 0.85 or more is not held by the code today, so spoken bids go through the confirm
           prompt by decision in <code>docs/GATES.md</code>, not by a code switch.
         </>
@@ -324,7 +324,7 @@ export function VoicePipelineDiagram() {
             <li>A yes is checked again by the engine at the server time of the answer. A no or an expiry places nothing and is audited.</li>
           </ol>
           <p>
-            Gate G5: wrong-accept {lo} to {hi} on 24 synthetic clips per set, against a limit of 0.05. Status FAIL.
+            Gate G5: wrong-accept {lo} to {hi} on 24 synthetic, noise-free clips per set (limit 0.05), fixes chosen on the same clips. Status PARTIAL.
           </p>
         </>
       }
