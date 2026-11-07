@@ -69,7 +69,8 @@ async function toCeiling(page: Page): Promise<void> {
 async function toApproval(page: Page): Promise<void> {
   await toCeiling(page);
   await page.getByRole('radio', { name: /\$500/ }).check();
-  await page.getByRole('button', { name: t('reg.approve') }).click();
+  await page.getByRole('button', { name: t('ui.hold.alt') }).click();
+  await page.getByRole('button', { name: t('ui.hold.altArmed') }).click();
 }
 
 test.describe('register: entry', () => {

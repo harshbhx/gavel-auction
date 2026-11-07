@@ -17,7 +17,7 @@ test('join button stays disabled until a code is typed', async ({ page, stack })
   await page.goto(stack.webUrl);
   const join = page.getByRole('button', { name: /join/i });
   await expect(join).toBeDisabled();
-  await page.getByRole('textbox').fill('zzzz');
+  await page.getByRole('textbox', { name: /character 1 of/i }).fill('ZZZZ');
   await expect(join).toBeEnabled();
 });
 

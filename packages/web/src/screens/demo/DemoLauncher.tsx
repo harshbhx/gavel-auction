@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { t } from '../../copy/t';
 import { Provenance } from '../../design/Provenance';
 import { Button } from '../../design/primitives/Button';
+import '../flows.css';
 
 export type DemoMode = 'live' | 'scripted';
 
@@ -108,7 +109,7 @@ export function DemoLauncher({
   };
 
   return (
-    <main className="gv-demo" data-route="demo">
+    <main className="gv-demo gv-flow" data-route="demo">
       <h1 ref={heading} tabIndex={-1}>
         {t('landing.start')}
       </h1>
@@ -117,7 +118,7 @@ export function DemoLauncher({
         {phase === 'busy' ? t('demo.creating') : t('landing.start')}
       </Button>
       {phase === 'failed' && (
-        <div role="alert">
+        <div className="gv-flow__error" role="alert">
           <p>{failureText(failure)}</p>
           <Button variant="outline" onClick={scripted}>
             {t('demo.scriptedInstead')}

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { t } from '../../copy/t';
+import '../flows.css';
 
 export interface NotFoundProps {
   readonly homeHref?: string;
@@ -12,11 +13,14 @@ export function NotFound({ homeHref = '/' }: NotFoundProps) {
     heading.current?.focus();
   }, []);
   return (
-    <main data-route="notFound">
+    <main className="gv-flow" data-route="notFound">
+      <p className="ui-kicker">{t('app.name')}</p>
       <h1 ref={heading} tabIndex={-1}>
         {t('err.notFound')}
       </h1>
-      <a href={homeHref}>{t('err.home')}</a>
+      <a className="gv-flow__action" href={homeHref}>
+        {t('err.home')}
+      </a>
     </main>
   );
 }

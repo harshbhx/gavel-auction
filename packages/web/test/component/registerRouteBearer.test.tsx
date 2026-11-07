@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
+import { confirmHold } from '../support/approveHold';
 import { saveSession } from '../../src/net/session';
 import { resetApprovalMemory } from '../../src/payments/useApproval';
 
@@ -30,7 +31,7 @@ describe('register route sends the session bearer on the hold request', () => {
     fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
     fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
     fireEvent.click(screen.getByLabelText('$250'));
-    fireEvent.click(screen.getByRole('button', { name: t('reg.approve') }));
+    confirmHold();
 
     await waitFor(() => expect(calls.length).toBeGreaterThan(0));
     expect(calls[0]).toEqual({

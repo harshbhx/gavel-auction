@@ -8,6 +8,7 @@ import { Banner } from '../../design/primitives/Banner';
 import { Button } from '../../design/primitives/Button';
 import type { ApprovalResult, ApprovalState } from '../../payments/port';
 import { formatUsdCompact } from '../../util/money';
+import '../flows.css';
 
 export const SUFFIX_LENGTH = 6;
 
@@ -100,11 +101,13 @@ export function Approve({
 }: ApproveProps) {
   if (closed) {
     return (
-      <section>
+      <section className="gv-approve" data-state="closed">
         <Banner tone="info" icon={<Icon name="lock" />}>
           {t('reg.closed')}
         </Banner>
-        <a href={watchHref}>{t('reg.watch')}</a>
+        <a className="gv-flow__action" href={watchHref}>
+          {t('reg.watch')}
+        </a>
       </section>
     );
   }
@@ -114,16 +117,24 @@ export function Approve({
       return null;
     case 'preparing':
     case 'confirming':
-      return <p role="status">{t('reg.confirming')}</p>;
+      return (
+        <p className="gv-approve" data-state="confirming" role="status">
+          {t('reg.confirming')}
+        </p>
+      );
     case 'awaiting_buyer':
-      return <p role="status">{t('reg.awaiting')}</p>;
+      return (
+        <p className="gv-approve" data-state="awaiting" role="status">
+          {t('reg.awaiting')}
+        </p>
+      );
     case 'held': {
       const amount = result?.ceilingCents ?? ceilingCents;
       const full = result?.holdId;
       const suffix = result?.holdIdSuffix ?? (full === undefined ? '' : holdSuffix(full));
       return (
-        <section data-testid="held-card">
-          <p>
+        <section className="gv-approve" data-state="held" data-testid="held-card">
+          <p className="gv-approve__headline">
             <Icon name="check" />
             <strong>{t('reg.held', { amount: formatUsdCompact(amount) })}</strong>
           </p>
@@ -143,14 +154,14 @@ export function Approve({
     }
     case 'cancelled':
       return (
-        <section>
+        <section className="gv-approve" data-state="cancelled">
           <p role="status">{t('reg.cancelled')}</p>
           <Button onClick={onBackToCeiling}>{t('generic.back')}</Button>
         </section>
       );
     case 'declined':
       return (
-        <section>
+        <section className="gv-approve" data-state="declined">
           <p role="alert">{t('reg.declined')}</p>
           <Button onClick={onBackToCeiling}>{t('generic.back')}</Button>
         </section>
@@ -158,7 +169,7 @@ export function Approve({
     case 'error': {
       const view = errorView(result?.errorCode);
       return (
-        <section>
+        <section className="gv-approve" data-state="error" data-action={view.action}>
           <p role="alert">{en[view.key]}</p>
           {view.action === 'retry' && <Button onClick={onRetry}>{t('generic.retry')}</Button>}
           {view.action === 'wait' && <DelayedRetry onRetry={onRetry} />}

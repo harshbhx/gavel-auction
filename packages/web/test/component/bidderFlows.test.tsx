@@ -5,6 +5,7 @@ import { App } from '../../src/App';
 import { en } from '../../src/copy/en';
 import { holdErrorCopyTable } from '../../src/copy/errors';
 import { t } from '../../src/copy/t';
+import { confirmHold } from '../support/approveHold';
 import { loadSession, saveHighBid, saveSession } from '../../src/net/session';
 import { resetApprovalMemory } from '../../src/payments/useApproval';
 import { saveRegistration } from '../../src/payments/registrationStore';
@@ -418,7 +419,7 @@ function fillAndApprove(preset: string): void {
   fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
   fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
   fireEvent.click(screen.getByRole('radio', { name: preset }));
-  fireEvent.click(screen.getByRole('button', { name: t('reg.approve') }));
+  confirmHold();
 }
 
 /** The inline rejection text; the shared announcer region also has role alert and is left out. */
@@ -457,7 +458,7 @@ describe('register route', () => {
     expect(screen.queryByRole('radio', { name: '$100' })).toBeNull();
     expect(screen.getByRole('radio', { name: '$1,500' })).toBeTruthy();
     fireEvent.click(screen.getByRole('radio', { name: '$500' }));
-    fireEvent.click(screen.getByRole('button', { name: t('reg.approve') }));
+    confirmHold();
     await flush();
     expect(JSON.parse(calls[0]?.body ?? '{}')).toEqual({ auctionId: ROOM, ceilingCents: 50_000 });
     expect(screen.getByText(en[holdErrorCopyTable.ceiling_out_of_range])).toBeTruthy();
