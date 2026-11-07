@@ -11,6 +11,8 @@
     "test": "vitest run",
     "test:visual": "playwright test",
     "test:a11y": "playwright test a11y keyboard motion responsive",
+    "test:screens": "playwright test -c playwright.screens.config.ts",
+    "screens:index": "node test/screens/build-index.mjs ui-screens-out",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "check:size": "node scripts/check-size.mjs dist"
