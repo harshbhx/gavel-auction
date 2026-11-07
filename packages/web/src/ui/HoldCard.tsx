@@ -13,6 +13,8 @@ export interface HoldCardProps {
   chargedCents?: number;
   /** Optional line above the amount, such as a paddle number. */
   caption?: string;
+  /** Overrides the region name when several cards share a page. */
+  ariaLabel?: string;
 }
 
 function tagFor(state: HoldState): string {
@@ -38,7 +40,13 @@ function describe(state: HoldState, ceiling: number, charged: number, hidden: bo
 }
 
 /** Shows only the hold: hatched while held, solid once charged, hollow when released. Always with text. */
-export function HoldCard({ state, ceilingCents, chargedCents = 0, caption }: HoldCardProps) {
+export function HoldCard({
+  state,
+  ceilingCents,
+  chargedCents = 0,
+  caption,
+  ariaLabel,
+}: HoldCardProps) {
   const [hidden, setHidden] = useState(false);
   const charged = Math.min(Math.max(0, chargedCents), ceilingCents);
   const shown = state === 'charged' ? charged : ceilingCents;
@@ -47,7 +55,7 @@ export function HoldCard({ state, ceilingCents, chargedCents = 0, caption }: Hol
   const hollowFlex = Math.max(ceilingCents - charged, state === 'charged' ? 0 : 1);
 
   return (
-    <section className="ui-holdcard" data-state={state} aria-label={t('ui.hold.aria')}>
+    <section className="ui-holdcard" data-state={state} aria-label={ariaLabel ?? t('ui.hold.aria')}>
       <div className="ui-holdcard__top">
         {caption !== undefined && <span className="ui-kicker">{caption}</span>}
         <button

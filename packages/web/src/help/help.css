@@ -1,0 +1,127 @@
+/* Help button, hold explainer sheet and guided tour. Tokens only. */
+
+.help-fab {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 90;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 var(--space-4);
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-lg);
+  background: var(--color-action);
+  color: var(--color-on-action);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-3);
+  font-weight: 700;
+  box-shadow: var(--shadow-2);
+  cursor: pointer;
+}
+
+.help-btn {
+  min-height: 48px;
+  padding: 0 var(--space-4);
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-3);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.help-btn--solid {
+  background: var(--color-action);
+  color: var(--color-on-action);
+}
+
+.help-fab:focus-visible,
+.help-btn:focus-visible,
+.help-layer .ui-link:focus-visible,
+.help-hold__title:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.help-menu,
+.help-hold {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.help-hold__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.help-hold__item h3,
+.help-menu__title,
+.help-hold__title,
+.help-tour__title {
+  margin: 0;
+}
+
+.help-tour {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+}
+
+.help-tour__veil {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--color-fg) 55%, transparent);
+}
+
+/* The huge shadow dims everything except the spotlighted element. */
+.help-tour__spot {
+  position: absolute;
+  border: var(--border-width-strong) solid var(--color-focus);
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--color-fg) 55%, transparent);
+  pointer-events: none;
+  transition:
+    top var(--duration-micro),
+    left var(--duration-micro),
+    width var(--duration-micro),
+    height var(--duration-micro);
+}
+
+.help-tour__card {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  left: var(--space-4);
+  max-width: 480px;
+  margin-inline: auto;
+  padding: var(--space-5);
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-fg);
+  box-shadow: var(--shadow-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.help-tour__card p {
+  margin: 0;
+}
+
+.help-tour__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .help-tour__spot {
+    transition: none;
+  }
+}

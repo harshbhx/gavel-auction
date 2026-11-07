@@ -25,6 +25,7 @@ import { loadScriptedRoom, type ScriptedRoom } from './testing/scriptedRoom';
 import { clearSession, type SessionRole } from './net/session';
 import { loadRegistration } from './payments/registrationStore';
 import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
+import { HelpLayer } from './help';
 import { RouteScreen, matchRoute, type RouteMatch } from './routes';
 import { AuditTable } from './screens/audit/AuditTable';
 import { Export } from './screens/audit/Export';
@@ -995,6 +996,16 @@ function Routed({
   );
 }
 
+/** Routes that carry the help button: landing, join, registration, bidder room and receipt. */
+const HELP_ROUTES: ReadonlySet<string> = new Set([
+  'landing',
+  'join',
+  'register',
+  'return',
+  'bid',
+  'receipt',
+]);
+
 export function App({ initialPath, gallery = import.meta.env.DEV, liveBase, api }: AppProps) {
   const [path, setPath] = useState(initialPath ?? window.location.pathname);
 
@@ -1014,6 +1025,7 @@ export function App({ initialPath, gallery = import.meta.env.DEV, liveBase, api 
       {match.route.id !== 'gallery' && <SandboxBanner />}
       {match.route.id !== 'gallery' && <Announcer />}
       <Routed match={match} liveBase={liveBase} api={api} />
+      {HELP_ROUTES.has(match.route.id) && <HelpLayer />}
     </ErrorBoundary>
   );
 }
