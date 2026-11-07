@@ -308,7 +308,7 @@ async function drive(
     await handler(req, res, `/ops/auctions/${encodeURIComponent(auctionId)}/release-review`);
     await service.idle();
     if (key === 'valid' && status === 409 && opsStatuses.length >= 3)
-      throw new Error(`DEBUGOPS ${body}`);
+      throw new Error(`DEBUGOPS ${body} ${JSON.stringify(await lastSettlement())}`);
     return status;
   }
 
