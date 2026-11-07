@@ -23,3 +23,7 @@ replace the files; keep the file names.
   returned for each clip (`text`, `latencyMs`), recorded by a live run of the `voice-eval` workflow
   (`record` input). No key or request header is stored. Cached mode scores these.
 - This is a loop check, not a real-room test. Scores here must not be quoted as room accuracy.
+- `audio-human/<id>.mp3` and `stt-cache-human/<provider>/<id>.json`: the second clip set, the same 24
+  utterances spoken by a human-like synthetic voice (see `audio/LICENSES.md`), and what the two
+  providers returned for it. Recorded by `voice-eval` with `record` and `clips=human`; the cached job
+  scores it with `--clips human`. Also noise-free and synthetic, so also not a real-room test.

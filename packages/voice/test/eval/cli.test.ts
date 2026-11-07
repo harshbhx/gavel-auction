@@ -117,6 +117,33 @@ describe('T-VOX-083 modes (R-VOX-075)', () => {
     expect(json.metrics.latencyP50Ms).toBe(120);
   });
 
+  it('--clips human reads the separate human-like cache and rejects other sets', async () => {
+    expect(parseArgs(['--clips', 'human'])).toMatchObject({ clips: 'human' });
+    expect(parseArgs(['--clips', 'robot'])).toMatch(/--clips/);
+    const manifest = JSON.parse(fixture('fixtures/audio/manifest.json')) as Array<{
+      id: string;
+      text: string;
+    }>;
+    const extra: Record<string, string> = {};
+    for (const m of manifest) {
+      extra[`fixtures/stt-cache-human/groq/${m.id}.json`] = JSON.stringify({
+        text: m.text,
+        latencyMs: 80,
+      });
+    }
+    const h = harness(extra);
+    h.dirs.add('fixtures/stt-cache-human/groq');
+    const code = await runCli(
+      ['--mode', 'cached', '--provider', 'groq', '--clips', 'human'],
+      h.deps,
+    );
+    expect(code).toBe(EXIT_OK);
+    expect(h.reads.filter((r) => r.startsWith('fixtures/stt-cache-human/groq/'))).toHaveLength(
+      manifest.length,
+    );
+    expect(h.reads.some((r) => r.startsWith('fixtures/stt-cache/groq/'))).toBe(false);
+  });
+
   it('cached mode fails with a message when a recording is missing', async () => {
     const h = harness();
     const code = await runCli(['--mode', 'cached'], h.deps);

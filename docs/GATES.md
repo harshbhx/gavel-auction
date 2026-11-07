@@ -124,7 +124,7 @@ Scope: tampered-event rejection was not part of this run; it is covered against 
 Status: FAIL
 Run date / by: 2026-11-07, cached eval over recorded provider outputs (PR #1940, issue #1864)
 Question: is the speech-to-text accuracy on noisy bid audio high enough to accept bids without manual confirmation?
-Setup: synthetic eSpeak speech (noise-free and robotic, which is harder than real speech), 24 clips, scored by the cached eval: Deepgram nova-2 exact 0.615, wrong-accept 0.125, confirm 0.417; Groq whisper-large-v3-turbo exact 0.615, wrong-accept 0.083, confirm 0.375..
+Setup: synthetic eSpeak speech (noise-free and robotic, which is harder than real speech), 24 clips; a second, human-like synthetic voice set of the same 24 utterances is scored below and also fails, scored by the cached eval: Deepgram nova-2 exact 0.615, wrong-accept 0.125, confirm 0.417; Groq whisper-large-v3-turbo exact 0.615, wrong-accept 0.083, confirm 0.375..
 Requests: the 24 clips were sent to each provider once and the outputs were recorded; the cached eval scores the recorded outputs through the rule parser.
 Observed: Deepgram nova-2 exact 0.615, wrong-accept 0.125, confirm 0.417. Groq whisper-large-v3-turbo exact 0.615, wrong-accept 0.083, confirm 0.375.
 Verdict: both providers miss the threshold (wrong-accept 0.05 or less), on speech that is noise-free but robotic and so harder than real speech. There is no real-room or noisy-room test.
@@ -132,6 +132,28 @@ Decision: FAIL for unconfirmed voice bids: spoken bids always go through the con
 Fallback if FAIL: always show the confirm prompt for spoken bids.
 Evidence: PR #1940 (merged): 24 synthetic clips under packages/voice/fixtures/audio and the recorded provider outputs under packages/voice/fixtures/stt-cache/deepgram and /groq
 Links: issue #1864
+
+### G5 second clip set: human-like synthetic voice (PR VOI-01)
+
+Same 24 utterances (manifest text unchanged), spoken by one natural text-to-speech voice
+(ElevenLabs "Kiora", eleven_multilingual_v2, one generation per clip, 24 in total) instead of
+eSpeak. Still synthetic and noise-free, so still not a real-room or noisy-room test. Both providers
+heard each clip once; the outputs are recorded under `packages/voice/fixtures/stt-cache-human` and
+scored by the cached job (`--clips human`). Recorded by voice-eval run 42342379648.
+
+| clip set                                         | provider                    | n   | exact | wrong accept | confirm | missed bid |
+| ------------------------------------------------ | --------------------------- | --- | ----- | ------------ | ------- | ---------- |
+| eSpeak (robotic), noise-free                     | Deepgram nova-2             | 24  | 0.615 | 0.125        | 0.417   | n/a        |
+| eSpeak (robotic), noise-free                     | Groq whisper-large-v3-turbo | 24  | 0.615 | 0.083        | 0.375   | n/a        |
+| human-like synthetic voice, noise-free, 24 clips | Deepgram nova-2             | 24  | 0.692 | 0.083        | 0.375   | 0.000      |
+| human-like synthetic voice, noise-free, 24 clips | Groq whisper-large-v3-turbo | 24  | 0.615 | 0.167        | 0.250   | 0.154      |
+
+Verdict: the natural voice does not clear the gate either. Deepgram improves slightly (wrong accept
+0.083, two of 24 clips); Groq gets worse on wrong accepts (0.167, four of 24 clips), and misses two
+bids that the parser then drops. Groq writes numbers as digits ("Paddle 12, 350."), which the rule
+parser reads differently from spelled-out words. Both stay above the 0.05 limit, so G5 stays FAIL.
+With 24 clips one clip moves a rate by 0.042, so the differences between the two clip sets are
+within noise.
 
 ### G5-text: text-level run (step 1)
 
@@ -215,7 +237,7 @@ Verified, with evidence above:
 Not run, results pending:
 
 - G3 (honor period, validity and reauthorize): NOT RUN / IN PROGRESS (day 0 7 Nov 2026 03:06 UTC, final about 12 Nov 06:17 UTC). Fallback: capture within the verified validity window and use the reauthorize path (spec R3, T-QA-052) before hammer. R3 is the plan, not a result: it is not verified until G3 runs.
-- G5 (speech-to-text accuracy on noisy bids): FAIL on synthetic eSpeak speech, 24 clips (Deepgram nova-2 wrong-accept 0.125, Groq whisper-large-v3-turbo 0.083, threshold 0.05). Fallback: voice bids always go through the confirm prompt (assist mode). No real-room or noisy-room test.
+- G5 (speech-to-text accuracy on noisy bids): FAIL on synthetic eSpeak speech, 24 clips (Deepgram nova-2 wrong-accept 0.125, Groq whisper-large-v3-turbo 0.083, threshold 0.05) and on a human-like synthetic voice, 24 clips (Deepgram 0.083, Groq 0.167). Fallback: voice bids always go through the confirm prompt (assist mode). No real-room or noisy-room test.
 
 What changes the decision:
 

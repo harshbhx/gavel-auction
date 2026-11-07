@@ -16,6 +16,14 @@ on:
         options:
           - deepgram
           - groq
+      clips:
+        description: 'Clip set for the record input: espeak (robotic, default) or human (human-like synthetic voice from fixtures/audio-human)'
+        required: false
+        default: espeak
+        type: choice
+        options:
+          - espeak
+          - human
       record:
         description: 'Render the synthetic clips and record both providers into stt-cache (uploads an artifact, no keys in it)'
         required: false
@@ -69,6 +77,12 @@ jobs:
           for p in deepgram groq; do
             npm run eval -w @gavel/voice -- --mode cached --provider "$p" --out "eval-out/cached/$p"
           done
+      - name: Cached mode, human-like synthetic voice set (second clip set, same 24 utterances)
+        run: |
+          for p in deepgram groq; do
+            npm run eval -w @gavel/voice -- --mode cached --provider "$p" --clips human \
+              --out "eval-out/cached-human/$p"
+          done
       - name: Job summary
         if: always()
         run: |
@@ -76,16 +90,21 @@ jobs:
             if [ -f "packages/voice/eval-out/cached/$p/report.md" ]; then
               cat "packages/voice/eval-out/cached/$p/report.md" >> "$GITHUB_STEP_SUMMARY"
             fi
+            if [ -f "packages/voice/eval-out/cached-human/$p/report.md" ]; then
+              cat "packages/voice/eval-out/cached-human/$p/report.md" >> "$GITHUB_STEP_SUMMARY"
+            fi
           done
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: voice-eval-cached
-          path: packages/voice/eval-out/cached
+          path: |
+            packages/voice/eval-out/cached
+            packages/voice/eval-out/cached-human
           if-no-files-found: ignore
 
   record:
-    if: github.event_name == 'workflow_dispatch' && inputs.record
+    if: github.event_name == 'workflow_dispatch' && inputs.record && inputs.clips != 'human'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -130,6 +149,60 @@ jobs:
             packages/voice/fixtures/stt-cache/deepgram
             packages/voice/fixtures/stt-cache/groq
             packages/voice/eval-out/live
+          if-no-files-found: ignore
+
+  record-human:
+    if: github.event_name == 'workflow_dispatch' && inputs.record && inputs.clips == 'human'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/setup
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Convert the human-like clips to 16 kHz mono wav (noise-free, not a real-room test)
+        # Same framing as render-clips.sh: 300 ms of silence on both sides.
+        run: |
+          mkdir -p "$RUNNER_TEMP/human-wav"
+          for f in packages/voice/fixtures/audio-human/*.mp3; do
+            id="$(basename "$f" .mp3)"
+            ffmpeg -nostdin -y -v error -i "$f" -af "adelay=300|300,apad=pad_dur=0.3" \
+              -ar 16000 -ac 1 -c:a pcm_s16le "$RUNNER_TEMP/human-wav/$id.wav"
+          done
+          ls "$RUNNER_TEMP/human-wav" | wc -l
+      - name: Live eval against both providers, recording provider output
+        env:
+          G5_AUDIO_DIR: ${{ runner.temp }}/human-wav
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          rm -rf packages/voice/fixtures/stt-cache-human/deepgram packages/voice/fixtures/stt-cache-human/groq
+          for p in deepgram groq; do
+            for attempt in 1 2 3 4 5 6; do
+              if npm run eval -w @gavel/voice -- --mode live --provider "$p" \
+                --record fixtures/stt-cache-human --resume true --out "eval-out/live-human/$p"; then
+                break
+              fi
+              [ "$attempt" = 6 ] && exit 1
+              sleep 65
+            done
+          done
+      - name: Job summary
+        if: always()
+        run: |
+          for p in deepgram groq; do
+            if [ -f "packages/voice/eval-out/live-human/$p/report.md" ]; then
+              cat "packages/voice/eval-out/live-human/$p/report.md" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: voice-stt-record-human
+          path: |
+            packages/voice/fixtures/stt-cache-human/deepgram
+            packages/voice/fixtures/stt-cache-human/groq
+            packages/voice/eval-out/live-human
           if-no-files-found: ignore
 
   live:

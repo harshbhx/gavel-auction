@@ -10,7 +10,7 @@ import { renderReport, type ReportItem } from './report.js';
  * Evaluation CLI (R-VOX-075, R-VOX-080): text, cached and live modes.
  *
  *   npm run eval -- --mode text [--set dev|heldout|all] [--out dir]
- *   npm run eval -- --mode cached --provider deepgram
+ *   npm run eval -- --mode cached --provider deepgram [--clips espeak|human]
  *   (add --mic room|device: the microphone rule of the gate; room is what the room runs)
  *   npm run eval -- --mode live --provider deepgram [--record fixtures/stt-cache [--resume true]]
  *   (--record writes the provider text, latency and confidence per clip, never a key, so the
@@ -35,6 +35,14 @@ export const LIVE_CONCURRENCY = 2;
 export type EvalMode = 'text' | 'cached' | 'live';
 export type EvalSet = 'dev' | 'heldout' | 'all';
 export type Provider = 'deepgram' | 'groq';
+/** Which recorded clip set the cached mode scores: the eSpeak set or the human-like synthetic set. */
+export type ClipSet = 'espeak' | 'human';
+
+/** Package-relative directory of the recorded provider output of a clip set. */
+export const STT_CACHE_DIR: Record<ClipSet, string> = {
+  espeak: 'fixtures/stt-cache',
+  human: 'fixtures/stt-cache-human',
+};
 
 /** Environment variable that holds the key of each live provider. */
 export const PROVIDER_KEY_ENV: Record<Provider, string> = {
@@ -48,6 +56,8 @@ export interface CliOptions {
   set: EvalSet;
   out: string;
   mic: GateMic;
+  /** Cached mode: which recorded clip set to score (default espeak). */
+  clips?: ClipSet;
   /** Live mode only: directory (package-relative) that receives <provider>/<clip id>.json. */
   record?: string;
   /** With --record: keep clips already recorded for this provider, so a rate-limited run can resume. */
@@ -83,6 +93,11 @@ export function parseArgs(argv: readonly string[]): CliOptions | string {
       if (value !== 'room' && value !== 'device')
         return `--mic must be room or device, got ${value}`;
       opts.mic = value;
+    } else if (flag === '--clips') {
+      if (value !== 'espeak' && value !== 'human') {
+        return `--clips must be espeak or human, got ${value}`;
+      }
+      opts.clips = value;
     } else if (flag === '--out') {
       opts.out = value;
     } else if (flag === '--record') {
@@ -268,8 +283,13 @@ function audioItem(
 }
 
 /** Recorded provider transcripts through the parser; deterministic and offline. */
-function cachedItems(deps: CliDeps, provider: Provider, mic: GateMic): ReportItem[] | string {
-  const dir = `fixtures/stt-cache/${provider}`;
+function cachedItems(
+  deps: CliDeps,
+  provider: Provider,
+  mic: GateMic,
+  clips: ClipSet,
+): ReportItem[] | string {
+  const dir = `${STT_CACHE_DIR[clips]}/${provider}`;
   if (!deps.exists(dir)) return `no recorded provider output at ${dir}`;
   const items: ReportItem[] = [];
   for (const c of audioCases(deps)) {
@@ -354,7 +374,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<nu
     if (opts.mode === 'text') {
       items = textItems(deps, opts.set, opts.mic);
     } else if (opts.mode === 'cached') {
-      items = cachedItems(deps, opts.provider, opts.mic);
+      items = cachedItems(deps, opts.provider, opts.mic, opts.clips ?? 'espeak');
       setLabel = 'audio';
     } else {
       if (key === '') {
