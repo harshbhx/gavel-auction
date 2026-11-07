@@ -162,15 +162,31 @@ describe.skipIf(!availability.ok)('sandbox R1 to R4', () => {
         const replay = await storeEvent(store, Buffer.from(eventBody), 2);
         dedupe = first.isNew && !replay.isNew;
       }
+      // Our server must refuse the same event body without PayPal's signature headers. This
+      // runs real server code; a delivery signed by PayPal itself is checked by the staging
+      // webhook log, not here.
+      let unsignedStatus = 0;
+      if (eventBody !== undefined) {
+        const res = await fetch(
+          `${(env['GAVEL_STAGING_URL'] ?? '').replace(/\/$/, '')}/webhooks/paypal`,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: eventBody,
+          },
+        );
+        unsignedStatus = res.status;
+      }
+      const rejectsUnsigned = unsignedStatus === 401;
       const result = finish('R4', s, {
         gate: 'G4',
-        met: eventBody !== undefined && dedupe,
+        met: eventBody !== undefined && dedupe && rejectsUnsigned,
         transient: eventBody === undefined && anyTransient(listStatus),
         observed:
           eventBody === undefined
             ? 'no delivery seen in the event list'
-            : `delivery recorded, replay dedupe ${dedupe ? 'works' : 'failed'}`,
-        facts: { delivered: eventBody !== undefined, dedupe },
+            : `PayPal event list shows the delivery, replay dedupe ${dedupe ? 'works' : 'failed'} (in-memory store), staging answered the unsigned event HTTP ${unsignedStatus}`,
+        facts: { delivered: eventBody !== undefined, dedupe, unsignedStatus },
       });
       expect(result).not.toBe('fail');
     },
