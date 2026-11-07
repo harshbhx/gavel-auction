@@ -1,3 +1,5 @@
+import { GROQ_BID_PROMPT } from '../stt/groq.js';
+
 /**
  * Live batch transcription of evaluation clips (R-VOX-080). One WAV goes to the provider's
  * prerecorded endpoint and comes back as text plus segments. The key is used only in a request
@@ -56,12 +58,27 @@ export interface LiveDeps {
   maxAttempts?: number;
   /** Deadline across all attempts in milliseconds; defaults to LIVE_TOTAL_TIMEOUT_MS. */
   totalTimeoutMs?: number;
+  /** Request options of the option trials; unset means the defaults below. */
+  options?: LiveOptions;
   /** Waits between attempts; defaults to a timer. */
   sleep?: (ms: number) => Promise<void>;
 }
 
+/** Provider request options a trial can change without a code edit. All unset means the defaults. */
+export interface LiveOptions {
+  /** Deepgram query string without the question mark, replacing the default parameters. */
+  deepgramQuery?: string;
+  /** Groq model name. */
+  groqModel?: string;
+  /** Groq prompt (vocabulary hint); null sends none. Defaults to GROQ_BID_PROMPT. */
+  groqPrompt?: string | null;
+  /** Groq temperature, as the string the API takes. */
+  groqTemperature?: string;
+}
+
+/** The Deepgram settings the room runs (see DEEPGRAM_DEFAULT_CONFIG): nova-3, words not digits. */
 export const LIVE_DEEPGRAM_URL =
-  'https://api.deepgram.com/v1/listen?model=nova-2&language=en-US&punctuate=false&smart_format=false';
+  'https://api.deepgram.com/v1/listen?model=nova-3&language=en&punctuate=true&smart_format=false';
 export const LIVE_GROQ_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 export const LIVE_GROQ_MODEL = 'whisper-large-v3-turbo';
 export const LIVE_MAX_ATTEMPTS = 3;
@@ -135,10 +152,14 @@ function buildRequest(
   provider: LiveProvider,
   audio: Uint8Array,
   key: string,
+  options: LiveOptions = {},
 ): { url: string; init: LiveRequestInit } {
   if (provider === 'deepgram') {
     return {
-      url: LIVE_DEEPGRAM_URL,
+      url:
+        options.deepgramQuery === undefined
+          ? LIVE_DEEPGRAM_URL
+          : `https://api.deepgram.com/v1/listen?${options.deepgramQuery}`,
       init: {
         method: 'POST',
         headers: { Authorization: `Token ${key}`, 'Content-Type': 'audio/wav' },
@@ -148,9 +169,12 @@ function buildRequest(
   }
   const form = new FormData();
   form.append('file', new Blob([audio], { type: 'audio/wav' }), 'audio.wav');
-  form.append('model', LIVE_GROQ_MODEL);
+  form.append('model', options.groqModel ?? LIVE_GROQ_MODEL);
   form.append('response_format', 'verbose_json');
   form.append('language', 'en');
+  const prompt = options.groqPrompt === undefined ? GROQ_BID_PROMPT : options.groqPrompt;
+  if (prompt !== null) form.append('prompt', prompt);
+  if (options.groqTemperature !== undefined) form.append('temperature', options.groqTemperature);
   return {
     url: LIVE_GROQ_URL,
     init: { method: 'POST', headers: { Authorization: `Bearer ${key}` }, body: form },
@@ -188,7 +212,7 @@ export async function transcribeLive(
     const remaining = deadline - Date.now();
     if (remaining <= 0) throw timedOut();
     // A new request per attempt: a form body is consumed by the first send.
-    const { url, init } = buildRequest(provider, audio, key);
+    const { url, init } = buildRequest(provider, audio, key, deps.options);
     const signal = AbortSignal.timeout(Math.min(requestTimeout, remaining));
     let status: number;
     let body: unknown = null;

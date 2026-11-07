@@ -7,9 +7,9 @@ status: unverified
 
 Status labels: "available" means the code is on `main` today. "not available yet" means the part is specified but not built or not deployed, so the step cannot be followed end to end.
 
-<Held title="No hosted demo is published">
+<Held title="Hosted in sandbox mode, temporary storage">
 
-The hosted server runs in production mode, which refuses the fake PayPal. The scripted `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake`, which config refuses under production-like settings. The local fake-payments run is the runnable path today.
+The web app is at [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev) and the API at [gavel-auction-aufz.onrender.com](https://gavel-auction-aufz.onrender.com). Storage is temporary until a disk is added. No end-to-end walk of the room flow on that host is recorded yet. The hosted server refuses the fake PayPal. The scripted `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake`, which config refuses under production-like settings. The local fake-payments run is the runnable path today.
 
 </Held>
 
@@ -17,10 +17,10 @@ The hosted server runs in production mode, which refuses the fake PayPal. The sc
 
 | Item | Status |
 | --- | --- |
-| Landing page `/` | Route built in the web package; no hosted deployment yet |
+| Landing page `/` | Route built in the web package and served at the hosted address |
 | Demo launcher `/demo` | Creates a room and gives four links; scripted mode is local only |
 | Replay `/replay/:recordingId` | Player and bundle format exist; no recording is hosted yet |
-| Auctioneer console, bidder screen, big screen, audit | Routes built; they need a running server |
+| Auctioneer console, bidder screen, big screen, audit | Routes built; they need a running server (the hosted API runs in sandbox mode) |
 
 Every page shows a "Sandbox: no real money moves" banner. A room is labelled "Live sandbox room", "Scripted demo: recorded events, no PayPal calls" or "Recorded: this is a replay".
 

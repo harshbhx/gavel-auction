@@ -1,5 +1,5 @@
 import type { Candidate, ParseContext, ParseResult } from '../types.js';
-import { PADDLE_WORDS, isNumberToken } from './lexicon.js';
+import { PADDLE_WORDS, SCALE, isNumberToken } from './lexicon.js';
 import { tokenize } from './normalize.js';
 import { parseBid } from './parse.js';
 
@@ -43,6 +43,15 @@ const ALWAYS = new Set([
 
 const PREPOSITIONS = new Set(['to', 'too', 'for']);
 
+/** Words speech-to-text writes for "paddle" ("panel twelve", "pedal seven"). */
+const PADDLE_HOMOPHONES = new Set(['panel', 'pedal', 'peddle', 'paddel', 'paddles']);
+
+/** A number that can follow a paddle word: a digit run or a number word. */
+function startsPaddleNumber(token: string): boolean {
+  if (token === 'point' || token in SCALE) return false;
+  return isNumberToken(token);
+}
+
 /** Raising verbs after which "to" or "for" may be a preposition rather than a digit. */
 export const PREP_VERBS: ReadonlySet<string> = new Set([
   'raise',
@@ -83,6 +92,11 @@ export function repairTokens(tokens: readonly string[]): AsrRepair {
   const fixed: string[] = [];
   const dropped = new Set<number>();
   tokens.forEach((t, i) => {
+    // "panel twelve three fifty" is paddle 12, repaired only in front of a number.
+    if (PADDLE_HOMOPHONES.has(t) && startsPaddleNumber(tokens[i + 1] ?? '')) {
+      fixed.push('paddle');
+      return;
+    }
     const repl = ASR.get(t);
     if (repl === undefined) {
       fixed.push(t);
@@ -116,6 +130,50 @@ export function repairTokens(tokens: readonly string[]): AsrRepair {
   };
 }
 
+const LOT_WORDS = new Set(['lot', 'item', 'page']);
+
+/**
+ * "paddle 9400" and "panel 12,350": the provider wrote a spoken paddle and amount ("paddle nine,
+ * four hundred") as one digit run. The split is never guessed: each reading goes to the console as
+ * a candidate. Returns null when the text is not a paddle word followed by one long digit run.
+ */
+function splitPaddleDigits(
+  tokens: readonly string[],
+  flags: ParseResult['flags'],
+): ParseResult | null {
+  for (let i = 0; i < tokens.length; i++) {
+    if (!PADDLE_WORDS.has(tokens[i] ?? '') || LOT_WORDS.has(tokens[i - 1] ?? '')) continue;
+    let j = i + 1;
+    while (PADDLE_WORDS.has(tokens[j] ?? '')) j += 1;
+    const digits = tokens[j] ?? '';
+    if (!/^[1-9]\d{2,5}$/.test(digits)) continue;
+    const others = tokens.filter((_, k) => k !== j);
+    if (others.some((t) => startsPaddleNumber(t))) return null;
+    const candidates: Candidate[] = [];
+    for (const k of [1, 2]) {
+      const rest = digits.slice(k);
+      if (rest.length >= 2 && !rest.startsWith('0')) {
+        candidates.push({
+          bidder: { kind: 'paddle', value: digits.slice(0, k) },
+          amountCents: Number(rest) * 100,
+        });
+      }
+    }
+    if (candidates.length === 0) return null;
+    return {
+      status: 'confirm',
+      bidder: null,
+      amountCents: null,
+      reason: 'multiple_bidders',
+      candidates: candidates.sort((a, b) => (a.amountCents ?? 0) - (b.amountCents ?? 0)),
+      flags,
+      confidence: 0.5,
+      source: 'rules',
+    };
+  }
+  return null;
+}
+
 function amountsOf(r: ParseResult): number[] {
   const all = [r.amountCents, ...r.candidates.map((c) => c.amountCents)];
   return all.filter((a): a is number => a !== null);
@@ -129,6 +187,8 @@ export function parseWithAsr(text: string, ctx: ParseContext = {}): ParseResult 
   const original = tokenize(text).map((t) => t.text);
   const repair = repairTokens(original);
   const changed = repair.tokens.some((t, i) => t !== original[i]);
+  const split = splitPaddleDigits(repair.tokens, changed ? ['asr_repair'] : []);
+  if (split !== null) return split;
   const first = parseBid(repair.tokens.join(' '), ctx);
   const withFlag: ParseResult =
     changed && !first.flags.includes('asr_repair')

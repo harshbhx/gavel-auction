@@ -12,6 +12,7 @@ import { renderReport, type ReportItem } from './report.js';
  *   npm run eval -- --mode text [--set dev|heldout|all] [--out dir]
  *   npm run eval -- --mode cached --provider deepgram [--clips espeak|human]
  *   (add --mic room|device: the microphone rule of the gate; room is what the room runs)
+ *   (add --model agree: the gate with a second reading that always agrees, an upper bound on AUTO)
  *   npm run eval -- --mode live --provider deepgram [--record fixtures/stt-cache [--resume true]]
  *   (--record writes the provider text, latency and confidence per clip, never a key, so the
  *   cached mode can replay the run)
@@ -50,12 +51,24 @@ export const PROVIDER_KEY_ENV: Record<Provider, string> = {
   groq: 'GROQ_API_KEY',
 };
 
+/** How the room gate is run: the microphone rule and whether a second reading agrees. */
+export interface GateOpts {
+  mic: GateMic;
+  /**
+   * Stand-in for the model reading: a copy of the rule parse. It agrees with every rule reading,
+   * wrong ones included, so the AUTO rate it gives is an upper bound on what the room would accept.
+   */
+  agree?: boolean;
+}
+
 export interface CliOptions {
   mode: EvalMode;
   provider: Provider;
   set: EvalSet;
   out: string;
   mic: GateMic;
+  /** 'agree' runs the gate with a second reading that always agrees; 'off' (default) is rules only. */
+  model?: 'off' | 'agree';
   /** Cached mode: which recorded clip set to score (default espeak). */
   clips?: ClipSet;
   /** Live mode only: directory (package-relative) that receives <provider>/<clip id>.json. */
@@ -93,6 +106,9 @@ export function parseArgs(argv: readonly string[]): CliOptions | string {
       if (value !== 'room' && value !== 'device')
         return `--mic must be room or device, got ${value}`;
       opts.mic = value;
+    } else if (flag === '--model') {
+      if (value !== 'off' && value !== 'agree') return `--model must be off or agree, got ${value}`;
+      opts.model = value;
     } else if (flag === '--clips') {
       if (value !== 'espeak' && value !== 'human') {
         return `--clips must be espeak or human, got ${value}`;
@@ -132,6 +148,8 @@ const manifestSchema = z.array(
     expected: z.object({
       outcome: z.enum(['bid', 'confirm', 'none']),
       amountCents: z.number().int().optional(),
+      /** Paddle the clip names aloud; the label the manifest carries for clips with no speaker id. */
+      paddle: z.string().optional(),
     }),
   }),
 );
@@ -199,7 +217,7 @@ function toActual(r: ParseResult, speaker: string | null | undefined): Actual {
   return { kind: 'none' };
 }
 
-function textItems(deps: CliDeps, set: EvalSet, mic: GateMic): ReportItem[] {
+function textItems(deps: CliDeps, set: EvalSet, gate: GateOpts): ReportItem[] {
   const cases = casesSchema.parse(JSON.parse(deps.readFile('fixtures/text/cases.json')));
   return cases
     .filter((c) => set === 'all' || c.set === set)
@@ -225,7 +243,8 @@ function textItems(deps: CliDeps, set: EvalSet, mic: GateMic): ReportItem[] {
           speaker: c.speaker,
           currentPriceCents: c.currentPriceCents,
           minIncrementCents: null,
-          mic,
+          mic: gate.mic,
+          ...(gate.agree === true ? { llm: parseUtterance } : {}),
         }),
         latencyMs: 0,
         provider: 'text',
@@ -245,7 +264,11 @@ function audioExpected(c: AudioCase): Expected {
   if (c.expected.outcome === 'bid') {
     return {
       outcome: 'bid',
-      pair: { who: c.speakerBidderId ?? '', amountCents: c.expected.amountCents ?? 0 },
+      // A clip that names a paddle aloud expects that paddle; the speaker id is the fallback.
+      pair: {
+        who: c.expected.paddle ?? c.speakerBidderId ?? '',
+        amountCents: c.expected.amountCents ?? 0,
+      },
     };
   }
   if (c.expected.outcome === 'confirm') return { outcome: 'confirm', acceptableConfirm: [] };
@@ -257,7 +280,7 @@ function audioItem(
   recognized: string,
   latencyMs: number,
   provider: string,
-  mic: GateMic,
+  gate: GateOpts,
   sttConfidence?: number,
 ): ReportItem {
   const r = parseUtterance(recognized, ctxOf(c.speakerBidderId, c.context.currentPriceCents));
@@ -273,7 +296,8 @@ function audioItem(
       currentPriceCents: c.context.currentPriceCents ?? null,
       minIncrementCents: c.context.minIncrementCents ?? null,
       ...(sttConfidence === undefined ? {} : { sttConfidence }),
-      mic,
+      mic: gate.mic,
+      ...(gate.agree === true ? { llm: parseUtterance } : {}),
     }),
     latencyMs,
     provider,
@@ -286,7 +310,7 @@ function audioItem(
 function cachedItems(
   deps: CliDeps,
   provider: Provider,
-  mic: GateMic,
+  mic: GateOpts,
   clips: ClipSet,
 ): ReportItem[] | string {
   const dir = `${STT_CACHE_DIR[clips]}/${provider}`;
@@ -335,7 +359,7 @@ async function liveItems(
   provider: Provider,
   key: string,
   transcribe: NonNullable<CliDeps['transcribe']>,
-  mic: GateMic,
+  mic: GateOpts,
   record?: string,
   resume = false,
 ): Promise<ReportItem[]> {
@@ -368,13 +392,14 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<nu
   const key = deps.env[keyName] ?? '';
   const log = (line: string): void => deps.log(redact(line, [key]));
 
+  const gateOpts: GateOpts = { mic: opts.mic, agree: opts.model === 'agree' };
   let items: ReportItem[] | string;
   let setLabel: string = opts.set;
   try {
     if (opts.mode === 'text') {
-      items = textItems(deps, opts.set, opts.mic);
+      items = textItems(deps, opts.set, gateOpts);
     } else if (opts.mode === 'cached') {
-      items = cachedItems(deps, opts.provider, opts.mic, opts.clips ?? 'espeak');
+      items = cachedItems(deps, opts.provider, gateOpts, opts.clips ?? 'espeak');
       setLabel = 'audio';
     } else {
       if (key === '') {
@@ -398,7 +423,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<nu
         opts.provider,
         key,
         deps.transcribe,
-        opts.mic,
+        gateOpts,
         opts.record,
         opts.resume,
       );
@@ -418,7 +443,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<nu
     mode: opts.mode,
     set: setLabel,
     provider: opts.mode === 'text' ? 'none' : opts.provider,
-    mic: opts.mic,
+    mic: gateOpts.agree === true ? `${opts.mic}, second reading agrees (upper bound)` : opts.mic,
     items,
   });
   deps.writeFile(`${opts.out}/report.json`, report.json);

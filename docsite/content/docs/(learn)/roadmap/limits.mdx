@@ -6,7 +6,7 @@ icon: CircleSlash
 
 Nothing here is hidden elsewhere. Each item points to the page with the detail.
 
-- **No hosted demo.** No URL is published. The runnable path is a local run on the fake PayPal. ([demo guide](/docs/start/demo))
+- **Hosted demo is sandbox only and temporary.** The web app is at https://gavel-web.creharsh.workers.dev and the API at https://gavel-auction-aufz.onrender.com, with temporary storage until a disk is added; no end-to-end walk of it is recorded. The path that is verified is a local run on the fake PayPal. ([demo guide](/docs/start/demo))
 - **Whole-auction settlement and crash recovery are mostly fake-PayPal results.** On the real sandbox only the nightly specs R7, R8 and R10 ran (one lot of three holds, one in-process crash). No auction driven through a server and no real process kill has run. ([crash recovery](/docs/how-it-works/crash-recovery))
 - **The 30 day run is simulated.** It shows the code is consistent with a model of PayPal, not that PayPal behaves like the model. ([simulation](/docs/proof/simulation))
 - **G3 is not finished.** The honor period and validity window are unknown until the probe ends. A hold older than 2 hours is flagged stale; it is still captured.

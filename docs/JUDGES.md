@@ -5,14 +5,14 @@ A short path through the repository for judges. Everything is PayPal sandbox onl
 ## Status, stated plainly
 
 - The web UI is owned by a contributor and may still be in progress. See `README.md` for the current run instructions instead of relying on any step written here.
-- The hosted demo is not published yet. `docs/DEMO.md` lists what is available and what is not.
+- The web app is hosted at https://gavel-web.creharsh.workers.dev with its API at https://gavel-auction-aufz.onrender.com, in sandbox mode. Storage there is temporary until a disk is added. `docs/DEMO.md` lists what is available and what is not.
 - Real versus recorded: the fake PayPal demo and the replay are recorded or simulated, not live PayPal. Gates G0, G1, G2 and G4 have run against the real sandbox; G3 (a real probe in progress since 7 Nov 2026 03:06 UTC, final about 12 Nov 06:17 UTC, no result recorded) and G5 has only a synthetic eSpeak result (FAIL against the 0.05 wrong-accept limit, so voice bids use the confirm prompt; no real-room or noisy-room test) and neither has a real-world result. Committed run logs exist for G1, G2 and G4 only; G0 is an Actions run log. See `docs/GATES.md` for each gate and its result. Settlement of a whole auction and crash recovery have been exercised against the fake PayPal; on the real sandbox only the nightly specs R7, R8 and R10 ran (one lot of three holds, one in-process crash; runs 42200708552 and 42317068784), not an auction driven through a server and not a real process kill.
 
 ## Five minute path
 
 The table below is TARGET behaviour: steps 1 and 2 need a deployed staging URL (the `JUDGE_URL` repository variable), and until that is configured the nightly smoke fails red (it never reports a skipped pass).
 
-This path cannot be followed today: no hosted demo URL is published (see `docs/DEMO.md`). `packages/e2e/specs/judge-walkthrough.spec.ts` covers steps 1 and 2 on the fake stack only. The nightly `.github/workflows/judge-smoke.yml` runs that spec against the hosted site and fails when the repository variable `JUDGE_URL` is unset, so a night that tested nothing cannot look like a pass. Steps 3 to 5 have no automated check.
+The web app is now hosted (see `docs/DEMO.md`); the walkthrough below has not yet been re-checked end to end against that URL, so treat each step as intended behaviour. `packages/e2e/specs/judge-walkthrough.spec.ts` covers steps 1 and 2 on the fake stack only. The nightly `.github/workflows/judge-smoke.yml` runs that spec against the hosted site and fails when the repository variable `JUDGE_URL` is unset, so a night that tested nothing cannot look like a pass. Steps 3 to 5 have no automated check.
 
 | Step | Persona    | What to do                                          | Expected outcome                                                                                         |
 | ---- | ---------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |

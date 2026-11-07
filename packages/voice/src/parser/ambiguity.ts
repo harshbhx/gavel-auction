@@ -59,6 +59,24 @@ function implausible(base: ParseResult, amountCents: Cents | null): ParseResult 
   };
 }
 
+const DECIMAL_AMOUNT =
+  /(?:^|[^\d.,])\$?\s*(\d{1,2})\.(\d{2})(?!\d)(?!\.\d)(?!\s*(?:k|m|%|percent))/gi;
+
+/**
+ * "$2.50" for the spoken "two fifty": the dollars-and-cents reading and the colloquial hundreds
+ * reading (250 dollars). Returns the colloquial amount in cents when the text holds exactly one such
+ * number and it is the amount the parser read.
+ */
+function colloquialDecimal(text: string, parsedCents: Cents): Cents | null {
+  const found = [...text.matchAll(DECIMAL_AMOUNT)];
+  const m = found[0];
+  if (found.length !== 1 || m === undefined) return null;
+  const whole = Number(m[1]);
+  const frac = Number(m[2]);
+  if (whole < 1 || whole * 100 + frac !== parsedCents) return null;
+  return (whole * 100 + frac) * 100;
+}
+
 /** Plausibility of every candidate of a correction or hedge result; never lets one through as is. */
 export function refineCandidates(text: string, base: ParseResult): ParseResult {
   if (base.status !== 'confirm' || base.candidates.length === 0) return base;
@@ -68,7 +86,15 @@ export function refineCandidates(text: string, base: ParseResult): ParseResult {
       c.amountCents !== null &&
       (c.amountCents < MIN_PLAUSIBLE_CENTS || c.amountCents > MAX_PLAUSIBLE_CENTS),
   );
-  if (!bad && !words.some((w) => HUGE_WORDS.has(w))) return base;
+  if (!bad && !words.some((w) => HUGE_WORDS.has(w))) {
+    const only = base.candidates.length === 1 ? base.candidates[0] : undefined;
+    const alt =
+      only === undefined || only.amountCents === null
+        ? null
+        : colloquialDecimal(text, only.amountCents);
+    if (only === undefined || alt === null) return base;
+    return { ...base, candidates: [only, { bidder: only.bidder, amountCents: alt }] };
+  }
   return implausible(base, base.amountCents);
 }
 
@@ -83,6 +109,17 @@ function amountSpans(text: string): string[][] {
 function homophoneAlternatives(text: string, priceCents: Cents): Cents[] {
   const alts: Cents[] = [];
   for (const span of amountSpans(text)) {
+    // The same confusion written as digits: "15" for "fifty", "50" for "fifteen".
+    const digits = span.length === 1 && /^\d\d$/.test(span[0] ?? '') ? Number(span[0]) : 0;
+    if (digits > 0) {
+      const alt =
+        digits >= 13 && digits <= 19
+          ? (digits - 10) * 10
+          : digits >= 30 && digits <= 90 && digits % 10 === 0
+            ? digits / 10 + 10
+            : 0;
+      if (alt > 0 && alt * 100 > priceCents) alts.push(alt * 100);
+    }
     span.forEach((word, k) => {
       const other = HOMOPHONES.get(word);
       if (other === undefined) return;
@@ -116,6 +153,18 @@ export function refineAmounts(text: string, ctx: ParseContext, base: ParseResult
     words.some((w) => HUGE_WORDS.has(w))
   ) {
     return implausible(base, amount);
+  }
+  if (base.reason === 'fractional_amount' && base.candidates.length === 1) {
+    const colloquial = colloquialDecimal(text, amount);
+    if (colloquial !== null) {
+      return {
+        ...base,
+        candidates: [amount, colloquial].map((amountCents) => ({
+          bidder: base.bidder,
+          amountCents,
+        })),
+      };
+    }
   }
   const price = ctx.currentPriceCents;
   if (price !== undefined && amount <= price) {

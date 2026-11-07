@@ -19,11 +19,15 @@ replace the files; keep the file names.
   `scripts/render-clips.sh` with eSpeak NG (16 kHz mono, 300 ms of silence either side). Synthetic,
   noise-free speech: the manifest `noise` and `snrDb` fields are not applied, and the voice ids map
   to eSpeak voices and variants, not to the voices named in `audio/LICENSES.md`.
-- `stt-cache/<provider>/<id>.json`: what Deepgram (`nova-2`) and Groq (`whisper-large-v3-turbo`)
-  returned for each clip (`text`, `latencyMs`), recorded by a live run of the `voice-eval` workflow
-  (`record` input). No key or request header is stored. Cached mode scores these.
+- `stt-cache/<provider>/<id>.json`: what Deepgram (`nova-3`, `punctuate=true`, `smart_format=false`)
+  and Groq (`whisper-large-v3-turbo` with the bid-words prompt, temperature 0) returned for each clip
+  (`text`, `latencyMs`), recorded by the option-trials job of the `voice-eval` workflow (variants
+  `dg-nova3-punct` and `gq-turbo-prompt-b`, runs 42365428369 for both). They replace the first
+  recordings (Deepgram `nova-2`, Groq without a prompt), which are in the git history and whose
+  scores are in docs/GATES.md. No key or request header is stored. Cached mode scores these.
 - This is a loop check, not a real-room test. Scores here must not be quoted as room accuracy.
 - `audio-human/<id>.mp3` and `stt-cache-human/<provider>/<id>.json`: the second clip set, the same 24
   utterances spoken by a human-like synthetic voice (see `audio/LICENSES.md`), and what the two
-  providers returned for it. Recorded by `voice-eval` with `record` and `clips=human`; the cached job
-  scores it with `--clips human`. Also noise-free and synthetic, so also not a real-room test.
+  providers returned for it (Deepgram nova-3 and Groq with the bid-words prompt, from the option
+  trials of the `voice-eval` workflow; the nova-2 recordings of the first run are in the git history).
+  The cached job scores it with `--clips human`. Also noise-free and synthetic, so also not a real-room test.

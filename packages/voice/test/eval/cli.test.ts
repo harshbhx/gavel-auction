@@ -61,6 +61,8 @@ describe('T-VOX-083 modes (R-VOX-075)', () => {
     expect(parseArgs(['--mic', 'device'])).toMatchObject({ mic: 'device' });
     expect(parseArgs([])).toMatchObject({ mic: 'room' });
     expect(parseArgs(['--mic', 'hall'])).toMatch(/--mic/);
+    expect(parseArgs(['--model', 'agree'])).toMatchObject({ model: 'agree' });
+    expect(parseArgs(['--model', 'big'])).toMatch(/--model/);
     expect(parseArgs(['--set'])).toMatch(/missing value/);
     expect(parseArgs(['--nope', 'x'])).toMatch(/unknown flag/);
   });
@@ -254,5 +256,33 @@ describe('T-VOX-088 live limits (R-VOX-080)', () => {
 
   it('redact removes every occurrence and ignores empty secrets', () => {
     expect(redact('a k1 b k1', ['k1', ''])).toBe('a [redacted] b [redacted]');
+  });
+});
+
+describe('expected paddle label of the audio manifest', () => {
+  it('scores a spoken paddle against the manifest paddle, not an empty bidder', async () => {
+    const manifest = JSON.parse(fixture('fixtures/audio/manifest.json')) as Array<{
+      id: string;
+      text: string;
+    }>;
+    const extra: Record<string, string> = {};
+    for (const m of manifest) {
+      extra[`fixtures/stt-cache/deepgram/${m.id}.json`] = JSON.stringify({
+        text: m.text,
+        latencyMs: 100,
+      });
+    }
+    const h = harness(extra);
+    const code = await runCli(['--mode', 'cached', '--provider', 'deepgram', '--out', 'o'], h.deps);
+    expect(code).toBe(EXIT_OK);
+    const json = JSON.parse(h.written.get('o/report.json') ?? '{}') as {
+      utterances: Array<{ id: string; expected: string }>;
+      confusion: Array<{ id: string; kind: string }>;
+    };
+    const a08 = json.utterances.find((u) => u.id === 'a08');
+    expect(a08?.expected).toBe('bid 9 40000');
+    const wrong = json.confusion.filter((c) => c.kind === 'wrong_accept').map((c) => c.id);
+    expect(wrong).not.toContain('a08');
+    expect(wrong).not.toContain('a09');
   });
 });
