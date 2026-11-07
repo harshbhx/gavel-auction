@@ -94,6 +94,7 @@ import { mountHolds } from '../http/holds';
 import { mountInvites } from '../http/invites';
 import { nodeRoutesFor, requestSources } from '../http/node-bridge';
 import { mountRead } from '../http/read';
+import { mountReceipt } from '../http/receipt';
 import { acquireDataDirLock } from '../store/data-dir-lock';
 import { FileRoomStore } from '../store/file-room-store';
 import { migrate, PostgresStore } from '../store/postgres';
@@ -598,6 +599,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
       mountAuctions,
       mountInvites,
       mountRead,
+      mountReceipt,
       mountControl,
       mountAuctioneerToken,
       judgeRooms.mount,

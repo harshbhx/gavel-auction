@@ -110,4 +110,21 @@ describe('QrCode (R-WEB-051)', () => {
   it('rejects a url too long to encode', () => {
     expect(() => encodeQr('x'.repeat(400))).toThrow(RangeError);
   });
+
+  it('fits a receipt link of about 330 bytes (versions 11 to 14, level M)', () => {
+    // Byte capacities at level M: 251, 287, 331, 362.
+    const sizes: ReadonlyArray<[number, number]> = [
+      [251, 61],
+      [252, 65],
+      [287, 65],
+      [288, 69],
+      [331, 69],
+      [332, 73],
+      [362, 73],
+    ];
+    for (const [bytes, modules] of sizes) {
+      expect(encodeQr('x'.repeat(bytes)).length).toBe(modules);
+    }
+    expect(() => encodeQr('x'.repeat(363))).toThrow(RangeError);
+  });
 });

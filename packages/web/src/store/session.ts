@@ -53,6 +53,9 @@ const auctioneerTokens = new Map<string, string>();
 // The invite slot is separate, so a single-use invite is never read as an auctioneer token.
 const inviteTokens = new Map<string, string>();
 
+// The receipt slot is separate too: a receipt link token opens one read-only receipt and nothing else.
+const receiptTokens = new Map<string, string>();
+
 function readSlot(
   slot: Map<string, string>,
   roomId: string,
@@ -95,15 +98,25 @@ export function readInviteToken(roomId: string, source?: FragmentSource): string
   return readSlot(inviteTokens, roomId, source);
 }
 
+/**
+ * Reads the receipt token of a shared receipt link from the URL fragment, clears the fragment from
+ * the address bar and keeps the token in memory under that room id, for this tab only.
+ */
+export function readReceiptToken(roomId: string, source?: FragmentSource): string | null {
+  return readSlot(receiptTokens, roomId, source);
+}
+
 /** Forgets the in-memory token for one room, or for every room when none is named. */
 export function clearAuctioneerToken(roomId?: string): void {
   if (roomId === undefined) {
     auctioneerTokens.clear();
     inviteTokens.clear();
+    receiptTokens.clear();
     bidderSessions.clear();
   } else {
     auctioneerTokens.delete(roomId);
     inviteTokens.delete(roomId);
+    receiptTokens.delete(roomId);
     bidderSessions.delete(roomId);
   }
 }

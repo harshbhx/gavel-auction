@@ -8,7 +8,7 @@ import { useMemo } from 'react';
 
 /** Quiet zone, in modules, on every side. */
 const QUIET = 4;
-const MAX_VERSION = 10;
+const MAX_VERSION = 14;
 
 /** Per version: [ecc codewords per block, blocks of the short size, short size, blocks of long size]. */
 const BLOCKS: readonly (readonly [number, number, number, number])[] = [
@@ -22,6 +22,10 @@ const BLOCKS: readonly (readonly [number, number, number, number])[] = [
   [22, 2, 38, 2],
   [22, 3, 36, 2],
   [26, 4, 43, 1],
+  [30, 1, 50, 4],
+  [22, 6, 36, 2],
+  [22, 8, 37, 1],
+  [24, 4, 40, 5],
 ];
 
 const ALIGN: readonly (readonly number[])[] = [
@@ -35,6 +39,10 @@ const ALIGN: readonly (readonly number[])[] = [
   [6, 24, 42],
   [6, 26, 46],
   [6, 28, 50],
+  [6, 30, 54],
+  [6, 32, 58],
+  [6, 34, 62],
+  [6, 26, 46, 66],
 ];
 
 function dataCodewords(version: number): number {

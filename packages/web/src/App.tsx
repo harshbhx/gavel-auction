@@ -14,8 +14,6 @@ import { createJudgeRoom, judgeRoomsAvailable } from './net/judgeRooms';
 import { socketUrl, startLiveRoom, type LiveRoom } from './net/liveRoom';
 import { Announcer } from './a11y/Announcer';
 import type { PaymentsMode } from './config';
-import { receiptSource } from './ladder/fromWire';
-import { SettlementPanel } from './ladder/SettlementPanel';
 import type { Transport } from './net/transport';
 import { WebSocketTransport } from './net/wsTransport';
 import { ScenarioTransport } from './net/scenarioTransport';
@@ -41,7 +39,9 @@ import { TryScreen } from './screens/try/TryScreen';
 import { fetchOpsSummary, OpsView, type OpsSummaryView } from './ops/OpsView';
 import { DemoLauncher, DemoRoomError, type DemoLinks } from './screens/demo/DemoLauncher';
 import { SandboxBanner } from './design/SandboxBanner';
-import { Receipt } from './screens/receipt/Receipt';
+import { ReceiptView } from './screens/receipt/ReceiptView';
+import { SharedReceiptRoute, mintReceiptLink } from './screens/receipt/SharedReceipt';
+import type { MintReceiptLink } from './screens/receipt/ShareControls';
 import { Approve } from './screens/register/Approve';
 import { Return } from './screens/register/Return';
 import { RegisterScreen, type RegistrationDraft } from './screens/register/RegisterScreen';
@@ -60,6 +60,7 @@ import {
   hasReviewerAccess,
   readAuctioneerToken,
   readInviteToken,
+  readReceiptToken,
   rememberBidderSession,
 } from './store/session';
 
@@ -277,7 +278,12 @@ function LiveRoute({
       return (
         <>
           {notice}
-          <ReceiptRoute roomId={roomId} />
+          <ReceiptRoute
+            roomId={roomId}
+            {...(api === undefined || bidderId === undefined || scripted !== undefined
+              ? {}
+              : { share: mintReceiptLink(api.apiBase, roomId, token) })}
+          />
         </>
       );
     case 'audit':
@@ -356,42 +362,9 @@ function ReplayRoute({ match }: { match: RouteMatch }) {
   );
 }
 
-export function ReceiptRoute({ roomId }: { roomId: string }) {
+export function ReceiptRoute({ roomId, share }: { roomId: string; share?: MintReceiptLink }) {
   const state = useRoom((s) => s);
-  const online = useOnline();
-  const stopped = useRoom(selectors.stopped);
-  const { view, paddle, at, runnerUp, detail, noHold } = useMemo(
-    () => receiptSource(state),
-    [state],
-  );
-  const itemName = state.snapshot?.lotTitle ?? t('receipt.untitled');
-  return (
-    <main data-route="receipt">
-      {!online && <Offline view="receipt" />}
-      {stopped && <p role="status">{t('screen.stopped')}</p>}
-      {state.snapshot === null ? (
-        <Loading view="receipt" />
-      ) : view === null ? (
-        <Empty view="receipt" />
-      ) : (
-        <>
-          <Receipt
-            view={view}
-            paddle={paddle}
-            itemName={itemName}
-            at={at}
-            runnerUp={runnerUp}
-            noHold={noHold}
-          />
-          <SettlementPanel
-            view={view}
-            detail={detail}
-            auditHref={`/r/${encodeURIComponent(roomId)}/audit`}
-          />
-        </>
-      )}
-    </main>
-  );
+  return <ReceiptView state={state} roomId={roomId} {...(share === undefined ? {} : { share })} />;
 }
 
 const NO_ROSTER: readonly { bidderId: string; paddle: number }[] = [];
@@ -944,6 +917,13 @@ function Routed({
     );
   }
   const who = live && roomId !== undefined ? tokenFor(id, roomId) : null;
+  if (id === 'receipt' && roomId !== undefined && api !== undefined) {
+    // A share link carries a receipt token in the fragment: it opens one read-only receipt.
+    const receiptToken = readReceiptToken(roomId);
+    if (receiptToken !== null) {
+      return <SharedReceiptRoute apiBase={api.apiBase} roomId={roomId} token={receiptToken} />;
+    }
+  }
   if (id === 'ops') return <OpsRoute api={api} />;
   if (id === 'landing' && api !== undefined) return <LandingRoute api={api} />;
   if (id === 'demo') return <DemoRoute api={api} />;
