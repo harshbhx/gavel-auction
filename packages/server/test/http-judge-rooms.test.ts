@@ -1,4 +1,10 @@
-import { ManualClock, SeqIds, type AuctionConfig, type AuctionId } from '@gavel/shared';
+import {
+  ManualClock,
+  SeqIds,
+  type AuctionConfig,
+  type AuctionId,
+  type Logger,
+} from '@gavel/shared';
 import { describe, expect, it } from 'vitest';
 import { secretSetFromConfig } from '../src/auth/rotation';
 import { createHttpApp, type HttpApp, type HttpDeps } from '../src/http/app';
@@ -53,12 +59,12 @@ function setup(over: Partial<JudgeRoomsOptions> = {}): Setup {
     engine: (cfg) => new LedgerEngine(id, cfg),
   });
   const logs: Setup['logs'] = [];
-  const mkLog = (bound: Record<string, unknown>): HttpDeps['log'] => ({
+  const mkLog = (bound: Record<string, unknown>): Logger => ({
     debug: () => undefined,
     info: (msg, f) => void logs.push({ msg, fields: { ...bound, ...f } }),
     warn: (msg, f) => void logs.push({ msg, fields: { ...bound, ...f } }),
     error: (msg, f) => void logs.push({ msg, fields: { ...bound, ...f } }),
-    child: (c) => mkLog({ ...bound, ...c }) as NonNullable<HttpDeps['log']>,
+    child: (c) => mkLog({ ...bound, ...c }),
   });
   const deps: HttpDeps = {
     service: {

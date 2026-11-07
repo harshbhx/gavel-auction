@@ -92,7 +92,7 @@ describe('judge rooms: scenario on the fake PayPal', () => {
       const res = await fetch(`${url}${path}`, {
         method: path.startsWith('/ops') ? 'GET' : 'POST',
         headers: auth,
-        body: path.startsWith('/ops') ? undefined : JSON.stringify({ paused: true }),
+        ...(path.startsWith('/ops') ? {} : { body: JSON.stringify({ paused: true }) }),
       });
       expect(res.status).toBe(401);
     }
