@@ -74,7 +74,7 @@ import { Room, type RoomDeps } from '../room/room';
 import type { HammerResult, SettlePort, SettlementReport } from '../room/settle-port';
 import { dispatchAtHead } from './engine-dispatch';
 import { LedgerEngine, commandIdFor, lotIdOf } from './ledger-engine';
-import { ownHoldsOf } from './own-holds';
+import { ownHoldsOf, settlementInvariants } from './own-holds';
 import { reviewCodeOf } from './review-code';
 import {
   isDefiniteRefusal,
@@ -1783,6 +1783,7 @@ class Service implements AuctionService, SettlePort {
       ...(note !== undefined ? { note } : {}),
       holds: own.holds,
       ...(own.winnerId !== undefined ? { winnerId: own.winnerId } : {}),
+      invariants: settlementInvariants(own.holds),
     };
     await room.reportSettlement(report);
     await this.boundary('after:report');

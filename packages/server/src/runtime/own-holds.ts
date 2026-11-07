@@ -11,6 +11,37 @@ export interface OwnHolds {
   winnerId?: string;
 }
 
+/** The ladder's money checks; codes only, so every viewer may see them. */
+export interface SettlementInvariants {
+  ok: boolean;
+  violations: string[];
+}
+
+/**
+ * Money checks over the per-hold projection (issue 712): at most one hold is captured, a
+ * capture never exceeds its hold's ceiling, only a captured hold has captured cents, and
+ * captured plus released never exceeds the ceiling. Codes only: no amount, id or name.
+ */
+export function settlementInvariants(
+  holds: Readonly<Record<string, OwnHoldDetail>>,
+): SettlementInvariants {
+  const found = new Set<string>();
+  let captures = 0;
+  for (const h of Object.values(holds)) {
+    if (h.status === 'CAPTURED') captures += 1;
+    if (h.capturedCents > h.ceilingCents) found.add('capture_over_ceiling');
+    if (h.capturedCents > 0 && h.status !== 'CAPTURED') {
+      found.add('capture_without_captured_status');
+    }
+    if (h.capturedCents + h.releasedCents > h.ceilingCents) {
+      found.add('more_than_ceiling_accounted');
+    }
+  }
+  if (captures > 1) found.add('more_than_one_capture');
+  const violations = [...found].sort();
+  return { ok: violations.length === 0, violations };
+}
+
 /**
  * Journal `voids` values that mean the winner's remainder no longer reserves money (void
  * phase): closed by PayPal with the final capture (`remainder_released` in journals saved
