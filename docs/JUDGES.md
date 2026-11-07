@@ -6,7 +6,7 @@ A short path through the repository for judges. Everything is PayPal sandbox onl
 
 - The web UI is owned by a contributor and may still be in progress. See `README.md` for the current run instructions instead of relying on any step written here.
 - The hosted demo is not published yet. `docs/DEMO.md` lists what is available and what is not.
-- Real versus recorded: the fake PayPal demo and the replay are recorded or simulated, not live PayPal. Gates G0, G1, G2 and G4 have run against the real sandbox; G3 (a real probe in progress since 7 Nov 2026 03:06 UTC, final about 12 Nov 06:17 UTC, no result recorded) and G5 (synthetic noise-free speech only, no real-room or noisy-room test) have not produced a real-world result. Committed run logs exist for G1, G2 and G4 only; G0 is an Actions run log. See `docs/GATES.md` for each gate and its result. Settlement of a whole auction and crash recovery have been exercised against the fake PayPal only.
+- Real versus recorded: the fake PayPal demo and the replay are recorded or simulated, not live PayPal. Gates G0, G1, G2 and G4 have run against the real sandbox; G3 (a real probe in progress since 7 Nov 2026 03:06 UTC, final about 12 Nov 06:17 UTC, no result recorded) and G5 has only a synthetic eSpeak result (FAIL against the 0.05 wrong-accept limit, so voice bids use the confirm prompt; no real-room or noisy-room test) and neither has a real-world result. Committed run logs exist for G1, G2 and G4 only; G0 is an Actions run log. See `docs/GATES.md` for each gate and its result. Settlement of a whole auction and crash recovery have been exercised against the fake PayPal only.
 
 ## Five minute path
 

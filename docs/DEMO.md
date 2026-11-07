@@ -69,7 +69,7 @@ The settlement logic is built and tested against the fake PayPal only. Gate G1 p
 | PayPal calls                             | Real sandbox only in a sandbox room and only once the gates pass (not available yet); after a final capture the authorization closes as CAPTURED for PayPal-account buyers (guest card capture untested); otherwise the fake PayPal, shown as such in the room label |
 | Scripted demo                            | Recorded events, no PayPal calls, labelled on screen                                                                                                                                                                                                                 |
 | Voice                                    | Replay uses recorded audio; live speech to text runs only with `VOICE_STT=groq` and a key, and no live speech run is recorded                                                                                                                                        |
-| Speech accuracy numbers                  | Synthetic noise-free speech only: 20 clips, Deepgram 11/11 parsed, 0 wrong accepts; Groq 9/11; no real-room or noisy-room test                                                                                                                                       |
+| Speech accuracy numbers                  | Synthetic eSpeak speech (noise-free, robotic), 24 clips: Deepgram nova-2 wrong-accept 0.125, Groq whisper-large-v3-turbo 0.083 against a 0.05 limit, so spoken bids go through the confirm prompt; no real-room or noisy-room test                                   |
 
 ## 7. Audit trail
 
@@ -81,7 +81,7 @@ Open `/r/<roomId>/audit` from the launcher (it needs the auctioneer or reviewer 
 - Sandbox latency inside budget. The void p95 of 1235.96 ms (n=10) is above the 1 s per-call budget behind the 6 s SETTLED target (`docs/GATES.md`).
 - A hosted web deployment. The routes and screens are built in `packages/web/src/App.tsx`, but no hosted server serves them. A live room screen without a stored room token shows the placeholder screen.
 - A persistent store for a hosted deploy (the file stores need a persistent disk and a single instance).
-- A recorded live voice run through the `/audio` socket into a room (G5 is NOT RUN).
+- A recorded live voice run through the `/audio` socket into a room (G5 FAILED on synthetic speech; voice bids use the confirm prompt).
 - A real-sandbox G3 result (in progress, final about 12 Nov 06:17 UTC) and a real-room or noisy-room G5 test (neither done; see `docs/GATES.md`); G0, G1, G2 and G4 are PASS (guest card capture not covered).
 - Live voice with real speech providers.
 - Recorded demo auctions for replay.

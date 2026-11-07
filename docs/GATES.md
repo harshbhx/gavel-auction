@@ -121,16 +121,17 @@ Scope: tampered-event rejection was not part of this run; it is covered against 
 
 ## G5: STT accuracy on noisy bids
 
-Status: NOT RUN
-Run date / by: n/a for real-room or noisy audio (synthetic noise-free evidence only). G5 on synthetic noise-free speech, 20 clips, Deepgram 11/11 parsed, 0 wrong accepts; Groq 9/11; no real-room or noisy-room test.
+Status: FAIL
+Run date / by: 2026-11-07, cached eval over recorded provider outputs (PR #1940, issue #1864)
 Question: is the speech-to-text accuracy on noisy bid audio high enough to accept bids without manual confirmation?
-Setup: n/a
-Requests: n/a
-Observed: n/a
-Verdict: n/a
-Decision: n/a
+Setup: synthetic eSpeak speech (noise-free and robotic, which is harder than real speech), 24 clips, scored by the cached eval: Deepgram nova-2 exact 0.615, wrong-accept 0.125, confirm 0.417; Groq whisper-large-v3-turbo exact 0.615, wrong-accept 0.083, confirm 0.375..
+Requests: the 24 clips were sent to each provider once and the outputs were recorded; the cached eval scores the recorded outputs through the rule parser.
+Observed: Deepgram nova-2 exact 0.615, wrong-accept 0.125, confirm 0.417. Groq whisper-large-v3-turbo exact 0.615, wrong-accept 0.083, confirm 0.375.
+Verdict: both providers miss the threshold (wrong-accept 0.05 or less), on speech that is noise-free but robotic and so harder than real speech. There is no real-room or noisy-room test.
+Decision: FAIL for unconfirmed voice bids: spoken bids always go through the confirm prompt (assist mode). The payments decision is unchanged.
 Fallback if FAIL: always show the confirm prompt for spoken bids.
-Links: n/a
+Evidence: PR #1940 (24 synthetic clips and the recorded provider outputs; the files are on main once it merges)
+Links: issue #1864
 
 ### G5-text: text-level run (step 1)
 
@@ -182,7 +183,7 @@ text level, because the parser emits only a few confidence values (0.50, 0.95, 1
 
 Not measured: audio, speech-to-text error, latency (text mode reports 0 ms), the cached and live
 modes (no recorded provider output is in the repo, no live run was done), and the AUTO and CONFIRM
-threshold calibration of issue 478. The G5 status above stays NOT RUN until the audio steps run.
+threshold calibration of issue 478. The G5 status above comes from the synthetic eSpeak run (PR #1940); there is no real-room or noisy-room run.
 
 ### G5 threshold calibration (issue 478)
 
@@ -202,7 +203,7 @@ confirm at 0.90 or more and wrong accepts at 0.05 or less; PARTIAL needs 0.70 or
 
 ## Decision
 
-Interim decision: GO, with documented fallbacks. This is not a final go: G3 is IN PROGRESS and G5 has no real-room or noisy-room test.
+Interim decision: GO, with documented fallbacks. This is not a final go: G3 is IN PROGRESS and G5 FAILED on synthetic speech, so voice bids use the confirm prompt.
 
 Verified, with evidence above:
 
@@ -214,13 +215,13 @@ Verified, with evidence above:
 Not run, results pending:
 
 - G3 (honor period, validity and reauthorize): NOT RUN / IN PROGRESS (day 0 7 Nov 2026 03:06 UTC, final about 12 Nov 06:17 UTC). Fallback: capture within the verified validity window and use the reauthorize path (spec R3, T-QA-052) before hammer. R3 is the plan, not a result: it is not verified until G3 runs.
-- G5 (speech-to-text accuracy on noisy bids): not run on noisy or real-room audio. Synthetic result: G5 on synthetic noise-free speech, 20 clips, Deepgram 11/11 parsed, 0 wrong accepts; Groq 9/11; no real-room or noisy-room test. Fallback: always show the confirm prompt for spoken bids.
+- G5 (speech-to-text accuracy on noisy bids): FAIL on synthetic eSpeak speech, 24 clips (Deepgram nova-2 wrong-accept 0.125, Groq whisper-large-v3-turbo 0.083, threshold 0.05). Fallback: voice bids always go through the confirm prompt (assist mode). No real-room or noisy-room test.
 
 What changes the decision:
 
 - G3 shows a validity window shorter than the longest planned auction, or reauthorize does not extend it: auctions are capped to the validity window and the demo stays short, or the decision moves to NO-GO for long auctions.
 - G3 passes with a window that covers the planned auctions: the decision becomes GO for card and wallet.
-- G5 FAIL: voice bids stay behind the confirm prompt; the payments decision is unchanged.
+- G5 FAIL (the current state): voice bids stay behind the confirm prompt; the payments decision is unchanged.
 - A later run of G1, G2 or G4 that no longer matches the recorded evidence reopens that gate and the flag that depends on it.
 
 ## Latency targets and measured numbers
@@ -292,7 +293,7 @@ What this run does not prove:
 - Latency: this run recorded no timings for the targets, so the table above is unchanged. The void p95 caveat stands: 1235.96 ms against the 1000 ms budget, and the SETTLED budget assumption (each call under 1 s at p95) still fails.
 - Only the run log and the summary artifact exist; no redacted evidence file is committed, so the figures are reported, not independently verifiable, until one is.
 
-Decision: no change. G1 PASS (decision A), G2 PASS, G3 NOT RUN / IN PROGRESS, G5 no noisy or real-room test, as before.
+Decision: no change. G1 PASS (decision A), G2 PASS, G3 NOT RUN / IN PROGRESS, G5 FAIL on synthetic speech (confirm prompt kept).
 
 ## Run entries
 
