@@ -10,6 +10,7 @@ const styles: Record<string, string> = {
   simulated: 'hl-hatch-chip',
   'in progress': 'hl-hatch-chip',
   unverified: 'hl-hatch-chip',
+  partial: 'hl-hatch-chip',
   fail: 'hl-stop-chip',
   planned: 'hl-hollow-chip',
   new: 'hl-solid-chip',

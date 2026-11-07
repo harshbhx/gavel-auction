@@ -11,6 +11,7 @@ const kinds: Record<string, { label: string; cls: string; meaning: string }> = {
   simulated: { label: 'Simulated', cls: 'hl-hatch-chip', meaning: 'our code over a model of PayPal on a fake clock' },
   'in progress': { label: 'In progress', cls: 'hl-hatch-chip', meaning: 'a real run has started and has no result yet' },
   unverified: { label: 'Unverified', cls: 'hl-hatch-chip', meaning: 'described, but not yet checked' },
+  partial: { label: 'Partial', cls: 'hl-hatch-chip', meaning: 'measured; some of the bar is met, with limits stated on the page' },
   fail: { label: 'Fail', cls: 'hl-stop-chip', meaning: 'measured and below the limit' },
   planned: { label: 'Planned', cls: 'hl-hollow-chip', meaning: 'not done yet' },
 };
@@ -32,7 +33,7 @@ export function PageMeta({
   if (slugs[0] === 'proof' && gate) {
     // Gate pages take their word from docs/GATES.md, so the strip cannot drift from the record.
     const g = gateById(`G${gate[1]}`);
-    key = g.status === 'PASS' ? 'pass' : g.status === 'FAIL' ? 'fail' : 'in progress';
+    key = g.status === 'PASS' ? 'pass' : g.status === 'FAIL' ? 'fail' : g.status === 'PARTIAL' ? 'partial' : 'in progress';
     gateNote = `Gate ${g.id}: ${g.status === 'NOT RUN' ? 'in progress' : g.status}. Read from docs/GATES.md when the site is built.`;
   }
   const k = key ? kinds[key] : undefined;
