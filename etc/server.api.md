@@ -374,6 +374,10 @@ export interface SettlementReport {
     // (undocumented)
     auctionState: SettlementState;
     holds?: Readonly<Record<string, Omit<OwnHold, 'bidderId'>>> | undefined;
+    invariants?: {
+        ok: boolean;
+        violations: string[];
+    } | undefined;
     // (undocumented)
     note?: string | undefined;
     // (undocumented)
