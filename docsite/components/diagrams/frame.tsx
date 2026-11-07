@@ -11,7 +11,7 @@ export function DiagramFrame({
   desc,
   width,
   height,
-  minWidth = 880,
+  minWidth = 1000,
   badge,
   caption,
   transcript,

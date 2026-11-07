@@ -91,14 +91,14 @@ export function VoiceDiagram() {
           {/* accept: dashed bypass, with the review notch */}
           <path d="M630 140 V96 H1005 V140" className="edge-stop" markerEnd={`url(#${p}-arrow-stop)`} />
           <polygon points="630,140 644,140 644,126" className="fill-stop" />
-          <T x={640} y={88} cls="t-small t-stop">accept: clean parse, both parsers agree, confidence 0.85 or more</T>
-          <T x={640} y={72} cls="t-small t-muted">skips the gate. Not the default build: its scores stay below 0.85.</T>
+          <T x={640} y={72} cls="t-small t-stop">accept: clean parse, both parsers agree, confidence 0.85 or more</T>
+          <T x={640} y={88} cls="t-small t-muted">skips the gate. Not the default build: its scores stay below 0.85.</T>
 
           {/* drop */}
           <path d="M630 196 V300" className="edge" markerEnd={`url(#${p}-arrow)`} />
-          <rect x={540} y={300} width={200} height={50} rx={2} className="node" />
-          <T x={640} y={321} anchor="middle" cls="t-small">drop: not a bid, or</T>
-          <T x={640} y={337} anchor="middle" cls="t-small t-muted">too uncertain. Logged.</T>
+          <rect x={470} y={300} width={220} height={50} rx={2} className="node" />
+          <T x={580} y={321} anchor="middle" cls="t-small">drop: not a bid, or</T>
+          <T x={580} y={337} anchor="middle" cls="t-small t-muted">too uncertain. Logged.</T>
 
           {/* the prompt and its exits */}
           <path d="M825 220 V290" className="edge-thick" markerEnd={`url(#${p}-arrow-dark)`} />

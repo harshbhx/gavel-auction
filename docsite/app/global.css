@@ -283,6 +283,7 @@ pre,
 /* ---------- diagrams (inline SVG, Holdline fills) ---------- */
 .dg text {
   font-family: var(--font-martian), ui-monospace, monospace;
+  font-stretch: 75%;
   font-size: 12.5px;
   fill: var(--hl-fg);
 }

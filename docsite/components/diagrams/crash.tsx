@@ -15,12 +15,12 @@ const panels = [
     title: 'Died after the intent was saved,',
     title2: 'before PayPal got the call',
     lines: [
-      ['JOURNAL', 'intent saved: capture, $350, request id.'],
-      ['', 'State is CAPTURING.'],
+      ['JOURNAL', 'intent saved: capture, $350,'],
+      ['', 'request id. State: CAPTURING.'],
       ['RESTART', 'reads the truth of the hold first.'],
       ['', 'PayPal shows no capture.'],
-      ['DOES', 'sends the saved intent again with the'],
-      ['', 'same request id; PayPal answers once.'],
+      ['DOES', 'sends the saved intent again,'],
+      ['', 'same request id, answered once.'],
     ],
   },
   {
@@ -30,12 +30,13 @@ const panels = [
     title2: 'before the answer was saved',
     lines: [
       ['JOURNAL', 'the same intent, no outcome.'],
-      ['RESTART', 'reads the truth first. It shows our'],
-      ['', 'capture (invoice id and amount match).'],
-      ['DOES', 'adopts it as capture_ok, no new call.'],
-      ['IF UNKNOWN', 'truth unreadable, or hold not found:'],
-      ['', 'wait with the same id for 10 minutes,'],
-      ['', 'then FAILED_NEEDS_REVIEW. Never the'],
+      ['RESTART', 'reads the truth first: it shows'],
+      ['', 'our capture (id and amount match).'],
+      ['DOES', 'adopts it as capture_ok.'],
+      ['', 'No new capture call.'],
+      ['UNKNOWN', 'truth unreadable or hold unknown:'],
+      ['', 'wait, same id, 10 minutes, then'],
+      ['', 'FAILED_NEEDS_REVIEW. Never the'],
       ['', 'next bidder.'],
     ],
   },
@@ -60,7 +61,7 @@ export function CrashDiagram() {
       title="Crash recovery: charged exactly once"
       desc="Two timelines. The process timeline runs hammer, truth read, intent saved, PayPal capture call, capture_ok saved, then voiding. Three crash points are marked: A after the intent is saved and before the call, B after PayPal took the capture and before the answer is saved, C after capture_ok is saved. The journal timeline shows the intent as a hatched entry and the outcome as a solid entry. Three panels say what the journal holds and what the restart does at each point. The result is one capture."
       width={1200}
-      height={700}
+      height={730}
       badge={<Chip kind="fake">Fake PayPal</Chip>}
       caption={
         <>
@@ -84,7 +85,7 @@ export function CrashDiagram() {
       render={(p) => (
         <>
           <Defs p={p} />
-          <rect x={0} y={0} width={1200} height={700} style={{ fill: 'var(--hl-bg)' }} />
+          <rect x={0} y={0} width={1200} height={730} style={{ fill: 'var(--hl-bg)' }} />
           <Legend p={p} x={30} y={24} />
 
           <T x={30} y={72} cls="t-small t-ink">PROCESS TIMELINE</T>
@@ -127,12 +128,12 @@ export function CrashDiagram() {
           <T x={765} y={286} anchor="middle" cls="t-small">capture_ok, winner</T>
           <T x={765} y={300} anchor="middle" cls="t-small t-muted">intent cleared</T>
           <rect x={175} y={236} width={120} height={32} className="fill-hollow" />
-          <T x={235} y={286} anchor="middle" cls="t-small t-muted">truth read: no write</T>
+          <T x={235} y={286} anchor="middle" cls="t-small t-muted">no write</T>
 
           {/* three panels */}
           {panels.map((pn) => (
             <g key={pn.id}>
-              <rect x={pn.x} y={326} width={370} height={236} className="panel" />
+              <rect x={pn.x} y={326} width={370} height={270} className="panel" />
               <Badge x={pn.x + 10} y={336} n={pn.id === 'A' ? 1 : pn.id === 'B' ? 2 : 3} />
               <T x={pn.x + 40} y={352} cls="t-small t-stop">{`CRASH ${pn.id}`}</T>
               <T x={pn.x + 12} y={378} cls="t-small" >{pn.title}</T>
@@ -142,19 +143,19 @@ export function CrashDiagram() {
                   {l[0] && (
                     <T x={pn.x + 12} y={424 + i * 16} cls="t-small t-ink">{l[0]}</T>
                   )}
-                  <T x={pn.x + 96} y={424 + i * 16} cls="t-small t-muted">{l[1]}</T>
+                  <T x={pn.x + 90} y={424 + i * 16} cls="t-small t-muted">{l[1]}</T>
                 </g>
               ))}
             </g>
           ))}
 
           {/* result strip */}
-          <rect x={30} y={590} width={1140} height={44} className="fill-solid" />
-          <text x={600} y={618} textAnchor="middle" style={{ fill: 'var(--hl-bg)', fontWeight: 800, fontSize: 18 }}>
+          <rect x={30} y={614} width={1140} height={44} className="fill-solid" />
+          <text x={600} y={642} textAnchor="middle" style={{ fill: 'var(--hl-bg)', fontWeight: 800, fontSize: 18 }}>
             Charged exactly once
           </text>
-          <T x={30} y={664} cls="t-small t-muted">Where this lives: packages/payments/src/saga/capture.ts (truth first, write-ahead intent),</T>
-          <T x={30} y={680} cls="t-small t-muted">saga/unknown.ts (the 10 minute deadline), saga/machine.ts, packages/payments/src/requestId.ts.</T>
+          <T x={30} y={688} cls="t-small t-muted">Where this lives: packages/payments/src/saga/capture.ts (truth first, write-ahead intent),</T>
+          <T x={30} y={704} cls="t-small t-muted">saga/unknown.ts (the 10 minute deadline), saga/machine.ts, packages/payments/src/requestId.ts.</T>
         </>
       )}
     />

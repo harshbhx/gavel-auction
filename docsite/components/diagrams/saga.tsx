@@ -63,7 +63,7 @@ export function SagaDiagram() {
           <T x={937} y={166} anchor="middle" cls="t-small t-muted">next_candidate</T>
 
           <path d="M816 152 V290" className="edge-thick" markerEnd={`url(#${p}-arrow-dark)`} />
-          <T x={808} y={225} anchor="end" cls="t-small t-muted">capture_ok / adopted</T>
+          <T x={824} y={225} cls="t-small t-muted">capture_ok / adopted</T>
 
           <path d="M756 316 H584" className="edge" markerEnd={`url(#${p}-arrow)`} />
           <T x={670} y={308} anchor="middle" cls="t-small t-muted">begin_void</T>
@@ -71,7 +71,7 @@ export function SagaDiagram() {
           <T x={403} y={308} anchor="middle" cls="t-small t-muted">all_released</T>
 
           <path d="M330 152 V240 H500 V290" className="edge" markerEnd={`url(#${p}-arrow)`} />
-          <T x={340} y={232} cls="t-small t-muted">cancel (from HELD or BIDDING)</T>
+          <T x={340} y={232} cls="t-small t-muted">cancel (HELD or BIDDING)</T>
           <path d="M560 152 V290" className="edge" markerEnd={`url(#${p}-arrow)`} />
           <T x={568} y={225} cls="t-small t-muted">no_candidate</T>
 
@@ -110,12 +110,12 @@ export function SagaDiagram() {
           <T x={44} y={640} cls="t-small t-ink">JOURNAL: written before and after each PayPal call</T>
           <line x1={60} y1={672} x2={1140} y2={672} className="edge" />
           {[
-            { x: 130, kind: 'solid', a: 'hammer saved', b: 'state WINNER_SELECTED' },
-            { x: 330, kind: 'hatch', a: 'intent saved', b: 'capture, request id, amount' },
-            { x: 530, kind: 'hollow', a: 'PayPal capture call', b: 'same request id on retry' },
-            { x: 730, kind: 'solid', a: 'capture_ok saved', b: 'state CAPTURED, intent cleared' },
-            { x: 930, kind: 'solid', a: 'begin_void saved', b: 'every other hold targeted' },
-            { x: 1090, kind: 'solid', a: 'all_released saved', b: 'state SETTLED' },
+            { x: 130, kind: 'solid', a: 'hammer saved', b: 'WINNER_SELECTED' },
+            { x: 330, kind: 'hatch', a: 'intent saved', b: 'capture + request id' },
+            { x: 530, kind: 'hollow', a: 'PayPal capture call', b: 'same id on retry' },
+            { x: 730, kind: 'solid', a: 'capture_ok saved', b: 'CAPTURED, intent cleared' },
+            { x: 930, kind: 'solid', a: 'begin_void saved', b: 'other holds targeted' },
+            { x: 1090, kind: 'solid', a: 'all_released saved', b: 'SETTLED' },
           ].map((t) => (
             <g key={t.x}>
               {t.kind === 'solid' && <rect x={t.x - 9} y={662} width={18} height={20} className="fill-solid" />}

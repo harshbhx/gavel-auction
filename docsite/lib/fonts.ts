@@ -11,6 +11,7 @@ export const archivo = Archivo({
 
 export const martian = Martian_Mono({
   subsets: ['latin'],
+  axes: ['wdth'], // the diagrams use the narrow width (75) so labels fit
   variable: '--font-martian',
   display: 'swap',
 });

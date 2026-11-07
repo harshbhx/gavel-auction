@@ -133,7 +133,7 @@ export function TimelineDiagram() {
           <T x={36} y={574} cls="t-small">{`${s8.fallbackLots} lots used the runner-up. ${s8.stormSettled} of ${s8.stormLots} injected rate-limit storms settled after a restart.`}</T>
           <rect x={36} y={588} width={16} height={16} className="fill-solid" />
           <T x={60} y={601} cls="t-small t-go">balances to the cent</T>
-          <T x={216} y={601} cls="t-small">{`held ${usd(s8.heldCents)} = captured ${usd(s8.capturedCents)} + released ${usd(s8.releasedCents)} + open ${usd(s8.openCents)}`}</T>
+          <T x={250} y={601} cls="t-small">{`held ${usd(s8.heldCents)} = captured ${usd(s8.capturedCents)} + released ${usd(s8.releasedCents)} + open ${usd(s8.openCents)}`}</T>
           <T x={36} y={616} cls="t-small t-muted">Fault positions inside the 30 days are random (seed {s8.seed}) and are not in the file, so they are not drawn.</T>
 
           <Legend p={p} x={30} y={644} />
