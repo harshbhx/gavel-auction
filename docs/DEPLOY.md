@@ -25,7 +25,14 @@ Requirements: R-QA-042 (deploy), R-QA-044 (webhook registration). Hosting choice
    - variable `STAGING_URL` (the same https URL as `PUBLIC_URL`)
 5. In the PayPal developer dashboard (sandbox app), Webhooks, add `https://<api-host>/webhooks/paypal` with the events the app uses: `PAYMENT.AUTHORIZATION.VOIDED`, `PAYMENT.AUTHORIZATION.DENIED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.DECLINED`. Other event types are acknowledged and ignored, so subscribing to them only spends verification calls. Copy the webhook id into `PAYPAL_WEBHOOK_ID` on Render only. Never commit it.
 6. Run the workflow `deploy-staging` by hand and read the smoke output.
-7. Web: create a Cloudflare Pages project, build `npm ci && npm run build -w @gavel/web` with the API origin passed in `VITE_API_BASE` and `VITE_WS_BASE`, and add the Pages origin to `CORS_ORIGINS`. A workflow for this is not part of this change.
+7. Web: the static build is hosted as a Cloudflare Worker with static assets (Cloudflare Pages project creation now redirects to Workers). `.github/workflows/deploy-web.yml` runs on `workflow_dispatch` and on pushes to `main` that touch `packages/web`, `packages/shared`, `infra/web` or the workflow. It runs `npm ci && npm run build -w @gavel/web` with `VITE_API_BASE`, `VITE_WS_BASE` (the Render API origin, `https://` and `wss://`), `VITE_SANDBOX=true` and `VITE_PAYPAL_CLIENT_ID` taken from the `PAYPAL_CLIENT_ID` secret (a public sandbox client id), and uploads the artifact `web-dist`. With the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` set, it then runs `wrangler deploy` against `infra/web/wrangler.toml` (Worker `gavel-web`, assets directory `./dist`, `not_found_handling = "single-page-application"` so `/join/<room>` and `/r/<room>/bid` serve `index.html`). Without them the deploy job ends green with a notice; download the artifact by hand and deploy it:
+
+   ```
+   gh run download <run-id> -n web-dist -D infra/web/dist
+   cd infra/web && npx wrangler deploy
+   ```
+
+   Then add the Worker origin (for example `https://gavel-web.creharsh.workers.dev`) to `CORS_ORIGINS` on Render, with no trailing slash. The API checks both browser requests and WebSocket upgrades against that list. The web app builds its join links and return route from `window.location.origin`, so `PUBLIC_URL` on Render stays the API origin. The operator key for `/ops` and the demo launcher is typed into the page and is never part of the build.
 
 ## Settings the hosted checks need
 
