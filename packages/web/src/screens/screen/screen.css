@@ -91,7 +91,7 @@
 .gv-screen__price {
   margin: 0;
   font-family: var(--font-display);
-  font-size: min(30vh, 11vw);
+  font-size: max(96px, min(30vh, 11vw));
   font-weight: 800;
   line-height: 1;
   color: var(--color-fg);
