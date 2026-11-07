@@ -61,7 +61,8 @@ export interface PipelineDeps {
   llm?: (text: string, ctx: ParseContext) => ParseResult | null;
   policy?: PolicyConfig;
   segmenter?: SegmenterOptions;
-  sttProvider?: string;
+  /** Name recorded in each decision's evidence; a function follows a provider switch. */
+  sttProvider?: string | (() => string);
   replay?: boolean;
   /** Device mic means one bidder speaks; room mic means a shared microphone. */
   mic?: 'device' | 'room';
@@ -72,6 +73,11 @@ interface Accepted {
   bidderId: string;
   amountCents: Cents;
   atMs: number;
+}
+
+function providerName(p: string | (() => string) | undefined): string {
+  if (p === undefined) return 'fake';
+  return typeof p === 'function' ? p() : p;
 }
 
 /**
@@ -240,7 +246,7 @@ export class VoicePipeline {
       transcript: seg.text,
       audioStartMs: seg.startMs,
       audioEndMs: seg.endMs,
-      sttProvider: this.deps.sttProvider ?? 'fake',
+      sttProvider: providerName(this.deps.sttProvider),
       sttConfidence: seg.confidence,
       replay: this.deps.replay ?? false,
       rules,

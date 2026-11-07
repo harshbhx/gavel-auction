@@ -39,7 +39,7 @@ export const realClock: FailoverClock = {
   clearTimeout: (id) => clearTimeout(id),
 };
 
-export type SwitchReason = 'silent' | 'fatal' | 'errors' | 'late_final' | 'recovered';
+export type SwitchReason = 'silent' | 'fatal' | 'errors' | 'late_final' | 'closed' | 'recovered';
 
 export interface FailoverOptions {
   /** Builders, because a stopped provider cannot be restarted (needed for the probe). */
@@ -127,7 +127,12 @@ export class FailoverStt implements InstrumentedSttProvider {
     this.startOpts = { keyterms: [...opts.keyterms], language: opts.language };
     this.startedAt = this.o.clock.now();
     this.pump(this.active);
-    await this.active.start(this.startOpts);
+    try {
+      await this.active.start(this.startOpts);
+    } catch {
+      // A primary that cannot even connect hands over at once instead of ending the stream.
+      this.switchToFallback('fatal');
+    }
   }
 
   write(batch: AudioBatch): void {
@@ -218,6 +223,12 @@ export class FailoverStt implements InstrumentedSttProvider {
       if (e.type !== 'interim') this.armed = false;
     }
     if (e.type === 'interim' || e.type === 'final') this.consecutiveErrors = 0;
+    if (e.type === 'state' && e.state === 'closed') {
+      // The primary shut itself down (connect failed, reconnect budget spent): nothing more
+      // will arrive from it, so waiting for silence would only cost the speech in between.
+      this.switchToFallback('closed');
+      return;
+    }
     if (e.type === 'error') {
       if (!e.retryable) {
         this.switchToFallback('fatal');
