@@ -724,3 +724,9 @@ figure.hl-fig .hl-fig__title::before {
 .hl-callout__label {
   font-family: var(--font-martian), ui-monospace, monospace;
 }
+
+/* figures, score sheet and progress route are interface, not reading: keep them in the interface face */
+#nd-page .prose .not-prose :is(p, li) {
+  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0;
+}
