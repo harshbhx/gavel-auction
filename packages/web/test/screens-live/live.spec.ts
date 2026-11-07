@@ -30,13 +30,13 @@ test.describe('live: no room needed', () => {
 
   test('landing, code typed', async ({ page, shoot }) => {
     await page.goto('/');
-    await page.getByLabel(t('landing.join')).fill('K7M2QX');
+    await page.getByLabel(t('ui.code.char', { n: 1, length: 6 })).fill('K7M2QX');
     await shoot('landing', 'code-typed');
   });
 
   test('landing, code not found', async ({ page, shoot }) => {
     await page.goto('/');
-    await page.getByLabel(t('landing.join')).fill('NOROOM');
+    await page.getByLabel(t('ui.code.char', { n: 1, length: 6 })).fill('NOROOM');
     await page.getByRole('button', { name: t('landing.join') }).click();
     await expect(page.getByText(t('landing.codeInvalid')).first()).toBeVisible();
     await shoot('landing', 'code-not-found');
@@ -109,7 +109,7 @@ test.describe('live: a throwaway room', () => {
 
   test('landing, code of a real room', async ({ page, shoot }) => {
     await page.goto('/');
-    await page.getByLabel(t('landing.join')).fill(room().joinCode);
+    await page.getByLabel(t('ui.code.char', { n: 1, length: 6 })).fill(room().joinCode);
     await shoot('landing', 'real-code-typed');
     await page.getByRole('button', { name: t('landing.join') }).click();
     await page.waitForURL(/\/join\//);

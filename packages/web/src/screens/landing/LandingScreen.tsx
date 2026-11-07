@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
-import { Field } from '../../design/primitives/Field';
+import { JoinCodeInput } from '../../ui';
+import './landing.css';
 
 /** default: both actions ready. busy: a room is being created. down: the server is unreachable. */
 export type LandingStatus = 'default' | 'busy' | 'down';
@@ -14,6 +15,8 @@ export interface LandingScreenProps {
   /** Offered when the server is down: runs the scripted demo instead. */
   onScripted: () => void;
 }
+
+const CODE_LENGTH = 6;
 
 /** Landing: one-sentence product, the held-not-charged promise and two actions (R-WEB-035). */
 export function LandingScreen({
@@ -40,9 +43,10 @@ export function LandingScreen({
 
   return (
     <main className="gv-landing">
-      <h1>{t('landing.title')}</h1>
+      <p className="ui-kicker gv-landing__kicker">{t('app.name')}</p>
+      <h1 className="gv-landing__title">{t('landing.title')}</h1>
       <p className="gv-landing__promise">{t('landing.promise')}</p>
-      <p>{t('landing.explain')}</p>
+      <p className="gv-landing__explain">{t('landing.explain')}</p>
       <div className="gv-landing__actions">
         <Button size="bid" disabled={busy} onClick={onStart}>
           {busy ? t('demo.creating') : t('landing.start')}
@@ -57,15 +61,18 @@ export function LandingScreen({
         </div>
       )}
       <form className="gv-landing__join" onSubmit={submit}>
-        <Field
-          label={t('landing.join')}
+        <p className="ui-kicker">{t('landing.join')}</p>
+        <JoinCodeInput
           value={code}
-          autoComplete="off"
-          onChange={(e) => {
-            setCode(e.target.value);
+          length={CODE_LENGTH}
+          prefix=""
+          disabled={checking}
+          invalid={invalid}
+          {...(invalid ? { message: t('landing.codeInvalid') } : {})}
+          onChange={(next) => {
+            setCode(next);
             setInvalid(false);
           }}
-          {...(invalid ? { error: t('landing.codeInvalid') } : {})}
         />
         <Button type="submit" variant="outline" disabled={checking || code.trim() === ''}>
           {t('landing.join')}

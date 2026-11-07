@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { t } from '../../src/copy/t';
+import { confirmHold } from '../support/approveHold';
 import { RegisterScreen } from '../../src/screens/register/RegisterScreen';
 import { customCeilingCents, validName } from '../../src/screens/register/validate';
 
@@ -42,17 +43,18 @@ describe('registration validation (T-WEB-031)', () => {
     fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
     fireEvent.click(continueButton());
 
-    const approve = screen.getByRole('button', { name: t('reg.approve') });
-    expect(approve.getAttribute('aria-disabled')).toBe('true');
+    const approve = (): HTMLElement => screen.getByRole('button', { name: t('reg.approve') });
+    expect(approve().getAttribute('aria-disabled')).toBe('true');
     expect(screen.queryByTestId('held-block')).toBeNull();
 
     fireEvent.click(screen.getByLabelText('$250'));
     const block = screen.getByTestId('held-block');
     expect(block.textContent).toContain(t('reg.heldNotCharged'));
     expect(block.textContent).toContain(t('reg.heldExplain', { amount: '$250' }));
-    expect(approve.getAttribute('aria-disabled')).toBeNull();
+    expect(approve().getAttribute('aria-disabled')).toBeNull();
 
-    fireEvent.click(approve);
+    expect(onApprove).not.toHaveBeenCalled();
+    confirmHold();
     expect(onApprove).toHaveBeenCalledWith({ name: 'Priya', ceilingCents: 25000 });
   });
 
@@ -68,5 +70,22 @@ describe('registration validation (T-WEB-031)', () => {
       t('reg.customRange', { min: '$100', max: '$1,000' }),
     );
     expect(screen.queryByTestId('held-block')).toBeNull();
+  });
+});
+
+describe('ceiling slider', () => {
+  it('moves the ceiling and keeps whole-dollar cents', () => {
+    const onApprove = setup();
+    fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
+    fireEvent.click(continueButton());
+    const slider = screen.getByRole('slider');
+    fireEvent.keyDown(slider, { key: 'End' });
+    expect(screen.getByTestId('held-block').textContent).toContain('$1,000');
+    fireEvent.keyDown(slider, { key: 'ArrowLeft' });
+    confirmHold();
+    expect(onApprove).toHaveBeenCalledTimes(1);
+    const draft = onApprove.mock.calls[0]?.[0] as { ceilingCents: number };
+    expect(draft.ceilingCents % 100).toBe(0);
+    expect(draft.ceilingCents).toBeLessThan(100000);
   });
 });

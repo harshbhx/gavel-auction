@@ -3,6 +3,7 @@ import { Cents, type RoomSnapshot } from '@gavel/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
+import { confirmHold } from '../support/approveHold';
 import { saveSession } from '../../src/net/session';
 import { resetApprovalMemory } from '../../src/payments/useApproval';
 import { roomStore } from '../../src/store/roomStore';
@@ -113,7 +114,7 @@ describe('register route for a room that takes only its presets', () => {
       expect(screen.queryByRole('radio', { name: t('reg.custom') })).toBeNull();
       expect(screen.queryByText(/whole dollar amount/)).toBeNull();
       fireEvent.click(screen.getAllByRole('radio')[PRESETS.indexOf(preset)] as HTMLElement);
-      fireEvent.click(screen.getByRole('button', { name: t('reg.approve') }));
+      confirmHold();
       await flush();
       const posted = JSON.parse(calls.find((c) => c.url.endsWith('/api/holds'))?.body ?? '{}') as {
         ceilingCents?: number;
@@ -155,7 +156,7 @@ describe('register route when the browser blocks storage', () => {
     fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
     fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
     fireEvent.click(screen.getAllByRole('radio')[0] as HTMLElement);
-    fireEvent.click(screen.getByRole('button', { name: t('reg.approve') }));
+    confirmHold();
     await flush(2000);
     expect(screen.getByTestId('held-card')).toBeTruthy();
     expect(screen.getByText(t('reg.sessionNotSaved'))).toBeTruthy();

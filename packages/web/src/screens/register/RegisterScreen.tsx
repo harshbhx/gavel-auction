@@ -7,6 +7,8 @@ import { Icon } from '../../design/icons';
 import { Button } from '../../design/primitives/Button';
 import { Field } from '../../design/primitives/Field';
 import { formatUsdCompact } from '../../util/money';
+import { CeilingSlider, HoldButton } from '../../ui';
+import '../flows.css';
 import { customCeilingCents, nameHasForbidden, validName } from './validate';
 
 export interface RegistrationDraft {
@@ -28,6 +30,18 @@ export interface RegisterScreenProps {
 
 const DEFAULT_PRESETS: readonly number[] = [10000, 25000, 50000, 100000];
 const CUSTOM = 'custom';
+const STEP_CHOICES: readonly number[] = [1000, 2500, 5000, 10000, 25000, 50000, 100000];
+const MAX_TICKS = 24;
+
+/** The smallest round step that keeps the slider to a readable number of ticks. */
+export function sliderStep(minCents: number, maxCents: number): number {
+  const span = Math.max(1, maxCents - minCents);
+  return (
+    STEP_CHOICES.find((s) => span / s <= MAX_TICKS) ??
+    STEP_CHOICES[STEP_CHOICES.length - 1] ??
+    100000
+  );
+}
 
 /** Registration steps 1 and 2 (R-WEB-040..042, R-WEB-116). */
 export function RegisterScreen({
@@ -83,8 +97,8 @@ export function RegisterScreen({
     announce('assertive', t(nameHasForbidden(name) ? 'reg.nameInvalid' : 'generic.error'));
   };
 
-  const submitStepTwo = (e: FormEvent): void => {
-    e.preventDefault();
+  /** Checks the ceiling; the amount is sent only after the hold (or its two-tap alternative). */
+  const confirmStepTwo = (): void => {
     setCustomTouched(true);
     if (ceilingCents === null) {
       if (!allowCustom) return;
@@ -101,9 +115,24 @@ export function RegisterScreen({
     onApprove({ name: name.trim(), ceilingCents });
   };
 
+  const submitStepTwo = (e: FormEvent): void => {
+    e.preventDefault();
+    setCustomTouched(true);
+  };
+
+  const pickFromSlider = (cents: number): void => {
+    if (presetsCents.includes(cents)) {
+      setChoice(String(cents));
+      return;
+    }
+    setChoice(CUSTOM);
+    setCustomText(String(cents / 100));
+    setCustomTouched(false);
+  };
+
   if (step === 1) {
     return (
-      <main>
+      <main className="gv-flow" data-step="name">
         <h1 tabIndex={-1}>{t('reg.step1')}</h1>
         <form onSubmit={submitStepOne} noValidate>
           <Field
@@ -125,11 +154,20 @@ export function RegisterScreen({
   }
 
   return (
-    <main>
+    <main className="gv-flow" data-step="ceiling">
       <h1 tabIndex={-1}>{t('reg.step2')}</h1>
-      <p>{t('reg.summary', { name: name.trim() })}</p>
+      <p className="gv-flow__summary">{t('reg.summary', { name: name.trim() })}</p>
       <form onSubmit={submitStepTwo} noValidate>
-        <div role="radiogroup" aria-label={t('reg.step2')}>
+        {allowCustom && (
+          <CeilingSlider
+            value={ceilingCents ?? minCents}
+            min={minCents}
+            max={maxCents}
+            step={sliderStep(minCents, maxCents)}
+            onChange={pickFromSlider}
+          />
+        )}
+        <div className="gv-chips" role="radiogroup" aria-label={t('reg.step2')}>
           {presetsCents.map((cents) => (
             <label key={cents}>
               <input
@@ -164,7 +202,7 @@ export function RegisterScreen({
           />
         )}
         {ceilingCents !== null && (
-          <section data-testid="held-block">
+          <section className="gv-flow__held" data-testid="held-block">
             <p>
               <Icon name="lock" />
               <strong>{t('reg.heldNotCharged')}</strong>
@@ -174,9 +212,12 @@ export function RegisterScreen({
           </section>
         )}
         <FakePaymentsLabel />
-        <Button type="submit" size="bid" disabled={ceilingCents === null}>
-          {t('reg.approve')}
-        </Button>
+        <HoldButton
+          key={ceilingCents ?? 'none'}
+          label={t('reg.approve')}
+          disabled={ceilingCents === null}
+          onConfirm={confirmStepTwo}
+        />
       </form>
     </main>
   );

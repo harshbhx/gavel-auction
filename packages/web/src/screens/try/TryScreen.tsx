@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
+import '../flows.css';
 
 export interface TryScreenProps {
   /** Opens the demo launcher, which starts a real room when the host offers one. */
@@ -22,7 +23,7 @@ export function TryScreen({ onStart }: TryScreenProps) {
     heading.current?.focus();
   }, []);
   return (
-    <main className="gv-demo" data-route="try">
+    <main className="gv-demo gv-flow" data-route="try">
       <h1 ref={heading} tabIndex={-1}>
         {t('try.title')}
       </h1>

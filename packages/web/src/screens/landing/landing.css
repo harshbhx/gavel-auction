@@ -1,0 +1,116 @@
+/* Landing, Scoreboard design. Tokens only: no colour, size or duration is hard-coded here. */
+
+.gv-landing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+.gv-landing__kicker {
+  margin: 0;
+}
+
+.gv-landing__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-7);
+  line-height: 0.95;
+  text-transform: uppercase;
+  color: var(--color-fg);
+}
+
+.gv-landing__promise {
+  display: inline-block;
+  align-self: flex-start;
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width) solid var(--color-rule);
+  border-radius: var(--radius-md);
+  background: var(--color-raised);
+  color: var(--color-fg);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+  font-weight: 700;
+  box-shadow: var(--shadow-1);
+}
+
+.gv-landing__explain {
+  margin: 0;
+  font-size: var(--font-size-3);
+  line-height: 1.5;
+  color: var(--color-fg);
+}
+
+.gv-landing__actions {
+  display: flex;
+  flex-direction: column;
+}
+
+.gv-landing__actions .gv-btn {
+  min-height: 56px;
+  border-color: var(--color-fg);
+  background: var(--color-action);
+  color: var(--color-on-action);
+  box-shadow: var(--shadow-2);
+}
+
+.gv-landing__down {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-danger);
+  border-radius: var(--radius-md);
+  background: var(--color-raised);
+  color: var(--color-fg);
+}
+
+.gv-landing__down p {
+  margin: 0;
+}
+
+.gv-landing__join {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-rule);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-fg);
+  box-shadow: var(--shadow-1);
+}
+
+.gv-landing__join .ui-kicker {
+  margin: 0;
+}
+
+.gv-landing__join .ui-otp__row {
+  gap: var(--space-1);
+}
+
+.gv-landing__join .ui-otp__slot {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  height: 60px;
+}
+
+@media (min-width: 720px) {
+  .gv-landing {
+    padding-block: var(--space-8);
+  }
+
+  .gv-landing__title {
+    font-size: var(--font-size-8);
+  }
+
+  .gv-landing__join .ui-otp__slot {
+    height: 72px;
+  }
+}

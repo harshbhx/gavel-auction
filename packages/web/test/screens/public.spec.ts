@@ -26,14 +26,14 @@ test.describe('landing', () => {
   test('code typed', async ({ page, shoot }) => {
     await mockApi(page, () => ({ status: 404 }));
     await page.goto('/');
-    await page.getByLabel(t('landing.join')).fill('K7M2QX');
+    await page.getByLabel(t('ui.code.char', { n: 1, length: 6 })).fill('K7M2QX');
     await shoot('landing', 'code-typed');
   });
 
   test('code not found', async ({ page, shoot }) => {
     await mockApi(page, () => ({ status: 404 }));
     await page.goto('/');
-    await page.getByLabel(t('landing.join')).fill('NOROOM');
+    await page.getByLabel(t('ui.code.char', { n: 1, length: 6 })).fill('NOROOM');
     await page.getByRole('button', { name: t('landing.join') }).click();
     await expect(page.getByText(t('landing.codeInvalid')).first()).toBeVisible();
     await shoot('landing', 'code-not-found');
