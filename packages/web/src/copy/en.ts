@@ -383,7 +383,7 @@ export const en = {
   'receipt.print': 'Print or save as PDF',
   'receipt.printHint':
     'This opens your browser print dialog. Choose "Save as PDF" there to keep a copy.',
-  'receipt.share.title': 'Share this receipt',
+  'receipt.share.title': 'Share',
   'receipt.share.create': 'Create share link',
   'receipt.share.creating': 'Creating the link',
   'receipt.share.failed': 'The link could not be created. Try again.',
