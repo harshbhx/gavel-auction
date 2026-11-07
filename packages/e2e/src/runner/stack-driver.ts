@@ -472,6 +472,7 @@ async function drive(
     voice: { bids: [], confirms: 0, candidates: 0, audit: [] },
     ledgerTypes: entries.map((e) => e.type),
     backoffMs: [],
+    opsStatuses: [],
     endTsAfter: [],
     softClose: { extensions: 0, shortened: false },
     settlement: null,

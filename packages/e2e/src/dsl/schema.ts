@@ -109,6 +109,9 @@ export const StepSchema = z.discriminatedUnion('do', [
   z.object({ t: ms, actor: name, do: z.literal('send_raw'), frame: z.string() }).strict(),
   z.object({ t: ms, do: z.literal('advance_clock'), ms }).strict(),
   z.object({ t: ms, do: z.literal('restart') }).strict(),
+  z
+    .object({ t: ms, do: z.literal('ops_release'), key: z.enum(['valid', 'missing', 'wrong']) })
+    .strict(),
   z.object({ t: ms, do: z.literal('fault'), fault: FaultSchema }).strict(),
 ]);
 
@@ -188,6 +191,7 @@ export const ExpectSchema = z.union([
         .strict(),
     })
     .strict(),
+  z.object({ ops: z.object({ statuses: z.array(z.number().int()) }).strict() }).strict(),
   z
     .object({
       captures: z

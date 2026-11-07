@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { evolveAll } from '@gavel/engine';
 import { DEFAULT_FAKE_WEBHOOK_ID } from '@gavel/payments/fake';
 import type { PaymentsGateway } from '@gavel/payments';
-import type { AuctionConfig, ConnId } from '@gavel/shared';
+import type { AuctionConfig, AuctionId, ConnId } from '@gavel/shared';
 import type { AuctionService, Connection } from '@gavel/server';
 import { checkpointBoundary } from '@gavel/server/src/boot/checkpoint-kill';
+import { createOpsSettlementHandler } from '@gavel/server/src/http/ops';
 import { parseUtterance } from '@gavel/voice';
 import type { FakeWebhookEvent } from '../../../payments/src/fake/core';
 import { WebhookEmitter } from '../../../payments/src/fake/webhooks';
@@ -62,6 +64,8 @@ export interface Outcome {
   ledgerTypes: string[];
   /** Waits the payment transport asked for between retries, in ms, in order. */
   backoffMs: number[];
+  /** HTTP status of each operator release (ops_release step), in order. */
+  opsStatuses: number[];
   /** End time after each accepted bid, and how often the soft close moved it. */
   endTsAfter: number[];
   softClose: { extensions: number; shortened: boolean };
@@ -83,6 +87,8 @@ export interface RunOptions {
 }
 
 const EXTEND_MS = 30_000;
+/** Fake operator key of the in-process ops route; it is never a real credential. */
+const OPS_KEY = 'inproc-fake-operator-word';
 const FINAL_STATES: ReadonlySet<string> = new Set(['SETTLED', 'FAILED_NEEDS_REVIEW']);
 const AUDIO_DIR = new URL('../../fixtures/audio/', import.meta.url);
 
@@ -211,6 +217,7 @@ async function drive(
   let boss: { conn: Connection } | undefined;
   const ceilings = new Map<string, number>();
   const webhookRules: WebhookRule[] = [];
+  const opsStatuses: number[] = [];
   const webhooks = { delivered: 0, duplicates: 0, failed: 0 };
   const voice = { confirms: 0, candidates: 0 };
   const insertIfAbsent = rig.stores.webhookEvents.insertIfAbsent.bind(rig.stores.webhookEvents);
@@ -264,14 +271,41 @@ async function drive(
   await service.idle();
   if (crashes > restarts) await restart(true);
   // A settlement still waiting after the clock was moved is run again, as the retry timer would.
-  if (steps.some((s) => s.do === 'advance_clock')) {
+  if (steps.some((s) => s.do === 'advance_clock')) await resumeWaiting();
+  await deliverWebhooks();
+
+  async function resumeWaiting(): Promise<void> {
     const waiting = await lastSettlement();
     if (waiting !== undefined && !FINAL_STATES.has(waiting.auctionState)) {
       await service.resume();
       await service.idle();
     }
   }
-  await deliverWebhooks();
+
+  /** The real operator route (admin key check, review check) called with a fake request. */
+  async function opsRelease(key: 'valid' | 'missing' | 'wrong'): Promise<number> {
+    await resumeWaiting();
+    const handler = createOpsSettlementHandler({
+      adminKey: OPS_KEY,
+      exists: async (id) => id === auctionId,
+      hasSettlement: async () => (await lastSettlement()) !== undefined,
+      voidAll: (id, actor) => service.voidAll(id as AuctionId, actor),
+      releaseReviewHolds: (id, actor) => service.releaseReviewHolds(id as AuctionId, actor),
+    });
+    const headers = key === 'missing' ? {} : { 'x-admin-key': key === 'valid' ? OPS_KEY : 'wrong' };
+    let status = 0;
+    const res = {
+      setHeader: () => undefined,
+      writeHead: (code: number) => {
+        status = code;
+      },
+      end: () => undefined,
+    } as unknown as ServerResponse;
+    const req = { method: 'POST', headers } as unknown as IncomingMessage;
+    await handler(req, res, `/ops/auctions/${encodeURIComponent(auctionId)}/release-review`);
+    await service.idle();
+    return status;
+  }
 
   async function lastSettlement() {
     const events = await rig.stores.store.readEvents(auctionId, 1, 100_000);
@@ -348,6 +382,9 @@ async function drive(
         return;
       case 'fault':
         await applyFault(step.fault, step.t);
+        return;
+      case 'ops_release':
+        opsStatuses.push(await opsRelease(step.key));
         return;
       default:
         throw new Error(
@@ -573,6 +610,7 @@ async function drive(
     },
     ledgerTypes: entries.map((e) => e.type),
     backoffMs: [...rig.sleeps],
+    opsStatuses: [...opsStatuses],
     endTsAfter,
     softClose: {
       extensions: ends.filter((v, i) => i > 0 && v > (ends[i - 1] as number)).length,
@@ -659,6 +697,8 @@ export function checkExpectations(scenario: Scenario, outcome: Outcome): string[
           ]),
         ),
       );
+    } else if ('ops' in exp) {
+      diff('ops', exp.ops, { statuses: outcome.opsStatuses });
     } else if ('captures' in exp) {
       diff('captures', exp.captures, outcome.captures);
     } else if ('voice' in exp) {

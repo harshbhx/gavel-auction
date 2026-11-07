@@ -36,6 +36,7 @@ export type Step =
   | { t: number; actor: string; do: 'send_raw'; frame: string }
   | { t: number; do: 'advance_clock'; ms: number }
   | { t: number; do: 'restart' }
+  | { t: number; do: 'ops_release'; key: 'valid' | 'missing' | 'wrong' }
   | { t: number; do: 'fault'; fault: Fault };
 
 export type SettlementState =
@@ -68,6 +69,7 @@ export type Expect =
       };
     }
   | { captures: { committed: number; requestIds: number } }
+  | { ops: { statuses: number[] } }
   | { ui?: { view: 'bidder' | 'auctioneer' | 'public' | 'audit'; text?: string; a11y?: true } };
 
 export interface Scenario {
