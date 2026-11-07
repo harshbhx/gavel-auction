@@ -1485,7 +1485,9 @@ export class PendingReadBackoff {
 // @public
 export type PendingReason = 'capture_outcome_unknown'
 /** PayPal lists the capture as PENDING: not adopted until it is COMPLETED (R11-O03). */
-| 'capture_pending' | 'kill_switch' | 'truth_unavailable' | 'auth_unavailable' | 'rate_limited' | 'capture_rejected_unclassified';
+| 'capture_pending' | 'kill_switch' | 'truth_unavailable' | 'auth_unavailable'
+/** PayPal refused to run the capture (HTTP 429): nothing was applied, retried later. */
+| 'rate_limited' | 'capture_rejected_unclassified';
 
 // @public (undocumented)
 export class PersistentKillSwitch implements KillSwitch {
