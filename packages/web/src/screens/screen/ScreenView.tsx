@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useHammerAlert } from '../../alerts/useAlerts';
 import { t } from '../../copy/t';
 import { useConnection } from '../../net/connection';
 import { useServerNow } from '../../net/clock';
@@ -49,6 +50,7 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
   const price = useRoom(selectors.price, store);
   const stream = useRoom(selectors.stream, store);
   const hammer = useRoom((s) => s.hammer, store);
+  useHammerAlert(store);
   const stopped = useRoom(selectors.stopped, store);
   const leaderPaddle = useRoom((s) => s.leaderPaddle, store);
   const roster = useRoom((s) => s.snapshot?.roster ?? null, store);
