@@ -139,6 +139,31 @@ function confirmTarget(d: Extract<Decision, { kind: 'confirm' }>): {
 }
 
 /**
+ * The options of a confirm decision the bridge did not submit as the hold: the room hold carries
+ * one bid, so every other option is recorded as a drop and is not lost without a trace.
+ */
+export function unsentOptionDrops(
+  d: Decision,
+  sent: { bidderId: string; amountCents: number },
+): VoiceDropRecord[] {
+  if (d.kind !== 'confirm') return [];
+  const base = dropOf(d);
+  const out: VoiceDropRecord[] = [];
+  d.prompt.options.forEach((o, i) => {
+    if (o.bidderId === sent.bidderId && o.amountCents === sent.amountCents) return;
+    out.push({
+      ...base,
+      segmentId: `${d.evidence.segmentId}#opt${i}`.slice(0, 64),
+      reason: 'confirm_option_not_held',
+      ...(Number.isSafeInteger(o.amountCents) && o.amountCents >= 0
+        ? { parsedCents: o.amountCents as Cents }
+        : {}),
+    });
+  });
+  return out;
+}
+
+/**
  * Runs the voice pipeline for one audio stream of one room and hands what it decides to the room.
  * An accepted decision becomes a voice bid with its confidence; a confirm decision becomes a voice
  * bid flagged ambiguous. Either way the room's own gate applies: below its confidence threshold or
@@ -264,6 +289,22 @@ export function startVoiceBridge(deps: VoiceBridgeDeps): VoiceBridge {
             });
         }
         continue;
+      }
+      const unsent =
+        room.recordVoiceDrop === undefined
+          ? []
+          : unsentOptionDrops(out.decision, {
+              bidderId: bid.bidderId,
+              amountCents: bid.msg.amount,
+            });
+      for (const drop of unsent) {
+        pending = pending
+          .then(() => room.recordVoiceDrop?.(drop))
+          .catch((e: unknown) => {
+            deps.log?.('voice drop not recorded', {
+              error: e instanceof Error ? e.message : String(e),
+            });
+          });
       }
       pending = pending
         .then(() => room.submitVoiceBid(bid.bidderId as BidderId, bid.msg))
