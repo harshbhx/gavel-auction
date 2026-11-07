@@ -196,6 +196,25 @@ describe('T-VOX-088 live limits (R-VOX-080)', () => {
     expect([...h.written.keys()].filter((k) => k.includes('stt-cache'))).toHaveLength(24);
   });
 
+  it('live --resume reuses recorded clips and asks the provider only for the rest', async () => {
+    const h = harness(
+      { 'fixtures/stt-cache/deepgram/a01.json': '{"text":"three hundred","latencyMs":5}' },
+      { DEEPGRAM_API_KEY: 'k' },
+    );
+    const asked: string[] = [];
+    h.deps.transcribe = async (id) => {
+      asked.push(id);
+      return { text: 'two fifty' };
+    };
+    const code = await runCli(
+      ['--mode', 'live', '--record', 'fixtures/stt-cache', '--resume', 'true'],
+      h.deps,
+    );
+    expect(code).toBe(EXIT_OK);
+    expect(asked).toHaveLength(23);
+    expect(asked).not.toContain('a01');
+  });
+
   it('redact removes every occurrence and ignores empty secrets', () => {
     expect(redact('a k1 b k1', ['k1', ''])).toBe('a [redacted] b [redacted]');
   });

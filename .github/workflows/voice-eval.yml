@@ -99,10 +99,19 @@ jobs:
         env:
           DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        # The Groq free tier answers 429 after a burst; --resume keeps what is recorded and the loop
+        # waits a minute before asking for the rest.
         run: |
+          rm -rf packages/voice/fixtures/stt-cache/deepgram packages/voice/fixtures/stt-cache/groq
           for p in deepgram groq; do
-            npm run eval -w @gavel/voice -- --mode live --provider "$p" \
-              --record fixtures/stt-cache --out "eval-out/live/$p"
+            for attempt in 1 2 3 4 5 6; do
+              if npm run eval -w @gavel/voice -- --mode live --provider "$p" \
+                --record fixtures/stt-cache --resume true --out "eval-out/live/$p"; then
+                break
+              fi
+              [ "$attempt" = 6 ] && exit 1
+              sleep 65
+            done
           done
       - name: Job summary
         if: always()
