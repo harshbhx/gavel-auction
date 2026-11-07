@@ -1,0 +1,47 @@
+---
+title: Settlement saga
+description: The state machine, the journal and idempotency.
+icon: Workflow
+status: unverified
+---
+
+After the hammer, GAVEL runs a settlement saga. It is a pure state machine (`step(journal, event)` has no I/O, no clock and no randomness) driven by a runner that saves the journal before each effect.
+
+<SagaDiagram />
+
+## Three ideas
+
+1. **The journal comes first.** Every transition is one compare-and-set save of the journal before the next effect. The capture intent (capture, amount, request id) is saved before the PayPal call.
+2. **An unknown answer is not a failure.** If a capture times out or returns a 5xx, the settlement stays CAPTURING with an unknown clock. It never moves to the next bidder. After ten minutes it goes to FAILED_NEEDS_REVIEW.
+3. **Only a definite refusal falls back.** After a definite failure the saga reads the truth first; if there is no capture it records the failure and moves to the next candidate at that candidate's own price.
+
+## Idempotency
+
+Every PayPal call carries a deterministic request id: `gv1-` followed by a hash of the auction id, the operation, the hold id, the amount in cents and a generation number. The generation only changes when parameters change, never on retry or resume, so a resumed capture repeats the same call and PayPal answers it once.
+
+## Limits you should know
+
+| Setting | Value | Meaning |
+| --- | --- | --- |
+| `voidConcurrency` | 3 | At most three voids in flight |
+| `maxVoidResumes` | 5 | A void that fails five resumes goes to review |
+| `unknownDeadlineMs` | 600000 | Ten minutes for an unknown capture outcome |
+
+<NotVerified title="Not run end to end on the sandbox">
+
+The saga is verified against the fake PayPal. The sandbox runs recorded in `docs/GATES.md` cover single calls (gates G1, G2, G4) and the nightly specs, including one full lot (R7). The nightly report is a run log; no redacted evidence file is committed for it.
+
+</NotVerified>
+
+## Where this lives in the code
+
+<CodePaths
+  paths={[
+    { path: 'packages/payments/src/saga/machine.ts', note: 'the transition table and step()' },
+    { path: 'packages/payments/src/saga/capture.ts', note: 'capture phase' },
+    { path: 'packages/payments/src/saga/fallback.ts', note: 'runner-up fallback facts' },
+    { path: 'packages/payments/src/saga/unknown.ts', note: 'unknown outcome and the deadline' },
+    { path: 'packages/payments/src/saga/void.ts', note: 'void and release phase' },
+    { path: 'packages/payments/src/config.ts', note: 'SAGA_DEFAULTS' },
+  ]}
+/>

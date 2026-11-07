@@ -1,0 +1,69 @@
+---
+title: Gates G0 to G5
+description: Each sandbox gate, its result and the caveat that goes with it.
+icon: DoorOpen
+---
+
+A gate is **closed** only when its status is PASS or FAIL with a recorded decision. A gate without evidence reads NOT RUN. This table is generated from `docs/GATES.md` when the site is built.
+
+<GatesTable />
+
+## G0: sandbox app and buyer accounts <GateBadge id="G0" />
+
+The sandbox app authenticates (HTTP 200, payments scope) and can create an AUTHORIZE order (HTTP 201 CREATED). Run 4 Nov 2026.
+
+<NotVerified title="Reported, not independently verifiable">
+
+No evidence file is committed for G0. The only record is the Actions run log of workflow `gate-g0`, which expires with log retention and needs repository access.
+
+</NotVerified>
+
+## G1: partial capture and remainder release <GateBadge id="G1" />
+
+After a final capture the authorization closes as CAPTURED and the order COMPLETED, and a later void is refused with `PREVIOUSLY_CAPTURED`. Run for a wallet buyer on 4 Nov and a card-funded PayPal account on 5 Nov 2026.
+
+<NotVerified title="Remainder release is inferred">
+
+No run read a buyer balance or available funds, so that the 150.00 remainder is released is inferred, not observed. Guest card capture was not run.
+
+</NotVerified>
+
+## G2: card and guest AUTHORIZE <GateBadge id="G2" />
+
+A wallet buyer and a guest with a sandbox card were both authorized through the PayPal JS SDK v6 (5 Nov 2026). Authorize only: no capture and no void of a card authorization ran.
+
+## G3: honor period versus validity and reauthorize <GateBadge id="G3" />
+
+<Held title="In progress">
+
+A real probe started on 7 Nov 2026 at 03:06 UTC. Checkpoints are at 3.5, 4 and 5 days; the final reading is about 12 Nov 06:17 UTC. Earlier attempts on 4 to 7 Nov never ran, so no earlier day is claimed. Until the readings exist the gate reads NOT RUN.
+
+</Held>
+
+The planned fallback if the window is short: capture within the verified validity window and reauthorize before the hammer. That is the plan, not a result.
+
+## G4: real webhook signature verification <GateBadge id="G4" />
+
+Six real deliveries, including a capture and a void, each verified SUCCESS through PayPal's verification endpoint with the raw body spliced into the request (5 Nov 2026). Rejecting a tampered event is covered against the fake only.
+
+## G5: speech accuracy on noisy bids <GateBadge id="G5" />
+
+<SpeechTable />
+
+Both providers miss the limit on both clip sets. The clips are synthetic and noise-free; there is no real-room or noisy-room test. Decision: spoken bids go through the confirm prompt (assist mode). See [voice and the confirm gate](/docs/how-it-works/voice-and-confirm).
+
+## What changes the decision
+
+- G3 shows a validity window shorter than the longest planned auction: auctions are capped, or the decision moves to NO-GO for long auctions.
+- G3 passes with a window that covers the planned auctions: GO for card and wallet.
+- G5 stays FAIL: voice bids stay behind the confirm prompt. The payments decision is unchanged.
+
+<CodePaths
+  paths={[
+    { path: 'docs/GATES.md', note: 'the record this page is generated from' },
+    { path: 'docs/evidence/G1', note: 'raw run logs' },
+    { path: 'docs/evidence/G2', note: 'raw run log' },
+    { path: 'docs/evidence/G4', note: 'raw run log' },
+    { path: 'docs/RUNBOOK-GATES.md', note: 'how to re-run a gate' },
+  ]}
+/>

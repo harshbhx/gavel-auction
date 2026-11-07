@@ -1,0 +1,39 @@
+---
+title: Sandbox-only safety
+description: The rules that keep GAVEL on the PayPal sandbox and keep secrets out of the repository.
+icon: ShieldCheck
+status: verified
+---
+
+GAVEL talks to the PayPal **sandbox** only. No live PayPal call is made and no real money moves. Do not put real card numbers, real accounts or personal data into the demo.
+
+## Rules in the code
+
+- `PAYPAL_ENV` accepts only `sandbox`. Production mode (`NODE_ENV=production`, or any public https host) refuses `PAYMENTS=fake`, weak secrets and the test hooks.
+- The scripted demo routes mount only with `DEMO_MODE=1` and `PAYMENTS=fake`, which config refuses under production-like settings.
+- The crash kill hook (`GAVEL_CHECKPOINT_KILL`) is refused in production.
+- A CI check fails the build when source or configuration names the live PayPal host.
+- Sandbox accounts must be US accounts and gates send USD.
+
+## Secrets
+
+Secrets are never committed. Names only appear in the docs: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `TOKEN_SECRET`, `ADMIN_KEY`, the voice provider keys. CI scans the history for secrets and builds the web bundle with canary secrets to prove none leaks into it. Report a vulnerability as described in `SECURITY.md`.
+
+## Kill switch
+
+The payments layer has a kill switch. While it is engaged no new capture is sent; a capture that is already at PayPal is still adopted, and the unknown-outcome clock stands still. Voids are not blocked.
+
+<Held title="Open items">
+
+The security review checklist has 18 items and **none is signed off yet**. See [the security review](/docs/safety/security-review).
+
+</Held>
+
+<CodePaths
+  paths={[
+    { path: 'SECURITY.md', note: 'how to report a vulnerability' },
+    { path: 'packages/server/src/config.ts', note: 'configuration and the production-like rules' },
+    { path: 'packages/payments/src/killswitch.ts', note: 'the kill switch' },
+    { path: 'scripts/check-no-live-host.mjs', note: 'the live host check' },
+  ]}
+/>

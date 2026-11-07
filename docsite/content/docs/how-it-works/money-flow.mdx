@@ -1,0 +1,46 @@
+---
+title: Money flow
+description: Holds, capture and void: where the money is at each moment.
+icon: Banknote
+status: verified
+---
+
+A hold is an authorization, not a payment. Only the winning price is captured.
+
+<MoneyFlowDiagram />
+
+## What happens, in order
+
+1. **Approve (T0).** Each bidder approves a PayPal order with intent AUTHORIZE for their ceiling.
+2. **Bid (T1).** The engine checks the bid against the ceiling and the rules; the ledger appends a hash-chained event.
+3. **Hammer (T2).** The highest valid bid wins at its price.
+4. **Capture (T3).** The saga reads the truth of the winner's hold, then captures the winning price with `final_capture`. PayPal closes the unused remainder of that authorization.
+5. **Void (T4).** Every other hold is voided, with bounded concurrency (three at a time). When all are released the settlement is SETTLED.
+
+## The invariant
+
+Every dollar that was held ends up charged, released or still open, and open is zero when settlement ends. In the 30 day simulation the same equality holds on larger totals: see [the simulation](/docs/proof/simulation).
+
+<Charged title="Seen on the sandbox (gate G1)">
+
+A partial capture with `final_capture` closed the authorization as CAPTURED for two PayPal-account buyers (4 and 5 Nov 2026). A later void answers 422 `PREVIOUSLY_CAPTURED`.
+
+</Charged>
+
+<NotVerified title="Remainder release is inferred">
+
+No run read a buyer balance. The authorization keeps its original amount (500.00 in the run), so the evidence cannot tell a released remainder from an open one. The saga handles both: in the default mode it records `remainder_closed_by_paypal` and sends no void; if an open remainder is found it voids it explicitly.
+
+</NotVerified>
+
+## Where this lives in the code
+
+<CodePaths
+  paths={[
+    { path: 'packages/payments/src/saga/capture.ts', note: 'truth read, intent, capture with final_capture' },
+    { path: 'packages/payments/src/saga/remainder.ts', note: 'the winner remainder policy (modes A, B, C)' },
+    { path: 'packages/payments/src/saga/void.ts', note: 'void every other hold, bounded concurrency' },
+    { path: 'packages/payments/src/requestId.ts', note: 'deterministic PayPal-Request-Id' },
+    { path: 'docs/evidence/G1', note: 'committed raw run logs for G1' },
+  ]}
+/>

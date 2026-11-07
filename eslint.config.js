@@ -8,7 +8,14 @@ import roomCore from './packages/server/eslint-rules/room-core.js';
 
 export default tseslint.config(
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**', '**/report/**', 'reference/**'],
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/coverage/**',
+      '**/report/**',
+      'reference/**',
+      'docsite/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.strict,

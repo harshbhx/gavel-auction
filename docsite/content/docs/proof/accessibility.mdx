@@ -1,0 +1,36 @@
+---
+title: Accessibility
+description: The automated checks that run, and the manual pass that nobody has done yet.
+icon: Accessibility
+status: unverified
+---
+
+This page does not claim any manual result that nobody has recorded.
+
+## Automated
+
+| Check | What it asserts |
+| --- | --- |
+| axe-core on states (unit) | No serious or critical violation on component and screen state fixtures |
+| axe-core in a browser | Zero serious or critical violations on every route, light and projector themes |
+| Keyboard walks | Tab reaches controls; focus ring at least 2 px and 3:1; dialog trap and restore |
+| Reduced motion, forced colors | Animation duration 0s under reduce; chips and stamps keep a border when forced |
+| Responsive | Reflow at 320 px and 200 percent zoom |
+| Public screen legibility | Price text 96 px or more, base text 28 px or more, 7:1 in the projector theme |
+
+<NotVerified title="Manual pass not performed">
+
+Nobody has run the screen-reader pass (NVDA with Firefox, VoiceOver with Safari) or the 200 percent zoom pass by hand. Every cell of that table in `docs/A11Y.md` reads "not yet performed". Gaps in automation are listed there too: for example the audit view and the paused and stopped bid screens have no automated check.
+
+</NotVerified>
+
+## This documentation site
+
+The site follows the same rules: a skip link, focus rings from the theme tokens, `prefers-reduced-motion` honoured by every animated component (the animation is removed, the content stays), diagrams with a title, a description and a text version, and meaning carried by words and fills, never colour alone. The Floodlight theme is a high-contrast projector theme.
+
+<CodePaths
+  paths={[
+    { path: 'docs/A11Y.md', note: 'how accessibility is checked, and the manual pass table' },
+    { path: 'packages/web/test/visual/a11y.spec.ts', note: 'axe on every route' },
+  ]}
+/>

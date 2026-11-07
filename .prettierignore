@@ -6,3 +6,4 @@ reference/
 package-lock.json
 *.tsbuildinfo
 etc/
+docsite/

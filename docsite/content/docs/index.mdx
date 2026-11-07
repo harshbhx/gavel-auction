@@ -1,0 +1,41 @@
+---
+title: GAVEL documentation
+description: Every bid is a PayPal hold; only the winner pays. What it does, what is proven on the PayPal sandbox, and what is not.
+icon: BookOpen
+---
+
+GAVEL is a live auction where **every bid is a PayPal AUTHORIZE hold**. Only the winning price is captured; every other hold is voided and released. A journaled settlement saga and a hash-chained audit trail keep the result checkable.
+
+Everything runs on the PayPal sandbox. No real money moves.
+
+## The visual rule
+
+These docs use the same language as the product. Hatched means held, solid means charged, hollow means released.
+
+<Held title="Held">Pending, or not yet verified. Nothing has moved.</Held>
+
+<Charged title="Charged">Confirmed, and backed by evidence you can open.</Charged>
+
+<Released title="Released">Undone, or retired. The hold is gone.</Released>
+
+<NotVerified title="Not verified">Proven only against the project's own fake PayPal, or only in a simulation.</NotVerified>
+
+A code block that differs between the fake and the sandbox carries a chip: <Chip kind="fake">Fake PayPal</Chip> or <Chip kind="sandbox">Sandbox</Chip>.
+
+## Where to go
+
+| Read this | To learn |
+| --- | --- |
+| [Start here](/docs/start) | The judge path, what is real, what is simulated |
+| [How it works](/docs/how-it-works) | Money flow, saga, crash recovery, voice gate, engine and ledger |
+| [Proof](/docs/proof) | Gates G0 to G5 and the 30 day simulation, with the real numbers |
+| [Safety](/docs/safety) | Sandbox-only rules, the security checklist, webhooks, backups |
+| [Run it yourself](/docs/run) | Local run, real sandbox, staging, re-running a gate |
+| [Roadmap and limits](/docs/roadmap) | What is not done, in plain words |
+| [Reference](/docs/reference) | Architecture, saga states, events, configuration |
+
+<Held title="Source of truth">
+
+These pages are distilled from the repository docs (`README.md`, `docs/GATES.md`, `docs/JUDGES.md`, `docs/DEMO.md` and friends) and from the code. Gate results and simulation figures are read from the committed files when the site is built, so they cannot differ from the repo. If a page and the repository disagree, the repository wins: please open an issue.
+
+</Held>
