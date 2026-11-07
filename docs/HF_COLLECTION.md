@@ -64,7 +64,7 @@ Short description: Event, ledger and outcome records of scripted demo auctions (
 
 Tags: synthetic, simulated, audit-log, ledger, anonymised.
 
-Why this data matters: it shows what the audit trail of a hold-then-capture auction looks like, including crashes, duplicate webhooks, voided holds and late bids, and that the ledger invariants held in each case. The payment provider is fake and no real person appears.
+Why this data matters: it shows what the audit trail of a hold-then-capture auction looks like, including crashes, duplicate webhooks, voided holds and late bids, and that the core ledger invariants held in each case. The payment provider is fake and no real person appears.
 
 ## Publishing
 

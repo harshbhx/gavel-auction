@@ -65,7 +65,11 @@
         "webhooks_duplicate": "integer",
         "soft_close_extensions": "integer",
         "final_auction_state": "string?",
-        "invariants_all_hold": "boolean"
+        "invariant_i1": "boolean",
+        "invariant_i2": "boolean",
+        "invariant_i3": "boolean",
+        "invariant_i4": "boolean",
+        "invariant_i5": "boolean"
       },
       "min": {
         "price_cents": 0,

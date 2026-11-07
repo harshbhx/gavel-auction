@@ -251,8 +251,8 @@ const EXTRA = {
     );
     rep.check(
       d,
-      'all ledger invariants held in every scenario',
-      out.every((o) => o.invariants_all_hold === true),
+      'ledger invariants I1, I2, I4 and I5 held in every scenario',
+      out.every((o) => o.invariant_i1 && o.invariant_i2 && o.invariant_i4 && o.invariant_i5),
       'an invariant failed',
     );
     rep.check(

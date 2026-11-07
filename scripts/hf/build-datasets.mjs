@@ -824,13 +824,16 @@ function buildAudit(ctx) {
     if (start === undefined || result === undefined) throw new Error(`${file}: no start or result`);
     const scenario = String(start.data.id).split('-')[0];
     const who = anonymiser();
+    let clock = 0;
     for (const e of trace) {
       if (e.kind === 'start' || e.kind === 'result') continue;
+      // The webhook summary step is recorded at time 0 by the runner; it carries the time of the step before it.
+      clock = Math.max(clock, e.t);
       const d = e.data;
       const row = {
         scenario,
         seq: e.n,
-        t_ms: e.t,
+        t_ms: clock,
         kind: e.kind,
         action: d.do ?? null,
         actor: who(d.actor ?? d.bidder ?? d.fault?.bidder),
@@ -871,7 +874,11 @@ function buildAudit(ctx) {
       webhooks_duplicate: o.webhooks?.duplicates ?? 0,
       soft_close_extensions: o.softClose?.extensions ?? 0,
       final_auction_state: o.settlement?.auction ?? null,
-      invariants_all_hold: Object.values(o.invariants ?? {}).every((v) => v === true),
+      invariant_i1: o.invariants?.I1 === true,
+      invariant_i2: o.invariants?.I2 === true,
+      invariant_i3: o.invariants?.I3 === true,
+      invariant_i4: o.invariants?.I4 === true,
+      invariant_i5: o.invariants?.I5 === true,
     });
     (o.ledgerTypes ?? []).forEach((type, i) => {
       ledger.push({ scenario, seq: i, event_type: type });
@@ -937,7 +944,11 @@ function buildAudit(ctx) {
             fields: [
               ['scenario', 'string', 'Scenario id, for example `S01`'],
               ['seq', 'integer', 'Order in the trace'],
-              ['t_ms', 'integer', 'Milliseconds from the scenario start (fake clock)'],
+              [
+                't_ms',
+                'integer',
+                'Milliseconds from the scenario start (fake clock); the webhook summary row carries the time of the step before it',
+              ],
               ['kind', 'string', '`step` or `fault`'],
               [
                 'action',
@@ -985,7 +996,11 @@ function buildAudit(ctx) {
                 'string or null',
                 'Last settlement state, for example SETTLED',
               ],
-              ['invariants_all_hold', 'boolean', 'All five ledger invariants held'],
+              [
+                'invariant_i1, invariant_i2, invariant_i3, invariant_i4, invariant_i5',
+                'boolean',
+                'The five ledger invariants: I1 at most one capture, I2 nothing captured above the winner ceiling, I3 every loser hold voided and never captured, I4 held money equals captured plus released, I5 the ledger hash chain verifies. I3 can read false where no winner emerges; each scenario asserts only the invariants that apply to it',
+              ],
             ],
           },
           {
