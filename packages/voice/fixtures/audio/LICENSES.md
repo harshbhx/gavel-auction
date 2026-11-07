@@ -27,3 +27,10 @@ am not sure." (confirm), "Let me think about that for a moment." (none).
 | sapi-david   | voice | Windows speech synthesizer, en-US male   | output of an installed OS voice | not applicable, synthetic |
 | sapi-zira    | voice | Windows speech synthesizer, en-US female | output of an installed OS voice | not applicable, synthetic |
 | generated-rn | noise | seeded noise written for this clip       | generated, no third-party audio | not applicable            |
+
+## Rendered recordings (issue 1864)
+
+`recordings/*.wav` are synthetic, rendered in CI by `scripts/render-clips.sh` with eSpeak NG (GPL-3.0
+software; the generated speech is not a copy of third-party audio). All 24 clips use eSpeak voices
+(`en-us`, `en-gb`, `en-gb-x-rp+f3`, `en-us+m3`, `en-us+f2`); the voice ids in the manifest select which.
+No person was recorded, so no consent is needed. The noise beds above are not mixed in.

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   EXIT_FAILED,
@@ -213,6 +213,16 @@ describe('T-VOX-088 live limits (R-VOX-080)', () => {
     expect(code).toBe(EXIT_OK);
     expect(asked).toHaveLength(23);
     expect(asked).not.toContain('a01');
+  });
+
+  it('committed provider cache scores every audio clip for both providers', async () => {
+    for (const provider of ['deepgram', 'groq'] as const) {
+      const h = harness();
+      h.deps.exists = (p) => existsSync(new URL(`../../${p}`, import.meta.url));
+      const code = await runCli(['--mode', 'cached', '--provider', provider, '--out', 'o'], h.deps);
+      expect(code).toBe(EXIT_OK);
+      expect(h.logs.join('\n')).toContain('24 utterances');
+    }
   });
 
   it('redact removes every occurrence and ignores empty secrets', () => {
