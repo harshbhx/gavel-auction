@@ -1,9 +1,9 @@
 import { EpochMs } from '@gavel/shared';
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
 import type { MediaLike } from '../../src/screens/replay/AudioSync';
+import ReplayScreen from '../../src/screens/replay/ReplayScreen';
 import { BASE_TIME, openSnapshot, roster, stateMsg } from '../../src/testing/builders';
 
 class FakeMedia implements MediaLike {
@@ -53,33 +53,34 @@ function bundle(withSettlement: boolean, audioUrl: string | null): unknown {
   };
 }
 
-function serve(body: unknown): void {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(() => Promise.resolve(new Response(JSON.stringify(body), { status: 200 }))),
+/** Hands the screen the recording and a fake audio element directly: no global fetch or Audio. */
+function renderReplay(body: unknown): void {
+  render(
+    <ReplayScreen
+      recordingId="rec1"
+      loadBundle={() => Promise.resolve(body)}
+      createMedia={(url) => new FakeMedia(url)}
+    />,
   );
 }
 
 beforeEach(() => {
   FakeMedia.last = null;
   FakeMedia.failPlay = false;
-  vi.stubGlobal('Audio', FakeMedia);
 });
 afterEach(() => {
   vi.useRealTimers();
-  vi.unstubAllGlobals();
 });
 
-// The first render lazy-loads the replay screen, which is slow on a busy runner. Waits on it get
-// a generous bound; they return as soon as the condition holds, so it costs nothing when fast.
+// Waits get a generous bound for a busy runner; they return as soon as the condition holds, so it
+// costs nothing when fast.
 const LOAD = { timeout: 10_000 };
 
-describe('replay route with audio and settlement', { timeout: 20_000 }, () => {
+describe('replay screen with audio and settlement', { timeout: 20_000 }, () => {
   it('creates the audio sync, corrects drift above 150 ms and shows the settlement panel', async () => {
-    serve(bundle(true, '/recordings/rec1/audio.webm'));
     // Only the replay clock is faked, so the waits below keep using real timers.
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
-    render(<App initialPath="/replay/rec1" />);
+    renderReplay(bundle(true, '/recordings/rec1/audio.webm'));
     expect(await screen.findByText('Walnut sideboard', {}, LOAD)).toBeTruthy();
     expect(FakeMedia.last?.url).toBe('/recordings/rec1/audio.webm');
     expect(FakeMedia.last?.plays).toBe(1);
@@ -95,15 +96,13 @@ describe('replay route with audio and settlement', { timeout: 20_000 }, () => {
   });
 
   it('shows the captions-only state when the audio cannot play', async () => {
-    serve(bundle(true, '/recordings/rec1/audio.webm'));
     FakeMedia.failPlay = true;
-    render(<App initialPath="/replay/rec1" />);
+    renderReplay(bundle(true, '/recordings/rec1/audio.webm'));
     expect(await screen.findByText(t('replay.captionsOnly'), {}, LOAD)).toBeTruthy();
   });
 
   it('creates no audio and no panel for a recording without them', async () => {
-    serve(bundle(false, null));
-    render(<App initialPath="/replay/rec1" />);
+    renderReplay(bundle(false, null));
     expect(await screen.findByText('Walnut sideboard', {}, LOAD)).toBeTruthy();
     expect(FakeMedia.last).toBeNull();
     expect(screen.queryByTestId('settlement-panel')).toBeNull();

@@ -121,6 +121,13 @@ jobs:
           SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
         run: npm run gate:g3 -w @gavel/payments -- --browser --out "$STATE"
+      - name: Check that day 0 wrote a run file
+        if: ${{ env.mode == 'start' }}
+        run: |
+          if [ -z "$(find "$STATE" -name '*.run.json' | head -1)" ]; then
+            echo "::error title=Probe did not start::Day 0 finished without writing a *.run.json under $STATE"
+            exit 1
+          fi
       - name: Checkpoints that are due
         if: ${{ env.mode == 'resume' }}
         env:

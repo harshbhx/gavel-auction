@@ -1,0 +1,100 @@
+name: ui-screens-live
+# Screen tour against the deployed site (WEB-99, live variant). Manual only: run it once the API
+# host and the hosted web app both exist, and pass their origins. It opens the real pages with no
+# mocks (landing, demo launcher, join, register, bid, console, big screen, audit, receipt, operator
+# page, replay and not-found) in the same four viewports and themes as the offline `ui-screens`
+# tour, and uploads one PNG per state plus the same index as the artifact `ui-screens-live`.
+#
+# Needs: the web app built with VITE_API_BASE pointing at `api_url`, and that API allowing the web
+# origin in CORS_ORIGINS. The room screens need the staging operator key in the repository secret
+# GAVEL_STAGING_ADMIN_KEY (the same value as ADMIN_KEY on the host); without it only the screens
+# that need no room are taken, and the summary says so. The tour makes throwaway rooms through the
+# public routes and makes no payment. It is informational: not part of the roll-up in ci.yml.
+#
+# Secret handling: the key reaches the specs through the environment only, it is never typed into a
+# page, and Playwright traces and videos are off, so no uploaded file holds a token or the key.
+on:
+  workflow_dispatch:
+    inputs:
+      web_url:
+        description: 'Origin of the hosted web app, for example https://gavel.pages.dev'
+        required: true
+        type: string
+      api_url:
+        description: 'Origin of the API host, for example https://gavel-host.onrender.com'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-screens-live
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  screens:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      WEB_URL: ${{ inputs.web_url }}
+      API_URL: ${{ inputs.api_url }}
+      GAVEL_LIVE_ADMIN_KEY: ${{ secrets.GAVEL_STAGING_ADMIN_KEY }}
+      UI_SCREENS_DIR: ${{ github.workspace }}/packages/web/ui-screens-live-out
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check the inputs
+        run: |
+          for pair in "web_url=$WEB_URL" "api_url=$API_URL"; do
+            name="${pair%%=*}"
+            value="${pair#*=}"
+            if ! printf '%s' "$value" | grep -Eq '^https://[A-Za-z0-9.-]+(:[0-9]+)?/?$'; then
+              echo "::error title=Bad input::$name must be an https origin with no path, user name or password"
+              exit 1
+            fi
+          done
+          echo "GAVEL_LIVE_WEB=${WEB_URL%/}" >> "$GITHUB_ENV"
+          echo "GAVEL_LIVE_API=${API_URL%/}" >> "$GITHUB_ENV"
+          if [ -z "$GAVEL_LIVE_ADMIN_KEY" ]; then
+            echo "::warning title=No operator key::GAVEL_STAGING_ADMIN_KEY is not set; the room screens are skipped"
+          fi
+      - name: Probe both hosts
+        run: |
+          # A free host can take a minute to wake up, so the probe retries.
+          curl -fsS -o /dev/null --max-time 30 --retry 6 --retry-delay 10 --retry-all-errors "${API_URL%/}/healthz"
+          curl -fsS -o /dev/null --max-time 30 --retry 6 --retry-delay 10 --retry-all-errors "${WEB_URL%/}/"
+      - uses: ./.github/actions/setup
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+      - name: Run the live screen specs
+        run: npm run test:screens:live -w @gavel/web
+      - name: Build the index
+        if: always()
+        run: |
+          node packages/web/test/screens/build-index.mjs packages/web/ui-screens-live-out
+          {
+            echo '## UI screens (live)'
+            echo
+            echo "Web: ${WEB_URL%/}"
+            echo "API: ${API_URL%/}"
+            echo "PNG files: $(find packages/web/ui-screens-live-out -name '*.png' | wc -l)"
+            if [ -z "$GAVEL_LIVE_ADMIN_KEY" ]; then
+              echo
+              echo 'Room screens skipped: GAVEL_STAGING_ADMIN_KEY is not set.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the screenshots and the index
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ui-screens-live
+          path: packages/web/ui-screens-live-out
+          if-no-files-found: error
+          retention-days: 30

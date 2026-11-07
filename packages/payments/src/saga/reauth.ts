@@ -271,6 +271,13 @@ const NO_REAUTH_KINDS: ReadonlySet<string> = new Set([
   'declined',
 ]);
 
+/**
+ * RT4-saga-06: how long the old authorization must keep reading live, across two lookups,
+ * before PayPal is taken to have made no reauthorization. PayPal may still be processing a
+ * request that timed out, and it closes the old authorization only when it finishes.
+ */
+export const REAUTH_LIVE_RECHECK_MS = 60_000;
+
 export interface ReauthLookupDeps extends ReauthStoreDeps {
   gateway: Pick<PaymentsGateway, 'getHoldTruth' | 'reauthorize'>;
   audit: AuditSink;
@@ -299,8 +306,10 @@ export type ReauthLookupResult =
  * (`JournalHold.reauthInDoubt`). PayPal closes an authorization when it reauthorizes it
  * (A11), so for each such hold:
  *
- *   - the hold's authorization is read; when it is still live or charged, PayPal made no
- *     reauthorization and the hold stays as it is;
+ *   - the hold's authorization is read; when it is still live or charged, PayPal may be
+ *     mid reauthorization (RT4-saga-06), so the hold stays in doubt and the time of that
+ *     read is saved; only when a lookup at least `REAUTH_LIVE_RECHECK_MS` later still reads
+ *     it live is no reauthorization taken to have been made, and the hold stays as it is;
  *   - otherwise the reauthorization is sent again with its saved request id. A closed
  *     authorization cannot be reauthorized again, so this only replays the authorization
  *     PayPal made for that request: the hold moves to it in the journal and the hold
@@ -339,6 +348,20 @@ export async function lookupUnknownReauths(
           requestId: doubt.requestId,
         };
         const found = await replayedAuthorization(deps, auctionId, hold, doubt);
+        if (found.kind === 'live') {
+          // The old authorization reads live: PayPal made no reauthorization, or has not
+          // finished one. Keep the hold in doubt until it still reads live a while later.
+          const nowMs = deps.clock.nowMs();
+          const since = doubt.liveSeenAtMs;
+          if (since === undefined || nowMs - since < REAUTH_LIVE_RECHECK_MS) {
+            open.push(stillOpen);
+            if (since === undefined) {
+              next.holds[bidderId] = { ...hold, reauthInDoubt: { ...doubt, liveSeenAtMs: nowMs } };
+              changed = true;
+            }
+            continue;
+          }
+        }
         if (found.kind === 'unknown') {
           open.push(stillOpen);
           continue;
@@ -367,11 +390,16 @@ export async function lookupUnknownReauths(
 }
 
 /** What PayPal says about a reauthorization in doubt. */
-type Replayed = { kind: 'made'; authId: string } | { kind: 'none' } | { kind: 'unknown' };
+type Replayed =
+  | { kind: 'made'; authId: string }
+  | { kind: 'none' }
+  | { kind: 'live' }
+  | { kind: 'unknown' };
 
 /**
  * The authorization PayPal made for a reauthorization in doubt (`made`), `none` when PayPal
- * made none, or `unknown` when PayPal did not answer.
+ * made none, `live` when the old authorization still reads live (a reauthorization may
+ * still be in progress), or `unknown` when PayPal did not answer.
  */
 async function replayedAuthorization(
   deps: ReauthLookupDeps,
@@ -386,7 +414,7 @@ async function replayedAuthorization(
     if (e instanceof PayPalError) return { kind: 'unknown' };
     throw e;
   }
-  if (NOT_REPLACED.has(truth.status)) return { kind: 'none' };
+  if (NOT_REPLACED.has(truth.status)) return { kind: 'live' };
   try {
     const renewed = await auditedCall(
       { audit: deps.audit, clock: deps.clock },

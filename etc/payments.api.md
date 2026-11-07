@@ -860,6 +860,7 @@ export interface JournalHold {
     reauthInDoubt?: {
         requestId: string;
         amountCents: number;
+        liveSeenAtMs?: number;
     };
     // (undocumented)
     stale: boolean;
@@ -1588,6 +1589,9 @@ export interface RawBodyContract {
 
 // @public
 export function readRawEvent(rawBody: Buffer | string): string | undefined;
+
+// @public
+export const REAUTH_LIVE_RECHECK_MS = 60000;
 
 // @public (undocumented)
 export interface ReauthDeps {
