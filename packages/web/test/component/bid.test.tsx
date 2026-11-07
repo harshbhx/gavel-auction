@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { t } from '../../src/copy/t';
 import { BidScreen } from '../../src/screens/bid/BidScreen';
@@ -71,7 +71,7 @@ describe('BidScreen (T-WEB-033)', () => {
     vi.useFakeTimers();
     const onBid = vi.fn();
     render(<BidScreen store={makeStore(50000)} onBid={onBid} />);
-    expect(screen.getByText('$1.00')).toBeTruthy();
+    expect(screen.getByRole('img', { name: '$1.00' })).toBeTruthy();
     expect(screen.getByText(t('bid.status.none'))).toBeTruthy();
     const quick = screen.getByRole('button', { name: t('bid.quick', { amount: '$50' }) });
     fireEvent.click(quick);
@@ -104,7 +104,9 @@ describe('BidScreen (T-WEB-033)', () => {
       }
     });
     render(<BidScreen store={store} onBid={() => undefined} />);
-    const rows = screen.getAllByRole('listitem');
+    const rows = within(screen.getByRole('list', { name: t('console.stream') })).getAllByRole(
+      'listitem',
+    );
     expect(rows).toHaveLength(5);
     expect(rows[0]?.textContent).toContain('$57.00');
     expect(rows[4]?.textContent).toContain('$53.00');

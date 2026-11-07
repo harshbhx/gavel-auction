@@ -64,18 +64,20 @@ export function ConfirmSheet({
 
   return (
     <Sheet open onClose={() => undefined} title={title}>
-      <p>{title}</p>
-      {changed && currentCents !== null && (
-        <p role="status">{t('confirm.changed', { amount: formatUsd(currentCents) })}</p>
-      )}
-      {isExpired && <p role="status">{t('confirm.expired')}</p>}
-      {isAnswered && !isExpired && <p role="status">{t('confirm.answered')}</p>}
-      <Button size="bid" disabled={done} onClick={() => respond(true)}>
-        {t('confirm.yes')}
-      </Button>
-      <Button size="bid" variant="outline" disabled={done} onClick={() => respond(false)}>
-        {t('confirm.no')}
-      </Button>
+      <div className="bid-confirm">
+        <p className="bid-confirm__title">{title}</p>
+        {changed && currentCents !== null && (
+          <p role="status">{t('confirm.changed', { amount: formatUsd(currentCents) })}</p>
+        )}
+        {isExpired && <p role="status">{t('confirm.expired')}</p>}
+        {isAnswered && !isExpired && <p role="status">{t('confirm.answered')}</p>}
+        <Button size="bid" disabled={done} onClick={() => respond(true)}>
+          {t('confirm.yes')}
+        </Button>
+        <Button size="bid" variant="outline" disabled={done} onClick={() => respond(false)}>
+          {t('confirm.no')}
+        </Button>
+      </div>
     </Sheet>
   );
 }

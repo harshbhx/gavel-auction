@@ -1,0 +1,341 @@
+/* Bidder room, Scoreboard design. The whole screen takes the colour of the bidder's state; the
+   words and icons say the same thing. Only tokens from design/tokens.css are used; every text and
+   ground pair below is a pair listed in design/pairs.ts. */
+
+.bid {
+  --bid-bg: var(--color-bg);
+  --bid-ink: var(--color-fg);
+  --bid-ink-soft: var(--color-fg-muted);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 100vh;
+  padding: var(--space-4);
+  background: var(--bid-bg);
+  color: var(--bid-ink);
+  font-family: var(--font-sans);
+}
+
+.bid[data-k='win'] {
+  --bid-bg: var(--color-win);
+  --bid-ink: var(--color-on-win);
+  --bid-ink-soft: var(--color-on-win);
+}
+
+.bid[data-k='out'],
+.bid[data-k='confirm'] {
+  --bid-bg: var(--color-out);
+  --bid-ink: var(--color-on-out);
+  --bid-ink-soft: var(--color-on-out);
+}
+
+.bid[data-k='review'] {
+  --bid-bg: var(--color-danger);
+  --bid-ink: var(--color-on-danger);
+  --bid-ink-soft: var(--color-on-danger);
+}
+
+/* Raised panels, chips, banners and the hold card keep their own readable ground. */
+.bid__panel,
+.bid .gv-chip,
+.bid .gv-banner,
+.bid .ui-holdcard,
+.bid__bar,
+.bid__stream,
+.bid__meter {
+  background: var(--color-raised);
+  color: var(--color-fg);
+}
+
+.bid__panel {
+  border: var(--border-width-strong) solid var(--color-fg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  padding: var(--space-4);
+}
+
+.bid .gv-chip {
+  border-width: var(--border-width);
+  border-color: var(--color-fg);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-3);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.bid .gv-banner {
+  border-width: var(--border-width);
+}
+
+.bid__notices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.bid__status {
+  display: flex;
+}
+
+.bid__lotimg {
+  min-height: 72px;
+}
+
+.bid__wait {
+  margin: 0;
+  color: var(--bid-ink-soft);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+}
+
+.bid__priceboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.bid__kicker {
+  margin: 0;
+  color: var(--color-fg-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
+  font-weight: 600;
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.bid__price {
+  font-size: var(--font-size-8);
+  line-height: 0.95;
+}
+
+.bid__leader {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-3);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.bid__vibrate {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  color: var(--bid-ink);
+  font-size: var(--font-size-2);
+}
+
+.bid__vibrate input {
+  inline-size: 20px;
+  block-size: 20px;
+  accent-color: var(--bid-ink);
+}
+
+/* Bid bar: stays reachable at the bottom of the phone. */
+.bid__bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: var(--border-width-strong) solid var(--bid-ink);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  z-index: 1;
+}
+
+.bid__bar > div:first-child {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.bid__bar form {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.bid__bar form > :first-child {
+  flex: 1;
+}
+
+.bid__bar p {
+  margin: 0;
+  grid-column: 1 / -1;
+  font-size: var(--font-size-2);
+}
+
+.bid .gv-btn {
+  border-width: var(--border-width-strong);
+  border-radius: var(--radius-md);
+  border-color: var(--color-fg);
+  background: var(--color-raised);
+  color: var(--color-fg);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.bid .gv-btn--solid {
+  background: var(--color-action);
+  color: var(--color-on-action);
+  box-shadow: var(--shadow-2);
+}
+
+.bid .gv-btn[aria-disabled='true'] {
+  opacity: 1;
+  border-style: dashed;
+  background: var(--color-raised);
+  color: var(--color-fg-muted);
+  box-shadow: none;
+}
+
+.bid .gv-btn:active:not([aria-disabled='true']) {
+  box-shadow: 1px 1px 0 var(--color-shadow);
+  transform: translate(1px, 1px);
+}
+
+/* Rejection and unanswered bid read as a panel on the state colour. */
+.bid [role='alert'] {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-md);
+  background: var(--color-raised);
+  color: var(--color-fg);
+  font-weight: 700;
+}
+
+.bid__unsent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.bid__unsent p {
+  margin: 0;
+}
+
+/* Ceiling meter: segments, filled up to the highest own accepted bid. */
+.bid__meter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-md);
+}
+
+.bid__meter p {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+  font-weight: 600;
+}
+
+.bid__meterbar {
+  block-size: 12px;
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  overflow: hidden;
+}
+
+.bid__meterfill {
+  block-size: 100%;
+  background: var(--color-fg);
+}
+
+.bid__stream {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-md);
+}
+
+.bid__stream:empty {
+  display: none;
+}
+
+.bid__stream li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-rule);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+}
+
+.bid__stream li:last-child {
+  border-bottom: 0;
+}
+
+.bid__amt {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.bid .ui-skeleton-group {
+  inline-size: 100%;
+}
+
+/* Spoken-bid confirm sheet: dark sheet, large question, two clear answers. */
+.gv-sheet:has(> .bid-confirm) {
+  background: var(--color-sheet);
+  color: var(--color-on-sheet);
+  border-top: var(--border-width-strong) solid var(--color-on-sheet);
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  box-shadow: none;
+}
+
+.bid-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.bid-confirm__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-6);
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.bid-confirm p {
+  margin: 0;
+}
+
+.bid-confirm .gv-btn {
+  border-color: var(--color-on-sheet);
+  background: transparent;
+  color: var(--color-on-sheet);
+  box-shadow: none;
+}
+
+.bid-confirm .gv-btn--solid {
+  background: var(--color-on-sheet);
+  color: var(--color-sheet);
+}
+
+.bid-confirm .gv-btn[aria-disabled='true'] {
+  background: transparent;
+  color: var(--color-on-sheet);
+  opacity: 0.6;
+}
+
+@media (min-width: 840px) {
+  .bid {
+    padding: var(--space-6) max(var(--space-8), calc((100vw - 760px) / 2));
+  }
+
+  .bid__bar {
+    position: static !important;
+  }
+}

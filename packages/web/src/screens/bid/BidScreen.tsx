@@ -17,19 +17,29 @@ import {
 } from '../../store/selectors';
 import { roomStore, useRoom, type RoomStore } from '../../store/roomStore';
 import { formatUsd } from '../../util/money';
+import { HoldCard, PriceRoll, Skeleton, SkeletonGroup } from '../../ui';
+import './bid.css';
 import { CeilingMeter } from './CeilingMeter';
 import { ConfirmSheet } from './ConfirmSheet';
 import { CustomBid } from './CustomBid';
 import { QuickBid, useSendGuard } from './QuickBid';
 import { Rejection, REJECTION_CLEAR_MS, type BidRejection } from './Rejection';
 import { StateBanner, bidsLocked, bidsNotice } from './StateBanner';
-import { myStatus, StatusChip } from './StatusChip';
+import { myStatus, StatusChip, type ChipStatus } from './StatusChip';
 import { useOutbid } from './useOutbid';
 
 export { REJECTION_CLEAR_MS };
 export type { BidRejection };
 
 const LAST_EVENTS = 5;
+
+/** Whole-screen state colour: win for leading or won, out for outbid, danger for review. */
+function kindOf(status: ChipStatus): 'win' | 'out' | 'review' | 'idle' {
+  if (status === 'leading' || status === 'won') return 'win';
+  if (status === 'outbid') return 'out';
+  if (status === 'review') return 'review';
+  return 'idle';
+}
 
 export interface BidScreenProps {
   store?: RoomStore;
@@ -117,9 +127,12 @@ export function BidScreen({
     announce('assertive', t('confirm.title', { amount: formatUsd(requestAmount), n: myPaddle }));
   }, [requestId, requestAmount, myPaddle]);
 
+  const screenKind = request !== null && myPaddle !== undefined ? 'confirm' : kindOf(status);
+  const ceilingHold = usage === null ? null : usage.maxCents;
+
   return (
-    <main>
-      <div>
+    <main className="bid" data-k={screenKind}>
+      <div className="bid__notices">
         {connection.offline && (
           <Banner tone="warn" icon={<Icon name="warning" />}>
             {t('net.offline')}
@@ -128,22 +141,38 @@ export function BidScreen({
         <StateBanner status={auctionStatus} stopped={stopped} />
       </div>
 
-      <section>
-        <div data-slot="lot-image" aria-hidden="true" style={{ minHeight: 120 }} />
-        {price === null && <p>{t('bid.waitingLot')}</p>}
+      <div className="bid__status">
+        <StatusChip status={status} />
+      </div>
+
+      <section className="bid__lot">
+        <div data-slot="lot-image" aria-hidden="true" className="bid__lotimg" />
+        {price === null && <p className="bid__wait">{t('bid.waitingLot')}</p>}
       </section>
 
-      <section aria-label={t('bid.price')}>
-        <h1 tabIndex={-1}>{t('bid.price')}</h1>
-        <p style={{ fontVariantNumeric: 'tabular-nums', minWidth: '8ch' }}>
-          {formatUsd(price?.currentCents ?? reserve)}
-        </p>
-        {leader !== null && <p>{leader}</p>}
+      <section aria-label={t('bid.price')} className="bid__panel bid__priceboard">
+        <h1 tabIndex={-1} className="bid__kicker">
+          {t('bid.price')}
+        </h1>
+        {price === null ? (
+          <SkeletonGroup>
+            <Skeleton height="3.5rem" width="70%" />
+          </SkeletonGroup>
+        ) : (
+          <PriceRoll cents={price.currentCents ?? reserve} className="bid__price" />
+        )}
+        {leader !== null && <p className="bid__leader">{leader}</p>}
       </section>
 
-      <StatusChip status={status} />
+      {ceilingHold !== null && (
+        <HoldCard
+          state="held"
+          ceilingCents={ceilingHold}
+          {...(myPaddle === undefined ? {} : { caption: t('reg.yourPaddle', { n: myPaddle }) })}
+        />
+      )}
 
-      <label>
+      <label className="bid__vibrate">
         <input type="checkbox" checked={vibrate} onChange={(e) => setVibrate(e.target.checked)} />
         <span>{t('bid.vibrate')}</span>
       </label>
@@ -151,6 +180,7 @@ export function BidScreen({
       {canBid && !unsent && (
         <section
           data-testid="bid-bar"
+          className="bid__bar"
           style={{
             position: 'sticky',
             bottom: 0,
@@ -175,7 +205,7 @@ export function BidScreen({
       />
 
       {unsent && !pending && (
-        <div role="status">
+        <div role="status" className="bid__panel bid__unsent">
           <p>{t('bid.unknown')}</p>
           {unsentCents !== null && unsentCents < nextMin && onReplace !== undefined ? (
             <Button disabled={connection.offline} onClick={() => onReplace(nextMin)}>
@@ -195,11 +225,11 @@ export function BidScreen({
 
       {usage !== null && <CeilingMeter usedCents={usage.usedCents} maxCents={usage.maxCents} />}
 
-      <ul aria-label={t('console.stream')}>
+      <ul aria-label={t('console.stream')} className="bid__stream">
         {stream.slice(0, LAST_EVENTS).map((b) => (
           <li key={b.seq}>
             <span>{b.paddle === null ? null : t('bid.leader', { n: b.paddle })}</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatUsd(b.amount)}</span>
+            <span className="bid__amt">{formatUsd(b.amount)}</span>
           </li>
         ))}
       </ul>
