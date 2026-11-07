@@ -141,7 +141,7 @@ describe('judge rooms: scenario on the fake PayPal', () => {
     const stop = await fetch(`${url}/api/auctions/${room.auctionId}/kill`, {
       method: 'POST',
       headers: auth,
-      body: '{}',
+      body: JSON.stringify({ confirm: 'STOP' }),
     });
     expect(stop.status).toBe(200);
   });

@@ -49,7 +49,7 @@ describe.skipIf(api === '')('sandbox judge rooms', () => {
     const stop = await fetch(`${api}/api/auctions/${room.auctionId}/kill`, {
       method: 'POST',
       headers: { ...bearer, 'content-type': 'application/json' },
-      body: '{}',
+      body: JSON.stringify({ confirm: 'STOP' }),
     });
     expect(stop.status).toBe(200);
   });

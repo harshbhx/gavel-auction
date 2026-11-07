@@ -224,6 +224,8 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     const { deps } = c;
     if (!opts.enabled) throw new HttpError(404, 'not_found', 'no such route');
     await load(deps);
+    // Read the body before the limit checks: no await may sit between a check and its reservation.
+    const { title } = parseBody(CreateBody, await c.body());
     const src = requestSources.get(c.req) ?? 'unknown';
     const tag = sourceTag(src);
     if (paused) return refuse(deps, 503, 'judge_rooms_paused', 'paused', tag, 60);
@@ -240,7 +242,6 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     if (live.size >= opts.maxLive) {
       return refuse(deps, 429, 'judge_room_cap', 'cap', tag, 60);
     }
-    const { title } = parseBody(CreateBody, await c.body());
     // Count the attempt and reserve the slot before the first await below, so a burst of
     // concurrent creates cannot overshoot either limit.
     mine.push(now);

@@ -238,7 +238,7 @@ describe('judge rooms: expiry and cleanup', () => {
         new Request(`http://h.test/api/auctions/${c.auctionId}/kill`, {
           method: 'POST',
           headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-          body: '{}',
+          body: JSON.stringify({ confirm: 'STOP' }),
         }),
       );
     expect((await post(app, JUDGE_ROOMS_PATH, { src: '5.5.5.5' })).status).toBe(429);
@@ -273,10 +273,16 @@ describe('judge rooms: token scoping', () => {
       (await post(app, JUDGE_PAUSE_PATH, { headers: bearer, body: { paused: true } })).status,
     ).toBe(401);
     // Another room rejects it.
-    const other = await post(app, `/api/auctions/${b.auctionId}/kill`, { headers: bearer });
+    const other = await post(app, `/api/auctions/${b.auctionId}/kill`, {
+      headers: bearer,
+      body: { confirm: 'STOP' },
+    });
     expect(other.status).toBe(401);
     // Its own room accepts it.
-    const own = await post(app, `/api/auctions/${a.auctionId}/kill`, { headers: bearer });
+    const own = await post(app, `/api/auctions/${a.auctionId}/kill`, {
+      headers: bearer,
+      body: { confirm: 'STOP' },
+    });
     expect(own.status).toBe(200);
   });
 });
