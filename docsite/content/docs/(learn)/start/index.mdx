@@ -13,19 +13,19 @@ A short path through the project. Everything is PayPal sandbox only. A bid is a 
 - <GateBadge id="G5" />: speech accuracy failed on synthetic audio, so voice bids are designed to wait for a confirmation.
 - Settlement of a whole auction and crash recovery are verified with the project's fake PayPal. The 30 day run is <Chip kind="hatched">SIMULATED</Chip>.
 
-<NotVerified title="No hosted demo yet">
+<Held title="Hosted in sandbox mode">
 
-No hosted demo URL is published. The [demo guide](/docs/start/demo) lists what you can run today. Where a URL is shown on these pages as a placeholder, it is marked as one.
+The web app is hosted at [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev) and the API at [gavel-auction-aufz.onrender.com](https://gavel-auction-aufz.onrender.com), in sandbox mode. Storage is temporary until a disk is added, so a restart can clear rooms. The [demo guide](/docs/start/demo) lists what you can run today.
 
-</NotVerified>
+</Held>
 
 ## The five minute path
 
-The scripted path below is the intended flow. It cannot be followed end to end today because there is no hosted web URL.
+The scripted path below is the intended flow. It has not yet been checked end to end against the hosted web app, so read it as the intended flow.
 
 | Step | Persona | What to do | Expected outcome |
 | --- | --- | --- | --- |
-| 1 | Judge | Open the hosted web URL. | The landing page shows "Start a demo auction". |
+| 1 | Judge | Open the hosted web URL (see above). | The landing page shows "Start a demo auction". |
 | 2 | Judge | Press "Start a demo auction". | A demo room opens with a link for each role. |
 | 3 | Auctioneer | Open the console link. | The console shows the lot and its controls. |
 | 4 | Bidder | Open a bidder link in a second tab and place a bid. | The bid shows on the big screen. A bid is a hold; nothing is charged. |

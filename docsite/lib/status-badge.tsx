@@ -16,15 +16,20 @@ const styles: Record<string, string> = {
 
 export function StatusBadge({ status }: { status: string }) {
   const key = status.toLowerCase();
+  // The leading space keeps a gap where the badge sits inline (the next page link); in the
+  // sidebar's flex row the space is ignored and ms-auto does the work.
   return (
-    <span
-      data-status={key}
-      className={cn(
-        'ms-auto shrink-0 rounded-[2px] px-1.5 py-px font-mono text-[0.625rem] font-medium uppercase leading-4 tracking-wide',
-        styles[key] ?? 'hl-hollow-chip',
-      )}
-    >
-      {status}
-    </span>
+    <>
+      {' '}
+      <span
+        data-status={key}
+        className={cn(
+          'ms-auto shrink-0 rounded-[2px] px-1.5 py-px font-mono text-[0.625rem] font-medium uppercase leading-4 tracking-wide',
+          styles[key] ?? 'hl-hollow-chip',
+        )}
+      >
+        {status}
+      </span>
+    </>
   );
 }

@@ -81,7 +81,7 @@ const faq = [
   },
   {
     q: 'Is there a hosted demo?',
-    a: 'Not yet. The demo guide lists what runs today (a local run on the fake PayPal) and what is not available.',
+    a: 'Yes, in sandbox mode: the web app is at gavel-web.creharsh.workers.dev and the API at gavel-auction-aufz.onrender.com. Storage is temporary until a disk is added, and nobody has walked the whole flow on it yet. The demo guide lists what is verified.',
   },
 ];
 
