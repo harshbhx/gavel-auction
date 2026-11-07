@@ -659,7 +659,7 @@ export async function scenario8(
             .join(' ');
           reviews.push([
             lot.id,
-            `closed day ${lot.closeAt.toFixed(2)}, down ${(res.downMs / DAY_MS).toFixed(2)} days, last step ${last}, reauthorized holds ${reauthed}, failed ${failedWhy}`,
+            `closed day ${lot.closeAt.toFixed(2)}, down ${(res.downMs / DAY_MS).toFixed(2)} days, last step ${last}, reauthorized holds ${reauthed}, failed ${failedWhy}, passes ${res.passes}, crashes ${res.crashes}, last calls ${tail}`,
           ]);
         }
         if (res.status === 'settled') numbers.settled += 1;
