@@ -26,6 +26,7 @@ check listed under Evidence is what the reviewer re-runs.
 | SEC-16 | P2  | Admin and ops pages                         | PASS     | manual review                                         | sec-review | 2026-11-07 |
 | SEC-17 | P2  | Clickjacking and PayPal return URL redirect | PASS     | manual review, live header check                      | hygiene    | 2026-11-07 |
 | SEC-18 | P0  | Server time is authoritative                | PASS     | T-QA-079                                              | sec-review | 2026-11-07 |
+| SEC-19 | P1  | Key-less judge rooms (JUDGE_ROOMS)          | OPEN     | `http-judge-rooms.test.ts`                            |            |            |
 
 ## How to record a result
 
@@ -60,6 +61,7 @@ look at the P0 rows is still advisable before the final submission.
 - **SEC-16** PASS. `/ops/*`, `/metrics` and `/admin/*` need `x-admin-key` (constant-time compare, 24 character minimum, must differ from the token secret). Live GETs answer 401. No HTML admin page is served.
 - **SEC-17** PASS. API sends `frame-ancestors 'none'`; no server redirect takes a client URL (return URLs are fixed in the PayPal SDK flow). The web host answers with `content-security-policy: frame-ancestors 'none'` and `x-frame-options: DENY` (live `curl -sI https://gavel-web.creharsh.workers.dev/` on 2026-11-07).
 - **SEC-18** PASS. T-QA-079 `access.test.ts` (events carry the server clock whatever `clientTs` says). [ci run](https://github.com/harshbhx/gavel-auction/actions/runs/42363011490).
+- **SEC-19** OPEN (new, not yet reviewed by someone other than its author). Threat: a create route that needs no operator key (`POST /api/judge/rooms`) lets anyone on the internet open real sandbox rooms, so it could be used to exhaust the host, to mint a token that reaches operator routes, to leave rooms running, or to point real PayPal at an unattended endpoint. Mitigations: the route answers 404 unless `JUDGE_ROOMS=true`; boot validation refuses the flag with a non-sandbox `PAYPAL_ENV` or `PAYPAL_BASE_URL` and, on a production-like host, without `PAYMENTS=sandbox`; `DEMO_MODE` stays refused in production; per-address and host-wide hourly create limits (the address is stored only as a short hash); a cap on live rooms counted before the first await so a burst cannot overshoot it; a fixed safe lot (small reserve, short window, ceilings under the payments cap); the response carries room-scoped auctioneer and screen tokens only, which every admin route rejects (they need `x-admin-key`); a sweeper ends each room at its lifetime, voids unsettled holds through the normal abort path and revokes the creator token; every audit line carries `judgeRoom: true`; the operator can switch creation off at runtime with `POST /api/judge/pause` (admin key) or boot paused with `JUDGE_ROOMS_PAUSED=true`. Residual: judges behind one shared address share the per-address limit (`JUDGE_ROOMS_PER_IP_HOUR`); an attacker with many addresses can fill the room cap and block judges until rooms expire; the real sandbox path (hold, hammer, void) is covered by the fake PayPal in CI and by a sandbox spec that is skipped without secrets.
 
 ## Sign-off
 

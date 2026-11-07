@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { isSecretKey } from './log/logger';
 
 const flag = z.enum(['0', '1']).transform((v) => v === '1');
+/** Like `flag`, but also accepts true and false, for the judge room switches. */
+const boolFlag = z.enum(['0', '1', 'true', 'false']).transform((v) => v === '1' || v === 'true');
 const int = (min: number) =>
   z
     .string()
@@ -44,6 +46,21 @@ const EnvObject = z.object({
   DEMO_MODE: flag.default('0'),
   /** Most live demo rooms the demo rooms route keeps; further creates answer 429. */
   DEMO_MAX_ROOMS: int(1).default('20'),
+  /**
+   * Judge rooms: a key-less create route for real sandbox rooms, so a judge can run an auction
+   * with no setup. Off by default; only allowed with sandbox PayPal (see the refinement below).
+   */
+  JUDGE_ROOMS: boolFlag.default('0'),
+  /** Boot-time state of the judge rooms kill switch; the admin route flips it at runtime. */
+  JUDGE_ROOMS_PAUSED: boolFlag.default('0'),
+  /** Most judge rooms live at once. */
+  JUDGE_ROOMS_MAX: int(1).pipe(z.number().max(50)).default('5'),
+  /** Lifetime of a judge room in ms before the sweeper ends it (at most 2 hours). */
+  JUDGE_ROOM_TTL_MS: int(60_000).pipe(z.number().max(7_200_000)).default('1800000'),
+  /** Judge rooms one source address may create per hour. */
+  JUDGE_ROOMS_PER_IP_HOUR: int(1).pipe(z.number().max(100)).default('4'),
+  /** Judge rooms the whole host may create per hour. */
+  JUDGE_ROOMS_PER_HOUR: int(1).pipe(z.number().max(1000)).default('40'),
   ALLOW_MEMORY_STORE: flag.default('0'),
   RATE_BID_PER_S: int(1).default('3'),
   RATE_BID_BURST: int(1).default('5'),
@@ -137,6 +154,20 @@ const EnvSchema = EnvObject.superRefine((env, ctx) => {
   }
   if (env.TOKEN_SECRET === env.ADMIN_KEY) {
     problem('ADMIN_KEY', 'must differ from TOKEN_SECRET');
+  }
+  if (env.JUDGE_ROOMS) {
+    // Real sandbox holds only. The fake adapter is allowed off-production so tests and local
+    // runs can exercise the feature; production-like hosts must use the PayPal sandbox.
+    if (env.PAYMENTS !== 'sandbox' && isProductionLike(env)) {
+      problem('JUDGE_ROOMS', 'needs PAYMENTS=sandbox');
+    }
+    if (env.PAYPAL_ENV !== 'sandbox') problem('JUDGE_ROOMS', 'needs PAYPAL_ENV=sandbox');
+    if (env.PAYMENTS === 'sandbox' && env.PAYPAL_BASE_URL !== undefined) {
+      const host = new URL(env.PAYPAL_BASE_URL).hostname;
+      if (host !== 'api-m.sandbox.paypal.com' && !LOCAL_HOSTS.has(host)) {
+        problem('JUDGE_ROOMS', 'refused: PAYPAL_BASE_URL is not the PayPal sandbox');
+      }
+    }
   }
   if (!isProductionLike(env)) return;
   if (env.STORE === 'memory' && !env.ALLOW_MEMORY_STORE) {

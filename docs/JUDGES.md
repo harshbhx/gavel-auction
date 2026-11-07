@@ -8,6 +8,18 @@ A short path through the repository for judges. Everything is PayPal sandbox onl
 - The web app is hosted at https://gavel-web.creharsh.workers.dev with its API at https://gavel-auction-aufz.onrender.com, in sandbox mode. Storage there is temporary until a disk is added. `docs/DEMO.md` lists what is available and what is not.
 - Real versus recorded: the fake PayPal demo and the replay are recorded or simulated, not live PayPal. Gates G0, G1, G2 and G4 have run against the real sandbox; G3 (a real probe in progress since 7 Nov 2026 03:06 UTC, final about 12 Nov 06:17 UTC, no result recorded) and G5 is PARTIAL (wrong accept 0.000 on 24 synthetic, noise-free clips per set after fixes chosen on those same clips, so it is not a pass; no real-room or noisy-room test; spoken bids always use the confirm prompt); neither has a real-world result. Committed run logs exist for G1, G2 and G4 only; G0 is an Actions run log. See `docs/GATES.md` for each gate and its result. Settlement of a whole auction and crash recovery have been exercised against the fake PayPal; on the real sandbox only the nightly specs R7, R8 and R10 ran (one lot of three holds, one in-process crash; runs 42200708552 and 42317068784), not an auction driven through a server and not a real process kill.
 
+## Real auction in two minutes (when judge rooms are on)
+
+The hosted site offers a short real room on the PayPal sandbox with no operator key. The same steps are on the page `/try` of the web app.
+
+1. Open https://gavel-web.creharsh.workers.dev and press "Start a demo auction". The server opens a room that lasts about thirty minutes and takes you to the auctioneer console. If the host is busy, switched off or the flag is not set, the page says so and offers the scripted demo.
+2. Open the big screen link in a second window, or scan its QR code with a phone, and join as a bidder.
+3. Enter a name, pick a ceiling and approve the hold in the PayPal sandbox login. Sandbox buyer credentials: see the Devpost testing instructions. They are not in this repository.
+4. Place a bid from the bidder view, then press hammer in the console.
+5. You should see the hold show as held while bidding, then the settlement after the hammer and the other holds released. The audit trail link shows the ledger chained by hash.
+
+For a 90 second tour that needs no login, open `/r/demo/screen?scripted=1`; it replays a recorded room in the browser and makes no PayPal calls. Nothing on this path is a live-money action: the host refuses to start judge rooms unless it is on the PayPal sandbox.
+
 ## Five minute path
 
 The table below is TARGET behaviour: steps 1 and 2 need a deployed staging URL (the `JUDGE_URL` repository variable), and until that is configured the nightly smoke fails red (it never reports a skipped pass).

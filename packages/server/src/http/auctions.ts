@@ -29,7 +29,7 @@ const CreateBody = z
   })
   .strict();
 
-const titleKey = (auctionId: string): string => `http:title:${auctionId}`;
+export const titleKey = (auctionId: string): string => `http:title:${auctionId}`;
 const codeKey = (code: string): string => `http:joincode:${code}`;
 
 /** Letters and digits without look-alikes (no 0 O 1 I L), so a code can be read out loud. */
@@ -52,7 +52,7 @@ function randomCode(): string {
 }
 
 /** Reserve a join code no other auction holds; the journal's version check makes it unique. */
-async function reserveJoinCode(deps: HttpDeps, auctionId: string): Promise<string> {
+export async function reserveJoinCode(deps: HttpDeps, auctionId: string): Promise<string> {
   for (let i = 0; i < CODE_TRIES; i++) {
     const code = randomCode();
     try {

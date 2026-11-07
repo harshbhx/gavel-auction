@@ -13,7 +13,7 @@ export interface DemoLinks {
 }
 
 /** Why the server refused to make a room; the launcher shows a message for each. */
-export type DemoFailure = 'demoOff' | 'unauthorized' | 'roomCap';
+export type DemoFailure = 'demoOff' | 'unauthorized' | 'roomCap' | 'judgeBusy';
 
 /** Rejection from `createRoom` when the server answered with a known refusal. */
 export class DemoRoomError extends Error {
@@ -28,6 +28,7 @@ function failureText(reason: DemoFailure | null): string {
   if (reason === 'demoOff') return t('demo.failedOff');
   if (reason === 'unauthorized') return t('demo.failedKey');
   if (reason === 'roomCap') return t('demo.failedCap');
+  if (reason === 'judgeBusy') return t('demo.failedBusy');
   return t('demo.failed');
 }
 
