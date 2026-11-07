@@ -62,6 +62,10 @@ export type Expect = {
         requestIds: number;
     };
 } | {
+    ops: {
+        statuses: number[];
+    };
+} | {
     ui?: {
         view: 'bidder' | 'auctioneer' | 'public' | 'audit';
         text?: string;
@@ -261,6 +265,22 @@ export const ExpectSchema: z.ZodUnion<[z.ZodObject<{
             transcript: string;
             confidenceBps: number;
         }[] | undefined;
+    };
+}>, z.ZodObject<{
+    ops: z.ZodObject<{
+        statuses: z.ZodArray<z.ZodNumber, "many">;
+    }, "strict", z.ZodTypeAny, {
+        statuses: number[];
+    }, {
+        statuses: number[];
+    }>;
+}, "strict", z.ZodTypeAny, {
+    ops: {
+        statuses: number[];
+    };
+}, {
+    ops: {
+        statuses: number[];
     };
 }>, z.ZodObject<{
     captures: z.ZodObject<{
@@ -699,6 +719,18 @@ export const ScenarioSchema: z.ZodObject<{
         t: number;
     }>, z.ZodObject<{
         t: z.ZodNumber;
+        do: z.ZodLiteral<"ops_release">;
+        key: z.ZodEnum<["valid", "missing", "wrong"]>;
+    }, "strict", z.ZodTypeAny, {
+        do: "ops_release";
+        t: number;
+        key: "valid" | "missing" | "wrong";
+    }, {
+        do: "ops_release";
+        t: number;
+        key: "valid" | "missing" | "wrong";
+    }>, z.ZodObject<{
+        t: z.ZodNumber;
         do: z.ZodLiteral<"fault">;
         fault: z.ZodUnion<[z.ZodObject<{
             at: z.ZodLiteral<"paypal.capture">;
@@ -1088,6 +1120,22 @@ export const ScenarioSchema: z.ZodObject<{
             }[] | undefined;
         };
     }>, z.ZodObject<{
+        ops: z.ZodObject<{
+            statuses: z.ZodArray<z.ZodNumber, "many">;
+        }, "strict", z.ZodTypeAny, {
+            statuses: number[];
+        }, {
+            statuses: number[];
+        }>;
+    }, "strict", z.ZodTypeAny, {
+        ops: {
+            statuses: number[];
+        };
+    }, {
+        ops: {
+            statuses: number[];
+        };
+    }>, z.ZodObject<{
         captures: z.ZodObject<{
             committed: z.ZodNumber;
             requestIds: z.ZodNumber;
@@ -1208,6 +1256,10 @@ export const ScenarioSchema: z.ZodObject<{
         do: "restart";
         t: number;
     } | {
+        do: "ops_release";
+        t: number;
+        key: "valid" | "missing" | "wrong";
+    } | {
         do: "fault";
         t: number;
         fault: {
@@ -1296,6 +1348,10 @@ export const ScenarioSchema: z.ZodObject<{
             }[] | undefined;
         };
     } | {
+        ops: {
+            statuses: number[];
+        };
+    } | {
         captures: {
             committed: number;
             requestIds: number;
@@ -1369,6 +1425,10 @@ export const ScenarioSchema: z.ZodObject<{
     } | {
         do: "restart";
         t: number;
+    } | {
+        do: "ops_release";
+        t: number;
+        key: "valid" | "missing" | "wrong";
     } | {
         do: "fault";
         t: number;
@@ -1454,6 +1514,10 @@ export const ScenarioSchema: z.ZodObject<{
             }[] | undefined;
         };
     } | {
+        ops: {
+            statuses: number[];
+        };
+    } | {
         captures: {
             committed: number;
             requestIds: number;
@@ -1514,6 +1578,10 @@ export type Step = {
 } | {
     t: number;
     do: 'restart';
+} | {
+    t: number;
+    do: 'ops_release';
+    key: 'valid' | 'missing' | 'wrong';
 } | {
     t: number;
     do: 'fault';
@@ -1651,6 +1719,18 @@ export const StepSchema: z.ZodDiscriminatedUnion<"do", [z.ZodObject<{
 }, {
     do: "restart";
     t: number;
+}>, z.ZodObject<{
+    t: z.ZodNumber;
+    do: z.ZodLiteral<"ops_release">;
+    key: z.ZodEnum<["valid", "missing", "wrong"]>;
+}, "strict", z.ZodTypeAny, {
+    do: "ops_release";
+    t: number;
+    key: "valid" | "missing" | "wrong";
+}, {
+    do: "ops_release";
+    t: number;
+    key: "valid" | "missing" | "wrong";
 }>, z.ZodObject<{
     t: z.ZodNumber;
     do: z.ZodLiteral<"fault">;

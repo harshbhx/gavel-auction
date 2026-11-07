@@ -75,9 +75,9 @@ describe('race, soft close and payment retry scenarios (R-QA-026, R-QA-030)', ()
         { t: 6900, do: 'ops_release', key: 'valid' },
         ...steps,
         { t: 7100, do: 'advance_clock', ms: 600_001 },
-        { t: 7200, do: 'ops_release', key: 'missing' },
-        { t: 7300, do: 'ops_release', key: 'wrong' },
-        { t: 7400, do: 'ops_release', key: 'valid' },
+        { t: 607_200, do: 'ops_release', key: 'missing' },
+        { t: 607_300, do: 'ops_release', key: 'wrong' },
+        { t: 607_400, do: 'ops_release', key: 'valid' },
       ],
       expect: [
         { ops: { statuses: [409, 401, 401, 200] } },
