@@ -121,39 +121,92 @@ Scope: tampered-event rejection was not part of this run; it is covered against 
 
 ## G5: STT accuracy on noisy bids
 
-Status: FAIL
-Run date / by: 2026-11-07, cached eval over recorded provider outputs (PR #1940, issue #1864)
+Status: PARTIAL
+Run date / by: 2026-11-07, cached eval over recorded provider outputs (PR #1940, issue #1864; second clip set PR VOI-01; error analysis, parser fixes and option trials PR VOI-02)
 Question: is the speech-to-text accuracy on noisy bid audio high enough to accept bids without manual confirmation?
-Setup: synthetic eSpeak speech (noise-free and robotic, which is harder than real speech), 24 clips; a second, human-like synthetic voice set of the same 24 utterances is scored below and also fails, scored by the cached eval: Deepgram nova-2 exact 0.615, wrong-accept 0.125, confirm 0.417; Groq whisper-large-v3-turbo exact 0.615, wrong-accept 0.083, confirm 0.375..
-Requests: the 24 clips were sent to each provider once and the outputs were recorded; the cached eval scores the recorded outputs through the rule parser.
-Observed: Deepgram nova-2 exact 0.615, wrong-accept 0.125, confirm 0.417. Groq whisper-large-v3-turbo exact 0.615, wrong-accept 0.083, confirm 0.375.
-Verdict: both providers miss the threshold (wrong-accept 0.05 or less), on speech that is noise-free but robotic and so harder than real speech. There is no real-room or noisy-room test.
-Decision: FAIL for unconfirmed voice bids: spoken bids always go through the confirm prompt (assist mode). The payments decision is unchanged.
-Fallback if FAIL: always show the confirm prompt for spoken bids.
-Evidence: PR #1940 (merged): 24 synthetic clips under packages/voice/fixtures/audio and the recorded provider outputs under packages/voice/fixtures/stt-cache/deepgram and /groq
-Links: issue #1864
+Setup: synthetic eSpeak speech (noise-free and robotic), 24 clips, and a second set of the same 24 utterances in a human-like synthetic voice, both scored by the cached eval. Deepgram nova-3 (`punctuate=true`, `smart_format=false`) and Groq whisper-large-v3-turbo with a bid-words prompt and temperature 0 (the options chosen in the option trials below). The first recordings used Deepgram nova-2 and Groq without a prompt and failed.
+Requests: every clip was sent to each provider once per variant; the outputs are recorded under `packages/voice/fixtures/stt-cache` and `stt-cache-human` and scored through the rule parser, with the room gate run on top.
+Observed: on both clip sets and both providers, wrong accept 0.000, exact plus recoverable 1.000, missed bid 0.000 (exact 1.000 for Deepgram, 0.923 for Groq; the rest recoverable through a confirm prompt). Confirm rate 0.292 (Deepgram) and 0.333 (Groq). At system level no bid is accepted without a prompt on the room microphone (0 of 24 auto-accepted, by construction); on a device microphone with an always-agreeing second reading, 0 of the 3 or 4 auto-accepted bids per run were wrong.
+Verdict: the measured numbers meet the gate criteria (wrong accept 0.05 or less, exact plus recoverable 0.90 or more) on synthetic clips, but they are not a pass of the gate question: the parser rules and the provider options were chosen after reading the failures on these same 24 clips (in sample), the audio is noise-free, 24 clips move a rate by 0.042 per clip, and there is no real-room or noisy-room run. Before this change the same clips failed (wrong accept 0.083 to 0.167), but 9 of the 11 wrong accepts were an evaluation defect (the manifest paddle label was ignored), not a speech or parser error.
+Decision: PARTIAL, gate stays open. Spoken bids keep going through the confirm prompt (assist mode); no code path enables auto-accept of spoken bids, and the room microphone cannot reach AUTO at all. The payments decision is unchanged.
+Fallback if not PASS: always show the confirm prompt for spoken bids.
+Evidence: PR VOI-02 (cached job artifacts of the `voice-eval` workflow, option trials runs 42364412751 and 42365428369); docs/evidence/G5/ERROR-ANALYSIS.md; clips under packages/voice/fixtures/audio and audio-human, recorded outputs under stt-cache and stt-cache-human. First results: PR #1940 (merged).
+Links: issues #1864 and #478
 
-### G5 second clip set: human-like synthetic voice (PR VOI-01)
+### G5 results after the VOI-02 changes
 
-Same 24 utterances (manifest text unchanged), spoken by one natural text-to-speech voice
-(ElevenLabs "Kiora", eleven_multilingual_v2, one generation per clip, 24 in total) instead of
-eSpeak. Still synthetic and noise-free, so still not a real-room or noisy-room test. Both providers
-heard each clip once; the outputs are recorded under `packages/voice/fixtures/stt-cache-human` and
-scored by the cached job (`--clips human`). Recorded by voice-eval run 42342379648.
+Same 24 utterances, two clip sets, both synthetic and noise-free. Scored by the cached eval with the
+parser and recordings of this change. The four rows below are the current result.
 
-| clip set                                         | provider                    | n   | exact | wrong accept | confirm | missed bid |
-| ------------------------------------------------ | --------------------------- | --- | ----- | ------------ | ------- | ---------- |
-| eSpeak (robotic), noise-free                     | Deepgram nova-2             | 24  | 0.615 | 0.125        | 0.417   | n/a        |
-| eSpeak (robotic), noise-free                     | Groq whisper-large-v3-turbo | 24  | 0.615 | 0.083        | 0.375   | n/a        |
-| human-like synthetic voice, noise-free, 24 clips | Deepgram nova-2             | 24  | 0.692 | 0.083        | 0.375   | 0.000      |
-| human-like synthetic voice, noise-free, 24 clips | Groq whisper-large-v3-turbo | 24  | 0.615 | 0.167        | 0.250   | 0.154      |
+| clip set                                         | provider                                | n   | exact | wrong accept | confirm | missed bid |
+| ------------------------------------------------ | --------------------------------------- | --- | ----- | ------------ | ------- | ---------- |
+| eSpeak (robotic), noise-free                     | Deepgram nova-3                         | 24  | 1.000 | 0.000        | 0.292   | 0.000      |
+| eSpeak (robotic), noise-free                     | Groq whisper-large-v3-turbo, bid prompt | 24  | 0.923 | 0.000        | 0.333   | 0.000      |
+| human-like synthetic voice, noise-free, 24 clips | Deepgram nova-3                         | 24  | 1.000 | 0.000        | 0.292   | 0.000      |
+| human-like synthetic voice, noise-free, 24 clips | Groq whisper-large-v3-turbo, bid prompt | 24  | 0.923 | 0.000        | 0.333   | 0.000      |
 
-Verdict: the natural voice does not clear the gate either. Deepgram improves slightly (wrong accept
-0.083, two of 24 clips); Groq gets worse on wrong accepts (0.167, four of 24 clips), and misses two
-bids that the parser then drops. Groq writes numbers as digits ("Paddle 12, 350."), which the rule
-parser reads differently from spelled-out words. Both stay above the 0.05 limit, so G5 stays FAIL.
-With 24 clips one clip moves a rate by 0.042, so the differences between the two clip sets are
-within noise.
+Exact plus recoverable is 1.000 in all four rows. Exact counts the 13 bid clips; wrong accept and
+confirm count all 24 clips.
+
+Before (main, PR #1940 and VOI-01; Deepgram nova-2 and Groq without a prompt):
+
+| run before this change             | provider                    | n   | exact | wrong accept | confirm | missed bid |
+| ---------------------------------- | --------------------------- | --- | ----- | ------------ | ------- | ---------- |
+| main, eSpeak, noise-free           | Deepgram nova-2             | 24  | 0.615 | 0.125        | 0.417   | 0.000      |
+| main, eSpeak, noise-free           | Groq whisper-large-v3-turbo | 24  | 0.615 | 0.083        | 0.375   | 0.077      |
+| main, human-like voice, noise-free | Deepgram nova-2             | 24  | 0.692 | 0.083        | 0.375   | 0.000      |
+| main, human-like voice, noise-free | Groq whisper-large-v3-turbo | 24  | 0.615 | 0.167        | 0.250   | 0.154      |
+
+Where the change came from, with the new parser and the same old recordings (nova-2, no prompt) and
+with the label fix alone. Exact, wrong accept (clips), exact plus recoverable:
+
+| step                                     | Deepgram eSpeak | Groq eSpeak     | Deepgram human  | Groq human      |
+| ---------------------------------------- | --------------- | --------------- | --------------- | --------------- |
+| main                                     | 0.615, 3, 0.692 | 0.615, 2, 0.615 | 0.692, 2, 0.692 | 0.615, 4, 0.615 |
+| eval label fix only (derived by recount) | 0.769, 1, 0.769 | 0.769, 0, 0.769 | 0.846, 0, 0.846 | 0.846, 1, 0.846 |
+| plus parser fixes (same recordings)      | 0.846, 0, 0.846 | 0.769, 0, 1.000 | 1.000, 0, 1.000 | 0.846, 0, 1.000 |
+| plus provider options (final)            | 1.000, 0, 1.000 | 0.923, 0, 1.000 | 1.000, 0, 1.000 | 0.923, 0, 1.000 |
+
+The label-fix row is a recount of the committed confusion lists of main (the run itself was
+cancelled on CI); the parser row is the option-trial rows `dg-nova2-base` and `gq-turbo-base` of the
+trials table in docs/evidence/G5/ERROR-ANALYSIS.md.
+
+Train and hold-out, in the sense that is possible on 24 clips. The 9 train clips are the ones whose
+failures drove a rule (a03, a05, a07, a08, a09, a10, a13, a18, a21); the 15 hold-out clips were not
+used for a rule and passed before. The hold-out therefore checks for regressions; it is not an
+independent test, and a fresh clip set was not recorded. Exact, wrong accept (clips), exact plus
+recoverable on the train clips: Deepgram 1.000, 0, 1.000 on both sets; Groq 0.857, 0, 1.000 on both
+sets (main: Deepgram 0.286 and 0.429 exact, Groq 0.286, with 2 to 4 wrong accepts per run). On the 15
+hold-out clips: 1.000, 0, 1.000 for all four runs, unchanged from main. The held-out text corpus (40
+cases, hash-guarded, not used for any rule) is unchanged: exact 0.864, wrong accept 0.000 before and
+after.
+
+Option choices were made on the aggregate of the 48 clip runs per provider (docs/evidence/G5/ERROR-ANALYSIS.md,
+option trials), so they are in sample too. The estimated spend of the trials is under 0.15 US dollars
+at Deepgram (about 340 short clips); Groq ran on its free tier; no new speech clips were generated.
+
+### G5 system level: AUTO against CONFIRM (issue 478)
+
+Raw parser accuracy is not what the room does. The eval also runs every utterance through the room
+pipeline (rules parse, rescoring, validation, AUTO and CONFIRM policy, mic rule) and counts what the
+room would accept without a prompt. The rate below is the wrong bids among the auto-accepted bids.
+
+| gate setting                                                         | auto-accepted (of 24 per run) | wrong among auto-accepted |
+| -------------------------------------------------------------------- | ----------------------------- | ------------------------- |
+| room microphone (what the room runs), rules only                     | 0, 0, 0, 0                    | 0 of 0 (by construction)  |
+| device microphone, rules only (no second reading)                    | 0, 0, 0, 0                    | 0 of 0                    |
+| device microphone, a second reading that always agrees (upper bound) | 4, 4, 3, 4                    | 0 of 15                   |
+
+Order in each row: Deepgram eSpeak, Groq eSpeak, Deepgram human, Groq human. A room microphone
+confirms every bid first (R12-V02). Without a second reading a rules-only bid tops out at 0.82, below
+AUTO 0.85, so it is confirmed too. With a second reading that always agrees (the rule parse standing in
+for the model, so it also agrees with every wrong rule reading), a bid reaches AUTO only when the speaker
+named a paddle on a device microphone; the 3 or 4 bids per run that did were all right. The threshold
+sweep after the gate (0.70 to 0.95) is flat at 0 wrong accepts in every run. Both numbers are honest and
+different: raw parser wrong accept is 0.000 on these clips, and the confirm gate keeps the auto-accepted
+wrong rate at 0 by construction. Neither is evidence about a real room. Decision on thresholds: keep
+AUTO 0.85 and CONFIRM 0.50; nothing in the audio sweep argues for a change, and lowering AUTO would not
+be justified by 15 auto-accepted bids.
 
 ### G5-text: text-level run (step 1)
 
@@ -205,16 +258,18 @@ text level, because the parser emits only a few confidence values (0.50, 0.95, 1
 
 Not measured: audio, speech-to-text error, latency (text mode reports 0 ms), the cached and live
 modes (no recorded provider output is in the repo, no live run was done), and the AUTO and CONFIRM
-threshold calibration of issue 478. The G5 status above comes from the synthetic eSpeak run (PR #1940); there is no real-room or noisy-room run.
+threshold calibration of issue 478. The G5 status above comes from the synthetic runs (PR #1940, VOI-01 and VOI-02); there is no real-room or noisy-room run.
 
 ### G5 threshold calibration (issue 478)
 
 Decision: keep the defaults AUTO 0.85 and CONFIRM 0.50 (`defaultConfig`, R-VOX-063). Rationale: the
 text-level sweep above is flat from 0.70 to 0.95 (the parser emits only 0.50, 0.95 and 1.00), wrong
-accepts are 0.000 on the dev and held-out sets, and the confirm rate is 0.272. No audio sweep exists
-yet because no live provider run was done, so the audio set cannot move the thresholds either way.
-The held-out text set was not used. Revisit after the live run: if any wrong accept shows up on the
-audio set, raise AUTO to the lowest sweep value with zero wrong accepts.
+accepts are 0.000 on the dev and held-out sets, and the confirm rate is 0.263 on the 175 cases. The
+audio sweep (cached mode on both clip sets, both providers, room and device microphone, with and without
+an agreeing second reading) is flat at 0.000 wrong accepts from 0.70 to 0.95, so the audio set cannot
+move the thresholds either way; the system-level result is in "G5 system level" above. The held-out
+text set was not used. Revisit when a noisy or real-room clip set exists: if any wrong accept shows up
+there, raise AUTO to the lowest sweep value with zero wrong accepts.
 
 Live run (not in pull request CI): `npm run gate:g5 -w @gavel/e2e -- --write-gates` sends 20 noisy
 recorded bids (`G5_AUDIO_DIR/g5-01.wav` to `g5-20.wav`, supplied privately) to the live provider
@@ -225,7 +280,7 @@ confirm at 0.90 or more and wrong accepts at 0.05 or less; PARTIAL needs 0.70 or
 
 ## Decision
 
-Interim decision: GO, with documented fallbacks. This is not a final go: G3 is IN PROGRESS and G5 FAILED on synthetic speech, so voice bids use the confirm prompt.
+Interim decision: GO, with documented fallbacks. This is not a final go: G3 is IN PROGRESS and G5 is PARTIAL (synthetic speech only, tuned on the same clips), so voice bids use the confirm prompt.
 
 Verified, with evidence above:
 
@@ -237,13 +292,13 @@ Verified, with evidence above:
 Not run, results pending:
 
 - G3 (honor period, validity and reauthorize): NOT RUN / IN PROGRESS (day 0 7 Nov 2026 03:06 UTC, final about 12 Nov 06:17 UTC). Fallback: capture within the verified validity window and use the reauthorize path (spec R3, T-QA-052) before hammer. R3 is the plan, not a result: it is not verified until G3 runs.
-- G5 (speech-to-text accuracy on noisy bids): FAIL on synthetic eSpeak speech, 24 clips (Deepgram nova-2 wrong-accept 0.125, Groq whisper-large-v3-turbo 0.083, threshold 0.05) and on a human-like synthetic voice, 24 clips (Deepgram 0.083, Groq 0.167). Fallback: voice bids always go through the confirm prompt (assist mode). No real-room or noisy-room test.
+- G5 (speech-to-text accuracy on noisy bids): PARTIAL. On synthetic speech, 24 eSpeak clips and 24 human-like clips, Deepgram nova-3 and Groq whisper-large-v3-turbo with a bid prompt score wrong accept 0.000 and exact plus recoverable 1.000, after fixes chosen on the same clips; the first nova-2 run failed at 0.083 to 0.167 (nine of eleven wrong accepts were an evaluation label defect). Fallback: voice bids always go through the confirm prompt (assist mode). No real-room or noisy-room test.
 
 What changes the decision:
 
 - G3 shows a validity window shorter than the longest planned auction, or reauthorize does not extend it: auctions are capped to the validity window and the demo stays short, or the decision moves to NO-GO for long auctions.
 - G3 passes with a window that covers the planned auctions: the decision becomes GO for card and wallet.
-- G5 FAIL (the current state): voice bids stay behind the confirm prompt; the payments decision is unchanged.
+- G5 PARTIAL (the current state): voice bids stay behind the confirm prompt; the payments decision is unchanged. A fresh, noisy or real-room clip set that keeps wrong accept at 0.05 or less would close it as PASS; a failure there would close it as FAIL.
 - A later run of G1, G2 or G4 that no longer matches the recorded evidence reopens that gate and the flag that depends on it.
 
 ## Latency targets and measured numbers
@@ -317,7 +372,7 @@ What this run does not prove:
 - Latency: this run recorded no timings for the targets, so the table above is unchanged. The void p95 caveat stands: 1235.96 ms against the 1000 ms budget, and the SETTLED budget assumption (each call under 1 s at p95) still fails.
 - Only the run log and the summary artifact exist; no redacted evidence file is committed, so the figures are reported, not independently verifiable, until one is.
 
-Decision: no change. G1 PASS (decision A), G2 PASS, G3 NOT RUN / IN PROGRESS, G5 FAIL on synthetic speech (confirm prompt kept).
+Decision: no change. G1 PASS (decision A), G2 PASS, G3 NOT RUN / IN PROGRESS, G5 PARTIAL on synthetic speech (confirm prompt kept).
 Evidence: redacted copies of the report are committed as `docs/evidence/nightly/NIGHTLY-42200708552.json` (sha256 d52637150b0fa9a4e6eafc8a2bb873227a75e797cef2093d19eb1e56e944de5b) and `docs/evidence/nightly/NIGHTLY-42317068784.json` (sha256 d3f4add63b30e08066daa83c0a7d289fae880472e94d98582065d859a7a05652); they hold spec ids, statuses and observed summaries only. The raw job logs remain Actions logs.
 
 ## Run entries

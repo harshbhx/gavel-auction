@@ -28,5 +28,6 @@ replace the files; keep the file names.
 - This is a loop check, not a real-room test. Scores here must not be quoted as room accuracy.
 - `audio-human/<id>.mp3` and `stt-cache-human/<provider>/<id>.json`: the second clip set, the same 24
   utterances spoken by a human-like synthetic voice (see `audio/LICENSES.md`), and what the two
-  providers returned for it. Recorded by `voice-eval` with `record` and `clips=human`; the cached job
-  scores it with `--clips human`. Also noise-free and synthetic, so also not a real-room test.
+  providers returned for it (Deepgram nova-3 and Groq with the bid-words prompt, from the option
+  trials of the `voice-eval` workflow; the nova-2 recordings of the first run are in the git history).
+  The cached job scores it with `--clips human`. Also noise-free and synthetic, so also not a real-room test.

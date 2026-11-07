@@ -60,15 +60,20 @@ Six real deliveries, including a capture and a void, each verified SUCCESS throu
 
 <GateBadge id="G5" />
 
-<SpeechTable />
+| Clip set | Provider | n | Exact | Wrong accept (limit 0.05) | Confirm | Missed bid |
+| --- | --- | --- | --- | --- | --- | --- |
+| eSpeak, noise-free | Deepgram nova-3 | 24 | 1.000 | 0.000 | 0.292 | 0.000 |
+| eSpeak, noise-free | Groq whisper-large-v3-turbo with a bid prompt | 24 | 0.923 | 0.000 | 0.333 | 0.000 |
+| Human-like synthetic voice, noise-free | Deepgram nova-3 | 24 | 1.000 | 0.000 | 0.292 | 0.000 |
+| Human-like synthetic voice, noise-free | Groq whisper-large-v3-turbo with a bid prompt | 24 | 0.923 | 0.000 | 0.333 | 0.000 |
 
-Both providers miss the limit on both clip sets. The clips are synthetic and noise-free; there is no real-room or noisy-room test. Decision: spoken bids go through the confirm prompt (assist mode). See [voice and the confirm gate](/docs/how-it-works/voice-and-confirm).
+Status PARTIAL. After the evaluation label fix, parser fixes and provider options, both providers are within the limit on both clip sets, but the fixes were chosen on these same clips. The clips are synthetic and noise-free; there is no real-room or noisy-room test. Decision: spoken bids go through the confirm prompt (assist mode). See [voice and the confirm gate](/docs/how-it-works/voice-and-confirm).
 
 ## What changes the decision
 
 - G3 shows a validity window shorter than the longest planned auction: auctions are capped, or the decision moves to NO-GO for long auctions.
 - G3 passes with a window that covers the planned auctions: GO for card and wallet.
-- G5 stays FAIL: voice bids stay behind the confirm prompt. The payments decision is unchanged.
+- G5 stays PARTIAL: voice bids stay behind the confirm prompt. The payments decision is unchanged.
 
 <CodePaths
   paths={[

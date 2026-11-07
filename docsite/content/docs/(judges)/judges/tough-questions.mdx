@@ -8,9 +8,9 @@ status: in progress
 Each answer says what is known, what is not, and where the evidence is. Where this page and `docs/GATES.md` disagree, the gate record wins.
 
 <Accordions type="multiple">
-<Accordion title="Voice accuracy failed. Why is voice still in the product?">
+<Accordion title="Voice accuracy did not pass cleanly. Why is voice still in the product?">
 
-Gate G5 is a FAIL. On 24 synthetic eSpeak clips, Deepgram nova-2 had a wrong-accept rate of 0.125 and Groq whisper-large-v3-turbo 0.083. On a second set of 24 clips in a human-like synthetic voice, Deepgram had 0.083 and Groq 0.167. The limit was 0.05 or less, so all four results fail. The clips are synthetic and noise-free; there is no real-room or noisy-room test, and no live speech run is recorded.
+Gate G5 is PARTIAL. The first run failed: on 24 synthetic eSpeak clips, Deepgram nova-2 had a wrong-accept rate of 0.125 and Groq whisper-large-v3-turbo 0.083, and on a second set of 24 human-like synthetic clips 0.083 and 0.167 (limit 0.05). Nine of the eleven wrong accepts were a label defect in our own evaluation. After fixing that, the parser for the real errors and the provider options (Deepgram nova-3, Groq with a bid prompt), the rate is 0.000 on all four runs, but the fixes were chosen on the same clips, the clips are synthetic and noise-free, and there is no real-room or noisy-room test or live speech run.
 
 The decision recorded in `docs/GATES.md` is that spoken bids always go through the confirm prompt. The parser never decides a winner and never moves money; typed entry and QR bids are the other input paths, so the auction works if speech fails. At the text level (transcripts through the parser, no audio) wrong accepts are 0.000 on 169 cases, but that measures the parser only and says nothing about speech-to-text accuracy.
 
