@@ -72,9 +72,10 @@ export class ScriptedView {
     private readonly route: 'bid' | 'console' | 'screen' | 'receipt',
   ) {}
 
-  async open(at?: number): Promise<void> {
+  async open(at?: number, scenario?: string): Promise<void> {
     const hold = at === undefined ? '' : `&at=${at}`;
-    await this.page.goto(`${this.stack.webUrl}/r/demo/${this.route}?scripted=1${hold}`);
+    const named = scenario === undefined ? '' : `&scenario=${encodeURIComponent(scenario)}`;
+    await this.page.goto(`${this.stack.webUrl}/r/demo/${this.route}?scripted=1${named}${hold}`);
     await this.provenance.waitFor();
   }
 
