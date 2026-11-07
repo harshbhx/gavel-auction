@@ -83,7 +83,7 @@ Scope: AUTHORIZE only. Capture and void of the guest card authorization were not
 Status: NOT RUN
 Run date / by: IN PROGRESS, real probe, day 0 was 7 Nov 2026 03:06 UTC (`.github/workflows/gate-g3.yml`; the earlier attempts on 4-7 Nov never ran, so no earlier day is claimed). Checkpoints at 3.5, 4 and 5 days; the final reading is about 12 Nov 06:17 UTC. Until those results exist the gate reads NOT RUN / IN PROGRESS.
 Early evidence: Additional early reading (not the full 5-day result): two older G2 authorizations are probed by `gate-g3-early.yml` (PR #1929, not yet on main).
-Simulated, not real: We simulated 30 days of auctions with a fake clock: holds, honor-period expiry, reauthorization, crashes and recovery, with the ledger balancing to the cent. This is a simulation, not a real sandbox result; PayPal's 29-day validity was not verified in the real sandbox. (docs/evidence/SIM-MULTIDAY.md will be linked once it is on main.)
+Simulated, not real: We simulated 30 days of auctions with a fake clock: holds, honor-period expiry, reauthorization, crashes and recovery, with the ledger balancing to the cent. This is a simulation, not a real sandbox result; PayPal's 29-day validity was not verified in the real sandbox. Details: [docs/evidence/SIM/SIM-MULTIDAY.md](evidence/SIM/SIM-MULTIDAY.md).
 Question: how long does an authorization stay capturable, and does reauthorize extend it?
 Setup: n/a
 Requests: n/a
