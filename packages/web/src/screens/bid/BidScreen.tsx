@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 
 import { announce } from '../../a11y/announce';
+import { MuteToggle } from '../../alerts/MuteToggle';
+import { useAlerts } from '../../alerts/useAlerts';
 import { t } from '../../copy/t';
 import { Icon } from '../../design/icons';
 import { Banner } from '../../design/primitives/Banner';
@@ -101,6 +103,7 @@ export function BidScreen({
     base !== 'watching' && !bidsLocked(auctionStatus, stopped) && canSend && !connection.offline;
 
   const { vibrate, setVibrate } = useOutbid(base, price?.currentCents ?? 0);
+  useAlerts(store);
   // A bid with no answer keeps new bids locked until it is answered or resent, so two amounts
   // can never both stand.
   const send = useSendGuard(onBid, pending || unsent);
@@ -176,6 +179,7 @@ export function BidScreen({
         <input type="checkbox" checked={vibrate} onChange={(e) => setVibrate(e.target.checked)} />
         <span>{t('bid.vibrate')}</span>
       </label>
+      <MuteToggle />
 
       {canBid && !unsent && (
         <section
