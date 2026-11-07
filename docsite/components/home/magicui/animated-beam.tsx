@@ -5,9 +5,10 @@
  * Source: https://magicui.design/r/animated-beam.json. Adapted for the GAVEL docsite.
  */
 import { useEffect, useId, useState, type RefObject } from "react"
-import { motion, useReducedMotion } from "motion/react"
+import { motion } from "motion/react"
 
 import { cn } from "../cn"
+import { useReduced } from "../use-reduced"
 
 export interface AnimatedBeamProps {
   className?: string
@@ -53,7 +54,7 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
   endYOffset = 0,
 }) => {
   const id = useId()
-  const reduce = useReducedMotion()
+  const reduce = useReduced()
   const [pathD, setPathD] = useState("")
   const [svgDimensions, setSvgDimensions] = useState({ width: 0, height: 0 })
 

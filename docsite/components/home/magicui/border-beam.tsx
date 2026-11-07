@@ -4,9 +4,10 @@
  * BorderBeam from Magic UI (https://magicui.design, MIT).
  * Source: https://magicui.design/r/border-beam.json. Adapted for the GAVEL docsite.
  */
-import { motion, useReducedMotion, type MotionStyle, type Transition } from "motion/react"
+import { motion, type MotionStyle, type Transition } from "motion/react"
 
 import { cn } from "../cn"
+import { useReduced } from "../use-reduced"
 
 interface BorderBeamProps {
   /**
@@ -68,7 +69,7 @@ export const BorderBeam = ({
   initialOffset = 0,
   borderWidth = 1,
 }: BorderBeamProps) => {
-  const reduce = useReducedMotion()
+  const reduce = useReduced()
   if (reduce) return null
   return (
     <div

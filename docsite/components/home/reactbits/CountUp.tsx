@@ -4,8 +4,9 @@
  * CountUp from React Bits by David Haz (https://reactbits.dev, MIT + Commons Clause).
  * Source: https://github.com/DavidHDev/react-bits (CountUp-TS-TW). Adapted for the GAVEL docsite.
  */
-import { useInView, useMotionValue, useReducedMotion, useSpring } from 'motion/react';
+import { useInView, useMotionValue, useSpring } from 'motion/react';
 import { useCallback, useEffect, useRef } from 'react';
+import { useReduced } from '../use-reduced';
 
 interface CountUpProps {
   to: number;
@@ -33,7 +34,7 @@ export default function CountUp({
   onEnd
 }: CountUpProps) {
   const ref = useRef<HTMLSpanElement>(null);
-  const reduce = useReducedMotion();
+  const reduce = useReduced();
   const motionValue = useMotionValue(direction === 'down' ? to : from);
 
   const damping = 20 + 40 * (1 / duration);
@@ -120,5 +121,10 @@ export default function CountUp({
     return () => unsubscribe();
   }, [springValue, formatValue]);
 
-  return <span className={className} ref={ref} />;
+  // The final number is in the server HTML, so it is readable without JavaScript.
+  return (
+    <span className={className} ref={ref}>
+      {formatValue(direction === 'down' ? from : to)}
+    </span>
+  );
 }

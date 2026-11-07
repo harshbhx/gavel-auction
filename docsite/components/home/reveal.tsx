@@ -1,6 +1,7 @@
 'use client';
 
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
+import { useReduced } from './use-reduced';
 import type { ReactNode } from 'react';
 
 /** Fades and lifts its children in once they scroll into view. */
@@ -15,7 +16,7 @@ export function Reveal({
   delay?: number;
   y?: number;
 }) {
-  const reduce = useReducedMotion();
+  const reduce = useReduced();
   if (reduce) return <div className={className}>{children}</div>;
   return (
     <motion.div

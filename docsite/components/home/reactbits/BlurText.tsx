@@ -4,8 +4,9 @@
  * BlurText from React Bits by David Haz (https://reactbits.dev, MIT + Commons Clause).
  * Source: https://github.com/DavidHDev/react-bits (BlurText-TS-TW). Adapted for the GAVEL docsite.
  */
-import { motion, useReducedMotion, type Transition, type Easing } from 'motion/react';
+import { motion, type Transition, type Easing } from 'motion/react';
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { useReduced } from '../use-reduced';
 
 type BlurTextProps = {
   text?: string;
@@ -55,7 +56,7 @@ const BlurText: React.FC<BlurTextProps> = ({
   as: Tag = 'p',
   startDelay = 0
 }) => {
-  const reduce = useReducedMotion();
+  const reduce = useReduced();
   const elements = animateBy === 'words' ? text.split(' ') : text.split('');
   const [inView, setInView] = useState(false);
   const ref = useRef<HTMLElement>(null);
@@ -99,6 +100,9 @@ const BlurText: React.FC<BlurTextProps> = ({
   const stepCount = toSnapshots.length + 1;
   const totalDuration = stepDuration * (stepCount - 1);
   const times = Array.from({ length: stepCount }, (_, i) => (stepCount === 1 ? 0 : i / (stepCount - 1)));
+
+  // Reduced motion: plain, fully visible text with no animation.
+  if (reduce) return <Tag className={className}>{text}</Tag>;
 
   return (
     <Tag ref={ref as React.RefObject<never>} className={`blur-text ${className} flex flex-wrap`}>
