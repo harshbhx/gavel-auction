@@ -1,0 +1,47 @@
+---
+title: Deploy staging
+description: Hosting the server on Render and the web client on Cloudflare Pages.
+icon: CloudUpload
+status: planned
+---
+
+<Held title="Not deployed yet">
+
+Hosting choices are recorded (a Node host on Render for the server, Cloudflare Pages for the web app), but no hosted URL is published. Wherever an address is needed below it is a placeholder.
+
+</Held>
+
+## Server on Render
+
+`render.yaml` describes one web service, `gavel-host`, with one instance and a 1 GB disk at `/var/data`. The build bundles the server and workspace packages into `packages/server/dist/main.js`; the start command runs `node dist/main.js`, so no dev tooling is in the runtime. The health check is `/healthz`. Auto deploy is off.
+
+`deploy-staging` runs on demand and on pushes to `main` that touch server code. It calls the Render deploy hook, waits, then runs `scripts/smoke.sh`. With the secrets missing it ends green and prints a notice naming what to add.
+
+The smoke script checks, with timeouts: `GET /healthz` is 200, `GET /warmup` is 200, an unsigned `POST /webhooks/paypal` is 400, and `POST /api/auctions` without a key is 401.
+
+## Settings the owner must provide (names only)
+
+| Where | Names |
+| --- | --- |
+| Render environment | `PUBLIC_URL`, `CORS_ORIGINS`, `TOKEN_SECRET`, `ADMIN_KEY`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID` |
+| GitHub environment `staging` | secret `RENDER_DEPLOY_HOOK_URL`, secret `ADMIN_KEY` (optional), variable `STAGING_URL` |
+| Hosted checks | variables `UPTIME_ENABLED`, `PRODUCTION_URL`, `JUDGE_URL` |
+
+Without them the uptime probe is skipped and the nightly judge smoke fails red with an error naming `JUDGE_URL`.
+
+## Rate limits behind one address
+
+Socket upgrades and HTTP joins share one per-address bucket. `RATE_JOIN_BURST` (default 40) is the bucket size and `RATE_JOIN_PER_MIN` (default 10) the refill. A venue where many judges share one NAT address can raise `RATE_JOIN_BURST`. Each address may hold at most 20 open sockets.
+
+## Known limits
+
+- The smoke may pass against the old instance if it answers before the new build is live; the workflow waits 60 seconds first.
+- Boot validation that exits 78 on a missing variable is not wired into `main.ts` yet; today `config.ts` refuses to boot with a message naming the variable.
+
+<CodePaths
+  paths={[
+    { path: 'docs/DEPLOY.md', note: 'the guide this page is distilled from' },
+    { path: 'render.yaml', note: 'the blueprint' },
+    { path: 'scripts/smoke.sh', note: 'the smoke checks' },
+  ]}
+/>

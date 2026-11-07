@@ -1,0 +1,25 @@
+---
+title: Limits, stated plainly
+description: The honest list of what is not done and why.
+icon: CircleSlash
+---
+
+Nothing here is hidden elsewhere. Each item points to the page with the detail.
+
+- **No hosted demo.** No URL is published. The runnable path is a local run on the fake PayPal. ([demo guide](/docs/start/demo))
+- **Whole-auction settlement and crash recovery are mostly fake-PayPal results.** On the real sandbox only the nightly specs R7, R8 and R10 ran (one lot of three holds, one in-process crash). No auction driven through a server and no real process kill has run. ([crash recovery](/docs/how-it-works/crash-recovery))
+- **The 30 day run is simulated.** It shows the code is consistent with a model of PayPal, not that PayPal behaves like the model. ([simulation](/docs/proof/simulation))
+- **G3 is not finished.** The honor period and validity window are unknown until the probe ends. A hold older than 2 hours is flagged stale; it is still captured.
+- **The remainder release is inferred.** No buyer balance was read; guest card capture was not run. ([gates](/docs/proof/gates))
+- **Voice is behind a confirm prompt.** G5 failed on synthetic audio; there is no real-room test and no live speech run. The web console has no audio sender yet. ([voice](/docs/how-it-works/voice-and-confirm))
+- **Latency is not within budget.** The void p95 of 1235.96 ms (n=10) is above the 1 s per-call budget behind the 6 s SETTLED target. ([latency](/docs/proof/latency))
+- **Rejected bids are not in the ledger.** They are kept in the room log only, so the ledger cannot prove them. ([engine and ledger](/docs/how-it-works/engine-and-ledger))
+- **Security review is unsigned.** All 18 items are open. ([security review](/docs/safety/security-review))
+- **Accessibility manual pass not done.** ([accessibility](/docs/proof/accessibility))
+- **Card and guest checkout in a live room.** G2 proves the SDK authorize flow only; no live-room checkout run is recorded.
+
+<NotVerified title="What exactly ran on the sandbox, beyond the gates">
+
+The `nightly-sandbox` workflow on `main` ran specs R7 (one lot of three holds: winner captured 12500 cents, others voided, saga SETTLED, 0 differences against PayPal), R8 and R10 (one in-process crash at `after:capture`, the resume adopted the capture, one capture) in run [42200708552](https://github.com/harshbhx/gavel-auction/actions/runs/42200708552) on 6 Nov 2026 and in the scheduled run [42317068784](https://github.com/harshbhx/gavel-auction/actions/runs/42317068784) on 7 Nov 2026. Redacted copies of the reports are committed under `docs/evidence/nightly`. R10 throws an exception in the test process; it is not a process kill.
+
+</NotVerified>

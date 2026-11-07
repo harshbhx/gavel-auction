@@ -1,0 +1,25 @@
+---
+title: Glossary
+description: Terms used across these docs.
+icon: BookA
+---
+
+| Term | Meaning |
+| --- | --- |
+| Authorization (hold) | A PayPal payment promise for an amount. Nothing is charged until capture. |
+| Capture | Taking money from an authorization. GAVEL captures the winning price with `final_capture`. |
+| Ceiling | The most a bidder may bid; the amount held. |
+| Fake PayPal | The project's built-in test double for PayPal. Not evidence about PayPal. |
+| `final_capture` | A capture flag that tells PayPal this is the last capture on the authorization. |
+| Gate | A run against the real PayPal sandbox that answers one question (G0 to G5). |
+| Hammer | The moment the lot closes and the winner is known. |
+| Honor period | How long PayPal guarantees an authorization can be captured. Unproven here (G3). |
+| Idempotency key (request id) | A deterministic id on each PayPal call so a repeat is answered once. |
+| Journal | The saga's saved state, written before and after each PayPal call. |
+| Ledger | The hash-chained record of auction events. |
+| Reauthorize | Asking PayPal for a new authorization after the honor period. |
+| Sandbox | PayPal's test environment. No real money moves. |
+| Simulated | Run with a fake clock against a model of PayPal. |
+| Soft close | A late bid extends the lot. |
+| Truth read | Asking PayPal what it knows about a hold before acting. |
+| Void | Releasing a hold so it is never charged. |

@@ -1,0 +1,25 @@
+---
+title: Concepts in one page
+description: Hold, ceiling, capture, void, hammer and soft close.
+icon: BookMarked
+---
+
+| Term | Meaning |
+| --- | --- |
+| **Ceiling** | The most a bidder may bid. It is the amount PayPal holds. |
+| **Hold** | A PayPal authorization (an order with intent AUTHORIZE) for the ceiling. A promise, not a payment. Nothing is charged. |
+| **Bid** | A price offered within the ceiling. The engine accepts or rejects it and the ledger records it. Bids above the ceiling are blocked. |
+| **Soft close** | A bid near the end extends the lot, so the auction does not end on a last-second bid. |
+| **Hammer** | The moment the lot closes and a winner and winning price are known. |
+| **Capture** | Taking the winning price from the winner's hold, with `final_capture`. Only the winning price is captured, never the ceiling. |
+| **Void** | Releasing a hold so it is never charged. Every hold except the winner's is voided. |
+| **Truth read** | Asking PayPal what it knows about a hold before acting on it. The saga does this first on every run. |
+| **Journal** | The saga's saved state: what it intends to do and what it has done, so it can resume after a crash. |
+
+<Held title="A hold is not a payment">
+
+The product never says "paid", "deposit" or "spent" for a hold. "Held" is an authorization. "Charged" means captured.
+
+</Held>
+
+See the [glossary](/docs/reference/glossary) for more terms.

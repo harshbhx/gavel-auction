@@ -1,0 +1,24 @@
+---
+title: Decisions
+description: Where the design decisions are recorded.
+icon: Scale
+---
+
+Decisions live in `docs/DECISIONS.md` (one block per decision with Date, Status, Owner, Context, Decision, Alternatives, Consequences and Evidence; a CI check lints the format). The plan is in `docs/PLAN.md`.
+
+A few that shape what you read on this site:
+
+| Decision | Subject |
+| --- | --- |
+| D-0006 | Realtime host: one Node process, hosted on Render |
+| D-0007 | Web hosting: the web client on Cloudflare Pages |
+| D-0008 | The keep-alive choice for uptime probing |
+| D-0014 | Accepted bids reach the engine ledger before they are acknowledged; rejected bids and voice records live in the room log only |
+| D-0029 | The order of the first two writes: the room log is written first |
+
+<CodePaths
+  paths={[
+    { path: 'docs/DECISIONS.md', note: 'the record' },
+    { path: 'docs/PLAN.md', note: 'the design plan' },
+  ]}
+/>

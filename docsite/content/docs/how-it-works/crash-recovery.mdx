@@ -1,0 +1,53 @@
+---
+title: Crash recovery
+description: What happens when the process dies in the middle of a capture.
+icon: Zap
+status: unverified
+full: true
+---
+
+The question a skeptical reader should ask: if the server dies at the worst moment, can the winner be charged twice, or not at all?
+
+<CrashDiagram />
+
+## The rule behind all three cases
+
+On every run the saga **reads the truth at PayPal first**, then acts. A capture that is already there is adopted. Only when PayPal shows no capture is the saved intent sent again, with the same request id.
+
+| Crash point | What the journal holds | What the restart does |
+| --- | --- | --- |
+| A: after the intent, before the call reached PayPal | Intent saved, state CAPTURING | Truth shows no capture, so the same intent is sent again with the same request id |
+| B: after PayPal took the capture, before the answer was saved | The same intent, no outcome | Truth shows the capture (invoice id and amount match), so it is adopted. No second call |
+| C: after `capture_ok` was saved | State CAPTURED, winner recorded | Goes on to void the other holds. No capture call |
+
+If the truth cannot be read, or PayPal does not know the hold, that is **not an answer**: the intent stays, no other candidate is tried, the unknown clock runs, and after ten minutes the settlement goes to FAILED_NEEDS_REVIEW for a person.
+
+## The server side
+
+The host calls `resume()` on start and then on a timer (every 60 seconds by default). It loads every known room, continues unfinished settlements and retries orphan voids. The audit trail rows of a transition are recovered from the journal history, so a crash between a save and its audit row loses nothing.
+
+## What has been tested
+
+<Charged title="Injected crashes, fake PayPal">
+
+The simulation scenario S6 kills the process at 10 boundary and idempotency-table variants and checks that every restart ends with one charge. See [the simulation](/docs/proof/simulation).
+
+</Charged>
+
+<NotVerified title="Not on a real host">
+
+One in-process crash at the same place (spec R10) passed on the real sandbox in the nightly runs of 6 and 7 Nov 2026 (runs 42200708552 and 42317068784; redacted reports committed under `docs/evidence/nightly`). Killing a real server process on a deployed host needs a staging server that is allowed to start with the kill hook; that has not been run.
+
+</NotVerified>
+
+## Where this lives in the code
+
+<CodePaths
+  paths={[
+    { path: 'packages/payments/src/saga/capture.ts', note: 'truth first, write-ahead intent, crash boundaries' },
+    { path: 'packages/payments/src/saga/trail.ts', note: 'audit rows recovered from the journal' },
+    { path: 'packages/server/src/runtime/auction-service.ts', note: 'resume() and the resume timer' },
+    { path: 'packages/server/src/boot/checkpoint-kill.ts', note: 'test hook that kills the process at a boundary' },
+    { path: 'docs/evidence/SIM/SIM-MULTIDAY.md', note: 'scenario S6' },
+  ]}
+/>

@@ -1,0 +1,53 @@
+---
+title: Start here (judge path)
+description: A short path through GAVEL for judges, with the status stated plainly.
+icon: Compass
+---
+
+A short path through the project. Everything is PayPal sandbox only. A bid is a hold (an authorization); nothing is charged before capture at the hammer.
+
+## Status, in four lines
+
+- <GateBadge id="G0" /> <GateBadge id="G1" /> <GateBadge id="G2" /> <GateBadge id="G4" /> ran against the real PayPal sandbox. Committed run logs exist for G1, G2 and G4; G0 is an Actions run log only.
+- <GateBadge id="G3" />: the honor-period probe started on 7 Nov 2026 at 03:06 UTC and its final reading is about 12 Nov. No result is claimed yet.
+- <GateBadge id="G5" />: speech accuracy failed on synthetic audio, so voice bids are designed to wait for a confirmation.
+- Settlement of a whole auction and crash recovery are verified with the project's fake PayPal. The 30 day run is <Chip kind="hatched">SIMULATED</Chip>.
+
+<NotVerified title="No hosted demo yet">
+
+No hosted demo URL is published. The [demo guide](/docs/start/demo) lists what you can run today. Where a URL is shown on these pages as a placeholder, it is marked as one.
+
+</NotVerified>
+
+## The five minute path
+
+The scripted path below is the intended flow. It cannot be followed end to end today because there is no hosted web URL.
+
+| Step | Persona | What to do | Expected outcome |
+| --- | --- | --- | --- |
+| 1 | Judge | Open the hosted web URL. | The landing page shows "Start a demo auction". |
+| 2 | Judge | Press "Start a demo auction". | A demo room opens with a link for each role. |
+| 3 | Auctioneer | Open the console link. | The console shows the lot and its controls. |
+| 4 | Bidder | Open a bidder link in a second tab and place a bid. | The bid shows on the big screen. A bid is a hold; nothing is charged. |
+| 5 | Auditor | Open the audit trail link. | The ledger entries show, chained by hash. |
+
+Steps 1 and 2 are covered by `packages/e2e/specs/judge-walkthrough.spec.ts` on the fake stack only. Steps 3 to 5 have no automated check.
+
+## What you can do right now
+
+1. Read [How it works](/docs/how-it-works/money-flow): one diagram, where the money is at each moment.
+2. Read [Crash recovery](/docs/how-it-works/crash-recovery): the page for a skeptical reader.
+3. Read [Proof](/docs/proof): every gate, with its caveats.
+4. [Run the fake-PayPal demo](/docs/run) locally if you have Node 22.
+
+## Verify the audit trail yourself
+
+A replay bundle carries a redacted, hash-chained public export of the ledger. `verifyPublicExport` in `@gavel/engine` checks its version, sequence numbers, links and hashes and returns `{ ok: true }` or the first bad index and the reason (`bad_hash`, `bad_prev`, `bad_seq`, `bad_version` or `truncated`). Any edit to an entry makes the result `ok: false` at that index.
+
+<CodePaths
+  paths={[
+    { path: 'docs/JUDGES.md', note: 'the judge walkthrough this page is distilled from' },
+    { path: 'packages/engine/src/ledger/public-export.ts', note: 'verifyPublicExport' },
+    { path: 'packages/engine/test/public-export.test.ts', note: 'working calls, including tampered and truncated chains' },
+  ]}
+/>

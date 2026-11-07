@@ -1,0 +1,34 @@
+---
+title: Run it locally
+description: Run GAVEL on your machine with the built-in fake PayPal. No PayPal account needed.
+icon: Terminal
+---
+
+Needs Node 22 and npm. No PayPal account is needed for the default run.
+
+<Chip kind="fake">Fake PayPal</Chip>
+
+```bash
+npm ci
+PUBLIC_URL=http://localhost:8080 TOKEN_SECRET=dev-token-secret ADMIN_KEY=dev-admin-key \
+  PAYMENTS=fake PAYPAL_ENV=sandbox npm start -w @gavel/server
+```
+
+With `PAYMENTS=fake` the server uses the built-in fake PayPal and needs no network access. Production mode refuses fake payments. All server settings are in [configuration](/docs/reference/configuration).
+
+## Tests and checks
+
+Every pull request runs these in GitHub Actions. The same commands work locally on a machine with room for them.
+
+| Command | What it runs |
+| --- | --- |
+| `npm test` | Unit tests for every package |
+| `npm run test:property` | Property tests; each run prints its seed |
+| `npm run typecheck` | Strict TypeScript across the workspace |
+| `npm run lint` | ESLint with zero warnings allowed |
+
+<Held title="Heavy work">
+
+Builds, full test suites and browser runs are meant for CI or a capable machine. This documentation site itself is built in GitHub Actions; see the site README for the one command to run it locally.
+
+</Held>

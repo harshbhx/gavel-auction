@@ -1,0 +1,27 @@
+---
+title: Ledger backup
+description: The daily encrypted snapshot, and a restore procedure that is documented but not exercised.
+icon: DatabaseBackup
+status: unverified
+---
+
+The ledger is private: it holds each bidder's ceiling, hold reference and spoken bid transcript. The repository is public, so the `backup` workflow encrypts the snapshot before upload and never stores plaintext as an artifact.
+
+## What the job does
+
+- Lists every stored auction and downloads each ledger, checking its head line. It fails when the number downloaded differs from the number listed.
+- Downloads, per auction, the payment state (settlement journal and hold records) and the room event log, and once the processed webhook ids with the kill switch state.
+- Redacts anything that looks like a secret, token or password. Credentials are not stored in those files in the first place.
+- Uploads only `ledger-snapshot.tgz.gpg`, kept for 30 days. If a required setting is missing the job does nothing and says so.
+
+## Restore
+
+Decrypt and unpack the artifact; each ledger file verifies with the chain check and its last line is the head. The snapshot is up to a day old, so after any restore the operator reconciles against PayPal and voids every authorization that no restored record accounts for, keeping the kill switch engaged until then.
+
+<NotVerified title="Documented, not exercised">
+
+No restore has been run against a real hosted disk. The payment state export is a JSON view, not a byte copy of the stores, and there is no import route: the stores are rebuilt by hand or script.
+
+</NotVerified>
+
+<CodePaths paths={[{ path: 'docs/RUNBOOK-BACKUP.md', note: 'setup and restore' }]} />

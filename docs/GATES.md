@@ -318,6 +318,7 @@ What this run does not prove:
 - Only the run log and the summary artifact exist; no redacted evidence file is committed, so the figures are reported, not independently verifiable, until one is.
 
 Decision: no change. G1 PASS (decision A), G2 PASS, G3 NOT RUN / IN PROGRESS, G5 FAIL on synthetic speech (confirm prompt kept).
+Evidence: redacted copies of the report are committed as `docs/evidence/nightly/NIGHTLY-42200708552.json` (sha256 d52637150b0fa9a4e6eafc8a2bb873227a75e797cef2093d19eb1e56e944de5b) and `docs/evidence/nightly/NIGHTLY-42317068784.json` (sha256 d3f4add63b30e08066daa83c0a7d289fae880472e94d98582065d859a7a05652); they hold spec ids, statuses and observed summaries only. The raw job logs remain Actions logs.
 
 ## Run entries
 
@@ -371,7 +372,6 @@ Not covered without staging: killing a real server process with `GAVEL_CHECKPOIN
 on a deployed host. That needs `GAVEL_STAGING_URL` and `GAVEL_STAGING_ADMIN_KEY`, a staging server
 that is allowed to start with the hook (it is refused when `NODE_ENV=production`) and a way to
 restart it on the same store. Until the owner provides that, the in-process crash in R10 is the
-evidence, and the SPEC tag for PayPal's repeated-capture answer stays UNVERIFIED until R10 has
-passed once in the nightly run.
+evidence. R10 has passed in the nightly runs of 6 and 7 Nov 2026 (see "Status of crash safety" below).
 
-Status of crash safety: whole-auction settlement and crash recovery are verified against the fake PayPal only. No whole-auction settlement ran on the real sandbox, R10 stays UNVERIFIED until it has passed once, and G3 (authorization validity and reauthorize) is NOT RUN / IN PROGRESS, so holds in an auction longer than minutes may expire before capture.
+Status of crash safety: What ran on the real PayPal sandbox, from the `sandbox-report` artifact (`report/sandbox.json`) of two runs of workflow `nightly-sandbox` on `main`: run 42200708552 (6 Nov 2026, manual dispatch) and scheduled run 42317068784 (7 Nov 2026 00:15 UTC). Both report the same: R7 (one lot of three holds settled by the real saga and `PayPalGateway`: the winner captured 12500 cents, the others voided, saga SETTLED, journal against PayPal 0 differences), R8 (reconciliation, 0 differences) and R10 (one in-process crash at the `after:capture` boundary, the resume adopted the capture: one capture on the winner, losers voided), all on PayPal-account orders. What did not run on the real sandbox: an auction driven through the deployed server, and a real server process kill and restart (R4 was skipped, no staging host). R10 kills nothing: the crash is an exception thrown in the test process. Everything beyond those specs (many lots, injected faults, 30 simulated days) ran against the fake PayPal only. G3 (authorization validity and reauthorize) is NOT RUN / IN PROGRESS, so holds in an auction longer than minutes may expire before capture.

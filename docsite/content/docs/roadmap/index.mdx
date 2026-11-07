@@ -1,0 +1,28 @@
+---
+title: Roadmap
+description: What happens next, and what the next days of the G3 probe decide.
+icon: Map
+---
+
+The submission deadline is Thu 12 Nov 2026, 12:00 PST (Fri 13 Nov 01:30 IST).
+
+## Next
+
+| Item | Why it matters |
+| --- | --- |
+| G3 final reading (about 12 Nov 06:17 UTC) | Decides the validity window and whether reauthorize extends it. May cap auction length. |
+| A hosted deployment and a published demo URL | Lets a judge follow the five minute path. Deployment issues QA-59 to QA-61 are open. |
+| A real-room or noisy-room speech test | G5 failed on synthetic audio; nothing real has been tested. |
+| An end-to-end settlement measurement on the sandbox | The 2.5 s and 6 s latency targets are not shown to hold. |
+| Recorded demo auctions for replay | The player exists; no recording is hosted. |
+| A persistent store for a hosted deploy | The file stores need a persistent disk and a single instance. |
+| Security review sign-off | All 18 items are open. |
+| Manual accessibility pass | Screen reader and zoom passes have not been run. |
+
+<Held title="What changes the decision">
+
+If G3 shows a window shorter than the longest planned auction, auctions are capped to it, or the decision moves to NO-GO for long auctions. If G3 passes with a window that covers the planned auctions, the decision becomes GO for card and wallet. Speech stays behind the confirm prompt either way.
+
+</Held>
+
+See [limits](/docs/roadmap/limits) for what is not built today.

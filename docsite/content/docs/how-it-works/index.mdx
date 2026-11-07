@@ -1,0 +1,36 @@
+---
+title: How it works
+description: Three steps, then the five mechanisms behind them.
+icon: Hammer
+---
+
+1. **Approve a ceiling.** A bidder approves the most they may bid. PayPal places an authorization hold for that amount. Nothing is charged.
+2. **Bid.** A deterministic engine accepts or rejects each bid against the ceilings and writes every event to a hash-chained ledger.
+3. **Hammer.** The settlement saga captures the winning price, voids every other hold, and records each step in a journal so a crash cannot double-charge anyone.
+
+| Page | The question it answers |
+| --- | --- |
+| [Money flow](/docs/how-it-works/money-flow) | Where is the money at each moment? |
+| [Settlement saga](/docs/how-it-works/settlement-saga) | Which states can a settlement be in, and which moves are legal? |
+| [Crash recovery](/docs/how-it-works/crash-recovery) | What happens when the process dies mid-capture? |
+| [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) | Can speech become a bid on its own? |
+| [Engine and ledger](/docs/how-it-works/engine-and-ledger) | How are bids decided and recorded? |
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor B as Bidder
+  participant G as GAVEL server
+  participant P as PayPal sandbox
+  B->>G: Join and pick a ceiling of $500
+  G->>P: Create order, intent AUTHORIZE
+  B->>P: Approve
+  P-->>G: Authorization: $500 held, nothing charged
+  B->>G: Bid $350
+  G->>G: Engine decides, ledger appends a hash-chained event
+  Note over G: Hammer: the $350 bid wins
+  G->>P: Capture $350 with final_capture
+  G->>P: Void every other hold
+  P-->>G: Webhooks confirm each step
+  G->>G: Journal closes, audit trail is sealed
+```
