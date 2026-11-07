@@ -29,6 +29,11 @@ on:
         required: false
         default: false
         type: boolean
+      only:
+        description: 'With trials: only run the variants whose name matches this extended regular expression (empty runs all)'
+        required: false
+        default: ''
+        type: string
       record:
         description: 'Render the synthetic clips and record both providers into stt-cache (uploads an artifact, no keys in it)'
         required: false
@@ -282,6 +287,7 @@ jobs:
           DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           HUMAN_WAV: ${{ runner.temp }}/human-wav
+          ONLY: ${{ inputs.only }}
         run: |
           DG_BASE='language=en&punctuate=false&smart_format=false'
           KEYTERMS='keyterm=paddle&keyterm=bidder&keyterm=hundred&keyterm=thousand&keyterm=fifty&keyterm=fifteen&keyterm=seventy%20five'
@@ -289,6 +295,7 @@ jobs:
           HINT='Spoken bids at an auction: paddle eight, six hundred dollars. Bidder number twenty, two thousand. Amounts are said in words.'
           run_variant() {
             name="$1"; provider="$2"
+            if [ -n "$ONLY" ] && ! printf '%s' "$name" | grep -Eq "$ONLY"; then return 0; fi
             for set in espeak human; do
               if [ "$set" = human ]; then dir="$HUMAN_WAV"; else dir="$PWD/packages/voice/fixtures/audio/recordings"; fi
               for attempt in 1 2 3 4 5 6; do
@@ -308,11 +315,14 @@ jobs:
           G5_DEEPGRAM_QUERY="model=nova-3&language=en&punctuate=true&smart_format=true&numerals=true" run_variant dg-nova3-numerals deepgram
           G5_DEEPGRAM_QUERY="model=nova-3&$DG_BASE&$KEYTERMS" run_variant dg-nova3-keyterm deepgram
           G5_DEEPGRAM_QUERY="model=nova-2&$DG_BASE&$KEYWORDS" run_variant dg-nova2-keywords deepgram
+          G5_DEEPGRAM_QUERY="model=nova-3&language=en&punctuate=true&smart_format=false" run_variant dg-nova3-punct deepgram
           run_variant gq-turbo-base groq
           G5_GROQ_TEMPERATURE=0 run_variant gq-turbo-temp0 groq
           G5_GROQ_MODEL=whisper-large-v3 run_variant gq-large-v3 groq
           G5_GROQ_PROMPT="$HINT" G5_GROQ_TEMPERATURE=0 run_variant gq-turbo-prompt groq
           G5_GROQ_MODEL=whisper-large-v3 G5_GROQ_PROMPT="$HINT" G5_GROQ_TEMPERATURE=0 run_variant gq-large-v3-prompt groq
+          G5_GROQ_PROMPT='Auction bidding. Words heard: paddle, bidder number, dollars, hundred, thousand.' run_variant gq-turbo-prompt-b groq
+          G5_GROQ_PROMPT='Bid at an auction, spoken as words.' run_variant gq-turbo-prompt-c groq
       - name: Trial summary
         if: always()
         run: |
