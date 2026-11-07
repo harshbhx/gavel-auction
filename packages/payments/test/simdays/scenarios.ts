@@ -582,9 +582,52 @@ export interface SoakNumbers {
   reviewRefused: number;
 }
 
+/** One lot of the 30-day soak, as exported to the open dataset (simulated, fake clock). */
+export interface SoakLotRow {
+  lotId: string;
+  closeDay: number;
+  holds: number;
+  storm: boolean;
+  status: string;
+  journalState: string;
+  sold: boolean;
+  winnerBidder: string | null;
+  winnerCents: number | null;
+  runnerUpFallback: boolean;
+  crashes: number;
+  passes: number;
+  downDays: number;
+  reviewCause: string | null;
+  faults: string[];
+  heldCents: number;
+  capturedCents: number;
+  releasedCents: number;
+  openCents: number;
+}
+
+/** One hold of the 30-day soak, with what happened to its money. */
+export interface SoakHoldRow {
+  holdId: string;
+  lotId: string;
+  bidder: string;
+  ceilingCents: number;
+  openedDay: number;
+  capturedCents: number;
+  releasedCents: number;
+  openCents: number;
+  authorizationsInChain: number;
+}
+
+export interface SoakExport {
+  seed: number;
+  startIso: string;
+  lots: SoakLotRow[];
+  holds: SoakHoldRow[];
+}
+
 export async function scenario8(
   seed = 20261107,
-): Promise<ScenarioResult & { numbers: SoakNumbers }> {
+): Promise<ScenarioResult & { numbers: SoakNumbers; export: SoakExport }> {
   const r = new Recorder();
   const rand = prng(seed);
   const int = (lo: number, hi: number): number => lo + Math.floor(rand() * (hi - lo + 1));
@@ -622,6 +665,10 @@ export async function scenario8(
   const events: Ev[] = [];
   const held = new Map<string, HoldRef[]>();
   const reviews: Array<[string, string]> = [];
+  const lotRows = new Map<
+    string,
+    Omit<SoakLotRow, 'heldCents' | 'capturedCents' | 'releasedCents' | 'openCents'>
+  >();
   const causes = new Map<string, number>();
   const numbers: SoakNumbers = {
     lots: SOAK_LOTS,
@@ -670,27 +717,32 @@ export async function scenario8(
         }
         await w.close(w.planFor(lot.id, holds, candidates));
         const first = sorted[0];
+        const faults: string[] = [];
         if (lot.storm) {
           // Two 429s on the first capture. They start no unknown clock, so the restart below
           // (2 hours down, past the unknown deadline) must not send the lot to review.
           if (first !== undefined) {
             w.core.inject('capture', 'http_429', first.authId, 2);
+            faults.push('capture:http_429x2');
             numbers.faultsArmed += 1;
             numbers.storms += 1;
           }
         } else {
           if (first !== undefined && rand() < 0.12) {
             w.core.inject('capture', 'capture_declined', first.authId, 1);
+            faults.push('capture:capture_declined');
             numbers.faultsArmed += 1;
           }
           if (rand() < 0.3) {
             const kind = CAPTURE_FAULTS[int(0, CAPTURE_FAULTS.length - 1)] as FakeFaultKind;
             w.core.inject('capture', kind, null, 1);
+            faults.push(`capture:${kind}`);
             numbers.faultsArmed += 1;
           }
           if (rand() < 0.2) {
             const kind = VOID_FAULTS[int(0, VOID_FAULTS.length - 1)] as FakeFaultKind;
             w.core.inject('void', kind, null, 1);
+            faults.push(`void:${kind}`);
             numbers.faultsArmed += 1;
           }
         }
@@ -738,6 +790,23 @@ export async function scenario8(
             `cause ${cause}; closed day ${lot.closeAt.toFixed(2)}, down ${(res.downMs / DAY_MS).toFixed(2)} days, last step ${last}, reauthorized holds ${reauthed}, failed ${failedWhy}, passes ${res.passes}, crashes ${res.crashes}, last calls ${tail}`,
           ]);
         }
+        lotRows.set(lot.id, {
+          lotId: lot.id,
+          closeDay: Number(lot.closeAt.toFixed(4)),
+          holds: holds.length,
+          storm: lot.storm,
+          status: res.status === 'settled' ? 'settled' : 'review',
+          journalState: res.journal?.state ?? 'none',
+          sold: res.journal !== null && res.journal.winner !== null,
+          winnerBidder: res.journal?.winner?.bidderId ?? null,
+          winnerCents: res.journal?.winner?.amountCents ?? null,
+          runnerUpFallback: (res.journal?.failed.length ?? 0) > 0,
+          crashes: res.crashes,
+          passes: res.passes,
+          downDays: Number((res.downMs / DAY_MS).toFixed(4)),
+          reviewCause: res.status === 'settled' ? null : reviewCause(w.audits, lot.id),
+          faults,
+        });
         if (res.status === 'settled') numbers.settled += 1;
         else numbers.review += 1;
         if (res.journal !== null && res.journal.winner !== null) numbers.sold += 1;
@@ -765,6 +834,41 @@ export async function scenario8(
   numbers.holds = w.roots.length;
   const ids = lots.map((l) => l.id);
   const ledger = await auditWorld(w, ids);
+  const exportLots: SoakLotRow[] = [];
+  const exportHolds: SoakHoldRow[] = [];
+  for (const lot of lots) {
+    const base = lotRows.get(lot.id);
+    if (base === undefined) continue;
+    let held = 0;
+    let captured = 0;
+    let released = 0;
+    let open = 0;
+    for (const h of w.holdsOf(lot.id)) {
+      const m = w.moneyOf(h);
+      held += h.ceilingCents;
+      captured += m.capturedCents;
+      released += m.releasedCents;
+      open += m.openCents;
+      exportHolds.push({
+        holdId: h.holdId,
+        lotId: lot.id,
+        bidder: h.bidderId,
+        ceilingCents: h.ceilingCents,
+        openedDay: Number(((h.createdAtMs - START_MS) / DAY_MS).toFixed(4)),
+        capturedCents: m.capturedCents,
+        releasedCents: m.releasedCents,
+        openCents: m.openCents,
+        authorizationsInChain: w.chainOf(h).length,
+      });
+    }
+    exportLots.push({
+      ...base,
+      heldCents: held,
+      capturedCents: captured,
+      releasedCents: released,
+      openCents: open,
+    });
+  }
 
   r.check(
     'every lot ends terminal',
@@ -823,7 +927,16 @@ export async function scenario8(
   r.stat('429 storm lots settled after a restart', numbers.stormSurvived);
   for (const [lotId, why] of reviews) r.stat(`lot in review: ${lotId}`, why);
   r.stat('seed', seed);
-  return { ...r.result('S8', '30 simulated days, 100 bidders, random crashes'), numbers };
+  return {
+    ...r.result('S8', '30 simulated days, 100 bidders, random crashes'),
+    numbers,
+    export: {
+      seed,
+      startIso: new Date(START_MS).toISOString(),
+      lots: exportLots,
+      holds: exportHolds,
+    },
+  };
 }
 
 export const ALL_SCENARIOS: Array<() => Promise<ScenarioResult>> = [

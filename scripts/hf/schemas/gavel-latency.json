@@ -1,0 +1,71 @@
+{
+  "dataset": "gavel-latency",
+  "version": "1.0.0",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "note": "First release: sandbox settlement spans (3 and 20 settlements) and per-call latency (10 cycles)."
+    }
+  ],
+  "tables": {
+    "settlement_spans.jsonl": {
+      "source": "scripts/hf/data/latency-settlement-runs.json (measure-sandbox artifacts, runs 42346020463 and 42346811713)",
+      "rows": {
+        "exact": 4
+      },
+      "primaryKey": ["run_id", "span"],
+      "fields": {
+        "run_id": "integer",
+        "run_label": "string",
+        "run_date": "string",
+        "span": "string",
+        "n": "integer",
+        "failures": "integer",
+        "min_ms": "number",
+        "p50_ms": "number",
+        "p95_ms": "number",
+        "p99_ms": "number",
+        "max_ms": "number",
+        "holds_per_settlement": "integer",
+        "void_concurrency": "integer",
+        "mismatches": "integer",
+        "errors": "integer"
+      },
+      "min": {
+        "n": 1,
+        "failures": 0,
+        "min_ms": 0,
+        "mismatches": 0,
+        "errors": 0
+      },
+      "enum": {
+        "span": ["hammer_to_captured", "hammer_to_settled"]
+      }
+    },
+    "api_calls.jsonl": {
+      "source": "scripts/hf/data/latency-calls-run.json (measure-sandbox run 42047543821; docs/GATES.md)",
+      "rows": {
+        "exact": 4
+      },
+      "primaryKey": ["run_id", "call"],
+      "fields": {
+        "run_id": "integer",
+        "run_date": "string",
+        "call": "string",
+        "n": "integer",
+        "failures": "integer",
+        "p50_ms": "number",
+        "p95_ms": "number",
+        "max_ms": "number"
+      },
+      "min": {
+        "n": 1,
+        "failures": 0,
+        "p50_ms": 0
+      },
+      "enum": {
+        "call": ["order", "authorize", "capture", "void"]
+      }
+    }
+  }
+}
