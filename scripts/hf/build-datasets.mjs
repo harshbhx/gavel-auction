@@ -921,7 +921,7 @@ function buildAudit(ctx) {
           '    data_files: rejections.jsonl',
         ],
         what: [
-          `Event, ledger and outcome records of ${files.length} scripted auction scenarios (happy path, voice replay, crash and resume, duplicate and out-of-order webhooks, runner-up fallback, voided and expired holds, reconnects, abusive input, last-100-ms race, soft close, capture and void failures, restart with a persisted ledger). For each: the timed steps taken (registrations, bids, hammer, faults), what happened (winner, price, captured and released cents, payment-provider calls, rejected bids with reason codes) and the ledger event types the engine wrote.`,
+          `Event, ledger and outcome records of ${files.length} scripted auction scenarios (happy path, voice replay, crash and resume, duplicate and out-of-order webhooks, runner-up fallback, voided and expired holds, reconnects, last-100-ms race, soft close, capture and void failures, restart with a persisted ledger). For each: the timed steps taken (registrations, bids, hammer, faults), what happened (winner, price, captured and released cents, payment-provider calls, rejected bids with reason codes) and the ledger event types the engine wrote.`,
           '',
           'It documents the audit trail of a hold-then-capture auction: bids, rejections, holds, captures, voids and timestamps.',
         ].join('\n'),
@@ -935,7 +935,7 @@ function buildAudit(ctx) {
             file: 'events.jsonl / .csv',
             about: 'One row per scripted step or injected fault.',
             fields: [
-              ['scenario', 'string', 'Scenario id, `S01` to `S15`'],
+              ['scenario', 'string', 'Scenario id, for example `S01`'],
               ['seq', 'integer', 'Order in the trace'],
               ['t_ms', 'integer', 'Milliseconds from the scenario start (fake clock)'],
               ['kind', 'string', '`step` or `fault`'],
@@ -1012,7 +1012,7 @@ function buildAudit(ctx) {
         limitations: [
           '- Scripted, not organic: the steps are written by the author to exercise edge cases, so frequencies say nothing about real auctions.',
           '- The payment provider is a fake. No real PayPal object, buyer, name or email exists in the data.',
-          '- Fifteen scenarios. Some details (generated ids, exact payloads) are deliberately left out.',
+          '- Only scenarios the in-process runner can drive are included (the abusive-input scenario S10 needs raw frames and is driven by another harness, so it is not here). Some details (generated ids, exact payloads) are deliberately left out.',
           '- Time is a fake clock in milliseconds from scenario start.',
         ].join('\n'),
       },

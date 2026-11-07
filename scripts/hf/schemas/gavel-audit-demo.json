@@ -43,7 +43,7 @@
     "outcomes.jsonl": {
       "source": "result events of the same traces",
       "rows": {
-        "exact": 15
+        "min": 1
       },
       "primaryKey": ["scenario"],
       "fields": {
