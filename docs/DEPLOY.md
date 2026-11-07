@@ -27,6 +27,18 @@ Requirements: R-QA-042 (deploy), R-QA-044 (webhook registration). Hosting choice
 6. Run the workflow `deploy-staging` by hand and read the smoke output.
 7. Web: create a Cloudflare Pages project, build `npm ci && npm run build -w @gavel/web` with the API origin passed in `VITE_API_BASE` and `VITE_WS_BASE`, and add the Pages origin to `CORS_ORIGINS`. A workflow for this is not part of this change.
 
+## Settings the hosted checks need
+
+These workflows stay quiet or fail until the settings exist. Names only, values never go in the repository.
+
+| Workflow                                                                                  | Settings (Settings, Secrets and variables, Actions)                                                                                                                        | Without them                                                               |
+| ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `uptime` (probes `/healthz`, `/readyz`, `/warmup` every 5 minutes, see `infra/uptime.md`) | variable `UPTIME_ENABLED` = `true` and variable `PRODUCTION_URL` (the https API origin). Turn it on only after the spend approval (Q2) and the keep-alive choice (D-0008). | The job is skipped: no probe runs and nothing alerts.                      |
+| `judge-smoke` (nightly judge walkthrough on the hosted web app)                           | variable `JUDGE_URL` (the https origin of the web app)                                                                                                                     | The nightly run fails red with an error that names `JUDGE_URL`.            |
+| `ui-screens-live` (manual screen tour of the hosted site)                                 | run inputs `web_url` and `api_url`; secret `GAVEL_STAGING_ADMIN_KEY` (same value as `ADMIN_KEY` on the host) for the room screens                                          | Only the screens that need no room are taken, and the run summary says so. |
+
+Run the screen tour once both hosts are up: Actions, `ui-screens-live`, Run workflow, then download the artifact `ui-screens-live` (`gh run download <run-id> -n ui-screens-live`). The web app must have been built with `VITE_API_BASE` set to the same `api_url`, and the API must list the web origin in `CORS_ORIGINS`.
+
 ## Check by hand
 
 ```
