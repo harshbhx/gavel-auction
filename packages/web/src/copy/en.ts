@@ -424,7 +424,7 @@ export const en = {
   'join.waysTitle': 'Two ways to try bidding',
   'join.waysWhy':
     'Judges can test either way: with the PayPal sandbox, or with the demo version that needs no PayPal login. Sandbox only, held, not charged.',
-  'join.wayPaypal': 'Pay with PayPal sandbox',
+  'join.wayPaypal': 'Use the PayPal sandbox',
   'join.wayDemo': 'Join with the demo',
   'watch.title': 'You are watching this room',
   'watch.lead':
