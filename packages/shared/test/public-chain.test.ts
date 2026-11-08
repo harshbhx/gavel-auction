@@ -33,7 +33,7 @@ describe('hashPublicEntry', () => {
     expect(hashPublicEntry({ b: [1, true, null], a: 'x' })).toBe(
       sha('{"a":"x","b":[1,true,null]}'),
     );
-    expect(hashPublicEntry({ k: 'café' })).toBe(sha('{"k":"caf\\u00e9"}'));
+    expect(hashPublicEntry({ k: `caf${String.fromCharCode(0xe9)}` })).toBe(sha('{"k":"caf\\u00e9"}'));
   });
 
   it('hashes inputs longer than one block, and across the padding edge', () => {
@@ -44,7 +44,7 @@ describe('hashPublicEntry', () => {
   });
 
   it('orders keys by code point and handles nested values', () => {
-    const body = { '\u{1F600}': 1, '～': 2, z: { y: [[], {}] } };
+    const body = { '\u{1F600}': 1, [String.fromCharCode(0xff5e)]: 2, z: { y: [[], {}] } };
     expect(hashPublicEntry(body)).toBe(sha('{"z":{"y":[[],{}]},"\\uff5e":2,"\\ud83d\\ude00":1}'));
   });
 
