@@ -16,6 +16,7 @@ import {
   REPO_URL,
   TrustSection,
 } from './LandingSections';
+import { lookupProblemText } from '../../net/apiError';
 import './landing.css';
 import './landing-extra.css';
 
@@ -51,6 +52,7 @@ export function LandingScreen({
 }: LandingScreenProps) {
   const [code, setCode] = useState('');
   const [invalid, setInvalid] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const busy = status === 'busy';
   const [past, setPast] = useState(false);
@@ -68,8 +70,14 @@ export function LandingScreen({
     if (trimmed === '' || checking) return;
     setChecking(true);
     onJoin(trimmed)
-      .then((found) => setInvalid(!found))
-      .catch(() => setInvalid(true))
+      .then((found) => {
+        setProblem(null);
+        setInvalid(!found);
+      })
+      .catch((error: unknown) => {
+        setProblem(lookupProblemText(error));
+        setInvalid(true);
+      })
       .finally(() => setChecking(false));
   };
 
@@ -127,10 +135,11 @@ export function LandingScreen({
                 prefix=""
                 disabled={checking}
                 invalid={invalid}
-                {...(invalid ? { message: t('landing.codeInvalid') } : {})}
+                {...(invalid ? { message: problem ?? t('landing.codeInvalid') } : {})}
                 onChange={(next) => {
                   setCode(next);
                   setInvalid(false);
+                  setProblem(null);
                 }}
               />
               <Button type="submit" variant="outline" disabled={checking || code.trim() === ''}>
