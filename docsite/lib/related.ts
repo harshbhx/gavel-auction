@@ -32,6 +32,8 @@ export const related: Record<string, string[]> = {
   '/docs/judges/evidence-index': ['/docs/proof/evidence-map', '/docs/proof/gates', '/docs/judges/open-data'],
   '/docs/judges/two-minute-path': ['/docs/judges/ten-minute-path', '/docs/start/demo', '/docs/judges/tough-questions'],
   '/docs/judges/ten-minute-path': ['/docs/judges/rubric-map', '/docs/proof/gates', '/docs/judges/findings-that-mattered'],
+  '/docs/reference/api-reference': ['/docs/reference/websocket-protocol', '/docs/reference/data-model', '/docs/run/hosting-on-render'],
+  '/docs/run/hosting-on-render': ['/docs/run/deploy', '/docs/reference/api-reference', '/docs/run/operator-runbook'],
   '/docs/reference/websocket-protocol': ['/docs/reference/events', '/docs/reference/data-model', '/docs/how-it-works/bid-lifecycle'],
   '/docs/reference/events': ['/docs/how-it-works/engine-and-ledger', '/docs/reference/websocket-protocol', '/docs/reference/data-model'],
   '/docs/reference/data-model': ['/docs/reference/events', '/docs/reference/saga-states', '/docs/reference/architecture'],
