@@ -1,0 +1,97 @@
+name: live-stress
+# Adversarial stress run of the LIVE web app (QA-4): rapid clicks, double submits, back/forward and
+# refresh mid-flow, bad deep links, hostile input, offline and flaky network, slow 3G, websocket
+# drops, six parallel actors, resize and rotate, keyboard-only, axe, reduced motion, forced colors,
+# blocked images and fonts, JavaScript off. It does not repeat the happy-path walk in
+# live-redteam.yml. Informational: findings go to the job summary and the artifact, never to the
+# build status.
+#
+# Load: this targets a judge-demo server that holds five rooms. The run makes two rooms (the
+# first one through fifteen rapid clicks with a guard that lets only one request reach the API),
+# one worker, light control traffic. It never touches the operator key and makes no payment.
+# Room links carry tokens, so the state file stays outside the artifact and traces are off by
+# default (set trace=true only for a private repo; they hold request headers).
+on:
+  workflow_dispatch:
+    inputs:
+      web_url:
+        description: 'Origin of the live web app'
+        required: false
+        default: 'https://gavel-web.creharsh.workers.dev'
+        type: string
+      api_url:
+        description: 'Origin of the live API'
+        required: false
+        default: 'https://gavel-auction-z2nm.onrender.com'
+        type: string
+      trace:
+        description: 'Keep Playwright traces for failures (they contain room tokens)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-stress
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  stress:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      WEB_URL: ${{ inputs.web_url || 'https://gavel-web.creharsh.workers.dev' }}
+      API_URL: ${{ inputs.api_url || 'https://gavel-auction-z2nm.onrender.com' }}
+      TRACE: ${{ inputs.trace && '1' || '0' }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Check the inputs
+        run: |
+          for pair in "web_url=$WEB_URL" "api_url=$API_URL"; do
+            value="${pair#*=}"
+            if ! printf '%s' "$value" | grep -Eq '^https://[A-Za-z0-9.-]+(:[0-9]+)?/?$'; then
+              echo "::error title=Bad input::${pair%%=*} must be an https origin with no path"
+              exit 1
+            fi
+          done
+      - name: Wake the API
+        run: curl -fsS -o /dev/null --max-time 30 --retry 6 --retry-delay 10 --retry-all-errors "${API_URL%/}/healthz"
+      - name: Install Playwright and chromium
+        working-directory: qa/live-stress
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Run the stress specs
+        working-directory: qa/live-stress
+        env:
+          OUT: ${{ github.workspace }}/stress-out
+          STATE_FILE: ${{ runner.temp }}/live-stress-state.json
+        run: npx playwright test || true
+      - name: Build the findings table
+        if: always()
+        working-directory: qa/live-stress
+        env:
+          OUT: ${{ github.workspace }}/stress-out
+        run: |
+          node report.mjs > /dev/null || echo "report failed"
+          if [ -f "$OUT/findings.md" ]; then cat "$OUT/findings.md" >> "$GITHUB_STEP_SUMMARY"; else echo "No findings file produced" >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload screenshots, video, findings
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: live-stress
+          path: stress-out
+          if-no-files-found: warn
+          retention-days: 14
