@@ -1029,6 +1029,17 @@ async function main() {
     await sc.goto(WEB + '/demo/scripted', { waitUntil: 'load' });
     await sc.evaluate(() => {
       window.__mut = { n: 0, texts: [], t0: performance.now() };
+      window.__chg = [];
+      window.__last = '';
+      setInterval(() => {
+        const t = document.body.innerText;
+        if (t !== window.__last) {
+          window.__last = t;
+          const price = (t.match(/\$[0-9,]+\.[0-9]{2}/) || [''])[0];
+          const sold = /SOLD/i.test(t) ? ' SOLD' : '';
+          window.__chg.push(Math.round(performance.now() - window.__mut.t0) + 'ms ' + price + sold);
+        }
+      }, 150);
       new MutationObserver((ms) => {
         window.__mut.n += ms.length;
       }).observe(document.body, {
@@ -1057,6 +1068,8 @@ async function main() {
       if (s % 8 === 0) await shot(sc, `${PROFILE}-scripted-t${String(s).padStart(2, '0')}`);
     }
     const mut = await sc.evaluate(() => window.__mut.n);
+    const chg = await sc.evaluate(() => window.__chg);
+    note(`timeline of visible changes (150 ms sampling): ${chg.join(' | ')}`);
     note(
       `over 40 s: visible-text changed ${changes} times; DOM mutations ${mut} (${(mut / 40).toFixed(0)}/s)`,
     );
