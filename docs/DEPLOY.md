@@ -48,7 +48,7 @@ A judge with no setup can run a real sandbox auction when the API runs with `JUD
 | `JUDGE_SIM_HOLDS`         | on      | Judge rooms only: a bidder may test with a simulated hold, no PayPal login. `false` turns it off. |
 | `JUDGE_ROOMS_MAX`         | 15      | Most rooms live at once (at most 50). Finished rooms free a slot at once.                         |
 | `JUDGE_ROOM_TTL_MS`       | 1800000 | Room lifetime before the sweeper ends it (at most 7200000).                                       |
-| `JUDGE_ROOMS_PER_IP_HOUR` | 4       | Creates per source address per hour. Judges on one NAT share it.                                  |
+| `JUDGE_ROOMS_PER_IP_HOUR` | 12      | Creates per source address per hour (at most 100). Judges on one NAT share it.                    |
 | `JUDGE_ROOMS_PER_HOUR`    | 40      | Creates for the whole host per hour.                                                              |
 
 ### Judge key (optional)
@@ -89,6 +89,8 @@ A real signed event reaching the host once G4 runs is checked in the PayPal webh
 ## Rate limits behind one address
 
 Socket upgrades and HTTP joins share one per-address bucket, and every reconnect spends a token. `RATE_JOIN_BURST` (default 40) is the bucket size and `RATE_JOIN_PER_MIN` (default 10) the refill. A venue where many judges share one NAT address can raise `RATE_JOIN_BURST`. Each address may also hold at most 20 open sockets.
+
+Other HTTP requests have two buckets per address. Public reads (GET, HEAD, OPTIONS) use `RATE_HTTP_READ_BURST` (default 300) and `RATE_HTTP_READ_PER_MIN` (default 300), so judges sharing one office address can browse. Every other request uses `RATE_HTTP_BURST` (default 60) and `RATE_HTTP_PER_MIN` (default 60). A refused request answers 429 with `Retry-After` in seconds and the same CORS headers as any other answer, so the web app can show a wait message instead of a network error. Health probes and webhooks are never limited.
 
 ## Known limits
 

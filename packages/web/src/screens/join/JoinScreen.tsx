@@ -5,10 +5,11 @@ import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
 import '../flows.css';
 import { getBidderSession } from '../../store/session';
+import { ApiProblem } from '../states/ApiProblem';
 
 const QrCode = lazy(() => import('./QrCode'));
 
-export type JoinState = 'loading' | 'open' | 'ended' | 'notFound' | 'full';
+export type JoinState = 'loading' | 'open' | 'ended' | 'notFound' | 'full' | 'busy' | 'unreachable';
 
 export interface JoinScreenProps {
   roomId: string;
@@ -23,6 +24,8 @@ export interface JoinScreenProps {
   onNavigate: (path: string) => void;
   /** A judge room with simulated holds: offer the PayPal sandbox and the demo side by side. */
   demoHold?: boolean;
+  /** Seconds the server asked the client to wait, for the `busy` state. */
+  retryAfterS?: number | null;
   /** Whether a valid session is stored for this room. Defaults to reading session storage. */
   hasSession?: boolean;
 }
@@ -61,6 +64,7 @@ export function JoinScreen({
   onNavigate,
   demoHold = false,
   hasSession,
+  retryAfterS = null,
 }: JoinScreenProps) {
   const returning = hasSession ?? getBidderSession(roomId) !== null;
   const bidPath = `/r/${encodeURIComponent(roomId)}/bid`;
@@ -70,6 +74,15 @@ export function JoinScreen({
     if (returning && state === 'open') onNavigate(bidPath);
   }, [returning, state, bidPath, onNavigate]);
 
+  if (state === 'busy' || state === 'unreachable') {
+    return (
+      <ApiProblem
+        kind={state === 'busy' ? 'rateLimited' : 'unreachable'}
+        retryAfterS={retryAfterS}
+        onNavigate={onNavigate}
+      />
+    );
+  }
   if (state === 'notFound') {
     return (
       <main className="gv-flow" data-state="not-found">
