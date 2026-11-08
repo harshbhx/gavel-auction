@@ -1,18 +1,23 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { t } from '../../copy/t';
 import { Icon, type IconName } from '../../design/icons';
 import { Button } from '../../design/primitives/Button';
 import { Chip, type ChipTone } from '../../design/primitives/Chip';
 import type { JudgeRoomsStatus } from '../../net/judgeRooms';
-import { SCRIPTED_DEMO_PATH, SCRIPTED_JOIN_PATH } from '../../net/scriptedMode';
+import { SCRIPTED_DEMO_PATH } from '../../net/scriptedMode';
 import { JoinCodeInput } from '../../ui';
 import { DemoRoomError, failureText, type DemoFailure, type DemoLinks } from '../demo/DemoLauncher';
 import { GoalField } from '../demo/GoalField';
 import { parseGoalInput } from '../screen/fundraiser';
-import { DOCS_URL, REPO_URL, Section, TrustSection } from '../landing/LandingSections';
 import { lookupProblemText } from '../../net/apiError';
+import { REPO_URL } from '../landing/LandingSections';
+import { latestHubRoom } from '../hub/hubKeys';
 import '../flows.css';
-import '../landing/landing.css';
+import { EvidenceColumn } from './EvidenceColumn';
+import { JudgeDialog, type JudgeTab } from './JudgeDialog';
+import { JudgeStage } from './JudgeStage';
+import { liveRoomFrom, type LiveRoom } from './liveRoom';
+import { useDemoScript } from './useDemoScript';
 import './judge.css';
 
 /** What the panel knows about live rooms: the host's answer, or why there is none. */
@@ -20,18 +25,20 @@ export type RoomsState = 'checking' | 'noServer' | JudgeRoomsStatus;
 
 export interface JudgePanelProps {
   readonly rooms: RoomsState;
-  /**
-   * Creates a key-less sandbox room, with a fundraiser goal in cents when the host typed one.
-   * Rejects with a `DemoRoomError` when the host refuses.
-   */
+  /** Creates a key-less sandbox room. Rejects with a `DemoRoomError` when the host refuses. */
   readonly createRoom: (goalCents?: number) => Promise<DemoLinks>;
-  /** Opens the room page in the current tab. */
+  /** Opens a page in the current tab. */
   readonly openRoom: (href: string) => void;
   /** Looks a room code up and goes to the join page. Resolves false when there is no such room. */
   readonly joinByCode: (code: string) => Promise<boolean>;
+  /** The visitor's live room. Defaults to the newest room this tab holds keys for. */
+  readonly room?: LiveRoom | null;
+  /** Turns the simulated run's own timer off, for tests that read one frame. */
+  readonly autoplay?: boolean;
 }
 
 const CODE_LENGTH = 6;
+const CODE_PREFIX = 'GVL-';
 
 const STATUS: Readonly<
   Record<
@@ -57,74 +64,40 @@ const STATUS: Readonly<
   noServer: { key: 'try.status.noServer', tone: 'neutral', icon: 'hollow' },
 };
 
-const BEATS = [
-  { title: 'try.beat1.title', body: 'try.beat1.body' },
-  { title: 'try.beat2.title', body: 'try.beat2.body' },
-  { title: 'try.beat3.title', body: 'try.beat3.body' },
-] as const;
-
-const SCREENS = [
-  { name: 'try.screens.room', who: 'try.screens.roomFor', how: 'try.screens.roomHow' },
-  {
-    name: 'try.screens.projection',
-    who: 'try.screens.projectionFor',
-    how: 'try.screens.projectionHow',
-  },
-  { name: 'try.screens.bidder', who: 'try.screens.bidderFor', how: 'try.screens.bidderHow' },
-  { name: 'try.screens.console', who: 'try.screens.consoleFor', how: 'try.screens.consoleHow' },
-  { name: 'try.screens.audit', who: 'try.screens.auditFor', how: 'try.screens.auditHow' },
-] as const;
-
-const BUYER_STEPS = [
-  'try.buyer.step1',
-  'try.buyer.step2',
-  'try.buyer.step3',
-  'try.buyer.step4',
-] as const;
-
-const FAQ = [
-  { q: 'try.faq.q1', a: 'try.faq.a1' },
-  { q: 'try.faq.q2', a: 'try.faq.a2' },
-  { q: 'try.faq.q3', a: 'try.faq.a3' },
-  { q: 'try.faq.q4', a: 'try.faq.a4' },
-  { q: 'try.faq.q5', a: 'try.faq.a5' },
-  { q: 'try.faq.q6', a: 'try.faq.a6' },
-] as const;
-
 /** Start a room is blocked only when the host cannot make one; a full host may free a slot soon. */
 function canStart(rooms: RoomsState): boolean {
   return rooms !== 'noServer' && rooms !== 'off';
 }
 
-function StepCard({ n, title, children }: { n: number; title: string; children: ReactNode }) {
-  const id = `gv-judge-step-${n}`;
-  return (
-    <li className="gv-judge__step" aria-labelledby={id}>
-      <span className="gv-judge__num" aria-hidden="true">
-        {n}
-      </span>
-      <div className="gv-judge__stepbody">
-        <p className="ui-kicker">{t('try.step', { n })}</p>
-        <h3 id={id}>{title}</h3>
-        {children}
-      </div>
-    </li>
-  );
-}
-
-/** The judge's landing page: a guided path from the 20 second pitch to receipt and audit trail. */
-export function JudgePanel({ rooms, createRoom, openRoom, joinByCode }: JudgePanelProps) {
+/**
+ * The judge page at /try, laid out as a newspaper front page: masthead, headline, Fig. 1 (a
+ * simulated run on an auction stage), three moves and a trust column. Nothing on it is live
+ * except the server status, the links and a room code the visitor already holds.
+ */
+export function JudgePanel({
+  rooms,
+  createRoom,
+  openRoom,
+  joinByCode,
+  room: roomProp,
+  autoplay = true,
+}: JudgePanelProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   const [phase, setPhase] = useState<'idle' | 'busy' | 'failed'>('idle');
   const [failure, setFailure] = useState<DemoFailure | null>(null);
-  const [retryAfterS, setRetryAfterS] = useState<number | null>(null);
   const [code, setCode] = useState('');
   const [looking, setLooking] = useState(false);
   const [missing, setMissing] = useState(false);
+  const [retryAfterS, setRetryAfterS] = useState<number | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
   const [goal, setGoal] = useState('');
   const goalInput = parseGoalInput(goal);
   const goalOk = goalInput.kind === 'empty' || goalInput.kind === 'ok';
-  const [problem, setProblem] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<JudgeTab | null>(null);
+  const [ownRoom] = useState<LiveRoom | null>(() => liveRoomFrom(latestHubRoom()));
+  const room = roomProp === undefined ? ownRoom : roomProp;
+  const script = useDemoScript(autoplay);
+  const running = script.state.status === 'running';
 
   useEffect(() => {
     document.title = t('try.title');
@@ -152,7 +125,12 @@ export function JudgePanel({ rooms, createRoom, openRoom, joinByCode }: JudgePan
   const find = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
     const trimmed = code.trim();
-    if (trimmed === '' || looking || rooms === 'noServer') return;
+    if (trimmed === '' || looking) return;
+    // Without a server the join page is the only place that can answer, so go straight there.
+    if (rooms === 'noServer') {
+      openRoom(`/join/${encodeURIComponent(trimmed)}`);
+      return;
+    }
     setLooking(true);
     joinByCode(trimmed)
       .then((found) => {
@@ -166,215 +144,193 @@ export function JudgePanel({ rooms, createRoom, openRoom, joinByCode }: JudgePan
       .finally(() => setLooking(false));
   };
 
+  const view = (
+    tab: 'console' | 'screen' | 'receipt',
+    label: 'try.a3.console' | 'try.a3.screen' | 'try.a3.receipt',
+  ) => {
+    const href = room === null ? null : room[tab];
+    return href !== null ? (
+      <a className="gv-judge__linkbtn gv-judge__linkbtn--alt" href={href}>
+        {t(label)}
+      </a>
+    ) : (
+      <Button variant="outline" onClick={() => setDialog(tab)}>
+        {t(label)}
+      </Button>
+    );
+  };
+
   return (
     <main className="gv-judge" data-route="try">
-      <header className="gv-judge__head">
-        <p className="ui-kicker">{t('try.kicker')}</p>
-        <h1 ref={heading} tabIndex={-1}>
-          {t('try.title')}
-        </h1>
-        <p className="gv-judge__lead">{t('try.lead')}</p>
-        <div role="status" className="gv-judge__status" data-rooms={rooms}>
-          <Chip
-            state={rooms}
-            label={t(status.key)}
-            tone={status.tone}
-            icon={<Icon name={status.icon} />}
-          />
+      <a className="gv-judge__skip" href="#gv-judge-main">
+        {t('try.skip')}
+      </a>
+      <div className="gv-judge__strip">
+        <div className="gv-judge__page gv-judge__stripin">
+          <span>{t('try.edition')}</span>
+          <span className="gv-judge__status" role="status" data-rooms={rooms}>
+            <Chip
+              state={rooms}
+              label={t(status.key)}
+              tone={status.tone}
+              icon={<Icon name={status.icon} />}
+            />
+          </span>
         </div>
-        <nav className="gv-judge__nav" aria-label={t('try.nav.label')}>
-          <a href="#path">{t('try.nav.path')}</a>
-          <a href="#screens">{t('try.nav.screens')}</a>
-          <a href="#buyer">{t('try.nav.buyer')}</a>
-          <a href="#trust">{t('try.nav.trust')}</a>
-          <a href="#faq">{t('try.nav.faq')}</a>
-        </nav>
+      </div>
+      <header className="gv-judge__page gv-judge__mast">
+        <p className="gv-judge__brand">{t('try.brand')}</p>
+        <p className="gv-judge__tagline">{t('try.tagline')}</p>
+        <p className="gv-judge__meta">
+          <span>{t('try.strip1')}</span>
+          <span>{t('try.strip2')}</span>
+          <span>{t('try.editionNote')}</span>
+        </p>
       </header>
 
-      <Section id="pitch" title={t('try.pitch.title')} lead={t('try.pitch.lead')}>
-        <ol className="gv-judge__beats">
-          {BEATS.map((beat, i) => (
-            <li key={beat.title} className="gv-judge__beat">
-              <span className="gv-judge__beatn" aria-hidden="true">
-                {i + 1}
-              </span>
-              <h3>{t(beat.title)}</h3>
-              <p>{t(beat.body)}</p>
-            </li>
-          ))}
-        </ol>
-      </Section>
+      <div className="gv-judge__page gv-judge__grid">
+        <div className="gv-judge__maincol" id="gv-judge-main">
+          <section className="gv-judge__headline" aria-labelledby="gv-judge-h1">
+            <p className="gv-judge__kicker">{t('try.kicker')}</p>
+            <h1 id="gv-judge-h1" ref={heading} tabIndex={-1}>
+              {t('try.hl1')} <mark>{t('try.hl2')}</mark> {t('try.hl3')} <mark>{t('try.hl4')}</mark>
+            </h1>
+            <div className="gv-judge__dek">
+              <p className="gv-judge__deck">{t('try.deck')}</p>
+              <p className="gv-judge__by">{t('try.by')}</p>
+            </div>
+          </section>
 
-      <Section id="path" title={t('try.path.title')} lead={t('try.path.lead')}>
-        <ol className="gv-judge__steps">
-          <StepCard n={1} title={t('try.s1.title')}>
-            <p>{t('try.s1.body')}</p>
-            <GoalField value={goal} onChange={setGoal} />
-            <Button size="bid" disabled={phase === 'busy' || !startable || !goalOk} onClick={start}>
-              {phase === 'busy' ? t('try.s1.creating') : t('try.s1.cta')}
-            </Button>
-            {(phase === 'failed' || (!startable && rooms !== 'checking')) && (
-              <div className="gv-flow__error" role="alert">
-                <p>
-                  {phase === 'failed'
-                    ? `${t('try.s1.failed')} ${failureText(failure, retryAfterS)}`
-                    : t('try.s1.open')}
-                </p>
-                <a className="gv-flow__action" href={SCRIPTED_DEMO_PATH}>
-                  {t('demo.scriptedInstead')}
-                </a>
-              </div>
-            )}
-          </StepCard>
+          <JudgeStage state={script.state} />
 
-          <StepCard n={2} title={t('try.s2.title')}>
-            <p>{t('try.s2.body')}</p>
-            <form className="gv-judge__join" onSubmit={find}>
-              <JoinCodeInput
-                value={code}
-                length={CODE_LENGTH}
-                prefix=""
-                disabled={looking || rooms === 'noServer'}
-                invalid={missing}
-                {...(missing ? { message: problem ?? t('landing.codeInvalid') } : {})}
-                onChange={(next) => {
-                  setCode(next);
-                  setMissing(false);
-                  setProblem(null);
-                }}
-              />
-              <Button
-                type="submit"
-                variant="outline"
-                disabled={looking || code.trim() === '' || rooms === 'noServer'}
-              >
-                {looking ? t('try.s2.checking') : t('try.s2.go')}
-              </Button>
-            </form>
-            {rooms === 'noServer' && <p className="gv-judge__note">{t('try.s2.noServer')}</p>}
-          </StepCard>
+          <section className="gv-judge__acts" aria-labelledby="gv-judge-acts">
+            <h2 id="gv-judge-acts" className="gv-judge__rule">
+              {t('try.acts.title')}
+            </h2>
+            <div className="gv-judge__cols">
+              <article className="gv-judge__col" aria-labelledby="gv-judge-a1">
+                <span className="gv-judge__num" aria-hidden="true">
+                  {1}
+                </span>
+                <h3 id="gv-judge-a1">{t('try.a1.title')}</h3>
+                <p className="gv-judge__tag">{t('try.a1.tag')}</p>
+                <p>{t('try.a1.body')}</p>
+                <GoalField value={goal} onChange={setGoal} />
+                <div className="gv-judge__stack">
+                  <a className="gv-judge__linkbtn" href={SCRIPTED_DEMO_PATH}>
+                    {t('try.a1.script')}
+                  </a>
+                  <Button
+                    variant="outline"
+                    disabled={phase === 'busy' || !startable || !goalOk}
+                    onClick={start}
+                  >
+                    {phase === 'busy' ? t('try.a1.creating') : t('try.a1.room')}
+                  </Button>
+                </div>
+                {(phase === 'failed' || (!startable && rooms !== 'checking')) && (
+                  <div className="gv-flow__error" role="alert">
+                    <p>
+                      {phase === 'failed'
+                        ? `${t('try.a1.failed')} ${failureText(failure, retryAfterS)}`
+                        : t('try.a1.open')}
+                    </p>
+                  </div>
+                )}
+              </article>
 
-          <StepCard n={3} title={t('try.s3.title')}>
-            <p>{t('try.s3.body')}</p>
-            <a className="gv-flow__action gv-flow__action--plain" href="#buyer">
-              {t('try.nav.buyer')}
-            </a>
-          </StepCard>
+              <article className="gv-judge__col" aria-labelledby="gv-judge-a2">
+                <span className="gv-judge__num" aria-hidden="true">
+                  {2}
+                </span>
+                <h3 id="gv-judge-a2">{t('try.a2.title')}</h3>
+                <p className="gv-judge__tag">{t('try.a2.tag')}</p>
+                <p>{t('try.a2.body')}</p>
+                <form className="gv-judge__join" onSubmit={find}>
+                  <JoinCodeInput
+                    value={code}
+                    length={CODE_LENGTH}
+                    prefix={CODE_PREFIX}
+                    disabled={looking}
+                    invalid={missing}
+                    {...(missing ? { message: problem ?? t('landing.codeInvalid') } : {})}
+                    onChange={(next) => {
+                      setCode(next);
+                      setMissing(false);
+                      setProblem(null);
+                    }}
+                  />
+                  <Button type="submit" disabled={looking || code.trim() === ''}>
+                    {looking ? t('try.a2.checking') : t('try.a2.go')}
+                  </Button>
+                </form>
+                <p className="gv-judge__note">{t('try.a2.nocode')}</p>
+              </article>
 
-          <StepCard n={4} title={t('try.s4.title')}>
-            <p>{t('try.s4.body')}</p>
-          </StepCard>
-
-          <StepCard n={5} title={t('try.s5.title')}>
-            <p>{t('try.s5.body')}</p>
-            <ol className="gv-judge__flow" aria-label={t('try.flow.label')}>
-              <li>{t('try.flow.hold')}</li>
-              <li>{t('try.flow.hammer')}</li>
-              <li>{t('try.flow.receipt')}</li>
-            </ol>
-          </StepCard>
-        </ol>
-
-        <aside className="gv-judge__script" aria-labelledby="gv-judge-script">
-          <h3 id="gv-judge-script">{t('try.script.title')}</h3>
-          <p>{t('try.script.body')}</p>
-          <div className="gv-judge__actions">
-            <a className="gv-flow__action" href={SCRIPTED_DEMO_PATH}>
-              {t('try.script.run')}
-            </a>
-            <a className="gv-flow__action gv-flow__action--plain" href={SCRIPTED_JOIN_PATH}>
-              {t('try.script.join')}
-            </a>
-          </div>
-        </aside>
-      </Section>
-
-      <Section id="screens" title={t('try.screens.title')} lead={t('try.screens.lead')}>
-        <div className="gv-judge__tablewrap">
-          <table className="gv-judge__table">
-            <caption className="gv-visually-hidden">{t('try.screens.caption')}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{t('try.screens.colScreen')}</th>
-                <th scope="col">{t('try.screens.colFor')}</th>
-                <th scope="col">{t('try.screens.colHow')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {SCREENS.map((row) => (
-                <tr key={row.name}>
-                  <th scope="row">{t(row.name)}</th>
-                  <td>{t(row.who)}</td>
-                  <td>{t(row.how)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              <article className="gv-judge__col" aria-labelledby="gv-judge-a3">
+                <span className="gv-judge__num" aria-hidden="true">
+                  {3}
+                </span>
+                <h3 id="gv-judge-a3">{t('try.a3.title')}</h3>
+                <p className="gv-judge__tag">{t('try.a3.tag')}</p>
+                <p>{t('try.a3.body')}</p>
+                <div className="gv-judge__row">
+                  {view('console', 'try.a3.console')}
+                  {view('screen', 'try.a3.screen')}
+                  {view('receipt', 'try.a3.receipt')}
+                </div>
+              </article>
+            </div>
+          </section>
         </div>
-        <aside className="gv-judge__key" aria-labelledby="gv-judge-key">
-          <h3 id="gv-judge-key">
-            <span aria-hidden="true">
-              <Icon name="lock" />
-            </span>{' '}
-            {t('try.key.title')}
-          </h3>
-          <p>{t('try.key.body')}</p>
-        </aside>
-      </Section>
+        <EvidenceColumn room={room} />
+      </div>
 
-      <Section id="buyer" title={t('try.buyer.title')} lead={t('try.buyer.lead')}>
-        <ol className="gv-judge__buyer">
-          {BUYER_STEPS.map((key) => (
-            <li key={key}>{t(key)}</li>
-          ))}
-        </ol>
-        <p className="gv-judge__warn">
-          <span aria-hidden="true">
-            <Icon name="warning" />
-          </span>{' '}
-          {t('try.buyer.warn')}
-        </p>
-        <div className="gv-judge__limits">
-          <h3>{t('try.limits.title')}</h3>
-          <p>{t('try.limits.body')}</p>
-        </div>
-      </Section>
+      <footer className="gv-judge__page gv-judge__foot">
+        <span>{t('try.foot')}</span>
+        <span>{t('try.footNote')}</span>
+        <span className="gv-judge__footlinks">
+          <a className="ui-link" href={REPO_URL}>
+            {t('try.more.repo')}
+          </a>
+          <a className="ui-link" href="/">
+            {t('try.more.landing')}
+          </a>
+        </span>
+      </footer>
 
-      <TrustSection />
-
-      <Section id="faq" title={t('try.faq.title')}>
-        <div className="gv-faq">
-          {FAQ.map((item) => (
-            <details key={item.q} className="gv-faq__item">
-              <summary className="gv-faq__q">{t(item.q)}</summary>
-              <p className="gv-faq__a">{t(item.a)}</p>
-            </details>
-          ))}
-        </div>
-      </Section>
-
-      <nav className="gv-judge__more" aria-labelledby="gv-judge-more">
-        <h2 id="gv-judge-more" className="ui-kicker">
-          {t('try.more.title')}
-        </h2>
-        <ul>
-          <li>
-            <a className="gv-link" href={DOCS_URL}>
-              {t('try.more.docs')}
-            </a>
-          </li>
-          <li>
-            <a className="gv-link" href={REPO_URL}>
-              {t('try.more.repo')}
-            </a>
-          </li>
-          <li>
-            <a className="gv-link" href="/">
-              {t('try.more.landing')}
-            </a>
-          </li>
-        </ul>
+      <nav className="gv-judge__bar" aria-label={t('try.bar.label')}>
+        <Button size="bid" className="gv-judge__go" disabled={running} onClick={script.run}>
+          <span>
+            {running
+              ? t('try.run.running')
+              : script.state.status === 'idle'
+                ? t('try.run.go')
+                : t('try.run.replay')}
+          </span>
+          <small>{t('try.run.sub')}</small>
+        </Button>
+        <Button size="bid" variant="outline" onClick={() => setDialog('join')}>
+          <span>{t('try.bar.join')}</span>
+          <small>{t('try.bar.joinSub')}</small>
+        </Button>
+        <Button size="bid" variant="outline" onClick={() => setDialog('console')}>
+          <span>{t('try.bar.console')}</span>
+          <small>{t('try.bar.consoleSub')}</small>
+        </Button>
+        <Button size="bid" variant="outline" onClick={() => setDialog('screen')}>
+          <span>{t('try.bar.screen')}</span>
+          <small>{t('try.bar.screenSub')}</small>
+        </Button>
       </nav>
+
+      <JudgeDialog
+        open={dialog !== null}
+        tab={dialog ?? 'join'}
+        onTab={setDialog}
+        onClose={() => setDialog(null)}
+        room={room}
+      />
     </main>
   );
 }
