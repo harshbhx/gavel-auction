@@ -174,6 +174,10 @@ export const en = {
   'demo.failedCap': 'The server is at its demo room limit. Try again soon.',
   'demo.failedBusy':
     'Judge rooms are busy or switched off right now. Try again soon, or run the scripted demo.',
+  'demo.failedRate':
+    'Too many tries from this network. Try again in {wait}, or run the scripted demo.',
+  'demo.failedRateUnknown':
+    'Too many tries from this network. Wait a few minutes and try again, or run the scripted demo.',
   'demo.scriptedInstead': 'Run scripted demo instead',
   'demo.lead':
     'Starts a sandbox room in a few seconds: an auctioneer console, a big screen and a bidder link. No real money moves.',
@@ -504,6 +508,8 @@ export const en = {
   'join.fullHelp':
     'The room has reached its bidder limit. You can watch the auction, or ask the host to start another room.',
   'join.loading': 'Looking for the room',
+  'join.rateTitle': 'Too many requests, wait a moment',
+  'join.offlineTitle': 'Could not reach the server',
   'bid.waitingLot': 'Waiting for the first lot',
   'bid.price': 'Current price',
   'bid.leader': 'Leading: paddle {n}',
@@ -825,6 +831,8 @@ export const en = {
   'receipt.shared.loading': 'Opening the receipt',
   'receipt.shared.invalid': 'This receipt link has expired or is not valid.',
   'replay.readonly': 'Replay is read-only',
+  'replay.about':
+    'A replay plays back a recorded auction. It is read-only: nothing here can be changed. Recordings are not hosted on this site yet.',
   'replay.captionsOnly': 'Audio could not load. Showing captions only.',
   'replay.invalid': 'This recording could not be read.',
   'replay.speed': 'Speed {x}',
@@ -851,6 +859,15 @@ export const en = {
   'err.room.rateLimitedSoon': 'Too many attempts. Try again in a moment.',
   'err.boundaryId': 'Error id {id}',
   'err.home': 'Go to the start page',
+  'room.missingTitle': 'Room not found or ended',
+  'room.missingHelp':
+    'Check the code and the link. Demo rooms close after a short while, so an old link may no longer work.',
+  'api.rateHelp': 'The server asked for a short pause. Try again in {wait}.',
+  'api.rateHelpUnknown': 'The server asked for a short pause. Try again in a few seconds.',
+  'api.offlineHelp': 'Check your connection, then try again.',
+  'time.seconds': '{n} s',
+  'time.minutes': '{n} min',
+  'time.hours': '{n} h',
   'err.pay.ceilingOutOfRange': 'That ceiling is outside the allowed range. Pick another amount.',
   'err.pay.holdExists': 'Your hold is already in place.',
   'err.pay.orderNotFound': 'We could not find that approval attempt. Start again.',

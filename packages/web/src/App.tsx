@@ -44,6 +44,8 @@ import { GalleryScreen } from './screens/gallery/GalleryScreen';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
 import { OfflineBanner } from './a11y/OfflineBanner';
 import { SkipLink } from './a11y/SkipLink';
+import { RoomGate } from './screens/states/RoomGate';
+import { ApiError, apiErrorFor, unreachable } from './net/apiError';
 import { WatcherGate } from './screens/join/WatcherGate';
 import { LandingScreen } from './screens/landing/LandingScreen';
 import { JudgePanel, type RoomsState } from './screens/judge/JudgePanel';
@@ -406,6 +408,10 @@ function ReplayRoute({ match }: { match: RouteMatch }) {
   const recordingId = match.params['recordingId'];
   return (
     <RouteScreen match={match}>
+      <p>{t('replay.about')}</p>
+      <a className="ui-link" href="/">
+        {t('err.home')}
+      </a>
       {recordingId !== undefined && (
         <Suspense fallback={<p role="status">{t('net.resyncing')}</p>}>
           <ReplayScreen recordingId={recordingId} />
@@ -462,8 +468,13 @@ export function AuditRoute() {
 type Api = NonNullable<AppProps['api']>;
 
 async function fetchJson(url: string, init?: RequestInit): Promise<unknown> {
-  const res = await fetch(url, init);
-  if (!res.ok) throw new Error('request failed');
+  let res: Response;
+  try {
+    res = await fetch(url, init);
+  } catch {
+    throw unreachable();
+  }
+  if (!res.ok) throw apiErrorFor(res);
   return (await res.json()) as unknown;
 }
 
@@ -486,7 +497,10 @@ async function joinByCode(api: Api | undefined, code: string): Promise<boolean> 
       auctionId?: unknown;
     };
     id = typeof body.auctionId === 'string' && body.auctionId !== '' ? body.auctionId : code;
-  } catch {
+  } catch (error) {
+    // Only "no such room" means the code is wrong; a limit or a lost network is told apart.
+    if (error instanceof ApiError && (error.kind === 'rateLimited' || error.kind === 'unreachable'))
+      throw error;
     return false;
   }
   navigate(`/join/${encodeURIComponent(id)}`);
@@ -540,6 +554,7 @@ function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
     id: string;
     code: string | null;
     demoHold: boolean;
+    retryAfterS?: number | null;
   }>({
     state: api === undefined ? 'open' : malformedRoom ? 'notFound' : 'loading',
     title: api === undefined ? roomId : null,
@@ -571,9 +586,19 @@ function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
           demoHold: simOn && info.judgeRoom === true,
         });
       })
-      .catch(() => {
-        if (live)
-          setFound({ state: 'notFound', title: null, id: roomId, code: null, demoHold: false });
+      .catch((error: unknown) => {
+        if (!live) return;
+        const kind = error instanceof ApiError ? error.kind : 'unreachable';
+        const state: JoinState =
+          kind === 'notFound' ? 'notFound' : kind === 'rateLimited' ? 'busy' : 'unreachable';
+        setFound({
+          state,
+          title: null,
+          id: roomId,
+          code: null,
+          demoHold: false,
+          retryAfterS: error instanceof ApiError ? error.retryAfterS : null,
+        });
       });
     return () => {
       live = false;
@@ -586,6 +611,7 @@ function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
       shortCode={found.code}
       demoHold={found.demoHold}
       state={found.state}
+      retryAfterS={found.retryAfterS ?? null}
       origin={window.location.origin}
       onNavigate={navigate}
     />
@@ -687,6 +713,7 @@ function RegisterRoute({
   }, [api, roomId, noInvite]);
   useEffect(() => {
     if (who !== null || invite === null) return;
+    setFailed(false);
     fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(roomId)}/join`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -1195,12 +1222,14 @@ function Routed({
   if (id === 'scriptedJoin') return <ScriptedJoin />;
   if (id === 'hub' && roomId !== undefined) {
     return (
-      <JudgeHub
-        roomId={roomId}
-        keys={readHubKeys(roomId)}
-        apiBase={api?.apiBase}
-        origin={window.location.origin}
-      />
+      <RoomGate apiBase={api?.apiBase} roomId={roomId} onNavigate={navigate}>
+        <JudgeHub
+          roomId={roomId}
+          keys={readHubKeys(roomId)}
+          apiBase={api?.apiBase}
+          origin={window.location.origin}
+        />
+      </RoomGate>
     );
   }
   if (id === 'try') return <TryRoute api={api} />;
@@ -1280,13 +1309,20 @@ const HELP_ROUTES: ReadonlySet<string> = new Set([
 export function App({ initialPath, gallery = import.meta.env.DEV, liveBase, api }: AppProps) {
   const [path, setPath] = useState(initialPath ?? window.location.pathname);
 
+  // A link pasted into the same tab changes only the fragment (an invite, a token): render again
+  // so the page reads it, instead of keeping what the old fragment said.
+  const [, setHashSeen] = useState(0);
+
   useEffect(() => {
     const sync = (): void => setPath(window.location.pathname);
+    const fragment = (): void => setHashSeen((n) => n + 1);
     window.addEventListener('popstate', sync);
     window.addEventListener(NAVIGATE_EVENT, sync);
+    window.addEventListener('hashchange', fragment);
     return () => {
       window.removeEventListener('popstate', sync);
       window.removeEventListener(NAVIGATE_EVENT, sync);
+      window.removeEventListener('hashchange', fragment);
     };
   }, []);
 
