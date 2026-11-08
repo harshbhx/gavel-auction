@@ -43,9 +43,13 @@ PayPal sandbox only: no real money moves, and nobody should use a personal PayPa
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Web app       | [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev), with the judge page at [`/try`](https://gavel-web.creharsh.workers.dev/try) |
 | Documentation | [gavel-docs.creharsh.workers.dev](https://gavel-docs.creharsh.workers.dev)                                                                            |
-| API           | Render, [`/healthz`](https://gavel-auction-aufz.onrender.com/healthz); the first request after idle can take about 30 seconds while the service wakes |
+| API           | Render, [`/healthz`](https://gavel-auction-z2nm.onrender.com/healthz); the first request after idle can take about 30 seconds while the service wakes |
 
-The hosted API runs in sandbox mode with temporary storage on the current host, so rooms can be lost on a restart. Whether a judge can start a key-less room depends on the host flag `JUDGE_ROOMS` (see [docs/DEPLOY.md](docs/DEPLOY.md)); [docs/DEMO.md](docs/DEMO.md) says what is verified and what is not.
+The hosted API runs in sandbox mode on one Render service with a 1 GB persistent disk (see [Sponsors: Render](#sponsors-render)). Whether a judge can start a key-less room depends on the host flag `JUDGE_ROOMS` (see [docs/DEPLOY.md](docs/DEPLOY.md)); [docs/DEMO.md](docs/DEMO.md) says what is verified and what is not.
+
+## Sponsors: Render
+
+The GAVEL API and WebSocket host runs on [Render](https://render.com) as one Node web service (`starter` plan, always on) at [gavel-auction-z2nm.onrender.com](https://gavel-auction-z2nm.onrender.com/healthz), with a 1 GB persistent disk at `/var/data` that holds the hash-chained ledger, room log, settlement journals and hold records. [`render.yaml`](render.yaml) is the blueprint; deploys start from GitHub Actions through a Render deploy hook and are followed by `/version` and smoke checks. The web app is on Cloudflare Workers. We do not use Render Postgres, cron jobs or preview environments yet. Details, the reasons for one instance, and the next steps: [Hosting on Render](https://gavel-docs.creharsh.workers.dev/docs/run/hosting-on-render).
 
 <table>
   <tr>
