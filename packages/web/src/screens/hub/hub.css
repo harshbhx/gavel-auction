@@ -1,12 +1,15 @@
-/* Judge room hub and token help, Newsprint and Signal. Tokens only. Mobile first. */
+/* Judge room hub and token help, Newsprint and Signal. Tokens only.
+ * Phones stack in one column. From 1100 px wide and 640 px tall the hub is one screen with no
+ * scrolling: preview on the left, join ticket in the middle, console and bidder on the right. */
 
 .gv-hub {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
-  max-width: 1040px;
+  gap: var(--space-4);
+  position: relative;
+  max-width: 1480px;
   margin: 0 auto;
-  padding: var(--space-5) var(--space-4) var(--space-7);
+  padding: var(--space-4) var(--space-4) var(--space-6);
   background: var(--color-bg);
   color: var(--color-fg);
 }
@@ -23,18 +26,28 @@
 
 .gv-hub__head {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding-bottom: var(--space-4);
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  padding-bottom: var(--space-3);
   border-bottom: var(--border-width-strong, 3px) solid var(--color-fg);
 }
 
-.gv-hub__head > p,
-.gv-hub__head > h1 {
+.gv-hub__titles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.gv-hub__titles > p,
+.gv-hub__titles > h1,
+.gv-hub__status {
   margin: 0;
 }
 
-.gv-hub__head > h1 {
+.gv-hub__titles > h1 {
   font-family: var(--font-display);
   font-size: var(--font-size-6);
   line-height: 1;
@@ -46,75 +59,70 @@
 }
 
 .gv-hub__grid {
-  display: grid;
-  gap: var(--space-4);
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 760px) {
-  .gv-hub__grid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.gv-hub__card {
-  position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  padding-top: var(--space-5);
-  border: var(--border-width) solid var(--color-fg);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-2);
+  gap: var(--space-5);
 }
 
-.gv-hub__card > h2,
-.gv-hub__card > p {
-  margin: 0;
+/* Phones: the ticket comes first, because it is what a phone scans */
+.gv-hub__ticket {
+  order: 1;
 }
 
-.gv-hub__card > h2 {
-  font-family: var(--font-display);
-  font-size: var(--font-size-5);
-  line-height: 1.1;
-  text-transform: uppercase;
+.gv-hub__screen {
+  order: 2;
 }
 
-.gv-hub__num {
-  position: absolute;
-  top: calc(var(--space-3) * -1);
-  left: var(--space-4);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  height: 32px;
-  border: var(--border-width) solid var(--color-fg);
-  background: var(--color-action);
-  color: var(--color-on-action);
-  font-family: var(--font-mono);
-  font-weight: 700;
-  box-shadow: var(--shadow-1);
+.gv-hub__side {
+  order: 3;
 }
 
-.gv-hub__hint {
-  color: var(--color-fg-muted);
-}
+@media (min-width: 1100px) and (min-height: 640px) {
+  .gv-hub {
+    box-sizing: border-box;
+    /* The sandbox banner above the hub is one line at these sizes: 68 px with its margins */
+    height: calc(100vh - var(--gv-hub-chrome, 68px));
+    height: calc(100dvh - var(--gv-hub-chrome, 68px));
+    overflow: hidden;
+    padding-bottom: var(--space-4);
+  }
 
-.gv-hub__body {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-  margin-top: auto;
+  .gv-hub__grid {
+    display: grid;
+    flex: 1;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.8fr);
+    gap: var(--space-5);
+    min-height: 0;
+  }
+
+  .gv-hub__screen,
+  .gv-hub__ticket,
+  .gv-hub__side {
+    order: 0;
+    min-height: 0;
+  }
+
+  /* Whatever does not fit scrolls inside its own column, never the page */
+  .gv-hub__side,
+  .gv-hub__test {
+    overflow-y: auto;
+  }
+
+  .gv-hub__test {
+    flex: 0 1 auto;
+    min-height: 0;
+    margin-top: 0;
+  }
 }
 
 .gv-hub__row {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
+}
+
+.gv-hub__row--center {
+  justify-content: center;
 }
 
 .gv-hub__missing,
@@ -125,31 +133,193 @@
   color: var(--color-fg-muted);
 }
 
-.gv-hub__join {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-4);
-  width: 100%;
-}
+/* Left: a scaled, live copy of the projection screen */
 
-.gv-hub__join > div:first-child {
+.gv-hub__screen {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
-.gv-hub__join .ui-kicker {
+.gv-hub__screen > h2,
+.gv-hub__side h2,
+.gv-hub__stub h2 {
   margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-5);
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.gv-hub__preview {
+  position: relative;
+  border: var(--border-width-strong) solid var(--color-fg);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+}
+
+.gv-hub__preview-frame {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.gv-hub__preview-stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+}
+
+.gv-hub__live {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-width) solid var(--color-fg);
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.gv-hub__live i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-action);
+  animation: gv-hub-pulse 1600ms ease-in-out infinite;
+}
+
+@keyframes gv-hub-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.gv-hub__test {
+  margin-top: auto;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) dashed var(--color-fg);
+  border-radius: var(--radius-md);
+}
+
+.gv-hub__test > h3 {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--font-size-4);
+  text-transform: uppercase;
+}
+
+.gv-hub__test ol {
+  margin: 0;
+  padding-left: var(--space-5);
+  font-size: var(--font-size-2);
+}
+
+/* Middle: the join ticket, with a perforated stub */
+
+.gv-hub__ticket {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: var(--border-width-strong) solid var(--color-fg);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-2);
+}
+
+.gv-hub__stub {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  background: var(--color-action);
+  color: var(--color-on-action);
+}
+
+.gv-hub__stub .ui-kicker {
+  margin: 0;
+  color: var(--color-on-action);
+}
+
+.gv-hub__kicker-code {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.gv-hub__perf {
+  position: relative;
+  height: 0;
+  border-top: var(--border-width) dashed var(--color-fg);
+}
+
+.gv-hub__perf::before,
+.gv-hub__perf::after {
+  content: '';
+  position: absolute;
+  top: -13px;
+  width: 24px;
+  height: 24px;
+  border: var(--border-width-strong) solid var(--color-fg);
+  border-radius: 50%;
+  background: var(--color-bg);
+}
+
+.gv-hub__perf::before {
+  left: -14px;
+  clip-path: inset(0 0 0 50%);
+}
+
+.gv-hub__perf::after {
+  right: -14px;
+  clip-path: inset(0 50% 0 0);
+}
+
+.gv-hub__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
 }
 
 .gv-hub__qr {
+  display: flex;
+  justify-content: center;
   padding: var(--space-2);
+  border: var(--border-width) solid var(--color-rule);
+  background: var(--color-surface);
+}
+
+.gv-hub__scan {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+  color: var(--color-fg-muted);
 }
 
 /* Join code as flap board tiles, the same motif as the price board */
 
 .gv-hub__flaps {
+  container-type: inline-size;
   display: flex;
   flex-wrap: nowrap;
   gap: var(--space-1);
@@ -158,10 +328,12 @@
 
 .gv-hub__flap {
   display: inline-flex;
+  flex: 1 1 0;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 64px;
+  min-width: 0;
+  max-width: 64px;
+  aspect-ratio: 5 / 7;
   border: var(--border-width) solid var(--color-fg);
   border-radius: var(--radius-sm, 2px);
   background: linear-gradient(
@@ -174,40 +346,65 @@
   );
   color: var(--color-bg);
   font-family: var(--font-mono);
-  font-size: var(--font-size-6);
+  font-size: clamp(28px, 6vw, 44px);
   font-weight: 700;
   box-shadow: var(--shadow-1);
 }
 
-.gv-hub__test {
+/* Right: console and bidder shortcuts */
+
+.gv-hub__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.gv-hub__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-2);
+}
+
+.gv-hub__card > p {
+  margin: 0;
+}
+
+.gv-hub__hint {
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-2);
+}
+
+.gv-hub__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.gv-hub__more {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-4);
-  border: var(--border-width) dashed var(--color-fg);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
+  margin-top: auto;
 }
 
-.gv-hub__test > h2,
-.gv-hub__test > p {
+.gv-hub__more > p {
   margin: 0;
 }
 
-.gv-hub__test > h2 {
-  font-family: var(--font-display);
-  font-size: var(--font-size-4);
-  text-transform: uppercase;
-}
-
-.gv-hub__test ol {
-  margin: 0;
-  padding-left: var(--space-5);
+.gv-hub__more .gv-flow__action {
+  align-self: stretch;
 }
 
 .gv-hub__note {
   font-family: var(--font-mono);
-  font-size: var(--font-size-2);
+  font-size: var(--font-size-1);
   color: var(--color-fg-muted);
 }
 
@@ -265,4 +462,10 @@
 
 .gv-scripted-frame .gv-screen {
   height: calc(100vh - 56px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-hub__live i {
+    animation: none;
+  }
 }

@@ -67,6 +67,8 @@ for (const screen of ROOM_SCREENS) {
         const view = new PublicView(page, stack, room);
         await view.open();
         if (screen.hammer) await expect(view.sold).toBeAttached();
+        // Before the first snapshot the screen shows the lobby line; wait for the real price.
+        else await expect(view.root).toContainText('Opening bid');
         // The clock follows the real end time and the join code carries a random port.
         await expect(page).toHaveScreenshot(`${screen.name}-${viewport.name}.png`, {
           mask: [view.clock, view.join],
@@ -74,6 +76,8 @@ for (const screen of ROOM_SCREENS) {
       } else {
         const view = new AuctioneerView(page, stack, room);
         await view.open();
+        // The console is offline and empty until the first snapshot arrives.
+        await expect(view.root).toContainText('$100.00');
         await expect(page).toHaveScreenshot(`${screen.name}-${viewport.name}.png`);
       }
     });

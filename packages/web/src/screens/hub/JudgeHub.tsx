@@ -2,7 +2,9 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNod
 import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
 import { StatusPill } from '../../ui';
+import { formatCountdown } from '../../util/time';
 import { ROOM_MINUTES, type HubKeys } from './hubKeys';
+import { ScreenPreview } from './ScreenPreview';
 import '../flows.css';
 import './hub.css';
 
@@ -33,6 +35,11 @@ type InviteState =
   | { readonly kind: 'failed' }
   | { readonly kind: 'ready'; readonly invite: Invite };
 
+interface Summary {
+  readonly title: string | null;
+  readonly code: string | null;
+}
+
 async function mintInvite(
   apiBase: string,
   roomId: string,
@@ -59,44 +66,18 @@ async function mintInvite(
   }
 }
 
-async function fetchCode(apiBase: string, roomId: string): Promise<string | null> {
+async function fetchSummary(apiBase: string, roomId: string): Promise<Summary | null> {
   try {
     const res = await fetch(`${apiBase}/api/auctions/${encodeURIComponent(roomId)}`);
     if (!res.ok) return null;
-    const body = (await res.json()) as { joinCode?: unknown };
-    return typeof body.joinCode === 'string' && body.joinCode !== '' ? body.joinCode : null;
+    const body = (await res.json()) as { joinCode?: unknown; title?: unknown };
+    return {
+      code: typeof body.joinCode === 'string' && body.joinCode !== '' ? body.joinCode : null,
+      title: typeof body.title === 'string' && body.title !== '' ? body.title : null,
+    };
   } catch {
     return null;
   }
-}
-
-function minutesLeft(expiresAt: number, now: number): number {
-  return Math.max(0, Math.ceil((expiresAt - now) / 60_000));
-}
-
-/** One labelled step: a number, a heading, a hint and the actions. */
-function Step({
-  n,
-  title,
-  hint,
-  children,
-}: {
-  n: number;
-  title: string;
-  hint: string;
-  children: ReactNode;
-}) {
-  const id = `gv-hub-step-${n}`;
-  return (
-    <section className="gv-hub__card" aria-labelledby={id} data-step={n}>
-      <span className="gv-hub__num" aria-hidden="true">
-        {n}
-      </span>
-      <h2 id={id}>{title}</h2>
-      <p className="gv-hub__hint">{hint}</p>
-      <div className="gv-hub__body">{children}</div>
-    </section>
-  );
 }
 
 /** Flap board join code: one dark tile per character, like the price board. */
@@ -113,6 +94,28 @@ function Flaps({ code }: { code: string | null }) {
   );
 }
 
+/** A console or bidder shortcut: short title, one line, the actions. */
+function Shortcut({
+  n,
+  title,
+  hint,
+  children,
+}: {
+  n: number;
+  title: string;
+  hint: string;
+  children: ReactNode;
+}) {
+  const id = `gv-hub-step-${n}`;
+  return (
+    <section className="gv-hub__card" aria-labelledby={id} data-step={n}>
+      <h2 id={id}>{title}</h2>
+      <p className="gv-hub__hint">{hint}</p>
+      <div className="gv-hub__body">{children}</div>
+    </section>
+  );
+}
+
 /** The judge's one page after a room is made: screen, code and QR, console and bidder. */
 export function JudgeHub({
   roomId,
@@ -123,7 +126,8 @@ export function JudgeHub({
   writeClipboard = (text) => navigator.clipboard.writeText(text),
 }: JudgeHubProps) {
   const heading = useRef<HTMLHeadingElement>(null);
-  const [code, setCode] = useState<string | null>(keys.code);
+  const [summary, setSummary] = useState<Summary>({ title: null, code: keys.code });
+  const code = summary.code;
   const [invite, setInvite] = useState<InviteState>({ kind: 'idle' });
   const [copied, setCopied] = useState<string | null>(null);
   const [tick, setTick] = useState(() => now());
@@ -141,20 +145,21 @@ export function JudgeHub({
   }, []);
 
   useEffect(() => {
-    const id = setInterval(() => setTick(now()), 15_000);
+    const id = setInterval(() => setTick(now()), 1_000);
     return () => clearInterval(id);
   }, [now]);
 
   useEffect(() => {
-    if (code !== null || apiBase === undefined) return undefined;
+    if (apiBase === undefined) return undefined;
     let live = true;
-    fetchCode(apiBase, roomId).then((got) => {
-      if (live && got !== null) setCode(got);
+    fetchSummary(apiBase, roomId).then((got) => {
+      if (live && got !== null)
+        setSummary((prev) => ({ title: got.title, code: got.code ?? prev.code }));
     });
     return () => {
       live = false;
     };
-  }, [apiBase, roomId, code]);
+  }, [apiBase, roomId]);
 
   const auctioneer = keys.auctioneer;
   const makeInvite = useCallback((): void => {
@@ -184,7 +189,7 @@ export function JudgeHub({
     bidderLink !== null && new TextEncoder().encode(bidderLink).length <= QR_MAX_BYTES
       ? bidderLink
       : joinLink;
-  const left = keys.expiresAt === null ? null : minutesLeft(keys.expiresAt, tick);
+  const leftMs = keys.expiresAt === null ? null : keys.expiresAt - tick;
 
   const shareText = [
     t('hub.shareHeader'),
@@ -200,16 +205,20 @@ export function JudgeHub({
   return (
     <main className="gv-hub" data-route="hub">
       <header className="gv-hub__head">
-        <p className="ui-kicker">{`${t('app.name')} / ${t('hub.kicker')}`}</p>
-        <h1 ref={heading} tabIndex={-1}>
-          {t('hub.title')}
-        </h1>
-        <p className="gv-hub__lead">{t('hub.lead')}</p>
+        <div className="gv-hub__titles">
+          <p className="ui-kicker">{`${t('app.name')} / ${t('hub.kicker')}`}</p>
+          <h1 ref={heading} tabIndex={-1}>
+            {t('hub.title')}
+          </h1>
+          <p className="gv-hub__lead">{t('hub.lead')}</p>
+        </div>
         <p className="gv-hub__status">
-          {left === null ? (
+          {leftMs === null ? (
             <StatusPill tone="live">{t('hub.expiresAt', { minutes: ROOM_MINUTES })}</StatusPill>
-          ) : left > 0 ? (
-            <StatusPill tone="live">{t('hub.expires', { minutes: left })}</StatusPill>
+          ) : leftMs > 0 ? (
+            <StatusPill tone="live">
+              {t('hub.closesIn', { time: formatCountdown(leftMs) })}
+            </StatusPill>
           ) : (
             <StatusPill tone="out">{t('hub.expired')}</StatusPill>
           )}
@@ -217,106 +226,123 @@ export function JudgeHub({
       </header>
 
       <div className="gv-hub__grid">
-        <Step n={1} title={t('hub.step1')} hint={t('hub.step1Hint')}>
-          {screenLink === null ? (
-            <p className="gv-hub__missing">{t('hub.noToken')}</p>
-          ) : (
-            <>
-              <a className="gv-flow__action" href={screenLink} target="_blank" rel="noopener">
-                {t('hub.step1Open')}
-                <span className="gv-visually-hidden">{newTab}</span>
-              </a>
-              <Button variant="outline" onClick={() => copy('screen', screenLink)}>
-                {copied === 'screen' ? t('generic.copied') : t('generic.copy')}
-              </Button>
-            </>
-          )}
-        </Step>
+        <section className="gv-hub__screen" aria-labelledby="gv-hub-step-1" data-step={1}>
+          <h2 id="gv-hub-step-1">{t('hub.step1')}</h2>
+          <ScreenPreview
+            roomId={roomId}
+            token={keys.screen}
+            apiBase={apiBase}
+            lotTitle={summary.title ?? t('screen.untitled')}
+            code={code}
+            joinUrl={joinLink}
+          />
+          <div className="gv-hub__row">
+            {screenLink === null ? (
+              <p className="gv-hub__missing">{t('hub.noToken')}</p>
+            ) : (
+              <>
+                <a className="gv-flow__action" href={screenLink} target="_blank" rel="noopener">
+                  {t('hub.step1Open')}
+                  <span className="gv-visually-hidden">{newTab}</span>
+                </a>
+                <Button variant="outline" onClick={() => copy('screen', screenLink)}>
+                  {copied === 'screen' ? t('generic.copied') : t('generic.copy')}
+                </Button>
+              </>
+            )}
+          </div>
+          <aside className="gv-hub__test" aria-labelledby="gv-hub-test">
+            <h3 id="gv-hub-test">{t('hub.testTitle')}</h3>
+            <ol>
+              <li>{t('hub.test1')}</li>
+              <li>{t('hub.test2')}</li>
+              <li>{t('hub.test3')}</li>
+              <li>{t('hub.test4')}</li>
+              <li>{t('hub.test5')}</li>
+            </ol>
+          </aside>
+        </section>
 
-        <Step n={2} title={t('hub.step2')} hint={t('hub.step2Hint')}>
-          <div className="gv-hub__join">
-            <div>
-              <p className="ui-kicker">{t('hub.codeLabel')}</p>
-              <Flaps code={code} />
-            </div>
-            <div className="gv-flow__qr gv-hub__qr" role="group" aria-label={t('hub.qrLabel')}>
+        <section className="gv-hub__ticket" aria-labelledby="gv-hub-step-2" data-step={2}>
+          <div className="gv-hub__stub">
+            <p className="ui-kicker">{t('hub.ticketAdmit')}</p>
+            <h2 id="gv-hub-step-2">{t('hub.ticket')}</h2>
+            <p className="gv-hub__kicker-code">{t('hub.codeLabel')}</p>
+            <Flaps code={code} />
+          </div>
+          <div className="gv-hub__perf" aria-hidden="true" />
+          <div className="gv-hub__main">
+            <div className="gv-hub__qr" role="group" aria-label={t('hub.qrLabel')}>
               <Suspense fallback={null}>
-                <QrCode url={qrTarget} size={176} />
+                <QrCode url={qrTarget} size={196} />
               </Suspense>
             </div>
-          </div>
-          <div className="gv-hub__row">
-            {code !== null && (
-              <Button variant="outline" onClick={() => copy('code', code)}>
-                {copied === 'code' ? t('generic.copied') : t('hub.copyCode')}
+            <p className="gv-hub__scan">{t('hub.scanToBid')}</p>
+            <div className="gv-hub__row gv-hub__row--center">
+              {code !== null && (
+                <Button variant="outline" onClick={() => copy('code', code)}>
+                  {copied === 'code' ? t('generic.copied') : t('hub.copyCode')}
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => copy('invite', qrTarget)}>
+                {copied === 'invite' ? t('generic.copied') : t('hub.copyInvite')}
               </Button>
-            )}
-            <Button variant="outline" onClick={() => copy('invite', qrTarget)}>
-              {copied === 'invite' ? t('generic.copied') : t('hub.copyInvite')}
-            </Button>
+            </div>
           </div>
-        </Step>
+        </section>
 
-        <Step n={3} title={t('hub.step3')} hint={t('hub.step3Hint')}>
-          {consoleLink === null ? (
-            <p className="gv-hub__missing">{t('hub.noToken')}</p>
-          ) : (
-            <>
-              <a className="gv-flow__action" href={consoleLink} target="_blank" rel="noopener">
-                {t('hub.step3Open')}
+        <div className="gv-hub__side">
+          <Shortcut n={3} title={t('hub.step3')} hint={t('hub.step3Hint')}>
+            {consoleLink === null ? (
+              <p className="gv-hub__missing">{t('hub.noToken')}</p>
+            ) : (
+              <>
+                <a className="gv-flow__action" href={consoleLink} target="_blank" rel="noopener">
+                  {t('hub.step3Open')}
+                  <span className="gv-visually-hidden">{newTab}</span>
+                </a>
+                <Button variant="outline" onClick={() => copy('console', consoleLink)}>
+                  {copied === 'console' ? t('generic.copied') : t('generic.copy')}
+                </Button>
+              </>
+            )}
+          </Shortcut>
+
+          <Shortcut n={4} title={t('hub.step4')} hint={t('hub.step4Hint')}>
+            {bidderLink !== null ? (
+              <a className="gv-flow__action" href={bidderLink} target="_blank" rel="noopener">
+                {t('hub.step4Open')}
                 <span className="gv-visually-hidden">{newTab}</span>
               </a>
-              <Button variant="outline" onClick={() => copy('console', consoleLink)}>
-                {copied === 'console' ? t('generic.copied') : t('generic.copy')}
+            ) : keys.auctioneer === null ? (
+              <p className="gv-hub__missing">{t('hub.noInviteToken')}</p>
+            ) : invite.kind === 'failed' ? (
+              <p className="gv-hub__missing" role="alert">
+                {t('hub.inviteFailed')}
+              </p>
+            ) : (
+              <p className="gv-hub__pending" role="status">
+                {t('hub.inviteBusy')}
+              </p>
+            )}
+            {keys.auctioneer !== null && (
+              <Button variant="outline" disabled={invite.kind === 'busy'} onClick={makeInvite}>
+                {t('hub.newInvite')}
               </Button>
-            </>
-          )}
-        </Step>
+            )}
+          </Shortcut>
 
-        <Step n={4} title={t('hub.step4')} hint={t('hub.step4Hint')}>
-          {bidderLink !== null ? (
-            <a className="gv-flow__action" href={bidderLink} target="_blank" rel="noopener">
-              {t('hub.step4Open')}
-              <span className="gv-visually-hidden">{newTab}</span>
-            </a>
-          ) : keys.auctioneer === null ? (
-            <p className="gv-hub__missing">{t('hub.noInviteToken')}</p>
-          ) : invite.kind === 'failed' ? (
-            <p className="gv-hub__missing" role="alert">
-              {t('hub.inviteFailed')}
-            </p>
-          ) : (
-            <p className="gv-hub__pending" role="status">
-              {t('hub.inviteBusy')}
-            </p>
-          )}
-          {keys.auctioneer !== null && (
-            <Button variant="outline" disabled={invite.kind === 'busy'} onClick={makeInvite}>
-              {t('hub.newInvite')}
+          <div className="gv-hub__more">
+            <Button onClick={() => copy('all', shareText)}>
+              {copied === 'all' ? t('hub.shareCopied') : t('hub.shareAll')}
             </Button>
-          )}
-        </Step>
-      </div>
-
-      <aside className="gv-hub__test" aria-labelledby="gv-hub-test">
-        <h2 id="gv-hub-test">{t('hub.testTitle')}</h2>
-        <ol>
-          <li>{t('hub.test1')}</li>
-          <li>{t('hub.test2')}</li>
-          <li>{t('hub.test3')}</li>
-          <li>{t('hub.test4')}</li>
-          <li>{t('hub.test5')}</li>
-        </ol>
-        <p className="gv-hub__note">{t('hub.expiresAt', { minutes: ROOM_MINUTES })}</p>
-        <div className="gv-hub__row">
-          <Button onClick={() => copy('all', shareText)}>
-            {copied === 'all' ? t('hub.shareCopied') : t('hub.shareAll')}
-          </Button>
-          <a className="gv-flow__action gv-flow__action--plain" href="/demo">
-            {t('hub.newDemo')}
-          </a>
+            <a className="gv-flow__action gv-flow__action--plain" href="/demo">
+              {t('hub.newDemo')}
+            </a>
+            <p className="gv-hub__note">{t('hub.expiresAt', { minutes: ROOM_MINUTES })}</p>
+          </div>
         </div>
-      </aside>
+      </div>
     </main>
   );
 }

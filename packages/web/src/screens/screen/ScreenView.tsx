@@ -33,6 +33,8 @@ export interface ScreenViewProps {
   store?: RoomStore;
   /** `projector` is the dark big screen theme; `newsprint` keeps the page theme (scripted demo). */
   theme?: 'projector' | 'newsprint';
+  /** A small, silent copy inside another page (the room hub): no sound, no theme change, no offline chip. */
+  preview?: boolean;
 }
 
 /** Ladder summary counts from the latest per-hold settlement data. */
@@ -49,6 +51,12 @@ export function countsToSettle(counts: Readonly<Record<string, number>>): Settle
   return { captured: counts['CAPTURED'] ?? 0, released: counts['SETTLED'] ?? 0 };
 }
 
+/** Plays the hammer sound for the real projector; the hub preview never renders it. */
+function HammerSound({ store }: { store: RoomStore }) {
+  useHammerAlert(store);
+  return null;
+}
+
 /** Projector view: no controls, no personal data beyond the paddle number. */
 export function ScreenView({
   lotTitle,
@@ -56,11 +64,13 @@ export function ScreenView({
   joinUrl,
   store = roomStore,
   theme = 'projector',
+  preview = false,
 }: ScreenViewProps) {
   const price = useRoom(selectors.price, store);
   const stream = useRoom(selectors.stream, store);
   const hammer = useRoom((s) => s.hammer, store);
-  useHammerAlert(store);
+  const connection = useConnection();
+  const offline = connection.offline && !preview;
   const stopped = useRoom(selectors.stopped, store);
   const leaderPaddle = useRoom((s) => s.leaderPaddle, store);
   const roster = useRoom((s) => s.snapshot?.roster ?? null, store);
@@ -71,11 +81,10 @@ export function ScreenView({
   const detail = useRoom((s) => s.settlementDetail ?? null, store);
   const roomId = useRoom((s) => s.auctionId, store);
   const now = useServerNow(store);
-  const connection = useConnection();
   const [, setTick] = useState(0);
 
   useEffect(() => {
-    if (theme !== 'projector') return undefined;
+    if (theme !== 'projector' || preview) return undefined;
     const root = document.documentElement;
     const previous = root.getAttribute('data-theme');
     root.setAttribute('data-theme', 'projector');
@@ -83,7 +92,7 @@ export function ScreenView({
       if (previous === null) root.removeAttribute('data-theme');
       else root.setAttribute('data-theme', previous);
     };
-  }, [theme]);
+  }, [theme, preview]);
 
   useEffect(() => {
     const id = setInterval(() => setTick((n) => n + 1), 250);
@@ -115,7 +124,7 @@ export function ScreenView({
   // While the connection is down the clock keeps the last value it showed: a local count down
   // could read 0:00 for a lot the server has already extended.
   const frozenRemaining = useRef<number | null>(null);
-  if (!connection.offline) frozenRemaining.current = null;
+  if (!offline) frozenRemaining.current = null;
   else if (frozenRemaining.current === null) frozenRemaining.current = liveRemaining;
   const remaining = frozenRemaining.current ?? liveRemaining;
   // Hidden unless the auctioneer set a goal. Only captured holds count as raised.
@@ -153,10 +162,15 @@ export function ScreenView({
           : 'leading';
 
   return (
-    <main className="gv-screen" aria-label={lotTitle} data-state={screenState}>
+    <main
+      className={preview ? 'gv-screen gv-screen--preview' : 'gv-screen'}
+      aria-label={lotTitle}
+      data-state={screenState}
+    >
+      {!preview && <HammerSound store={store} />}
       <header className="gv-screen__head">
         <h1 className="gv-screen__lot">{lotTitle}</h1>
-        <FrozenChip disconnected={connection.offline} />
+        <FrozenChip disconnected={offline} />
         {stopped && (
           <p role="status" className="gv-screen__notice">
             {t('screen.stopped')}
@@ -167,7 +181,9 @@ export function ScreenView({
         <div className="gv-screen__board">
           {closed ? (
             <Sold outcome={outcome} settlement={settlement} />
-          ) : price === null || price.currentCents === null ? (
+          ) : price === null ? (
+            <p className="gv-screen__opening">{t('screen.lobby')}</p>
+          ) : price.currentCents === null ? (
             <p className="gv-screen__opening tabular">
               {t('screen.opening', { amount: formatUsd(price?.nextMinCents ?? 0) })}
             </p>
@@ -182,11 +198,11 @@ export function ScreenView({
           {!closed && remaining !== null && (
             <p
               className="gv-screen__clock tabular"
-              data-frozen={connection.offline ? 'true' : 'false'}
+              data-frozen={offline ? 'true' : 'false'}
               data-soft={soft ? 'true' : 'false'}
             >
               {formatCountdown(remaining)}
-              {connection.offline && <span> {t('screen.clockFrozen')}</span>}
+              {offline && <span> {t('screen.clockFrozen')}</span>}
             </p>
           )}
         </div>
