@@ -10,7 +10,9 @@ import { openSnapshot, priceMsg, roster, stateMsg } from '../../src/testing/buil
 
 function storeWithOffset(offsetMs: number): RoomStore {
   const store = new RoomStore();
-  store.dispatch({ kind: 'wire', msg: stateMsg(1, openSnapshot(roster([12, 'Priya']))) }, 0);
+  // Every frame is received offsetMs before its server time, so the best sample is offsetMs.
+  const first = stateMsg(1, openSnapshot(roster([12, 'Priya'])));
+  store.dispatch({ kind: 'wire', msg: first }, first.ts - offsetMs);
   const msg = priceMsg(2, 12, 5000);
   store.dispatch({ kind: 'wire', msg }, msg.ts - offsetMs);
   return store;
