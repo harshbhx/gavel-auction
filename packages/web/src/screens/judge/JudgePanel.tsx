@@ -360,7 +360,7 @@ export function JudgePanel({
                     prefix={CODE_PREFIX}
                     disabled={looking}
                     invalid={missing}
-                    {...(missing ? { message: t('landing.codeInvalid') } : {})}
+                    {...(missing ? { message: problem ?? t('landing.codeInvalid') } : {})}
                     onChange={(next) => {
                       setCode(next);
                       setMissing(false);
