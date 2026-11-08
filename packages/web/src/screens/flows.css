@@ -339,7 +339,17 @@ main[data-route='return'] {
     align-content: start;
     max-width: 1280px;
     min-height: calc(100vh - var(--gv-hub-chrome, 68px));
+    margin: 0 auto;
     padding-top: var(--space-7);
+    /* landing-extra.css also names a money-flow diagram .gv-flow and gives it a card frame */
+    border: 0;
+    border-radius: 0;
+    background: var(--color-bg);
+    box-shadow: none;
+  }
+
+  .gv-flow:not(:has(> .gv-aside)) {
+    margin-inline: auto;
   }
 
   .gv-flow:has(> .gv-aside) > :not(.gv-aside) {
