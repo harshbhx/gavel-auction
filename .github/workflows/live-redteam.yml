@@ -51,7 +51,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        profile: ${{ fromJSON((github.event_name == 'push' && !contains(github.event.head_commit.message, '[iphone]')) && '["desktop"]' || inputs.profiles || '["desktop","iphone"]') }}
+        profile: ${{ fromJSON(contains(github.event.head_commit.message, '[iphone-only]') && '["iphone"]' || (github.event_name == 'push' && !contains(github.event.head_commit.message, '[iphone]')) && '["desktop"]' || inputs.profiles || '["desktop","iphone"]') }}
     env:
       WEB_URL: ${{ inputs.web_url || (contains(github.event.head_commit.message, '[workers]') && 'https://gavel-web.creharsh.workers.dev') || 'https://gavel.dualmindlab.tech' }}
       API_URL: ${{ inputs.api_url || 'https://gavel-auction-z2nm.onrender.com' }}

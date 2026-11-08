@@ -1053,10 +1053,19 @@ async function main() {
       await harvest(page, `receipt-${label}`);
       if (label === 'bidderA') {
         note(`receipt actions: ${(await listActions(page)).join(' | ')}`);
-        const sh = await clickText(page, /copy (the )?link|share/i, { roles: ['button'] });
-        note(`share clicked: ${sh}`);
+        const made = await clickText(page, /create share link/i, { roles: ['button'] });
+        note(`create share link clicked: ${made}`);
+        await page.waitForTimeout(3500);
+        const fieldVal = await page
+          .getByLabel(/receipt link/i)
+          .first()
+          .inputValue()
+          .catch(() => '');
+        const sh = await clickText(page, /copy link/i, { roles: ['button'] });
+        note(`share clicked: ${sh}; field has link: ${fieldVal ? 'yes' : 'NO'}`);
         await page.waitForTimeout(800);
-        const txt = await page.evaluate(() => navigator.clipboard.readText()).catch(() => '');
+        let txt = await page.evaluate(() => navigator.clipboard.readText()).catch(() => '');
+        if (!/^https?:/.test(txt)) txt = fieldVal;
         note(
           `share link copied: ${txt ? txt.replace(/(token|t|s)=[^&#\s]+/g, '$1=<r>').slice(0, 160) : 'EMPTY'}`,
         );
