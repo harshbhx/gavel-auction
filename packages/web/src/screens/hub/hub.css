@@ -481,3 +481,11 @@
     animation: none;
   }
 }
+
+/* Wide screens (UIX-27): the hub keeps its three columns and takes the extra width. */
+@media (min-width: 1700px) {
+  .gv-hub {
+    max-width: 1840px;
+    padding-inline: var(--space-7);
+  }
+}

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { WideAside } from '../WideAside';
 import { t } from '../../copy/t';
 import '../flows.css';
 
@@ -21,6 +22,7 @@ export function NotFound({ homeHref = '/' }: NotFoundProps) {
       <a className="gv-flow__action" href={homeHref}>
         {t('err.home')}
       </a>
+      <WideAside />
     </main>
   );
 }

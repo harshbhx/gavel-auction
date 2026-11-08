@@ -288,3 +288,15 @@
   color: var(--color-fg);
   text-decoration: underline;
 }
+
+/* Wide screens (UIX-27): the desk grows with the window instead of stopping at 1440 px. */
+@media (min-width: 1700px) {
+  .gv-console {
+    max-width: 1840px;
+    padding-inline: var(--space-7);
+  }
+
+  .gv-console-columns {
+    gap: var(--space-6);
+  }
+}
