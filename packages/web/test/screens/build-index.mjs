@@ -6,6 +6,8 @@ import { join, resolve } from 'node:path';
 
 const PROJECTS = [
   ['desktop-light', 'Desktop 1440x900, light'],
+  ['fhd-light', 'Wide 1920x1080, light'],
+  ['hd-light', 'Laptop 1280x720, light'],
   ['phone-light', 'Phone 390x844, light'],
   ['desktop-dark', 'Desktop 1440x900, dark'],
   ['desktop-projector', 'Desktop 1440x900, projector'],
