@@ -32,7 +32,10 @@ export const test = base.extend<Fixtures>({
     await provide(page);
   },
   shoot: async ({ page }, provide, testInfo) => {
+    // A project may list the views it captures (metadata.views); other views are not saved.
+    const views = testInfo.project.metadata['views'] as readonly string[] | undefined;
     await provide(async (view, state) => {
+      if (views !== undefined && !views.includes(view)) return;
       mkdirSync(OUT_DIR, { recursive: true });
       await page.evaluate(() => document.fonts.ready);
       // Lets effects, lazy chunks and one render pass settle before the picture is taken.
@@ -211,7 +214,7 @@ export async function openRoom(page: Page, opts: RoomOptions): Promise<string> {
 /* --------------------------------------------------------------------- the HTTP side, mocked */
 
 export type ApiReply =
-  | { status: number; json?: unknown }
+  | { status: number; json?: unknown; headers?: Record<string, string> }
   /** The request is never answered: the page stays in its loading state. */
   | 'hang'
   /** The request fails at the network level, as a server that is down does. */
@@ -227,6 +230,7 @@ const CORS = {
   'access-control-allow-origin': '*',
   'access-control-allow-headers': 'content-type, authorization, x-admin-key',
   'access-control-allow-methods': 'GET, POST, DELETE, OPTIONS',
+  'access-control-expose-headers': 'retry-after',
 };
 
 /** Answers every request to the API origin from `answer`. */
@@ -252,7 +256,7 @@ export async function mockApi(
     }
     await route.fulfill({
       status: reply.status,
-      headers: { ...CORS, 'content-type': 'application/json' },
+      headers: { ...CORS, 'content-type': 'application/json', ...reply.headers },
       body: JSON.stringify(reply.json ?? {}),
     });
   });

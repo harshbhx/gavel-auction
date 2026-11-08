@@ -89,6 +89,10 @@ jobs:
           test -f out/llms.txt
           test -f out/llms-full.txt
           test -f out/openapi.yaml
+          test -f out/_headers
+          grep -q "frame-ancestors 'none'" out/_headers
+          grep -q '^/_next/static/\*' out/_headers
+          grep -q 'immutable' out/_headers
           cmp out/openapi.yaml ../openapi/gavel.yaml
           echo "pages: $(find out/docs -name '*.html' | wc -l)"
           echo "llms-full.txt bytes: $(wc -c < out/llms-full.txt)"
@@ -129,6 +133,7 @@ jobs:
       - name: Take screenshots
         working-directory: docsite
         run: |
+          node scripts/write-serve-json.mjs out
           npx serve out -l 4173 > "$RUNNER_TEMP/serve.log" 2>&1 &
           for i in $(seq 1 30); do curl -fs http://localhost:4173/ > /dev/null && break; sleep 1; done
           node scripts/shots.mjs http://localhost:4173 shots out

@@ -152,6 +152,19 @@ describe('marketing landing', () => {
     expect(screen.getByText(t('mk.trust.note'))).toBeTruthy();
   });
 
+  it('keeps the open gates honest: partial stays partial, G3 stays a running probe', () => {
+    expect(t('mk.trust.partial')).toMatch(/partial/i);
+    expect(t('mk.trust.progress')).toMatch(/in progress/i);
+    for (const key of ['mk.trust.g3.body', 'mk.trust.g5.body', 'mk.trust.lat.body'] as const) {
+      expect(t(key), key).not.toMatch(/\b(full|fully|passed|complete)\b/i);
+    }
+    expect(t('mk.trust.g3.body')).toMatch(/probe is running/);
+    expect(t('mk.trust.g3.body')).toMatch(/final reading is due/);
+    expect(t('mk.trust.g5.body')).toMatch(/synthetic/);
+    expect(t('mk.trust.g5.body')).toMatch(/live-room test/);
+    expect(t('mk.trust.lat.body')).toMatch(/3\.0 s against a 2\.5 s target/);
+  });
+
   it('does not claim replay, users, testimonials or partners', () => {
     const { view } = setup();
     const text = (view.container.textContent ?? '').toLowerCase();
@@ -191,7 +204,13 @@ describe('marketing landing', () => {
         .getAttribute('href'),
     ).toBe(DOCS);
     expect(within(footer).getByRole('link', { name: t('mk.foot.license') })).toBeTruthy();
-    expect(within(footer).getByText(t('mk.foot.data'))).toBeTruthy();
+    const data = within(footer).getByRole('link', { name: t('mk.foot.data') });
+    expect(data.getAttribute('href')).toBe(
+      'https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504',
+    );
+    expect(t('mk.foot.data')).toMatch(/published/);
+    expect(t('mk.foot.data')).toMatch(/synthetic/);
+    expect(t('mk.foot.data')).not.toMatch(/prepared|not yet/i);
     expect(within(footer).getByText(t('mk.foot.sandbox'))).toBeTruthy();
   });
 });

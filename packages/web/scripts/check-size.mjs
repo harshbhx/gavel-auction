@@ -2,10 +2,13 @@
 /**
  * Bundle gate for the web app (R-WEB-009, T-WEB-057), run after `npm run build -w @gavel/web`.
  *
- * Walks the initial route (the scripts and preloads in dist/index.html plus everything they import
- * statically), sums the gzip size of that JS and fails when it is over 180 KB. It also fails when
- * the PayPal SDK loader, the QR encoder, the replay player or AG Grid is part of that initial graph: those
- * must be lazy chunks. It also checks that index.html ships a Content-Security-Policy with
+ * Walks the initial route: the scripts and preloads in dist/index.html, everything they import
+ * statically, and the chunks the entry loads with a dynamic import() on boot (main.tsx loads the
+ * whole app with import('./App'), so the App chunk is part of a first visit). Dynamic imports found
+ * in the App chunk itself are the lazy chunks and are not followed. The gate sums the gzip size of
+ * that JS and fails when it is over 180 KB. It also fails when the PayPal SDK loader, the QR
+ * encoder, the replay player or AG Grid is part of that initial graph: those must be lazy chunks.
+ * It also checks that index.html ships a Content-Security-Policy with
  * no inline script allowance (R-WEB-004).
  *
  * Usage: node packages/web/scripts/check-size.mjs [distDir]
@@ -19,20 +22,40 @@ const LIMIT_BYTES = 180 * 1000;
 
 /** What must stay out of the initial route: a chunk file name pattern or a string only it holds. */
 const LAZY = [
-  { name: 'PayPal SDK', file: /paypal/i, text: 'web-sdk/v6/core' },
+  // The PayPal SDK itself is a script loaded from PayPal's origin on the approval step and is never
+  // bundled; what must not land in the initial route is a chunk that carries it.
+  { name: 'PayPal SDK', file: /paypal-?sdk|paypal\.js|paypal-/i, text: null },
   { name: 'QR encoder', file: /qrcode/i, text: 'url too long for the QR renderer' },
   { name: 'replay player', file: /replay/i, text: null },
-  { name: 'AG Grid', file: /ag-grid/i, text: 'ag-root-wrapper' },
+  // Markers of the AG Grid bundle (audit grid): a chunk named after it, or its licence manager.
+  { name: 'AG Grid', file: /ag-?grid/i, text: 'ag-grid-community' },
 ];
 
-/** Static import specifiers of a built chunk. Dynamic import( ) calls are not matched. */
+/**
+ * Static import specifiers of a built chunk, also in minified form (`import{a as b}from"./x.js"`,
+ * no space before from). Dynamic import( ) calls are not matched.
+ */
 export function staticImports(code) {
   const found = [];
-  const pattern = /(?:^|[;}\s])(?:import|export)\s*(?:[^'"()]*?\sfrom\s*)?["']([^"']+)["']/g;
+  const pattern = /(?:^|[;}\s])(?:import|export)\s*(?:[^'"()]*?\bfrom\s*)?["']([^"']+)["']/g;
   for (const match of code.matchAll(pattern)) {
     if (match[1] !== undefined && match[1].startsWith('.')) found.push(match[1]);
   }
   return found;
+}
+
+/** Specifiers of dynamic import("./chunk.js") calls with a literal path. */
+export function dynamicImports(code) {
+  const found = [];
+  for (const match of code.matchAll(/\bimport\(\s*["']([^"']+)["']\s*\)/g)) {
+    if (match[1] !== undefined && match[1].startsWith('.')) found.push(match[1]);
+  }
+  return found;
+}
+
+/** True when a chunk file name belongs to a library that must stay lazy. */
+function isLazyName(rel) {
+  return LAZY.some((lazy) => lazy.file.test(path.posix.basename(rel)));
 }
 
 /** Local script and modulepreload targets of an HTML file. */
@@ -88,19 +111,36 @@ export function cspProblems(html, env = process.env) {
   return problems;
 }
 
-/** Loads the initial graph from dist. Returns { files: Map(rel -> code) }. */
+/**
+ * Loads the initial graph from dist. Returns Map(rel -> code). Static imports are followed
+ * everywhere. Dynamic imports are followed only from the entry files (the scripts of index.html and
+ * their static imports), which is how main.tsx boots the app; a dynamic import from the App chunk
+ * or deeper is a lazy chunk and stays out. A dynamic target that is a known lazy chunk is skipped.
+ */
 export function initialGraph(dist, html) {
   const files = new Map();
-  const queue = entriesOf(html).map((e) => path.posix.normalize(e.replace(/^\//, '')));
+  const queue = entriesOf(html).map((e) => ({
+    rel: path.posix.normalize(e.replace(/^\//, '')),
+    entry: true,
+  }));
   while (queue.length > 0) {
-    const rel = queue.pop();
-    if (rel === undefined || files.has(rel)) continue;
+    const item = queue.pop();
+    if (item === undefined) continue;
+    const { rel, entry } = item;
+    if (files.has(rel)) continue;
     const abs = path.join(dist, rel);
     if (!existsSync(abs)) throw new Error(`missing file in build output: ${rel}`);
     const code = readFileSync(abs, 'utf8');
     files.set(rel, code);
+    const dir = path.posix.dirname(rel);
     for (const spec of staticImports(code)) {
-      queue.push(path.posix.join(path.posix.dirname(rel), spec));
+      queue.push({ rel: path.posix.join(dir, spec), entry });
+    }
+    if (entry) {
+      for (const spec of dynamicImports(code)) {
+        const target = path.posix.join(dir, spec);
+        if (!isLazyName(target)) queue.push({ rel: target, entry: false });
+      }
     }
   }
   return files;
