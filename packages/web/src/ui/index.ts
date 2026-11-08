@@ -5,5 +5,3 @@ export { CeilingSlider, type CeilingSliderProps } from './CeilingSlider';
 export { JoinCodeInput, normalizeCode, type JoinCodeInputProps } from './JoinCodeInput';
 export { Loader, Skeleton, SkeletonGroup, type LoaderProps, type SkeletonProps } from './Loader';
 export { StatusPill, type PillTone, type StatusPillProps } from './StatusPill';
-export { PaletteSwitch } from './PaletteSwitch';
-export { PALETTES, initPalette, setPalette, clearPalette, type PaletteName } from './palette';

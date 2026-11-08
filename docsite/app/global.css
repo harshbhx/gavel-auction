@@ -5,8 +5,7 @@
 /*
  * HOLDLINE for the docs site. Token names and values follow the product design system
  * (docs: "Hatched means held. Solid means charged. Hollow means released.").
- * Themes: Daylight (light), Dusk (dark, default for the demo) and Floodlight (projector,
- * data-floodlight on <html>, always on top of dark).
+ * One theme: Newsprint. No theme switch; any stored theme is ignored (see components/provider.tsx).
  */
 html {
   scrollbar-gutter: stable;
@@ -63,47 +62,6 @@ html > body[data-scroll-locked] {
   --color-fd-accent: var(--hl-panel-2);
   --color-fd-accent-foreground: var(--hl-fg);
   --color-fd-ring: var(--hl-focus);
-}
-
-.dark {
-  /* Night Board (palette B of the web app) */
-  --hl-bg: #0c1624;
-  --hl-panel: #132238;
-  --hl-panel-2: #1b2f4b;
-  --hl-fg: #f0ebdd;
-  --hl-fg-muted: #a9b6c8;
-  --hl-border: #6c86a8;
-  --hl-hairline: #2a3f5e;
-  --hl-signal: #e3b766;
-  --hl-on-signal: #0c1624;
-  --hl-signal-ink: #e3b766;
-  --hl-go: #8fd3b0;
-  --hl-stop: #ff9c88;
-  --hl-info: #72d6ea;
-  --hl-focus: #e3b766;
-  --hl-shadow: #7e6b47;
-
-  --color-fd-primary-foreground: #0c1624;
-}
-
-:root[data-floodlight='1'] {
-  /* Projector: Night Board on black, brighter ink */
-  --hl-bg: #000000;
-  --hl-panel: #0c1624;
-  --hl-panel-2: #132238;
-  --hl-fg: #ffffff;
-  --hl-fg-muted: #d5deea;
-  --hl-border: #8fa6c4;
-  --hl-hairline: #2a3f5e;
-  --hl-signal: #e3b766;
-  --hl-on-signal: #0c1624;
-  --hl-signal-ink: #e3b766;
-  --hl-go: #8fd3b0;
-  --hl-stop: #ff9c88;
-  --hl-info: #8fe3f5;
-  --hl-focus: #ffffff;
-
-  --color-fd-primary-foreground: #0c1624;
 }
 
 body {
@@ -656,9 +614,7 @@ figure.hl-fig .hl-fig__title::before {
 
 /* ---------- print: a page you can hand to someone ---------- */
 @media print {
-  :root,
-  .dark,
-  :root[data-floodlight='1'] {
+  :root {
     --hl-bg: #fff;
     --hl-panel: #fff;
     --hl-panel-2: #f1f1ee;
@@ -767,9 +723,6 @@ body::before {
   opacity: 0.05;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   mix-blend-mode: multiply;
-}
-.dark body::before {
-  display: none;
 }
 
 /* masthead: the top bar is paper with a heavy ink rule under it, and the brand in the poster face */
@@ -1026,10 +979,6 @@ header#nd-nav,
 .hl-stop-chip {
   color: var(--hl-panel);
 }
-.dark .hl-solid-chip,
-.dark .hl-stop-chip {
-  color: var(--hl-bg);
-}
 
 /* ---------- orientation steps, feature card ---------- */
 .hl-step {
@@ -1202,12 +1151,6 @@ body {
   text-shadow: 6px 6px 0 var(--hl-signal);
 }
 
-/* ---------- Projector: heavier rules, no shadows that vanish on black ---------- */
-:root[data-floodlight='1'] .hl-card,
-:root[data-floodlight='1'] .hl-receipt,
-:root[data-floodlight='1'] .hl-callout {
-  border-color: var(--hl-fg);
-}
 
 /* forced colours: keep tiles and stamps visible */
 @media (forced-colors: active) {

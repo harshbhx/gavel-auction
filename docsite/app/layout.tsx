@@ -23,11 +23,6 @@ export const metadata: Metadata = {
   twitter: { card: 'summary_large_image', images: '/og/site/image.png' },
 };
 
-// Restores the Projector choice before first paint. Newsprint (light, the default) and Night are
-// handled by next-themes; Projector is a flag on top of Night.
-const floodlightScript =
-  "try{if(localStorage.getItem('gavel-floodlight')==='1'){document.documentElement.dataset.floodlight='1';document.documentElement.classList.add('dark')}}catch(e){}";
-
 export default function Layout({ children }: LayoutProps<'/'>) {
   return (
     <html
@@ -35,9 +30,6 @@ export default function Layout({ children }: LayoutProps<'/'>) {
       className={`${publicSans.variable} ${bigShoulders.variable} ${jetbrains.variable}`}
       suppressHydrationWarning
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: floodlightScript }} />
-      </head>
       <body className="flex min-h-screen flex-col">
         <a href="#main" className="hl-skip">
           Skip to content

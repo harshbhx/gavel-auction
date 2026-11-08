@@ -48,31 +48,30 @@ function listDocs(dir, rel = '') {
 const browser = await chromium.launch();
 let failures = 0;
 
-async function shoot(name, url, { scheme, viewport, floodlight, checkOverflow }) {
+async function shoot(name, url, { scheme, viewport, checkOverflow }) {
   const context = await browser.newContext({ colorScheme: scheme, viewport, reducedMotion: 'reduce' });
-  // The site starts on Newsprint (light) whatever the system says, so pick the theme explicitly.
-  await context.addInitScript((t) => {
+  // Seed the old saved theme choices: the site must ignore them and render Newsprint.
+  await context.addInitScript(() => {
     try {
-      localStorage.setItem('theme', t);
+      localStorage.setItem('theme', 'dark');
+      localStorage.setItem('gavel-floodlight', '1');
     } catch {
       /* ignore */
     }
-  }, scheme === 'dark' ? 'dark' : 'light');
-  if (floodlight) {
-    await context.addInitScript(() => {
-      try {
-        localStorage.setItem('gavel-floodlight', '1');
-      } catch {
-        /* ignore */
-      }
-    });
-  }
+  });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   const res = await page.goto(base + url, { waitUntil: 'networkidle' });
   if (!res || !res.ok()) {
     console.error(`FAIL ${url}: HTTP ${res?.status()}`);
+    failures += 1;
+  }
+  const themed = await page.evaluate(
+    () => document.documentElement.classList.contains('dark') || 'floodlight' in document.documentElement.dataset,
+  );
+  if (themed) {
+    console.error(`FAIL ${url}: a stored dark or floodlight theme was applied`);
     failures += 1;
   }
   // Mermaid renders after hydration.
@@ -120,16 +119,15 @@ async function interact(url) {
   await context.close();
 }
 
-const dusk = { scheme: 'dark', viewport: { width: 1280, height: 900 } };
+// Newsprint is the only theme. Every context seeds the old saved theme values (dark, floodlight)
+// and a dark system scheme in some shots, so these pictures prove they are ignored.
+const stale = { scheme: 'dark', viewport: { width: 1280, height: 900 } };
 for (const [name, url] of key) {
-  await shoot(`${name}-dusk-desktop`, url, dusk);
-  await shoot(`${name}-daylight-desktop`, url, { scheme: 'light', viewport: { width: 1280, height: 900 } });
+  await shoot(`${name}-stale-dark-desktop`, url, stale);
+  await shoot(`${name}-desktop`, url, { scheme: 'light', viewport: { width: 1280, height: 900 } });
 }
-await shoot('home-floodlight-desktop', '/', { ...dusk, floodlight: true });
-await shoot('voice-floodlight-desktop', '/docs/how-it-works/voice-and-confirm', { ...dusk, floodlight: true });
-await shoot('home-daylight-1440', '/', { scheme: 'light', viewport: { width: 1440, height: 900 } });
-await shoot('voice-daylight-1440', '/docs/how-it-works/voice-and-confirm', { scheme: 'light', viewport: { width: 1440, height: 900 } });
-await shoot('home-dusk-1440', '/', { scheme: 'dark', viewport: { width: 1440, height: 900 } });
+await shoot('home-1440', '/', { scheme: 'light', viewport: { width: 1440, height: 900 } });
+await shoot('voice-1440', '/docs/how-it-works/voice-and-confirm', { scheme: 'light', viewport: { width: 1440, height: 900 } });
 
 // Print layout, the 404 page and the Open Graph cards.
 {

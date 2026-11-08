@@ -7,15 +7,11 @@ import {
   HoldCard,
   JoinCodeInput,
   Loader,
-  PaletteSwitch,
   PriceRoll,
   Skeleton,
   SkeletonGroup,
   StatusPill,
-  clearPalette,
-  initPalette,
   normalizeCode,
-  setPalette,
 } from '../../src/ui';
 import { changedIndexes, snapToStep } from '../../src/ui/format';
 
@@ -388,52 +384,5 @@ describe('Loader, Skeleton and StatusPill', () => {
     render(<StatusPill tone="win">You lead</StatusPill>);
     const pill = screen.getByText('You lead');
     expect(pill.getAttribute('data-tone')).toBe('win');
-  });
-});
-
-describe('palette', () => {
-  beforeEach(() => {
-    clearPalette();
-  });
-
-  it('stores the pick and sets data-pal', () => {
-    setPalette('c');
-    expect(document.documentElement.getAttribute('data-pal')).toBe('c');
-    expect(window.localStorage.getItem('gavel.palette')).toBe('c');
-  });
-
-  it('applies the stored pick at start-up and ignores junk', () => {
-    window.localStorage.setItem('gavel.palette', 'b');
-    expect(initPalette()).toBe('b');
-    expect(document.documentElement.getAttribute('data-pal')).toBe('b');
-    clearPalette();
-    window.localStorage.setItem('gavel.palette', 'zzz');
-    expect(initPalette()).toBeNull();
-    expect(document.documentElement.hasAttribute('data-pal')).toBe(false);
-  });
-
-  it('survives blocked storage', () => {
-    const spy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
-      throw new Error('blocked');
-    });
-    const set = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('blocked');
-    });
-    expect(initPalette()).toBeNull();
-    expect(() => {
-      setPalette('a');
-    }).not.toThrow();
-    expect(document.documentElement.getAttribute('data-pal')).toBe('a');
-    spy.mockRestore();
-    set.mockRestore();
-  });
-
-  it('PaletteSwitch buttons switch and show the pressed one', () => {
-    render(<PaletteSwitch />);
-    fireEvent.click(screen.getByRole('button', { name: 'Night Board' }));
-    expect(screen.getByRole('button', { name: 'Night Board' }).getAttribute('aria-pressed')).toBe(
-      'true',
-    );
-    expect(document.documentElement.getAttribute('data-pal')).toBe('b');
   });
 });

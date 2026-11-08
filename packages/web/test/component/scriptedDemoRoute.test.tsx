@@ -5,7 +5,6 @@ import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
 import { HelpLayer } from '../../src/help';
 import { readScriptedRequest } from '../../src/net/scriptedMode';
-import { PALETTE_STORAGE_KEY } from '../../src/ui/palette';
 import { matchRoute } from '../../src/routes';
 
 afterEach(() => {
@@ -43,17 +42,14 @@ describe('/demo/scripted', () => {
   });
 });
 
-describe('palette control in the help menu', () => {
-  it('is mounted, keyboard operable and stores the choice', () => {
+describe('help menu', () => {
+  it('has no colour or theme control and ignores an old stored palette', () => {
+    window.localStorage.setItem('gavel.palette', 'b');
     render(<HelpLayer autoStart={false} />);
     fireEvent.click(screen.getByRole('button', { name: t('help.button') }));
-    const group = screen.getByRole('group', { name: t('ui.palette.group') });
-    expect(group).toBeTruthy();
-    const night = screen.getByRole('button', { name: t('ui.palette.b') });
-    expect(night.tagName).toBe('BUTTON');
-    fireEvent.click(night);
-    expect(night.getAttribute('aria-pressed')).toBe('true');
-    expect(window.localStorage.getItem(PALETTE_STORAGE_KEY)).toBe('b');
+    expect(screen.queryByRole('group', { name: /palette|theme|colour/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /night board|salon/i })).toBeNull();
+    expect(document.documentElement.hasAttribute('data-pal')).toBe(false);
   });
 
   it('has no axe violations', async () => {
