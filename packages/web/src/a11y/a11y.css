@@ -75,3 +75,8 @@
     border: 1px solid ButtonText;
   }
 }
+
+/* The main landmark takes focus from the skip link and on route changes; it is not a control. */
+main[tabindex='-1']:focus {
+  outline: none;
+}

@@ -25,8 +25,9 @@ export function useRouteChrome(match: RouteMatch): void {
   const selfManaged = SELF_MANAGED.has(routeId);
 
   useEffect(() => {
-    if (routeId === 'landing') document.title = INDEX_TITLE;
-    else if (!selfManaged) document.title = title;
+    if (routeId === 'landing') {
+      if (INDEX_TITLE !== '') document.title = INDEX_TITLE;
+    } else if (!selfManaged) document.title = title;
   }, [routeId, selfManaged, title]);
 
   useEffect(() => {
