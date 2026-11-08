@@ -23,12 +23,17 @@ info:
     | Screen token | `Authorization: Bearer <token>`, valid 12 hours | returned as a link when an auction is created |
     | Session (bidder) token | `Authorization: Bearer <token>`, valid 4 hours | returned by the join routes |
     | Receipt token | `Authorization: Bearer <token>`, valid 4 hours | returned by the receipt-link route |
+    | Reviewer token | `Authorization: Bearer <token>`, valid 12 hours | returned as `reviewerToken` and `reviewerLink` when a judge room is created; read only, a screen's view plus the room ledger |
+    | Judge key | header `X-Judge-Key` | a limited key for judges (environment setting `JUDGE_KEY`, never the operator key); optional, only on the judge-room create and key-check routes |
     | Invite token | field `invite` in the body of the join route, valid 24 hours, single use | minted by the auctioneer |
 
     Every token is bound to one auction (its `aud`) and to one kind. A token of the wrong kind
     or for another auction answers 401. A token whose role may not do the thing answers 403.
-    Tokens are opaque strings: do not parse them. The server has no separate "reviewer" token;
-    reviewers use a judge room (no key needed) and receipt links.
+    Tokens are opaque strings: do not parse them. A reviewer token can read the snapshot, the
+    event log and the room ledger of its own judge room, and nothing else. Judge rooms need no
+    key; the judge key only lifts the public limits when a host has one set (see
+    `POST /api/judge/key`). The judge key is sent only in the `X-Judge-Key` header, never in a
+    URL or body.
 
     Links the host returns carry the token in the URL fragment (`#token=`) so it never reaches
     a server log.
@@ -65,7 +70,9 @@ info:
     Send `X-Request-Id` (1 to 64 characters of `A-Z a-z 0-9 _ -`) to correlate a request;
     every response carries `X-Request-Id`, and the server mints one when you send none or an
     invalid one. Browsers are allowed only from the origins the operator lists; other origins
-    get no CORS headers.
+    get no CORS headers. Allowed request headers are `Authorization`, `Content-Type`,
+    `X-Request-Id`, `X-Admin-Key` and `X-Judge-Key`; readable response headers are
+    `X-Request-Id` and `Retry-After` (also on early 429, 404 and 500 answers).
 
     ## Not in this document
 
@@ -91,7 +98,7 @@ info:
 
     | `t` | Purpose | Fields |
     | --- | --- | --- |
-    | `join` | First frame. Opens the session. | `token` (session, auctioneer or screen token), `auctionId`, optional `lastSeq` (resume after this sequence number), optional `client` ({name, version}) |
+    | `join` | First frame. Opens the session. | `token` (session, auctioneer, screen or reviewer token; a reviewer joins with a screen's view), `auctionId`, optional `lastSeq` (resume after this sequence number), optional `client` ({name, version}) |
     | `bid` | Place a bid. | `mid` (id you mint, for idempotency), `amount` (cents), `source` (`voice`, `qr` or `manual`), optional `bidderId`, `transcript`, `confidence`, `ambiguous`, `audioTsMs`, `audioEndMs`, `clientTs` |
     | `confirm_response` | Answer a spoken-bid confirmation. | `confirmId`, `accept` |
 
@@ -151,11 +158,18 @@ tags:
 x-rate-limits:
   http:
     description: >-
-      Per source address, applied to every route except /healthz, /readyz, /version and
-      /webhooks/**. Token bucket.
+      Per source address, applied to every write (POST, DELETE) on every route except
+      /healthz, /readyz, /version and /webhooks/**. Token bucket.
     perMinute: 60
     burst: 60
     setting: RATE_HTTP_PER_MIN, RATE_HTTP_BURST
+  httpRead:
+    description: >-
+      Per source address, applied to reads (GET, HEAD, OPTIONS). Looser, so judges who share
+      one address can browse. Same exemptions as `http`.
+    perMinute: 300
+    burst: 300
+    setting: RATE_HTTP_READ_PER_MIN, RATE_HTTP_READ_BURST
   join:
     description: Per source address on POST /api/auctions/{id}/join. Token bucket.
     perMinute: 10
@@ -169,6 +183,12 @@ x-rate-limits:
     codeLookupAttemptsPerMinute: 30
     wrongCodesBeforeLockout: 5
     lockoutMinutes: 15
+    note: A wrong judge key counts as a wrong code toward the same lockout.
+  judgeKey:
+    description: Creates made with a valid judge key, counted for the whole host.
+    createsPerHour: 20
+    liveRoomsMax: 3
+    setting: JUDGE_KEY_ROOMS_MAX
   websocket:
     bidsPerSecond: 3
     bidBurst: 5
@@ -262,6 +282,8 @@ paths:
                 status: OPEN
                 endTs: 1767225600000
                 bidderCount: 2
+                currentCents: 1500
+                leaderPaddle: 2
         '404':
           $ref: '#/components/responses/NotFound'
         '429':
@@ -669,11 +691,12 @@ paths:
       description: |
         The same snapshot the WebSocket sends in a `state` frame, filtered by role: a bidder
         sees only their own ceiling and hold, a screen sees no private fields, the auctioneer
-        sees the full audit rows.
+        sees the full audit rows. A reviewer token gets the screen's view.
       security:
         - auctioneerAuth: []
         - screenAuth: []
         - sessionAuth: []
+        - reviewerAuth: []
       parameters:
         - $ref: '#/components/parameters/AuctionId'
       responses:
@@ -699,13 +722,14 @@ paths:
       operationId: listEvents
       summary: Page through the event log
       description: |
-        Auctioneer or screen token. Events after sequence `after`, at most `limit`. A screen
+        Auctioneer, screen or reviewer token (a reviewer sees what a screen sees). Events after sequence `after`, at most `limit`. A screen
         sees full rows only for public event types; every other event is a bare `{seq}` so the
         log stays whole. Ceilings, transcripts, hold references and the auctioneer subject are
         never returned. Pass `next` back as `after` to continue.
       security:
         - auctioneerAuth: []
         - screenAuth: []
+        - reviewerAuth: []
       parameters:
         - $ref: '#/components/parameters/AuctionId'
         - name: after
@@ -1094,10 +1118,15 @@ paths:
                   simHolds:
                     type: boolean
                     description: The simulated-hold route is available.
+                  keyed:
+                    type: boolean
+                    const: true
+                    description: Present and true only when the host has a judge key set.
               example:
                 judgeRooms: true
                 accepting: true
                 simHolds: true
+                keyed: true
         '429':
           $ref: '#/components/responses/RateLimited'
         '500':
@@ -1108,9 +1137,18 @@ paths:
       operationId: createJudgeRoom
       summary: Create a judge room
       description: |
-        No credential. Creates a short sandbox auction (10 minute lot, small ceilings) that
-        ends after 30 minutes. The creator gets auctioneer and screen tokens for that room
-        only; no operator route opens. Answers 404 when judge rooms are off.
+        No credential needed. Creates a short sandbox auction (10 minute lot, small ceilings)
+        that ends after 30 minutes. The creator gets auctioneer, screen and reviewer tokens for
+        that room only; no operator route opens. Answers 404 when judge rooms are off.
+
+        With the optional `X-Judge-Key` header the request is judged by the key alone: the
+        public limits do not apply, the room does not use a public slot, and a wrong key is
+        401 `judge_key_invalid` (it never falls back to the public path). Wrong keys count
+        toward the same lockout as wrong room codes (429 `judge_key_locked`). The response then
+        carries `unlocked: true`.
+      security:
+        - {}
+        - judgeKey: []
       requestBody:
         required: false
         content:
@@ -1124,6 +1162,11 @@ paths:
                   minLength: 1
                   maxLength: 60
                   default: Sandbox demo lot
+                fundraiserGoalCents:
+                  type: integer
+                  minimum: 1
+                  maximum: 100000000000
+                  description: Optional goal; the projector shows a thermometer only when it is set.
             example:
               title: Sandbox demo lot
       responses:
@@ -1141,10 +1184,14 @@ paths:
                 screenToken: SCREEN_TOKEN
                 auctioneerLink: https://gavel-web.example/r/01JC5ZP4M7Q8R9S0T1V2W3X4Y5/console#token=AUCTIONEER_TOKEN
                 screenLink: https://gavel-web.example/r/01JC5ZP4M7Q8R9S0T1V2W3X4Y5/screen#token=SCREEN_TOKEN
+                reviewerToken: REVIEWER_TOKEN
+                reviewerLink: https://gavel-web.example/r/01JC5ZP4M7Q8R9S0T1V2W3X4Y5/audit#token=REVIEWER_TOKEN
                 expiresAt: 1767227400000
                 biddingEndsAt: 1767226200000
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/JudgeKeyInvalid'
         '404':
           $ref: '#/components/responses/NotFound'
         '413':
@@ -1153,8 +1200,11 @@ paths:
           $ref: '#/components/responses/UnsupportedMediaType'
         '429':
           description: >-
-            Too many creates from this address (`judge_rate_limited`, retry after 600 s) or the
-            live-room cap is reached (`judge_room_cap`, retry after 60 s).
+            Too many creates from this address or from the host (`judge_rate_limited`; `Retry-After`
+            is the time until the oldest create leaves the hour window, 600 s for a keyed
+            create), the live-room cap is reached (`judge_room_cap`, 60 s), a keyed create hit
+            its own room cap (`judge_key_room_cap`, 60 s), or the source is locked out
+            (`judge_key_locked`). The body is `{error, message}`.
           headers:
             Retry-After:
               $ref: '#/components/headers/RetryAfter'
@@ -1181,11 +1231,107 @@ paths:
                 message: Demo rooms are paused right now. Try again in a minute.
       x-rate-limit:
         scope: source address and whole host
-        perSourcePerHour: 4
+        perSourcePerHour: 12
         hostPerHour: 40
         liveRoomsMax: 15
         roomLifetimeMinutes: 30
-        settings: JUDGE_ROOMS_MAX, JUDGE_ROOM_TTL_MS
+        keyedCreatesPerHour: 20
+        keyedLiveRoomsMax: 3
+        settings: JUDGE_ROOMS_PER_IP_HOUR, JUDGE_ROOMS_PER_HOUR, JUDGE_ROOMS_MAX, JUDGE_ROOM_TTL_MS, JUDGE_KEY_ROOMS_MAX
+  /api/judge/key:
+    post:
+      tags: [Judge rooms]
+      operationId: checkJudgeKey
+      summary: Check a judge key
+      description: |
+        Send the key in the `X-Judge-Key` header, with no body. Creates nothing; it lets a
+        panel say whether the key works. A wrong key is 401 `judge_key_invalid` and counts
+        toward the lockout shared with wrong room codes (5 wrong, 15 minutes: 429
+        `judge_key_locked`, even with the right key). When the host has no judge key set, every
+        key answers as wrong. Answers 404 when judge rooms are off.
+      security:
+        - judgeKey: []
+      responses:
+        '200':
+          description: The key is accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, roomsMax, roomsLive]
+                properties:
+                  ok:
+                    type: boolean
+                    const: true
+                  roomsMax:
+                    type: integer
+                    description: Most keyed rooms alive at once.
+                  roomsLive:
+                    type: integer
+                    description: Keyed rooms alive now.
+              example:
+                ok: true
+                roomsMax: 3
+                roomsLive: 0
+        '401':
+          $ref: '#/components/responses/JudgeKeyInvalid'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/Internal'
+      x-rate-limit:
+        scope: source address
+        wrongKeysBeforeLockout: 5
+        lockoutMinutes: 15
+  /api/judge/rooms/{id}/ledger:
+    get:
+      tags: [Judge rooms, Export]
+      operationId: getJudgeRoomLedger
+      summary: Verifiable ledger of a judge room
+      description: |
+        Reviewer or auctioneer token of that room. The room's hash-chained ledger as a replay
+        bundle with the private fields removed. The private chain and the public chain are
+        both checked before anything is sent: a broken chain answers 409 `ledger_unverified`
+        instead of a bundle that looks fine. 404 before the ledger has any entry, for an id
+        that is not a judge room, or when judge rooms are off.
+      security:
+        - reviewerAuth: []
+        - auctioneerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AuctionId'
+      responses:
+        '200':
+          description: The bundle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplayBundle'
+              example:
+                version: 1
+                exportVersion: 4
+                auctionId: 01JC5ZP4M7Q8R9S0T1V2W3X4Y5
+                generatedAt: 1767226300000
+                count: 0
+                headHash: null
+                events: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The ledger does not verify (`ledger_unverified`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: ledger_unverified
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/Internal'
   /api/judge/join:
     post:
       tags: [Judge rooms]
@@ -1804,6 +1950,19 @@ components:
       type: http
       scheme: bearer
       description: Screen token (12 hours) for the projector page. Read only, no private fields.
+    reviewerAuth:
+      type: http
+      scheme: bearer
+      description: >-
+        Reviewer token (12 hours), returned by judge-room creation. Read only: the screen's
+        view of the snapshot and event log, and the room ledger. Bound to one judge room.
+    judgeKey:
+      type: apiKey
+      in: header
+      name: X-Judge-Key
+      description: >-
+        A limited key for judges (set by the host operator, never the operator key). Only the
+        judge-room create and key-check routes read it. No real value appears in this document.
     sessionAuth:
       type: http
       scheme: bearer
@@ -2125,6 +2284,14 @@ components:
         bidderCount:
           type: integer
           minimum: 0
+        currentCents:
+          $ref: '#/components/schemas/Cents'
+          description: Current price in cents; absent until the first accepted bid.
+        leaderPaddle:
+          type: integer
+          minimum: 1
+          maximum: 9999
+          description: Paddle number of the current leader; absent when there is none.
     ControlRequest:
       type: object
       additionalProperties: false
@@ -2212,10 +2379,53 @@ components:
         screenLink:
           type: string
           format: uri
+        reviewerToken:
+          type: string
+          description: Read-only reviewer token for this room (12 hours).
+        reviewerLink:
+          type: string
+          format: uri
+          description: Audit page link with the reviewer token in the fragment.
         expiresAt:
           $ref: '#/components/schemas/EpochMs'
         biddingEndsAt:
           $ref: '#/components/schemas/EpochMs'
+        unlocked:
+          type: boolean
+          const: true
+          description: Present and true when the room was made with a valid judge key.
+    ReplayBundle:
+      type: object
+      description: >-
+        A verifiable export of the ledger (`packages/shared/src/replay-bundle.ts`). Hash with
+        `verifyPublicExport` and compare `headHash`.
+      required: [version, exportVersion, auctionId, generatedAt, count, headHash, events]
+      properties:
+        version:
+          type: integer
+        exportVersion:
+          type: integer
+        auctionId:
+          type: string
+        generatedAt:
+          $ref: '#/components/schemas/EpochMs'
+        count:
+          type: integer
+          minimum: 0
+          description: Number of events; equals the last event seq.
+        headHash:
+          type:
+            - string
+            - 'null'
+          description: Hash of the last public event, or null for an empty ledger.
+        closed:
+          type: boolean
+          description: True when the last event closes the auction and names the event before it.
+        events:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
     CreateHoldResponse:
       type: object
       required: [holdId, orderId]
@@ -2425,6 +2635,16 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             error: busy
+    JudgeKeyInvalid:
+      description: The judge key was not accepted (`judge_key_invalid`), or the host has none set.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: judge_key_invalid
+            code: judge_key_invalid
+            message: That key was not accepted.
     Gone:
       description: The judge room ended (`judge_room_expired` or `judge_room_ended`).
       content:
