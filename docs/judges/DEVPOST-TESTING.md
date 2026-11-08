@@ -4,7 +4,7 @@ Draft for the Devpost "testing instructions" field. The owner pastes this in and
 
 ---
 
-For judges: start at https://gavel-web.creharsh.workers.dev/try (judge panel). No login: https://gavel-web.creharsh.workers.dev/demo/scripted. Demo room: https://gavel-web.creharsh.workers.dev/demo. Trust and FAQ: https://gavel-docs.creharsh.workers.dev/docs/judges/trust-and-faq. Sandbox buyer logins are placeholders below (OWNER fills in).
+For judges: start at https://gavel-web.creharsh.workers.dev/try (judge panel). No login: https://gavel-web.creharsh.workers.dev/demo/scripted. Demo room: https://gavel-web.creharsh.workers.dev/demo. Trust and FAQ: https://docs.gavel.dualmindlab.tech/docs/judges/trust-and-faq. Sandbox buyer logins are placeholders below (OWNER fills in).
 
 GAVEL is a live auction where every bid is a PayPal authorization hold. At the hammer only the winning price is captured and every other hold is voided. Everything runs in the PayPal sandbox: no real money moves, and you should never use your own PayPal account.
 
@@ -33,4 +33,4 @@ Notes for testers
 - Voice bidding is partial (synthetic, noise-free test audio only), so a spoken bid always asks for confirmation. Typed and QR bids work without it.
 - Sandbox buyers are US accounts and the auction is in USD.
 
-More: judge walkthrough https://github.com/harshbhx/gavel-auction/blob/main/docs/JUDGES.md and the docs site https://gavel-docs.creharsh.workers.dev/docs/judges
+More: judge walkthrough https://github.com/harshbhx/gavel-auction/blob/main/docs/JUDGES.md and the docs site https://docs.gavel.dualmindlab.tech/docs/judges

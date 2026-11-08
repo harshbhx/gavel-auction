@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { t } from '../../src/copy/t';
 import type { ControlPort } from '../../src/net/transport';
-import { createControlPort } from '../../src/net/controlPort';
+import { ControlError, createControlPort } from '../../src/net/controlPort';
 import { Controls, controlStatus, disabledReason } from '../../src/screens/console/Controls';
 import { HammerDialog } from '../../src/screens/console/HammerDialog';
 import { KillSwitch } from '../../src/screens/console/KillSwitch';
@@ -85,6 +85,31 @@ describe('controlStatus (SRV-31)', () => {
 });
 
 describe('Controls', () => {
+  it('shows the reason the server gave when a pause is refused (SRV-38)', async () => {
+    const port = fakePort();
+    port.pause = vi.fn(() => Promise.reject(new ControlError(409, 'The lot is already paused')));
+    render(
+      <Controls
+        port={port}
+        lotId="lot1"
+        status="OPEN"
+        online
+        stopped={false}
+        leader={null}
+        priceCents={0}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: t('console.pause') }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(
+      screen.getByText(
+        t('controls.refused', { action: t('console.pause'), detail: 'The lot is already paused' }),
+      ),
+    ).toBeTruthy();
+  });
+
   it('posts through the port and keeps offline controls visible but disabled', async () => {
     const port = fakePort();
     const { rerender } = render(

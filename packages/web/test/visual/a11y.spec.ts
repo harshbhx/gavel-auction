@@ -20,6 +20,9 @@ const ROUTES = [
   '/r/room1/console',
   '/r/room1/screen',
   '/r/room1/audit',
+  '/r/room1/hub',
+  '/ops',
+  '/replay/abc',
   '/gallery',
   '/nowhere',
 ] as const;

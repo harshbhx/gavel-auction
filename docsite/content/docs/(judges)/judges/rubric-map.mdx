@@ -8,7 +8,7 @@ The PayPal AI Hackathon scores five equally weighted criteria from 1 to 5 in Sta
 
 <Held title="Not scored here">
 
-The map shows where to look. It makes no claim about the score. Open items (G3, G5, hosted demo not yet walked end to end) are repeated in each row where they matter.
+The map shows where to look. It makes no claim about the score. Open items (<Term id="gate-g3">G3</Term>, <Term id="gate-g5">G5</Term>, hosted demo not yet walked end to end) are repeated in each row where they matter.
 
 </Held>
 
@@ -20,7 +20,7 @@ The map shows where to look. It makes no claim about the score. Open items (G3, 
 | --- | --- | --- |
 | Public repository | [github.com/harshbhx/gavel-auction](https://github.com/harshbhx/gavel-auction) | Public (checked 5 Nov in [`docs/SUBMISSION.md`](https://github.com/harshbhx/gavel-auction/blob/main/docs/SUBMISSION.md)) |
 | Detectable open-source license | [`LICENSE`](https://github.com/harshbhx/gavel-auction/blob/main/LICENSE) (MIT) | Detected by GitHub |
-| Working build, with run instructions | `README.md` "Run it" and the [ten-minute path](/docs/judges/ten-minute-path) | Runs on the fake PayPal. The web app is hosted in sandbox mode (gavel-web.creharsh.workers.dev); no end-to-end walk is recorded yet. |
+| Working build, with run instructions | `README.md` "Run it" and the [ten-minute path](/docs/judges/ten-minute-path) | Runs on the <Term id="fake-paypal">fake PayPal</Term>. The web app is hosted in sandbox mode (gavel-web.creharsh.workers.dev); no end-to-end walk is recorded yet. |
 | Public video under 3:00 | [Demo script](/docs/judges/demo-script) | Script written; the recording is an open item in `docs/SUBMISSION.md` |
 | Meaningful use of PayPal and AI | Rows 1 and 2 below | See below |
 
@@ -32,8 +32,8 @@ Thorough, skilled use of the PayPal platform and AI, a genuine and non-trivial i
 
 | What to open | What it shows | Status |
 | --- | --- | --- |
-| [Gates G0 to G5](/docs/proof/gates) | Real sandbox runs for authorize, partial capture, card and guest authorize and webhook verification | PASS for G0, G1, G2, G4 |
-| [Settlement saga](/docs/how-it-works/settlement-saga), [Idempotency](/docs/how-it-works/idempotency) | A pure state machine, a journal saved before each call, deterministic request ids | Tested against the fake PayPal; one lot of three holds and one in-process crash on the real sandbox |
+| [Gates G0 to G5](/docs/proof/gates) | Real sandbox runs for authorize, partial <Term id="capture">capture</Term>, card and guest authorize and webhook verification | PASS for G0, G1, G2, G4 |
+| [Settlement saga](/docs/how-it-works/settlement-saga), [Idempotency](/docs/how-it-works/idempotency) | A pure state machine, a <Term id="journal">journal</Term> saved before each call, deterministic request ids | Tested against the fake PayPal; one lot of three holds and one in-process crash on the real sandbox |
 | [Webhooks](/docs/safety/webhooks) | Signature verification through PayPal's endpoint | PASS on six real events (G4); tampered-event rejection is fake only |
 | [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) | Speech-to-text, a parser and a validator that never decides a winner or moves money | G5 PARTIAL, synthetic audio only; every spoken bid confirms |
 | [Quality checks](/docs/proof/quality-checks) | Unit, property, scenario and differential checks run in CI | See the page for what is and is not measured |
@@ -64,8 +64,8 @@ Novelty, and how it differs from existing concepts.
 | What to open | What it shows | Status |
 | --- | --- | --- |
 | [Money flow](/docs/how-it-works/money-flow) | Every bid is an AUTHORIZE hold, only the winning price is captured, the remainder is released | G1 PASS for the capture and authorization state; release of the remainder is inferred, not observed |
-| [Engine and ledger](/docs/how-it-works/engine-and-ledger) | A deterministic engine with a hash-chained ledger that anyone can re-verify | Covered by tests; verify it yourself in the [ten-minute path](/docs/judges/ten-minute-path) |
-| [Crash recovery](/docs/how-it-works/crash-recovery) | A saga that resumes after a crash without a second capture | Fake PayPal plus one in-process crash on the sandbox (spec R10). No real process kill. |
+| [Engine and ledger](/docs/how-it-works/engine-and-ledger) | A deterministic <Term id="engine">engine</Term> with a <Term id="hash-chain">hash-chained</Term> <Term id="ledger">ledger</Term> that anyone can re-verify | Covered by tests; verify it yourself in the [ten-minute path](/docs/judges/ten-minute-path) |
+| [Crash recovery](/docs/how-it-works/crash-recovery) | A <Term id="saga">saga</Term> that resumes after a crash without a second capture | Fake PayPal plus one in-process crash on the sandbox (spec R10). No real process kill. |
 
 ### 5. Presentation
 

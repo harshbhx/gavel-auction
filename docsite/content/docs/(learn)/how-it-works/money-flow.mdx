@@ -6,17 +6,17 @@ status: verified
 full: true
 ---
 
-A hold is an authorization, not a payment. Only the winning price is captured.
+A <Term id="hold">hold</Term> is an <Term id="authorization">authorization</Term>, not a payment. Only the winning price is <Term id="capture">captured</Term>.
 
 <MoneyFlowDiagram />
 
 ## What happens, in order
 
 1. **Approve (T0).** Each bidder approves a PayPal order with intent AUTHORIZE for their ceiling.
-2. **Bid (T1).** The engine checks the bid against the ceiling and the rules; the ledger appends a hash-chained event.
-3. **Hammer (T2).** The highest valid bid wins at its price.
-4. **Capture (T3).** The saga reads the truth of the winner's hold, then captures the winning price with `final_capture`. PayPal closes the unused remainder of that authorization.
-5. **Void (T4).** Every other hold is voided, with bounded concurrency (three at a time). When all are released the settlement is SETTLED.
+2. **Bid (T1).** The <Term id="engine">engine</Term> checks the <Term id="bid">bid</Term> against the <Term id="ceiling">ceiling</Term> and the rules; the <Term id="ledger">ledger</Term> appends a hash-chained event.
+3. **<Term id="hammer">Hammer</Term> (T2).** The highest valid bid wins at its price.
+4. **Capture (T3).** The <Term id="saga">saga</Term> reads the truth of the winner's hold, then captures the winning price with `final_capture`. PayPal closes the unused remainder of that authorization.
+5. **Void (T4).** Every other hold is <Term id="void">voided</Term>, with bounded concurrency (three at a time). When all are released the <Term id="settlement">settlement</Term> is SETTLED.
 
 ## The invariant
 

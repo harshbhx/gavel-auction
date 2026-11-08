@@ -5,18 +5,18 @@ icon: DatabaseBackup
 status: unverified
 ---
 
-The ledger is private: it holds each bidder's ceiling, hold reference and spoken bid transcript. The repository is public, so the `backup` workflow encrypts the snapshot before upload and never stores plaintext as an artifact.
+The <Term id="ledger">ledger</Term> is private: it holds each bidder's <Term id="ceiling">ceiling</Term>, <Term id="hold">hold</Term> reference and spoken bid transcript. The repository is public, so the `backup` workflow encrypts the snapshot before upload and never stores plaintext as an artifact.
 
 ## What the job does
 
 - Lists every stored auction and downloads each ledger, checking its head line. It fails when the number downloaded differs from the number listed.
-- Downloads, per auction, the payment state (settlement journal and hold records) and the room event log, and once the processed webhook ids with the kill switch state.
+- Downloads, per auction, the payment state (settlement <Term id="journal">journal</Term> and hold records) and the room event log, and once the processed <Term id="webhook">webhook</Term> ids with the kill switch state.
 - Redacts anything that looks like a secret, token or password. Credentials are not stored in those files in the first place.
 - Uploads only `ledger-snapshot.tgz.gpg`, kept for 30 days. If a required setting is missing the job does nothing and says so.
 
 ## Restore
 
-Decrypt and unpack the artifact; each ledger file verifies with the chain check and its last line is the head. The snapshot is up to a day old, so after any restore the operator reconciles against PayPal and voids every authorization that no restored record accounts for, keeping the kill switch engaged until then.
+Decrypt and unpack the artifact; each ledger file verifies with the chain check and its last line is the head. The snapshot is up to a day old, so after any restore the operator reconciles against PayPal and <Term id="void">voids</Term> every authorization that no restored record accounts for, keeping the kill switch engaged until then.
 
 <NotVerified title="Documented, not exercised">
 

@@ -9,7 +9,7 @@ status: verified
 
 ## Question
 
-Does the PayPal sandbox app authenticate, and can it create an order with intent `AUTHORIZE`? Every later real-sandbox gate depends on this, so it runs first.
+Does the PayPal <Term id="sandbox">sandbox</Term> app authenticate, and can it create an order with intent `AUTHORIZE`? Every later real-sandbox <Term id="gate">gate</Term> depends on this, so it runs first.
 
 ## Method
 
@@ -37,12 +37,12 @@ The result is stated in [docs/GATES.md](https://github.com/harshbhx/gavel-auctio
 ## Limits
 
 - It proves connectivity, token scopes and order creation only.
-- No buyer approval and no capture were part of G0.
+- No buyer approval and no <Term id="capture">capture</Term> were part of G0.
 - It says nothing about card or guest buyers ([G2](/docs/proof/gate-g2)), partial capture ([G1](/docs/proof/gate-g1)) or webhooks ([G4](/docs/proof/gate-g4)).
 
 ## If it fails
 
-There is no fallback for payments. Hold G1 to G4 and demo on the fake PayPal, labelled as fake. See the [operator runbook](/docs/run/operator-runbook) and [gate runbook](/docs/run/gate-runbook).
+There is no fallback for payments. Hold G1 to G4 and demo on the <Term id="fake-paypal">fake PayPal</Term>, labelled as fake. See the [operator runbook](/docs/run/operator-runbook) and [gate runbook](/docs/run/gate-runbook).
 
 <CodePaths
   paths={[

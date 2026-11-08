@@ -1,0 +1,319 @@
+{
+  "_comment": "Single source for the glossary page and the <Term> tooltips. Fields: id (kebab-case, stable: it is the anchor), term, short (tooltip text, one or two sentences, 260 characters at most), long (optional extra paragraph for the glossary page), page (the docs page that explains it best), see (ids of related entries). Gate entries define the question a gate asks, never its result: the result lives on the gate page and in docs/GATES.md. Checked by scripts/check-glossary.mjs.",
+  "entries": [
+    {
+      "id": "audit-trail",
+      "term": "Audit trail",
+      "short": "The record of what happened in an auction, built on the ledger. A redacted public export of it can be checked with the verifier, so an edited entry shows up.",
+      "long": "In the product the audit trail is the view of the ledger for a reviewer: a timeline of the accepted events, a summary and the ledger entries. Rejected bids are kept in the room log only, not in the ledger.",
+      "page": "/docs/how-it-works/engine-and-ledger",
+      "see": ["ledger", "hash-chain", "verifier"]
+    },
+    {
+      "id": "auctioneer-console",
+      "term": "Auctioneer console",
+      "short": "The screen where the person running the auction opens and controls the lot, including the hammer.",
+      "page": "/docs/start/demo",
+      "see": ["hammer", "room"]
+    },
+    {
+      "id": "authorization",
+      "term": "Authorization",
+      "short": "PayPal's promise to keep an amount available on a buyer's account for a seller. An authorization is a hold: nothing is charged until it is captured.",
+      "page": "/docs/how-it-works/registration-and-holds",
+      "see": ["hold", "capture", "void"]
+    },
+    {
+      "id": "bid",
+      "term": "Bid",
+      "short": "A price offered within the bidder's ceiling. The engine accepts or rejects it and the ledger records an accepted bid. A bid is never a payment.",
+      "page": "/docs/how-it-works/bid-lifecycle",
+      "see": ["ceiling", "hold", "ledger"]
+    },
+    {
+      "id": "capture",
+      "term": "Capture",
+      "short": "Taking money from an authorization. GAVEL captures only the winning price from the winner's hold, with final_capture, never the ceiling.",
+      "long": "Capture is the one step where money moves, and in this project it only ever runs against the PayPal sandbox.",
+      "page": "/docs/how-it-works/settlement-saga",
+      "see": ["hold", "final-capture", "void", "settlement"]
+    },
+    {
+      "id": "ceiling",
+      "term": "Ceiling",
+      "short": "The most a bidder may bid, and the amount PayPal holds for them. Bids above the ceiling are blocked.",
+      "page": "/docs/how-it-works/registration-and-holds",
+      "see": ["hold", "bid"]
+    },
+    {
+      "id": "confirm-prompt",
+      "term": "Confirm prompt",
+      "short": "A question put to a bidder before a spoken bid is placed, for example whether they meant 150 for paddle 12. A yes is checked again against the live price.",
+      "long": "Spoken bids always go through a confirm prompt in the current setup: no code path auto-accepts a spoken bid.",
+      "page": "/docs/how-it-works/voice-and-confirm",
+      "see": ["paddle", "stt", "gate-g5"]
+    },
+    {
+      "id": "engine",
+      "term": "Engine",
+      "short": "The deterministic auction core: three pure functions (decide, evolve and replay) with no Node built-ins, so the same events always give the same result.",
+      "page": "/docs/how-it-works/engine-and-ledger",
+      "see": ["ledger", "replay"]
+    },
+    {
+      "id": "fake-paypal",
+      "term": "Fake PayPal",
+      "short": "The project's built-in test double for PayPal. What it shows is evidence about GAVEL's code, not about PayPal.",
+      "page": "/docs/judges/real-vs-simulated",
+      "see": ["sandbox", "simulated"]
+    },
+    {
+      "id": "final-capture",
+      "term": "final_capture",
+      "short": "A flag on a PayPal capture that says this is the last capture on the authorization. After it, gate G1 observed the authorization closed as CAPTURED.",
+      "page": "/docs/proof/gate-g1",
+      "see": ["capture", "gate-g1"]
+    },
+    {
+      "id": "gate",
+      "term": "Gate",
+      "short": "A run that answers one question about the real PayPal sandbox or the speech pipeline, numbered G0 to G5. A gate is closed only on PASS or FAIL with a recorded decision; PARTIAL stays open.",
+      "long": "Each gate reads PASS, PARTIAL, FAIL or NOT RUN in docs/GATES.md, which is the record. The docs read the status from that file when the site is built.",
+      "page": "/docs/proof/gates",
+      "see": ["gate-g0", "gate-g1", "gate-g2", "gate-g3", "gate-g4", "gate-g5"]
+    },
+    {
+      "id": "gate-g0",
+      "term": "G0",
+      "short": "Gate G0 asks: does the sandbox app authenticate, and can it create an AUTHORIZE order?",
+      "page": "/docs/proof/gate-g0",
+      "see": ["gate", "sandbox"]
+    },
+    {
+      "id": "gate-g1",
+      "term": "G1",
+      "short": "Gate G1 asks: after authorizing 500.00 and capturing 350.00 with final_capture, is the 150.00 remainder released or still active?",
+      "page": "/docs/proof/gate-g1",
+      "see": ["gate", "final-capture", "capture"]
+    },
+    {
+      "id": "gate-g2",
+      "term": "G2",
+      "short": "Gate G2 asks: does an Orders v2 AUTHORIZE flow work for card and guest checkout buyers in the sandbox?",
+      "page": "/docs/proof/gate-g2",
+      "see": ["gate", "authorization"]
+    },
+    {
+      "id": "gate-g3",
+      "term": "G3",
+      "short": "Gate G3 asks: how long does an authorization stay capturable, and does reauthorize extend it? Read its current status on the gate page.",
+      "page": "/docs/proof/gate-g3",
+      "see": ["gate", "honor-period", "reauthorization"]
+    },
+    {
+      "id": "gate-g4",
+      "term": "G4",
+      "short": "Gate G4 asks: does signature verification against the sandbox webhook id accept real events and reject tampered ones?",
+      "page": "/docs/proof/gate-g4",
+      "see": ["gate", "webhook"]
+    },
+    {
+      "id": "gate-g5",
+      "term": "G5",
+      "short": "Gate G5 asks: is speech-to-text accuracy on noisy bid audio high enough to accept bids without manual confirmation?",
+      "page": "/docs/proof/gate-g5",
+      "see": ["gate", "stt", "confirm-prompt"]
+    },
+    {
+      "id": "hammer",
+      "term": "Hammer",
+      "short": "The moment the lot closes and the winner and winning price are fixed. Settlement starts from the hammer.",
+      "page": "/docs/how-it-works/auction-states",
+      "see": ["soft-close", "settlement", "capture"]
+    },
+    {
+      "id": "hash-chain",
+      "term": "Hash chain",
+      "short": "Each ledger entry carries a hash of the entry before it, so changing any entry breaks every link after it and the verifier reports the first bad one.",
+      "long": "A chain on its own cannot show that its tail was cut off. A cut tail shows as not closed, and is proven only against a head hash published elsewhere.",
+      "page": "/docs/how-it-works/engine-and-ledger",
+      "see": ["ledger", "verifier", "audit-trail"]
+    },
+    {
+      "id": "hold",
+      "term": "Hold",
+      "short": "A PayPal authorization for the bidder's ceiling. A promise that the money is there, not a payment: nothing is charged until capture.",
+      "long": "In the product the words paid, deposit and spent are never used for a hold. Held means authorized; charged means captured.",
+      "page": "/docs/how-it-works/registration-and-holds",
+      "see": ["authorization", "ceiling", "capture", "void"]
+    },
+    {
+      "id": "honor-period",
+      "term": "Honor period",
+      "short": "How long PayPal promises to honor a capture on an authorization. GAVEL's 3 day figure is an assumption of its fake PayPal, still unverified on the real sandbox (G3).",
+      "page": "/docs/how-it-works/honor-period",
+      "see": ["reauthorization", "gate-g3"]
+    },
+    {
+      "id": "idempotency-key",
+      "term": "Idempotency key",
+      "short": "A deterministic request id sent with each PayPal call, so a repeat of the same call is answered once instead of acting twice.",
+      "page": "/docs/how-it-works/idempotency",
+      "see": ["saga", "journal"]
+    },
+    {
+      "id": "journal",
+      "term": "Journal",
+      "short": "The settlement saga's saved state, written before and after each PayPal call, so a restart can resume without charging twice.",
+      "page": "/docs/how-it-works/crash-recovery",
+      "see": ["saga", "truth-read"]
+    },
+    {
+      "id": "judge-room",
+      "term": "Judge room",
+      "short": "A key-less demo auction a judge can start from the /try page. It runs on the PayPal sandbox and needs the host flag JUDGE_ROOMS switched on.",
+      "page": "/docs/start/demo",
+      "see": ["sandbox", "scripted-demo"]
+    },
+    {
+      "id": "ledger",
+      "term": "Ledger",
+      "short": "The hash-chained record of an auction's accepted events, in order. It is what the audit trail and the replay are built from.",
+      "page": "/docs/how-it-works/engine-and-ledger",
+      "see": ["hash-chain", "audit-trail", "replay"]
+    },
+    {
+      "id": "lot",
+      "term": "Lot",
+      "short": "One item up for bid. Lots open one at a time, in lot order, and move from pending to open, closing, settling and done.",
+      "page": "/docs/how-it-works/auction-states",
+      "see": ["hammer", "soft-close"]
+    },
+    {
+      "id": "p95",
+      "term": "p95",
+      "short": "The 95th percentile: 95 percent of measured runs were at or under this time. The docs quote p95 for latency, with the sample size next to it.",
+      "page": "/docs/proof/latency",
+      "see": ["p50"]
+    },
+    {
+      "id": "p50",
+      "term": "p50",
+      "short": "The median: half of the measured runs were at or under this time.",
+      "page": "/docs/proof/latency",
+      "see": ["p95"]
+    },
+    {
+      "id": "paddle",
+      "term": "Paddle",
+      "short": "A bidder's number in the room, as in an auction paddle. A spoken bid names the paddle that was heard, and the bidder of a spoken bid comes from that paddle.",
+      "page": "/docs/how-it-works/voice-and-confirm",
+      "see": ["confirm-prompt", "bid"]
+    },
+    {
+      "id": "reauthorization",
+      "term": "Reauthorization",
+      "short": "Asking PayPal to renew an authorization that has aged. Only useful for auctions that run for days; GAVEL ships with it off, pending gate G3.",
+      "page": "/docs/how-it-works/honor-period",
+      "see": ["honor-period", "gate-g3"]
+    },
+    {
+      "id": "receipt",
+      "term": "Receipt",
+      "short": "The settlement document shown after the hammer. It carries a share link and QR code, has a print layout, and opens one read-only view for one bidder.",
+      "page": "/docs/start/demo",
+      "see": ["hammer", "settlement"]
+    },
+    {
+      "id": "replay",
+      "term": "Replay",
+      "short": "Rebuilding an auction by running its recorded events back through the engine. The same events always give the same result.",
+      "page": "/docs/how-it-works/engine-and-ledger",
+      "see": ["engine", "ledger"]
+    },
+    {
+      "id": "room",
+      "term": "Room",
+      "short": "One live auction as the server holds it: the bidders, the lot, the ledger and the screens for each role.",
+      "page": "/docs/how-it-works/engine-and-ledger",
+      "see": ["auctioneer-console", "judge-room"]
+    },
+    {
+      "id": "saga",
+      "term": "Settlement saga",
+      "short": "The step-by-step job that settles a lot after the hammer: read the truth from PayPal, capture the winner, void the rest. Each step is journaled so a crash can resume.",
+      "page": "/docs/how-it-works/settlement-saga",
+      "see": ["journal", "truth-read", "idempotency-key"]
+    },
+    {
+      "id": "sandbox",
+      "term": "Sandbox",
+      "short": "PayPal's test environment. Everything GAVEL does with PayPal runs here, and no real money moves.",
+      "page": "/docs/run/sandbox",
+      "see": ["fake-paypal", "gate"]
+    },
+    {
+      "id": "scripted-demo",
+      "term": "Scripted demo",
+      "short": "A recorded room played back in your browser at /demo/scripted. It makes no server connection and no PayPal calls.",
+      "page": "/docs/start/demo",
+      "see": ["judge-room", "simulated"]
+    },
+    {
+      "id": "settlement",
+      "term": "Settlement",
+      "short": "What happens after the hammer: the winner's price is captured and every other hold is voided, so only the winning price is ever charged.",
+      "page": "/docs/how-it-works/settlement-walkthrough",
+      "see": ["saga", "capture", "void"]
+    },
+    {
+      "id": "simulated",
+      "term": "Simulated",
+      "short": "Run by GAVEL's code against a model of PayPal on a fake clock. A simulation is not a result from the real sandbox.",
+      "page": "/docs/proof/simulation",
+      "see": ["fake-paypal", "sandbox"]
+    },
+    {
+      "id": "soft-close",
+      "term": "Soft close",
+      "short": "A rule that a bid placed near the end of a lot extends it, so the auction cannot end on a last-second bid. Extensions are capped.",
+      "page": "/docs/how-it-works/auction-states",
+      "see": ["hammer", "lot"]
+    },
+    {
+      "id": "stt",
+      "term": "STT (speech to text)",
+      "short": "Speech-to-text: turning spoken audio into a transcript. GAVEL reads spoken bids from a transcript with rules and always confirms them.",
+      "page": "/docs/how-it-works/voice-and-confirm",
+      "see": ["confirm-prompt", "gate-g5"]
+    },
+    {
+      "id": "truth-read",
+      "term": "Truth read",
+      "short": "Asking PayPal what it knows about a hold before acting on it. The saga does this first on every run.",
+      "page": "/docs/how-it-works/crash-recovery",
+      "see": ["saga", "journal"]
+    },
+    {
+      "id": "verifier",
+      "term": "Verifier",
+      "short": "The check that walks a ledger export and reports ok, or the first bad entry and why. verifyPublicExport runs in code; verify-ledger runs it from the command line.",
+      "page": "/docs/how-it-works/engine-and-ledger",
+      "see": ["hash-chain", "ledger"]
+    },
+    {
+      "id": "void",
+      "term": "Void",
+      "short": "Releasing an authorization so it is never charged. Every hold except the winner's is voided at settlement.",
+      "page": "/docs/how-it-works/settlement-saga",
+      "see": ["hold", "capture", "settlement"]
+    },
+    {
+      "id": "webhook",
+      "term": "Webhook",
+      "short": "A message PayPal sends to GAVEL when something happens, such as a capture completing. Its signature is verified before it is trusted.",
+      "page": "/docs/safety/webhooks",
+      "see": ["gate-g4"]
+    }
+  ]
+}

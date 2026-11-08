@@ -222,6 +222,17 @@
   border-color: var(--color-action);
 }
 
+@media (forced-colors: active) {
+  .gv-console-tabs [role='tab'][aria-selected='true'] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border-color: HighlightText;
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
 .gv-console-tabs [role='tab']:focus-visible {
   outline: var(--border-width-strong, 3px) solid var(--color-focus);
   outline-offset: 2px;

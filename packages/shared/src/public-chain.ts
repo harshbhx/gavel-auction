@@ -181,7 +181,7 @@ function isAnchoredClose(entries: readonly Entry[]): boolean {
 
 /** Same checks as the engine's `verifyPublicExport`, optionally against the head the bundle claims. */
 export function verifyPublicChain(
-  entries: readonly Entry[],
+  entries: readonly ReplayEvent[],
   expectedHead?: { seq: number; hash: string },
 ): PublicChainResult {
   let prev = GENESIS_PREV;
