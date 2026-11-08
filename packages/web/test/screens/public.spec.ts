@@ -98,6 +98,7 @@ test.describe('judge panel', () => {
 
   test('rooms on', async ({ page, shoot }) => {
     await mockApi(page, () => caps(true, true));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/try');
     await expect(page.getByText(t('try.status.on'))).toBeVisible();
     await shoot('try', 'rooms-on');
@@ -105,13 +106,15 @@ test.describe('judge panel', () => {
 
   test('rooms off', async ({ page, shoot }) => {
     await mockApi(page, () => ({ status: 404 }));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/try');
-    await expect(page.getByText(t('try.s1.open'))).toBeVisible();
+    await expect(page.getByText(t('try.a1.open'))).toBeVisible();
     await shoot('try', 'rooms-off');
   });
 
   test('rooms full', async ({ page, shoot }) => {
     await mockApi(page, () => caps(true, false));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/try');
     await expect(page.getByText(t('try.status.busy'))).toBeVisible();
     await shoot('try', 'rooms-full');
@@ -119,6 +122,7 @@ test.describe('judge panel', () => {
 
   test('server unreachable', async ({ page, shoot }) => {
     await mockApi(page, () => 'fail');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/try');
     await expect(page.getByText(t('try.status.unreachable'))).toBeVisible();
     await shoot('try', 'unreachable');
@@ -126,9 +130,10 @@ test.describe('judge panel', () => {
 
   test('create refused', async ({ page, shoot }) => {
     await mockApi(page, (req) => (req.method === 'POST' ? { status: 503 } : caps(true, true)));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/try');
     await expect(page.getByText(t('try.status.on'))).toBeVisible();
-    await page.getByRole('button', { name: t('try.s1.cta') }).click();
+    await page.getByRole('button', { name: t('try.a1.room') }).click();
     await expect(page.getByText(t('demo.failedBusy'), { exact: false })).toBeVisible();
     await shoot('try', 'create-refused');
   });
@@ -137,11 +142,47 @@ test.describe('judge panel', () => {
     await mockApi(page, (req) =>
       req.path.endsWith('/capabilities') ? caps(true, true) : { status: 404 },
     );
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/try');
     await page.getByLabel(t('ui.code.char', { n: 1, length: 6 })).fill('NOROOM');
-    await page.getByRole('button', { name: t('try.s2.go') }).click();
+    await page.getByRole('button', { name: t('try.a2.go') }).click();
     await expect(page.getByText(t('landing.codeInvalid')).first()).toBeVisible();
     await shoot('try', 'code-not-found');
+  });
+
+  test('console tab explains it opens inside a room', async ({ page, shoot }) => {
+    await mockApi(page, () => caps(true, true));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/try');
+    await expect(page.getByText(t('try.status.on'))).toBeVisible();
+    await page
+      .getByRole('navigation', { name: t('try.bar.label') })
+      .getByRole('button', { name: new RegExp(`^${t('try.bar.console')}`) })
+      .click();
+    await expect(page.getByText(t('try.dlg.needsRoom'))).toBeVisible();
+    await shoot('try', 'dialog-console');
+  });
+
+  test('proven tab lists what is not claimed', async ({ page, shoot }) => {
+    await mockApi(page, () => caps(true, true));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/try');
+    await page
+      .getByRole('navigation', { name: t('try.bar.label') })
+      .getByRole('button', { name: new RegExp(`^${t('try.bar.join')}`) })
+      .click();
+    await page.getByRole('tab', { name: t('try.tab.proven') }).click();
+    await expect(page.getByRole('tabpanel').getByText(t('try.ev.n2'))).toBeVisible();
+    await shoot('try', 'dialog-proven');
+  });
+
+  test('wide screen fills the width at 1920', async ({ page, shoot }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await mockApi(page, () => caps(true, true));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/try');
+    await expect(page.getByText(t('try.status.on'))).toBeVisible();
+    await shoot('try', 'wide-1920');
   });
 });
 
