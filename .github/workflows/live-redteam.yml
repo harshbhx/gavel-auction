@@ -26,7 +26,7 @@ on:
         default: '["desktop","iphone"]'
         type: string
   push:
-    branches: ['qa/QA-01-live-redteam']
+    branches: ['qa/QA-01-live-redteam', 'ci/QA-01-live-redteam']
     paths:
       - '.github/workflows/live-redteam.yml'
       - 'qa/live-redteam/**'
