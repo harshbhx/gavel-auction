@@ -4,7 +4,7 @@ description: Each sandbox gate, its result and the caveat that goes with it.
 icon: DoorOpen
 ---
 
-A <Term id="gate">gate</Term> is **closed** only when its status is PASS or FAIL with a recorded decision. A gate without evidence reads NOT RUN. This table is generated from `docs/GATES.md` when the site is built.
+A gate is **closed** only when its status is PASS or FAIL with a recorded decision. A gate without evidence reads NOT RUN. This table is generated from `docs/GATES.md` when the site is built.
 
 <GatesTable />
 
@@ -12,7 +12,7 @@ A <Term id="gate">gate</Term> is **closed** only when its status is PASS or FAIL
 
 <GateBadge id="G0" />
 
-The <Term id="sandbox">sandbox</Term> app authenticates (HTTP 200, payments scope) and can create an AUTHORIZE order (HTTP 201 CREATED). Run 4 Nov 2026.
+The sandbox app authenticates (HTTP 200, payments scope) and can create an AUTHORIZE order (HTTP 201 CREATED). Run 4 Nov 2026.
 
 <NotVerified title="Reported, not independently verifiable">
 
@@ -24,7 +24,7 @@ No evidence file is committed for G0. The only record is the Actions run log of 
 
 <GateBadge id="G1" />
 
-After a final <Term id="capture">capture</Term> the <Term id="authorization">authorization</Term> closes as CAPTURED and the order COMPLETED, and a later void is refused with `PREVIOUSLY_CAPTURED`. Run for a wallet buyer on 4 Nov and a card-funded PayPal account on 5 Nov 2026.
+After a final capture the authorization closes as CAPTURED and the order COMPLETED, and a later void is refused with `PREVIOUSLY_CAPTURED`. Run for a wallet buyer on 4 Nov and a card-funded PayPal account on 5 Nov 2026.
 
 <NotVerified title="Remainder release is inferred">
 
@@ -48,7 +48,7 @@ A real probe started on 7 Nov 2026 at 03:06 UTC. Checkpoints are at 3.5, 4 and 5
 
 </Held>
 
-The planned fallback if the window is short: capture within the verified validity window and reauthorize before the <Term id="hammer">hammer</Term>. That is the plan, not a result.
+The planned fallback if the window is short: capture within the verified validity window and reauthorize before the hammer. That is the plan, not a result.
 
 ## G4: real webhook signature verification
 
@@ -67,13 +67,13 @@ Six real deliveries, including a capture and a void, each verified SUCCESS throu
 | Human-like synthetic voice, noise-free | Deepgram nova-3 | 24 | 1.000 | 0.000 | 0.292 | 0.000 |
 | Human-like synthetic voice, noise-free | Groq whisper-large-v3-turbo with a bid prompt | 24 | 0.923 | 0.000 | 0.333 | 0.000 |
 
-Status PARTIAL. After the evaluation label fix, parser fixes and provider options, both providers are within the limit on both clip sets, but the fixes were chosen on these same clips. The clips are synthetic and noise-free; there is no real-room or noisy-room test. Decision: spoken bids go through the <Term id="confirm-prompt">confirm prompt</Term> (assist mode). See [voice and the confirm gate](/docs/how-it-works/voice-and-confirm).
+Status PARTIAL. After the evaluation label fix, parser fixes and provider options, both providers are within the limit on both clip sets, but the fixes were chosen on these same clips. The clips are synthetic and noise-free; there is no real-room or noisy-room test. Decision: spoken bids go through the confirm prompt (assist mode). See [voice and the confirm gate](/docs/how-it-works/voice-and-confirm).
 
 ## What changes the decision
 
-- <Term id="gate-g3">G3</Term> shows a validity window shorter than the longest planned auction: auctions are capped, or the decision moves to NO-GO for long auctions.
+- G3 shows a validity window shorter than the longest planned auction: auctions are capped, or the decision moves to NO-GO for long auctions.
 - G3 passes with a window that covers the planned auctions: GO for card and wallet.
-- <Term id="gate-g5">G5</Term> stays PARTIAL: voice bids stay behind the confirm prompt. The payments decision is unchanged.
+- G5 stays PARTIAL: voice bids stay behind the confirm prompt. The payments decision is unchanged.
 
 <CodePaths
   paths={[

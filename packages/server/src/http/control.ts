@@ -56,12 +56,7 @@ export function mountControl(app: HttpApp): void {
       if (code === 'conflict' && typeof why === 'string' && STALE_HAMMER.has(why)) {
         throw new HttpError(409, 'conflict', why, why);
       }
-      const known = isErrorCode(code) ? code : 'internal';
-      if (known === 'conflict' || known === 'bad_message') {
-        const { snapshot } = await snapshotFor(c.deps, room, 'auctioneer', who.sub);
-        throw new GavelError(known, controlReason(known, body, snapshot));
-      }
-      throw new GavelError(known, 'control refused');
+      throw new GavelError(isErrorCode(code) ? code : 'internal', 'control refused');
     }
     const hammer = frames.find((f) => f.t === 'hammer');
     return json(200, { ok: true, controlId: body.controlId, ...(hammer ? { hammer } : {}) });
@@ -87,46 +82,6 @@ export function mountControl(app: HttpApp): void {
       state: stateOf(snapshot),
     });
   });
-}
-
-/**
- * Why the room refused a control, in words the console can show. The room only says `conflict`
- * or `bad_message`; the lot's own state tells which rule was hit.
- */
-export function controlReason(
-  code: 'conflict' | 'bad_message',
-  body: { controlId: string; action: string; args?: Record<string, number> | undefined },
-  snapshot: Pick<RoomSnapshot, 'status' | 'paused' | 'stopped' | 'hammer'>,
-): string {
-  const ended = snapshot.status === 'DONE' || snapshot.hammer !== undefined || snapshot.stopped;
-  if (code === 'bad_message') {
-    if (body.action === 'extend') return 'extraMs must be a whole number from 1 to 600000';
-    return 'That control is not valid';
-  }
-  if (ended) return 'The lot has already ended';
-  if (snapshot.status !== 'OPEN' && snapshot.status !== 'PAUSED') {
-    return `The lot is not open (${snapshot.status.toLowerCase()})`;
-  }
-  const paused = snapshot.paused === true || snapshot.status === 'PAUSED';
-  switch (body.action) {
-    case 'pause':
-      if (paused) return 'The lot is already paused';
-      break;
-    case 'resume':
-      if (!paused) return 'The lot is not paused';
-      break;
-    case 'open':
-      return 'The lot is already open';
-    case 'extend':
-      if (paused) return 'Resume the lot before extending it';
-      break;
-    case 'hammer':
-      if (paused) return 'Resume the lot before the hammer';
-      if (body.args?.closeNow !== 1)
-        return 'The lot is still open: send closeNow 1 to close it now';
-      break;
-  }
-  return 'That controlId was already used for a different action';
 }
 
 function stateOf(s: RoomSnapshot): {

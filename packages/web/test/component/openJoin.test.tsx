@@ -128,7 +128,7 @@ describe('a watcher on the bid page', () => {
   it('is offered a way to join as a bidder instead of a blank page', async () => {
     stubApi(summary);
     render(<App initialPath={`/r/${ROOM}/bid`} api={API} />);
-    expect(await screen.findByRole('heading', { level: 1, name: t('watch.title') })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(t('watch.title'));
     fireEvent.click(screen.getByRole('button', { name: t('join.asBidder') }));
     await waitFor(() => expect(window.location.pathname).toBe(`/r/${ROOM}/register`));
   });

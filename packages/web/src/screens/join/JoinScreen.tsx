@@ -1,16 +1,13 @@
 import { lazy, Suspense, useEffect } from 'react';
 
-import { WideAside } from '../WideAside';
 import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
 import '../flows.css';
-import { loadRegistration } from '../../payments/registrationStore';
 import { getBidderSession } from '../../store/session';
-import { ApiProblem } from '../states/ApiProblem';
 
 const QrCode = lazy(() => import('./QrCode'));
 
-export type JoinState = 'loading' | 'open' | 'ended' | 'notFound' | 'full' | 'busy' | 'unreachable';
+export type JoinState = 'loading' | 'open' | 'ended' | 'notFound' | 'full';
 
 export interface JoinScreenProps {
   roomId: string;
@@ -25,12 +22,7 @@ export interface JoinScreenProps {
   onNavigate: (path: string) => void;
   /** A judge room with simulated holds: offer the PayPal sandbox and the demo side by side. */
   demoHold?: boolean;
-  /** Seconds the server asked the client to wait, for the `busy` state. */
-  retryAfterS?: number | null;
-  /**
-   * Whether this device already registered a hold for the room. Defaults to reading session
-   * storage: a session alone (the register form was only opened) is not a registered bidder.
-   */
+  /** Whether a valid session is stored for this room. Defaults to reading session storage. */
   hasSession?: boolean;
 }
 
@@ -58,14 +50,6 @@ function Steps({ current }: { current: 1 | 2 | 3 }) {
   );
 }
 
-function hasRegisteredHold(roomId: string): boolean {
-  const stored = getBidderSession(roomId);
-  return (
-    stored?.bidderId !== undefined &&
-    loadRegistration(roomId, stored.bidderId)?.ceilingCents !== undefined
-  );
-}
-
 /** Resolves a room and routes to register or bid (R-WEB-050, R-WEB-052). */
 export function JoinScreen({
   roomId,
@@ -76,9 +60,8 @@ export function JoinScreen({
   onNavigate,
   demoHold = false,
   hasSession,
-  retryAfterS = null,
 }: JoinScreenProps) {
-  const returning = hasSession ?? hasRegisteredHold(roomId);
+  const returning = hasSession ?? getBidderSession(roomId) !== null;
   const bidPath = `/r/${encodeURIComponent(roomId)}/bid`;
   const registerPath = `/r/${encodeURIComponent(roomId)}/register`;
 
@@ -86,15 +69,6 @@ export function JoinScreen({
     if (returning && state === 'open') onNavigate(bidPath);
   }, [returning, state, bidPath, onNavigate]);
 
-  if (state === 'busy' || state === 'unreachable') {
-    return (
-      <ApiProblem
-        kind={state === 'busy' ? 'rateLimited' : 'unreachable'}
-        retryAfterS={retryAfterS}
-        onNavigate={onNavigate}
-      />
-    );
-  }
   if (state === 'notFound') {
     return (
       <main className="gv-flow" data-state="not-found">
@@ -196,7 +170,6 @@ export function JoinScreen({
       <Button variant="outline" onClick={() => onNavigate(bidPath)}>
         {t('join.watch')}
       </Button>
-      <WideAside />
     </main>
   );
 }

@@ -125,8 +125,3 @@
     transition: none;
   }
 }
-
-/* The floating help button must never sit on top of the last links of a page. */
-body:has(.help-layer) {
-  padding-bottom: calc(48px + var(--space-4) * 2);
-}

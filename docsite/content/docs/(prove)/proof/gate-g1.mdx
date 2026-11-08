@@ -9,13 +9,13 @@ status: verified
 
 ## Question
 
-After authorizing 500.00 and <Term id="capture">capturing</Term> 350.00 with `final_capture=true`, is the 150.00 remainder released, or still active? GAVEL charges only the winning price, so this decides whether the <Term id="saga">saga</Term> must <Term id="void">void</Term> the remainder itself.
+After authorizing 500.00 and capturing 350.00 with `final_capture=true`, is the 150.00 remainder released, or still active? GAVEL charges only the winning price, so this decides whether the saga must void the remainder itself.
 
 ## Method
 
-- Workflow: [`gate-g1`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/gate-g1.yml), by hand, `main` only. A headless browser signs in as the <Term id="sandbox">sandbox</Term> buyer to approve the order.
+- Workflow: [`gate-g1`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/gate-g1.yml), by hand, `main` only. A headless browser signs in as the sandbox buyer to approve the order.
 - Script: `gates/g1.ts` in `packages/payments` (package script `gate:g1`).
-- Steps: create order (AUTHORIZE 500.00), buyer approval, authorize, capture 350.00 with `final_capture`, read the <Term id="authorization">authorization</Term> and the order, then try an explicit void of the remainder.
+- Steps: create order (AUTHORIZE 500.00), buyer approval, authorize, capture 350.00 with `final_capture`, read the authorization and the order, then try an explicit void of the remainder.
 - Two buyers, two runs: a wallet buyer (4 Nov) and a second buyer funded by a card (5 Nov, run `G1-20261105T123116Z`). Both orders use `payment_source.paypal`, so both are PayPal-account orders. The second buyer is a personal sandbox account, not a guest card checkout.
 
 ## Observed
@@ -61,7 +61,7 @@ No run read a buyer balance or available funds. The authorization keeps amount 5
 </NotVerified>
 
 - PayPal-account buyers only. Capture of a guest card order was never run on the sandbox.
-- It does not measure latency or <Term id="webhook">webhooks</Term>.
+- It does not measure latency or webhooks.
 
 <CodePaths
   paths={[

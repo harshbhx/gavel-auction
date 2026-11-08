@@ -2,7 +2,6 @@ import { t } from '../../copy/t';
 import type { HoldView } from '../../ladder/ladderModel';
 import { HoldCard } from '../../ui';
 import { formatUsd } from '../../util/money';
-import { ReceiptTime } from './ReceiptTime';
 
 export interface NonWinnerProps {
   hold: HoldView;
@@ -29,7 +28,7 @@ export function NonWinner({ hold, itemName, at }: NonWinnerProps) {
           <>
             <dt>{t('receipt.time')}</dt>
             <dd>
-              <ReceiptTime at={at} />
+              <time dateTime={new Date(at).toISOString()}>{new Date(at).toISOString()}</time>
             </dd>
           </>
         )}

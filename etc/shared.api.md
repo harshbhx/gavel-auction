@@ -2203,9 +2203,6 @@ export const HammerSchema: z.ZodObject<{
     registrationClosed?: boolean | undefined;
 }>;
 
-// @public
-export function hashPublicEntry(body: unknown): string;
-
 // @public (undocumented)
 export const HOLD_ERROR_CODES: readonly ["ceiling_out_of_range", "hold_exists", "order_not_found", "order_not_approved", "paypal_unavailable", "kill_switch_engaged", "payments_not_sandbox"];
 
@@ -2648,21 +2645,6 @@ export interface PublicBidAuditRecord {
     // (undocumented)
     source: BidAuditRecord['source'];
 }
-
-// @public
-export type PublicChainFailure = 'bad_hash' | 'bad_prev' | 'bad_seq' | 'bad_version' | 'truncated';
-
-// @public (undocumented)
-export type PublicChainResult = {
-    ok: true;
-    count: number;
-    headHash: string;
-    closed: boolean;
-} | {
-    ok: false;
-    firstBadIndex: number;
-    reason: PublicChainFailure;
-};
 
 // @public
 export type RandomBytes = (buf: Uint8Array) => void;
@@ -7391,12 +7373,6 @@ export class UlidMinter implements Ids {
     // (undocumented)
     mint<B extends string = string>(): Ulid<B>;
 }
-
-// @public
-export function verifyPublicChain(entries: readonly ReplayEvent[], expectedHead?: {
-    seq: number;
-    hash: string;
-}): PublicChainResult;
 
 // @public
 export const VoiceDroppedEvent: z.ZodObject<{

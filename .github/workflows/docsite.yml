@@ -4,8 +4,7 @@ name: docsite
 # Build, type check and screenshots run here, never on a laptop or the shared VM.
 # Deploy to Cloudflare Pages runs only when the two Cloudflare secrets exist in the repository;
 # without them the deploy job ends green and says so. The site content reads docs/GATES.md and
-# docs/evidence/SIM/SIM-MULTIDAY.md, and the Changelog page is generated from CHANGELOG.md, so
-# changes to those files rebuild it too.
+# docs/evidence/SIM/SIM-MULTIDAY.md, so changes to those files rebuild it too.
 
 on:
   push:
@@ -13,18 +12,14 @@ on:
     paths:
       - 'docsite/**'
       - 'docs/GATES.md'
-      - 'CHANGELOG.md'
       - 'docs/evidence/SIM/**'
-      - 'openapi/**'
       - '.github/workflows/docsite.yml'
   pull_request:
     branches: [main]
     paths:
       - 'docsite/**'
       - 'docs/GATES.md'
-      - 'CHANGELOG.md'
       - 'docs/evidence/SIM/**'
-      - 'openapi/**'
       - '.github/workflows/docsite.yml'
   workflow_dispatch:
 
@@ -56,16 +51,6 @@ jobs:
         working-directory: docsite
         run: npm ci --ignore-scripts
 
-      # The Changelog page is generated from CHANGELOG.md; the committed copy must match.
-      - name: Changelog page is in sync
-        working-directory: docsite
-        run: node scripts/gen-changelog.mjs --check
-
-      # Glossary data, <Term> ids, the tour and the related links: plain node, seconds.
-      - name: Check the glossary
-        working-directory: docsite
-        run: node scripts/check-glossary.mjs
-
       # Static export: compiles every MDX page and writes docsite/out/.
       - name: Build
         working-directory: docsite
@@ -88,8 +73,6 @@ jobs:
           test -f out/index.html
           test -f out/llms.txt
           test -f out/llms-full.txt
-          test -f out/openapi.yaml
-          cmp out/openapi.yaml ../openapi/gavel.yaml
           echo "pages: $(find out/docs -name '*.html' | wc -l)"
           echo "llms-full.txt bytes: $(wc -c < out/llms-full.txt)"
 

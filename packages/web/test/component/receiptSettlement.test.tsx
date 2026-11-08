@@ -5,7 +5,6 @@ import { ReceiptRoute } from '../../src/App';
 import { roomStore } from '../../src/store/roomStore';
 import { BASE_TIME, bidderId, openSnapshot, roster, stateMsg } from '../../src/testing/builders';
 import type { SettlementUpdateMsg } from '../../src/wire';
-import { formatTime } from '../../src/ui/format';
 
 type State = SettlementUpdateMsg['auctionState'];
 
@@ -91,7 +90,9 @@ describe('receipt route after capture', () => {
     vi.setSystemTime(new Date('2031-01-01T00:00:00Z'));
     try {
       const { container } = render(<ReceiptRoute roomId="lot1" />);
-      expect(container.querySelector('time')?.textContent).toBe(formatTime(BASE_TIME + 3000));
+      expect(container.querySelector('time')?.textContent).toBe(
+        new Date(BASE_TIME + 3000).toISOString(),
+      );
     } finally {
       vi.useRealTimers();
     }

@@ -6,15 +6,15 @@ status: verified
 full: true
 ---
 
-`packages/web` is the browser client: React 18, Vite and strict TypeScript. It renders the bidder, <Term id="auctioneer-console">auctioneer console</Term>, public screen, audit and <Term id="replay">replay</Term> views from the wire types in `@gavel/shared`. All money is integer cents. All user text lives in `src/copy`.
+`packages/web` is the browser client: React 18, Vite and strict TypeScript. It renders the bidder, auctioneer console, public screen, audit and replay views from the wire types in `@gavel/shared`. All money is integer cents. All user text lives in `src/copy`.
 
-It holds no business rules. Whether a bid stands, who wins and what is charged are decided by the <Term id="engine">engine</Term> and the payments <Term id="saga">saga</Term> on the server; the client shows the state it receives and sends commands.
+It holds no business rules. Whether a bid stands, who wins and what is charged are decided by the engine and the payments saga on the server; the client shows the state it receives and sends commands.
 
 ## Responsibilities
 
 - **Routes.** `src/routes.tsx` is the route table (first match wins, catch-all last). Routes that need a stored session token are marked `needsToken`; the audit route needs a reviewer token.
 - **Live state.** `src/net` wraps the WebSocket behind a `Transport` interface; `connection.ts` reconnects with backoff and `resync.ts` asks for a fresh snapshot after a gap. `src/store` reduces server messages into room state.
-- **Payment approval.** `src/payments` hides PayPal behind `PaymentApprovalPort`; there is a fake adapter and a PayPal <Term id="sandbox">sandbox</Term> adapter (`paypalV6Adapter.ts`).
+- **Payment approval.** `src/payments` hides PayPal behind `PaymentApprovalPort`; there is a fake adapter and a PayPal sandbox adapter (`paypalV6Adapter.ts`).
 - **Voice input.** `src/audio` captures the microphone and sends it to the `/audio` socket for the auctioneer console.
 - **Design system.** `src/design` holds tokens, themes (including the projector theme), primitives and the sandbox and fake-payments labels.
 - **Accessibility.** `src/a11y` holds the announcer and focus helpers.

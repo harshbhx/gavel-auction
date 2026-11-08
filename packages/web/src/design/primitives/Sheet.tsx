@@ -1,5 +1,5 @@
 import { useCallback, useRef, type ReactNode } from 'react';
-import { keepFocusOnOverlay, useEscapeKey, useFocusTrap } from '../../a11y/useFocus';
+import { useFocusTrap } from '../../a11y/useFocus';
 import './primitives.css';
 
 export interface SheetProps {
@@ -17,7 +17,15 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
     onClose();
   }, [onClose]);
 
-  useEscapeKey(onClose, open);
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    },
+    [onClose],
+  );
 
   if (!open) return null;
 
@@ -25,7 +33,7 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
     <div
       className="gv-sheet-backdrop"
       onClick={onBackdropClick}
-      onMouseDown={keepFocusOnOverlay}
+      onKeyDown={onKeyDown}
       role="presentation"
     >
       <div

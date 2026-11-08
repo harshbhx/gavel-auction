@@ -26,5 +26,3 @@ yarn-error.log*
 next-env.d.ts
 # generated from the repo docs at build time
 /lib/generated/
-# copied from openapi/gavel.yaml at build time
-/public/openapi.yaml

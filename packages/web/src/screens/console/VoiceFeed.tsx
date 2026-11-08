@@ -60,7 +60,7 @@ export function VoiceFeed({ mic, level, entries, unavailable = false }: VoiceFee
   const shown = clampLevel(level);
   const problem = mic === 'error' || mic === 'denied';
   return (
-    <div className="gv-voice">
+    <section className="gv-voice" aria-label={t('console.voice')}>
       {unavailable ? (
         <p role="status">{t('console.mic.unavailable')}</p>
       ) : (
@@ -111,7 +111,7 @@ export function VoiceFeed({ mic, level, entries, unavailable = false }: VoiceFee
           ))}
         </ol>
       )}
-    </div>
+    </section>
   );
 }
 

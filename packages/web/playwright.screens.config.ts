@@ -34,16 +34,6 @@ export default defineConfig({
       use: { browserName: 'chromium', viewport: { width: 1440, height: 900 } },
     },
     {
-      name: 'fhd-light',
-      metadata: { theme: 'light' },
-      use: { browserName: 'chromium', viewport: { width: 1920, height: 1080 } },
-    },
-    {
-      name: 'hd-light',
-      metadata: { theme: 'light' },
-      use: { browserName: 'chromium', viewport: { width: 1280, height: 720 } },
-    },
-    {
       name: 'phone-light',
       metadata: { theme: 'light' },
       use: {

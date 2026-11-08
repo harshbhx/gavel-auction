@@ -57,11 +57,11 @@ Direction is `shared`, then `engine`, then `payments`; `voice` depends on `share
 
 Two further rules are in the same file or its companion scripts:
 
-- **The <Term id="engine">engine</Term> is pure.** The rule `engine-no-node-io` forbids `fs`, `net`, `http`, `child_process`, `os` and the other Node I/O modules under `packages/engine/src/`, except the folders `node/` and `testing/`. `packages/engine/scripts/check-imports.mjs` repeats the check and also fails when the engine declares a runtime dependency.
+- **The engine is pure.** The rule `engine-no-node-io` forbids `fs`, `net`, `http`, `child_process`, `os` and the other Node I/O modules under `packages/engine/src/`, except the folders `node/` and `testing/`. `packages/engine/scripts/check-imports.mjs` repeats the check and also fails when the engine declares a runtime dependency.
 - **Payments keeps one runtime dependency.** The root script `check:deps` runs `depcruise`, `scripts/check-engine-purity.mjs` and the payments check that `zod` is the only runtime dependency.
 
 <Held title="What the rule does not say">
-The rule limits what a package may import. It does not say a package uses everything it may import: in `packages/payments/src` the engine is not imported at run time, because the <Term id="saga">saga</Term> reads the engine's <Term id="hammer">hammer</Term> result through a structural type (`PlanOutcome` in `saga/plan.ts`). The engine is a development dependency of payments, used by its tests.
+The rule limits what a package may import. It does not say a package uses everything it may import: in `packages/payments/src` the engine is not imported at run time, because the saga reads the engine's hammer result through a structural type (`PlanOutcome` in `saga/plan.ts`). The engine is a development dependency of payments, used by its tests.
 </Held>
 
 ## How to read the repo

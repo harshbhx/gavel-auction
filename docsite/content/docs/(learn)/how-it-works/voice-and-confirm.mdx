@@ -11,8 +11,8 @@ full: true
 
 A bidder can say a number instead of tapping it. Three things stay true however well that goes:
 
-- **Speech never bids by itself.** A spoken <Term id="bid">bid</Term> is a suggestion until the <Term id="room">room</Term> has checked it, and by default the bidder is asked "did you mean $150?" first.
-- **The <Term id="engine">engine</Term> decides, not the microphone.** Whatever speech produces goes through the same rules as a tap: price, increment, <Term id="ceiling">ceiling</Term>.
+- **Speech never bids by itself.** A spoken bid is a suggestion until the room has checked it, and by default the bidder is asked "did you mean $150?" first.
+- **The engine decides, not the microphone.** Whatever speech produces goes through the same rules as a tap: price, increment, ceiling.
 - **Speech can fail without stopping the auction.** Manual entry and tap to bid never depend on it.
 
 Whether speech is accurate enough to skip the question is the open part. The results so far are on synthetic, noise-free audio only, so bids still ask first; the numbers are [further down](#how-accurate-is-it).
@@ -24,8 +24,8 @@ Whether speech is accurate enough to skip the question is the open part. The res
 ## The pipeline
 
 1. **Segment.** Audio is cut into speech segments.
-2. **<Term id="stt">Speech to text</Term>.** The default build plays cached transcripts. A live provider (Groq or Deepgram) runs only when `VOICE_STT` is set and its key exists.
-3. **Parse.** A rule parser reads amount, <Term id="paddle">paddle</Term> and intent.
+2. **Speech to text.** The default build plays cached transcripts. A live provider (Groq or Deepgram) runs only when `VOICE_STT` is set and its key exists.
+3. **Parse.** A rule parser reads amount, paddle and intent.
 4. **Decide.** The step merges parser opinions, scores confidence and validates the bid against the room. The result is `accept`, `confirm` or `drop`.
 5. **Confirm.** A question goes to the bidder (for example "Did you mean $150 for paddle 12?"). A yes is checked again against the live price before a bid is placed. A no or an expiry places nothing and is logged.
 
@@ -58,7 +58,7 @@ Step through it, or hover and focus a box to see what it does and which file imp
     **The decision step classifies the segment.** Confidence at or above 0.85 with no hard flag is accept. From 0.50 up to 0.85 is confirm. Below 0.50, or nothing that looks like a bid, is drop. Hard flags (correction, hedged phrase, several amounts or bidders, homophone, unsupported currency, fractional amount, large jump, unregistered paddle, implausible amount, model disagreement) always confirm.
   </Step>
   <Step>
-    **The bridge hands it to the room.** An accept becomes a voice bid carrying its confidence. A confirm becomes a voice bid flagged ambiguous. A drop is written to the <Term id="audit-trail">audit trail</Term> without the transcript.
+    **The bridge hands it to the room.** An accept becomes a voice bid carrying its confidence. A confirm becomes a voice bid flagged ambiguous. A drop is written to the audit trail without the transcript.
   </Step>
   <Step>
     **The room gate applies.** A voice bid below 0.85, or flagged ambiguous, is held for 15 seconds and its bidder is asked. A clean bid at 0.85 or more goes straight to the engine, which still checks price, increment and ceiling.
@@ -102,7 +102,7 @@ The first run failed: Deepgram nova-2 and Groq whisper-large-v3-turbo had wrong-
 | Human-like synthetic voice, noise-free | Deepgram nova-3 | 24 | 1.000 | 0.000 | 0.292 | 0.000 |
 | Human-like synthetic voice, noise-free | Groq whisper-large-v3-turbo with a bid prompt | 24 | 0.923 | 0.000 | 0.333 | 0.000 |
 
-These numbers meet the 0.05 and 0.90 criteria, but the fixes were chosen after reading the failures on these same clips, the audio is noise-free, 24 clips move a rate by 0.042, and there is no real-room or noisy-room test. So the gate stays open as PARTIAL and spoken bids still go through the <Term id="confirm-prompt">confirm prompt</Term>. At system level, nothing is auto-accepted on the room microphone (0 of 24 per run, by construction); on a device microphone with a second reading that always agrees, 0 of the 15 auto-accepted bids were wrong. The error analysis is in `docs/evidence/G5/ERROR-ANALYSIS.md` and the record in `docs/GATES.md`.
+These numbers meet the 0.05 and 0.90 criteria, but the fixes were chosen after reading the failures on these same clips, the audio is noise-free, 24 clips move a rate by 0.042, and there is no real-room or noisy-room test. So the gate stays open as PARTIAL and spoken bids still go through the confirm prompt. At system level, nothing is auto-accepted on the room microphone (0 of 24 per run, by construction); on a device microphone with a second reading that always agrees, 0 of the 15 auto-accepted bids were wrong. The error analysis is in `docs/evidence/G5/ERROR-ANALYSIS.md` and the record in `docs/GATES.md`.
 
 </NotVerified>
 

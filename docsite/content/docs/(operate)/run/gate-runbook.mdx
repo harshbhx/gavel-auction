@@ -4,12 +4,12 @@ description: What to do when a gate fails, stays NOT RUN, or reads stale.
 icon: RotateCw
 ---
 
-The <Term id="gate">gate</Term> questions and results live in `docs/GATES.md`; the runbook says where to look, what to decide and what to re-run. It holds names only: no secret values, logins or buyer credentials.
+The gate questions and results live in `docs/GATES.md`; the runbook says where to look, what to decide and what to re-run. It holds names only: no secret values, logins or buyer credentials.
 
 ## Rules
 
 - A gate closes only with Status PASS or FAIL, a Decision and an Evidence line. PARTIAL stays open. **Do not edit a gate to PASS by hand.**
-- Gate workflows run only from `main`, in the `sandbox-nightly` environment. Only the repository owner can change that environment and the repository secrets, or run anything against the real <Term id="sandbox">sandbox</Term> from a laptop.
+- Gate workflows run only from `main`, in the `sandbox-nightly` environment. Only the repository owner can change that environment and the repository secrets, or run anything against the real sandbox from a laptop.
 - Gate flags in `gates-result.json` may leave their safe value only while the matching section in `docs/GATES.md` is closed with evidence. A test fails otherwise.
 
 ## Re-run commands (owner)
@@ -29,10 +29,10 @@ After any run, commit the new evidence file and the updated `docs/GATES.md` sect
 
 | Gate | If it fails |
 | --- | --- |
-| G0 | Hold G1 to G4 and demo on the <Term id="fake-paypal">fake PayPal</Term> |
-| G1 | Keep the remainder mode at its safe value and <Term id="void">void</Term> the remainder explicitly |
+| G0 | Hold G1 to G4 and demo on the fake PayPal |
+| G1 | Keep the remainder mode at its safe value and void the remainder explicitly |
 | G2 | Restrict registration to wallet buyers |
-| G3 | Keep auctions shorter than the validity window and <Term id="reauthorization">reauthorize</Term> before the <Term id="hammer">hammer</Term> |
-| G5 | Always show the <Term id="confirm-prompt">confirm prompt</Term> for spoken bids |
+| G3 | Keep auctions shorter than the validity window and reauthorize before the hammer |
+| G5 | Always show the confirm prompt for spoken bids |
 
 <CodePaths paths={[{ path: 'docs/RUNBOOK-GATES.md', note: 'the full runbook' }]} />

@@ -90,19 +90,13 @@ export function mountInvites(app: HttpApp): void {
   app.post('/api/auctions/:id/join', async (c: Ctx) => {
     const limited = joinLimitOf(c.deps, c.req);
     if (limited && !limited.ok) {
-      return new Response(
-        JSON.stringify({
-          error: 'rate_limited',
-          message: 'Too many tries. Wait a minute and try again.',
-        }),
-        {
-          status: 429,
-          headers: {
-            'content-type': 'application/json',
-            'retry-after': String(Math.max(1, Math.ceil(limited.retryAfterMs / 1000))),
-          },
+      return new Response(JSON.stringify({ error: 'rate_limited' }), {
+        status: 429,
+        headers: {
+          'content-type': 'application/json',
+          'retry-after': String(Math.max(1, Math.ceil(limited.retryAfterMs / 1000))),
         },
-      );
+      });
     }
     // The path carries the auction id or its short join code; resolve it only after the limit.
     const auctionId = await auctionIdOrCode(c);

@@ -67,8 +67,6 @@ export interface BidScreenProps {
   onConfirm?: (confirmId: string, accept: boolean) => void;
   /** The room was stopped by the operator. */
   stopped?: boolean;
-  /** Sends a bidder with no registered hold back to registration. */
-  onJoin?: () => void;
 }
 
 /** Layout of the bidder screen (R-WEB-053). */
@@ -85,7 +83,6 @@ export function BidScreen({
   myPaddle,
   onConfirm,
   stopped = false,
-  onJoin,
 }: BidScreenProps) {
   const price = useRoom(selectPrice, store);
   const base = useRoom(selectMyStatus, store);
@@ -176,12 +173,6 @@ export function BidScreen({
           ceilingCents={ceilingHold}
           {...(myPaddle === undefined ? {} : { caption: t('reg.yourPaddle', { n: myPaddle }) })}
         />
-      )}
-
-      {base === 'watching' && onJoin !== undefined && (
-        <Button size="bid" onClick={onJoin}>
-          {t('join.asBidder')}
-        </Button>
       )}
 
       <label className="bid__vibrate">

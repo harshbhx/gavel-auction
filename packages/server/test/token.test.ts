@@ -163,7 +163,6 @@ describe('token claims (T-RT-059)', () => {
       auctioneer: 43_200,
       screen: 43_200,
       receipt: 14_400,
-      reviewer: 43_200,
     });
   });
 });

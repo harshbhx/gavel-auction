@@ -6,10 +6,10 @@ status: verified
 full: true
 ---
 
-An auction in GAVEL is one **<Term id="lot">lot</Term>** at a time, and a lot has a clock. This page shows the states a lot can be in, which event moves it from one to the next, and exactly how the clock can be extended when someone bids at the last moment.
+An auction in GAVEL is one **lot** at a time, and a lot has a clock. This page shows the states a lot can be in, which event moves it from one to the next, and exactly how the clock can be extended when someone bids at the last moment.
 
 <Callout type="info" title="Verified against the code, not measured">
-  States and rules come from the <Term id="engine">engine</Term> and the <Term id="room">room</Term> host. The clock numbers in the simulator are the demo lot of the server, not a general setting. Nothing here is a timing measurement; for latency see [Latency](/docs/proof/latency).
+  States and rules come from the engine and the room host. The clock numbers in the simulator are the demo lot of the server, not a general setting. Nothing here is a timing measurement; for latency see [Latency](/docs/proof/latency).
 </Callout>
 
 <AuctionStatesDiagram />
@@ -19,8 +19,8 @@ An auction in GAVEL is one **<Term id="lot">lot</Term>** at a time, and a lot ha
 | State | Entered by | What is allowed |
 | --- | --- | --- |
 | `PENDING` | `LOT_ADDED` | Nothing yet. Lots open one at a time, in lot order. |
-| `OPEN` | `LOT_OPENED` (`OpenLot`) | <Term id="bid">Bids</Term>. Pause, resume and extend by the auctioneer. |
-| `CLOSING` | `LOT_CLOSING` | No bids. The <Term id="hammer">hammer</Term>. |
+| `OPEN` | `LOT_OPENED` (`OpenLot`) | Bids. Pause, resume and extend by the auctioneer. |
+| `CLOSING` | `LOT_CLOSING` | No bids. The hammer. |
 | `SETTLING` | `LOT_HAMMERED` | Nothing on the auction side: the lot is frozen and the [settlement saga](/docs/how-it-works/settlement-saga) runs. |
 | `DONE` | `LOT_SETTLED`, `LOT_UNSOLD` or `LOT_ABORTED` | Nothing. |
 
@@ -48,7 +48,7 @@ Two things that look like states are not:
 <Tabs items={['Auctioneer', 'Timer', 'Kill switch']}>
   <Tab value="Auctioneer">
 
-The auctioneer console posts a `hammer` control to the HTTP control route (it is not a WebSocket frame). The control carries a `controlId`, so a repeat returns the same result and appends nothing. It may also carry the price and the leader <Term id="paddle">paddle</Term> the auctioneer saw; if either has moved, the hammer is refused with `conflict` (`price_changed` or `leader_changed`) and nothing is hammered. Hammering an `OPEN` lot needs the explicit close-now argument; a paused lot cannot be hammered.
+The auctioneer console posts a `hammer` control to the HTTP control route (it is not a WebSocket frame). The control carries a `controlId`, so a repeat returns the same result and appends nothing. It may also carry the price and the leader paddle the auctioneer saw; if either has moved, the hammer is refused with `conflict` (`price_changed` or `leader_changed`) and nothing is hammered. Hammering an `OPEN` lot needs the explicit close-now argument; a paused lot cannot be hammered.
 
   </Tab>
   <Tab value="Timer">
@@ -58,14 +58,14 @@ If the room config sets `autoHammerDelayMs`, the room hammers by itself that lon
   </Tab>
   <Tab value="Kill switch">
 
-The Stop control ends the lot as an unsold hammer, so <Term id="settlement">settlement</Term> <Term id="void">voids</Term> every hold. In the engine this is `AbortLot`: allowed from `PENDING`, `OPEN` or `CLOSING`, refused once the lot is `SETTLING` or `DONE`. Bids stay in the <Term id="ledger">ledger</Term>.
+The Stop control ends the lot as an unsold hammer, so settlement voids every hold. In the engine this is `AbortLot`: allowed from `PENDING`, `OPEN` or `CLOSING`, refused once the lot is `SETTLING` or `DONE`. Bids stay in the ledger.
 
   </Tab>
 </Tabs>
 
 ## The soft-close clock
 
-<Term id="soft-close">Soft close</Term> stops a lot from ending on a last-second bid by giving rivals time to answer. The rule is small and exact (`extension()` in the engine):
+Soft close stops a lot from ending on a last-second bid by giving rivals time to answer. The rule is small and exact (`extension()` in the engine):
 
 1. It applies to an **accepted** bid only. A rejected bid never moves the clock.
 2. If the bid time is earlier than `endsAt - windowMs`, nothing happens.

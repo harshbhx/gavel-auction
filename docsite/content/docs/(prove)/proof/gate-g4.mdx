@@ -9,11 +9,11 @@ status: verified
 
 ## Question
 
-Does verification against the <Term id="sandbox">sandbox</Term> <Term id="webhook">webhook</Term> id accept real events delivered by PayPal, and reject tampered ones?
+Does verification against the sandbox webhook id accept real events delivered by PayPal, and reject tampered ones?
 
 ## Method
 
-- Workflow: [`gate-g4`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/gate-g4.yml), by hand, `main` only. A small sandbox flow makes PayPal send real webhooks to a receiver (`tools/g4-receiver`): a <Term id="capture">capture</Term> of 1.00 with `final_capture` and a <Term id="void">void</Term> of a second authorization.
+- Workflow: [`gate-g4`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/gate-g4.yml), by hand, `main` only. A small sandbox flow makes PayPal send real webhooks to a receiver (`tools/g4-receiver`): a capture of 1.00 with `final_capture` and a void of a second authorization.
 - The log is fetched from the receiver and every delivery goes, as received, to `POST /v1/notifications/verify-webhook-signature` with the raw body spliced in.
 - Scripts: `gates/g4.ts` and `gates/g4-events.ts` (event capture alone) in `packages/payments`.
 - Needs the repository variable `G4_RECEIVER_URL` and, by name, the secrets `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `SANDBOX_BUYER_EMAIL`, `SANDBOX_BUYER_PASSWORD` and `G4_LOG_TOKEN`.
@@ -42,7 +42,7 @@ Six sanitized fixtures were written to `packages/payments/test/fixtures/webhooks
 
 - Tampered-event rejection was not part of this run. It is covered against the fake only.
 - The retry schedule and the shapes of `PAYMENT.CAPTURE.DENIED` and `PAYMENT.CAPTURE.PENDING` are UNVERIFIED.
-- Only first deliveries were recorded, so whether a PayPal retry keeps the original `PAYPAL-TRANSMISSION-ID` and time is UNVERIFIED (assumption W06). Until a run records a retry, the <Term id="verifier">verifier</Term> sends an old transmission time (within seven days) to the verify endpoint instead of refusing it (decision D-0033), and event ids are deduplicated.
+- Only first deliveries were recorded, so whether a PayPal retry keeps the original `PAYPAL-TRANSMISSION-ID` and time is UNVERIFIED (assumption W06). Until a run records a retry, the verifier sends an old transmission time (within seven days) to the verify endpoint instead of refusing it (decision D-0033), and event ids are deduplicated.
 
 </NotVerified>
 

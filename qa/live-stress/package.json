@@ -1,0 +1,11 @@
+{
+  "name": "gavel-live-stress",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Adversarial UI stress suite for the live GAVEL site (QA-4). Not part of the workspace build.",
+  "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
+    "@playwright/test": "1.55.1"
+  }
+}

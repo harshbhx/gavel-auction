@@ -222,17 +222,6 @@
   border-color: var(--color-action);
 }
 
-@media (forced-colors: active) {
-  .gv-console-tabs [role='tab'][aria-selected='true'] {
-    forced-color-adjust: none;
-    background: Highlight;
-    color: HighlightText;
-    border-color: HighlightText;
-    outline: 3px solid Highlight;
-    outline-offset: 2px;
-  }
-}
-
 .gv-console-tabs [role='tab']:focus-visible {
   outline: var(--border-width-strong, 3px) solid var(--color-focus);
   outline-offset: 2px;
@@ -298,16 +287,4 @@
 .gv-console-guide__audit a {
   color: var(--color-fg);
   text-decoration: underline;
-}
-
-/* Wide screens (UIX-27): the desk grows with the window instead of stopping at 1440 px. */
-@media (min-width: 1700px) {
-  .gv-console {
-    max-width: 1840px;
-    padding-inline: var(--space-7);
-  }
-
-  .gv-console-columns {
-    gap: var(--space-6);
-  }
 }

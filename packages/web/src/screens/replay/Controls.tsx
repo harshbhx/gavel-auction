@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type ChangeEvent } from 'react';
 import { t } from '../../copy/t';
 import { Icon } from '../../design/icons';
 import {
@@ -9,8 +9,6 @@ import {
   type ChapterMarker,
   type Speed,
 } from './Chapters';
-import { followingMarker, previousMarker, type ScrubMarker } from './Scrub';
-import { Scrubber } from './Scrubber';
 
 export type ReplayView = 'console' | 'screen' | 'ladder';
 
@@ -29,16 +27,12 @@ export interface ControlsProps {
   chapters: readonly ChapterMarker[];
   /** Offsets of every event in the recording, for the step-to-next-event key. */
   eventOffsets: readonly number[];
-  /** Bids and the hammer, drawn on the timeline. */
-  markers?: readonly ScrubMarker[];
   onSeek: (offsetMs: number) => void;
   onPlayingChange: (playing: boolean) => void;
   onSpeedChange: (speed: Speed) => void;
   /** Changing the view never changes the offset. */
   onViewChange: (view: ReplayView) => void;
 }
-
-const NO_MARKERS: readonly ScrubMarker[] = [];
 
 function isEditable(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -54,7 +48,6 @@ export function Controls({
   view,
   chapters,
   eventOffsets,
-  markers = NO_MARKERS,
   onSeek,
   onPlayingChange,
   onSpeedChange,
@@ -85,8 +78,9 @@ export function Controls({
     };
   }, [playing, offsetMs, durationMs, eventOffsets, onSeek, onPlayingChange]);
 
-  const prev = previousMarker(markers, offsetMs);
-  const next = followingMarker(markers, offsetMs);
+  const onScrub = (e: ChangeEvent<HTMLInputElement>): void => {
+    onSeek(clampOffset(Number(e.target.value), durationMs));
+  };
 
   return (
     <div className="gv-replay-controls">
@@ -101,33 +95,14 @@ export function Controls({
           </button>
         ))}
       </div>
-      <button
-        type="button"
-        data-scrub="prev"
-        disabled={prev === null}
-        onClick={() => {
-          if (prev !== null) onSeek(prev.offsetMs);
-        }}
-      >
-        {t('replay.scrub.prev')}
-      </button>
-      <button
-        type="button"
-        data-scrub="next"
-        disabled={next === null}
-        onClick={() => {
-          if (next !== null) onSeek(next.offsetMs);
-        }}
-      >
-        {t('replay.scrub.next')}
-      </button>
-      <Scrubber
-        durationMs={durationMs}
-        offsetMs={offsetMs}
-        playing={playing}
-        markers={markers}
-        onSeek={onSeek}
-        onPlayingChange={onPlayingChange}
+      <input
+        type="range"
+        min={0}
+        max={durationMs}
+        step={100}
+        value={clampOffset(offsetMs, durationMs)}
+        onChange={onScrub}
+        aria-label={t('replay.readonly')}
       />
       <ul className="gv-replay-controls__chapters">
         {chapters.map((c) => (

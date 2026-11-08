@@ -7,26 +7,26 @@ status: verified
 
 ## The engine
 
-An English ascending auction with <Term id="ceiling">ceilings</Term> and a <Term id="soft-close">soft close</Term>. The core is three pure functions, `decide`, `evolve` and `replay`, with no Node built-ins, so the same events always give the same result.
+An English ascending auction with ceilings and a soft close. The core is three pure functions, `decide`, `evolve` and `replay`, with no Node built-ins, so the same events always give the same result.
 
 Events are real names from the code: `AUCTION_CREATED`, `LOT_ADDED`, `LOT_OPENED`, `BID_RECORDED`, `BID_REJECTED`, `BID_STRUCK`, `LOT_CLOSING`, `LOT_HAMMERED`, `LOT_UNSOLD`, `LOT_ABORTED`, `LOT_PAUSED`, `LOT_RESUMED`, `LOT_EXTENDED`, `LOT_SETTLED`, `AUCTION_CLOSED`. See [events](/docs/reference/events).
 
 ## The ledger
 
-Every event is linked to the one before it by a hash. A redacted public export and a <Term id="verifier">verifier</Term> detect an edited chain. A cut tail shows as not closed, and is proven only against a head hash published elsewhere.
+Every event is linked to the one before it by a hash. A redacted public export and a verifier detect an edited chain. A cut tail shows as not closed, and is proven only against a head hash published elsewhere.
 
 - `verifyPublicExport(entries)` returns `{ ok: true }` or the first bad index with a reason. Pass `expectedHead` to also detect truncation.
 - `verify-ledger <ledger.jsonl>` in `packages/engine` checks an export without a server and exits non-zero on tampering.
 
 <Held title="What the ledger does not hold">
 
-Accepted <Term id="bid">bids</Term> are in the <Term id="ledger">ledger</Term> (`BID_RECORDED`, with source `manual`, `qr` or `voice`). Rejected bids are kept in the room log only (decisions D-0014 and D-0029), so the ledger export has no `BID_REJECTED` entry and `verify-ledger` cannot check them. Manual bids record only who entered them.
+Accepted bids are in the ledger (`BID_RECORDED`, with source `manual`, `qr` or `voice`). Rejected bids are kept in the room log only (decisions D-0014 and D-0029), so the ledger export has no `BID_REJECTED` entry and `verify-ledger` cannot check them. Manual bids record only who entered them.
 
 </Held>
 
 ## The room runtime
 
-The server is a single Node process per host. It holds the <Term id="room">room</Term>, turns spoken and typed bids into engine commands, schedules settlement and keeps file stores for the room log, ledger, journals, holds and webhook events. A persistent store for a hosted deploy needs a persistent disk and a single instance.
+The server is a single Node process per host. It holds the room, turns spoken and typed bids into engine commands, schedules settlement and keeps file stores for the room log, ledger, journals, holds and webhook events. A persistent store for a hosted deploy needs a persistent disk and a single instance.
 
 <CodePaths
   paths={[

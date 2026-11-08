@@ -5,17 +5,17 @@ icon: Cpu
 status: verified
 ---
 
-`@gavel/engine` (`packages/engine`) decides what an auction does. It has no clock, no randomness, no network and no disk in its core: a command goes in, <Term id="ledger">ledger</Term> entries come out, and the state of the auction is a fold over those entries. It has no runtime dependencies.
+`@gavel/engine` (`packages/engine`) decides what an auction does. It has no clock, no randomness, no network and no disk in its core: a command goes in, ledger entries come out, and the state of the auction is a fold over those entries. It has no runtime dependencies.
 
 ## Responsibilities
 
 - **Decide.** `decide(state, command)` returns either entries to append or a rejection with a reason from `REJECT_REASONS`. Every command type has its own file under `src/decide/` (`place-bid.ts`, `hammer.ts`, `open-lot.ts`, `abort-lot.ts`, `pause.ts`, `promote.ts`, `revoke.ts`, `settlement.ts`, `setup.ts`, `close-auction.ts`).
 - **Evolve.** `evolve(state, entry)` folds one entry into the state. `replay` rebuilds the state from a verified chain.
-- **Rules.** Pricing for the three modes (`english`, `proxy`, `second_price`), increments, <Term id="soft-close">soft close</Term>, exposure against a bidder's <Term id="ceiling">ceiling</Term>, ranking and the fallback candidate list live in `src/rules/`.
+- **Rules.** Pricing for the three modes (`english`, `proxy`, `second_price`), increments, soft close, exposure against a bidder's ceiling, ranking and the fallback candidate list live in `src/rules/`.
 - **Ledger.** Each entry is hashed with the hash of the entry before it (`ledger/chain.ts`). `verifyChain` finds the first bad entry; `exportJsonl` and `verifyJsonl` write and check a file; the `verify-ledger` binary checks an export without a server.
-- **Projections.** `projectPublic`, `projectBidder` and `projectAuditor` decide who may see what. Sealed bids stay hidden until the <Term id="hammer">hammer</Term>.
+- **Projections.** `projectPublic`, `projectBidder` and `projectAuditor` decide who may see what. Sealed bids stay hidden until the hammer.
 - **Public export.** `publicExport` writes a second, redacted chain (version 4) that anyone can verify; `matchesLedger` lets an auditor holding the private ledger check it.
-- **Runtime.** `AuctionRuntime` runs commands of one auction one after another, rebuilds state from the store by verified <Term id="replay">replay</Term> on first use, and tells observers only after the store acknowledged the append.
+- **Runtime.** `AuctionRuntime` runs commands of one auction one after another, rebuilds state from the store by verified replay on first use, and tells observers only after the store acknowledged the append.
 
 ## Public interface
 

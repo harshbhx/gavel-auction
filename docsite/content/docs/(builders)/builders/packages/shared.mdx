@@ -15,7 +15,7 @@ status: verified
 - **The wire protocol.** Strict zod schemas for client and server messages (`wire/client.ts`, `wire/server.ts`), the envelope with its size limits (`wire/envelope.ts`) and `encodeMsg` / `decodeMsg` (`wire/codec.ts`). See the [WebSocket protocol](/docs/reference/websocket-protocol).
 - **Ports.** Interfaces only, no implementation: `RoomStore`, `EnginePort`, `PaymentsPort`, `Transport`, `TokenSigner`, `Logger` (`ports.ts`).
 - **Error codes.** `ERROR_CODES` and `ERROR_TABLE`, plus the HTTP error body `ApiError` (`api-error.ts`).
-- **Cross-package contracts.** The <Term id="hold">hold</Term> route contract (`hold-contract.ts`), the <Term id="ceiling">ceiling</Term> policy (`ceilings.ts`), the auction config schema (`config-schema.ts`), the <Term id="replay">replay</Term> bundle format (`replay-bundle.ts`) and the per-client rate-limit key (`client-key.ts`).
+- **Cross-package contracts.** The hold route contract (`hold-contract.ts`), the ceiling policy (`ceilings.ts`), the auction config schema (`config-schema.ts`), the replay bundle format (`replay-bundle.ts`) and the per-client rate-limit key (`client-key.ts`).
 
 ## Public interface
 

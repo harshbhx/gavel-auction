@@ -8,13 +8,13 @@ full: true
 
 ## In plain words
 
-PayPal does not let a <Term id="hold">hold</Term> stay capturable forever. An <Term id="authorization">authorization</Term> has an **<Term id="honor-period">honor period</Term>**: PayPal promises to honor a <Term id="capture">capture</Term> for a limited time after the hold, and may decline later ones. The authorization is also **valid** for a longer window. A **<Term id="reauthorization">reauthorization</Term>** asks PayPal to renew the reservation, which is only useful in an auction that runs for days.
+PayPal does not let a hold stay capturable forever. An authorization has an **honor period**: PayPal promises to honor a capture for a limited time after the hold, and may decline later ones. The authorization is also **valid** for a longer window. A **reauthorization** asks PayPal to renew the reservation, which is only useful in an auction that runs for days.
 
-GAVEL's demo creates holds minutes before the capture, so none of this matters there. It matters for a multi-day auction. Because PayPal's real numbers are what is uncertain, GAVEL ships with reauthorization **off** and a real <Term id="sandbox">sandbox</Term> probe, <Term id="gate">gate</Term> <Term id="gate-g3">G3</Term>, running to measure them.
+GAVEL's demo creates holds minutes before the capture, so none of this matters there. It matters for a multi-day auction. Because PayPal's real numbers are what is uncertain, GAVEL ships with reauthorization **off** and a real sandbox probe, gate G3, running to measure them.
 
 <NotVerified title="PayPal's real numbers are not verified">
 
-The 3 day honor period and the 29 day validity on this page are the assumptions of GAVEL's **<Term id="fake-paypal">fake PayPal</Term>** (assumptions A07 to A11, all marked unverified). Gate G3 is **IN PROGRESS**: day 0 was 7 Nov 2026 03:06 UTC and the final reading is about 12 Nov 2026 06:17 UTC. Until it finishes, nothing here claims what PayPal does.
+The 3 day honor period and the 29 day validity on this page are the assumptions of GAVEL's **fake PayPal** (assumptions A07 to A11, all marked unverified). Gate G3 is **IN PROGRESS**: day 0 was 7 Nov 2026 03:06 UTC and the final reading is about 12 Nov 2026 06:17 UTC. Until it finishes, nothing here claims what PayPal does.
 
 </NotVerified>
 
@@ -25,17 +25,17 @@ The 3 day honor period and the 29 day validity on this page are the assumptions 
 <Tabs items={['Stale flag', 'Reauthorization', 'Capture refused']}>
 <Tab value="Stale flag">
 
-At <Term id="settlement">settlement</Term> start, a hold older than `GAVEL_HOLD_MAX_AGE_MS` (default 2 hours) is flagged `stale` and one `stale_hold` audit row is written. It is a flag only: the hold is still captured. It tells an operator that a hold has aged.
+At settlement start, a hold older than `GAVEL_HOLD_MAX_AGE_MS` (default 2 hours) is flagged `stale` and one `stale_hold` audit row is written. It is a flag only: the hold is still captured. It tells an operator that a hold has aged.
 
 </Tab>
 <Tab value="Reauthorization">
 
-Off by default (`GAVEL_REAUTH`, default `0`). When on, before the capture the auction service reauthorizes the candidates still in play whose hold is older than `honorSafeMs`: **2 days 18 hours** (3 days minus 6 hours) unless `GAVEL_REAUTH_HONOR_SAFE_MS` says otherwise. Each hold is reauthorized once, never above its original ceiling, under a request id with a generation number so a retry replays the same request. PayPal is modelled to answer with a **new authorization id**, so the <Term id="journal">journal</Term> stores the new id and keeps the old one in `priorAuthIds`; capture and void then use the new id. The capture waits while a reauthorization is unsettled.
+Off by default (`GAVEL_REAUTH`, default `0`). When on, before the capture the auction service reauthorizes the candidates still in play whose hold is older than `honorSafeMs`: **2 days 18 hours** (3 days minus 6 hours) unless `GAVEL_REAUTH_HONOR_SAFE_MS` says otherwise. Each hold is reauthorized once, never above its original ceiling, under a request id with a generation number so a retry replays the same request. PayPal is modelled to answer with a **new authorization id**, so the journal stores the new id and keeps the old one in `priorAuthIds`; capture and void then use the new id. The capture waits while a reauthorization is unsettled.
 
 </Tab>
 <Tab value="Capture refused">
 
-If PayPal refuses a capture because the authorization is older than its honor period, the <Term id="saga">saga</Term> reads that as a definite refusal that names the hold (422 `AUTHORIZATION_NOT_HONORED_AFTER_HONOR_PERIOD`; the exact name PayPal uses is unverified) and moves to the next candidate, or releases everything if none is left. Nobody is charged wrongly.
+If PayPal refuses a capture because the authorization is older than its honor period, the saga reads that as a definite refusal that names the hold (422 `AUTHORIZATION_NOT_HONORED_AFTER_HONOR_PERIOD`; the exact name PayPal uses is unverified) and moves to the next candidate, or releases everything if none is left. Nobody is charged wrongly.
 
 </Tab>
 </Tabs>
@@ -80,7 +80,7 @@ The state travels between runs as an artifact; the final run writes the GATES.md
 
 ## What the simulation shows, and what it does not
 
-<Chip kind="hatched">SIMULATED</Chip> Scenarios S2 to S5 of the 30 day simulation run GAVEL's own code over simulated days against the fake PayPal model, with a fake clock: a capture inside the honor period needs no reauthorization (S2); a capture at day 3.5 works with reauthorization and charges nobody without it (S3); a reauthorization at day 3.04 lets a capture at day 5 succeed (S4); holds never reauthorized expire cleanly and the runner-up is charged its own price (S5). The <Term id="ledger">ledger</Term> balances to the cent in each.
+<Chip kind="hatched">SIMULATED</Chip> Scenarios S2 to S5 of the 30 day simulation run GAVEL's own code over simulated days against the fake PayPal model, with a fake clock: a capture inside the honor period needs no reauthorization (S2); a capture at day 3.5 works with reauthorization and charges nobody without it (S3); a reauthorization at day 3.04 lets a capture at day 5 succeed (S4); holds never reauthorized expire cleanly and the runner-up is charged its own price (S5). The ledger balances to the cent in each.
 
 That shows GAVEL behaves correctly **if** PayPal follows the model. It says nothing about whether PayPal does; G3 is the check. See [the simulation](/docs/proof/simulation) and [Gates](/docs/proof/gates).
 

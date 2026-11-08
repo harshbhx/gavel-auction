@@ -1,27 +1,28 @@
 ---
 title: Roadmap
-description: The next steps, in order, and what the G3 readings decide.
+description: What happens next, and what the next days of the G3 probe decide.
 icon: Map
 ---
 
-The submission deadline is Thu 12 Nov 2026, 12:00 PST (Fri 13 Nov 01:30 IST). The tables on [Limits and next steps](/docs/roadmap/limits) carry the detail, with owners and dates where they are known.
+The submission deadline is Thu 12 Nov 2026, 12:00 PST (Fri 13 Nov 01:30 IST).
 
 ## Next
 
-| Step | What it adds |
+| Item | Why it matters |
 | --- | --- |
-| <Term id="gate-g3">G3</Term> final reading (about 12 Nov 06:17 UTC) | The measured validity window and whether reauthorize extends it. Auctions are sized to the result. The G2 card authorization early reading is due 8 Nov 23:58 UTC. |
-| A recorded walk of the five-minute path on the hosted app | A recording that shows the hosted flow from `/try` to the receipt. |
-| A live-room speech test | Confirms the G5 synthetic-audio numbers with real room audio and background noise. |
-| An owner decision on the 2.5 s <Term id="hammer">hammer</Term> to captured target | Hammer to captured is p95 3.01 s today (n=20, sandbox), and tuning continues toward 2.5 s. Hammer to settled is p95 5.59 s, inside its 6 s target. |
-| Recorded demo auctions for <Term id="replay">replay</Term> | A hosted recording for the replay player, which already exists. |
-| Security review of SEC-19 and SEC-20, and the SEC-15 log scan | Closes the last open items of the checklist. |
-| A manual accessibility pass | Screen reader and 200 percent zoom, on top of the automated sweeps. |
+| G3 final reading (about 12 Nov 06:17 UTC) | Decides the validity window and whether reauthorize extends it. May cap auction length. |
+| A walk of the five minute path on the hosted app | The web app and API are hosted in sandbox mode; no end-to-end walk is recorded yet. |
+| A real-room or noisy-room speech test | G5 is PARTIAL on synthetic audio (fixes chosen on the same 24 clips); nothing real has been tested. |
+| An owner decision on the 2.5 s hammer to CAPTURED target | Measured end to end at p95 3010.04 ms (n=20, sandbox), so it is missed. The 6 s SETTLED target is met at p95 5591.30 ms. |
+| Recorded demo auctions for replay | The player exists; no recording is hosted. |
+| A persistent store for the hosted deploy | Storage is temporary until a persistent disk is added; the file stores need a single instance. |
+| Security review sign-off | All 18 items are open. |
+| Manual accessibility pass | Screen reader and zoom passes have not been run. |
 
 <Held title="What changes the decision">
 
-If G3 shows a window shorter than the longest planned auction, auctions are capped to it, or the decision moves to NO-GO for long auctions. If G3 passes with a window that covers the planned auctions, the decision becomes GO for card and wallet. Speech stays behind the <Term id="confirm-prompt">confirm prompt</Term> either way.
+If G3 shows a window shorter than the longest planned auction, auctions are capped to it, or the decision moves to NO-GO for long auctions. If G3 passes with a window that covers the planned auctions, the decision becomes GO for card and wallet. Speech stays behind the confirm prompt either way.
 
 </Held>
 
-See the [changelog](/docs/roadmap/changelog) for what already landed.
+See [limits](/docs/roadmap/limits) for what is not built today.

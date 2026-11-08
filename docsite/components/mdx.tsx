@@ -7,13 +7,8 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Mermaid } from '@/components/mermaid';
-import { Term } from '@/components/guide/term';
-import { ProcessDiagram } from '@/components/diagrams/process';
-import { TourSteps } from '@/components/guide/tour-steps';
-import { GlossaryList } from '@/components/guide/glossary-list';
 import { Charged, Held, NotVerified, Released } from '@/components/holdline/callout';
 import { Chip, GateBadge } from '@/components/holdline/chip';
-import { ChangelogDay } from '@/components/holdline/changelog';
 import { JudgeProgress, Scorecard } from '@/components/holdline/judge-guide';
 import { CodePaths } from '@/components/holdline/code-paths';
 import { GatesTable, LatencyTable, SimScenarioTable, SpeechTable } from '@/components/holdline/data-tables';
@@ -67,11 +62,6 @@ export function getMDXComponents(components?: MDXComponents) {
     Tabs,
     TypeTable,
     Mermaid,
-    // glossary tooltips, the guided tour and the glossary page
-    Term,
-    TourSteps,
-    GlossaryList,
-    ProcessDiagram,
     // Holdline vocabulary
     Held,
     Charged,
@@ -79,7 +69,6 @@ export function getMDXComponents(components?: MDXComponents) {
     NotVerified,
     Chip,
     GateBadge,
-    ChangelogDay,
     CodePaths,
     JudgeProgress,
     Scorecard,

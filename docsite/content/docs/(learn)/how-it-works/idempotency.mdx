@@ -61,7 +61,7 @@ Hashing a JSON array, not a joined string, means no choice of ids can produce th
 
 ### Save the intent, then call
 
-The <Term id="capture">capture</Term> saves its intent in the <Term id="journal">journal</Term> first: operation, hold, amount and request id. If the process dies after that, the intent survives.
+The capture saves its intent in the journal first: operation, hold, amount and request id. If the process dies after that, the intent survives.
 
 </Step>
 <Step>
@@ -75,14 +75,14 @@ The HTTP transport retries network errors and the statuses 429, 500, 502, 503 an
 
 ### Restart and resume
 
-A resume finds the saved intent and sends it again, with the same id. Before it sends anything it reads the truth of the <Term id="hold">hold</Term> at PayPal: a capture that is already there is adopted and no second call is made.
+A resume finds the saved intent and sends it again, with the same id. Before it sends anything it reads the truth of the hold at PayPal: a capture that is already there is adopted and no second call is made.
 
 </Step>
 <Step>
 
 ### A new id only for a new call
 
-If the parameters change, the id changes. A <Term id="reauthorization">reauthorization</Term> raises the generation by one. The generation never changes on a retry or a resume.
+If the parameters change, the id changes. A reauthorization raises the generation by one. The generation never changes on a retry or a resume.
 
 </Step>
 </Steps>
@@ -95,7 +95,7 @@ If PayPal had forgotten the id, a repeated capture could run again. GAVEL theref
 
 </Callout>
 
-If the same id is ever sent with different parameters, the <Term id="fake-paypal">fake PayPal</Term> answers with a conflict. The <Term id="saga">saga</Term> treats that as an invariant fault, a bug or a configuration problem, and stops in `FAILED_NEEDS_REVIEW` instead of trying another bidder.
+If the same id is ever sent with different parameters, the fake PayPal answers with a conflict. The saga treats that as an invariant fault, a bug or a configuration problem, and stops in `FAILED_NEEDS_REVIEW` instead of trying another bidder.
 
 ## What is proven
 
@@ -111,7 +111,7 @@ In the nightly run 42200708552 (6 Nov 2026) a second capture send with the same 
 </Tab>
 <Tab value="Fake PayPal">
 
-The fake keeps an <Term id="idempotency-key">idempotency</Term> table keyed by operation, resource and request id. The same key with equal parameters replays the stored result; different parameters conflict. It can also forget the table on purpose (the `forget_idempotency` fault) to model a lost record.
+The fake keeps an idempotency table keyed by operation, resource and request id. The same key with equal parameters replays the stored result; different parameters conflict. It can also forget the table on purpose (the `forget_idempotency` fault) to model a lost record.
 
 </Tab>
 <Tab value="Simulation">

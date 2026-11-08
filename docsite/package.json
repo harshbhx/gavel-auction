@@ -4,12 +4,12 @@
   "private": true,
   "description": "The GAVEL documentation website (Fumadocs, Next.js static export).",
   "scripts": {
-    "gen": "node scripts/gen-repo-data.mjs && node scripts/gen-changelog.mjs",
-    "prebuild": "node scripts/gen-repo-data.mjs && node scripts/gen-changelog.mjs",
+    "gen": "node scripts/gen-repo-data.mjs",
+    "prebuild": "node scripts/gen-repo-data.mjs",
     "build": "next build",
-    "dev": "node scripts/gen-repo-data.mjs && node scripts/gen-changelog.mjs && next dev",
+    "dev": "node scripts/gen-repo-data.mjs && next dev",
     "start": "serve out",
-    "types:check": "node scripts/gen-repo-data.mjs && node scripts/gen-changelog.mjs && next typegen && tsc --noEmit"
+    "types:check": "node scripts/gen-repo-data.mjs && next typegen && tsc --noEmit"
   },
   "dependencies": {
     "cn": "^0.4.0",

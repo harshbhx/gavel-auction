@@ -9,11 +9,11 @@ full: true
 
 ## The idea in one paragraph
 
-When the <Term id="hammer">hammer</Term> falls, GAVEL has one winning price and several <Term id="hold">holds</Term>. It charges the winner the winning price, releases the part of the winner's hold that was not used, and releases every other hold. The [settlement saga](/docs/how-it-works/settlement-saga) does this as a journaled state machine, so a crash in the middle cannot charge twice or forget a hold. This page walks one concrete lot through it, in whole cents (money in GAVEL is always integer cents).
+When the hammer falls, GAVEL has one winning price and several holds. It charges the winner the winning price, releases the part of the winner's hold that was not used, and releases every other hold. The [settlement saga](/docs/how-it-works/settlement-saga) does this as a journaled state machine, so a crash in the middle cannot charge twice or forget a hold. This page walks one concrete lot through it, in whole cents (money in GAVEL is always integer cents).
 
 ## The worked example
 
-Three buyers each hold **200.00 (20000 cents)**. The <Term id="engine">engine</Term> ranks the <Term id="bid">bids</Term> and prices each candidate as if every earlier candidate were out:
+Three buyers each hold **200.00 (20000 cents)**. The engine ranks the bids and prices each candidate as if every earlier candidate were out:
 
 | Candidate | Hold ceiling | Price at the hammer |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ Three buyers each hold **200.00 (20000 cents)**. The <Term id="engine">engine</T
 | B (runner-up) | 20000 | 11000 |
 | C | 20000 | 10000 |
 
-These are the numbers of the nightly <Term id="sandbox">sandbox</Term> spec R7. Use the buttons under the figure to switch between the normal sale and the case where the winner's <Term id="capture">capture</Term> is refused.
+These are the numbers of the nightly sandbox spec R7. Use the buttons under the figure to switch between the normal sale and the case where the winner's capture is refused.
 
 <SettlementWalkthroughDiagram />
 
@@ -32,21 +32,21 @@ These are the numbers of the nightly <Term id="sandbox">sandbox</Term> spec R7. 
 
 ### Plan
 
-`planFromOutcome` turns the engine's hammer outcome into a plan: the candidates in the engine's order at the engine's prices, plus each bidder's hold. A candidate with no hold, or whose price is above its own hold's ceiling, cannot be charged and is left out, so the next candidate becomes the fallback instead of the whole plan being rejected. The plan is the first thing saved to the <Term id="journal">journal</Term>.
+`planFromOutcome` turns the engine's hammer outcome into a plan: the candidates in the engine's order at the engine's prices, plus each bidder's hold. A candidate with no hold, or whose price is above its own hold's ceiling, cannot be charged and is left out, so the next candidate becomes the fallback instead of the whole plan being rejected. The plan is the first thing saved to the journal.
 
 </Step>
 <Step>
 
 ### Intent, then capture
 
-Before the capture call the <Term id="saga">saga</Term> saves the intent to the journal: capture, the hold, the amount and a request id. The capture is `final_capture` for the candidate's own price, with an invoice id. A retry or a resume sends the **same request id**, so PayPal answers it once. See [Idempotency](/docs/how-it-works/idempotency).
+Before the capture call the saga saves the intent to the journal: capture, the hold, the amount and a request id. The capture is `final_capture` for the candidate's own price, with an invoice id. A retry or a resume sends the **same request id**, so PayPal answers it once. See [Idempotency](/docs/how-it-works/idempotency).
 
 </Step>
 <Step>
 
 ### Remainder
 
-After CAPTURED the saga reads the winner's authorization again. Gate <Term id="gate-g1">G1</Term> observed on the sandbox that after a final capture the authorization reads CAPTURED and the order COMPLETED, and that a later void answers 422 `PREVIOUSLY_CAPTURED`. So by default (decision A) the saga records the remainder as closed by PayPal and sends no <Term id="void">void</Term>. If PayPal ever reports an open remainder, the saga voids it explicitly (decision B), and a void refused because the authorization is already captured, voided or expired counts as released.
+After CAPTURED the saga reads the winner's authorization again. Gate G1 observed on the sandbox that after a final capture the authorization reads CAPTURED and the order COMPLETED, and that a later void answers 422 `PREVIOUSLY_CAPTURED`. So by default (decision A) the saga records the remainder as closed by PayPal and sends no void. If PayPal ever reports an open remainder, the saga voids it explicitly (decision B), and a void refused because the authorization is already captured, voided or expired counts as released.
 
 </Step>
 <Step>
@@ -60,7 +60,7 @@ Every hold except the winner's is voided, sorted by bidder id, at most three at 
 
 ### Settled
 
-When every hold is charged or released, the journal moves to SETTLED. The <Term id="ledger">ledger</Term> balances: held cents equal charged plus released.
+When every hold is charged or released, the journal moves to SETTLED. The ledger balances: held cents equal charged plus released.
 
 </Step>
 </Steps>

@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from 'react';
 
-import { WideAside } from '../WideAside';
 import { announce } from '../../a11y/announce';
 import { t } from '../../copy/t';
 import { FakePaymentsLabel } from '../../design/FakePaymentsLabel';
@@ -150,7 +149,6 @@ export function RegisterScreen({
             {t('reg.continue')}
           </Button>
         </form>
-        <WideAside />
       </main>
     );
   }
@@ -221,7 +219,6 @@ export function RegisterScreen({
           onConfirm={confirmStepTwo}
         />
       </form>
-      <WideAside />
     </main>
   );
 }

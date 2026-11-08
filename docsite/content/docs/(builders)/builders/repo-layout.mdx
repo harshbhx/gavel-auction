@@ -59,8 +59,8 @@ One strict TypeScript monorepo (npm workspaces over `packages/*`, Node 22) plus 
 | Folder | Contents | Owner area |
 | --- | --- | --- |
 | `packages/shared` | Money in integer cents, ids, errors, events, the wire types and codecs, the replay bundle format | RT |
-| `packages/engine` | The pure auction core: commands, rules, the hash-chained <Term id="ledger">ledger</Term>, projections, replay | ENG |
-| `packages/payments` | <Term id="hold">Holds</Term>, the <Term id="saga">settlement saga</Term>, webhook verification, the <Term id="fake-paypal">fake PayPal</Term>, the gate scripts under `gates/` | PAY |
+| `packages/engine` | The pure auction core: commands, rules, the hash-chained ledger, projections, replay | ENG |
+| `packages/payments` | Holds, the settlement saga, webhook verification, the fake PayPal, the gate scripts under `gates/` | PAY |
 | `packages/voice` | Audio framing, speech-to-text clients, the parser, the decision step, evaluation tooling, fixtures | VOI |
 | `packages/server` | The single-process host: HTTP routes, the room runtime, WebSocket gateways, stores, boot and config | RT |
 | `packages/web` | The browser client | WEB |
@@ -78,7 +78,7 @@ The ownership map is `scripts/ownership.map.json`. A pull request that touches m
 
 ## Evidence in the repository
 
-Committed evidence lives under `docs/evidence`: `G1`, `G2`, `G4` (<Term id="gate">gate</Term> runs as redacted JSONL), `nightly` (redacted nightly sandbox reports) and `SIM` (the <Term id="simulated">simulated</Term> multi-day run). `docs/GATES.md` is the record that ties each gate to its result; this site reads its gate and simulation tables from that file and from `docs/evidence/SIM/SIM-MULTIDAY.md` at build time.
+Committed evidence lives under `docs/evidence`: `G1`, `G2`, `G4` (gate runs as redacted JSONL), `nightly` (redacted nightly sandbox reports) and `SIM` (the simulated multi-day run). `docs/GATES.md` is the record that ties each gate to its result; this site reads its gate and simulation tables from that file and from `docs/evidence/SIM/SIM-MULTIDAY.md` at build time.
 
 <CodePaths
   paths={[

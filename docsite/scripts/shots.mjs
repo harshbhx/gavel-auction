@@ -22,8 +22,6 @@ const key = [
   ['crash-recovery', '/docs/how-it-works/crash-recovery'],
   ['voice', '/docs/how-it-works/voice-and-confirm'],
   ['rubric-map', '/docs/judges/rubric-map'],
-  ['guided-tour', '/docs/start/guided-tour'],
-  ['glossary', '/docs/reference/glossary'],
   ['gate-g5', '/docs/proof/gate-g5'],
   ['gates', '/docs/proof/gates'],
   ['evidence-map', '/docs/proof/evidence-map'],
@@ -121,62 +119,6 @@ async function interact(url) {
   await context.close();
 }
 
-
-// Glossary tooltips: <Term> opens on hover, on keyboard focus and on tap, closes on mouse leave,
-// Escape and a tap elsewhere, links to its glossary entry, and stays inside a phone viewport.
-async function termChecks(url) {
-  const fail = (m) => {
-    console.error(`FAIL ${url}: ${m}`);
-    failures += 1;
-  };
-  // Mouse: hover opens, leaving closes.
-  {
-    const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
-    const page = await context.newPage();
-    await page.goto(base + url, { waitUntil: 'networkidle' });
-    const term = page.locator('.hl-term-btn').first();
-    const pop = page.locator('.hl-term-pop').first();
-    if (!(await term.count())) fail('no <Term> on the page');
-    else {
-      await term.hover();
-      await pop.waitFor({ state: 'visible', timeout: 3000 }).catch(() => fail('hover did not open the definition'));
-      const href = await pop.locator('a').getAttribute('href').catch(() => null);
-      if (!href || !href.includes('/docs/reference/glossary#')) fail(`definition link is ${href}`);
-      await page.screenshot({ path: join(outDir, 'term-hover-desktop.png') });
-      await page.mouse.move(5, 5);
-      await pop.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => fail('moving away did not close the definition'));
-      // Keyboard: focus opens, Escape closes and keeps focus on the term.
-      await term.focus();
-      await pop.waitFor({ state: 'visible', timeout: 3000 }).catch(() => fail('keyboard focus did not open the definition'));
-      if ((await term.getAttribute('aria-expanded')) !== 'true') fail('aria-expanded is not true while open');
-      await page.keyboard.press('Escape');
-      await pop.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => fail('Escape did not close the definition'));
-    }
-    await context.close();
-  }
-  // Touch on a phone: tap opens and pins, it fits the screen, a tap elsewhere closes it.
-  {
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
-    const page = await context.newPage();
-    await page.goto(base + url, { waitUntil: 'networkidle' });
-    const terms = page.locator('.hl-term-btn');
-    const pop = page.locator('.hl-term-pop').first();
-    const n = await terms.count();
-    for (const i of [0, Math.min(n - 1, 5), n - 1]) {
-      await terms.nth(i).scrollIntoViewIfNeeded();
-      await terms.nth(i).tap();
-      await pop.waitFor({ state: 'visible', timeout: 3000 }).catch(() => fail(`tap on term ${i} did not open the definition`));
-      const box = await pop.boundingBox();
-      if (box && (box.x < -1 || box.x + box.width > 391)) fail(`definition ${i} leaves the 390 px screen (x ${box.x}, width ${box.width})`);
-      if (i === 0) await page.screenshot({ path: join(outDir, 'term-tap-390.png') });
-      await page.mouse.click(2, 300).catch(() => {});
-      await page.touchscreen.tap(2, 300);
-      await pop.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => fail('a tap elsewhere did not close the definition'));
-    }
-    await context.close();
-  }
-}
-
 // Newsprint is the only theme. Every context seeds the old saved theme values (dark, floodlight)
 // and a dark system scheme in some shots, so these pictures prove they are ignored.
 const stale = { scheme: 'dark', viewport: { width: 1280, height: 900 } };
@@ -219,8 +161,6 @@ await shoot('m390-home', '/', { scheme: 'dark', viewport: { width: 390, height: 
 for (const url of ['/docs/how-it-works/bid-lifecycle', '/docs/how-it-works/settlement-walkthrough']) {
   await interact(url);
 }
-
-await termChecks('/docs/start/guided-tour');
 
 await browser.close();
 if (failures > 0) {

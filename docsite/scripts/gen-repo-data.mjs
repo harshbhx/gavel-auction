@@ -4,7 +4,7 @@
 //   docs/GATES.md                       gate status, speech accuracy table, latency table
 //   docs/evidence/SIM/SIM-MULTIDAY.md   the simulated multi-day scenarios and the 30 day totals
 // The build fails when a file or a table cannot be read, instead of showing stale numbers.
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -130,9 +130,3 @@ const data = {
 mkdirSync(dirname(outFile), { recursive: true });
 writeFileSync(outFile, `${JSON.stringify(data, null, 2)}\n`);
 console.log(`gen-repo-data: wrote ${outFile} (${gateStatus.length} gates, ${scenarios.length} scenarios)`);
-
-// The OpenAPI document is served from the docs site at /openapi.yaml. The repo keeps one copy
-// (openapi/gavel.yaml); this copies it into public/ for every build, so the two cannot differ.
-read('openapi/gavel.yaml');
-copyFileSync(join(repoRoot, 'openapi', 'gavel.yaml'), join(here, '..', 'public', 'openapi.yaml'));
-console.log('gen-repo-data: copied openapi/gavel.yaml to public/openapi.yaml');

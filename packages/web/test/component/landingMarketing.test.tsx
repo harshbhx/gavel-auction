@@ -23,9 +23,7 @@ describe('marketing landing', () => {
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(t('landing.title'));
     for (const key of [
-      'mk.story.title',
       'mk.how.title',
-      'mk.shots.title',
       'mk.feat.title',
       'mk.trust.title',
       'mk.aud.title',
@@ -118,22 +116,6 @@ describe('marketing landing', () => {
     expect(screen.getByRole('heading', { level: 3, name: t('mk.how.s2.title') })).toBeTruthy();
   });
 
-  it('tells hold, hammer, receipt and shows four labelled screenshots', () => {
-    setup();
-    const story = document.getElementById('story');
-    expect(story?.querySelectorAll('li.gv-story__beat')).toHaveLength(3);
-    const shots = document.getElementById('screens');
-    const imgs = Array.from(shots?.querySelectorAll('img') ?? []);
-    expect(imgs).toHaveLength(4);
-    for (const img of imgs) {
-      expect(img.getAttribute('alt')?.length ?? 0).toBeGreaterThan(20);
-      expect(img.getAttribute('width')).not.toBeNull();
-      expect(img.getAttribute('height')).not.toBeNull();
-    }
-    expect(screen.getByText(t('mk.shots.note'))).toBeTruthy();
-    expect(screen.getByRole('link', { name: t('mk.cta.docs') }).getAttribute('href')).toBe(DOCS);
-  });
-
   it('lists the gates with real status labels and a docs link for each', () => {
     setup();
     const trust = document.getElementById('trust');
@@ -166,10 +148,10 @@ describe('marketing landing', () => {
     }
   });
 
-  it('answers the eight questions in an accordion that opens and closes', () => {
+  it('answers the five questions in an accordion that opens and closes', () => {
     const { view } = setup();
     const items = view.container.querySelectorAll('details.gv-faq__item');
-    expect(items).toHaveLength(8);
+    expect(items).toHaveLength(5);
     const first = items[0];
     expect(first?.hasAttribute('open')).toBe(false);
     expect(screen.getByText(t('mk.faq.q2'))).toBeTruthy();

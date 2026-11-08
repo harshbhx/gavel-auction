@@ -339,19 +339,3 @@
     position: static !important;
   }
 }
-
-/* Wide screens (UIX-27): the bidder room flows into two balanced columns, price and status on the
- * left, bids and the ladder on the right. Phones and tablets keep the single column. */
-@media (min-width: 1100px) {
-  .bid {
-    display: block;
-    column-count: 2;
-    column-gap: var(--space-7);
-    padding: var(--space-6) max(var(--space-7), calc((100vw - 1280px) / 2));
-  }
-
-  .bid > * {
-    break-inside: avoid;
-    margin-bottom: var(--space-4);
-  }
-}

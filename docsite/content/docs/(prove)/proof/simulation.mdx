@@ -10,11 +10,11 @@ full: true
 
 ## What it is
 
-The <Term id="saga">settlement saga</Term>, the <Term id="reauthorization">reauthorization</Term> pass, the <Term id="journal">journal</Term> stores and the <Term id="webhook">webhook</Term> merge run over <Term id="simulated">simulated</Term> days against a **model** of PayPal's authorization rules, in seconds, with an injected clock. The model is the <Term id="fake-paypal">fake PayPal</Term> with these assumptions: <Term id="honor-period">honor period</Term> 3 days, authorization valid 29 days, reauthorize allowed only after the honor period and answered with a new authorization id, capture after validity fails.
+The settlement saga, the reauthorization pass, the journal stores and the webhook merge run over simulated days against a **model** of PayPal's authorization rules, in seconds, with an injected clock. The model is the fake PayPal with these assumptions: honor period 3 days, authorization valid 29 days, reauthorize allowed only after the honor period and answered with a new authorization id, capture after validity fails.
 
 <NotVerified title="What this proves, and what it does not">
 
-A passing run says our code behaves correctly **if PayPal follows this model**. It says nothing about whether PayPal does. That is gate <Term id="gate-g3">G3</Term>, a real probe that is still in progress. Where G3 disagrees with the model, the model changes and the suite reruns.
+A passing run says our code behaves correctly **if PayPal follows this model**. It says nothing about whether PayPal does. That is gate G3, a real probe that is still in progress. Where G3 disagrees with the model, the model changes and the suite reruns.
 
 </NotVerified>
 

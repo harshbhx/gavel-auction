@@ -1,5 +1,5 @@
 import { useCallback, useRef, type ReactNode } from 'react';
-import { keepFocusOnOverlay, useEscapeKey, useFocusTrap } from '../../a11y/useFocus';
+import { useFocusTrap } from '../../a11y/useFocus';
 import './primitives.css';
 
 export interface DialogProps {
@@ -19,7 +19,15 @@ export function Dialog({ open, onClose, strict = false, title, children }: Dialo
     if (!strict) onClose();
   }, [onClose, strict]);
 
-  useEscapeKey(onClose, open && !strict);
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent): void => {
+      if (e.key === 'Escape' && !strict) {
+        e.stopPropagation();
+        onClose();
+      }
+    },
+    [onClose, strict],
+  );
 
   if (!open) return null;
 
@@ -27,7 +35,7 @@ export function Dialog({ open, onClose, strict = false, title, children }: Dialo
     <div
       className="gv-dialog-backdrop"
       onClick={onBackdropClick}
-      onMouseDown={keepFocusOnOverlay}
+      onKeyDown={onKeyDown}
       role="presentation"
     >
       <div

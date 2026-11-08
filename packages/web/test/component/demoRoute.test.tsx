@@ -105,9 +105,7 @@ describe('demo launcher on the real route (R-WEB-036..038)', () => {
   });
 
   it('explains a 429 and offers the scripted demo', async () => {
-    fetchMock.mockImplementation((url) =>
-      Promise.resolve({ status: url.endsWith('/api/judge/capabilities') ? 404 : 429 }),
-    );
+    fetchMock.mockResolvedValue({ status: 429 });
     start();
     await expectFallback(t('demo.failedCap'));
   });
@@ -160,10 +158,10 @@ describe('demo launcher on the real route (R-WEB-036..038)', () => {
       expect(screen.getByRole('link', { name: '/join/room-7' })).toBeTruthy();
     });
 
-    it('says to wait and offers the scripted demo on 429', async () => {
+    it('says the host is busy and offers the scripted demo on 429', async () => {
       answer({ status: 429 });
       await startKeyless();
-      await expectFallback(t('demo.failedRateUnknown'));
+      await expectFallback(t('demo.failedBusy'));
     });
   });
 

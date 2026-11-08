@@ -53,12 +53,7 @@ describe('security headers on every live route (RT4-sec-08)', () => {
   });
 
   it('sends them on the 429', async () => {
-    const port = await boot({
-      RATE_HTTP_BURST: '1',
-      RATE_HTTP_PER_MIN: '1',
-      RATE_HTTP_READ_BURST: '1',
-      RATE_HTTP_READ_PER_MIN: '1',
-    });
+    const port = await boot({ RATE_HTTP_BURST: '1', RATE_HTTP_PER_MIN: '1' });
     const url = `http://127.0.0.1:${port}`;
     await (await fetch(`${url}/nope`)).arrayBuffer();
     const res = await fetch(`${url}/nope`);

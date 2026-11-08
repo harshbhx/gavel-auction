@@ -32,7 +32,6 @@ import { SimApprovalAdapter } from './payments/simAdapter';
 import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
 import { HelpLayer } from './help';
 import { RouteScreen, matchRoute, type RouteMatch } from './routes';
-import { ChainCheck } from './chain/ChainCheck';
 import { AuditTable } from './screens/audit/AuditTable';
 import { Export } from './screens/audit/Export';
 import { Filters, useUrlFilters } from './screens/audit/Filters';
@@ -43,18 +42,12 @@ import { BidScreen } from './screens/bid/BidScreen';
 import { LiveConsole } from './screens/console/LiveConsole';
 import { GalleryScreen } from './screens/gallery/GalleryScreen';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
-import { OfflineBanner } from './a11y/OfflineBanner';
-import { SkipLink } from './a11y/SkipLink';
-import { useRouteChrome } from './a11y/useRouteChrome';
-import { RoomGate } from './screens/states/RoomGate';
-import { ApiError, apiErrorFor, unreachable } from './net/apiError';
 import { WatcherGate } from './screens/join/WatcherGate';
 import { LandingScreen } from './screens/landing/LandingScreen';
 import { JudgePanel, type RoomsState } from './screens/judge/JudgePanel';
 import { fetchOpsSummary, OpsView, type OpsSummaryView } from './ops/OpsView';
 import { DemoLauncher, DemoRoomError, type DemoLinks } from './screens/demo/DemoLauncher';
 import { ScriptedJoin } from './screens/demo/ScriptedJoin';
-import { ScriptedPlayer, useScriptedPlayback } from './screens/demo/ScriptedPlayer';
 import { openJoin, type OpenJoinFailure, type OpenJoinResult } from './net/openJoin';
 import { JudgeHub } from './screens/hub/JudgeHub';
 import { TokenHelp } from './screens/hub/TokenHelp';
@@ -84,7 +77,6 @@ import {
   readInviteToken,
   readReceiptToken,
   rememberBidderSession,
-  clearAuctioneerToken,
 } from './store/session';
 
 export interface AppProps {
@@ -108,10 +100,9 @@ export function navigate(to: string): void {
   window.dispatchEvent(new Event(NAVIGATE_EVENT));
 }
 
-/** Which slot a refused token came from: console and audit use the in-memory auctioneer token. */
-function roleOf(routeId: string): SessionRole | 'auctioneer' {
-  if (routeId === 'screen') return 'screen';
-  return routeId === 'console' || routeId === 'audit' ? 'auctioneer' : 'bidder';
+/** Which stored slot a refused token is cleared from; the screen token is never stored. */
+function roleOf(routeId: string): SessionRole {
+  return routeId === 'screen' ? 'screen' : 'bidder';
 }
 
 function tokenFor(routeId: string, roomId: string): { token: string; bidderId?: string } | null {
@@ -131,13 +122,6 @@ function tokenFor(routeId: string, roomId: string): { token: string; bidderId?: 
 interface ScriptedPlay {
   readonly room: ScriptedRoom;
   readonly at: number | null;
-  /** Changes when the player rebuilds the room at the same time. */
-  readonly runKey?: number;
-  /**
-   * Set by the scripted demo player: the scenario is not left on autoplay. The player gets the
-   * transport and moves its clock one beat at a time.
-   */
-  readonly attach?: (transport: ScenarioTransport) => void;
 }
 
 interface Live {
@@ -164,8 +148,6 @@ function useLiveRoom(
     const scriptedTransport =
       scripted === null ? null : new ScenarioTransport(scripted.room.scenario);
     const transport: Transport = scriptedTransport ?? new WebSocketTransport(socketUrl(liveBase));
-    // A rebuilt scripted room (restart, step back) must not keep the frames of the last run.
-    if (scripted?.attach !== undefined) roomStore.enter('scripted-reset');
     const started = startLiveRoom({
       wsBase: liveBase,
       roomId: scripted === null ? roomId : scripted.room.roomId,
@@ -174,10 +156,7 @@ function useLiveRoom(
       ...(bidderId === undefined ? {} : { bidderId }),
     });
     if (scripted !== null && scriptedTransport !== null) {
-      if (scripted.attach !== undefined) {
-        scriptedTransport.advance(scripted.at ?? 0);
-        scripted.attach(scriptedTransport);
-      } else if (scripted.at === null) scriptedTransport.autoplay();
+      if (scripted.at === null) scriptedTransport.autoplay();
       else scriptedTransport.advance(scripted.at);
     }
     setLive({ room: started, transport });
@@ -254,14 +233,8 @@ function LiveRoute({
   useEffect(() => {
     // A refused token is dead: forget it, so a reload does not reuse it.
     if (!dead) return;
-    if (role === 'bidder') {
-      clearSession(roomId, undefined, role);
-      clearBidderSession(roomId);
-    } else {
-      // The screen, console and audit tokens live in memory only: drop the dead one, keep the bidder.
-      if (role === 'screen') clearSession(roomId, undefined, role);
-      clearAuctioneerToken(roomId);
-    }
+    clearSession(roomId, undefined, role);
+    if (role === 'bidder') clearBidderSession(roomId);
   }, [dead, roomId, role]);
   const myPaddle = useRoom((s) =>
     bidderId === undefined
@@ -276,15 +249,11 @@ function LiveRoute({
     // The connection is stopped; the bid screen would only say it is waiting for a lot.
     return (
       <main data-route={match.route.id}>
-        <h1 tabIndex={-1}>{t('err.refusedTitle')}</h1>
         <RoomError
           error={refused}
           rejoinHref={`/join/${encodeURIComponent(roomId)}`}
           onRetry={() => setAttempt((n) => n + 1)}
         />
-        <a className="ui-link" href="/">
-          {t('err.home')}
-        </a>
       </main>
     );
   }
@@ -317,7 +286,6 @@ function LiveRoute({
               room?.bid(Cents(amount), 'qr');
             }}
             stopped={stopped}
-            onJoin={() => navigate(`/r/${encodeURIComponent(roomId)}/register`)}
             {...(myPaddle === undefined ? {} : { myPaddle, onConfirm: respond })}
           />
         </div>
@@ -419,10 +387,6 @@ function ReplayRoute({ match }: { match: RouteMatch }) {
   const recordingId = match.params['recordingId'];
   return (
     <RouteScreen match={match}>
-      <p>{t('replay.about')}</p>
-      <a className="ui-link" href="/">
-        {t('err.home')}
-      </a>
       {recordingId !== undefined && (
         <Suspense fallback={<p role="status">{t('net.resyncing')}</p>}>
           <ReplayScreen recordingId={recordingId} />
@@ -453,7 +417,6 @@ export function AuditRoute() {
   return (
     <main data-route="audit">
       <h1 tabIndex={-1}>{t('audit.title')}</h1>
-      <ChainCheck allowFile />
       {!online && <Offline view="audit" />}
       {!loaded ? (
         <Loading view="audit" />
@@ -480,13 +443,8 @@ export function AuditRoute() {
 type Api = NonNullable<AppProps['api']>;
 
 async function fetchJson(url: string, init?: RequestInit): Promise<unknown> {
-  let res: Response;
-  try {
-    res = await fetch(url, init);
-  } catch {
-    throw unreachable();
-  }
-  if (!res.ok) throw apiErrorFor(res);
+  const res = await fetch(url, init);
+  if (!res.ok) throw new Error('request failed');
   return (await res.json()) as unknown;
 }
 
@@ -509,10 +467,7 @@ async function joinByCode(api: Api | undefined, code: string): Promise<boolean> 
       auctionId?: unknown;
     };
     id = typeof body.auctionId === 'string' && body.auctionId !== '' ? body.auctionId : code;
-  } catch (error) {
-    // Only "no such room" means the code is wrong; a limit or a lost network is told apart.
-    if (error instanceof ApiError && (error.kind === 'rateLimited' || error.kind === 'unreachable'))
-      throw error;
+  } catch {
     return false;
   }
   navigate(`/join/${encodeURIComponent(id)}`);
@@ -535,9 +490,9 @@ function TryRoute({ api }: { api: Api | undefined }) {
   return (
     <JudgePanel
       rooms={rooms}
-      createRoom={async (goalCents) => {
+      createRoom={async () => {
         if (api === undefined) throw new Error('no api');
-        return createJudgeRoom(api.apiBase, goalCents);
+        return createJudgeRoom(api.apiBase);
       }}
       openRoom={navigate}
       joinByCode={(code) => joinByCode(api, code)}
@@ -555,28 +510,22 @@ async function judgeSimHolds(apiBase: string): Promise<boolean> {
   }
 }
 
-/** Room ids are ULIDs and join codes are short letters and digits, with an optional dash. */
-const ROOM_KEY = /^[A-Za-z0-9][A-Za-z0-9-]{0,63}$/;
-
 function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
-  const malformedRoom = !ROOM_KEY.test(roomId);
   const [found, setFound] = useState<{
     state: JoinState;
     title: string | null;
     id: string;
     code: string | null;
     demoHold: boolean;
-    retryAfterS?: number | null;
   }>({
-    state: api === undefined ? 'open' : malformedRoom ? 'notFound' : 'loading',
+    state: api === undefined ? 'open' : 'loading',
     title: api === undefined ? roomId : null,
     id: roomId,
     code: null,
     demoHold: false,
   });
   useEffect(() => {
-    // A code with slashes, dots or spaces cannot be a room: say so without asking the server.
-    if (api === undefined || malformedRoom) return undefined;
+    if (api === undefined) return undefined;
     let live = true;
     const caps = judgeSimHolds(api.apiBase);
     fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(roomId)}`)
@@ -598,24 +547,14 @@ function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
           demoHold: simOn && info.judgeRoom === true,
         });
       })
-      .catch((error: unknown) => {
-        if (!live) return;
-        const kind = error instanceof ApiError ? error.kind : 'unreachable';
-        const state: JoinState =
-          kind === 'notFound' ? 'notFound' : kind === 'rateLimited' ? 'busy' : 'unreachable';
-        setFound({
-          state,
-          title: null,
-          id: roomId,
-          code: null,
-          demoHold: false,
-          retryAfterS: error instanceof ApiError ? error.retryAfterS : null,
-        });
+      .catch(() => {
+        if (live)
+          setFound({ state: 'notFound', title: null, id: roomId, code: null, demoHold: false });
       });
     return () => {
       live = false;
     };
-  }, [api, roomId, malformedRoom]);
+  }, [api, roomId]);
   return (
     <JoinScreen
       roomId={found.id}
@@ -623,7 +562,6 @@ function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
       shortCode={found.code}
       demoHold={found.demoHold}
       state={found.state}
-      retryAfterS={found.retryAfterS ?? null}
       origin={window.location.origin}
       onNavigate={navigate}
     />
@@ -674,8 +612,6 @@ function RegisterRoute({
   liveBase: string | undefined;
 }) {
   const [who, setWho] = useState<{ token: string; bidderId: string } | null>(() => {
-    // A fresh invite in the link wins over whatever session this tab still holds.
-    if (readInviteToken(roomId) !== null) return null;
     const stored = getBidderSession(roomId);
     return stored?.bidderId === undefined
       ? null
@@ -704,17 +640,6 @@ function RegisterRoute({
   const roomError = useRoom((s) => s.lastError);
   const registrationClosed = useRoom(selectors.registrationClosed);
 
-  const deadSession = who !== null && roomError !== null && isTerminalError(roomError.code);
-  useEffect(() => {
-    // A refused session is dead: forget it and fall back to the invite or the open join, instead
-    // of reconnecting with the same token on every reload.
-    if (!deadSession) return;
-    clearSession(roomId);
-    clearBidderSession(roomId);
-    roomStore.dispatch({ kind: 'identify', bidderId: null });
-    setWho(null);
-  }, [deadSession, roomId]);
-
   const invite = who === null ? readInviteToken(roomId) : null;
   // No invite: a judge room lets a bidder in with its room code, so a scanned QR or a typed code works.
   const [openState, setOpenState] = useState<OpenJoinFailure | null>(null);
@@ -738,7 +663,6 @@ function RegisterRoute({
   }, [api, roomId, noInvite]);
   useEffect(() => {
     if (who !== null || invite === null) return;
-    setFailed(false);
     fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(roomId)}/join`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -767,14 +691,12 @@ function RegisterRoute({
       if (openState === null) {
         return (
           <main data-route="register" aria-busy="true">
-            <h1 tabIndex={-1}>{t('reg.step1')}</h1>
             <p role="status">{t('reg.confirming')}</p>
           </main>
         );
       }
       return (
         <main data-route="register">
-          <h1 tabIndex={-1}>{t('reg.step1')}</h1>
           <p role="alert">{t(openState === 'full' ? 'join.full' : 'join.ended')}</p>
           <p>{t(openState === 'full' ? 'join.fullHelp' : 'join.endedHelp')}</p>
           <a className="ui-link" href={`/r/${encodeURIComponent(roomId)}/bid`}>
@@ -785,7 +707,6 @@ function RegisterRoute({
     }
     return (
       <main data-route="register">
-        <h1 tabIndex={-1}>{t('reg.step1')}</h1>
         {failed || invite === null ? (
           <>
             <p role="alert">{t('reg.expired')}</p>
@@ -802,7 +723,6 @@ function RegisterRoute({
   if (live && snapshot === null) {
     return (
       <main data-route="register">
-        <h1 tabIndex={-1}>{t('reg.step1')}</h1>
         {roomError === null ? (
           <p role="status">{t('reg.confirming')}</p>
         ) : (
@@ -818,7 +738,6 @@ function RegisterRoute({
   if (snapshot !== null && registrationClosed) {
     return (
       <main data-route="register">
-        <h1 tabIndex={-1}>{t('reg.step1')}</h1>
         <Approve
           state="idle"
           result={null}
@@ -903,7 +822,6 @@ function ApproveRoute(props: {
   }, [start, ceilingCents, name]);
   return (
     <main data-route="register">
-      <h1 tabIndex={-1}>{t('reg.step1')}</h1>
       <Approve
         state={approval.state}
         result={approval.result}
@@ -970,10 +888,9 @@ function ReturnRoute({ roomId, api }: { roomId: string; api: Api }) {
 /** The operator key input, shared by the ops page and the demo launcher. It is never stored. */
 function OperatorKeyField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <label className="gv-ops__key">
+    <label>
       {t('ops.keyLabel')}
       <input
-        className="gv-ops__input"
         type="password"
         autoComplete="off"
         value={value}
@@ -1003,8 +920,7 @@ function OpsRoute({ api }: { api: Api | undefined }) {
       .catch(() => setError(t('ops.failed')));
   };
   return (
-    <main data-route="ops" className="gv-ops-page">
-      <h1>{t('ops.title')}</h1>
+    <main data-route="ops">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -1012,9 +928,7 @@ function OpsRoute({ api }: { api: Api | undefined }) {
         }}
       >
         <OperatorKeyField value={key} onChange={setKey} />
-        <button type="submit" className="gv-ops__load">
-          {t('ops.load')}
-        </button>
+        <button type="submit">{t('ops.load')}</button>
       </form>
       {(summary !== undefined || error !== undefined) && (
         <OpsView labels={labels} summary={summary} error={error} />
@@ -1073,11 +987,10 @@ function DemoRoute({ api }: { api: Api | undefined }) {
       {api !== undefined && !judge && <OperatorKeyField value={key} onChange={setKey} />}
       <DemoLauncher
         initialMode={api === undefined ? 'scripted' : 'live'}
-        goalField={judge}
-        createRoom={async (goalCents) => {
+        createRoom={async () => {
           if (api === undefined) throw new Error('no api');
           return (await probe) === true
-            ? createJudgeRoom(api.apiBase, goalCents)
+            ? createJudgeRoom(api.apiBase)
             : createDemoRoom(api.apiBase, key);
         }}
         startScripted={() => roomLinks('demo')}
@@ -1093,17 +1006,11 @@ function ScriptedRoute({
   roomId,
   request,
   liveBase,
-  attach,
-  runKey = 0,
 }: {
   match: RouteMatch;
   roomId: string;
   request: ScriptedRequest;
   liveBase: string | undefined;
-  /** Scripted demo player: take over the clock of the scenario. */
-  attach?: (transport: ScenarioTransport) => void;
-  /** Changes to build the room again at `request.at`. */
-  runKey?: number;
 }) {
   const { name, at } = request;
   const asBidder = match.route.id === 'bid';
@@ -1123,11 +1030,8 @@ function ScriptedRoute({
     };
   }, [name, asBidder]);
   const scripted = useMemo(
-    () =>
-      loaded === undefined || loaded === null
-        ? null
-        : { room: loaded, at, ...(attach === undefined ? {} : { attach }), runKey },
-    [loaded, at, attach, runKey],
+    () => (loaded === undefined || loaded === null ? null : { room: loaded, at }),
+    [loaded, at],
   );
   if (loaded === null) return <NotFound />;
   if (scripted === null) return <p role="status">{t('net.resyncing')}</p>;
@@ -1156,6 +1060,7 @@ const SCRIPTED_BID_MATCH: RouteMatch = {
   route: { id: 'bid', path: '/r/:roomId/bid', titleKey: 'bid.price' },
   params: { roomId: SCRIPTED_ROOM_ID },
 };
+const SCRIPTED_REQUEST: ScriptedRequest = { name: DEFAULT_SCENARIO, at: null };
 
 /**
  * /demo/scripted and /demo/scripted/bid: play the scripted demo in this tab, in every build, with
@@ -1168,14 +1073,9 @@ function InMemoryScriptedDemo({
   liveBase: string | undefined;
   view: 'screen' | 'bid';
 }) {
-  const playback = useScriptedPlayback();
-  const request = useMemo<ScriptedRequest>(
-    () => ({ name: DEFAULT_SCENARIO, at: playback.startAt }),
-    [playback.startAt],
-  );
   return (
     <div className="gv-scripted-frame">
-      <div className="gv-scripted-bar" role="region" aria-label={t('scriptedDemo.barLabel')}>
+      <div className="gv-scripted-bar">
         <p>{t('scriptedDemo.banner')}</p>
         <div className="gv-scripted-bar__links">
           <a className="ui-link" href="/demo">
@@ -1186,17 +1086,12 @@ function InMemoryScriptedDemo({
           </a>
         </div>
       </div>
-      <div className="gv-scripted-stage">
-        <ScriptedRoute
-          match={view === 'bid' ? SCRIPTED_BID_MATCH : SCRIPTED_SCREEN_MATCH}
-          roomId={SCRIPTED_ROOM_ID}
-          request={request}
-          liveBase={liveBase}
-          attach={playback.attach}
-          runKey={playback.run}
-        />
-      </div>
-      <ScriptedPlayer playback={playback} />
+      <ScriptedRoute
+        match={view === 'bid' ? SCRIPTED_BID_MATCH : SCRIPTED_SCREEN_MATCH}
+        roomId={SCRIPTED_ROOM_ID}
+        request={SCRIPTED_REQUEST}
+        liveBase={liveBase}
+      />
     </div>
   );
 }
@@ -1247,14 +1142,12 @@ function Routed({
   if (id === 'scriptedJoin') return <ScriptedJoin />;
   if (id === 'hub' && roomId !== undefined) {
     return (
-      <RoomGate apiBase={api?.apiBase} roomId={roomId} onNavigate={navigate}>
-        <JudgeHub
-          roomId={roomId}
-          keys={readHubKeys(roomId)}
-          apiBase={api?.apiBase}
-          origin={window.location.origin}
-        />
-      </RoomGate>
+      <JudgeHub
+        roomId={roomId}
+        keys={readHubKeys(roomId)}
+        apiBase={api?.apiBase}
+        origin={window.location.origin}
+      />
     );
   }
   if (id === 'try') return <TryRoute api={api} />;
@@ -1304,11 +1197,7 @@ function Routed({
     api !== undefined &&
     roomId !== 'demo'
   ) {
-    return (
-      <RoomGate apiBase={api.apiBase} roomId={roomId} onNavigate={navigate}>
-        <WatcherGate roomId={roomId} onNavigate={navigate} apiBase={api.apiBase} />
-      </RoomGate>
-    );
+    return <WatcherGate roomId={roomId} onNavigate={navigate} />;
   }
   if (liveBase === undefined || roomId === undefined || who === null) {
     return <RouteScreen match={match} />;
@@ -1338,30 +1227,20 @@ const HELP_ROUTES: ReadonlySet<string> = new Set([
 export function App({ initialPath, gallery = import.meta.env.DEV, liveBase, api }: AppProps) {
   const [path, setPath] = useState(initialPath ?? window.location.pathname);
 
-  // A link pasted into the same tab changes only the fragment (an invite, a token): render again
-  // so the page reads it, instead of keeping what the old fragment said.
-  const [, setHashSeen] = useState(0);
-
   useEffect(() => {
     const sync = (): void => setPath(window.location.pathname);
-    const fragment = (): void => setHashSeen((n) => n + 1);
     window.addEventListener('popstate', sync);
     window.addEventListener(NAVIGATE_EVENT, sync);
-    window.addEventListener('hashchange', fragment);
     return () => {
       window.removeEventListener('popstate', sync);
       window.removeEventListener(NAVIGATE_EVENT, sync);
-      window.removeEventListener('hashchange', fragment);
     };
   }, []);
 
   const match = matchRoute(path, { gallery });
-  useRouteChrome(match);
   return (
     <ErrorBoundary>
-      {match.route.id !== 'gallery' && <SkipLink />}
       {match.route.id !== 'gallery' && <SandboxBanner />}
-      {match.route.id !== 'gallery' && match.route.id !== 'bid' && <OfflineBanner />}
       {match.route.id !== 'gallery' && <Announcer />}
       <Routed match={match} liveBase={liveBase} api={api} />
       {HELP_ROUTES.has(match.route.id) && <HelpLayer />}

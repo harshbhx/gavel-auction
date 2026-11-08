@@ -6,7 +6,7 @@ status: verified
 full: true
 ---
 
-All heavy work runs in GitHub Actions: builds, test suites, browsers, screenshots, <Term id="gate">gate</Term> runs and deploys. Nothing in this project asks you to run them on a laptop.
+All heavy work runs in GitHub Actions: builds, test suites, browsers, screenshots, gate runs and deploys. Nothing in this project asks you to run them on a laptop.
 
 <CiPipelineDiagram />
 
@@ -25,10 +25,10 @@ The five lanes group workflows by what starts them. Hover or focus a box for its
 
 | Workflow | What it proves | Label |
 | --- | --- | --- |
-| `nightly-sandbox` | Real PayPal <Term id="sandbox">sandbox</Term> specs R1 to R10 and the <Term id="gate-g5">G5</Term> speech harness | Sandbox |
-| `gate-g3` | Whether an authorization stays capturable past the <Term id="honor-period">honor period</Term> | Sandbox, in progress |
+| `nightly-sandbox` | Real PayPal sandbox specs R1 to R10 and the G5 speech harness | Sandbox |
+| `gate-g3` | Whether an authorization stays capturable past the honor period | Sandbox, in progress |
 | `gate-g3-early` | An additional early reading from older G2 authorizations | Sandbox, partial |
-| `sim-multiday` | The settlement code against the <Term id="fake-paypal">fake PayPal</Term> on a <Term id="simulated">simulated</Term> clock | Simulated |
+| `sim-multiday` | The settlement code against the fake PayPal on a simulated clock | Simulated |
 | `ci` | Types, lint, unit, property and scenario tests, the fake PayPal | Fake PayPal |
 
 <NotVerified title="G3 is not finished">

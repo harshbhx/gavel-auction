@@ -20,10 +20,9 @@ export interface JoinCodeInputProps {
 /** Keeps letters and digits, upper-cases them and drops a leading prefix from pasted text. */
 export function normalizeCode(raw: string, prefix: string, length: number): string {
   const clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const own = prefix.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  // A pasted "GVL-KPGQV3" carries the brand prefix even where the field shows none.
-  const pre = [own, 'GVL'].find((p) => p !== '' && clean.startsWith(p)) ?? '';
-  const body = pre !== '' && clean.length > length ? clean.slice(pre.length) : clean;
+  const pre = prefix.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const body =
+    pre !== '' && clean.startsWith(pre) && clean.length > length ? clean.slice(pre.length) : clean;
   return body.slice(0, length);
 }
 
@@ -105,7 +104,7 @@ export function JoinCodeInput({
             autoCapitalize="characters"
             autoComplete={i === 0 ? 'one-time-code' : 'off'}
             spellCheck={false}
-            maxLength={length + 8}
+            maxLength={length}
             value={chars[i] === ' ' ? '' : chars[i]}
             disabled={disabled}
             aria-label={t('ui.code.char', { n: i + 1, length })}

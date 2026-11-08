@@ -30,7 +30,8 @@ export function OpsView({ summary, labels, error }: OpsViewProps) {
   if (error !== undefined) return <p role="alert">{error}</p>;
   if (summary === undefined) return <p>{labels.loading}</p>;
   return (
-    <div className="gv-ops">
+    <main aria-label={labels.title}>
+      <h1>{labels.title}</h1>
       <section aria-label={labels.sagas}>
         <h2>{labels.sagas}</h2>
         {summary.sagas.length === 0 ? (
@@ -55,7 +56,7 @@ export function OpsView({ summary, labels, error }: OpsViewProps) {
         <h2>{labels.logs}</h2>
         <pre>{summary.logs.join('\n')}</pre>
       </section>
-    </div>
+    </main>
   );
 }
 

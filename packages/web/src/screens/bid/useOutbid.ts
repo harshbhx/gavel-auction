@@ -43,32 +43,15 @@ export interface UseOutbid {
 export function useOutbid(status: string, currentCents: number): UseOutbid {
   const [vibrate, setVibrateState] = useState<boolean>(readOptIn);
   const previous = useRef(status);
-  // An outbid waits for a real price, so the announcement never carries the $0.00 default.
-  const waitingForPrice = useRef(false);
-  const latestCents = useRef(currentCents);
-  latestCents.current = currentCents;
   const optIn = useRef(vibrate);
   optIn.current = vibrate;
 
   useEffect(() => {
     if (previous.current !== 'outbid' && status === 'outbid') {
-      waitingForPrice.current = true;
+      announce('polite', t('bid.announce.outbid', { amount: formatUsd(currentCents) }), 'outbid');
       if (optIn.current) vibrateOnce();
     }
-    if (status !== 'outbid') waitingForPrice.current = false;
     previous.current = status;
-    if (!waitingForPrice.current || currentCents <= 0) return undefined;
-    // One tick later, so a price frame that lands right behind the status change is the one read.
-    const timer = setTimeout(() => {
-      if (!waitingForPrice.current || latestCents.current <= 0) return;
-      waitingForPrice.current = false;
-      announce(
-        'polite',
-        t('bid.announce.outbid', { amount: formatUsd(latestCents.current) }),
-        'outbid',
-      );
-    }, 0);
-    return () => clearTimeout(timer);
   }, [status, currentCents]);
 
   const setVibrate = useCallback((on: boolean): void => {

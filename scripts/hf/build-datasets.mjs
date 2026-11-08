@@ -140,24 +140,9 @@ export function wavSeconds(buf) {
   return null;
 }
 
-const DEMO_URL = 'https://gavel-web.creharsh.workers.dev/demo';
-const DOCS_URL = 'https://gavel-docs.creharsh.workers.dev/docs/judges/open-data';
-const LICENSE_NAMES = {
-  'cc-by-4.0': 'CC-BY-4.0 (Creative Commons Attribution 4.0 International)',
-};
-
-const COMMON_FOOTER = (spec, ns) => {
-  const name = spec.name;
+const COMMON_FOOTER = (name, ns) => {
   const url = `https://huggingface.co/datasets/${ns}/${name}`;
   return [
-    '## License',
-    '',
-    `${LICENSE_NAMES[spec.license] ?? spec.license}. You may copy, adapt and redistribute the data, including commercially, if you credit the project (see Citation). The licence covers the data files in this dataset only; it grants no right to the marks or services of PayPal, Deepgram, Groq or any other third party named in it.`,
-    '',
-    '## Simulated or real',
-    '',
-    `Labels: ${spec.labels.join(', ')}. Read the label note at the top of this card before using any number. Nothing here is production data, and no real person or real money is involved.`,
-    '',
     '## Citation',
     '',
     '```bibtex',
@@ -169,13 +154,6 @@ const COMMON_FOOTER = (spec, ns) => {
     `  note   = {Generated from ${REPO_URL}}`,
     '}',
     '```',
-    '',
-    '## Links',
-    '',
-    `- Source code, the build in \`scripts/hf\` and the evidence: ${REPO_URL}`,
-    `- Live demo (start a room in the browser, sandbox payments): ${DEMO_URL}`,
-    `- Documentation for this data: ${DOCS_URL}`,
-    `- Evidence Explorer (charts from these datasets): https://huggingface.co/spaces/${ns}/gavel-evidence-explorer`,
     '',
     '## Contact',
     '',
@@ -254,7 +232,7 @@ function card(spec, ns) {
     '',
     spec.limitations,
     '',
-    COMMON_FOOTER(spec, ns),
+    COMMON_FOOTER(spec.name, ns),
   ];
   return fm.join('\n') + body.join('\n');
 }
@@ -274,7 +252,7 @@ function sttRows(clipSet, manifest) {
         clip_set: clipSet,
         id: clip.id,
         provider,
-        model: provider === 'deepgram' ? 'nova-3' : 'whisper-large-v3-turbo',
+        model: provider === 'deepgram' ? 'nova-2' : 'whisper-large-v3-turbo',
         reference_text: clip.text,
         provider_text: rec.text,
         latency_ms: rec.latencyMs,
@@ -424,7 +402,7 @@ function buildStt(ctx) {
           '- Audio: rendered in CI by `packages/voice/scripts/render-clips.sh` with eSpeak NG (the Ubuntu package on the GitHub runner at render time; the exact version was not recorded when the clips were rendered), 16 kHz mono PCM, 300 ms of silence either side, speaking rate 150. Five eSpeak voices or variants stand in for the voice ids of the manifest (`en-us`, `en-gb`, `en-gb-x-rp+f3`, `en-us+m3`, `en-us+f2`). No person was recorded.',
           '- Noise: the manifest has `noise` and `snrDb` fields from the original plan. They are NOT applied to these clips and are left out of this dataset.',
           '- `human` clip set (text only): the same utterances spoken by one general-purpose English voice of a commercial text-to-speech service (model `eleven_multilingual_v2`), then sent to the same two providers by the same workflow with `clips=human`. Only provider outputs and scores are published.',
-          '- Provider outputs: recorded runs of the `voice-eval` workflow (the option trials of the second round, VOI-02) sent each clip to Deepgram `nova-3` (`punctuate=true`, `smart_format=false`) and Groq `whisper-large-v3-turbo` (a prompt listing bid words, temperature 0) and stored the text and the call time. These replace the first recordings (Deepgram `nova-2`, Groq without a prompt), which scored worse and are only in the repository history. The options were chosen after reading the failures on these same clips, so the scores are in sample. No key and no request header is stored.',
+          '- Provider outputs: a recorded live run of the `voice-eval` workflow sent each clip to Deepgram (`nova-2`) and Groq (`whisper-large-v3-turbo`) and stored the text and the call time. No key and no request header is stored.',
           '- Scores: computed by `scripts/hf/build-datasets.mjs` as word error rate over lower-cased words with punctuation removed. Numerals are not converted to words, so a service that writes "300" for "three hundred" is scored as wrong; `output_has_digits` flags those rows. Parse-level scoring (did the bid parser get the amount right) lives in the repository `voice-eval` job, not here.',
         ].join('\n'),
         tables: [
@@ -492,7 +470,6 @@ function buildStt(ctx) {
         limitations: [
           '- Synthetic and clean. Real rooms have noise, accents, crosstalk and microphones; nothing here measures them. n is 24 clips.',
           '- Word error rate penalises numerals and punctuation choices that do not matter for a bid; read it with `output_has_digits`.',
-          '- The parser rules and provider options were chosen after reading the failures on these same 24 clips (in sample). The project gate for this accuracy (G5) is PARTIAL, not passed.',
           '- Provider outputs are one recorded run on one day. Services change; the numbers will not reproduce later.',
           "- Licensing of the audio: eSpeak NG is GPL-3.0-or-later software. Speech it synthesizes is generally not treated as a derivative of the program, and this dataset is released under CC-BY-4.0 on that reading. This is the maintainer's interpretation, not legal advice. If you need certainty, render your own clips with `render-clips.sh`.",
           "- Text returned by the two providers is included as recorded output of the maintainer's own API calls on synthetic input.",

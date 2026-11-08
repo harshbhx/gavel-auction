@@ -5,7 +5,6 @@ import { SCRIPTED_DEMO_PATH } from '../../net/scriptedMode';
 import { JoinCodeInput } from '../../ui';
 import { BlurText, useInView } from '../../ui/fx';
 import { MoneyFlow, StatsSection, TechSection } from './LandingExtras';
-import { ShotsSection, StorySection } from './LandingStory';
 import {
   AudienceSection,
   DOCS_URL,
@@ -17,7 +16,6 @@ import {
   REPO_URL,
   TrustSection,
 } from './LandingSections';
-import { lookupProblemText } from '../../net/apiError';
 import './landing.css';
 import './landing-extra.css';
 
@@ -53,7 +51,6 @@ export function LandingScreen({
 }: LandingScreenProps) {
   const [code, setCode] = useState('');
   const [invalid, setInvalid] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const busy = status === 'busy';
   const [past, setPast] = useState(false);
@@ -71,14 +68,8 @@ export function LandingScreen({
     if (trimmed === '' || checking) return;
     setChecking(true);
     onJoin(trimmed)
-      .then((found) => {
-        setProblem(null);
-        setInvalid(!found);
-      })
-      .catch((error: unknown) => {
-        setProblem(lookupProblemText(error));
-        setInvalid(true);
-      })
+      .then((found) => setInvalid(!found))
+      .catch(() => setInvalid(true))
       .finally(() => setChecking(false));
   };
 
@@ -91,7 +82,6 @@ export function LandingScreen({
           <span className="gv-mk-header__brand">{t('app.name')}</span>
           <nav className="gv-mk-header__nav" aria-label={t('mk.nav.label')}>
             <a href="#how">{t('mk.nav.how')}</a>
-            <a href="#screens">{t('mk.nav.product')}</a>
             <a href="#trust">{t('mk.nav.trust')}</a>
             <a href={DOCS_URL}>{t('mk.nav.docs')}</a>
           </nav>
@@ -109,16 +99,10 @@ export function LandingScreen({
             </h1>
             <p className="gv-landing__promise">{t('landing.promise')}</p>
             <p className="gv-landing__explain">{t('mk.hero.sub')}</p>
-            <p className="gv-hero__for">{t('mk.hero.for')}</p>
             <div className="gv-landing__actions">
-              <div className="gv-hero__ctas">
-                <a className="gv-cta" href={SCRIPTED_DEMO_PATH} onClick={tryDemo}>
-                  {t('mk.cta.try')}
-                </a>
-                <a className="gv-cta gv-cta--outline" href={DOCS_URL}>
-                  {t('mk.cta.docs')}
-                </a>
-              </div>
+              <a className="gv-cta" href={SCRIPTED_DEMO_PATH} onClick={tryDemo}>
+                {t('mk.cta.try')}
+              </a>
               <p className="gv-hero__note">{t('mk.hero.demoNote')}</p>
             </div>
             <p className="gv-hero__or">{t('mk.hero.or')}</p>
@@ -143,11 +127,10 @@ export function LandingScreen({
                 prefix=""
                 disabled={checking}
                 invalid={invalid}
-                {...(invalid ? { message: problem ?? t('landing.codeInvalid') } : {})}
+                {...(invalid ? { message: t('landing.codeInvalid') } : {})}
                 onChange={(next) => {
                   setCode(next);
                   setInvalid(false);
-                  setProblem(null);
                 }}
               />
               <Button type="submit" variant="outline" disabled={checking || code.trim() === ''}>
@@ -160,9 +143,7 @@ export function LandingScreen({
           </div>
         </section>
         <TechSection />
-        <StorySection />
         <HowSection />
-        <ShotsSection />
         <MoneyFlow />
         <FeaturesSection />
         <StatsSection />

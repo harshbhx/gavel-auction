@@ -9,7 +9,7 @@ status: verified
 
 ## Question
 
-Does an Orders v2 intent AUTHORIZE flow work for card and guest-checkout buyers on the <Term id="sandbox">sandbox</Term>, so that registration can offer a card and not only a PayPal wallet?
+Does an Orders v2 intent AUTHORIZE flow work for card and guest-checkout buyers on the sandbox, so that registration can offer a card and not only a PayPal wallet?
 
 ## Method
 
@@ -35,13 +35,13 @@ Decision: the card path is on (`g2_card_authorize` is true in `packages/payments
 ## Evidence
 
 - [G2-20261105T115228Z.jsonl](https://github.com/harshbhx/gavel-auction/blob/main/docs/evidence/G2/G2-20261105T115228Z.jsonl), sha256 `2a0e9ee9...fdfe`.
-- The two <Term id="authorization">authorizations</Term> from this run are the ones the early [G3](/docs/proof/gate-g3) probe reads.
+- The two authorizations from this run are the ones the early [G3](/docs/proof/gate-g3) probe reads.
 
 ## Limits
 
 <NotVerified title="AUTHORIZE only">
 
-<Term id="capture">Capture</Term> and <Term id="void">void</Term> of the guest card authorization were not run. G1 captured a PayPal-account order only, and the nightly R2 spec stops at the authorization (status CREATED). A guest card capture is therefore not shown on the sandbox.
+Capture and void of the guest card authorization were not run. G1 captured a PayPal-account order only, and the nightly R2 spec stops at the authorization (status CREATED). A guest card capture is therefore not shown on the sandbox.
 
 </NotVerified>
 

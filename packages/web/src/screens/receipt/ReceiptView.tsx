@@ -1,7 +1,5 @@
 import { useMemo } from 'react';
 
-import { WideAside } from '../WideAside';
-import { ChainCheck } from '../../chain/ChainCheck';
 import { t } from '../../copy/t';
 import { receiptSource } from '../../ladder/fromWire';
 import { SettlementPanel } from '../../ladder/SettlementPanel';
@@ -40,28 +38,24 @@ export function ReceiptView({ state, roomId, share, shared = false }: ReceiptVie
       ) : view === null ? (
         <Empty view="receipt" />
       ) : (
-        <div className="gv-receipt-wide">
-          <div className="gv-receipt-wide__main">
-            <Receipt
+        <>
+          <Receipt
+            view={view}
+            paddle={paddle}
+            itemName={itemName}
+            at={at}
+            runnerUp={runnerUp}
+            noHold={noHold}
+            {...(share === undefined ? {} : { share })}
+          />
+          {!shared && (
+            <SettlementPanel
               view={view}
-              paddle={paddle}
-              itemName={itemName}
-              at={at}
-              runnerUp={runnerUp}
-              noHold={noHold}
-              {...(share === undefined ? {} : { share })}
+              detail={detail}
+              auditHref={`/r/${encodeURIComponent(roomId)}/audit`}
             />
-            {!shared && (
-              <SettlementPanel
-                view={view}
-                detail={detail}
-                auditHref={`/r/${encodeURIComponent(roomId)}/audit`}
-              />
-            )}
-            <ChainCheck allowFile />
-          </div>
-          <WideAside />
-        </div>
+          )}
+        </>
       )}
     </main>
   );

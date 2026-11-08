@@ -77,7 +77,7 @@ Reviewers come from `.github/CODEOWNERS`. Exempt from the check: `package-lock.j
 - No `any`, no unused variables, no non-null assertions: the root lint rejects them.
 - Files are plain ASCII. The `check-ascii` job fails on any other character, in code and in docs.
 - The banned-word check also reads commit messages and pull request text.
-- Never commit a key, token or secret. Use <Term id="sandbox">sandbox</Term> values only; the secret scanners run on every pull request.
+- Never commit a key, token or secret. Use sandbox values only; the secret scanners run on every pull request.
 - Do not force-push a shared branch. If main moved, merge it into your branch (`chore(repo): merge main`).
 - `package-lock.json` must stay in sync with the workspaces. After a dependency change, run `npm install --package-lock-only` and commit the lockfile.
 
@@ -96,7 +96,7 @@ Fixtures live in `packages/<name>/fixtures/` next to the code they feed. Keep th
 </Tab>
 <Tab value="A gate run">
 
-A <Term id="gate">gate</Term> is a recorded question about PayPal sandbox behaviour. Follow the Setup and Requests lines in `docs/GATES.md` with sandbox credentials, fill in Observed, Verdict, Decision and Links, and set the date and name. A gate is closed only when its status is PASS or FAIL with a recorded decision. Read the procedure in [the gate runbook](/docs/run/gate-runbook).
+A gate is a recorded question about PayPal sandbox behaviour. Follow the Setup and Requests lines in `docs/GATES.md` with sandbox credentials, fill in Observed, Verdict, Decision and Links, and set the date and name. A gate is closed only when its status is PASS or FAIL with a recorded decision. Read the procedure in [the gate runbook](/docs/run/gate-runbook).
 
 </Tab>
 </Tabs>

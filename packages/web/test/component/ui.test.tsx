@@ -354,10 +354,6 @@ describe('JoinCodeInput', () => {
     expect(normalizeCode('GVL-4K7Q', 'GVL-', 4)).toBe('4K7Q');
     expect(normalizeCode(' 4k 7q ', 'GVL-', 4)).toBe('4K7Q');
     expect(normalizeCode('4K7QXX', 'GVL-', 4)).toBe('4K7Q');
-    expect(normalizeCode('gvl-kpgqv3', '', 6)).toBe('KPGQV3');
-    expect(normalizeCode('GVL-KPGQV3', '', 6)).toBe('KPGQV3');
-    expect(normalizeCode('KPG QV3', '', 6)).toBe('KPGQV3');
-    expect(normalizeCode('GVLABC', '', 6)).toBe('GVLABC');
   });
 });
 

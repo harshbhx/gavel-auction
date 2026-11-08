@@ -6,9 +6,8 @@ Start here: **https://gavel-web.creharsh.workers.dev/try** is the judge panel. I
 
 - No login, about 1 minute: https://gavel-web.creharsh.workers.dev/demo/scripted (a recorded room, no server, no PayPal calls)
 - Demo room, about 3 minutes: https://gavel-web.creharsh.workers.dev/demo (start a room, open the hub, join as a bidder, bid, hammer, receipt)
-- Trust and FAQ: https://docs.gavel.dualmindlab.tech/docs/judges/trust-and-faq
-- All judge pages (paths, rubric map, evidence): https://docs.gavel.dualmindlab.tech/docs/judges
-- Open data on Hugging Face: https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504 (five datasets and the Evidence Explorer Space https://huggingface.co/spaces/harshbhx/gavel-evidence-explorer)
+- Trust and FAQ: https://gavel-docs.creharsh.workers.dev/docs/judges/trust-and-faq
+- All judge pages (paths, rubric map, evidence): https://gavel-docs.creharsh.workers.dev/docs/judges
 - Sandbox buyer login: OWNER fills in from the sandbox dashboard (email and password placeholders; never committed)
 
 Draft text for the Devpost entry. Refs #99 and #321. The owner finalizes it: numbers from the /quality page, the tools and models list the Devpost form asks for, the reuse statement and the links are filled in by the owner and are marked OWNER below. Everything here is checked against `docs/GATES.md` and the code on main at the time of writing. PayPal sandbox only: no live charge is made anywhere in this project.
@@ -93,10 +92,6 @@ Latency is the open risk. Sandbox void p95 is 1235.96 ms (n=10 per call, 2026-11
 ## Built with
 
 OWNER: list the tools, models and PayPal APIs exactly as the Devpost form asks. PayPal APIs used in code: Orders v2 (intent AUTHORIZE), Payments v2 (authorize, capture, void, reauthorize), Webhooks verify-webhook-signature, JS SDK v6. Other stack: TypeScript, Node 22, React, Vite, Vitest, Playwright, GitHub Actions, Render.
-
-## Built with Render
-
-The GAVEL host, the part that must stay up while a room is live, runs on Render. It is one Node web service on the `starter` plan, always on, with a 1 GB persistent disk mounted at `/var/data`. The room log, the hash-chained ledger, the settlement journals and the hold records are files on that disk, so a redeploy does not lose an auction; this is also why the service keeps a single instance (decision records D-0006 and D-0018). The blueprint is `render.yaml` in the repository, the health check is `/healthz` with `/readyz` behind it, and secrets are set in the Render dashboard and never committed. Deploys are not triggered by pushes: GitHub Actions calls the Render deploy hook, waits until `/version` serves the new commit, then runs a smoke test, and the production workflow can roll back through the Render API. The judge rooms behind our `/try` page and the simulated demo run on this service, with the web app on Cloudflare Workers (gavel.dualmindlab.tech) in front; an API domain, api.gavel.dualmindlab.tech, is planned, pending DNS. Honest limits: one instance means a short gap on each deploy, we publish no uptime figure, and we do not use Render Postgres, cron jobs or preview environments yet; moving the stores to Render Postgres and room fan-out to a managed Redis would be the path to more than one instance. Full write-up: https://docs.gavel.dualmindlab.tech/docs/run/hosting-on-render
 
 ## Reuse statement
 

@@ -162,18 +162,15 @@ export function ScreenView({
           ? 'soft'
           : 'leading';
 
-  // The hub's small copy is decoration: no second main landmark and no second page heading.
-  const Root = preview ? 'div' : 'main';
-  const Title = preview ? 'p' : 'h1';
   return (
-    <Root
+    <main
       className={preview ? 'gv-screen gv-screen--preview' : 'gv-screen'}
-      {...(preview ? {} : { 'aria-label': lotTitle })}
+      aria-label={lotTitle}
       data-state={screenState}
     >
       {!preview && <HammerSound store={store} />}
       <header className="gv-screen__head">
-        <Title className="gv-screen__lot">{lotTitle}</Title>
+        <h1 className="gv-screen__lot">{lotTitle}</h1>
         <FrozenChip disconnected={offline} />
         <StoryRail phase={closed ? (settlement !== null ? 2 : 1) : 0} />
         {stopped && (
@@ -232,13 +229,13 @@ export function ScreenView({
           />
         )}
         {!closed && (
-          <div className="gv-screen__join">
+          <aside className="gv-screen__join">
             <QrCode url={joinUrl} size={260} />
             {code !== null && <p className="tabular">{t('screen.join', { code })}</p>}
-          </div>
+          </aside>
         )}
       </div>
-    </Root>
+    </main>
   );
 }
 

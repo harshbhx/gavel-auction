@@ -6,7 +6,7 @@ status: verified
 full: true
 ---
 
-The live auction runs over one WebSocket per client at `/ws`. Frames are JSON text, one object per frame. This page is the contract: the shapes come from `packages/shared/src/wire/`, and the behaviour from the <Term id="room">room</Term> host in `packages/server`.
+The live auction runs over one WebSocket per client at `/ws`. Frames are JSON text, one object per frame. This page is the contract: the shapes come from `packages/shared/src/wire/`, and the behaviour from the room host in `packages/server`.
 
 <Callout type="info" title="Verified against the code, not measured">
   Shapes and limits are read from the shared schemas and the server host. This is a description of the protocol, not a claim about load or latency.
@@ -31,7 +31,7 @@ Every frame is a strict object: `{ "v": 1, "t": "<type>", ... }`. A frame with a
 
 ## Frames a client may send
 
-After the join a client may send only `bid` and `confirm_response`. Auctioneer controls such as <Term id="hammer">hammer</Term>, pause and extend are **HTTP** requests, not frames.
+After the join a client may send only `bid` and `confirm_response`. Auctioneer controls such as hammer, pause and extend are **HTTP** requests, not frames.
 
 <Tabs items={['join', 'bid', 'confirm_response']}>
   <Tab value="join">

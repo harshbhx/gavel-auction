@@ -6,9 +6,9 @@ status: partial
 full: true
 ---
 
-`packages/voice` turns speech into a structured bid, or into a question for the bidder. It never decides whether a bid is valid: the <Term id="engine">engine</Term> does that. Its job ends at a decision (`auto`, `confirm` or `drop`) and, for an accepted one, a `PlaceBid` command the server submits to the room.
+`packages/voice` turns speech into a structured bid, or into a question for the bidder. It never decides whether a bid is valid: the engine does that. Its job ends at a decision (`auto`, `confirm` or `drop`) and, for an accepted one, a `PlaceBid` command the server submits to the room.
 
-<GateBadge id="G5" /> Speech accuracy was measured on synthetic audio only (PARTIAL: the first run missed the threshold, the fixes were chosen on the same clips), so spoken bids always go through the <Term id="confirm-prompt">confirm prompt</Term>. See [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) and [Gate G5](/docs/proof/gates).
+<GateBadge id="G5" /> Speech accuracy was measured on synthetic audio only (PARTIAL: the first run missed the threshold, the fixes were chosen on the same clips), so spoken bids always go through the confirm prompt. See [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) and [Gate G5](/docs/proof/gates).
 
 ## Responsibilities
 
@@ -31,7 +31,7 @@ full: true
 
 ### Parse and decide
 
-`src/parser` reads the amount and the <Term id="paddle">paddle</Term> or speaker from a transcript with rules. `src/decide` scores the reading, merges it with an optional model reading, applies the policy thresholds and writes the confirm prompt. `src/pipeline/pipeline.ts` ties segmentation, parsing and deciding together; `bid-command.ts` maps a decision to an engine `PlaceBid`.
+`src/parser` reads the amount and the paddle or speaker from a transcript with rules. `src/decide` scores the reading, merges it with an optional model reading, applies the policy thresholds and writes the confirm prompt. `src/pipeline/pipeline.ts` ties segmentation, parsing and deciding together; `bid-command.ts` maps a decision to an engine `PlaceBid`.
 
 </Step>
 <Step>

@@ -14,16 +14,16 @@ A claim without a file behind it is an opinion. This page lists the claims GAVEL
 
 <Tabs items={['PASS', 'FAIL', 'PARTIAL', 'IN PROGRESS', 'SIMULATED', 'OPEN', 'CI']}>
   <Tab value="PASS">
-    A recorded run on the PayPal <Term id="sandbox">sandbox</Term> passed and the evidence is in the repository or in a named run. The limit of each pass is stated on its row. A pass on one buyer type says nothing about another.
+    A recorded run on the PayPal sandbox passed and the evidence is in the repository or in a named run. The limit of each pass is stated on its row. A pass on one buyer type says nothing about another.
   </Tab>
   <Tab value="FAIL">
-    A recorded run failed and the stated fallback is in force. No gate reads FAIL today; <Term id="gate-g5">G5</Term> failed on its first run and now reads PARTIAL.
+    A recorded run failed and the stated fallback is in force. No gate reads FAIL today; G5 failed on its first run and now reads PARTIAL.
   </Tab>
   <Tab value="PARTIAL">
-    A recorded run exists but does not close the question. Today that is G5: wrong accept is 0.000 on synthetic, noise-free clips, but the fixes were chosen on those same clips and there is no real-room test. Spoken bids always go through the <Term id="confirm-prompt">confirm prompt</Term>.
+    A recorded run exists but does not close the question. Today that is G5: wrong accept is 0.000 on synthetic, noise-free clips, but the fixes were chosen on those same clips and there is no real-room test. Spoken bids always go through the confirm prompt.
   </Tab>
   <Tab value="IN PROGRESS">
-    A real run is under way and has no result. Today that is <Term id="gate-g3">G3</Term>, the <Term id="honor-period">honor period</Term> and reauthorize probe on the sandbox. Day 0 was 7 November 2026 at 03:06 UTC, the checkpoints are at 3.5, 4 and 5 days, and the final reading is about 12 November at 06:17 UTC. Nothing is claimed until those readings exist.
+    A real run is under way and has no result. Today that is G3, the honor period and reauthorize probe on the sandbox. Day 0 was 7 November 2026 at 03:06 UTC, the checkpoints are at 3.5, 4 and 5 days, and the final reading is about 12 November at 06:17 UTC. Nothing is claimed until those readings exist.
   </Tab>
   <Tab value="SIMULATED">
     The 30 day run uses a fake clock and a model of PayPal authorization rules (`packages/payments/src/fake`). It proves our code behaves as designed if PayPal follows the model. It does not prove PayPal follows it.
@@ -37,7 +37,7 @@ A claim without a file behind it is an opinion. This page lists the claims GAVEL
 </Tabs>
 
 <Callout type="info" title="Sandbox is not the fake">
-  Sandbox means real calls to the PayPal sandbox. <Term id="fake-paypal">Fake PayPal</Term> means an in-process model in `packages/payments/src/fake`. A row says which one it ran on. Nothing here ran against live PayPal and no real money moved.
+  Sandbox means real calls to the PayPal sandbox. Fake PayPal means an in-process model in `packages/payments/src/fake`. A row says which one it ran on. Nothing here ran against live PayPal and no real money moved.
 </Callout>
 
 ## Where the numbers come from
@@ -62,7 +62,7 @@ A claim without a file behind it is an opinion. This page lists the claims GAVEL
 - G1 remainder release is inferred from the authorization state, not read from a buyer balance.
 - Guest card capture and void were never run on the sandbox.
 - No real-room or noisy-room speech test exists.
-- The <Term id="hammer">hammer</Term> to CAPTURED latency target (2.5 s) is missed end to end (<Term id="p95">p95</Term> 3010.04 ms, n=20); the SETTLED target (6 s) is met (p95 5591.30 ms, n=20).
+- The hammer to CAPTURED latency target (2.5 s) is missed end to end (p95 3010.04 ms, n=20); the SETTLED target (6 s) is met (p95 5591.30 ms, n=20).
 - No security checklist item has been signed off.
 
 </NotVerified>

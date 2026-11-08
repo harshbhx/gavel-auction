@@ -4,9 +4,9 @@ description: Three steps, then the five mechanisms behind them.
 icon: Hammer
 ---
 
-1. **Approve a <Term id="ceiling">ceiling</Term>.** A bidder approves the most they may bid. PayPal places an <Term id="authorization">authorization</Term> <Term id="hold">hold</Term> for that amount. Nothing is charged.
-2. **<Term id="bid">Bid</Term>.** A deterministic <Term id="engine">engine</Term> accepts or rejects each bid against the ceilings and writes every event to a <Term id="hash-chain">hash-chained</Term> <Term id="ledger">ledger</Term>.
-3. **<Term id="hammer">Hammer</Term>.** The <Term id="saga">settlement saga</Term> <Term id="capture">captures</Term> the winning price, <Term id="void">voids</Term> every other hold, and records each step in a <Term id="journal">journal</Term> so a crash cannot double-charge anyone.
+1. **Approve a ceiling.** A bidder approves the most they may bid. PayPal places an authorization hold for that amount. Nothing is charged.
+2. **Bid.** A deterministic engine accepts or rejects each bid against the ceilings and writes every event to a hash-chained ledger.
+3. **Hammer.** The settlement saga captures the winning price, voids every other hold, and records each step in a journal so a crash cannot double-charge anyone.
 
 | Page | The question it answers |
 | --- | --- |

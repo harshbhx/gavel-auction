@@ -4,9 +4,7 @@ import { t } from '../../copy/t';
 import { FakePaymentsLabel } from '../../design/FakePaymentsLabel';
 import { LadderCompact } from '../../ladder/LadderCompact';
 import type { SettlementView } from '../../ladder/ladderModel';
-import { useServerNow, useSkew } from '../../net/clock';
-import { Icon } from '../../design/icons';
-import { Banner } from '../../design/primitives/Banner';
+import { useServerNow } from '../../net/clock';
 import { selectConfirmQueue, selectPrice, selectStream, selectors } from '../../store/selectors';
 import { roomStore, useRoom, type RoomStore } from '../../store/roomStore';
 import { formatUsd } from '../../util/money';
@@ -14,7 +12,6 @@ import { BidStream, rowsFromAudit } from './BidStream';
 import { ConfirmQueue } from './ConfirmQueue';
 import { ConsoleGuide } from './ConsoleGuide';
 import { PriceHeader } from './PriceHeader';
-import '../../a11y/a11y.css';
 import './console.css';
 
 /** Desktop layout from this width up (R-WEB-063). */
@@ -82,13 +79,6 @@ export function ConsoleScreen({
   const auctionId = useRoom((s) => s.snapshot?.auctionId ?? null, store);
   const roster = useRoom((s) => s.snapshot?.roster, store);
   const now = useServerNow(store);
-  const skewMs = useSkew(store);
-  const skew =
-    skewMs > 0 ? (
-      <Banner tone="warn" icon={<Icon name="warning" />}>
-        {t('console.skew', { s: Math.round(skewMs / 1000) })}
-      </Banner>
-    ) : null;
 
   const left = (
     <section className="gv-console-panel gv-console-panel--lot" aria-label={t('bid.price')}>
@@ -151,9 +141,7 @@ export function ConsoleScreen({
   if (wide) {
     return (
       <main className="gv-console" data-layout="wide">
-        <h1 className="gv-sr-only">{t('demo.roleConsole')}</h1>
         <FakePaymentsLabel />
-        {skew}
         <div className="gv-console-columns" data-testid="console-columns">
           {left}
           {centre}
@@ -171,9 +159,7 @@ export function ConsoleScreen({
   ];
   return (
     <main className="gv-console" data-layout="stacked">
-      <h1 className="gv-sr-only">{t('demo.roleConsole')}</h1>
       <FakePaymentsLabel />
-      {skew}
       <div className="gv-console-tabs" role="tablist">
         {tabs.map((x) => (
           <button

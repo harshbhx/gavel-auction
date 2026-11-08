@@ -8,7 +8,7 @@ full: true
 
 A threat model answers three questions: what are we protecting, who might attack it, and what stops them. This page is a design map of GAVEL, read from the code. It is not an audit. The security checklist has 18 items and none is signed off yet (see [the security review](/docs/safety/security-review)).
 
-Everything here is the PayPal **<Term id="sandbox">sandbox</Term>**. No real money moves.
+Everything here is the PayPal **sandbox**. No real money moves.
 
 <ThreatModelDiagram />
 
@@ -27,7 +27,7 @@ Think of GAVEL as a building with two kinds of keys.
   <Tab value="ADMIN_KEY">
     **ADMIN_KEY is the operator's master password.** It is not a ticket and not tied to an auction. It is sent in the `x-admin-key` header and checked on its own.
 
-    - It can create an auction, replace an auctioneer link, list rooms, <Term id="void">void</Term> every <Term id="hold">hold</Term> of an auction, release a settlement from review, read metrics and export the <Term id="ledger">ledger</Term>.
+    - It can create an auction, replace an auctioneer link, list rooms, void every hold of an auction, release a settlement from review, read metrics and export the ledger.
     - It is compared in constant time, must be at least 24 characters in production and must differ from TOKEN_SECRET, so one leak does not hand over both.
     - A leaked auctioneer link is not an admin problem: the operator uses ADMIN_KEY to issue a new link, which kills every earlier auctioneer token.
   </Tab>
@@ -153,7 +153,7 @@ A trust boundary is a line where data passes from something we do not control to
 
 <NotVerified title="This is a design map, not a sign-off">
 
-- Security checklist: all eight P0 items are PASS as of 2026-11-07, and 16 of the original 18 pass. SEC-15 (log scan), SEC-19 and SEC-20 are open and wait for an independent reviewer; automated checks exist for most items.
+- All 18 items of the security checklist (SEC-01 to SEC-18) are OPEN. Automated checks exist for most of them; a second person has not signed any item off.
 - Tampered-webhook rejection is tested against the fake PayPal only. Retry behaviour of real PayPal deliveries is unverified.
 - The sandbox accounts hold no real money, so the stakes of a leaked sandbox secret are low, but they are still kept out of the repository, logs and the web bundle.
 - Staging security tests and load tests stay unverified until a staging URL exists.

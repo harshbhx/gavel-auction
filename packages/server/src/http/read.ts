@@ -29,13 +29,9 @@ const Query = z
 export function mountRead(app: HttpApp): void {
   app.get('/api/auctions/:id/snapshot', async (c: Ctx) => {
     const auctionId = auctionIdOf(c);
-    const who = await authenticate(c, auctionId, ['auctioneer', 'session', 'screen', 'reviewer']);
+    const who = await authenticate(c, auctionId, ['auctioneer', 'session', 'screen']);
     const role =
-      who.kind === 'session'
-        ? 'bidder'
-        : who.kind === 'screen' || who.kind === 'reviewer'
-          ? 'screen'
-          : 'auctioneer';
+      who.kind === 'session' ? 'bidder' : who.kind === 'screen' ? 'screen' : 'auctioneer';
     if (!authorize('snapshot', role).ok) throw new GavelError('forbidden', 'not allowed');
     const room = await roomFor(c.deps, auctionId);
     const { frame, snapshot } = await snapshotFor(c.deps, room, role, who.sub, who.bidderId);
@@ -45,8 +41,8 @@ export function mountRead(app: HttpApp): void {
 
   app.get('/api/auctions/:id/events', async (c: Ctx) => {
     const auctionId = auctionIdOf(c);
-    const who = await authenticate(c, auctionId, ['auctioneer', 'screen', 'reviewer']);
-    const role = who.kind === 'screen' || who.kind === 'reviewer' ? 'screen' : 'auctioneer';
+    const who = await authenticate(c, auctionId, ['auctioneer', 'screen']);
+    const role = who.kind === 'screen' ? 'screen' : 'auctioneer';
     const raw = Object.fromEntries(c.url.searchParams);
     const { after, limit } = parseBody(Query, raw);
     await roomFor(c.deps, auctionId);

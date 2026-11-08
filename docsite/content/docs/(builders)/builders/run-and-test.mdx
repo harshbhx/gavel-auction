@@ -22,7 +22,7 @@ nvm use
 npm ci
 ```
 
-Copy `.env.example` to `.env` only when a task needs configuration, with PayPal <Term id="sandbox">sandbox</Term> values only.
+Copy `.env.example` to `.env` only when a task needs configuration, with PayPal sandbox values only.
 
 ## Root scripts
 
@@ -70,7 +70,7 @@ Copy `.env.example` to `.env` only when a task needs configuration, with PayPal 
 
 | Command | What it does |
 | --- | --- |
-| `npm run test -w @gavel/payments` | Vitest against the <Term id="fake-paypal">fake PayPal</Term> |
+| `npm run test -w @gavel/payments` | Vitest against the fake PayPal |
 | `npm run check:deps -w @gavel/payments` | Fails on any runtime dependency other than `zod` |
 | `npm run demo:settle -w @gavel/payments` | Settlement demo with a crash and a resume |
 | `npm run gate:g0`, `gate:g1`, `gate:g2`, `gate:g3`, `gate:g4`, `gate:g4-events`, `gate:idem` | Gate scripts. They call the PayPal sandbox and need sandbox credentials; normally started through their workflows |
@@ -146,7 +146,7 @@ Path-filtered workflows run only when relevant: `engine-readiness`, `server-post
 
 ### On a schedule and by hand
 
-The nightly sandbox specs, the <Term id="gate-g3">G3</Term> probe, the judge smoke, the daily backup and the weekly checks run on a schedule. Gates and measurements run by hand. See the workflow tabs on [Infra](/docs/builders/packages/infra).
+The nightly sandbox specs, the G3 probe, the judge smoke, the daily backup and the weekly checks run on a schedule. Gates and measurements run by hand. See the workflow tabs on [Infra](/docs/builders/packages/infra).
 
 </Step>
 </Steps>
