@@ -29,7 +29,7 @@ export class DemoRoomError extends Error {
   }
 }
 
-function failureText(reason: DemoFailure | null): string {
+export function failureText(reason: DemoFailure | null): string {
   if (reason === 'demoOff') return t('demo.failedOff');
   if (reason === 'unauthorized') return t('demo.failedKey');
   if (reason === 'roomCap') return t('demo.failedCap');

@@ -90,6 +90,61 @@ test.describe('demo launcher', () => {
   });
 });
 
+test.describe('judge panel', () => {
+  const caps = (judgeRooms: boolean, accepting: boolean) => ({
+    status: 200,
+    json: { judgeRooms, accepting },
+  });
+
+  test('rooms on', async ({ page, shoot }) => {
+    await mockApi(page, () => caps(true, true));
+    await page.goto('/try');
+    await expect(page.getByText(t('try.status.on'))).toBeVisible();
+    await shoot('try', 'rooms-on');
+  });
+
+  test('rooms off', async ({ page, shoot }) => {
+    await mockApi(page, () => ({ status: 404 }));
+    await page.goto('/try');
+    await expect(page.getByText(t('try.s1.open'))).toBeVisible();
+    await shoot('try', 'rooms-off');
+  });
+
+  test('rooms full', async ({ page, shoot }) => {
+    await mockApi(page, () => caps(true, false));
+    await page.goto('/try');
+    await expect(page.getByText(t('try.status.busy'))).toBeVisible();
+    await shoot('try', 'rooms-full');
+  });
+
+  test('server unreachable', async ({ page, shoot }) => {
+    await mockApi(page, () => 'fail');
+    await page.goto('/try');
+    await expect(page.getByText(t('try.status.unreachable'))).toBeVisible();
+    await shoot('try', 'unreachable');
+  });
+
+  test('create refused', async ({ page, shoot }) => {
+    await mockApi(page, (req) => (req.method === 'POST' ? { status: 503 } : caps(true, true)));
+    await page.goto('/try');
+    await expect(page.getByText(t('try.status.on'))).toBeVisible();
+    await page.getByRole('button', { name: t('try.s1.cta') }).click();
+    await expect(page.getByText(t('demo.failedBusy'), { exact: false })).toBeVisible();
+    await shoot('try', 'create-refused');
+  });
+
+  test('code not found', async ({ page, shoot }) => {
+    await mockApi(page, (req) =>
+      req.path.endsWith('/capabilities') ? caps(true, true) : { status: 404 },
+    );
+    await page.goto('/try');
+    await page.getByLabel(t('ui.code.char', { n: 1, length: 6 })).fill('NOROOM');
+    await page.getByRole('button', { name: t('try.s2.go') }).click();
+    await expect(page.getByText(t('landing.codeInvalid')).first()).toBeVisible();
+    await shoot('try', 'code-not-found');
+  });
+});
+
 test.describe('join', () => {
   test('open room', async ({ page, shoot }) => {
     await mockApi(page, () => ({ status: 200, json: OPEN_ROOM }));

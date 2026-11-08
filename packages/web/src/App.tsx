@@ -10,7 +10,7 @@ import {
 import { Cents, type MsgId } from '@gavel/shared';
 import { PROTOCOL_VERSION } from './wire';
 import { t } from './copy/t';
-import { createJudgeRoom, judgeRoomsAvailable } from './net/judgeRooms';
+import { createJudgeRoom, judgeRoomsAvailable, judgeRoomsStatus } from './net/judgeRooms';
 import { socketUrl, startLiveRoom, type LiveRoom } from './net/liveRoom';
 import { Announcer } from './a11y/Announcer';
 import type { PaymentsMode } from './config';
@@ -42,7 +42,7 @@ import { LiveConsole } from './screens/console/LiveConsole';
 import { GalleryScreen } from './screens/gallery/GalleryScreen';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
 import { LandingScreen } from './screens/landing/LandingScreen';
-import { TryScreen } from './screens/try/TryScreen';
+import { JudgePanel, type RoomsState } from './screens/try/JudgePanel';
 import { fetchOpsSummary, OpsView, type OpsSummaryView } from './ops/OpsView';
 import { DemoLauncher, DemoRoomError, type DemoLinks } from './screens/demo/DemoLauncher';
 import { ScriptedJoin } from './screens/demo/ScriptedJoin';
@@ -450,20 +450,49 @@ function LandingRoute({ api }: { api: Api | undefined }) {
       onStart={() => navigate('/demo')}
       onScripted={() => navigate(SCRIPTED_DEMO_PATH)}
       onJudges={() => navigate('/try')}
-      onJoin={async (code) => {
-        if (api === undefined) return false;
-        let id: string;
-        try {
-          const body = (await fetchJson(
-            `${api.apiBase}/api/auctions/${encodeURIComponent(code)}`,
-          )) as { auctionId?: unknown };
-          id = typeof body.auctionId === 'string' && body.auctionId !== '' ? body.auctionId : code;
-        } catch {
-          return false;
-        }
-        navigate(`/join/${encodeURIComponent(id)}`);
-        return true;
+      onJoin={(code) => joinByCode(api, code)}
+    />
+  );
+}
+
+/** Finds a room by its join code and opens the join page. Resolves false when there is none. */
+async function joinByCode(api: Api | undefined, code: string): Promise<boolean> {
+  if (api === undefined) return false;
+  let id: string;
+  try {
+    const body = (await fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(code)}`)) as {
+      auctionId?: unknown;
+    };
+    id = typeof body.auctionId === 'string' && body.auctionId !== '' ? body.auctionId : code;
+  } catch {
+    return false;
+  }
+  navigate(`/join/${encodeURIComponent(id)}`);
+  return true;
+}
+
+/** The judge panel: asks the host about live rooms and starts one without an operator key. */
+function TryRoute({ api }: { api: Api | undefined }) {
+  const [rooms, setRooms] = useState<RoomsState>(api === undefined ? 'noServer' : 'checking');
+  useEffect(() => {
+    if (api === undefined) return undefined;
+    let live = true;
+    judgeRoomsStatus(api.apiBase).then((next) => {
+      if (live) setRooms(next);
+    });
+    return () => {
+      live = false;
+    };
+  }, [api]);
+  return (
+    <JudgePanel
+      rooms={rooms}
+      createRoom={async () => {
+        if (api === undefined) throw new Error('no api');
+        return createJudgeRoom(api.apiBase);
       }}
+      openRoom={navigate}
+      joinByCode={(code) => joinByCode(api, code)}
     />
   );
 }
@@ -1014,7 +1043,7 @@ function Routed({
       />
     );
   }
-  if (id === 'try') return <TryScreen onStart={() => navigate('/demo')} />;
+  if (id === 'try') return <TryRoute api={api} />;
   if (id === 'notFound') return <NotFound />;
   if (id === 'replay') return <ReplayRoute match={match} />;
   if (id === 'audit' && roomId !== undefined && who === null && !hasReviewerAccess(roomId)) {

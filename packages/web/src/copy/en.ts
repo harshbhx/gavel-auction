@@ -179,31 +179,129 @@ export const en = {
   'demo.failedBusy':
     'Judge rooms are busy or switched off right now. Try again soon, or run the scripted demo.',
   'demo.scriptedInstead': 'Run scripted demo instead',
-  'try.title': 'Try a real auction in two minutes',
-  'try.lead': 'This build talks to the PayPal sandbox. No real money moves.',
-  'try.step1.title': 'Start a room',
-  'try.step1.body':
-    'Choose Start a demo auction. The server opens a short room for you and takes you to the auctioneer console.',
-  'try.step2.title': 'Invite a bidder',
-  'try.step2.body':
-    'Open the big screen link in a second window, or scan its QR code with a phone. The bidder link works in another tab too.',
-  'try.step3.title': 'Approve a hold',
-  'try.step3.body':
-    'Enter a display name and pick a ceiling. PayPal opens its sandbox login. Sign in with a sandbox buyer account and approve the hold.',
-  'try.step4.title': 'Bid, then hammer',
-  'try.step4.body':
-    'Place a bid from the bidder view. In the console press hammer. The winning amount settles from the hold and every other hold is released.',
-  'try.credsTitle': 'Sandbox buyer credentials',
-  'try.credsBody':
-    'See the Devpost testing instructions for the sandbox buyer logins. They are not shown on this page.',
-  'try.expectTitle': 'What you should see',
-  'try.expectBody':
-    'Your hold shows as held while bidding. After the hammer the console and the audit trail show the settlement and the released holds.',
-  'try.limits':
-    'A room lasts about thirty minutes and the host limits how many run at once. If it is busy, the scripted demo still works.',
-  'try.tourTitle': 'Ninety second guided tour',
-  'try.tourBody': 'No sandbox login needed. This replays a recorded room in your browser.',
-  'try.tourLink': 'Watch the guided tour',
+  'try.title': 'Judge panel',
+  'try.kicker': 'GAVEL / For judges',
+  'try.lead':
+    'A guided path through a live auction on the PayPal sandbox. About five minutes. No real money moves.',
+  'try.nav.label': 'On this page',
+  'try.nav.path': 'The path',
+  'try.nav.screens': 'Screens',
+  'try.nav.buyer': 'Sandbox buyer',
+  'try.nav.trust': 'Evidence',
+  'try.nav.faq': 'Questions',
+  'try.pitch.title': 'What GAVEL is, in 20 seconds',
+  'try.pitch.lead':
+    'Online auctions break at the hammer: the winner may never follow through. GAVEL secures the money before bidding starts.',
+  'try.beat1.title': 'Hold',
+  'try.beat1.body':
+    'Each bidder approves a PayPal hold as their ceiling. Held, not charged. A bid above the hold is refused.',
+  'try.beat2.title': 'Bid',
+  'try.beat2.body':
+    'Bids arrive by phone, QR or voice. A spoken bid counts only after the bidder confirms it.',
+  'try.beat3.title': 'Hammer',
+  'try.beat3.body':
+    'Only the winning price settles from the winner hold. Every other hold is released. A receipt and an audit trail record it.',
+  'try.status.checking': 'Checking the server',
+  'try.status.on': 'Live rooms are on',
+  'try.status.busy': 'Live rooms are full or paused',
+  'try.status.off': 'Live rooms are switched off',
+  'try.status.unreachable': 'The server is not answering',
+  'try.status.noServer': 'This build has no server',
+  'try.path.title': 'Your path',
+  'try.path.lead': 'Do these in order. Each step opens from the one before.',
+  'try.step': 'Step {n}',
+  'try.s1.title': 'Start a demo room',
+  'try.s1.body':
+    'One tap opens a short room on the sandbox and takes you to your room page: projection screen, join ticket, console and bidder links.',
+  'try.s1.cta': 'Start a demo room',
+  'try.s1.creating': 'Creating room',
+  'try.s1.open': 'Rooms are off, full or unreachable. The scripted demo below needs no server.',
+  'try.s1.failed': 'We could not create a room.',
+  'try.s2.title': 'Join as a bidder',
+  'try.s2.body':
+    'On your room page, scan the QR with a phone or open the bidder link in a second tab. If a colleague already has a room, type its code here.',
+  'try.s2.go': 'Find room',
+  'try.s2.checking': 'Looking for the room',
+  'try.s2.noServer': 'Joining by code needs a server. Start a room or run the scripted demo.',
+  'try.s3.title': 'Approve a hold and bid',
+  'try.s3.body':
+    'Enter a name, pick a ceiling, sign in to the PayPal sandbox with the buyer login from the Devpost testing instructions and approve the hold. Then place a bid.',
+  'try.s4.title': 'Hammer from the console',
+  'try.s4.body':
+    'Open the console from your room page. Start the lot, watch the bid arrive, then hold the hammer button for 3 seconds.',
+  'try.s5.title': 'See the receipt and the audit trail',
+  'try.s5.body':
+    'The bidder screen shows a receipt. The audit trail lists every event of the room, in order, with the settlement.',
+  'try.flow.label': 'What you will see',
+  'try.flow.hold': 'Hold: held, not charged',
+  'try.flow.hammer': 'Hammer: winner settles, others released',
+  'try.flow.receipt': 'Receipt and audit trail',
+  'try.script.title': 'No sandbox login? Run the scripted demo',
+  'try.script.body':
+    'A recorded room that plays in your browser: hold, bids, hammer and receipt in about ninety seconds. It makes no PayPal calls and is labelled as scripted.',
+  'try.script.run': 'Run the scripted demo',
+  'try.script.join': 'Open the scripted bidder',
+  'try.screens.title': 'Every screen and who it is for',
+  'try.screens.lead':
+    'Your room page, step 1, holds the links for the screens that need a key. They open from there.',
+  'try.screens.colScreen': 'Screen',
+  'try.screens.colFor': 'For',
+  'try.screens.colHow': 'How to open it',
+  'try.screens.caption': 'GAVEL screens, who uses each and how to reach it',
+  'try.screens.room': 'Room page',
+  'try.screens.roomFor': 'You, the host',
+  'try.screens.roomHow': 'Opens when the room is created. It holds all the links below.',
+  'try.screens.projection': 'Projection screen',
+  'try.screens.projectionFor': 'The room',
+  'try.screens.projectionHow': 'Open screen on the room page. Put it on a big display.',
+  'try.screens.bidder': 'Bidder',
+  'try.screens.bidderFor': 'Bidders',
+  'try.screens.bidderHow': 'Scan the QR or use the join link. No key needed.',
+  'try.screens.console': 'Auctioneer console',
+  'try.screens.consoleFor': 'The auctioneer',
+  'try.screens.consoleHow': 'Open console on the room page. The link carries a private key.',
+  'try.screens.audit': 'Audit trail',
+  'try.screens.auditFor': 'Reviewers and auditors',
+  'try.screens.auditHow':
+    'Needs a reviewer key from the room. The scripted demo shows the same view.',
+  'try.key.title': 'Key-protected real flow',
+  'try.key.body':
+    'When live rooms are switched off, Start a demo room asks for an operator key. Keys are kept by the team and are never shown on this site. You do not need one: the scripted demo covers the same screens, and a live room covers the real PayPal sandbox.',
+  'try.buyer.title': 'PayPal sandbox buyer',
+  'try.buyer.lead':
+    'Approving a hold needs a sandbox buyer account. The logins are in the Devpost testing instructions, not on this site.',
+  'try.buyer.step1': 'Open the Devpost entry and copy the sandbox buyer email and password.',
+  'try.buyer.step2':
+    'In GAVEL pick a ceiling and choose to approve the hold. A PayPal window opens.',
+  'try.buyer.step3':
+    'Sign in with the sandbox buyer and approve. Allow pop-ups for this site if the window does not open.',
+  'try.buyer.step4': 'Back in GAVEL the hold shows as held. Bid up to your ceiling.',
+  'try.buyer.warn': 'Use only the sandbox buyer. Never enter a real PayPal account or a real card.',
+  'try.limits.title': 'Limits to know',
+  'try.limits.body':
+    'A room lasts about thirty minutes and the host limits how many run at once. Rooms can be lost if the server restarts. If a room is gone, start a new one.',
+  'try.faq.title': 'Judge questions',
+  'try.faq.q1': 'Does this move real money?',
+  'try.faq.a1':
+    'No. Every hold runs on the PayPal sandbox and the sandbox notice stays on every page.',
+  'try.faq.q2': 'Why a hold up front?',
+  'try.faq.a2':
+    'A hold sets money aside up to the ceiling without taking it. Only the winning price settles. The rest is released at the hammer.',
+  'try.faq.q3': 'The PayPal window did not open',
+  'try.faq.a3': 'Allow pop-ups for this site and press approve again. The page keeps your ceiling.',
+  'try.faq.q4': 'My room disappeared',
+  'try.faq.a4':
+    'Rooms last about thirty minutes and can be lost on a server restart. Start a new room from this page.',
+  'try.faq.q5': 'Start a demo room says rooms are full',
+  'try.faq.a5':
+    'The host caps how many run at once. Try again in a minute or run the scripted demo, which needs no server.',
+  'try.faq.q6': 'What is verified and what is not?',
+  'try.faq.a6':
+    'The evidence section lists each sandbox gate with its status, including the ones still open. The docs site links the raw runs.',
+  'try.more.title': 'Read more',
+  'try.more.docs': 'Docs site: diagrams, proof pages and judge paths',
+  'try.more.repo': 'Source code on GitHub',
+  'try.more.landing': 'Back to the GAVEL home page',
   'demo.roleConsole': 'Auctioneer console',
   'demo.roleScreen': 'Big screen',
   'demo.roleBidder': 'Bidder QR',
