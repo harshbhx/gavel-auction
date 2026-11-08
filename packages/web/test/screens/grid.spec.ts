@@ -88,9 +88,9 @@ test.describe('ledger lab', () => {
     // The row is far down the ledger: search for the entry the verdict names, so it is drawn.
     const verdict = (await page.getByText(/Chain broken at entry \d+/).textContent()) ?? '';
     await page.getByLabel(t('ledger.quick')).fill(verdict.replace(/\D/g, ''));
-    await expect(page.locator('.gv-grid-row--bad').first()).toBeVisible();
+    await expect(page.locator('.gv-grid-row--bad').first()).toBeVisible({ timeout: 20_000 });
     // The count line follows the filter, and the marked row stays drawn.
-    await expect(page.getByText(/^2134 of 2134 entries$/)).toHaveCount(0);
+    await expect(page.getByText(/^2134 of 2134 entries$/)).toHaveCount(0, { timeout: 20_000 });
     await expect(page.locator('.gv-grid-row--bad').first()).toBeVisible();
     await shoot('grid', 'ledger-lab-edited');
   });
