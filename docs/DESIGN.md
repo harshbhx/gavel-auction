@@ -4,12 +4,12 @@ The app UI follows the "P2 Scoreboard" direction: flat panels, hard offset shado
 
 ## Files
 
-| File                      | Purpose                                                                                         |
-| ------------------------- | ----------------------------------------------------------------------------------------------- |
-| `src/design/tokens.css`   | Type, space, radius, border, elevation, motion tokens; light colours (Newsprint and Signal)     |
-| `src/design/themes.css`   | Internal dark and projector themes (not user-selectable)                                        |
-| `src/design/pairs.ts`     | Every foreground and background pair the UI uses, with its minimum ratio                        |
-| `src/ui/ui.css`           | Styles for the shared components                                                                |
+| File                    | Purpose                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| `src/design/tokens.css` | Type, space, radius, border, elevation, motion tokens; light colours (Newsprint and Signal) |
+| `src/design/themes.css` | Internal dark and projector themes (not user-selectable)                                    |
+| `src/design/pairs.ts`   | Every foreground and background pair the UI uses, with its minimum ratio                    |
+| `src/ui/ui.css`         | Styles for the shared components                                                            |
 | `src/ui/*.tsx`            | The shared components (see below)                                                               |
 
 ## Tokens
