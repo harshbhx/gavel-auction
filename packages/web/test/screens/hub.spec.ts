@@ -200,6 +200,12 @@ test.describe('links that lost their token', () => {
 });
 
 test.describe('scripted demo in Newsprint', () => {
+  // Reduced motion keeps the demo on its first beat until a step button is pressed, so each
+  // frame is a stable shot of one beat.
+  test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+  });
+
   test('screen, with a QR that opens the scripted join page', async ({ page, shoot }) => {
     await mockApi(page, () => ({ status: 404 }));
     await page.goto('/demo/scripted');
@@ -228,5 +234,90 @@ test.describe('scripted demo in Newsprint', () => {
     await ready(page);
     await expect(page.getByText(t('scriptedDemo.banner'))).toBeVisible();
     await shoot('scripted', 'bidder');
+  });
+});
+
+test.describe('scripted demo player', () => {
+  test('one readable beat at a time, no layout shift', async ({ page, shoot }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await mockApi(page, () => ({ status: 404 }));
+    await page.goto('/demo/scripted');
+    await ready(page);
+    const player = page.getByTestId('scripted-player');
+    const caption = page.getByTestId('scripted-caption');
+    const next = page.getByRole('button', { name: t('scriptedDemo.next') });
+    const before = await caption.boundingBox();
+    const playerBefore = await player.boundingBox();
+    await expect(caption).toContainText(t('scriptedDemo.b0.label'));
+    await shoot('scripted-player', '1-holds');
+    await next.click();
+    await next.click();
+    await expect(caption).toContainText(t('scriptedDemo.b2.label'));
+    await expect(page.getByTestId('screen-price')).toContainText('150.00');
+    await shoot('scripted-player', '3-outbid');
+    for (let i = 0; i < 4; i += 1) await next.click();
+    await expect(caption).toContainText(t('scriptedDemo.b6.label'));
+    await expect(page.getByTestId('sold')).toBeAttached();
+    await shoot('scripted-player', '7-hammer');
+    await next.click();
+    await next.click();
+    await expect(caption).toContainText(t('scriptedDemo.b8.label'));
+    await shoot('scripted-player', '9-capture');
+    await next.click();
+    await expect(caption).toContainText(t('scriptedDemo.b9.label'));
+    await shoot('scripted-player', '10-receipt');
+    expect(await caption.boundingBox()).toEqual(before);
+    expect(await player.boundingBox()).toEqual(playerBefore);
+  });
+
+  test('plays by itself, slowly, and pauses', async ({ page }) => {
+    await mockApi(page, () => ({ status: 404 }));
+    await page.goto('/demo/scripted');
+    await ready(page);
+    const progress = page.getByTestId('scripted-progress');
+    await expect(progress).toHaveText(t('scriptedDemo.progress', { n: 1, total: 10 }));
+    await page.waitForTimeout(1500);
+    await expect(progress).toHaveText(t('scriptedDemo.progress', { n: 1, total: 10 }));
+    await expect(progress).toHaveText(t('scriptedDemo.progress', { n: 2, total: 10 }), {
+      timeout: 3500,
+    });
+    await page.getByRole('button', { name: t('scriptedDemo.pause') }).click();
+    await page.waitForTimeout(4000);
+    await expect(progress).toHaveText(t('scriptedDemo.progress', { n: 2, total: 10 }));
+  });
+});
+
+test.describe('joining with only the room code', () => {
+  test('a watcher joins as a bidder from the join page, no invite needed', async ({ page }) => {
+    const seen: string[] = [];
+    await mockApi(page, (req) => {
+      seen.push(`${req.method} ${req.path}`);
+      if (req.method === 'POST' && req.path === '/api/judge/join') {
+        return { status: 200, json: { sessionToken: 'plainly-fake-session', bidderId: 'B9' } };
+      }
+      return hubApi(req);
+    });
+    await page.goto(`/join/${ROOM}?c=${CODE}`);
+    await page.getByRole('button', { name: t('join.asBidder') }).click();
+    await expect(page).toHaveURL(new RegExp(`/r/${ROOM}/register`));
+    await expect.poll(() => seen.includes('POST /api/judge/join')).toBe(true);
+    await expect(page.getByText(t('reg.expired'))).toHaveCount(0);
+  });
+
+  test('the hub join link and QR carry the code', async ({ page }) => {
+    await mockApi(page, hubApi);
+    await page.goto(HUB);
+    await expect(page.getByTestId('hub-join-link')).toContainText(`/join/${ROOM}?c=${CODE}`);
+    await expect(page.getByTestId('hub-join-open')).toHaveAttribute(
+      'href',
+      new RegExp(`/join/${ROOM}\\?c=${CODE}$`),
+    );
+  });
+
+  test('a watcher on the bid page can join', async ({ page }) => {
+    await mockApi(page, hubApi);
+    await page.goto(`/r/${ROOM}/bid`);
+    await expect(page.getByRole('heading', { level: 1, name: t('watch.title') })).toBeVisible();
+    await expect(page.getByRole('button', { name: t('join.asBidder') })).toBeVisible();
   });
 });

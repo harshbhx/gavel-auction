@@ -49,7 +49,7 @@ describe('judge rooms: boot validation', () => {
     const { url } = await boot({});
     expect((await fetch(`${url}/api/judge/rooms`, { method: 'POST' })).status).toBe(404);
     const probe = await fetch(`${url}/api/judge/capabilities`);
-    expect(await probe.json()).toEqual({ judgeRooms: false, accepting: false });
+    expect(await probe.json()).toEqual({ judgeRooms: false, accepting: false, simHolds: false });
   });
 
   it('refuses the flag on a production-like host without sandbox PayPal', async () => {

@@ -42,6 +42,16 @@ const EnvObject = z.object({
   DATA_DIR: z.string().min(1).default('./data'),
   DATABASE_URL: z.string().min(1).optional(),
   CORS_ORIGINS: csv.default(''),
+  /**
+   * Origin of the web app. Every link the API hands out (console, screen, invite, receipt) is
+   * built on it, since PUBLIC_URL is the API host and has no pages. Left out, the first entry of
+   * CORS_ORIGINS is used, then PUBLIC_URL. A path or trailing slash is dropped.
+   */
+  WEB_ORIGIN: z
+    .string()
+    .url()
+    .transform((v) => new URL(v).origin)
+    .optional(),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   DEMO_MODE: flag.default('0'),
   /** Most live demo rooms the demo rooms route keeps; further creates answer 429. */
@@ -53,8 +63,10 @@ const EnvObject = z.object({
   JUDGE_ROOMS: boolFlag.default('0'),
   /** Boot-time state of the judge rooms kill switch; the admin route flips it at runtime. */
   JUDGE_ROOMS_PAUSED: boolFlag.default('0'),
+  /** Simulated holds (no PayPal login) inside judge rooms. Has no effect while JUDGE_ROOMS is off. */
+  JUDGE_SIM_HOLDS: boolFlag.default('1'),
   /** Most judge rooms live at once. */
-  JUDGE_ROOMS_MAX: int(1).pipe(z.number().max(50)).default('5'),
+  JUDGE_ROOMS_MAX: int(1).pipe(z.number().max(50)).default('15'),
   /** Lifetime of a judge room in ms before the sweeper ends it (at most 2 hours). */
   JUDGE_ROOM_TTL_MS: int(60_000).pipe(z.number().max(7_200_000)).default('1800000'),
   /** Judge rooms one source address may create per hour. */

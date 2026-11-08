@@ -72,7 +72,9 @@ function DemoLinksList() {
 function StartOnMount() {
   useEffect(() => {
     const id = window.setTimeout(() => {
-      document.querySelector<HTMLButtonElement>('main[data-route="demo"] > button')?.click();
+      document
+        .querySelector<HTMLButtonElement>('main[data-route="demo"] .gv-demo__start button')
+        ?.click();
     }, 50);
     return () => window.clearTimeout(id);
   }, []);
