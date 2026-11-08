@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useHammerAlert } from '../../alerts/useAlerts';
 import { t } from '../../copy/t';
 import { useConnection } from '../../net/connection';
@@ -9,9 +9,11 @@ import { formatUsd } from '../../util/money';
 import { formatCountdown } from '../../util/time';
 import { publicSource } from '../../ladder/fromWire';
 import { SettlementPanel } from '../../ladder/SettlementPanel';
-import { QrCode } from '../join/QrCode';
 import { capturedTotal, lotRaise, thermometer } from './fundraiser';
 import { FundraiserThermometer } from './Thermometer';
+
+// The QR encoder is a lazy chunk (R-WEB-009), like on the join page and the hub.
+const QrCode = lazy(() => import('../join/QrCode'));
 import { StoryRail } from './StoryRail';
 import { FrozenChip, PriceFlash, Sold, type SettleCounts, type SoldOutcome } from './Sold';
 import type { SettlementDetail } from '../../store/roomReducer';
@@ -235,7 +237,9 @@ export function ScreenView({
         )}
         {!closed && (
           <div className="gv-screen__join">
-            <QrCode url={joinUrl} size={260} />
+            <Suspense fallback={null}>
+              <QrCode url={joinUrl} size={260} />
+            </Suspense>
             {code !== null && <p className="tabular">{t('screen.join', { code })}</p>}
           </div>
         )}

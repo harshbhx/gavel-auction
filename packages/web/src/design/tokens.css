@@ -60,6 +60,38 @@
   src: url('./fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2-variations');
 }
 
+/* Metric-matched fallbacks: a local system face scaled so the first paint takes about the room the
+ * web font will, which keeps the swap from moving the layout (CLS). The numbers come from the font
+ * tables (unitsPerEm, hhea ascent and descent, frequency-weighted advance widths of English text)
+ * against Arial: size-adjust is the width ratio, the overrides are the font's own ascent and
+ * descent divided by size-adjust. Derived, not browser-measured. */
+@font-face {
+  font-family: 'Public Sans Fallback';
+  src: local('Arial'), local('Helvetica Neue'), local('Helvetica'), local('Liberation Sans');
+  size-adjust: 103%;
+  ascent-override: 92%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Big Shoulders Fallback';
+  src: local('Arial Narrow'), local('Arial'), local('Helvetica'), local('Liberation Sans');
+  size-adjust: 58%;
+  ascent-override: 170%;
+  descent-override: 37%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono Fallback';
+  src: local('Courier New'), local('Menlo'), local('Consolas'), local('Liberation Mono');
+  size-adjust: 100%;
+  ascent-override: 102%;
+  descent-override: 30%;
+  line-gap-override: 0%;
+}
+
 :root {
   /* colour: light (palette A, Newsprint and Signal) */
   --color-bg: #efe6d3;
@@ -93,10 +125,12 @@
   --color-slider-fill: #f5b488;
 
   /* type */
-  --font-sans: 'Public Sans Variable', 'Inter Variable', system-ui, -apple-system, 'Segoe UI',
-    Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-display: 'Big Shoulders Display Variable', 'Arial Narrow', Impact, sans-serif;
-  --font-mono: 'JetBrains Mono Variable', ui-monospace, Menlo, Consolas, monospace;
+  --font-sans: 'Public Sans Variable', 'Public Sans Fallback', 'Inter Variable', system-ui,
+    -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Big Shoulders Display Variable', 'Big Shoulders Fallback', 'Arial Narrow', Impact,
+    sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono Fallback', ui-monospace, Menlo, Consolas,
+    monospace;
   --type-scale: 1;
   --font-size-1: calc(12px * var(--type-scale));
   --font-size-2: calc(14px * var(--type-scale));
@@ -154,6 +188,13 @@
     --hammer-static: 1;
     --duration-roll: 0ms;
   }
+}
+
+/* The browser's 8 px default margin pushed full-viewport pages (the projector screen) 8 px past the
+ * edge. Every page lays itself out from the viewport edge. */
+html,
+body {
+  margin: 0;
 }
 
 body {
