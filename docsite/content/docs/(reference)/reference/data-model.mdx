@@ -14,10 +14,10 @@ GAVEL keeps its truth in a few append-only or compare-and-set files. This page n
 
 A live auction needs two different kinds of memory.
 
-1. **What happened in the room** (who joined, which bids came in, what the screen showed). That is the **room log**: ordered events, numbered 1, 2, 3 with no gaps, so a reconnecting screen can ask for "everything after 41".
-2. **What the auction rules decided** (who leads, who won). That is the **engine ledger**: each entry carries the hash of the entry before it, so changing an old entry breaks every hash after it. Anyone holding the chain can check it.
+1. **What happened in the <Term id="room">room</Term>** (who joined, which bids came in, what the screen showed). That is the **room log**: ordered events, numbered 1, 2, 3 with no gaps, so a reconnecting screen can ask for "everything after 41".
+2. **What the auction rules decided** (who leads, who won). That is the **<Term id="engine">engine</Term> <Term id="ledger">ledger</Term>**: each entry carries the hash of the entry before it, so changing an old entry breaks every hash after it. Anyone holding the chain can check it.
 
-Money gets its own record, the **payment journal**, because settlement has to survive a crash halfway through a PayPal call. The journal says what GAVEL intends to do before it does it.
+Money gets its own record, the **payment <Term id="journal">journal</Term>**, because <Term id="settlement">settlement</Term> has to survive a crash halfway through a PayPal call. The journal says what GAVEL intends to do before it does it.
 
 ## The write order
 

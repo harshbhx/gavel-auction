@@ -12,6 +12,8 @@ import {
 import { notFound } from 'next/navigation';
 import { getMDXComponents } from '@/components/mdx';
 import { PageMeta } from '@/components/holdline/page-meta';
+import { TourBar, TourPager } from '@/components/guide/tour-nav';
+import { PageFooter } from '@/components/guide/page-footer';
 import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getPageEditUrl, getPageImageUrl, getPageMarkdownUrl } from '@/lib/shared';
@@ -34,6 +36,7 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
       tableOfContent={{ style: 'clerk' }}
       tableOfContentPopover={{ style: 'clerk' }}
     >
+      <TourBar url={page.url} />
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
       <PageMeta
@@ -53,6 +56,8 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
             a: createRelativeLink(source, page),
           })}
         />
+        <TourPager url={page.url} />
+        <PageFooter url={page.url} />
       </DocsBody>
       <div className="flex flex-row flex-wrap items-center justify-between gap-4 border-t pt-6">
         <EditOnGitHub href={editUrl} />

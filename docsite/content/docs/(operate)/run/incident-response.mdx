@@ -25,28 +25,28 @@ The repository has no incident-response document and no severity scale for live 
 
 ### Stop new money calls
 
-The kill switch is a persisted state (`kill-switch.json` in the data directory) that wraps the payments gateway: `createOrder`, `authorizeOrder`, `capture` and `reauthorize` throw `kill_switch_engaged` before reaching the network, while voids and reads pass through. Engage and release are audited with the actor. The state survives a restart. I did not find an HTTP route that engages it; engaging it is a code or data-directory action by the owner.
+The kill switch is a persisted state (`kill-switch.json` in the data directory) that wraps the payments gateway: `createOrder`, `authorizeOrder`, `capture` and `reauthorize` throw `kill_switch_engaged` before reaching the network, while <Term id="void">voids</Term> and reads pass through. Engage and release are audited with the actor. The state survives a restart. I did not find an HTTP route that engages it; engaging it is a code or data-directory action by the owner.
 
 </Step>
 <Step>
 
 ### Find out what PayPal knows
 
-Compare PayPal with the journal. The saga's first move on every run is a truth read, so a resume is safe. Export the state with the admin key: `GET /admin/export?kind=payments&auction=<id>` and `kind=roomlog`.
+Compare PayPal with the <Term id="journal">journal</Term>. The <Term id="saga">saga</Term>'s first move on every run is a <Term id="truth-read">truth read</Term>, so a resume is safe. Export the state with the admin key: `GET /admin/export?kind=payments&auction=<id>` and `kind=roomlog`.
 
 </Step>
 <Step>
 
 ### Release holds that should not stand
 
-`POST /ops/auctions/<auctionId>/void-all` (every hold of a hammered auction that is not captured) or `POST /ops/auctions/<auctionId>/release-review` (holds a review keeps). Admin key required, POST only, audited as actor `admin`. A 409 `busy` means a run holds the settlement lease: wait and retry.
+`POST /ops/auctions/<auctionId>/void-all` (every <Term id="hold">hold</Term> of a hammered auction that is not captured) or `POST /ops/auctions/<auctionId>/release-review` (holds a review keeps). Admin key required, POST only, audited as actor `admin`. A 409 `busy` means a run holds the settlement lease: wait and retry.
 
 </Step>
 <Step>
 
 ### Capture evidence before changing anything
 
-Keep the ledger export (its hash chain verifies), the payments journal, the room log, the processed webhook ids and the workflow run links. The audit records of money calls are in `payment-audit.jsonl` on the server disk, which the backup snapshot does not include. No secrets, no webhook bodies.
+Keep the <Term id="ledger">ledger</Term> export (its hash chain verifies), the payments journal, the room log, the processed webhook ids and the workflow run links. The audit records of money calls are in `payment-audit.jsonl` on the server disk, which the backup snapshot does not include. No secrets, no webhook bodies.
 
 </Step>
 <Step>

@@ -167,6 +167,48 @@ export const en = {
   'mk.stat.link': 'How these were counted',
   'mk.tech.title': 'Built with',
   'mk.tech.label': 'Technology used',
+  'mk.nav.product': 'Screens',
+  'mk.cta.docs': 'Read the docs',
+  'mk.hero.for': 'For sellers, auctioneers and bidders.',
+  'mk.story.title': 'Hold, hammer, receipt',
+  'mk.story.lead': 'The whole product in three beats.',
+  'mk.story.s1.title': 'Hold',
+  'mk.story.s1.body': 'Every bidder sets a ceiling as a PayPal hold. Held, not charged.',
+  'mk.story.s2.title': 'Hammer',
+  'mk.story.s2.body':
+    'The auctioneer closes the lot. Every bid was checked against its hold, so one price stands.',
+  'mk.story.s3.title': 'Receipt',
+  'mk.story.s3.body':
+    'The winner is charged only if PayPal confirms the hold. Every other hold is released, and each bidder gets a receipt.',
+  'mk.shots.title': 'The real screens',
+  'mk.shots.lead': 'Four views of one auction room, as the app draws them.',
+  'mk.shots.note':
+    'Screenshots of the app on its test stage: a simulated room with sample bids and amounts. Not a real auction.',
+  'mk.shots.bidder.cap': 'Bidder, on a phone: the price, your paddle and your hold.',
+  'mk.shots.bidder.alt':
+    'The bidder screen on a phone: current price 500 dollars, leading paddle 7, your hold of 500 dollars marked held, and three bid buttons.',
+  'mk.shots.screen.cap': 'Public screen: the current bid, the latest bids and a QR code to join.',
+  'mk.shots.screen.alt':
+    'The public screen: a large price of 300 dollars, paddle number 7, a countdown, a list of latest bids and a QR code.',
+  'mk.shots.receipt.cap': 'Receipt: the winning amount and the rest of the hold, released.',
+  'mk.shots.receipt.alt':
+    'The receipt page: item, winning price 350 dollars, a bar with a solid part for the amount taken and a dashed part for the amount released.',
+  'mk.shots.console.cap':
+    'Auctioneer console: lot controls, the bid stream, bidders and their holds.',
+  'mk.shots.console.alt':
+    'The auctioneer console: lot status, hammer and pause controls, a bid stream and three bidders with held holds.',
+  'mk.aud.sel.title': 'Sellers and fundraisers',
+  'mk.aud.sel.body':
+    'Bids are backed by holds, so a high bid is more than a promise. A projector screen shows the current bid and progress toward a goal.',
+  'mk.faq.q6': 'Can I use my own PayPal account?',
+  'mk.faq.a6':
+    'No. GAVEL runs on the PayPal sandbox, so use sandbox test accounts only. Do not enter a personal PayPal login.',
+  'mk.faq.q7': 'What is not finished?',
+  'mk.faq.a7':
+    'The honor period test (G3) is still running, and voice accuracy was measured on synthetic audio only. The gate log above lists both.',
+  'mk.faq.q8': 'Is the code open?',
+  'mk.faq.a8':
+    'Yes. The source is on GitHub under the MIT license, and the docs explain how an auction settles.',
   'demo.creating': 'Creating room',
   'demo.failed': 'We could not reach the server.',
   'demo.failedOff': 'Live demo rooms are turned off on this server.',
@@ -748,6 +790,7 @@ export const en = {
   'controls.hammerLeaderChanged':
     'The leader changed. Nothing was hammered. Review the new leader and hold again.',
   'controls.failed': '{action} failed. Try again.',
+  'controls.refused': '{action} was not accepted: {detail}.',
   'controls.unknown':
     '{action}: no answer from the server. It may have gone through. Check the lot state.',
   'kill.notAvailable': 'The server does not know this auction. The auction is still running.',

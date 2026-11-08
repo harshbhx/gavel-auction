@@ -20,9 +20,9 @@ From `packages/server/src/config.ts` and the deploy guide. The server validates 
 | `PAYPAL_ENV` | sandbox | The only accepted value |
 | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID` | string | Needed for `PAYMENTS=sandbox` |
 | `VOICE_STT` | replay, fake, groq, deepgram | Unset means cached transcripts |
-| `DEMO_MODE` | 0 or 1 | Scripted demo routes; only with fake payments |
+| `DEMO_MODE` | 0 or 1 | <Term id="scripted-demo">Scripted demo</Term> routes; only with fake payments |
 | `CORS_ORIGINS` | list of origins | The web origin |
-| `GAVEL_HOLD_MAX_AGE_MS` | integer | Default 7200000: a hold older than this is flagged stale |
+| `GAVEL_HOLD_MAX_AGE_MS` | integer | Default 7200000: a <Term id="hold">hold</Term> older than this is flagged stale |
 | `RATE_JOIN_BURST`, `RATE_JOIN_PER_MIN` | integers | Defaults 40 and 10 |
 | `TRUSTED_PROXY_HOPS` | 0 to 10 | Default 0 |
 | `LOG_LEVEL` | debug, info, warn, error | Default info |

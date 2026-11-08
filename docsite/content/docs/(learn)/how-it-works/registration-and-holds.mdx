@@ -8,9 +8,9 @@ full: true
 
 ## In plain words
 
-A **hold** is a reservation on a buyer's PayPal funds. PayPal calls it an *authorization*. It is not a payment: nothing leaves the buyer's account when the hold is placed. Think of a hotel asking for a card at check-in. The hotel reserves an amount, and only charges what you actually owe when you leave.
+A **<Term id="hold">hold</Term>** is a reservation on a buyer's PayPal funds. PayPal calls it an *<Term id="authorization">authorization</Term>*. It is not a payment: nothing leaves the buyer's account when the hold is placed. Think of a hotel asking for a card at check-in. The hotel reserves an amount, and only charges what you actually owe when you leave.
 
-In GAVEL every buyer places one hold before bidding, for a **ceiling** they choose: the most they can ever be charged in that auction. Bids are checked against that ceiling. When the hammer falls, only the winner is charged, and only the winning price. Everyone else's hold is released.
+In GAVEL every buyer places one hold before bidding, for a **<Term id="ceiling">ceiling</Term>** they choose: the most they can ever be charged in that auction. <Term id="bid">Bids</Term> are checked against that ceiling. When the <Term id="hammer">hammer</Term> falls, only the winner is charged, and only the winning price. Everyone else's hold is released.
 
 <Held title="Held means reserved, not charged">
 A hold that is HELD has moved no money. It is shown hatched everywhere in these docs.
@@ -25,14 +25,14 @@ A hold that is HELD has moved no money. It is shown hatched everywhere in these 
 
 ### The buyer picks a name and a ceiling
 
-The register screen asks for a display name and one of the room's ceiling presets. The web default presets are 10000, 25000, 50000 and 100000 cents (100, 250, 500 and 1,000 dollars); a room can set its own list, and the server accepts only a ceiling from the auction's list whatever the screen offers. The screen explains the choice: the amount is held, not charged.
+The register screen asks for a display name and one of the <Term id="room">room</Term>'s ceiling presets. The web default presets are 10000, 25000, 50000 and 100000 cents (100, 250, 500 and 1,000 dollars); a room can set its own list, and the server accepts only a ceiling from the auction's list whatever the screen offers. The screen explains the choice: the amount is held, not charged.
 
 </Step>
 <Step>
 
 ### The browser asks for a hold order
 
-`POST /api/holds` carries the auction id and the ceiling in cents. It carries **no bidder id**: the server reads the bidder from the session token, so a buyer can never ask for a hold in someone else's name. The route refuses an auction that no longer takes holds (hammered, or a settlement already exists).
+`POST /api/holds` carries the auction id and the ceiling in cents. It carries **no bidder id**: the server reads the bidder from the session token, so a buyer can never ask for a hold in someone else's name. The route refuses an auction that no longer takes holds (hammered, or a <Term id="settlement">settlement</Term> already exists).
 
 </Step>
 <Step>
@@ -46,7 +46,7 @@ The register screen asks for a display name and one of the room's ceiling preset
 
 ### The buyer approves in the PayPal popup
 
-The browser loads the PayPal SDK (sandbox host only) when it is needed, not at page load, and opens a one-time payment session for that order. The buyer chooses how to pay inside the popup.
+The browser loads the PayPal SDK (<Term id="sandbox">sandbox</Term> host only) when it is needed, not at page load, and opens a one-time payment session for that order. The buyer chooses how to pay inside the popup.
 
 </Step>
 <Step>
@@ -72,12 +72,12 @@ Both ways of paying go through exactly the same server flow. The code does not b
 <Tabs items={['Wallet buyer', 'Guest card buyer']}>
 <Tab value="Wallet buyer">
 
-The buyer signs in to PayPal and approves. Evidence: gate G2 on the sandbox (5 Nov 2026) reached `onApprove` and authorized an order for a wallet buyer. Gate G1 captured with PayPal-account buyers (one funded by a card, but still a PayPal account).
+The buyer signs in to PayPal and approves. Evidence: gate <Term id="gate-g2">G2</Term> on the sandbox (5 Nov 2026) reached `onApprove` and authorized an order for a wallet buyer. Gate <Term id="gate-g1">G1</Term> <Term id="capture">captured</Term> with PayPal-account buyers (one funded by a card, but still a PayPal account).
 
 </Tab>
 <Tab value="Guest card buyer">
 
-The buyer pays by card without a PayPal account. Evidence: gate G2 reached `onApprove` and authorized for a guest card buyer through the SDK v6 guest session. That is **AUTHORIZE only**. Capture and void of a guest card authorization have **not** been run on the sandbox, so settlement of a guest card winner is not verified end to end.
+The buyer pays by card without a PayPal account. Evidence: gate G2 reached `onApprove` and authorized for a guest card buyer through the SDK v6 guest session. That is **AUTHORIZE only**. Capture and <Term id="void">void</Term> of a guest card authorization have **not** been run on the sandbox, so settlement of a guest card winner is not verified end to end.
 
 </Tab>
 </Tabs>
@@ -158,7 +158,7 @@ A guessed id and somebody else's id look the same to the caller: both answer `or
   }}
 />
 
-Webhooks and reconciliation merge in later readings in a fixed order: PENDING_APPROVAL, then HELD, then CAPTURED; VOIDED, EXPIRED and DENIED are final, and CAPTURED against a final state is a conflict that is not applied. See [Webhooks](/docs/safety/webhooks) and [Settlement saga](/docs/how-it-works/settlement-saga).
+<Term id="webhook">Webhooks</Term> and reconciliation merge in later readings in a fixed order: PENDING_APPROVAL, then HELD, then CAPTURED; VOIDED, EXPIRED and DENIED are final, and CAPTURED against a final state is a conflict that is not applied. See [Webhooks](/docs/safety/webhooks) and [Settlement saga](/docs/how-it-works/settlement-saga).
 
 ## Where this lives in the code
 

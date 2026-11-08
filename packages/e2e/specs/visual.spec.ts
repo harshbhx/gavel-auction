@@ -83,7 +83,11 @@ for (const screen of ROOM_SCREENS) {
         // The console is offline and empty until the first snapshot arrives.
         await expect(view.root).toContainText('$100.00');
         await settle(page);
-        await expect(page).toHaveScreenshot(`${screen.name}-${viewport.name}.png`);
+        // The page clock is pinned to a fixed day while the stack runs on real time, so the
+        // clock-skew notice shows a number that changes every day: mask it.
+        await expect(page).toHaveScreenshot(`${screen.name}-${viewport.name}.png`, {
+          mask: [page.locator('.gv-banner', { hasText: /clock differs/i })],
+        });
       }
     });
   }

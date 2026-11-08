@@ -46,6 +46,7 @@ import { GalleryScreen } from './screens/gallery/GalleryScreen';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
 import { OfflineBanner } from './a11y/OfflineBanner';
 import { SkipLink } from './a11y/SkipLink';
+import { useRouteChrome } from './a11y/useRouteChrome';
 import { RoomGate } from './screens/states/RoomGate';
 import { ApiError, apiErrorFor, unreachable } from './net/apiError';
 import { WatcherGate } from './screens/join/WatcherGate';
@@ -85,6 +86,7 @@ import {
   readInviteToken,
   readReceiptToken,
   rememberBidderSession,
+  clearAuctioneerToken,
 } from './store/session';
 
 export interface AppProps {
@@ -108,9 +110,10 @@ export function navigate(to: string): void {
   window.dispatchEvent(new Event(NAVIGATE_EVENT));
 }
 
-/** Which stored slot a refused token is cleared from; the screen token is never stored. */
-function roleOf(routeId: string): SessionRole {
-  return routeId === 'screen' ? 'screen' : 'bidder';
+/** Which slot a refused token came from: console and audit use the in-memory auctioneer token. */
+function roleOf(routeId: string): SessionRole | 'auctioneer' {
+  if (routeId === 'screen') return 'screen';
+  return routeId === 'console' || routeId === 'audit' ? 'auctioneer' : 'bidder';
 }
 
 function tokenFor(routeId: string, roomId: string): { token: string; bidderId?: string } | null {
@@ -253,8 +256,14 @@ function LiveRoute({
   useEffect(() => {
     // A refused token is dead: forget it, so a reload does not reuse it.
     if (!dead) return;
-    clearSession(roomId, undefined, role);
-    if (role === 'bidder') clearBidderSession(roomId);
+    if (role === 'bidder') {
+      clearSession(roomId, undefined, role);
+      clearBidderSession(roomId);
+    } else {
+      // The screen, console and audit tokens live in memory only: drop the dead one, keep the bidder.
+      if (role === 'screen') clearSession(roomId, undefined, role);
+      clearAuctioneerToken(roomId);
+    }
   }, [dead, roomId, role]);
   const myPaddle = useRoom((s) =>
     bidderId === undefined
@@ -310,6 +319,7 @@ function LiveRoute({
               room?.bid(Cents(amount), 'qr');
             }}
             stopped={stopped}
+            onJoin={() => navigate(`/r/${encodeURIComponent(roomId)}/register`)}
             {...(myPaddle === undefined ? {} : { myPaddle, onConfirm: respond })}
           />
         </div>
@@ -675,6 +685,8 @@ function RegisterRoute({
   liveBase: string | undefined;
 }) {
   const [who, setWho] = useState<{ token: string; bidderId: string } | null>(() => {
+    // A fresh invite in the link wins over whatever session this tab still holds.
+    if (readInviteToken(roomId) !== null) return null;
     const stored = getBidderSession(roomId);
     return stored?.bidderId === undefined
       ? null
@@ -702,6 +714,17 @@ function RegisterRoute({
   const snapshot = useRoom((s) => (s.snapshot?.auctionId === roomId ? s.snapshot : null));
   const roomError = useRoom((s) => s.lastError);
   const registrationClosed = useRoom(selectors.registrationClosed);
+
+  const deadSession = who !== null && roomError !== null && isTerminalError(roomError.code);
+  useEffect(() => {
+    // A refused session is dead: forget it and fall back to the invite or the open join, instead
+    // of reconnecting with the same token on every reload.
+    if (!deadSession) return;
+    clearSession(roomId);
+    clearBidderSession(roomId);
+    roomStore.dispatch({ kind: 'identify', bidderId: null });
+    setWho(null);
+  }, [deadSession, roomId]);
 
   const invite = who === null ? readInviteToken(roomId) : null;
   // No invite: a judge room lets a bidder in with its room code, so a scanned QR or a typed code works.
@@ -1345,6 +1368,7 @@ export function App({ initialPath, gallery = import.meta.env.DEV, liveBase, api 
   }, []);
 
   const match = matchRoute(path, { gallery });
+  useRouteChrome(match);
   return (
     <ErrorBoundary>
       {match.route.id !== 'gallery' && <SkipLink />}
