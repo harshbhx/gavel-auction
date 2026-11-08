@@ -159,16 +159,17 @@ export function createControlPort(deps: ControlPortDeps): ControlPort {
     // The expectation travels with the hammer so a late bid is refused, not hammered.
     hammer: (...call) => {
       const expected = call[1];
-      return control(
-        'hammer',
-        expected === undefined
-          ? undefined
+      // closeNow: the console hammers an open lot, which the server only closes on request.
+      return control('hammer', {
+        closeNow: 1,
+        ...(expected === undefined
+          ? {}
           : {
               expectedPriceCents: expected.priceCents,
               expectedLeaderPaddle: expected.leaderPaddle,
               expectedSeq: expected.seq,
-            },
-      );
+            }),
+      });
     },
     // The stop route: the server refuses any confirm text other than STOP.
     kill: (confirm) => post('kill', { confirm }, false),
