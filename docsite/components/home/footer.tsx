@@ -4,7 +4,7 @@ import { Wordmark } from '@/components/holdline/wordmark';
 
 export function Footer() {
   return (
-    <footer className="border-t border-[var(--hl-hairline)] px-4 py-10">
+    <footer className="border-t-2 border-[var(--hl-fg)] px-4 py-10">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-start justify-between gap-6">
         <div>
           <Wordmark />

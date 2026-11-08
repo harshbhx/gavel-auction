@@ -42,6 +42,6 @@ export function SectionHeading({
 }
 
 export const btnPrimary =
-  'inline-flex items-center gap-2 rounded-[2px] bg-[var(--hl-signal)] px-4 py-2.5 text-sm font-bold text-[var(--hl-on-signal)] transition-opacity hover:opacity-90';
+  'inline-flex items-center gap-2 rounded-[2px] border-2 border-[var(--hl-fg)] bg-[var(--hl-signal)] px-4 py-2.5 text-sm font-bold text-[var(--hl-on-signal)] shadow-[3px_3px_0_var(--hl-shadow)] transition-transform hover:-translate-x-px hover:-translate-y-px';
 export const btnSecondary =
-  'inline-flex items-center gap-2 rounded-[2px] border-[1.5px] border-[var(--hl-border)] px-4 py-2.5 text-sm font-bold transition-colors hover:bg-fd-accent';
+  'inline-flex items-center gap-2 rounded-[2px] border-2 border-[var(--hl-fg)] bg-[var(--hl-panel)] px-4 py-2.5 text-sm font-bold shadow-[3px_3px_0_var(--hl-shadow)] transition-transform hover:-translate-x-px hover:-translate-y-px';

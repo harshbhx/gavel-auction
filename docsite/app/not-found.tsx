@@ -17,7 +17,7 @@ const starts: Record<string, string> = {
 export default function NotFound() {
   return (
     <HomeLayout {...baseOptions()}>
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-4 py-16">
+      <main className="hl-dots mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-4 py-16">
         <p className="hl-eyebrow">Error 404</p>
         <h1 className="hl-display text-[clamp(3.5rem,12vw,8rem)]">Released.</h1>
         {/* a hold that was let go: only the outline is left */}

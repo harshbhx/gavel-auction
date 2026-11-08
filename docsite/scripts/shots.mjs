@@ -50,6 +50,14 @@ let failures = 0;
 
 async function shoot(name, url, { scheme, viewport, floodlight, checkOverflow }) {
   const context = await browser.newContext({ colorScheme: scheme, viewport, reducedMotion: 'reduce' });
+  // The site starts on Newsprint (light) whatever the system says, so pick the theme explicitly.
+  await context.addInitScript((t) => {
+    try {
+      localStorage.setItem('theme', t);
+    } catch {
+      /* ignore */
+    }
+  }, scheme === 'dark' ? 'dark' : 'light');
   if (floodlight) {
     await context.addInitScript(() => {
       try {
