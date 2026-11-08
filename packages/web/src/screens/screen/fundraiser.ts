@@ -1,5 +1,22 @@
 /** Fundraiser thermometer maths. Integer cents only; nothing here touches the money path. */
 
+import { parseUsdToCents } from '../../util/money';
+
+/** Largest goal the server accepts: one billion dollars, in cents. */
+export const MAX_GOAL_CENTS = 1_000_000_000_00;
+
+export type GoalInput =
+  { kind: 'empty' } | { kind: 'ok'; cents: number } | { kind: 'invalid' } | { kind: 'tooBig' };
+
+/** Reads the setup field: empty means no thermometer, anything else must be a positive USD amount. */
+export function parseGoalInput(input: string): GoalInput {
+  if (input.trim() === '') return { kind: 'empty' };
+  const cents = parseUsdToCents(input);
+  if (cents === null) return { kind: 'invalid' };
+  if (cents > MAX_GOAL_CENTS) return { kind: 'tooBig' };
+  return { kind: 'ok', cents };
+}
+
 /** Settlement states in which the winner's amount is reserved but not yet captured. */
 const ON_HOLD_STATES: readonly string[] = ['WINNER_SELECTED', 'CAPTURING'];
 
