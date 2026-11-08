@@ -640,9 +640,12 @@
     height: 72px;
   }
 
-  .gv-steps,
-  .gv-aud {
+  .gv-steps {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .gv-aud {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .gv-features,

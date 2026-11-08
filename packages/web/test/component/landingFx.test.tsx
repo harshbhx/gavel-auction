@@ -88,7 +88,6 @@ describe('landing polish', () => {
     onStart: vi.fn(),
     onJoin: vi.fn(() => Promise.resolve(true)),
     onScripted: vi.fn(),
-    onJudges: vi.fn(),
   };
 
   it('shows only figures that the repository documents', () => {
@@ -155,9 +154,8 @@ describe('landing polish', () => {
     render(<LandingScreen {...props} />);
     const footer = screen.getByRole('contentinfo');
     const nav = within(footer).getByRole('navigation', { name: t('mk.foot.nav') });
-    expect(within(nav).getAllByRole('link').length).toBeGreaterThanOrEqual(9);
-    fireEvent.click(within(nav).getByRole('link', { name: t('mk.foot.judges') }));
-    expect(props.onJudges).toHaveBeenCalled();
+    expect(within(nav).getAllByRole('link').length).toBeGreaterThanOrEqual(8);
+    expect(nav.querySelector('a[href="/try"]')).toBeNull();
     expect(within(footer).getByText(t('mk.foot.sandbox'))).toBeTruthy();
   });
 
