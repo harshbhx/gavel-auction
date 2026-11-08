@@ -9,13 +9,13 @@ status: partial
 
 ## Question
 
-Is speech-to-text accuracy on noisy bid audio high enough to accept bids without a manual confirm?
+Is <Term id="stt">speech-to-text</Term> accuracy on noisy bid audio high enough to accept bids without a manual confirm?
 
 ## Result
 
 <Held title="PARTIAL: within the limit on synthetic clips, not proven">
 
-The first run failed (wrong accept 0.083 to 0.167 against a limit of 0.05). Nine of the eleven wrong accepts were a defect in our evaluation, which ignored the paddle label of the clips. The other errors were traced per clip, the rule parser was fixed for them, and the provider options were tried. Both providers are now at wrong accept 0.000 on both clip sets, but the fixes and the options were chosen after reading the results on the same 24 clips, the audio is noise-free and synthetic, and there is no real-room or noisy-room test. Spoken bids therefore still go through the confirm prompt (assist mode). The payments decision is unchanged.
+The first run failed (wrong accept 0.083 to 0.167 against a limit of 0.05). Nine of the eleven wrong accepts were a defect in our evaluation, which ignored the <Term id="paddle">paddle</Term> label of the clips. The other errors were traced per clip, the rule parser was fixed for them, and the provider options were tried. Both providers are now at wrong accept 0.000 on both clip sets, but the fixes and the options were chosen after reading the results on the same 24 clips, the audio is noise-free and synthetic, and there is no real-room or noisy-room test. Spoken bids therefore still go through the <Term id="confirm-prompt">confirm prompt</Term> (assist mode). The payments decision is unchanged.
 
 </Held>
 
@@ -58,7 +58,7 @@ Reference text goes in as recognized text, so this measures the parser and nothi
 
 ## What GAVEL does about it
 
-A spoken bid is never accepted silently: it goes through the confirm gate. See [voice and confirm](/docs/how-it-works/voice-and-confirm). For demos, use the recorded replay, which makes no PayPal call.
+A spoken bid is never accepted silently: it goes through the confirm gate. See [voice and confirm](/docs/how-it-works/voice-and-confirm). For demos, use the recorded <Term id="replay">replay</Term>, which makes no PayPal call.
 
 <CodePaths
   paths={[

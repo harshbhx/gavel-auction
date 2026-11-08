@@ -7,7 +7,7 @@ evidence: 'Read against the retry and review code listed at the foot of the page
 full: true
 ---
 
-A capture call can end in four very different ways, and charging the wrong person depends on telling them apart.
+A <Term id="capture">capture</Term> call can end in four very different ways, and charging the wrong person depends on telling them apart.
 
 <Cards>
   <Card title="Taken" description="PayPal answers COMPLETED. Money moved. The settlement goes on." />
@@ -41,7 +41,7 @@ Each status gets a kind and an outcome, either `definite` (PayPal said so) or `u
 
 ### The capture phase decides
 
-In this order: kill switch, no token, 429, other unknown outcomes, invariant faults, then refusals that name the hold, and finally every other refusal.
+In this order: kill switch, no token, 429, other unknown outcomes, invariant faults, then refusals that name the <Term id="hold">hold</Term>, and finally every other refusal.
 
 </Step>
 </Steps>
@@ -60,21 +60,21 @@ In this order: kill switch, no token, 429, other unknown outcomes, invariant fau
 | 422 with an unknown issue, other 4xx | rejected | definite | Not known to name this hold |
 | network failure, timeout | network | unknown | No answer exists |
 
-The 422 issue names other than `PREVIOUSLY_CAPTURED` are UNVERIFIED on the sandbox (gate G1). The saga is built so a wrong name is harmless: it always reads the truth before it falls back.
+The 422 issue names other than `PREVIOUSLY_CAPTURED` are UNVERIFIED on the <Term id="sandbox">sandbox</Term> (gate <Term id="gate-g1">G1</Term>). The <Term id="saga">saga</Term> is built so a wrong name is harmless: it always reads the truth before it falls back.
 
 ## What changed on 7 Nov 2026
 
 <Accordions>
 <Accordion title="A 429 is not an unknown outcome (PR 1938)">
 
-Before this change a capture that kept getting 429 was treated like a timeout: the ten minute unknown clock started, and a restart after a long outage could push the settlement into review. A 429 means PayPal declined to run the request, so now it starts no clock. The capture waits as `rate_limited`, keeps its intent, and the next pass reads the truth first and repeats the same request id. A 429 that follows an earlier ambiguous attempt leaves that attempt's clock as it was.
+Before this change a capture that kept getting 429 was treated like a timeout: the ten minute unknown clock started, and a restart after a long outage could push the <Term id="settlement">settlement</Term> into review. A 429 means PayPal declined to run the request, so now it starts no clock. The capture waits as `rate_limited`, keeps its intent, and the next pass reads the truth first and repeats the same request id. A 429 that follows an earlier ambiguous attempt leaves that attempt's clock as it was.
 
 Issue: https://github.com/harshbhx/gavel-auction/issues/1937. Fix: https://github.com/harshbhx/gavel-auction/pull/1938.
 
 </Accordion>
 <Accordion title="A refusal after a 429 stall is still a refusal (PR 1947)">
 
-A capture that PayPal refuses because the authorization is older than its honor period names this hold, not the merchant. After a 429 stall such a refusal, and a declined or expired one, is classified like a first refusal: the truth is read and the settlement falls back to the runner-up at once, instead of waiting for the ten minute deadline. The honor-period issue name `AUTHORIZATION_NOT_HONORED_AFTER_HONOR_PERIOD` is UNVERIFIED (gate G3).
+A capture that PayPal refuses because the authorization is older than its <Term id="honor-period">honor period</Term> names this hold, not the merchant. After a 429 stall such a refusal, and a declined or expired one, is classified like a first refusal: the truth is read and the settlement falls back to the runner-up at once, instead of waiting for the ten minute deadline. The honor-period issue name `AUTHORIZATION_NOT_HONORED_AFTER_HONOR_PERIOD` is UNVERIFIED (gate <Term id="gate-g3">G3</Term>).
 
 Issue: https://github.com/harshbhx/gavel-auction/issues/1946. Fix: https://github.com/harshbhx/gavel-auction/pull/1947.
 
@@ -116,7 +116,7 @@ If the first capture did happen and the runner-up is charged as well, two people
 
 <NotVerified title="Fake PayPal and simulation only">
 
-The behaviour is tested against the fake PayPal, including the 429 cases in `packages/payments/test/saga/rateLimited.test.ts`, and in the simulated 30-day run, where eight lots get two injected 429s on their first capture and a restart after a two hour outage. The fake showed 0 answers with 429 in 60 cycles; PayPal's real rate limits are UNVERIFIED (gate G1 measurement), so how often a real run would meet a 429 is not known. See [the simulation](/docs/proof/simulation).
+The behaviour is tested against the <Term id="fake-paypal">fake PayPal</Term>, including the 429 cases in `packages/payments/test/saga/rateLimited.test.ts`, and in the <Term id="simulated">simulated</Term> 30-day run, where eight lots get two injected 429s on their first capture and a restart after a two hour outage. The fake showed 0 answers with 429 in 60 cycles; PayPal's real rate limits are UNVERIFIED (gate G1 measurement), so how often a real run would meet a 429 is not known. See [the simulation](/docs/proof/simulation).
 
 </NotVerified>
 

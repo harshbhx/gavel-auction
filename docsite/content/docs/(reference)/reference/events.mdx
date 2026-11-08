@@ -5,25 +5,25 @@ icon: ListOrdered
 status: verified
 ---
 
-Names are taken from `packages/engine/src/evolve.ts`. The ledger appends accepted events; see [engine and ledger](/docs/how-it-works/engine-and-ledger) for what it does not hold.
+Names are taken from `packages/engine/src/evolve.ts`. The <Term id="ledger">ledger</Term> appends accepted events; see [engine and ledger](/docs/how-it-works/engine-and-ledger) for what it does not hold.
 
 | Event | Meaning |
 | --- | --- |
 | `AUCTION_CREATED` | An auction exists |
-| `LOT_ADDED` | A lot is added |
+| `LOT_ADDED` | A <Term id="lot">lot</Term> is added |
 | `LOT_OPENED` | Bidding opens on a lot |
-| `BID_RECORDED` | A bid was accepted (source `manual`, `qr` or `voice`) |
+| `BID_RECORDED` | A <Term id="bid">bid</Term> was accepted (source `manual`, `qr` or `voice`) |
 | `BID_REJECTED` | A bid was rejected (room log only) |
 | `BID_STRUCK` | A recorded bid was struck |
 | `LOT_CLOSING` | The lot is closing |
-| `LOT_EXTENDED` | The soft close extended the lot |
+| `LOT_EXTENDED` | The <Term id="soft-close">soft close</Term> extended the lot |
 | `LOT_PAUSED`, `LOT_RESUMED` | The auctioneer paused or resumed the clock |
 | `LOT_HAMMERED` | The lot closed with a winner and a price |
 | `LOT_UNSOLD` | The lot closed with no winner |
-| `LOT_ABORTED` | The lot was cancelled before the hammer |
+| `LOT_ABORTED` | The lot was cancelled before the <Term id="hammer">hammer</Term> |
 | `LOT_SETTLED` | Settlement finished |
 | `AUCTION_CLOSED` | The auction is over |
 
-The saga has its own state changes: `WINNER_SELECTED`, `CAPTURING` and the rest are saga states, not engine events. See [saga states](/docs/reference/saga-states).
+The <Term id="saga">saga</Term> has its own state changes: `WINNER_SELECTED`, `CAPTURING` and the rest are saga states, not engine events. See [saga states](/docs/reference/saga-states).
 
 <CodePaths paths={['packages/engine/src/evolve.ts', 'packages/engine/src/events.ts']} />

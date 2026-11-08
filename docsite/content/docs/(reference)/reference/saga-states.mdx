@@ -27,7 +27,7 @@ The table below is `TRANSITIONS` in `packages/payments/src/saga/machine.ts`. Any
 
 ## Effects
 
-A transition can return effects that the runner executes after it saves the journal: `capture` (cursor, bidder, hold, authorization id, amount), `void_holds` (every hold except the winner's, sorted by id) and `flag_review` (with a reason).
+A transition can return effects that the runner executes after it saves the <Term id="journal">journal</Term>: `capture` (cursor, bidder, hold, authorization id, amount), `void_holds` (every hold except the winner's, sorted by id) and `flag_review` (with a reason).
 
 ## Crash boundaries
 

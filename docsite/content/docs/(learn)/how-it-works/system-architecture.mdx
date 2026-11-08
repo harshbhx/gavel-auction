@@ -13,12 +13,12 @@ If you have never seen the code, read this page first. It answers one question: 
 ## The short version
 
 - **One browser app** for bidders, the auctioneer and the big screen. It is static files.
-- **One server process** (a single Node program) that owns everything stateful: the live rooms, the auction engine, the payment logic and the files on its disk.
-- **PayPal** is called only by the server, and only by two parts of it: the hold service (to create and authorize a hold) and the settlement saga (to capture the winner and release the rest). The only direct contact between a browser and PayPal is the approval popup.
-- **Speech to text** also runs on the server. The microphone sends audio frames and the server turns them into a bid decision.
+- **One server process** (a single Node program) that owns everything stateful: the live <Term id="room">rooms</Term>, the auction <Term id="engine">engine</Term>, the payment logic and the files on its disk.
+- **PayPal** is called only by the server, and only by two parts of it: the <Term id="hold">hold</Term> service (to create and authorize a hold) and the <Term id="saga">settlement saga</Term> (to <Term id="capture">capture</Term> the winner and release the rest). The only direct contact between a browser and PayPal is the approval popup.
+- **<Term id="stt">Speech to text</Term>** also runs on the server. The microphone sends audio frames and the server turns them into a bid decision.
 
 <Callout type="info" title="Why one process and one instance">
-`render.yaml` pins `numInstances: 1` and puts the data directory on a persistent disk. The room log, the ledger, the journals and the holds are files owned by one process, and a data directory lock stops a second host from opening them. The price is that GAVEL does not scale out; the benefit is that the order of writes, which the money logic depends on, is easy to reason about.
+`render.yaml` pins `numInstances: 1` and puts the data directory on a persistent disk. The room log, the <Term id="ledger">ledger</Term>, the <Term id="journal">journals</Term> and the holds are files owned by one process, and a data directory lock stops a second host from opening them. The price is that GAVEL does not scale out; the benefit is that the order of writes, which the money logic depends on, is easy to reason about.
 </Callout>
 
 ## Four journeys through the boxes
@@ -30,7 +30,7 @@ Use the buttons under the diagram to light each one up.
 
 ### A tap or typed bid
 
-The web app sends a bid message on the room socket (`/ws`). The room runtime checks it with the engine (ascending price, the bidder's ceiling, the lot state). The event goes into the room log first; the engine ledger is written before the event is acknowledged. Everyone in the room then receives the update.
+The web app sends a bid message on the room socket (`/ws`). The room runtime checks it with the engine (ascending price, the bidder's <Term id="ceiling">ceiling</Term>, the <Term id="lot">lot</Term> state). The event goes into the room log first; the engine ledger is written before the event is acknowledged. Everyone in the room then receives the update.
 
 </Step>
 <Step>
@@ -51,7 +51,7 @@ Audio frames go to the `/audio` socket. The speech chain turns them into text (D
 
 ### Settlement and the webhook
 
-After the hammer the room starts the settlement saga. The hammer is already in the engine ledger; the saga saves its journal, then captures the winning price and voids every other hold. PayPal later posts events to `/webhooks/paypal`; the host verifies the signature with PayPal, stores the event id once and hands the event to the settlement service. See [Settlement saga](/docs/how-it-works/settlement-saga) and [Webhooks](/docs/safety/webhooks).
+After the <Term id="hammer">hammer</Term> the room starts the settlement saga. The hammer is already in the engine ledger; the saga saves its journal, then captures the winning price and voids every other hold. PayPal later posts events to `/webhooks/paypal`; the host verifies the signature with PayPal, stores the event id once and hands the event to the settlement service. See [Settlement saga](/docs/how-it-works/settlement-saga) and [Webhooks](/docs/safety/webhooks).
 
 </Step>
 </Steps>
@@ -80,7 +80,7 @@ All builds, tests, gate runs and deploys. See the [CI and deployment map](/docs/
 </Tab>
 <Tab value="PayPal and speech">
 
-The PayPal **sandbox** (Orders v2, Payments v2 and the webhook verify call). Deepgram and Groq for live speech; with no `VOICE_STT` set the server runs only cached transcripts and needs no key.
+The PayPal **<Term id="sandbox">sandbox</Term>** (Orders v2, Payments v2 and the webhook verify call). Deepgram and Groq for live speech; with no `VOICE_STT` set the server runs only cached transcripts and needs no key.
 
 </Tab>
 </Tabs>
@@ -120,7 +120,7 @@ With `STORE=postgres` the room log, snapshots, token denylist and journals live 
 
 <NotVerified title="What has and has not been run">
 
-The architecture runs end to end against the fake PayPal in the test suites. The PayPal sandbox gates in `docs/GATES.md` (G0, G1, G2, G4 pass; G3 is in progress, day 0 was 7 Nov 2026 03:06 UTC, final reading about 12 Nov) cover single calls and the nightly specs, not one complete hosted auction. Speech accuracy gate G5 is PARTIAL (synthetic audio only); see [Gates](/docs/proof/gates).
+The architecture runs end to end against the <Term id="fake-paypal">fake PayPal</Term> in the test suites. The PayPal sandbox <Term id="gate">gates</Term> in `docs/GATES.md` (G0, G1, G2, G4 pass; <Term id="gate-g3">G3</Term> is in progress, day 0 was 7 Nov 2026 03:06 UTC, final reading about 12 Nov) cover single calls and the nightly specs, not one complete hosted auction. Speech accuracy gate G5 is PARTIAL (synthetic audio only); see [Gates](/docs/proof/gates).
 
 </NotVerified>
 

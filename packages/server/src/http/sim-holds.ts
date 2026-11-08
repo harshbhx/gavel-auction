@@ -68,7 +68,10 @@ export function withSimulatedHolds(gateway: PaymentsGateway, nowMs: () => number
       if (taken !== undefined) {
         return Promise.resolve({
           ...base,
-          status: taken >= amount ? 'CAPTURED' : 'PARTIALLY_CAPTURED',
+          // Like PayPal after our final capture: CAPTURED, with the rest of the authorization closed
+          // by it. PARTIALLY_CAPTURED made the saga read a winner below the ceiling as a mismatch
+          // and send every simulated settlement with bids to review (SRV-39).
+          status: 'CAPTURED',
           capturedCents: taken,
           captures: [{ captureId: `sim-cap-${h.authId}`, amountCents: taken, final: true }],
         });

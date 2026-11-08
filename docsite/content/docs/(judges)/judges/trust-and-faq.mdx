@@ -4,11 +4,11 @@ description: What happens to your login, your money and your data when you try a
 icon: ShieldCheck
 ---
 
-Short answers for a judge about to try a room. Where this page and `docs/GATES.md` disagree, the gate record wins.
+Short answers for a judge about to try a <Term id="room">room</Term>. Where this page and `docs/GATES.md` disagree, the gate record wins.
 
 <Held title="A bid is a hold, not a charge">
 
-Every PayPal call is against the sandbox. A sandbox buyer is a test account with pretend funds. Never sign in with your own PayPal account. Nothing is charged until the hammer, and then only the winning price is captured.
+Every PayPal call is against the <Term id="sandbox">sandbox</Term>. A sandbox buyer is a test account with pretend funds. Never sign in with your own PayPal account. Nothing is charged until the <Term id="hammer">hammer</Term>, and then only the winning price is <Term id="capture">captured</Term>.
 
 </Held>
 
@@ -25,17 +25,17 @@ No. The login happens on PayPal's own sandbox pages. See the [privacy notice](ht
 </Accordion>
 <Accordion title="What does GAVEL keep about me?">
 
-The display name you type, your bids and holds (amounts in cents, times and sandbox order ids) and the room audit trail. No analytics, ad identifiers or cookies. Voice is off unless the host turns it on. Records are removed when the demo is shut down.
+The display name you type, your bids and holds (amounts in cents, times and sandbox order ids) and the room <Term id="audit-trail">audit trail</Term>. No analytics, ad identifiers or cookies. Voice is off unless the host turns it on. Records are removed when the demo is shut down.
 
 </Accordion>
 <Accordion title="Can I check the auction was not rigged?">
 
-Yes. Every event goes into a ledger chained by hash; the audit trail link in a room shows it and an edited entry breaks the chain at that entry. See [engine and ledger](/docs/how-it-works/engine-and-ledger).
+Yes. Every event goes into a <Term id="ledger">ledger</Term> chained by hash; the audit trail link in a room shows it and an edited entry breaks the chain at that entry. See [engine and ledger](/docs/how-it-works/engine-and-ledger).
 
 </Accordion>
 <Accordion title="What if the server restarts mid-room?">
 
-The API is set up with a persistent disk, and the settlement saga resumes from its journal. If a room is gone, start a new demo auction. Crash-safe settlement is tested against the fake PayPal and on the real sandbox (one lot of three holds and one in-process crash); a whole auction on the hosted server is the next step. See [crash recovery](/docs/how-it-works/crash-recovery).
+The API is set up with a persistent disk, and the settlement saga resumes from its journal. If a room is gone, start a new demo auction. Crash-safe settlement is tested against the <Term id="fake-paypal">fake PayPal</Term> and on the real sandbox (one lot of three holds and one in-process crash); a whole auction on the hosted server is the next step. See [crash recovery](/docs/how-it-works/crash-recovery).
 
 </Accordion>
 <Accordion title="What comes next?">
