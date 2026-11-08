@@ -1,0 +1,621 @@
+/* Marketing landing, polish layer. Loaded after landing.css. Tokens only. Mobile first.
+ * Moving rules sit behind prefers-reduced-motion: no-preference. */
+
+.gv-mk {
+  overflow-x: clip;
+}
+
+/* ---- Hero: dotted newsprint grid and a little paper grain, both static ---- */
+.gv-hero {
+  position: relative;
+  isolation: isolate;
+}
+
+.gv-hero::before,
+.gv-hero::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: calc(-1 * var(--space-6));
+  bottom: calc(-1 * var(--space-6));
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.gv-hero::before {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-fg) 16%, transparent) 1px,
+    transparent 1.6px
+  );
+  background-size: 22px 22px;
+  mask-image: linear-gradient(to bottom, var(--color-fg) 35%, transparent);
+}
+
+.gv-hero::after {
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+
+/* ---- Scroll progress on the header edge (CSS only) ---- */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: scroll()) {
+    .gv-mk-header::after {
+      content: '';
+      position: absolute;
+      inset: auto 0 calc(-1 * var(--border-width)) 0;
+      height: var(--border-width-strong);
+      background: var(--color-action);
+      transform-origin: left;
+      animation: gv-progress linear both;
+      animation-timeline: scroll(root);
+    }
+  }
+}
+
+@keyframes gv-progress {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ---- Built with ---- */
+.gv-tech {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.gv-tech__title {
+  margin: 0;
+}
+
+/* ---- Figures ---- */
+.gv-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.gv-stats__item {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-rule);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+/* The two simulated figures get a dashed edge, like the hollow part of a hold. */
+.gv-stats__item:nth-child(3),
+.gv-stats__item:nth-child(4) {
+  border-style: dashed;
+  border-color: var(--color-released);
+}
+
+.gv-stats__item:last-child {
+  grid-column: 1 / -1;
+}
+
+.gv-stats__num {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-7);
+  line-height: 1;
+  color: var(--color-fg);
+}
+
+.gv-stats__label {
+  font-size: var(--font-size-2);
+  color: var(--color-fg);
+}
+
+.gv-stats__note {
+  margin: 0;
+  max-width: 70ch;
+  font-size: var(--font-size-2);
+  line-height: var(--line-height-body);
+  color: var(--color-fg);
+}
+
+.gv-stats__note .gv-link {
+  display: inline;
+}
+
+/* ---- Money flow ---- */
+.gv-flow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-4);
+  border: var(--border-width-strong) solid var(--color-fg);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-2);
+}
+
+.gv-flow__svg {
+  width: 100%;
+  height: auto;
+}
+
+.gv-flow__hatch {
+  fill: var(--color-held);
+}
+
+.gv-flow__held {
+  fill: url('#gv-flow-hatch');
+  stroke: var(--color-held);
+  stroke-width: 2;
+}
+
+.gv-flow__solid {
+  fill: var(--color-charged);
+  stroke: var(--color-charged);
+  stroke-width: 2;
+}
+
+.gv-flow__hollow {
+  fill: none;
+  stroke: var(--color-released);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+.gv-flow__arrow {
+  fill: none;
+  stroke: var(--color-fg);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gv-flow__step {
+    transition:
+      opacity var(--duration-standard) var(--ease-out),
+      transform var(--duration-standard) var(--ease-out);
+    transition-delay: calc(var(--gv-i, 0) * 280ms);
+  }
+
+  .gv-flow__arrow {
+    transition: stroke-dashoffset var(--duration-standard) var(--ease-out) 140ms;
+  }
+
+  .gv-flow[data-state='pending'] .gv-flow__step {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  .gv-flow[data-state='pending'] .gv-flow__arrow {
+    stroke-dashoffset: 1;
+  }
+}
+
+.gv-flow__list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gv-flow__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: var(--border-width) solid var(--color-rule);
+}
+
+.gv-flow__title {
+  margin: 0;
+  font-size: var(--font-size-4);
+  color: var(--color-fg);
+}
+
+.gv-flow__body {
+  margin: 0;
+  font-size: var(--font-size-3);
+  line-height: var(--line-height-body);
+  color: var(--color-fg);
+}
+
+/* ---- How it works: steps, with the hold beside them on wide screens ---- */
+.gv-how {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.gv-steps__item {
+  transition:
+    box-shadow var(--duration-standard) var(--ease-out),
+    border-color var(--duration-standard) var(--ease-out);
+}
+
+.gv-panel {
+  display: none;
+}
+
+.gv-panel__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: var(--border-width-strong) solid var(--color-fg);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-2);
+}
+
+.gv-panel__card p {
+  margin: 0;
+}
+
+.gv-panel[data-step='1'],
+.gv-panel[data-step='2'] {
+  --gv-held: 1;
+  --gv-charged: 0;
+  --gv-released: 0;
+}
+
+.gv-panel[data-step='3'] {
+  --gv-held: 0;
+  --gv-charged: 7;
+  --gv-released: 3;
+}
+
+.gv-panel__bar {
+  display: flex;
+  height: 48px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--color-raised);
+}
+
+.gv-panel__seg {
+  display: block;
+  height: 100%;
+  box-sizing: border-box;
+  flex-basis: 0;
+  min-width: 0;
+}
+
+.gv-panel__seg--held {
+  flex-grow: var(--gv-held);
+  border: calc(min(1, var(--gv-held)) * var(--border-width)) solid var(--color-held);
+  background: repeating-linear-gradient(135deg, var(--color-held) 0 2px, transparent 2px 7px);
+}
+
+.gv-panel__seg--charged {
+  flex-grow: var(--gv-charged);
+  border: calc(min(1, var(--gv-charged)) * var(--border-width)) solid var(--color-charged);
+  background: var(--color-charged);
+}
+
+.gv-panel__seg--released {
+  flex-grow: var(--gv-released);
+  border: calc(min(1, var(--gv-released)) * var(--border-width)) dashed var(--color-released);
+  border-inline-start: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gv-panel__seg {
+    transition:
+      flex-grow var(--duration-hammer) var(--ease-out),
+      border-width var(--duration-hammer) var(--ease-out);
+  }
+}
+
+.gv-panel__text {
+  min-height: 3em;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-3);
+  font-weight: 700;
+  line-height: var(--line-height-body);
+  color: var(--color-fg);
+}
+
+/* ---- Bento features ---- */
+.gv-bento__cell {
+  min-height: 160px;
+}
+
+.gv-bento__cell--hold .gv-features__title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-6);
+  line-height: var(--line-height-display);
+  text-transform: uppercase;
+}
+
+.gv-vis {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 52px;
+  margin-top: auto;
+  padding-top: var(--space-3);
+}
+
+.gv-vis--hold i {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-sm);
+}
+
+.gv-vis__held {
+  flex: 5;
+  border: var(--border-width) solid var(--color-held);
+  background: repeating-linear-gradient(135deg, var(--color-held) 0 2px, transparent 2px 7px);
+}
+
+.gv-vis__solid {
+  flex: 3;
+  border: var(--border-width) solid var(--color-charged);
+  background: var(--color-charged);
+}
+
+.gv-vis__hollow {
+  flex: 2;
+  border: var(--border-width) dashed var(--color-released);
+}
+
+.gv-vis--voice i,
+.gv-vis--screen i {
+  display: block;
+  flex: 1;
+  border-radius: var(--radius-sm);
+  background: var(--color-fg);
+  transform-origin: bottom;
+}
+
+.gv-vis--screen i:last-child {
+  background: var(--color-action);
+}
+
+.gv-vis--receipt {
+  flex-direction: column;
+  align-items: stretch;
+  height: auto;
+  border-top: var(--border-width) dashed var(--color-rule);
+  margin-top: var(--space-3);
+}
+
+.gv-vis--receipt i {
+  display: block;
+  height: 5px;
+  border-radius: var(--radius-sm);
+  background: var(--color-rule);
+}
+
+.gv-vis--receipt i:nth-child(2) {
+  width: 70%;
+}
+
+.gv-vis--receipt i:nth-child(3) {
+  width: 45%;
+  background: var(--color-fg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gv-vis--voice i {
+    animation: gv-wave 900ms ease-in-out infinite alternate;
+  }
+}
+
+@keyframes gv-wave {
+  from {
+    transform: scaleY(0.45);
+  }
+
+  to {
+    transform: scaleY(1);
+  }
+}
+
+/* ---- FAQ: the answer opens smoothly where the browser can animate it ---- */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (selector(::details-content)) {
+    .gv-faq {
+      interpolate-size: allow-keywords;
+    }
+
+    .gv-faq__item::details-content {
+      block-size: 0;
+      overflow: clip;
+      transition:
+        block-size var(--duration-standard) var(--ease-out),
+        content-visibility var(--duration-standard) allow-discrete;
+    }
+
+    .gv-faq__item[open]::details-content {
+      block-size: auto;
+    }
+  }
+}
+
+.gv-faq__q:hover {
+  color: var(--color-accent);
+}
+
+/* ---- Sticky call to action on phones ---- */
+.gv-sticky-cta {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 20;
+  display: flex;
+  padding: var(--space-3) var(--space-4);
+  padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+  border-top: var(--border-width-strong) solid var(--color-fg);
+  background: var(--color-bg);
+  transform: translateY(100%);
+  visibility: hidden;
+  transition:
+    transform var(--duration-standard) var(--ease-out),
+    visibility 0s linear var(--duration-standard);
+}
+
+.gv-sticky-cta[data-show='true'] {
+  transform: none;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.gv-sticky-cta .gv-cta {
+  flex: 1;
+}
+
+/* ---- Footer ---- */
+.gv-mk-footer {
+  padding-inline: max(var(--space-4), calc((100% - 1120px) / 2));
+  padding-bottom: calc(var(--space-8) + var(--space-7));
+}
+
+.gv-mk-footer__inner {
+  display: grid;
+  gap: var(--space-6);
+  padding-bottom: var(--space-4);
+}
+
+.gv-mk-footer__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.gv-mk-footer__brand {
+  font-size: clamp(56px, 16vw, 144px);
+  line-height: 0.85;
+  text-transform: uppercase;
+}
+
+.gv-mk-footer__tag {
+  font-size: var(--font-size-3);
+  font-weight: 600;
+}
+
+.gv-mk-footer__cols {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+}
+
+.gv-mk-footer__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.gv-mk-footer__links {
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* ---- Wider screens ---- */
+@media (min-width: 560px) {
+  .gv-mk-footer__cols {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 720px) {
+  .gv-sticky-cta {
+    display: none;
+  }
+
+  .gv-mk-footer {
+    padding-bottom: var(--space-7);
+  }
+
+  .gv-flow__list {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .gv-features.gv-bento {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gv-bento__cell--hold {
+    grid-column: 1 / -1;
+  }
+
+  .gv-mk-footer__inner {
+    grid-template-columns: 1.2fr 1fr;
+    align-items: end;
+  }
+}
+
+@media (min-width: 900px) {
+  .gv-stats {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .gv-stats__item:last-child {
+    grid-column: auto;
+  }
+
+  .gv-how {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-6);
+  }
+
+  .gv-how .gv-steps {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+
+  .gv-how .gv-steps__item {
+    min-height: 34vh;
+    justify-content: center;
+  }
+
+  .gv-steps__item[data-active='true'] {
+    border-color: var(--color-fg);
+    box-shadow: var(--shadow-2);
+  }
+
+  .gv-panel {
+    display: block;
+    position: sticky;
+    top: calc(var(--space-8) + var(--space-5));
+  }
+
+  .gv-features.gv-bento {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-areas:
+      'hold hold voice voice'
+      'hold hold screen receipt';
+  }
+
+  .gv-bento__cell--hold {
+    grid-area: hold;
+  }
+
+  .gv-bento__cell--voice {
+    grid-area: voice;
+  }
+
+  .gv-bento__cell--screen {
+    grid-area: screen;
+  }
+
+  .gv-bento__cell--receipt {
+    grid-area: receipt;
+  }
+}

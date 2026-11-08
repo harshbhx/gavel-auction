@@ -4,7 +4,9 @@ import { Icon } from '../../design/icons';
 import { Chip, type ChipTone } from '../../design/primitives/Chip';
 import { formatUsd } from '../../util/money';
 import { PriceRoll } from '../../ui';
+import { SpotlightCard } from '../../ui/fx';
 import { HammerArt, HoldArt, VoiceArt } from './LandingArt';
+import { HowPanel, useActiveStep } from './LandingHow';
 
 export const DOCS_URL = 'https://gavel-docs.creharsh.workers.dev';
 export const REPO_URL = 'https://github.com/harshbhx/gavel-auction';
@@ -61,7 +63,7 @@ export function LotCard() {
   );
 }
 
-function Section({
+export function Section({
   id,
   title,
   lead,
@@ -103,37 +105,90 @@ export function HowSection() {
       body: t('mk.how.s3.body'),
     },
   ];
+  const [register, active] = useActiveStep(steps.length);
+  const step = (active + 1) as 1 | 2 | 3;
   return (
     <Section id="how" title={t('mk.how.title')} lead={t('mk.how.lead')}>
-      <ol className="gv-steps">
-        {steps.map((s, i) => (
-          <li key={s.title} className="gv-steps__item gv-reveal">
-            {s.art}
-            <p className="ui-kicker">{t('mk.how.step', { n: i + 1 })}</p>
-            <h3 className="gv-steps__title">{s.title}</h3>
-            <p className="gv-steps__body">{s.body}</p>
-          </li>
-        ))}
-      </ol>
+      <div className="gv-how">
+        <ol className="gv-steps">
+          {steps.map((s, i) => (
+            <li
+              key={s.title}
+              ref={(el) => register(el, i)}
+              className="gv-steps__item gv-reveal"
+              data-active={i === active ? 'true' : 'false'}
+            >
+              {s.art}
+              <p className="ui-kicker">{t('mk.how.step', { n: i + 1 })}</p>
+              <h3 className="gv-steps__title">{s.title}</h3>
+              <p className="gv-steps__body">{s.body}</p>
+            </li>
+          ))}
+        </ol>
+        <HowPanel step={step} />
+      </div>
     </Section>
+  );
+}
+
+/** Small decorative drawings for the bento cells. CSS only and hidden from assistive tech. */
+function FeatureVisual({ id }: { id: string }) {
+  if (id === 'hold') {
+    return (
+      <div className="gv-vis gv-vis--hold" aria-hidden="true">
+        <i className="gv-vis__held" />
+        <i className="gv-vis__solid" />
+        <i className="gv-vis__hollow" />
+      </div>
+    );
+  }
+  if (id === 'voice') {
+    return (
+      <div className="gv-vis gv-vis--voice" aria-hidden="true">
+        {[40, 70, 100, 60, 85, 45, 25].map((h, i) => (
+          <i key={i} style={{ height: `${h}%`, animationDelay: `${i * 90}ms` }} />
+        ))}
+      </div>
+    );
+  }
+  if (id === 'screen') {
+    return (
+      <div className="gv-vis gv-vis--screen" aria-hidden="true">
+        {[34, 52, 71, 100].map((h, i) => (
+          <i key={i} style={{ height: `${h}%` }} />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="gv-vis gv-vis--receipt" aria-hidden="true">
+      <i />
+      <i />
+      <i />
+    </div>
   );
 }
 
 export function FeaturesSection() {
   const features = [
-    { title: t('mk.feat.hold.title'), body: t('mk.feat.hold.body') },
-    { title: t('mk.feat.voice.title'), body: t('mk.feat.voice.body') },
-    { title: t('mk.feat.screen.title'), body: t('mk.feat.screen.body') },
-    { title: t('mk.feat.receipt.title'), body: t('mk.feat.receipt.body') },
+    { id: 'hold', title: t('mk.feat.hold.title'), body: t('mk.feat.hold.body') },
+    { id: 'voice', title: t('mk.feat.voice.title'), body: t('mk.feat.voice.body') },
+    { id: 'screen', title: t('mk.feat.screen.title'), body: t('mk.feat.screen.body') },
+    { id: 'receipt', title: t('mk.feat.receipt.title'), body: t('mk.feat.receipt.body') },
   ];
   return (
     <Section id="features" title={t('mk.feat.title')}>
-      <ul className="gv-features">
+      <ul className="gv-features gv-bento">
         {features.map((f) => (
-          <li key={f.title} className="gv-features__item gv-reveal">
+          <SpotlightCard
+            key={f.id}
+            as="li"
+            className={`gv-features__item gv-bento__cell gv-bento__cell--${f.id} gv-reveal`}
+          >
             <h3 className="gv-features__title">{f.title}</h3>
             <p className="gv-features__body">{f.body}</p>
-          </li>
+            <FeatureVisual id={f.id} />
+          </SpotlightCard>
         ))}
       </ul>
     </Section>
@@ -245,15 +300,15 @@ export function AudienceSection({ onJudges }: { onJudges: () => void }) {
   return (
     <Section id="who" title={t('mk.aud.title')}>
       <div className="gv-aud">
-        <article className="gv-aud__col gv-reveal">
+        <SpotlightCard as="article" className="gv-aud__col gv-reveal">
           <h3 className="gv-aud__title">{t('mk.aud.auc.title')}</h3>
           <p>{t('mk.aud.auc.body')}</p>
-        </article>
-        <article className="gv-aud__col gv-reveal">
+        </SpotlightCard>
+        <SpotlightCard as="article" className="gv-aud__col gv-reveal">
           <h3 className="gv-aud__title">{t('mk.aud.bid.title')}</h3>
           <p>{t('mk.aud.bid.body')}</p>
-        </article>
-        <article className="gv-aud__col gv-reveal">
+        </SpotlightCard>
+        <SpotlightCard as="article" className="gv-aud__col gv-reveal">
           <h3 className="gv-aud__title">{t('mk.aud.jud.title')}</h3>
           <p>{t('mk.aud.jud.body')}</p>
           <a
@@ -267,7 +322,7 @@ export function AudienceSection({ onJudges }: { onJudges: () => void }) {
           >
             {t('mk.aud.jud.link')}
           </a>
-        </article>
+        </SpotlightCard>
       </div>
     </Section>
   );

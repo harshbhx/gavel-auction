@@ -1,0 +1,122 @@
+/* Effects used by the marketing landing. Tokens only. Every moving rule sits behind
+ * prefers-reduced-motion: no-preference, or is switched off by the component itself. */
+
+/* BlurText: the words are always visible; only a short blur and rise plays. */
+.fx-blur-word {
+  display: inline-block;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fx-blur-word {
+    animation: fx-blur-in 700ms var(--ease-out) both;
+    animation-delay: calc(var(--fx-i, 0) * 70ms);
+  }
+}
+
+@keyframes fx-blur-in {
+  from {
+    filter: blur(10px);
+    transform: translateY(0.2em);
+  }
+
+  to {
+    filter: blur(0);
+    transform: none;
+  }
+}
+
+/* Marquee: a row of text chips that slides; paused on hover and focus. */
+.fx-marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-fg) 6%,
+    var(--color-fg) 94%,
+    transparent
+  );
+}
+
+.fx-marquee[data-motion='off'] {
+  mask-image: none;
+}
+
+.fx-marquee__track {
+  display: flex;
+  width: max-content;
+  max-width: none;
+}
+
+.fx-marquee[data-motion='off'] .fx-marquee__track {
+  width: auto;
+}
+
+.fx-marquee__row {
+  display: flex;
+  flex: none;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0 var(--space-3) 0 0;
+  list-style: none;
+}
+
+.fx-marquee[data-motion='off'] .fx-marquee__row {
+  flex-wrap: wrap;
+}
+
+.fx-marquee__chip {
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fx-marquee[data-motion='on'] .fx-marquee__track {
+    animation: fx-marquee 36s linear infinite;
+  }
+
+  .fx-marquee:hover .fx-marquee__track,
+  .fx-marquee:focus-within .fx-marquee__track {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes fx-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* SpotlightCard: a faint tint under the content, centred on the pointer. */
+.fx-spot {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.fx-spot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    280px circle at var(--fx-x, 50%) var(--fx-y, 50%),
+    color-mix(in srgb, var(--color-action) 18%, transparent),
+    transparent 70%
+  );
+  transition: opacity var(--duration-standard);
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .fx-spot:hover::before {
+    opacity: 1;
+  }
+}
