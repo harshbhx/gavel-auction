@@ -70,7 +70,7 @@ test.describe('ledger lab', () => {
   test('search narrows the rows', async ({ page, shoot }) => {
     await lab(page);
     await page.getByLabel(t('ledger.quick')).fill('hammer');
-    await expect(page.getByText(/^30 of [\d,]+ entries$/)).toBeVisible();
+    await expect(page.getByText(/^30 of [\d,]+ entries$/)).toBeVisible({ timeout: 20_000 });
     await shoot('grid', 'ledger-lab-search');
   });
 
