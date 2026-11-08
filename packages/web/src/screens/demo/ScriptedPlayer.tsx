@@ -120,6 +120,9 @@ export function useScriptedPlayback(beats: readonly Beat[] = BEATS): Playback {
   );
 }
 
+/** Beat copy has no placeholders, so a union of its keys is safe to look up. */
+const say = (key: Beat['label'] | Beat['body']): string => t(key as 'scriptedDemo.b0.label');
+
 /** Caption, transport controls and the step list that sit beside the scripted screen. */
 export function ScriptedPlayer({
   playback,
@@ -137,7 +140,11 @@ export function ScriptedPlayer({
       ? t('scriptedDemo.pause')
       : t('scriptedDemo.play');
   return (
-    <section className="gv-player" aria-label={t('scriptedDemo.player')} data-testid="scripted-player">
+    <section
+      className="gv-player"
+      aria-label={t('scriptedDemo.player')}
+      data-testid="scripted-player"
+    >
       <p className="gv-player__progress tabular" data-testid="scripted-progress">
         {t('scriptedDemo.progress', { n: beat + 1, total })}
       </p>
@@ -149,8 +156,8 @@ export function ScriptedPlayer({
         data-stage={current?.stage}
         data-testid="scripted-caption"
       >
-        <h2 className="gv-player__title">{current === undefined ? '' : t(current.label)}</h2>
-        <p className="gv-player__body">{current === undefined ? '' : t(current.body)}</p>
+        <h2 className="gv-player__title">{current === undefined ? '' : say(current.label)}</h2>
+        <p className="gv-player__body">{current === undefined ? '' : say(current.body)}</p>
       </div>
       {playback.reduced && <p className="gv-player__note">{t('scriptedDemo.reduced')}</p>}
       {finished && !playback.reduced && <p className="gv-player__note">{t('scriptedDemo.done')}</p>}
@@ -197,7 +204,7 @@ export function ScriptedPlayer({
               aria-current={i === beat ? 'step' : undefined}
               onClick={() => playback.jump(i)}
             >
-              {`${i + 1}. ${t(b.label)}`}
+              {`${i + 1}. ${say(b.label)}`}
             </button>
           </li>
         ))}

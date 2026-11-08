@@ -399,7 +399,8 @@ export const en = {
   'scriptedDemo.speedNormal': '1x',
   'scriptedDemo.speedSlow': 'Slow',
   'scriptedDemo.steps': 'Steps',
-  'scriptedDemo.reduced': 'Reduced motion is on, so the demo waits for you. Use Next step to move on.',
+  'scriptedDemo.reduced':
+    'Reduced motion is on, so the demo waits for you. Use Next step to move on.',
   'scriptedDemo.done': 'End of the demo. Press Play again to watch it once more.',
   'scriptedDemo.b0.label': 'Holds placed',
   'scriptedDemo.b0.body':

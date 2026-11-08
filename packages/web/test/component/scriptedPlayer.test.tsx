@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
@@ -183,7 +191,9 @@ describe('/demo/scripted player', () => {
     render(<App initialPath="/demo/scripted" gallery={false} />);
     await waitFor(() => expect(screen.getByText(t('prov.scripted'))).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: new RegExp(t('scriptedDemo.b6.label')) }));
-    expect(screen.getByTestId('scripted-caption').textContent).toContain(t('scriptedDemo.b6.label'));
+    expect(screen.getByTestId('scripted-caption').textContent).toContain(
+      t('scriptedDemo.b6.label'),
+    );
     await waitFor(() => expect(screen.getByTestId('sold')).toBeTruthy());
   });
 });
