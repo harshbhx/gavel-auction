@@ -4,7 +4,7 @@ import { t } from '../copy/t';
 import './grid.css';
 
 /**
- * The grids are lazy: AG Grid (the ag-grid chunk) is fetched only when a page that shows a table
+ * The grids are lazy: AG Grid (its own lazy chunks) is fetched only when a page that shows a table
  * opens, so the landing and bidder bundles do not carry it (the size gate checks that).
  */
 const LedgerGridLazy = lazy(() => import('./LedgerGrid'));

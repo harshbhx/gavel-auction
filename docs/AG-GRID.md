@@ -44,7 +44,7 @@ Rows and columns are virtualised by AG Grid. The lab loads a 30-day run (a few t
 
 ## Bundle
 
-The grids are lazy. Each is behind `React.lazy`, and Vite puts the library in its own `ag-grid` chunk, so the landing and bidder pages do not download it. The web-budget check (`packages/web/scripts/check-size.mjs`) fails the build if AG Grid ever lands in the initial route.
+The grids are lazy. Each is behind `React.lazy`, and Vite splits the library into lazy chunks, so the landing and bidder pages do not download it. The web-budget check (`packages/web/scripts/check-size.mjs`) fails the build if AG Grid ever lands in the initial route.
 
 ## Screenshots
 

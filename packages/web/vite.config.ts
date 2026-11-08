@@ -87,17 +87,6 @@ export function cspPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [react(), sandboxGuard(), cspPlugin()],
-  build: {
-    rollupOptions: {
-      output: {
-        // AG Grid and its React wrapper go in one lazy chunk, so the size gate can name it and no
-        // entry chunk can absorb it. Only the grids under src/grid import it.
-        manualChunks(id: string): string | undefined {
-          return id.includes('node_modules/ag-grid-') ? 'ag-grid' : undefined;
-        },
-      },
-    },
-  },
   test: {
     environment: 'jsdom',
     globals: true,
