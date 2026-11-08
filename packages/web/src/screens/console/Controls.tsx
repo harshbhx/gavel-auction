@@ -38,6 +38,15 @@ export interface ControlState {
   readonly busy: boolean;
 }
 
+/**
+ * The status the controls must follow. The server reports a paused lot as OPEN plus a `paused`
+ * flag, never as PAUSED, so the console maps the pair to PAUSED. Without this Resume stays
+ * disabled while paused and Extend (which the engine refuses while paused) stays enabled.
+ */
+export function controlStatus(status: AuctionStatus, paused: boolean): AuctionStatus {
+  return paused && status === 'OPEN' ? 'PAUSED' : status;
+}
+
 /** The reason a control is unavailable, or null when it can be used. */
 export function disabledReason(name: ControlName, s: ControlState): ReasonKey | null {
   if (s.stopped) return 'controls.reason.stopped';
