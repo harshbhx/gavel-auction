@@ -20,9 +20,9 @@ flowchart LR
 
 | Package | Purpose |
 | --- | --- |
-| `packages/shared` | Money in integer cents, ids, wire types, replay bundle format |
-| `packages/engine` | Pure auction core and hash-chained ledger |
-| `packages/payments` | Hold service, settlement saga, webhook verification, fake PayPal, gate scripts |
+| `packages/shared` | Money in integer cents, ids, wire types, <Term id="replay">replay</Term> bundle format |
+| `packages/engine` | Pure auction core and hash-chained <Term id="ledger">ledger</Term> |
+| `packages/payments` | <Term id="hold">Hold</Term> service, settlement <Term id="saga">saga</Term>, <Term id="webhook">webhook</Term> verification, <Term id="fake-paypal">fake PayPal</Term>, gate scripts |
 | `packages/voice` | Audio capture, speech-to-text clients, bid parser, decision step |
 | `packages/server` | Single-process host: HTTP routes, room runtime, settlement scheduling, file stores |
 | `packages/e2e` | Scenario DSL, runner and end-to-end specs |

@@ -10,13 +10,13 @@ This is the label sheet from `docs/submission/VIDEO-SCRIPT.md`, with each row li
 
 | Claim shown | Label on screen | Truth |
 | --- | --- | --- |
-| Hold, capture 350, remainder released | Real sandbox, evidence file | G1 PASS, wallet and card |
-| Card and guest authorize | Real sandbox | G2 PASS |
-| Webhook verification | Real sandbox, 6 events | G4 PASS; tampered-event rejection is fake only |
-| Full multi-bidder settlement | Fake PayPal | Shown on the fake PayPal. On the sandbox one lot of three holds and a 20-settlement measurement have run; a whole auction through a server is the next step |
+| <Term id="hold">Hold</Term>, <Term id="capture">capture</Term> 350, remainder released | Real <Term id="sandbox">sandbox</Term>, evidence file | <Term id="gate-g1">G1</Term> PASS, wallet and card |
+| Card and guest authorize | Real sandbox | <Term id="gate-g2">G2</Term> PASS |
+| <Term id="webhook">Webhook</Term> verification | Real sandbox, 6 events | <Term id="gate-g4">G4</Term> PASS; tampered-event rejection is fake only |
+| Full multi-bidder <Term id="settlement">settlement</Term> | Fake PayPal | Shown on the fake PayPal. On the sandbox one lot of three holds and a 20-settlement measurement have run; a whole auction through a server is the next step |
 | Crash and resume | Fake PayPal, test hook | In-process hook on the fake PayPal, and one in-process crash recovered on the sandbox; a trigger on a hosted server is the next step |
-| Voice bid | Recorded replay | G5 PARTIAL: measured on synthetic clips, confirm prompt on every spoken bid, live-room test is the next step |
-| Honor period and reauthorize | Not shown as a result | G3 timed probe in progress, final reading about 12 Nov |
+| Voice bid | Recorded replay | <Term id="gate-g5">G5</Term> PARTIAL: measured on synthetic clips, confirm prompt on every spoken bid, live-room test is the next step |
+| <Term id="honor-period">Honor period</Term> and reauthorize | Not shown as a result | <Term id="gate-g3">G3</Term> timed probe in progress, final reading about 12 Nov |
 | Any money | Never a live charge | Sandbox only |
 
 ## The source labels used on shots
@@ -35,14 +35,14 @@ This is the label sheet from `docs/submission/VIDEO-SCRIPT.md`, with each row li
 | --- | --- | --- |
 | Real | A call to the PayPal sandbox with committed evidence or a run log | G1, G2, G4 |
 | Fake | The built-in fake PayPal, a test double | Whole-auction settlement tests |
-| Simulated | Our code over simulated days on a fake clock against a model of PayPal | The 30-day run |
+| <Term id="simulated">Simulated</Term> | Our code over simulated days on a fake clock against a model of PayPal | The 30-day run |
 | Recorded | A replay of recorded events or cached speech outputs | The voice replay, G5 |
 
 ## By area
 
 | Area | Mode | Page |
 | --- | --- | --- |
-| Auction rules, price, soft close, hammer | Real code, deterministic, the same in every mode | [Engine and ledger](/docs/how-it-works/engine-and-ledger) |
+| Auction rules, price, <Term id="soft-close">soft close</Term>, <Term id="hammer">hammer</Term> | Real code, deterministic, the same in every mode | [Engine and ledger](/docs/how-it-works/engine-and-ledger) |
 | Authorize, partial capture, remainder | Real sandbox; remainder release inferred | [Gate G1](/docs/proof/gate-g1) |
 | Card and guest authorize | Real sandbox, authorize only | [Gate G2](/docs/proof/gate-g2) |
 | Webhook signatures | Real sandbox for valid events; fake for tampered ones | [Gate G4](/docs/proof/gate-g4) |
@@ -50,7 +50,7 @@ This is the label sheet from `docs/submission/VIDEO-SCRIPT.md`, with each row li
 | Crash recovery | Fake, plus one in-process crash on the sandbox | [Crash recovery](/docs/how-it-works/crash-recovery) |
 | Honor period | Timed sandbox probe running (G3, final reading about 12 Nov); the 30-day run is simulated | [Gate G3](/docs/proof/gate-g3), [simulation](/docs/proof/simulation) |
 | Voice | Recorded transcripts and cached provider outputs; G5 PARTIAL | [Gate G5](/docs/proof/gate-g5) |
-| Replay | Recorded events, read only, labelled on screen | [Demo](/docs/start/demo) |
+| <Term id="replay">Replay</Term> | Recorded events, read only, labelled on screen | [Demo](/docs/start/demo) |
 | Hosted demo | Hosted in sandbox mode with a persistent disk; a recorded walk is the next step | [Demo](/docs/start/demo) |
 
 <NotVerified title="The label sheet is a script note, not a result">

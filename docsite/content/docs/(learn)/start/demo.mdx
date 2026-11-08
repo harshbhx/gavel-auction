@@ -9,7 +9,7 @@ Status labels: "available" means the code is on `main` today. "not available yet
 
 <Held title="Hosted in sandbox mode, recorded walk is next">
 
-The web app is at [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev) and the API at [api.gavel.dualmindlab.tech](https://api.gavel.dualmindlab.tech), with a persistent disk. A recorded end-to-end walk of the room flow on that host is the next step. The hosted server refuses the fake PayPal. The scripted `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake`, which config refuses under production-like settings. The local fake-payments run is the runnable path today.
+The web app is at [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev) and the API at [api.gavel.dualmindlab.tech](https://api.gavel.dualmindlab.tech), with a persistent disk. A recorded end-to-end walk of the room flow on that host is the next step. The hosted server refuses the <Term id="fake-paypal">fake PayPal</Term>. The <Term id="scripted-demo">scripted</Term> `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake`, which config refuses under production-like settings. The local fake-payments run is the runnable path today.
 
 </Held>
 
@@ -18,11 +18,11 @@ The web app is at [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.wo
 | Item | Status |
 | --- | --- |
 | Landing page `/` | Route built in the web package and served at the hosted address |
-| Judge page `/try` | Steps for a key-less sandbox room and a link to the scripted tour; the room needs the host flag `JUDGE_ROOMS=true` |
+| Judge page `/try` | Steps for a key-less <Term id="sandbox">sandbox</Term> <Term id="room">room</Term> and a link to the scripted tour; the room needs the host flag `JUDGE_ROOMS=true` |
 | Help button | Opens the hold explainer or replays a six-step guided tour; present on the landing, join, register, bid and receipt screens |
 | Demo launcher `/demo` | Creates a room and gives four links; scripted mode is local only |
 | Replay `/replay/:recordingId` | Player and bundle format exist; no recording is hosted yet |
-| Auctioneer console, bidder screen, big screen, audit | Routes built; they need a running server (the hosted API runs in sandbox mode) |
+| <Term id="auctioneer-console">Auctioneer console</Term>, bidder screen, big screen, audit | Routes built; they need a running server (the hosted API runs in sandbox mode) |
 
 Every page shows a "Sandbox: no real money moves" banner. A room is labelled "Live sandbox room", "Scripted demo: recorded events, no PayPal calls" or "Recorded: this is a replay".
 
@@ -33,9 +33,9 @@ Run the web app in development (`npm run dev -w @gavel/web`) and open `/r/demo/s
 ## Join as a bidder
 
 1. Open the QR link from the launcher, or `/join/<roomId>` and type the six-character code.
-2. Choose "Join as bidder" and pick a ceiling. The page creates a PayPal order with intent AUTHORIZE for that amount.
+2. Choose "Join as bidder" and pick a <Term id="ceiling">ceiling</Term>. The page creates a PayPal order with intent AUTHORIZE for that amount.
 3. Approve it. A sandbox buyer signs in with a sandbox personal account; in a fake-payments room the page approves after a short pause with no sign-in.
-4. The ladder shows your hold as HELD. A hold is a promise, not a charge.
+4. The ladder shows your <Term id="hold">hold</Term> as HELD. A hold is a promise, not a charge.
 
 The ceiling is set on a slider and approved with a press-and-hold button (3 seconds, or Space or Enter on a keyboard, with a two-tap alternative). The help button explains the hold: hatched is held, solid is charged, hollow is released.
 
@@ -47,8 +47,8 @@ The ceiling is set on a slider and approved with a press-and-hold button (3 seco
 
 ## Expected result at the hammer
 
-1. The winner's hold is captured for the **winning price only**. A $500 ceiling and a $350 winning bid captures $350.
-2. Every other hold is voided. The winner's unused remainder is closed by PayPal (inferred, not observed).
+1. The winner's hold is <Term id="capture">captured</Term> for the **winning price only**. A $500 ceiling and a $350 winning bid captures $350.
+2. Every other hold is <Term id="void">voided</Term>. The winner's unused remainder is closed by PayPal (inferred, not observed).
 3. The ladder shows HELD, then CAPTURED for the winner and VOIDED for the others, with the source of each confirmation (webhook or lookup).
 4. Exactly one capture happens even if the server stops mid-settlement and resumes. If PayPal's answer is unknown, the settlement stops for review.
 

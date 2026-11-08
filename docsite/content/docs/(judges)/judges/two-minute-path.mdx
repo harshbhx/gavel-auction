@@ -6,11 +6,11 @@ icon: Timer
 
 <Held title="Hosted in sandbox mode, recorded walk is next">
 
-The web app is hosted at [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev) and the API at [api.gavel.dualmindlab.tech](https://api.gavel.dualmindlab.tech), both in sandbox mode, with a persistent disk. A recorded click-through of the five-minute path on that host is the next step, so this path reads the evidence on this site. The runnable demo with the fake PayPal is the local one, in the [ten-minute path](/docs/judges/ten-minute-path).
+The web app is hosted at [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev) and the API at [api.gavel.dualmindlab.tech](https://api.gavel.dualmindlab.tech), both in sandbox mode, with a persistent disk. A recorded click-through of the five-minute path on that host is the next step, so this path reads the evidence on this site. The runnable demo with the <Term id="fake-paypal">fake PayPal</Term> is the local one, in the [ten-minute path](/docs/judges/ten-minute-path).
 
 </Held>
 
-If the host has judge rooms switched on (`JUDGE_ROOMS=true`), you can also start a key-less sandbox room from the web app; the page `/try` lists the steps. The help button on the bidder screens opens the hold explainer and a six-step guided tour. See the [demo guide](/docs/start/demo).
+If the host has <Term id="judge-room">judge rooms</Term> switched on (`JUDGE_ROOMS=true`), you can also start a key-less sandbox room from the web app; the page `/try` lists the steps. The help button on the bidder screens opens the <Term id="hold">hold</Term> explainer and a six-step guided tour. See the [demo guide](/docs/start/demo).
 
 <Steps>
 <Step>
@@ -19,7 +19,7 @@ If the host has judge rooms switched on (`JUDGE_ROOMS=true`), you can also start
 
 Open [Start here](/docs/start) and then [Real, simulated, recorded](/docs/start/status).
 
-Expected: one sentence (every bid is a PayPal authorization hold, only the winning price is captured, every other hold is voided) and a table that labels each area as real sandbox, fake, simulated, recorded or not available.
+Expected: one sentence (every bid is a PayPal authorization hold, only the winning price is <Term id="capture">captured</Term>, every other hold is <Term id="void">voided</Term>) and a table that labels each area as real sandbox, fake, simulated, recorded or not available.
 
 </Step>
 <Step>
@@ -28,7 +28,7 @@ Expected: one sentence (every bid is a PayPal authorization hold, only the winni
 
 Open [Gates G0 to G5](/docs/proof/gates).
 
-Expected: a table with G0, G1, G2 and G4 as PASS, G5 as PARTIAL and G3 as IN PROGRESS. The table is generated from `docs/GATES.md`, so it cannot differ from the repository.
+Expected: a table with <Term id="gate-g0">G0</Term>, G1, G2 and G4 as PASS, <Term id="gate-g5">G5</Term> as PARTIAL and <Term id="gate-g3">G3</Term> as IN PROGRESS. The table is generated from `docs/GATES.md`, so it cannot differ from the repository.
 
 </Step>
 <Step>
