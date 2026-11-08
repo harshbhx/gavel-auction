@@ -1279,7 +1279,11 @@ function Routed({
     api !== undefined &&
     roomId !== 'demo'
   ) {
-    return <WatcherGate roomId={roomId} onNavigate={navigate} apiBase={api.apiBase} />;
+    return (
+      <RoomGate apiBase={api.apiBase} roomId={roomId} onNavigate={navigate}>
+        <WatcherGate roomId={roomId} onNavigate={navigate} apiBase={api.apiBase} />
+      </RoomGate>
+    );
   }
   if (liveBase === undefined || roomId === undefined || who === null) {
     return <RouteScreen match={match} />;
