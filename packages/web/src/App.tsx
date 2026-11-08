@@ -46,6 +46,7 @@ import { JudgePanel, type RoomsState } from './screens/judge/JudgePanel';
 import { fetchOpsSummary, OpsView, type OpsSummaryView } from './ops/OpsView';
 import { DemoLauncher, DemoRoomError, type DemoLinks } from './screens/demo/DemoLauncher';
 import { ScriptedJoin } from './screens/demo/ScriptedJoin';
+import { ScriptedPlayer, useScriptedPlayback } from './screens/demo/ScriptedPlayer';
 import { JudgeHub } from './screens/hub/JudgeHub';
 import { TokenHelp } from './screens/hub/TokenHelp';
 import { hubHref, readHubKeys } from './screens/hub/hubKeys';
@@ -119,6 +120,13 @@ function tokenFor(routeId: string, roomId: string): { token: string; bidderId?: 
 interface ScriptedPlay {
   readonly room: ScriptedRoom;
   readonly at: number | null;
+  /** Changes when the player rebuilds the room at the same time. */
+  readonly runKey?: number;
+  /**
+   * Set by the scripted demo player: the scenario is not left on autoplay. The player gets the
+   * transport and moves its clock one beat at a time.
+   */
+  readonly attach?: (transport: ScenarioTransport) => void;
 }
 
 interface Live {
@@ -145,6 +153,8 @@ function useLiveRoom(
     const scriptedTransport =
       scripted === null ? null : new ScenarioTransport(scripted.room.scenario);
     const transport: Transport = scriptedTransport ?? new WebSocketTransport(socketUrl(liveBase));
+    // A rebuilt scripted room (restart, step back) must not keep the frames of the last run.
+    if (scripted?.attach !== undefined) roomStore.enter('scripted-reset');
     const started = startLiveRoom({
       wsBase: liveBase,
       roomId: scripted === null ? roomId : scripted.room.roomId,
@@ -153,7 +163,10 @@ function useLiveRoom(
       ...(bidderId === undefined ? {} : { bidderId }),
     });
     if (scripted !== null && scriptedTransport !== null) {
-      if (scripted.at === null) scriptedTransport.autoplay();
+      if (scripted.attach !== undefined) {
+        scriptedTransport.advance(scripted.at ?? 0);
+        scripted.attach(scriptedTransport);
+      } else if (scripted.at === null) scriptedTransport.autoplay();
       else scriptedTransport.advance(scripted.at);
     }
     setLive({ room: started, transport });
@@ -904,11 +917,17 @@ function ScriptedRoute({
   roomId,
   request,
   liveBase,
+  attach,
+  runKey = 0,
 }: {
   match: RouteMatch;
   roomId: string;
   request: ScriptedRequest;
   liveBase: string | undefined;
+  /** Scripted demo player: take over the clock of the scenario. */
+  attach?: (transport: ScenarioTransport) => void;
+  /** Changes to build the room again at `request.at`. */
+  runKey?: number;
 }) {
   const { name, at } = request;
   const asBidder = match.route.id === 'bid';
@@ -928,8 +947,11 @@ function ScriptedRoute({
     };
   }, [name, asBidder]);
   const scripted = useMemo(
-    () => (loaded === undefined || loaded === null ? null : { room: loaded, at }),
-    [loaded, at],
+    () =>
+      loaded === undefined || loaded === null
+        ? null
+        : { room: loaded, at, ...(attach === undefined ? {} : { attach }), runKey },
+    [loaded, at, attach, runKey],
   );
   if (loaded === null) return <NotFound />;
   if (scripted === null) return <p role="status">{t('net.resyncing')}</p>;
@@ -958,7 +980,6 @@ const SCRIPTED_BID_MATCH: RouteMatch = {
   route: { id: 'bid', path: '/r/:roomId/bid', titleKey: 'bid.price' },
   params: { roomId: SCRIPTED_ROOM_ID },
 };
-const SCRIPTED_REQUEST: ScriptedRequest = { name: DEFAULT_SCENARIO, at: null };
 
 /**
  * /demo/scripted and /demo/scripted/bid: play the scripted demo in this tab, in every build, with
@@ -971,6 +992,11 @@ function InMemoryScriptedDemo({
   liveBase: string | undefined;
   view: 'screen' | 'bid';
 }) {
+  const playback = useScriptedPlayback();
+  const request = useMemo<ScriptedRequest>(
+    () => ({ name: DEFAULT_SCENARIO, at: playback.startAt }),
+    [playback.startAt],
+  );
   return (
     <div className="gv-scripted-frame">
       <div className="gv-scripted-bar">
@@ -984,12 +1010,17 @@ function InMemoryScriptedDemo({
           </a>
         </div>
       </div>
-      <ScriptedRoute
-        match={view === 'bid' ? SCRIPTED_BID_MATCH : SCRIPTED_SCREEN_MATCH}
-        roomId={SCRIPTED_ROOM_ID}
-        request={SCRIPTED_REQUEST}
-        liveBase={liveBase}
-      />
+      <div className="gv-scripted-stage">
+        <ScriptedRoute
+          match={view === 'bid' ? SCRIPTED_BID_MATCH : SCRIPTED_SCREEN_MATCH}
+          roomId={SCRIPTED_ROOM_ID}
+          request={request}
+          liveBase={liveBase}
+          attach={playback.attach}
+          runKey={playback.run}
+        />
+      </div>
+      <ScriptedPlayer playback={playback} />
     </div>
   );
 }
