@@ -11,6 +11,19 @@ export interface LiveRoom {
   readonly hub: string;
   /** Path of the join page, with the code when there is one. */
   readonly join: string;
+  /** The read-only audit trail link (a reviewer token, or the console token as a fallback). */
+  readonly audit?: string | null;
+  /** The read-only reviewer token, for the ledger check. Null when the room made none. */
+  readonly reviewer?: string | null;
+}
+
+function auditLink(
+  base: string,
+  reviewer: string | null,
+  auctioneer: string | null,
+): string | null {
+  const token = reviewer ?? auctioneer;
+  return token === null ? null : `${base}/audit#token=${token}`;
 }
 
 export function liveRoomFrom(known: KnownRoom | null): LiveRoom | null {
@@ -25,6 +38,8 @@ export function liveRoomFrom(known: KnownRoom | null): LiveRoom | null {
     screen: keys.screen === null ? null : `${base}/screen#token=${keys.screen}`,
     receipt: `${base}/receipt`,
     hub: `${base}/hub${hubFragment(keys)}`,
+    audit: auditLink(base, keys.reviewer ?? null, keys.auctioneer),
+    reviewer: keys.reviewer ?? null,
     join: `/join/${encodeURIComponent(roomId)}${code === null ? '' : `?c=${encodeURIComponent(code)}`}`,
   };
 }

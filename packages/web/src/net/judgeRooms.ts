@@ -1,5 +1,6 @@
 import { DemoRoomError, type DemoLinks } from '../screens/demo/DemoLauncher';
 import { hubFragment, rememberHubKeys, type HubKeys } from '../screens/hub/hubKeys';
+import { JUDGE_KEY_HEADER } from './judgeKey';
 
 /** Asks the host whether key-less judge rooms are on and have a free slot. Never throws. */
 export async function judgeRoomsAvailable(apiBase: string): Promise<boolean> {
@@ -44,14 +45,36 @@ function text(body: unknown, key: string): string {
   return value;
 }
 
-/** Creates a real sandbox room with no operator key. The room tokens ride in the link fragment. */
-export async function createJudgeRoom(apiBase: string): Promise<DemoLinks> {
+async function errorCode(res: Response): Promise<string | null> {
+  try {
+    const body = (await res.json()) as unknown;
+    const error = field(body, 'error');
+    return typeof error === 'string' ? error : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Creates a real sandbox room with no operator key. The room tokens ride in the link fragment.
+ * With a judge key (header only, never a URL) the host lifts its public limits within a bound.
+ */
+export async function createJudgeRoom(apiBase: string, judgeKey?: string): Promise<DemoLinks> {
   const res = await fetch(`${apiBase}/api/judge/rooms`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      ...(judgeKey === undefined ? {} : { [JUDGE_KEY_HEADER]: judgeKey }),
+    },
     body: '{}',
   });
   if (res.status === 404) throw new DemoRoomError('demoOff');
+  if (res.status === 401 && judgeKey !== undefined) throw new DemoRoomError('keyWrong');
+  if (res.status === 429 && judgeKey !== undefined) {
+    const code = await errorCode(res);
+    if (code === 'judge_key_locked') throw new DemoRoomError('keyLocked');
+    if (code === 'judge_key_room_cap') throw new DemoRoomError('keyCap');
+  }
   if (res.status === 429 || res.status === 503) throw new DemoRoomError('judgeBusy');
   if (res.status !== 201) throw new Error('judge room failed');
   const body = (await res.json()) as unknown;
@@ -60,11 +83,14 @@ export async function createJudgeRoom(apiBase: string): Promise<DemoLinks> {
   const base = `/r/${id}`;
   const auctioneer = text(body, 'auctioneerToken');
   const screen = text(body, 'screenToken');
+  const rawReviewer = field(body, 'reviewerToken');
+  const reviewer = typeof rawReviewer === 'string' && rawReviewer !== '' ? rawReviewer : null;
   const rawExp = field(body, 'expiresAt');
   const rawCode = field(body, 'joinCode');
   const keys: HubKeys = {
     auctioneer,
     screen,
+    reviewer,
     expiresAt: typeof rawExp === 'number' && Number.isFinite(rawExp) ? Math.round(rawExp) : null,
     code: typeof rawCode === 'string' && rawCode !== '' ? rawCode : null,
   };
@@ -73,7 +99,33 @@ export async function createJudgeRoom(apiBase: string): Promise<DemoLinks> {
     console: `${base}/console#token=${auctioneer}`,
     screen: `${base}/screen#token=${screen}`,
     bidder: `/join/${id}`,
-    audit: `${base}/audit`,
+    audit: reviewer === null ? `${base}/audit` : `${base}/audit#token=${reviewer}`,
     hub: `${base}/hub${hubFragment(keys)}`,
   };
+}
+
+/** What the ledger route answered, as far as the verify area cares. */
+export type LedgerFetch =
+  | { readonly kind: 'ok'; readonly ledger: unknown }
+  | { readonly kind: 'notYet' }
+  | { readonly kind: 'denied' }
+  | { readonly kind: 'failed' };
+
+/** Reads a judge room's hash-chained ledger with its read-only reviewer token. Never throws. */
+export async function fetchRoomLedger(
+  apiBase: string,
+  roomId: string,
+  reviewerToken: string,
+): Promise<LedgerFetch> {
+  try {
+    const res = await fetch(`${apiBase}/api/judge/rooms/${encodeURIComponent(roomId)}/ledger`, {
+      headers: { authorization: `Bearer ${reviewerToken}` },
+    });
+    if (res.ok) return { kind: 'ok', ledger: (await res.json()) as unknown };
+    if (res.status === 404) return { kind: 'notYet' };
+    if (res.status === 401 || res.status === 403) return { kind: 'denied' };
+    return { kind: 'failed' };
+  } catch {
+    return { kind: 'failed' };
+  }
 }

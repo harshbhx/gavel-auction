@@ -21,7 +21,14 @@ export interface DemoLinks {
 type RoleKey = Exclude<keyof DemoLinks, 'hub'>;
 
 /** Why the server refused to make a room; the launcher shows a message for each. */
-export type DemoFailure = 'demoOff' | 'unauthorized' | 'roomCap' | 'judgeBusy';
+export type DemoFailure =
+  | 'demoOff'
+  | 'unauthorized'
+  | 'roomCap'
+  | 'judgeBusy'
+  | 'keyWrong'
+  | 'keyLocked'
+  | 'keyCap';
 
 /** Rejection from `createRoom` when the server answered with a known refusal. */
 export class DemoRoomError extends Error {
@@ -37,6 +44,9 @@ export function failureText(reason: DemoFailure | null): string {
   if (reason === 'unauthorized') return t('demo.failedKey');
   if (reason === 'roomCap') return t('demo.failedCap');
   if (reason === 'judgeBusy') return t('demo.failedBusy');
+  if (reason === 'keyWrong') return t('try.key.wrong');
+  if (reason === 'keyLocked') return t('try.key.locked');
+  if (reason === 'keyCap') return t('try.key.cap');
   return t('demo.failed');
 }
 

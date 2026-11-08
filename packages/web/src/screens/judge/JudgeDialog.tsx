@@ -1,12 +1,14 @@
 import { useRef, type KeyboardEvent } from 'react';
+import { VerifyPanel } from '../../chain/VerifyPanel';
 import { t } from '../../copy/t';
 import { Dialog } from '../../design/primitives/Dialog';
+import type { LedgerFetch } from '../../net/judgeRooms';
 import { SCRIPTED_DEMO_PATH } from '../../net/scriptedMode';
 import { BUYERS_DOC_URL, ProvenLists, TRUST_DOC_URL } from './EvidenceColumn';
 import type { LiveRoom } from './liveRoom';
 import { RoomCard } from './RoomCard';
 
-export type JudgeTab = 'join' | 'console' | 'screen' | 'receipt' | 'proven';
+export type JudgeTab = 'join' | 'console' | 'screen' | 'receipt' | 'verify' | 'proven';
 
 const TIMES = String.fromCharCode(0xd7);
 
@@ -17,12 +19,14 @@ const TABS: readonly {
     | 'try.tab.console'
     | 'try.tab.screen'
     | 'try.tab.receipt'
+    | 'try.tab.verify'
     | 'try.tab.proven';
 }[] = [
   { id: 'join', label: 'try.tab.join' },
   { id: 'console', label: 'try.tab.console' },
   { id: 'screen', label: 'try.tab.screen' },
   { id: 'receipt', label: 'try.tab.receipt' },
+  { id: 'verify', label: 'try.tab.verify' },
   { id: 'proven', label: 'try.tab.proven' },
 ];
 
@@ -92,10 +96,21 @@ export interface JudgeDialogProps {
   readonly onTab: (tab: JudgeTab) => void;
   readonly onClose: () => void;
   readonly room: LiveRoom | null;
+  /** The API base, for the ledger of the visitor's room. */
+  readonly apiBase?: string | undefined;
+  readonly loadLedger?: (apiBase: string, roomId: string, token: string) => Promise<LedgerFetch>;
 }
 
-/** One dialog, five tabs: join, the three room views, and what is proven. */
-export function JudgeDialog({ open, tab, onTab, onClose, room }: JudgeDialogProps) {
+/** One dialog, six tabs: join, the three room views, the ledger check and what is proven. */
+export function JudgeDialog({
+  open,
+  tab,
+  onTab,
+  onClose,
+  room,
+  apiBase,
+  loadLedger,
+}: JudgeDialogProps) {
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
   const move = (e: KeyboardEvent<HTMLButtonElement>, index: number): void => {
     const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
@@ -152,10 +167,15 @@ export function JudgeDialog({ open, tab, onTab, onClose, room }: JudgeDialogProp
               <p>{t('try.dlg.joinLead')}</p>
               <RoomCard room={room} id="gv-judge-room-dlg" />
               {room !== null && (
-                <p>
+                <p className="gv-judge__links">
                   <a className="gv-judge__linkbtn gv-judge__linkbtn--alt" href={room.hub}>
                     {t('try.room.hub')}
                   </a>
+                  {room.audit !== undefined && room.audit !== null && (
+                    <a className="gv-judge__linkbtn gv-judge__linkbtn--alt" href={room.audit}>
+                      {t('try.room.audit')}
+                    </a>
+                  )}
                 </p>
               )}
             </>
@@ -163,6 +183,22 @@ export function JudgeDialog({ open, tab, onTab, onClose, room }: JudgeDialogProp
           {tab === 'console' && <ViewPanel view="console" room={room} />}
           {tab === 'screen' && <ViewPanel view="screen" room={room} />}
           {tab === 'receipt' && <ViewPanel view="receipt" room={room} />}
+          {tab === 'verify' && (
+            <VerifyPanel
+              room={
+                room === null
+                  ? null
+                  : {
+                      roomId: room.roomId,
+                      reviewer: room.reviewer ?? null,
+                      audit: room.audit ?? null,
+                    }
+              }
+              apiBase={apiBase}
+              headingId="gv-judge-verify-title"
+              {...(loadLedger === undefined ? {} : { loadLedger })}
+            />
+          )}
           {tab === 'proven' && (
             <>
               <h2>{t('try.dlg.provenTitle')}</h2>

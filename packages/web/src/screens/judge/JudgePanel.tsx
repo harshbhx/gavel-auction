@@ -3,7 +3,15 @@ import { t } from '../../copy/t';
 import { Icon, type IconName } from '../../design/icons';
 import { Button } from '../../design/primitives/Button';
 import { Chip, type ChipTone } from '../../design/primitives/Chip';
-import type { JudgeRoomsStatus } from '../../net/judgeRooms';
+import { Field } from '../../design/primitives/Field';
+import {
+  forgetJudgeKey,
+  JUDGE_KEY_MAX_CHARS,
+  readJudgeKey,
+  rememberJudgeKey,
+  type JudgeKeyResult,
+} from '../../net/judgeKey';
+import type { JudgeRoomsStatus, LedgerFetch } from '../../net/judgeRooms';
 import { SCRIPTED_DEMO_PATH } from '../../net/scriptedMode';
 import { JoinCodeInput } from '../../ui';
 import { DemoRoomError, failureText, type DemoFailure, type DemoLinks } from '../demo/DemoLauncher';
@@ -22,8 +30,11 @@ export type RoomsState = 'checking' | 'noServer' | JudgeRoomsStatus;
 
 export interface JudgePanelProps {
   readonly rooms: RoomsState;
-  /** Creates a key-less sandbox room. Rejects with a `DemoRoomError` when the host refuses. */
-  readonly createRoom: () => Promise<DemoLinks>;
+  /**
+   * Creates a sandbox room, with the judge key when the visitor unlocked one. Rejects with a
+   * `DemoRoomError` when the host refuses.
+   */
+  readonly createRoom: (judgeKey?: string) => Promise<DemoLinks>;
   /** Opens a page in the current tab. */
   readonly openRoom: (href: string) => void;
   /** Looks a room code up and goes to the join page. Resolves false when there is no such room. */
@@ -32,6 +43,13 @@ export interface JudgePanelProps {
   readonly room?: LiveRoom | null;
   /** Turns the simulated run's own timer off, for tests that read one frame. */
   readonly autoplay?: boolean;
+  /** True when the host has a judge key set. Without it the key field is not shown at all. */
+  readonly keyOffered?: boolean;
+  /** Asks the host whether a key is right, without making a room. */
+  readonly checkKey?: (key: string) => Promise<JudgeKeyResult>;
+  /** The API base, for the ledger check of the visitor's room. */
+  readonly apiBase?: string | undefined;
+  readonly loadLedger?: (apiBase: string, roomId: string, token: string) => Promise<LedgerFetch>;
 }
 
 const CODE_LENGTH = 6;
@@ -78,6 +96,10 @@ export function JudgePanel({
   joinByCode,
   room: roomProp,
   autoplay = true,
+  keyOffered = false,
+  checkKey,
+  apiBase,
+  loadLedger,
 }: JudgePanelProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   const [phase, setPhase] = useState<'idle' | 'busy' | 'failed'>('idle');
@@ -86,6 +108,11 @@ export function JudgePanel({
   const [looking, setLooking] = useState(false);
   const [missing, setMissing] = useState(false);
   const [dialog, setDialog] = useState<JudgeTab | null>(null);
+  // The key lives in this tab's sessionStorage and in this state, never in a URL or a link.
+  const [heldKey, setHeldKey] = useState<string | null>(() => (keyOffered ? readJudgeKey() : null));
+  const [keyInput, setKeyInput] = useState('');
+  const [keyState, setKeyState] = useState<'idle' | 'checking' | JudgeKeyResult>('idle');
+  const unlocked = keyOffered && heldKey !== null;
   const [ownRoom] = useState<LiveRoom | null>(() => liveRoomFrom(latestHubRoom()));
   const room = roomProp === undefined ? ownRoom : roomProp;
   const script = useDemoScript(autoplay);
@@ -103,14 +130,53 @@ export function JudgePanel({
     if (phase === 'busy' || !startable) return;
     setPhase('busy');
     setFailure(null);
-    createRoom().then(
+    createRoom(keyOffered && heldKey !== null ? heldKey : undefined).then(
       (links) => openRoom(links.hub ?? links.console),
       (error: unknown) => {
-        setFailure(error instanceof DemoRoomError ? error.reason : null);
+        const reason = error instanceof DemoRoomError ? error.reason : null;
+        // A key the host no longer accepts is dropped, so the visitor can type a new one.
+        if (reason === 'keyWrong') {
+          forgetJudgeKey();
+          setHeldKey(null);
+        }
+        setFailure(reason);
         setPhase('failed');
       },
     );
   };
+
+  const unlock = (e: FormEvent<HTMLFormElement>): void => {
+    e.preventDefault();
+    const typed = keyInput.trim();
+    if (typed === '' || keyState === 'checking' || checkKey === undefined) return;
+    setKeyState('checking');
+    checkKey(typed).then(
+      (result) => {
+        setKeyState(result);
+        if (result === 'ok') {
+          rememberJudgeKey(typed);
+          setHeldKey(typed);
+          setKeyInput('');
+        }
+      },
+      () => setKeyState('unreachable'),
+    );
+  };
+
+  const lock = (): void => {
+    forgetJudgeKey();
+    setHeldKey(null);
+    setKeyState('idle');
+  };
+
+  const keyMessage =
+    keyState === 'wrong'
+      ? t('try.key.wrong')
+      : keyState === 'locked'
+        ? t('try.key.locked')
+        : keyState === 'unreachable'
+          ? t('try.key.unreachable')
+          : null;
 
   const find = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
@@ -211,6 +277,46 @@ export function JudgePanel({
                     {phase === 'busy' ? t('try.a1.creating') : t('try.a1.room')}
                   </Button>
                 </div>
+                {keyOffered && (
+                  <div className="gv-judge__key" data-unlocked={unlocked}>
+                    {unlocked ? (
+                      <>
+                        <p className="gv-judge__note" role="status">
+                          {t('try.key.active')}
+                        </p>
+                        <Button variant="outline" onClick={lock}>
+                          {t('try.key.forget')}
+                        </Button>
+                      </>
+                    ) : (
+                      <form onSubmit={unlock}>
+                        <Field
+                          label={t('try.key.label')}
+                          hint={t('try.key.hint')}
+                          type="password"
+                          name="judge-key"
+                          autoComplete="off"
+                          autoCapitalize="none"
+                          spellCheck={false}
+                          maxLength={JUDGE_KEY_MAX_CHARS}
+                          value={keyInput}
+                          onChange={(e) => {
+                            setKeyInput(e.target.value);
+                            if (keyState !== 'checking') setKeyState('idle');
+                          }}
+                          {...(keyMessage === null ? {} : { error: keyMessage })}
+                        />
+                        <Button
+                          type="submit"
+                          variant="outline"
+                          disabled={keyState === 'checking' || keyInput.trim() === ''}
+                        >
+                          {keyState === 'checking' ? t('try.key.checking') : t('try.key.unlock')}
+                        </Button>
+                      </form>
+                    )}
+                  </div>
+                )}
                 {(phase === 'failed' || (!startable && rooms !== 'checking')) && (
                   <div className="gv-flow__error" role="alert">
                     <p>
@@ -312,6 +418,8 @@ export function JudgePanel({
         onTab={setDialog}
         onClose={() => setDialog(null)}
         room={room}
+        apiBase={apiBase}
+        {...(loadLedger === undefined ? {} : { loadLedger })}
       />
     </main>
   );

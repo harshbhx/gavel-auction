@@ -11,6 +11,8 @@ export interface HubKeys {
   readonly expiresAt: number | null;
   /** Short join code, when the creating response had it. */
   readonly code: string | null;
+  /** Read-only reviewer token: opens the audit trail and the ledger check, nothing else. */
+  readonly reviewer?: string | null;
 }
 
 export const NO_KEYS: HubKeys = { auctioneer: null, screen: null, expiresAt: null, code: null };
@@ -36,6 +38,7 @@ export function parseHubFragment(hash: string): HubKeys {
     screen: pick(params, 'screen'),
     expiresAt: exp,
     code: pick(params, 'code'),
+    reviewer: pick(params, 'review'),
   };
 }
 
@@ -45,6 +48,7 @@ function merge(base: HubKeys, over: HubKeys): HubKeys {
     screen: over.screen ?? base.screen,
     expiresAt: over.expiresAt ?? base.expiresAt,
     code: over.code ?? base.code,
+    reviewer: over.reviewer ?? base.reviewer ?? null,
   };
 }
 
@@ -70,6 +74,7 @@ export function hubFragment(keys: HubKeys): string {
   if (keys.screen !== null) params.set('screen', keys.screen);
   if (keys.expiresAt !== null) params.set('exp', String(keys.expiresAt));
   if (keys.code !== null) params.set('code', keys.code);
+  if (keys.reviewer !== undefined && keys.reviewer !== null) params.set('review', keys.reviewer);
   const text = params.toString();
   return text === '' ? '' : `#${text}`;
 }
