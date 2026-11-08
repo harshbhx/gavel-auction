@@ -76,7 +76,8 @@
   }
 }
 
-/* The main landmark takes focus from the skip link and on route changes; it is not a control. */
-main[tabindex='-1']:focus {
+/* The main landmark and the page heading take focus on route changes; neither is a control. */
+main[tabindex='-1']:focus,
+main h1[tabindex='-1']:focus {
   outline: none;
 }
