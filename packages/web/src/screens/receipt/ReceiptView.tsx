@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 
-import { ChainCheck } from '../../chain/ChainCheck';
 import { WideAside } from '../WideAside';
 import { ChainCheck } from '../../chain/ChainCheck';
 import { t } from '../../copy/t';
