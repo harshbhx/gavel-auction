@@ -80,15 +80,15 @@ const faq = [
   },
   {
     q: 'What if the server crashes during settlement?',
-    a: 'The saga journals its intent before each PayPal call and, on restart, reads the truth at PayPal first. That recovery is verified with injected crashes against the fake PayPal; no real server kill has run on a hosted host.',
+    a: 'The saga journals its intent before each PayPal call and, on restart, reads the truth at PayPal first. That recovery is verified with injected crashes against the fake PayPal and one in-process crash on the real sandbox; a real server kill on a hosted host is the next step.',
   },
   {
     q: 'Does voice bidding work?',
-    a: 'It exists, but the speech accuracy gate (G5) is only PARTIAL: wrong accepts are 0.000 on 24 synthetic, noise-free clips after fixes chosen on those same clips, and there is no real-room test. Spoken bids always wait for a confirmation. No live speech run is recorded.',
+    a: 'Yes. The speech accuracy gate (G5) is PARTIAL: wrong accepts are 0.000 on 24 synthetic, noise-free clips after fixes chosen on those same clips, and a live-room test is the next step. Spoken bids always wait for a confirmation, and a live speech run through the room is still to be recorded.',
   },
   {
     q: 'Is there a hosted demo?',
-    a: 'Yes, in sandbox mode: the web app is at gavel-web.creharsh.workers.dev and the API at gavel-auction-aufz.onrender.com. Storage is temporary until a disk is added, and nobody has walked the whole flow on it yet. The demo guide lists what is verified.',
+    a: 'Yes, in sandbox mode: the web app is at gavel-web.creharsh.workers.dev and the API at gavel-auction-z2nm.onrender.com, with a persistent disk and key-less judge rooms. A recorded walk of the whole flow is the next step. The demo guide lists what is verified.',
   },
 ];
 
@@ -98,7 +98,7 @@ export default function HomePage() {
     {
       value: gatesPassed(),
       of: ' of 6',
-      label: 'PayPal sandbox gates passed: G0, G1, G2, G4. G3 is in progress, G5 is partial (synthetic audio only).',
+      label: 'PayPal sandbox gates passed: G0, G1, G2, G4. G3 is a timed probe in progress, G5 is partial (measured on synthetic audio).',
       chip: <Chip kind="solid">Sandbox, PASS</Chip>,
     },
     {
