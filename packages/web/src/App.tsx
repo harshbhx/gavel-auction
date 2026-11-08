@@ -32,6 +32,7 @@ import { SimApprovalAdapter } from './payments/simAdapter';
 import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
 import { HelpLayer } from './help';
 import { RouteScreen, matchRoute, type RouteMatch } from './routes';
+import { ChainCheck } from './chain/ChainCheck';
 import { AuditTable } from './screens/audit/AuditTable';
 import { Export } from './screens/audit/Export';
 import { Filters, useUrlFilters } from './screens/audit/Filters';
@@ -430,6 +431,7 @@ export function AuditRoute() {
   return (
     <main data-route="audit">
       <h1 tabIndex={-1}>{t('audit.title')}</h1>
+      <ChainCheck allowFile />
       {!online && <Offline view="audit" />}
       {!loaded ? (
         <Loading view="audit" />
