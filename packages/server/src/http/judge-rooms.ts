@@ -1,17 +1,22 @@
-import { createHash } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import {
   BIDDER_NAME_FORBIDDEN_PATTERN,
-  clientKey,
   EpochMs,
+  ERROR_TABLE,
   GavelError,
   MAX_NAME_CHARS,
+  scrubMessage,
+  type RoomSnapshot,
   type AuctionConfig,
   type Cents,
   type Logger,
 } from '@gavel/shared';
+import { ChainError, type LedgerStore, type Ulid } from '@gavel/engine';
 import { z } from 'zod';
+import { buildReplayBundle } from '../admin/replay-bundle';
 import { raiseAuctioneerFloor } from '../auth/auctioneer-floor';
 import {
+  authenticate,
   json,
   mintToken,
   parseBody,
@@ -22,8 +27,11 @@ import {
   type HttpDeps,
   type Mount,
 } from './app';
+import { codeGuardOf, sourceTag } from './code-guard';
 import {
   auctionIdForCode,
+  looksLikeJoinCode,
+  normalizeJoinCode,
   linkFor,
   reserveJoinCode,
   roomFor,
@@ -35,8 +43,15 @@ import { requestSources } from './node-bridge';
 
 export const JUDGE_ROOMS_PATH = '/api/judge/rooms';
 export const JUDGE_JOIN_PATH = '/api/judge/join';
+export const JUDGE_SIM_HOLD_PATH = '/api/judge/rooms/:id/sim-hold';
 export const JUDGE_CAPABILITIES_PATH = '/api/judge/capabilities';
 export const JUDGE_PAUSE_PATH = '/api/judge/pause';
+export const JUDGE_KEY_PATH = '/api/judge/key';
+export const JUDGE_LEDGER_PATH = '/api/judge/rooms/:id/ledger';
+/** Header that carries the judge key. Never a URL, never the body, never a log line. */
+export const JUDGE_KEY_HEADER = 'x-judge-key';
+/** Keyed creates the whole host accepts per hour, a second bound under the live-room bound. */
+const KEYED_PER_HOUR = 20;
 
 const HOUR_MS = 3_600_000;
 const DEFAULT_TITLE = 'Sandbox demo lot';
@@ -64,6 +79,33 @@ export interface JudgeRoomsOptions {
   lotWindowMs: number;
   /** Open-join limits (SRV-30); every field falls back to JUDGE_JOIN_DEFAULTS. */
   join?: Partial<JudgeJoinLimits>;
+  /**
+   * Simulated holds (a hold with no PayPal login, judge rooms only). Left out, the route answers
+   * 404, which is how a host keeps it off.
+   */
+  simHolds?: SimHolds;
+  /**
+   * JUDGE_KEY: the limited key for judges. Left out, the key routes answer as if the key were
+   * wrong and the capability probe says nothing about a key. It is never the operator key.
+   */
+  judgeKey?: string | undefined;
+  /** Most keyed rooms alive at once (JUDGE_KEY_ROOMS_MAX). They do not use the public slots. */
+  keyedMax?: number | undefined;
+  /** The ledger the read-only reviewer route builds a verifiable bundle from. */
+  ledger?: Pick<LedgerStore, 'read'> | undefined;
+}
+
+/** What the simulated-hold route needs from the host. */
+export interface SimHolds {
+  /** True while the auction still takes holds. */
+  acceptsHolds(auctionId: string): Promise<boolean>;
+  /** Writes the simulated hold, puts the bidder in the room and returns the hold id. */
+  place(input: {
+    auctionId: string;
+    bidderId: string;
+    name: string;
+    ceilingCents: number;
+  }): Promise<string>;
 }
 
 /** Limits of the open join route. Judge rooms only; a normal auction never uses it. */
@@ -86,18 +128,25 @@ export const JUDGE_JOIN_DEFAULTS: JudgeJoinLimits = {
 };
 
 export const JUDGE_ROOM_DEFAULTS = {
-  maxLive: 5,
+  maxLive: 15,
   ttlMs: 30 * 60_000,
-  perIpPerHour: 4,
+  perIpPerHour: 12,
   globalPerHour: 40,
   lotWindowMs: 10 * 60_000,
 } as const;
 
-const CreateBody = z.object({ title: z.string().trim().min(1).max(60).optional() }).strict();
+const CreateBody = z
+  .object({
+    title: z.string().trim().min(1).max(60).optional(),
+    /** Optional fundraiser goal in integer cents; the projector shows a thermometer only when set. */
+    fundraiserGoalCents: z.number().int().positive().max(1_000_000_000_00).optional(),
+  })
+  .strict();
 
 const JoinBody = z
   .object({
-    code: z.string().trim().min(1).max(16),
+    // Room codes are typed or pasted in many shapes ("gvl-abc 234"); the server cleans them up.
+    code: z.string().trim().min(1).max(40),
     displayName: z
       .string()
       .trim()
@@ -107,7 +156,17 @@ const JoinBody = z
   })
   .strict();
 
-const MINUTE_MS = 60_000;
+const SimHoldBody = z
+  .object({
+    ceilingCents: z.number().int().positive(),
+    name: z
+      .string()
+      .trim()
+      .min(1)
+      .max(MAX_NAME_CHARS)
+      .refine((v) => !BIDDER_NAME_FORBIDDEN_PATTERN.test(v), 'name holds a forbidden character'),
+  })
+  .strict();
 
 const PauseBody = z.object({ paused: z.boolean() }).strict();
 
@@ -115,6 +174,8 @@ interface Marker {
   createdAt: number;
   expiresAt: number;
   expired?: true;
+  /** Made with the judge key. */
+  keyed?: true;
 }
 
 /** Fixed, safe lot settings: short timers, small money, ceilings under the payments cap. */
@@ -137,9 +198,53 @@ export function judgeRoomConfig(
   };
 }
 
-/** A short stable tag for a source address, so the audit trail never holds the address itself. */
-function sourceTag(source: string): string {
-  return createHash('sha256').update(clientKey(source)).digest('hex').slice(0, 12);
+/** Constant-time comparison of two secrets of any length (both sides are hashed first). */
+function secretsEqual(given: string, expected: string): boolean {
+  const a = createHash('sha256').update(given).digest();
+  const b = createHash('sha256').update(expected).digest();
+  return timingSafeEqual(a, b);
+}
+
+/** True once the lot was hammered, stopped or settled: nobody can usefully join any more. */
+function isEnded(snapshot: RoomSnapshot): boolean {
+  return snapshot.status === 'DONE' || snapshot.hammer !== undefined || snapshot.stopped === true;
+}
+
+/** What each refusal says to a person. `error` stays the stable code the web app switches on. */
+const REFUSAL_TEXT: Readonly<Record<string, string>> = {
+  judge_rooms_paused: 'Demo rooms are paused right now. Try again in a minute.',
+  judge_rate_limited: 'Too many tries from this network. Wait a few minutes and try again.',
+  judge_room_cap: 'All demo rooms are in use. Try again in a minute.',
+  judge_room_full: 'Room is full',
+  judge_room_expired: 'That room has ended',
+  judge_room_ended: 'That room has ended',
+  judge_join_locked: 'Too many wrong codes. Try again later.',
+  judge_key_invalid: 'That key was not accepted.',
+  judge_key_locked: 'Too many wrong tries. Try again later.',
+  judge_key_room_cap: 'You already have the most judge rooms the server allows. Try again soon.',
+  not_found: 'Code not found, check and try again',
+};
+
+/**
+ * Judge routes answer errors as `{ error, message }` (`error` is the stable code, `message` is
+ * for a person); `code` and `detail` ride along for clients that read the common error shape.
+ */
+function judgeRoute(handler: (c: Ctx) => Promise<Response>): (c: Ctx) => Promise<Response> {
+  return async (c) => {
+    try {
+      return await handler(c);
+    } catch (e) {
+      if (!(e instanceof GavelError) || e.code === 'internal') throw e;
+      const status = e instanceof HttpError ? e.status : ERROR_TABLE[e.code].status;
+      const detail = e instanceof HttpError ? e.detail : undefined;
+      return json(status, {
+        error: e.code,
+        code: e.code,
+        message: scrubMessage(e.message),
+        ...(detail === undefined ? {} : { detail: scrubMessage(detail) }),
+      });
+    }
+  };
 }
 
 export interface JudgeRooms {
@@ -159,13 +264,11 @@ export interface JudgeRooms {
  */
 export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
   /** Live rooms: id -> expiry and creator tag. */
-  const live = new Map<string, { expiresAt: number; src: string }>();
+  const live = new Map<string, { expiresAt: number; src: string; keyed?: true }>();
+  const keyedMax = opts.keyedMax ?? 3;
+  let keyedStamps: number[] = [];
   const perIp = new Map<string, number[]>();
   const joinLimits: JudgeJoinLimits = { ...JUDGE_JOIN_DEFAULTS, ...(opts.join ?? {}) };
-  /** Join attempts per source tag, last minute. */
-  const joinAttempts = new Map<string, number[]>();
-  /** Wrong codes per source tag: count since `since`, and the end of a lockout if one runs. */
-  const wrongCodes = new Map<string, { count: number; since: number; lockedUntil: number }>();
   /** Bidder sessions the open join issued per room. */
   const joined = new Map<string, number>();
   let global: number[] = [];
@@ -189,7 +292,11 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
       for (const id of await deps.store.listAuctions()) {
         const m = (await deps.store.getJournal(markerKey(id)))?.value as Marker | undefined;
         if (m !== undefined && m.expired !== true) {
-          live.set(id, { expiresAt: m.expiresAt, src: 'restored' });
+          live.set(id, {
+            expiresAt: m.expiresAt,
+            src: 'restored',
+            ...(m.keyed === true ? { keyed: true as const } : {}),
+          });
         }
       }
       loaded = true;
@@ -200,6 +307,10 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
   const withinWindow = (stamps: number[], now: number): number[] =>
     stamps.filter((t) => now - t < HOUR_MS);
 
+  /** Seconds until the oldest stamp leaves the hour window (at least 1). */
+  const untilFree = (stamps: number[], now: number): number =>
+    Math.max(1, Math.ceil(((stamps[0] ?? now) + HOUR_MS - now) / 1000));
+
   const refuse = (
     deps: HttpDeps,
     status: number,
@@ -207,16 +318,21 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     why: string,
     src: string,
     retryAfterS?: number,
+    message?: string,
   ): Response => {
     audit(deps)?.warn('judge room refused', { event: 'judge_room.refused', reason: why, src });
     return json(
       status,
-      { error },
+      { error, message: message ?? REFUSAL_TEXT[error] ?? 'Request refused' },
       retryAfterS === undefined ? {} : { 'retry-after': String(retryAfterS) },
     );
   };
 
-  const accepting = (): boolean => opts.enabled && !paused && live.size < opts.maxLive;
+  /** Rooms that use a public slot; keyed rooms have a bound of their own. */
+  const publicLive = (): number => [...live.values()].filter((e) => e.keyed !== true).length;
+  const keyedLive = (): number => live.size - publicLive();
+
+  const accepting = (): boolean => opts.enabled && !paused && publicLive() < opts.maxLive;
 
   const expire = async (deps: HttpDeps, id: string, why: 'ttl' | 'done'): Promise<void> => {
     const entry = live.get(id);
@@ -265,7 +381,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
           try {
             const room = await roomFor(deps, id);
             const { snapshot } = await snapshotFor(deps, room, 'screen', 'judge-room-sweep');
-            if (snapshot.status === 'DONE') {
+            if (isEnded(snapshot)) {
               await expire(deps, id, 'done');
               ended += 1;
             }
@@ -286,44 +402,71 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     if (!opts.enabled) throw new HttpError(404, 'not_found', 'no such route');
     await load(deps);
     // Read the body before the limit checks: no await may sit between a check and its reservation.
-    const { title } = parseBody(CreateBody, await c.body());
+    const { title, fundraiserGoalCents } = parseBody(CreateBody, await c.body());
     const src = requestSources.get(c.req) ?? 'unknown';
     const tag = sourceTag(src);
+    // A request that names a key is judged by the key alone: the public limits do not apply to
+    // it, and a wrong key never falls back to the public path.
+    const keyed = c.req.headers.has(JUDGE_KEY_HEADER);
+    if (keyed) {
+      const refused = checkKey(c, tag, deps.clock.now());
+      if (refused !== undefined) return refused;
+    }
     if (paused) return refuse(deps, 503, 'judge_rooms_paused', 'paused', tag, 60);
+    // A hammered room still holds a slot until the sweeper runs; free them before judging the cap.
+    if (keyed ? keyedLive() >= keyedMax : publicLive() >= opts.maxLive) await sweep();
     const now = deps.clock.now();
-    const mine = withinWindow(perIp.get(tag) ?? [], now);
-    global = withinWindow(global, now);
-    if (mine.length >= opts.perIpPerHour) {
+    if (keyed) {
+      keyedStamps = withinWindow(keyedStamps, now);
+      if (keyedLive() >= keyedMax) {
+        return refuse(deps, 429, 'judge_key_room_cap', 'key_cap', tag, 60);
+      }
+      if (keyedStamps.length >= KEYED_PER_HOUR) {
+        return refuse(deps, 429, 'judge_rate_limited', 'key_hourly', tag, 600);
+      }
+      keyedStamps.push(now);
+    } else {
+      const mine = withinWindow(perIp.get(tag) ?? [], now);
+      global = withinWindow(global, now);
+      if (mine.length >= opts.perIpPerHour) {
+        perIp.set(tag, mine);
+        return refuse(deps, 429, 'judge_rate_limited', 'per_ip', tag, untilFree(mine, now));
+      }
+      if (global.length >= opts.globalPerHour) {
+        return refuse(deps, 429, 'judge_rate_limited', 'global', tag, untilFree(global, now));
+      }
+      if (publicLive() >= opts.maxLive) {
+        return refuse(deps, 429, 'judge_room_cap', 'cap', tag, 60);
+      }
+      // Count the attempt before the first await below, so a burst of concurrent creates
+      // cannot overshoot either limit.
+      mine.push(now);
       perIp.set(tag, mine);
-      return refuse(deps, 429, 'judge_rate_limited', 'per_ip', tag, 600);
+      global.push(now);
     }
-    if (global.length >= opts.globalPerHour) {
-      return refuse(deps, 429, 'judge_rate_limited', 'global', tag, 600);
-    }
-    if (live.size >= opts.maxLive) {
-      return refuse(deps, 429, 'judge_room_cap', 'cap', tag, 60);
-    }
-    // Count the attempt and reserve the slot before the first await below, so a burst of
-    // concurrent creates cannot overshoot either limit.
-    mine.push(now);
-    perIp.set(tag, mine);
-    global.push(now);
     const auctionId = deps.ids.mint<'AuctionId'>();
     const expiresAt = now + opts.ttlMs;
-    live.set(auctionId, { expiresAt, src: tag });
+    live.set(auctionId, { expiresAt, src: tag, ...(keyed ? { keyed: true as const } : {}) });
     try {
       const lot = title ?? DEFAULT_TITLE;
       const auctioneerSub = deps.ids.mint<'Jti'>();
       const joinCode = await reserveJoinCode(deps, auctionId);
-      await deps.store.putJournal(titleKey(auctionId), 0, { title: lot, joinCode });
+      await deps.store.putJournal(titleKey(auctionId), 0, {
+        title: lot,
+        joinCode,
+        judgeRoom: true,
+        ...(fundraiserGoalCents === undefined ? {} : { fundraiserGoalCents }),
+      });
       await deps.store.putJournal(markerKey(auctionId), 0, {
         createdAt: now,
         expiresAt,
+        ...(keyed ? { keyed: true as const } : {}),
       } satisfies Marker);
       const config = judgeRoomConfig(now, opts);
       await deps.service.createAuction(auctionId, config, auctioneerSub);
       const auctioneer = await mintToken(deps, 'auctioneer', auctionId, auctioneerSub);
       const screen = await mintToken(deps, 'screen', auctionId, deps.ids.mint<'Jti'>());
+      const reviewer = await mintToken(deps, 'reviewer', auctionId, deps.ids.mint<'Jti'>());
       audit(deps)?.info('judge room created', {
         event: 'judge_room.created',
         auctionId,
@@ -331,6 +474,8 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
         src: tag,
         expiresAt,
         live: live.size,
+        // Never the key itself: a field name with "key" in it would be redacted anyway.
+        via: keyed ? 'judge-pass' : 'public',
       });
       return json(201, {
         auctionId,
@@ -340,8 +485,11 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
         screenToken: screen.token,
         auctioneerLink: linkFor(deps, auctionId, 'console', auctioneer.token),
         screenLink: linkFor(deps, auctionId, 'screen', screen.token),
+        reviewerToken: reviewer.token,
+        reviewerLink: linkFor(deps, auctionId, 'audit', reviewer.token),
         expiresAt,
         biddingEndsAt: config.endTs,
+        ...(keyed ? { unlocked: true } : {}),
       });
     } catch (e) {
       live.delete(auctionId);
@@ -354,35 +502,80 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     }
   };
 
-  const MAX_TRACKED = 5_000;
-
-  const pruneJoinState = (now: number): void => {
-    if (joinAttempts.size > MAX_TRACKED) {
-      for (const [k, v] of joinAttempts) {
-        if (withinMinute(v, now).length === 0) joinAttempts.delete(k);
-      }
+  /**
+   * Judges the judge key on a request. Returns undefined when it is right, otherwise the refusal.
+   * A wrong key counts toward the same lockout as a wrong room code (one guard for both); a
+   * locked-out source is refused even with the right key. The key is compared in constant time
+   * and never logged.
+   */
+  const checkKey = (c: Ctx, tag: string, now: number): Response | undefined => {
+    const { deps } = c;
+    const guard = codeGuardOf(deps);
+    // The lockout is checked without using up the join attempts of a shared address: a right key
+    // costs nothing, a wrong one is a strike.
+    const lockedFor = guard.lockedFor(tag, now);
+    if (lockedFor > 0) return refuse(deps, 429, 'judge_key_locked', 'key_locked', tag, lockedFor);
+    const given = c.req.headers.get(JUDGE_KEY_HEADER) ?? '';
+    const expected = opts.judgeKey;
+    // Always run the comparison, so an unset key costs the same time as a wrong one.
+    const same = secretsEqual(given, expected ?? '\u0000unset');
+    if (expected === undefined || given === '' || !same) {
+      guard.noteWrong(tag, now);
+      return refuse(deps, 401, 'judge_key_invalid', 'key_wrong', tag);
     }
-    if (wrongCodes.size > MAX_TRACKED) {
-      for (const [k, v] of wrongCodes) {
-        if (v.lockedUntil <= now && now - v.since >= joinLimits.lockoutMs) wrongCodes.delete(k);
-      }
-    }
+    return undefined;
   };
 
-  const withinMinute = (stamps: number[], now: number): number[] =>
-    stamps.filter((t) => now - t < MINUTE_MS);
+  /** `POST /api/judge/key`: checks the key without creating anything, so the panel can say so. */
+  const keyCheck = async (c: Ctx): Promise<Response> => {
+    const { deps } = c;
+    if (!opts.enabled) throw new HttpError(404, 'not_found', 'no such route');
+    await load(deps);
+    const tag = sourceTag(requestSources.get(c.req) ?? 'unknown');
+    const refused = checkKey(c, tag, deps.clock.now());
+    if (refused !== undefined) return refused;
+    audit(deps)?.info('judge pass accepted', {
+      event: 'judge_room.key_ok',
+      src: tag,
+      via: 'judge-pass',
+    });
+    return json(200, { ok: true, roomsMax: keyedMax, roomsLive: keyedLive() });
+  };
 
-  /** Counts one wrong code for the source; the Nth one starts the lockout. */
-  const noteWrongCode = (tag: string, now: number): void => {
-    const prev = wrongCodes.get(tag);
-    const fresh =
-      prev === undefined || (prev.lockedUntil <= now && now - prev.since >= joinLimits.lockoutMs);
-    const next = fresh ? { count: 0, since: now, lockedUntil: 0 } : { ...prev };
-    next.count += 1;
-    if (next.count >= joinLimits.wrongCodesBeforeLockout) {
-      next.lockedUntil = now + joinLimits.lockoutMs;
+  /**
+   * `GET /api/judge/rooms/:id/ledger`: the room's hash-chained ledger as a replay bundle, for the
+   * read-only reviewer link (or the auctioneer). Judge rooms only; the chain is checked before it
+   * is sent, so a broken ledger answers 409 rather than a bundle that looks fine.
+   */
+  const ledgerBundle = async (c: Ctx): Promise<Response> => {
+    const { deps } = c;
+    const ledger = opts.ledger;
+    if (!opts.enabled || ledger === undefined) {
+      throw new HttpError(404, 'not_found', 'no such route');
     }
-    wrongCodes.set(tag, next);
+    const auctionId = c.params.id ?? '';
+    await authenticate(c, auctionId, ['reviewer', 'auctioneer']);
+    await load(deps);
+    const marker = (await deps.store.getJournal(markerKey(auctionId)))?.value as Marker | undefined;
+    if (marker === undefined) throw new GavelError('not_found', 'no such judge room');
+    const entries = await ledger.read(auctionId as Ulid, 1);
+    if (entries.length === 0) throw new GavelError('not_found', 'the ledger has no entries yet');
+    try {
+      const bundle = buildReplayBundle(auctionId, entries, deps.clock.now());
+      audit(deps)?.info('judge room ledger read', {
+        event: 'judge_room.ledger_read',
+        auctionId,
+        entries: bundle.count,
+      });
+      return json(200, bundle, { 'cache-control': 'no-store' });
+    } catch (e) {
+      if (!(e instanceof ChainError)) throw e;
+      audit(deps)?.error('judge room ledger unverified', {
+        event: 'judge_room.ledger_unverified',
+        auctionId,
+      });
+      return json(409, { error: 'ledger_unverified' }, { 'cache-control': 'no-store' });
+    }
   };
 
   /**
@@ -398,20 +591,21 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     const src = requestSources.get(c.req) ?? 'unknown';
     const tag = sourceTag(src);
     const now = deps.clock.now();
-    pruneJoinState(now);
-    const strikes = wrongCodes.get(tag);
-    if (strikes !== undefined && strikes.lockedUntil > now) {
-      const retry = Math.max(1, Math.ceil((strikes.lockedUntil - now) / 1000));
-      return refuse(deps, 429, 'judge_join_locked', 'join_locked', tag, retry);
+    const guard = codeGuardOf(deps);
+    const verdict = guard.attempt(tag, now);
+    if (!verdict.ok) {
+      return verdict.reason === 'locked'
+        ? refuse(deps, 429, 'judge_join_locked', 'join_locked', tag, verdict.retryAfterS)
+        : refuse(
+            deps,
+            429,
+            'judge_rate_limited',
+            'join_per_ip',
+            tag,
+            verdict.retryAfterS,
+            'Too many tries. Wait a minute and try again.',
+          );
     }
-    // Count the attempt before the first await below, so a burst cannot slip past the limit.
-    const recent = withinMinute(joinAttempts.get(tag) ?? [], now);
-    if (recent.length >= joinLimits.attemptsPerIpPerMin) {
-      joinAttempts.set(tag, recent);
-      return refuse(deps, 429, 'judge_rate_limited', 'join_per_ip', tag, 60);
-    }
-    recent.push(now);
-    joinAttempts.set(tag, recent);
 
     let auctionId: string | undefined;
     try {
@@ -424,12 +618,22 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
         ? undefined
         : ((await deps.store.getJournal(markerKey(auctionId)))?.value as Marker | undefined);
     if (auctionId === undefined || marker === undefined) {
-      // An unknown code and the code of a normal auction look the same to the caller.
-      noteWrongCode(tag, now);
+      // An unknown code and the code of a normal auction look the same to the caller. A code
+      // that is not even shaped like one is a typo, not a guess: it costs an attempt, no strike.
+      if (looksLikeJoinCode(code)) guard.noteWrong(tag, now, normalizeJoinCode(code));
       return refuse(deps, 404, 'not_found', 'join_wrong_code', tag);
     }
     if (marker.expired === true || marker.expiresAt <= now) {
       return refuse(deps, 410, 'judge_room_expired', 'join_expired', tag);
+    }
+    {
+      // A hammered room takes no one: say so, and give its slot back without waiting for the sweep.
+      const room = await roomFor(deps, auctionId);
+      const { snapshot } = await snapshotFor(deps, room, 'screen', 'judge-join');
+      if (isEnded(snapshot)) {
+        await expire(deps, auctionId, 'done');
+        return refuse(deps, 410, 'judge_room_ended', 'join_ended', tag);
+      }
     }
     const roomId: string = auctionId;
     // Reserve the seat before the first await below.
@@ -461,24 +665,81 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     }
   };
 
+  /**
+   * `POST /api/judge/rooms/:id/sim-hold`: a bidder session of a judge room gets a simulated hold,
+   * so the room can be tried with no PayPal login. Judge rooms only: any other auction answers
+   * `not_found`, whatever the session.
+   */
+  const simHold = async (c: Ctx): Promise<Response> => {
+    const { deps } = c;
+    const sim = opts.simHolds;
+    if (!opts.enabled || sim === undefined) throw new HttpError(404, 'not_found', 'no such route');
+    const auctionId = c.params.id ?? '';
+    const who = await authenticate(c, auctionId, ['session']);
+    if (who.bidderId === undefined) throw new GavelError('forbidden', 'no bidder in the session');
+    const body = parseBody(SimHoldBody, await c.body());
+    await load(deps);
+    const marker = (await deps.store.getJournal(markerKey(auctionId)))?.value as Marker | undefined;
+    if (marker === undefined) throw new GavelError('not_found', 'no such judge room');
+    if (marker.expired === true || marker.expiresAt <= deps.clock.now()) {
+      return refuse(deps, 410, 'judge_room_expired', 'sim_hold_expired', sourceTag(auctionId));
+    }
+    const room = await roomFor(deps, auctionId);
+    const { snapshot } = await snapshotFor(deps, room, 'screen', 'judge-sim-hold');
+    if (!snapshot.config.ceilingPresets.includes(body.ceilingCents as Cents)) {
+      throw new GavelError('bad_message', 'ceiling is not one of the offered amounts');
+    }
+    if (!(await sim.acceptsHolds(auctionId))) {
+      throw new GavelError('closed', 'the auction no longer takes holds');
+    }
+    const holdId = await sim.place({
+      auctionId,
+      bidderId: who.bidderId,
+      name: body.name,
+      ceilingCents: body.ceilingCents,
+    });
+    audit(deps)?.info('judge room simulated hold', {
+      event: 'judge_room.sim_hold',
+      auctionId,
+      ceilingCents: body.ceilingCents,
+    });
+    return json(200, { holdId, simulated: true, ceilingCents: body.ceilingCents });
+  };
+
   const mount: Mount = (app: HttpApp): void => {
     appDeps = app.deps;
-    app.post(JUDGE_JOIN_PATH, join);
+    codeGuardOf(app.deps, joinLimits);
+    app.post(JUDGE_JOIN_PATH, judgeRoute(join));
+    app.post(JUDGE_SIM_HOLD_PATH, judgeRoute(simHold));
     app.get(JUDGE_CAPABILITIES_PATH, async (c: Ctx) => {
-      if (opts.enabled) await load(c.deps);
-      return json(200, { judgeRooms: opts.enabled, accepting: accepting() });
+      if (opts.enabled) {
+        await load(c.deps);
+        if (live.size >= opts.maxLive) await sweep().catch(() => 0);
+      }
+      return json(200, {
+        judgeRooms: opts.enabled,
+        accepting: accepting(),
+        simHolds: opts.enabled && opts.simHolds !== undefined,
+        // Present only when a judge key is set, so the panel shows its key field only then.
+        ...(opts.enabled && opts.judgeKey !== undefined ? { keyed: true } : {}),
+      });
     });
-    app.post(JUDGE_ROOMS_PATH, create);
-    app.post(JUDGE_PAUSE_PATH, async (c: Ctx) => {
-      requireAdmin(c);
-      const body = parseBody(PauseBody, await c.body());
-      await load(c.deps);
-      const prev = await c.deps.store.getJournal(PAUSED_KEY);
-      await c.deps.store.putJournal(PAUSED_KEY, prev?.version ?? 0, { paused: body.paused });
-      paused = body.paused;
-      audit(c.deps)?.warn('judge rooms switch', { event: 'judge_room.switch', paused });
-      return json(200, { paused });
-    });
+    app.post(JUDGE_ROOMS_PATH, judgeRoute(create));
+    app.post(JUDGE_KEY_PATH, judgeRoute(keyCheck));
+    app.get(JUDGE_LEDGER_PATH, judgeRoute(ledgerBundle));
+    app.post(
+      JUDGE_PAUSE_PATH,
+      judgeRoute(async (c: Ctx) => {
+        requireAdmin(c);
+        const body = parseBody(PauseBody, await c.body());
+        await load(c.deps);
+        const prev = await c.deps.store.getJournal(PAUSED_KEY);
+        await c.deps.store.putJournal(PAUSED_KEY, prev?.version ?? 0, { paused: body.paused });
+        paused = body.paused;
+        audit(c.deps)?.warn('judge rooms switch', { event: 'judge_room.switch', paused });
+        return json(200, { paused });
+      }),
+    );
   };
 
   return {

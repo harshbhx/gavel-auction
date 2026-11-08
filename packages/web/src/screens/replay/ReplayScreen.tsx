@@ -4,12 +4,14 @@ import { SettlementPanel } from '../../ladder/SettlementPanel';
 import { publicSource } from '../../ladder/fromWire';
 import { ScenarioTransport } from '../../net/scenarioTransport';
 import { RoomStore, useRoom } from '../../store/roomStore';
+import { ChainCheck } from '../../chain/ChainCheck';
 import { t } from '../../copy/t';
 import { formatUsd } from '../../util/money';
 import { ScreenView } from '../screen/ScreenView';
 import { createAudioSync, type AudioStatus, type AudioSync, type MediaLike } from './AudioSync';
 import { bundleToScenario, parseBundle, type ReplayBundle } from './bundle';
 import { chapterMarkers, clampOffset, type Speed } from './Chapters';
+import { scrubMarkers } from './Scrub';
 import { Controls, type ReplayView as ReplayViewId } from './Controls';
 
 export interface ReplayScreenProps {
@@ -26,7 +28,17 @@ function browserMedia(url: string): MediaLike {
   return new Audio(url);
 }
 
-type Phase = { kind: 'loading' } | { kind: 'invalid' } | { kind: 'ready'; bundle: ReplayBundle };
+type Phase =
+  | { kind: 'loading' }
+  | { kind: 'invalid' }
+  | { kind: 'ready'; bundle: ReplayBundle; ledger: unknown };
+
+/** The hash-chained ledger export a recording may carry beside its events (`ledger`). */
+function ledgerOf(raw: unknown): unknown {
+  return typeof raw === 'object' && raw !== null
+    ? (raw as Record<string, unknown>)['ledger']
+    : undefined;
+}
 
 async function fetchBundle(recordingId: string): Promise<unknown> {
   const res = await fetch(`/recordings/${encodeURIComponent(recordingId)}/events.json`);
@@ -53,7 +65,11 @@ export default function ReplayScreen({
       (raw) => {
         if (cancelled) return;
         const result = parseBundle(raw);
-        setPhase(result.ok ? { kind: 'ready', bundle: result.bundle } : { kind: 'invalid' });
+        setPhase(
+          result.ok
+            ? { kind: 'ready', bundle: result.bundle, ledger: ledgerOf(raw) }
+            : { kind: 'invalid' },
+        );
       },
       () => {
         if (!cancelled) setPhase({ kind: 'invalid' });
@@ -71,7 +87,10 @@ export default function ReplayScreen({
       {phase.kind === 'loading' && <p role="status">{t('net.resyncing')}</p>}
       {phase.kind === 'invalid' && <p role="alert">{t('replay.invalid')}</p>}
       {phase.kind === 'ready' && (
-        <ReplayPlayer bundle={phase.bundle} autoplay={autoplay} createMedia={createMedia} />
+        <>
+          <ChainCheck ledger={phase.ledger} allowFile />
+          <ReplayPlayer bundle={phase.bundle} autoplay={autoplay} createMedia={createMedia} />
+        </>
       )}
     </div>
   );
@@ -95,6 +114,7 @@ function ReplayPlayer({
   const transportRef = useRef<ScenarioTransport | null>(null);
   const syncRef = useRef<AudioSync | null>(null);
   const chapters = useMemo(() => chapterMarkers(bundle), [bundle]);
+  const markers = useMemo(() => scrubMarkers(bundle), [bundle]);
   const eventOffsets = useMemo(() => bundle.events.map((e) => e.t), [bundle]);
 
   /** Starts a fresh transport and store, and plays the recording up to `toMs`. */
@@ -180,6 +200,7 @@ function ReplayPlayer({
         view={view}
         chapters={chapters}
         eventOffsets={eventOffsets}
+        markers={markers}
         onSeek={seek}
         onPlayingChange={setPlaying}
         onSpeedChange={setSpeed}

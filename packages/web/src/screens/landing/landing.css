@@ -704,9 +704,15 @@
     padding-inline: var(--space-7);
   }
 
+  /* flows.css also names the join pages .gv-flow and caps them at 560 px */
   .gv-landing figure.gv-flow {
     box-sizing: border-box;
     width: 100%;
+    max-width: none;
+  }
+
+  .gv-landing .gv-how .gv-steps__item {
+    min-height: 22vh;
   }
 
   .gv-landing__promise,

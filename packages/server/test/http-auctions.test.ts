@@ -111,6 +111,17 @@ describe('create auction (T-RT-073)', () => {
 });
 
 describe('public summary (T-RT-074)', () => {
+  it('adds the price and leader paddle only once a bid stands', async () => {
+    const { app } = setup();
+    const made = (await (await create(app, { title: 'Gala lot', config: validConfig })).json()) as {
+      auctionId: string;
+    };
+    const res = await app.fetch(new Request(`http://h.test/api/auctions/${made.auctionId}`));
+    const body = (await res.json()) as Record<string, unknown>;
+    expect('currentCents' in body).toBe(false);
+    expect('leaderPaddle' in body).toBe(false);
+  });
+
   it('is public and lists title, status, end time and bidder count only', async () => {
     const { app } = setup();
     const made = (await (await create(app, { title: 'Gala lot', config: validConfig })).json()) as {

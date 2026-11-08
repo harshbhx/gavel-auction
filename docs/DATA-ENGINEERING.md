@@ -1,6 +1,6 @@
 # Data engineering of the open datasets
 
-The open datasets are produced by a small, checked pipeline: sources committed in this repository, validators, transforms, datasets with manifests and checksums, and only then (by hand, on request) Hugging Face. Nothing is uploaded automatically. See `docs/HF_COLLECTION.md` for what each dataset contains.
+The open datasets are produced by a small, checked pipeline: sources committed in this repository, validators, transforms, datasets with manifests and checksums, and only then (by hand, on request) Hugging Face: the datasets, the static Space `gavel-evidence-explorer` and the collection. Nothing is uploaded automatically. See `docs/HF_COLLECTION.md` for what each dataset contains.
 
 ## Pipeline
 
@@ -15,7 +15,7 @@ The open datasets are produced by a small, checked pipeline: sources committed i
  issue counts (GitHub API, aggregates only) --+                                           + verify.py
                                                                                                 |
                                                           dry run: artifact `hf-datasets`  <----+
-                                                          dry_run=false and HF secrets: Hugging Face
+                                                          dry_run=false and HF secrets: Hugging Face (datasets, Space, collection)
 ```
 
 Honest labels carried through every stage: real sandbox (PayPal sandbox, never production), simulated (fake clock, model of PayPal), synthetic audio (machine-generated speech), fake PayPal (scripted demo auctions).
@@ -45,7 +45,7 @@ Each `MANIFEST.json` records the dataset version, the repository commit it was b
 
 ## Versioning and changelog
 
-Every dataset has a version (in its schema file) and a `CHANGELOG.md` inside the dataset. A new field or a changed meaning raises the minor or major version; a rebuild from newer evidence with the same schema is a patch. All five datasets are at 1.0.0.
+Every dataset has a version (in its schema file) and a `CHANGELOG.md` inside the dataset. A new field or a changed meaning raises the minor or major version; a rebuild from newer evidence with the same schema is a patch. Four datasets are at 1.0.0; `gavel-stt-bids` is at 1.1.0 (regenerated from the second-round speech-to-text recordings).
 
 ## What this does not claim
 

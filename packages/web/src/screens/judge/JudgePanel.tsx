@@ -7,7 +7,10 @@ import type { JudgeRoomsStatus } from '../../net/judgeRooms';
 import { SCRIPTED_DEMO_PATH, SCRIPTED_JOIN_PATH } from '../../net/scriptedMode';
 import { JoinCodeInput } from '../../ui';
 import { DemoRoomError, failureText, type DemoFailure, type DemoLinks } from '../demo/DemoLauncher';
+import { GoalField } from '../demo/GoalField';
+import { parseGoalInput } from '../screen/fundraiser';
 import { DOCS_URL, REPO_URL, Section, TrustSection } from '../landing/LandingSections';
+import { lookupProblemText } from '../../net/apiError';
 import '../flows.css';
 import '../landing/landing.css';
 import './judge.css';
@@ -17,8 +20,11 @@ export type RoomsState = 'checking' | 'noServer' | JudgeRoomsStatus;
 
 export interface JudgePanelProps {
   readonly rooms: RoomsState;
-  /** Creates a key-less sandbox room. Rejects with a `DemoRoomError` when the host refuses. */
-  readonly createRoom: () => Promise<DemoLinks>;
+  /**
+   * Creates a key-less sandbox room, with a fundraiser goal in cents when the host typed one.
+   * Rejects with a `DemoRoomError` when the host refuses.
+   */
+  readonly createRoom: (goalCents?: number) => Promise<DemoLinks>;
   /** Opens the room page in the current tab. */
   readonly openRoom: (href: string) => void;
   /** Looks a room code up and goes to the join page. Resolves false when there is no such room. */
@@ -111,9 +117,14 @@ export function JudgePanel({ rooms, createRoom, openRoom, joinByCode }: JudgePan
   const heading = useRef<HTMLHeadingElement>(null);
   const [phase, setPhase] = useState<'idle' | 'busy' | 'failed'>('idle');
   const [failure, setFailure] = useState<DemoFailure | null>(null);
+  const [retryAfterS, setRetryAfterS] = useState<number | null>(null);
   const [code, setCode] = useState('');
   const [looking, setLooking] = useState(false);
   const [missing, setMissing] = useState(false);
+  const [goal, setGoal] = useState('');
+  const goalInput = parseGoalInput(goal);
+  const goalOk = goalInput.kind === 'empty' || goalInput.kind === 'ok';
+  const [problem, setProblem] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = t('try.title');
@@ -124,13 +135,15 @@ export function JudgePanel({ rooms, createRoom, openRoom, joinByCode }: JudgePan
   const startable = canStart(rooms);
 
   const start = (): void => {
-    if (phase === 'busy' || !startable) return;
+    if (phase === 'busy' || !startable || !goalOk) return;
     setPhase('busy');
     setFailure(null);
-    createRoom().then(
+    setRetryAfterS(null);
+    createRoom(goalInput.kind === 'ok' ? goalInput.cents : undefined).then(
       (links) => openRoom(links.hub ?? links.console),
       (error: unknown) => {
         setFailure(error instanceof DemoRoomError ? error.reason : null);
+        setRetryAfterS(error instanceof DemoRoomError ? error.retryAfterS : null);
         setPhase('failed');
       },
     );
@@ -142,8 +155,14 @@ export function JudgePanel({ rooms, createRoom, openRoom, joinByCode }: JudgePan
     if (trimmed === '' || looking || rooms === 'noServer') return;
     setLooking(true);
     joinByCode(trimmed)
-      .then((found) => setMissing(!found))
-      .catch(() => setMissing(true))
+      .then((found) => {
+        setProblem(null);
+        setMissing(!found);
+      })
+      .catch((error: unknown) => {
+        setProblem(lookupProblemText(error));
+        setMissing(true);
+      })
       .finally(() => setLooking(false));
   };
 
@@ -190,14 +209,15 @@ export function JudgePanel({ rooms, createRoom, openRoom, joinByCode }: JudgePan
         <ol className="gv-judge__steps">
           <StepCard n={1} title={t('try.s1.title')}>
             <p>{t('try.s1.body')}</p>
-            <Button size="bid" disabled={phase === 'busy' || !startable} onClick={start}>
+            <GoalField value={goal} onChange={setGoal} />
+            <Button size="bid" disabled={phase === 'busy' || !startable || !goalOk} onClick={start}>
               {phase === 'busy' ? t('try.s1.creating') : t('try.s1.cta')}
             </Button>
             {(phase === 'failed' || (!startable && rooms !== 'checking')) && (
               <div className="gv-flow__error" role="alert">
                 <p>
                   {phase === 'failed'
-                    ? `${t('try.s1.failed')} ${failureText(failure)}`
+                    ? `${t('try.s1.failed')} ${failureText(failure, retryAfterS)}`
                     : t('try.s1.open')}
                 </p>
                 <a className="gv-flow__action" href={SCRIPTED_DEMO_PATH}>
@@ -216,10 +236,11 @@ export function JudgePanel({ rooms, createRoom, openRoom, joinByCode }: JudgePan
                 prefix=""
                 disabled={looking || rooms === 'noServer'}
                 invalid={missing}
-                {...(missing ? { message: t('landing.codeInvalid') } : {})}
+                {...(missing ? { message: problem ?? t('landing.codeInvalid') } : {})}
                 onChange={(next) => {
                   setCode(next);
                   setMissing(false);
+                  setProblem(null);
                 }}
               />
               <Button

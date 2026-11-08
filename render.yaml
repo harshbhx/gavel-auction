@@ -42,9 +42,17 @@ services:
       # Comma separated origins of the hosted web app, for example the Pages URL.
       - key: CORS_ORIGINS
         sync: false
+      # Origin of the web app (for example the Worker URL). Links the API builds use it; PUBLIC_URL is
+      # the API host and has no pages. Left empty, the first CORS_ORIGINS entry is used.
+      - key: WEB_ORIGIN
+        sync: false
       - key: TOKEN_SECRET
         sync: false
       - key: ADMIN_KEY
+        sync: false
+      # Optional limited key for judges (32+ random characters, never the ADMIN_KEY). The judge
+      # panel offers a key field only while this is set. Share it in the slide deck only.
+      - key: JUDGE_KEY
         sync: false
       # PAYMENTS=sandbox needs the PayPal sandbox app credentials (config.ts refuses to boot without).
       - key: PAYPAL_CLIENT_ID

@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
+import { confirmHold } from '../support/approveHold';
+import { saveSession } from '../../src/net/session';
 import { openJoin } from '../../src/net/openJoin';
 import { JudgeHub } from '../../src/screens/hub/JudgeHub';
 import { NO_KEYS, hubHref, forgetHubKeys, rememberHubKeys } from '../../src/screens/hub/hubKeys';
@@ -126,7 +128,7 @@ describe('a watcher on the bid page', () => {
   it('is offered a way to join as a bidder instead of a blank page', async () => {
     stubApi(summary);
     render(<App initialPath={`/r/${ROOM}/bid`} api={API} />);
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(t('watch.title'));
+    expect(await screen.findByRole('heading', { level: 1, name: t('watch.title') })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: t('join.asBidder') }));
     await waitFor(() => expect(window.location.pathname).toBe(`/r/${ROOM}/register`));
   });
@@ -188,5 +190,67 @@ describe('hub link back from the console', () => {
     expect(hubHref(ROOM, 'aud-token-1', 'EMY48N')).toBe(
       `/r/${ROOM}/hub#token=aud-token-1&screen=scr-token-1&code=EMY48N`,
     );
+  });
+});
+
+describe('two ways to hold on a judge room (SRV-34)', () => {
+  const room = (judgeRoom: boolean, simHolds: boolean) => (call: Call) => {
+    if (call.url === 'http://api.test/api/judge/capabilities') {
+      return reply(200, { judgeRooms: true, accepting: true, simHolds });
+    }
+    if (call.url === `http://api.test/api/auctions/${ROOM}`) {
+      return reply(200, {
+        auctionId: ROOM,
+        title: 'Lot',
+        joinCode: 'EMY48N',
+        status: 'OPEN',
+        ...(judgeRoom ? { judgeRoom: true } : {}),
+      });
+    }
+    return undefined;
+  };
+
+  it('shows the PayPal sandbox and the demo side by side with one line of why', async () => {
+    stubApi(room(true, true));
+    render(<App initialPath={`/join/${ROOM}`} api={API} />);
+    expect(await screen.findByRole('button', { name: t('join.wayPaypal') })).toBeTruthy();
+    expect(screen.getByRole('button', { name: t('join.wayDemo') })).toBeTruthy();
+    expect(screen.getByText(t('join.waysWhy'))).toBeTruthy();
+    expect(t('join.waysWhy')).toMatch(/held, not charged/);
+    fireEvent.click(screen.getByRole('button', { name: t('join.wayDemo') }));
+    await waitFor(() => expect(window.location.search).toBe('?mode=demo'));
+    expect(window.location.pathname).toBe(`/r/${ROOM}/register`);
+  });
+
+  it('keeps the single button for a normal room or a host with the demo off', async () => {
+    stubApi(room(false, true));
+    const first = render(<App initialPath={`/join/${ROOM}`} api={API} />);
+    expect(await first.findByRole('button', { name: t('join.asBidder') })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: t('join.wayDemo') })).toBeNull();
+    first.unmount();
+    stubApi(room(true, false));
+    render(<App initialPath={`/join/${ROOM}`} api={API} />);
+    expect(await screen.findByRole('button', { name: t('join.asBidder') })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: t('join.wayDemo') })).toBeNull();
+  });
+
+  it('places a simulated hold in demo mode, with no PayPal call', async () => {
+    window.history.replaceState(null, '', `/r/${ROOM}/register?mode=demo`);
+    saveSession(ROOM, { token: 'plainly-fake-session', bidderId: 'B7' });
+    const calls = stubApi((c) =>
+      c.url.endsWith('/sim-hold')
+        ? reply(200, { holdId: 'sim-hold-B7', simulated: true })
+        : undefined,
+    );
+    render(<App initialPath={`/r/${ROOM}/register`} api={API} />);
+    fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
+    fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
+    fireEvent.click(screen.getByLabelText('$250'));
+    confirmHold();
+    await waitFor(() => expect(calls.some((c) => c.url.endsWith('/sim-hold'))).toBe(true));
+    const sim = calls.find((c) => c.url.endsWith('/sim-hold'));
+    expect(sim?.url).toBe(`http://api.test/api/judge/rooms/${ROOM}/sim-hold`);
+    expect(JSON.parse(sim?.body ?? '{}')).toEqual({ ceilingCents: 25_000, name: 'Priya' });
+    expect(calls.some((c) => c.url.endsWith('/api/holds'))).toBe(false);
   });
 });

@@ -8,7 +8,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { secretSetFromConfig } from '../src/auth/rotation';
 import { createHttpApp, type HttpApp, type HttpDeps } from '../src/http/app';
-import { mountAuctions } from '../src/http/auctions';
+import { mountAuctions, titleKey } from '../src/http/auctions';
 import { mountControl } from '../src/http/control';
 import {
   createJudgeRooms,
@@ -124,7 +124,7 @@ describe('judge rooms: flag guard', () => {
     const { app } = setup({ enabled: false });
     expect((await post(app, JUDGE_ROOMS_PATH)).status).toBe(404);
     const probe = await app.fetch(new Request(`http://h.test${JUDGE_CAPABILITIES_PATH}`));
-    expect(await probe.json()).toEqual({ judgeRooms: false, accepting: false });
+    expect(await probe.json()).toEqual({ judgeRooms: false, accepting: false, simHolds: false });
   });
 
   it('the probe returns booleans only', async () => {
@@ -132,7 +132,7 @@ describe('judge rooms: flag guard', () => {
     const body = (await (
       await app.fetch(new Request(`http://h.test${JUDGE_CAPABILITIES_PATH}`))
     ).json()) as Record<string, unknown>;
-    expect(body).toEqual({ judgeRooms: true, accepting: true });
+    expect(body).toEqual({ judgeRooms: true, accepting: true, simHolds: false });
   });
 });
 
@@ -164,6 +164,26 @@ describe('judge rooms: create', () => {
     expect(res.status).toBe(400);
   });
 
+  it('keeps an optional fundraiser goal beside the room, and none when it is left out (UIX-31)', async () => {
+    const { app, store } = setup({ perIpPerHour: 10, globalPerHour: 10 });
+    const withGoal = await created(
+      await post(app, JUDGE_ROOMS_PATH, { body: { fundraiserGoalCents: 2_500_000 } }),
+    );
+    const stored = await store.getJournal(titleKey(withGoal.auctionId));
+    expect((stored?.value as { fundraiserGoalCents?: number }).fundraiserGoalCents).toBe(2_500_000);
+    const plain = await created(await post(app, JUDGE_ROOMS_PATH));
+    const none = await store.getJournal(titleKey(plain.auctionId));
+    expect((none?.value as Record<string, unknown>).fundraiserGoalCents).toBeUndefined();
+  });
+
+  it('refuses a fractional, non-positive or oversized goal (UIX-31)', async () => {
+    const { app } = setup({ perIpPerHour: 10, globalPerHour: 10 });
+    for (const goal of [0, -1, 10.5, 1_000_000_000_01]) {
+      const res = await post(app, JUDGE_ROOMS_PATH, { body: { fundraiserGoalCents: goal } });
+      expect(res.status).toBe(400);
+    }
+  });
+
   it('marks audit entries as judge-room and keeps the raw address out of them', async () => {
     const { app, logs } = setup();
     await post(app, JUDGE_ROOMS_PATH, { src: '198.51.100.9' });
@@ -181,7 +201,9 @@ describe('judge rooms: limits', () => {
     expect((await post(app, JUDGE_ROOMS_PATH, { src: '1.1.1.1' })).status).toBe(201);
     const third = await post(app, JUDGE_ROOMS_PATH, { src: '1.1.1.1' });
     expect(third.status).toBe(429);
-    expect(third.headers.get('retry-after')).not.toBeNull();
+    // The wait is the time until the oldest create leaves the hour, not a fixed guess.
+    expect(Number(third.headers.get('retry-after'))).toBeGreaterThan(3500);
+    expect(Number(third.headers.get('retry-after'))).toBeLessThanOrEqual(3600);
     expect((await post(app, JUDGE_ROOMS_PATH, { src: '2.2.2.2' })).status).toBe(201);
     clock.set(clock.now() + (HOUR + 1));
     expect((await post(app, JUDGE_ROOMS_PATH, { src: '1.1.1.1' })).status).toBe(201);
@@ -206,7 +228,7 @@ describe('judge rooms: limits', () => {
     expect(results.filter((r) => r.status === 429)).toHaveLength(3);
     expect(rooms.liveCount()).toBe(2);
     const probe = await app.fetch(new Request(`http://h.test${JUDGE_CAPABILITIES_PATH}`));
-    expect(await probe.json()).toEqual({ judgeRooms: true, accepting: false });
+    expect(await probe.json()).toEqual({ judgeRooms: true, accepting: false, simHolds: false });
   });
 });
 

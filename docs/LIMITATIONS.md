@@ -1,0 +1,60 @@
+# Limits and next steps
+
+What GAVEL does today, how far each part has been measured, and what comes next. Every row follows the committed evidence. Where this page and [docs/GATES.md](GATES.md) differ, the gate record wins. The same page is on the docs site as [Limits and next steps](https://gavel-docs.creharsh.workers.dev/docs/roadmap/limits).
+
+The submission deadline is Thu 12 Nov 2026, 12:00 PST (Fri 13 Nov 01:30 IST).
+
+## Built and measured
+
+- **Four sandbox gates passed on the real PayPal sandbox.** G0 (app and buyers), G1 (partial capture with `final_capture`, two PayPal-account buyers), G2 (wallet and guest card AUTHORIZE) and G4 (six real webhooks verified). G5 is PARTIAL and G3 is a timed probe in progress; both are in the tables below.
+- **Hammer to settled lands inside its target.** It has a p95 of 5.59 s, inside the 6 s target (20 settlements of 6 holds each on the real sandbox, 0 failed).
+- **One lot of three holds settled on the real sandbox, with one in-process crash recovered.** Nightly specs R7, R8 and R10, runs [42200708552](https://github.com/harshbhx/gavel-auction/actions/runs/42200708552) and [42317068784](https://github.com/harshbhx/gavel-auction/actions/runs/42317068784).
+- **Voice bidding is measured.** On 24 synthetic clips in two sets, wrong accept is 0.000 and exact plus recoverable is 1.000 for both providers, and every spoken bid goes through a confirm prompt.
+- **Security review.** All eight P0 items are PASS as of 2026-11-07.
+- **Hosted in sandbox mode.** Web app on Cloudflare, API on Render, with key-less judge rooms.
+
+## Payments and gates
+
+| Area                          | Today                                                                                                                                                                                                                                                                                                                                                                                | Next                                                                                                                                  | Owner and date             |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| G3 honor period and reauth    | Timed sandbox probe running. Started 7 Nov 03:06 UTC; day 0 is recorded (an immediate reauthorize was refused with `REAUTHORIZATION_TOO_SOON`, and three authorizations were approved to be read at day 3.5, 4 and 5). The 30-day run is a simulation on a fake clock.                                                                                                               | Final reading about 12 Nov 06:17 UTC. It sets the validity window and shows whether reauthorize extends it; auctions are sized to it. | harshbhx, 12 Nov           |
+| G3 early reading              | Older G2 wallet authorization probed 8 Nov 17:36 UTC at age 3.24 days: a partial capture of 1.00 was accepted (HTTP 201) and the reauthorize call answered 422 `UNPROCESSABLE_ENTITY` with the issue `PAYER_CANNOT_PAY`. This is an early reading on a used authorization, not the G3 result. Run [42505780514](https://github.com/harshbhx/gavel-auction/actions/runs/42505780514). | G2 card authorization is due 8 Nov 23:58 UTC; its result is added here. The day 3.5, 4 and 5 readings give the clean answer.          | harshbhx, 8 Nov and 12 Nov |
+| Remainder release (G1)        | After the final capture the authorization reads CAPTURED and a later void answers 422 `PREVIOUSLY_CAPTURED`, so the remainder is treated as released.                                                                                                                                                                                                                                | Read a buyer balance to confirm the release directly, and capture a guest card order.                                                 | Date not set               |
+| Webhooks (G4)                 | Six real deliveries verified. Rejecting a tampered event is covered against the fake PayPal.                                                                                                                                                                                                                                                                                         | Record a tampered event and a PayPal retry delivery on the sandbox.                                                                   | Date not set               |
+| Card and guest in a live room | G2 shows the SDK authorize flow for a wallet buyer and a guest card.                                                                                                                                                                                                                                                                                                                 | Record a card checkout inside a live judge room.                                                                                      | Date not set               |
+| Whole auction, hosted         | The settlement saga is covered against the fake PayPal, and on the sandbox by the nightly specs and the 20-settlement measurement (one script, no server in the loop).                                                                                                                                                                                                               | Settle a whole auction through the hosted server and kill the process for real during settlement.                                     | Date not set               |
+
+## Speed
+
+| Target                    | Today                                                                        | Next                                                                                     | Owner and date         |
+| ------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------- |
+| Hammer to settled, 6 s    | p95 5.59 s, inside the target (n=20, 6 holds, sandbox, run 42346811713).     | Repeat on a larger sample.                                                               | Date not set           |
+| Hammer to captured, 2.5 s | p95 3.01 s (p50 2.56 s). The capture call alone is p95 2.28 s (5 Nov, n=10). | Tune toward 2.5 s, or set the target from the sandbox figure. This is an owner decision. | harshbhx, date not set |
+
+## Voice
+
+| Area               | Today                                                                                                                                                             | Next                                                                                                            | Owner and date |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------------- |
+| G5 speech accuracy | PARTIAL. Measured on synthetic audio (24 eSpeak and 24 human-like clips, Deepgram nova-3 and Groq whisper-large-v3-turbo). Fixes were chosen on those same clips. | Confirm in a live room, with new clips and background noise. Until then no code path auto-accepts a spoken bid. | Date not set   |
+| Live speech        | Cached transcripts by default; live speech runs only with `VOICE_STT` set.                                                                                        | Record a live run through the `/audio` socket, and add an audio sender to the web console.                      | Date not set   |
+
+## Hosting and demo
+
+| Area          | Today                                                                                                                                                         | Next                                                              | Owner and date |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | -------------- |
+| Hosted app    | Web at https://gavel-web.creharsh.workers.dev and API at https://gavel-auction-z2nm.onrender.com, both in sandbox mode. Judge rooms open a real sandbox room. | Record a walk of the five-minute path on the hosted app.          | Date not set   |
+| Storage       | The Render service is set up with a 1 GB persistent disk and one instance (`render.yaml`).                                                                    | Keep one instance: the file stores are owned by a single process. | Standing       |
+| Replay        | The player and bundle format exist; the scripted demo plays a recorded room in the browser.                                                                   | Host recorded live auctions for replay.                           | Date not set   |
+| Rejected bids | Kept in the room log. The hash-chained ledger holds accepted bids.                                                                                            | Decide whether rejected bids also go into the ledger.             | Date not set   |
+
+## Reviews and data
+
+| Area            | Today                                                                                                                                                                                                        | Next                                                              | Owner and date |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- | -------------- |
+| Security review | 16 of the 18 original items PASS (all eight P0), one is ACCEPTED, one (SEC-15, log scan) is open. SEC-19 and SEC-20, added for judge rooms and receipt links, are written up and awaiting review.            | Independent review of SEC-19 and SEC-20, and the SEC-15 log scan. | Date not set   |
+| Accessibility   | Automated axe sweeps run in CI over the scripted bid, console and screen states.                                                                                                                             | A manual pass with a screen reader and 200 percent zoom.          | Date not set   |
+| Open datasets   | Five small datasets are prepared for Hugging Face. The speech, simulation and audit-trace sets use synthetic audio, a fake clock and scripted auctions by design: GAVEL does not collect real people's data. | Publish them.                                                     | Date not set   |
+
+## Why synthetic data
+
+The speech, simulation and audit-trace datasets use synthetic speech, a simulated clock and scripted auctions on purpose. That is privacy by design: no real person's voice, name or payment detail is collected, stored or published. The sandbox accounts are test accounts with pretend funds.
