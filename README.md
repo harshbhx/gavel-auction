@@ -62,13 +62,13 @@ PayPal sandbox only: no real money moves, and nobody should use a personal PayPa
 
 ### Where things are hosted (sandbox mode)
 
-| What          | Link                                                                                                                                                        |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Web app       | [gavel.dualmindlab.tech](https://gavel.dualmindlab.tech) and [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev), judge page at `/try` |
-| Documentation | [docs.gavel.dualmindlab.tech](https://docs.gavel.dualmindlab.tech)                                                                                          |
-| API           | Render, [`/healthz`](https://gavel-auction-z2nm.onrender.com/healthz); the first request after idle can take about 30 seconds while the service wakes       |
+| What          | Link                                                                                                                                                                                   |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web app       | [gavel.dualmindlab.tech](https://gavel.dualmindlab.tech) and [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev), judge page at `/try`                            |
+| Documentation | [docs.gavel.dualmindlab.tech](https://docs.gavel.dualmindlab.tech)                                                                                                                     |
+| API           | Render, served at api.gavel.dualmindlab.tech, [`/healthz`](https://api.gavel.dualmindlab.tech/healthz); the first request after idle can take about 30 seconds while the service wakes |
 
-The API's own domain, `api.gavel.dualmindlab.tech`, is being set up; the links on this page use the Render address above. The hosted API runs in sandbox mode on one Render service with a 1 GB persistent disk (see [Sponsors](#sponsors)).
+The API runs on Render and is served at `api.gavel.dualmindlab.tech`. The hosted API runs in sandbox mode on one Render service with a 1 GB persistent disk (see [Sponsors](#sponsors)).
 
 ### Built and proved so far
 
@@ -266,7 +266,7 @@ Full diagram and details: [docs/submission/ARCHITECTURE.md](docs/submission/ARCH
 | APIMatic | SDK and developer portal from the OpenAPI 3.1 spec | The spec is ready; APIMatic generation is pending (needs an account), so nothing is generated yet                                       |
 | AG Grid  | Ledger, bids and holds tables in the web app       | In review: [pull request #2046](https://github.com/harshbhx/gavel-auction/pull/2046) is open and not merged, so it is not on `main` yet |
 
-**Render.** The GAVEL API and WebSocket host runs on [Render](https://render.com) as one Node web service (`starter` plan, always on) at [gavel-auction-z2nm.onrender.com](https://gavel-auction-z2nm.onrender.com/healthz), with a 1 GB persistent disk at `/var/data` that holds the hash-chained ledger, room log, settlement journals and hold records. [`render.yaml`](render.yaml) is the blueprint; deploys start from GitHub Actions through a Render deploy hook and are followed by `/version` and smoke checks. We do not use Render Postgres, cron jobs or preview environments yet. Details, the reasons for one instance, and the next steps: [Hosting on Render](https://docs.gavel.dualmindlab.tech/docs/run/hosting-on-render).
+**Render.** The GAVEL API and WebSocket host runs on [Render](https://render.com) as one Node web service (`starter` plan, always on) at [api.gavel.dualmindlab.tech](https://api.gavel.dualmindlab.tech/healthz), with a 1 GB persistent disk at `/var/data` that holds the hash-chained ledger, room log, settlement journals and hold records. [`render.yaml`](render.yaml) is the blueprint; deploys start from GitHub Actions through a Render deploy hook and are followed by `/version` and smoke checks. We do not use Render Postgres, cron jobs or preview environments yet. Details, the reasons for one instance, and the next steps: [Hosting on Render](https://docs.gavel.dualmindlab.tech/docs/run/hosting-on-render).
 
 **APIMatic.** Best Use of APIMatic. The OpenAPI 3.1 spec of the host API is ready ([`openapi/gavel.yaml`](openapi/gavel.yaml), linted in CI and checked against the server router, also served at https://docs.gavel.dualmindlab.tech/openapi.yaml). SDK and developer portal generation by APIMatic is pending: it needs an APIMatic account, so nothing is generated yet. Details in [docs/API.md](docs/API.md).
 

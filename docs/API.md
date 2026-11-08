@@ -138,7 +138,7 @@ Judge rooms are sandbox auctions anyone can open on a host that has them on. Rep
 with the host address.
 
 ```sh
-API=https://gavel-auction-z2nm.onrender.com
+API=https://api.gavel.dualmindlab.tech
 
 # 1. Is the host taking rooms?
 curl -s $API/api/judge/capabilities
