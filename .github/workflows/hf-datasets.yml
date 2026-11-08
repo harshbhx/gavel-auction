@@ -1,15 +1,19 @@
 name: hf-datasets
 # Builds the open datasets (scripts/hf) from the evidence committed in this repository, checks them
-# for personal data and secrets, and uploads them as the artifact `hf-datasets`. Nothing is pushed to
-# Hugging Face unless dry_run is false AND the repository secret HF_TOKEN and the repository variable
-# HF_NAMESPACE both exist; otherwise the job says so and ends green. The token is only passed through
-# env to the upload step and is never printed.
+# for personal data and secrets, builds the static Space `gavel-evidence-explorer` (hf/space) from them,
+# and uploads both as the artifacts `hf-datasets` and `hf-space`. Nothing is pushed to Hugging Face
+# unless dry_run is false. A publish run (dry_run false) uploads the five datasets, the Space and the
+# collection `GAVEL Evidence: auction holds, hammer and receipts` (scripts/hf/push.py), and FAILS with
+# a message naming what is missing if the repository secret HF_TOKEN or the repository variable
+# HF_NAMESPACE does not exist. A dry run prints what a publish would do. The token is only passed
+# through env to the upload step and is never printed.
 on:
   # A pull request that changes the build runs it as a dry run, so the build is checked in CI.
   pull_request:
     paths:
       - '.github/workflows/hf-datasets.yml'
       - 'scripts/hf/**'
+      - 'hf/space/**'
       - 'packages/payments/test/simdays/**'
   workflow_dispatch:
     inputs:
@@ -18,7 +22,7 @@ on:
         required: false
         default: all
       dry_run:
-        description: 'true builds and uploads only the artifact; false also pushes to Hugging Face'
+        description: 'true (default) builds and shows the publish plan; false publishes the datasets, the Space and the collection to Hugging Face (needs secret HF_TOKEN and variable HF_NAMESPACE)'
         type: boolean
         default: true
 
@@ -82,6 +86,11 @@ jobs:
           [ -f "$ASSURANCE_FILE" ] || unset ASSURANCE_FILE
           scripts/hf/build.sh "$RUNNER_TEMP/hf" "$DATASET"
           cp "$RUNNER_TEMP"/hf/quality-report.md "$RUNNER_TEMP"/hf/data-dictionary.md "$RUNNER_TEMP"/ 2>/dev/null || true
+      - name: Build the Evidence Explorer Space
+        if: ${{ env.DATASET == 'all' }}
+        run: |
+          node scripts/hf/build-space.mjs "$RUNNER_TEMP/hf" "$RUNNER_TEMP/space"
+          ls -R "$RUNNER_TEMP/space"
       - name: Prove the build is reproducible (second build, same manifests)
         env:
           HF_NAMESPACE: ${{ vars.HF_NAMESPACE }}
@@ -128,6 +137,20 @@ jobs:
           name: hf-datasets
           path: ${{ runner.temp }}/hf
           if-no-files-found: warn
+      - name: Keep the Space
+        if: ${{ always() && env.DATASET == 'all' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hf-space
+          path: ${{ runner.temp }}/space
+          if-no-files-found: warn
+      - name: Show the publish plan
+        if: ${{ env.DATASET == 'all' }}
+        env:
+          HF_NAMESPACE: ${{ vars.HF_NAMESPACE }}
+        run: |
+          python scripts/hf/push.py "$RUNNER_TEMP/hf" "$RUNNER_TEMP/space" --dry-run | tee "$RUNNER_TEMP/plan.txt"
+          { echo '### Publish plan (nothing is sent in this step)'; echo; echo '```'; cat "$RUNNER_TEMP/plan.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Check the Hugging Face settings
         id: hf
         env:
@@ -142,15 +165,20 @@ jobs:
             echo "::notice title=Dry run::Built and scanned; nothing was pushed to Hugging Face."
           elif [ -n "$missing" ]; then
             echo "push=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Push skipped::Missing:$missing"
+            echo "::error title=Cannot publish to Hugging Face::Missing:$missing. Add the secret HF_TOKEN (a write token) and the variable HF_NAMESPACE under Settings, Secrets and variables, Actions, then run this workflow again. Nothing was uploaded."
+            exit 1
           else
             echo "push=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Push to Hugging Face
+      - name: Publish datasets, Space and collection to Hugging Face
         if: ${{ steps.hf.outputs.push == 'true' }}
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_NAMESPACE: ${{ vars.HF_NAMESPACE }}
         run: |
           python -m pip install --quiet huggingface_hub
-          python scripts/hf/push.py "$RUNNER_TEMP/hf"
+          if [ "$DATASET" = all ]; then
+            python scripts/hf/push.py "$RUNNER_TEMP/hf" "$RUNNER_TEMP/space"
+          else
+            python scripts/hf/push.py "$RUNNER_TEMP/hf"
+          fi
