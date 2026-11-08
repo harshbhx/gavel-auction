@@ -1,0 +1,54 @@
+---
+title: Trust and FAQ
+description: What happens to your login, your money and your data when you try a GAVEL room, and what to do when something goes wrong.
+icon: ShieldCheck
+---
+
+Short answers for a judge about to try a room. Where this page and `docs/GATES.md` disagree, the gate record wins.
+
+<Held title="A bid is a hold, not a charge">
+
+Every PayPal call is against the sandbox. A sandbox buyer is a test account with pretend funds. Never sign in with your own PayPal account. Nothing is charged until the hammer, and then only the winning price is captured.
+
+</Held>
+
+<Accordions type="multiple">
+<Accordion title="Is any real money involved?">
+
+No. The hosted server refuses to start judge rooms unless it is on the PayPal sandbox, and refuses fake payments in production mode.
+
+</Accordion>
+<Accordion title="Does GAVEL see my PayPal login?">
+
+No. The login happens on PayPal's own sandbox pages. See the [privacy notice](https://github.com/harshbhx/gavel-auction/blob/main/docs/PRIVACY.md).
+
+</Accordion>
+<Accordion title="What does GAVEL keep about me?">
+
+The display name you type, your bids and holds (amounts in cents, times and sandbox order ids) and the room audit trail. No analytics, ad identifiers or cookies. Voice is off unless the host turns it on. Records are removed when the demo is shut down.
+
+</Accordion>
+<Accordion title="Can I check the auction was not rigged?">
+
+Yes. Every event goes into a ledger chained by hash; the audit trail link in a room shows it and an edited entry breaks the chain at that entry. See [engine and ledger](/docs/how-it-works/engine-and-ledger).
+
+</Accordion>
+<Accordion title="What if the server restarts mid-room?">
+
+The hosted API uses temporary storage, so a room can be lost. Start a new demo auction. Crash-safe settlement is tested against the fake PayPal and a few real sandbox runs, not a whole auction on the hosted server. See [crash recovery](/docs/how-it-works/crash-recovery).
+
+</Accordion>
+<Accordion title="What is not proven?">
+
+Whole-auction settlement through the hosted server, a real process kill on the sandbox, guest-card capture, the remainder release as seen on a buyer balance (inferred), real-room voice accuracy and the final G3 reading. See [tough questions](/docs/judges/tough-questions) and [real, simulated, recorded](/docs/judges/real-vs-simulated).
+
+</Accordion>
+<Accordion title="Something is not working. What now?">
+
+1. Reload and retry the room code.
+2. If the room is gone or the host is busy, start a new demo auction.
+3. If judge rooms are off or the host is down, open `/demo/scripted` on the web app: a recorded room with no login.
+4. If the sandbox login is refused, see [sandbox buyers](/docs/judges/sandbox-buyers).
+
+</Accordion>
+</Accordions>
