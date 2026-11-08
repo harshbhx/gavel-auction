@@ -32,7 +32,7 @@ on:
   # Until this file is on the default branch it cannot be dispatched, so a push to the branch
   # runs it with the defaults. Remove this trigger before merging.
   push:
-    branches: ['qa/QA-04-live-stress']
+    branches: ['test/QA-04-live-stress']
     paths:
       - '.github/workflows/live-stress.yml'
       - 'qa/live-stress/**'
@@ -50,7 +50,7 @@ defaults:
 
 jobs:
   stress:
-    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    if: ${{ github.repository == 'harshbhx/gavel-auction' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run]')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
