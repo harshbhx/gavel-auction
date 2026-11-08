@@ -106,7 +106,10 @@ export function readReceiptToken(roomId: string, source?: FragmentSource): strin
   return readSlot(receiptTokens, roomId, source);
 }
 
-/** Forgets the in-memory token for one room, or for every room when none is named. */
+/**
+ * Forgets the in-memory tokens for one room, or for every room when none is named. A named room
+ * keeps its bidder session: a refused console token must never sign the bidder out.
+ */
 export function clearAuctioneerToken(roomId?: string): void {
   if (roomId === undefined) {
     auctioneerTokens.clear();
@@ -117,7 +120,6 @@ export function clearAuctioneerToken(roomId?: string): void {
     auctioneerTokens.delete(roomId);
     inviteTokens.delete(roomId);
     receiptTokens.delete(roomId);
-    bidderSessions.delete(roomId);
   }
 }
 
