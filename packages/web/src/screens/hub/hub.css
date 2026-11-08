@@ -460,6 +460,18 @@
   margin: 0;
 }
 
+.gv-scripted-bar__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.gv-scripted-bar__links .ui-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
 .gv-scripted-frame .gv-screen {
   height: calc(100vh - 56px);
 }

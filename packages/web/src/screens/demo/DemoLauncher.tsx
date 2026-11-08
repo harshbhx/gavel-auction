@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { t } from '../../copy/t';
 import { Provenance } from '../../design/Provenance';
 import { Button } from '../../design/primitives/Button';
+import { Dialog } from '../../design/primitives/Dialog';
+import { Field } from '../../design/primitives/Field';
 import '../flows.css';
+import './demo.css';
 
 export type DemoMode = 'live' | 'scripted';
 
@@ -46,6 +49,8 @@ export interface DemoLauncherProps {
   readonly openConsole: (href: string) => void;
   /** Starts in scripted mode, for `transport=scenario`. */
   readonly initialMode?: DemoMode;
+  /** Goes to a room by its code. Defaults to `openConsole`, which navigates in the current tab. */
+  readonly openRoom?: (href: string) => void;
   readonly writeClipboard?: (text: string) => Promise<void>;
 }
 
@@ -67,6 +72,7 @@ export function DemoLauncher({
   startScripted,
   openConsole,
   initialMode = 'live',
+  openRoom = openConsole,
   writeClipboard = (text) => navigator.clipboard.writeText(text),
 }: DemoLauncherProps) {
   const heading = useRef<HTMLHeadingElement>(null);
@@ -79,6 +85,27 @@ export function DemoLauncher({
   const [links, setLinks] = useState<DemoLinks | null>(null);
   const [copied, setCopied] = useState<RoleKey | null>(null);
   const [failure, setFailure] = useState<DemoFailure | null>(null);
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [code, setCode] = useState('');
+  const [codeError, setCodeError] = useState<string | undefined>(undefined);
+  const errorBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (phase === 'failed') errorBox.current?.focus();
+  }, [phase]);
+
+  const goToRoom = (event: React.FormEvent): void => {
+    event.preventDefault();
+    const clean = code.trim();
+    if (clean === '') {
+      setCodeError(t('demo.codeEmpty'));
+    } else if (!/^[A-Za-z0-9_-]{1,64}$/.test(clean)) {
+      setCodeError(t('demo.codeBad'));
+    } else {
+      setCodeError(undefined);
+      setCodeOpen(false);
+      openRoom(`/join/${encodeURIComponent(clean)}`);
+    }
+  };
 
   const finish = (next: DemoLinks, how: DemoMode): void => {
     setMode(how);
@@ -114,20 +141,39 @@ export function DemoLauncher({
 
   return (
     <main className="gv-demo gv-flow" data-route="demo">
+      <p className="ui-kicker">{t('app.name')}</p>
       <h1 ref={heading} tabIndex={-1}>
         {t('landing.start')}
       </h1>
+      <p className="gv-demo__lead">{t('demo.lead')}</p>
       <Provenance kind={mode} />
-      <Button size="bid" disabled={phase === 'busy'} onClick={start}>
-        {phase === 'busy' ? t('demo.creating') : t('landing.start')}
-      </Button>
+      <section className="gv-demo__start" aria-busy={phase === 'busy'}>
+        <Button size="bid" disabled={phase === 'busy'} onClick={start}>
+          {phase === 'busy' ? t('demo.creating') : t('landing.start')}
+        </Button>
+        {phase === 'busy' && (
+          <p className="gv-demo__status" role="status">
+            {t('demo.creatingStatus')}
+          </p>
+        )}
+      </section>
       {phase === 'failed' && (
-        <div className="gv-flow__error" role="alert">
+        <div ref={errorBox} className="gv-flow__error" role="alert" tabIndex={-1}>
           <p>{failureText(failure)}</p>
           <Button variant="outline" onClick={scripted}>
             {t('demo.scriptedInstead')}
           </Button>
         </div>
+      )}
+      {links === null && (
+        <section className="gv-demo__gets" aria-labelledby="gv-demo-gets">
+          <h2 id="gv-demo-gets">{t('demo.steps')}</h2>
+          <ul>
+            <li>{t('demo.stepConsole')}</li>
+            <li>{t('demo.stepScreen')}</li>
+            <li>{t('demo.stepBidder')}</li>
+          </ul>
+        </section>
       )}
       {links !== null && (
         <section aria-label={t('demo.linksTitle')}>
@@ -147,6 +193,46 @@ export function DemoLauncher({
           </Button>
         </section>
       )}
+      <nav className="gv-demo__ways" aria-labelledby="gv-demo-ways">
+        <h2 id="gv-demo-ways">{t('demo.otherWays')}</h2>
+        <ul>
+          <li>
+            <a href="/demo/scripted">{t('demo.tour')}</a>
+            <span>{t('demo.tourHint')}</span>
+          </li>
+          <li>
+            <a href="/try">{t('demo.judge')}</a>
+            <span>{t('demo.judgeHint')}</span>
+          </li>
+          <li>
+            <button type="button" className="gv-demo__linkbtn" onClick={() => setCodeOpen(true)}>
+              {t('demo.haveCode')}
+            </button>
+          </li>
+        </ul>
+      </nav>
+      <Dialog open={codeOpen} onClose={() => setCodeOpen(false)} title={t('demo.codeTitle')}>
+        <form className="gv-demo__code" onSubmit={goToRoom} noValidate>
+          <h2>{t('demo.codeTitle')}</h2>
+          <Field
+            label={t('demo.codeLabel')}
+            hint={t('demo.codeHint')}
+            {...(codeError === undefined ? {} : { error: codeError })}
+            value={code}
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            autoFocus
+            onChange={(e) => setCode(e.target.value)}
+          />
+          <div className="gv-demo__code-actions">
+            <Button type="submit">{t('demo.codeGo')}</Button>
+            <Button type="button" variant="outline" onClick={() => setCodeOpen(false)}>
+              {t('generic.close')}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
     </main>
   );
 }
