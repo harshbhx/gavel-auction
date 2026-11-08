@@ -301,6 +301,10 @@ export function AudienceSection() {
     <Section id="who" title={t('mk.aud.title')}>
       <div className="gv-aud">
         <SpotlightCard as="article" className="gv-aud__col gv-reveal">
+          <h3 className="gv-aud__title">{t('mk.aud.sel.title')}</h3>
+          <p>{t('mk.aud.sel.body')}</p>
+        </SpotlightCard>
+        <SpotlightCard as="article" className="gv-aud__col gv-reveal">
           <h3 className="gv-aud__title">{t('mk.aud.auc.title')}</h3>
           <p>{t('mk.aud.auc.body')}</p>
         </SpotlightCard>
@@ -320,6 +324,9 @@ export function FaqSection() {
     { q: t('mk.faq.q3'), a: t('mk.faq.a3') },
     { q: t('mk.faq.q4'), a: t('mk.faq.a4') },
     { q: t('mk.faq.q5'), a: t('mk.faq.a5') },
+    { q: t('mk.faq.q6'), a: t('mk.faq.a6') },
+    { q: t('mk.faq.q7'), a: t('mk.faq.a7') },
+    { q: t('mk.faq.q8'), a: t('mk.faq.a8') },
   ];
   return (
     <Section id="faq" title={t('mk.faq.title')}>
