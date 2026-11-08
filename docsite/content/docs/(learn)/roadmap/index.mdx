@@ -15,7 +15,7 @@ The submission deadline is Thu 12 Nov 2026, 12:00 PST (Fri 13 Nov 01:30 IST).
 | A real-room or noisy-room speech test | G5 is PARTIAL on synthetic audio (fixes chosen on the same 24 clips); nothing real has been tested. |
 | An owner decision on the 2.5 s hammer to CAPTURED target | Measured end to end at p95 3010.04 ms (n=20, sandbox), so it is missed. The 6 s SETTLED target is met at p95 5591.30 ms. |
 | Recorded demo auctions for replay | The player exists; no recording is hosted. |
-| A persistent store for the hosted deploy | Storage is temporary until a persistent disk is added; the file stores need a single instance. |
+| A restart drill on the hosted deploy | The API has a 1 GB persistent disk at `/var/data`; no recorded test shows a room surviving a restart. The file stores need a single instance. |
 | Security review sign-off | All 18 items are open. |
 | Manual accessibility pass | Screen reader and zoom passes have not been run. |
 

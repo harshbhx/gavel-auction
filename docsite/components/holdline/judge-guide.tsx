@@ -112,7 +112,7 @@ const criteria = [
       ['Demo screens', '/docs/start/demo'],
       ['Concepts', '/docs/start/concepts'],
     ],
-    state: 'Automated checks only; the screen-reader pass is not done. The hosted app is not yet walked end to end.',
+    state: 'Automated checks only; the screen-reader pass is not done. No end-to-end walk of the hosted app is recorded.',
     chip: 'open',
   },
   {

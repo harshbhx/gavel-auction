@@ -39,13 +39,13 @@ PayPal sandbox only: no real money moves, and nobody should use a personal PayPa
 
 ### Live links (sandbox mode)
 
-| What          | Link                                                                                                                                                  |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Web app       | [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev), with the judge page at [`/try`](https://gavel-web.creharsh.workers.dev/try) |
-| Documentation | [gavel-docs.creharsh.workers.dev](https://gavel-docs.creharsh.workers.dev)                                                                            |
-| API           | Render, [`/healthz`](https://gavel-auction-aufz.onrender.com/healthz); the first request after idle can take about 30 seconds while the service wakes |
+| What          | Link                                                                                                                                                     |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web app       | [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev), with the judge page at [`/try`](https://gavel-web.creharsh.workers.dev/try)    |
+| Documentation | [gavel-docs.creharsh.workers.dev](https://gavel-docs.creharsh.workers.dev)                                                                               |
+| API           | Render, [`/healthz`](https://gavel-auction-z2nm.onrender.com/healthz); paid Render plan with a 1 GB persistent disk; judge rooms on, PayPal sandbox only |
 
-The hosted API runs in sandbox mode with temporary storage on the current host, so rooms can be lost on a restart. Whether a judge can start a key-less room depends on the host flag `JUDGE_ROOMS` (see [docs/DEPLOY.md](docs/DEPLOY.md)); [docs/DEMO.md](docs/DEMO.md) says what is verified and what is not.
+The hosted API runs in sandbox mode on a Render paid plan with a 1 GB persistent disk at `/var/data` (`DATA_DIR=/var/data`), so room files are kept across restarts and redeploys by design; no restart drill is recorded. Judge rooms (`JUDGE_ROOMS`, see [docs/DEPLOY.md](docs/DEPLOY.md)) are switched on, so a judge can start a key-less demo room. Payments are PayPal sandbox only; [docs/DEMO.md](docs/DEMO.md) says what is verified and what is not.
 
 <table>
   <tr>
@@ -214,7 +214,7 @@ Latency is partly within budget. On the real PayPal sandbox (`measure-sandbox` r
 | Webhook verification      | ![verified](https://img.shields.io/badge/-verified-2ea44f?style=flat-square) Against real sandbox events (gate G4)                                                                                                                                                                                                                                                                               |
 | Server                    | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) Ops, webhook, admin and auction HTTP routes, room WebSocket gateway and `/audio` socket mounted; scripted demo routes only with `DEMO_MODE=1` and fake payments                                                                                                                                                       |
 | Voice                     | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) `/audio` socket feeds decisions into the room. Speech is cached transcripts by default, Groq only with `VOICE_STT=groq` and `GROQ_API_KEY`; no live speech run recorded (G5: PARTIAL, wrong accept 0.000 on synthetic clips but tuned on the same clips and no real-room test, so spoken bids use the confirm prompt) |
-| Web client                | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) Scoreboard interface on every route, tested in CI; hosted in sandbox mode with temporary storage; no recorded click-through of the hosted site. See [packages/web/README.md](packages/web/README.md) and [docs/DESIGN.md](docs/DESIGN.md)                                                                             |
+| Web client                | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) Scoreboard interface on every route, tested in CI; hosted in sandbox mode on a persistent disk; no recorded click-through of the hosted site. See [packages/web/README.md](packages/web/README.md) and [docs/DESIGN.md](docs/DESIGN.md)                                                                               |
 
 ## PayPal sandbox gates
 

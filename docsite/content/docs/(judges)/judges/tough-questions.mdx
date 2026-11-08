@@ -47,8 +47,8 @@ Inferred, not observed. After the final capture the authorization reads CAPTURED
 
 No. The list is on [Roadmap and limits](/docs/roadmap/limits). In short:
 
-- The hosted app (https://gavel-web.creharsh.workers.dev, sandbox mode) has not been walked end to end; the verified runnable path is local, on the fake PayPal.
-- The file stores need a persistent disk and a single instance; the hosted API uses temporary storage until a disk is added.
+- The hosted app (https://gavel-web.creharsh.workers.dev, sandbox mode) has no recorded end-to-end walk; the verified runnable path is local, on the fake PayPal.
+- The file stores need a persistent disk and a single instance; the hosted API has both (1 GB disk at `/var/data`, one instance), though no restart drill is recorded.
 - Latency is only partly inside budget: end to end on the sandbox (n=20, 6 holds), hammer to SETTLED has p95 5591.30 ms, inside 6 s, and hammer to CAPTURED has p95 3010.04 ms, above the 2.5 s target. The 5 Nov per-call numbers (n=10) are not committed as raw logs; the settlement run has a redacted copy.
 - Whole-auction settlement was not driven through a deployed server, and no real process kill ran on the sandbox.
 - Rejected bids are kept in the room log only, not in the ledger.

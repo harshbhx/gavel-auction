@@ -35,7 +35,7 @@ Yes. Every event goes into a ledger chained by hash; the audit trail link in a r
 </Accordion>
 <Accordion title="What if the server restarts mid-room?">
 
-The hosted API uses temporary storage, so a room can be lost. Start a new demo auction. Crash-safe settlement is tested against the fake PayPal and a few real sandbox runs, not a whole auction on the hosted server. See [crash recovery](/docs/how-it-works/crash-recovery).
+The hosted API keeps its files on a persistent disk, but no restart drill is recorded, so a room could still be lost. Start a new demo auction. Crash-safe settlement is tested against the fake PayPal and a few real sandbox runs, not a whole auction on the hosted server. See [crash recovery](/docs/how-it-works/crash-recovery).
 
 </Accordion>
 <Accordion title="What is not proven?">

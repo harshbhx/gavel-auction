@@ -21,7 +21,7 @@ export const DEFAULTS = {
   repo: 'harshbhx/gavel-auction',
   web: 'https://gavel-web.creharsh.workers.dev',
   docs: 'https://gavel-docs.creharsh.workers.dev',
-  api: 'https://gavel-auction-aufz.onrender.com',
+  api: 'https://gavel-auction-z2nm.onrender.com',
   timeoutMs: 60_000,
 };
 

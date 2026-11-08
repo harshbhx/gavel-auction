@@ -88,7 +88,7 @@ const faq = [
   },
   {
     q: 'Is there a hosted demo?',
-    a: 'Yes, in sandbox mode: the web app is at gavel-web.creharsh.workers.dev and the API at gavel-auction-aufz.onrender.com. Storage is temporary until a disk is added, and nobody has walked the whole flow on it yet. The demo guide lists what is verified.',
+    a: 'Yes, in sandbox mode: the web app is at gavel-web.creharsh.workers.dev and the API at gavel-auction-z2nm.onrender.com. The API keeps its files on a persistent disk, and no whole-flow walk of it is recorded yet. The demo guide lists what is verified.',
   },
 ];
 
