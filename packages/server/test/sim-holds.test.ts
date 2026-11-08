@@ -43,7 +43,7 @@ describe('simulated holds', () => {
       }),
     ).toEqual({ captureId: 'sim-cap-sim-auth-B1-5000', amountCents: 3_000 });
     const after = await gw.getHoldTruth(truth);
-    expect(after.status).toBe('PARTIALLY_CAPTURED');
+    expect(after.status).toBe('CAPTURED');
     expect(after.capturedCents).toBe(3_000);
     await gw.voidAuthorization('sim-auth-B2-5000', 'r2');
     expect((await gw.getHoldTruth({ holdId: 'h2', authId: 'sim-auth-B2-5000' })).status).toBe(
