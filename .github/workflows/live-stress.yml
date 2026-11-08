@@ -29,6 +29,13 @@ on:
         required: false
         default: false
         type: boolean
+  # Until this file is on the default branch it cannot be dispatched, so a push to the branch
+  # runs it with the defaults. Remove this trigger before merging.
+  push:
+    branches: ['qa/QA-4-live-stress']
+    paths:
+      - '.github/workflows/live-stress.yml'
+      - 'qa/live-stress/**'
 
 permissions:
   contents: read
