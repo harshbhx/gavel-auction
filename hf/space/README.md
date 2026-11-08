@@ -6,7 +6,7 @@ colorTo: blue
 sdk: static
 pinned: false
 license: cc-by-4.0
-short_description: Read-only charts of GAVEL's sandbox, simulated and synthetic evidence
+short_description: Charts of GAVEL sandbox, simulated and synthetic evidence
 tags:
   - evidence
   - payments
