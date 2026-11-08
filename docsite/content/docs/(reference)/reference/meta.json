@@ -1,1 +1,1 @@
-{"title": "Reference", "icon": "Library", "pages": ["architecture", "data-model", "websocket-protocol", "saga-states", "events", "configuration", "decisions", "glossary", "keyboard-shortcuts"]}
+{"title": "Reference", "icon": "Library", "pages": ["architecture", "data-model", "websocket-protocol", "api-reference", "saga-states", "events", "configuration", "decisions", "glossary", "keyboard-shortcuts"]}
