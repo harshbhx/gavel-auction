@@ -701,6 +701,11 @@
     padding-inline: var(--space-7);
   }
 
+  .gv-landing figure.gv-flow {
+    box-sizing: border-box;
+    width: 100%;
+  }
+
   .gv-landing__promise,
   .gv-landing__explain {
     font-size: var(--font-size-4);

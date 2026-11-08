@@ -348,7 +348,7 @@ main[data-route='return'] {
     box-shadow: none;
   }
 
-  .gv-flow:not(:has(> .gv-aside)) {
+  main.gv-flow:not(:has(> .gv-aside)) {
     margin-inline: auto;
   }
 
