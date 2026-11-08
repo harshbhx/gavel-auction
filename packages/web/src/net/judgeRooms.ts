@@ -48,7 +48,23 @@ function text(body: unknown, key: string): string {
  * Creates a real sandbox room with no operator key. The room tokens ride in the link fragment.
  * `goalCents` is the optional fundraiser goal; left out, the big screen shows no thermometer.
  */
-export async function createJudgeRoom(apiBase: string, goalCents?: number): Promise<DemoLinks> {
+export function createJudgeRoom(apiBase: string, goalCents?: number): Promise<DemoLinks> {
+  // Rapid double clicks share one request: a second POST would make a second room.
+  const key = `${apiBase}|${goalCents ?? ''}`;
+  const pending = inFlight.get(key);
+  if (pending !== undefined) return pending;
+  const made = postJudgeRoom(apiBase, goalCents);
+  inFlight.set(key, made);
+  const clear = (): void => {
+    inFlight.delete(key);
+  };
+  made.then(clear, clear);
+  return made;
+}
+
+const inFlight = new Map<string, Promise<DemoLinks>>();
+
+async function postJudgeRoom(apiBase: string, goalCents?: number): Promise<DemoLinks> {
   const res = await fetch(`${apiBase}/api/judge/rooms`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
