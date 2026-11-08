@@ -73,4 +73,43 @@ describe('join screen (T-WEB-032)', () => {
     );
     expect(screen.getByText(t('join.ended'))).toBeTruthy();
   });
+
+  it('shows the three steps with the first marked current', () => {
+    render(
+      <JoinScreen
+        roomId="room1"
+        roomName="Gala"
+        shortCode="ABC123"
+        state="open"
+        origin={ORIGIN}
+        onNavigate={() => undefined}
+        hasSession={false}
+      />,
+    );
+    const steps = screen.getAllByRole('listitem');
+    expect(steps).toHaveLength(3);
+    expect(steps[0]?.getAttribute('aria-current')).toBe('step');
+    expect(screen.getByText(t('join.sandboxNote'))).toBeTruthy();
+  });
+
+  it('offers a way out of the not found, ended and full states', () => {
+    const onNavigate = vi.fn();
+    const base = {
+      roomId: 'room1',
+      shortCode: null,
+      origin: ORIGIN,
+      onNavigate,
+      hasSession: false,
+    } as const;
+    const { rerender } = render(<JoinScreen {...base} roomName={null} state="notFound" />);
+    expect(screen.getByText(t('join.notFoundHelp'))).toBeTruthy();
+    screen.getByRole('button', { name: t('join.tryAgain') }).click();
+    expect(onNavigate).toHaveBeenCalledWith('/');
+    rerender(<JoinScreen {...base} roomName="Gala" state="ended" />);
+    expect(screen.getByText(t('join.endedHelp'))).toBeTruthy();
+    rerender(<JoinScreen {...base} roomName="Gala" state="full" />);
+    expect(screen.getByText(t('join.full'))).toBeTruthy();
+    screen.getByRole('button', { name: t('join.watch') }).click();
+    expect(onNavigate).toHaveBeenCalledWith('/r/room1/bid');
+  });
 });
