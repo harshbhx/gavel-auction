@@ -2,7 +2,7 @@
 // Screenshots of the key pages, taken in CI against the static export (docsite/out).
 // Usage: node scripts/shots.mjs <base-url> <out-dir> [export-dir]
 // Needs playwright (installed with --no-save by the workflow). Not run on the VM.
-import { mkdirSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 
@@ -34,6 +34,44 @@ const key = [
   ['operator-runbook', '/docs/run/operator-runbook'],
 ];
 
+// Response headers: `npx serve` ignores out/_headers, so the Content-Security-Policy of the `/*` rule
+// is added to every response here and any violation fails the run. That is how a policy that
+// breaks hydration, the theme script, fonts, Mermaid or the search box shows up before a deploy.
+function headerRule() {
+  const file = join(exportDir, '_headers');
+  if (!existsSync(file)) return {};
+  const rule = {};
+  let inside = false;
+  for (const line of readFileSync(file, 'utf8').split('\n')) {
+    if (line.trim() === '' || line.startsWith('#')) continue;
+    if (!line.startsWith(' ')) {
+      inside = line.trim() === '/*';
+      continue;
+    }
+    const at = line.indexOf(':');
+    if (inside && at > 0) rule[line.slice(0, at).trim().toLowerCase()] = line.slice(at + 1).trim();
+  }
+  return rule;
+}
+const hostHeaders = headerRule();
+const violations = [];
+
+async function withHeaders(context) {
+  if (Object.keys(hostHeaders).length === 0) return;
+  await context.route('**/*', async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({ response, headers: { ...response.headers(), ...hostHeaders } });
+  });
+}
+
+function watchCsp(page, url) {
+  page.on('console', (message) => {
+    if (/content security policy/i.test(message.text())) {
+      violations.push(`${url}: ${message.text().slice(0, 200)}`);
+    }
+  });
+}
+
 function listDocs(dir, rel = '') {
   const urls = [];
   for (const name of readdirSync(join(dir, rel))) {
@@ -61,7 +99,9 @@ async function shoot(name, url, { scheme, viewport, checkOverflow }) {
       /* ignore */
     }
   });
+  await withHeaders(context);
   const page = await context.newPage();
+  watchCsp(page, url);
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   const res = await page.goto(base + url, { waitUntil: 'networkidle' });
@@ -97,7 +137,9 @@ async function shoot(name, url, { scheme, viewport, checkOverflow }) {
 // and the full-size view opens and closes.
 async function interact(url) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+  await withHeaders(context);
   const page = await context.newPage();
+  watchCsp(page, url);
   await page.goto(base + url, { waitUntil: 'networkidle' });
   const next = page.getByRole('button', { name: 'Next', exact: true }).first();
   if (await next.count()) {
@@ -223,6 +265,10 @@ for (const url of ['/docs/how-it-works/bid-lifecycle', '/docs/how-it-works/settl
 await termChecks('/docs/start/guided-tour');
 
 await browser.close();
+if (violations.length > 0) {
+  for (const v of new Set(violations)) console.error(`FAIL CSP violation at ${v}`);
+  failures += 1;
+}
 if (failures > 0) {
   console.error(`${failures} problem(s)`);
   process.exit(1);

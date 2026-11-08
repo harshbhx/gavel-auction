@@ -32,7 +32,10 @@ export const test = base.extend<Fixtures>({
     await provide(page);
   },
   shoot: async ({ page }, provide, testInfo) => {
+    // A project may list the views it captures (metadata.views); other views are not saved.
+    const views = testInfo.project.metadata['views'] as readonly string[] | undefined;
     await provide(async (view, state) => {
+      if (views !== undefined && !views.includes(view)) return;
       mkdirSync(OUT_DIR, { recursive: true });
       await page.evaluate(() => document.fonts.ready);
       // Lets effects, lazy chunks and one render pass settle before the picture is taken.

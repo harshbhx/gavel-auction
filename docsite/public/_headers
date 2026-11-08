@@ -1,0 +1,18 @@
+# Response headers for the docs site, served by Cloudflare Pages. Next copies public/ into the
+# static export (out/_headers). The same hardening set as the web app (packages/web/public/_headers).
+#
+# The Next static export writes small inline scripts and styles (hydration data, the theme script),
+# so script-src and style-src allow 'unsafe-inline'; a hash-based policy would break on every build.
+# Everything else is locked to this origin: no plugins, no framing, no base-tag or form hijack.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; worker-src 'self' blob:; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), geolocation=(), microphone=(), usb=()
+  X-Frame-Options: DENY
+
+# Hashed build output never changes under the same name. HTML keeps the Pages default
+# (public, max-age=0, must-revalidate), so a new deploy reaches returning visitors at once.
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
