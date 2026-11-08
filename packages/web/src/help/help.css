@@ -130,3 +130,8 @@
 body:has(.help-layer) {
   padding-bottom: calc(48px + var(--space-4) * 2);
 }
+
+/* Scrolling a focused control into view (Place bid, a form field) also stops clear of the button. */
+html:has(.help-layer) {
+  scroll-padding-bottom: calc(48px + var(--space-4) * 2);
+}

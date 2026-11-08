@@ -59,7 +59,6 @@ test.describe('demo launcher', () => {
   const failures: ReadonlyArray<[string, number, string]> = [
     ['failed-demo-off', 404, t('demo.failedOff')],
     ['failed-bad-key', 401, t('demo.failedKey')],
-    ['failed-room-cap', 429, t('demo.failedCap')],
     ['failed-server-error', 500, t('demo.failed')],
   ];
   for (const [state, status, text] of failures) {
@@ -71,6 +70,38 @@ test.describe('demo launcher', () => {
       await shoot('demo', state);
     });
   }
+
+  // Since #2044 a 429 from the capabilities probe keeps the key-less judge path, so the operator
+  // room cap needs judge rooms switched off (404) and a 429 on the operator create call.
+  test('failed-room-cap', async ({ page, shoot }) => {
+    await mockApi(page, (req) =>
+      req.path === '/api/judge/capabilities' ? { status: 404 } : { status: 429 },
+    );
+    await page.goto('/demo');
+    await page.getByRole('button', { name: t('landing.start') }).click();
+    await expect(page.getByText(t('demo.failedCap')).first()).toBeVisible();
+    await shoot('demo', 'failed-room-cap');
+  });
+
+  // A rate limit says how long to wait: the Retry-After header becomes "2 min".
+  test('failed-rate-limited', async ({ page, shoot }) => {
+    await mockApi(page, () => ({ status: 429, headers: { 'retry-after': '120' } }));
+    await page.goto('/demo');
+    await page.getByRole('button', { name: t('landing.start') }).click();
+    await expect(
+      page.getByText(t('demo.failedRate', { wait: t('time.minutes', { n: 2 }) })).first(),
+    ).toBeVisible();
+    await shoot('demo', 'failed-rate-limited');
+  });
+
+  // A full judge house is a 429 with error judge_room_cap: "busy", not a rate limit.
+  test('failed-judge-busy', async ({ page, shoot }) => {
+    await mockApi(page, () => ({ status: 429, json: { error: 'judge_room_cap' } }));
+    await page.goto('/demo');
+    await page.getByRole('button', { name: t('landing.start') }).click();
+    await expect(page.getByText(t('demo.failedBusy')).first()).toBeVisible();
+    await shoot('demo', 'failed-judge-busy');
+  });
 
   test('server unreachable', async ({ page, shoot }) => {
     await mockApi(page, () => 'fail');
