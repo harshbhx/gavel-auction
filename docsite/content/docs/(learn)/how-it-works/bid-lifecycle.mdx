@@ -7,18 +7,18 @@ evidence: 'Read against packages/server/src/room/room.ts, room/confirm.ts, packa
 full: true
 ---
 
-A bid in GAVEL is a small message with an amount in cents. It can come from a tap on a phone or from speech in the room. Either way it passes the same short chain: the **room** decides whether it needs a human yes, the **engine** decides whether the bid is legal, and only then does it reach the event log and the other screens.
+A <Term id="bid">bid</Term> in GAVEL is a small message with an amount in cents. It can come from a tap on a phone or from speech in the room. Either way it passes the same short chain: the **<Term id="room">room</Term>** decides whether it needs a human yes, the **<Term id="engine">engine</Term>** decides whether the bid is legal, and only then does it reach the event log and the other screens.
 
 <Callout type="info" title="Verified against the code, not measured">
-  This page describes code paths that were read in the repository. It makes no speed or accuracy claim. Speech accuracy is a separate, still partial gate: see the note on G5 below.
+  This page describes code paths that were read in the repository. It makes no speed or accuracy claim. Speech accuracy is a separate, still partial gate: see the note on <Term id="gate-g5">G5</Term> below.
 </Callout>
 
 ## In plain words
 
-1. You tap a number, or you say "paddle twelve, three hundred".
+1. You tap a number, or you say "<Term id="paddle">paddle</Term> twelve, three hundred".
 2. The room checks that it is really you and that you are not sending too fast.
-3. If the bid came from speech and the system is not sure, it **holds** the bid and asks you "Did you mean $300?" for up to 15 seconds. Nothing has happened to the auction yet.
-4. The engine checks the rules: is the lot open, are you registered, is the amount under your ceiling, is it high enough.
+3. If the bid came from speech and the system is not sure, it **<Term id="hold">holds</Term>** the bid and asks you "Did you mean $300?" for up to 15 seconds. Nothing has happened to the auction yet.
+4. The engine checks the rules: is the <Term id="lot">lot</Term> open, are you registered, is the amount under your <Term id="ceiling">ceiling</Term>, is it high enough.
 5. The result is written to the log first. Only then are you told, and everyone else sees the new price.
 
 ## Step through it
@@ -45,7 +45,7 @@ A drop is written to the log as a `voice_dropped` record (reason and confidence,
 </Tabs>
 
 <Held title="Spoken bids and the partial accuracy gate">
-  <GateBadge id="G5" /> Speech accuracy is within the threshold only on synthetic, noise-free audio, with fixes chosen on those same clips, and there is no real-room test. The recorded decision is that spoken bids go through the confirm prompt. In the code as wired, the voice bridge has no second parser, so a clean reading scores at most 0.82, below the 0.85 auto line, and every spoken bid arrives as a confirm. The code does not have a separate switch for this. See [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) and [Gates](/docs/proof/gates).
+  <GateBadge id="G5" /> Speech accuracy is within the threshold only on synthetic, noise-free audio, with fixes chosen on those same clips, and there is no real-room test. The recorded decision is that spoken bids go through the <Term id="confirm-prompt">confirm prompt</Term>. In the code as wired, the voice bridge has no second parser, so a clean reading scores at most 0.82, below the 0.85 auto line, and every spoken bid arrives as a confirm. The code does not have a separate switch for this. See [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) and [Gates](/docs/proof/gates).
 </Held>
 
 ## The confirm gate
@@ -120,7 +120,7 @@ Before the engine, the room can also answer `rate_limited` (retryable), `forbidd
 
 1. The room builds `bid_accepted` with a fresh bid id and appends it to the log with the expected sequence number. If another host already owns the room, the append fails and this host stops serving it.
 2. The sender gets `bid_accepted` once the log holds it. If persisting fails the sender gets a store error instead, never an acknowledgement that is ahead of the log.
-3. Everyone gets a `price` frame and a redacted `audit_event` under the same sequence number. The end-of-lot timer is re-armed, because a bid in the soft-close window can move the end. See [Auction states and soft close](/docs/how-it-works/auction-states).
+3. Everyone gets a `price` frame and a redacted `audit_event` under the same sequence number. The end-of-lot timer is re-armed, because a bid in the <Term id="soft-close">soft-close</Term> window can move the end. See [Auction states and soft close](/docs/how-it-works/auction-states).
 
 <CodePaths
   paths={[

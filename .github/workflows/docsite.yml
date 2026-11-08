@@ -61,6 +61,11 @@ jobs:
         working-directory: docsite
         run: node scripts/gen-changelog.mjs --check
 
+      # Glossary data, <Term> ids, the tour and the related links: plain node, seconds.
+      - name: Check the glossary
+        working-directory: docsite
+        run: node scripts/check-glossary.mjs
+
       # Static export: compiles every MDX page and writes docsite/out/.
       - name: Build
         working-directory: docsite

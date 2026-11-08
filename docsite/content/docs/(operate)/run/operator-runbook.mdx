@@ -5,7 +5,7 @@ icon: ClipboardList
 status: unverified
 ---
 
-This page is for the person who runs the server. It is built from [docs/DEPLOY.md](https://github.com/harshbhx/gavel-auction/blob/main/docs/DEPLOY.md), [docs/RUNBOOK-GATES.md](https://github.com/harshbhx/gavel-auction/blob/main/docs/RUNBOOK-GATES.md), [docs/RUNBOOK-BACKUP.md](https://github.com/harshbhx/gavel-auction/blob/main/docs/RUNBOOK-BACKUP.md) and `infra/`. Everything points at the PayPal sandbox.
+This page is for the person who runs the server. It is built from [docs/DEPLOY.md](https://github.com/harshbhx/gavel-auction/blob/main/docs/DEPLOY.md), [docs/RUNBOOK-GATES.md](https://github.com/harshbhx/gavel-auction/blob/main/docs/RUNBOOK-GATES.md), [docs/RUNBOOK-BACKUP.md](https://github.com/harshbhx/gavel-auction/blob/main/docs/RUNBOOK-BACKUP.md) and `infra/`. Everything points at the PayPal <Term id="sandbox">sandbox</Term>.
 
 <NotVerified title="Written, not rehearsed">
 
@@ -18,7 +18,7 @@ Staging deploy, production rollback and disk restore are documented but have not
 | Role | Can do |
 | --- | --- |
 | Owner | Change repository secrets and the `sandbox-nightly`, `staging` and `production` environments, use the PayPal developer dashboard, run anything against the real sandbox from a laptop |
-| Contributor | Read evidence and workflow logs, run the fake PayPal and the text-level voice eval, open pull requests. Never receives secrets |
+| Contributor | Read evidence and workflow logs, run the <Term id="fake-paypal">fake PayPal</Term> and the text-level voice eval, open pull requests. Never receives secrets |
 
 ## Deploy
 
@@ -48,7 +48,7 @@ Copy the Render deploy hook. In GitHub, environment `staging`: secret `RENDER_DE
 
 ### Register the webhook
 
-In the PayPal developer dashboard (sandbox app, Webhooks) add `https://<api-host>/webhooks/paypal` for `PAYMENT.AUTHORIZATION.VOIDED`, `PAYMENT.AUTHORIZATION.DENIED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED` and `PAYMENT.CAPTURE.DECLINED`. Other types are acknowledged and ignored. Copy the webhook id into `PAYPAL_WEBHOOK_ID` on Render only.
+In the PayPal developer dashboard (sandbox app, Webhooks) add `https://<api-host>/webhooks/paypal` for `PAYMENT.AUTHORIZATION.VOIDED`, `PAYMENT.AUTHORIZATION.DENIED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED` and `PAYMENT.CAPTURE.DECLINED`. Other types are acknowledged and ignored. Copy the <Term id="webhook">webhook</Term> id into `PAYPAL_WEBHOOK_ID` on Render only.
 
 </Step>
 <Step>

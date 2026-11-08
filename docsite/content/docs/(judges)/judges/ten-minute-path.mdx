@@ -4,7 +4,7 @@ description: The deep path. Read the raw evidence, verify the ledger, run the fa
 icon: Route
 ---
 
-Everything here is PayPal sandbox only. The commands run on a normal developer machine with Node 22 and npm. This site never needs a build on a shared machine; the repository runs its own checks in GitHub Actions.
+Everything here is PayPal <Term id="sandbox">sandbox</Term> only. The commands run on a normal developer machine with Node 22 and npm. This site never needs a build on a shared machine; the repository runs its own checks in GitHub Actions.
 
 <Steps>
 <Step>
@@ -25,21 +25,21 @@ Open the committed run logs. They are JSON lines. Tokens, buyer emails and payer
 - [G4, webhook verification](https://github.com/harshbhx/gavel-auction/tree/main/docs/evidence/G4): six real events.
 - [Nightly sandbox reports](https://github.com/harshbhx/gavel-auction/tree/main/docs/evidence/nightly): runs 42200708552 and 42317068784, redacted.
 
-Gate G0 has no evidence file. Its only record is the `gate-g0` Actions run log (run 41815593520), which needs repository access and expires with log retention.
+Gate <Term id="gate-g0">G0</Term> has no evidence file. Its only record is the `gate-g0` Actions run log (run 41815593520), which needs repository access and expires with log retention.
 
 </Step>
 <Step>
 
 ### Minutes 4 to 6: the settlement logic
 
-Read [Settlement saga](/docs/how-it-works/settlement-saga) and [Retries and unknown outcomes](/docs/how-it-works/retries-and-unknown-outcomes). The saga is a pure state machine in [`packages/payments/src/saga/machine.ts`](https://github.com/harshbhx/gavel-auction/blob/main/packages/payments/src/saga/machine.ts). It was run against the fake PayPal in full, and against the real sandbox as one lot of three holds and one in-process crash (nightly specs R7, R8 and R10).
+Read [Settlement saga](/docs/how-it-works/settlement-saga) and [Retries and unknown outcomes](/docs/how-it-works/retries-and-unknown-outcomes). The <Term id="saga">saga</Term> is a pure state machine in [`packages/payments/src/saga/machine.ts`](https://github.com/harshbhx/gavel-auction/blob/main/packages/payments/src/saga/machine.ts). It was run against the <Term id="fake-paypal">fake PayPal</Term> in full, and against the real sandbox as one lot of three holds and one in-process crash (nightly specs R7, R8 and R10).
 
 </Step>
 <Step>
 
 ### Minutes 6 to 8: verify the audit trail yourself
 
-The engine writes a hash-chained ledger. A public export can be checked without a server.
+The <Term id="engine">engine</Term> writes a <Term id="hash-chain">hash-chained</Term> <Term id="ledger">ledger</Term>. A public export can be checked without a server.
 
 <Tabs items={['Command line', 'In code']}>
 <Tab value="Command line">
@@ -68,7 +68,7 @@ Rejected bids are not in the ledger. The server keeps them in the room log only 
 
 1. Follow the "Run it" section of `README.md`. The default run is `npm ci`, then `npm start -w @gavel/server` with `PAYMENTS=fake` and `PAYPAL_ENV=sandbox` (the README lists the other variables, with development values).
 2. `PAYMENTS=fake` uses the built-in fake PayPal: no network access and no PayPal account are needed. Production mode refuses fake payments.
-3. The scripted `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake`.
+3. The <Term id="scripted-demo">scripted</Term> `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake`.
 
 The fake PayPal is a test double. What you see there says nothing about the real sandbox; the gates do.
 

@@ -48,7 +48,7 @@ The open datasets (see [Open data](/docs/judges/open-data), prepared, not yet pu
 | --- | --- |
 | Schema | Every table has a schema (types, nulls, ranges, enums, key); wrong or missing fields fail the build |
 | Money | Integer cents, never negative |
-| Ledger | Held equals captured plus released plus open, per lot and per hold, in the simulated run |
+| <Term id="ledger">Ledger</Term> | Held equals captured plus released plus open, per lot and per hold, in the simulated run |
 | Time | Timestamps and sequence numbers never go backwards; percentiles are ordered |
 | Consistency | Scores recompute from outputs; evidence hashes equal the ones in `docs/GATES.md`; counts add up |
 | Privacy | No emails, tokens, key-like strings, IPs or payment-object-like ids; demo actors anonymised |
@@ -61,4 +61,4 @@ The open datasets (see [Open data](/docs/judges/open-data), prepared, not yet pu
 
 ## Honest labels
 
-Real sandbox (PayPal sandbox, small samples, never production), simulated (fake clock, a model of PayPal), synthetic audio (machine-generated speech), fake PayPal (scripted demo auctions). The pipeline shows the data is well formed and traceable; it does not turn a simulation into a measurement. The full write-up is `docs/DATA-ENGINEERING.md` in the repository.
+Real <Term id="sandbox">sandbox</Term> (PayPal sandbox, small samples, never production), <Term id="simulated">simulated</Term> (fake clock, a model of PayPal), synthetic audio (machine-generated speech), <Term id="fake-paypal">fake PayPal</Term> (<Term id="scripted-demo">scripted demo</Term> auctions). The pipeline shows the data is well formed and traceable; it does not turn a simulation into a measurement. The full write-up is `docs/DATA-ENGINEERING.md` in the repository.
