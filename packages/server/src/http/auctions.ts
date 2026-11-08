@@ -88,17 +88,20 @@ export interface AuctionMeta {
   title: string | undefined;
   joinCode: string | undefined;
   fundraiserGoalCents: number | undefined;
+  /** True for a key-less judge room (set when it is made). */
+  judgeRoom: boolean;
 }
 
 /** Public facts kept beside the log: the title and the join code. Older auctions have no code. */
 export async function auctionMeta(deps: HttpDeps, auctionId: string): Promise<AuctionMeta> {
   const stored = await deps.store.getJournal(titleKey(auctionId));
   const v = stored?.value as
-    | { title?: unknown; joinCode?: unknown; fundraiserGoalCents?: unknown }
+    | { title?: unknown; joinCode?: unknown; fundraiserGoalCents?: unknown; judgeRoom?: unknown }
     | undefined;
   return {
     title: typeof v?.title === 'string' ? v.title : undefined,
     joinCode: typeof v?.joinCode === 'string' ? v.joinCode : undefined,
+    judgeRoom: v?.judgeRoom === true,
     fundraiserGoalCents:
       typeof v?.fundraiserGoalCents === 'number' &&
       Number.isSafeInteger(v.fundraiserGoalCents) &&
@@ -216,6 +219,7 @@ export function mountAuctions(app: HttpApp): void {
       auctionId,
       title,
       ...(meta.joinCode !== undefined ? { joinCode: meta.joinCode } : {}),
+      ...(meta.judgeRoom ? { judgeRoom: true } : {}),
       ...(snapshot.registrationClosed ? { registrationClosed: true } : {}),
       ...(snapshot.stopped ? { stopped: true } : {}),
       status: snapshot.status,

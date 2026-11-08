@@ -124,7 +124,7 @@ describe('judge rooms: flag guard', () => {
     const { app } = setup({ enabled: false });
     expect((await post(app, JUDGE_ROOMS_PATH)).status).toBe(404);
     const probe = await app.fetch(new Request(`http://h.test${JUDGE_CAPABILITIES_PATH}`));
-    expect(await probe.json()).toEqual({ judgeRooms: false, accepting: false });
+    expect(await probe.json()).toEqual({ judgeRooms: false, accepting: false, simHolds: false });
   });
 
   it('the probe returns booleans only', async () => {
@@ -132,7 +132,7 @@ describe('judge rooms: flag guard', () => {
     const body = (await (
       await app.fetch(new Request(`http://h.test${JUDGE_CAPABILITIES_PATH}`))
     ).json()) as Record<string, unknown>;
-    expect(body).toEqual({ judgeRooms: true, accepting: true });
+    expect(body).toEqual({ judgeRooms: true, accepting: true, simHolds: false });
   });
 });
 
@@ -206,7 +206,7 @@ describe('judge rooms: limits', () => {
     expect(results.filter((r) => r.status === 429)).toHaveLength(3);
     expect(rooms.liveCount()).toBe(2);
     const probe = await app.fetch(new Request(`http://h.test${JUDGE_CAPABILITIES_PATH}`));
-    expect(await probe.json()).toEqual({ judgeRooms: true, accepting: false });
+    expect(await probe.json()).toEqual({ judgeRooms: true, accepting: false, simHolds: false });
   });
 });
 
