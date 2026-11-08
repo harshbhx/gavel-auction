@@ -24,7 +24,7 @@ export function TermPopover({
 }) {
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
-  const [place, setPlace] = useState<{ x: number; above: boolean }>({ x: 0, above: false });
+  const [pos, setPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
   const wrap = useRef<HTMLSpanElement>(null);
   const pop = useRef<HTMLSpanElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -42,21 +42,38 @@ export function TermPopover({
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  // Keep the popover inside the viewport: shift sideways, flip above when there is no room below.
+  // The popover is position: fixed and placed from the term's own rectangle, clamped to the
+  // viewport: sideways it never leaves the screen, and it flips above the term when there is no
+  // room below. Fixed elements add no scrollable overflow, so a phone never zooms out to fit it.
+  // It follows the term on scroll and resize, and closes once the term has scrolled out of view.
   useLayoutEffect(() => {
-    if (!open || !pop.current || !wrap.current) return;
-    const box = pop.current.getBoundingClientRect();
-    const anchor = wrap.current.getBoundingClientRect();
-    const margin = 12;
-    // clientWidth is the layout viewport: window.innerWidth grows on a phone when something
-    // overflows (the page zooms out to fit it), which would hide exactly the overflow we fix.
-    const vw = document.documentElement.clientWidth;
-    const vh = document.documentElement.clientHeight;
-    let x = 0;
-    if (box.right > vw - margin) x = vw - margin - box.right;
-    if (box.left + x < margin) x = margin - box.left;
-    const above = box.bottom > vh - margin && anchor.top - box.height - 8 > margin;
-    setPlace((p) => (p.x === x && p.above === above ? p : { x, above }));
+    if (!open) return;
+    const place = () => {
+      const btn = wrap.current?.querySelector('button');
+      const box = pop.current;
+      if (!btn || !box) return;
+      const r = btn.getClientRects()[0] ?? btn.getBoundingClientRect();
+      const vw = document.documentElement.clientWidth;
+      const vh = document.documentElement.clientHeight;
+      if (r.bottom < 0 || r.top > vh) {
+        close();
+        return;
+      }
+      const margin = 12;
+      const w = box.offsetWidth;
+      const h = box.offsetHeight;
+      const left = Math.max(margin, Math.min(r.left, vw - margin - w));
+      let top = r.bottom + 6;
+      if (top + h > vh - margin && r.top - h - 6 > margin) top = r.top - h - 6;
+      setPos((p) => (p.left === left && p.top === top ? p : { left, top }));
+    };
+    place();
+    window.addEventListener('scroll', place, { passive: true });
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place);
+      window.removeEventListener('resize', place);
+    };
   }, [open]);
 
   // Escape closes; a press outside closes a pinned popover.
@@ -119,8 +136,7 @@ export function TermPopover({
           role="dialog"
           aria-label={`Definition: ${term}`}
           className="hl-term-pop not-prose"
-          data-above={place.above || undefined}
-          style={{ transform: place.x ? `translateX(${place.x}px)` : undefined }}
+          style={{ left: pos.left, top: pos.top }}
         >
           <span className="hl-term-pop__name">{term}</span>
           <span className="hl-term-pop__text">{short}</span>

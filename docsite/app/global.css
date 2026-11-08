@@ -1183,13 +1183,11 @@ body {
   outline-offset: 2px;
 }
 .hl-term-pop {
-  position: absolute;
+  position: fixed;
   z-index: 40;
-  top: calc(100% + 6px);
-  left: 0;
   display: block;
   width: 21rem;
-  max-width: calc(100vw - 2rem);
+  max-width: calc(100vw - 24px);
   padding: 0.7rem 0.85rem 0.75rem;
   background: var(--hl-panel);
   color: var(--hl-fg);
@@ -1200,10 +1198,6 @@ body {
   font-weight: 400;
   text-align: left;
   white-space: normal;
-}
-.hl-term-pop[data-above] {
-  top: auto;
-  bottom: calc(100% + 6px);
 }
 .hl-term-pop__name {
   display: block;
