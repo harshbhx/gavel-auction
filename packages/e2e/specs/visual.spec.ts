@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '../src/fixtures/base';
 import { hammerRoom, seedRoom } from '../src/fixtures/room';
-import { calmMotion, settle } from '../src/fixtures/settle';
+import { settle } from '../src/fixtures/settle';
 import { AuctioneerView, PublicView } from '../src/pages/views';
 
 const BASELINES = fileURLToPath(new URL('../__screenshots__', import.meta.url));
@@ -35,7 +35,6 @@ for (const screen of SCREENS) {
         'no baselines committed for this project yet',
       );
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
-      await calmMotion(page);
       await page.clock.install({ time: new Date('2026-01-15T12:00:00.000Z') });
       await page.goto(`${stack.webUrl}${screen.path}`);
       await expect(page.locator('main, [role="main"]').first()).toBeVisible();
@@ -66,7 +65,6 @@ for (const screen of ROOM_SCREENS) {
       const room = await seedRoom(stack);
       if (screen.hammer) await hammerRoom(stack, room);
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
-      await calmMotion(page);
       await page.clock.install({ time: new Date('2026-01-15T12:00:00.000Z') });
       if (screen.view === 'public') {
         const view = new PublicView(page, stack, room);
