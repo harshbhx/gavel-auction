@@ -1,6 +1,6 @@
 import { clientKey, type Clock } from '@gavel/shared';
 
-export type LimitKind = 'bid' | 'frame' | 'join' | 'http';
+export type LimitKind = 'bid' | 'frame' | 'join' | 'http' | 'httpRead';
 
 export interface BucketSpec {
   /** Milliseconds to earn one token (integer, so refills are exact). */
@@ -14,6 +14,8 @@ export const LIMITS: Readonly<Record<LimitKind, BucketSpec>> = {
   frame: { refillMs: 50, burst: 40 },
   join: { refillMs: 6000, burst: 40 },
   http: { refillMs: 1000, burst: 60 },
+  // Public reads (GET, HEAD, OPTIONS): judges at one venue share an address, so this is looser.
+  httpRead: { refillMs: 200, burst: 300 },
 };
 
 /**
@@ -27,6 +29,8 @@ export function limitsFromConfig(cfg: {
   RATE_JOIN_BURST?: number;
   RATE_HTTP_PER_MIN?: number;
   RATE_HTTP_BURST?: number;
+  RATE_HTTP_READ_PER_MIN?: number;
+  RATE_HTTP_READ_BURST?: number;
 }): Readonly<Record<LimitKind, BucketSpec>> {
   const perMin = (rate: number): number => Math.max(1, Math.floor(60_000 / rate));
   return {
@@ -38,6 +42,12 @@ export function limitsFromConfig(cfg: {
     http: {
       refillMs: cfg.RATE_HTTP_PER_MIN ? perMin(cfg.RATE_HTTP_PER_MIN) : LIMITS.http.refillMs,
       burst: cfg.RATE_HTTP_BURST ?? LIMITS.http.burst,
+    },
+    httpRead: {
+      refillMs: cfg.RATE_HTTP_READ_PER_MIN
+        ? perMin(cfg.RATE_HTTP_READ_PER_MIN)
+        : LIMITS.httpRead.refillMs,
+      burst: cfg.RATE_HTTP_READ_BURST ?? LIMITS.httpRead.burst,
     },
     bid: {
       refillMs: Math.max(1, Math.floor(1000 / cfg.RATE_BID_PER_S)),
@@ -84,9 +94,9 @@ const EXEMPT_PREFIXES: readonly string[] = ['/webhooks/'];
 
 export class RateLimiter {
   private readonly buckets = new Map<string, Bucket>();
-  private readonly counts: Record<LimitKind, number> = { bid: 0, frame: 0, join: 0, http: 0 };
+  private readonly counts: Record<LimitKind, number> = { bid: 0, frame: 0, join: 0, http: 0, httpRead: 0 };
   /** Count of denials per kind, for metrics (R-RT-122). */
-  readonly denied: Record<LimitKind, number> = { bid: 0, frame: 0, join: 0, http: 0 };
+  readonly denied: Record<LimitKind, number> = { bid: 0, frame: 0, join: 0, http: 0, httpRead: 0 };
 
   constructor(
     private readonly clock: Clock,
@@ -151,11 +161,15 @@ export class RateLimiter {
     return this.check('join', clientKey(ip));
   }
 
-  /** HTTP limit per IP; webhook routes are exempt. */
-  checkHttp(ip: string, path: string): RateResult {
+  /**
+   * HTTP limit per IP; webhook routes are exempt. Reads (GET, HEAD, OPTIONS) use their own,
+   * looser bucket so a shared address can browse while write limits stay tight.
+   */
+  checkHttp(ip: string, path: string, method?: string): RateResult {
     const normal = normalizePath(path);
     if (normal !== null && EXEMPT_PREFIXES.some((p) => normal.startsWith(p))) return { ok: true };
-    return this.check('http', clientKey(ip));
+    const read = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
+    return this.check(read ? 'httpRead' : 'http', clientKey(ip));
   }
 
   /** Drop buckets that have fully refilled, to bound memory. */
