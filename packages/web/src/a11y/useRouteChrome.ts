@@ -38,7 +38,8 @@ export function useRouteChrome(match: RouteMatch): void {
       if (main === null) return;
       if (main.id === '') main.id = 'main';
       if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1');
-      if (routeId === 'landing' || focused === 'heading') return;
+      // The big screen is a display for a room, not a page a visitor works in: no focus ring on it.
+      if (routeId === 'landing' || routeId === 'screen' || focused === 'heading') return;
       const heading = main.querySelector<HTMLElement>('h1');
       // Never take focus from something the visitor is already using.
       const active = document.activeElement;
