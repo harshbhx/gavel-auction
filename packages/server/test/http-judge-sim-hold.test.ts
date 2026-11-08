@@ -121,23 +121,6 @@ const createNormal = async (
   return (await res.json()) as { auctionId: string; joinCode: string };
 };
 
-interface Joined {
-  auctionId: string;
-  sessionToken: string;
-  bidderId: string;
-  displayName: string;
-  wsUrl: string;
-}
-
-const claimsOf = (token: string): Record<string, unknown> =>
-  JSON.parse(Buffer.from(token.split('.')[0] ?? '', 'base64url').toString('utf8')) as Record<
-    string,
-    unknown
-  >;
-
-const join = (app: HttpApp, body: unknown, src = '198.51.100.1'): Promise<Response> =>
-  post(app, JUDGE_JOIN_PATH, { src, body });
-
 interface Placed {
   auctionId: string;
   bidderId: string;
