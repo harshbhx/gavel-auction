@@ -40,7 +40,7 @@ function joinLimitOf(deps: HttpDeps, req: Request): ReturnType<NonNullable<HttpD
   return limiter.checkJoin(requestSources.get(req) ?? 'unknown');
 }
 
-function wsUrlOf(deps: HttpDeps): string {
+export function wsUrlOf(deps: HttpDeps): string {
   return deps.wsUrl ?? `${deps.publicUrl.replace(/^http/, 'ws')}/ws`;
 }
 

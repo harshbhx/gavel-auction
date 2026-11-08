@@ -1,5 +1,14 @@
 import { createHash } from 'node:crypto';
-import { clientKey, EpochMs, type AuctionConfig, type Cents, type Logger } from '@gavel/shared';
+import {
+  BIDDER_NAME_FORBIDDEN_PATTERN,
+  clientKey,
+  EpochMs,
+  GavelError,
+  MAX_NAME_CHARS,
+  type AuctionConfig,
+  type Cents,
+  type Logger,
+} from '@gavel/shared';
 import { z } from 'zod';
 import { raiseAuctioneerFloor } from '../auth/auctioneer-floor';
 import {
@@ -13,10 +22,19 @@ import {
   type HttpDeps,
   type Mount,
 } from './app';
-import { linkFor, reserveJoinCode, roomFor, snapshotFor, titleKey } from './auctions';
+import {
+  auctionIdForCode,
+  linkFor,
+  reserveJoinCode,
+  roomFor,
+  snapshotFor,
+  titleKey,
+} from './auctions';
+import { wsUrlOf } from './invites';
 import { requestSources } from './node-bridge';
 
 export const JUDGE_ROOMS_PATH = '/api/judge/rooms';
+export const JUDGE_JOIN_PATH = '/api/judge/join';
 export const JUDGE_CAPABILITIES_PATH = '/api/judge/capabilities';
 export const JUDGE_PAUSE_PATH = '/api/judge/pause';
 
@@ -44,7 +62,28 @@ export interface JudgeRoomsOptions {
   maxCeilingCents: number;
   /** Bidding window of the lot, in ms from creation. */
   lotWindowMs: number;
+  /** Open-join limits (SRV-30); every field falls back to JUDGE_JOIN_DEFAULTS. */
+  join?: Partial<JudgeJoinLimits>;
 }
+
+/** Limits of the open join route. Judge rooms only; a normal auction never uses it. */
+export interface JudgeJoinLimits {
+  /** Most bidder sessions the open join issues per room. */
+  maxBiddersPerRoom: number;
+  /** Join attempts one source address may make per minute, right or wrong. */
+  attemptsPerIpPerMin: number;
+  /** Wrong codes one source address may try before it is locked out. */
+  wrongCodesBeforeLockout: number;
+  /** How long a locked-out address is refused, in ms. */
+  lockoutMs: number;
+}
+
+export const JUDGE_JOIN_DEFAULTS: JudgeJoinLimits = {
+  maxBiddersPerRoom: 20,
+  attemptsPerIpPerMin: 10,
+  wrongCodesBeforeLockout: 5,
+  lockoutMs: 15 * 60_000,
+};
 
 export const JUDGE_ROOM_DEFAULTS = {
   maxLive: 5,
@@ -55,6 +94,20 @@ export const JUDGE_ROOM_DEFAULTS = {
 } as const;
 
 const CreateBody = z.object({ title: z.string().trim().min(1).max(60).optional() }).strict();
+
+const JoinBody = z
+  .object({
+    code: z.string().trim().min(1).max(16),
+    displayName: z
+      .string()
+      .trim()
+      .min(1)
+      .max(MAX_NAME_CHARS)
+      .refine((v) => !BIDDER_NAME_FORBIDDEN_PATTERN.test(v), 'name holds a forbidden character'),
+  })
+  .strict();
+
+const MINUTE_MS = 60_000;
 
 const PauseBody = z.object({ paused: z.boolean() }).strict();
 
@@ -108,6 +161,13 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
   /** Live rooms: id -> expiry and creator tag. */
   const live = new Map<string, { expiresAt: number; src: string }>();
   const perIp = new Map<string, number[]>();
+  const joinLimits: JudgeJoinLimits = { ...JUDGE_JOIN_DEFAULTS, ...(opts.join ?? {}) };
+  /** Join attempts per source tag, last minute. */
+  const joinAttempts = new Map<string, number[]>();
+  /** Wrong codes per source tag: count since `since`, and the end of a lockout if one runs. */
+  const wrongCodes = new Map<string, { count: number; since: number; lockedUntil: number }>();
+  /** Bidder sessions the open join issued per room. */
+  const joined = new Map<string, number>();
   let global: number[] = [];
   let paused = opts.paused;
   let loaded = false;
@@ -161,6 +221,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
   const expire = async (deps: HttpDeps, id: string, why: 'ttl' | 'done'): Promise<void> => {
     const entry = live.get(id);
     live.delete(id);
+    joined.delete(id);
     const log = audit(deps);
     try {
       if (why === 'ttl') {
@@ -293,8 +354,116 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     }
   };
 
+  const MAX_TRACKED = 5_000;
+
+  const pruneJoinState = (now: number): void => {
+    if (joinAttempts.size > MAX_TRACKED) {
+      for (const [k, v] of joinAttempts) {
+        if (withinMinute(v, now).length === 0) joinAttempts.delete(k);
+      }
+    }
+    if (wrongCodes.size > MAX_TRACKED) {
+      for (const [k, v] of wrongCodes) {
+        if (v.lockedUntil <= now && now - v.since >= joinLimits.lockoutMs) wrongCodes.delete(k);
+      }
+    }
+  };
+
+  const withinMinute = (stamps: number[], now: number): number[] =>
+    stamps.filter((t) => now - t < MINUTE_MS);
+
+  /** Counts one wrong code for the source; the Nth one starts the lockout. */
+  const noteWrongCode = (tag: string, now: number): void => {
+    const prev = wrongCodes.get(tag);
+    const fresh =
+      prev === undefined || (prev.lockedUntil <= now && now - prev.since >= joinLimits.lockoutMs);
+    const next = fresh ? { count: 0, since: now, lockedUntil: 0 } : { ...prev };
+    next.count += 1;
+    if (next.count >= joinLimits.wrongCodesBeforeLockout) {
+      next.lockedUntil = now + joinLimits.lockoutMs;
+    }
+    wrongCodes.set(tag, next);
+  };
+
+  /**
+   * `POST /api/judge/join` (SRV-30): a bidder joins a judge room with its 6-letter code and a
+   * display name, and gets the same session token an invite join would give. Judge rooms only:
+   * a code of any other auction answers exactly like an unknown code.
+   */
+  const join = async (c: Ctx): Promise<Response> => {
+    const { deps } = c;
+    if (!opts.enabled) throw new HttpError(404, 'not_found', 'no such route');
+    const { code, displayName } = parseBody(JoinBody, await c.body());
+    await load(deps);
+    const src = requestSources.get(c.req) ?? 'unknown';
+    const tag = sourceTag(src);
+    const now = deps.clock.now();
+    pruneJoinState(now);
+    const strikes = wrongCodes.get(tag);
+    if (strikes !== undefined && strikes.lockedUntil > now) {
+      const retry = Math.max(1, Math.ceil((strikes.lockedUntil - now) / 1000));
+      return refuse(deps, 429, 'judge_join_locked', 'join_locked', tag, retry);
+    }
+    // Count the attempt before the first await below, so a burst cannot slip past the limit.
+    const recent = withinMinute(joinAttempts.get(tag) ?? [], now);
+    if (recent.length >= joinLimits.attemptsPerIpPerMin) {
+      joinAttempts.set(tag, recent);
+      return refuse(deps, 429, 'judge_rate_limited', 'join_per_ip', tag, 60);
+    }
+    recent.push(now);
+    joinAttempts.set(tag, recent);
+
+    let auctionId: string | undefined;
+    try {
+      auctionId = await auctionIdForCode(deps, code);
+    } catch (e) {
+      if (!(e instanceof GavelError && e.code === 'not_found')) throw e;
+    }
+    const marker =
+      auctionId === undefined
+        ? undefined
+        : ((await deps.store.getJournal(markerKey(auctionId)))?.value as Marker | undefined);
+    if (auctionId === undefined || marker === undefined) {
+      // An unknown code and the code of a normal auction look the same to the caller.
+      noteWrongCode(tag, now);
+      return refuse(deps, 404, 'not_found', 'join_wrong_code', tag);
+    }
+    if (marker.expired === true || marker.expiresAt <= now) {
+      return refuse(deps, 410, 'judge_room_expired', 'join_expired', tag);
+    }
+    const roomId: string = auctionId;
+    // Reserve the seat before the first await below.
+    const taken = joined.get(roomId) ?? 0;
+    if (taken >= joinLimits.maxBiddersPerRoom) {
+      return refuse(deps, 429, 'judge_room_full', 'join_full', tag, 60);
+    }
+    joined.set(roomId, taken + 1);
+    try {
+      await roomFor(deps, roomId);
+      const bidderId = deps.ids.mint<'BidderId'>();
+      const session = await mintToken(deps, 'session', roomId, bidderId, bidderId);
+      audit(deps)?.info('judge room joined', {
+        event: 'judge_room.joined',
+        auctionId: roomId,
+        src: tag,
+        seats: taken + 1,
+      });
+      return json(200, {
+        auctionId: roomId,
+        sessionToken: session.token,
+        bidderId,
+        displayName,
+        wsUrl: wsUrlOf(deps),
+      });
+    } catch (e) {
+      joined.set(roomId, Math.max(0, (joined.get(roomId) ?? 1) - 1));
+      throw e;
+    }
+  };
+
   const mount: Mount = (app: HttpApp): void => {
     appDeps = app.deps;
+    app.post(JUDGE_JOIN_PATH, join);
     app.get(JUDGE_CAPABILITIES_PATH, async (c: Ctx) => {
       if (opts.enabled) await load(c.deps);
       return json(200, { judgeRooms: opts.enabled, accepting: accepting() });
