@@ -307,6 +307,14 @@
   }
 }
 
+/* Hub preview: the real layout at 1920x1080, scaled down by the hub. */
+.gv-screen--preview {
+  width: 1920px;
+  height: 1080px;
+  pointer-events: none;
+  user-select: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gv-screen__frozen,
   .gv-screen[data-state='sold'] .gv-screen__board,

@@ -1,6 +1,15 @@
 import { t } from '../../src/copy/t';
-import { REGISTER_ROOM_ID } from './support/frames';
-import { expect, mockApi, ready, test, type ApiReply, type ApiRequest } from './support/harness';
+import { HAPPY, REGISTER_ROOM_ID, happy } from './support/frames';
+import {
+  BASE_TIME,
+  expect,
+  mockApi,
+  ready,
+  serveRoom,
+  test,
+  type ApiReply,
+  type ApiRequest,
+} from './support/harness';
 
 /**
  * UIX-12: the judge room hub, links that lost their token, and the scripted demo in Newsprint.
@@ -46,14 +55,57 @@ test.describe('judge room hub', () => {
     await mockApi(page, hubApi);
     await page.goto(HUB);
     await expect(page.getByRole('heading', { level: 1, name: t('hub.title') })).toBeVisible();
-    for (const title of [t('hub.step1'), t('hub.step2'), t('hub.step3'), t('hub.step4')]) {
+    for (const title of [t('hub.step1'), t('hub.ticket'), t('hub.step3'), t('hub.step4')]) {
       await expect(page.getByRole('heading', { level: 2, name: title })).toBeVisible();
     }
     await expect(page.locator('.gv-hub__flap')).toHaveCount(CODE.length);
     await expect(page.locator('.gv-hub__qr svg')).toBeVisible();
+    await expect(page.locator('.gv-hub__preview .gv-screen')).toHaveCount(1);
     await expect(page.getByRole('link', { name: new RegExp(t('hub.step4Open')) })).toBeVisible();
     await expect(page.getByRole('heading', { name: t('hub.testTitle') })).toBeVisible();
     await shoot('hub', 'ready');
+  });
+
+  for (const size of [
+    { width: 1440, height: 900 },
+    { width: 1280, height: 720 },
+  ]) {
+    test(`fits one screen at ${size.width}x${size.height}`, async ({ page, shoot }, info) => {
+      test.skip(info.project.name !== 'desktop-light', 'laptop sizes are checked once');
+      await page.setViewportSize(size);
+      await mockApi(page, hubApi);
+      await page.goto(HUB);
+      await expect(page.locator('.gv-hub__flap')).toHaveCount(CODE.length);
+      await expect(page.locator('.gv-hub__qr svg')).toBeVisible();
+      await expect(page.getByRole('link', { name: new RegExp(t('hub.step4Open')) })).toBeVisible();
+      const overflow = await page.evaluate(() => ({
+        page: document.documentElement.scrollHeight - window.innerHeight,
+        hub: (document.querySelector('.gv-hub') as HTMLElement).scrollHeight - window.innerHeight,
+        sideways: document.documentElement.scrollWidth - window.innerWidth,
+      }));
+      expect(overflow.page).toBeLessThanOrEqual(0);
+      expect(overflow.hub).toBeLessThanOrEqual(0);
+      expect(overflow.sideways).toBeLessThanOrEqual(0);
+      await shoot('hub', `fit-${size.width}x${size.height}`);
+    });
+  }
+
+  test('live preview shows the room as the projector does', async ({ page, shoot }) => {
+    const room = await serveRoom(page, { scenario: happy, at: HAPPY.outbid, role: 'screen' });
+    const expires = BASE_TIME + HAPPY.outbid + 30 * 60_000;
+    await mockApi(page, (req) =>
+      req.method === 'GET' && req.path === `/api/auctions/${room.roomId}`
+        ? {
+            status: 200,
+            json: { auctionId: room.roomId, title: 'Signed first-press vinyl', joinCode: CODE },
+          }
+        : { status: 404 },
+    );
+    await page.goto(
+      `/r/${room.roomId}/hub#token=${AUCTIONEER}&screen=${SCREEN}&exp=${expires}&code=${CODE}`,
+    );
+    await expect(page.locator('.gv-hub__preview [data-testid="screen-price"]')).toBeVisible();
+    await shoot('hub', 'live-preview');
   });
 
   test('links carry their tokens', async ({ page }) => {
