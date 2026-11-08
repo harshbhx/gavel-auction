@@ -75,106 +75,158 @@ function open(
 }
 
 describe('SRV-39: hammer of a judge room with simulated holds', () => {
-  it('hammers, captures the winner, releases the loser, reaches DONE and keeps serving', async () => {
-    const lines: string[] = [];
-    const app = await composeServer(base, { sink: (l) => void lines.push(l) });
-    running.push(app);
-    const port = await app.listen(0);
-    const url = `http://127.0.0.1:${port}`;
-    const post = async (path: string, body: unknown, token?: string) => {
-      const res = await fetch(`${url}${path}`, {
-        method: 'POST',
-        headers: { ...json, ...(token === undefined ? {} : { authorization: `Bearer ${token}` }) },
-        body: JSON.stringify(body),
-      });
-      return { status: res.status, body: (await res.json()) as Record<string, string> };
-    };
+  // Bids are [bidder index, cents]. The price is what the winner pays, whatever the ceiling.
+  const cases = [
+    {
+      name: 'winner below ceiling',
+      ceilings: [5000, 5000],
+      bids: [
+        [0, 1500],
+        [1, 2000],
+      ],
+      win: 1,
+      price: 2000,
+    },
+    {
+      name: 'winner bid equals its ceiling',
+      ceilings: [2000, 5000],
+      bids: [[0, 2000]],
+      win: 0,
+      price: 2000,
+    },
+    {
+      name: 'a single bid at the reserve',
+      ceilings: [5000, 5000],
+      bids: [[1, 1000]],
+      win: 1,
+      price: 1000,
+    },
+  ] as const;
+  it.each(cases)(
+    '$name: captures the winner, releases the loser, reaches SETTLED',
+    async (c) => {
+      const lines: string[] = [];
+      const app = await composeServer(base, { sink: (l) => void lines.push(l) });
+      running.push(app);
+      const port = await app.listen(0);
+      const url = `http://127.0.0.1:${port}`;
+      const post = async (path: string, body: unknown, token?: string) => {
+        const res = await fetch(`${url}${path}`, {
+          method: 'POST',
+          headers: {
+            ...json,
+            ...(token === undefined ? {} : { authorization: `Bearer ${token}` }),
+          },
+          body: JSON.stringify(body),
+        });
+        return { status: res.status, body: (await res.json()) as Record<string, string> };
+      };
 
-    const made = await post('/api/judge/rooms', {});
-    expect(made.status).toBe(201);
-    const { auctionId, joinCode, auctioneerToken } = made.body as {
-      auctionId: string;
-      joinCode: string;
-      auctioneerToken: string;
-    };
+      const made = await post('/api/judge/rooms', {});
+      expect(made.status).toBe(201);
+      const { auctionId, joinCode, auctioneerToken } = made.body as {
+        auctionId: string;
+        joinCode: string;
+        auctioneerToken: string;
+      };
 
-    const bidders: Array<{ token: string; bidderId: string }> = [];
-    for (const name of ['Sim A', 'Sim B']) {
-      const joined = await post('/api/judge/join', { code: joinCode, displayName: name });
-      expect(joined.status).toBe(200);
-      const token = joined.body.sessionToken as string;
-      const hold = await post(
-        `/api/judge/rooms/${auctionId}/sim-hold`,
-        { ceilingCents: 5000, name },
-        token,
+      const bidders: Array<{ token: string; bidderId: string }> = [];
+      for (const [i, name] of ['Sim A', 'Sim B'].entries()) {
+        const joined = await post('/api/judge/join', { code: joinCode, displayName: name });
+        expect(joined.status).toBe(200);
+        const token = joined.body.sessionToken as string;
+        const hold = await post(
+          `/api/judge/rooms/${auctionId}/sim-hold`,
+          { ceilingCents: c.ceilings[i] ?? 5000, name },
+          token,
+        );
+        expect(hold.status).toBe(200);
+        bidders.push({ token, bidderId: joined.body.bidderId as string });
+      }
+
+      // A may already be open; either answer leaves the lot open.
+      await post(
+        `/api/auctions/${auctionId}/control`,
+        { controlId: 'open-1', action: 'open' },
+        auctioneerToken,
       );
-      expect(hold.status).toBe(200);
-      bidders.push({ token, bidderId: joined.body.bidderId as string });
-    }
 
-    // A may already be open; either answer leaves the lot open.
-    await post(
-      `/api/auctions/${auctionId}/control`,
-      { controlId: 'open-1', action: 'open' },
-      auctioneerToken,
-    );
+      const conns = [];
+      for (const b of bidders) conns.push(await open(port, b.token, auctionId));
+      await Promise.all(
+        conns.map((c) => until(() => c.frames.find((f) => f.t === 'state'), 5000, 'state')),
+      );
+      for (const [who, amount] of c.bids) {
+        const conn = conns[who];
+        if (conn === undefined) throw new Error('socket expected');
+        const before = conn.frames.filter((f) => f.t === 'bid_accepted').length;
+        conn.ws.send(JSON.stringify({ v: 1, t: 'bid', mid: ulid(), amount, source: 'manual' }));
+        await until(
+          () =>
+            conn.frames.filter((f) => f.t === 'bid_accepted').length > before ? true : undefined,
+          5000,
+          `bid ${amount} accepted`,
+        );
+      }
+      const [a, b] = conns;
+      if (a === undefined || b === undefined) throw new Error('two sockets expected');
 
-    const conns = [];
-    for (const b of bidders) conns.push(await open(port, b.token, auctionId));
-    await Promise.all(
-      conns.map((c) => until(() => c.frames.find((f) => f.t === 'state'), 5000, 'state')),
-    );
-    const [a, b] = conns;
-    if (a === undefined || b === undefined) throw new Error('two sockets expected');
-    a.ws.send(JSON.stringify({ v: 1, t: 'bid', mid: ulid(), amount: 1500, source: 'manual' }));
-    await until(() => a.frames.find((f) => f.t === 'bid_accepted'), 5000, 'bid A accepted');
-    b.ws.send(JSON.stringify({ v: 1, t: 'bid', mid: ulid(), amount: 2000, source: 'manual' }));
-    await until(() => b.frames.find((f) => f.t === 'bid_accepted'), 5000, 'bid B accepted');
+      const hammer = await post(
+        `/api/auctions/${auctionId}/control`,
+        { controlId: 'hammer-1', action: 'hammer', args: { closeNow: 1 } },
+        auctioneerToken,
+      );
+      expect(hammer.status).toBe(200);
+      expect((hammer.body as { hammer?: { price: number } }).hammer?.price).toBe(c.price);
 
-    const hammer = await post(
-      `/api/auctions/${auctionId}/control`,
-      { controlId: 'hammer-1', action: 'hammer', args: { closeNow: 1 } },
-      auctioneerToken,
-    );
-    expect(hammer.status).toBe(200);
-    expect((hammer.body as { hammer?: { price: number } }).hammer?.price).toBe(2000);
+      // Settlement finishes: the winner's simulated hold is captured, the loser's is released.
+      const final = await until(
+        () =>
+          [...a.frames, ...b.frames].find(
+            (f) =>
+              f.t === 'settlement_update' &&
+              (f.auctionState === 'SETTLED' || f.auctionState === 'FAILED_NEEDS_REVIEW'),
+          ),
+        60_000,
+        'terminal settlement',
+      );
+      const dump = (): string => lines.filter((l) => l.includes('settlement stopped')).join('\n');
+      expect(final.auctionState, dump()).toBe('SETTLED');
+      expect(final.amountCaptured).toBe(c.price);
 
-    // Settlement finishes: the winner's simulated hold is captured, the loser's is released.
-    const final = await until(
-      () =>
-        [...a.frames, ...b.frames].find(
-          (f) =>
-            f.t === 'settlement_update' &&
-            (f.auctionState === 'SETTLED' || f.auctionState === 'FAILED_NEEDS_REVIEW'),
-        ),
-      60_000,
-      'terminal settlement',
-    );
-    const dump = (): string => lines.filter((l) => l.includes('settlement stopped')).join('\n');
-    expect(final.auctionState, dump()).toBe('SETTLED');
-    expect(final.amountCaptured).toBe(2000);
+      // Receipt data: the winner's simulated hold is CAPTURED for the price, the loser's is VOIDED.
+      for (const [i, bidder] of bidders.entries()) {
+        const link = await post(`/api/auctions/${auctionId}/receipt-link`, {}, bidder.token);
+        expect(link.status).toBe(200);
+        const receipt = await fetch(`${url}/api/auctions/${auctionId}/receipt`, {
+          headers: { authorization: `Bearer ${link.body.token ?? ''}` },
+        });
+        expect(receipt.status).toBe(200);
+        const cut = (await receipt.json()) as {
+          snapshot: { settlement?: { auctionState: string; yourHold?: Record<string, unknown> } };
+        };
+        expect(cut.snapshot.settlement?.auctionState).toBe('SETTLED');
+        const hold = cut.snapshot.settlement?.yourHold;
+        if (i === c.win) {
+          expect(hold).toMatchObject({ status: 'CAPTURED', capturedCents: c.price });
+        } else {
+          expect(hold).toMatchObject({ status: 'VOIDED', capturedCents: 0 });
+        }
+      }
 
-    // Both bidders can open a receipt link and read the settled lot.
-    for (const bidder of bidders) {
-      const link = await post(`/api/auctions/${auctionId}/receipt-link`, {}, bidder.token);
-      expect(link.status).toBe(200);
-      const receipt = await fetch(`${url}/api/auctions/${auctionId}/receipt`, {
-        headers: { authorization: `Bearer ${link.body.token ?? ''}` },
-      });
-      expect(receipt.status).toBe(200);
-    }
+      // The server still serves: probes, a new socket, a new room.
+      expect((await fetch(`${url}/healthz`)).status).toBe(200);
+      const again = await open(port, auctioneerToken, auctionId);
+      await until(() => again.frames.find((f) => f.t === 'state'), 5000, 'state after settlement');
+      expect((await post('/api/judge/rooms', {})).status).toBe(201);
 
-    // The server still serves: probes, a new socket, a new room.
-    expect((await fetch(`${url}/healthz`)).status).toBe(200);
-    const again = await open(port, auctioneerToken, auctionId);
-    await until(() => again.frames.find((f) => f.t === 'state'), 5000, 'state after settlement');
-    expect((await post('/api/judge/rooms', {})).status).toBe(201);
-
-    // Nothing escaped the settlement as an unhandled rejection, and no run stopped on an error.
-    await sleep(300);
-    expect(rejections).toEqual([]);
-    expect(dump()).toBe('');
-  }, 90_000);
+      // Nothing escaped the settlement as an unhandled rejection, and no run stopped on an error.
+      await sleep(300);
+      expect(rejections).toEqual([]);
+      expect(dump()).toBe('');
+    },
+    90_000,
+  );
 
   it('answers an unsold hammer and survives the retry window', async () => {
     const lines: string[] = [];
