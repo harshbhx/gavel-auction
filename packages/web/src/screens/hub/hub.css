@@ -481,3 +481,15 @@
     animation: none;
   }
 }
+
+.gv-hub__joinlink {
+  margin: 0.5rem 0 0;
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+  text-align: center;
+  user-select: all;
+}
+
+.gv-hub__joinlabel {
+  font-weight: 600;
+}

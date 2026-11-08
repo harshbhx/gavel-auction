@@ -340,7 +340,12 @@ export const en = {
   'hub.codeLabel': 'Join code',
   'hub.codePending': 'Code loading',
   'hub.copyCode': 'Copy code',
-  'hub.copyInvite': 'Copy bidder link',
+  'hub.copyInvite': 'Copy join link',
+  'hub.joinLinkLabel': 'Join link',
+  'hub.joinHere': 'Join as a bidder',
+  'hub.joinHereOpen': 'Open join page',
+  'hub.watcherNote':
+    'You opened this hub without the room keys, so you can join as a bidder but not run the room.',
   'hub.ticket': 'Join ticket',
   'hub.ticketAdmit': 'Admit one bidder',
   'hub.scanToBid': 'Scan with a phone to bid',
@@ -376,7 +381,7 @@ export const en = {
   'tokenHelp.step1': 'Go back to the room hub and open the link from there.',
   'tokenHelp.step2': 'Or start a new demo and use the links it shows.',
   'tokenHelp.registerLead':
-    'A bidder needs a personal invite link or QR from the room hub. A bare join code is not enough to bid.',
+    'This room only lets in bidders who hold a personal invite link. Ask the host for one, or open the room hub and make a new invite.',
   'scriptedJoin.title': 'This is the scripted demo',
   'scriptedJoin.lead':
     'You scanned the QR code of a recorded auction. It plays inside the page, so no phone can place a real bid in it.',
@@ -421,6 +426,10 @@ export const en = {
   'join.enterCode': 'Enter a code instead',
   'join.asBidder': 'Join as bidder',
   'join.watch': 'Just watch',
+  'watch.title': 'You are watching this room',
+  'watch.lead':
+    'You have not joined as a bidder yet. Join to register a sandbox hold and place bids.',
+  'watch.openJoin': 'See the join page and code',
   'join.ended': 'This auction has ended.',
   'join.notFound': 'We could not find this auction.',
   'join.steps': 'Three steps to bid',

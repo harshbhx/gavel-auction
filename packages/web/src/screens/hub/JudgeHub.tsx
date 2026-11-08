@@ -10,9 +10,6 @@ import './hub.css';
 
 const QrCode = lazy(() => import('../join/QrCode'));
 
-/** The QR renderer reaches version 14 at level M; longer links fall back to the short join link. */
-const QR_MAX_BYTES = 320;
-
 export interface JudgeHubProps {
   readonly roomId: string;
   readonly keys: HubKeys;
@@ -185,10 +182,8 @@ export function JudgeHub({
   };
 
   const bidderLink = invite.kind === 'ready' ? invite.invite.link : null;
-  const qrTarget =
-    bidderLink !== null && new TextEncoder().encode(bidderLink).length <= QR_MAX_BYTES
-      ? bidderLink
-      : joinLink;
+  // The QR is the join link with the room code: it works for every phone, not just the first one.
+  const qrTarget = joinLink;
   const leftMs = keys.expiresAt === null ? null : keys.expiresAt - tick;
 
   const shareText = [
@@ -196,7 +191,7 @@ export function JudgeHub({
     code === null ? '' : `${t('hub.codeLabel')}: ${code}`,
     screenLink === null ? '' : `${t('hub.step1')}: ${screenLink}`,
     consoleLink === null ? '' : `${t('hub.step3')}: ${consoleLink}`,
-    bidderLink === null ? `${t('hub.step4')}: ${joinLink}` : `${t('hub.step4')}: ${bidderLink}`,
+    `${t('hub.joinLinkLabel')}: ${joinLink}`,
     t('hub.expiresAt', { minutes: ROOM_MINUTES }),
   ]
     .filter((line) => line !== '')
@@ -284,10 +279,17 @@ export function JudgeHub({
                   {copied === 'code' ? t('generic.copied') : t('hub.copyCode')}
                 </Button>
               )}
-              <Button variant="outline" onClick={() => copy('invite', qrTarget)}>
+              <Button
+                variant="outline"
+                disabled={code === null}
+                onClick={() => copy('invite', joinLink)}
+              >
                 {copied === 'invite' ? t('generic.copied') : t('hub.copyInvite')}
               </Button>
             </div>
+            <p className="gv-hub__joinlink" data-testid="hub-join-link">
+              <span className="gv-hub__joinlabel">{t('hub.joinLinkLabel')}</span> {joinLink}
+            </p>
           </div>
         </section>
 
@@ -309,26 +311,38 @@ export function JudgeHub({
           </Shortcut>
 
           <Shortcut n={4} title={t('hub.step4')} hint={t('hub.step4Hint')}>
-            {bidderLink !== null ? (
-              <a className="gv-flow__action" href={bidderLink} target="_blank" rel="noopener">
-                {t('hub.step4Open')}
-                <span className="gv-visually-hidden">{newTab}</span>
-              </a>
-            ) : keys.auctioneer === null ? (
-              <p className="gv-hub__missing">{t('hub.noInviteToken')}</p>
-            ) : invite.kind === 'failed' ? (
-              <p className="gv-hub__missing" role="alert">
-                {t('hub.inviteFailed')}
-              </p>
+            <a
+              className="gv-flow__action"
+              href={joinLink}
+              target="_blank"
+              rel="noopener"
+              data-testid="hub-join-open"
+            >
+              {t('hub.joinHere')}
+              <span className="gv-visually-hidden">{newTab}</span>
+            </a>
+            {keys.auctioneer === null ? (
+              <p className="gv-hub__note">{t('hub.watcherNote')}</p>
             ) : (
-              <p className="gv-hub__pending" role="status">
-                {t('hub.inviteBusy')}
-              </p>
-            )}
-            {keys.auctioneer !== null && (
-              <Button variant="outline" disabled={invite.kind === 'busy'} onClick={makeInvite}>
-                {t('hub.newInvite')}
-              </Button>
+              <>
+                {bidderLink !== null ? (
+                  <a className="gv-flow__action" href={bidderLink} target="_blank" rel="noopener">
+                    {t('hub.step4Open')}
+                    <span className="gv-visually-hidden">{newTab}</span>
+                  </a>
+                ) : invite.kind === 'failed' ? (
+                  <p className="gv-hub__missing" role="alert">
+                    {t('hub.inviteFailed')}
+                  </p>
+                ) : (
+                  <p className="gv-hub__pending" role="status">
+                    {t('hub.inviteBusy')}
+                  </p>
+                )}
+                <Button variant="outline" disabled={invite.kind === 'busy'} onClick={makeInvite}>
+                  {t('hub.newInvite')}
+                </Button>
+              </>
             )}
           </Shortcut>
 

@@ -41,11 +41,13 @@ import { BidScreen } from './screens/bid/BidScreen';
 import { LiveConsole } from './screens/console/LiveConsole';
 import { GalleryScreen } from './screens/gallery/GalleryScreen';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
+import { WatcherGate } from './screens/join/WatcherGate';
 import { LandingScreen } from './screens/landing/LandingScreen';
 import { JudgePanel, type RoomsState } from './screens/judge/JudgePanel';
 import { fetchOpsSummary, OpsView, type OpsSummaryView } from './ops/OpsView';
 import { DemoLauncher, DemoRoomError, type DemoLinks } from './screens/demo/DemoLauncher';
 import { ScriptedJoin } from './screens/demo/ScriptedJoin';
+import { openJoin, type OpenJoinFailure, type OpenJoinResult } from './net/openJoin';
 import { JudgeHub } from './screens/hub/JudgeHub';
 import { TokenHelp } from './screens/hub/TokenHelp';
 import { hubHref, readHubKeys } from './screens/hub/hubKeys';
@@ -239,6 +241,7 @@ function LiveRoute({
       : s.snapshot?.roster.find((r) => r.bidderId === bidderId)?.paddle,
   );
   const stopped = useRoom((s) => s.snapshot?.stopped ?? false);
+  const joinCode = useRoom((s) => s.snapshot?.joinCode ?? null);
   const respond = (confirmId: string, accept: boolean): void =>
     transport?.send({ v: PROTOCOL_VERSION, t: 'confirm_response', confirmId, accept });
   if (refused !== null) {
@@ -311,7 +314,7 @@ function LiveRoute({
       return (
         <div data-route="console">
           {scripted === undefined && roomId !== 'demo' && (
-            <a className="ui-link gv-hub-back" href={hubHref(roomId, token)}>
+            <a className="ui-link gv-hub-back" href={hubHref(roomId, token, joinCode)}>
               {t('hub.backToHub')}
             </a>
           )}
@@ -547,6 +550,37 @@ function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
   );
 }
 
+const openJoins = new Map<string, Promise<OpenJoinResult>>();
+
+/** The room code to join with: the `c` query of the link, else the room's public summary. */
+async function roomCodeFor(apiBase: string, roomId: string): Promise<string | null> {
+  const fromLink = new URLSearchParams(window.location.search).get('c');
+  if (fromLink !== null && fromLink !== '') return fromLink;
+  try {
+    const body = (await fetchJson(`${apiBase}/api/auctions/${encodeURIComponent(roomId)}`)) as {
+      joinCode?: unknown;
+    };
+    return typeof body.joinCode === 'string' && body.joinCode !== '' ? body.joinCode : null;
+  } catch {
+    return null;
+  }
+}
+
+/** One open join per room at a time, so a re-render or a double mount never takes two seats. */
+function openJoinForRoom(apiBase: string, roomId: string): Promise<OpenJoinResult> {
+  const running = openJoins.get(roomId);
+  if (running !== undefined) return running;
+  const started = roomCodeFor(apiBase, roomId)
+    .then((code): Promise<OpenJoinResult> | OpenJoinResult =>
+      code === null ? { ok: false, reason: 'notOpen' } : openJoin(apiBase, code),
+    )
+    .finally(() => {
+      openJoins.delete(roomId);
+    });
+  openJoins.set(roomId, started);
+  return started;
+}
+
 const CEILING_MIN_CENTS = 10000;
 const CEILING_MAX_CENTS = 100000;
 
@@ -585,6 +619,26 @@ function RegisterRoute({
   const registrationClosed = useRoom(selectors.registrationClosed);
 
   const invite = who === null ? readInviteToken(roomId) : null;
+  // No invite: a judge room lets a bidder in with its room code, so a scanned QR or a typed code works.
+  const [openState, setOpenState] = useState<OpenJoinFailure | null>(null);
+  const noInvite = who === null && invite === null;
+  useEffect(() => {
+    if (!noInvite) return undefined;
+    let live = true;
+    openJoinForRoom(api.apiBase, roomId).then((got) => {
+      if (!live) return;
+      if (got.ok) {
+        const kept = rememberBidderSession(roomId, { token: got.token, bidderId: got.bidderId });
+        if (!kept) setNotSaved(true);
+        setWho({ token: got.token, bidderId: got.bidderId });
+      } else {
+        setOpenState(got.reason);
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, [api, roomId, noInvite]);
   useEffect(() => {
     if (who !== null || invite === null) return;
     fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(roomId)}/join`, {
@@ -608,6 +662,27 @@ function RegisterRoute({
   }, [api, roomId, who, invite]);
 
   if (who === null) {
+    if (
+      invite === null &&
+      (openState === null || openState === 'full' || openState === 'expired')
+    ) {
+      if (openState === null) {
+        return (
+          <main data-route="register" aria-busy="true">
+            <p role="status">{t('reg.confirming')}</p>
+          </main>
+        );
+      }
+      return (
+        <main data-route="register">
+          <p role="alert">{t(openState === 'full' ? 'join.full' : 'join.ended')}</p>
+          <p>{t(openState === 'full' ? 'join.fullHelp' : 'join.endedHelp')}</p>
+          <a className="ui-link" href={`/r/${encodeURIComponent(roomId)}/bid`}>
+            {t('join.watch')}
+          </a>
+        </main>
+      );
+    }
     return (
       <main data-route="register">
         {failed || invite === null ? (
@@ -1087,6 +1162,15 @@ function Routed({
   }
   if (id === 'return' && roomId !== undefined && api !== undefined) {
     return <ReturnRoute roomId={roomId} api={api} />;
+  }
+  if (
+    (id === 'bid' || id === 'receipt') &&
+    who === null &&
+    roomId !== undefined &&
+    api !== undefined &&
+    roomId !== 'demo'
+  ) {
+    return <WatcherGate roomId={roomId} onNavigate={navigate} />;
   }
   if (liveBase === undefined || roomId === undefined || who === null) {
     return <RouteScreen match={match} />;
