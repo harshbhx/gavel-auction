@@ -12,7 +12,7 @@ const made: string[] = [];
 
 /** Size and lazy-chunk problems only: the CSP check depends on the VITE_* env of the test project. */
 function sizeProblems(dir: string): string[] {
-  return sizeProblems(dir).filter((p) => !p.startsWith('CSP'));
+  return check(dir).problems.filter((p) => !p.startsWith('CSP'));
 }
 
 /** A fake dist: index.html plus the given chunk files under assets/. */
