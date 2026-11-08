@@ -19,7 +19,13 @@ export default function NotFound() {
     <HomeLayout {...baseOptions()}>
       <main className="hl-dots mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-4 py-16">
         <p className="hl-eyebrow">Error 404</p>
-        <h1 className="hl-display text-[clamp(3.5rem,12vw,8rem)]">Released.</h1>
+        <p className="hl-404-num" aria-hidden>
+          404
+        </p>
+        <h1 className="hl-display text-[clamp(3rem,10vw,6rem)]">
+          Released.
+          <span className="hl-stamp ml-4 align-middle text-[var(--hl-stop)]">Not charged</span>
+        </h1>
         {/* a hold that was let go: only the outline is left */}
         <div role="img" aria-label="A hollow bar: a hold that was released" className="hl-hold__bar max-w-md" />
         <p className="max-w-[34rem] font-[family-name:var(--font-newsreader)] text-xl leading-snug">

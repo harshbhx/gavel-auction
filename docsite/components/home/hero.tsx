@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { FillLegend } from '@/components/holdline/legend';
+import { GateBadge } from '@/components/holdline/chip';
+import { repoData } from '@/lib/repo-data';
+import { FlapPrice } from './flap-price';
 import { HoldResolver } from './hold-resolver';
 import { btnPrimary, btnSecondary } from './section';
 
@@ -29,6 +32,13 @@ export function Hero() {
             These pages are the receipts. Each claim points at a file or a run, and what has only been
             tried on a fake or a simulation says so.
           </p>
+          <ul aria-label="Gate status" className="mt-6 flex flex-wrap gap-2">
+            {repoData.gates.map((g) => (
+              <li key={g.id}>
+                <GateBadge id={g.id} />
+              </li>
+            ))}
+          </ul>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/docs/judges" className={btnPrimary}>
               Start with the judge guide <ArrowRight className="size-4" aria-hidden />
@@ -39,8 +49,15 @@ export function Hero() {
           </div>
         </div>
 
-        <div className="lg:col-span-5 lg:col-start-8 lg:-mr-6 lg:mt-14">
-          <div className="lg:-rotate-[0.6deg]">
+        <div className="lg:col-span-5 lg:col-start-8 lg:-mr-6 lg:mt-10">
+          <div className="hl-receipt lg:-rotate-[0.6deg]">
+            <span className="hl-tape hl-tape--l" aria-hidden />
+            <span className="hl-tape hl-tape--r" aria-hidden />
+            <div className="hl-receipt__head">
+              <p className="hl-eyebrow">Hammer price, example</p>
+              <FlapPrice cents={35000} label="Example winning price: 350 dollars" className="mt-2" />
+              <p className="hl-stamp hl-stamp--go" aria-hidden>Charged once</p>
+            </div>
             <HoldResolver />
           </div>
           <FillLegend className="mt-4" />

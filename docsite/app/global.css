@@ -883,3 +883,331 @@ header#nd-nav,
   background: var(--hl-signal);
   color: var(--hl-on-signal);
 }
+
+/* ======================================================================================
+   UIX-11 craft layer: the docs as the same printed object as the landing page.
+   Flap price, receipt with tape, stamps, steps, article chrome, mobile.
+   ====================================================================================== */
+
+/* ---------- flap-board price ---------- */
+.hl-flap {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  font-family: var(--font-poster);
+  font-weight: 800;
+  line-height: 1;
+}
+.hl-flap__tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 2.4rem;
+  height: 3.6rem;
+  font-size: 2.9rem;
+  color: var(--hl-bg);
+  background: var(--hl-fg);
+  border-radius: 3px;
+  box-shadow: 2px 2px 0 var(--hl-shadow);
+  font-variant-numeric: tabular-nums;
+}
+.hl-flap__tile::after {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto 0;
+  height: 2px;
+  background: var(--hl-bg);
+  opacity: 0.55;
+}
+.hl-flap__mark {
+  align-self: flex-end;
+  font-size: 2.2rem;
+  padding: 0 0.1rem 0.25rem;
+  color: var(--hl-signal-ink);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hl-flap__tile {
+    animation: hl-flip 0.55s cubic-bezier(0.3, 0.7, 0.2, 1) backwards;
+  }
+  .hl-flap__tile:nth-child(3) { animation-delay: 0.08s; }
+  .hl-flap__tile:nth-child(4) { animation-delay: 0.16s; }
+  .hl-flap__tile:nth-child(6) { animation-delay: 0.24s; }
+  .hl-flap__tile:nth-child(7) { animation-delay: 0.32s; }
+}
+@keyframes hl-flip {
+  from {
+    transform: rotateX(-90deg);
+    opacity: 0;
+  }
+}
+@media (max-width: 420px) {
+  .hl-flap__tile {
+    min-width: 1.9rem;
+    height: 3rem;
+    font-size: 2.3rem;
+  }
+}
+
+/* ---------- receipt card with tape and stamp ---------- */
+.hl-receipt {
+  position: relative;
+  border: 2px solid var(--hl-fg);
+  background: var(--hl-panel);
+  box-shadow: 6px 6px 0 var(--hl-shadow);
+  padding: 1rem 1rem 1.1rem;
+}
+.hl-receipt__head {
+  position: relative;
+  padding-bottom: 0.9rem;
+  margin-bottom: 0.9rem;
+  border-bottom: 2px dashed var(--hl-border);
+}
+.hl-receipt > .hl-hold {
+  border: 0;
+  background: transparent;
+}
+.hl-tape {
+  position: absolute;
+  top: -0.8rem;
+  width: 4.2rem;
+  height: 1.5rem;
+  background: color-mix(in oklab, var(--hl-signal) 55%, var(--hl-panel));
+  border: 1px solid color-mix(in oklab, var(--hl-signal-ink) 50%, transparent);
+  opacity: 0.92;
+}
+.hl-tape--l {
+  left: 1.2rem;
+  transform: rotate(-5deg);
+}
+.hl-tape--r {
+  right: 1.2rem;
+  transform: rotate(4deg);
+}
+
+/* stamps: a rubber stamp, double rule, slight tilt, in the status colour */
+.hl-stamp {
+  display: inline-block;
+  font-family: var(--font-martian);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border: 2px solid currentColor;
+  outline: 1px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 2px;
+  transform: rotate(-4deg);
+  margin-top: 0.7rem;
+}
+.hl-stamp--go {
+  color: var(--hl-go);
+}
+.hl-receipt__head .hl-stamp {
+  position: absolute;
+  right: 0.25rem;
+  bottom: 1.1rem;
+  margin: 0;
+  background: var(--hl-panel);
+}
+
+/* status chips everywhere read as stamps */
+.hl-solid-chip,
+.hl-stop-chip,
+.hl-hatch-chip,
+.hl-hollow-chip,
+.hl-checked-chip {
+  letter-spacing: 0.1em;
+  box-shadow: 1px 1px 0 var(--hl-shadow);
+}
+.hl-solid-chip {
+  color: var(--hl-panel);
+}
+.hl-stop-chip {
+  color: var(--hl-panel);
+}
+.dark .hl-solid-chip,
+.dark .hl-stop-chip {
+  color: var(--hl-bg);
+}
+
+/* ---------- orientation steps, feature card ---------- */
+.hl-step {
+  list-style: none;
+}
+.hl-step__n {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.9rem;
+  font-size: 4.2rem;
+  color: color-mix(in oklab, var(--hl-signal) 40%, transparent);
+  pointer-events: none;
+}
+.hl-card--feature {
+  background: color-mix(in oklab, var(--hl-signal) 14%, var(--hl-panel));
+  border-width: 2px;
+}
+.hl-card a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ---------- article chrome ---------- */
+/* breadcrumb: mono label voice */
+#nd-page nav[aria-label*='readcrumb' i],
+#nd-page :is(.text-fd-muted-foreground) a[href^='/docs'] {
+  font-family: var(--font-martian);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* table of contents: ink rail, signal marker */
+[data-toc],
+#nd-toc {
+  font-family: var(--font-archivo);
+}
+#nd-toc h3,
+#nd-toc [id='toc-title'] {
+  font-family: var(--font-martian);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+#nd-toc a[data-active='true'] {
+  color: var(--hl-signal-ink);
+  font-weight: 700;
+}
+
+/* previous and next: ticket cards */
+#nd-page a[class*='rounded-xl'][class*='border'],
+#nd-page a[class*='rounded-lg'][class*='border'][class*='flex-col'] {
+  border: 2px solid var(--hl-fg);
+  border-radius: 2px;
+  background: var(--hl-panel);
+  box-shadow: 3px 3px 0 var(--hl-shadow);
+}
+#nd-page a[class*='rounded-xl'][class*='border']:hover,
+#nd-page a[class*='rounded-lg'][class*='border'][class*='flex-col']:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--hl-shadow);
+  background: var(--hl-panel);
+}
+@media (prefers-reduced-motion: reduce) {
+  #nd-page a[class*='rounded-xl'][class*='border']:hover {
+    transform: none;
+  }
+}
+
+/* page action buttons (copy markdown, open, edit on GitHub) */
+#nd-page button[class*='border'],
+#nd-page a[class*='border'][class*='text-xs'] {
+  border: 1.5px solid var(--hl-fg);
+  border-radius: 2px;
+  box-shadow: 2px 2px 0 var(--hl-shadow);
+}
+
+/* code blocks: header bar like a printed listing */
+.prose figure:has(> div > pre) figcaption {
+  font-family: var(--font-martian);
+  letter-spacing: 0.04em;
+}
+
+/* ---------- sidebar and header repairs ---------- */
+#nd-sidebar {
+  min-width: 0;
+}
+#nd-sidebar > div,
+#nd-sidebar [data-radix-scroll-area-viewport] {
+  padding-inline: 1rem;
+}
+#nd-sidebar [role='group'][aria-label='Theme'],
+#nd-nav [role='group'][aria-label='Theme'] {
+  flex-wrap: wrap;
+  max-width: 100%;
+  border: 2px solid var(--hl-fg);
+  box-shadow: 2px 2px 0 var(--hl-shadow);
+}
+#nd-sidebar [role='group'][aria-label='Theme'] button,
+#nd-nav [role='group'][aria-label='Theme'] button {
+  min-height: 2rem;
+}
+#nd-sidebar .hl-hatch-chip {
+  margin-inline: 1px;
+}
+
+/* ---------- mobile: 390px ---------- */
+html,
+body {
+  overflow-x: clip;
+}
+.prose,
+#nd-page {
+  min-width: 0;
+}
+.prose :is(.fd-scroll-container, [data-radix-scroll-area-viewport]),
+.fd-scroll-container {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  border: 2px solid var(--hl-fg);
+  background:
+    linear-gradient(to right, var(--hl-panel) 30%, transparent) left / 24px 100% no-repeat local,
+    linear-gradient(to left, var(--hl-panel) 30%, transparent) right / 24px 100% no-repeat local,
+    linear-gradient(to right, color-mix(in oklab, var(--hl-fg) 22%, transparent), transparent) left / 10px 100% no-repeat scroll,
+    linear-gradient(to left, color-mix(in oklab, var(--hl-fg) 22%, transparent), transparent) right / 10px 100% no-repeat scroll,
+    var(--hl-panel);
+}
+.prose .fd-scroll-container table,
+.fd-scroll-container table {
+  border: 0;
+  margin: 0;
+}
+.fd-scroll-container:focus-visible {
+  outline-offset: -4px;
+}
+@media (max-width: 640px) {
+  #nd-page .prose h2 {
+    font-size: 2rem;
+  }
+  #nd-page .prose td,
+  #nd-page .prose th {
+    padding: 0.5rem 0.6rem;
+  }
+  .hl-receipt {
+    box-shadow: 4px 4px 0 var(--hl-shadow);
+  }
+  .hl-step__n {
+    font-size: 3.4rem;
+  }
+}
+
+/* ---------- 404 ---------- */
+.hl-404-num {
+  font-family: var(--font-poster);
+  font-weight: 800;
+  line-height: 0.85;
+  font-size: clamp(7rem, 26vw, 16rem);
+  color: var(--hl-fg);
+  -webkit-text-stroke: 0;
+  text-shadow: 6px 6px 0 var(--hl-signal);
+}
+
+/* ---------- Projector: heavier rules, no shadows that vanish on black ---------- */
+:root[data-floodlight='1'] .hl-card,
+:root[data-floodlight='1'] .hl-receipt,
+:root[data-floodlight='1'] .hl-callout {
+  border-color: var(--hl-fg);
+}
+
+/* forced colours: keep tiles and stamps visible */
+@media (forced-colors: active) {
+  .hl-flap__tile {
+    border: 1px solid CanvasText;
+  }
+  .hl-stamp {
+    border-color: CanvasText;
+    outline-color: CanvasText;
+  }
+}

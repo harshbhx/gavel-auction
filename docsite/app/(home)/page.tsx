@@ -5,6 +5,7 @@ import {
   FlaskConical,
   Hammer,
   Map,
+  Scale,
   ShieldCheck,
   Terminal,
 } from 'lucide-react';
@@ -12,6 +13,7 @@ import { Hero } from '@/components/home/hero';
 import { HoldBeam } from '@/components/home/hold-beam';
 import { Section, SectionHeading, btnPrimary, btnSecondary } from '@/components/home/section';
 import CountUp from '@/components/home/reactbits/CountUp';
+import { Orient } from '@/components/home/orient';
 import { Reveal } from '@/components/home/reveal';
 import { GatesTable } from '@/components/holdline/data-tables';
 import { Chip } from '@/components/holdline/chip';
@@ -23,6 +25,12 @@ import { CrashDiagram } from '@/components/diagrams/crash';
 import { gatesPassed, repoData } from '@/lib/repo-data';
 
 const paths = [
+  {
+    href: '/docs/judges',
+    icon: Scale,
+    title: 'For judges',
+    text: 'Start here if you score GAVEL without running it: two paths, a rubric map and honest answers.',
+  },
   {
     href: '/docs/start',
     icon: BookOpenCheck,
@@ -115,6 +123,8 @@ export default function HomePage() {
     <div className="flex flex-1 flex-col overflow-x-clip">
       <Hero />
 
+      <Orient />
+
       <Section labelledBy="stats-title" className="border-b border-[var(--hl-hairline)]">
         <SectionHeading id="stats-title" eyebrow="Status, stated plainly" title="What we can prove, and how.">
           Numbers come from the committed gate record and the simulation output, read at build time.
@@ -136,14 +146,14 @@ export default function HomePage() {
       </Section>
 
       <Section labelledBy="paths-title">
-        <SectionHeading id="paths-title" eyebrow="Pick a path" title="Two minutes, or the whole thing.">
+        <SectionHeading id="paths-title" eyebrow="Pick a path" title="Judge path first, then the rest.">
           The pages are short: one screen of prose, one diagram, and a list of the files that hold the
           claim.
         </SectionHeading>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {paths.map((p, i) => (
-            <Reveal key={p.href} delay={i * 0.05} className="h-full">
-              <div className="hl-card h-full">
+            <Reveal key={p.href} delay={i * 0.05} className={i === 0 ? "h-full md:col-span-2 lg:col-span-3" : "h-full"}>
+              <div className={i === 0 ? "hl-card hl-card--feature h-full" : "hl-card h-full"}>
                 <Link href={p.href} className="flex h-full flex-col p-6 focus-visible:outline-2">
                   <p.icon className="size-6 text-fd-primary" aria-hidden />
                   <h3 className="hl-display mt-4 text-2xl">{p.title}</h3>
