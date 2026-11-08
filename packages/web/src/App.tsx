@@ -42,6 +42,8 @@ import { BidScreen } from './screens/bid/BidScreen';
 import { LiveConsole } from './screens/console/LiveConsole';
 import { GalleryScreen } from './screens/gallery/GalleryScreen';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
+import { OfflineBanner } from './a11y/OfflineBanner';
+import { SkipLink } from './a11y/SkipLink';
 import { WatcherGate } from './screens/join/WatcherGate';
 import { LandingScreen } from './screens/landing/LandingScreen';
 import { JudgePanel, type RoomsState } from './screens/judge/JudgePanel';
@@ -262,11 +264,15 @@ function LiveRoute({
     // The connection is stopped; the bid screen would only say it is waiting for a lot.
     return (
       <main data-route={match.route.id}>
+        <h1 tabIndex={-1}>{t('err.refusedTitle')}</h1>
         <RoomError
           error={refused}
           rejoinHref={`/join/${encodeURIComponent(roomId)}`}
           onRetry={() => setAttempt((n) => n + 1)}
         />
+        <a className="ui-link" href="/">
+          {t('err.home')}
+        </a>
       </main>
     );
   }
@@ -523,7 +529,11 @@ async function judgeSimHolds(apiBase: string): Promise<boolean> {
   }
 }
 
+/** Room ids are ULIDs and join codes are short letters and digits, with an optional dash. */
+const ROOM_KEY = /^[A-Za-z0-9][A-Za-z0-9-]{0,63}$/;
+
 function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
+  const malformedRoom = !ROOM_KEY.test(roomId);
   const [found, setFound] = useState<{
     state: JoinState;
     title: string | null;
@@ -531,14 +541,15 @@ function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
     code: string | null;
     demoHold: boolean;
   }>({
-    state: api === undefined ? 'open' : 'loading',
+    state: api === undefined ? 'open' : malformedRoom ? 'notFound' : 'loading',
     title: api === undefined ? roomId : null,
     id: roomId,
     code: null,
     demoHold: false,
   });
   useEffect(() => {
-    if (api === undefined) return undefined;
+    // A code with slashes, dots or spaces cannot be a room: say so without asking the server.
+    if (api === undefined || malformedRoom) return undefined;
     let live = true;
     const caps = judgeSimHolds(api.apiBase);
     fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(roomId)}`)
@@ -567,7 +578,7 @@ function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
     return () => {
       live = false;
     };
-  }, [api, roomId]);
+  }, [api, roomId, malformedRoom]);
   return (
     <JoinScreen
       roomId={found.id}
@@ -704,12 +715,14 @@ function RegisterRoute({
       if (openState === null) {
         return (
           <main data-route="register" aria-busy="true">
+            <h1 tabIndex={-1}>{t('reg.step1')}</h1>
             <p role="status">{t('reg.confirming')}</p>
           </main>
         );
       }
       return (
         <main data-route="register">
+          <h1 tabIndex={-1}>{t('reg.step1')}</h1>
           <p role="alert">{t(openState === 'full' ? 'join.full' : 'join.ended')}</p>
           <p>{t(openState === 'full' ? 'join.fullHelp' : 'join.endedHelp')}</p>
           <a className="ui-link" href={`/r/${encodeURIComponent(roomId)}/bid`}>
@@ -720,6 +733,7 @@ function RegisterRoute({
     }
     return (
       <main data-route="register">
+        <h1 tabIndex={-1}>{t('reg.step1')}</h1>
         {failed || invite === null ? (
           <>
             <p role="alert">{t('reg.expired')}</p>
@@ -736,6 +750,7 @@ function RegisterRoute({
   if (live && snapshot === null) {
     return (
       <main data-route="register">
+        <h1 tabIndex={-1}>{t('reg.step1')}</h1>
         {roomError === null ? (
           <p role="status">{t('reg.confirming')}</p>
         ) : (
@@ -751,6 +766,7 @@ function RegisterRoute({
   if (snapshot !== null && registrationClosed) {
     return (
       <main data-route="register">
+        <h1 tabIndex={-1}>{t('reg.step1')}</h1>
         <Approve
           state="idle"
           result={null}
@@ -835,6 +851,7 @@ function ApproveRoute(props: {
   }, [start, ceilingCents, name]);
   return (
     <main data-route="register">
+      <h1 tabIndex={-1}>{t('reg.step1')}</h1>
       <Approve
         state={approval.state}
         result={approval.result}
@@ -901,9 +918,10 @@ function ReturnRoute({ roomId, api }: { roomId: string; api: Api }) {
 /** The operator key input, shared by the ops page and the demo launcher. It is never stored. */
 function OperatorKeyField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <label>
+    <label className="gv-ops__key">
       {t('ops.keyLabel')}
       <input
+        className="gv-ops__input"
         type="password"
         autoComplete="off"
         value={value}
@@ -933,7 +951,8 @@ function OpsRoute({ api }: { api: Api | undefined }) {
       .catch(() => setError(t('ops.failed')));
   };
   return (
-    <main data-route="ops">
+    <main data-route="ops" className="gv-ops-page">
+      <h1>{t('ops.title')}</h1>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -941,7 +960,9 @@ function OpsRoute({ api }: { api: Api | undefined }) {
         }}
       >
         <OperatorKeyField value={key} onChange={setKey} />
-        <button type="submit">{t('ops.load')}</button>
+        <button type="submit" className="gv-ops__load">
+          {t('ops.load')}
+        </button>
       </form>
       {(summary !== undefined || error !== undefined) && (
         <OpsView labels={labels} summary={summary} error={error} />
@@ -1102,7 +1123,7 @@ function InMemoryScriptedDemo({
   );
   return (
     <div className="gv-scripted-frame">
-      <div className="gv-scripted-bar">
+      <div className="gv-scripted-bar" role="region" aria-label={t('scriptedDemo.barLabel')}>
         <p>{t('scriptedDemo.banner')}</p>
         <div className="gv-scripted-bar__links">
           <a className="ui-link" href="/demo">
@@ -1229,7 +1250,7 @@ function Routed({
     api !== undefined &&
     roomId !== 'demo'
   ) {
-    return <WatcherGate roomId={roomId} onNavigate={navigate} />;
+    return <WatcherGate roomId={roomId} onNavigate={navigate} apiBase={api.apiBase} />;
   }
   if (liveBase === undefined || roomId === undefined || who === null) {
     return <RouteScreen match={match} />;
@@ -1272,7 +1293,9 @@ export function App({ initialPath, gallery = import.meta.env.DEV, liveBase, api 
   const match = matchRoute(path, { gallery });
   return (
     <ErrorBoundary>
+      {match.route.id !== 'gallery' && <SkipLink />}
       {match.route.id !== 'gallery' && <SandboxBanner />}
+      {match.route.id !== 'gallery' && match.route.id !== 'bid' && <OfflineBanner />}
       {match.route.id !== 'gallery' && <Announcer />}
       <Routed match={match} liveBase={liveBase} api={api} />
       {HELP_ROUTES.has(match.route.id) && <HelpLayer />}
