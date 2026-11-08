@@ -4,8 +4,8 @@ The GAVEL host exposes a small HTTP API and one WebSocket. The HTTP API is descr
 OpenAPI 3.1 document:
 
 - Source of truth: [`openapi/gavel.yaml`](../openapi/gavel.yaml)
-- Served from the docs site: https://gavel-docs.creharsh.workers.dev/openapi.yaml
-- Docs site page: https://gavel-docs.creharsh.workers.dev/docs/reference/api-reference
+- Served from the docs site: https://docs.gavel.dualmindlab.tech/openapi.yaml
+- Docs site page: https://docs.gavel.dualmindlab.tech/docs/reference/api-reference
 
 PayPal sandbox only: no real money moves through any route here.
 
@@ -109,7 +109,7 @@ The operator can change these through host settings.
 ## WebSocket protocol
 
 OpenAPI cannot describe a WebSocket, so the spec carries a prose section and this page links
-the full contract: [docs site, WebSocket protocol](https://gavel-docs.creharsh.workers.dev/docs/reference/websocket-protocol)
+the full contract: [docs site, WebSocket protocol](https://docs.gavel.dualmindlab.tech/docs/reference/websocket-protocol)
 and [`docs/specs/realtime/SPEC-realtime.md`](specs/realtime/SPEC-realtime.md).
 
 Short version. A reviewer token can join too, with a screen's view. Connect to `wss://<host>/ws` from an allowed origin. Frames are JSON text,
@@ -184,7 +184,7 @@ What generating them involves, once the account exists:
 2. In APIMatic, import the API from the raw file URL
    `https://raw.githubusercontent.com/harshbhx/gavel-auction/main/openapi/gavel.yaml`
    or upload `openapi/gavel.yaml`. The same file is served at
-   https://gavel-docs.creharsh.workers.dev/openapi.yaml.
+   https://docs.gavel.dualmindlab.tech/openapi.yaml.
 3. Let APIMatic validate it, and fix anything it reports in `openapi/gavel.yaml`.
 4. Generate the SDKs, starting with TypeScript, and the API developer portal (reference
    docs, code samples, try-it).
