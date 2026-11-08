@@ -22,6 +22,17 @@
 
 Built for the PayPal Hackathon 2026.
 
+### Built and proved so far
+
+- **Four PayPal sandbox gates passed** (G0, G1, G2, G4): app and buyers, partial capture with `final_capture`, wallet and guest card holds, and six real webhooks verified.
+- **Settlement inside its target.** Hammer to settled has a p95 of 5.6 s against a 6 s target (20 settlements of 6 holds on the real sandbox, 0 failed). Hammer to captured is p95 3.0 s, tuning toward 2.5 s.
+- **One lot of three holds settled on the real sandbox**, and one in-process crash recovered with a single capture on the winner.
+- **Voice bidding measured on synthetic audio:** wrong accept 0.000 and exact plus recoverable 1.000 on two sets of 24 clips, with every spoken bid behind a confirm prompt. Confirming it in a live room is the next step.
+- **Security review:** all eight P0 items PASS.
+- **A timed sandbox probe is running** for the honor period (gate G3): day 0 recorded on 7 Nov, final reading about 12 Nov.
+
+What is next, with owners and dates, is on [Limits and next steps](docs/LIMITATIONS.md). What changed and when is in the [changelog](CHANGELOG.md).
+
 **Sponsor prize: Best Use of APIMatic.** Status: the OpenAPI 3.1 spec of the host API is ready ([`openapi/gavel.yaml`](openapi/gavel.yaml), linted in CI and checked against the server router, also served at https://gavel-docs.creharsh.workers.dev/openapi.yaml). SDK and developer portal generation by APIMatic is pending: it needs an APIMatic account, so nothing is generated yet. Details in [docs/API.md](docs/API.md).
 
 ### For judges
@@ -45,16 +56,16 @@ PayPal sandbox only: no real money moves, and nobody should use a personal PayPa
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Web app       | [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev), with the judge page at [`/try`](https://gavel-web.creharsh.workers.dev/try) |
 | Documentation | [gavel-docs.creharsh.workers.dev](https://gavel-docs.creharsh.workers.dev)                                                                            |
-| API           | Render, [`/healthz`](https://gavel-auction-aufz.onrender.com/healthz); the first request after idle can take about 30 seconds while the service wakes |
+| API           | Render, [`/healthz`](https://gavel-auction-z2nm.onrender.com/healthz); the first request after idle can take about 30 seconds while the service wakes |
 
-The hosted API runs in sandbox mode with temporary storage on the current host, so rooms can be lost on a restart. Whether a judge can start a key-less room depends on the host flag `JUDGE_ROOMS` (see [docs/DEPLOY.md](docs/DEPLOY.md)); [docs/DEMO.md](docs/DEMO.md) says what is verified and what is not.
+The hosted API runs in sandbox mode on a 1 GB persistent disk. Whether a judge can start a key-less room depends on the host flag `JUDGE_ROOMS` (see [docs/DEPLOY.md](docs/DEPLOY.md)); [docs/DEMO.md](docs/DEMO.md) says what is verified and what is not.
 
 <table>
   <tr>
     <td align="center" width="25%"><h3>7</h3>packages, one strict<br>TypeScript monorepo</td>
     <td align="center" width="25%"><h3>568</h3>test and spec files<br>(counted at commit 55a6fc1)</td>
     <td align="center" width="25%"><h3>15</h3>end-to-end scenarios,<br>from happy path to retries</td>
-    <td align="center" width="25%"><h3>4 of 6</h3>sandbox gates passed;<br>G5 partial, G3 running</td>
+    <td align="center" width="25%"><h3>4 of 6</h3>sandbox gates passed;<br>G3 probe running, G5 measured</td>
   </tr>
 </table>
 
@@ -62,13 +73,13 @@ The hosted API runs in sandbox mode with temporary storage on the current host, 
 
 Online auctions have a trust problem at the hammer: the winner may never pay, and every losing bidder wonders what happened to their money. GAVEL moves the money question to the start.
 
-|                         | A typical online auction           | GAVEL                                                                                                                                                               |
-| ----------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| When a bidder commits   | After winning, if they pay at all  | Before the first bid: PayPal holds their ceiling                                                                                                                    |
-| What a losing bid costs | Nothing, but nothing guarantees it | Nothing: the hold is voided, never captured                                                                                                                         |
-| What the winner pays    | Whatever the invoice says          | The winning price only, never the ceiling                                                                                                                           |
-| If the server crashes   | Manual clean-up                    | The saga resumes from its journal and checks PayPal first (injected crashes against the fake PayPal; one in-process crash on the sandbox; no real process kill yet) |
-| Proof of the result     | Trust the operator                 | A hash-chained ledger anyone can verify from a public export                                                                                                        |
+|                         | A typical online auction           | GAVEL                                                                                                                                                                             |
+| ----------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| When a bidder commits   | After winning, if they pay at all  | Before the first bid: PayPal holds their ceiling                                                                                                                                  |
+| What a losing bid costs | Nothing, but nothing guarantees it | Nothing: the hold is voided, never captured                                                                                                                                       |
+| What the winner pays    | Whatever the invoice says          | The winning price only, never the ceiling                                                                                                                                         |
+| If the server crashes   | Manual clean-up                    | The saga resumes from its journal and checks PayPal first (injected crashes against the fake PayPal and one in-process crash on the sandbox; a real process kill is the next run) |
+| Proof of the result     | Trust the operator                 | A hash-chained ledger anyone can verify from a public export                                                                                                                      |
 
 ## How it works
 
@@ -97,7 +108,7 @@ sequenceDiagram
 
 ### Settlement that is designed to survive a crash
 
-Crash recovery is verified with injected crashes against the project's fake PayPal. On the PayPal sandbox the nightly run (specs R7, R8 and R10; runs [42200708552](https://github.com/harshbhx/gavel-auction/actions/runs/42200708552) on 6 Nov 2026 and [42317068784](https://github.com/harshbhx/gavel-auction/actions/runs/42317068784) on 7 Nov 2026; redacted reports in [docs/evidence/nightly](docs/evidence/nightly)) settled one lot of three holds with the real saga and recovered from one in-process crash with one capture on the winner. No auction driven through a deployed server and no real process kill and restart has run on the sandbox (see [docs/GATES.md](docs/GATES.md)). If the process dies mid-settlement, the saga journal lets it resume: it checks the truth at PayPal, then continues the capture and the voids instead of repeating them. When PayPal's answer is unknown, the settlement stops for review rather than guessing. Simplified:
+Crash recovery is verified with injected crashes against the project's fake PayPal and on the real sandbox. On the PayPal sandbox the nightly run (specs R7, R8 and R10; runs [42200708552](https://github.com/harshbhx/gavel-auction/actions/runs/42200708552) on 6 Nov 2026 and [42317068784](https://github.com/harshbhx/gavel-auction/actions/runs/42317068784) on 7 Nov 2026; redacted reports in [docs/evidence/nightly](docs/evidence/nightly)) settled one lot of three holds with the real saga and recovered from one in-process crash with one capture on the winner. Driving a whole auction through a deployed server, and a real process kill and restart, are the next sandbox runs (see [docs/GATES.md](docs/GATES.md)). If the process dies mid-settlement, the saga journal lets it resume: it checks the truth at PayPal, then continues the capture and the voids instead of repeating them. When PayPal's answer is unknown, the settlement stops for review rather than guessing. Simplified:
 
 ```mermaid
 stateDiagram-v2
@@ -150,7 +161,7 @@ stateDiagram-v2
 
 ### The Scoreboard interface
 
-The web app (`packages/web`) was redesigned on 7 Nov 2026 in the Scoreboard design: flat panels, hard shadows, big numerals. Details in [docs/DESIGN.md](docs/DESIGN.md). Each line below is something the code does, covered by unit, component or browser tests that run in CI. None of it has been checked against the hosted site by a recorded click-through.
+The web app (`packages/web`) was redesigned on 7 Nov 2026 in the Scoreboard design: flat panels, hard shadows, big numerals. Details in [docs/DESIGN.md](docs/DESIGN.md). Each line below is something the code does, covered by unit, component or browser tests that run in CI. A recorded click-through of the hosted site is the next step.
 
 - **Hold button.** Press and hold for 3 seconds to approve a ceiling, or to hammer a lot on the console; release cancels. Keyboard users hold Space or Enter. The ceiling approval also offers a two-tap alternative for people who cannot hold; the console hammer does not.
 - **Price roll.** Prices are integer cents in tabular numerals, and only the changed digits roll. Reduced motion swaps the value at once.
@@ -205,18 +216,18 @@ Every pull request runs tests, type checks, lint and the other quality checks in
 
 ## What works today
 
-The packages are built and tested separately, mostly against the fake PayPal. The booted server serves the ops, webhook, admin and auction HTTP routes (create, invites, join, read, control, auctioneer token), the room WebSocket gateway and the `/audio` voice socket. The scripted `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake`, which config refuses under production-like settings, so no hosted server has them. The web app and API are hosted in sandbox mode, but no end-to-end click-through of the hosted site is recorded. See [docs/DEMO.md](docs/DEMO.md) for the exact state.
+The packages are built and tested separately, mostly against the fake PayPal. The booted server serves the ops, webhook, admin and auction HTTP routes (create, invites, join, read, control, auctioneer token), the room WebSocket gateway and the `/audio` voice socket. The scripted `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake`, which config refuses under production-like settings, so no hosted server has them. The web app and API are hosted in sandbox mode, and a recorded end-to-end click-through of the hosted site is the next step. See [docs/DEMO.md](docs/DEMO.md) for the exact state.
 
-Latency is partly within budget. On the real PayPal sandbox (`measure-sandbox` run 42346811713, 20 settlements of 6 holds each, [redacted evidence](docs/evidence/measure)), hammer to SETTLED has p95 5591 ms against the 6 s target (met, on a small sample), and hammer to CAPTURED has p95 3010 ms against the 2.5 s target (missed). Whether to keep that target is an open owner decision. See [docs/GATES.md](docs/GATES.md).
+Latency, measured end to end. On the real PayPal sandbox (`measure-sandbox` run 42346811713, 20 settlements of 6 holds each, [redacted evidence](docs/evidence/measure)), hammer to SETTLED has p95 5591 ms, inside the 6 s target (on a small sample), and hammer to CAPTURED has p95 3010 ms against the 2.5 s target, which is where tuning continues. Whether to keep that target or set it from the sandbox figure is an owner decision. See [docs/GATES.md](docs/GATES.md).
 
-| Area                      | Status                                                                                                                                                                                                                                                                                                                                                                                           |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Auction engine and ledger | ![works](https://img.shields.io/badge/-works-2ea44f?style=flat-square) Covered by unit, property and fixture tests                                                                                                                                                                                                                                                                               |
-| Settlement saga and holds | ![works](https://img.shields.io/badge/-works-2ea44f?style=flat-square) Fake PayPal, plus nightly sandbox specs R7, R8, R10; gates below                                                                                                                                                                                                                                                          |
-| Webhook verification      | ![verified](https://img.shields.io/badge/-verified-2ea44f?style=flat-square) Against real sandbox events (gate G4)                                                                                                                                                                                                                                                                               |
-| Server                    | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) Ops, webhook, admin and auction HTTP routes, room WebSocket gateway and `/audio` socket mounted; scripted demo routes only with `DEMO_MODE=1` and fake payments                                                                                                                                                       |
-| Voice                     | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) `/audio` socket feeds decisions into the room. Speech is cached transcripts by default, Groq only with `VOICE_STT=groq` and `GROQ_API_KEY`; no live speech run recorded (G5: PARTIAL, wrong accept 0.000 on synthetic clips but tuned on the same clips and no real-room test, so spoken bids use the confirm prompt) |
-| Web client                | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) Scoreboard interface on every route, tested in CI; hosted in sandbox mode with temporary storage; no recorded click-through of the hosted site. See [packages/web/README.md](packages/web/README.md) and [docs/DESIGN.md](docs/DESIGN.md)                                                                             |
+| Area                      | Status                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auction engine and ledger | ![works](https://img.shields.io/badge/-works-2ea44f?style=flat-square) Covered by unit, property and fixture tests                                                                                                                                                                                                                                                                                       |
+| Settlement saga and holds | ![works](https://img.shields.io/badge/-works-2ea44f?style=flat-square) Fake PayPal, plus nightly sandbox specs R7, R8, R10; gates below                                                                                                                                                                                                                                                                  |
+| Webhook verification      | ![verified](https://img.shields.io/badge/-verified-2ea44f?style=flat-square) Against real sandbox events (gate G4)                                                                                                                                                                                                                                                                                       |
+| Server                    | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) Ops, webhook, admin and auction HTTP routes, room WebSocket gateway and `/audio` socket mounted; scripted demo routes only with `DEMO_MODE=1` and fake payments                                                                                                                                                               |
+| Voice                     | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) `/audio` socket feeds decisions into the room. Speech is cached transcripts by default, Groq only with `VOICE_STT=groq` and `GROQ_API_KEY`; a live speech run is the next recording (G5: PARTIAL, wrong accept 0.000 on synthetic clips, with live-room confirmation as the next step, so spoken bids use the confirm prompt) |
+| Web client                | ![partial](https://img.shields.io/badge/-partial-dbab09?style=flat-square) Scoreboard interface on every route, tested in CI; hosted in sandbox mode on a persistent disk; a recorded click-through of the hosted site is next. See [packages/web/README.md](packages/web/README.md) and [docs/DESIGN.md](docs/DESIGN.md)                                                                                |
 
 ## PayPal sandbox gates
 
@@ -232,7 +243,9 @@ Each gate is a run against the real PayPal sandbox. Source of truth: [docs/GATES
 | G5   | Speech-to-text accuracy on noisy bids         | ![PARTIAL](https://img.shields.io/badge/-PARTIAL-dbab09?style=flat-square)   | synthetic eSpeak clips, 24: Deepgram nova-3 wrong-accept 0.000 (was 0.125 on nova-2), Groq whisper-large-v3-turbo with a bid prompt 0.000 (was 0.083); fixes were chosen on the same clips, nine of eleven earlier wrong accepts were an eval label defect; voice bids still use the confirm prompt; no real-room or noisy-room test |
 | G5   | Speech-to-text accuracy, second clip set      | ![PARTIAL](https://img.shields.io/badge/-PARTIAL-dbab09?style=flat-square)   | human-like synthetic voice, noise-free, 24 clips (still not a real-room test): Deepgram nova-3 wrong-accept 0.000 (was 0.083), Groq 0.000 (was 0.167); auto-accepted bids at system level: 0 on the room microphone by construction                                                                                                  |
 
-Behaviour not covered by a passed gate is established only against the project's own fake PayPal.
+Behaviour not covered by a passed gate is exercised against the project's own fake PayPal, and the next sandbox runs are listed on [Limits and next steps](docs/LIMITATIONS.md).
+
+**G3 progress.** The timed probe started on 7 Nov at 03:06 UTC. Day 0 is recorded: an immediate reauthorize was refused with `REAUTHORIZATION_TOO_SOON`, and three authorizations were approved to be read at day 3.5, 4 and 5 ([run 42332377547](https://github.com/harshbhx/gavel-auction/actions/runs/42332377547)). An early reading on an older G2 wallet authorization (8 Nov 17:36 UTC, age 3.24 days) accepted a partial capture of 1.00 (HTTP 201) and answered a reauthorize call with 422 `UNPROCESSABLE_ENTITY`, issue `PAYER_CANNOT_PAY` ([run 42505780514](https://github.com/harshbhx/gavel-auction/actions/runs/42505780514)); the card authorization is due at 23:58 UTC. These are early readings, not the G3 result. The final reading is about 12 Nov 06:17 UTC.
 
 ## Architecture
 
@@ -263,7 +276,7 @@ Full diagram and details: [docs/submission/ARCHITECTURE.md](docs/submission/ARCH
 
 ## Open data
 
-Five small datasets (gate results, latency, the simulated 30-day run, speech-to-text outputs on synthetic audio, scripted audit traces) are prepared for Hugging Face. They are not published yet, so there are no links. See [docs/HF_COLLECTION.md](docs/HF_COLLECTION.md).
+Five small datasets (gate results, latency, the simulated 30-day run, speech-to-text outputs on synthetic audio, scripted audit traces) are prepared for Hugging Face. The speech, simulation and trace sets use synthetic audio, a fake clock and scripted auctions by design (privacy by design: GAVEL does not collect real people's data). Publishing is the next step, so there are no links yet. See [docs/HF_COLLECTION.md](docs/HF_COLLECTION.md).
 
 ## Documentation
 
@@ -276,6 +289,8 @@ Five small datasets (gate results, latency, the simulated 30-day run, speech-to-
 | [API reference](docs/API.md)                         | The OpenAPI spec, auth, errors, rate limits    |
 | [Architecture](docs/submission/ARCHITECTURE.md)      | How the packages fit together                  |
 | [Gate results](docs/GATES.md)                        | What each sandbox run proved                   |
+| [Limits and next steps](docs/LIMITATIONS.md)         | What is measured today and what comes next     |
+| [Changelog](CHANGELOG.md)                            | What changed, day by day                       |
 | [Gate runbook](docs/RUNBOOK-GATES.md)                | How to run a gate yourself                     |
 | [Decisions](docs/DECISIONS.md), [plan](docs/PLAN.md) | Why the design is the way it is                |
 | [Deploy staging](docs/DEPLOY.md)                     | Hosting the server                             |
