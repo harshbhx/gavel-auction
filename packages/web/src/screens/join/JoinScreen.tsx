@@ -79,7 +79,7 @@ export function JoinScreen({
           <Button size="bid" onClick={() => onNavigate('/')}>
             {t('join.tryAgain')}
           </Button>
-          <Button variant="outline" onClick={() => onNavigate('/try')}>
+          <Button variant="outline" onClick={() => onNavigate('/demo')}>
             {t('join.startDemo')}
           </Button>
         </div>
@@ -105,7 +105,7 @@ export function JoinScreen({
         <p className="gv-join__help">{t('join.endedHelp')}</p>
         <div className="gv-join__actions">
           <Button onClick={() => onNavigate(bidPath)}>{t('join.watch')}</Button>
-          <Button variant="outline" onClick={() => onNavigate('/try')}>
+          <Button variant="outline" onClick={() => onNavigate('/demo')}>
             {t('join.startDemo')}
           </Button>
         </div>

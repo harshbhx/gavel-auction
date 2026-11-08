@@ -22,6 +22,21 @@
 
 Built for the PayPal Hackathon 2026.
 
+### For judges
+
+A separate entry point for judges, with a live sandbox room and no operator key: **https://gavel-web.creharsh.workers.dev/try**. It is deliberately not linked from the public landing page.
+
+| What you get                               | Where                                                                                                                                                             |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Judge panel with a demo room, in one click | [gavel-web.creharsh.workers.dev/try](https://gavel-web.creharsh.workers.dev/try)                                                                                  |
+| No-login scripted demo (about 1 minute)    | [gavel-web.creharsh.workers.dev/demo/scripted](https://gavel-web.creharsh.workers.dev/demo/scripted): a recorded room in your browser, no server, no PayPal calls |
+| Demo room (about 3 minutes)                | [gavel-web.creharsh.workers.dev/demo](https://gavel-web.creharsh.workers.dev/demo): start a room, open the hub, join as a bidder, hold, bid, hammer, receipt      |
+| Trust and FAQ                              | [Trust and FAQ](https://gavel-docs.creharsh.workers.dev/docs/judges/trust-and-faq), also in the repo at [docs/judges/TRUST-FAQ.md](docs/judges/TRUST-FAQ.md)      |
+| Judge paths, rubric map, evidence          | [Docs site, For judges](https://gavel-docs.creharsh.workers.dev/docs/judges) and the [judge walkthrough](docs/JUDGES.md)                                          |
+| Sandbox buyer logins                       | Placeholders only here: see [docs/judges/DEVPOST-TESTING.md](docs/judges/DEVPOST-TESTING.md). The Devpost testing field carries the real sandbox test accounts    |
+
+PayPal sandbox only: no real money moves, and nobody should use a personal PayPal account.
+
 ### Live links (sandbox mode)
 
 | What          | Link                                                                                                                                                  |

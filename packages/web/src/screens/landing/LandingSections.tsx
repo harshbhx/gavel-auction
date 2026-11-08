@@ -296,7 +296,7 @@ export function TrustSection() {
   );
 }
 
-export function AudienceSection({ onJudges }: { onJudges: () => void }) {
+export function AudienceSection() {
   return (
     <Section id="who" title={t('mk.aud.title')}>
       <div className="gv-aud">
@@ -307,21 +307,6 @@ export function AudienceSection({ onJudges }: { onJudges: () => void }) {
         <SpotlightCard as="article" className="gv-aud__col gv-reveal">
           <h3 className="gv-aud__title">{t('mk.aud.bid.title')}</h3>
           <p>{t('mk.aud.bid.body')}</p>
-        </SpotlightCard>
-        <SpotlightCard as="article" className="gv-aud__col gv-reveal">
-          <h3 className="gv-aud__title">{t('mk.aud.jud.title')}</h3>
-          <p>{t('mk.aud.jud.body')}</p>
-          <a
-            className="gv-link"
-            href="/try"
-            onClick={(e) => {
-              if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-              e.preventDefault();
-              onJudges();
-            }}
-          >
-            {t('mk.aud.jud.link')}
-          </a>
         </SpotlightCard>
       </div>
     </Section>
