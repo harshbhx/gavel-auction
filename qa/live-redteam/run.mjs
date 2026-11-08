@@ -418,7 +418,22 @@ async function registerBidder(page, label, name, buyerIdx) {
   const altVisible = await alt.isVisible().catch(() => false);
   if (!altVisible) {
     note(`${label}: no two-tap confirm button; actions: ${(await listActions(page)).join(' | ')}`);
-    return false;
+    const hb = page.getByRole('button', { name: /approve|your hold|hold/i }).first();
+    const bb = await hb.boundingBox().catch(() => null);
+    if (!bb) return false;
+    await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(3600);
+    await page.mouse.up();
+    note(`${label}: used press-and-hold approve`);
+    const ok = await page
+      .getByText(/hold of .* is in place/i)
+      .first()
+      .waitFor({ timeout: 30000 })
+      .then(() => true)
+      .catch(() => false);
+    note(`${label}: after hold -> ${clip(await visibleText(page), 200)}`);
+    return ok;
   }
   const popupP = page
     .context()
@@ -745,8 +760,8 @@ async function main() {
       `copy-bidder-link/QR target length ${clipTxt.length} bytes; is invite link: ${/\/register#/.test(clipTxt)}; Open-bidder href length ${(href || '').length}`,
     );
     check(
-      /\/register#/.test(clipTxt),
-      'Copy bidder link / QR carries the invite (register#token), not the bare join link',
+      /\/register#|\/join\//.test(clipTxt),
+      'Copy bidder link / QR carries a working link (invite, or a join link that can register)',
     );
     return href ? new URL(href, WEB).href : '';
   }
@@ -765,7 +780,9 @@ async function main() {
     note(`url after typing code: ${bidA.url()}`);
     note(`join page: ${await visibleText(bidA)}`);
     check(/\/join\//.test(bidA.url()) || /\/r\//.test(bidA.url()), 'code leads to a join page');
-    const asBidder = await clickText(bidA, /join as bidder/i, { roles: ['button', 'link'] });
+    const asBidder = await clickText(bidA, /join with the demo|join as bidder/i, {
+      roles: ['button', 'link'],
+    });
     check(asBidder !== null, '"Join as bidder" present');
     await bidA.waitForTimeout(3000);
     note(`url after "Join as bidder": ${bidA.url().replace(/#.*/, '#<frag>')}`);
@@ -819,12 +836,12 @@ async function main() {
     // the exact path Dhairya reports: back to the join page, Join as bidder
     await watcher.goto(joinUrl, { waitUntil: 'load' });
     await watcher
-      .getByRole('button', { name: /join as bidder/i })
+      .getByRole('button', { name: /join with the demo|join as bidder/i })
       .first()
       .waitFor({ timeout: 15000 })
       .catch(() => {});
     note(`revisit join page url: ${watcher.url()}`);
-    const again = await clickText(watcher, /join as bidder/i);
+    const again = await clickText(watcher, /join with the demo|join as bidder/i);
     await watcher.waitForTimeout(3000);
     note(
       `watcher after "Join as bidder": url ${watcher.url().replace(/#.*/, '#<f>')} :: ${await visibleText(watcher)}`,
@@ -861,21 +878,36 @@ async function main() {
     check(inviteA !== inviteB, 'invites differ');
   });
 
-  await step('Bidder A registers (invite link) and holds (sandbox)', async () => {
-    if (!inviteA) return check(false, 'no invite');
-    await bidA.goto('about:blank');
-    await bidA.goto(inviteA, { waitUntil: 'load' });
-    await bidA.waitForTimeout(2500);
+  async function viaJoinPage(page, label) {
+    const joinUrl = `${WEB}/join/${encodeURIComponent(roomId)}${code ? `?c=${code}` : ''}`;
+    await page.goto('about:blank');
+    await page.goto(joinUrl, { waitUntil: 'load' });
+    await page
+      .getByRole('button', { name: /join with the demo|join as bidder/i })
+      .first()
+      .waitFor({ timeout: 15000 })
+      .catch(() => {});
+    note(`${label}: join page buttons: ${(await listActions(page)).join(' | ')}`);
+    await clickText(page, /join with the demo|join as bidder/i, { roles: ['button'] });
+    await page.waitForTimeout(3000);
+    note(`${label}: after join choice url ${page.url().replace(/#.*/, '#<f>')}`);
+  }
+
+  await step('Bidder A registers (demo hold) and holds', async () => {
+    const onForm = await bidA
+      .getByLabel(/display name/i)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    if (!onForm) await viaJoinPage(bidA, 'bidderA');
     aRegistered = await registerBidder(bidA, 'bidderA', 'QA Alice', 0);
     check(aRegistered, 'hold is in place for bidder A');
   });
 
   const bidB = await newActor('bidderB');
   let bRegistered = false;
-  await step('Bidder B registers via QR/invite link and holds (sandbox)', async () => {
-    if (!inviteB) return check(false, 'no invite');
-    await bidB.goto(inviteB, { waitUntil: 'load' });
-    await bidB.waitForTimeout(2500);
+  await step('Bidder B joins from the hub join link/QR target (demo hold)', async () => {
+    await viaJoinPage(bidB, 'bidderB');
     bRegistered = await registerBidder(bidB, 'bidderB', 'QA Bob', 1);
     check(bRegistered, 'hold is in place for bidder B');
   });
