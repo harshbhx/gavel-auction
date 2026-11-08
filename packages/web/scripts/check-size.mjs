@@ -22,7 +22,9 @@ const LIMIT_BYTES = 180 * 1000;
 
 /** What must stay out of the initial route: a chunk file name pattern or a string only it holds. */
 const LAZY = [
-  { name: 'PayPal SDK', file: /paypal/i, text: 'web-sdk/v6/core' },
+  // The PayPal SDK itself is a script loaded from PayPal's origin on the approval step and is never
+  // bundled; what must not land in the initial route is a chunk that carries it.
+  { name: 'PayPal SDK', file: /paypal-?sdk|paypal\.js|paypal-/i, text: null },
   { name: 'QR encoder', file: /qrcode/i, text: 'url too long for the QR renderer' },
   { name: 'replay player', file: /replay/i, text: null },
   // Markers of the AG Grid bundle (audit grid): a chunk named after it, or its licence manager.

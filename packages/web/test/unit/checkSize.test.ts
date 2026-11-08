@@ -59,15 +59,17 @@ describe('check-size dynamic imports (initial route includes the App chunk)', ()
     expect(check(dir).problems).toEqual([]);
   });
 
-  it('fails when a lazy-only library is statically imported inside the App chunk', () => {
+  it('fails when a lazy-only chunk (the PayPal SDK) is statically imported inside the App chunk', () => {
     const dir = dist({
       'index-aaa.js': ENTRY,
-      'App-bbb.js': 'import{g}from"./grid-eee.js";export const a = g;',
+      'App-bbb.js': 'import{g}from"./paypal-sdk-eee.js";export const a = g;',
       'config-ccc.js': '',
-      'grid-eee.js': 'export const g = "web-sdk/v6/core";',
+      'paypal-sdk-eee.js': 'export const g = 1;',
     });
     const { problems } = check(dir);
-    expect(problems.some((p) => p.includes('PayPal SDK') && p.includes('grid-eee.js'))).toBe(true);
+    expect(problems.some((p) => p.includes('PayPal SDK') && p.includes('paypal-sdk-eee.js'))).toBe(
+      true,
+    );
   });
 
   it('fails when an AG Grid chunk or marker is in the App graph', () => {
