@@ -130,7 +130,7 @@ export const JUDGE_JOIN_DEFAULTS: JudgeJoinLimits = {
 export const JUDGE_ROOM_DEFAULTS = {
   maxLive: 15,
   ttlMs: 30 * 60_000,
-  perIpPerHour: 4,
+  perIpPerHour: 12,
   globalPerHour: 40,
   lotWindowMs: 10 * 60_000,
 } as const;
@@ -307,6 +307,10 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
   const withinWindow = (stamps: number[], now: number): number[] =>
     stamps.filter((t) => now - t < HOUR_MS);
 
+  /** Seconds until the oldest stamp leaves the hour window (at least 1). */
+  const untilFree = (stamps: number[], now: number): number =>
+    Math.max(1, Math.ceil(((stamps[0] ?? now) + HOUR_MS - now) / 1000));
+
   const refuse = (
     deps: HttpDeps,
     status: number,
@@ -426,10 +430,10 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
       global = withinWindow(global, now);
       if (mine.length >= opts.perIpPerHour) {
         perIp.set(tag, mine);
-        return refuse(deps, 429, 'judge_rate_limited', 'per_ip', tag, 600);
+        return refuse(deps, 429, 'judge_rate_limited', 'per_ip', tag, untilFree(mine, now));
       }
       if (global.length >= opts.globalPerHour) {
-        return refuse(deps, 429, 'judge_rate_limited', 'global', tag, 600);
+        return refuse(deps, 429, 'judge_rate_limited', 'global', tag, untilFree(global, now));
       }
       if (publicLive() >= opts.maxLive) {
         return refuse(deps, 429, 'judge_room_cap', 'cap', tag, 60);

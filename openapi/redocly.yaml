@@ -1,0 +1,12 @@
+# Lint rules for openapi/gavel.yaml, run by the `openapi` job in .github/workflows/ci.yml.
+extends:
+  - recommended
+rules:
+  # Examples are checked against their schemas, so a wrong example fails the build.
+  no-invalid-media-type-examples: error
+  no-invalid-schema-examples: error
+  no-unused-components: warn
+  # The spec lists a localhost server for development on purpose.
+  no-server-example.com: off
+  # Judge-room and health routes are public on purpose and say so with their own security.
+  security-defined: error
