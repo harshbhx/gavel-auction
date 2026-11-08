@@ -28,8 +28,8 @@ export function useReducedMotion(): boolean {
 export function useInView<T extends Element>(
   once = true,
   margin = '0px 0px -10% 0px',
-): [RefObject<T | null>, boolean] {
-  const ref = useRef<T | null>(null);
+): [RefObject<T>, boolean] {
+  const ref = useRef<T>(null);
   const [seen, setSeen] = useState(() => typeof IntersectionObserver === 'undefined');
   useEffect(() => {
     const el = ref.current;
