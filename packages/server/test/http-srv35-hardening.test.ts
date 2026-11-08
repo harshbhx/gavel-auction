@@ -489,3 +489,36 @@ describe('SRV-35 H: the public code lookup is throttled', () => {
     }
   });
 });
+
+describe('SRV-38: the pause control, end to end over HTTP', () => {
+  it('pauses, refuses a second pause and a reused id with a reason, then resumes', async () => {
+    const s = setup();
+    const room = await createRoom(s);
+    const msg = async (body: unknown): Promise<[number, string]> => {
+      const res = await control(s, room, body);
+      return [res.status, String((await bodyOf(res)).message ?? 'ok')];
+    };
+
+    expect(await msg({ controlId: 'p1', action: 'pause' })).toEqual([200, 'ok']);
+    // The same id again is the same command: answered ok, nothing new happens.
+    expect(await msg({ controlId: 'p1', action: 'pause' })).toEqual([200, 'ok']);
+    expect(await msg({ controlId: 'p2', action: 'pause' })).toEqual([
+      409,
+      'The lot is already paused',
+    ]);
+    // A resume that reuses the pause id is refused and says why, not a silent no-op.
+    expect(await msg({ controlId: 'p1', action: 'resume' })).toEqual([
+      409,
+      'That controlId was already used for a different action',
+    ]);
+    s.clock.set(START + 5_000);
+    expect(await msg({ controlId: 'r1', action: 'resume' })).toEqual([200, 'ok']);
+    expect(await msg({ controlId: 'r2', action: 'resume' })).toEqual([
+      409,
+      'The lot is not paused',
+    ]);
+    // A lot that was paused and resumed can be paused again under a fresh id.
+    s.clock.set(START + 10_000);
+    expect(await msg({ controlId: 'p3', action: 'pause' })).toEqual([200, 'ok']);
+  });
+});

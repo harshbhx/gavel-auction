@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Cents, EpochMs } from '@gavel/shared';
 import { App, ReceiptRoute } from '../../src/App';
 import { formatCountdown } from '../../src/util/time';
+import { formatTime } from '../../src/ui/format';
 import { t } from '../../src/copy/t';
 import { roomStore } from '../../src/store/roomStore';
 import {
@@ -209,8 +210,9 @@ describe('receipt route item and time', () => {
     loadReceipt('Brass lantern', 'SETTLED');
     const { container } = render(<ReceiptRoute roomId={ROOM} />);
     expect(screen.getByText('Brass lantern')).toBeTruthy();
-    const stamp = new Date(BASE_TIME + 123_000).toISOString();
-    expect(container.querySelector('time')?.textContent).toBe(stamp);
+    const time = container.querySelector('time');
+    expect(time?.textContent).toBe(formatTime(BASE_TIME + 123_000));
+    expect(time?.textContent).not.toMatch(/T\d\d:\d\d:\d\d\.\d{3}Z/);
     expect(container.textContent).not.toContain('2031');
     expect(container.textContent).not.toContain(ROOM);
   });

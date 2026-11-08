@@ -117,7 +117,7 @@ The uptime probe only runs when the repository variable `UPTIME_ENABLED` is `tru
 
 ## Custom domain
 
-The API is planned to move to `api.gavel.dualmindlab.tech`, pending DNS. It is not live; today the API is the `onrender.com` address above. Moving it means a repository variable change for the web build, a redeploy of the web app (the API origin is compiled in), and an update to `CORS_ORIGINS` and `PUBLIC_URL`.
+The API's own domain, `api.gavel.dualmindlab.tech`, is live and answers `/healthz` with 200; the `onrender.com` address above still works. What ties a client to one address is the API origin compiled into the web build, `CORS_ORIGINS` and `PUBLIC_URL`.
 
 ## What we do not use
 

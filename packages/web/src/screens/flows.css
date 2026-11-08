@@ -142,6 +142,18 @@ main[data-route='return'] {
   box-shadow: var(--shadow-1);
 }
 
+/* Forced colors drop background and shadow: the chosen ceiling needs a system-colour fill. */
+@media (forced-colors: active) {
+  .gv-chips label:has(input:checked) {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border-color: HighlightText;
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
 .gv-chips label:has(input:focus-visible) {
   outline: var(--border-width-strong) solid var(--color-focus);
   outline-offset: 3px;

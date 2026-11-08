@@ -2649,7 +2649,7 @@ export interface PublicBidAuditRecord {
     source: BidAuditRecord['source'];
 }
 
-// @public (undocumented)
+// @public
 export type PublicChainFailure = 'bad_hash' | 'bad_prev' | 'bad_seq' | 'bad_version' | 'truncated';
 
 // @public (undocumented)
