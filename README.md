@@ -60,7 +60,7 @@ The hosted API runs in sandbox mode on one Render service with a 1 GB persistent
 
 ## Sponsors: Render
 
-The GAVEL API and WebSocket host runs on [Render](https://render.com) as one Node web service (`starter` plan, always on) at [gavel-auction-z2nm.onrender.com](https://gavel-auction-z2nm.onrender.com/healthz), with a 1 GB persistent disk at `/var/data` that holds the hash-chained ledger, room log, settlement journals and hold records. [`render.yaml`](render.yaml) is the blueprint; deploys start from GitHub Actions through a Render deploy hook and are followed by `/version` and smoke checks. The web app is on Cloudflare Workers. We do not use Render Postgres, cron jobs or preview environments yet. Details, the reasons for one instance, and the next steps: [Hosting on Render](https://gavel-docs.creharsh.workers.dev/docs/run/hosting-on-render).
+The GAVEL API and WebSocket host runs on [Render](https://render.com) as one Node web service (`starter` plan, always on) at [gavel-auction-z2nm.onrender.com](https://gavel-auction-z2nm.onrender.com/healthz), with a 1 GB persistent disk at `/var/data` that holds the hash-chained ledger, room log, settlement journals and hold records. [`render.yaml`](render.yaml) is the blueprint; deploys start from GitHub Actions through a Render deploy hook and are followed by `/version` and smoke checks. The web app is on Cloudflare Workers at [gavel.dualmindlab.tech](https://gavel.dualmindlab.tech). The API's own domain, `api.gavel.dualmindlab.tech`, is planned, pending DNS. We do not use Render Postgres, cron jobs or preview environments yet. Details, the reasons for one instance, and the next steps: [Hosting on Render](https://docs.gavel.dualmindlab.tech/docs/run/hosting-on-render).
 
 <table>
   <tr>

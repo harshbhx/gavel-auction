@@ -37,7 +37,7 @@ flowchart LR
 | API, rooms, WebSocket | Render web service, Node, `starter` plan, always on | A room is one live process with sockets; Render runs it as a normal long-lived server. |
 | Room log, ledger, journals, holds, webhook events | Files on the Render disk at `/var/data` | Written by one process, replayed on restart (D-0018). |
 
-The service answers at `https://gavel-auction-z2nm.onrender.com`. The browser origin for the web app is a separate Worker; the API lists it in `CORS_ORIGINS` and checks both fetches and WebSocket upgrades against that list.
+The service answers at `https://gavel-auction-z2nm.onrender.com`. The web app is a separate Worker, served at `https://gavel.dualmindlab.tech` (the `workers.dev` address still works); the API lists it in `CORS_ORIGINS` and checks both fetches and WebSocket upgrades against that list.
 
 ## Why Render fits this host
 
@@ -117,7 +117,7 @@ The uptime probe only runs when the repository variable `UPTIME_ENABLED` is `tru
 
 ## Custom domain
 
-The API is planned to move to `gavel-api.dualmindlab.tech`. That is pending and not live; today the API is the `onrender.com` address above. Moving it means a repository variable change for the web build, a redeploy of the web app (the API origin is compiled in), and an update to `CORS_ORIGINS` and `PUBLIC_URL`.
+The API is planned to move to `api.gavel.dualmindlab.tech`, pending DNS. It is not live; today the API is the `onrender.com` address above. Moving it means a repository variable change for the web build, a redeploy of the web app (the API origin is compiled in), and an update to `CORS_ORIGINS` and `PUBLIC_URL`.
 
 ## What we do not use
 
