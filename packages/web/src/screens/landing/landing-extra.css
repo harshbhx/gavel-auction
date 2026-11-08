@@ -619,3 +619,40 @@
     grid-area: receipt;
   }
 }
+
+/* ---- Marketing pass (UIX-29) ---- */
+.gv-hero__for {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.gv-hero__ctas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+@media (min-width: 560px) {
+  .gv-hero__ctas {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+@media (min-width: 900px) {
+  .gv-landing .gv-aud {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1100px) {
+  .gv-landing .gv-faq {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-7);
+    align-items: start;
+  }
+}

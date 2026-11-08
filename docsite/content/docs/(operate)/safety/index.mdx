@@ -5,15 +5,15 @@ icon: ShieldCheck
 status: verified
 ---
 
-GAVEL talks to the PayPal **sandbox** only. No live PayPal call is made and no real money moves. Do not put real card numbers, real accounts or personal data into the demo.
+GAVEL talks to the PayPal **<Term id="sandbox">sandbox</Term>** only. No live PayPal call is made and no real money moves. Do not put real card numbers, real accounts or personal data into the demo.
 
 ## Rules in the code
 
 - `PAYPAL_ENV` accepts only `sandbox`. Production mode (`NODE_ENV=production`, or any public https host) refuses `PAYMENTS=fake`, weak secrets and the test hooks.
-- The scripted demo routes mount only with `DEMO_MODE=1` and `PAYMENTS=fake`, which config refuses under production-like settings.
+- The <Term id="scripted-demo">scripted demo</Term> routes mount only with `DEMO_MODE=1` and `PAYMENTS=fake`, which config refuses under production-like settings.
 - The crash kill hook (`GAVEL_CHECKPOINT_KILL`) is refused in production.
 - A CI check fails the build when source or configuration names the live PayPal host.
-- Sandbox accounts must be US accounts and gates send USD.
+- Sandbox accounts must be US accounts and <Term id="gate">gates</Term> send USD.
 
 ## Secrets
 
@@ -21,7 +21,7 @@ Secrets are never committed. Names only appear in the docs: `PAYPAL_CLIENT_ID`, 
 
 ## Kill switch
 
-The payments layer has a kill switch. While it is engaged no new capture is sent; a capture that is already at PayPal is still adopted, and the unknown-outcome clock stands still. Voids are not blocked.
+The payments layer has a kill switch. While it is engaged no new <Term id="capture">capture</Term> is sent; a capture that is already at PayPal is still adopted, and the unknown-outcome clock stands still. <Term id="void">Voids</Term> are not blocked.
 
 <Held title="Next items">
 

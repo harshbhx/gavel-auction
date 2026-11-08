@@ -52,7 +52,7 @@ If the window is shorter than the longest planned auction, auctions are capped t
 
 | Area | Today | Next | Owner and date |
 | --- | --- | --- | --- |
-| Hosted app | Web at [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev) and API at [gavel-auction-z2nm.onrender.com](https://gavel-auction-z2nm.onrender.com), both in sandbox mode. Judge rooms open a real sandbox room. | Record a walk of the five-minute path on the hosted app. | Date not set |
+| Hosted app | Web at [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev) and API at [api.gavel.dualmindlab.tech](https://api.gavel.dualmindlab.tech), both in sandbox mode. Judge rooms open a real sandbox room. | Record a walk of the five-minute path on the hosted app. | Date not set |
 | Storage | The Render service is set up with a 1 GB persistent disk and one instance (`render.yaml`). | Keep one instance: the file stores are owned by a single process. | Standing |
 | Replay | The player and bundle format exist; the scripted demo plays a recorded room in the browser. | Host recorded live auctions for replay. | Date not set |
 | Rejected bids | Kept in the room log. The hash-chained ledger holds accepted bids. See [engine and ledger](/docs/how-it-works/engine-and-ledger). | Decide whether rejected bids also go into the ledger. | Date not set |
@@ -63,7 +63,7 @@ If the window is shorter than the longest planned auction, auctions are capped t
 | --- | --- | --- | --- |
 | Security review | 16 of the 18 original items PASS (all eight P0), one is ACCEPTED, one (SEC-15, log scan) is open. SEC-19 and SEC-20, added for judge rooms and receipt links, are written up and awaiting review. | Independent review of SEC-19 and SEC-20, and the SEC-15 log scan. | Date not set |
 | Accessibility | Automated axe sweeps run in CI over the scripted bid, console and screen states. See [accessibility](/docs/proof/accessibility). | A manual pass with a screen reader and 200 percent zoom. | Date not set |
-| Open datasets | Five small datasets are prepared for Hugging Face. The speech, simulation and audit-trace sets use synthetic audio, a fake clock and scripted auctions by design. See [open data](/docs/judges/open-data). | Publish them. | Date not set |
+| Open datasets | Five small datasets are published on Hugging Face. The speech, simulation and audit-trace sets use synthetic audio, a fake clock and scripted auctions by design. See [open data](/docs/judges/open-data). | Keep them in step with new evidence (for example when G3 finishes). | Date not set |
 
 ## Why synthetic data
 

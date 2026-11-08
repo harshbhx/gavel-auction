@@ -3,6 +3,7 @@ import type { HoldView } from '../../ladder/ladderModel';
 import { RemainderNote } from '../../ladder/RemainderNote';
 import { HoldCard } from '../../ui';
 import { formatUsd } from '../../util/money';
+import { ReceiptTime } from './ReceiptTime';
 
 export interface WinnerProps {
   hold: HoldView;
@@ -55,7 +56,7 @@ export function Winner({ hold, itemName, priceCents, at }: WinnerProps) {
           <>
             <dt>{t('receipt.time')}</dt>
             <dd>
-              <time dateTime={new Date(at).toISOString()}>{new Date(at).toISOString()}</time>
+              <ReceiptTime at={at} />
             </dd>
           </>
         )}

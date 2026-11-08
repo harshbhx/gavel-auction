@@ -4,18 +4,18 @@ description: A short path through GAVEL for judges, with the status stated plain
 icon: Compass
 ---
 
-A short path through the project. Everything is PayPal sandbox only. A bid is a hold (an authorization); nothing is charged before capture at the hammer.
+A short path through the project. Everything is PayPal <Term id="sandbox">sandbox</Term> only. A bid is a hold (an <Term id="authorization">authorization</Term>); nothing is charged before <Term id="capture">capture</Term> at the <Term id="hammer">hammer</Term>.
 
 ## Status, in four lines
 
 - <GateBadge id="G0" /> <GateBadge id="G1" /> <GateBadge id="G2" /> <GateBadge id="G4" /> ran against the real PayPal sandbox. Committed run logs exist for G1, G2 and G4; G0 is an Actions run log only.
-- <GateBadge id="G3" />: the honor-period probe started on 7 Nov 2026 at 03:06 UTC, day 0 is recorded, and its final reading is about 12 Nov. No result is claimed before then.
+- <GateBadge id="G3" />: the <Term id="honor-period">honor-period</Term> probe started on 7 Nov 2026 at 03:06 UTC, day 0 is recorded, and its final reading is about 12 Nov. No result is claimed before then.
 - <GateBadge id="G5" />: speech accuracy is measured on synthetic, noise-free audio and live-room confirmation is the next step, so every voice bid waits for a confirmation.
-- Settlement of a whole auction and crash recovery are verified with the project's fake PayPal, plus one lot and one in-process crash on the real sandbox. The 30 day run is <Chip kind="hatched">SIMULATED</Chip>.
+- <Term id="settlement">Settlement</Term> of a whole auction and crash recovery are verified with the project's <Term id="fake-paypal">fake PayPal</Term>, plus one lot and one in-process crash on the real sandbox. The 30 day run is <Chip kind="hatched">SIMULATED</Chip>.
 
 <Held title="Hosted in sandbox mode">
 
-The web app is hosted at [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev) and the API at [gavel-auction-z2nm.onrender.com](https://gavel-auction-z2nm.onrender.com), in sandbox mode, with a persistent disk. The [demo guide](/docs/start/demo) lists what you can run today.
+The web app is hosted at [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev) and the API at [api.gavel.dualmindlab.tech](https://api.gavel.dualmindlab.tech), in sandbox mode, with a persistent disk. The [demo guide](/docs/start/demo) lists what you can run today.
 
 </Held>
 
@@ -29,7 +29,7 @@ The path below is the intended flow. A recorded click-through of it on the hoste
 | 2 | Judge | Press "Start a demo auction". | A demo room opens with a link for each role. |
 | 3 | Auctioneer | Open the console link. | The console shows the lot and its controls. |
 | 4 | Bidder | Open a bidder link in a second tab and place a bid. | The bid shows on the big screen. A bid is a hold; nothing is charged. |
-| 5 | Auditor | Open the audit trail link. | The ledger entries show, chained by hash. |
+| 5 | Auditor | Open the <Term id="audit-trail">audit trail</Term> link. | The <Term id="ledger">ledger</Term> entries show, chained by hash. |
 
 Steps 1 and 2 are covered by `packages/e2e/specs/judge-walkthrough.spec.ts` on the fake stack only. Steps 3 to 5 have no automated check.
 

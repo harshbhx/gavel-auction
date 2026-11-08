@@ -13,15 +13,15 @@ The question a skeptical reader should ask: if the server dies at the worst mome
 
 ## The rule behind all three cases
 
-On every run the saga **reads the truth at PayPal first**, then acts. A capture that is already there is adopted. Only when PayPal shows no capture is the saved intent sent again, with the same request id.
+On every run the <Term id="saga">saga</Term> **reads the <Term id="truth-read">truth</Term> at PayPal first**, then acts. A <Term id="capture">capture</Term> that is already there is adopted. Only when PayPal shows no capture is the saved intent sent again, with the same request id.
 
 | Crash point | What the journal holds | What the restart does |
 | --- | --- | --- |
 | A: after the intent, before the call reached PayPal | Intent saved, state CAPTURING | Truth shows no capture, so the same intent is sent again with the same request id |
 | B: after PayPal took the capture, before the answer was saved | The same intent, no outcome | Truth shows the capture (invoice id and amount match), so it is adopted. No second call |
-| C: after `capture_ok` was saved | State CAPTURED, winner recorded | Goes on to void the other holds. No capture call |
+| C: after `capture_ok` was saved | State CAPTURED, winner recorded | Goes on to <Term id="void">void</Term> the other <Term id="hold">holds</Term>. No capture call |
 
-If the truth cannot be read, or PayPal does not know the hold, that is **not an answer**: the intent stays, no other candidate is tried, the unknown clock runs, and after ten minutes the settlement goes to FAILED_NEEDS_REVIEW for a person.
+If the truth cannot be read, or PayPal does not know the hold, that is **not an answer**: the intent stays, no other candidate is tried, the unknown clock runs, and after ten minutes the <Term id="settlement">settlement</Term> goes to FAILED_NEEDS_REVIEW for a person.
 
 ## The restart, minute by minute
 
@@ -48,7 +48,7 @@ A settlement run takes a lease so that two runners never work on one auction. A 
 
 ### The journal and its audit trail are caught up
 
-The journal is read from disk. A transition is saved first and its audit row is written after, so a crash between the two could lose the row. The journal history is the source: the run starts by appending the rows above `auditedSeq`, before any other effect.
+The <Term id="journal">journal</Term> is read from disk. A transition is saved first and its audit row is written after, so a crash between the two could lose the row. The journal history is the source: the run starts by appending the rows above `auditedSeq`, before any other effect.
 
 </Step>
 <Step>
@@ -62,14 +62,14 @@ PayPal is asked about the hold before anything is sent. Depending on where the c
 
 ### The settlement finishes and the sweeps run
 
-The other holds are voided, three at a time, and the settlement ends SETTLED. Every resume pass also applies webhook events that were stored but have no result, and sweeps abandoned holds and orphan voids.
+The other holds are voided, three at a time, and the settlement ends SETTLED. Every resume pass also applies <Term id="webhook">webhook</Term> events that were stored but have no result, and sweeps abandoned holds and orphan voids.
 
 </Step>
 </Steps>
 
 ## The server side
 
-The host calls `resume()` on start and then on a timer (every 60 seconds by default). It loads every known room, continues unfinished settlements, applies stored webhook events and retries orphan voids. The audit trail rows of a transition are recovered from the journal history, so a crash between a save and its audit row loses nothing.
+The host calls `resume()` on start and then on a timer (every 60 seconds by default). It loads every known room, continues unfinished settlements, applies stored webhook events and retries orphan voids. The <Term id="audit-trail">audit trail</Term> rows of a transition are recovered from the journal history, so a crash between a save and its audit row loses nothing.
 
 ## What has been tested
 
@@ -81,7 +81,7 @@ The simulation scenario S6 kills the process at 10 boundary and idempotency-tabl
 
 <NotVerified title="Not on a real host">
 
-One in-process crash at the same place (spec R10) passed on the real sandbox in the nightly runs of 6 and 7 Nov 2026 (runs 42200708552 and 42317068784; redacted reports committed under `docs/evidence/nightly`). Killing a real server process on a deployed host needs a staging server that is allowed to start with the kill hook; that has not been run.
+One in-process crash at the same place (spec R10) passed on the real <Term id="sandbox">sandbox</Term> in the nightly runs of 6 and 7 Nov 2026 (runs 42200708552 and 42317068784; redacted reports committed under `docs/evidence/nightly`). Killing a real server process on a deployed host needs a staging server that is allowed to start with the kill hook; that has not been run.
 
 </NotVerified>
 

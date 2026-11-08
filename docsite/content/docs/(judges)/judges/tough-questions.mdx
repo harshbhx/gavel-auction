@@ -13,7 +13,7 @@ Gate G5 is PARTIAL: voice bidding is measured on synthetic audio, and live-room 
 
 The first run, on Deepgram nova-2 and Groq without a prompt, scored a wrong-accept rate of 0.125 and 0.083 on the eSpeak set and 0.083 and 0.167 on the second set. Nine of the eleven wrong accepts were a label defect in our own evaluation; the parser and provider options fixed the rest. Those fixes were chosen on the same clips, the clips are noise-free, and no real-room or noisy-room run exists yet, so the numbers are a strong start and not a pass of the gate question.
 
-The decision recorded in `docs/GATES.md` is that spoken bids always go through the confirm prompt. The parser never decides a winner and never moves money; typed entry and QR bids are the other input paths, so the auction works if speech fails. At the text level (transcripts through the parser, no audio) wrong accepts are 0.000 on 169 cases, which measures the parser only.
+The decision recorded in `docs/GATES.md` is that spoken bids always go through the <Term id="confirm-prompt">confirm prompt</Term>. The parser never decides a winner and never moves money; typed entry and QR bids are the other input paths, so the auction works if speech fails. At the text level (transcripts through the parser, no audio) wrong accepts are 0.000 on 169 cases, which measures the parser only.
 
 See [voice and the confirm gate](/docs/how-it-works/voice-and-confirm).
 
@@ -24,7 +24,7 @@ G3 is a real timed probe on the sandbox. Day 0 was 7 Nov 2026 03:06 UTC and the 
 
 An early reading on an older G2 wallet authorization, taken on 8 Nov 17:36 UTC at age 3.24 days, accepted a partial capture of 1.00 (HTTP 201) and answered the reauthorize call with 422 `UNPROCESSABLE_ENTITY` and the issue `PAYER_CANNOT_PAY`. That authorization already carried a partial capture, so it is an early data point; the day 3.5, 4 and 5 authorizations give the clean answer.
 
-PayPal's documentation names an honor period (3 days) and a validity window (29 days, with one reauthorization), and GAVEL does not assume either until the probe reports. The plan is to capture within the verified window and reauthorize before the hammer. That is a plan, not a result. Meanwhile holds older than two hours at settlement are flagged stale, and a stale hold is still captured.
+PayPal's documentation names an <Term id="honor-period">honor period</Term> (3 days) and a validity window (29 days, with one <Term id="reauthorization">reauthorization</Term>), and GAVEL does not assume either until the probe reports. The plan is to capture within the verified window and reauthorize before the hammer. That is a plan, not a result. Meanwhile holds older than two hours at settlement are flagged stale, and a stale hold is still captured.
 
 The 30-day run is a simulation on a fake clock against a model of PayPal. It shows our code is consistent with that model.
 
@@ -33,9 +33,9 @@ See [honor period](/docs/how-it-works/honor-period) and [gate G3](/docs/proof/ga
 </Accordion>
 <Accordion title="Is any of this real PayPal, or is it all the fake?">
 
-Both exist and they are labelled. Real on the PayPal sandbox: G0 (Actions run log only), G1 (authorize 500, capture 350 with final capture, two PayPal-account buyers, one funded by a card), G2 (wallet and guest card authorize), G4 (six real webhooks verified) and one lot of three holds plus one in-process crash in the nightly specs R7, R8 and R10.
+Both exist and they are labelled. Real on the PayPal <Term id="sandbox">sandbox</Term>: G0 (Actions run log only), G1 (authorize 500, capture 350 with final capture, two PayPal-account buyers, one funded by a card), G2 (wallet and guest card authorize), G4 (six real webhooks verified) and one lot of three holds plus one in-process crash in the nightly specs R7, R8 and R10.
 
-Fake: whole-auction settlement with many holds, crash and resume, and rejection of a tampered webhook. The fake PayPal is a test double in `packages/payments/src/fake/`; it says nothing about the real PayPal.
+Fake: whole-auction settlement with many holds, crash and resume, and rejection of a tampered webhook. The <Term id="fake-paypal">fake PayPal</Term> is a test double in `packages/payments/src/fake/`; it says nothing about the real PayPal.
 
 Never real: money. Every PayPal call is against the sandbox.
 
@@ -53,7 +53,7 @@ GAVEL runs in sandbox mode today, and the next steps are listed on [Limits and n
 
 - The hosted app (https://gavel-web.creharsh.workers.dev, sandbox mode) is live with key-less judge rooms; a recorded walk of the hosted flow is the next step. The fake-PayPal run is the local path.
 - The file stores run on one instance with a persistent disk.
-- Latency: hammer to settled has p95 5591.30 ms, inside the 6 s target, and hammer to captured has p95 3010.04 ms, tuning toward the 2.5 s target (n=20, 6 holds, sandbox). The 5 Nov per-call numbers (n=10) have no committed raw log; the settlement run has a redacted copy.
+- Latency: hammer to settled has <Term id="p95">p95</Term> 5591.30 ms, inside the 6 s target, and hammer to captured has p95 3010.04 ms, tuning toward the 2.5 s target (n=20, 6 holds, sandbox). The 5 Nov per-call numbers (n=10) have no committed raw log; the settlement run has a redacted copy.
 - Whole-auction settlement through a deployed server and a real process kill on the sandbox are the next sandbox runs.
 - Rejected bids are kept in the room log, and the ledger holds accepted bids.
 - An audio sender from the web console to the `/audio` socket is next.
@@ -69,7 +69,7 @@ See [security review](/docs/safety/security-review) and the [threat model](/docs
 </Accordion>
 <Accordion title="How do I know the audit trail was not edited?">
 
-Accepted bids go into a hash-chained ledger. A public export can be checked with `verifyPublicExport` or the `verify-ledger` command in `packages/engine`; an edited entry fails at its index and a cut chain fails with `truncated` when the expected head is passed. The limit: rejected bids are not in the ledger, so it cannot prove them.
+Accepted bids go into a <Term id="hash-chain">hash-chained</Term> <Term id="ledger">ledger</Term>. A public export can be checked with `verifyPublicExport` or the `verify-ledger` command in `packages/engine`; an edited entry fails at its index and a cut chain fails with `truncated` when the expected head is passed. The limit: rejected bids are not in the ledger, so it cannot prove them.
 
 </Accordion>
 <Accordion title="How solid are the latency numbers?">
