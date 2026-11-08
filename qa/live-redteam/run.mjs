@@ -23,6 +23,7 @@ const results = [];
 const events = []; // console errors, page errors, failed requests, http >= 400, ws events
 const links = []; // every anchor seen: { from, href, text, target }
 const apiLog = []; // direct API probes
+const lastSig = {};
 const P = {}; // label -> page
 const C = {}; // label -> context
 let N = 0;
@@ -88,12 +89,42 @@ async function step(name, fn) {
   }
   rec.ms = Date.now() - t0;
   for (const [label, page] of Object.entries(P)) {
+    let sig = '';
+    try {
+      sig = page.url() + '|' + (await page.locator('body').innerText({ timeout: 3000 })).length;
+    } catch {}
+    if (sig === lastSig[label]) continue;
+    lastSig[label] = sig;
     const f = await shot(page, `${PROFILE}-${id}-${slug(name)}-${label}`);
     if (f) rec.shots.push(f);
   }
   results.push(rec);
   log(`  => ${rec.status} (${rec.ms} ms)`);
   cur = null;
+}
+
+let reprobeApi = null;
+async function reprobe(url, method, label, stepId) {
+  if (method !== 'GET' || !reprobeApi) return;
+  try {
+    const res = await reprobeApi.get(url, { headers: { origin: WEB }, timeout: 20000 });
+    const h = res.headers();
+    events.push({
+      kind: 'reprobe',
+      label,
+      step: stepId,
+      url: clip(url, 160),
+      text: `status ${res.status()} acao=${h['access-control-allow-origin']} retry-after=${h['retry-after']} ratelimit=${h['x-ratelimit-remaining'] ?? h['ratelimit-remaining']} server=${h.server} via=${h.via} body=${clip(await res.text(), 100)}`,
+    });
+  } catch (e) {
+    events.push({
+      kind: 'reprobe',
+      label,
+      step: stepId,
+      url: clip(url, 160),
+      text: `error ${clip(e.message, 100)}`,
+    });
+  }
 }
 
 function hook(page, label) {
@@ -120,6 +151,8 @@ function hook(page, label) {
   page.on('requestfailed', (r) => {
     const f = r.failure()?.errorText || '';
     events.push({ kind: 'requestfailed', label, step: cur?.id, url: clip(r.url(), 160), text: f });
+    if (r.url().startsWith(API) && f !== 'net::ERR_ABORTED')
+      reprobe(r.url(), r.method(), label, cur?.id);
   });
   page.on('response', (r) => {
     if (r.status() >= 400) {
@@ -395,6 +428,7 @@ async function main() {
 
   // ---- API probes before anything else
   const api = await pwRequest.newContext({ baseURL: API, extraHTTPHeaders: { origin: WEB } });
+  reprobeApi = api;
   async function probe(label, method, url, body, expectStatuses, headers) {
     const t = Date.now();
     let status = 'ERR';
@@ -511,7 +545,7 @@ async function main() {
     for (const p of pages) {
       let status = 'ERR';
       try {
-        const res = await host.goto(WEB + p, { waitUntil: 'networkidle', timeout: 45000 });
+        const res = await host.goto(WEB + p, { waitUntil: 'load', timeout: 45000 });
         status = res ? res.status() : 'none';
       } catch (e) {
         status = `ERR ${clip(e.message, 60)}`;
@@ -545,15 +579,27 @@ async function main() {
   });
 
   await step('Landing: enter a room code field', async () => {
-    await host.goto(WEB + '/', { waitUntil: 'networkidle' });
-    const got = await clickText(host, /join with a code|room code|have a code/i);
-    note(`landing code control clicked: ${got}`);
-    check(got !== null, 'a way to enter a join code is present on the landing');
+    await host.goto(WEB + '/', { waitUntil: 'load' });
+    const boxes = await host.locator('input').count();
+    note(
+      `landing inputs: ${boxes}; actions: ${(await listActions(host)).slice(0, 12).join(' | ')}`,
+    );
+    check(boxes >= 1, 'a way to enter a join code is present on the landing');
+    await host.locator('input').first().click();
+    await host.keyboard.type('ABC123', { delay: 80 });
+    const go = host.getByRole('button', { name: /join with a code/i }).first();
+    note(
+      `join-with-a-code enabled after typing 6 chars: ${await go.isEnabled().catch(() => 'n/a')}`,
+    );
+    check(
+      await go.isEnabled().catch(() => false),
+      'join with a code button enables once six characters are typed',
+    );
   });
 
   // ---- /try -> start a room
   await step('/try: start a demo room and land on the hub', async () => {
-    await host.goto(WEB + '/try', { waitUntil: 'networkidle' });
+    await host.goto(WEB + '/try', { waitUntil: 'load' });
     note(`/try banner/probe text: ${clip(await visibleText(host), 260)}`);
     const clicked = await clickText(host, /start (a |your )?(demo|live|sandbox|room)/i, {
       roles: ['button'],
@@ -639,10 +685,23 @@ async function main() {
   // helper: get a fresh single-use invite link via the hub copy button
   async function freshInvite() {
     await clickText(host, /new bidder invite/i, { roles: ['button'] }).catch(() => {});
-    await host.waitForTimeout(2500);
+    await host.waitForTimeout(3000);
+    const href = await host
+      .getByRole('link', { name: /open bidder/i })
+      .first()
+      .getAttribute('href')
+      .catch(() => '');
     await clickText(host, /copy bidder link/i, { roles: ['button'] });
     await host.waitForTimeout(400);
-    return host.evaluate(() => navigator.clipboard.readText()).catch(() => '');
+    const clipTxt = await host.evaluate(() => navigator.clipboard.readText()).catch(() => '');
+    note(
+      `copy-bidder-link/QR target length ${clipTxt.length} bytes; is invite link: ${/\/register#/.test(clipTxt)}; Open-bidder href length ${(href || '').length}`,
+    );
+    check(
+      /\/register#/.test(clipTxt),
+      'Copy bidder link / QR carries the invite (register#token), not the bare join link',
+    );
+    return href ? new URL(href, WEB).href : '';
   }
 
   // ---- bidder A: by code (the way a judge types it)
@@ -650,15 +709,11 @@ async function main() {
   let aRegistered = false;
   await step('Bidder A joins by room CODE (landing -> join -> Join as bidder)', async () => {
     check(Boolean(code), 'have a code');
-    await bidA.goto(WEB + '/', { waitUntil: 'networkidle' });
-    await clickText(bidA, /join with a code|have a code|room code/i);
-    const input = bidA.getByLabel(/room code|code/i).first();
-    if (await input.isVisible().catch(() => false)) {
-      await input.fill(code || '');
-      await clickText(bidA, /go to the room|join|enter/i, { roles: ['button'] });
-    } else {
-      note(`code field not visible; actions ${(await listActions(bidA)).join(' | ')}`);
-    }
+    await bidA.goto(WEB + '/', { waitUntil: 'load' });
+    await bidA.locator('input').first().click();
+    await bidA.keyboard.type(code || '', { delay: 80 });
+    await bidA.waitForTimeout(500);
+    await clickText(bidA, /join with a code/i, { roles: ['button'], enabledOnly: true });
     await bidA.waitForTimeout(3000);
     note(`url after typing code: ${bidA.url()}`);
     note(`join page: ${await visibleText(bidA)}`);
@@ -687,7 +742,7 @@ async function main() {
   const watcher = await newActor('watcher');
   await step('Watcher: hub join link, Just watch, then join as bidder', async () => {
     const joinUrl = `${WEB}/join/${encodeURIComponent(roomId)}${code ? `?c=${code}` : ''}`;
-    await watcher.goto(joinUrl, { waitUntil: 'networkidle' });
+    await watcher.goto(joinUrl, { waitUntil: 'load' });
     note(`join page for room link: ${await visibleText(watcher)}`);
     const w = await clickText(watcher, /just watch|watch/i);
     check(w !== null, '"Just watch" present');
@@ -710,7 +765,7 @@ async function main() {
       );
     }
     // the exact path Dhairya reports: back to the join page, Join as bidder
-    await watcher.goto(joinUrl, { waitUntil: 'networkidle' });
+    await watcher.goto(joinUrl, { waitUntil: 'load' });
     await watcher.waitForTimeout(1500);
     note(`revisit join page url: ${watcher.url()}`);
     const again = await clickText(watcher, /join as bidder/i);
@@ -730,7 +785,7 @@ async function main() {
 
   await step('Direct nav to /r/<room>/register with no invite', async () => {
     await watcher.goto(`${WEB}/r/${encodeURIComponent(roomId)}/register`, {
-      waitUntil: 'networkidle',
+      waitUntil: 'load',
     });
     await watcher.waitForTimeout(1500);
     const body = await visibleText(watcher);
@@ -752,7 +807,7 @@ async function main() {
 
   await step('Bidder A registers (invite link) and holds (sandbox)', async () => {
     if (!inviteA) return check(false, 'no invite');
-    await bidA.goto(inviteA, { waitUntil: 'networkidle' });
+    await bidA.goto(inviteA, { waitUntil: 'load' });
     await bidA.waitForTimeout(2500);
     aRegistered = await registerBidder(bidA, 'bidderA', 'QA Alice', 0);
     check(aRegistered, 'hold is in place for bidder A');
@@ -762,7 +817,7 @@ async function main() {
   let bRegistered = false;
   await step('Bidder B registers via QR/invite link and holds (sandbox)', async () => {
     if (!inviteB) return check(false, 'no invite');
-    await bidB.goto(inviteB, { waitUntil: 'networkidle' });
+    await bidB.goto(inviteB, { waitUntil: 'load' });
     await bidB.waitForTimeout(2500);
     bRegistered = await registerBidder(bidB, 'bidderB', 'QA Bob', 1);
     check(bRegistered, 'hold is in place for bidder B');
@@ -772,7 +827,7 @@ async function main() {
   const screenPage = await newActor('screen');
   await step('Big screen opens and shows the lobby and join code', async () => {
     if (!screenUrl) return check(false, 'no screen link');
-    await screenPage.goto(screenUrl, { waitUntil: 'networkidle' });
+    await screenPage.goto(screenUrl, { waitUntil: 'load' });
     await screenPage.waitForTimeout(3000);
     const body = await visibleText(screenPage);
     note(`screen: ${body}`);
@@ -784,7 +839,7 @@ async function main() {
   const cons = await newActor('console');
   await step('Console: opens, open lot', async () => {
     if (!consoleUrl) return check(false, 'no console link');
-    await cons.goto(consoleUrl, { waitUntil: 'networkidle' });
+    await cons.goto(consoleUrl, { waitUntil: 'load' });
     await cons.waitForTimeout(3000);
     note(`console actions: ${(await listActions(cons)).join(' | ')}`);
     await harvest(cons, 'console');
@@ -804,7 +859,7 @@ async function main() {
         await page.waitForTimeout(2500);
       }
       if (!/\/bid/.test(page.url()))
-        await page.goto(`${WEB}/r/${encodeURIComponent(roomId)}/bid`, { waitUntil: 'networkidle' });
+        await page.goto(`${WEB}/r/${encodeURIComponent(roomId)}/bid`, { waitUntil: 'load' });
       await page.waitForTimeout(2500);
       note(`${label} bid screen: ${await visibleText(page)}`);
       note(`${label} actions: ${(await listActions(page)).join(' | ')}`);
@@ -892,7 +947,7 @@ async function main() {
       ['bidderB', bidB],
     ]) {
       await page.goto(`${WEB}/r/${encodeURIComponent(roomId)}/receipt`, {
-        waitUntil: 'networkidle',
+        waitUntil: 'load',
       });
       await page.waitForTimeout(6000);
       const body = await visibleText(page);
@@ -915,7 +970,7 @@ async function main() {
           const sp = await fresh.newPage();
           hook(sp, 'sharelink');
           P.sharelink = sp;
-          const res = await sp.goto(txt, { waitUntil: 'networkidle' }).catch(() => null);
+          const res = await sp.goto(txt, { waitUntil: 'load' }).catch(() => null);
           await sp.waitForTimeout(3000);
           note(`share link opens: status ${res?.status()} :: ${await visibleText(sp)}`);
           check(
@@ -932,7 +987,7 @@ async function main() {
 
   await step('/demo: start a second room, land on hub', async () => {
     const demo = await newActor('demo');
-    await demo.goto(WEB + '/demo', { waitUntil: 'networkidle' });
+    await demo.goto(WEB + '/demo', { waitUntil: 'load' });
     const c = await clickText(demo, /start a demo auction|start/i, {
       roles: ['button'],
       enabledOnly: true,
@@ -950,7 +1005,7 @@ async function main() {
   // ---- scripted demo
   const sc = await newActor('scripted');
   await step('/demo/scripted: pace and readability', async () => {
-    await sc.goto(WEB + '/demo/scripted', { waitUntil: 'networkidle' });
+    await sc.goto(WEB + '/demo/scripted', { waitUntil: 'load' });
     await sc.evaluate(() => {
       window.__mut = { n: 0, texts: [], t0: performance.now() };
       new MutationObserver((ms) => {
@@ -997,9 +1052,9 @@ async function main() {
     );
     await harvest(sc, 'scripted');
     note(`scripted actions at end: ${(await listActions(sc)).join(' | ')}`);
-    const join = await sc.goto(WEB + '/demo/scripted/join', { waitUntil: 'networkidle' });
+    const join = await sc.goto(WEB + '/demo/scripted/join', { waitUntil: 'load' });
     note(`scripted join: ${join?.status()} :: ${await visibleText(sc)}`);
-    const bid = await sc.goto(WEB + '/demo/scripted/bid', { waitUntil: 'networkidle' });
+    const bid = await sc.goto(WEB + '/demo/scripted/bid', { waitUntil: 'load' });
     note(`scripted bid: ${bid?.status()} :: ${await visibleText(sc)}`);
   });
 
@@ -1070,7 +1125,7 @@ async function main() {
         if (/^\/r\/[^/]+\/(console|screen|audit)$/.test(u.pathname) && u.hash) continue;
         let status = 'ERR';
         try {
-          const res = await probePage.goto(l.href, { waitUntil: 'networkidle', timeout: 30000 });
+          const res = await probePage.goto(l.href, { waitUntil: 'load', timeout: 30000 });
           status = res?.status();
         } catch (e) {
           status = `ERR ${clip(e.message, 40)}`;
