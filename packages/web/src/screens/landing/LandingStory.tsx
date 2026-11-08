@@ -85,7 +85,6 @@ export function ShotsSection() {
               width={s.width}
               height={s.height}
               alt={s.alt}
-              loading="lazy"
               decoding="async"
             />
             <figcaption className="gv-shot__cap">{s.cap}</figcaption>
