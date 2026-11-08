@@ -6,7 +6,10 @@ import { parseUsdToCents } from '../../util/money';
 export const MAX_GOAL_CENTS = 1_000_000_000_00;
 
 export type GoalInput =
-  { kind: 'empty' } | { kind: 'ok'; cents: number } | { kind: 'invalid' } | { kind: 'tooBig' };
+  | { kind: 'empty' }
+  | { kind: 'ok'; cents: number }
+  | { kind: 'invalid' }
+  | { kind: 'tooBig' };
 
 /** Reads the setup field: empty means no thermometer, anything else must be a positive USD amount. */
 export function parseGoalInput(input: string): GoalInput {
