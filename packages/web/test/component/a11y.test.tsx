@@ -174,7 +174,7 @@ describe('axe on the landing and join screens', () => {
     expect(await seriousViolations(container)).toEqual([]);
   });
 
-  const joinStates: readonly JoinState[] = ['loading', 'open', 'ended', 'notFound'];
+  const joinStates: readonly JoinState[] = ['loading', 'open', 'ended', 'notFound', 'full'];
 
   it.each(joinStates)('join in the %s state', async (state) => {
     const { container } = render(

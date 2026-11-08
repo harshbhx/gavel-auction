@@ -305,6 +305,21 @@ export const en = {
   'join.watch': 'Just watch',
   'join.ended': 'This auction has ended.',
   'join.notFound': 'We could not find this auction.',
+  'join.steps': 'Three steps to bid',
+  'join.step1': 'Find the room',
+  'join.step2': 'Register with a sandbox login',
+  'join.step3': 'Set a ceiling and bid',
+  'join.sandboxNote':
+    'Next you sign in to the PayPal sandbox with a buyer account. The hold is placed on a test account, held and not charged.',
+  'join.notFoundHelp':
+    'The code may have a typo, or the room was closed. Codes are six characters. Check the big screen and try again.',
+  'join.tryAgain': 'Enter another code',
+  'join.startDemo': 'Start a demo room instead',
+  'join.endedHelp': 'Bidding is over. You can still watch the result and open the receipt.',
+  'join.full': 'This room is full.',
+  'join.fullHelp':
+    'The room has reached its bidder limit. You can watch the auction, or ask the host to start another room.',
+  'join.loading': 'Looking for the room',
   'bid.waitingLot': 'Waiting for the first lot',
   'bid.price': 'Current price',
   'bid.leader': 'Leading: paddle {n}',

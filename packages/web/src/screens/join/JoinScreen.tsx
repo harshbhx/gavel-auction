@@ -7,7 +7,7 @@ import { getBidderSession } from '../../store/session';
 
 const QrCode = lazy(() => import('./QrCode'));
 
-export type JoinState = 'loading' | 'open' | 'ended' | 'notFound';
+export type JoinState = 'loading' | 'open' | 'ended' | 'notFound' | 'full';
 
 export interface JoinScreenProps {
   roomId: string;
@@ -28,6 +28,24 @@ export interface JoinScreenProps {
 export function joinUrl(origin: string, roomId: string, shortCode: string | null): string {
   const base = `${origin}/join/${encodeURIComponent(roomId)}`;
   return shortCode === null ? base : `${base}?c=${encodeURIComponent(shortCode)}`;
+}
+
+/** The three steps a bidder takes, with the current one marked for assistive tech. */
+function Steps({ current }: { current: 1 | 2 | 3 }) {
+  const keys = ['join.step1', 'join.step2', 'join.step3'] as const;
+  return (
+    <ol className="gv-join__steps" aria-label={t('join.steps')}>
+      {keys.map((key, i) => (
+        <li
+          key={key}
+          className="gv-join__step"
+          {...(i + 1 === current ? { 'aria-current': 'step' as const } : {})}
+        >
+          <span>{t(key)}</span>
+        </li>
+      ))}
+    </ol>
+  );
 }
 
 /** Resolves a room and routes to register or bid (R-WEB-050, R-WEB-052). */
@@ -52,6 +70,18 @@ export function JoinScreen({
       <main className="gv-flow" data-state="not-found">
         <p className="ui-kicker">{t('app.name')}</p>
         <h1 tabIndex={-1}>{t('join.notFound')}</h1>
+        <p role="alert" className="gv-join__help">
+          {t('join.notFoundHelp')}
+        </p>
+        <div className="gv-join__actions">
+          <p className="gv-join__note">{t('join.sandboxNote')}</p>
+          <Button size="bid" onClick={() => onNavigate('/')}>
+            {t('join.tryAgain')}
+          </Button>
+          <Button variant="outline" onClick={() => onNavigate('/try')}>
+            {t('join.startDemo')}
+          </Button>
+        </div>
       </main>
     );
   }
@@ -59,6 +89,9 @@ export function JoinScreen({
     return (
       <main className="gv-flow" aria-busy="true">
         <h1 tabIndex={-1}>{t('app.name')}</h1>
+        <p role="status" className="gv-join__help">
+          {t('join.loading')}
+        </p>
       </main>
     );
   }
@@ -67,8 +100,30 @@ export function JoinScreen({
       <main className="gv-flow" data-state="ended">
         <p className="ui-kicker">{t('app.name')}</p>
         <h1 tabIndex={-1}>{t('join.title', { room: roomName })}</h1>
-        <p>{t('join.ended')}</p>
-        <Button onClick={() => onNavigate(bidPath)}>{t('join.watch')}</Button>
+        <p role="alert">{t('join.ended')}</p>
+        <p className="gv-join__help">{t('join.endedHelp')}</p>
+        <div className="gv-join__actions">
+          <Button onClick={() => onNavigate(bidPath)}>{t('join.watch')}</Button>
+          <Button variant="outline" onClick={() => onNavigate('/try')}>
+            {t('join.startDemo')}
+          </Button>
+        </div>
+      </main>
+    );
+  }
+  if (state === 'full') {
+    return (
+      <main className="gv-flow" data-state="full">
+        <p className="ui-kicker">{t('app.name')}</p>
+        <h1 tabIndex={-1}>{t('join.title', { room: roomName })}</h1>
+        <p role="alert">{t('join.full')}</p>
+        <p className="gv-join__help">{t('join.fullHelp')}</p>
+        <div className="gv-join__actions">
+          <Button onClick={() => onNavigate(bidPath)}>{t('join.watch')}</Button>
+          <Button variant="outline" onClick={() => onNavigate('/')}>
+            {t('join.tryAgain')}
+          </Button>
+        </div>
       </main>
     );
   }
@@ -78,12 +133,14 @@ export function JoinScreen({
     <main className="gv-flow" data-state="open">
       <p className="ui-kicker">{t('app.name')}</p>
       <h1 tabIndex={-1}>{t('join.title', { room: roomName })}</h1>
+      <Steps current={1} />
       <div className="gv-flow__qr">
         <Suspense fallback={null}>
           <QrCode url={url} size={192} />
         </Suspense>
       </div>
       {shortCode !== null && <p className="gv-flow__code">{t('join.code', { code: shortCode })}</p>}
+      <p className="gv-join__note">{t('join.sandboxNote')}</p>
       <Button size="bid" onClick={() => onNavigate(`/r/${encodeURIComponent(roomId)}/register`)}>
         {t('join.asBidder')}
       </Button>
