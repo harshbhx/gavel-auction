@@ -5,11 +5,12 @@ import { FakePaymentsLabel } from '../../design/FakePaymentsLabel';
 import { LadderCompact } from '../../ladder/LadderCompact';
 import type { SettlementView } from '../../ladder/ladderModel';
 import { useServerNow } from '../../net/clock';
-import { selectConfirmQueue, selectPrice, selectStream } from '../../store/selectors';
+import { selectConfirmQueue, selectPrice, selectStream, selectors } from '../../store/selectors';
 import { roomStore, useRoom, type RoomStore } from '../../store/roomStore';
 import { formatUsd } from '../../util/money';
 import { BidStream, rowsFromAudit } from './BidStream';
 import { ConfirmQueue } from './ConfirmQueue';
+import { ConsoleGuide } from './ConsoleGuide';
 import { PriceHeader } from './PriceHeader';
 import './console.css';
 
@@ -73,11 +74,15 @@ export function ConsoleScreen({
     store,
   );
   const audit = useRoom((s) => s.audit, store);
+  const status = useRoom((s) => s.snapshot?.status ?? 'SCHEDULED', store);
+  const stopped = useRoom(selectors.stopped, store);
+  const auctionId = useRoom((s) => s.snapshot?.auctionId ?? null, store);
   const roster = useRoom((s) => s.snapshot?.roster, store);
   const now = useServerNow(store);
 
   const left = (
     <section className="gv-console-panel gv-console-panel--lot" aria-label={t('bid.price')}>
+      <ConsoleGuide status={status} stopped={stopped} roomId={auctionId} />
       <PriceHeader
         priceCents={price?.currentCents ?? null}
         reserveCents={reserve}
