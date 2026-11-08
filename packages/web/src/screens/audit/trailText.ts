@@ -1,3 +1,4 @@
+import { en } from '../../copy/en';
 import { t } from '../../copy/t';
 import { formatUsd } from '../../util/money';
 import type { TrailEntry } from './trail';
@@ -65,7 +66,7 @@ export function describeEntry(e: TrailEntry, names: Names): string {
       return amount === null ? t('audit.tl.hammerNone') : t('audit.tl.hammer', { who, amount });
     case 'settlement':
       return t('audit.tl.settleLine', {
-        state: t(stateLabelKey(e.state ?? 'HELD')),
+        state: en[stateLabelKey(e.state ?? 'HELD')],
         n: e.count ?? 0,
       });
     case 'receipt':
