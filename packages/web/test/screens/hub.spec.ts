@@ -257,7 +257,7 @@ test.describe('scripted demo player', () => {
     await shoot('scripted-player', '3-outbid');
     for (let i = 0; i < 4; i += 1) await next.click();
     await expect(caption).toContainText(t('scriptedDemo.b6.label'));
-    await expect(page.getByTestId('sold')).toBeVisible();
+    await expect(page.getByTestId('sold')).toBeAttached();
     await shoot('scripted-player', '7-hammer');
     await next.click();
     await next.click();

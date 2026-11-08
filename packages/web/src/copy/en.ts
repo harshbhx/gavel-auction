@@ -405,7 +405,7 @@ export const en = {
   'scriptedDemo.b0.label': 'Holds placed',
   'scriptedDemo.b0.body':
     'Priya, Sam and Ana (simulated) each approve a hold as their ceiling: $500, $400 and $100. Held, not charged. Bidding is open.',
-  'scriptedDemo.b1.label': 'First bid',
+  'scriptedDemo.b1.label': 'Opening bid',
   'scriptedDemo.b1.body': 'Ana bids $50. She leads, so the price is $50.',
   'scriptedDemo.b2.label': 'Outbid',
   'scriptedDemo.b2.body': 'Sam outbids Ana with $150. Sam now leads and Ana has been outbid.',
@@ -419,12 +419,13 @@ export const en = {
   'scriptedDemo.b6.body': 'The hammer falls: sold to Priya for $350. The winning price is fixed.',
   'scriptedDemo.b7.label': 'Winner chosen',
   'scriptedDemo.b7.body':
-    'Priya hold is picked to pay. The holds of Sam and Ana start to be released.',
-  'scriptedDemo.b8.label': 'Capture',
-  'scriptedDemo.b8.body': 'Only $350 is taken from Priya hold of $500. The rest is not taken.',
+    'Priya hold is picked as the winning hold. The holds of Sam and Ana start to be released.',
+  'scriptedDemo.b8.label': 'Settling',
+  'scriptedDemo.b8.body':
+    'Only $350 is taken from the $500 hold of Priya. The rest of the hold is not taken.',
   'scriptedDemo.b9.label': 'Receipt',
   'scriptedDemo.b9.body':
-    'Captured: $350 settled, $150 of her hold released. Sam and Ana holds released in full. The receipt is recorded.',
+    'Settled: $350 taken, $150 of her hold released. The holds of Sam and Ana are released in full. The receipt is recorded.',
   'scriptedDemo.live': 'Try the live demo',
   'scriptedDemo.judge': 'Judge guide',
   'reg.step1': 'Your name',

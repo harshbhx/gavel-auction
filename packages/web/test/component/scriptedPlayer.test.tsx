@@ -105,9 +105,11 @@ describe('useScriptedPlayback', () => {
     vi.useFakeTimers();
     reducedMotion(false);
     const { result } = renderHook(() => useScriptedPlayback());
-    act(() => {
-      vi.advanceTimersByTime(BEAT_MS.normal * (BEATS.length + 2));
-    });
+    for (let i = 0; i < BEATS.length + 2; i += 1) {
+      act(() => {
+        vi.advanceTimersByTime(BEAT_MS.normal);
+      });
+    }
     expect(result.current.beat).toBe(BEATS.length - 1);
     expect(result.current.playing).toBe(false);
     expect(result.current.finished).toBe(true);
