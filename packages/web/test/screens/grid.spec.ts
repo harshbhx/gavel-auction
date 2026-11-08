@@ -88,7 +88,7 @@ test.describe('ledger lab', () => {
     // The row is far down the ledger: search for the entry the verdict names, so it is drawn.
     const verdict = (await page.getByText(/Chain broken at entry \d+/).textContent()) ?? '';
     await page.getByLabel(t('ledger.quick')).fill(verdict.replace(/\D/g, ''));
-    await expect(page.locator('.gv-grid-row--bad').first()).toBeAttached();
+    await expect(page.locator('.gv-grid-row--bad').first()).toBeVisible();
     await shoot('grid', 'ledger-lab-edited');
   });
 

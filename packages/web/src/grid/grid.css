@@ -135,6 +135,12 @@
   color: var(--color-fg-muted);
 }
 
+/* Chips sit inside a 40px row, so keep them compact. */
+.gv-gridbox .gv-chip {
+  line-height: 1.2;
+  padding-block: 1px;
+}
+
 /* Cards for narrow screens. */
 .gv-card {
   display: flex;

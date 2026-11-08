@@ -50,6 +50,12 @@ The grids are lazy. Each is behind `React.lazy`, and Vite splits the library int
 
 The `ui-screens` CI artifact has the view `grid`: ledger lab (intact, scrolled, search, detail, edited entry), holds, live bids, the audit page grid view and the console bid history, on desktop and phone.
 
+![Ledger lab: a selected entry with its hash and the hash it links to](assets/ag-grid/ledger-detail-desktop.png)
+
+![Holds and settlement states with a pinned totals row](assets/ag-grid/holds-desktop.png)
+
+![Ledger lab on a phone: one card per entry, no sideways scroll](assets/ag-grid/ledger-phone.png)
+
 ## Tests
 
 - `test/unit/ledgerModel.test.ts`: chain sealing, intact, tampered and broken results, the 30-day run.
