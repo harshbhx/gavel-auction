@@ -5,6 +5,7 @@ import { SCRIPTED_DEMO_PATH } from '../../net/scriptedMode';
 import { JoinCodeInput } from '../../ui';
 import { BlurText, useInView } from '../../ui/fx';
 import { MoneyFlow, StatsSection, TechSection } from './LandingExtras';
+import { ShotsSection, StorySection } from './LandingStory';
 import {
   AudienceSection,
   DOCS_URL,
@@ -82,6 +83,7 @@ export function LandingScreen({
           <span className="gv-mk-header__brand">{t('app.name')}</span>
           <nav className="gv-mk-header__nav" aria-label={t('mk.nav.label')}>
             <a href="#how">{t('mk.nav.how')}</a>
+            <a href="#screens">{t('mk.nav.product')}</a>
             <a href="#trust">{t('mk.nav.trust')}</a>
             <a href={DOCS_URL}>{t('mk.nav.docs')}</a>
           </nav>
@@ -99,10 +101,16 @@ export function LandingScreen({
             </h1>
             <p className="gv-landing__promise">{t('landing.promise')}</p>
             <p className="gv-landing__explain">{t('mk.hero.sub')}</p>
+            <p className="gv-hero__for">{t('mk.hero.for')}</p>
             <div className="gv-landing__actions">
-              <a className="gv-cta" href={SCRIPTED_DEMO_PATH} onClick={tryDemo}>
-                {t('mk.cta.try')}
-              </a>
+              <div className="gv-hero__ctas">
+                <a className="gv-cta" href={SCRIPTED_DEMO_PATH} onClick={tryDemo}>
+                  {t('mk.cta.try')}
+                </a>
+                <a className="gv-cta gv-cta--outline" href={DOCS_URL}>
+                  {t('mk.cta.docs')}
+                </a>
+              </div>
               <p className="gv-hero__note">{t('mk.hero.demoNote')}</p>
             </div>
             <p className="gv-hero__or">{t('mk.hero.or')}</p>
@@ -143,7 +151,9 @@ export function LandingScreen({
           </div>
         </section>
         <TechSection />
+        <StorySection />
         <HowSection />
+        <ShotsSection />
         <MoneyFlow />
         <FeaturesSection />
         <StatsSection />
