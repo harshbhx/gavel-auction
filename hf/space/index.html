@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GAVEL Evidence Explorer</title>
+    <meta
+      name="description"
+      content="Read-only charts of GAVEL's real sandbox, simulated and synthetic evidence."
+    />
+    <style>
+      :root {
+        --bg: #fafaf9;
+        --panel: #ffffff;
+        --ink: #1c1917;
+        --muted: #57534e;
+        --line: #e7e5e4;
+        --accent: #2563eb;
+        --accent2: #d97706;
+        --ok: #15803d;
+        --ok-bg: #dcfce7;
+        --warn: #a16207;
+        --warn-bg: #fef3c7;
+        --info: #1d4ed8;
+        --info-bg: #dbeafe;
+        --bad: #b91c1c;
+        --bad-bg: #fee2e2;
+        --mute-bg: #f5f5f4;
+        --sim: #7c3aed;
+        --sim-bg: #ede9fe;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0c0a09;
+          --panel: #1c1917;
+          --ink: #fafaf9;
+          --muted: #a8a29e;
+          --line: #292524;
+          --accent: #60a5fa;
+          --accent2: #fbbf24;
+          --ok: #4ade80;
+          --ok-bg: #14532d;
+          --warn: #fcd34d;
+          --warn-bg: #422006;
+          --info: #93c5fd;
+          --info-bg: #1e3a8a;
+          --bad: #fca5a5;
+          --bad-bg: #450a0a;
+          --mute-bg: #292524;
+          --sim: #c4b5fd;
+          --sim-bg: #3b0764;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          16px/1.5 system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+      }
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 24px 16px 64px;
+      }
+      h1 {
+        font-size: 1.8rem;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 1.25rem;
+        margin: 0 0 4px;
+      }
+      p {
+        margin: 0 0 12px;
+      }
+      .lede {
+        color: var(--muted);
+        max-width: 68ch;
+      }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 24px;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 2px 10px;
+        border-radius: 999px;
+        margin-right: 8px;
+        vertical-align: middle;
+      }
+      .tag.real {
+        background: var(--ok-bg);
+        color: var(--ok);
+      }
+      .tag.sim {
+        background: var(--sim-bg);
+        color: var(--sim);
+      }
+      .tag.syn {
+        background: var(--info-bg);
+        color: var(--info);
+      }
+      .banner {
+        border-left: 4px solid var(--sim);
+        background: var(--sim-bg);
+        color: var(--ink);
+        padding: 10px 14px;
+        border-radius: 6px;
+        margin: 12px 0 16px;
+      }
+      .banner.syn {
+        border-color: var(--info);
+        background: var(--info-bg);
+      }
+      .banner.real {
+        border-color: var(--ok);
+        background: var(--ok-bg);
+      }
+      .grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+      }
+      .card h3 {
+        margin: 0 0 6px;
+        font-size: 1rem;
+      }
+      .chip {
+        display: inline-block;
+        font-weight: 700;
+        font-size: 0.8rem;
+        padding: 2px 10px;
+        border-radius: 6px;
+      }
+      .chip.pass {
+        background: var(--ok-bg);
+        color: var(--ok);
+      }
+      .chip.partial {
+        background: var(--warn-bg);
+        color: var(--warn);
+      }
+      .chip.progress {
+        background: var(--info-bg);
+        color: var(--info);
+      }
+      .chip.fail {
+        background: var(--bad-bg);
+        color: var(--bad);
+      }
+      .chip.other {
+        background: var(--mute-bg);
+        color: var(--muted);
+      }
+      .small {
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      .tiles {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        margin: 12px 0;
+      }
+      .tile {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 12px;
+      }
+      .tile b {
+        display: block;
+        font-size: 1.5rem;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 0.9rem;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        color: var(--muted);
+        font-weight: 600;
+      }
+      td.num,
+      th.num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .scroll {
+        overflow-x: auto;
+      }
+      svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      svg text {
+        fill: var(--ink);
+        font:
+          12px system-ui,
+          sans-serif;
+      }
+      svg .mut {
+        fill: var(--muted);
+      }
+      svg .axis {
+        stroke: var(--line);
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        font-size: 0.85rem;
+        margin: 4px 0 8px;
+      }
+      .legend i {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        margin-right: 6px;
+        vertical-align: -1px;
+      }
+      .cta {
+        display: inline-block;
+        background: var(--accent);
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+        padding: 10px 18px;
+        border-radius: 8px;
+        margin-top: 4px;
+      }
+      a {
+        color: var(--accent);
+      }
+      #error {
+        display: none;
+        border: 1px solid var(--bad);
+        color: var(--bad);
+        padding: 12px;
+        border-radius: 8px;
+        margin-top: 24px;
+      }
+      footer {
+        margin-top: 32px;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>GAVEL Evidence Explorer</h1>
+      <p class="lede">
+        GAVEL is an auction where bidders hold funds with PayPal authorizations and the winner is
+        captured at the hammer. This read-only page charts the project's open datasets. Each section
+        says whether its numbers are real sandbox measurements, a simulation, or synthetic audio.
+        Nothing here is production data and no real money or person is involved.
+      </p>
+      <p>
+        <a class="cta" href="https://gavel-web.creharsh.workers.dev/demo">Try the live demo</a>
+      </p>
+      <div id="error" role="alert"></div>
+
+      <section id="gates">
+        <h2><span class="tag real">real sandbox</span>Go/no-go gates, G0 to G5</h2>
+        <p class="small">
+          Statuses exactly as recorded in <code>docs/GATES.md</code>. A gate is closed only when it
+          is PASS or FAIL; PARTIAL stays open. G3, the multi-day authorization probe, is still
+          running and has no result yet.
+        </p>
+        <div class="grid" id="gate-cards"></div>
+      </section>
+
+      <section id="latency">
+        <h2><span class="tag real">real sandbox</span>Latency, hammer to money moved</h2>
+        <div class="banner real">
+          Real PayPal sandbox calls, small samples (stated per row). These numbers say nothing about
+          production PayPal.
+        </div>
+        <p class="small">
+          95th percentile, in seconds, of the end-to-end settlement of a lot with 6 holds. The
+          dashed line is the project target; the capture target is missed.
+        </p>
+        <div id="latency-chart"></div>
+        <p class="small">
+          Per-call time of one order, authorize, capture and void cycle (10 cycles).
+        </p>
+        <div id="calls-chart"></div>
+      </section>
+
+      <section id="sim">
+        <h2><span class="tag sim">simulated</span>30-day settlement run</h2>
+        <div class="banner">
+          <b>SIMULATED.</b> A fake clock and a model of PayPal, with crashes and injected faults. It
+          is not a real-sandbox result. It shows that the settlement code keeps the ledger balanced
+          to the cent; it does not show how PayPal behaves over 30 days (that is gate G3, still
+          running).
+        </div>
+        <div class="tiles" id="sim-tiles"></div>
+        <p class="small">Outcome of each simulated lot.</p>
+        <div id="sim-status"></div>
+        <p class="small">
+          Money, in the simulation's fake dollars (held = captured + released + open).
+        </p>
+        <div class="scroll" id="sim-money"></div>
+        <p class="small">Simulation scenarios and their checks.</p>
+        <div class="scroll" id="sim-scen"></div>
+      </section>
+
+      <section id="stt">
+        <h2><span class="tag syn">synthetic audio</span>Speech-to-text on spoken bids</h2>
+        <div class="banner syn">
+          <b>SYNTHETIC.</b> 24 machine-generated, noise-free utterances in two voices. Not a real
+          room. The parser and provider options were tuned on these same clips (in sample), and the
+          gate (G5) is PARTIAL, not passed.
+        </div>
+        <p class="small">
+          Exact word-for-word match rate per provider and clip set (dataset
+          <code>gavel-stt-bids</code>). Providers write numerals for spoken amounts, which counts as
+          a miss here; the bid parser handles that.
+        </p>
+        <div id="stt-chart"></div>
+        <p class="small">
+          Parse-level results from the G5 table of <code>docs/GATES.md</code> (rate of clips; exact
+          counts the 13 bid clips, the others count all 24).
+        </p>
+        <div class="scroll" id="g5-table"></div>
+      </section>
+
+      <footer id="foot"></footer>
+    </main>
+
+    <script>
+      (function () {
+        'use strict';
+        var SVGNS = 'http://www.w3.org/2000/svg';
+        function h(tag, attrs, kids) {
+          var el = document.createElement(tag);
+          Object.keys(attrs || {}).forEach(function (k) {
+            if (k === 'text') el.textContent = attrs[k];
+            else el.setAttribute(k, attrs[k]);
+          });
+          (kids || []).forEach(function (c) {
+            el.appendChild(c);
+          });
+          return el;
+        }
+        function s(tag, attrs, text) {
+          var el = document.createElementNS(SVGNS, tag);
+          Object.keys(attrs || {}).forEach(function (k) {
+            el.setAttribute(k, attrs[k]);
+          });
+          if (text !== undefined) el.textContent = text;
+          return el;
+        }
+        function $(id) {
+          return document.getElementById(id);
+        }
+        function fixed(n, d) {
+          return Number(n).toFixed(d);
+        }
+        function money(cents) {
+          return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 });
+        }
+        function chipClass(status) {
+          var u = String(status).toUpperCase();
+          if (u === 'PASS') return 'pass';
+          if (u === 'PARTIAL') return 'partial';
+          if (u === 'IN PROGRESS') return 'progress';
+          if (u === 'FAIL') return 'fail';
+          return 'other';
+        }
+        function legend(items) {
+          return h(
+            'div',
+            { class: 'legend' },
+            items.map(function (it) {
+              var i = h('i');
+              i.style.background = it[1];
+              return h('span', {}, [i, document.createTextNode(it[0])]);
+            }),
+          );
+        }
+        function table(cols, rows) {
+          var thead = h('thead', {}, [
+            h(
+              'tr',
+              {},
+              cols.map(function (c) {
+                return h('th', { class: c.num ? 'num' : '', text: c.label });
+              }),
+            ),
+          ]);
+          var tbody = h(
+            'tbody',
+            {},
+            rows.map(function (r) {
+              return h(
+                'tr',
+                {},
+                cols.map(function (c) {
+                  return h('td', { class: c.num ? 'num' : '', text: String(r[c.key]) });
+                }),
+              );
+            }),
+          );
+          return h('table', {}, [thead, tbody]);
+        }
+        // Horizontal grouped bar chart. groups: [{label, bars:[{value,color,text}]}]
+        function barChart(groups, opts) {
+          var rowH = 22;
+          var gap = 16;
+          var left = opts.left || 150;
+          var width = 640;
+          var plotW = width - left - 70;
+          var max = opts.max;
+          var y = 8;
+          var svg = s('svg', {
+            viewBox: '0 0 ' + width + ' ' + (groups.length * (opts.barsPer * rowH + gap) + 30),
+            role: 'img',
+            'aria-label': opts.aria,
+          });
+          var targets = [];
+          groups.forEach(function (g) {
+            svg.appendChild(s('text', { x: 0, y: y + rowH - 6, class: '' }, g.label));
+            g.bars.forEach(function (b, i) {
+              var w = Math.max(1, (b.value / max) * plotW);
+              svg.appendChild(
+                s('rect', {
+                  x: left,
+                  y: y + i * rowH,
+                  width: w,
+                  height: rowH - 4,
+                  rx: 3,
+                  fill: b.color,
+                }),
+              );
+              svg.appendChild(
+                s('text', { x: left + w + 6, y: y + i * rowH + 13, class: 'mut' }, b.text),
+              );
+            });
+            if (g.target !== undefined) targets.push({ y: y, v: g.target, n: g.bars.length });
+            y += g.bars.length * rowH + gap;
+          });
+          targets.forEach(function (t) {
+            var x = left + (t.v / max) * plotW;
+            svg.appendChild(
+              s('line', {
+                x1: x,
+                x2: x,
+                y1: t.y - 3,
+                y2: t.y + t.n * rowH - 1,
+                stroke: 'var(--bad)',
+                'stroke-width': 2,
+                'stroke-dasharray': '4 3',
+              }),
+            );
+          });
+          svg.appendChild(
+            s('line', {
+              x1: left,
+              x2: left,
+              y1: 0,
+              y2: y - gap + 4,
+              class: 'axis',
+              'stroke-width': 1,
+            }),
+          );
+          return svg;
+        }
+
+        function render(d) {
+          // gates
+          d.gates.forEach(function (g) {
+            var meta = g.date_utc ? g.date_utc.slice(0, 10) : 'no date';
+            var kids = [
+              h('h3', { text: g.gate + ': ' + g.title }),
+              h('p', {}, [h('span', { class: 'chip ' + chipClass(g.status), text: g.status })]),
+              h('p', { class: 'small', text: g.label + ' | ' + meta }),
+            ];
+            if (g.note) kids.push(h('p', { class: 'small', text: g.note }));
+            $('gate-cards').appendChild(h('div', { class: 'card' }, kids));
+          });
+
+          // latency
+          var runs = {};
+          d.latency.spans.forEach(function (r) {
+            (runs[r.run_id] = runs[r.run_id] || []).push(r);
+          });
+          var order = Object.keys(runs).sort(function (a, b) {
+            return runs[b][0].n - runs[a][0].n;
+          });
+          var colCap = 'var(--accent)';
+          var colSet = 'var(--accent2)';
+          var secs = function (ms) {
+            return fixed(ms / 1000, 2) + ' s';
+          };
+          var latGroups = [];
+          order.forEach(function (id) {
+            var rs = runs[id];
+            var cap = rs.filter(function (r) {
+              return r.span === 'hammer_to_captured';
+            })[0];
+            var set = rs.filter(function (r) {
+              return r.span === 'hammer_to_settled';
+            })[0];
+            var label = rs[0].run_label + ' run, n=' + rs[0].n + ' (' + rs[0].run_date + ')';
+            latGroups.push({
+              label: label,
+              bars: [
+                { value: cap.p95_ms, color: colCap, text: 'captured p95 ' + secs(cap.p95_ms) },
+                { value: set.p95_ms, color: colSet, text: 'settled p95 ' + secs(set.p95_ms) },
+              ],
+            });
+          });
+          var tc = d.latency.targets.captured_ms;
+          var ts = d.latency.targets.settled_ms;
+          var maxLat = Math.max(
+            ts,
+            Math.max.apply(
+              null,
+              d.latency.spans.map(function (r) {
+                return r.p95_ms;
+              }),
+            ),
+          );
+          $('latency-chart').appendChild(
+            legend([
+              ['hammer to captured (target ' + secs(tc) + ')', colCap],
+              ['hammer to settled (target ' + secs(ts) + ')', colSet],
+            ]),
+          );
+          $('latency-chart').appendChild(
+            barChart(latGroups, {
+              barsPer: 2,
+              max: maxLat * 1.25,
+              left: 190,
+              aria: 'p95 settlement latency',
+            }),
+          );
+          $('latency-chart').appendChild(
+            h('p', {
+              class: 'small',
+              text:
+                'Targets: ' +
+                secs(tc) +
+                ' to captured (missed in the n=20 run) and ' +
+                secs(ts) +
+                ' to settled (met). Source: docs/GATES.md, run ' +
+                order[0] +
+                '. The pilot (n=3) is shown for completeness.',
+            }),
+          );
+          var callGroups = d.latency.calls.map(function (c) {
+            return {
+              label: c.call + ' (n=' + c.n + ')',
+              bars: [
+                { value: c.p50_ms, color: colCap, text: 'p50 ' + secs(c.p50_ms) },
+                { value: c.p95_ms, color: colSet, text: 'p95 ' + secs(c.p95_ms) },
+              ],
+            };
+          });
+          var maxCall = Math.max.apply(
+            null,
+            d.latency.calls.map(function (c) {
+              return c.p95_ms;
+            }),
+          );
+          $('calls-chart').appendChild(
+            legend([
+              ['p50', colCap],
+              ['p95', colSet],
+            ]),
+          );
+          $('calls-chart').appendChild(
+            barChart(callGroups, {
+              barsPer: 2,
+              max: maxCall * 1.3,
+              left: 120,
+              aria: 'per-call latency',
+            }),
+          );
+
+          // simulation
+          var sim = d.sim;
+          var tile = function (v, l) {
+            return h('div', { class: 'tile' }, [
+              h('b', { text: String(v) }),
+              h('span', { class: 'small', text: l }),
+            ]);
+          };
+          $('sim-tiles').appendChild(tile(sim.lots, 'simulated lots'));
+          $('sim-tiles').appendChild(tile(sim.holds, 'simulated holds'));
+          $('sim-tiles').appendChild(tile(sim.sold, 'lots sold'));
+          $('sim-tiles').appendChild(tile(sim.crashes, 'simulated crashes'));
+          $('sim-tiles').appendChild(
+            tile(sim.balanced ? 'balanced' : 'NOT balanced', 'ledger, to the cent'),
+          );
+          var statusNames = Object.keys(sim.status_counts);
+          var palette = [
+            'var(--accent)',
+            'var(--accent2)',
+            'var(--sim)',
+            'var(--ok)',
+            'var(--bad)',
+          ];
+          var statusGroups = statusNames.map(function (n, i) {
+            return {
+              label: n,
+              bars: [
+                {
+                  value: sim.status_counts[n],
+                  color: palette[i % palette.length],
+                  text: sim.status_counts[n] + ' lots',
+                },
+              ],
+            };
+          });
+          var causeNames = Object.keys(sim.review_causes);
+          causeNames.forEach(function (n, i) {
+            statusGroups.push({
+              label: 'review: ' + n,
+              bars: [
+                {
+                  value: sim.review_causes[n],
+                  color: 'var(--warn)',
+                  text: sim.review_causes[n] + ' lots',
+                },
+              ],
+            });
+          });
+          $('sim-status').appendChild(
+            barChart(statusGroups, {
+              barsPer: 1,
+              max: sim.lots,
+              left: 230,
+              aria: 'simulated lot outcomes',
+            }),
+          );
+          $('sim-money').appendChild(
+            table(
+              [
+                { key: 'what', label: 'Total over all lots (simulated)' },
+                { key: 'v', label: 'Amount', num: true },
+              ],
+              [
+                { what: 'held', v: money(sim.money.held_cents) },
+                { what: 'captured', v: money(sim.money.captured_cents) },
+                { what: 'released', v: money(sim.money.released_cents) },
+                { what: 'still open', v: money(sim.money.open_cents) },
+              ],
+            ),
+          );
+          $('sim-scen').appendChild(
+            table(
+              [
+                { key: 'scenario', label: 'Scenario' },
+                { key: 'title', label: 'What it simulates' },
+                { key: 'p', label: 'Checks passed', num: true },
+              ],
+              sim.scenarios.map(function (r) {
+                return {
+                  scenario: r.scenario,
+                  title: r.title,
+                  p: r.checks_passed + ' of ' + r.checks,
+                };
+              }),
+            ),
+          );
+
+          // stt
+          var pn = { deepgram: 'Deepgram', groq: 'Groq' };
+          var setName = { espeak: 'robotic voice (eSpeak)', human: 'human-like synthetic voice' };
+          var sttGroups = d.stt.scores.map(function (r) {
+            return {
+              label: setName[r.clip_set] + ', ' + pn[r.provider],
+              bars: [
+                {
+                  value: r.exact_match_rate,
+                  color: r.provider === 'deepgram' ? colCap : colSet,
+                  text: fixed(r.exact_match_rate * 100, 0) + '% exact (' + r.model + ')',
+                },
+              ],
+            };
+          });
+          $('stt-chart').appendChild(
+            barChart(sttGroups, {
+              barsPer: 1,
+              max: 1.35,
+              left: 250,
+              aria: 'exact transcript match rate',
+            }),
+          );
+          $('g5-table').appendChild(
+            table(
+              [
+                { key: 'clip_set_label', label: 'Clip set' },
+                { key: 'provider', label: 'Provider' },
+                { key: 'exact', label: 'Exact', num: true },
+                { key: 'wrong_accept', label: 'Wrong accept', num: true },
+                { key: 'confirm', label: 'Confirm', num: true },
+                { key: 'missed_bid', label: 'Missed bid', num: true },
+              ],
+              d.stt.g5_table.map(function (r) {
+                return {
+                  clip_set_label: r.clip_set_label,
+                  provider: r.provider,
+                  exact: fixed(r.exact, 3),
+                  wrong_accept: fixed(r.wrong_accept, 3),
+                  confirm: fixed(r.confirm, 3),
+                  missed_bid: fixed(r.missed_bid, 3),
+                };
+              }),
+            ),
+          );
+
+          // footer
+          var b = d.built_from;
+          var vs = Object.keys(b.dataset_versions)
+            .map(function (k) {
+              return k + ' ' + b.dataset_versions[k];
+            })
+            .join(', ');
+          var f = $('foot');
+          f.appendChild(
+            h('p', {
+              text:
+                'Built from commit ' +
+                (b.commit || 'unknown').slice(0, 12) +
+                ' of the repository. Datasets: ' +
+                vs +
+                '. ',
+            }),
+          );
+          f.appendChild(h('a', { href: b.repository, text: b.repository }));
+          if (b.build_run_url) {
+            f.appendChild(document.createTextNode(' | '));
+            f.appendChild(h('a', { href: b.build_run_url, text: 'build run' }));
+          }
+        }
+
+        function fail(msg) {
+          var e = $('error');
+          e.style.display = 'block';
+          e.textContent = msg;
+        }
+
+        fetch('data/explorer.json')
+          .then(function (r) {
+            if (!r.ok) throw new Error('data/explorer.json answered ' + r.status);
+            return r.json();
+          })
+          .then(render)
+          .catch(function (e) {
+            fail(
+              'The data file could not be loaded (' +
+                e.message +
+                '). Nothing is shown rather than anything invented.',
+            );
+          });
+      })();
+    </script>
+  </body>
+</html>
