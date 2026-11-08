@@ -1117,9 +1117,17 @@ header#nd-nav,
 #nd-sidebar {
   min-width: 0;
 }
-#nd-sidebar > div,
-#nd-sidebar [data-radix-scroll-area-viewport] {
-  padding-inline: 1rem;
+/* long child titles wrap on words, and the status chip drops under the title instead of squeezing it */
+#nd-sidebar a {
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
+}
+#nd-sidebar a:has(> span[class*='uppercase']),
+#nd-sidebar a:has(> .hl-hatch-chip),
+#nd-sidebar a:has(> .hl-solid-chip),
+#nd-sidebar a:has(> .hl-hollow-chip) {
+  flex-wrap: wrap;
 }
 #nd-sidebar [role='group'][aria-label='Theme'],
 #nd-nav [role='group'][aria-label='Theme'] {
