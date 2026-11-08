@@ -29,8 +29,11 @@ export function prefersReducedMotion(): boolean {
 /** A receipt time in the viewer's locale and zone, with the zone name ("14 Nov 2023, 22:13 UTC"). */
 export function formatTime(at: number, locale?: string): string {
   return new Intl.DateTimeFormat(locale, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
     timeZoneName: 'short',
   }).format(new Date(at));
 }
@@ -38,8 +41,12 @@ export function formatTime(at: number, locale?: string): string {
 /** The same instant in UTC, for the title and the accessible name. */
 export function formatTimeUtc(at: number, locale?: string): string {
   return new Intl.DateTimeFormat(locale, {
-    dateStyle: 'medium',
-    timeStyle: 'medium',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
     timeZone: 'UTC',
     timeZoneName: 'short',
   }).format(new Date(at));
