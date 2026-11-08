@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
 import { judgeRoomsStatus } from '../../src/net/judgeRooms';
-import { JudgePanel } from '../../src/screens/try/JudgePanel';
+import { JudgePanel } from '../../src/screens/judge/JudgePanel';
 
 afterEach(() => {
   vi.unstubAllGlobals();

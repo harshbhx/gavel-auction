@@ -42,7 +42,7 @@ import { LiveConsole } from './screens/console/LiveConsole';
 import { GalleryScreen } from './screens/gallery/GalleryScreen';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
 import { LandingScreen } from './screens/landing/LandingScreen';
-import { JudgePanel, type RoomsState } from './screens/try/JudgePanel';
+import { JudgePanel, type RoomsState } from './screens/judge/JudgePanel';
 import { fetchOpsSummary, OpsView, type OpsSummaryView } from './ops/OpsView';
 import { DemoLauncher, DemoRoomError, type DemoLinks } from './screens/demo/DemoLauncher';
 import { ScriptedJoin } from './screens/demo/ScriptedJoin';
