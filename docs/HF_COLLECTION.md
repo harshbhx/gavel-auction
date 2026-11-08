@@ -20,8 +20,8 @@ Items, in this order: the five datasets below, then the Space `harshbhx/gavel-ev
 
 ## Order and descriptions
 
-| #   | Dataset                        | Label                         | Rows                                                                                | License   |
-| --- | ------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------- | --------- |
+| #   | Dataset                     | Label                         | Rows                                                                                | License   |
+| --- | --------------------------- | ----------------------------- | ----------------------------------------------------------------------------------- | --------- |
 | 1   | `harshbhx/gavel-gates`      | real sandbox, synthetic audio | 6 gates, evidence file hashes, nightly results, adversarial-review and audit counts | CC-BY-4.0 |
 | 2   | `harshbhx/gavel-latency`    | real sandbox                  | summary statistics                                                                  | CC-BY-4.0 |
 | 3   | `harshbhx/gavel-sim-30d`    | simulated                     | per lot and per hold                                                                | CC-BY-4.0 |

@@ -49,11 +49,11 @@ The submission deadline is Thu 12 Nov 2026, 12:00 PST (Fri 13 Nov 01:30 IST).
 
 ## Reviews and data
 
-| Area            | Today                                                                                                                                                                                                        | Next                                                              | Owner and date |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- | -------------- |
-| Security review | 16 of the 18 original items PASS (all eight P0), one is ACCEPTED, one (SEC-15, log scan) is open. SEC-19 and SEC-20, added for judge rooms and receipt links, are written up and awaiting review.            | Independent review of SEC-19 and SEC-20, and the SEC-15 log scan. | Date not set   |
-| Accessibility   | Automated axe sweeps run in CI over the scripted bid, console and screen states.                                                                                                                             | A manual pass with a screen reader and 200 percent zoom.          | Date not set   |
-| Open datasets   | Five small datasets are published on Hugging Face. The speech, simulation and audit-trace sets use synthetic audio, a fake clock and scripted auctions by design: GAVEL does not collect real people's data. | Keep them in step with new evidence (for example when G3 finishes).                                                     | Date not set   |
+| Area            | Today                                                                                                                                                                                                        | Next                                                                | Owner and date |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- | -------------- |
+| Security review | 16 of the 18 original items PASS (all eight P0), one is ACCEPTED, one (SEC-15, log scan) is open. SEC-19 and SEC-20, added for judge rooms and receipt links, are written up and awaiting review.            | Independent review of SEC-19 and SEC-20, and the SEC-15 log scan.   | Date not set   |
+| Accessibility   | Automated axe sweeps run in CI over the scripted bid, console and screen states.                                                                                                                             | A manual pass with a screen reader and 200 percent zoom.            | Date not set   |
+| Open datasets   | Five small datasets are published on Hugging Face. The speech, simulation and audit-trace sets use synthetic audio, a fake clock and scripted auctions by design: GAVEL does not collect real people's data. | Keep them in step with new evidence (for example when G3 finishes). | Date not set   |
 
 ## Why synthetic data
 
