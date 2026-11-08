@@ -360,6 +360,26 @@ async function paypalPopup(pop, buyer) {
       const label = clip(await ok.innerText().catch(() => ''), 40);
       note(`paypal: clicking "${label}" (iteration ${i})`);
       await ok.scrollIntoViewIfNeeded().catch(() => {});
+      const bb = await ok.boundingBox().catch(() => null);
+      if (bb) {
+        await pop.mouse.move(bb.x + 20, bb.y - 40, { steps: 8 });
+        await pop.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2, { steps: 12 });
+        await pop.waitForTimeout(400);
+        await pop.mouse.down();
+        await pop.waitForTimeout(120);
+        await pop.mouse.up();
+        await pop.waitForTimeout(3000);
+        const alertTxt = await pop
+          .locator('[role=alert], .notification, [data-testid*=error]')
+          .first()
+          .innerText({ timeout: 1000 })
+          .catch(() => '');
+        note(
+          `paypal: after real mouse click url=${new URL(pop.url()).pathname} alert="${clip(alertTxt, 120)}" btn still shown=${await ok.isVisible().catch(() => false)}`,
+        );
+        if (i >= 2) await ok.press('Enter').catch(() => {});
+        continue;
+      }
       await ok.click({ timeout: 8000 }).catch(async (e) => {
         note(`paypal: click failed ${clip(e.message, 80)}; forcing`);
         await ok.click({ force: true }).catch(() => {});

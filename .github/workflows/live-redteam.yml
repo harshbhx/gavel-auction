@@ -20,6 +20,11 @@ on:
         required: false
         default: 'https://gavel-auction-z2nm.onrender.com'
         type: string
+      profiles:
+        description: 'JSON list of profiles: desktop, iphone (each makes one judge room; the host allows 4 creates per hour per address)'
+        required: false
+        default: '["desktop","iphone"]'
+        type: string
   push:
     branches: ['qa/QA-1-live-redteam']
     paths:
@@ -46,7 +51,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        profile: [desktop, iphone]
+        profile: ${{ fromJSON((github.event_name == 'push' && !contains(github.event.head_commit.message, '[iphone]')) && '["desktop"]' || inputs.profiles || '["desktop","iphone"]') }}
     env:
       WEB_URL: ${{ inputs.web_url || 'https://gavel-web.creharsh.workers.dev' }}
       API_URL: ${{ inputs.api_url || 'https://gavel-auction-z2nm.onrender.com' }}
