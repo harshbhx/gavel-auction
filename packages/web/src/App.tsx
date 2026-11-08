@@ -425,6 +425,7 @@ function LandingRoute({ api }: { api: Api | undefined }) {
     <LandingScreen
       onStart={() => navigate('/demo')}
       onScripted={() => navigate(SCRIPTED_DEMO_PATH)}
+      onJudges={() => navigate('/try')}
       onJoin={async (code) => {
         if (api === undefined) return false;
         let id: string;
