@@ -7,6 +7,12 @@ name: deploy-web
 # Steps are in docs/DEPLOY.md.
 on:
   workflow_dispatch:
+    inputs:
+      api_origin:
+        description: 'API origin for this run only, for example https://api.example.org (empty uses the API_ORIGIN variable)'
+        required: false
+        type: string
+        default: ''
   push:
     branches: [main]
     paths:
@@ -27,8 +33,6 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  VITE_API_BASE: https://gavel-auction-aufz.onrender.com
-  VITE_WS_BASE: wss://gavel-auction-aufz.onrender.com
   VITE_SANDBOX: 'true'
 
 jobs:
@@ -46,6 +50,24 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
+      # The API origin comes from the input api_origin (one run) or the repository variable API_ORIGIN.
+      # Empty means the current Render host. The websocket base is derived from it.
+      - name: Resolve the API origin
+        env:
+          INPUT_ORIGIN: ${{ inputs.api_origin }}
+          VAR_ORIGIN: ${{ vars.API_ORIGIN }}
+        run: |
+          origin="${INPUT_ORIGIN:-$VAR_ORIGIN}"
+          origin="${origin:-https://gavel-auction-aufz.onrender.com}"
+          if ! printf '%s' "$origin" | grep -Eq '^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?$'; then
+            echo "::error::The API origin must be an https origin with no path and no trailing slash, for example https://api.example.org. Fix the api_origin input or the API_ORIGIN variable."
+            exit 1
+          fi
+          {
+            echo "VITE_API_BASE=$origin"
+            echo "VITE_WS_BASE=wss://${origin#https://}"
+          } >> "$GITHUB_ENV"
+          echo "Web build API origin: $origin" >> "$GITHUB_STEP_SUMMARY"
       # Social crawlers (Open Graph, Twitter, Slack) do not read SVG, so the share image and the
       # .ico favicon are rendered here from the committed SVG sources and never committed.
       - name: Render the share image and favicon
@@ -74,7 +96,8 @@ jobs:
           if grep -rq "localhost:8787" packages/web/dist; then
             echo "::error::The build still points at localhost"; exit 1
           fi
-          grep -rlq "gavel-auction-aufz.onrender.com" packages/web/dist
+          grep -rlqF "$VITE_API_BASE" packages/web/dist
+          grep -rlqF "$VITE_WS_BASE" packages/web/dist
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: web-dist
