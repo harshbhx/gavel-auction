@@ -1,0 +1,56 @@
+---
+title: Sandbox buyers
+description: How to approve a hold with a PayPal sandbox buyer, and what to try when the PayPal window gives trouble.
+icon: KeyRound
+---
+
+The buyer logins are not published here or in the repository. They are in the Devpost testing instructions. Without them, use the [scripted demo](/docs/start/demo), which needs no login.
+
+<Held title="Sandbox only">
+
+No real money moves. Never use your own PayPal account or card. Sandbox buyers are US accounts and the auction is in USD.
+
+</Held>
+
+<Steps>
+<Step>
+
+### Start a room
+
+Open the [web app](https://gavel-web.creharsh.workers.dev) and press "Start a demo auction" (or open `/try`). The room lasts about thirty minutes.
+
+</Step>
+<Step>
+
+### Join as a bidder
+
+Open the big screen link in a second window, or scan its QR code. Enter a name and pick a ceiling.
+
+</Step>
+<Step>
+
+### Approve the hold
+
+Press and hold the approve button for 3 seconds (a two-tap alternative sits below it). In the PayPal sandbox window, log in with the sandbox buyer from the Devpost field.
+
+</Step>
+<Step>
+
+### Bid and hammer
+
+Place a bid, then press hammer in the console. The winner is captured for the winning price only and the other holds are released. The receipt and the audit trail show the result.
+
+</Step>
+</Steps>
+
+## If the PayPal window gives trouble
+
+| Symptom | What to try |
+| --- | --- |
+| The login is refused | Check for typos, use a private window, and make sure the address contains `sandbox`. |
+| The popup is blocked | Allow popups for the GAVEL site and press approve again. |
+| Room is full, expired or the code is wrong | Start a new demo auction and use the fresh code. |
+| Judge rooms are off or the host is busy | Use `/demo/scripted`, a recorded room with no login. |
+| The hold shows as released | The hold is old. Register, bid and hammer in one sitting. |
+
+Credentials never go in issues, pull requests or docs. If an account is locked, say so through Devpost or an issue without pasting a password.
