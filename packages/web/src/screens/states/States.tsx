@@ -3,6 +3,7 @@ import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
 import { redactDetail, shortRef } from './redact';
 import { STATES_TABLE, type DataView } from './statesTable';
+import { Logo } from '../../design/Logo';
 import './states.css';
 
 export interface StateProps {
@@ -13,6 +14,7 @@ export interface StateProps {
 export function Loading({ view, rows = 3 }: StateProps & { rows?: number }) {
   return (
     <div className="gv-state gv-state--loading" role="status" aria-busy="true">
+      <Logo variant="mark" height={32} decorative className="gv-logo--pulse" />
       <span>{en[STATES_TABLE[view].loading]}</span>
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="gv-skeleton" aria-hidden="true" />

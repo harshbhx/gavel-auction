@@ -1,0 +1,54 @@
+/* The GAVEL logo takes its colours from the theme tokens: ink is the foreground, the mallet head is
+ * the action colour. Fixed width and height attributes on the SVG keep layout from shifting. */
+.gv-logo {
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+}
+
+.gv-logo__ink {
+  fill: var(--color-fg);
+}
+
+.gv-logo__stroke {
+  stroke: var(--color-fg);
+}
+
+.gv-logo__head {
+  fill: var(--color-action);
+}
+
+@media (forced-colors: active) {
+  .gv-logo__ink {
+    fill: CanvasText;
+  }
+
+  .gv-logo__stroke {
+    stroke: CanvasText;
+  }
+
+  .gv-logo__head {
+    fill: Highlight;
+  }
+}
+
+.gv-logo--end {
+  margin-inline-start: auto;
+}
+
+.gv-logo--pulse {
+  display: block;
+  margin-block-end: var(--space-2);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gv-logo--pulse .gv-logo__head {
+    animation: gv-logo-pulse 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes gv-logo-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}

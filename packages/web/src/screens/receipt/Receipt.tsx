@@ -9,6 +9,7 @@ import { Fallback } from './Fallback';
 import { NonWinner } from './NonWinner';
 import { ShareControls, type MintReceiptLink } from './ShareControls';
 import { Winner, isCaptured } from './Winner';
+import { Logo } from '../../design/Logo';
 import './receipt.css';
 import './print.css';
 
@@ -99,6 +100,7 @@ export function Receipt(props: ReceiptProps) {
   if (view !== null && props.noHold === true) {
     return (
       <article className="gv-receipt" aria-labelledby="gv-receipt-title">
+        <Logo variant="wordmark" height={20} decorative />
         <h2 id="gv-receipt-title">{t('receipt.title')}</h2>
         <section className="gv-receipt__body" data-outcome="nohold">
           <dl className="gv-receipt__rows">
@@ -116,6 +118,7 @@ export function Receipt(props: ReceiptProps) {
   }
   return (
     <article className="gv-receipt" aria-labelledby="gv-receipt-title">
+      <Logo variant="wordmark" height={20} decorative />
       <h2 id="gv-receipt-title">{t('receipt.title')}</h2>
       <FakePaymentsLabel />
       <Body view={view} hold={hold} props={props} />

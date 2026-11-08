@@ -1,10 +1,5 @@
 <div align="center">
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="brand/svg/lockup-h-reversed.svg">
-  <img src="brand/svg/lockup-h-color.svg" alt="GAVEL" width="320">
-</picture>
-
 **Every bid is a PayPal hold. Only the winner pays.**
 
 <p align="center">
