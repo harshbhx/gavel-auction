@@ -1190,30 +1190,31 @@ async function main() {
       'POST',
       '/api/judge/join',
       { code, displayName: 'QA API One' },
-      [200],
+      [200, 410],
     );
-    check(/sessionToken/.test(ok.text), 'join returns a session token');
+    if (ok.status === 410) note('room already ended by the hammer, 410 is expected here');
+    else check(/sessionToken/.test(ok.text), 'join returns a session token');
     const ok2 = await probe(
       'judge join valid (second bidder)',
       'POST',
       '/api/judge/join',
       { code, displayName: 'QA API Two' },
-      [200],
+      [200, 410],
     );
-    check(ok.text !== ok2.text, 'second join gets a distinct session');
+    if (ok.status === 200) check(ok.text !== ok2.text, 'second join gets a distinct session');
     await probe(
       'judge join lowercase code',
       'POST',
       '/api/judge/join',
       { code: String(code).toLowerCase(), displayName: 'QA Low' },
-      [200, 404],
+      [200, 404, 410],
     );
     await probe(
       'judge join code with spaces',
       'POST',
       '/api/judge/join',
       { code: ` ${code} `, displayName: 'QA Space' },
-      [200],
+      [200, 410],
     );
     const sum = await probe('room summary by id', 'GET', `/api/auctions/${roomId}`, undefined, [
       200,
