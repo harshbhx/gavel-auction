@@ -4,7 +4,8 @@ name: docsite
 # Build, type check and screenshots run here, never on a laptop or the shared VM.
 # Deploy to Cloudflare Pages runs only when the two Cloudflare secrets exist in the repository;
 # without them the deploy job ends green and says so. The site content reads docs/GATES.md and
-# docs/evidence/SIM/SIM-MULTIDAY.md, so changes to those files rebuild it too.
+# docs/evidence/SIM/SIM-MULTIDAY.md, and the Changelog page is generated from CHANGELOG.md, so
+# changes to those files rebuild it too.
 
 on:
   push:
@@ -12,6 +13,7 @@ on:
     paths:
       - 'docsite/**'
       - 'docs/GATES.md'
+      - 'CHANGELOG.md'
       - 'docs/evidence/SIM/**'
       - '.github/workflows/docsite.yml'
   pull_request:
@@ -19,6 +21,7 @@ on:
     paths:
       - 'docsite/**'
       - 'docs/GATES.md'
+      - 'CHANGELOG.md'
       - 'docs/evidence/SIM/**'
       - '.github/workflows/docsite.yml'
   workflow_dispatch:
@@ -50,6 +53,11 @@ jobs:
       - name: Install
         working-directory: docsite
         run: npm ci --ignore-scripts
+
+      # The Changelog page is generated from CHANGELOG.md; the committed copy must match.
+      - name: Changelog page is in sync
+        working-directory: docsite
+        run: node scripts/gen-changelog.mjs --check
 
       # Static export: compiles every MDX page and writes docsite/out/.
       - name: Build
