@@ -170,15 +170,15 @@ describe('judge hub join link', () => {
       expect(screen.getByTestId('hub-join-link').textContent).toContain('?c=EMY48N'),
     );
     expect(
-      (screen.getByRole('button', { name: t('hub.copyInvite') }) as HTMLButtonElement).disabled,
-    ).toBe(false);
+      screen.getByRole('button', { name: t('hub.copyInvite') }).getAttribute('aria-disabled'),
+    ).toBeNull();
   });
 
   it('holds the copy button until the code is known', () => {
     render(<JudgeHub roomId={ROOM} keys={NO_KEYS} origin={origin} />);
     expect(
-      (screen.getByRole('button', { name: t('hub.copyInvite') }) as HTMLButtonElement).disabled,
-    ).toBe(true);
+      screen.getByRole('button', { name: t('hub.copyInvite') }).getAttribute('aria-disabled'),
+    ).toBe('true');
   });
 });
 
