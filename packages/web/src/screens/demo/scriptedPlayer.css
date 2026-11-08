@@ -1,0 +1,209 @@
+/* Scripted demo player, Newsprint. Tokens only. The screen sits left and the player right; on a
+ * narrow page the player stacks above the screen. Nothing in here moves: steps change colour and
+ * weight in place, and the caption box has a fixed height so a longer caption never shifts it. */
+
+.gv-scripted-frame {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+.gv-scripted-frame > .gv-scripted-bar {
+  grid-column: 1 / -1;
+}
+
+.gv-scripted-frame .gv-scripted-stage {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+}
+
+.gv-scripted-frame .gv-player {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.gv-scripted-frame .gv-scripted-stage .gv-screen {
+  width: 100%;
+  height: calc(100vh - 56px);
+}
+
+/* The scripted clock counts a wall clock against recorded times, so it is kept out of sight. The
+ * slot stays, so nothing around it shifts. */
+.gv-scripted-frame .gv-screen__clock {
+  visibility: hidden;
+}
+
+/* Calm: no slam, no tick, no sliding digits. A price or leader change is a slow cross-fade in place. */
+.gv-scripted-frame .gv-screen__board,
+.gv-scripted-frame .gv-hammer-stamp,
+.gv-scripted-frame .gv-price-tick {
+  animation: none;
+}
+
+.gv-scripted-frame .ui-price__old,
+.gv-scripted-frame .ui-price__new {
+  --ui-delay: 0s;
+  animation-duration: 900ms;
+  animation-timing-function: ease-in-out;
+}
+
+.gv-scripted-frame .ui-price__old {
+  animation-name: gv-calm-out;
+}
+
+.gv-scripted-frame .ui-price__new {
+  animation-name: gv-calm-in;
+}
+
+.gv-scripted-frame .gv-screen__leader {
+  min-height: 1.25em;
+}
+
+@keyframes gv-calm-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes gv-calm-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.gv-player {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border-inline-start: var(--border-width-strong, 3px) solid var(--color-fg);
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+.gv-player__progress {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+  color: var(--color-fg-muted);
+}
+
+.gv-player__caption {
+  box-sizing: border-box;
+  min-height: 13rem;
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-fg);
+  border-inline-start-width: 8px;
+}
+
+.gv-player__title {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--font-size-5, 1.5rem);
+  line-height: 1.1;
+}
+
+.gv-player__body {
+  margin: 0;
+  font-size: var(--font-size-3);
+  line-height: 1.4;
+}
+
+.gv-player__note {
+  margin: 0;
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-2);
+}
+
+.gv-player__controls,
+.gv-player__speed {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.gv-player__steps {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: var(--border-width) solid var(--color-rule);
+}
+
+.gv-player__step {
+  border-bottom: var(--border-width) solid var(--color-rule);
+}
+
+.gv-player__jump {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-inline-start: 6px solid transparent;
+  background: transparent;
+  color: var(--color-fg-muted);
+  font: inherit;
+  font-size: var(--font-size-2);
+  text-align: start;
+  cursor: pointer;
+}
+
+.gv-player__step[data-status='done'] .gv-player__jump {
+  color: var(--color-fg);
+}
+
+.gv-player__step[data-status='now'] .gv-player__jump {
+  border-inline-start-color: var(--color-fg);
+  background: var(--color-fg);
+  color: var(--color-bg);
+  font-weight: 700;
+}
+
+.gv-player__jump:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: -3px;
+}
+
+@media (max-width: 900px) {
+  .gv-scripted-frame {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+  }
+
+  .gv-scripted-frame .gv-player,
+  .gv-scripted-frame .gv-scripted-stage {
+    grid-column: 1;
+  }
+
+  .gv-scripted-frame .gv-player {
+    grid-row: 2;
+    border-inline-start: 0;
+    border-block-end: var(--border-width-strong, 3px) solid var(--color-fg);
+  }
+
+  .gv-scripted-frame .gv-scripted-stage {
+    grid-row: 3;
+  }
+
+  .gv-scripted-frame .gv-scripted-stage .gv-screen {
+    height: 100vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-scripted-frame .ui-price__old,
+  .gv-scripted-frame .ui-price__new {
+    animation: none;
+  }
+
+  .gv-scripted-frame .ui-price__old {
+    display: none;
+  }
+}
