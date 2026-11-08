@@ -4,6 +4,7 @@ import { WideAside } from '../WideAside';
 import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
 import '../flows.css';
+import { loadRegistration } from '../../payments/registrationStore';
 import { getBidderSession } from '../../store/session';
 import { ApiProblem } from '../states/ApiProblem';
 
@@ -26,7 +27,10 @@ export interface JoinScreenProps {
   demoHold?: boolean;
   /** Seconds the server asked the client to wait, for the `busy` state. */
   retryAfterS?: number | null;
-  /** Whether a valid session is stored for this room. Defaults to reading session storage. */
+  /**
+   * Whether this device already registered a hold for the room. Defaults to reading session
+   * storage: a session alone (the register form was only opened) is not a registered bidder.
+   */
   hasSession?: boolean;
 }
 
@@ -54,6 +58,14 @@ function Steps({ current }: { current: 1 | 2 | 3 }) {
   );
 }
 
+function hasRegisteredHold(roomId: string): boolean {
+  const stored = getBidderSession(roomId);
+  return (
+    stored?.bidderId !== undefined &&
+    loadRegistration(roomId, stored.bidderId)?.ceilingCents !== undefined
+  );
+}
+
 /** Resolves a room and routes to register or bid (R-WEB-050, R-WEB-052). */
 export function JoinScreen({
   roomId,
@@ -66,7 +78,7 @@ export function JoinScreen({
   hasSession,
   retryAfterS = null,
 }: JoinScreenProps) {
-  const returning = hasSession ?? getBidderSession(roomId) !== null;
+  const returning = hasSession ?? hasRegisteredHold(roomId);
   const bidPath = `/r/${encodeURIComponent(roomId)}/bid`;
   const registerPath = `/r/${encodeURIComponent(roomId)}/register`;
 
