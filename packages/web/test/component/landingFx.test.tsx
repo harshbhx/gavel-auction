@@ -132,6 +132,14 @@ describe('landing polish', () => {
   });
 
   it('shows the sticky bar after scrolling past the hero', () => {
+    // Without an observer the hook reports "seen" at once, which hides the bar; stand in one that
+    // never reports the closing section as visible.
+    class IdleObserver {
+      observe(): void {}
+      disconnect(): void {}
+      unobserve(): void {}
+    }
+    vi.stubGlobal('IntersectionObserver', IdleObserver);
     const { container } = render(<LandingScreen {...props} />);
     const bar = container.querySelector('.gv-sticky-cta');
     expect(bar?.getAttribute('data-show')).toBe('false');
