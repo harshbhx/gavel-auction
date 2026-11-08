@@ -734,7 +734,7 @@ export const en = {
   'chain.none.detail': 'No ledger came with this view, so nothing here has been verified.',
   'chain.invalid': 'Chain not checked',
   'chain.invalid.detail': 'This file is not a ledger export, so it could not be read.',
-  'chain.head': 'Closing fingerprint',
+  'chain.head': 'Closing fingerprint:',
   'chain.explain.summary': 'What a hash chain proves, and what it does not',
   'chain.explain.proves':
     'It proves the recorded events are complete, in order and unedited since the ledger sealed them. Each entry carries a fingerprint of its content and of the entry before it, so changing, removing or reordering one entry breaks every fingerprint after it.',

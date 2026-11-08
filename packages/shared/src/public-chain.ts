@@ -1,4 +1,4 @@
-import type { ReplayBundle } from './replay-bundle';
+import type { ReplayEvent } from './replay-bundle';
 
 /**
  * Browser-side verifier for a replay bundle (the redacted public export, version 4).
@@ -165,7 +165,7 @@ export function hashPublicEntry(body: unknown): string {
   return sha256HexOf(new TextEncoder().encode(out.join('')));
 }
 
-type Entry = ReplayBundle['events'][number];
+type Entry = ReplayEvent;
 
 function isAnchoredClose(entries: readonly Entry[]): boolean {
   const last = entries[entries.length - 1];
