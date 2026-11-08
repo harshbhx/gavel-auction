@@ -1,28 +1,26 @@
-import { Archivo, Martian_Mono, Newsreader } from 'next/font/google';
+import { Big_Shoulders_Display, JetBrains_Mono, Public_Sans } from 'next/font/google';
 
-// Type, chosen as a set. Archivo is the interface and the poster voice: its width axis gives a
-// heavy condensed face for headings and numerals, like lot numbers and auction bills. Newsreader
-// (a text serif drawn for screens, with an optical size axis) carries the long reading, which
-// is the one characterful choice: these pages are read like a printed catalogue entry, not a
-// dashboard. Martian Mono holds code, labels and the diagrams.
-export const archivo = Archivo({
-  subsets: ['latin'],
-  axes: ['wdth'],
-  variable: '--font-archivo',
-  display: 'swap',
-});
-
-export const newsreader = Newsreader({
+// Newsprint and Signal type, the same three families as the web app (packages/web/src/design):
+// Public Sans for the interface and the long reading, Big Shoulders Display for the poster
+// headings and numerals (a condensed newspaper-headline face), JetBrains Mono for code, labels
+// and the diagrams. global.css aliases the older --font-archivo, --font-newsreader and
+// --font-martian names onto these so every component keeps working.
+export const publicSans = Public_Sans({
   subsets: ['latin'],
   style: ['normal', 'italic'],
-  axes: ['opsz'],
-  variable: '--font-newsreader',
+  variable: '--font-public',
   display: 'swap',
 });
 
-export const martian = Martian_Mono({
+export const bigShoulders = Big_Shoulders_Display({
   subsets: ['latin'],
-  axes: ['wdth'], // the diagrams use the narrow width (75) so labels fit
-  variable: '--font-martian',
+  weight: ['600', '700', '800', '900'],
+  variable: '--font-display',
+  display: 'swap',
+});
+
+export const jetbrains = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-jbmono',
   display: 'swap',
 });

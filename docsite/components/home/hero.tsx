@@ -11,7 +11,7 @@ import { btnPrimary, btnSecondary } from './section';
  */
 export function Hero() {
   return (
-    <section aria-labelledby="hero-title" className="border-b border-[var(--hl-border)] px-4 pt-10 pb-14 md:pt-16 md:pb-20">
+    <section aria-labelledby="hero-title" className="hl-dots border-b-2 border-[var(--hl-fg)] px-4 pt-10 pb-14 md:pt-16 md:pb-20">
       <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-12 lg:gap-6 [&>*]:min-w-0">
         <div className="lg:col-span-7 lg:pt-6">
           <p className="hl-eyebrow">PayPal hackathon 2026 | documentation, sandbox only</p>

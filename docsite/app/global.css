@@ -25,21 +25,27 @@ html > body[data-scroll-locked] {
 
 /* ---------- tokens ---------- */
 :root {
-  /* Daylight */
-  --hl-bg: #f6f4ee;
-  --hl-panel: #ffffff;
-  --hl-panel-2: #ece9e0;
-  --hl-fg: #121715;
-  --hl-fg-muted: #4a524f;
-  --hl-border: #6b726f;
-  --hl-hairline: #cfcabb;
-  --hl-signal: #ffb224; /* brass: fills only on Daylight */
-  --hl-on-signal: #121715;
-  --hl-signal-ink: #7a4600; /* brass as text or thin line */
-  --hl-go: #0b6b3a;
+  /* Newsprint and Signal (palette A of the web app, packages/web/src/design/tokens.css) */
+  --hl-bg: #efe6d3; /* paper */
+  --hl-panel: #f8f2e4;
+  --hl-panel-2: #e6dac1;
+  --hl-fg: #1d1712; /* ink */
+  --hl-fg-muted: #5a4d3f;
+  --hl-border: #7a6a57;
+  --hl-hairline: #d3c5a8; /* the app's --color-rule */
+  --hl-signal: #ff6a1f; /* signal orange: fills only */
+  --hl-on-signal: #1a0a00;
+  --hl-signal-ink: #a33a06; /* signal as text or thin line */
+  --hl-go: #256b3a;
   --hl-stop: #b3261e;
   --hl-info: #0a5e73;
-  --hl-focus: #121715;
+  --hl-focus: #1d1712;
+  --hl-shadow: #1d1712; /* hard offset shadows, no blur */
+
+  --font-archivo: var(--font-public), 'Public Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-newsreader: var(--font-public), 'Public Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-martian: var(--font-jbmono), ui-monospace, Menlo, Consolas, monospace;
+  --font-poster: var(--font-display), 'Arial Narrow', Impact, sans-serif;
 
   --color-fd-background: var(--hl-bg);
   --color-fd-foreground: var(--hl-fg);
@@ -51,7 +57,7 @@ html > body[data-scroll-locked] {
   --color-fd-card-foreground: var(--hl-fg);
   --color-fd-border: var(--hl-hairline);
   --color-fd-primary: var(--hl-signal-ink);
-  --color-fd-primary-foreground: #ffffff;
+  --color-fd-primary-foreground: #f8f2e4;
   --color-fd-secondary: var(--hl-panel-2);
   --color-fd-secondary-foreground: var(--hl-fg);
   --color-fd-accent: var(--hl-panel-2);
@@ -60,43 +66,44 @@ html > body[data-scroll-locked] {
 }
 
 .dark {
-  /* Dusk */
-  --hl-bg: #0b0f10;
-  --hl-panel: #121819;
-  --hl-panel-2: #1a2326;
-  --hl-fg: #e8eeeb;
-  --hl-fg-muted: #a3b1ad;
-  --hl-border: #5f7377;
-  --hl-hairline: #2e3d40;
-  --hl-signal: #ffb224;
-  --hl-on-signal: #0b0f10;
-  --hl-signal-ink: #ffb224;
-  --hl-go: #62e39a;
-  --hl-stop: #ff8073;
+  /* Night Board (palette B of the web app) */
+  --hl-bg: #0c1624;
+  --hl-panel: #132238;
+  --hl-panel-2: #1b2f4b;
+  --hl-fg: #f0ebdd;
+  --hl-fg-muted: #a9b6c8;
+  --hl-border: #6c86a8;
+  --hl-hairline: #2a3f5e;
+  --hl-signal: #e3b766;
+  --hl-on-signal: #0c1624;
+  --hl-signal-ink: #e3b766;
+  --hl-go: #8fd3b0;
+  --hl-stop: #ff9c88;
   --hl-info: #72d6ea;
-  --hl-focus: #f5f7f6;
+  --hl-focus: #e3b766;
+  --hl-shadow: #7e6b47;
 
-  --color-fd-primary-foreground: #0b0f10;
+  --color-fd-primary-foreground: #0c1624;
 }
 
 :root[data-floodlight='1'] {
-  /* Floodlight (projector) */
+  /* Projector: Night Board on black, brighter ink */
   --hl-bg: #000000;
-  --hl-panel: #0a0a0a;
-  --hl-panel-2: #141414;
+  --hl-panel: #0c1624;
+  --hl-panel-2: #132238;
   --hl-fg: #ffffff;
-  --hl-fg-muted: #d4dad7;
-  --hl-border: #9aa9a5;
-  --hl-hairline: #3a4a4d;
-  --hl-signal: #ffc94d;
-  --hl-on-signal: #000000;
-  --hl-signal-ink: #ffc94d;
-  --hl-go: #7bf0ae;
-  --hl-stop: #ff9c90;
+  --hl-fg-muted: #d5deea;
+  --hl-border: #8fa6c4;
+  --hl-hairline: #2a3f5e;
+  --hl-signal: #e3b766;
+  --hl-on-signal: #0c1624;
+  --hl-signal-ink: #e3b766;
+  --hl-go: #8fd3b0;
+  --hl-stop: #ff9c88;
   --hl-info: #8fe3f5;
   --hl-focus: #ffffff;
 
-  --color-fd-primary-foreground: #000000;
+  --color-fd-primary-foreground: #0c1624;
 }
 
 body {
@@ -121,13 +128,13 @@ pre,
   font-family: var(--font-martian), ui-monospace, 'SFMono-Regular', Menlo, monospace;
 }
 
-/* display voice: Archivo condensed, heavy */
+/* display voice: Big Shoulders Display, the newspaper headline face of the web app */
 .hl-display {
-  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
-  font-stretch: 75%;
+  font-family: var(--font-poster);
   font-weight: 800;
-  letter-spacing: -0.01em;
-  line-height: 1.02;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 /* focus ring from tokens, never removed */
@@ -203,7 +210,8 @@ pre,
 .hl-callout {
   position: relative;
   margin: 1.5rem 0;
-  border: 1px solid var(--hl-hairline);
+  border: 2px solid var(--hl-fg);
+  box-shadow: 3px 3px 0 var(--hl-shadow);
   background: var(--hl-panel);
   border-radius: 2px;
   padding: 0.9rem 1rem 0.9rem 1.5rem;
@@ -297,18 +305,18 @@ pre,
 /* ---------- diagrams (inline SVG, Holdline fills) ---------- */
 .dg text {
   font-family: var(--font-martian), ui-monospace, monospace;
-  font-stretch: 75%;
-  font-size: 12.5px;
+  font-size: 11px; /* JetBrains Mono has no width axis, so the sizes are a step under the old narrow face */
+  letter-spacing: -0.02em;
   fill: var(--hl-fg);
 }
 .dg .t-muted {
   fill: var(--hl-fg-muted);
 }
 .dg .t-small {
-  font-size: 11px;
+  font-size: 9.5px;
 }
 .dg .t-big {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
 }
 .dg .t-stop {
@@ -419,9 +427,8 @@ article.prose,
 }
 #nd-page .prose :is(p, li, blockquote, dd),
 .prose :is(p, li) {
-  font-family: var(--font-newsreader), Georgia, 'Times New Roman', serif;
-  font-optical-sizing: auto;
-  letter-spacing: 0.002em;
+  font-family: var(--font-newsreader);
+  letter-spacing: 0;
 }
 #nd-page .prose > :is(p, ul, ol, blockquote) {
   max-width: 66ch;
@@ -441,30 +448,42 @@ article.prose,
 }
 /* page title: the poster face */
 #nd-page h1 {
-  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
-  font-stretch: 75%;
+  font-family: var(--font-poster);
   font-weight: 800;
-  font-size: clamp(2.4rem, 5.2vw, 3.6rem);
-  line-height: 1;
-  letter-spacing: -0.01em;
+  font-size: clamp(2.8rem, 6vw, 4.4rem);
+  line-height: 0.95;
+  letter-spacing: 0;
+  text-transform: uppercase;
   text-wrap: balance;
 }
 #nd-page .prose :is(h2, h3, h4) {
-  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
-  font-stretch: 75%;
+  font-family: var(--font-poster);
   font-weight: 800;
-  letter-spacing: -0.005em;
-  line-height: 1.1;
+  letter-spacing: 0.005em;
+  line-height: 1.02;
+  text-transform: uppercase;
   text-wrap: balance;
 }
+/* section rules like a newspaper column: a heavy ink rule, signal tick at the start */
 #nd-page .prose h2 {
-  font-size: 2rem;
-  margin-top: 3.25rem;
+  position: relative;
+  font-size: 2.4rem;
+  margin-top: 3.5rem;
   padding-top: 1.1rem;
-  border-top: 1.5px solid var(--hl-border);
+  border-top: 2px solid var(--hl-fg);
+}
+#nd-page .prose h2::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  width: 3.5rem;
+  height: 6px;
+  background: var(--hl-signal);
+  border: 0;
 }
 #nd-page .prose h3 {
-  font-size: 1.45rem;
+  font-size: 1.75rem;
   margin-top: 2.25rem;
 }
 #nd-page .prose a:not(.not-prose a) {
@@ -497,8 +516,9 @@ article.prose,
   border-radius: 2px;
 }
 .prose figure:has(> div > pre) {
-  border: 1.5px solid var(--hl-border);
-  border-left: 6px solid var(--hl-signal-ink);
+  border: 2px solid var(--hl-fg);
+  border-left: 6px solid var(--hl-signal);
+  box-shadow: 3px 3px 0 var(--hl-shadow);
   background: var(--hl-panel);
   font-size: 0.82rem;
   line-height: 1.65;
@@ -626,7 +646,7 @@ figure.hl-fig .hl-fig__title::before {
   border-radius: 2px;
 }
 .hl-hold__btn:hover {
-  box-shadow: 3px 3px 0 var(--hl-border);
+  box-shadow: 3px 3px 0 var(--hl-shadow);
   transform: translate(-1px, -1px);
 }
 .hl-hold__range {
@@ -700,9 +720,10 @@ figure.hl-fig .hl-fig__title::before {
 /* plain card: hairline, hard offset shadow on hover, like a printed ticket lifting */
 .hl-card {
   position: relative;
-  border: 1.5px solid var(--hl-border);
+  border: 2px solid var(--hl-fg);
   background: var(--hl-panel);
   border-radius: 2px;
+  box-shadow: 2px 2px 0 var(--hl-shadow);
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease;
@@ -710,7 +731,7 @@ figure.hl-fig .hl-fig__title::before {
 .hl-card:hover,
 .hl-card:focus-within {
   transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0 var(--hl-border);
+  box-shadow: 4px 4px 0 var(--hl-shadow);
 }
 @media (prefers-reduced-motion: reduce) {
   .hl-card:hover,
@@ -729,4 +750,136 @@ figure.hl-fig .hl-fig__title::before {
 #nd-page .prose .not-prose :is(p, li) {
   font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
   letter-spacing: 0;
+}
+
+/* ---------- Newsprint and Signal layer (mirrors packages/web landing and app) ---------- */
+
+/* paper grain, static, like the landing hero (multiply on light, off on dark) */
+body {
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+.dark body::before {
+  display: none;
+}
+
+/* masthead: the top bar is paper with a heavy ink rule under it, and the brand in the poster face */
+#nd-nav,
+header#nd-nav,
+#nd-subnav {
+  background: var(--hl-bg) !important;
+  border-bottom: 2px solid var(--hl-fg) !important;
+  backdrop-filter: none !important;
+}
+#nd-nav a[class*='font-medium'],
+#nd-nav nav a {
+  font-family: var(--font-martian);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* sidebar: a column with an ink rule, section labels in the mono label voice */
+#nd-sidebar {
+  background: var(--hl-bg) !important;
+  border-inline-end: 2px solid var(--hl-fg) !important;
+}
+#nd-sidebar [data-active='true'] {
+  color: var(--hl-signal-ink);
+  background: color-mix(in oklab, var(--hl-signal) 16%, transparent);
+  box-shadow: inset 3px 0 0 var(--hl-signal);
+}
+#nd-sidebar p[class*='uppercase'],
+#nd-sidebar [class*='text-xs'][class*='font-medium'] {
+  font-family: var(--font-martian);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* table of contents: active item in signal */
+[data-toc] a[data-active='true'] {
+  color: var(--hl-signal-ink);
+}
+
+/* tables: ink frame, mono-label header row on raised paper, rules between rows */
+.prose table {
+  border: 2px solid var(--hl-fg);
+  border-collapse: collapse;
+  border-radius: 2px;
+  background: var(--hl-panel);
+}
+.prose thead th {
+  background: var(--hl-panel-2);
+  border-bottom: 2px solid var(--hl-fg);
+  font-family: var(--font-martian);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.prose tbody td,
+.prose tbody th {
+  border-top: 1px solid var(--hl-hairline);
+}
+
+/* blockquote: a signal bar, like a pull quote */
+.prose blockquote {
+  border-inline-start: 4px solid var(--hl-signal);
+  background: color-mix(in oklab, var(--hl-panel-2) 55%, transparent);
+  padding: 0.4rem 1rem;
+}
+
+.prose hr {
+  border: 0;
+  border-top: 2px solid var(--hl-fg);
+}
+
+/* search dialog: paper panel, ink frame, hard shadow */
+[role='dialog'] {
+  border-radius: 3px !important;
+}
+[role='dialog'][data-state='open'][class*='shadow'],
+[cmdk-root] {
+  border: 2px solid var(--hl-fg);
+  box-shadow: 5px 5px 0 var(--hl-shadow);
+  background: var(--hl-panel);
+}
+
+/* the 404 and home hero: dotted newsprint grid fading downward, as on the landing hero */
+.hl-dots {
+  position: relative;
+  isolation: isolate;
+}
+.hl-dots::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--hl-fg) 16%, transparent) 1px,
+    transparent 1.6px
+  );
+  background-size: 22px 22px;
+  mask-image: linear-gradient(to bottom, #000 35%, transparent);
+}
+
+/* top banner: signal orange stripes under a paper chip */
+.hl-hatch-fill {
+  border-bottom-width: 2px;
+}
+
+/* selection */
+::selection {
+  background: var(--hl-signal);
+  color: var(--hl-on-signal);
 }

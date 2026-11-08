@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/cn';
 
-// Three themes: Daylight (light), Dusk (dark) and Floodlight (projector, on top of dark).
+// Three themes: Newsprint (light), Night (dark) and Projector (high contrast, on top of dark).
 type Mode = 'daylight' | 'dusk' | 'floodlight';
 
 const FLAG = 'gavel-floodlight';
@@ -61,9 +61,9 @@ export function ThemeSwitch() {
         : 'daylight';
 
   const items: Array<{ mode: Mode; label: string; hint: string }> = [
-    { mode: 'daylight', label: 'Daylight', hint: 'Light theme' },
-    { mode: 'dusk', label: 'Dusk', hint: 'Dark theme' },
-    { mode: 'floodlight', label: 'Floodlight', hint: 'High contrast projector theme' },
+    { mode: 'daylight', label: 'Newsprint', hint: 'Paper theme (default)' },
+    { mode: 'dusk', label: 'Night', hint: 'Dark theme' },
+    { mode: 'floodlight', label: 'Projector', hint: 'High contrast projector theme' },
   ];
 
   return (
