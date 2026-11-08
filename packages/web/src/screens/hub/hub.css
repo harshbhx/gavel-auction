@@ -1,0 +1,268 @@
+/* Judge room hub and token help, Newsprint and Signal. Tokens only. Mobile first. */
+
+.gv-hub {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4) var(--space-7);
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+.gv-hub .gv-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.gv-hub__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+  border-bottom: var(--border-width-strong, 3px) solid var(--color-fg);
+}
+
+.gv-hub__head > p,
+.gv-hub__head > h1 {
+  margin: 0;
+}
+
+.gv-hub__head > h1 {
+  font-family: var(--font-display);
+  font-size: var(--font-size-6);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.gv-hub__lead {
+  color: var(--color-fg-muted);
+}
+
+.gv-hub__grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 760px) {
+  .gv-hub__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.gv-hub__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  padding-top: var(--space-5);
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-2);
+}
+
+.gv-hub__card > h2,
+.gv-hub__card > p {
+  margin: 0;
+}
+
+.gv-hub__card > h2 {
+  font-family: var(--font-display);
+  font-size: var(--font-size-5);
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.gv-hub__num {
+  position: absolute;
+  top: calc(var(--space-3) * -1);
+  left: var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  border: var(--border-width) solid var(--color-fg);
+  background: var(--color-action);
+  color: var(--color-on-action);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  box-shadow: var(--shadow-1);
+}
+
+.gv-hub__hint {
+  color: var(--color-fg-muted);
+}
+
+.gv-hub__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: auto;
+}
+
+.gv-hub__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.gv-hub__missing,
+.gv-hub__pending {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+  color: var(--color-fg-muted);
+}
+
+.gv-hub__join {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.gv-hub__join > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.gv-hub__join .ui-kicker {
+  margin: 0;
+}
+
+.gv-hub__qr {
+  padding: var(--space-2);
+}
+
+/* Join code as flap board tiles, the same motif as the price board */
+
+.gv-hub__flaps {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.gv-hub__flap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 64px;
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-sm, 2px);
+  background: linear-gradient(
+    to bottom,
+    var(--color-fg) 0,
+    var(--color-fg) calc(50% - 1px),
+    var(--color-bg) calc(50% - 1px),
+    var(--color-bg) calc(50% + 1px),
+    var(--color-fg) calc(50% + 1px)
+  );
+  color: var(--color-bg);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-6);
+  font-weight: 700;
+  box-shadow: var(--shadow-1);
+}
+
+.gv-hub__test {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) dashed var(--color-fg);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.gv-hub__test > h2,
+.gv-hub__test > p {
+  margin: 0;
+}
+
+.gv-hub__test > h2 {
+  font-family: var(--font-display);
+  font-size: var(--font-size-4);
+  text-transform: uppercase;
+}
+
+.gv-hub__test ol {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.gv-hub__note {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+  color: var(--color-fg-muted);
+}
+
+.gv-flow__action--plain {
+  background: transparent;
+  color: var(--color-fg);
+}
+
+/* Token help, inside a .gv-flow page */
+
+.gv-help {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.gv-help > p {
+  margin: 0;
+}
+
+.gv-help__steps {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+/* Console: a small way back to the hub */
+
+.gv-hub-back {
+  display: inline-block;
+  margin: var(--space-2) var(--space-3);
+}
+
+/* Scripted demo: a Newsprint strip above the recorded screen */
+
+.gv-scripted-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: var(--border-width) solid var(--color-fg);
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+.gv-scripted-bar > p {
+  margin: 0;
+}
+
+.gv-scripted-frame .gv-screen {
+  height: calc(100vh - 56px);
+}

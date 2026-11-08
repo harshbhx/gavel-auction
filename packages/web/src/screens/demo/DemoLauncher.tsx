@@ -11,7 +11,11 @@ export interface DemoLinks {
   readonly screen: string;
   readonly bidder: string;
   readonly audit: string;
+  /** The room hub, which a judge room opens first. Rooms without one open the console. */
+  readonly hub?: string;
 }
+
+type RoleKey = Exclude<keyof DemoLinks, 'hub'>;
 
 /** Why the server refused to make a room; the launcher shows a message for each. */
 export type DemoFailure = 'demoOff' | 'unauthorized' | 'roomCap' | 'judgeBusy';
@@ -48,7 +52,7 @@ export interface DemoLauncherProps {
 type Phase = 'idle' | 'busy' | 'failed' | 'ready';
 
 const ROLES: ReadonlyArray<{
-  key: keyof DemoLinks;
+  key: RoleKey;
   label: 'demo.roleConsole' | 'demo.roleScreen' | 'demo.roleBidder' | 'demo.roleAudit';
 }> = [
   { key: 'console', label: 'demo.roleConsole' },
@@ -73,14 +77,14 @@ export function DemoLauncher({
   const [phase, setPhase] = useState<Phase>('idle');
   const [mode, setMode] = useState<DemoMode>(initialMode);
   const [links, setLinks] = useState<DemoLinks | null>(null);
-  const [copied, setCopied] = useState<keyof DemoLinks | null>(null);
+  const [copied, setCopied] = useState<RoleKey | null>(null);
   const [failure, setFailure] = useState<DemoFailure | null>(null);
 
   const finish = (next: DemoLinks, how: DemoMode): void => {
     setMode(how);
     setLinks(next);
     setPhase('ready');
-    openConsole(next.console);
+    openConsole(next.hub ?? next.console);
   };
 
   const scripted = (): void => finish(startScripted(), 'scripted');
@@ -101,7 +105,7 @@ export function DemoLauncher({
     );
   };
 
-  const copy = (key: keyof DemoLinks, href: string): void => {
+  const copy = (key: RoleKey, href: string): void => {
     writeClipboard(href).then(
       () => setCopied(key),
       () => setCopied(null),

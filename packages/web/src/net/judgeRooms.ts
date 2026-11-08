@@ -1,4 +1,5 @@
 import { DemoRoomError, type DemoLinks } from '../screens/demo/DemoLauncher';
+import { hubFragment, rememberHubKeys, type HubKeys } from '../screens/hub/hubKeys';
 
 /** Asks the host whether key-less judge rooms are on and have a free slot. Never throws. */
 export async function judgeRoomsAvailable(apiBase: string): Promise<boolean> {
@@ -14,9 +15,12 @@ export async function judgeRoomsAvailable(apiBase: string): Promise<boolean> {
   }
 }
 
+function field(body: unknown, key: string): unknown {
+  return typeof body === 'object' && body !== null ? (body as Record<string, unknown>)[key] : null;
+}
+
 function text(body: unknown, key: string): string {
-  const value =
-    typeof body === 'object' && body !== null ? (body as Record<string, unknown>)[key] : null;
+  const value = field(body, key);
   if (typeof value !== 'string' || value === '') throw new Error('bad judge room');
   return value;
 }
@@ -32,12 +36,25 @@ export async function createJudgeRoom(apiBase: string): Promise<DemoLinks> {
   if (res.status === 429 || res.status === 503) throw new DemoRoomError('judgeBusy');
   if (res.status !== 201) throw new Error('judge room failed');
   const body = (await res.json()) as unknown;
-  const id = encodeURIComponent(text(body, 'auctionId'));
+  const roomId = text(body, 'auctionId');
+  const id = encodeURIComponent(roomId);
   const base = `/r/${id}`;
+  const auctioneer = text(body, 'auctioneerToken');
+  const screen = text(body, 'screenToken');
+  const rawExp = field(body, 'expiresAt');
+  const rawCode = field(body, 'joinCode');
+  const keys: HubKeys = {
+    auctioneer,
+    screen,
+    expiresAt: typeof rawExp === 'number' && Number.isFinite(rawExp) ? Math.round(rawExp) : null,
+    code: typeof rawCode === 'string' && rawCode !== '' ? rawCode : null,
+  };
+  rememberHubKeys(roomId, keys);
   return {
-    console: `${base}/console#token=${text(body, 'auctioneerToken')}`,
-    screen: `${base}/screen#token=${text(body, 'screenToken')}`,
+    console: `${base}/console#token=${auctioneer}`,
+    screen: `${base}/screen#token=${screen}`,
     bidder: `/join/${id}`,
     audit: `${base}/audit`,
+    hub: `${base}/hub${hubFragment(keys)}`,
   };
 }

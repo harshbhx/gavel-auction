@@ -31,6 +31,8 @@ export interface ScreenViewProps {
   /** Address encoded in the QR code. */
   joinUrl: string;
   store?: RoomStore;
+  /** `projector` is the dark big screen theme; `newsprint` keeps the page theme (scripted demo). */
+  theme?: 'projector' | 'newsprint';
 }
 
 /** Ladder summary counts from the latest per-hold settlement data. */
@@ -48,7 +50,13 @@ export function countsToSettle(counts: Readonly<Record<string, number>>): Settle
 }
 
 /** Projector view: no controls, no personal data beyond the paddle number. */
-export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: ScreenViewProps) {
+export function ScreenView({
+  lotTitle,
+  code,
+  joinUrl,
+  store = roomStore,
+  theme = 'projector',
+}: ScreenViewProps) {
   const price = useRoom(selectors.price, store);
   const stream = useRoom(selectors.stream, store);
   const hammer = useRoom((s) => s.hammer, store);
@@ -67,6 +75,7 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
   const [, setTick] = useState(0);
 
   useEffect(() => {
+    if (theme !== 'projector') return undefined;
     const root = document.documentElement;
     const previous = root.getAttribute('data-theme');
     root.setAttribute('data-theme', 'projector');
@@ -74,7 +83,7 @@ export function ScreenView({ lotTitle, code, joinUrl, store = roomStore }: Scree
       if (previous === null) root.removeAttribute('data-theme');
       else root.setAttribute('data-theme', previous);
     };
-  }, []);
+  }, [theme]);
 
   useEffect(() => {
     const id = setInterval(() => setTick((n) => n + 1), 250);
