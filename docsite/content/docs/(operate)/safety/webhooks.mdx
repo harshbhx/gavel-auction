@@ -6,7 +6,7 @@ status: verified
 full: true
 ---
 
-A webhook is PayPal knocking on GAVEL's door to say "something happened to a hold". GAVEL never takes the knock at its word. It checks who knocked, writes the message down once, asks PayPal what the hold looks like now, and only then updates its own record. The settlement also reads the truth at PayPal itself, so a webhook that never arrives cannot stall a settlement.
+A <Term id="webhook">webhook</Term> is PayPal knocking on GAVEL's door to say "something happened to a <Term id="hold">hold</Term>". GAVEL never takes the knock at its word. It checks who knocked, writes the message down once, asks PayPal what the hold looks like now, and only then updates its own record. The <Term id="settlement">settlement</Term> also reads the truth at PayPal itself, so a webhook that never arrives cannot stall a settlement.
 
 <WebhookDiagram />
 

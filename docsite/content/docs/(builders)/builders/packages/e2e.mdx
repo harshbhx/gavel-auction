@@ -6,13 +6,13 @@ status: verified
 full: true
 ---
 
-`packages/e2e` tests the packages together. It has a small YAML scenario language, two runners (in process and as separate processes), property tests, a load harness, browser specs and the specs that talk to the real PayPal sandbox.
+`packages/e2e` tests the packages together. It has a small YAML scenario language, two runners (in process and as separate processes), property tests, a load harness, browser specs and the specs that talk to the real PayPal <Term id="sandbox">sandbox</Term>.
 
 It sits outside the package dependency rule: it may import every other package, and nothing imports it.
 
 <Held title="Fake PayPal versus sandbox">
 
-The in-process scenarios and the stack runner use the fake PayPal server. Only the specs in `sandbox/` talk to the PayPal sandbox, and only with sandbox secrets present (otherwise every spec is skipped). What each gate and nightly run proved is in [Proof](/docs/proof).
+The in-process scenarios and the stack runner use the <Term id="fake-paypal">fake PayPal</Term> server. Only the specs in `sandbox/` talk to the PayPal sandbox, and only with sandbox secrets present (otherwise every spec is skipped). What each <Term id="gate">gate</Term> and nightly run proved is in [Proof](/docs/proof).
 
 </Held>
 
@@ -23,8 +23,8 @@ The in-process scenarios and the stack runner use the fake PayPal server. Only t
 
 Fifteen scenarios, `S01` to `S15`, in `scenarios/*.yaml`. Each file declares an auction, actors, timed steps, faults and expectations. The schema in `src/dsl/schema.ts` rejects a file that does not match, and a step or fault a runner cannot drive throws; it is never skipped.
 
-- **In process** (`src/runner/inproc.ts`): the real engine, room, settlement saga and the fake PayPal server on a manual clock. No browser, no real sleeping.
-- **Stack** (`src/runner/stack.ts`): the real server (fake payments, file store) as a child process, killed with SIGKILL and restarted on the same data folder. `externalFake` runs the fake PayPal in its own process so a server kill leaves orders and idempotency keys alive. Scenarios `S03`, `S09` and `S15` declare `modes: [inproc, stack]`; the others run in process only.
+- **In process** (`src/runner/inproc.ts`): the real <Term id="engine">engine</Term>, room, settlement <Term id="saga">saga</Term> and the fake PayPal server on a manual clock. No browser, no real sleeping.
+- **Stack** (`src/runner/stack.ts`): the real server (fake payments, file store) as a child process, killed with SIGKILL and restarted on the same data folder. `externalFake` runs the fake PayPal in its own process so a server kill leaves orders and <Term id="idempotency-key">idempotency keys</Term> alive. Scenarios `S03`, `S09` and `S15` declare `modes: [inproc, stack]`; the others run in process only.
 
 </Tab>
 <Tab value="Property tests">

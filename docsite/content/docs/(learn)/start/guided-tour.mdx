@@ -1,0 +1,23 @@
+---
+title: The guided tour
+description: Ten steps through the docs, from what GAVEL is to what is not done yet, with the process of one auction in a single diagram.
+icon: Route
+---
+
+This is the shortest way through everything. Each step is one page, in an order that builds: what the project is, how to try it, how an auction runs, how to check the result, how it is built, what is proven, and what is not done. Every page on the path has a progress bar at the top and Previous and Next links at the bottom.
+
+Everything runs on the PayPal sandbox. A bid is a <Term id="hold">hold</Term>; nothing is charged until the winning price is <Term id="capture">captured</Term> at the <Term id="hammer">hammer</Term>.
+
+## The process of one auction
+
+<ProcessDiagram />
+
+Stages 1 to 4 are held: a hold exists and nothing has been charged. At stage 5 the winning price is charged and every other hold is released. Stage 6 shows the outcome and stage 7 lets anyone check the record. If an auction runs for days, an authorization can age; see <Term id="honor-period">honor period</Term> for what is and is not known.
+
+## The ten steps
+
+<TourSteps />
+
+## New to the words?
+
+Words like <Term id="ledger">ledger</Term> and <Term id="hash-chain">hash chain</Term> have a short definition on hover, on keyboard focus or on tap, and the full list is in the [glossary](/docs/reference/glossary). A plainer start, with a hotel analogy, is the [beginner path](/docs/start/beginner-path).
