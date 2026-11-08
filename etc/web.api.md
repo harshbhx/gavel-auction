@@ -35,8 +35,8 @@ export function ReceiptRoute(input: {
 
 // Warnings were encountered during analysis:
 //
-// /home/runner/work/gavel-auction/gavel-auction/.api-types/web/App.d.ts:13:9 - (ae-forgotten-export) The symbol "PaymentsMode" needs to be exported by the entry point App.d.ts
-// /home/runner/work/gavel-auction/gavel-auction/.api-types/web/App.d.ts:21:5 - (ae-forgotten-export) The symbol "MintReceiptLink" needs to be exported by the entry point App.d.ts
+// /home/runner/work/gavel-auction/gavel-auction/.api-types/web/App.d.ts:14:9 - (ae-forgotten-export) The symbol "PaymentsMode" needs to be exported by the entry point App.d.ts
+// /home/runner/work/gavel-auction/gavel-auction/.api-types/web/App.d.ts:22:5 - (ae-forgotten-export) The symbol "MintReceiptLink" needs to be exported by the entry point App.d.ts
 
 // (No @packageDocumentation comment for this package)
 
