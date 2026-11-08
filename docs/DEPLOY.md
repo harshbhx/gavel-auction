@@ -14,6 +14,7 @@ Requirements: R-QA-042 (deploy), R-QA-044 (webhook registration). Hosting choice
 2. In the service Environment tab fill the variables the blueprint leaves empty. Names only:
    - `PUBLIC_URL`: the https URL Render gives the service (set after the first deploy, then redeploy).
    - `CORS_ORIGINS`: the origin of the hosted web app.
+   - `WEB_ORIGIN` (optional): the origin of the hosted web app, used for every link the API builds (console, screen, invite, receipt). Left out, the first `CORS_ORIGINS` entry is used, then `PUBLIC_URL`.
    - `TOKEN_SECRET`: at least 32 bytes, random.
    - `ADMIN_KEY`: at least 24 characters, random, different from `TOKEN_SECRET`.
    - `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`: from the PayPal sandbox app.
@@ -45,7 +46,7 @@ A judge with no setup can run a real sandbox auction when the API runs with `JUD
 | `JUDGE_ROOMS`             | off     | `true` turns the routes on. Off answers 404.                                                      |
 | `JUDGE_ROOMS_PAUSED`      | off     | Boot with creation switched off (the runtime switch is below).                                    |
 | `JUDGE_SIM_HOLDS`         | on      | Judge rooms only: a bidder may test with a simulated hold, no PayPal login. `false` turns it off. |
-| `JUDGE_ROOMS_MAX`         | 5       | Most rooms live at once (at most 50).                                                             |
+| `JUDGE_ROOMS_MAX`         | 15      | Most rooms live at once (at most 50). Finished rooms free a slot at once.                         |
 | `JUDGE_ROOM_TTL_MS`       | 1800000 | Room lifetime before the sweeper ends it (at most 7200000).                                       |
 | `JUDGE_ROOMS_PER_IP_HOUR` | 4       | Creates per source address per hour. Judges on one NAT share it.                                  |
 | `JUDGE_ROOMS_PER_HOUR`    | 40      | Creates for the whole host per hour.                                                              |

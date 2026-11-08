@@ -32,6 +32,11 @@ export interface HttpDeps {
   adminKey: string;
   /** Public origin used to build links, no trailing slash. */
   publicUrl: string;
+  /**
+   * Origin of the web app, no trailing slash. Every link a person opens (console, screen, invite,
+   * receipt) is built on it. Defaults to `publicUrl`, which is right only when one host serves both.
+   */
+  webOrigin?: string;
   /** Origins allowed by CORS. Anything else gets no CORS headers. */
   corsOrigins: readonly string[];
   /** Override of the WebSocket URL returned by join. Defaults to PUBLIC_URL with ws scheme and /ws. */
@@ -289,7 +294,8 @@ export function requireAdmin(c: Ctx): void {
 export function bearerOf(c: Ctx): string {
   const h = c.req.headers.get('authorization') ?? '';
   const m = /^Bearer (\S+)$/i.exec(h);
-  if (m?.[1] === undefined) throw new GavelError('unauthorized', 'bearer token required');
+  // Not worded "bearer token": the message scrubber would turn that into "[redacted] required".
+  if (m?.[1] === undefined) throw new GavelError('unauthorized', 'access token required');
   return m[1];
 }
 

@@ -334,6 +334,21 @@ function bearerOf(req: IncomingMessage): string | undefined {
 }
 
 /** Origins that may open a socket: the configured CORS list plus the public origin. */
+/** The origin links are built on: WEB_ORIGIN, else the first CORS origin, else the API host. */
+export function webOriginOf(config: {
+  PUBLIC_URL: string;
+  CORS_ORIGINS: readonly string[];
+  WEB_ORIGIN?: string | undefined;
+}): string {
+  const first = config.CORS_ORIGINS[0];
+  const raw = config.WEB_ORIGIN ?? first ?? config.PUBLIC_URL;
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return config.PUBLIC_URL.replace(/\/+$/, '');
+  }
+}
+
 function wsOrigins(config: { PUBLIC_URL: string; CORS_ORIGINS: readonly string[] }): string[] {
   return [...new Set([new URL(config.PUBLIC_URL).origin, ...config.CORS_ORIGINS])];
 }
@@ -617,6 +632,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
       secrets,
       adminKey: config.ADMIN_KEY,
       publicUrl: config.PUBLIC_URL,
+      webOrigin: webOriginOf(config),
       corsOrigins: config.CORS_ORIGINS,
       log,
       joinLimit: (req) => limiter.checkJoin(requestSources.get(req) ?? 'unknown'),
