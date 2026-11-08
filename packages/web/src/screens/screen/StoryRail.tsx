@@ -20,9 +20,7 @@ export function StoryRail({ phase }: { readonly phase: StoryPhase }) {
           data-status={i < phase ? 'done' : i === phase ? 'now' : 'next'}
           aria-current={i === phase ? 'step' : undefined}
         >
-          <span className="gv-story__label tabular">
-            {`${i + 1}. ${t(step.label)}`}
-          </span>
+          <span className="gv-story__label tabular">{`${i + 1}. ${t(step.label)}`}</span>
           <span className="gv-story__note">{t(step.note)}</span>
         </li>
       ))}
