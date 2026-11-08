@@ -82,6 +82,7 @@ export function DemoLauncher({
   writeClipboard = (text) => navigator.clipboard.writeText(text),
 }: DemoLauncherProps) {
   const heading = useRef<HTMLHeadingElement>(null);
+  const starting = useRef(false);
   useEffect(() => {
     document.title = t('landing.start');
     heading.current?.focus();
@@ -130,12 +131,18 @@ export function DemoLauncher({
       scripted();
       return;
     }
-    if (!goalOk) return;
+    if (!goalOk || starting.current) return;
+    // A ref, not state: two clicks in one frame must not both send a request.
+    starting.current = true;
     setPhase('busy');
     setFailure(null);
     createRoom(goalField && goalInput.kind === 'ok' ? goalInput.cents : undefined).then(
-      (next) => finish(next, 'live'),
+      (next) => {
+        starting.current = false;
+        finish(next, 'live');
+      },
       (error: unknown) => {
+        starting.current = false;
         setFailure(error instanceof DemoRoomError ? error.reason : null);
         setPhase('failed');
       },
