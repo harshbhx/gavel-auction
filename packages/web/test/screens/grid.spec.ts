@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { t } from '../../src/copy/t';
-import { HAPPY, auditRoom, happy } from './support/frames';
+import { auditRoom } from './support/frames';
 import { expect, openRoom, test } from './support/harness';
 
 /**
@@ -15,6 +15,22 @@ async function lab(page: Page): Promise<void> {
   await page.getByRole('heading', { level: 1, name: t('sim.title') }).waitFor();
   await page.locator('.ag-row').first().waitFor();
   await expect(page.getByText(/Chain intact: [\d,]+ entries sealed and linked/)).toBeVisible();
+}
+
+/** Scrolls the grid's own scroller (whichever element AG Grid uses) to a fraction of its height. */
+async function scrollGrid(page: Page, fraction: number): Promise<void> {
+  await page
+    .locator('.gv-gridbox')
+    .first()
+    .evaluate((box, f) => {
+      const scroller = Array.from(box.querySelectorAll<HTMLElement>('*')).find(
+        (el) =>
+          el.scrollHeight > el.clientHeight + 50 &&
+          /(auto|scroll)/.test(getComputedStyle(el).overflowY),
+      );
+      if (scroller !== undefined)
+        scroller.scrollTop = scroller.scrollHeight * f - scroller.clientHeight / 2;
+    }, fraction);
 }
 
 async function noSidewaysScroll(page: Page): Promise<void> {
@@ -45,9 +61,7 @@ test.describe('ledger lab', () => {
 
   test('scrolls far down without drawing every row', async ({ page, shoot }) => {
     await lab(page);
-    await page.locator('.gv-gridbox .ag-body-viewport').evaluate((el) => {
-      el.scrollTop = el.scrollHeight / 2;
-    });
+    await scrollGrid(page, 0.5);
     await page.waitForTimeout(300);
     expect(await page.locator('.gv-gridbox .ag-row').count()).toBeLessThan(150);
     await shoot('grid', 'ledger-lab-scrolled');
@@ -62,7 +76,7 @@ test.describe('ledger lab', () => {
 
   test('a selected row opens its detail', async ({ page, shoot }) => {
     await lab(page);
-    await page.locator('.gv-gridbox .ag-center-cols-container .ag-row').nth(3).click();
+    await page.locator('.gv-gridbox .ag-row[row-id="4"]').first().click();
     await expect(page.getByText(t('ledger.detail.hash'))).toBeVisible();
     await shoot('grid', 'ledger-lab-detail');
   });
@@ -72,9 +86,7 @@ test.describe('ledger lab', () => {
     await page.getByRole('button', { name: /Simulate an edit to entry/ }).click();
     await expect(page.getByText(/Chain broken at entry \d+/)).toBeVisible();
     // The row is far down the ledger, so it is only drawn once the grid scrolls to it.
-    await page.locator('.gv-gridbox .ag-body-viewport').evaluate((el) => {
-      el.scrollTop = el.scrollHeight * 0.55 - el.clientHeight / 2;
-    });
+    await scrollGrid(page, 0.55);
     await expect(page.locator('.gv-grid-row--bad').first()).toBeAttached();
     await shoot('grid', 'ledger-lab-edited');
   });
@@ -83,7 +95,7 @@ test.describe('ledger lab', () => {
     await lab(page);
     await page.getByRole('tab', { name: t('sim.tab.holds') }).click();
     await expect(page.getByText(t('holds.check.ok'))).toBeVisible();
-    await page.locator('.ag-floating-bottom .ag-row').first().waitFor();
+    await expect(page.getByText(/^Totals for \d+ shown$/).first()).toBeVisible();
     await shoot('grid', 'holds');
   });
 
@@ -110,8 +122,8 @@ test.describe('console bid history', () => {
     await openRoom(page, {
       role: 'auctioneer',
       route: 'console',
-      scenario: happy,
-      at: HAPPY.outbid,
+      scenario: auditRoom,
+      at: 9_000,
     });
     await page.getByRole('button', { name: t('console.hammer'), exact: true }).waitFor();
     await page.getByRole('button', { name: t('console.view.grid'), exact: true }).click();
