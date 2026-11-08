@@ -36,6 +36,7 @@ import { BidScreen } from './screens/bid/BidScreen';
 import { LiveConsole } from './screens/console/LiveConsole';
 import { GalleryScreen } from './screens/gallery/GalleryScreen';
 import { AuditPage } from './screens/audit/AuditPage';
+import { renderAuditLedger } from './screens/audit/AuditGridSlot';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
 import { OfflineBanner } from './a11y/OfflineBanner';
 import { SkipLink } from './a11y/SkipLink';
@@ -89,6 +90,7 @@ export interface AppProps {
 }
 
 const ReplayScreen = lazy(() => import('./screens/replay/ReplayScreen'));
+const LedgerLab = lazy(() => import('./screens/ledger/LedgerLab'));
 
 const NAVIGATE_EVENT = 'gavel:navigate';
 
@@ -397,6 +399,16 @@ function ScreenRoute({
 }
 
 /** Replay of a recording: the bundle is fetched from the recording folder. */
+function LedgerRoute({ match }: { match: RouteMatch }) {
+  return (
+    <RouteScreen match={match}>
+      <Suspense fallback={<p role="status">{t('grid.loading')}</p>}>
+        <LedgerLab />
+      </Suspense>
+    </RouteScreen>
+  );
+}
+
 function ReplayRoute({ match }: { match: RouteMatch }) {
   const recordingId = match.params['recordingId'];
   return (
@@ -417,7 +429,7 @@ export function ReceiptRoute({ roomId, share }: { roomId: string; share?: MintRe
 
 export function AuditRoute() {
   const state = useRoom((s) => s);
-  return <AuditPage state={state} roomId={state.auctionId} />;
+  return <AuditPage state={state} roomId={state.auctionId} ledger={renderAuditLedger} />;
 }
 
 type Api = NonNullable<AppProps['api']>;
@@ -1167,6 +1179,7 @@ function Routed({
   if (id === 'try') return <TryRoute api={api} />;
   if (id === 'notFound') return <NotFound />;
   if (id === 'replay') return <ReplayRoute match={match} />;
+  if (id === 'ledger') return <LedgerRoute match={match} />;
   if (id === 'audit' && roomId !== undefined && who === null && !hasReviewerAccess(roomId)) {
     return (
       <TokenGate role="reviewer" token={null} roomId={roomId}>

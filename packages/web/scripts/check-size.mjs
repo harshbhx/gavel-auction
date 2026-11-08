@@ -4,8 +4,8 @@
  *
  * Walks the initial route (the scripts and preloads in dist/index.html plus everything they import
  * statically), sums the gzip size of that JS and fails when it is over 180 KB. It also fails when
- * the PayPal SDK loader, the QR encoder or the replay player is part of that initial graph: those
- * three must be lazy chunks. It also checks that index.html ships a Content-Security-Policy with
+ * the PayPal SDK loader, the QR encoder, the replay player or AG Grid is part of that initial graph: those
+ * must be lazy chunks. It also checks that index.html ships a Content-Security-Policy with
  * no inline script allowance (R-WEB-004).
  *
  * Usage: node packages/web/scripts/check-size.mjs [distDir]
@@ -22,6 +22,7 @@ const LAZY = [
   { name: 'PayPal SDK', file: /paypal/i, text: 'web-sdk/v6/core' },
   { name: 'QR encoder', file: /qrcode/i, text: 'url too long for the QR renderer' },
   { name: 'replay player', file: /replay/i, text: null },
+  { name: 'AG Grid', file: /ag-grid/i, text: 'ag-root-wrapper' },
 ];
 
 /** Static import specifiers of a built chunk. Dynamic import( ) calls are not matched. */

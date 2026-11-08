@@ -57,8 +57,8 @@ const SETTLE_ORDER = [
 ] as const;
 
 /** A copy key for a settlement state label (reused from the ladder, so wording stays in one place). */
-export function stateLabelKey(state: string): CopyKey {
-  return `ladder.state.${state}` as CopyKey;
+export function stateLabelKey(state: string): Extract<CopyKey, `ladder.state.${string}`> {
+  return `ladder.state.${state}` as Extract<CopyKey, `ladder.state.${string}`>;
 }
 
 function roster(state: RoomState): Rosterish {

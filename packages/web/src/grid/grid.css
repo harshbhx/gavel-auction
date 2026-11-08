@@ -1,0 +1,275 @@
+/* Shared styles for the AG Grid tables. The grid itself is themed in theme.ts; this is the frame around it. */
+
+.gv-gridwrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.gv-gridbox {
+  /* AG Grid needs a height. Fill most of the viewport, never less than a screenful of rows. */
+  height: clamp(22rem, 70vh, 40rem);
+  min-width: 0;
+  width: 100%;
+}
+
+.gv-gridbox--bids {
+  height: clamp(20rem, 60vh, 32rem);
+}
+
+.gv-gridbox--loading {
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--color-fg);
+  background: var(--color-surface);
+  color: var(--color-fg-muted);
+}
+
+.gv-gridbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.gv-gridbar label {
+  display: block;
+  font-size: var(--font-size-1);
+  font-weight: 700;
+  margin-bottom: var(--space-1);
+}
+
+.gv-gridbar input[type='search'],
+.gv-gridbar select {
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 2px solid var(--color-fg);
+  border-radius: 0;
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font: inherit;
+}
+
+.gv-gridbar input[type='search'] {
+  min-width: min(100%, 18rem);
+}
+
+.gv-gridbar__search {
+  flex: 1 1 14rem;
+}
+
+.gv-gridbar__sort {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2);
+}
+
+.gv-gridbar__sort label {
+  flex-basis: 100%;
+  margin-bottom: 0;
+}
+
+.gv-gridbar__count {
+  margin: 0;
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-1);
+  font-variant-numeric: tabular-nums;
+  align-self: center;
+}
+
+.gv-gridbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.gv-gridbar__notice {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--font-size-1);
+}
+
+.gv-gridbar :focus-visible,
+.gv-gridwrap :focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.gv-grid-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* One-line verdict above a grid: words first, the edge colour only backs them up. */
+.gv-gridchain {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--color-fg);
+  border-left-width: 8px;
+  font-weight: 700;
+  font-size: var(--font-size-2);
+  background: var(--color-surface);
+}
+
+.gv-gridchain[data-state='ok'] {
+  border-left-color: var(--color-success);
+}
+
+.gv-gridchain[data-state='bad'] {
+  border-color: var(--color-danger);
+  border-left-color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 12%, var(--color-surface));
+}
+
+/* A row that was edited after sealing, or whose link is broken. */
+.ag-theme-quartz .ag-row.gv-grid-row--bad,
+.gv-gridbox .ag-row.gv-grid-row--bad {
+  background-color: color-mix(in srgb, var(--color-danger) 18%, var(--color-surface));
+  box-shadow: inset 6px 0 0 var(--color-danger);
+  font-weight: 700;
+}
+
+.gv-gridbox .ag-row.gv-bid--rejected {
+  color: var(--color-fg-muted);
+}
+
+/* Cards for narrow screens. */
+.gv-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1);
+  height: 100%;
+  line-height: 1.3;
+  min-width: 0;
+}
+
+.gv-card__top,
+.gv-card__mid,
+.gv-card__bot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.gv-card__mid {
+  justify-content: space-between;
+}
+
+.gv-card__bot {
+  justify-content: space-between;
+}
+
+.gv-card__seq {
+  font-weight: 700;
+}
+
+.gv-card time {
+  margin-left: auto;
+  font-size: var(--font-size-1);
+  color: var(--color-fg-muted);
+}
+
+.gv-griddetail {
+  padding: var(--space-4);
+  border: 2px solid var(--color-fg);
+  background: var(--color-surface);
+}
+
+.gv-griddetail > p {
+  margin: 0;
+  color: var(--color-fg-muted);
+}
+
+.gv-griddetail header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.gv-griddetail h3 {
+  margin: 0;
+}
+
+.gv-griddetail dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-3) 0 0;
+}
+
+.gv-griddetail dt {
+  font-weight: 700;
+}
+
+.gv-griddetail dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.gv-grid-hash {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
+  overflow-wrap: anywhere;
+}
+
+.gv-gridnote {
+  margin: 0;
+  font-size: var(--font-size-1);
+  color: var(--color-fg-muted);
+}
+
+.gv-gridnote a {
+  color: var(--color-accent);
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
+/* Two-button switch between a list or table and the grid. */
+.gv-views {
+  display: flex;
+  margin-top: var(--space-2);
+}
+
+.gv-views button {
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: 2px solid var(--color-fg);
+  border-radius: 0;
+  margin-right: -2px;
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gv-views button[aria-pressed='true'] {
+  background: var(--color-fg);
+  color: var(--color-on-sheet);
+}
+
+@media (max-width: 699px) {
+  .gv-gridbar__actions > * {
+    flex: 1 1 auto;
+  }
+
+  .gv-griddetail dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gv-griddetail dt {
+    margin-top: var(--space-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-gridbox * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -287,6 +287,7 @@ Five small datasets (gate results, latency, the simulated 30-day run, speech-to-
 | [Docs site](https://gavel-docs.creharsh.workers.dev) | Diagrams, proof pages and the judge paths      |
 | [Judge walkthrough](docs/JUDGES.md)                  | A short path through the code and the evidence |
 | [Design system](docs/DESIGN.md)                      | The Scoreboard interface and its components    |
+| [AG Grid tables](docs/AG-GRID.md)                    | How the ledger, bids and holds grids are built |
 | [Demo guide](docs/DEMO.md)                           | What you can try today and what to expect      |
 | [Architecture](docs/submission/ARCHITECTURE.md)      | How the packages fit together                  |
 | [Gate results](docs/GATES.md)                        | What each sandbox run proved                   |
@@ -297,6 +298,10 @@ Five small datasets (gate results, latency, the simulated 30-day run, speech-to-
 | [Deploy staging](docs/DEPLOY.md)                     | Hosting the server                             |
 
 Package guides: [server](packages/server/README.md), [voice](packages/voice/README.md), [engine](packages/engine/README.md), [web](packages/web/README.md).
+
+## Sponsors
+
+- **[AG Grid](https://www.ag-grid.com/)** (Community edition, MIT): the audit ledger, the console bid history and the holds and settlement tables are AG Grid tables, themed to the Newsprint look. They sort, filter, resize, select, export to CSV and stay smooth on a few thousand rows. The grids load on demand, so the landing and bidder pages do not carry the library. See [docs/AG-GRID.md](docs/AG-GRID.md), and try the grids on the `/ledger` page of the web app (a 30-day simulated run).
 
 ## Security and sandbox notice
 
