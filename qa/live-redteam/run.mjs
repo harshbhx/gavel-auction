@@ -342,17 +342,29 @@ async function paypalPopup(pop, buyer) {
   if (login) await login.click();
   for (let i = 0; i < 20; i += 1) {
     if (pop.isClosed()) return true;
+    if (!/paypal\.com/.test(pop.url())) {
+      note(`paypal: returned to ${new URL(pop.url()).hostname}`);
+      return true;
+    }
     const ok = await first([
       '#payment-submit-btn',
       'button[data-testid="submit-button-initial"]',
+      'button:has-text("Continue to Review Order")',
       'button:has-text("Complete Purchase")',
       'button:has-text("Agree and Continue")',
-      'button:has-text("Continue")',
+      'button:has-text("Agree & Continue")',
       'button:has-text("Pay Now")',
+      'button:has-text("Continue")',
     ]);
     if (ok) {
-      await ok.click().catch(() => {});
-      await pop.waitForTimeout(3000);
+      const label = clip(await ok.innerText().catch(() => ''), 40);
+      note(`paypal: clicking "${label}" (iteration ${i})`);
+      await ok.scrollIntoViewIfNeeded().catch(() => {});
+      await ok.click({ timeout: 8000 }).catch(async (e) => {
+        note(`paypal: click failed ${clip(e.message, 80)}; forcing`);
+        await ok.click({ force: true }).catch(() => {});
+      });
+      await pop.waitForTimeout(4000);
     } else {
       await pop.waitForTimeout(1500);
     }
@@ -758,6 +770,11 @@ async function main() {
   await step('Watcher: hub join link, Just watch, then join as bidder', async () => {
     const joinUrl = `${WEB}/join/${encodeURIComponent(roomId)}${code ? `?c=${code}` : ''}`;
     await watcher.goto(joinUrl, { waitUntil: 'load' });
+    await watcher
+      .getByRole('button', { name: /just watch/i })
+      .first()
+      .waitFor({ timeout: 15000 })
+      .catch(() => {});
     note(`join page for room link: ${await visibleText(watcher)}`);
     const w = await clickText(watcher, /just watch|watch/i);
     check(w !== null, '"Just watch" present');
@@ -781,7 +798,11 @@ async function main() {
     }
     // the exact path Dhairya reports: back to the join page, Join as bidder
     await watcher.goto(joinUrl, { waitUntil: 'load' });
-    await watcher.waitForTimeout(1500);
+    await watcher
+      .getByRole('button', { name: /join as bidder/i })
+      .first()
+      .waitFor({ timeout: 15000 })
+      .catch(() => {});
     note(`revisit join page url: ${watcher.url()}`);
     const again = await clickText(watcher, /join as bidder/i);
     await watcher.waitForTimeout(3000);
@@ -822,6 +843,7 @@ async function main() {
 
   await step('Bidder A registers (invite link) and holds (sandbox)', async () => {
     if (!inviteA) return check(false, 'no invite');
+    await bidA.goto('about:blank');
     await bidA.goto(inviteA, { waitUntil: 'load' });
     await bidA.waitForTimeout(2500);
     aRegistered = await registerBidder(bidA, 'bidderA', 'QA Alice', 0);
@@ -929,11 +951,19 @@ async function main() {
       note(`hammer dialog: ${clip(await dlg.innerText(), 200)}`);
       const btns = await dlg.getByRole('button').allInnerTexts();
       note(`dialog buttons: ${btns.join(' | ')}`);
-      await dlg
-        .getByRole('button', { name: /hammer|confirm|close|sell|yes/i })
-        .first()
-        .click()
-        .catch((e) => note(`dialog confirm: ${clip(e.message, 100)}`));
+      const hb = dlg.getByRole('button', { name: /hold to hammer/i }).first();
+      const box = await hb.boundingBox().catch(() => null);
+      if (box) {
+        await cons.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        await cons.mouse.down();
+        await cons.waitForTimeout(3800);
+        await cons.mouse.up();
+        note('held the dialog hammer button for 3.8 s with the mouse');
+      } else {
+        await hb.focus().catch(() => {});
+        await cons.keyboard.press('Enter');
+        note('no hold box; pressed Enter on the hammer button');
+      }
     } else {
       note('no dialog; trying press-and-hold on hold-to-hammer');
       const hold = cons.getByRole('button', { name: /hold to hammer|hold 3 seconds/i }).first();
