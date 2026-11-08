@@ -93,9 +93,8 @@
   --color-slider-fill: #f5b488;
 
   /* type */
-  --font-sans:
-    'Public Sans Variable', 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
+  --font-sans: 'Public Sans Variable', 'Inter Variable', system-ui, -apple-system, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-display: 'Big Shoulders Display Variable', 'Arial Narrow', Impact, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, Menlo, Consolas, monospace;
   --type-scale: 1;
