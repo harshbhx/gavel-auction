@@ -658,6 +658,33 @@ export const en = {
   'screen.story.receipt': 'Receipt',
   'screen.story.receiptNote': 'Settled at the hammer price. Other holds are released.',
   'audit.title': 'Audit trail',
+  'chain.title': 'Ledger check',
+  'chain.verified': 'Chain verified',
+  'chain.verified.detail':
+    '{count} entries checked in this browser. Each one links to the entry before it, and the closing fingerprint matches.',
+  'chain.verified.open':
+    'This file does not end with the auction closing, so a missing tail cannot be ruled out.',
+  'chain.broken': 'Chain broken at entry {n}',
+  'chain.broken.bad_hash':
+    'Entry {n} no longer matches its own fingerprint, so it was changed after it was recorded.',
+  'chain.broken.bad_prev':
+    'Entry {n} does not link to the entry before it, so an entry was removed, added or reordered.',
+  'chain.broken.bad_seq': 'Entry {n} is out of order or a number is missing.',
+  'chain.broken.bad_version': 'Entry {n} is not in the export format this check understands.',
+  'chain.broken.truncated':
+    'The file ends after entry {n}, but the ledger recorded more entries than that.',
+  'chain.none': 'Chain not checked',
+  'chain.none.detail': 'No ledger came with this view, so nothing here has been verified.',
+  'chain.invalid': 'Chain not checked',
+  'chain.invalid.detail': 'This file is not a ledger export, so it could not be read.',
+  'chain.head': 'Closing fingerprint',
+  'chain.explain.summary': 'What a hash chain proves, and what it does not',
+  'chain.explain.proves':
+    'It proves the recorded events are complete, in order and unedited since the ledger sealed them. Each entry carries a fingerprint of its content and of the entry before it, so changing, removing or reordering one entry breaks every fingerprint after it.',
+  'chain.explain.notProves':
+    'It does not prove that what was recorded was true: a bid is kept as it was received, and private ceilings are left out of this public copy. It also never moves money. Holds stay held, not charged.',
+  'chain.file.label': 'Check a ledger file',
+  'chain.file.hint': 'Choose a replay bundle (JSON). It is read in this browser and not uploaded.',
   'ops.title': 'Operations',
   'ops.loading': 'Loading operations data',
   'ops.sagas': 'Saga states',
