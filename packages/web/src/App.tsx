@@ -28,6 +28,7 @@ import { Provenance } from './design/Provenance';
 import { SCRIPTED_ROOM_ID, loadScriptedRoom, type ScriptedRoom } from './testing/scriptedRoom';
 import { clearSession, type SessionRole } from './net/session';
 import { loadRegistration } from './payments/registrationStore';
+import { SimApprovalAdapter } from './payments/simAdapter';
 import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
 import { HelpLayer } from './help';
 import { RouteScreen, matchRoute, type RouteMatch } from './routes';
@@ -499,25 +500,40 @@ function TryRoute({ api }: { api: Api | undefined }) {
   );
 }
 
+/** Whether the host offers simulated holds in judge rooms. Never throws. */
+async function judgeSimHolds(apiBase: string): Promise<boolean> {
+  try {
+    const body = (await fetchJson(`${apiBase}/api/judge/capabilities`)) as { simHolds?: unknown };
+    return body.simHolds === true;
+  } catch {
+    return false;
+  }
+}
+
 function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
   const [found, setFound] = useState<{
     state: JoinState;
     title: string | null;
     id: string;
     code: string | null;
+    demoHold: boolean;
   }>({
     state: api === undefined ? 'open' : 'loading',
     title: api === undefined ? roomId : null,
     id: roomId,
     code: null,
+    demoHold: false,
   });
   useEffect(() => {
     if (api === undefined) return undefined;
     let live = true;
+    const caps = judgeSimHolds(api.apiBase);
     fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(roomId)}`)
-      .then((body) => {
+      .then(async (body) => {
+        const simOn = await caps;
         if (!live) return;
         const info = body as {
+          judgeRoom?: unknown;
           title?: unknown;
           status?: unknown;
           auctionId?: unknown;
@@ -528,10 +544,12 @@ function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
           title: typeof info.title === 'string' ? info.title : roomId,
           id: typeof info.auctionId === 'string' && info.auctionId !== '' ? info.auctionId : roomId,
           code: typeof info.joinCode === 'string' && info.joinCode !== '' ? info.joinCode : null,
+          demoHold: simOn && info.judgeRoom === true,
         });
       })
       .catch(() => {
-        if (live) setFound({ state: 'notFound', title: null, id: roomId, code: null });
+        if (live)
+          setFound({ state: 'notFound', title: null, id: roomId, code: null, demoHold: false });
       });
     return () => {
       live = false;
@@ -542,6 +560,7 @@ function JoinRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
       roomId={found.id}
       roomName={found.title}
       shortCode={found.code}
+      demoHold={found.demoHold}
       state={found.state}
       origin={window.location.origin}
       onNavigate={navigate}
@@ -598,6 +617,10 @@ function RegisterRoute({
       ? null
       : { token: stored.token, bidderId: stored.bidderId };
   });
+  // `?mode=demo` is the judge-room demo way: a simulated hold instead of a PayPal sandbox hold.
+  const [demoHold] = useState(
+    () => new URLSearchParams(window.location.search).get('mode') === 'demo',
+  );
   const [draft, setDraft] = useState<RegistrationDraft | null>(null);
   // The draft is kept when the buyer goes back, so the name and paddle they typed are still there.
   const [approving, setApproving] = useState(false);
@@ -759,6 +782,7 @@ function RegisterRoute({
         ceilingCents={draft.ceilingCents}
         name={draft.name}
         paddle={snapshot?.roster.find((r) => r.bidderId === who.bidderId)?.paddle}
+        demo={demoHold}
         onBack={() => setApproving(false)}
       />
     </>
@@ -774,17 +798,21 @@ function ApproveRoute(props: {
   name: string;
   /** The paddle the server assigned, read from the room roster. */
   paddle: number | undefined;
+  /** The judge-room demo way: a simulated hold, no PayPal login. */
+  demo: boolean;
   onBack: () => void;
 }) {
-  const { roomId, bidderId, token, api, ceilingCents, name, paddle } = props;
+  const { roomId, bidderId, token, api, ceilingCents, name, paddle, demo } = props;
   const port = useMemo(
     () =>
-      createApprovalPort(
-        api.payments,
-        { apiBase: api.apiBase, token },
-        { apiBase: api.apiBase, clientId: api.paypalClientId, token },
-      ),
-    [api, token],
+      demo
+        ? new SimApprovalAdapter({ apiBase: api.apiBase, token })
+        : createApprovalPort(
+            api.payments,
+            { apiBase: api.apiBase, token },
+            { apiBase: api.apiBase, clientId: api.paypalClientId, token },
+          ),
+    [api, token, demo],
   );
   const approval = useApproval({ port, roomId, bidderId });
   const { start } = approval;

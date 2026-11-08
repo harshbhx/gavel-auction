@@ -53,6 +53,8 @@ const EnvObject = z.object({
   JUDGE_ROOMS: boolFlag.default('0'),
   /** Boot-time state of the judge rooms kill switch; the admin route flips it at runtime. */
   JUDGE_ROOMS_PAUSED: boolFlag.default('0'),
+  /** Simulated holds (no PayPal login) inside judge rooms. Has no effect while JUDGE_ROOMS is off. */
+  JUDGE_SIM_HOLDS: boolFlag.default('1'),
   /** Most judge rooms live at once. */
   JUDGE_ROOMS_MAX: int(1).pipe(z.number().max(50)).default('5'),
   /** Lifetime of a judge room in ms before the sweeper ends it (at most 2 hours). */
