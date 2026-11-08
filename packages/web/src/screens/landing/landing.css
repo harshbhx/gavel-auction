@@ -589,12 +589,6 @@
   color: var(--color-fg);
 }
 
-.gv-mk-footer__note a {
-  color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
 /* ---- Motion: a short rise on scroll, CSS only, never under reduced motion ---- */
 @media (prefers-reduced-motion: no-preference) {
   html:has(.gv-mk) {

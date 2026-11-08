@@ -13,7 +13,6 @@ import {
   FeaturesSection,
   HowSection,
   LICENSE_URL,
-  OPEN_DATA_URL,
   LotCard,
   REPO_URL,
   TrustSection,
@@ -250,9 +249,7 @@ export function LandingScreen({
             </div>
           </nav>
         </div>
-        <p className="gv-mk-footer__note">
-          <a href={OPEN_DATA_URL}>{t('mk.foot.data')}</a>
-        </p>
+        <p className="gv-mk-footer__note">{t('mk.foot.data')}</p>
         <p className="gv-mk-footer__note">{t('mk.foot.sandbox')}</p>
       </footer>
     </div>

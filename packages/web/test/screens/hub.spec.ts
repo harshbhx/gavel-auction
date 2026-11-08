@@ -1,4 +1,3 @@
-import type { Locator } from '@playwright/test';
 import { t } from '../../src/copy/t';
 import { HAPPY, REGISTER_ROOM_ID, happy } from './support/frames';
 import {
@@ -239,10 +238,7 @@ test.describe('scripted demo in Newsprint', () => {
 });
 
 test.describe('scripted demo player', () => {
-  test('one readable beat at a time, no layout shift', async ({ page, shoot }, info) => {
-    // Found by the 320 px project: the caption box moves 13 px between beats there because the
-    // beat label wraps to a different number of lines. Tracked in a follow-up issue.
-    test.fixme(info.project.name === 'phone-small', 'caption shifts 13 px between beats at 320 px');
+  test('one readable beat at a time, no layout shift', async ({ page, shoot }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await mockApi(page, () => ({ status: 404 }));
     await page.goto('/demo/scripted');
@@ -250,15 +246,8 @@ test.describe('scripted demo player', () => {
     const player = page.getByTestId('scripted-player');
     const caption = page.getByTestId('scripted-caption');
     const next = page.getByRole('button', { name: t('scriptedDemo.next') });
-    // Positions are measured on the page, not the viewport: on a narrow screen the page is taller
-    // than the window and pressing Next scrolls it, which moves every box in viewport terms.
-    const onPage = (box: Locator): Promise<{ x: number; y: number; w: number; h: number }> =>
-      box.evaluate((el) => {
-        const r = el.getBoundingClientRect();
-        return { x: r.x + scrollX, y: r.y + scrollY, w: r.width, h: r.height };
-      });
-    const before = await onPage(caption);
-    const playerBefore = await onPage(player);
+    const before = await caption.boundingBox();
+    const playerBefore = await player.boundingBox();
     await expect(caption).toContainText(t('scriptedDemo.b0.label'));
     await shoot('scripted-player', '1-holds');
     await next.click();
@@ -277,8 +266,8 @@ test.describe('scripted demo player', () => {
     await next.click();
     await expect(caption).toContainText(t('scriptedDemo.b9.label'));
     await shoot('scripted-player', '10-receipt');
-    expect(await onPage(caption)).toEqual(before);
-    expect(await onPage(player)).toEqual(playerBefore);
+    expect(await caption.boundingBox()).toEqual(before);
+    expect(await player.boundingBox()).toEqual(playerBefore);
   });
 
   test('plays by itself, slowly, and pauses', async ({ page }) => {

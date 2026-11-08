@@ -19,19 +19,12 @@ Locally, with browsers installed: `npm run test:screens -w @gavel/web`, then
 
 `<view>--<state>--<project>.png`, with the project one of:
 
-| Project           | Viewport       | Theme     |
-| ----------------- | -------------- | --------- |
-| desktop-light     | 1440x900       | light     |
-| phone-light       | 390x844 at 2x  | light     |
-| desktop-dark      | 1440x900       | dark      |
-| desktop-projector | 1440x900       | projector |
-| phone-small       | 320x640 at 2x  | light     |
-| tablet            | 768x1024 at 2x | light     |
-| phone-dark        | 390x844 at 2x  | dark      |
-| phone-projector   | 390x844 at 2x  | projector |
-
-The last four save only the key views (landing, join, register, bid, receipt, console, hub, screen):
-the list is `KEY_VIEWS` in `playwright.screens.config.ts`, read by the `shoot` fixture.
+| Project           | Viewport      | Theme     |
+| ----------------- | ------------- | --------- |
+| desktop-light     | 1440x900      | light     |
+| phone-light       | 390x844 at 2x | light     |
+| desktop-dark      | 1440x900      | dark      |
+| desktop-projector | 1440x900      | projector |
 
 ## How states are reached
 
@@ -47,7 +40,7 @@ No real PayPal, server or network is used.
 
 ## Files
 
-- `playwright.screens.config.ts`: ten projects, own dev server on port 4174.
+- `playwright.screens.config.ts`: four projects, own dev server on port 4174.
 - `support/harness.ts`: fixtures, socket and API mocks, screenshot helper.
 - `support/frames.ts`: extra scenarios for states the stock ones do not cover.
 - `public.spec.ts`, `register.spec.ts`, `bidder.spec.ts`, `console.spec.ts`, `screen.spec.ts`,

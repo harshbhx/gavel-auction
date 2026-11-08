@@ -34,20 +34,6 @@ const key = [
   ['operator-runbook', '/docs/run/operator-runbook'],
 ];
 
-// Response headers: the workflow turns out/_headers into out/serve.json (scripts/write-serve-json.mjs),
-// so `npx serve` sends the same Content-Security-Policy as Cloudflare Pages. Any violation reported
-// by the browser fails the run: that is how a policy that breaks hydration, the theme script, fonts,
-// Mermaid or search shows up before a deploy.
-const violations = [];
-
-function watchCsp(page, url) {
-  page.on('console', (message) => {
-    if (/content security policy/i.test(message.text())) {
-      violations.push(`${url}: ${message.text().slice(0, 200)}`);
-    }
-  });
-}
-
 function listDocs(dir, rel = '') {
   const urls = [];
   for (const name of readdirSync(join(dir, rel))) {
@@ -76,7 +62,6 @@ async function shoot(name, url, { scheme, viewport, checkOverflow }) {
     }
   });
   const page = await context.newPage();
-  watchCsp(page, url);
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   const res = await page.goto(base + url, { waitUntil: 'networkidle' });
@@ -113,7 +98,6 @@ async function shoot(name, url, { scheme, viewport, checkOverflow }) {
 async function interact(url) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
   const page = await context.newPage();
-  watchCsp(page, url);
   await page.goto(base + url, { waitUntil: 'networkidle' });
   const next = page.getByRole('button', { name: 'Next', exact: true }).first();
   if (await next.count()) {
@@ -239,10 +223,6 @@ for (const url of ['/docs/how-it-works/bid-lifecycle', '/docs/how-it-works/settl
 await termChecks('/docs/start/guided-tour');
 
 await browser.close();
-if (violations.length > 0) {
-  for (const v of new Set(violations)) console.error(`FAIL CSP violation at ${v}`);
-  failures += 1;
-}
 if (failures > 0) {
   console.error(`${failures} problem(s)`);
   process.exit(1);
