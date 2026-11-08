@@ -33,9 +33,9 @@ describe('/try judge panel', () => {
   it('has no server in this build: start is blocked and the scripted demo is offered', () => {
     render(<App initialPath="/try" />);
     expect(screen.getByText(t('try.status.noServer'))).toBeTruthy();
-    expect(screen.getByRole('button', { name: t('try.s1.cta') }).hasAttribute('disabled')).toBe(
-      true,
-    );
+    expect(
+      screen.getByRole('button', { name: t('try.s1.cta') }).getAttribute('aria-disabled'),
+    ).toBe('true');
     expect(screen.getByRole('alert').textContent).toContain(t('try.s1.open'));
     expect(screen.getByText(t('try.s2.noServer'))).toBeTruthy();
   });
