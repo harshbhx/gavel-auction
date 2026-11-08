@@ -25,10 +25,12 @@ PayPal sandbox only: no real money moves through any route.
 | Control | `POST /api/auctions/{id}/control`, `POST /api/auctions/{id}/kill` | auctioneer token |
 | Bidding access | `POST /api/auctions/{id}/invites`, `POST /api/auctions/{id}/bidders/{bidderId}/invite` | auctioneer token |
 | Bidding access | `POST /api/auctions/{id}/join` | invite token in the body |
-| Read | `GET /api/auctions/{id}/snapshot` | auctioneer, screen or session token |
-| Read | `GET /api/auctions/{id}/events` | auctioneer or screen token |
+| Read | `GET /api/auctions/{id}/snapshot` | auctioneer, screen, session or reviewer token |
+| Read | `GET /api/auctions/{id}/events` | auctioneer, screen or reviewer token |
 | Holds | `POST /api/holds`, `POST /api/holds/{holdId}/approve`, `GET` and `DELETE /api/holds/{holdId}` | session token |
-| Judge rooms | `GET /api/judge/capabilities`, `POST /api/judge/rooms`, `POST /api/judge/join` | none |
+| Judge rooms | `GET /api/judge/capabilities`, `POST /api/judge/rooms`, `POST /api/judge/join` | none (create also accepts the judge key) |
+| Judge rooms | `POST /api/judge/key` | judge key |
+| Judge rooms | `GET /api/judge/rooms/{id}/ledger` | reviewer or auctioneer token |
 | Judge rooms | `POST /api/judge/rooms/{id}/sim-hold` | session token |
 | Judge rooms | `POST /api/judge/pause` | operator key |
 | Receipts | `POST /api/auctions/{id}/receipt-link` | session token |
@@ -48,9 +50,11 @@ The PayPal webhook and the three demo routes are left out on purpose: PayPal alo
 | Screen token | `Authorization: Bearer` | 12 hours |
 | Session token | `Authorization: Bearer` | 4 hours |
 | Receipt token | `Authorization: Bearer` | 4 hours |
+| Reviewer token | `Authorization: Bearer` | 12 hours, read only, from judge-room creation |
+| Judge key | header `X-Judge-Key` | set by the host operator, optional, limited (never the operator key) |
 | Invite token | body field `invite` of the join route | 24 hours, single use |
 
-A token is bound to one auction and one kind. No real credential appears in the document.
+A token is bound to one auction and one kind. A reviewer token reads the snapshot, event log and room ledger of its own judge room and nothing else. The judge key only lifts the public judge-room limits and is sent only in its header. No real credential appears in the document.
 
 ## Errors
 
@@ -64,7 +68,7 @@ Statuses in use: 400, 401, 403, 404, 409, 410, 413, 415, 429, 500 and 503. A 429
 
 ## Rate limits
 
-Each operation that has its own limit carries an `x-rate-limit` extension, and the host-wide defaults sit under `x-rate-limits`. By default a source address gets 60 requests a minute on every route except health and webhooks, 10 joins a minute, and 4 judge rooms an hour.
+Each operation that has its own limit carries an `x-rate-limit` extension, and the host-wide defaults sit under `x-rate-limits`. By default a source address gets 60 write requests a minute (reads have their own 300 a minute bucket) on every route except health and webhooks, 10 joins a minute, and 12 judge rooms an hour.
 
 ## WebSocket protocol
 
