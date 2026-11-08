@@ -7,10 +7,10 @@ import { Empty, Loading, Offline } from '../states/States';
 import { useOnline } from '../states/useOnline';
 import { AuditDrawer } from './AuditDrawer';
 import { AuditSummary } from './AuditSummary';
-import { AuditTable } from './AuditTable';
 import { AuditTimeline } from './AuditTimeline';
 import { CopyActions } from './CopyActions';
 import { Export } from './Export';
+import { LedgerFallback, type LedgerRender } from './LedgerSlot';
 import { Filters, useUrlFilters } from './Filters';
 import { applyFilters, applyTrailFilters, hasActiveFilters } from './filters';
 import { buildTrail, paddleLookup, summarize } from './trail';
@@ -25,6 +25,12 @@ export interface AuditPageProps {
    * judge sees the chain status with the result. Absent: the summary and the guide use the width.
    */
   chain?: ReactNode;
+  /**
+   * Slot for the ledger table (named LedgerSlot). The AG Grid LedgerGrid plugs in here and gets
+   * the filtered rows, names and an `onOpen` that opens the page's detail sheet. Absent: a tiny
+   * accessible fallback table.
+   */
+  ledger?: LedgerRender;
   /** Slot for the reviewer area (key link and verify steps), under the guide. */
   reviewer?: ReactNode;
 }
@@ -51,7 +57,13 @@ function Guide() {
 }
 
 /** The audit trail page: guide, summary, chain slot, timeline and ledger under shared filters. */
-export function AuditPage({ state, roomId, chain, reviewer }: AuditPageProps) {
+export function AuditPage({
+  state,
+  roomId,
+  chain,
+  reviewer,
+  ledger = LedgerFallback,
+}: AuditPageProps) {
   const online = useOnline();
   const [filters, setFilters] = useUrlFilters();
   const [open, setOpen] = useState<AuditPayload | null>(null);
@@ -142,25 +154,32 @@ export function AuditPage({ state, roomId, chain, reviewer }: AuditPageProps) {
                 <h2 id="gv-audit-ledger-title">{t('audit.ledger.title')}</h2>
                 <p>{t('audit.ledger.lead')}</p>
               </header>
-              <AuditTable
-                rows={filteredRows}
-                paddleOf={paddleOf}
-                live={['scheduled', 'open', 'paused'].includes(summary.status)}
-                filtered={active && rows.length > 0}
-                names={names}
-                open={open}
-                onOpenChange={setOpen}
-              />
+              <div className="gv-audit__ledger-slot" data-slot="ledger">
+                {ledger({
+                  rows: filteredRows,
+                  allRows: rows,
+                  paddleOf,
+                  names,
+                  filtered: active && rows.length > 0,
+                  live: ['scheduled', 'open', 'paused'].includes(summary.status),
+                  onOpen: setOpen,
+                  selected: open,
+                })}
+              </div>
             </section>
           </div>
-          {open !== null && idx < 0 && (
-            <AuditDrawer
-              row={open}
-              onClose={() => setOpen(null)}
-              paddleOf={paddleOf}
-              names={names}
-            />
-          )}
+          <AuditDrawer
+            row={open}
+            onClose={() => setOpen(null)}
+            paddleOf={paddleOf}
+            names={names}
+            onPrev={idx > 0 ? () => setOpen(filteredRows[idx - 1] ?? null) : undefined}
+            onNext={
+              idx >= 0 && idx < filteredRows.length - 1
+                ? () => setOpen(filteredRows[idx + 1] ?? null)
+                : undefined
+            }
+          />
         </>
       )}
     </main>

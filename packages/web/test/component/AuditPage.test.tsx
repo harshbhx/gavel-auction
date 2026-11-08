@@ -111,6 +111,24 @@ describe('AuditPage', () => {
     expect(document.querySelector('.gv-audit__top')?.getAttribute('data-chain')).toBe('present');
   });
 
+  it('hands the filtered rows and an opener to a plugged-in ledger', () => {
+    window.history.replaceState(null, '', '/r/x/audit?type=bid');
+    render(
+      <AuditPage
+        state={room()}
+        roomId="x"
+        ledger={({ rows, onOpen }) => (
+          <button type="button" onClick={() => rows[0] !== undefined && onOpen(rows[0])}>
+            grid with {rows.length} rows
+          </button>
+        )}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'grid with 2 rows' }));
+    expect(screen.getByRole('dialog', { name: 'Entry 1' })).toBeTruthy();
+    expect(screen.queryByRole('table')).toBeNull();
+  });
+
   it('shows the loading and empty states', () => {
     const loading = render(<AuditPage state={{ ...room(), snapshot: null }} roomId="x" />);
     expect(screen.getByRole('status', { busy: true })).toBeTruthy();
