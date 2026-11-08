@@ -36,7 +36,12 @@ describe('/try judge panel', () => {
     expect(
       screen.getByRole('button', { name: t('try.s1.cta') }).getAttribute('aria-disabled'),
     ).toBe('true');
-    expect(screen.getByRole('alert').textContent).toContain(t('try.s1.open'));
+    expect(
+      screen
+        .getAllByRole('alert')
+        .map((a) => a.textContent)
+        .join(' '),
+    ).toContain(t('try.s1.open'));
     expect(screen.getByText(t('try.s2.noServer'))).toBeTruthy();
   });
 
