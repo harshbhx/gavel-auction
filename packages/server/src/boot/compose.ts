@@ -83,7 +83,7 @@ import { createWarmupRoute, type WarmupStep } from '../warmup/warmup';
 import { createAuctionService, type AuctionService } from '../runtime/auction-service';
 import { lotIdOf } from '../runtime/ledger-engine';
 import { FileLedgerStore } from '../store/file-ledger-store';
-import { createHttpApp } from '../http/app';
+import { CORS_EXPOSE, createHttpApp } from '../http/app';
 import { createDemoHandler, DEMO_RESET_PATH, DEMO_ROOMS_PATH, DEMO_SEED_PATH } from '../http/demo';
 import { createDemoHoldSource } from '../http/demo-holds';
 import { createSimHoldSource, withSimulatedHolds } from '../http/sim-holds';
@@ -699,7 +699,11 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     if (path === '/readyz') return health.readyz(req, res);
     if (path === '/version') return versionRoute(req, res);
     // R-RT-120: per-client HTTP limit; webhook routes are exempt inside checkHttp.
-    const limited = limiter.checkHttp(sourceOf(req, config.TRUSTED_PROXY_HOPS) ?? 'unknown', path);
+    const limited = limiter.checkHttp(
+      sourceOf(req, config.TRUSTED_PROXY_HOPS) ?? 'unknown',
+      path,
+      req.method,
+    );
     if (!limited.ok) {
       res.writeHead(429, {
         'content-type': 'application/json',
@@ -725,6 +729,14 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
   const socketsBySource = new Map<string, number>();
   const http = createServer((req, res) => {
     for (const [name, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(name, value);
+    // Early answers (429, 404, 500) never reach the app, so give them the CORS headers a
+    // browser needs to read the status instead of reporting a network error.
+    const origin = req.headers.origin;
+    if (typeof origin === 'string' && config.CORS_ORIGINS.includes(origin)) {
+      res.setHeader('access-control-allow-origin', origin);
+      res.setHeader('access-control-expose-headers', CORS_EXPOSE);
+      res.setHeader('vary', 'Origin');
+    }
     if (wsHost.handleRequest(req, res)) return;
     handle(req, res).catch((error: unknown) => {
       log.error('request failed', {

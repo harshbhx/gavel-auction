@@ -125,6 +125,17 @@ describe('rate limiter configuration (R-RT-120)', () => {
     expect(limits.http).toEqual(LIMITS.http);
   });
 
+  it('gives public reads a looser bucket than writes', () => {
+    const rl = new RateLimiter(new ManualClock(1_789_000_000_000));
+    const post = () => rl.checkHttp('a', '/x', 'POST').ok;
+    const get = () => rl.checkHttp('a', '/x', 'GET').ok;
+    for (let i = 0; i < LIMITS.http.burst; i++) expect(post()).toBe(true);
+    expect(post()).toBe(false);
+    for (let i = 0; i < LIMITS.httpRead.burst; i++) expect(get()).toBe(true);
+    expect(get()).toBe(false);
+    expect(LIMITS.httpRead.burst).toBeGreaterThan(LIMITS.http.burst);
+  });
+
   it('honours a larger configured burst', () => {
     const clock = new ManualClock(1_789_000_000_000);
     const rl = new RateLimiter(clock, limitsFromConfig({ RATE_BID_PER_S: 3, RATE_BID_BURST: 20 }));
