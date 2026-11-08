@@ -89,6 +89,9 @@ test.describe('ledger lab', () => {
     const verdict = (await page.getByText(/Chain broken at entry \d+/).textContent()) ?? '';
     await page.getByLabel(t('ledger.quick')).fill(verdict.replace(/\D/g, ''));
     await expect(page.locator('.gv-grid-row--bad').first()).toBeVisible();
+    // The count line follows the filter, and the marked row stays drawn.
+    await expect(page.getByText(/^2134 of 2134 entries$/)).toHaveCount(0);
+    await expect(page.locator('.gv-grid-row--bad').first()).toBeVisible();
     await shoot('grid', 'ledger-lab-edited');
   });
 
