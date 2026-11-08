@@ -6,12 +6,14 @@ import { Field } from '../../design/primitives/Field';
 import {
   EMPTY_FILTERS,
   OUTCOMES,
+  SINCE_OPTIONS,
   SOURCES,
   filtersToSearch,
   hasActiveFilters,
   parseFilters,
   type AuditFilters,
 } from './filters';
+import { TRAIL_KINDS } from './trail';
 
 /** Filters kept in the page query string, so a filtered view is a shareable link. */
 export function useUrlFilters(): readonly [AuditFilters, (next: AuditFilters) => void] {
@@ -51,6 +53,20 @@ export function Filters({ filters, onChange }: FiltersProps) {
       aria-label={t('audit.filters')}
       onSubmit={(e) => e.preventDefault()}
     >
+      <label>
+        <span>{t('audit.filter.type')}</span>
+        <select
+          value={filters.type ?? ''}
+          onChange={(e) => set({ type: TRAIL_KINDS.find((k) => k === e.target.value) ?? null })}
+        >
+          <option value="">{t('audit.filter.any')}</option>
+          {TRAIL_KINDS.map((k) => (
+            <option key={k} value={k}>
+              {t(`audit.kind.${k}`)}
+            </option>
+          ))}
+        </select>
+      </label>
       <Field
         label={t('audit.filter.paddle')}
         inputMode="numeric"
@@ -94,6 +110,22 @@ export function Filters({ filters, onChange }: FiltersProps) {
           set({ confidenceBelow: n !== null && n <= 100 ? n : null });
         }}
       />
+      <label>
+        <span>{t('audit.filter.since')}</span>
+        <select
+          value={filters.sinceMin === null ? '' : String(filters.sinceMin)}
+          onChange={(e) =>
+            set({ sinceMin: SINCE_OPTIONS.find((m) => String(m) === e.target.value) ?? null })
+          }
+        >
+          <option value="">{t('audit.since.any')}</option>
+          {SINCE_OPTIONS.map((m) => (
+            <option key={m} value={m}>
+              {t(`audit.since.m${m}`)}
+            </option>
+          ))}
+        </select>
+      </label>
       <Field
         label={t('audit.filter.text')}
         type="search"

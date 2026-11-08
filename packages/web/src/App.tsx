@@ -32,15 +32,10 @@ import { SimApprovalAdapter } from './payments/simAdapter';
 import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
 import { HelpLayer } from './help';
 import { RouteScreen, matchRoute, type RouteMatch } from './routes';
-import { AuditTable } from './screens/audit/AuditTable';
-import { Export } from './screens/audit/Export';
-import { Filters, useUrlFilters } from './screens/audit/Filters';
-import { applyFilters } from './screens/audit/filters';
-import { Empty, Loading, Offline } from './screens/states/States';
-import { useOnline } from './screens/states/useOnline';
 import { BidScreen } from './screens/bid/BidScreen';
 import { LiveConsole } from './screens/console/LiveConsole';
 import { GalleryScreen } from './screens/gallery/GalleryScreen';
+import { AuditPage } from './screens/audit/AuditPage';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
 import { WatcherGate } from './screens/join/WatcherGate';
 import { LandingScreen } from './screens/landing/LandingScreen';
@@ -414,43 +409,9 @@ export function ReceiptRoute({ roomId, share }: { roomId: string; share?: MintRe
   return <ReceiptView state={state} roomId={roomId} {...(share === undefined ? {} : { share })} />;
 }
 
-const NO_ROSTER: readonly { bidderId: string; paddle: number }[] = [];
-
 export function AuditRoute() {
-  const rows = useRoom((s) => s.audit);
-  const loaded = useRoom((s) => s.snapshot !== null);
-  const truncated = useRoom((s) => s.auditTruncated);
-  const roomId = useRoom((s) => s.auctionId);
-  const roster = useRoom((s) => s.snapshot?.roster ?? NO_ROSTER);
-  const online = useOnline();
-  const [filters, setFilters] = useUrlFilters();
-  const paddleOf = (id: string): number | null =>
-    roster.find((r) => r.bidderId === id)?.paddle ?? null;
-  const filtered = applyFilters(rows, filters, paddleOf);
-  return (
-    <main data-route="audit">
-      <h1 tabIndex={-1}>{t('audit.title')}</h1>
-      {!online && <Offline view="audit" />}
-      {!loaded ? (
-        <Loading view="audit" />
-      ) : rows.length === 0 ? (
-        <Empty view="audit" />
-      ) : (
-        <>
-          <Filters filters={filters} onChange={setFilters} />
-          <Export
-            roomId={roomId}
-            lotId={roomId}
-            filteredRows={filtered}
-            allRows={rows}
-            paddleOf={paddleOf}
-            truncated={truncated}
-          />
-          <AuditTable rows={filtered} paddleOf={paddleOf} />
-        </>
-      )}
-    </main>
-  );
+  const state = useRoom((s) => s);
+  return <AuditPage state={state} roomId={state.auctionId} />;
 }
 
 type Api = NonNullable<AppProps['api']>;
