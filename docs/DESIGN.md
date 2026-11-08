@@ -10,7 +10,7 @@ The app UI follows the "P2 Scoreboard" direction: flat panels, hard offset shado
 | `src/design/themes.css` | Internal dark and projector themes (not user-selectable)                                    |
 | `src/design/pairs.ts`   | Every foreground and background pair the UI uses, with its minimum ratio                    |
 | `src/ui/ui.css`         | Styles for the shared components                                                            |
-| `src/ui/*.tsx`            | The shared components (see below)                                                               |
+| `src/ui/*.tsx`          | The shared components (see below)                                                           |
 
 ## Tokens
 
