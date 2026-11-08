@@ -86,3 +86,9 @@ Known gaps, stated plainly:
 ## Fonts and CSP
 
 Fonts are self-hosted woff2 files under `src/design/fonts` (licences next to them) and load from the same origin, so the existing `default-src 'self'` covers them and the Content-Security-Policy is unchanged. No third-party font host is used.
+
+## Landing effects (`src/ui/fx`)
+
+The marketing landing uses a few small effects kept as local files in `packages/web/src/ui/fx`: a word blur reveal for the headline (BlurText), a number ticker, a text chip marquee, a pointer spotlight card, and two hooks (reduced motion, in view). They are original code in the style of React Bits, Magic UI and Aceternity UI, so no library code was copied for Aceternity. React Bits is MIT with the Commons Clause, which forbids selling the components themselves; using the idea inside this free app is within it. Per-component decisions are in `docsite/LICENSES-UI.md`.
+
+Rules for every effect: the final state is in the markup (the headline, numbers and diagrams are readable without script), the largest paint is static text, nothing changes layout, and `prefers-reduced-motion` turns each one off (no animation class, no duplicate marquee row, final numbers at once). The page adds no dependency: the effects are CSS plus about 3 KB of gzip script. Figures on the page are only those the repository documents: 606 labelled review issues with 589 closed (docsite findings page), 40 lots and 294 holds in the simulated 30-day run (`docs/evidence/SIM/SIM-MULTIDAY.md`, shown with a dashed edge and labelled as a simulation), and 568 test and spec files (README).

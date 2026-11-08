@@ -1,8 +1,10 @@
-import { useState, type FormEvent, type MouseEvent } from 'react';
+import { useEffect, useState, type FormEvent, type MouseEvent } from 'react';
 import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
 import { SCRIPTED_DEMO_PATH } from '../../net/scriptedMode';
 import { JoinCodeInput } from '../../ui';
+import { BlurText, useInView } from '../../ui/fx';
+import { MoneyFlow, StatsSection, TechSection } from './LandingExtras';
 import {
   AudienceSection,
   DOCS_URL,
@@ -15,6 +17,7 @@ import {
   TrustSection,
 } from './LandingSections';
 import './landing.css';
+import './landing-extra.css';
 
 /** default: both actions ready. busy: a room is being created. down: the server is unreachable. */
 export type LandingStatus = 'default' | 'busy' | 'down';
@@ -53,6 +56,14 @@ export function LandingScreen({
   const [invalid, setInvalid] = useState(false);
   const [checking, setChecking] = useState(false);
   const busy = status === 'busy';
+  const [past, setPast] = useState(false);
+  const [finalRef, finalSeen] = useInView<HTMLElement>(false);
+  useEffect(() => {
+    const onScroll = (): void => setPast(window.scrollY > 520);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const submit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
@@ -87,7 +98,7 @@ export function LandingScreen({
           <div className="gv-hero__copy">
             <p className="ui-kicker gv-landing__kicker">{t('mk.hero.kicker')}</p>
             <h1 id="hero-title" className="gv-landing__title">
-              {t('landing.title')}
+              <BlurText text={t('landing.title')} />
             </h1>
             <p className="gv-landing__promise">{t('landing.promise')}</p>
             <p className="gv-landing__explain">{t('mk.hero.sub')}</p>
@@ -134,12 +145,15 @@ export function LandingScreen({
             <LotCard />
           </div>
         </section>
+        <TechSection />
         <HowSection />
+        <MoneyFlow />
         <FeaturesSection />
+        <StatsSection />
         <TrustSection />
         <AudienceSection onJudges={onJudges ?? (() => undefined)} />
         <FaqSection />
-        <section className="gv-final" aria-labelledby="final-title">
+        <section ref={finalRef} className="gv-final" aria-labelledby="final-title">
           <h2 id="final-title" className="gv-mk-section__title">
             {t('mk.final.title')}
           </h2>
@@ -154,19 +168,76 @@ export function LandingScreen({
           </div>
         </section>
       </main>
+      <div
+        className="gv-sticky-cta"
+        role="group"
+        aria-label={t('mk.sticky.label')}
+        data-show={past && !finalSeen ? 'true' : 'false'}
+      >
+        <a className="gv-cta" href={SCRIPTED_DEMO_PATH} onClick={tryDemo}>
+          {t('mk.cta.try')}
+        </a>
+      </div>
       <footer className="gv-mk-footer">
-        <p className="gv-mk-footer__brand">{t('app.name')}</p>
-        <ul className="gv-mk-footer__links">
-          <li>
-            <a href={REPO_URL}>{t('mk.foot.github')}</a>
-          </li>
-          <li>
-            <a href={DOCS_URL}>{t('mk.foot.docs')}</a>
-          </li>
-          <li>
-            <a href={LICENSE_URL}>{t('mk.foot.license')}</a>
-          </li>
-        </ul>
+        <div className="gv-mk-footer__inner">
+          <div className="gv-mk-footer__intro">
+            <p className="gv-mk-footer__brand">{t('app.name')}</p>
+            <p className="gv-mk-footer__tag">{t('mk.foot.tag')}</p>
+          </div>
+          <nav className="gv-mk-footer__cols" aria-label={t('mk.foot.nav')}>
+            <div className="gv-mk-footer__col">
+              <p className="ui-kicker">{t('mk.foot.colProduct')}</p>
+              <ul className="gv-mk-footer__links">
+                <li>
+                  <a href={SCRIPTED_DEMO_PATH} onClick={tryDemo}>
+                    {t('mk.cta.try')}
+                  </a>
+                </li>
+                <li>
+                  <a href="#how">{t('mk.nav.how')}</a>
+                </li>
+                <li>
+                  <a href="#who">{t('mk.aud.title')}</a>
+                </li>
+                <li>
+                  <a href="#faq">{t('mk.faq.title')}</a>
+                </li>
+              </ul>
+            </div>
+            <div className="gv-mk-footer__col">
+              <p className="ui-kicker">{t('mk.foot.colProject')}</p>
+              <ul className="gv-mk-footer__links">
+                <li>
+                  <a href={REPO_URL}>{t('mk.foot.github')}</a>
+                </li>
+                <li>
+                  <a href={DOCS_URL}>{t('mk.foot.docs')}</a>
+                </li>
+                <li>
+                  <a href={LICENSE_URL}>{t('mk.foot.license')}</a>
+                </li>
+              </ul>
+            </div>
+            <div className="gv-mk-footer__col">
+              <p className="ui-kicker">{t('mk.foot.colProof')}</p>
+              <ul className="gv-mk-footer__links">
+                <li>
+                  <a href="/try" onClick={routeClick(onJudges ?? (() => undefined))}>
+                    {t('mk.foot.judges')}
+                  </a>
+                </li>
+                <li>
+                  <a href={`${DOCS_URL}/docs/judges/findings-that-mattered`}>
+                    {t('mk.foot.findings')}
+                  </a>
+                </li>
+                <li>
+                  <a href={`${DOCS_URL}/docs/proof/evidence-map`}>{t('mk.foot.evidence')}</a>
+                </li>
+              </ul>
+            </div>
+          </nav>
+        </div>
         <p className="gv-mk-footer__note">{t('mk.foot.data')}</p>
         <p className="gv-mk-footer__note">{t('mk.foot.sandbox')}</p>
       </footer>
