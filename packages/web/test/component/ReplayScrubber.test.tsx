@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { t } from '../../src/copy/t';
 import ReplayScreen from '../../src/screens/replay/ReplayScreen';
@@ -18,9 +18,14 @@ async function mount(autoplay = false): Promise<HTMLInputElement> {
       loadBundle={() => Promise.resolve(bundle)}
     />,
   );
-  return (await screen.findByRole('slider', {
+  const slider = (await screen.findByRole('slider', {
     name: t('replay.scrub.label'),
   })) as HTMLInputElement;
+  // findBy resolves as soon as the slider is in the DOM, but the player starts its transport in a
+  // passive effect that React may not have run yet. A click before that seeks nothing (value 0),
+  // which showed up under load in the property job. Flush the effects before the test acts.
+  await act(async () => {});
+  return slider;
 }
 
 describe('replay scrubber', () => {
