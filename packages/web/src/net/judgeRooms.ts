@@ -15,6 +15,25 @@ export async function judgeRoomsAvailable(apiBase: string): Promise<boolean> {
   }
 }
 
+/** What the host says about key-less rooms: on, full or paused, switched off, or not answering. */
+export type JudgeRoomsStatus = 'on' | 'busy' | 'off' | 'unreachable';
+
+/** Like `judgeRoomsAvailable`, but keeps the reason, so the judge panel can say what is wrong. */
+export async function judgeRoomsStatus(apiBase: string): Promise<JudgeRoomsStatus> {
+  try {
+    const res = await fetch(`${apiBase}/api/judge/capabilities`);
+    if (res.status === 404) return 'off';
+    if (!res.ok) return 'unreachable';
+    const body = (await res.json()) as unknown;
+    if (typeof body !== 'object' || body === null) return 'unreachable';
+    const flags = body as { judgeRooms?: unknown; accepting?: unknown };
+    if (flags.judgeRooms !== true) return 'off';
+    return flags.accepting === true ? 'on' : 'busy';
+  } catch {
+    return 'unreachable';
+  }
+}
+
 function field(body: unknown, key: string): unknown {
   return typeof body === 'object' && body !== null ? (body as Record<string, unknown>)[key] : null;
 }

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { t } from '../../src/copy/t';
 import type { ControlPort } from '../../src/net/transport';
 import { createControlPort } from '../../src/net/controlPort';
-import { Controls, disabledReason } from '../../src/screens/console/Controls';
+import { Controls, controlStatus, disabledReason } from '../../src/screens/console/Controls';
 import { HammerDialog } from '../../src/screens/console/HammerDialog';
 import { KillSwitch } from '../../src/screens/console/KillSwitch';
 import { Roster, type RosterRow } from '../../src/screens/console/Roster';
@@ -40,6 +40,47 @@ describe('disabledReason', () => {
     expect(disabledReason('open', base)).toBe('controls.reason.notScheduled');
     expect(disabledReason('pause', { ...base, online: false })).toBe('controls.reason.offline');
     expect(disabledReason('pause', { ...base, stopped: true })).toBe('controls.reason.stopped');
+  });
+});
+
+describe('controlStatus (SRV-31)', () => {
+  it('maps the server pause (OPEN plus paused) to PAUSED and leaves the rest alone', () => {
+    expect(controlStatus('OPEN', true)).toBe('PAUSED');
+    expect(controlStatus('OPEN', false)).toBe('OPEN');
+    expect(controlStatus('SCHEDULED', true)).toBe('SCHEDULED');
+    expect(controlStatus('DONE', true)).toBe('DONE');
+  });
+
+  it('enables Resume and disables Extend, Pause and Open while the lot is paused', () => {
+    const state = {
+      status: controlStatus('OPEN', true),
+      online: true,
+      stopped: false,
+      busy: false,
+    } as const;
+    expect(disabledReason('resume', state)).toBeNull();
+    expect(disabledReason('extend', state)).toBe('controls.reason.notOpen');
+    expect(disabledReason('pause', state)).toBe('controls.reason.notOpen');
+    expect(disabledReason('open', state)).toBe('controls.reason.notScheduled');
+  });
+
+  it('enables exactly one of Open and Resume in every status', () => {
+    for (const [status, paused] of [
+      ['SCHEDULED', false],
+      ['OPEN', false],
+      ['OPEN', true],
+    ] as const) {
+      const state = {
+        status: controlStatus(status, paused),
+        online: true,
+        stopped: false,
+        busy: false,
+      } as const;
+      const enabled = (['open', 'resume'] as const).filter(
+        (n) => disabledReason(n, state) === null,
+      );
+      expect(enabled.length).toBeLessThanOrEqual(1);
+    }
   });
 });
 

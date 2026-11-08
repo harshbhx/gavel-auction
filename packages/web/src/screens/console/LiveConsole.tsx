@@ -11,7 +11,7 @@ import type { LiveRoom } from '../../net/liveRoom';
 import { publicSource } from '../../ladder/fromWire';
 import { useRoom } from '../../store/roomStore';
 import { selectors } from '../../store/selectors';
-import { Controls } from './Controls';
+import { Controls, controlStatus } from './Controls';
 import { ConsoleScreen } from './ConsoleScreen';
 import { KillSwitch } from './KillSwitch';
 import { ManualEntry, type ManualSendResult } from './ManualEntry';
@@ -91,7 +91,9 @@ export function LiveConsole({
     [roomId, token, apiBase],
   );
   const connection = useConnection();
-  const status = useRoom((s) => s.snapshot?.status ?? 'SCHEDULED');
+  const rawStatus = useRoom((s) => s.snapshot?.status ?? 'SCHEDULED');
+  const lotPaused = useRoom((s) => s.snapshot?.paused === true);
+  const status = controlStatus(rawStatus, lotPaused);
   const priceCents = useRoom((s) => s.snapshot?.price ?? 0);
   const roomState = useRoom((s) => s);
   const settlementView = useMemo(() => publicSource(roomState, true), [roomState]);
