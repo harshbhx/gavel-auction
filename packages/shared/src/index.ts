@@ -21,3 +21,4 @@ export * from './hold-contract';
 export * from './client-key';
 export * from './ceilings';
 export * from './replay-bundle';
+export * from './public-chain';

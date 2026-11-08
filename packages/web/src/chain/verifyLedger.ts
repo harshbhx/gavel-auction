@@ -1,27 +1,23 @@
-import { verifyPublicExport, type PublicEntry, type PublicVerifyFailure } from '@gavel/engine';
-import { isReplayBundle } from '@gavel/shared';
+import { isReplayBundle, verifyPublicChain, type PublicChainFailure } from '@gavel/shared';
 
 /** Outcome of checking a ledger export in the browser. */
 export type ChainVerdict =
   | { kind: 'none' }
   | { kind: 'invalid' }
   | { kind: 'verified'; count: number; headHash: string; closed: boolean }
-  | { kind: 'broken'; entry: number; reason: PublicVerifyFailure };
+  | { kind: 'broken'; entry: number; reason: PublicChainFailure };
 
 /**
- * Verifies a replay bundle with the engine's own public-chain verifier: version, sequence,
+ * Verifies a replay bundle with the shared public-chain verifier (a port of the engine's): version, sequence,
  * links and every hash, then the head the bundle claims. Never throws. `undefined` or `null`
  * means no ledger was supplied; anything that is not a bundle is `invalid`.
  */
 export function verifyLedger(raw: unknown): ChainVerdict {
   if (raw === undefined || raw === null) return { kind: 'none' };
   if (!isReplayBundle(raw) || raw.headHash === null) return { kind: 'invalid' };
-  const entries = raw.events as unknown as readonly PublicEntry[];
-  let result: ReturnType<typeof verifyPublicExport>;
+  let result: ReturnType<typeof verifyPublicChain>;
   try {
-    result = verifyPublicExport(entries, undefined, {
-      expectedHead: { seq: raw.count, hash: raw.headHash },
-    });
+    result = verifyPublicChain(raw.events, { seq: raw.count, hash: raw.headHash });
   } catch {
     return { kind: 'invalid' };
   }

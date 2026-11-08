@@ -1,34 +1,44 @@
 import {
-  genesisHead,
-  publicExport,
-  sealBatch,
-  verifyPublicExport,
-  type LedgerEvent,
-  type Ulid,
-} from '@gavel/engine';
-import { REPLAY_BUNDLE_VERSION, REPLAY_EXPORT_VERSION, type ReplayBundle } from '@gavel/shared';
+  REPLAY_BUNDLE_VERSION,
+  REPLAY_EXPORT_VERSION,
+  hashPublicEntry,
+  type ReplayBundle,
+  type ReplayEvent,
+} from '@gavel/shared';
 
-const ID = 'A1' as Ulid;
+const ID = 'A1';
 
-/** A real replay bundle: sealed by the engine, redacted to export v4, head hash included. */
+/** A well-formed export v4 chain built with the shared hasher (the server test pins it to the engine). */
 export function makeLedgerBundle(): ReplayBundle {
-  const events = [
-    { type: 'AUCTION_CREATED', payload: { note: 'x' } },
-    { type: 'AUCTION_CLOSED', payload: { headHash: 'h' } },
-  ] as unknown as LedgerEvent[];
-  const entries = sealBatch(events, genesisHead(ID), 1000, null);
-  const pub = publicExport(entries);
-  const v = verifyPublicExport(pub);
-  if (!v.ok) throw new Error('fixture does not verify');
+  const events: ReplayEvent[] = [];
+  let prev = '0'.repeat(64);
+  const types = ['AUCTION_CREATED', 'AUCTION_CLOSED'];
+  types.forEach((type, i) => {
+    const body = {
+      v: 4 as const,
+      auctionId: ID,
+      seq: i + 1,
+      at: 1000,
+      type,
+      cmd: null,
+      payload: type === 'AUCTION_CLOSED' ? { headHash: prev } : { note: 'x' },
+      redacted: [] as string[],
+      fullHash: null,
+      prev,
+    };
+    const hash = hashPublicEntry(body);
+    events.push({ ...body, hash });
+    prev = hash;
+  });
   return {
     version: REPLAY_BUNDLE_VERSION,
     exportVersion: REPLAY_EXPORT_VERSION,
     auctionId: ID,
     generatedAt: 5000,
-    count: pub.length,
-    headHash: v.headHash,
-    closed: v.closed,
-    events: structuredClone(pub) as unknown as ReplayBundle['events'],
+    count: events.length,
+    headHash: prev,
+    closed: false,
+    events,
   };
 }
 

@@ -33,7 +33,7 @@ function readText(file: File): Promise<string> {
 }
 
 function shortHash(h: string): string {
-  return `${h.slice(0, 12)}…${h.slice(-6)}`;
+  return `${h.slice(0, 12)}...${h.slice(-6)}`;
 }
 
 /** The verdict as words first; the edge colour only backs it up. */
