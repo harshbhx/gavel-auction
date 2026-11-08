@@ -5,8 +5,6 @@ import { Icon } from '../../design/icons';
 import { formatUsd } from '../../util/money';
 import type { AuditPayload } from '../../wire';
 import { AuditDrawer } from './AuditDrawer';
-import type { Names } from './trailText';
-import './audit.css';
 
 export type AuditColumn =
   | 'seq'
@@ -44,14 +42,8 @@ export interface AuditTableProps {
   paddleOf: (bidderId: string) => number | null;
   /** A running room appends rows and follows the bottom; a settled room is read-only. */
   live?: boolean;
-  /** Height of the scrolling area in CSS pixels. Absent: the panel sizes it with CSS. */
+  /** Height of the scrolling area in CSS pixels. */
   height?: number;
-  /** True when the rows were narrowed by filters, so an empty table says so. */
-  filtered?: boolean;
-  names?: Names;
-  /** Controlled detail row. Absent: the table keeps its own. */
-  open?: AuditPayload | null;
-  onOpenChange?: (row: AuditPayload | null) => void;
 }
 
 /** mm:ss.mmm from lot start. */
@@ -142,31 +134,17 @@ function Cell({
       if (row.confirmed === undefined) return <>{t('audit.confirmed.auto')}</>;
       return row.confirmed ? <Icon name="check" /> : <Icon name="stop" />;
     case 'outcome':
-      return <>{t(`audit.outcome.${row.outcome}`)}</>;
+      return <>{row.outcome}</>;
     case 'reason':
       return <>{row.reason}</>;
   }
 }
 
 /** A real table: scope headers, sortable columns with aria-sort, row detail drawer. */
-export function AuditTable({
-  rows,
-  paddleOf,
-  live = true,
-  height,
-  filtered = false,
-  names,
-  open: openProp,
-  onOpenChange,
-}: AuditTableProps) {
+export function AuditTable({ rows, paddleOf, live = true, height = 400 }: AuditTableProps) {
   const [sortCol, setSortCol] = useState<AuditColumn>('seq');
   const [sortDir, setSortDir] = useState<SortDir>('ascending');
-  const [ownOpen, setOwnOpen] = useState<AuditPayload | null>(null);
-  const open = openProp === undefined ? ownOpen : openProp;
-  const setOpen = (row: AuditPayload | null): void => {
-    if (openProp === undefined) setOwnOpen(row);
-    onOpenChange?.(row);
-  };
+  const [open, setOpen] = useState<AuditPayload | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
 
@@ -189,46 +167,27 @@ export function AuditTable({
     }
   };
 
-  if (rows.length === 0) {
-    return (
-      <p className="gv-state gv-state--empty" role="status">
-        {t(filtered ? 'audit.noMatch' : 'audit.empty')}
-      </p>
-    );
-  }
-
-  const at = open === null ? -1 : sorted.findIndex((r) => r.seq === open.seq);
-  const step = (delta: number): (() => void) | undefined => {
-    const next = sorted[at + delta];
-    return at < 0 || next === undefined ? undefined : () => setOpen(next);
-  };
+  if (rows.length === 0) return <p>{t('audit.empty')}</p>;
 
   return (
-    <div className="gv-audit-ledger">
+    <div>
       <div
         ref={scroller}
-        className="gv-audit-ledger__scroll"
         data-testid="audit-scroll"
-        role="region"
-        aria-label={t('audit.ledger.scroll')}
-        tabIndex={0}
-        style={height === undefined ? undefined : { maxHeight: height }}
+        style={{ overflow: 'auto', maxHeight: height }}
         onScroll={(e) => {
           const el = e.currentTarget;
           atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight <= AT_BOTTOM_SLACK_PX;
         }}
       >
         <table>
-          <caption className="gv-audit__sr">{t('audit.ledger.title')}</caption>
+          <caption>{t('audit.title')}</caption>
           <thead>
             <tr>
               {AUDIT_COLUMNS.map((col) => (
                 <th key={col} scope="col" aria-sort={col === sortCol ? sortDir : 'none'}>
                   <button type="button" onClick={() => toggle(col)}>
-                    {t(`audit.col.${col}`)}
-                    <span aria-hidden="true" className="gv-audit-sort">
-                      {col === sortCol ? (sortDir === 'ascending' ? '\u25B2' : '\u25BC') : ''}
-                    </span>
+                    {col}
                   </button>
                 </th>
               ))}
@@ -236,15 +195,11 @@ export function AuditTable({
           </thead>
           <tbody>
             {sorted.map((row) => (
-              <tr key={row.seq} data-outcome={row.outcome} onClick={() => setOpen(row)}>
+              <tr key={row.seq} onClick={() => setOpen(row)}>
                 {AUDIT_COLUMNS.map((col, i) =>
                   i === 0 ? (
                     <th key={col} scope="row">
-                      <button
-                        type="button"
-                        aria-label={t('audit.drawer.title', { seq: row.seq })}
-                        onClick={() => setOpen(row)}
-                      >
+                      <button type="button" onClick={() => setOpen(row)}>
                         <Cell row={row} col={col} paddleOf={paddleOf} />
                       </button>
                     </th>
@@ -259,14 +214,7 @@ export function AuditTable({
           </tbody>
         </table>
       </div>
-      <AuditDrawer
-        row={open}
-        onClose={() => setOpen(null)}
-        paddleOf={paddleOf}
-        {...(names === undefined ? {} : { names })}
-        onPrev={step(-1)}
-        onNext={step(1)}
-      />
+      <AuditDrawer row={open} onClose={() => setOpen(null)} />
     </div>
   );
 }
