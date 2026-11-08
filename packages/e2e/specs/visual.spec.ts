@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '../src/fixtures/base';
 import { hammerRoom, seedRoom } from '../src/fixtures/room';
+import { calmMotion, settle } from '../src/fixtures/settle';
 import { AuctioneerView, PublicView } from '../src/pages/views';
 
 const BASELINES = fileURLToPath(new URL('../__screenshots__', import.meta.url));
@@ -34,8 +35,11 @@ for (const screen of SCREENS) {
         'no baselines committed for this project yet',
       );
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      await calmMotion(page);
       await page.clock.install({ time: new Date('2026-01-15T12:00:00.000Z') });
       await page.goto(`${stack.webUrl}${screen.path}`);
+      await expect(page.locator('main, [role="main"]').first()).toBeVisible();
+      await settle(page);
       await expect(page).toHaveScreenshot(`${screen.name}-${viewport.name}.png`);
     });
   }
@@ -62,6 +66,7 @@ for (const screen of ROOM_SCREENS) {
       const room = await seedRoom(stack);
       if (screen.hammer) await hammerRoom(stack, room);
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      await calmMotion(page);
       await page.clock.install({ time: new Date('2026-01-15T12:00:00.000Z') });
       if (screen.view === 'public') {
         const view = new PublicView(page, stack, room);
@@ -69,6 +74,7 @@ for (const screen of ROOM_SCREENS) {
         if (screen.hammer) await expect(view.sold).toBeAttached();
         // Before the first snapshot the screen shows the lobby line; wait for the real price.
         else await expect(view.root).toContainText('Opening bid');
+        await settle(page);
         // The clock follows the real end time and the join code carries a random port.
         await expect(page).toHaveScreenshot(`${screen.name}-${viewport.name}.png`, {
           mask: [view.clock, view.join],
@@ -78,6 +84,7 @@ for (const screen of ROOM_SCREENS) {
         await view.open();
         // The console is offline and empty until the first snapshot arrives.
         await expect(view.root).toContainText('$100.00');
+        await settle(page);
         await expect(page).toHaveScreenshot(`${screen.name}-${viewport.name}.png`);
       }
     });
