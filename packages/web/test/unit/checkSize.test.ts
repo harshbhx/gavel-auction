@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { check, dynamicImports, initialGraph } from '../../scripts/check-size.mjs';
+import { check, dynamicImports, initialGraph, staticImports } from '../../scripts/check-size.mjs';
 
 const CSP = "default-src 'self'; script-src 'self'; connect-src 'self' https://api.example.test";
 const HTML = `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="${CSP}"><script type="module" src="/assets/index-aaa.js"></script></head><body></body></html>`;
@@ -33,6 +33,11 @@ describe('check-size dynamic imports (initial route includes the App chunk)', ()
     expect(dynamicImports('import("./a.js");import{x}from"./b.js";import(foo)')).toEqual([
       './a.js',
     ]);
+  });
+
+  it('reads minified static imports with no space before from', () => {
+    const code = 'import{a as b}from"./x.js";export{c}from"./y.js";import"./z.js";';
+    expect(staticImports(code)).toEqual(['./x.js', './y.js', './z.js']);
   });
 
   it('counts the App chunk that the entry loads with import()', () => {

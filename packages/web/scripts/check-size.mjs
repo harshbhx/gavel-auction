@@ -31,10 +31,13 @@ const LAZY = [
   { name: 'AG Grid', file: /ag-?grid/i, text: 'ag-grid-community' },
 ];
 
-/** Static import specifiers of a built chunk. Dynamic import( ) calls are not matched. */
+/**
+ * Static import specifiers of a built chunk, also in minified form (`import{a as b}from"./x.js"`,
+ * no space before from). Dynamic import( ) calls are not matched.
+ */
 export function staticImports(code) {
   const found = [];
-  const pattern = /(?:^|[;}\s])(?:import|export)\s*(?:[^'"()]*?\sfrom\s*)?["']([^"']+)["']/g;
+  const pattern = /(?:^|[;}\s])(?:import|export)\s*(?:[^'"()]*?\bfrom\s*)?["']([^"']+)["']/g;
   for (const match of code.matchAll(pattern)) {
     if (match[1] !== undefined && match[1].startsWith('.')) found.push(match[1]);
   }
