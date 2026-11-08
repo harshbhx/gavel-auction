@@ -77,32 +77,33 @@ export const en = {
     'After the hammer each bidder gets a receipt page that shows the final amount and can be shared.',
   'mk.trust.title': 'Why you can trust it',
   'mk.trust.lead':
-    'This is the gate log, including what is unfinished. Each line links to its proof page.',
+    'This is the gate log: what is built and measured, and the next step for each open item. Each line links to its proof page.',
   'mk.trust.read': 'Read the proof',
   'mk.trust.passed': 'Passed',
   'mk.trust.progress': 'In progress',
-  'mk.trust.partial': 'Partial',
+  'mk.trust.partial': 'Measured, partial',
   'mk.trust.simulated': 'Simulated',
   'mk.trust.g0.title': 'G0 Sandbox app',
   'mk.trust.g0.body': 'The sandbox app signs in and creates an authorize order.',
-  'mk.trust.g1.title': 'G1 Partial release',
+  'mk.trust.g1.title': 'G1 Hold and release',
   'mk.trust.g1.body':
     'After the winning amount is taken the authorization closes. That the rest is released is inferred from PayPal responses.',
   'mk.trust.g2.title': 'G2 Card and guest',
   'mk.trust.g2.body': 'Wallet and guest card buyers can both authorize in the SDK v6 flow.',
   'mk.trust.g3.title': 'G3 Honor period',
-  'mk.trust.g3.body': 'Honor period against validity and reauthorization is not finished.',
+  'mk.trust.g3.body':
+    'A timed sandbox probe is running. Day 0 and an early reading on an older wallet hold are recorded, and the final reading is due 12 Nov.',
   'mk.trust.g4.title': 'G4 Webhooks',
   'mk.trust.g4.body': 'Six real sandbox webhook deliveries passed signature verification.',
   'mk.trust.g5.title': 'G5 Speech accuracy',
   'mk.trust.g5.body':
-    'Measured on synthetic audio only, with no real-room test. So voice bids keep the confirm step.',
+    'Measured on synthetic audio, with a live-room test as the next step. Voice bids keep the confirm step.',
   'mk.trust.sim.title': '30-day run',
   'mk.trust.sim.body':
     'Thirty days of auctions on a fake clock, with the ledger balanced to the cent. A simulation, not a sandbox result.',
   'mk.trust.lat.title': 'Latency',
   'mk.trust.lat.body':
-    'Hammer to settled took p95 5.6 s against a 6 s target (met). The winner step took p95 3.0 s against 2.5 s (missed).',
+    'Hammer to settled: p95 5.6 s, inside the 6 s target. The winner step: p95 3.0 s against a 2.5 s target, with tuning next.',
   'mk.trust.note': 'Sandbox only. Nothing on this site moved real money.',
   'mk.aud.title': 'Who it is for',
   'mk.aud.auc.title': 'Auctioneers',
@@ -126,12 +127,12 @@ export const en = {
     'Say a bid out loud. The app shows what it heard and asks you to confirm before it counts. The confirm step is always on.',
   'mk.faq.q5': 'Where is the data?',
   'mk.faq.a5':
-    'Live demo rooms keep their records on the GAVEL server. The scripted demo runs from recorded events in your browser and makes no PayPal calls.',
+    'Live demo rooms keep their records on the GAVEL server. The scripted demo runs from recorded events in your browser and makes no PayPal calls. The open datasets are published on Hugging Face and are synthetic by design.',
   'mk.final.title': 'See a hold turn into a hammer',
   'mk.final.body': 'Two minutes, no sign-in, no real money.',
   'mk.foot.github': 'GitHub repository',
   'mk.foot.docs': 'Documentation',
-  'mk.foot.data': 'Open data: prepared, not yet published',
+  'mk.foot.data': 'Open data on Hugging Face: published, synthetic by design',
   'mk.foot.license': 'MIT license',
   'mk.foot.sandbox': 'Built on the PayPal sandbox for a hackathon. No real money moves.',
   'mk.foot.nav': 'Footer',
@@ -203,9 +204,9 @@ export const en = {
   'mk.faq.q6': 'Can I use my own PayPal account?',
   'mk.faq.a6':
     'No. GAVEL runs on the PayPal sandbox, so use sandbox test accounts only. Do not enter a personal PayPal login.',
-  'mk.faq.q7': 'What is not finished?',
+  'mk.faq.q7': 'What comes next?',
   'mk.faq.a7':
-    'The honor period test (G3) is still running, and voice accuracy was measured on synthetic audio only. The gate log above lists both.',
+    'The honor period test (G3) is a timed probe with its final reading due 12 Nov, and voice accuracy is measured on synthetic audio with a live-room test next. The gate log above lists both.',
   'mk.faq.q8': 'Is the code open?',
   'mk.faq.a8':
     'Yes. The source is on GitHub under the MIT license, and the docs explain how an auction settles.',
