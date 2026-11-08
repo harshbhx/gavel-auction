@@ -134,7 +134,7 @@ export function GridToolbar({
             ))}
           </select>
           <select
-            aria-label={t('grid.sort')}
+            aria-label={t('grid.sortDir')}
             value={sortDir}
             onChange={(e) => {
               const dir = e.currentTarget.value === 'desc' ? 'desc' : 'asc';

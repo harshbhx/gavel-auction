@@ -1043,6 +1043,7 @@ export const en = {
   'grid.note.link': 'AG Grid',
   'grid.note.tail': ' Community edition (MIT licence). Tables sort, filter, resize and export.',
   'grid.sort': 'Sort by',
+  'grid.sortDir': 'Sort direction',
   'grid.sortAsc': 'Ascending',
   'grid.sortDesc': 'Descending',
   'ledger.region': 'Ledger table',

@@ -200,5 +200,6 @@ describe('LedgerGrid', () => {
       expect(container.querySelectorAll('.gv-card').length).toBe(5);
     });
     expect(screen.getByLabelText('Sort by')).toBeTruthy();
+    expect(screen.getByLabelText('Sort direction')).toBeTruthy();
   });
 });
