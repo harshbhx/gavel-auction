@@ -51,7 +51,7 @@ describe('fundraiser goal field on /try (UIX-31)', () => {
     fireEvent.change(field(), { target: { value: 'lots' } });
     expect(screen.getByText(t('goal.invalid'))).toBeTruthy();
     expect(field().getAttribute('aria-invalid')).toBe('true');
-    expect((start() as HTMLButtonElement).disabled).toBe(true);
+    expect(start().getAttribute('aria-disabled')).toBe('true');
     fireEvent.click(start());
     expect(createRoom).not.toHaveBeenCalled();
     fireEvent.change(field(), { target: { value: '1000000001' } });
@@ -90,9 +90,9 @@ describe('fundraiser goal field on the operator launcher (UIX-31)', () => {
   it('blocks the start for a bad amount', () => {
     const createRoom = launcher(true);
     fireEvent.change(field(), { target: { value: '-3' } });
-    expect(
-      (screen.getByRole('button', { name: t('landing.start') }) as HTMLButtonElement).disabled,
-    ).toBe(true);
+    const go = screen.getByRole('button', { name: t('landing.start') });
+    expect(go.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(go);
     expect(createRoom).not.toHaveBeenCalled();
   });
 });
