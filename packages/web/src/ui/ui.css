@@ -24,8 +24,7 @@
 .ui-hold button:focus-visible,
 .ui-link:focus-visible,
 .ui-slider__track:focus-visible,
-.ui-otp__slot:focus-visible,
-.ui-palettes__btn:focus-visible {
+.ui-otp__slot:focus-visible {
   outline: var(--border-width-strong) solid var(--color-focus);
   outline-offset: 3px;
 }
@@ -534,30 +533,6 @@
 
 .ui-pill[data-tone='live'] .ui-pill__mark {
   background: var(--color-action);
-}
-
-/* ---- PaletteSwitch ---- */
-.ui-palettes {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.ui-palettes__btn {
-  padding: var(--space-2) var(--space-3);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-fg);
-  font: inherit;
-  font-size: var(--font-size-2);
-  cursor: pointer;
-}
-
-.ui-palettes__btn[aria-pressed='true'] {
-  border-color: var(--color-fg);
-  background: var(--color-fg);
-  color: var(--color-bg);
 }
 
 /* Reduced motion: no loops, no shake, no roll. Durations already collapse in tokens.css. */

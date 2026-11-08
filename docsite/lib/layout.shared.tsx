@@ -1,6 +1,5 @@
 import { BookOpenText, FlaskConical } from 'lucide-react';
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
-import { ThemeSwitch } from '@/components/theme-switch';
 import { Wordmark } from '@/components/holdline/wordmark';
 import { repoUrl } from './shared';
 
@@ -25,11 +24,6 @@ export function baseOptions(): BaseLayoutProps {
         url: '/docs/proof',
         active: 'nested-url',
         on: 'nav',
-      },
-      {
-        type: 'custom',
-        secondary: true,
-        children: <ThemeSwitch />,
       },
       {
         type: 'custom',

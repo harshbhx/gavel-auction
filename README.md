@@ -140,7 +140,7 @@ The web app (`packages/web`) was redesigned on 7 Nov 2026 in the Scoreboard desi
 - **Hold card.** Hatched means held, solid means charged, hollow means released, always with a text status and a hide-amount toggle.
 - **Ceiling slider.** Ticks at every step, snapping, and full keyboard control (arrows, PageUp, PageDown, Home, End).
 - **Join code input.** One slot per character, auto-advance, paste that drops a `GVL-` prefix.
-- **Three palettes.** Newsprint and Signal, Night Board and Salon, each checked against contrast pairs in a unit test. The switch component exists, but no screen mounts it yet, so the choice is only read from browser storage.
+- **One look.** Newsprint and Signal is the only palette, checked against contrast pairs in a unit test. There is no colour or theme switch; Night Board and Salon stay in the design-preview rounds only.
 - **Alerts.** Outbid, win and sold alerts on the bidder phone and a gavel sound on the projector, with a mute toggle on the bidder screen.
 - **Hold explainer and guided tour.** A help button on the landing, join, register, bid and receipt screens opens a sheet that explains the hold, or replays a six-step tour that opens by itself on a first visit.
 - **Fundraiser thermometer.** The projector screen shows a goal bar when the auctioneer sets a goal. Only captured money counts as raised; money reserved for the winner is shown apart.

@@ -1,7 +1,7 @@
 # GAVEL docsite
 
 The GAVEL documentation website. Fumadocs on Next.js (static export), Tailwind 4, Mermaid, motion,
-next-themes and lucide icons, with the Holdline identity: Dusk, Daylight and Floodlight themes,
+next-themes and lucide icons, with the Holdline identity: one fixed Newsprint theme (no theme switch),
 Archivo and Martian Mono, and the fill language (hatched is held, solid is charged, hollow is
 released).
 

@@ -2,12 +2,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { COLOR_PAIRS, MIN_RATIO, THEMES, type ThemeName } from '../../src/design/pairs';
-import { PALETTES, type PaletteName } from '../../src/ui/palette';
 
 const read = (rel: string): string => readFileSync(new URL(rel, import.meta.url), 'utf8');
 const tokens = read('../../src/design/tokens.css');
 const themes = read('../../src/design/themes.css');
-const palettes = read('../../src/design/palettes.css');
 
 function declarations(block: string | undefined): Map<string, string> {
   const out = new Map<string, string>();
@@ -73,41 +71,9 @@ describe.each(THEMES)('theme %s', (theme) => {
   );
 });
 
-function paletteColors(name: PaletteName): Map<string, string> {
-  return declarations(
-    new RegExp(
-      `:root\\[data-pal='${name}'\\]:not\\(\\[data-theme='projector'\\]\\) \\{([\\s\\S]*?)\\n\\}`,
-    ).exec(palettes)?.[1],
-  );
-}
-
-describe.each(PALETTES)('palette %s', (name) => {
-  const colors = paletteColors(name);
-
-  it('declares every colour token of the light theme', () => {
-    for (const token of palette('light').keys()) {
-      expect(colors.has(token), `${name} ${token}`).toBe(true);
-    }
-  });
-
-  it.each(COLOR_PAIRS.map((p) => [p.fg, p.bg, p] as const))(
-    '%s on %s meets its minimum',
-    (_fg, _bg, pair) => {
-      const fg = colors.get(pair.fg);
-      const bg = colors.get(pair.bg);
-      expect(fg).toBeDefined();
-      expect(bg).toBeDefined();
-      expect(contrastRatio(fg ?? '#000000', bg ?? '#000000')).toBeGreaterThanOrEqual(
-        MIN_RATIO[pair.kind],
-      );
-    },
-  );
-});
-
 describe('text never equals its background', () => {
   const sets: [string, Map<string, string>][] = [
     ...THEMES.map((t): [string, Map<string, string>] => [t, palette(t)]),
-    ...PALETTES.map((n): [string, Map<string, string>] => [`palette ${n}`, paletteColors(n)]),
   ];
 
   it.each(sets)('%s', (_name, colors) => {

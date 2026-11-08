@@ -1,8 +1,8 @@
 /*
- * Theme overrides for tokens.css. Light values (palette A) live in tokens.css.
- * Dark is palette B (Night Board) and applies only when data-theme="dark" is set explicitly. The
- * operating system colour scheme is ignored: everyone starts on palette A (Newsprint and Signal). Projector is B with a black ground, brighter ink and a type scale
- * of 2.0; it is forced on the public screen and ignores the palette switch (see palettes.css).
+ * Theme overrides for tokens.css. Light values (Newsprint and Signal) live in tokens.css and are the only user-facing look.
+ * Dark applies only when data-theme="dark" is set explicitly (nothing in the UI sets it). The operating system colour
+ * scheme and any stored choice are ignored. Projector is a black ground, brighter ink and a type scale of 2.0; it is
+ * forced on the public screen.
  */
 
 :root[data-theme='dark'] {

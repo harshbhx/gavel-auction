@@ -1,7 +1,6 @@
 import { useEffect, useReducer } from 'react';
 import { t } from '../copy/t';
 import { Sheet } from '../design/primitives/Sheet';
-import { PaletteSwitch } from '../ui/PaletteSwitch';
 import { GuidedTour } from './GuidedTour';
 import { HoldExplainer } from './HoldExplainer';
 import {
@@ -76,7 +75,6 @@ export function HelpLayer({ autoStart }: HelpLayerProps) {
             >
               {t('help.open.tour')}
             </button>
-            <PaletteSwitch />
             <button type="button" className="ui-link" onClick={closeSheet}>
               {t('help.close')}
             </button>

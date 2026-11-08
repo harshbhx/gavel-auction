@@ -10,7 +10,7 @@
  *   --color-held, --color-charged, --color-on-charged, --color-released, --color-on-danger,
  *   --color-ring, --color-sheet, --color-on-sheet, --color-win, --color-on-win, --color-out,
  *   --color-on-out, --color-shadow, --color-slider-fill
- *   Light is palette A and the default for everyone; dark is B; palettes.css lets data-pal="a|b|c" override either.
+ *   Light is palette A (Newsprint and Signal), the only look; there is no palette switch. Dark and projector are internal themes.
  * Type:
  *   --font-sans (Public Sans), --font-display (Big Shoulders Display), --font-mono (JetBrains Mono),
  *   --type-scale (1 for light and dark, 2 for projector),
