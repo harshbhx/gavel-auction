@@ -85,8 +85,9 @@ test.describe('ledger lab', () => {
     await lab(page);
     await page.getByRole('button', { name: /Simulate an edit to entry/ }).click();
     await expect(page.getByText(/Chain broken at entry \d+/)).toBeVisible();
-    // The row is far down the ledger, so it is only drawn once the grid scrolls to it.
-    await scrollGrid(page, 0.55);
+    // The row is far down the ledger: search for the entry the verdict names, so it is drawn.
+    const verdict = (await page.getByText(/Chain broken at entry \d+/).textContent()) ?? '';
+    await page.getByLabel(t('ledger.quick')).fill(verdict.replace(/\D/g, ''));
     await expect(page.locator('.gv-grid-row--bad').first()).toBeAttached();
     await shoot('grid', 'ledger-lab-edited');
   });
@@ -126,6 +127,8 @@ test.describe('console bid history', () => {
       at: 9_000,
     });
     await page.getByRole('button', { name: t('console.hammer'), exact: true }).waitFor();
+    const streamTab = page.getByRole('tab', { name: t('console.stream'), exact: true });
+    if (await streamTab.isVisible()) await streamTab.click();
     await page.getByRole('button', { name: t('console.view.grid'), exact: true }).click();
     await page.locator('[data-testid="bids-grid"] .ag-row').first().waitFor();
     await shoot('grid', 'console-bid-history');
