@@ -11,6 +11,12 @@ export const DEFAULT_SCENARIO = 'happy';
 /** In-app route that plays the default scenario in every build; it never reads the query flag. */
 export const SCRIPTED_DEMO_PATH = '/demo/scripted';
 
+/** What the QR on the scripted screen opens: a page that says this demo is scripted. */
+export const SCRIPTED_JOIN_PATH = '/demo/scripted/join';
+
+/** The scripted bidder view, played in the tab with no server. */
+export const SCRIPTED_BID_PATH = '/demo/scripted/bid';
+
 /**
  * Reads the address query. `?scripted=1` or `?transport=scenario` turn it on; `scenario=<name>`
  * picks the script and `at=<ms>` holds it at one moment. Anything else, and every production

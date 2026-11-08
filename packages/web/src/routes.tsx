@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 
 import { t } from './copy/t';
+import { TokenHelp } from './screens/hub/TokenHelp';
 import { hasAuctioneerAccess, hasReviewerAccess } from './store/session';
 
 export type RouteTitleKey =
@@ -9,6 +10,7 @@ export type RouteTitleKey =
   | 'reg.step1'
   | 'bid.price'
   | 'receipt.none'
+  | 'hub.title'
   | 'try.title'
   | 'demo.roleConsole'
   | 'demo.roleScreen'
@@ -23,6 +25,9 @@ export type RouteId =
   | 'demo'
   | 'try'
   | 'scriptedDemo'
+  | 'scriptedJoin'
+  | 'scriptedBid'
+  | 'hub'
   | 'join'
   | 'register'
   | 'return'
@@ -54,6 +59,8 @@ export const ROUTES: readonly RouteDef[] = [
   { id: 'landing', path: '/', titleKey: 'app.name' },
   { id: 'demo', path: '/demo', titleKey: 'landing.start' },
   { id: 'scriptedDemo', path: '/demo/scripted', titleKey: 'app.name' },
+  { id: 'scriptedJoin', path: '/demo/scripted/join', titleKey: 'app.name' },
+  { id: 'scriptedBid', path: '/demo/scripted/bid', titleKey: 'bid.price' },
   { id: 'try', path: '/try', titleKey: 'try.title' },
   { id: 'join', path: '/join/:roomId', titleKey: 'landing.join' },
   { id: 'register', path: '/r/:roomId/register', titleKey: 'reg.step1' },
@@ -61,6 +68,7 @@ export const ROUTES: readonly RouteDef[] = [
   { id: 'bid', path: '/r/:roomId/bid', titleKey: 'bid.price' },
   { id: 'receipt', path: '/r/:roomId/receipt', titleKey: 'receipt.none' },
   { id: 'console', path: '/r/:roomId/console', titleKey: 'demo.roleConsole', needsToken: true },
+  { id: 'hub', path: '/r/:roomId/hub', titleKey: 'hub.title' },
   { id: 'screen', path: '/r/:roomId/screen', titleKey: 'demo.roleScreen' },
   {
     id: 'audit',
@@ -145,6 +153,7 @@ export function RouteScreen({ match, children }: RouteScreenProps): ReactNode {
       <h1 ref={headingRef} tabIndex={-1}>
         {blocked ? t('err.tokenMissing') : t(match.route.titleKey)}
       </h1>
+      {blocked && <TokenHelp roomId={roomId} />}
       {children}
     </main>
   );

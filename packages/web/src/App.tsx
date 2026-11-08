@@ -20,6 +20,7 @@ import { ScenarioTransport } from './net/scenarioTransport';
 import {
   DEFAULT_SCENARIO,
   SCRIPTED_DEMO_PATH,
+  SCRIPTED_JOIN_PATH,
   readScriptedRequest,
   type ScriptedRequest,
 } from './net/scriptedMode';
@@ -44,6 +45,11 @@ import { LandingScreen } from './screens/landing/LandingScreen';
 import { TryScreen } from './screens/try/TryScreen';
 import { fetchOpsSummary, OpsView, type OpsSummaryView } from './ops/OpsView';
 import { DemoLauncher, DemoRoomError, type DemoLinks } from './screens/demo/DemoLauncher';
+import { ScriptedJoin } from './screens/demo/ScriptedJoin';
+import { JudgeHub } from './screens/hub/JudgeHub';
+import { TokenHelp } from './screens/hub/TokenHelp';
+import { hubHref, readHubKeys } from './screens/hub/hubKeys';
+import './screens/hub/hub.css';
 import { SandboxBanner } from './design/SandboxBanner';
 import { ReceiptView } from './screens/receipt/ReceiptView';
 import { SharedReceiptRoute, mintReceiptLink } from './screens/receipt/SharedReceipt';
@@ -298,12 +304,17 @@ function LiveRoute({
       return (
         <div data-route="screen">
           {notice}
-          <ScreenRoute roomId={roomId} api={api} />
+          <ScreenRoute roomId={roomId} api={api} scripted={scripted !== undefined} />
         </div>
       );
     default:
       return (
         <div data-route="console">
+          {scripted === undefined && roomId !== 'demo' && (
+            <a className="ui-link gv-hub-back" href={hubHref(roomId, token)}>
+              {t('hub.backToHub')}
+            </a>
+          )}
           <LiveConsole
             room={room}
             roomId={roomId}
@@ -321,7 +332,15 @@ function LiveRoute({
 }
 
 /** Lot title and short join code: from the snapshot when it has them, else the public summary. */
-function ScreenRoute({ roomId, api }: { roomId: string; api: Api | undefined }) {
+function ScreenRoute({
+  roomId,
+  api,
+  scripted = false,
+}: {
+  roomId: string;
+  api: Api | undefined;
+  scripted?: boolean;
+}) {
   const snapTitle = useRoom((s) => s.snapshot?.lotTitle ?? null);
   const snapCode = useRoom((s) => s.snapshot?.joinCode ?? null);
   const [fetched, setFetched] = useState<{ title: string | null; code: string | null }>({
@@ -349,7 +368,12 @@ function ScreenRoute({ roomId, api }: { roomId: string; api: Api | undefined }) 
     <ScreenView
       lotTitle={snapTitle ?? fetched.title ?? t('screen.untitled')}
       code={snapCode ?? fetched.code}
-      joinUrl={`${window.location.origin}/join/${encodeURIComponent(roomId)}`}
+      joinUrl={
+        scripted
+          ? `${window.location.origin}${SCRIPTED_JOIN_PATH}`
+          : `${window.location.origin}/join/${encodeURIComponent(roomId)}`
+      }
+      theme={scripted ? 'newsprint' : 'projector'}
     />
   );
 }
@@ -558,7 +582,10 @@ function RegisterRoute({
     return (
       <main data-route="register">
         {failed || invite === null ? (
-          <p role="alert">{t('reg.expired')}</p>
+          <>
+            <p role="alert">{t('reg.expired')}</p>
+            <TokenHelp roomId={roomId} kind="register" />
+          </>
         ) : (
           <p>{t('reg.confirming')}</p>
         )}
@@ -898,17 +925,38 @@ const SCRIPTED_SCREEN_MATCH: RouteMatch = {
   route: { id: 'screen', path: '/r/:roomId/screen', titleKey: 'demo.roleScreen' },
   params: { roomId: SCRIPTED_ROOM_ID },
 };
+const SCRIPTED_BID_MATCH: RouteMatch = {
+  route: { id: 'bid', path: '/r/:roomId/bid', titleKey: 'bid.price' },
+  params: { roomId: SCRIPTED_ROOM_ID },
+};
 const SCRIPTED_REQUEST: ScriptedRequest = { name: DEFAULT_SCENARIO, at: null };
 
-/** /demo/scripted: plays the scripted demo in this tab, in every build, with no server connection. */
-function InMemoryScriptedDemo({ liveBase }: { liveBase: string | undefined }) {
+/**
+ * /demo/scripted and /demo/scripted/bid: play the scripted demo in this tab, in every build, with
+ * no server connection. A Newsprint strip says it is a recording and links to the live demo.
+ */
+function InMemoryScriptedDemo({
+  liveBase,
+  view,
+}: {
+  liveBase: string | undefined;
+  view: 'screen' | 'bid';
+}) {
   return (
-    <ScriptedRoute
-      match={SCRIPTED_SCREEN_MATCH}
-      roomId={SCRIPTED_ROOM_ID}
-      request={SCRIPTED_REQUEST}
-      liveBase={liveBase}
-    />
+    <div className="gv-scripted-frame">
+      <div className="gv-scripted-bar">
+        <p>{t('scriptedDemo.banner')}</p>
+        <a className="ui-link" href="/demo">
+          {t('scriptedDemo.live')}
+        </a>
+      </div>
+      <ScriptedRoute
+        match={view === 'bid' ? SCRIPTED_BID_MATCH : SCRIPTED_SCREEN_MATCH}
+        roomId={SCRIPTED_ROOM_ID}
+        request={SCRIPTED_REQUEST}
+        liveBase={liveBase}
+      />
+    </div>
   );
 }
 
@@ -953,13 +1001,25 @@ function Routed({
   if (id === 'ops') return <OpsRoute api={api} />;
   if (id === 'landing' && api !== undefined) return <LandingRoute api={api} />;
   if (id === 'demo') return <DemoRoute api={api} />;
-  if (id === 'scriptedDemo') return <InMemoryScriptedDemo liveBase={liveBase} />;
+  if (id === 'scriptedDemo') return <InMemoryScriptedDemo liveBase={liveBase} view="screen" />;
+  if (id === 'scriptedBid') return <InMemoryScriptedDemo liveBase={liveBase} view="bid" />;
+  if (id === 'scriptedJoin') return <ScriptedJoin />;
+  if (id === 'hub' && roomId !== undefined) {
+    return (
+      <JudgeHub
+        roomId={roomId}
+        keys={readHubKeys(roomId)}
+        apiBase={api?.apiBase}
+        origin={window.location.origin}
+      />
+    );
+  }
   if (id === 'try') return <TryScreen onStart={() => navigate('/demo')} />;
   if (id === 'notFound') return <NotFound />;
   if (id === 'replay') return <ReplayRoute match={match} />;
   if (id === 'audit' && roomId !== undefined && who === null && !hasReviewerAccess(roomId)) {
     return (
-      <TokenGate role="reviewer" token={null}>
+      <TokenGate role="reviewer" token={null} roomId={roomId}>
         {null}
       </TokenGate>
     );
@@ -973,7 +1033,14 @@ function Routed({
     !hasAuctioneerAccess(roomId)
   ) {
     return (
-      <TokenGate role="auctioneer" token={null}>
+      <TokenGate role="auctioneer" token={null} roomId={roomId}>
+        {null}
+      </TokenGate>
+    );
+  }
+  if (id === 'screen' && liveBase !== undefined && roomId !== undefined && who === null) {
+    return (
+      <TokenGate role="screen" token={null} roomId={roomId}>
         {null}
       </TokenGate>
     );

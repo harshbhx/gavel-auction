@@ -127,7 +127,11 @@ describe('demo launcher on the real route (R-WEB-036..038)', () => {
       expect(call?.[1]?.method).toBe('POST');
       expect(call?.[1]?.headers?.['x-admin-key']).toBeUndefined();
       expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/api/demo/rooms'))).toBe(false);
-      expect(pushed).toHaveBeenLastCalledWith(null, '', '/r/room-7/console#token=auc-token');
+      expect(pushed).toHaveBeenLastCalledWith(
+        null,
+        '',
+        '/r/room-7/hub#token=auc-token&screen=scr-token',
+      );
       expect(screen.getByRole('link', { name: '/join/room-7' })).toBeTruthy();
     });
 
