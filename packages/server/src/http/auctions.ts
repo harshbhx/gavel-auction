@@ -263,6 +263,7 @@ export function mountAuctions(app: HttpApp): void {
     const { snapshot } = await snapshotFor(c.deps, room, 'screen', 'public');
     const meta = await auctionMeta(c.deps, auctionId);
     const title = meta.title ?? 'Untitled auction';
+    const leaderPaddle = snapshot.roster.find((r) => r.bidderId === snapshot.leaderId)?.paddle;
     return json(200, {
       auctionId,
       title,
@@ -273,6 +274,9 @@ export function mountAuctions(app: HttpApp): void {
       status: snapshot.status,
       endTs: snapshot.endTs,
       bidderCount: snapshot.roster.length,
+      // The price and the leader's paddle are what the big screen shows to the whole room.
+      ...(snapshot.price !== null ? { currentCents: snapshot.price } : {}),
+      ...(leaderPaddle !== undefined ? { leaderPaddle } : {}),
     });
   });
 }

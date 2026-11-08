@@ -131,7 +131,7 @@ Each requirement is testable and appears in the Coverage table in DEPS.md. MUST 
 
 - **R-RT-100** All HTTP errors MUST use `{code, message}` with the status from the error table; every response carries `x-request-id`.
 - **R-RT-101** `POST /api/auctions` (admin key) validates `AuctionConfig`, creates the room and returns auctionId, auctioneer link and screen link.
-- **R-RT-102** `GET /api/auctions/:id` returns a public summary (title, status, endTs, bidder count) with no secrets.
+- **R-RT-102** `GET /api/auctions/:id` returns a public summary (title, status, endTs, bidder count, and the standing price and leader paddle once a bid exists) with no secrets.
 - **R-RT-103** `POST /api/auctions/:id/invites` (auctioneer) mints invites; `POST /api/auctions/:id/join` exchanges an invite for a session token.
 - **R-RT-104** `GET /api/auctions/:id/snapshot` and `GET /api/auctions/:id/events?after=&limit=` return role-filtered data with the same schemas as the wire.
 - **R-RT-105** CORS allowlist, JSON-only, 64 KiB body limit, 415/413 on violations.

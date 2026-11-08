@@ -485,3 +485,30 @@ main[data-route='return'] {
     grid-column: 1 / -1;
   }
 }
+
+/* Watcher view: the public price and status of a room the person has not joined. */
+.gv-watch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-rule);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.gv-watch > p {
+  margin: 0;
+}
+
+.gv-watch__lot {
+  font-weight: 600;
+}
+
+.gv-watch__price {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-6);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
