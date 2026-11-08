@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GAVEL Evidence Explorer</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <meta
       name="description"
       content="Read-only charts of GAVEL's real sandbox, simulated and synthetic evidence."
@@ -69,6 +70,26 @@
         max-width: 960px;
         margin: 0 auto;
         padding: 24px 16px 64px;
+      }
+      .brand {
+        display: block;
+        margin: 0 0 12px;
+      }
+      .brand img {
+        display: block;
+        width: 168px;
+        height: 37px;
+      }
+      .brand .dark {
+        display: none;
+      }
+      @media (prefers-color-scheme: dark) {
+        .brand .light {
+          display: none;
+        }
+        .brand .dark {
+          display: block;
+        }
       }
       h1 {
         font-size: 1.8rem;
@@ -277,6 +298,10 @@
   </head>
   <body>
     <main>
+      <span class="brand">
+        <img class="light" src="logo-light.svg" alt="GAVEL" width="168" height="37" />
+        <img class="dark" src="logo-dark.svg" alt="" width="168" height="37" />
+      </span>
       <h1>GAVEL Evidence Explorer</h1>
       <p class="lede">
         GAVEL is an auction where bidders hold funds with PayPal authorizations and the winner is

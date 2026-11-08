@@ -17,6 +17,7 @@ import { FrozenChip, PriceFlash, Sold, type SettleCounts, type SoldOutcome } fro
 import type { SettlementDetail } from '../../store/roomReducer';
 
 type SettlementHold = SettlementDetail['holds'][number];
+import { Logo } from '../../design/Logo';
 import './screen.css';
 
 /** The ticker shows the last five accepted bids (R-WEB-075). */
@@ -181,6 +182,7 @@ export function ScreenView({
             {t('screen.stopped')}
           </p>
         )}
+        {!preview && <Logo variant="mark" height={56} className="gv-logo--end" />}
       </header>
       <div className="gv-screen__stage">
         <div className="gv-screen__board">
