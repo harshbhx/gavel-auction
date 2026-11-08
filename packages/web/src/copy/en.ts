@@ -759,7 +759,7 @@ export const en = {
   'audit.intro.body':
     'This is the written record of one auction. The server adds a line for every hold, bid and result as it happens. This page only reads the record; nothing here can be edited.',
   'audit.intro.step1': 'The summary at the top gives the result in a glance.',
-  'audit.intro.step2': 'The timeline tells the story in plain words, oldest line first.',
+  'audit.intro.step2': 'The timeline tells the story in plain words, oldest line at the top.',
   'audit.intro.step3':
     'The ledger lists every bid attempt with its time, amount and result. Select a row to open its detail.',
   'audit.intro.step4':
@@ -802,7 +802,7 @@ export const en = {
   'audit.kind.settlement': 'Settlement',
   'audit.kind.receipt': 'Receipt',
   'audit.tl.title': 'Timeline',
-  'audit.tl.lead': 'What happened, oldest line first.',
+  'audit.tl.lead': 'What happened, oldest line at the top.',
   'audit.tl.empty': 'No events yet. Lines appear here as the auction runs.',
   'audit.tl.noMatch': 'No lines match these filters.',
   'audit.tl.beforeBidding': 'Before bidding',

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { t } from '../../copy/t';
 import { formatUsd } from '../../util/money';
 import type { AuditPayload } from '../../wire';
+import { formatOffset } from './AuditTable';
 import type { Names } from './trailText';
 import { whoLabel } from './trailText';
 
@@ -49,6 +50,7 @@ export function LedgerFallback({ rows, filtered, paddleOf, names, onOpen }: Ledg
             <tr>
               <th scope="col">{t('audit.col.seq')}</th>
               <th scope="col">{t('audit.col.serverTs')}</th>
+              <th scope="col">{t('audit.col.audioTsMs')}</th>
               <th scope="col">{t('audit.col.paddle')}</th>
               <th scope="col">{t('audit.col.parsedAmount')}</th>
               <th scope="col">{t('audit.col.outcome')}</th>
@@ -67,6 +69,11 @@ export function LedgerFallback({ rows, filtered, paddleOf, names, onOpen }: Ledg
                   </button>
                 </th>
                 <td>{new Date(Number(row.serverTs)).toISOString().slice(11, 23)}</td>
+                <td>
+                  {row.audioTsMs === undefined
+                    ? null
+                    : `${formatOffset(row.audioTsMs)}${row.audioEndMs === undefined ? '' : ` \u2013 ${formatOffset(row.audioEndMs)}`}`}
+                </td>
                 <td>{whoLabel(paddleOf(row.bidderId), names)}</td>
                 <td>{row.parsedAmount === undefined ? '' : formatUsd(Number(row.parsedAmount))}</td>
                 <td>{t(`audit.outcome.${row.outcome}`)}</td>
