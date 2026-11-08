@@ -32,6 +32,7 @@ import { SimApprovalAdapter } from './payments/simAdapter';
 import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
 import { HelpLayer } from './help';
 import { RouteScreen, matchRoute, type RouteMatch } from './routes';
+import { ChainCheck } from './chain/ChainCheck';
 import { BidScreen } from './screens/bid/BidScreen';
 import { LiveConsole } from './screens/console/LiveConsole';
 import { GalleryScreen } from './screens/gallery/GalleryScreen';
@@ -417,7 +418,7 @@ export function ReceiptRoute({ roomId, share }: { roomId: string; share?: MintRe
 
 export function AuditRoute() {
   const state = useRoom((s) => s);
-  return <AuditPage state={state} roomId={state.auctionId} />;
+  return <AuditPage state={state} roomId={state.auctionId} chain={<ChainCheck allowFile />} />;
 }
 
 type Api = NonNullable<AppProps['api']>;
