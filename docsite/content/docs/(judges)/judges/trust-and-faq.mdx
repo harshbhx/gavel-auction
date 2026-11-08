@@ -35,12 +35,12 @@ Yes. Every event goes into a ledger chained by hash; the audit trail link in a r
 </Accordion>
 <Accordion title="What if the server restarts mid-room?">
 
-The hosted API uses temporary storage, so a room can be lost. Start a new demo auction. Crash-safe settlement is tested against the fake PayPal and a few real sandbox runs, not a whole auction on the hosted server. See [crash recovery](/docs/how-it-works/crash-recovery).
+The API is set up with a persistent disk, and the settlement saga resumes from its journal. If a room is gone, start a new demo auction. Crash-safe settlement is tested against the fake PayPal and on the real sandbox (one lot of three holds and one in-process crash); a whole auction on the hosted server is the next step. See [crash recovery](/docs/how-it-works/crash-recovery).
 
 </Accordion>
-<Accordion title="What is not proven?">
+<Accordion title="What comes next?">
 
-Whole-auction settlement through the hosted server, a real process kill on the sandbox, guest-card capture, the remainder release as seen on a buyer balance (inferred), real-room voice accuracy and the final G3 reading. See [tough questions](/docs/judges/tough-questions) and [real, simulated, recorded](/docs/judges/real-vs-simulated).
+Next steps are a whole auction settled through the hosted server, a real process kill on the sandbox, guest-card capture, the remainder release read on a buyer balance (inferred today), real-room voice confirmation and the final G3 reading on 12 Nov. See [limits and next steps](/docs/roadmap/limits), [tough questions](/docs/judges/tough-questions) and [real, simulated, recorded](/docs/judges/real-vs-simulated).
 
 </Accordion>
 <Accordion title="Something is not working. What now?">

@@ -115,7 +115,7 @@ describe('createJudgeRoom with a key', () => {
 
   it('sends the key as a header, keeps it out of every link and returns a working audit link', async () => {
     const fn = stub(201, CREATED);
-    const links = await createJudgeRoom(API, KEY);
+    const links = await createJudgeRoom(API, undefined, KEY);
     const [url, init] = fn.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe(`${API}/api/judge/rooms`);
     expect((init.headers as Record<string, string>)[JUDGE_KEY_HEADER]).toBe(KEY);
@@ -134,13 +134,17 @@ describe('createJudgeRoom with a key', () => {
 
   it('names a wrong key, a lockout and the keyed room cap', async () => {
     stub(401, { error: 'judge_key_invalid' });
-    await expect(createJudgeRoom(API, KEY)).rejects.toMatchObject({ reason: 'keyWrong' });
+    await expect(createJudgeRoom(API, undefined, KEY)).rejects.toMatchObject({
+      reason: 'keyWrong',
+    });
     stub(429, { error: 'judge_key_locked' });
-    await expect(createJudgeRoom(API, KEY)).rejects.toMatchObject({ reason: 'keyLocked' });
+    await expect(createJudgeRoom(API, undefined, KEY)).rejects.toMatchObject({
+      reason: 'keyLocked',
+    });
     stub(429, { error: 'judge_key_room_cap' });
-    await expect(createJudgeRoom(API, KEY)).rejects.toMatchObject({ reason: 'keyCap' });
+    await expect(createJudgeRoom(API, undefined, KEY)).rejects.toMatchObject({ reason: 'keyCap' });
     stub(429, { error: 'judge_room_cap' });
-    await expect(createJudgeRoom(API, KEY)).rejects.toBeInstanceOf(DemoRoomError);
+    await expect(createJudgeRoom(API, undefined, KEY)).rejects.toBeInstanceOf(DemoRoomError);
     stub(429, { error: 'judge_room_cap' });
     await expect(createJudgeRoom(API)).rejects.toMatchObject({ reason: 'judgeBusy' });
   });

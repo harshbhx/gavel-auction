@@ -1,25 +1,78 @@
 ---
-title: Limits, stated plainly
-description: The honest list of what is not done and why.
-icon: CircleSlash
+title: Limits and next steps
+description: What is built and measured today, and the next step for each open item, with owners and dates where they are known.
+icon: Map
 ---
 
-Nothing here is hidden elsewhere. Each item points to the page with the detail.
+Every row below follows the committed evidence. Where this page and `docs/GATES.md` differ, the gate record wins. The submission deadline is Thu 12 Nov 2026, 12:00 PST (Fri 13 Nov 01:30 IST).
 
-- **Hosted demo is sandbox only and temporary.** The web app is at https://gavel-web.creharsh.workers.dev and the API at https://gavel-auction-aufz.onrender.com, with temporary storage until a disk is added; no end-to-end walk of it is recorded. The path that is verified is a local run on the fake PayPal. ([demo guide](/docs/start/demo))
-- **Whole-auction settlement and crash recovery are mostly fake-PayPal results.** On the real sandbox only the nightly specs R7, R8 and R10 ran (one lot of three holds, one in-process crash). No auction driven through a server and no real process kill has run. ([crash recovery](/docs/how-it-works/crash-recovery))
-- **The 30 day run is simulated.** It shows the code is consistent with a model of PayPal, not that PayPal behaves like the model. ([simulation](/docs/proof/simulation))
-- **G3 is not finished.** The honor period and validity window are unknown until the probe ends. A hold older than 2 hours is flagged stale; it is still captured.
-- **The remainder release is inferred.** No buyer balance was read; guest card capture was not run. ([gates](/docs/proof/gates))
-- **Voice is behind a confirm prompt.** G5 is only PARTIAL (synthetic audio, fixes chosen on the same clips); there is no real-room test and no live speech run. The web console has no audio sender yet. ([voice](/docs/how-it-works/voice-and-confirm))
-- **Hammer to CAPTURED is over its target.** End-to-end p95 is 3010.04 ms against 2.5 s (n=20, sandbox). The 6 s SETTLED target is met at p95 5591.30 ms. ([latency](/docs/proof/latency))
-- **Rejected bids are not in the ledger.** They are kept in the room log only, so the ledger cannot prove them. ([engine and ledger](/docs/how-it-works/engine-and-ledger))
-- **Security review is unsigned.** All 18 items are open. ([security review](/docs/safety/security-review))
-- **Accessibility manual pass not done.** ([accessibility](/docs/proof/accessibility))
-- **Card and guest checkout in a live room.** G2 proves the SDK authorize flow only; no live-room checkout run is recorded.
+## Built and measured
+
+| What | Where it stands |
+| --- | --- |
+| <GateBadge id="G0" /> <GateBadge id="G1" /> <GateBadge id="G2" /> <GateBadge id="G4" /> | Four sandbox gates passed on the real PayPal sandbox: app and buyers, partial capture with `final_capture`, wallet and guest card AUTHORIZE, and six real webhooks verified. See [gates](/docs/proof/gates). |
+| Hammer to settled | p95 5.59 s, inside the 6 s target (20 settlements of 6 holds on the real sandbox, 0 failed). See [latency](/docs/proof/latency). |
+| One lot on the real sandbox | One lot of three holds settled and one in-process crash recovered, by the nightly specs R7, R8 and R10 (runs [42200708552](https://github.com/harshbhx/gavel-auction/actions/runs/42200708552) and [42317068784](https://github.com/harshbhx/gavel-auction/actions/runs/42317068784)). |
+| <GateBadge id="G5" /> | Voice measured on 24 synthetic clips in two sets: wrong accept 0.000, exact plus recoverable 1.000 for both providers. Every spoken bid goes through a confirm prompt. |
+| Security review | All eight P0 items PASS as of 2026-11-07. See [security review](/docs/safety/security-review). |
+| Hosted | Web app on Cloudflare and API on Render, in sandbox mode, with key-less judge rooms. See [demo guide](/docs/start/demo). |
+
+## Payments and gates
+
+| Area | Today | Next | Owner and date |
+| --- | --- | --- | --- |
+| <GateBadge id="G3" /> honor period and reauthorize | Timed sandbox probe running. Started 7 Nov 03:06 UTC. Day 0 is recorded: an immediate reauthorize was refused with `REAUTHORIZATION_TOO_SOON`, and three authorizations were approved to be read at day 3.5, 4 and 5. The 30-day run is a simulation on a fake clock. | Final reading about 12 Nov 06:17 UTC. It sets the validity window and shows whether reauthorize extends it; auctions are sized to it. See [gate G3](/docs/proof/gate-g3). | harshbhx, 12 Nov |
+| G3 early reading | Older G2 wallet authorization probed 8 Nov 17:36 UTC at age 3.24 days: a partial capture of 1.00 was accepted (HTTP 201) and the reauthorize call answered 422 `UNPROCESSABLE_ENTITY` with the issue `PAYER_CANNOT_PAY`. An early reading on a used authorization, not the G3 result. Run [42505780514](https://github.com/harshbhx/gavel-auction/actions/runs/42505780514). | The G2 card authorization is due 8 Nov 23:58 UTC and its result is added here. The day 3.5, 4 and 5 readings give the clean answer. | harshbhx, 8 Nov and 12 Nov |
+| Remainder release (G1) | After the final capture the authorization reads CAPTURED and a later void answers 422 `PREVIOUSLY_CAPTURED`, so the remainder is treated as released. | Read a buyer balance to confirm the release directly, and capture a guest card order. | Date not set |
+| Webhooks (G4) | Six real deliveries verified. Rejecting a tampered event is covered against the fake PayPal. | Record a tampered event and a PayPal retry delivery on the sandbox. | Date not set |
+| Card and guest in a live room | G2 shows the SDK authorize flow for a wallet buyer and a guest card. | Record a card checkout inside a live judge room. | Date not set |
+| Whole auction, hosted | The settlement saga is covered against the fake PayPal, and on the sandbox by the nightly specs and the 20-settlement measurement (one script, no server in the loop). See [crash recovery](/docs/how-it-works/crash-recovery). | Settle a whole auction through the hosted server and kill the process for real during settlement. | Date not set |
+
+<Held title="What the G3 readings decide">
+
+If the window is shorter than the longest planned auction, auctions are capped to it, or long auctions are left out. If the window covers the planned auctions, the decision becomes GO for card and wallet. Speech stays behind the confirm prompt either way. No G3 result is claimed before the final reading.
+
+</Held>
+
+## Speed
+
+| Target | Today | Next | Owner and date |
+| --- | --- | --- | --- |
+| Hammer to settled, 6 s | p95 5.59 s, inside the target (n=20, 6 holds, sandbox, run 42346811713). | Repeat on a larger sample. | Date not set |
+| Hammer to captured, 2.5 s | p95 3.01 s (p50 2.56 s). The capture call alone is p95 2.28 s (5 Nov, n=10). | Tune toward 2.5 s, or set the target from the sandbox figure. This is an owner decision. | harshbhx, date not set |
+
+## Voice
+
+| Area | Today | Next | Owner and date |
+| --- | --- | --- | --- |
+| <GateBadge id="G5" /> speech accuracy | Measured on synthetic audio: 24 eSpeak and 24 human-like clips, Deepgram nova-3 and Groq whisper-large-v3-turbo. Fixes were chosen on those same clips. See [voice and confirm](/docs/how-it-works/voice-and-confirm). | Confirm in a live room, with new clips and background noise. Until then no code path auto-accepts a spoken bid. | Date not set |
+| Live speech | Cached transcripts by default; live speech runs only with `VOICE_STT` set. | Record a live run through the `/audio` socket, and add an audio sender to the web console. | Date not set |
+
+## Hosting and demo
+
+| Area | Today | Next | Owner and date |
+| --- | --- | --- | --- |
+| Hosted app | Web at [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev) and API at [gavel-auction-z2nm.onrender.com](https://gavel-auction-z2nm.onrender.com), both in sandbox mode. Judge rooms open a real sandbox room. | Record a walk of the five-minute path on the hosted app. | Date not set |
+| Storage | The Render service is set up with a 1 GB persistent disk and one instance (`render.yaml`). | Keep one instance: the file stores are owned by a single process. | Standing |
+| Replay | The player and bundle format exist; the scripted demo plays a recorded room in the browser. | Host recorded live auctions for replay. | Date not set |
+| Rejected bids | Kept in the room log. The hash-chained ledger holds accepted bids. See [engine and ledger](/docs/how-it-works/engine-and-ledger). | Decide whether rejected bids also go into the ledger. | Date not set |
+
+## Reviews and data
+
+| Area | Today | Next | Owner and date |
+| --- | --- | --- | --- |
+| Security review | 16 of the 18 original items PASS (all eight P0), one is ACCEPTED, one (SEC-15, log scan) is open. SEC-19 and SEC-20, added for judge rooms and receipt links, are written up and awaiting review. | Independent review of SEC-19 and SEC-20, and the SEC-15 log scan. | Date not set |
+| Accessibility | Automated axe sweeps run in CI over the scripted bid, console and screen states. See [accessibility](/docs/proof/accessibility). | A manual pass with a screen reader and 200 percent zoom. | Date not set |
+| Open datasets | Five small datasets are prepared for Hugging Face. The speech, simulation and audit-trace sets use synthetic audio, a fake clock and scripted auctions by design. See [open data](/docs/judges/open-data). | Publish them. | Date not set |
+
+## Why synthetic data
+
+The speech, simulation and audit-trace datasets use synthetic speech, a simulated clock and scripted auctions on purpose. That is privacy by design: no real person's voice, name or payment detail is collected, stored or published. The sandbox accounts are test accounts with pretend funds.
 
 <NotVerified title="What exactly ran on the sandbox, beyond the gates">
 
 The `nightly-sandbox` workflow on `main` ran specs R7 (one lot of three holds: winner captured 12500 cents, others voided, saga SETTLED, 0 differences against PayPal), R8 and R10 (one in-process crash at `after:capture`, the resume adopted the capture, one capture) in run [42200708552](https://github.com/harshbhx/gavel-auction/actions/runs/42200708552) on 6 Nov 2026 and in the scheduled run [42317068784](https://github.com/harshbhx/gavel-auction/actions/runs/42317068784) on 7 Nov 2026. Redacted copies of the reports are committed under `docs/evidence/nightly`. R10 throws an exception in the test process; it is not a process kill.
 
 </NotVerified>
+
+See the [changelog](/docs/roadmap/changelog) for what changed and when.

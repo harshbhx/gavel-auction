@@ -19,14 +19,14 @@ Four words are used with care on this site.
 | --- | --- | --- |
 | Auction rules, price, soft close, hammer | Real code | Deterministic engine, the same in every mode. Covered by unit, property and fixture tests. |
 | Hold creation (AUTHORIZE) | Real on the sandbox | Gate G2 PASS: wallet buyer and guest card authorized with the PayPal JS SDK v6. |
-| Partial capture with `final_capture` | Real on the sandbox | Gate G1 PASS for two PayPal-account buyers. Guest card capture was not run. |
-| Remainder release | Inferred | The authorization reads CAPTURED and a void answers 422 PREVIOUSLY_CAPTURED. No buyer balance was read. |
-| Webhook signature verification | Real on the sandbox | Gate G4 PASS: six real deliveries verified. Rejecting a tampered event is fake-only. |
-| Whole-auction settlement | Fake, plus one sandbox lot | Settlement saga against the fake PayPal. Nightly sandbox specs R7 and R8 settled one lot of three holds on the real sandbox (runs 42200708552 and 42317068784, redacted reports committed). No auction driven through a server. |
-| Crash recovery | Fake, plus one sandbox crash | Injected crashes against the fake PayPal. Spec R10 recovered from one in-process crash on the sandbox. No real process kill. |
-| Honor period and reauthorize | Not known | Gate G3 is a real probe in progress. The 30 day run is simulated. |
-| Voice | Recorded | Cached transcripts by default. Live speech only with `VOICE_STT` set. Gate G5 PARTIAL (synthetic audio only; bids always confirm). |
-| Hosted demo | Hosted, not walked end to end | Web at gavel-web.creharsh.workers.dev, API at gavel-auction-aufz.onrender.com, sandbox mode, temporary storage. |
+| Partial capture with `final_capture` | Real on the sandbox | Gate G1 PASS for two PayPal-account buyers. Guest card capture is the next addition. |
+| Remainder release | Inferred | The authorization reads CAPTURED and a void answers 422 PREVIOUSLY_CAPTURED. Reading a buyer balance is the next step. |
+| Webhook signature verification | Real on the sandbox | Gate G4 PASS: six real deliveries verified. Rejecting a tampered event is covered against the fake PayPal; a sandbox run of it is next. |
+| Whole-auction settlement | Fake, plus sandbox lots | Settlement saga against the fake PayPal. On the real sandbox, nightly specs R7 and R8 settled one lot of three holds (runs 42200708552 and 42317068784, redacted reports committed) and 20 settlements of 6 holds were measured end to end (run 42346811713). Driving a whole auction through a server is the next step. |
+| Crash recovery | Fake, plus one sandbox crash | Injected crashes against the fake PayPal. Spec R10 recovered from one in-process crash on the sandbox. A real process kill on the sandbox is the next step. |
+| Honor period and reauthorize | Timed probe running | Gate G3 is a real sandbox probe: day 0 recorded 7 Nov 03:06 UTC, final reading about 12 Nov 06:17 UTC. The 30 day run is simulated. |
+| Voice | Recorded | Cached transcripts by default. Live speech only with `VOICE_STT` set. Gate G5 PARTIAL: measured on synthetic audio, live-room confirmation is the next step; bids always confirm. |
+| Hosted demo | Hosted in sandbox mode | Web at gavel-web.creharsh.workers.dev, API at gavel-auction-z2nm.onrender.com, persistent disk. A recorded walk of the flow is the next step. |
 
 <NotVerified title="Reading the table">
 

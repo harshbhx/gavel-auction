@@ -5,6 +5,8 @@ import { Provenance } from '../../design/Provenance';
 import { Button } from '../../design/primitives/Button';
 import { Dialog } from '../../design/primitives/Dialog';
 import { Field } from '../../design/primitives/Field';
+import { parseGoalInput } from '../screen/fundraiser';
+import { GoalField } from './GoalField';
 import '../flows.css';
 import './demo.css';
 
@@ -53,7 +55,9 @@ export function failureText(reason: DemoFailure | null): string {
 
 export interface DemoLauncherProps {
   /** Creates a room on the server. Rejects when the server cannot be reached. */
-  readonly createRoom: () => Promise<DemoLinks>;
+  readonly createRoom: (goalCents?: number) => Promise<DemoLinks>;
+  /** Shows the optional fundraiser goal field. Only hosts that take a goal at creation set this. */
+  readonly goalField?: boolean;
   /** Starts the local scripted room (ScenarioTransport) and returns its links. */
   readonly startScripted: () => DemoLinks;
   /** Opens the console in the current tab. */
@@ -80,6 +84,7 @@ const ROLES: ReadonlyArray<{
 /** One click makes a room and shows the four role links with their provenance (R-WEB-036..038). */
 export function DemoLauncher({
   createRoom,
+  goalField = false,
   startScripted,
   openConsole,
   initialMode = 'live',
@@ -96,6 +101,9 @@ export function DemoLauncher({
   const [links, setLinks] = useState<DemoLinks | null>(null);
   const [copied, setCopied] = useState<RoleKey | null>(null);
   const [failure, setFailure] = useState<DemoFailure | null>(null);
+  const [goal, setGoal] = useState('');
+  const goalInput = parseGoalInput(goal);
+  const goalOk = !goalField || goalInput.kind === 'empty' || goalInput.kind === 'ok';
   const [codeOpen, setCodeOpen] = useState(false);
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState<string | undefined>(undefined);
@@ -132,9 +140,10 @@ export function DemoLauncher({
       scripted();
       return;
     }
+    if (!goalOk) return;
     setPhase('busy');
     setFailure(null);
-    createRoom().then(
+    createRoom(goalField && goalInput.kind === 'ok' ? goalInput.cents : undefined).then(
       (next) => finish(next, 'live'),
       (error: unknown) => {
         setFailure(error instanceof DemoRoomError ? error.reason : null);
@@ -159,7 +168,12 @@ export function DemoLauncher({
       <p className="gv-demo__lead">{t('demo.lead')}</p>
       <Provenance kind={mode} />
       <section className="gv-demo__start" aria-busy={phase === 'busy'}>
-        <Button size="bid" disabled={phase === 'busy'} onClick={start}>
+        {goalField && mode === 'live' && <GoalField value={goal} onChange={setGoal} />}
+        <Button
+          size="bid"
+          disabled={phase === 'busy' || (mode === 'live' && !goalOk)}
+          onClick={start}
+        >
           {phase === 'busy' ? t('demo.creating') : t('landing.start')}
         </Button>
         {phase === 'busy' && (

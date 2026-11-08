@@ -11,6 +11,7 @@ import { ScreenView } from '../screen/ScreenView';
 import { createAudioSync, type AudioStatus, type AudioSync, type MediaLike } from './AudioSync';
 import { bundleToScenario, parseBundle, type ReplayBundle } from './bundle';
 import { chapterMarkers, clampOffset, type Speed } from './Chapters';
+import { scrubMarkers } from './Scrub';
 import { Controls, type ReplayView as ReplayViewId } from './Controls';
 
 export interface ReplayScreenProps {
@@ -113,6 +114,7 @@ function ReplayPlayer({
   const transportRef = useRef<ScenarioTransport | null>(null);
   const syncRef = useRef<AudioSync | null>(null);
   const chapters = useMemo(() => chapterMarkers(bundle), [bundle]);
+  const markers = useMemo(() => scrubMarkers(bundle), [bundle]);
   const eventOffsets = useMemo(() => bundle.events.map((e) => e.t), [bundle]);
 
   /** Starts a fresh transport and store, and plays the recording up to `toMs`. */
@@ -198,6 +200,7 @@ function ReplayPlayer({
         view={view}
         chapters={chapters}
         eventOffsets={eventOffsets}
+        markers={markers}
         onSeek={seek}
         onPlayingChange={setPlaying}
         onSpeedChange={setSpeed}

@@ -57,16 +57,21 @@ async function errorCode(res: Response): Promise<string | null> {
 
 /**
  * Creates a real sandbox room with no operator key. The room tokens ride in the link fragment.
+ * `goalCents` is the optional fundraiser goal; left out, the big screen shows no thermometer.
  * With a judge key (header only, never a URL) the host lifts its public limits within a bound.
  */
-export async function createJudgeRoom(apiBase: string, judgeKey?: string): Promise<DemoLinks> {
+export async function createJudgeRoom(
+  apiBase: string,
+  goalCents?: number,
+  judgeKey?: string,
+): Promise<DemoLinks> {
   const res = await fetch(`${apiBase}/api/judge/rooms`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       ...(judgeKey === undefined ? {} : { [JUDGE_KEY_HEADER]: judgeKey }),
     },
-    body: '{}',
+    body: JSON.stringify(goalCents === undefined ? {} : { fundraiserGoalCents: goalCents }),
   });
   if (res.status === 404) throw new DemoRoomError('demoOff');
   if (res.status === 401 && judgeKey !== undefined) throw new DemoRoomError('keyWrong');

@@ -98,7 +98,7 @@ describe('judge key field on /try', () => {
     expect(window.location.href).not.toContain(KEY);
     fireEvent.click(screen.getByRole('button', { name: t('try.a1.room') }));
     await waitFor(() => expect(openRoom).toHaveBeenCalledWith(LINKS.hub));
-    expect(createRoom).toHaveBeenCalledWith(KEY);
+    expect(createRoom).toHaveBeenCalledWith(undefined, KEY);
     expect(openRoom.mock.calls.flat().join(' ')).not.toContain(KEY);
   });
 

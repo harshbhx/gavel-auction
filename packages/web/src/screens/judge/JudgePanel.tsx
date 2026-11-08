@@ -17,6 +17,8 @@ import { JoinCodeInput } from '../../ui';
 import { DemoRoomError, failureText, type DemoFailure, type DemoLinks } from '../demo/DemoLauncher';
 import { REPO_URL } from '../landing/LandingSections';
 import { latestHubRoom } from '../hub/hubKeys';
+import { GoalField } from '../demo/GoalField';
+import { parseGoalInput } from '../screen/fundraiser';
 import '../flows.css';
 import { EvidenceColumn } from './EvidenceColumn';
 import { JudgeDialog, type JudgeTab } from './JudgeDialog';
@@ -31,10 +33,10 @@ export type RoomsState = 'checking' | 'noServer' | JudgeRoomsStatus;
 export interface JudgePanelProps {
   readonly rooms: RoomsState;
   /**
-   * Creates a sandbox room, with the judge key when the visitor unlocked one. Rejects with a
-   * `DemoRoomError` when the host refuses.
+   * Creates a sandbox room, with a fundraiser goal in cents when the host typed one and the judge
+   * key when the visitor unlocked one. Rejects with a `DemoRoomError` when the host refuses.
    */
-  readonly createRoom: (judgeKey?: string) => Promise<DemoLinks>;
+  readonly createRoom: (goalCents?: number, judgeKey?: string) => Promise<DemoLinks>;
   /** Opens a page in the current tab. */
   readonly openRoom: (href: string) => void;
   /** Looks a room code up and goes to the join page. Resolves false when there is no such room. */
@@ -108,6 +110,9 @@ export function JudgePanel({
   const [looking, setLooking] = useState(false);
   const [missing, setMissing] = useState(false);
   const [dialog, setDialog] = useState<JudgeTab | null>(null);
+  const [goal, setGoal] = useState('');
+  const goalInput = parseGoalInput(goal);
+  const goalOk = goalInput.kind === 'empty' || goalInput.kind === 'ok';
   // The key lives in this tab's sessionStorage and in this state, never in a URL or a link.
   const [heldKey, setHeldKey] = useState<string | null>(() => (keyOffered ? readJudgeKey() : null));
   const [keyInput, setKeyInput] = useState('');
@@ -127,10 +132,11 @@ export function JudgePanel({
   const startable = canStart(rooms);
 
   const start = (): void => {
-    if (phase === 'busy' || !startable) return;
+    if (phase === 'busy' || !startable || !goalOk) return;
     setPhase('busy');
     setFailure(null);
-    createRoom(keyOffered && heldKey !== null ? heldKey : undefined).then(
+    const goalCents = goalInput.kind === 'ok' ? goalInput.cents : undefined;
+    (keyOffered && heldKey !== null ? createRoom(goalCents, heldKey) : createRoom(goalCents)).then(
       (links) => openRoom(links.hub ?? links.console),
       (error: unknown) => {
         const reason = error instanceof DemoRoomError ? error.reason : null;
@@ -265,13 +271,14 @@ export function JudgePanel({
                 <h3 id="gv-judge-a1">{t('try.a1.title')}</h3>
                 <p className="gv-judge__tag">{t('try.a1.tag')}</p>
                 <p>{t('try.a1.body')}</p>
+                <GoalField value={goal} onChange={setGoal} />
                 <div className="gv-judge__stack">
                   <a className="gv-judge__linkbtn" href={SCRIPTED_DEMO_PATH}>
                     {t('try.a1.script')}
                   </a>
                   <Button
                     variant="outline"
-                    disabled={phase === 'busy' || !startable}
+                    disabled={phase === 'busy' || !startable || !goalOk}
                     onClick={start}
                   >
                     {phase === 'busy' ? t('try.a1.creating') : t('try.a1.room')}
