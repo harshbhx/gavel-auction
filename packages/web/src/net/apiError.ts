@@ -40,7 +40,7 @@ export function unreachable(): ApiError {
 export function waitText(seconds: number | null): string {
   if (seconds === null) return '';
   if (seconds < 90) return t('time.seconds', { n: seconds });
-  if (seconds < 5400) return t('time.minutes', { n: Math.ceil(seconds / 60) });
+  if (seconds < 3600) return t('time.minutes', { n: Math.ceil(seconds / 60) });
   return t('time.hours', { n: Math.ceil(seconds / 3600) });
 }
 

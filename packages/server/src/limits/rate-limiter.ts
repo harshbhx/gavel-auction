@@ -94,7 +94,13 @@ const EXEMPT_PREFIXES: readonly string[] = ['/webhooks/'];
 
 export class RateLimiter {
   private readonly buckets = new Map<string, Bucket>();
-  private readonly counts: Record<LimitKind, number> = { bid: 0, frame: 0, join: 0, http: 0, httpRead: 0 };
+  private readonly counts: Record<LimitKind, number> = {
+    bid: 0,
+    frame: 0,
+    join: 0,
+    http: 0,
+    httpRead: 0,
+  };
   /** Count of denials per kind, for metrics (R-RT-122). */
   readonly denied: Record<LimitKind, number> = { bid: 0, frame: 0, join: 0, http: 0, httpRead: 0 };
 

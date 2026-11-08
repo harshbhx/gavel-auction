@@ -39,10 +39,7 @@ export class DemoRoomError extends Error {
   }
 }
 
-export function failureText(
-  reason: DemoFailure | null,
-  retryAfterS: number | null = null,
-): string {
+export function failureText(reason: DemoFailure | null, retryAfterS: number | null = null): string {
   if (reason === 'rateLimited') {
     return retryAfterS === null
       ? t('demo.failedRateUnknown')

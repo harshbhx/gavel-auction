@@ -24,7 +24,8 @@ async function boot(env: Record<string, string> = {}): Promise<string> {
 
 describe('HTTP rate limit (R12-S11)', () => {
   it('answers 429 with retry-after once the burst is spent, and never limits probes', async () => {
-    const url = await boot({ RATE_HTTP_BURST: '2',
+    const url = await boot({
+      RATE_HTTP_BURST: '2',
       RATE_HTTP_PER_MIN: '1',
       RATE_HTTP_READ_BURST: '2',
       RATE_HTTP_READ_PER_MIN: '1',
