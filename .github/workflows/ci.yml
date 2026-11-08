@@ -307,6 +307,20 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: ./.github/actions/setup
       - run: npm run test:tools
+  # The OpenAPI document (openapi/gavel.yaml): linted with Redocly, and the route test in
+  # `tools` keeps it in step with the server router. Cheap, so it runs on every change.
+  openapi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version-file: .nvmrc
+      - name: Lint the OpenAPI document
+        run: npx --yes @redocly/cli@2.76.0 lint openapi/gavel.yaml --config openapi/redocly.yaml --format stylish
+      - name: Spec and router list the same routes
+        run: node --test scripts/tests/openapi-routes.test.mjs
   package-checks:
     needs: [changes]
     if: ${{ needs.changes.outputs.code == 'true' }}
@@ -360,6 +374,7 @@ jobs:
       - reference-python
       - differential
       - tools
+      - openapi
       - ownership
     runs-on: ubuntu-latest
     timeout-minutes: 5

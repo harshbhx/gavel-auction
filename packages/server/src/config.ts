@@ -79,7 +79,7 @@ const EnvObject = z.object({
   /** Lifetime of a judge room in ms before the sweeper ends it (at most 2 hours). */
   JUDGE_ROOM_TTL_MS: int(60_000).pipe(z.number().max(7_200_000)).default('1800000'),
   /** Judge rooms one source address may create per hour. */
-  JUDGE_ROOMS_PER_IP_HOUR: int(1).pipe(z.number().max(100)).default('4'),
+  JUDGE_ROOMS_PER_IP_HOUR: int(1).pipe(z.number().max(100)).default('12'),
   /** Judge rooms the whole host may create per hour. */
   JUDGE_ROOMS_PER_HOUR: int(1).pipe(z.number().max(1000)).default('40'),
   ALLOW_MEMORY_STORE: flag.default('0'),
@@ -89,6 +89,9 @@ const EnvObject = z.object({
   RATE_JOIN_BURST: int(1).default('40'),
   RATE_HTTP_PER_MIN: int(1).default('60'),
   RATE_HTTP_BURST: int(1).default('60'),
+  /** Public reads (GET, HEAD, OPTIONS) per address per minute; writes use RATE_HTTP_PER_MIN. */
+  RATE_HTTP_READ_PER_MIN: int(1).default('300'),
+  RATE_HTTP_READ_BURST: int(1).default('300'),
   /** Reverse proxies in front of the host; the client address is read from x-forwarded-for. */
   TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(0),
   MAX_CONN_PER_BIDDER: int(1).default('3'),

@@ -1,0 +1,76 @@
+/* Ledger check (Newsprint): a ruled box, verdict words first, edge colour backs it up. Tokens only. */
+.gv-chain {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 40rem;
+  margin-block: var(--space-4);
+  margin-inline: auto;
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-fg);
+}
+
+.gv-chain > h2 {
+  margin: 0;
+  padding-block-end: var(--space-2);
+  border-block-end: var(--border-width) solid var(--color-rule);
+  font-family: var(--font-display);
+  font-size: var(--font-size-4);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.gv-chain__verdict {
+  --chain-edge: var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-inline-start: var(--space-3);
+  border-inline-start: var(--border-width-strong) solid var(--chain-edge);
+}
+
+.gv-chain__verdict[data-verdict='verified'] {
+  --chain-edge: var(--color-success);
+}
+
+.gv-chain__verdict[data-verdict='broken'] {
+  --chain-edge: var(--color-danger);
+}
+
+.gv-chain__verdict p {
+  margin: 0;
+}
+
+.gv-chain__badge {
+  font-family: var(--font-display);
+  font-size: var(--font-size-5);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.gv-chain__head code {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+}
+
+.gv-chain__file {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.gv-chain__file small,
+.gv-chain__explain {
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-2);
+}
+
+.gv-chain__explain summary {
+  cursor: pointer;
+  color: var(--color-fg);
+  font-weight: 700;
+}
