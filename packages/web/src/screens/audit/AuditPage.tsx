@@ -145,6 +145,7 @@ export function AuditPage({ state, roomId, chain, reviewer }: AuditPageProps) {
               <AuditTable
                 rows={filteredRows}
                 paddleOf={paddleOf}
+                live={['scheduled', 'open', 'paused'].includes(summary.status)}
                 filtered={active && rows.length > 0}
                 names={names}
                 open={open}

@@ -240,7 +240,11 @@ export function AuditTable({
                 {AUDIT_COLUMNS.map((col, i) =>
                   i === 0 ? (
                     <th key={col} scope="row">
-                      <button type="button" onClick={() => setOpen(row)}>
+                      <button
+                        type="button"
+                        aria-label={t('audit.drawer.title', { seq: row.seq })}
+                        onClick={() => setOpen(row)}
+                      >
                         <Cell row={row} col={col} paddleOf={paddleOf} />
                       </button>
                     </th>
