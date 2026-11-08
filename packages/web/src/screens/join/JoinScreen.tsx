@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react';
 
+import { WideAside } from '../WideAside';
 import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
 import '../flows.css';
@@ -170,6 +171,7 @@ export function JoinScreen({
       <Button variant="outline" onClick={() => onNavigate(bidPath)}>
         {t('join.watch')}
       </Button>
+      <WideAside />
     </main>
   );
 }

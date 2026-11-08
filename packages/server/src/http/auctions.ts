@@ -10,6 +10,8 @@ import {
   isUlid,
 } from '@gavel/shared';
 import { z } from 'zod';
+import { codeGuardOf, sourceTag } from './code-guard';
+import { requestSources } from './node-bridge';
 import { MemoryTransport } from '../room/memory-transport';
 import type { Connection, Room } from '../room/room';
 import {
@@ -68,12 +70,27 @@ export async function reserveJoinCode(deps: HttpDeps, auctionId: string): Promis
   throw new GavelError('internal', 'no free join code');
 }
 
+/**
+ * A typed or pasted join code, cleaned up: any case, with spaces and dashes dropped, and the
+ * `GVL-` prefix of the printed form removed ("gvl-abc 234" is "ABC234").
+ */
+export function normalizeJoinCode(raw: string): string {
+  const code = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return code.length === CODE_LENGTH + 3 && code.startsWith('GVL') ? code.slice(3) : code;
+}
+
+/** True when the text, once cleaned up, has the shape of a join code (it may still not exist). */
+export function looksLikeJoinCode(raw: string): boolean {
+  return CODE_RE.test(normalizeJoinCode(raw));
+}
+
 /** The auction id behind a join code, or `not_found`. The code is case-insensitive. */
 export async function auctionIdForCode(deps: HttpDeps, raw: string): Promise<string> {
-  const code = raw.trim().toUpperCase();
+  const code = normalizeJoinCode(raw);
   const stored = CODE_RE.test(code) ? await deps.store.getJournal(codeKey(code)) : null;
   const id = (stored?.value as { auctionId?: unknown } | undefined)?.auctionId;
-  if (typeof id !== 'string') throw new GavelError('not_found', 'no such auction');
+  if (typeof id !== 'string')
+    throw new GavelError('not_found', 'Code not found, check and try again');
   return id;
 }
 
@@ -123,9 +140,9 @@ export function withMeta(snapshot: RoomSnapshot, meta: AuctionMeta): RoomSnapsho
   };
 }
 
-/** Link the host hands out for a role. The token rides in the fragment so it never reaches a log. */
+/** Link the host hands out for a role, on the web origin (not the API host). The token rides in the fragment so it never reaches a log. */
 export function linkFor(deps: HttpDeps, auctionId: string, page: string, token: string): string {
-  return `${deps.publicUrl}/r/${auctionId}/${page}#token=${token}`;
+  return `${deps.webOrigin ?? deps.publicUrl}/r/${auctionId}/${page}#token=${token}`;
 }
 
 /** The room for an id that exists; an unknown id is `not_found`, not an empty room. */
@@ -210,7 +227,38 @@ export function mountAuctions(app: HttpApp): void {
   });
 
   app.get('/api/auctions/:id', async (c: Ctx) => {
-    const auctionId = await auctionIdOrCode(c);
+    const raw = c.params.id;
+    let auctionId: string;
+    if (raw !== undefined && !isUlid(raw)) {
+      // A short code is a guessable key, and this route is public: it shares the join throttle.
+      const guard = codeGuardOf(c.deps);
+      const tag = sourceTag(requestSources.get(c.req) ?? 'unknown');
+      const now = c.deps.clock.now();
+      const verdict = guard.attempt(tag, now, 'lookup');
+      if (!verdict.ok) {
+        const locked = verdict.reason === 'locked';
+        return json(
+          429,
+          {
+            error: locked ? 'code_locked' : 'rate_limited',
+            message: locked
+              ? 'Too many wrong codes. Try again later.'
+              : 'Too many tries. Wait a minute and try again.',
+          },
+          { 'retry-after': String(verdict.retryAfterS) },
+        );
+      }
+      try {
+        auctionId = await auctionIdForCode(c.deps, raw);
+      } catch (e) {
+        if (e instanceof GavelError && e.code === 'not_found' && looksLikeJoinCode(raw)) {
+          guard.noteWrong(tag, now, normalizeJoinCode(raw), 'lookup');
+        }
+        throw e;
+      }
+    } else {
+      auctionId = await auctionIdOrCode(c);
+    }
     const room = await roomFor(c.deps, auctionId);
     const { snapshot } = await snapshotFor(c.deps, room, 'screen', 'public');
     const meta = await auctionMeta(c.deps, auctionId);

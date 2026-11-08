@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { WideAside } from '../WideAside';
 import { t } from '../../copy/t';
 import { Provenance } from '../../design/Provenance';
 import { Button } from '../../design/primitives/Button';
@@ -221,6 +222,7 @@ export function DemoLauncher({
           </li>
         </ul>
       </nav>
+      <WideAside />
       <Dialog open={codeOpen} onClose={() => setCodeOpen(false)} title={t('demo.codeTitle')}>
         <form className="gv-demo__code" onSubmit={goToRoom} noValidate>
           <h2>{t('demo.codeTitle')}</h2>
