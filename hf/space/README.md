@@ -1,6 +1,6 @@
 ---
 title: GAVEL Evidence Explorer
-emoji: 🔨
+emoji: "\U0001F528"
 colorFrom: gray
 colorTo: blue
 sdk: static

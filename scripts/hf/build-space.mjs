@@ -47,7 +47,8 @@ export function parseG5(gatesMd) {
       missed_bid: Number(m[7]),
     });
   }
-  if (rows.length !== 4) throw new Error(`expected 4 G5 rows in docs/GATES.md, found ${rows.length}`);
+  if (rows.length !== 4)
+    throw new Error(`expected 4 G5 rows in docs/GATES.md, found ${rows.length}`);
   return rows;
 }
 
@@ -55,13 +56,16 @@ export function parseG5(gatesMd) {
 export function parseTargets(gatesMd) {
   const cap = /\|\s*hammer to CAPTURED p95\s*\|\s*([\d.]+) s\s*\|/.exec(gatesMd);
   const set = /\|\s*hammer to SETTLED, 6 holds, p95\s*\|\s*([\d.]+) s\s*\|/.exec(gatesMd);
-  if (cap === null || set === null) throw new Error('latency target rows not found in docs/GATES.md');
+  if (cap === null || set === null)
+    throw new Error('latency target rows not found in docs/GATES.md');
   return { captured_ms: Number(cap[1]) * 1000, settled_ms: Number(set[1]) * 1000 };
 }
 
 export function buildExplorer(datasetsDir) {
   const gatesMd = readFileSync(join(ROOT, 'docs', 'GATES.md'), 'utf8');
-  const manifest = JSON.parse(readFileSync(need(datasetsDir, 'gavel-gates', 'MANIFEST.json'), 'utf8'));
+  const manifest = JSON.parse(
+    readFileSync(need(datasetsDir, 'gavel-gates', 'MANIFEST.json'), 'utf8'),
+  );
 
   const gates = readJsonl(need(datasetsDir, 'gavel-gates', 'gates.jsonl')).map((g) => ({
     gate: g.gate,
@@ -72,16 +76,18 @@ export function buildExplorer(datasetsDir) {
     label: g.label,
   }));
 
-  const spans = readJsonl(need(datasetsDir, 'gavel-latency', 'settlement_spans.jsonl')).map((r) => ({
-    run_id: r.run_id,
-    run_label: r.run_label,
-    run_date: r.run_date,
-    span: r.span,
-    n: r.n,
-    p50_ms: r.p50_ms,
-    p95_ms: r.p95_ms,
-    max_ms: r.max_ms,
-  }));
+  const spans = readJsonl(need(datasetsDir, 'gavel-latency', 'settlement_spans.jsonl')).map(
+    (r) => ({
+      run_id: r.run_id,
+      run_label: r.run_label,
+      run_date: r.run_date,
+      span: r.span,
+      n: r.n,
+      p50_ms: r.p50_ms,
+      p95_ms: r.p95_ms,
+      max_ms: r.max_ms,
+    }),
+  );
   const calls = readJsonl(need(datasetsDir, 'gavel-latency', 'api_calls.jsonl')).map((r) => ({
     run_id: r.run_id,
     run_date: r.run_date,
