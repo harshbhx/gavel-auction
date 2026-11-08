@@ -8,7 +8,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { secretSetFromConfig } from '../src/auth/rotation';
 import { createHttpApp, type HttpApp, type HttpDeps } from '../src/http/app';
-import { mountAuctions } from '../src/http/auctions';
+import { mountAuctions, titleKey } from '../src/http/auctions';
 import { mountControl } from '../src/http/control';
 import {
   createJudgeRooms,
@@ -162,6 +162,26 @@ describe('judge rooms: create', () => {
     const { app } = setup();
     const res = await post(app, JUDGE_ROOMS_PATH, { body: { config: { reserve: 1 } } });
     expect(res.status).toBe(400);
+  });
+
+  it('keeps an optional fundraiser goal beside the room, and none when it is left out (UIX-31)', async () => {
+    const { app, store } = setup({ perIpPerHour: 10, globalPerHour: 10 });
+    const withGoal = await created(
+      await post(app, JUDGE_ROOMS_PATH, { body: { fundraiserGoalCents: 2_500_000 } }),
+    );
+    const stored = await store.getJournal(titleKey(withGoal.auctionId));
+    expect((stored?.value as { fundraiserGoalCents?: number }).fundraiserGoalCents).toBe(2_500_000);
+    const plain = await created(await post(app, JUDGE_ROOMS_PATH));
+    const none = await store.getJournal(titleKey(plain.auctionId));
+    expect((none?.value as Record<string, unknown>).fundraiserGoalCents).toBeUndefined();
+  });
+
+  it('refuses a fractional, non-positive or oversized goal (UIX-31)', async () => {
+    const { app } = setup({ perIpPerHour: 10, globalPerHour: 10 });
+    for (const goal of [0, -1, 10.5, 1_000_000_000_01]) {
+      const res = await post(app, JUDGE_ROOMS_PATH, { body: { fundraiserGoalCents: goal } });
+      expect(res.status).toBe(400);
+    }
   });
 
   it('marks audit entries as judge-room and keeps the raw address out of them', async () => {
