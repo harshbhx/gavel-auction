@@ -11,6 +11,10 @@ const PROJECTS = [
   ['phone-light', 'Phone 390x844, light'],
   ['desktop-dark', 'Desktop 1440x900, dark'],
   ['desktop-projector', 'Desktop 1440x900, projector'],
+  ['phone-small', 'Small phone 320x640, light (key views)'],
+  ['tablet', 'Tablet 768x1024, light (key views)'],
+  ['phone-dark', 'Phone 390x844, dark (key views)'],
+  ['phone-projector', 'Phone 390x844, projector (key views)'],
 ];
 
 // States drawn on the component page (support/pages/harness.tsx) rather than on a route.

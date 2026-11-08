@@ -9,6 +9,13 @@ import { defineConfig } from '@playwright/test';
 const PORT = 4174;
 const BAD_CONFIG_PORT = 4175;
 
+/**
+ * Views captured by the narrow, tablet and phone-dark/projector projects (metadata.views): the
+ * routes a person actually uses on those devices. It keeps the artifact and the run time near flat.
+ */
+const KEY_VIEWS = ['landing', 'join', 'register', 'bid', 'receipt', 'console', 'hub', 'screen'];
+const PHONE = { deviceScaleFactor: 2, isMobile: true, hasTouch: true } as const;
+
 export default defineConfig({
   testDir: 'test/screens',
   testMatch: '**/*.spec.ts',
@@ -63,6 +70,33 @@ export default defineConfig({
       name: 'desktop-projector',
       metadata: { theme: 'projector' },
       use: { browserName: 'chromium', viewport: { width: 1440, height: 900 } },
+    },
+    {
+      // Narrowest supported phone, and the reflow width of 400% zoom on a desktop.
+      name: 'phone-small',
+      metadata: { theme: 'light', views: KEY_VIEWS },
+      use: { browserName: 'chromium', viewport: { width: 320, height: 640 }, ...PHONE },
+    },
+    {
+      // Between the 720 and 900 px breakpoints.
+      name: 'tablet',
+      metadata: { theme: 'light', views: KEY_VIEWS },
+      use: {
+        browserName: 'chromium',
+        viewport: { width: 768, height: 1024 },
+        deviceScaleFactor: 2,
+        hasTouch: true,
+      },
+    },
+    {
+      name: 'phone-dark',
+      metadata: { theme: 'dark', views: KEY_VIEWS },
+      use: { browserName: 'chromium', viewport: { width: 390, height: 844 }, ...PHONE },
+    },
+    {
+      name: 'phone-projector',
+      metadata: { theme: 'projector', views: KEY_VIEWS },
+      use: { browserName: 'chromium', viewport: { width: 390, height: 844 }, ...PHONE },
     },
   ],
   webServer: [
