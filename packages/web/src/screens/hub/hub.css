@@ -6,6 +6,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  position: relative;
   max-width: 1480px;
   margin: 0 auto;
   padding: var(--space-4) var(--space-4) var(--space-6);
@@ -98,6 +99,18 @@
   .gv-hub__side {
     order: 0;
     min-height: 0;
+  }
+
+  /* Whatever does not fit scrolls inside its own column, never the page */
+  .gv-hub__side,
+  .gv-hub__test {
+    overflow-y: auto;
+  }
+
+  .gv-hub__test {
+    flex: 0 1 auto;
+    min-height: 0;
+    margin-top: 0;
   }
 }
 
