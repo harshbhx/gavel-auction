@@ -322,3 +322,65 @@
     animation: none;
   }
 }
+
+/* Story strip: hold, hammer, receipt. The current step has a heavy edge in the state colour; upcoming steps are
+ * muted. Text stays large enough to read from the back of the room. */
+.gv-story {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 1 1 100%;
+  min-width: 0;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gv-story__step {
+  display: flex;
+  flex: 1 1 200px;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--color-rule);
+  color: var(--color-fg-muted);
+}
+
+.gv-story__label {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 700px) {
+  .gv-story__label {
+    font-size: 20px;
+  }
+
+  .gv-story__note {
+    font-size: 16px;
+  }
+}
+
+.gv-story__note {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.gv-story__step[data-status='now'] {
+  border: var(--border-width-strong) solid var(--screen-state);
+  background: var(--color-surface);
+  color: var(--color-fg);
+}
+
+.gv-story__step[data-status='done'] {
+  color: var(--color-fg);
+}
+
+@media (forced-colors: active) {
+  .gv-story__step[data-status='now'] {
+    border-color: CanvasText;
+  }
+}

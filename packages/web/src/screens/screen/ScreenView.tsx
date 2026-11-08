@@ -12,6 +12,7 @@ import { SettlementPanel } from '../../ladder/SettlementPanel';
 import { QrCode } from '../join/QrCode';
 import { capturedTotal, lotRaise, thermometer } from './fundraiser';
 import { FundraiserThermometer } from './Thermometer';
+import { StoryRail } from './StoryRail';
 import { FrozenChip, PriceFlash, Sold, type SettleCounts, type SoldOutcome } from './Sold';
 import type { SettlementDetail } from '../../store/roomReducer';
 
@@ -171,6 +172,7 @@ export function ScreenView({
       <header className="gv-screen__head">
         <h1 className="gv-screen__lot">{lotTitle}</h1>
         <FrozenChip disconnected={offline} />
+        <StoryRail phase={closed ? (settlement !== null ? 2 : 1) : 0} />
         {stopped && (
           <p role="status" className="gv-screen__notice">
             {t('screen.stopped')}
