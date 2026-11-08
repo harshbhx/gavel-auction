@@ -81,7 +81,8 @@ async function fetchSummary(apiBase: string, roomId: string): Promise<Summary | 
 function Flaps({ code }: { code: string | null }) {
   if (code === null) return <p className="gv-hub__pending">{t('hub.codePending')}</p>;
   return (
-    <p className="gv-hub__flaps" aria-label={`${t('hub.codeLabel')} ${code.split('').join(' ')}`}>
+    <p className="gv-hub__flaps">
+      <span className="gv-visually-hidden">{`${t('hub.codeLabel')} ${code.split('').join(' ')}`}</span>
       {code.split('').map((ch, i) => (
         <span key={`${ch}${i}`} className="gv-hub__flap" aria-hidden="true">
           {ch}
@@ -129,6 +130,7 @@ export function JudgeHub({
   const [copied, setCopied] = useState<string | null>(null);
   const [tick, setTick] = useState(() => now());
   const asked = useRef(false);
+  const minting = useRef(false);
   const newTab = ` (${t('hub.opensNewTab')})`;
   const base = `${origin}/r/${encodeURIComponent(roomId)}`;
   const screenLink = keys.screen === null ? null : `${base}/screen#token=${keys.screen}`;
@@ -160,11 +162,14 @@ export function JudgeHub({
 
   const auctioneer = keys.auctioneer;
   const makeInvite = useCallback((): void => {
-    if (apiBase === undefined || auctioneer === null) return;
+    if (apiBase === undefined || auctioneer === null || minting.current) return;
+    // A ref, not state: two clicks in one frame must not both send a request.
+    minting.current = true;
     setInvite({ kind: 'busy' });
-    mintInvite(apiBase, roomId, auctioneer, origin).then((got) =>
-      setInvite(got === null ? { kind: 'failed' } : { kind: 'ready', invite: got }),
-    );
+    mintInvite(apiBase, roomId, auctioneer, origin).then((got) => {
+      minting.current = false;
+      setInvite(got === null ? { kind: 'failed' } : { kind: 'ready', invite: got });
+    });
   }, [apiBase, auctioneer, roomId, origin]);
 
   // The first invite is made on arrival, so the QR is ready for a phone straight away.
@@ -246,7 +251,7 @@ export function JudgeHub({
               </>
             )}
           </div>
-          <aside className="gv-hub__test" aria-labelledby="gv-hub-test">
+          <section className="gv-hub__test" aria-labelledby="gv-hub-test" tabIndex={0}>
             <h3 id="gv-hub-test">{t('hub.testTitle')}</h3>
             <ol>
               <li>{t('hub.test1')}</li>
@@ -255,7 +260,7 @@ export function JudgeHub({
               <li>{t('hub.test4')}</li>
               <li>{t('hub.test5')}</li>
             </ol>
-          </aside>
+          </section>
         </section>
 
         <section className="gv-hub__ticket" aria-labelledby="gv-hub-step-2" data-step={2}>
@@ -293,7 +298,7 @@ export function JudgeHub({
           </div>
         </section>
 
-        <div className="gv-hub__side">
+        <div className="gv-hub__side" role="group" aria-label={t('hub.sideLabel')} tabIndex={0}>
           <Shortcut n={3} title={t('hub.step3')} hint={t('hub.step3Hint')}>
             {consoleLink === null ? (
               <p className="gv-hub__missing">{t('hub.noToken')}</p>

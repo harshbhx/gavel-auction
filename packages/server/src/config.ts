@@ -22,6 +22,8 @@ const csv = z.string().transform((v) =>
 /** Minimum TOKEN_SECRET length in bytes and ADMIN_KEY length in characters (R-RT-131). */
 const MIN_SECRET_BYTES = 32;
 const MIN_ADMIN_KEY_CHARS = 24;
+/** Minimum JUDGE_KEY length in characters: it is typed in by hand but must resist guessing. */
+const MIN_JUDGE_KEY_CHARS = 32;
 
 const byteLength = (s: string): number => new TextEncoder().encode(s).length;
 
@@ -37,6 +39,13 @@ const EnvObject = z.object({
   /** Epoch ms after which TOKEN_SECRET_PREVIOUS is no longer accepted. */
   TOKEN_SECRET_PREVIOUS_UNTIL: int(1).optional(),
   ADMIN_KEY: z.string().min(1),
+  /**
+   * Optional limited key for judges (never the operator key): lifts the judge room cap and the
+   * per-address create limit within a small bound. Empty or unset turns the feature off.
+   */
+  JUDGE_KEY: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional()),
+  /** Most keyed judge rooms alive at once, for the whole host. */
+  JUDGE_KEY_ROOMS_MAX: int(1).pipe(z.number().max(10)).default('3'),
   STORE: z.enum(['memory', 'file', 'postgres', 'd1']).default('memory'),
   /** Directory for the durable files when STORE=file. */
   DATA_DIR: z.string().min(1).default('./data'),
@@ -166,6 +175,14 @@ const EnvSchema = EnvObject.superRefine((env, ctx) => {
   }
   if (env.TOKEN_SECRET === env.ADMIN_KEY) {
     problem('ADMIN_KEY', 'must differ from TOKEN_SECRET');
+  }
+  if (env.JUDGE_KEY !== undefined) {
+    if (env.JUDGE_KEY === env.ADMIN_KEY) problem('JUDGE_KEY', 'must differ from ADMIN_KEY');
+    if (env.JUDGE_KEY === env.TOKEN_SECRET) problem('JUDGE_KEY', 'must differ from TOKEN_SECRET');
+    if (env.JUDGE_KEY.length < MIN_JUDGE_KEY_CHARS) {
+      problem('JUDGE_KEY', `must be at least ${MIN_JUDGE_KEY_CHARS} characters`);
+    }
+    if (!env.JUDGE_ROOMS) problem('JUDGE_KEY', 'needs JUDGE_ROOMS=true');
   }
   if (env.JUDGE_ROOMS) {
     // Real sandbox holds only. The fake adapter is allowed off-production so tests and local

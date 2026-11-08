@@ -2,12 +2,23 @@
 
 A short path through the repository for judges. Everything is PayPal sandbox only: no live PayPal call is made and no real money moves. A bid is a hold (an authorization); nothing is charged before capture at the hammer.
 
-## Status, stated plainly
+## Status at a glance
 
-- The web UI was redesigned on 7 Nov 2026 in the Scoreboard design (`docs/DESIGN.md`). See `README.md` for the current run instructions.
-- G5 is PARTIAL and G3 is in progress; latency is PARTIAL (hammer to SETTLED p95 5591 ms meets the 6 s target, hammer to CAPTURED p95 3010 ms misses the 2.5 s target, both on the real sandbox, n=20). The 30-day run is a simulation on a fake clock (`docs/evidence/SIM/SIM-MULTIDAY.md`). The Hugging Face datasets are prepared and not published.
-- The web app is hosted at https://gavel-web.creharsh.workers.dev with its API at https://gavel-auction-aufz.onrender.com, in sandbox mode. Storage there is temporary until a disk is added. `docs/DEMO.md` lists what is available and what is not.
-- Real versus recorded: the fake PayPal demo and the replay are recorded or simulated, not live PayPal. Gates G0, G1, G2 and G4 have run against the real sandbox; G3 (a real probe in progress since 7 Nov 2026 03:06 UTC, final about 12 Nov 06:17 UTC, no result recorded) and G5 is PARTIAL (wrong accept 0.000 on 24 synthetic, noise-free clips per set after fixes chosen on those same clips, so it is not a pass; no real-room or noisy-room test; spoken bids always use the confirm prompt); neither has a real-world result. Committed run logs exist for G1, G2 and G4 only; G0 is an Actions run log. See `docs/GATES.md` for each gate and its result. Settlement of a whole auction and crash recovery have been exercised against the fake PayPal; on the real sandbox only the nightly specs R7, R8 and R10 ran (one lot of three holds, one in-process crash; runs 42200708552 and 42317068784), not an auction driven through a server and not a real process kill.
+What is built and measured:
+
+- Gates G0, G1, G2 and G4 passed on the real PayPal sandbox. The web UI was redesigned on 7 Nov 2026 in the Scoreboard design (`docs/DESIGN.md`), and the judge path from `/try` through a room, a bidder join, a bid and the hammer to the receipt is built.
+- Latency is measured end to end on the real sandbox (n=20): hammer to SETTLED has p95 5591 ms, inside the 6 s target; hammer to CAPTURED has p95 3010 ms against the 2.5 s target, and tuning continues. Status PARTIAL in `docs/GATES.md`.
+- G5 (speech accuracy) is PARTIAL: wrong accept 0.000 on 24 synthetic, noise-free clips per set after fixes chosen on those same clips. Confirming it in a live or noisy room is the next step, and spoken bids always use the confirm prompt.
+- G3 is a timed sandbox probe in progress since 7 Nov 2026 03:06 UTC. Day 0 is recorded, and the final reading is about 12 Nov 06:17 UTC. No result is claimed before then. The 30-day run is a simulation on a fake clock (`docs/evidence/SIM/SIM-MULTIDAY.md`).
+- The web app is hosted at https://gavel-web.creharsh.workers.dev with its API at https://gavel-auction-z2nm.onrender.com, in sandbox mode, on a persistent disk. `docs/DEMO.md` lists what is available and what comes next.
+- The Hugging Face datasets are prepared and use synthetic data by design (privacy by design); publishing is next.
+- Next steps, with owners and dates where known, are on `docs/LIMITATIONS.md`. What changed and when is in `CHANGELOG.md`.
+
+How to read the labels:
+
+- The fake PayPal demo and the replay are recorded or simulated, not live PayPal. Gates G0, G1, G2 and G4 ran against the real sandbox. Committed run logs exist for G1, G2 and G4; G0 is an Actions run log.
+- Settlement of a whole auction and crash recovery are covered against the fake PayPal. On the real sandbox the nightly specs R7, R8 and R10 ran (one lot of three holds, one in-process crash; runs 42200708552 and 42317068784), and 20 settlements of 6 holds were measured end to end. Driving a whole auction through a server and a real process kill are the next sandbox runs.
+- See `docs/GATES.md` for each gate and its result.
 
 ## Real auction in two minutes (when judge rooms are on)
 
@@ -32,7 +43,7 @@ For a tour that needs no login, run the web app in development (`npm run dev -w 
 
 The table below is TARGET behaviour: steps 1 and 2 need a deployed staging URL (the `JUDGE_URL` repository variable), and until that is configured the nightly smoke fails red (it never reports a skipped pass).
 
-The web app is now hosted (see `docs/DEMO.md`); the walkthrough below has not yet been re-checked end to end against that URL, so treat each step as intended behaviour. `packages/e2e/specs/judge-walkthrough.spec.ts` covers steps 1 and 2 on the fake stack only. The nightly `.github/workflows/judge-smoke.yml` runs that spec against the hosted site and fails when the repository variable `JUDGE_URL` is unset, so a night that tested nothing cannot look like a pass. Steps 3 to 5 have no automated check.
+The web app is hosted (see `docs/DEMO.md`); a recorded end-to-end check of the walkthrough below against that URL is the next step, so treat each step as intended behaviour. `packages/e2e/specs/judge-walkthrough.spec.ts` covers steps 1 and 2 on the fake stack only. The nightly `.github/workflows/judge-smoke.yml` runs that spec against the hosted site and fails when the repository variable `JUDGE_URL` is unset, so a night that tested nothing cannot look like a pass. Steps 3 to 5 have no automated check.
 
 | Step | Persona    | What to do                                          | Expected outcome                                                                                         |
 | ---- | ---------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |

@@ -26,6 +26,17 @@ This is a real sandbox probe that is still running. Day 0 was 7 Nov 2026 03:06 U
 - Early reading: [`gate-g3-early`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/gate-g3-early.yml) probes two older G2 authorizations (a 1.00 partial capture and a reauthorization once an authorization reaches its checkpoint age, 3.0 days for the wallet one and 3.5 for the card one). It never touches the G3 probe state. It is an extra early reading, not the full 5-day result.
 - Secrets by name: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `SANDBOX_BUYER_EMAIL`, `SANDBOX_BUYER_PASSWORD`.
 
+## Readings so far
+
+| When | Reading | Where |
+| --- | --- | --- |
+| 7 Nov 03:06 UTC, day 0 | An immediate reauthorize was refused with 422 `UNPROCESSABLE_ENTITY` `REAUTHORIZATION_TOO_SOON`, as expected. Three authorizations were approved, to be read at day 3.5, day 4 and day 5. | [run 42332377547](https://github.com/harshbhx/gavel-auction/actions/runs/42332377547) |
+| 8 Nov 17:36 UTC, early, older G2 wallet authorization at age 3.24 days | A partial capture of 1.00 was accepted (HTTP 201) and the authorization then read `PARTIALLY_CAPTURED`. The reauthorize call answered 422 `UNPROCESSABLE_ENTITY` with the issue `PAYER_CANNOT_PAY`. | [run 42505780514](https://github.com/harshbhx/gavel-auction/actions/runs/42505780514) |
+| 8 Nov 23:58 UTC, early, older G2 card authorization | Due. The result is added when the run completes. | `gate-g3-early` |
+| About 12 Nov 06:17 UTC | Final reading on the day 3.5, 4 and 5 authorizations. | `gate-g3` |
+
+The 8 Nov reading was taken on an authorization that already had a partial capture, so it is an early data point, not the G3 result. The day 3.5, 4 and 5 authorizations have no capture on them, which makes them the clean reading.
+
 ## What the nightly run said so far
 
 The nightly spec R3 (reauthorize after a delay) answered HTTP 422 UNPROCESSABLE_ENTITY and reported `inconclusive`. Reauthorize is therefore unproven on that run. See the [nightly record](https://github.com/harshbhx/gavel-auction/blob/main/docs/evidence/nightly/NIGHTLY-42200708552.json).
