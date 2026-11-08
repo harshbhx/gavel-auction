@@ -3,8 +3,24 @@ import { createServer } from 'node:net';
 
 /** Child process control for the stack runner: free ports, readiness, SIGKILL and cleanup. */
 
-/** Asks the OS for a free loopback port. The port is released before it is returned. */
-export function freePort(): Promise<number> {
+// Ports come from a range below Linux's ephemeral range (32768+). A port the kernel hands out from
+// that range can be taken a moment later as the source port of an outgoing connection (the
+// readiness polls fetch in a loop), which is what produced EADDRINUSE between freePort() and the
+// child's listen(). Each process works in its own slice so parallel workers do not collide either.
+const RANGE_START = 20_000;
+const SLICE = 200;
+const SLICES = 60;
+const issued = new Set<number>();
+
+function canBind(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const srv = createServer();
+    srv.once('error', () => resolve(false));
+    srv.listen(port, '127.0.0.1', () => srv.close(() => resolve(true)));
+  });
+}
+
+function osPort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const srv = createServer();
     srv.once('error', reject);
@@ -14,6 +30,29 @@ export function freePort(): Promise<number> {
       srv.close(() => (port > 0 ? resolve(port) : reject(new Error('no port was assigned'))));
     });
   });
+}
+
+/**
+ * Finds a free loopback port. The port is released before it is returned, never repeats within this
+ * process, and is picked from a slice of a fixed range keyed on the test worker (or the pid).
+ */
+export async function freePort(): Promise<number> {
+  const worker = Number(process.env.VITEST_POOL_ID ?? process.env.VITEST_WORKER_ID ?? process.pid);
+  const base = RANGE_START + (Number.isFinite(worker) ? worker % SLICES : 0) * SLICE;
+  for (let i = 0; i < 100; i += 1) {
+    const port = base + Math.floor(Math.random() * SLICE);
+    if (issued.has(port) || !(await canBind(port))) continue;
+    issued.add(port);
+    return port;
+  }
+  // The slice is crowded: let the OS choose, and still never repeat a port.
+  for (;;) {
+    const port = await osPort();
+    if (!issued.has(port)) {
+      issued.add(port);
+      return port;
+    }
+  }
 }
 
 export interface SpawnOptions {
