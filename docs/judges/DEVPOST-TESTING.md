@@ -4,6 +4,8 @@ Draft for the Devpost "testing instructions" field. The owner pastes this in and
 
 ---
 
+For judges: start at https://gavel-web.creharsh.workers.dev/try (judge panel). No login: https://gavel-web.creharsh.workers.dev/demo/scripted. Demo room: https://gavel-web.creharsh.workers.dev/demo. Trust and FAQ: https://gavel-docs.creharsh.workers.dev/docs/judges/trust-and-faq. Sandbox buyer logins are placeholders below (OWNER fills in).
+
 GAVEL is a live auction where every bid is a PayPal authorization hold. At the hammer only the winning price is captured and every other hold is voided. Everything runs in the PayPal sandbox: no real money moves, and you should never use your own PayPal account.
 
 No login path (about 1 minute)

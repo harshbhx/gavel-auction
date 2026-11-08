@@ -12,6 +12,7 @@ import {
 import { z } from 'zod';
 import { raiseAuctioneerFloor } from '../auth/auctioneer-floor';
 import {
+  authenticate,
   json,
   mintToken,
   parseBody,
@@ -35,6 +36,7 @@ import { requestSources } from './node-bridge';
 
 export const JUDGE_ROOMS_PATH = '/api/judge/rooms';
 export const JUDGE_JOIN_PATH = '/api/judge/join';
+export const JUDGE_SIM_HOLD_PATH = '/api/judge/rooms/:id/sim-hold';
 export const JUDGE_CAPABILITIES_PATH = '/api/judge/capabilities';
 export const JUDGE_PAUSE_PATH = '/api/judge/pause';
 
@@ -64,6 +66,24 @@ export interface JudgeRoomsOptions {
   lotWindowMs: number;
   /** Open-join limits (SRV-30); every field falls back to JUDGE_JOIN_DEFAULTS. */
   join?: Partial<JudgeJoinLimits>;
+  /**
+   * Simulated holds (a hold with no PayPal login, judge rooms only). Left out, the route answers
+   * 404, which is how a host keeps it off.
+   */
+  simHolds?: SimHolds;
+}
+
+/** What the simulated-hold route needs from the host. */
+export interface SimHolds {
+  /** True while the auction still takes holds. */
+  acceptsHolds(auctionId: string): Promise<boolean>;
+  /** Writes the simulated hold, puts the bidder in the room and returns the hold id. */
+  place(input: {
+    auctionId: string;
+    bidderId: string;
+    name: string;
+    ceilingCents: number;
+  }): Promise<string>;
 }
 
 /** Limits of the open join route. Judge rooms only; a normal auction never uses it. */
@@ -99,6 +119,18 @@ const JoinBody = z
   .object({
     code: z.string().trim().min(1).max(16),
     displayName: z
+      .string()
+      .trim()
+      .min(1)
+      .max(MAX_NAME_CHARS)
+      .refine((v) => !BIDDER_NAME_FORBIDDEN_PATTERN.test(v), 'name holds a forbidden character'),
+  })
+  .strict();
+
+const SimHoldBody = z
+  .object({
+    ceilingCents: z.number().int().positive(),
+    name: z
       .string()
       .trim()
       .min(1)
@@ -315,7 +347,11 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
       const lot = title ?? DEFAULT_TITLE;
       const auctioneerSub = deps.ids.mint<'Jti'>();
       const joinCode = await reserveJoinCode(deps, auctionId);
-      await deps.store.putJournal(titleKey(auctionId), 0, { title: lot, joinCode });
+      await deps.store.putJournal(titleKey(auctionId), 0, {
+        title: lot,
+        joinCode,
+        judgeRoom: true,
+      });
       await deps.store.putJournal(markerKey(auctionId), 0, {
         createdAt: now,
         expiresAt,
@@ -461,12 +497,58 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     }
   };
 
+  /**
+   * `POST /api/judge/rooms/:id/sim-hold`: a bidder session of a judge room gets a simulated hold,
+   * so the room can be tried with no PayPal login. Judge rooms only: any other auction answers
+   * `not_found`, whatever the session.
+   */
+  const simHold = async (c: Ctx): Promise<Response> => {
+    const { deps } = c;
+    const sim = opts.simHolds;
+    if (!opts.enabled || sim === undefined) throw new HttpError(404, 'not_found', 'no such route');
+    const auctionId = c.params.id ?? '';
+    const who = await authenticate(c, auctionId, ['session']);
+    if (who.bidderId === undefined) throw new GavelError('forbidden', 'no bidder in the session');
+    const body = parseBody(SimHoldBody, await c.body());
+    await load(deps);
+    const marker = (await deps.store.getJournal(markerKey(auctionId)))?.value as Marker | undefined;
+    if (marker === undefined) throw new GavelError('not_found', 'no such judge room');
+    if (marker.expired === true || marker.expiresAt <= deps.clock.now()) {
+      return refuse(deps, 410, 'judge_room_expired', 'sim_hold_expired', sourceTag(auctionId));
+    }
+    const room = await roomFor(deps, auctionId);
+    const { snapshot } = await snapshotFor(deps, room, 'screen', 'judge-sim-hold');
+    if (!snapshot.config.ceilingPresets.includes(body.ceilingCents as Cents)) {
+      throw new GavelError('bad_message', 'ceiling is not one of the offered amounts');
+    }
+    if (!(await sim.acceptsHolds(auctionId))) {
+      throw new GavelError('closed', 'the auction no longer takes holds');
+    }
+    const holdId = await sim.place({
+      auctionId,
+      bidderId: who.bidderId,
+      name: body.name,
+      ceilingCents: body.ceilingCents,
+    });
+    audit(deps)?.info('judge room simulated hold', {
+      event: 'judge_room.sim_hold',
+      auctionId,
+      ceilingCents: body.ceilingCents,
+    });
+    return json(200, { holdId, simulated: true, ceilingCents: body.ceilingCents });
+  };
+
   const mount: Mount = (app: HttpApp): void => {
     appDeps = app.deps;
     app.post(JUDGE_JOIN_PATH, join);
+    app.post(JUDGE_SIM_HOLD_PATH, simHold);
     app.get(JUDGE_CAPABILITIES_PATH, async (c: Ctx) => {
       if (opts.enabled) await load(c.deps);
-      return json(200, { judgeRooms: opts.enabled, accepting: accepting() });
+      return json(200, {
+        judgeRooms: opts.enabled,
+        accepting: accepting(),
+        simHolds: opts.enabled && opts.simHolds !== undefined,
+      });
     });
     app.post(JUDGE_ROOMS_PATH, create);
     app.post(JUDGE_PAUSE_PATH, async (c: Ctx) => {

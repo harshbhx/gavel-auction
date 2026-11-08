@@ -86,6 +86,7 @@ import { FileLedgerStore } from '../store/file-ledger-store';
 import { createHttpApp } from '../http/app';
 import { createDemoHandler, DEMO_RESET_PATH, DEMO_ROOMS_PATH, DEMO_SEED_PATH } from '../http/demo';
 import { createDemoHoldSource } from '../http/demo-holds';
+import { createSimHoldSource, withSimulatedHolds } from '../http/sim-holds';
 import { mountAuctions } from '../http/auctions';
 import { createJudgeRooms, JUDGE_ROOM_DEFAULTS } from '../http/judge-rooms';
 import { mountAuctioneerToken } from '../http/auctioneer-token';
@@ -434,7 +435,10 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     holds: stores.holds,
     webhookEvents: stores.webhookEvents,
     audit,
-    gateway: payments.gateway,
+    gateway:
+      config.JUDGE_ROOMS && config.JUDGE_SIM_HOLDS
+        ? withSimulatedHolds(payments.gateway, () => clock.now())
+        : payments.gateway,
     verifier: payments.verifier,
     killSwitch,
     holdMaxAgeMs: payments.holdMaxAgeMs,
@@ -581,6 +585,28 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     globalPerHour: config.JUDGE_ROOMS_PER_HOUR,
     maxCeilingCents: payments.maxCeilingCents,
     lotWindowMs: JUDGE_ROOM_DEFAULTS.lotWindowMs,
+    ...(config.JUDGE_ROOMS && config.JUDGE_SIM_HOLDS
+      ? {
+          simHolds: {
+            acceptsHolds: (auctionId: string) => service.acceptsHolds(auctionId as AuctionId),
+            place: async (input) => {
+              const holdId = await createSimHoldSource(stores.holds, () => clock.now())(
+                input.bidderId as BidderId,
+                input.ceilingCents as Cents,
+                input.auctionId as AuctionId,
+              );
+              await service.registerBidder({
+                auctionId: input.auctionId as AuctionId,
+                bidderId: input.bidderId as BidderId,
+                holdId,
+                name: input.name,
+              });
+              await service.holdApproved(holdId);
+              return holdId;
+            },
+          },
+        }
+      : {}),
   });
   const apiApp = createHttpApp(
     {

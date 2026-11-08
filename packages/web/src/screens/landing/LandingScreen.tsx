@@ -29,8 +29,6 @@ export interface LandingScreenProps {
   onJoin: (code: string) => Promise<boolean>;
   /** Opens the production-safe scripted demo (also offered when the server is down). */
   onScripted: () => void;
-  /** Opens the judge page. Optional: without it the link follows its address. */
-  onJudges?: () => void;
 }
 
 const CODE_LENGTH = 6;
@@ -50,7 +48,6 @@ export function LandingScreen({
   onStart,
   onJoin,
   onScripted,
-  onJudges,
 }: LandingScreenProps) {
   const [code, setCode] = useState('');
   const [invalid, setInvalid] = useState(false);
@@ -151,7 +148,7 @@ export function LandingScreen({
         <FeaturesSection />
         <StatsSection />
         <TrustSection />
-        <AudienceSection onJudges={onJudges ?? (() => undefined)} />
+        <AudienceSection />
         <FaqSection />
         <section ref={finalRef} className="gv-final" aria-labelledby="final-title">
           <h2 id="final-title" className="gv-mk-section__title">
@@ -221,11 +218,6 @@ export function LandingScreen({
             <div className="gv-mk-footer__col">
               <p className="ui-kicker">{t('mk.foot.colProof')}</p>
               <ul className="gv-mk-footer__links">
-                <li>
-                  <a href="/try" onClick={routeClick(onJudges ?? (() => undefined))}>
-                    {t('mk.foot.judges')}
-                  </a>
-                </li>
                 <li>
                   <a href={`${DOCS_URL}/docs/judges/findings-that-mattered`}>
                     {t('mk.foot.findings')}

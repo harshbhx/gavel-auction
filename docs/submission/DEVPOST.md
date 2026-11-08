@@ -1,5 +1,15 @@
 # GAVEL: Devpost draft
 
+## For judges
+
+Start here: **https://gavel-web.creharsh.workers.dev/try** is the judge panel. It starts a live PayPal sandbox room with no operator key. No real money moves; do not use your own PayPal account.
+
+- No login, about 1 minute: https://gavel-web.creharsh.workers.dev/demo/scripted (a recorded room, no server, no PayPal calls)
+- Demo room, about 3 minutes: https://gavel-web.creharsh.workers.dev/demo (start a room, open the hub, join as a bidder, bid, hammer, receipt)
+- Trust and FAQ: https://gavel-docs.creharsh.workers.dev/docs/judges/trust-and-faq
+- All judge pages (paths, rubric map, evidence): https://gavel-docs.creharsh.workers.dev/docs/judges
+- Sandbox buyer login: OWNER fills in from the sandbox dashboard (email and password placeholders; never committed)
+
 Draft text for the Devpost entry. Refs #99 and #321. The owner finalizes it: numbers from the /quality page, the tools and models list the Devpost form asks for, the reuse statement and the links are filled in by the owner and are marked OWNER below. Everything here is checked against `docs/GATES.md` and the code on main at the time of writing. PayPal sandbox only: no live charge is made anywhere in this project.
 
 ## Tagline

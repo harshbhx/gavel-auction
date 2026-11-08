@@ -20,6 +20,8 @@ export interface JoinScreenProps {
   origin: string;
   /** Moves the app to another path. */
   onNavigate: (path: string) => void;
+  /** A judge room with simulated holds: offer the PayPal sandbox and the demo side by side. */
+  demoHold?: boolean;
   /** Whether a valid session is stored for this room. Defaults to reading session storage. */
   hasSession?: boolean;
 }
@@ -56,10 +58,12 @@ export function JoinScreen({
   state,
   origin,
   onNavigate,
+  demoHold = false,
   hasSession,
 }: JoinScreenProps) {
   const returning = hasSession ?? getBidderSession(roomId) !== null;
   const bidPath = `/r/${encodeURIComponent(roomId)}/bid`;
+  const registerPath = `/r/${encodeURIComponent(roomId)}/register`;
 
   useEffect(() => {
     if (returning && state === 'open') onNavigate(bidPath);
@@ -78,7 +82,7 @@ export function JoinScreen({
           <Button size="bid" onClick={() => onNavigate('/')}>
             {t('join.tryAgain')}
           </Button>
-          <Button variant="outline" onClick={() => onNavigate('/try')}>
+          <Button variant="outline" onClick={() => onNavigate('/demo')}>
             {t('join.startDemo')}
           </Button>
         </div>
@@ -104,7 +108,7 @@ export function JoinScreen({
         <p className="gv-join__help">{t('join.endedHelp')}</p>
         <div className="gv-join__actions">
           <Button onClick={() => onNavigate(bidPath)}>{t('join.watch')}</Button>
-          <Button variant="outline" onClick={() => onNavigate('/try')}>
+          <Button variant="outline" onClick={() => onNavigate('/demo')}>
             {t('join.startDemo')}
           </Button>
         </div>
@@ -140,10 +144,29 @@ export function JoinScreen({
         </Suspense>
       </div>
       {shortCode !== null && <p className="gv-flow__code">{t('join.code', { code: shortCode })}</p>}
-      <p className="gv-join__note">{t('join.sandboxNote')}</p>
-      <Button size="bid" onClick={() => onNavigate(`/r/${encodeURIComponent(roomId)}/register`)}>
-        {t('join.asBidder')}
-      </Button>
+      {demoHold ? (
+        <section className="gv-join__ways" aria-labelledby="gv-join-ways">
+          <h2 id="gv-join-ways">{t('join.waysTitle')}</h2>
+          <p className="gv-join__help">{t('join.waysWhy')}</p>
+          <Button size="bid" onClick={() => onNavigate(registerPath)}>
+            {t('join.wayPaypal')}
+          </Button>
+          <Button
+            size="bid"
+            variant="outline"
+            onClick={() => onNavigate(`${registerPath}?mode=demo`)}
+          >
+            {t('join.wayDemo')}
+          </Button>
+        </section>
+      ) : (
+        <>
+          <p className="gv-join__note">{t('join.sandboxNote')}</p>
+          <Button size="bid" onClick={() => onNavigate(registerPath)}>
+            {t('join.asBidder')}
+          </Button>
+        </>
+      )}
       <Button variant="outline" onClick={() => onNavigate(bidPath)}>
         {t('join.watch')}
       </Button>

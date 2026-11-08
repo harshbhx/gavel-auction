@@ -286,3 +286,38 @@ test.describe('scripted demo player', () => {
     await expect(progress).toHaveText(t('scriptedDemo.progress', { n: 2, total: 10 }));
   });
 });
+
+test.describe('joining with only the room code', () => {
+  test('a watcher joins as a bidder from the join page, no invite needed', async ({ page }) => {
+    const seen: string[] = [];
+    await mockApi(page, (req) => {
+      seen.push(`${req.method} ${req.path}`);
+      if (req.method === 'POST' && req.path === '/api/judge/join') {
+        return { status: 200, json: { sessionToken: 'plainly-fake-session', bidderId: 'B9' } };
+      }
+      return hubApi(req);
+    });
+    await page.goto(`/join/${ROOM}?c=${CODE}`);
+    await page.getByRole('button', { name: t('join.asBidder') }).click();
+    await expect(page).toHaveURL(new RegExp(`/r/${ROOM}/register`));
+    await expect.poll(() => seen.includes('POST /api/judge/join')).toBe(true);
+    await expect(page.getByText(t('reg.expired'))).toHaveCount(0);
+  });
+
+  test('the hub join link and QR carry the code', async ({ page }) => {
+    await mockApi(page, hubApi);
+    await page.goto(HUB);
+    await expect(page.getByTestId('hub-join-link')).toContainText(`/join/${ROOM}?c=${CODE}`);
+    await expect(page.getByTestId('hub-join-open')).toHaveAttribute(
+      'href',
+      new RegExp(`/join/${ROOM}\\?c=${CODE}$`),
+    );
+  });
+
+  test('a watcher on the bid page can join', async ({ page }) => {
+    await mockApi(page, hubApi);
+    await page.goto(`/r/${ROOM}/bid`);
+    await expect(page.getByRole('heading', { level: 1, name: t('watch.title') })).toBeVisible();
+    await expect(page.getByRole('button', { name: t('join.asBidder') })).toBeVisible();
+  });
+});
