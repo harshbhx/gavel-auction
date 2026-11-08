@@ -3,6 +3,7 @@ import { RemainderNote } from '../../ladder/RemainderNote';
 import type { RemainderState } from '../../wire';
 import { HoldCard } from '../../ui';
 import { formatUsd } from '../../util/money';
+import { ReceiptTime } from './ReceiptTime';
 
 export interface FallbackProps {
   itemName: string;
@@ -25,7 +26,7 @@ export function Fallback({ itemName, chargedCents, idSuffix, at, remainder }: Fa
           <>
             <dt>{t('receipt.time')}</dt>
             <dd>
-              <time dateTime={new Date(at).toISOString()}>{new Date(at).toISOString()}</time>
+              <ReceiptTime at={at} />
             </dd>
           </>
         )}

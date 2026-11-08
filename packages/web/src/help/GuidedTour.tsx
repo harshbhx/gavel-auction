@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { useFocusTrap } from '../a11y/useFocus';
+import { useEffect, useRef, useState } from 'react';
+import { keepFocusOnOverlay, useFocusTrap } from '../a11y/useFocus';
 import { t } from '../copy/t';
 import { TOUR_STEPS, type TourStepId } from './tourState';
 
@@ -99,19 +99,22 @@ export function GuidedTour({ step, onNext, onBack, onSkip }: GuidedTourProps) {
     };
   }, [id]);
 
-  const onKeyDown = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape') {
-      e.stopPropagation();
-      onSkip();
-    } else if (e.key === 'ArrowRight') {
-      onNext();
-    } else if (e.key === 'ArrowLeft' && index > 0) {
-      onBack();
-    }
-  };
+  // On the document, so the keys still work after a click on the veil moved focus to the body.
+  const keys = useRef({ onNext, onBack, onSkip, index });
+  keys.current = { onNext, onBack, onSkip, index };
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent): void => {
+      const k = keys.current;
+      if (e.key === 'Escape') k.onSkip();
+      else if (e.key === 'ArrowRight') k.onNext();
+      else if (e.key === 'ArrowLeft' && k.index > 0) k.onBack();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   return (
-    <div className="help-tour" role="presentation" onKeyDown={onKeyDown}>
+    <div className="help-tour" role="presentation" onMouseDown={keepFocusOnOverlay}>
       {box === null ? (
         <div className="help-tour__veil" aria-hidden="true" />
       ) : (

@@ -25,3 +25,22 @@ export function prefersReducedMotion(): boolean {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
+
+/** A receipt time in the viewer's locale and zone, with the zone name ("14 Nov 2023, 22:13 UTC"). */
+export function formatTime(at: number, locale?: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZoneName: 'short',
+  }).format(new Date(at));
+}
+
+/** The same instant in UTC, for the title and the accessible name. */
+export function formatTimeUtc(at: number, locale?: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'medium',
+    timeZone: 'UTC',
+    timeZoneName: 'short',
+  }).format(new Date(at));
+}

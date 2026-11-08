@@ -8,6 +8,7 @@ import { ControlError, ControlTimeoutError } from '../../net/controlPort';
 import type { ControlPort } from '../../net/transport';
 import type { AuctionStatus } from '../../wire';
 import { HammerDialog, type HammerLeader } from './HammerDialog';
+import { ShortcutHelp, useShortcuts, type ShortcutHandlers } from './ShortcutHelp';
 
 export const DEFAULT_EXTEND_MS = 30_000;
 
@@ -151,6 +152,22 @@ export function Controls({
     { name: 'hammer', label: t('console.hammer'), act: () => setShown({ leader, priceCents }) },
   ];
 
+  // Single keys for the safe controls and `?` for the list. Hammer and stop have no key.
+  const [helpOpen, setHelpOpen] = useState(false);
+  const keyFor = (name: ControlName): (() => void) => {
+    return () => {
+      if (disabledReason(name, state) === null) items.find((i) => i.name === name)?.act();
+    };
+  };
+  const shortcuts: ShortcutHandlers = {
+    help: () => setHelpOpen(true),
+    open: keyFor('open'),
+    pause: keyFor('pause'),
+    resume: keyFor('resume'),
+    extend: keyFor('extend'),
+  };
+  useShortcuts(shortcuts, shown === null && !helpOpen);
+
   /** One path for the dialog and the desk hold: a bid that landed after the question was shown refuses. */
   const hammerNow = (was: { leader: HammerLeader | null; priceCents: number } | null): void => {
     if (was === null) return;
@@ -203,6 +220,7 @@ export function Controls({
         <p className="gv-console-hammer__alt">{t('console.hammerDialogHint')}</p>
       </div>
       <p role="status">{result}</p>
+      <ShortcutHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
       <HammerDialog
         open={shown !== null}
         leader={shown === null ? leader : shown.leader}
