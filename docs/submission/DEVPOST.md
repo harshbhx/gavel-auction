@@ -17,6 +17,10 @@ Draft text for the Devpost entry. Refs #99 and #321. The owner finalizes it: num
 
 Every bid is a PayPal hold. The hammer is the payment.
 
+## Logo and media
+
+The Mallet G: a heavy circular G whose crossbar is a mallet handle ending in an orange head. From the `brand-raster` artifact of the brand-assets workflow, upload `android-chrome-512x512.png` as the project logo and `og.png` as the thumbnail or cover image. Use `gavel-sting-1080p.mp4` from the `brand-sting` artifact as the opening or closing card of the demo video. Sources, colours and usage rules are in `brand/README.md`.
+
 ## The problem
 
 In a live auction or a fundraiser, bidders hesitate when a card is charged up front, so they bid less or do not bid. The other way round, bids are unsecured: a winner can walk away after the hammer and the organizer chases payment afterwards. Paper sheets and shouted bids make the record hard to trust. We do not quote a non-payment rate, because we found no data we can stand behind.

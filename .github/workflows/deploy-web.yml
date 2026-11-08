@@ -68,15 +68,22 @@ jobs:
             echo "VITE_WS_BASE=wss://${origin#https://}"
           } >> "$GITHUB_ENV"
           echo "Web build API origin: $origin" >> "$GITHUB_STEP_SUMMARY"
-      # Social crawlers (Open Graph, Twitter, Slack) do not read SVG, so the share image and the
-      # .ico favicon are rendered here from the committed SVG sources and never committed.
-      - name: Render the share image and favicon
+      # Social crawlers (Open Graph, Twitter, Slack) do not read SVG, so the share image, the .ico
+      # favicon and the touch and app icons are rendered here from the committed SVG sources
+      # (mirrors of brand/svg) and never committed.
+      - name: Render the share image and icons
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq librsvg2-bin imagemagick
-          rsvg-convert -w 1200 -h 630 packages/web/public/og.svg -o packages/web/public/og.png
-          rsvg-convert -w 32 -h 32 packages/web/public/favicon.svg -o "$RUNNER_TEMP/favicon-32.png"
-          convert "$RUNNER_TEMP/favicon-32.png" packages/web/public/favicon.ico
+          p=packages/web/public
+          rsvg-convert -w 1200 -h 630 $p/og.svg -o $p/og.png
+          rsvg-convert -w 1200 -h 600 $p/og-twitter.svg -o $p/twitter.png
+          for n in 16 32 48; do rsvg-convert -w $n -h $n $p/favicon.svg -o "$RUNNER_TEMP/favicon-$n.png"; done
+          convert "$RUNNER_TEMP/favicon-16.png" "$RUNNER_TEMP/favicon-32.png" "$RUNNER_TEMP/favicon-48.png" $p/favicon.ico
+          rsvg-convert -w 180 -h 180 $p/app-icon.svg -o $p/apple-touch-icon.png
+          rsvg-convert -w 192 -h 192 $p/app-icon.svg -o $p/android-chrome-192x192.png
+          rsvg-convert -w 512 -h 512 $p/app-icon.svg -o $p/android-chrome-512x512.png
+          rsvg-convert -w 512 -h 512 $p/app-icon-maskable.svg -o $p/maskable-512x512.png
 
       - name: Build the web app
         env:
@@ -91,6 +98,8 @@ jobs:
           test -f packages/web/dist/favicon.svg
           test -f packages/web/dist/favicon.ico
           test -f packages/web/dist/og.png
+          test -f packages/web/dist/apple-touch-icon.png
+          test -f packages/web/dist/maskable-512x512.png
           test "$(file -b --mime-type packages/web/dist/og.png)" = "image/png"
           test "$(identify -format '%wx%h' packages/web/dist/og.png)" = "1200x630"
           if grep -rq "localhost:8787" packages/web/dist; then
