@@ -1,6 +1,6 @@
 # Open data: Hugging Face collection
 
-Status: prepared, not yet published. No dataset below is live. Links are placeholders until publish: replace `<namespace>` with the Hugging Face account that publishes them.
+Status: published. The five datasets, the Space and the collection are live under the Hugging Face account `harshbhx`: [collection](https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504), Space [gavel-evidence-explorer](https://huggingface.co/spaces/harshbhx/gavel-evidence-explorer), datasets [gavel-gates](https://huggingface.co/datasets/harshbhx/gavel-gates), [gavel-latency](https://huggingface.co/datasets/harshbhx/gavel-latency), [gavel-sim-30d](https://huggingface.co/datasets/harshbhx/gavel-sim-30d), [gavel-stt-bids](https://huggingface.co/datasets/harshbhx/gavel-stt-bids) and [gavel-audit-demo](https://huggingface.co/datasets/harshbhx/gavel-audit-demo).
 
 The datasets are built from evidence committed in this repository by `scripts/hf/build-datasets.mjs`, run by the workflow `hf-datasets` (manual, dry run by default). Every dataset carries a `MANIFEST.json` (sha256 of every file, the repository commit, the build run URL, row counts) and a `verify.py` that recomputes the hashes. The privacy and secret scan runs on every output and fails the build on a hit. How the pipeline is built and checked: `docs/DATA-ENGINEERING.md`.
 
@@ -16,19 +16,19 @@ Description (the Hub allows 150 characters; this is what `scripts/hf/push.py` se
 
 Longer text for the datasets' own pages: data behind GAVEL, an auction where bidders hold funds with PayPal authorizations and the winner is captured at the hammer. Five small datasets, each labelled for what it is: real sandbox measurements, a simulated 30-day settlement run on a fake clock, synthetic speech with recorded speech-to-text outputs, and scripted demo audit trails. Every file has a checksum and a manifest so the numbers can be verified. Nothing is production data and no real person or real money is involved.
 
-Items, in this order: the five datasets below, then the Space `<namespace>/gavel-evidence-explorer`.
+Items, in this order: the five datasets below, then the Space `harshbhx/gavel-evidence-explorer`.
 
 ## Order and descriptions
 
-| #   | Dataset                        | Label                         | Rows                                                                                | License   |
-| --- | ------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------- | --------- |
-| 1   | `<namespace>/gavel-gates`      | real sandbox, synthetic audio | 6 gates, evidence file hashes, nightly results, adversarial-review and audit counts | CC-BY-4.0 |
-| 2   | `<namespace>/gavel-latency`    | real sandbox                  | summary statistics                                                                  | CC-BY-4.0 |
-| 3   | `<namespace>/gavel-sim-30d`    | simulated                     | per lot and per hold                                                                | CC-BY-4.0 |
-| 4   | `<namespace>/gavel-stt-bids`   | synthetic audio               | 24 clips, 96 provider outputs                                                       | CC-BY-4.0 |
-| 5   | `<namespace>/gavel-audit-demo` | synthetic, simulated          | scripted scenario traces                                                            | CC-BY-4.0 |
+| #   | Dataset                     | Label                         | Rows                                                                                | License   |
+| --- | --------------------------- | ----------------------------- | ----------------------------------------------------------------------------------- | --------- |
+| 1   | `harshbhx/gavel-gates`      | real sandbox, synthetic audio | 6 gates, evidence file hashes, nightly results, adversarial-review and audit counts | CC-BY-4.0 |
+| 2   | `harshbhx/gavel-latency`    | real sandbox                  | summary statistics                                                                  | CC-BY-4.0 |
+| 3   | `harshbhx/gavel-sim-30d`    | simulated                     | per lot and per hold                                                                | CC-BY-4.0 |
+| 4   | `harshbhx/gavel-stt-bids`   | synthetic audio               | 24 clips, 96 provider outputs                                                       | CC-BY-4.0 |
+| 5   | `harshbhx/gavel-audit-demo` | synthetic, simulated          | scripted scenario traces                                                            | CC-BY-4.0 |
 
-The Space `<namespace>/gavel-evidence-explorer` is item 6 (see below). Exact row counts are in each dataset's `MANIFEST.json` and in the summary of the `hf-datasets` run.
+The Space `harshbhx/gavel-evidence-explorer` is item 6 (see below). Exact row counts are in each dataset's `MANIFEST.json` and in the summary of the `hf-datasets` run.
 
 ### 1. gavel-gates
 
@@ -84,10 +84,10 @@ What it shows, each section carrying its label:
 
 ## Publishing
 
-Nothing is live until the owner runs these steps:
+They were published with these steps, and the same steps update them:
 
 1. Add the repository secret `HF_TOKEN` (a Hugging Face write token). Never paste it in chat or in a file.
 2. Add the repository variable `HF_NAMESPACE` (the Hugging Face user or organisation that will own the datasets, the Space and the collection).
 3. Run the workflow `hf-datasets` once with the default `dry_run` ticked. It builds and checks everything, prints the publish plan in the job summary and keeps the artifacts `hf-datasets` and `hf-space`.
 4. Run it again with `dry_run` unticked. It uploads the five datasets and the Space (all public), creates the collection (or reuses one with the same title) and adds the datasets and then the Space to it, in the order above. If the secret or the variable is missing the run fails with a message that says which one; nothing is uploaded.
-5. Afterwards replace the `<namespace>` placeholders in this file and in `docsite` (page Open data) and, if wanted, add an Open data section to the README. Re-running step 4 later updates the files and keeps the collection.
+5. Re-running step 4 later updates the files and keeps the collection.

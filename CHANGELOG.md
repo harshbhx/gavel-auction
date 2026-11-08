@@ -10,6 +10,9 @@ Work in flight and evidence being collected. Nothing here changes a gate result;
 
 ### Added
 
+- Open data is live on Hugging Face: five datasets (gavel-gates, gavel-latency, gavel-sim-30d, gavel-stt-bids, gavel-audit-demo) and the Evidence Explorer Space, grouped in one collection: https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504
+- The API has its own domain, https://api.gavel.dualmindlab.tech (its `/healthz` answers 200), alongside the Render address; the docs are at https://docs.gavel.dualmindlab.tech and the web app at https://gavel.dualmindlab.tech.
+- Docs: a glossary with definitions on hover, focus and tap, and a ten-step guided tour with a process diagram.
 - A timed sandbox probe for gate G3 (honor period, validity and reauthorize). It started on 7 Nov 03:06 UTC. Day 0 is recorded: an immediate reauthorize was refused with `REAUTHORIZATION_TOO_SOON`, as it should be, and three fresh authorizations were approved to be read at day 3.5, day 4 and day 5. Scheduled checks are set for every 6 hours (GitHub starts them roughly every 6 to 8) and the final reading is due on 12 Nov. Run: https://github.com/harshbhx/gavel-auction/actions/runs/42332377547
 - An early G3 reading on two older G2 authorizations. The wallet one was probed on 8 Nov 17:36 UTC at age 3.24 days: a partial capture of 1.00 was accepted (HTTP 201) and the authorization then read `PARTIALLY_CAPTURED`; the reauthorize call answered 422 `UNPROCESSABLE_ENTITY` with the issue `PAYER_CANNOT_PAY`. The card one is due on 8 Nov 23:58 UTC and its result will be added here. Run: https://github.com/harshbhx/gavel-auction/actions/runs/42505780514
 - This changelog and a "Limits and next steps" page ([docs/LIMITATIONS.md](docs/LIMITATIONS.md)), with matching pages on the docs site.

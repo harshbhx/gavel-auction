@@ -1,22 +1,21 @@
 ---
 title: Open data
-description: Datasets and an Evidence Explorer Space prepared for Hugging Face. Prepared, not yet published.
+description: Five small datasets and an Evidence Explorer Space, live on Hugging Face, each labelled for what it is.
 icon: Database
-status: in progress
 ---
 
-Status: **prepared, not yet published.** No dataset on this page is live yet, so there are no links. This page changes when they are.
+Status: **published on Hugging Face.** The five datasets, the Evidence Explorer Space and the collection are live: [the collection](https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504) groups them.
 
 Five small datasets are built in CI from evidence that is committed in this repository. Each one is labelled for what it is, ships a `MANIFEST.json` with a sha256 for every file and the commit it was built from, and a `verify.py` that recomputes the hashes. A privacy and secret scan runs on every output.
 
 | Dataset | What it holds | Label |
 | --- | --- | --- |
-| `gavel-gates` | Index of <Term id="gate">gates</Term> G0 to G5 with status, date, run links and evidence file hashes | real sandbox, synthetic audio, G3 in progress |
-| `gavel-latency` | Settlement and per-call latency of the PayPal sandbox | real sandbox, small n |
-| `gavel-sim-30d` | <Term id="simulated">Simulated</Term> 30-day <Term id="settlement">settlement</Term>, per <Term id="lot">lot</Term> and per hold | simulated, fake clock |
-| `gavel-stt-bids` | 24 synthetic bid clips, speech-to-text outputs and scores | synthetic audio |
-| `gavel-audit-demo` | Event, <Term id="ledger">ledger</Term> and outcome records of <Term id="scripted-demo">scripted demo</Term> auctions | synthetic, <Term id="fake-paypal">fake PayPal</Term> |
+| [`gavel-gates`](https://huggingface.co/datasets/harshbhx/gavel-gates) | Index of <Term id="gate">gates</Term> G0 to G5 with status, date, run links and evidence file hashes | real sandbox, synthetic audio, G3 in progress |
+| [`gavel-latency`](https://huggingface.co/datasets/harshbhx/gavel-latency) | Settlement and per-call latency of the PayPal sandbox | real sandbox, small n |
+| [`gavel-sim-30d`](https://huggingface.co/datasets/harshbhx/gavel-sim-30d) | <Term id="simulated">Simulated</Term> 30-day <Term id="settlement">settlement</Term>, per <Term id="lot">lot</Term> and per hold | simulated, fake clock |
+| [`gavel-stt-bids`](https://huggingface.co/datasets/harshbhx/gavel-stt-bids) | 24 synthetic bid clips, speech-to-text outputs and scores | synthetic audio |
+| [`gavel-audit-demo`](https://huggingface.co/datasets/harshbhx/gavel-audit-demo) | Event, <Term id="ledger">ledger</Term> and outcome records of <Term id="scripted-demo">scripted demo</Term> auctions | synthetic, <Term id="fake-paypal">fake PayPal</Term> |
 
-A read-only static Space, `gavel-evidence-explorer`, charts them (gate status, sandbox latency, the simulated 30-day run, speech-to-text on synthetic audio), each section labelled. The collection is titled "GAVEL Evidence: auction holds, hammer and receipts".
+A read-only static Space, [`gavel-evidence-explorer`](https://huggingface.co/spaces/harshbhx/gavel-evidence-explorer), charts them (gate status, sandbox latency, the simulated 30-day run, speech-to-text on synthetic audio), each section labelled. The collection is titled "GAVEL Evidence: auction holds, hammer and receipts".
 
-Nothing here is production data, no real person or real money is involved, and the sandbox numbers say nothing about production PayPal. The full description of each dataset, and how to publish them, is in `docs/HF_COLLECTION.md`. See also [Real, simulated, recorded](/docs/judges/real-vs-simulated).
+Nothing here is production data, no real person or real money is involved, and the sandbox numbers say nothing about production PayPal. The full description of each dataset, and how they are built and published, is in `docs/HF_COLLECTION.md`. See also [Real, simulated, recorded](/docs/judges/real-vs-simulated).
