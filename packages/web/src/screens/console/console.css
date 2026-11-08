@@ -282,10 +282,9 @@
 
 .gv-console-guide__audit {
   font-size: var(--font-size-1);
-  color: var(--color-fg-muted);
 }
 
 .gv-console-guide__audit a {
-  color: var(--color-action);
+  color: var(--color-fg);
   text-decoration: underline;
 }
