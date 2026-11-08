@@ -503,9 +503,9 @@ function TryRoute({ api }: { api: Api | undefined }) {
   return (
     <JudgePanel
       rooms={rooms}
-      createRoom={async () => {
+      createRoom={async (goalCents) => {
         if (api === undefined) throw new Error('no api');
-        return createJudgeRoom(api.apiBase);
+        return createJudgeRoom(api.apiBase, goalCents);
       }}
       openRoom={navigate}
       joinByCode={(code) => joinByCode(api, code)}
@@ -1000,10 +1000,11 @@ function DemoRoute({ api }: { api: Api | undefined }) {
       {api !== undefined && !judge && <OperatorKeyField value={key} onChange={setKey} />}
       <DemoLauncher
         initialMode={api === undefined ? 'scripted' : 'live'}
-        createRoom={async () => {
+        goalField={judge}
+        createRoom={async (goalCents) => {
           if (api === undefined) throw new Error('no api');
           return (await probe) === true
-            ? createJudgeRoom(api.apiBase)
+            ? createJudgeRoom(api.apiBase, goalCents)
             : createDemoRoom(api.apiBase, key);
         }}
         startScripted={() => roomLinks('demo')}

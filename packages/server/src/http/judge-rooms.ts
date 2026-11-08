@@ -117,7 +117,13 @@ export const JUDGE_ROOM_DEFAULTS = {
   lotWindowMs: 10 * 60_000,
 } as const;
 
-const CreateBody = z.object({ title: z.string().trim().min(1).max(60).optional() }).strict();
+const CreateBody = z
+  .object({
+    title: z.string().trim().min(1).max(60).optional(),
+    /** Optional fundraiser goal in integer cents; the projector shows a thermometer only when set. */
+    fundraiserGoalCents: z.number().int().positive().max(1_000_000_000_00).optional(),
+  })
+  .strict();
 
 const JoinBody = z
   .object({
@@ -352,7 +358,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     if (!opts.enabled) throw new HttpError(404, 'not_found', 'no such route');
     await load(deps);
     // Read the body before the limit checks: no await may sit between a check and its reservation.
-    const { title } = parseBody(CreateBody, await c.body());
+    const { title, fundraiserGoalCents } = parseBody(CreateBody, await c.body());
     const src = requestSources.get(c.req) ?? 'unknown';
     const tag = sourceTag(src);
     if (paused) return refuse(deps, 503, 'judge_rooms_paused', 'paused', tag, 60);
@@ -387,6 +393,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
         title: lot,
         joinCode,
         judgeRoom: true,
+        ...(fundraiserGoalCents === undefined ? {} : { fundraiserGoalCents }),
       });
       await deps.store.putJournal(markerKey(auctionId), 0, {
         createdAt: now,

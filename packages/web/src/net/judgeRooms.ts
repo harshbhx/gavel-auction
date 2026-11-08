@@ -44,12 +44,15 @@ function text(body: unknown, key: string): string {
   return value;
 }
 
-/** Creates a real sandbox room with no operator key. The room tokens ride in the link fragment. */
-export async function createJudgeRoom(apiBase: string): Promise<DemoLinks> {
+/**
+ * Creates a real sandbox room with no operator key. The room tokens ride in the link fragment.
+ * `goalCents` is the optional fundraiser goal; left out, the big screen shows no thermometer.
+ */
+export async function createJudgeRoom(apiBase: string, goalCents?: number): Promise<DemoLinks> {
   const res = await fetch(`${apiBase}/api/judge/rooms`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: '{}',
+    body: JSON.stringify(goalCents === undefined ? {} : { fundraiserGoalCents: goalCents }),
   });
   if (res.status === 404) throw new DemoRoomError('demoOff');
   if (res.status === 429 || res.status === 503) throw new DemoRoomError('judgeBusy');
