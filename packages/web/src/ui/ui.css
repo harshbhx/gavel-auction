@@ -134,14 +134,15 @@
 .ui-price__dg {
   position: relative;
   display: inline-block;
-  height: 1.12em;
+  height: 1.2em;
   overflow: hidden;
   vertical-align: top;
 }
 
 .ui-price__dg b {
   display: block;
-  height: 1.12em;
+  height: 1.2em;
+  line-height: 1.2;
   font-weight: inherit;
 }
 
@@ -184,13 +185,22 @@
 
 .ui-holdcard__top {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
 }
 
 .ui-holdcard__amt {
+  min-width: 0;
   font-size: var(--font-size-7);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+  .ui-holdcard__amt {
+    font-size: var(--font-size-6);
+  }
 }
 
 .ui-holdcard__mask {
@@ -377,6 +387,7 @@
 }
 
 .ui-otp__row {
+  max-width: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -391,7 +402,9 @@
 }
 
 .ui-otp__slot {
+  flex: 0 1 58px;
   width: 58px;
+  min-width: 0;
   height: 72px;
   padding: 0;
   border: var(--border-width) solid var(--color-border);

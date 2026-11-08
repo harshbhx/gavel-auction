@@ -14,6 +14,7 @@ export const en = {
   'net.reconnecting': 'Reconnecting',
   'net.resyncing': 'Updating',
   'net.back': 'Back online',
+  'a11y.skip': 'Skip to main content',
   'generic.error': 'Something went wrong. Try again.',
   'generic.details': 'Details',
   'generic.retry': 'Try again',
@@ -173,6 +174,10 @@ export const en = {
   'demo.failedCap': 'The server is at its demo room limit. Try again soon.',
   'demo.failedBusy':
     'Judge rooms are busy or switched off right now. Try again soon, or run the scripted demo.',
+  'demo.failedRate':
+    'Too many tries from this network. Try again in {wait}, or run the scripted demo.',
+  'demo.failedRateUnknown':
+    'Too many tries from this network. Wait a few minutes and try again, or run the scripted demo.',
   'demo.scriptedInstead': 'Run scripted demo instead',
   'demo.lead':
     'Starts a sandbox room in a few seconds: an auctioneer console, a big screen and a bidder link. No real money moves.',
@@ -336,6 +341,7 @@ export const en = {
   'hub.step1': 'Projection screen',
   'hub.step1Hint': 'Live preview. Open it on the big screen.',
   'hub.step1Open': 'Open screen',
+  'hub.sideLabel': 'Console and bidder shortcuts',
   'hub.codeLabel': 'Join code',
   'hub.codePending': 'Code loading',
   'hub.copyCode': 'Copy code',
@@ -388,6 +394,7 @@ export const en = {
   'scriptedJoin.screen': 'Back to the scripted screen',
   'scriptedJoin.live': 'Start a live demo you can bid in',
   'scriptedJoin.liveHint': 'The live demo makes a real sandbox room with its own join code and QR.',
+  'scriptedDemo.barLabel': 'Scripted demo notice',
   'scriptedDemo.banner':
     'Simulated demo. Every name, bid and amount is made up and plays in this tab; nothing here is live and no PayPal call is made.',
   'scriptedDemo.player': 'Scripted demo player',
@@ -475,6 +482,15 @@ export const en = {
   'watch.lead':
     'You have not joined as a bidder yet. Join to register a sandbox hold and place bids.',
   'watch.openJoin': 'See the join page and code',
+  'watch.lot': 'Lot: {title}',
+  'watch.price': 'Current price',
+  'watch.noBids': 'No bids yet',
+  'watch.leader': 'Leading: paddle {n}',
+  'watch.bidders': '{n} bidders in the room',
+  'watch.status.OPEN': 'Bidding is open',
+  'watch.status.DONE': 'The hammer has fallen',
+  'watch.status.other': 'Waiting for bidding to open',
+  'watch.unavailable': 'Live details are not available right now. They will return on their own.',
   'join.ended': 'This auction has ended.',
   'join.notFound': 'We could not find this auction.',
   'join.steps': 'Three steps to bid',
@@ -492,6 +508,8 @@ export const en = {
   'join.fullHelp':
     'The room has reached its bidder limit. You can watch the auction, or ask the host to start another room.',
   'join.loading': 'Looking for the room',
+  'join.rateTitle': 'Too many requests, wait a moment',
+  'join.offlineTitle': 'Could not reach the server',
   'bid.waitingLot': 'Waiting for the first lot',
   'bid.price': 'Current price',
   'bid.leader': 'Leading: paddle {n}',
@@ -703,6 +721,33 @@ export const en = {
   'screen.story.receipt': 'Receipt',
   'screen.story.receiptNote': 'Settled at the hammer price. Other holds are released.',
   'audit.title': 'Audit trail',
+  'chain.title': 'Ledger check',
+  'chain.verified': 'Chain verified',
+  'chain.verified.detail':
+    '{count} entries checked in this browser. Each one links to the entry before it, and the closing fingerprint matches.',
+  'chain.verified.open':
+    'This file does not end with the auction closing, so a missing tail cannot be ruled out.',
+  'chain.broken': 'Chain broken at entry {n}',
+  'chain.broken.bad_hash':
+    'Entry {n} no longer matches its own fingerprint, so it was changed after it was recorded.',
+  'chain.broken.bad_prev':
+    'Entry {n} does not link to the entry before it, so an entry was removed, added or reordered.',
+  'chain.broken.bad_seq': 'Entry {n} is out of order or a number is missing.',
+  'chain.broken.bad_version': 'Entry {n} is not in the export format this check understands.',
+  'chain.broken.truncated':
+    'The file ends after entry {n}, but the ledger recorded more entries than that.',
+  'chain.none': 'Chain not checked',
+  'chain.none.detail': 'No ledger came with this view, so nothing here has been verified.',
+  'chain.invalid': 'Chain not checked',
+  'chain.invalid.detail': 'This file is not a ledger export, so it could not be read.',
+  'chain.head': 'Closing fingerprint:',
+  'chain.explain.summary': 'What a hash chain proves, and what it does not',
+  'chain.explain.proves':
+    'It proves the recorded events are complete, in order and unedited since the ledger sealed them. Each entry carries a fingerprint of its content and of the entry before it, so changing, removing or reordering one entry breaks every fingerprint after it.',
+  'chain.explain.notProves':
+    'It does not prove that what was recorded was true: a bid is kept as it was received, and private ceilings are left out of this public copy. It also never moves money. Holds stay held, not charged.',
+  'chain.file.label': 'Check a ledger file',
+  'chain.file.hint': 'Choose a replay bundle (JSON). It is read in this browser and not uploaded.',
   'ops.title': 'Operations',
   'ops.loading': 'Loading operations data',
   'ops.sagas': 'Saga states',
@@ -813,6 +858,8 @@ export const en = {
   'receipt.shared.loading': 'Opening the receipt',
   'receipt.shared.invalid': 'This receipt link has expired or is not valid.',
   'replay.readonly': 'Replay is read-only',
+  'replay.about':
+    'A replay plays back a recorded auction. It is read-only: nothing here can be changed. Recordings are not hosted on this site yet.',
   'replay.captionsOnly': 'Audio could not load. Showing captions only.',
   'replay.invalid': 'This recording could not be read.',
   'replay.speed': 'Speed {x}',
@@ -832,12 +879,22 @@ export const en = {
   'err.reload': 'Reload',
   'err.tokenMissing': 'This link needs its token.',
   'err.newLink': 'Create a new room',
+  'err.refusedTitle': 'This link cannot open the page',
   'err.rejoin': 'Join again with a fresh link',
   'err.room.full': 'This room is full right now.',
   'err.room.rateLimited': 'Too many attempts. Try again in {seconds} seconds.',
   'err.room.rateLimitedSoon': 'Too many attempts. Try again in a moment.',
   'err.boundaryId': 'Error id {id}',
   'err.home': 'Go to the start page',
+  'room.missingTitle': 'Room not found or ended',
+  'room.missingHelp':
+    'Check the code and the link. Demo rooms close after a short while, so an old link may no longer work.',
+  'api.rateHelp': 'The server asked for a short pause. Try again in {wait}.',
+  'api.rateHelpUnknown': 'The server asked for a short pause. Try again in a few seconds.',
+  'api.offlineHelp': 'Check your connection, then try again.',
+  'time.seconds': '{n} s',
+  'time.minutes': '{n} min',
+  'time.hours': '{n} h',
   'err.pay.ceilingOutOfRange': 'That ceiling is outside the allowed range. Pick another amount.',
   'err.pay.holdExists': 'Your hold is already in place.',
   'err.pay.orderNotFound': 'We could not find that approval attempt. Start again.',

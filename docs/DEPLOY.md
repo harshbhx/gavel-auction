@@ -48,8 +48,21 @@ A judge with no setup can run a real sandbox auction when the API runs with `JUD
 | `JUDGE_SIM_HOLDS`         | on      | Judge rooms only: a bidder may test with a simulated hold, no PayPal login. `false` turns it off. |
 | `JUDGE_ROOMS_MAX`         | 15      | Most rooms live at once (at most 50). Finished rooms free a slot at once.                         |
 | `JUDGE_ROOM_TTL_MS`       | 1800000 | Room lifetime before the sweeper ends it (at most 7200000).                                       |
-| `JUDGE_ROOMS_PER_IP_HOUR` | 4       | Creates per source address per hour. Judges on one NAT share it.                                  |
+| `JUDGE_ROOMS_PER_IP_HOUR` | 12      | Creates per source address per hour (at most 100). Judges on one NAT share it.                    |
 | `JUDGE_ROOMS_PER_HOUR`    | 40      | Creates for the whole host per hour.                                                              |
+
+### Judge key (optional)
+
+`JUDGE_KEY` is a second, limited key for judges. It is not the operator key: it opens nothing but the judge panel's keyed rooms and never reaches an admin route (`ADMIN_KEY` and `JUDGE_KEY` must differ, and boot refuses them equal). Generate it yourself as a random secret of at least 32 characters, set it on Render (`sync: false`, so it is never in the repository), and hand it to judges only in the slide deck. It needs `JUDGE_ROOMS=true`; leave it unset and the panel shows no key field.
+
+| Variable              | Default | Meaning                                                      |
+| --------------------- | ------- | ------------------------------------------------------------ |
+| `JUDGE_KEY`           | unset   | The limited judge key. Unset or empty turns the feature off. |
+| `JUDGE_KEY_ROOMS_MAX` | 3       | Keyed rooms alive at once, for the whole host (at most 10).  |
+
+A holder types the key into the field on the judge panel (`/try`). It is sent in the `x-judge-key` header, kept in `sessionStorage` for that tab only and never put in a URL. With the key, creating a room skips the live-room cap and the per-address limit of the public path, but stays inside `JUDGE_KEY_ROOMS_MAX` live keyed rooms and 20 keyed creates per hour; rooms expire at `JUDGE_ROOM_TTL_MS` as usual and the kill switch below still applies. A wrong key answers 401 and counts toward the same wrong-attempt lockout as a wrong room code (five strikes, 15 minutes), and a locked-out address is refused even with the right key. The key is compared in constant time. The audit log records every keyed action (`judge_room.key_ok`, `judge_room.created` with `via: judge-pass`, `judge_room.refused`) with the source as a short hash, and never the key. To rotate the key, change the variable on Render; rooms already created keep working.
+
+Every judge room also returns a read-only reviewer link (`reviewerLink`): a `reviewer` token (12 hours) that can read the room's public audit trail, snapshot and events, and `GET /api/judge/rooms/:id/ledger`, which builds the hash-chained replay bundle for the in-browser check on `/verify`. It cannot bid, drive the room or mint anything.
 
 Kill switch at runtime: `curl -X POST -H "x-admin-key: $ADMIN_KEY" -H 'content-type: application/json' -d '{"paused":true}' https://<api-host>/api/judge/pause` (send `false` to resume; the state survives a restart). Rooms still running when you pause finish normally or expire at their lifetime. The sandbox buyer logins are not part of the build; they go in the Devpost testing instructions.
 
@@ -76,6 +89,8 @@ A real signed event reaching the host once G4 runs is checked in the PayPal webh
 ## Rate limits behind one address
 
 Socket upgrades and HTTP joins share one per-address bucket, and every reconnect spends a token. `RATE_JOIN_BURST` (default 40) is the bucket size and `RATE_JOIN_PER_MIN` (default 10) the refill. A venue where many judges share one NAT address can raise `RATE_JOIN_BURST`. Each address may also hold at most 20 open sockets.
+
+Other HTTP requests have two buckets per address. Public reads (GET, HEAD, OPTIONS) use `RATE_HTTP_READ_BURST` (default 300) and `RATE_HTTP_READ_PER_MIN` (default 300), so judges sharing one office address can browse. Every other request uses `RATE_HTTP_BURST` (default 60) and `RATE_HTTP_PER_MIN` (default 60). A refused request answers 429 with `Retry-After` in seconds and the same CORS headers as any other answer, so the web app can show a wait message instead of a network error. Health probes and webhooks are never limited.
 
 ## Known limits
 

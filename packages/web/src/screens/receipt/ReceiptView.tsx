@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { WideAside } from '../WideAside';
+import { ChainCheck } from '../../chain/ChainCheck';
 import { t } from '../../copy/t';
 import { receiptSource } from '../../ladder/fromWire';
 import { SettlementPanel } from '../../ladder/SettlementPanel';
@@ -57,6 +58,7 @@ export function ReceiptView({ state, roomId, share, shared = false }: ReceiptVie
                 auditHref={`/r/${encodeURIComponent(roomId)}/audit`}
               />
             )}
+            <ChainCheck allowFile />
           </div>
           <WideAside />
         </div>

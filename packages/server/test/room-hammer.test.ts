@@ -253,6 +253,25 @@ describe('hammer and auto-hammer (R-RT-044, R-RT-050, R-RT-051)', () => {
     expect(types(await t.events())).toContain('hammered');
   });
 
+  it('closes an open lot with no bids, and still refuses a stale expectation', async () => {
+    const t = await setup();
+    const boss = await t.connect(t.room, 'auctioneer');
+    // The opening price is shown on screen but is not a price: with no bids the head is 0.
+    await t.room.control(boss.conn, {
+      controlId: 'nb1',
+      action: 'hammer',
+      args: { closeNow: 1, expectedPriceCents: 1000, expectedLeaderPaddle: 0 },
+    });
+    expect(boss.transport.messages('error').map((m) => m.message)).toEqual(['price_changed']);
+    expect(types(await t.events())).not.toContain('hammered');
+    await t.room.control(boss.conn, {
+      controlId: 'nb2',
+      action: 'hammer',
+      args: { closeNow: 1, expectedPriceCents: 0, expectedLeaderPaddle: 0 },
+    });
+    expect(types(await t.events())).toContain('hammered');
+  });
+
   it('leaves stopped off when the timer ended the lot', async () => {
     const t = await setup({ autoHammerDelayMs: 3000 });
     const c1 = await t.connect(t.room, 'bidder', t.b1);

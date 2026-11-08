@@ -15,6 +15,7 @@ on:
       - 'docs/GATES.md'
       - 'CHANGELOG.md'
       - 'docs/evidence/SIM/**'
+      - 'openapi/**'
       - '.github/workflows/docsite.yml'
   pull_request:
     branches: [main]
@@ -23,6 +24,7 @@ on:
       - 'docs/GATES.md'
       - 'CHANGELOG.md'
       - 'docs/evidence/SIM/**'
+      - 'openapi/**'
       - '.github/workflows/docsite.yml'
   workflow_dispatch:
 
@@ -86,6 +88,8 @@ jobs:
           test -f out/index.html
           test -f out/llms.txt
           test -f out/llms-full.txt
+          test -f out/openapi.yaml
+          cmp out/openapi.yaml ../openapi/gavel.yaml
           echo "pages: $(find out/docs -name '*.html' | wc -l)"
           echo "llms-full.txt bytes: $(wc -c < out/llms-full.txt)"
 

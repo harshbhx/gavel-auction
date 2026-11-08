@@ -1,10 +1,14 @@
 {
   "dataset": "gavel-stt-bids",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "changelog": [
     {
       "version": "1.0.0",
       "note": "First release: 24 synthetic clips, provider outputs for two clip sets (human set text only), scores."
+    },
+    {
+      "version": "1.1.0",
+      "note": "Regenerated from the second-round recordings (VOI-02): Deepgram nova-3 and Groq with a bid-words prompt replace nova-2 and the unprompted Groq run; the model column reads nova-3. The card gained licence, simulated-or-real and links sections."
     }
   ],
   "tables": {

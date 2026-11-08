@@ -22,6 +22,8 @@ const csv = z.string().transform((v) =>
 /** Minimum TOKEN_SECRET length in bytes and ADMIN_KEY length in characters (R-RT-131). */
 const MIN_SECRET_BYTES = 32;
 const MIN_ADMIN_KEY_CHARS = 24;
+/** Minimum JUDGE_KEY length in characters: it is typed in by hand but must resist guessing. */
+const MIN_JUDGE_KEY_CHARS = 32;
 
 const byteLength = (s: string): number => new TextEncoder().encode(s).length;
 
@@ -37,6 +39,13 @@ const EnvObject = z.object({
   /** Epoch ms after which TOKEN_SECRET_PREVIOUS is no longer accepted. */
   TOKEN_SECRET_PREVIOUS_UNTIL: int(1).optional(),
   ADMIN_KEY: z.string().min(1),
+  /**
+   * Optional limited key for judges (never the operator key): lifts the judge room cap and the
+   * per-address create limit within a small bound. Empty or unset turns the feature off.
+   */
+  JUDGE_KEY: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional()),
+  /** Most keyed judge rooms alive at once, for the whole host. */
+  JUDGE_KEY_ROOMS_MAX: int(1).pipe(z.number().max(10)).default('3'),
   STORE: z.enum(['memory', 'file', 'postgres', 'd1']).default('memory'),
   /** Directory for the durable files when STORE=file. */
   DATA_DIR: z.string().min(1).default('./data'),
@@ -70,7 +79,7 @@ const EnvObject = z.object({
   /** Lifetime of a judge room in ms before the sweeper ends it (at most 2 hours). */
   JUDGE_ROOM_TTL_MS: int(60_000).pipe(z.number().max(7_200_000)).default('1800000'),
   /** Judge rooms one source address may create per hour. */
-  JUDGE_ROOMS_PER_IP_HOUR: int(1).pipe(z.number().max(100)).default('4'),
+  JUDGE_ROOMS_PER_IP_HOUR: int(1).pipe(z.number().max(100)).default('12'),
   /** Judge rooms the whole host may create per hour. */
   JUDGE_ROOMS_PER_HOUR: int(1).pipe(z.number().max(1000)).default('40'),
   ALLOW_MEMORY_STORE: flag.default('0'),
@@ -80,6 +89,9 @@ const EnvObject = z.object({
   RATE_JOIN_BURST: int(1).default('40'),
   RATE_HTTP_PER_MIN: int(1).default('60'),
   RATE_HTTP_BURST: int(1).default('60'),
+  /** Public reads (GET, HEAD, OPTIONS) per address per minute; writes use RATE_HTTP_PER_MIN. */
+  RATE_HTTP_READ_PER_MIN: int(1).default('300'),
+  RATE_HTTP_READ_BURST: int(1).default('300'),
   /** Reverse proxies in front of the host; the client address is read from x-forwarded-for. */
   TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(0),
   MAX_CONN_PER_BIDDER: int(1).default('3'),
@@ -166,6 +178,14 @@ const EnvSchema = EnvObject.superRefine((env, ctx) => {
   }
   if (env.TOKEN_SECRET === env.ADMIN_KEY) {
     problem('ADMIN_KEY', 'must differ from TOKEN_SECRET');
+  }
+  if (env.JUDGE_KEY !== undefined) {
+    if (env.JUDGE_KEY === env.ADMIN_KEY) problem('JUDGE_KEY', 'must differ from ADMIN_KEY');
+    if (env.JUDGE_KEY === env.TOKEN_SECRET) problem('JUDGE_KEY', 'must differ from TOKEN_SECRET');
+    if (env.JUDGE_KEY.length < MIN_JUDGE_KEY_CHARS) {
+      problem('JUDGE_KEY', `must be at least ${MIN_JUDGE_KEY_CHARS} characters`);
+    }
+    if (!env.JUDGE_ROOMS) problem('JUDGE_KEY', 'needs JUDGE_ROOMS=true');
   }
   if (env.JUDGE_ROOMS) {
     // Real sandbox holds only. The fake adapter is allowed off-production so tests and local

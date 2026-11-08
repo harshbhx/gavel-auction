@@ -336,19 +336,32 @@
   aspect-ratio: 5 / 7;
   border: var(--border-width) solid var(--color-fg);
   border-radius: var(--radius-sm, 2px);
-  background: linear-gradient(
-    to bottom,
-    var(--color-fg) 0,
-    var(--color-fg) calc(50% - 1px),
-    var(--color-bg) calc(50% - 1px),
-    var(--color-bg) calc(50% + 1px),
-    var(--color-fg) calc(50% + 1px)
-  );
+  position: relative;
+  background: var(--color-fg);
   color: var(--color-bg);
   font-family: var(--font-mono);
   font-size: clamp(28px, 6vw, 44px);
   font-weight: 700;
   box-shadow: var(--shadow-1);
+}
+
+/* The flap split is two notches at the tile edges, so no line runs through the letter. */
+.gv-hub__flap::before,
+.gv-hub__flap::after {
+  content: '';
+  position: absolute;
+  top: calc(50% - 1px);
+  width: 4px;
+  height: 2px;
+  background: var(--color-bg);
+}
+
+.gv-hub__flap::before {
+  left: 0;
+}
+
+.gv-hub__flap::after {
+  right: 0;
 }
 
 /* Right: console and bidder shortcuts */

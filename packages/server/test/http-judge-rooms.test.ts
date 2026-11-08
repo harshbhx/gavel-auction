@@ -201,7 +201,9 @@ describe('judge rooms: limits', () => {
     expect((await post(app, JUDGE_ROOMS_PATH, { src: '1.1.1.1' })).status).toBe(201);
     const third = await post(app, JUDGE_ROOMS_PATH, { src: '1.1.1.1' });
     expect(third.status).toBe(429);
-    expect(third.headers.get('retry-after')).not.toBeNull();
+    // The wait is the time until the oldest create leaves the hour, not a fixed guess.
+    expect(Number(third.headers.get('retry-after'))).toBeGreaterThan(3500);
+    expect(Number(third.headers.get('retry-after'))).toBeLessThanOrEqual(3600);
     expect((await post(app, JUDGE_ROOMS_PATH, { src: '2.2.2.2' })).status).toBe(201);
     clock.set(clock.now() + (HOUR + 1));
     expect((await post(app, JUDGE_ROOMS_PATH, { src: '1.1.1.1' })).status).toBe(201);
