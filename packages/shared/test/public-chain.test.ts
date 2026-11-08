@@ -33,7 +33,9 @@ describe('hashPublicEntry', () => {
     expect(hashPublicEntry({ b: [1, true, null], a: 'x' })).toBe(
       sha('{"a":"x","b":[1,true,null]}'),
     );
-    expect(hashPublicEntry({ k: `caf${String.fromCharCode(0xe9)}` })).toBe(sha('{"k":"caf\\u00e9"}'));
+    expect(hashPublicEntry({ k: `caf${String.fromCharCode(0xe9)}` })).toBe(
+      sha('{"k":"caf\\u00e9"}'),
+    );
   });
 
   it('hashes inputs longer than one block, and across the padding edge', () => {
