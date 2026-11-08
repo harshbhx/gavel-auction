@@ -310,7 +310,7 @@ export const en = {
   'join.step2': 'Register with a sandbox login',
   'join.step3': 'Set a ceiling and bid',
   'join.sandboxNote':
-    'Next you sign in to the PayPal sandbox with a buyer account. The hold is placed on a test account. Nothing is charged.',
+    'Next you sign in to the PayPal sandbox with a buyer account. The hold is placed on a test account, held and not charged.',
   'join.notFoundHelp':
     'The code may have a typo, or the room was closed. Codes are six characters. Check the big screen and try again.',
   'join.tryAgain': 'Enter another code',
