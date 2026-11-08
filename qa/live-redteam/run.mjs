@@ -155,6 +155,19 @@ function hook(page, label) {
       reprobe(r.url(), r.method(), label, cur?.id);
   });
   page.on('response', (r) => {
+    if (r.url().includes('/api/judge/rooms') && r.request().method() === 'POST') {
+      r.text()
+        .then((b) =>
+          events.push({
+            kind: 'judge-rooms-response',
+            label,
+            step: cur?.id,
+            url: clip(r.url(), 100),
+            text: `status ${r.status()} retry-after=${r.headers()['retry-after']} body=${clip(b, 120)}`,
+          }),
+        )
+        .catch(() => {});
+    }
     if (r.status() >= 400) {
       events.push({
         kind: `http.${r.status()}`,
@@ -599,8 +612,10 @@ async function main() {
 
   // ---- /try -> start a room
   await step('/try: start a demo room and land on the hub', async () => {
-    await host.goto(WEB + '/try', { waitUntil: 'load' });
-    note(`/try banner/probe text: ${clip(await visibleText(host), 260)}`);
+    const startPath = PROFILE === 'iphone' ? '/demo' : '/try';
+    note(`starting the room from ${startPath}`);
+    await host.goto(WEB + startPath, { waitUntil: 'load' });
+    note(`${startPath} banner/probe text: ${clip(await visibleText(host), 260)}`);
     const clicked = await clickText(host, /start (a |your )?(demo|live|sandbox|room)/i, {
       roles: ['button'],
       enabledOnly: true,
@@ -986,6 +1001,12 @@ async function main() {
   delete P.sharelink;
 
   await step('/demo: start a second room, land on hub', async () => {
+    if (!process.env.EXTRA_ROOM) {
+      note(
+        'skipped: one room per profile keeps inside the host limit of 4 creates per hour per address',
+      );
+      return;
+    }
     const demo = await newActor('demo');
     await demo.goto(WEB + '/demo', { waitUntil: 'load' });
     const c = await clickText(demo, /start a demo auction|start/i, {
@@ -1126,7 +1147,7 @@ async function main() {
         let status = 'ERR';
         try {
           const res = await probePage.goto(l.href, { waitUntil: 'load', timeout: 30000 });
-          status = res?.status();
+          status = res ? res.status() : 200;
         } catch (e) {
           status = `ERR ${clip(e.message, 40)}`;
         }
