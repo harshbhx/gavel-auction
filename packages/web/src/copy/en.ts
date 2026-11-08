@@ -110,10 +110,6 @@ export const en = {
   'mk.aud.bid.title': 'Bidders',
   'mk.aud.bid.body':
     'Join with a code or QR, set a ceiling, bid by voice or tap, and see your hold at all times.',
-  'mk.aud.jud.title': 'Judges',
-  'mk.aud.jud.body':
-    'Run the scripted demo, then check each claim against its gate and proof page.',
-  'mk.aud.jud.link': 'Open the judge page',
   'mk.faq.title': 'Questions',
   'mk.faq.q1': 'What is a hold?',
   'mk.faq.a1':
@@ -142,7 +138,6 @@ export const en = {
   'mk.foot.colProduct': 'Product',
   'mk.foot.colProject': 'Project',
   'mk.foot.colProof': 'Proof',
-  'mk.foot.judges': 'Judge page',
   'mk.foot.findings': 'Findings that mattered',
   'mk.foot.evidence': 'Evidence map',
   'mk.sticky.label': 'Quick action',

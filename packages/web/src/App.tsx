@@ -449,7 +449,6 @@ function LandingRoute({ api }: { api: Api | undefined }) {
     <LandingScreen
       onStart={() => navigate('/demo')}
       onScripted={() => navigate(SCRIPTED_DEMO_PATH)}
-      onJudges={() => navigate('/try')}
       onJoin={(code) => joinByCode(api, code)}
     />
   );

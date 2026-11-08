@@ -11,7 +11,6 @@ function setup(overrides: Partial<Parameters<typeof LandingScreen>[0]> = {}) {
     onStart: vi.fn(),
     onJoin: vi.fn(() => Promise.resolve(true)),
     onScripted: vi.fn(),
-    onJudges: vi.fn(),
     ...overrides,
   };
   const view = render(<LandingScreen {...props} />);
@@ -159,10 +158,9 @@ describe('marketing landing', () => {
     expect(screen.getByText(t('mk.faq.a4')).textContent).toContain('confirm');
   });
 
-  it('routes the judge link in-app and ends with repo, docs, licence and sandbox notes', () => {
-    const { props } = setup();
-    fireEvent.click(screen.getByRole('link', { name: t('mk.aud.jud.link') }));
-    expect(props.onJudges).toHaveBeenCalledTimes(1);
+  it('does not advertise the judge page and ends with repo, docs, licence and sandbox notes', () => {
+    setup();
+    expect(document.querySelector('a[href="/try"]')).toBeNull();
     const footer = screen.getByRole('contentinfo');
     expect(
       within(footer)
