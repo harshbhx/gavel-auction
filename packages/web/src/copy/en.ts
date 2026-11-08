@@ -676,6 +676,7 @@ export const en = {
   'controls.hammerLeaderChanged':
     'The leader changed. Nothing was hammered. Review the new leader and hold again.',
   'controls.failed': '{action} failed. Try again.',
+  'controls.refused': '{action} was not accepted: {detail}.',
   'controls.unknown':
     '{action}: no answer from the server. It may have gone through. Check the lot state.',
   'kill.notAvailable': 'The server does not know this auction. The auction is still running.',

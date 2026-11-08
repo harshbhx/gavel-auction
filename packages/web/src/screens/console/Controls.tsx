@@ -114,7 +114,9 @@ export function Controls({
           ? t('controls.unknown', { action: label })
           : err instanceof ControlError && err.status === 409 && label === t('console.hammer')
             ? hammerConflict(err.detail)
-            : t('controls.failed', { action: label });
+            : err instanceof ControlError && err.status >= 400 && err.status < 500 && err.detail
+              ? t('controls.refused', { action: label, detail: err.detail })
+              : t('controls.failed', { action: label });
       setResult(failed);
       announce('polite', failed, 'bid_rejected');
     } finally {
