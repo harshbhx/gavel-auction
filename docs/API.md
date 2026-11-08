@@ -32,7 +32,7 @@ If you add a route, add it to `openapi/gavel.yaml` in the same change.
 | Bidding access | invites, re-issue an invite, `POST /api/auctions/{id}/join`                                          |
 | Read           | `GET /api/auctions/{id}/snapshot`, `GET /api/auctions/{id}/events`                                   |
 | Holds          | `POST /api/holds`, approve, read, abandon                                                            |
-| Judge rooms    | capabilities, create, join, simulated hold, pause switch                                             |
+| Judge rooms    | capabilities, create, join, simulated hold, key check, room ledger, pause switch                     |
 | Receipts       | receipt link, receipt                                                                                |
 | Export         | `GET /api/auctions/{id}/export` (NDJSON), `GET /admin/export`, `GET /admin/replay-bundle`            |
 | Health         | `/healthz`, `/readyz`, `/version`, `/warmup`                                                         |
@@ -43,19 +43,28 @@ them, not because they are public.
 
 ## Authentication
 
-| Credential       | Sent as                               | Lifetime             | Where it comes from                           |
-| ---------------- | ------------------------------------- | -------------------- | --------------------------------------------- |
-| Operator key     | header `X-Admin-Key`                  | n/a                  | the host setting `ADMIN_KEY`                  |
-| Auctioneer token | `Authorization: Bearer ...`           | 12 hours             | auction creation, judge-room creation, rotate |
-| Screen token     | `Authorization: Bearer ...`           | 12 hours             | auction creation, judge-room creation         |
-| Session token    | `Authorization: Bearer ...`           | 4 hours              | the join routes                               |
-| Receipt token    | `Authorization: Bearer ...`           | 4 hours              | `POST /api/auctions/{id}/receipt-link`        |
-| Invite token     | body field `invite` of the join route | 24 hours, single use | `POST /api/auctions/{id}/invites`             |
+| Credential       | Sent as                               | Lifetime             | Where it comes from                                                  |
+| ---------------- | ------------------------------------- | -------------------- | -------------------------------------------------------------------- |
+| Operator key     | header `X-Admin-Key`                  | n/a                  | the host setting `ADMIN_KEY`                                         |
+| Auctioneer token | `Authorization: Bearer ...`           | 12 hours             | auction creation, judge-room creation, rotate                        |
+| Screen token     | `Authorization: Bearer ...`           | 12 hours             | auction creation, judge-room creation                                |
+| Session token    | `Authorization: Bearer ...`           | 4 hours              | the join routes                                                      |
+| Receipt token    | `Authorization: Bearer ...`           | 4 hours              | `POST /api/auctions/{id}/receipt-link`                               |
+| Reviewer token   | `Authorization: Bearer ...`           | 12 hours             | `reviewerToken` and `reviewerLink` in the judge-room create response |
+| Judge key        | header `X-Judge-Key`                  | n/a                  | the host setting `JUDGE_KEY`, handed to judges; optional             |
+| Invite token     | body field `invite` of the join route | 24 hours, single use | `POST /api/auctions/{id}/invites`                                    |
 
 A token is bound to one auction and one kind. A wrong kind or another auction is 401; a
-valid token whose role may not do the thing is 403. There is no separate reviewer token:
-reviewers use a judge room, which needs no key. No real credential appears in the spec or in
-this page.
+valid token whose role may not do the thing is 403.
+
+A reviewer token is read only. It opens the snapshot and event log with a screen's view, the
+room ledger (`GET /api/judge/rooms/{id}/ledger`) and the audit page, for its own judge room
+only. Judge rooms need no key. The judge key is a separate, limited key (never the operator
+key) that a host may set: sent as `X-Judge-Key` on `POST /api/judge/rooms` it skips the public
+limits and the response carries `unlocked: true`; `POST /api/judge/key` checks it without
+creating anything. A wrong key counts toward the same lockout as a wrong room code. The key
+travels only in that header, never in a URL or body. No real credential appears in the spec or
+in this page.
 
 ## Errors
 
@@ -84,14 +93,16 @@ The operator-served routes (`/admin/*`, `/ops/*`, `/metrics*`, the NDJSON export
 Published in the spec as the vendor extension `x-rate-limit` on each operation and as
 `x-rate-limits` at the top. Defaults, per source address:
 
-| Scope                                  | Default                                                                                   |
-| -------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Every route except health and webhooks | 60 requests per minute, burst 60                                                          |
-| Join (`POST /api/auctions/{id}/join`)  | 10 per minute, burst 40                                                                   |
-| Judge join and lookup by join code     | 10 and 30 attempts per minute; 5 wrong codes lock the address for 15 minutes              |
-| Judge room create                      | 4 per hour per address, 40 per hour for the host, 15 live rooms, 30 minute lifetime       |
-| Judge room size                        | 20 bidders                                                                                |
-| WebSocket                              | bids 3 per second (burst 5), frames 20 per second (burst 40), 20 open sockets per address |
+| Scope                                                 | Default                                                                                   |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Every write (POST, DELETE) except health and webhooks | 60 requests per minute, burst 60                                                          |
+| Every read (GET, HEAD, OPTIONS)                       | 300 requests per minute, burst 300, a separate looser bucket                              |
+| Join (`POST /api/auctions/{id}/join`)                 | 10 per minute, burst 40                                                                   |
+| Judge join and lookup by join code                    | 10 and 30 attempts per minute; 5 wrong codes lock the address for 15 minutes              |
+| Judge room create                                     | 12 per hour per address, 40 per hour for the host, 15 live rooms, 30 minute lifetime      |
+| Judge room create with a judge key                    | 20 per hour for the host, 3 live keyed rooms; wrong keys share the code lockout           |
+| Judge room size                                       | 20 bidders                                                                                |
+| WebSocket                                             | bids 3 per second (burst 5), frames 20 per second (burst 40), 20 open sockets per address |
 
 The operator can change these through host settings.
 
@@ -101,7 +112,7 @@ OpenAPI cannot describe a WebSocket, so the spec carries a prose section and thi
 the full contract: [docs site, WebSocket protocol](https://gavel-docs.creharsh.workers.dev/docs/reference/websocket-protocol)
 and [`docs/specs/realtime/SPEC-realtime.md`](specs/realtime/SPEC-realtime.md).
 
-Short version. Connect to `wss://<host>/ws` from an allowed origin. Frames are JSON text,
+Short version. A reviewer token can join too, with a screen's view. Connect to `wss://<host>/ws` from an allowed origin. Frames are JSON text,
 `{"v":1,"t":"<type>", ...}`, at most 16 KiB from the client. The client sends three types:
 
 ```json
@@ -132,7 +143,8 @@ API=https://gavel-auction-z2nm.onrender.com
 # 1. Is the host taking rooms?
 curl -s $API/api/judge/capabilities
 
-# 2. Create a room. The response carries auctionId, joinCode and the auctioneer token.
+# 2. Create a room. The response carries auctionId, joinCode and the auctioneer, screen and
+#    reviewer tokens. On a host with a judge key, add -H "x-judge-key: $JUDGE_KEY".
 curl -s -X POST $API/api/judge/rooms -H 'content-type: application/json' -d '{"title":"Sandbox demo lot"}'
 
 # 3. Join as a bidder with the code. The response carries the session token.
@@ -149,7 +161,10 @@ curl -s -X POST $API/api/auctions/$AUCTION_ID/control \
   -H "authorization: Bearer $AUCTIONEER_TOKEN" -H 'content-type: application/json' \
   -d '{"controlId":"ctl-1","action":"hammer","args":{"closeNow":1}}'
 
-# 6. Make and read a receipt as the bidder.
+# 6. Read the verifiable ledger as the reviewer (read only).
+curl -s $API/api/judge/rooms/$AUCTION_ID/ledger -H "authorization: Bearer $REVIEWER_TOKEN"
+
+# 7. Make and read a receipt as the bidder.
 curl -s -X POST $API/api/auctions/$AUCTION_ID/receipt-link -H "authorization: Bearer $SESSION_TOKEN"
 curl -s $API/api/auctions/$AUCTION_ID/receipt -H "authorization: Bearer $RECEIPT_TOKEN"
 ```
