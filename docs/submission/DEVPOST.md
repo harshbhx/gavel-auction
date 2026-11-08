@@ -93,6 +93,10 @@ Latency is the open risk. Sandbox void p95 is 1235.96 ms (n=10 per call, 2026-11
 
 OWNER: list the tools, models and PayPal APIs exactly as the Devpost form asks. PayPal APIs used in code: Orders v2 (intent AUTHORIZE), Payments v2 (authorize, capture, void, reauthorize), Webhooks verify-webhook-signature, JS SDK v6. Other stack: TypeScript, Node 22, React, Vite, Vitest, Playwright, GitHub Actions, Render.
 
+## Built with Render
+
+The GAVEL host, the part that must stay up while a room is live, runs on Render. It is one Node web service on the `starter` plan, always on, with a 1 GB persistent disk mounted at `/var/data`. The room log, the hash-chained ledger, the settlement journals and the hold records are files on that disk, so a redeploy does not lose an auction; this is also why the service keeps a single instance (decision records D-0006 and D-0018). The blueprint is `render.yaml` in the repository, the health check is `/healthz` with `/readyz` behind it, and secrets are set in the Render dashboard and never committed. Deploys are not triggered by pushes: GitHub Actions calls the Render deploy hook, waits until `/version` serves the new commit, then runs a smoke test, and the production workflow can roll back through the Render API. The judge rooms behind our `/try` page and the simulated demo run on this service, with the web app on Cloudflare Workers (gavel.dualmindlab.tech) in front; an API domain, api.gavel.dualmindlab.tech, is planned, pending DNS. Honest limits: one instance means a short gap on each deploy, we publish no uptime figure, and we do not use Render Postgres, cron jobs or preview environments yet; moving the stores to Render Postgres and room fan-out to a managed Redis would be the path to more than one instance. Full write-up: https://docs.gavel.dualmindlab.tech/docs/run/hosting-on-render
+
 ## Reuse statement
 
 OWNER: state what was built during the hackathon period and what, if anything, was reused from earlier work.
