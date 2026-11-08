@@ -33,7 +33,7 @@ Old token names keep working: `--color-bg`, `--color-surface`, `--color-fg`, `--
 | b   | Night Board          | navy `#0C1624`, cream `#F0EBDD`       | mint; amber for held, coral for out             |
 | c   | Salon                | ivory `#F1EBDD`, deep green `#14301F` | green; copper for held                          |
 
-Without `data-pal`, light is A and dark is B. The projector theme is B on black, large, and ignores the switch on purpose. Put `<PaletteSwitch />` anywhere to let a person choose.
+Without `data-pal`, palette A is used on every route, whatever the OS colour scheme says. Dark (B) only applies when `data-theme="dark"` is set explicitly or the person picks B in the switch. The projector theme is B on black, large, and ignores the switch on purpose. Put `<PaletteSwitch />` anywhere to let a person choose.
 
 To add a palette: add a block to `palettes.css` with every `--color-*` token, add its key to `PALETTES` in `src/ui/palette.ts`, and a `ui.palette.*` entry in the copy catalog. The contrast test fails until every pair passes.
 

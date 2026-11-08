@@ -1,7 +1,7 @@
 /*
  * Theme overrides for tokens.css. Light values (palette A) live in tokens.css.
- * Dark is palette B (Night Board) and applies when data-theme="dark", or when no data-theme is set
- * and the system prefers dark. Projector is B with a black ground, brighter ink and a type scale
+ * Dark is palette B (Night Board) and applies only when data-theme="dark" is set explicitly. The
+ * operating system colour scheme is ignored: everyone starts on palette A (Newsprint and Signal). Projector is B with a black ground, brighter ink and a type scale
  * of 2.0; it is forced on the public screen and ignores the palette switch (see palettes.css).
  */
 
@@ -35,40 +35,6 @@
   --color-on-out: #0c1624;
   --color-shadow: #7e6b47;
   --color-slider-fill: #2c5b55;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) {
-    --color-bg: #0c1624;
-    --color-surface: #132238;
-    --color-raised: #1b2f4b;
-    --color-fg: #f0ebdd;
-    --color-fg-muted: #a9b6c8;
-    --color-border: #6c86a8;
-    --color-rule: #2a3f5e;
-    --color-accent: #8fd3b0;
-    --color-on-accent: #0c1624;
-    --color-action: #8fd3b0;
-    --color-on-action: #0c1624;
-    --color-held: #e3b766;
-    --color-charged: #8fd3b0;
-    --color-on-charged: #0c1624;
-    --color-released: #a9b6c8;
-    --color-success: #8fd3b0;
-    --color-warning: #e3b766;
-    --color-danger: #ff9c88;
-    --color-on-danger: #0c1624;
-    --color-focus: #e3b766;
-    --color-ring: #0c1624;
-    --color-sheet: #1b2f4b;
-    --color-on-sheet: #f0ebdd;
-    --color-win: #8fd3b0;
-    --color-on-win: #0c1624;
-    --color-out: #ff9c88;
-    --color-on-out: #0c1624;
-    --color-shadow: #7e6b47;
-    --color-slider-fill: #2c5b55;
-  }
 }
 
 :root[data-theme='projector'] {
