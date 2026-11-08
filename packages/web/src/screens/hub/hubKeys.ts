@@ -74,8 +74,12 @@ export function hubFragment(keys: HubKeys): string {
   return text === '' ? '' : `#${text}`;
 }
 
-/** Path of the hub for a room, with whatever keys this tab has (plus an optional console token). */
-export function hubHref(roomId: string, auctioneer: string | null = null): string {
-  const known = merge(memory.get(roomId) ?? NO_KEYS, { ...NO_KEYS, auctioneer });
+/** Path of the hub for a room, with whatever keys this tab has (plus an optional console token and join code). */
+export function hubHref(
+  roomId: string,
+  auctioneer: string | null = null,
+  code: string | null = null,
+): string {
+  const known = merge(memory.get(roomId) ?? NO_KEYS, { ...NO_KEYS, auctioneer, code });
   return `/r/${encodeURIComponent(roomId)}/hub${hubFragment(known)}`;
 }

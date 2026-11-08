@@ -481,3 +481,18 @@
     animation: none;
   }
 }
+
+.gv-hub__joinlink {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: all;
+}
+
+.gv-hub__joinlabel {
+  font-weight: 600;
+}
