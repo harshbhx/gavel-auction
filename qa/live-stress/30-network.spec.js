@@ -29,7 +29,7 @@ test('offline and back online on the live pages', async ({ page, context }) => {
     await gotoOk(page, url);
     await page.waitForTimeout(2500);
     await context.setOffline(true);
-    await page.waitForTimeout(7000);
+    await page.waitForTimeout(5000);
     const t = await bodyText(page);
     if (t.trim().length < 15)
       await finding(page, {
@@ -50,7 +50,7 @@ test('offline and back online on the live pages', async ({ page, context }) => {
         actual: clip(t, 160),
       });
     await context.setOffline(false);
-    await page.waitForTimeout(12000);
+    await page.waitForTimeout(8000);
     const t2 = await bodyText(page);
     if (/hub|screen|join/.test(label) && OFFLINE_WORDS.test(t2) && /you are offline/i.test(t2))
       await finding(page, {

@@ -73,6 +73,7 @@ test('keyboard only: tab order, visible focus, no trap', async ({ page, isMobile
     let stuck = 0;
     for (let i = 0; i < 45; i += 1) {
       await page.keyboard.press('Tab');
+      await page.waitForTimeout(150);
       const info = await page.evaluate(() => {
         const e = document.activeElement;
         if (!e || e === document.body) return { id: 'body' };

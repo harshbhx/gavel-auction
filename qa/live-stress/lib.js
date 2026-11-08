@@ -39,7 +39,13 @@ export const redact = (u) =>
 
 export function loadState() {
   try {
-    return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
+    const st = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
+    // Rooms are deleted 30 minutes after creation; after 26 minutes treat them as gone so
+    // later specs skip instead of reporting an expired room as a bug.
+    for (const k of Object.keys(st.rooms || {})) {
+      if (st.rooms[k] && Date.now() - st.rooms[k].createdAt > 26 * 60 * 1000) st.rooms[k] = null;
+    }
+    return st;
   } catch {
     return { rooms: {}, note: 'no state file' };
   }

@@ -31,6 +31,7 @@ const RAW =
   /undefined|\[object|NaN|Traceback|TypeError|Cannot read|stack trace|at https?:|<\/?script/i;
 
 async function judge(page, label, url, w) {
+  await page.goto('about:blank');
   const r = await gotoOk(page, url);
   if (r.status === 0)
     return finding(page, {
