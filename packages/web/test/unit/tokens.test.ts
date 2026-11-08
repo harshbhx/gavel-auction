@@ -43,9 +43,9 @@ describe('themes', () => {
     expect(themes).toContain(":root[data-theme='projector']");
   });
 
-  it('follows prefers-color-scheme only when no data-theme is set', () => {
-    expect(themes).toContain('@media (prefers-color-scheme: dark)');
-    expect(themes).toContain(':root:not([data-theme])');
+  it('ignores prefers-color-scheme so palette A is the default everywhere', () => {
+    expect(themes).not.toContain('prefers-color-scheme');
+    expect(tokens).not.toContain('prefers-color-scheme: dark');
   });
 
   it('doubles the type scale on the projector theme', () => {

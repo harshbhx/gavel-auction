@@ -1,7 +1,7 @@
 /*
  * Palettes. A palette overrides the same --color-* tokens the themes set, so every component follows
  * it. Switch with data-pal="a" | "b" | "c" on the root element (src/ui/palette.ts persists the pick).
- * Without data-pal the theme decides: light is A, dark is B, projector is B on black.
+ * Without data-pal the theme decides: light (the default, whatever the OS prefers) is A, an explicit dark is B, projector is B on black.
  *   a  Newsprint and Signal: paper, ink, signal orange (warm, printed)
  *   b  Night Board: navy, cream, mint and amber (reads at a distance)
  *   c  Salon: ivory, deep green, copper (calm)
