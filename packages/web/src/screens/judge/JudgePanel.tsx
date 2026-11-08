@@ -56,7 +56,7 @@ export interface JudgePanelProps {
 }
 
 const CODE_LENGTH = 6;
-const CODE_PREFIX = 'GVL-';
+const CODE_PREFIX = '';
 
 const STATUS: Readonly<
   Record<

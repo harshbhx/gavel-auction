@@ -6,6 +6,7 @@
   --judge-muted: color-mix(in srgb, var(--color-on-sheet) 82%, var(--color-sheet));
   --judge-line: color-mix(in srgb, var(--color-on-sheet) 22%, transparent);
   position: relative;
+  overflow-x: clip;
   min-height: 100vh;
   padding-bottom: 112px;
   background: var(--color-bg);
