@@ -48,10 +48,14 @@ export function TermPopover({
     const box = pop.current.getBoundingClientRect();
     const anchor = wrap.current.getBoundingClientRect();
     const margin = 12;
+    // clientWidth is the layout viewport: window.innerWidth grows on a phone when something
+    // overflows (the page zooms out to fit it), which would hide exactly the overflow we fix.
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
     let x = 0;
-    if (box.right > window.innerWidth - margin) x = window.innerWidth - margin - box.right;
+    if (box.right > vw - margin) x = vw - margin - box.right;
     if (box.left + x < margin) x = margin - box.left;
-    const above = box.bottom > window.innerHeight - margin && anchor.top - box.height - 8 > margin;
+    const above = box.bottom > vh - margin && anchor.top - box.height - 8 > margin;
     setPlace((p) => (p.x === x && p.above === above ? p : { x, above }));
   }, [open]);
 
