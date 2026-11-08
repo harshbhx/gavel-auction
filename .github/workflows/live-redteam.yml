@@ -1,0 +1,99 @@
+name: live-redteam
+# Walks the whole judge journey against the LIVE web app and API in a real browser
+# (desktop chromium and iPhone 14 emulation), with a step log, screenshots, video, a console and
+# network error log, direct API probes, and a link crawl. Informational: it never fails the
+# build over a finding; read the job summary and the artifacts.
+#
+# Sandbox only. It makes two throwaway judge rooms per profile (the host allows 4 per hour per
+# source address) and one PayPal sandbox hold per bidder when the buyer secrets exist. Secrets
+# reach the script through the environment only and are never written to a note.
+on:
+  workflow_dispatch:
+    inputs:
+      web_url:
+        description: 'Origin of the live web app'
+        required: false
+        default: 'https://gavel-web.creharsh.workers.dev'
+        type: string
+      api_url:
+        description: 'Origin of the live API'
+        required: false
+        default: 'https://gavel-auction-z2nm.onrender.com'
+        type: string
+  push:
+    branches: ['qa/QA-1-live-redteam']
+    paths:
+      - '.github/workflows/live-redteam.yml'
+      - 'qa/live-redteam/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-redteam
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  walk:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        profile: [desktop, iphone]
+    env:
+      WEB_URL: ${{ inputs.web_url || 'https://gavel-web.creharsh.workers.dev' }}
+      API_URL: ${{ inputs.api_url || 'https://gavel-auction-z2nm.onrender.com' }}
+      PROFILE: ${{ matrix.profile }}
+      PP_EMAIL_A: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+      PP_PASS_A: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+      PP_EMAIL_B: ${{ secrets.SANDBOX_BUYER2_EMAIL }}
+      PP_PASS_B: ${{ secrets.SANDBOX_BUYER2_PASSWORD }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Check the inputs
+        run: |
+          for pair in "web_url=$WEB_URL" "api_url=$API_URL"; do
+            value="${pair#*=}"
+            if ! printf '%s' "$value" | grep -Eq '^https://[A-Za-z0-9.-]+(:[0-9]+)?/?$'; then
+              echo "::error title=Bad input::${pair%%=*} must be an https origin with no path"
+              exit 1
+            fi
+          done
+      - name: Wake the API
+        run: curl -fsS -o /dev/null --max-time 30 --retry 6 --retry-delay 10 --retry-all-errors "${API_URL%/}/healthz"
+      - name: Install Playwright and chromium
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw"
+          cp qa/live-redteam/run.mjs "$RUNNER_TEMP/pw/run.mjs"
+          cd "$RUNNER_TEMP/pw"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright@1.55.1
+          npx playwright install --with-deps chromium
+      - name: Walk the journey
+        run: |
+          cd "$RUNNER_TEMP/pw"
+          OUT="$GITHUB_WORKSPACE/redteam-out" node run.mjs
+      - name: Job summary
+        if: always()
+        run: |
+          if [ -f "redteam-out/summary-$PROFILE.md" ]; then cat "redteam-out/summary-$PROFILE.md" >> "$GITHUB_STEP_SUMMARY"; else echo "No summary produced" >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload screenshots, video, logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: live-redteam-${{ matrix.profile }}
+          path: redteam-out
+          if-no-files-found: warn
+          retention-days: 14
