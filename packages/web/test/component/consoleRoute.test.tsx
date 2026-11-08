@@ -136,6 +136,7 @@ describe('hammer expectation (#1772)', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1), { timeout: 3000 });
     expect(lastCall().body['action']).toBe('hammer');
     expect(lastCall().body['args']).toEqual({
+      closeNow: 1,
       expectedPriceCents: 40_000,
       expectedLeaderPaddle: 12,
       expectedSeq: 2,

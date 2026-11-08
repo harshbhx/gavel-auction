@@ -25,7 +25,7 @@ describe('judge room config', () => {
       JUDGE_ROOMS_PAUSED: false,
       JUDGE_ROOMS_MAX: 15,
       JUDGE_ROOM_TTL_MS: 1_800_000,
-      JUDGE_ROOMS_PER_IP_HOUR: 4,
+      JUDGE_ROOMS_PER_IP_HOUR: 12,
       JUDGE_ROOMS_PER_HOUR: 40,
     });
   });

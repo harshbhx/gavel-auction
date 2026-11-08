@@ -24,7 +24,12 @@ async function boot(env: Record<string, string> = {}): Promise<string> {
 
 describe('HTTP rate limit (R12-S11)', () => {
   it('answers 429 with retry-after once the burst is spent, and never limits probes', async () => {
-    const url = await boot({ RATE_HTTP_BURST: '2', RATE_HTTP_PER_MIN: '1' });
+    const url = await boot({
+      RATE_HTTP_BURST: '2',
+      RATE_HTTP_PER_MIN: '1',
+      RATE_HTTP_READ_BURST: '2',
+      RATE_HTTP_READ_PER_MIN: '1',
+    });
     expect((await fetch(`${url}/nope`)).status).toBe(404);
     expect((await fetch(`${url}/nope`)).status).toBe(404);
     const limited = await fetch(`${url}/nope`);
@@ -41,12 +46,44 @@ describe('HTTP rate limit (R12-S11)', () => {
     const url = await boot({
       RATE_HTTP_BURST: '1',
       RATE_HTTP_PER_MIN: '1',
+      RATE_HTTP_READ_BURST: '1',
+      RATE_HTTP_READ_PER_MIN: '1',
       TRUSTED_PROXY_HOPS: '1',
     });
     const as = (ip: string) => fetch(`${url}/nope`, { headers: { 'x-forwarded-for': ip } });
     expect((await as('203.0.113.1')).status).toBe(404);
     expect((await as('203.0.113.1')).status).toBe(429);
     expect((await as('203.0.113.2')).status).toBe(404);
+  });
+});
+
+describe('429 answers a browser can read (SRV-37)', () => {
+  const origin = 'http://localhost:8080';
+  it('carries the CORS headers and a retry-after on the 429 and the 404', async () => {
+    const url = await boot({
+      CORS_ORIGINS: origin,
+      RATE_HTTP_READ_BURST: '1',
+      RATE_HTTP_READ_PER_MIN: '1',
+    });
+    const get = () => fetch(`${url}/nope`, { headers: { origin } });
+    const ok = await get();
+    expect(ok.status).toBe(404);
+    expect(ok.headers.get('access-control-allow-origin')).toBe(origin);
+    const limited = await get();
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get('access-control-allow-origin')).toBe(origin);
+    expect(limited.headers.get('access-control-expose-headers')).toContain('retry-after');
+    expect(Number(limited.headers.get('retry-after'))).toBeGreaterThanOrEqual(1);
+    const other = await fetch(`${url}/nope`, { headers: { origin: 'http://evil.example' } });
+    expect(other.headers.get('access-control-allow-origin')).toBeNull();
+  });
+
+  it('keeps writes on their own, tighter bucket than public reads', async () => {
+    const url = await boot({ RATE_HTTP_BURST: '1', RATE_HTTP_PER_MIN: '1' });
+    for (let i = 0; i < 5; i += 1) expect((await fetch(`${url}/nope`)).status).toBe(404);
+    const post = () => fetch(`${url}/nope`, { method: 'POST', body: '{}' });
+    expect((await post()).status).toBe(404);
+    expect((await post()).status).toBe(429);
   });
 });
 
