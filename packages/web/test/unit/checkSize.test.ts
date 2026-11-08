@@ -10,6 +10,11 @@ const HTML = `<!doctype html><html><head><meta http-equiv="Content-Security-Poli
 
 const made: string[] = [];
 
+/** Size and lazy-chunk problems only: the CSP check depends on the VITE_* env of the test project. */
+function sizeProblems(dir: string): string[] {
+  return sizeProblems(dir).filter((p) => !p.startsWith('CSP'));
+}
+
 /** A fake dist: index.html plus the given chunk files under assets/. */
 function dist(chunks: Record<string, string>): string {
   const dir = mkdtempSync(path.join(tmpdir(), 'check-size-'));
@@ -50,7 +55,7 @@ describe('check-size dynamic imports (initial route includes the App chunk)', ()
     expect(files).toEqual(
       expect.arrayContaining(['assets/index-aaa.js', 'assets/App-bbb.js', 'assets/config-ccc.js']),
     );
-    expect(check(dir).problems).toEqual([]);
+    expect(sizeProblems(dir)).toEqual([]);
   });
 
   it('does not follow dynamic imports made by the App chunk: those are the lazy chunks', () => {
@@ -61,7 +66,7 @@ describe('check-size dynamic imports (initial route includes the App chunk)', ()
       'QrCode-ddd.js': 'url too long for the QR renderer',
     });
     expect([...initialGraph(dir, HTML).keys()]).not.toContain('assets/QrCode-ddd.js');
-    expect(check(dir).problems).toEqual([]);
+    expect(sizeProblems(dir)).toEqual([]);
   });
 
   it('fails when a lazy-only chunk (the PayPal SDK) is statically imported inside the App chunk', () => {
@@ -71,7 +76,7 @@ describe('check-size dynamic imports (initial route includes the App chunk)', ()
       'config-ccc.js': '',
       'paypal-sdk-eee.js': 'export const g = 1;',
     });
-    const { problems } = check(dir);
+    const problems = sizeProblems(dir);
     expect(problems.some((p) => p.includes('PayPal SDK') && p.includes('paypal-sdk-eee.js'))).toBe(
       true,
     );
@@ -84,12 +89,12 @@ describe('check-size dynamic imports (initial route includes the App chunk)', ()
       'config-ccc.js': '',
       'ag-grid-fff.js': 'export const x = 1;',
     });
-    expect(check(dir).problems.some((p) => p.includes('AG Grid'))).toBe(true);
+    expect(sizeProblems(dir).some((p) => p.includes('AG Grid'))).toBe(true);
     const marker = dist({
       'index-aaa.js': ENTRY,
       'App-bbb.js': 'const m = "ag-grid-community";',
       'config-ccc.js': '',
     });
-    expect(check(marker).problems.some((p) => p.includes('AG Grid'))).toBe(true);
+    expect(sizeProblems(marker).some((p) => p.includes('AG Grid'))).toBe(true);
   });
 });
