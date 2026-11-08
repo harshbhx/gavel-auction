@@ -85,8 +85,46 @@ export function cspPlugin(): Plugin {
   };
 }
 
+/** Fonts the first paint needs: body text (Public Sans) and the display headline (Big Shoulders). */
+const PRELOAD_FONTS = /(?:public-sans|big-shoulders-display)-latin-wght-normal[^/]*\.woff2$/;
+
+/** Preload tags for the built font files that match, with the site base prepended. */
+export function fontPreloadTags(fileNames: readonly string[], base: string): string[] {
+  return fileNames
+    .filter((name) => PRELOAD_FONTS.test(name))
+    .sort()
+    .map(
+      (name) =>
+        `<link rel="preload" as="font" type="font/woff2" crossorigin href="${base}${name}" />`,
+    );
+}
+
+/**
+ * Adds a preload link for the two above-the-fold fonts to the built index.html, so the browser
+ * fetches them with the stylesheet instead of after it (HTML -> CSS -> font becomes HTML -> font).
+ * The hashed file names are only known after bundling, so this runs on the build output.
+ */
+export function fontPreloadPlugin(): Plugin {
+  let base = '/';
+  return {
+    name: 'gavel-font-preload',
+    apply: 'build',
+    configResolved(resolved) {
+      base = resolved.base;
+    },
+    transformIndexHtml: {
+      order: 'post',
+      handler: (html, ctx) => {
+        const tags = fontPreloadTags(Object.keys(ctx.bundle ?? {}), base);
+        if (tags.length === 0) return html;
+        return html.replace('</head>', `    ${tags.join('\n    ')}\n  </head>`);
+      },
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), sandboxGuard(), cspPlugin()],
+  plugins: [react(), sandboxGuard(), cspPlugin(), fontPreloadPlugin()],
   test: {
     environment: 'jsdom',
     globals: true,
