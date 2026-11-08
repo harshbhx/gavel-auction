@@ -29,7 +29,7 @@ export interface GatewayDeps {
   limiter: Pick<RateLimiter, 'checkFrame'>;
 }
 
-const TOKEN_KINDS = ['session', 'auctioneer', 'screen'] as const;
+const TOKEN_KINDS = ['session', 'auctioneer', 'screen', 'reviewer'] as const;
 
 /**
  * Turns an accepted socket into a room connection. The first frame must be a join whose token
@@ -80,7 +80,9 @@ export function createGateway(deps: GatewayDeps): (transport: BoundedConnection)
               ? 'bidder'
               : p.kind === 'invite' || p.kind === 'receipt'
                 ? undefined
-                : p.kind;
+                : p.kind === 'reviewer'
+                  ? 'screen'
+                  : p.kind;
           if (role === undefined) return fail('unauthorized');
           const conn: Connection = {
             id: connId,

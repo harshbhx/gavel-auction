@@ -12,6 +12,7 @@ import { BidStream, rowsFromAudit } from './BidStream';
 import { ConfirmQueue } from './ConfirmQueue';
 import { ConsoleGuide } from './ConsoleGuide';
 import { PriceHeader } from './PriceHeader';
+import '../../a11y/a11y.css';
 import './console.css';
 
 /** Desktop layout from this width up (R-WEB-063). */
@@ -141,6 +142,7 @@ export function ConsoleScreen({
   if (wide) {
     return (
       <main className="gv-console" data-layout="wide">
+        <h1 className="gv-sr-only">{t('demo.roleConsole')}</h1>
         <FakePaymentsLabel />
         <div className="gv-console-columns" data-testid="console-columns">
           {left}
@@ -159,6 +161,7 @@ export function ConsoleScreen({
   ];
   return (
     <main className="gv-console" data-layout="stacked">
+      <h1 className="gv-sr-only">{t('demo.roleConsole')}</h1>
       <FakePaymentsLabel />
       <div className="gv-console-tabs" role="tablist">
         {tabs.map((x) => (

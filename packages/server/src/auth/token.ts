@@ -2,12 +2,20 @@ import { isUlid } from '@gavel/shared';
 import type { ErrorCode } from '@gavel/shared';
 import { z } from 'zod';
 
-export const TOKEN_KINDS = ['invite', 'session', 'auctioneer', 'screen', 'receipt'] as const;
+export const TOKEN_KINDS = [
+  'invite',
+  'session',
+  'auctioneer',
+  'screen',
+  'receipt',
+  'reviewer',
+] as const;
 export type TokenKind = (typeof TOKEN_KINDS)[number];
 
 /**
  * Lifetimes in seconds: invite 24 h, session 4 h, auctioneer 12 h, screen 12 h, receipt 4 h (the
- * bidder session lifetime, so a shared receipt link lives as long as the room's bidder tokens).
+ * bidder session lifetime, so a shared receipt link lives as long as the room's bidder tokens),
+ * reviewer 12 h (a read-only link to the public audit trail and ledger; it has a screen's view).
  */
 export const TOKEN_TTL_S: Readonly<Record<TokenKind, number>> = {
   invite: 24 * 3600,
@@ -15,6 +23,7 @@ export const TOKEN_TTL_S: Readonly<Record<TokenKind, number>> = {
   auctioneer: 12 * 3600,
   screen: 12 * 3600,
   receipt: 4 * 3600,
+  reviewer: 12 * 3600,
 };
 
 const ulid = z.string().refine(isUlid, 'invalid id');

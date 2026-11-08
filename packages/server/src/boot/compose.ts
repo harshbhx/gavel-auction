@@ -600,6 +600,9 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     globalPerHour: config.JUDGE_ROOMS_PER_HOUR,
     maxCeilingCents: payments.maxCeilingCents,
     lotWindowMs: JUDGE_ROOM_DEFAULTS.lotWindowMs,
+    keyedMax: config.JUDGE_KEY_ROOMS_MAX,
+    ledger: stores.ledger,
+    ...(config.JUDGE_KEY === undefined ? {} : { judgeKey: config.JUDGE_KEY }),
     ...(config.JUDGE_ROOMS && config.JUDGE_SIM_HOLDS
       ? {
           simHolds: {

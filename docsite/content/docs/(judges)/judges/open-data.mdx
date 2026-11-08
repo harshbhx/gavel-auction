@@ -1,6 +1,6 @@
 ---
 title: Open data
-description: Datasets prepared for Hugging Face. Prepared, not yet published.
+description: Datasets and an Evidence Explorer Space prepared for Hugging Face. Prepared, not yet published.
 icon: Database
 status: in progress
 ---
@@ -16,5 +16,7 @@ Five small datasets are built in CI from evidence that is committed in this repo
 | `gavel-sim-30d` | Simulated 30-day settlement, per lot and per hold | simulated, fake clock |
 | `gavel-stt-bids` | 24 synthetic bid clips, speech-to-text outputs and scores | synthetic audio |
 | `gavel-audit-demo` | Event, ledger and outcome records of scripted demo auctions | synthetic, fake PayPal |
+
+A read-only static Space, `gavel-evidence-explorer`, charts them (gate status, sandbox latency, the simulated 30-day run, speech-to-text on synthetic audio), each section labelled. The collection is titled "GAVEL Evidence: auction holds, hammer and receipts".
 
 Nothing here is production data, no real person or real money is involved, and the sandbox numbers say nothing about production PayPal. The full description of each dataset, and how to publish them, is in `docs/HF_COLLECTION.md`. See also [Real, simulated, recorded](/docs/judges/real-vs-simulated).

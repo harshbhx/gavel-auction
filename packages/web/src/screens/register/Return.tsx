@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { WideAside } from '../WideAside';
 import type { ApprovalResult, ApprovalState } from '../../payments/port';
 import { completeApprovalReturn } from '../../payments/useApproval';
 import '../flows.css';
@@ -56,6 +57,7 @@ export function Return({
         }}
         onContinue={onContinue}
       />
+      <WideAside />
     </main>
   );
 }

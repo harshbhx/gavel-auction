@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   capturedTotal,
+  MAX_GOAL_CENTS,
   lotRaise,
+  parseGoalInput,
   thermometer,
   totalRaise,
 } from '../../src/screens/screen/fundraiser';
@@ -68,5 +70,29 @@ describe('fundraiser cents math', () => {
     });
     expect(totalRaise([a, { goalCents: null, raise: b.raise }])).toBeNull();
     expect(totalRaise([])).toBeNull();
+  });
+});
+
+describe('parseGoalInput (UIX-31)', () => {
+  it('treats empty and blank text as no goal', () => {
+    expect(parseGoalInput('')).toEqual({ kind: 'empty' });
+    expect(parseGoalInput('   ')).toEqual({ kind: 'empty' });
+  });
+
+  it('reads whole dollars, cents, a dollar sign and thousands commas', () => {
+    expect(parseGoalInput('5000')).toEqual({ kind: 'ok', cents: 500_000 });
+    expect(parseGoalInput('$5,000.50')).toEqual({ kind: 'ok', cents: 500_050 });
+    expect(parseGoalInput(' 12.5 ')).toEqual({ kind: 'ok', cents: 1_250 });
+  });
+
+  it('refuses zero, negatives, words, exponents and more than two decimals', () => {
+    for (const bad of ['0', '-5', 'abc', '1e6', '1.234', '5 000']) {
+      expect(parseGoalInput(bad)).toEqual({ kind: 'invalid' });
+    }
+  });
+
+  it('refuses a goal above the server limit and accepts the limit itself', () => {
+    expect(parseGoalInput('1000000000')).toEqual({ kind: 'ok', cents: MAX_GOAL_CENTS });
+    expect(parseGoalInput('1000000000.01')).toEqual({ kind: 'tooBig' });
   });
 });

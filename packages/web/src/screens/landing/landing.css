@@ -687,3 +687,51 @@
     width: auto;
   }
 }
+
+/* Wide screens (UIX-27): the page uses the width it has. The measure grows with the window and the
+ * hero title takes the extra room, so a 1920 px screen is not a narrow column in the middle. */
+@media (min-width: 1280px) {
+  .gv-mk-header__bar,
+  .gv-landing {
+    max-width: 1440px;
+  }
+
+  .gv-mk-footer {
+    padding-inline: max(var(--space-4), calc((100% - 1440px) / 2));
+  }
+
+  .gv-landing {
+    padding-inline: var(--space-7);
+  }
+
+  /* flows.css also names the join pages .gv-flow and caps them at 560 px */
+  .gv-landing figure.gv-flow {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: none;
+  }
+
+  .gv-landing .gv-how .gv-steps__item {
+    min-height: 22vh;
+  }
+
+  .gv-landing__promise,
+  .gv-landing__explain {
+    font-size: var(--font-size-4);
+  }
+}
+
+@media (min-width: 1700px) {
+  .gv-mk-header__bar,
+  .gv-landing {
+    max-width: 1720px;
+  }
+
+  .gv-mk-footer {
+    padding-inline: max(var(--space-4), calc((100% - 1720px) / 2));
+  }
+
+  .gv-landing__title {
+    font-size: calc(var(--font-size-8) * 1.3);
+  }
+}

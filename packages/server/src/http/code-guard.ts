@@ -71,6 +71,14 @@ export class CodeGuard {
     }
   }
 
+  /** Seconds left of a source's lockout, or 0 when it is not locked out. Counts nothing. */
+  lockedFor(tag: string, now: number): number {
+    const strikes = this.wrong.get(tag);
+    return strikes !== undefined && strikes.lockedUntil > now
+      ? Math.max(1, Math.ceil((strikes.lockedUntil - now) / 1000))
+      : 0;
+  }
+
   /** Checks the lockout and the attempt rate for a source and counts the attempt. */
   attempt(tag: string, now: number, kind: GuardKind = 'join'): GuardVerdict {
     this.prune(now);
