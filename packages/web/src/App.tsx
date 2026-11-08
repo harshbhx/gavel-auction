@@ -975,9 +975,14 @@ function InMemoryScriptedDemo({
     <div className="gv-scripted-frame">
       <div className="gv-scripted-bar">
         <p>{t('scriptedDemo.banner')}</p>
-        <a className="ui-link" href="/demo">
-          {t('scriptedDemo.live')}
-        </a>
+        <div className="gv-scripted-bar__links">
+          <a className="ui-link" href="/demo">
+            {t('scriptedDemo.live')}
+          </a>
+          <a className="ui-link" href="/try">
+            {t('scriptedDemo.judge')}
+          </a>
+        </div>
       </div>
       <ScriptedRoute
         match={view === 'bid' ? SCRIPTED_BID_MATCH : SCRIPTED_SCREEN_MATCH}

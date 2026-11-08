@@ -42,6 +42,29 @@ async function expectFallback(message: string): Promise<void> {
 }
 
 describe('demo launcher on the real route (R-WEB-036..038)', () => {
+  it('links to the scripted demo and the judge guide', () => {
+    render(<App initialPath="/demo" api={API} />);
+    expect(screen.getByRole('link', { name: t('demo.tour') }).getAttribute('href')).toBe(
+      '/demo/scripted',
+    );
+    expect(screen.getByRole('link', { name: t('demo.judge') }).getAttribute('href')).toBe('/try');
+  });
+
+  it('opens a code dialog, rejects empty and odd codes, and goes to the join page', () => {
+    render(<App initialPath="/demo" api={API} />);
+    fireEvent.click(screen.getByRole('button', { name: t('demo.haveCode') }));
+    const input = screen.getByLabelText(t('demo.codeLabel'));
+    fireEvent.click(screen.getByRole('button', { name: t('demo.codeGo') }));
+    expect(screen.getByText(t('demo.codeEmpty'))).toBeTruthy();
+    fireEvent.change(input, { target: { value: 'a b/c' } });
+    fireEvent.click(screen.getByRole('button', { name: t('demo.codeGo') }));
+    expect(screen.getByText(t('demo.codeBad'))).toBeTruthy();
+    fireEvent.change(input, { target: { value: ' room-4 ' } });
+    fireEvent.click(screen.getByRole('button', { name: t('demo.codeGo') }));
+    expect(pushed).toHaveBeenLastCalledWith(null, '', '/join/room-4');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
   it('posts to the demo route with the operator key and shows four links, copy buttons and LIVE', async () => {
     fetchMock.mockResolvedValue({
       status: 200,

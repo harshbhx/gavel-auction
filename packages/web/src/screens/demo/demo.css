@@ -1,0 +1,107 @@
+/* Demo launcher, Newsprint. Tokens only; phones stack in one column. */
+
+.gv-demo__lead {
+  margin: 0;
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-3);
+  max-width: 48ch;
+}
+
+.gv-demo__start {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) 0;
+  border-top: var(--border-width-strong, 3px) solid var(--color-fg);
+  border-bottom: var(--border-width) solid var(--color-rule);
+}
+
+.gv-demo__start .gv-btn {
+  width: 100%;
+}
+
+.gv-demo__status {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+  color: var(--color-fg-muted);
+}
+
+.gv-demo h2 {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--font-size-4);
+  text-transform: uppercase;
+}
+
+.gv-demo__gets ul,
+.gv-demo__ways ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gv-demo__gets li {
+  padding-left: var(--space-3);
+  border-left: var(--border-width-strong, 3px) solid var(--color-rule);
+}
+
+.gv-demo__ways li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) 0;
+  border-bottom: var(--border-width) solid var(--color-rule);
+}
+
+.gv-demo__ways li > span {
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-2);
+}
+
+.gv-demo__ways a,
+.gv-demo__linkbtn {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.gv-demo__ways a:focus-visible,
+.gv-demo__linkbtn:focus-visible {
+  outline: var(--border-width-strong, 3px) solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.gv-flow__error:focus-visible {
+  outline: var(--border-width-strong, 3px) solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.gv-demo__code {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.gv-demo__code h2 {
+  margin: 0;
+}
+
+.gv-demo__code-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
