@@ -1,0 +1,93 @@
+---
+title: API reference
+description: The HTTP API of the GAVEL host as an OpenAPI 3.1 document, with authentication, errors, rate limits and the WebSocket note.
+icon: FileJson
+status: code-checked
+evidence: Written from the route files in packages/server/src/http and the schemas in packages/shared. CI lints it and a test compares its paths with the server router.
+full: true
+---
+
+The host serves a small HTTP API and one WebSocket. The HTTP API is described by an OpenAPI 3.1 document.
+
+<Callout type="info" title="Get the document">
+  [Download openapi.yaml](/openapi.yaml). The same file lives in the repository at [openapi/gavel.yaml](https://github.com/harshbhx/gavel-auction/blob/main/openapi/gavel.yaml), and the docs site copies it at build time so the two never differ. Open it in any OpenAPI viewer, Postman, Insomnia or an SDK generator.
+</Callout>
+
+PayPal sandbox only: no real money moves through any route.
+
+## Endpoints
+
+| Area | Method and path | Credential |
+| --- | --- | --- |
+| Auctions | `POST /api/auctions` | operator key |
+| Auctions | `GET /api/auctions/{id}` (id or join code) | none |
+| Auctions | `POST /api/auctions/{id}/auctioneer/rotate`, `revoke-all`, `revoke` | operator key |
+| Control | `POST /api/auctions/{id}/control`, `POST /api/auctions/{id}/kill` | auctioneer token |
+| Bidding access | `POST /api/auctions/{id}/invites`, `POST /api/auctions/{id}/bidders/{bidderId}/invite` | auctioneer token |
+| Bidding access | `POST /api/auctions/{id}/join` | invite token in the body |
+| Read | `GET /api/auctions/{id}/snapshot` | auctioneer, screen, session or reviewer token |
+| Read | `GET /api/auctions/{id}/events` | auctioneer, screen or reviewer token |
+| Holds | `POST /api/holds`, `POST /api/holds/{holdId}/approve`, `GET` and `DELETE /api/holds/{holdId}` | session token |
+| Judge rooms | `GET /api/judge/capabilities`, `POST /api/judge/rooms`, `POST /api/judge/join` | none (create also accepts the judge key) |
+| Judge rooms | `POST /api/judge/key` | judge key |
+| Judge rooms | `GET /api/judge/rooms/{id}/ledger` | reviewer or auctioneer token |
+| Judge rooms | `POST /api/judge/rooms/{id}/sim-hold` | session token |
+| Judge rooms | `POST /api/judge/pause` | operator key |
+| Receipts | `POST /api/auctions/{id}/receipt-link` | session token |
+| Receipts | `GET /api/auctions/{id}/receipt` | receipt token |
+| Export | `GET /api/auctions/{id}/export` (NDJSON) | auctioneer token or operator key |
+| Health | `GET /healthz`, `/readyz`, `/version`, `/warmup` | none |
+| Operator | `/admin/export`, `/admin/replay-bundle`, `/metrics`, `/metrics/prometheus`, `/ops/summary`, `/ops/rooms`, `/ops/auctions/{id}/void-all`, `release-review` | operator key |
+
+The PayPal webhook and the three demo routes are left out on purpose: PayPal alone calls the webhook, and the demo routes exist only when the host runs in demo mode, never in production.
+
+## Authentication
+
+| Credential | Sent as | Lifetime |
+| --- | --- | --- |
+| Operator key | header `X-Admin-Key` | set by the host operator |
+| Auctioneer token | `Authorization: Bearer` | 12 hours |
+| Screen token | `Authorization: Bearer` | 12 hours |
+| Session token | `Authorization: Bearer` | 4 hours |
+| Receipt token | `Authorization: Bearer` | 4 hours |
+| Reviewer token | `Authorization: Bearer` | 12 hours, read only, from judge-room creation |
+| Judge key | header `X-Judge-Key` | set by the host operator, optional, limited (never the operator key) |
+| Invite token | body field `invite` of the join route | 24 hours, single use |
+
+A token is bound to one auction and one kind. A reviewer token reads the snapshot, event log and room ledger of its own judge room and nothing else. The judge key only lifts the public judge-room limits and is sent only in its header. No real credential appears in the document.
+
+## Errors
+
+Every error is JSON with a `message`. Read the stable code as `code ?? error`: the core and judge routes send `code`, the hold, judge and operator routes send `error`, and `detail` is optional extra text.
+
+```json
+{ "code": "bad_message", "message": "invalid request body", "detail": "config.reserve: reserve must be at least 100 cents" }
+```
+
+Statuses in use: 400, 401, 403, 404, 409, 410, 413, 415, 429, 500 and 503. A 429 always carries `Retry-After`.
+
+## Rate limits
+
+Each operation that has its own limit carries an `x-rate-limit` extension, and the host-wide defaults sit under `x-rate-limits`. By default a source address gets 60 write requests a minute (reads have their own 300 a minute bucket) on every route except health and webhooks, 10 joins a minute, and 12 judge rooms an hour.
+
+## WebSocket protocol
+
+Live bidding runs on `wss://<host>/ws`. OpenAPI cannot describe a socket, so the document carries a prose section and this site has the full contract on [WebSocket protocol](/docs/reference/websocket-protocol). In AsyncAPI terms the channel `/ws` has three client messages (`join`, `bid`, `confirm_response`) and ten server messages (`registered`, `state`, `price`, `bid_accepted`, `bid_rejected`, `confirm_request`, `hammer`, `settlement_update`, `audit_event`, `error`).
+
+## SDKs with APIMatic
+
+GAVEL is entered for the sponsor prize "Best Use of APIMatic".
+
+<Callout type="warn" title="Status: spec ready, SDK not generated yet">
+  The OpenAPI document is ready. Generating the TypeScript SDK and the developer portal needs an APIMatic account, which does not exist yet, so no SDK and no portal have been generated. Nothing is checked in as generated output.
+</Callout>
+
+The flow once the account exists:
+
+1. Create an APIMatic account.
+2. Import the API from `https://raw.githubusercontent.com/harshbhx/gavel-auction/main/openapi/gavel.yaml`, or upload `openapi/gavel.yaml`.
+3. Review the validation report and fix anything it names in the document.
+4. Generate the TypeScript SDK (other languages the same way) and the API developer portal.
+5. Publish the portal and record its address and the SDK package here and in the README.
+
+The WebSocket is outside what an OpenAPI-based SDK generates, so live bidding stays on the documented socket protocol.

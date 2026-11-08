@@ -19,6 +19,7 @@ import { REPO_URL } from '../landing/LandingSections';
 import { latestHubRoom } from '../hub/hubKeys';
 import { GoalField } from '../demo/GoalField';
 import { parseGoalInput } from '../screen/fundraiser';
+import { lookupProblemText } from '../../net/apiError';
 import '../flows.css';
 import { EvidenceColumn } from './EvidenceColumn';
 import { JudgeDialog, type JudgeTab } from './JudgeDialog';
@@ -106,6 +107,7 @@ export function JudgePanel({
   const heading = useRef<HTMLHeadingElement>(null);
   const [phase, setPhase] = useState<'idle' | 'busy' | 'failed'>('idle');
   const [failure, setFailure] = useState<DemoFailure | null>(null);
+  const [retryAfterS, setRetryAfterS] = useState<number | null>(null);
   const [code, setCode] = useState('');
   const [looking, setLooking] = useState(false);
   const [missing, setMissing] = useState(false);
@@ -118,6 +120,7 @@ export function JudgePanel({
   const [keyInput, setKeyInput] = useState('');
   const [keyState, setKeyState] = useState<'idle' | 'checking' | JudgeKeyResult>('idle');
   const unlocked = keyOffered && heldKey !== null;
+  const [problem, setProblem] = useState<string | null>(null);
   const [ownRoom] = useState<LiveRoom | null>(() => liveRoomFrom(latestHubRoom()));
   const room = roomProp === undefined ? ownRoom : roomProp;
   const script = useDemoScript(autoplay);
@@ -136,6 +139,7 @@ export function JudgePanel({
     setPhase('busy');
     setFailure(null);
     const goalCents = goalInput.kind === 'ok' ? goalInput.cents : undefined;
+    setRetryAfterS(null);
     (keyOffered && heldKey !== null ? createRoom(goalCents, heldKey) : createRoom(goalCents)).then(
       (links) => openRoom(links.hub ?? links.console),
       (error: unknown) => {
@@ -146,6 +150,7 @@ export function JudgePanel({
           setHeldKey(null);
         }
         setFailure(reason);
+        setRetryAfterS(error instanceof DemoRoomError ? error.retryAfterS : null);
         setPhase('failed');
       },
     );
@@ -195,8 +200,14 @@ export function JudgePanel({
     }
     setLooking(true);
     joinByCode(trimmed)
-      .then((found) => setMissing(!found))
-      .catch(() => setMissing(true))
+      .then((found) => {
+        setProblem(null);
+        setMissing(!found);
+      })
+      .catch((error: unknown) => {
+        setProblem(lookupProblemText(error));
+        setMissing(true);
+      })
       .finally(() => setLooking(false));
   };
 
@@ -328,7 +339,7 @@ export function JudgePanel({
                   <div className="gv-flow__error" role="alert">
                     <p>
                       {phase === 'failed'
-                        ? `${t('try.a1.failed')} ${failureText(failure)}`
+                        ? `${t('try.a1.failed')} ${failureText(failure, retryAfterS)}`
                         : t('try.a1.open')}
                     </p>
                   </div>

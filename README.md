@@ -33,6 +33,8 @@ Built for the PayPal Hackathon 2026.
 
 What is next, with owners and dates, is on [Limits and next steps](docs/LIMITATIONS.md). What changed and when is in the [changelog](CHANGELOG.md).
 
+**Sponsor prize: Best Use of APIMatic.** Status: the OpenAPI 3.1 spec of the host API is ready ([`openapi/gavel.yaml`](openapi/gavel.yaml), linted in CI and checked against the server router, also served at https://gavel-docs.creharsh.workers.dev/openapi.yaml). SDK and developer portal generation by APIMatic is pending: it needs an APIMatic account, so nothing is generated yet. Details in [docs/API.md](docs/API.md).
+
 ### For judges
 
 A separate entry point for judges, with a live sandbox room and no operator key: **https://gavel-web.creharsh.workers.dev/try**. It is deliberately not linked from the public landing page.
@@ -56,7 +58,11 @@ PayPal sandbox only: no real money moves, and nobody should use a personal PayPa
 | Documentation | [gavel-docs.creharsh.workers.dev](https://gavel-docs.creharsh.workers.dev)                                                                            |
 | API           | Render, [`/healthz`](https://gavel-auction-z2nm.onrender.com/healthz); the first request after idle can take about 30 seconds while the service wakes |
 
-The hosted API runs in sandbox mode on a 1 GB persistent disk. Whether a judge can start a key-less room depends on the host flag `JUDGE_ROOMS` (see [docs/DEPLOY.md](docs/DEPLOY.md)); [docs/DEMO.md](docs/DEMO.md) says what is verified and what is not.
+The hosted API runs in sandbox mode on one Render service with a 1 GB persistent disk (see [Sponsors: Render](#sponsors-render)). Whether a judge can start a key-less room depends on the host flag `JUDGE_ROOMS` (see [docs/DEPLOY.md](docs/DEPLOY.md)); [docs/DEMO.md](docs/DEMO.md) says what is verified and what is not.
+
+## Sponsors: Render
+
+The GAVEL API and WebSocket host runs on [Render](https://render.com) as one Node web service (`starter` plan, always on) at [gavel-auction-z2nm.onrender.com](https://gavel-auction-z2nm.onrender.com/healthz), with a 1 GB persistent disk at `/var/data` that holds the hash-chained ledger, room log, settlement journals and hold records. [`render.yaml`](render.yaml) is the blueprint; deploys start from GitHub Actions through a Render deploy hook and are followed by `/version` and smoke checks. The web app is on Cloudflare Workers at [gavel.dualmindlab.tech](https://gavel.dualmindlab.tech). The API's own domain, `api.gavel.dualmindlab.tech`, is planned, pending DNS. We do not use Render Postgres, cron jobs or preview environments yet. Details, the reasons for one instance, and the next steps: [Hosting on Render](https://docs.gavel.dualmindlab.tech/docs/run/hosting-on-render).
 
 <table>
   <tr>
@@ -284,6 +290,7 @@ Five small datasets (gate results, latency, the simulated 30-day run, speech-to-
 | [Judge walkthrough](docs/JUDGES.md)                  | A short path through the code and the evidence |
 | [Design system](docs/DESIGN.md)                      | The Scoreboard interface and its components    |
 | [Demo guide](docs/DEMO.md)                           | What you can try today and what to expect      |
+| [API reference](docs/API.md)                         | The OpenAPI spec, auth, errors, rate limits    |
 | [Architecture](docs/submission/ARCHITECTURE.md)      | How the packages fit together                  |
 | [Gate results](docs/GATES.md)                        | What each sandbox run proved                   |
 | [Limits and next steps](docs/LIMITATIONS.md)         | What is measured today and what comes next     |

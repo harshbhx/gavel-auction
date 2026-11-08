@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import { ChainCheck } from '../../chain/ChainCheck';
 import { WideAside } from '../WideAside';
+import { ChainCheck } from '../../chain/ChainCheck';
 import { t } from '../../copy/t';
 import { receiptSource } from '../../ladder/fromWire';
 import { SettlementPanel } from '../../ladder/SettlementPanel';

@@ -49,6 +49,9 @@ export interface HttpDeps {
 }
 
 /** An error with a status the shared table does not carry (413, 415). */
+/** Response headers a browser page may read cross-origin. */
+export const CORS_EXPOSE = 'x-request-id, retry-after';
+
 export class HttpError extends GavelError {
   constructor(
     readonly status: number,
@@ -136,7 +139,7 @@ export class HttpApp {
     securityHeaders(out.headers);
     if (allowed !== null) {
       out.headers.set('access-control-allow-origin', allowed);
-      out.headers.set('access-control-expose-headers', 'x-request-id');
+      out.headers.set('access-control-expose-headers', CORS_EXPOSE);
       out.headers.append('vary', 'Origin');
     }
     return out;
@@ -154,7 +157,8 @@ export class HttpApp {
         status: 204,
         headers: {
           'access-control-allow-methods': 'GET, POST, DELETE, OPTIONS',
-          'access-control-allow-headers': 'authorization, content-type, x-request-id, x-admin-key',
+          'access-control-allow-headers':
+            'authorization, content-type, x-request-id, x-admin-key, x-judge-key',
           'access-control-max-age': '600',
         },
       });

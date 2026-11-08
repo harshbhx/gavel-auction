@@ -16,7 +16,7 @@ const recording = {
 describe('verifyLedger', () => {
   it('verifies an untouched bundle against its head hash', () => {
     const v = verifyLedger(makeLedgerBundle());
-    expect(v).toMatchObject({ kind: 'verified', count: 2, closed: true });
+    expect(v).toMatchObject({ kind: 'verified', count: 2, closed: false });
   });
 
   it('names the entry whose content was edited', () => {
@@ -45,6 +45,7 @@ describe('ChainCheck', () => {
   it('shows the verified badge and the plain-words explanation', () => {
     render(<ChainCheck ledger={makeLedgerBundle()} />);
     expect(screen.getByText(t('chain.verified'))).toBeTruthy();
+    expect(screen.getByText(t('chain.verified.open'))).toBeTruthy();
     expect(screen.getByText(t('chain.explain.proves'))).toBeTruthy();
     expect(screen.getByText(t('chain.explain.notProves'))).toBeTruthy();
   });

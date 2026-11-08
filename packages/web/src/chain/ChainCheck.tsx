@@ -33,7 +33,7 @@ function readText(file: File): Promise<string> {
 }
 
 function shortHash(h: string): string {
-  return `${h.slice(0, 12)}…${h.slice(-6)}`;
+  return `${h.slice(0, 12)}...${h.slice(-6)}`;
 }
 
 /** The verdict as words first; the edge colour only backs it up. */
@@ -46,7 +46,7 @@ export function ChainBadge({ verdict }: { verdict: ChainVerdict }) {
           <p>{t('chain.verified.detail', { count: verdict.count })}</p>
           {!verdict.closed && <p>{t('chain.verified.open')}</p>}
           <p className="gv-chain__head">
-            {t('chain.head')}: <code>{shortHash(verdict.headHash)}</code>
+            {t('chain.head')} <code>{shortHash(verdict.headHash)}</code>
           </p>
         </div>
       );
@@ -101,17 +101,19 @@ export function ChainCheck({ ledger, allowFile = false }: ChainCheckProps) {
       <h2 id="gv-chain-title">{t('chain.title')}</h2>
       <ChainBadge verdict={verdict} />
       {allowFile && (
-        <label className="gv-chain__file">
-          <span>{t('chain.file.label')}</span>
+        <div className="gv-chain__file">
+          <label htmlFor="gv-chain-file">{t('chain.file.label')}</label>
           <input
+            id="gv-chain-file"
             type="file"
             accept="application/json,.json"
+            aria-describedby="gv-chain-file-hint"
             onChange={(e) => {
               onFile(e.target.files?.[0]);
             }}
           />
-          <small>{t('chain.file.hint')}</small>
-        </label>
+          <small id="gv-chain-file-hint">{t('chain.file.hint')}</small>
+        </div>
       )}
       <details className="gv-chain__explain">
         <summary>{t('chain.explain.summary')}</summary>

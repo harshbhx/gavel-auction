@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { WideAside } from '../WideAside';
 import { t } from '../../copy/t';
+import { waitText } from '../../net/apiError';
 import { Provenance } from '../../design/Provenance';
 import { Button } from '../../design/primitives/Button';
 import { Dialog } from '../../design/primitives/Dialog';
@@ -29,6 +30,7 @@ export type DemoFailure =
   | 'unauthorized'
   | 'roomCap'
   | 'judgeBusy'
+  | 'rateLimited'
   | 'keyWrong'
   | 'keyLocked'
   | 'keyCap';
@@ -36,13 +38,21 @@ export type DemoFailure =
 /** Rejection from `createRoom` when the server answered with a known refusal. */
 export class DemoRoomError extends Error {
   readonly reason: DemoFailure;
-  constructor(reason: DemoFailure) {
+  /** Seconds the server asked the client to wait, when it said. */
+  readonly retryAfterS: number | null;
+  constructor(reason: DemoFailure, retryAfterS: number | null = null) {
     super(reason);
     this.reason = reason;
+    this.retryAfterS = retryAfterS;
   }
 }
 
-export function failureText(reason: DemoFailure | null): string {
+export function failureText(reason: DemoFailure | null, retryAfterS: number | null = null): string {
+  if (reason === 'rateLimited') {
+    return retryAfterS === null
+      ? t('demo.failedRateUnknown')
+      : t('demo.failedRate', { wait: waitText(retryAfterS) });
+  }
   if (reason === 'demoOff') return t('demo.failedOff');
   if (reason === 'unauthorized') return t('demo.failedKey');
   if (reason === 'roomCap') return t('demo.failedCap');
@@ -92,6 +102,7 @@ export function DemoLauncher({
   writeClipboard = (text) => navigator.clipboard.writeText(text),
 }: DemoLauncherProps) {
   const heading = useRef<HTMLHeadingElement>(null);
+  const starting = useRef(false);
   useEffect(() => {
     document.title = t('landing.start');
     heading.current?.focus();
@@ -104,6 +115,7 @@ export function DemoLauncher({
   const [goal, setGoal] = useState('');
   const goalInput = parseGoalInput(goal);
   const goalOk = !goalField || goalInput.kind === 'empty' || goalInput.kind === 'ok';
+  const [retryAfterS, setRetryAfterS] = useState<number | null>(null);
   const [codeOpen, setCodeOpen] = useState(false);
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState<string | undefined>(undefined);
@@ -140,13 +152,21 @@ export function DemoLauncher({
       scripted();
       return;
     }
-    if (!goalOk) return;
+    if (!goalOk || starting.current) return;
+    // A ref, not state: two clicks in one frame must not both send a request.
+    starting.current = true;
     setPhase('busy');
     setFailure(null);
+    setRetryAfterS(null);
     createRoom(goalField && goalInput.kind === 'ok' ? goalInput.cents : undefined).then(
-      (next) => finish(next, 'live'),
+      (next) => {
+        starting.current = false;
+        finish(next, 'live');
+      },
       (error: unknown) => {
+        starting.current = false;
         setFailure(error instanceof DemoRoomError ? error.reason : null);
+        setRetryAfterS(error instanceof DemoRoomError ? error.retryAfterS : null);
         setPhase('failed');
       },
     );
@@ -184,7 +204,7 @@ export function DemoLauncher({
       </section>
       {phase === 'failed' && (
         <div ref={errorBox} className="gv-flow__error" role="alert" tabIndex={-1}>
-          <p>{failureText(failure)}</p>
+          <p>{failureText(failure, retryAfterS)}</p>
           <Button variant="outline" onClick={scripted}>
             {t('demo.scriptedInstead')}
           </Button>

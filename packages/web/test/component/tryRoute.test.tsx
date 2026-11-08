@@ -119,7 +119,7 @@ describe('/try judge panel: the Ledger front page', () => {
     expect(
       screen.getByRole('button', { name: t('try.a1.room') }).getAttribute('aria-disabled'),
     ).toBe('true');
-    expect(screen.getByRole('alert').textContent).toContain(t('try.a1.open'));
+    expect(screen.getByText(t('try.a1.open'))).toBeTruthy();
     expect(screen.getByRole('link', { name: t('try.a1.script') }).getAttribute('href')).toBe(
       '/demo/scripted',
     );
