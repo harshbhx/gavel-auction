@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: ./.github/actions/setup
       - name: Text mode (transcripts through the parser, no keys)
         run: npm run eval -w @gavel/voice -- --mode text --set all --out eval-out/text
@@ -67,7 +67,7 @@ jobs:
           if [ -f packages/voice/eval-out/text/report.md ]; then
             cat packages/voice/eval-out/text/report.md >> "$GITHUB_STEP_SUMMARY"
           fi
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: voice-eval-text
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: ./.github/actions/setup
       - name: Cached mode (recorded STT outputs through the parser, deterministic)
         # Fails when a provider directory or a clip is missing: a green run always scored every clip.
@@ -120,7 +120,7 @@ jobs:
               cat "packages/voice/eval-out/cached-human/$p/report.md" >> "$GITHUB_STEP_SUMMARY"
             fi
           done
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: voice-eval-cached
@@ -138,7 +138,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: ./.github/actions/setup
       - name: Install speech synthesizer
         run: sudo apt-get update -qq && sudo apt-get install -y -qq espeak-ng ffmpeg jq
@@ -170,7 +170,7 @@ jobs:
               cat "packages/voice/eval-out/live/$p/report.md" >> "$GITHUB_STEP_SUMMARY"
             fi
           done
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: voice-stt-record
@@ -186,7 +186,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: ./.github/actions/setup
       - name: Install ffmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
@@ -225,7 +225,7 @@ jobs:
               cat "packages/voice/eval-out/live-human/$p/report.md" >> "$GITHUB_STEP_SUMMARY"
             fi
           done
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: voice-stt-record-human
@@ -240,7 +240,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: ./.github/actions/setup
       - name: Live mode (audio through the provider)
         env:
@@ -255,7 +255,7 @@ jobs:
           if [ -f packages/voice/eval-out/live/report.md ]; then
             cat packages/voice/eval-out/live/report.md >> "$GITHUB_STEP_SUMMARY"
           fi
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: voice-eval-live
@@ -270,7 +270,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: ./.github/actions/setup
       - name: Install speech synthesizer and ffmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y -qq espeak-ng ffmpeg jq
@@ -334,7 +334,7 @@ jobs:
             v="$(basename "$(dirname "$(dirname "$f")")")"; p="$(basename "$(dirname "$f")")"
             jq -r --arg v "$v" --arg p "$p" '"| \($v) | \($p) | \(.metrics.exactRate) | \(.metrics.wrongAcceptRate) | \(.metrics.recoverableRate) | \(.metrics.missedBidRate) | \(.metrics.confirmRate) | \(.gated.autoWrongAcceptRate) |"' "$f" >> "$GITHUB_STEP_SUMMARY"
           done
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: voice-stt-trials

@@ -44,10 +44,10 @@ jobs:
       PROFILE: desktop
       SMOKE: '1'
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '22'
       - name: Check the inputs
@@ -79,7 +79,7 @@ jobs:
           if [ -f "smoke-out/summary-$PROFILE.md" ]; then cat "smoke-out/summary-$PROFILE.md" >> "$GITHUB_STEP_SUMMARY"; else echo "### FAILED: no summary produced, nothing was verified" >> "$GITHUB_STEP_SUMMARY"; fi
       - name: Upload screenshots, video, logs
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: judge-smoke-desktop
           path: smoke-out

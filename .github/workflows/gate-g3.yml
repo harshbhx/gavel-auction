@@ -27,7 +27,7 @@ jobs:
     env:
       STATE: ${{ github.workspace }}/g3-state
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
       - name: Restore the probe state
@@ -95,7 +95,7 @@ jobs:
       - name: Cache the browser
         id: pw-cache
         if: ${{ env.mode == 'start' }}
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-1.49.1-chromium
@@ -145,7 +145,7 @@ jobs:
             | cut -d' ' -f1 | openssl dgst -sha256 -hmac "$G3_TAG_KEY" -r | cut -d' ' -f1 > state.tag)
       - name: Keep the probe state
         if: ${{ always() && env.mode != 'skip' }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: g3-probe-state
           path: ${{ env.STATE }}
@@ -154,7 +154,7 @@ jobs:
       # The GATES.md entry exists only after the last checkpoint; download it from that run.
       - name: Upload the entry
         if: ${{ always() && env.mode != 'skip' }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: g3-entry
           path: GATES.md

@@ -26,7 +26,7 @@ jobs:
     env:
       GAVEL_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           # The builder script lives on the default branch. The commit under report is only
           # named by GAVEL_SHA, because older commits do not carry the script.
@@ -36,7 +36,7 @@ jobs:
         run: npx vite-node infra/pages/quality/build.mjs -- quality-out
       - name: Add the sha file
         run: printf '%s\n' "$GAVEL_SHA" > quality-out/sha.txt
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: quality-report
           path: quality-out
