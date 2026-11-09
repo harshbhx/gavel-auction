@@ -1,23 +1,30 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { manualChunks } from '../../vite.config';
+import { chunkFileName } from '../../vite.config';
 
-describe('manualChunks', () => {
-  it('puts AG Grid (community and react) in the ag-grid chunk', () => {
-    expect(manualChunks('/repo/node_modules/ag-grid-community/dist/package/main.esm.mjs')).toBe(
-      'ag-grid',
-    );
-    expect(manualChunks('C:\\repo\\node_modules\\ag-grid-react\\dist\\index.js')).toBe('ag-grid');
+describe('chunkFileName', () => {
+  it('names the chunk that holds AG Grid (community or react) ag-grid', () => {
+    expect(
+      chunkFileName({
+        moduleIds: [
+          '/repo/packages/web/src/grid/agRuntime.ts',
+          '/repo/node_modules/ag-grid-community/dist/package/main.esm.mjs',
+        ],
+      }),
+    ).toBe('assets/ag-grid-[hash].js');
+    expect(
+      chunkFileName({ moduleIds: ['C:\\repo\\node_modules\\ag-grid-react\\dist\\index.js'] }),
+    ).toBe('assets/ag-grid-[hash].js');
   });
 
-  it('keeps React in its own chunk, so AG Grid does not pull it in and land in the entry', () => {
-    expect(manualChunks('/repo/node_modules/react/index.js')).toBe('react');
-    expect(manualChunks('/repo/node_modules/react-dom/client.js')).toBe('react');
-    expect(manualChunks('/repo/node_modules/scheduler/index.js')).toBe('react');
-  });
-
-  it('leaves app code and other libraries to Rollup', () => {
-    expect(manualChunks('/repo/packages/web/src/grid/LedgerGrid.tsx')).toBeUndefined();
-    expect(manualChunks('/repo/node_modules/zustand/index.js')).toBeUndefined();
+  it('leaves every other chunk with its default name', () => {
+    expect(
+      chunkFileName({
+        moduleIds: [
+          '/repo/packages/web/src/grid/LedgerGrid.tsx',
+          '/repo/node_modules/react/index.js',
+        ],
+      }),
+    ).toBe('assets/[name]-[hash].js');
   });
 });

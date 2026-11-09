@@ -123,24 +123,24 @@ export function fontPreloadPlugin(): Plugin {
   };
 }
 
+const AG_GRID_MODULE = /[\\/]node_modules[\\/](?:ag-grid-community|ag-grid-react)[\\/]/;
+
 /**
- * Names the AG Grid chunk. Without this the library lands in a chunk named after whichever module
- * Rollup picked first. scripts/check-size.mjs finds the chunk by its ag-grid- prefix: it keeps it out
- * of the initial route and holds it to its own size budget.
- *
- * Rollup also pulls the dependencies of a manual chunk's modules into that chunk unless they are
- * assigned to another one. ag-grid-react depends on React, so React gets its own chunk here: without
- * it the whole of React would move into ag-grid-*.js and the entry would import AG Grid.
+ * Names the AG Grid chunk. Rollup names a shared chunk after whichever module it saw first (it was
+ * useGridEnv-*.js), so the chunk that holds the library is named here instead: assets/ag-grid-*.js.
+ * scripts/check-size.mjs finds the chunk by that prefix: it keeps it out of the initial route and
+ * holds it to its own size budget. This renames only; chunk contents stay as Rollup split them (a
+ * manualChunks rule would pull React into the chunk and the entry would then import AG Grid).
  */
-export function manualChunks(id: string): string | undefined {
-  if (/[\\/]node_modules[\\/](?:ag-grid-community|ag-grid-react)[\\/]/.test(id)) return 'ag-grid';
-  if (/[\\/]node_modules[\\/](?:react|react-dom|scheduler)[\\/]/.test(id)) return 'react';
-  return undefined;
+export function chunkFileName(chunk: { moduleIds: readonly string[] }): string {
+  return chunk.moduleIds.some((id) => AG_GRID_MODULE.test(id))
+    ? 'assets/ag-grid-[hash].js'
+    : 'assets/[name]-[hash].js';
 }
 
 export default defineConfig({
   plugins: [react(), sandboxGuard(), cspPlugin(), fontPreloadPlugin()],
-  build: { rollupOptions: { output: { manualChunks } } },
+  build: { rollupOptions: { output: { chunkFileNames: chunkFileName } } },
   test: {
     environment: 'jsdom',
     globals: true,
