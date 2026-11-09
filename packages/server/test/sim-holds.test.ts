@@ -1,4 +1,4 @@
-import type { HoldStore, PaymentsGateway } from '@gavel/payments';
+import type { HoldRecord, HoldStore, PaymentsGateway } from '@gavel/payments';
 import type { AuctionId, BidderId, Cents } from '@gavel/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { createSimHoldSource, isSimAuth, withSimulatedHolds } from '../src/http/sim-holds';
@@ -19,7 +19,8 @@ function realGateway(): PaymentsGateway {
 describe('simulated holds', () => {
   it('writes an approved hold with a simulated authorization', async () => {
     const put = vi.fn(() => Promise.resolve());
-    const source = createSimHoldSource({ put } as unknown as HoldStore, () => 5);
+    const get = vi.fn(() => Promise.resolve(null));
+    const source = createSimHoldSource({ put, get } as unknown as HoldStore, () => 5);
     const id = await source('B1' as BidderId, 5_000 as Cents, 'A1' as AuctionId);
     expect(id).toBe('sim-hold-B1');
     expect(put).toHaveBeenCalledWith(
@@ -27,6 +28,54 @@ describe('simulated holds', () => {
     );
     expect(isSimAuth('sim-auth-B1-5000')).toBe(true);
     expect(isSimAuth('9AB12345CD')).toBe(false);
+  });
+
+  it('writes one hold per bidder: same ceiling is idempotent, another ceiling is refused', async () => {
+    const rows = new Map<string, HoldRecord>();
+    const store = {
+      get: (id: string) => Promise.resolve(rows.get(id) ?? null),
+      put: (h: HoldRecord) => {
+        rows.set(h.holdId, h);
+        return Promise.resolve();
+      },
+    } as unknown as HoldStore;
+    const source = createSimHoldSource(store, () => 5);
+    await source('B1' as BidderId, 5_000 as Cents, 'A1' as AuctionId);
+    expect(await source('B1' as BidderId, 5_000 as Cents, 'A1' as AuctionId)).toBe('sim-hold-B1');
+    await expect(source('B1' as BidderId, 2_000 as Cents, 'A1' as AuctionId)).rejects.toMatchObject(
+      {
+        code: 'conflict',
+      },
+    );
+    expect(rows.get('sim-hold-B1')?.ceilingCents).toBe(5_000);
+    // A hold that is no longer HELD is never reused or rewritten.
+    rows.set('sim-hold-B1', { ...(rows.get('sim-hold-B1') as HoldRecord), status: 'VOIDED' });
+    await expect(source('B1' as BidderId, 5_000 as Cents, 'A1' as AuctionId)).rejects.toMatchObject(
+      {
+        code: 'conflict',
+      },
+    );
+    expect(rows.get('sim-hold-B1')?.status).toBe('VOIDED');
+  });
+
+  it('races two calls for one bidder into a single write', async () => {
+    const rows = new Map<string, HoldRecord>();
+    const put = vi.fn(async (h: HoldRecord) => {
+      await Promise.resolve();
+      rows.set(h.holdId, h);
+    });
+    const store = {
+      get: (id: string) => Promise.resolve(rows.get(id) ?? null),
+      put,
+    } as unknown as HoldStore;
+    const source = createSimHoldSource(store, () => 5);
+    const results = await Promise.allSettled([
+      source('B9' as BidderId, 5_000 as Cents, 'A1' as AuctionId),
+      source('B9' as BidderId, 2_000 as Cents, 'A1' as AuctionId),
+    ]);
+    expect(results.map((r) => r.status)).toEqual(['fulfilled', 'rejected']);
+    expect(put).toHaveBeenCalledTimes(1);
+    expect(rows.get('sim-hold-B9')?.ceilingCents).toBe(5_000);
   });
 
   it('settles a simulated hold without the real gateway', async () => {

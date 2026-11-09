@@ -1,4 +1,5 @@
 import {
+  GavelError,
   ManualClock,
   SeqIds,
   type AuctionConfig,
@@ -177,6 +178,30 @@ describe('judge simulated hold (SRV-34)', () => {
     expect(placed).toEqual([
       { auctionId: room.auctionId, bidderId: who.bidderId, name: 'Ada', ceilingCents: 5_000 },
     ]);
+  });
+
+  it('answers a refused repeat hold with 409 and no second write (#2064, #2065)', async () => {
+    const seen = new Map<string, number>();
+    const sim: SimHolds = {
+      acceptsHolds: () => Promise.resolve(true),
+      place: (i) => {
+        const first = seen.get(i.bidderId);
+        if (first !== undefined && first !== i.ceilingCents) {
+          return Promise.reject(new GavelError('conflict', 'this bidder already has a hold'));
+        }
+        seen.set(i.bidderId, i.ceilingCents);
+        return Promise.resolve(`sim-hold-${i.bidderId}`);
+      },
+    };
+    const { app } = setup({ simHolds: sim });
+    const room = await createRoom(app);
+    const who = await joinRoom(app, room.joinCode);
+    const go = (ceilingCents: number): Promise<Response> =>
+      simHold(app, room.auctionId, who.sessionToken, { ceilingCents, name: 'Ada' });
+    expect((await go(5_000)).status).toBe(200);
+    expect((await go(5_000)).status).toBe(200);
+    expect((await go(2_000)).status).toBe(409);
+    expect(seen.get(who.bidderId)).toBe(5_000);
   });
 
   it('refuses a ceiling that is not offered, a bad name and extra fields', async () => {

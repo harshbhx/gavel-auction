@@ -8,6 +8,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { secretSetFromConfig } from '../src/auth/rotation';
 import { createHttpApp, type HttpApp, type HttpDeps } from '../src/http/app';
+import { MAX_CENTS } from '@gavel/shared';
 import { mountAuctions, titleKey } from '../src/http/auctions';
 import { mountControl } from '../src/http/control';
 import {
@@ -182,6 +183,31 @@ describe('judge rooms: create', () => {
       const res = await post(app, JUDGE_ROOMS_PATH, { body: { fundraiserGoalCents: goal } });
       expect(res.status).toBe(400);
     }
+  });
+
+  it('takes a goal of exactly the money limit and refuses one cent more (#2076)', async () => {
+    const { app, store } = setup({ perIpPerHour: 10, globalPerHour: 10 });
+    const ok = await post(app, JUDGE_ROOMS_PATH, { body: { fundraiserGoalCents: MAX_CENTS } });
+    expect(ok.status).toBe(201);
+    const id = ((await ok.json()) as { auctionId: string }).auctionId;
+    const stored = await store.getJournal(titleKey(id));
+    expect((stored?.value as { fundraiserGoalCents?: number }).fundraiserGoalCents).toBe(MAX_CENTS);
+    const over = await post(app, JUDGE_ROOMS_PATH, {
+      body: { fundraiserGoalCents: MAX_CENTS + 1 },
+    });
+    expect(over.status).toBe(400);
+  });
+
+  it('refuses titles with control, bidi or invisible characters (#2079)', async () => {
+    const { app } = setup({ perIpPerHour: 20, globalPerHour: 20 });
+    for (const title of ['a\u202Eb', 'a\nb', 'a\u0000b', '\u200B', 'a\u2066b', 'a\u200Bb']) {
+      const res = await post(app, JUDGE_ROOMS_PATH, { body: { title } });
+      expect(res.status, JSON.stringify(title)).toBe(400);
+    }
+    const fine = await post(app, JUDGE_ROOMS_PATH, {
+      body: { title: 'Lot A < B, \u{1F468}\u200D\u{1F469}' },
+    });
+    expect(fine.status).toBe(201);
   });
 
   it('marks audit entries as judge-room and keeps the raw address out of them', async () => {

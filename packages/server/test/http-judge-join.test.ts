@@ -15,8 +15,10 @@ import {
   JUDGE_JOIN_DEFAULTS,
   JUDGE_JOIN_PATH,
   JUDGE_ROOMS_PATH,
+  JUDGE_SIM_HOLD_PATH,
   judgeRoomConfig,
   type JudgeRoomsOptions,
+  type SimHolds,
 } from '../src/http/judge-rooms';
 import { requestSources } from '../src/http/node-bridge';
 import { Room, type RoomDeps } from '../src/room/room';
@@ -228,6 +230,32 @@ describe('judge open join (SRV-30): refusals', () => {
     const third = await join(app, { code: room.joinCode, displayName: 'C' });
     expect(third.status).toBe(429);
     expect(((await third.json()) as { error: string }).error).toBe('judge_room_full');
+  });
+
+  it('gives back the seats of sessions that never took a hold, keeps those that did (#2082)', async () => {
+    const sim: SimHolds = {
+      acceptsHolds: () => Promise.resolve(true),
+      place: (i) => Promise.resolve(`sim-hold-${i.bidderId}`),
+    };
+    const { app, clock } = setup({
+      simHolds: sim,
+      join: { maxBiddersPerRoom: 3, attemptsPerIpPerMin: 100 },
+    });
+    const room = await createRoom(app);
+    const a = (await (await join(app, { code: room.joinCode, displayName: 'A' })).json()) as Joined;
+    await join(app, { code: room.joinCode, displayName: 'B' });
+    await join(app, { code: room.joinCode, displayName: 'C' });
+    const hold = await post(app, JUDGE_SIM_HOLD_PATH.replace(':id', room.auctionId), {
+      body: { ceilingCents: 5_000, name: 'A' },
+      headers: { authorization: `Bearer ${a.sessionToken}` },
+    });
+    expect(hold.status).toBe(200);
+    expect((await join(app, { code: room.joinCode, displayName: 'D' })).status).toBe(429);
+    // Two minutes on, B and C (no hold) are gone; A (holds) keeps its seat.
+    clock.set(clock.now() + 2 * 60_000 + 1);
+    expect((await join(app, { code: room.joinCode, displayName: 'D' })).status).toBe(200);
+    expect((await join(app, { code: room.joinCode, displayName: 'E' })).status).toBe(200);
+    expect((await join(app, { code: room.joinCode, displayName: 'F' })).status).toBe(429);
   });
 
   it('a burst of joins cannot overshoot the cap', async () => {

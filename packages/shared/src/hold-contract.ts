@@ -21,6 +21,16 @@ export const BIDDER_NAME_FORBIDDEN_PATTERN = new RegExp(
   'u',
 );
 
+/**
+ * Characters a lot title may never hold: the bidder name rule without the angle brackets (the
+ * screens escape text, so a title may say "A < B"). Control, zero-width and bidi characters are
+ * refused, so a title cannot reverse itself, spoof a look-alike or be invisible.
+ */
+export const LOT_TITLE_FORBIDDEN_PATTERN = new RegExp(
+  BIDDER_NAME_FORBIDDEN_PATTERN.source.split('<>').join(''),
+  'u',
+);
+
 export const HOLD_ERROR_CODES = [
   'ceiling_out_of_range',
   'hold_exists',
