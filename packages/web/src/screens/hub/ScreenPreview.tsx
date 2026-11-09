@@ -17,6 +17,8 @@ export interface ScreenPreviewProps {
   readonly lotTitle: string;
   readonly code: string | null;
   readonly joinUrl: string;
+  /** The hub's own room store, already fed by its live socket. Without it the tile opens its own. */
+  readonly store?: RoomStore | undefined;
 }
 
 /**
@@ -30,8 +32,10 @@ export function ScreenPreview({
   lotTitle,
   code,
   joinUrl,
+  store: sharedStore,
 }: ScreenPreviewProps) {
-  const [store] = useState(() => new RoomStore(roomId));
+  const [ownStore] = useState(() => new RoomStore(roomId));
+  const store = sharedStore ?? ownStore;
   const frame = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.3);
 
@@ -51,7 +55,7 @@ export function ScreenPreview({
   }, []);
 
   useEffect(() => {
-    if (token === null || apiBase === undefined) return undefined;
+    if (sharedStore !== undefined || token === null || apiBase === undefined) return undefined;
     const started = startLiveRoom({
       wsBase: apiBase.replace(/^http/, 'ws'),
       roomId,
@@ -59,7 +63,7 @@ export function ScreenPreview({
       store,
     });
     return () => started?.stop();
-  }, [apiBase, roomId, token, store]);
+  }, [apiBase, roomId, token, store, sharedStore]);
 
   return (
     <div className="gv-hub__preview" role="group" aria-label={t('hub.previewLabel')}>
