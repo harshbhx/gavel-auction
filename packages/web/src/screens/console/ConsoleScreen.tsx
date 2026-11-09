@@ -139,7 +139,11 @@ export function ConsoleScreen({
         <ol reversed>
           {[...stream].reverse().map((b) => (
             <li key={b.seq} style={{ fontVariantNumeric: 'tabular-nums' }}>
-              {b.paddle === null ? null : <span>{t('bid.leader', { n: b.paddle })} </span>}
+              {b.paddle === null ? null : (
+                <span>
+                  {t(b.seq === stream[0]?.seq ? 'bid.rowLeading' : 'bid.row', { n: b.paddle })}{' '}
+                </span>
+              )}
               <span>{formatUsd(b.amount)}</span>
             </li>
           ))}

@@ -70,7 +70,7 @@ The API runs on Render and is served at `api.gavel.dualmindlab.tech`. The hosted
 - **Four PayPal sandbox gates passed** (G0, G1, G2, G4): app and buyers, partial capture with `final_capture`, wallet and guest card holds, and six real webhooks verified.
 - **Settlement inside its target.** Hammer to settled has a p95 of 5.6 s against a 6 s target (20 settlements of 6 holds on the real sandbox, 0 failed). Hammer to captured is p95 3.0 s, tuning toward 2.5 s.
 - **One lot of three holds settled on the real sandbox**, and one in-process crash recovered with a single capture on the winner.
-- **Voice bidding measured on synthetic audio:** wrong accept 0.000 and exact plus recoverable 1.000 on two sets of 24 clips, with every spoken bid behind a confirm prompt. Confirming it in a live room is the next step.
+- **Voice bidding measured on synthetic audio:** wrong accept 0.000 and exact plus recoverable 1.000 on two sets of 24 clips, with every spoken bid behind a confirm prompt. A 120-clip noisy held-out set, measured once, missed the threshold for both providers (wrong accept 0.058 Groq and 0.092 Deepgram against 0.05), so G5 stays partial and a real-room test has not been run.
 - **Security review:** all eight P0 items PASS.
 - **A timed sandbox probe is running** for the honor period (gate G3): day 0 recorded on 7 Nov, final reading about 12 Nov.
 

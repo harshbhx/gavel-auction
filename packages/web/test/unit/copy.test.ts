@@ -131,6 +131,22 @@ describe('JSX literal scan (R-WEB-002)', () => {
   });
 });
 
+describe('one word per concept (copy glossary)', () => {
+  const viewer = entries.filter(([k]) => !k.startsWith('mk.trust.lat'));
+  it('keeps the G5 gate wording in step with docs/GATES.md', () => {
+    for (const key of ['mk.trust.g5.body', 'try.ev.n3d', 'mk.faq.a7'] as const) {
+      expect(en[key], key).not.toMatch(/live-room test/);
+      expect(en[key], key).toMatch(/noisy/);
+    }
+    expect(en['mk.trust.g5.body']).toMatch(/0\.058 and 0\.092 against 0\.05/);
+  });
+
+  it('uses limit, not ceiling, in user-facing text and keeps the hold gesture apart from the hold', () => {
+    expect(viewer.filter(([, v]) => /ceiling/i.test(v) && !/\{ceiling\}/.test(v))).toEqual([]);
+    expect(viewer.filter(([, v]) => /\bHold (to|\d)|\bvoided\b|\bcaptured,/.test(v))).toEqual([]);
+  });
+});
+
 describe('banned wording (R-WEB-120, R-WEB-122)', () => {
   const exempt = new Set<string>([...AFTER_CAPTURE_KEYS, ...Object.keys(wordingExemptions)]);
 
@@ -190,6 +206,7 @@ describe('banned wording (R-WEB-120, R-WEB-122)', () => {
       'ladder.fallback',
       'ladder.invariants.ok',
       'ladder.state.CAPTURED',
+      'mk.trust.lat.body',
       'replay.chapter.bid',
       'screen.settleSummary',
     ]);

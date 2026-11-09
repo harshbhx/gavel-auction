@@ -104,7 +104,6 @@ export function JoinScreen({
           {t('join.notFoundHelp')}
         </p>
         <div className="gv-join__actions">
-          <p className="gv-join__note">{t('join.sandboxNote')}</p>
           <Button size="bid" onClick={() => onNavigate('/')}>
             {t('join.tryAgain')}
           </Button>
