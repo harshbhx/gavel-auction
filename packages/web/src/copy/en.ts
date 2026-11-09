@@ -652,8 +652,17 @@ export const en = {
   'bid.status.won': 'Won',
   'bid.status.lost': 'Lost',
   'bid.status.watching': 'Watching only',
+  'bid.lot.alt':
+    'Illustration of the lot: an engraved plate in a frame, with lines of text and a seal',
+  'bid.lot.fallbackName': 'Lot on the block',
+  'bid.lot.story':
+    'The room holds one lot at a time. Bid with the buttons, the slider or the stepper; your bid never goes above your limit.',
+  'bid.step.down': 'Lower bid by {amount}',
+  'bid.step.up': 'Raise bid by {amount}',
+  'bid.slider': 'Bid amount slider, from {min} to {max}',
   'bid.quick': 'Bid {amount}',
   'bid.plus': '+{amount}',
+  'bid.minus': '-{amount}',
   'bid.custom': 'Your amount',
   'bid.place': 'Place bid',
   'bid.aboveCeiling': 'Bids above {max} are over your limit',
