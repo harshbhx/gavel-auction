@@ -52,14 +52,7 @@ jobs:
           persist-credentials: false
       - name: Check the inputs
         run: |
-          for pair in "web_url=$WEB_URL" "api_url=$API_URL"; do
-            name="${pair%%=*}"
-            value="${pair#*=}"
-            if ! printf '%s' "$value" | grep -Eq '^https://[A-Za-z0-9.-]+(:[0-9]+)?/?$'; then
-              echo "::error title=Bad input::$name must be an https origin with no path, user name or password"
-              exit 1
-            fi
-          done
+          bash scripts/ci/assert-live-host.sh "web_url=$WEB_URL" "api_url=$API_URL"
           echo "GAVEL_LIVE_WEB=${WEB_URL%/}" >> "$GITHUB_ENV"
           echo "GAVEL_LIVE_API=${API_URL%/}" >> "$GITHUB_ENV"
           if [ -z "$GAVEL_LIVE_ADMIN_KEY" ]; then

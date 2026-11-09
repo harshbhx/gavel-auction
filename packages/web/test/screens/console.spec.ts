@@ -155,13 +155,13 @@ test.describe('console: after the hammer', () => {
 
   test('settlement needs review', async ({ page, shoot }) => {
     await consoleRoom(page, { scenario: failed_needs_review, at: 14_500 });
-    await expect(page.getByText(t('console.settlement.needsReview')).first()).toBeVisible();
+    await expect(page.getByText(t('console.settlement.reviewNoRunnerUp')).first()).toBeVisible();
     await shoot('console', 'settlement-needs-review');
   });
 
   test('settlement needs review, full ladder', async ({ page, shoot }) => {
     await consoleRoom(page, { scenario: ladderFailed, at: 5_000 });
-    await expect(page.getByText(t('console.settlement.needsReview')).first()).toBeVisible();
+    await expect(page.getByText(t('console.settlement.reviewNoRunnerUp')).first()).toBeVisible();
     await shoot('console', 'settlement-needs-review-full-ladder');
   });
 });

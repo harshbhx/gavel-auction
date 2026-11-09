@@ -76,7 +76,7 @@ async function toApproval(page: Page): Promise<void> {
 test.describe('register: entry', () => {
   test('invite missing', async ({ page, shoot }) => {
     await openRegister(page, {}, { invite: false });
-    await expect(page.getByText(t('reg.expired')).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: t('reg.noInviteTitle') })).toBeVisible();
     await shoot('register', 'invite-missing');
   });
 
@@ -88,7 +88,7 @@ test.describe('register: entry', () => {
 
   test('invite refused', async ({ page, shoot }) => {
     await openRegister(page, { join: { status: 409, json: { error: 'invite_used' } } });
-    await expect(page.getByText(t('reg.expired')).first()).toBeVisible();
+    await expect(page.getByText(t('reg.inviteFailed')).first()).toBeVisible();
     await shoot('register', 'invite-refused');
   });
 

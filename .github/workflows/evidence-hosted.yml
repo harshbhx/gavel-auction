@@ -99,9 +99,7 @@ jobs:
           check repeats "$REPEATS" 1 5
           check idle_minutes "$IDLE" 15 20
           check webhook_n "$WEBHOOK_N" 20 100
-          if ! printf '%s' "$API_URL" | grep -Eq '^https://[A-Za-z0-9.-]+(:[0-9]+)?/?$'; then
-            echo "::error title=Bad input::api_url must be an https origin with no path"; exit 1
-          fi
+          bash scripts/ci/assert-live-host.sh "api_url=$API_URL"
           echo "API_ORIGIN=${API_URL%/}" >> "$GITHUB_ENV"
       - name: Read the judge smoke runs
         run: node scripts/evidence/hosted.mjs judge --repo "$GITHUB_REPOSITORY" --out "$RUNNER_TEMP/judge.json"

@@ -58,7 +58,7 @@ function LiveVoice({
 function SettlementNotice() {
   const phase = useRoom((s) => s.snapshot?.settlement?.auctionState ?? null);
   if (phase === 'FAILED_NEEDS_REVIEW')
-    return <p role="alert">{t('console.settlement.needsReview')}</p>;
+    return <p role="alert">{t('console.settlement.reviewNoRunnerUp')}</p>;
   if (phase === 'VOIDING' || phase === 'CAPTURING')
     return <p role="status">{t('console.settlement.inProgress')}</p>;
   return null;
@@ -217,6 +217,7 @@ export function LiveConsole({
           )
         }
         onConfirmAnswer={onConfirmAnswer}
+        stoppedHere={stoppedHere}
       />
     </>
   );

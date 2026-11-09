@@ -214,7 +214,7 @@ export function ScreenView({
               data-frozen={offline ? 'true' : 'false'}
               data-soft={soft ? 'true' : 'false'}
             >
-              {formatCountdown(remaining)}
+              {stopped ? t('screen.clockStopped') : formatCountdown(remaining)}
               {offline && <span> {t('screen.clockFrozen')}</span>}
             </p>
           )}

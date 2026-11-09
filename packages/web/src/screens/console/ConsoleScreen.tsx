@@ -38,6 +38,8 @@ export interface ConsoleScreenProps {
   voiceFeed?: ReactNode;
   /** Sends the auctioneer's answer to one confirmation. Without it the queue only lists. */
   onConfirmAnswer?: (confirmId: string, accept: boolean) => void;
+  /** The stop was accepted here before the room frame arrived. */
+  stoppedHere?: boolean;
   /** Forces the layout; defaults to a media query on the viewport width. */
   wide?: boolean;
 }
@@ -66,6 +68,7 @@ export function ConsoleScreen({
   controls,
   voiceFeed,
   onConfirmAnswer,
+  stoppedHere = false,
   wide: forcedWide,
 }: ConsoleScreenProps) {
   const wide = useWide(forcedWide);
@@ -81,7 +84,7 @@ export function ConsoleScreen({
   const audit = useRoom((s) => s.audit, store);
   // The hammer frame closes the lot before any later snapshot says so.
   const status = useRoom((s) => selectors.auctionStatus(s) ?? 'SCHEDULED', store) as AuctionStatus;
-  const stopped = useRoom(selectors.stopped, store);
+  const stopped = useRoom(selectors.stopped, store) || stoppedHere;
   const hammer = useRoom((s) => s.hammer, store);
   const closed = status === 'CLOSING' || status === 'SETTLING' || status === 'DONE';
   const auctionId = useRoom((s) => s.snapshot?.auctionId ?? null, store);
@@ -108,6 +111,7 @@ export function ConsoleScreen({
         </p>
       )}
       <PriceHeader
+        stopped={stopped}
         closed={closed}
         priceCents={price?.currentCents ?? null}
         reserveCents={reserve}

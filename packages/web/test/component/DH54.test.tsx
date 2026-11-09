@@ -140,7 +140,7 @@ describe('public screen route', () => {
     expect(screen.getByTestId('sold').textContent).toContain('SOLD to paddle 7 for $250.00');
     expect(screen.queryByTestId('settle-summary')).toBeNull();
     act(() => roomStore.dispatch({ kind: 'wire', msg: settlement() }));
-    expect(screen.getByTestId('settle-summary').textContent).toBe('1 captured, 2 released');
+    expect(screen.getByTestId('settle-summary').textContent).toBe('1 charged, 2 released');
   });
 });
 

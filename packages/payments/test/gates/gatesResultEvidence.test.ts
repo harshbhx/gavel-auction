@@ -63,8 +63,11 @@ describe('gates-result flags are tied to evidence (R4-G09)', () => {
         `docs/evidence/G1/${m[1] as string}`,
         m[2],
       ]),
+      ...[
+        ...md.matchAll(/(LIVE-SOCKET-(?:groq|deepgram)\.(?:json|md)) \(sha256 ([0-9a-f]{64})/g),
+      ].map((m) => [m[0], `docs/evidence/voice-live-socket/${m[1] as string}`, m[2]]),
     ];
-    expect(recorded.length).toBeGreaterThanOrEqual(19);
+    expect(recorded.length).toBeGreaterThanOrEqual(23);
     for (const m of recorded) {
       const rel = m[1] as string;
       const want = m[2] as string;

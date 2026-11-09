@@ -110,6 +110,17 @@
   color: var(--color-fg);
 }
 
+.gv-console-kill {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: var(--border-width-strong, 3px) solid var(--color-danger);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-fg);
+}
+
 .gv-console-hammer__alt {
   margin: 0;
   font-size: var(--font-size-1);

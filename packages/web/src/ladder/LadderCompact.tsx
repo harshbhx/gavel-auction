@@ -97,7 +97,10 @@ export function LadderCompact({ view }: LadderCompactProps) {
           })}
         </ul>
       )}
-      {final ? (
+      {final && laneless && captured === 0 && view?.winnerPaddle != null ? (
+        // The counts cannot say which SETTLED hold is the winner's: no "released" claim for it.
+        <p role="status">{t('ladder.state.CAPTURING')}</p>
+      ) : final ? (
         <p role="status">{t('screen.settleSummary', { c: captured, r: released })}</p>
       ) : null}
     </div>

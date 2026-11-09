@@ -43,7 +43,12 @@ export function Sold({ outcome, settlement = null, review = false }: SoldProps) 
           {t('screen.settleReview')}
         </p>
       )}
-      {!review && settlement !== null && (
+      {!review && outcome.kind === 'sold' && settlement !== null && settlement.captured === 0 && (
+        <p className="gv-screen__settle" data-testid="settle-pending" role="status">
+          {t('ladder.state.CAPTURING')}
+        </p>
+      )}
+      {!review && settlement !== null && (outcome.kind !== 'sold' || settlement.captured > 0) && (
         <p className="gv-screen__settle tabular" data-testid="settle-summary">
           {t('screen.settleSummary', { c: settlement.captured, r: settlement.released })}
         </p>
