@@ -318,3 +318,89 @@ describe('round 3 blocking fixes (RT3)', () => {
     expect(readFileSync(file, 'utf8').split('\n')).toHaveLength(lines.length);
   });
 });
+
+describe('bounded caches (#2073)', () => {
+  const entryFor = (auctionId: Ulid, seq: number, prev: string): LedgerEntry => ({
+    ...entry(seq, prev),
+    auctionId,
+    hash: `${auctionId.slice(-4)}${seq}`.padEnd(64, '0'),
+  });
+
+  it('caches at most maxCached ledgers and re-reads an evicted one from its file intact', async () => {
+    const dir = freshDir();
+    const store = new FileLedgerStore(dir, 3);
+    const ids = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6'].map(pad);
+    const heads = new Map<string, string>();
+    for (const id of ids) {
+      const e1 = entryFor(id, 1, GENESIS_PREV);
+      const e2 = entryFor(id, 2, e1.hash);
+      await store.append(id, [e1, e2], 0);
+      heads.set(id, e2.hash);
+      expect(store.cachedLedgers).toBeLessThanOrEqual(3);
+    }
+    expect(store.cachedLedgers).toBe(3);
+    // The first ledger was evicted: its head and entries come back from the file, unchanged,
+    // and it still extends the chain.
+    expect(await store.head(ids[0] as Ulid)).toEqual({ seq: 2, hash: heads.get(ids[0] as string) });
+    const e3 = entryFor(ids[0] as Ulid, 3, heads.get(ids[0] as string) as string);
+    await store.append(ids[0] as Ulid, [e3], 2);
+    expect((await store.read(ids[0] as Ulid, 1)).map((e) => e.seq)).toEqual([1, 2, 3]);
+    expect(store.cachedLedgers).toBeLessThanOrEqual(3);
+    // Nothing was removed from disk.
+    expect(readdirSync(dir).filter((f) => f.endsWith('.ledger.jsonl'))).toHaveLength(6);
+    expect((await new FileLedgerStore(dir).read(ids[0] as Ulid, 1)).map((e) => e.seq)).toEqual([
+      1, 2, 3,
+    ]);
+  });
+
+  it('still refuses a stale head on an evicted ledger', async () => {
+    const store = new FileLedgerStore(freshDir(), 1);
+    const a = pad('M1');
+    const b = pad('M2');
+    const a1 = entryFor(a, 1, GENESIS_PREV);
+    await store.append(a, [a1], 0);
+    await store.append(b, [entryFor(b, 1, GENESIS_PREV)], 0);
+    await expect(store.append(a, [entryFor(a, 2, a1.hash)], 0)).rejects.toThrow();
+    await store.append(a, [entryFor(a, 2, a1.hash)], 1);
+    expect((await store.head(a))?.seq).toBe(2);
+  });
+
+  it('forgets expired token ids on its own and keeps live ones and their answers', async () => {
+    let now = 0;
+    const s = new MemoryStore(() => now);
+    for (let i = 0; i < 600; i += 1) await s.consumeJti(`old${i}` as Jti, 100);
+    await s.denyJti('deny-old' as Jti, 100 as EpochMs);
+    await s.consumeJti('live' as Jti, 100_000);
+    await s.denyJti('deny-live' as Jti, 100_000 as EpochMs);
+    now = 1000;
+    expect(s.pruneExpiredTokens()).toBe(601);
+    expect(s.pruneExpiredTokens()).toBe(0);
+    expect(await s.consumeJti('live' as Jti, 100)).toBe(false);
+    expect(await s.consumeJti('old0' as Jti, 100)).toBe(true);
+    expect(await s.isDenied('deny-live' as Jti)).toBe(true);
+    expect(await s.isDenied('deny-old' as Jti)).toBe(false);
+  });
+
+  it('sweeps expired token ids by itself as writes come in', async () => {
+    let now = 0;
+    const s = new MemoryStore(() => now);
+    for (let i = 0; i < 500; i += 1) await s.consumeJti(`a${i}` as Jti, 10);
+    now = 100;
+    for (let i = 0; i < 600; i += 1) await s.consumeJti(`b${i}` as Jti, 10_000);
+    // The first 500 are expired and were swept by the periodic pass.
+    expect(s.pruneExpiredTokens()).toBe(0);
+  });
+
+  it('appends many batches to one room log without losing order', async () => {
+    const s = new MemoryStore();
+    const au = new SeqIds().mint<'AuctionId'>() as AuctionId;
+    for (let i = 0; i < 300; i += 1) {
+      await s.appendEvents(au, i, [
+        { type: 'settle_requested', auctionId: au, seq: i + 1, ts: 1 as EpochMs } as RoomEvent,
+      ]);
+    }
+    expect(await s.lastSeq(au)).toBe(300);
+    expect((await s.readEvents(au, 299, 10)).map((e) => e.seq)).toEqual([299, 300]);
+    expect(await s.listAuctions()).toEqual([au]);
+  });
+});

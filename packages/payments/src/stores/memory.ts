@@ -39,6 +39,8 @@ export interface JournalSnapshot {
 
 export interface WebhookSnapshot {
   events: Record<string, StoredWebhook>;
+  /** Ids of processed events dropped by prune(), oldest first, kept so a replay is still a duplicate. */
+  pruned?: string[];
 }
 
 export interface HoldSnapshot {
@@ -63,6 +65,11 @@ export class MemoryJournalStore implements JournalStore {
   constructor(
     initial?: JournalSnapshot,
     private readonly onChange?: (s: JournalSnapshot) => void,
+    /**
+     * When false, a lease change does not call `onChange`: a lease is process-local and a
+     * durable store does not carry it over, so writing it only costs a full rewrite.
+     */
+    private readonly persistLeases = true,
   ) {
     if (initial !== undefined) {
       for (const [k, v] of Object.entries(initial.journals)) this.journals.set(k, v);
@@ -125,6 +132,7 @@ export class MemoryJournalStore implements JournalStore {
     const cur = this.leases.get(auctionId);
     if (cur !== undefined && cur.owner !== owner && cur.expiresAtMs > nowMs) return false;
     this.leases.set(auctionId, { owner, expiresAtMs: nowMs + ttlMs });
+    if (!this.persistLeases) return true;
     try {
       this.changed();
     } catch (e) {
@@ -139,6 +147,7 @@ export class MemoryJournalStore implements JournalStore {
     const cur = this.leases.get(auctionId);
     if (cur === undefined || cur.owner !== owner) return;
     this.leases.delete(auctionId);
+    if (!this.persistLeases) return;
     try {
       this.changed();
     } catch (e) {
@@ -148,25 +157,44 @@ export class MemoryJournalStore implements JournalStore {
   }
 }
 
+/** How many pruned event ids are remembered for dedupe. */
+export const MAX_PRUNED_WEBHOOK_IDS = 20_000;
+
 /**
  * In-memory WebhookEventStore. An "orphan" is an event parked until a time and
  * not yet processed; listOrphans returns those still inside their window
  * (parkedUntilMs > nowMs) so the sweep can retry them.
+ *
+ * Unprocessed events are also tracked in a set, so the sweep reads only those and
+ * not the whole history. prune() drops processed events past a retention window
+ * and remembers their ids (bounded) so a late redelivery is still a duplicate.
  */
 export class MemoryWebhookEventStore implements WebhookEventStore {
   private events = new Map<string, StoredWebhook>();
+  private unprocessed = new Set<string>();
+  /** Insertion ordered, so the oldest tombstone is the first key. */
+  private pruned = new Set<string>();
 
   constructor(
     initial?: WebhookSnapshot,
     private readonly onChange?: (s: WebhookSnapshot) => void,
   ) {
     if (initial !== undefined) {
-      for (const [k, v] of Object.entries(initial.events)) this.events.set(k, clone(v));
+      for (const [k, v] of Object.entries(initial.events)) {
+        this.events.set(k, clone(v));
+        if (v.result === undefined) this.unprocessed.add(k);
+      }
+      for (const id of initial.pruned ?? []) this.pruned.add(id);
     }
   }
 
   snapshot(): WebhookSnapshot {
-    return { events: Object.fromEntries([...this.events].map(([k, v]) => [k, clone(v)])) };
+    const snap: WebhookSnapshot = {
+      events: Object.fromEntries([...this.events].map(([k, v]) => [k, clone(v)])),
+    };
+    // Omitted while empty so files written before pruning existed keep their shape.
+    if (this.pruned.size > 0) snap.pruned = [...this.pruned];
+    return snap;
   }
 
   private changed(): void {
@@ -174,12 +202,14 @@ export class MemoryWebhookEventStore implements WebhookEventStore {
   }
 
   async insertIfAbsent(e: StoredWebhook): Promise<boolean> {
-    if (this.events.has(e.id)) return false;
+    if (this.events.has(e.id) || this.pruned.has(e.id)) return false;
     this.events.set(e.id, clone(e));
+    if (e.result === undefined) this.unprocessed.add(e.id);
     try {
       this.changed();
     } catch (err) {
       this.events.delete(e.id);
+      this.unprocessed.delete(e.id);
       throw err;
     }
     return true;
@@ -202,41 +232,84 @@ export class MemoryWebhookEventStore implements WebhookEventStore {
   /** Swaps an event and persists; a failed write restores the previous event. */
   private replaceEvent(id: string, previous: StoredWebhook, next: StoredWebhook): void {
     this.events.set(id, next);
+    if (next.result === undefined) this.unprocessed.add(id);
+    else this.unprocessed.delete(id);
     try {
       this.changed();
     } catch (e) {
       this.events.set(id, previous);
+      if (previous.result === undefined) this.unprocessed.add(id);
+      else this.unprocessed.delete(id);
       throw e;
     }
   }
 
+  private unprocessedEvents(): StoredWebhook[] {
+    const out: StoredWebhook[] = [];
+    for (const id of this.unprocessed) {
+      const e = this.events.get(id);
+      if (e !== undefined) out.push(e);
+    }
+    return out;
+  }
+
   async listOrphans(nowMs: number): Promise<StoredWebhook[]> {
-    return [...this.events.values()]
-      .filter(
-        (e) => e.result === undefined && e.parkedUntilMs !== undefined && e.parkedUntilMs > nowMs,
-      )
+    return this.unprocessedEvents()
+      .filter((e) => e.parkedUntilMs !== undefined && e.parkedUntilMs > nowMs)
       .sort((a, b) => a.receivedAtMs - b.receivedAtMs || (a.id < b.id ? -1 : 1))
       .map(clone);
   }
 
   async listUnprocessed(): Promise<StoredWebhook[]> {
-    return [...this.events.values()]
-      .filter((e) => e.result === undefined)
+    return this.unprocessedEvents()
       .sort((a, b) => a.receivedAtMs - b.receivedAtMs || (a.id < b.id ? -1 : 1))
       .map(clone);
   }
+
+  /**
+   * Drops processed events received before `beforeMs` and remembers their ids (at most
+   * MAX_PRUNED_WEBHOOK_IDS, oldest forgotten first) so a redelivery is still refused as a
+   * duplicate. An event without a result is never dropped. Returns how many were dropped;
+   * a failed write puts everything back.
+   */
+  async prune(beforeMs: number): Promise<number> {
+    const drop: StoredWebhook[] = [];
+    for (const e of this.events.values()) {
+      if (e.result !== undefined && e.receivedAtMs < beforeMs) drop.push(e);
+    }
+    if (drop.length === 0) return 0;
+    const prevPruned = new Set(this.pruned);
+    for (const e of drop) {
+      this.events.delete(e.id);
+      this.pruned.add(e.id);
+    }
+    while (this.pruned.size > MAX_PRUNED_WEBHOOK_IDS) {
+      const oldest = this.pruned.values().next().value as string;
+      this.pruned.delete(oldest);
+    }
+    try {
+      this.changed();
+    } catch (err) {
+      for (const e of drop) this.events.set(e.id, e);
+      this.pruned = prevPruned;
+      throw err;
+    }
+    return drop.length;
+  }
 }
 
-/** In-memory HoldStore. */
+/** In-memory HoldStore, with indexes by authorization id and by auction. */
 export class MemoryHoldStore implements HoldStore {
   private holds = new Map<string, HoldRecord>();
+  private byAuth = new Map<string, Set<string>>();
+  private byAuctionIdx = new Map<string, Set<string>>();
 
   constructor(
     initial?: HoldSnapshot,
     private readonly onChange?: (s: HoldSnapshot) => void,
   ) {
     if (initial !== undefined) {
-      for (const [k, v] of Object.entries(initial.holds)) this.holds.set(k, clone(v));
+      for (const [k, v] of Object.entries(initial.holds)) this.setHold(k, clone(v));
     }
   }
 
@@ -244,38 +317,92 @@ export class MemoryHoldStore implements HoldStore {
     return { holds: Object.fromEntries([...this.holds].map(([k, v]) => [k, clone(v)])) };
   }
 
+  /** Stores a record and keeps both indexes in step, including when its keys changed. */
+  private setHold(holdId: string, h: HoldRecord): void {
+    this.removeHold(holdId);
+    this.holds.set(holdId, h);
+    addTo(this.byAuctionIdx, h.auctionId, holdId);
+    if (h.authId !== undefined) addTo(this.byAuth, h.authId, holdId);
+  }
+
+  private removeHold(holdId: string): void {
+    const cur = this.holds.get(holdId);
+    if (cur === undefined) return;
+    this.holds.delete(holdId);
+    removeFrom(this.byAuctionIdx, cur.auctionId, holdId);
+    if (cur.authId !== undefined) removeFrom(this.byAuth, cur.authId, holdId);
+  }
+
   async get(holdId: string): Promise<HoldRecord | null> {
     const h = this.holds.get(holdId);
     return h === undefined ? null : clone(h);
   }
 
+  private auctionHolds(auctionId: string): HoldRecord[] {
+    const out: HoldRecord[] = [];
+    for (const id of this.byAuctionIdx.get(auctionId) ?? []) {
+      const h = this.holds.get(id);
+      if (h !== undefined) out.push(h);
+    }
+    return out;
+  }
+
   /** Newest hold (by createdAtMs) of the bidder in the auction, or null. */
   async byBidder(auctionId: string, bidderId: string): Promise<HoldRecord | null> {
     let best: HoldRecord | null = null;
-    for (const h of this.holds.values()) {
-      if (h.auctionId !== auctionId || h.bidderId !== bidderId) continue;
+    for (const h of this.auctionHolds(auctionId)) {
+      if (h.bidderId !== bidderId) continue;
       if (best === null || h.createdAtMs > best.createdAtMs) best = h;
+    }
+    return best === null ? null : clone(best);
+  }
+
+  /** The hold whose current `authId` is the given one (the oldest when several share it), or null. */
+  async byAuthId(authId: string): Promise<HoldRecord | null> {
+    let best: HoldRecord | null = null;
+    for (const id of this.byAuth.get(authId) ?? []) {
+      const h = this.holds.get(id);
+      if (h === undefined) continue;
+      if (
+        best === null ||
+        h.createdAtMs < best.createdAtMs ||
+        (h.createdAtMs === best.createdAtMs && h.holdId < best.holdId)
+      ) {
+        best = h;
+      }
     }
     return best === null ? null : clone(best);
   }
 
   async put(h: HoldRecord): Promise<void> {
     const before = this.holds.get(h.holdId);
-    this.holds.set(h.holdId, clone(h));
+    this.setHold(h.holdId, clone(h));
     try {
       this.onChange?.(this.snapshot());
     } catch (e) {
-      if (before === undefined) this.holds.delete(h.holdId);
-      else this.holds.set(h.holdId, before);
+      if (before === undefined) this.removeHold(h.holdId);
+      else this.setHold(h.holdId, before);
       throw e;
     }
   }
 
   /** Ordered by createdAtMs, then holdId. */
   async listByAuction(auctionId: string): Promise<HoldRecord[]> {
-    return [...this.holds.values()]
-      .filter((h) => h.auctionId === auctionId)
+    return this.auctionHolds(auctionId)
       .sort((a, b) => a.createdAtMs - b.createdAtMs || (a.holdId < b.holdId ? -1 : 1))
       .map(clone);
   }
+}
+
+function addTo(m: Map<string, Set<string>>, key: string, id: string): void {
+  let set = m.get(key);
+  if (set === undefined) m.set(key, (set = new Set()));
+  set.add(id);
+}
+
+function removeFrom(m: Map<string, Set<string>>, key: string, id: string): void {
+  const set = m.get(key);
+  if (set === undefined) return;
+  set.delete(id);
+  if (set.size === 0) m.delete(key);
 }

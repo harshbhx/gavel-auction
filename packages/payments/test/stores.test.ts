@@ -1,6 +1,6 @@
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
   FileHoldStore,
@@ -107,5 +107,124 @@ describe('file stores survive a restart', () => {
     const raw = s.snapshot().journals['a1'] ?? '';
     expect(raw.startsWith('{"auctionId":"a1"')).toBe(true);
     expect(raw).not.toContain(' ');
+  });
+});
+
+describe('webhook retention (#2086)', () => {
+  const ev = (id: string, receivedAtMs: number) => ({
+    id,
+    eventType: 'X',
+    receivedAtMs,
+    body: '{}',
+  });
+
+  it('prune drops processed events past the cutoff, never unprocessed ones', async () => {
+    const s = new MemoryWebhookEventStore();
+    await s.insertIfAbsent(ev('old-done', 1));
+    await s.insertIfAbsent(ev('old-open', 2));
+    await s.insertIfAbsent(ev('new-done', 100));
+    await s.markProcessed('old-done', 'ok');
+    await s.markProcessed('new-done', 'ok');
+    expect(await s.prune(50)).toBe(1);
+    expect(Object.keys(s.snapshot().events).sort()).toEqual(['new-done', 'old-open']);
+    expect((await s.listUnprocessed()).map((e) => e.id)).toEqual(['old-open']);
+    expect(await s.prune(50)).toBe(0);
+  });
+
+  it('a pruned id stays a duplicate, also after a restart on a file', async () => {
+    const path = join(freshDir(), 'w.json');
+    const a = new FileWebhookEventStore(path);
+    await a.insertIfAbsent(ev('e1', 1));
+    await a.markProcessed('e1', 'ok');
+    await a.prune(10);
+    expect(await a.insertIfAbsent(ev('e1', 20))).toBe(false);
+    const b = new FileWebhookEventStore(path);
+    expect(Object.keys(b.snapshot().events)).toEqual([]);
+    expect(await b.insertIfAbsent(ev('e1', 20))).toBe(false);
+  });
+
+  it('a failed write on prune puts the events back', async () => {
+    let fail = false;
+    const s = new MemoryWebhookEventStore(undefined, () => {
+      if (fail) throw new Error('disk full');
+    });
+    await s.insertIfAbsent(ev('e1', 1));
+    await s.markProcessed('e1', 'ok');
+    fail = true;
+    await expect(s.prune(10)).rejects.toThrow('disk full');
+    fail = false;
+    expect(Object.keys(s.snapshot().events)).toEqual(['e1']);
+    expect(s.snapshot().pruned).toBeUndefined();
+  });
+});
+
+describe('hold index by authorization id (#2086)', () => {
+  const rec = (holdId: string, authId: string | undefined, auctionId = 'a1') => ({
+    holdId,
+    auctionId,
+    bidderId: 'b1',
+    orderId: `O-${holdId}`,
+    ...(authId === undefined ? {} : { authId }),
+    ceilingCents: 100,
+    status: 'HELD' as const,
+    createdAtMs: 1,
+  });
+
+  it('follows a changed authId and a failed write', async () => {
+    let fail = false;
+    const s = new MemoryHoldStore(undefined, () => {
+      if (fail) throw new Error('disk full');
+    });
+    await s.put(rec('h1', 'A1'));
+    expect((await s.byAuthId('A1'))?.holdId).toBe('h1');
+    await s.put(rec('h1', 'A2'));
+    expect(await s.byAuthId('A1')).toBeNull();
+    expect((await s.byAuthId('A2'))?.holdId).toBe('h1');
+    fail = true;
+    await expect(s.put(rec('h1', 'A3'))).rejects.toThrow('disk full');
+    fail = false;
+    expect(await s.byAuthId('A3')).toBeNull();
+    expect((await s.byAuthId('A2'))?.holdId).toBe('h1');
+    expect(await s.byAuthId('missing')).toBeNull();
+  });
+
+  it('is rebuilt from a saved file and keeps the per-auction listing', async () => {
+    const path = join(freshDir(), 'h.json');
+    const a = new FileHoldStore(path);
+    await a.put(rec('h1', 'A1', 'x'));
+    await a.put(rec('h2', undefined, 'y'));
+    const b = new FileHoldStore(path);
+    expect((await b.byAuthId('A1'))?.holdId).toBe('h1');
+    expect((await b.listByAuction('y')).map((h) => h.holdId)).toEqual(['h2']);
+    expect(await b.listByAuction('nope')).toEqual([]);
+  });
+});
+
+describe('leases are not written to disk (#2070)', () => {
+  it('a file journal store still enforces leases but writes nothing for them', async () => {
+    const path = join(freshDir(), 'j.json');
+    const s = new FileJournalStore(path);
+    expect(await s.acquireLease('a1', 'r1', 1000, 0)).toBe(true);
+    expect(await s.acquireLease('a1', 'r2', 1000, 500)).toBe(false);
+    await s.releaseLease('a1', 'r2');
+    expect(await s.acquireLease('a1', 'r2', 1000, 600)).toBe(false);
+    await s.releaseLease('a1', 'r1');
+    expect(await s.acquireLease('a1', 'r2', 1000, 600)).toBe(true);
+    expect(readdirSync(dirname(path))).toEqual([]);
+  });
+
+  it('a journal write is still durable before the call returns', async () => {
+    const path = join(freshDir(), 'j.json');
+    const s = new FileJournalStore(path);
+    await s.create(makeJournal('a1', 0));
+    expect(Object.keys(JSON.parse(readFileSync(path, 'utf8')).journals)).toEqual(['a1']);
+  });
+
+  it('the in-memory store still reports lease changes unless told not to', async () => {
+    const calls: number[] = [];
+    const s = new MemoryJournalStore(undefined, () => calls.push(1));
+    await s.acquireLease('a1', 'r1', 1000, 0);
+    await s.releaseLease('a1', 'r1');
+    expect(calls).toHaveLength(2);
   });
 });

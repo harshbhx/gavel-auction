@@ -77,11 +77,18 @@ export interface WebhookEventStore {
    * processes these so an event stored just before a crash is not lost (R-PAY-094).
    */
   listUnprocessed(): Promise<StoredWebhook[]>;
+  /**
+   * Optional retention: drops processed events received before `beforeMs`, keeping their ids
+   * so a redelivery is still a duplicate. Never drops an event without a result.
+   */
+  prune?(beforeMs: number): Promise<number>;
 }
 
 export interface HoldStore {
   get(holdId: string): Promise<HoldRecord | null>;
   byBidder(auctionId: string, bidderId: string): Promise<HoldRecord | null>;
+  /** Optional index lookup: the hold whose current authorization id this is, or null. */
+  byAuthId?(authId: string): Promise<HoldRecord | null>;
   put(h: HoldRecord): Promise<void>;
   listByAuction(auctionId: string): Promise<HoldRecord[]>;
 }

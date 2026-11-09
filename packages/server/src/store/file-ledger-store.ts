@@ -33,6 +33,9 @@ function fsyncDir(dir: string): void {
   }
 }
 
+/** Ledgers kept in memory at once; the rest are read back from their file on use. */
+export const DEFAULT_MAX_CACHED_LEDGERS = 256;
+
 /** The ledger file is damaged somewhere before its tail; it is left as found. */
 export class LedgerCorruption extends Error {
   constructor(
@@ -58,10 +61,34 @@ export class LedgerCorruption extends Error {
  * journal is saved only after LOT_HAMMERED is in the ledger.
  */
 export class FileLedgerStore implements LedgerStore {
+  /** Insertion ordered by last use, so the first key is the least recently used. */
   private readonly ledgers = new Map<string, LedgerEntry[]>();
 
-  constructor(private readonly dir: string) {
+  /**
+   * `maxCached` bounds how many auctions' entries stay in memory. The file is the source of
+   * truth and `load` re-reads and re-verifies the whole chain, so dropping a cached ledger
+   * loses nothing and never touches a file.
+   */
+  constructor(
+    private readonly dir: string,
+    private readonly maxCached = DEFAULT_MAX_CACHED_LEDGERS,
+  ) {
     mkdirSync(dir, { recursive: true });
+  }
+
+  /** Marks a cached ledger as just used and evicts the least recently used beyond the cap. */
+  private remember(auctionId: string, entries: LedgerEntry[]): void {
+    this.ledgers.delete(auctionId);
+    this.ledgers.set(auctionId, entries);
+    while (this.ledgers.size > Math.max(1, this.maxCached)) {
+      const oldest = this.ledgers.keys().next().value as string;
+      this.ledgers.delete(oldest);
+    }
+  }
+
+  /** How many ledgers are cached in memory (for tests and metrics). */
+  get cachedLedgers(): number {
+    return this.ledgers.size;
   }
 
   private path(auctionId: string): string {
@@ -71,7 +98,10 @@ export class FileLedgerStore implements LedgerStore {
 
   private load(auctionId: string): LedgerEntry[] {
     const cached = this.ledgers.get(auctionId);
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {
+      this.remember(auctionId, cached);
+      return cached;
+    }
     let text = '';
     try {
       text = readFileSync(this.path(auctionId), 'utf8');
@@ -107,7 +137,7 @@ export class FileLedgerStore implements LedgerStore {
     // Cut the unfinished write off so the next batch starts on a fresh line.
     if (tail !== '')
       truncateSync(this.path(auctionId), Buffer.byteLength(text) - Buffer.byteLength(tail));
-    this.ledgers.set(auctionId, entries);
+    this.remember(auctionId, entries);
     return entries;
   }
 
