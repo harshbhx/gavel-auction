@@ -369,8 +369,7 @@ describe('hold routes in the production composition (HRD-69, issue 1074)', () =>
 
       // The same request again hands back the same order.
       const again = await hold(60000);
-      expect(again.order?.holdId).toBe(raise.order?.holdId);
-      expect(again.order?.orderId).toBe(raise.order?.orderId);
+      expect(again.order).toEqual(raise.order);
 
       // Approving, with or without a name, twice: one raise, one void.
       for (let i = 0; i < 2; i += 1) {
@@ -444,7 +443,8 @@ describe('hold routes in the production composition (HRD-69, issue 1074)', () =>
       // Asking for the same amount again hands back the same order, not hold_exists.
       const again = await hold(60000);
       expect(again.created.status).toBe(201);
-      expect(again.order).toEqual(raise.order);
+      expect(again.order?.holdId).toBe(raise.order?.holdId);
+      expect(again.order?.orderId).toBe(raise.order?.orderId);
       expect((await again.approve?.())?.status).toBe(200);
       // The room switched and the old authorization was voided; one authorization is live.
       expect(paypal.core.calls.filter((c) => c.op === 'void')).toHaveLength(1);
