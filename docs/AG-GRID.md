@@ -59,6 +59,10 @@ The `ui-screens` CI artifact has the view `grid`: ledger lab (intact, scrolled, 
 
 ![Holds and settlement states with a pinned totals row](assets/ag-grid/holds-desktop.png)
 
+![Ledger lab opened from a shared link: the event filter is set to Hammer and the URL carries it](assets/ag-grid/ledger-filtered-link-desktop.png)
+
+![After Verify chain: every row reached is marked in green with the words Linked and intact, and the line above says what was checked](assets/ag-grid/ledger-verified-desktop.png)
+
 ![Ledger lab on a phone: one card per entry, no sideways scroll](assets/ag-grid/ledger-phone.png)
 
 ## Tests
