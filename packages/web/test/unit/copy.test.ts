@@ -138,7 +138,21 @@ describe('one word per concept (copy glossary)', () => {
       expect(en[key], key).not.toMatch(/live-room test/);
       expect(en[key], key).toMatch(/noisy/);
     }
-    expect(en['mk.trust.g5.body']).toMatch(/0\.058 and 0\.092 against 0\.05/);
+    expect(en['mk.trust.g5.body']).toMatch(
+      /0\.058 \(Groq\) and 0\.092 \(Deepgram\) against a target of 0\.05/,
+    );
+  });
+
+  it('states measured numbers against targets, without failure words, on the trust copy', () => {
+    for (const key of [
+      'mk.trust.g5.body',
+      'try.ev.n3d',
+      'mk.faq.a7',
+      'mk.trust.lat.body',
+    ] as const) {
+      expect(en[key], key).not.toMatch(/\b(failed|missed|not met|miss)\b/i);
+      expect(en[key], key).toMatch(/against a target of/);
+    }
   });
 
   it('uses limit, not ceiling, in user-facing text and keeps the hold gesture apart from the hold', () => {

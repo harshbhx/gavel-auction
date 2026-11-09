@@ -97,13 +97,13 @@ export const en = {
   'mk.trust.g4.body': 'Six real sandbox webhook deliveries passed signature verification.',
   'mk.trust.g5.title': 'G5 Speech accuracy',
   'mk.trust.g5.body':
-    'Partial. No wrong accepts on 24 clean synthetic clips. A 120-clip noisy synthetic set, measured once, missed the line for both providers (wrong accept 0.058 and 0.092 against 0.05). Spoken bids always ask for confirmation.',
+    'Partial. Live voice run: 24 of 24 synthetic clips answered, with 0 bids accepted without a confirm. Measured once on a 120-clip noisy held-out set: wrong accept 0.058 (Groq) and 0.092 (Deepgram) against a target of 0.05. Voice bids always ask for a confirm.',
   'mk.trust.sim.title': '30-day run',
   'mk.trust.sim.body':
     'Thirty days of auctions on a fake clock, with the ledger balanced to the cent. A simulation, not a sandbox result.',
   'mk.trust.lat.title': 'Latency',
   'mk.trust.lat.body':
-    'Measured on the PayPal sandbox over 49 settlements, not on the hosted demo rooms. Hammer to captured p95 3.8 s and hammer to settled p95 6.9 s, both above the targets (2.5 s and 6 s). Whether to change the targets or the code is an open owner decision.',
+    'Measured on the PayPal sandbox over 49 settlements, not on the hosted demo rooms: hammer to captured p95 3.8 s against a target of 2.5 s, hammer to settled p95 6.9 s against a target of 6 s. Whether to change the targets or the code is an open owner decision.',
   'mk.trust.note': 'Sandbox only. Nothing on this site moved real money.',
   'mk.aud.title': 'Who it is for',
   'mk.aud.auc.title': 'Auctioneers',
@@ -208,7 +208,7 @@ export const en = {
     'No. GAVEL runs on the PayPal sandbox, so use sandbox test accounts only. Do not enter a personal PayPal login.',
   'mk.faq.q7': 'What comes next?',
   'mk.faq.a7':
-    'The honor period test (G3) is a timed probe with its final reading due 12 Nov, and voice accuracy (G5) is partial: a noisy held-out set missed its threshold, and a real-room test has not been run. The gate log above lists both.',
+    'The honor period test (G3) is a timed probe with its final reading about 12 Nov. Voice accuracy (G5) is partial: the live voice run answered 24 of 24 clips with 0 bids accepted without a confirm, and the noisy held-out set measured wrong accept 0.058 and 0.092 against a target of 0.05. No real-room test yet. The gate log above lists both.',
   'mk.faq.q8': 'Is the code open?',
   'mk.faq.a8':
     'Yes. The source is on GitHub under the MIT license, and the docs explain how an auction settles.',
@@ -390,7 +390,7 @@ export const en = {
     'A real probe is in progress since 7 Nov, final reading about 12 Nov. No result yet. The 30-day run is a simulation.',
   'try.ev.n3': 'G5: voice accuracy',
   'try.ev.n3d':
-    'Partial. No wrong accepts on 24 clean synthetic clips, which is not a pass. A 120-clip noisy held-out set, measured once, missed the threshold for both providers. Spoken bids always ask for confirmation.',
+    'Partial. Live voice run: 24 of 24 synthetic clips answered, with 0 bids accepted without a confirm. Measured once on a 120-clip noisy held-out set: wrong accept 0.058 (Groq) and 0.092 (Deepgram) against a target of 0.05. Voice bids always ask for a confirm.',
   'try.ev.n4': 'Whole auction on the hosted site',
   'try.ev.n4d':
     'Settlement of a whole auction has not been run end to end on the hosted site. Tests cover it, a recorded run does not.',
