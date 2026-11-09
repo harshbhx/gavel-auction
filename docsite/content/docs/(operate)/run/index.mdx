@@ -10,11 +10,11 @@ Needs Node 22 and npm. No PayPal account is needed for the default run.
 
 ```bash
 npm ci
-PUBLIC_URL=http://localhost:8080 TOKEN_SECRET=dev-token-secret ADMIN_KEY=dev-admin-key \
+PUBLIC_URL=http://localhost:8080 TOKEN_SECRET="$(openssl rand -hex 16)" ADMIN_KEY="$(openssl rand -hex 12)" \
   PAYMENTS=fake PAYPAL_ENV=sandbox npm start -w @gavel/server
 ```
 
-With `PAYMENTS=fake` the server uses the built-in <Term id="fake-paypal">fake PayPal</Term> and needs no network access. Production mode refuses fake payments. All server settings are in [configuration](/docs/reference/configuration).
+With `PAYMENTS=fake` the server uses the built-in <Term id="fake-paypal">fake PayPal</Term> and needs no network access. Production mode refuses fake payments. All server settings are in [configuration](/docs/reference/configuration). The two `openssl` commands generate throwaway values that meet the server minimums (32 bytes and 24 characters); any strings of that length work. To run the web app against this server, copy `packages/web/.env.example` to `packages/web/.env.local` and run `npm run dev -w @gavel/web`.
 
 ## Tests and checks
 

@@ -1,7 +1,7 @@
 name: report
 # Builds the quality report for a commit on main after the ci workflow succeeded (R-QA-032),
 # and attaches it as the quality-report artifact. The folder infra/pages/quality holds the page
-# builder; the hosted site serves the artifact's index.html at /quality. The page carries the commit
+# builder; the artifact's index.html is not served from the hosted site. The page carries the commit
 # sha, so it can be matched to GET /version of the deploy.
 on:
   workflow_run:

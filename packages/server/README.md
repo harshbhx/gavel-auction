@@ -8,7 +8,7 @@ From the repo root:
 
 ```
 npm ci
-PUBLIC_URL=http://localhost:8080 TOKEN_SECRET=dev-token-secret ADMIN_KEY=dev-admin-key \
+PUBLIC_URL=http://localhost:8080 TOKEN_SECRET="$(openssl rand -hex 16)" ADMIN_KEY="$(openssl rand -hex 12)" \
   PAYMENTS=fake PAYPAL_ENV=sandbox npm start -w @gavel/server
 ```
 
@@ -16,7 +16,7 @@ Production runs `npm run build -w @gavel/server` (esbuild bundle to `dist/main.j
 
 Health: `GET /healthz` (process is up), `GET /readyz` (the room store answers a ping; payments are not probed), `GET /metrics` (JSON snapshot).
 
-The booted process serves the ops, webhook and admin routes (`/admin/export?auction=<id>`, `/admin/replay-bundle`, `/warmup`, `/metrics`, `/ops/*`, `/webhooks/paypal`). The auction, invite, join, control, read and token routes under `/api/` are mounted by `composeServer`, so `main.ts` serves them (create needs `x-admin-key`); the scripted `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake` (config refuses that combination under production-like settings), and the judge room routes (`/api/judge/*`) are mounted by `composeServer` too. Every route but `/healthz`, `/readyz` and the webhook is limited per client by `RATE_HTTP_*`; set `TRUSTED_PROXY_HOPS` to the number of proxies in front of the host (1 on Render) so the client address is read from `x-forwarded-for`.
+The booted process serves the ops, webhook and admin routes (`/admin/export?auction=<id>`, `/admin/replay-bundle`, `/warmup`, `/metrics`, `/ops/*`, `/webhooks/paypal`). The auction, invite, join, control, read and token routes under `/api/` are mounted by `composeServer`, so `main.ts` serves them (create needs `x-admin-key`); the scripted `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake` (config refuses that combination under production-like settings), and the judge room routes (`/api/judge/*`) are mounted by `composeServer` too. Every route but `/healthz`, `/readyz` and the webhook is limited per client by `RATE_HTTP_*`; set `TRUSTED_PROXY_HOPS` to the number of proxies in front of the host so the client address is read from `x-forwarded-for`: 2 on Render (Render's own Cloudflare edge plus Render's proxy; checked once on 9 Nov 2026, see `docs/evidence/security/SEC-14/`), and 1 behind a single proxy.
 
 ## Configure
 
@@ -27,9 +27,9 @@ Settings come from the process environment (`src/config.ts`).
 | `PORT`                                                          | 8080          | 1 to 65535                                                                              |
 | `PUBLIC_URL`                                                    | required      | absolute URL used in links                                                              |
 | `NODE_ENV`                                                      | development   | `development`, `test`, `production`                                                     |
-| `TOKEN_SECRET`                                                  | required      | signs auctioneer and bidder tokens; 32 bytes or more in production                      |
+| `TOKEN_SECRET`                                                  | required      | signs auctioneer and bidder tokens; 32 bytes or more (waived when `NODE_ENV=test`)      |
 | `TOKEN_SECRET_PREVIOUS`, `TOKEN_SECRET_PREVIOUS_UNTIL`          | unset         | previous secret accepted until the epoch-ms deadline (rotation)                         |
-| `ADMIN_KEY`                                                     | required      | admin access; 24 characters or more in production                                       |
+| `ADMIN_KEY`                                                     | required      | admin access; 24 characters or more (waived when `NODE_ENV=test`)                       |
 | `STORE`                                                         | memory        | `memory`, `file`, `postgres`, `d1`; `memory` needs `ALLOW_MEMORY_STORE=1` in production |
 | `DATA_DIR`                                                      | ./data        | used when `STORE=file`                                                                  |
 | `DATABASE_URL`                                                  | unset         | required when `STORE=postgres`                                                          |

@@ -11,9 +11,9 @@ From `packages/server/src/config.ts` and the deploy guide. The server validates 
 | --- | --- | --- |
 | `PUBLIC_URL` | https URL | Required. A non-local host turns production rules on |
 | `NODE_ENV` | development, test, production | Production refuses fake payments and weak secrets |
-| `TOKEN_SECRET` | string | Required; at least 32 bytes in production |
+| `TOKEN_SECRET` | string | Required; at least 32 bytes (waived only when `NODE_ENV=test`) |
 | `TOKEN_SECRET_PREVIOUS` | string | Optional, for rotation |
-| `ADMIN_KEY` | string | Required; at least 24 characters in production |
+| `ADMIN_KEY` | string | Required; at least 24 characters (waived only when `NODE_ENV=test`) |
 | `STORE` | memory, file, postgres, d1 | Default memory |
 | `DATA_DIR` | path | Default `./data` |
 | `PAYMENTS` | fake, sandbox | Default fake |

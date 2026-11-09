@@ -37,13 +37,13 @@ Along the way, check these parts of the interface (each is covered by tests in C
 - On the big screen, a lot with a fundraiser goal shows a thermometer that counts only captured money.
 - After the hammer the receipt can mint a share link with a QR code, and has a print layout.
 
-For a tour that needs no login, run the web app in development (`npm run dev -w @gavel/web`) and open `/r/demo/screen?scripted=1`; it replays a recorded room in the browser and makes no PayPal calls. Only development builds honour `scripted=1`: on the hosted site a production build ignores it. To try the scripted demo on the hosted site, open `/demo/scripted` (the "Watch the guided tour" link on `/try` goes there): it plays the recorded room in the tab with no server connection. Nothing on this path is a live-money action: the host refuses to start judge rooms unless it is on the PayPal sandbox.
+For a tour that needs no login, run the web app in development (`cp packages/web/.env.example packages/web/.env.local`, then `npm run dev -w @gavel/web`) and open `/r/demo/screen?scripted=1`; it replays a recorded room in the browser and makes no PayPal calls. Only development builds honour `scripted=1`: on the hosted site a production build ignores it. To try the scripted demo on the hosted site, open `/demo/scripted` (the "Watch the guided tour" link on `/try` goes there): it plays the recorded room in the tab with no server connection. Nothing on this path is a live-money action: the host refuses to start judge rooms unless it is on the PayPal sandbox.
 
 ## Five minute path
 
-The table below is TARGET behaviour: steps 1 and 2 need a deployed staging URL (the `JUDGE_URL` repository variable), and until that is configured the nightly smoke fails red (it never reports a skipped pass).
+The table below is the manual path a judge follows by hand. A separate automated check, the nightly smoke, walks the same journey on the public site; its own step numbers (1 to 17) are not the numbers in this table.
 
-The web app is hosted (see `docs/DEMO.md`); the live walkthrough below was run against that URL on 9 Nov 2026 (https://github.com/harshbhx/gavel-auction/actions/runs/42561627128): steps 1 to 15 and 17 (receipts) passed and step 16 (hammer) failed, so the full journey is not yet green (issue #2208, fix PR #2209 in CI); treat the hammer step as intended behaviour until a green run is recorded. `packages/e2e/specs/judge-walkthrough.spec.ts` covers steps 1 and 2 on the fake stack only. The nightly `.github/workflows/judge-smoke.yml` runs that spec against the hosted site and fails when the repository variable `JUDGE_URL` is unset, so a night that tested nothing cannot look like a pass. Steps 3 to 5 have no automated check.
+The web app is hosted (see `docs/DEMO.md`). The nightly `.github/workflows/judge-smoke.yml` runs the live journey walk (the script under `qa/`) in smoke mode against the public domains (workflow inputs `web_url` and `api_url`, defaults `https://gavel.dualmindlab.tech` and `https://api.gavel.dualmindlab.tech`): open `/try`, start a demo room, open the hub, join by code and from the hub link, register with the demo hold, bid from two bidders, close the lot, open the screen and the receipt. One room per run, every step is listed as PASS or FAIL in the job summary, and the job fails when any step fails. The run on 9 Nov 2026 (https://github.com/harshbhx/gavel-auction/actions/runs/42561627128) passed steps 1 to 15 and 17 (receipts) and failed step 16 (hammer); the hammer fix (issue #2208, PR #2209) is merged, and the judge-smoke run list in Actions shows the latest result. Treat the hammer step as intended behaviour until a green run follows. Steps 3 to 5 of the table above are covered by the smoke only through its own steps; the older `packages/e2e/specs/judge-walkthrough.spec.ts` covers steps 1 and 2 on the fake stack.
 
 | Step | Persona    | What to do                                          | Expected outcome                                                                                         |
 | ---- | ---------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
@@ -55,17 +55,17 @@ The web app is hosted (see `docs/DEMO.md`); the live walkthrough below was run a
 
 Where to look afterwards:
 
-- Quality report: `/quality` on the hosted site (built by `.github/workflows/report.yml`); it names the commit it was built from.
-- Version: `GET /version` on the API host returns the deployed commit; it should match the report.
+- Quality report: the `quality-report` artifact of the latest `.github/workflows/report.yml` run in GitHub Actions (https://github.com/harshbhx/gavel-auction/actions/workflows/report.yml); its page names the commit it was built from. It is not served from the hosted site.
+- Version: `GET /version` on the API host returns the deployed commit; compare it with the commit the report names.
 - Audit export: the audit trail link in step 5, and the verification steps below.
 
-Steps 3 and 4 depend on the web UI and are not covered by any automated check; the spec covers steps 1 and 2 only.
+Steps 3 and 4 depend on the web UI; the nightly smoke exercises the hub, join, bid and hammer path, and the spec `judge-walkthrough.spec.ts` covers steps 1 and 2 only.
 
 ## Run the fake-PayPal demo
 
-1. Follow the "Run it" section of `README.md` (Node 22 and npm; `npm ci` first).
+1. Follow the "Quick start" section of `README.md` (Node 22 and npm; run `npm ci` before the server). Its `TOKEN_SECRET` and `ADMIN_KEY` values are generated with `openssl rand`, because the server refuses short ones.
 2. Start the server with `PAYMENTS=fake`. The built-in fake PayPal answers every call, so no network access and no PayPal account are needed. Production mode refuses fake payments.
-3. For the web part, see `README.md` and `docs/DEMO.md` for the current instructions.
+3. For the web part, copy `packages/web/.env.example` to `packages/web/.env.local` and run `npm run dev -w @gavel/web`; `docs/DEMO.md` has the routes to open.
 
 The fake PayPal is a test double. Behaviour seen there says nothing about the real PayPal sandbox; the gate evidence below does.
 
