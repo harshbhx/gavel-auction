@@ -39,4 +39,4 @@ Rule: an item is marked [x] only after it is verified on `main`. An item marked 
 - [x] Gate G2 (card and guest AUTHORIZE) passed on the sandbox: PASS in `docs/GATES.md`.
 - [x] Gate G3 (honor period, validity and reauthorize) is UNVERIFIED: NOT RUN in `docs/GATES.md`.
 - [x] Gate G5 (speech-to-text accuracy on noisy bids) is PARTIAL in `docs/GATES.md`: synthetic, noise-free speech only, fixes chosen on the same clips, no real-room test.
-- [x] The hosted demo is in sandbox mode with temporary storage; a judge cannot start a live room without the operator key, and no whole hosted auction has been recorded (see `docs/DEMO.md`).
+- [x] The hosted demo is in sandbox mode on a 1 GB persistent disk; a judge can start a room without the operator key (the host reports `judgeRooms` and `accepting` at `/api/judge/capabilities`), and no whole hosted auction has been recorded (see `docs/DEMO.md`).

@@ -28,7 +28,7 @@ Live sandbox room (about 3 minutes)
 Notes for testers
 
 - A room lasts about thirty minutes. Do the whole run in one sitting.
-- The hosted API uses temporary storage, so a room can be lost if the host restarts. Start a new demo auction if that happens.
+- The hosted API keeps its data on a 1 GB persistent disk, so a room normally survives a host restart until it expires. If a room is gone anyway, start a new demo auction.
 - If the host is busy or judge rooms are off, the page says so and offers the scripted demo.
 - Voice bidding is partial (synthetic, noise-free test audio only), so a spoken bid always asks for confirmation. Typed and QR bids work without it.
 - Sandbox buyers are US accounts and the auction is in USD.

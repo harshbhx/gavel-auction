@@ -11,7 +11,7 @@ Everything here is PayPal <Term id="sandbox">sandbox</Term> only. The commands r
 
 ### Minutes 0 to 2: the status and the gates
 
-Follow the [two-minute path](/docs/judges/two-minute-path). It gives you the shape: four real passes, one failure with a fallback, one real probe in progress.
+Follow the [two-minute path](/docs/judges/two-minute-path). It gives you the shape: four real passes, one partial result (G5, speech accuracy) with a fallback, one real probe in progress.
 
 </Step>
 <Step>
@@ -66,7 +66,7 @@ Rejected bids are not in the ledger. The server keeps them in the room log only 
 
 ### Minutes 8 to 10: run the fake-PayPal demo and read the open items
 
-1. Follow the "Run it" section of `README.md`. The default run is `npm ci`, then `npm start -w @gavel/server` with `PAYMENTS=fake` and `PAYPAL_ENV=sandbox` (the README lists the other variables, with development values).
+1. Follow the [Run it locally](/docs/run) page (the "Quick start" section of `README.md` has the same command). The default run is `npm ci`, then `npm start -w @gavel/server` with `PAYMENTS=fake` and `PAYPAL_ENV=sandbox`; `TOKEN_SECRET` and `ADMIN_KEY` are generated with `openssl rand`. For the web app, copy `packages/web/.env.example` to `packages/web/.env.local` beforehand.
 2. `PAYMENTS=fake` uses the built-in fake PayPal: no network access and no PayPal account are needed. Production mode refuses fake payments.
 3. The <Term id="scripted-demo">scripted</Term> `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake`.
 
@@ -83,5 +83,5 @@ Then read [Tough questions](/docs/judges/tough-questions) and [Security review](
 | --- | --- |
 | Fresh-clone install, typecheck and tests each week | [`clean-clone.yml`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/clean-clone.yml) and [`scripts/clean-clone-check.mjs`](https://github.com/harshbhx/gavel-auction/blob/main/scripts/clean-clone-check.mjs) |
 | Quality report built from a named commit | [`report.yml`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/report.yml) |
-| Judge walkthrough spec (fake stack, steps 1 and 2) | [`packages/e2e/specs/judge-walkthrough.spec.ts`](https://github.com/harshbhx/gavel-auction/blob/main/packages/e2e/specs/judge-walkthrough.spec.ts), run nightly by [`judge-smoke.yml`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/judge-smoke.yml), which fails red while `JUDGE_URL` is unset |
+| Nightly judge smoke on the public site (steps 1 to 17 of its own) | [`qa/live-redteam/run.mjs`](https://github.com/harshbhx/gavel-auction/blob/main/qa/live-redteam/run.mjs), run nightly by [`judge-smoke.yml`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/judge-smoke.yml) against the public domains (inputs `web_url` and `api_url`); the job fails when any step fails |
 | What was checked before the repo went public | [`docs/PUBLIC-REPO-CHECKLIST.md`](https://github.com/harshbhx/gavel-auction/blob/main/docs/PUBLIC-REPO-CHECKLIST.md) |

@@ -28,7 +28,7 @@ Every page shows a "Sandbox: no real money moves" banner. A room is labelled "Li
 
 ## The scripted tour
 
-Run the web app in development (`npm run dev -w @gavel/web`) and open `/r/demo/screen?scripted=1`. The flag plays a recorded scenario in the browser with no server and no PayPal calls, and the provenance tag says Scripted. Add `at=<ms>` to hold the scenario at one moment, for example `/r/demo/bid?scripted=1&at=3000`. Only development builds honour the flag: the hosted production build ignores it, so the tour link on `/try` does not play a scenario on the hosted site.
+Copy `packages/web/.env.example` to `packages/web/.env.local` (the web app needs those `VITE_*` values), run the web app in development (`npm run dev -w @gavel/web`) and open `/r/demo/screen?scripted=1`. The flag plays a recorded scenario in the browser with no server and no PayPal calls, and the provenance tag says Scripted. Add `at=<ms>` to hold the scenario at one moment, for example `/r/demo/bid?scripted=1&at=3000`. Only development builds honour the flag: the hosted production build ignores it. On the hosted site the tour link on `/try` opens `/demo/scripted`, which plays the recorded room in the tab in every build.
 
 ## Join as a bidder
 

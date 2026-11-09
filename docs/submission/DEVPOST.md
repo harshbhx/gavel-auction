@@ -11,7 +11,7 @@ Start here: **https://gavel.dualmindlab.tech/try** is the judge panel. It starts
 - Open data on Hugging Face: https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504 (five datasets and the Evidence Explorer Space https://huggingface.co/spaces/harshbhx/gavel-evidence-explorer)
 - Sandbox buyer login: OWNER fills in from the sandbox dashboard (email and password placeholders; never committed)
 
-Draft text for the Devpost entry. Refs #99 and #321. The owner finalizes it: numbers from the /quality page, the tools and models list the Devpost form asks for, the reuse statement and the links are filled in by the owner and are marked OWNER below. Everything here is checked against `docs/GATES.md` and the code on main at the time of writing. PayPal sandbox only: no live charge is made anywhere in this project.
+Draft text for the Devpost entry. Refs #99 and #321. The owner finalizes it: numbers from the latest `quality-report` artifact (report.yml run), the tools and models list the Devpost form asks for, the reuse statement and the links are filled in by the owner and are marked OWNER below. Everything here is checked against `docs/GATES.md` and the code on main at the time of writing. PayPal sandbox only: no live charge is made anywhere in this project.
 
 ## Tagline
 

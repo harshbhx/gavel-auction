@@ -24,7 +24,7 @@ Yes. Every event goes into a ledger chained by hash. The audit trail link in a r
 
 ## What if the server restarts mid-room?
 
-The hosted API uses temporary storage today, so a room can be lost on a restart. If that happens, start a new demo auction. The settlement saga is designed to resume after a crash without a second capture; that is tested against the fake PayPal and on a small set of real sandbox runs (see `docs/GATES.md`), not on a whole auction driven through the hosted server.
+The hosted API keeps its data on a 1 GB persistent disk, and rooms are read back from it on start, so a room normally survives a restart until it expires. If a room is gone anyway, start a new demo auction. The settlement saga is designed to resume after a crash without a second capture; that is tested against the fake PayPal and on a small set of real sandbox runs (see `docs/GATES.md`), not on a whole auction driven through the hosted server.
 
 ## What is real, simulated and recorded?
 
