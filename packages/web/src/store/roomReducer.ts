@@ -225,9 +225,16 @@ function apply(state: RoomState, msg: Exclude<ServerMessage, { t: 'state' }>): R
       // Only the identity this session was issued: a broadcast must not change who "you" are.
       if (state.expectedBidderId !== null && msg.bidderId !== state.expectedBidderId) return state;
       if (state.me !== null && state.me.bidderId !== msg.bidderId) return state;
+      const raised = msg.ceiling;
       return {
         ...state,
-        me: { bidderId: msg.bidderId, paddle: msg.paddle, ceiling: msg.ceiling ?? null },
+        me: { bidderId: msg.bidderId, paddle: msg.paddle, ceiling: raised ?? null },
+        // A raised limit arrives as a second `registered`; the snapshot's own copy must follow it
+        // (the selectors read `snapshot.you` first), or the screen would keep the old limit.
+        snapshot:
+          state.snapshot?.you !== undefined && raised !== undefined
+            ? { ...state.snapshot, you: { ...state.snapshot.you, ceiling: raised } }
+            : state.snapshot,
       };
     }
     case 'confirm_request':
