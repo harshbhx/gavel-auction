@@ -1,0 +1,55 @@
+/* Shared GAVEL graphics theme: Newsprint and Signal. Fonts come from the web app so the look matches. */
+@font-face {
+  font-family: 'Public Sans Variable';
+  font-weight: 100 900;
+  src: url('../../packages/web/src/design/fonts/public-sans-latin-wght-normal.woff2')
+    format('woff2-variations');
+}
+@font-face {
+  font-family: 'Big Shoulders Display Variable';
+  font-weight: 100 900;
+  src: url('../../packages/web/src/design/fonts/big-shoulders-display-latin-wght-normal.woff2')
+    format('woff2-variations');
+}
+@font-face {
+  font-family: 'JetBrains Mono Variable';
+  font-weight: 100 900;
+  src: url('../../packages/web/src/design/fonts/jetbrains-mono-latin-wght-normal.woff2')
+    format('woff2-variations');
+}
+:root {
+  --paper: #efe6d3;
+  --paper-2: #f8f2e4;
+  --raised: #e6dac1;
+  --ink: #1d1712;
+  --muted: #5a4d3f;
+  --rule: #d3c5a8;
+  --orange: #ff6a1f;
+  --rust: #a33a06;
+  --green: #256b3a;
+  --red: #b3261e;
+  --display: 'Big Shoulders Display Variable', 'Arial Narrow', sans-serif;
+  --body: 'Public Sans Variable', system-ui, sans-serif;
+  --mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+  --shadow: 6px 6px 0 var(--ink);
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+.dark {
+  --paper: #1d1712;
+  --paper-2: #2a2218;
+  --raised: #33291d;
+  --ink: #efe6d3;
+  --muted: #b9ab94;
+  --rule: #4a3d2d;
+  --shadow: 6px 6px 0 #000;
+}
