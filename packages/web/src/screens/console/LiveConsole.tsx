@@ -217,6 +217,7 @@ export function LiveConsole({
           )
         }
         onConfirmAnswer={onConfirmAnswer}
+        stoppedHere={stoppedHere}
       />
     </>
   );
