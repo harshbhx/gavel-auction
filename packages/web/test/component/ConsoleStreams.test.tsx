@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { BidderId } from '@gavel/shared';
@@ -65,6 +67,31 @@ describe('BidStream (R-WEB-065)', () => {
     expect(screen.getByText(en['console.rej.over_ceiling'], { exact: false })).toBeTruthy();
     expect(screen.getByText('93 percent sure')).toBeTruthy();
     expect(screen.getByText(en['console.status.pending'])).toBeTruthy();
+  });
+
+  it('gives each bid its own cell: time, paddle, amount, status (UIX-40)', () => {
+    const { container } = render(
+      <BidStream
+        rows={[row(1, { paddle: 2, amountCents: 5_000 }), row(2, { status: 'rejected' })]}
+      />,
+    );
+    const first = container.querySelector('li.gv-stream__row');
+    if (first === null) throw new Error('row missing');
+    const cells = Array.from(first.children);
+    expect(cells).toHaveLength(6);
+    expect(cells[0]?.tagName).toBe('TIME');
+    expect(cells[1]?.textContent).toBe(en['console.paddle'].replace('{n}', '12'));
+    expect(cells[2]?.textContent).toMatch(/\$350/);
+    expect(cells[5]?.textContent).toContain(en['console.status.rejected']);
+  });
+
+  it('styles the stream rows with a rule and a colour per status (UIX-40)', () => {
+    const css = readFileSync(resolve(__dirname, '../../src/screens/console/console.css'), 'utf8');
+    expect(css).toContain('.gv-stream__row {');
+    for (const s of ['accepted', 'rejected', 'pending']) {
+      expect(css).toContain(`.gv-stream__row[data-status='${s}'] > :last-child`);
+    }
+    expect(css).toMatch(/border-bottom: 1px solid var\(--color-rule\)/);
   });
 
   it('shows the empty copy', () => {

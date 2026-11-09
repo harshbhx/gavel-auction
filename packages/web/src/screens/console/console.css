@@ -322,3 +322,85 @@
     gap: var(--space-6);
   }
 }
+
+/* Bid stream (UIX-40): a ledger. One fixed-height row per event, hairline rules between rows,
+ * plain-word status in a status colour, tabular figures. No cards, chips or motion. The row
+ * height matches ROW_HEIGHT in BidStream.tsx so the windowed list stays plain arithmetic. */
+.gv-stream__scroll {
+  border-block: var(--border-width) solid var(--color-border);
+}
+
+.gv-stream__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gv-stream__row {
+  display: grid;
+  grid-template-columns: 7ch 8ch 8ch 20px 5ch minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-3);
+  box-sizing: border-box;
+  inline-size: 100%;
+  block-size: 36px;
+  padding-inline: var(--space-2);
+  border-bottom: 1px solid var(--color-rule);
+  font-size: var(--font-size-2);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.gv-stream__row[data-kind='control'] {
+  grid-template-columns: 7ch minmax(0, 1fr) auto;
+}
+
+.gv-stream__row > * {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gv-stream__row > time {
+  color: var(--color-fg-muted);
+}
+
+/* Amount is a figure: right-aligned so the digits line up down the column. */
+.gv-stream__row:not([data-kind='control']) > :nth-child(3) {
+  text-align: end;
+  font-weight: 700;
+}
+
+.gv-stream__row > :last-child {
+  font-weight: 600;
+}
+
+.gv-stream__row[data-status='accepted'] > :last-child {
+  color: var(--color-success);
+}
+
+.gv-stream__row[data-status='rejected'] > :last-child {
+  color: var(--color-danger);
+}
+
+.gv-stream__row[data-status='pending'] > :last-child {
+  color: var(--color-warning);
+}
+
+.gv-stream__reason {
+  font-weight: 400;
+  color: var(--color-fg-muted);
+}
+
+@media (max-width: 479px) {
+  /* Phone: the voice confidence column gives way so the status keeps room. */
+  .gv-stream__row:not([data-kind='control']) {
+    grid-template-columns: 7ch 7ch 7ch 20px minmax(0, 1fr);
+    column-gap: var(--space-2);
+  }
+
+  .gv-stream__row:not([data-kind='control']) > :nth-child(5) {
+    display: none;
+  }
+}
