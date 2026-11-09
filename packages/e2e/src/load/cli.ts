@@ -25,6 +25,8 @@ function flag(argv: readonly string[], name: string): string | undefined {
   return i >= 0 ? argv[i + 1] : undefined;
 }
 
+const gc = (globalThis as { gc?: () => void }).gc;
+
 async function main(argv: readonly string[]): Promise<number> {
   const which = argv.find((a) => a === 'L3' || a === 'L4' || a === 'L5' || a === 'all') ?? 'all';
   const minutes = Number(flag(argv, '--minutes') ?? '30');
@@ -54,6 +56,7 @@ async function main(argv: readonly string[]): Promise<number> {
       await runSoak({
         ...deps,
         durationMs: minutes * 60 * 1000,
+        ...(typeof gc === 'function' ? { gc } : {}),
         ...(diagFile === undefined
           ? {}
           : {

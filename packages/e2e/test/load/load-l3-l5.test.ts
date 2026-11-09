@@ -48,6 +48,9 @@ describe('T-QA-064 L5 soak', () => {
       process.getActiveResourcesInfo().filter((r) => r === 'Timeout').length;
     const before = timeouts();
     const rigs = new Set<Rig>();
+    const servers = new Set<unknown>();
+    const authsAtStart: number[] = [];
+    let collections = 0;
     let t = 0;
     let during = 0;
     const r = await runSoak({
@@ -55,8 +58,13 @@ describe('T-QA-064 L5 soak', () => {
       rss: () => 0,
       durationMs: 5000,
       bidders: 3,
+      gc: () => {
+        collections += 1;
+      },
       onStart: (rig) => {
         rigs.add(rig);
+        servers.add(rig.paypal);
+        authsAtStart.push(rig.paypal.core.authCount());
         during = Math.max(during, timeouts());
       },
       pause: () => {
@@ -66,6 +74,10 @@ describe('T-QA-064 L5 soak', () => {
     });
     expect(r.rounds).toBe(5);
     expect(rigs.size).toBe(5);
+    // One fake PayPal server for the whole soak, emptied between rounds.
+    expect(servers.size).toBe(1);
+    expect(authsAtStart).toEqual([0, 0, 0, 0, 0]);
+    expect(collections).toBe(5);
     // Before the fix every round left a 60 s resume timer: five rounds, five more timers.
     expect(timeouts()).toBeLessThanOrEqual(before);
     expect(during).toBeLessThanOrEqual(before + 1);

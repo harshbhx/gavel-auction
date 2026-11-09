@@ -1,4 +1,4 @@
-import { CONFIG, makeRig } from '../../test/flow/rig';
+import { CONFIG, makeRig, startFakePaypal } from '../../test/flow/rig';
 import { tally } from './clients';
 import { LIMITS, release, setUp, type Check, type LoadDeps } from './run';
 import type { Rig } from '../../test/flow/rig';
@@ -17,6 +17,8 @@ export interface SoakDeps extends LoadDeps {
   durationMs?: number;
   /** Waits between rounds; default 250 ms of real time. */
   pause?: () => Promise<void>;
+  /** Forces a collection before each rss reading (cli passes globalThis.gc under `node --expose-gc`), so rss shows retained memory, not garbage waiting for a sweep. */
+  gc?: () => void;
   /** Called with each round's fresh rig before the round runs (the diagnostic mode hooks its probes here). */
   onStart?: (rig: Rig) => void | Promise<void>;
   /** Called once after the last round. */
@@ -47,7 +49,9 @@ export async function runSoak(deps: SoakDeps): Promise<SoakReport> {
     unhandled += 1;
   };
   process.on('unhandledRejection', onUnhandled);
-  let rig: Rig | undefined;
+  // One fake PayPal server (one origin, one connection pool) for the whole soak; its records are
+  // reset after every round, so nothing of a finished auction is kept (#2203).
+  const paypal = await startFakePaypal();
   const start = deps.now();
   let baseline = -1;
   let peak = 0;
@@ -57,9 +61,9 @@ export async function runSoak(deps: SoakDeps): Promise<SoakReport> {
   let duplicate = 0;
   try {
     do {
-      // A fresh rig (fake PayPal, stores, service) for every round, released at its end: a finished
-      // auction's log, ledger and holds are not kept for the rest of the soak (#2203).
-      rig = await makeRig();
+      // Fresh stores and service for every round, released at its end: a finished auction's log,
+      // ledger and holds are not kept for the rest of the soak.
+      const rig = await makeRig({ paypal });
       await deps.onStart?.(rig);
       const field = await setUp({ ...deps, bidders }, rig);
       for (let step = 1; step <= 3; step += 1) {
@@ -75,19 +79,18 @@ export async function runSoak(deps: SoakDeps): Promise<SoakReport> {
       duplicate += t.duplicate;
       rounds += 1;
       deps.onRound?.(rounds);
+      deps.gc?.();
       const rss = deps.rss();
       if (baseline < 0) baseline = rss;
       peak = Math.max(peak, rss);
       await release(field);
-      await rig.paypal.stop();
-      rig = undefined;
+      paypal.reset();
       await pause();
     } while (deps.now() - start < durationMs);
   } finally {
     await deps.onEnd?.();
     process.off('unhandledRejection', onUnhandled);
-    // Only set when a round failed half way: stop its fake PayPal server.
-    await rig?.paypal.stop();
+    await paypal.stop();
   }
   const rssGrowthMb = Math.max(0, peak - Math.max(0, baseline)) / MB;
   const checks: Check[] = [
