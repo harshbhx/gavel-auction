@@ -75,7 +75,7 @@ Real PayPal sandbox gates (see `docs/GATES.md`, evidence files under `docs/evide
 | Hosted demo                                                  | Web app at https://gavel.dualmindlab.tech and API at https://api.gavel.dualmindlab.tech, in sandbox mode on one Render service with a 1 GB persistent disk; judge rooms open a real sandbox room with no operator key | Judge rooms can also use a simulated hold, and `/demo/scripted` is a recorded room in the browser                                                                                                                                                      | `docs/DEMO.md`      |
 | Money                                                        | No real money moves anywhere. All PayPal calls are sandbox                                                                                                                                                            |                                                                                                                                                                                                                                                        | all                 |
 
-Latency, measured end to end on the real sandbox (run 42346811713, n=20 settlements of 6 holds, redacted evidence in `docs/evidence/measure`): hammer to SETTLED is met, p95 5591.30 ms against the 6 s target. Hammer to CAPTURED is missed, p95 3010.04 ms against the 2.5 s target (status PARTIAL); the capture call alone has p95 2280.66 ms. The void call alone has p95 1235.96 ms (n=10, 2026-11-05). See `docs/GATES.md`.
+Latency, measured end to end on the real sandbox (run 42346811713, n=20 settlements of 6 holds, redacted evidence in `docs/evidence/measure`): the earlier n=20 run had SETTLED p95 5591.30 ms and CAPTURED p95 3010.04 ms. A later, larger run (run 42563147792, n=49, INCOMPLETE: 1 timeout and 3 failed capture calls) misses both targets: hammer to SETTLED p95 6.93 s against 6 s and hammer to CAPTURED p95 3.77 s against 2.5 s (status PARTIAL). Per call every p95 is above 1 s (capture 2.72 s, void 1.25 s). Owner decision open: keep the targets, raise them with a reason, or reduce latency. See `docs/GATES.md`.
 
 ## Challenges and what we learned
 
@@ -90,7 +90,7 @@ Latency, measured end to end on the real sandbox (run 42346811713, n=20 settleme
 
 - Record the G3 result and set the reauthorize behaviour from it.
 - Run G5 on real-room and noisy recorded bids with real speech-to-text and calibrate the confirm thresholds.
-- Record a live speech run through the `/audio` socket (gate G5), and bring hammer to CAPTURED from p95 3.0 s toward its 2.5 s target.
+- Record a live speech run through the `/audio` socket (gate G5), and decide on the latency targets (hammer to CAPTURED p95 3.77 s against 2.5 s and hammer to SETTLED p95 6.93 s against 6 s, both missed on run 42563147792): keep, raise with a reason, or reduce latency.
 - Host a recorded replay and publish the screenshots.
 - Drive a whole auction through the deployed server and run a real process kill and resume on the sandbox (20 settlements of 6 holds are already measured).
 

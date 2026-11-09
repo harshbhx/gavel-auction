@@ -46,7 +46,7 @@ The limit is a wrong-accept rate of 0.05 or less. Every row is within it, but th
 | Claim | Status | Evidence |
 | --- | --- | --- |
 | Sandbox call latency, 10 cycles, 0 failures: order <Term id="p95">p95</Term> 758.5 ms, authorize p95 2268.65 ms, capture p95 2280.66 ms, void p95 1235.96 ms | Measured, not committed | Actions run 42047543821 (`measure-sandbox`). The raw log is not committed, so this is not independently verifiable. |
-| <Term id="hammer">Hammer</Term> to CAPTURED within 2.5 s: MISSED, end-to-end p95 3010.04 ms (n=20, 6 holds). Hammer to SETTLED within 6 s: MET, p95 5591.30 ms (same run) | Measured, committed (redacted) | Actions run 42346811713 (`measure-sandbox`, mode `settlement`); `docs/evidence/measure/measure-settlement.json`. One sandbox run. |
+| <Term id="hammer">Hammer</Term> to CAPTURED within 2.5 s: MISSED, end-to-end p95 3766.67 ms (n=49, 6 holds). Hammer to SETTLED within 6 s: MISSED, p95 6927.43 ms (same run, INCOMPLETE: 1 timeout, 3 failed capture calls). The earlier n=20 run (3010.04 ms and 5591.30 ms) is a smaller sample | Measured, committed (redacted) | Actions run 42563147792 (`evidence-latency`); `docs/evidence/latency/`. Earlier: run 42346811713, `docs/evidence/measure/measure-settlement.json`. |
 
 ## Safety and process
 
