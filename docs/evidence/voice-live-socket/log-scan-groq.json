@@ -1,0 +1,22 @@
+{
+  "schema": "sec15-log-scan/1",
+  "verdict": "PASS",
+  "problems": [],
+  "canaries": ["GROQ_API_KEY"],
+  "logLines": 165,
+  "countsByRule": {},
+  "files": [
+    {
+      "path": "/home/runner/work/gavel-auction/gavel-auction/voice-live-out/server-groq.log",
+      "kind": "log",
+      "lines": 165,
+      "sha256": "490c851fc98565640be725563fc72056524827bab9854bdaa7786ef68ab51fe3",
+      "findings": 0
+    }
+  ],
+  "findings": [],
+  "notCovered": [
+    "raw audio transcripts: scenario S01 sends no audio, so no private transcript was injected",
+    "any log line the server wrote that this run did not exercise (other routes, error paths)"
+  ]
+}

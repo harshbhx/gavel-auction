@@ -53,7 +53,7 @@ flowchart LR
   SHARED -.- Server
 ```
 
-Mounted in `packages/server/src/boot/compose.ts`: the room WebSocket gateway (`createGateway`) and the `/audio` voice socket (`createAudioHost`), which feeds each decision into the room through `Room.submitVoiceBid`. The speech provider is cached transcripts unless `VOICE_STT` names a live provider with its key. No live speech run is recorded (gate G5 NOT RUN).
+Mounted in `packages/server/src/boot/compose.ts`: the room WebSocket gateway (`createGateway`) and the `/audio` voice socket (`createAudioHost`), which feeds each decision into the room through `Room.submitVoiceBid`. The speech provider is cached transcripts unless `VOICE_STT` names a live provider with its key. One live run of the socket is recorded (run 42575018866: 24 synthetic clips, both providers, fake PayPal in the server, no spoken bid accepted without a confirm); gate G5 stays PARTIAL.
 
 ## Settlement flow
 

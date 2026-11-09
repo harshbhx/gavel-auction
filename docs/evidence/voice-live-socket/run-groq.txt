@@ -1,0 +1,29 @@
+
+> @gavel/e2e@0.0.0 voice:live-socket
+> vite-node src/voice/live-socket-cli.ts -- --provider groq --out /home/runner/work/gavel-auction/gavel-auction/voice-live-out
+
+a01: transcript received, room: no_room_action
+a02: transcript received, room: no_room_action
+a03: transcript received, room: no_room_action
+a04: transcript received, room: no_room_action
+a05: transcript received, room: no_room_action
+a06: transcript received, room: no_room_action
+a07: transcript received, room: confirm_prompt
+a08: transcript received, room: confirm_prompt
+a09: transcript received, room: confirm_prompt
+a10: transcript received, room: confirm_prompt
+a11: transcript received, room: no_room_action
+a12: transcript received, room: no_room_action
+a13: transcript received, room: no_room_action
+a14: transcript received, room: no_room_action
+a15: transcript received, room: no_room_action
+a16: transcript received, room: no_room_action
+a17: transcript received, room: confirm_prompt
+a18: transcript received, room: no_room_action
+a19: transcript received, room: no_room_action
+a20: transcript received, room: no_room_action
+a21: transcript received, room: no_room_action
+a22: transcript received, room: no_room_action
+a23: transcript received, room: no_room_action
+a24: transcript received, room: no_room_action
+VOICE LIVE SOCKET VERDICT: PASS (the live provider answered 24 of 24 clips and no spoken bid was accepted without a confirm)
