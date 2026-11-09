@@ -48,25 +48,24 @@ export const THEMES = {
 /* ---------- animated logo ---------- */
 
 export const LOGO_CSS = `
-.gv-ring{stroke-dasharray:1;animation:gv-draw .85s cubic-bezier(.55,0,.2,1) var(--s,0s) backwards}
-.gv-mal{transform-origin:100px 50px;animation:gv-swing 1.3s linear calc(var(--s,0s) + .7s) backwards}
-.gv-jolt{transform-origin:50px 50px;animation:gv-jolt .45s cubic-bezier(.2,.8,.2,1) calc(var(--s,0s) + 1.64s) backwards}
-.gv-shock{fill:none;stroke:#ff6a1f;stroke-width:3.5;opacity:0;transform-origin:50px 50px;animation:gv-shock .8s cubic-bezier(.12,.7,.25,1) calc(var(--s,0s) + 1.64s)}
-.gv-shock2{stroke-width:1.5;animation-delay:calc(var(--s,0s) + 1.78s)}
-.gv-mk{animation:gv-slide .6s cubic-bezier(.65,0,.25,1) calc(var(--s,0s) + 2.1s) backwards}
-.gv-l{animation:gv-in .55s cubic-bezier(.2,.8,.2,1) calc(var(--s,0s) + 2.35s + var(--i,0) * .09s) backwards}
+.gv-ring{stroke-dasharray:1;animation:gv-draw .55s cubic-bezier(.55,0,.2,1) var(--s,0s) backwards}
+.gv-mal{transform-origin:100px 50px;animation:gv-swing 1s linear calc(var(--s,0s) + .25s) backwards}
+.gv-jolt{transform-origin:50px 50px;animation:gv-jolt .4s cubic-bezier(.2,.8,.2,1) calc(var(--s,0s) + .97s) backwards}
+.gv-shock{fill:none;stroke:#ff6a1f;stroke-width:1.6;opacity:0;transform-origin:50px 50px;animation:gv-shock .8s cubic-bezier(.12,.7,.25,1) calc(var(--s,0s) + .97s)}
+.gv-mk{animation:gv-slide .5s cubic-bezier(.65,0,.25,1) calc(var(--s,0s) + 1.35s) backwards}
+.gv-l{animation:gv-in .45s cubic-bezier(.2,.8,.2,1) calc(var(--s,0s) + 1.55s + var(--i,0) * .06s) backwards}
 .gv-loop .gv-ring,.gv-loop .gv-mk,.gv-loop .gv-l{animation:none}
-.gv-loop .gv-mal{animation:gv-swing 1.8s linear 0s infinite}
-.gv-loop .gv-jolt{animation:gv-jolt-l 1.8s cubic-bezier(.2,.8,.2,1) 0s infinite}
-.gv-loop .gv-shock{animation:gv-shock-l 1.8s cubic-bezier(.12,.7,.25,1) 0s infinite}
-.gv-loop .gv-shock2{animation-delay:.12s}
+.gv-loop .gv-mal{animation:gv-swing 1.6s linear 0s infinite}
+.gv-loop .gv-jolt{animation:gv-jolt-l 1.6s cubic-bezier(.2,.8,.2,1) 0s infinite}
+.gv-loop .gv-shock{animation:gv-shock-l 1.6s cubic-bezier(.12,.7,.25,1) 0s infinite}
+.gv-still *{animation:none!important}
 @keyframes gv-draw{from{stroke-dashoffset:1}}
-@keyframes gv-swing{0%{transform:rotate(72deg);opacity:0;animation-timing-function:ease-out}8%{transform:rotate(72deg);opacity:1;animation-timing-function:cubic-bezier(.3,0,.4,1)}58%{transform:rotate(94deg);animation-timing-function:cubic-bezier(.75,0,1,.6)}72%,100%{transform:rotate(0deg);opacity:1}}
+@keyframes gv-swing{0%{transform:rotate(72deg);opacity:0;animation-timing-function:ease-out}8%{transform:rotate(72deg);opacity:1;animation-timing-function:cubic-bezier(.3,0,.4,1)}56%{transform:rotate(94deg);animation-timing-function:cubic-bezier(.75,0,1,.6)}72%,100%{transform:rotate(0deg);opacity:1}}
 @keyframes gv-jolt{0%,100%{transform:scale(1)}30%{transform:scale(.93)}}
 @keyframes gv-jolt-l{0%,70%{transform:scale(1)}78%{transform:scale(.93)}100%{transform:scale(1)}}
-@keyframes gv-shock{0%{opacity:.9;transform:scale(.8)}100%{opacity:0;transform:scale(1.75)}}
-@keyframes gv-shock-l{0%,71%{opacity:0;transform:scale(.8)}72%{opacity:.9;transform:scale(.8)}100%{opacity:0;transform:scale(1.75)}}
-@keyframes gv-slide{from{transform:translateX(153px)}}
+@keyframes gv-shock{0%{opacity:.8;transform:scale(.8)}100%{opacity:0;transform:scale(1.75)}}
+@keyframes gv-shock-l{0%,71%{opacity:0;transform:scale(.8)}72%{opacity:.8;transform:scale(.8)}100%{opacity:0;transform:scale(1.75)}}
+@keyframes gv-slide{from{transform:translateX(118px)}}
 @keyframes gv-in{from{opacity:0;transform:translateX(-26px)}}
 `;
 
@@ -83,8 +82,7 @@ function parts(variant) {
   return { ring: m[1], handle: m[2], head: m[3], letters };
 }
 
-const shock =
-  '<circle class="gv-shock" cx="50" cy="50" r="46"/><circle class="gv-shock gv-shock2" cx="50" cy="50" r="46"/>';
+const shock = '<circle class="gv-shock" cx="50" cy="50" r="46"/>';
 
 function markGroup(p) {
   const ring = p.ring.replace('<path ', '<path class="gv-ring" pathLength="1" ');
@@ -92,14 +90,26 @@ function markGroup(p) {
 }
 
 /** Inline-able animated logo. kind: 'mark' | 'lockup'. start: seconds before it begins. */
-export function logoSvg({ variant = 'color', kind = 'lockup', start = 0, loop = false, cls = '' }) {
+export function logoSvg({
+  variant = 'color',
+  kind = 'lockup',
+  start = 0,
+  loop = false,
+  cls = '',
+  still = false,
+}) {
+  if (still) cls = `gv-still ${cls}`;
   const p = parts(variant);
   const label = 'GAVEL';
   if (kind === 'mark') {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 144 144" class="${loop ? 'gv-loop ' : ''}${cls}" style="--s:${start}s;overflow:visible" role="img" aria-label="${label}"><title>${label}</title>${markGroup(p)}</svg>`;
   }
-  const letters = p.letters.map((l, i) => `<g class="gv-l" style="--i:${i}">${l}</g>`).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 450.24 144" class="${cls}" style="--s:${start}s;overflow:visible" role="img" aria-label="${label}"><title>${label}</title><g class="gv-mk">${markGroup(p)}</g><g transform="translate(126 19) scale(0.62)">${letters}</g></svg>`;
+  // The mark already is the G, so the wordmark continues with AVEL (never a second G).
+  const letters = p.letters
+    .slice(1)
+    .map((l, i) => `<g class="gv-l" style="--i:${i}">${l}</g>`)
+    .join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 391 144" class="${cls}" style="--s:${start}s;overflow:visible" role="img" aria-label="${label}"><title>${label}</title><g class="gv-mk">${markGroup(p)}</g><g transform="translate(56.56 19) scale(0.62)">${letters}</g></svg>`;
 }
 
 /** Standalone animated SVG file (CSS keyframes only, no script, reduced motion shows the finished logo). */
@@ -116,33 +126,30 @@ export const KIT_CSS = `
 html,body{margin:0;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased}
 .stage{position:relative;overflow:hidden;background:var(--bg)}
 .abs{position:absolute}
-.disp{font-family:var(--display);font-weight:800;text-transform:uppercase;line-height:.92;letter-spacing:.005em}
-.mono{font-family:var(--mono);font-weight:600;letter-spacing:.12em;text-transform:uppercase}
-.lab{font-family:var(--mono);font-weight:600;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.disp{font-family:var(--display);font-weight:800;text-transform:uppercase;line-height:.88;letter-spacing:-.005em}
+.cap{font:600 13px var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.txt{font:500 20px var(--body);line-height:1.4;color:var(--ink)}
 .or{color:var(--orange)}
-.card{background:var(--card);border:3px solid var(--ink);box-shadow:8px 8px 0 var(--shadow)}
-.tag{display:inline-block;white-space:nowrap;font:700 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;border:2px solid var(--ink)}
-.tag.ok{background:var(--green);color:#fff;border-color:var(--green)}
-.tag.no{background:var(--red);color:#fff;border-color:var(--red)}
-.tag.sim{background:var(--orange);color:#1d1712;border-color:var(--ink)}
-.tag.part{background:transparent;color:var(--ink)}
-.rise{animation:gv-rise .6s cubic-bezier(.2,.8,.2,1) var(--d,0s) backwards}
-.pop{animation:gv-pop .5s cubic-bezier(.2,1.15,.3,1) var(--d,0s) backwards}
-.wipe{animation:gv-wipe .75s cubic-bezier(.6,0,.2,1) var(--d,0s) backwards}
-.slam{animation:gv-slam .55s cubic-bezier(.3,0,.2,1) var(--d,0s) backwards}
-.grow{transform-origin:0 50%;animation:gv-grow var(--len,1s) cubic-bezier(.3,0,.2,1) var(--d,0s) backwards}
-.growy{transform-origin:50% 100%;animation:gv-growy var(--len,1s) cubic-bezier(.3,0,.2,1) var(--d,0s) backwards}
-.ring{position:absolute;border:3px solid var(--orange);border-radius:50%;opacity:0;animation:gv-ring 2.5s cubic-bezier(.12,.7,.25,1) infinite;animation-delay:var(--d,0s)}
-.scn{position:absolute;inset:0;animation:gv-scn var(--len,4s) linear var(--at,0s)}
+.hr{background:var(--ink);transform-origin:0 50%;animation:gv-grow var(--len,.9s) cubic-bezier(.6,0,.2,1) var(--d,0s) backwards}
+.vr{background:var(--ink);transform-origin:50% 0;animation:gv-growy var(--len,.9s) cubic-bezier(.6,0,.2,1) var(--d,0s) backwards}
+.rev{display:block;overflow:hidden}
+.rev>*{display:block;animation:gv-rev var(--len,.8s) cubic-bezier(.2,.7,.1,1) var(--d,0s) backwards}
+.rise{animation:gv-rise .7s cubic-bezier(.2,.7,.1,1) var(--d,0s) backwards}
+.fade{animation:gv-fade .6s ease var(--d,0s) backwards}
+.drop{animation:gv-drop .5s cubic-bezier(.55,0,.1,1) var(--d,0s) backwards}
+.shk{animation:gv-shk .32s cubic-bezier(.2,.7,.1,1) var(--d,0s)}
+.ringl{position:absolute;border:2px solid var(--ink);border-radius:50%;opacity:0;animation:gv-ringl 1.1s cubic-bezier(.12,.7,.25,1) var(--d,0s)}
+.scn{position:absolute;inset:0;animation:gv-scn var(--sl,4s) linear var(--at,0s)}
 .scn{opacity:0}
-.cur{position:absolute;inset:0;background:var(--ink);clip-path:inset(100% 0 0 0);animation:gv-cur .6s cubic-bezier(.7,0,.3,1) var(--at,0s)}
-@keyframes gv-rise{from{opacity:0;transform:translateY(26px)}}
-@keyframes gv-pop{from{opacity:0;transform:scale(.7)}}
-@keyframes gv-wipe{from{clip-path:inset(0 100% 0 0)}}
-@keyframes gv-slam{0%{opacity:0;transform:translateY(-80px) scale(1.25)}70%{opacity:1;transform:translateY(5px) scale(.98)}100%{transform:none}}
+.cur{position:absolute;inset:0;background:var(--ink);clip-path:inset(100% 0 0 0);animation:gv-cur .5s cubic-bezier(.7,0,.3,1) var(--at,0s)}
+@keyframes gv-rev{from{transform:translateY(106%)}}
+@keyframes gv-rise{from{opacity:0;transform:translateY(18px)}}
+@keyframes gv-fade{from{opacity:0}}
+@keyframes gv-drop{from{transform:translateY(-130%)}}
+@keyframes gv-shk{0%,100%{transform:translateY(0)}30%{transform:translateY(8px)}}
 @keyframes gv-grow{from{transform:scaleX(0)}}
 @keyframes gv-growy{from{transform:scaleY(0)}}
-@keyframes gv-ring{0%{opacity:.5;transform:scale(.35)}100%{opacity:0;transform:scale(1)}}
+@keyframes gv-ringl{0%{opacity:.7;transform:scale(.15)}100%{opacity:0;transform:scale(1)}}
 @keyframes gv-scn{from,to{opacity:1}}
 @keyframes gv-cur{0%{clip-path:inset(100% 0 0 0)}50%{clip-path:inset(0 0 0 0)}100%{clip-path:inset(0 0 100% 0)}}
 `;

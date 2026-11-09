@@ -11,7 +11,7 @@ const out = path.resolve(process.argv[2] ?? 'out/motion-brand');
 const tmp = path.join(out, '.tmp');
 mkdirSync(tmp, { recursive: true });
 const FPS = 30;
-const SECS = 5;
+const SECS = 4; // under 3 s of motion, then a 1 s hold
 const report = [];
 
 // Animated logo SVGs (CSS keyframes, no script, reduced motion shows the finished logo).

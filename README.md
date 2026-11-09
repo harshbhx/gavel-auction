@@ -7,7 +7,7 @@
     <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/assets/readme/readme-banner-dark-poster.png">
     <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/readme-banner-poster.png">
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/readme-banner-dark.gif">
-    <img src="docs/assets/readme/readme-banner.gif" alt="GAVEL logo animation: the Mallet G draws round, the mallet strikes and a round shockwave leaves the G, the wordmark GAVEL glides in, then the tagline: every bid is a PayPal hold, only the winner pays. A simulated bid ladder ticks from 10 to 25 dollars beside it. PayPal sandbox only, bids are held, not charged." width="100%">
+    <img src="docs/assets/readme/readme-banner.gif" alt="GAVEL logo animation: the Mallet G draws round, the mallet strikes and a round shockwave leaves the G, the wordmark GAVEL glides in, then the tagline: every bid is a PayPal hold, only the winner pays." width="100%">
   </picture>
 </p>
 
@@ -33,9 +33,9 @@ Built for the PayPal Hackathon 2026.
 <p align="center">
   <picture>
     <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/reel-poster.png">
-    <img src="docs/assets/readme/reel.gif" alt="GAVEL in 20 seconds, five scenes. One: the logo animation and the tagline. Two: a bid is a hold, a simulated bidder holds 20 dollars on PayPal, held and not charged, and bids tick from 10 to 15 dollars. Three: the hammer settles it, a simulated lot sold to paddle 2 for 15 dollars, the winner captured and the other hold released. Four: check it yourself, hash-chain links snap together and a receipt shows a ledger of 19 entries with 0 differences, measured in the server-kill run. Five: links to the web app, the docs and the source. PayPal sandbox only." width="100%">
+    <img src="docs/assets/readme/reel.gif" alt="GAVEL in 10 seconds, five quick scenes. One: the logo draws, the mallet strikes and the tagline appears. Two: a bid is a hold, a simulated bid ladder ticks from 10 to 15 to 20 dollars, held on PayPal, not charged. Three: the hammer falls, a simulated lot sold to paddle 2 for 20 dollars, winner captured and other holds released. Four: check it yourself, hash-chain links snap together and a receipt shows 19 ledger entries with 0 differences, measured in the server-kill run. Five: links to the web app, the docs and the source. PayPal sandbox only." width="100%">
   </picture>
-  <br><sub><b>In 20 seconds.</b> The lot in scenes two and three is a simulated example. The live app is below under <a href="#see-it-run">See it run</a>.</sub>
+  <br><sub><b>In 10 seconds.</b> The lot in scenes two and three is a simulated example. The live app is below under <a href="#see-it-run">See it run</a>.</sub>
 </p>
 
 <p align="center">
@@ -43,7 +43,7 @@ Built for the PayPal Hackathon 2026.
     <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/assets/readme/readme-stats-dark-poster.png">
     <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/readme-stats-poster.png">
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/readme-stats-dark.gif">
-    <img src="docs/assets/readme/readme-stats.gif" alt="At a glance, five measured tiles. Hammer to settled, p95, 5.59 seconds against a 6 second target, 20 runs with 6 holds each on the real PayPal sandbox: met. Webhook handler, p95 on the hosted route, 112 milliseconds against a 300 millisecond target: met. Hammer to captured, p95, 3.01 seconds against a 2.5 second target: missed. Server killed mid-capture: 0 differences between the journal and PayPal, one capture and two holds voided, on a CI runner: pass. Voice bids, gate G5: 24 synthetic clips scored in sample, no noisy-room run yet: partial." width="100%">
+    <img src="docs/assets/readme/readme-stats.gif" alt="Three things built and proven, PayPal sandbox only. Live voice: 24 of 24 synthetic clips answered by the live provider, and no spoken bid accepted without a confirm. A real server process killed mid-capture: 0 differences between the journal and PayPal. The hash-chained ledger: 19 entries and the chain verifies." width="100%">
   </picture>
 </p>
 
@@ -51,7 +51,7 @@ Built for the PayPal Hackathon 2026.
   <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/assets/readme/lifecycle-dark.svg">
   <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/lifecycle-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/how-it-works-dark.gif">
-  <img src="docs/assets/readme/how-it-works.gif" alt="Animation of one lot in five steps, a marker moving from step to step: 1 hold, the bidder approves a PayPal hold as a ceiling, held and not charged; 2 bid, each bid is checked against that hold; 3 hammer, the highest valid bid wins; 4 capture and void, the winner pays the hammer price and every other hold is released; 5 receipt, the result is in the hash-chained ledger and anyone can verify it. A simulated example, PayPal sandbox only." width="100%">
+  <img src="docs/assets/readme/how-it-works.gif" alt="The flow of one lot in four words: Hold, a PayPal hold sets the ceiling and is held, not charged; Bid, every bid is checked against that hold; Hammer, the highest valid bid wins; Receipt, the winner pays and every other hold is released. A simulated lot, PayPal sandbox only." width="100%">
 </picture>
 
 ## Contents
@@ -191,7 +191,7 @@ The web app (`packages/web`) uses the Scoreboard design: flat panels, hard shado
 
 ## See it run
 
-Real recordings of the live app at [gavel.dualmindlab.tech](https://gavel.dualmindlab.tech), cut from the nightly judge smoke run [42561627128](https://github.com/harshbhx/gavel-auction/actions/runs/42561627128) (9 Nov 2026). Nothing is mocked: a sandbox demo room with simulated demo holds, and the app's own sandbox banner is on screen. In that run one check failed (the console did not show the lot as closed), so the console clip stops at the hammer confirmation. Each clip is 9 to 10 seconds.
+Real recordings of the live app at [gavel.dualmindlab.tech](https://gavel.dualmindlab.tech), cut from the nightly judge smoke run [42561627128](https://github.com/harshbhx/gavel-auction/actions/runs/42561627128) (9 Nov 2026). Nothing is mocked: a sandbox demo room with simulated demo holds, and the app's own sandbox banner is on screen. In that run one check failed (the console did not show the lot as closed), so the console clip stops at the hammer confirmation. Each clip is about 5 seconds, with the waiting sped up.
 
 <table>
   <tr>

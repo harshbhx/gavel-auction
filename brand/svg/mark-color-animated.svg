@@ -1,22 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 144 144" class="" style="--s:0s" role="img" aria-label="GAVEL"><title>GAVEL</title><style>
-.gv-ring{stroke-dasharray:1;animation:gv-draw .8s steps(8,end) var(--s,0s) backwards}
-.gv-mal{transform-origin:100px 50px;animation:gv-swing 1.3s linear calc(var(--s,0s) + .7s) backwards}
-.gv-jolt{transform-origin:50px 50px;animation:gv-jolt .3s steps(3,end) calc(var(--s,0s) + 1.64s) backwards}
-.gv-shock{fill:none;stroke:#ff6a1f;stroke-width:5;stroke-dasharray:3 9;opacity:0;transform-origin:50px 50px;animation:gv-shock .55s steps(6,end) calc(var(--s,0s) + 1.64s)}
-.gv-shock2{stroke-width:2.5;animation-delay:calc(var(--s,0s) + 1.78s)}
-.gv-mk{animation:gv-slide .5s steps(7,end) calc(var(--s,0s) + 2.1s) backwards}
-.gv-l{animation:gv-in .35s steps(4,end) calc(var(--s,0s) + 2.35s + var(--i,0) * .09s) backwards}
+.gv-ring{stroke-dasharray:1;animation:gv-draw .55s cubic-bezier(.55,0,.2,1) var(--s,0s) backwards}
+.gv-mal{transform-origin:100px 50px;animation:gv-swing 1s linear calc(var(--s,0s) + .25s) backwards}
+.gv-jolt{transform-origin:50px 50px;animation:gv-jolt .4s cubic-bezier(.2,.8,.2,1) calc(var(--s,0s) + .97s) backwards}
+.gv-shock{fill:none;stroke:#ff6a1f;stroke-width:1.6;opacity:0;transform-origin:50px 50px;animation:gv-shock .8s cubic-bezier(.12,.7,.25,1) calc(var(--s,0s) + .97s)}
+.gv-mk{animation:gv-slide .5s cubic-bezier(.65,0,.25,1) calc(var(--s,0s) + 1.35s) backwards}
+.gv-l{animation:gv-in .45s cubic-bezier(.2,.8,.2,1) calc(var(--s,0s) + 1.55s + var(--i,0) * .06s) backwards}
 .gv-loop .gv-ring,.gv-loop .gv-mk,.gv-loop .gv-l{animation:none}
 .gv-loop .gv-mal{animation:gv-swing 1.6s linear 0s infinite}
-.gv-loop .gv-jolt{animation:gv-jolt-l 1.6s steps(3,end) 0s infinite}
-.gv-loop .gv-shock{animation:gv-shock-l 1.6s steps(6,end) 0s infinite}
-.gv-loop .gv-shock2{animation-delay:.12s}
+.gv-loop .gv-jolt{animation:gv-jolt-l 1.6s cubic-bezier(.2,.8,.2,1) 0s infinite}
+.gv-loop .gv-shock{animation:gv-shock-l 1.6s cubic-bezier(.12,.7,.25,1) 0s infinite}
+.gv-still *{animation:none!important}
 @keyframes gv-draw{from{stroke-dashoffset:1}}
-@keyframes gv-swing{0%{transform:rotate(70deg);opacity:0;animation-timing-function:steps(1,end)}6%{transform:rotate(70deg);opacity:1;animation-timing-function:steps(5,end)}58%{transform:rotate(92deg);animation-timing-function:steps(4,end)}72%,100%{transform:rotate(0deg);opacity:1}}
-@keyframes gv-jolt{0%,100%{transform:scale(1)}40%{transform:scale(.92)}}
-@keyframes gv-jolt-l{0%,70%{transform:scale(1)}78%{transform:scale(.92)}100%{transform:scale(1)}}
-@keyframes gv-shock{0%{opacity:1;transform:scale(.8)}100%{opacity:0;transform:scale(1.65)}}
-@keyframes gv-shock-l{0%,71%{opacity:0;transform:scale(.8)}72%{opacity:1;transform:scale(.8)}100%{opacity:0;transform:scale(1.65)}}
-@keyframes gv-slide{from{transform:translateX(153px)}}
+@keyframes gv-swing{0%{transform:rotate(72deg);opacity:0;animation-timing-function:ease-out}8%{transform:rotate(72deg);opacity:1;animation-timing-function:cubic-bezier(.3,0,.4,1)}56%{transform:rotate(94deg);animation-timing-function:cubic-bezier(.75,0,1,.6)}72%,100%{transform:rotate(0deg);opacity:1}}
+@keyframes gv-jolt{0%,100%{transform:scale(1)}30%{transform:scale(.93)}}
+@keyframes gv-jolt-l{0%,70%{transform:scale(1)}78%{transform:scale(.93)}100%{transform:scale(1)}}
+@keyframes gv-shock{0%{opacity:.8;transform:scale(.8)}100%{opacity:0;transform:scale(1.75)}}
+@keyframes gv-shock-l{0%,71%{opacity:0;transform:scale(.8)}72%{opacity:.8;transform:scale(.8)}100%{opacity:0;transform:scale(1.75)}}
+@keyframes gv-slide{from{transform:translateX(118px)}}
 @keyframes gv-in{from{opacity:0;transform:translateX(-26px)}}
-@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style><g class="gv-jolt"><circle class="gv-shock" cx="50" cy="50" r="46"/><circle class="gv-shock gv-shock2" cx="50" cy="50" r="46"/><path class="gv-ring" pathLength="1" d="M78.98 23.90A39 39 0 1 0 89.00 50.00" fill="none" stroke="#1d1712" stroke-width="22"/><g class="gv-mal"><rect x="40.0" y="43.50" width="60.0" height="13" fill="#1d1712"/><rect x="32" y="33.00" width="16" height="34" rx="3" fill="#ff6a1f"/></g></g></svg>
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style><g class="gv-jolt"><circle class="gv-shock" cx="50" cy="50" r="46"/><path class="gv-ring" pathLength="1" d="M78.98 23.90A39 39 0 1 0 89.00 50.00" fill="none" stroke="#1d1712" stroke-width="22"/><g class="gv-mal"><rect x="40.0" y="43.50" width="60.0" height="13" fill="#1d1712"/><rect x="32" y="33.00" width="16" height="34" rx="3" fill="#ff6a1f"/></g></g></svg>
