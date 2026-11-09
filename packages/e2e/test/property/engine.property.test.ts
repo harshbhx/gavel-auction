@@ -187,6 +187,76 @@ function englishViolations(t: Trace): string[] {
   return out;
 }
 
+type RaiseOp =
+  | { readonly kind: 'bid'; readonly dt: number; readonly bidder: number; readonly delta: number }
+  | { readonly kind: 'raise'; readonly dt: number; readonly bidder: number; readonly to: number };
+
+const raiseOp: fc.Arbitrary<RaiseOp> = fc.oneof(
+  bidInput.map((b): RaiseOp => ({ kind: 'bid', ...b })),
+  fc.record({
+    kind: fc.constant('raise' as const),
+    dt: fc.integer({ min: 0, max: 1500 }),
+    bidder: fc.integer({ min: 0, max: BIDDERS.length - 1 }),
+    // Below, at and above the current ceiling, up to the engine default cap of 100000.
+    to: fc.oneof(
+      fc.constantFrom(CEILING - 1, CEILING, CEILING + 1),
+      fc.integer({ min: 100, max: 100_000 }),
+    ),
+  }),
+);
+
+describe('ceiling raises (#2410)', () => {
+  it('a limit never decreases, bids stay in the latest limit, the hammer price fits the winner', () => {
+    assertProp(
+      fc.property(fc.array(raiseOp, { minLength: 1, maxLength: 40 }), (ops) => {
+        let s = scene('english');
+        let at = 200;
+        for (const op of ops) {
+          at += op.dt;
+          const bidder = BIDDERS[op.bidder] as Ulid;
+          const before = s.bidders[bidder]?.ceilingCents ?? 0;
+          if (op.kind === 'raise') {
+            const r = apply(
+              s,
+              mk(at, { type: 'RegisterBidder', bidderId: bidder, ceilingCents: op.to }),
+            );
+            // Only a strictly larger limit is taken.
+            expect(r.accepted).toBe(op.to > before);
+            s = r.state;
+          } else {
+            const lot = s.lots[LOT];
+            const minNext = lot?.priceCents == null ? RESERVE : lot.priceCents + INCREMENT;
+            const amount = Math.max(1, minNext + op.delta);
+            const r = apply(
+              s,
+              mk(at, {
+                type: 'PlaceBid',
+                lotId: LOT,
+                bidderId: bidder,
+                amountCents: amount,
+                source: 'manual',
+                audit: {},
+              }),
+            );
+            if (r.accepted) expect(amount).toBeLessThanOrEqual(before);
+            s = r.state;
+          }
+          const after = s.bidders[bidder]?.ceilingCents ?? 0;
+          expect(after).toBeGreaterThanOrEqual(before);
+        }
+        const done = apply(
+          s,
+          mk(at + 1, { type: 'Hammer', lotId: LOT, early: true, actor: 'host' }),
+        ).state;
+        const lot = done.lots[LOT];
+        if (lot?.winnerId != null && lot.priceCents != null) {
+          expect(lot.priceCents).toBeLessThanOrEqual(done.bidders[lot.winnerId]?.ceilingCents ?? 0);
+        }
+      }),
+    );
+  });
+});
+
 describe('engine invariants (T-QA-021)', () => {
   it('english: price strictly increases, no bid above ceiling, soft close never shortens', () => {
     assertProp(
