@@ -96,6 +96,16 @@ export function json(
   });
 }
 
+const WRITE_METHODS: ReadonlySet<string> = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function originOf(url: string): string | null {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+
 export class HttpApp {
   private readonly routes: Route[] = [];
 
@@ -122,6 +132,7 @@ export class HttpApp {
     const allowed = origin !== null && this.deps.corsOrigins.includes(origin) ? origin : null;
     let res: Response;
     try {
+      this.checkWriteOrigin(req, origin);
       res = await this.dispatch(req, requestId, allowed);
     } catch (e) {
       res = errorResponse(e);
@@ -143,6 +154,21 @@ export class HttpApp {
       out.headers.append('vary', 'Origin');
     }
     return out;
+  }
+
+  /**
+   * A browser sends `Origin` on every cross-site write, including the "simple" ones that skip the
+   * preflight, so a write from an origin we do not know is refused before any handler runs
+   * (#2061). Callers without an `Origin` (curl, server to server, PayPal webhooks, health checks)
+   * are not browsers and stay allowed; reads and the preflight keep their own handling.
+   */
+  private checkWriteOrigin(req: Request, origin: string | null): void {
+    if (origin === null || !WRITE_METHODS.has(req.method)) return;
+    if (this.deps.corsOrigins.includes(origin)) return;
+    const { webOrigin, publicUrl } = this.deps;
+    if (webOrigin !== undefined && originOf(webOrigin) === origin) return;
+    if (originOf(publicUrl) === origin) return;
+    throw new GavelError('forbidden', 'origin not allowed');
   }
 
   private async dispatch(

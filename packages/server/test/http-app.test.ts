@@ -7,9 +7,9 @@ import { MemoryStore } from '../src/store/memory-store';
 
 const ORIGIN = 'https://app.example.test';
 
-function setup(log?: HttpDeps['log']): ReturnType<typeof createHttpApp> {
+function baseDeps(log?: HttpDeps['log']): HttpDeps {
   const clock = new ManualClock(1_789_000_000_000);
-  const deps: HttpDeps = {
+  return {
     service: {
       createAuction: () => Promise.reject(new Error('unused')),
       room: () => Promise.reject(new Error('unused')),
@@ -23,7 +23,10 @@ function setup(log?: HttpDeps['log']): ReturnType<typeof createHttpApp> {
     corsOrigins: [ORIGIN],
     ...(log !== undefined ? { log } : {}),
   };
-  return createHttpApp(deps, [
+}
+
+function setup(log?: HttpDeps['log']): ReturnType<typeof createHttpApp> {
+  return createHttpApp(baseDeps(log), [
     (app) => {
       app.get('/t/err/:code', (c) => {
         throw new GavelError(c.params.code as (typeof ERROR_CODES)[number], 'boom');
@@ -140,6 +143,92 @@ describe('body rules and CORS (T-RT-077)', () => {
       new Request('http://h.test/nope', { headers: { origin: 'https://evil.example.test' } }),
     );
     expect(b.headers.get('access-control-allow-origin')).toBeNull();
+  });
+});
+
+describe('http app refuses writes from unknown origins (#2061)', () => {
+  const EVIL = 'https://evil.example.test';
+  const write = (method: string, origin: string | null) =>
+    new Request('http://h.test/t/echo', {
+      method,
+      ...(origin !== null ? { headers: { origin } } : {}),
+    });
+
+  it('answers 403 before the handler runs for a disallowed Origin, with no body needed', async () => {
+    for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+      const res = await setup().fetch(write(method, EVIL));
+      expect(res.status).toBe(403);
+      expect(res.headers.get('access-control-allow-origin')).toBeNull();
+      const body = (await res.json()) as { code: string };
+      expect(body.code).toBe('forbidden');
+    }
+    const calls: string[] = [];
+    const app = createHttpApp({ ...baseDeps(), corsOrigins: [ORIGIN] }, [
+      (a) =>
+        a.post('/t/side', () => {
+          calls.push('ran');
+          return json(200, {});
+        }),
+    ]);
+    const res = await app.fetch(
+      new Request('http://h.test/t/side', { method: 'POST', headers: { origin: EVIL } }),
+    );
+    expect(res.status).toBe(403);
+    expect(calls).toEqual([]);
+  });
+
+  it('treats the literal null origin as unknown', async () => {
+    const res = await setup().fetch(write('POST', 'null'));
+    expect(res.status).toBe(403);
+  });
+
+  it('lets a write from an allowed origin through', async () => {
+    const res = await setup().fetch(write('POST', ORIGIN));
+    expect(res.status).toBe(200);
+    expect(res.headers.get('access-control-allow-origin')).toBe(ORIGIN);
+  });
+
+  it('lets the web origin and the API own origin write', async () => {
+    const app = createHttpApp(
+      { ...baseDeps(), corsOrigins: [], webOrigin: 'https://web.example.test' },
+      [(a) => a.post('/t/echo', () => json(200, {}))],
+    );
+    expect((await app.fetch(write('POST', 'https://web.example.test'))).status).toBe(200);
+    expect((await app.fetch(write('POST', 'https://gavel.example.test'))).status).toBe(200);
+    expect((await app.fetch(write('POST', EVIL))).status).toBe(403);
+  });
+
+  it('lets a write with no Origin through (curl, webhooks, scripts)', async () => {
+    const res = await setup().fetch(write('POST', null));
+    expect(res.status).toBe(200);
+  });
+
+  it('keeps GET and a webhook-style raw POST without Origin unchanged', async () => {
+    const app = createHttpApp(baseDeps(), [
+      (a) => {
+        a.get('/t/read', () => json(200, { ok: true }));
+        a.post('/webhooks/paypal', () => json(200, { received: true }));
+        a.get('/healthz', () => json(200, { ok: true }));
+      },
+    ]);
+    const read = await app.fetch(
+      new Request('http://h.test/t/read', { headers: { origin: EVIL } }),
+    );
+    expect(read.status).toBe(200);
+    expect(read.headers.get('access-control-allow-origin')).toBeNull();
+    const hook = await app.fetch(
+      new Request('http://h.test/webhooks/paypal', { method: 'POST', body: '{}' }),
+    );
+    expect(hook.status).toBe(200);
+    expect((await app.fetch(new Request('http://h.test/healthz'))).status).toBe(200);
+  });
+
+  it('leaves the preflight as it was', async () => {
+    const app = setup();
+    const pre = (origin: string) =>
+      app.fetch(new Request('http://h.test/t/echo', { method: 'OPTIONS', headers: { origin } }));
+    expect((await pre(ORIGIN)).status).toBe(204);
+    expect((await pre(EVIL)).status).toBe(403);
   });
 });
 
