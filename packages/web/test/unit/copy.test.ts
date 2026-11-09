@@ -143,7 +143,9 @@ describe('one word per concept (copy glossary)', () => {
 
   it('uses limit, not ceiling, in user-facing text and keeps the hold gesture apart from the hold', () => {
     expect(viewer.filter(([, v]) => /ceiling/i.test(v) && !/\{ceiling\}/.test(v))).toEqual([]);
-    expect(viewer.filter(([, v]) => /\bHold (to|the|\d)|\bvoided\b|\bcaptured,/.test(v))).toEqual([]);
+    expect(viewer.filter(([, v]) => /\bHold (to|the|\d)|\bvoided\b|\bcaptured,/.test(v))).toEqual(
+      [],
+    );
   });
 });
 
