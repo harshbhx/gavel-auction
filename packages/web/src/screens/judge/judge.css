@@ -51,6 +51,7 @@
 }
 
 .gv-judge__page {
+  box-sizing: border-box;
   width: 100%;
   max-width: 1840px;
   margin-inline: auto;
