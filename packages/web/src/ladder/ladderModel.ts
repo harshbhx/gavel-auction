@@ -186,7 +186,15 @@ function verificationOf(hold: HoldView): Verification {
   return { kind: 'lookup', eventId: last.eventId, at: last.at };
 }
 
-function buildLane(hold: HoldView, winnerPaddle: number | null): LadderLane {
+function buildLane(rawHold: HoldView, winnerPaddle: number | null): LadderLane {
+  // The server reports SETTLED for the winner once the sale is finished, and the same word for a
+  // released hold. A winner is never "Released": it is charged when the amount is known and is
+  // still being finalised until then.
+  const winnerSettled =
+    rawHold.paddle === winnerPaddle && rawHold.state === 'SETTLED';
+  const hold: HoldView = winnerSettled
+    ? { ...rawHold, state: rawHold.capturedCents > 0 ? 'CAPTURED' : 'CAPTURING' }
+    : rawHold;
   const { rungs, branch } = lanePath(hold);
   const onWinnerTrack = WINNER_TRACK_STATES.includes(hold.state);
   const isWinner = hold.paddle === winnerPaddle && hold.state !== 'FALLBACK_RUNNER_UP';

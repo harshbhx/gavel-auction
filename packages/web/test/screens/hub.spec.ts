@@ -194,7 +194,7 @@ test.describe('links that lost their token', () => {
   test('join without an invite', async ({ page, shoot }) => {
     await mockApi(page, hubApi);
     await page.goto(`/r/${ROOM}/register`);
-    await expect(page.getByText(t('reg.expired')).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: t('reg.noInviteTitle') })).toBeVisible();
     await expect(page.getByText(t('tokenHelp.registerLead'))).toBeVisible();
     await shoot('token-missing', 'register');
   });

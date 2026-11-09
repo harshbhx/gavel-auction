@@ -115,6 +115,14 @@ export const selectRegistrationClosed: Selector<boolean> = memo((s) => {
   );
 });
 
+/** True only when a settlement update names a paddle other than this bidder's as the winner. */
+function namesOtherWinner(s: RoomState, bidderId: string): boolean {
+  const named = s.settlementMeta?.winnerPaddle;
+  if (named === undefined || s.snapshot === null) return false;
+  const mine = s.snapshot.roster.find((r) => r.bidderId === bidderId)?.paddle;
+  return mine !== undefined && named !== mine;
+}
+
 export const selectMyStatus: Selector<MyStatus> = memo((s) => {
   const you = youOf(s);
   if (you === null) return 'watching';
@@ -126,6 +134,10 @@ export const selectMyStatus: Selector<MyStatus> = memo((s) => {
       return 'won';
     case 'SETTLED':
     case 'VOIDING':
+      // The server uses SETTLED for the winner's finished sale as well as for a released hold.
+      // The hammer winner stays the winner unless the server names another paddle as winner.
+      if (s.hammer?.winnerId === you.bidderId && !namesOtherWinner(s, you.bidderId)) return 'won';
+      return 'lost';
     case 'FALLBACK_RUNNER_UP':
       return 'lost';
     case 'FAILED_NEEDS_REVIEW':
