@@ -2,22 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { Dialog } from '../../src/design/primitives/Dialog';
 import { Sheet } from '../../src/design/primitives/Sheet';
-import { GuidedTour } from '../../src/help/GuidedTour';
 
 describe('Escape and focus after a click on the overlay (#2103)', () => {
-  it('closes the tour on Escape after the veil was clicked', () => {
-    const onSkip = vi.fn();
-    const { container } = render(
-      <GuidedTour step={0} onNext={vi.fn()} onBack={vi.fn()} onSkip={onSkip} />,
-    );
-    const veil = container.querySelector('.help-tour__veil') as HTMLElement;
-    fireEvent.mouseDown(veil);
-    fireEvent.click(veil);
-    (document.activeElement as HTMLElement | null)?.blur();
-    fireEvent.keyDown(document.body, { key: 'Escape' });
-    expect(onSkip).toHaveBeenCalledTimes(1);
-  });
-
   it('closes a sheet on Escape when focus is on the body', () => {
     const onClose = vi.fn();
     render(

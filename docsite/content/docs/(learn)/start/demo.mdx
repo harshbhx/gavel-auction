@@ -19,7 +19,7 @@ The web app is at [gavel.dualmindlab.tech](https://gavel.dualmindlab.tech) and t
 | --- | --- |
 | Landing page `/` | Route built in the web package and served at the hosted address |
 | Judge page `/try` | Steps for a key-less <Term id="sandbox">sandbox</Term> <Term id="room">room</Term> and a link to the scripted tour; the room needs the host flag `JUDGE_ROOMS=true` |
-| Help button | Opens the hold explainer or replays a six-step guided tour; present on the landing, join, register, bid and receipt screens |
+| Help button | Opens the hold explainer; present on the landing, join, register, bid and receipt screens |
 | Demo launcher `/demo` | Creates a room and gives four links; scripted mode is local only |
 | Replay `/replay/:recordingId` | Player and bundle format exist; no recording is hosted yet |
 | <Term id="auctioneer-console">Auctioneer console</Term>, bidder screen, big screen, audit | Routes built; they need a running server (the hosted API runs in sandbox mode) |
@@ -43,7 +43,7 @@ The ceiling is set on a slider and approved with a press-and-hold button (3 seco
 
 - QR: after joining, the bid screen has a quick-bid button, increment buttons and a custom amount. Bids above your ceiling are blocked.
 - Typed entry: the auctioneer console has "Manual entry" to place a bid for a registered bidder.
-- Voice: the `/audio` socket turns a spoken bid into a structured bid and asks for confirmation. The console has no audio sender yet, so its microphone button is disabled.
+- Voice: the `/audio` socket turns a spoken bid into a structured bid and asks for confirmation. The console has an auctioneer microphone that is enabled only when the server reports a live speech provider; otherwise it is disabled and says why. Every spoken bid still asks for a confirm.
 
 ## Expected result at the hammer
 

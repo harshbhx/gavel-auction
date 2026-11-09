@@ -20,6 +20,32 @@ export function snapToStep(value: number, min: number, max: number, step: number
   return Math.min(max, snapped);
 }
 
+/**
+ * The positions a slider can rest on: the minimum, every multiple of `step` between the ends
+ * (counted from zero, so a ladder reads round whatever the minimum is), any extra `marks` inside
+ * the range, and the maximum. Sorted, no duplicates.
+ */
+export function sliderStops(
+  min: number,
+  max: number,
+  step: number,
+  marks: readonly number[] = [],
+): number[] {
+  const set = new Set<number>([min, max]);
+  if (step > 0) {
+    for (let v = Math.ceil(min / step) * step; v < max; v += step) set.add(v);
+  }
+  for (const m of marks) if (m >= min && m <= max) set.add(m);
+  return [...set].sort((a, b) => a - b);
+}
+
+/** The stop nearest to `value` (the lower one on a tie). */
+export function nearestStop(stops: readonly number[], value: number): number {
+  let best = stops[0] ?? value;
+  for (const s of stops) if (Math.abs(s - value) < Math.abs(best - value)) best = s;
+  return best;
+}
+
 /** True when the user asks for reduced motion. Safe where matchMedia is missing. */
 export function prefersReducedMotion(): boolean {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;

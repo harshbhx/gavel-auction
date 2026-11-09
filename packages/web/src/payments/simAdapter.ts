@@ -1,3 +1,4 @@
+import { isHoldErrorCode } from '../copy/errors';
 import type { ApprovalRequest, ApprovalResult, ApprovalState, PaymentApprovalPort } from './port';
 
 export interface SimAdapterDeps {
@@ -44,8 +45,13 @@ export class SimApprovalAdapter implements PaymentApprovalPort {
           }),
         },
       );
-      if (!res.ok)
-        return finish('error', { errorCode: res.status === 404 ? 'demo_off' : 'hold_failed' });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => null)) as { error?: unknown } | null;
+        const code = err?.error;
+        return finish('error', {
+          errorCode: isHoldErrorCode(code) ? code : res.status === 404 ? 'demo_off' : 'hold_failed',
+        });
+      }
       const body = (await res.json()) as { holdId?: unknown; ceilingCents?: unknown };
       if (typeof body.holdId !== 'string') return finish('error', { errorCode: 'hold_failed' });
       return finish('held', {

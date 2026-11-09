@@ -1,9 +1,6 @@
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import type { BidderId, Cents, MsgId } from '@gavel/shared';
 import { announce } from '../../a11y/announce';
-import type { AudioFrameSink } from '../../audio/micCapture';
-import { useMic } from '../../audio/useMic';
-import { Button } from '../../design/primitives/Button';
 import { t } from '../../copy/t';
 import { useConnection } from '../../net/connection';
 import { ControlError, ControlTimeoutError, createControlPort } from '../../net/controlPort';
@@ -12,12 +9,19 @@ import { publicSource } from '../../ladder/fromWire';
 import { useRoom } from '../../store/roomStore';
 import { selectors } from '../../store/selectors';
 import type { AuctionStatus } from '../../wire';
+import { ChunkBoundary, lazyWithRetry } from '../states/ChunkBoundary';
 import { Controls, controlStatus } from './Controls';
 import { ConsoleScreen } from './ConsoleScreen';
 import { KillSwitch } from './KillSwitch';
 import { ManualEntry, type ManualSendResult } from './ManualEntry';
 import { Roster } from './Roster';
-import { VoiceFeed, voiceEntriesFromAudit, type VoiceFeedEntry } from './VoiceFeed';
+import { voiceEntriesFromAudit } from './VoiceFeed';
+
+// The microphone code (capture, resampler, socket) loads only with the console, not with the
+// landing route, to keep the first visit under the bundle budget.
+const VoiceControl = lazyWithRetry(() =>
+  import('./VoiceControl').then((m) => ({ default: m.VoiceControl })),
+);
 
 export interface LiveConsoleProps {
   readonly room: LiveRoom | null;
@@ -30,28 +34,8 @@ export interface LiveConsoleProps {
   readonly onConfirmAnswer: (confirmId: string, accept: boolean) => void;
   /** Error code of the last rejected bid this console sent, or an empty string. */
   readonly rejection: string;
-  /** Receives microphone PCM chunks. Without it the microphone is shown as not available. */
-  readonly audioSink?: AudioFrameSink;
-}
-
-/** Microphone button and feed for a build that has an audio path to the server. */
-function LiveVoice({
-  sink,
-  entries,
-}: {
-  readonly sink: AudioFrameSink;
-  readonly entries: readonly VoiceFeedEntry[];
-}) {
-  const mic = useMic(sink);
-  const micOn = mic.state === 'live' || mic.state === 'requesting';
-  return (
-    <>
-      <Button variant="outline" onClick={micOn ? mic.stop : mic.start}>
-        {t(micOn ? 'console.mic.stop' : 'console.mic.start')}
-      </Button>
-      <VoiceFeed mic={mic.state} level={mic.level} entries={entries} />
-    </>
-  );
+  /** The scripted demo has no server to listen to: the microphone shows why it is off. */
+  readonly scripted?: boolean;
 }
 
 /** What the auctioneer must know about a capture that is not done or has failed. */
@@ -85,7 +69,7 @@ export function LiveConsole({
   apiBase,
   onConfirmAnswer,
   rejection,
-  audioSink,
+  scripted = false,
 }: LiveConsoleProps) {
   const port = useMemo(
     () => createControlPort({ auctionId: roomId, token, baseUrl: apiBase }),
@@ -205,16 +189,16 @@ export function LiveConsole({
         settlementView={settlementView}
         controls={controls}
         voiceFeed={
-          audioSink === undefined ? (
-            <>
-              <Button variant="outline" disabled>
-                {t('console.mic.start')}
-              </Button>
-              <VoiceFeed mic="off" level={0} entries={voiceEntries} unavailable />
-            </>
-          ) : (
-            <LiveVoice sink={audioSink} entries={voiceEntries} />
-          )
+          <ChunkBoundary fallback={<p role="status">{t('console.mic.reason.checking')}</p>}>
+            <VoiceControl
+              apiBase={apiBase}
+              roomId={roomId}
+              token={token}
+              closed={stopped || status === 'CLOSING' || status === 'SETTLING' || status === 'DONE'}
+              scripted={scripted}
+              entries={voiceEntries}
+            />
+          </ChunkBoundary>
         }
         onConfirmAnswer={onConfirmAnswer}
         stoppedHere={stoppedHere}

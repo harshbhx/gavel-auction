@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { t } from '../../src/copy/t';
 import { confirmHold } from '../support/approveHold';
 import { RegisterScreen } from '../../src/screens/register/RegisterScreen';
-import { customCeilingCents, validName } from '../../src/screens/register/validate';
+import { NAME_MAX, customCeilingCents, validName } from '../../src/screens/register/validate';
 
 function continueButton(): HTMLElement {
   return screen.getByRole('button', { name: t('reg.continue') });
@@ -20,7 +20,25 @@ describe('registration validation (T-WEB-031)', () => {
     expect(validName('')).toBe(false);
     expect(validName('   ')).toBe(false);
     expect(validName('a'.repeat(24))).toBe(true);
-    expect(validName('a'.repeat(25))).toBe(false);
+    expect(validName('a'.repeat(64))).toBe(true);
+    expect(validName('a'.repeat(65))).toBe(false);
+  });
+
+  it('accepts a 30 character name and the input limit equals the enforced one (#2391)', () => {
+    setup();
+    const input = screen.getByLabelText(t('reg.name')) as HTMLInputElement;
+    expect(input.maxLength).toBe(NAME_MAX);
+    fireEvent.change(input, { target: { value: 'Dr. Elizabeth Montgomery-Smith' } });
+    expect(continueButton().getAttribute('aria-disabled')).toBeNull();
+  });
+
+  it('says what is wrong with a name, never the generic error (#2391)', () => {
+    setup();
+    const input = screen.getByLabelText(t('reg.name'));
+    fireEvent.change(input, { target: { value: '   ' } });
+    fireEvent.blur(input);
+    expect(screen.getByRole('alert').textContent).toContain(t('reg.nameRequired'));
+    expect(screen.queryByText(t('generic.error'))).toBeNull();
   });
 
   it('accepts a custom ceiling only inside the room range', () => {

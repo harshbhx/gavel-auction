@@ -99,7 +99,7 @@ Open and in progress, stated as of 9 Nov 2026:
 - **G3, honor period and reauthorize: a real sandbox probe is running.** Day 0 was recorded on 7 Nov 2026 at 03:06 UTC and the final reading is about 12 Nov 06:17 UTC. Early readings on older authorizations at 3.24 and 3.5075 days accepted a partial capture of 1.00 (HTTP 201) ([evidence](docs/evidence/G3-early)). The 30-day auction run is a simulation on a fake clock ([SIM-MULTIDAY](docs/evidence/SIM/SIM-MULTIDAY.md)), not a sandbox result.
 - **G5, voice accuracy: PARTIAL, and spoken bids run in assist mode.** On two sets of 24 synthetic clips, Deepgram nova-3 and Groq whisper-large-v3-turbo score wrong accept 0.000 (tuned on those clips). A held-out noisy set of 120 synthetic clips, measured once against thresholds fixed beforehand, read wrong accept 0.058 for Groq and 0.092 for Deepgram against 0.05 ([result](docs/evidence/G5/HELDOUT-NOISY.md)). Every spoken bid goes through the confirm prompt, and the next step is a real room.
 - **Latency targets:** both are missed on the larger run; keeping them, raising them with a reason or reducing latency is an owner decision that is still open.
-- **Scope:** PayPal sandbox only. The server kill ran on a CI runner, not the deployed host. The live socket run used the fake PayPal and synthetic clips, and the web console has no audio sender yet. A `final_capture` and a void on a guest-card authorization are not run, and the release of the remainder is inferred, not read from a buyer balance.
+- **Scope:** PayPal sandbox only. The server kill ran on a CI runner, not the deployed host. The live socket run used the fake PayPal and synthetic clips, and the web console microphone has been tested only with a fake microphone and socket, not by a person in a real room. A `final_capture` and a void on a guest-card authorization are not run, and the release of the remainder is inferred, not read from a buyer balance.
 
 What is next, with owners and dates where known: [Limits and next steps](docs/LIMITATIONS.md). What changed and when: [changelog](CHANGELOG.md).
 
@@ -182,7 +182,7 @@ The web app (`packages/web`) uses the Scoreboard design: flat panels, hard shado
 - **Hold card.** Hatched means held, solid means charged, hollow means released, always with a text status and a hide-amount toggle.
 - **Ceiling slider and join code input.** Snapping ticks and full keyboard control; one slot per character with paste that drops a `GVL-` prefix.
 - **Alerts.** Outbid, win and sold alerts on the bidder phone and a gavel sound on the projector, with a mute toggle.
-- **Hold explainer and guided tour.** A help button opens a sheet that explains the hold, or replays a six-step tour.
+- **Hold explainer.** A help button opens a sheet that explains the hold. Nothing opens over the page by itself.
 - **Fundraiser thermometer.** The projector screen shows a goal bar when the auctioneer sets a goal. Only captured money counts as raised.
 - **Shareable receipt.** A receipt can mint a link with a QR code and a copy button, and has a print layout.
 - **Judge rooms.** With `JUDGE_ROOMS=true`, "Start a demo auction" opens a key-less room on the PayPal sandbox (capped, rate limited, switchable off at runtime).

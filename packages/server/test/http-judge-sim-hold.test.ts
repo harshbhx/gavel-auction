@@ -7,6 +7,7 @@ import {
   type Cents,
   EpochMs,
 } from '@gavel/shared';
+import { HoldError } from '@gavel/payments';
 import { describe, expect, it } from 'vitest';
 import { secretSetFromConfig } from '../src/auth/rotation';
 import { createHttpApp, type HttpApp, type HttpDeps } from '../src/http/app';
@@ -202,6 +203,30 @@ describe('judge simulated hold (SRV-34)', () => {
     expect((await go(5_000)).status).toBe(200);
     expect((await go(2_000)).status).toBe(409);
     expect(seen.get(who.bidderId)).toBe(5_000);
+  });
+
+  it('answers a refused raise with its hold error code (#2397)', async () => {
+    const sim: SimHolds = {
+      acceptsHolds: () => Promise.resolve(true),
+      place: (i) =>
+        Promise.reject(
+          new HoldError(
+            i.ceilingCents === 5_000 ? 'raise_too_small' : 'raise_limit_reached',
+            'refused',
+          ),
+        ),
+    };
+    const { app } = setup({ simHolds: sim });
+    const room = await createRoom(app);
+    const who = await joinRoom(app, room.joinCode);
+    const go = (ceilingCents: number): Promise<Response> =>
+      simHold(app, room.auctionId, who.sessionToken, { ceilingCents, name: 'Ada' });
+    const small = await go(5_000);
+    expect(small.status).toBe(422);
+    expect(await small.json()).toMatchObject({ error: 'raise_too_small', code: 'raise_too_small' });
+    const capped = await go(4_000);
+    expect(capped.status).toBe(409);
+    expect(await capped.json()).toMatchObject({ error: 'raise_limit_reached' });
   });
 
   it('takes any whole-cent ceiling from the minimum to the cap, not only the presets', async () => {
