@@ -257,7 +257,7 @@ export function capturesOf(order: unknown): CaptureRef[] | null;
 // @public (undocumented)
 export interface CeilingRules {
     maxCeilingCents: number;
-    presetsCents: readonly number[];
+    presetsCents?: readonly number[];
 }
 
 // @public
@@ -339,7 +339,7 @@ export interface CreateHoldInput {
     bidderId: string;
     // (undocumented)
     ceilingCents: number;
-    presetsCents: readonly number[];
+    presetsCents?: readonly number[];
 }
 
 // @public

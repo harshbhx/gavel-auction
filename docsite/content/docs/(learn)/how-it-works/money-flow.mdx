@@ -30,7 +30,7 @@ A partial capture with `final_capture` closed the authorization as CAPTURED for 
 
 <NotVerified title="Remainder release is inferred">
 
-No run read a buyer balance. The authorization keeps its original amount (500.00 in the run), so the evidence cannot tell a released remainder from an open one. The saga handles both: in the default mode it records `remainder_closed_by_paypal` and sends no void; if an open remainder is found it voids it explicitly.
+No run read a buyer balance (the 9 Nov attempt, run 42567836032, was blocked: the buyer account pages asked for a sign-in again). The authorization keeps its original amount (500.00 in the run), so the evidence cannot tell a released remainder from an open one. The saga handles both: in the default mode it records `remainder_closed_by_paypal` and sends no void; if an open remainder is found it voids it explicitly.
 
 </NotVerified>
 

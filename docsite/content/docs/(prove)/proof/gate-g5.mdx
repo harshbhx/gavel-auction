@@ -19,6 +19,17 @@ The first run failed (wrong accept 0.083 to 0.167 against a limit of 0.05). Nine
 
 </Held>
 
+## Held-out noisy set, measured once
+
+On a synthetic held-out set measured once (120 clips: eSpeak speech, simulated room and babble noise at 20, 10 and 5 dB, run 42567832671), neither provider met the pre-registered thresholds: Groq wrong accept 0.058 and exact plus recoverable 0.923, Deepgram wrong accept 0.092 and exact plus recoverable 0.744, against 0.05 and 0.90; this is worse than the in-sample result.
+
+| Provider | Exact plus recoverable (line 0.90) | Wrong accept (line 0.05) | Wrong accept at 20, 10 and 5 dB (line 0.05 each) | Confirm rate |
+| --- | --- | --- | --- | --- |
+| Groq whisper-large-v3-turbo | 0.923, met | 0.058, missed | 0.050, 0.050, 0.075 (5 dB missed) | 0.175 |
+| Deepgram nova-3 | 0.744, missed | 0.092, missed | 0.075, 0.100, 0.100, all missed | 0.233 |
+
+A wrong accept is a clip where the parser answered accept, a bid taken without a confirm prompt, with a pair other than the spoken bid; it is counted over all 120 clips. The parser asked for a confirm on 0.175 (Groq) and 0.233 (Deepgram) of the clips, and on the room microphone no bid is auto-accepted by construction, so these are parser answers and not bids that reached the auction. The audio is synthetic and the noise is simulated. The set was measured once and nothing was tuned on it; any later parser, option or threshold change made after reading these failures counts as in-sample. G5 stays PARTIAL. Run: [42567832671](https://github.com/harshbhx/gavel-auction/actions/runs/42567832671); files and sha256 in [`docs/evidence/G5`](https://github.com/harshbhx/gavel-auction/tree/main/docs/evidence/G5).
+
 ## Method
 
 - Cached eval: 24 clips (24 utterances) were sent to each provider once and the outputs recorded; the cached eval scores the recorded outputs through the rule parser. It runs in the [`voice-eval`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/voice-eval.yml) workflow (text and cached modes run on pull requests with no keys; live mode is manual).
@@ -51,7 +62,7 @@ Reference text goes in as recognized text, so this measures the parser and nothi
 
 ## Limits
 
-- Synthetic audio only, noise-free. No real room, no noisy room, no accents beyond the parser's text cases.
+- Synthetic audio only: noise-free in the two 24-clip sets, simulated noise in the held-out set. No real room, no person, no accents beyond the parser's text cases.
 - The 24-clip sample is small, and the parser rules and provider options were chosen after reading the failures on it.
 - Latency is not measured by the text mode.
 - The nightly harness skipped G5 (20 of 20 private recordings missing), so no live G5 run exists.

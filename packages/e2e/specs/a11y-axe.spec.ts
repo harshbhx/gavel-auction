@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import type { Page, TestInfo } from '@playwright/test';
 import { expect, test } from '../src/fixtures/base';
-import { seedRoom } from '../src/fixtures/room';
+import { putRoomInState, seedRoom, storeBidderSession } from '../src/fixtures/room';
 
 /**
  * axe-core over the views the web app serves on the real stack (R-QA-037, T-QA-047): zero serious
@@ -125,9 +125,7 @@ test('axe on the gallery with the dialog open', async ({ page, stack }, testInfo
 
 /**
  * Bid, console, public screen and receipt on the scripted scenarios, reached with `?scripted=1`
- * (`at` holds the scenario at one moment). Bid paused and bid stopped are not reachable: no
- * scripted scenario pauses a lot or stops a room with a flag on the snapshot. The audit view is
- * not reachable either: it needs a reviewer link and the scripted routes do not mount it.
+ * (`at` holds the scenario at one moment).
  */
 const SCRIPTED_VIEWS = [
   { name: 'bid-open', path: '/r/demo/bid', query: 'at=3000' },
@@ -149,4 +147,46 @@ for (const view of SCRIPTED_VIEWS) {
       await sweep(page, testInfo, `scripted-${view.name}-${theme}`);
     });
   }
+}
+
+/**
+ * Bid paused, bid stopped and the audit view, on a real seeded room whose state is set through the
+ * server's own control route (no scripted scenario is needed): `paused` pauses the open lot,
+ * `stopped` hammers it with closeNow, which sets the stopped flag the bid screen reads. The audit
+ * view opens with the room's auctioneer link in the URL fragment, which is a link that opens it
+ * (a reviewer link opens the same view).
+ */
+const ROOM_STATE_VIEWS = [
+  { name: 'bid-paused', state: 'paused', banner: 'Paused by the auctioneer' },
+  { name: 'bid-stopped', state: 'stopped', banner: 'Auction stopped' },
+] as const;
+
+for (const view of ROOM_STATE_VIEWS) {
+  for (const theme of THEMES) {
+    test(`axe ${view.name} in ${theme}`, async ({ page, stack }, testInfo) => {
+      await setTheme(page, theme);
+      const room = await seedRoom(stack);
+      await putRoomInState(stack, room, view.state);
+      await storeBidderSession(page, stack, room);
+      await page.goto(`${stack.webUrl}/r/${room.auctionId}/bid`);
+      await expect(page.getByText(view.banner).first()).toBeVisible({ timeout: 20_000 });
+      await sweep(page, testInfo, `${view.name}-${theme}`);
+    });
+  }
+}
+
+for (const theme of THEMES) {
+  test(`axe audit view with a reviewer-style link in ${theme}`, async ({
+    page,
+    stack,
+  }, testInfo) => {
+    await setTheme(page, theme);
+    const room = await seedRoom(stack);
+    await putRoomInState(stack, room, 'stopped');
+    await page.goto(`${stack.webUrl}/r/${room.auctionId}/audit#token=${room.auctioneerToken}`);
+    await page.locator('main[data-route="audit"]').waitFor();
+    // Past the loading state: the guide shows both with and without trail rows.
+    await page.locator('#gv-audit-guide-title').waitFor({ timeout: 20_000 });
+    await sweep(page, testInfo, `audit-${theme}`);
+  });
 }

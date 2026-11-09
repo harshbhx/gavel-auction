@@ -114,16 +114,20 @@ jobs:
           fi
       - uses: ./.github/actions/setup
       - name: Install the browser
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
       - name: Run the accessibility specs
         working-directory: packages/web
-        run: npm run test:a11y
+        run: npx playwright test --project=chromium a11y keyboard motion responsive
+      - name: Run the axe and keyboard specs in WebKit
+        # An engine check for Safari (issue 2195), not VoiceOver. It passed on its first run.
+        working-directory: packages/web
+        run: npx playwright test --project=webkit a11y keyboard
       - name: Run the web specs
         if: steps.baselines.outputs.present == 'true' || github.event.inputs.update_baselines == 'true'
         working-directory: packages/web
         env:
           UPDATE: ${{ github.event.inputs.update_baselines == 'true' && '--update-snapshots' || '' }}
-        run: npx playwright test $UPDATE
+        run: npx playwright test --project=chromium $UPDATE
       - name: Upload failure output
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

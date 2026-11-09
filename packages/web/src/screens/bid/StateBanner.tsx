@@ -18,9 +18,10 @@ export function bidsLocked(status: string | null, stopped = false): boolean {
 export function bidsNotice(
   status: string | null,
   stopped = false,
-): 'bid.stoppedBanner' | 'bid.paused' | 'bid.closedBanner' | null {
+): 'bid.stoppedBanner' | 'bid.paused' | 'bid.closedBanner' | 'bid.notOpenYet' | null {
   if (stopped) return 'bid.stoppedBanner';
   if (status === 'PAUSED') return 'bid.paused';
+  if (status === 'SCHEDULED') return 'bid.notOpenYet';
   if (status === 'CLOSING' || status === 'SETTLING' || status === 'DONE') return 'bid.closedBanner';
   return null;
 }
@@ -38,6 +39,13 @@ export function StateBanner({ status, stopped = false }: StateBannerProps) {
     return (
       <Banner tone="warn" icon={<Icon name="pause" />}>
         {t('bid.paused')}
+      </Banner>
+    );
+  }
+  if (status === 'SCHEDULED') {
+    return (
+      <Banner tone="info" icon={<Icon name="pause" />}>
+        {t('bid.notOpenYet')}
       </Banner>
     );
   }

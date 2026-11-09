@@ -102,17 +102,15 @@ afterEach(() => {
   FakeSocket.all = [];
 });
 
-describe('register route for a room that takes only its presets', () => {
-  it('offers no custom amount and posts only a ceiling from the presets', async () => {
+describe('register route for a room that lists presets', () => {
+  it('offers the presets as quick picks and posts the one chosen', async () => {
     for (const preset of PRESETS) {
       saveSession(ROOM, { token: 'plainly-fake-session', bidderId: ME });
       const calls = stubFetch();
       openLive(`/r/${ROOM}/register`);
       fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
       fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
-      expect(screen.getAllByRole('radio')).toHaveLength(PRESETS.length);
-      expect(screen.queryByRole('radio', { name: t('reg.custom') })).toBeNull();
-      expect(screen.queryByText(/whole dollar amount/)).toBeNull();
+      expect(screen.getAllByRole('radio')).toHaveLength(PRESETS.length + 1);
       fireEvent.click(screen.getAllByRole('radio')[PRESETS.indexOf(preset)] as HTMLElement);
       confirmHold();
       await flush();
@@ -126,6 +124,49 @@ describe('register route for a room that takes only its presets', () => {
       roomStore.enter('');
       resetApprovalMemory();
     }
+  });
+});
+
+describe('register route with a custom ceiling', () => {
+  it('posts the amount the bidder typed when it is inside the room range', async () => {
+    saveSession(ROOM, { token: 'plainly-fake-session', bidderId: ME });
+    const calls = stubFetch();
+    openLive(`/r/${ROOM}/register`);
+    fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
+    fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
+    fireEvent.click(screen.getByRole('radio', { name: t('reg.custom') }));
+    fireEvent.change(screen.getByRole('textbox', { name: t('reg.custom') }), {
+      target: { value: '420' },
+    });
+    confirmHold();
+    await flush();
+    const posted = JSON.parse(calls.find((c) => c.url.endsWith('/api/holds'))?.body ?? '{}') as {
+      ceilingCents?: number;
+    };
+    expect(posted.ceilingCents).toBe(42_000);
+  });
+
+  it('uses the cap the server sends in the snapshot as the maximum', () => {
+    saveSession(ROOM, { token: 'plainly-fake-session', bidderId: ME });
+    stubFetch();
+    render(<App initialPath={`/r/${ROOM}/register`} liveBase="ws://x" api={API} />);
+    const socket = lastSocket();
+    act(() => socket.open());
+    act(() => socket.receive(stateMsg(1, { ...snapshot(), maxCeilingCents: Cents(250_000) })));
+    fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
+    fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
+    fireEvent.click(screen.getByRole('radio', { name: t('reg.custom') }));
+    expect(screen.getByText(t('reg.customHint', { min: '$1', max: '$2,500' }))).toBeTruthy();
+    const field = screen.getByRole('textbox', { name: t('reg.custom') });
+    fireEvent.change(field, { target: { value: '2501' } });
+    fireEvent.blur(field);
+    expect(
+      screen
+        .getAllByRole('alert')
+        .some((a) =>
+          (a.textContent ?? '').includes(t('reg.customRange', { min: '$1', max: '$2,500' })),
+        ),
+    ).toBe(true);
   });
 });
 
