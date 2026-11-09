@@ -37,10 +37,7 @@ function openStore(): RoomStore {
   const store = new RoomStore();
   store.dispatch({
     kind: 'wire',
-    msg: stateMsg(
-      1,
-      openSnapshot(roster([12, 'Priya']), baseConfig, 'OPEN', ROOM as AuctionId),
-    ),
+    msg: stateMsg(1, openSnapshot(roster([12, 'Priya']), baseConfig, 'OPEN', ROOM as AuctionId)),
   });
   store.dispatch({ kind: 'wire', msg: priceMsg(2, 12, 40_000) });
   return store;
@@ -123,8 +120,8 @@ describe('stopped clock on every surface', () => {
       leaderPaddle: 12,
       leaderName: 'Priya',
       bidCount: 1,
-      endTs: Date.now() + 60_000,
-      now: Date.now,
+      endTs: 60_000,
+      now: () => 0,
       nextMinCents: 41_000,
     };
     const { rerender } = render(<PriceHeader {...props} />);
@@ -142,15 +139,13 @@ describe('stopped clock on every surface', () => {
     act(() => {
       store.dispatch({
         kind: 'wire',
-        msg: stateMsg(
-          4,
-          { ...openSnapshot(roster([12, 'Priya']), baseConfig, 'OPEN', ROOM as AuctionId), stopped: true },
-        ),
+        msg: stateMsg(4, {
+          ...openSnapshot(roster([12, 'Priya']), baseConfig, 'OPEN', ROOM as AuctionId),
+          stopped: true,
+        }),
       });
     });
-    expect(document.querySelector('.gv-screen__clock')?.textContent).toBe(
-      t('screen.clockStopped'),
-    );
+    expect(document.querySelector('.gv-screen__clock')?.textContent).toBe(t('screen.clockStopped'));
     expect(screen.getAllByText(t('screen.stopped')).length).toBeGreaterThan(0);
   });
 
@@ -158,7 +153,7 @@ describe('stopped clock on every surface', () => {
     const store = openStore();
     stop(store);
     expect(selectors.stopped(store.getState())).toBe(true);
-    render(<BidScreen store={store} stopped />);
+    render(<BidScreen store={store} onBid={() => undefined} stopped />);
     expect(screen.getAllByText(t('bid.stoppedBanner')).length).toBeGreaterThan(0);
   });
 
@@ -220,10 +215,7 @@ describe('room hub follows the stop at once', () => {
       FakeSocket.last?.onopen?.();
     });
     deliver(
-      stateMsg(
-        1,
-        openSnapshot(roster([12, 'Priya']), baseConfig, 'OPEN', ROOM as AuctionId),
-      ),
+      stateMsg(1, openSnapshot(roster([12, 'Priya']), baseConfig, 'OPEN', ROOM as AuctionId)),
     );
   }
 
@@ -236,11 +228,11 @@ describe('room hub follows the stop at once', () => {
     expect(screen.getByTestId('hub-ended').textContent).toBe(t('hub.stoppedNote'));
     expect(screen.getByTestId('hub-join-open').tagName).not.toBe('A');
     expect(
-      (screen.getByRole('button', { name: t('hub.newInvite') }) as HTMLButtonElement).disabled,
-    ).toBe(true);
+      screen.getByRole('button', { name: t('hub.newInvite') }).getAttribute('aria-disabled'),
+    ).toBe('true');
     expect(
-      (screen.getByRole('button', { name: t('hub.copyInvite') }) as HTMLButtonElement).disabled,
-    ).toBe(true);
+      screen.getByRole('button', { name: t('hub.copyInvite') }).getAttribute('aria-disabled'),
+    ).toBe('true');
   });
 
   it('closes joining after a hammer with a winner, without calling it stopped', () => {
