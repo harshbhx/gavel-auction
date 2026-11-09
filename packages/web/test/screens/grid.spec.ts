@@ -153,6 +153,8 @@ test.describe('ledger lab: export, filters in the link, verify, memory', () => {
   });
 
   test('sort and widths come back after a reload in the same tab', async ({ page }) => {
+    // Under 700 px the ledger is a list of cards with no header row to click; sorting there is the select.
+    test.skip((page.viewportSize()?.width ?? 1280) < 700, 'cards have no header row');
     await lab(page);
     // The grid starts saving a moment after it has settled; a person never clicks sooner.
     await page.waitForTimeout(600);
