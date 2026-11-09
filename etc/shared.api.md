@@ -4100,6 +4100,7 @@ export const RoomSnapshotSchema: z.ZodObject<{
             readonly __brand_centsBrand: "Cents";
         };
     }>>;
+    maxCeilingCents: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
     joinCode: z.ZodOptional<z.ZodString>;
     roster: z.ZodEffects<z.ZodArray<z.ZodObject<{
         bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
@@ -4415,6 +4416,7 @@ export const RoomSnapshotSchema: z.ZodObject<{
             readonly __brand_centsBrand: "Cents";
         };
     } | undefined;
+    maxCeilingCents?: Cents | undefined;
     joinCode?: string | undefined;
     you?: {
         bidderId: string & {
@@ -4527,6 +4529,7 @@ export const RoomSnapshotSchema: z.ZodObject<{
             readonly __brand_centsBrand: "Cents";
         };
     } | undefined;
+    maxCeilingCents?: Cents | undefined;
     joinCode?: string | undefined;
     you?: {
         bidderId: string & {
@@ -4922,6 +4925,7 @@ export const serverSchemas: {
                     readonly __brand_centsBrand: "Cents";
                 };
             }>>;
+            maxCeilingCents: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
             joinCode: z.ZodOptional<z.ZodString>;
             roster: z.ZodEffects<z.ZodArray<z.ZodObject<{
                 bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
@@ -5237,6 +5241,7 @@ export const serverSchemas: {
                     readonly __brand_centsBrand: "Cents";
                 };
             } | undefined;
+            maxCeilingCents?: Cents | undefined;
             joinCode?: string | undefined;
             you?: {
                 bidderId: string & {
@@ -5349,6 +5354,7 @@ export const serverSchemas: {
                     readonly __brand_centsBrand: "Cents";
                 };
             } | undefined;
+            maxCeilingCents?: Cents | undefined;
             joinCode?: string | undefined;
             you?: {
                 bidderId: string & {
@@ -5487,6 +5493,7 @@ export const serverSchemas: {
                     readonly __brand_centsBrand: "Cents";
                 };
             } | undefined;
+            maxCeilingCents?: Cents | undefined;
             joinCode?: string | undefined;
             you?: {
                 bidderId: string & {
@@ -5605,6 +5612,7 @@ export const serverSchemas: {
                     readonly __brand_centsBrand: "Cents";
                 };
             } | undefined;
+            maxCeilingCents?: Cents | undefined;
             joinCode?: string | undefined;
             you?: {
                 bidderId: string & {
@@ -6610,6 +6618,7 @@ export const StateSchema: z.ZodObject<{
                 readonly __brand_centsBrand: "Cents";
             };
         }>>;
+        maxCeilingCents: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
         joinCode: z.ZodOptional<z.ZodString>;
         roster: z.ZodEffects<z.ZodArray<z.ZodObject<{
             bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
@@ -6925,6 +6934,7 @@ export const StateSchema: z.ZodObject<{
                 readonly __brand_centsBrand: "Cents";
             };
         } | undefined;
+        maxCeilingCents?: Cents | undefined;
         joinCode?: string | undefined;
         you?: {
             bidderId: string & {
@@ -7037,6 +7047,7 @@ export const StateSchema: z.ZodObject<{
                 readonly __brand_centsBrand: "Cents";
             };
         } | undefined;
+        maxCeilingCents?: Cents | undefined;
         joinCode?: string | undefined;
         you?: {
             bidderId: string & {
@@ -7175,6 +7186,7 @@ export const StateSchema: z.ZodObject<{
                 readonly __brand_centsBrand: "Cents";
             };
         } | undefined;
+        maxCeilingCents?: Cents | undefined;
         joinCode?: string | undefined;
         you?: {
             bidderId: string & {
@@ -7293,6 +7305,7 @@ export const StateSchema: z.ZodObject<{
                 readonly __brand_centsBrand: "Cents";
             };
         } | undefined;
+        maxCeilingCents?: Cents | undefined;
         joinCode?: string | undefined;
         you?: {
             bidderId: string & {
