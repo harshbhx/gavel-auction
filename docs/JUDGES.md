@@ -34,8 +34,8 @@ How to read the labels:
 
 The hosted site offers a short real room on the PayPal sandbox with no operator key. The same steps are on the page `/try` of the web app.
 
-1. Open https://gavel.dualmindlab.tech and press "Start a demo auction". The server opens a room that lasts about thirty minutes and takes you to the auctioneer console. If the host is busy, switched off or the flag is not set, the page says so and offers the scripted demo.
-2. Open the big screen link in a second window, or scan its QR code with a phone, and join as a bidder.
+1. Open https://gavel.dualmindlab.tech and press "Start a demo auction". The server opens a room that lasts about thirty minutes and takes you to the room hub, which shows a room code, a QR code and buttons for the big screen, the console and the bidder view. Open the console from the hub. If the host is busy, switched off or the flag is not set, the page says so and offers the scripted demo.
+2. From the hub, open the big screen in a second window, and join as a bidder with the room code or by scanning the QR code with a phone.
 3. Enter a name, pick a ceiling and approve the hold in the PayPal sandbox login. Sandbox buyer credentials: see the Devpost testing instructions. They are not in this repository.
 4. Place a bid from the bidder view, then press hammer in the console.
 5. You should see the hold show as held while bidding, then the settlement after the hammer and the other holds released. The audit trail link shows the ledger entries; the hash chain is checked on the sealed public export.

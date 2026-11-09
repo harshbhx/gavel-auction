@@ -19,14 +19,18 @@ _A price counts up to $20, then the line "Held, not charged" sweeps across it._
 GAVEL turns that idea into a working room. Everything runs in the PayPal sandbox; no real money moves.
 
 - **Hold.** A bidder approves a ceiling as a PayPal authorization. It is held, not charged.
-- **Bid.** A deterministic engine runs an ascending English auction with a minimum increment and a soft close. A bid above the ceiling is refused. Bids come from phones, a QR code, the console or, with a confirm step, by voice.
+- **Bid.** A deterministic engine runs an ascending English auction with a minimum increment and a soft close. A bid above the ceiling is refused. Bids come from phones, a QR code or the console. Voice bids go through the server audio socket with a confirm step; the web console microphone is not connected yet.
 - **Hammer.** The auctioneer holds a button to close the lot. GAVEL captures only the winning price from the winner's hold and voids every other hold. Until that capture, money is held, not charged.
 - **Receipt and verify.** Every accepted bid goes into a hash-chained ledger that anyone can check in the browser.
-- **Voice.** A spoken bid is parsed, validated and then waits for a confirm ("Did you mean 350 for paddle 12?").
+- **Voice.** A spoken bid sent to the server audio socket is parsed, validated and then waits for a confirm ("Did you mean 350 for paddle 12?"). This is proven on synthetic clips; the web console microphone is not connected yet, so a judge bids by tap, QR or typed entry.
 
 ![Four steps, Hold, Bid, Hammer, Receipt, each lit in turn while the real GAVEL screen for that step wipes in beside it.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/03-what-it-does.png)
 
 _Hold, bid, hammer, receipt: the four steps, with the real screen for each._
+
+![Animated slide: how it works, in four moves: hold, bid, hammer, receipt.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/04-how-it-works.gif)
+
+_How it works: a ceiling is held, bids come in under it, the hammer captures the winning price, and the receipt closes the lot._
 
 ### Try it in 60 seconds, no account
 
@@ -35,11 +39,15 @@ _Hold, bid, hammer, receipt: the four steps, with the real screen for each._
 3. Bid, then press and hold the hammer on the console.
 4. Read the receipt, then open the audit page and verify the ledger chain in your browser.
 5. The [scripted demo](https://gavel.dualmindlab.tech/demo/scripted) plays a recorded room in about a minute.
-6. Prefer HTTP? Ask for a judge key and follow [Call the API as a judge](https://docs.gavel.dualmindlab.tech/docs/judges/call-the-api): open a room, bid, hammer and read the ledger with curl. The [API reference](https://docs.gavel.dualmindlab.tech/api-reference) has a Try it panel, and the [docs](https://docs.gavel.dualmindlab.tech) cover the rest.
+6. Prefer HTTP? Use the shared judge key in the Devpost testing instructions (optional, the steps above need no key) and follow [Call the API as a judge](https://docs.gavel.dualmindlab.tech/docs/judges/call-the-api): open a room, bid, hammer and read the ledger with curl. The [API reference](https://docs.gavel.dualmindlab.tech/api-reference) has a Try it panel, and the [docs](https://docs.gavel.dualmindlab.tech) cover the rest.
 
 ![Animated slide: the real room at /try and the scripted demo.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/06-judge-flow.png)
 
 _Two ways in for a judge, no login._
+
+![Animated slide: do not trust, verify. Every accepted bid goes into a hash-chained ledger that anyone can re-check.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/07-audit-and-verify.gif)
+
+_Do not trust, verify: every accepted bid goes into a hash-chained ledger, and anyone can re-check the public export. Hashes shown are shortened examples._
 
 ## How we built it
 
@@ -78,13 +86,17 @@ _Open data and the gate status._
 
 ### AI in the product
 
-**Runtime AI.** AI is used for voice bidding. Audio from the auctioneer's microphone goes to speech-to-text: Deepgram (model nova-3) with Groq (model whisper-large-v3-turbo) as failover. A rule-based parser turns the transcript into a structured bid, and a deterministic validator checks it against the auction rules. The model never decides a winner and never moves money, and every spoken bid waits for a confirm.
+**Runtime AI.** AI is used for voice bidding. Audio sent to the server's audio socket goes to speech-to-text: Deepgram (model nova-3) with Groq (model whisper-large-v3-turbo) as failover. A rule-based parser turns the transcript into a structured bid, and a deterministic validator checks it against the auction rules. The model never decides a winner and never moves money, and every spoken bid waits for a confirm.
 
 **AI tools used while building.** An AI coding assistant (name added by hand on Devpost), for coding assistance and documentation drafts.
 
 ![PayPal, Cloudflare Workers, Render, Hugging Face and AG Grid in large type, then the rest of the stack in small type.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/11-built-with.png)
 
 _The partners in large type, the rest of the stack below._
+
+![Built with the best: PayPal for payments, Cloudflare for web and docs, Render for API hosting, AG Grid for data tables, Hugging Face for open datasets.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/08-partners.png)
+
+_Who does what: PayPal payments, Cloudflare web and docs, Render API hosting, AG Grid data tables, Hugging Face open datasets._
 
 ## Challenges we ran into
 
@@ -108,7 +120,7 @@ _Two bids arrive together: one is accepted, one is refused as not higher._
 - Live speech through the audio socket: both providers answered 24 of 24 synthetic clips; no bid was accepted without a confirm.
 - The hosted judge flow passed all 17 steps on the live domains.
 - More than 4,500 test cases run in CI, and all eight P0 security items pass.
-- Audit waves found and closed real bugs: 157 deep-dig issues and 597 red-team issues are closed on GitHub.
+- Audit waves found and closed real bugs: as of 9 Nov 2026, 172 deep-dig issues and 597 red-team issues are closed on GitHub (the deep-dig round was still running).
 
 ![Three results in large type: kill survived, voice 24 of 24 (synthetic clips, confirm before every bid), chain verifies.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/13-results.gif)
 
@@ -127,7 +139,7 @@ _The same event arrives twice and is counted once._
 ## What's next for GAVEL
 
 - Read out the G3 probe and set the reauthorize behaviour from it.
-- Test voice with a person in a real room and in recorded noise.
+- Connect the web console microphone to the audio socket, then test voice with a person in a real room and in recorded noise.
 - More payment methods through the same hold and capture shape.
 - An organizer dashboard: lots, bidders, settlement and the ledger in one view.
 - Repeat the process kill on the deployed host.

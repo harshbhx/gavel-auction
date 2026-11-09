@@ -1,15 +1,15 @@
 ---
 title: Demo guide
-description: What you can try today, what needs a hosted server, and what is not built yet.
+description: What you can try today on the hosted site, what stays local, and what is not built yet.
 icon: Play
-status: unverified
+status: verified
 ---
 
 Status labels: "available" means the code is on `main` today. "not available yet" means the part is specified but not built or not deployed, so the step cannot be followed end to end.
 
-<Held title="Hosted in sandbox mode, recorded walk is next">
+<Held title="Hosted in sandbox mode, judge room and scripted demo available">
 
-The web app is at [gavel.dualmindlab.tech](https://gavel.dualmindlab.tech) and the API at [api.gavel.dualmindlab.tech](https://api.gavel.dualmindlab.tech), with a persistent disk. A recorded end-to-end walk of the room flow on that host is the next step. The hosted server refuses the <Term id="fake-paypal">fake PayPal</Term>. The <Term id="scripted-demo">scripted</Term> `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake`, which config refuses under production-like settings. The local fake-payments run is the runnable path today.
+The web app is at [gavel.dualmindlab.tech](https://gavel.dualmindlab.tech) and the API at [api.gavel.dualmindlab.tech](https://api.gavel.dualmindlab.tech), with a persistent disk. The hosted judge flow passed all 17 steps of the judge smoke on the live domains (Actions run 42584326641). You can start a judge room at [/try](https://gavel.dualmindlab.tech/try) with no login, or play the [scripted demo](https://gavel.dualmindlab.tech/demo/scripted) in your tab, with a speed control so each step is readable. The hosted server refuses the <Term id="fake-paypal">fake PayPal</Term>. The <Term id="scripted-demo">scripted</Term> `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake`, which config refuses under production-like settings. A local fake-payments run is optional: use it only to work offline or to change the code.
 
 </Held>
 
@@ -20,7 +20,7 @@ The web app is at [gavel.dualmindlab.tech](https://gavel.dualmindlab.tech) and t
 | Landing page `/` | Route built in the web package and served at the hosted address |
 | Judge page `/try` | Steps for a key-less <Term id="sandbox">sandbox</Term> <Term id="room">room</Term> and a link to the scripted tour; the room needs the host flag `JUDGE_ROOMS=true` |
 | Help button | Opens the hold explainer; present on the landing, join, register, bid and receipt screens |
-| Demo launcher `/demo` | Creates a room and gives four links; scripted mode is local only |
+| Demo launcher `/demo` | Creates a room and gives four links; the hosted launcher opens the judge room hub; the scripted fake-payments mode (`DEMO_MODE=1`) is local only, and the hosted scripted tour is `/demo/scripted` |
 | Replay `/replay/:recordingId` | Player and bundle format exist; no recording is hosted yet |
 | <Term id="auctioneer-console">Auctioneer console</Term>, bidder screen, big screen, audit | Routes built; they need a running server (the hosted API runs in sandbox mode) |
 
@@ -43,7 +43,7 @@ The ceiling is set on a slider and approved with a press-and-hold button (3 seco
 
 - QR: after joining, the bid screen has a quick-bid button, increment buttons and a custom amount. Bids above your ceiling are blocked.
 - Typed entry: the auctioneer console has "Manual entry" to place a bid for a registered bidder.
-- Voice: the `/audio` socket turns a spoken bid into a structured bid and asks for confirmation. The console has an auctioneer microphone that is enabled only when the server reports a live speech provider; otherwise it is disabled and says why. Every spoken bid still asks for a confirm.
+- Voice: the `/audio` socket turns a spoken bid into a structured bid and asks for confirmation. The console has an auctioneer microphone that is enabled only when the server reports a live speech provider; otherwise it is disabled and says why. Every spoken bid still asks for a confirm. The bidder phone has no microphone: a bidder uses the typed or quick bid.
 
 ## Expected result at the hammer
 

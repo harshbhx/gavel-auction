@@ -166,13 +166,14 @@ Paths are under `packages/server/` (code in `src/http/`, tests in `test/`).
 ### SEC-23 Simulated holds in judge rooms: agent verdict PASS (code level, agent only)
 
 - What the code does: the route needs `JUDGE_ROOMS` and the simulated-hold option (`:699`), a `session`
-  token for the room (`:701`), the judge-room marker and its expiry (`:705-709`), a ceiling from the
-  room's offered presets (`:712`) and an auction that still takes holds (`:715`). The hold id is
-  `sim-hold-<bidderId>`, written once under the per-hold queue; a second ceiling is a `conflict`
+  token for the room (`:701`), the judge-room marker and its expiry (`:705-709`), a whole-cent ceiling from
+  the minimum to the room cap (`:712`; presets are only quick picks, FIX-78) and an auction that still takes holds (`:715`). The hold id is
+  `sim-hold-<bidderId>`, written once under the per-hold queue; a repeat with the same ceiling returns the hold already there, a larger ceiling is a raise
+  with its own hold (the old one is voided, D-0025), and a smaller or equal ceiling is a `conflict`
   (`sim-holds.ts:36-67`). `withSimulatedHolds` answers only `sim-auth-` ids and passes every other id
   to the real gateway (`:74-124`), and only the sim-hold route writes such an id. Boot wraps the
   gateway only when judge rooms are on, and judge rooms need sandbox PayPal.
-- Test evidence: `http-judge-sim-hold.test.ts:163` (place), `:183` (repeat gives 409), `:207`
+- Test evidence: `http-judge-sim-hold.test.ts:163` (place), `:183` (repeat gives 409 for a smaller or equal ceiling), `:207`
   (ceiling, name, extra fields), `:220` (session of the same room), `:234` (never a normal auction),
   `:253` (off gives 404), `:264` (closed and expired), `:281` (probe); `sim-holds.test.ts:20-105`
   (write once, race, settle without the real gateway, real ids pass through);

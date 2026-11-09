@@ -16,7 +16,7 @@ Read these files in this order:
 2. `docs/GATES.md`: the six PayPal sandbox gates and their exact status. Every claim in the video must match this file.
 3. `docs/LIMITATIONS.md`: what is not done yet. The closing of the video states some of this.
 4. `docs/JUDGES.md` and `docs/judges/TRUST-FAQ.md`: what judges can click and how to read the labels.
-5. `docs/submission/DEVPOST.md`: the Devpost story, including the real-versus-simulated table.
+5. `brand/devpost/DESCRIPTION.md` and `FIELDS.md`: the Devpost story and fields, with the real-versus-simulated table.
 6. `docs/submission/VIDEO-SCRIPT.md`: the earlier shot list that this prompt builds on (timings, source labels, the label sheet).
 7. `docs/submission/ARCHITECTURE.md`: the package map and the settlement flow.
 8. `docs/DEMO.md` and `docs/DESIGN.md`: the screens, the route names and the visual language.

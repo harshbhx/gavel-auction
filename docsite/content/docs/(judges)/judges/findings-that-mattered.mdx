@@ -11,7 +11,7 @@ The repository was reviewed in repeated adversarial passes: red-team rounds 1 to
 
 Counted with `gh` on 7 Nov 2026 (queries at the end of the page); the open issues in "What is still open" were re-checked on 9 Nov 2026.
 
-- 606 issues carry the `red-team` label. 589 are closed and 17 are open.
+- 606 issues carry the `red-team` label. 597 are closed and 9 are open (counted again on 9 Nov 2026 with the queries at the end of the page; the breakdowns below were counted on 7 Nov, so they can differ by a few issues).
 - Of those 606, 37 are batch or epic issues that track the fix work (their titles start with `FEATURE:` or `EPIC`). The other 569 are individual findings: 560 closed, 9 open.
 - Severity labels on the 569 findings: 6 critical (6 closed), 96 high (93 closed), 210 medium (208 closed), 97 low (95 closed). 160 findings have no severity label (158 closed). Later rounds mostly did not set one.
 - Three further label sets are separate from `red-team` and are not in the 606: `audit-r1` has 27 issues (23 closed), `audit-r2` has 33 (all closed) and `redteam-r4` has 68 (67 closed).
@@ -229,7 +229,7 @@ All counts come from the GitHub issue tracker with the `gh` CLI, run on 7 Nov 20
 R=harshbhx/gavel-auction
 # totals and open counts per label
 gh issue list -R $R -l red-team -s all  -L 2000 --json number --jq length   # 606
-gh issue list -R $R -l red-team -s open -L 2000 --json number --jq length   # 17
+gh issue list -R $R -l red-team -s open -L 2000 --json number --jq length   # 9 on 9 Nov 2026 (17 on 7 Nov)
 for l in audit-r1 audit-r2 redteam-r4; do
   gh issue list -R $R -l $l -s all  -L 2000 --json number --jq length
   gh issue list -R $R -l $l -s open -L 2000 --json number --jq length

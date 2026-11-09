@@ -1,6 +1,6 @@
 # Devpost form fields: PayPal AI Hackathon
 
-Paste order follows the Devpost form. The long text is in [`DESCRIPTION.md`](DESCRIPTION.md) (paste the whole file into "About the project"). Image URLs in it are raw GitHub URLs on `main` under `brand/devpost/description/` (numbered in the order they appear in the text; see [`../CURATION.md`](../CURATION.md)).
+Single source for the Devpost entry: this file plus `DESCRIPTION.md`. (`docs/submission/DEVPOST.md` is only a pointer here.) Paste order follows the Devpost form. The long text is in [`DESCRIPTION.md`](DESCRIPTION.md) (paste the whole file into "About the project"). Image URLs in it are raw GitHub URLs on `main` under `brand/devpost/description/` (numbered in the order they appear in the text; see [`../CURATION.md`](../CURATION.md)).
 
 Rules source: https://paypalaihackathon.devpost.com/rules (Submission Period 1 Oct 2026 9:15 am PT to Thu 12 Nov 2026 12:00 pm PT).
 
@@ -22,11 +22,11 @@ Paste the full content of `brand/devpost/DESCRIPTION.md`. Headings used, in Devp
 
 Markdown used: H2 and H3 headings, bold, bullet lists, inline code, links, images by URL. No tables, no HTML, no fenced code, no strikethrough (Devpost's Markdown tips list tables, fenced code and strikethrough as extended syntax that not every renderer supports).
 
-## Built with (23 tags, limit 25)
+## Built with (22 tags, limit 25)
 
-typescript, node.js, react, vite, python, paypal, paypal-orders-api, paypal-payments-api, paypal-js-sdk, cloudflare-workers, render, ag-grid, hugging-face, deepgram, groq, websockets, openapi, apimatic, vitest, playwright, github-actions, next.js, fumadocs
+typescript, node.js, react, vite, python, paypal, paypal-orders-api, paypal-payments-api, paypal-js-sdk, cloudflare-workers, render, ag-grid, hugging-face, deepgram, groq, websockets, openapi, vitest, playwright, github-actions, next.js, fumadocs
 
-Two spare slots. Add `paypal-webhooks` or `speech-to-text` if you like. Removed from the older list: `cloudflare-pages` (the web app is a Worker with static assets; not confirmed as Pages). `apimatic` stays (see flag 2).
+Three spare slots. Add `paypal-webhooks` or `speech-to-text` if you like. Removed from the older list: `cloudflare-pages` (the web app is a Worker with static assets; not confirmed as Pages). `apimatic` is dropped: the portal and SDKs do not exist (see flag 2), so the tag would claim something we do not ship.
 
 ## Try it out links
 
@@ -48,7 +48,7 @@ https://github.com/harshbhx/gavel-auction (public, MIT `LICENSE` at the root; ch
 
 ## Testing instructions
 
-Paste `docs/judges/DEVPOST-TESTING.md` and fill the two sandbox buyer logins on Devpost only. Never commit them. The rules require testing access to stay free and unrestricted until the Judging Period ends (1 to 15 Dec 2026, access live until 15 Dec 8:00 am PT), so keep the Render service, the Worker and the sandbox buyers alive until then.
+Paste `docs/judges/DEVPOST-TESTING.md` and fill the two sandbox buyer logins and, optionally, the one shared judge key on Devpost only. Never commit them. The text leads with the keyless path (the scripted demo, then a keyless judge room on /try); the key is optional and only for the HTTP path. Per-judge keys expire on 30 Nov 2026, before judging (1 to 15 Dec), so the shared non-expiring key is the one to paste. The rules require testing access to stay free and unrestricted until the Judging Period ends (1 to 15 Dec 2026, access live until 15 Dec 8:00 am PT), so keep the Render service, the Worker and the sandbox buyers alive until then.
 
 ## Demo video (under 3 minutes)
 
@@ -88,7 +88,7 @@ Devpost has its own team members field: add Harsh Bhanushali (harshbhx) and Dhai
 1. **AI tools used while building.** The rules require naming every AI tool and how it was used. The description now has this block under "AI in the product". It is Harsh's call, so confirm before posting. The repository's banned-word check rejects the assistant's product name and its vendor name, so the text says "an AI coding assistant (name added by hand on Devpost)". Replace that bracket with the real product and vendor name in the Devpost editor only; never commit it. Both versions:
    - With: "AI tools used while building: an AI coding assistant (name added by hand on Devpost), for coding assistance and documentation drafts." followed by the runtime AI paragraph (Deepgram nova-3, Groq whisper-large-v3-turbo).
    - Without: delete the "AI tools used while building" paragraph and keep only the runtime AI paragraph. The rules say every AI tool used, so leaving it out is a disclosure risk.
-2. **APIMatic claim.** The text says the API portal and the TypeScript and Python SDKs are generated with APIMatic. `docs/API.md` still says nothing has been generated, and https://docs.gavel.dualmindlab.tech/portal answered 404 on 9 Nov 12:05 UTC (DOC-55 has not merged). Do not submit this sentence unless the portal and SDKs exist; if not, replace it with "the OpenAPI spec is linted in CI; portal and SDK generation is in progress". Add the portal to the try-it links when it is live.
+2. **APIMatic: not claimed.** `DESCRIPTION.md` says the APIMatic portal and SDKs are not live, so it does not claim them, and the `apimatic` Built-with tag is not used. https://docs.gavel.dualmindlab.tech/portal still answered 404 on 9 Nov, and `docs/API.md` says nothing has been generated. If the portal goes live before submission, add the portal to the try-it links, restore the tag and reword the "A judge API" bullet and the last "What's next" bullet in `DESCRIPTION.md`.
 
 ## Rules check, in short
 
@@ -98,3 +98,18 @@ Open items for the submitter:
 2. Fill the form extras the live form adds (category, developer account ID, country, tool feedback), and the reuse statement: the project started on 4 Nov 2026, after the 1 Oct start, so it counts as new.
 3. Upload the video, the thumbnail (static) and the 8 gallery images, paste the testing instructions with buyer logins.
 4. After G3 reports (about 12 Nov 06:17 UTC), the deadline is 12 Nov 12:00 pm PT (20:00 UTC, Fri 13 Nov 01:30 IST). Reword the G3 lines if the result lands before you submit.
+
+## What is real versus simulated (reference, not pasted)
+
+Reference table for answering questions about what is real. It is not part of the paste text (Devpost may not render tables).
+
+| Part                          | Real                                                                                                                                                      | Simulated or recorded                                                                                       |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Authorize, capture, remainder | Authorization reads CAPTURED after a 350 of 500 final capture on the sandbox for two PayPal-account buyers (G1); the release of the remainder is inferred | Saga tests against the project's fake PayPal                                                                |
+| Card and guest holds          | Wallet and guest card AUTHORIZE in SDK v6 on the sandbox (G2)                                                                                             | n/a                                                                                                         |
+| Webhooks                      | Six real sandbox events verified through PayPal's endpoint (G4)                                                                                           | Tampered-event rejection and the retry schedule are tested against the fake only                            |
+| Honor period                  | A real probe is running (G3, final reading about 12 Nov 06:17 UTC)                                                                                        | 30 days of auctions on a fake clock ([SIM-MULTIDAY](../evidence/SIM/SIM-MULTIDAY.md)); not a sandbox result |
+| Settlement and crash          | 20 and 49 settlements of 6 holds measured on the sandbox; in-process crash resume in the nightly runs; one real process kill on a CI runner               | Many crash points and kills run against the fake PayPal; the kill was not on the deployed host              |
+| Speech                        | Live socket run with real providers on synthetic clips (24 of 24 answered)                                                                                | All audio is synthetic; the text parser is measured on 169 transcripts; no real room yet (G5 PARTIAL)       |
+| Hosted demo                   | Web at gavel.dualmindlab.tech and API at api.gavel.dualmindlab.tech, sandbox mode, one Render service with a 1 GB disk                                    | Demo holds can be simulated, and `/demo/scripted` is a recorded room in the browser                         |
+| Money                         | No real money moves anywhere; all PayPal calls are sandbox                                                                                                |                                                                                                             |

@@ -99,7 +99,7 @@ A judge with no setup can run a real sandbox auction when the API runs with `JUD
 
 ### Judge key (optional)
 
-`JUDGE_KEY` is a second, limited key for judges. It is not the operator key: it opens nothing but the judge panel's keyed rooms and never reaches an admin route (`ADMIN_KEY` and `JUDGE_KEY` must differ, and boot refuses them equal). Generate it yourself as a random secret of at least 32 characters, set it on Render (`sync: false`, so it is never in the repository), and hand it to judges only in the slide deck. It needs `JUDGE_ROOMS=true`; leave it unset and the panel shows no key field.
+`JUDGE_KEY` is a second, limited key for judges. It is not the operator key: it opens nothing but the judge panel's keyed rooms and never reaches an admin route (`ADMIN_KEY` and `JUDGE_KEY` must differ, and boot refuses them equal). Generate it yourself as a random secret of at least 32 characters, set it on Render (`sync: false`, so it is never in the repository), and hand the shared judging key to judges only in the Devpost testing instructions field, pasted by hand on Devpost, never in the repository. It needs `JUDGE_ROOMS=true`; leave it unset and the panel shows no key field.
 
 | Variable                     | Default | Meaning                                                      |
 | ---------------------------- | ------- | ------------------------------------------------------------ |
