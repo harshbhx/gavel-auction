@@ -8,16 +8,7 @@
 import { mkdirSync, writeFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { openBrowser, frames, still } from '../lib/render.mjs';
-import {
-  THEMES,
-  writePage,
-  fitGif,
-  frameCount,
-  rm,
-  logoSvg,
-  mp4v,
-  webm,
-} from '../lib/motion.mjs';
+import { THEMES, writePage, fitGif, frameCount, rm, logoSvg, mp4v, webm } from '../lib/motion.mjs';
 import { introBody } from '../lib/scenes.mjs';
 
 const out = path.resolve(process.argv[2] ?? 'out/motion-readme');
