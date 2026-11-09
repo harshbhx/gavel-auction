@@ -337,20 +337,27 @@ Needs Node 22 and npm. No PayPal account is needed for the default run.
 
 ```bash
 npm ci
-PUBLIC_URL=http://localhost:8080 TOKEN_SECRET=dev-token-secret ADMIN_KEY=dev-admin-key \
+PUBLIC_URL=http://localhost:8080 TOKEN_SECRET="$(openssl rand -hex 16)" ADMIN_KEY="$(openssl rand -hex 12)" \
   PAYMENTS=fake PAYPAL_ENV=sandbox npm start -w @gavel/server
 ```
 
-With `PAYMENTS=fake` the server uses the built-in fake PayPal and needs no network access. Production mode refuses fake payments. All server settings are listed in [packages/server/README.md](packages/server/README.md).
+The two generated values are 32 and 24 hex characters, the minimum lengths the server accepts for `TOKEN_SECRET` and `ADMIN_KEY` (the minimums are waived only when `NODE_ENV=test`). With `PAYMENTS=fake` the server uses the built-in fake PayPal and needs no network access. Production mode refuses fake payments. All server settings are listed in [packages/server/README.md](packages/server/README.md).
 
-To see the interface without a server, start the web dev server (`npm run dev -w @gavel/web`) and open `/r/demo/screen?scripted=1`. The flag plays a recorded scenario in the browser and makes no PayPal calls; `/r/demo/bid?scripted=1&at=3000` and the console and receipt routes work the same way. Only development builds honour the flag: a production build, including the hosted site, ignores it.
+To see the interface without a server, copy the web settings once and start the web dev server:
+
+```bash
+cp packages/web/.env.example packages/web/.env.local
+npm run dev -w @gavel/web
+```
+
+Then open `/r/demo/screen?scripted=1`. The flag plays a recorded scenario in the browser and makes no PayPal calls; `/r/demo/bid?scripted=1&at=3000` and the console and receipt routes work the same way. Only development builds honour the `scripted=1` flag: a production build, including the hosted site, ignores it. The `/demo/scripted` page plays the recorded room in every build, the hosted site included.
 
 <details>
 <summary><b>Use the real PayPal sandbox</b></summary>
 
 <br>
 
-Set `PAYMENTS=sandbox` and provide `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` and `PAYPAL_WEBHOOK_ID`. The names are in `.env.example`; keep the values in your local `.env` and never commit them. The gate runbook in [docs/RUNBOOK-GATES.md](docs/RUNBOOK-GATES.md) shows how each sandbox run is recorded.
+Set `PAYMENTS=sandbox` and provide `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` and `PAYPAL_WEBHOOK_ID`. The names are in `.env.example`; keep the values in your local `.env` and never commit them. Nothing loads that file by itself: delete the lines you do not fill in (empty values count as unset), then run `set -a; source .env; set +a` before starting the server, or pass the variables inline. The gate runbook in [docs/RUNBOOK-GATES.md](docs/RUNBOOK-GATES.md) shows how each sandbox run is recorded.
 
 </details>
 
