@@ -1,5 +1,4 @@
 import { canonicalJson } from '../util/hash';
-import type { AuditPayload } from '../wire';
 
 /** One line of a hash-chained ledger, as the ledger grid shows it. */
 export interface LedgerEntry {
@@ -141,25 +140,4 @@ export function chainCounts(
   return counts;
 }
 
-/**
- * Audit rows as ledger entries. Audit rows are not sealed (the server keeps the chain; the page has no
- * hashes for them), so hash and prev stay null and the grid hides those columns.
- */
-export function entriesFromAudit(
-  rows: readonly AuditPayload[],
-  paddleOf: (bidderId: string) => number | null,
-): LedgerEntry[] {
-  return rows.map((row) => {
-    const paddle = paddleOf(row.bidderId);
-    return {
-      seq: row.seq,
-      at: Number(row.serverTs),
-      type: `audit_${row.outcome}`,
-      actor: paddle === null ? null : `paddle:${paddle}`,
-      amountCents: row.parsedAmount === undefined ? null : Number(row.parsedAmount),
-      note: row.reason ?? null,
-      hash: null,
-      prev: null,
-    };
-  });
-}
+export { entriesFromAudit } from './auditEntries';

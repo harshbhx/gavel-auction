@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { t } from '../../copy/t';
 import { BuiltWithAgGrid, LedgerGrid } from '../../grid';
-import { entriesFromAudit } from '../../grid/ledgerModel';
+import { entriesFromAudit } from '../../grid/auditEntries';
 import { LedgerFallback, type LedgerSlotProps } from './LedgerSlot';
 
 /**
