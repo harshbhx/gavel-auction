@@ -2,7 +2,9 @@ name: deploy-staging
 # Deploys the API and WebSocket host to Render and then runs scripts/smoke.sh against it.
 # Needs: environment `staging` with secrets RENDER_DEPLOY_HOOK_URL (the service's deploy hook)
 # and optional ADMIN_KEY (lets the smoke create an auction), plus variable STAGING_URL
-# (the public https URL of the Render service). Without them the job ends green with a notice.
+# (the public https URL of the Render service). Without them the job still ends green on a push, but
+# says "SKIPPED" in the job summary and as a warning annotation; a manual dispatch fails so nobody
+# mistakes a skipped deploy for a deployed one (#2068).
 # Steps are in docs/DEPLOY.md. Values reach steps only through env and are never echoed.
 on:
   workflow_dispatch:
@@ -44,8 +46,17 @@ jobs:
           if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then missing="$missing secret:RENDER_DEPLOY_HOOK_URL"; fi
           if [ -z "$STAGING_URL" ]; then missing="$missing variable:STAGING_URL"; fi
           if [ -n "$missing" ]; then
-            echo "::notice title=Deploy skipped::Not configured, add to environment staging:$missing (see docs/DEPLOY.md)"
+            echo "::warning title=Deploy SKIPPED, nothing was deployed or smoke tested::Not configured, add to environment staging:$missing (see docs/DEPLOY.md)"
+            {
+              echo "## deploy-staging: SKIPPED"
+              echo "Nothing was deployed and no smoke test ran. Missing:$missing (see docs/DEPLOY.md)."
+              echo "A green check on this run does not mean the API at this commit was deployed or tested."
+            } >> "$GITHUB_STEP_SUMMARY"
             echo "ready=false" >> "$GITHUB_OUTPUT"
+            if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+              echo "::error title=Deploy requested but not configured::A manual dispatch asked for a deploy, so this run fails"
+              exit 1
+            fi
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
