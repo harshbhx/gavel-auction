@@ -15,7 +15,7 @@ import {
   type StreamControl,
 } from '../screens/console/BidStream';
 import { AgGridReact } from './agRuntime';
-import { columnMemoryProps, gridStateFor } from './columnMemory';
+import { columnMemoryProps, gridStateFor, restoreSort } from './columnMemory';
 import { exportBaseName } from './exportName';
 import { GridToolbar } from './GridToolbar';
 import { bidRowId, diffBids, isEmptyDiff } from './bidsModel';
@@ -209,10 +209,11 @@ export default function BidsGrid({
 
   const onGridReady = useCallback(
     (e: GridReadyEvent<BidStreamRow>) => {
+      restoreSort(e.api, memoryKey);
       setApi(e.api);
       onReady?.(e.api);
     },
-    [onReady],
+    [onReady, memoryKey],
   );
 
   return (

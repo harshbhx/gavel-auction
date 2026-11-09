@@ -14,7 +14,7 @@ import { Icon, type IconName } from '../design/icons';
 import { Chip, type ChipTone } from '../design/primitives/Chip';
 import { formatUsd } from '../util/money';
 import { AgGridReact } from './agRuntime';
-import { columnMemoryProps, gridStateFor } from './columnMemory';
+import { columnMemoryProps, gridStateFor, restoreSort } from './columnMemory';
 import { exportBaseName } from './exportName';
 import { GridToolbar } from './GridToolbar';
 import { holdTotals, totalsAddUp, type HoldRow } from './holdsModel';
@@ -230,10 +230,11 @@ export default function HoldsGrid({
 
   const onGridReady = useCallback(
     (e: GridReadyEvent<HoldRow>) => {
+      restoreSort(e.api, memoryKey);
       setApi(e.api);
       onReady?.(e.api);
     },
-    [onReady],
+    [onReady, memoryKey],
   );
 
   const ok = totalsAddUp(rows);

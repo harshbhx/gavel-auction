@@ -123,3 +123,22 @@ export function columnMemoryProps(key: string | null): {
     onStateUpdated: save,
   };
 }
+
+/**
+ * Puts the saved sort back when the grid is ready. `initialState` carries the whole layout; this
+ * covers the sort in case the grid applied a column's own default sort after reading it.
+ */
+export function restoreSort(api: GridApi, key: string | null): void {
+  const saved = key === null ? null : loadColumns(key);
+  if (saved === null) return;
+  const known = saved.filter((c) => api.getColumn(c.colId) !== null);
+  if (!known.some((c) => c.sort === 'asc' || c.sort === 'desc')) return;
+  api.applyColumnState({
+    state: known.map((c) => ({
+      colId: c.colId,
+      sort: c.sort ?? null,
+      sortIndex: c.sortIndex ?? null,
+    })),
+    defaultState: { sort: null },
+  });
+}

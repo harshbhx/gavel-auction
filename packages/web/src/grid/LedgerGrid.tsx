@@ -13,7 +13,7 @@ import { sha256Hex } from '../util/hash';
 import { formatUsd } from '../util/money';
 import { AgGridReact } from './agRuntime';
 import { cardCell, statusCell, typeCell, type LedgerRow } from './cells';
-import { columnMemoryProps, gridStateFor } from './columnMemory';
+import { columnMemoryProps, gridStateFor, restoreSort } from './columnMemory';
 import { exportBaseName } from './exportName';
 import { GridToolbar, type SortOption } from './GridToolbar';
 import { actorLabel, typeLabel } from './labels';
@@ -399,10 +399,11 @@ export default function LedgerGrid({
         // A filter the grid does not accept is dropped; the unfiltered ledger shows.
       }
       if (quick !== '') e.api.setGridOption('quickFilterText', quick);
+      restoreSort(e.api, memoryKey);
       setApi(e.api);
       onReady?.(e.api);
     },
-    [onReady],
+    [onReady, memoryKey],
   );
 
   const sortOptions = useMemo<SortOption[]>(
