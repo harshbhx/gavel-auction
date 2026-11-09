@@ -1,0 +1,104 @@
+name: evidence-log-scan
+# SEC-15 (issue 2188): run scenario S01 on the real server process with its stdout and stderr
+# captured, with canary values seeded into the server environment, then scan the log and the data
+# folder. Manual dispatch only. No secrets are used: every canary is a random value made in the
+# first step and masked in the job log; PayPal is the fake adapter.
+# What runs: packages/e2e/src/security/sec15-cli.ts (S01 in stack mode, then six probe requests
+# that carry canary values in headers, query and body), then scripts/scan-logs.mjs over server.log
+# (canaries plus Bearer, JWT, signed-token, Authorization, email and card-number patterns) and over
+# the copied data folder (canaries only).
+# Negative control: the scan runs again on a copy of the log with one canary line appended, and the
+# job fails unless that second scan fails. That proves the scanner can see a leak.
+# Not covered: raw audio transcripts (S01 sends no audio) and any route this run did not call.
+# Artifact: sec15-log-scan (log-scan.json, negative-control.json, run.json, server.log). The data
+# folder copy is not uploaded. Verdict line: "SEC-15 LOG SCAN VERDICT: PASS|FAIL|NOT RUN".
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  scan:
+    if: ${{ !github.event.repository.fork }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: evidence-log-scan
+      cancel-in-progress: false
+    env:
+      OUT_DIR: ${{ github.workspace }}/sec15-out
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Make the canary values
+        # Random, throw-away values shaped like the real ones; masked so the job log hides them.
+        run: |
+          rand() { openssl rand -hex "$1"; }
+          set_canary() {
+            echo "::add-mask::$2"
+            printf '%s=%s\n' "$1" "$2" >> "$GITHUB_ENV"
+          }
+          set_canary GAVEL_E2E_ADMIN_KEY "canary-admin-$(rand 16)"
+          set_canary GAVEL_E2E_TOKEN_SECRET "canary-token-secret-$(rand 24)"
+          set_canary JUDGE_KEY "canary-judge-key-$(rand 20)"
+          set_canary PAYPAL_CLIENT_SECRET "canary-paypal-secret-$(rand 20)"
+          set_canary PAYPAL_CLIENT_ID "canary-paypal-id-$(rand 12)"
+          set_canary PAYPAL_WEBHOOK_ID "canary-webhook-id-$(rand 12)"
+          set_canary CANARY_BUYER_EMAIL "buyer-$(rand 6)@canary-mail.example.com"
+          set_canary CANARY_CARD_NUMBER "4111111111111111"
+          set_canary CANARY_BEARER "eyJ$(rand 10).$(rand 14).$(rand 14)"
+          echo "JUDGE_ROOMS=true" >> "$GITHUB_ENV"
+      - name: Run S01 on the real server with the log captured
+        run: |
+          mkdir -p "$OUT_DIR"
+          export GAVEL_E2E_SERVER_LOG="$OUT_DIR/server.log"
+          set -o pipefail
+          npm run scan:sec15 -w @gavel/e2e -- --out "$OUT_DIR" | tee "$OUT_DIR/run.txt"
+      - name: Scan the log and the data folder
+        run: |
+          set -o pipefail
+          node scripts/scan-logs.mjs --log "$OUT_DIR/server.log" --store "$OUT_DIR/store" \
+            --canary GAVEL_E2E_ADMIN_KEY,GAVEL_E2E_TOKEN_SECRET,JUDGE_KEY,PAYPAL_CLIENT_SECRET,PAYPAL_CLIENT_ID,PAYPAL_WEBHOOK_ID,CANARY_BUYER_EMAIL,CANARY_CARD_NUMBER,CANARY_BEARER \
+            --min-lines 10 --out "$OUT_DIR/log-scan.json" | tee "$OUT_DIR/verdict.txt"
+      - name: Negative control, the scan must fail when a canary is in the log
+        if: ${{ !cancelled() }}
+        run: |
+          cp "$OUT_DIR/server.log" "$OUT_DIR/leaky.log"
+          printf '{"msg":"negative control line %s"}\n' "$JUDGE_KEY" >> "$OUT_DIR/leaky.log"
+          if node scripts/scan-logs.mjs --log "$OUT_DIR/leaky.log" --canary JUDGE_KEY \
+            --min-lines 1 --out "$OUT_DIR/negative-control.json"; then
+            echo "SEC-15 LOG SCAN VERDICT: FAIL (negative control passed, so the scanner cannot be trusted)"
+            exit 1
+          fi
+          echo "negative control failed as it must"
+          rm -f "$OUT_DIR/leaky.log"
+      - name: Job summary
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            echo '### SEC-15 log scan'
+            cat "$OUT_DIR/verdict.txt" 2>/dev/null || echo 'SEC-15 LOG SCAN VERDICT: NOT RUN (no verdict printed)'
+            echo
+            echo 'Scenario S01 ran in stack mode on the real server process with fake PayPal. Canary values were seeded into the server environment; the scan looks for them and for secret-shaped text in server.log and, for canaries only, in the data folder.'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sec15-log-scan
+          path: |
+            ${{ github.workspace }}/sec15-out/log-scan.json
+            ${{ github.workspace }}/sec15-out/negative-control.json
+            ${{ github.workspace }}/sec15-out/run.json
+            ${{ github.workspace }}/sec15-out/run.txt
+            ${{ github.workspace }}/sec15-out/verdict.txt
+            ${{ github.workspace }}/sec15-out/server.log
+          if-no-files-found: warn
+          retention-days: 30

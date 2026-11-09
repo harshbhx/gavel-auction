@@ -17,6 +17,7 @@ export const SANDBOX_SPEC_IDS = [
   'R6',
   'R7',
   'R8',
+  'R9',
   'R10',
   'G5',
 ] as const;

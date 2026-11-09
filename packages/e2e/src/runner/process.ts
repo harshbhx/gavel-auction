@@ -1,4 +1,5 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { createWriteStream, type WriteStream } from 'node:fs';
 import { createServer } from 'node:net';
 
 /** Child process control for the stack runner: free ports, readiness, SIGKILL and cleanup. */
@@ -63,6 +64,8 @@ export interface SpawnOptions {
   args: string[];
   cwd: string;
   env: NodeJS.ProcessEnv;
+  /** Append everything the process writes to stdout and stderr to this file (SEC-15 log scan). */
+  logPath?: string;
 }
 
 const WIN = process.platform === 'win32';
@@ -108,6 +111,12 @@ export class ManagedProcess {
     };
     child.stdout?.on('data', keep);
     child.stderr?.on('data', keep);
+    if (this.opts.logPath !== undefined) {
+      const sink: WriteStream = createWriteStream(this.opts.logPath, { flags: 'a' });
+      child.stdout?.pipe(sink, { end: false });
+      child.stderr?.pipe(sink, { end: false });
+      child.once('close', () => sink.end());
+    }
     this.done = new Promise((resolve) => {
       child.once('exit', (code) => resolve(code));
       child.once('error', () => resolve(null));
