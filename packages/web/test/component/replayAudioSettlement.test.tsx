@@ -1,5 +1,5 @@
 import { EpochMs } from '@gavel/shared';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { t } from '../../src/copy/t';
 import type { MediaLike } from '../../src/screens/replay/AudioSync';
@@ -82,8 +82,10 @@ describe('replay screen with audio and settlement', { timeout: 20_000 }, () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     renderReplay(bundle(true, '/recordings/rec1/audio.webm'));
     expect(await screen.findByText('Walnut sideboard', {}, LOAD)).toBeTruthy();
-    expect(FakeMedia.last?.url).toBe('/recordings/rec1/audio.webm');
-    expect(FakeMedia.last?.plays).toBe(1);
+    // The audio element is created and started by an effect after the bundle loads: wait for it
+    // rather than reading the shared handle at once.
+    await waitFor(() => expect(FakeMedia.last?.url).toBe('/recordings/rec1/audio.webm'), LOAD);
+    await waitFor(() => expect(FakeMedia.last?.plays).toBe(1), LOAD);
     expect(screen.queryByTestId('settlement-panel')).toBeNull();
     // The replay clock advances 100 ms per tick; step it past the 400 ms settlement event.
     act(() => {
@@ -91,7 +93,7 @@ describe('replay screen with audio and settlement', { timeout: 20_000 }, () => {
     });
     expect(await screen.findByTestId('settlement-panel', {}, LOAD)).toBeTruthy();
     // The audio sat at 0 ms while the clock reached 400 ms: the gap is over the limit.
-    expect(FakeMedia.last?.currentTime).toBeCloseTo(0.4, 3);
+    await waitFor(() => expect(FakeMedia.last?.currentTime).toBeCloseTo(0.4, 3), LOAD);
     expect(screen.queryByText(t('replay.captionsOnly'))).toBeNull();
   });
 
