@@ -89,6 +89,7 @@ import { createDemoHoldSource } from '../http/demo-holds';
 import { createSimHoldSource, purgeSimHolds, withSimulatedHolds } from '../http/sim-holds';
 import { mountAuctions } from '../http/auctions';
 import { allowedOriginsOf, isOriginAllowed } from '../http/origins';
+import { JudgeKeyRegistry, parseJudgeKeys } from '../auth/judge-keys';
 import { createJudgeRooms, JUDGE_ROOM_DEFAULTS } from '../http/judge-rooms';
 import { mountAuctioneerToken } from '../http/auctioneer-token';
 import { mountControl } from '../http/control';
@@ -634,7 +635,13 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     lotWindowMs: JUDGE_ROOM_DEFAULTS.lotWindowMs,
     keyedMax: config.JUDGE_KEY_ROOMS_MAX,
     ledger: stores.ledger,
-    ...(config.JUDGE_KEY === undefined ? {} : { judgeKey: config.JUDGE_KEY }),
+    // Per-judge keys plus the legacy shared JUDGE_KEY as one more entry (id "legacy").
+    keys: new JudgeKeyRegistry(
+      parseJudgeKeys(config.JUDGE_KEYS).entries,
+      config.JUDGE_KEY === undefined
+        ? undefined
+        : { key: config.JUDGE_KEY, maxRooms: config.JUDGE_KEY_ROOMS_MAX, perHour: 20 },
+    ),
     ...(config.JUDGE_ROOMS && config.JUDGE_SIM_HOLDS
       ? {
           simHolds: {
@@ -670,6 +677,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
       publicUrl: config.PUBLIC_URL,
       webOrigin: webOriginOf(config),
       corsOrigins: config.CORS_ORIGINS,
+      docsOrigins: config.JUDGE_DOCS_ORIGINS,
       log,
       joinLimit: (req) => limiter.checkJoin(requestSources.get(req) ?? 'unknown'),
     },

@@ -185,7 +185,7 @@ describe('pages with a way out', () => {
       />,
     );
     expect(screen.getByRole('heading', { name: t('join.notFound') })).toBeTruthy();
-    expect(screen.getByRole('button', { name: t('join.tryAgain') })).toBeTruthy();
+    expect(screen.getByRole('link', { name: t('join.tryAgain') })).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

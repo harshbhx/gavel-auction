@@ -8,6 +8,16 @@ GAVEL is a live auction where **every bid is a PayPal AUTHORIZE hold**. Only the
 
 Everything runs on the PayPal sandbox. No real money moves.
 
+## What is proven
+
+- Gates G0, G1, G2 and G4 passed on the real PayPal sandbox: app and buyers, partial capture with `final_capture`, wallet and guest card holds, and six real webhooks verified.
+- A real server process was killed once on a CI runner after the capture request and before the response, and settled with one capture, two losers voided, a journal equal to PayPal and a verifying ledger.
+- Live speech through the `/audio` socket: both providers answered 24 of 24 synthetic clips, and no spoken bid was accepted without a confirm.
+- The ledger hash chain verifies, and the hosted API checks ran: webhook route p95 112.03 ms against a 300 ms target (n=50) and warmup after 16 minutes idle at most 0.66 s (n=2).
+- The judge flow is live on the hosted site (steps 1 to 15 and 17 of the walkthrough passed on 9 Nov), more than 4,500 test cases run in CI, and all eight P0 items of the security review PASS.
+
+The scope of each result, and the next step for each open item (G3 in progress, G5 partial, the latency targets under owner decision), are in [Roadmap and limits](/docs/roadmap).
+
 ## The visual rule
 
 These docs use the same language as the product. Hatched means held, solid means charged, hollow means released.
@@ -37,7 +47,7 @@ Six sections, each a tab at the top of the sidebar.
   <Card title="Reference" href="/docs/reference/architecture" description="Architecture, WebSocket protocol, data model, saga states, events, configuration." />
 </Cards>
 
-Also: [Roadmap and limits](/docs/roadmap) says what is not done, in plain words.
+Also: [Roadmap and limits](/docs/roadmap) gives the scope of each result and the next step for each open item, in plain words.
 
 <Held title="Source of truth">
 

@@ -55,7 +55,7 @@ In the PayPal developer dashboard (sandbox app, Webhooks) add `https://<api-host
 
 ### Run the deploy workflow and read the smoke output
 
-Run `deploy-staging` by hand. It calls the deploy hook, waits 60 seconds, then runs `scripts/smoke.sh`.
+Deploy `main` with Manual Deploy in the Render dashboard, then run `scripts/smoke.sh <api-url>`. The optional `deploy-staging` workflow does the same through the deploy hook once its secrets exist; until then it only reports SKIPPED.
 
 </Step>
 <Step>

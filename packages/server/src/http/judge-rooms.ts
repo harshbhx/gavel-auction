@@ -1,4 +1,3 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
 import {
   BIDDER_NAME_FORBIDDEN_PATTERN,
   EpochMs,
@@ -17,6 +16,7 @@ import { ChainError, type LedgerStore, type Ulid } from '@gavel/engine';
 import { z } from 'zod';
 import { buildReplayBundle } from '../admin/replay-bundle';
 import { raiseAuctioneerFloor } from '../auth/auctioneer-floor';
+import { JudgeKeyRegistry, LEGACY_KEY_ID, type JudgeKeyEntry } from '../auth/judge-keys';
 import {
   authenticate,
   json,
@@ -40,6 +40,7 @@ import {
   roomFor,
   snapshotFor,
   titleKey,
+  withConnection,
 } from './auctions';
 import { wsUrlOf } from './invites';
 import { requestSources } from './node-bridge';
@@ -51,6 +52,10 @@ export const JUDGE_CAPABILITIES_PATH = '/api/judge/capabilities';
 export const JUDGE_PAUSE_PATH = '/api/judge/pause';
 export const JUDGE_KEY_PATH = '/api/judge/key';
 export const JUDGE_LEDGER_PATH = '/api/judge/rooms/:id/ledger';
+export const JUDGE_BID_PATH = '/api/judge/rooms/:id/bids';
+/** Admin only (x-admin-key): list the judge keys, or revoke one. Never answers a hash. */
+export const JUDGE_KEYS_PATH = '/api/judge/keys';
+export const JUDGE_KEY_REVOKE_PATH = '/api/judge/keys/:keyId/revoke';
 /** Header that carries the judge key. Never a URL, never the body, never a log line. */
 export const JUDGE_KEY_HEADER = 'x-judge-key';
 /** Keyed creates the whole host accepts per hour, a second bound under the live-room bound. */
@@ -59,6 +64,8 @@ const KEYED_PER_HOUR = 20;
 const HOUR_MS = 3_600_000;
 const DEFAULT_TITLE = 'Sandbox demo lot';
 const PAUSED_KEY = 'judge:paused';
+/** Journal row that holds the ids of revoked judge keys, so a revoke survives a restart. */
+const KEYS_KEY = 'judge:keys';
 const markerKey = (auctionId: string): string => `judge:room:${auctionId}`;
 /** The audit actor recorded when the sweeper ends a judge room. */
 const EXPIRY_ACTOR = 'judge-room-expiry';
@@ -92,6 +99,11 @@ export interface JudgeRoomsOptions {
    * wrong and the capability probe says nothing about a key. It is never the operator key.
    */
   judgeKey?: string | undefined;
+  /**
+   * Per-judge keys (JUDGE_KEYS) with the legacy shared key as one more entry. When given it
+   * replaces `judgeKey`; the host builds it with the legacy key inside.
+   */
+  keys?: JudgeKeyRegistry | undefined;
   /** Most keyed rooms alive at once (JUDGE_KEY_ROOMS_MAX). They do not use the public slots. */
   keyedMax?: number | undefined;
   /** The ledger the read-only reviewer route builds a verifiable bundle from. */
@@ -184,6 +196,18 @@ const SimHoldBody = z
 
 const PauseBody = z.object({ paused: z.boolean() }).strict();
 
+const BidBody = z
+  .object({
+    /** Integer cents, like the socket's bid frame. */
+    amount: z.number().int().positive().max(MAX_CENTS),
+    /** Optional message id (a ULID): sending the same one again is a safe retry. */
+    mid: z
+      .string()
+      .regex(/^[0-9A-HJKMNP-TV-Z]{26}$/, 'mid must be a ULID')
+      .optional(),
+  })
+  .strict();
+
 interface Marker {
   createdAt: number;
   expiresAt: number;
@@ -192,8 +216,10 @@ interface Marker {
   endedAt?: number;
   /** The room's simulated holds have been dropped from the hold store. */
   simPurged?: true;
-  /** Made with the judge key. */
+  /** Made with a judge key. */
   keyed?: true;
+  /** Which key made it (an id, never the secret); absent on rooms made before per-key keys. */
+  keyId?: string;
 }
 
 /** Fixed, safe lot settings: short timers, small money, ceilings under the payments cap. */
@@ -218,13 +244,6 @@ export function judgeRoomConfig(
   };
 }
 
-/** Constant-time comparison of two secrets of any length (both sides are hashed first). */
-function secretsEqual(given: string, expected: string): boolean {
-  const a = createHash('sha256').update(given).digest();
-  const b = createHash('sha256').update(expected).digest();
-  return timingSafeEqual(a, b);
-}
-
 /** True once the lot was hammered, stopped or settled: nobody can usefully join any more. */
 function isEnded(snapshot: RoomSnapshot): boolean {
   return snapshot.status === 'DONE' || snapshot.hammer !== undefined || snapshot.stopped === true;
@@ -240,6 +259,8 @@ const REFUSAL_TEXT: Readonly<Record<string, string>> = {
   judge_room_ended: 'That room has ended',
   judge_join_locked: 'Too many wrong codes. Try again later.',
   judge_key_invalid: 'That key was not accepted.',
+  judge_key_expired: 'That key has expired.',
+  judge_key_revoked: 'That key was revoked.',
   judge_key_locked: 'Too many wrong tries. Try again later.',
   judge_key_room_cap: 'You already have the most judge rooms the server allows. Try again soon.',
   not_found: 'Code not found, check and try again',
@@ -284,9 +305,19 @@ export interface JudgeRooms {
  */
 export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
   /** Live rooms: id -> expiry and creator tag. */
-  const live = new Map<string, { expiresAt: number; src: string; keyed?: true }>();
+  const live = new Map<string, { expiresAt: number; src: string; keyed?: true; keyId?: string }>();
   const keyedMax = opts.keyedMax ?? 3;
+  const registry =
+    opts.keys ??
+    new JudgeKeyRegistry(
+      [],
+      opts.judgeKey === undefined
+        ? undefined
+        : { key: opts.judgeKey, maxRooms: keyedMax, perHour: KEYED_PER_HOUR },
+    );
   let keyedStamps: number[] = [];
+  /** Creates per key in the last hour: one judge's key never uses another's allowance. */
+  const keyStamps = new Map<string, number[]>();
   const perIp = new Map<string, number[]>();
   const joinLimits: JudgeJoinLimits = { ...JUDGE_JOIN_DEFAULTS, ...(opts.join ?? {}) };
   /**
@@ -329,6 +360,12 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
       const flag = await deps.store.getJournal(PAUSED_KEY);
       const stored = (flag?.value as { paused?: unknown } | undefined)?.paused;
       if (typeof stored === 'boolean') paused = stored || opts.paused;
+      const revoked = (await deps.store.getJournal(KEYS_KEY))?.value as
+        | { revoked?: unknown }
+        | undefined;
+      if (Array.isArray(revoked?.revoked)) {
+        registry.setRevoked(revoked.revoked.filter((x): x is string => typeof x === 'string'));
+      }
       for (const id of await deps.store.listAuctions()) {
         const m = (await deps.store.getJournal(markerKey(id)))?.value as Marker | undefined;
         if (m !== undefined && m.expired === true && m.simPurged !== true) {
@@ -339,6 +376,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
             expiresAt: m.expiresAt,
             src: 'restored',
             ...(m.keyed === true ? { keyed: true as const } : {}),
+            ...(m.keyId === undefined ? {} : { keyId: m.keyId }),
           });
         }
       }
@@ -374,6 +412,10 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
   /** Rooms that use a public slot; keyed rooms have a bound of their own. */
   const publicLive = (): number => [...live.values()].filter((e) => e.keyed !== true).length;
   const keyedLive = (): number => live.size - publicLive();
+  /** Live rooms of one key; rooms made before per-key keys count for the legacy key. */
+  const liveOf = (keyId: string): number =>
+    [...live.values()].filter((e) => e.keyed === true && (e.keyId ?? LEGACY_KEY_ID) === keyId)
+      .length;
 
   const accepting = (): boolean => opts.enabled && !paused && publicLive() < opts.maxLive;
 
@@ -493,23 +535,28 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     // A request that names a key is judged by the key alone: the public limits do not apply to
     // it, and a wrong key never falls back to the public path.
     const keyed = c.req.headers.has(JUDGE_KEY_HEADER);
+    let key: JudgeKeyEntry | undefined;
     if (keyed) {
-      const refused = checkKey(c, tag, deps.clock.now());
-      if (refused !== undefined) return refused;
+      const checked = checkKey(c, tag, deps.clock.now());
+      if ('refused' in checked) return checked.refused;
+      key = checked.key;
     }
     if (paused) return refuse(deps, 503, 'judge_rooms_paused', 'paused', tag, 60);
     // A hammered room still holds a slot until the sweeper runs; free them before judging the cap.
     if (keyed ? keyedLive() >= keyedMax : publicLive() >= opts.maxLive) await sweep();
     const now = deps.clock.now();
-    if (keyed) {
+    if (keyed && key !== undefined) {
       keyedStamps = withinWindow(keyedStamps, now);
-      if (keyedLive() >= keyedMax) {
+      const mine = withinWindow(keyStamps.get(key.id) ?? [], now);
+      keyStamps.set(key.id, mine);
+      if (liveOf(key.id) >= key.maxRooms || keyedLive() >= keyedMax) {
         return refuse(deps, 429, 'judge_key_room_cap', 'key_cap', tag, 60);
       }
-      if (keyedStamps.length >= KEYED_PER_HOUR) {
+      if (mine.length >= key.perHour || keyedStamps.length >= KEYED_PER_HOUR) {
         return refuse(deps, 429, 'judge_rate_limited', 'key_hourly', tag, 600);
       }
       keyedStamps.push(now);
+      mine.push(now);
     } else {
       const mine = withinWindow(perIp.get(tag) ?? [], now);
       global = withinWindow(global, now);
@@ -531,7 +578,11 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     }
     const auctionId = deps.ids.mint<'AuctionId'>();
     const expiresAt = now + opts.ttlMs;
-    live.set(auctionId, { expiresAt, src: tag, ...(keyed ? { keyed: true as const } : {}) });
+    live.set(auctionId, {
+      expiresAt,
+      src: tag,
+      ...(key === undefined ? {} : { keyed: true as const, keyId: key.id }),
+    });
     try {
       const lot = title ?? DEFAULT_TITLE;
       const auctioneerSub = deps.ids.mint<'Jti'>();
@@ -545,7 +596,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
       await deps.store.putJournal(markerKey(auctionId), 0, {
         createdAt: now,
         expiresAt,
-        ...(keyed ? { keyed: true as const } : {}),
+        ...(key === undefined ? {} : { keyed: true as const, keyId: key.id }),
       } satisfies Marker);
       const config = judgeRoomConfig(now, opts);
       await deps.service.createAuction(auctionId, config, auctioneerSub);
@@ -561,6 +612,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
         live: live.size,
         // Never the key itself: a field name with "key" in it would be redacted anyway.
         via: keyed ? 'judge-pass' : 'public',
+        ...(key === undefined ? {} : { keyId: key.id }),
       });
       return json(201, {
         auctionId,
@@ -588,26 +640,38 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
   };
 
   /**
-   * Judges the judge key on a request. Returns undefined when it is right, otherwise the refusal.
+   * Judges the judge key on a request: the key record when it is right, otherwise the refusal.
    * A wrong key counts toward a lockout of its own (`keyGuardOf`), apart from the room code
-   * guard, so key typos never block joins; a locked-out source is refused even with the right key. The key is compared in constant time
-   * and never logged.
+   * guard, so key typos never block joins; a locked-out source is refused even with the right
+   * key. An expired or revoked key (right secret) is refused without a strike. The key is
+   * compared in constant time and never logged; only its id is.
    */
-  const checkKey = (c: Ctx, tag: string, now: number): Response | undefined => {
+  const checkKey = (
+    c: Ctx,
+    tag: string,
+    now: number,
+  ): { key: JudgeKeyEntry } | { refused: Response } => {
     const { deps } = c;
     const guard = keyGuardOf(deps);
-    // A right key costs nothing, a wrong one is a strike on the key guard only.
     const lockedFor = guard.lockedFor(tag, now);
-    if (lockedFor > 0) return refuse(deps, 429, 'judge_key_locked', 'key_locked', tag, lockedFor);
-    const given = c.req.headers.get(JUDGE_KEY_HEADER) ?? '';
-    const expected = opts.judgeKey;
-    // Always run the comparison, so an unset key costs the same time as a wrong one.
-    const same = secretsEqual(given, expected ?? '\u0000unset');
-    if (expected === undefined || given === '' || !same) {
-      guard.noteWrong(tag, now);
-      return refuse(deps, 401, 'judge_key_invalid', 'key_wrong', tag);
+    if (lockedFor > 0) {
+      return { refused: refuse(deps, 429, 'judge_key_locked', 'key_locked', tag, lockedFor) };
     }
-    return undefined;
+    const given = c.req.headers.get(JUDGE_KEY_HEADER) ?? '';
+    const verdict = registry.verify(given, now);
+    if (verdict.ok) return { key: verdict.key };
+    if (verdict.reason === 'invalid') {
+      guard.noteWrong(tag, now);
+      return { refused: refuse(deps, 401, 'judge_key_invalid', 'key_wrong', tag) };
+    }
+    const error = verdict.reason === 'expired' ? 'judge_key_expired' : 'judge_key_revoked';
+    audit(deps)?.warn('judge pass refused', {
+      event: 'judge_room.key_refused',
+      reason: verdict.reason,
+      keyId: verdict.keyId,
+      src: tag,
+    });
+    return { refused: refuse(deps, 401, error, `key_${verdict.reason}`, tag) };
   };
 
   /** `POST /api/judge/key`: checks the key without creating anything, so the panel can say so. */
@@ -616,14 +680,55 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     if (!opts.enabled) throw new HttpError(404, 'not_found', 'no such route');
     await load(deps);
     const tag = sourceTag(requestSources.get(c.req) ?? 'unknown');
-    const refused = checkKey(c, tag, deps.clock.now());
-    if (refused !== undefined) return refused;
+    const checked = checkKey(c, tag, deps.clock.now());
+    if ('refused' in checked) return checked.refused;
+    const { key } = checked;
     audit(deps)?.info('judge pass accepted', {
       event: 'judge_room.key_ok',
       src: tag,
       via: 'judge-pass',
+      keyId: key.id,
     });
-    return json(200, { ok: true, roomsMax: keyedMax, roomsLive: keyedLive() });
+    return json(200, {
+      ok: true,
+      keyId: key.id,
+      roomsMax: Math.min(key.maxRooms, keyedMax),
+      roomsLive: liveOf(key.id),
+      ...(Number.isFinite(key.expiresAt)
+        ? { expiresAt: new Date(key.expiresAt).toISOString() }
+        : {}),
+    });
+  };
+
+  /** `GET /api/judge/keys` (admin): ids, labels, limits and state of every key. No hashes. */
+  const keyList = async (c: Ctx): Promise<Response> => {
+    requireAdmin(c);
+    await load(c.deps);
+    const now = c.deps.clock.now();
+    return json(200, {
+      keys: registry.entries().map((k) => ({
+        id: k.id,
+        label: k.label,
+        maxRooms: k.maxRooms,
+        perHour: k.perHour,
+        roomsLive: liveOf(k.id),
+        revoked: registry.isRevoked(k.id),
+        expired: k.expiresAt <= now,
+        ...(Number.isFinite(k.expiresAt) ? { expiresAt: new Date(k.expiresAt).toISOString() } : {}),
+      })),
+    });
+  };
+
+  /** `POST /api/judge/keys/:keyId/revoke` (admin): the key is refused from now on, restart or not. */
+  const keyRevoke = async (c: Ctx): Promise<Response> => {
+    requireAdmin(c);
+    await load(c.deps);
+    const id = c.params.keyId ?? '';
+    if (!registry.revoke(id)) throw new HttpError(404, 'not_found', 'no such judge key');
+    const prev = await c.deps.store.getJournal(KEYS_KEY);
+    await c.deps.store.putJournal(KEYS_KEY, prev?.version ?? 0, { revoked: registry.revokedIds() });
+    audit(c.deps)?.warn('judge key revoked', { event: 'judge_room.key_revoked', keyId: id });
+    return json(200, { id, revoked: true });
   };
 
   /**
@@ -800,11 +905,97 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     return json(200, { holdId, simulated: true, ceilingCents: body.ceilingCents });
   };
 
+  /**
+   * `POST /api/judge/rooms/:id/bids`: a bidder session of a judge room places a bid over plain
+   * HTTP, for curl and SDK clients that cannot open the socket (which needs a browser Origin).
+   * It takes the very path of a socket bid (rate limit, registered check, engine), only through
+   * a throwaway connection. Session tokens only; judge rooms only, anything else is `not_found`.
+   */
+  const placeBid = async (c: Ctx): Promise<Response> => {
+    const { deps } = c;
+    if (!opts.enabled) throw new HttpError(404, 'not_found', 'no such route');
+    const auctionId = c.params.id ?? '';
+    const who = await authenticate(c, auctionId, ['session']);
+    if (who.bidderId === undefined) throw new GavelError('forbidden', 'no bidder in the session');
+    const body = parseBody(BidBody, await c.body());
+    await load(deps);
+    const marker = (await deps.store.getJournal(markerKey(auctionId)))?.value as Marker | undefined;
+    if (marker === undefined) throw new GavelError('not_found', 'no such judge room');
+    if (marker.expired === true || marker.expiresAt <= deps.clock.now()) {
+      return refuse(deps, 410, 'judge_room_expired', 'bid_expired', sourceTag(auctionId));
+    }
+    const room = await roomFor(deps, auctionId);
+    const mid = body.mid ?? deps.ids.mint<'MsgId'>();
+    const frames = await withConnection(
+      deps,
+      room,
+      'bidder',
+      who.sub,
+      (conn) =>
+        room.submitBid(conn, {
+          v: 1,
+          t: 'bid',
+          mid,
+          amount: body.amount,
+          source: 'qr',
+        } as Parameters<typeof room.submitBid>[1]),
+      who.bidderId,
+    );
+    const failure = frames.find((f) => f.t === 'error');
+    if (failure !== undefined) {
+      const code = failure.code;
+      const known =
+        typeof code === 'string' && code in ERROR_TABLE
+          ? (code as keyof typeof ERROR_TABLE)
+          : 'internal';
+      const retry =
+        typeof failure.retryAfterMs === 'number'
+          ? Math.ceil(failure.retryAfterMs / 1000)
+          : undefined;
+      return json(
+        ERROR_TABLE[known].status,
+        { error: known, code: known, message: REFUSAL_TEXT[known] ?? 'Bid refused' },
+        retry === undefined ? {} : { 'retry-after': String(Math.max(1, retry)) },
+      );
+    }
+    const accepted = frames.find((f) => f.t === 'bid_accepted');
+    if (accepted !== undefined) {
+      audit(deps)?.info('judge room bid over http', {
+        event: 'judge_room.bid_http',
+        auctionId,
+        amount: body.amount,
+      });
+      return json(200, {
+        accepted: true,
+        mid,
+        bidId: accepted.bidId,
+        amount: accepted.amount,
+        seq: accepted.seq,
+      });
+    }
+    const rejected = frames.find((f) => f.t === 'bid_rejected');
+    if (rejected !== undefined) {
+      return json(409, {
+        accepted: false,
+        error: 'bid_rejected',
+        mid,
+        reason: rejected.reason,
+        retryable: rejected.retryable === true,
+      });
+    }
+    // The room held the bid for the bidder to confirm (low-confidence bids only; HTTP bids carry
+    // no confidence, so this is not expected) or sent nothing: say so rather than guess.
+    return json(202, { accepted: false, pending: true, mid });
+  };
+
   const mount: Mount = (app: HttpApp): void => {
     appDeps = app.deps;
     codeGuardOf(app.deps, joinLimits);
     app.post(JUDGE_JOIN_PATH, judgeRoute(join));
     app.post(JUDGE_SIM_HOLD_PATH, judgeRoute(simHold));
+    app.post(JUDGE_BID_PATH, judgeRoute(placeBid));
+    app.get(JUDGE_KEYS_PATH, judgeRoute(keyList));
+    app.post(JUDGE_KEY_REVOKE_PATH, judgeRoute(keyRevoke));
     app.get(JUDGE_CAPABILITIES_PATH, async (c: Ctx) => {
       if (opts.enabled) {
         await load(c.deps);
@@ -815,7 +1006,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
         accepting: accepting(),
         simHolds: opts.enabled && opts.simHolds !== undefined,
         // Present only when a judge key is set, so the panel shows its key field only then.
-        ...(opts.enabled && opts.judgeKey !== undefined ? { keyed: true } : {}),
+        ...(opts.enabled && registry.any ? { keyed: true } : {}),
       });
     });
     app.post(JUDGE_ROOMS_PATH, judgeRoute(create));

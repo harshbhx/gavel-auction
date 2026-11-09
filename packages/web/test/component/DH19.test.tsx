@@ -81,7 +81,7 @@ describe('states', () => {
   it('404 shows the not found heading and a way home', () => {
     render(<NotFound />);
     expect(screen.getByRole('heading', { name: t('err.notFound') })).toBeTruthy();
-    expect(screen.getByRole('link', { name: t('err.home') })).toBeTruthy();
+    expect(screen.getByRole('link', { name: t('nf.docs') })).toBeTruthy();
   });
 
   it('boundary shows id, reload and the banner', () => {

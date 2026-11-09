@@ -94,6 +94,8 @@ jobs:
           test -f out/llms.txt
           test -f out/llms-full.txt
           test -f out/openapi.yaml
+          test -f out/api-reference.html
+          grep -q 'id="createAuction"' out/api-reference.html
           test -f out/_headers
           grep -q "frame-ancestors 'none'" out/_headers
           grep -q '^/_next/static/\*' out/_headers

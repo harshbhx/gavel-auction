@@ -9,11 +9,13 @@ import { gzipSync } from 'node:zlib';
 
 const dir = process.argv[2] ?? 'out';
 
-// Limits in bytes of gzip JS. Measured in CI with search on demand: home 335,223 and docs page 394,388 (was about 379,000 on the home page).
+// Limits in bytes of gzip JS that a modern browser loads (the noModule polyfill bundle is not counted).
+// Measured on main with search on demand: home 335,223 and docs page 394,388, both including 39 KB of noModule
+// polyfills. After this change (noModule not counted, motion features in a lazy chunk): home 298,482 and docs page 354,932.
 // Raise one only with a reason in the pull request; lower it when the size drops.
 const budgets = [
-  { page: 'index.html', label: 'home', limit: Number(process.env.JS_BUDGET_HOME ?? 345_000) },
-  { page: 'docs/start.html', label: 'docs page', limit: Number(process.env.JS_BUDGET_DOCS ?? 405_000) },
+  { page: 'index.html', label: 'home', limit: Number(process.env.JS_BUDGET_HOME ?? 305_000) },
+  { page: 'docs/start.html', label: 'docs page', limit: Number(process.env.JS_BUDGET_DOCS ?? 362_000) },
 ];
 
 let failed = false;
@@ -21,7 +23,11 @@ for (const { page, label, limit } of budgets) {
   const file0 = existsSync(join(dir, page)) ? join(dir, page) : join(dir, page.replace(/\.html$/, '/index.html'));
   const html = readFileSync(file0, 'utf8');
   const srcs = new Set();
-  for (const m of html.matchAll(/<script[^>]*\ssrc="([^"]+\.js[^"]*)"/g)) srcs.add(m[1]);
+  // Scripts marked noModule are the legacy polyfill bundle; browsers that run modules never fetch it.
+  for (const m of html.matchAll(/<script\b[^>]*>/g)) {
+    const src = /\ssrc="([^"]+\.js[^"]*)"/.exec(m[0]);
+    if (src && !/\snomodule\b/i.test(m[0])) srcs.add(src[1]);
+  }
   for (const m of html.matchAll(/<link[^>]*rel="preload"[^>]*as="script"[^>]*href="([^"]+)"/g)) srcs.add(m[1]);
   for (const m of html.matchAll(/<link[^>]*href="([^"]+\.js[^"]*)"[^>]*as="script"/g)) srcs.add(m[1]);
   let total = 0;

@@ -1,6 +1,7 @@
 import { isAbsolute } from 'node:path';
 import { z } from 'zod';
-import { parseOriginList } from './http/origins';
+import { parseJudgeKeys } from './auth/judge-keys';
+import { DEFAULT_DOCS_ORIGIN, parseOriginList } from './http/origins';
 import { isSecretKey } from './log/logger';
 
 const flag = z.enum(['0', '1']).transform((v) => v === '1');
@@ -49,6 +50,16 @@ const EnvObject = z.object({
    * per-address create limit within a small bound. Empty or unset turns the feature off.
    */
   JUDGE_KEY: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional()),
+  /**
+   * Per-judge keys: a JSON array of `{id, hash, label, expiresAt, maxRooms, perHour}`. Only the
+   * sha256 of each secret is configured (see scripts/make-judge-key.mjs). Needs JUDGE_ROOMS.
+   */
+  JUDGE_KEYS: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional()),
+  /**
+   * Docs-site origin(s) allowed to call the judge routes from a browser (the "Try it" panel).
+   * Judge routes only; never the socket and never admin routes. Empty turns it off.
+   */
+  JUDGE_DOCS_ORIGINS: originList.default(DEFAULT_DOCS_ORIGIN),
   /** Most keyed judge rooms alive at once, for the whole host. */
   JUDGE_KEY_ROOMS_MAX: int(1).pipe(z.number().max(10)).default('3'),
   STORE: z.enum(['memory', 'file', 'postgres', 'd1']).default('memory'),
@@ -191,6 +202,11 @@ const EnvSchema = EnvObject.superRefine((env, ctx) => {
       problem('JUDGE_KEY', `must be at least ${MIN_JUDGE_KEY_CHARS} characters`);
     }
     if (!env.JUDGE_ROOMS) problem('JUDGE_KEY', 'needs JUDGE_ROOMS=true');
+  }
+  if (env.JUDGE_KEYS !== undefined) {
+    if (!env.JUDGE_ROOMS) problem('JUDGE_KEYS', 'needs JUDGE_ROOMS=true');
+    const { problems } = parseJudgeKeys(env.JUDGE_KEYS);
+    for (const p of problems) problem('JUDGE_KEYS', p);
   }
   if (env.JUDGE_ROOMS) {
     // Real sandbox holds only. The fake adapter is allowed off-production so tests and local

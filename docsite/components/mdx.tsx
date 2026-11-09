@@ -7,6 +7,7 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Mermaid } from '@/components/mermaid';
+import { JudgeTryIt } from '@/components/judge/try-it';
 import { Term } from '@/components/guide/term';
 import { ProcessDiagram } from '@/components/diagrams/process';
 import { TourSteps } from '@/components/guide/tour-steps';
@@ -67,6 +68,7 @@ export function getMDXComponents(components?: MDXComponents) {
     Tabs,
     TypeTable,
     Mermaid,
+    JudgeTryIt,
     // glossary tooltips, the guided tour and the glossary page
     Term,
     TourSteps,

@@ -10,6 +10,7 @@ import { BidScreen } from '../../src/screens/bid/BidScreen';
 import { ConsoleScreen } from '../../src/screens/console/ConsoleScreen';
 import { JoinScreen, type JoinState } from '../../src/screens/join/JoinScreen';
 import { LandingScreen, type LandingStatus } from '../../src/screens/landing/LandingScreen';
+import { NotFound, type NotFoundKind } from '../../src/screens/states/NotFound';
 import { Receipt } from '../../src/screens/receipt/Receipt';
 import { RegisterScreen } from '../../src/screens/register/RegisterScreen';
 import { ScreenView } from '../../src/screens/screen/ScreenView';
@@ -190,6 +191,14 @@ describe('axe on the landing and join screens', () => {
       />,
     );
     if (state === 'open') await screen.findByRole('img');
+    expect(await seriousViolations(container)).toEqual([]);
+  });
+});
+
+describe('axe on the not found screen', () => {
+  const kinds: readonly NotFoundKind[] = ['page', 'room', 'code'];
+  it.each(kinds)('not found, %s case', async (kind) => {
+    const { container } = render(<NotFound kind={kind} />);
     expect(await seriousViolations(container)).toEqual([]);
   });
 });

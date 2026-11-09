@@ -15,7 +15,7 @@ The server runs on Render ([api.gavel.dualmindlab.tech](https://api.gavel.dualmi
 
 `render.yaml` describes one web service, `gavel-host`, with one instance and a 1 GB disk at `/var/data`. The build bundles the server and workspace packages into `packages/server/dist/main.js`; the start command runs `node dist/main.js`, so no dev tooling is in the runtime. The health check is `/healthz`. Auto deploy is off.
 
-`deploy-staging` runs on demand and on pushes to `main` that touch server code. It calls the Render deploy hook, waits, then runs `scripts/smoke.sh`. With the secrets missing it ends green and prints a notice naming what to add.
+The real deploy path: the owner uses Manual Deploy of `main` in the Render dashboard, then checks `GET /version` and runs `scripts/smoke.sh`. `deploy-staging` is an optional workflow that runs by hand only; it calls the Render deploy hook, waits, then runs `scripts/smoke.sh`. It is not configured, so a run says SKIPPED in its job summary and a manual start fails.
 
 The smoke script checks, with timeouts: `GET /healthz` is 200, `GET /warmup` is 200, an unsigned `POST /webhooks/paypal` is 400, and `POST /api/auctions` without a key is 401.
 
