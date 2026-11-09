@@ -1,6 +1,8 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/App';
+import { ROUTE_CHROME_WATCH_MS, useRouteChrome } from '../../src/a11y/useRouteChrome';
+import { matchRoute } from '../../src/routes';
 import { t } from '../../src/copy/t';
 import { loadSession, saveSession } from '../../src/net/session';
 import { saveRegistration } from '../../src/payments/registrationStore';
@@ -17,6 +19,12 @@ import {
 } from '../../src/testing/builders';
 
 const ROOM = auctionId(7);
+
+/** A route whose page has a main landmark but no heading: the watcher has nothing to wait for. */
+function ChromeProbe() {
+  useRouteChrome(matchRoute('/r/r1/bid', { gallery: false }));
+  return <main />;
+}
 const ME = bidderId(1);
 const API = { apiBase: 'http://api.test', payments: 'paypal', paypalClientId: 'none' } as const;
 
@@ -148,6 +156,55 @@ describe('title, main landmark and focus on every route (#2055, #2093, #2117)', 
     (document.activeElement as HTMLElement).blur();
     fireEvent.click(screen.getByText(t('a11y.skip')));
     expect(document.activeElement).toBe(document.getElementById('main'));
+  });
+});
+
+describe('the skip link target exists on every route (#2439)', () => {
+  it.each(['/', '/about'])('%s has one main landmark and it answers to #main', async (path) => {
+    render(<App initialPath={path} api={API} />);
+    await waitFor(() => expect(document.getElementById('main')).not.toBeNull());
+    const mains = document.querySelectorAll('main');
+    expect(mains.length).toBe(1);
+    expect(mains[0]?.id).toBe('main');
+    const skip = screen.getByText(t('a11y.skip')) as HTMLAnchorElement;
+    expect(document.getElementById(skip.hash.slice(1))).toBe(mains[0]);
+  });
+});
+
+describe('the route chrome observer does not outlive its job (#2444)', () => {
+  function watchObservers(): { made: number; disconnected: number } {
+    const count = { made: 0, disconnected: 0 };
+    class Counting {
+      constructor() {
+        count.made += 1;
+      }
+      observe(): void {}
+      takeRecords(): [] {
+        return [];
+      }
+      disconnect(): void {
+        count.disconnected += 1;
+      }
+    }
+    vi.stubGlobal('MutationObserver', Counting);
+    return count;
+  }
+
+  it('starts none when the screen route already has its main landmark', () => {
+    const count = watchObservers();
+    render(<App initialPath="/r/r1/screen" />);
+    expect(count.made).toBe(0);
+  });
+
+  it('disconnects the watcher when the page never gets a heading', () => {
+    vi.useFakeTimers();
+    const count = watchObservers();
+    const { unmount } = render(<ChromeProbe />);
+    expect(count.made).toBe(1);
+    vi.advanceTimersByTime(ROUTE_CHROME_WATCH_MS);
+    expect(count.disconnected).toBe(1);
+    unmount();
+    vi.useRealTimers();
   });
 });
 

@@ -23,20 +23,26 @@ export interface SoldProps {
   readonly review?: boolean;
 }
 
+/** The result line: also what the announcer speaks at the hammer. */
+export function soldText(outcome: SoldOutcome, review: boolean): string {
+  if (outcome.kind === 'passed') return t('screen.passed');
+  const amount = formatUsd(outcome.amountCents);
+  if (review) {
+    return outcome.paddle === null
+      ? t('screen.wonReviewUnknown', { amount })
+      : t('screen.wonReview', { n: outcome.paddle, amount });
+  }
+  return outcome.paddle === null
+    ? t('screen.soldUnknown', { amount })
+    : t('screen.sold', { n: outcome.paddle, amount });
+}
+
 /** SOLD or Passed banner with a compact settlement summary (R-WEB-078). */
 export function Sold({ outcome, settlement = null, review = false }: SoldProps) {
   return (
     <section data-testid="sold" className="gv-screen__sold" data-kind={outcome.kind}>
       <p className="gv-hammer-stamp gv-screen__stamp tabular" data-closed="true">
-        {outcome.kind === 'passed'
-          ? t('screen.passed')
-          : review
-            ? outcome.paddle === null
-              ? t('screen.wonReviewUnknown', { amount: formatUsd(outcome.amountCents) })
-              : t('screen.wonReview', { n: outcome.paddle, amount: formatUsd(outcome.amountCents) })
-            : outcome.paddle === null
-              ? t('screen.soldUnknown', { amount: formatUsd(outcome.amountCents) })
-              : t('screen.sold', { n: outcome.paddle, amount: formatUsd(outcome.amountCents) })}
+        {soldText(outcome, review)}
       </p>
       {review && outcome.kind === 'sold' && (
         <p className="gv-screen__settle" data-testid="settle-review" role="status">

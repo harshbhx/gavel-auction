@@ -26,10 +26,13 @@ export function ConfirmQueue({ requests, now, onAnswer }: ConfirmQueueProps) {
   const sent = useRef(new Set<string>());
   const [sentIds, setSentIds] = useState<readonly string[]>([]);
 
+  // The countdowns are the only thing the tick moves: an empty queue has none.
+  const hasRequests = requests.length > 0;
   useEffect(() => {
+    if (!hasRequests) return undefined;
     const id = setInterval(() => setTick((n) => n + 1), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [hasRequests]);
 
   // Forget ids that left the queue, and keep the selection inside it.
   useEffect(() => {

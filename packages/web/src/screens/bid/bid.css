@@ -36,6 +36,14 @@
   --bid-ink-soft: var(--color-on-danger);
 }
 
+/* Controls that sit straight on the state ground (green, red) take the ink colour for their focus
+   ring: the shared dark ring is only 2.7:1 on those grounds (WCAG 1.4.11, 2.4.7). */
+.bid__prefs :focus-visible,
+.bid__raise :focus-visible,
+.bid > .gv-btn:focus-visible {
+  outline-color: var(--bid-ink);
+}
+
 /* Raised panels, chips, banners and the hold card keep their own readable ground. */
 .bid__panel,
 .bid .gv-chip,
@@ -369,6 +377,12 @@
   border-top: var(--border-width-strong) solid var(--color-on-sheet);
   border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
   box-shadow: none;
+}
+
+/* The shared ring colour is the sheet colour (1.00:1): ring the answers in the sheet's ink. */
+.gv-sheet:has(> .bid-confirm):focus-visible,
+.gv-sheet:has(> .bid-confirm) :focus-visible {
+  outline-color: var(--color-on-sheet);
 }
 
 .bid-confirm {
