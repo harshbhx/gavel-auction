@@ -45,39 +45,61 @@ export async function purgeSimHolds(holds: HoldStore, auctionId: string): Promis
 
 /**
  * Writes a HELD hold with a simulated authorization. Returns the hold id. Like a real hold it is
- * written once: a repeat with the same ceiling returns the hold already there, and a repeat with
- * another ceiling is refused (`conflict`), so the stored ceiling never drifts from the one the
- * room registered. The read and the write run inside the per-hold queue.
+ * written once: a repeat with the same ceiling returns the hold already there. A larger ceiling
+ * for a bidder who already has one is a raise (D-0025): it gets its own hold, written once per
+ * amount, and the room switches to it and voids the old one. A smaller or equal ceiling is
+ * refused (`conflict`), so the stored ceiling never drifts from the one the room registered. The
+ * read and the write run inside the per-hold queue.
  */
 export function createSimHoldSource(
   holds: HoldStore,
   nowMs: () => number,
 ): (bidderId: BidderId, ceiling: Cents, auctionId: AuctionId) => Promise<string> {
+  const write = (
+    holdId: string,
+    auctionId: AuctionId,
+    bidderId: BidderId,
+    ceiling: Cents,
+  ): Promise<void> =>
+    holds.put({
+      holdId,
+      auctionId,
+      bidderId,
+      orderId: `sim-order-${bidderId}`,
+      authId: simAuthId(bidderId, ceiling),
+      ceilingCents: ceiling,
+      status: 'HELD',
+      createdAtMs: nowMs(),
+    });
   return (bidderId, ceiling, auctionId) => {
     const holdId = `sim-hold-${bidderId}`;
     return sharedHoldQueue.run(holdId, async () => {
       const existing = await holds.get(holdId);
-      if (existing !== null) {
-        if (
-          existing.status === 'HELD' &&
-          existing.ceilingCents === ceiling &&
-          existing.auctionId === auctionId
-        ) {
-          return holdId;
-        }
-        throw new GavelError('conflict', 'this bidder already has a hold; it cannot change');
+      if (existing === null) {
+        await write(holdId, auctionId, bidderId, ceiling);
+        return holdId;
       }
-      await holds.put({
-        holdId,
-        auctionId,
-        bidderId,
-        orderId: `sim-order-${bidderId}`,
-        authId: simAuthId(bidderId, ceiling),
-        ceilingCents: ceiling,
-        status: 'HELD',
-        createdAtMs: nowMs(),
+      if (
+        existing.status === 'HELD' &&
+        existing.ceilingCents === ceiling &&
+        existing.auctionId === auctionId
+      ) {
+        return holdId;
+      }
+      if (existing.auctionId !== auctionId || ceiling <= existing.ceilingCents) {
+        throw new GavelError('conflict', 'this bidder already has a hold; it can only be raised');
+      }
+      // A raise: one hold per amount, so a repeat of the same request finds it again.
+      const raiseId = `${holdId}-${ceiling}`;
+      return sharedHoldQueue.run(raiseId, async () => {
+        const raised = await holds.get(raiseId);
+        if (raised === null) {
+          await write(raiseId, auctionId, bidderId, ceiling);
+          return raiseId;
+        }
+        if (raised.status === 'HELD' && raised.ceilingCents === ceiling) return raiseId;
+        throw new GavelError('conflict', 'this bidder already had a hold of that amount');
       });
-      return holdId;
     });
   };
 }

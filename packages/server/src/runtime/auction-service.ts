@@ -670,6 +670,8 @@ class Service implements AuctionService, SettlePort {
       throw new GavelError('forbidden', 'the bidder has no held hold in this auction');
     }
     const room = await this.room(input.auctionId);
+    // The hold the room used before this call; a raise replaces it (D-0025).
+    const before = room.holdRefs.get(input.bidderId);
     try {
       await room.registerBidder({
         bidderId: input.bidderId,
@@ -677,6 +679,12 @@ class Service implements AuctionService, SettlePort {
         ceiling: hold.ceilingCents as Cents,
         holdRef: hold.holdId,
       });
+      // A raise switched the room to this hold: only now is the earlier hold voided, so the
+      // bidder is never without one. A failed void is retried by the orphan sweep and, at the
+      // latest, by the settlement's spare release.
+      if (before !== undefined && before !== hold.holdId) {
+        await this.voidOrphan(input.auctionId, before);
+      }
     } catch (e) {
       // A refused registration leaves a live authorization nobody uses. Once the plan is
       // cut it is not in the journal either, so it is released here (SERVICE-R3-09).

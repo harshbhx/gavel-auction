@@ -100,3 +100,33 @@ export function clearAllRegistrations(): void {
     // Nothing to clear.
   }
 }
+
+const MODE_PREFIX = 'gavel:holdmode:';
+
+/**
+ * How this tab holds funds in a room: `demo` is the judge-room simulated hold. Set when the bidder
+ * registers, so the raise screen holds the same way without the register link's query (FEAT-61).
+ */
+export function rememberHoldMode(
+  roomId: string,
+  mode: 'demo' | 'paypal',
+  storage: StorageLike | null = defaultStorage(),
+): void {
+  try {
+    storage?.setItem(`${MODE_PREFIX}${encodeURIComponent(roomId)}`, mode);
+  } catch {
+    // Not stored: the raise then uses the room's normal way.
+  }
+}
+
+export function loadHoldMode(
+  roomId: string,
+  storage: StorageLike | null = defaultStorage(),
+): 'demo' | 'paypal' | null {
+  try {
+    const v = storage?.getItem(`${MODE_PREFIX}${encodeURIComponent(roomId)}`);
+    return v === 'demo' || v === 'paypal' ? v : null;
+  } catch {
+    return null;
+  }
+}

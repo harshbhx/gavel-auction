@@ -20,7 +20,7 @@ import {
 import { Provenance } from './design/Provenance';
 import { SCRIPTED_ROOM_ID, loadScriptedRoom, type ScriptedRoom } from './testing/scriptedRoom';
 import { clearSession, type SessionRole } from './net/session';
-import { loadRegistration } from './payments/registrationStore';
+import { loadHoldMode, loadRegistration, rememberHoldMode } from './payments/registrationStore';
 import { SimApprovalAdapter } from './payments/simAdapter';
 import { createApprovalPort, createReturnAdapter, useApproval } from './payments/useApproval';
 import { HelpLayer } from './help';
@@ -267,6 +267,17 @@ function LiveRoute({
   );
   const stopped = useRoom(selectors.stopped);
   const joinCode = useRoom((s) => s.snapshot?.joinCode ?? null);
+  // The way this bidder holds funds (judge-room simulation or PayPal) also serves a limit raise.
+  const raisePort = useMemo(() => {
+    if (api === undefined || bidderId === undefined || scripted !== undefined) return null;
+    return loadHoldMode(roomId) === 'demo'
+      ? new SimApprovalAdapter({ apiBase: api.apiBase, token })
+      : createApprovalPort(
+          api.payments,
+          { apiBase: api.apiBase, token },
+          { apiBase: api.apiBase, clientId: api.paypalClientId, token },
+        );
+  }, [api, bidderId, scripted, roomId, token]);
   const respond = (confirmId: string, accept: boolean): void =>
     transport?.send({ v: PROTOCOL_VERSION, t: 'confirm_response', confirmId, accept });
   if (connection.superseded === true) {
@@ -327,6 +338,9 @@ function LiveRoute({
             stopped={stopped}
             onJoin={() => navigate(`/r/${encodeURIComponent(roomId)}/register`)}
             {...(myPaddle === undefined ? {} : { myPaddle, onConfirm: respond })}
+            {...(raisePort === null || bidderId === undefined
+              ? {}
+              : { raise: { port: raisePort, roomId, bidderId } })}
           />
         </div>
       );
@@ -681,6 +695,10 @@ function RegisterRoute({
   const [demoHold] = useState(
     () => new URLSearchParams(window.location.search).get('mode') === 'demo',
   );
+  useEffect(() => {
+    // The raise screen holds the same way the bidder registered (judge-room simulation or PayPal).
+    rememberHoldMode(roomId, demoHold ? 'demo' : 'paypal');
+  }, [roomId, demoHold]);
   const [draft, setDraft] = useState<RegistrationDraft | null>(null);
   // The draft is kept when the buyer goes back, so the name and paddle they typed are still there.
   const [approving, setApproving] = useState(false);

@@ -906,6 +906,16 @@ paths:
         Session token only. The bidder is the one in the token; a body that names a bidder is
         rejected. The ceiling must be one of the auction's offered presets. Errors on the hold
         routes are `{error, message}` with the codes in `HoldErrorCode`.
+
+        <!-- FEAT-61 begin: raise a limit -->
+        A bidder who already has a HELD hold can raise the limit with this same route: send a
+        `ceilingCents` above the held one and up to the server cap. The answer is a new order
+        that replaces the old hold once it is approved; the old authorization is voided only
+        after the room has switched to the new one, so the bidder always has a hold. The same
+        request twice returns the same order. A ceiling that is not higher answers 409
+        `hold_exists`; one above the cap answers 400 `ceiling_out_of_range`; once the lot is
+        hammered the route answers 409 `closed`. Still held, not charged (sandbox only).
+        <!-- FEAT-61 end -->
       security:
         - sessionAuth: []
       requestBody:
@@ -2837,8 +2847,8 @@ components:
       type: object
       description: >-
         One logged event. `seq` is always there. The other fields depend on `type`
-        (`auction_created`, `bidder_registered`, `bid_accepted`, `control`, `state_changed`,
-        `hammered` and others); a screen sees only `seq` for non-public types.
+        (`auction_created`, `bidder_registered`, `ceiling_raised`, `bid_accepted`, `control`,
+        `state_changed`, `hammered` and others); a screen sees only `seq` for non-public types.
       required: [seq]
       properties:
         seq:

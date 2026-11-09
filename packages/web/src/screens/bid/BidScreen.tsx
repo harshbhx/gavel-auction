@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { announce } from '../../a11y/announce';
 import { MuteToggle } from '../../alerts/MuteToggle';
@@ -9,6 +9,7 @@ import { Banner } from '../../design/primitives/Banner';
 import { Button } from '../../design/primitives/Button';
 import { useServerNow } from '../../net/clock';
 import { useConnection } from '../../net/connection';
+import type { PaymentApprovalPort } from '../../payments/port';
 import {
   selectCeilingUsage,
   selectConfirmQueue,
@@ -26,6 +27,7 @@ import { ConfirmSheet } from './ConfirmSheet';
 import { CustomBid } from './CustomBid';
 import { LotBlock } from './LotBlock';
 import { QuickBid, useSendGuard } from './QuickBid';
+import { RaiseLimit } from './RaiseLimit';
 import { Rejection, REJECTION_CLEAR_MS, type BidRejection } from './Rejection';
 import { StateBanner, bidsLocked, bidsNotice } from './StateBanner';
 import { myStatus, StatusChip, type ChipStatus } from './StatusChip';
@@ -35,6 +37,8 @@ export { REJECTION_CLEAR_MS };
 export type { BidRejection };
 
 const LAST_EVENTS = 5;
+/** The next bid is within this share of the limit: the screen starts offering a raise. */
+const NEAR_LIMIT_SHARE = 0.8;
 
 /** Whole-screen state colour: win for leading or won, out for outbid, danger for review. */
 function kindOf(status: ChipStatus): 'win' | 'out' | 'review' | 'idle' {
@@ -70,6 +74,17 @@ export interface BidScreenProps {
   stopped?: boolean;
   /** Sends a bidder with no registered hold back to registration. */
   onJoin?: () => void;
+  /**
+   * What the bidder needs to hold a higher limit (FEAT-61). Without it the screen does not offer
+   * a raise (replays, the scripted demo).
+   */
+  raise?: {
+    port: PaymentApprovalPort;
+    roomId: string;
+    bidderId: string;
+    /** Whether the room takes a typed limit (false: only its presets). */
+    allowCustom?: boolean;
+  };
 }
 
 /** Layout of the bidder screen (R-WEB-053). */
@@ -87,6 +102,7 @@ export function BidScreen({
   onConfirm,
   stopped = false,
   onJoin,
+  raise,
 }: BidScreenProps) {
   const price = useRoom(selectPrice, store);
   const base = useRoom(selectMyStatus, store);
@@ -100,6 +116,9 @@ export function BidScreen({
   const loaded = useRoom((s) => s.snapshot !== null, store);
   const connection = useConnection();
   const serverNow = useServerNow(store);
+  const presets = useRoom((s) => s.snapshot?.config.ceilingPresets, store);
+  const cap = useRoom((s) => s.snapshot?.maxCeilingCents, store);
+  const [raising, setRaising] = useState(false);
 
   const status = myStatus(base, pending);
   const nextMin = price?.nextMinCents ?? reserve;
@@ -140,6 +159,37 @@ export function BidScreen({
     if (requestId === null || requestAmount === null || myPaddle === undefined) return;
     announce('assertive', t('confirm.title', { amount: formatUsd(requestAmount), n: myPaddle }));
   }, [requestId, requestAmount, myPaddle]);
+
+  // A bidder can raise the limit while the lot takes bids; the cap is the real server cap.
+  const canRaise =
+    raise !== undefined &&
+    base !== 'watching' &&
+    ceiling !== null &&
+    !bidsLocked(auctionStatus, stopped) &&
+    (cap === undefined || ceiling < cap);
+  const mustRaise = ceiling !== null && nextMin > ceiling;
+  const raiseHint =
+    ceiling === null
+      ? null
+      : base === 'outbid'
+        ? t('raise.hintOutbid')
+        : !mustRaise && nextMin >= ceiling * NEAR_LIMIT_SHARE
+          ? t('raise.hintNear')
+          : null;
+  if (raising && canRaise && raise !== undefined && ceiling !== null) {
+    return (
+      <RaiseLimit
+        port={raise.port}
+        roomId={raise.roomId}
+        bidderId={raise.bidderId}
+        currentCents={ceiling}
+        maxCents={cap ?? Math.max(ceiling, ...(presets ?? []))}
+        {...(presets === undefined ? {} : { presetsCents: presets })}
+        {...(raise.allowCustom === undefined ? {} : { allowCustom: raise.allowCustom })}
+        onClose={() => setRaising(false)}
+      />
+    );
+  }
 
   const screenKind = request !== null && myPaddle !== undefined ? 'confirm' : kindOf(status);
   const ceilingHold = usage === null ? null : usage.maxCents;
@@ -192,6 +242,22 @@ export function BidScreen({
           ceilingCents={ceilingHold}
           {...(myPaddle === undefined ? {} : { caption: t('reg.yourPaddle', { n: myPaddle }) })}
         />
+      )}
+
+      {canRaise && (
+        <section className="bid__raise" data-testid="raise-limit">
+          {raiseHint !== null && (
+            <p role="status" data-testid="raise-hint">
+              {raiseHint}
+            </p>
+          )}
+          <Button
+            variant={raiseHint === null && !mustRaise ? 'outline' : 'solid'}
+            onClick={() => setRaising(true)}
+          >
+            {t('raise.cta')}
+          </Button>
+        </section>
       )}
 
       {base === 'watching' && onJoin !== undefined && (

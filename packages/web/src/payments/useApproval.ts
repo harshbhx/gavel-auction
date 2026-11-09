@@ -34,7 +34,8 @@ export function resetAttemptMemoryOnly(): void {
   attempts.clear();
 }
 
-const keyOf = (roomId: string, bidderId: string): string => `${roomId}:${bidderId}`;
+const keyOf = (roomId: string, bidderId: string, scope?: string): string =>
+  scope === undefined ? `${roomId}:${bidderId}` : `${roomId}:${bidderId}:${scope}`;
 
 function newId(): string {
   return globalThis.crypto.randomUUID();
@@ -94,6 +95,11 @@ export interface UseApprovalOptions {
   bidderId: string;
   /** Test seam for the per-attempt id. */
   makeId?: () => string;
+  /**
+   * Keeps this hook's attempts apart from the bidder's registration attempt. A limit raise has its
+   * own scope, so the hold the bidder already has does not answer for the new one (FEAT-61).
+   */
+  scope?: string;
 }
 
 export interface UseApproval {
@@ -106,7 +112,7 @@ export interface UseApproval {
 
 export function useApproval(options: UseApprovalOptions): UseApproval {
   const { port, roomId, bidderId } = options;
-  const key = keyOf(roomId, bidderId);
+  const key = keyOf(roomId, bidderId, options.scope);
   const makeId = options.makeId ?? newId;
   const existing = attempts.get(key);
   const [state, setState] = useState<ApprovalState>(existing?.state ?? 'idle');

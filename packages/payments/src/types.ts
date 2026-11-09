@@ -111,6 +111,11 @@ export interface HoldRecord {
   status: HoldStatus;
   createdAtMs: number;
   stale?: boolean;
+  /**
+   * Set on a hold made to raise a limit: the id of the HELD hold it replaces. That hold is voided
+   * only after the room has switched to this one, so a bidder is never left without a hold.
+   */
+  supersedes?: string;
   /** Authorization ids replaced by a reauthorization, oldest first (R11-O06). */
   priorAuthIds?: string[];
 }
