@@ -15,7 +15,6 @@ import {
   frameCount,
   rm,
   logoSvg,
-  rule,
   mp4v,
   webm,
 } from '../lib/motion.mjs';
