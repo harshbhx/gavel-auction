@@ -338,7 +338,7 @@ function parseG4Flags(argv: readonly string[]): G4Flags {
 }
 
 /** Deliveries a fake receiver would log for a capture and a void. */
-function fakeDeliveries(server: FakePayPalServer): Delivery[] {
+export function fakeDeliveries(server: FakePayPalServer): Delivery[] {
   const core = server.core;
   const order = core.createOrder(
     { holdId: 'g4-fake', amountCents: 500, description: 'g4' },
