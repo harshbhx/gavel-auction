@@ -607,6 +607,7 @@ async function main() {
     '/r/nope/register',
     '/this-does-not-exist',
   ];
+  const NOT_FOUND_PAGES = new Set(['/gallery', '/this-does-not-exist']);
   const host = await newActor('host');
   await step('Every top-level page loads (status, h1, errors)', async () => {
     for (const p of pages) {
@@ -629,19 +630,53 @@ async function main() {
       const acts = await listActions(host);
       const body = await visibleText(host);
       await harvest(host, p);
+      // The production worker answers 404 (with the app's not-found screen) for an unknown page;
+      // /gallery is dev-only, so it is one of those. Room pages (/r/<id>/...) and /join/<code>
+      // stay 200 whatever the id: the app asks the server whether the room exists.
+      const expectNotFound = NOT_FOUND_PAGES.has(p);
       const lowSignal =
-        /not found|404/i.test(body) &&
-        !/this-does-not-exist|\/r\/nope|ZZZZZZ|gallery|replay/.test(p);
+        !expectNotFound && /not found|404/i.test(body) && !/\/r\/nope|ZZZZZZ|replay/.test(p);
       note(
-        `${p} -> ${status}; h1="${h1}"; actions=${acts.length}${acts.length === 0 ? ' DEAD END' : ''}`,
+        `${p} -> ${status} (expected ${expectNotFound ? '404 not-found screen' : '200'}); h1="${h1}"; actions=${acts.length}${acts.length === 0 ? ' DEAD END' : ''}`,
       );
-      check(status === 200, `${p} status ${status}`);
+      if (expectNotFound) {
+        check(status === 404, `${p} status ${status}, expected 404 (unknown page in production)`);
+        check(h1 !== '(no h1)', `${p} not-found screen has an h1`);
+        check(/not found/i.test(`${h1} ${body}`), `${p} shows the not-found copy`);
+        const hrefs = await host
+          .locator('a[href]')
+          .evaluateAll((as) => as.map((a) => a.getAttribute('href') || ''))
+          .catch(() => []);
+        check(
+          hrefs.some((h) => /^\/try\/?$/.test(h)),
+          `${p} not-found screen links to /try`,
+        );
+        check(
+          hrefs.some((h) => /docs\./.test(h)),
+          `${p} not-found screen links to the docs`,
+        );
+        note(`   not-found screen: h1="${h1}"; links=${clip(hrefs.join(' '), 160)}`);
+      } else {
+        check(status === 200, `${p} status ${status}, expected 200`);
+        check(h1 !== '(no h1)', `${p} has an h1`);
+      }
       if (lowSignal) check(false, `${p} shows a not-found message`);
       if (acts.length === 0) check(false, `${p} has no link or button at all (dead end)`);
-      if (p.startsWith('/r/nope') || p.startsWith('/join/ZZZZZZ') || p === '/this-does-not-exist') {
+      if (p.startsWith('/r/nope') || p.startsWith('/join/ZZZZZZ') || expectNotFound) {
         note(`   unknown-room page text: ${clip(body, 160)}`);
       }
       await shot(host, `${PROFILE}-pages-${slug(p) || 'home'}`);
+    }
+    // A missing file under /assets/ must be a real 404, never index.html cached as a script.
+    const bogus = `${WEB}/assets/this-file-does-not-exist-${Date.now()}.js`;
+    try {
+      const r = await host.request.get(bogus, { timeout: 30000 });
+      const ct = r.headers()['content-type'] || '';
+      note(`bogus asset path -> ${r.status()}; content-type=${ct}`);
+      check(r.status() === 404, `bogus asset path status ${r.status()}, expected 404`);
+      check(!/text\/html/i.test(ct), `bogus asset path answered HTML (${ct})`);
+    } catch (e) {
+      check(false, `bogus asset request failed: ${clip(e.message, 80)}`);
     }
   });
 
