@@ -760,9 +760,7 @@ function RegisterRoute({
       if (openState === 'full' || openState === 'expired') {
         return (
           <main data-route="register">
-            <h1 tabIndex={-1}>
-              {t(openState === 'full' ? 'reg.fullTitle' : 'reg.closedTitle')}
-            </h1>
+            <h1 tabIndex={-1}>{t(openState === 'full' ? 'reg.fullTitle' : 'reg.closedTitle')}</h1>
             <p role="alert">{t(openState === 'full' ? 'join.full' : 'join.ended')}</p>
             <p>{t(openState === 'full' ? 'join.fullHelp' : 'join.endedHelp')}</p>
             <a className="ui-link" href={`/r/${encodeURIComponent(roomId)}/bid`}>

@@ -590,7 +590,8 @@ export const en = {
   'reg.fullTitle': 'This room is full',
   'reg.inviteFailedTitle': 'This invite did not work',
   'reg.inviteFailed': 'This invite link is used, expired or not valid. Ask the host for a new one.',
-  'reg.returnLost': 'There is no PayPal approval in progress in this browser. Start again from the room hub.',
+  'reg.returnLost':
+    'There is no PayPal approval in progress in this browser. Start again from the room hub.',
   'reg.closed': 'Registration is closed for this auction. You can watch.',
   'reg.watch': 'Watch only',
   'reg.startAgain': 'Start again',

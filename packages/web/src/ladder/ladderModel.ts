@@ -190,8 +190,7 @@ function buildLane(rawHold: HoldView, winnerPaddle: number | null): LadderLane {
   // The server reports SETTLED for the winner once the sale is finished, and the same word for a
   // released hold. A winner is never "Released": it is charged when the amount is known and is
   // still being finalised until then.
-  const winnerSettled =
-    rawHold.paddle === winnerPaddle && rawHold.state === 'SETTLED';
+  const winnerSettled = rawHold.paddle === winnerPaddle && rawHold.state === 'SETTLED';
   const hold: HoldView = winnerSettled
     ? { ...rawHold, state: rawHold.capturedCents > 0 ? 'CAPTURED' : 'CAPTURING' }
     : rawHold;
