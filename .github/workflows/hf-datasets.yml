@@ -7,6 +7,9 @@ name: hf-datasets
 # a message naming what is missing if the repository secret HF_TOKEN or the repository variable
 # HF_NAMESPACE does not exist. A dry run prints what a publish would do. The token is only passed
 # through env to the upload step and is never printed.
+# The job `drift` runs on every pull request that touches docs/evidence, the builder or the lock file
+# hf/datasets.lock.json: it builds gavel-latency and gavel-gates without publishing and fails when the
+# build differs from the lock or an evidence file is missing from the dataset.
 on:
   # A pull request that changes the build runs it as a dry run, so the build is checked in CI.
   pull_request:
@@ -15,6 +18,7 @@ on:
       - 'scripts/hf/**'
       - 'hf/space/**'
       - 'docs/evidence/**'
+      - 'hf/datasets.lock.json'
       - 'docs/GATES.md'
       - 'packages/payments/test/simdays/**'
   workflow_dispatch:
@@ -37,6 +41,33 @@ defaults:
     shell: bash
 
 jobs:
+  drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b
+        with:
+          python-version: '3.12'
+      - name: Install pyarrow
+        run: python -m pip install --quiet pyarrow
+      - name: Build the two datasets that come from committed evidence (nothing is published)
+        run: |
+          out="$RUNNER_TEMP/hf-drift"
+          rm -rf "$out"
+          node scripts/hf/build-datasets.mjs --out "$out" --dataset gavel-latency
+          node scripts/hf/build-datasets.mjs --out "$out" --dataset gavel-gates
+          python3 scripts/hf/to-parquet.py "$out"
+          node scripts/hf/validate-datasets.mjs "$out"
+          node scripts/hf/finalize.mjs "$out"
+      - name: Fail when an evidence file is missing from the datasets
+        run: node scripts/hf/check-evidence-coverage.mjs "$RUNNER_TEMP/hf-drift"
+      - name: Fail when the build differs from hf/datasets.lock.json
+        run: node scripts/hf/check-drift.mjs "$RUNNER_TEMP/hf-drift"
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30

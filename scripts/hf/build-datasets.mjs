@@ -150,6 +150,8 @@ export function wavSeconds(buf) {
 
 const DEMO_URL = 'https://gavel.dualmindlab.tech/demo';
 const DOCS_URL = 'https://docs.gavel.dualmindlab.tech/docs/judges/open-data';
+const SITE_URL = 'https://gavel.dualmindlab.tech';
+const DOCS_HOME_URL = 'https://docs.gavel.dualmindlab.tech';
 const LICENSE_NAMES = {
   'cc-by-4.0': 'CC-BY-4.0 (Creative Commons Attribution 4.0 International)',
 };
@@ -181,8 +183,12 @@ const COMMON_FOOTER = (spec, ns) => {
     '## Links',
     '',
     `- Source code, the build in \`scripts/hf\` and the evidence: ${REPO_URL}`,
+    `- Project site: ${SITE_URL}`,
     `- Live demo (start a room in the browser, sandbox payments): ${DEMO_URL}`,
+    `- Documentation: ${DOCS_HOME_URL}`,
     `- Documentation for this data: ${DOCS_URL}`,
+    `- Evidence files on main: ${REPO_URL}/tree/main/docs/evidence`,
+    `- Gate verdicts on main: ${REPO_URL}/blob/main/docs/GATES.md`,
     `- Evidence Explorer (charts from these datasets): https://huggingface.co/spaces/${ns}/gavel-evidence-explorer`,
     '',
     '## Contact',
@@ -222,7 +228,21 @@ function provenanceSection(spec) {
   ].join('\n');
 }
 
+/** Commit date (UTC) of the build commit: deterministic, so two builds of one commit stay equal. */
+function repoCommitDate(sha) {
+  try {
+    return execFileSync('git', ['show', '-s', '--format=%cI', sha], {
+      cwd: ROOT,
+      encoding: 'utf8',
+    }).trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
 function card(spec, ns) {
+  const sha = repoSha();
+  const flag = (name) => spec.labels.includes(name);
   const fm = [
     '---',
     `license: ${spec.license}`,
@@ -235,6 +255,13 @@ function card(spec, ns) {
     'size_categories:',
     '  - n<1K',
     `pretty_name: ${spec.title}`,
+    `source_repository: ${REPO_URL}`,
+    `source_commit: ${sha}`,
+    `source_commit_date: ${repoCommitDate(sha)}`,
+    `sandbox: ${flag('sandbox') || flag('real sandbox')}`,
+    `synthetic: ${flag('synthetic') || flag('synthetic audio')}`,
+    `simulated: ${flag('simulated')}`,
+    'production_data: false',
     ...(spec.configs ?? []),
     '---',
     '',
