@@ -4,8 +4,10 @@
 # The Next static export writes small inline scripts and styles (hydration data, the theme script),
 # so script-src and style-src allow 'unsafe-inline'; a hash-based policy would break on every build.
 # Everything else is locked to this origin: no plugins, no framing, no base-tag or form hijack.
+# connect-src names the API origin and nothing else: the judge Try it panel keeps the key in
+# sessionStorage and promises to send it only there, so a script on the page cannot post it elsewhere.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; worker-src 'self' blob:; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://api.gavel.dualmindlab.tech; worker-src 'self' blob:; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
