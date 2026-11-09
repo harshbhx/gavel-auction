@@ -25,7 +25,7 @@ describe('stepAmount and sliderMax', () => {
 
   it('puts the slider top on the step ladder under the limit', () => {
     expect(sliderMax(5000, 500, 20000)).toBe(20000);
-    expect(sliderMax(5000, 700, 20000)).toBe(19200);
+    expect(sliderMax(5000, 700, 20000)).toBe(19700);
     expect(sliderMax(5000, 500, 4000)).toBeNull();
     expect(sliderMax(5000, 500, null)).toBeNull();
   });
@@ -56,12 +56,12 @@ describe('CustomBid stepper and slider', () => {
     fireEvent.keyDown(box, { key: 'ArrowUp' });
     fireEvent.keyDown(box, { key: 'ArrowUp' });
     expect(box.value).toBe('60');
-    expect((up as HTMLButtonElement).disabled).toBe(true);
+    expect(up.getAttribute('aria-disabled')).toBe('true');
     fireEvent.keyDown(box, { key: 'ArrowDown' });
     fireEvent.keyDown(box, { key: 'ArrowDown' });
     fireEvent.keyDown(box, { key: 'ArrowDown' });
     expect(box.value).toBe('50');
-    expect((down as HTMLButtonElement).disabled).toBe(true);
+    expect(down.getAttribute('aria-disabled')).toBe('true');
   });
 
   it('keeps the slider and the box in sync both ways', () => {

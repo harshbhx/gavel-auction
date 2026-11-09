@@ -129,7 +129,7 @@ export function CustomBid({
           disabled={atMin}
           onClick={() => step(-1)}
         >
-          {'\u2212'}
+          {t('bid.minus', { amount: formatUsdCompact(inc) })}
         </Button>
         <Field
           label={t('bid.custom')}
@@ -154,7 +154,7 @@ export function CustomBid({
           disabled={atMax}
           onClick={() => step(1)}
         >
-          +
+          {t('bid.plus', { amount: formatUsdCompact(inc) })}
         </Button>
       </div>
       {top !== null && top > nextMinCents && (

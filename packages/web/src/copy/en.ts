@@ -662,6 +662,7 @@ export const en = {
   'bid.slider': 'Bid amount slider, from {min} to {max}',
   'bid.quick': 'Bid {amount}',
   'bid.plus': '+{amount}',
+  'bid.minus': '-{amount}',
   'bid.custom': 'Your amount',
   'bid.place': 'Place bid',
   'bid.aboveCeiling': 'Bids above {max} are over your limit',
