@@ -152,7 +152,7 @@ jobs:
         with:
           name: docsite-shots
           path: docsite/shots
-          retention-days: 7
+          retention-days: 3
 
   # axe-core over the home page, a docs page, the glossary and the API reference, at desktop and
   # phone width. Fails on serious and critical violations; the full report is an artifact.

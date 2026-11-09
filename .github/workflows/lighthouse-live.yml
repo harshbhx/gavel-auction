@@ -64,3 +64,4 @@ jobs:
           name: lighthouse-live
           path: lh
           if-no-files-found: error
+          retention-days: 7

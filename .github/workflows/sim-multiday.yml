@@ -41,6 +41,7 @@ jobs:
           name: sim-multiday-report
           path: docs/evidence/SIM/SIM-MULTIDAY.md
           if-no-files-found: warn
+          retention-days: 7
       - name: The committed report is the generated one
         run: |
           if ! git diff --quiet -- docs/evidence/SIM/SIM-MULTIDAY.md || [ -n "$(git ls-files --others --exclude-standard -- docs/evidence/SIM/SIM-MULTIDAY.md)" ]; then

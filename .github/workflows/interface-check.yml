@@ -15,7 +15,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: interface-check-${{ github.event.pull_request.number || github.sha }}
+  # A label event gets its own group, so it neither cancels a run for a new commit nor is
+  # cancelled by one (issue 2450). The check needs the generated reports, so it must re-run.
+  group: interface-check-${{ github.event.pull_request.number || github.sha }}-${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && 'label' || 'code' }}
   cancel-in-progress: true
 
 jobs:
@@ -34,6 +36,7 @@ jobs:
           name: api-reports
           path: etc/
           if-no-files-found: ignore
+          retention-days: 7
       - name: Compare with the committed reports
         env:
           PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
