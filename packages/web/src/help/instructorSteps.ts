@@ -2,13 +2,7 @@
 import type { CopyKey } from '../copy/en';
 import type { AuctionStatus } from '../wire';
 
-export type InstructorScreen =
-  | 'hub'
-  | 'console'
-  | 'bid'
-  | 'receipt'
-  | 'verify'
-  | 'try';
+export type InstructorScreen = 'hub' | 'console' | 'bid' | 'receipt' | 'verify' | 'try';
 
 type StepKey = Extract<CopyKey, `instructor.${InstructorScreen}.${number}`>;
 

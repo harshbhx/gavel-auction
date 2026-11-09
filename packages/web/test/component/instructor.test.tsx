@@ -3,12 +3,7 @@ import axe from 'axe-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { t } from '../../src/copy/t';
 import { Instructor } from '../../src/help/Instructor';
-import {
-  INSTRUCTOR_STEPS,
-  bidderStep,
-  consoleStep,
-  hubStep,
-} from '../../src/help/instructorSteps';
+import { INSTRUCTOR_STEPS, bidderStep, consoleStep, hubStep } from '../../src/help/instructorSteps';
 
 const ON = '?instructor=1';
 
@@ -32,9 +27,9 @@ describe('Instructor', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(INSTRUCTOR_STEPS.console.length);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(
-      screen.getByRole('button', { name: new RegExp(t('instructor.hide')) }).getAttribute(
-        'aria-expanded',
-      ),
+      screen
+        .getByRole('button', { name: new RegExp(t('instructor.hide')) })
+        .getAttribute('aria-expanded'),
     ).toBe('true');
   });
 
@@ -50,15 +45,13 @@ describe('Instructor', () => {
     const first = render(<Instructor screen="bid" judge current={0} search={ON} />);
     fireEvent.click(screen.getByRole('button', { name: new RegExp(t('instructor.hide')) }));
     expect(
-      screen.getByRole('button', { name: new RegExp(t('instructor.show')) }).getAttribute(
-        'aria-expanded',
-      ),
+      screen
+        .getByRole('button', { name: new RegExp(t('instructor.show')) })
+        .getAttribute('aria-expanded'),
     ).toBe('false');
     first.unmount();
     render(<Instructor screen="bid" judge current={0} search={ON} />);
-    expect(
-      screen.getByRole('button', { name: new RegExp(t('instructor.show')) }),
-    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: new RegExp(t('instructor.show')) })).toBeTruthy();
     cleanup();
     // Another screen is not affected.
     render(<Instructor screen="receipt" judge current={0} search={ON} />);
