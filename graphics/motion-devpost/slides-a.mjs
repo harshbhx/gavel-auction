@@ -1,5 +1,5 @@
 // Slides 01 to 04 (broadside set). Each slide: html, js (setup + update(t, h)), T (loop seconds), poster (second).
-import { ln, rule, vrule, frame, asset } from './kit.mjs';
+import { ln, rule, frame, asset } from './kit.mjs';
 
 /* ---------- 01 hero ---------- */
 export const hero = {

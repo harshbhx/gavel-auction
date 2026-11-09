@@ -1,5 +1,5 @@
 // Slides 05 to 08 (broadside set, see slides-a.mjs for the format).
-import { ln, rule, vrule, frame, lockupLetters } from './kit.mjs';
+import { ln, vrule, frame, lockupLetters } from './kit.mjs';
 
 /* ---------- 05 audit and verify: the ledger chain, drawn ---------- */
 export const audit = {
