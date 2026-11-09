@@ -1,3 +1,4 @@
+import { Cents, EpochMs } from '@gavel/shared';
 import type {
   AuditPayload,
   ConfirmRequestMsg,
@@ -132,6 +133,22 @@ function withSnapshot(state: RoomState, update: (snap: RoomSnapshot) => RoomSnap
   return state.snapshot === null ? state : { ...state, snapshot: update(state.snapshot) };
 }
 
+/** The hammer a snapshot reports, in the shape of the frame; the fallback when it reports none. */
+function hammerOf(snap: RoomSnapshot, fallback: HammerMsg | null): HammerMsg | null {
+  if (snap.hammer === undefined) return fallback;
+  return {
+    v: 1,
+    t: 'hammer',
+    seq: 0,
+    ts: EpochMs(0),
+    winnerId: snap.hammer.winnerId,
+    price: Cents(snap.hammer.price),
+    ranking: [],
+    ...(snap.stopped === true ? { stopped: true } : {}),
+    ...(snap.registrationClosed === true ? { registrationClosed: true } : {}),
+  };
+}
+
 /** A snapshot is the truth about the room, but not about what only this client knows. */
 function applySnapshot(state: RoomState, msg: Extract<ServerMessage, { t: 'state' }>): RoomState {
   const snap = msg.snapshot;
@@ -149,8 +166,9 @@ function applySnapshot(state: RoomState, msg: Extract<ServerMessage, { t: 'state
     expectedBidderId: state.expectedBidderId,
     me: state.me,
     ownHighCents: Math.max(state.ownHighCents, snap.you?.highBid ?? 0),
-    // The hammer already fell and the snapshot does not carry it, so keep it unless the lot reopened.
-    hammer: open ? null : state.hammer,
+    // The snapshot carries the outcome (winner and price), so a reload keeps it. Without one, keep
+    // the frame this client saw unless the lot reopened.
+    hammer: hammerOf(snap, open ? null : state.hammer),
     // The snapshot does not carry confirmations either: keep the ones that have not expired.
     confirmRequests: state.confirmRequests.filter((c) => c.expiresAt > msg.ts),
     audit: [...snap.recentAudit],

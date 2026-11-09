@@ -99,6 +99,7 @@ export const selectAuctionStatus: Selector<string | null> = memo((s) => {
  */
 export const selectStopped: Selector<boolean> = memo((s) => {
   if (s.hammer !== null && s.hammer.winnerId !== null) return false;
+  if (s.snapshot?.hammer?.winnerId != null) return false;
   return s.snapshot?.stopped === true || s.hammer?.stopped === true;
 });
 

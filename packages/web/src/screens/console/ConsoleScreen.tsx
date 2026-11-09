@@ -9,6 +9,7 @@ import { Icon } from '../../design/icons';
 import { Banner } from '../../design/primitives/Banner';
 import { selectConfirmQueue, selectPrice, selectStream, selectors } from '../../store/selectors';
 import { roomStore, useRoom, type RoomStore } from '../../store/roomStore';
+import type { AuctionStatus } from '../../wire';
 import { formatUsd } from '../../util/money';
 import { rowsFromAudit } from './BidStream';
 import { BidHistory } from './BidHistory';
@@ -78,7 +79,8 @@ export function ConsoleScreen({
     store,
   );
   const audit = useRoom((s) => s.audit, store);
-  const status = useRoom((s) => s.snapshot?.status ?? 'SCHEDULED', store);
+  // The hammer frame closes the lot before any later snapshot says so.
+  const status = useRoom((s) => selectors.auctionStatus(s) ?? 'SCHEDULED', store) as AuctionStatus;
   const stopped = useRoom(selectors.stopped, store);
   const auctionId = useRoom((s) => s.snapshot?.auctionId ?? null, store);
   const roster = useRoom((s) => s.snapshot?.roster, store);
