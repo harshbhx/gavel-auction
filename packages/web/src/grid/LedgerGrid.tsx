@@ -498,7 +498,7 @@ export default function LedgerGrid({
           {...(initialState === undefined ? {} : { initialState })}
           {...columnMemoryProps(memoryKey)}
           onFirstDataRendered={(e) => {
-            restoreSort(e.api, memoryKey);
+            restoreSort(e.api, memoryKey, true);
           }}
           key={narrow ? 'cards' : 'table'}
           theme={gavelTheme}

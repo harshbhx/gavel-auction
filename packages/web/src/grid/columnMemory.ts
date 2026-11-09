@@ -100,6 +100,8 @@ export function gridStateFor(key: string | null): GridState | undefined {
   };
 }
 
+const armed = new WeakSet<GridApi>();
+
 /**
  * Grid event props that keep the saved layout up to date. Spread them onto the grid; `key` names
  * the grid and its layout (null: remember nothing). The saved layout comes back through
@@ -112,7 +114,9 @@ export function columnMemoryProps(key: string | null): {
   onStateUpdated: (e: { api: GridApi }) => void;
 } {
   const save = (e: { api: GridApi }): void => {
-    if (key !== null) saveColumns(key, e.api);
+    // Events fired while the grid is being built (its default sort, first layout) must not overwrite
+    // the saved layout before it is put back; saving starts once restoreSort has run.
+    if (key !== null && armed.has(e.api)) saveColumns(key, e.api);
   };
   return {
     onSortChanged: save,
@@ -128,7 +132,15 @@ export function columnMemoryProps(key: string | null): {
  * Puts the saved sort back when the grid is ready. `initialState` carries the whole layout; this
  * covers the sort in case the grid applied a column's own default sort after reading it.
  */
-export function restoreSort(api: GridApi, key: string | null): void {
+export function restoreSort(api: GridApi, key: string | null, settled = false): void {
+  // Later changes are the visitor's own; start saving them once the grid has settled (right after its
+  // first data render, or after a short wait when that event does not come).
+  window.setTimeout(
+    () => {
+      armed.add(api);
+    },
+    settled ? 0 : 250,
+  );
   const saved = key === null ? null : loadColumns(key);
   if (saved === null) return;
   const known = saved.filter((c) => api.getColumn(c.colId) !== null);

@@ -190,6 +190,8 @@ describe('LedgerGrid filters', () => {
 describe('LedgerGrid remembers its columns for the session', () => {
   it('restores sort and width after a remount, and drops them on reset', async () => {
     const first = await mount({ remember: true });
+    // Saving starts once the grid has settled.
+    await new Promise((resolve) => setTimeout(resolve, 400));
     act(() => {
       first.api.applyColumnState({
         state: [
