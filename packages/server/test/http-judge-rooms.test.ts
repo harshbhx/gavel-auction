@@ -14,6 +14,7 @@ import { mountControl } from '../src/http/control';
 import {
   createJudgeRooms,
   JUDGE_CAPABILITIES_PATH,
+  JUDGE_JOIN_PATH,
   JUDGE_PAUSE_PATH,
   JUDGE_ROOMS_PATH,
   judgeRoomConfig,
@@ -332,5 +333,64 @@ describe('judge rooms: token scoping', () => {
       body: { confirm: 'STOP' },
     });
     expect(own.status).toBe(200);
+  });
+});
+
+describe('judge rooms: close now', () => {
+  const closePath = (id: string): string => `/api/judge/rooms/${id}/close`;
+  const bearer = (token: string): Record<string, string> => ({ authorization: `Bearer ${token}` });
+
+  it('stops the lot, ends the room, refuses joins and keeps the ledger readable', async () => {
+    const { app, rooms, store } = setup();
+    const c = await created(await post(app, JUDGE_ROOMS_PATH));
+    const res = await post(app, closePath(c.auctionId), { headers: bearer(c.auctioneerToken) });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ closed: true, alreadyClosed: false });
+    const marker = await store.getJournal(`judge:room:${c.auctionId}`);
+    expect((marker?.value as { expired?: boolean }).expired).toBe(true);
+    expect(rooms.liveCount()).toBe(0);
+    // The lot ended as an unsold stop, so the snapshot says stopped.
+    const snap = await app.fetch(
+      new Request(`http://h.test/api/auctions/${c.auctionId}`, {
+        headers: bearer(c.auctioneerToken),
+      }),
+    );
+    expect(snap.status).toBe(200);
+    // New joins are refused.
+    const join = await post(app, JUDGE_JOIN_PATH, {
+      body: { code: c.joinCode, displayName: 'Ada' },
+    });
+    expect(join.status).toBe(410);
+  });
+
+  it('is safe to repeat', async () => {
+    const { app } = setup();
+    const c = await created(await post(app, JUDGE_ROOMS_PATH));
+    const first = await post(app, closePath(c.auctionId), { headers: bearer(c.auctioneerToken) });
+    expect(first.status).toBe(200);
+    const again = await post(app, closePath(c.auctionId), { headers: bearer(c.auctioneerToken) });
+    expect(again.status).toBe(200);
+    expect(await again.json()).toEqual({ closed: true, alreadyClosed: true });
+  });
+
+  it('needs the auctioneer token of that room', async () => {
+    const { app } = setup({ perIpPerHour: 10 });
+    const a = await created(await post(app, JUDGE_ROOMS_PATH));
+    const b = await created(await post(app, JUDGE_ROOMS_PATH));
+    expect((await post(app, closePath(a.auctionId))).status).toBe(401);
+    expect(
+      (await post(app, closePath(a.auctionId), { headers: bearer(b.auctioneerToken) })).status,
+    ).toBe(401);
+    expect(
+      (await post(app, closePath(a.auctionId), { headers: bearer(a.screenToken) })).status,
+    ).toBe(401);
+    // Room a is still open after the refusals.
+    const ok = await post(app, closePath(b.auctionId), { headers: bearer(b.auctioneerToken) });
+    expect(ok.status).toBe(200);
+  });
+
+  it('answers 404 when judge rooms are off', async () => {
+    const { app } = setup({ enabled: false });
+    expect((await post(app, closePath('X'))).status).toBe(404);
   });
 });

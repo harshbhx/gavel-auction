@@ -22,6 +22,7 @@ import { lookupProblemText } from '../../net/apiError';
 import './landing.css';
 import './landing-extra.css';
 import { Logo } from '../../design/Logo';
+import { RoomClosedNote } from '../hub/RoomClosedNote';
 
 /** default: both actions ready. busy: a room is being created. down: the server is unreachable. */
 export type LandingStatus = 'default' | 'busy' | 'down';
@@ -88,6 +89,7 @@ export function LandingScreen({
 
   return (
     <div className="gv-mk">
+      <RoomClosedNote />
       <header className="gv-mk-header">
         <div className="gv-mk-header__bar">
           <span className="gv-mk-header__brand">

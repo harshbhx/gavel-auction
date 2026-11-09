@@ -26,6 +26,18 @@ describe('config', () => {
     }
   });
 
+  it('keeps GAVEL_MAX_CEILING_CENTS in the range the engine can run (FIX-118)', () => {
+    for (const bad of ['50', '99', '100000001', '200000000']) {
+      expect(() => loadConfig({ ...base, GAVEL_MAX_CEILING_CENTS: bad })).toThrow(
+        /GAVEL_MAX_CEILING_CENTS must be an integer in 100\.\.100000000/,
+      );
+    }
+    expect(loadConfig({ ...base, GAVEL_MAX_CEILING_CENTS: '100' }).maxCeilingCents).toBe(100);
+    expect(loadConfig({ ...base, GAVEL_MAX_CEILING_CENTS: '100000000' }).maxCeilingCents).toBe(
+      100_000_000,
+    );
+  });
+
   it('missing client id is an error unless fake mode', () => {
     const rest: Record<string, string | undefined> = { ...base };
     delete rest.PAYPAL_CLIENT_ID;

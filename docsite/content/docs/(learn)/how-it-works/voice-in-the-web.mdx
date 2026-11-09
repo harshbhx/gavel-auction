@@ -1,0 +1,59 @@
+---
+title: Voice bidding in the web
+description: The auctioneer's microphone in the console. What works, what is simulated, and what is still unproven.
+icon: Mic
+status: code-checked
+evidence: 'Read against packages/web/src/audio/, packages/web/src/screens/console/VoiceControl.tsx, packages/server/src/host/audio-ws.ts and the capability probe in packages/server/src/http/judge-rooms.ts (FEAT-62). Tested with a fake microphone and a fake socket; no person has used it in a real room. Accuracy is read from docs/GATES.md (G5 PARTIAL).'
+full: true
+---
+
+## In plain words
+
+On the auctioneer console there is a microphone control. The auctioneer says "paddle 3, two hundred" and the console streams that audio to the server. The server turns speech into text, reads the paddle and the amount, and, as always, **asks the bidder to confirm before anything counts**. Nothing the microphone hears is a bid on its own. The same rules as a tap apply after the confirm: price, increment and the bidder's limit.
+
+## What works in the browser
+
+- **Two ways to talk.** Tap to start and tap to stop, or press and hold the button (or hold Space while it has focus) and let go to finish. Tap mode turns itself off after 20 seconds of silence.
+- **Honest permission states.** Asking, blocked (with how to allow the microphone again), no microphone found, a microphone another app holds, a browser without the audio APIs, and a page that is not HTTPS each get their own plain sentence. Manual entry always stays available.
+- **A plain level line and a live caption.** The line shows the input level. The caption shows what the speech service hears, partial first and then final.
+- **The confirm step is the existing one, on the bidder's screen.** A reading that is a bid becomes a question ("Did you mean $200 for paddle 3?") sent to that paddle's bidder, who answers on their own screen. A yes is checked again against the live price. A no or a timeout places nothing, and the console does not accept anything on the bidder's behalf. The console shows the caption and the voice feed; the bid stream shows the bid once it is placed.
+- **The microphone is released** when you turn it off, when the tab is hidden, when the window loses focus during a press, when the lot closes or is stopped, and when the page goes away.
+
+## When the button is enabled
+
+The console asks `GET /api/judge/capabilities` once. The answer carries `voice: true` only when the server has a live speech provider with its key (`VOICE_STT=groq` or `deepgram`). Without it the button is disabled and says why. The probe never reports a key or the provider name, and no key is ever sent to the browser.
+
+The microphone is also off, with a reason, in the scripted demo (there is no server to listen), and a room opened with a judge key never uses the metered speech services: the server refuses the audio connection and the console says the connection was refused.
+
+## Limits that protect the speech budget
+
+| Limit | Value | Where |
+| --- | --- | --- |
+| One stream per room source | a second stream with another token is refused as busy | server |
+| Streams per token, per room | 2 and 4 | server |
+| Audio rate | 64 KB per second and 100 messages per second | server |
+| Longest session on the server | 30 minutes | server |
+| Longest session in the console | 5 minutes | browser |
+| Longest held clip in press and hold | 15 seconds | browser |
+| Silence cutoff in tap mode | 20 seconds | browser |
+| Armed but unused in press and hold | released after 60 seconds | browser |
+
+The token is the auctioneer token the console already holds. It goes in the first message of the socket, never in the URL. The audio is 16 kHz mono 16 bit in 100 ms messages.
+
+## What is simulated, and what is not proven
+
+- **Not run by a person yet.** The browser side is covered by tests with a fake microphone, a fake audio context and a fake socket. The server side was run once with 24 synthetic clips through the real socket ([run 42575018866](https://github.com/harshbhx/gavel-auction/actions/runs/42575018866)). Nobody has spoken a real bid into the console in a real room.
+- **Accuracy.** Gate G5 is **PARTIAL**. On 24 noise-free synthetic clips per set the wrong-accept rate was 0.000 and exact plus recoverable was 1.000, but the parser rules were chosen on those same clips. On a held-out noisy synthetic set measured once (120 clips) neither provider met the pre-registered targets: wrong accept 0.058 (Groq) and 0.092 (Deepgram) against 0.05. No real room, no human voice. Spoken bids therefore always ask for a confirm, and the room microphone cannot reach auto accept. See [Gate G5](/docs/proof/gate-g5).
+- **Fake PayPal in the voice runs.** The recorded socket run used the fake PayPal.
+
+## Browser support
+
+The console needs `getUserMedia`, `AudioContext` and `AudioWorklet` on a secure page (HTTPS or localhost). These are in current versions of the major browsers, but the browser side is tested only with fake browser APIs (CI has no microphone), not in each browser. If a browser lacks one the console says so before you click and leaves the button disabled. The microphone permission is asked for the first time you turn it on, never on page load.
+
+## The bidder screen has no microphone
+
+A bidder-scoped audio token does not exist. The audio route accepts an auctioneer token only (`AUDIO_ROLES` lists the auctioneer and the console, and the socket verifies the `auctioneer` token kind), and the spoken paddle, not the token, picks the bidder. A bidder microphone would need a new token scope on the server first, so none is offered.
+
+## Related
+
+[Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) explains the pipeline; [real versus simulated](/docs/judges/real-vs-simulated) lists what is fake in the demo.

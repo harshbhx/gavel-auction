@@ -3,6 +3,7 @@ import {
   EpochMs,
   ERROR_TABLE,
   GavelError,
+  HOLD_ERROR_STATUS,
   MAX_CENTS,
   MAX_NAME_CHARS,
   MIN_CEILING_CENTS,
@@ -13,6 +14,7 @@ import {
   type Logger,
 } from '@gavel/shared';
 import { ChainError, type LedgerStore, type Ulid } from '@gavel/engine';
+import { HoldError } from '@gavel/payments';
 import { z } from 'zod';
 import { buildReplayBundle } from '../admin/replay-bundle';
 import { raiseAuctioneerFloor } from '../auth/auctioneer-floor';
@@ -53,6 +55,7 @@ export const JUDGE_PAUSE_PATH = '/api/judge/pause';
 export const JUDGE_KEY_PATH = '/api/judge/key';
 export const JUDGE_LEDGER_PATH = '/api/judge/rooms/:id/ledger';
 export const JUDGE_BID_PATH = '/api/judge/rooms/:id/bids';
+export const JUDGE_CLOSE_PATH = '/api/judge/rooms/:id/close';
 /** Admin only (x-admin-key): list the judge keys, or revoke one. Never answers a hash. */
 export const JUDGE_KEYS_PATH = '/api/judge/keys';
 export const JUDGE_KEY_REVOKE_PATH = '/api/judge/keys/:keyId/revoke';
@@ -110,6 +113,11 @@ export interface JudgeRoomsOptions {
   keyedPerHour?: number | undefined;
   /** The ledger the read-only reviewer route builds a verifiable bundle from. */
   ledger?: Pick<LedgerStore, 'read'> | undefined;
+  /**
+   * True when a live speech provider is configured for the /audio route. The capability probe
+   * answers `voice: true` only then, so the web console enables its microphone only then.
+   */
+  voiceLive?: (() => boolean) | undefined;
 }
 
 /** What the simulated-hold route needs from the host. */
@@ -933,7 +941,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     if (marker.expired === true || marker.expiresAt <= deps.clock.now()) {
       return refuse(deps, 410, 'judge_room_expired', 'sim_hold_expired', sourceTag(auctionId));
     }
-    await roomFor(deps, auctionId);
+    const room = await roomFor(deps, auctionId);
     // Any whole-dollar limit from the minimum to the room cap is fine; the presets are only
     // quick picks (FIX-78).
     if (
@@ -943,15 +951,40 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     ) {
       throw new GavelError('bad_message', 'ceiling is outside the allowed range');
     }
+    // The room refuses these at registration; refuse them before a hold is written (FIX-118).
+    const pre = room.holdPreflight(who.bidderId, body.ceilingCents);
+    if (pre.refusal === 'revoked') {
+      throw new GavelError('ceiling_revoked', 'the limit of this bidder was revoked');
+    }
+    if (pre.refusal === 'below_reserve') {
+      throw new GavelError(
+        'bad_message',
+        `the limit is below the lot reserve of ${pre.reserve} cents`,
+      );
+    }
     if (!(await sim.acceptsHolds(auctionId))) {
       throw new GavelError('closed', 'the auction no longer takes holds');
     }
-    const holdId = await sim.place({
-      auctionId,
-      bidderId: who.bidderId,
-      name: body.name,
-      ceilingCents: body.ceilingCents,
-    });
+    let holdId: string;
+    try {
+      holdId = await sim.place({
+        auctionId,
+        bidderId: who.bidderId,
+        name: body.name,
+        ceilingCents: body.ceilingCents,
+      });
+    } catch (e) {
+      // A raise past the cap or below the minimum step answers with its hold error code.
+      if (
+        e instanceof HoldError &&
+        (e.code === 'raise_limit_reached' || e.code === 'raise_too_small')
+      ) {
+        const why = `sim_hold_${e.code}`;
+        const src = sourceTag(auctionId);
+        return refuse(deps, HOLD_ERROR_STATUS[e.code], e.code, why, src, undefined, e.message);
+      }
+      throw e;
+    }
     // The bidder now has a hold, so its seat stays for as long as the room lives.
     seatsOf(auctionId, deps.clock.now()).set(who.bidderId, {
       at: deps.clock.now(),
@@ -1048,12 +1081,44 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     return json(202, { accepted: false, pending: true, mid });
   };
 
+  /**
+   * `POST /api/judge/rooms/:id/close`: the creator ends a judge room now. The auctioneer token of
+   * that room is the only credential. A running lot is stopped first (the same unsold hammer as the
+   * console Stop button), then the room is marked ended: new joins, holds and bids are refused with
+   * 410. Nothing is deleted: the ledger, the audit trail and the receipt stay readable until the
+   * room's normal end. Safe to repeat: a room that is already closed answers 200 with
+   * `alreadyClosed: true`.
+   */
+  const closeRoom = async (c: Ctx): Promise<Response> => {
+    const { deps } = c;
+    if (!opts.enabled) throw new HttpError(404, 'not_found', 'no such route');
+    const auctionId = c.params.id ?? '';
+    const who = await authenticate(c, auctionId, ['auctioneer']);
+    await load(deps);
+    const marker = (await deps.store.getJournal(markerKey(auctionId)))?.value as Marker | undefined;
+    if (marker === undefined) throw new GavelError('not_found', 'no such judge room');
+    if (marker.expired === true) return json(200, { closed: true, alreadyClosed: true });
+    const room = await roomFor(deps, auctionId);
+    await room.abort(who.sub);
+    await expire(deps, auctionId, 'done');
+    const after = (await deps.store.getJournal(markerKey(auctionId)))?.value as Marker | undefined;
+    if (after?.expired !== true) {
+      throw new GavelError('store_unavailable', 'could not close the room');
+    }
+    audit(deps)?.info('judge room closed by creator', {
+      event: 'judge_room.closed',
+      auctionId,
+    });
+    return json(200, { closed: true, alreadyClosed: false });
+  };
+
   const mount: Mount = (app: HttpApp): void => {
     appDeps = app.deps;
     codeGuardOf(app.deps, joinLimits);
     app.post(JUDGE_JOIN_PATH, judgeRoute(join));
     app.post(JUDGE_SIM_HOLD_PATH, judgeRoute(simHold));
     app.post(JUDGE_BID_PATH, judgeRoute(placeBid));
+    app.post(JUDGE_CLOSE_PATH, judgeRoute(closeRoom));
     app.get(JUDGE_KEYS_PATH, judgeRoute(keyList));
     app.post(JUDGE_KEY_REVOKE_PATH, judgeRoute(keyRevoke));
     app.get(JUDGE_CAPABILITIES_PATH, async (c: Ctx) => {
@@ -1067,6 +1132,8 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
         simHolds: opts.enabled && opts.simHolds !== undefined,
         // Present only when a judge key is set, so the panel shows its key field only then.
         ...(opts.enabled && registry.any ? { keyed: true } : {}),
+        // Present only when a live speech provider is set; never says which one or its key.
+        ...(opts.voiceLive?.() === true ? { voice: true } : {}),
       });
     });
     app.post(JUDGE_ROOMS_PATH, judgeRoute(create));

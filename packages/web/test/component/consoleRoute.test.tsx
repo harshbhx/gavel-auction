@@ -85,7 +85,12 @@ beforeEach(() => {
   fetchMock.mockReset();
   fetchMock.mockResolvedValue({ ok: true, status: 200 });
   vi.stubGlobal('WebSocket', FakeSocket);
-  vi.stubGlobal('fetch', fetchMock);
+  // The voice probe is not a control request: answer it apart so the call counts stay about controls.
+  vi.stubGlobal('fetch', (url: string, init: FetchInit) =>
+    url.endsWith('/api/judge/capabilities')
+      ? Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) })
+      : fetchMock(url, init),
+  );
 });
 afterEach(() => {
   vi.useRealTimers();

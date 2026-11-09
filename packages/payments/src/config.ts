@@ -64,6 +64,21 @@ function positiveInt(env: Env, name: string, dflt: number): number {
   return n;
 }
 
+/** The range the engine can run (engine AuctionConfig maxCeilingCents); keep in step with it. */
+const MIN_MAX_CEILING_CENTS = 100;
+const MAX_MAX_CEILING_CENTS = 100_000_000;
+
+function maxCeilingCents(env: Env): number {
+  const n = positiveInt(env, 'GAVEL_MAX_CEILING_CENTS', DEFAULT_MAX_CEILING_CENTS);
+  if (n < MIN_MAX_CEILING_CENTS || n > MAX_MAX_CEILING_CENTS) {
+    throw new PaymentsConfigError(
+      'payments_bad_config',
+      `GAVEL_MAX_CEILING_CENTS must be an integer in ${MIN_MAX_CEILING_CENTS}..${MAX_MAX_CEILING_CENTS} cents`,
+    );
+  }
+  return n;
+}
+
 function required(env: Env, name: string): string {
   const v = env[name];
   if (v === undefined || v === '')
@@ -115,7 +130,7 @@ export function loadConfig(env: Env, opts: LoadConfigOptions = {}): PaymentsConf
         ? (env['PAYPAL_WEBHOOK_ID'] ?? '')
         : required(env, 'PAYPAL_WEBHOOK_ID'),
     baseUrl,
-    maxCeilingCents: positiveInt(env, 'GAVEL_MAX_CEILING_CENTS', DEFAULT_MAX_CEILING_CENTS),
+    maxCeilingCents: maxCeilingCents(env),
     fake,
     holdMaxAgeMs: positiveInt(env, 'GAVEL_HOLD_MAX_AGE_MS', DEFAULT_HOLD_MAX_AGE_MS),
   };

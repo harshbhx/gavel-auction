@@ -20,7 +20,7 @@ Scope and limits:
 - Latency is measured on the sandbox: hammer to settled p95 6.93 s against a 6 s target and hammer to captured p95 3.77 s against 2.5 s (run 42563147792, 49 of 50 completed, INCOMPLETE: 1 timeout and 3 failed capture calls); the earlier n=20 run measured 5591 ms and 3010 ms. Owner decision open: keep the targets, raise them with a reason, or reduce latency. Status PARTIAL in `docs/GATES.md`.
 - G5 (speech accuracy) is PARTIAL and measured on synthetic audio: wrong accept 0.000 on 24 noise-free clips per set (tuned on those clips), and 0.058 (Groq) and 0.092 (Deepgram) on a held-out noisy set measured once (120 clips) against a pre-registered 0.05. Spoken bids always use the confirm prompt; the next step is a live or noisy room.
 - G3 is a timed sandbox probe in progress since 7 Nov 2026 03:06 UTC. Day 0 is recorded and the final reading is about 12 Nov 06:17 UTC, so the result is reported then. The 30-day run is a simulation on a fake clock (`docs/evidence/SIM/SIM-MULTIDAY.md`).
-- The kill ran on a CI runner, not the deployed host; the live socket run used the fake PayPal, and the web console has no audio sender yet.
+- The kill ran on a CI runner, not the deployed host; the live socket run used the fake PayPal and synthetic clips. The web console now has an auctioneer microphone (enabled only when the server reports a live speech provider, and every spoken bid still asks for a confirm); no person has used it in a real room yet.
 - The Hugging Face datasets are published and use synthetic data by design (privacy by design).
 - Next steps, with owners and dates where known, are on `docs/LIMITATIONS.md`. What changed and when is in `CHANGELOG.md`.
 
@@ -34,15 +34,15 @@ How to read the labels:
 
 The hosted site offers a short real room on the PayPal sandbox with no operator key. The same steps are on the page `/try` of the web app.
 
-1. Open https://gavel.dualmindlab.tech and press "Start a demo auction". The server opens a room that lasts about thirty minutes and takes you to the auctioneer console. If the host is busy, switched off or the flag is not set, the page says so and offers the scripted demo.
-2. Open the big screen link in a second window, or scan its QR code with a phone, and join as a bidder.
+1. Open https://gavel.dualmindlab.tech and press "Start a demo auction". The server opens a room that lasts about thirty minutes and takes you to the room hub, which shows a room code, a QR code and buttons for the big screen, the console and the bidder view. Open the console from the hub. If the host is busy, switched off or the flag is not set, the page says so and offers the scripted demo.
+2. From the hub, open the big screen in a second window, and join as a bidder with the room code or by scanning the QR code with a phone.
 3. Enter a name, pick a ceiling and approve the hold in the PayPal sandbox login. Sandbox buyer credentials: see the Devpost testing instructions. They are not in this repository.
 4. Place a bid from the bidder view, then press hammer in the console.
 5. You should see the hold show as held while bidding, then the settlement after the hammer and the other holds released. The audit trail link shows the ledger entries; the hash chain is checked on the sealed public export.
 
 Along the way, check these parts of the interface (each is covered by tests in CI, none by a recorded click-through of the hosted site):
 
-- The help button (landing, join, register, bid and receipt screens) opens the hold explainer or replays the six-step guided tour; the tour also opens by itself on a first visit.
+- The help button (landing, join, register, bid and receipt screens) opens the hold explainer; nothing opens by itself over the page.
 - Approving the ceiling uses a press-and-hold button (3 seconds, Space or Enter on a keyboard, with a two-tap alternative); the hold card shows hatched for held, solid for charged, hollow for released.
 - On the big screen, a lot with a fundraiser goal shows a thermometer that counts only captured money.
 - After the hammer the receipt can mint a share link with a QR code, and has a print layout.

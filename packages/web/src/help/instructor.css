@@ -1,0 +1,54 @@
+.gv-instructor {
+  margin: 0 0 var(--space-4);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-fg);
+  font-size: var(--font-size-1);
+}
+
+.gv-instructor__head {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.gv-instructor__title {
+  margin: 0;
+}
+
+.gv-instructor__toggle {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.gv-instructor__toggle:focus-visible {
+  outline: 2px solid var(--color-fg);
+  outline-offset: 2px;
+}
+
+.gv-instructor__lead {
+  margin: 0 0 var(--space-2);
+  color: var(--color-fg-muted);
+}
+
+.gv-instructor__steps {
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-5);
+  overflow-wrap: anywhere;
+}
+
+.gv-instructor__steps li {
+  padding: var(--space-1) 0;
+}
+
+.gv-instructor__steps li[data-here='true'] {
+  font-weight: 600;
+}

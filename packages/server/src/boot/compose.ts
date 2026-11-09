@@ -88,7 +88,7 @@ import { createDemoHandler, DEMO_RESET_PATH, DEMO_ROOMS_PATH, DEMO_SEED_PATH } f
 import { createDemoHoldSource } from '../http/demo-holds';
 import { createSimHoldSource, purgeSimHolds, withSimulatedHolds } from '../http/sim-holds';
 import { mountAuctions } from '../http/auctions';
-import { allowedOriginsOf, isOriginAllowed } from '../http/origins';
+import { allowedOriginsOf, isDocsCall, isOriginAllowed } from '../http/origins';
 import { JudgeKeyRegistry, parseJudgeKeys } from '../auth/judge-keys';
 import { createJudgeRooms, JUDGE_ROOM_DEFAULTS } from '../http/judge-rooms';
 import { mountAuctioneerToken } from '../http/auctioneer-token';
@@ -638,9 +638,19 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     }
   }
   const judgeKeyEntries = parsedKeys.entries;
+  // Cached transcripts unless VOICE_STT names a live provider whose key is set (no key needed).
+  const stt = chooseStt(
+    {
+      VOICE_STT: config.VOICE_STT,
+      GROQ_API_KEY: env['GROQ_API_KEY'],
+      DEEPGRAM_API_KEY: env['DEEPGRAM_API_KEY'],
+    },
+    { log: (message, fields) => log.warn(message, fields) },
+  );
   // Judge rooms (R-JRM): key-less real sandbox rooms behind JUDGE_ROOMS=1; config refuses the
   // flag with live PayPal. The create route is mounted always and answers 404 while it is off.
   const judgeRooms = createJudgeRooms({
+    voiceLive: () => stt.name === 'groq' || stt.name === 'deepgram',
     enabled: config.JUDGE_ROOMS,
     paused: config.JUDGE_ROOMS_PAUSED,
     maxLive: config.JUDGE_ROOMS_MAX,
@@ -794,8 +804,14 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     for (const [name, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(name, value);
     // Early answers (429, 404, 500) never reach the app, so give them the CORS headers a
     // browser needs to read the status instead of reporting a network error.
+    // The docs origin is allowed on the judge routes only (same predicate as HttpApp.fetch).
     const origin = req.headers.origin;
-    if (isOriginAllowed(allowedOrigins, origin)) {
+    const earlyPath = (req.url ?? '').split('?')[0] ?? '';
+    if (
+      typeof origin === 'string' &&
+      (isOriginAllowed(allowedOrigins, origin) ||
+        isDocsCall(config.JUDGE_DOCS_ORIGINS, origin, earlyPath))
+    ) {
       res.setHeader('access-control-allow-origin', origin);
       res.setHeader('access-control-expose-headers', CORS_EXPOSE);
       res.setHeader('vary', 'Origin');
@@ -854,15 +870,6 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     }),
   });
 
-  // Cached transcripts unless VOICE_STT names a live provider whose key is set (no key needed).
-  const stt = chooseStt(
-    {
-      VOICE_STT: config.VOICE_STT,
-      GROQ_API_KEY: env['GROQ_API_KEY'],
-      DEEPGRAM_API_KEY: env['DEEPGRAM_API_KEY'],
-    },
-    { log: (message, fields) => log.warn(message, fields) },
-  );
   const audioHost = createAudioHost({
     server: http,
     clock,

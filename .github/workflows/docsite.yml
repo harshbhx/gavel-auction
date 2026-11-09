@@ -211,6 +211,7 @@ jobs:
       CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PAGES_PROJECT: ${{ vars.DOCSITE_PAGES_PROJECT || 'gavel-docs' }}
+      REQUIRE_DEPLOY: ${{ vars.DOCSITE_REQUIRE_DEPLOY }}
     steps:
       - id: gate
         run: |
@@ -224,7 +225,12 @@ jobs:
               echo "The built site is the artifact \`docsite\` of this run: download it and publish it"
               echo "with \`wrangler pages deploy\` to the Pages project \`$PAGES_PROJECT\`."
             } >> "$GITHUB_STEP_SUMMARY"
-            echo "::notice::Cloudflare secrets are not set; deploy skipped. The artifact docsite holds the built site."
+            echo "::warning::Cloudflare secrets are not set; nothing was deployed. The artifact docsite holds the built site."
+            # Repository variable DOCSITE_REQUIRE_DEPLOY=true makes a skipped deploy on main a red job.
+            if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "${REQUIRE_DEPLOY:-}" = "true" ]; then
+              echo "::error::Deploy skipped on a push to main while DOCSITE_REQUIRE_DEPLOY=true"
+              exit 1
+            fi
           fi
 
       - if: steps.gate.outputs.enabled == 'true'
@@ -261,3 +267,39 @@ jobs:
         env:
           DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
         run: echo "Deployed to $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
+
+  # main only: the public spec must be the one in this commit. Fails when a deploy ran but the
+  # live /openapi.yaml still differs; when the deploy was skipped it warns with the line count
+  # of the drift, so a green run can no longer hide a stale contract (#2424).
+  published-spec:
+    name: Published spec matches main
+    needs: deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Compare the live spec with openapi/gavel.yaml
+        run: |
+          deployed=false
+          if [ -n "$CF_TOKEN" ] && [ -n "$CF_ACCOUNT" ]; then deployed=true; fi
+          for i in 1 2 3 4 5 6; do
+            curl -fsS https://docs.gavel.dualmindlab.tech/openapi.yaml -o live.yaml || true
+            if [ -s live.yaml ] && cmp -s live.yaml openapi/gavel.yaml; then
+              echo "The published spec matches main." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            [ "$deployed" = "true" ] || break
+            sleep 20
+          done
+          lines=$(diff live.yaml openapi/gavel.yaml 2>/dev/null | grep -c '^[<>]' || true)
+          echo "### Published spec is stale" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://docs.gavel.dualmindlab.tech/openapi.yaml differs from openapi/gavel.yaml ($lines differing lines)." >> "$GITHUB_STEP_SUMMARY"
+          if [ "$deployed" = "true" ]; then
+            echo "::error::The deploy ran but the published openapi.yaml differs from main ($lines lines)"
+            exit 1
+          fi
+          echo "::warning::No deploy ran and the published openapi.yaml differs from main ($lines lines). Publish the docsite artifact."

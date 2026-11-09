@@ -1,8 +1,12 @@
 import {
+  DEFAULT_RAISE_POLICY,
+  HoldError,
+  raiseRefusal,
   sharedHoldQueue,
   type HoldStore,
   type HoldTruth,
   type PaymentsGateway,
+  type RaisePolicy,
 } from '@gavel/payments';
 import { GavelError, type AuctionId, type BidderId, type Cents } from '@gavel/shared';
 
@@ -54,7 +58,9 @@ export async function purgeSimHolds(holds: HoldStore, auctionId: string): Promis
 export function createSimHoldSource(
   holds: HoldStore,
   nowMs: () => number,
+  raisePolicy: Partial<RaisePolicy> = {},
 ): (bidderId: BidderId, ceiling: Cents, auctionId: AuctionId) => Promise<string> {
+  const policy: RaisePolicy = { ...DEFAULT_RAISE_POLICY, ...raisePolicy };
   const write = (
     holdId: string,
     auctionId: AuctionId,
@@ -86,19 +92,37 @@ export function createSimHoldSource(
       ) {
         return holdId;
       }
-      if (existing.auctionId !== auctionId || ceiling <= existing.ceilingCents) {
+      if (existing.auctionId !== auctionId) {
         throw new GavelError('conflict', 'this bidder already has a hold; it can only be raised');
       }
       // A raise: one hold per amount, so a repeat of the same request finds it again.
       const raiseId = `${holdId}-${ceiling}`;
       return sharedHoldQueue.run(raiseId, async () => {
         const raised = await holds.get(raiseId);
-        if (raised === null) {
-          await write(raiseId, auctionId, bidderId, ceiling);
-          return raiseId;
+        if (raised !== null) {
+          if (raised.status === 'HELD' && raised.ceilingCents === ceiling) return raiseId;
+          throw new GavelError('conflict', 'this bidder already had a hold of that amount');
         }
-        if (raised.status === 'HELD' && raised.ceilingCents === ceiling) return raiseId;
-        throw new GavelError('conflict', 'this bidder already had a hold of that amount');
+        // The bidder's holds in this room: the first one and one per raise so far (#2397).
+        const mine = (await holds.listByAuction(auctionId)).filter(
+          (h) => h.bidderId === bidderId && isSimHold(h),
+        );
+        const current = mine.reduce((m, h) => Math.max(m, h.ceilingCents), existing.ceilingCents);
+        if (ceiling <= current) {
+          throw new GavelError('conflict', 'this bidder already has a hold; it can only be raised');
+        }
+        const refusal = raiseRefusal(
+          { currentCents: current, nextCents: ceiling, done: Math.max(0, mine.length - 1) },
+          policy,
+        );
+        if (refusal === 'raise_limit_reached') {
+          throw new HoldError(refusal, 'this bidder has used all raises of the limit');
+        }
+        if (refusal === 'raise_too_small') {
+          throw new HoldError(refusal, 'the raise is below the minimum step');
+        }
+        await write(raiseId, auctionId, bidderId, ceiling);
+        return raiseId;
       });
     });
   };

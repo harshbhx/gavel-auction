@@ -149,6 +149,51 @@ describe('openapi spec and server routes', () => {
     assert.deepEqual(brokenRefs(spec), []);
   });
 
+  it('lists the public API domain first and no Render host in examples (#2427)', () => {
+    const urls = [...spec.matchAll(/^ {2}- url: (\S+)/gm)].map((m) => m[1]);
+    assert.equal(urls[0], 'https://api.gavel.dualmindlab.tech');
+    assert.doesNotMatch(spec, /wss:\/\/[^\s]*onrender\.com/);
+  });
+
+  it('only offers what createAuction accepts (#2420, #2421)', () => {
+    assert.doesNotMatch(spec, /enum: \[english, proxy/);
+    assert.doesNotMatch(spec, /enum: \[event, lot\]/);
+    assert.doesNotMatch(spec, /^ {8}incrementLadder:/m);
+    assert.doesNotMatch(
+      spec,
+      /one of the auction's offered presets|not one of the offered amounts/,
+    );
+    // No example epoch in the past may sit next to the end-time rule: the example is a placeholder.
+    assert.match(spec, /endTs: 1893456000000/);
+  });
+
+  it('declares the origin refusal on the write operations that have no role check (#2425)', () => {
+    const ops = [
+      'createAuction',
+      'joinAuction',
+      'createHold',
+      'approveHold',
+      'abandonHold',
+      'checkJudgeKey',
+      'createJudgeRoom',
+      'joinJudgeRoom',
+      'pauseJudgeRooms',
+      'revokeJudgeKey',
+    ];
+    for (const id of ops) {
+      const at = spec.indexOf(`operationId: ${id}\n`);
+      assert.ok(at > 0, id);
+      const rest = spec.slice(at);
+      const next = rest.search(/\n {2}\/|\n {4}(get|post|delete):/);
+      const block = next < 0 ? rest : rest.slice(0, next);
+      assert.match(
+        block,
+        /'403':\n\s+\$ref: '#\/components\/responses\/(OriginForbidden|Forbidden)'/,
+        id,
+      );
+    }
+  });
+
   it('keeps real secrets out of the document', () => {
     assert.doesNotMatch(spec, /api-m\.paypal\.com|(?<![\w.-])www\.paypal\.com/i);
     assert.doesNotMatch(spec, /Bearer [A-Za-z0-9_-]{20,}/);

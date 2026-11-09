@@ -10,12 +10,12 @@ How a judge approves a hold in the sandbox. The buyer logins themselves are not 
 
 ## Steps
 
-1. Open https://gavel.dualmindlab.tech and press "Start a demo auction" (or open `/try`). You land in the auctioneer console of a room that lasts about thirty minutes.
-2. Open the big screen link in a second window, or scan its QR code with a phone.
-3. Join as a bidder: enter your name and pick a ceiling, the most you may bid.
+1. Open https://gavel.dualmindlab.tech and press "Start a demo auction" (or open `/try`). You land in the room hub of a room that lasts about thirty minutes. The hub shows a room code, a QR code and buttons for the big screen, the console and the bidder view.
+2. From the hub, open the big screen in a second window.
+3. Join as a bidder with the room code, or scan the hub QR code with a phone: enter your name and pick a ceiling, the most you may bid.
 4. Press and hold the approve button for 3 seconds (a two-tap alternative sits below it). A PayPal sandbox window opens.
 5. Log in with the sandbox buyer email and password from the Devpost field, then approve.
-6. The ladder shows your hold as held. Place a bid, then press hammer in the console.
+6. The ladder shows your hold as held. Place a bid, then press hammer in the console (open it from the hub).
 7. After the hammer the winner is captured for the winning price only, the other holds are released, and the receipt shows the result. The audit trail link shows the hash chain.
 
 ## If the PayPal window gives trouble

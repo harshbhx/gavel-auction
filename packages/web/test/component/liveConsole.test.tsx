@@ -41,11 +41,12 @@ describe('live console route', () => {
     expect(screen.getByText(t('console.noConfirm'))).toBeTruthy();
   });
 
-  it('mounts the bid stream and a voice feed that says voice is not available', () => {
+  it('mounts the bid stream and a voice area that says it is checking until the voice chunk loads', () => {
     render(<App initialPath={`/r/${ROOM}/console`} liveBase="ws://localhost:1" />);
     expect(screen.getByRole('region', { name: t('console.stream') })).toBeTruthy();
-    expect(screen.getByText(t('console.mic.unavailable'))).toBeTruthy();
+    // The microphone code is a lazy chunk: until it loads, the area says what it is waiting for.
+    // The voice states themselves are covered in voiceMic.test.tsx.
+    expect(screen.getByText(t('console.mic.reason.checking'))).toBeTruthy();
     expect(screen.queryByRole('meter')).toBeNull();
-    expect(screen.getByText(t('console.voice.empty'))).toBeTruthy();
   });
 });

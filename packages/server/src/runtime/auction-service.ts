@@ -349,6 +349,8 @@ class Service implements AuctionService, SettlePort {
   private readonly retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly retryCounts = new Map<string, number>();
   private readonly orphans = new Map<string, string>();
+  /** Holds a registration is running for, so the raise sweep never voids one under way. */
+  private readonly registering = new Set<string>();
   private readonly holdService: Pick<HoldService, 'completeApproval'>;
   private resumeTimer: ReturnType<typeof setInterval> | undefined;
   private reconcileTimer: ReconcileTimer | undefined;
@@ -645,8 +647,8 @@ class Service implements AuctionService, SettlePort {
       store: this.roomStore,
       clock: this.deps.clock,
       ids: this.deps.ids,
-      engine: (config, createdAt) =>
-        new LedgerEngine(auctionId, config, createdAt, this.deps.maxCeilingCents),
+      engine: (config, createdAt, cap) =>
+        new LedgerEngine(auctionId, config, createdAt, cap ?? this.deps.maxCeilingCents),
       settle: this,
       durable: (id, engine) => this.flushLedger(id, engine, false),
       ...(this.deps.limiter !== undefined ? { limiter: this.deps.limiter } : {}),
@@ -672,6 +674,7 @@ class Service implements AuctionService, SettlePort {
     const room = await this.room(input.auctionId);
     // The hold the room used before this call; a raise replaces it (D-0025).
     const before = room.holdRefs.get(input.bidderId);
+    this.registering.add(input.holdId);
     try {
       await room.registerBidder({
         bidderId: input.bidderId,
@@ -694,6 +697,8 @@ class Service implements AuctionService, SettlePort {
         if (journal !== null) await this.releaseSpares(journal);
       }
       throw e;
+    } finally {
+      this.registering.delete(input.holdId);
     }
     // A webhook may have denied, voided or expired the hold while the registration waited in
     // the mailbox; onHoldStatus ignored it then because the room did not know the hold yet.
@@ -1065,9 +1070,38 @@ class Service implements AuctionService, SettlePort {
         });
         // An adopted authorization is a HELD write like an approval (HRD-76).
         if (swept.some((s) => s.result.status === 'authorized')) await this.afterHeld(id);
+        await this.sweepUnregisteredRaises(id, minAge);
       } catch (e) {
         this.deps.onError?.(id, e);
       }
+    }
+  }
+
+  /**
+   * A raise hold that was approved but never registered with the room (the registration failed
+   * after the approval, #2399) keeps a second authorization held next to the one the room uses.
+   * Once it is older than `minAgeMs` it is voided, so the bidder is double held only for a
+   * bounded time; a retry of the same amount then makes a fresh order. Open auctions only: a
+   * closed one is settled, which voids spares itself.
+   */
+  private async sweepUnregisteredRaises(id: string, minAgeMs: number): Promise<void> {
+    const auctionId = id as AuctionId;
+    const now = this.payClock.nowMs();
+    const stale = (await this.deps.holds.listByAuction(id)).filter(
+      (h) =>
+        h.status === 'HELD' &&
+        h.supersedes !== undefined &&
+        h.authId !== undefined &&
+        now - h.createdAtMs > minAgeMs &&
+        !this.registering.has(h.holdId),
+    );
+    // Only now look at the room: with no stale raise hold nothing is loaded (#1888).
+    if (stale.length === 0 || !(await this.acceptsHolds(auctionId))) return;
+    const room = await this.room(auctionId);
+    for (const h of stale) {
+      if (room.holdRefs.get(h.bidderId as BidderId) === h.holdId) continue;
+      if (this.registering.has(h.holdId)) continue;
+      await this.voidOrphan(auctionId, h.holdId);
     }
   }
 

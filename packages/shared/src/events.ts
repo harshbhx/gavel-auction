@@ -36,6 +36,12 @@ export type ControlAction = (typeof CONTROL_ACTIONS)[number];
 export const AuctionCreatedEvent = record('auction_created', {
   config: AuctionConfigSchema,
   auctioneerSub: z.string().min(1),
+  /**
+   * The ceiling cap in force when the auction was created (event schema v2). Replay builds the
+   * engine with this value, not the current environment. Logs written before this field existed
+   * do not carry it: replay then uses the process cap, which defaults to DEFAULT_MAX_CEILING_CENTS.
+   */
+  maxCeilingCents: cents().optional(),
 });
 
 export const BidderRegisteredEvent = record('bidder_registered', {

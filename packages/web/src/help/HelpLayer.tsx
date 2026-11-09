@@ -1,48 +1,17 @@
-import { useEffect, useReducer } from 'react';
+import { useReducer } from 'react';
 import { t } from '../copy/t';
 import { Sheet } from '../design/primitives/Sheet';
-import { GuidedTour } from './GuidedTour';
 import { HoldExplainer } from './HoldExplainer';
-import {
-  TOUR_IDLE,
-  hasSeenTour,
-  helpReducer,
-  isAutomatedBrowser,
-  markTourSeen,
-  shouldAutoStart,
-  tourReducer,
-} from './tourState';
+import { helpReducer } from './helpState';
 import { Logo } from '../design/Logo';
 import './help.css';
 
-export interface HelpLayerProps {
-  /** Overrides the first-visit check. Defaults to the stored record, URL flag and browser kind. */
-  autoStart?: boolean;
-}
-
 /**
  * One help button for the landing, join, registration, bidder room and receipt routes.
- * Opens the hold explainer sheet or replays the guided tour.
+ * Opens the hold explainer sheet.
  */
-export function HelpLayer({ autoStart }: HelpLayerProps) {
+export function HelpLayer() {
   const [view, dispatchView] = useReducer(helpReducer, 'closed');
-  const [tour, dispatchTour] = useReducer(tourReducer, TOUR_IDLE);
-
-  useEffect(() => {
-    const start =
-      autoStart ??
-      shouldAutoStart({
-        search: window.location.search,
-        seen: hasSeenTour(),
-        automated: isAutomatedBrowser(),
-      });
-    if (start) dispatchTour({ type: 'start' });
-  }, [autoStart]);
-
-  useEffect(() => {
-    if (tour.status === 'done' || tour.status === 'skipped') markTourSeen(tour.status);
-  }, [tour.status]);
-
   const closeSheet = (): void => dispatchView({ type: 'close' });
 
   return (
@@ -67,16 +36,6 @@ export function HelpLayer({ autoStart }: HelpLayerProps) {
             >
               {t('help.open.hold')}
             </button>
-            <button
-              type="button"
-              className="help-btn"
-              onClick={() => {
-                closeSheet();
-                dispatchTour({ type: 'start' });
-              }}
-            >
-              {t('help.open.tour')}
-            </button>
             <button type="button" className="ui-link" onClick={closeSheet}>
               {t('help.close')}
             </button>
@@ -91,14 +50,6 @@ export function HelpLayer({ autoStart }: HelpLayerProps) {
           </>
         )}
       </Sheet>
-      {tour.status === 'running' && (
-        <GuidedTour
-          step={tour.step}
-          onNext={() => dispatchTour({ type: 'next' })}
-          onBack={() => dispatchTour({ type: 'back' })}
-          onSkip={() => dispatchTour({ type: 'skip' })}
-        />
-      )}
     </aside>
   );
 }

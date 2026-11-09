@@ -48,7 +48,7 @@ This is how code reaches the live site today. Nothing else deploys automatically
 | Web app (Cloudflare Worker `gavel-web`)      | `deploy-web.yml` builds the artifact `web-dist` from `main`; the owner downloads it (`gh run download`) and runs `npx wrangler deploy` in `infra/web`.                                                                                                                                                  |
 | Docs site                                    | `docsite.yml` builds the artifact `docsite` from `main`; the owner downloads it and runs `npx wrangler pages deploy` for the project `gavel-docs`.                                                                                                                                                      |
 
-The workflows `deploy-staging` and `deploy-prod` are optional extras that need Render secrets which are not set up; they deploy nothing until the owner adds them. The wrangler steps in `deploy-web.yml` and `docsite.yml` run only when the Cloudflare secrets exist; without them the run ends green after the build and leaves the artifact. Read the job summary, not just the check color, to see what was deployed.
+The workflows `deploy-staging` and `deploy-prod` are optional extras that need Render secrets which are not set up; they deploy nothing until the owner adds them. The wrangler steps in `deploy-web.yml` and `docsite.yml` run only when the Cloudflare secrets exist; without them the run ends green after the build and leaves the artifact. Read the job summary, not just the check color, to see what was deployed. On `docsite.yml` the job `Published spec matches main` compares `https://docs.gavel.dualmindlab.tech/openapi.yaml` with `openapi/gavel.yaml` after every push to main: it warns when nothing was deployed and the spec is stale, and fails when a deploy ran but the spec still differs. Set the repository variable `DOCSITE_REQUIRE_DEPLOY=true` to make a skipped docs deploy on main a red job.
 
 ## Production deploy and rollback (optional workflow path)
 
@@ -103,7 +103,7 @@ A judge with no setup can run a real sandbox auction when the API runs with `JUD
 
 ### Judge key (optional)
 
-`JUDGE_KEY` is a second, limited key for judges. It is not the operator key: it opens nothing but the judge panel's keyed rooms and never reaches an admin route (`ADMIN_KEY` and `JUDGE_KEY` must differ, and boot refuses them equal). Generate it yourself as a random secret of at least 32 characters, set it on Render (`sync: false`, so it is never in the repository), and hand it to judges only in the slide deck. It needs `JUDGE_ROOMS=true`; leave it unset and the panel shows no key field.
+`JUDGE_KEY` is a second, limited key for judges. It is not the operator key: it opens nothing but the judge panel's keyed rooms and never reaches an admin route (`ADMIN_KEY` and `JUDGE_KEY` must differ, and boot refuses them equal). Generate it yourself as a random secret of at least 32 characters, set it on Render (`sync: false`, so it is never in the repository), and hand the shared judging key to judges only in the Devpost testing instructions field, pasted by hand on Devpost, never in the repository. It needs `JUDGE_ROOMS=true`; leave it unset and the panel shows no key field.
 
 | Variable                     | Default | Meaning                                                      |
 | ---------------------------- | ------- | ------------------------------------------------------------ |
