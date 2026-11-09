@@ -798,8 +798,9 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     const origin = req.headers.origin;
     const earlyPath = (req.url ?? '').split('?')[0] ?? '';
     if (
-      isOriginAllowed(allowedOrigins, origin) ||
-      isDocsCall(config.JUDGE_DOCS_ORIGINS, origin, earlyPath)
+      typeof origin === 'string' &&
+      (isOriginAllowed(allowedOrigins, origin) ||
+        isDocsCall(config.JUDGE_DOCS_ORIGINS, origin, earlyPath))
     ) {
       res.setHeader('access-control-allow-origin', origin);
       res.setHeader('access-control-expose-headers', CORS_EXPOSE);
