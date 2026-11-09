@@ -1,0 +1,5 @@
+
+> @gavel/e2e@0.0.0 scan:sec15
+> vite-node src/security/sec15-cli.ts -- --out /home/runner/work/gavel-auction/gavel-auction/sec15-out
+
+S01 on the real server: scenario checks passed, 6 probes sent

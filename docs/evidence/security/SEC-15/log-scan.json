@@ -1,0 +1,74 @@
+{
+  "schema": "sec15-log-scan/1",
+  "verdict": "PASS",
+  "problems": [],
+  "canaries": [
+    "GAVEL_E2E_ADMIN_KEY",
+    "GAVEL_E2E_TOKEN_SECRET",
+    "JUDGE_KEY",
+    "PAYPAL_CLIENT_SECRET",
+    "PAYPAL_CLIENT_ID",
+    "PAYPAL_WEBHOOK_ID",
+    "CANARY_BUYER_EMAIL",
+    "CANARY_CARD_NUMBER",
+    "CANARY_BEARER"
+  ],
+  "logLines": 43,
+  "countsByRule": {},
+  "files": [
+    {
+      "path": "/home/runner/work/gavel-auction/gavel-auction/sec15-out/server.log",
+      "kind": "log",
+      "lines": 43,
+      "sha256": "96f3c9a16d021877f97b00330fbfc857c768fac91d80d2c620e199e9769402e7",
+      "findings": 0
+    },
+    {
+      "path": "store/gavel.lock",
+      "kind": "store",
+      "lines": 1,
+      "sha256": "8e1ae607c212ac416bb11d6ce77109ba83fda69c464f6f1a2c02e070c4d48faa",
+      "findings": 0
+    },
+    {
+      "path": "store/ledgers/01M6ZC4Y97FS1FB4YY5N2JXC3J.ledger.jsonl",
+      "kind": "store",
+      "lines": 19,
+      "sha256": "1208528e8bf7b2ff6a9ddc92db1a4fdf795c3bb03abaab065dfba821d6df4669",
+      "findings": 0
+    },
+    {
+      "path": "store/payment-audit.jsonl",
+      "kind": "store",
+      "lines": 16,
+      "sha256": "ef05350818d3c04e692c170f35a16b0384a329c95993881bd917bb75c2ca669a",
+      "findings": 0
+    },
+    {
+      "path": "store/payments/holds.json",
+      "kind": "store",
+      "lines": 1,
+      "sha256": "5390e7f9829c985289d384735166798817759c60f79235457b2852d892b5d18e",
+      "findings": 0
+    },
+    {
+      "path": "store/payments/journals.json",
+      "kind": "store",
+      "lines": 1,
+      "sha256": "1cb51c1416bf64cfe9293f8d5698d38f05847701ceb93db7d2fc90a505d7d848",
+      "findings": 0
+    },
+    {
+      "path": "store/rooms.jsonl",
+      "kind": "store",
+      "lines": 21,
+      "sha256": "97e49b19232e8e9d42cab7a2155960c784a2222b59eef9690444092a45e9ac6c",
+      "findings": 0
+    }
+  ],
+  "findings": [],
+  "notCovered": [
+    "raw audio transcripts: scenario S01 sends no audio, so no private transcript was injected",
+    "any log line the server wrote that this run did not exercise (other routes, error paths)"
+  ]
+}

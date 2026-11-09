@@ -1,0 +1,35 @@
+{
+  "scenario": "S01-happy-path",
+  "mode": "stack",
+  "seed": 1,
+  "scenarioFailures": [],
+  "accepted": 5,
+  "winner": "ana",
+  "capturedCents": 10000,
+  "probes": [
+    {
+      "name": "healthz",
+      "status": 200
+    },
+    {
+      "name": "canary query string and bad bearer on a lookup",
+      "status": 404
+    },
+    {
+      "name": "bad invite carrying a canary email and card in the body",
+      "status": 404
+    },
+    {
+      "name": "judge room create with the judge key header",
+      "status": 201
+    },
+    {
+      "name": "admin export with the admin key header",
+      "status": 404
+    },
+    {
+      "name": "admin route with a wrong key",
+      "status": 401
+    }
+  ]
+}
