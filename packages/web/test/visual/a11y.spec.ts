@@ -132,9 +132,19 @@ for (const width of [320, 390] as const) {
       slots: [...document.querySelectorAll('.ui-otp__slot')].map((el) =>
         Math.round(el.getBoundingClientRect().right),
       ),
+      chain: [...document.querySelectorAll('.ui-otp__slot')].slice(0, 1).map((el) => {
+        const out: string[] = [];
+        for (let n: Element | null = el; n !== null; n = n.parentElement) {
+          const r = n.getBoundingClientRect();
+          out.push(`${n.tagName}.${String(n.className)} l${Math.round(r.left)} w${Math.round(r.width)}`);
+        }
+        return out;
+      }),
     }));
-    expect(overflow.scroll).toBeLessThanOrEqual(overflow.inner);
-    for (const right of overflow.slots) expect(right).toBeLessThanOrEqual(overflow.inner);
+    expect(overflow.scroll, JSON.stringify(overflow)).toBeLessThanOrEqual(overflow.inner);
+    for (const right of overflow.slots) {
+      expect(right, JSON.stringify(overflow)).toBeLessThanOrEqual(overflow.inner);
+    }
     expect(await blockingViolations(page)).toEqual([]);
   });
 }
