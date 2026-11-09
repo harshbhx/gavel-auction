@@ -15,11 +15,11 @@ no live PayPal account in this project.
 
 ## Deployed surfaces
 
-| Surface    | Name                                                                              | Set by                                                          |
-| ---------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| API        | Render web service `gavel-host`, Starter plan (`render.yaml`)                     | manual deploys through `deploy-prod`                            |
-| Web app    | Cloudflare Worker `gavel-web` (`infra/web/wrangler.toml`)                         | `deploy-web.yml`                                                |
-| Docs site  | Cloudflare Pages project `gavel-docs`, or the repository variable `DOCSITE_PAGES_PROJECT` | `docsite.yml`                                           |
+| Surface   | Name                                                                                      | Set by                               |
+| --------- | ----------------------------------------------------------------------------------------- | ------------------------------------ |
+| API       | Render web service `gavel-host`, Starter plan (`render.yaml`)                             | manual deploys through `deploy-prod` |
+| Web app   | Cloudflare Worker `gavel-web` (`infra/web/wrangler.toml`)                                 | `deploy-web.yml`                     |
+| Docs site | Cloudflare Pages project `gavel-docs`, or the repository variable `DOCSITE_PAGES_PROJECT` | `docsite.yml`                        |
 
 Both Cloudflare deploys need the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Rollback steps for each surface are in `infra/rollback.md`.
 

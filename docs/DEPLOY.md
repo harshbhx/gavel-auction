@@ -41,11 +41,11 @@ Requirements: R-QA-042 (deploy), R-QA-044 (webhook registration). Hosting choice
 
 Surfaces and how each is deployed:
 
-| Surface                     | Where it runs                                                  | How it deploys                                                                                                                                  | Rollback                                           |
-| --------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| API and WebSocket host      | Render web service `gavel-host`, Starter plan, 1 GB disk       | Manual deploys (auto deploy is off): `deploy-prod` calls the deploy hook after approval                                                         | `deploy-prod` with `rollback=true`                 |
-| Web app                     | Cloudflare Worker `gavel-web` (`infra/web/wrangler.toml`)      | `deploy-web` builds the artifact `web-dist` and runs `wrangler deploy`                                                                          | `npx wrangler rollback` (see `infra/rollback.md`)  |
-| Docs site                   | Cloudflare, deployed by `docsite.yml` with wrangler            | The `docsite` artifact is published with `wrangler pages deploy` to the project named by the variable `DOCSITE_PAGES_PROJECT` (default `gavel-docs`) | Roll back to a previous deployment (see `infra/rollback.md`) |
+| Surface                | Where it runs                                             | How it deploys                                                                                                                                       | Rollback                                                     |
+| ---------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| API and WebSocket host | Render web service `gavel-host`, Starter plan, 1 GB disk  | Manual deploys (auto deploy is off): `deploy-prod` calls the deploy hook after approval                                                              | `deploy-prod` with `rollback=true`                           |
+| Web app                | Cloudflare Worker `gavel-web` (`infra/web/wrangler.toml`) | `deploy-web` builds the artifact `web-dist` and runs `wrangler deploy`                                                                               | `npx wrangler rollback` (see `infra/rollback.md`)            |
+| Docs site              | Cloudflare, deployed by `docsite.yml` with wrangler       | The `docsite` artifact is published with `wrangler pages deploy` to the project named by the variable `DOCSITE_PAGES_PROJECT` (default `gavel-docs`) | Roll back to a previous deployment (see `infra/rollback.md`) |
 
 ### Deploy the API to production
 
