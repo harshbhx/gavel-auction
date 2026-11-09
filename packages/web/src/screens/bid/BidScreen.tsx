@@ -147,9 +147,15 @@ export function BidScreen({
   const send = useSendGuard(onBid, pending || unsent);
 
   const notice = bidsNotice(auctionStatus, stopped);
+  // The result line ("You won at ...") already says the lot closed, so the bare notice stays quiet.
+  const resultSpoken =
+    closedLot &&
+    (price?.currentCents ?? 0) > 0 &&
+    (base === 'won' || base === 'lost' || base === 'watching');
   useEffect(() => {
+    if (notice === 'bid.closedBanner' && resultSpoken) return;
     if (notice !== null) announce('assertive', t(notice), 'stop');
-  }, [notice]);
+  }, [notice, resultSpoken]);
 
   const offline = connection.offline;
   useEffect(() => {

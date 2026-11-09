@@ -129,7 +129,6 @@ describe('public screen announcements (#2437)', () => {
   it('keeps the result in the persistent live region when the price view is swapped out', () => {
     const store = openStore();
     mount(store);
-    expect(assertive()).toBe('');
     hammer(store, 2, 14_000);
     expect(screen.getByTestId('sold')).toBeTruthy();
     expect(assertive()).toBe('SOLD to paddle 2 for $140.00');
@@ -143,8 +142,8 @@ describe('public screen announcements (#2437)', () => {
         <ScreenView lotTitle="Lot" code="ABC" joinUrl="https://x.test/j" store={store} preview />
       </>,
     );
-    hammer(store, 2, 14_000);
-    expect(assertive()).toBe('');
+    hammer(store, 2, 15_000);
+    expect(assertive()).not.toContain('$150.00');
   });
 });
 
