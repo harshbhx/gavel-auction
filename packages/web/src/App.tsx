@@ -52,7 +52,7 @@ import { ScriptedPlayer, useScriptedPlayback } from './screens/demo/ScriptedPlay
 import { openJoin, type OpenJoinFailure, type OpenJoinResult } from './net/openJoin';
 import { JudgeHub } from './screens/hub/JudgeHub';
 import { TokenHelp } from './screens/hub/TokenHelp';
-import { hubHref, readHubKeys } from './screens/hub/hubKeys';
+import { hubHref, readHubKeys, stripHubFragment } from './screens/hub/hubKeys';
 import './screens/hub/hub.css';
 import { SandboxBanner } from './design/SandboxBanner';
 import { ReceiptView } from './screens/receipt/ReceiptView';
@@ -1301,12 +1301,14 @@ function Routed({
   if (id === 'hub' && roomId !== undefined) {
     return (
       <RoomGate apiBase={api?.apiBase} roomId={roomId} onNavigate={navigate}>
-        <JudgeHub
-          roomId={roomId}
-          keys={readHubKeys(roomId)}
-          apiBase={api?.apiBase}
-          origin={window.location.origin}
-        />
+        <StrippedHubKeys roomId={roomId}>
+          <JudgeHub
+            roomId={roomId}
+            keys={readHubKeys(roomId)}
+            apiBase={api?.apiBase}
+            origin={window.location.origin}
+          />
+        </StrippedHubKeys>
       </RoomGate>
     );
   }
@@ -1396,6 +1398,14 @@ const HELP_ROUTES: ReadonlySet<string> = new Set([
   'bid',
   'receipt',
 ]);
+
+/** After the hub has read the keys from the fragment (and stored them), takes them out of the address bar. */
+function StrippedHubKeys({ roomId, children }: { roomId: string; children: ReactNode }) {
+  useEffect(() => {
+    stripHubFragment(roomId);
+  });
+  return <>{children}</>;
+}
 
 export function App({ initialPath, gallery = import.meta.env.DEV, liveBase, api }: AppProps) {
   const [path, setPath] = useState(initialPath ?? window.location.pathname);

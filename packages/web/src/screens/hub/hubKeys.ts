@@ -141,6 +141,29 @@ export function readHubKeys(
   return found;
 }
 
+/**
+ * Takes the keys out of the address bar once this tab holds them: the hub reads the fragment,
+ * keeps the keys in memory and this tab's sessionStorage (see readHubKeys), then rewrites the URL
+ * to the bare path, so the tokens do not sit in the address bar, history or a screenshot for the
+ * whole visit. A reload still works from sessionStorage; the links the hub renders are built from
+ * the stored keys. Does nothing when the fragment carries no hub key. Returns whether it stripped.
+ */
+export function stripHubFragment(
+  roomId: string,
+  win: {
+    location: { hash: string; pathname: string; search: string };
+    history: { replaceState: (data: null, unused: string, url: string) => void };
+  } = window,
+  storage: HubStorage | null = tabStorage(),
+): boolean {
+  const found = parseHubFragment(win.location.hash);
+  if (hubFragment(found) === '') return false;
+  // Keep a copy first, so a failed strip never loses the keys.
+  rememberHubKeys(roomId, found, storage);
+  win.history.replaceState(null, '', `${win.location.pathname}${win.location.search}`);
+  return true;
+}
+
 export function forgetHubKeys(storage: HubStorage | null = tabStorage()): void {
   for (const id of [...storedHubRooms]) forgetHubRoom(id, storage);
   memory.clear();
