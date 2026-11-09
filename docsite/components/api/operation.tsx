@@ -66,7 +66,7 @@ export function OperationView({ spec, o }: { spec: Spec; o: Operation }) {
       {params.length > 0 ? (
         <>
           <H4>Parameters</H4>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Parameters table">
             <table className="w-full border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-fd-foreground">
