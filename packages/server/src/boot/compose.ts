@@ -88,7 +88,7 @@ import { createDemoHandler, DEMO_RESET_PATH, DEMO_ROOMS_PATH, DEMO_SEED_PATH } f
 import { createDemoHoldSource } from '../http/demo-holds';
 import { createSimHoldSource, purgeSimHolds, withSimulatedHolds } from '../http/sim-holds';
 import { mountAuctions } from '../http/auctions';
-import { allowedOriginsOf, isOriginAllowed } from '../http/origins';
+import { allowedOriginsOf, isDocsCall, isOriginAllowed } from '../http/origins';
 import { JudgeKeyRegistry, parseJudgeKeys } from '../auth/judge-keys';
 import { createJudgeRooms, JUDGE_ROOM_DEFAULTS } from '../http/judge-rooms';
 import { mountAuctioneerToken } from '../http/auctioneer-token';
@@ -804,8 +804,14 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     for (const [name, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(name, value);
     // Early answers (429, 404, 500) never reach the app, so give them the CORS headers a
     // browser needs to read the status instead of reporting a network error.
+    // The docs origin is allowed on the judge routes only (same predicate as HttpApp.fetch).
     const origin = req.headers.origin;
-    if (isOriginAllowed(allowedOrigins, origin)) {
+    const earlyPath = (req.url ?? '').split('?')[0] ?? '';
+    if (
+      typeof origin === 'string' &&
+      (isOriginAllowed(allowedOrigins, origin) ||
+        isDocsCall(config.JUDGE_DOCS_ORIGINS, origin, earlyPath))
+    ) {
       res.setHeader('access-control-allow-origin', origin);
       res.setHeader('access-control-expose-headers', CORS_EXPOSE);
       res.setHeader('vary', 'Origin');

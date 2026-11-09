@@ -40,17 +40,26 @@ info:
 
     ## Errors
 
-    Every error is JSON. The fields vary slightly by route family because the host grew in
-    layers; read them like this and you are safe on every route:
+    Every error is JSON. The fields vary by route family because the host grew in layers.
+    One rule is true everywhere: read `code ?? error` for the stable code. The fields each
+    family sends:
 
-    - `message`: text for a person. Always present on `/api/**` errors.
-    - `code`: the stable error code (see `ErrorCode`). Present on the core routes (auctions,
-      control, invites, read, receipts, auctioneer tokens) and on judge routes.
-    - `error`: the same stable code on the hold routes, the judge routes and the operator
-      routes. Judge routes also send `code`. Operator routes send only `error`.
-    - `detail`: optional extra text, for example the field paths that failed validation.
+    | Family | Fields | Notes |
+    | --- | --- | --- |
+    | Core `/api/auctions/**` (create, token routes, control, kill, invites, join, read, receipts) | `code`, `message`, optional `detail` | Exceptions: the 429 of the code lookup `GET /api/auctions/{id}` (`rate_limited`, `code_locked`) and of `POST /api/auctions/{id}/join` (`rate_limited`) send `error` and `message`, no `code`. |
+    | Hold routes `/api/holds/**` | hold failures: `error`, `message`; auth, body and state failures (`unauthorized`, `bad_message`, `closed`): `code`, `message` | The hold codes are in `HoldErrorCode`. |
+    | Judge routes `/api/judge/**` | `error`, `code` and `message` | Same value in `error` and `code` on the judge-specific failures; errors raised by shared code (for example `bad_message`, `forbidden`) carry `code` and `message` only. |
+    | Operator routes (`/admin/**`, `/metrics`, `/ops/**`) and the export route | `error` only | No `message`, no `code`. |
+    | Host-level answers before any route runs: the per-address limiter 429, the unknown-route 404, the catch-all 500 | `error` only (`rate_limited`, `not_found`, `internal`) | Also on `/api/**` paths. The 429 carries `Retry-After`. |
 
-    A client should read `code ?? error`. See the `Error` schema.
+    `message` is therefore present on every error of the core, hold and judge routes, but not
+    on the operator routes and the host-level answers above. `detail` is optional extra text,
+    for example the field paths that failed validation.
+
+    `ErrorCode` lists the codes of the realtime protocol and the core routes. Some routes
+    send further codes that are not in it (`ExtraErrorCode`, the hold codes in
+    `HoldErrorCode`); treat `code` and `error` as plain strings and do not fail on a value you
+    do not know. See the `Error` schema.
 
     Messages never contain tokens or stack traces (they are scrubbed on the server).
 
@@ -72,13 +81,30 @@ info:
     invalid one. Browsers are allowed only from the origins the operator lists; other origins
     get no CORS headers. Allowed request headers are `Authorization`, `Content-Type`,
     `X-Request-Id`, `X-Admin-Key` and `X-Judge-Key`; readable response headers are
-    `X-Request-Id` and `Retry-After` (also on early 429, 404 and 500 answers).
+    `X-Request-Id` and `Retry-After` (also on the early 429, 404 and 500 answers, for the
+    allowed origins and for the docs origin on its routes).
+
+    A cross-origin write (POST or DELETE with an `Origin` header) from an origin that is not
+    allowed is refused with `403 {"code":"forbidden","message":"origin not allowed"}` before
+    any handler runs; see the `OriginForbidden` response. Callers that send no `Origin`
+    (curl, server to server) are not affected. The docs site origin
+    (`https://docs.gavel.dualmindlab.tech`, setting `JUDGE_DOCS_ORIGINS`) may call only these
+    routes from a browser: `/api/judge/capabilities`, `/api/judge/key`, `/api/judge/join`,
+    `/api/judge/rooms`, `/api/judge/rooms/{id}/sim-hold`, `/api/judge/rooms/{id}/bids`,
+    `/api/judge/rooms/{id}/ledger`, `/api/auctions/{id}/control`,
+    `/api/auctions/{id}/receipt-link` and `/api/auctions/{id}/receipt`. Every other route
+    (the snapshot, the event log, `GET /api/auctions/{id}`, kill, invites, holds and all
+    operator routes) gets no CORS headers for the docs origin, and a write from it is 403.
 
     ## Not in this document
 
     - **WebSocket protocol.** Live bidding runs on `wss://<host>/ws` and OpenAPI cannot model
       it. See the section "WebSocket protocol" below and
       https://github.com/harshbhx/gavel-auction/blob/main/docs/API.md.
+    - **Method on the health routes.** `/healthz`, `/readyz` and `/version` answer on any HTTP
+      method (the host matches them by path only), so a `POST` to them also returns 200. The
+      document lists `GET`, the method to use. Every other operator route answers 405 with an
+      `Allow` header for a wrong method.
     - **PayPal webhook.** `POST /webhooks/paypal` is called by PayPal only, is verified by
       PayPal's signature, and is not part of the client API.
     - **Demo routes.** `/api/demo/reset`, `/api/demo/seed` and `/api/demo/rooms` exist only
@@ -130,8 +156,10 @@ info:
     name: MIT
     identifier: MIT
 servers:
+  - url: https://api.gavel.dualmindlab.tech
+    description: Live sandbox host, the public API domain (PayPal sandbox only).
   - url: https://gavel-auction-z2nm.onrender.com
-    description: Live sandbox host (PayPal sandbox only).
+    description: Render hostname of the same host. An alternate that can change when the service is replaced; prefer the API domain.
   - url: http://localhost:8080
     description: Local host for development.
 tags:
@@ -206,6 +234,13 @@ paths:
         Operator only. Creates the auction, reserves a 6 character join code, and returns links
         for the auctioneer console and the projector screen. The tokens are inside the links
         (fragment `#token=`), valid 12 hours.
+
+        End time rules: `config.endTs` must be strictly after the host's clock and at most 24
+        hours ahead (400 `bad_message`, "end time is more than a day away", otherwise). The
+        host runs a flat English lot with one hold per event: `mode` other than `english`,
+        `holdScope: lot` and an `incrementLadder` are refused with 400 `bad_message`
+        ("unsupported mode, increment ladder or hold scope"). Answers 503 `room_cap` when the
+        host holds the most auctions it allows.
       security:
         - adminKey: []
       requestBody:
@@ -214,6 +249,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CreateAuctionRequest'
+            # endTs cannot be a fixed value that stays valid (it must be within 24 hours of
+            # the request), so the example is a placeholder and the description says so.
             example:
               title: Charity quilt
               config:
@@ -221,7 +258,7 @@ paths:
                 currency: USD
                 reserve: 10000
                 minIncrement: 500
-                endTs: 1767225600000
+                endTs: 1893456000000
                 softCloseWindowMs: 30000
                 softCloseExtensionMs: 30000
                 maxExtensions: 5
@@ -245,6 +282,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/OriginForbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
         '415':
@@ -253,6 +294,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/Internal'
+        '503':
+          $ref: '#/components/responses/Unavailable'
       x-rate-limit:
         scope: source address
         ref: '#/x-rate-limits/http'
@@ -321,6 +364,8 @@ paths:
                 auctioneerLink: https://gavel-web.example/r/01JC5ZP4M7Q8R9S0T1V2W3X4Y5/console#token=AUCTIONEER_TOKEN
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/OriginForbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '429':
@@ -342,6 +387,8 @@ paths:
           $ref: '#/components/responses/Revoked'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/OriginForbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '429':
@@ -378,6 +425,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/OriginForbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '413':
@@ -453,6 +502,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/Internal'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /api/auctions/{id}/kill:
     post:
       tags: [Control]
@@ -522,6 +573,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
         '415':
@@ -530,6 +583,8 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/Internal'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /api/auctions/{id}/invites:
     post:
       tags: [Bidding access]
@@ -665,11 +720,13 @@ paths:
               example:
                 sessionToken: SESSION_TOKEN
                 bidderId: 01JC5ZR1B2C3D4E5F6G7H8J9K0
-                wsUrl: wss://gavel-auction-z2nm.onrender.com/ws
+                wsUrl: wss://api.gavel.dualmindlab.tech/ws
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/OriginForbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -870,6 +927,8 @@ paths:
         personal fields removed for everyone but the operator. If the store has a gap the
         connection is cut instead of ending quietly, so a short file never looks complete.
         This route is served by the host directly: its errors are `{"error": "<code>"}` only.
+        Only an auctioneer token of that auction or the operator key opens it; any other token
+        (session, screen, reviewer) is 401, never 403.
       security:
         - auctioneerAuth: []
         - adminKey: []
@@ -886,17 +945,15 @@ paths:
               example: |
                 {"seq":1,"type":"auction_created"}
         '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
+          $ref: '#/components/responses/OperatorUnauthorized'
         '404':
-          $ref: '#/components/responses/NotFound'
+          $ref: '#/components/responses/OperatorNotFound'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '429':
-          $ref: '#/components/responses/RateLimited'
+          $ref: '#/components/responses/OperatorRateLimited'
         '500':
-          $ref: '#/components/responses/Internal'
+          $ref: '#/components/responses/OperatorInternal'
   /api/holds:
     post:
       tags: [Holds]
@@ -904,8 +961,12 @@ paths:
       summary: Create a PayPal hold order
       description: |
         Session token only. The bidder is the one in the token; a body that names a bidder is
-        rejected. The ceiling must be one of the auction's offered presets. Errors on the hold
-        routes are `{error, message}` with the codes in `HoldErrorCode`.
+        rejected. The ceiling is any whole number of cents from 100 up to the host cap (the
+        room's `maxCeilingCents`, setting `GAVEL_MAX_CEILING_CENTS`); the auction's preset
+        ceilings are suggestions only. A ceiling below 100 or above the cap answers 400
+        `ceiling_out_of_range`. Hold failures are `{error, message}` with the codes in
+        `HoldErrorCode`; authentication and state failures (`unauthorized`, `closed`) are
+        `{code, message}`.
 
         <!-- FEAT-61 begin: raise a limit -->
         A bidder who already has a HELD hold can raise the limit with this same route: send a
@@ -940,8 +1001,11 @@ paths:
                   $ref: '#/components/schemas/Ulid'
                 ceilingCents:
                   type: integer
-                  minimum: 1
-                  description: Highest amount this bidder allows, in cents.
+                  minimum: 100
+                  description: >-
+                    Highest amount this bidder allows, in whole cents: at least 100 and at most
+                    the host cap (`maxCeilingCents` of the room snapshot). Not limited to the
+                    preset ceilings.
             example:
               auctionId: 01JC5ZP4M7Q8R9S0T1V2W3X4Y5
               ceilingCents: 25000
@@ -960,6 +1024,8 @@ paths:
           $ref: '#/components/responses/HoldBadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/OriginForbidden'
         '404':
           $ref: '#/components/responses/HoldNotFound'
         '409':
@@ -1031,6 +1097,8 @@ paths:
           $ref: '#/components/responses/HoldBadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/OriginForbidden'
         '404':
           $ref: '#/components/responses/HoldNotFound'
         '409':
@@ -1113,6 +1181,8 @@ paths:
                 released: true
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/OriginForbidden'
         '404':
           $ref: '#/components/responses/HoldNotFound'
         '409':
@@ -1226,6 +1296,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/JudgeKeyInvalid'
+        '403':
+          $ref: '#/components/responses/OriginForbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '413':
@@ -1300,7 +1372,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [ok, roomsMax, roomsLive]
+                required: [ok, keyId, roomsMax, roomsLive, expiresAt]
                 properties:
                   ok:
                     type: boolean
@@ -1326,6 +1398,8 @@ paths:
                 expiresAt: '2026-11-30T23:59:00Z'
         '401':
           $ref: '#/components/responses/JudgeKeyInvalid'
+        '403':
+          $ref: '#/components/responses/OriginForbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '429':
@@ -1364,9 +1438,62 @@ paths:
                 exportVersion: 4
                 auctionId: 01JC5ZP4M7Q8R9S0T1V2W3X4Y5
                 generatedAt: 1767226300000
-                count: 0
-                headHash: null
-                events: []
+                count: 4
+                headHash: 'c4d1e8a07b3f5926e0a1b7d3c85f4a9e6b2d0c7f1a3e5b8d9c0f2a4b6d8e1f30'
+                closed: false
+                events:
+                  - {
+                      v: 4,
+                      auctionId: 01JC5ZP4M7Q8R9S0T1V2W3X4Y5,
+                      seq: 1,
+                      at: 1767226000000,
+                      type: AUCTION_CREATED,
+                      cmd: null,
+                      payload: {},
+                      redacted: [],
+                      fullHash: null,
+                      prev: GENESIS,
+                      hash: 'a1f0000000000000000000000000000000000000000000000000000000000001',
+                    }
+                  - {
+                      v: 4,
+                      auctionId: 01JC5ZP4M7Q8R9S0T1V2W3X4Y5,
+                      seq: 2,
+                      at: 1767226010000,
+                      type: BIDDER_REGISTERED,
+                      cmd: REGISTER,
+                      payload: {},
+                      redacted: [],
+                      fullHash: null,
+                      prev: 'a1f0000000000000000000000000000000000000000000000000000000000001',
+                      hash: 'b2e0000000000000000000000000000000000000000000000000000000000002',
+                    }
+                  - {
+                      v: 4,
+                      auctionId: 01JC5ZP4M7Q8R9S0T1V2W3X4Y5,
+                      seq: 3,
+                      at: 1767226020000,
+                      type: BID_ACCEPTED,
+                      cmd: BID,
+                      payload: {},
+                      redacted: [],
+                      fullHash: null,
+                      prev: 'b2e0000000000000000000000000000000000000000000000000000000000002',
+                      hash: 'b3e0000000000000000000000000000000000000000000000000000000000003',
+                    }
+                  - {
+                      v: 4,
+                      auctionId: 01JC5ZP4M7Q8R9S0T1V2W3X4Y5,
+                      seq: 4,
+                      at: 1767226030000,
+                      type: BID_ACCEPTED,
+                      cmd: BID,
+                      payload: {},
+                      redacted: [],
+                      fullHash: null,
+                      prev: 'b3e0000000000000000000000000000000000000000000000000000000000003',
+                      hash: 'c4d1e8a07b3f5926e0a1b7d3c85f4a9e6b2d0c7f1a3e5b8d9c0f2a4b6d8e1f30',
+                    }
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1438,9 +1565,11 @@ paths:
                 sessionToken: SESSION_TOKEN
                 bidderId: 01JC5ZR1B2C3D4E5F6G7H8J9K0
                 displayName: Asha
-                wsUrl: wss://gavel-auction-z2nm.onrender.com/ws
+                wsUrl: wss://api.gavel.dualmindlab.tech/ws
         '400':
           $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/OriginForbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '410':
@@ -1575,6 +1704,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/OriginForbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
         '415':
@@ -1849,6 +1982,8 @@ paths:
                 revoked: true
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/OriginForbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '429':
@@ -1873,7 +2008,9 @@ paths:
       tags: [Health]
       operationId: getHealth
       summary: Liveness
-      description: Always 200 while the process runs. Never rate limited.
+      description: >-
+        Always 200 while the process runs. Never rate limited. Answers on any HTTP method
+        (the host matches the path only); use `GET`.
       responses:
         '200':
           description: Alive.
@@ -1888,7 +2025,9 @@ paths:
       tags: [Health]
       operationId: getReadiness
       summary: Readiness
-      description: 200 when every migration is applied and the store answers; 503 otherwise. Never rate limited.
+      description: >-
+        200 when every migration is applied and the store answers; 503 otherwise. Never rate
+        limited. Answers on any HTTP method (the host matches the path only); use `GET`.
       responses:
         '200':
           description: Ready.
@@ -1920,7 +2059,9 @@ paths:
       tags: [Health]
       operationId: getVersion
       summary: Deployed build
-      description: The commit the running build was made from, or `unknown`. Never rate limited.
+      description: >-
+        The commit the running build was made from, or `unknown`. Never rate limited. Answers
+        on any HTTP method (the host matches the path only); use `GET`.
       responses:
         '200':
           description: Build sha.
@@ -2008,15 +2149,15 @@ paths:
         '400':
           $ref: '#/components/responses/OperatorBadRequest'
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          $ref: '#/components/responses/OperatorUnauthorized'
         '404':
-          $ref: '#/components/responses/NotFound'
+          $ref: '#/components/responses/OperatorNotFound'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '429':
-          $ref: '#/components/responses/RateLimited'
+          $ref: '#/components/responses/OperatorRateLimited'
         '500':
-          $ref: '#/components/responses/Internal'
+          $ref: '#/components/responses/OperatorInternal'
         '501':
           description: The host does not support this export mode.
           content:
@@ -2032,7 +2173,9 @@ paths:
       summary: Replay bundle of one auction
       description: |
         Operator only. A self-contained bundle of the auction's ledger for replay and
-        verification. Query `auctionId` is required. 409 when the hash chain is broken.
+        verification. Query `auctionId` is required. 404 when the ledger has no entry, 409
+        `ledger_unverified` when the hash chain is broken, 500 `export_failed` when it cannot
+        be read.
       security:
         - adminKey: []
       parameters:
@@ -2050,20 +2193,19 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
+                $ref: '#/components/schemas/ReplayBundle'
         '400':
           $ref: '#/components/responses/OperatorBadRequest'
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          $ref: '#/components/responses/OperatorUnauthorized'
         '404':
-          $ref: '#/components/responses/NotFound'
+          $ref: '#/components/responses/OperatorNotFound'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '409':
-          $ref: '#/components/responses/Conflict'
+          $ref: '#/components/responses/ReplayLedgerUnverified'
         '429':
-          $ref: '#/components/responses/RateLimited'
+          $ref: '#/components/responses/OperatorRateLimited'
         '500':
           $ref: '#/components/responses/Internal'
   /metrics:
@@ -2085,11 +2227,11 @@ paths:
                 type: object
                 additionalProperties: true
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          $ref: '#/components/responses/OperatorUnauthorized'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '429':
-          $ref: '#/components/responses/RateLimited'
+          $ref: '#/components/responses/OperatorRateLimited'
       x-rate-limit:
         scope: whole route
         perMinute: 60
@@ -2109,11 +2251,11 @@ paths:
               schema:
                 type: string
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          $ref: '#/components/responses/OperatorUnauthorized'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '429':
-          $ref: '#/components/responses/RateLimited'
+          $ref: '#/components/responses/OperatorRateLimited'
   /ops/summary:
     get:
       tags: [Operator]
@@ -2155,11 +2297,11 @@ paths:
                     type: object
                     additionalProperties: true
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          $ref: '#/components/responses/OperatorUnauthorized'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '429':
-          $ref: '#/components/responses/RateLimited'
+          $ref: '#/components/responses/OperatorRateLimited'
   /ops/rooms:
     get:
       tags: [Operator]
@@ -2201,11 +2343,11 @@ paths:
                     connections: 3
                     mailboxDepth: 0
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          $ref: '#/components/responses/OperatorUnauthorized'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '429':
-          $ref: '#/components/responses/RateLimited'
+          $ref: '#/components/responses/OperatorRateLimited'
   /ops/auctions/{id}/void-all:
     post:
       tags: [Operator]
@@ -2237,15 +2379,17 @@ paths:
                       type: string
                     description: Hold id to the outcome the payments package recorded.
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          $ref: '#/components/responses/OperatorUnauthorized'
         '404':
-          $ref: '#/components/responses/NotFound'
+          $ref: '#/components/responses/OperatorNotFound'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '409':
           $ref: '#/components/responses/OperatorConflict'
         '429':
-          $ref: '#/components/responses/RateLimited'
+          $ref: '#/components/responses/OperatorRateLimited'
+        '500':
+          $ref: '#/components/responses/OperatorInternal'
   /ops/auctions/{id}/release-review:
     post:
       tags: [Operator]
@@ -2271,15 +2415,17 @@ paths:
                     type: string
                     const: released
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          $ref: '#/components/responses/OperatorUnauthorized'
         '404':
-          $ref: '#/components/responses/NotFound'
+          $ref: '#/components/responses/OperatorNotFound'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '409':
           $ref: '#/components/responses/OperatorConflict'
         '429':
-          $ref: '#/components/responses/RateLimited'
+          $ref: '#/components/responses/OperatorRateLimited'
+        '500':
+          $ref: '#/components/responses/OperatorInternal'
 components:
   securitySchemes:
     adminKey:
@@ -2424,18 +2570,21 @@ components:
     Error:
       type: object
       description: >-
-        The error body. `message` is always there. The stable code is in `code` on the core
-        and judge routes and in `error` on the hold, judge and operator routes: read
-        `code ?? error`. 413 and 415 use `bad_message`.
+        The error body. The stable code is in `code` on the core routes, in `error` on the
+        operator routes and the host-level answers, and in both on the judge routes; the
+        hold routes use `error` for hold failures and `code` for authentication and state
+        failures. Read `code ?? error`. `message` is present on the core, hold and judge
+        routes, and absent on the operator routes and host-level answers. 413 and 415 use
+        `bad_message`. See "Errors" in the description for the table per family.
       properties:
         error:
           example: 'order_not_found'
           type: string
-          description: Stable code (hold, judge and operator routes).
+          description: Stable code (hold failures, judge, operator and host-level answers, and the 429 of the code lookup and the join route). A plain string; may be a value outside ErrorCode.
         code:
           example: 'bad_message'
           type: string
-          description: Stable code (core and judge routes). One of ErrorCode.
+          description: Stable code (core, judge and hold authentication or state failures). Usually one of ErrorCode; judge, hold and lookup codes are listed in ExtraErrorCode and HoldErrorCode, so treat it as a string.
         message:
           description: Text for a person. Never contains a token or a stack trace.
           example: 'invalid request body'
@@ -2455,6 +2604,36 @@ components:
         - error: order_not_found
           message: no such hold
         - error: unauthorized
+    ExtraErrorCode:
+      type: string
+      enum:
+        - code_locked
+        - judge_join_locked
+        - judge_key_invalid
+        - judge_key_expired
+        - judge_key_revoked
+        - judge_key_locked
+        - judge_room_full
+        - judge_room_ended
+        - judge_room_expired
+        - judge_rate_limited
+        - ledger_unverified
+        - method_not_allowed
+        - export_failed
+        - bad_auction_id
+        - bad_kind
+        - no_settlement
+        - not_in_review
+        - busy
+        - payments_unsupported
+      description: >-
+        Codes sent by the judge, operator, export and lookup routes that are not in
+        `ErrorCode`: 429 code_locked, judge_join_locked, judge_key_locked, judge_room_full,
+        judge_rate_limited; 401 judge_key_invalid, judge_key_expired, judge_key_revoked; 410
+        judge_room_ended, judge_room_expired; 409 ledger_unverified, busy, no_settlement,
+        not_in_review; 405 method_not_allowed; 400 bad_auction_id, bad_kind; 500
+        export_failed; 501 payments_unsupported. The list may grow: do not fail on an unknown
+        value.
     HoldErrorCode:
       type: string
       enum:
@@ -2468,8 +2647,8 @@ components:
         - kill_switch_engaged
         - payments_not_sandbox
       description: >-
-        400 ceiling_out_of_range; 404 order_not_found; 409 hold_exists, raise_limit_reached,
-        order_not_approved; 422 raise_too_small;
+        400 ceiling_out_of_range (below 100 cents or above the host cap); 404 order_not_found;
+        409 hold_exists, raise_limit_reached, order_not_approved; 422 raise_too_small;
         503 paypal_unavailable, kill_switch_engaged, payments_not_sandbox.
     Status:
       type: object
@@ -2533,9 +2712,11 @@ components:
         - confirmConfidenceThreshold
       properties:
         mode:
-          description: Bidding mode. Defaults to english.
+          description: >-
+            Bidding mode. Only `english` is accepted; the host refuses any other mode with
+            400 `bad_message`. Defaults to english.
           type: string
-          enum: [english, proxy, second_price]
+          enum: [english]
           default: english
         currency:
           description: Currency of every amount. Only USD is accepted.
@@ -2545,14 +2726,21 @@ components:
           example: 500
           type: integer
           minimum: 100
-          description: Reserve price in cents (at least 100).
+          maximum: 99999999999
+          description: Reserve price in cents (at least 100, at most 99999999999).
         minIncrement:
           example: 100
           type: integer
           minimum: 1
-          description: Smallest raise in cents.
+          maximum: 99999999999
+          description: Smallest raise in cents (at most 99999999999).
         endTs:
-          $ref: '#/components/schemas/EpochMs'
+          description: >-
+            End of the lot, in epoch milliseconds. Must be strictly after the host's clock at
+            creation and at most 24 hours ahead (400 `bad_message` otherwise). The value in
+            the example is a placeholder: use the current time plus a few minutes.
+          type: integer
+          example: 1893456000000
         softCloseWindowMs:
           example: 30000
           type: integer
@@ -2579,7 +2767,11 @@ components:
           items:
             type: integer
             minimum: 1
-          description: Strictly ascending ceiling amounts in cents, none below the reserve.
+            maximum: 99999999999
+          description: >-
+            Strictly ascending suggested ceiling amounts in cents, none below the reserve. A
+            bidder may choose any ceiling from the minimum to the host cap, so these are
+            suggestions, not the only allowed amounts.
         confirmConfidenceThreshold:
           example: 0.8
           type: number
@@ -2592,34 +2784,11 @@ components:
           type: integer
           minimum: 0
         holdScope:
-          description: Whether one hold covers the whole event or a single lot. The engine default is event.
+          description: >-
+            One hold covers the whole event. Only `event` is accepted; `lot` is refused with
+            400 `bad_message`.
           type: string
-          enum: [event, lot]
-        incrementLadder:
-          example:
-            [
-              { 'fromCents': 0, 'incrementCents': 100 },
-              { 'fromCents': 5000, 'incrementCents': 500 },
-            ]
-          type: array
-          minItems: 1
-          maxItems: 16
-          description: Tiered increments. Must start at fromCents 0 and strictly ascend.
-          items:
-            type: object
-            additionalProperties: false
-            required: [fromCents, incrementCents]
-            properties:
-              fromCents:
-                description: Price in cents from which this increment applies.
-                example: 0
-                type: integer
-                minimum: 0
-              incrementCents:
-                description: Smallest raise in cents at this price tier.
-                example: 100
-                type: integer
-                minimum: 1
+          enum: [event]
     CreateAuctionRequest:
       type: object
       additionalProperties: false
@@ -2780,6 +2949,8 @@ components:
         - screenToken
         - auctioneerLink
         - screenLink
+        - reviewerToken
+        - reviewerLink
         - expiresAt
         - biddingEndsAt
       properties:
@@ -2825,7 +2996,7 @@ components:
       description: >-
         A verifiable export of the ledger (`packages/shared/src/replay-bundle.ts`). Hash with
         `verifyPublicExport` and compare `headHash`.
-      required: [version, exportVersion, auctionId, generatedAt, count, headHash, events]
+      required: [version, exportVersion, auctionId, generatedAt, count, headHash, closed, events]
       properties:
         version:
           description: Version of the bundle format.
@@ -2833,7 +3004,7 @@ components:
           type: integer
         exportVersion:
           description: Version of the export rules used to build the bundle.
-          example: 1
+          example: 4
           type: integer
         auctionId:
           description: Id of the exported auction.
@@ -2854,7 +3025,9 @@ components:
         closed:
           example: true
           type: boolean
-          description: True when the last event closes the auction and names the event before it.
+          description: >-
+            True when the last event closes the auction and names the event before it. False
+            means the bundle is open or not anchored. Always present.
         events:
           description: The public events in order, one object per event.
           type: array
@@ -2953,11 +3126,23 @@ components:
             price:
               $ref: '#/components/schemas/Cents'
         lotTitle:
-          description: Title of the lot.
+          description: Title of the lot (at most 120 characters). Set by the HTTP snapshot route.
           example: 'Vintage typewriter'
           type: string
+          maxLength: 120
+        maxCeilingCents:
+          description: >-
+            The most one bidder may hold as a limit in this room (the host cap), so a limit
+            picker never offers an amount the host refuses. Absent on older hosts.
+          example: 100000
+          type: integer
+          minimum: 0
         joinCode:
-          $ref: '#/components/schemas/JoinCode'
+          description: Short join code of the auction, 4 to 12 characters (the host mints 6). Set by the HTTP snapshot route.
+          type: string
+          minLength: 4
+          maxLength: 12
+          example: K7M2QX
         fundraiser:
           description: Fundraiser goal, present only when one was set.
           type: object
@@ -3002,11 +3187,87 @@ components:
         settlement:
           description: Settlement progress, present once the lot ended.
           type: object
-          additionalProperties: true
+          additionalProperties: false
+          required: [rev, auctionState]
+          properties:
+            rev:
+              description: Revision counter of the settlement; it grows with every change.
+              example: 3
+              type: integer
+            auctionState:
+              description: State of the settlement of the lot.
+              type: string
+              enum:
+                - HELD
+                - BIDDING
+                - WINNER_SELECTED
+                - CAPTURING
+                - CAPTURED
+                - VOIDING
+                - SETTLED
+                - FALLBACK_RUNNER_UP
+                - FAILED_NEEDS_REVIEW
+            you:
+              description: The viewing bidder's own settlement state. Bidder sessions only.
+              type: string
+              enum:
+                - HELD
+                - BIDDING
+                - WINNER_SELECTED
+                - CAPTURING
+                - CAPTURED
+                - VOIDING
+                - SETTLED
+                - FALLBACK_RUNNER_UP
+                - FAILED_NEEDS_REVIEW
+            yourHold:
+              description: The viewing bidder's own hold after the hammer. Never sent to screens, the auctioneer or other bidders.
+              type: object
+              additionalProperties: false
+              required:
+                [bidderId, idSuffix, status, ceilingCents, capturedCents, releasedCents, remainder]
+              properties:
+                bidderId:
+                  $ref: '#/components/schemas/Ulid'
+                idSuffix:
+                  description: Last 6 characters of the hold id only.
+                  example: 9K0M1A
+                  type: string
+                  maxLength: 6
+                status:
+                  description: Status of the hold.
+                  type: string
+                  enum: [PENDING_APPROVAL, HELD, CAPTURED, VOIDED, EXPIRED, DENIED, UNKNOWN]
+                ceilingCents:
+                  $ref: '#/components/schemas/Cents'
+                capturedCents:
+                  description: Cents captured from the hold (sandbox only).
+                  example: 0
+                  type: integer
+                  minimum: 0
+                releasedCents:
+                  description: Cents of the hold released.
+                  example: 0
+                  type: integer
+                  minimum: 0
+                remainder:
+                  description: What happened to the part of a captured hold beyond the price.
+                  type: string
+                  enum: [none, pending, released, unreleased]
         you:
-          type: object
-          additionalProperties: true
           description: The viewing bidder's own ceiling and high bid. Bidder sessions only.
+          type: object
+          additionalProperties: false
+          required: [bidderId, ceiling]
+          properties:
+            bidderId:
+              $ref: '#/components/schemas/Ulid'
+            ceiling:
+              $ref: '#/components/schemas/Cents'
+            highBid:
+              description: This bidder's highest accepted amount, absent before their first accepted bid.
+              allOf:
+                - $ref: '#/components/schemas/Cents'
       additionalProperties: true
     StateFrame:
       type: object
@@ -3025,6 +3286,10 @@ components:
           description: Sequence number of the last event the snapshot includes.
           example: 12
           type: integer
+        ts:
+          description: Host clock when the frame was built (every server frame carries it).
+          allOf:
+            - $ref: '#/components/schemas/EpochMs'
         snapshot:
           $ref: '#/components/schemas/RoomSnapshot'
       additionalProperties: true
@@ -3058,7 +3323,10 @@ components:
             code: unauthorized
             message: access token required
     Forbidden:
-      description: The credential is valid but its role may not do this (`forbidden`).
+      description: >-
+        The credential is valid but its role may not do this (`forbidden`). On a write sent
+        from a browser origin the host does not allow, the same code answers "origin not
+        allowed" (see `OriginForbidden`).
       content:
         application/json:
           schema:
@@ -3066,6 +3334,83 @@ components:
           example:
             code: forbidden
             message: not allowed
+    OriginForbidden:
+      description: >-
+        A cross-origin write (POST or DELETE with an `Origin` header) from an origin the host
+        does not allow is refused before the handler runs (`forbidden`, "origin not allowed").
+        Allowed are the operator's web origins; the docs origin
+        (`https://docs.gavel.dualmindlab.tech`) is allowed only on the judge-room, control and
+        receipt routes listed in the CORS section. Callers that send no `Origin` header are
+        not affected.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: forbidden
+            message: origin not allowed
+    Unavailable:
+      description: >-
+        The host cannot serve the request now: the room cannot reach its store
+        (`store_unavailable`), or a host limit is reached (`room_cap`, `room_full`,
+        `auction_full`). Safe to retry after a short wait.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: store_unavailable
+            message: the room cannot reach its store
+    OperatorUnauthorized:
+      description: >-
+        The operator key or token is missing or wrong. Operator routes send `{"error": "unauthorized"}` only.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: unauthorized
+    OperatorNotFound:
+      description: >-
+        No such auction or route. Operator routes send `{"error": "not_found"}` only.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: not_found
+    OperatorRateLimited:
+      description: >-
+        The per-address limit of the host answered before the route ran. The body is
+        `{"error": "rate_limited"}` only. Wait `Retry-After` seconds.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: rate_limited
+    OperatorInternal:
+      description: >-
+        A read or a payments call failed (`internal` from the host, `export_failed` from the
+        export routes). The body is `{"error": "<code>"}` only.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: internal
+    ReplayLedgerUnverified:
+      description: >-
+        The hash chain of the ledger does not verify (`ledger_unverified`). The body is `{"error": "ledger_unverified"}` only.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: ledger_unverified
     NotFound:
       description: No such auction, bidder, room or route (`not_found`).
       content:
@@ -3090,8 +3435,9 @@ components:
     Conflict:
       description: >-
         The request conflicts with the state of the lot or the credential: `conflict` (for
-        example a hammer refused because the price or leader changed), `closed`,
-        `invite_used`, `lot_not_open`.
+        example a hammer refused because the price or leader changed, an auction that already
+        exists, or a concurrent change), `closed`, `invite_used`, `lot_not_open`, or
+        `host_fenced` when another host instance owns the room.
       content:
         application/json:
           schema:
@@ -3151,7 +3497,9 @@ components:
       description: >-
         Too many requests (`rate_limited`), a locked-out source (`code_locked`,
         `judge_join_locked`), a full judge room (`judge_room_full`), or a judge-room cap or
-        create limit. Wait `Retry-After` seconds.
+        create limit. Wait `Retry-After` seconds. The body carries `message` on the routes
+        that build it; the host-wide per-address limiter answers `{"error": "rate_limited"}`
+        only, so read `code ?? error`.
       headers:
         Retry-After:
           $ref: '#/components/headers/RetryAfter'
@@ -3185,14 +3533,16 @@ components:
           example:
             revoked: true
     HoldBadRequest:
-      description: Invalid body (`bad_message`) or a ceiling the auction does not offer (`ceiling_out_of_range`).
+      description: >-
+        Invalid body (`bad_message`) or a ceiling below the minimum of 100 cents or above the
+        host cap (`ceiling_out_of_range`).
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
           example:
             error: ceiling_out_of_range
-            message: ceiling is not one of the offered amounts
+            message: ceiling 50 is below the minimum of 100
     HoldNotFound:
       description: No such hold, or it belongs to another bidder (`order_not_found`).
       content:
