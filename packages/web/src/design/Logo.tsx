@@ -10,7 +10,7 @@ export interface LogoProps {
   /** True when text beside the logo already says GAVEL (hides it from assistive technology). */
   decorative?: boolean;
   /**
-   * Optional motion: the mallet winds up and strikes in four stepped clicks, on hover or focus
+   * Optional motion: the mallet winds up and strikes with a smooth ease, on hover or focus
    * ('hover'), once when the logo mounts ('load'), or both. Off by default and always off under
    * prefers-reduced-motion.
    */
