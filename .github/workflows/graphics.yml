@@ -1,0 +1,70 @@
+name: graphics
+# Renders every graphics set under graphics/<set>/ (a set is a folder with render.mjs) in CI only.
+# Each set uploads one artifact named graphics-<set>. Rendered files that the README and Devpost need
+# are committed from these artifacts (see graphics/README.md). Run it from the Actions tab or by a PR
+# that touches graphics/, brand/svg or the web fonts.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'graphics/**'
+      - 'brand/svg/**'
+      - '.github/workflows/graphics.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'graphics/**'
+      - 'brand/svg/**'
+      - '.github/workflows/graphics.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: graphics-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      sets: ${{ steps.find.outputs.sets }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - id: find
+        run: |
+          sets=$(for f in graphics/*/render.mjs; do [ "$(basename "$(dirname "$f")")" = lib ] && continue; basename "$(dirname "$f")"; done | jq -R . | jq -sc .)
+          echo "sets=$sets" >> "$GITHUB_OUTPUT"
+  render:
+    needs: discover
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        set: ${{ fromJson(needs.discover.outputs.sets) }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: 22
+      - name: Install Playwright, ffmpeg, ImageMagick, gifsicle, librsvg
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
+          npm init -y >/dev/null && npm install --no-audit --no-fund playwright@1.49.1
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y -qq ffmpeg imagemagick gifsicle librsvg2-bin
+      - name: Render the set
+        run: PW_DIR="$RUNNER_TEMP/pw" node graphics/${{ matrix.set }}/render.mjs "$PWD/out/${{ matrix.set }}"
+      - name: List outputs and sizes
+        run: |
+          find out -type f -printf '%s %p\n' | sort -k2 | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: graphics-${{ matrix.set }}
+          path: out/${{ matrix.set }}
+          if-no-files-found: error
