@@ -1,6 +1,6 @@
 import { verifyChain } from '@gavel/engine';
 import { CONFIG, ledgerKey, makeRig } from '../../test/flow/rig';
-import { setUp, type Check, type LoadDeps } from './run';
+import { release, setUp, type Check, type LoadDeps } from './run';
 import { tally } from './clients';
 
 // L3 hammer race (R-QA-030, T-QA-062): many short auctions, each with every bidder sending the same
@@ -44,6 +44,7 @@ export async function runL3(deps: HammerDeps): Promise<HammerReport> {
       duplicate += t.duplicate;
       const entries = await rig.stores.ledger.read(ledgerKey(field.room.auctionId), 1);
       if (entries.length > 0 && !verifyChain(entries).ok) badChain += 1;
+      await release(field);
     }
   } finally {
     await rig.paypal.stop();

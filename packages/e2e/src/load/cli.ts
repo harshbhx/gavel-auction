@@ -49,6 +49,7 @@ async function main(argv: readonly string[]): Promise<number> {
     let diag: Diagnostics | undefined;
     let stopSampling: Awaited<ReturnType<typeof startHeapSampling>> | undefined;
     let roundsDone = 0;
+    let current: Rig | undefined;
     results.push(
       await runSoak({
         ...deps,
@@ -57,9 +58,14 @@ async function main(argv: readonly string[]): Promise<number> {
           ? {}
           : {
               onStart: async (rig: Rig): Promise<void> => {
+                current = rig;
+                if (diag !== undefined) return;
                 stopSampling = await startHeapSampling();
                 diag = startDiagnostics({
-                  probe: () => ({ ...rigCounters(rig), 'soak.rounds': roundsDone }),
+                  probe: () => ({
+                    ...(current === undefined ? {} : rigCounters(current)),
+                    'soak.rounds': roundsDone,
+                  }),
                 });
               },
               onRound: (n: number): void => {

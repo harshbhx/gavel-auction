@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { runL3 } from '../../src/load/hammer';
 import { runL4 } from '../../src/load/webhooks';
 import { runSoak } from '../../src/load/soak';
+import type { Rig } from '../flow/rig';
 
 // T-QA-062 (L3), T-QA-063 (L4) and T-QA-064 (L5), scaled down for CI. The full runs use
 // src/load/cli.ts: 500 hammer iterations, 50 duplicate webhooks and a 30 minute soak.
@@ -40,5 +41,33 @@ describe('T-QA-064 L5 soak', () => {
     expect(r.rounds).toBeGreaterThanOrEqual(2);
     expect(r.checks.filter((c) => !c.ok)).toEqual([]);
     expect(r.ok).toBe(true);
+  }, 120_000);
+
+  it('releases every round: no service timer is left behind and each round gets a fresh rig (#2203)', async () => {
+    const timeouts = (): number =>
+      process.getActiveResourcesInfo().filter((r) => r === 'Timeout').length;
+    const before = timeouts();
+    const rigs = new Set<Rig>();
+    let t = 0;
+    let during = 0;
+    const r = await runSoak({
+      now: () => t,
+      rss: () => 0,
+      durationMs: 5000,
+      bidders: 3,
+      onStart: (rig) => {
+        rigs.add(rig);
+        during = Math.max(during, timeouts());
+      },
+      pause: () => {
+        t += 1000;
+        return Promise.resolve();
+      },
+    });
+    expect(r.rounds).toBe(5);
+    expect(rigs.size).toBe(5);
+    // Before the fix every round left a 60 s resume timer: five rounds, five more timers.
+    expect(timeouts()).toBeLessThanOrEqual(before);
+    expect(during).toBeLessThanOrEqual(before + 1);
   }, 120_000);
 });

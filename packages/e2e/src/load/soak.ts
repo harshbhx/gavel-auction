@@ -1,6 +1,6 @@
 import { CONFIG, makeRig } from '../../test/flow/rig';
 import { tally } from './clients';
-import { LIMITS, setUp, type Check, type LoadDeps } from './run';
+import { LIMITS, release, setUp, type Check, type LoadDeps } from './run';
 import type { Rig } from '../../test/flow/rig';
 
 // L5 soak (R-QA-030, T-QA-064): 20 bidders keep bidding across fresh auctions for 30 minutes.
@@ -17,10 +17,10 @@ export interface SoakDeps extends LoadDeps {
   durationMs?: number;
   /** Waits between rounds; default 250 ms of real time. */
   pause?: () => Promise<void>;
-  /** Called once with the rig before the first round (the diagnostic mode hooks its probes here). */
+  /** Called with each round's fresh rig before the round runs (the diagnostic mode hooks its probes here). */
   onStart?: (rig: Rig) => void | Promise<void>;
-  /** Called once after the last round, before the fake PayPal stops. */
-  onEnd?: (rig: Rig) => void | Promise<void>;
+  /** Called once after the last round. */
+  onEnd?: () => void | Promise<void>;
   /** Called after every finished round with the number of rounds so far. */
   onRound?: (rounds: number) => void;
 }
@@ -47,8 +47,7 @@ export async function runSoak(deps: SoakDeps): Promise<SoakReport> {
     unhandled += 1;
   };
   process.on('unhandledRejection', onUnhandled);
-  const rig = await makeRig();
-  await deps.onStart?.(rig);
+  let rig: Rig | undefined;
   const start = deps.now();
   let baseline = -1;
   let peak = 0;
@@ -58,6 +57,10 @@ export async function runSoak(deps: SoakDeps): Promise<SoakReport> {
   let duplicate = 0;
   try {
     do {
+      // A fresh rig (fake PayPal, stores, service) for every round, released at its end: a finished
+      // auction's log, ledger and holds are not kept for the rest of the soak (#2203).
+      rig = await makeRig();
+      await deps.onStart?.(rig);
       const field = await setUp({ ...deps, bidders }, rig);
       for (let step = 1; step <= 3; step += 1) {
         await Promise.all(
@@ -75,12 +78,16 @@ export async function runSoak(deps: SoakDeps): Promise<SoakReport> {
       const rss = deps.rss();
       if (baseline < 0) baseline = rss;
       peak = Math.max(peak, rss);
+      await release(field);
+      await rig.paypal.stop();
+      rig = undefined;
       await pause();
     } while (deps.now() - start < durationMs);
   } finally {
-    await deps.onEnd?.(rig);
+    await deps.onEnd?.();
     process.off('unhandledRejection', onUnhandled);
-    await rig.paypal.stop();
+    // Only set when a round failed half way: stop its fake PayPal server.
+    await rig?.paypal.stop();
   }
   const rssGrowthMb = Math.max(0, peak - Math.max(0, baseline)) / MB;
   const checks: Check[] = [

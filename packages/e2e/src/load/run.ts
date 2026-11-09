@@ -56,6 +56,8 @@ const MB = 1024 * 1024;
 
 export interface Field {
   rig: Rig;
+  /** The service that owns `room`: every `setUp` creates one, so the caller closes it (`release`). */
+  service: AuctionService;
   room: Awaited<ReturnType<AuctionService['createAuction']>>;
   bidders: SimulatedBidder[];
 }
@@ -96,7 +98,16 @@ export async function setUp(deps: LoadDeps, shared?: Rig): Promise<Field> {
     const mint = (): MsgId => rig.ids.mint<'MsgId'>();
     bidders.push(new SimulatedBidder(id, conn, transport, room, mint, deps.now));
   }
-  return { rig, room, bidders };
+  return { rig, service, room, bidders };
+}
+
+/**
+ * Releases a field's service: stops its resume timer and closes its room. A service that is left
+ * open stays alive through that timer and, at the first firing (60 s), loads every auction the
+ * shared store knows into its own room map, which grew a long soak by gigabytes (#2203).
+ */
+export async function release(field: Field): Promise<void> {
+  await field.service.close();
 }
 
 function report(
