@@ -68,14 +68,14 @@ export const inspiration = {
   T: 4.4,
   poster: 3.3,
   html: `${frame('Inspiration', '01')}
-<div class="a mk" data-t=".05" data-d="1" style="left:48px;top:62px;overflow:hidden;font:800 330px/.84 var(--display);padding-bottom:.06em"><span style="display:block"><span class="cn" data-t=".15" data-d="1.1" data-f="0" data-v="20" data-p="$">$0</span></span></div>
+<div class="a mk" data-t=".05" data-d="1" style="left:48px;top:76px;overflow:hidden;font:800 330px/.84 var(--display);padding-bottom:.06em"><span style="display:block"><span class="cn" data-t=".15" data-d="1.1" data-f="0" data-v="20" data-p="$">$0</span></span></div>
 ${M(0.3, 'left:650px;top:110px;' + disp(64) + 'width:300px', 'A bid is')}
 ${M(0.42, 'left:650px;top:172px;' + disp(64) + 'width:300px', 'a promise.')}
-${R(0.9, 0.9, 'left:56px;width:888px;top:384px')}
-${R(1.7, 1.0, 'left:56px;width:888px;top:381px', ORANGE, 6)}
-${F(1.0, 0.4, 'left:56px;top:400px', '<span class="lab">Bid placed</span>')}
-${F(2.5, 0.4, 'right:56px;top:400px', '<span class="lab">Hold on PayPal</span>')}
-${M(2.0, 'left:56px;top:432px;' + disp(76) + 'width:888px', 'Held, <span class="or">not charged.</span>', 0.8)}
+${R(0.9, 0.9, 'left:56px;width:888px;top:392px')}
+${R(1.7, 1.0, 'left:56px;width:888px;top:389px', ORANGE, 6)}
+${F(1.0, 0.4, 'left:56px;top:408px', '<span class="lab">Bid placed</span>')}
+${F(2.5, 0.4, 'right:56px;top:408px', '<span class="lab">Hold on PayPal</span>')}
+${M(2.0, 'left:56px;top:438px;' + disp(72) + 'width:888px', 'Held, <span class="or">not charged.</span>', 0.8)}
 `,
   js: `${LIB}
 function update(t,h){ L(t,h); }
@@ -194,7 +194,7 @@ ${F(0.9, 0.4, 'left:524px;top:238px', '<span class="lab">Paddle 7</span>')}
 <div class="a" id="ua" style="left:56px;top:452px;width:0;height:6px;background:var(--orange)"></div>
 ${F(2.3, 0.4, 'left:56px;top:470px', '<span class="lab">Entry 41 &nbsp;/&nbsp; accepted</span>')}
 ${F(2.4, 0.4, 'left:524px;top:470px', '<span class="lab" style="color:var(--muted)">Refused &nbsp;/&nbsp; not higher</span>')}
-${M(2.6, 'right:56px;top:488px;font:600 24px/1.2 var(--body);text-align:right;width:500px', 'The engine takes bids in order.', 0.7)}
+${M(0.6, 'right:56px;top:152px;font:600 24px/1.2 var(--body);text-align:right;width:420px', 'The engine takes bids in order.', 0.7)}
 `,
   js: `${LIB}
 function update(t,h){

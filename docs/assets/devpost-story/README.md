@@ -1,0 +1,21 @@
+# Devpost story graphics
+
+The images and loops for the written project description on Devpost (the "story"). They are separate from the gallery slides in `docs/assets/devpost/` and from the GitHub README graphics in `docs/assets/readme/`.
+
+Source: `graphics/motion-devpost-story/`. Rendered in CI by the `graphics` workflow (set `motion-devpost-story`, artifact `graphics-motion-devpost-story`). Every item has a GIF (15 fps, under 2 MB), an MP4 and a WebM (24 fps) and a `-poster.png` still. Inline items are 1000x560, the banner is 1600x500 (GIF 1200 px wide). Upload the GIF into the description (Devpost's size limit for story images is not confirmed, every GIF here is far below 1 MB).
+
+Look: a printed auction-house broadside. Flat paper, black ink, one orange accent, big type, hairline rules, no cards or badges. "PayPal sandbox only" is set small in the foot of every item.
+
+| File (prefix) | Place it in the description | Alt text |
+| --- | --- | --- |
+| `00-story-banner` | Top of the description, above the first paragraph | GAVEL: the Mallet G strikes and rings, beside the line "Every bid is a hold. The hammer is the payment." PayPal sandbox only. |
+| `01-inspiration` | Inspiration, after the first paragraph | A price counts up to $20, then an orange line sweeps across it: "Held, not charged." |
+| `02-what-it-does` | What it does | Four steps, Hold, Bid, Hammer, Receipt, each lit in turn while the real GAVEL screen for that step wipes in beside it. |
+| `03-how-we-built-it` | How we built it | A line diagram: Cloudflare Workers (web and docs), Render (API), PayPal (sandbox holds and capture), AG Grid (ledger grid) and Hugging Face (open datasets), joined by thin lines that light up with a packet moving along each. |
+| `04-challenges` | Challenges | Two $25 bids from paddle 12 and paddle 7 arrive together. The first is accepted as ledger entry 41, the second is struck through: refused, not higher. |
+| `05-accomplishments` | Accomplishments | Three results in large type: kill survived, voice 24 of 24 (synthetic clips, confirm before every bid), chain verifies. |
+| `06-what-we-learned` | What we learned | The same event arrives twice. The first is counted as entry 41, the duplicate is struck out, the count goes from 2 to 1. |
+| `07-what-is-next` | What is next | Three lines: G3 probe (running), real-room voice, deployed-host kill. |
+| `08-built-with` | Built with | PayPal, Cloudflare Workers, Render, Hugging Face and AG Grid in large type, an orange highlight stepping down the list, then the rest of the stack in small type. |
+
+Claims: G3 is shown as running, G5 is not claimed beyond the 24 synthetic clips, no latency numbers and no gate verdicts appear, no real money (sandbox only), the voice result says synthetic and confirm-first.
