@@ -2,22 +2,20 @@
 .gv-ring{stroke-dasharray:1;animation:gv-draw .55s cubic-bezier(.55,0,.2,1) var(--s,0s) backwards}
 .gv-mal{transform-origin:100px 50px;animation:gv-swing 1s linear calc(var(--s,0s) + .25s) backwards}
 .gv-jolt{transform-origin:50px 50px;animation:gv-jolt .4s cubic-bezier(.2,.8,.2,1) calc(var(--s,0s) + .97s) backwards}
-.gv-shock{fill:none;stroke:#ff6a1f;stroke-width:3.5;opacity:0;transform-origin:50px 50px;animation:gv-shock .7s cubic-bezier(.12,.7,.25,1) calc(var(--s,0s) + .97s)}
-.gv-shock2{stroke-width:1.5;animation-delay:calc(var(--s,0s) + 1.08s)}
+.gv-shock{fill:none;stroke:#ff6a1f;stroke-width:1.6;opacity:0;transform-origin:50px 50px;animation:gv-shock .8s cubic-bezier(.12,.7,.25,1) calc(var(--s,0s) + .97s)}
 .gv-mk{animation:gv-slide .5s cubic-bezier(.65,0,.25,1) calc(var(--s,0s) + 1.35s) backwards}
 .gv-l{animation:gv-in .45s cubic-bezier(.2,.8,.2,1) calc(var(--s,0s) + 1.55s + var(--i,0) * .06s) backwards}
 .gv-loop .gv-ring,.gv-loop .gv-mk,.gv-loop .gv-l{animation:none}
 .gv-loop .gv-mal{animation:gv-swing 1.6s linear 0s infinite}
 .gv-loop .gv-jolt{animation:gv-jolt-l 1.6s cubic-bezier(.2,.8,.2,1) 0s infinite}
 .gv-loop .gv-shock{animation:gv-shock-l 1.6s cubic-bezier(.12,.7,.25,1) 0s infinite}
-.gv-loop .gv-shock2{animation-delay:.1s}
 .gv-still *{animation:none!important}
 @keyframes gv-draw{from{stroke-dashoffset:1}}
 @keyframes gv-swing{0%{transform:rotate(72deg);opacity:0;animation-timing-function:ease-out}8%{transform:rotate(72deg);opacity:1;animation-timing-function:cubic-bezier(.3,0,.4,1)}56%{transform:rotate(94deg);animation-timing-function:cubic-bezier(.75,0,1,.6)}72%,100%{transform:rotate(0deg);opacity:1}}
 @keyframes gv-jolt{0%,100%{transform:scale(1)}30%{transform:scale(.93)}}
 @keyframes gv-jolt-l{0%,70%{transform:scale(1)}78%{transform:scale(.93)}100%{transform:scale(1)}}
-@keyframes gv-shock{0%{opacity:.9;transform:scale(.8)}100%{opacity:0;transform:scale(1.75)}}
-@keyframes gv-shock-l{0%,71%{opacity:0;transform:scale(.8)}72%{opacity:.9;transform:scale(.8)}100%{opacity:0;transform:scale(1.75)}}
+@keyframes gv-shock{0%{opacity:.8;transform:scale(.8)}100%{opacity:0;transform:scale(1.75)}}
+@keyframes gv-shock-l{0%,71%{opacity:0;transform:scale(.8)}72%{opacity:.8;transform:scale(.8)}100%{opacity:0;transform:scale(1.75)}}
 @keyframes gv-slide{from{transform:translateX(153px)}}
 @keyframes gv-in{from{opacity:0;transform:translateX(-26px)}}
-@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style><g class="gv-jolt"><circle class="gv-shock" cx="50" cy="50" r="46"/><circle class="gv-shock gv-shock2" cx="50" cy="50" r="46"/><path class="gv-ring" pathLength="1" d="M78.98 23.90A39 39 0 1 0 89.00 50.00" fill="none" stroke="#efe6d3" stroke-width="22"/><g class="gv-mal"><rect x="40.0" y="43.50" width="60.0" height="13" fill="#efe6d3"/><rect x="32" y="33.00" width="16" height="34" rx="3" fill="#ff6a1f"/></g></g></svg>
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style><g class="gv-jolt"><circle class="gv-shock" cx="50" cy="50" r="46"/><path class="gv-ring" pathLength="1" d="M78.98 23.90A39 39 0 1 0 89.00 50.00" fill="none" stroke="#efe6d3" stroke-width="22"/><g class="gv-mal"><rect x="40.0" y="43.50" width="60.0" height="13" fill="#efe6d3"/><rect x="32" y="33.00" width="16" height="34" rx="3" fill="#ff6a1f"/></g></g></svg>
