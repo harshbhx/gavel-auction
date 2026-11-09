@@ -41,7 +41,6 @@ export const wordingExemptions: Readonly<Partial<Record<CopyKey, string>>> = {
   'ladder.invariants.ok': 'settlement totals line shown only after capture',
   'ladder.fallback': 'settlement narrative shown after a failed capture attempt',
   'screen.settleSummary': 'settlement counts line, shown only once the phase is final',
-  'receipt.failed': 'receipt copy for a failed capture',
   'bid.waitingLot': 'ordinal use of "first", not a claim',
   'replay.chapter.bid': 'chapter label, ordinal use of "first"',
 };

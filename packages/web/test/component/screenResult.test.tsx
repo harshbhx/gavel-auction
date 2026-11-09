@@ -114,3 +114,32 @@ describe('public screen settlement ladder', () => {
     expect(container.textContent).not.toContain('AB12CD');
   });
 });
+
+describe('public screen when settlement needs review', () => {
+  it('claims no sale and no capture, and says held, not charged', () => {
+    const store = closedStore({ leader: 7, inRoster: true });
+    store.dispatch({
+      kind: 'wire',
+      msg: {
+        v: 1,
+        t: 'settlement_update',
+        seq: 6,
+        ts: EpochMs(BASE_TIME + 6),
+        rev: 1,
+        auctionState: 'FAILED_NEEDS_REVIEW',
+        winnerPaddle: 7,
+        holds: [],
+        invariants: { ok: true, violations: [] },
+      },
+    });
+    const { container } = render(
+      <ScreenView lotTitle="Lot" code={null} joinUrl="https://x.test/j" store={store} />,
+    );
+    expect(screen.getByText('Paddle 7 won at $250.00')).toBeTruthy();
+    expect(screen.getByTestId('settle-review').textContent).toMatch(
+      /needs review.*held, not charged/,
+    );
+    expect(container.textContent).not.toMatch(/SOLD|captured/);
+    expect(screen.queryByTestId('settle-summary')).toBeNull();
+  });
+});

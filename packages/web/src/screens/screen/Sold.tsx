@@ -19,20 +19,31 @@ export interface SoldProps {
   readonly outcome: SoldOutcome;
   /** Set once settlement_update arrives. */
   readonly settlement?: SettleCounts | null;
+  /** Settlement stopped for review: no sale is claimed and no capture count is shown. */
+  readonly review?: boolean;
 }
 
 /** SOLD or Passed banner with a compact settlement summary (R-WEB-078). */
-export function Sold({ outcome, settlement = null }: SoldProps) {
+export function Sold({ outcome, settlement = null, review = false }: SoldProps) {
   return (
     <section data-testid="sold" className="gv-screen__sold" data-kind={outcome.kind}>
       <p className="gv-hammer-stamp gv-screen__stamp tabular" data-closed="true">
         {outcome.kind === 'passed'
           ? t('screen.passed')
-          : outcome.paddle === null
-            ? t('screen.soldUnknown', { amount: formatUsd(outcome.amountCents) })
-            : t('screen.sold', { n: outcome.paddle, amount: formatUsd(outcome.amountCents) })}
+          : review
+            ? outcome.paddle === null
+              ? t('screen.wonReviewUnknown', { amount: formatUsd(outcome.amountCents) })
+              : t('screen.wonReview', { n: outcome.paddle, amount: formatUsd(outcome.amountCents) })
+            : outcome.paddle === null
+              ? t('screen.soldUnknown', { amount: formatUsd(outcome.amountCents) })
+              : t('screen.sold', { n: outcome.paddle, amount: formatUsd(outcome.amountCents) })}
       </p>
-      {settlement !== null && (
+      {review && outcome.kind === 'sold' && (
+        <p className="gv-screen__settle" data-testid="settle-review" role="status">
+          {t('screen.settleReview')}
+        </p>
+      )}
+      {!review && settlement !== null && (
         <p className="gv-screen__settle tabular" data-testid="settle-summary">
           {t('screen.settleSummary', { c: settlement.captured, r: settlement.released })}
         </p>

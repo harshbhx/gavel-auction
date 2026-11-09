@@ -189,7 +189,11 @@ export function ScreenView({
       <div className="gv-screen__stage">
         <div className="gv-screen__board">
           {closed ? (
-            <Sold outcome={outcome} settlement={settlement} />
+            <Sold
+              outcome={outcome}
+              settlement={settlement}
+              review={auctionState === 'FAILED_NEEDS_REVIEW'}
+            />
           ) : price === null ? (
             <p className="gv-screen__opening">{t('screen.lobby')}</p>
           ) : price.currentCents === null ? (
