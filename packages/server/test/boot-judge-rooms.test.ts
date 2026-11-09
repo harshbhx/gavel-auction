@@ -52,6 +52,29 @@ describe('judge rooms: boot validation', () => {
     expect(await probe.json()).toEqual({ judgeRooms: false, accepting: false, simHolds: false });
   });
 
+  it('reports voice only when a live speech provider has its key', async () => {
+    const off = await boot({ JUDGE_ROOMS: 'true' });
+    expect(await (await fetch(`${off.url}/api/judge/capabilities`)).json()).not.toHaveProperty(
+      'voice',
+    );
+    // Named but no key: the cached provider takes over, which is not live speech.
+    const nokey = await boot({ JUDGE_ROOMS: 'true', VOICE_STT: 'groq' });
+    expect(await (await fetch(`${nokey.url}/api/judge/capabilities`)).json()).not.toHaveProperty(
+      'voice',
+    );
+    const live = await boot({
+      JUDGE_ROOMS: 'true',
+      VOICE_STT: 'groq',
+      GROQ_API_KEY: 'gq-test',
+    });
+    const body = (await (await fetch(`${live.url}/api/judge/capabilities`)).json()) as Record<
+      string,
+      unknown
+    >;
+    expect(body['voice']).toBe(true);
+    expect(JSON.stringify(body)).not.toContain('gq-test');
+  });
+
   it('refuses the flag on a production-like host without sandbox PayPal', async () => {
     await expect(
       boot({

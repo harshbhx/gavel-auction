@@ -379,6 +379,7 @@ function LiveRoute({
             token={token}
             apiBase={liveBase.replace(/^ws/, 'http').replace(/\/+$/, '')}
             rejection={view.rejection?.reason ?? ''}
+            scripted={scripted !== undefined}
             onConfirmAnswer={(confirmId, accept) => {
               respond(confirmId, accept);
               roomStore.dispatch({ kind: 'confirm_resolved', confirmId });

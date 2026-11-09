@@ -20,7 +20,7 @@ Scope and limits:
 - Latency is measured on the sandbox: hammer to settled p95 6.93 s against a 6 s target and hammer to captured p95 3.77 s against 2.5 s (run 42563147792, 49 of 50 completed, INCOMPLETE: 1 timeout and 3 failed capture calls); the earlier n=20 run measured 5591 ms and 3010 ms. Owner decision open: keep the targets, raise them with a reason, or reduce latency. Status PARTIAL in `docs/GATES.md`.
 - G5 (speech accuracy) is PARTIAL and measured on synthetic audio: wrong accept 0.000 on 24 noise-free clips per set (tuned on those clips), and 0.058 (Groq) and 0.092 (Deepgram) on a held-out noisy set measured once (120 clips) against a pre-registered 0.05. Spoken bids always use the confirm prompt; the next step is a live or noisy room.
 - G3 is a timed sandbox probe in progress since 7 Nov 2026 03:06 UTC. Day 0 is recorded and the final reading is about 12 Nov 06:17 UTC, so the result is reported then. The 30-day run is a simulation on a fake clock (`docs/evidence/SIM/SIM-MULTIDAY.md`).
-- The kill ran on a CI runner, not the deployed host; the live socket run used the fake PayPal, and the web console has no audio sender yet.
+- The kill ran on a CI runner, not the deployed host; the live socket run used the fake PayPal and synthetic clips. The web console now has an auctioneer microphone (enabled only when the server reports a live speech provider, and every spoken bid still asks for a confirm); no person has used it in a real room yet.
 - The Hugging Face datasets are published and use synthetic data by design (privacy by design).
 - Next steps, with owners and dates where known, are on `docs/LIMITATIONS.md`. What changed and when is in `CHANGELOG.md`.
 

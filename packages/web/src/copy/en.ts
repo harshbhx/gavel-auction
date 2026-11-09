@@ -766,6 +766,57 @@ export const en = {
   'console.confirm.sent': 'Sent',
   'console.confirm.hint': 'Press Y to accept or N to reject the top request.',
   'console.mic.level': 'Microphone level',
+  'console.mic.connecting': 'Connecting to the speech service',
+  'console.mic.armed': 'Ready. Press and hold the button to talk',
+  'console.mic.nomic': 'No microphone found. Use manual entry.',
+  'console.mic.busy': 'Another app is using the microphone. Use manual entry.',
+  'console.mic.unsupported': 'This browser cannot record audio. Use manual entry.',
+  'console.mic.insecure': 'The microphone needs a secure (HTTPS) page. Use manual entry.',
+  'console.mic.mode': 'Microphone mode',
+  'console.mic.modeToggle': 'Tap to start and stop',
+  'console.mic.modeHold': 'Press and hold to talk',
+  'console.mic.holdButton': 'Press and hold to talk',
+  'console.mic.holdActive': 'Release to finish',
+  'console.mic.holdHint':
+    'Press and hold the button, or hold Space while it has focus, and say for example "paddle 3, two hundred". Let go to finish.',
+  'console.mic.toggleHint':
+    'Say for example "paddle 3, two hundred". It turns itself off after {s} seconds of silence.',
+  'console.mic.deniedHelp':
+    'Allow the microphone for this site in the browser address bar (the icon beside the address), then turn it on again. Manual entry still works.',
+  'console.mic.reason.checking': 'Checking whether this server can read speech',
+  'console.mic.reason.off':
+    'Voice is off on this server: no speech service is set up. Use manual entry.',
+  'console.mic.reason.unreachable': 'Could not ask the server about voice. Use manual entry.',
+  'console.mic.reason.scripted': 'Voice is not part of the scripted demo. Use manual entry.',
+  'console.mic.reason.closed': 'The lot is closed, so the microphone is off.',
+  'console.voice.heard': 'Heard: {text}',
+  'console.voice.hearing': 'Hearing: {text}',
+  'console.voice.privacy':
+    'Audio goes to a speech service to read bids. Do not say personal data. Each spoken bid goes to the bidder as a question and counts only if they confirm. Voice reading is still being tested.',
+  'console.voice.sttDegraded': 'The speech service is slow. Spoken bids may be missed.',
+  'console.voice.sttDown': 'The speech service is down. Use manual entry.',
+  'console.voice.p.unauthorized':
+    'The server refused the voice connection. The link may have expired, or this room does not use speech services. Use manual entry.',
+  'console.voice.p.badFrame': 'The server could not read the audio. Turn the microphone on again.',
+  'console.voice.p.rate':
+    'Too much audio was sent, or too many voice connections are open. Wait a moment and try again.',
+  'console.voice.p.ended':
+    'The voice session ended: its time limit passed, or voice was started in another tab. Turn it on again.',
+  'console.voice.p.streamBusy':
+    'Voice is already on in another tab or window. Turn it off there, then try again.',
+  'console.voice.p.notFound': 'The server does not know this room.',
+  'console.voice.p.server':
+    'The speech service had a problem. Turn the microphone on again, or use manual entry.',
+  'console.voice.p.lost':
+    'The voice connection dropped. Turn the microphone on again, or use manual entry.',
+  'console.voice.p.silence': 'Microphone turned off after {s} seconds of silence.',
+  'console.voice.p.idle': 'Microphone released after a minute without use.',
+  'console.voice.p.maxSession':
+    'Microphone turned off after {m} minutes, the longest one session may run.',
+  'console.voice.p.hidden': 'Microphone turned off because the tab was hidden.',
+  'console.voice.p.closed': 'Microphone turned off because the lot closed.',
+  'console.voice.note.maxClip': 'A clip is at most {s} seconds. Let go and press again.',
+  'console.voice.note.confirmExpired': 'The question timed out. No bid was taken from it.',
   'console.transcript.final': 'Final',
   'console.transcript.partial': 'Partial',
   'console.rej.none': 'No reason given',

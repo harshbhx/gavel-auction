@@ -1138,6 +1138,12 @@ paths:
                     type: boolean
                     const: true
                     description: Present and true only when the host has a judge key set.
+                  voice:
+                    type: boolean
+                    const: true
+                    description: >-
+                      Present and true only when a live speech provider is configured for the
+                      audio route. The provider name and its key are never reported.
               example:
                 judgeRooms: true
                 accepting: true
