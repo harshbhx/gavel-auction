@@ -9,7 +9,7 @@ GAVEL's API and WebSocket host runs as one Render web service. Every judge room,
 
 <NotVerified title="What this page does and does not claim">
 
-The service shape below comes from `render.yaml`, `docs/DEPLOY.md`, `docs/DECISIONS.md` (D-0006, D-0018) and the workflows in `.github/workflows`. We publish no uptime figure for the Render host: the repository holds no measurement of it. One hosted run (workflow `evidence-hosted`, run 42558107791, 9 Nov 2026) measured warmup after idle (n=2, max 662.17 ms against a 3000 ms budget; the host may never go cold because the uptime workflow pings it every 5 minutes, and Render was redeployed during the run) and the webhook route (n=50, p95 112.03 ms from a GitHub runner, network included). Evidence is in `docs/evidence/hosted/`. Two settings live in the Render dashboard, not in the blueprint, so the repository cannot prove them: the zero-downtime deploy switch and the custom domain.
+The service shape below comes from `render.yaml`, `docs/DEPLOY.md`, `docs/DECISIONS.md` (D-0006, D-0018) and the workflows in `.github/workflows`. We publish no uptime figure for the Render host: the repository holds no measurement of it. One hosted run (workflow `evidence-hosted`, run 42558107791, 9 Nov 2026) measured warmup after idle (n=2, max 662.17 ms against a 3000 ms budget; the host may not have gone cold, the uptime workflow runs only every few hours so it is not a keep-alive, and Render was redeployed during the run) and the webhook route (n=50, p95 112.03 ms from a GitHub runner, network included). Evidence is in `docs/evidence/hosted/`. Two settings live in the Render dashboard, not in the blueprint, so the repository cannot prove them: the zero-downtime deploy switch and the custom domain.
 
 </NotVerified>
 
@@ -109,7 +109,7 @@ The full CI map is on [CI and deployment map](/docs/run/ci-pipeline).
 | Check | Where it runs | What it touches |
 | --- | --- | --- |
 | Smoke after every deploy | `deploy-staging`, `deploy-prod` | `/healthz`, `/warmup`, webhook rejection, operator-key gate |
-| Uptime probe, every 5 minutes | `uptime` workflow | `/healthz`, `/readyz`, `/warmup`; two failed rounds in a row open one issue |
+| Uptime probe, best effort (observed every 4 to 8 hours) | `uptime` workflow | `/healthz`, `/readyz`, `/warmup`; a failure that stands after a 30 second re-probe opens one issue |
 | Nightly judge walkthrough | `judge-smoke` workflow | The hosted web app, which calls the Render API; fails red when the target is not configured |
 | Daily encrypted backup | `backup` workflow | The host's admin export route; the ledger, journals, holds and room log leave the disk as one encrypted artifact |
 

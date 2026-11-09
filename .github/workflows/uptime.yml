@@ -1,15 +1,19 @@
 name: uptime
-# Probes /healthz, /readyz and /warmup of the production host every 5 minutes (R-QA-045, R-QA-048).
-# A failed round shows as an error annotation. When the previous round also failed, the job opens
-# one Needs-you issue (or comments on the open one). GitHub may delay scheduled runs; the external
-# monitor in infra/uptime.md is the primary probe.
+# Probes /healthz, /readyz and /warmup of the production host (R-QA-045, R-QA-048).
+# Schedule: requested every 15 minutes, but GitHub schedules cron on a best-effort basis. Observed
+# on this repository (6 to 9 Nov 2026): one run every 4 to 8 hours, many skipped. Do not read this
+# workflow as a 5-minute or even a 15-minute probe. A failed round is re-probed after 30 seconds
+# inside the same job, and when the failure stands the job opens one Needs-you issue (or comments
+# on the open one) right away: it does not wait for a second run, because the next run may be
+# hours away. A reliable minute-level probe needs the external monitor described in infra/uptime.md
+# (none is configured yet).
 # On by default. Set the repository variable UPTIME_ENABLED to 'false' to switch it off.
 # Targets: the API (PRODUCTION_URL, default https://api.gavel.dualmindlab.tech), the web app
 # (WEB_URL variable, default https://gavel.dualmindlab.tech) and the docs host (DOCS_URL variable,
 # default https://docs.gavel.dualmindlab.tech). The job log lists every URL with status and latency.
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -27,7 +31,7 @@ jobs:
   probe:
     if: ${{ github.repository == 'harshbhx/gavel-auction' && vars.UPTIME_ENABLED != 'false' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     permissions:
       contents: read
       actions: read
@@ -52,26 +56,30 @@ jobs:
               *) echo "FAIL ${code:-000} ${ms}ms $url"; failed="$failed $url" ;;
             esac
           }
-          for path in /healthz /readyz /warmup; do probe "${PRODUCTION_URL%/}$path"; done
-          probe "${WEB_URL%/}/"
-          probe "${DOCS_URL%/}/"
+          round() {
+            failed=""
+            for path in /healthz /readyz /warmup; do probe "${PRODUCTION_URL%/}$path"; done
+            probe "${WEB_URL%/}/"
+            probe "${DOCS_URL%/}/"
+          }
+          round
+          if [ -n "$failed" ]; then
+            echo "Round failed, probing again in 30 seconds to rule out a blip"
+            sleep 30
+            round
+          fi
           if [ -n "$failed" ]; then
             echo "::error title=Uptime probe failed::failing:$failed"
             echo "failed=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Raise an alert after two failed rounds
+      - name: Raise an alert when the failure stands after the re-probe
         if: steps.probe.outputs.failed == 'true'
         run: |
-          prev="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/uptime.yml/runs?per_page=2&status=completed" --jq '.workflow_runs[0].conclusion // "none"')"
-          if [ "$prev" != "failure" ]; then
-            echo "First failed round, no alert yet (previous: $prev)"
+          title="Needs you: production host is failing its uptime probe"
+          open="$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')"
+          if [ -z "$open" ]; then
+            gh issue create --title "$title" --body "A probe round and its re-probe 30 seconds later both failed against the production host. See the uptime workflow run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. This workflow runs on GitHub's best-effort schedule, so the outage may have begun hours earlier."
           else
-            title="Needs you: production host is failing its uptime probe"
-            open="$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')"
-            if [ -z "$open" ]; then
-              gh issue create --title "$title" --body "Two consecutive probe rounds failed against the production host. See the uptime workflow run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID."
-            else
-              gh issue comment "$open" --body "Still failing: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-            fi
+            gh issue comment "$open" --body "Still failing: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           fi
           exit 1

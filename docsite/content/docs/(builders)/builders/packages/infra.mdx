@@ -85,7 +85,7 @@ The workflow files are in `.github/workflows`. Grouped by purpose, with the trig
 
 | Workflow | Schedule (UTC) |
 | --- | --- |
-| `uptime` | every 5 minutes; stays off until the repository variable `UPTIME_ENABLED` is true |
+| `uptime` | requested every 15 minutes, observed every 4 to 8 hours (GitHub cron is best effort); on by default, `UPTIME_ENABLED` set to `false` turns it off |
 | `gate-g3` | every 6 hours at minute 17 |
 | `nightly-sandbox` | 20:30 daily |
 | `judge-smoke` | 21:45 daily |
