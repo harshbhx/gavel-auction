@@ -14,6 +14,8 @@ const BAD_CONFIG_PORT = 4175;
  * routes a person actually uses on those devices. It keeps the artifact and the run time near flat.
  */
 const KEY_VIEWS = ['landing', 'join', 'register', 'bid', 'receipt', 'console', 'hub', 'screen'];
+/** Phone routes for the short and the 360 px projects: the main bidder, console and audit states. */
+const PHONE_VIEWS = ['join', 'bid', 'console', 'receipt', 'audit', 'try'];
 const PHONE = { deviceScaleFactor: 2, isMobile: true, hasTouch: true } as const;
 
 export default defineConfig({
@@ -76,6 +78,18 @@ export default defineConfig({
       name: 'phone-small',
       metadata: { theme: 'light', views: KEY_VIEWS },
       use: { browserName: 'chromium', viewport: { width: 320, height: 640 }, ...PHONE },
+    },
+    {
+      // The most common Android width; the layouts were only checked at 320 and 390.
+      name: 'phone-360',
+      metadata: { theme: 'light', views: PHONE_VIEWS },
+      use: { browserName: 'chromium', viewport: { width: 360, height: 640 }, ...PHONE },
+    },
+    {
+      // A phone turned sideways (iPhone 844x390): wide enough for the desktop breakpoints, very short.
+      name: 'phone-landscape',
+      metadata: { theme: 'light', views: PHONE_VIEWS },
+      use: { browserName: 'chromium', viewport: { width: 844, height: 390 }, ...PHONE },
     },
     {
       // Between the 720 and 900 px breakpoints.
