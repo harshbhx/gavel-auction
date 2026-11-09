@@ -1086,7 +1086,6 @@ class Service implements AuctionService, SettlePort {
    */
   private async sweepUnregisteredRaises(id: string, minAgeMs: number): Promise<void> {
     const auctionId = id as AuctionId;
-    if (!(await this.acceptsHolds(auctionId))) return;
     const now = this.payClock.nowMs();
     const stale = (await this.deps.holds.listByAuction(id)).filter(
       (h) =>
@@ -1096,7 +1095,8 @@ class Service implements AuctionService, SettlePort {
         now - h.createdAtMs > minAgeMs &&
         !this.registering.has(h.holdId),
     );
-    if (stale.length === 0) return;
+    // Only now look at the room: with no stale raise hold nothing is loaded (#1888).
+    if (stale.length === 0 || !(await this.acceptsHolds(auctionId))) return;
     const room = await this.room(auctionId);
     for (const h of stale) {
       if (room.holdRefs.get(h.bidderId as BidderId) === h.holdId) continue;

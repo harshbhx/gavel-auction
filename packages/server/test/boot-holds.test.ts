@@ -463,7 +463,7 @@ describe('hold routes in the production composition (HRD-69, issue 1074)', () =>
       // Too young: left alone, so a retry can still register it.
       await app.service.resume();
       expect(voids()).toBe(0);
-      vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 11 * 60_000 });
+      vi.useFakeTimers({ toFake: ['Date'], now: new SystemClock().now() + 11 * 60_000 });
       try {
         await app.service.resume();
       } finally {
