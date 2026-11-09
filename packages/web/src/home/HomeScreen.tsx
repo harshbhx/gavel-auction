@@ -253,10 +253,12 @@ export function HomeScreen({
 
       <main className="gv-home__main">
         <section className="gv-home__hero" aria-labelledby="home-hello">
-          <div className="gv-home__mark" aria-hidden="true">
-            <Logo variant="mark" height={72} decorative motion="load" />
+          <div className="gv-home__kickrow">
+            <span className="gv-home__mark" aria-hidden="true">
+              <Logo variant="mark" height={28} decorative motion="load" />
+            </span>
+            <p className="ui-kicker gv-home__kicker">{t('home.kicker')}</p>
           </div>
-          <p className="ui-kicker gv-home__kicker">{t('home.kicker')}</p>
           <h1 id="home-hello" className="gv-home__hello">
             <span className="gv-home__mask">
               <span className="gv-home__strike">{greeting.hello}</span>

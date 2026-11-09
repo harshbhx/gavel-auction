@@ -62,6 +62,11 @@ const EARLIER = [
 ];
 
 test.describe('home', () => {
+  test.beforeEach(async ({ page }) => {
+    // The entrance and the count-up are off, so every picture shows the settled screen.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+  });
+
   test('won, room still there', async ({ page, shoot }) => {
     await remember(page, [entry({}), ...EARLIER]);
     await mockApi(page, () => ({
