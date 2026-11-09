@@ -190,7 +190,6 @@ describe('banned wording (R-WEB-120, R-WEB-122)', () => {
       'ladder.fallback',
       'ladder.invariants.ok',
       'ladder.state.CAPTURED',
-      'receipt.failed',
       'replay.chapter.bid',
       'screen.settleSummary',
     ]);
