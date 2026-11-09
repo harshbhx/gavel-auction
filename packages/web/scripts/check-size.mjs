@@ -9,7 +9,7 @@
  * that JS and fails when it is over 180 KB. It also fails when the PayPal SDK loader, the QR
  * encoder, the replay player or AG Grid is part of that initial graph: those must be lazy chunks.
  * The lazy AG Grid chunk (assets/ag-grid-*.js, named by the Vite config) has its own budget: its gzip
- * size must stay under 380 KB, so a module added by accident shows up here.
+ * size must stay under 320 KB, so a module added by accident shows up here.
  * It also checks that index.html ships a Content-Security-Policy with
  * no inline script allowance (R-WEB-004).
  *
