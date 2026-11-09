@@ -254,12 +254,11 @@ const NODES: N[] = [
     id: 'staging',
     lane: 'deploy',
     name: 'deploy-staging',
-    l2: 'push to main (server paths), manual',
+    l2: 'manual only, not configured',
     l3: 'hook, wait for sha, smoke',
     detail: (
       <>
-        <b>deploy-staging.yml.</b> Environment <code>staging</code>. Runs on a push to main that touches the server, shared, engine or payments packages, <code>render.yaml</code> or{' '}
-        <code>scripts/smoke.sh</code>, and on manual dispatch. Needs the secret <code>RENDER_DEPLOY_HOOK_URL</code> and the variable <code>STAGING_URL</code>; without them it ends green with a notice.
+        <b>deploy-staging.yml.</b> Environment <code>staging</code>. Runs on manual dispatch only; it is not the deploy path (the owner uses Manual Deploy of main in Render). Needs the secret <code>RENDER_DEPLOY_HOOK_URL</code> and the variable <code>STAGING_URL</code>; without them the run says SKIPPED in its summary and fails when started by hand.
         It calls the Render deploy hook, waits until <code>/version</code> reports the commit, runs <code>scripts/smoke.sh</code> and then the security header and fuzz specs against staging.
       </>
     ),
@@ -410,7 +409,7 @@ export function CiPipelineDiagram() {
             <li>Pull requests that change certain paths: sim-multiday (simulated clock), ui-screens, the nightly-sandbox skip check, and the gate-g3-early read.</li>
             <li>Scheduled, in UTC: nightly-sandbox 20:30 daily, judge-smoke 21:45 daily, gate-g3 every six hours at minute 17, uptime every five minutes, backup 03:17 daily, audit Monday 05:17, mutation Sunday 03:00.</li>
             <li>Started by hand: gate-g3 to start the probe, gate-g3-early in read or probe mode, ui-screens-live with the web and API origins.</li>
-            <li>Deploy: deploy-staging on server-side changes on main, deploy-prod on a v tag that is the head of main, and the docs site deploy job.</li>
+            <li>Deploy: the API is deployed by hand in Render; deploy-staging (manual, not configured), deploy-prod on a v tag that is the head of main, and the docs site deploy job.</li>
           </ul>
         </>
       }

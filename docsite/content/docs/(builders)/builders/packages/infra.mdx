@@ -102,7 +102,7 @@ The workflow files are in `.github/workflows`. Grouped by purpose, with the trig
 </Tab>
 <Tab value="Deploy">
 
-`deploy-staging` runs on pushes to main that touch the server, shared, engine or payments packages (or `render.yaml`) and calls the Render deploy hook, then runs `scripts/smoke.sh`. `deploy-prod` runs on a `v*` tag or by hand, waits for approval on the `production` environment, refuses to deploy a commit that is not the head of main, polls `GET /version` until the new commit is served and rolls back automatically if it never appears. Both end green with a notice when their secrets are missing. Details: `infra/rollback.md` and [Operators: deploy](/docs/run/deploy).
+`deploy-staging` is an optional manual workflow (it does not run on pushes): it calls the Render deploy hook and runs `scripts/smoke.sh`, and says SKIPPED when its secrets are missing. The live API is deployed by the owner with Manual Deploy of `main` in the Render dashboard. `deploy-prod` runs on a `v*` tag or by hand, waits for approval on the `production` environment, refuses to deploy a commit that is not the head of main, polls `GET /version` until the new commit is served and rolls back automatically if it never appears. Both are unused until their secrets are added. Details: `infra/rollback.md` and [Operators: deploy](/docs/run/deploy).
 
 </Tab>
 <Tab value="Docs site">

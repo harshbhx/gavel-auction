@@ -5,7 +5,7 @@ Requirements: R-QA-042 (deploy), R-QA-044 (webhook registration). Hosting choice
 ## What is automated
 
 - `render.yaml` describes one Render web service, `gavel-host`, with one instance and a 1 GB disk at `/var/data`. Build command `npm ci --include=dev --ignore-scripts && npm run build -w @gavel/server` bundles the server and the workspace packages into `packages/server/dist/main.js` with esbuild; start command `npm run start:prod -w @gavel/server` runs `node dist/main.js`, so no dev tooling (vite, vite-node, vitest) is in the runtime. Health check `/healthz`. Boot validation exits 78 and names any missing or invalid required variable (R-QA-043). Auto deploy is off.
-- `.github/workflows/deploy-staging.yml` runs on `workflow_dispatch` and on pushes to `main` that touch server code. It runs in the GitHub environment `staging`, calls the Render deploy hook, waits, then runs `scripts/smoke.sh`. With the secrets missing it ends green and prints a notice naming what to add.
+- `.github/workflows/deploy-staging.yml` is an optional extra, not the deploy path. It runs on `workflow_dispatch` only, in the GitHub environment `staging`, calls the Render deploy hook, waits for `/version`, then runs `scripts/smoke.sh`. It is not configured today (no `RENDER_DEPLOY_HOOK_URL` or `STAGING_URL`): a run says SKIPPED in its job summary and a manual dispatch fails. It does not run on pushes.
 - `scripts/smoke.sh <base-url>` checks, with timeouts and a non-zero exit on failure: `GET /healthz` is 200, `GET /warmup` is 200 (a 404 is reported as skipped until the route is registered), an unsigned `POST /webhooks/paypal` is 400, `POST /api/auctions` without a key is 401 and, when `ADMIN_KEY` is set, with the key is 201.
 
 ## Manual steps (owner, once)
@@ -25,7 +25,7 @@ Requirements: R-QA-042 (deploy), R-QA-044 (webhook registration). Hosting choice
    - secret `ADMIN_KEY` (same value as on Render; optional, enables the create-auction smoke)
    - variable `STAGING_URL` (the same https URL as `PUBLIC_URL`)
 5. In the PayPal developer dashboard (sandbox app), Webhooks, add `https://<api-host>/webhooks/paypal` with the events the app uses: `PAYMENT.AUTHORIZATION.VOIDED`, `PAYMENT.AUTHORIZATION.DENIED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.DECLINED`. Other event types are acknowledged and ignored, so subscribing to them only spends verification calls. Copy the webhook id into `PAYPAL_WEBHOOK_ID` on Render only. Never commit it.
-6. Run the workflow `deploy-staging` by hand and read the smoke output.
+6. Optional: run the workflow `deploy-staging` by hand and read the smoke output (needs steps 3 and 4). Without them, run `scripts/smoke.sh <api-url>` yourself after a manual deploy.
 7. Web: the static build is hosted as a Cloudflare Worker with static assets (Cloudflare Pages project creation now redirects to Workers). `.github/workflows/deploy-web.yml` runs on `workflow_dispatch` and on pushes to `main` that touch `packages/web`, `packages/shared`, `infra/web` or the workflow. It runs `npm ci && npm run build -w @gavel/web` with `VITE_API_BASE` set to the API origin, `VITE_WS_BASE` derived from it (`wss://` plus the same host), `VITE_SANDBOX=true` and `VITE_PAYPAL_CLIENT_ID` taken from the `PAYPAL_CLIENT_ID` secret (a public sandbox client id), and uploads the artifact `web-dist`. With the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` set, it then runs `wrangler deploy` against `infra/web/wrangler.toml` (Worker `gavel-web`, assets directory `./dist`, `not_found_handling = "single-page-application"` so `/join/<room>` and `/r/<room>/bid` serve `index.html`). Without them the deploy job ends green with a notice; download the artifact by hand and deploy it:
 
    ```
@@ -37,13 +37,27 @@ Requirements: R-QA-042 (deploy), R-QA-044 (webhook registration). Hosting choice
 
    To switch the API the web build talks to, either set the repository variable `API_ORIGIN` (Settings, Secrets and variables, Actions, Variables; an `https://` origin with no path and no trailing slash, for example `https://api.example.org`), which applies to every later build, or run `deploy-web` once with the `api_origin` input (`gh workflow run deploy-web.yml -f api_origin=https://api.example.org`), which overrides the variable for that run only. An empty variable and an empty input use the current Render host, `https://api.gavel.dualmindlab.tech`. The build fails if the origin is malformed or the output still points at localhost. Rebuild and redeploy after any change, because the origin is compiled into the bundle.
 
-## Production deploy and rollback
+## The one real deploy path
+
+This is how code reaches the live site today. Nothing else deploys automatically.
+
+| Surface | Who and how |
+| ------- | ----------- |
+| API and WebSocket host (Render `gavel-host`) | The owner opens the Render dashboard, the service `gavel-host`, and chooses Manual Deploy, Deploy latest commit (head of `main`). `autoDeploy` is off in `render.yaml`. No GitHub workflow is involved. Afterwards check `GET /version` (it must show the commit) and run `scripts/smoke.sh <api-url>`. |
+| Web app (Cloudflare Worker `gavel-web`) | `deploy-web.yml` builds the artifact `web-dist` from `main`; the owner downloads it (`gh run download`) and runs `npx wrangler deploy` in `infra/web`. |
+| Docs site | `docsite.yml` builds the artifact `docsite` from `main`; the owner downloads it and runs `npx wrangler pages deploy` for the project `gavel-docs`. |
+
+The workflows `deploy-staging` and `deploy-prod` are optional extras that need Render secrets which are not set up; they deploy nothing until the owner adds them. The wrangler steps in `deploy-web.yml` and `docsite.yml` run only when the Cloudflare secrets exist; without them the run ends green after the build and leaves the artifact. Read the job summary, not just the check color, to see what was deployed.
+
+## Production deploy and rollback (optional workflow path)
+
+The rest of this section describes `deploy-prod`, which is not used today. It needs the `production` environment secrets and variables listed below.
 
 Surfaces and how each is deployed:
 
 | Surface                | Where it runs                                             | How it deploys                                                                                                                                       | Rollback                                                     |
 | ---------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| API and WebSocket host | Render web service `gavel-host`, Starter plan, 1 GB disk  | Manual deploys (auto deploy is off): `deploy-prod` calls the deploy hook after approval                                                              | `deploy-prod` with `rollback=true`                           |
+| API and WebSocket host | Render web service `gavel-host`, Starter plan, 1 GB disk  | Manual deploy of `main` in the Render dashboard (auto deploy is off); the `deploy-prod` workflow is an optional alternative                          | Render dashboard, Events, Rollback (or `deploy-prod` with `rollback=true`) |
 | Web app                | Cloudflare Worker `gavel-web` (`infra/web/wrangler.toml`) | `deploy-web` builds the artifact `web-dist` and runs `wrangler deploy`                                                                               | `npx wrangler rollback` (see `infra/rollback.md`)            |
 | Docs site              | Cloudflare, deployed by `docsite.yml` with wrangler       | The `docsite` artifact is published with `wrangler pages deploy` to the project named by the variable `DOCSITE_PAGES_PROJECT` (default `gavel-docs`) | Roll back to a previous deployment (see `infra/rollback.md`) |
 

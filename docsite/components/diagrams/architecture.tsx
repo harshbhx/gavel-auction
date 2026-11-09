@@ -88,8 +88,8 @@ const FLOWS: Record<
     edges: ['gha_hook', 'hook_host', 'up_host', 'gha_docs', 'cfweb'],
     text: (
       <>
-        GitHub Actions run the checks. A deploy calls the Render deploy hook and then smoke tests the host
-        (<code>deploy-staging.yml</code>, <code>deploy-prod.yml</code>); the docs site is built and published from{' '}
+        GitHub Actions run the checks. The API is deployed by hand in Render (the optional
+        <code>deploy-staging.yml</code> and <code>deploy-prod.yml</code> use the deploy hook); the docs site is built and published from{' '}
         <code>docsite.yml</code>. The uptime workflow probes the host every five minutes once it is switched on.
       </>
     ),
@@ -203,8 +203,8 @@ const DETAILS: Record<string, ReactNode> = {
   ),
   hook: (
     <>
-      <b>Render deploy hook.</b> <code>autoDeploy</code> is off in <code>render.yaml</code>; deploys come from <code>deploy-staging.yml</code> and{' '}
-      <code>deploy-prod.yml</code>, which then run <code>scripts/smoke.sh</code>.
+      <b>Render deploy hook.</b> <code>autoDeploy</code> is off in <code>render.yaml</code>; the owner deploys <code>main</code> with Manual Deploy in the Render dashboard. The optional{' '}
+      <code>deploy-staging.yml</code> and <code>deploy-prod.yml</code> call the hook and run <code>scripts/smoke.sh</code> once their secrets exist.
     </>
   ),
   uptime: (

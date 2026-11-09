@@ -4,6 +4,8 @@ Three surfaces deploy separately: the API on Render (this page, sections Deploy 
 
 Requirements: R-QA-042 (deploy), R-QA-049 (rollback). Workflow: `.github/workflows/deploy-prod.yml`.
 
+The live API is deployed today by the owner with Manual Deploy of `main` in the Render dashboard (see `docs/DEPLOY.md`, "The one real deploy path"); to roll that back, open the service in Render, Events, and use Rollback on an earlier deploy, then check `GET /version`. The `deploy-prod` workflow below is an optional alternative that needs secrets which are not set, and its rollback has not been rehearsed.
+
 ## Deploy
 
 1. Tag the commit: `git tag v0.1.0 && git push origin v0.1.0`, or run the workflow by hand from the Actions tab.

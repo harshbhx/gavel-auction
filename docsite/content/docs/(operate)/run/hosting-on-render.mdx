@@ -89,7 +89,7 @@ Render normally starts the new instance before it stops the old one. With files 
 
 ## Deploy flow
 
-1. A change to server code reaches `main`. The workflow `deploy-staging` runs (on pushes that touch the server, shared, engine or payments packages, `render.yaml` or the smoke script, and on demand). Production deploys use `deploy-prod` on a `v*` tag, behind a required reviewer.
+1. A change to server code reaches `main`. Today the owner then uses Manual Deploy of `main` in the Render dashboard and runs the smoke script. The optional workflows `deploy-staging` (manual) and `deploy-prod` (a `v*` tag, behind a required reviewer) do the same through the deploy hook once their secrets are set; they are not configured now.
 2. The job calls the Render **deploy hook** (a secret named `RENDER_DEPLOY_HOOK_URL`) and fails if Render does not answer 2xx.
 3. `scripts/wait-version.sh` polls `GET /version` until the host serves the commit being deployed. The old instance can answer first, so a green smoke against the old build would prove nothing.
 4. `scripts/smoke.sh` checks `/healthz`, `/warmup`, that an unsigned PayPal webhook is rejected with 400 and that creating an auction without the operator key is 401.
