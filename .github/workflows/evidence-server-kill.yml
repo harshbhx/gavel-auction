@@ -1,0 +1,96 @@
+name: evidence-server-kill
+# Real server process, whole auction, real SIGKILL during settlement, restart, on the real PayPal
+# sandbox (issue 2185). Manual dispatch only, from main, in the sandbox-nightly environment.
+# What runs: the real packages/server composition as a child process of the job (PAYMENTS=sandbox,
+# file store in a temp data folder, NODE_ENV test), three bidders with real sandbox holds of 200.00
+# each (3 authorizations, one buyer approval in a browser each), bids over WebSocket, the hammer
+# over HTTP, and the server kills itself with GAVEL_CHECKPOINT_KILL=after_capture_request_before_
+# response (SIGKILL, after PayPal was asked to capture and before the answer was handled). The
+# harness restarts the server on the same data folder and waits for the journal to read SETTLED,
+# then reads PayPal and the ledger. Checks: the process died at the checkpoint, a new pid came up,
+# exactly one capture for the hammer price on the winner, the other holds VOIDED, journal equal to
+# PayPal (0 differences), the ledger hash chain verifies and its captured amount equals PayPal's.
+# Wording to use for the result: "real server process on a CI runner against the real sandbox",
+# not "deployed host"; the Render-host variant (staging host and admin key) stays open.
+# Bounded: 3 authorizations, 1 capture, 2 voids, a few reads. Holds are enrolled through a test-only
+# route (/__e2e/enrol-sandbox, admin key, not production) because the product registers a bidder
+# through the web SDK popup; every settlement step after that is the real server and PayPal.
+# Artifact: server-kill-evidence.json (+ .md, .sha256) and server-kill-transcript.jsonl (harness steps
+# plus the redacted sandbox calls). Verdict line: "SERVER KILL VERDICT: PASS|FAIL|NOT RUN".
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  kill:
+    if: ${{ github.ref == 'refs/heads/main' && !github.event.repository.fork }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: sandbox-nightly
+    concurrency:
+      group: evidence-server-kill
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Check which secrets exist
+        id: secrets
+        # Only the names of missing secrets are printed, never a value.
+        env:
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          PAYPAL_WEBHOOK_ID: ${{ secrets.PAYPAL_WEBHOOK_ID }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+        run: |
+          missing=""
+          for name in PAYPAL_CLIENT_ID PAYPAL_CLIENT_SECRET PAYPAL_WEBHOOK_ID SANDBOX_BUYER_EMAIL SANDBOX_BUYER_PASSWORD; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Server kill skipped::Missing secrets:$missing"
+            echo "SERVER KILL VERDICT: NOT RUN (missing secrets:$missing)"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install the browser
+        if: ${{ steps.secrets.outputs.present == 'true' }}
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.49.1
+          cd "$RUNNER_TEMP/pw"
+          npx playwright install --with-deps chromium
+      - name: Kill the real server during settlement
+        if: ${{ steps.secrets.outputs.present == 'true' }}
+        env:
+          PAYPAL_ENV: sandbox
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          PAYPAL_WEBHOOK_ID: ${{ secrets.PAYPAL_WEBHOOK_ID }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
+        run: |
+          set -o pipefail
+          npm run kill:server -w @gavel/e2e -- --out "$RUNNER_TEMP/kill" | tee "$RUNNER_TEMP/kill.txt"
+      - name: Job summary
+        if: ${{ steps.secrets.outputs.present == 'true' && always() }}
+        run: |
+          if [ -f "$RUNNER_TEMP/kill/server-kill-evidence.md" ]; then cat "$RUNNER_TEMP/kill/server-kill-evidence.md" >> "$GITHUB_STEP_SUMMARY"; else echo "### Server kill: no evidence produced, nothing was verified" >> "$GITHUB_STEP_SUMMARY"; fi
+          grep -h "SERVER KILL VERDICT" "$RUNNER_TEMP/kill.txt" >> "$GITHUB_STEP_SUMMARY" || echo "SERVER KILL VERDICT: NOT RUN (no verdict printed)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the evidence
+        if: ${{ steps.secrets.outputs.present == 'true' && always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: server-kill-evidence
+          path: ${{ runner.temp }}/kill
+          if-no-files-found: warn
+          retention-days: 30

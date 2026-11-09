@@ -26,6 +26,12 @@ export interface StackOptions {
   env?: Record<string, string>;
   /** Run the fake PayPal in a process of its own, outside the server process. */
   externalFake?: boolean;
+  /**
+   * Real PayPal sandbox payments (PAYMENTS=sandbox). The server starts through
+   * `server-entry-sandbox.ts`; PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET and PAYPAL_WEBHOOK_ID
+   * come from the environment of this process. Not combined with `externalFake`.
+   */
+  sandbox?: boolean;
 }
 
 export interface Stack {
@@ -36,6 +42,8 @@ export interface Stack {
   readonly adminKey: string;
   /** Base URL of the fake PayPal control and snapshot routes; set with `externalFake`. */
   readonly fakeControlUrl: string | undefined;
+  /** Process id of the server process that runs now; changes after a restart. */
+  serverPid(): number | undefined;
   /** Resolves when the current server process has exited, for a checkpoint kill. */
   serverExited(): Promise<number | null>;
   /** SIGKILL the server process and wait for it to exit. */
@@ -66,13 +74,19 @@ export async function startStack(opts: StackOptions = {}): Promise<Stack> {
 
   const viteNode = bin(serverDir, 'vite-node/vite-node.mjs');
   const external = opts.externalFake === true;
+  const sandbox = opts.sandbox === true;
+  if (sandbox && external) throw new Error('sandbox and externalFake cannot be combined');
   const fakePort = external ? await freePort() : 0;
   const controlPort = external ? await freePort() : 0;
   const fakeUrl = external ? `http://127.0.0.1:${fakePort}` : undefined;
   const fakeControlUrl = external ? `http://127.0.0.1:${controlPort}` : undefined;
 
+  // The buyer logins are for the harness browser only; the server process never gets them.
+  const inherited = Object.fromEntries(
+    Object.entries(process.env).filter(([k]) => !(sandbox && /^SANDBOX_/.test(k))),
+  );
   const serverEnv = (checkpoint: Checkpoint | undefined): NodeJS.ProcessEnv => ({
-    ...process.env,
+    ...inherited,
     NODE_ENV: 'test',
     PORT: String(serverPort),
     PUBLIC_URL: serverUrl,
@@ -80,7 +94,7 @@ export async function startStack(opts: StackOptions = {}): Promise<Stack> {
     ADMIN_KEY: ADMIN,
     STORE: 'file',
     DATA_DIR: dataDir,
-    PAYMENTS: 'fake',
+    PAYMENTS: sandbox ? 'sandbox' : 'fake',
     PAYPAL_ENV: 'sandbox',
     ...(external && fakeUrl !== undefined && fakeControlUrl !== undefined
       ? { GAVEL_E2E_FAKE_URL: fakeUrl, GAVEL_E2E_FAKE_CONTROL_URL: fakeControlUrl }
@@ -92,10 +106,12 @@ export async function startStack(opts: StackOptions = {}): Promise<Stack> {
     new ManagedProcess({
       name: 'server',
       command: process.execPath,
-      args: external
-        ? [viteNode, join(E2E_DIR, 'src', 'runner', 'server-entry.ts')]
-        : [viteNode, 'src/main.ts'],
-      cwd: external ? E2E_DIR : serverDir,
+      args: sandbox
+        ? [viteNode, join(E2E_DIR, 'src', 'runner', 'server-entry-sandbox.ts')]
+        : external
+          ? [viteNode, join(E2E_DIR, 'src', 'runner', 'server-entry.ts')]
+          : [viteNode, 'src/main.ts'],
+      cwd: external || sandbox ? E2E_DIR : serverDir,
       env: serverEnv(checkpoint),
     });
 
@@ -160,6 +176,7 @@ export async function startStack(opts: StackOptions = {}): Promise<Stack> {
     dataDir,
     adminKey: ADMIN,
     fakeControlUrl,
+    serverPid: () => server.pid,
     serverExited: () => server.exited(),
     killServer: () => server.kill(),
     restartServer: async () => {
