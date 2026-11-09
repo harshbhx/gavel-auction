@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { t } from '../../copy/t';
+import { clearAuctioneerToken } from '../../store/session';
+import { forgetHubRoom } from '../hub/hubKeys';
 import { ApiError, apiErrorFor, unreachable } from '../../net/apiError';
 import { ApiProblem, type ApiProblemKind } from './ApiProblem';
 import '../flows.css';
@@ -31,6 +33,11 @@ export function RoomGate({ apiBase, roomId, onNavigate, children }: RoomGateProp
         (): Check => ({ kind: 'problem', error: unreachable() }),
       )
       .then((next) => {
+        // The room ended or expired: its keys must not outlive it in this tab.
+        if (next.kind === 'problem' && next.error.kind === 'notFound') {
+          clearAuctioneerToken(roomId);
+          forgetHubRoom(roomId);
+        }
         if (live) setCheck(next);
       });
     return () => {

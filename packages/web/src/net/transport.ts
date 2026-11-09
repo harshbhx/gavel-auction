@@ -11,6 +11,8 @@ export interface Transport {
   onMessage(cb: (m: ServerMessage) => void): Unsubscribe;
   onStatus(cb: (s: TransportStatus) => void): Unsubscribe;
   close(): void;
+  /** WebSocket close code of the socket that ended last, when the transport knows it. */
+  readonly lastCloseCode?: number | null;
 }
 
 /** The price, leader paddle (0 for none) and seq the auctioneer saw when confirming a hammer. */

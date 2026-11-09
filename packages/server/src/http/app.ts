@@ -51,7 +51,8 @@ export interface HttpDeps {
 
 /** An error with a status the shared table does not carry (413, 415). */
 /** Response headers a browser page may read cross-origin. */
-export const CORS_EXPOSE = 'x-request-id, retry-after';
+// `date` lets the web hub measure how far a device clock is from the server's (#2230).
+export const CORS_EXPOSE = 'x-request-id, retry-after, date';
 
 export class HttpError extends GavelError {
   constructor(

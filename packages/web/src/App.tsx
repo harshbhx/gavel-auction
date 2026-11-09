@@ -34,6 +34,8 @@ import { renderAuditLedger } from './screens/audit/AuditGridSlot';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
 import { OfflineBanner } from './a11y/OfflineBanner';
 import { BusyBanner } from './a11y/BusyBanner';
+import { Button } from './design/primitives/Button';
+import { useConnection } from './net/connection';
 import { SkipLink } from './a11y/SkipLink';
 import { useRouteChrome } from './a11y/useRouteChrome';
 import { RoomGate } from './screens/states/RoomGate';
@@ -241,6 +243,7 @@ function LiveRoute({
     scripted ?? null,
   );
   const view = usePendingView(room);
+  const connection = useConnection();
   const lastError = useRoom((s) => s.lastError);
   const refused = lastError !== null && isHaltingError(lastError.code) ? lastError : null;
   const dead = refused !== null && isTerminalError(refused.code);
@@ -252,7 +255,7 @@ function LiveRoute({
       clearSession(roomId, undefined, role);
       clearBidderSession(roomId);
     } else {
-      // The screen, console and audit tokens live in memory only: drop the dead one, keep the bidder.
+      // Console, screen and audit tokens live in memory and tab storage: drop the dead one, keep the bidder.
       if (role === 'screen') clearSession(roomId, undefined, role);
       clearAuctioneerToken(roomId);
     }
@@ -266,6 +269,17 @@ function LiveRoute({
   const joinCode = useRoom((s) => s.snapshot?.joinCode ?? null);
   const respond = (confirmId: string, accept: boolean): void =>
     transport?.send({ v: PROTOCOL_VERSION, t: 'confirm_response', confirmId, accept });
+  if (connection.superseded === true) {
+    // The server closed this tab for a newer one on the same link. Reconnecting by itself would
+    // only evict that tab in turn, so wait until the person asks to use this one.
+    return (
+      <main data-route={match.route.id} data-superseded="true">
+        <h1 tabIndex={-1}>{t('err.superseded.title')}</h1>
+        <p role="status">{t('err.superseded.help')}</p>
+        <Button onClick={() => setAttempt((n) => n + 1)}>{t('err.superseded.use')}</Button>
+      </main>
+    );
+  }
   if (refused !== null) {
     // The connection is stopped; the bid screen would only say it is waiting for a lot.
     return (
