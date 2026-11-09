@@ -81,6 +81,14 @@ main[data-route='return'] {
   box-shadow: var(--shadow-1);
 }
 
+/* Refusal pages: ink on paper in every theme (the tokens below meet 4.5:1 together). */
+main[data-route='token-gate'] .gv-flow__action,
+.gv-flow__error ~ .gv-flow__action {
+  background: var(--color-fg);
+  border-color: var(--color-fg);
+  color: var(--color-bg);
+}
+
 .gv-flow__action:focus-visible {
   outline: var(--border-width-strong) solid var(--color-focus);
   outline-offset: 3px;

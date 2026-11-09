@@ -80,6 +80,15 @@ describe('BidScreen (T-WEB-033)', () => {
     expect(onBid).toHaveBeenCalledWith(5000);
   });
 
+  it('keeps the alert settings above the sticky bid bar, not under it', () => {
+    const { container } = render(<BidScreen store={makeStore(50000)} onBid={() => undefined} />);
+    const prefs = container.querySelector('.bid__prefs');
+    const bar = screen.getByTestId('bid-bar');
+    expect(prefs?.querySelector('[data-testid="alerts-mute"]')).not.toBeNull();
+    expect(prefs?.compareDocumentPosition(bar)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(bar.style.bottom).toBe('');
+  });
+
   it('disables bids above the ceiling', () => {
     render(<BidScreen store={makeStore(6000)} onBid={() => undefined} />);
     const above = screen.getByRole('button', { name: t('bid.quick', { amount: '$100' }) });

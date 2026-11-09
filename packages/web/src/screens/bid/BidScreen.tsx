@@ -151,6 +151,14 @@ export function BidScreen({
         <StatusChip status={status} />
       </div>
 
+      <div className="bid__prefs">
+        <label className="bid__vibrate">
+          <input type="checkbox" checked={vibrate} onChange={(e) => setVibrate(e.target.checked)} />
+          <span>{t('bid.vibrate')}</span>
+        </label>
+        <MuteToggle />
+      </div>
+
       <section className="bid__lot">
         <div data-slot="lot-image" aria-hidden="true" className="bid__lotimg" />
         {price === null && <p className="bid__wait">{t('bid.waitingLot')}</p>}
@@ -184,19 +192,12 @@ export function BidScreen({
         </Button>
       )}
 
-      <label className="bid__vibrate">
-        <input type="checkbox" checked={vibrate} onChange={(e) => setVibrate(e.target.checked)} />
-        <span>{t('bid.vibrate')}</span>
-      </label>
-      <MuteToggle />
-
       {canBid && !unsent && (
         <section
           data-testid="bid-bar"
           className="bid__bar"
           style={{
             position: 'sticky',
-            bottom: 0,
             paddingBottom: 'env(safe-area-inset-bottom)',
           }}
         >

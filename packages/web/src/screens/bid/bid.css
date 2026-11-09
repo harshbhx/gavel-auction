@@ -119,6 +119,19 @@
   text-transform: uppercase;
 }
 
+/* Settings sit above the lot, clear of the sticky bid bar and the help button. */
+.bid__prefs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.bid__prefs [data-testid='alerts-mute'] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
 .bid__vibrate {
   display: flex;
   align-items: center;
@@ -136,6 +149,8 @@
 
 /* Bid bar: stays reachable at the bottom of the phone. */
 .bid__bar {
+  /* Sits above the floating help button, which owns the bottom corner. */
+  bottom: var(--help-reserve, 0px);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
