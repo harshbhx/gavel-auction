@@ -76,10 +76,30 @@ test('landing: Tab reaches every control with a visible ring and never traps', a
   await page.keyboard.press('Shift+Tab');
 });
 
-test('gallery: dialog traps focus and gives it back on close', async ({ page }) => {
+/**
+ * Opens /gallery and puts focus on the dialog opener. The route chrome moves focus to the main
+ * heading once the lazy route has rendered (useRouteChrome); in WebKit that sometimes ran after the
+ * test's own focus() call and took focus away, so the key press went to the heading and no dialog
+ * opened (issue 2271, page snapshot shows the h1 active). Wait for that move first, then focus the
+ * opener and check it holds before pressing anything.
+ */
+async function focusDialogOpener(page: Page) {
   await page.goto('/gallery');
   const opener = page.getByTestId(TEST_IDS.dialogOpen);
-  await opener.focus();
+  await expect(opener).toBeVisible();
+  // Focus moves to the heading when the route chrome has run; tolerate a route that leaves it.
+  await expect(page.getByRole('heading', { level: 1 }))
+    .toBeFocused({ timeout: 5_000 })
+    .catch(() => undefined);
+  await expect(async () => {
+    await opener.focus();
+    await expect(opener).toBeFocused({ timeout: 500 });
+  }).toPass({ timeout: 10_000 });
+  return opener;
+}
+
+test('gallery: dialog traps focus and gives it back on close', async ({ page }) => {
+  const opener = await focusDialogOpener(page);
   await page.keyboard.press('Enter');
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -100,9 +120,7 @@ test('gallery: dialog traps focus and gives it back on close', async ({ page }) 
 });
 
 test('gallery: a button opens the dialog with Enter and with Space', async ({ page }) => {
-  await page.goto('/gallery');
-  const opener = page.getByTestId(TEST_IDS.dialogOpen);
-  await opener.focus();
+  await focusDialogOpener(page);
   await page.keyboard.press('Space');
   await expect(page.getByRole('dialog')).toBeVisible();
 });
