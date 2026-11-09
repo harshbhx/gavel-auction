@@ -71,9 +71,9 @@ describe('socket upgrades are limited per address (RT4-sec-09, FIX-84)', () => {
   /** Opens a socket and reports what the browser can see: 101 then the first frame and close. */
   interface Outcome {
     status: number;
-    frame?: { t: string; code: string; message: string; retryAfterMs?: number };
-    closeCode?: number;
-    closeReason?: string;
+    frame?: { t: string; code: string; message: string; retryAfterMs?: number } | undefined;
+    closeCode?: number | undefined;
+    closeReason?: string | undefined;
   }
   const upgrade = (port: number, origin: string = ORIGIN): Promise<Outcome> =>
     new Promise((resolve) => {

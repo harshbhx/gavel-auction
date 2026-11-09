@@ -830,7 +830,11 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     store: stores.room,
     service,
     makeStt: stt.make,
-    admitUpgrade,
+    // The audio socket has no client that reads a refusal frame: a denial stays a bare 429.
+    admitUpgrade: (req) => {
+      const admitted = admitUpgrade(req);
+      return typeof admitted === 'object' ? undefined : admitted;
+    },
     log: (message, fields) => log.warn(message, fields),
   });
 

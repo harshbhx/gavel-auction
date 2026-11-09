@@ -102,6 +102,7 @@ function setup(random = 0.5, seq = 0, token = 'tok') {
     random: () => random,
     setTimer: clock.setTimer,
     clearTimer: clock.clearTimer,
+    now: () => clock.now,
   });
   return { clock, transport, manager, received };
 }
@@ -135,7 +136,7 @@ describe('ConnectionManager refused as too busy (FIX-84, #2228)', () => {
       refuse(transport, 3000);
       const until = manager.getSnapshot().busyUntilMs;
       expect(until).toBeDefined();
-      waits.push(Math.round(((until ?? 0) - Date.now()) / 1000));
+      waits.push(Math.round(((until ?? 0) - clock.now) / 1000));
       clock.advance(60_000);
     }
     // 5, 10, 20, 40, then capped at 60 s.
@@ -147,11 +148,11 @@ describe('ConnectionManager refused as too busy (FIX-84, #2228)', () => {
   });
 
   it('honours a longer retryAfterMs, up to one minute', () => {
-    const { transport, manager } = setup();
+    const { clock, transport, manager } = setup();
     transport.failConnect = false;
     manager.start();
     refuse(transport, 30_000);
-    const wait = ((manager.getSnapshot().busyUntilMs ?? 0) - Date.now()) / 1000;
+    const wait = ((manager.getSnapshot().busyUntilMs ?? 0) - clock.now) / 1000;
     expect(Math.round(wait)).toBe(30);
   });
 

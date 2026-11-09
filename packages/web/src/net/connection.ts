@@ -49,6 +49,8 @@ export interface ConnectionDeps {
   /** Defaults to Math.random. Returns a value in [0, 1). */
   random?: () => number;
   setTimer?: (fn: () => void, ms: number) => unknown;
+  /** Epoch ms, for the busy notice. Defaults to Date.now. */
+  now?: () => number;
   clearTimer?: (handle: unknown) => void;
 }
 
@@ -196,7 +198,7 @@ export class ConnectionManager {
       const rung = Math.min(this.busyCount - 1, BUSY_BACKOFF_MS.length - 1);
       const step = BUSY_BACKOFF_MS[rung] ?? 60_000;
       delay = Math.min(Math.max(step, this.busyWaitMs), 60_000);
-      this.update({ ...this.snapshot, busyUntilMs: Date.now() + delay });
+      this.update({ ...this.snapshot, busyUntilMs: (this.deps.now ?? Date.now)() + delay });
     }
     this.reconnectTimer = this.setTimer(() => {
       this.reconnectTimer = null;
