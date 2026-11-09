@@ -163,25 +163,25 @@ The images inside `devpost/DESCRIPTION.md`, numbered in the order they appear. A
 
 Used in: Devpost description (About the project).
 
-| File | Pixels | Size | URL |
-| ---- | ------ | ---- | --- |
+| File                         | Pixels   | Size   | URL                                                                                                                |
+| ---------------------------- | -------- | ------ | ------------------------------------------------------------------------------------------------------------------ |
 | `01-banner-poster.png`       | 1600x500 | 68 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/01-banner-poster.png       |
 | `01-banner.gif`              | 1200x375 | 478 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/01-banner.gif              |
-| `02-inspiration.png`        | 1000x560 | 43 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/02-inspiration.png        |
-| `03-what-it-does.png`       | 1000x560 | 184 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/03-what-it-does.png       |
+| `02-inspiration.png`         | 1000x560 | 43 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/02-inspiration.png         |
+| `03-what-it-does.png`        | 1000x560 | 184 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/03-what-it-does.png        |
 | `04-how-it-works.gif`        | 1200x800 | 514 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/04-how-it-works.gif        |
 | `05-architecture.gif`        | 1200x800 | 532 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/05-architecture.gif        |
-| `06-judge-flow.png` | 1200x800 | 318 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/06-judge-flow.png |
+| `06-judge-flow.png`          | 1200x800 | 318 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/06-judge-flow.png          |
 | `07-audit-and-verify.gif`    | 1200x800 | 567 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/07-audit-and-verify.gif    |
-| `08-partners.png` | 1200x800 | 64 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/08-partners.png |
-| `09-open-data-and-gates.png` | 1200x800 | 85 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/09-open-data-and-gates.png |
-| `10-how-we-built-it.png`    | 1000x560 | 35 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/10-how-we-built-it.png    |
-| `11-built-with.png`         | 1000x560 | 53 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/11-built-with.png         |
-| `12-challenges.png`         | 1000x560 | 47 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/12-challenges.png         |
-| `13-results-poster.png`    | 1000x560 | 48 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/13-results-poster.png    |
-| `13-results.gif`           | 1000x560 | 315 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/13-results.gif           |
-| `14-what-we-learned.png`    | 1000x560 | 38 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/14-what-we-learned.png    |
-| `15-what-is-next.png`       | 1000x560 | 43 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/15-what-is-next.png       |
+| `08-partners.png`            | 1200x800 | 64 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/08-partners.png            |
+| `09-open-data-and-gates.png` | 1200x800 | 85 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/09-open-data-and-gates.png |
+| `10-how-we-built-it.png`     | 1000x560 | 35 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/10-how-we-built-it.png     |
+| `11-built-with.png`          | 1000x560 | 53 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/11-built-with.png          |
+| `12-challenges.png`          | 1000x560 | 47 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/12-challenges.png          |
+| `13-results-poster.png`      | 1000x560 | 48 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/13-results-poster.png      |
+| `13-results.gif`             | 1000x560 | 315 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/13-results.gif             |
+| `14-what-we-learned.png`     | 1000x560 | 38 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/14-what-we-learned.png     |
+| `15-what-is-next.png`        | 1000x560 | 43 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/15-what-is-next.png        |
 | `16-ending.gif`              | 1200x800 | 779 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/16-ending.gif              |
 
 ### `devpost/`
@@ -243,24 +243,24 @@ MP4 and WebM of the README loops.
 
 Used in: Editors, social posts and the video; same animation as `brand/readme`.
 
-| File                      | Pixels | Size   | URL                                                                                                      |
-| ------------------------- | ------ | ------ | -------------------------------------------------------------------------------------------------------- |
-| `how-it-works-dark.mp4`   |        | 67 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/how-it-works-dark.mp4   |
-| `how-it-works-dark.webm`  |        | 73 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/how-it-works-dark.webm  |
-| `how-it-works.mp4`        |        | 67 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/how-it-works.mp4        |
-| `how-it-works.webm`       |        | 73 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/how-it-works.webm       |
-| `readme-banner-dark.mp4`  |        | 84 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-banner-dark.mp4  |
-| `readme-banner-dark.webm` |        | 55 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-banner-dark.webm |
-| `readme-banner.mp4`       |        | 81 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-banner.mp4       |
-| `readme-banner.webm`      |        | 54 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-banner.webm      |
-| `readme-footer-dark.mp4`  |        | 81 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-footer-dark.mp4  |
-| `readme-footer-dark.webm` |        | 59 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-footer-dark.webm |
-| `readme-footer.mp4`       |        | 80 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-footer.mp4       |
-| `readme-footer.webm`      |        | 58 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-footer.webm      |
-| `readme-stats-dark.mp4`   |        | 80 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-stats-dark.mp4   |
-| `readme-stats-dark.webm`  |        | 56 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-stats-dark.webm  |
-| `readme-stats.mp4`        |        | 78 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-stats.mp4        |
-| `readme-stats.webm`       |        | 56 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-stats.webm       |
+| File                      | Pixels | Size  | URL                                                                                                      |
+| ------------------------- | ------ | ----- | -------------------------------------------------------------------------------------------------------- |
+| `how-it-works-dark.mp4`   |        | 67 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/how-it-works-dark.mp4   |
+| `how-it-works-dark.webm`  |        | 73 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/how-it-works-dark.webm  |
+| `how-it-works.mp4`        |        | 67 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/how-it-works.mp4        |
+| `how-it-works.webm`       |        | 73 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/how-it-works.webm       |
+| `readme-banner-dark.mp4`  |        | 84 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-banner-dark.mp4  |
+| `readme-banner-dark.webm` |        | 55 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-banner-dark.webm |
+| `readme-banner.mp4`       |        | 81 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-banner.mp4       |
+| `readme-banner.webm`      |        | 54 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-banner.webm      |
+| `readme-footer-dark.mp4`  |        | 81 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-footer-dark.mp4  |
+| `readme-footer-dark.webm` |        | 59 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-footer-dark.webm |
+| `readme-footer.mp4`       |        | 80 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-footer.mp4       |
+| `readme-footer.webm`      |        | 58 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-footer.webm      |
+| `readme-stats-dark.mp4`   |        | 80 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-stats-dark.mp4   |
+| `readme-stats-dark.webm`  |        | 56 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-stats-dark.webm  |
+| `readme-stats.mp4`        |        | 78 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-stats.mp4        |
+| `readme-stats.webm`       |        | 56 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/readme-stats.webm       |
 
 ### `video/motion/`
 
@@ -285,10 +285,10 @@ MP4 and WebM of the one animated gallery slide, the hero.
 
 Used in: Optional video version of the hero; not uploaded to the Devpost gallery.
 
-| File | Pixels | Size | URL |
-| ---- | ------ | ---- | --- |
-| `01-hero.mp4`                 |        | 356 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-gallery/01-hero.mp4                 |
-| `01-hero.webm`                |        | 227 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-gallery/01-hero.webm                |
+| File           | Pixels | Size   | URL                                                                                                    |
+| -------------- | ------ | ------ | ------------------------------------------------------------------------------------------------------ |
+| `01-hero.mp4`  |        | 356 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-gallery/01-hero.mp4  |
+| `01-hero.webm` |        | 227 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-gallery/01-hero.webm |
 
 ### `video/devpost-description/`
 
@@ -296,20 +296,20 @@ MP4 and WebM of the animated images in the Devpost description (same numbering a
 
 Used in: Optional video versions of the description animations.
 
-| File | Pixels | Size | URL |
-| ---- | ------ | ---- | --- |
-| `01-banner.mp4`     |        | 177 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/01-banner.mp4     |
-| `01-banner.webm`    |        | 147 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/01-banner.webm    |
-| `04-how-it-works.mp4`         |        | 148 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/04-how-it-works.mp4         |
-| `04-how-it-works.webm`        |        | 112 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/04-how-it-works.webm        |
-| `05-architecture.mp4`         |        | 107 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/05-architecture.mp4         |
-| `05-architecture.webm`        |        | 82 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/05-architecture.webm        |
-| `07-audit-and-verify.mp4`     |        | 130 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/07-audit-and-verify.mp4     |
-| `07-audit-and-verify.webm`    |        | 91 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/07-audit-and-verify.webm    |
-| `13-results.mp4`  |        | 89 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/13-results.mp4  |
-| `13-results.webm` |        | 89 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/13-results.webm |
-| `16-ending.mp4`               |        | 205 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/16-ending.mp4               |
-| `16-ending.webm`              |        | 140 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/16-ending.webm              |
+| File                       | Pixels | Size   | URL                                                                                                                    |
+| -------------------------- | ------ | ------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `01-banner.mp4`            |        | 177 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/01-banner.mp4            |
+| `01-banner.webm`           |        | 147 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/01-banner.webm           |
+| `04-how-it-works.mp4`      |        | 148 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/04-how-it-works.mp4      |
+| `04-how-it-works.webm`     |        | 112 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/04-how-it-works.webm     |
+| `05-architecture.mp4`      |        | 107 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/05-architecture.mp4      |
+| `05-architecture.webm`     |        | 82 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/05-architecture.webm     |
+| `07-audit-and-verify.mp4`  |        | 130 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/07-audit-and-verify.mp4  |
+| `07-audit-and-verify.webm` |        | 91 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/07-audit-and-verify.webm |
+| `13-results.mp4`           |        | 89 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/13-results.mp4           |
+| `13-results.webm`          |        | 89 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/13-results.webm          |
+| `16-ending.mp4`            |        | 205 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/16-ending.mp4            |
+| `16-ending.webm`           |        | 140 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/16-ending.webm           |
 
 ## Originals not copied here
 
