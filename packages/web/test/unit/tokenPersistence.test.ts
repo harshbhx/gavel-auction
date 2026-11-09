@@ -101,7 +101,7 @@ describe('hub keys survive a reload in this tab (#2225)', () => {
 
   it('drops keys of a room that has expired', () => {
     const storage = memory();
-    rememberHubKeys('room-x', { ...parseHubFragment(hash), expiresAt: Date.now() - 1000 }, storage);
+    rememberHubKeys('room-x', { ...parseHubFragment(hash), expiresAt: 1 }, storage);
     const keys = readHubKeys('room-x', '', storage);
     expect(keys.auctioneer).toBeNull();
     expect(storage.data.size).toBe(0);
