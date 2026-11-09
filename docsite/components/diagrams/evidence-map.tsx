@@ -166,9 +166,9 @@ function rows(): Row[] {
       id: 'live',
       claim: 'The hosted app passes the nightly judge walkthrough',
       status: 'OPEN',
-      ranOn: 'Not run',
+      ranOn: 'Nightly; latest run in Actions',
       evidence: ['.github/workflows/judge-smoke.yml', '.github/workflows/uptime.yml'],
-      limit: 'The workflow fails when JUDGE_URL is empty, so a run that tested nothing cannot look like a pass. The uptime probe is off until UPTIME_ENABLED is true. docs/GATES.md keeps staging security and load tests UNVERIFIED until a staging URL exists.',
+      limit: 'The workflow targets the public domains and fails when any step of the journey fails, so a green run means the journey worked. The uptime probe is off until UPTIME_ENABLED is true. docs/GATES.md keeps staging security and load tests UNVERIFIED until a staging URL exists.',
     },
   ];
 }

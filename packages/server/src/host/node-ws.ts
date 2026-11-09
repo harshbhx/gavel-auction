@@ -28,6 +28,14 @@ export interface SocketHandlers {
   onClosed?: (code: number, reason: string) => void;
 }
 
+/** A refusal the host delivers over the socket: an error frame, then a close with 4429. */
+export interface UpgradeDenied {
+  readonly deny: { readonly retryAfterMs: number };
+}
+
+/** Message of the error frame sent with an UpgradeDenied; the web client keys on it. */
+export const TOO_MANY_CONNECTIONS = 'too_many_connections';
+
 export interface NodeWsHostOptions {
   /** The HTTP server whose `upgrade` event this host serves. */
   server: Server;
@@ -42,10 +50,12 @@ export interface NodeWsHostOptions {
   maxPayload?: number;
   /**
    * Asked for every upgrade that passed the path and Origin checks, before the handshake.
-   * Return an idempotent release callback to admit the socket (called when it closes), or
-   * undefined to answer 429 (R-RT-120).
+   * Return an idempotent release callback to admit the socket (called when it closes), a
+   * `deny` to accept the handshake and close at once with 4429 and an error frame the client can
+   * read (a browser cannot read an HTTP refusal, so it would only see "offline"), or undefined to
+   * answer a bare 429 (R-RT-120, kept for floods beyond the hard cap).
    */
-  admitUpgrade?: (req: IncomingMessage) => (() => void) | undefined;
+  admitUpgrade?: (req: IncomingMessage) => (() => void) | UpgradeDenied | undefined;
 }
 
 export interface NodeWsHost {
@@ -80,6 +90,25 @@ export function createNodeWsHost(opts: NodeWsHostOptions): NodeWsHost {
     const release = opts.admitUpgrade ? opts.admitUpgrade(req) : () => undefined;
     if (release === undefined) {
       refuse(socket, 429, 'Too Many Requests');
+      return;
+    }
+    if (typeof release === 'object') {
+      const { retryAfterMs } = release.deny;
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        ws.on('error', () => undefined);
+        ws.send(
+          JSON.stringify({
+            v: 1,
+            t: 'error',
+            code: 'rate_limited',
+            message: TOO_MANY_CONNECTIONS,
+            retryAfterMs,
+          }),
+          () => ws.close(RATE_LIMITED_CODE, TOO_MANY_CONNECTIONS),
+        );
+        // A peer that never answers the close frame must not hold the socket open.
+        setTimeout(() => ws.terminate(), 2000).unref();
+      });
       return;
     }
     // The handshake callback never runs when the peer drops mid-handshake or sends a bad

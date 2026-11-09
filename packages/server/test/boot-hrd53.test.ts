@@ -67,21 +67,50 @@ describe('security headers on every live route (RT4-sec-08)', () => {
   });
 });
 
-describe('socket upgrades are limited per address (RT4-sec-09)', () => {
-  const upgrade = (port: number): Promise<number> =>
+describe('socket upgrades are limited per address (RT4-sec-09, FIX-84)', () => {
+  /** Opens a socket and reports what the browser can see: 101 then the first frame and close. */
+  interface Outcome {
+    status: number;
+    frame?: { t: string; code: string; message: string; retryAfterMs?: number } | undefined;
+    closeCode?: number | undefined;
+    closeReason?: string | undefined;
+  }
+  const upgrade = (port: number, origin: string = ORIGIN): Promise<Outcome> =>
     new Promise((resolve) => {
-      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, { origin: ORIGIN });
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, { origin });
       sockets.push(ws);
-      ws.on('unexpected-response', (_req, res) => resolve(res.statusCode ?? 0));
-      ws.on('open', () => resolve(101));
+      const out: Outcome = { status: 101 };
+      ws.on('unexpected-response', (_req, res) => resolve({ status: res.statusCode ?? 0 }));
+      ws.on('message', (data) => {
+        out.frame = JSON.parse(String(data)) as Outcome['frame'];
+      });
+      ws.on('close', (code, reason) => {
+        out.closeCode = code;
+        out.closeReason = reason.toString('utf8');
+        resolve(out);
+      });
+      // An admitted socket stays open: report it once the handshake is done and nothing follows.
+      ws.on('open', () => {
+        setTimeout(() => {
+          if (ws.readyState === WebSocket.OPEN) resolve(out);
+        }, 150);
+      });
       ws.on('error', () => undefined);
     });
 
-  it('answers 429 once the join budget is spent', async () => {
+  it('tells the 4th socket, once the join budget is spent, with a 4429 close and a frame', async () => {
     const port = await boot({ RATE_JOIN_BURST: '3', RATE_JOIN_PER_MIN: '1' });
-    const codes: number[] = [];
-    for (let i = 0; i < 5; i += 1) codes.push(await upgrade(port));
-    expect(codes).toEqual([101, 101, 101, 429, 429]);
+    const outcomes: Outcome[] = [];
+    for (let i = 0; i < 5; i += 1) outcomes.push(await upgrade(port));
+    expect(outcomes.slice(0, 3).map((o) => o.closeCode)).toEqual([undefined, undefined, undefined]);
+    for (const o of outcomes.slice(3)) {
+      expect(o.status).toBe(101);
+      expect(o.closeCode).toBe(4429);
+      expect(o.closeReason).toBe('too_many_connections');
+      expect(o.frame).toMatchObject({ t: 'error', code: 'rate_limited' });
+      expect(o.frame?.message).toBe('too_many_connections');
+      expect(o.frame?.retryAfterMs).toBeGreaterThan(0);
+    }
   });
 
   /** Raw upgrade with a bad Sec-WebSocket-Key: the server refuses it and closes. */
@@ -101,14 +130,27 @@ describe('socket upgrades are limited per address (RT4-sec-09)', () => {
   it('does not leak slots on failed handshakes', async () => {
     const port = await boot({ RATE_JOIN_BURST: '1000' });
     for (let i = 0; i < 25; i += 1) await badUpgrade(port);
-    expect(await upgrade(port)).toBe(101);
+    expect((await upgrade(port)).closeCode).toBeUndefined();
   });
 
-  it('caps open sockets at 20 per address', async () => {
+  it('closes the 21st socket from one address with 4429 and a retry hint', async () => {
     const port = await boot({ RATE_JOIN_BURST: '1000' });
-    const codes: number[] = [];
-    for (let i = 0; i < 21; i += 1) codes.push(await upgrade(port));
-    expect(codes.slice(0, 20).every((c) => c === 101)).toBe(true);
-    expect(codes[20]).toBe(429);
+    const outcomes: Outcome[] = [];
+    for (let i = 0; i < 21; i += 1) outcomes.push(await upgrade(port));
+    expect(outcomes.slice(0, 20).every((o) => o.status === 101 && o.closeCode === undefined)).toBe(
+      true,
+    );
+    const last = outcomes[20];
+    expect(last?.status).toBe(101);
+    expect(last?.closeCode).toBe(4429);
+    expect(last?.frame).toMatchObject({ t: 'error', code: 'rate_limited', retryAfterMs: 10_000 });
+  });
+
+  it('still refuses a wrong Origin with 403, with or without a spent budget', async () => {
+    const port = await boot({ RATE_JOIN_BURST: '1', RATE_JOIN_PER_MIN: '1' });
+    expect((await upgrade(port, 'https://evil.example')).status).toBe(403);
+    await upgrade(port);
+    expect((await upgrade(port, 'https://evil.example')).status).toBe(403);
+    expect((await upgrade(port)).closeCode).toBe(4429);
   });
 });

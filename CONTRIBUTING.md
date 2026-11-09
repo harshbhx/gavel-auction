@@ -13,7 +13,7 @@ nvm use
 npm ci
 ```
 
-Copy `.env.example` to `.env` only when a task needs configuration. Use PayPal sandbox values only. Never commit a real key, token or secret; the secret scanners run on every pull request and will fail the build.
+Copy `.env.example` to `.env` only when a task needs configuration. Nothing loads that file by itself: delete the lines you do not fill in (empty values are treated as unset), then export it before starting the server with `set -a; source .env; set +a`, or pass the variables inline on the command line. Use PayPal sandbox values only. Never commit a real key, token or secret; the secret scanners run on every pull request and will fail the build.
 
 To confirm the setup works, run the unit tests:
 
@@ -25,24 +25,23 @@ npm test
 
 All scripts run from the repository root.
 
-| Script                            | Purpose                                                            |
-| --------------------------------- | ------------------------------------------------------------------ |
-| `npm run build`                   | Build every package with TypeScript project references             |
-| `npm run typecheck`               | Type-check the repository and each package                         |
-| `npm run lint`                    | ESLint with zero warnings allowed                                  |
-| `npm run format:check`            | Check formatting; `npm run format` rewrites files                  |
-| `npm test`                        | Unit tests for every package                                       |
-| `npm run test:pkg -- unit:engine` | Unit tests for one package (replace the project name)              |
-| `npm run test:coverage`           | Unit tests with coverage and the threshold check                   |
-| `npm run test:property`           | Property-based tests                                               |
-| `npm run test:scenarios`          | In-process scenario tests                                          |
-| `npm run check:ascii`             | Fail on any non-ASCII character in checked files                   |
-| `npm run check:banned-words`      | Fail on banned words in checked files                              |
-| `npm run check:deps`              | Dependency boundaries and engine purity                            |
-| `npm run check:ownership`         | Verify a pull request touches one area only                        |
-| `npm run report`                  | Build the test report (`report/summary.json`, `report/index.html`) |
+| Script                            | Purpose                                                |
+| --------------------------------- | ------------------------------------------------------ |
+| `npm run build`                   | Build every package with TypeScript project references |
+| `npm run typecheck`               | Type-check the repository and each package             |
+| `npm run lint`                    | ESLint with zero warnings allowed                      |
+| `npm run format:check`            | Check formatting; `npm run format` rewrites files      |
+| `npm test`                        | Unit tests for every package                           |
+| `npm run test:pkg -- unit:engine` | Unit tests for one package (replace the project name)  |
+| `npm run test:coverage`           | Unit tests with coverage and the threshold check       |
+| `npm run test:property`           | Property-based tests                                   |
+| `npm run test:scenarios`          | In-process scenario tests                              |
+| `npm run check:ascii`             | Fail on any non-ASCII character in checked files       |
+| `npm run check:banned-words`      | Fail on banned words in checked files                  |
+| `npm run check:deps`              | Dependency boundaries and engine purity                |
+| `npm run check:ownership`         | Verify a pull request touches one area only            |
 
-Some scripts print "not implemented" until the issue that owns them is merged. That is expected.
+The root scripts `test:e2e`, `test:e2e:sandbox`, `test:load` and `report` are placeholders that print "not implemented" and exit 1. The quality report is built in CI by `.github/workflows/report.yml` (`npx vite-node infra/pages/quality/build.mjs -- quality-out`).
 
 ## Branch and commit rules
 

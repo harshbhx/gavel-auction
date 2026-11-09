@@ -52,7 +52,7 @@ The limit is a wrong-accept rate of 0.05 or less. Every row is within it, but th
 
 | Claim | Status | Evidence |
 | --- | --- | --- |
-| Security checklist SEC-01 to SEC-18 | OPEN, no sign-off | [`docs/SECURITY-REVIEW.md`](https://github.com/harshbhx/gavel-auction/blob/main/docs/SECURITY-REVIEW.md). Automated checks exist under `packages/e2e/test/security`; no reviewer has signed an item. No FAIL is recorded. |
+| Security checklist SEC-01 to SEC-24 | P0 rows PASS; SEC-19 and SEC-20 OPEN; SEC-09, 10, 14, 15 and 21 to 24 PARTIAL; no human sign-off | [`docs/SECURITY-REVIEW.md`](https://github.com/harshbhx/gavel-auction/blob/main/docs/SECURITY-REVIEW.md). Automated checks exist under `packages/e2e/test/security`; no human reviewer has signed an item, and SEC-19 to SEC-24 are agent-only reviews. No FAIL is recorded. |
 | Evidence files match their recorded sha256, and tokens, buyer emails and payer ids are redacted | Checked | `packages/payments/test/gates` (see `docs/GATES.md`, "Run entries"); checklist in [`docs/SUBMISSION.md`](https://github.com/harshbhx/gavel-auction/blob/main/docs/SUBMISSION.md) |
 | What was checked before the repository was public | Checked | [`docs/PUBLIC-REPO-CHECKLIST.md`](https://github.com/harshbhx/gavel-auction/blob/main/docs/PUBLIC-REPO-CHECKLIST.md) |
 | Fresh clone installs, typechecks and passes unit tests | Weekly CI | [`clean-clone.yml`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/clean-clone.yml) |

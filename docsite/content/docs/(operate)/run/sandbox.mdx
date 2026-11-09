@@ -6,7 +6,7 @@ icon: Plug
 
 <Chip kind="sandbox">Sandbox</Chip>
 
-Set `PAYMENTS=sandbox` and provide `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` and `PAYPAL_WEBHOOK_ID`. The names are in `.env.example`; keep the values in your local `.env` and never commit them.
+Set `PAYMENTS=sandbox` and provide `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` and `PAYPAL_WEBHOOK_ID`. The names are in `.env.example`; keep the values in your local `.env` and never commit them. The server does not read a `.env` file by itself: load it into your shell with `set -a; source .env; set +a` (after deleting the lines you leave empty) or pass the variables inline.
 
 ```bash
 # names only: values live in your .env, never in the repository

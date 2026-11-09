@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { t } from '../../copy/t';
 import { startLiveRoom } from '../../net/liveRoom';
 import { RoomStore, useRoom } from '../../store/roomStore';
@@ -10,8 +10,9 @@ import { ROOM_MINUTES, type HubKeys } from './hubKeys';
 import { ScreenPreview } from './ScreenPreview';
 import '../flows.css';
 import './hub.css';
+import { ChunkBoundary, lazyWithRetry } from '../states/ChunkBoundary';
 
-const QrCode = lazy(() => import('../join/QrCode'));
+const QrCode = lazyWithRetry(() => import('../join/QrCode'));
 
 export interface JudgeHubProps {
   readonly roomId: string;
@@ -310,9 +311,9 @@ export function JudgeHub({
               {ended ? (
                 <p className="gv-hub__pending">{t('hub.joinClosed')}</p>
               ) : (
-                <Suspense fallback={null}>
+                <ChunkBoundary>
                   <QrCode url={qrTarget} size={196} />
-                </Suspense>
+                </ChunkBoundary>
               )}
             </div>
             {!ended && <p className="gv-hub__scan">{t('hub.scanToBid')}</p>}

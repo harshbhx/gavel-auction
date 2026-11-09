@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ConfigError, validateEnv } from '../../src/config';
 
@@ -141,5 +143,17 @@ describe('boot', () => {
     expect(mod.config.apiBase).toBe(good.VITE_API_BASE);
     expect(Object.isFrozen(mod.config)).toBe(true);
     expect(new ConfigError(['X']).missing).toEqual(['X']);
+  });
+});
+
+describe('packages/web/.env.example', () => {
+  it('is a complete local configuration', () => {
+    const text = readFileSync(path.resolve(__dirname, '../../.env.example'), 'utf8');
+    const env: Record<string, string> = {};
+    for (const line of text.split('\n')) {
+      const m = /^(VITE_[A-Z_]+)=(.*)$/.exec(line);
+      if (m?.[1] !== undefined) env[m[1]] = m[2] ?? '';
+    }
+    expect(validateEnv(env)).toMatchObject({ ok: true });
   });
 });

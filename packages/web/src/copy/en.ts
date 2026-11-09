@@ -1170,6 +1170,8 @@ export const en = {
   'err.room.rateLimited': 'Too many attempts. Try again in {seconds} seconds.',
   'err.room.rateLimitedSoon': 'Too many attempts. Try again in a moment.',
   'err.boundaryId': 'Error id {id}',
+  'err.chunk': 'Part of this page could not load. Reload to try again.',
+  'err.net.tooMany': 'Too many connections from this network. Retrying in {seconds} s.',
   'err.home': 'Go to the start page',
   'room.missingTitle': 'We could not find this room',
   'room.missingHelp':
