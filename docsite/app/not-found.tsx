@@ -17,7 +17,7 @@ const starts: Record<string, string> = {
 export default function NotFound() {
   return (
     <HomeLayout {...baseOptions({ inList: true })}>
-      <main className="hl-dots mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-4 py-16">
+      <div className="hl-dots mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-4 py-16">
         <p className="hl-eyebrow">Error 404</p>
         <p className="hl-404-num" aria-hidden>
           404
@@ -41,7 +41,7 @@ export default function NotFound() {
             </li>
           ))}
         </ul>
-      </main>
+      </div>
     </HomeLayout>
   );
 }
