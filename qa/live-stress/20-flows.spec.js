@@ -120,9 +120,19 @@ test('hub: refresh, back and forward keep the room and the keys', async ({ page 
 test('watcher then bidder: join page, Just watch, Join as a bidder, back/forward/refresh', async ({
   page,
 }) => {
+  test.skip(
+    !['d1440', 'iphone14'].includes(test.info().project.name),
+    'join budget: one viewport spends bidder slots',
+  );
   const A = room();
   test.skip(!A, 'no room');
   const w = watch(page, { allowConsole: true });
+  let joinPosts = 0;
+  await page.route('**/api/judge/join', async (route) => {
+    joinPosts += 1;
+    if (joinPosts > 3) return route.abort('failed');
+    return route.continue();
+  });
   await gotoOk(page, A.joinUrl);
   const text0 = await bodyText(page);
   const asBidder = () =>
@@ -204,6 +214,7 @@ test('watcher then bidder: join page, Just watch, Join as a bidder, back/forward
   }
   // fresh: rapid double click on Join as a bidder
   await gotoOk(page, A.joinUrl);
+  const joinsBefore = joinPosts;
   let navs = 0;
   page.on('framenavigated', (f) => {
     if (f === page.mainFrame()) navs += 1;
@@ -214,6 +225,16 @@ test('watcher then bidder: join page, Just watch, Join as a bidder, back/forward
     })
     .catch(() => {});
   await page.waitForTimeout(3000);
+  if (joinPosts - joinsBefore > 1)
+    await finding(page, {
+      sev: 'high',
+      title: 'Eight fast clicks on the join button send several /api/judge/join requests',
+      page: 'join',
+      steps: 'click the join button eight times in one tick',
+      expected: 'one request (each one takes a bidder slot)',
+      actual: `${joinPosts - joinsBefore} POSTs`,
+      cause: 'join button handler in screens/join/JoinScreen.tsx or the judge join call in App.tsx',
+    });
   const form = await page
     .getByLabel(/display name/i)
     .first()
@@ -267,6 +288,10 @@ test('watcher then bidder: join page, Just watch, Join as a bidder, back/forward
 });
 
 test('two tabs, same session', async ({ context }) => {
+  test.skip(
+    !['d1440'].includes(test.info().project.name),
+    'join budget: one viewport spends bidder slots',
+  );
   const A = room();
   test.skip(!A, 'no room');
   const p1 = await context.newPage();
@@ -310,6 +335,10 @@ test('two tabs, same session', async ({ context }) => {
 });
 
 test('six actors in parallel contexts: 2 bidders, 3 watchers, 1 hub', async ({ browser }) => {
+  test.skip(
+    !['d1440'].includes(test.info().project.name),
+    'join budget: one viewport spends bidder slots',
+  );
   const A = room();
   test.skip(!A, 'no room');
   const actors = [];
@@ -391,6 +420,10 @@ test('six actors in parallel contexts: 2 bidders, 3 watchers, 1 hub', async ({ b
 });
 
 test('resize and rotate mid-flow keep state and layout', async ({ page }) => {
+  test.skip(
+    !['d1440'].includes(test.info().project.name),
+    'join budget: one viewport spends bidder slots',
+  );
   const A = room();
   test.skip(!A, 'no room');
   const w = watch(page, { allowConsole: true });
