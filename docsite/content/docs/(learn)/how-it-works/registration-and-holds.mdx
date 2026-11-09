@@ -25,7 +25,7 @@ A hold that is HELD has moved no money. It is shown hatched everywhere in these 
 
 ### The buyer picks a name and a ceiling
 
-The register screen asks for a display name and one of the <Term id="room">room</Term>'s ceiling presets. The web default presets are 10000, 25000, 50000 and 100000 cents (100, 250, 500 and 1,000 dollars); a room can set its own list, and the server accepts only a ceiling from the auction's list whatever the screen offers. The screen explains the choice: the amount is held, not charged.
+The register screen asks for a display name and a ceiling for the <Term id="room">room</Term>: a typed limit, a slider, or one of the quick picks. The web default quick picks are 10000, 25000, 50000 and 100000 cents (100, 250, 500 and 1,000 dollars); a room can set its own list. The presets are only shortcuts: the server accepts any whole number of cents from the minimum to the cap. The screen explains the choice: the amount is held, not charged.
 
 </Step>
 <Step>
@@ -39,7 +39,7 @@ The register screen asks for a display name and one of the <Term id="room">room<
 
 ### The server checks the ceiling and creates an AUTHORIZE order
 
-`validateCeiling` runs before any PayPal call. The ceiling must be a whole number of cents, at least 100, at most the configured cap (`GAVEL_MAX_CEILING_CENTS`) and one of the auction presets. Then the server creates an Orders v2 order with intent `AUTHORIZE` for exactly that amount, under a request id derived from the auction, the hold and the amount, and stores a hold in `PENDING_APPROVAL`. The browser contributes nothing to the amount except the choice among presets.
+`validateCeiling` runs before any PayPal call. The ceiling must be a whole number of cents, at least 100, and at most the configured cap (`GAVEL_MAX_CEILING_CENTS`). Presets are not checked. Then the server creates an Orders v2 order with intent `AUTHORIZE` for exactly that amount, under a request id derived from the auction, the hold and the amount, and stores a hold in `PENDING_APPROVAL`. The browser contributes nothing to the amount except the choice of limit inside that range.
 
 </Step>
 <Step>

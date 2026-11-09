@@ -10,7 +10,7 @@ If you were given a judge key, you can drive a whole sandbox auction over plain 
 
 <Held title="Limits of a key">
 
-Each key has its own cap on rooms alive at once (2 by default) and on rooms created per hour (10 by default), and it stops working on 30 November 2026 (`judge_key_expired`). The shared judging key does not expire; sandbox only; it can be revoked. The host can revoke a key at any time (`judge_key_revoked`). A room lasts 30 minutes. Bids and holds in these rooms are simulated, with no PayPal login. Voice bidding is switched off in rooms opened with a key.
+Each key has its own cap on rooms alive at once (2 by default) and on rooms created per hour (10 by default), and a personal key stops working on 30 November 2026 (`judge_key_expired`). Judges receive the one shared judging key in the Devpost testing instructions: it does not expire, so it works through the judging period to 15 December 2026; it opens sandbox rooms only and can be revoked. You do not need a key to try GAVEL: a keyless judge room on `/try` works without one. The host can revoke a key at any time (`judge_key_revoked`). A room lasts 30 minutes. Bids and holds in these rooms are simulated, with no PayPal login. Voice bidding is switched off in rooms opened with a key.
 
 </Held>
 
