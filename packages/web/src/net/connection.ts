@@ -20,11 +20,21 @@ export const WAIT_ERRORS: readonly string[] = [
 ];
 const HALTING_ERRORS: readonly string[] = [...TERMINAL_ERRORS, ...WAIT_ERRORS];
 
+/**
+ * The message of the error frame the server sends when it refuses a socket because of too many
+ * connections from one address (or a spent join budget), and closes it with 4429.
+ */
+export const BUSY_MESSAGE = 'too_many_connections';
+/** Waits before retrying such a refusal, doubling up to the last value (capped at one minute). */
+export const BUSY_BACKOFF_MS: readonly number[] = [5000, 10_000, 20_000, 40_000, 60_000];
+
 export interface ConnectionSnapshot {
   status: TransportStatus;
   offline: boolean;
   /** True when the server closed this connection because the same link was opened elsewhere. */
   superseded?: true;
+  /** Epoch ms of the next attempt while the server refuses this network as too busy. */
+  busyUntilMs?: number;
 }
 
 /** Close code the server uses for the oldest connection of a token past the per-token cap. */
@@ -52,9 +62,9 @@ export interface ConnectionDeps {
   /** Defaults to Math.random. Returns a value in [0, 1). */
   random?: () => number;
   setTimer?: (fn: () => void, ms: number) => unknown;
-  clearTimer?: (handle: unknown) => void;
-  /** Clock for the silence check. Defaults to Date.now. */
+  /** Epoch ms, for the busy notice and the silence check. Defaults to Date.now. */
   now?: () => number;
+  clearTimer?: (handle: unknown) => void;
   /** Where wake-up events come from. Defaults to the browser document and window. */
   wake?: WakeSource;
 }
@@ -105,6 +115,9 @@ export class ConnectionManager {
   private watchdogTimer: unknown = null;
   private lastFrameAt = 0;
   private running = false;
+  /** Consecutive busy refusals, and the wait the latest one asked for. */
+  private busyCount = 0;
+  private busyWaitMs = 0;
   /** True once the server accepted the join on the current socket (it sent a snapshot). */
   private joined = false;
   private unsubscribers: Array<() => void> = [];
@@ -138,9 +151,22 @@ export class ConnectionManager {
       (this.deps.wake ?? browserWake).subscribe(() => this.wake()),
       transport.onMessage((m) => {
         this.lastFrameAt = this.now();
+        if (
+          m.t === 'error' &&
+          !this.joined &&
+          m.code === 'rate_limited' &&
+          m.message === BUSY_MESSAGE
+        ) {
+          // Refused for this network: keep retrying with a capped backoff and tell the page when.
+          this.busyWaitMs = m.retryAfterMs ?? 0;
+          this.busyCount += 1;
+          return;
+        }
         if (m.t === 'state') {
           this.attempt = 0;
           this.joined = true;
+          this.busyCount = 0;
+          this.update({ status: this.snapshot.status, offline: this.snapshot.offline });
         }
         this.deps.onMessage(m);
         // The server refused this join. Retrying with the same token cannot succeed, so stop.
@@ -152,6 +178,7 @@ export class ConnectionManager {
 
   stop(): void {
     this.running = false;
+    this.busyCount = 0;
     this.clearReconnect();
     this.clearOffline();
     this.clearStable();
@@ -175,7 +202,11 @@ export class ConnectionManager {
       }, STABLE_AFTER_MS);
       this.lastFrameAt = this.now();
       this.armWatchdog();
-      this.update({ status, offline: false });
+      this.update(
+        this.snapshot.busyUntilMs === undefined
+          ? { status, offline: false }
+          : { status, offline: false, busyUntilMs: this.snapshot.busyUntilMs },
+      );
       this.sendJoin();
       return;
     }
@@ -193,7 +224,7 @@ export class ConnectionManager {
     if (this.offlineTimer === null && !this.snapshot.offline) {
       this.offlineTimer = this.setTimer(() => {
         this.offlineTimer = null;
-        if (this.running) this.update({ ...this.snapshot, offline: true });
+        if (this.running && this.busyCount === 0) this.update({ ...this.snapshot, offline: true });
       }, OFFLINE_AFTER_MS);
     }
     this.scheduleReconnect();
@@ -227,7 +258,8 @@ export class ConnectionManager {
 
   /** The page became visible, was restored, or the network returned: do not wait for a timer. */
   private wake(): void {
-    if (!this.running) return;
+    // A busy refusal keeps its own capped backoff: waking must not hammer a limiter that said wait.
+    if (!this.running || this.busyCount > 0) return;
     if (this.snapshot.status === 'open') {
       if (this.now() - this.lastFrameAt >= SILENCE_MS) this.dropSilent();
       return;
@@ -270,8 +302,14 @@ export class ConnectionManager {
 
   private scheduleReconnect(): void {
     if (this.reconnectTimer !== null) return;
-    const delay = backoffDelay(this.attempt, this.random());
+    let delay = backoffDelay(this.attempt, this.random());
     this.attempt += 1;
+    if (this.busyCount > 0) {
+      const rung = Math.min(this.busyCount - 1, BUSY_BACKOFF_MS.length - 1);
+      const step = BUSY_BACKOFF_MS[rung] ?? 60_000;
+      delay = Math.min(Math.max(step, this.busyWaitMs), 60_000);
+      this.update({ ...this.snapshot, busyUntilMs: (this.deps.now ?? Date.now)() + delay });
+    }
     this.reconnectTimer = this.setTimer(() => {
       this.reconnectTimer = null;
       if (this.running) this.deps.transport.connect();
@@ -297,7 +335,8 @@ export class ConnectionManager {
     if (
       next.status === this.snapshot.status &&
       next.offline === this.snapshot.offline &&
-      next.superseded === this.snapshot.superseded
+      next.superseded === this.snapshot.superseded &&
+      next.busyUntilMs === this.snapshot.busyUntilMs
     ) {
       return;
     }

@@ -10,6 +10,8 @@ const ORIGIN = 'https://auction.example';
 let server: Server | undefined;
 let host: NodeWsHost | undefined;
 
+let deny = false;
+
 const start = async (): Promise<number> => {
   const s = http.createServer((req, res) => {
     if (host?.handleRequest(req, res)) return;
@@ -21,6 +23,7 @@ const start = async (): Promise<number> => {
     clock: new ManualClock(1_789_000_000_000),
     allowedOrigins: [ORIGIN],
     accept: () => ({ onJoin: () => undefined, onFrame: () => undefined }),
+    admitUpgrade: () => (deny ? { deny: { retryAfterMs: 7000 } } : () => undefined),
   });
   await new Promise<void>((resolve) => s.listen(0, '127.0.0.1', resolve));
   return (s.address() as AddressInfo).port;
@@ -42,6 +45,45 @@ describe('node ws host (R-RT-074, T-RT-057)', () => {
       ws.on('open', () => reject(new Error('opened')));
       ws.on('error', () => undefined);
     });
+    expect(status).toBe(403);
+  });
+
+  it('accepts a denied upgrade, sends the error frame and closes 4429 (FIX-84)', async () => {
+    const port = await start();
+    deny = true;
+    const got = await new Promise<{ frame: unknown; code: number; reason: string }>(
+      (resolve, reject) => {
+        const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, { origin: ORIGIN });
+        let frame: unknown;
+        ws.on('message', (d) => {
+          frame = JSON.parse(String(d));
+        });
+        ws.on('close', (code, reason) => resolve({ frame, code, reason: reason.toString() }));
+        ws.on('error', reject);
+      },
+    );
+    deny = false;
+    expect(got.code).toBe(4429);
+    expect(got.reason).toBe('too_many_connections');
+    expect(got.frame).toEqual({
+      v: 1,
+      t: 'error',
+      code: 'rate_limited',
+      message: 'too_many_connections',
+      retryAfterMs: 7000,
+    });
+  });
+
+  it('still answers 403 for a wrong Origin when the budget would deny', async () => {
+    const port = await start();
+    deny = true;
+    const status = await new Promise<number>((resolve, reject) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, { origin: 'https://evil.example' });
+      ws.on('unexpected-response', (_req, res) => resolve(res.statusCode ?? 0));
+      ws.on('open', () => reject(new Error('opened')));
+      ws.on('error', () => undefined);
+    });
+    deny = false;
     expect(status).toBe(403);
   });
 

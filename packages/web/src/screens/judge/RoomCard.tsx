@@ -1,9 +1,10 @@
-import { lazy, Suspense, useState } from 'react';
+import { useState } from 'react';
 import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
 import type { LiveRoom } from './liveRoom';
+import { ChunkBoundary, lazyWithRetry } from '../states/ChunkBoundary';
 
-const QrCode = lazy(() => import('../join/QrCode'));
+const QrCode = lazyWithRetry(() => import('../join/QrCode'));
 
 /** Shown with the sample label when the visitor has no live room. It is not a real room code. */
 export const SAMPLE_CODE = 'K7M2QX';
@@ -67,9 +68,9 @@ export function RoomCard({
       <div className="gv-judge__qr">
         {live ? (
           <div role="group" aria-label={t('try.room.qrLive')}>
-            <Suspense fallback={null}>
+            <ChunkBoundary>
               <QrCode url={`${origin}${room.join}`} size={128} />
-            </Suspense>
+            </ChunkBoundary>
           </div>
         ) : (
           <svg

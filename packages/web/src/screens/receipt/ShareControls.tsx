@@ -1,10 +1,11 @@
-import { lazy, Suspense, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
 import './share.css';
+import { ChunkBoundary, lazyWithRetry } from '../states/ChunkBoundary';
 
-const QrCode = lazy(() => import('../join/QrCode'));
+const QrCode = lazyWithRetry(() => import('../join/QrCode'));
 
 /** A minted receipt link and when it stops working (epoch ms), or null when it could not be made. */
 export type ReceiptLink = { link: string; expiresAt: number };
@@ -88,9 +89,9 @@ export function ShareControls({ mint }: { mint: MintReceiptLink }) {
             </Button>
           </div>
           <div className="gv-share__qr">
-            <Suspense fallback={null}>
+            <ChunkBoundary>
               <QrCode url={made.link} size={192} />
-            </Suspense>
+            </ChunkBoundary>
           </div>
           <p className="gv-share__note">
             {t('receipt.share.note', { until: new Date(made.expiresAt).toLocaleString() })}

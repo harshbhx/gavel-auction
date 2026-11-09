@@ -91,7 +91,7 @@ export function LandingScreen({
       <header className="gv-mk-header">
         <div className="gv-mk-header__bar">
           <span className="gv-mk-header__brand">
-            <Logo variant="wordmark" height={22} />
+            <Logo variant="wordmark" height={22} motion="hover" />
           </span>
           <nav className="gv-mk-header__nav" aria-label={t('mk.nav.label')}>
             <a href="#how">{t('mk.nav.how')}</a>

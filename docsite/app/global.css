@@ -1509,3 +1509,29 @@ body {
   margin: 0.3rem 0 0;
   padding-left: 1.2rem;
 }
+
+/* Navbar wordmark motion: on hover or keyboard focus the mallet winds up and strikes with a smooth ease.
+ * Off under prefers-reduced-motion. Pivot is the end of the handle on the 100 unit G grid. */
+.hl-wm-mallet {
+  transform-origin: 100px 50px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  a:hover .hl-wm .hl-wm-mallet,
+  a:focus-visible .hl-wm .hl-wm-mallet {
+    animation: hl-wm-strike 0.7s linear;
+  }
+}
+@keyframes hl-wm-strike {
+  0% {
+    transform: rotate(0deg);
+    animation-timing-function: cubic-bezier(0.3, 0, 0.4, 1);
+  }
+  45% {
+    transform: rotate(70deg);
+    animation-timing-function: cubic-bezier(0.75, 0, 1, 0.6);
+  }
+  75%,
+  100% {
+    transform: rotate(0deg);
+  }
+}
