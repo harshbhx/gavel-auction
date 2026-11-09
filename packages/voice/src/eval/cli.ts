@@ -10,7 +10,7 @@ import { renderReport, type ReportItem } from './report.js';
  * Evaluation CLI (R-VOX-075, R-VOX-080): text, cached and live modes.
  *
  *   npm run eval -- --mode text [--set dev|heldout|all] [--out dir]
- *   npm run eval -- --mode cached --provider deepgram [--clips espeak|human]
+ *   npm run eval -- --mode cached --provider deepgram [--clips espeak|human|heldout]
  *   (add --mic room|device: the microphone rule of the gate; room is what the room runs)
  *   (add --model agree: the gate with a second reading that always agrees, an upper bound on AUTO)
  *   npm run eval -- --mode live --provider deepgram [--record fixtures/stt-cache [--resume true]]
@@ -37,12 +37,23 @@ export type EvalMode = 'text' | 'cached' | 'live';
 export type EvalSet = 'dev' | 'heldout' | 'all';
 export type Provider = 'deepgram' | 'groq';
 /** Which recorded clip set the cached mode scores: the eSpeak set or the human-like synthetic set. */
-export type ClipSet = 'espeak' | 'human';
+export type ClipSet = 'espeak' | 'human' | 'heldout';
 
 /** Package-relative directory of the recorded provider output of a clip set. */
 export const STT_CACHE_DIR: Record<ClipSet, string> = {
   espeak: 'fixtures/stt-cache',
   human: 'fixtures/stt-cache-human',
+  heldout: 'fixtures/stt-cache-heldout',
+};
+
+/**
+ * Package-relative clip manifest of each clip set. The human set speaks the same utterances as the
+ * eSpeak set; the held-out noisy set (issue 2192) has its own 120 clips.
+ */
+export const MANIFEST_PATH: Record<ClipSet, string> = {
+  espeak: 'fixtures/audio/manifest.json',
+  human: 'fixtures/audio/manifest.json',
+  heldout: 'fixtures/audio-heldout/manifest.json',
 };
 
 /** Environment variable that holds the key of each live provider. */
@@ -110,8 +121,8 @@ export function parseArgs(argv: readonly string[]): CliOptions | string {
       if (value !== 'off' && value !== 'agree') return `--model must be off or agree, got ${value}`;
       opts.model = value;
     } else if (flag === '--clips') {
-      if (value !== 'espeak' && value !== 'human') {
-        return `--clips must be espeak or human, got ${value}`;
+      if (value !== 'espeak' && value !== 'human' && value !== 'heldout') {
+        return `--clips must be espeak, human or heldout, got ${value}`;
       }
       opts.clips = value;
     } else if (flag === '--out') {
@@ -256,8 +267,8 @@ function textItems(deps: CliDeps, set: EvalSet, gate: GateOpts): ReportItem[] {
 
 type AudioCase = z.infer<typeof manifestSchema>[number];
 
-function audioCases(deps: CliDeps): AudioCase[] {
-  return manifestSchema.parse(JSON.parse(deps.readFile('fixtures/audio/manifest.json')));
+function audioCases(deps: CliDeps, clips: ClipSet = 'espeak'): AudioCase[] {
+  return manifestSchema.parse(JSON.parse(deps.readFile(MANIFEST_PATH[clips])));
 }
 
 function audioExpected(c: AudioCase): Expected {
@@ -316,7 +327,7 @@ function cachedItems(
   const dir = `${STT_CACHE_DIR[clips]}/${provider}`;
   if (!deps.exists(dir)) return `no recorded provider output at ${dir}`;
   const items: ReportItem[] = [];
-  for (const c of audioCases(deps)) {
+  for (const c of audioCases(deps, clips)) {
     const path = `${dir}/${c.id}.json`;
     if (!deps.exists(path)) return `missing ${path}`;
     const rec = sttCacheSchema.parse(JSON.parse(deps.readFile(path)));
@@ -362,8 +373,9 @@ async function liveItems(
   mic: GateOpts,
   record?: string,
   resume = false,
+  clips: ClipSet = 'espeak',
 ): Promise<ReportItem[]> {
-  const cases = audioCases(deps);
+  const cases = audioCases(deps, clips);
   return mapLimited(cases, LIVE_CONCURRENCY, async (c) => {
     const recorded = record === undefined ? '' : `${record}/${provider}/${c.id}.json`;
     if (resume && recorded !== '' && deps.exists(recorded)) {
@@ -411,7 +423,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<nu
         return EXIT_FAILED;
       }
       if (deps.recordingExists !== undefined) {
-        const ids = audioCases(deps).map((c) => c.id);
+        const ids = audioCases(deps, opts.clips ?? 'espeak').map((c) => c.id);
         const missing = ids.filter((id) => deps.recordingExists?.(id) !== true).length;
         if (missing > 0) {
           log(`eval: NOT RUN: ${missing} of ${ids.length} recordings missing, nothing was scored`);
@@ -426,6 +438,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<nu
         gateOpts,
         opts.record,
         opts.resume,
+        opts.clips ?? 'espeak',
       );
       setLabel = 'audio';
     }

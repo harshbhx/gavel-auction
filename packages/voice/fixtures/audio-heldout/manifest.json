@@ -1,0 +1,2525 @@
+[
+  {
+    "id": "h01-s20-babble",
+    "text": "four hundred",
+    "category": "snr20",
+    "voice": "en-us",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 37500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 40000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h01",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6000
+  },
+  {
+    "id": "h01-s10-babble",
+    "text": "four hundred",
+    "category": "snr10",
+    "voice": "en-us",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 37500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 40000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h01",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6001
+  },
+  {
+    "id": "h01-s5-babble",
+    "text": "four hundred",
+    "category": "snr5",
+    "voice": "en-us",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 37500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 40000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h01",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6002
+  },
+  {
+    "id": "h02-s20-room",
+    "text": "I'll bid six hundred",
+    "category": "snr20",
+    "voice": "en-gb",
+    "speakerBidderId": "5",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 57500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 60000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h02",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6003
+  },
+  {
+    "id": "h02-s10-room",
+    "text": "I'll bid six hundred",
+    "category": "snr10",
+    "voice": "en-gb",
+    "speakerBidderId": "5",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 57500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 60000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h02",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6004
+  },
+  {
+    "id": "h02-s5-room",
+    "text": "I'll bid six hundred",
+    "category": "snr5",
+    "voice": "en-gb",
+    "speakerBidderId": "5",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 57500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 60000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h02",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6005
+  },
+  {
+    "id": "h03-s20-babble",
+    "text": "six hundred and fifty dollars",
+    "category": "snr20",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "3",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 62500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 65000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h03",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6006
+  },
+  {
+    "id": "h03-s10-babble",
+    "text": "six hundred and fifty dollars",
+    "category": "snr10",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "3",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 62500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 65000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h03",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6007
+  },
+  {
+    "id": "h03-s5-babble",
+    "text": "six hundred and fifty dollars",
+    "category": "snr5",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "3",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 62500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 65000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h03",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6008
+  },
+  {
+    "id": "h04-s20-room",
+    "text": "eight hundred and seventy five",
+    "category": "snr20",
+    "voice": "en-us+m3",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 85000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 87500
+    },
+    "acceptableConfirm": [],
+    "utterance": "h04",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6009
+  },
+  {
+    "id": "h04-s10-room",
+    "text": "eight hundred and seventy five",
+    "category": "snr10",
+    "voice": "en-us+m3",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 85000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 87500
+    },
+    "acceptableConfirm": [],
+    "utterance": "h04",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6010
+  },
+  {
+    "id": "h04-s5-room",
+    "text": "eight hundred and seventy five",
+    "category": "snr5",
+    "voice": "en-us+m3",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 85000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 87500
+    },
+    "acceptableConfirm": [],
+    "utterance": "h04",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6011
+  },
+  {
+    "id": "h05-s20-babble",
+    "text": "one thousand three hundred",
+    "category": "snr20",
+    "voice": "en-us+f2",
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 127500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 130000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h05",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6012
+  },
+  {
+    "id": "h05-s10-babble",
+    "text": "one thousand three hundred",
+    "category": "snr10",
+    "voice": "en-us+f2",
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 127500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 130000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h05",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6013
+  },
+  {
+    "id": "h05-s5-babble",
+    "text": "one thousand three hundred",
+    "category": "snr5",
+    "voice": "en-us+f2",
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 127500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 130000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h05",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6014
+  },
+  {
+    "id": "h06-s20-room",
+    "text": "I'll take three hundred and twenty five",
+    "category": "snr20",
+    "voice": "en-us",
+    "speakerBidderId": "8",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 30000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 32500
+    },
+    "acceptableConfirm": [],
+    "utterance": "h06",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6015
+  },
+  {
+    "id": "h06-s10-room",
+    "text": "I'll take three hundred and twenty five",
+    "category": "snr10",
+    "voice": "en-us",
+    "speakerBidderId": "8",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 30000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 32500
+    },
+    "acceptableConfirm": [],
+    "utterance": "h06",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6016
+  },
+  {
+    "id": "h06-s5-room",
+    "text": "I'll take three hundred and twenty five",
+    "category": "snr5",
+    "voice": "en-us",
+    "speakerBidderId": "8",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 30000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 32500
+    },
+    "acceptableConfirm": [],
+    "utterance": "h06",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6017
+  },
+  {
+    "id": "h07-s20-babble",
+    "text": "nine hundred",
+    "category": "snr20",
+    "voice": "en-gb",
+    "speakerBidderId": "5",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 87500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 90000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h07",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6018
+  },
+  {
+    "id": "h07-s10-babble",
+    "text": "nine hundred",
+    "category": "snr10",
+    "voice": "en-gb",
+    "speakerBidderId": "5",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 87500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 90000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h07",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6019
+  },
+  {
+    "id": "h07-s5-babble",
+    "text": "nine hundred",
+    "category": "snr5",
+    "voice": "en-gb",
+    "speakerBidderId": "5",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 87500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 90000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h07",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6020
+  },
+  {
+    "id": "h08-s20-room",
+    "text": "seven fifty",
+    "category": "snr20",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 72500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 75000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h08",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6021
+  },
+  {
+    "id": "h08-s10-room",
+    "text": "seven fifty",
+    "category": "snr10",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 72500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 75000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h08",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6022
+  },
+  {
+    "id": "h08-s5-room",
+    "text": "seven fifty",
+    "category": "snr5",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 72500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 75000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h08",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6023
+  },
+  {
+    "id": "h09-s20-babble",
+    "text": "four twenty five",
+    "category": "snr20",
+    "voice": "en-us+m3",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 40000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 42500
+    },
+    "acceptableConfirm": [],
+    "utterance": "h09",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6024
+  },
+  {
+    "id": "h09-s10-babble",
+    "text": "four twenty five",
+    "category": "snr10",
+    "voice": "en-us+m3",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 40000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 42500
+    },
+    "acceptableConfirm": [],
+    "utterance": "h09",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6025
+  },
+  {
+    "id": "h09-s5-babble",
+    "text": "four twenty five",
+    "category": "snr5",
+    "voice": "en-us+m3",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 40000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 42500
+    },
+    "acceptableConfirm": [],
+    "utterance": "h09",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6026
+  },
+  {
+    "id": "h10-s20-room",
+    "text": "six seventy five",
+    "category": "snr20",
+    "voice": "en-us+f2",
+    "speakerBidderId": "8",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 65000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 67500
+    },
+    "acceptableConfirm": [],
+    "utterance": "h10",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6027
+  },
+  {
+    "id": "h10-s10-room",
+    "text": "six seventy five",
+    "category": "snr10",
+    "voice": "en-us+f2",
+    "speakerBidderId": "8",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 65000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 67500
+    },
+    "acceptableConfirm": [],
+    "utterance": "h10",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6028
+  },
+  {
+    "id": "h10-s5-room",
+    "text": "six seventy five",
+    "category": "snr5",
+    "voice": "en-us+f2",
+    "speakerBidderId": "8",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 65000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 67500
+    },
+    "acceptableConfirm": [],
+    "utterance": "h10",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6029
+  },
+  {
+    "id": "h11-s20-babble",
+    "text": "eleven hundred",
+    "category": "snr20",
+    "voice": "en-us",
+    "speakerBidderId": "3",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 107500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 110000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h11",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6030
+  },
+  {
+    "id": "h11-s10-babble",
+    "text": "eleven hundred",
+    "category": "snr10",
+    "voice": "en-us",
+    "speakerBidderId": "3",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 107500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 110000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h11",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6031
+  },
+  {
+    "id": "h11-s5-babble",
+    "text": "eleven hundred",
+    "category": "snr5",
+    "voice": "en-us",
+    "speakerBidderId": "3",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 107500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 110000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h11",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6032
+  },
+  {
+    "id": "h12-s20-room",
+    "text": "fourteen fifty",
+    "category": "snr20",
+    "voice": "en-gb",
+    "speakerBidderId": "5",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 142500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 145000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h12",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6033
+  },
+  {
+    "id": "h12-s10-room",
+    "text": "fourteen fifty",
+    "category": "snr10",
+    "voice": "en-gb",
+    "speakerBidderId": "5",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 142500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 145000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h12",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6034
+  },
+  {
+    "id": "h12-s5-room",
+    "text": "fourteen fifty",
+    "category": "snr5",
+    "voice": "en-gb",
+    "speakerBidderId": "5",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 142500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 145000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h12",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6035
+  },
+  {
+    "id": "h13-s20-babble",
+    "text": "eight twenty five",
+    "category": "snr20",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 80000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 82500
+    },
+    "acceptableConfirm": [],
+    "utterance": "h13",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6036
+  },
+  {
+    "id": "h13-s10-babble",
+    "text": "eight twenty five",
+    "category": "snr10",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 80000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 82500
+    },
+    "acceptableConfirm": [],
+    "utterance": "h13",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6037
+  },
+  {
+    "id": "h13-s5-babble",
+    "text": "eight twenty five",
+    "category": "snr5",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 80000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 82500
+    },
+    "acceptableConfirm": [],
+    "utterance": "h13",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6038
+  },
+  {
+    "id": "h14-s20-room",
+    "text": "nine fifty",
+    "category": "snr20",
+    "voice": "en-us+m3",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 92500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 95000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h14",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6039
+  },
+  {
+    "id": "h14-s10-room",
+    "text": "nine fifty",
+    "category": "snr10",
+    "voice": "en-us+m3",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 92500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 95000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h14",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6040
+  },
+  {
+    "id": "h14-s5-room",
+    "text": "nine fifty",
+    "category": "snr5",
+    "voice": "en-us+m3",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 92500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 95000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h14",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6041
+  },
+  {
+    "id": "h15-s20-babble",
+    "text": "seventeen hundred",
+    "category": "snr20",
+    "voice": "en-us+f2",
+    "speakerBidderId": "8",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 167500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 170000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h15",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6042
+  },
+  {
+    "id": "h15-s10-babble",
+    "text": "seventeen hundred",
+    "category": "snr10",
+    "voice": "en-us+f2",
+    "speakerBidderId": "8",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 167500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 170000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h15",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6043
+  },
+  {
+    "id": "h15-s5-babble",
+    "text": "seventeen hundred",
+    "category": "snr5",
+    "voice": "en-us+f2",
+    "speakerBidderId": "8",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 167500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 170000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h15",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6044
+  },
+  {
+    "id": "h16-s20-room",
+    "text": "paddle eleven four fifty",
+    "category": "snr20",
+    "voice": "en-us",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 42500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 45000,
+      "paddle": "11"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h16",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6045
+  },
+  {
+    "id": "h16-s10-room",
+    "text": "paddle eleven four fifty",
+    "category": "snr10",
+    "voice": "en-us",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 42500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 45000,
+      "paddle": "11"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h16",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6046
+  },
+  {
+    "id": "h16-s5-room",
+    "text": "paddle eleven four fifty",
+    "category": "snr5",
+    "voice": "en-us",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 42500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 45000,
+      "paddle": "11"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h16",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6047
+  },
+  {
+    "id": "h17-s20-babble",
+    "text": "bidder number six five hundred",
+    "category": "snr20",
+    "voice": "en-gb",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 47500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 50000,
+      "paddle": "6"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h17",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6048
+  },
+  {
+    "id": "h17-s10-babble",
+    "text": "bidder number six five hundred",
+    "category": "snr10",
+    "voice": "en-gb",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 47500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 50000,
+      "paddle": "6"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h17",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6049
+  },
+  {
+    "id": "h17-s5-babble",
+    "text": "bidder number six five hundred",
+    "category": "snr5",
+    "voice": "en-gb",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 47500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 50000,
+      "paddle": "6"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h17",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6050
+  },
+  {
+    "id": "h18-s20-room",
+    "text": "paddle thirteen six hundred dollars",
+    "category": "snr20",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 57500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 60000,
+      "paddle": "13"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h18",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6051
+  },
+  {
+    "id": "h18-s10-room",
+    "text": "paddle thirteen six hundred dollars",
+    "category": "snr10",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 57500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 60000,
+      "paddle": "13"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h18",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6052
+  },
+  {
+    "id": "h18-s5-room",
+    "text": "paddle thirteen six hundred dollars",
+    "category": "snr5",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 57500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 60000,
+      "paddle": "13"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h18",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6053
+  },
+  {
+    "id": "h19-s20-babble",
+    "text": "seven fifty from paddle eight",
+    "category": "snr20",
+    "voice": "en-us+m3",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 72500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 75000,
+      "paddle": "8"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h19",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6054
+  },
+  {
+    "id": "h19-s10-babble",
+    "text": "seven fifty from paddle eight",
+    "category": "snr10",
+    "voice": "en-us+m3",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 72500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 75000,
+      "paddle": "8"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h19",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6055
+  },
+  {
+    "id": "h19-s5-babble",
+    "text": "seven fifty from paddle eight",
+    "category": "snr5",
+    "voice": "en-us+m3",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 72500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 75000,
+      "paddle": "8"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h19",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6056
+  },
+  {
+    "id": "h20-s20-room",
+    "text": "paddle fifteen eight hundred",
+    "category": "snr20",
+    "voice": "en-us+f2",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 77500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 80000,
+      "paddle": "15"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h20",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6057
+  },
+  {
+    "id": "h20-s10-room",
+    "text": "paddle fifteen eight hundred",
+    "category": "snr10",
+    "voice": "en-us+f2",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 77500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 80000,
+      "paddle": "15"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h20",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6058
+  },
+  {
+    "id": "h20-s5-room",
+    "text": "paddle fifteen eight hundred",
+    "category": "snr5",
+    "voice": "en-us+f2",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 77500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 80000,
+      "paddle": "15"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h20",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6059
+  },
+  {
+    "id": "h21-s20-babble",
+    "text": "bidder number three three seventy five",
+    "category": "snr20",
+    "voice": "en-us",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 35000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 37500,
+      "paddle": "3"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h21",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6060
+  },
+  {
+    "id": "h21-s10-babble",
+    "text": "bidder number three three seventy five",
+    "category": "snr10",
+    "voice": "en-us",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 35000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 37500,
+      "paddle": "3"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h21",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6061
+  },
+  {
+    "id": "h21-s5-babble",
+    "text": "bidder number three three seventy five",
+    "category": "snr5",
+    "voice": "en-us",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 35000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 37500,
+      "paddle": "3"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h21",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6062
+  },
+  {
+    "id": "h22-s20-room",
+    "text": "paddle ten, one thousand dollars",
+    "category": "snr20",
+    "voice": "en-gb",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 97500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 100000,
+      "paddle": "10"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h22",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6063
+  },
+  {
+    "id": "h22-s10-room",
+    "text": "paddle ten, one thousand dollars",
+    "category": "snr10",
+    "voice": "en-gb",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 97500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 100000,
+      "paddle": "10"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h22",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6064
+  },
+  {
+    "id": "h22-s5-room",
+    "text": "paddle ten, one thousand dollars",
+    "category": "snr5",
+    "voice": "en-gb",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 97500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 100000,
+      "paddle": "10"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h22",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6065
+  },
+  {
+    "id": "h23-s20-babble",
+    "text": "paddle sixteen two hundred",
+    "category": "snr20",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 17500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 20000,
+      "paddle": "16"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h23",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6066
+  },
+  {
+    "id": "h23-s10-babble",
+    "text": "paddle sixteen two hundred",
+    "category": "snr10",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 17500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 20000,
+      "paddle": "16"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h23",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6067
+  },
+  {
+    "id": "h23-s5-babble",
+    "text": "paddle sixteen two hundred",
+    "category": "snr5",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 17500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 20000,
+      "paddle": "16"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h23",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6068
+  },
+  {
+    "id": "h24-s20-room",
+    "text": "two thousand",
+    "category": "snr20",
+    "voice": "en-us+m3",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 197500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 200000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h24",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6069
+  },
+  {
+    "id": "h24-s10-room",
+    "text": "two thousand",
+    "category": "snr10",
+    "voice": "en-us+m3",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 197500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 200000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h24",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6070
+  },
+  {
+    "id": "h24-s5-room",
+    "text": "two thousand",
+    "category": "snr5",
+    "voice": "en-us+m3",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 197500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 200000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h24",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6071
+  },
+  {
+    "id": "h25-s20-babble",
+    "text": "twenty six hundred",
+    "category": "snr20",
+    "voice": "en-us+f2",
+    "speakerBidderId": "5",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 257500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 260000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h25",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6072
+  },
+  {
+    "id": "h25-s10-babble",
+    "text": "twenty six hundred",
+    "category": "snr10",
+    "voice": "en-us+f2",
+    "speakerBidderId": "5",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 257500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 260000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h25",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6073
+  },
+  {
+    "id": "h25-s5-babble",
+    "text": "twenty six hundred",
+    "category": "snr5",
+    "voice": "en-us+f2",
+    "speakerBidderId": "5",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 257500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 260000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h25",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6074
+  },
+  {
+    "id": "h26-s20-room",
+    "text": "three thousand five hundred",
+    "category": "snr20",
+    "voice": "en-us",
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 345000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 350000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h26",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6075
+  },
+  {
+    "id": "h26-s10-room",
+    "text": "three thousand five hundred",
+    "category": "snr10",
+    "voice": "en-us",
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 345000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 350000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h26",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6076
+  },
+  {
+    "id": "h26-s5-room",
+    "text": "three thousand five hundred",
+    "category": "snr5",
+    "voice": "en-us",
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 345000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 350000
+    },
+    "acceptableConfirm": [],
+    "utterance": "h26",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6077
+  },
+  {
+    "id": "h27-s20-babble",
+    "text": "four hundred no wait four fifty",
+    "category": "snr20",
+    "voice": "en-gb",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 37500
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "amountCents": 45000
+        }
+      ]
+    ],
+    "utterance": "h27",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6078
+  },
+  {
+    "id": "h27-s10-babble",
+    "text": "four hundred no wait four fifty",
+    "category": "snr10",
+    "voice": "en-gb",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 37500
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "amountCents": 45000
+        }
+      ]
+    ],
+    "utterance": "h27",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6079
+  },
+  {
+    "id": "h27-s5-babble",
+    "text": "four hundred no wait four fifty",
+    "category": "snr5",
+    "voice": "en-gb",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 37500
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "amountCents": 45000
+        }
+      ]
+    ],
+    "utterance": "h27",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6080
+  },
+  {
+    "id": "h28-s20-room",
+    "text": "maybe five hundred",
+    "category": "snr20",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 45000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "amountCents": 50000
+        }
+      ]
+    ],
+    "utterance": "h28",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6081
+  },
+  {
+    "id": "h28-s10-room",
+    "text": "maybe five hundred",
+    "category": "snr10",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 45000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "amountCents": 50000
+        }
+      ]
+    ],
+    "utterance": "h28",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6082
+  },
+  {
+    "id": "h28-s5-room",
+    "text": "maybe five hundred",
+    "category": "snr5",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 45000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "amountCents": 50000
+        }
+      ]
+    ],
+    "utterance": "h28",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6083
+  },
+  {
+    "id": "h29-s20-babble",
+    "text": "six hundred or six fifty",
+    "category": "snr20",
+    "voice": "en-us+m3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 55000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "amountCents": 60000
+        },
+        {
+          "amountCents": 65000
+        }
+      ]
+    ],
+    "utterance": "h29",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6084
+  },
+  {
+    "id": "h29-s10-babble",
+    "text": "six hundred or six fifty",
+    "category": "snr10",
+    "voice": "en-us+m3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 55000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "amountCents": 60000
+        },
+        {
+          "amountCents": 65000
+        }
+      ]
+    ],
+    "utterance": "h29",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6085
+  },
+  {
+    "id": "h29-s5-babble",
+    "text": "six hundred or six fifty",
+    "category": "snr5",
+    "voice": "en-us+m3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 55000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "amountCents": 60000
+        },
+        {
+          "amountCents": 65000
+        }
+      ]
+    ],
+    "utterance": "h29",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6086
+  },
+  {
+    "id": "h30-s20-room",
+    "text": "paddle four three hundred paddle nine three twenty five",
+    "category": "snr20",
+    "voice": "en-us+f2",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 27500
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "paddle": "4",
+          "amountCents": 30000
+        },
+        {
+          "paddle": "9",
+          "amountCents": 32500
+        }
+      ]
+    ],
+    "utterance": "h30",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6087
+  },
+  {
+    "id": "h30-s10-room",
+    "text": "paddle four three hundred paddle nine three twenty five",
+    "category": "snr10",
+    "voice": "en-us+f2",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 27500
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "paddle": "4",
+          "amountCents": 30000
+        },
+        {
+          "paddle": "9",
+          "amountCents": 32500
+        }
+      ]
+    ],
+    "utterance": "h30",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6088
+  },
+  {
+    "id": "h30-s5-room",
+    "text": "paddle four three hundred paddle nine three twenty five",
+    "category": "snr5",
+    "voice": "en-us+f2",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 27500
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "paddle": "4",
+          "amountCents": 30000
+        },
+        {
+          "paddle": "9",
+          "amountCents": 32500
+        }
+      ]
+    ],
+    "utterance": "h30",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6089
+  },
+  {
+    "id": "h31-s20-babble",
+    "text": "no, make it seven hundred",
+    "category": "snr20",
+    "voice": "en-us",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 65000,
+      "pendingCandidate": {
+        "paddle": "7",
+        "amountCents": 65000
+      }
+    },
+    "expected": {
+      "outcome": "confirm",
+      "intended": {
+        "paddle": "7",
+        "amountCents": 70000
+      }
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "paddle": "7",
+          "amountCents": 70000
+        }
+      ]
+    ],
+    "utterance": "h31",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6090
+  },
+  {
+    "id": "h31-s10-babble",
+    "text": "no, make it seven hundred",
+    "category": "snr10",
+    "voice": "en-us",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 65000,
+      "pendingCandidate": {
+        "paddle": "7",
+        "amountCents": 65000
+      }
+    },
+    "expected": {
+      "outcome": "confirm",
+      "intended": {
+        "paddle": "7",
+        "amountCents": 70000
+      }
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "paddle": "7",
+          "amountCents": 70000
+        }
+      ]
+    ],
+    "utterance": "h31",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6091
+  },
+  {
+    "id": "h31-s5-babble",
+    "text": "no, make it seven hundred",
+    "category": "snr5",
+    "voice": "en-us",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 65000,
+      "pendingCandidate": {
+        "paddle": "7",
+        "amountCents": 65000
+      }
+    },
+    "expected": {
+      "outcome": "confirm",
+      "intended": {
+        "paddle": "7",
+        "amountCents": 70000
+      }
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "paddle": "7",
+          "amountCents": 70000
+        }
+      ]
+    ],
+    "utterance": "h31",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6092
+  },
+  {
+    "id": "h32-s20-room",
+    "text": "five fifty rupees",
+    "category": "snr20",
+    "voice": "en-gb",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 40000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h32",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6093
+  },
+  {
+    "id": "h32-s10-room",
+    "text": "five fifty rupees",
+    "category": "snr10",
+    "voice": "en-gb",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 40000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h32",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6094
+  },
+  {
+    "id": "h32-s5-room",
+    "text": "five fifty rupees",
+    "category": "snr5",
+    "voice": "en-gb",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 40000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h32",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6095
+  },
+  {
+    "id": "h33-s20-babble",
+    "text": "the next lot is a clock",
+    "category": "snr20",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h33",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6096
+  },
+  {
+    "id": "h33-s10-babble",
+    "text": "the next lot is a clock",
+    "category": "snr10",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h33",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6097
+  },
+  {
+    "id": "h33-s5-babble",
+    "text": "the next lot is a clock",
+    "category": "snr5",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h33",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6098
+  },
+  {
+    "id": "h34-s20-room",
+    "text": "is it six hundred",
+    "category": "snr20",
+    "voice": "en-us+m3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 55000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h34",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6099
+  },
+  {
+    "id": "h34-s10-room",
+    "text": "is it six hundred",
+    "category": "snr10",
+    "voice": "en-us+m3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 55000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h34",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6100
+  },
+  {
+    "id": "h34-s5-room",
+    "text": "is it six hundred",
+    "category": "snr5",
+    "voice": "en-us+m3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 55000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h34",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6101
+  },
+  {
+    "id": "h35-s20-babble",
+    "text": "I have three grandchildren",
+    "category": "snr20",
+    "voice": "en-us+f2",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h35",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6102
+  },
+  {
+    "id": "h35-s10-babble",
+    "text": "I have three grandchildren",
+    "category": "snr10",
+    "voice": "en-us+f2",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h35",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6103
+  },
+  {
+    "id": "h35-s5-babble",
+    "text": "I have three grandchildren",
+    "category": "snr5",
+    "voice": "en-us+f2",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h35",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6104
+  },
+  {
+    "id": "h36-s20-room",
+    "text": "we are at four hundred now",
+    "category": "snr20",
+    "voice": "en-us",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 40000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h36",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6105
+  },
+  {
+    "id": "h36-s10-room",
+    "text": "we are at four hundred now",
+    "category": "snr10",
+    "voice": "en-us",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 40000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h36",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6106
+  },
+  {
+    "id": "h36-s5-room",
+    "text": "we are at four hundred now",
+    "category": "snr5",
+    "voice": "en-us",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 40000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h36",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6107
+  },
+  {
+    "id": "h37-s20-babble",
+    "text": "I'm done",
+    "category": "snr20",
+    "voice": "en-gb",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h37",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6108
+  },
+  {
+    "id": "h37-s10-babble",
+    "text": "I'm done",
+    "category": "snr10",
+    "voice": "en-gb",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h37",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6109
+  },
+  {
+    "id": "h37-s5-babble",
+    "text": "I'm done",
+    "category": "snr5",
+    "voice": "en-gb",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h37",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6110
+  },
+  {
+    "id": "h38-s20-room",
+    "text": "does that include shipping",
+    "category": "snr20",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h38",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6111
+  },
+  {
+    "id": "h38-s10-room",
+    "text": "does that include shipping",
+    "category": "snr10",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h38",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6112
+  },
+  {
+    "id": "h38-s5-room",
+    "text": "does that include shipping",
+    "category": "snr5",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h38",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6113
+  },
+  {
+    "id": "h39-s20-babble",
+    "text": "can you repeat the price",
+    "category": "snr20",
+    "voice": "en-us+m3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h39",
+    "noise": "babble",
+    "snrDb": 20,
+    "seed": 6114
+  },
+  {
+    "id": "h39-s10-babble",
+    "text": "can you repeat the price",
+    "category": "snr10",
+    "voice": "en-us+m3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h39",
+    "noise": "babble",
+    "snrDb": 10,
+    "seed": 6115
+  },
+  {
+    "id": "h39-s5-babble",
+    "text": "can you repeat the price",
+    "category": "snr5",
+    "voice": "en-us+m3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h39",
+    "noise": "babble",
+    "snrDb": 5,
+    "seed": 6116
+  },
+  {
+    "id": "h40-s20-room",
+    "text": "she paid two hundred last year",
+    "category": "snr20",
+    "voice": "en-us+f2",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h40",
+    "noise": "room",
+    "snrDb": 20,
+    "seed": 6117
+  },
+  {
+    "id": "h40-s10-room",
+    "text": "she paid two hundred last year",
+    "category": "snr10",
+    "voice": "en-us+f2",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h40",
+    "noise": "room",
+    "snrDb": 10,
+    "seed": 6118
+  },
+  {
+    "id": "h40-s5-room",
+    "text": "she paid two hundred last year",
+    "category": "snr5",
+    "voice": "en-us+f2",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": [],
+    "utterance": "h40",
+    "noise": "room",
+    "snrDb": 5,
+    "seed": 6119
+  }
+]
