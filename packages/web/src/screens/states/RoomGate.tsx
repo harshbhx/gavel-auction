@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { t } from '../../copy/t';
 import { ApiError, apiErrorFor, unreachable } from '../../net/apiError';
 import { ApiProblem, type ApiProblemKind } from './ApiProblem';
@@ -19,6 +19,8 @@ export function RoomGate({ apiBase, roomId, onNavigate, children }: RoomGateProp
   const [check, setCheck] = useState<Check>(
     apiBase === undefined ? { kind: 'ok' } : { kind: 'checking' },
   );
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
   useEffect(() => {
     if (apiBase === undefined) return undefined;
     let live = true;
@@ -34,7 +36,7 @@ export function RoomGate({ apiBase, roomId, onNavigate, children }: RoomGateProp
     return () => {
       live = false;
     };
-  }, [apiBase, roomId]);
+  }, [apiBase, roomId, attempt]);
   if (check.kind === 'ok') return <>{children}</>;
   if (check.kind === 'checking') {
     return (
@@ -52,7 +54,14 @@ export function RoomGate({ apiBase, roomId, onNavigate, children }: RoomGateProp
       : check.error.kind === 'rateLimited'
         ? 'rateLimited'
         : 'unreachable';
-  return <ApiProblem kind={kind} retryAfterS={check.error.retryAfterS} onNavigate={onNavigate} />;
+  return (
+    <ApiProblem
+      kind={kind}
+      retryAfterS={check.error.retryAfterS}
+      onNavigate={onNavigate}
+      onRetry={retry}
+    />
+  );
 }
 
 export default RoomGate;

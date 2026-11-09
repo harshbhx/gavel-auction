@@ -12,9 +12,17 @@ export interface ApiProblemProps {
   readonly retryAfterS?: number | null;
   /** Moves the app to another path. */
   readonly onNavigate: (path: string) => void;
-  /** Tries the request again. Defaults to reloading the page. */
+  /**
+   * Tries the request again. Defaults to reloading the page. When given, a rate limit also retries
+   * by itself once the server's Retry-After has passed (up to AUTO_RETRY_MAX_S).
+   */
   readonly onRetry?: () => void;
 }
+
+/** A rate limit shorter than this retries on its own; a long lockout waits for the button. */
+const AUTO_RETRY_MAX_S = 120;
+/** Wait used when the server sent no Retry-After. */
+const AUTO_RETRY_DEFAULT_S = 5;
 
 /** A room page that cannot load: missing or ended, slowed down by the server, or no network. */
 export function ApiProblem({ kind, retryAfterS = null, onNavigate, onRetry }: ApiProblemProps) {
@@ -23,6 +31,13 @@ export function ApiProblem({ kind, retryAfterS = null, onNavigate, onRetry }: Ap
     heading.current?.focus();
   }, [kind]);
   const retry = onRetry ?? (() => window.location.reload());
+  const autoS = retryAfterS ?? AUTO_RETRY_DEFAULT_S;
+  const auto = kind === 'rateLimited' && onRetry !== undefined && autoS <= AUTO_RETRY_MAX_S;
+  useEffect(() => {
+    if (!auto || onRetry === undefined) return undefined;
+    const timer = window.setTimeout(onRetry, autoS * 1000);
+    return () => window.clearTimeout(timer);
+  }, [auto, autoS, onRetry]);
   const title =
     kind === 'notFound'
       ? t('room.missingTitle')

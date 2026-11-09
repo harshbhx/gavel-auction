@@ -107,6 +107,20 @@ export class CodeGuard {
   }
 
   /**
+   * Gives back the attempt `attempt` just counted, because the code turned out to be a real room.
+   * Only misses stay in the per-minute budget, so brute force is still capped while a room of
+   * judges behind one address can look up a real code as often as they like. The lockout is not
+   * touched: wrong codes still strike.
+   */
+  release(tag: string, now: number, kind: GuardKind = 'join'): void {
+    const recent = this.attempts.get(`${kind}:${tag}`);
+    if (recent === undefined) return;
+    const at = recent.lastIndexOf(now);
+    if (at >= 0) recent.splice(at, 1);
+    else recent.pop();
+  }
+
+  /**
    * Counts one wrong code for the source; the Nth one starts the lockout. The same code sent
    * again within a few seconds through the other door (a lookup, then a join with one typo) is one
    * strike, not two. The same door twice is two guesses.
