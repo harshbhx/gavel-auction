@@ -735,9 +735,8 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
       keyId: key.id,
       roomsMax: Math.min(key.maxRooms, keyedMax),
       roomsLive: liveOf(key.id),
-      ...(Number.isFinite(key.expiresAt)
-        ? { expiresAt: new Date(key.expiresAt).toISOString() }
-        : {}),
+      // null means the key never expires (never Infinity: JSON cannot carry it).
+      expiresAt: Number.isFinite(key.expiresAt) ? new Date(key.expiresAt).toISOString() : null,
     });
   };
 
@@ -755,7 +754,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
         roomsLive: liveOf(k.id),
         revoked: registry.isRevoked(k.id),
         expired: k.expiresAt <= now,
-        ...(Number.isFinite(k.expiresAt) ? { expiresAt: new Date(k.expiresAt).toISOString() } : {}),
+        expiresAt: Number.isFinite(k.expiresAt) ? new Date(k.expiresAt).toISOString() : null,
       })),
     });
   };

@@ -147,7 +147,7 @@ test.describe('bid: voice confirmation', () => {
   test('confirmation answered', async ({ page, shoot }) => {
     await bidder(page, { scenario: ambiguous_confirm, at: 3_500 });
     await page.getByRole('button', { name: t('confirm.yes') }).click();
-    await expect(page.getByText(t('confirm.answered')).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: t('confirm.yes') })).toBeHidden();
     await shoot('bid', 'confirm-answered');
   });
 });

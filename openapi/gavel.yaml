@@ -1304,9 +1304,9 @@ paths:
                     type: integer
                     description: Rooms of this key alive now.
                   expiresAt:
-                    type: string
+                    type: [string, 'null']
                     format: date-time
-                    description: When the key stops working. Absent for the legacy shared key.
+                    description: When the key stops working. `null` for a key that never expires (the shared judging key).
               example:
                 ok: true
                 keyId: a1b2c3d4
@@ -1770,8 +1770,9 @@ paths:
                         expired:
                           type: boolean
                         expiresAt:
-                          type: string
+                          type: [string, 'null']
                           format: date-time
+                          description: When the key stops working. `null` means it never expires.
               example:
                 keys:
                   - id: a1b2c3d4
@@ -1782,6 +1783,14 @@ paths:
                     revoked: false
                     expired: false
                     expiresAt: '2026-11-30T23:59:00Z'
+                  - id: legacy
+                    label: shared judge key
+                    maxRooms: 10
+                    perHour: 100
+                    roomsLive: 0
+                    revoked: false
+                    expired: false
+                    expiresAt: null
         '401':
           $ref: '#/components/responses/Unauthorized'
         '429':
@@ -2288,8 +2297,9 @@ components:
       description: >-
         A limited per-judge key, `gvl_judge_<id>_<secret>` (set by the host operator, never the
         operator key). Only the judge-room create and key-check routes read it; it never opens an
-        operator route. It has an expiry, a room cap and an hourly cap of its own. No real value
-        appears in this document.
+        operator route. It has a room cap and an hourly cap of its own, and an expiry unless it is the
+        shared judging key, which does not expire (sandbox only; the operator can revoke it). No
+        real value appears in this document.
     sessionAuth:
       type: http
       scheme: bearer

@@ -283,7 +283,7 @@ describe('bid screen', () => {
     expect(screen.getAllByText(NO_AMOUNT).length).toBeGreaterThan(0);
   });
 
-  it('opens the confirm sheet for the bidder, announces it and sends one answer', () => {
+  it('opens the confirm sheet for the bidder, announces it and sends one answer', async () => {
     saveSession(ROOM, { token: 'heron', bidderId: ME });
     const socket = joinLive(`/r/${ROOM}/bid`);
     act(() => socket.receive(stateMsg(1, snapshot())));
@@ -299,6 +299,7 @@ describe('bid screen', () => {
       }),
     );
     const title = t('confirm.title', { amount: '$350.00', n: 1 });
+    await screen.findByRole('dialog');
     expect(screen.getAllByText(title).length).toBeGreaterThan(0);
     expect(screen.getByTestId('live-assertive').textContent).toContain(title);
     const yes = screen.getByRole('button', { name: t('confirm.yes') });
