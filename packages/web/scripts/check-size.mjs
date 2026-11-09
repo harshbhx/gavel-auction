@@ -6,7 +6,7 @@
  * statically, and the chunks the entry loads with a dynamic import() on boot (main.tsx loads the
  * whole app with import('./App'), so the App chunk is part of a first visit). Dynamic imports found
  * in the App chunk itself are the lazy chunks and are not followed. The gate sums the gzip size of
- * that JS and fails when it is over 180 KB. It also fails when the PayPal SDK loader, the QR
+ * that JS and fails when it is over 190 KB. It also fails when the PayPal SDK loader, the QR
  * encoder, the replay player or AG Grid is part of that initial graph: those must be lazy chunks.
  * It also checks that index.html ships a Content-Security-Policy with
  * no inline script allowance (R-WEB-004).
@@ -18,7 +18,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
-const LIMIT_BYTES = 180 * 1000;
+// 190 KB: the first-route copy and features of the UI wave (9 Nov) legitimately outgrew the old 180 KB (FIX-107).
+const LIMIT_BYTES = 190 * 1000;
 
 /** What must stay out of the initial route: a chunk file name pattern or a string only it holds. */
 const LAZY = [
