@@ -1280,15 +1280,22 @@ body {
   max-width: 3rem;
 }
 .hl-tourbar__dots a {
+  /* 24 px tall target (WCAG 2.2 target size); the 10 px bar is drawn by ::before. */
+  position: relative;
   display: block;
-  height: 10px;
+  height: 24px;
+}
+.hl-tourbar__dots a::before {
+  content: '';
+  position: absolute;
+  inset: 7px 0;
   border: 1px solid var(--hl-border);
   background: var(--hl-panel);
 }
-.hl-tourbar__dots a[data-done] {
+.hl-tourbar__dots a[data-done]::before {
   background: var(--hl-fg);
 }
-.hl-tourbar__dots a[data-here] {
+.hl-tourbar__dots a[data-here]::before {
   background: var(--hl-signal);
   border-color: var(--hl-fg);
 }
