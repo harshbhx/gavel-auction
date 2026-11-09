@@ -264,9 +264,13 @@ export function BidScreen({
       {usage !== null && <CeilingMeter usedCents={usage.usedCents} maxCents={usage.maxCents} />}
 
       <ul aria-label={t('console.stream')} className="bid__stream">
-        {stream.slice(0, LAST_EVENTS).map((b) => (
+        {stream.slice(0, LAST_EVENTS).map((b, i) => (
           <li key={b.seq}>
-            <span>{b.paddle === null ? null : t('bid.leader', { n: b.paddle })}</span>
+            <span>
+              {b.paddle === null
+                ? null
+                : t(i === 0 ? 'bid.rowLeading' : 'bid.row', { n: b.paddle })}
+            </span>
             <span className="bid__amt">{formatUsd(b.amount)}</span>
           </li>
         ))}

@@ -93,7 +93,7 @@ describe('BidScreen (T-WEB-033)', () => {
     render(<BidScreen store={makeStore(6000)} onBid={() => undefined} />);
     const above = screen.getByRole('button', { name: t('bid.quick', { amount: '$100' }) });
     expect(above.getAttribute('aria-disabled')).toBe('true');
-    expect(screen.getByText(t('bid.aboveCeiling'))).toBeTruthy();
+    expect(screen.getByText(t('bid.aboveCeiling', { max: '$60' }))).toBeTruthy();
   });
 
   it('shows the leading chip after a price update for this bidder', () => {

@@ -34,7 +34,7 @@ describe('QuickBid and CustomBid (T-WEB-033)', () => {
     expect(send).toHaveBeenCalledTimes(1);
     const over = screen.getByRole('button', { name: t('bid.quick', { amount: '$55' }) });
     expect(over.getAttribute('aria-disabled')).toBe('true');
-    expect(screen.getByText(t('bid.aboveCeiling'))).toBeTruthy();
+    expect(screen.getByText(t('bid.aboveCeiling', { max: '$52' }))).toBeTruthy();
     act(() => {
       vi.advanceTimersByTime(600);
     });
