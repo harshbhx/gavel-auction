@@ -34,6 +34,8 @@ describe('simulated holds', () => {
     const rows = new Map<string, HoldRecord>();
     const store = {
       get: (id: string) => Promise.resolve(rows.get(id) ?? null),
+      listByAuction: (a: string) =>
+        Promise.resolve([...rows.values()].filter((h) => h.auctionId === a)),
       put: (h: HoldRecord) => {
         rows.set(h.holdId, h);
         return Promise.resolve();
@@ -62,6 +64,8 @@ describe('simulated holds', () => {
     const rows = new Map<string, HoldRecord>();
     const store = {
       get: (id: string) => Promise.resolve(rows.get(id) ?? null),
+      listByAuction: (a: string) =>
+        Promise.resolve([...rows.values()].filter((h) => h.auctionId === a)),
       put: (h: HoldRecord) => {
         rows.set(h.holdId, h);
         return Promise.resolve();
@@ -86,6 +90,46 @@ describe('simulated holds', () => {
     );
   });
 
+  it('refuses a raise below the minimum step and past the raise cap (#2397)', async () => {
+    const rows = new Map<string, HoldRecord>();
+    const store = {
+      get: (id: string) => Promise.resolve(rows.get(id) ?? null),
+      listByAuction: (a: string) =>
+        Promise.resolve([...rows.values()].filter((h) => h.auctionId === a)),
+      put: (h: HoldRecord) => {
+        rows.set(h.holdId, h);
+        return Promise.resolve();
+      },
+    } as unknown as HoldStore;
+    const source = createSimHoldSource(store, () => 5);
+    const ask = (c: number): Promise<string> =>
+      source('B1' as BidderId, c as Cents, 'A1' as AuctionId);
+    await ask(10_000);
+    // One cent, and just under 5 percent, are too small; nothing is written for them.
+    await expect(ask(10_001)).rejects.toMatchObject({ code: 'raise_too_small' });
+    await expect(ask(10_499)).rejects.toMatchObject({ code: 'raise_too_small' });
+    expect(rows.size).toBe(1);
+    // Five raises of ten percent each are fine; the sixth is refused whatever its size.
+    let current = 10_000;
+    for (let n = 0; n < 5; n += 1) {
+      current = Math.round(current * 1.1);
+      await ask(current);
+    }
+    expect(rows.size).toBe(6);
+    await expect(ask(current * 2)).rejects.toMatchObject({ code: 'raise_limit_reached' });
+    expect(rows.size).toBe(6);
+    // A repeat of a raise already written still returns it.
+    expect(await ask(11_000)).toBe('sim-hold-B1-11000');
+    // The limits can be set by the host.
+    const strict = createSimHoldSource(store, () => 5, { maxRaises: 0 });
+    await expect(strict('B2' as BidderId, 5_000 as Cents, 'A1' as AuctionId)).resolves.toBe(
+      'sim-hold-B2',
+    );
+    await expect(strict('B2' as BidderId, 9_000 as Cents, 'A1' as AuctionId)).rejects.toMatchObject(
+      { code: 'raise_limit_reached' },
+    );
+  });
+
   it('races two calls for one bidder into a single write', async () => {
     const rows = new Map<string, HoldRecord>();
     const put = vi.fn(async (h: HoldRecord) => {
@@ -94,6 +138,8 @@ describe('simulated holds', () => {
     });
     const store = {
       get: (id: string) => Promise.resolve(rows.get(id) ?? null),
+      listByAuction: (a: string) =>
+        Promise.resolve([...rows.values()].filter((h) => h.auctionId === a)),
       put,
     } as unknown as HoldStore;
     const source = createSimHoldSource(store, () => 5);

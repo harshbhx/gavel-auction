@@ -1,6 +1,7 @@
 import { BIDDER_NAME_FORBIDDEN_PATTERN } from '@gavel/shared';
 
-export const NAME_MAX = 24;
+/** The server and the wire schema take up to 64 characters (docs/PRIVACY.md). */
+export const NAME_MAX = 64;
 
 /** True when the name holds a character the server refuses (control, invisible, < or >). */
 export function nameHasForbidden(raw: string): boolean {

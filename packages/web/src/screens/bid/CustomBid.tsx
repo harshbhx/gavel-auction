@@ -57,6 +57,9 @@ export function stepAmount(
   incrementCents: number,
   ceilingCents: number | null,
 ): number {
+  // A limit under the next minimum leaves nothing to step to: answer the minimum, never a
+  // smaller amount the server would refuse.
+  if (ceilingCents !== null && ceilingCents < nextMinCents) return nextMinCents;
   const base = current ?? nextMinCents;
   const stepped = current === null ? nextMinCents : base + direction * incrementCents;
   const capped = ceilingCents === null ? stepped : Math.min(stepped, ceilingCents);
@@ -105,8 +108,10 @@ export function CustomBid({
   };
   const sliderValue =
     top === null ? nextMinCents : Math.min(Math.max(cents ?? nextMinCents, nextMinCents), top);
-  const atMin = cents !== null && cents <= nextMinCents;
-  const atMax = ceilingCents !== null && cents !== null && cents >= (top ?? ceilingCents);
+  const pricedOut = ceilingCents !== null && ceilingCents < nextMinCents;
+  const atMin = pricedOut || (cents !== null && cents <= nextMinCents);
+  const atMax =
+    pricedOut || (ceilingCents !== null && cents !== null && cents >= (top ?? ceilingCents));
 
   const submit = (e: FormEvent): void => {
     e.preventDefault();
@@ -173,7 +178,9 @@ export function CustomBid({
           onChange={(e) => set(Number(e.target.value))}
         />
       )}
-      <Button type="submit">{t('bid.place')}</Button>
+      <Button type="submit" disabled={pricedOut}>
+        {t('bid.place')}
+      </Button>
     </form>
   );
 }

@@ -595,3 +595,28 @@ button.ui-link {
     transition: none;
   }
 }
+
+/* Forced colours: fill, ticks and knob are drawn with background only, which the mode replaces
+   with the canvas colour. Keep them visible with system colours (a11y). */
+@media (forced-colors: active) {
+  .ui-slider__track {
+    border-color: CanvasText;
+  }
+
+  .ui-slider__fill {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+
+  .ui-slider__tick,
+  .ui-slider__tick--major {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+
+  .ui-slider__knob {
+    forced-color-adjust: none;
+    background: CanvasText;
+    border: 2px solid Highlight;
+  }
+}

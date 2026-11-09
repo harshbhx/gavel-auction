@@ -3,6 +3,7 @@ import {
   EpochMs,
   ERROR_TABLE,
   GavelError,
+  HOLD_ERROR_STATUS,
   MAX_CENTS,
   MAX_NAME_CHARS,
   MIN_CEILING_CENTS,
@@ -13,6 +14,7 @@ import {
   type Logger,
 } from '@gavel/shared';
 import { ChainError, type LedgerStore, type Ulid } from '@gavel/engine';
+import { HoldError } from '@gavel/payments';
 import { z } from 'zod';
 import { buildReplayBundle } from '../admin/replay-bundle';
 import { raiseAuctioneerFloor } from '../auth/auctioneer-floor';
@@ -111,6 +113,11 @@ export interface JudgeRoomsOptions {
   keyedPerHour?: number | undefined;
   /** The ledger the read-only reviewer route builds a verifiable bundle from. */
   ledger?: Pick<LedgerStore, 'read'> | undefined;
+  /**
+   * True when a live speech provider is configured for the /audio route. The capability probe
+   * answers `voice: true` only then, so the web console enables its microphone only then.
+   */
+  voiceLive?: (() => boolean) | undefined;
 }
 
 /** What the simulated-hold route needs from the host. */
@@ -947,12 +954,26 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     if (!(await sim.acceptsHolds(auctionId))) {
       throw new GavelError('closed', 'the auction no longer takes holds');
     }
-    const holdId = await sim.place({
-      auctionId,
-      bidderId: who.bidderId,
-      name: body.name,
-      ceilingCents: body.ceilingCents,
-    });
+    let holdId: string;
+    try {
+      holdId = await sim.place({
+        auctionId,
+        bidderId: who.bidderId,
+        name: body.name,
+        ceilingCents: body.ceilingCents,
+      });
+    } catch (e) {
+      // A raise past the cap or below the minimum step answers with its hold error code.
+      if (
+        e instanceof HoldError &&
+        (e.code === 'raise_limit_reached' || e.code === 'raise_too_small')
+      ) {
+        const why = `sim_hold_${e.code}`;
+        const src = sourceTag(auctionId);
+        return refuse(deps, HOLD_ERROR_STATUS[e.code], e.code, why, src, undefined, e.message);
+      }
+      throw e;
+    }
     // The bidder now has a hold, so its seat stays for as long as the room lives.
     seatsOf(auctionId, deps.clock.now()).set(who.bidderId, {
       at: deps.clock.now(),
@@ -1100,6 +1121,8 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
         simHolds: opts.enabled && opts.simHolds !== undefined,
         // Present only when a judge key is set, so the panel shows its key field only then.
         ...(opts.enabled && registry.any ? { keyed: true } : {}),
+        // Present only when a live speech provider is set; never says which one or its key.
+        ...(opts.voiceLive?.() === true ? { voice: true } : {}),
       });
     });
     app.post(JUDGE_ROOMS_PATH, judgeRoute(create));

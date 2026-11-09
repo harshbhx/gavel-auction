@@ -86,7 +86,12 @@ for (const screen of ROOM_SCREENS) {
         // The page clock is pinned to a fixed day while the stack runs on real time, so the
         // clock-skew notice shows a number that changes every day: mask it.
         await expect(page).toHaveScreenshot(`${screen.name}-${viewport.name}.png`, {
-          mask: [page.locator('.gv-banner', { hasText: /clock differs/i })],
+          // The voice panel waits for the capability probe and a lazy chunk, so its text can differ
+          // between runs: mask it. Its states are covered by component tests.
+          mask: [
+            page.locator('.gv-banner', { hasText: /clock differs/i }),
+            page.locator('section[aria-label="Voice feed"]'),
+          ],
         });
       }
     });
