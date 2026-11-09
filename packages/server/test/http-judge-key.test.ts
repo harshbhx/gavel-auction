@@ -355,15 +355,17 @@ describe('reviewer link', () => {
     expect([401, 404]).toContain(plain.status);
   });
 
-  it('refuses bidder session and screen tokens on the ledger route, allows the reviewer', async () => {
+  it('refuses session and screen tokens on the ledger route, allows reviewer', async () => {
     const { app, ledger } = setup();
     const c = await created(await post(app, JUDGE_ROOMS_PATH));
     const id = c.auctionId as Ulid;
-    const events = [{ type: 'AUCTION_CREATED', payload: { note: 'x' } }] as unknown as LedgerEvent[];
+    const events = [
+      { type: 'AUCTION_CREATED', payload: { note: 'x' } },
+    ] as unknown as LedgerEvent[];
     await ledger.append(id, sealBatch(events, genesisHead(id), 1000, null), 0);
     const path = `/api/judge/rooms/${c.auctionId}/ledger`;
     const joined = await post(app, JUDGE_JOIN_PATH, {
-      body: { code: c.joinCode, name: 'Ada' },
+      body: { code: c.joinCode, displayName: 'Ada' },
     });
     expect(joined.status).toBe(200);
     const { sessionToken } = (await joined.json()) as { sessionToken: string };
