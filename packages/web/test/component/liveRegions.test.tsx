@@ -43,7 +43,7 @@ function hammer(store: RoomStore, winner: number, cents: number): void {
     msg: {
       v: 1,
       t: 'hammer',
-      seq: 50,
+      seq: store.getState().lastSeq + 1,
       ts: 1,
       winnerId: bidderId(winner),
       price: cents,
@@ -149,7 +149,7 @@ describe('public screen announcements (#2437)', () => {
 });
 
 describe('background work stops when nothing can change (#2444)', () => {
-  const tickCalls = (spy: ReturnType<typeof vi.spyOn>): number =>
+  const tickCalls = (spy: { mock: { calls: unknown[][] } }): number =>
     spy.mock.calls.filter((c) => c[1] === 250).length;
 
   it('runs the 250 ms clock tick on an open lot and not on a closed one', () => {
@@ -178,7 +178,7 @@ describe('background work stops when nothing can change (#2444)', () => {
 });
 
 describe('the confirm queue tick', () => {
-  const second = (spy: ReturnType<typeof vi.spyOn>): number =>
+  const second = (spy: { mock: { calls: unknown[][] } }): number =>
     spy.mock.calls.filter((c) => c[1] === 1000).length;
   const pending = { v: 1, t: 'confirm_request', confirmId: 'c1', amount: 1, expiresAt: 9e9 };
 
