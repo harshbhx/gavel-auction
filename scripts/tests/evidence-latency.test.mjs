@@ -4,6 +4,7 @@ import {
   MIN_SAMPLES,
   TARGETS,
   buildLatencyEvidence,
+  conservativeP95,
   latencyVerdictLine,
   renderLatencyMarkdown,
 } from '../evidence/latency-report.mjs';
@@ -80,5 +81,28 @@ describe('latency evidence', () => {
     const line = latencyVerdictLine(ev);
     assert.match(line, /^LATENCY EVIDENCE VERDICT: RECORDED/);
     assert.match(line, /CAPTURED p95 .* vs 2500: MISSED, n=50/);
+  });
+
+  it('counts failures in the worst case and never reports MET with failures (issue 2324)', () => {
+    // 50 attempts, 2 timed out: the 48th of 50 attempts is a success at most p99, 49th/50th fail.
+    const ok = series(48, 2000);
+    const c = conservativeP95({ ...summarize(ok), failures: 2 });
+    assert.equal(c.attempts, 50);
+    assert.equal(c.bound, true);
+    assert.ok(c.value === null || c.value >= summarize(ok).p95);
+    // 3 failures of 10 attempts: the 95th-percentile rank (10) is a failed attempt.
+    assert.equal(conservativeP95({ ...summarize(series(7, 100)), failures: 3 }).value, null);
+    // No failures: the conservative figure is the reported p95.
+    const clean = summarize(series(50, 100));
+    assert.equal(conservativeP95({ ...clean, failures: 0 }).value, clean.p95);
+
+    const base = good();
+    base.settlement.hammerToSettled = { ...summarize(series(48, 2000)), failures: 2 };
+    const ev = buildLatencyEvidence(base);
+    assert.equal(ev.settlement.hammerToSettled.status, 'UNPROVEN');
+    assert.equal(ev.settlement.hammerToSettled.attempts, 50);
+    assert.equal(ev.verdict, 'INCOMPLETE');
+    assert.ok(ev.problems.some((p) => /2 of 50 attempts failed/.test(p)));
+    assert.match(renderLatencyMarkdown(ev), /p95 all attempts ms/);
   });
 });

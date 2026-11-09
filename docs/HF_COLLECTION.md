@@ -44,7 +44,7 @@ Short description: Latency of the PayPal sandbox calls an auction settlement mak
 
 Tags: sandbox, latency, payments, benchmark, small-n.
 
-Why this data matters: the time between hammer and charge decides whether an auction feels live. These are real sandbox numbers with the sample sizes stated (3 and 20 settlements, 10 call cycles), including the places where the target was not met, so they can be used to size timeouts instead of guessing.
+Why this data matters: the time between hammer and charge decides whether an auction feels live. These are real sandbox numbers with the sample sizes and the failed or timed-out attempts stated for every run (read from the committed evidence, newest run included), including the places where the target was not met, so they can be used to size timeouts instead of guessing.
 
 ### 3. gavel-sim-30d
 

@@ -14,6 +14,8 @@ on:
       - '.github/workflows/hf-datasets.yml'
       - 'scripts/hf/**'
       - 'hf/space/**'
+      - 'docs/evidence/**'
+      - 'docs/GATES.md'
       - 'packages/payments/test/simdays/**'
   workflow_dispatch:
     inputs:
@@ -112,6 +114,8 @@ jobs:
             fi
           done
           exit $status
+      - name: Check the datasets cover the committed evidence
+        run: node scripts/hf/check-evidence-coverage.mjs "$RUNNER_TEMP/hf"
       - name: Prove the scan can fail
         run: |
           mkdir -p "$RUNNER_TEMP/scan-selftest"

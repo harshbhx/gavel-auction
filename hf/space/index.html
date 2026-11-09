@@ -310,7 +310,7 @@
         Nothing here is production data and no real money or person is involved.
       </p>
       <p>
-        <a class="cta" href="https://gavel-web.creharsh.workers.dev/demo">Try the live demo</a>
+        <a class="cta" href="https://gavel.dualmindlab.tech/demo">Try the live demo</a>
       </p>
       <div id="error" role="alert"></div>
 
@@ -541,7 +541,7 @@
             (runs[r.run_id] = runs[r.run_id] || []).push(r);
           });
           var order = Object.keys(runs).sort(function (a, b) {
-            return runs[b][0].n - runs[a][0].n;
+            return runs[b][0].attempts - runs[a][0].attempts;
           });
           var colCap = 'var(--accent)';
           var colSet = 'var(--accent2)';
@@ -557,7 +557,15 @@
             var set = rs.filter(function (r) {
               return r.span === 'hammer_to_settled';
             })[0];
-            var label = rs[0].run_label + ' run, n=' + rs[0].n + ' (' + rs[0].run_date + ')';
+            var label =
+              rs[0].run_label +
+              ': ' +
+              rs[0].n +
+              ' of ' +
+              rs[0].attempts +
+              ' completed (' +
+              (rs[0].run_date || 'date not recorded') +
+              ')';
             latGroups.push({
               label: label,
               bars: [
@@ -597,16 +605,39 @@
               text:
                 'Targets: ' +
                 secs(tc) +
-                ' to captured (missed in the n=20 run) and ' +
+                ' to captured and ' +
                 secs(ts) +
-                ' to settled (met in the n=20 run; the later n=49 run 42563147792 missed both targets and is not shown here). Source: docs/GATES.md, run ' +
-                order[0] +
-                '. The pilot (n=3) is shown for completeness.',
+                ' to settled. ' +
+                order
+                  .map(function (id) {
+                    return (
+                      'Run ' +
+                      id +
+                      ': ' +
+                      runs[id]
+                        .map(function (r) {
+                          return (
+                            r.span.replace('hammer_to_', '') +
+                            ' ' +
+                            r.status +
+                            (r.failures > 0
+                              ? ' (' +
+                                r.failures +
+                                ' failed or timed out, counted as worst case in p95_all_attempts_ms)'
+                              : '')
+                          );
+                        })
+                        .join(', ')
+                    );
+                  })
+                  .join('. ') +
+                '. Source: docs/GATES.md and docs/evidence.',
             }),
           );
           var callGroups = d.latency.calls.map(function (c) {
             return {
-              label: c.call + ' (n=' + c.n + ')',
+              label:
+                c.call + ' (n=' + c.n + (c.failures > 0 ? ', ' + c.failures + ' failed' : '') + ')',
               bars: [
                 { value: c.p50_ms, color: colCap, text: 'p50 ' + secs(c.p50_ms) },
                 { value: c.p95_ms, color: colSet, text: 'p95 ' + secs(c.p95_ms) },

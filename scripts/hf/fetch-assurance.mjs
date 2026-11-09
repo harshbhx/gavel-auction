@@ -20,9 +20,14 @@ const median = (xs) => {
 
 /** issues: [{number, state, created_at, closed_at, labels:[names]}] -> rows */
 export function aggregate(issues, repo, asOf) {
-  const q = (labels, extra = []) => {
+  const q = (labels, extra = [], exclude = []) => {
     const lab = `label:${labels.map((l) => `"${l}"`).join(',')}`;
-    const parts = ['is:issue', lab, ...extra.map((l) => `label:"${l}"`)];
+    const parts = [
+      'is:issue',
+      lab,
+      ...extra.map((l) => `label:"${l}"`),
+      ...exclude.map((l) => `-label:"${l}"`),
+    ];
     return `https://github.com/${repo}/issues?q=${encodeURIComponent(parts.join(' '))}`;
   };
   const row = (dimension, key, sel, url) => {
@@ -66,6 +71,20 @@ export function aggregate(issues, repo, asOf) {
       ),
     );
   }
+  // Severity covers the red-team label only; red-team findings without any severity label get their
+  // own row so that the severity rows add up to the red-team count (issue 2328).
+  rows.push(
+    row(
+      'severity',
+      'unlabelled',
+      issues.filter((i) => has(i, 'red-team') && !SEVERITIES.some((s) => has(i, `severity:${s}`))),
+      q(
+        ['red-team'],
+        [],
+        SEVERITIES.map((s) => `severity:${s}`),
+      ),
+    ),
+  );
   const areas = [
     ...new Set(issues.flatMap((i) => i.labels.filter((l) => l.startsWith('area:')))),
   ].sort();
@@ -78,6 +97,16 @@ export function aggregate(issues, repo, asOf) {
         q(POPULATION_LABELS, [a]),
       ),
     );
+  // Area labels overlap (an issue can carry several), so area rows can add up to more than the
+  // population; the unlabelled row counts the issues that carry no area label at all.
+  rows.push(
+    row(
+      'area',
+      'unlabelled',
+      issues.filter((i) => !i.labels.some((l) => l.startsWith('area:'))),
+      q(POPULATION_LABELS, [], areas),
+    ),
+  );
   return rows;
 }
 

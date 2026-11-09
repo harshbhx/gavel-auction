@@ -1,7 +1,11 @@
 {
   "dataset": "gavel-latency",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "changelog": [
+    {
+      "version": "1.1.0",
+      "note": "Built directly from docs/evidence (no hand-copied inputs): adds the 50-settlement run 42563147792 and its 60 per-call cycles, which missed both targets; every row carries attempts, failures, a worst-case p95 over all attempts, the target and a MET/MISSED/UNPROVEN status."
+    },
     {
       "version": "1.0.0",
       "note": "First release: sandbox settlement spans (3 and 20 settlements) and per-call latency (10 cycles)."
@@ -9,18 +13,23 @@
   ],
   "tables": {
     "settlement_spans.jsonl": {
-      "source": "scripts/hf/data/latency-settlement-runs.json (measure-sandbox artifacts, runs 42346020463 and 42346811713)",
+      "source": "docs/evidence/latency and docs/evidence/measure (redacted measure-sandbox settlement summaries)",
       "rows": {
-        "exact": 4
+        "min": 4
       },
       "primaryKey": ["run_id", "span"],
       "fields": {
         "run_id": "integer",
         "run_label": "string",
-        "run_date": "string",
+        "run_date": "string?",
         "span": "string",
         "n": "integer",
         "failures": "integer",
+        "attempts": "integer",
+        "p95_all_attempts_ms": "number?",
+        "target_p95_ms": "integer",
+        "met": "boolean",
+        "status": "string",
         "min_ms": "number",
         "p50_ms": "number",
         "p95_ms": "number",
@@ -29,7 +38,8 @@
         "holds_per_settlement": "integer",
         "void_concurrency": "integer",
         "mismatches": "integer",
-        "errors": "integer"
+        "errors": "integer",
+        "source_path": "string"
       },
       "min": {
         "n": 1,
@@ -39,24 +49,34 @@
         "errors": 0
       },
       "enum": {
-        "span": ["hammer_to_captured", "hammer_to_settled"]
+        "span": ["hammer_to_captured", "hammer_to_settled"],
+        "status": ["MET", "MISSED", "UNPROVEN"]
       }
     },
     "api_calls.jsonl": {
-      "source": "scripts/hf/data/latency-calls-run.json (measure-sandbox run 42047543821; docs/GATES.md)",
+      "source": "docs/evidence/latency (redacted per-call summary of the same workflow run)",
       "rows": {
-        "exact": 4
+        "min": 4
       },
       "primaryKey": ["run_id", "call"],
       "fields": {
         "run_id": "integer",
-        "run_date": "string",
+        "run_date": "string?",
         "call": "string",
         "n": "integer",
         "failures": "integer",
+        "attempts": "integer",
+        "p95_all_attempts_ms": "number?",
+        "target_p95_ms": "integer",
+        "met": "boolean",
+        "status": "string",
+        "min_ms": "number",
         "p50_ms": "number",
         "p95_ms": "number",
-        "max_ms": "number"
+        "p99_ms": "number",
+        "max_ms": "number",
+        "cycles": "integer",
+        "source_path": "string"
       },
       "min": {
         "n": 1,
@@ -64,7 +84,8 @@
         "p50_ms": 0
       },
       "enum": {
-        "call": ["order", "authorize", "capture", "void"]
+        "call": ["order", "authorize", "capture", "void"],
+        "status": ["MET", "MISSED", "UNPROVEN"]
       }
     }
   }
