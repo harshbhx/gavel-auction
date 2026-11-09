@@ -265,9 +265,9 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2);
   width: 100%;
-  min-height: 132px;
+  min-height: 96px;
   padding: var(--space-4) var(--space-5);
   border: var(--border-width-strong) solid var(--color-fg);
   border-radius: 0;
@@ -494,6 +494,11 @@
 
   .gv-home__fig {
     text-align: right;
+  }
+
+  .gv-home__act {
+    min-height: 132px;
+    gap: var(--space-3);
   }
 
   .gv-home__pair {
