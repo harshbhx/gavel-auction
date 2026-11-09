@@ -1198,6 +1198,55 @@ export type CancelTimer = () => void;
 export const CEILING_PRESETS_CENTS: readonly [10000, 25000, 50000, 100000];
 
 // @public
+export const CeilingRaisedEvent: z.ZodObject<{
+    type: z.ZodLiteral<"ceiling_raised">;
+    auctionId: z.ZodType<AuctionId, z.ZodTypeDef, AuctionId>;
+    seq: z.ZodNumber;
+    ts: z.ZodEffects<z.ZodNumber, EpochMs, number>;
+} & {
+    bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
+    from: z.ZodType<Cents, z.ZodTypeDef, Cents>;
+    ceiling: z.ZodType<Cents, z.ZodTypeDef, Cents>;
+    holdRef: z.ZodString;
+}, "strict", z.ZodTypeAny, {
+    type: "ceiling_raised";
+    bidderId: string & {
+        readonly __brand_brand: "BidderId";
+    };
+    seq: number;
+    auctionId: string & {
+        readonly __brand_brand: "AuctionId";
+    };
+    ts: number & {
+        readonly __brand_epochBrand: "EpochMs";
+    };
+    ceiling: number & {
+        readonly __brand_centsBrand: "Cents";
+    };
+    holdRef: string;
+    from: number & {
+        readonly __brand_centsBrand: "Cents";
+    };
+}, {
+    type: "ceiling_raised";
+    bidderId: string & {
+        readonly __brand_brand: "BidderId";
+    };
+    seq: number;
+    auctionId: string & {
+        readonly __brand_brand: "AuctionId";
+    };
+    ts: number;
+    ceiling: number & {
+        readonly __brand_centsBrand: "Cents";
+    };
+    holdRef: string;
+    from: number & {
+        readonly __brand_centsBrand: "Cents";
+    };
+}>;
+
+// @public
 export const CeilingRevokedEvent: z.ZodObject<{
     type: z.ZodLiteral<"ceiling_revoked">;
     auctionId: z.ZodType<AuctionId, z.ZodTypeDef, AuctionId>;
@@ -3006,6 +3055,52 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         readonly __brand_centsBrand: "Cents";
     };
     holdRef: string;
+}>, z.ZodObject<{
+    type: z.ZodLiteral<"ceiling_raised">;
+    auctionId: z.ZodType<AuctionId, z.ZodTypeDef, AuctionId>;
+    seq: z.ZodNumber;
+    ts: z.ZodEffects<z.ZodNumber, EpochMs, number>;
+} & {
+    bidderId: z.ZodType<BidderId, z.ZodTypeDef, BidderId>;
+    from: z.ZodType<Cents, z.ZodTypeDef, Cents>;
+    ceiling: z.ZodType<Cents, z.ZodTypeDef, Cents>;
+    holdRef: z.ZodString;
+}, "strict", z.ZodTypeAny, {
+    type: "ceiling_raised";
+    bidderId: string & {
+        readonly __brand_brand: "BidderId";
+    };
+    seq: number;
+    auctionId: string & {
+        readonly __brand_brand: "AuctionId";
+    };
+    ts: number & {
+        readonly __brand_epochBrand: "EpochMs";
+    };
+    ceiling: number & {
+        readonly __brand_centsBrand: "Cents";
+    };
+    holdRef: string;
+    from: number & {
+        readonly __brand_centsBrand: "Cents";
+    };
+}, {
+    type: "ceiling_raised";
+    bidderId: string & {
+        readonly __brand_brand: "BidderId";
+    };
+    seq: number;
+    auctionId: string & {
+        readonly __brand_brand: "AuctionId";
+    };
+    ts: number;
+    ceiling: number & {
+        readonly __brand_centsBrand: "Cents";
+    };
+    holdRef: string;
+    from: number & {
+        readonly __brand_centsBrand: "Cents";
+    };
 }>, z.ZodObject<{
     type: z.ZodLiteral<"bid_accepted">;
     auctionId: z.ZodType<AuctionId, z.ZodTypeDef, AuctionId>;

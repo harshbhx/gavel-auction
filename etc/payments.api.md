@@ -670,6 +670,7 @@ export interface HoldRecord {
     stale?: boolean;
     // (undocumented)
     status: HoldStatus;
+    supersedes?: string;
 }
 
 // @public (undocumented)
