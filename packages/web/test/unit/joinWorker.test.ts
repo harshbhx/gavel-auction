@@ -109,6 +109,7 @@ describe('unknown pages', () => {
 
   it.each([
     '/',
+    '/about',
     '/try',
     '/try/',
     '/demo/scripted/bid',

@@ -1,5 +1,7 @@
 # Graphics notes
 
+> Curation (DOC-60): which of these animated files are used, and which were moved to `brand/archive/`, is listed in [`brand/CURATION.md`](../../brand/CURATION.md).
+
 A running record of every animated graphic: what it is, where it comes from, how to re-render it, how big it is and where it is used. Updated in each graphics PR. Nothing here is rendered on a laptop or the VM: the `graphics` workflow does all rendering.
 
 ## Motion language

@@ -205,4 +205,61 @@ describe('LedgerGrid', () => {
     expect(screen.getByLabelText('Sort by')).toBeTruthy();
     expect(screen.getByLabelText('Sort direction')).toBeTruthy();
   });
+
+  it('keeps one grid, its search and its sort when the layout flips between table and cards', async () => {
+    const chain = await sealChain(bodies, nodeHash);
+    const apis: GridApi<LedgerRow>[] = [];
+    const props = {
+      entries: chain,
+      hash: nodeHash,
+      virtualise: false,
+      remember: false,
+      onReady: (a: GridApi<LedgerRow>) => {
+        apis.push(a);
+      },
+    };
+    const { rerender, container } = render(<LedgerGrid {...props} narrow={false} />);
+    await waitFor(() => {
+      expect(apis.length).toBe(1);
+    });
+    const first = apis[0] as GridApi<LedgerRow>;
+    first.setGridOption('quickFilterText', 'hammer');
+    first.applyColumnState({ state: [{ colId: 'seq', sort: 'desc' }] });
+    await waitFor(() => {
+      expect(first.getDisplayedRowCount()).toBe(1);
+    });
+    rerender(<LedgerGrid {...props} narrow />);
+    await waitFor(() => {
+      expect(container.querySelector('[data-mode="cards"]')).not.toBeNull();
+    });
+    expect(apis.length).toBe(1);
+    expect(first.isDestroyed()).toBe(false);
+    expect(first.getDisplayedRowCount()).toBe(1);
+    expect(first.getColumnState().find((c) => c.colId === 'seq')?.sort).toBe('desc');
+    rerender(<LedgerGrid {...props} narrow={false} />);
+    await waitFor(() => {
+      expect(container.querySelector('[data-mode="table"]')).not.toBeNull();
+    });
+    expect(apis.length).toBe(1);
+    expect(first.getDisplayedRowCount()).toBe(1);
+  });
+
+  it('says it cannot check here, and marks nothing tampered, without SHA-256', async () => {
+    const chain = await sealChain(bodies, nodeHash);
+    const { container } = render(
+      <LedgerGrid
+        entries={chain}
+        hash={() => Promise.resolve(null)}
+        narrow={false}
+        virtualise={false}
+        remember={false}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText(/cannot compute SHA-256/)).toBeTruthy();
+    });
+    expect(container.querySelector('.gv-grid-row--bad')).toBeNull();
+    expect(screen.queryByText(/Chain broken/)).toBeNull();
+    expect(screen.queryAllByText('Edited after sealing').length).toBe(0);
+  });
 });

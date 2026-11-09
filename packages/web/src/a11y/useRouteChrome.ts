@@ -5,6 +5,7 @@ import { titleFor, type RouteId, type RouteMatch } from '../routes';
 /** Routes that manage their own title and focus: the landing page and the /try judge panel. */
 const SELF_MANAGED: ReadonlySet<RouteId> = new Set<RouteId>([
   'landing',
+  'about',
   'try',
   'gallery',
   'scriptedJoin',
@@ -25,7 +26,7 @@ export function useRouteChrome(match: RouteMatch): void {
   const selfManaged = SELF_MANAGED.has(routeId);
 
   useEffect(() => {
-    if (routeId === 'landing') {
+    if (routeId === 'landing' || routeId === 'about') {
       if (INDEX_TITLE !== '') document.title = INDEX_TITLE;
     } else if (!selfManaged) document.title = title;
   }, [routeId, selfManaged, title]);
@@ -39,7 +40,13 @@ export function useRouteChrome(match: RouteMatch): void {
       if (main.id === '') main.id = 'main';
       if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1');
       // The big screen is a display for a room, not a page a visitor works in: no focus ring on it.
-      if (routeId === 'landing' || routeId === 'screen' || focused === 'heading') return;
+      if (
+        routeId === 'landing' ||
+        routeId === 'about' ||
+        routeId === 'screen' ||
+        focused === 'heading'
+      )
+        return;
       const heading = main.querySelector<HTMLElement>('h1');
       // Never take focus from something the visitor is already using.
       const active = document.activeElement;

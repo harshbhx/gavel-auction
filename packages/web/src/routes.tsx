@@ -24,6 +24,7 @@ export type RouteTitleKey =
 
 export type RouteId =
   | 'landing'
+  | 'about'
   | 'demo'
   | 'try'
   | 'verify'
@@ -61,6 +62,7 @@ export interface RouteDef {
 /** Route table (R-WEB-030). The first match wins; the catch-all is last. */
 export const ROUTES: readonly RouteDef[] = [
   { id: 'landing', path: '/', titleKey: 'app.name' },
+  { id: 'about', path: '/about', titleKey: 'app.name' },
   { id: 'demo', path: '/demo', titleKey: 'landing.start' },
   { id: 'scriptedDemo', path: '/demo/scripted', titleKey: 'app.name' },
   { id: 'scriptedJoin', path: '/demo/scripted/join', titleKey: 'app.name' },

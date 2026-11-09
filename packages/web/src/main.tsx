@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './design/tokens.css';
 import './design/themes.css';
 import './ui/ui.css';
+import './design/short-viewport.css';
 
 const container = document.getElementById('root');
 if (container === null) {

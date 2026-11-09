@@ -38,6 +38,7 @@ afterEach(() => {
 // Static role and name audit (names, labels, ids, headings), then an axe-core pass further down.
 const ROUTES: readonly string[] = [
   '/',
+  '/about',
   '/demo',
   '/try',
   '/verify',

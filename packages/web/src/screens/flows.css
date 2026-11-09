@@ -368,6 +368,7 @@ main[data-route='token-gate'] .gv-flow__action,
     align-content: start;
     max-width: 1280px;
     min-height: calc(100vh - var(--gv-hub-chrome, 68px));
+    min-height: calc(100dvh - var(--gv-hub-chrome, 68px));
     margin: 0 auto;
     padding-top: var(--space-7);
     /* landing-extra.css also names a money-flow diagram .gv-flow and gives it a card frame */
@@ -607,9 +608,10 @@ main[data-route='token-gate'] .gv-flow__action,
 }
 
 /* The floating Help button must never sit on a call to action: on phones every page keeps a
- * clear band under its last control, so the page can be scrolled until the control is free. The
+ * clear band under its last control, so the page can be scrolled until the control is free (short
+ * screens such as a phone turned sideways count as phones). The
  * full-window pages (screen, console, hub) do not scroll and keep their own layout. */
-@media (max-width: 839px) {
+@media (max-width: 839px), (max-height: 480px) {
   body:has(.help-fab) {
     padding-bottom: calc(48px + var(--space-4) * 2);
   }

@@ -19,6 +19,8 @@ const BIDDER_ROUTES = [
 const NARROW = [
   { name: '320 px', width: 320, height: 640 },
   { name: '200 percent zoom', width: 640, height: 450 },
+  { name: '360 px', width: 360, height: 640 },
+  { name: 'phone landscape', width: 844, height: 390 },
 ] as const;
 
 for (const size of NARROW) {

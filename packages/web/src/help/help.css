@@ -20,8 +20,9 @@
 }
 
 /* Phones: the button shrinks to a round icon so it covers as little of the page as possible. The
- * word stays in the accessible name; the page keeps a clear band under its last control. */
-@media (max-width: 839px) {
+ * word stays in the accessible name; the page keeps a clear band under its last control. Short
+ * screens get it too: a phone turned sideways is 844x390, wider than 839 px but very short. */
+@media (max-width: 839px), (max-height: 480px) {
   .help-fab {
     width: 48px;
     padding: 0;
@@ -34,6 +35,14 @@
     content: '?';
     font-size: var(--font-size-5);
     line-height: 1;
+  }
+}
+
+/* A short screen has little room above the corner: keep the round button tight to it. */
+@media (max-height: 480px) {
+  .help-fab {
+    right: var(--space-3);
+    bottom: var(--space-3);
   }
 }
 

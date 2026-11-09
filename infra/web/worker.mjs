@@ -22,6 +22,7 @@
 export const KNOWN_ROUTES = [
   '/',
   '/index.html',
+  '/about',
   '/demo',
   '/demo/scripted',
   '/demo/scripted/join',
