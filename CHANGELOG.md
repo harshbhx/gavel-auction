@@ -2,7 +2,7 @@
 
 What changed in GAVEL, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/): each entry groups changes under Added, Changed and Fixed. Dates are UTC and come from the merged pull requests on `main`. Every pull request link is the full GitHub address.
 
-The same text is shown on the docs site as [Changelog](https://gavel-docs.creharsh.workers.dev/docs/roadmap/changelog). That page is generated from this file by `docsite/scripts/gen-changelog.mjs`, so the two never differ. For what is proven and what comes next, read [docs/LIMITATIONS.md](docs/LIMITATIONS.md) and [docs/GATES.md](docs/GATES.md).
+The same text is shown on the docs site as [Changelog](https://docs.gavel.dualmindlab.tech/docs/roadmap/changelog). That page is generated from this file by `docsite/scripts/gen-changelog.mjs`, so the two never differ. For what is proven and what comes next, read [docs/LIMITATIONS.md](docs/LIMITATIONS.md) and [docs/GATES.md](docs/GATES.md).
 
 ## Unreleased
 

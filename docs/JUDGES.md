@@ -10,7 +10,7 @@ What is built and measured:
 - Latency is measured end to end on the real sandbox (n=20): hammer to SETTLED has p95 5591 ms, inside the 6 s target; hammer to CAPTURED has p95 3010 ms against the 2.5 s target, and tuning continues. Status PARTIAL in `docs/GATES.md`.
 - G5 (speech accuracy) is PARTIAL: wrong accept 0.000 on 24 synthetic, noise-free clips per set after fixes chosen on those same clips. Confirming it in a live or noisy room is the next step, and spoken bids always use the confirm prompt.
 - G3 is a timed sandbox probe in progress since 7 Nov 2026 03:06 UTC. Day 0 is recorded, and the final reading is about 12 Nov 06:17 UTC. No result is claimed before then. The 30-day run is a simulation on a fake clock (`docs/evidence/SIM/SIM-MULTIDAY.md`).
-- The web app is hosted at https://gavel-web.creharsh.workers.dev with its API at https://api.gavel.dualmindlab.tech, in sandbox mode, on a persistent disk. `docs/DEMO.md` lists what is available and what comes next.
+- The web app is hosted at https://gavel.dualmindlab.tech with its API at https://api.gavel.dualmindlab.tech, in sandbox mode, on a persistent disk. `docs/DEMO.md` lists what is available and what comes next.
 - The Hugging Face datasets are prepared and use synthetic data by design (privacy by design); publishing is next.
 - Next steps, with owners and dates where known, are on `docs/LIMITATIONS.md`. What changed and when is in `CHANGELOG.md`.
 
@@ -24,7 +24,7 @@ How to read the labels:
 
 The hosted site offers a short real room on the PayPal sandbox with no operator key. The same steps are on the page `/try` of the web app.
 
-1. Open https://gavel-web.creharsh.workers.dev and press "Start a demo auction". The server opens a room that lasts about thirty minutes and takes you to the auctioneer console. If the host is busy, switched off or the flag is not set, the page says so and offers the scripted demo.
+1. Open https://gavel.dualmindlab.tech and press "Start a demo auction". The server opens a room that lasts about thirty minutes and takes you to the auctioneer console. If the host is busy, switched off or the flag is not set, the page says so and offers the scripted demo.
 2. Open the big screen link in a second window, or scan its QR code with a phone, and join as a bidder.
 3. Enter a name, pick a ceiling and approve the hold in the PayPal sandbox login. Sandbox buyer credentials: see the Devpost testing instructions. They are not in this repository.
 4. Place a bid from the bidder view, then press hammer in the console.

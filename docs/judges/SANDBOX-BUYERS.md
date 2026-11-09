@@ -10,7 +10,7 @@ How a judge approves a hold in the sandbox. The buyer logins themselves are not 
 
 ## Steps
 
-1. Open https://gavel-web.creharsh.workers.dev and press "Start a demo auction" (or open `/try`). You land in the auctioneer console of a room that lasts about thirty minutes.
+1. Open https://gavel.dualmindlab.tech and press "Start a demo auction" (or open `/try`). You land in the auctioneer console of a room that lasts about thirty minutes.
 2. Open the big screen link in a second window, or scan its QR code with a phone.
 3. Join as a bidder: enter your name and pick a ceiling, the most you may bid.
 4. Press and hold the approve button for 3 seconds (a two-tap alternative sits below it). A PayPal sandbox window opens.
