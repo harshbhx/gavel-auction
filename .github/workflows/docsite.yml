@@ -98,6 +98,8 @@ jobs:
           grep -q 'id="createAuction"' out/api-reference.html
           test -f out/_headers
           grep -q "frame-ancestors 'none'" out/_headers
+          grep -q "connect-src 'self' https://api.gavel.dualmindlab.tech;" out/_headers
+          if grep -Eq "connect-src[^;]*https: " out/_headers; then echo 'connect-src must not allow every https host'; exit 1; fi
           grep -q '^/_next/static/\*' out/_headers
           grep -q 'immutable' out/_headers
           cmp out/openapi.yaml ../openapi/gavel.yaml

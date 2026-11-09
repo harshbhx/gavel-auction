@@ -36,17 +36,28 @@ const ENDPOINTS: Endpoint[] = [
 const EMPTY: Values = { id: '', code: '', key: '', session: '', auctioneer: '', reviewer: '', receipt: '' };
 const ENV_NAME: Record<Slot, string> = { key: 'JUDGE_KEY', session: 'SESSION', auctioneer: 'AUCTIONEER', reviewer: 'REVIEWER', receipt: 'RECEIPT', none: '' };
 
-function fill(text: string, v: Values): string {
-  return text.replace('{id}', v.id || '{id}').replace('{code}', v.code || '{code}');
+/** Every placeholder, not just the first; `enc` makes the value safe for where it lands. */
+function fillWith(text: string, v: Values, enc: (s: string) => string): string {
+  return text
+    .split('{id}').join(v.id ? enc(v.id) : '{id}')
+    .split('{code}').join(v.code ? enc(v.code) : '{code}');
 }
+/** For a URL path: the editable room id is percent-encoded. */
+const fillPath = (text: string, v: Values): string => fillWith(text, v, encodeURIComponent);
+/** For a JSON body: the value is escaped as the inside of a JSON string. */
+const fillBody = (text: string, v: Values): string => fillWith(text, v, (s) => JSON.stringify(s).slice(1, -1));
+/** Single-quotes text for a POSIX shell; a quote inside is closed, escaped and reopened. */
+const shQuote = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`;
+/** True for the steps that send the judge key. */
+const needsKey = (e: Endpoint): boolean => e.auth === 'key';
 
 function curlOf(e: Endpoint, v: Values, body: string): string {
-  const parts = [`curl -s${e.method === 'POST' ? ' -X POST' : ''} ${API_BASE}${fill(e.path, v)}`];
+  const parts = [`curl -s${e.method === 'POST' ? ' -X POST' : ''} ${shQuote(`${API_BASE}${fillPath(e.path, v)}`)}`];
   if (e.auth === 'key') parts.push(`-H "x-judge-key: $${ENV_NAME.key}"`);
   else if (e.auth !== 'none') parts.push(`-H "authorization: Bearer $${ENV_NAME[e.auth]}"`);
   if (e.method === 'POST') {
     parts.push(`-H 'content-type: application/json'`);
-    parts.push(`-d '${fill(body, v).replace(/\s*\n\s*/g, ' ')}'`);
+    parts.push(`-d ${shQuote(fillBody(body, v).replace(/\s*\n\s*/g, ' '))}`);
   }
   return parts.join(' \\\n  ');
 }
@@ -95,6 +106,7 @@ export function JudgeTryIt() {
     }
   };
 
+  const keyMissing = needsKey(endpoint) && v.key.trim() === '';
   const body = bodies[endpoint.id] ?? '';
   const curl = useMemo(() => curlOf(endpoint, v, body), [endpoint, v, body]);
 
@@ -103,14 +115,20 @@ export function JudgeTryIt() {
     setOut(null);
     setNetErr(null);
     const headers: Record<string, string> = {};
+    // A blank key is never sent: the host counts a wrong key as a strike, and a shared network
+    // would lock colleagues out. The Send button is also disabled until a key is pasted.
+    if (needsKey(endpoint) && v.key.trim() === '') {
+      setBusy(false);
+      return;
+    }
     if (endpoint.auth === 'key') headers['x-judge-key'] = v.key.trim();
     else if (endpoint.auth !== 'none') headers.authorization = `Bearer ${v[endpoint.auth].trim()}`;
     if (endpoint.method === 'POST') headers['content-type'] = 'application/json';
     try {
-      const res = await fetch(`${API_BASE}${fill(endpoint.path, v)}`, {
+      const res = await fetch(`${API_BASE}${fillPath(endpoint.path, v)}`, {
         method: endpoint.method,
         headers,
-        ...(endpoint.method === 'POST' ? { body: fill(body, v) } : {}),
+        ...(endpoint.method === 'POST' ? { body: fillBody(body, v) } : {}),
         cache: 'no-store',
         credentials: 'omit',
       });
@@ -125,7 +143,9 @@ export function JudgeTryIt() {
       }
       const h = [...res.headers.entries()].map(([k, val]) => `${k}: ${val}`).join('\n');
       const rec = (data ?? {}) as Record<string, unknown>;
-      const error = typeof rec.error === 'string' ? rec.error : undefined;
+      // Refusals carry `code` and `error`; thrown errors may carry only one of them.
+      const error =
+        typeof rec.code === 'string' ? rec.code : typeof rec.error === 'string' ? rec.error : undefined;
       setOut({ status: res.status, statusText: res.statusText, headers: h, body: pretty, hint: explain(res.status, error, res.headers.get('retry-after')) });
       if (res.ok && data !== undefined) {
         // Carry what the host returned into the later steps.
@@ -192,7 +212,7 @@ export function JudgeTryIt() {
             <option key={e.id} value={e.id}>{e.label}</option>
           ))}
         </select>
-        <p className="mt-2 font-mono text-sm"><b>{endpoint.method}</b> {API_BASE}{fill(endpoint.path, v)}</p>
+        <p className="mt-2 font-mono text-sm"><b>{endpoint.method}</b> {API_BASE}{fillPath(endpoint.path, v)}</p>
         <p className="mt-1 text-xs text-fd-muted-foreground">{endpoint.note}</p>
         {endpoint.method === 'POST' && (
           <>
@@ -201,9 +221,10 @@ export function JudgeTryIt() {
           </>
         )}
         <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" className={btn} onClick={send} disabled={busy}>{busy ? 'Sending...' : 'Send'}</button>
+          <button type="button" className={btn} onClick={send} disabled={busy || keyMissing}>{busy ? 'Sending...' : 'Send'}</button>
           <button type="button" className={btn} onClick={() => copy('curl', curl)}>{copied === 'curl' ? 'Copied' : 'Copy as curl'}</button>
         </div>
+        {keyMissing && <p role="status" className="mt-2 text-sm">Paste your key first.</p>}
       </div>
 
       <div className="py-3" aria-live="polite">
