@@ -54,4 +54,11 @@ describe('wide first screens (FIX-66)', () => {
       expect(phone).toContain(`body:has(main[data-route='${route}'])`);
     }
   });
+
+  it('shrinks the Help button to a round icon on phones, keeping its word for readers', () => {
+    const fab = helpCss.slice(helpCss.indexOf('Phones: the button shrinks'));
+    expect(fab).toContain('@media (max-width: 839px)');
+    expect(fab).toContain('border-radius: 50%;');
+    expect(fab).toContain("content: '?';");
+  });
 });

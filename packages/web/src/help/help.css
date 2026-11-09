@@ -19,6 +19,24 @@
   cursor: pointer;
 }
 
+/* Phones: the button shrinks to a round icon so it covers as little of the page as possible. The
+ * word stays in the accessible name; the page keeps a clear band under its last control. */
+@media (max-width: 839px) {
+  .help-fab {
+    width: 48px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 0;
+    line-height: 0;
+  }
+
+  .help-fab::before {
+    content: '?';
+    font-size: var(--font-size-5);
+    line-height: 1;
+  }
+}
+
 .help-btn {
   min-height: 48px;
   padding: 0 var(--space-4);
