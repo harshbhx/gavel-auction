@@ -150,6 +150,10 @@ export function createAudioHost(opts: AudioHostOptions): AudioHost {
       return { ok: false, status: 401 };
     }
     if ((await opts.store.lastSeq(auctionId as AuctionId)) === 0) return { ok: false, status: 404 };
+    // Rooms opened with a judge key never use the metered speech services (FEAT-60).
+    const marker = (await opts.store.getJournal(`judge:room:${auctionId}`))?.value as
+      { keyed?: unknown } | undefined;
+    if (marker?.keyed === true) return { ok: false, status: 403 };
     return { ok: true, payload: r.payload };
   };
 

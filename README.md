@@ -105,6 +105,18 @@ The API runs on Render and is served at `api.gavel.dualmindlab.tech`. The hosted
 
 What is next, with owners and dates, is on [Limits and next steps](docs/LIMITATIONS.md). What changed and when is in the [changelog](CHANGELOG.md).
 
+### Call the API with a judge key
+
+If you were given a key (`gvl_judge_<id>_<secret>`), you can open a sandbox room, bid, hammer and read the ledger with plain HTTP. The key opens judge rooms only, never an operator route, and PayPal stays in the sandbox. Each key has its own room cap, hourly cap and expiry (30 November 2026 by default).
+
+```sh
+API=https://api.gavel.dualmindlab.tech
+curl -s -X POST $API/api/judge/rooms -H "x-judge-key: $JUDGE_KEY" -H 'content-type: application/json' -d '{"title":"My lot"}'
+curl -s -X POST $API/api/judge/rooms/$ID/bids -H "authorization: Bearer $SESSION" -H 'content-type: application/json' -d '{"amount":1500}'
+```
+
+The whole path, with a "Try it" panel, is on the docs page [Call the API as a judge](https://docs.gavel.dualmindlab.tech/docs/judges/call-the-api). The operator makes keys with `node scripts/make-judge-key.mjs`.
+
 ## How it works
 
 1. **Approve a ceiling.** A bidder approves the most they may bid. PayPal places an authorization hold for that amount. The money is held, not charged.
