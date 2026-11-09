@@ -57,7 +57,7 @@ const DISP = 'font-family:var(--display);font-weight:800;text-transform:uppercas
 const bannerBody = (th) => `
 ${cap(0.1, 'left:56px;top:20px', 'Lot 01 &nbsp; Gavel')}${cap(0.1, 'right:56px;top:20px', 'PayPal sandbox only')}
 ${hr(0.05, 56, 50, 1168, '1s')}
-<div class="abs" style="left:26px;top:74px;width:700px">${logoSvg({ variant: th.variant, start: 0 })}</div>
+<div class="abs" style="left:30px;top:96px;width:660px">${logoSvg({ variant: th.variant, start: 0 })}</div>
 ${vr(1.5, 770, 84, 250)}
 ${rev(1.65, 'Every bid is<br>a PayPal hold.', `left:800px;top:84px;font-size:60px;line-height:.92;white-space:nowrap;${DISP}`)}
 ${rev(1.85, 'Only the<br>winner pays.', `left:800px;top:214px;font-size:60px;line-height:.92;white-space:nowrap;${DISP}color:var(--orange);`)}
@@ -216,7 +216,7 @@ ${lk(0, 'Web app', 'gavel.dualmindlab.tech')}${lk(1, 'Docs', 'docs.gavel.dualmin
   mp4v(dir, path.join(out, 'reel.mp4'), FPS);
   webm(dir, path.join(out, 'reel.webm'), FPS);
   await still(browser, file, path.join(out, 'reel-poster.png'), 960, 540, {
-    at: 2.95 * 1000,
+    at: 2.85 * 1000,
     scale: 2,
   });
   report.push(

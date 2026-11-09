@@ -65,7 +65,7 @@ export const LOGO_CSS = `
 @keyframes gv-jolt-l{0%,70%{transform:scale(1)}78%{transform:scale(.93)}100%{transform:scale(1)}}
 @keyframes gv-shock{0%{opacity:.8;transform:scale(.8)}100%{opacity:0;transform:scale(1.75)}}
 @keyframes gv-shock-l{0%,71%{opacity:0;transform:scale(.8)}72%{opacity:.8;transform:scale(.8)}100%{opacity:0;transform:scale(1.75)}}
-@keyframes gv-slide{from{transform:translateX(153px)}}
+@keyframes gv-slide{from{transform:translateX(118px)}}
 @keyframes gv-in{from{opacity:0;transform:translateX(-26px)}}
 `;
 
@@ -104,8 +104,12 @@ export function logoSvg({
   if (kind === 'mark') {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 144 144" class="${loop ? 'gv-loop ' : ''}${cls}" style="--s:${start}s;overflow:visible" role="img" aria-label="${label}"><title>${label}</title>${markGroup(p)}</svg>`;
   }
-  const letters = p.letters.map((l, i) => `<g class="gv-l" style="--i:${i}">${l}</g>`).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 450.24 144" class="${cls}" style="--s:${start}s;overflow:visible" role="img" aria-label="${label}"><title>${label}</title><g class="gv-mk">${markGroup(p)}</g><g transform="translate(126 19) scale(0.62)">${letters}</g></svg>`;
+  // The mark already is the G, so the wordmark continues with AVEL (never a second G).
+  const letters = p.letters
+    .slice(1)
+    .map((l, i) => `<g class="gv-l" style="--i:${i}">${l}</g>`)
+    .join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 391 144" class="${cls}" style="--s:${start}s;overflow:visible" role="img" aria-label="${label}"><title>${label}</title><g class="gv-mk">${markGroup(p)}</g><g transform="translate(56.56 19) scale(0.62)">${letters}</g></svg>`;
 }
 
 /** Standalone animated SVG file (CSS keyframes only, no script, reduced motion shows the finished logo). */
