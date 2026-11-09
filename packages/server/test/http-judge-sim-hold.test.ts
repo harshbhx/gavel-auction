@@ -256,6 +256,20 @@ describe('judge simulated hold (SRV-34)', () => {
     expect(placed).toEqual([]);
   });
 
+  it('refuses a limit under the lot reserve before any hold is written (FIX-118)', async () => {
+    const placed: Placed[] = [];
+    const { app } = setup({ simHolds: fakeSim(placed) });
+    const room = await createRoom(app);
+    const who = await joinRoom(app, room.joinCode);
+    const res = await simHold(app, room.auctionId, who.sessionToken, {
+      ceilingCents: 500,
+      name: 'Ada',
+    });
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(await res.json())).toContain('reserve');
+    expect(placed).toEqual([]);
+  });
+
   it('needs a bidder session of the same room', async () => {
     const placed: Placed[] = [];
     const { app } = setup({ simHolds: fakeSim(placed) });

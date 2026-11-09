@@ -940,7 +940,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     if (marker.expired === true || marker.expiresAt <= deps.clock.now()) {
       return refuse(deps, 410, 'judge_room_expired', 'sim_hold_expired', sourceTag(auctionId));
     }
-    await roomFor(deps, auctionId);
+    const room = await roomFor(deps, auctionId);
     // Any whole-dollar limit from the minimum to the room cap is fine; the presets are only
     // quick picks (FIX-78).
     if (
@@ -949,6 +949,17 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
       body.ceilingCents > opts.maxCeilingCents
     ) {
       throw new GavelError('bad_message', 'ceiling is outside the allowed range');
+    }
+    // The room refuses these at registration; refuse them before a hold is written (FIX-118).
+    const pre = room.holdPreflight(who.bidderId, body.ceilingCents);
+    if (pre.refusal === 'revoked') {
+      throw new GavelError('ceiling_revoked', 'the limit of this bidder was revoked');
+    }
+    if (pre.refusal === 'below_reserve') {
+      throw new GavelError(
+        'bad_message',
+        `the limit is below the lot reserve of ${pre.reserve} cents`,
+      );
     }
     if (!(await sim.acceptsHolds(auctionId))) {
       throw new GavelError('closed', 'the auction no longer takes holds');

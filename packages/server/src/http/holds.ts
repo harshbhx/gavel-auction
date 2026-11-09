@@ -92,8 +92,19 @@ export function mountHolds(port: HoldsPort): Mount {
         const body = parseBody(CreateHoldRequest, await c.body());
         const who = await authenticate(c, body.auctionId, ['session']);
         if (who.bidderId === undefined) return notFound();
-        await roomFor(c.deps, body.auctionId);
+        const room = await roomFor(c.deps, body.auctionId);
         await requireOpen(port, body.auctionId);
+        // Registration refuses these two later; refuse them here, before PayPal sees an order.
+        const pre = room.holdPreflight(who.bidderId, body.ceilingCents);
+        if (pre.refusal === 'revoked') {
+          throw new GavelError('ceiling_revoked', 'the limit of this bidder was revoked');
+        }
+        if (pre.refusal === 'below_reserve') {
+          return holdFailure(
+            'ceiling_out_of_range',
+            `the limit is below the lot reserve of ${pre.reserve} cents`,
+          );
+        }
         const created = await port.service.createHoldOrder({
           auctionId: body.auctionId,
           bidderId: who.bidderId,

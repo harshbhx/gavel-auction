@@ -647,8 +647,8 @@ class Service implements AuctionService, SettlePort {
       store: this.roomStore,
       clock: this.deps.clock,
       ids: this.deps.ids,
-      engine: (config, createdAt) =>
-        new LedgerEngine(auctionId, config, createdAt, this.deps.maxCeilingCents),
+      engine: (config, createdAt, cap) =>
+        new LedgerEngine(auctionId, config, createdAt, cap ?? this.deps.maxCeilingCents),
       settle: this,
       durable: (id, engine) => this.flushLedger(id, engine, false),
       ...(this.deps.limiter !== undefined ? { limiter: this.deps.limiter } : {}),

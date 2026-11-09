@@ -986,6 +986,12 @@ paths:
         returns the same order and the approve route registers it; one that stays unregistered
         for ten minutes is voided by the server, so the bidder is never held twice for long.
         <!-- FEAT-61 end -->
+
+        <!-- FIX-118 begin: refuse early -->
+        A ceiling under the lot reserve answers 400 `ceiling_out_of_range` (the message names the
+        reserve), and a bidder whose limit was revoked answers 403 `ceiling_revoked`. Both are
+        refused before any PayPal order exists.
+        <!-- FIX-118 end -->
       security:
         - sessionAuth: []
       requestBody:
@@ -1598,10 +1604,13 @@ paths:
         no PayPal call and puts the bidder in the room, so the whole path can be tried without
         a PayPal login. The ceiling is any whole number of cents from 100 up to the room's
         ceiling cap (the top preset); the presets are only quick picks, and a value outside the
-        range is 400 `bad_message`. Any other auction answers 404. Answers 404 when simulated
-        holds are off. A larger ceiling for a bidder who already has a hold is a raise, bounded
-        like `POST /api/holds`: at most 5 raises per bidder (409 `raise_limit_reached`) and each
-        at least $1 or 5 percent more than the current limit (422 `raise_too_small`).
+        range is 400 `bad_message`. A ceiling under the lot reserve is also 400 `bad_message`
+        (the message names the reserve), and a bidder whose limit was revoked is 403
+        `ceiling_revoked`; both are refused before any hold is written. Any other auction
+        answers 404. Answers 404 when simulated holds are off. A larger ceiling for a bidder who
+        already has a hold is a raise, bounded like `POST /api/holds`: at most 5 raises per
+        bidder (409 `raise_limit_reached`) and each at least $1 or 5 percent more than the
+        current limit (422 `raise_too_small`).
       security:
         - sessionAuth: []
       parameters:
