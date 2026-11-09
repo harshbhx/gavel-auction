@@ -110,7 +110,7 @@ describe('register route for a room that lists presets', () => {
       openLive(`/r/${ROOM}/register`);
       fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
       fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
-      expect(screen.getAllByRole('radio')).toHaveLength(PRESETS.length + 1);
+      expect(screen.getAllByRole('radio')).toHaveLength(PRESETS.length);
       fireEvent.click(screen.getAllByRole('radio')[PRESETS.indexOf(preset)] as HTMLElement);
       confirmHold();
       await flush();
