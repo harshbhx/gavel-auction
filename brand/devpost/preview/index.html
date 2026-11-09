@@ -50,8 +50,8 @@ _A price counts up to $20, then the line "Held, not charged" sweeps across it._
 
 GAVEL turns that idea into a working room. Everything runs in the PayPal sandbox; no real money moves.
 
-- **Hold.** A bidder approves a ceiling as a PayPal authorization hold. It is held, not charged.
-- **Bid.** A deterministic engine runs an ascending English auction with a minimum increment and a soft close. A bid above the ceiling is refused, because the hold behind it would not cover it. Bids arrive from phones, a QR code, the auctioneer console or, with a confirm step, by voice.
+- **Hold.** A bidder approves a ceiling as a PayPal authorization. It is held, not charged.
+- **Bid.** A deterministic engine runs an ascending English auction with a minimum increment and a soft close. A bid above the ceiling is refused. Bids come from phones, a QR code, the console or, with a confirm step, by voice.
 - **Hammer.** The auctioneer holds a button to close the lot. GAVEL captures only the winning price from the winner's hold and voids every other hold. Until that capture, money is held, not charged.
 - **Receipt and verify.** Every accepted bid goes into a hash-chained ledger that anyone can check in the browser.
 - **Voice.** A spoken bid is parsed, validated and then waits for a confirm ("Did you mean 350 for paddle 12?").
@@ -66,7 +66,7 @@ _Hold, bid, hammer, receipt: the four steps, with the real screen for each._
 2. Join the room as a bidder from the hub and register a sandbox hold.
 3. Bid, then press and hold the hammer on the console.
 4. Read the receipt, then open the audit page and verify the ledger chain in your browser.
-5. Short on time? The [scripted demo](https://gavel.dualmindlab.tech/demo/scripted) plays a recorded room in about a minute.
+5. The [scripted demo](https://gavel.dualmindlab.tech/demo/scripted) plays a recorded room in about a minute.
 6. Prefer HTTP? Ask for a judge key and follow [Call the API as a judge](https://docs.gavel.dualmindlab.tech/docs/judges/call-the-api): open a room, bid, hammer and read the ledger with curl. The [API reference](https://docs.gavel.dualmindlab.tech/api-reference) has a Try it panel, and the [docs](https://docs.gavel.dualmindlab.tech) cover the rest.
 
 ![Animated slide: the real room at /try and the scripted demo.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/06-judge-flow.png)
@@ -127,7 +127,7 @@ Correctness costs more than the happy path.
 - **The soft close.** Two bids landing together must get one ordered answer: one accepted, one refused as not higher.
 - **How long a hold lasts.** PayPal's pages disagree (3 days versus 29, with one reauthorization). We run a real timed probe, and until it reports, demo holds are made minutes before the capture.
 - **Voice in noise.** On a held-out noisy set of 120 synthetic clips, measured once against thresholds fixed beforehand, wrong accept was 0.058 for Groq and 0.092 for Deepgram against a 0.05 limit. That is why every spoken bid stays behind a confirm prompt.
-- **Speed.** On the sandbox, hammer to settled for 6 holds has p95 6927.43 ms against a 6000 ms target, and hammer to captured p95 3766.67 ms against 2500 ms (n=49, run incomplete). Both targets are missed.
+- **Speed.** On the sandbox, hammer to settled for 6 holds has p95 6927.43 ms against a 6000 ms target, and hammer to captured p95 3766.67 ms against 2500 ms (49 of 50, incomplete). Both targets are missed.
 - **Flaky CI and honest numbers.** Browser and sandbox runs flake, so we separated a real failure from a flaky one before trusting a green run, and every figure here names what it measured. The sandbox also needs US accounts and USD.
 
 ![Two $25 bids from paddle 12 and paddle 7 arrive together. One is accepted as ledger entry 41, the other is refused as not higher.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/12-challenges.png)
@@ -140,7 +140,7 @@ _Two bids arrive together: one is accepted, one is refused as not higher._
 - Live speech through the audio socket: both providers answered 24 of 24 synthetic clips; no bid was accepted without a confirm.
 - The hosted judge flow passed all 17 steps on the live domains.
 - More than 4,500 test cases run in CI, and all eight P0 security items pass.
-- Audit waves found and closed real bugs: 157 issues labelled deep-dig are closed on GitHub, and 597 issues carrying the red-team label are closed, from independent review passes.
+- Audit waves found and closed real bugs: 157 deep-dig issues and 597 red-team issues are closed on GitHub.
 
 ![Three results in large type: kill survived, voice 24 of 24 (synthetic clips, confirm before every bid), chain verifies.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/13-results.gif)
 
