@@ -21,7 +21,7 @@ import { openSession } from './session.js';
 // VOIDED; a sample that does not match is a failure and is not counted in the percentiles.
 // The output holds numbers only (counts and milliseconds): no ids, no headers, no credentials.
 // Run: npm run measure:settlement -w @gavel/e2e -- --out <dir>
-//   MEASURE_SETTLEMENTS (default 20, 1 to 30), MEASURE_SETTLE_HOLDS (default 6, 2 to 6).
+//   MEASURE_SETTLEMENTS (default 20, 1 to 60), MEASURE_SETTLE_HOLDS (default 6, 2 to 6).
 
 const HOLD_CENTS = 2000;
 const PRICE_CENTS = 1500;
@@ -45,7 +45,7 @@ async function main(): Promise<number> {
     );
     return 0;
   }
-  const settlements = intEnv('MEASURE_SETTLEMENTS', 20, 1, 30);
+  const settlements = intEnv('MEASURE_SETTLEMENTS', 20, 1, 60);
   const holdCount = intEnv('MEASURE_SETTLE_HOLDS', 6, 2, 6);
   const runId = newRunId('settle');
   const s = await openSession({

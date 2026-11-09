@@ -1,0 +1,133 @@
+name: evidence-hosted
+# Hosted API evidence (issue 2191), manual dispatch only. No secrets and no environment: every call
+# is a plain public request to the hosted API, and none changes state.
+#   1. Warmup after idle: sleep IDLE minutes with no request to the host, then time GET /warmup and
+#      GET /healthz from a fresh process (new connection, DNS and TLS included). Repeated REPEATS
+#      times (so 3 repeats of 16 minutes is about 50 minutes of runner time). The host may never go
+#      cold, and the scheduled uptime workflow pings it every 5 minutes; the evidence file says so.
+#   2. Webhook route: N sequential POSTs (20 to 100) of an event type the intake ignores. The route
+#      answers 200 without a verify call and stores nothing. The time includes the network from the
+#      GitHub runner, so it is an upper bound for the handler alone (the handler alone, on loopback,
+#      is measured by `npm run bench:webhook-handler -w @gavel/server` in the job `handler`).
+#   3. Judge smoke: reads the last 10 finished runs of the existing judge-smoke workflow (the
+#      simulated hold path, with the steps and seconds of the latest) via the GitHub API.
+#      Dispatching judge-smoke itself stays a separate, deliberate action.
+# Artifact: hosted-evidence.json (+ .md, .sha256), webhook-handler.json. Verdict lines:
+# "HOSTED EVIDENCE VERDICT: RECORDED|INCOMPLETE" and "WEBHOOK HANDLER VERDICT: MET|MISSED|INVALID".
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: 'Origin of the API'
+        required: false
+        default: 'https://api.gavel.dualmindlab.tech'
+        type: string
+      repeats:
+        description: 'Idle-then-probe repeats (1 to 5)'
+        required: false
+        default: '3'
+        type: string
+      idle_minutes:
+        description: 'Idle minutes before each probe (15 to 20)'
+        required: false
+        default: '16'
+        type: string
+      webhook_n:
+        description: 'Webhook posts (20 to 100)'
+        required: false
+        default: '50'
+        type: string
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  handler:
+    # The handler alone: our route on loopback, verify call not made, 500 requests.
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Measure the handler
+        run: |
+          set -o pipefail
+          npm run bench:webhook-handler -w @gavel/server -- --out "$RUNNER_TEMP/handler" --n 500 | tee "$RUNNER_TEMP/handler.txt"
+          grep -h "WEBHOOK HANDLER VERDICT" "$RUNNER_TEMP/handler.txt" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ always() }}
+        with:
+          name: webhook-handler-evidence
+          path: ${{ runner.temp }}/handler/webhook-handler.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  hosted:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      contents: read
+      actions: read
+    env:
+      API_URL: ${{ inputs.api_url }}
+      REPEATS: ${{ inputs.repeats }}
+      IDLE: ${{ inputs.idle_minutes }}
+      WEBHOOK_N: ${{ inputs.webhook_n }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Check the inputs
+        run: |
+          check() { # name value min max
+            if ! printf '%s' "$2" | grep -Eq '^[0-9]+$' || [ "$2" -lt "$3" ] || [ "$2" -gt "$4" ]; then
+              echo "::error title=Bad input::$1 must be an integer from $3 to $4"; exit 1
+            fi
+          }
+          check repeats "$REPEATS" 1 5
+          check idle_minutes "$IDLE" 15 20
+          check webhook_n "$WEBHOOK_N" 20 100
+          if ! printf '%s' "$API_URL" | grep -Eq '^https://[A-Za-z0-9.-]+(:[0-9]+)?/?$'; then
+            echo "::error title=Bad input::api_url must be an https origin with no path"; exit 1
+          fi
+          echo "API_ORIGIN=${API_URL%/}" >> "$GITHUB_ENV"
+      - name: Read the judge smoke runs
+        run: node scripts/evidence/hosted.mjs judge --repo "$GITHUB_REPOSITORY" --out "$RUNNER_TEMP/judge.json"
+      - name: Warmup after idle
+        run: |
+          for i in $(seq 1 "$REPEATS"); do
+            echo "idle ${IDLE} min before sample $i"
+            sleep $((IDLE * 60))
+            node scripts/evidence/hosted.mjs probe --api "$API_ORIGIN" --label "idle-$i" --out "$RUNNER_TEMP/warmup-samples.json"
+          done
+      - name: Webhook route, ignored event type
+        run: node scripts/evidence/hosted.mjs webhook --api "$API_ORIGIN" --n "$WEBHOOK_N" --out "$RUNNER_TEMP/webhook.json"
+      - name: Build the evidence file and the verdict
+        if: ${{ always() }}
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/out"
+          cp -f "$RUNNER_TEMP"/warmup-samples.json "$RUNNER_TEMP"/webhook.json "$RUNNER_TEMP"/judge.json "$RUNNER_TEMP/out/" 2>/dev/null || true
+          node scripts/evidence/hosted.mjs report --dir "$RUNNER_TEMP/out" --out "$RUNNER_TEMP/out" --run-url "$RUN_URL" --idle-minutes "$IDLE" | tee "$RUNNER_TEMP/verdict.txt"
+          cat "$RUNNER_TEMP/out/hosted-evidence.md" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ always() }}
+        with:
+          name: hosted-evidence
+          path: ${{ runner.temp }}/out
+          if-no-files-found: warn
+          retention-days: 30

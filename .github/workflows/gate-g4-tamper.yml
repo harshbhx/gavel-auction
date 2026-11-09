@@ -1,0 +1,135 @@
+name: gate-g4-tamper
+# G4 tamper run (issue 2184), by hand only. It makes fresh sandbox events (a capture and a void, the
+# same small flow as gate-g4), fetches the deliveries from the receiver in tools/g4-receiver, and asks
+# PayPal's real verify endpoint five questions per event (at most two events, so at most 10 verify
+# calls): the unmodified delivery (control), one character of the body changed, the amount changed,
+# a foreign transmission id, and one character of the signature changed. Only statuses are recorded.
+# Verdict line: "G4 TAMPER VERDICT: PASS" when the control verifies and every tampered case is refused
+# (FAILURE or an HTTP error); INCONCLUSIVE (exit 1) when the control does not verify, because then
+# nothing is proven; FAIL when a tampered event verifies. Same secrets, variable and receiver as
+# gate-g4 (see its header): no new secrets. Set the webhook URL of the sandbox app to <receiver url>/hook
+# before the run. The job runs only from main in the sandbox-nightly environment. It shares the
+# concurrency group of gate-g4 because both use the one receiver log.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RECEIVER_URL: ${{ vars.G4_RECEIVER_URL }}
+  GATE_CURRENCY: USD
+
+jobs:
+  g4-tamper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: sandbox-nightly
+    if: ${{ github.ref == 'refs/heads/main' }}
+    concurrency:
+      group: gate-g4
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check that the receiver URL is set
+        run: |
+          case "$RECEIVER_URL" in
+            https://*) ;;
+            *) echo "Set the repository variable G4_RECEIVER_URL to the https URL of the receiver."; exit 1 ;;
+          esac
+      - name: Check that the secrets exist
+        env:
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          PAYPAL_WEBHOOK_ID: ${{ secrets.PAYPAL_WEBHOOK_ID }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          G4_LOG_TOKEN: ${{ secrets.G4_LOG_TOKEN }}
+        run: |
+          missing=""
+          for name in PAYPAL_CLIENT_ID PAYPAL_CLIENT_SECRET PAYPAL_WEBHOOK_ID SANDBOX_BUYER_EMAIL SANDBOX_BUYER_PASSWORD G4_LOG_TOKEN; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error title=Missing secrets::Add these repository Actions secrets and run again:$missing"
+            exit 2
+          fi
+      - uses: ./.github/actions/setup
+      - name: Cache the browser
+        id: pw-cache
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-1.49.1-chromium
+      - name: Install the browser
+        env:
+          BROWSER_CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.49.1
+          cd "$RUNNER_TEMP/pw"
+          if [ "$BROWSER_CACHE_HIT" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+      - name: Clear the receiver log
+        env:
+          G4_LOG_TOKEN: ${{ secrets.G4_LOG_TOKEN }}
+        run: |
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            out=$(curl -fsS -X DELETE --get --data-urlencode "token=$G4_LOG_TOKEN" "$RECEIVER_URL/log")
+            echo "$out"
+            case "$out" in *" more 0") break ;; esac
+          done
+      - name: Generate sandbox events
+        env:
+          PAYPAL_ENV: sandbox
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
+          G4_RUN_FILE: ${{ runner.temp }}/g4-run-ids.json
+        run: npm run gate:g4-events -w @gavel/payments -- --out "$RUNNER_TEMP/g4-events"
+      - name: Wait for the deliveries
+        run: sleep 60
+      - name: Fetch the receiver log
+        env:
+          G4_LOG_TOKEN: ${{ secrets.G4_LOG_TOKEN }}
+        run: |
+          curl -fsS --get --data-urlencode "token=$G4_LOG_TOKEN" "$RECEIVER_URL/log" -o "$RUNNER_TEMP/g4-receiver.jsonl"
+          echo "deliveries: $(grep -c . "$RUNNER_TEMP/g4-receiver.jsonl" || true)"
+      - name: Replay the deliveries tampered
+        env:
+          PAYPAL_ENV: sandbox
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          PAYPAL_WEBHOOK_ID: ${{ secrets.PAYPAL_WEBHOOK_ID }}
+        run: |
+          set -o pipefail
+          npm run gate:g4-tamper -w @gavel/payments -- --log "$RUNNER_TEMP/g4-receiver.jsonl" --run-file "$RUNNER_TEMP/g4-run-ids.json" --out "$RUNNER_TEMP/g4-tamper" | tee "$RUNNER_TEMP/g4-tamper.txt"
+      - name: Job summary and verdict
+        if: ${{ always() }}
+        run: |
+          f=$(find "$RUNNER_TEMP/g4-tamper" -name 'tamper-summary.md' | head -1)
+          if [ -n "$f" ]; then cat "$f" >> "$GITHUB_STEP_SUMMARY"; else echo "### G4 tamper: no summary produced, nothing was verified" >> "$GITHUB_STEP_SUMMARY"; fi
+          grep -h "G4 TAMPER VERDICT" "$RUNNER_TEMP/g4-tamper.txt" || echo "G4 TAMPER VERDICT: NOT RUN"
+      - name: Clear the receiver log again
+        if: ${{ always() }}
+        env:
+          G4_LOG_TOKEN: ${{ secrets.G4_LOG_TOKEN }}
+        run: curl -fsS -X DELETE --get --data-urlencode "token=$G4_LOG_TOKEN" "$RECEIVER_URL/log" || true
+      # Statuses only: the evidence file, the summary and its sha256. Never the raw log or run files.
+      - name: Upload evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g4-tamper-evidence
+          path: |
+            ${{ runner.temp }}/g4-tamper/G4-tamper/*.jsonl
+            ${{ runner.temp }}/g4-tamper/G4-tamper/tamper-summary.*
+            !${{ runner.temp }}/g4-tamper/G4-tamper/*.run.json
+          if-no-files-found: warn
+          retention-days: 30

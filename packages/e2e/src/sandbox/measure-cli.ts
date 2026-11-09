@@ -41,7 +41,7 @@ async function main(): Promise<number> {
     return 0;
   }
   const raw = Number(env['MEASURE_SANDBOX_CYCLES'] ?? DEFAULT_CYCLES);
-  const cycles = Number.isInteger(raw) && raw > 0 && raw <= 50 ? raw : DEFAULT_CYCLES;
+  const cycles = Number.isInteger(raw) && raw > 0 && raw <= 100 ? raw : DEFAULT_CYCLES;
 
   const runId = newRunId('measure');
   const s = await openSession({ env, runId, gate: 'QA-MEASURE', now: () => Date.now(), sleep });
