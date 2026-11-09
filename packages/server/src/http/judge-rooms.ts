@@ -110,6 +110,11 @@ export interface JudgeRoomsOptions {
   keyedPerHour?: number | undefined;
   /** The ledger the read-only reviewer route builds a verifiable bundle from. */
   ledger?: Pick<LedgerStore, 'read'> | undefined;
+  /**
+   * True when a live speech provider is configured for the /audio route. The capability probe
+   * answers `voice: true` only then, so the web console enables its microphone only then.
+   */
+  voiceLive?: (() => boolean) | undefined;
 }
 
 /** What the simulated-hold route needs from the host. */
@@ -1067,6 +1072,8 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
         simHolds: opts.enabled && opts.simHolds !== undefined,
         // Present only when a judge key is set, so the panel shows its key field only then.
         ...(opts.enabled && registry.any ? { keyed: true } : {}),
+        // Present only when a live speech provider is set; never says which one or its key.
+        ...(opts.voiceLive?.() === true ? { voice: true } : {}),
       });
     });
     app.post(JUDGE_ROOMS_PATH, judgeRoute(create));

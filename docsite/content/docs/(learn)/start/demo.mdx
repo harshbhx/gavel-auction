@@ -43,7 +43,7 @@ The ceiling is set on a slider and approved with a press-and-hold button (3 seco
 
 - QR: after joining, the bid screen has a quick-bid button, increment buttons and a custom amount. Bids above your ceiling are blocked.
 - Typed entry: the auctioneer console has "Manual entry" to place a bid for a registered bidder.
-- Voice: the `/audio` socket turns a spoken bid into a structured bid and asks for confirmation. The console has no audio sender yet, so its microphone button is disabled.
+- Voice: the `/audio` socket turns a spoken bid into a structured bid and asks for confirmation. The console has an auctioneer microphone that is enabled only when the server reports a live speech provider; otherwise it is disabled and says why. Every spoken bid still asks for a confirm.
 
 ## Expected result at the hammer
 

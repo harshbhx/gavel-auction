@@ -53,5 +53,5 @@ a microphone, a browser or a person. Two cautions:
   belongs behind `workflow_dispatch` like the live mode of `voice-eval`.
 
 What it cannot show: real speech in a room with noise, accents and a real microphone, and the web
-console has no audio sender yet (`docs/DEMO.md`). A person with a microphone is still needed for
+console microphone (FEAT-62) has been tested only with a fake microphone and socket (`docs/DEMO.md`). A person with a microphone is still needed for
 that, and the wording of the voice claims should say "synthetic clips through the server socket".
