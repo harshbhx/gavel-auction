@@ -56,8 +56,18 @@ ffmpeg -nostdin -y -v error \
 # 4. Mix every clip with its bed at its SNR and seed (mix-noise.sh, R-VOX-079).
 jq -r '.[] | [.id, .utterance, .noise, (.snrDb | tostring), (.seed | tostring)] | @tsv' "$manifest" |
   while IFS=$'\t' read -r id utt noise snr seed; do
-    bash "$here/scripts/mix-noise.sh" "$tmp/clean/$utt.wav" "$out/$id.wav" "$tmp/noise/$noise.wav" "$snr" "$seed"
+    # mix-noise.sh runs ffmpeg without -nostdin, which would swallow the rest of this loop's input
+    # (the first run rendered 7 clips of 120), so the call gets an empty stdin.
+    bash "$here/scripts/mix-noise.sh" "$tmp/clean/$utt.wav" "$out/$id.wav" "$tmp/noise/$noise.wav" "$snr" "$seed" </dev/null
   done
+
+# Every manifest row must have produced its clip; a short render must never read as a result.
+want="$(jq 'length' "$manifest")"
+got="$(find "$out" -name '*.wav' | wc -l)"
+if [ "$got" != "$want" ]; then
+  echo "render-heldout: expected $want clips, found $got" >&2
+  exit 1
+fi
 
 (cd "$out" && sha256sum ./*.wav | sed 's# \./# #' >SHA256SUMS)
 echo "rendered $(find "$out" -name '*.wav' | wc -l) clips into $out"
