@@ -7,7 +7,7 @@ The submission deadline is Thu 12 Nov 2026, 12:00 PST (Fri 13 Nov 01:30 IST).
 ## Built and measured
 
 - **Four sandbox gates passed on the real PayPal sandbox.** G0 (app and buyers), G1 (partial capture with `final_capture`, two PayPal-account buyers), G2 (wallet and guest card AUTHORIZE) and G4 (six real webhooks verified). G5 is PARTIAL and G3 is a timed probe in progress; both are in the tables below.
-- **Hammer to settled lands inside its target.** It has a p95 of 5.59 s, inside the 6 s target (20 settlements of 6 holds each on the real sandbox, 0 failed).
+- **Latency misses both targets.** On the latest, larger run (42563147792, n=49 settlements of 6 holds, INCOMPLETE: 1 timeout and 3 failed capture calls) hammer to settled has p95 6.93 s against 6 s and hammer to captured p95 3.77 s against 2.5 s. An earlier n=20 run had settled p95 5.59 s (a smaller sample). Owner decision open: keep the targets, raise them with a reason, or reduce latency.
 - **One lot of three holds settled on the real sandbox, with one in-process crash recovered.** Nightly specs R7, R8 and R10, runs [42200708552](https://github.com/harshbhx/gavel-auction/actions/runs/42200708552) and [42317068784](https://github.com/harshbhx/gavel-auction/actions/runs/42317068784).
 - **Voice bidding is measured, and the held-out result is mixed.** On 24 synthetic clips in two sets (tuned on those clips), wrong accept is 0.000 and exact plus recoverable is 1.000 for both providers. On a synthetic held-out noisy set measured once (120 clips, run 42567832671), neither provider met the pre-registered thresholds: wrong accept 0.058 (Groq) and 0.092 (Deepgram) against 0.05. Every spoken bid goes through a confirm prompt.
 - **Security review.** All eight P0 items are PASS as of 2026-11-07.
@@ -26,10 +26,10 @@ The submission deadline is Thu 12 Nov 2026, 12:00 PST (Fri 13 Nov 01:30 IST).
 
 ## Speed
 
-| Target                    | Today                                                                        | Next                                                                                     | Owner and date         |
-| ------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------- |
-| Hammer to settled, 6 s    | p95 5.59 s, inside the target (n=20, 6 holds, sandbox, run 42346811713).     | Repeat on a larger sample.                                                               | Date not set           |
-| Hammer to captured, 2.5 s | p95 3.01 s (p50 2.56 s). The capture call alone is p95 2.28 s (5 Nov, n=10). | Tune toward 2.5 s, or set the target from the sandbox figure. This is an owner decision. | harshbhx, date not set |
+| Target                    | Today                                                                                                                                                | Next                                                                                     | Owner and date         |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------- |
+| Hammer to settled, 6 s    | p95 6.93 s, missed (n=49, run 42563147792, INCOMPLETE); earlier n=20 run p95 5.59 s.                                                                 | Owner decision: keep, raise with a reason, or reduce latency.                            | Date not set           |
+| Hammer to captured, 2.5 s | p95 3.77 s (p50 2.78 s, n=49, run 42563147792); earlier n=20 run p95 3.01 s. The capture call alone is p95 2.72 s (per call, 3 of the calls failed). | Tune toward 2.5 s, or set the target from the sandbox figure. This is an owner decision. | harshbhx, date not set |
 
 ## Voice
 
