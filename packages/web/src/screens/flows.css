@@ -532,3 +532,89 @@ main[data-route='token-gate'] .gv-flow__action,
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
+
+/* Wide first screens (FIX-66): short pages sit in the optical middle of a tall window instead of
+ * hugging the top, and the plain pages (gallery, replay, ops key form) get a centred measure.
+ * Only 1100px and wider; phones and tablets are untouched. */
+@media screen and (min-width: 1100px) and (min-height: 640px) {
+  /* Pages with the side panel: more air above the column. */
+  .gv-flow:has(> .gv-aside),
+  main[data-route='register']:has(> .gv-aside),
+  main[data-route='return']:has(> .gv-aside) {
+    padding-top: clamp(var(--space-7), 12vh, 9rem);
+  }
+
+  /* Pages with one column (watcher, errors, 404 without a panel, refusals): centred both ways. */
+  main.gv-flow:not(:has(> .gv-aside)),
+  main[data-route='register']:not(:has(> .gv-aside)),
+  main[data-route='return']:not(:has(> .gv-aside)) {
+    justify-content: center;
+    min-height: calc(100vh - var(--gv-hub-chrome, 68px));
+    max-width: 640px;
+    padding-block: var(--space-7);
+  }
+
+  main.gv-flow:not(:has(> .gv-aside)) > h1 {
+    font-size: var(--font-size-8);
+  }
+
+  /* Receipt: the document sits in the middle of the window, not under the top edge. */
+  main[data-route='receipt'] {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: calc(100vh - var(--gv-hub-chrome, 68px));
+    padding-block: var(--space-6);
+  }
+
+  /* Ops before a key is loaded: the key form is the page, so it takes the middle. */
+  main[data-route='ops']:not(:has(.gv-ops)) {
+    justify-content: center;
+    min-height: calc(100vh - var(--gv-hub-chrome, 68px));
+    max-width: 720px;
+  }
+
+  main[data-route='ops']:not(:has(.gv-ops)) > h1 {
+    font-size: var(--font-size-8);
+  }
+
+  /* Replay explainer: a centred card-width column. */
+  main[data-route='replay'] {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 720px;
+    min-height: calc(100vh - var(--gv-hub-chrome, 68px));
+    justify-content: center;
+  }
+
+  /* Gallery specimens: laid out in a wrapping row so the first screen is not a thin left strip. */
+  main[data-route='gallery'] > section {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: center;
+    gap: var(--space-6);
+    padding-block: var(--space-7);
+  }
+
+  main[data-route='gallery'] > section > :is(h2, [role='status'], .ui-banner, .gv-banner) {
+    flex-basis: 100%;
+    text-align: center;
+  }
+}
+
+/* The floating Help button must never sit on a call to action: on phones every page keeps a
+ * clear band under its last control, so the page can be scrolled until the control is free. The
+ * full-window pages (screen, console, hub) do not scroll and keep their own layout. */
+@media (max-width: 839px) {
+  body:has(.help-fab) {
+    padding-bottom: calc(48px + var(--space-4) * 2);
+  }
+
+  body:has(main[data-route='screen']),
+  body:has(main[data-route='console']),
+  body:has(main[data-route='hub']) {
+    padding-bottom: 0;
+  }
+}
