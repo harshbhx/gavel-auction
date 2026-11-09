@@ -19,7 +19,9 @@ function mount(): void {
 // Generous bound for a busy runner; waits return as soon as the condition holds.
 const LOAD = { timeout: 10_000 };
 
-describe('replay player', () => {
+// The default 5 s test timeout is shorter than the 10 s waits above: on a busy coverage runner the
+// whole test (render, seek, ladder) timed out before a wait could fail. Give the tests room.
+describe('replay player', { timeout: 30_000 }, () => {
   it('shows the chapter controls and no settlement before the settlement chapter', async () => {
     mount();
     expect(
