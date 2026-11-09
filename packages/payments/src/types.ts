@@ -1,5 +1,11 @@
 export type HoldStatus =
-  'PENDING_APPROVAL' | 'HELD' | 'CAPTURED' | 'VOIDED' | 'EXPIRED' | 'DENIED' | 'UNKNOWN';
+  | 'PENDING_APPROVAL'
+  | 'HELD'
+  | 'CAPTURED'
+  | 'VOIDED'
+  | 'EXPIRED'
+  | 'DENIED'
+  | 'UNKNOWN';
 
 export const SETTLEMENT_STATES = [
   'HELD',
@@ -136,7 +142,12 @@ export interface PaymentAudit {
    * deadline; the saga keeps retrying, an operator should look.
    */
   kind:
-    'paypal_call' | 'state_change' | 'kill_switch' | 'stale_hold' | 'void_all' | 'settlement_alert';
+    | 'paypal_call'
+    | 'state_change'
+    | 'kill_switch'
+    | 'stale_hold'
+    | 'void_all'
+    | 'settlement_alert';
   auctionId?: string;
   holdId?: string;
   op?: string;

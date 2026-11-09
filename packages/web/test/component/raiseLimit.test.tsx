@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { t } from '../../src/copy/t';
 import type { ApprovalRequest, PaymentApprovalPort } from '../../src/payments/port';
 import { resetApprovalMemory } from '../../src/payments/useApproval';
