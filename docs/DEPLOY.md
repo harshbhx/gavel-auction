@@ -41,11 +41,11 @@ Requirements: R-QA-042 (deploy), R-QA-044 (webhook registration). Hosting choice
 
 This is how code reaches the live site today. Nothing else deploys automatically.
 
-| Surface | Who and how |
-| ------- | ----------- |
+| Surface                                      | Who and how                                                                                                                                                                                                                                                                                             |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | API and WebSocket host (Render `gavel-host`) | The owner opens the Render dashboard, the service `gavel-host`, and chooses Manual Deploy, Deploy latest commit (head of `main`). `autoDeploy` is off in `render.yaml`. No GitHub workflow is involved. Afterwards check `GET /version` (it must show the commit) and run `scripts/smoke.sh <api-url>`. |
-| Web app (Cloudflare Worker `gavel-web`) | `deploy-web.yml` builds the artifact `web-dist` from `main`; the owner downloads it (`gh run download`) and runs `npx wrangler deploy` in `infra/web`. |
-| Docs site | `docsite.yml` builds the artifact `docsite` from `main`; the owner downloads it and runs `npx wrangler pages deploy` for the project `gavel-docs`. |
+| Web app (Cloudflare Worker `gavel-web`)      | `deploy-web.yml` builds the artifact `web-dist` from `main`; the owner downloads it (`gh run download`) and runs `npx wrangler deploy` in `infra/web`.                                                                                                                                                  |
+| Docs site                                    | `docsite.yml` builds the artifact `docsite` from `main`; the owner downloads it and runs `npx wrangler pages deploy` for the project `gavel-docs`.                                                                                                                                                      |
 
 The workflows `deploy-staging` and `deploy-prod` are optional extras that need Render secrets which are not set up; they deploy nothing until the owner adds them. The wrangler steps in `deploy-web.yml` and `docsite.yml` run only when the Cloudflare secrets exist; without them the run ends green after the build and leaves the artifact. Read the job summary, not just the check color, to see what was deployed.
 
@@ -55,11 +55,11 @@ The rest of this section describes `deploy-prod`, which is not used today. It ne
 
 Surfaces and how each is deployed:
 
-| Surface                | Where it runs                                             | How it deploys                                                                                                                                       | Rollback                                                     |
-| ---------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Surface                | Where it runs                                             | How it deploys                                                                                                                                       | Rollback                                                                   |
+| ---------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | API and WebSocket host | Render web service `gavel-host`, Starter plan, 1 GB disk  | Manual deploy of `main` in the Render dashboard (auto deploy is off); the `deploy-prod` workflow is an optional alternative                          | Render dashboard, Events, Rollback (or `deploy-prod` with `rollback=true`) |
-| Web app                | Cloudflare Worker `gavel-web` (`infra/web/wrangler.toml`) | `deploy-web` builds the artifact `web-dist` and runs `wrangler deploy`                                                                               | `npx wrangler rollback` (see `infra/rollback.md`)            |
-| Docs site              | Cloudflare, deployed by `docsite.yml` with wrangler       | The `docsite` artifact is published with `wrangler pages deploy` to the project named by the variable `DOCSITE_PAGES_PROJECT` (default `gavel-docs`) | Roll back to a previous deployment (see `infra/rollback.md`) |
+| Web app                | Cloudflare Worker `gavel-web` (`infra/web/wrangler.toml`) | `deploy-web` builds the artifact `web-dist` and runs `wrangler deploy`                                                                               | `npx wrangler rollback` (see `infra/rollback.md`)                          |
+| Docs site              | Cloudflare, deployed by `docsite.yml` with wrangler       | The `docsite` artifact is published with `wrangler pages deploy` to the project named by the variable `DOCSITE_PAGES_PROJECT` (default `gavel-docs`) | Roll back to a previous deployment (see `infra/rollback.md`)               |
 
 ### Deploy the API to production
 

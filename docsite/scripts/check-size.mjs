@@ -11,11 +11,11 @@ const dir = process.argv[2] ?? 'out';
 
 // Limits in bytes of gzip JS that a modern browser loads (the noModule polyfill bundle is not counted).
 // Measured on main with search on demand: home 335,223 and docs page 394,388, both including 39 KB of noModule
-// polyfills, so about 296,000 and 355,000 without them. Updated below after the motion split.
+// polyfills. After this change (noModule not counted, motion features in a lazy chunk): home 298,482 and docs page 354,932.
 // Raise one only with a reason in the pull request; lower it when the size drops.
 const budgets = [
-  { page: 'index.html', label: 'home', limit: Number(process.env.JS_BUDGET_HOME ?? 345_000) },
-  { page: 'docs/start.html', label: 'docs page', limit: Number(process.env.JS_BUDGET_DOCS ?? 405_000) },
+  { page: 'index.html', label: 'home', limit: Number(process.env.JS_BUDGET_HOME ?? 305_000) },
+  { page: 'docs/start.html', label: 'docs page', limit: Number(process.env.JS_BUDGET_DOCS ?? 362_000) },
 ];
 
 let failed = false;

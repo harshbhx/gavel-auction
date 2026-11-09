@@ -4,22 +4,22 @@ Three GitHub environments exist (R-QA-043). Secrets live only in environment sec
 Render and Cloudflare dashboards. `.env.example` lists the variable names with empty values; no
 value is committed.
 
-| Environment       | Used by                                | PayPal         | Notes                                                |
-| ----------------- | -------------------------------------- | -------------- | ---------------------------------------------------- |
+| Environment       | Used by                                                              | PayPal         | Notes                                                |
+| ----------------- | -------------------------------------------------------------------- | -------------- | ---------------------------------------------------- |
 | `staging`         | the optional `deploy-staging` run (manual only), the R7 and R8 specs | PayPal sandbox | Own data and URL. Not configured today.              |
-| `production`      | the public demo                        | PayPal sandbox | Same PayPal sandbox as staging; data and URL differ. |
-| `sandbox-nightly` | the gate workflows and the nightly run | PayPal sandbox | Required reviewer, deployments limited to `main`.    |
+| `production`      | the public demo                                                      | PayPal sandbox | Same PayPal sandbox as staging; data and URL differ. |
+| `sandbox-nightly` | the gate workflows and the nightly run                               | PayPal sandbox | Required reviewer, deployments limited to `main`.    |
 
 Both app environments point at the sandbox: `PAYMENTS=sandbox` and `PAYPAL_ENV=sandbox`. There is
 no live PayPal account in this project.
 
 ## Deployed surfaces
 
-| Surface   | Name                                                                                      | Set by                               |
-| --------- | ----------------------------------------------------------------------------------------- | ------------------------------------ |
+| Surface   | Name                                                                                      | Set by                                                                                            |
+| --------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | API       | Render web service `gavel-host`, Starter plan (`render.yaml`)                             | the owner, Manual Deploy of `main` in the Render dashboard (`deploy-prod` is optional and unused) |
-| Web app   | Cloudflare Worker `gavel-web` (`infra/web/wrangler.toml`)                                 | `deploy-web.yml`                     |
-| Docs site | Cloudflare Pages project `gavel-docs`, or the repository variable `DOCSITE_PAGES_PROJECT` | `docsite.yml`                        |
+| Web app   | Cloudflare Worker `gavel-web` (`infra/web/wrangler.toml`)                                 | `deploy-web.yml`                                                                                  |
+| Docs site | Cloudflare Pages project `gavel-docs`, or the repository variable `DOCSITE_PAGES_PROJECT` | `docsite.yml`                                                                                     |
 
 The one real deploy path is written down in `docs/DEPLOY.md` ("The one real deploy path"). Both Cloudflare deploys need the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Rollback steps for each surface are in `infra/rollback.md`.
 
