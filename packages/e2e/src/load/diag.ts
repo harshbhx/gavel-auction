@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { Session } from 'node:inspector/promises';
 import { getHeapSpaceStatistics, getHeapStatistics } from 'node:v8';
 import type { Rig } from '../../test/flow/rig';
 
@@ -124,6 +125,8 @@ export interface DiagSummary {
   counterGrowth: Array<{ name: string; first: number; last: number; delta: number }>;
   rssGrowthMb: number;
   liveHeapGrowthMb: number | null;
+  /** Live bytes by allocating function at the end of the run, when sampled. */
+  retained?: RetainedSite[];
 }
 
 /** Summarises samples: what grew between the first and the last one. */
@@ -184,5 +187,65 @@ export function rigCounters(rig: Rig): Record<string, number> {
     ...sizeCounters(rig.stores.journals, 'stores.journals'),
     ...sizeCounters(rig.stores.webhookEvents, 'stores.webhookEvents'),
     'rig.sleeps': rig.sleeps.length,
+  };
+}
+
+export interface RetainedSite {
+  fn: string;
+  url: string;
+  line: number;
+  selfMb: number;
+}
+
+interface ProfileNode {
+  callFrame: { functionName: string; url: string; lineNumber: number };
+  selfSize: number;
+  children: ProfileNode[];
+}
+
+/** Adds up the live bytes of a sampling heap profile by allocating function, largest first. */
+export function topRetained(head: ProfileNode, limit = 25): RetainedSite[] {
+  const sites = new Map<string, RetainedSite>();
+  const stack: ProfileNode[] = [head];
+  while (stack.length > 0) {
+    const n = stack.pop();
+    if (n === undefined) break;
+    if (n.selfSize > 0) {
+      const f = n.callFrame;
+      const key = `${f.functionName}|${f.url}|${String(f.lineNumber)}`;
+      const cur = sites.get(key) ?? {
+        fn: f.functionName || '(anonymous)',
+        url: f.url,
+        line: f.lineNumber + 1,
+        selfMb: 0,
+      };
+      cur.selfMb += n.selfSize / MB;
+      sites.set(key, cur);
+    }
+    for (const c of n.children) stack.push(c);
+  }
+  return [...sites.values()]
+    .map((s) => ({ ...s, selfMb: round(s.selfMb) }))
+    .sort((a, b) => b.selfMb - a.selfMb)
+    .slice(0, limit);
+}
+
+/**
+ * Starts the V8 sampling heap profiler (cheap, unlike a heap snapshot). `stop` returns the
+ * allocation sites of the objects still alive, which names the code that holds the memory.
+ */
+export async function startHeapSampling(): Promise<() => Promise<RetainedSite[]>> {
+  const session = new Session();
+  session.connect();
+  await session.post('HeapProfiler.startSampling', {
+    samplingInterval: 65536,
+    includeObjectsCollectedByMajorGC: false,
+    includeObjectsCollectedByMinorGC: false,
+  });
+  return async (): Promise<RetainedSite[]> => {
+    (globalThis as { gc?: () => void }).gc?.();
+    const { profile } = await session.post('HeapProfiler.stopSampling');
+    session.disconnect();
+    return topRetained(profile.head as unknown as ProfileNode);
   };
 }

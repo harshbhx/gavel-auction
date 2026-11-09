@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sizeCounters, startDiagnostics, summarize, takeSample } from '../../src/load/diag';
+import { sizeCounters, topRetained, startDiagnostics, summarize, takeSample } from '../../src/load/diag';
 
 describe('load diagnostics (#2203)', () => {
   it('counts maps, sets and arrays below a root, and the inner size of a map of arrays', () => {
@@ -69,5 +69,23 @@ describe('load diagnostics (#2203)', () => {
     expect(n).toBeGreaterThanOrEqual(3);
     await new Promise((r) => setTimeout(r, 30));
     expect(d.samples.length).toBe(n);
+  });
+
+  it('adds up live bytes of a sampling profile by allocating function', () => {
+    const node = (fn: string, selfSize: number, children: unknown[] = []) => ({
+      callFrame: { functionName: fn, url: 'file:///x.ts', lineNumber: 9 },
+      selfSize,
+      children,
+    });
+    const head = node('(root)', 0, [
+      node('append', 3 * 1048576, [node('copy', 1048576)]),
+      node('other', 0.5 * 1048576),
+      node('append', 2 * 1048576),
+    ]);
+    const top = topRetained(head as never, 2);
+    expect(top.map((s) => [s.fn, s.selfMb, s.line])).toEqual([
+      ['append', 5, 10],
+      ['copy', 1, 10],
+    ]);
   });
 });

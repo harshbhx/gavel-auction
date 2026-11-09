@@ -5,7 +5,7 @@ import { runL3 } from './hammer';
 import { runL4 } from './webhooks';
 import { runSoak } from './soak';
 import type { Check } from './run';
-import { rigCounters, startDiagnostics, writeDiagnostics, type Diagnostics } from './diag';
+import { rigCounters, startDiagnostics, startHeapSampling, writeDiagnostics, type Diagnostics } from './diag';
 import type { Rig } from '../../test/flow/rig';
 
 // Runs the L3 hammer race, the L4 webhook storm and the L5 soak and writes one JSON report.
@@ -47,6 +47,8 @@ async function main(argv: readonly string[]): Promise<number> {
   save();
   if (which === 'L5' || which === 'all') {
     let diag: Diagnostics | undefined;
+    let stopSampling: Awaited<ReturnType<typeof startHeapSampling>> | undefined;
+    let roundsDone = 0;
     results.push(
       await runSoak({
         ...deps,
@@ -54,11 +56,19 @@ async function main(argv: readonly string[]): Promise<number> {
         ...(diagFile === undefined
           ? {}
           : {
-              onStart: (rig: Rig): void => {
-                diag = startDiagnostics({ probe: () => rigCounters(rig) });
+              onStart: async (rig: Rig): Promise<void> => {
+                stopSampling = await startHeapSampling();
+                diag = startDiagnostics({
+                  probe: () => ({ ...rigCounters(rig), 'soak.rounds': roundsDone }),
+                });
               },
-              onEnd: (): void => {
-                if (diag !== undefined) writeDiagnostics(diagFile, diag.finish());
+              onRound: (n: number): void => {
+                roundsDone = n;
+              },
+              onEnd: async (): Promise<void> => {
+                if (diag === undefined) return;
+                const retained = stopSampling === undefined ? [] : await stopSampling();
+                writeDiagnostics(diagFile, { ...diag.finish(), retained });
               },
             }),
       }),

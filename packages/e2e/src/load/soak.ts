@@ -18,9 +18,11 @@ export interface SoakDeps extends LoadDeps {
   /** Waits between rounds; default 250 ms of real time. */
   pause?: () => Promise<void>;
   /** Called once with the rig before the first round (the diagnostic mode hooks its probes here). */
-  onStart?: (rig: Rig) => void;
+  onStart?: (rig: Rig) => void | Promise<void>;
   /** Called once after the last round, before the fake PayPal stops. */
-  onEnd?: (rig: Rig) => void;
+  onEnd?: (rig: Rig) => void | Promise<void>;
+  /** Called after every finished round with the number of rounds so far. */
+  onRound?: (rounds: number) => void;
 }
 
 export interface SoakReport {
@@ -46,7 +48,7 @@ export async function runSoak(deps: SoakDeps): Promise<SoakReport> {
   };
   process.on('unhandledRejection', onUnhandled);
   const rig = await makeRig();
-  deps.onStart?.(rig);
+  await deps.onStart?.(rig);
   const start = deps.now();
   let baseline = -1;
   let peak = 0;
@@ -69,13 +71,14 @@ export async function runSoak(deps: SoakDeps): Promise<SoakReport> {
       lost += t.lost;
       duplicate += t.duplicate;
       rounds += 1;
+      deps.onRound?.(rounds);
       const rss = deps.rss();
       if (baseline < 0) baseline = rss;
       peak = Math.max(peak, rss);
       await pause();
     } while (deps.now() - start < durationMs);
   } finally {
-    deps.onEnd?.(rig);
+    await deps.onEnd?.(rig);
     process.off('unhandledRejection', onUnhandled);
     await rig.paypal.stop();
   }
