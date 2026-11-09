@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-// Open Graph card with the site's identity: cream or dusk ground, the GAVEL block letters, a
+// Open Graph card with the site's identity: cream or dusk ground, the GAVEL wordmark, a
 // hatched stripe on the left, and the three-fill rule along the bottom. Drawn with plain divs
 // because the image renderer has no access to CSS variables or the page fonts.
 const INK = '#121715';
@@ -9,13 +9,16 @@ const GO = '#0b6b3a';
 const BG = '#f6f4ee';
 
 function Letters() {
+  // The Mallet G wordmark (brand/svg/wordmark-color.svg) in the app's ink and signal orange.
   return (
-    <svg width="300" height="88" viewBox="0 0 150 44" fill="none" stroke={INK} strokeWidth="6.5" strokeLinejoin="miter">
-      <path d="M27 9 H8 V29 H27 V19 H16" />
-      <path d="M34 32 L48 4 L62 32 M39.5 23 H56.5" />
-      <path d="M66 4 L80 32 L94 4" />
-      <path d="M117 6 H99 V30 H117 M99 18 H113" />
-      <path d="M126 4 V30 H146" />
+    <svg width="360" height="80" viewBox="0 0 452 100" fill={INK}>
+      <path d="M80.1 22.9A40.5 40.5 0 1 0 90.5 50" fill="none" stroke={INK} strokeWidth="19" />
+      <rect x="41" y="44.5" width="59" height="11" />
+      <rect x="34" y="35" width="14" height="30" rx="3" fill="#ff6a1f" />
+      <path transform="translate(112 0)" d="M0 100L39.5 0L56.5 0L96 100L77 100L67.52 76L28.48 76L19 100ZM48 26.58L61.2 60L34.8 60Z" fillRule="evenodd" />
+      <path transform="translate(206 0)" d="M0 0L19 0L48 73.42L77 0L96 0L56.5 100L39.5 100Z" />
+      <path transform="translate(316 0)" d="M0 0L64 0L64 16L19 16L19 42L56 42L56 58L19 58L19 84L64 84L64 100L0 100Z" />
+      <path transform="translate(394 0)" d="M0 0L19 0L19 84L58 84L58 100L0 100Z" />
     </svg>
   );
 }

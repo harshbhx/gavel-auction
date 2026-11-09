@@ -21,6 +21,7 @@ import {
 import { lookupProblemText } from '../../net/apiError';
 import './landing.css';
 import './landing-extra.css';
+import { Logo } from '../../design/Logo';
 
 /** default: both actions ready. busy: a room is being created. down: the server is unreachable. */
 export type LandingStatus = 'default' | 'busy' | 'down';
@@ -89,7 +90,9 @@ export function LandingScreen({
     <div className="gv-mk">
       <header className="gv-mk-header">
         <div className="gv-mk-header__bar">
-          <span className="gv-mk-header__brand">{t('app.name')}</span>
+          <span className="gv-mk-header__brand">
+            <Logo variant="wordmark" height={22} />
+          </span>
           <nav className="gv-mk-header__nav" aria-label={t('mk.nav.label')}>
             <a href="#how">{t('mk.nav.how')}</a>
             <a href="#screens">{t('mk.nav.product')}</a>
@@ -198,7 +201,9 @@ export function LandingScreen({
       <footer className="gv-mk-footer">
         <div className="gv-mk-footer__inner">
           <div className="gv-mk-footer__intro">
-            <p className="gv-mk-footer__brand">{t('app.name')}</p>
+            <p className="gv-mk-footer__brand">
+              <Logo variant="wordmark" height={26} />
+            </p>
             <p className="gv-mk-footer__tag">{t('mk.foot.tag')}</p>
           </div>
           <nav className="gv-mk-footer__cols" aria-label={t('mk.foot.nav')}>

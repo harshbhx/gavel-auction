@@ -161,7 +161,7 @@ test.describe('audit', () => {
 
   test('filters match nothing', async ({ page, shoot }) => {
     await audit(page, { scenario: auditRoom, at: 9_000, query: 'q=zzzz' });
-    await expect(page.getByText(t('audit.empty')).first()).toBeVisible();
+    await expect(page.getByText(t('audit.noMatch')).first()).toBeVisible();
     await shoot('audit', 'filtered-no-match');
   });
 
@@ -170,6 +170,35 @@ test.describe('audit', () => {
     await page.locator('tbody tr th button').nth(1).click();
     await page.getByRole('dialog').waitFor();
     await shoot('audit', 'row-drawer');
+  });
+
+  test('timeline and summary after the hammer', async ({ page, shoot }) => {
+    await audit(page, { scenario: happy, at: HAPPY.settled });
+    await expect(page.getByRole('region', { name: t('audit.tl.title') })).toBeVisible();
+    await expect(page.getByText(t('audit.tl.receiptLink'))).toBeVisible();
+    await shoot('audit', 'settled-timeline');
+  });
+
+  test('bidding war in progress', async ({ page, shoot }) => {
+    await audit(page, { scenario: happy, at: HAPPY.outbid });
+    await expect(page.getByRole('region', { name: t('audit.tl.title') })).toBeVisible();
+    await shoot('audit', 'live-bidding');
+  });
+
+  test('filtered to bid lines', async ({ page, shoot }) => {
+    await audit(page, { scenario: auditRoom, at: 9_000, query: 'type=bid' });
+    await expect(page.getByRole('table')).toBeVisible();
+    await shoot('audit', 'filtered-type-bid');
+  });
+
+  test('detail sheet opened from the timeline', async ({ page, shoot }) => {
+    await audit(page, { scenario: auditRoom, at: 9_000 });
+    await page
+      .getByRole('button', { name: new RegExp(t('audit.tl.details')) })
+      .first()
+      .click();
+    await page.getByRole('dialog').waitFor();
+    await shoot('audit', 'timeline-drawer');
   });
 
   test('no events yet', async ({ page, shoot }) => {

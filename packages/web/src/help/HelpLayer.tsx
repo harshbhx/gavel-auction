@@ -12,6 +12,7 @@ import {
   shouldAutoStart,
   tourReducer,
 } from './tourState';
+import { Logo } from '../design/Logo';
 import './help.css';
 
 export interface HelpLayerProps {
@@ -57,6 +58,7 @@ export function HelpLayer({ autoStart }: HelpLayerProps) {
       <Sheet open={view !== 'closed'} onClose={closeSheet} title={t('help.title')}>
         {view === 'menu' && (
           <div className="help-menu">
+            <Logo variant="wordmark" height={18} decorative />
             <h2 className="help-menu__title">{t('help.title')}</h2>
             <button
               type="button"

@@ -1,10 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="GAVEL">
-  <defs>
-    <pattern id="h" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-      <rect width="2" height="6" fill="#0b0f10"/>
-    </pattern>
-  </defs>
-  <rect width="64" height="64" rx="4" fill="#ffb224"/>
-  <rect x="10" y="10" width="44" height="26" fill="url(#h)" stroke="#0b0f10" stroke-width="2"/>
-  <rect x="10" y="42" width="44" height="12" fill="#0b0f10"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><title>GAVEL</title><rect width="128" height="128" rx="26" fill="#1d1712"/><g transform="translate(1.84 8.0) scale(1.12)"><path d="M78.98 23.90A39 39 0 1 0 89.00 50.00" fill="none" stroke="#efe6d3" stroke-width="22"/><rect x="40" y="43.5" width="60" height="13" fill="#efe6d3"/><rect x="32" y="33" width="16" height="34" rx="3" fill="#ff6a1f"/></g></svg>

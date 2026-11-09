@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { WideAside } from '../WideAside';
 import { t } from '../../copy/t';
+import { Logo } from '../../design/Logo';
 import '../flows.css';
 
 export interface NotFoundProps {
@@ -15,7 +16,9 @@ export function NotFound({ homeHref = '/' }: NotFoundProps) {
   }, []);
   return (
     <main className="gv-flow" data-route="notFound">
-      <p className="ui-kicker">{t('app.name')}</p>
+      <p className="ui-kicker">
+        <Logo variant="lockup" height={40} />
+      </p>
       <h1 ref={heading} tabIndex={-1}>
         {t('err.notFound')}
       </h1>

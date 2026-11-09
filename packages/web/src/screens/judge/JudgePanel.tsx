@@ -15,11 +15,11 @@ import type { JudgeRoomsStatus, LedgerFetch } from '../../net/judgeRooms';
 import { SCRIPTED_DEMO_PATH } from '../../net/scriptedMode';
 import { JoinCodeInput } from '../../ui';
 import { DemoRoomError, failureText, type DemoFailure, type DemoLinks } from '../demo/DemoLauncher';
-import { REPO_URL } from '../landing/LandingSections';
-import { latestHubRoom } from '../hub/hubKeys';
 import { GoalField } from '../demo/GoalField';
 import { parseGoalInput } from '../screen/fundraiser';
 import { lookupProblemText } from '../../net/apiError';
+import { REPO_URL } from '../landing/LandingSections';
+import { latestHubRoom } from '../hub/hubKeys';
 import '../flows.css';
 import { EvidenceColumn } from './EvidenceColumn';
 import { JudgeDialog, type JudgeTab } from './JudgeDialog';
@@ -34,8 +34,8 @@ export type RoomsState = 'checking' | 'noServer' | JudgeRoomsStatus;
 export interface JudgePanelProps {
   readonly rooms: RoomsState;
   /**
-   * Creates a sandbox room, with a fundraiser goal in cents when the host typed one and the judge
-   * key when the visitor unlocked one. Rejects with a `DemoRoomError` when the host refuses.
+   * Creates a sandbox room, with a fundraiser goal in cents when one was typed and the judge key
+   * when the visitor unlocked one. Rejects with a `DemoRoomError` when the host refuses.
    */
   readonly createRoom: (goalCents?: number, judgeKey?: string) => Promise<DemoLinks>;
   /** Opens a page in the current tab. */
@@ -56,7 +56,7 @@ export interface JudgePanelProps {
 }
 
 const CODE_LENGTH = 6;
-const CODE_PREFIX = '';
+const CODE_PREFIX = 'GVL-';
 
 const STATUS: Readonly<
   Record<
@@ -107,20 +107,20 @@ export function JudgePanel({
   const heading = useRef<HTMLHeadingElement>(null);
   const [phase, setPhase] = useState<'idle' | 'busy' | 'failed'>('idle');
   const [failure, setFailure] = useState<DemoFailure | null>(null);
-  const [retryAfterS, setRetryAfterS] = useState<number | null>(null);
   const [code, setCode] = useState('');
   const [looking, setLooking] = useState(false);
   const [missing, setMissing] = useState(false);
-  const [dialog, setDialog] = useState<JudgeTab | null>(null);
+  const [retryAfterS, setRetryAfterS] = useState<number | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
   const [goal, setGoal] = useState('');
   const goalInput = parseGoalInput(goal);
   const goalOk = goalInput.kind === 'empty' || goalInput.kind === 'ok';
+  const [dialog, setDialog] = useState<JudgeTab | null>(null);
   // The key lives in this tab's sessionStorage and in this state, never in a URL or a link.
   const [heldKey, setHeldKey] = useState<string | null>(() => (keyOffered ? readJudgeKey() : null));
   const [keyInput, setKeyInput] = useState('');
   const [keyState, setKeyState] = useState<'idle' | 'checking' | JudgeKeyResult>('idle');
   const unlocked = keyOffered && heldKey !== null;
-  const [problem, setProblem] = useState<string | null>(null);
   const [ownRoom] = useState<LiveRoom | null>(() => liveRoomFrom(latestHubRoom()));
   const room = roomProp === undefined ? ownRoom : roomProp;
   const script = useDemoScript(autoplay);
@@ -138,8 +138,8 @@ export function JudgePanel({
     if (phase === 'busy' || !startable || !goalOk) return;
     setPhase('busy');
     setFailure(null);
-    const goalCents = goalInput.kind === 'ok' ? goalInput.cents : undefined;
     setRetryAfterS(null);
+    const goalCents = goalInput.kind === 'ok' ? goalInput.cents : undefined;
     (keyOffered && heldKey !== null ? createRoom(goalCents, heldKey) : createRoom(goalCents)).then(
       (links) => openRoom(links.hub ?? links.console),
       (error: unknown) => {
@@ -364,6 +364,7 @@ export function JudgePanel({
                     onChange={(next) => {
                       setCode(next);
                       setMissing(false);
+                      setProblem(null);
                     }}
                   />
                   <Button type="submit" disabled={looking || code.trim() === ''}>
