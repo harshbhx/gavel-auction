@@ -5,6 +5,7 @@ import {
   SeqIds,
   type AuctionConfig,
   type AuctionId,
+  type Cents,
 } from '@gavel/shared';
 import { HoldError, type HoldRecord } from '@gavel/payments';
 import { describe, expect, it } from 'vitest';
@@ -157,6 +158,36 @@ describe('hold routes (INT-R3-20)', () => {
     expect(res.status).toBe(201);
     expect(await res.json()).toEqual({ holdId: 'hold-1', orderId: 'order-1' });
     expect(calls.created).toEqual([{ auctionId, bidderId: bidder, ceilingCents: 30000 }]);
+  });
+
+  it('refuses a limit under the reserve before any order is created (FIX-118)', async () => {
+    const { app, deps, calls } = setup();
+    const auctionId = await newAuction(app);
+    const bidder = deps.ids.mint<'BidderId'>();
+    const m = await mintToken(deps, 'session', auctionId, bidder, bidder);
+    const res = await post(app, '/api/holds', { auctionId, ceilingCents: 500 }, m.token);
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toBe('ceiling_out_of_range');
+    expect(calls.created).toEqual([]);
+  });
+
+  it('refuses a bidder whose limit was revoked before any order is created (FIX-118)', async () => {
+    const { app, deps, calls } = setup();
+    const auctionId = await newAuction(app);
+    const bidder = deps.ids.mint<'BidderId'>();
+    const room = await deps.service.room(auctionId as AuctionId);
+    await room.registerBidder({
+      bidderId: bidder,
+      name: 'Ada',
+      ceiling: 30000 as Cents,
+      holdRef: 'h1',
+    });
+    await room.revokeBidder(bidder, 'declined');
+    const m = await mintToken(deps, 'session', auctionId, bidder, bidder);
+    const res = await post(app, '/api/holds', { auctionId, ceilingCents: 30000 }, m.token);
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { error: string }).error).toBe('ceiling_revoked');
+    expect(calls.created).toEqual([]);
   });
 
   it('hands the PayPal approval link back so the redirect fallback can run (issue 1778)', async () => {

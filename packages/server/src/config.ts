@@ -2,6 +2,7 @@ import { isAbsolute } from 'node:path';
 import { z } from 'zod';
 import { DEFAULT_DOCS_ORIGIN, parseOriginList } from './http/origins';
 import { isSecretKey } from './log/logger';
+import { MAX_CEILING_CENTS_LIMIT, MIN_CEILING_CENTS } from '@gavel/shared';
 
 const flag = z.enum(['0', '1']).transform((v) => v === '1');
 /** Like `flag`, but also accepts true and false, for the judge room switches. */
@@ -130,7 +131,15 @@ const EnvObject = z.object({
    * cached provider when they fail.
    */
   VOICE_STT: z.enum(['replay', 'fake', 'groq', 'deepgram']).optional(),
-  GAVEL_MAX_CEILING_CENTS: int(1).optional(),
+  /** In the range the engine can run: MIN_CEILING_CENTS..MAX_CEILING_CENTS_LIMIT (default 100000). */
+  GAVEL_MAX_CEILING_CENTS: int(1)
+    .pipe(
+      z
+        .number()
+        .min(MIN_CEILING_CENTS, `must be at least ${MIN_CEILING_CENTS} cents`)
+        .max(MAX_CEILING_CENTS_LIMIT, `must be at most ${MAX_CEILING_CENTS_LIMIT} cents`),
+    )
+    .optional(),
   GAVEL_HOLD_MAX_AGE_MS: int(1).optional(),
   /** Period of the reconcile pass over settled auctions, in ms; unset or 0 turns it off. */
   GAVEL_RECONCILE_INTERVAL_MS: int(0).optional(),

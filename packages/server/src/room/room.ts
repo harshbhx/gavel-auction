@@ -189,7 +189,7 @@ export interface RoomDeps {
   clock: Clock;
   ids: Ids;
   /** Builds a fresh engine for a config; called again whenever the room is rebuilt from its log. */
-  engine: (config: AuctionConfig, createdAt: EpochMs) => EnginePort;
+  engine: (config: AuctionConfig, createdAt: EpochMs, maxCeilingCents?: number) => EnginePort;
   limiter?: RateLimiter;
   /** The server's bidder limit cap in cents; sent in every snapshot when set (FIX-78). */
   maxCeilingCents?: number;
@@ -280,6 +280,8 @@ export class Room {
   /** Voice holds requested per bidder; capped so one paddle cannot grow the log (RT4-sec-03). */
   private holdsBy = new Map<BidderId, number>();
   private config: AuctionConfig | undefined;
+  /** The cap this auction was created with (from the log); undefined for legacy logs. */
+  private logCap: number | undefined;
   private engine: EnginePort | undefined;
   private lastState = 'OPEN';
   private roster = new Map<BidderId, RosterEntry>();
@@ -348,6 +350,7 @@ export class Room {
         ts: deps.clock.now(),
         config,
         auctioneerSub,
+        ...(deps.maxCeilingCents === undefined ? {} : { maxCeilingCents: deps.maxCeilingCents }),
       },
     ]);
     await room.replay();
@@ -634,6 +637,21 @@ export class Room {
 
   private storeCode(): ErrorCode {
     return this.stopped ? 'host_fenced' : 'store_unavailable';
+  }
+
+  /**
+   * What the room would refuse about a new hold before any money moves: a bidder whose limit was
+   * revoked (D-0023), or a limit under the lot reserve. `reserve` is the reserve in cents.
+   * Reads state only; registration still decides at the end (FIX-118).
+   */
+  holdPreflight(
+    bidderId: string,
+    ceilingCents: number,
+  ): { refusal: 'revoked' | 'below_reserve' | null; reserve: number } {
+    const reserve = this.config?.reserve ?? 0;
+    if (this.revoked.has(bidderId as BidderId)) return { refusal: 'revoked', reserve };
+    if (ceilingCents < reserve) return { refusal: 'below_reserve', reserve };
+    return { refusal: null, reserve };
   }
 
   /** Report a payment hold: the bidder joins the roster with their private ceiling (R-RT-054). */
@@ -1944,9 +1962,9 @@ export class Room {
       leaderId: view.leader,
       endTs: this.endTsFor(view, this.deps.clock.now()),
       minNext: view.minNext,
-      ...(this.deps.maxCeilingCents === undefined
+      ...((this.logCap ?? this.deps.maxCeilingCents) === undefined
         ? {}
-        : { maxCeilingCents: this.deps.maxCeilingCents as Cents }),
+        : { maxCeilingCents: (this.logCap ?? this.deps.maxCeilingCents) as Cents }),
       ...(view.paused ? { paused: true, remainingMs: view.remainingMs ?? 0 } : {}),
       ...(this.hammered && this.endedByAuctioneer ? { stopped: true } : {}),
       ...(this.hammered || this.done ? { registrationClosed: true } : {}),
@@ -2266,7 +2284,8 @@ export class Room {
     switch (event.type) {
       case 'auction_created':
         this.config = event.config;
-        this.engine = this.deps.engine(event.config, event.ts);
+        this.logCap = event.maxCeilingCents;
+        this.engine = this.deps.engine(event.config, event.ts, event.maxCeilingCents);
         break;
       case 'bidder_registered':
         try {
