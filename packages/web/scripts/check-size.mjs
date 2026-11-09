@@ -23,7 +23,7 @@ import { gzipSync } from 'node:zlib';
 const LIMIT_BYTES = 180 * 1000;
 
 /** Budget for the lazy AG Grid chunk, gzip. Only the modules the grids use are registered. */
-export const GRID_LIMIT_BYTES = 380 * 1000;
+export const GRID_LIMIT_BYTES = 320 * 1000;
 
 /** What must stay out of the initial route: a chunk file name pattern or a string only it holds. */
 const LAZY = [

@@ -49,7 +49,7 @@ Rows and columns are virtualised by AG Grid. The lab loads a 30-day run (2,134 e
 
 ## Bundle
 
-The grids are lazy. Each is behind `React.lazy`, and the Vite config puts the library in one named chunk (`assets/ag-grid-*.js`, via `manualChunks` in `packages/web/vite.config.ts`), so the landing and bidder pages do not download it. Only the modules the grids use are registered in `src/grid/agRuntime.ts`, not `AllCommunityModule`; a feature that needs another module logs an AG Grid error and fails agModules.test.tsx, so add it there. The web-budget check (`packages/web/scripts/check-size.mjs`) fails the build if AG Grid ever lands in the initial route, and holds the `ag-grid-*` chunk to its own budget (380 KB gzip). The layout hooks (`useNarrow`, `useReducedMotion`) live in `src/util/useMedia.ts`, outside the chunk.
+The grids are lazy. Each is behind `React.lazy`, and the Vite config puts the library in one named chunk (`assets/ag-grid-*.js`, via `manualChunks` in `packages/web/vite.config.ts`), so the landing and bidder pages do not download it. Only the modules the grids use are registered in `src/grid/agRuntime.ts`, not `AllCommunityModule`; a feature that needs another module logs an AG Grid error and fails agModules.test.tsx, so add it there. The web-budget check (`packages/web/scripts/check-size.mjs`) fails the build if AG Grid ever lands in the initial route, and holds the `ag-grid-*` chunk to its own budget (320 KB gzip; it is about 296 KB). The layout hooks (`useNarrow`, `useReducedMotion`) live in `src/util/useMedia.ts`, outside the chunk.
 
 ## Screenshots
 
