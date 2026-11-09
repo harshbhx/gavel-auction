@@ -1,8 +1,40 @@
 import type { CopyKey } from '../../copy/en';
 
-/** How long one beat stays up before the next one, per speed. Each is a readable 3 to 6 seconds. */
-export const BEAT_MS = { normal: 3000, slow: 6000 } as const;
-export type PlaybackSpeed = keyof typeof BEAT_MS;
+/** How long one beat stays up at 1x, in virtual milliseconds. Speeds divide the real wait. */
+export const BEAT_MS = 2400;
+
+/** Playback speeds the viewer can pick; 1x is the default. */
+export const SPEEDS = [1, 1.25, 1.5, 2] as const;
+export type PlaybackSpeed = (typeof SPEEDS)[number];
+export const DEFAULT_SPEED: PlaybackSpeed = 1;
+
+/** Copy key of a speed's visible label and of its full spoken name. */
+export const SPEED_LABEL: Readonly<Record<PlaybackSpeed, CopyKey>> = {
+  1: 'scriptedDemo.speed1',
+  1.25: 'scriptedDemo.speed125',
+  1.5: 'scriptedDemo.speed15',
+  2: 'scriptedDemo.speed2',
+};
+
+const SPEED_STORE_KEY = 'gavel.scripted.speed';
+
+/** The speed kept for this tab, or 1x when none is stored or storage is blocked. */
+export function readStoredSpeed(): PlaybackSpeed {
+  try {
+    const raw = Number(sessionStorage.getItem(SPEED_STORE_KEY));
+    return SPEEDS.find((s) => s === raw) ?? DEFAULT_SPEED;
+  } catch {
+    return DEFAULT_SPEED;
+  }
+}
+
+export function storeSpeed(speed: PlaybackSpeed): void {
+  try {
+    sessionStorage.setItem(SPEED_STORE_KEY, String(speed));
+  } catch {
+    /* storage blocked: the choice just does not outlive this render */
+  }
+}
 
 export interface Beat {
   /** Scenario time (ms) the beat plays up to. Matches the frames of the `happy` scenario. */
@@ -14,7 +46,7 @@ export interface Beat {
 
 /**
  * The beats of the `happy` scenario, one per group of frames: holds, five bids, hammer, and the
- * three settlement frames. The player moves from one beat to the next on its own clock, so a
+ * three settlement frames. The player moves from one beat to the next on one virtual clock, so a
  * viewer reads one change at a time instead of watching the whole script run in 18 seconds.
  */
 export const BEATS: readonly Beat[] = [

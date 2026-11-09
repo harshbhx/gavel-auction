@@ -19,6 +19,11 @@ afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
   window.history.replaceState(null, '', '/');
+  try {
+    sessionStorage.clear();
+  } catch {
+    /* ignore */
+  }
 });
 
 function reducedMotion(on: boolean): void {
@@ -31,10 +36,10 @@ function reducedMotion(on: boolean): void {
 }
 
 describe('scripted demo beats', () => {
-  it('are readable: each beat is 2 to 4 seconds at 1x and slower at slow', () => {
-    expect(BEAT_MS.normal).toBeGreaterThanOrEqual(2000);
-    expect(BEAT_MS.normal).toBeLessThanOrEqual(4000);
-    expect(BEAT_MS.slow).toBeGreaterThan(BEAT_MS.normal);
+  it('are readable: each beat is 2 to 4 seconds at 1x and still 1 second at 2x', () => {
+    expect(BEAT_MS).toBeGreaterThanOrEqual(2000);
+    expect(BEAT_MS).toBeLessThanOrEqual(4000);
+    expect(BEAT_MS / 2).toBeGreaterThanOrEqual(1000);
   });
 
   it('cover the story in order: hold, bids, hammer, capture, receipt', () => {
@@ -55,27 +60,31 @@ describe('scripted demo beats', () => {
 });
 
 describe('useScriptedPlayback', () => {
-  it('moves one beat per interval at 1x and slower at slow speed', () => {
+  it('moves one beat per interval at 1x and faster at 1.25x without restarting the beat', () => {
     vi.useFakeTimers();
     reducedMotion(false);
     const { result } = renderHook(() => useScriptedPlayback());
     expect(result.current.beat).toBe(0);
     expect(result.current.playing).toBe(true);
     act(() => {
-      vi.advanceTimersByTime(BEAT_MS.normal - 1);
+      vi.advanceTimersByTime(BEAT_MS - 1);
     });
     expect(result.current.beat).toBe(0);
     act(() => {
       vi.advanceTimersByTime(1);
     });
     expect(result.current.beat).toBe(1);
-    act(() => result.current.setSpeed('slow'));
     act(() => {
-      vi.advanceTimersByTime(BEAT_MS.normal);
+      vi.advanceTimersByTime(BEAT_MS / 2);
+    });
+    // Half the beat is spent at 1x; the other half now takes 1/1.25 as long in real time.
+    act(() => result.current.setSpeed(1.25));
+    act(() => {
+      vi.advanceTimersByTime(BEAT_MS / 2 / 1.25 - 1);
     });
     expect(result.current.beat).toBe(1);
     act(() => {
-      vi.advanceTimersByTime(BEAT_MS.slow - BEAT_MS.normal);
+      vi.advanceTimersByTime(1);
     });
     expect(result.current.beat).toBe(2);
   });
@@ -87,7 +96,7 @@ describe('useScriptedPlayback', () => {
     act(() => result.current.toggle());
     expect(result.current.playing).toBe(false);
     act(() => {
-      vi.advanceTimersByTime(BEAT_MS.slow * 3);
+      vi.advanceTimersByTime(BEAT_MS * 3);
     });
     expect(result.current.beat).toBe(0);
     act(() => result.current.next());
@@ -107,7 +116,7 @@ describe('useScriptedPlayback', () => {
     const { result } = renderHook(() => useScriptedPlayback());
     for (let i = 0; i < BEATS.length + 2; i += 1) {
       act(() => {
-        vi.advanceTimersByTime(BEAT_MS.normal);
+        vi.advanceTimersByTime(BEAT_MS);
       });
     }
     expect(result.current.beat).toBe(BEATS.length - 1);
@@ -125,7 +134,7 @@ describe('useScriptedPlayback', () => {
     expect(result.current.reduced).toBe(true);
     expect(result.current.playing).toBe(false);
     act(() => {
-      vi.advanceTimersByTime(BEAT_MS.slow * 4);
+      vi.advanceTimersByTime(BEAT_MS * 4);
     });
     expect(result.current.beat).toBe(0);
     act(() => result.current.next());
@@ -176,16 +185,43 @@ describe('/demo/scripted player', () => {
     await waitFor(() => expect(screen.queryByTestId('screen-price')).toBeNull());
   });
 
-  it('toggles speed with pressed state, 1x first', async () => {
+  it('offers 1x, 1.25x, 1.5x and 2x as a pressed-state group, 1x first, and remembers it', async () => {
     reducedMotion(true);
+    const { unmount } = render(<App initialPath="/demo/scripted" gallery={false} />);
+    await waitFor(() => expect(screen.getByText(t('prov.scripted'))).toBeTruthy());
+    const group = screen.getByRole('group', { name: t('scriptedDemo.speed') });
+    const buttons = group.querySelectorAll('button');
+    expect(Array.from(buttons).map((b) => b.textContent)).toEqual(['1x', '1.25x', '1.5x', '2x']);
+    const named = (x: string) =>
+      screen.getByRole('button', { name: t('scriptedDemo.speedOption', { speed: x }) });
+    expect(named('1x').getAttribute('aria-pressed')).toBe('true');
+    const before = screen.getByTestId('scripted-duration').textContent;
+    fireEvent.click(named('1.25x'));
+    expect(named('1.25x').getAttribute('aria-pressed')).toBe('true');
+    expect(named('1x').getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByTestId('scripted-duration').textContent).not.toBe(before);
+    // Recording strip is unchanged by the speed.
+    expect(screen.getByText(t('scriptedDemo.banner'))).toBeTruthy();
+    unmount();
     render(<App initialPath="/demo/scripted" gallery={false} />);
     await waitFor(() => expect(screen.getByText(t('prov.scripted'))).toBeTruthy());
-    const normal = screen.getByRole('button', { name: t('scriptedDemo.speedNormal') });
-    const slow = screen.getByRole('button', { name: t('scriptedDemo.speedSlow') });
-    expect(normal.getAttribute('aria-pressed')).toBe('true');
-    fireEvent.click(slow);
-    expect(slow.getAttribute('aria-pressed')).toBe('true');
-    expect(normal.getAttribute('aria-pressed')).toBe('false');
+    expect(named('1.25x').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('falls back to 1x when session storage is blocked', () => {
+    vi.stubGlobal('sessionStorage', {
+      getItem: () => {
+        throw new Error('blocked');
+      },
+      setItem: () => {
+        throw new Error('blocked');
+      },
+    });
+    reducedMotion(false);
+    const { result } = renderHook(() => useScriptedPlayback());
+    expect(result.current.speed).toBe(1);
+    act(() => result.current.setSpeed(2));
+    expect(result.current.speed).toBe(2);
   });
 
   it('jumps to a step from the step list', async () => {
