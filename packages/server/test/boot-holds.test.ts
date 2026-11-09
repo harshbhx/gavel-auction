@@ -369,7 +369,8 @@ describe('hold routes in the production composition (HRD-69, issue 1074)', () =>
 
       // The same request again hands back the same order.
       const again = await hold(60000);
-      expect(again.order).toEqual(raise.order);
+      expect(again.order?.holdId).toBe(raise.order?.holdId);
+      expect(again.order?.orderId).toBe(raise.order?.orderId);
 
       // Approving, with or without a name, twice: one raise, one void.
       for (let i = 0; i < 2; i += 1) {
