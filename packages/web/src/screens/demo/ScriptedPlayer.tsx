@@ -3,7 +3,17 @@ import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
 import type { ScenarioTransport } from '../../net/scenarioTransport';
 import { useReducedMotion } from '../../ui/fx/hooks';
-import { BEATS, BEAT_MS, type Beat, type PlaybackSpeed } from './scriptedBeats';
+import {
+  BEATS,
+  BEAT_MS,
+  SPEEDS,
+  SPEED_LABEL,
+  readStoredSpeed,
+  storeSpeed,
+  type Beat,
+  type PlaybackSpeed,
+} from './scriptedBeats';
+import { VirtualClock } from './virtualClock';
 import './scriptedPlayer.css';
 
 export interface Playback {
@@ -37,10 +47,12 @@ export function useScriptedPlayback(beats: readonly Beat[] = BEATS): Playback {
   const last = beats.length - 1;
   const [beat, setBeat] = useState(0);
   const [playing, setPlaying] = useState(!reduced);
-  const [speed, setSpeed] = useState<PlaybackSpeed>('normal');
+  const [speed, setSpeed] = useState<PlaybackSpeed>(readStoredSpeed);
   const [startAt, setStartAt] = useState(beats[0]?.at ?? 0);
   const [run, setRun] = useState(0);
   const transport = useRef<ScenarioTransport | null>(null);
+  const clock = useRef<VirtualClock>(new VirtualClock());
+  const dwellBeat = useRef(-1);
 
   const attach = useCallback((tr: ScenarioTransport) => {
     transport.current = tr;
@@ -49,6 +61,7 @@ export function useScriptedPlayback(beats: readonly Beat[] = BEATS): Playback {
   const rebuildAt = useCallback(
     (index: number) => {
       transport.current = null;
+      clock.current.reset();
       setStartAt(beats[index]?.at ?? 0);
       setRun((n) => n + 1);
       setBeat(index);
@@ -76,9 +89,24 @@ export function useScriptedPlayback(beats: readonly Beat[] = BEATS): Playback {
       setPlaying(false);
       return undefined;
     }
-    const id = setTimeout(() => goTo(beat + 1), BEAT_MS[speed]);
-    return () => clearTimeout(id);
-  }, [playing, beat, speed, last, goTo]);
+    const c = clock.current;
+    if (dwellBeat.current !== beat) {
+      dwellBeat.current = beat;
+      c.reset();
+    }
+    c.setSpeed(speed);
+    c.start();
+    const id = setTimeout(() => goTo(beat + 1), c.realUntil(BEAT_MS));
+    return () => {
+      clearTimeout(id);
+      c.stop();
+    };
+  }, [playing, beat, speed, run, last, goTo]);
+
+  const chooseSpeed = useCallback((next: PlaybackSpeed) => {
+    storeSpeed(next);
+    setSpeed(next);
+  }, []);
 
   const finished = beat >= last && !playing;
 
@@ -114,14 +142,17 @@ export function useScriptedPlayback(beats: readonly Beat[] = BEATS): Playback {
         setPlaying(false);
         goTo(index);
       },
-      setSpeed,
+      setSpeed: chooseSpeed,
     }),
-    [beat, playing, speed, reduced, finished, startAt, run, attach, goTo, rebuildAt],
+    [beat, playing, speed, reduced, finished, startAt, run, attach, goTo, rebuildAt, chooseSpeed],
   );
 }
 
 /** Beat copy has no placeholders, so a union of its keys is safe to look up. */
 const say = (key: Beat['label'] | Beat['body']): string => t(key as 'scriptedDemo.b0.label');
+
+/** Speed labels have no placeholders, so a union of their keys is safe to look up. */
+const speedText = (s: PlaybackSpeed): string => t(SPEED_LABEL[s] as 'scriptedDemo.speed1');
 
 /** Caption, transport controls and the step list that sit beside the scripted screen. */
 export function ScriptedPlayer({
@@ -176,21 +207,29 @@ export function ScriptedPlayer({
         </Button>
       </div>
       <div className="gv-player__speed" role="group" aria-label={t('scriptedDemo.speed')}>
-        <Button
-          variant={speed === 'normal' ? 'solid' : 'outline'}
-          aria-pressed={speed === 'normal'}
-          onClick={() => playback.setSpeed('normal')}
-        >
-          {t('scriptedDemo.speedNormal')}
-        </Button>
-        <Button
-          variant={speed === 'slow' ? 'solid' : 'outline'}
-          aria-pressed={speed === 'slow'}
-          onClick={() => playback.setSpeed('slow')}
-        >
-          {t('scriptedDemo.speedSlow')}
-        </Button>
+        <span className="gv-player__speed-label" aria-hidden="true">
+          {t('scriptedDemo.speed')}
+        </span>
+        {SPEEDS.map((s) => (
+          <Button
+            key={s}
+            className="gv-player__speed-btn tabular"
+            variant={speed === s ? 'solid' : 'outline'}
+            aria-pressed={speed === s}
+            aria-label={t('scriptedDemo.speedOption', { speed: speedText(s) })}
+            data-testid={`scripted-speed-${s}`}
+            onClick={() => playback.setSpeed(s)}
+          >
+            {speedText(s)}
+          </Button>
+        ))}
       </div>
+      <p className="gv-player__note tabular" data-testid="scripted-duration">
+        {t('scriptedDemo.duration', {
+          seconds: Math.round(((total - 1) * BEAT_MS) / speed / 1000),
+          speed: speedText(speed),
+        })}
+      </p>
       <ol className="gv-player__steps" aria-label={t('scriptedDemo.steps')}>
         {beats.map((b, i) => (
           <li
