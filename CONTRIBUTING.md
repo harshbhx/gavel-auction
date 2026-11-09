@@ -48,6 +48,7 @@ Some scripts print "not implemented" until the issue that owns them is merged. T
 
 - One issue per pull request. Branch name: `<type>/<KEY>-<slug>`, for example `feat/ENG-04-ledger-model`.
 - The pull request title starts with the issue key: `ENG-04: append-only ledger model`.
+- The squash commit on `main` takes the pull request title, so the title is the rule that shapes history: `KEY: subject`, at most 72 characters (CI checks both). Commits on a branch are squashed away and follow Conventional Commits below; they are linted only on the pull request, not on `main`.
 - Commits follow Conventional Commits: `type(scope): subject`. Allowed types are feat, fix, test, docs, chore, refactor, perf, ci and build. Allowed scopes are shared, engine, payments, voice, server, web, e2e, infra, docs and repo. The header is lower case, has no trailing period and is at most 72 characters.
 - Pull request bodies include a Summary, What changed and How to test, and one `Closes #<n>` line per issue.
 - Do not force-push a shared branch. If `main` moved, merge it into your branch.

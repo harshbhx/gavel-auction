@@ -9,6 +9,12 @@ import { chromium, devices, request as pwRequest } from 'playwright';
 const WEB = (process.env.WEB_URL || '').replace(/\/$/, '');
 const API = (process.env.API_URL || '').replace(/\/$/, '');
 const PROFILE = process.env.PROFILE || 'desktop';
+// SMOKE=1 (judge-smoke workflow): one room, the judge journey only, and the process exits 1
+// when any step fails. The red-team extras (wrong-code probe, scripted demo, link crawl, live
+// room API probes) are skipped by name.
+const SMOKE = process.env.SMOKE === '1';
+const SMOKE_SKIP =
+  /^(API join endpoint error handling|\/demo: start a second room|\/demo\/scripted|API: join endpoints against the live room|Link crawl)/;
 const OUT = path.resolve(process.env.OUT || 'out');
 const BUYERS = [
   { email: process.env.PP_EMAIL_A || '', pass: process.env.PP_PASS_A || '' },
@@ -75,6 +81,7 @@ async function shot(page, name) {
 }
 
 async function step(name, fn) {
+  if (SMOKE && SMOKE_SKIP.test(name)) return;
   N += 1;
   const id = String(N).padStart(2, '0');
   const rec = { id, name, status: 'PASS', notes: [], shots: [], ms: 0 };
@@ -1367,9 +1374,10 @@ async function main() {
     ),
   );
   log(`done: ${failed} failed of ${results.length}`);
+  if (SMOKE && (failed > 0 || results.length === 0)) process.exitCode = 1;
 }
 
 main().catch((e) => {
   console.error(e);
-  process.exitCode = 0; // artifacts matter more than the exit code
+  process.exitCode = SMOKE ? 1 : 0; // red team: artifacts matter more than the exit code
 });
