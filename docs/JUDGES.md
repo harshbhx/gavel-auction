@@ -42,7 +42,7 @@ The hosted site offers a short real room on the PayPal sandbox with no operator 
 
 Along the way, check these parts of the interface (each is covered by tests in CI, none by a recorded click-through of the hosted site):
 
-- The help button (landing, join, register, bid and receipt screens) opens the hold explainer or replays the six-step guided tour; the tour also opens by itself on a first visit.
+- The help button (landing, join, register, bid and receipt screens) opens the hold explainer; nothing opens by itself over the page.
 - Approving the ceiling uses a press-and-hold button (3 seconds, Space or Enter on a keyboard, with a two-tap alternative); the hold card shows hatched for held, solid for charged, hollow for released.
 - On the big screen, a lot with a fundraiser goal shows a thermometer that counts only captured money.
 - After the hammer the receipt can mint a share link with a QR code, and has a print layout.
