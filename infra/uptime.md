@@ -27,4 +27,4 @@ A scheduled GitHub workflow runs every 5 minutes at best; GitHub may delay sched
 ## Open items
 
 - `/healthz`, `/warmup`, `/ops/summary` and `/metrics/prometheus` are registered in `packages/server/src/boot/compose.ts`. `/warmup` and `/healthz` are open and return only step names and timings; the other two need the operator key.
-- The warmup time under 3 s after 15 minutes idle (T-QA-084) is not measured yet; it needs a staging host and the enabled workflow.
+- The warmup time under 3 s after 15 minutes idle (T-QA-084): measured once on the hosted API in workflow `evidence-hosted`, run 42558107791 (9 Nov 2026): n=2 samples after 16 minutes idle, max 662.17 ms for `/warmup`, within the 3000 ms budget. Caveats: two samples only; the host may never go cold because the uptime workflow pings every 5 minutes; the owner redeployed Render during the run (about 03:50 UTC). Evidence: `docs/evidence/hosted/` (sha256 in `docs/GATES.md`).

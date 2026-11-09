@@ -53,8 +53,13 @@ describe('gates-result flags are tied to evidence (R4-G09)', () => {
       ...[...md.matchAll(/(server-kill-[\w-]+\.(?:json|md|jsonl)) \(sha256 ([0-9a-f]{64})/g)].map(
         (m) => [m[0], `docs/evidence/server-kill/${m[1] as string}`, m[2]],
       ),
+      ...[
+        ...md.matchAll(
+          /((?:hosted-evidence|warmup-samples|webhook|webhook-handler|judge)\.(?:json|md)) \(sha256 ([0-9a-f]{64})/g,
+        ),
+      ].map((m) => [m[0], `docs/evidence/hosted/${m[1] as string}`, m[2]]),
     ];
-    expect(recorded.length).toBeGreaterThanOrEqual(10);
+    expect(recorded.length).toBeGreaterThanOrEqual(16);
     for (const m of recorded) {
       const rel = m[1] as string;
       const want = m[2] as string;

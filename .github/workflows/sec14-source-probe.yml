@@ -1,0 +1,82 @@
+name: sec14-source-probe
+# Distinct-client probe for TRUSTED_PROXY_HOPS (issues 2067 and 2069, SEC-14). Dispatch only.
+# The API has no route that echoes the client address, and none is added. The one place the server
+# writes the address it derived is the audit line `judge_room.created` (field `src`, a 12 character
+# sha256 prefix of the address). Each of the two jobs below runs on its own runner (its own egress
+# address), sends ONE public create request to the live API, and prints the tag that line must carry
+# if the server sees that runner's own address. The operator then reads the two `src` values in the
+# Render logs. Procedure and what each outcome proves: docs/evidence/security/SEC-14-source-probe.md.
+# Side effect: two short-lived sandbox judge rooms (swept by the server at their lifetime), and one
+# use of the per-address hourly create budget (JUDGE_ROOMS_PER_IP_HOUR, default 12) per runner.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type CREATE-TWO-ROOMS to run (it opens two short-lived sandbox judge rooms on the live API)'
+        required: true
+        type: string
+      api:
+        description: 'API origin to probe'
+        required: true
+        default: https://api.gavel.dualmindlab.tech
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sec14-source-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        client: [a, b]
+    steps:
+      - name: Require the confirmation text
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "CREATE-TWO-ROOMS" ]; then
+            echo "::error title=Not confirmed::Type CREATE-TWO-ROOMS in the confirm input"
+            exit 2
+          fi
+      - name: Spread the two clients apart
+        if: matrix.client == 'b'
+        run: sleep 45
+      - name: Probe
+        env:
+          API: ${{ inputs.api }}
+          CLIENT: ${{ matrix.client }}
+        run: |
+          set -u
+          case "$API" in
+            https://api.gavel.dualmindlab.tech|https://gavel-auction-z2nm.onrender.com) ;;
+            *) echo "::error::refusing to probe $API"; exit 2 ;;
+          esac
+          ip="$(curl -fsS --max-time 15 https://api.ipify.org)"
+          case "$ip" in
+            *:*) echo "::error::runner egress is IPv6 ($ip); compute the tag with clientKey in packages/shared"; exit 1 ;;
+          esac
+          # For an IPv4 address clientKey is the address itself, so the tag is sha256(address)[0:12].
+          tag="$(printf '%s' "$ip" | sha256sum | cut -c1-12)"
+          started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          hdr="$(curl -sS --max-time 20 -o /dev/null -D - "$API/healthz" | tr -d '\r' | grep -i -E '^(HTTP|server|x-render-origin-server|cf-ray)')"
+          code="$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' -X POST "$API/api/judge/rooms" \
+            -H 'content-type: application/json' --data '{}')"
+          {
+            echo "### client $CLIENT"
+            echo ""
+            echo "- sent at (UTC): $started"
+            echo "- runner egress address: $ip"
+            echo "- tag the server must log if it sees this address: \`$tag\`"
+            echo "- POST /api/judge/rooms answered HTTP $code (201 means one audit line \`judge_room.created\` was written; 404 means judge rooms are off on that host, 429 means a limit answered)"
+            echo "- healthz edge headers (which Cloudflare data centre this runner reached):"
+            echo '```'
+            echo "$hdr"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"

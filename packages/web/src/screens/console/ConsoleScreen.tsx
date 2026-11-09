@@ -82,8 +82,14 @@ export function ConsoleScreen({
   // The hammer frame closes the lot before any later snapshot says so.
   const status = useRoom((s) => selectors.auctionStatus(s) ?? 'SCHEDULED', store) as AuctionStatus;
   const stopped = useRoom(selectors.stopped, store);
+  const hammer = useRoom((s) => s.hammer, store);
+  const closed = status === 'CLOSING' || status === 'SETTLING' || status === 'DONE';
   const auctionId = useRoom((s) => s.snapshot?.auctionId ?? null, store);
   const roster = useRoom((s) => s.snapshot?.roster, store);
+  const winnerPaddle = useRoom(
+    (s) => s.snapshot?.roster.find((r) => r.bidderId === s.hammer?.winnerId)?.paddle ?? null,
+    store,
+  );
   const now = useServerNow(store);
   const skewMs = useSkew(store);
   const skew =
@@ -96,7 +102,13 @@ export function ConsoleScreen({
   const left = (
     <section className="gv-console-panel gv-console-panel--lot" aria-label={t('bid.price')}>
       <ConsoleGuide status={status} stopped={stopped} roomId={auctionId} />
+      {closed && hammer !== null && hammer.winnerId !== null && winnerPaddle !== null && (
+        <p className="gv-console-result" role="status" data-field="result">
+          {t('console.result.sold', { n: winnerPaddle, amount: formatUsd(hammer.price) })}
+        </p>
+      )}
       <PriceHeader
+        closed={closed}
         priceCents={price?.currentCents ?? null}
         reserveCents={reserve}
         leaderPaddle={price?.leaderPaddle ?? null}

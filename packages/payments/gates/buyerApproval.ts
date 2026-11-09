@@ -203,6 +203,11 @@ export interface ApproveOptions {
   launcher: BrowserLauncher;
   /** Defaults to 60 seconds per navigation. */
   timeoutMs?: number;
+  /**
+   * Runs once the browser is on the return URL, still signed in as the buyer and before the
+   * browser closes (the G1 remainder observation reads the buyer's account pages here).
+   */
+  afterReturn?: (page: PageLike) => Promise<void>;
 }
 
 /** Makes the page layout-only: no text, image, canvas or field value is drawn. */
@@ -212,7 +217,7 @@ export const HIDE_PAGE_CONTENT_CSS =
   'img, svg, video, canvas, input, textarea, select { visibility: hidden !important; }';
 
 /** Expression that removes the injected hiding style again, so the page is usable afterwards. */
-const REMOVE_MASK_EXPRESSION = `Array.from(document.querySelectorAll('style')).filter((s) => s.textContent === ${JSON.stringify(HIDE_PAGE_CONTENT_CSS)}).forEach((s) => s.remove())`;
+export const REMOVE_MASK_EXPRESSION = `Array.from(document.querySelectorAll('style')).filter((s) => s.textContent === ${JSON.stringify(HIDE_PAGE_CONTENT_CSS)}).forEach((s) => s.remove())`;
 
 async function visible(l: LocatorLike): Promise<boolean> {
   try {
@@ -463,6 +468,7 @@ export async function approveInBrowser(opts: ApproveOptions): Promise<void> {
       : await waitVisible(page, CONFIRM_BUTTONS, Math.min(timeout, 60_000));
     if (returned()) {
       await snap('returned');
+      await opts.afterReturn?.(page);
       return;
     }
     if (confirmHit === undefined) {
@@ -493,6 +499,7 @@ export async function approveInBrowser(opts: ApproveOptions): Promise<void> {
       );
     }
     await snap('returned');
+    await opts.afterReturn?.(page);
   } finally {
     await browser.close();
   }

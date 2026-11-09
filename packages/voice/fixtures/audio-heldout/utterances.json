@@ -1,0 +1,683 @@
+[
+  {
+    "id": "h01",
+    "text": "four hundred",
+    "category": "plain",
+    "voice": "en-us",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 37500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 40000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h02",
+    "text": "I'll bid six hundred",
+    "category": "plain",
+    "voice": "en-gb",
+    "speakerBidderId": "5",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 57500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 60000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h03",
+    "text": "six hundred and fifty dollars",
+    "category": "plain",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "3",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 62500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 65000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h04",
+    "text": "eight hundred and seventy five",
+    "category": "plain",
+    "voice": "en-us+m3",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 85000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 87500
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h05",
+    "text": "one thousand three hundred",
+    "category": "plain",
+    "voice": "en-us+f2",
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 127500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 130000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h06",
+    "text": "I'll take three hundred and twenty five",
+    "category": "plain",
+    "voice": "en-us",
+    "speakerBidderId": "8",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 30000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 32500
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h07",
+    "text": "nine hundred",
+    "category": "plain",
+    "voice": "en-gb",
+    "speakerBidderId": "5",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 87500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 90000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h08",
+    "text": "seven fifty",
+    "category": "colloquial",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 72500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 75000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h09",
+    "text": "four twenty five",
+    "category": "colloquial",
+    "voice": "en-us+m3",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 40000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 42500
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h10",
+    "text": "six seventy five",
+    "category": "colloquial",
+    "voice": "en-us+f2",
+    "speakerBidderId": "8",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 65000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 67500
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h11",
+    "text": "eleven hundred",
+    "category": "colloquial",
+    "voice": "en-us",
+    "speakerBidderId": "3",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 107500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 110000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h12",
+    "text": "fourteen fifty",
+    "category": "colloquial",
+    "voice": "en-gb",
+    "speakerBidderId": "5",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 142500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 145000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h13",
+    "text": "eight twenty five",
+    "category": "colloquial",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 80000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 82500
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h14",
+    "text": "nine fifty",
+    "category": "colloquial",
+    "voice": "en-us+m3",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 92500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 95000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h15",
+    "text": "seventeen hundred",
+    "category": "colloquial",
+    "voice": "en-us+f2",
+    "speakerBidderId": "8",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 167500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 170000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h16",
+    "text": "paddle eleven four fifty",
+    "category": "paddle",
+    "voice": "en-us",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 42500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 45000,
+      "paddle": "11"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h17",
+    "text": "bidder number six five hundred",
+    "category": "paddle",
+    "voice": "en-gb",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 47500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 50000,
+      "paddle": "6"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h18",
+    "text": "paddle thirteen six hundred dollars",
+    "category": "paddle",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 57500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 60000,
+      "paddle": "13"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h19",
+    "text": "seven fifty from paddle eight",
+    "category": "paddle",
+    "voice": "en-us+m3",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 72500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 75000,
+      "paddle": "8"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h20",
+    "text": "paddle fifteen eight hundred",
+    "category": "paddle",
+    "voice": "en-us+f2",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 77500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 80000,
+      "paddle": "15"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h21",
+    "text": "bidder number three three seventy five",
+    "category": "paddle",
+    "voice": "en-us",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 35000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 37500,
+      "paddle": "3"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h22",
+    "text": "paddle ten, one thousand dollars",
+    "category": "paddle",
+    "voice": "en-gb",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 97500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 100000,
+      "paddle": "10"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h23",
+    "text": "paddle sixteen two hundred",
+    "category": "paddle",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 17500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 20000,
+      "paddle": "16"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h24",
+    "text": "two thousand",
+    "category": "plain",
+    "voice": "en-us+m3",
+    "speakerBidderId": "4",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 197500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 200000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h25",
+    "text": "twenty six hundred",
+    "category": "numeral",
+    "voice": "en-us+f2",
+    "speakerBidderId": "5",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 257500
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 260000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h26",
+    "text": "three thousand five hundred",
+    "category": "plain",
+    "voice": "en-us",
+    "speakerBidderId": "6",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 345000
+    },
+    "expected": {
+      "outcome": "bid",
+      "amountCents": 350000
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h27",
+    "text": "four hundred no wait four fifty",
+    "category": "correction",
+    "voice": "en-gb",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 37500
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "amountCents": 45000
+        }
+      ]
+    ]
+  },
+  {
+    "id": "h28",
+    "text": "maybe five hundred",
+    "category": "ambiguous",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 45000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "amountCents": 50000
+        }
+      ]
+    ]
+  },
+  {
+    "id": "h29",
+    "text": "six hundred or six fifty",
+    "category": "ambiguous",
+    "voice": "en-us+m3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 55000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "amountCents": 60000
+        },
+        {
+          "amountCents": 65000
+        }
+      ]
+    ]
+  },
+  {
+    "id": "h30",
+    "text": "paddle four three hundred paddle nine three twenty five",
+    "category": "two_bidders",
+    "voice": "en-us+f2",
+    "speakerBidderId": null,
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 27500
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "paddle": "4",
+          "amountCents": 30000
+        },
+        {
+          "paddle": "9",
+          "amountCents": 32500
+        }
+      ]
+    ]
+  },
+  {
+    "id": "h31",
+    "text": "no, make it seven hundred",
+    "category": "correction",
+    "voice": "en-us",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 65000,
+      "pendingCandidate": {
+        "paddle": "7",
+        "amountCents": 65000
+      }
+    },
+    "expected": {
+      "outcome": "confirm",
+      "intended": {
+        "paddle": "7",
+        "amountCents": 70000
+      }
+    },
+    "acceptableConfirm": [
+      [
+        {
+          "paddle": "7",
+          "amountCents": 70000
+        }
+      ]
+    ]
+  },
+  {
+    "id": "h32",
+    "text": "five fifty rupees",
+    "category": "currency",
+    "voice": "en-gb",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 40000
+    },
+    "expected": {
+      "outcome": "confirm"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h33",
+    "text": "the next lot is a clock",
+    "category": "non_bid",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h34",
+    "text": "is it six hundred",
+    "category": "non_bid",
+    "voice": "en-us+m3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 55000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h35",
+    "text": "I have three grandchildren",
+    "category": "non_bid",
+    "voice": "en-us+f2",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h36",
+    "text": "we are at four hundred now",
+    "category": "non_bid",
+    "voice": "en-us",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 40000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h37",
+    "text": "I'm done",
+    "category": "non_bid",
+    "voice": "en-gb",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h38",
+    "text": "does that include shipping",
+    "category": "non_bid",
+    "voice": "en-gb-x-rp+f3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h39",
+    "text": "can you repeat the price",
+    "category": "non_bid",
+    "voice": "en-us+m3",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": []
+  },
+  {
+    "id": "h40",
+    "text": "she paid two hundred last year",
+    "category": "non_bid",
+    "voice": "en-us+f2",
+    "speakerBidderId": "7",
+    "context": {
+      "minIncrementCents": 2500,
+      "currentPriceCents": 20000
+    },
+    "expected": {
+      "outcome": "none"
+    },
+    "acceptableConfirm": []
+  }
+]
