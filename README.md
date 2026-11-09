@@ -265,6 +265,8 @@ Full diagram and details: [docs/submission/ARCHITECTURE.md](docs/submission/ARCH
 
 **APIMatic.** Best Use of APIMatic. The OpenAPI 3.1 spec of the host API is ready ([`openapi/gavel.yaml`](openapi/gavel.yaml), linted in CI and checked against the server router, also served at https://docs.gavel.dualmindlab.tech/openapi.yaml). SDK and developer portal generation by APIMatic is pending: it needs an APIMatic account, so nothing is generated yet. Details in [docs/API.md](docs/API.md).
 
+**AG Grid.** [AG Grid](https://www.ag-grid.com/) Community edition (MIT): the audit ledger, the console bid history and the holds and settlement tables are AG Grid tables, themed to the Newsprint look. They sort, filter, resize, select, export to CSV and stay smooth on a few thousand rows. The grids load on demand, so the landing and bidder pages do not carry the library. See [docs/AG-GRID.md](docs/AG-GRID.md), and try the grids on the `/ledger` page of the web app (a 30-day simulated run).
+
 ## Evidence and gates
 
 Each gate is a run against the real PayPal sandbox. Source of truth: [docs/GATES.md](docs/GATES.md). Committed raw run logs ([`docs/evidence/`](docs/evidence)) exist for G1, G2 and G4; G0 is recorded only as a GitHub Actions run log (no committed file).
@@ -383,6 +385,7 @@ GAVEL talks to the PayPal sandbox only. No live PayPal call is made and no real 
 | [Glossary](https://docs.gavel.dualmindlab.tech/docs/reference/glossary)   | Every term, with the pages that use it         |
 | [Judge walkthrough](docs/JUDGES.md)                                       | A short path through the code and the evidence |
 | [Design system](docs/DESIGN.md)                                           | The Scoreboard interface and its components    |
+| [AG Grid tables](docs/AG-GRID.md)                                         | How the ledger, bids and holds grids are built |
 | [Demo guide](docs/DEMO.md)                                                | What you can try today and what to expect      |
 | [API reference](docs/API.md)                                              | The OpenAPI spec, auth, errors, rate limits    |
 | [Architecture](docs/submission/ARCHITECTURE.md)                           | How the packages fit together                  |

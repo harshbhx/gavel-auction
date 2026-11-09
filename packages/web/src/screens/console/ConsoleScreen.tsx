@@ -10,7 +10,8 @@ import { Banner } from '../../design/primitives/Banner';
 import { selectConfirmQueue, selectPrice, selectStream, selectors } from '../../store/selectors';
 import { roomStore, useRoom, type RoomStore } from '../../store/roomStore';
 import { formatUsd } from '../../util/money';
-import { BidStream, rowsFromAudit } from './BidStream';
+import { rowsFromAudit } from './BidStream';
+import { BidHistory } from './BidHistory';
 import { ConfirmQueue } from './ConfirmQueue';
 import { ConsoleGuide } from './ConsoleGuide';
 import { PriceHeader } from './PriceHeader';
@@ -112,7 +113,7 @@ export function ConsoleScreen({
     <section className="gv-console-panel" aria-label={t('console.stream')}>
       <h2 className="ui-kicker">{t('console.stream')}</h2>
       {audit.length > 0 ? (
-        <BidStream
+        <BidHistory
           rows={rowsFromAudit(
             audit,
             (id) => roster?.find((r) => r.bidderId === id)?.paddle ?? null,

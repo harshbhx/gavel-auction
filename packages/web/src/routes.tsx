@@ -15,6 +15,7 @@ export type RouteTitleKey =
   | 'demo.roleConsole'
   | 'demo.roleScreen'
   | 'audit.title'
+  | 'sim.title'
   | 'ops.title'
   | 'replay.readonly'
   | 'app.name'
@@ -36,6 +37,7 @@ export type RouteId =
   | 'console'
   | 'screen'
   | 'audit'
+  | 'ledger'
   | 'ops'
   | 'replay'
   | 'gallery'
@@ -77,6 +79,7 @@ export const ROUTES: readonly RouteDef[] = [
     needsToken: true,
     tokenRole: 'reviewer',
   },
+  { id: 'ledger', path: '/ledger', titleKey: 'sim.title' },
   { id: 'ops', path: '/ops', titleKey: 'ops.title' },
   { id: 'replay', path: '/replay/:recordingId', titleKey: 'replay.readonly' },
   { id: 'gallery', path: '/gallery', titleKey: 'app.name', devOnly: true },
