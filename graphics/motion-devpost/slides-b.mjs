@@ -27,7 +27,7 @@ function setup(h){
     html += '<div class="ln" style="left:112px;top:' + (y+12) + 'px;width:470px;height:70px"><span class="d ev" style="font-size:80px;line-height:70px">' + e[0] + '</span></div>';
     html += '<div class="rl tk" style="left:596px;top:' + (y+46) + 'px;width:36px;background:#ff6a1f;height:3px"></div>';
     html += '<div class="ln" style="left:648px;top:' + (y+24) + 'px;width:300px;height:44px"><span class="m hs" style="font-size:34px;line-height:44px;letter-spacing:.02em;text-transform:none">' + e[1] + '</span></div>';
-    html += '<div class="ln" style="left:960px;top:' + (y+36) + 'px;width:176px;height:24px"><span class="m pv" style="font-size:15px;line-height:24px;color:#6f6250;text-align:right">' + (i === 0 ? 'first entry' : 'prev ' + e[2]) + '</span></div>';
+    html += '<div class="ln" style="left:960px;top:' + (y+36) + 'px;width:176px;height:24px"><span class="m pv" style="font-size:15px;line-height:24px;color:#6f6250;text-align:right">' + (i === 0 ? 'start' : 'prev ' + e[2]) + '</span></div>';
     html += '<div class="rl ul" style="left:648px;top:' + (y+68) + 'px;width:178px;background:#ff6a1f;height:3px"></div>';
   });
   html += '<div class="rl rr" style="left:64px;top:' + (Y0 + 4*RH) + 'px;width:1072px"></div>';
