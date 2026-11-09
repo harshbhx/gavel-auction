@@ -10,3 +10,18 @@ rules:
   info-contact: warn
   info-description: error
   tag-description: warn
+  # Import tools score undocumented fields and parameters, so ask for a description on each.
+  gavel-property-description:
+    description: Every inline schema property needs a description.
+    severity: warn
+    given: "$.components.schemas..properties[?(@ && typeof @ === 'object' && !@['$ref'] && !@.oneOf && !@.allOf)]"
+    then:
+      field: description
+      function: truthy
+  gavel-parameter-description:
+    description: Every inline parameter needs a description.
+    severity: warn
+    given: "$.paths..parameters[?(@ && !@['$ref'])]"
+    then:
+      field: description
+      function: truthy
