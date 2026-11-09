@@ -39,7 +39,8 @@ services:
       # The public https URL of this service; set it in the dashboard after the first deploy.
       - key: PUBLIC_URL
         sync: false
-      # Comma separated origins of the hosted web app, for example the Pages URL.
+      # Comma separated origins of the hosted web app, for example the Pages URL. Bare origins only
+      # (scheme and host, no path or wildcard); a bad entry stops the boot.
       - key: CORS_ORIGINS
         sync: false
       # Origin of the web app (for example the Worker URL). Links the API builds use it; PUBLIC_URL is

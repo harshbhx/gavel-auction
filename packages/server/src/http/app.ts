@@ -15,6 +15,7 @@ import { TOKEN_TTL_S, type JtiStore, type TokenKind, type TokenPayload } from '.
 import { withLogContext } from '../log/context';
 import { auctioneerTokenLive } from '../auth/auctioneer-floor';
 import type { AuctionService } from '../runtime/auction-service';
+import { allowedOriginsOf, isOriginAllowed } from './origins';
 import { securityHeaders } from './security-headers';
 
 /** Largest request body the host reads (R-RT-105). */
@@ -98,14 +99,6 @@ export function json(
 
 const WRITE_METHODS: ReadonlySet<string> = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-function originOf(url: string): string | null {
-  try {
-    return new URL(url).origin;
-  } catch {
-    return null;
-  }
-}
-
 export class HttpApp {
   private readonly routes: Route[] = [];
 
@@ -129,7 +122,7 @@ export class HttpApp {
     const requestId =
       supplied !== null && REQUEST_ID_RE.test(supplied) ? supplied : this.deps.ids.mint();
     const origin = req.headers.get('origin');
-    const allowed = origin !== null && this.deps.corsOrigins.includes(origin) ? origin : null;
+    const allowed = isOriginAllowed(this.allowedOrigins(), origin) ? origin : null;
     let res: Response;
     try {
       this.checkWriteOrigin(req, origin);
@@ -162,12 +155,15 @@ export class HttpApp {
    * (#2061). Callers without an `Origin` (curl, server to server, PayPal webhooks, health checks)
    * are not browsers and stay allowed; reads and the preflight keep their own handling.
    */
+  /** The one allow-list of the host, shared with the CORS headers and the socket upgrade. */
+  private allowedOrigins(): string[] {
+    const { corsOrigins, webOrigin, publicUrl } = this.deps;
+    return allowedOriginsOf({ corsOrigins, webOrigin, publicUrl });
+  }
+
   private checkWriteOrigin(req: Request, origin: string | null): void {
     if (origin === null || !WRITE_METHODS.has(req.method)) return;
-    if (this.deps.corsOrigins.includes(origin)) return;
-    const { webOrigin, publicUrl } = this.deps;
-    if (webOrigin !== undefined && originOf(webOrigin) === origin) return;
-    if (originOf(publicUrl) === origin) return;
+    if (isOriginAllowed(this.allowedOrigins(), origin)) return;
     throw new GavelError('forbidden', 'origin not allowed');
   }
 

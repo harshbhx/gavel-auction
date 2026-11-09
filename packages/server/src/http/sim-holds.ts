@@ -27,6 +27,22 @@ function simAmount(authId: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** The record `createSimHoldSource` writes: both its id and its authorization are simulated. */
+export function isSimHold(h: { holdId: string; authId?: string | undefined }): boolean {
+  return h.holdId.startsWith('sim-hold-') && h.authId !== undefined && isSimAuth(h.authId);
+}
+
+/**
+ * Drops the simulated holds of one auction from the hold store and returns how many went. Real
+ * holds (any other id or authorization) are never matched, and neither is anything outside the
+ * hold store: the ledger and audit trail are not touched. A store without `deleteByAuction`
+ * drops nothing.
+ */
+export async function purgeSimHolds(holds: HoldStore, auctionId: string): Promise<number> {
+  if (holds.deleteByAuction === undefined) return 0;
+  return holds.deleteByAuction(auctionId, isSimHold);
+}
+
 /**
  * Writes a HELD hold with a simulated authorization. Returns the hold id. Like a real hold it is
  * written once: a repeat with the same ceiling returns the hold already there, and a repeat with

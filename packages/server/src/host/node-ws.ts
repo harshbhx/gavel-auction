@@ -4,6 +4,7 @@ import type { Clock } from '@gavel/shared';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { BoundedConnection } from '../transport/connections';
 import { Handshake, type HandshakeOptions } from '../transport/handshake';
+import { isOriginAllowed } from '../http/origins';
 
 /** R-RT-074: largest inbound frame; a bigger one closes the socket with 1009. */
 export const MAX_PAYLOAD_BYTES = 16 * 1024;
@@ -63,7 +64,7 @@ export function createNodeWsHost(opts: NodeWsHostOptions): NodeWsHost {
     noServer: true,
     maxPayload: opts.maxPayload ?? MAX_PAYLOAD_BYTES,
   });
-  const allowed = new Set(opts.allowedOrigins);
+  const allowed = opts.allowedOrigins;
 
   const onUpgrade = (req: IncomingMessage, socket: Duplex, head: Buffer): void => {
     if (pathOf(req) !== path) {
@@ -72,7 +73,7 @@ export function createNodeWsHost(opts: NodeWsHostOptions): NodeWsHost {
       return;
     }
     const origin = req.headers.origin;
-    if (typeof origin !== 'string' || !allowed.has(origin)) {
+    if (!isOriginAllowed(allowed, origin)) {
       refuse(socket, 403, 'Forbidden');
       return;
     }

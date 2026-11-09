@@ -386,6 +386,20 @@ export class MemoryHoldStore implements HoldStore {
     }
   }
 
+  async deleteByAuction(auctionId: string, match: (h: HoldRecord) => boolean): Promise<number> {
+    const doomed = this.auctionHolds(auctionId).filter(match);
+    if (doomed.length === 0) return 0;
+    const removed = doomed.map((h) => clone(h));
+    for (const h of doomed) this.removeHold(h.holdId);
+    try {
+      this.onChange?.(this.snapshot());
+    } catch (e) {
+      for (const h of removed) this.setHold(h.holdId, h);
+      throw e;
+    }
+    return removed.length;
+  }
+
   /** Ordered by createdAtMs, then holdId. */
   async listByAuction(auctionId: string): Promise<HoldRecord[]> {
     return this.auctionHolds(auctionId)

@@ -235,7 +235,7 @@ describe('judge key: wrong key', () => {
     expect((await post(off.app, JUDGE_ROOMS_PATH, { headers: keyed(JUDGE) })).status).toBe(401);
   });
 
-  it('counts toward the same lockout as a wrong room code, even for the right key', async () => {
+  it('locks the key check after five wrong keys, even for the right key', async () => {
     const { app, clock } = setup();
     for (let i = 0; i < 5; i++) {
       expect(
@@ -257,19 +257,39 @@ describe('judge key: wrong key', () => {
     );
   });
 
-  it('wrong room codes and wrong keys share the strikes', async () => {
+  it('keeps key strikes and room code strikes apart (#2234)', async () => {
     const { app } = setup();
-    for (let i = 0; i < 3; i++) {
-      await post(app, '/api/judge/join', {
-        src: '6.6.6.6',
-        body: { code: 'ZZZZZZ', displayName: 'A' },
-      });
-    }
-    for (let i = 0; i < 2; i++) {
+    // Five wrong keys lock the key check only: joins and lookups from that address still work.
+    for (let i = 0; i < 5; i++) {
       await post(app, JUDGE_KEY_PATH, { src: '6.6.6.6', headers: keyed(WRONG) });
     }
     expect((await post(app, JUDGE_KEY_PATH, { src: '6.6.6.6', headers: keyed() })).status).toBe(
       429,
+    );
+    const room = await created(await post(app, JUDGE_ROOMS_PATH, { src: '7.7.7.7' }));
+    const join = await post(app, JUDGE_JOIN_PATH, {
+      src: '6.6.6.6',
+      body: { code: room.joinCode, displayName: 'A' },
+    });
+    expect(join.status).toBe(200);
+    const lookupReq = new Request(`http://h.test/api/auctions/${room.joinCode}`);
+    requestSources.set(lookupReq, '6.6.6.6');
+    const lookup = await app.fetch(lookupReq);
+    expect(lookup.status).toBe(200);
+    // And five wrong room codes lock the codes only: the right key still passes.
+    for (let i = 0; i < 5; i++) {
+      await post(app, JUDGE_JOIN_PATH, {
+        src: '8.8.8.8',
+        body: { code: 'ZZZZZZ', displayName: 'A' },
+      });
+    }
+    const codeLocked = await post(app, JUDGE_JOIN_PATH, {
+      src: '8.8.8.8',
+      body: { code: room.joinCode, displayName: 'A' },
+    });
+    expect(codeLocked.status).toBe(429);
+    expect((await post(app, JUDGE_KEY_PATH, { src: '8.8.8.8', headers: keyed() })).status).toBe(
+      200,
     );
   });
 });

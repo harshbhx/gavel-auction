@@ -91,6 +91,12 @@ export interface HoldStore {
   byAuthId?(authId: string): Promise<HoldRecord | null>;
   put(h: HoldRecord): Promise<void>;
   listByAuction(auctionId: string): Promise<HoldRecord[]>;
+  /**
+   * Optional: drops the holds of one auction that `match` accepts and returns how many went, with
+   * a single durable write. Only for records that are not evidence of money (simulated holds of an
+   * ended judge room); callers must never pass a filter that can match a real PayPal hold.
+   */
+  deleteByAuction?(auctionId: string, match: (h: HoldRecord) => boolean): Promise<number>;
 }
 
 export interface AuditSink {
