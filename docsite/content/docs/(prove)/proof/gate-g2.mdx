@@ -41,7 +41,7 @@ Decision: the card path is on (`g2_card_authorize` is true in `packages/payments
 
 <NotVerified title="AUTHORIZE only">
 
-<Term id="capture">Capture</Term> and <Term id="void">void</Term> of the guest card authorization were not run. G1 captured a PayPal-account order only, and the nightly R2 spec stops at the authorization (status CREATED). A guest card capture is therefore not shown on the sandbox.
+<Term id="capture">Capture</Term> and <Term id="void">void</Term> of the guest card authorization were not run as part of G2. G1 captured a PayPal-account order only, and the nightly R2 spec stops at the authorization (status CREATED). The early G3 probe later accepted a partial capture of 1.00 on this guest card authorization at age 3.5 days (run 42538613566, 9 Nov 2026). A `final_capture`, a hammer capture and a void on a guest card authorization are not shown on the sandbox.
 
 </NotVerified>
 

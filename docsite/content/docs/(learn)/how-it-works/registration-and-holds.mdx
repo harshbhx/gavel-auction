@@ -84,7 +84,7 @@ The buyer pays by card without a PayPal account. Evidence: gate G2 reached `onAp
 
 <NotVerified title="Guest card settlement">
 
-The G2 run proves a guest card hold can be created. G1 captured PayPal-account orders only. Until a run captures a guest card authorization, treat that path as authorize-only evidence.
+The G2 run proves a guest card hold can be created. G1 captured PayPal-account orders only. Only a 1.00 partial capture on a guest card authorization has been seen (early G3 probe, 9 Nov); until a `final_capture` runs on one, treat that path as authorize-only evidence.
 
 </NotVerified>
 

@@ -1,0 +1,28 @@
+{
+  "mode": "read",
+  "runTag": "261108173529",
+  "results": [
+    {
+      "label": "G2-wallet",
+      "checkpointDays": 3,
+      "ageDays": 3.2374,
+      "atIso": "2026-11-08T17:35:29.417Z",
+      "dueAtIso": "2026-11-08T11:53:35.000Z",
+      "readBeforeHttp": 200,
+      "statusBefore": "CREATED",
+      "statusNameBefore": "",
+      "probed": false
+    },
+    {
+      "label": "G2-card",
+      "checkpointDays": 3.5,
+      "ageDays": 3.234,
+      "atIso": "2026-11-08T17:35:29.417Z",
+      "dueAtIso": "2026-11-08T23:58:33.000Z",
+      "readBeforeHttp": 200,
+      "statusBefore": "CREATED",
+      "statusNameBefore": "",
+      "probed": false
+    }
+  ]
+}

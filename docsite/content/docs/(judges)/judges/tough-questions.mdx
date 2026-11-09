@@ -22,7 +22,7 @@ See [voice and the confirm gate](/docs/how-it-works/voice-and-confirm).
 
 G3 is a real timed probe on the sandbox. Day 0 was 7 Nov 2026 03:06 UTC and the day 0 checks are recorded: an immediate reauthorize was refused with `REAUTHORIZATION_TOO_SOON`, and three authorizations were approved to be read at 3.5, 4 and 5 days. The final reading is about 12 Nov 06:17 UTC. Earlier attempts on 4 to 7 Nov never ran, so no earlier day is claimed. Until the readings exist the gate reads NOT RUN / IN PROGRESS.
 
-An early reading on an older G2 wallet authorization, taken on 8 Nov 17:36 UTC at age 3.24 days, accepted a partial capture of 1.00 (HTTP 201) and answered the reauthorize call with 422 `UNPROCESSABLE_ENTITY` and the issue `PAYER_CANNOT_PAY`. That authorization already carried a partial capture, so it is an early data point; the day 3.5, 4 and 5 authorizations give the clean answer.
+An early reading on an older G2 wallet authorization, taken on 8 Nov 17:36 UTC at age 3.24 days, accepted a partial capture of 1.00 (HTTP 201) and answered the reauthorize call with 422 `UNPROCESSABLE_ENTITY` and the issue `PAYER_CANNOT_PAY`. That authorization already carried a partial capture, so it is an early data point; the day 3.5, 4 and 5 authorizations give the clean answer. The older G2 guest card authorization, probed on 9 Nov at age 3.5075 days, also accepted a partial capture of 1.00 and refused reauthorize (run 42538613566); a `final_capture` and a void on a guest card authorization were not run.
 
 PayPal's documentation names an <Term id="honor-period">honor period</Term> (3 days) and a validity window (29 days, with one <Term id="reauthorization">reauthorization</Term>), and GAVEL does not assume either until the probe reports. The plan is to capture within the verified window and reauthorize before the hammer. That is a plan, not a result. Meanwhile holds older than two hours at settlement are flagged stale, and a stale hold is still captured.
 
@@ -33,7 +33,7 @@ See [honor period](/docs/how-it-works/honor-period) and [gate G3](/docs/proof/ga
 </Accordion>
 <Accordion title="Is any of this real PayPal, or is it all the fake?">
 
-Both exist and they are labelled. Real on the PayPal <Term id="sandbox">sandbox</Term>: G0 (Actions run log only), G1 (authorize 500, capture 350 with final capture, two PayPal-account buyers, one funded by a card), G2 (wallet and guest card authorize), G4 (six real webhooks verified) and one lot of three holds plus one in-process crash in the nightly specs R7, R8 and R10.
+Both exist and they are labelled. Real on the PayPal <Term id="sandbox">sandbox</Term>: G0 (connectivity, committed evidence file from 9 Nov), G1 (authorize 500, capture 350 with final capture, two PayPal-account buyers, one funded by a card), G2 (wallet and guest card authorize), G4 (six real webhooks verified) and one lot of three holds plus one in-process crash in the nightly specs R7, R8 and R10.
 
 Fake: whole-auction settlement with many holds, crash and resume, and rejection of a tampered webhook. The <Term id="fake-paypal">fake PayPal</Term> is a test double in `packages/payments/src/fake/`; it says nothing about the real PayPal.
 
@@ -44,7 +44,7 @@ See [real, simulated, recorded](/docs/judges/real-vs-simulated).
 </Accordion>
 <Accordion title="Is the remainder of a partial capture really released?">
 
-Inferred from the evidence. After the final capture the authorization reads CAPTURED and an explicit void answers 422 `PREVIOUSLY_CAPTURED`. Reading a buyer balance, and capturing a guest card authorization (G1 used PayPal-account orders), are the next steps.
+Inferred from the evidence. After the final capture the authorization reads CAPTURED and an explicit void answers 422 `PREVIOUSLY_CAPTURED`. Reading a buyer balance, and running a `final_capture` and a void on a guest card authorization (G1 used PayPal-account orders; only a 1.00 partial capture was seen on a guest card), are the next steps.
 
 </Accordion>
 <Accordion title="What stands between this sandbox system and production?">
