@@ -13,6 +13,9 @@ export const metadata: Metadata = {
   },
   description:
     'Every bid is a PayPal hold; only the winner pays. How GAVEL settles an auction, what has been proven on the PayPal sandbox, and what has not.',
+  // One canonical host: the alias gavel-docs.dualmindlab.tech serves the same build, so every page
+  // names its docs.gavel.dualmindlab.tech URL as canonical (relative to metadataBase).
+  alternates: { canonical: './' },
   icons: { icon: '/icon.svg' },
   openGraph: {
     title: 'GAVEL docs',

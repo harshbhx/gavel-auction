@@ -73,7 +73,11 @@ Settings in the `production` environment, names only: secrets `RENDER_API_KEY` a
 
 ### Deploy the web app and the docs site
 
-Both deploy from GitHub Actions on pushes to `main` (`deploy-web.yml` for the Worker, `docsite.yml` for the docs site) and need the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Without them the run ends green and leaves the build as an artifact (`web-dist`, `docsite`) for a manual `wrangler` deploy, as in step 7 above. Artifacts expire, so rebuild if a run is old. The docs site is also served on its own domain; the domain is attached to the Cloudflare project in the Cloudflare dashboard, not in this repository, and a new deploy of the project updates it.
+Both deploy from GitHub Actions on pushes to `main` (`deploy-web.yml` for the Worker, `docsite.yml` for the docs site) and need the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Without them the run ends green and leaves the build as an artifact (`web-dist`, `docsite`) for a manual `wrangler` deploy, as in step 7 above. Artifacts expire, so rebuild if a run is old. The docs site is also served on its own domain; the domain is attached to the Cloudflare project in the Cloudflare dashboard, not in this repository, and a new deploy of the project updates it. `https://docs.gavel.dualmindlab.tech` is the canonical docs host (the Try it panel works only there, because the API CORS list names it). The alias `https://gavel-docs.dualmindlab.tech` serves the same build; every page carries `<link rel="canonical">` pointing at the canonical host, so search engines index one copy. A Cloudflare redirect rule from the alias to the canonical host is the cleaner fix and is set in the dashboard, not in this repository.
+
+### Preview hosts (workers.dev)
+
+`gavel-portal-preview.creharsh.workers.dev` and `gavel-devpost-preview.creharsh.workers.dev` are scratch previews, deployed by hand with `wrangler`; no workflow in this repository deploys them and their sources live outside it. They are not part of the product. Delete each once its content has a real home. While they exist they should send `X-Robots-Tag: noindex, nofollow` plus the header set of `docsite/public/_headers`; that header block is added on the workers themselves (outside this repository), because the repository's `_headers` files only reach the hosts they are deployed with.
 
 ### Roll back
 

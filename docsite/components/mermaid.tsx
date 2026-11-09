@@ -154,7 +154,7 @@ function MermaidContent({ chart }: { chart: string }) {
       const mermaid = await loadMermaid();
       mermaid.initialize({
         startOnLoad: false,
-        securityLevel: 'loose',
+        securityLevel: 'strict',
         theme: 'base',
         themeVariables: dark ? darkTheme : lightTheme,
         fontFamily,
