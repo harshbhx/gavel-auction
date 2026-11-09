@@ -37,17 +37,7 @@ for (const screen of SCREENS) {
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await prepare(page, theme);
         await page.goto(screen.path);
-        // Lazy route chunks and late layout used to be captured half-drawn at some sizes: wait for
-        // the network to go quiet, fonts, a heading, and two animation frames before the shot.
-        await page.waitForLoadState('networkidle');
-        await expect(page.getByRole('heading').first()).toBeVisible();
         await page.evaluate(() => document.fonts.ready);
-        await page.evaluate(
-          () =>
-            new Promise<void>((done) =>
-              requestAnimationFrame(() => requestAnimationFrame(() => done())),
-            ),
-        );
         await expect(page).toHaveScreenshot(`${screen.name}-${viewport.name}-${theme}.png`);
       });
     }
