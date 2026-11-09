@@ -50,7 +50,11 @@ export const MAX_DELIVERIES = 2;
 const PREFERRED_TYPES = ['PAYMENT.CAPTURE.COMPLETED', 'PAYMENT.AUTHORIZATION.VOIDED'] as const;
 
 export type TamperCase =
-  'control' | 'body_byte' | 'amount' | 'foreign_transmission_id' | 'signature';
+  | 'control'
+  | 'body_byte'
+  | 'amount'
+  | 'foreign_transmission_id'
+  | 'signature';
 export const TAMPER_CASES: readonly TamperCase[] = [
   'control',
   'body_byte',
