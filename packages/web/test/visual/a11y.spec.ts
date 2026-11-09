@@ -114,8 +114,7 @@ test('axe on /try with the judge dialog open', async ({ page }) => {
   await page.locator('main, h1').first().waitFor({ state: 'attached' });
   await page
     .getByRole('navigation', { name: t('try.bar.label') })
-    .getByRole('button')
-    .first()
+    .getByRole('button', { name: new RegExp(`^${t('try.bar.join')}`) })
     .click();
   await page.getByRole('dialog').waitFor();
   expect(await blockingViolations(page)).toEqual([]);
