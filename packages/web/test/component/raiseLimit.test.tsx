@@ -133,6 +133,32 @@ describe('raising a limit from the bid screen (FEAT-61)', () => {
     expect(screen.getByTestId('bid-bar')).toBeTruthy();
   });
 
+  it('keeps the typed limit when the bidder goes back from the approval (#2394)', async () => {
+    const port: PaymentApprovalPort = {
+      start: (_req, on) => {
+        on('declined');
+        return Promise.resolve({ state: 'declined' });
+      },
+      cancel: () => undefined,
+    };
+    render(
+      <BidScreen
+        store={storeFor({ ceiling: 40_000 })}
+        onBid={() => undefined}
+        raise={raise(port)}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: t('raise.cta') }));
+    const box = screen.getByRole('textbox', { name: t('reg.custom') }) as HTMLInputElement;
+    fireEvent.change(box, { target: { value: '750' } });
+    confirmHold();
+    fireEvent.click(await screen.findByRole('button', { name: t('generic.back') }));
+    const again = screen.getByRole('textbox', { name: t('reg.custom') }) as HTMLInputElement;
+    expect(again.value).toBe('750');
+    expect(screen.getByRole('slider').getAttribute('aria-valuenow')).toBe('75000');
+    expect(screen.getByTestId('held-block').textContent).toContain('$750');
+  });
+
   it('rejects a limit that is not higher than the current one', () => {
     const { port } = heldPort();
     render(

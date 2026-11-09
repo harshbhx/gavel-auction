@@ -84,9 +84,12 @@ export function useLimitEntry(opts: LimitEntryOptions): LimitEntryState {
     initialCents === undefined || initialPreset ? '' : String(initialCents / 100),
   );
   const [touched, setTouched] = useState(false);
-  const [rangeMax, setRangeMax] = useState(() =>
-    sliderMax(minCents, maxCents, presetsCents, parseWholeDollars(customText)),
+  // The widest limit typed so far stretches the slider; the bounds themselves come from the
+  // props on every render, so a room snapshot that arrives later is followed (no stale range).
+  const [stretchCents, setStretchCents] = useState<number | null>(() =>
+    parseWholeDollars(customText),
   );
+  const rangeMax = sliderMax(minCents, maxCents, presetsCents, stretchCents);
 
   const customCents = customCeilingCents(customText, minCents, maxCents);
   let ceilingCents: number | null = null;
@@ -119,7 +122,7 @@ export function useLimitEntry(opts: LimitEntryOptions): LimitEntryState {
     setCustomText(digits);
     const cents = parseWholeDollars(digits);
     setChoice(presetsCents.includes(cents ?? -1) ? String(cents) : CUSTOM);
-    setRangeMax(sliderMax(minCents, maxCents, presetsCents, cents));
+    setStretchCents(cents);
   };
 
   const fields = (
@@ -130,6 +133,7 @@ export function useLimitEntry(opts: LimitEntryOptions): LimitEntryState {
           min={minCents}
           max={rangeMax}
           step={sliderStep(minCents, rangeMax)}
+          marks={presetsCents}
           onChange={pickFromSlider}
         />
       )}

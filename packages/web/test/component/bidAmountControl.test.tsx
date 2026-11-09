@@ -23,6 +23,11 @@ describe('stepAmount and sliderMax', () => {
     expect(stepAmount(20000, 1, 5000, 500, 20000)).toBe(20000);
   });
 
+  it('never steps to an amount below the minimum when the limit is under it (#2396)', () => {
+    expect(stepAmount(null, 1, 10500, 500, 10000)).toBe(10500);
+    expect(stepAmount(null, -1, 10500, 500, 10000)).toBe(10500);
+  });
+
   it('puts the slider top on the step ladder under the limit', () => {
     expect(sliderMax(5000, 500, 20000)).toBe(20000);
     expect(sliderMax(5000, 700, 20000)).toBe(19700);
@@ -123,5 +128,19 @@ describe('LotBlock and the bid screen lot', () => {
     render(<BidScreen store={store} onBid={vi.fn()} />);
     expect(screen.getByTestId('lot-block')).toBeTruthy();
     expect(screen.getByRole('slider')).toBeTruthy();
+  });
+});
+
+describe('CustomBid when the limit is under the next minimum (#2396)', () => {
+  it('leaves the steppers and Place bid inert and writes nothing', () => {
+    const { box, onBid } = setup(4000);
+    const up = screen.getByRole('button', { name: t('bid.step.up', { amount: '$5' }) });
+    const down = screen.getByRole('button', { name: t('bid.step.down', { amount: '$5' }) });
+    const place = screen.getByRole('button', { name: t('bid.place') });
+    for (const b of [up, down, place]) expect(b.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(up);
+    fireEvent.keyDown(box, { key: 'ArrowUp' });
+    fireEvent.click(place);
+    expect(onBid).not.toHaveBeenCalled();
   });
 });

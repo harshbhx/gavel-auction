@@ -566,6 +566,8 @@ export const en = {
   'reg.step1': 'Your name',
   'reg.name': 'Display name',
   'reg.nameHint': 'Shown to the room.',
+  'reg.nameTooLong': 'Use at most {max} characters.',
+  'reg.nameRequired': 'Enter the name to show the room.',
   'reg.nameInvalid': 'Use a plain name without control or invisible characters or < >.',
   'reg.paddle': 'Paddle number',
   'reg.yourPaddle': 'Your paddle is {n}',

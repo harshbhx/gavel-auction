@@ -11,7 +11,7 @@ import { formatUsdCompact } from '../../util/money';
 import { HoldButton } from '../../ui';
 import '../flows.css';
 import { useLimitEntry } from './LimitEntry';
-import { nameHasForbidden, validName } from './validate';
+import { NAME_MAX, nameHasForbidden, validName } from './validate';
 
 // The limit control moved to LimitEntry so the raise screen uses the very same one (FEAT-61).
 export { formatDigits, sliderMax, sliderStep } from './LimitEntry';
@@ -59,10 +59,12 @@ export function RegisterScreen({
   const nameOk = validName(name);
   const stepOneValid = nameOk;
 
-  const nameError =
-    touched && !nameOk
-      ? t(nameHasForbidden(name) ? 'reg.nameInvalid' : 'generic.error')
-      : undefined;
+  const nameProblem = nameHasForbidden(name)
+    ? t('reg.nameInvalid')
+    : name.trim().length > NAME_MAX
+      ? t('reg.nameTooLong', { max: String(NAME_MAX) })
+      : t('reg.nameRequired');
+  const nameError = touched && !nameOk ? nameProblem : undefined;
 
   const submitStepOne = (e: FormEvent): void => {
     e.preventDefault();
@@ -71,7 +73,7 @@ export function RegisterScreen({
       setStep(2);
       return;
     }
-    announce('assertive', t(nameHasForbidden(name) ? 'reg.nameInvalid' : 'generic.error'));
+    announce('assertive', nameProblem);
   };
 
   /** Checks the ceiling; the amount is sent only after the hold (or its two-tap alternative). */
@@ -99,7 +101,7 @@ export function RegisterScreen({
             label={t('reg.name')}
             hint={t('reg.nameHint')}
             value={name}
-            maxLength={64}
+            maxLength={NAME_MAX}
             autoComplete="nickname"
             onChange={(e) => setName(e.target.value)}
             onBlur={() => setTouched(true)}
