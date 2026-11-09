@@ -3,7 +3,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { GRID_LIMIT_BYTES, check, dynamicImports, initialGraph, staticImports } from '../../scripts/check-size.mjs';
+import {
+  GRID_LIMIT_BYTES,
+  check,
+  dynamicImports,
+  initialGraph,
+  staticImports,
+} from '../../scripts/check-size.mjs';
 
 const CSP = "default-src 'self'; script-src 'self'; connect-src 'self' https://api.example.test";
 const HTML = `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="${CSP}"><script type="module" src="/assets/index-aaa.js"></script></head><body></body></html>`;
@@ -101,7 +107,10 @@ describe('check-size dynamic imports (initial route includes the App chunk)', ()
 
 describe('check-size AG Grid budget', () => {
   it('passes a small named ag-grid chunk and reports its size', () => {
-    const dir = dist({ 'index-aaa.js': 'export const a = 1;', 'ag-grid-eee.js': 'export const g = 1;' });
+    const dir = dist({
+      'index-aaa.js': 'export const a = 1;',
+      'ag-grid-eee.js': 'export const g = 1;',
+    });
     const result = check(dir);
     expect(result.gridFiles).toBe(1);
     expect(result.gridBytes).toBeGreaterThan(0);

@@ -163,7 +163,12 @@ export function gridChunks(dist) {
 export function check(dist) {
   const indexPath = path.join(dist, 'index.html');
   if (!existsSync(indexPath))
-    return { problems: [`no build output at ${dist}; run the build first`], bytes: 0, gridBytes: 0, gridFiles: 0 };
+    return {
+      problems: [`no build output at ${dist}; run the build first`],
+      bytes: 0,
+      gridBytes: 0,
+      gridFiles: 0,
+    };
   const html = readFileSync(indexPath, 'utf8');
   const problems = cspProblems(html);
   const files = initialGraph(dist, html);
@@ -193,10 +198,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { problems, bytes, gridBytes, gridFiles } = check(dist);
   // A real build always has the named chunk; without it the budget above would pass by default.
   if (gridFiles === 0 && existsSync(path.join(dist, 'index.html')))
-    problems.push('no ag-grid-*.js chunk in the build: the Vite config must name the AG Grid chunk');
+    problems.push(
+      'no ag-grid-*.js chunk in the build: the Vite config must name the AG Grid chunk',
+    );
   if (problems.length > 0) {
     for (const p of problems) console.error(`check:size ${p}`);
     process.exit(1);
   }
-  console.log(`check:size ok (initial route ${bytes} bytes gzip, limit ${LIMIT_BYTES}; AG Grid chunk ${gridBytes} bytes gzip, budget ${GRID_LIMIT_BYTES})`);
+  console.log(
+    `check:size ok (initial route ${bytes} bytes gzip, limit ${LIMIT_BYTES}; AG Grid chunk ${gridBytes} bytes gzip, budget ${GRID_LIMIT_BYTES})`,
+  );
 }

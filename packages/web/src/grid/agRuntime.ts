@@ -17,7 +17,6 @@ import {
   RowStyleModule,
   TextFilterModule,
   TooltipModule,
-  ValidationModule,
 } from 'ag-grid-community';
 
 /**
@@ -29,7 +28,8 @@ import {
  * Only the modules the grids use are registered, not AllCommunityModule: sorting and the row model,
  * text and number filters, the quick filter, row selection, CSV export, row transactions, the pinned
  * totals row, cell and row classes, tooltips, change flashes, column state and column drag. A grid
- * feature that needs another module logs an AG Grid error (#200) in development; add the module here.
+ * feature that needs another module logs an AG Grid error (#200); test/component/agModules.test.tsx fails on
+ * that, so add the module here. ValidationModule stays out: its dev overlay would cover the tables.
  */
 ModuleRegistry.registerModules([
   ClientSideRowModelModule,
@@ -49,8 +49,6 @@ ModuleRegistry.registerModules([
   TooltipModule,
   HighlightChangesModule,
   GridStateModule,
-  // Messages for a missing module or a bad option; development and tests only, not shipped.
-  ...(import.meta.env.DEV ? [ValidationModule] : []),
 ]);
 
 export { AgGridReact } from 'ag-grid-react';
