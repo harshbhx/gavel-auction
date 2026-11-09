@@ -1,0 +1,59 @@
+{
+  "script": "g1-observe-1",
+  "runTag": "261109053243",
+  "authorizeCents": 50000,
+  "captureCents": 35000,
+  "captureHttp": 201,
+  "readings": [
+    {
+      "step": "before-authorize",
+      "buyer": {
+        "readable": false,
+        "availableCents": null,
+        "activityMentionsPending": false,
+        "reason": "the account pages asked for a sign-in again"
+      },
+      "api": {
+        "authorizationHttp": null,
+        "authorizationStatus": "",
+        "orderHttp": 200,
+        "orderStatus": "APPROVED"
+      }
+    },
+    {
+      "step": "after-authorize",
+      "buyer": {
+        "readable": false,
+        "availableCents": null,
+        "activityMentionsPending": false,
+        "reason": "the account pages asked for a sign-in again"
+      },
+      "api": {
+        "authorizationHttp": 200,
+        "authorizationStatus": "CREATED",
+        "orderHttp": 200,
+        "orderStatus": "COMPLETED"
+      }
+    },
+    {
+      "step": "after-capture",
+      "buyer": {
+        "readable": false,
+        "availableCents": null,
+        "activityMentionsPending": false,
+        "reason": "the account pages asked for a sign-in again"
+      },
+      "api": {
+        "authorizationHttp": 200,
+        "authorizationStatus": "CAPTURED",
+        "orderHttp": 200,
+        "orderStatus": "COMPLETED"
+      }
+    }
+  ],
+  "conclusion": {
+    "status": "inferred",
+    "sentence": "the buyer account pages could not be read at every step (the account pages asked for a sign-in again)"
+  },
+  "error": ""
+}

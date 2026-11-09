@@ -1,0 +1,1401 @@
+{
+  "gitSha": "0085f1480673ea899cf80fd0a75f5aad31d975d1",
+  "mode": "live",
+  "set": "audio",
+  "provider": "deepgram",
+  "metrics": {
+    "n": 120,
+    "bidN": 78,
+    "noneN": 24,
+    "exactRate": 0.74359,
+    "wrongAcceptRate": 0.091667,
+    "confirmRate": 0.233333,
+    "recoverableRate": 0,
+    "missedBidRate": 0.051282,
+    "falsePromptRate": 0.041667,
+    "numberTokenErrorRate": {
+      "deepgram": 0.108333
+    },
+    "latencyP50Ms": 51,
+    "latencyP95Ms": 401
+  },
+  "gate": {
+    "pass": false,
+    "usableRate": 0.74359,
+    "wrongAcceptRate": 0.091667,
+    "reasons": ["exact + recoverable 0.744 is below 0.9", "wrong accept 0.092 is above 0.05"],
+    "notice": "G5 failed: the product switches to assist mode, every voice bid requires confirm."
+  },
+  "categories": [
+    {
+      "category": "snr10",
+      "n": 40,
+      "exactRate": 0.730769,
+      "wrongAcceptRate": 0.1,
+      "confirmRate": 0.25
+    },
+    {
+      "category": "snr20",
+      "n": 40,
+      "exactRate": 0.884615,
+      "wrongAcceptRate": 0.075,
+      "confirmRate": 0.15
+    },
+    {
+      "category": "snr5",
+      "n": 40,
+      "exactRate": 0.615385,
+      "wrongAcceptRate": 0.1,
+      "confirmRate": 0.3
+    }
+  ],
+  "sweep": [
+    {
+      "threshold": 0.7,
+      "wrongAcceptRate": 0.091667,
+      "confirmRate": 0.233333
+    },
+    {
+      "threshold": 0.75,
+      "wrongAcceptRate": 0.091667,
+      "confirmRate": 0.233333
+    },
+    {
+      "threshold": 0.8,
+      "wrongAcceptRate": 0.091667,
+      "confirmRate": 0.233333
+    },
+    {
+      "threshold": 0.85,
+      "wrongAcceptRate": 0.091667,
+      "confirmRate": 0.233333
+    },
+    {
+      "threshold": 0.9,
+      "wrongAcceptRate": 0.091667,
+      "confirmRate": 0.233333
+    },
+    {
+      "threshold": 0.95,
+      "wrongAcceptRate": 0.091667,
+      "confirmRate": 0.233333
+    }
+  ],
+  "gated": {
+    "note": "Outcome after the room pipeline: rules parse, rescoring, validation, AUTO/CONFIRM policy and mic rule.",
+    "mic": "room",
+    "assumptions": "Roster of paddles 1 to 99 with active holds; price 0 and minimum increment 100 cents where the fixture gives none; neutral speech-to-text confidence where none was recorded; model off, so every bid is rules-only.",
+    "outcomes": {
+      "auto": 0,
+      "confirm": 85,
+      "drop": 35
+    },
+    "autoAccepted": 0,
+    "autoWrongAccepts": 0,
+    "autoWrongAcceptRate": 0,
+    "sttConfidence": {
+      "recorded": 0,
+      "neutralAssumed": 120
+    },
+    "metrics": {
+      "n": 120,
+      "bidN": 78,
+      "noneN": 24,
+      "exactRate": 0,
+      "wrongAcceptRate": 0,
+      "confirmRate": 0.708333,
+      "recoverableRate": 0.74359,
+      "missedBidRate": 0.115385,
+      "falsePromptRate": 0.041667,
+      "numberTokenErrorRate": {
+        "deepgram": 0.108333
+      },
+      "latencyP50Ms": 51,
+      "latencyP95Ms": 401
+    },
+    "sweep": [
+      {
+        "threshold": 0.7,
+        "wrongAcceptRate": 0,
+        "confirmRate": 0.708333
+      },
+      {
+        "threshold": 0.75,
+        "wrongAcceptRate": 0,
+        "confirmRate": 0.708333
+      },
+      {
+        "threshold": 0.8,
+        "wrongAcceptRate": 0,
+        "confirmRate": 0.708333
+      },
+      {
+        "threshold": 0.85,
+        "wrongAcceptRate": 0,
+        "confirmRate": 0.708333
+      },
+      {
+        "threshold": 0.9,
+        "wrongAcceptRate": 0,
+        "confirmRate": 0.708333
+      },
+      {
+        "threshold": 0.95,
+        "wrongAcceptRate": 0,
+        "confirmRate": 0.708333
+      }
+    ]
+  },
+  "confusion": [
+    {
+      "id": "h01-s10-babble",
+      "kind": "wrong_accept",
+      "expected": "bid 4 40000",
+      "actual": "accept 4 400"
+    },
+    {
+      "id": "h01-s20-babble",
+      "kind": "missed_bid",
+      "expected": "bid 4 40000",
+      "actual": "none"
+    },
+    {
+      "id": "h01-s5-babble",
+      "kind": "missed_bid",
+      "expected": "bid 4 40000",
+      "actual": "none"
+    },
+    {
+      "id": "h05-s5-babble",
+      "kind": "unrecovered_confirm",
+      "expected": "bid 6 130000",
+      "actual": "confirm 6 100 / 6 100300"
+    },
+    {
+      "id": "h07-s10-babble",
+      "kind": "unrecovered_confirm",
+      "expected": "bid 5 90000",
+      "actual": "confirm "
+    },
+    {
+      "id": "h07-s5-babble",
+      "kind": "unrecovered_confirm",
+      "expected": "bid 5 90000",
+      "actual": "confirm "
+    },
+    {
+      "id": "h11-s10-babble",
+      "kind": "missed_bid",
+      "expected": "bid 3 110000",
+      "actual": "none"
+    },
+    {
+      "id": "h11-s5-babble",
+      "kind": "unrecovered_confirm",
+      "expected": "bid 3 110000",
+      "actual": "confirm "
+    },
+    {
+      "id": "h13-s20-babble",
+      "kind": "wrong_accept",
+      "expected": "bid 6 82500",
+      "actual": "accept 6 82000"
+    },
+    {
+      "id": "h13-s5-babble",
+      "kind": "wrong_accept",
+      "expected": "bid 6 82500",
+      "actual": "accept 6 2500"
+    },
+    {
+      "id": "h16-s10-room",
+      "kind": "unrecovered_confirm",
+      "expected": "bid 11 45000",
+      "actual": "confirm "
+    },
+    {
+      "id": "h16-s5-room",
+      "kind": "unrecovered_confirm",
+      "expected": "bid 11 45000",
+      "actual": "confirm "
+    },
+    {
+      "id": "h17-s5-babble",
+      "kind": "missed_bid",
+      "expected": "bid 6 50000",
+      "actual": "none"
+    },
+    {
+      "id": "h18-s10-room",
+      "kind": "unrecovered_confirm",
+      "expected": "bid 13 60000",
+      "actual": "confirm "
+    },
+    {
+      "id": "h18-s20-room",
+      "kind": "unrecovered_confirm",
+      "expected": "bid 13 60000",
+      "actual": "confirm "
+    },
+    {
+      "id": "h18-s5-room",
+      "kind": "unrecovered_confirm",
+      "expected": "bid 13 60000",
+      "actual": "confirm "
+    },
+    {
+      "id": "h20-s10-room",
+      "kind": "unrecovered_confirm",
+      "expected": "bid 15 80000",
+      "actual": "confirm "
+    },
+    {
+      "id": "h23-s10-babble",
+      "kind": "unrecovered_confirm",
+      "expected": "bid 16 20000",
+      "actual": "confirm "
+    },
+    {
+      "id": "h23-s5-babble",
+      "kind": "unrecovered_confirm",
+      "expected": "bid 16 20000",
+      "actual": "confirm "
+    },
+    {
+      "id": "h25-s5-babble",
+      "kind": "wrong_accept",
+      "expected": "bid 5 260000",
+      "actual": "accept 5 2600"
+    },
+    {
+      "id": "h34-s10-room",
+      "kind": "wrong_accept",
+      "expected": "none",
+      "actual": "accept 7 60000"
+    },
+    {
+      "id": "h35-s10-babble",
+      "kind": "wrong_accept",
+      "expected": "none",
+      "actual": "accept 7 300"
+    },
+    {
+      "id": "h35-s20-babble",
+      "kind": "wrong_accept",
+      "expected": "none",
+      "actual": "accept 7 300"
+    },
+    {
+      "id": "h35-s5-babble",
+      "kind": "wrong_accept",
+      "expected": "none",
+      "actual": "accept 7 300"
+    },
+    {
+      "id": "h36-s5-room",
+      "kind": "false_prompt",
+      "expected": "none",
+      "actual": "confirm 7 40000"
+    },
+    {
+      "id": "h40-s10-room",
+      "kind": "wrong_accept",
+      "expected": "none",
+      "actual": "accept 7 20000"
+    },
+    {
+      "id": "h40-s20-room",
+      "kind": "wrong_accept",
+      "expected": "none",
+      "actual": "accept 7 20000"
+    },
+    {
+      "id": "h40-s5-room",
+      "kind": "wrong_accept",
+      "expected": "none",
+      "actual": "accept 7 20000"
+    }
+  ],
+  "utterances": [
+    {
+      "id": "h01-s10-babble",
+      "category": "snr10",
+      "expected": "bid 4 40000",
+      "actual": "accept 4 400",
+      "confidence": 1,
+      "latencyMs": 519,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h01-s20-babble",
+      "category": "snr20",
+      "expected": "bid 4 40000",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 183,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h01-s5-babble",
+      "category": "snr5",
+      "expected": "bid 4 40000",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 61,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h02-s10-room",
+      "category": "snr10",
+      "expected": "bid 5 60000",
+      "actual": "accept 5 60000",
+      "confidence": 1,
+      "latencyMs": 48,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h02-s20-room",
+      "category": "snr20",
+      "expected": "bid 5 60000",
+      "actual": "accept 5 60000",
+      "confidence": 1,
+      "latencyMs": 52,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h02-s5-room",
+      "category": "snr5",
+      "expected": "bid 5 60000",
+      "actual": "accept 5 60000",
+      "confidence": 1,
+      "latencyMs": 55,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h03-s10-babble",
+      "category": "snr10",
+      "expected": "bid 3 65000",
+      "actual": "accept 3 65000",
+      "confidence": 1,
+      "latencyMs": 187,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h03-s20-babble",
+      "category": "snr20",
+      "expected": "bid 3 65000",
+      "actual": "accept 3 65000",
+      "confidence": 1,
+      "latencyMs": 53,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h03-s5-babble",
+      "category": "snr5",
+      "expected": "bid 3 65000",
+      "actual": "accept 3 65000",
+      "confidence": 1,
+      "latencyMs": 50,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h04-s10-room",
+      "category": "snr10",
+      "expected": "bid 4 87500",
+      "actual": "accept 4 87500",
+      "confidence": 1,
+      "latencyMs": 43,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h04-s20-room",
+      "category": "snr20",
+      "expected": "bid 4 87500",
+      "actual": "accept 4 87500",
+      "confidence": 1,
+      "latencyMs": 58,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h04-s5-room",
+      "category": "snr5",
+      "expected": "bid 4 87500",
+      "actual": "accept 4 87500",
+      "confidence": 1,
+      "latencyMs": 80,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h05-s10-babble",
+      "category": "snr10",
+      "expected": "bid 6 130000",
+      "actual": "accept 6 130000",
+      "confidence": 1,
+      "latencyMs": 41,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h05-s20-babble",
+      "category": "snr20",
+      "expected": "bid 6 130000",
+      "actual": "accept 6 130000",
+      "confidence": 1,
+      "latencyMs": 101,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h05-s5-babble",
+      "category": "snr5",
+      "expected": "bid 6 130000",
+      "actual": "confirm 6 100 / 6 100300",
+      "confidence": 0.5,
+      "latencyMs": 49,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h06-s10-room",
+      "category": "snr10",
+      "expected": "bid 8 32500",
+      "actual": "accept 8 32500",
+      "confidence": 1,
+      "latencyMs": 455,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h06-s20-room",
+      "category": "snr20",
+      "expected": "bid 8 32500",
+      "actual": "accept 8 32500",
+      "confidence": 1,
+      "latencyMs": 56,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h06-s5-room",
+      "category": "snr5",
+      "expected": "bid 8 32500",
+      "actual": "accept 8 32500",
+      "confidence": 1,
+      "latencyMs": 56,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h07-s10-babble",
+      "category": "snr10",
+      "expected": "bid 5 90000",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 57,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h07-s20-babble",
+      "category": "snr20",
+      "expected": "bid 5 90000",
+      "actual": "accept 5 90000",
+      "confidence": 1,
+      "latencyMs": 49,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h07-s5-babble",
+      "category": "snr5",
+      "expected": "bid 5 90000",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 52,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h08-s10-room",
+      "category": "snr10",
+      "expected": "bid 6 75000",
+      "actual": "accept 6 75000",
+      "confidence": 1,
+      "latencyMs": 51,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h08-s20-room",
+      "category": "snr20",
+      "expected": "bid 6 75000",
+      "actual": "accept 6 75000",
+      "confidence": 1,
+      "latencyMs": 52,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h08-s5-room",
+      "category": "snr5",
+      "expected": "bid 6 75000",
+      "actual": "accept 6 75000",
+      "confidence": 1,
+      "latencyMs": 51,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h09-s10-babble",
+      "category": "snr10",
+      "expected": "bid 4 42500",
+      "actual": "accept 4 42500",
+      "confidence": 1,
+      "latencyMs": 91,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h09-s20-babble",
+      "category": "snr20",
+      "expected": "bid 4 42500",
+      "actual": "accept 4 42500",
+      "confidence": 1,
+      "latencyMs": 42,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h09-s5-babble",
+      "category": "snr5",
+      "expected": "bid 4 42500",
+      "actual": "accept 4 42500",
+      "confidence": 1,
+      "latencyMs": 50,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h10-s10-room",
+      "category": "snr10",
+      "expected": "bid 8 67500",
+      "actual": "accept 8 67500",
+      "confidence": 1,
+      "latencyMs": 58,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h10-s20-room",
+      "category": "snr20",
+      "expected": "bid 8 67500",
+      "actual": "accept 8 67500",
+      "confidence": 1,
+      "latencyMs": 42,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h10-s5-room",
+      "category": "snr5",
+      "expected": "bid 8 67500",
+      "actual": "accept 8 67500",
+      "confidence": 1,
+      "latencyMs": 243,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h11-s10-babble",
+      "category": "snr10",
+      "expected": "bid 3 110000",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 392,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h11-s20-babble",
+      "category": "snr20",
+      "expected": "bid 3 110000",
+      "actual": "accept 3 110000",
+      "confidence": 1,
+      "latencyMs": 50,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h11-s5-babble",
+      "category": "snr5",
+      "expected": "bid 3 110000",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 49,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h12-s10-room",
+      "category": "snr10",
+      "expected": "bid 5 145000",
+      "actual": "accept 5 145000",
+      "confidence": 1,
+      "latencyMs": 52,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h12-s20-room",
+      "category": "snr20",
+      "expected": "bid 5 145000",
+      "actual": "accept 5 145000",
+      "confidence": 1,
+      "latencyMs": 281,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h12-s5-room",
+      "category": "snr5",
+      "expected": "bid 5 145000",
+      "actual": "accept 5 145000",
+      "confidence": 1,
+      "latencyMs": 53,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h13-s10-babble",
+      "category": "snr10",
+      "expected": "bid 6 82500",
+      "actual": "accept 6 82500",
+      "confidence": 1,
+      "latencyMs": 57,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h13-s20-babble",
+      "category": "snr20",
+      "expected": "bid 6 82500",
+      "actual": "accept 6 82000",
+      "confidence": 1,
+      "latencyMs": 50,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h13-s5-babble",
+      "category": "snr5",
+      "expected": "bid 6 82500",
+      "actual": "accept 6 2500",
+      "confidence": 1,
+      "latencyMs": 45,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h14-s10-room",
+      "category": "snr10",
+      "expected": "bid 4 95000",
+      "actual": "accept 4 95000",
+      "confidence": 1,
+      "latencyMs": 45,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h14-s20-room",
+      "category": "snr20",
+      "expected": "bid 4 95000",
+      "actual": "accept 4 95000",
+      "confidence": 1,
+      "latencyMs": 50,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h14-s5-room",
+      "category": "snr5",
+      "expected": "bid 4 95000",
+      "actual": "accept 4 95000",
+      "confidence": 1,
+      "latencyMs": 44,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h15-s10-babble",
+      "category": "snr10",
+      "expected": "bid 8 170000",
+      "actual": "accept 8 170000",
+      "confidence": 1,
+      "latencyMs": 56,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h15-s20-babble",
+      "category": "snr20",
+      "expected": "bid 8 170000",
+      "actual": "accept 8 170000",
+      "confidence": 1,
+      "latencyMs": 408,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h15-s5-babble",
+      "category": "snr5",
+      "expected": "bid 8 170000",
+      "actual": "accept 8 170000",
+      "confidence": 1,
+      "latencyMs": 43,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h16-s10-room",
+      "category": "snr10",
+      "expected": "bid 11 45000",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 51,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h16-s20-room",
+      "category": "snr20",
+      "expected": "bid 11 45000",
+      "actual": "accept 11 45000",
+      "confidence": 1,
+      "latencyMs": 51,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h16-s5-room",
+      "category": "snr5",
+      "expected": "bid 11 45000",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 51,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h17-s10-babble",
+      "category": "snr10",
+      "expected": "bid 6 50000",
+      "actual": "accept 6 50000",
+      "confidence": 1,
+      "latencyMs": 52,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h17-s20-babble",
+      "category": "snr20",
+      "expected": "bid 6 50000",
+      "actual": "accept 6 50000",
+      "confidence": 1,
+      "latencyMs": 51,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h17-s5-babble",
+      "category": "snr5",
+      "expected": "bid 6 50000",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 399,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h18-s10-room",
+      "category": "snr10",
+      "expected": "bid 13 60000",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 55,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h18-s20-room",
+      "category": "snr20",
+      "expected": "bid 13 60000",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 61,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h18-s5-room",
+      "category": "snr5",
+      "expected": "bid 13 60000",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 59,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h19-s10-babble",
+      "category": "snr10",
+      "expected": "bid 8 75000",
+      "actual": "accept 8 75000",
+      "confidence": 1,
+      "latencyMs": 50,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h19-s20-babble",
+      "category": "snr20",
+      "expected": "bid 8 75000",
+      "actual": "accept 8 75000",
+      "confidence": 1,
+      "latencyMs": 58,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h19-s5-babble",
+      "category": "snr5",
+      "expected": "bid 8 75000",
+      "actual": "accept 8 75000",
+      "confidence": 1,
+      "latencyMs": 51,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h20-s10-room",
+      "category": "snr10",
+      "expected": "bid 15 80000",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 401,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h20-s20-room",
+      "category": "snr20",
+      "expected": "bid 15 80000",
+      "actual": "accept 15 80000",
+      "confidence": 1,
+      "latencyMs": 54,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h20-s5-room",
+      "category": "snr5",
+      "expected": "bid 15 80000",
+      "actual": "accept 15 80000",
+      "confidence": 1,
+      "latencyMs": 44,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h21-s10-babble",
+      "category": "snr10",
+      "expected": "bid 3 37500",
+      "actual": "accept 3 37500",
+      "confidence": 1,
+      "latencyMs": 57,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h21-s20-babble",
+      "category": "snr20",
+      "expected": "bid 3 37500",
+      "actual": "accept 3 37500",
+      "confidence": 1,
+      "latencyMs": 445,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h21-s5-babble",
+      "category": "snr5",
+      "expected": "bid 3 37500",
+      "actual": "accept 3 37500",
+      "confidence": 1,
+      "latencyMs": 48,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h22-s10-room",
+      "category": "snr10",
+      "expected": "bid 10 100000",
+      "actual": "accept 10 100000",
+      "confidence": 1,
+      "latencyMs": 58,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h22-s20-room",
+      "category": "snr20",
+      "expected": "bid 10 100000",
+      "actual": "accept 10 100000",
+      "confidence": 1,
+      "latencyMs": 53,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h22-s5-room",
+      "category": "snr5",
+      "expected": "bid 10 100000",
+      "actual": "accept 10 100000",
+      "confidence": 1,
+      "latencyMs": 46,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h23-s10-babble",
+      "category": "snr10",
+      "expected": "bid 16 20000",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 49,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h23-s20-babble",
+      "category": "snr20",
+      "expected": "bid 16 20000",
+      "actual": "accept 16 20000",
+      "confidence": 1,
+      "latencyMs": 53,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h23-s5-babble",
+      "category": "snr5",
+      "expected": "bid 16 20000",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 386,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h24-s10-room",
+      "category": "snr10",
+      "expected": "bid 4 200000",
+      "actual": "accept 4 200000",
+      "confidence": 1,
+      "latencyMs": 51,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h24-s20-room",
+      "category": "snr20",
+      "expected": "bid 4 200000",
+      "actual": "accept 4 200000",
+      "confidence": 1,
+      "latencyMs": 41,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h24-s5-room",
+      "category": "snr5",
+      "expected": "bid 4 200000",
+      "actual": "accept 4 200000",
+      "confidence": 1,
+      "latencyMs": 51,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h25-s10-babble",
+      "category": "snr10",
+      "expected": "bid 5 260000",
+      "actual": "accept 5 260000",
+      "confidence": 1,
+      "latencyMs": 49,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h25-s20-babble",
+      "category": "snr20",
+      "expected": "bid 5 260000",
+      "actual": "accept 5 260000",
+      "confidence": 1,
+      "latencyMs": 48,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h25-s5-babble",
+      "category": "snr5",
+      "expected": "bid 5 260000",
+      "actual": "accept 5 2600",
+      "confidence": 1,
+      "latencyMs": 40,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h26-s10-room",
+      "category": "snr10",
+      "expected": "bid 6 350000",
+      "actual": "accept 6 350000",
+      "confidence": 1,
+      "latencyMs": 335,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h26-s20-room",
+      "category": "snr20",
+      "expected": "bid 6 350000",
+      "actual": "accept 6 350000",
+      "confidence": 1,
+      "latencyMs": 443,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h26-s5-room",
+      "category": "snr5",
+      "expected": "bid 6 350000",
+      "actual": "accept 6 350000",
+      "confidence": 1,
+      "latencyMs": 77,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h27-s10-babble",
+      "category": "snr10",
+      "expected": "confirm",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 61,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h27-s20-babble",
+      "category": "snr20",
+      "expected": "confirm",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 215,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h27-s5-babble",
+      "category": "snr5",
+      "expected": "confirm",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 47,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h28-s10-room",
+      "category": "snr10",
+      "expected": "confirm",
+      "actual": "confirm 7 50000",
+      "confidence": 0.5,
+      "latencyMs": 45,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h28-s20-room",
+      "category": "snr20",
+      "expected": "confirm",
+      "actual": "confirm 7 50000",
+      "confidence": 0.5,
+      "latencyMs": 52,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h28-s5-room",
+      "category": "snr5",
+      "expected": "confirm",
+      "actual": "confirm 7 50000",
+      "confidence": 0.5,
+      "latencyMs": 41,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h29-s10-babble",
+      "category": "snr10",
+      "expected": "confirm",
+      "actual": "confirm 7 60000 / 7 65000",
+      "confidence": 0.5,
+      "latencyMs": 50,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h29-s20-babble",
+      "category": "snr20",
+      "expected": "confirm",
+      "actual": "confirm 7 60000 / 7 65000",
+      "confidence": 0.5,
+      "latencyMs": 144,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h29-s5-babble",
+      "category": "snr5",
+      "expected": "confirm",
+      "actual": "confirm 7 60000 / 7 65000",
+      "confidence": 0.5,
+      "latencyMs": 53,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h30-s10-room",
+      "category": "snr10",
+      "expected": "confirm",
+      "actual": "confirm 4 30000 / 9 32500",
+      "confidence": 0.5,
+      "latencyMs": 49,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h30-s20-room",
+      "category": "snr20",
+      "expected": "confirm",
+      "actual": "confirm 4 30000 / 9 32500",
+      "confidence": 0.5,
+      "latencyMs": 57,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h30-s5-room",
+      "category": "snr5",
+      "expected": "confirm",
+      "actual": "confirm 4 30000 / 9 32500",
+      "confidence": 0.5,
+      "latencyMs": 54,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h31-s10-babble",
+      "category": "snr10",
+      "expected": "confirm",
+      "actual": "confirm 7 70000",
+      "confidence": 0.5,
+      "latencyMs": 42,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h31-s20-babble",
+      "category": "snr20",
+      "expected": "confirm",
+      "actual": "confirm 7 70000",
+      "confidence": 0.5,
+      "latencyMs": 48,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h31-s5-babble",
+      "category": "snr5",
+      "expected": "confirm",
+      "actual": "confirm 7 70000",
+      "confidence": 0.5,
+      "latencyMs": 45,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h32-s10-room",
+      "category": "snr10",
+      "expected": "confirm",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 47,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h32-s20-room",
+      "category": "snr20",
+      "expected": "confirm",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 42,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h32-s5-room",
+      "category": "snr5",
+      "expected": "confirm",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 45,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h33-s10-babble",
+      "category": "snr10",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 122,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h33-s20-babble",
+      "category": "snr20",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 44,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h33-s5-babble",
+      "category": "snr5",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 50,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h34-s10-room",
+      "category": "snr10",
+      "expected": "none",
+      "actual": "accept 7 60000",
+      "confidence": 1,
+      "latencyMs": 46,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h34-s20-room",
+      "category": "snr20",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 43,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h34-s5-room",
+      "category": "snr5",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 41,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h35-s10-babble",
+      "category": "snr10",
+      "expected": "none",
+      "actual": "accept 7 300",
+      "confidence": 1,
+      "latencyMs": 44,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h35-s20-babble",
+      "category": "snr20",
+      "expected": "none",
+      "actual": "accept 7 300",
+      "confidence": 1,
+      "latencyMs": 49,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h35-s5-babble",
+      "category": "snr5",
+      "expected": "none",
+      "actual": "accept 7 300",
+      "confidence": 1,
+      "latencyMs": 43,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h36-s10-room",
+      "category": "snr10",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 42,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h36-s20-room",
+      "category": "snr20",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 54,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h36-s5-room",
+      "category": "snr5",
+      "expected": "none",
+      "actual": "confirm 7 40000",
+      "confidence": 0.5,
+      "latencyMs": 49,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h37-s10-babble",
+      "category": "snr10",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 40,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h37-s20-babble",
+      "category": "snr20",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 41,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h37-s5-babble",
+      "category": "snr5",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 41,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h38-s10-room",
+      "category": "snr10",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 40,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h38-s20-room",
+      "category": "snr20",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 39,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h38-s5-room",
+      "category": "snr5",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 42,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h39-s10-babble",
+      "category": "snr10",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 43,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h39-s20-babble",
+      "category": "snr20",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 44,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h39-s5-babble",
+      "category": "snr5",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 51,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h40-s10-room",
+      "category": "snr10",
+      "expected": "none",
+      "actual": "accept 7 20000",
+      "confidence": 1,
+      "latencyMs": 46,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h40-s20-room",
+      "category": "snr20",
+      "expected": "none",
+      "actual": "accept 7 20000",
+      "confidence": 1,
+      "latencyMs": 40,
+      "provider": "deepgram"
+    },
+    {
+      "id": "h40-s5-room",
+      "category": "snr5",
+      "expected": "none",
+      "actual": "accept 7 20000",
+      "confidence": 1,
+      "latencyMs": 461,
+      "provider": "deepgram"
+    }
+  ]
+}
