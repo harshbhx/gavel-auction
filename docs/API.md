@@ -167,6 +167,10 @@ curl -s $API/api/judge/rooms/$AUCTION_ID/ledger -H "authorization: Bearer $REVIE
 # 7. Make and read a receipt as the bidder.
 curl -s -X POST $API/api/auctions/$AUCTION_ID/receipt-link -H "authorization: Bearer $SESSION_TOKEN"
 curl -s $API/api/auctions/$AUCTION_ID/receipt -H "authorization: Bearer $RECEIPT_TOKEN"
+
+# 8. End the room early as its creator: stops a running lot, refuses new joins and bids.
+# The ledger and receipts stay readable. Safe to repeat.
+curl -s -X POST $API/api/judge/rooms/$AUCTION_ID/close -H "authorization: Bearer $AUCTIONEER_TOKEN"
 ```
 
 ## SDKs with APIMatic

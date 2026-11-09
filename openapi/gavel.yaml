@@ -1563,6 +1563,51 @@ paths:
         '500':
           $ref: '#/components/responses/Internal'
   # --- FEAT-60 judge API keys: begin (separate block, keep edits here apart from lint passes) ---
+  /api/judge/rooms/{id}/close:
+    post:
+      tags: [Judge rooms]
+      operationId: closeJudgeRoom
+      summary: Close a judge room now
+      description: |
+        The creator ends a judge room before its normal end. Send the room's auctioneer token as a
+        bearer token. A running lot is stopped first (an unsold hammer, as the console Stop button
+        does), then the room is marked ended: new joins, simulated holds and bids are refused with
+        410. Nothing is deleted, so the ledger, the audit trail and the receipt stay readable.
+        Safe to repeat: a room that is already closed answers 200 with `alreadyClosed: true`.
+      security:
+        - auctioneerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AuctionId'
+      responses:
+        '200':
+          description: The room is closed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [closed, alreadyClosed]
+                properties:
+                  closed:
+                    type: boolean
+                    const: true
+                  alreadyClosed:
+                    type: boolean
+                    description: True when the room was already closed before this call.
+              example:
+                closed: true
+                alreadyClosed: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: The room could not be closed right now (`store_unavailable`). Try again.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/judge/rooms/{id}/bids:
     post:
       tags: [Judge rooms]

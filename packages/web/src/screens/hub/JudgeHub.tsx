@@ -4,8 +4,10 @@ import { startLiveRoom } from '../../net/liveRoom';
 import { RoomStore, useRoom } from '../../store/roomStore';
 import { selectors } from '../../store/selectors';
 import { Button } from '../../design/primitives/Button';
+import { Dialog } from '../../design/primitives/Dialog';
 import { StatusPill } from '../../ui';
 import { formatCountdown } from '../../util/time';
+import { closeJudgeRoom, rememberRoomClosed } from './closeRoom';
 import { ROOM_MINUTES, type HubKeys } from './hubKeys';
 import { ScreenPreview } from './ScreenPreview';
 import '../flows.css';
@@ -23,6 +25,8 @@ export interface JudgeHubProps {
   readonly origin: string;
   readonly now?: () => number;
   readonly writeClipboard?: (text: string) => Promise<void>;
+  /** Leaves the hub for another page (full load). Defaults to `location.assign`. */
+  readonly navigate?: (to: string) => void;
 }
 
 interface Invite {
@@ -147,13 +151,20 @@ export function JudgeHub({
   origin,
   now = Date.now,
   writeClipboard = (text) => navigator.clipboard.writeText(text),
+  navigate = (to) => window.location.assign(to),
 }: JudgeHubProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   // One room frame feeds both the preview tile and the hub's own state: stop and hammer show at once.
   const [store] = useState(() => new RoomStore(roomId));
   const stopped = useRoom(selectors.stopped, store);
   const sold = useRoom((s) => s.hammer !== null && s.hammer.winnerId !== null, store);
-  const ended = stopped || sold;
+  // Set once this tab closed the room; the live frame confirms it a moment later.
+  const [closedHere, setClosedHere] = useState(false);
+  const [closing, setClosing] = useState<{
+    readonly step: 'idle' | 'confirm' | 'busy' | 'failed';
+    readonly home: boolean;
+  }>({ step: 'idle', home: false });
+  const ended = stopped || sold || closedHere;
   const [summary, setSummary] = useState<Summary>({
     title: null,
     code: keys.code,
@@ -234,6 +245,27 @@ export function JudgeHub({
     makeInvite();
   }, [makeInvite]);
 
+  const askClose = (home: boolean): void => setClosing({ step: 'confirm', home });
+  const cancelClose = (): void => setClosing({ step: 'idle', home: false });
+  const confirmClose = (): void => {
+    if (apiBase === undefined || auctioneer === null || closing.step === 'busy') return;
+    const home = closing.home;
+    setClosing({ step: 'busy', home });
+    closeJudgeRoom(apiBase, roomId, auctioneer).then((result) => {
+      if (result === 'failed') {
+        setClosing({ step: 'failed', home });
+        return;
+      }
+      setClosedHere(true);
+      setClosing({ step: 'idle', home: false });
+      if (home) {
+        rememberRoomClosed();
+        navigate('/');
+      }
+    });
+  };
+  const canClose = apiBase !== undefined && auctioneer !== null && !ended;
+
   const copy = (key: string, text: string): void => {
     writeClipboard(text).then(
       () => setCopied(key),
@@ -269,7 +301,7 @@ export function JudgeHub({
           <p className="gv-hub__lead">{t('hub.lead')}</p>
         </div>
         <p className="gv-hub__status">
-          {stopped ? (
+          {stopped || closedHere ? (
             <StatusPill tone="out">{t('hub.stopped')}</StatusPill>
           ) : leftMs === null ? (
             <StatusPill tone="live">{t('hub.expiresAt', { minutes: ROOM_MINUTES })}</StatusPill>
@@ -285,7 +317,11 @@ export function JudgeHub({
 
       {ended && (
         <p className="gv-hub__ended" role="status" data-testid="hub-ended">
-          {stopped ? t('hub.stoppedNote') : t('hub.closedNote')}
+          {closedHere
+            ? t('hub.close.done')
+            : stopped
+              ? t('hub.stoppedNote')
+              : t('hub.closedNote')}
         </p>
       )}
 
@@ -452,10 +488,49 @@ export function JudgeHub({
             <a className="gv-flow__action gv-flow__action--plain" href="/demo">
               {t('hub.newDemo')}
             </a>
+            {canClose && (
+              <div className="gv-hub__close">
+                <Button tone="danger" variant="outline" onClick={() => askClose(false)}>
+                  {t('hub.close.button')}
+                </Button>
+                <Button tone="danger" variant="outline" onClick={() => askClose(true)}>
+                  {t('hub.close.home')}
+                </Button>
+              </div>
+            )}
+            {ended && (
+              <a className="gv-flow__action gv-flow__action--plain" href="/" data-testid="hub-home">
+                {t('hub.close.homeLink')}
+              </a>
+            )}
             <p className="gv-hub__note">{t('hub.expiresAt', { minutes: ROOM_MINUTES })}</p>
           </div>
         </div>
       </div>
+      <Dialog
+        open={closing.step !== 'idle'}
+        onClose={cancelClose}
+        strict={closing.step === 'busy'}
+        title={t('hub.close.title')}
+      >
+        <div className="gv-hub__close">
+          <h2>{t('hub.close.title')}</h2>
+          <p>{t('hub.close.body')}</p>
+          {closing.step === 'failed' && <p role="alert">{t('hub.close.failed')}</p>}
+          {closing.step === 'busy' && <p role="status">{t('hub.close.busy')}</p>}
+          <Button tone="danger" disabled={closing.step === 'busy'} onClick={confirmClose}>
+            {t('hub.close.confirm')}
+          </Button>
+          <Button
+            variant="outline"
+            tone="neutral"
+            disabled={closing.step === 'busy'}
+            onClick={cancelClose}
+          >
+            {t('common.cancel')}
+          </Button>
+        </div>
+      </Dialog>
     </main>
   );
 }
