@@ -5,7 +5,15 @@ import { fileURLToPath } from 'node:url';
 import { encodeBatch } from '@gavel/voice';
 import { startStack, type Stack } from '../runner/stack';
 import {
-  CEILING_CENTS,
+  connectAudio,
+  now,
+  setUpRoom,
+  sleep,
+  type AudioConnection,
+  type Room,
+  type SockCtor,
+} from './live-room';
+import {
   FLAG_END_OF_UTTERANCE,
   FLAG_KEEPALIVE,
   LIVE_STACK_ENV,
@@ -38,142 +46,16 @@ const SERVER_DIR = join(ROOT, 'packages', 'server');
 const CLIP_DIR = join(ROOT, 'packages', 'voice', 'fixtures', 'audio', 'recordings');
 const MANIFEST = join(ROOT, 'packages', 'voice', 'fixtures', 'audio', 'manifest.json');
 
-const BIDDERS = 14; // the clips name paddles up to 14
 const BATCH_MS = 100;
 const WAIT_FINAL_MS = 12_000;
 const SETTLE_MS = 2_500;
 const GAP_MS = 1_000;
-
-type Frame = Record<string, unknown>;
-interface Sock {
-  readyState: number;
-  on(event: string, cb: (...args: unknown[]) => void): void;
-  send(data: string | Uint8Array): void;
-  close(code?: number): void;
-}
-type SockCtor = new (url: string, opts: { headers: Record<string, string> }) => Sock;
-
-const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
-const now = (): number => Date.now();
 
 interface ManifestClip {
   id: string;
   file: string;
   text: string;
   expected: ExpectedOutcome;
-}
-
-async function json<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    // The body of a failed test route is an error message, never a secret.
-    const body = (await res.text()).slice(0, 200);
-    throw new Error(`${new URL(res.url).pathname} answered ${res.status}: ${body}`);
-  }
-  return (await res.json()) as T;
-}
-
-function openSocket(
-  make: SockCtor,
-  url: string,
-  origin: string,
-  onMessage: (f: Frame) => void,
-): Promise<Sock> {
-  return new Promise((resolveOpen, reject) => {
-    const sock = new make(url, { headers: { origin } });
-    sock.on('message', (data) => {
-      try {
-        onMessage(JSON.parse(String(data)) as Frame);
-      } catch {
-        // not JSON: ignore
-      }
-    });
-    sock.on('open', () => resolveOpen(sock));
-    sock.on('error', (e) => reject(e instanceof Error ? e : new Error(String(e))));
-  });
-}
-
-interface Room {
-  auctionId: string;
-  auctioneerToken: string;
-  bidderSockets: Sock[];
-  /** Everything that reached a bidder socket, with the wall time and the paddle it belongs to. */
-  seen: Array<{ at: number; paddle: string; frame: Frame }>;
-}
-
-async function setUpRoom(stack: Stack, make: SockCtor): Promise<Room> {
-  const base = stack.serverUrl;
-  const origin = new URL(base).origin;
-  const adminHeaders = { 'content-type': 'application/json', 'x-admin-key': stack.adminKey };
-  const created = await json<{ auctionId: string; auctioneerLink: string }>(
-    await fetch(`${base}/api/auctions`, {
-      method: 'POST',
-      headers: adminHeaders,
-      body: JSON.stringify({
-        title: 'voice-live-socket',
-        config: {
-          mode: 'english',
-          currency: 'USD',
-          reserve: 5000,
-          minIncrement: 500,
-          endTs: now() + 3_600_000,
-          softCloseWindowMs: 30_000,
-          softCloseExtensionMs: 30_000,
-          maxExtensions: 5,
-          ceilingPresets: [CEILING_CENTS],
-          confirmConfidenceThreshold: 0.85,
-        },
-      }),
-    }),
-  );
-  const auctionId = created.auctionId;
-  const auctioneerToken = created.auctioneerLink.split('#token=')[1] ?? '';
-  const bearer = { 'content-type': 'application/json', authorization: `Bearer ${auctioneerToken}` };
-  const room: Room = { auctionId, auctioneerToken, bidderSockets: [], seen: [] };
-  const wsUrl = `${base.replace(/^http/, 'ws')}/ws`;
-  for (let i = 1; i <= BIDDERS; i += 1) {
-    const { invites } = await json<{ invites: Array<{ link: string }> }>(
-      await fetch(`${base}/api/auctions/${auctionId}/invites`, {
-        method: 'POST',
-        headers: bearer,
-        body: JSON.stringify({ count: 1 }),
-      }),
-    );
-    const joined = await json<{ sessionToken: string; bidderId: string }>(
-      await fetch(`${base}/api/auctions/${auctionId}/join`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ invite: invites[0]?.link.split('#token=')[1] ?? '' }),
-      }),
-    );
-    await json(
-      await fetch(`${base}/__e2e/enrol`, {
-        method: 'POST',
-        headers: adminHeaders,
-        body: JSON.stringify({
-          auctionId,
-          bidderId: joined.bidderId,
-          name: `bidder ${i}`,
-          ceilingCents: CEILING_CENTS,
-          presetsCents: [CEILING_CENTS],
-        }),
-      }),
-    );
-    // Paddles are handed out in registration order, so bidder i holds paddle i.
-    const paddle = String(i);
-    const sock = await openSocket(make, wsUrl, origin, (frame) => {
-      room.seen.push({ at: now(), paddle, frame });
-    });
-    sock.send(JSON.stringify({ v: 1, t: 'join', token: joined.sessionToken, auctionId }));
-    room.bidderSockets.push(sock);
-  }
-  const open = await fetch(`${base}/api/auctions/${auctionId}/control`, {
-    method: 'POST',
-    headers: bearer,
-    body: JSON.stringify({ controlId: 'open-1', action: 'open' }),
-  });
-  if (!open.ok) throw new Error(`opening the lot answered ${open.status}`);
-  await sleep(500);
-  return room;
 }
 
 async function streamClip(
@@ -183,8 +65,6 @@ async function streamClip(
   clip: ManifestClip,
   samples: Int16Array,
 ): Promise<ClipObservation> {
-  const base = stack.serverUrl;
-  const origin = new URL(base).origin;
   const captions: Caption[] = [];
   const statuses: string[] = [];
   const obs: ClipObservation = {
@@ -200,43 +80,29 @@ async function streamClip(
     pricesWithLeader: [],
   };
   const seenFrom = room.seen.length;
-  let ready = false;
-  let closeCode: number | undefined;
-  const url = `${base.replace(/^http/, 'ws')}/audio?auction=${room.auctionId}&source=mic`;
-  let sock: Sock;
+  let conn: AudioConnection;
   try {
-    sock = await openSocket(make, url, origin, (f) => {
-      if (f['t'] === 'ready') ready = true;
-      else if (f['t'] === 'caption') {
+    conn = await connectAudio(stack, make, room, (f) => {
+      if (f['t'] === 'caption') {
         captions.push({ at: now(), text: String(f['text'] ?? ''), final: f['final'] === true });
       } else if (f['t'] === 'status') statuses.push(`${String(f['stt'])}/${String(f['llm'])}`);
     });
   } catch (e) {
-    obs.error = `audio socket did not open: ${e instanceof Error ? e.message : String(e)}`;
+    obs.error = e instanceof Error ? e.message : String(e);
     return obs;
   }
-  sock.on('close', (code) => {
-    closeCode = typeof code === 'number' ? code : undefined;
-  });
-  sock.send(JSON.stringify({ t: 'auth', token: room.auctioneerToken }));
-  const readyBy = now() + 10_000;
-  while (!ready && closeCode === undefined && now() < readyBy) await sleep(25);
-  if (!ready) {
-    obs.error = 'the server never sent ready';
-    if (closeCode !== undefined) obs.closeCode = closeCode;
-    sock.close();
-    return obs;
-  }
+  const { sock } = conn;
+  const closeCodeOf = (): number | undefined => conn.closeCode();
   obs.startedAt = now();
   let seq = 0;
   for (const batch of toBatches(samples)) {
-    if (closeCode !== undefined) break;
+    if (closeCodeOf() !== undefined) break;
     sock.send(encodeBatch({ seq, tsMs: batch.offsetMs, flags: 0, pcm: batch.pcm }));
     seq += 1;
     await sleep(BATCH_MS);
   }
   obs.speechEndAt = now();
-  if (closeCode === undefined) {
+  if (closeCodeOf() === undefined) {
     sock.send(
       encodeBatch({
         seq,
@@ -248,7 +114,7 @@ async function streamClip(
   }
   const until = now() + WAIT_FINAL_MS;
   while (
-    closeCode === undefined &&
+    closeCodeOf() === undefined &&
     now() < until &&
     !captions.some((c) => c.final && c.text.trim() !== '')
   ) {
@@ -256,7 +122,8 @@ async function streamClip(
   }
   await sleep(SETTLE_MS);
   obs.endedAt = now();
-  if (closeCode !== undefined) obs.closeCode = closeCode;
+  const finalClose = closeCodeOf();
+  if (finalClose !== undefined) obs.closeCode = finalClose;
   sock.close(1000);
 
   const seenSeq = new Set<number>();

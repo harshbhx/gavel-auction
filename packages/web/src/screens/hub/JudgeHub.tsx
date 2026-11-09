@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { t } from '../../copy/t';
+import { startLiveRoom } from '../../net/liveRoom';
+import { RoomStore, useRoom } from '../../store/roomStore';
+import { selectors } from '../../store/selectors';
 import { Button } from '../../design/primitives/Button';
 import { StatusPill } from '../../ui';
 import { formatCountdown } from '../../util/time';
@@ -125,6 +128,11 @@ export function JudgeHub({
   writeClipboard = (text) => navigator.clipboard.writeText(text),
 }: JudgeHubProps) {
   const heading = useRef<HTMLHeadingElement>(null);
+  // One room frame feeds both the preview tile and the hub's own state: stop and hammer show at once.
+  const [store] = useState(() => new RoomStore(roomId));
+  const stopped = useRoom(selectors.stopped, store);
+  const sold = useRoom((s) => s.hammer !== null && s.hammer.winnerId !== null, store);
+  const ended = stopped || sold;
   const [summary, setSummary] = useState<Summary>({ title: null, code: keys.code });
   const code = summary.code;
   const [invite, setInvite] = useState<InviteState>({ kind: 'idle' });
@@ -143,6 +151,18 @@ export function JudgeHub({
       : `${base}/audit#token=${keys.reviewer}`;
   const joinQuery = code === null ? '' : `?c=${encodeURIComponent(code)}`;
   const joinLink = `${origin}/join/${encodeURIComponent(roomId)}${joinQuery}`;
+
+  const screenToken = keys.screen;
+  useEffect(() => {
+    if (screenToken === null || apiBase === undefined) return undefined;
+    const started = startLiveRoom({
+      wsBase: apiBase.replace(/^http/, 'ws'),
+      roomId,
+      token: screenToken,
+      store,
+    });
+    return () => started?.stop();
+  }, [apiBase, roomId, screenToken, store]);
 
   useEffect(() => {
     document.title = t('hub.title');
@@ -168,7 +188,7 @@ export function JudgeHub({
 
   const auctioneer = keys.auctioneer;
   const makeInvite = useCallback((): void => {
-    if (apiBase === undefined || auctioneer === null || minting.current) return;
+    if (apiBase === undefined || auctioneer === null || minting.current || ended) return;
     // A ref, not state: two clicks in one frame must not both send a request.
     minting.current = true;
     setInvite({ kind: 'busy' });
@@ -176,7 +196,7 @@ export function JudgeHub({
       minting.current = false;
       setInvite(got === null ? { kind: 'failed' } : { kind: 'ready', invite: got });
     });
-  }, [apiBase, auctioneer, roomId, origin]);
+  }, [apiBase, auctioneer, roomId, origin, ended]);
 
   // The first invite is made on arrival, so the QR is ready for a phone straight away.
   useEffect(() => {
@@ -219,7 +239,9 @@ export function JudgeHub({
           <p className="gv-hub__lead">{t('hub.lead')}</p>
         </div>
         <p className="gv-hub__status">
-          {leftMs === null ? (
+          {stopped ? (
+            <StatusPill tone="out">{t('hub.stopped')}</StatusPill>
+          ) : leftMs === null ? (
             <StatusPill tone="live">{t('hub.expiresAt', { minutes: ROOM_MINUTES })}</StatusPill>
           ) : leftMs > 0 ? (
             <StatusPill tone="live">
@@ -231,6 +253,12 @@ export function JudgeHub({
         </p>
       </header>
 
+      {ended && (
+        <p className="gv-hub__ended" role="status" data-testid="hub-ended">
+          {stopped ? t('hub.stoppedNote') : t('hub.closedNote')}
+        </p>
+      )}
+
       <div className="gv-hub__grid">
         <section className="gv-hub__screen" aria-labelledby="gv-hub-step-1" data-step={1}>
           <h2 id="gv-hub-step-1">{t('hub.step1')}</h2>
@@ -241,6 +269,7 @@ export function JudgeHub({
             lotTitle={summary.title ?? t('screen.untitled')}
             code={code}
             joinUrl={joinLink}
+            store={screenToken === null ? undefined : store}
           />
           <div className="gv-hub__row">
             {screenLink === null ? (
@@ -279,20 +308,24 @@ export function JudgeHub({
           <div className="gv-hub__perf" aria-hidden="true" />
           <div className="gv-hub__main">
             <div className="gv-hub__qr" role="group" aria-label={t('hub.qrLabel')}>
-              <ChunkBoundary>
-                <QrCode url={qrTarget} size={196} />
-              </ChunkBoundary>
+              {ended ? (
+                <p className="gv-hub__pending">{t('hub.joinClosed')}</p>
+              ) : (
+                <ChunkBoundary>
+                  <QrCode url={qrTarget} size={196} />
+                </ChunkBoundary>
+              )}
             </div>
-            <p className="gv-hub__scan">{t('hub.scanToBid')}</p>
+            {!ended && <p className="gv-hub__scan">{t('hub.scanToBid')}</p>}
             <div className="gv-hub__row gv-hub__row--center">
               {code !== null && (
-                <Button variant="outline" onClick={() => copy('code', code)}>
+                <Button variant="outline" disabled={ended} onClick={() => copy('code', code)}>
                   {copied === 'code' ? t('generic.copied') : t('hub.copyCode')}
                 </Button>
               )}
               <Button
                 variant="outline"
-                disabled={code === null}
+                disabled={code === null || ended}
                 onClick={() => copy('invite', joinLink)}
               >
                 {copied === 'invite' ? t('generic.copied') : t('hub.copyInvite')}
@@ -322,21 +355,27 @@ export function JudgeHub({
           </Shortcut>
 
           <Shortcut n={4} title={t('hub.step4')} hint={t('hub.step4Hint')}>
-            <a
-              className="gv-flow__action"
-              href={joinLink}
-              target="_blank"
-              rel="noopener"
-              data-testid="hub-join-open"
-            >
-              {t('hub.joinHere')}
-              <span className="gv-visually-hidden">{newTab}</span>
-            </a>
+            {ended ? (
+              <p className="gv-hub__missing" data-testid="hub-join-open">
+                {t('hub.joinClosed')}
+              </p>
+            ) : (
+              <a
+                className="gv-flow__action"
+                href={joinLink}
+                target="_blank"
+                rel="noopener"
+                data-testid="hub-join-open"
+              >
+                {t('hub.joinHere')}
+                <span className="gv-visually-hidden">{newTab}</span>
+              </a>
+            )}
             {keys.auctioneer === null ? (
               <p className="gv-hub__note">{t('hub.watcherNote')}</p>
             ) : (
               <>
-                {bidderLink !== null ? (
+                {ended ? null : bidderLink !== null ? (
                   <a className="gv-flow__action" href={bidderLink} target="_blank" rel="noopener">
                     {t('hub.step4Open')}
                     <span className="gv-visually-hidden">{newTab}</span>
@@ -350,7 +389,11 @@ export function JudgeHub({
                     {t('hub.inviteBusy')}
                   </p>
                 )}
-                <Button variant="outline" disabled={invite.kind === 'busy'} onClick={makeInvite}>
+                <Button
+                  variant="outline"
+                  disabled={invite.kind === 'busy' || ended}
+                  onClick={makeInvite}
+                >
                   {t('hub.newInvite')}
                 </Button>
               </>

@@ -262,7 +262,7 @@ function LiveRoute({
       ? undefined
       : s.snapshot?.roster.find((r) => r.bidderId === bidderId)?.paddle,
   );
-  const stopped = useRoom((s) => s.snapshot?.stopped ?? false);
+  const stopped = useRoom(selectors.stopped);
   const joinCode = useRoom((s) => s.snapshot?.joinCode ?? null);
   const respond = (confirmId: string, accept: boolean): void =>
     transport?.send({ v: PROTOCOL_VERSION, t: 'confirm_response', confirmId, accept });
