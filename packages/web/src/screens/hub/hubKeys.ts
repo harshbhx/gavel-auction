@@ -83,3 +83,22 @@ export function hubHref(
   const known = merge(memory.get(roomId) ?? NO_KEYS, { ...NO_KEYS, auctioneer, code });
   return `/r/${encodeURIComponent(roomId)}/hub${hubFragment(known)}`;
 }
+
+/** A room this tab made or opened: its id and the keys the tab holds for it. */
+export interface KnownRoom {
+  readonly roomId: string;
+  readonly keys: HubKeys;
+}
+
+/**
+ * The newest room this tab holds keys for that has not expired, or null. The /try page uses it to
+ * show a real room code and real links, and to say nothing of the kind when there is no room.
+ */
+export function latestHubRoom(now: number = Date.now()): KnownRoom | null {
+  let found: KnownRoom | null = null;
+  for (const [roomId, keys] of memory) {
+    const live = keys.expiresAt === null || keys.expiresAt > now;
+    if (live && (keys.code !== null || keys.auctioneer !== null)) found = { roomId, keys };
+  }
+  return found;
+}

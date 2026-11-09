@@ -25,7 +25,7 @@ function panel(createRoom: (goalCents?: number) => Promise<DemoLinks>): void {
 }
 
 const field = (): HTMLInputElement => screen.getByLabelText(t('goal.label'));
-const start = (): HTMLElement => screen.getByRole('button', { name: t('try.s1.cta') });
+const start = (): HTMLElement => screen.getByRole('button', { name: t('try.a1.room') });
 
 describe('fundraiser goal field on /try (UIX-31)', () => {
   it('is optional: an empty field starts a room with no goal', async () => {
