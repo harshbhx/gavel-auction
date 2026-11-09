@@ -3,7 +3,7 @@ title: Crash recovery
 description: What happens when the process dies in the middle of a capture.
 icon: Zap
 status: code-checked
-evidence: 'Read against the recovery code listed at the foot of the page (PR #1954). Crashes were injected against the fake PayPal; one in-process crash ran on the sandbox, no real process kill.'
+evidence: 'Read against the recovery code listed at the foot of the page (PR #1954). Crashes were injected against the fake PayPal; one in-process crash ran on the sandbox, and one real server process kill ran on a CI runner against the sandbox (run 42558021614, not the deployed host).'
 full: true
 ---
 
