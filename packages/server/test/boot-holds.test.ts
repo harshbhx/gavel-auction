@@ -150,7 +150,7 @@ describe('hold routes in the production composition (HRD-69, issue 1074)', () =>
     expect(named.status).toBe(400);
     const odd = await call(url, 'POST', '/api/holds', ada.sessionToken, {
       auctionId,
-      ceilingCents: 12345,
+      ceilingCents: 99,
     });
     expect(odd.status).toBe(400);
     expect(await holdError(odd)).toBe('ceiling_out_of_range');

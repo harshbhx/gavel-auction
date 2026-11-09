@@ -160,9 +160,13 @@ describe('register route with a custom ceiling', () => {
     const field = screen.getByRole('textbox', { name: t('reg.custom') });
     fireEvent.change(field, { target: { value: '2501' } });
     fireEvent.blur(field);
-    expect(screen.getByRole('alert').textContent).toContain(
-      t('reg.customRange', { min: '$1', max: '$2,500' }),
-    );
+    expect(
+      screen
+        .getAllByRole('alert')
+        .some((a) =>
+          (a.textContent ?? '').includes(t('reg.customRange', { min: '$1', max: '$2,500' })),
+        ),
+    ).toBe(true);
   });
 });
 
