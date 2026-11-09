@@ -78,6 +78,14 @@ export function offsetFromDate(header: string | null, localMs: number): number |
   return Number.isFinite(serverMs) ? serverMs - localMs : null;
 }
 
+function dateHeader(res: Response): string | null {
+  try {
+    return res.headers.get('date');
+  } catch {
+    return null;
+  }
+}
+
 async function fetchSummary(apiBase: string, roomId: string): Promise<Summary | null> {
   try {
     const res = await fetch(`${apiBase}/api/auctions/${encodeURIComponent(roomId)}`);
@@ -86,7 +94,7 @@ async function fetchSummary(apiBase: string, roomId: string): Promise<Summary | 
     return {
       code: typeof body.joinCode === 'string' && body.joinCode !== '' ? body.joinCode : null,
       title: typeof body.title === 'string' && body.title !== '' ? body.title : null,
-      offsetMs: offsetFromDate(res.headers.get('date'), Date.now()),
+      offsetMs: offsetFromDate(dateHeader(res), Date.now()),
     };
   } catch {
     return null;
