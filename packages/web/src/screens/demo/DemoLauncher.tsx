@@ -3,6 +3,7 @@ import { WideAside } from '../WideAside';
 import { t } from '../../copy/t';
 import { waitText } from '../../net/apiError';
 import { Provenance } from '../../design/Provenance';
+import { ActionGroup } from '../../design/primitives/ActionGroup';
 import { Button } from '../../design/primitives/Button';
 import { Dialog } from '../../design/primitives/Dialog';
 import { Field } from '../../design/primitives/Field';
@@ -271,12 +272,12 @@ export function DemoLauncher({
             autoFocus
             onChange={(e) => setCode(e.target.value)}
           />
-          <div className="gv-demo__code-actions">
+          <ActionGroup>
             <Button type="submit">{t('demo.codeGo')}</Button>
             <Button type="button" variant="outline" onClick={() => setCodeOpen(false)}>
               {t('generic.close')}
             </Button>
-          </div>
+          </ActionGroup>
         </form>
       </Dialog>
     </main>

@@ -32,6 +32,12 @@
   color: var(--color-on-accent);
 }
 
+.gv-btn--text {
+  border-color: transparent;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
 .gv-btn[data-tone='danger'] {
   --gv-btn-color: var(--color-danger);
 }
@@ -199,4 +205,38 @@
 
 .gv-banner[data-tone='danger'] {
   --gv-banner-color: var(--color-danger);
+}
+
+/* Button group (UIX-45): one gap, one height, one width on a phone; two equal columns beside the
+ * heading on wider screens. A text button (the quiet third choice) always takes its own row. */
+.gv-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: stretch;
+  justify-items: stretch;
+  align-self: stretch;
+}
+
+.gv-actions > .gv-btn,
+.gv-actions > .gv-btn--bid {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  font-size: var(--font-size-3);
+  font-weight: 600;
+  text-align: center;
+}
+
+@media (min-width: 720px) {
+  .gv-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gv-actions > .gv-btn--text {
+    grid-column: 1 / -1;
+    justify-self: start;
+    width: auto;
+  }
 }

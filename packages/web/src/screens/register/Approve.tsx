@@ -5,6 +5,7 @@ import { holdErrorCopyTable, isHoldErrorCode } from '../../copy/errors';
 import { t } from '../../copy/t';
 import { Icon } from '../../design/icons';
 import { Banner } from '../../design/primitives/Banner';
+import { ActionGroup } from '../../design/primitives/ActionGroup';
 import { Button } from '../../design/primitives/Button';
 import type { ApprovalResult, ApprovalState } from '../../payments/port';
 import { formatUsdCompact } from '../../util/money';
@@ -174,14 +175,14 @@ export function Approve({
           {view.action === 'retry' && <Button onClick={onRetry}>{t('generic.retry')}</Button>}
           {view.action === 'wait' && <DelayedRetry onRetry={onRetry} />}
           {view.action === 'continue' && (
-            <>
+            <ActionGroup>
               <Button size="bid" onClick={onContinue}>
                 {t('reg.continue')}
               </Button>
-              <Button variant="outline" onClick={onBackToCeiling}>
+              <Button size="bid" variant="outline" onClick={onBackToCeiling}>
                 {t('reg.startAgain')}
               </Button>
-            </>
+            </ActionGroup>
           )}
           {view.action === 'back' && (
             <Button onClick={onBackToCeiling}>

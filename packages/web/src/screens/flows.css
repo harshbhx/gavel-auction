@@ -201,6 +201,10 @@ main[data-route='token-gate'] .gv-flow__action,
   align-self: flex-start;
 }
 
+.gv-approve .gv-actions > .gv-btn {
+  align-self: stretch;
+}
+
 .gv-approve .gv-btn--solid {
   border-color: var(--color-fg);
   background: var(--color-action);
@@ -334,10 +338,15 @@ main[data-route='token-gate'] .gv-flow__action,
   color: var(--color-fg-muted);
 }
 
-.gv-join__actions {
+.gv-join__ways {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+
+.gv-join__ways > h2,
+.gv-join__ways > p {
+  margin: 0;
 }
 
 /* Wide screens (UIX-27): the narrow flow pages sit beside the money rule instead of leaving the right
