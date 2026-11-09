@@ -204,8 +204,16 @@ describe('banned wording (R-WEB-120, R-WEB-122)', () => {
     expect(en['kill.consequence']).toMatch(/holds will be released/i);
     expect(en['receipt.failed']).not.toMatch(/nothing more will be charged/i);
     expect(en['receipt.failed']).toMatch(/held, not charged/);
-    for (const key of ['receipt.failedWon', 'screen.wonReview', 'screen.wonReviewUnknown', 'screen.settleReview'] as const) {
-      expect(bannedBeforeCapture.filter((r) => r.test(en[key])), key).toEqual([]);
+    for (const key of [
+      'receipt.failedWon',
+      'screen.wonReview',
+      'screen.wonReviewUnknown',
+      'screen.settleReview',
+    ] as const) {
+      expect(
+        bannedBeforeCapture.filter((r) => r.test(en[key])),
+        key,
+      ).toEqual([]);
       expect(en[key]).not.toMatch(/\bfirst\b/i);
     }
     expect(en['receipt.failedNoCapture']).toMatch(/not charged/i);

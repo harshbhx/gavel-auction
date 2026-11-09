@@ -136,7 +136,9 @@ describe('public screen when settlement needs review', () => {
       <ScreenView lotTitle="Lot" code={null} joinUrl="https://x.test/j" store={store} />,
     );
     expect(screen.getByText('Paddle 7 won at $250.00')).toBeTruthy();
-    expect(screen.getByTestId('settle-review').textContent).toMatch(/needs review.*held, not charged/);
+    expect(screen.getByTestId('settle-review').textContent).toMatch(
+      /needs review.*held, not charged/,
+    );
     expect(container.textContent).not.toMatch(/SOLD|captured/);
     expect(screen.queryByTestId('settle-summary')).toBeNull();
   });

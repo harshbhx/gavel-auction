@@ -22,7 +22,9 @@ export function Failed({ uncertain, reference, contact, priceCents = null }: Fai
         {uncertain ? t('receipt.failed') : t('receipt.failedNoCapture')}
       </p>
       {uncertain && priceCents !== null && (
-        <p className="gv-receipt__status">{t('receipt.failedWon', { amount: formatUsd(priceCents) })}</p>
+        <p className="gv-receipt__status">
+          {t('receipt.failedWon', { amount: formatUsd(priceCents) })}
+        </p>
       )}
       <dl className="gv-receipt__rows">
         <dt>{t('receipt.contact')}</dt>

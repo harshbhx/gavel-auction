@@ -35,8 +35,8 @@ export function Sold({ outcome, settlement = null, review = false }: SoldProps) 
               ? t('screen.wonReviewUnknown', { amount: formatUsd(outcome.amountCents) })
               : t('screen.wonReview', { n: outcome.paddle, amount: formatUsd(outcome.amountCents) })
             : outcome.paddle === null
-            ? t('screen.soldUnknown', { amount: formatUsd(outcome.amountCents) })
-            : t('screen.sold', { n: outcome.paddle, amount: formatUsd(outcome.amountCents) })}
+              ? t('screen.soldUnknown', { amount: formatUsd(outcome.amountCents) })
+              : t('screen.sold', { n: outcome.paddle, amount: formatUsd(outcome.amountCents) })}
       </p>
       {review && outcome.kind === 'sold' && (
         <p className="gv-screen__settle" data-testid="settle-review" role="status">
