@@ -1,11 +1,8 @@
 import {
-  GavelError,
   ManualClock,
   SeqIds,
   type AuctionConfig,
   type AuctionId,
-  type Cents,
-  EpochMs,
 } from '@gavel/shared';
 import { describe, expect, it } from 'vitest';
 import { secretSetFromConfig } from '../src/auth/rotation';
@@ -13,12 +10,9 @@ import { createHttpApp, type HttpApp, type HttpDeps } from '../src/http/app';
 import { mountAuctions } from '../src/http/auctions';
 import {
   createJudgeRooms,
-  JUDGE_SIM_HOLD_PATH,
   SIM_PURGE_GRACE_MS,
   type SimHolds,
-  JUDGE_JOIN_PATH,
   JUDGE_ROOMS_PATH,
-  judgeRoomConfig,
   type JudgeRoomsOptions,
 } from '../src/http/judge-rooms';
 import { requestSources } from '../src/http/node-bridge';
@@ -98,6 +92,9 @@ const post = (
     headers: { 'content-type': 'application/json', ...(opts.headers ?? {}) },
     body: JSON.stringify(opts.body ?? {}),
   });
+  requestSources.set(req, opts.src ?? '203.0.113.7');
+  return app.fetch(req);
+};
 
 const createRoom = async (app: HttpApp): Promise<{ auctionId: string; joinCode: string }> => {
   const res = await post(app, JUDGE_ROOMS_PATH, { src: '10.0.0.1' });
