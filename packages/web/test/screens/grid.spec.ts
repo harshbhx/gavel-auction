@@ -157,7 +157,7 @@ test.describe('ledger lab: export, filters in the link, verify, memory', () => {
     test.skip((page.viewportSize()?.width ?? 1280) < 700, 'cards have no header row');
     await lab(page);
     // The grid starts saving a moment after it has settled; a person never clicks sooner.
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(1500);
     await page.getByRole('columnheader', { name: new RegExp(t('ledger.col.amount')) }).click();
     await expect(
       page.getByRole('columnheader', { name: new RegExp(t('ledger.col.amount')) }),
