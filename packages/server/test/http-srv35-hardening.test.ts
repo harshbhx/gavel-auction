@@ -254,13 +254,18 @@ describe('SRV-35 C: judge errors always carry error and message', () => {
     expect(wrong.status).toBe(404);
     expect(await bodyOf(wrong)).toEqual({
       error: 'not_found',
+      code: 'not_found',
       message: 'Code not found, check and try again',
     });
 
     expect((await join(s, room.joinCode, '2.2.2.2')).status).toBe(200);
     const full = await join(s, room.joinCode, '2.2.2.3');
     expect(full.status).toBe(429);
-    expect(await bodyOf(full)).toEqual({ error: 'judge_room_full', message: 'Room is full' });
+    expect(await bodyOf(full)).toEqual({
+      error: 'judge_room_full',
+      code: 'judge_room_full',
+      message: 'Room is full',
+    });
 
     const bad = await call(s.app, 'POST', JUDGE_JOIN_PATH, { src: '3.3.3.3', body: { nope: 1 } });
     expect(bad.status).toBe(400);
@@ -301,6 +306,7 @@ describe('SRV-35 C: judge errors always carry error and message', () => {
     expect(expired.status).toBe(410);
     expect(await bodyOf(expired)).toEqual({
       error: 'judge_room_expired',
+      code: 'judge_room_expired',
       message: 'That room has ended',
     });
   });

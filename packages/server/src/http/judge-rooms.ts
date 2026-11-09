@@ -58,8 +58,8 @@ export const JUDGE_KEYS_PATH = '/api/judge/keys';
 export const JUDGE_KEY_REVOKE_PATH = '/api/judge/keys/:keyId/revoke';
 /** Header that carries the judge key. Never a URL, never the body, never a log line. */
 export const JUDGE_KEY_HEADER = 'x-judge-key';
-/** Keyed creates the whole host accepts per hour, a second bound under the live-room bound. */
-const KEYED_PER_HOUR = 20;
+/** Default for keyed creates the whole host accepts per hour (`JudgeRoomsOptions.keyedPerHour`). */
+const KEYED_PER_HOUR = 100;
 
 const HOUR_MS = 3_600_000;
 const DEFAULT_TITLE = 'Sandbox demo lot';
@@ -106,6 +106,8 @@ export interface JudgeRoomsOptions {
   keys?: JudgeKeyRegistry | undefined;
   /** Most keyed rooms alive at once (JUDGE_KEY_ROOMS_MAX). They do not use the public slots. */
   keyedMax?: number | undefined;
+  /** Keyed creates the whole host accepts per hour (JUDGE_KEY_CREATES_PER_HOUR). */
+  keyedPerHour?: number | undefined;
   /** The ledger the read-only reviewer route builds a verifiable bundle from. */
   ledger?: Pick<LedgerStore, 'read'> | undefined;
 }
@@ -263,6 +265,9 @@ const REFUSAL_TEXT: Readonly<Record<string, string>> = {
   judge_key_revoked: 'That key was revoked.',
   judge_key_locked: 'Too many wrong tries. Try again later.',
   judge_key_room_cap: 'You already have the most judge rooms the server allows. Try again soon.',
+  judge_host_busy: 'The sandbox is busy right now. Try again in a few minutes.',
+  rate_limited: 'Too many bids too fast. Slow down and try again.',
+  conflict: 'That bid id was already used with a different amount. Send a new bid id.',
   not_found: 'Code not found, check and try again',
 };
 
@@ -307,13 +312,14 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
   /** Live rooms: id -> expiry and creator tag. */
   const live = new Map<string, { expiresAt: number; src: string; keyed?: true; keyId?: string }>();
   const keyedMax = opts.keyedMax ?? 3;
+  const keyedPerHour = opts.keyedPerHour ?? KEYED_PER_HOUR;
   const registry =
     opts.keys ??
     new JudgeKeyRegistry(
       [],
       opts.judgeKey === undefined
         ? undefined
-        : { key: opts.judgeKey, maxRooms: keyedMax, perHour: KEYED_PER_HOUR },
+        : { key: opts.judgeKey, maxRooms: keyedMax, perHour: Math.min(20, keyedPerHour) },
     );
   let keyedStamps: number[] = [];
   /** Creates per key in the last hour: one judge's key never uses another's allowance. */
@@ -381,7 +387,11 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
         }
       }
       loaded = true;
-    })();
+    })().catch((e: unknown) => {
+      // A failed read must not stick: the next request tries again.
+      loading = undefined;
+      throw e;
+    });
     return loading;
   };
 
@@ -404,7 +414,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     audit(deps)?.warn('judge room refused', { event: 'judge_room.refused', reason: why, src });
     return json(
       status,
-      { error, message: message ?? REFUSAL_TEXT[error] ?? 'Request refused' },
+      { error, code: error, message: message ?? REFUSAL_TEXT[error] ?? 'Request refused' },
       retryAfterS === undefined ? {} : { 'retry-after': String(retryAfterS) },
     );
   };
@@ -416,6 +426,12 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
   const liveOf = (keyId: string): number =>
     [...live.values()].filter((e) => e.keyed === true && (e.keyId ?? LEGACY_KEY_ID) === keyId)
       .length;
+
+  /** Seconds until the keyed room that ends first frees its slot (at least 1). */
+  const soonestKeyedExpiry = (now: number): number => {
+    const ends = [...live.values()].filter((e) => e.keyed === true).map((e) => e.expiresAt);
+    return ends.length === 0 ? 60 : Math.max(1, Math.ceil((Math.min(...ends) - now) / 1000));
+  };
 
   const accepting = (): boolean => opts.enabled && !paused && publicLive() < opts.maxLive;
 
@@ -549,11 +565,26 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
       keyedStamps = withinWindow(keyedStamps, now);
       const mine = withinWindow(keyStamps.get(key.id) ?? [], now);
       keyStamps.set(key.id, mine);
-      if (liveOf(key.id) >= key.maxRooms || keyedLive() >= keyedMax) {
-        return refuse(deps, 429, 'judge_key_room_cap', 'key_cap', tag, 60);
+      // The key's own limits first, so a judge at their own limit is told so; only then the
+      // host-wide ones, which blame the sandbox and not the judge.
+      if (liveOf(key.id) >= key.maxRooms) {
+        return refuse(deps, 429, 'judge_key_room_cap', 'key_cap', tag, soonestKeyedExpiry(now));
       }
-      if (mine.length >= key.perHour || keyedStamps.length >= KEYED_PER_HOUR) {
-        return refuse(deps, 429, 'judge_rate_limited', 'key_hourly', tag, 600);
+      if (mine.length >= key.perHour) {
+        return refuse(deps, 429, 'judge_rate_limited', 'key_hourly', tag, untilFree(mine, now));
+      }
+      if (keyedLive() >= keyedMax) {
+        return refuse(deps, 503, 'judge_host_busy', 'host_cap', tag, soonestKeyedExpiry(now));
+      }
+      if (keyedStamps.length >= keyedPerHour) {
+        return refuse(
+          deps,
+          503,
+          'judge_host_busy',
+          'host_hourly',
+          tag,
+          untilFree(keyedStamps, now),
+        );
       }
       keyedStamps.push(now);
       mine.push(now);
@@ -610,9 +641,10 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
         src: tag,
         expiresAt,
         live: live.size,
-        // Never the key itself: a field name with "key" in it would be redacted anyway.
+        // Never the key itself. The id is public; it is logged as `passId` because the logger
+        // redacts any field whose name contains "key".
         via: keyed ? 'judge-pass' : 'public',
-        ...(key === undefined ? {} : { keyId: key.id }),
+        ...(key === undefined ? {} : { passId: key.id }),
       });
       return json(201, {
         auctionId,
@@ -658,6 +690,10 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
       return { refused: refuse(deps, 429, 'judge_key_locked', 'key_locked', tag, lockedFor) };
     }
     const given = c.req.headers.get(JUDGE_KEY_HEADER) ?? '';
+    // A blank key is a missing key, not a guess: refuse it without a strike, so a panel that
+    // sends Check before a key is pasted cannot lock a shared address out.
+    if (given.trim() === '')
+      return { refused: refuse(deps, 401, 'judge_key_invalid', 'key_blank', tag) };
     const verdict = registry.verify(given, now);
     if (verdict.ok) return { key: verdict.key };
     if (verdict.reason === 'invalid') {
@@ -668,7 +704,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     audit(deps)?.warn('judge pass refused', {
       event: 'judge_room.key_refused',
       reason: verdict.reason,
-      keyId: verdict.keyId,
+      passId: verdict.keyId,
       src: tag,
     });
     return { refused: refuse(deps, 401, error, `key_${verdict.reason}`, tag) };
@@ -687,7 +723,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
       event: 'judge_room.key_ok',
       src: tag,
       via: 'judge-pass',
-      keyId: key.id,
+      passId: key.id,
     });
     return json(200, {
       ok: true,
@@ -724,10 +760,35 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     requireAdmin(c);
     await load(c.deps);
     const id = c.params.keyId ?? '';
-    if (!registry.revoke(id)) throw new HttpError(404, 'not_found', 'no such judge key');
-    const prev = await c.deps.store.getJournal(KEYS_KEY);
-    await c.deps.store.putJournal(KEYS_KEY, prev?.version ?? 0, { revoked: registry.revokedIds() });
-    audit(c.deps)?.warn('judge key revoked', { event: 'judge_room.key_revoked', keyId: id });
+    if (registry.get(id) === undefined) throw new HttpError(404, 'not_found', 'no such judge key');
+    // Journal first: the revoke is durable or the call fails and memory stays as it was. One
+    // retry on a version conflict (two quick revokes read the same version), re-reading the row.
+    const write = async (): Promise<void> => {
+      const prev = await c.deps.store.getJournal(KEYS_KEY);
+      const stored = (prev?.value as { revoked?: unknown } | undefined)?.revoked;
+      const ids = new Set<string>([
+        ...registry.revokedIds(),
+        ...(Array.isArray(stored) ? stored.filter((x): x is string => typeof x === 'string') : []),
+        id,
+      ]);
+      await c.deps.store.putJournal(KEYS_KEY, prev?.version ?? 0, { revoked: [...ids] });
+    };
+    try {
+      await write();
+    } catch (first) {
+      try {
+        await write();
+      } catch (second) {
+        audit(c.deps)?.error('judge key revoke failed', {
+          event: 'judge_room.key_revoke_failed',
+          passId: id,
+          error: second instanceof Error ? second.message : String(first),
+        });
+        throw new HttpError(503, 'store_unavailable', 'the revoke could not be saved, try again');
+      }
+    }
+    registry.revoke(id);
+    audit(c.deps)?.warn('judge key revoked', { event: 'judge_room.key_revoked', passId: id });
     return json(200, { id, revoked: true });
   };
 

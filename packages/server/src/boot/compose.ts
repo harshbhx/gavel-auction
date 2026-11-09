@@ -622,6 +622,22 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     clock: { nowMs: () => clock.now() },
     maxCeilingCents: payments.maxCeilingCents,
   });
+  // JUDGE_KEYS: one bad entry is skipped and logged (never its hash), the rest still work.
+  const parsedKeys = parseJudgeKeys(config.JUDGE_KEYS);
+  for (const problem of parsedKeys.problems) {
+    log.error('JUDGE_KEYS entry skipped', { event: 'judge_keys.entry_skipped', problem });
+  }
+  for (const e of parsedKeys.entries) {
+    if (e.maxRooms > config.JUDGE_KEY_ROOMS_MAX) {
+      log.warn('judge key allows more rooms than the host', {
+        event: 'judge_keys.limit_above_host',
+        passId: e.id,
+        maxRooms: e.maxRooms,
+        hostMax: config.JUDGE_KEY_ROOMS_MAX,
+      });
+    }
+  }
+  const judgeKeyEntries = parsedKeys.entries;
   // Judge rooms (R-JRM): key-less real sandbox rooms behind JUDGE_ROOMS=1; config refuses the
   // flag with live PayPal. The create route is mounted always and answers 404 while it is off.
   const judgeRooms = createJudgeRooms({
@@ -634,13 +650,18 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     maxCeilingCents: payments.maxCeilingCents,
     lotWindowMs: JUDGE_ROOM_DEFAULTS.lotWindowMs,
     keyedMax: config.JUDGE_KEY_ROOMS_MAX,
+    keyedPerHour: config.JUDGE_KEY_CREATES_PER_HOUR,
     ledger: stores.ledger,
     // Per-judge keys plus the legacy shared JUDGE_KEY as one more entry (id "legacy").
     keys: new JudgeKeyRegistry(
-      parseJudgeKeys(config.JUDGE_KEYS).entries,
+      judgeKeyEntries,
       config.JUDGE_KEY === undefined
         ? undefined
-        : { key: config.JUDGE_KEY, maxRooms: config.JUDGE_KEY_ROOMS_MAX, perHour: 20 },
+        : {
+            key: config.JUDGE_KEY,
+            maxRooms: Math.min(config.JUDGE_KEY_ROOMS_MAX, 3),
+            perHour: 20,
+          },
     ),
     ...(config.JUDGE_ROOMS && config.JUDGE_SIM_HOLDS
       ? {

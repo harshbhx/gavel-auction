@@ -62,7 +62,7 @@ room ledger (`GET /api/judge/rooms/{id}/ledger`) and the audit page, for its own
 only. It keeps working for the token's full 12 hours, also after the room ends, so a judge can verify the ledger and audit trail later; it is read only and exposes only the public chain export. Judge rooms need no key. The judge key is a separate, limited key (never the operator
 key) that a host may set: sent as `X-Judge-Key` on `POST /api/judge/rooms` it skips the public
 limits and the response carries `unlocked: true`; `POST /api/judge/key` checks it without
-creating anything. A wrong key counts toward the same lockout as a wrong room code. The key
+creating anything. A wrong key has a lockout of its own (5 wrong keys, 15 minutes, per source address) that never blocks joins. The key
 travels only in that header, never in a URL or body. No real credential appears in the spec or
 in this page.
 
@@ -100,7 +100,7 @@ Published in the spec as the vendor extension `x-rate-limit` on each operation a
 | Join (`POST /api/auctions/{id}/join`)                 | 10 per minute, burst 40                                                                   |
 | Judge join and lookup by join code                    | 10 and 30 attempts per minute; 5 wrong codes lock the address for 15 minutes              |
 | Judge room create                                     | 12 per hour per address, 40 per hour for the host, 15 live rooms, 30 minute lifetime      |
-| Judge room create with a judge key                    | 20 per hour for the host, 3 live keyed rooms; wrong keys share the code lockout           |
+| Judge room create with a judge key                    | 100 per hour for the host, 10 live keyed rooms; wrong keys have their own lockout         |
 | Judge room size                                       | 20 bidders                                                                                |
 | WebSocket                                             | bids 3 per second (burst 5), frames 20 per second (burst 40), 20 open sockets per address |
 
