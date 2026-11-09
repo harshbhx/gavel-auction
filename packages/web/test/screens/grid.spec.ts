@@ -154,6 +154,8 @@ test.describe('ledger lab: export, filters in the link, verify, memory', () => {
 
   test('sort and widths come back after a reload in the same tab', async ({ page }) => {
     await lab(page);
+    // The grid starts saving a moment after it has settled; a person never clicks sooner.
+    await page.waitForTimeout(600);
     await page.getByRole('columnheader', { name: new RegExp(t('ledger.col.amount')) }).click();
     await expect(
       page.getByRole('columnheader', { name: new RegExp(t('ledger.col.amount')) }),
