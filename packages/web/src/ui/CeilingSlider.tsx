@@ -54,8 +54,7 @@ export function CeilingSlider({
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
     const index = stops.indexOf(at);
-    const stopAt = (i: number): number =>
-      stops[Math.min(stops.length - 1, Math.max(0, i))] ?? at;
+    const stopAt = (i: number): number => stops[Math.min(stops.length - 1, Math.max(0, i))] ?? at;
     const moves: Readonly<Record<string, number>> = {
       ArrowRight: stopAt(index + 1),
       ArrowUp: stopAt(index + 1),

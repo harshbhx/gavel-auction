@@ -127,4 +127,3 @@ describe('slider ladder and live bounds (#2393, #2395)', () => {
     expect(slider.getAttribute('aria-valuemax')).toBe('300000');
   });
 });
-
