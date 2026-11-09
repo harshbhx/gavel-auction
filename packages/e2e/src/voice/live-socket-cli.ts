@@ -65,8 +65,6 @@ async function streamClip(
   clip: ManifestClip,
   samples: Int16Array,
 ): Promise<ClipObservation> {
-  const base = stack.serverUrl;
-  const origin = new URL(base).origin;
   const captions: Caption[] = [];
   const statuses: string[] = [];
   const obs: ClipObservation = {
