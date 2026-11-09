@@ -180,9 +180,27 @@ export interface KnownRoom {
  */
 export function latestHubRoom(now: number = Date.now()): KnownRoom | null {
   let found: KnownRoom | null = null;
-  for (const [roomId, keys] of memory) {
+  const consider = (roomId: string, keys: HubKeys): void => {
     const live = keys.expiresAt === null || keys.expiresAt > now;
     if (live && (keys.code !== null || keys.auctioneer !== null)) found = { roomId, keys };
+  };
+  for (const [roomId, keys] of memory) consider(roomId, keys);
+  if (found !== null) return found;
+  // A full page load (a plain link from the hub to /verify) empties memory; this tab's
+  // sessionStorage still holds the keys the hub stored.
+  const storage = tabStorage();
+  try {
+    const prefix = 'gavel:session:';
+    const suffix = ':hub';
+    for (let i = 0; storage !== null && i < (storage as Storage).length; i += 1) {
+      const key = (storage as Storage).key(i);
+      if (key === null || !key.startsWith(prefix) || !key.endsWith(suffix)) continue;
+      const roomId = key.slice(prefix.length, key.length - suffix.length);
+      const keys = loadStored(roomId, storage);
+      if (keys !== null) consider(roomId, keys);
+    }
+  } catch {
+    // Storage blocked: no stored room.
   }
   return found;
 }
