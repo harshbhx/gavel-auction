@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Cents, EpochMs, RoomSnapshotSchema, type RoomSnapshot } from '@gavel/shared';
 
 import { t } from '../../copy/t';
+import { clearReceiptToken } from '../../store/session';
 import { initialRoomState, type RoomState } from '../../store/roomReducer';
 import { Loading } from '../states/States';
 import { ReceiptView } from './ReceiptView';
@@ -99,7 +100,13 @@ export function SharedReceiptRoute({
       headers: { authorization: `Bearer ${token}` },
     })
       .then(async (res) => {
-        if (!res.ok) throw new Error('refused');
+        if (!res.ok) {
+          // A refused or expired token must not be kept for the next reload; a network blip may.
+          if (res.status === 401 || res.status === 403 || res.status === 404) {
+            clearReceiptToken(roomId);
+          }
+          throw new Error('refused');
+        }
         const body = (await res.json()) as { snapshot?: unknown; bidderId?: unknown };
         const parsed = RoomSnapshotSchema.safeParse(body.snapshot);
         if (!parsed.success || typeof body.bidderId !== 'string') throw new Error('bad receipt');

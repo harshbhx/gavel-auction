@@ -55,7 +55,7 @@ describe('Sold', () => {
         settlement={{ captured: 1, released: 11 }}
       />,
     );
-    expect(screen.getByTestId('settle-summary').textContent).toBe('1 captured, 11 released');
+    expect(screen.getByTestId('settle-summary').textContent).toBe('1 charged, 11 released');
     rerender(<Sold outcome={{ kind: 'passed' }} />);
     expect(screen.getByText(t('screen.passed'))).toBeTruthy();
   });

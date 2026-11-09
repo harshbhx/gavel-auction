@@ -15,7 +15,7 @@ describe('LadderCompact', () => {
   it('shows one dot per hold and the count summary', () => {
     const { container } = render(<LadderCompact view={settled} />);
     expect(container.querySelectorAll('li').length).toBe(12);
-    expect(screen.getByText('1 captured, 11 released')).toBeTruthy();
+    expect(screen.getByText('1 charged, 11 released')).toBeTruthy();
   });
 
   it('uses a different shape for each state class', () => {

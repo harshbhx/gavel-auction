@@ -121,11 +121,13 @@ describe('console route access (#1777)', () => {
     expect(FakeSocket.last).toBeNull();
   });
 
-  it('keeps the screen token out of session storage', () => {
+  it('keeps the screen token out of the bidder session and out of localStorage', () => {
+    // #2225: the tab keeps the token under its own key so a reload works, but it never becomes a
+    // bidder session and never reaches localStorage.
     window.history.pushState(null, '', `/r/${ROOM}/screen#token=pelican`);
     render(<App initialPath={`/r/${ROOM}/screen`} liveBase="ws://localhost:1" />);
     expect(loadSession(ROOM)).toBeNull();
-    expect(window.sessionStorage.length).toBe(0);
+    expect(window.localStorage.length).toBe(0);
   });
 });
 

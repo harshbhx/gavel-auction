@@ -322,6 +322,15 @@ Gates G0 to G4 are runs against the real PayPal sandbox; G5 is measured on synth
 
 Behaviour not covered by a passed gate is exercised against the project's own fake PayPal, and the next sandbox runs are listed on [Limits and next steps](docs/LIMITATIONS.md).
 
+<p align="center">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/assets/readme/results-latency-dark-poster.png">
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/results-latency-poster.png">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/results-latency-dark.gif">
+    <img src="docs/assets/readme/results-latency.gif" alt="Bar chart of measured hammer latency, p95, on the real PayPal sandbox, 20 runs with 6 holds each. Hammer to settled: 5.59 seconds against a 6 second target, met. Hammer to captured: 3.01 seconds against a 2.5 second target, missed. Source: docs/GATES.md, run 42346811713." width="80%">
+  </picture>
+</p>
+
 **G3 progress.** The timed probe started on 7 Nov at 03:06 UTC. Day 0 is recorded: an immediate reauthorize was refused with `REAUTHORIZATION_TOO_SOON`, and three authorizations were approved to be read at day 3.5, 4 and 5 ([run 42332377547](https://github.com/harshbhx/gavel-auction/actions/runs/42332377547)). An early reading on an older G2 wallet authorization (8 Nov 17:36 UTC, age 3.24 days) accepted a partial capture of 1.00 (HTTP 201) and answered a reauthorize call with 422 `UNPROCESSABLE_ENTITY`, issue `PAYER_CANNOT_PAY` ([run 42505780514](https://github.com/harshbhx/gavel-auction/actions/runs/42505780514)); the older guest-card authorization was probed on 9 Nov at 00:09 UTC, age 3.5075 days: still CREATED, a partial capture of 1.00 accepted (HTTP 201), reauthorize 422 `PAYER_CANNOT_PAY` ([run 42538613566](https://github.com/harshbhx/gavel-auction/actions/runs/42538613566); [evidence](docs/evidence/G3-early)). A `final_capture` and a void on a guest-card authorization were not run. These are early readings, not the G3 result. The final reading is about 12 Nov 06:17 UTC.
 
 The docs read gate status from `docs/GATES.md` when the site is built: [Evidence and gates](https://docs.gavel.dualmindlab.tech/docs/proof/gates), [evidence map](https://docs.gavel.dualmindlab.tech/docs/proof/evidence-map), [simulation](https://docs.gavel.dualmindlab.tech/docs/proof/simulation).

@@ -78,7 +78,7 @@ The file is [`render.yaml`](https://github.com/harshbhx/gavel-auction/blob/main/
 </Step>
 <Step>
 
-**Environment variables.** Fixed values sit in the blueprint: `NODE_VERSION=22`, `NODE_ENV=production`, `TRUSTED_PROXY_HOPS=1` (the host trusts one proxy hop, Render's, when it reads the client address for rate limits; `docs/SECURITY-REVIEW.md` SEC-14 notes this is not confirmed against the live host), `STORE`, `DATA_DIR`, `PAYMENTS=sandbox` and `PAYPAL_ENV=sandbox`. Values that differ per environment or are secret are declared with `sync: false`, so Render asks for them in the dashboard: `PUBLIC_URL`, `CORS_ORIGINS`, `WEB_ORIGIN`, `TOKEN_SECRET`, `ADMIN_KEY` and the PayPal sandbox credentials. Secret values are never in the repository.
+**Environment variables.** Fixed values sit in the blueprint: `NODE_VERSION=22`, `NODE_ENV=production`, `TRUSTED_PROXY_HOPS=2` (Render's own Cloudflare edge and Render's proxy are two hops in front of the app, so the client is the second entry from the right of `X-Forwarded-For`; checked once on 9 Nov 2026 with two probe runners, where 1 did not match and 2 matched exactly, see `docs/evidence/security/SEC-14/`; use 1 only behind a single proxy), `STORE`, `DATA_DIR`, `PAYMENTS=sandbox` and `PAYPAL_ENV=sandbox`. Values that differ per environment or are secret are declared with `sync: false`, so Render asks for them in the dashboard: `PUBLIC_URL`, `CORS_ORIGINS`, `WEB_ORIGIN`, `TOKEN_SECRET`, `ADMIN_KEY` and the PayPal sandbox credentials. Secret values are never in the repository.
 
 </Step>
 </Steps>

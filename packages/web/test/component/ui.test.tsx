@@ -221,7 +221,7 @@ describe('CeilingSlider', () => {
 
   it('exposes slider semantics with a money value text', () => {
     render(<CeilingSlider {...props} value={50000} onChange={() => undefined} />);
-    const slider = screen.getByRole('slider', { name: /price ceiling/i });
+    const slider = screen.getByRole('slider', { name: /price limit/i });
     expect(slider.getAttribute('aria-valuemin')).toBe('10000');
     expect(slider.getAttribute('aria-valuemax')).toBe('100000');
     expect(slider.getAttribute('aria-valuenow')).toBe('50000');

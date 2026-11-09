@@ -1,6 +1,6 @@
 # SEC-14 source-address probe: how to read it and what each outcome proves
 
-Issues: #2067 and #2069. Status of SEC-14 stays as it is in `docs/SECURITY-REVIEW.md` until a run below is recorded.
+Issues: #2067 and #2069. Result recorded on 9 Nov 2026 in [SEC-14/README.md](SEC-14/README.md): `TRUSTED_PROXY_HOPS=2` matched both runners (run 42578306983); 1 did not (run 42564773281). SEC-14 stays PARTIAL in `docs/SECURITY-REVIEW.md`.
 
 ## Why this is a procedure and not an automatic check
 
@@ -10,7 +10,7 @@ That gives a safe comparison. If the server sees a client's own address, the tag
 
 ## Two proxy hops are likely
 
-Responses from the API host carry `server: cloudflare` and `cf-ray`, and `x-render-origin-server: Render`. The custom domain is proxied by Cloudflare, and Render itself also fronts its services with Cloudflare, so there may be two proxy hops in front of the app while `TRUSTED_PROXY_HOPS` is 1. The first probe run (sec14-source-probe run 42564773281) created both rooms with HTTP 201; the `src` values in the Render logs have still to be compared.
+Responses from the API host carry `server: cloudflare` and `cf-ray`, and `x-render-origin-server: Render`. The custom domain is proxied by Cloudflare, and Render itself also fronts its services with Cloudflare, so there may be two proxy hops in front of the app while `TRUSTED_PROXY_HOPS` is 1. The probe confirmed two hops: with `TRUSTED_PROXY_HOPS=1` (run 42564773281) the `src` values matched neither runner, and with 2 (run 42578306983) they matched exactly.
 
 ## The probe
 

@@ -32,7 +32,7 @@ describe('copy catalog', () => {
   });
 
   it('leaves no placeholder behind when all params are given', () => {
-    expect(t('screen.settleSummary', { c: 1, r: 4 })).toBe('1 captured, 4 released');
+    expect(t('screen.settleSummary', { c: 1, r: 4 })).toBe('1 charged, 4 released');
   });
 
   it('keeps the exact required phrase on the landing and the ceiling step', () => {

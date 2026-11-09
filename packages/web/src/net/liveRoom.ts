@@ -87,7 +87,7 @@ export function startLiveRoom(opts: LiveRoomOptions): LiveRoom | null {
       if (msg.t === 'state') pending.reconcile(msg.snapshot);
     },
   });
-  const unbind = bindResync(store, { sendJoin: () => connection.sendJoin() });
+  const unbind = bindResync(store, { requestSnapshot: () => connection.reconnect() });
   setActiveConnection(connection);
   connection.start();
 

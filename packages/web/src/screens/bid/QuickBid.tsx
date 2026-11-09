@@ -68,7 +68,9 @@ export function QuickBid({ nextMinCents, incrementCents, ceilingCents, onBid }: 
           {t('bid.quick', { amount: formatUsdCompact(cents) })}
         </Button>
       ))}
-      {anyOver && <p id={REASON_ID}>{t('bid.aboveCeiling')}</p>}
+      {anyOver && ceilingCents !== null && (
+        <p id={REASON_ID}>{t('bid.aboveCeiling', { max: formatUsdCompact(ceilingCents) })}</p>
+      )}
     </div>
   );
 }

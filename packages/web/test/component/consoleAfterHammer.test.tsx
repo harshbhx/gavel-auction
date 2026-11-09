@@ -121,7 +121,7 @@ describe('settlement line without per-hold lanes', () => {
 
   it('agrees with the counts and is the only settlement line', () => {
     render(<LadderCompact view={view('SETTLED')} />);
-    expect(screen.getByText('1 captured, 1 released')).toBeTruthy();
+    expect(screen.getByText('1 charged, 1 released')).toBeTruthy();
     expect(screen.queryByText(`1 ${t('ladder.state.SETTLED')}`)).toBeNull();
   });
 

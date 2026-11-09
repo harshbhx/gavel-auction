@@ -22,6 +22,73 @@ export const ROOM_MINUTES = 30;
 
 const memory = new Map<string, HubKeys>();
 
+// The keys also live in this tab's sessionStorage (never localStorage), so a reload of the hub or
+// a "Back to hub" link from a screen tab still has them. They are dropped when the room expires.
+type HubStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+const hubStoreKey = (roomId: string): string => `gavel:session:${roomId}:hub`;
+const storedHubRooms = new Set<string>();
+
+function tabStorage(): HubStorage | null {
+  try {
+    return typeof sessionStorage === 'undefined' ? null : sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+function loadStored(roomId: string, storage: HubStorage | null): HubKeys | null {
+  try {
+    const raw = storage?.getItem(hubStoreKey(roomId)) ?? null;
+    if (raw === null) return null;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
+    const exp = typeof parsed['expiresAt'] === 'number' ? parsed['expiresAt'] : null;
+    return {
+      auctioneer: str(parsed['auctioneer']),
+      screen: str(parsed['screen']),
+      expiresAt: exp,
+      code: str(parsed['code']),
+      reviewer: str(parsed['reviewer']),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveStored(roomId: string, keys: HubKeys, storage: HubStorage | null): void {
+  try {
+    storage?.setItem(hubStoreKey(roomId), JSON.stringify(keys));
+    storedHubRooms.add(roomId);
+  } catch {
+    // Blocked or full: the in-memory copy still works.
+  }
+}
+
+function isExpired(keys: HubKeys, now: number): boolean {
+  return keys.expiresAt !== null && keys.expiresAt <= now;
+}
+
+/** What this tab remembers for the room: memory first, then sessionStorage; expired keys are dropped. */
+function known(roomId: string, storage: HubStorage | null, now: number): HubKeys {
+  const held = memory.get(roomId) ?? loadStored(roomId, storage);
+  if (held === null) return NO_KEYS;
+  if (isExpired(held, now)) {
+    forgetHubRoom(roomId, storage);
+    return NO_KEYS;
+  }
+  return held;
+}
+
+/** Forgets one room's keys in memory and in this tab's storage (room ended or expired). */
+export function forgetHubRoom(roomId: string, storage: HubStorage | null = tabStorage()): void {
+  memory.delete(roomId);
+  try {
+    storage?.removeItem(hubStoreKey(roomId));
+  } catch {
+    // Nothing to clear.
+  }
+}
+
 function pick(params: URLSearchParams, name: string): string | null {
   const value = params.get(name);
   return value === null || value === '' ? null : value;
@@ -52,18 +119,30 @@ function merge(base: HubKeys, over: HubKeys): HubKeys {
   };
 }
 
-export function rememberHubKeys(roomId: string, keys: HubKeys): void {
-  memory.set(roomId, merge(memory.get(roomId) ?? NO_KEYS, keys));
+export function rememberHubKeys(
+  roomId: string,
+  keys: HubKeys,
+  storage: HubStorage | null = tabStorage(),
+): void {
+  const merged = merge(known(roomId, storage, Date.now()), keys);
+  memory.set(roomId, merged);
+  saveStored(roomId, merged, storage);
 }
 
 /** The keys in the fragment, merged over what this tab already remembers for the room. */
-export function readHubKeys(roomId: string, hash: string = window.location.hash): HubKeys {
-  const found = merge(memory.get(roomId) ?? NO_KEYS, parseHubFragment(hash));
+export function readHubKeys(
+  roomId: string,
+  hash: string = window.location.hash,
+  storage: HubStorage | null = tabStorage(),
+): HubKeys {
+  const found = merge(known(roomId, storage, Date.now()), parseHubFragment(hash));
   memory.set(roomId, found);
+  if (found !== NO_KEYS && hubFragment(found) !== '') saveStored(roomId, found, storage);
   return found;
 }
 
-export function forgetHubKeys(): void {
+export function forgetHubKeys(storage: HubStorage | null = tabStorage()): void {
+  for (const id of [...storedHubRooms]) forgetHubRoom(id, storage);
   memory.clear();
 }
 
@@ -85,8 +164,8 @@ export function hubHref(
   auctioneer: string | null = null,
   code: string | null = null,
 ): string {
-  const known = merge(memory.get(roomId) ?? NO_KEYS, { ...NO_KEYS, auctioneer, code });
-  return `/r/${encodeURIComponent(roomId)}/hub${hubFragment(known)}`;
+  const have = merge(known(roomId, tabStorage(), Date.now()), { ...NO_KEYS, auctioneer, code });
+  return `/r/${encodeURIComponent(roomId)}/hub${hubFragment(have)}`;
 }
 
 /** A room this tab made or opened: its id and the keys the tab holds for it. */

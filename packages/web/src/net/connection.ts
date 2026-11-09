@@ -31,9 +31,22 @@ export const BUSY_BACKOFF_MS: readonly number[] = [5000, 10_000, 20_000, 40_000,
 export interface ConnectionSnapshot {
   status: TransportStatus;
   offline: boolean;
+  /** True when the server closed this connection because the same link was opened elsewhere. */
+  superseded?: true;
   /** Epoch ms of the next attempt while the server refuses this network as too busy. */
   busyUntilMs?: number;
 }
+
+/** Close code the server uses for the oldest connection of a token past the per-token cap. */
+export const SUPERSEDED_CLOSE_CODE = 4011;
+/**
+ * A connection that stays silent this long while open is treated as lost. The browser cannot see
+ * the server's transport pings, so a half-open socket raises no event of its own. A room with no
+ * traffic is refreshed with one quiet reconnect per window, which costs one join.
+ */
+export const SILENCE_MS = 60_000;
+/** How often the silence check runs. */
+export const WATCHDOG_CHECK_MS = 10_000;
 
 /** A connection that stays open this long counts as stable, and the backoff starts over. */
 export const STABLE_AFTER_MS = 5000;
@@ -49,10 +62,35 @@ export interface ConnectionDeps {
   /** Defaults to Math.random. Returns a value in [0, 1). */
   random?: () => number;
   setTimer?: (fn: () => void, ms: number) => unknown;
-  /** Epoch ms, for the busy notice. Defaults to Date.now. */
+  /** Epoch ms, for the busy notice and the silence check. Defaults to Date.now. */
   now?: () => number;
   clearTimer?: (handle: unknown) => void;
+  /** Where wake-up events come from. Defaults to the browser document and window. */
+  wake?: WakeSource;
 }
+
+/** The browser events that mean the device may have slept or changed network. */
+export interface WakeSource {
+  /** Calls `cb` when the page becomes visible, is restored from cache, or the network returns. */
+  subscribe(cb: () => void): () => void;
+}
+
+const browserWake: WakeSource = {
+  subscribe(cb) {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return () => {};
+    const onVisible = (): void => {
+      if (document.visibilityState === 'visible') cb();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', cb);
+    window.addEventListener('online', cb);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', cb);
+      window.removeEventListener('online', cb);
+    };
+  },
+};
 
 /** Delay before reconnect attempt number `attempt` (0 based), with plus or minus 20 percent jitter. */
 export function backoffDelay(attempt: number, random: number): number {
@@ -74,6 +112,8 @@ export class ConnectionManager {
   private reconnectTimer: unknown = null;
   private offlineTimer: unknown = null;
   private stableTimer: unknown = null;
+  private watchdogTimer: unknown = null;
+  private lastFrameAt = 0;
   private running = false;
   /** Consecutive busy refusals, and the wait the latest one asked for. */
   private busyCount = 0;
@@ -84,11 +124,13 @@ export class ConnectionManager {
   private readonly random: () => number;
   private readonly setTimer: (fn: () => void, ms: number) => unknown;
   private readonly clearTimer: (handle: unknown) => void;
+  private readonly now: () => number;
 
   constructor(private readonly deps: ConnectionDeps) {
     this.random = deps.random ?? Math.random;
     this.setTimer = deps.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
     this.clearTimer = deps.clearTimer ?? ((h) => clearTimeout(h as number));
+    this.now = deps.now ?? Date.now;
   }
 
   getSnapshot = (): ConnectionSnapshot => this.snapshot;
@@ -106,7 +148,9 @@ export class ConnectionManager {
     const { transport } = this.deps;
     this.unsubscribers = [
       transport.onStatus((s) => this.handleStatus(s)),
+      (this.deps.wake ?? browserWake).subscribe(() => this.wake()),
       transport.onMessage((m) => {
+        this.lastFrameAt = this.now();
         if (
           m.t === 'error' &&
           !this.joined &&
@@ -138,6 +182,7 @@ export class ConnectionManager {
     this.clearReconnect();
     this.clearOffline();
     this.clearStable();
+    this.clearWatchdog();
     this.unsubscribers.forEach((u) => u());
     this.unsubscribers = [];
     this.deps.transport.close();
@@ -155,6 +200,8 @@ export class ConnectionManager {
         this.stableTimer = null;
         this.attempt = 0;
       }, STABLE_AFTER_MS);
+      this.lastFrameAt = this.now();
+      this.armWatchdog();
       this.update(
         this.snapshot.busyUntilMs === undefined
           ? { status, offline: false }
@@ -168,6 +215,11 @@ export class ConnectionManager {
       return;
     }
     this.clearStable();
+    this.clearWatchdog();
+    if (this.deps.transport.lastCloseCode === SUPERSEDED_CLOSE_CODE) {
+      this.supersede();
+      return;
+    }
     this.update({ ...this.snapshot, status });
     if (this.offlineTimer === null && !this.snapshot.offline) {
       this.offlineTimer = this.setTimer(() => {
@@ -176,6 +228,64 @@ export class ConnectionManager {
       }, OFFLINE_AFTER_MS);
     }
     this.scheduleReconnect();
+  }
+
+  /**
+   * The server closed this connection because the same link was opened in another tab. Reconnecting
+   * would only evict that tab in turn, so stop and let the person choose to use this tab.
+   */
+  private supersede(): void {
+    this.running = false;
+    this.clearReconnect();
+    this.clearOffline();
+    this.unsubscribers.forEach((u) => u());
+    this.unsubscribers = [];
+    this.deps.transport.close();
+    this.update({ status: 'closed', offline: false, superseded: true });
+  }
+
+  /**
+   * Replaces the socket with a fresh one right now, with a normal first join (token and resume
+   * point), so the server answers with a snapshot. Used to resync after a gap: a second join on
+   * an open socket is refused by the gateway.
+   */
+  reconnect(): void {
+    if (!this.running) return;
+    this.clearReconnect();
+    this.attempt = 0;
+    this.deps.transport.connect();
+  }
+
+  /** The page became visible, was restored, or the network returned: do not wait for a timer. */
+  private wake(): void {
+    // A busy refusal keeps its own capped backoff: waking must not hammer a limiter that said wait.
+    if (!this.running || this.busyCount > 0) return;
+    if (this.snapshot.status === 'open') {
+      if (this.now() - this.lastFrameAt >= SILENCE_MS) this.dropSilent();
+      return;
+    }
+    this.reconnect();
+  }
+
+  private armWatchdog(): void {
+    this.clearWatchdog();
+    this.watchdogTimer = this.setTimer(() => {
+      this.watchdogTimer = null;
+      if (!this.running || this.snapshot.status !== 'open') return;
+      if (this.now() - this.lastFrameAt >= SILENCE_MS) this.dropSilent();
+      else this.armWatchdog();
+    }, WATCHDOG_CHECK_MS);
+  }
+
+  private clearWatchdog(): void {
+    if (this.watchdogTimer !== null) this.clearTimer(this.watchdogTimer);
+    this.watchdogTimer = null;
+  }
+
+  /** No frame for too long: treat the socket as lost so the normal reconnect path runs. */
+  private dropSilent(): void {
+    this.clearWatchdog();
+    this.deps.transport.close();
   }
 
   /** Sends a join with the current token and resume point. Used on open and to resync. */
@@ -225,6 +335,7 @@ export class ConnectionManager {
     if (
       next.status === this.snapshot.status &&
       next.offline === this.snapshot.offline &&
+      next.superseded === this.snapshot.superseded &&
       next.busyUntilMs === this.snapshot.busyUntilMs
     ) {
       return;

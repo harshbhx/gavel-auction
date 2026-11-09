@@ -161,8 +161,15 @@ describe('marketing landing', () => {
     expect(t('mk.trust.g3.body')).toMatch(/probe is running/);
     expect(t('mk.trust.g3.body')).toMatch(/final reading is due/);
     expect(t('mk.trust.g5.body')).toMatch(/synthetic/);
-    expect(t('mk.trust.g5.body')).toMatch(/live-room test/);
-    expect(t('mk.trust.lat.body')).toMatch(/3\.0 s against a 2\.5 s target/);
+    expect(t('mk.trust.g5.body')).toMatch(
+      /0\.058 \(Groq\) and 0\.092 \(Deepgram\) against a target of 0\.05/,
+    );
+    expect(t('mk.trust.g5.body')).toMatch(/24 of 24/);
+    expect(t('mk.trust.g5.body')).not.toMatch(/live-room test/);
+    expect(t('mk.trust.lat.body')).toMatch(/49 settlements/);
+    expect(t('mk.trust.lat.body')).toMatch(
+      /captured p95 3\.8 s against a target of 2\.5 s, hammer to settled p95 6\.9 s against a target of 6 s/,
+    );
   });
 
   it('does not claim replay, users, testimonials or partners', () => {

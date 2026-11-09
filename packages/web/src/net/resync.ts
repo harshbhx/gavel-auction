@@ -4,16 +4,19 @@ import type { RoomStore } from '../store/roomStore';
 export const RESYNC_RETRY_MS = 3000;
 
 export interface ResyncDeps {
-  /** Sends a join with the stored session token and the store's current lastSeq. */
-  sendJoin(): void;
+  /**
+   * Gets a fresh snapshot: reopens the connection so the first join carries the session token and
+   * the store's current lastSeq. The gateway refuses a second join on an open socket.
+   */
+  requestSnapshot(): void;
   setTimer?: (fn: () => void, ms: number) => unknown;
   clearTimer?: (handle: unknown) => void;
 }
 
 /**
- * Connects the store's resync effect to the connection. The join goes out through the same
- * path as the first join, so it carries the session token, and it is repeated until a snapshot
- * arrives, because the first one may be sent while the socket is down. Returns an unbind function.
+ * Connects the store's resync effect to the connection. The request reopens the connection, so
+ * the join carries the session token, and it is repeated until a snapshot arrives, because the
+ * first one may be sent while the socket is down. Returns an unbind function.
  */
 export function bindResync(store: RoomStore, deps: ResyncDeps): () => void {
   const setTimer = deps.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
@@ -29,14 +32,14 @@ export function bindResync(store: RoomStore, deps: ResyncDeps): () => void {
     timer = setTimer(() => {
       timer = null;
       if (!store.getState().resyncing) return;
-      deps.sendJoin();
+      deps.requestSnapshot();
       arm();
     }, RESYNC_RETRY_MS);
   };
 
   const offEffect = store.onEffect((effect) => {
     if (effect.type !== 'resync') return;
-    deps.sendJoin();
+    deps.requestSnapshot();
     arm();
   });
   const offState = store.subscribe(() => {
