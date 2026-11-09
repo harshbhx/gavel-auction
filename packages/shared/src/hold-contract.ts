@@ -34,6 +34,8 @@ export const LOT_TITLE_FORBIDDEN_PATTERN = new RegExp(
 export const HOLD_ERROR_CODES = [
   'ceiling_out_of_range',
   'hold_exists',
+  'raise_limit_reached',
+  'raise_too_small',
   'order_not_found',
   'order_not_approved',
   'paypal_unavailable',
@@ -46,6 +48,8 @@ export type HoldErrorCode = (typeof HOLD_ERROR_CODES)[number];
 export const HOLD_ERROR_STATUS: Record<HoldErrorCode, number> = {
   ceiling_out_of_range: 400,
   hold_exists: 409,
+  raise_limit_reached: 409,
+  raise_too_small: 422,
   order_not_found: 404,
   order_not_approved: 409,
   paypal_unavailable: 503,

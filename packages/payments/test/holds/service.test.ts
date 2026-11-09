@@ -397,9 +397,64 @@ describe('FEAT-61 raising a limit', () => {
       ceilingCents: 20000,
     });
     expect((await rig.holds.get(first))?.status).toBe('HELD');
-    // A third raise builds on the larger hold.
-    expect(await codeOf(create(rig, 'b1', 20000))).toBe('hold_exists');
+    // The approved raise hold is the live one: lower or equal to the first is refused.
     expect(await codeOf(create(rig, 'b1', 15000))).toBe('hold_exists');
+    expect(await codeOf(create(rig, 'b1', 19000))).toBe('hold_exists');
+  });
+
+  it('hands back an approved raise hold the room never took (#2399)', async () => {
+    await held();
+    const raise = await create(rig, 'b1', 20000);
+    await rig.approve(raise.orderId);
+    await rig.service.completeApproval({ holdId: raise.holdId, orderId: raise.orderId });
+    // The registration failed after the approval; the retry asks for the same amount again.
+    const again = await create(rig, 'b1', 20000);
+    expect(again.holdId).toBe(raise.holdId);
+    expect(again.orderId).toBe(raise.orderId);
+    // The approval is idempotent and answers HELD again, so the client can register it.
+    await expect(
+      rig.service.completeApproval({ holdId: again.holdId, orderId: again.orderId }),
+    ).resolves.toMatchObject({ status: 'HELD', ceilingCents: 20000 });
+    expect(rig.counts.createOrder).toBe(2);
+    expect(rig.server.core.authCount()).toBe(2);
+  });
+
+  it('refuses a raise below the minimum step before any PayPal call (#2397)', async () => {
+    await held(10000);
+    // 5 percent of $100 is $5: a one cent raise and an under-step raise are both too small.
+    expect(await codeOf(create(rig, 'b1', 10001))).toBe('raise_too_small');
+    expect(await codeOf(create(rig, 'b1', 10499))).toBe('raise_too_small');
+    expect(rig.counts.createOrder).toBe(1);
+    await expect(create(rig, 'b1', 10500)).resolves.toBeDefined();
+    expect(rig.counts.createOrder).toBe(2);
+  });
+
+  it('caps the raises per bidder and per auction (#2397)', async () => {
+    let current = 10000;
+    let holdId = await held(current);
+    // Five raises of ten percent each, every one approved. Cap is 5.
+    for (let n = 0; n < 5; n += 1) {
+      current = Math.round(current * 1.1);
+      const raise = await create(rig, 'b1', current);
+      await rig.approve(raise.orderId);
+      await rig.service.completeApproval({ holdId: raise.holdId, orderId: raise.orderId });
+      holdId = raise.holdId;
+    }
+    expect(holdId).toBeDefined();
+    const orders = rig.counts.createOrder;
+    expect(await codeOf(create(rig, 'b1', current + 5000))).toBe('raise_limit_reached');
+    expect(rig.counts.createOrder).toBe(orders);
+  });
+
+  it('counts abandoned raise orders too, at a higher bound', async () => {
+    await held(10000);
+    let amount = 10500;
+    // 15 attempts of different amounts: each abandons the one before.
+    for (let n = 0; n < 15; n += 1) {
+      await create(rig, 'b1', amount);
+      amount += 600;
+    }
+    expect(await codeOf(create(rig, 'b1', amount))).toBe('raise_limit_reached');
   });
 
   it('refuses a limit that is not higher, and one above the cap', async () => {

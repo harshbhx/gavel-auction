@@ -8,7 +8,7 @@ Schemas live in `@gavel/shared` (`packages/shared/src/hold-contract.ts`), the on
 POST /api/holds
   request : { auctionId, ceilingCents }                   CreateHoldRequest
   response: { holdId, orderId, clientToken? }            CreateHoldResponse
-  errors  : 400 ceiling_out_of_range | 409 hold_exists
+  errors  : 400 ceiling_out_of_range | 409 hold_exists | 409 raise_limit_reached | 422 raise_too_small
             503 paypal_unavailable | 503 kill_switch_engaged | 503 payments_not_sandbox
 
 POST /api/holds/{holdId}/approve
@@ -25,7 +25,7 @@ DELETE /api/holds/{holdId}        (browser onCancel / onError; only an unapprove
 
 Once the auction is hammered or its settlement has started, `POST /api/holds` and `approve` answer `409 closed`, so no authorization appears that the settlement plan does not know; `DELETE` still releases.
 
-Every error response has the body `{ "error": <code> }` (`HoldErrorResponse`). Codes: `ceiling_out_of_range`, `hold_exists`, `order_not_found`, `order_not_approved`, `paypal_unavailable`, `kill_switch_engaged`, `payments_not_sandbox`.
+Every error response has the body `{ "error": <code> }` (`HoldErrorResponse`). Codes: `ceiling_out_of_range`, `hold_exists`, `raise_limit_reached`, `raise_too_small`, `order_not_found`, `order_not_approved`, `paypal_unavailable`, `kill_switch_engaged`, `payments_not_sandbox`.
 
 The server never trusts an `authId`, an amount or a bidder id from the browser. `CreateHoldRequest` has no `bidderId`: the bidder is derived from the authenticated session, and a body that names one is rejected by the strict schema.
 

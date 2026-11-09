@@ -688,5 +688,6 @@ Consequences:
 
 - The room log has a new persisted type `ceiling_raised`; exports hide its amounts like `bidder_registered`.
 - The old hold is voided in the same call; if that void is unconfirmed, the orphan sweep retries it and the settlement releases it as a spare at the latest.
+- Raises are bounded (FIX-110, issues 2397 and 2399): at most 5 per bidder and auction (`raise_limit_reached`, 409), each at least $1 or 5 percent of the current limit (`raise_too_small`, 422), in `POST /api/holds` and in `sim-hold`. A repeat of the amount of an approved raise hold the room never took returns that hold, so the approve call registers it; the sweep voids such a hold after ten minutes.
 
 Evidence: packages/payments/src/holds/service.ts, packages/server/src/room/room.ts (raiseCeiling), packages/server/src/runtime/auction-service.ts (registerBidder), packages/server/test/boot-holds.test.ts, packages/server/test/room-raise.test.ts, packages/engine/test/raise-limit.test.ts.
