@@ -189,3 +189,15 @@
 .gv-demo__code h2 {
   margin: 0;
 }
+
+/* Forced colours drop backgrounds and rules, so each row keeps its own border. */
+@media (forced-colors: active) {
+  .gv-demo__way {
+    border: var(--border-width) solid ButtonText;
+  }
+
+  .gv-demo__way:hover,
+  .gv-demo__way:focus-visible {
+    border-color: Highlight;
+  }
+}
