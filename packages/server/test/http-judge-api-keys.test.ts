@@ -561,7 +561,8 @@ describe('judge keys: never expires (FEAT-63)', () => {
       parseJudgeKeys(JSON.stringify([{ ...raw, maxRooms: 10, perHour: 100 }])).problems,
     ).toEqual([]);
     // Missing is still a mistake; so is a far-future date.
-    const { expiresAt: _drop, ...missing } = raw;
+    const missing: Record<string, unknown> = { ...raw };
+    delete missing.expiresAt;
     expect(parseJudgeKeys(JSON.stringify([missing])).problems[0]).toMatch(/expiresAt/);
     expect(
       parseJudgeKeys(JSON.stringify([{ ...raw, expiresAt: '2027-01-01T00:00:00Z' }])).problems[0],
