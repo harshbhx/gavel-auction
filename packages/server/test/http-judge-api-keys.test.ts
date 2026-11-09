@@ -138,7 +138,7 @@ function setup(entries = [entry(A), entry(B)], over: Partial<JudgeRoomsOptions> 
 }
 const toJson = (e: ReturnType<typeof entry>) => ({
   ...e,
-  expiresAt: new Date(e.expiresAt).toISOString(),
+  expiresAt: Number.isFinite(e.expiresAt) ? new Date(e.expiresAt).toISOString() : null,
 });
 
 const call = (
@@ -544,6 +544,118 @@ describe('scripts/make-judge-key.mjs', () => {
     const script = join(__dirname, '..', '..', '..', 'scripts', 'make-judge-key.mjs');
     expect(() =>
       execFileSync('node', [script, '--expires', '2027-02-01T00:00:00Z'], { stdio: 'pipe' }),
+    ).toThrow();
+  });
+});
+
+describe('judge keys: never expires (FEAT-63)', () => {
+  const FAR = Date.parse('2031-01-01T00:00:00Z');
+  const never = () => entry(A, { expiresAt: Number.POSITIVE_INFINITY });
+
+  it('parses expiresAt null as no expiry and keeps the cap for dated entries', () => {
+    const raw = { ...entry(A), expiresAt: null };
+    const ok = parseJudgeKeys(JSON.stringify([raw]));
+    expect(ok.problems).toEqual([]);
+    expect(ok.entries[0]?.expiresAt).toBe(Number.POSITIVE_INFINITY);
+    expect(
+      parseJudgeKeys(JSON.stringify([{ ...raw, maxRooms: 10, perHour: 100 }])).problems,
+    ).toEqual([]);
+    // Missing is still a mistake; so is a far-future date.
+    const missing: Record<string, unknown> = { ...raw };
+    delete missing.expiresAt;
+    expect(parseJudgeKeys(JSON.stringify([missing])).problems[0]).toMatch(/expiresAt/);
+    expect(
+      parseJudgeKeys(JSON.stringify([{ ...raw, expiresAt: '2027-01-01T00:00:00Z' }])).problems[0],
+    ).toMatch(/after/);
+  });
+
+  it('never trips the expiry check, and revoke still works', () => {
+    const { entries } = parseJudgeKeys(JSON.stringify([{ ...entry(A), expiresAt: null }]));
+    const reg = new JudgeKeyRegistry(entries, undefined);
+    expect(reg.verify(A.key, START)).toMatchObject({ ok: true });
+    expect(reg.verify(A.key, FAR)).toMatchObject({ ok: true });
+    expect(reg.verify(A.key, Number.MAX_SAFE_INTEGER)).toMatchObject({ ok: true });
+    expect(reg.revoke(A.id)).toBe(true);
+    expect(reg.verify(A.key, FAR)).toMatchObject({ ok: false, reason: 'revoked' });
+  });
+
+  it('the probe and the admin list say null, never a timestamp or Infinity', async () => {
+    const { app, clock } = setup([never()]);
+    clock.set(FAR);
+    const probe = await call(app, 'POST', JUDGE_KEY_PATH, { headers: withKey(A.key) });
+    expect(probe.status).toBe(200);
+    expect(await json(probe)).toEqual({
+      ok: true,
+      keyId: A.id,
+      roomsMax: 2,
+      roomsLive: 0,
+      expiresAt: null,
+    });
+    const res = await call(app, 'GET', JUDGE_KEYS_PATH, { headers: { 'x-admin-key': ADMIN } });
+    const list = await json<{ keys: Array<Record<string, unknown>> }>(res);
+    expect(list.keys[0]).toMatchObject({
+      id: A.id,
+      expired: false,
+      revoked: false,
+      expiresAt: null,
+    });
+    expect(JSON.stringify(list)).not.toContain('Infinity');
+    expect((await call(app, 'GET', JUDGE_KEYS_PATH, { headers: withKey(A.key) })).status).toBe(401);
+  });
+
+  it('revoking the shared key over HTTP refuses it at once', async () => {
+    const { app } = setup([never()]);
+    const done = await call(app, 'POST', `/api/judge/keys/${A.id}/revoke`, {
+      headers: { 'x-admin-key': ADMIN },
+    });
+    expect(done.status).toBe(200);
+    const after = await call(app, 'POST', JUDGE_KEY_PATH, { headers: withKey(A.key) });
+    expect(after.status).toBe(401);
+    expect((await json(after)).error).toBe('judge_key_revoked');
+    const res = await call(app, 'GET', JUDGE_KEYS_PATH, { headers: { 'x-admin-key': ADMIN } });
+    const list = await json<{ keys: Array<Record<string, unknown>> }>(res);
+    expect(list.keys[0]).toMatchObject({ revoked: true, expiresAt: null });
+  });
+});
+
+describe('scripts/make-judge-key.mjs --never-expires', () => {
+  const script = join(__dirname, '..', '..', '..', 'scripts', 'make-judge-key.mjs');
+
+  it('makes a key whose entry has expiresAt null and the host accepts it', () => {
+    const out = JSON.parse(
+      execFileSync(
+        'node',
+        [
+          script,
+          '--json',
+          '--never-expires',
+          '--label',
+          'Shared',
+          '--rooms',
+          '10',
+          '--per-hour',
+          '100',
+        ],
+        { encoding: 'utf8' },
+      ),
+    ) as { key: string; entry: Record<string, unknown> };
+    expect(out.entry.expiresAt).toBeNull();
+    expect(out.entry.maxRooms).toBe(10);
+    expect(out.entry.perHour).toBe(100);
+    const { entries, problems } = parseJudgeKeys(JSON.stringify([out.entry]));
+    expect(problems).toEqual([]);
+    const reg = new JudgeKeyRegistry(entries, undefined);
+    expect(reg.verify(out.key, Date.parse('2040-01-01T00:00:00Z'))).toMatchObject({ ok: true });
+  });
+
+  it('prints the revoke note and refuses --expires together with it', () => {
+    const text = execFileSync('node', [script, '--never-expires'], { encoding: 'utf8' });
+    expect(text).toContain('NEVER expires');
+    expect(text).toContain('/revoke');
+    expect(() =>
+      execFileSync('node', [script, '--never-expires', '--expires', '2026-11-30T23:59:00Z'], {
+        stdio: 'pipe',
+      }),
     ).toThrow();
   });
 });

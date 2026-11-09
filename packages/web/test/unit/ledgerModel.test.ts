@@ -37,6 +37,13 @@ describe('ledger chain', () => {
     expect(firstBad(result)).toBeNull();
   });
 
+  it('reports unchecked, never tampered, when the browser has no SHA-256', async () => {
+    const chain = await sealChain(bodies, nodeHash);
+    const result = await verifyEntries(chain, async () => null);
+    expect([...result.values()]).toEqual(['unchecked', 'unchecked', 'unchecked']);
+    expect(firstBad(result)).toBeNull();
+  });
+
   it('marks an edited entry as tampered and leaves the others verified', async () => {
     const chain = await sealChain(bodies, nodeHash);
     const edited = chain.map((e) => (e.seq === 2 ? { ...e, amountCents: 999_999 } : e));
@@ -45,7 +52,13 @@ describe('ledger chain', () => {
     expect(result.get(2)).toBe('tampered');
     expect(result.get(3)).toBe('verified');
     expect(firstBad(result)).toBe(2);
-    expect(chainCounts(result)).toEqual({ verified: 2, tampered: 1, broken: 0, unsealed: 0 });
+    expect(chainCounts(result)).toEqual({
+      verified: 2,
+      tampered: 1,
+      broken: 0,
+      unsealed: 0,
+      unchecked: 0,
+    });
   });
 
   it('marks an entry whose link does not match the one before as broken', async () => {

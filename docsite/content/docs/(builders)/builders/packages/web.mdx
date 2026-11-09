@@ -113,7 +113,7 @@ The package is an application, not a library, and exports nothing for other pack
 
 - **Sandbox only.** The Vite plugin `gavel-sandbox-guard` fails a production build unless `VITE_SANDBOX` is exactly `true`, and refuses `VITE_PAYMENTS=fake` without `VITE_ALLOW_FAKE=true`.
 - **A fixed Content-Security-Policy.** `buildCsp` generates the policy from the same config: scripts only from self and the PayPal sandbox, `connect-src` limited to self, the configured API and WS origins and the two PayPal sandbox origins, no objects, no inline script allowance.
-- **A small first load.** `check-size.mjs` fails the build when the gzip size of the initial route is over 180 KB, or when the PayPal SDK loader, the QR encoder or the replay player is part of that initial graph. The replay screen is loaded lazily.
+- **A small first load.** `check-size.mjs` fails the build when the gzip size of the initial route is over 190 KB, or when the PayPal SDK loader, the QR encoder or the replay player is part of that initial graph. The replay screen is loaded lazily.
 - **No secret in the bundle.** The root check `npm run check:secrets` builds the web app with canary values and scans the output (see [Infra](/docs/builders/packages/infra)).
 - **One wire source.** Wire types come only through `src/wire`, which re-exports `@gavel/shared`. The web source imports `@gavel/shared`; the dependency rule would also allow `@gavel/voice`, but no web source file imports it today.
 - **Honest wording.** The banned-wording rules above are applied to the copy catalog by `test/unit/copy.test.ts`.

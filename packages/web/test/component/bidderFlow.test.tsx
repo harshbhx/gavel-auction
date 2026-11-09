@@ -126,56 +126,117 @@ const request = {
 } as unknown as ConfirmRequestMsg;
 
 describe('ConfirmSheet (T-WEB-034)', () => {
-  it('answers once and ignores a second tap', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const mount = (over: Partial<Parameters<typeof ConfirmSheet>[0]> = {}, bare = false) => {
     const onRespond = vi.fn();
-    render(
+    const onDismiss = vi.fn();
+    const ui = (extra: Partial<Parameters<typeof ConfirmSheet>[0]> = {}) => (
       <ConfirmSheet
         request={request}
         paddle={12}
         currentCents={35000}
         onRespond={onRespond}
+        {...(bare ? {} : { onDismiss })}
         now={() => 0}
-      />,
+        {...over}
+        {...extra}
+      />
     );
+    return { onRespond, onDismiss, ui, ...render(ui()) };
+  };
+
+  it('answering closes the sheet at once and sends one answer', () => {
+    const { onRespond, onDismiss } = mount();
     expect(screen.getAllByText(t('confirm.title', { amount: '$350.00', n: 12 })).length).toBe(1);
     const yes = screen.getByRole('button', { name: t('confirm.yes') });
     fireEvent.click(yes);
     fireEvent.click(yes);
     expect(onRespond).toHaveBeenCalledTimes(1);
     expect(onRespond).toHaveBeenCalledWith('c1', true);
-    expect(screen.getByText(t('confirm.answered'))).toBeTruthy();
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('notes a price change and expires at expiresAt', () => {
+  it('no closes it too, even when the parent keeps the request', () => {
+    const { onRespond } = mount({}, true);
+    fireEvent.click(screen.getByRole('button', { name: t('confirm.no') }));
+    expect(onRespond).toHaveBeenCalledWith('c1', false);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('a refused send still closes the sheet', () => {
+    const { onDismiss } = mount({
+      onRespond: () => {
+        throw new Error('socket closed');
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: t('confirm.yes') }));
+    expect(onDismiss).toHaveBeenCalledWith('c1');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('notes a price change, then expires with one Close and closes itself', () => {
     vi.useFakeTimers();
     let clock = 0;
-    const onRespond = vi.fn();
-    const { rerender } = render(
-      <ConfirmSheet
-        request={request}
-        paddle={12}
-        currentCents={35000}
-        onRespond={onRespond}
-        now={() => clock}
-      />,
-    );
-    rerender(
-      <ConfirmSheet
-        request={request}
-        paddle={12}
-        currentCents={40000}
-        onRespond={onRespond}
-        now={() => clock}
-      />,
-    );
+    const { onRespond, onDismiss, rerender, ui } = mount({ now: () => clock });
+    rerender(ui({ currentCents: 40000 }));
     expect(screen.getByText(t('confirm.changed', { amount: '$400.00' }))).toBeTruthy();
     clock = 10_000;
     act(() => {
       vi.advanceTimersByTime(10_000);
     });
     expect(screen.getByText(t('confirm.expired'))).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: t('confirm.yes') }));
+    expect(screen.queryByRole('button', { name: t('confirm.yes') })).toBeNull();
+    expect(screen.getByRole('button', { name: t('generic.close') })).toBeTruthy();
     expect(onRespond).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(3_000);
+    });
+    expect(onDismiss).toHaveBeenCalledWith('c1');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('Close and Escape dismiss without answering', () => {
+    const first = mount();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(first.onDismiss).toHaveBeenCalledWith('c1');
+    expect(first.onRespond).not.toHaveBeenCalled();
+  });
+
+  it('a stale request is dropped on arrival', () => {
+    const { onDismiss, onRespond } = mount({ now: () => 20_000 });
+    expect(onDismiss).toHaveBeenCalledWith('c1');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(onRespond).not.toHaveBeenCalled();
+  });
+
+  it('a hard timeout closes it when the clocks never agree', () => {
+    vi.useFakeTimers();
+    const { onDismiss } = mount({ now: () => -1_000_000 });
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    act(() => {
+      vi.advanceTimersByTime(22_000);
+    });
+    expect(onDismiss).toHaveBeenCalledWith('c1');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('shows a draining countdown that is not a chip', () => {
+    vi.useFakeTimers();
+    let clock = 0;
+    const slow = { ...request, expiresAt: 20_000 } as ConfirmRequestMsg;
+    mount({ request: slow, now: () => clock });
+    expect(screen.getByText(t('confirm.secondsLeft', { s: 20 }))).toBeTruthy();
+    clock = 12_000;
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(screen.getByText(t('confirm.secondsLeft', { s: 8 }))).toBeTruthy();
+    // Still answerable 12 s in: the old 8 s window would have closed it.
+    expect(screen.getByRole('button', { name: t('confirm.yes') })).toBeTruthy();
   });
 });
 

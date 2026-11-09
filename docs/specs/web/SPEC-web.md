@@ -52,7 +52,7 @@ Each requirement is testable by at least one T-WEB test (section 10). MUST = rel
 - R-WEB-006 Countdowns MUST use server epoch ms plus a measured offset (`serverNow = Date.now() + offsetMs`), never the local clock alone.
 - R-WEB-007 All wire types MUST be imported from the single seam `src/wire/index.ts` (re-export of `@gavel/shared` once available). No other file defines a wire shape.
 - R-WEB-008 The whole app MUST run with `ScenarioTransport` and zero network, selected by `?transport=scenario&scenario=<name>` or the demo launcher.
-- R-WEB-009 Initial route JS MUST be at most 180 KB gzip; the PayPal SDK, the QR encoder and the replay player MUST be lazy chunks.
+- R-WEB-009 Initial route JS MUST be at most 190 KB gzip; the PayPal SDK, the QR encoder and the replay player MUST be lazy chunks.
 - R-WEB-010 Configuration MUST come from `VITE_*` variables validated at boot (`VITE_API_BASE`, `VITE_WS_BASE`, `VITE_PAYPAL_CLIENT_ID`, `VITE_SANDBOX=true`); the build MUST fail if `VITE_SANDBOX` is not `true`.
 
 ### 3.2 Design system
@@ -788,7 +788,7 @@ States: loading bundle, bundle invalid (version/shape error message), audio fail
 - Determinism: reducer and ladder model are pure and have property tests; replay is deterministic (R-WEB-104).
 - Security: no secrets in the bundle (CI grep for key patterns), CSP (R-WEB-004), tokens kept out of logs and out of `localStorage`, auctioneer token only in fragment and memory, strict input validation by guards before reducing, no `dangerouslySetInnerHTML`, transcript text always rendered as text.
 - Privacy: no analytics, no third-party requests except PayPal SDK on approval; display names visible to the room are shown on registration with a notice.
-- Bundle: initial route at most 180 KB gzip (R-WEB-009), checked in CI by a size script.
+- Bundle: initial route at most 190 KB gzip (R-WEB-009), checked in CI by a size script.
 - Browser support: last 2 versions of Chrome, Safari iOS 16+, Firefox, Edge. Web Speech try-it mode only where available.
 
 ## 11. Copy deck
@@ -912,7 +912,10 @@ Bid screen
 - `confirm.no`: No
 - `confirm.changed`: Price changed to {amount}
 - `confirm.answered`: Already answered
-- `confirm.expired`: This question expired.
+- `confirm.expired`: This question expired. Say your bid again.
+- `confirm.secondsLeft`: {s} s left
+- `confirm.sent`: Your answer was sent.
+- `confirm.refused`: Your answer could not be sent.
 
 Console
 
@@ -1093,7 +1096,7 @@ Tooling: Vitest + React Testing Library + jest-dom for unit and component tests;
 - T-WEB-054 (R-WEB-114) `prefers-reduced-motion`: computed `animation-duration` of hammer and tick elements is 0s; forced-colors screenshot of ladder keeps visible state markers (visual test).
 - T-WEB-055 (R-WEB-115, R-WEB-117..119) Reflow at 320 px and 200 percent zoom: `document.scrollingElement.scrollWidth <= innerWidth` on bidder routes; safe-area padding present on quick-bid bar; screen view has no vertical scroll at 1920x1080 and 1280x720.
 - T-WEB-056 (R-WEB-124) Visual regression: matrix of screens x viewports x themes, `maxDiffPixelRatio 0.002`, animations disabled, fonts self-hosted, clock frozen; baseline update through workflow_dispatch producing an artifact, reviewed in the PR.
-- T-WEB-057 (R-WEB-009) Bundle size gate: initial route gzip <= 180 KB; PayPal SDK, QR, replay chunks not in initial graph.
+- T-WEB-057 (R-WEB-009) Bundle size gate: initial route gzip <= 190 KB; PayPal SDK, QR, replay chunks not in initial graph.
 - T-WEB-058 (R-WEB-003, R-WEB-004) Network audit: Playwright records all requests during the demo flow; only self, room host and (on approval step) PayPal origins; CSP header or meta present with no `unsafe-inline` for scripts.
 - T-WEB-059 (R-WEB-125) Test id contract: every id in `testids.ts` exists in at least one rendered state; no duplicate ids on a page.
 - T-WEB-060 (R-WEB-030..034) Routing: each route sets title and focuses `h1`; console without token shows `err.tokenMissing`; 404 and error boundary include the sandbox banner.

@@ -7,6 +7,7 @@ import { Icon } from '../design/icons';
 import { Chip, type ChipTone } from '../design/primitives/Chip';
 import type { BidSource } from '../wire';
 import { formatUsd, formatUsdCompact } from '../util/money';
+import { useNarrow, useReducedMotion } from '../util/useMedia';
 import {
   formatServerTime,
   rejectionText,
@@ -20,7 +21,6 @@ import { exportBaseName } from './exportName';
 import { GridToolbar } from './GridToolbar';
 import { bidRowId, diffBids, isEmptyDiff } from './bidsModel';
 import { gavelTheme } from './theme';
-import { useNarrow, useReducedMotion } from './useGridEnv';
 import './grid.css';
 
 export interface BidsGridProps {

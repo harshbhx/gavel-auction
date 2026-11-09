@@ -7,6 +7,7 @@
   --judge-line: color-mix(in srgb, var(--color-on-sheet) 22%, transparent);
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: clip;
   padding-bottom: var(--judge-bar-clear, 112px);
   background: var(--color-bg);

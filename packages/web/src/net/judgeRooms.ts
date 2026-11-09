@@ -124,6 +124,12 @@ async function postJudgeRoom(
     code: typeof rawCode === 'string' && rawCode !== '' ? rawCode : null,
   };
   rememberHubKeys(roomId, keys);
+  // Browser history for the Home screen: the room id, role and join code only, never a token.
+  void import('../home/history').then(
+    ({ recordRoom }) =>
+      recordRoom(roomId, { role: 'auctioneer', expiresAt: keys.expiresAt, code: keys.code }),
+    () => undefined,
+  );
   return {
     console: `${base}/console#token=${auctioneer}`,
     screen: `${base}/screen#token=${screen}`,

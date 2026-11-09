@@ -123,8 +123,24 @@ export function fontPreloadPlugin(): Plugin {
   };
 }
 
+const AG_GRID_MODULE = /[\\/]node_modules[\\/](?:ag-grid-community|ag-grid-react)[\\/]/;
+
+/**
+ * Names the AG Grid chunk. Rollup names a shared chunk after whichever module it saw first (it was
+ * useGridEnv-*.js), so the chunk that holds the library is named here instead: assets/ag-grid-*.js.
+ * scripts/check-size.mjs finds the chunk by that prefix: it keeps it out of the initial route and
+ * holds it to its own size budget. This renames only; chunk contents stay as Rollup split them (a
+ * manualChunks rule would pull React into the chunk and the entry would then import AG Grid).
+ */
+export function chunkFileName(chunk: { moduleIds: readonly string[] }): string {
+  return chunk.moduleIds.some((id) => AG_GRID_MODULE.test(id))
+    ? 'assets/ag-grid-[hash].js'
+    : 'assets/[name]-[hash].js';
+}
+
 export default defineConfig({
   plugins: [react(), sandboxGuard(), cspPlugin(), fontPreloadPlugin()],
+  build: { rollupOptions: { output: { chunkFileNames: chunkFileName } } },
   test: {
     environment: 'jsdom',
     globals: true,
@@ -136,5 +152,7 @@ export default defineConfig({
       VITE_PAYMENTS: 'fake',
     },
     include: ['test/**/*.test.{ts,tsx}'],
+    // Browser history (the Home screen) lives in localStorage: no test may leak it into the next.
+    setupFiles: ['test/support/clearHistory.ts'],
   },
 });

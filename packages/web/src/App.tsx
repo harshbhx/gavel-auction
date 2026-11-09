@@ -42,6 +42,7 @@ import { RoomGate } from './screens/states/RoomGate';
 import { ApiError, apiErrorFor, unreachable } from './net/apiError';
 import { WatcherGate } from './screens/join/WatcherGate';
 import { LandingScreen } from './screens/landing/LandingScreen';
+import { storedHistoryExists } from './home/historyKey';
 import { JudgePanel, type RoomsState } from './screens/judge/JudgePanel';
 import { VerifyScreen } from './screens/verify/VerifyScreen';
 import { fetchOpsSummary, OpsView, type OpsSummaryView } from './ops/OpsView';
@@ -93,6 +94,9 @@ export interface AppProps {
   api?: { apiBase: string; payments: PaymentsMode; paypalClientId: string };
 }
 
+// The Home screen and the history recorder load as their own chunks: a first visit never pays for them.
+const HomeRoute = lazyWithRetry(() => import('./home/HomeRoute'));
+const HistoryRecorder = lazyWithRetry(() => import('./home/HistoryRecorder'));
 const ReplayScreen = lazyWithRetry(() => import('./screens/replay/ReplayScreen'));
 const LedgerLab = lazyWithRetry(() => import('./screens/ledger/LedgerLab'));
 
@@ -524,6 +528,27 @@ async function joinByCode(api: Api | undefined, code: string): Promise<boolean> 
 }
 
 /** The judge panel: asks the host about live rooms and starts one without an operator key. */
+/**
+ * The start page. A visitor this browser remembers lands on the Home screen; a first-time visitor
+ * (or one who cleared their history) gets the marketing landing page, which is always at /about.
+ */
+function HomeOrLanding({ api, match }: { api: Api | undefined; match: RouteMatch }) {
+  const [remembered] = useState(storedHistoryExists);
+  const landing = api === undefined ? <RouteScreen match={match} /> : <LandingRoute api={api} />;
+  if (!remembered) return landing;
+  return (
+    <ChunkBoundary fallback={null}>
+      <HomeRoute
+        apiBase={api?.apiBase}
+        landing={landing}
+        onJoin={(code) => joinByCode(api, code)}
+        onCreate={() => navigate('/try')}
+        onNavigate={navigate}
+      />
+    </ChunkBoundary>
+  );
+}
+
 function TryRoute({ api }: { api: Api | undefined }) {
   const [rooms, setRooms] = useState<RoomsState>(api === undefined ? 'noServer' : 'checking');
   const [keyOffered, setKeyOffered] = useState(false);
@@ -1266,7 +1291,8 @@ function Routed({
     }
   }
   if (id === 'ops') return <OpsRoute api={api} />;
-  if (id === 'landing' && api !== undefined) return <LandingRoute api={api} />;
+  if (id === 'landing') return <HomeOrLanding api={api} match={match} />;
+  if (id === 'about' && api !== undefined) return <LandingRoute api={api} />;
   if (id === 'demo') return <DemoRoute api={api} />;
   if (id === 'scriptedDemo') return <InMemoryScriptedDemo liveBase={liveBase} view="screen" />;
   if (id === 'scriptedBid') return <InMemoryScriptedDemo liveBase={liveBase} view="bid" />;
@@ -1362,6 +1388,7 @@ function Routed({
 /** Routes that carry the help button: landing, join, registration, bidder room and receipt. */
 const HELP_ROUTES: ReadonlySet<string> = new Set([
   'landing',
+  'about',
   'join',
   'register',
   'return',
@@ -1398,6 +1425,9 @@ export function App({ initialPath, gallery = import.meta.env.DEV, liveBase, api 
       {match.route.id !== 'gallery' && match.route.id !== 'bid' && <OfflineBanner />}
       {match.route.id !== 'gallery' && <BusyBanner />}
       {match.route.id !== 'gallery' && <Announcer />}
+      <ChunkBoundary fallback={null}>
+        <HistoryRecorder match={match} />
+      </ChunkBoundary>
       <Routed match={match} liveBase={liveBase} api={api} />
       {HELP_ROUTES.has(match.route.id) && <HelpLayer />}
     </ErrorBoundary>
