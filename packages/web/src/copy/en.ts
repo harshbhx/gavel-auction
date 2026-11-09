@@ -1177,6 +1177,11 @@ export const en = {
   'err.chunk': 'Part of this page could not load. Reload to try again.',
   'err.net.tooMany': 'Too many connections from this network. Retrying in {seconds} s.',
   'err.home': 'Go to the start page',
+  'nf.pageHelp': 'This address does not match a page. Try one of these instead.',
+  'nf.linksLabel': 'Where to go next',
+  'nf.demo': 'Try a demo room',
+  'nf.judges': 'Judges guide',
+  'nf.docs': 'Docs',
   'room.missingTitle': 'We could not find this room',
   'room.missingHelp':
     'Check the code and the link. Demo rooms close after a short while, so an old link may no longer work.',

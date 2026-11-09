@@ -80,3 +80,9 @@
 main[tabindex='-1']:focus {
   outline: none;
 }
+
+/* A heading that takes focus after a route change is not a control: no ring around it. Real
+ * controls keep their :focus-visible ring. */
+h1[tabindex='-1']:focus {
+  outline: none;
+}

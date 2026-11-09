@@ -27,6 +27,7 @@ const ROUTES = [
   '/replay/abc',
   '/gallery',
   '/nowhere',
+  '/nowhere/at/all',
 ] as const;
 
 const THEMES = ['light', 'projector'] as const;

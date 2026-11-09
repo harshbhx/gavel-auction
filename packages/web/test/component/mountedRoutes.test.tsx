@@ -37,7 +37,7 @@ describe('routes mount the state screens', () => {
     render(<App initialPath="/nope/at/all" />);
     expect(screen.getByText(t('err.notFound'))).toBeTruthy();
     expect(screen.getAllByText(t('banner.sandbox'))).toHaveLength(1);
-    expect(screen.getByRole('link', { name: t('err.home') })).toBeTruthy();
+    expect(screen.getByRole('link', { name: t('nf.demo') })).toBeTruthy();
   });
 });
 
