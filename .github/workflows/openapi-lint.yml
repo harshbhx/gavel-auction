@@ -1,0 +1,38 @@
+name: openapi-lint
+
+# Spectral lint of openapi/gavel.yaml (recommended OpenAPI ruleset plus openapi/.spectral.yaml).
+# Runs only here, never on the shared VM. Findings are in the job log and the
+# `spectral-report` artifact.
+
+on:
+  pull_request:
+    paths:
+      - 'openapi/**'
+      - '.github/workflows/openapi-lint.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  spectral:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version-file: .nvmrc
+      - name: Lint with Spectral (text)
+        run: npx --yes @stoplight/spectral-cli@6.15.0 lint openapi/gavel.yaml --ruleset openapi/.spectral.yaml --format stylish --fail-severity warn
+      - name: Lint with Spectral (json report)
+        if: always()
+        run: npx --yes @stoplight/spectral-cli@6.15.0 lint openapi/gavel.yaml --ruleset openapi/.spectral.yaml --format json --output spectral-report.json || true
+      - name: Count findings by rule
+        if: always()
+        run: node -e "const r=require('./spectral-report.json');const c={};for(const f of r)c[f.code]=(c[f.code]||0)+1;console.log(r.length,'findings');console.log(c)"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: spectral-report
+          path: spectral-report.json

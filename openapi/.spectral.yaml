@@ -1,0 +1,12 @@
+# Spectral ruleset for openapi/gavel.yaml, run by .github/workflows/openapi-lint.yml.
+# Redocly (openapi/redocly.yaml) stays the gate in ci.yml; Spectral adds the description,
+# example and tag checks that API import tools such as APIMatic score.
+extends:
+  - spectral:oas
+rules:
+  oas3-api-servers: error
+  operation-description: warn
+  operation-tag-defined: error
+  info-contact: warn
+  info-description: error
+  tag-description: warn
