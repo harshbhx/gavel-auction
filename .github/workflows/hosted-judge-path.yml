@@ -1,0 +1,150 @@
+name: hosted-judge-path
+# Records the judge path on the hosted app with REAL PayPal sandbox holds (issue 2186), by hand only.
+# Playwright opens one judge room on https://gavel.dualmindlab.tech (API https://api.gavel.dualmindlab.tech),
+# three bidders hold through the PayPal popup (A: wallet buyer, B and C: guest with the sandbox test card),
+# C bids highest, the console hammers, C is captured and A and B are voided, receipts are opened.
+# One room, three small sandbox holds. Video and trace are on for the app pages. Nothing typed into a
+# PayPal popup is recorded (popup videos deleted, trace paused while a popup is open, popup screenshots
+# hide input values), and a scan step fails the run and deletes any file that holds a secret value.
+# Evidence artifact: hosted-judge-path (statuses.json, verdict.json, summary.md, shots, videos, traces).
+# Outcome line: "HOSTED JUDGE PATH VERDICT: PASS | NEEDS-MANUAL-RECORDING | FAIL". NEEDS-MANUAL-RECORDING
+# means a PayPal popup stopped the automation (for example a bot check): that is the result, not a retry case.
+# The repository is public, so any signed-in GitHub user can download artifacts: they are kept 7 days and
+# nothing from them goes into the repository except the redacted statuses.
+#
+# Secrets (names only): SANDBOX_BUYER_EMAIL, SANDBOX_BUYER_PASSWORD (wallet buyer, exist),
+# SANDBOX_GUEST_CARD_NUMBER, SANDBOX_GUEST_CARD_EXPIRY, SANDBOX_GUEST_CARD_CVV (the sandbox test card from
+# PayPal's Card Generator; add from a terminal: `gh secret set NAME -R harshbhx/gavel-auction` and paste
+# the value at the prompt, never in chat or in a file), optional SANDBOX_GUEST_EMAIL, optional JUDGE_KEY.
+# PayPal's own record of the run is read from the G4 receiver (variable G4_RECEIVER_URL, secret G4_LOG_TOKEN),
+# which needs the sandbox app's webhook URL set to <receiver url>/hook (as for gate-g4), and which also
+# means this job shares the concurrency group of gate-g4 (one receiver log).
+on:
+  workflow_dispatch:
+    inputs:
+      web_url:
+        description: 'Origin of the web app'
+        required: false
+        default: 'https://gavel.dualmindlab.tech'
+        type: string
+      api_url:
+        description: 'Origin of the API'
+        required: false
+        default: 'https://api.gavel.dualmindlab.tech'
+        type: string
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  hosted-judge-path:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: sandbox-nightly
+    concurrency:
+      group: gate-g4
+      cancel-in-progress: false
+    env:
+      WEB_URL: ${{ inputs.web_url || 'https://gavel.dualmindlab.tech' }}
+      API_URL: ${{ inputs.api_url || 'https://api.gavel.dualmindlab.tech' }}
+      OUT: ${{ github.workspace }}/hosted-out
+      RECEIVER_URL: ${{ vars.G4_RECEIVER_URL }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Check the inputs and the secrets
+        env:
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          SANDBOX_GUEST_CARD_NUMBER: ${{ secrets.SANDBOX_GUEST_CARD_NUMBER }}
+          SANDBOX_GUEST_CARD_EXPIRY: ${{ secrets.SANDBOX_GUEST_CARD_EXPIRY }}
+          SANDBOX_GUEST_CARD_CVV: ${{ secrets.SANDBOX_GUEST_CARD_CVV }}
+        run: |
+          bash scripts/ci/assert-live-host.sh "web_url=$WEB_URL" "api_url=$API_URL"
+          missing=""
+          for name in SANDBOX_BUYER_EMAIL SANDBOX_BUYER_PASSWORD SANDBOX_GUEST_CARD_NUMBER SANDBOX_GUEST_CARD_EXPIRY SANDBOX_GUEST_CARD_CVV; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error title=Missing secrets::Add these repository Actions secrets from a terminal with gh secret set NAME and run again:$missing"
+            exit 2
+          fi
+          # Keep the values out of any log line even if one were printed by mistake.
+          for name in SANDBOX_GUEST_CARD_NUMBER SANDBOX_GUEST_CARD_EXPIRY SANDBOX_GUEST_CARD_CVV; do
+            echo "::add-mask::${!name}"
+          done
+      - name: Wake the API
+        run: curl -fsS -o /dev/null --max-time 30 --retry 6 --retry-delay 10 --retry-all-errors "${API_URL%/}/healthz"
+      - name: Install Playwright and chromium
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw"
+          cp qa/hosted-judge-path/run.mjs "$RUNNER_TEMP/pw/run.mjs"
+          cd "$RUNNER_TEMP/pw"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright@1.55.1
+          npx playwright install --with-deps chromium
+      - name: Clear the receiver log
+        if: ${{ vars.G4_RECEIVER_URL != '' }}
+        env:
+          G4_LOG_TOKEN: ${{ secrets.G4_LOG_TOKEN }}
+        run: |
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            out=$(curl -fsS -X DELETE --get --data-urlencode "token=$G4_LOG_TOKEN" "$RECEIVER_URL/log" || echo "cleared 0 more 0")
+            case "$out" in *" more 0") break ;; esac
+          done
+      - name: Walk the hosted judge path
+        env:
+          PP_EMAIL_A: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          PP_PASS_A: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          SANDBOX_GUEST_CARD_NUMBER: ${{ secrets.SANDBOX_GUEST_CARD_NUMBER }}
+          SANDBOX_GUEST_CARD_EXPIRY: ${{ secrets.SANDBOX_GUEST_CARD_EXPIRY }}
+          SANDBOX_GUEST_CARD_CVV: ${{ secrets.SANDBOX_GUEST_CARD_CVV }}
+          SANDBOX_GUEST_EMAIL: ${{ secrets.SANDBOX_GUEST_EMAIL }}
+          JUDGE_KEY: ${{ secrets.JUDGE_KEY }}
+          G4_LOG_TOKEN: ${{ secrets.G4_LOG_TOKEN }}
+        run: |
+          cd "$RUNNER_TEMP/pw"
+          mkdir -p "$OUT"
+          set -o pipefail
+          node run.mjs | tee "$OUT/run.txt"
+      - name: Scan the output for secret values
+        if: ${{ always() }}
+        env:
+          PP_EMAIL_A: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          PP_PASS_A: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          SANDBOX_GUEST_CARD_NUMBER: ${{ secrets.SANDBOX_GUEST_CARD_NUMBER }}
+          SANDBOX_GUEST_CARD_EXPIRY: ${{ secrets.SANDBOX_GUEST_CARD_EXPIRY }}
+          SANDBOX_GUEST_CARD_CVV: ${{ secrets.SANDBOX_GUEST_CARD_CVV }}
+          SANDBOX_GUEST_EMAIL: ${{ secrets.SANDBOX_GUEST_EMAIL }}
+          JUDGE_KEY: ${{ secrets.JUDGE_KEY }}
+          G4_LOG_TOKEN: ${{ secrets.G4_LOG_TOKEN }}
+          SCAN_ENV_NAMES: PP_EMAIL_A,PP_PASS_A,SANDBOX_GUEST_CARD_NUMBER,SANDBOX_GUEST_CARD_EXPIRY,SANDBOX_GUEST_CARD_CVV,SANDBOX_GUEST_EMAIL,JUDGE_KEY,G4_LOG_TOKEN
+        run: |
+          if [ -d "$OUT" ]; then node qa/hosted-judge-path/scan.mjs "$OUT"; else echo "no output folder"; fi
+      - name: Job summary
+        if: ${{ always() }}
+        run: |
+          if [ -f "$OUT/summary.md" ]; then cat "$OUT/summary.md" >> "$GITHUB_STEP_SUMMARY"; else echo "### Hosted judge path: no summary produced, nothing was verified" >> "$GITHUB_STEP_SUMMARY"; fi
+          grep -h "HOSTED JUDGE PATH VERDICT" "$OUT/run.txt" 2>/dev/null || echo "HOSTED JUDGE PATH VERDICT: NOT RUN"
+      - name: Clear the receiver log again
+        if: ${{ always() && vars.G4_RECEIVER_URL != '' }}
+        env:
+          G4_LOG_TOKEN: ${{ secrets.G4_LOG_TOKEN }}
+        run: curl -fsS -X DELETE --get --data-urlencode "token=$G4_LOG_TOKEN" "$RECEIVER_URL/log" || true
+      - name: Upload evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hosted-judge-path
+          path: hosted-out
+          if-no-files-found: warn
+          retention-days: 7
