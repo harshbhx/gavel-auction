@@ -34,3 +34,7 @@ All gallery PNGs are 1500x1000 (3:2) and well under 1 MB. Every file is far belo
 | `intro-static.png`, `architecture-static.png`, `closing-static.png` | 1000x600  | Fallback for reduced motion or if GIFs are refused    |
 
 Honesty notes: example hashes in gallery 05 are labelled as an illustration; gallery 07 shows G3 as in progress and G5 as partial; APIMatic reads "spec ready, SDK pending"; no sponsor logos are used.
+
+## Animated gallery (GFX-07)
+
+`01-hero.gif` to `07-open-data-and-gates.gif` (1200x800), `08-ending.gif` (1200x675) and `architecture-1200x800.png` are rendered by `graphics/motion-devpost/render.mjs` (artifact `graphics-motion-devpost`) from the same slide sources as the PNGs, with the Mallet G intro and a stepped reveal added. They are separate from the README motion set in `docs/assets/readme/`. Details and alt texts: [`docs/submission/DEVPOST-IMAGES.md`](../../submission/DEVPOST-IMAGES.md) and [`docs/assets/GRAPHICS-NOTES.md`](../GRAPHICS-NOTES.md).
