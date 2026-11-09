@@ -55,6 +55,7 @@ export const JUDGE_PAUSE_PATH = '/api/judge/pause';
 export const JUDGE_KEY_PATH = '/api/judge/key';
 export const JUDGE_LEDGER_PATH = '/api/judge/rooms/:id/ledger';
 export const JUDGE_BID_PATH = '/api/judge/rooms/:id/bids';
+export const JUDGE_CLOSE_PATH = '/api/judge/rooms/:id/close';
 /** Admin only (x-admin-key): list the judge keys, or revoke one. Never answers a hash. */
 export const JUDGE_KEYS_PATH = '/api/judge/keys';
 export const JUDGE_KEY_REVOKE_PATH = '/api/judge/keys/:keyId/revoke';
@@ -1080,12 +1081,44 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     return json(202, { accepted: false, pending: true, mid });
   };
 
+  /**
+   * `POST /api/judge/rooms/:id/close`: the creator ends a judge room now. The auctioneer token of
+   * that room is the only credential. A running lot is stopped first (the same unsold hammer as the
+   * console Stop button), then the room is marked ended: new joins, holds and bids are refused with
+   * 410. Nothing is deleted: the ledger, the audit trail and the receipt stay readable until the
+   * room's normal end. Safe to repeat: a room that is already closed answers 200 with
+   * `alreadyClosed: true`.
+   */
+  const closeRoom = async (c: Ctx): Promise<Response> => {
+    const { deps } = c;
+    if (!opts.enabled) throw new HttpError(404, 'not_found', 'no such route');
+    const auctionId = c.params.id ?? '';
+    const who = await authenticate(c, auctionId, ['auctioneer']);
+    await load(deps);
+    const marker = (await deps.store.getJournal(markerKey(auctionId)))?.value as Marker | undefined;
+    if (marker === undefined) throw new GavelError('not_found', 'no such judge room');
+    if (marker.expired === true) return json(200, { closed: true, alreadyClosed: true });
+    const room = await roomFor(deps, auctionId);
+    await room.abort(who.sub);
+    await expire(deps, auctionId, 'done');
+    const after = (await deps.store.getJournal(markerKey(auctionId)))?.value as Marker | undefined;
+    if (after?.expired !== true) {
+      throw new GavelError('store_unavailable', 'could not close the room');
+    }
+    audit(deps)?.info('judge room closed by creator', {
+      event: 'judge_room.closed',
+      auctionId,
+    });
+    return json(200, { closed: true, alreadyClosed: false });
+  };
+
   const mount: Mount = (app: HttpApp): void => {
     appDeps = app.deps;
     codeGuardOf(app.deps, joinLimits);
     app.post(JUDGE_JOIN_PATH, judgeRoute(join));
     app.post(JUDGE_SIM_HOLD_PATH, judgeRoute(simHold));
     app.post(JUDGE_BID_PATH, judgeRoute(placeBid));
+    app.post(JUDGE_CLOSE_PATH, judgeRoute(closeRoom));
     app.get(JUDGE_KEYS_PATH, judgeRoute(keyList));
     app.post(JUDGE_KEY_REVOKE_PATH, judgeRoute(keyRevoke));
     app.get(JUDGE_CAPABILITIES_PATH, async (c: Ctx) => {

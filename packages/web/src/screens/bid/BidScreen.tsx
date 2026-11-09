@@ -20,6 +20,8 @@ import {
 } from '../../store/selectors';
 import { roomStore, useRoom, type RoomStore } from '../../store/roomStore';
 import { formatUsd, formatUsdCompact } from '../../util/money';
+import { Instructor, bidderStep } from '../../help';
+import type { AuctionStatus } from '../../wire';
 import { HoldCard, PriceRoll, Skeleton, SkeletonGroup } from '../../ui';
 import './bid.css';
 import { CeilingMeter } from './CeilingMeter';
@@ -123,6 +125,7 @@ export function BidScreen({
   const presets = useRoom((s) => s.snapshot?.config.ceilingPresets, store);
   const cap = useRoom((s) => s.snapshot?.maxCeilingCents, store);
   const [raising, setRaising] = useState(false);
+  const roomId = useRoom((s) => s.auctionId, store);
 
   const status = myStatus(base, pending);
   const nextMin = price?.nextMinCents ?? reserve;
@@ -200,6 +203,15 @@ export function BidScreen({
 
   return (
     <main className="bid" data-k={screenKind}>
+      <Instructor
+        screen="bid"
+        roomId={roomId}
+        current={bidderStep({
+          status: auctionStatus as AuctionStatus | null,
+          ended: stopped || bidsNotice(auctionStatus) === 'bid.closedBanner',
+          hasLimit: ceilingHold !== null,
+        })}
+      />
       <div className="bid__notices">
         {connection.offline && (
           <Banner tone="warn" icon={<Icon name="warning" />}>

@@ -525,3 +525,13 @@
   border-radius: var(--radius-md);
   font-weight: 700;
 }
+
+.gv-hub__close {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.gv-hub__close p {
+  margin: 0;
+}

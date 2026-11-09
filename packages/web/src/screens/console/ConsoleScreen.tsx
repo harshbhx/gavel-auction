@@ -14,6 +14,7 @@ import { formatUsd } from '../../util/money';
 import { rowsFromAudit } from './BidStream';
 import { BidHistory } from './BidHistory';
 import { ConfirmQueue } from './ConfirmQueue';
+import { Instructor, consoleStep } from '../../help';
 import { ConsoleGuide } from './ConsoleGuide';
 import { PriceHeader } from './PriceHeader';
 import '../../a11y/a11y.css';
@@ -104,6 +105,11 @@ export function ConsoleScreen({
 
   const left = (
     <section className="gv-console-panel gv-console-panel--lot" aria-label={t('bid.price')}>
+      <Instructor
+        screen="console"
+        {...(auctionId === null ? {} : { roomId: auctionId })}
+        current={consoleStep({ status, ended: stopped || status === 'DONE' })}
+      />
       <ConsoleGuide status={status} stopped={stopped} roomId={auctionId} />
       {closed && hammer !== null && hammer.winnerId !== null && winnerPaddle !== null && (
         <p className="gv-console-result" role="status" data-field="result">
