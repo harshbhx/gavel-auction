@@ -158,6 +158,10 @@ test.describe('ledger lab: export, filters in the link, verify, memory', () => {
     await expect(
       page.getByRole('columnheader', { name: new RegExp(t('ledger.col.amount')) }),
     ).toHaveAttribute('aria-sort', 'ascending');
+    const stored = await page.evaluate(() =>
+      Object.entries(window.sessionStorage).filter(([k]) => k.startsWith('gavel.grid.columns.')),
+    );
+    expect(JSON.stringify(stored)).toContain('"sort":"asc"');
     await page.reload();
     await page.locator('.ag-row').first().waitFor();
     await expect(

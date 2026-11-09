@@ -174,10 +174,7 @@ test.describe('audit', () => {
     await audit(page, { scenario: auditRoom, at: 9_000 });
     // The grid is the default view: a click on a row opens the page's detail sheet.
     await ledgerRows(page);
-    await page
-      .locator('[data-testid="ledger-grid"] .ag-row[row-index="1"] [col-id="type"]')
-      .first()
-      .click();
+    await page.locator('[data-testid="ledger-grid"] .ag-row[row-index="1"]').first().click();
     await page.getByRole('dialog').waitFor();
     await shoot('audit', 'row-drawer');
   });

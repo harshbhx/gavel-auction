@@ -109,6 +109,22 @@ export function gridStateFor(key: string | null): GridState | undefined {
 export function useColumnMemory(api: GridApi | null, key: string | null): void {
   useEffect(() => {
     if (api === null || key === null) return undefined;
+    // The layout also goes in through initialState; this puts the sort back once the grid has settled,
+    // in case the grid applied its own default sort after creating the columns.
+    const saved = loadColumns(key);
+    const settle = window.setTimeout(() => {
+      if (saved === null || api.isDestroyed()) return;
+      const known = saved.filter((c) => api.getColumn(c.colId) !== null);
+      if (!known.some((c) => c.sort === 'asc' || c.sort === 'desc')) return;
+      api.applyColumnState({
+        state: known.map((c) => ({
+          colId: c.colId,
+          sort: c.sort ?? null,
+          sortIndex: c.sortIndex ?? null,
+        })),
+        defaultState: { sort: null },
+      });
+    }, 0);
     const save = (): void => {
       saveColumns(key, api);
     };
@@ -119,6 +135,7 @@ export function useColumnMemory(api: GridApi | null, key: string | null): void {
     api.addEventListener('columnMoved', save);
     api.addEventListener('columnResized', onResize);
     return () => {
+      window.clearTimeout(settle);
       if (!api.isDestroyed()) {
         api.removeEventListener('sortChanged', save);
         api.removeEventListener('columnMoved', save);
