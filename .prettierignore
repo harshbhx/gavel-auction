@@ -7,3 +7,4 @@ package-lock.json
 *.tsbuildinfo
 etc/
 docsite/
+brand/devpost/preview/
