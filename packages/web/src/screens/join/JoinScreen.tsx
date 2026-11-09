@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { useEffect } from 'react';
 
 import { WideAside } from '../WideAside';
 import { t } from '../../copy/t';
@@ -7,8 +7,9 @@ import '../flows.css';
 import { loadRegistration } from '../../payments/registrationStore';
 import { getBidderSession } from '../../store/session';
 import { ApiProblem } from '../states/ApiProblem';
+import { ChunkBoundary, lazyWithRetry } from '../states/ChunkBoundary';
 
-const QrCode = lazy(() => import('./QrCode'));
+const QrCode = lazyWithRetry(() => import('./QrCode'));
 
 export type JoinState = 'loading' | 'open' | 'ended' | 'notFound' | 'full' | 'busy' | 'unreachable';
 
@@ -165,9 +166,9 @@ export function JoinScreen({
       <h1 tabIndex={-1}>{t('join.title', { room: roomName })}</h1>
       <Steps current={1} />
       <div className="gv-flow__qr">
-        <Suspense fallback={null}>
+        <ChunkBoundary>
           <QrCode url={url} size={192} />
-        </Suspense>
+        </ChunkBoundary>
       </div>
       {shortCode !== null && <p className="gv-flow__code">{t('join.code', { code: shortCode })}</p>}
       {demoHold ? (

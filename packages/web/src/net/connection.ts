@@ -20,9 +20,19 @@ export const WAIT_ERRORS: readonly string[] = [
 ];
 const HALTING_ERRORS: readonly string[] = [...TERMINAL_ERRORS, ...WAIT_ERRORS];
 
+/**
+ * The message of the error frame the server sends when it refuses a socket because of too many
+ * connections from one address (or a spent join budget), and closes it with 4429.
+ */
+export const BUSY_MESSAGE = 'too_many_connections';
+/** Waits before retrying such a refusal, doubling up to the last value (capped at one minute). */
+export const BUSY_BACKOFF_MS: readonly number[] = [5000, 10_000, 20_000, 40_000, 60_000];
+
 export interface ConnectionSnapshot {
   status: TransportStatus;
   offline: boolean;
+  /** Epoch ms of the next attempt while the server refuses this network as too busy. */
+  busyUntilMs?: number;
 }
 
 /** A connection that stays open this long counts as stable, and the backoff starts over. */
@@ -63,6 +73,9 @@ export class ConnectionManager {
   private offlineTimer: unknown = null;
   private stableTimer: unknown = null;
   private running = false;
+  /** Consecutive busy refusals, and the wait the latest one asked for. */
+  private busyCount = 0;
+  private busyWaitMs = 0;
   /** True once the server accepted the join on the current socket (it sent a snapshot). */
   private joined = false;
   private unsubscribers: Array<() => void> = [];
@@ -92,9 +105,22 @@ export class ConnectionManager {
     this.unsubscribers = [
       transport.onStatus((s) => this.handleStatus(s)),
       transport.onMessage((m) => {
+        if (
+          m.t === 'error' &&
+          !this.joined &&
+          m.code === 'rate_limited' &&
+          m.message === BUSY_MESSAGE
+        ) {
+          // Refused for this network: keep retrying with a capped backoff and tell the page when.
+          this.busyWaitMs = m.retryAfterMs ?? 0;
+          this.busyCount += 1;
+          return;
+        }
         if (m.t === 'state') {
           this.attempt = 0;
           this.joined = true;
+          this.busyCount = 0;
+          this.update({ status: this.snapshot.status, offline: this.snapshot.offline });
         }
         this.deps.onMessage(m);
         // The server refused this join. Retrying with the same token cannot succeed, so stop.
@@ -106,6 +132,7 @@ export class ConnectionManager {
 
   stop(): void {
     this.running = false;
+    this.busyCount = 0;
     this.clearReconnect();
     this.clearOffline();
     this.clearStable();
@@ -126,7 +153,11 @@ export class ConnectionManager {
         this.stableTimer = null;
         this.attempt = 0;
       }, STABLE_AFTER_MS);
-      this.update({ status, offline: false });
+      this.update(
+        this.snapshot.busyUntilMs === undefined
+          ? { status, offline: false }
+          : { status, offline: false, busyUntilMs: this.snapshot.busyUntilMs },
+      );
       this.sendJoin();
       return;
     }
@@ -139,7 +170,7 @@ export class ConnectionManager {
     if (this.offlineTimer === null && !this.snapshot.offline) {
       this.offlineTimer = this.setTimer(() => {
         this.offlineTimer = null;
-        if (this.running) this.update({ ...this.snapshot, offline: true });
+        if (this.running && this.busyCount === 0) this.update({ ...this.snapshot, offline: true });
       }, OFFLINE_AFTER_MS);
     }
     this.scheduleReconnect();
@@ -159,8 +190,14 @@ export class ConnectionManager {
 
   private scheduleReconnect(): void {
     if (this.reconnectTimer !== null) return;
-    const delay = backoffDelay(this.attempt, this.random());
+    let delay = backoffDelay(this.attempt, this.random());
     this.attempt += 1;
+    if (this.busyCount > 0) {
+      const rung = Math.min(this.busyCount - 1, BUSY_BACKOFF_MS.length - 1);
+      const step = BUSY_BACKOFF_MS[rung] ?? 60_000;
+      delay = Math.min(Math.max(step, this.busyWaitMs), 60_000);
+      this.update({ ...this.snapshot, busyUntilMs: Date.now() + delay });
+    }
     this.reconnectTimer = this.setTimer(() => {
       this.reconnectTimer = null;
       if (this.running) this.deps.transport.connect();
@@ -183,7 +220,13 @@ export class ConnectionManager {
   }
 
   private update(next: ConnectionSnapshot): void {
-    if (next.status === this.snapshot.status && next.offline === this.snapshot.offline) return;
+    if (
+      next.status === this.snapshot.status &&
+      next.offline === this.snapshot.offline &&
+      next.busyUntilMs === this.snapshot.busyUntilMs
+    ) {
+      return;
+    }
     this.snapshot = next;
     this.listeners.forEach((l) => l());
   }
