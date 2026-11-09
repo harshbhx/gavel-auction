@@ -37,10 +37,10 @@ export function reloadForChunk(opts: ChunkRecovery = {}): boolean {
   const now = (opts.now ?? Date.now)();
   const storage = opts.storage === undefined ? defaultStorage() : opts.storage;
   try {
-    const last = Number(storage?.getItem(CHUNK_RELOAD_KEY) ?? 0);
-    if (storage === null || (Number.isFinite(last) && now - last < CHUNK_RELOAD_WINDOW_MS)) {
-      return false;
-    }
+    if (storage === null) return false;
+    const stored = storage.getItem(CHUNK_RELOAD_KEY);
+    const last = stored === null ? Number.NaN : Number(stored);
+    if (Number.isFinite(last) && now - last < CHUNK_RELOAD_WINDOW_MS) return false;
     storage.setItem(CHUNK_RELOAD_KEY, String(now));
   } catch {
     return false;
