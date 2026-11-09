@@ -576,7 +576,7 @@ describe('judge keys: audit fixes', () => {
   });
 
   it('a host-wide cap answers its own code and never blames a judge with no rooms (#2301)', async () => {
-    const s = setup([entry(A), entry(B), entry(C)], { keyedMax: 2 });
+    const s = setup([entry(A, { maxRooms: 1 }), entry(B), entry(C)], { keyedMax: 2 });
     expect((await call(s.app, 'POST', JUDGE_ROOMS_PATH, { headers: withKey(A.key) })).status).toBe(
       201,
     );
