@@ -68,7 +68,11 @@ function quickStartEnv(relPath: string): Record<string, string> {
 }
 
 describe('documented quick start command', () => {
-  const docs = ['packages/server/README.md', 'docsite/content/docs/(operate)/run/index.mdx'];
+  const docs = [
+    'README.md',
+    'packages/server/README.md',
+    'docsite/content/docs/(operate)/run/index.mdx',
+  ];
   it.each(docs)('passes config validation with NODE_ENV unset (%s)', (doc) => {
     const env = quickStartEnv(doc);
     expect(Object.keys(env)).toEqual(
@@ -78,6 +82,33 @@ describe('documented quick start command', () => {
     const r = parseConfig(env);
     expect(r.ok ? [] : r.errors).toEqual([]);
     expect(r.ok).toBe(true);
+  });
+});
+
+describe('root README quick start', () => {
+  const readme = readFileSync(
+    fileURLToPath(new URL('../../../README.md', import.meta.url)),
+    'utf8',
+  );
+
+  it('names the web env step for a file that exists', () => {
+    expect(readme).toContain('cp packages/web/.env.example packages/web/.env.local');
+    const example = readFileSync(
+      fileURLToPath(new URL('../../web/.env.example', import.meta.url)),
+      'utf8',
+    );
+    expect(example).toMatch(/^VITE_API_BASE=/m);
+  });
+
+  it('says how the .env file is loaded', () => {
+    expect(readme).toContain('set -a; source .env; set +a');
+  });
+
+  it('says the quick start secrets meet the server minimums', () => {
+    expect(readme).toMatch(/32 and 24 hex characters/);
+    const env = quickStartEnv('README.md');
+    expect(String(env.TOKEN_SECRET).length).toBeGreaterThanOrEqual(32);
+    expect(String(env.ADMIN_KEY).length).toBeGreaterThanOrEqual(24);
   });
 });
 
