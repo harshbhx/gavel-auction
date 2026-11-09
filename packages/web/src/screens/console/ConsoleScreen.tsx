@@ -102,11 +102,9 @@ export function ConsoleScreen({
   const left = (
     <section className="gv-console-panel gv-console-panel--lot" aria-label={t('bid.price')}>
       <ConsoleGuide status={status} stopped={stopped} roomId={auctionId} />
-      {closed && hammer !== null && (
+      {closed && hammer !== null && hammer.winnerId !== null && winnerPaddle !== null && (
         <p className="gv-console-result" role="status" data-field="result">
-          {hammer.winnerId === null || winnerPaddle === null
-            ? t('console.result.noWinner', { amount: formatUsd(hammer.price) })
-            : t('console.result.sold', { n: winnerPaddle, amount: formatUsd(hammer.price) })}
+          {t('console.result.sold', { n: winnerPaddle, amount: formatUsd(hammer.price) })}
         </p>
       )}
       <PriceHeader

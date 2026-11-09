@@ -101,11 +101,10 @@ describe('console right after the hammer', () => {
     expect(screen.getByText(t('console.biddersClosed', { n: 2 }))).toBeTruthy();
   });
 
-  it('says closed with no winner for an unsold hammer', () => {
+  it('adds no sale line for an unsold hammer: the status says stopped or closing', () => {
     deliver(hammerMsg(null, 40_000));
-    expect(
-      screen.getByText(t('console.result.noWinner', { amount: formatUsd(40_000) })),
-    ).toBeTruthy();
+    expect(screen.queryByText(/^Sold to paddle/)).toBeNull();
+    expect(screen.getByText(t('console.clockClosed'))).toBeTruthy();
   });
 });
 

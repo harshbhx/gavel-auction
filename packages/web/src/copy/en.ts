@@ -741,7 +741,6 @@ export const en = {
   'console.ladder.winner': 'Winner',
   'console.biddersClosed': '{n} bidders',
   'console.result.sold': 'Sold to paddle {n} at {amount}',
-  'console.result.noWinner': 'Closed with no winner at {amount}',
   'console.clockClosed': 'Closed',
   'console.ladder.held': 'Hold held',
   'console.ladder.high': 'High {amount}',
