@@ -4,8 +4,12 @@
 # The site is served at https://gavel-web.<account-subdomain>.workers.dev.
 name = "gavel-web"
 compatibility_date = "2025-09-01"
+# Runs first only for /join/* so a mangled join link gets the app, not a bare 400 (worker.mjs).
+main = "worker.mjs"
 
 [assets]
 directory = "./dist"
 # Unknown paths such as /join/<room> or /r/<room>/bid answer with index.html.
 not_found_handling = "single-page-application"
+binding = "ASSETS"
+run_worker_first = ["/join/*"]

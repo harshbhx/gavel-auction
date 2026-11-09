@@ -145,3 +145,20 @@ describe('judge key field on /try', () => {
     expect((await screen.findByRole('alert')).textContent).toContain(t('try.key.cap'));
   });
 });
+
+describe('action bar clearance on /try', () => {
+  afterEach(() => {
+    document.documentElement.style.removeProperty('--judge-bar-clear');
+  });
+
+  it('publishes the bar height so the page ends above it', () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      height: 96,
+    } as DOMRect);
+    const view = render(panel());
+    expect(document.documentElement.style.getPropertyValue('--judge-bar-clear')).toBe('136px');
+    view.unmount();
+    expect(document.documentElement.style.getPropertyValue('--judge-bar-clear')).toBe('');
+    vi.restoreAllMocks();
+  });
+});
