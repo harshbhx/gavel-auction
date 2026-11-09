@@ -8,17 +8,17 @@ Rules source: https://paypalaihackathon.devpost.com/rules (Submission Period 1 O
 
 GAVEL
 
-## Tagline (49 characters, limit 60)
+## Tagline (47 characters, limit 60)
 
-Every bid is a PayPal hold. Only the winner pays.
+Every bid is a hold. The hammer is the payment.
 
-## Elevator pitch (157 characters, limit 200)
+## Elevator pitch (172 characters, limit 200)
 
-A live auction where every bid is a PayPal hold. At the hammer GAVEL captures the winning price, voids the rest, and seals the result in a verifiable ledger.
+A live auction on PayPal holds: bidders hold a ceiling, the hammer captures only the winning price and voids the rest, and a hash-chained ledger anyone can verify seals it.
 
 ## About the project
 
-Paste the full content of `brand/devpost/DESCRIPTION.md`. Headings used, in Devpost's order: Inspiration, What it does, How we built it, Challenges we ran into, Accomplishments that we're proud of, What we learned, What's next for GAVEL. Extra H3 subsections: "Animated slides" (under What it does), and "Team", "Where the partners fit" and "AI in the product" (under How we built it). Every image has an italic caption line. The AI section answers the rules item "identify which tools (model or AI service) were used and how".
+Paste the full content of `brand/devpost/DESCRIPTION.md`. Headings used, in Devpost's order: Inspiration, What it does, How we built it, Challenges we ran into, Accomplishments that we're proud of, What we learned, What's next for GAVEL. Extra subsections: "Try it in 60 seconds" (under What it does), "Evidence before claims" and "AI in the product" (under How we built it), then "Team" and "Try it" at the end. Every image has an italic caption line. The AI section answers the rules item "identify which tools (model or AI service) were used and how".
 
 Markdown used: H2 and H3 headings, bold, bullet lists, inline code, links, images by URL. No tables, no HTML, no fenced code, no strikethrough (Devpost's Markdown tips list tables, fenced code and strikethrough as extended syntax that not every renderer supports).
 
