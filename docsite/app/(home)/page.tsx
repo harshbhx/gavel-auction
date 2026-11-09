@@ -88,7 +88,7 @@ const faq = [
   },
   {
     q: 'Is there a hosted demo?',
-    a: 'Yes, in sandbox mode: the web app is at gavel-web.creharsh.workers.dev and the API at gavel-auction-z2nm.onrender.com, with a persistent disk and key-less judge rooms. A recorded walk of the whole flow is the next step. The demo guide lists what is verified.',
+    a: 'Yes, in sandbox mode: the web app is at gavel.dualmindlab.tech and the API at api.gavel.dualmindlab.tech, with a persistent disk and key-less judge rooms. A recorded walk of the whole flow is the next step. The demo guide lists what is verified.',
   },
 ];
 

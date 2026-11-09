@@ -80,7 +80,7 @@ What it shows, each section carrying its label:
 - Latency, real sandbox: hammer to captured and to settled p95 against the targets (the capture target is missed), and per-call p50 and p95, with n stated.
 - The 30-day run, labelled SIMULATED: lots, holds, outcomes, review causes, money held, captured, released and open, and the scenario checks.
 - Speech-to-text, labelled SYNTHETIC: exact-match rates per provider and clip set, and the parse-level G5 table.
-- A link to the live demo, https://gavel-web.creharsh.workers.dev/demo.
+- A link to the live demo, https://gavel.dualmindlab.tech/demo.
 
 ## Publishing
 

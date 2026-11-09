@@ -19,9 +19,9 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 export const DEFAULTS = {
   repo: 'harshbhx/gavel-auction',
-  web: 'https://gavel-web.creharsh.workers.dev',
-  docs: 'https://gavel-docs.creharsh.workers.dev',
-  api: 'https://gavel-auction-aufz.onrender.com',
+  web: 'https://gavel.dualmindlab.tech',
+  docs: 'https://docs.gavel.dualmindlab.tech',
+  api: 'https://api.gavel.dualmindlab.tech',
   timeoutMs: 60_000,
 };
 

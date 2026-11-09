@@ -4,18 +4,18 @@ Draft for the Devpost "testing instructions" field. The owner pastes this in and
 
 ---
 
-For judges: start at https://gavel-web.creharsh.workers.dev/try (judge panel). No login: https://gavel-web.creharsh.workers.dev/demo/scripted. Demo room: https://gavel-web.creharsh.workers.dev/demo. Trust and FAQ: https://docs.gavel.dualmindlab.tech/docs/judges/trust-and-faq. Sandbox buyer logins are placeholders below (OWNER fills in).
+For judges: start at https://gavel.dualmindlab.tech/try (judge panel). No login: https://gavel.dualmindlab.tech/demo/scripted. Demo room: https://gavel.dualmindlab.tech/demo. Trust and FAQ: https://docs.gavel.dualmindlab.tech/docs/judges/trust-and-faq. Sandbox buyer logins are placeholders below (OWNER fills in).
 
 GAVEL is a live auction where every bid is a PayPal authorization hold. At the hammer only the winning price is captured and every other hold is voided. Everything runs in the PayPal sandbox: no real money moves, and you should never use your own PayPal account.
 
 No login path (about 1 minute)
 
-1. Open https://gavel-web.creharsh.workers.dev/demo/scripted
+1. Open https://gavel.dualmindlab.tech/demo/scripted
 2. It plays a recorded room in your browser with no server and no PayPal calls. It is labelled "Scripted demo: recorded events, no PayPal calls".
 
 Live sandbox room (about 3 minutes)
 
-1. Open https://gavel-web.creharsh.workers.dev and press "Start a demo auction". The page /try lists the same steps.
+1. Open https://gavel.dualmindlab.tech and press "Start a demo auction". The page /try lists the same steps.
 2. Open the big screen link in a second window, or scan its QR code on a phone, and join as a bidder with any name and a ceiling.
 3. Press and hold the approve button for 3 seconds. In the PayPal sandbox window log in with this sandbox buyer:
    - Email: OWNER fills in from the sandbox dashboard

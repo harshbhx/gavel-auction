@@ -10,7 +10,7 @@ Deadline: Thu Nov 12 2026 12:00pm PST (= Fri Nov 13 01:30 IST). Early eligibilit
 | Settlement saga (capture, void, journal, resume, webhooks) | single sandbox calls (G1, G2, G4) and nightly R7, R8, R10    | whole-auction settlement, crash recovery | a whole auction driven through a deployed server on the sandbox |
 | Hold creation and approval service                         | HTTP routes mounted in the server                            | yes, in tests                            | a recorded hold and approval through the hosted web app         |
 | Room and runtime service with file stores                  | server entry point, HTTP and WebSocket routes, Render deploy |                                          | a recorded run on the hosted disk                               |
-| Web components, routes and replay player                   | deployed Worker (https://gavel-web.creharsh.workers.dev)     |                                          | a recorded walk of all screens against a live hosted room       |
+| Web components, routes and replay player                   | deployed Worker (https://gavel.dualmindlab.tech)             |                                          | a recorded walk of all screens against a live hosted room       |
 | Voice package (capture, STT clients, parser)               | `/audio` socket feeds decisions into the room                |                                          | audio sender in the web console, a live speech run              |
 | Replay of recorded audio                                   | player and bundle format                                     |                                          | recording export, published recording                           |
 | Crash and resume                                           | in-process test hook, one in-process crash on the sandbox    |                                          | trigger on a hosted server                                      |
@@ -63,7 +63,7 @@ If G1 or G2 fails with no workaround: switch to Orders AUTHORIZE with PayPal-wal
 
 ## 7. Submission checklist
 
-Public repo + visible OSS license; run instructions + hosted URL (web https://gavel-web.creharsh.workers.dev, API on Render, docs https://gavel-docs.creharsh.workers.dev; holds expire within days, so the hosted build needs fresh sandbox holds at test time); PayPal sandbox only; AI tool and model named in text; PayPal central; public YouTube <3 min, no copyrighted music; English; Devpost tools list; mention what changed if reused earlier work; optional early check by Nov 5.
+Public repo + visible OSS license; run instructions + hosted URL (web https://gavel.dualmindlab.tech, API on Render, docs https://docs.gavel.dualmindlab.tech; holds expire within days, so the hosted build needs fresh sandbox holds at test time); PayPal sandbox only; AI tool and model named in text; PayPal central; public YouTube <3 min, no copyrighted music; English; Devpost tools list; mention what changed if reused earlier work; optional early check by Nov 5.
 
 ## 8. Risks and what stays unknown
 

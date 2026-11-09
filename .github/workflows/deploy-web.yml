@@ -58,7 +58,7 @@ jobs:
           VAR_ORIGIN: ${{ vars.API_ORIGIN }}
         run: |
           origin="${INPUT_ORIGIN:-$VAR_ORIGIN}"
-          origin="${origin:-https://gavel-auction-aufz.onrender.com}"
+          origin="${origin:-https://api.gavel.dualmindlab.tech}"
           if ! printf '%s' "$origin" | grep -Eq '^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?$'; then
             echo "::error::The API origin must be an https origin with no path and no trailing slash, for example https://api.example.org. Fix the api_origin input or the API_ORIGIN variable."
             exit 1

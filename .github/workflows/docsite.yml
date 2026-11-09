@@ -72,7 +72,7 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: '1'
           # Absolute address for Open Graph and metadataBase (docsite/lib/shared.ts).
-          NEXT_PUBLIC_SITE_URL: https://gavel-docs.creharsh.workers.dev
+          NEXT_PUBLIC_SITE_URL: https://docs.gavel.dualmindlab.tech
         run: npm run build
 
       # After the build, so the generated content types exist.

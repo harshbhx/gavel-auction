@@ -1,6 +1,6 @@
 # Limits and next steps
 
-What GAVEL does today, how far each part has been measured, and what comes next. Every row follows the committed evidence. Where this page and [docs/GATES.md](GATES.md) differ, the gate record wins. The same page is on the docs site as [Limits and next steps](https://gavel-docs.creharsh.workers.dev/docs/roadmap/limits).
+What GAVEL does today, how far each part has been measured, and what comes next. Every row follows the committed evidence. Where this page and [docs/GATES.md](GATES.md) differ, the gate record wins. The same page is on the docs site as [Limits and next steps](https://docs.gavel.dualmindlab.tech/docs/roadmap/limits).
 
 The submission deadline is Thu 12 Nov 2026, 12:00 PST (Fri 13 Nov 01:30 IST).
 
@@ -40,12 +40,12 @@ The submission deadline is Thu 12 Nov 2026, 12:00 PST (Fri 13 Nov 01:30 IST).
 
 ## Hosting and demo
 
-| Area          | Today                                                                                                                                                    | Next                                                              | Owner and date |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | -------------- |
-| Hosted app    | Web at https://gavel-web.creharsh.workers.dev and API at https://api.gavel.dualmindlab.tech, both in sandbox mode. Judge rooms open a real sandbox room. | Record a walk of the five-minute path on the hosted app.          | Date not set   |
-| Storage       | The Render service is set up with a 1 GB persistent disk and one instance (`render.yaml`).                                                               | Keep one instance: the file stores are owned by a single process. | Standing       |
-| Replay        | The player and bundle format exist; the scripted demo plays a recorded room in the browser.                                                              | Host recorded live auctions for replay.                           | Date not set   |
-| Rejected bids | Kept in the room log. The hash-chained ledger holds accepted bids.                                                                                       | Decide whether rejected bids also go into the ledger.             | Date not set   |
+| Area          | Today                                                                                                                                            | Next                                                              | Owner and date |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- | -------------- |
+| Hosted app    | Web at https://gavel.dualmindlab.tech and API at https://api.gavel.dualmindlab.tech, both in sandbox mode. Judge rooms open a real sandbox room. | Record a walk of the five-minute path on the hosted app.          | Date not set   |
+| Storage       | The Render service is set up with a 1 GB persistent disk and one instance (`render.yaml`).                                                       | Keep one instance: the file stores are owned by a single process. | Standing       |
+| Replay        | The player and bundle format exist; the scripted demo plays a recorded room in the browser.                                                      | Host recorded live auctions for replay.                           | Date not set   |
+| Rejected bids | Kept in the room log. The hash-chained ledger holds accepted bids.                                                                               | Decide whether rejected bids also go into the ledger.             | Date not set   |
 
 ## Reviews and data
 
