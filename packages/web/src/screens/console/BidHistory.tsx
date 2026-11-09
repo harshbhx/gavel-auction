@@ -5,7 +5,7 @@ import { BidsGrid } from '../../grid';
 import { BidStream, type BidStreamRow } from './BidStream';
 
 /** The bid history as the plain list (default) or as the AG Grid table, one switch apart. */
-export function BidHistory({ rows }: { rows: readonly BidStreamRow[] }) {
+export function BidHistory({ rows, roomId }: { rows: readonly BidStreamRow[]; roomId: string }) {
   const [view, setView] = useState<'list' | 'grid'>('list');
   return (
     <>
@@ -23,7 +23,7 @@ export function BidHistory({ rows }: { rows: readonly BidStreamRow[] }) {
           </button>
         ))}
       </div>
-      {view === 'grid' ? <BidsGrid rows={rows} /> : <BidStream rows={rows} />}
+      {view === 'grid' ? <BidsGrid rows={rows} roomId={roomId} /> : <BidStream rows={rows} />}
     </>
   );
 }

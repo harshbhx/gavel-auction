@@ -1,12 +1,15 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { GridApi } from 'ag-grid-community';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { LedgerRow } from '../../src/grid/cells';
 import LedgerGrid from '../../src/grid/LedgerGrid';
 import { sealChain, type LedgerEntry } from '../../src/grid/ledgerModel';
 import { nodeHash, stubResizeObserver } from '../support/gridTest';
 
 beforeAll(stubResizeObserver);
+beforeEach(() => {
+  window.sessionStorage.clear();
+});
 
 const bodies = [
   {

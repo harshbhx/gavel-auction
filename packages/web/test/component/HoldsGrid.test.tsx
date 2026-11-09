@@ -1,11 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import type { GridApi } from 'ag-grid-community';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import HoldsGrid from '../../src/grid/HoldsGrid';
 import type { HoldRow } from '../../src/grid/holdsModel';
 import { stubResizeObserver } from '../support/gridTest';
 
 beforeAll(stubResizeObserver);
+beforeEach(() => {
+  window.sessionStorage.clear();
+});
 
 const rows: HoldRow[] = [
   {

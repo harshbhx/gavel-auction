@@ -132,6 +132,7 @@ export function ConsoleScreen({
       <h2 className="ui-kicker">{t('console.stream')}</h2>
       {audit.length > 0 ? (
         <BidHistory
+          roomId={auctionId ?? 'room'}
           rows={rowsFromAudit(
             audit,
             (id) => roster?.find((r) => r.bidderId === id)?.paddle ?? null,

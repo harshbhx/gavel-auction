@@ -279,3 +279,79 @@
     animation-duration: 0.01ms !important;
   }
 }
+
+/* Text for screen readers only (the keyboard help line above each table). */
+.gv-grid-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Event, paddle and hash-prefix filters above the ledger. */
+.gv-gridfilters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.gv-gridfilters label {
+  display: block;
+  font-size: var(--font-size-1);
+  font-weight: 700;
+  margin-bottom: var(--space-1);
+}
+
+.gv-gridfilters input[type='text'],
+.gv-gridfilters select {
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 2px solid var(--color-fg);
+  border-radius: 0;
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font: inherit;
+}
+
+.gv-gridfilters input[type='text'] {
+  width: 10rem;
+  max-width: 100%;
+}
+
+.gv-gridfilters p {
+  margin: 0;
+  font-size: var(--font-size-1);
+}
+
+/* What the "Verify chain" action checks, in plain words next to the button. */
+.gv-gridscope {
+  margin: 0;
+  font-size: var(--font-size-1);
+  color: var(--color-fg-muted);
+}
+
+/* A row the "Verify chain" run has reached and found intact: a green edge, and the chip says so in words. */
+.ag-theme-quartz .ag-row.gv-grid-row--ok,
+.gv-gridbox .ag-row.gv-grid-row--ok {
+  background-color: color-mix(in srgb, var(--color-success) 14%, var(--color-surface));
+  box-shadow: inset 6px 0 0 var(--color-success);
+  animation: gv-verify-in 450ms ease-out;
+}
+
+@keyframes gv-verify-in {
+  from {
+    background-color: color-mix(in srgb, var(--color-success) 45%, var(--color-surface));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ag-theme-quartz .ag-row.gv-grid-row--ok,
+  .gv-gridbox .ag-row.gv-grid-row--ok {
+    animation: none;
+  }
+}

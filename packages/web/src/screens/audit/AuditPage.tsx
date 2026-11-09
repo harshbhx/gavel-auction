@@ -156,6 +156,7 @@ export function AuditPage({
               </header>
               <div className="gv-audit__ledger-slot" data-slot="ledger">
                 {ledger({
+                  roomId,
                   rows: filteredRows,
                   allRows: rows,
                   paddleOf,

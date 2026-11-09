@@ -23,6 +23,7 @@ const ROUTES = [
   '/r/room1/screen',
   '/r/room1/audit',
   '/r/room1/hub',
+  '/ledger',
   '/ops',
   '/replay/abc',
   '/gallery',
@@ -141,3 +142,38 @@ for (const width of [320, 390] as const) {
     expect(await blockingViolations(page)).toEqual([]);
   });
 }
+
+/**
+ * The AG Grid tables (ledger lab): axe with rows drawn, on each tab and as phone cards. The grid
+ * keeps its own ARIA roles; this proves our toolbar, filters and chips add no violation around it.
+ */
+test.describe('axe on the AG Grid tables', () => {
+  async function labReady(page: Page): Promise<void> {
+    await page.goto('/ledger');
+    await page.locator('.gv-gridbox .ag-row').first().waitFor();
+  }
+
+  for (const tab of ['ledger', 'holds', 'bids'] as const) {
+    test(`axe /ledger ${tab} tab`, async ({ page }) => {
+      await labReady(page);
+      if (tab !== 'ledger') {
+        await page.getByRole('tab', { name: t(`sim.tab.${tab}`) }).click();
+        await page.locator('.gv-gridbox .ag-row').first().waitFor();
+      }
+      expect(await blockingViolations(page)).toEqual([]);
+    });
+  }
+
+  test('axe /ledger after Verify chain', async ({ page }) => {
+    await labReady(page);
+    await page.getByRole('button', { name: t('grid.verify.button'), exact: true }).click();
+    await page.getByText(/^Checked [\d,]+ entries in this export/).waitFor({ timeout: 20_000 });
+    expect(await blockingViolations(page)).toEqual([]);
+  });
+
+  test('axe /ledger as phone cards', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await labReady(page);
+    expect(await blockingViolations(page)).toEqual([]);
+  });
+});

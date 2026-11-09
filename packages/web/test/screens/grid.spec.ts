@@ -111,13 +111,72 @@ test.describe('ledger lab', () => {
   });
 });
 
+test.describe('ledger lab: export, filters in the link, verify, memory', () => {
+  test('export what you see downloads a CSV named for the room and time', async ({ page }) => {
+    await lab(page);
+    await page.getByLabel(t('ledger.quick')).fill('hammer');
+    await expect(page.getByText(/^30 of [\d,]+ entries$/)).toBeVisible({ timeout: 20_000 });
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Export what you see (30 rows)' }).click();
+    const file = await download;
+    expect(file.suggestedFilename()).toMatch(/^gavel-ledger-simulated-30d-\d{8}T\d{6}Z\.csv$/);
+    const path = await file.path();
+    const { readFileSync } = await import('node:fs');
+    const lines = readFileSync(path, 'utf8').trim().split(/\r?\n/);
+    expect(lines).toHaveLength(31);
+  });
+
+  test('a filtered link opens the same filtered ledger', async ({ page, shoot }) => {
+    const model = { type: { filterType: 'text', type: 'equals', filter: 'Hammer' } };
+    await page.goto(`/ledger?gf=${encodeURIComponent(JSON.stringify(model))}`);
+    await page.getByRole('heading', { level: 1, name: t('sim.title') }).waitFor();
+    await expect(page.getByText(/^30 of [\d,]+ entries$/)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByLabel(t('grid.filter.type'))).toHaveValue('Hammer');
+    await shoot('grid', 'ledger-lab-shared-link');
+  });
+
+  test('typing a filter writes it to the address bar', async ({ page }) => {
+    await lab(page);
+    await page.getByLabel(t('grid.filter.paddle')).fill('3');
+    await expect.poll(() => new URL(page.url()).searchParams.get('gf')).toContain('Paddle 3');
+  });
+
+  test('verify chain marks the rows green and says what it checked', async ({ page, shoot }) => {
+    await lab(page);
+    await page.getByRole('button', { name: t('grid.verify.button'), exact: true }).click();
+    await expect(page.getByText(/^Checked [\d,]+ entries in this export/)).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.locator('.gv-gridbox .gv-grid-row--ok').first()).toBeVisible();
+    await expect(page.getByText(t('grid.verify.scope'))).toBeVisible();
+    await shoot('grid', 'ledger-lab-verified');
+  });
+
+  test('sort and widths come back after a reload in the same tab', async ({ page }) => {
+    await lab(page);
+    await page.getByRole('columnheader', { name: new RegExp(t('ledger.col.amount')) }).click();
+    await expect(
+      page.getByRole('columnheader', { name: new RegExp(t('ledger.col.amount')) }),
+    ).toHaveAttribute('aria-sort', 'ascending');
+    await page.reload();
+    await page.locator('.ag-row').first().waitFor();
+    await expect(
+      page.getByRole('columnheader', { name: new RegExp(t('ledger.col.amount')) }),
+    ).toHaveAttribute('aria-sort', 'ascending');
+  });
+});
+
 test.describe('audit page grid view', () => {
-  test('table switched to the grid', async ({ page, shoot }) => {
+  test('the grid is the default view, the table is one switch away', async ({ page, shoot }) => {
     await openRoom(page, { role: 'reviewer', route: 'audit', scenario: auditRoom, at: 9_000 });
-    await page.getByRole('button', { name: t('audit.view.grid'), exact: true }).click();
     await page.locator('[data-testid="ledger-grid"] .ag-row').first().waitFor();
+    await expect(
+      page.getByRole('button', { name: t('audit.view.grid'), exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
     await noSidewaysScroll(page);
     await shoot('grid', 'audit-grid-view');
+    await page.getByRole('button', { name: t('audit.view.table'), exact: true }).click();
+    await expect(page.getByRole('table')).toBeVisible();
   });
 });
 

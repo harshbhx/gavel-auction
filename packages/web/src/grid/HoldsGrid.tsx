@@ -14,6 +14,8 @@ import { Icon, type IconName } from '../design/icons';
 import { Chip, type ChipTone } from '../design/primitives/Chip';
 import { formatUsd } from '../util/money';
 import { AgGridReact } from './agRuntime';
+import { useColumnMemory } from './columnMemory';
+import { exportBaseName } from './exportName';
 import { GridToolbar } from './GridToolbar';
 import { holdTotals, totalsAddUp, type HoldRow } from './holdsModel';
 import { gavelTheme } from './theme';
@@ -29,7 +31,10 @@ export interface HoldsGridProps {
   virtualise?: boolean;
   onReady?: (api: GridApi<HoldRow>) => void;
   label?: string;
-  fileName?: string;
+  /** Room id, for the CSV file name (`gavel-holds-<room>-<time>.csv`). */
+  roomId?: string;
+  /** Remember sort, column order and widths in sessionStorage. Default true. */
+  remember?: boolean;
 }
 
 const STATE_KEY = {
@@ -113,12 +118,17 @@ export default function HoldsGrid({
   virtualise = true,
   onReady,
   label,
-  fileName = 'holds',
+  roomId = 'room',
+  remember = true,
 }: HoldsGridProps) {
   const narrow = useNarrow(narrowProp);
   const calm = useReducedMotion();
   const [api, setApi] = useState<GridApi<HoldRow> | null>(null);
   const [shown, setShown] = useState(rows.length);
+  const memoryKey = remember
+    ? `holds.${showDay ? 'days' : 'room'}.${narrow ? 'cards' : 'table'}`
+    : null;
+  useColumnMemory(api as GridApi | null, memoryKey);
 
   const pinTotals = useCallback((a: GridApi<HoldRow>) => {
     const visible: HoldRow[] = [];
@@ -236,7 +246,8 @@ export default function HoldsGrid({
         quickHint={t('ledger.quickHint')}
         shown={shown}
         total={rows.length}
-        fileName={fileName}
+        fileName={exportBaseName('holds', roomId)}
+        memoryKey={memoryKey}
         exportKeys={[
           'ref',
           'paddle',
@@ -257,6 +268,7 @@ export default function HoldsGrid({
       <p className="gv-gridchain" data-state={ok ? 'ok' : 'bad'} role="status">
         {ok ? t('holds.check.ok') : t('holds.check.bad')}
       </p>
+      <p className="gv-grid-sr">{t('grid.kbd.help')}</p>
       <div
         className="gv-gridbox"
         data-testid="holds-grid"
@@ -275,6 +287,8 @@ export default function HoldsGrid({
           suppressRowVirtualisation={!virtualise}
           suppressColumnVirtualisation={!virtualise}
           onGridReady={onGridReady}
+          tabToNextCell={() => false}
+          tabToNextHeader={() => false}
         />
       </div>
     </section>

@@ -6,7 +6,7 @@ import { t } from '../copy/t';
 import { Icon } from '../design/icons';
 import { Chip, type ChipTone } from '../design/primitives/Chip';
 import type { BidSource } from '../wire';
-import { formatUsdCompact } from '../util/money';
+import { formatUsd, formatUsdCompact } from '../util/money';
 import {
   formatServerTime,
   rejectionText,
@@ -15,6 +15,9 @@ import {
   type StreamControl,
 } from '../screens/console/BidStream';
 import { AgGridReact } from './agRuntime';
+import { useColumnMemory } from './columnMemory';
+import { exportBaseName } from './exportName';
+import { GridToolbar } from './GridToolbar';
 import { bidRowId, diffBids, isEmptyDiff } from './bidsModel';
 import { gavelTheme } from './theme';
 import { useNarrow, useReducedMotion } from './useGridEnv';
@@ -29,6 +32,10 @@ export interface BidsGridProps {
   virtualise?: boolean;
   onReady?: (api: GridApi<BidStreamRow>) => void;
   label?: string;
+  /** Room id, for the CSV file name (`gavel-bids-<room>-<time>.csv`). */
+  roomId?: string;
+  /** Remember sort, column order and widths in sessionStorage. Default true. */
+  remember?: boolean;
 }
 
 const STATUS_KEY = {
@@ -90,10 +97,14 @@ export default function BidsGrid({
   virtualise = true,
   onReady,
   label,
+  roomId = 'room',
+  remember = true,
 }: BidsGridProps) {
   const narrow = useNarrow(narrowProp);
   const calm = useReducedMotion();
   const [api, setApi] = useState<GridApi<BidStreamRow> | null>(null);
+  const [shown, setShown] = useState(rows.length);
+  useColumnMemory(api as GridApi | null, remember ? `bids.${narrow ? 'cards' : 'table'}` : null);
   // The grid is given its first rows once; every later change is a transaction.
   const [initial] = useState<readonly BidStreamRow[]>(rows);
   const applied = useRef<readonly BidStreamRow[]>(initial);
@@ -103,6 +114,7 @@ export default function BidsGrid({
     const diff = diffBids(applied.current, rows);
     applied.current = rows;
     if (isEmptyDiff(diff)) return;
+    setShown(api.getDisplayedRowCount());
     const res = api.applyTransaction(diff);
     if (!calm && res !== null && res !== undefined && res.add.length > 0) {
       api.flashCells({ rowNodes: res.add, columns: ['amount', 'status'] });
@@ -204,9 +216,27 @@ export default function BidsGrid({
 
   return (
     <section className="gv-gridwrap" aria-label={label ?? t('bids.region')}>
-      <p className="gv-gridbar__count" role="status">
-        {t('bids.count', { n: rows.length })}
-      </p>
+      <GridToolbar
+        api={api as GridApi | null}
+        quickLabel={t('bids.quick')}
+        quickHint={t('bids.quickHint')}
+        shown={shown}
+        total={rows.length}
+        count={t('bids.shown', { shown, total: rows.length })}
+        fileName={exportBaseName('bids', roomId)}
+        memoryKey={remember ? `bids.${narrow ? 'cards' : 'table'}` : null}
+        exportKeys={['seq', 'time', 'paddle', 'amount', 'source', 'confidence', 'status', 'reason']}
+        processCell={(colId, data) => {
+          const row = data as BidStreamRow | undefined;
+          if (row === undefined) return undefined;
+          if (colId === 'time') return new Date(row.serverTs).toISOString();
+          if (colId === 'amount') return row.amountCents === null ? '' : formatUsd(row.amountCents);
+          if (colId === 'confidence') return row.confidence === null ? '' : String(row.confidence);
+          if (colId === 'reason') return reasonText(row);
+          return undefined;
+        }}
+      />
+      <p className="gv-grid-sr">{t('grid.kbd.help')}</p>
       <div
         className="gv-gridbox gv-gridbox--bids"
         data-testid="bids-grid"
@@ -219,12 +249,18 @@ export default function BidsGrid({
           defaultColDef={{ sortable: true, resizable: true }}
           getRowId={(p) => bidRowId(p.data)}
           getRowClass={(p) => (p.data === undefined ? undefined : `gv-bid--${p.data.status}`)}
+          includeHiddenColumnsInQuickFilter
           animateRows={!calm}
           cellFlashDuration={calm ? 0 : 900}
           cellFadeDuration={calm ? 0 : 600}
           suppressRowVirtualisation={!virtualise}
           suppressColumnVirtualisation={!virtualise}
           onGridReady={onGridReady}
+          tabToNextCell={() => false}
+          tabToNextHeader={() => false}
+          onModelUpdated={(e) => {
+            setShown(e.api.getDisplayedRowCount());
+          }}
         />
       </div>
     </section>

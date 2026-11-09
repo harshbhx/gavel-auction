@@ -251,3 +251,37 @@ test('route change puts focus on the main heading', async ({ page }) => {
   await page.goto('/gallery');
   await expect(page.locator('h1')).toBeFocused();
 });
+
+/**
+ * The ledger grid with the keyboard alone: Tab enters the table, arrows move by row, Enter selects a
+ * row, the focus ring is drawn, and Tab leaves the table at once (it does not walk every cell).
+ */
+test('ledger grid: arrows move by row, Enter selects, Tab leaves, ring is visible', async ({
+  page,
+}) => {
+  await page.goto('/ledger');
+  await page.locator('.gv-gridbox .ag-row').first().waitFor();
+  const inGrid = (): Promise<boolean> =>
+    page.evaluate(() => document.activeElement?.closest('.ag-root-wrapper') != null);
+
+  const presses = await tabUntil(page, (el) => el.closest('.ag-root-wrapper') !== null, 30);
+  expect(presses, 'Tab reaches the table').toBeGreaterThan(0);
+  const ring = await readRing(page);
+  expect(ring.widthPx, `ring width on ${ring.tag}`).toBeGreaterThanOrEqual(2);
+  expect(ring.contrast, `ring contrast on ${ring.tag}`).toBeGreaterThanOrEqual(3);
+
+  await page.keyboard.press('ArrowDown');
+  const rowIndex = (): Promise<number> =>
+    page.evaluate(() =>
+      Number(document.activeElement?.closest('[role="row"]')?.getAttribute('aria-rowindex') ?? 0),
+    );
+  const start = await rowIndex();
+  await page.keyboard.press('ArrowDown');
+  expect(await rowIndex()).toBe(start + 1);
+
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { name: /^Entry \d+$/ })).toBeVisible();
+
+  await page.keyboard.press('Tab');
+  expect(await inGrid(), 'one Tab leaves the table').toBe(false);
+});
