@@ -1,6 +1,6 @@
 # Devpost form fields: PayPal AI Hackathon
 
-Paste order follows the Devpost form. The long text is in [`DESCRIPTION.md`](DESCRIPTION.md) (paste the whole file into "About the project"). Image URLs in it are raw GitHub URLs on `main` under `brand/devpost/story/`.
+Paste order follows the Devpost form. The long text is in [`DESCRIPTION.md`](DESCRIPTION.md) (paste the whole file into "About the project"). Image URLs in it are raw GitHub URLs on `main` under `brand/devpost/description/` (numbered in the order they appear in the text; see [`../CURATION.md`](../CURATION.md)).
 
 Rules source: https://paypalaihackathon.devpost.com/rules (Submission Period 1 Oct 2026 9:15 am PT to Thu 12 Nov 2026 12:00 pm PT).
 
@@ -60,7 +60,7 @@ Paste `docs/judges/DEVPOST-TESTING.md` and fill the two sandbox buyer logins on 
 
 ## Image gallery (upload in this order, JPG/PNG/GIF, 5 MB max, 3:2)
 
-Rule: at most one animated GIF in the gallery (the hero). Every other slide is a static PNG. All animated slides sit in the description instead (see "Animated slides" in `DESCRIPTION.md`; files in `brand/devpost/story/`).
+Rule: at most one animated GIF in the gallery (the hero). Every other slide is a static PNG. The description uses animation only where motion adds meaning: banner (intro), how it works, architecture, ledger verify, results (kill survived, voice 24 of 24, chain verifies) and the closing slide (outro). Every other image there is a static PNG. Files are in `brand/devpost/description/`; superseded animated variants are in `brand/archive/devpost-story/`.
 
 All files are in `brand/devpost/gallery/` (1200x800, 3:2, largest 1.4 MB). Thumbnail: `brand/devpost/thumbnail.png` (static).
 
@@ -75,7 +75,9 @@ All files are in `brand/devpost/gallery/` (1200x800, 3:2, largest 1.4 MB). Thumb
 | 7   | 07-open-data-and-gates.png | static PNG   | The evidence is open: five small datasets, each with a sha256 manifest and labelled for what it is. Gates G0, G1, G2 and G4 passed on the PayPal sandbox, G3 is a real probe in progress and G5 is partial on synthetic audio. |
 | 8   | 08-ending.png              | static PNG   | Try it. Verify it. No login. Web app, docs and source links.                                                                                                                                                                   |
 
-Slot reserved: the outro GIF with credits (being built by the 3D logo task). It is a GIF, so it goes in the description (under "Try it", next to the closing slide), not in the gallery. Add its file to `brand/devpost/story/` and one image line in `DESCRIPTION.md` when it lands.
+Slot reserved: the outro GIF with credits (being built by the 3D logo task). It is a GIF, so it goes in the description (under "Try it", next to the closing slide), not in the gallery. Add its file to `brand/devpost/outro/` and one image line in `DESCRIPTION.md` when it lands; it then replaces `description/16-ending.gif`, which stays as the fallback. Pending, owned by agent gfx-outro.
+
+Devpost limits checked on 9 Nov: gallery files must be JPG, PNG or GIF, at most 5 MB each, ratio 3:2. All 8 gallery files are 1200x800 (3:2); the largest is `01-hero.gif` at 1.3 MB. The description images are not subject to the gallery limit; the largest, `16-ending.gif`, is 0.8 MB.
 
 ## Team members (Devpost field)
 

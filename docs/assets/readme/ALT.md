@@ -1,5 +1,7 @@
 # Alt texts for the README graphics
 
+> Curation (DOC-60): which of these animated files are used, and which were moved to `brand/archive/`, is listed in [`brand/CURATION.md`](../../../brand/CURATION.md).
+
 Every file in this folder, with the alt text to use. Source: `graphics/readme/` (rendered in CI by `.github/workflows/graphics.yml`, set `readme`).
 
 | File                                                                                                 | Alt text                                                                                                                                                                                                                                                                                                                                                                          |

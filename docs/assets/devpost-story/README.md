@@ -1,5 +1,7 @@
 # Devpost story graphics
 
+> Curation (DOC-60): which of these animated files are used, and which were moved to `brand/archive/`, is listed in [`brand/CURATION.md`](../../../brand/CURATION.md).
+
 The images and loops for the written project description on Devpost (the "story"). They are separate from the gallery slides in `docs/assets/devpost/` and from the GitHub README graphics in `docs/assets/readme/`.
 
 Source: `graphics/motion-devpost-story/`. Rendered in CI by the `graphics` workflow (set `motion-devpost-story`, artifact `graphics-motion-devpost-story`). Every item has a GIF (15 fps, under 2 MB), an MP4 and a WebM (24 fps) and a `-poster.png` still. Inline items are 1000x560, the banner is 1600x500 (GIF 1200 px wide). Upload the GIF into the description (Devpost's size limit for story images is not confirmed, every GIF here is far below 1 MB).
