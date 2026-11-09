@@ -2,13 +2,13 @@
 
 One folder for the logo, the Devpost entry (text and images), the GitHub README graphics and the videos. Every file here is a copy: the originals stay in `docs/assets/` and `brand/svg/`, so existing links keep working. Every URL below is the raw file on `main`.
 
-| Folder                | What is in it                                                                           |
-| --------------------- | --------------------------------------------------------------------------------------- |
-| [`logo/`](logo)       | Logo SVGs by background, animated logo, product icons, PNG renders                      |
-| [`devpost/`](devpost) | Paste-ready description and form fields, gallery, story images, thumbnail, preview page |
-| [`readme/`](readme)   | The GitHub README graphics (GIF and poster)                                             |
-| [`video/`](video)     | MP4 and WebM of every animation above, each file under 10 MB                            |
-| [`svg/`](svg)         | The original logo SVG set and its usage guide (see "Logo reference" below)              |
+| Folder                | What is in it                                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| [`logo/`](logo)       | Logo SVGs by background, animated logo, product icons, PNG renders (lockup light and dark, mark, favicons, share images) |
+| [`devpost/`](devpost) | Paste-ready description and form fields, gallery, story images, thumbnail, preview page                                  |
+| [`readme/`](readme)   | The GitHub README graphics (GIF and poster)                                                                              |
+| [`video/`](video)     | MP4 and WebM of every animation above, each file under 10 MB                                                             |
+| [`svg/`](svg)         | The original logo SVG set and its usage guide (see "Logo reference" below)                                               |
 
 Quick start for Devpost: open [`devpost/FIELDS.md`](devpost/FIELDS.md) for the form fields, paste [`devpost/DESCRIPTION.md`](devpost/DESCRIPTION.md) into "About the project", upload `devpost/thumbnail.png` and `devpost/gallery/01` to `08` (PNG), and preview the result in [`devpost/preview/index.html`](devpost/preview/index.html) (open it in a browser; served from the repo, it loads the images from `main`).
 
@@ -77,6 +77,25 @@ Animated logo (SVG, plays once or loops), sting, and intro and outro GIFs with p
 | `mark-reversed-loader.svg`       |           | 2 KB   | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/animated/mark-reversed-loader.svg       |
 | `sting-transparent.svg`          |           | 3 KB   | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/animated/sting-transparent.svg          |
 | `sting.svg`                      |           | 3 KB   | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/animated/sting.svg                      |
+
+### `logo/png/`
+
+PNG renders of the logo SVGs (rendered in CI by `brand-assets.yml` from `brand/svg`). Light and dark are the horizontal lockup; the mark is on transparent.
+
+| File                         | Pixels    | Size  | URL                                                                                                     |
+| ---------------------------- | --------- | ----- | ------------------------------------------------------------------------------------------------------- |
+| `android-chrome-192x192.png` | 192x192   | 6 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/png/android-chrome-192x192.png |
+| `android-chrome-512x512.png` | 512x512   | 15 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/png/android-chrome-512x512.png |
+| `apple-touch-icon.png`       | 180x180   | 5 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/png/apple-touch-icon.png       |
+| `favicon-16x16.png`          | 16x16     | 1 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/png/favicon-16x16.png          |
+| `favicon-32x32.png`          | 32x32     | 1 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/png/favicon-32x32.png          |
+| `favicon.ico`                |           | 15 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/png/favicon.ico                |
+| `lockup-h-color-2048.png`    | 2048x505  | 50 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/png/lockup-h-color-2048.png    |
+| `lockup-h-reversed-2048.png` | 2048x505  | 51 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/png/lockup-h-reversed-2048.png |
+| `mark-color-1024.png`        | 1024x1024 | 39 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/png/mark-color-1024.png        |
+| `maskable-512x512.png`       | 512x512   | 13 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/png/maskable-512x512.png       |
+| `og.png`                     | 1200x630  | 19 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/png/og.png                     |
+| `twitter.png`                | 1200x600  | 19 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/png/twitter.png                |
 
 ### `logo/`
 
