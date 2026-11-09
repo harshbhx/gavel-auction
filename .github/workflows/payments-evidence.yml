@@ -39,3 +39,4 @@ jobs:
             ${{ runner.temp }}/evidence
             ${{ runner.temp }}/measure.txt
             ${{ runner.temp }}/demo.txt
+          retention-days: 30

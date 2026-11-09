@@ -141,6 +141,7 @@ jobs:
           name: hf-datasets
           path: ${{ runner.temp }}/hf
           if-no-files-found: warn
+          retention-days: 7
       - name: Keep the Space
         if: ${{ always() && env.DATASET == 'all' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -148,6 +149,7 @@ jobs:
           name: hf-space
           path: ${{ runner.temp }}/space
           if-no-files-found: warn
+          retention-days: 7
       - name: Show the publish plan
         if: ${{ env.DATASET == 'all' }}
         env:

@@ -1,0 +1,54 @@
+name: pr-labels
+# The checks that read pull request labels or the title. They live here, not in ci.yml or
+# browser-specs.yml, so a label or title change re-runs only these two light jobs and never
+# cancels or restarts a full CI run (issue 2450). No install, no build.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-labels-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  ownership:
+    # Dependabot branches and titles follow its own format; the exclusion keys on the pull request
+    # author, not on github.actor (the actor is whoever pushed or labelled last).
+    if: ${{ github.event.pull_request.user.login != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+        with:
+          install: 'false'
+      - run: npm run check:ownership
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          BASE_REF: origin/${{ github.base_ref }}
+  baseline-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Baselines change only with the visual-update label
+        env:
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -E '(^|/)__screenshots__/' || true)"
+          if [ -n "$changed" ] && ! printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'visual-update'; then
+            echo "Baseline files changed without the visual-update label:"
+            echo "$changed"
+            exit 1
+          fi

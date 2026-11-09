@@ -71,3 +71,4 @@ jobs:
           name: graphics-${{ matrix.set }}
           path: out/${{ matrix.set }}
           if-no-files-found: error
+          retention-days: 7

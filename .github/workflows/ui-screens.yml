@@ -48,7 +48,7 @@ jobs:
           name: ui-screens
           path: packages/web/ui-screens-out
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 3
       - name: Upload failure output
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

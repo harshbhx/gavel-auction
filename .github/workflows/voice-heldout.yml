@@ -127,3 +127,4 @@ jobs:
             packages/voice/eval-out/heldout-cached
             ${{ runner.temp }}/heldout-wav/SHA256SUMS
           if-no-files-found: ignore
+          retention-days: 30

@@ -73,6 +73,7 @@ jobs:
           name: voice-eval-text
           path: packages/voice/eval-out/text
           if-no-files-found: ignore
+          retention-days: 30
 
   heldout-render:
     # The held-out noisy set generator must produce exactly the 120 clips of its manifest without any
@@ -151,6 +152,7 @@ jobs:
             packages/voice/eval-out/cached-device-agree
             packages/voice/eval-out/cached-device-agree-human
           if-no-files-found: ignore
+          retention-days: 30
 
   record:
     if: github.event_name == 'workflow_dispatch' && inputs.record && !inputs.trials && inputs.clips != 'human'
@@ -199,6 +201,7 @@ jobs:
             packages/voice/fixtures/stt-cache/groq
             packages/voice/eval-out/live
           if-no-files-found: ignore
+          retention-days: 30
 
   record-human:
     if: github.event_name == 'workflow_dispatch' && inputs.record && !inputs.trials && inputs.clips == 'human'
@@ -253,6 +256,7 @@ jobs:
             packages/voice/fixtures/stt-cache-human/groq
             packages/voice/eval-out/live-human
           if-no-files-found: ignore
+          retention-days: 30
 
   live:
     if: github.event_name == 'workflow_dispatch' && !inputs.record && !inputs.trials
@@ -280,6 +284,7 @@ jobs:
           name: voice-eval-live
           path: packages/voice/eval-out/live
           if-no-files-found: ignore
+          retention-days: 30
 
   trials:
     # Option trials for the speech-to-text providers: every variant records both clip sets and is
@@ -361,3 +366,4 @@ jobs:
             packages/voice/fixtures/stt-cache-trial
             packages/voice/eval-out/trials
           if-no-files-found: ignore
+          retention-days: 30

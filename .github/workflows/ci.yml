@@ -1,7 +1,9 @@
 name: ci
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled, edited]
+    # Label and title edits do not trigger this workflow (they cancelled full runs); the label and
+    # title dependent checks live in pr-labels.yml.
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
 
@@ -10,7 +12,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
 
 # Every job here is real: an npm script that is not implemented exits 1 instead of passing.
 # The browser end-to-end job is absent until packages/e2e has a Playwright suite; it joins the
@@ -18,7 +20,7 @@ concurrency:
 jobs:
   # Decides whether the change touches anything but documentation. A pull request that only
   # changes documentation skips the build, test and type jobs; every cheap check (format, docs
-  # format, commit messages, ownership, secrets, banned words, tool tests) still runs, and the
+  # format, commit messages, secrets, banned words, tool tests) still runs, and the
   # `required` roll-up always runs. Pushes to main always run everything.
   changes:
     runs-on: ubuntu-latest
@@ -267,22 +269,6 @@ jobs:
             exit 1
           fi
           echo "title length $len ok"
-  ownership:
-    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/setup
-        with:
-          install: 'false'
-      - run: npm run check:ownership
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
-          BASE_REF: origin/${{ github.base_ref }}
   voice:
     needs: [changes]
     if: ${{ needs.changes.outputs.code == 'true' }}
@@ -422,18 +408,15 @@ jobs:
       - differential
       - tools
       - openapi
-      - ownership
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # Every job must succeed. Two kinds of skip are accepted: `ownership` is defined for pull
-      # requests alone, and the build, test, type and package-check jobs are skipped when the
+      # Every job must succeed. One kind of skip is accepted: the build, test, type and package-check jobs are skipped when the
       # `changes` job found a documentation-only pull request (classifier output code=false). A
       # job skipped for any other reason, or whose `changes` job failed, is not accepted.
       - name: Require every job to succeed
         env:
           NEEDS: ${{ toJSON(needs) }}
-          EVENT: ${{ github.event_name }}
         run: |
           node -e '
             const needs = JSON.parse(process.env.NEEDS);
@@ -442,7 +425,6 @@ jobs:
             let bad = 0;
             for (const [name, job] of Object.entries(needs)) {
               const okSkip =
-                (name === "ownership" && process.env.EVENT !== "pull_request") ||
                 (docsOnly && docsSkippable.has(name));
               const ok = job.result === "success" || (okSkip && job.result === "skipped");
               console.log(name + ": " + job.result + (ok ? "" : "  <-- not accepted"));
