@@ -178,8 +178,17 @@ export function check(dist) {
     for (const lazy of LAZY) {
       const byName = lazy.file.test(path.posix.basename(rel));
       const byText = lazy.text !== null && code.includes(lazy.text);
-      if (byName || byText)
-        problems.push(`${lazy.name} is in the initial route (${rel}); it must be a lazy chunk`);
+      if (byName || byText) {
+        // Name the chunks that mention this one, so the import that pulls it in is easy to find.
+        const base = path.posix.basename(rel);
+        const via = [...files]
+          .filter(([other, otherCode]) => other !== rel && otherCode.includes(base))
+          .map(([other]) => other);
+        const note = via.length === 0 ? '' : `, referenced by ${via.join(', ')}`;
+        problems.push(
+          `${lazy.name} is in the initial route (${rel}${note}); it must be a lazy chunk`,
+        );
+      }
     }
   }
   if (bytes > LIMIT_BYTES)
