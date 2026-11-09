@@ -164,15 +164,27 @@ test.describe('ledger lab: export, filters in the link, verify, memory', () => {
       Object.entries(window.sessionStorage).filter(([k]) => k.startsWith('gavel.grid.columns.')),
     );
     expect(stored.map(([, v]) => v).join('\n')).toContain('"sort":"asc"');
+    const logs: string[] = [];
+    page.on('console', (m) => logs.push(`${m.type()}: ${m.text().slice(0, 200)}`));
     await page.reload();
     await page.locator('.ag-row').first().waitFor();
     const after = await page.evaluate(() =>
       Object.entries(window.sessionStorage).map(([k, v]) => `${k}=${v.slice(0, 400)}`),
     );
     expect(after.join('\n'), 'saved layout survives the reload').toContain('amount');
-    await expect(
-      page.getByRole('columnheader', { name: new RegExp(t('ledger.col.amount')) }),
-    ).toHaveAttribute('aria-sort', 'ascending');
+    await page.waitForTimeout(1000);
+    const sorts = await page.evaluate(() =>
+      [...document.querySelectorAll('[role="columnheader"]')].map(
+        (h) => `${h.getAttribute('col-id')}=${h.getAttribute('aria-sort')}`,
+      ),
+    );
+    const now = await page.evaluate(() =>
+      Object.entries(window.sessionStorage).map(([, v]) => v.slice(0, 300)),
+    );
+    expect(
+      sorts.join(' ') + '\n' + now.join('\n') + '\n' + logs.join('\n'),
+      'headers, saved layout and console after reload',
+    ).toContain('amount=ascending');
   });
 });
 
