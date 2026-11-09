@@ -46,7 +46,7 @@ A second rule, `engine-no-node-io`, stops the engine from importing `fs`, `net`,
 | Script | What it checks or does |
 | --- | --- |
 | `check-ascii.mjs` | Fails on a non-ASCII character in checked files |
-| `check-banned-words.mjs` | Fails on a banned word; the list comes from a CI secret or a local file |
+| `check-banned-words.mjs` | Fails on a banned word; the list comes from a CI secret or a local file; co-author trailer lines in commit messages are ignored |
 | `check-branch-pr.mjs` | Branch name and pull request title rules (see [Contributing](/docs/builders/contributing)) |
 | `check-ownership.mjs` | A pull request may touch one area only, unless it has the `cross-area` label |
 | `check-interface-label.mjs` | Regenerates the API reports; a changed report needs the `interface` label |
