@@ -1,0 +1,164 @@
+name: traffic-sim
+# One bounded traffic run against the LIVE site (FIX-68), manual only. It makes judge rooms with
+# simulated holds (no PayPal login, no PayPal call), drives simulated bidders through the same
+# endpoints the web app uses, and writes a report. See docs/TRAFFIC.md.
+#
+# Guardrails (all enforced in qa/traffic-sim and unit-tested): rooms run in waves of 3 or fewer;
+# the first 429 on room creation stops the run; one global request budget; the run aborts when
+# more than 20 percent of the requests fail over a 30 second window; joins are paced under the
+# API limit; webhook and admin routes are never called; user agent gavel-traffic-sim. It uses no
+# secret.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Origin of the live web app'
+        required: false
+        default: 'https://gavel.dualmindlab.tech'
+        type: string
+      api_url:
+        description: 'Origin of the live API'
+        required: false
+        default: 'https://api.gavel.dualmindlab.tech'
+        type: string
+      rooms:
+        description: 'Judge rooms to run, in waves of 3 (1 to 8)'
+        required: false
+        default: '3'
+        type: string
+      bidders_per_room:
+        description: 'Simulated bidders per room (1 to 12)'
+        required: false
+        default: '6'
+        type: string
+      duration_minutes:
+        description: 'Bidding time in minutes (1 to 10)'
+        required: false
+        default: '5'
+        type: string
+      confirm:
+        description: "Type 'yes' to run against the live site"
+        required: true
+        default: 'no'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: traffic-sim
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  simulate:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      verdict: ${{ steps.verdict.outputs.verdict }}
+    env:
+      CONFIRM: ${{ inputs.confirm }}
+      TARGET: ${{ inputs.target }}
+      API_URL: ${{ inputs.api_url }}
+      ROOMS: ${{ inputs.rooms }}
+      BIDDERS_PER_ROOM: ${{ inputs.bidders_per_room }}
+      DURATION_MINUTES: ${{ inputs.duration_minutes }}
+    steps:
+      - name: Confirm
+        run: |
+          if [ "$CONFIRM" != "yes" ]; then
+            echo "::error title=Not confirmed::confirm must equal 'yes'; nothing was run"
+            echo "### Not run: confirm was not 'yes'" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Check the settings
+        run: node -e "import('./qa/traffic-sim/lib.mjs').then(m => { const c = m.parseConfig(process.env); console.log('rooms', c.rooms, 'bidders', c.bidders, 'minutes', c.durationMinutes, 'budget', c.budget); }).catch(e => { console.error('::error title=Bad input::' + e.message); process.exit(1); })"
+      - name: Wake the API
+        run: curl -fsS -o /dev/null --max-time 30 --retry 6 --retry-delay 10 --retry-all-errors -A gavel-traffic-sim "${API_URL%/}/healthz"
+      - name: Install the WebSocket client
+        run: |
+          mkdir -p "$RUNNER_TEMP/sim"
+          cd "$RUNNER_TEMP/sim"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund ws@8.18.0
+          cp -r "$GITHUB_WORKSPACE/qa/traffic-sim/." .
+      - name: Run the simulation
+        run: |
+          cd "$RUNNER_TEMP/sim"
+          OUT="$GITHUB_WORKSPACE/traffic-report" node run.mjs
+      - name: Read the verdict
+        id: verdict
+        if: always()
+        run: |
+          if [ -f traffic-report/report.json ]; then
+            node -e "console.log('verdict=' + JSON.parse(require('fs').readFileSync('traffic-report/report.json','utf8')).verdict)" >> "$GITHUB_OUTPUT"
+          else
+            echo "verdict=none" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Job summary
+        if: always()
+        run: |
+          if [ -f traffic-report/summary.md ]; then cat traffic-report/summary.md >> "$GITHUB_STEP_SUMMARY"; else echo "No report produced" >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: traffic-report
+          path: traffic-report
+          if-no-files-found: warn
+          retention-days: 30
+
+  walk:
+    # One real browser walk of the judge journey for realism. It makes one more judge room, so it
+    # runs only after a clean simulation, never after a rate limit or an abort. Informational.
+    needs: simulate
+    if: ${{ needs.simulate.outputs.verdict == 'completed' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    env:
+      WEB_URL: ${{ inputs.target }}
+      API_URL: ${{ inputs.api_url }}
+      PROFILE: desktop
+      SMOKE: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install Playwright and chromium
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw"
+          cp qa/live-redteam/run.mjs "$RUNNER_TEMP/pw/run.mjs"
+          cd "$RUNNER_TEMP/pw"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright@1.55.1
+          npx playwright install --with-deps chromium
+      - name: Walk the judge journey
+        run: |
+          cd "$RUNNER_TEMP/pw"
+          OUT="$GITHUB_WORKSPACE/traffic-walk" node run.mjs
+      - name: Job summary
+        if: always()
+        run: |
+          if [ -f "traffic-walk/summary-$PROFILE.md" ]; then cat "traffic-walk/summary-$PROFILE.md" >> "$GITHUB_STEP_SUMMARY"; else echo "No walk summary produced" >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload the walk
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: traffic-walk
+          path: traffic-walk
+          if-no-files-found: warn
+          retention-days: 14
