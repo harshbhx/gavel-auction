@@ -72,6 +72,26 @@ describe('fx pieces', () => {
     expect(screen.getByRole('group', { name: 'Tech' })).toBeTruthy();
   });
 
+  it('stops the marquee from a button reachable by keyboard and touch', () => {
+    reduceMotion(false);
+    const { container } = render(
+      <Marquee items={['A', 'B']} label="Tech" pauseLabel="Stop" playLabel="Play" />,
+    );
+    expect(container.querySelector('[data-motion="on"]')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+    expect(container.querySelector('[data-motion="off"]')).not.toBeNull();
+    expect(container.querySelectorAll('ul')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Play' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Play' }));
+    expect(container.querySelector('[data-motion="on"]')).not.toBeNull();
+  });
+
+  it('offers no stop button when the system already asks for less motion', () => {
+    reduceMotion(true);
+    render(<Marquee items={['A']} label="Tech" pauseLabel="Stop" playLabel="Play" />);
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
   it('leaves the highlight position alone for anything but a mouse', () => {
     reduceMotion(true);
     const { container } = render(<SpotlightCard as="article">Body</SpotlightCard>);

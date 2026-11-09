@@ -87,6 +87,26 @@
   }
 }
 
+/* aria-pressed button above the marquee: stops the movement for pointer, touch and keyboard. */
+.fx-marquee__toggle {
+  min-height: 44px;
+  margin-bottom: var(--space-2);
+  padding: 0 var(--space-4);
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fx-marquee__toggle:focus-visible {
+  outline: 3px solid var(--color-action);
+  outline-offset: 2px;
+}
+
 @keyframes fx-marquee {
   to {
     transform: translateX(-50%);

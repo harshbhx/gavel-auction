@@ -1,9 +1,10 @@
 import { createRequire } from 'node:module';
 import { expect, test, type Page } from '@playwright/test';
+import { t } from '../../src/copy/t';
 import { TEST_IDS } from '../../src/testing/testids';
 
 /**
- * axe-core in a real browser (R-WEB-109, T-WEB-051): zero serious or critical violations, colour
+ * axe-core in a real browser (R-WEB-109, T-WEB-051): zero serious, critical or moderate violations, colour
  * contrast included, on every route in the light and projector themes. The engine is injected
  * from the axe-core dev dependency, so no extra package is needed.
  */
@@ -12,6 +13,7 @@ const AXE_PATH = nodeRequire.resolve('axe-core');
 
 const ROUTES = [
   '/',
+  '/try',
   '/demo',
   '/join/room1',
   '/r/room1/register',
@@ -42,7 +44,7 @@ interface AxeApi {
   ) => Promise<{ violations: AxeViolation[] }>;
 }
 
-async function seriousViolations(page: Page): Promise<string[]> {
+async function blockingViolations(page: Page): Promise<string[]> {
   await page.addScriptTag({ path: AXE_PATH });
   return page.evaluate(async () => {
     const axe = (window as unknown as { axe: AxeApi }).axe;
@@ -53,7 +55,7 @@ async function seriousViolations(page: Page): Promise<string[]> {
       },
     });
     return result.violations
-      .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+      .filter((v) => v.impact === 'serious' || v.impact === 'critical' || v.impact === 'moderate')
       .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
   });
 }
@@ -67,7 +69,7 @@ for (const route of ROUTES) {
       await page.goto(route);
       await page.waitForLoadState('networkidle');
       await page.locator('main, h1').first().waitFor({ state: 'attached' });
-      expect(await seriousViolations(page)).toEqual([]);
+      expect(await blockingViolations(page)).toEqual([]);
     });
   }
 }
@@ -95,7 +97,7 @@ for (const state of LIVE_STATES) {
       }, theme);
       await page.goto(state.url);
       await page.locator(state.ready).waitFor();
-      expect(await seriousViolations(page)).toEqual([]);
+      expect(await blockingViolations(page)).toEqual([]);
     });
   }
 }
@@ -104,5 +106,36 @@ test('axe on the gallery with the dialog open', async ({ page }) => {
   await page.goto('/gallery');
   await page.getByTestId(TEST_IDS.dialogOpen).click();
   await page.getByRole('dialog').waitFor();
-  expect(await seriousViolations(page)).toEqual([]);
+  expect(await blockingViolations(page)).toEqual([]);
 });
+
+test('axe on /try with the judge dialog open', async ({ page }) => {
+  await page.goto('/try');
+  await page.locator('main, h1').first().waitFor({ state: 'attached' });
+  await page
+    .getByRole('navigation', { name: t('try.bar.label') })
+    .getByRole('button')
+    .first()
+    .click();
+  await page.getByRole('dialog').waitFor();
+  expect(await blockingViolations(page)).toEqual([]);
+});
+
+/** WCAG 1.4.10 Reflow: no sideways scroll at 320 px and 390 px (R-WEB-109, issues 2090, 2101). */
+for (const width of [320, 390] as const) {
+  test(`/try reflows without sideways scroll at ${width} px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/try');
+    await page.locator('main, h1').first().waitFor({ state: 'attached' });
+    const overflow = await page.evaluate(() => ({
+      scroll: document.documentElement.scrollWidth,
+      inner: window.innerWidth,
+      slots: [...document.querySelectorAll('.ui-otp__slot')].map((el) =>
+        Math.round(el.getBoundingClientRect().right),
+      ),
+    }));
+    expect(overflow.scroll).toBeLessThanOrEqual(overflow.inner);
+    for (const right of overflow.slots) expect(right).toBeLessThanOrEqual(overflow.inner);
+    expect(await blockingViolations(page)).toEqual([]);
+  });
+}

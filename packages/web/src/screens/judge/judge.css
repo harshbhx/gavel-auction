@@ -858,6 +858,7 @@
 
 .gv-judge__join {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
 }
 
@@ -873,7 +874,7 @@
 .gv-judge__join .ui-otp__slot {
   flex: 1 1 0;
   width: auto;
-  min-width: 32px;
+  min-width: 24px;
   max-width: 60px;
   height: 56px;
   font-size: var(--font-size-5);

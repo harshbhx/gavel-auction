@@ -168,6 +168,8 @@ export const en = {
   'mk.stat.link': 'How these were counted',
   'mk.tech.title': 'Built with',
   'mk.tech.label': 'Technology used',
+  'mk.tech.pause': 'Stop the moving list',
+  'mk.tech.play': 'Move the list again',
   'mk.nav.product': 'Screens',
   'mk.cta.docs': 'Read the docs',
   'mk.hero.for': 'For sellers, auctioneers and bidders.',
