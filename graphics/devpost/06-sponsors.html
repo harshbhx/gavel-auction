@@ -1,0 +1,69 @@
+<!doctype html><meta charset="utf-8" /><title>GAVEL partners</title>
+<link rel="stylesheet" href="../lib/theme.css" /><link rel="stylesheet" href="poster.css" />
+<style>
+  .gr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    margin-top: 32px;
+  }
+  .card {
+    min-height: 200px;
+    padding: 20px 28px;
+  }
+  .card h2 {
+    font: 900 68px/1 var(--display);
+    text-transform: uppercase;
+    margin: 0 0 10px;
+  }
+  .card p {
+    font: 500 28px/1.35 var(--body);
+    margin: 0 0 14px;
+  }
+  .chip {
+    font: 700 22px var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    background: var(--ink);
+    color: var(--paper);
+    display: inline-block;
+  }
+  .chip.o {
+    background: var(--orange);
+    color: var(--ink);
+  }
+</style>
+<body>
+  <div class="p ink">
+    <div class="top">
+      <img src="../../brand/svg/lockup-h-reversed.svg" alt="GAVEL" /><span>06 / 07</span>
+    </div>
+    <h1 class="h" style="margin-top: 30px; font-size: 160px">
+      Built with <span class="or">four.</span>
+    </h1>
+    <div class="gr">
+      <div class="card">
+        <h2>AG Grid</h2>
+        <p>The ledger, bids and holds tables.</p>
+        <span class="chip">In the app</span>
+      </div>
+      <div class="card">
+        <h2>Render</h2>
+        <p>Hosts the auction API service.</p>
+        <span class="chip">In use</span>
+      </div>
+      <div class="card">
+        <h2>APIMatic</h2>
+        <p>The OpenAPI spec is ready. SDK generation is pending.</p>
+        <span class="chip o">Spec ready, SDK pending</span>
+      </div>
+      <div class="card">
+        <h2>Hugging Face</h2>
+        <p>A public collection of the evidence datasets.</p>
+        <span class="chip">Collection live</span>
+      </div>
+    </div>
+    <div class="foot"><span>Payments: PayPal sandbox</span><span>No sponsor logos used</span></div>
+  </div>
+</body>

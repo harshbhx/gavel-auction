@@ -1,0 +1,105 @@
+/* Devpost poster set: one big idea per image. Min text 22px on the 1500x1000 canvas. */
+.p {
+  width: 1500px;
+  height: 1000px;
+  position: relative;
+  overflow: hidden;
+  padding: 60px 80px;
+  display: flex;
+  flex-direction: column;
+}
+.p.ink {
+  background: var(--ink);
+  color: var(--paper);
+}
+.p.paper {
+  background: var(--paper);
+  color: var(--ink);
+}
+.p.sig {
+  background: var(--orange);
+  color: var(--ink);
+}
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 60px;
+  font: 600 24px var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.top img {
+  height: 54px;
+  display: block;
+}
+.foot {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 22px;
+  border-top: 2px solid currentColor;
+  font: 600 22px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.h {
+  font: 900 220px/0.86 var(--display);
+  text-transform: uppercase;
+  letter-spacing: -0.005em;
+  margin: 0;
+}
+.h.m {
+  font-size: 170px;
+}
+.h.s {
+  font-size: 140px;
+}
+.or {
+  color: var(--orange);
+}
+.ink .or {
+  color: var(--orange);
+}
+.sig .or {
+  color: var(--paper);
+}
+.paper .or {
+  color: var(--rust);
+}
+.lede {
+  font: 500 30px/1.35 var(--body);
+  max-width: 1000px;
+  margin: 0;
+}
+.tag {
+  display: inline-block;
+  font: 700 22px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 10px 18px;
+  border: 3px solid currentColor;
+}
+.sticker {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 7px 7px 0 var(--orange);
+  border: 3px solid var(--paper);
+}
+.card {
+  background: var(--paper-2);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  box-shadow: 8px 8px 0 var(--ink);
+  padding: 26px 28px;
+}
+.sig .card {
+  box-shadow: 8px 8px 0 var(--ink);
+}
+.ink .card {
+  box-shadow: 8px 8px 0 var(--orange);
+}
+.mono {
+  font-family: var(--mono);
+}

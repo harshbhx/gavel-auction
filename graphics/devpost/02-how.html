@@ -1,0 +1,59 @@
+<!doctype html><meta charset="utf-8" /><title>GAVEL how it works</title>
+<link rel="stylesheet" href="../lib/theme.css" /><link rel="stylesheet" href="poster.css" />
+<style>
+  .row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 26px;
+    margin-top: 44px;
+  }
+  .n {
+    font: 900 170px/0.8 var(--display);
+    color: var(--orange);
+  }
+  .k {
+    font: 900 64px/1 var(--display);
+    text-transform: uppercase;
+    margin: 14px 0 12px;
+  }
+  .card p {
+    font: 500 26px/1.35 var(--body);
+    margin: 0;
+  }
+  .card {
+    min-height: 430px;
+  }
+</style>
+<body>
+  <div class="p paper">
+    <div class="top">
+      <img src="../../brand/svg/lockup-h-color.svg" alt="GAVEL" /><span>02 / 07</span>
+    </div>
+    <h1 class="h" style="margin-top: 34px; font-size: 200px">Four moves.</h1>
+    <div class="row">
+      <div class="card">
+        <div class="n">1</div>
+        <div class="k">Hold</div>
+        <p>A bidder approves a ceiling as a PayPal hold. A promise, not a charge.</p>
+      </div>
+      <div class="card">
+        <div class="n">2</div>
+        <div class="k">Bid</div>
+        <p>An ascending English auction. A bid above the ceiling is refused.</p>
+      </div>
+      <div class="card">
+        <div class="n">3</div>
+        <div class="k">Hammer</div>
+        <p>The auctioneer closes the lot and the engine names the winner.</p>
+      </div>
+      <div class="card">
+        <div class="n">4</div>
+        <div class="k">Settle</div>
+        <p>Only the winning price is captured. Every other hold is released.</p>
+      </div>
+    </div>
+    <div class="foot">
+      <span>A receipt and a ledger entry follow</span><span>Sandbox only</span>
+    </div>
+  </div>
+</body>

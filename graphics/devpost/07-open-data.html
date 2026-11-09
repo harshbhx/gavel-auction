@@ -1,0 +1,97 @@
+<!doctype html><meta charset="utf-8" /><title>GAVEL open data</title>
+<link rel="stylesheet" href="../lib/theme.css" /><link rel="stylesheet" href="poster.css" />
+<style>
+  .rows {
+    margin-top: 34px;
+    border-top: 3px solid var(--ink);
+  }
+  .r {
+    display: grid;
+    grid-template-columns: 330px 1fr 380px;
+    gap: 20px;
+    align-items: center;
+    padding: 13px 0;
+    border-bottom: 2px solid var(--rule);
+    font: 500 27px var(--body);
+  }
+  .r b {
+    font: 700 27px var(--mono);
+  }
+  .r i {
+    font: 700 22px var(--mono);
+    font-style: normal;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    justify-self: end;
+    padding: 6px 12px;
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .r i.o {
+    background: var(--orange);
+    color: var(--ink);
+  }
+  .gt {
+    display: flex;
+    gap: 12px;
+    margin-top: 26px;
+  }
+  .gt div {
+    flex: 1;
+    border: 3px solid var(--ink);
+    padding: 10px 8px;
+    text-align: center;
+    font: 700 24px var(--mono);
+  }
+  .gt div small {
+    display: block;
+    font: 700 22px var(--mono);
+    margin-top: 4px;
+  }
+  .gt .ok {
+    background: var(--green);
+    color: #fff;
+  }
+  .gt .pt {
+    background: var(--orange);
+  }
+</style>
+<body>
+  <div class="p paper">
+    <div class="top">
+      <img src="../../brand/svg/lockup-h-color.svg" alt="GAVEL" /><span>07 / 07</span>
+    </div>
+    <h1 class="h" style="margin-top: 26px; font-size: 170px">
+      The evidence is <span class="or">open.</span>
+    </h1>
+    <div class="rows">
+      <div class="r">
+        <b>gavel-gates</b><span>Six experiments, hashed evidence files</span><i>Real sandbox</i>
+      </div>
+      <div class="r">
+        <b>gavel-latency</b><span>Sandbox timing summary</span><i>Real sandbox</i>
+      </div>
+      <div class="r">
+        <b>gavel-sim-30d</b><span>30 days of auctions, fake clock</span><i class="o">Simulated</i>
+      </div>
+      <div class="r">
+        <b>gavel-stt-bids</b><span>24 clips, 96 provider outputs</span
+        ><i class="o">Synthetic audio</i>
+      </div>
+      <div class="r">
+        <b>gavel-audit-demo</b><span>Scripted audit traces</span><i class="o">Simulated</i>
+      </div>
+    </div>
+    <div class="gt">
+      <div class="ok">G0<small>PASS</small></div>
+      <div class="ok">G1<small>PASS</small></div>
+      <div class="ok">G2<small>PASS</small></div>
+      <div class="pt">G3<small>IN PROGRESS</small></div>
+      <div class="ok">G4<small>PASS</small></div>
+      <div class="pt">G5<small>PARTIAL</small></div>
+    </div>
+    <div class="foot">
+      <span>Every file has a sha256 manifest</span><span>huggingface.co/harshbhx</span>
+    </div>
+  </div>
+</body>
