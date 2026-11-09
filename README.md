@@ -18,7 +18,7 @@
 [![PayPal sandbox only](https://img.shields.io/badge/PayPal-sandbox%20only-003087.svg?logo=paypal&logoColor=white)](#security-and-data-notes)
 [![Open data on Hugging Face](https://img.shields.io/badge/Hugging%20Face-5%20datasets-ffd21e.svg?logo=huggingface&logoColor=black)](https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504)
 
-**[Live demo](https://gavel.dualmindlab.tech)** &nbsp;|&nbsp; **[Docs](https://docs.gavel.dualmindlab.tech)** &nbsp;|&nbsp; **[API reference](https://docs.gavel.dualmindlab.tech/docs/reference/api-reference)** &nbsp;|&nbsp; **[Hugging Face](https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504)** &nbsp;|&nbsp; **[Changelog](CHANGELOG.md)** &nbsp;|&nbsp; **[Limits](docs/LIMITATIONS.md)**
+**[Live demo](https://gavel.dualmindlab.tech)** &nbsp;|&nbsp; **[Docs](https://docs.gavel.dualmindlab.tech)** &nbsp;|&nbsp; **[API reference](https://docs.gavel.dualmindlab.tech/api-reference)** &nbsp;|&nbsp; **[Hugging Face](https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504)** &nbsp;|&nbsp; **[Changelog](CHANGELOG.md)** &nbsp;|&nbsp; **[Limits](docs/LIMITATIONS.md)**
 
 Live demo: [gavel.dualmindlab.tech](https://gavel.dualmindlab.tech) or [gavel-web.creharsh.workers.dev](https://gavel-web.creharsh.workers.dev). PayPal sandbox only: no real money moves.
 
