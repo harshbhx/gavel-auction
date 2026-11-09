@@ -186,7 +186,7 @@ describe('hold routes (INT-R3-20)', () => {
     const m = await mintToken(deps, 'session', auctionId, bidder, bidder);
     const res = await post(app, '/api/holds', { auctionId, ceilingCents: 30000 }, m.token);
     expect(res.status).toBe(403);
-    expect(((await res.json()) as { error: string }).error).toBe('ceiling_revoked');
+    expect(((await res.json()) as { code: string }).code).toBe('ceiling_revoked');
     expect(calls.created).toEqual([]);
   });
 
