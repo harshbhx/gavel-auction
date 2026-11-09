@@ -30,7 +30,7 @@ jobs:
       group: gate-g4
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
       - name: Check that the receiver URL is set
@@ -59,7 +59,7 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Cache the browser
         id: pw-cache
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-1.49.1-chromium

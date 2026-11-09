@@ -34,7 +34,7 @@ jobs:
     outputs:
       sets: ${{ steps.find.outputs.sets }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - id: find
         run: |
           sets=$(for f in graphics/*/render.mjs; do [ "$(basename "$(dirname "$f")")" = lib ] && continue; basename "$(dirname "$f")"; done | jq -R . | jq -sc .)
@@ -48,8 +48,8 @@ jobs:
       matrix:
         set: ${{ fromJson(needs.discover.outputs.sets) }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
       - name: Install Playwright, ffmpeg, ImageMagick, gifsicle, librsvg
