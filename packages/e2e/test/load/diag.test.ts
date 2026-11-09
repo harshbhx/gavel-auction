@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { sizeCounters, topRetained, startDiagnostics, summarize, takeSample } from '../../src/load/diag';
+import {
+  sizeCounters,
+  topRetained,
+  startDiagnostics,
+  summarize,
+  takeSample,
+} from '../../src/load/diag';
 
 describe('load diagnostics (#2203)', () => {
   it('counts maps, sets and arrays below a root, and the inner size of a map of arrays', () => {

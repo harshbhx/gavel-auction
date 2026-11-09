@@ -5,7 +5,13 @@ import { runL3 } from './hammer';
 import { runL4 } from './webhooks';
 import { runSoak } from './soak';
 import type { Check } from './run';
-import { rigCounters, startDiagnostics, startHeapSampling, writeDiagnostics, type Diagnostics } from './diag';
+import {
+  rigCounters,
+  startDiagnostics,
+  startHeapSampling,
+  writeDiagnostics,
+  type Diagnostics,
+} from './diag';
 import type { Rig } from '../../test/flow/rig';
 
 // Runs the L3 hammer race, the L4 webhook storm and the L5 soak and writes one JSON report.
