@@ -116,7 +116,7 @@ describe('public screen settlement ladder', () => {
 });
 
 describe('public screen when settlement needs review', () => {
-  it('claims no sale and no capture, and says held, not charged', () => {
+  it('claims no sale and no capture, and does not state a charge outcome', () => {
     const store = closedStore({ leader: 7, inRoster: true });
     store.dispatch({
       kind: 'wire',
@@ -137,7 +137,7 @@ describe('public screen when settlement needs review', () => {
     );
     expect(screen.getByText('Paddle 7 won at $250.00')).toBeTruthy();
     expect(screen.getByTestId('settle-review').textContent).toMatch(
-      /needs review.*held, not charged/,
+      /needs review.*checking whether the winning hold was taken/,
     );
     expect(container.textContent).not.toMatch(/SOLD|captured/);
     expect(screen.queryByTestId('settle-summary')).toBeNull();
