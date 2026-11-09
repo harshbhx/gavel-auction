@@ -16,6 +16,7 @@ export default tseslint.config(
       'reference/**',
       'docsite/**',
       'qa/**',
+      'qa/**',
     ],
   },
   js.configs.recommended,
