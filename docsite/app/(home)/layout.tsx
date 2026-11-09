@@ -4,7 +4,7 @@ import { Footer } from '@/components/home/footer';
 
 export default function Layout({ children }: LayoutProps<'/'>) {
   return (
-    <HomeLayout {...baseOptions()}>
+    <HomeLayout {...baseOptions({ inList: true })}>
       {children}
       <Footer />
     </HomeLayout>
