@@ -65,20 +65,18 @@ for (const t of ['paper', 'dark'])
     limit: 500 * 1024,
   });
 
-/* ---- stats: the three latency numbers that matter, one clean graphic ---- */
+/* ---- stats: the two hammer latency numbers, both measured and both missed ---- */
 const col = (i, label, to, dec, unit, target, tag, cls) => `
-<div class="abs" style="left:${40 + i * 420}px;top:0;width:400px;height:360px">
-  <div class="lab rise" style="--d:${0.05 + i * 0.12}s;position:absolute;top:46px;font-size:15px">${label}</div>
-  <div class="disp" style="position:absolute;top:84px;font-size:190px;white-space:nowrap"><span data-count="${to}" data-from="0" data-start="${0.1 + i * 0.12}" data-dur="1.1" data-dec="${dec}" data-suf="<small style='font-size:64px'> ${unit}</small>">0</span></div>
-  <div class="rise" style="--d:${1 + i * 0.12}s;position:absolute;top:300px;display:flex;gap:12px;align-items:center"><span class="tag ${cls}">${tag}</span><span class="lab" style="font-size:14px;color:var(--ink)">${target}</span></div>
+<div class="abs" style="left:${60 + i * 600}px;top:0;width:560px;height:360px">
+  <div class="lab rise" style="--d:${0.05 + i * 0.12}s;position:absolute;top:56px;font-size:16px">${label}</div>
+  <div class="disp" style="position:absolute;top:92px;font-size:200px;white-space:nowrap"><span data-count="${to}" data-from="0" data-start="${0.1 + i * 0.12}" data-dur="1.1" data-dec="${dec}" data-suf="<small style='font-size:68px'> ${unit}</small>">0</span></div>
+  <div class="rise" style="--d:${1 + i * 0.12}s;position:absolute;top:306px;display:flex;gap:12px;align-items:center"><span class="tag ${cls}">${tag}</span><span class="lab" style="font-size:14px;color:var(--ink)">${target}</span></div>
 </div>`;
 const statsBody = `
-${col(0, 'Hammer to settled, p95', 5.59, 2, 's', 'target 6 s', 'Met', 'ok')}
-${col(1, 'Webhook handler, p95', 112, 0, 'ms', 'target 300 ms', 'Met', 'ok')}
-${col(2, 'Hammer to captured, p95', 3.01, 2, 's', 'target 2.5 s', 'Missed', 'no')}
-<div class="abs" style="left:440px;top:60px;height:230px;border-left:2px solid var(--rule)"></div>
-<div class="abs" style="left:860px;top:60px;height:230px;border-left:2px solid var(--rule)"></div>
-<div class="abs lab rise" style="--d:1.3s;left:40px;top:6px;font-size:12px">Measured on the real PayPal sandbox. Source: docs/GATES.md</div>`;
+${col(0, 'Hammer to captured, p95', 3.77, 2, 's', 'target 2.5 s', 'Target missed', 'no')}
+${col(1, 'Hammer to settled, p95', 6.93, 2, 's', 'target 6 s', 'Target missed', 'no')}
+<div class="abs" style="left:640px;top:70px;height:230px;border-left:2px solid var(--rule)"></div>
+<div class="abs lab rise" style="--d:1.3s;left:60px;top:12px;font-size:12px">Measured on the real PayPal sandbox, 49 runs (1 failed). Source: evidence-latency run 42563147792</div>`;
 for (const t of ['paper', 'dark'])
   await make('readme-stats', t, {
     w: 1280,
