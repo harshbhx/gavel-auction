@@ -49,13 +49,13 @@ describe('simulated holds', () => {
     );
     expect(rows.get('sim-hold-B1')?.ceilingCents).toBe(5_000);
     // A hold that is no longer HELD is never reused or rewritten.
-    rows.set('sim-hold-B1', { ...(rows.get('sim-hold-B1') as HoldRecord), status: 'RELEASED' });
+    rows.set('sim-hold-B1', { ...(rows.get('sim-hold-B1') as HoldRecord), status: 'VOIDED' });
     await expect(source('B1' as BidderId, 5_000 as Cents, 'A1' as AuctionId)).rejects.toMatchObject(
       {
         code: 'conflict',
       },
     );
-    expect(rows.get('sim-hold-B1')?.status).toBe('RELEASED');
+    expect(rows.get('sim-hold-B1')?.status).toBe('VOIDED');
   });
 
   it('races two calls for one bidder into a single write', async () => {
