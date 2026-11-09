@@ -38,22 +38,28 @@ jobs:
       - name: Run Lighthouse, desktop and mobile
         run: |
           mkdir -p lh
-          for preset in desktop mobile; do
-            for run in 1 2 3; do
-              args=(--chrome-flags="--headless=new --no-sandbox" --output=json --output=html
-                --output-path="lh/$preset-$run" --only-categories=performance,accessibility,best-practices,seo --quiet)
-              if [ "$preset" = desktop ]; then args+=(--preset=desktop); fi
-              npx --yes lighthouse@13.6.0 "$TARGET" "${args[@]}"
+          # PageSpeed Insights does not announce itself as an automated browser (navigator.webdriver is
+          # false), so the first-visit tour used to open there. The "pagespeed" runs repeat that.
+          for mode in plain pagespeed; do
+            flags="--headless=new --no-sandbox"
+            if [ "$mode" = pagespeed ]; then flags="$flags --disable-blink-features=AutomationControlled"; fi
+            for preset in desktop mobile; do
+              for run in 1 2; do
+                args=(--chrome-flags="$flags" --output=json --output=html
+                  --output-path="lh/$mode-$preset-$run" --only-categories=performance,accessibility,best-practices,seo --quiet)
+                if [ "$preset" = desktop ]; then args+=(--preset=desktop); fi
+                npx --yes lighthouse@13.6.0 "$TARGET" "${args[@]}"
+              done
             done
           done
           ls -la lh
       - name: Summarize
         run: |
-          node scripts/perf/lighthouse-summary.mjs lh/desktop-1.report.json lh/mobile-1.report.json | tee lh/summary.txt
+          node scripts/perf/lighthouse-summary.mjs lh/pagespeed-desktop-1.report.json lh/pagespeed-mobile-1.report.json | tee lh/summary.txt
           {
             echo '## Lighthouse 13.6.0 (lab)'
             for f in lh/*.report.json; do
-              node -e 'const r=require(process.argv[1]);const c=k=>Math.round((r.categories[k].score??0)*100);const a=r.audits;console.log(`- ${process.argv[1]}: perf ${c("performance")}, a11y ${c("accessibility")}, bp ${c("best-practices")}, seo ${c("seo")}, FCP ${a["first-contentful-paint"].displayValue}, LCP ${a["largest-contentful-paint"].displayValue??"none"}, TBT ${a["total-blocking-time"].displayValue??"none"}, CLS ${a["cumulative-layout-shift"].displayValue}, SI ${a["speed-index"].displayValue}`)' "$f"
+              node -e 'const r=require("./"+process.argv[1]);const c=k=>Math.round((r.categories[k].score??0)*100);const a=r.audits;console.log(`- ${process.argv[1]}: perf ${c("performance")}, a11y ${c("accessibility")}, bp ${c("best-practices")}, seo ${c("seo")}, FCP ${a["first-contentful-paint"].displayValue}, LCP ${a["largest-contentful-paint"].displayValue??"none"}, TBT ${a["total-blocking-time"].displayValue??"none"}, CLS ${a["cumulative-layout-shift"].displayValue}, SI ${a["speed-index"].displayValue}`)' "$f"
             done
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
