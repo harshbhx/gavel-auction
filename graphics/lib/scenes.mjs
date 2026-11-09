@@ -1,31 +1,39 @@
-// Scene bodies shared by the brand video, the README reel and the Devpost set. All are laid out on a
-// 1920x1080 stage; callers scale them down with a wrapper when they need a smaller canvas.
-import { logoSvg, rule } from './motion.mjs';
+// Scene bodies shared by the brand video and the README reel. Laid out on a 1920x1080 stage like a printed
+// auction broadside: flat paper, black ink, one orange accent, hairline rules that draw themselves, type
+// that reveals through a mask, an asymmetric grid with a lot of empty paper. Callers scale them down.
+import { logoSvg } from './motion.mjs';
 
 export const W = 1920;
 export const H = 1080;
 
-/** Logo sting: the Mallet G draws round, strikes, a shockwave leaves it, the wordmark and tagline glide in. Done in under 3 s. */
+const rev = (d, inner, style = '') =>
+  `<div class="rev abs" style="--d:${d}s;${style}"><div>${inner}</div></div>`;
+
+/** Logo sting: the Mallet G draws round, strikes, a hairline ring leaves it, the wordmark and tagline resolve. Under 3 s. */
 export function introBody(th, at = 0) {
-  const v = th.variant;
   return `
-<div class="abs" style="left:340px;top:210px;width:1240px">${logoSvg({ variant: v, start: at })}</div>
-<div class="abs disp rise" style="--d:${at + 1.95}s;left:0;right:0;top:700px;text-align:center;font-size:92px">Every bid is a PayPal hold. <span class="or">Only the winner pays.</span></div>
-<div class="abs mono rise lab" style="--d:${at + 2.2}s;left:0;right:0;top:830px;text-align:center;font-size:24px">PayPal sandbox only. No real money moves.</div>
-<div class="abs" style="left:240px;bottom:90px">${rule(1440, at + 2.15, 6)}</div>`;
+<div class="abs cap fade" style="--d:${at + 0.1}s;left:120px;top:44px;font-size:22px">Lot 01 &nbsp; Gavel</div>
+<div class="abs cap fade" style="--d:${at + 0.1}s;right:120px;top:44px;font-size:22px">PayPal sandbox only</div>
+<div class="abs hr" style="--d:${at + 0.05}s;--len:1.1s;left:120px;top:96px;width:1680px;height:3px"></div>
+<div class="abs" style="left:96px;top:170px;width:1240px">${logoSvg({ variant: th.variant, start: at })}</div>
+<div class="abs vr" style="--d:${at + 1.6}s;left:1480px;top:230px;width:3px;height:520px"></div>
+${rev(at + 1.75, 'Every bid is<br>a PayPal hold.', 'left:1530px;top:230px;font-size:104px;line-height:.92;width:380px;font-family:var(--display);font-weight:800;text-transform:uppercase')}
+${rev(at + 1.95, 'Only the<br>winner pays.', 'left:1530px;top:450px;font-size:104px;line-height:.92;width:380px;font-family:var(--display);font-weight:800;text-transform:uppercase;color:var(--orange)')}
+<div class="abs hr" style="--d:${at + 2.1}s;--len:.7s;left:120px;top:990px;width:1680px;height:3px"></div>`;
 }
 
-/** Outro: logo, then the three links glide in. Done in under 3 s. */
+/** Outro: logo, then the three links as ledger lines. Under 3 s. */
 export function outroBody(th, at = 0) {
   const v = th.variant;
   const row = (i, k, url) => `
-<div class="abs rise" style="--d:${at + 1.7 + i * 0.18}s;left:300px;top:${560 + i * 118}px;width:1320px;display:flex;align-items:baseline;gap:36px;border-top:3px solid var(--ink);padding-top:16px">
-  <span class="lab" style="width:190px;font-size:24px">${k}</span><span class="disp" style="font-size:62px;letter-spacing:.02em">${url}</span></div>`;
+<div class="abs hr" style="--d:${at + 1.2 + i * 0.16}s;--len:.7s;left:120px;top:${560 + i * 120}px;width:1680px;height:3px"></div>
+<div class="abs cap fade" style="--d:${at + 1.4 + i * 0.16}s;left:120px;top:${594 + i * 120}px;font-size:22px">${k}</div>
+${rev(at + 1.35 + i * 0.16, url, `left:420px;top:${580 + i * 120}px;font-size:84px;font-family:var(--display);font-weight:800;text-transform:uppercase;line-height:1;white-space:nowrap`)}`;
   return `
-<div class="abs" style="left:490px;top:110px;width:940px">${logoSvg({ variant: v, start: at })}</div>
+<div class="abs" style="left:96px;top:60px;width:900px">${logoSvg({ variant: v, start: at })}</div>
 ${row(0, 'Web app', 'gavel.dualmindlab.tech')}
 ${row(1, 'Docs', 'docs.gavel.dualmindlab.tech')}
 ${row(2, 'Source', 'github.com/harshbhx/gavel-auction')}
-<div class="abs mono lab rise" style="--d:${at + 2.2}s;left:0;right:0;top:960px;text-align:center;font-size:22px">PayPal sandbox only. Bids are held, not charged.</div>
-<div class="abs" style="left:240px;bottom:44px">${rule(1440, at + 2.15, 6)}</div>`;
+<div class="abs hr" style="--d:${at + 1.9}s;--len:.6s;left:120px;top:920px;width:1680px;height:3px"></div>
+<div class="abs cap fade" style="--d:${at + 2.1}s;left:120px;top:950px;font-size:22px">PayPal sandbox only. Bids are held, not charged.</div>`;
 }
