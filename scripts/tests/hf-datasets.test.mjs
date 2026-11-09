@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { aggregate } from '../hf/fetch-assurance.mjs';
 import { main as build } from '../hf/build-datasets.mjs';
 import { check } from '../hf/check-evidence-coverage.mjs';
+import { compare, snapshot } from '../hf/check-drift.mjs';
+import { main as finalize } from '../hf/finalize.mjs';
 import {
   evidenceGroup,
   gateStatus,
@@ -90,6 +92,71 @@ describe('hf datasets', () => {
       }
       assert.deepEqual(check(out), []);
       assert.ok(walkEvidence(ROOT).length > 50);
+    } finally {
+      rmSync(out, { recursive: true, force: true });
+    }
+  });
+  it('cards carry the source commit, the sandbox flags and only the custom-domain links', () => {
+    const out = mkdtempSync(join(tmpdir(), 'hf-'));
+    try {
+      const w = process.stdout.write;
+      process.stdout.write = () => true;
+      try {
+        build(['--out', out, '--dataset', 'gavel-latency']);
+        build(['--out', out, '--dataset', 'gavel-gates']);
+      } finally {
+        process.stdout.write = w;
+      }
+      for (const name of ['gavel-latency', 'gavel-gates']) {
+        const card = readFileSync(join(out, name, 'README.md'), 'utf8');
+        assert.match(card, /^license: cc-by-4\.0$/m);
+        assert.match(card, /^source_commit: \S+$/m);
+        assert.match(card, /^source_commit_date: \S+$/m);
+        assert.match(card, /^sandbox: true$/m);
+        assert.match(card, /^production_data: false$/m);
+        assert.ok(card.includes('https://gavel.dualmindlab.tech'));
+        assert.ok(card.includes('https://docs.gavel.dualmindlab.tech'));
+        assert.ok(
+          card.includes('https://github.com/harshbhx/gavel-auction/tree/main/docs/evidence'),
+        );
+        assert.ok(!card.includes('workers.dev'));
+      }
+      const gates = readFileSync(join(out, 'gavel-gates', 'gates.jsonl'), 'utf8')
+        .split('\n')
+        .filter((l) => l !== '')
+        .map((l) => JSON.parse(l));
+      assert.deepEqual(
+        gates.map((g) => g.gate),
+        ['G0', 'G1', 'G2', 'G3', 'G4', 'G5'],
+      );
+      assert.ok(gates.every((g) => g.evidence_files !== ''));
+      assert.equal(gates.find((g) => g.gate === 'G3').status, 'IN PROGRESS');
+      assert.equal(gates.find((g) => g.gate === 'G5').status, 'PARTIAL');
+    } finally {
+      rmSync(out, { recursive: true, force: true });
+    }
+  });
+
+  it('the drift check passes on the committed lock and fails on a missing evidence file', () => {
+    const out = mkdtempSync(join(tmpdir(), 'hf-'));
+    try {
+      const w = process.stdout.write;
+      process.stdout.write = () => true;
+      try {
+        build(['--out', out, '--dataset', 'gavel-latency']);
+        build(['--out', out, '--dataset', 'gavel-gates']);
+        finalize(out);
+      } finally {
+        process.stdout.write = w;
+      }
+      const lock = JSON.parse(readFileSync(join(ROOT, 'hf', 'datasets.lock.json'), 'utf8'));
+      const snap = snapshot(out);
+      assert.deepEqual(compare(lock, snap), []);
+      const dropped = { ...snap, evidence_files: snap.evidence_files.slice(1) };
+      assert.ok(compare(lock, dropped).length > 0);
+      const changed = structuredClone(snap);
+      changed.evidence_files[0].sha256 = '0'.repeat(64);
+      assert.ok(compare(lock, changed).some((p) => p.includes('changed')));
     } finally {
       rmSync(out, { recursive: true, force: true });
     }
