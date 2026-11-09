@@ -8,6 +8,10 @@ The API has no route that echoes the client address, and a production route must
 
 That gives a safe comparison. If the server sees a client's own address, the tag in the log equals the tag computed from that client's public address. If it sees a shared Cloudflare edge address, the tags of two different clients are equal to each other and to neither client's own tag.
 
+## Two proxy hops are likely
+
+Responses from the API host carry `server: cloudflare` and `cf-ray`, and `x-render-origin-server: Render`. The custom domain is proxied by Cloudflare, and Render itself also fronts its services with Cloudflare, so there may be two proxy hops in front of the app while `TRUSTED_PROXY_HOPS` is 1. The first probe run (sec14-source-probe run 42564773281) created both rooms with HTTP 201; the `src` values in the Render logs have still to be compared.
+
 ## The probe
 
 Workflow `sec14-source-probe` (dispatch only; type `CREATE-TWO-ROOMS`). It runs two jobs, `a` and `b`, on two different runners, 45 seconds apart. Each job:

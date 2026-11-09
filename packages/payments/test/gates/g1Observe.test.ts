@@ -6,6 +6,7 @@ import {
   mentionsPending,
   moneyCents,
   observeG1,
+  requestInit,
   summarizeView,
   type ApiReply,
   type BuyerView,
@@ -187,5 +188,21 @@ describe('G1 observation: the run', () => {
     expect(text).not.toContain('ORD');
     expect(text).not.toContain('AUTH"');
     expect(text).not.toContain('@');
+  });
+});
+
+describe('G1 observation: API request options', () => {
+  it('sends {} with a JSON content type on a bodyless POST (PayPal answers 415 otherwise)', () => {
+    const init = requestInit('POST', 't', undefined, { 'PayPal-Request-Id': 'x' });
+    expect(init.body).toBe('{}');
+    expect(init.headers['Content-Type']).toBe('application/json');
+    expect(init.headers['PayPal-Request-Id']).toBe('x');
+  });
+
+  it('sends the payload as JSON and sends nothing on a GET', () => {
+    expect(requestInit('POST', 't', { a: 1 }).body).toBe('{"a":1}');
+    const get = requestInit('GET', 't');
+    expect(get.body).toBeUndefined();
+    expect(get.headers['Content-Type']).toBeUndefined();
   });
 });
