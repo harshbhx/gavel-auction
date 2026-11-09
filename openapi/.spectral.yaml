@@ -4,6 +4,9 @@
 extends:
   - spectral:oas
 rules:
+  # ErrorCode and HoldErrorCode are published for client code generators and are named in prose
+  # and in the 'code' and 'error' descriptions; no operation points at them by $ref.
+  oas3-unused-component: off
   oas3-api-servers: error
   operation-description: warn
   operation-tag-defined: error

@@ -607,6 +607,8 @@ paths:
         - name: bidderId
           in: path
           required: true
+          description: Id of the registered bidder to re-invite.
+          example: 01J9ZZ0000000000000000000B
           schema:
             $ref: '#/components/schemas/Ulid'
       responses:
@@ -734,12 +736,16 @@ paths:
         - $ref: '#/components/parameters/AuctionId'
         - name: after
           in: query
+          description: Return events after this sequence number. Pass the `next` of the previous page to continue.
+          example: 0
           schema:
             type: integer
             minimum: 0
             default: 0
         - name: limit
           in: query
+          description: Most events to return in one page.
+          example: 100
           schema:
             type: integer
             minimum: 1
@@ -1636,11 +1642,15 @@ paths:
           description: Auction id (`auctionId` is accepted as an alias).
         - name: list
           in: query
+          description: Send `1` to list every auction id instead of exporting one auction.
+          example: '1'
           schema:
             type: string
             const: '1'
         - name: kind
           in: query
+          description: Which export to return. Without it, `auction` returns the ledger.
+          example: payments
           schema:
             type: string
             enum: [payments, payments-global, roomlog]
@@ -1692,6 +1702,8 @@ paths:
         - name: auctionId
           in: query
           required: true
+          description: Id of the auction to bundle.
+          example: 01J9ZZ0000000000000000000A
           schema:
             type: string
             pattern: '^[0-9A-Za-z_-]{1,64}$'
@@ -1997,6 +2009,8 @@ components:
       name: holdId
       in: path
       required: true
+      description: Id of the hold, as returned by the create-hold route.
+      example: hold_01
       schema:
         type: string
         minLength: 1
@@ -2121,6 +2135,7 @@ components:
         status:
           type: string
           const: ok
+          description: Always `ok` when the host answers.
     WarmupReport:
       type: object
       required: [ok, elapsedMs, steps]
