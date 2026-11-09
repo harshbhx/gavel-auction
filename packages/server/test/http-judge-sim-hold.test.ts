@@ -204,14 +204,28 @@ describe('judge simulated hold (SRV-34)', () => {
     expect(seen.get(who.bidderId)).toBe(5_000);
   });
 
-  it('refuses a ceiling that is not offered, a bad name and extra fields', async () => {
+  it('takes any whole-cent ceiling from the minimum to the cap, not only the presets', async () => {
+    const placed: Placed[] = [];
+    const { app } = setup({ simHolds: fakeSim(placed) });
+    const room = await createRoom(app);
+    const who = await joinRoom(app, room.joinCode);
+    const res = await simHold(app, room.auctionId, who.sessionToken, {
+      ceilingCents: 3_700,
+      name: 'Ada',
+    });
+    expect(res.status).toBe(200);
+    expect(placed.map((p) => p.ceilingCents)).toEqual([3_700]);
+  });
+
+  it('refuses a ceiling outside the range, a bad name and extra fields', async () => {
     const placed: Placed[] = [];
     const { app } = setup({ simHolds: fakeSim(placed) });
     const room = await createRoom(app);
     const who = await joinRoom(app, room.joinCode);
     const go = (body: unknown): Promise<Response> =>
       simHold(app, room.auctionId, who.sessionToken, body);
-    expect((await go({ ceilingCents: 4_999, name: 'Ada' })).status).toBe(400);
+    expect((await go({ ceilingCents: 99, name: 'Ada' })).status).toBe(400);
+    expect((await go({ ceilingCents: 5_001, name: 'Ada' })).status).toBe(400);
     expect((await go({ ceilingCents: 5_000, name: 'a<b>' })).status).toBe(400);
     expect((await go({ ceilingCents: 5_000, name: 'Ada', x: 1 })).status).toBe(400);
     expect(placed).toEqual([]);

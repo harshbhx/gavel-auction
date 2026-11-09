@@ -63,19 +63,10 @@ describe('T-PAY-006 ceiling validator', () => {
     }
   });
 
-  it('enforces the presets passed in by the caller', () => {
+  it('accepts any whole-cent ceiling from the minimum to the cap, listed or not', () => {
     const r = { maxCeilingCents: 25000, presetsCents: [5000, 10000] };
-    expect(validateCeiling(5000, r)).toBe(5000);
-    expect(refused(() => validateCeiling(7500, r))).toBe(true);
-    expect(refused(() => validateCeiling(100, { ...r, presetsCents: [] }))).toBe(true);
-  });
-
-  it('fails closed when the presets are omitted by a caller that bypasses the type', () => {
-    const noPresets = { maxCeilingCents: 25000 } as unknown as Parameters<
-      typeof validateCeiling
-    >[1];
-    expect(refused(() => validateCeiling(24999, noPresets))).toBe(true);
-    expect(refused(() => validateCeiling(5000, noPresets))).toBe(true);
+    for (const c of [100, 7500, 12345, 25000]) expect(validateCeiling(c, r)).toBe(c);
+    expect(validateCeiling(7500, { maxCeilingCents: 25000 })).toBe(7500);
   });
 
   it('still applies the cap when a preset exceeds it', () => {

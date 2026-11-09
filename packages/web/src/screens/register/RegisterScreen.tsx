@@ -198,7 +198,13 @@ export function RegisterScreen({
             label={t('reg.custom')}
             value={customText}
             inputMode="numeric"
-            onChange={(e) => setCustomText(e.target.value)}
+            pattern="[0-9]*"
+            autoComplete="off"
+            hint={t('reg.customHint', {
+              min: formatUsdCompact(minCents),
+              max: formatUsdCompact(maxCents),
+            })}
+            onChange={(e) => setCustomText(e.target.value.replace(/\D/g, '').slice(0, 9))}
             onBlur={() => setCustomTouched(true)}
             {...(customError === undefined ? {} : { error: customError })}
           />

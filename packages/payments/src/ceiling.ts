@@ -7,11 +7,10 @@ export interface CeilingRules {
   /** GAVEL_MAX_CEILING_CENTS. */
   maxCeilingCents: number;
   /**
-   * The auction's allowed presets, passed in by the caller. Required: the ceiling
-   * must be one of them, and an empty list refuses every ceiling. A caller that
-   * has no list gets a refusal, never a pass.
+   * The auction's quick-pick amounts. Informational only: a bidder may choose any whole-cent
+   * ceiling from the minimum to the cap, so the list no longer limits the amount (FIX-78).
    */
-  presetsCents: readonly number[];
+  presetsCents?: readonly number[];
 }
 
 function refuse(message: string): never {
@@ -38,11 +37,6 @@ export function validateCeiling(ceilingCents: number, rules: CeilingRules): numb
   }
   if (ceilingCents > rules.maxCeilingCents) {
     return refuse(`ceiling ${ceilingCents} exceeds the cap of ${rules.maxCeilingCents}`);
-  }
-  // The type requires the list; a caller that bypasses it (plain JS, a cast) fails closed.
-  const presets: unknown = rules.presetsCents;
-  if (!Array.isArray(presets) || !presets.includes(ceilingCents)) {
-    return refuse('ceiling is not one of the auction presets');
   }
   return ceilingCents;
 }

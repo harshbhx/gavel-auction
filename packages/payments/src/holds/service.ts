@@ -60,8 +60,8 @@ export interface CreateHoldInput {
   auctionId: string;
   bidderId: string;
   ceilingCents: number;
-  /** The auction's allowed ceilings, from the caller. */
-  presetsCents: readonly number[];
+  /** The auction's quick-pick amounts; informational, any ceiling in the allowed range is accepted. */
+  presetsCents?: readonly number[];
 }
 
 export interface CreatedHold {
@@ -160,7 +160,6 @@ export class HoldService {
     try {
       validateCeiling(i.ceilingCents, {
         maxCeilingCents: this.deps.maxCeilingCents,
-        presetsCents: i.presetsCents,
       });
       const now = this.deps.clock.nowMs();
       const existing = await this.current(i.auctionId, i.bidderId);
