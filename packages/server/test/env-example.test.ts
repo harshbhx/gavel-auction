@@ -68,10 +68,7 @@ function quickStartEnv(relPath: string): Record<string, string> {
 }
 
 describe('documented quick start command', () => {
-  const docs = [
-    'packages/server/README.md',
-    'docsite/content/docs/(operate)/run/index.mdx',
-  ];
+  const docs = ['packages/server/README.md', 'docsite/content/docs/(operate)/run/index.mdx'];
   it.each(docs)('passes config validation with NODE_ENV unset (%s)', (doc) => {
     const env = quickStartEnv(doc);
     expect(Object.keys(env)).toEqual(
