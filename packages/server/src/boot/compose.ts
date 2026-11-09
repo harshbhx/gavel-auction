@@ -86,8 +86,9 @@ import { FileLedgerStore } from '../store/file-ledger-store';
 import { CORS_EXPOSE, createHttpApp } from '../http/app';
 import { createDemoHandler, DEMO_RESET_PATH, DEMO_ROOMS_PATH, DEMO_SEED_PATH } from '../http/demo';
 import { createDemoHoldSource } from '../http/demo-holds';
-import { createSimHoldSource, withSimulatedHolds } from '../http/sim-holds';
+import { createSimHoldSource, purgeSimHolds, withSimulatedHolds } from '../http/sim-holds';
 import { mountAuctions } from '../http/auctions';
+import { allowedOriginsOf, isOriginAllowed } from '../http/origins';
 import { createJudgeRooms, JUDGE_ROOM_DEFAULTS } from '../http/judge-rooms';
 import { mountAuctioneerToken } from '../http/auctioneer-token';
 import { mountControl } from '../http/control';
@@ -349,8 +350,17 @@ export function webOriginOf(config: {
   }
 }
 
-function wsOrigins(config: { PUBLIC_URL: string; CORS_ORIGINS: readonly string[] }): string[] {
-  return [...new Set([new URL(config.PUBLIC_URL).origin, ...config.CORS_ORIGINS])];
+/** The one allow-list of the host: CORS_ORIGINS, the web origin and the API's own origin. */
+export function allowedOriginsFor(config: {
+  PUBLIC_URL: string;
+  CORS_ORIGINS: readonly string[];
+  WEB_ORIGIN?: string | undefined;
+}): string[] {
+  return allowedOriginsOf({
+    corsOrigins: config.CORS_ORIGINS,
+    webOrigin: config.WEB_ORIGIN,
+    publicUrl: config.PUBLIC_URL,
+  });
 }
 
 /**
@@ -622,6 +632,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
               await service.holdApproved(holdId);
               return holdId;
             },
+            purge: (auctionId: string) => purgeSimHolds(stores.holds, auctionId),
           },
         }
       : {}),
@@ -725,6 +736,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     if (await extra(req, res)) return;
     notFound(res);
   };
+  const allowedOrigins = allowedOriginsFor(config);
   /** R-RT-120: open sockets per source address, released on close. */
   const socketsBySource = new Map<string, number>();
   const http = createServer((req, res) => {
@@ -732,7 +744,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     // Early answers (429, 404, 500) never reach the app, so give them the CORS headers a
     // browser needs to read the status instead of reporting a network error.
     const origin = req.headers.origin;
-    if (typeof origin === 'string' && config.CORS_ORIGINS.includes(origin)) {
+    if (isOriginAllowed(allowedOrigins, origin)) {
       res.setHeader('access-control-allow-origin', origin);
       res.setHeader('access-control-expose-headers', CORS_EXPOSE);
       res.setHeader('vary', 'Origin');
@@ -767,7 +779,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
   const wsHost = createNodeWsHost({
     server: http,
     clock,
-    allowedOrigins: wsOrigins(config),
+    allowedOrigins: allowedOriginsFor(config),
     passPaths: [AUDIO_PATH],
     admitUpgrade,
     accept: createGateway({
@@ -792,7 +804,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
   const audioHost = createAudioHost({
     server: http,
     clock,
-    allowedOrigins: wsOrigins(config),
+    allowedOrigins: allowedOriginsFor(config),
     secrets,
     store: stores.room,
     service,
