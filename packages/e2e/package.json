@@ -12,6 +12,7 @@
     "test:sandbox": "vitest run --config vitest.sandbox.config.ts",
     "measure:sandbox": "vite-node src/sandbox/measure-cli.ts --",
     "measure:settlement": "vite-node src/sandbox/measure-settlement-cli.ts --",
+    "record:judge-room": "vite-node src/replay/record-judge-room-cli.ts --",
     "scan:sec15": "vite-node src/security/sec15-cli.ts --",
     "voice:live-socket": "vite-node src/voice/live-socket-cli.ts --",
     "kill:server": "vite-node src/sandbox/server-kill-cli.ts --",
