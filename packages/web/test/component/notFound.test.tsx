@@ -1,6 +1,5 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import a11yCss from '../../src/a11y/a11y.css?raw';
 import { t } from '../../src/copy/t';
 import {
   NOT_FOUND_DOCS_URL,
@@ -37,9 +36,8 @@ describe('the shared not found screen', () => {
     expect(screen.queryByText(t('join.sandboxNote'))).toBeNull();
   });
 
-  it('takes focus on the heading without a focus ring rule that draws a box', () => {
+  it('moves focus to the heading (the ring is removed in a11y.css, covered by the gallery baselines)', () => {
     render(<NotFound />);
     expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }));
-    expect(a11yCss).toMatch(/h1\[tabindex='-1'\]:focus\s*\{\s*outline: none/);
   });
 });
