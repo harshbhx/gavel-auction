@@ -43,6 +43,8 @@ export function minRaiseCents(currentCents: number): number {
 export function RaiseLimit(props: RaiseLimitProps) {
   const { currentCents, maxCents, onClose } = props;
   const [target, setTarget] = useState<number | null>(null);
+  // The amount last tried, kept when the bidder goes back from the approval (as register does).
+  const [lastTarget, setLastTarget] = useState<number | null>(null);
   const minCents = minRaiseCents(currentCents);
   const presetsCents = useMemo(
     () => (props.presetsCents ?? []).filter((p) => p >= minCents && p <= maxCents),
@@ -79,7 +81,11 @@ export function RaiseLimit(props: RaiseLimitProps) {
       maxCents={maxCents}
       presetsCents={presetsCents}
       allowCustom={props.allowCustom ?? true}
-      onChoose={setTarget}
+      initialCents={lastTarget ?? undefined}
+      onChoose={(cents) => {
+        setLastTarget(cents);
+        setTarget(cents);
+      }}
       onClose={onClose}
     />
   );
@@ -91,6 +97,7 @@ function RaiseEntry(props: {
   maxCents: number;
   presetsCents: readonly number[];
   allowCustom: boolean;
+  initialCents?: number | undefined;
   onChoose: (cents: number) => void;
   onClose: () => void;
 }) {
@@ -99,6 +106,7 @@ function RaiseEntry(props: {
     maxCents: props.maxCents,
     presetsCents: props.presetsCents,
     allowCustom: props.allowCustom,
+    initialCents: props.initialCents,
   });
   const { ceilingCents } = limit;
   const confirm = (): void => {

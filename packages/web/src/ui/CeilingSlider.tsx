@@ -1,7 +1,7 @@
 import { useId, useRef, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import { t } from '../copy/t';
 import { formatUsdCompact } from '../util/money';
-import { snapToStep } from './format';
+import { nearestStop, sliderStops } from './format';
 
 export interface CeilingSliderProps {
   /** Current ceiling in cents. */
@@ -9,8 +9,10 @@ export interface CeilingSliderProps {
   onChange: (cents: number) => void;
   min: number;
   max: number;
-  /** Snap step in cents. */
+  /** Snap step in cents; positions are round multiples of it, plus the two ends. */
   step: number;
+  /** Extra amounts (such as preset quick picks) the slider can also rest on. */
+  marks?: readonly number[];
   /** A tick is drawn every `step`; a tall one every `majorEvery` cents. Default 2 steps. */
   majorEvery?: number;
   label?: string;
@@ -24,6 +26,7 @@ export function CeilingSlider({
   min,
   max,
   step,
+  marks,
   majorEvery,
   label = t('ui.slider.label'),
   disabled = false,
@@ -32,13 +35,14 @@ export function CeilingSlider({
   const track = useRef<HTMLDivElement | null>(null);
   const major = majorEvery ?? step * 2;
   const span = Math.max(1, max - min);
-  const pct = ((snapToStep(value, min, max, step) - min) / span) * 100;
-  const ticks: number[] = [];
-  for (let v = min; v <= max; v += step) ticks.push(v);
+  const stops = sliderStops(min, max, step, marks);
+  const at = nearestStop(stops, value);
+  const pct = ((at - min) / span) * 100;
+  const ticks = sliderStops(min, max, step);
 
   const set = (next: number): void => {
     if (disabled) return;
-    const snapped = snapToStep(next, min, max, step);
+    const snapped = nearestStop(stops, next);
     if (snapped !== value) onChange(snapped);
   };
 
@@ -49,14 +53,16 @@ export function CeilingSlider({
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
-    const jump = step * 5;
+    const index = stops.indexOf(at);
+    const stopAt = (i: number): number =>
+      stops[Math.min(stops.length - 1, Math.max(0, i))] ?? at;
     const moves: Readonly<Record<string, number>> = {
-      ArrowRight: value + step,
-      ArrowUp: value + step,
-      ArrowLeft: value - step,
-      ArrowDown: value - step,
-      PageUp: value + jump,
-      PageDown: value - jump,
+      ArrowRight: stopAt(index + 1),
+      ArrowUp: stopAt(index + 1),
+      ArrowLeft: stopAt(index - 1),
+      ArrowDown: stopAt(index - 1),
+      PageUp: stopAt(index + 5),
+      PageDown: stopAt(index - 5),
       Home: min,
       End: max,
     };
@@ -100,7 +106,7 @@ export function CeilingSlider({
             <s
               key={v}
               className={
-                (v - min) % major === 0
+                v === min || v % major === 0
                   ? 'ui-slider__tick ui-slider__tick--major'
                   : 'ui-slider__tick'
               }
