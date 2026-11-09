@@ -862,7 +862,8 @@ export const en = {
   'screen.settleSummary': '{c} charged, {r} released',
   'screen.wonReview': 'Paddle {n} won at {amount}',
   'screen.wonReviewUnknown': 'Won at {amount}',
-  'screen.settleReview': 'Settlement needs review. The auctioneer is checking whether the winning hold was taken.',
+  'screen.settleReview':
+    'Settlement needs review. The auctioneer is checking whether the winning hold was taken.',
   'screen.stopped': 'Auction stopped',
   'screen.clockFrozen': 'last known, reconnecting',
   'screen.untitled': 'Live auction',

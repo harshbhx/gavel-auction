@@ -20,7 +20,9 @@ describe('docs host (issue 2318)', () => {
 
   it('has no link to the old docs workers.dev host in src', () => {
     const files = walk(join(__dirname, '../../src')).filter((f) => /\.(ts|tsx)$/.test(f));
-    const hits = files.filter((f) => readFileSync(f, 'utf8').includes('gavel-docs.creharsh.workers.dev'));
+    const hits = files.filter((f) =>
+      readFileSync(f, 'utf8').includes('gavel-docs.creharsh.workers.dev'),
+    );
     expect(hits).toEqual([]);
   });
 });

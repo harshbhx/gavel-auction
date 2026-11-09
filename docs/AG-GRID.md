@@ -4,11 +4,11 @@ GAVEL's tables are [AG Grid](https://www.ag-grid.com/) Community edition (`ag-gr
 
 ## Where the grids are
 
-| Grid         | Where                                                               | What it shows                                                       |
-| ------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Grid         | Where                                                               | What it shows                                                                       |
+| ------------ | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `LedgerGrid` | Audit page (Table / Grid switch) and the `/ledger` page             | The ledger, one row per entry. Chain status only where entries are sealed (the lab) |
-| `BidsGrid`   | Auctioneer console (List / Table switch) and the `/ledger` live tab | The live bid history, newest first                                  |
-| `HoldsGrid`  | The `/ledger` holds tab                                             | Holds and settlement states, with a totals row pinned at the bottom |
+| `BidsGrid`   | Auctioneer console (List / Table switch) and the `/ledger` live tab | The live bid history, newest first                                                  |
+| `HoldsGrid`  | The `/ledger` holds tab                                             | Holds and settlement states, with a totals row pinned at the bottom                 |
 
 The code is in `packages/web/src/grid/`. The `/ledger` page (ledger lab) feeds all three from a seeded 30-day simulated run: 2,134 sealed entries, no real money and no real people.
 

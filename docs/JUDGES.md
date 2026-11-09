@@ -62,8 +62,8 @@ The web app is hosted (see `docs/DEMO.md`). The nightly `.github/workflows/judge
 | 1    | Judge      | Open the hosted web URL.                            | The landing page shows a heading and the "Start a demo auction" button.                                  |
 | 2    | Judge      | Press "Start a demo auction".                       | A demo auction opens with a link for each role: big screen, auctioneer console, bidders and audit trail. |
 | 3    | Auctioneer | Open the auctioneer console link.                   | The console shows the lot and its controls.                                                              |
-| 4    | Bidder     | Open a bidder link in a second tab and place a bid. | The bid shows on the big screen. A bid is a hold, held and not charged until the hammer.                                    |
-| 5    | Auditor    | Open the audit trail link.                          | The ledger entries show. The hash chain is checked on the sealed public export.                                                                |
+| 4    | Bidder     | Open a bidder link in a second tab and place a bid. | The bid shows on the big screen. A bid is a hold, held and not charged until the hammer.                 |
+| 5    | Auditor    | Open the audit trail link.                          | The ledger entries show. The hash chain is checked on the sealed public export.                          |
 
 Where to look afterwards:
 
