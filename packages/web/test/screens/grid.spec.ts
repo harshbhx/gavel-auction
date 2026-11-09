@@ -161,7 +161,7 @@ test.describe('ledger lab: export, filters in the link, verify, memory', () => {
     const stored = await page.evaluate(() =>
       Object.entries(window.sessionStorage).filter(([k]) => k.startsWith('gavel.grid.columns.')),
     );
-    expect(JSON.stringify(stored)).toContain('"sort":"asc"');
+    expect(stored.map(([, v]) => v).join('\n')).toContain('"sort":"asc"');
     await page.reload();
     await page.locator('.ag-row').first().waitFor();
     await expect(
