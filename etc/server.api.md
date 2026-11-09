@@ -315,6 +315,10 @@ export class Room {
     dropDeadTokens(): Promise<number>;
     encodeFailures: number;
     fence(): void;
+    holdPreflight(bidderId: string, ceilingCents: number): {
+        refusal: 'revoked' | 'below_reserve' | null;
+        reserve: number;
+    };
     get holdRefs(): ReadonlyMap<BidderId, string>;
     get isDone(): boolean;
     // (undocumented)
@@ -354,7 +358,7 @@ export interface RoomDeps {
     // (undocumented)
     clock: Clock;
     durable?: DurableHook;
-    engine: (config: AuctionConfig, createdAt: EpochMs) => EnginePort;
+    engine: (config: AuctionConfig, createdAt: EpochMs, maxCeilingCents?: number) => EnginePort;
     // (undocumented)
     ids: Ids;
     // (undocumented)

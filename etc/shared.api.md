@@ -334,6 +334,7 @@ export const AuctionCreatedEvent: z.ZodObject<{
         }[] | undefined;
     }>;
     auctioneerSub: z.ZodString;
+    maxCeilingCents: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
 }, "strict", z.ZodTypeAny, {
     type: "auction_created";
     seq: number;
@@ -372,6 +373,7 @@ export const AuctionCreatedEvent: z.ZodObject<{
     ts: number & {
         readonly __brand_epochBrand: "EpochMs";
     };
+    maxCeilingCents?: Cents | undefined;
 }, {
     type: "auction_created";
     seq: number;
@@ -398,6 +400,7 @@ export const AuctionCreatedEvent: z.ZodObject<{
         readonly __brand_brand: "AuctionId";
     };
     ts: number;
+    maxCeilingCents?: Cents | undefined;
 }>;
 
 // @public (undocumented)
@@ -2416,6 +2419,9 @@ export function max(a: Cents, b: Cents): Cents;
 // @public
 export const MAX_BIDDERS_PER_ROOM = 200;
 
+// @public
+export const MAX_CEILING_CENTS_LIMIT = 100000000;
+
 // @public (undocumented)
 export const MAX_CEILING_PRESETS = 8;
 
@@ -2946,6 +2952,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         }[] | undefined;
     }>;
     auctioneerSub: z.ZodString;
+    maxCeilingCents: z.ZodOptional<z.ZodType<Cents, z.ZodTypeDef, Cents>>;
 }, "strict", z.ZodTypeAny, {
     type: "auction_created";
     seq: number;
@@ -2984,6 +2991,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
     ts: number & {
         readonly __brand_epochBrand: "EpochMs";
     };
+    maxCeilingCents?: Cents | undefined;
 }, {
     type: "auction_created";
     seq: number;
@@ -3010,6 +3018,7 @@ export const RoomEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObject<{
         readonly __brand_brand: "AuctionId";
     };
     ts: number;
+    maxCeilingCents?: Cents | undefined;
 }>, z.ZodObject<{
     type: z.ZodLiteral<"bidder_registered">;
     auctionId: z.ZodType<AuctionId, z.ZodTypeDef, AuctionId>;
@@ -4501,6 +4510,7 @@ export const RoomSnapshotSchema: z.ZodObject<{
             readonly __brand_centsBrand: "Cents";
         };
     } | undefined;
+    maxCeilingCents?: Cents | undefined;
     paused?: boolean | undefined;
     remainingMs?: number | undefined;
     stopped?: boolean | undefined;
@@ -4511,7 +4521,6 @@ export const RoomSnapshotSchema: z.ZodObject<{
             readonly __brand_centsBrand: "Cents";
         };
     } | undefined;
-    maxCeilingCents?: Cents | undefined;
     joinCode?: string | undefined;
     you?: {
         bidderId: string & {
@@ -4614,6 +4623,7 @@ export const RoomSnapshotSchema: z.ZodObject<{
             readonly __brand_centsBrand: "Cents";
         };
     } | undefined;
+    maxCeilingCents?: Cents | undefined;
     paused?: boolean | undefined;
     remainingMs?: number | undefined;
     stopped?: boolean | undefined;
@@ -4624,7 +4634,6 @@ export const RoomSnapshotSchema: z.ZodObject<{
             readonly __brand_centsBrand: "Cents";
         };
     } | undefined;
-    maxCeilingCents?: Cents | undefined;
     joinCode?: string | undefined;
     you?: {
         bidderId: string & {
@@ -5326,6 +5335,7 @@ export const serverSchemas: {
                     readonly __brand_centsBrand: "Cents";
                 };
             } | undefined;
+            maxCeilingCents?: Cents | undefined;
             paused?: boolean | undefined;
             remainingMs?: number | undefined;
             stopped?: boolean | undefined;
@@ -5336,7 +5346,6 @@ export const serverSchemas: {
                     readonly __brand_centsBrand: "Cents";
                 };
             } | undefined;
-            maxCeilingCents?: Cents | undefined;
             joinCode?: string | undefined;
             you?: {
                 bidderId: string & {
@@ -5439,6 +5448,7 @@ export const serverSchemas: {
                     readonly __brand_centsBrand: "Cents";
                 };
             } | undefined;
+            maxCeilingCents?: Cents | undefined;
             paused?: boolean | undefined;
             remainingMs?: number | undefined;
             stopped?: boolean | undefined;
@@ -5449,7 +5459,6 @@ export const serverSchemas: {
                     readonly __brand_centsBrand: "Cents";
                 };
             } | undefined;
-            maxCeilingCents?: Cents | undefined;
             joinCode?: string | undefined;
             you?: {
                 bidderId: string & {
@@ -5578,6 +5587,7 @@ export const serverSchemas: {
                     readonly __brand_centsBrand: "Cents";
                 };
             } | undefined;
+            maxCeilingCents?: Cents | undefined;
             paused?: boolean | undefined;
             remainingMs?: number | undefined;
             stopped?: boolean | undefined;
@@ -5588,7 +5598,6 @@ export const serverSchemas: {
                     readonly __brand_centsBrand: "Cents";
                 };
             } | undefined;
-            maxCeilingCents?: Cents | undefined;
             joinCode?: string | undefined;
             you?: {
                 bidderId: string & {
@@ -5697,6 +5706,7 @@ export const serverSchemas: {
                     readonly __brand_centsBrand: "Cents";
                 };
             } | undefined;
+            maxCeilingCents?: Cents | undefined;
             paused?: boolean | undefined;
             remainingMs?: number | undefined;
             stopped?: boolean | undefined;
@@ -5707,7 +5717,6 @@ export const serverSchemas: {
                     readonly __brand_centsBrand: "Cents";
                 };
             } | undefined;
-            maxCeilingCents?: Cents | undefined;
             joinCode?: string | undefined;
             you?: {
                 bidderId: string & {
@@ -7019,6 +7028,7 @@ export const StateSchema: z.ZodObject<{
                 readonly __brand_centsBrand: "Cents";
             };
         } | undefined;
+        maxCeilingCents?: Cents | undefined;
         paused?: boolean | undefined;
         remainingMs?: number | undefined;
         stopped?: boolean | undefined;
@@ -7029,7 +7039,6 @@ export const StateSchema: z.ZodObject<{
                 readonly __brand_centsBrand: "Cents";
             };
         } | undefined;
-        maxCeilingCents?: Cents | undefined;
         joinCode?: string | undefined;
         you?: {
             bidderId: string & {
@@ -7132,6 +7141,7 @@ export const StateSchema: z.ZodObject<{
                 readonly __brand_centsBrand: "Cents";
             };
         } | undefined;
+        maxCeilingCents?: Cents | undefined;
         paused?: boolean | undefined;
         remainingMs?: number | undefined;
         stopped?: boolean | undefined;
@@ -7142,7 +7152,6 @@ export const StateSchema: z.ZodObject<{
                 readonly __brand_centsBrand: "Cents";
             };
         } | undefined;
-        maxCeilingCents?: Cents | undefined;
         joinCode?: string | undefined;
         you?: {
             bidderId: string & {
@@ -7271,6 +7280,7 @@ export const StateSchema: z.ZodObject<{
                 readonly __brand_centsBrand: "Cents";
             };
         } | undefined;
+        maxCeilingCents?: Cents | undefined;
         paused?: boolean | undefined;
         remainingMs?: number | undefined;
         stopped?: boolean | undefined;
@@ -7281,7 +7291,6 @@ export const StateSchema: z.ZodObject<{
                 readonly __brand_centsBrand: "Cents";
             };
         } | undefined;
-        maxCeilingCents?: Cents | undefined;
         joinCode?: string | undefined;
         you?: {
             bidderId: string & {
@@ -7390,6 +7399,7 @@ export const StateSchema: z.ZodObject<{
                 readonly __brand_centsBrand: "Cents";
             };
         } | undefined;
+        maxCeilingCents?: Cents | undefined;
         paused?: boolean | undefined;
         remainingMs?: number | undefined;
         stopped?: boolean | undefined;
@@ -7400,7 +7410,6 @@ export const StateSchema: z.ZodObject<{
                 readonly __brand_centsBrand: "Cents";
             };
         } | undefined;
-        maxCeilingCents?: Cents | undefined;
         joinCode?: string | undefined;
         you?: {
             bidderId: string & {
