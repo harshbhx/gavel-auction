@@ -299,7 +299,7 @@ describe('judge key: key check route', () => {
     const { app } = setup();
     const res = await post(app, JUDGE_KEY_PATH, { headers: keyed() });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, roomsMax: 3, roomsLive: 0 });
+    expect(await res.json()).toEqual({ ok: true, keyId: 'legacy', roomsMax: 3, roomsLive: 0 });
   });
 
   it('answers 404 while judge rooms are off', async () => {

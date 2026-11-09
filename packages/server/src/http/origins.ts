@@ -85,3 +85,26 @@ export function isOriginAllowed(
 ): origin is string {
   return typeof origin === 'string' && origin !== 'null' && allowed.includes(origin);
 }
+
+/** Browser origin of the docs site, the one extra origin the judge routes answer to by default. */
+export const DEFAULT_DOCS_ORIGIN = 'https://docs.gavel.dualmindlab.tech';
+
+/**
+ * The routes the docs "Try it" panel may call from the docs origin: judge rooms and the room
+ * routes a judge's own tokens open (control, receipt). Everything else, admin and ops routes
+ * included, never gets CORS headers for the docs origin, and a browser write from it is refused.
+ */
+const DOCS_PATHS: readonly RegExp[] = [
+  /^\/api\/judge\/(capabilities|key|join|rooms)$/,
+  /^\/api\/judge\/rooms\/[^/]+\/(sim-hold|bids|ledger)$/,
+  /^\/api\/auctions\/[^/]+\/(control|receipt-link|receipt)$/,
+];
+
+/** True when `origin` is on the explicit docs list and `pathname` is one of the judge routes. */
+export function isDocsCall(
+  docsOrigins: readonly string[] | undefined,
+  origin: string | null | undefined,
+  pathname: string,
+): boolean {
+  return isOriginAllowed(docsOrigins ?? [], origin) && DOCS_PATHS.some((re) => re.test(pathname));
+}

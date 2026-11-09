@@ -49,6 +49,8 @@ Along the way, check these parts of the interface (each is covered by tests in C
 
 For a tour that needs no login, run the web app in development (`cp packages/web/.env.example packages/web/.env.local`, then `npm run dev -w @gavel/web`) and open `/r/demo/screen?scripted=1`; it replays a recorded room in the browser and makes no PayPal calls. Only development builds honour `scripted=1`: on the hosted site a production build ignores it. To try the scripted demo on the hosted site, open `/demo/scripted` (the "Watch the guided tour" link on `/try` goes there): it plays the recorded room in the tab with no server connection. Nothing on this path is a live-money action: the host refuses to start judge rooms unless it is on the PayPal sandbox.
 
+To call the API directly (curl or a client) with a judge key, see [Call the API as a judge](https://docs.gavel.dualmindlab.tech/docs/judges/call-the-api): per-key room cap, hourly cap and expiry, an HTTP bid route, and a Try it panel. A key never opens an operator route.
+
 ## Five minute path
 
 The table below is the manual path a judge follows by hand. A separate automated check, the nightly smoke, walks the same journey on the public site; its own step numbers (1 to 17) are not the numbers in this table.

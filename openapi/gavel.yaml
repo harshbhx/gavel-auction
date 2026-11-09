@@ -24,7 +24,7 @@ info:
     | Session (bidder) token | `Authorization: Bearer <token>`, valid 4 hours | returned by the join routes |
     | Receipt token | `Authorization: Bearer <token>`, valid 4 hours | returned by the receipt-link route |
     | Reviewer token | `Authorization: Bearer <token>`, valid 12 hours | returned as `reviewerToken` and `reviewerLink` when a judge room is created; read only, a screen's view plus the room ledger |
-    | Judge key | header `X-Judge-Key` | a limited key for judges (environment setting `JUDGE_KEY`, never the operator key); optional, only on the judge-room create and key-check routes |
+    | Judge key | header `X-Judge-Key` | a limited key for judges, `gvl_judge_<id>_<secret>` (per-judge entries in `JUDGE_KEYS`, or the shared `JUDGE_KEY`; never the operator key); optional, only on the judge-room create and key-check routes |
     | Invite token | field `invite` in the body of the join route, valid 24 hours, single use | minted by the auctioneer |
 
     Every token is bound to one auction (its `aud`) and to one kind. A token of the wrong kind
@@ -1269,16 +1269,25 @@ paths:
                   ok:
                     type: boolean
                     const: true
+                  keyId:
+                    type: string
+                    description: The id of the key (`legacy` for the shared host key). Never the secret.
                   roomsMax:
                     type: integer
-                    description: Most keyed rooms alive at once.
+                    description: Most rooms this key may keep alive at once.
                   roomsLive:
                     type: integer
-                    description: Keyed rooms alive now.
+                    description: Rooms of this key alive now.
+                  expiresAt:
+                    type: string
+                    format: date-time
+                    description: When the key stops working. Absent for the legacy shared key.
               example:
                 ok: true
-                roomsMax: 3
+                keyId: a1b2c3d4
+                roomsMax: 2
                 roomsLive: 0
+                expiresAt: '2026-11-30T23:59:00Z'
         '401':
           $ref: '#/components/responses/JudgeKeyInvalid'
         '404':
@@ -1531,6 +1540,241 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/Internal'
+  # --- FEAT-60 judge API keys: begin (separate block, keep edits here apart from lint passes) ---
+  /api/judge/rooms/{id}/bids:
+    post:
+      tags: [Judge rooms]
+      operationId: placeJudgeBid
+      summary: Place a bid in a judge room over HTTP
+      description: |
+        Bid with plain HTTP, for curl and generated clients that cannot open the WebSocket (the
+        socket needs a browser `Origin`; this route does not, and the socket rules are
+        unchanged). Send the session token from `POST /api/judge/join` as a bearer token, after
+        the bidder has a hold (`POST /api/judge/rooms/{id}/sim-hold`). The bid takes the same
+        path as a socket bid: the per-bidder bid limit, the registered check and the auction
+        engine all apply. `amount` is whole cents. `mid` is optional; send the same `mid` again
+        to retry safely, the room answers with the original result and records nothing twice.
+
+        A bid the engine refuses (too low, over your ceiling, lot closed) is 409 with
+        `accepted: false` and a `reason`. Only session tokens work here, and only for judge
+        rooms: any other auction answers 404. A judge key is not needed on this route.
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AuctionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [amount]
+              properties:
+                amount:
+                  type: integer
+                  minimum: 1
+                  description: Bid in cents.
+                mid:
+                  type: string
+                  pattern: '^[0-9A-HJKMNP-TV-Z]{26}$'
+                  description: Optional message id (ULID) that makes a retry safe.
+            example:
+              amount: 1500
+      responses:
+        '200':
+          description: The bid was accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted, mid, bidId, amount, seq]
+                properties:
+                  accepted:
+                    type: boolean
+                    const: true
+                  mid:
+                    type: string
+                  bidId:
+                    type: string
+                  amount:
+                    type: integer
+                    description: The accepted bid in cents.
+                  seq:
+                    type: integer
+                    description: Position of the bid in the room's event log.
+              example:
+                accepted: true
+                mid: 01JC5ZR1B2C3D4E5F6G7H8J9K0
+                bidId: 01JC5ZR1B2C3D4E5F6G7H8J9K1
+                amount: 1500
+                seq: 7
+        '202':
+          description: The room is holding the bid for the bidder to confirm; nothing was placed yet.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted, pending, mid]
+                properties:
+                  accepted:
+                    type: boolean
+                    const: false
+                  pending:
+                    type: boolean
+                    const: true
+                  mid:
+                    type: string
+              example:
+                accepted: false
+                pending: true
+                mid: 01JC5ZR1B2C3D4E5F6G7H8J9K0
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The engine refused the bid (`accepted` is false and `reason` says why).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted, error, mid, reason, retryable]
+                properties:
+                  accepted:
+                    type: boolean
+                    const: false
+                  error:
+                    type: string
+                    const: bid_rejected
+                  mid:
+                    type: string
+                  reason:
+                    $ref: '#/components/schemas/ErrorCode'
+                  retryable:
+                    type: boolean
+              example:
+                accepted: false
+                error: bid_rejected
+                mid: 01JC5ZR1B2C3D4E5F6G7H8J9K0
+                reason: below_increment
+                retryable: false
+        '410':
+          $ref: '#/components/responses/Gone'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/Internal'
+  /api/judge/keys:
+    get:
+      tags: [Judge rooms, Operator]
+      operationId: listJudgeKeys
+      summary: List judge keys
+      description: |
+        Operator only (`X-Admin-Key`). Lists every judge key by id with its label, limits and
+        state. The secret and its hash are never returned. A judge key on this route is 401.
+      security:
+        - adminKey: []
+      responses:
+        '200':
+          description: The keys.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [keys]
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, label, maxRooms, perHour, roomsLive, revoked, expired]
+                      properties:
+                        id:
+                          type: string
+                        label:
+                          type: string
+                        maxRooms:
+                          type: integer
+                        perHour:
+                          type: integer
+                        roomsLive:
+                          type: integer
+                        revoked:
+                          type: boolean
+                        expired:
+                          type: boolean
+                        expiresAt:
+                          type: string
+                          format: date-time
+              example:
+                keys:
+                  - id: a1b2c3d4
+                    label: Asha
+                    maxRooms: 2
+                    perHour: 10
+                    roomsLive: 1
+                    revoked: false
+                    expired: false
+                    expiresAt: '2026-11-30T23:59:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/Internal'
+  /api/judge/keys/{keyId}/revoke:
+    post:
+      tags: [Judge rooms, Operator]
+      operationId: revokeJudgeKey
+      summary: Revoke a judge key
+      description: |
+        Operator only (`X-Admin-Key`). The key is refused from now on (401 `judge_key_revoked`)
+        and stays revoked after a restart. Rooms it already opened run until they end. A judge
+        key on this route is 401.
+      security:
+        - adminKey: []
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          description: The 8 character id inside the key (`gvl_judge_<id>_<secret>`), or `legacy`.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The key is revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, revoked]
+                properties:
+                  id:
+                    type: string
+                  revoked:
+                    type: boolean
+                    const: true
+              example:
+                id: a1b2c3d4
+                revoked: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/Internal'
+  # --- FEAT-60 judge API keys: end ---
   /healthz:
     get:
       tags: [Health]
@@ -1973,8 +2217,10 @@ components:
       in: header
       name: X-Judge-Key
       description: >-
-        A limited key for judges (set by the host operator, never the operator key). Only the
-        judge-room create and key-check routes read it. No real value appears in this document.
+        A limited per-judge key, `gvl_judge_<id>_<secret>` (set by the host operator, never the
+        operator key). Only the judge-room create and key-check routes read it; it never opens an
+        operator route. It has an expiry, a room cap and an hourly cap of its own. No real value
+        appears in this document.
     sessionAuth:
       type: http
       scheme: bearer
@@ -2765,7 +3011,9 @@ components:
           example:
             error: busy
     JudgeKeyInvalid:
-      description: The judge key was not accepted (`judge_key_invalid`), or the host has none set.
+      description: >-
+        The judge key was not accepted (`judge_key_invalid`), it has expired
+        (`judge_key_expired`), it was revoked (`judge_key_revoked`), or the host has none set.
       content:
         application/json:
           schema:

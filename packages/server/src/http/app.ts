@@ -15,7 +15,7 @@ import { TOKEN_TTL_S, type JtiStore, type TokenKind, type TokenPayload } from '.
 import { withLogContext } from '../log/context';
 import { auctioneerTokenLive } from '../auth/auctioneer-floor';
 import type { AuctionService } from '../runtime/auction-service';
-import { allowedOriginsOf, isOriginAllowed } from './origins';
+import { allowedOriginsOf, isDocsCall, isOriginAllowed } from './origins';
 import { securityHeaders } from './security-headers';
 
 /** Largest request body the host reads (R-RT-105). */
@@ -40,6 +40,11 @@ export interface HttpDeps {
   webOrigin?: string;
   /** Origins allowed by CORS. Anything else gets no CORS headers. */
   corsOrigins: readonly string[];
+  /**
+   * Extra origins (the docs site) that may call the judge routes only, never the socket or any
+   * other route. Explicit list; empty or left out means none.
+   */
+  docsOrigins?: readonly string[];
   /** Override of the WebSocket URL returned by join. Defaults to PUBLIC_URL with ws scheme and /ws. */
   wsUrl?: string;
   maxBodyBytes?: number;
@@ -123,10 +128,12 @@ export class HttpApp {
     const requestId =
       supplied !== null && REQUEST_ID_RE.test(supplied) ? supplied : this.deps.ids.mint();
     const origin = req.headers.get('origin');
-    const allowed = isOriginAllowed(this.allowedOrigins(), origin) ? origin : null;
+    const docs = isDocsCall(this.deps.docsOrigins, origin, new URL(req.url).pathname);
+    const allowed =
+      isOriginAllowed(this.allowedOrigins(), origin) || docs ? (origin as string) : null;
     let res: Response;
     try {
-      this.checkWriteOrigin(req, origin);
+      this.checkWriteOrigin(req, origin, docs);
       res = await this.dispatch(req, requestId, allowed);
     } catch (e) {
       res = errorResponse(e);
@@ -162,8 +169,9 @@ export class HttpApp {
     return allowedOriginsOf({ corsOrigins, webOrigin, publicUrl });
   }
 
-  private checkWriteOrigin(req: Request, origin: string | null): void {
+  private checkWriteOrigin(req: Request, origin: string | null, docs = false): void {
     if (origin === null || !WRITE_METHODS.has(req.method)) return;
+    if (docs) return;
     if (isOriginAllowed(this.allowedOrigins(), origin)) return;
     throw new GavelError('forbidden', 'origin not allowed');
   }
