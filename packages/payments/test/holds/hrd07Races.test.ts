@@ -152,13 +152,14 @@ describe('R8-P04 hold writes do not erase each other', () => {
   });
 
   it('an abandon that races an approval is refused once the hold is HELD', async () => {
+    // The same limit again is not a raise (a higher one is, FEAT-61).
     const r = rig();
     const { holdId, orderId } = await pending(r);
     await r.service.completeApproval({ holdId, orderId });
     const again = r.service.createHoldOrder({
       auctionId: 'a1',
       bidderId: 'b1',
-      ceilingCents: 25000,
+      ceilingCents: 15000,
       presetsCents: PRESETS,
     });
     await expect(again).rejects.toBeInstanceOf(HoldError);
