@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { t } from '../../copy/t';
 import { startLiveRoom } from '../../net/liveRoom';
+import type { AuctionStatus } from '../../wire';
 import { RoomStore, useRoom } from '../../store/roomStore';
 import { selectors } from '../../store/selectors';
 import { Button } from '../../design/primitives/Button';
+import { Instructor, hubStep } from '../../help';
 import { Dialog } from '../../design/primitives/Dialog';
 import { StatusPill } from '../../ui';
 import { formatCountdown } from '../../util/time';
@@ -165,6 +167,7 @@ export function JudgeHub({
     readonly home: boolean;
   }>({ step: 'idle', home: false });
   const ended = stopped || sold || closedHere;
+  const roomStatus = useRoom(selectors.auctionStatus, store) as AuctionStatus | null;
   const [summary, setSummary] = useState<Summary>({
     title: null,
     code: keys.code,
@@ -314,6 +317,8 @@ export function JudgeHub({
           )}
         </p>
       </header>
+
+      <Instructor screen="hub" judge current={hubStep({ status: roomStatus, ended })} />
 
       {ended && (
         <p className="gv-hub__ended" role="status" data-testid="hub-ended">

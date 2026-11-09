@@ -1,3 +1,4 @@
+import { Instructor } from '../../help';
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
 import { t } from '../../copy/t';
 import { Icon, type IconName } from '../../design/icons';
@@ -293,6 +294,8 @@ export function JudgePanel({
               <p className="gv-judge__by">{t('try.by')}</p>
             </div>
           </section>
+
+          <Instructor screen="try" judge current={0} />
 
           <JudgeStage state={script.state} />
 
