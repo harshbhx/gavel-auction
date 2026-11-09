@@ -402,10 +402,36 @@
   color: var(--color-sheet);
 }
 
-.bid-confirm .gv-btn[aria-disabled='true'] {
-  background: transparent;
-  color: var(--color-on-sheet);
-  opacity: 0.6;
+/* Countdown: a thin rule that drains, not a chip. */
+.bid-confirm__count {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-2);
+}
+
+.bid-confirm__bar {
+  flex: 1;
+  height: 4px;
+  background: color-mix(in srgb, var(--color-on-sheet) 25%, transparent);
+}
+
+.bid-confirm__fill {
+  height: 100%;
+  background: var(--color-on-sheet);
+  transform-origin: left;
+  transition: transform 250ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bid-confirm__fill {
+    transition: none;
+  }
+}
+
+.bid-confirm .gv-btn {
+  width: 100%;
+  min-height: 48px;
 }
 
 @media (min-width: 840px) {

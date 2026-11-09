@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 
 import { announce } from '../../a11y/announce';
 import { MuteToggle } from '../../alerts/MuteToggle';
@@ -23,7 +23,6 @@ import { formatUsd, formatUsdCompact } from '../../util/money';
 import { HoldCard, PriceRoll, Skeleton, SkeletonGroup } from '../../ui';
 import './bid.css';
 import { CeilingMeter } from './CeilingMeter';
-import { ConfirmSheet } from './ConfirmSheet';
 import { CustomBid } from './CustomBid';
 import { LotBlock } from './LotBlock';
 import { QuickBid, useSendGuard } from './QuickBid';
@@ -32,6 +31,11 @@ import { Rejection, REJECTION_CLEAR_MS, type BidRejection } from './Rejection';
 import { StateBanner, bidsLocked, bidsNotice } from './StateBanner';
 import { myStatus, StatusChip, type ChipStatus } from './StatusChip';
 import { useOutbid } from './useOutbid';
+
+// Loaded on first use: a confirm question is rare, and this keeps the first route small.
+const ConfirmSheet = lazy(() =>
+  import('./ConfirmSheet').then((m) => ({ default: m.ConfirmSheet })),
+);
 
 export { REJECTION_CLEAR_MS };
 export type { BidRejection };
@@ -349,14 +353,17 @@ export function BidScreen({
         ))}
       </ul>
 
-      {onConfirm !== undefined && myPaddle !== undefined && (
-        <ConfirmSheet
-          request={request}
-          paddle={myPaddle}
-          currentCents={price?.currentCents ?? null}
-          onRespond={onConfirm}
-          now={serverNow}
-        />
+      {onConfirm !== undefined && myPaddle !== undefined && request !== null && (
+        <Suspense fallback={null}>
+          <ConfirmSheet
+            request={request}
+            paddle={myPaddle}
+            currentCents={price?.currentCents ?? null}
+            onRespond={onConfirm}
+            onDismiss={(confirmId) => store.dispatch({ kind: 'confirm_resolved', confirmId })}
+            now={serverNow}
+          />
+        </Suspense>
       )}
     </main>
   );
