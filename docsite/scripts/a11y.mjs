@@ -21,6 +21,9 @@ const pages = [
   ['docs-page', '/docs/start'],
   ['glossary', '/docs/reference/glossary'],
   ['openapi', '/docs/reference/api-reference'],
+  ['api-reference', '/api-reference'],
+  // The 404 page answers with 404 on purpose; it still has to be a clean page (one main landmark).
+  ['not-found', '/docs/zzz-no-such-page', 404],
 ];
 const viewports = [
   ['desktop', { width: 1280, height: 900 }],
@@ -33,10 +36,10 @@ let failures = 0;
 
 for (const [vname, viewport] of viewports) {
   const context = await browser.newContext({ viewport, reducedMotion: 'reduce' });
-  for (const [name, url] of pages) {
+  for (const [name, url, expected = 200] of pages) {
     const page = await context.newPage();
     const res = await page.goto(base + url, { waitUntil: 'networkidle' });
-    if (!res || !res.ok()) {
+    if (!res || res.status() !== expected) {
       console.error(`FAIL ${url}: HTTP ${res?.status()}`);
       failures += 1;
     }

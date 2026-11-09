@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { announce } from '../../a11y/announce';
 import { useHammerAlert } from '../../alerts/useAlerts';
 import { t } from '../../copy/t';
 import { useConnection } from '../../net/connection';
@@ -15,7 +16,14 @@ import { FundraiserThermometer } from './Thermometer';
 // The QR encoder is a lazy chunk (R-WEB-009), like on the join page and the hub.
 const QrCode = lazyWithRetry(() => import('../join/QrCode'));
 import { StoryRail } from './StoryRail';
-import { FrozenChip, PriceFlash, Sold, type SettleCounts, type SoldOutcome } from './Sold';
+import {
+  FrozenChip,
+  PriceFlash,
+  Sold,
+  soldText,
+  type SettleCounts,
+  type SoldOutcome,
+} from './Sold';
 import type { SettlementDetail } from '../../store/roomReducer';
 
 type SettlementHold = SettlementDetail['holds'][number];
@@ -99,9 +107,16 @@ export function ScreenView({
     };
   }, [theme, preview]);
 
+  // The tick only feeds the countdown, so it stops when nothing on the clock can change: a hidden
+  // tab, or (below) a closed, stopped, paused or frozen lot.
+  const [visible, setVisible] = useState(() => document.visibilityState !== 'hidden');
   useEffect(() => {
-    const id = setInterval(() => setTick((n) => n + 1), 250);
-    return () => clearInterval(id);
+    const onChange = (): void => {
+      setVisible(document.visibilityState !== 'hidden');
+      setTick((n) => n + 1);
+    };
+    document.addEventListener('visibilitychange', onChange);
+    return () => document.removeEventListener('visibilitychange', onChange);
   }, []);
 
   // A reload or a late join gets a snapshot but not the hammer message: the snapshot status and
@@ -153,6 +168,31 @@ export function ScreenView({
       ? { kind: 'passed' }
       : { kind: 'sold', paddle: winnerPaddle, amountCents: finalPrice };
 
+  const clockRuns = !closed && !offline && !stopped && price?.paused !== true && visible;
+  useEffect(() => {
+    if (!clockRuns) return undefined;
+    const id = setInterval(() => setTick((n) => n + 1), 250);
+    return () => clearInterval(id);
+  }, [clockRuns]);
+
+  // The result and the settlement summary are spoken through the app announcer, which stays mounted
+  // when the price view is swapped for the Sold view. The hub preview stays silent.
+  const review = auctionState === 'FAILED_NEEDS_REVIEW';
+  const resultText = closed ? soldText(outcome, review) : null;
+  useEffect(() => {
+    if (!preview && resultText !== null) announce('assertive', resultText, 'summary');
+  }, [preview, resultText]);
+  const settledText =
+    closed && !review && settlement !== null && (outcome.kind !== 'sold' || settlement.captured > 0)
+      ? t('screen.settleSummary', { c: settlement.captured, r: settlement.released })
+      : null;
+  useEffect(() => {
+    if (!preview && settledText !== null) announce('polite', settledText, 'ladder');
+  }, [preview, settledText]);
+  useEffect(() => {
+    if (!preview && stopped) announce('assertive', t('screen.stopped'), 'stop');
+  }, [preview, stopped]);
+
   const soft = !closed && remaining !== null && remaining <= SOFT_CLOSE_MS;
   const screenState = closed
     ? outcome.kind === 'sold'
@@ -190,11 +230,7 @@ export function ScreenView({
       <div className="gv-screen__stage">
         <div className="gv-screen__board">
           {closed ? (
-            <Sold
-              outcome={outcome}
-              settlement={settlement}
-              review={auctionState === 'FAILED_NEEDS_REVIEW'}
-            />
+            <Sold outcome={outcome} settlement={settlement} review={review} />
           ) : price === null ? (
             <p className="gv-screen__opening">{t('screen.lobby')}</p>
           ) : price.currentCents === null ? (

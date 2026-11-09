@@ -32,6 +32,7 @@ import { RaiseLimit } from './RaiseLimit';
 import { Rejection, REJECTION_CLEAR_MS, type BidRejection } from './Rejection';
 import { StateBanner, bidsLocked, bidsNotice } from './StateBanner';
 import { myStatus, StatusChip, type ChipStatus } from './StatusChip';
+import { useBidAnnounce } from './useBidAnnounce';
 import { useOutbid } from './useOutbid';
 
 // Loaded on first use: a confirm question is rare, and this keeps the first route small.
@@ -140,15 +141,24 @@ export function BidScreen({
   else if (!canSend && !bidsLocked(auctionStatus, stopped)) blockedReason = t('bid.notConnected');
 
   const { vibrate, setVibrate } = useOutbid(base, price?.currentCents ?? 0);
+  const closedLot =
+    auctionStatus === 'CLOSING' || auctionStatus === 'SETTLING' || auctionStatus === 'DONE';
+  useBidAnnounce(base, price?.currentCents ?? 0, closedLot);
   useAlerts(store);
   // A bid with no answer keeps new bids locked until it is answered or resent, so two amounts
   // can never both stand.
   const send = useSendGuard(onBid, pending || unsent);
 
   const notice = bidsNotice(auctionStatus, stopped);
+  // The result line ("You won at ...") already says the lot closed, so the bare notice stays quiet.
+  const resultSpoken =
+    closedLot &&
+    (price?.currentCents ?? 0) > 0 &&
+    (base === 'won' || base === 'lost' || base === 'watching');
   useEffect(() => {
+    if (notice === 'bid.closedBanner' && resultSpoken) return;
     if (notice !== null) announce('assertive', t(notice), 'stop');
-  }, [notice]);
+  }, [notice, resultSpoken]);
 
   const offline = connection.offline;
   useEffect(() => {

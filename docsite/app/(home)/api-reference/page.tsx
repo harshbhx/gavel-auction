@@ -14,7 +14,7 @@ export default function ApiReferencePage() {
   const spec = loadSpec();
   const errorCodes: J = spec.root.components?.schemas?.ErrorCode;
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-12">
+    <div className="mx-auto w-full max-w-4xl px-4 py-12">
       <h1 className="text-3xl font-bold tracking-tight">API reference</h1>
       <p className="mt-2 text-fd-muted-foreground">
         {spec.info.title}, version {spec.info.version}. PayPal sandbox only: no real money moves. This page is
@@ -91,6 +91,6 @@ export default function ApiReferencePage() {
           </div>
         </section>
       ))}
-    </main>
+    </div>
   );
 }

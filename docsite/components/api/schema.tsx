@@ -83,7 +83,7 @@ export function SchemaTable({ root, schema }: { root: J; schema: J }) {
   return (
     <div className="space-y-2">
       {head}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Schema fields">
         <table className="w-full border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-fd-foreground">

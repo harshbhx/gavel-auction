@@ -103,7 +103,8 @@
 }
 
 .fx-marquee__toggle:focus-visible {
-  outline: 3px solid var(--color-action);
+  /* Ink, not orange: the accent is 2.3:1 on paper (WCAG 1.4.11, 2.4.7). */
+  outline: 3px solid var(--color-focus);
   outline-offset: 2px;
 }
 

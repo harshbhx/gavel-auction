@@ -106,7 +106,7 @@ export function LandingScreen({
           </a>
         </div>
       </header>
-      <main className="gv-landing" id="top">
+      <main className="gv-landing" id="main">
         <section className="gv-hero" aria-labelledby="hero-title">
           <div className="gv-hero__copy">
             <p className="ui-kicker gv-landing__kicker">{t('mk.hero.kicker')}</p>
