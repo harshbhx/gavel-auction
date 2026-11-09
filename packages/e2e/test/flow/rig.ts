@@ -51,10 +51,20 @@ const noSleep = async (): Promise<void> => undefined;
 /** Jitter draw of the payment transport: fixed, so a retry waits just under its ceiling. */
 const TOP_OF_RANGE = 0.999;
 
-/** One fake PayPal server plus every store that has to outlive a restart of the service. */
-export async function makeRig() {
+/** A started fake PayPal server whose faults never really sleep; share it between rigs. */
+export async function startFakePaypal(): Promise<FakePayPalServer> {
   const paypal = new FakePayPalServer({ timers: { sleep: noSleep } });
   await paypal.start();
+  return paypal;
+}
+
+/**
+ * One fake PayPal server plus every store that has to outlive a restart of the service. Pass a
+ * running `paypal` to build the stores on a server that outlives the rig (the soak does, so every
+ * round talks to one origin); the caller stops it and calls its `reset()` between rigs.
+ */
+export async function makeRig(opts: { paypal?: FakePayPalServer } = {}) {
+  const paypal = opts.paypal ?? (await startFakePaypal());
   /** Every wait the payment transport asked for, in ms; nothing really sleeps. */
   const sleeps: number[] = [];
   const auth = new TokenManager({

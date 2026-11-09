@@ -5,9 +5,19 @@ import { runL3 } from './hammer';
 import { runL4 } from './webhooks';
 import { runSoak } from './soak';
 import type { Check } from './run';
+import {
+  rigCounters,
+  startDiagnostics,
+  startHeapSampling,
+  writeDiagnostics,
+  type Diagnostics,
+} from './diag';
+import type { Rig } from '../../test/flow/rig';
 
 // Runs the L3 hammer race, the L4 webhook storm and the L5 soak and writes one JSON report.
-//   npx vite-node packages/e2e/src/load/cli.ts -- L3|L4|L5|all [--minutes 30] [--out load.json]
+//   npx vite-node packages/e2e/src/load/cli.ts -- L3|L4|L5|all [--minutes 30] [--out load.json] [--diag diag.json]
+// --diag writes memory samples every 5 s plus per-component counters for the L5 soak (#2203); run
+// node with --expose-gc to also get the live heap after a forced collection. Off by default.
 // Exit code 1 when any check fails.
 
 interface Result {
@@ -21,10 +31,13 @@ function flag(argv: readonly string[], name: string): string | undefined {
   return i >= 0 ? argv[i + 1] : undefined;
 }
 
+const gc = (globalThis as { gc?: () => void }).gc;
+
 async function main(argv: readonly string[]): Promise<number> {
   const which = argv.find((a) => a === 'L3' || a === 'L4' || a === 'L5' || a === 'all') ?? 'all';
   const minutes = Number(flag(argv, '--minutes') ?? '30');
   const out = flag(argv, '--out');
+  const diagFile = flag(argv, '--diag');
   const deps = { now: () => performance.now(), rss: () => process.memoryUsage().rss };
   const results: Result[] = [];
   // The report is rewritten after every scenario, with the peak rss so far, so a crash in a later
@@ -41,7 +54,40 @@ async function main(argv: readonly string[]): Promise<number> {
   if (which === 'L4' || which === 'all') results.push(await runL4());
   save();
   if (which === 'L5' || which === 'all') {
-    results.push(await runSoak({ ...deps, durationMs: minutes * 60 * 1000 }));
+    let diag: Diagnostics | undefined;
+    let stopSampling: Awaited<ReturnType<typeof startHeapSampling>> | undefined;
+    let roundsDone = 0;
+    let current: Rig | undefined;
+    results.push(
+      await runSoak({
+        ...deps,
+        durationMs: minutes * 60 * 1000,
+        ...(typeof gc === 'function' ? { gc } : {}),
+        ...(diagFile === undefined
+          ? {}
+          : {
+              onStart: async (rig: Rig): Promise<void> => {
+                current = rig;
+                if (diag !== undefined) return;
+                stopSampling = await startHeapSampling();
+                diag = startDiagnostics({
+                  probe: () => ({
+                    ...(current === undefined ? {} : rigCounters(current)),
+                    'soak.rounds': roundsDone,
+                  }),
+                });
+              },
+              onRound: (n: number): void => {
+                roundsDone = n;
+              },
+              onEnd: async (): Promise<void> => {
+                if (diag === undefined) return;
+                const retained = stopSampling === undefined ? [] : await stopSampling();
+                writeDiagnostics(diagFile, { ...diag.finish(), retained });
+              },
+            }),
+      }),
+    );
   }
   save();
   for (const r of results) {
