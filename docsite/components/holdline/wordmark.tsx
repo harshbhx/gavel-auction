@@ -12,7 +12,7 @@ export function Wordmark({ className, title = 'GAVEL' }: { className?: string; t
         viewBox="0 0 452 100"
         role="img"
         aria-label={title}
-        className="h-6 w-auto overflow-visible"
+        className="hl-wm h-6 w-auto overflow-visible"
         fill="currentColor"
       >
         <path
@@ -21,8 +21,10 @@ export function Wordmark({ className, title = 'GAVEL' }: { className?: string; t
           stroke="currentColor"
           strokeWidth="19"
         />
-        <rect x="41" y="44.5" width="59" height="11" />
-        <rect x="34" y="35" width="14" height="30" rx="3" fill="var(--hl-signal)" />
+        <g className="hl-wm-mallet">
+          <rect x="41" y="44.5" width="59" height="11" />
+          <rect x="34" y="35" width="14" height="30" rx="3" fill="var(--hl-signal)" />
+        </g>
         <path
           transform="translate(112 0)"
           fillRule="evenodd"

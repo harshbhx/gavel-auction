@@ -9,6 +9,12 @@ export interface LogoProps {
   height?: number;
   /** True when text beside the logo already says GAVEL (hides it from assistive technology). */
   decorative?: boolean;
+  /**
+   * Optional motion: the mallet winds up and strikes in four stepped clicks, on hover or focus
+   * ('hover'), once when the logo mounts ('load'), or both. Off by default and always off under
+   * prefers-reduced-motion.
+   */
+  motion?: 'hover' | 'load' | 'both';
   className?: string;
 }
 
@@ -27,8 +33,10 @@ const MARK = (
       fill="none"
       strokeWidth="22"
     />
-    <rect className="gv-logo__ink" x="40" y="43.5" width="60" height="13" />
-    <rect className="gv-logo__head" x="32" y="33" width="16" height="34" rx="3" />
+    <g className="gv-logo__mallet">
+      <rect className="gv-logo__ink" x="40" y="43.5" width="60" height="13" />
+      <rect className="gv-logo__head" x="32" y="33" width="16" height="34" rx="3" />
+    </g>
   </>
 );
 
@@ -40,8 +48,10 @@ const WORD = (
       fill="none"
       strokeWidth="19"
     />
-    <rect className="gv-logo__ink" x="41" y="44.5" width="59" height="11" />
-    <rect className="gv-logo__head" x="34" y="35" width="14" height="30" rx="3" />
+    <g className="gv-logo__mallet">
+      <rect className="gv-logo__ink" x="41" y="44.5" width="59" height="11" />
+      <rect className="gv-logo__head" x="34" y="35" width="14" height="30" rx="3" />
+    </g>
     <path
       className="gv-logo__ink"
       fillRule="evenodd"
@@ -74,6 +84,7 @@ export function Logo({
   variant = 'wordmark',
   height = 24,
   decorative = false,
+  motion,
   className,
 }: LogoProps) {
   const [w, h] = BOX[variant];
@@ -88,7 +99,14 @@ export function Logo({
       width={width}
       height={height}
       focusable="false"
-      className={className === undefined ? 'gv-logo' : `gv-logo ${className}`}
+      className={[
+        'gv-logo',
+        motion === 'hover' || motion === 'both' ? 'gv-logo--hover' : '',
+        motion === 'load' || motion === 'both' ? 'gv-logo--load' : '',
+        className ?? '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       {...a11y}
     >
       {variant === 'mark' && MARK}
