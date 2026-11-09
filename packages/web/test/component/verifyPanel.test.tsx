@@ -143,4 +143,25 @@ describe('/verify route', () => {
       '/r/room-9/audit#token=rev',
     );
   });
+
+  it('offers the room after a full page load from the hub link (#2447)', () => {
+    // A plain link to /verify empties memory; only this tab's sessionStorage still holds the keys.
+    sessionStorage.setItem(
+      'gavel:session:room-10:hub',
+      JSON.stringify({
+        auctioneer: 'a',
+        screen: 's',
+        expiresAt: null,
+        code: 'ABC234',
+        reviewer: 'rev',
+      }),
+    );
+    try {
+      render(<VerifyScreen apiBase="https://api.example.test" />);
+      const button = screen.getByRole('button', { name: t('verify.room.button') });
+      expect(button.getAttribute('aria-disabled')).not.toBe('true');
+    } finally {
+      sessionStorage.removeItem('gavel:session:room-10:hub');
+    }
+  });
 });
