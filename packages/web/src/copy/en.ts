@@ -55,7 +55,7 @@ export const en = {
   'mk.how.s1.body': 'Approve a PayPal hold for your limit. Held, not charged.',
   'mk.how.s2.title': 'Bid by tap or voice',
   'mk.how.s2.body':
-    'Tap a bid on your phone, or the auctioneer says one into the console microphone. A spoken bid always shows a confirm step on the bidder's screen before it counts.',
+    'Tap a bid on your phone, or the auctioneer says one into the console microphone. A spoken bid always shows a confirm step on the bidder screen before it counts.',
   'mk.how.s3.title': 'Hammer',
   'mk.how.s3.body':
     'The winner is charged only if PayPal confirms the hold. Every other hold is released.',
