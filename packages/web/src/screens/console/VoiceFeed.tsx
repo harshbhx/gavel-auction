@@ -5,7 +5,18 @@ import { Chip } from '../../design/primitives/Chip';
 import { Icon } from '../../design/icons';
 import { formatUsdCompact } from '../../util/money';
 
-export type MicState = 'off' | 'requesting' | 'live' | 'error' | 'denied';
+export type MicState =
+  | 'off'
+  | 'requesting'
+  | 'connecting'
+  | 'live'
+  | 'armed'
+  | 'error'
+  | 'denied'
+  | 'nomic'
+  | 'busy'
+  | 'unsupported'
+  | 'insecure';
 
 /** What the parser made of one utterance. Null `bid` means it was not a bid. */
 export interface VoiceParse {
@@ -25,16 +36,24 @@ export interface VoiceFeedProps {
   /** Input level 0..1. */
   level: number;
   entries: readonly VoiceFeedEntry[];
-  /** True when this build has no audio path to the server: no microphone state or level shows. */
+  /** True when voice cannot be used here: no microphone state or level shows. */
   unavailable?: boolean;
+  /** Why it cannot be used. Defaults to the build-level wording. */
+  unavailableReason?: string;
 }
 
 const MIC_KEY = {
   off: 'console.mic.off',
   requesting: 'console.mic.requesting',
+  connecting: 'console.mic.connecting',
   live: 'console.mic.live',
+  armed: 'console.mic.armed',
   error: 'console.mic.error',
   denied: 'console.mic.denied',
+  nomic: 'console.mic.nomic',
+  busy: 'console.mic.busy',
+  unsupported: 'console.mic.unsupported',
+  insecure: 'console.mic.insecure',
 } as const satisfies Record<MicState, CopyKey>;
 
 /** 0.93 -> "0.93". Integer rounding first, so no float formatting surprises. */
@@ -56,13 +75,19 @@ function clampLevel(level: number): number {
 }
 
 /** Partial and final transcripts, parse results and the microphone state (R-WEB-066). */
-export function VoiceFeed({ mic, level, entries, unavailable = false }: VoiceFeedProps) {
+export function VoiceFeed({
+  mic,
+  level,
+  entries,
+  unavailable = false,
+  unavailableReason,
+}: VoiceFeedProps) {
   const shown = clampLevel(level);
-  const problem = mic === 'error' || mic === 'denied';
+  const problem = !['off', 'requesting', 'connecting', 'live', 'armed'].includes(mic);
   return (
     <div className="gv-voice">
       {unavailable ? (
-        <p role="status">{t('console.mic.unavailable')}</p>
+        <p role="status">{unavailableReason ?? t('console.mic.unavailable')}</p>
       ) : (
         <div className="gv-voice__mic" data-state={mic}>
           <Icon name={problem ? 'warning' : 'mic'} size={16} />

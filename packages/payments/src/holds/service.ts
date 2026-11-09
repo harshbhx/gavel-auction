@@ -8,6 +8,7 @@ import { buildRequestId } from '../requestId.js';
 import type { HoldRecord } from '../types.js';
 import { sharedHoldQueue, type KeyedQueue } from '../webhooks/merge.js';
 import { auditedCall } from './audited.js';
+import { DEFAULT_RAISE_POLICY, raiseRefusal, type RaisePolicy } from './raise-policy.js';
 
 /**
  * HoldService: the server side of the hold flow (SPEC 3.3, R-PAY-030 to R-PAY-033).
@@ -54,6 +55,8 @@ export interface HoldServiceDeps {
    * queue the webhook processor uses; the default is the process-wide one.
    */
   queue?: KeyedQueue;
+  /** Bounds on raising a limit (D-0035). Defaults: 5 raises, at least $1 or 5 percent more. */
+  raisePolicy?: Partial<RaisePolicy>;
 }
 
 export interface CreateHoldInput {
@@ -115,6 +118,7 @@ export class HoldService {
   private readonly newId: () => string;
   private readonly pendingTtlMs: number;
   private readonly queue: KeyedQueue;
+  private readonly raisePolicy: RaisePolicy;
   private readonly inflight = new Map<string, Promise<ApprovedHold>>();
   /** Tail of the createHoldOrder queue per (auction, bidder). */
   private readonly creating = new Map<string, Promise<unknown>>();
@@ -125,6 +129,7 @@ export class HoldService {
     this.newId = deps.newId ?? (() => randomUUID());
     this.pendingTtlMs = deps.pendingTtlMs ?? DEFAULT_PENDING_TTL_MS;
     this.queue = deps.queue ?? sharedHoldQueue;
+    this.raisePolicy = { ...DEFAULT_RAISE_POLICY, ...deps.raisePolicy };
   }
 
   /**
@@ -135,16 +140,18 @@ export class HoldService {
   private async live(
     auctionId: string,
     bidderId: string,
-  ): Promise<{ settled: HoldRecord | null; pending: HoldRecord[] }> {
-    const all = (await this.deps.holds.listByAuction(auctionId)).filter(
-      (h) => h.bidderId === bidderId && !TERMINAL.has(h.status),
+  ): Promise<{ settled: HoldRecord | null; pending: HoldRecord[]; raises: HoldRecord[] }> {
+    const mine = (await this.deps.holds.listByAuction(auctionId)).filter(
+      (h) => h.bidderId === bidderId,
     );
+    const all = mine.filter((h) => !TERMINAL.has(h.status));
     const settled = all
       .filter((h) => h.status !== 'PENDING_APPROVAL')
       .sort((a, b) => b.ceilingCents - a.ceilingCents || b.createdAtMs - a.createdAtMs)[0];
     return {
       settled: settled ?? null,
       pending: all.filter((h) => h.status === 'PENDING_APPROVAL'),
+      raises: mine.filter((h) => h.supersedes !== undefined),
     };
   }
 
@@ -174,13 +181,22 @@ export class HoldService {
         maxCeilingCents: this.deps.maxCeilingCents,
       });
       const now = this.deps.clock.nowMs();
-      const { settled, pending } = await this.live(i.auctionId, i.bidderId);
+      const { settled, pending, raises } = await this.live(i.auctionId, i.bidderId);
       // A bidder with a HELD hold may raise the limit: the new order carries `supersedes`, and
       // the old hold stays HELD until the room has switched to the new one (D-0025). Anything
       // that does not raise (same or lower amount, a captured hold) is still `hold_exists`.
       let supersedes: string | undefined;
       if (settled !== null) {
-        if (settled.status !== 'HELD' || i.ceilingCents <= settled.ceilingCents) {
+        if (settled.status !== 'HELD') {
+          throw new HoldError('hold_exists', 'the bidder already has a hold in this auction');
+        }
+        // A raise hold that was approved but never reached the room (the registration failed
+        // after the approval) is the live hold here. Asking for the same amount again hands
+        // back that hold, so the client approves it again and the approval registers it (#2399).
+        if (settled.supersedes !== undefined && i.ceilingCents === settled.ceilingCents) {
+          return this.created(settled.holdId, settled.orderId);
+        }
+        if (i.ceilingCents <= settled.ceilingCents) {
           throw new HoldError('hold_exists', 'the bidder already has a hold in this auction');
         }
         supersedes = settled.holdId;
@@ -188,18 +204,34 @@ export class HoldService {
       const existing = pending
         .filter((h) => (h.supersedes !== undefined) === (supersedes !== undefined))
         .at(-1);
-      if (existing !== undefined) {
-        const fresh = now - existing.createdAtMs <= this.pendingTtlMs;
-        if (
-          fresh &&
-          existing.ceilingCents === i.ceilingCents &&
-          existing.supersedes === supersedes
-        ) {
-          return this.created(existing.holdId, existing.orderId);
-        }
-        // A lapsed order, or one for another amount, is abandoned; no PayPal call is needed.
-        await this.abandonPending(existing);
+      const reusable =
+        existing !== undefined &&
+        now - existing.createdAtMs <= this.pendingTtlMs &&
+        existing.ceilingCents === i.ceilingCents &&
+        existing.supersedes === supersedes;
+      if (existing !== undefined && reusable) {
+        return this.created(existing.holdId, existing.orderId);
       }
+      // A new raise order: bounded in count and in size before any PayPal call (#2397).
+      if (settled !== null) {
+        const refusal = raiseRefusal(
+          {
+            currentCents: settled.ceilingCents,
+            nextCents: i.ceilingCents,
+            done: raises.filter((h) => h.status !== 'EXPIRED' && h.status !== 'DENIED').length,
+            attempts: raises.length,
+          },
+          this.raisePolicy,
+        );
+        if (refusal === 'raise_limit_reached') {
+          throw new HoldError(refusal, 'this bidder has used all raises of the limit');
+        }
+        if (refusal === 'raise_too_small') {
+          throw new HoldError(refusal, 'the raise is below the minimum step');
+        }
+      }
+      // A lapsed order, or one for another amount, is abandoned; no PayPal call is needed.
+      if (existing !== undefined) await this.abandonPending(existing);
 
       const holdId = this.newId();
       const requestId = buildRequestId({

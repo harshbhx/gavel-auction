@@ -976,6 +976,15 @@ paths:
         request twice returns the same order. A ceiling that is not higher answers 409
         `hold_exists`; one above the cap answers 400 `ceiling_out_of_range`; once the lot is
         hammered the route answers 409 `closed`. Still held, not charged (sandbox only).
+
+        Raising is bounded (FIX-110). A bidder gets at most 5 raises per auction (abandoned
+        orders count too, at three times that); the sixth answers 409 `raise_limit_reached`.
+        A raise must add at least $1 or 5 percent of the current limit, whichever is larger;
+        a smaller one answers 422 `raise_too_small` before any PayPal call. The write rate
+        limit of the session token applies as for every other write. If a raise was approved
+        but the room never took it (a failed registration), asking for the same amount again
+        returns the same order and the approve route registers it; one that stays unregistered
+        for ten minutes is voided by the server, so the bidder is never held twice for long.
         <!-- FEAT-61 end -->
       security:
         - sessionAuth: []
@@ -1025,6 +1034,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/RaiseTooSmall'
         '429':
           $ref: '#/components/responses/RateLimited'
         '500':
@@ -1208,6 +1219,12 @@ paths:
                     type: boolean
                     const: true
                     description: Present and true only when the host has a judge key set.
+                  voice:
+                    type: boolean
+                    const: true
+                    description: >-
+                      Present and true only when a live speech provider is configured for the
+                      audio route. The provider name and its key are never reported.
               example:
                 judgeRooms: true
                 accepting: true
@@ -1582,7 +1599,9 @@ paths:
         a PayPal login. The ceiling is any whole number of cents from 100 up to the room's
         ceiling cap (the top preset); the presets are only quick picks, and a value outside the
         range is 400 `bad_message`. Any other auction answers 404. Answers 404 when simulated
-        holds are off.
+        holds are off. A larger ceiling for a bidder who already has a hold is a raise, bounded
+        like `POST /api/holds`: at most 5 raises per bidder (409 `raise_limit_reached`) and each
+        at least $1 or 5 percent more than the current limit (422 `raise_too_small`).
       security:
         - sessionAuth: []
       parameters:
@@ -1641,6 +1660,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/RaiseTooSmall'
         '429':
           $ref: '#/components/responses/RateLimited'
         '500':
@@ -2618,13 +2639,16 @@ components:
       enum:
         - ceiling_out_of_range
         - hold_exists
+        - raise_limit_reached
+        - raise_too_small
         - order_not_found
         - order_not_approved
         - paypal_unavailable
         - kill_switch_engaged
         - payments_not_sandbox
       description: >-
-        400 ceiling_out_of_range (below 100 cents or above the host cap); 404 order_not_found; 409 hold_exists, order_not_approved;
+        400 ceiling_out_of_range (below 100 cents or above the host cap); 404 order_not_found;
+        409 hold_exists, raise_limit_reached, order_not_approved; 422 raise_too_small;
         503 paypal_unavailable, kill_switch_engaged, payments_not_sandbox.
     Status:
       type: object
@@ -3529,7 +3553,7 @@ components:
             error: order_not_found
             message: no such hold
     HoldConflict:
-      description: A hold already exists or is authorized (`hold_exists`), the order is not approved yet (`order_not_approved`) or the auction no longer takes holds (`closed`).
+      description: A hold already exists or is authorized (`hold_exists`), the raises of the limit are used up (`raise_limit_reached`), the order is not approved yet (`order_not_approved`) or the auction no longer takes holds (`closed`).
       content:
         application/json:
           schema:
@@ -3537,6 +3561,15 @@ components:
           example:
             error: order_not_approved
             message: the order is not approved
+    RaiseTooSmall:
+      description: The raise adds less than the minimum step, $1 or 5 percent of the current limit (`raise_too_small`).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: raise_too_small
+            message: the raise is below the minimum step
     HoldUnavailable:
       description: PayPal is unreachable (`paypal_unavailable`), the kill switch is on (`kill_switch_engaged`) or the host is not in sandbox mode (`payments_not_sandbox`).
       content:

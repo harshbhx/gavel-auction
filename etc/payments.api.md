@@ -426,6 +426,9 @@ export const DEFAULT_PENDING_CAPTURE_DEADLINE_MS: number;
 export const DEFAULT_PENDING_TTL_MS: number;
 
 // @public (undocumented)
+export const DEFAULT_RAISE_POLICY: Readonly<RaisePolicy>;
+
+// @public (undocumented)
 export const DEFAULT_REAUTH_POLICY: ReauthPolicy;
 
 // @public (undocumented)
@@ -708,6 +711,7 @@ export interface HoldServiceDeps {
     newId?: () => string;
     pendingTtlMs?: number;
     queue?: KeyedQueue;
+    raisePolicy?: Partial<RaisePolicy>;
 }
 
 // @public (undocumented)
@@ -1113,6 +1117,9 @@ export function mergeStatus(current: HoldStatus, observed: HoldStatus): MergeDec
 
 // @public
 export const MIN_CEILING_CENTS = 100;
+
+// @public
+export function minRaisedCeilingCents(currentCents: number, policy?: Readonly<RaisePolicy>): number;
 
 // @public (undocumented)
 export class MoneyError extends Error {
@@ -1592,6 +1599,21 @@ export interface PromoteRunnerUpIntent {
     // (undocumented)
     type: 'PromoteRunnerUp';
 }
+
+// @public
+export interface RaisePolicy {
+    maxRaises: number;
+    minStepCents: number;
+    minStepPercent: number;
+}
+
+// @public
+export function raiseRefusal(input: {
+    currentCents: number;
+    nextCents: number;
+    done: number;
+    attempts?: number;
+}, policy?: Readonly<RaisePolicy>): 'raise_limit_reached' | 'raise_too_small' | null;
 
 // @public
 export const RAW_BODY_SAMPLES: readonly string[];

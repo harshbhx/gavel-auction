@@ -2256,7 +2256,7 @@ export const HammerSchema: z.ZodObject<{
 export function hashPublicEntry(body: unknown): string;
 
 // @public (undocumented)
-export const HOLD_ERROR_CODES: readonly ["ceiling_out_of_range", "hold_exists", "order_not_found", "order_not_approved", "paypal_unavailable", "kill_switch_engaged", "payments_not_sandbox"];
+export const HOLD_ERROR_CODES: readonly ["ceiling_out_of_range", "hold_exists", "raise_limit_reached", "raise_too_small", "order_not_found", "order_not_approved", "paypal_unavailable", "kill_switch_engaged", "payments_not_sandbox"];
 
 // @public
 export const HOLD_ERROR_STATUS: Record<HoldErrorCode, number>;
@@ -2272,13 +2272,13 @@ export type HoldErrorCode = (typeof HOLD_ERROR_CODES)[number];
 
 // @public
 export const HoldErrorResponse: z.ZodObject<{
-    error: z.ZodEnum<["ceiling_out_of_range", "hold_exists", "order_not_found", "order_not_approved", "paypal_unavailable", "kill_switch_engaged", "payments_not_sandbox"]>;
+    error: z.ZodEnum<["ceiling_out_of_range", "hold_exists", "raise_limit_reached", "raise_too_small", "order_not_found", "order_not_approved", "paypal_unavailable", "kill_switch_engaged", "payments_not_sandbox"]>;
     message: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
-    error: "ceiling_out_of_range" | "hold_exists" | "order_not_found" | "order_not_approved" | "paypal_unavailable" | "kill_switch_engaged" | "payments_not_sandbox";
+    error: "ceiling_out_of_range" | "hold_exists" | "raise_limit_reached" | "raise_too_small" | "order_not_found" | "order_not_approved" | "paypal_unavailable" | "kill_switch_engaged" | "payments_not_sandbox";
     message?: string | undefined;
 }, {
-    error: "ceiling_out_of_range" | "hold_exists" | "order_not_found" | "order_not_approved" | "paypal_unavailable" | "kill_switch_engaged" | "payments_not_sandbox";
+    error: "ceiling_out_of_range" | "hold_exists" | "raise_limit_reached" | "raise_too_small" | "order_not_found" | "order_not_approved" | "paypal_unavailable" | "kill_switch_engaged" | "payments_not_sandbox";
     message?: string | undefined;
 }>;
 

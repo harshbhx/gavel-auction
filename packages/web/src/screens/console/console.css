@@ -404,3 +404,78 @@
     display: none;
   }
 }
+
+/* Voice: the microphone controls and a plain line for the input level. */
+.gv-voice-control {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.gv-voice-control p {
+  margin: 0;
+}
+
+.gv-voice-control__mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.gv-voice-control__mode legend {
+  padding: 0;
+  margin-bottom: var(--space-1);
+  color: var(--color-fg-muted);
+}
+
+.gv-voice-control__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.gv-voice-control__hint,
+.gv-voice-control__privacy {
+  color: var(--color-fg-muted);
+}
+
+.gv-voice-control__caption[data-final='false'] {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.gv-voice__mic {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.gv-voice__level {
+  flex: 1 1 100%;
+  width: 100%;
+  height: 4px;
+  border: 0;
+  background: var(--color-border);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.gv-voice__level::-webkit-meter-bar {
+  height: 4px;
+  border: 0;
+  border-radius: 0;
+  background: var(--color-border);
+}
+
+.gv-voice__level::-webkit-meter-optimum-value,
+.gv-voice__level::-webkit-meter-suboptimum-value,
+.gv-voice__level::-webkit-meter-even-less-good-value {
+  background: var(--color-accent);
+}
+
+.gv-voice__level::-moz-meter-bar {
+  background: var(--color-accent);
+}

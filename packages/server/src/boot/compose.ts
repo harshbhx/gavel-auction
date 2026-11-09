@@ -638,9 +638,19 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     }
   }
   const judgeKeyEntries = parsedKeys.entries;
+  // Cached transcripts unless VOICE_STT names a live provider whose key is set (no key needed).
+  const stt = chooseStt(
+    {
+      VOICE_STT: config.VOICE_STT,
+      GROQ_API_KEY: env['GROQ_API_KEY'],
+      DEEPGRAM_API_KEY: env['DEEPGRAM_API_KEY'],
+    },
+    { log: (message, fields) => log.warn(message, fields) },
+  );
   // Judge rooms (R-JRM): key-less real sandbox rooms behind JUDGE_ROOMS=1; config refuses the
   // flag with live PayPal. The create route is mounted always and answers 404 while it is off.
   const judgeRooms = createJudgeRooms({
+    voiceLive: () => stt.name === 'groq' || stt.name === 'deepgram',
     enabled: config.JUDGE_ROOMS,
     paused: config.JUDGE_ROOMS_PAUSED,
     maxLive: config.JUDGE_ROOMS_MAX,
@@ -860,15 +870,6 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     }),
   });
 
-  // Cached transcripts unless VOICE_STT names a live provider whose key is set (no key needed).
-  const stt = chooseStt(
-    {
-      VOICE_STT: config.VOICE_STT,
-      GROQ_API_KEY: env['GROQ_API_KEY'],
-      DEEPGRAM_API_KEY: env['DEEPGRAM_API_KEY'],
-    },
-    { log: (message, fields) => log.warn(message, fields) },
-  );
   const audioHost = createAudioHost({
     server: http,
     clock,

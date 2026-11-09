@@ -56,14 +56,14 @@ The redesign shipped as six slices, each one merged pull request, then extras th
 
 Extras on top of the slices:
 
-| Issue  | Pull request                                                 | What it adds                                                                                                                 |
-| ------ | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| UX-04  | [#1991](https://github.com/harshbhx/gavel-auction/pull/1991) | Outbid, win and sold alerts, a gavel sound on the projector and a mute toggle (`src/alerts`)                                 |
-| UX-01  | [#1992](https://github.com/harshbhx/gavel-auction/pull/1992) | Hold explainer sheet and a six-step first-visit guided tour (`src/help`); the tour record is `gavel.tour.v1` in localStorage |
-| UX-02  | [#1993](https://github.com/harshbhx/gavel-auction/pull/1993) | Fundraiser thermometer on the projector screen; only captured money counts as raised                                         |
-| UX-05  | [#1996](https://github.com/harshbhx/gavel-auction/pull/1996) | Shareable receipt link with QR code, copy button and print layout                                                            |
-| JRM-01 | [#1965](https://github.com/harshbhx/gavel-auction/pull/1965) | The `/try` page for judge rooms (the rooms need the host flag `JUDGE_ROOMS`)                                                 |
-| DH-83  | [#1994](https://github.com/harshbhx/gavel-auction/pull/1994) | Axe accessibility sweep over scripted bid, console and screen states                                                         |
+| Issue  | Pull request                                                 | What it adds                                                                                        |
+| ------ | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| UX-04  | [#1991](https://github.com/harshbhx/gavel-auction/pull/1991) | Outbid, win and sold alerts, a gavel sound on the projector and a mute toggle (`src/alerts`)        |
+| UX-01  | [#1992](https://github.com/harshbhx/gavel-auction/pull/1992) | Hold explainer sheet (`src/help`); the six-step first-visit tour from this PR was removed in UIX-54 |
+| UX-02  | [#1993](https://github.com/harshbhx/gavel-auction/pull/1993) | Fundraiser thermometer on the projector screen; only captured money counts as raised                |
+| UX-05  | [#1996](https://github.com/harshbhx/gavel-auction/pull/1996) | Shareable receipt link with QR code, copy button and print layout                                   |
+| JRM-01 | [#1965](https://github.com/harshbhx/gavel-auction/pull/1965) | The `/try` page for judge rooms (the rooms need the host flag `JUDGE_ROOMS`)                        |
+| DH-83  | [#1994](https://github.com/harshbhx/gavel-auction/pull/1994) | Axe accessibility sweep over scripted bid, console and screen states                                |
 
 Known gaps, stated plainly:
 
