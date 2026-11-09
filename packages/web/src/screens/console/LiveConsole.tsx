@@ -11,6 +11,7 @@ import type { LiveRoom } from '../../net/liveRoom';
 import { publicSource } from '../../ladder/fromWire';
 import { useRoom } from '../../store/roomStore';
 import { selectors } from '../../store/selectors';
+import type { AuctionStatus } from '../../wire';
 import { Controls, controlStatus } from './Controls';
 import { ConsoleScreen } from './ConsoleScreen';
 import { KillSwitch } from './KillSwitch';
@@ -91,7 +92,7 @@ export function LiveConsole({
     [roomId, token, apiBase],
   );
   const connection = useConnection();
-  const rawStatus = useRoom((s) => s.snapshot?.status ?? 'SCHEDULED');
+  const rawStatus = useRoom((s) => selectors.auctionStatus(s) ?? 'SCHEDULED') as AuctionStatus;
   const lotPaused = useRoom((s) => s.snapshot?.paused === true);
   const status = controlStatus(rawStatus, lotPaused);
   const priceCents = useRoom((s) => s.snapshot?.price ?? 0);
