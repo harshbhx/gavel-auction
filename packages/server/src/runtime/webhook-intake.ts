@@ -41,9 +41,13 @@ export interface WebhookIntakeDeps {
   onCaptureHint?(hold: HoldRecord): Promise<void>;
   /** How long an event for an unknown hold is retried. Default 10 minutes. */
   orphanWindowMs?: number;
+  /** How long a processed event is kept before the sweep prunes it. Default 30 days. */
+  retentionMs?: number;
 }
 
 export const DEFAULT_ORPHAN_WINDOW_MS = 600_000;
+export const DEFAULT_WEBHOOK_RETENTION_MS = 30 * 24 * 3_600_000;
+const PRUNE_EVERY_MS = 3_600_000;
 
 type Json = Record<string, unknown>;
 
@@ -135,9 +139,12 @@ function statusFromTruth(truth: HoldTruth): HoldStatus | undefined {
 
 export class WebhookIntake {
   private readonly orphanWindowMs: number;
+  private readonly retentionMs: number;
+  private lastPruneMs: number | undefined;
 
   constructor(private readonly deps: WebhookIntakeDeps) {
     this.orphanWindowMs = deps.orphanWindowMs ?? DEFAULT_ORPHAN_WINDOW_MS;
+    this.retentionMs = deps.retentionMs ?? DEFAULT_WEBHOOK_RETENTION_MS;
   }
 
   /**
@@ -187,7 +194,20 @@ export class WebhookIntake {
         // Leave it for the next sweep.
       }
     }
+    await this.pruneProcessed();
     return done;
+  }
+
+  /** Drops processed events past the retention window, at most once an hour. */
+  private async pruneProcessed(): Promise<void> {
+    const now = this.deps.clock.nowMs();
+    if (this.lastPruneMs !== undefined && now - this.lastPruneMs < PRUNE_EVERY_MS) return;
+    this.lastPruneMs = now;
+    try {
+      await this.deps.events.prune?.(now - this.retentionMs);
+    } catch {
+      // Retention is housekeeping: a failed write leaves the events and the next pass retries.
+    }
   }
 
   private async apply(stored: StoredWebhook): Promise<'processed' | 'parked'> {
@@ -243,6 +263,9 @@ export class WebhookIntake {
   }
 
   private async findHold(authId: string): Promise<HoldRecord | undefined> {
+    if (this.deps.holds.byAuthId !== undefined) {
+      return (await this.deps.holds.byAuthId(authId)) ?? undefined;
+    }
     for (const auctionId of await this.deps.listAuctions()) {
       const hold = (await this.deps.holds.listByAuction(auctionId)).find(
         (h) => h.authId === authId,

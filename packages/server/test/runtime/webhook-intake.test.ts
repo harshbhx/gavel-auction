@@ -228,3 +228,84 @@ describe('capture events are hints for the settlement (R11-O03)', () => {
     expect((await holds.get('H1'))?.status).toBe('HELD');
   });
 });
+
+describe('webhook intake lookups and retention (#2086)', () => {
+  it('finds the hold by authorization id without listing auctions or holds', async () => {
+    const holds = new MemoryHoldStore();
+    for (let i = 0; i < 2000; i += 1) {
+      await holds.put({ ...hold, holdId: `H${i}`, auctionId: `AU${i}`, authId: `AUTH-${i}` });
+    }
+    let listed = 0;
+    const list = holds.listByAuction.bind(holds);
+    holds.listByAuction = async (a) => {
+      listed += 1;
+      return list(a);
+    };
+    const seen: string[] = [];
+    const intake = new WebhookIntake({
+      events: new MemoryWebhookEventStore(),
+      holds,
+      clock: { nowMs: () => 1000 },
+      truth: async (h) => ({
+        holdId: h.holdId,
+        authId: h.authId ?? '',
+        status: 'DENIED',
+        amountCents: h.ceilingCents,
+        capturedCents: 0,
+        captures: [],
+        observedAtMs: 1000,
+      }),
+      listAuctions: async () => Array.from({ length: 2000 }, (_, i) => `AU${i}`),
+      onHoldStatus: async (h) => {
+        seen.push(h.holdId);
+      },
+    });
+    await intake.accept({
+      ...denied,
+      rawBody: Buffer.from(
+        JSON.stringify({
+          id: 'WH-LAST',
+          event_type: 'PAYMENT.AUTHORIZATION.DENIED',
+          resource: { authId: 'AUTH-1999' },
+        }),
+      ),
+    });
+    expect(seen).toEqual(['H1999']);
+    expect(listed).toBe(0);
+  });
+
+  it('prunes processed events past retention once an hour and keeps unprocessed ones', async () => {
+    const r = rig();
+    let now = 1000;
+    const intake = new WebhookIntake({
+      events: r.events,
+      holds: r.holds,
+      clock: { nowMs: () => now },
+      truth: async () => {
+        throw new Error('down');
+      },
+      listAuctions: async () => [],
+      onHoldStatus: async () => undefined,
+      retentionMs: 5000,
+    });
+    await r.holds.put(hold);
+    // Processed (ignored type) at t=1 and an unprocessed one (hold known, truth read fails).
+    await intake.accept({
+      ...denied,
+      rawBody: Buffer.from(JSON.stringify({ id: 'WH-OLD', event_type: 'OTHER', resource: {} })),
+    });
+    await intake.accept(denied);
+    expect((await r.events.listUnprocessed()).map((e) => e.id)).toEqual(['WH-1']);
+    now = 1 + 5000 + 1;
+    await intake.sweep();
+    // The first sweep pruned: the processed event is gone, the unprocessed one is kept.
+    expect(r.events.snapshot().events['WH-OLD']).toBeUndefined();
+    expect(r.events.snapshot().events['WH-1']).toBeDefined();
+    // A redelivery of a pruned id is still a duplicate and is not re-applied.
+    await intake.accept({
+      ...denied,
+      rawBody: Buffer.from(JSON.stringify({ id: 'WH-OLD', event_type: 'OTHER', resource: {} })),
+    });
+    expect(r.events.snapshot().events['WH-OLD']).toBeUndefined();
+  });
+});
