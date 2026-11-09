@@ -216,13 +216,18 @@ describe('ceiling raises (#2410)', () => {
           const bidder = BIDDERS[op.bidder] as Ulid;
           const before = s.bidders[bidder]?.ceilingCents ?? 0;
           if (op.kind === 'raise') {
-            const r = apply(
-              s,
-              mk(at, { type: 'RegisterBidder', bidderId: bidder, ceilingCents: op.to }),
-            );
-            // Only a strictly larger limit is taken.
-            expect(r.accepted).toBe(op.to > before);
-            s = r.state;
+            // The engine throws on a lowered or equal limit; only a larger one is taken.
+            let r: { state: AuctionState; accepted: boolean } | null = null;
+            try {
+              r = apply(
+                s,
+                mk(at, { type: 'RegisterBidder', bidderId: bidder, ceilingCents: op.to }),
+              );
+            } catch {
+              r = null;
+            }
+            expect(r?.accepted ?? false).toBe(op.to > before);
+            if (r !== null) s = r.state;
           } else {
             const lot = s.lots[LOT];
             const minNext = lot?.priceCents == null ? RESERVE : lot.priceCents + INCREMENT;

@@ -350,7 +350,9 @@ export class Room {
         ts: deps.clock.now(),
         config,
         auctioneerSub,
-        ...(deps.maxCeilingCents === undefined ? {} : { maxCeilingCents: deps.maxCeilingCents }),
+        ...(deps.maxCeilingCents === undefined
+          ? {}
+          : { maxCeilingCents: deps.maxCeilingCents as Cents }),
       },
     ]);
     await room.replay();
