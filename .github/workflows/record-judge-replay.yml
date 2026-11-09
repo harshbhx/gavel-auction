@@ -1,0 +1,74 @@
+name: record-judge-replay
+# Records a judge-room auction as a replay bundle with SIMULATED holds (inventory row 41). Manual
+# dispatch only, no secrets. packages/e2e/src/replay/record-judge-room-cli.ts boots the real server
+# process with judge rooms on (JUDGE_ROOMS, JUDGE_SIM_HOLDS, fake payments), creates a judge room,
+# joins three bidders by room code, gives each a simulated hold, bids over the room socket two
+# seconds apart, hammers the lot and records every frame a public screen receives, as the events.json
+# the web app's /replay/<id> route fetches from /recordings/<id>/events.json.
+# The bundle is labelled in its title, in a `simulatedHolds` flag and in a note: no PayPal call was
+# made and no money moved. It is NOT a sandbox auction.
+# To host it: download the artifact and commit recordings/<id>/events.json under
+# packages/web/public/recordings/<id>/ in a PR (the player route and the fetch path already exist).
+# Artifact: judge-replay-recording (recordings/<id>/events.json, summary.json). Verdict line:
+# "REPLAY RECORDING VERDICT: PASS|FAIL".
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: 'Recording id (the /replay/<id> path segment)'
+        required: false
+        default: judge-room-simulated-holds
+        type: string
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  record:
+    if: ${{ !github.event.repository.fork }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      OUT_DIR: ${{ github.workspace }}/replay-out
+      RECORDING_ID: ${{ inputs.id }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Check the recording id
+        run: |
+          if ! printf '%s' "$RECORDING_ID" | grep -Eq '^[a-z0-9][a-z0-9-]{2,63}$'; then
+            echo "RECORDING_ID must be 3 to 64 lower case letters, digits or dashes" >&2
+            exit 2
+          fi
+      - name: Record the auction
+        run: |
+          mkdir -p "$OUT_DIR"
+          set -o pipefail
+          npm run record:judge-room -w @gavel/e2e -- --out "$OUT_DIR" --id "$RECORDING_ID" | tee "$OUT_DIR/run.txt"
+      - name: Job summary
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            echo '### Judge room replay recording (simulated holds)'
+            grep -h 'VERDICT' "$OUT_DIR/run.txt" || echo 'REPLAY RECORDING VERDICT: FAIL (no verdict printed)'
+            if [ -f "$OUT_DIR/summary.json" ]; then
+              echo
+              echo '```json'
+              cat "$OUT_DIR/summary.json"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the recording
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: judge-replay-recording
+          path: ${{ github.workspace }}/replay-out
+          if-no-files-found: warn
+          retention-days: 30

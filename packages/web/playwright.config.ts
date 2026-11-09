@@ -26,7 +26,17 @@ export default defineConfig({
     // axe-core is injected as an inline script, which the page CSP refuses.
     bypassCSP: true,
   },
-  projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
+  projects: [
+    { name: 'chromium', use: { browserName: 'chromium' } },
+    // The axe and keyboard specs also run in WebKit, the engine of Safari (issue 2195). Other specs
+    // compare screenshots against Chromium baselines, so they stay out of this project. This is
+    // an engine check, not VoiceOver: no screen reader runs.
+    {
+      name: 'webkit',
+      testMatch: ['**/a11y.spec.ts', '**/keyboard.spec.ts'],
+      use: { browserName: 'webkit' },
+    },
+  ],
   webServer: {
     command: `npm run dev -- --host 127.0.0.1 --port ${PORT} --strictPort`,
     url: `http://127.0.0.1:${PORT}`,
