@@ -278,6 +278,9 @@ export default function HoldsGrid({
         <AgGridReact<HoldRow>
           {...(initialState === undefined ? {} : { initialState })}
           {...columnMemoryProps(memoryKey)}
+          onFirstDataRendered={(e) => {
+            restoreSort(e.api, memoryKey);
+          }}
           theme={gavelTheme}
           rowData={rows as HoldRow[]}
           columnDefs={columns}

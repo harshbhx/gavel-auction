@@ -497,6 +497,9 @@ export default function LedgerGrid({
         <AgGridReact<LedgerRow>
           {...(initialState === undefined ? {} : { initialState })}
           {...columnMemoryProps(memoryKey)}
+          onFirstDataRendered={(e) => {
+            restoreSort(e.api, memoryKey);
+          }}
           key={narrow ? 'cards' : 'table'}
           theme={gavelTheme}
           rowData={rows}

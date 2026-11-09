@@ -164,6 +164,10 @@ test.describe('ledger lab: export, filters in the link, verify, memory', () => {
     expect(stored.map(([, v]) => v).join('\n')).toContain('"sort":"asc"');
     await page.reload();
     await page.locator('.ag-row').first().waitFor();
+    const after = await page.evaluate(() =>
+      Object.entries(window.sessionStorage).map(([k, v]) => `${k}=${v.slice(0, 400)}`),
+    );
+    expect(after.join('\n'), 'saved layout survives the reload').toContain('amount');
     await expect(
       page.getByRole('columnheader', { name: new RegExp(t('ledger.col.amount')) }),
     ).toHaveAttribute('aria-sort', 'ascending');

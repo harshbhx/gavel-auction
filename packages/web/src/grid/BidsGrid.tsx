@@ -247,6 +247,9 @@ export default function BidsGrid({
         <AgGridReact<BidStreamRow>
           {...(initialState === undefined ? {} : { initialState })}
           {...columnMemoryProps(memoryKey)}
+          onFirstDataRendered={(e) => {
+            restoreSort(e.api, memoryKey);
+          }}
           theme={gavelTheme}
           rowData={initial as BidStreamRow[]}
           columnDefs={columns}
