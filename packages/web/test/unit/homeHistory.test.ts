@@ -64,7 +64,7 @@ describe('browser history store', () => {
     const [room] = readHistory(storage);
     expect(room).toMatchObject({
       roomId: 'room1',
-      roles: ['bidder', 'auctioneer'],
+      roles: ['auctioneer', 'bidder'],
       createdAt: 1000,
       lastSeenAt: 5000,
       lotTitle: 'Signed print',
