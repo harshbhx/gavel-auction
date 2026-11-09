@@ -1,0 +1,129 @@
+name: voice-heldout
+# G5 held-out noisy synthetic clip set (issue 2192). Dispatch only: it asks both speech providers
+# once per clip, so it must be run on purpose and only once per set (see
+# docs/evidence/G5/HELDOUT-NOISY-PREREG.md, thresholds fixed before the run). Needs the repository
+# secrets DEEPGRAM_API_KEY and GROQ_API_KEY. Nothing is committed; the reports, the recorded provider
+# output and the clip checksums go into one artifact, and the results are written up by hand.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type MEASURE-ONCE to run: every clip is sent once to each provider, with no tuning afterwards'
+        required: true
+        type: string
+      frozen_sha:
+        description: 'Commit that fixed the parser, gate, metrics and provider options; the run fails if they differ from it'
+        required: true
+        default: 5d59ef4ceebbcc61a29ab943d991157463f8f6fe
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: voice-heldout
+  cancel-in-progress: false
+
+jobs:
+  heldout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Require the confirmation text
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "MEASURE-ONCE" ]; then
+            echo "::error title=Not confirmed::Type MEASURE-ONCE in the confirm input to run the one measurement"
+            exit 2
+          fi
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Guard, the frozen pipeline is unchanged
+        env:
+          FROZEN_SHA: ${{ inputs.frozen_sha }}
+        run: |
+          git cat-file -e "$FROZEN_SHA^{commit}"
+          if ! git diff --quiet "$FROZEN_SHA" HEAD -- \
+            packages/voice/src/parser packages/voice/src/stt packages/voice/src/decide \
+            packages/voice/src/eval/gate.ts packages/voice/src/eval/metrics.ts packages/voice/src/eval/live.ts; then
+            git diff --stat "$FROZEN_SHA" HEAD -- packages/voice/src
+            echo "::error title=Frozen files changed::The parser, gate, metrics or provider options differ from $FROZEN_SHA"
+            exit 1
+          fi
+          echo "frozen files equal $FROZEN_SHA, run on $(git rev-parse HEAD)" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Check that the provider keys exist
+        env:
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          missing=""
+          for name in DEEPGRAM_API_KEY GROQ_API_KEY; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error title=Missing secrets::Add these repository Actions secrets and run again:$missing"
+            exit 2
+          fi
+      - uses: ./.github/actions/setup
+      - name: Install speech synthesizer and ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq espeak-ng ffmpeg jq
+      - name: Render the 120 clips (synthetic speech, simulated noise, not a real room)
+        run: |
+          bash packages/voice/scripts/render-heldout.sh "$RUNNER_TEMP/heldout-wav"
+          test "$(find "$RUNNER_TEMP/heldout-wav" -name '*.wav' | wc -l)" = 120
+      - name: Live eval, one request per clip and provider, frozen options
+        env:
+          G5_AUDIO_DIR: ${{ runner.temp }}/heldout-wav
+          G5_GROQ_TEMPERATURE: '0'
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        # Groq answers 429 after a burst. --resume keeps every recorded answer and only asks for clips
+        # with none, so a clip that has an answer is never asked again.
+        run: |
+          rm -rf packages/voice/fixtures/stt-cache-heldout
+          for p in deepgram groq; do
+            for attempt in 1 2 3 4 5 6; do
+              if npm run eval -w @gavel/voice -- --mode live --provider "$p" --clips heldout \
+                --record fixtures/stt-cache-heldout --resume true --out "eval-out/heldout/$p"; then
+                break
+              fi
+              [ "$attempt" = 6 ] && exit 1
+              sleep 65
+            done
+          done
+      - name: Replay the recorded answers offline (same scores, deterministic)
+        run: |
+          for p in deepgram groq; do
+            npm run eval -w @gavel/voice -- --mode cached --provider "$p" --clips heldout \
+              --out "eval-out/heldout-cached/$p"
+          done
+      - name: Job summary, per SNR
+        if: always()
+        run: |
+          for p in deepgram groq; do
+            f="packages/voice/eval-out/heldout/$p/report.json"
+            [ -f "$f" ] || continue
+            echo "### $p (n = 120, thresholds in HELDOUT-NOISY-PREREG.md)" >> "$GITHUB_STEP_SUMMARY"
+            jq -r '"overall: exact \(.metrics.exactRate), wrong accept \(.metrics.wrongAcceptRate), recoverable \(.metrics.recoverableRate), missed \(.metrics.missedBidRate), confirm \(.metrics.confirmRate); gate pass \(.gate.pass); auto-accepted \(.gated.autoAccepted // 0), auto wrong \(.gated.autoWrongAccepts // 0)"' "$f" >> "$GITHUB_STEP_SUMMARY"
+            echo '' >> "$GITHUB_STEP_SUMMARY"
+            echo '| SNR | n | exact | wrong accept | confirm |' >> "$GITHUB_STEP_SUMMARY"
+            echo '| --- | --- | --- | --- | --- |' >> "$GITHUB_STEP_SUMMARY"
+            jq -r '.categories[] | "| \(.category) | \(.n) | \(.exactRate) | \(.wrongAcceptRate) | \(.confirmRate) |"' "$f" >> "$GITHUB_STEP_SUMMARY"
+            echo '' >> "$GITHUB_STEP_SUMMARY"
+          done
+          if [ -f "$RUNNER_TEMP/heldout-wav/SHA256SUMS" ]; then
+            echo "clip checksums: SHA256SUMS in the artifact (sha256 of that file: $(sha256sum "$RUNNER_TEMP/heldout-wav/SHA256SUMS" | cut -d' ' -f1))" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: voice-heldout
+          path: |
+            packages/voice/fixtures/stt-cache-heldout
+            packages/voice/eval-out/heldout
+            packages/voice/eval-out/heldout-cached
+            ${{ runner.temp }}/heldout-wav/SHA256SUMS
+          if-no-files-found: ignore

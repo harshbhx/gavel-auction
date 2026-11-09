@@ -1,0 +1,82 @@
+# Tries to OBSERVE the G1 remainder release (issue 2187): one signed-in sandbox buyer session reads the
+# buyer's available funds before the authorization, after authorizing 500.00 (50000 cents) and after the final
+# capture of 350.00, and the API reads the authorization and order at each step. Manual, main only.
+# Writes numbers, statuses and HTTP codes only; screenshots hide all text. The result says "observed"
+# only when the three readings prove the release, otherwise "inferred" with the reason (the buyer
+# view may not show an authorization hold at all, or PayPal may block the account pages for automation).
+# Actions secrets needed: PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, SANDBOX_BUYER_EMAIL, SANDBOX_BUYER_PASSWORD.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  g1-observe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: sandbox-nightly
+    if: ${{ github.ref == 'refs/heads/main' }}
+    concurrency:
+      group: gate-g1-observe
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check that the secrets exist
+        env:
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+        run: |
+          missing=""
+          for name in PAYPAL_CLIENT_ID PAYPAL_CLIENT_SECRET SANDBOX_BUYER_EMAIL SANDBOX_BUYER_PASSWORD; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error title=Missing secrets::Add these repository Actions secrets and run again:$missing"
+            exit 2
+          fi
+      - uses: ./.github/actions/setup
+      - name: Cache the browser
+        id: pw-cache
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-1.49.1-chromium
+      - name: Install the browser
+        env:
+          BROWSER_CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.49.1
+          cd "$RUNNER_TEMP/pw"
+          if [ "$BROWSER_CACHE_HIT" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+      - name: Observe the remainder
+        env:
+          PAYPAL_ENV: sandbox
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
+        run: npm run gate:g1-observe -w @gavel/payments -- --out "$RUNNER_TEMP/g1-observe"
+      - name: Job summary
+        if: ${{ always() }}
+        run: |
+          if [ -f "$RUNNER_TEMP/g1-observe/g1-observe.md" ]; then
+            cat "$RUNNER_TEMP/g1-observe/g1-observe.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload observation
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: g1-observe
+          path: ${{ runner.temp }}/g1-observe
+          if-no-files-found: warn
+          retention-days: 7

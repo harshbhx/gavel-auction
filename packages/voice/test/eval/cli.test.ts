@@ -244,6 +244,36 @@ describe('T-VOX-088 live limits (R-VOX-080)', () => {
     expect(asked).not.toContain('a01');
   });
 
+  it('--clips heldout asks for the 120 held-out noisy clips and records apart from the other sets', async () => {
+    expect(parseArgs(['--clips', 'heldout'])).toMatchObject({ clips: 'heldout' });
+    const h = harness({}, { GROQ_API_KEY: 'k' });
+    const asked: string[] = [];
+    h.deps.recordingExists = () => true;
+    h.deps.transcribe = async (id) => {
+      asked.push(id);
+      return { text: 'stub transcript for plumbing only' };
+    };
+    const code = await runCli(
+      [
+        '--mode',
+        'live',
+        '--provider',
+        'groq',
+        '--clips',
+        'heldout',
+        '--record',
+        'fixtures/stt-cache-heldout',
+      ],
+      h.deps,
+    );
+    expect(code).toBe(EXIT_OK);
+    expect(asked).toHaveLength(120);
+    expect(asked.every((id) => /^h\d\d-s(20|10|5)-(room|babble)$/.test(id))).toBe(true);
+    const recorded = [...h.written.keys()].filter((k) => k.startsWith('fixtures/'));
+    expect(recorded).toHaveLength(120);
+    expect(recorded.every((k) => k.startsWith('fixtures/stt-cache-heldout/groq/'))).toBe(true);
+  });
+
   it('committed provider cache scores every audio clip for both providers', async () => {
     for (const provider of ['deepgram', 'groq'] as const) {
       const h = harness();
