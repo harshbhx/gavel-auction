@@ -151,7 +151,22 @@ describe('receipt link (UX-05)', () => {
     expect(body.snapshot.roster[0]?.bidderId).toBe(s.bidderId);
     expect(body.snapshot.roster[0]?.name).toBe('Bidder 0');
     expect(body.snapshot.lotTitle).toBe('Gala lot');
-    expect(text).not.toMatch(/Bidder [123]|"ceiling"|joinCode|holdRef|"sub"|"you"/);
+    expect(text).not.toMatch(/Bidder [123]|joinCode|holdRef|"sub"|"you"/);
+    // The holder's own ceiling stays private: no key at any depth is `ceiling` or `ceilingCents`.
+    // `config.ceilingPresets` is the public preset list, not a holder's amount, so it may stay.
+    const keys: string[] = [];
+    const walk = (v: unknown): void => {
+      if (Array.isArray(v)) v.forEach(walk);
+      else if (v !== null && typeof v === 'object') {
+        for (const [k, child] of Object.entries(v)) {
+          keys.push(k);
+          walk(child);
+        }
+      }
+    };
+    walk(body);
+    expect(keys.length).toBeGreaterThan(5);
+    expect(keys.filter((k) => /^ceiling(cents)?$/i.test(k))).toEqual([]);
   });
 
   it('only a session may mint, and only for itself', async () => {

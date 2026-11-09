@@ -61,6 +61,8 @@ const PAUSED_KEY = 'judge:paused';
 const markerKey = (auctionId: string): string => `judge:room:${auctionId}`;
 /** The audit actor recorded when the sweeper ends a judge room. */
 const EXPIRY_ACTOR = 'judge-room-expiry';
+/** How long after a room ends the reviewer link may still read its ledger (SEC-22). */
+export const LEDGER_GRACE_MS = 15 * 60_000;
 
 export interface JudgeRoomsOptions {
   /** JUDGE_ROOMS. When false the create route answers 404 and the probe says so. */
@@ -179,6 +181,8 @@ interface Marker {
   createdAt: number;
   expiresAt: number;
   expired?: true;
+  /** When the room ended (hammer, stop or lifetime), set once it is marked expired. */
+  endedAt?: number;
   /** Made with the judge key. */
   keyed?: true;
 }
@@ -373,7 +377,13 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
       const prev = await deps.store.getJournal(markerKey(id));
       const value = prev?.value as Marker | undefined;
       if (prev !== null && value !== undefined && value.expired !== true) {
-        await deps.store.putJournal(markerKey(id), prev.version, { ...value, expired: true });
+        const now = deps.clock.now();
+        const endedAt = why === 'ttl' ? Math.min(value.expiresAt, now) : now;
+        await deps.store.putJournal(markerKey(id), prev.version, {
+          ...value,
+          expired: true,
+          endedAt,
+        });
       }
       log?.info('judge room ended', { event: 'judge_room.ended', auctionId: id, why });
     } catch (e) {
@@ -581,6 +591,17 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     await load(deps);
     const marker = (await deps.store.getJournal(markerKey(auctionId)))?.value as Marker | undefined;
     if (marker === undefined) throw new GavelError('not_found', 'no such judge room');
+    // A reviewer link reads while the room is live and for a short window after it ends.
+    const now = deps.clock.now();
+    const endedAt =
+      marker.expired === true ? (marker.endedAt ?? marker.expiresAt) : marker.expiresAt;
+    if ((marker.expired === true || marker.expiresAt <= now) && now - endedAt > LEDGER_GRACE_MS) {
+      throw new HttpError(
+        410,
+        'judge_room_ended',
+        'That room has ended, so this link no longer opens its ledger',
+      );
+    }
     const entries = await ledger.read(auctionId as Ulid, 1);
     if (entries.length === 0) throw new GavelError('not_found', 'the ledger has no entries yet');
     try {
