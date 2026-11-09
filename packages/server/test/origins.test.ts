@@ -59,7 +59,11 @@ describe('allowed origins are one list for HTTP, CORS and sockets', () => {
       webOrigin: 'https://web.example',
       publicUrl: 'https://api.example/base',
     });
-    expect(list.sort()).toEqual(['https://a.example', 'https://api.example', 'https://web.example']);
+    expect(list.sort()).toEqual([
+      'https://a.example',
+      'https://api.example',
+      'https://web.example',
+    ]);
   });
 
   it('the socket allow-list built at boot includes WEB_ORIGIN (#2233)', () => {

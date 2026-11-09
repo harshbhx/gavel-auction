@@ -279,8 +279,7 @@ describe('one origin allow-list for writes and CORS headers (#2233)', () => {
   const route: Mount = (a) => {
     a.post('/t/echo', async (c) => json(200, { body: await c.body() }));
   };
-  const make = (over: Partial<HttpDeps>) =>
-    createHttpApp({ ...baseDeps(), ...over }, [route]);
+  const make = (over: Partial<HttpDeps>) => createHttpApp({ ...baseDeps(), ...over }, [route]);
   const send = (origin: string, method = 'POST') =>
     new Request('http://h.test/t/echo', { method, headers: { origin } });
 
