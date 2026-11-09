@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { ColumnState, GridApi } from 'ag-grid-community';
 import {
   forgetColumns,
   loadColumns,
-  restoreColumns,
+  gridStateFor,
   saveColumns,
   toSaved,
 } from '../../src/grid/columnMemory';
@@ -59,20 +59,33 @@ describe('column memory', () => {
     expect(loadColumns('z')).toBeNull();
   });
 
-  it('puts a layout back, skipping columns the grid no longer has', () => {
-    const applyColumnState = vi.fn();
-    const api = {
-      getColumn: (id: string) => (id === 'gone' ? null : {}),
-      applyColumnState,
-    } as unknown as GridApi;
-    restoreColumns(api, [
-      { colId: 'gone', width: 50 },
-      { colId: 'amount', width: 200, sort: 'desc', sortIndex: 0 },
-    ]);
-    expect(applyColumnState).toHaveBeenCalledWith({
-      state: [{ colId: 'amount', width: 200, sort: 'desc', sortIndex: 0 }],
-      applyOrder: true,
+  it('turns a saved layout into the grid initial state', () => {
+    window.sessionStorage.setItem(
+      'gavel.grid.columns.g',
+      JSON.stringify([
+        { colId: 'b', width: 120, sort: null, sortIndex: null },
+        { colId: 'a', flex: 1, sort: 'desc', sortIndex: 1 },
+        { colId: 'c', width: 90, sort: 'asc', sortIndex: 0 },
+      ]),
+    );
+    expect(gridStateFor('g')).toEqual({
+      columnOrder: { orderedColIds: ['b', 'a', 'c'] },
+      columnSizing: {
+        columnSizingModel: [
+          { colId: 'b', width: 120 },
+          { colId: 'a', flex: 1 },
+          { colId: 'c', width: 90 },
+        ],
+      },
+      sort: {
+        sortModel: [
+          { colId: 'c', sort: 'asc' },
+          { colId: 'a', sort: 'desc' },
+        ],
+      },
     });
+    expect(gridStateFor('nothing')).toBeUndefined();
+    expect(gridStateFor(null)).toBeUndefined();
   });
 });
 

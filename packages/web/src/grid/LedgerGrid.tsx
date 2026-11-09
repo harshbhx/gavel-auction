@@ -13,7 +13,7 @@ import { sha256Hex } from '../util/hash';
 import { formatUsd } from '../util/money';
 import { AgGridReact } from './agRuntime';
 import { cardCell, statusCell, typeCell, type LedgerRow } from './cells';
-import { useColumnMemory } from './columnMemory';
+import { gridStateFor, useColumnMemory } from './columnMemory';
 import { exportBaseName } from './exportName';
 import { GridToolbar, type SortOption } from './GridToolbar';
 import { actorLabel, typeLabel } from './labels';
@@ -77,6 +77,17 @@ interface VerifyRun {
 }
 
 const REVEAL_MS = 45;
+
+/** Row data for the sealed entries in a list, with the status a verify run gives them. */
+function markRows(
+  list: readonly LedgerEntry[],
+  statusOf: (e: LedgerEntry) => LedgerRow['status'],
+  checked: boolean,
+): LedgerRow[] {
+  return list
+    .filter((e) => e.hash !== null)
+    .map((e): LedgerRow => ({ ...e, status: statusOf(e), ...(checked ? { checked: true } : {}) }));
+}
 
 const EXPORT_KEYS = ['seq', 'at', 'type', 'actor', 'amount', 'hash', 'prev', 'status', 'note'];
 
@@ -170,12 +181,16 @@ export default function LedgerGrid({
   useEffect(() => {
     setRun(null);
     return stopRun;
-  }, [entries, stopRun]);
+  }, [entries, verdicts, stopRun]);
 
   const startVerify = useCallback(async (): Promise<void> => {
+    if (api === null) return;
     stopRun();
     const id = runId.current;
     setRun({ phase: 'hashing', done: 0, result: new Map() });
+    // Rows read "Checking" while the hashes are recomputed. The reveal below touches only the rows it
+    // reaches (a transaction per step), so a long ledger stays smooth.
+    api.applyTransaction({ update: markRows(entries, () => 'checking', false) });
     let result: Map<number, ChainStatus>;
     try {
       result = await verifyEntries(entries, hash);
@@ -189,8 +204,12 @@ export default function LedgerGrid({
     const step = calm ? total : revealStep(total);
     let done = 0;
     const tick = (): void => {
-      if (id !== runId.current) return;
+      if (id !== runId.current || api.isDestroyed()) return;
+      const from = done;
       done = Math.min(total, done + step);
+      api.applyTransaction({
+        update: markRows(entries.slice(from, done), (e) => result.get(e.seq) ?? 'checking', true),
+      });
       const finished = done >= total;
       setRun({ phase: finished ? 'done' : 'revealing', done, result });
       if (finished) {
@@ -202,25 +221,17 @@ export default function LedgerGrid({
     tick();
     // onChecked is a callback for the parent; a new function must not rebuild this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entries, hash, calm, stopRun]);
+  }, [api, entries, hash, calm, stopRun]);
 
   const rows = useMemo<LedgerRow[]>(
     () =>
-      entries.map((e, i): LedgerRow => {
-        if (e.hash === null) return { ...e, status: 'unsealed' };
-        // While a run reveals its result, rows it has not reached yet read "Checking".
-        if (run !== null && run.phase !== 'done') {
-          return i < run.done
-            ? { ...e, status: run.result.get(e.seq) ?? 'checking', checked: true }
-            : { ...e, status: 'checking' };
-        }
-        return {
+      entries.map(
+        (e): LedgerRow => ({
           ...e,
-          status: statuses?.get(e.seq) ?? 'checking',
-          ...(run !== null ? { checked: true } : {}),
-        };
-      }),
-    [entries, statuses, run],
+          status: e.hash === null ? 'unsealed' : (statuses?.get(e.seq) ?? 'checking'),
+        }),
+      ),
+    [entries, statuses],
   );
   const hasHash = useMemo(() => entries.some((e) => e.hash !== null), [entries]);
   const hasActor = useMemo(() => entries.some((e) => e.actor !== null), [entries]);
@@ -354,6 +365,7 @@ export default function LedgerGrid({
     ? `ledger.${hasHash ? 'sealed' : 'plain'}.${narrow ? 'cards' : 'table'}`
     : null;
   useColumnMemory(api as GridApi | null, memoryKey);
+  const initialState = useMemo(() => gridStateFor(memoryKey), [memoryKey]);
 
   const pushUrl = useCallback(
     (patch: Partial<{ quick: string; model: FilterModel }>): void => {
@@ -483,6 +495,7 @@ export default function LedgerGrid({
         style={height === undefined ? undefined : { height }}
       >
         <AgGridReact<LedgerRow>
+          {...(initialState === undefined ? {} : { initialState })}
           key={narrow ? 'cards' : 'table'}
           theme={gavelTheme}
           rowData={rows}

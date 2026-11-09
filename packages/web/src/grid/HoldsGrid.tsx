@@ -14,7 +14,7 @@ import { Icon, type IconName } from '../design/icons';
 import { Chip, type ChipTone } from '../design/primitives/Chip';
 import { formatUsd } from '../util/money';
 import { AgGridReact } from './agRuntime';
-import { useColumnMemory } from './columnMemory';
+import { gridStateFor, useColumnMemory } from './columnMemory';
 import { exportBaseName } from './exportName';
 import { GridToolbar } from './GridToolbar';
 import { holdTotals, totalsAddUp, type HoldRow } from './holdsModel';
@@ -129,6 +129,7 @@ export default function HoldsGrid({
     ? `holds.${showDay ? 'days' : 'room'}.${narrow ? 'cards' : 'table'}`
     : null;
   useColumnMemory(api as GridApi | null, memoryKey);
+  const initialState = useMemo(() => gridStateFor(memoryKey), [memoryKey]);
 
   const pinTotals = useCallback((a: GridApi<HoldRow>) => {
     const visible: HoldRow[] = [];
@@ -275,6 +276,7 @@ export default function HoldsGrid({
         style={height === undefined ? undefined : { height }}
       >
         <AgGridReact<HoldRow>
+          {...(initialState === undefined ? {} : { initialState })}
           theme={gavelTheme}
           rowData={rows as HoldRow[]}
           columnDefs={columns}

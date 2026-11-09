@@ -1,4 +1,4 @@
-import type { ColumnState, GridApi } from 'ag-grid-community';
+import type { ColumnState, GridApi, GridState } from 'ag-grid-community';
 import { useEffect } from 'react';
 
 const PREFIX = 'gavel.grid.columns.';
@@ -74,33 +74,41 @@ export function saveColumns(key: string, api: GridApi): void {
   }
 }
 
-/** Puts a saved layout back. Columns the grid no longer has are skipped. */
-export function restoreColumns(api: GridApi, saved: readonly SavedColumn[]): void {
-  const state: ColumnState[] = saved
-    .filter((c) => api.getColumn(c.colId) !== null)
-    .map((c) => ({
-      colId: c.colId,
-      ...(c.flex === undefined
-        ? c.width === undefined
-          ? {}
-          : { width: c.width }
-        : { flex: c.flex }),
-      sort: c.sort ?? null,
-      sortIndex: c.sortIndex ?? null,
-    }));
-  if (state.length === 0) return;
-  api.applyColumnState({ state, applyOrder: true });
+/**
+ * The saved layout as AG Grid state, for the `initialState` grid option: the grid is created with it,
+ * so there is no flash of the default order. Null when nothing is saved.
+ */
+export function gridStateFor(key: string | null): GridState | undefined {
+  const saved = key === null ? null : loadColumns(key);
+  if (saved === null || saved.length === 0) return undefined;
+  const sorted = saved
+    .filter((c) => c.sort === 'asc' || c.sort === 'desc')
+    .sort((x, y) => (x.sortIndex ?? 0) - (y.sortIndex ?? 0));
+  return {
+    columnOrder: { orderedColIds: saved.map((c) => c.colId) },
+    columnSizing: {
+      columnSizingModel: saved.flatMap((c) =>
+        c.flex !== undefined
+          ? [{ colId: c.colId, flex: c.flex }]
+          : c.width !== undefined
+            ? [{ colId: c.colId, width: c.width }]
+            : [],
+      ),
+    },
+    sort: {
+      sortModel: sorted.map((c) => ({ colId: c.colId, sort: c.sort === 'desc' ? 'desc' : 'asc' })),
+    },
+  };
 }
 
 /**
  * Remembers sort, column order and widths of one grid for the rest of the browser session
- * (sessionStorage, so it is gone when the tab closes). `key` names the grid and its layout.
+ * (sessionStorage, so it is gone when the tab closes). `key` names the grid and its layout. The grid
+ * gets the saved layout through `initialState` (see gridStateFor); this hook keeps it up to date.
  */
 export function useColumnMemory(api: GridApi | null, key: string | null): void {
   useEffect(() => {
     if (api === null || key === null) return undefined;
-    const saved = loadColumns(key);
-    if (saved !== null) restoreColumns(api, saved);
     const save = (): void => {
       saveColumns(key, api);
     };
