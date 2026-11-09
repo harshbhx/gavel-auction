@@ -4,8 +4,9 @@
 # The site is served at https://gavel-web.<account-subdomain>.workers.dev.
 name = "gavel-web"
 compatibility_date = "2025-09-01"
-# Runs first for /join/* (a mangled join link gets the app, not a bare 400) and /assets/* (a missing
-# hashed file answers 404 + no-store instead of index.html cached as immutable) (worker.mjs).
+# Runs first for every path (worker.mjs): /join/* (a mangled join link gets the app, not a bare 400),
+# /assets/* (a missing hashed file answers 404 + no-store instead of index.html cached as immutable)
+# and unknown pages (the app's index.html with status 404; known routes and real files stay 200).
 main = "worker.mjs"
 
 [assets]
@@ -13,4 +14,4 @@ directory = "./dist"
 # Unknown paths such as /join/<room> or /r/<room>/bid answer with index.html.
 not_found_handling = "single-page-application"
 binding = "ASSETS"
-run_worker_first = ["/join/*", "/assets/*"]
+run_worker_first = ["/*"]
