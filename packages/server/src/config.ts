@@ -1,6 +1,5 @@
 import { isAbsolute } from 'node:path';
 import { z } from 'zod';
-import { parseJudgeKeys } from './auth/judge-keys';
 import { DEFAULT_DOCS_ORIGIN, parseOriginList } from './http/origins';
 import { isSecretKey } from './log/logger';
 
@@ -61,7 +60,9 @@ const EnvObject = z.object({
    */
   JUDGE_DOCS_ORIGINS: originList.default(DEFAULT_DOCS_ORIGIN),
   /** Most keyed judge rooms alive at once, for the whole host. */
-  JUDGE_KEY_ROOMS_MAX: int(1).pipe(z.number().max(10)).default('3'),
+  JUDGE_KEY_ROOMS_MAX: int(1).pipe(z.number().max(50)).default('10'),
+  /** Keyed creates the whole host accepts per hour, across all judge keys. */
+  JUDGE_KEY_CREATES_PER_HOUR: int(1).pipe(z.number().max(1000)).default('100'),
   STORE: z.enum(['memory', 'file', 'postgres', 'd1']).default('memory'),
   /** Directory for the durable files when STORE=file. */
   DATA_DIR: z.string().min(1).default('./data'),
@@ -205,8 +206,8 @@ const EnvSchema = EnvObject.superRefine((env, ctx) => {
   }
   if (env.JUDGE_KEYS !== undefined) {
     if (!env.JUDGE_ROOMS) problem('JUDGE_KEYS', 'needs JUDGE_ROOMS=true');
-    const { problems } = parseJudgeKeys(env.JUDGE_KEYS);
-    for (const p of problems) problem('JUDGE_KEYS', p);
+    // A bad entry never stops the host: boot skips it and logs it (see compose.ts), so a typo in
+    // one judge's entry cannot turn a Render restart into an outage.
   }
   if (env.JUDGE_ROOMS) {
     // Real sandbox holds only. The fake adapter is allowed off-production so tests and local

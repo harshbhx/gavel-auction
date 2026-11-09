@@ -11,6 +11,7 @@ import {
   type Logger,
 } from '@gavel/shared';
 import { describe, expect, it } from 'vitest';
+import { createLogger } from '../src/log/logger';
 import { JudgeKeyRegistry, parseJudgeKey, parseJudgeKeys, sha256Hex } from '../src/auth/judge-keys';
 import { secretSetFromConfig } from '../src/auth/rotation';
 import { createHttpApp, mintToken, type HttpApp, type HttpDeps } from '../src/http/app';
@@ -544,5 +545,261 @@ describe('scripts/make-judge-key.mjs', () => {
     expect(() =>
       execFileSync('node', [script, '--expires', '2027-02-01T00:00:00Z'], { stdio: 'pipe' }),
     ).toThrow();
+  });
+});
+
+describe('judge keys: audit fixes', () => {
+  const C = mk('cccc3333', 'd');
+
+  it('keeps the key id readable through the real logger (#2300)', async () => {
+    const lines: string[] = [];
+    const real = createLogger({
+      level: 'debug',
+      clock: new ManualClock(START),
+      sink: (l) => void lines.push(l),
+    });
+    const s = setup();
+    s.deps.log = real;
+    await call(s.app, 'POST', JUDGE_KEY_PATH, { headers: withKey(A.key) });
+    await call(s.app, 'POST', JUDGE_ROOMS_PATH, { headers: withKey(A.key) });
+    await call(s.app, 'POST', '/api/judge/keys/aaaa1111/revoke', {
+      headers: { 'x-admin-key': ADMIN },
+    });
+    await call(s.app, 'POST', JUDGE_ROOMS_PATH, { headers: withKey(A.key) });
+    const text = lines.join('\n');
+    expect(text).not.toContain(A.secret);
+    for (const event of ['key_ok', 'created', 'key_revoked', 'key_refused']) {
+      const line = lines.find((l) => l.includes(`judge_room.${event}`));
+      expect(line, event).toBeDefined();
+      expect(line).toContain(`"passId":"${A.id}"`);
+    }
+  });
+
+  it('a host-wide cap answers its own code and never blames a judge with no rooms (#2301)', async () => {
+    const s = setup([entry(A), entry(B), entry(C)], { keyedMax: 2 });
+    expect((await call(s.app, 'POST', JUDGE_ROOMS_PATH, { headers: withKey(A.key) })).status).toBe(
+      201,
+    );
+    expect((await call(s.app, 'POST', JUDGE_ROOMS_PATH, { headers: withKey(B.key) })).status).toBe(
+      201,
+    );
+    const busy = await call(s.app, 'POST', JUDGE_ROOMS_PATH, { headers: withKey(C.key) });
+    expect(busy.status).toBe(503);
+    const body = await json(busy);
+    expect(body.error).toBe('judge_host_busy');
+    expect(body.code).toBe('judge_host_busy');
+    expect(String(body.message)).toContain('sandbox is busy');
+    // Retry-After follows the soonest room expiry (30 minutes here), not a flat minute.
+    expect(Number(busy.headers.get('retry-after'))).toBe(30 * 60);
+    // A key at its own limit still hears that it is its own.
+    const own = await call(s.app, 'POST', JUDGE_ROOMS_PATH, { headers: withKey(A.key) });
+    expect((await json(own)).error).toBe('judge_key_room_cap');
+  });
+
+  it('the host-wide hourly bound is a setting and answers host busy (#2301)', async () => {
+    const s = setup([entry(A, { maxRooms: 10, perHour: 100 }), entry(B)], {
+      keyedMax: 10,
+      keyedPerHour: 2,
+    });
+    for (let i = 0; i < 2; i++) {
+      expect(
+        (await call(s.app, 'POST', JUDGE_ROOMS_PATH, { headers: withKey(A.key) })).status,
+      ).toBe(201);
+    }
+    const res = await call(s.app, 'POST', JUDGE_ROOMS_PATH, { headers: withKey(B.key) });
+    expect(res.status).toBe(503);
+    expect((await json(res)).error).toBe('judge_host_busy');
+  });
+
+  it('a failed first load is retried on the next request (#2302)', async () => {
+    const s = setup();
+    const real = s.store.getJournal.bind(s.store);
+    let fail = true;
+    s.store.getJournal = ((k: string) => {
+      if (fail) {
+        fail = false;
+        return Promise.reject(new Error('store not ready'));
+      }
+      return real(k);
+    }) as typeof s.store.getJournal;
+    let first: Response | undefined;
+    try {
+      first = await call(s.app, 'POST', JUDGE_KEY_PATH, { headers: withKey(A.key) });
+    } catch {
+      first = undefined;
+    }
+    expect(first === undefined || first.status >= 500).toBe(true);
+    expect((await call(s.app, 'POST', JUDGE_KEY_PATH, { headers: withKey(A.key) })).status).toBe(
+      200,
+    );
+  });
+
+  it('an empty x-judge-key is refused without a strike (#2304)', async () => {
+    const s = setup([entry(A), entry(B)], { maxLive: 20 });
+    for (let i = 0; i < 7; i++) {
+      const res = await call(s.app, 'POST', JUDGE_ROOMS_PATH, { headers: withKey('') });
+      expect(res.status).toBe(401);
+      expect((await call(s.app, 'POST', JUDGE_KEY_PATH, { headers: withKey('') })).status).toBe(
+        401,
+      );
+    }
+    const ok = await call(s.app, 'POST', JUDGE_KEY_PATH, { headers: withKey(A.key) });
+    expect(ok.status).toBe(200);
+    const blank = await call(s.app, 'POST', JUDGE_KEY_PATH, { headers: withKey('  ') });
+    expect(blank.status).toBe(401);
+    expect((await json(blank)).error).toBe('judge_key_invalid');
+  });
+
+  it('refusals carry both error and code (#2306)', async () => {
+    const { app } = setup();
+    const res = await call(app, 'POST', JUDGE_KEY_PATH, { headers: withKey('wrong') });
+    expect(res.status).toBe(401);
+    const body = await json(res);
+    expect(body.error).toBe('judge_key_invalid');
+    expect(body.code).toBe('judge_key_invalid');
+  });
+
+  it('revoke writes the journal first and fails with 503, memory untouched (#2312)', async () => {
+    const s = setup();
+    const real = s.store.putJournal.bind(s.store);
+    let broken = true;
+    s.store.putJournal = ((k: string, v: number, val: unknown) =>
+      broken && k === 'judge:keys'
+        ? Promise.reject(new Error('disk full'))
+        : real(k, v, val as never)) as typeof s.store.putJournal;
+    const fail = await call(s.app, 'POST', '/api/judge/keys/aaaa1111/revoke', {
+      headers: { 'x-admin-key': ADMIN },
+    });
+    expect(fail.status).toBe(503);
+    // The key still works: nothing was revoked in memory.
+    expect((await call(s.app, 'POST', JUDGE_KEY_PATH, { headers: withKey(A.key) })).status).toBe(
+      200,
+    );
+    broken = false;
+    const ok = await call(s.app, 'POST', '/api/judge/keys/aaaa1111/revoke', {
+      headers: { 'x-admin-key': ADMIN },
+    });
+    expect(ok.status).toBe(200);
+  });
+
+  it('two concurrent revokes both stay revoked after a restart (#2312)', async () => {
+    const s = setup();
+    const [r1, r2] = await Promise.all([
+      call(s.app, 'POST', '/api/judge/keys/aaaa1111/revoke', { headers: { 'x-admin-key': ADMIN } }),
+      call(s.app, 'POST', '/api/judge/keys/bbbb2222/revoke', { headers: { 'x-admin-key': ADMIN } }),
+    ]);
+    expect([r1.status, r2.status]).toEqual([200, 200]);
+    const again = createJudgeRooms({
+      ...OPTS,
+      keys: new JudgeKeyRegistry(
+        parseJudgeKeys(JSON.stringify([toJson(entry(A)), toJson(entry(B))])).entries,
+        undefined,
+      ),
+    });
+    const app2 = createHttpApp(s.deps, [mountAuctions, again.mount]);
+    for (const k of [A, B]) {
+      const res = await call(app2, 'POST', JUDGE_KEY_PATH, { headers: withKey(k.key) });
+      expect((await json(res)).error).toBe('judge_key_revoked');
+    }
+  });
+
+  it('a bid reused with another amount answers conflict with a readable message (#2305)', async () => {
+    const s = setup();
+    const room = await json<{ auctionId: string; joinCode: string }>(
+      await call(s.app, 'POST', JUDGE_ROOMS_PATH, { headers: withKey(A.key) }),
+    );
+    const joined = await json<{ sessionToken: string }>(
+      await call(s.app, 'POST', JUDGE_JOIN_PATH, {
+        body: { code: room.joinCode, displayName: 'Asha' },
+      }),
+    );
+    const base = `/api/judge/rooms/${room.auctionId}`;
+    await call(s.app, 'POST', `${base}/sim-hold`, {
+      headers: bearer(joined.sessionToken),
+      body: { ceilingCents: 5000, name: 'Asha' },
+    });
+    const mid = '01JC5ZR1B2C3D4E5F6G7H8J9K0';
+    await call(s.app, 'POST', `${base}/bids`, {
+      headers: bearer(joined.sessionToken),
+      body: { amount: 1500, mid },
+    });
+    const res = await call(s.app, 'POST', `${base}/bids`, {
+      headers: bearer(joined.sessionToken),
+      body: { amount: 2000, mid },
+    });
+    expect(res.status).toBe(409);
+    const body = await json(res);
+    expect(body.error).toBe('conflict');
+    expect(body.code).toBe('conflict');
+    expect(body.message).not.toBe('Bid refused');
+  });
+
+  it('accepts a whole range of sim-hold ceilings, as the spec now says (#2308)', async () => {
+    const s = setup();
+    const room = await json<{ auctionId: string; joinCode: string }>(
+      await call(s.app, 'POST', JUDGE_ROOMS_PATH, { headers: withKey(A.key) }),
+    );
+    const joined = await json<{ sessionToken: string }>(
+      await call(s.app, 'POST', JUDGE_JOIN_PATH, {
+        body: { code: room.joinCode, displayName: 'Asha' },
+      }),
+    );
+    const path = `/api/judge/rooms/${room.auctionId}/sim-hold`;
+    const low = await call(s.app, 'POST', path, {
+      headers: bearer(joined.sessionToken),
+      body: { ceilingCents: 99, name: 'Asha' },
+    });
+    expect(low.status).toBe(400);
+    const high = await call(s.app, 'POST', path, {
+      headers: bearer(joined.sessionToken),
+      body: { ceilingCents: 5001, name: 'Asha' },
+    });
+    expect(high.status).toBe(400);
+    const odd = await call(s.app, 'POST', path, {
+      headers: bearer(joined.sessionToken),
+      body: { ceilingCents: 1234, name: 'Asha' },
+    });
+    expect(odd.status).toBe(200);
+  });
+});
+
+describe('judge keys: parse rules and the script (#2303)', () => {
+  const script = join(__dirname, '..', '..', '..', 'scripts', 'make-judge-key.mjs');
+  const run = (...args: string[]) => {
+    try {
+      return {
+        code: 0,
+        out: execFileSync('node', [script, '--json', ...args], { encoding: 'utf8', stdio: 'pipe' }),
+      };
+    } catch (e) {
+      return { code: (e as { status?: number }).status ?? 1, out: '' };
+    }
+  };
+
+  it('refuses every value the server would refuse', () => {
+    for (const args of [
+      ['--rooms', 'abc'],
+      ['--rooms', '0'],
+      ['--rooms', '11'],
+      ['--rooms', '1.5'],
+      ['--per-hour', '101'],
+      ['--per-hour', '0'],
+      ['--expires', 'Nov 5 2026'],
+      ['--expires', '2026-11-05'],
+    ]) {
+      expect(run(...args).code, args.join(' ')).toBe(1);
+    }
+    const ok = run('--rooms', '2', '--per-hour', '10');
+    expect(ok.code).toBe(0);
+    const { entry: e } = JSON.parse(ok.out) as { entry: unknown };
+    expect(parseJudgeKeys(JSON.stringify([e])).problems).toEqual([]);
+  });
+
+  it('the server skips non-ISO expiry text and keeps the good entries', () => {
+    const good = toJson(entry(A));
+    const bad = { ...toJson(entry(B)), expiresAt: 'Nov 5 2026' };
+    const { entries, problems } = parseJudgeKeys(JSON.stringify([good, bad]));
+    expect(entries.map((e) => e.id)).toEqual([A.id]);
+    expect(problems).toHaveLength(1);
   });
 });

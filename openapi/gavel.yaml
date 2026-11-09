@@ -183,12 +183,12 @@ x-rate-limits:
     codeLookupAttemptsPerMinute: 30
     wrongCodesBeforeLockout: 5
     lockoutMinutes: 15
-    note: A wrong judge key counts as a wrong code toward the same lockout.
+    note: A wrong judge key has a lockout of its own (5 wrong, 15 minutes, per source address); it never blocks joins.
   judgeKey:
     description: Creates made with a valid judge key, counted for the whole host.
-    createsPerHour: 20
-    liveRoomsMax: 3
-    setting: JUDGE_KEY_ROOMS_MAX
+    createsPerHour: 100
+    liveRoomsMax: 10
+    setting: JUDGE_KEY_CREATES_PER_HOUR, JUDGE_KEY_ROOMS_MAX
   websocket:
     bidsPerSecond: 3
     bidBurst: 5
@@ -1149,9 +1149,10 @@ paths:
 
         With the optional `X-Judge-Key` header the request is judged by the key alone: the
         public limits do not apply, the room does not use a public slot, and a wrong key is
-        401 `judge_key_invalid` (it never falls back to the public path). Wrong keys count
-        toward the same lockout as wrong room codes (429 `judge_key_locked`). The response then
-        carries `unlocked: true`.
+        401 `judge_key_invalid` (it never falls back to the public path). An empty header is
+        401 `judge_key_invalid` without a strike. Wrong keys have a lockout of their own, separate from the room-code lockout:
+        5 wrong keys, 15 minutes, per source address (429 `judge_key_locked`); it has no effect
+        on joins. The response then carries `unlocked: true`.
       security:
         - {}
         - judgeKey: []
@@ -1206,11 +1207,12 @@ paths:
           $ref: '#/components/responses/UnsupportedMediaType'
         '429':
           description: >-
-            Too many creates from this address or from the host (`judge_rate_limited`; `Retry-After`
-            is the time until the oldest create leaves the hour window, 600 s for a keyed
-            create), the live-room cap is reached (`judge_room_cap`, 60 s), a keyed create hit
-            its own room cap (`judge_key_room_cap`, 60 s), or the source is locked out
-            (`judge_key_locked`). The body is `{error, message}`.
+            Too many creates from this address or from the host, or from this key
+            (`judge_rate_limited`; `Retry-After` is the time until the oldest create leaves the
+            hour window), the live-room cap is reached (`judge_room_cap`, 60 s), a keyed create
+            hit its own room cap (`judge_key_room_cap`; `Retry-After` is the time until the
+            soonest keyed room ends), or the source is locked out of keyed calls
+            (`judge_key_locked`). The body is `{error, code, message}`; `code` repeats `error`.
           headers:
             Retry-After:
               $ref: '#/components/headers/RetryAfter'
@@ -1220,11 +1222,16 @@ paths:
                 $ref: '#/components/schemas/Error'
               example:
                 error: judge_rate_limited
+                code: judge_rate_limited
                 message: Too many tries from this network. Wait a few minutes and try again.
         '500':
           $ref: '#/components/responses/Internal'
         '503':
-          description: Judge rooms are paused (`judge_rooms_paused`, retry after 60 s).
+          description: >-
+            Judge rooms are paused (`judge_rooms_paused`, retry after 60 s), or the host-wide
+            bound on keyed rooms or keyed creates per hour is reached (`judge_host_busy`;
+            `Retry-After` is the time until a keyed room ends or the hour window frees a slot).
+            Unlike `judge_key_room_cap`, this is not the caller's own limit.
           headers:
             Retry-After:
               $ref: '#/components/headers/RetryAfter'
@@ -1234,6 +1241,7 @@ paths:
                 $ref: '#/components/schemas/Error'
               example:
                 error: judge_rooms_paused
+                code: judge_rooms_paused
                 message: Demo rooms are paused right now. Try again in a minute.
       x-rate-limit:
         scope: source address and whole host
@@ -1241,9 +1249,9 @@ paths:
         hostPerHour: 40
         liveRoomsMax: 15
         roomLifetimeMinutes: 30
-        keyedCreatesPerHour: 20
-        keyedLiveRoomsMax: 3
-        settings: JUDGE_ROOMS_PER_IP_HOUR, JUDGE_ROOMS_PER_HOUR, JUDGE_ROOMS_MAX, JUDGE_ROOM_TTL_MS, JUDGE_KEY_ROOMS_MAX
+        keyedCreatesPerHour: 100
+        keyedLiveRoomsMax: 10
+        settings: JUDGE_ROOMS_PER_IP_HOUR, JUDGE_ROOMS_PER_HOUR, JUDGE_ROOMS_MAX, JUDGE_ROOM_TTL_MS, JUDGE_KEY_ROOMS_MAX, JUDGE_KEY_CREATES_PER_HOUR
   /api/judge/key:
     post:
       tags: [Judge rooms]
@@ -1252,9 +1260,10 @@ paths:
       description: |
         Send the key in the `X-Judge-Key` header, with no body. Creates nothing; it lets a
         panel say whether the key works. A wrong key is 401 `judge_key_invalid` and counts
-        toward the lockout shared with wrong room codes (5 wrong, 15 minutes: 429
-        `judge_key_locked`, even with the right key). When the host has no judge key set, every
-        key answers as wrong. Answers 404 when judge rooms are off.
+        toward a lockout of its own, separate from the room-code lockout (5 wrong keys, 15
+        minutes, per source address: 429 `judge_key_locked`, even with the right key; joins are
+        not affected). A blank key is 401 without a strike. When the host has no judge key set,
+        every key answers as wrong. Answers 404 when judge rooms are off.
       security:
         - judgeKey: []
       responses:
@@ -1431,8 +1440,10 @@ paths:
       description: |
         Session token of a bidder in that judge room. Writes an already-authorized hold with
         no PayPal call and puts the bidder in the room, so the whole path can be tried without
-        a PayPal login. The ceiling must be one of the room's presets. Any other auction
-        answers 404. Answers 404 when simulated holds are off.
+        a PayPal login. The ceiling is any whole number of cents from 100 up to the room's
+        ceiling cap (the top preset); the presets are only quick picks, and a value outside the
+        range is 400 `bad_message`. Any other auction answers 404. Answers 404 when simulated
+        holds are off.
       security:
         - sessionAuth: []
       parameters:
@@ -1448,7 +1459,8 @@ paths:
               properties:
                 ceilingCents:
                   type: integer
-                  minimum: 1
+                  minimum: 100
+                  description: Whole cents, at least 100 and at most the room's ceiling cap.
                 name:
                   $ref: '#/components/schemas/BidderName'
             example:
@@ -1556,7 +1568,10 @@ paths:
         to retry safely, the room answers with the original result and records nothing twice.
 
         A bid the engine refuses (too low, over your ceiling, lot closed) is 409 with
-        `accepted: false` and a `reason`. Only session tokens work here, and only for judge
+        `accepted: false` and a `reason`. Sending a `mid` again with a different `amount` is 409
+        `conflict` (`{error, code, message}`). Bids sent too fast are 429 `rate_limited` with
+        `Retry-After`. When the room cannot take the bid (`auction_full`, `store_unavailable`,
+        `room_full`) the answer is 503. Only session tokens work here, and only for judge
         rooms: any other auction answers 404. A judge key is not needed on this route.
       security:
         - sessionAuth: []
@@ -1574,6 +1589,7 @@ paths:
                 amount:
                   type: integer
                   minimum: 1
+                  maximum: 99999999999
                   description: Bid in cents.
                 mid:
                   type: string
@@ -1638,31 +1654,44 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
-          description: The engine refused the bid (`accepted` is false and `reason` says why).
+          description: >-
+            The engine refused the bid (`bid_rejected`: `accepted` is false and `reason` says
+            why), or the same `mid` was reused with a different amount (`conflict`).
           content:
             application/json:
               schema:
-                type: object
-                required: [accepted, error, mid, reason, retryable]
-                properties:
-                  accepted:
-                    type: boolean
-                    const: false
-                  error:
-                    type: string
-                    const: bid_rejected
-                  mid:
-                    type: string
-                  reason:
-                    $ref: '#/components/schemas/ErrorCode'
-                  retryable:
-                    type: boolean
-              example:
-                accepted: false
-                error: bid_rejected
-                mid: 01JC5ZR1B2C3D4E5F6G7H8J9K0
-                reason: below_increment
-                retryable: false
+                oneOf:
+                  - type: object
+                    required: [accepted, error, mid, reason, retryable]
+                    properties:
+                      accepted:
+                        type: boolean
+                        const: false
+                      error:
+                        type: string
+                        const: bid_rejected
+                      mid:
+                        type: string
+                      reason:
+                        $ref: '#/components/schemas/ErrorCode'
+                      retryable:
+                        type: boolean
+                  - $ref: '#/components/schemas/Error'
+              examples:
+                rejected:
+                  summary: The engine refused the bid
+                  value:
+                    accepted: false
+                    error: bid_rejected
+                    mid: 01JC5ZR1B2C3D4E5F6G7H8J9K0
+                    reason: below_increment
+                    retryable: false
+                conflict:
+                  summary: The same mid with another amount
+                  value:
+                    error: conflict
+                    code: conflict
+                    message: That bid id was already used with a different amount. Send a new bid id.
         '410':
           $ref: '#/components/responses/Gone'
         '413':
@@ -1673,6 +1702,18 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/Internal'
+        '503':
+          description: >-
+            The room could not take the bid (`auction_full`, `store_unavailable`, `room_full`).
+            Retry after a moment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: store_unavailable
+                code: store_unavailable
+                message: Bid refused
   /api/judge/keys:
     get:
       tags: [Judge rooms, Operator]
@@ -1774,6 +1815,18 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/Internal'
+        '503':
+          description: >-
+            The revoke could not be saved (`store_unavailable`). Nothing changed and the key is
+            still usable; try again.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: store_unavailable
+                code: store_unavailable
+                message: the revoke could not be saved, try again
   # --- FEAT-60 judge API keys: end ---
   /healthz:
     get:

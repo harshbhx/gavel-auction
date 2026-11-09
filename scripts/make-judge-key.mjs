@@ -22,10 +22,25 @@ export function makeJudgeKey({
   rooms = 2,
   perHour = 10,
 } = {}) {
+  // Same rules as the server's parseJudgeKeys (packages/server/src/auth/judge-keys.ts), so the
+  // script never prints an entry the host would skip.
+  if (
+    typeof expires !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(expires)
+  ) {
+    throw new Error('--expires must be an ISO-8601 date with time and a Z or offset');
+  }
   const at = Date.parse(expires);
   if (Number.isNaN(at)) throw new Error('--expires must be an ISO date');
+  const intIn = (v, lo, hi) =>
+    typeof v === 'string' || typeof v === 'number'
+      ? /^\d+$/.test(String(v)) && Number(v) >= lo && Number(v) <= hi
+      : false;
+  if (!intIn(rooms, 1, 10)) throw new Error('--rooms must be an integer from 1 to 10');
+  if (!intIn(perHour, 1, 100)) throw new Error('--per-hour must be an integer from 1 to 100');
   if (at > Date.parse(LATEST_EXPIRY))
     throw new Error(`--expires must not be after ${LATEST_EXPIRY}`);
+  if (typeof label !== 'string') throw new Error('--label must be text');
   const id = randomBytes(4).toString('hex');
   const secret = randomBytes(24).toString('hex');
   const hash = createHash('sha256').update(secret).digest('hex');

@@ -49,6 +49,7 @@ export function secretsEqual(given: string, expected: string): boolean {
 
 const HEX64 = /^[0-9a-f]{64}$/;
 const ID_RE = /^[a-z0-9]{8}$/;
+const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
 
 /**
  * Parses the JUDGE_KEYS value (a JSON array). Returns the entries and every problem found, so
@@ -84,7 +85,11 @@ export function parseJudgeKeys(raw: string | undefined): {
     if (typeof o.hash !== 'string' || !HEX64.test(o.hash)) {
       return void problems.push(`${at}: hash must be 64 lowercase hex characters (sha256)`);
     }
-    const expiresAt = typeof o.expiresAt === 'string' ? Date.parse(o.expiresAt) : Number.NaN;
+    // ISO-8601 with a Z or offset only: Date.parse alone also takes local-time text like "Nov 5".
+    const expiresAt =
+      typeof o.expiresAt === 'string' && ISO_RE.test(o.expiresAt)
+        ? Date.parse(o.expiresAt)
+        : Number.NaN;
     if (Number.isNaN(expiresAt)) return void problems.push(`${at}: expiresAt must be an ISO date`);
     // A date in the past is allowed: the key is simply refused as expired, and a restart after
     // the judging window must not stop the host from booting.

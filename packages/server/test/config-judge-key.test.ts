@@ -16,7 +16,7 @@ describe('JUDGE_KEY config', () => {
     for (const env of [good, { ...good, JUDGE_KEY: '' }]) {
       const r = parseConfig(env);
       expect(r.ok && r.config.JUDGE_KEY).toBeUndefined();
-      expect(r.ok && r.config.JUDGE_KEY_ROOMS_MAX).toBe(3);
+      expect(r.ok && r.config.JUDGE_KEY_ROOMS_MAX).toBe(10);
     }
   });
 
@@ -41,7 +41,14 @@ describe('JUDGE_KEY config', () => {
     }
   });
 
-  it('caps the keyed room bound at 10', () => {
-    expect(parseConfig({ ...good, JUDGE_KEY: JUDGE, JUDGE_KEY_ROOMS_MAX: '11' }).ok).toBe(false);
+  it('caps the keyed room bound at 50', () => {
+    expect(parseConfig({ ...good, JUDGE_KEY: JUDGE, JUDGE_KEY_ROOMS_MAX: '51' }).ok).toBe(false);
+  });
+
+  it('does not refuse boot over a bad JUDGE_KEYS entry (boot skips and logs it)', () => {
+    const r = parseConfig({ ...good, JUDGE_KEYS: JSON.stringify([{ id: 'x' }, 'nope']) });
+    expect(r.ok).toBe(true);
+    expect(parseConfig({ ...good, JUDGE_KEYS: 'not json' }).ok).toBe(true);
+    expect(parseConfig({ ...good, JUDGE_ROOMS: 'false', JUDGE_KEYS: '[]' }).ok).toBe(false);
   });
 });
