@@ -7,33 +7,31 @@
 }
 
 .gv-instructor__head {
-  margin: 0;
-  font: inherit;
-}
-
-.gv-instructor__toggle {
   display: flex;
-  width: 100%;
   min-height: 44px;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+}
+
+.gv-instructor__title {
+  margin: 0;
+}
+
+.gv-instructor__toggle {
+  min-height: 44px;
   padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
   font: inherit;
-  text-align: left;
+  text-decoration: underline;
   cursor: pointer;
 }
 
 .gv-instructor__toggle:focus-visible {
   outline: 2px solid var(--color-fg);
   outline-offset: 2px;
-}
-
-.gv-instructor__action {
-  text-decoration: underline;
 }
 
 .gv-instructor__lead {

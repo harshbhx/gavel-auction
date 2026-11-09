@@ -27,9 +27,7 @@ describe('Instructor', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(INSTRUCTOR_STEPS.console.length);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(
-      screen
-        .getByRole('button', { name: new RegExp(t('instructor.hide')) })
-        .getAttribute('aria-expanded'),
+      screen.getByRole('button', { name: t('instructor.hide') }).getAttribute('aria-expanded'),
     ).toBe('true');
   });
 
@@ -43,19 +41,17 @@ describe('Instructor', () => {
 
   it('remembers a collapsed screen for the session, per screen', () => {
     const first = render(<Instructor screen="bid" judge current={0} search={ON} />);
-    fireEvent.click(screen.getByRole('button', { name: new RegExp(t('instructor.hide')) }));
+    fireEvent.click(screen.getByRole('button', { name: t('instructor.hide') }));
     expect(
-      screen
-        .getByRole('button', { name: new RegExp(t('instructor.show')) })
-        .getAttribute('aria-expanded'),
+      screen.getByRole('button', { name: t('instructor.show') }).getAttribute('aria-expanded'),
     ).toBe('false');
     first.unmount();
     render(<Instructor screen="bid" judge current={0} search={ON} />);
-    expect(screen.getByRole('button', { name: new RegExp(t('instructor.show')) })).toBeTruthy();
+    expect(screen.getByRole('button', { name: t('instructor.show') })).toBeTruthy();
     cleanup();
     // Another screen is not affected.
     render(<Instructor screen="receipt" judge current={0} search={ON} />);
-    expect(screen.getByRole('button', { name: new RegExp(t('instructor.hide')) })).toBeTruthy();
+    expect(screen.getByRole('button', { name: t('instructor.hide') })).toBeTruthy();
   });
 
   it('still works when storage throws', () => {
@@ -68,8 +64,8 @@ describe('Instructor', () => {
       },
     });
     render(<Instructor screen="hub" judge current={0} search={ON} />);
-    fireEvent.click(screen.getByRole('button', { name: new RegExp(t('instructor.hide')) }));
-    expect(screen.getByRole('button', { name: new RegExp(t('instructor.show')) })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: t('instructor.hide') }));
+    expect(screen.getByRole('button', { name: t('instructor.show') })).toBeTruthy();
   });
 
   it('is hidden for a room that is not a judge room, and for automated browsers by default', () => {

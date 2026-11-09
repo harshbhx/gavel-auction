@@ -111,7 +111,10 @@ export function Instructor({ screen, current = null, judge, roomId, search }: In
       aria-labelledby={headingId}
       data-screen={screen}
     >
-      <h2 className="gv-instructor__head" id={headingId}>
+      <div className="gv-instructor__head">
+        <h2 className="gv-instructor__title ui-kicker" id={headingId}>
+          {t('instructor.title')}
+        </h2>
         <button
           type="button"
           className="gv-instructor__toggle"
@@ -119,12 +122,9 @@ export function Instructor({ screen, current = null, judge, roomId, search }: In
           aria-controls={listId}
           onClick={toggle}
         >
-          <span className="ui-kicker">{t('instructor.title')}</span>
-          <span className="gv-instructor__action">
-            {collapsed ? t('instructor.show') : t('instructor.hide')}
-          </span>
+          {collapsed ? t('instructor.show') : t('instructor.hide')}
         </button>
-      </h2>
+      </div>
       <div id={listId} hidden={collapsed}>
         <p className="gv-instructor__lead">{t('instructor.lead')}</p>
         <ol className="gv-instructor__steps">

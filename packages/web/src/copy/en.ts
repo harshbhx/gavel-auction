@@ -839,7 +839,7 @@ export const en = {
   'instructor.console.1': 'Open the lot.',
   'instructor.console.2': 'The lot is open: watch the bids come in.',
   'instructor.console.3':
-    'Hold the hammer button for 3 seconds to sell. Stop auction ends it with no winner.',
+    'Press and hold the hammer button for 3 seconds to sell. Stop auction ends it with no winner.',
   'instructor.console.4': 'The lot is over. Open the audit trail and check the receipt.',
   'instructor.bid.1': 'Set a limit: the most you are willing to bid.',
   'instructor.bid.2': 'Confirm the hold. This is a sandbox: no real money moves.',
