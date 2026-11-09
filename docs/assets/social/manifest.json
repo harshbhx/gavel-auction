@@ -1,0 +1,116 @@
+[
+  {
+    "file": "bug-sandbox-only-1920x1080.png",
+    "bytes": 15528,
+    "size": "1920x1080",
+    "alt": "Transparent full frame with a small top left bug reading \"Sandbox only, no real money\"."
+  },
+  {
+    "file": "bug-sandbox-only-tight.png",
+    "bytes": 14398,
+    "size": "1328x160",
+    "alt": "Cropped bug \"Sandbox only, no real money\" on transparent, 2x."
+  },
+  {
+    "file": "chip-recorded-1920x1080.png",
+    "bytes": 11767,
+    "size": "1920x1080",
+    "alt": "Transparent full frame with the \"Recorded\" chip at top left."
+  },
+  {
+    "file": "chip-recorded.png",
+    "bytes": 6812,
+    "size": "540x160",
+    "alt": "Paper label chip reading \"Recorded\" with a red dot, transparent, 2x. Put it on footage of a real sandbox session."
+  },
+  {
+    "file": "chip-simulated-1920x1080.png",
+    "bytes": 11579,
+    "size": "1920x1080",
+    "alt": "Transparent full frame with the \"Simulated\" chip at top left."
+  },
+  {
+    "file": "chip-simulated.png",
+    "bytes": 5989,
+    "size": "516x160",
+    "alt": "Orange label chip reading \"Simulated\", transparent, 2x. Put it on any scripted or fake-PayPal footage."
+  },
+  {
+    "file": "github-social-preview.png",
+    "bytes": 60726,
+    "size": "1280x640",
+    "alt": "GAVEL card on paper: the Mallet G logo, the headline \"Bids are holds. The hammer is the charge.\" with the hammer line on an orange bar, a five step strip Hold, Bid, Hammer, Receipt, Verify, and the address gavel.dualmindlab.tech. A pill says PayPal sandbox only, no real money."
+  },
+  {
+    "file": "linkedin-1200x627.png",
+    "bytes": 57500,
+    "size": "1200x627",
+    "alt": "GAVEL card on paper: the Mallet G logo, the headline \"Bids are holds. The hammer is the charge.\" with the hammer line on an orange bar, a five step strip Hold, Bid, Hammer, Receipt, Verify, and the address gavel.dualmindlab.tech. A pill says PayPal sandbox only, no real money."
+  },
+  {
+    "file": "lower-third-hook-alpha.webm",
+    "bytes": 40113,
+    "size": "1920x1080",
+    "alt": "Animated alpha version of the lower third: slides in from the left, holds, slides out, 3 seconds, VP9 with alpha."
+  },
+  {
+    "file": "lower-third-hook.png",
+    "bytes": 22305,
+    "size": "1920x1080",
+    "alt": "Transparent 1920x1080 lower third: ink bar with orange edge, the Mallet G mark, title \"GAVEL\" and subtitle \"Bids are holds. The hammer is the charge.\", bottom left."
+  },
+  {
+    "file": "lower-third-sandbox-alpha.webm",
+    "bytes": 44895,
+    "size": "1920x1080",
+    "alt": "Animated alpha version of the lower third: slides in from the left, holds, slides out, 3 seconds, VP9 with alpha."
+  },
+  {
+    "file": "lower-third-sandbox.png",
+    "bytes": 29650,
+    "size": "1920x1080",
+    "alt": "Transparent 1920x1080 lower third: ink bar with orange edge, the Mallet G mark, title \"PayPal sandbox\" and subtitle \"No real money moves in this demo\", bottom left."
+  },
+  {
+    "file": "og-1200x630.png",
+    "bytes": 57483,
+    "size": "1200x630",
+    "alt": "GAVEL card on paper: the Mallet G logo, the headline \"Bids are holds. The hammer is the charge.\" with the hammer line on an orange bar, a five step strip Hold, Bid, Hammer, Receipt, Verify, and the address gavel.dualmindlab.tech. A pill says PayPal sandbox only, no real money."
+  },
+  {
+    "file": "x-card-1200x628.png",
+    "bytes": 57510,
+    "size": "1200x628",
+    "alt": "GAVEL card on paper: the Mallet G logo, the headline \"Bids are holds. The hammer is the charge.\" with the hammer line on an orange bar, a five step strip Hold, Bid, Hammer, Receipt, Verify, and the address gavel.dualmindlab.tech. A pill says PayPal sandbox only, no real money."
+  },
+  {
+    "file": "x-card-1200x675.png",
+    "bytes": 57480,
+    "size": "1200x675",
+    "alt": "GAVEL card on paper: the Mallet G logo, the headline \"Bids are holds. The hammer is the charge.\" with the hammer line on an orange bar, a five step strip Hold, Bid, Hammer, Receipt, Verify, and the address gavel.dualmindlab.tech. A pill says PayPal sandbox only, no real money."
+  },
+  {
+    "file": "youtube-end-card-1920x1080.png",
+    "bytes": 77351,
+    "size": "1920x1080",
+    "alt": "YouTube end card: GAVEL logo, \"Hold the bid. Hammer the charge.\", empty dashed zones for a subscribe circle and two 16:9 video end elements, and the web and repo addresses."
+  },
+  {
+    "file": "youtube-end-card-guides.png",
+    "bytes": 83625,
+    "size": "1920x1080",
+    "alt": "The end card with the reserved zones labelled, for planning only. Do not upload this one."
+  },
+  {
+    "file": "youtube-thumbnail-A.png",
+    "bytes": 55228,
+    "size": "1280x720",
+    "alt": "YouTube thumbnail A: huge ink headline \"Bids are holds.\" then \"The hammer is the charge.\" on an orange bar, the Mallet G plate at right, GAVEL logo and a PayPal sandbox tag at top."
+  },
+  {
+    "file": "youtube-thumbnail-B.png",
+    "bytes": 49429,
+    "size": "1280x720",
+    "alt": "YouTube thumbnail B on dark ink: \"Nobody pays until the hammer.\" with the last word in signal orange, the Mallet G plate at right, GAVEL logo and a PayPal sandbox tag."
+  }
+]
