@@ -78,6 +78,21 @@ describe('429 answers a browser can read (SRV-37)', () => {
     expect(other.headers.get('access-control-allow-origin')).toBeNull();
   });
 
+  it('gives the docs origin the same readable 429 on the judge routes only (#2423)', async () => {
+    const docs = 'https://docs.gavel.dualmindlab.tech';
+    const url = await boot({ RATE_HTTP_READ_BURST: '1', RATE_HTTP_READ_PER_MIN: '1' });
+    const get = (path: string) => fetch(`${url}${path}`, { headers: { origin: docs } });
+    const first = await get('/api/judge/capabilities');
+    expect(first.headers.get('access-control-allow-origin')).toBe(docs);
+    const limited = await get('/api/judge/capabilities');
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get('access-control-allow-origin')).toBe(docs);
+    expect(limited.headers.get('access-control-expose-headers')).toContain('retry-after');
+    const elsewhere = await get('/api/auctions/abc/snapshot');
+    expect(elsewhere.status).toBe(429);
+    expect(elsewhere.headers.get('access-control-allow-origin')).toBeNull();
+  });
+
   it('keeps writes on their own, tighter bucket than public reads', async () => {
     const url = await boot({ RATE_HTTP_BURST: '1', RATE_HTTP_PER_MIN: '1' });
     for (let i = 0; i < 5; i += 1) expect((await fetch(`${url}/nope`)).status).toBe(404);
