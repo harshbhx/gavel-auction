@@ -584,6 +584,14 @@ export const en = {
   'reg.declined': 'PayPal did not approve this hold. Try again or choose a lower ceiling.',
   'reg.popupBlocked': 'The PayPal window was blocked. Open PayPal in this tab.',
   'reg.expired': 'Approval expired. Start again.',
+  'reg.checkingTitle': 'Checking this room',
+  'reg.noInviteTitle': 'You need an invite link',
+  'reg.closedTitle': 'Registration is closed',
+  'reg.fullTitle': 'This room is full',
+  'reg.inviteFailedTitle': 'This invite did not work',
+  'reg.inviteFailed': 'This invite link is used, expired or not valid. Ask the host for a new one.',
+  'reg.returnLost':
+    'There is no PayPal approval in progress in this browser. Start again from the room hub.',
   'reg.closed': 'Registration is closed for this auction. You can watch.',
   'reg.watch': 'Watch only',
   'reg.startAgain': 'Start again',
@@ -701,6 +709,8 @@ export const en = {
   'console.mic.unavailable': 'Voice is not available in this build. Use manual entry.',
   'console.settlement.needsReview':
     'Settlement failed and needs review. Contact the winner or move to the runner-up.',
+  'console.settlement.reviewNoRunnerUp':
+    'Settlement failed and needs review. Holds are held, not charged. Contact the winner, then open the audit trail to see what happened.',
   'console.settlement.inProgress': 'Settlement is in progress.',
   'console.mic.denied': 'Microphone blocked. Use manual entry.',
   'console.notBid': 'Not a bid',
@@ -1125,6 +1135,8 @@ export const en = {
   'receipt.share.copy': 'Copy link',
   'receipt.share.copied': 'Link copied.',
   'receipt.share.selected': 'The link is selected. Copy it with your device.',
+  'receipt.sandboxLine': 'Sandbox: no real money moved',
+  'receipt.sandboxNote': 'PayPal sandbox, no real money moved',
   'receipt.shared.readOnly': 'Shared receipt, read only.',
   'receipt.shared.loading': 'Opening the receipt',
   'receipt.shared.invalid': 'This receipt link has expired or is not valid.',

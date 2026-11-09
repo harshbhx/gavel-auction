@@ -174,3 +174,19 @@ export function codeGuardOf(deps: HttpDeps, limits?: Partial<CodeGuardLimits>): 
   }
   return guard;
 }
+
+const keyGuards = new WeakMap<HttpDeps, CodeGuard>();
+
+/**
+ * The guard of judge key attempts, apart from the room code guard: wrong keys strike here and
+ * nowhere else, so a mistyped key never locks a shared address out of joining or looking up a
+ * room, and wrong codes never lock the key check. Same limits as the code guard by default.
+ */
+export function keyGuardOf(deps: HttpDeps): CodeGuard {
+  let guard = keyGuards.get(deps);
+  if (guard === undefined) {
+    guard = new CodeGuard();
+    keyGuards.set(deps, guard);
+  }
+  return guard;
+}

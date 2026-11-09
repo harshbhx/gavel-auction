@@ -92,7 +92,7 @@ describe('console settlement notice', () => {
     openConsole();
     deliver(settlement(4, 'FAILED_NEEDS_REVIEW'));
     const alerts = screen.getAllByRole('alert').map((el) => el.textContent);
-    expect(alerts).toContain(t('console.settlement.needsReview'));
+    expect(alerts).toContain(t('console.settlement.reviewNoRunnerUp'));
     const counts = screen.getByRole('list', { name: t('ladder.counts') });
     expect(counts.textContent).toBe(`1 ${t('ladder.state.FAILED_NEEDS_REVIEW')}`);
   });
@@ -103,6 +103,6 @@ describe('console settlement notice', () => {
     const statuses = screen.getAllByRole('status').map((el) => el.textContent);
     expect(statuses).toContain(t('console.settlement.inProgress'));
     const alerts = screen.queryAllByRole('alert').map((el) => el.textContent);
-    expect(alerts).not.toContain(t('console.settlement.needsReview'));
+    expect(alerts).not.toContain(t('console.settlement.reviewNoRunnerUp'));
   });
 });

@@ -723,6 +723,7 @@ export interface HoldStore {
     byAuthId?(authId: string): Promise<HoldRecord | null>;
     // (undocumented)
     byBidder(auctionId: string, bidderId: string): Promise<HoldRecord | null>;
+    deleteByAuction?(auctionId: string, match: (h: HoldRecord) => boolean): Promise<number>;
     // (undocumented)
     get(holdId: string): Promise<HoldRecord | null>;
     // (undocumented)
@@ -1041,6 +1042,8 @@ export class MemoryHoldStore implements HoldStore {
     constructor(initial?: HoldSnapshot, onChange?: ((s: HoldSnapshot) => void) | undefined);
     byAuthId(authId: string): Promise<HoldRecord | null>;
     byBidder(auctionId: string, bidderId: string): Promise<HoldRecord | null>;
+    // (undocumented)
+    deleteByAuction(auctionId: string, match: (h: HoldRecord) => boolean): Promise<number>;
     // (undocumented)
     get(holdId: string): Promise<HoldRecord | null>;
     listByAuction(auctionId: string): Promise<HoldRecord[]>;

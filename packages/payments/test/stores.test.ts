@@ -55,6 +55,47 @@ describe('VersionConflict', () => {
   });
 });
 
+describe('HoldStore.deleteByAuction (#2232)', () => {
+  const rec = (holdId: string, auctionId: string) => ({
+    holdId,
+    auctionId,
+    bidderId: holdId,
+    orderId: `o-${holdId}`,
+    authId: `auth-${holdId}`,
+    ceilingCents: 100,
+    status: 'HELD' as const,
+    createdAtMs: 1,
+  });
+
+  it('drops matching holds, keeps the rest, and persists the removal across a restart', async () => {
+    const path = join(freshDir(), 'h.json');
+    const s = new FileHoldStore(path);
+    await s.put(rec('sim-1', 'a1'));
+    await s.put(rec('sim-2', 'a1'));
+    await s.put(rec('real-1', 'a1'));
+    await s.put(rec('sim-3', 'a2'));
+    expect(await s.deleteByAuction('a1', (h) => h.holdId.startsWith('sim-'))).toBe(2);
+    expect(await s.get('sim-1')).toBeNull();
+    expect(await s.byAuthId('auth-sim-2')).toBeNull();
+    expect((await s.listByAuction('a1')).map((h) => h.holdId)).toEqual(['real-1']);
+    const again = new FileHoldStore(path);
+    expect((await again.listByAuction('a1')).map((h) => h.holdId)).toEqual(['real-1']);
+    expect((await again.listByAuction('a2')).map((h) => h.holdId)).toEqual(['sim-3']);
+    expect(await again.deleteByAuction('a1', () => false)).toBe(0);
+  });
+
+  it('puts the holds back when the durable write fails', async () => {
+    let fail = false;
+    const s = new MemoryHoldStore(undefined, () => {
+      if (fail) throw new Error('disk full');
+    });
+    await s.put(rec('sim-1', 'a1'));
+    fail = true;
+    await expect(s.deleteByAuction('a1', () => true)).rejects.toThrow('disk full');
+    expect((await s.listByAuction('a1')).map((h) => h.holdId)).toEqual(['sim-1']);
+  });
+});
+
 describe('file stores survive a restart', () => {
   it('a new instance on the same directory sees journals, webhooks and holds', async () => {
     const dir = freshDir();

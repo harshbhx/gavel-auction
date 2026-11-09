@@ -1,0 +1,22 @@
+{
+  "schema": "sec15-log-scan/1",
+  "verdict": "PASS",
+  "problems": [],
+  "canaries": ["DEEPGRAM_API_KEY"],
+  "logLines": 165,
+  "countsByRule": {},
+  "files": [
+    {
+      "path": "/home/runner/work/gavel-auction/gavel-auction/voice-live-out/server-deepgram.log",
+      "kind": "log",
+      "lines": 165,
+      "sha256": "2c01d700471b29050bec7cd845a18ae870e1c247812389b81bfa88d9a84b0def",
+      "findings": 0
+    }
+  ],
+  "findings": [],
+  "notCovered": [
+    "raw audio transcripts: scenario S01 sends no audio, so no private transcript was injected",
+    "any log line the server wrote that this run did not exercise (other routes, error paths)"
+  ]
+}
