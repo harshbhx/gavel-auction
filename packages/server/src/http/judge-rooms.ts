@@ -29,7 +29,7 @@ import {
   type HttpDeps,
   type Mount,
 } from './app';
-import { codeGuardOf, sourceTag } from './code-guard';
+import { codeGuardOf, keyGuardOf, sourceTag } from './code-guard';
 import {
   auctionIdForCode,
   looksLikeJoinCode,
@@ -109,7 +109,15 @@ export interface SimHolds {
     name: string;
     ceilingCents: number;
   }): Promise<string>;
+  /** Drops the room's simulated holds from the hold store (only those) and returns the count. */
+  purge?(auctionId: string): Promise<number>;
 }
+
+/**
+ * How long an ended room keeps its simulated holds before they are purged, so a settlement or
+ * void that is still running (or a retry of it) finds them.
+ */
+export const SIM_PURGE_GRACE_MS = 10 * 60_000;
 
 /** Limits of the open join route. Judge rooms only; a normal auction never uses it. */
 export interface JudgeJoinLimits {
@@ -180,6 +188,10 @@ interface Marker {
   createdAt: number;
   expiresAt: number;
   expired?: true;
+  /** When the room ended (hammer or expiry); the simulated holds are purged a grace after it. */
+  endedAt?: number;
+  /** The room's simulated holds have been dropped from the hold store. */
+  simPurged?: true;
   /** Made with the judge key. */
   keyed?: true;
 }
@@ -303,6 +315,8 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
   let loading: Promise<void> | undefined;
   let timer: ReturnType<typeof setInterval> | undefined;
   let sweeping: Promise<number> | undefined;
+  /** Ended rooms whose simulated holds are still to be purged, with the time they are due. */
+  const purgeDue = new Map<string, number>();
   let appDeps: HttpDeps | undefined;
 
   const audit = (deps: HttpDeps): Logger | undefined =>
@@ -317,6 +331,9 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
       if (typeof stored === 'boolean') paused = stored || opts.paused;
       for (const id of await deps.store.listAuctions()) {
         const m = (await deps.store.getJournal(markerKey(id)))?.value as Marker | undefined;
+        if (m !== undefined && m.expired === true && m.simPurged !== true) {
+          purgeDue.set(id, (m.endedAt ?? m.expiresAt) + SIM_PURGE_GRACE_MS);
+        }
         if (m !== undefined && m.expired !== true) {
           live.set(id, {
             expiresAt: m.expiresAt,
@@ -376,7 +393,13 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
       const prev = await deps.store.getJournal(markerKey(id));
       const value = prev?.value as Marker | undefined;
       if (prev !== null && value !== undefined && value.expired !== true) {
-        await deps.store.putJournal(markerKey(id), prev.version, { ...value, expired: true });
+        const endedAt = deps.clock.now();
+        await deps.store.putJournal(markerKey(id), prev.version, {
+          ...value,
+          expired: true,
+          endedAt,
+        });
+        if (opts.simHolds?.purge !== undefined) purgeDue.set(id, endedAt + SIM_PURGE_GRACE_MS);
       }
       log?.info('judge room ended', { event: 'judge_room.ended', auctionId: id, why });
     } catch (e) {
@@ -387,6 +410,41 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
         auctionId: id,
         error: e instanceof Error ? e.message : String(e),
       });
+    }
+  };
+
+  /** Drops the simulated holds of ended rooms whose grace is over, and marks the room as done. */
+  const purgeEnded = async (deps: HttpDeps, now: number): Promise<void> => {
+    const purge = opts.simHolds?.purge;
+    if (purge === undefined) {
+      purgeDue.clear();
+      return;
+    }
+    for (const [id, due] of [...purgeDue]) {
+      if (due > now) continue;
+      try {
+        const removed = await purge(id);
+        const prev = await deps.store.getJournal(markerKey(id));
+        const value = prev?.value as Marker | undefined;
+        if (prev !== null && value !== undefined && value.simPurged !== true) {
+          await deps.store.putJournal(markerKey(id), prev.version, { ...value, simPurged: true });
+        }
+        purgeDue.delete(id);
+        if (removed > 0) {
+          audit(deps)?.info('judge room sim holds purged', {
+            event: 'judge_room.sim_holds_purged',
+            auctionId: id,
+            removed,
+          });
+        }
+      } catch (e) {
+        // Stays due: the next sweep tries again.
+        audit(deps)?.error('judge room sim hold purge failed', {
+          event: 'judge_room.sim_purge_failed',
+          auctionId: id,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
     }
   };
 
@@ -415,6 +473,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
             // An unreadable room is handled when its lifetime runs out.
           }
         }
+        await purgeEnded(deps, deps.clock.now());
       } finally {
         sweeping = undefined;
       }
@@ -530,15 +589,14 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
 
   /**
    * Judges the judge key on a request. Returns undefined when it is right, otherwise the refusal.
-   * A wrong key counts toward the same lockout as a wrong room code (one guard for both); a
-   * locked-out source is refused even with the right key. The key is compared in constant time
+   * A wrong key counts toward a lockout of its own (`keyGuardOf`), apart from the room code
+   * guard, so key typos never block joins; a locked-out source is refused even with the right key. The key is compared in constant time
    * and never logged.
    */
   const checkKey = (c: Ctx, tag: string, now: number): Response | undefined => {
     const { deps } = c;
-    const guard = codeGuardOf(deps);
-    // The lockout is checked without using up the join attempts of a shared address: a right key
-    // costs nothing, a wrong one is a strike.
+    const guard = keyGuardOf(deps);
+    // A right key costs nothing, a wrong one is a strike on the key guard only.
     const lockedFor = guard.lockedFor(tag, now);
     if (lockedFor > 0) return refuse(deps, 429, 'judge_key_locked', 'key_locked', tag, lockedFor);
     const given = c.req.headers.get(JUDGE_KEY_HEADER) ?? '';

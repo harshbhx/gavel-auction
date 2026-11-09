@@ -15,6 +15,7 @@ import { verifyRotating, type SecretSet } from '../auth/rotation';
 import type { JtiStore, TokenPayload } from '../auth/token';
 import type { AuctionService } from '../runtime/auction-service';
 import { startVoiceBridge, type VoiceBridge } from '../voice/bridge';
+import { isOriginAllowed } from '../http/origins';
 
 export const AUDIO_PATH = '/audio';
 /** Largest audio message: 12 byte header and ten 640 byte frames, with room to spare. */
@@ -117,7 +118,7 @@ function refuse(socket: Duplex, status: number, text: string): void {
  */
 export function createAudioHost(opts: AudioHostOptions): AudioHost {
   const wss = new WebSocketServer({ noServer: true, maxPayload: AUDIO_MAX_PAYLOAD_BYTES });
-  const allowed = new Set(opts.allowedOrigins);
+  const allowed = opts.allowedOrigins;
   const jtis: JtiStore = {
     isRevoked: (jti) => opts.store.isDenied(jti as Parameters<RoomStore['isDenied']>[0]),
     consume: () => Promise.resolve(true),
@@ -157,7 +158,7 @@ export function createAudioHost(opts: AudioHostOptions): AudioHost {
     if (path !== AUDIO_PATH) return;
     socket.on('error', () => undefined);
     const origin = req.headers.origin;
-    if (typeof origin !== 'string' || !allowed.has(origin)) {
+    if (!isOriginAllowed(allowed, origin)) {
       refuse(socket, 403, 'Forbidden');
       return;
     }

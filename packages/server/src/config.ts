@@ -1,5 +1,6 @@
 import { isAbsolute } from 'node:path';
 import { z } from 'zod';
+import { parseOriginList } from './http/origins';
 import { isSecretKey } from './log/logger';
 
 const flag = z.enum(['0', '1']).transform((v) => v === '1');
@@ -12,12 +13,16 @@ const int = (min: number) =>
     .transform(Number)
     .pipe(z.number().int().min(min));
 
-const csv = z.string().transform((v) =>
-  v
-    .split(',')
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0),
-);
+/**
+ * A list of browser origins: each entry is trimmed, lowercased, stripped of a trailing slash and
+ * deduplicated. An entry with a path, query, wildcard or non-http(s) scheme fails the boot, since
+ * a silent mismatch would 403 every browser write and socket (#2233).
+ */
+const originList = z.string().transform((v, ctx) => {
+  const { origins, errors } = parseOriginList(v);
+  for (const message of errors) ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+  return errors.length > 0 ? z.NEVER : origins;
+});
 
 /** Minimum TOKEN_SECRET length in bytes and ADMIN_KEY length in characters (R-RT-131). */
 const MIN_SECRET_BYTES = 32;
@@ -50,7 +55,7 @@ const EnvObject = z.object({
   /** Directory for the durable files when STORE=file. */
   DATA_DIR: z.string().min(1).default('./data'),
   DATABASE_URL: z.string().min(1).optional(),
-  CORS_ORIGINS: csv.default(''),
+  CORS_ORIGINS: originList.default(''),
   /**
    * Origin of the web app. Every link the API hands out (console, screen, invite, receipt) is
    * built on it, since PUBLIC_URL is the API host and has no pages. Left out, the first entry of

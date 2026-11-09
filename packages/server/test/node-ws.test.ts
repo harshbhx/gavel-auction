@@ -45,6 +45,19 @@ describe('node ws host (R-RT-074, T-RT-057)', () => {
     expect(status).toBe(403);
   });
 
+  it('refuses the null origin and an origin that is only a prefix match with 403', async () => {
+    const port = await start();
+    for (const origin of ['null', `${ORIGIN}.evil.example`]) {
+      const status = await new Promise<number>((resolve, reject) => {
+        const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, { origin });
+        ws.on('unexpected-response', (_req, res) => resolve(res.statusCode ?? 0));
+        ws.on('open', () => reject(new Error('opened')));
+        ws.on('error', () => undefined);
+      });
+      expect(status, origin).toBe(403);
+    }
+  });
+
   it('closes 1009 on a 16385 byte frame', async () => {
     const port = await start();
     const code = await new Promise<number>((resolve, reject) => {
