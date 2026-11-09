@@ -74,3 +74,71 @@
   color: var(--color-fg);
   font-weight: 700;
 }
+
+/* Verify area: the same ruled box, a paste field and two actions. */
+.gv-verify {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 40rem;
+  margin-inline: auto;
+  color: var(--color-fg);
+}
+
+.gv-verify > h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-5);
+}
+
+.gv-verify__room,
+.gv-verify__paste {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.gv-verify__paste > label {
+  font-weight: 600;
+}
+
+.gv-verify__text {
+  box-sizing: border-box;
+  inline-size: 100%;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
+  resize: vertical;
+}
+
+.gv-verify__hint,
+.gv-verify__paste small {
+  margin: 0;
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-1);
+}
+
+.gv-verify__msg {
+  margin: 0;
+  padding-inline-start: var(--space-3);
+  border-inline-start: var(--border-width-strong) solid var(--color-warning);
+}
+
+.gv-verify__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.gv-verify__file {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-size-1);
+}

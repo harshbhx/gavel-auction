@@ -135,6 +135,11 @@ export function JudgeHub({
   const base = `${origin}/r/${encodeURIComponent(roomId)}`;
   const screenLink = keys.screen === null ? null : `${base}/screen#token=${keys.screen}`;
   const consoleLink = keys.auctioneer === null ? null : `${base}/console#token=${keys.auctioneer}`;
+  // Only the read-only reviewer token opens the audit link here; the console token is not shown.
+  const auditLink =
+    keys.reviewer === undefined || keys.reviewer === null
+      ? null
+      : `${base}/audit#token=${keys.reviewer}`;
   const joinQuery = code === null ? '' : `?c=${encodeURIComponent(code)}`;
   const joinLink = `${origin}/join/${encodeURIComponent(roomId)}${joinQuery}`;
 
@@ -355,6 +360,21 @@ export function JudgeHub({
             <Button onClick={() => copy('all', shareText)}>
               {copied === 'all' ? t('hub.shareCopied') : t('hub.shareAll')}
             </Button>
+            {auditLink !== null && (
+              <a
+                className="gv-flow__action gv-flow__action--plain"
+                href={auditLink}
+                target="_blank"
+                rel="noopener"
+                data-testid="hub-audit-link"
+              >
+                {t('hub.auditLink')}
+                <span className="gv-visually-hidden">{newTab}</span>
+              </a>
+            )}
+            <a className="gv-flow__action gv-flow__action--plain" href="/verify">
+              {t('hub.verifyLink')}
+            </a>
             <a className="gv-flow__action gv-flow__action--plain" href="/demo">
               {t('hub.newDemo')}
             </a>

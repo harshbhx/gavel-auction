@@ -39,6 +39,7 @@ const ROUTES: readonly string[] = [
   '/',
   '/demo',
   '/try',
+  '/verify',
   '/join/r1',
   '/r/r1/register',
   '/r/r1/bid',

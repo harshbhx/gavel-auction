@@ -12,6 +12,7 @@ export type RouteTitleKey =
   | 'receipt.none'
   | 'hub.title'
   | 'try.title'
+  | 'verify.page.title'
   | 'demo.roleConsole'
   | 'demo.roleScreen'
   | 'audit.title'
@@ -25,6 +26,7 @@ export type RouteId =
   | 'landing'
   | 'demo'
   | 'try'
+  | 'verify'
   | 'scriptedDemo'
   | 'scriptedJoin'
   | 'scriptedBid'
@@ -64,6 +66,7 @@ export const ROUTES: readonly RouteDef[] = [
   { id: 'scriptedJoin', path: '/demo/scripted/join', titleKey: 'app.name' },
   { id: 'scriptedBid', path: '/demo/scripted/bid', titleKey: 'bid.price' },
   { id: 'try', path: '/try', titleKey: 'try.title' },
+  { id: 'verify', path: '/verify', titleKey: 'verify.page.title' },
   { id: 'join', path: '/join/:roomId', titleKey: 'landing.join' },
   { id: 'register', path: '/r/:roomId/register', titleKey: 'reg.step1' },
   { id: 'return', path: '/r/:roomId/return', titleKey: 'reg.step1' },

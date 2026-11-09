@@ -11,6 +11,7 @@ import { Cents, type MsgId } from '@gavel/shared';
 import { PROTOCOL_VERSION } from './wire';
 import { t } from './copy/t';
 import { createJudgeRoom, judgeRoomsAvailable, judgeRoomsStatus } from './net/judgeRooms';
+import { checkJudgeKey, judgeKeyOffered } from './net/judgeKey';
 import { socketUrl, startLiveRoom, type LiveRoom } from './net/liveRoom';
 import { Announcer } from './a11y/Announcer';
 import type { PaymentsMode } from './config';
@@ -47,6 +48,7 @@ import { ApiError, apiErrorFor, unreachable } from './net/apiError';
 import { WatcherGate } from './screens/join/WatcherGate';
 import { LandingScreen } from './screens/landing/LandingScreen';
 import { JudgePanel, type RoomsState } from './screens/judge/JudgePanel';
+import { VerifyScreen } from './screens/verify/VerifyScreen';
 import { fetchOpsSummary, OpsView, type OpsSummaryView } from './ops/OpsView';
 import { DemoLauncher, DemoRoomError, type DemoLinks } from './screens/demo/DemoLauncher';
 import { ScriptedJoin } from './screens/demo/ScriptedJoin';
@@ -501,11 +503,15 @@ async function joinByCode(api: Api | undefined, code: string): Promise<boolean> 
 /** The judge panel: asks the host about live rooms and starts one without an operator key. */
 function TryRoute({ api }: { api: Api | undefined }) {
   const [rooms, setRooms] = useState<RoomsState>(api === undefined ? 'noServer' : 'checking');
+  const [keyOffered, setKeyOffered] = useState(false);
   useEffect(() => {
     if (api === undefined) return undefined;
     let live = true;
     judgeRoomsStatus(api.apiBase).then((next) => {
       if (live) setRooms(next);
+    });
+    judgeKeyOffered(api.apiBase).then((next) => {
+      if (live) setKeyOffered(next);
     });
     return () => {
       live = false;
@@ -514,12 +520,17 @@ function TryRoute({ api }: { api: Api | undefined }) {
   return (
     <JudgePanel
       rooms={rooms}
-      createRoom={async (goalCents) => {
+      createRoom={async (goalCents, judgeKey) => {
         if (api === undefined) throw new Error('no api');
-        return createJudgeRoom(api.apiBase, goalCents);
+        return createJudgeRoom(api.apiBase, goalCents, judgeKey);
       }}
       openRoom={navigate}
       joinByCode={(code) => joinByCode(api, code)}
+      keyOffered={keyOffered}
+      checkKey={(key) =>
+        api === undefined ? Promise.resolve('unreachable') : checkJudgeKey(api.apiBase, key)
+      }
+      apiBase={api?.apiBase}
     />
   );
 }
@@ -1237,6 +1248,7 @@ function Routed({
     );
   }
   if (id === 'try') return <TryRoute api={api} />;
+  if (id === 'verify') return <VerifyScreen apiBase={api?.apiBase} />;
   if (id === 'notFound') return <NotFound />;
   if (id === 'replay') return <ReplayRoute match={match} />;
   if (id === 'ledger') return <LedgerRoute match={match} />;

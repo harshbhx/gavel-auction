@@ -253,7 +253,7 @@ describe('judge dialog', () => {
     render(panel());
     fireEvent.click(barButton('try.bar.join'));
     const tabs = screen.getAllByRole('tab');
-    expect(tabs.length).toBe(5);
+    expect(tabs.length).toBe(6);
     expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
     fireEvent.keyDown(tabs[0] as HTMLElement, { key: 'ArrowRight' });
     expect(screen.getAllByRole('tab')[1]?.getAttribute('aria-selected')).toBe('true');
