@@ -48,16 +48,16 @@ Read these files in this order:
 
 **Evidence and honest limits (these must appear in the video).**
 
-| Item                                                                                 | Status you may state                                                                                                         |
-| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| G0 connectivity, G1 partial capture, G2 wallet and guest-card authorize, G4 webhooks | PASS on the real PayPal sandbox                                                                                              |
-| G3 honor period and reauthorize                                                      | a timed sandbox probe in progress, final reading about 12 Nov; no result is claimed                                          |
-| G5 speech accuracy                                                                   | PARTIAL: synthetic, noise-free audio only, every spoken bid confirmed                                                        |
-| Full multi-bidder settlement                                                         | not run end to end on the sandbox; shown on the fake PayPal                                                                  |
-| Crash recovery                                                                       | shown on the fake PayPal, plus one in-process crash on the sandbox                                                           |
-| Latency                                                                              | hammer to SETTLED p95 5.6 s (n=20, inside the 6 s target); hammer to CAPTURED p95 3.0 s against a 2.5 s target, still tuning |
-| APIMatic SDK                                                                         | not generated yet; only the OpenAPI spec is ready                                                                            |
-| Money                                                                                | PayPal sandbox only. No real money moves.                                                                                    |
+| Item                                                                                 | Status you may state                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G0 connectivity, G1 partial capture, G2 wallet and guest-card authorize, G4 webhooks | PASS on the real PayPal sandbox                                                                                                                                                         |
+| G3 honor period and reauthorize                                                      | a timed sandbox probe in progress, final reading about 12 Nov; no result is claimed                                                                                                     |
+| G5 speech accuracy                                                                   | PARTIAL: synthetic, noise-free audio only, every spoken bid confirmed                                                                                                                   |
+| Full multi-bidder settlement                                                         | not run end to end on the sandbox; shown on the fake PayPal                                                                                                                             |
+| Crash recovery                                                                       | shown on the fake PayPal, plus one in-process crash on the sandbox                                                                                                                      |
+| Latency                                                                              | both targets missed on run 42563147792 (n=49, INCOMPLETE): hammer to SETTLED p95 6.9 s against 6 s, hammer to CAPTURED p95 3.8 s against 2.5 s; an earlier n=20 run had 5.6 s and 3.0 s |
+| APIMatic SDK                                                                         | not generated yet; only the OpenAPI spec is ready                                                                                                                                       |
+| Money                                                                                | PayPal sandbox only. No real money moves.                                                                                                                                               |
 
 **Sponsors and tools (name them only as the repo supports).**
 
