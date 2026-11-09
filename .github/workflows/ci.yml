@@ -177,7 +177,7 @@ jobs:
           # own secret store); the same check runs on main. The secret is
           # repository-level, so a pull request from this repository whose workflow file is changed can
           # read it; it holds only the banned-word list, not a credential.
-          BANNED_WORDS_ALLOW_EMPTY: ${{ github.event.pull_request.head.repo.fork == true || github.actor == 'dependabot[bot]' }}
+          BANNED_WORDS_ALLOW_EMPTY: ${{ github.event.pull_request.head.repo.fork == true || github.event.pull_request.user.login == 'dependabot[bot]' }}
       # Commit messages (body and trailers), the pull request title and description and the branch
       # name are checked too, because they reach the public history. The text is passed through
       # the environment and never interpolated into the command line.
@@ -189,7 +189,7 @@ jobs:
           --git-log "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
         env:
           BANNED_WORDS: ${{ secrets.BANNED_WORDS }}
-          BANNED_WORDS_ALLOW_EMPTY: ${{ github.event.pull_request.head.repo.fork == true || github.actor == 'dependabot[bot]' }}
+          BANNED_WORDS_ALLOW_EMPTY: ${{ github.event.pull_request.head.repo.fork == true || github.event.pull_request.user.login == 'dependabot[bot]' }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
           BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
@@ -224,7 +224,7 @@ jobs:
       # The squash subject on main is the PR title, so its length is the one rule worth enforcing
       # there (the key-first rule is checked by pr-meta). The text arrives through the environment.
       - name: Pull request title length
-        if: ${{ github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' }}
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]' }}
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
@@ -235,7 +235,7 @@ jobs:
           fi
           echo "title length $len ok"
   ownership:
-    if: ${{ github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' }}
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
