@@ -130,7 +130,7 @@ describe('ConfirmSheet (T-WEB-034)', () => {
     vi.useRealTimers();
   });
 
-  const mount = (over: Partial<Parameters<typeof ConfirmSheet>[0]> = {}) => {
+  const mount = (over: Partial<Parameters<typeof ConfirmSheet>[0]> = {}, bare = false) => {
     const onRespond = vi.fn();
     const onDismiss = vi.fn();
     const ui = (extra: Partial<Parameters<typeof ConfirmSheet>[0]> = {}) => (
@@ -139,7 +139,7 @@ describe('ConfirmSheet (T-WEB-034)', () => {
         paddle={12}
         currentCents={35000}
         onRespond={onRespond}
-        onDismiss={onDismiss}
+        {...(bare ? {} : { onDismiss })}
         now={() => 0}
         {...over}
         {...extra}
@@ -161,7 +161,7 @@ describe('ConfirmSheet (T-WEB-034)', () => {
   });
 
   it('no closes it too, even when the parent keeps the request', () => {
-    const { onRespond } = mount({ onDismiss: undefined });
+    const { onRespond } = mount({}, true);
     fireEvent.click(screen.getByRole('button', { name: t('confirm.no') }));
     expect(onRespond).toHaveBeenCalledWith('c1', false);
     expect(screen.queryByRole('dialog')).toBeNull();
