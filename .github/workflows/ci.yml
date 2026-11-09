@@ -220,6 +220,19 @@ jobs:
       - name: Lint commit messages
         if: ${{ github.event_name == 'pull_request' && hashFiles('commitlint.config.*') != '' }}
         run: npx commitlint --from "origin/${{ github.base_ref }}" --to HEAD
+      # The squash subject on main is the PR title, so its length is the one rule worth enforcing
+      # there (the key-first rule is checked by pr-meta). The text arrives through the environment.
+      - name: Pull request title length
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          len="${#PR_TITLE}"
+          if [ "$len" -gt 72 ]; then
+            echo "::error title=PR title too long::The pull request title is $len characters; the limit is 72 (it becomes the squash commit subject)."
+            exit 1
+          fi
+          echo "title length $len ok"
   ownership:
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest

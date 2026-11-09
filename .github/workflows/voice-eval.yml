@@ -246,8 +246,9 @@ jobs:
         env:
           DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          PROVIDER: ${{ inputs.provider }}
         # Exits 3 and fails this job when recordings are missing, so a green run always has scores.
-        run: npm run eval -w @gavel/voice -- --mode live --provider "${{ inputs.provider }}" --out eval-out/live
+        run: npm run eval -w @gavel/voice -- --mode live --provider "$PROVIDER" --out eval-out/live
       - name: Job summary
         if: always()
         run: |

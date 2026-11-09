@@ -11,3 +11,13 @@ report/
 *.tsbuildinfo
 .DS_Store
 scripts/banned-words.txt
+playwright-report/
+test-results/
+load-report/
+redteam-out/
+.wrangler/
+.vite/
+.turbo/
+.idea/
+.vscode/
+*.swp

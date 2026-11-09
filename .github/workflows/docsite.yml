@@ -181,6 +181,18 @@ jobs:
           name: docsite
           path: site
 
+      # The branch name is attacker-chosen text. It reaches the shell only through the env var
+      # RAW_BRANCH and leaves this step as a sanitised alias of [A-Za-z0-9-] (max 40 chars).
+      - if: steps.gate.outputs.enabled == 'true'
+        id: alias
+        env:
+          RAW_BRANCH: ${{ github.head_ref || 'main' }}
+        run: |
+          alias="$(printf '%s' "$RAW_BRANCH" | tr -c 'A-Za-z0-9' '-' | sed -E 's/-+/-/g; s/^-+//; s/-+$//' | cut -c1-40 | sed -E 's/-+$//')"
+          [ -n "$alias" ] || alias="preview"
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then alias="main"; fi
+          echo "branch=$alias" >> "$GITHUB_OUTPUT"
+
       - if: steps.gate.outputs.enabled == 'true'
         id: deploy
         uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65
@@ -188,8 +200,12 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           # First run: create the Pages project (fails harmlessly once it exists).
+          # The only branch text inlined below is the sanitised alias from the step above, which
+          # holds [A-Za-z0-9-] only; the raw head_ref never appears in a command.
           preCommands: npx wrangler pages project create ${{ env.PAGES_PROJECT }} --production-branch=main || true
-          command: pages deploy site --project-name=${{ env.PAGES_PROJECT }} --branch=${{ github.head_ref || 'main' }} --commit-dirty=true
+          command: pages deploy site --project-name=${{ env.PAGES_PROJECT }} --branch=${{ steps.alias.outputs.branch }} --commit-dirty=true
 
       - if: steps.gate.outputs.enabled == 'true'
-        run: echo "Deployed to ${{ steps.deploy.outputs.deployment-url }}" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: echo "Deployed to $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
