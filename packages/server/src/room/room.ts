@@ -1881,7 +1881,7 @@ export class Room {
       minNext: view.minNext,
       ...(this.deps.maxCeilingCents === undefined
         ? {}
-        : { maxCeilingCents: this.deps.maxCeilingCents }),
+        : { maxCeilingCents: this.deps.maxCeilingCents as Cents }),
       ...(view.paused ? { paused: true, remainingMs: view.remainingMs ?? 0 } : {}),
       ...(this.hammered && this.endedByAuctioneer ? { stopped: true } : {}),
       ...(this.hammered || this.done ? { registrationClosed: true } : {}),
