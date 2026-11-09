@@ -25,6 +25,7 @@ import {
   JUDGE_KEY_HEADER,
   JUDGE_KEY_PATH,
   JUDGE_PAUSE_PATH,
+  JUDGE_JOIN_PATH,
   JUDGE_ROOMS_PATH,
   type JudgeRoomsOptions,
 } from '../src/http/judge-rooms';
@@ -132,6 +133,7 @@ interface Created {
   auctioneerToken: string;
   reviewerToken: string;
   reviewerLink: string;
+  screenToken: string;
   unlocked?: true;
 }
 const created = async (res: Response): Promise<Created> => (await res.json()) as Created;
@@ -351,6 +353,25 @@ describe('reviewer link', () => {
     // Not a judge room: same answer as no such room.
     const plain = await get(app, `/api/judge/rooms/${'0'.repeat(26)}/ledger`, c.reviewerToken);
     expect([401, 404]).toContain(plain.status);
+  });
+
+  it('refuses session and screen tokens on the ledger route, allows reviewer', async () => {
+    const { app, ledger } = setup();
+    const c = await created(await post(app, JUDGE_ROOMS_PATH));
+    const id = c.auctionId as Ulid;
+    const events = [
+      { type: 'AUCTION_CREATED', payload: { note: 'x' } },
+    ] as unknown as LedgerEvent[];
+    await ledger.append(id, sealBatch(events, genesisHead(id), 1000, null), 0);
+    const path = `/api/judge/rooms/${c.auctionId}/ledger`;
+    const joined = await post(app, JUDGE_JOIN_PATH, {
+      body: { code: c.joinCode, displayName: 'Ada' },
+    });
+    expect(joined.status).toBe(200);
+    const { sessionToken } = (await joined.json()) as { sessionToken: string };
+    expect([401, 403]).toContain((await get(app, path, sessionToken)).status);
+    expect([401, 403]).toContain((await get(app, path, c.screenToken)).status);
+    expect((await get(app, path, c.reviewerToken)).status).toBe(200);
   });
 
   it('answers 404 when the host passes no ledger', async () => {
