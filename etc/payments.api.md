@@ -720,6 +720,7 @@ export type HoldStatus = 'PENDING_APPROVAL' | 'HELD' | 'CAPTURED' | 'VOIDED' | '
 
 // @public (undocumented)
 export interface HoldStore {
+    byAuthId?(authId: string): Promise<HoldRecord | null>;
     // (undocumented)
     byBidder(auctionId: string, bidderId: string): Promise<HoldRecord | null>;
     // (undocumented)
@@ -1033,8 +1034,12 @@ export function lookupUnknownReauths(deps: ReauthLookupDeps, auctionId: string):
 export const MAX_DESCRIPTION_LENGTH = 127;
 
 // @public
+export const MAX_PRUNED_WEBHOOK_IDS = 20000;
+
+// @public
 export class MemoryHoldStore implements HoldStore {
     constructor(initial?: HoldSnapshot, onChange?: ((s: HoldSnapshot) => void) | undefined);
+    byAuthId(authId: string): Promise<HoldRecord | null>;
     byBidder(auctionId: string, bidderId: string): Promise<HoldRecord | null>;
     // (undocumented)
     get(holdId: string): Promise<HoldRecord | null>;
@@ -1047,7 +1052,8 @@ export class MemoryHoldStore implements HoldStore {
 
 // @public
 export class MemoryJournalStore implements JournalStore {
-    constructor(initial?: JournalSnapshot, onChange?: ((s: JournalSnapshot) => void) | undefined);
+    constructor(initial?: JournalSnapshot, onChange?: ((s: JournalSnapshot) => void) | undefined,
+    persistLeases?: boolean);
     // (undocumented)
     acquireLease(auctionId: string, owner: string, ttlMs: number, nowMs: number): Promise<boolean>;
     // (undocumented)
@@ -1084,6 +1090,7 @@ export class MemoryWebhookEventStore implements WebhookEventStore {
     markProcessed(id: string, result: string): Promise<void>;
     // (undocumented)
     parkOrphan(id: string, untilMs: number): Promise<void>;
+    prune(beforeMs: number): Promise<number>;
     // (undocumented)
     snapshot(): WebhookSnapshot;
 }
@@ -2467,6 +2474,7 @@ export interface WebhookEventStore {
     markProcessed(id: string, result: string): Promise<void>;
     // (undocumented)
     parkOrphan(id: string, untilMs: number): Promise<void>;
+    prune?(beforeMs: number): Promise<number>;
 }
 
 // @public (undocumented)
@@ -2523,6 +2531,7 @@ export interface WebhookResponse {
 export interface WebhookSnapshot {
     // (undocumented)
     events: Record<string, StoredWebhook>;
+    pruned?: string[];
 }
 
 // @public (undocumented)

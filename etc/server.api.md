@@ -436,12 +436,13 @@ export interface WebhookIntakeDeps {
     onCaptureHint?(hold: HoldRecord): Promise<void>;
     onHoldStatus(hold: HoldRecord): Promise<void>;
     orphanWindowMs?: number;
+    retentionMs?: number;
     truth(hold: HoldRecord): Promise<HoldTruth>;
 }
 
 // Warnings were encountered during analysis:
 //
-// /home/runner/work/gavel-auction/gavel-auction/.api-types/server/runtime/webhook-intake.d.ts:37:5 - (ae-forgotten-export) The symbol "Json" needs to be exported by the entry point index.d.ts
+// /home/runner/work/gavel-auction/gavel-auction/.api-types/server/runtime/webhook-intake.d.ts:40:5 - (ae-forgotten-export) The symbol "Json" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 
