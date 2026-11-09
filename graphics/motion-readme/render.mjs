@@ -65,18 +65,20 @@ for (const t of ['paper', 'dark'])
     limit: 500 * 1024,
   });
 
-/* ---- stats: the two hammer latency numbers, both measured and both missed ---- */
-const col = (i, label, to, dec, unit, target, tag, cls) => `
-<div class="abs" style="left:${60 + i * 600}px;top:0;width:560px;height:360px">
-  <div class="lab rise" style="--d:${0.05 + i * 0.12}s;position:absolute;top:56px;font-size:16px">${label}</div>
-  <div class="disp" style="position:absolute;top:92px;font-size:200px;white-space:nowrap"><span data-count="${to}" data-from="0" data-start="${0.1 + i * 0.12}" data-dur="1.1" data-dec="${dec}" data-suf="<small style='font-size:68px'> ${unit}</small>">0</span></div>
-  <div class="rise" style="--d:${1 + i * 0.12}s;position:absolute;top:306px;display:flex;gap:12px;align-items:center"><span class="tag ${cls}">${tag}</span><span class="lab" style="font-size:14px;color:var(--ink)">${target}</span></div>
+/* ---- stats: three things built and proven, big type ---- */
+const col = (i, label, to, unit, sub) => `
+<div class="abs" style="left:${40 + i * 420}px;top:0;width:400px;height:360px">
+  <div class="lab rise" style="--d:${0.05 + i * 0.12}s;position:absolute;top:50px;font-size:15px">${label}</div>
+  <div class="disp" style="position:absolute;top:84px;font-size:190px;white-space:nowrap"><span data-count="${to}" data-from="0" data-start="${0.1 + i * 0.12}" data-dur="1.1" data-dec="0" data-suf="<small style='font-size:64px'> ${unit}</small>">0</span></div>
+  <div class="rise" style="--d:${1 + i * 0.12}s;position:absolute;top:300px;display:flex;gap:12px;align-items:center"><span class="tag ok">Pass</span><span class="lab" style="font-size:14px;color:var(--ink)">${sub}</span></div>
 </div>`;
 const statsBody = `
-${col(0, 'Hammer to captured, p95', 3.77, 2, 's', 'target 2.5 s', 'Target missed', 'no')}
-${col(1, 'Hammer to settled, p95', 6.93, 2, 's', 'target 6 s', 'Target missed', 'no')}
-<div class="abs" style="left:640px;top:70px;height:230px;border-left:2px solid var(--rule)"></div>
-<div class="abs lab rise" style="--d:1.3s;left:60px;top:12px;font-size:12px">Measured on the real PayPal sandbox, 49 runs (1 failed). Source: evidence-latency run 42563147792</div>`;
+${col(0, 'Live voice, 24 synthetic clips', 24, '/ 24', 'answered, confirm before bid')}
+${col(1, 'Server killed mid-capture', 0, 'diffs', 'journal equals PayPal')}
+${col(2, 'Hash-chained ledger', 19, 'entries', 'the chain verifies')}
+<div class="abs" style="left:440px;top:60px;height:230px;border-left:2px solid var(--rule)"></div>
+<div class="abs" style="left:860px;top:60px;height:230px;border-left:2px solid var(--rule)"></div>
+<div class="abs lab rise" style="--d:1.3s;left:40px;top:12px;font-size:12px">Built and proven. PayPal sandbox only</div>`;
 for (const t of ['paper', 'dark'])
   await make('readme-stats', t, {
     w: 1280,

@@ -43,7 +43,7 @@ Built for the PayPal Hackathon 2026.
     <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/assets/readme/readme-stats-dark-poster.png">
     <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/readme-stats-poster.png">
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/readme-stats-dark.gif">
-    <img src="docs/assets/readme/readme-stats.gif" alt="Two measured numbers on the real PayPal sandbox, 49 runs with 1 failed: hammer to captured, p95, 3.77 seconds against a 2.5 second target, target missed; hammer to settled, p95, 6.93 seconds against a 6 second target, target missed." width="100%">
+    <img src="docs/assets/readme/readme-stats.gif" alt="Three things built and proven, PayPal sandbox only. Live voice: 24 of 24 synthetic clips answered by the live provider, and no spoken bid accepted without a confirm. A real server process killed mid-capture: 0 differences between the journal and PayPal. The hash-chained ledger: 19 entries and the chain verifies." width="100%">
   </picture>
 </p>
 
