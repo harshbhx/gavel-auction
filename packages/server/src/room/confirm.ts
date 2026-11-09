@@ -10,8 +10,12 @@ import type {
   RoomEvent,
 } from '@gavel/shared';
 
-/** How long a held voice bid waits for its bidder (R-RT-045). */
-export const CONFIRM_TTL_MS = 15_000;
+/**
+ * How long a held voice bid waits for its bidder (R-RT-045). Twenty seconds, so a bidder who is a
+ * couple of seconds slow still answers in time. An expired hold never places a bid: it is audited
+ * as expired and the bidder is asked to say it again.
+ */
+export const CONFIRM_TTL_MS = 20_000;
 
 /** A voice bid held back until its bidder answers; the engine has not seen it. */
 export interface PendingConfirm {

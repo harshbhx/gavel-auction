@@ -355,6 +355,7 @@ export function BidScreen({
           paddle={myPaddle}
           currentCents={price?.currentCents ?? null}
           onRespond={onConfirm}
+          onDismiss={(confirmId) => store.dispatch({ kind: 'confirm_resolved', confirmId })}
           now={serverNow}
         />
       )}

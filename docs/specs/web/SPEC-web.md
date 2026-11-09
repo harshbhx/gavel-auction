@@ -912,7 +912,10 @@ Bid screen
 - `confirm.no`: No
 - `confirm.changed`: Price changed to {amount}
 - `confirm.answered`: Already answered
-- `confirm.expired`: This question expired.
+- `confirm.expired`: This question expired. Say your bid again.
+- `confirm.secondsLeft`: {s} s left
+- `confirm.sent`: Your answer was sent.
+- `confirm.refused`: Your answer could not be sent.
 
 Console
 
