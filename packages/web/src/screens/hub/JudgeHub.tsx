@@ -317,11 +317,7 @@ export function JudgeHub({
 
       {ended && (
         <p className="gv-hub__ended" role="status" data-testid="hub-ended">
-          {closedHere
-            ? t('hub.close.done')
-            : stopped
-              ? t('hub.stoppedNote')
-              : t('hub.closedNote')}
+          {closedHere ? t('hub.close.done') : stopped ? t('hub.stoppedNote') : t('hub.closedNote')}
         </p>
       )}
 

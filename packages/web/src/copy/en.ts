@@ -710,7 +710,7 @@ export const en = {
   'bid.paused': 'Paused by the auctioneer',
   'bid.notOpenYet': 'Bidding has not opened yet.',
   'bid.closedBanner': 'Lot closed',
-  'bid.stoppedBanner': 'Room closed. The host stopped this auction.',
+  'bid.stoppedBanner': 'Auction stopped. The room is closed.',
   'bid.announce.price': 'Price is now {amount}. Paddle {n} is leading.',
   'bid.announce.outbid': 'You have been outbid. Current price {amount}.',
   'bid.vibrate': 'Vibrate when outbid',
