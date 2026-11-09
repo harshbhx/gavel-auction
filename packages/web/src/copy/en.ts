@@ -1331,6 +1331,7 @@ export const en = {
   'ledger.status.broken': 'Link broken',
   'ledger.status.unsealed': 'Not sealed',
   'ledger.status.checking': 'Checking',
+  'ledger.status.unchecked': 'Cannot check here',
   'ledger.genesis': 'Start of chain',
   'ledger.detail.title': 'Entry {seq}',
   'ledger.detail.region': 'Entry detail',
@@ -1340,6 +1341,8 @@ export const en = {
   'ledger.detail.prev': 'Previous hash',
   'ledger.chain.ok': 'Chain intact: {n} entries sealed and linked',
   'ledger.chain.bad': 'Chain broken at entry {n}',
+  'ledger.chain.unchecked':
+    'This browser cannot compute SHA-256 here (it needs a secure page), so the chain could not be checked. Nothing was found edited.',
   'ledger.chain.checking': 'Checking {n} entries in your browser',
   'ledger.tamper': 'Simulate an edit to entry {n}',
   'ledger.untamper': 'Undo the edit',

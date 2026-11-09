@@ -11,6 +11,7 @@ import { t } from '../copy/t';
 import { Button } from '../design/primitives/Button';
 import { sha256Hex } from '../util/hash';
 import { formatUsd } from '../util/money';
+import { useNarrow, useReducedMotion } from '../util/useMedia';
 import { AgGridReact } from './agRuntime';
 import { cardCell, statusCell, typeCell, type LedgerRow } from './cells';
 import { columnMemoryProps, gridStateFor, restoreSort } from './columnMemory';
@@ -31,7 +32,6 @@ import {
   type LedgerEntry,
 } from './ledgerModel';
 import { gavelTheme } from './theme';
-import { useNarrow, useReducedMotion } from './useGridEnv';
 import { cleanModel, readLedgerUrl, writeLedgerUrl, type FilterModel } from './urlState';
 import './grid.css';
 
@@ -77,6 +77,10 @@ interface VerifyRun {
 }
 
 const REVEAL_MS = 45;
+// Row and header heights per layout. Both are always passed, so a layout switch resets them.
+const CARD_ROW_PX = 104;
+const TABLE_ROW_PX = 40;
+const TABLE_HEADER_PX = 44;
 
 /** Row data for the sealed entries in a list, with the status a verify run gives them. */
 function markRows(
@@ -144,7 +148,8 @@ function useChain(
  * The hash-chained ledger as an AG Grid table: pinned number column, sorting, a search box, column
  * filters, resize and reorder, row selection with a detail panel, CSV export and copy, keyboard
  * navigation, and a status chip for every row. A row that was edited after sealing is highlighted.
- * Under 700px each row becomes a card, so the page never scrolls sideways.
+ * Under 700px each row becomes a card, so the page never scrolls sideways. The grid is created once:
+ * crossing 700px (a phone rotating) swaps the columns in place, so sort, filters, search and selection stay.
  */
 export default function LedgerGrid({
   entries,
@@ -470,9 +475,11 @@ export default function LedgerGrid({
             ? t('grid.verify.hashing', { n: entries.length })
             : run.phase === 'revealing'
               ? t('grid.verify.progress', { done: run.done, total: entries.length })
-              : firstBad(run.result) === null
+              : firstBad(run.result) === null && !hasUnchecked(run.result)
                 ? t('grid.verify.done', { n: entries.length })
-                : t('ledger.chain.bad', { n: firstBad(run.result) ?? 0 })}
+                : firstBad(run.result) === null
+                  ? t('ledger.chain.unchecked')
+                  : t('ledger.chain.bad', { n: firstBad(run.result) ?? 0 })}
         </p>
       )}
       {statuses === null && hasHash && (
@@ -480,13 +487,20 @@ export default function LedgerGrid({
           {t('ledger.chain.checking', { n: entries.length })}
         </p>
       )}
-      {statuses !== null && counts.verified + counts.tampered + counts.broken > 0 && (
-        <p className="gv-gridchain" data-state={bad === null ? 'ok' : 'bad'} role="status">
-          {bad === null
-            ? t('ledger.chain.ok', { n: counts.verified })
-            : t('ledger.chain.bad', { n: bad })}
+      {statuses !== null && counts.unchecked > 0 && (
+        <p className="gv-gridchain" data-state="checking" role="status">
+          {t('ledger.chain.unchecked')}
         </p>
       )}
+      {statuses !== null &&
+        counts.unchecked === 0 &&
+        counts.verified + counts.tampered + counts.broken > 0 && (
+          <p className="gv-gridchain" data-state={bad === null ? 'ok' : 'bad'} role="status">
+            {bad === null
+              ? t('ledger.chain.ok', { n: counts.verified })
+              : t('ledger.chain.bad', { n: bad })}
+          </p>
+        )}
       <p className="gv-grid-sr">{t('grid.kbd.help')}</p>
       <div
         className="gv-gridbox"
@@ -500,7 +514,6 @@ export default function LedgerGrid({
           onFirstDataRendered={(e) => {
             restoreSort(e.api, memoryKey);
           }}
-          key={narrow ? 'cards' : 'table'}
           theme={gavelTheme}
           rowData={rows}
           columnDefs={columns}
@@ -513,7 +526,8 @@ export default function LedgerGrid({
             headerCheckbox: !narrow,
             enableClickSelection: true,
           }}
-          {...(narrow ? { rowHeight: 104, headerHeight: 0 } : {})}
+          rowHeight={narrow ? CARD_ROW_PX : TABLE_ROW_PX}
+          headerHeight={narrow ? 0 : TABLE_HEADER_PX}
           includeHiddenColumnsInQuickFilter
           animateRows={!calm}
           tooltipShowDelay={300}
@@ -609,6 +623,11 @@ export default function LedgerGrid({
   );
 }
 
+function hasUnchecked(result: ReadonlyMap<number, ChainStatus>): boolean {
+  for (const s of result.values()) if (s === 'unchecked') return true;
+  return false;
+}
+
 function statusText(s: LedgerRow['status']): string {
   switch (s) {
     case 'verified':
@@ -619,6 +638,8 @@ function statusText(s: LedgerRow['status']): string {
       return t('ledger.status.broken');
     case 'unsealed':
       return t('ledger.status.unsealed');
+    case 'unchecked':
+      return t('ledger.status.unchecked');
     case 'checking':
       return t('ledger.status.checking');
   }

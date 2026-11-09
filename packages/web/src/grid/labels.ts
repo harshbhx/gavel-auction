@@ -48,6 +48,7 @@ export const STATUS_LABEL: Readonly<Record<ChainStatus, () => string>> = {
   tampered: () => t('ledger.status.tampered'),
   broken: () => t('ledger.status.broken'),
   unsealed: () => t('ledger.status.unsealed'),
+  unchecked: () => t('ledger.status.unchecked'),
 };
 
 export const STATUS_TONE: Readonly<Record<ChainStatus, ChipTone>> = {
@@ -55,6 +56,7 @@ export const STATUS_TONE: Readonly<Record<ChainStatus, ChipTone>> = {
   tampered: 'danger',
   broken: 'danger',
   unsealed: 'neutral',
+  unchecked: 'neutral',
 };
 
 export const STATUS_ICON: Readonly<Record<ChainStatus, IconName>> = {
@@ -62,4 +64,5 @@ export const STATUS_ICON: Readonly<Record<ChainStatus, IconName>> = {
   tampered: 'stop',
   broken: 'warning',
   unsealed: 'hollow',
+  unchecked: 'hollow',
 };

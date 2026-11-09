@@ -123,8 +123,20 @@ export function fontPreloadPlugin(): Plugin {
   };
 }
 
+/**
+ * Names the AG Grid chunk. Without this the library lands in a chunk named after whichever module
+ * Rollup picked first. scripts/check-size.mjs finds the chunk by its ag-grid- prefix: it keeps it out
+ * of the initial route and holds it to its own size budget.
+ */
+export function manualChunks(id: string): string | undefined {
+  return /[\\/]node_modules[\\/](?:ag-grid-community|ag-grid-react)[\\/]/.test(id)
+    ? 'ag-grid'
+    : undefined;
+}
+
 export default defineConfig({
   plugins: [react(), sandboxGuard(), cspPlugin(), fontPreloadPlugin()],
+  build: { rollupOptions: { output: { manualChunks } } },
   test: {
     environment: 'jsdom',
     globals: true,
