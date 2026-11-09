@@ -151,6 +151,9 @@ export function useScriptedPlayback(beats: readonly Beat[] = BEATS): Playback {
 /** Beat copy has no placeholders, so a union of its keys is safe to look up. */
 const say = (key: Beat['label'] | Beat['body']): string => t(key as 'scriptedDemo.b0.label');
 
+/** Speed labels have no placeholders, so a union of their keys is safe to look up. */
+const speedText = (s: PlaybackSpeed): string => t(SPEED_LABEL[s] as 'scriptedDemo.speed1');
+
 /** Caption, transport controls and the step list that sit beside the scripted screen. */
 export function ScriptedPlayer({
   playback,
@@ -213,18 +216,18 @@ export function ScriptedPlayer({
             className="gv-player__speed-btn tabular"
             variant={speed === s ? 'solid' : 'outline'}
             aria-pressed={speed === s}
-            aria-label={t('scriptedDemo.speedOption', { speed: t(SPEED_LABEL[s]) })}
+            aria-label={t('scriptedDemo.speedOption', { speed: speedText(s) })}
             data-testid={`scripted-speed-${s}`}
             onClick={() => playback.setSpeed(s)}
           >
-            {t(SPEED_LABEL[s])}
+            {speedText(s)}
           </Button>
         ))}
       </div>
       <p className="gv-player__note tabular" data-testid="scripted-duration">
         {t('scriptedDemo.duration', {
           seconds: Math.round(((total - 1) * BEAT_MS) / speed / 1000),
-          speed: t(SPEED_LABEL[speed]),
+          speed: speedText(speed),
         })}
       </p>
       <ol className="gv-player__steps" aria-label={t('scriptedDemo.steps')}>
