@@ -1,26 +1,43 @@
 # GAVEL brand kit
 
-One folder for the logo, the Devpost entry (text and images), the GitHub README graphics and the videos. Every file here is a copy: the originals stay in `docs/assets/` and `brand/svg/`, so existing links keep working. Every URL below is the raw file on `main`.
+One folder for the logo, the Devpost entry (text and images), the GitHub README graphics, the social images and the videos. Files under `brand/` are copies: the originals stay in `docs/assets/` and `brand/svg/`, so existing links keep working. Every URL below is the raw file on `main`. The "Used in" column says where each group is used.
 
 | Folder                | What is in it                                                                                                            |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | [`logo/`](logo)       | Logo SVGs by background, animated logo, product icons, PNG renders (lockup light and dark, mark, favicons, share images) |
+| [`logo/3d/`](logo/3d) | 3D logo set (turntable video and GIF, still angles): section below, to be added                                          |
 | [`devpost/`](devpost) | Paste-ready description and form fields, gallery, story images, thumbnail, preview page                                  |
 | [`readme/`](readme)   | The GitHub README graphics (GIF and poster)                                                                              |
 | [`video/`](video)     | MP4 and WebM of every animation above, each file under 10 MB                                                             |
 | [`svg/`](svg)         | The original logo SVG set and its usage guide (see "Logo reference" below)                                               |
 
-Quick start for Devpost: open [`devpost/FIELDS.md`](devpost/FIELDS.md) for the form fields, paste [`devpost/DESCRIPTION.md`](devpost/DESCRIPTION.md) into "About the project", upload `devpost/thumbnail.png` and `devpost/gallery/01` to `08` (PNG), and preview the result in [`devpost/preview/index.html`](devpost/preview/index.html) (open it in a browser; served from the repo, it loads the images from `main`).
+Quick start for Devpost: open [`devpost/FIELDS.md`](devpost/FIELDS.md) for the form fields and flags, paste [`devpost/DESCRIPTION.md`](devpost/DESCRIPTION.md) into "About the project", upload `devpost/thumbnail.png` and the gallery (`devpost/gallery/01-hero.gif`, then `02` to `08` as PNG), and preview the result in [`devpost/preview/index.html`](devpost/preview/index.html) (open it in a browser; over http it loads the images from `main`). Rebuild the preview after editing the description: `node brand/devpost/build-preview.mjs`.
 
-Not copied (already organised elsewhere): `docs/assets/social/` (X, LinkedIn, YouTube and GitHub share images with a manifest), `docs/assets/readme/see-it-run-*` (six UI recordings), `docs/assets/ag-grid/`, and the architecture and lifecycle diagrams in `docs/assets/readme/`.
+## All graphics at a glance
 
-Rebuild the preview after editing the description: `node brand/devpost/build-preview.mjs`.
+| Graphic                                                                                        | Where it lives                                         | Used in                                                     |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------- |
+| Logo SVGs (static, mono, reversed, plate)                                                      | `brand/svg`, copies in `brand/logo`                    | Web app, docs site, graphics renders, slides                |
+| Animated logo SVGs, sting                                                                      | `brand/logo/animated`                                  | README and docs motion, sting video                         |
+| Intro and outro GIF, MP4, WebM                                                                 | `brand/logo/animated`, `brand/video/motion`            | Video bumpers, README motion set                            |
+| Favicons, touch and app icons, og and twitter images                                           | `brand/logo/png`                                       | Web app head and share previews (`packages/web/index.html`) |
+| README banner, stats, footer, reel, how-it-works, results                                      | `brand/readme`                                         | Root `README.md`                                            |
+| README hero, outro, architecture-flow GIFs                                                     | `brand/readme`                                         | README embed notes                                          |
+| README diagrams (architecture, lifecycle, hero SVG and PNG)                                    | `docs/assets/readme`                                   | Root `README.md`                                            |
+| README "see it run" recordings (six UI GIFs)                                                   | `docs/assets/readme/see-it-run-*`                      | Root `README.md`                                            |
+| AG Grid screenshots                                                                            | `docs/assets/ag-grid`                                  | Docs and the AG Grid sponsor write-up                       |
+| Devpost gallery (hero GIF plus 7 PNGs) and thumbnail                                           | `brand/devpost/gallery`, `brand/devpost/thumbnail.png` | Devpost gallery                                             |
+| Devpost description loops and animated slides                                                  | `brand/devpost/story`                                  | Devpost description                                         |
+| Social images (X, LinkedIn, GitHub preview, YouTube end card, thumbnails, lower thirds, chips) | `docs/assets/social`                                   | Share posts, repo social preview, demo video                |
+| 3D logo set                                                                                    | `brand/logo/3d` (to be added)                          | Outro, video, Devpost                                       |
 
-## Index of every file
+## Index of every file in the kit
 
 ### `logo/light/`
 
 Logo for light backgrounds (ink plus orange, transparent).
+
+Used in: Reference copy. The web app (`Logo.tsx`), the docs site and the graphics renders read `brand/svg`.
 
 | File           | Pixels | Size | URL                                                                                         |
 | -------------- | ------ | ---- | ------------------------------------------------------------------------------------------- |
@@ -33,6 +50,8 @@ Logo for light backgrounds (ink plus orange, transparent).
 
 Logo for dark backgrounds (paper plus orange, transparent).
 
+Used in: Same as above, for dark surfaces.
+
 | File           | Pixels | Size | URL                                                                                        |
 | -------------- | ------ | ---- | ------------------------------------------------------------------------------------------ |
 | `lockup-h.svg` |        | 1 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/dark/lockup-h.svg |
@@ -43,6 +62,8 @@ Logo for dark backgrounds (paper plus orange, transparent).
 ### `logo/mono/`
 
 One-colour logo, black on light or white on dark or photos.
+
+Used in: Same as above, for one-colour use.
 
 | File                 | Pixels | Size | URL                                                                                              |
 | -------------------- | ------ | ---- | ------------------------------------------------------------------------------------------------ |
@@ -57,7 +78,9 @@ One-colour logo, black on light or white on dark or photos.
 
 ### `logo/animated/`
 
-Animated logo (SVG, plays once or loops), sting, and intro and outro GIFs with posters.
+Animated logo SVGs, sting, and intro and outro GIFs with posters.
+
+Used in: Animated SVGs: README and docs motion, source of the sting video. Intro and outro GIFs: video bumpers and the README motion set.
 
 | File                             | Pixels    | Size   | URL                                                                                                              |
 | -------------------------------- | --------- | ------ | ---------------------------------------------------------------------------------------------------------------- |
@@ -78,9 +101,25 @@ Animated logo (SVG, plays once or loops), sting, and intro and outro GIFs with p
 | `sting-transparent.svg`          |           | 3 KB   | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/animated/sting-transparent.svg          |
 | `sting.svg`                      |           | 3 KB   | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/animated/sting.svg                      |
 
+### `logo/`
+
+Product icons and share images (SVG sources).
+
+Used in: favicon, app icons and og images are rendered to PNG in CI and served by the web app.
+
+| File                    | Pixels | Size | URL                                                                                            |
+| ----------------------- | ------ | ---- | ---------------------------------------------------------------------------------------------- |
+| `app-icon-maskable.svg` |        | 1 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/app-icon-maskable.svg |
+| `app-icon.svg`          |        | 1 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/app-icon.svg          |
+| `favicon.svg`           |        | 1 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/favicon.svg           |
+| `og-twitter.svg`        |        | 2 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/og-twitter.svg        |
+| `og.svg`                |        | 2 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/og.svg                |
+
 ### `logo/png/`
 
-PNG renders of the logo SVGs (rendered in CI by `brand-assets.yml` from `brand/svg`). Light and dark are the horizontal lockup; the mark is on transparent.
+PNG renders of the logo SVGs (CI, `brand-assets.yml`).
+
+Used in: Favicons and touch icons: web app head. og and twitter: share previews. Lockups and mark: slides, docs, editors.
 
 | File                         | Pixels    | Size  | URL                                                                                                     |
 | ---------------------------- | --------- | ----- | ------------------------------------------------------------------------------------------------------- |
@@ -97,89 +136,87 @@ PNG renders of the logo SVGs (rendered in CI by `brand-assets.yml` from `brand/s
 | `og.png`                     | 1200x630  | 19 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/png/og.png                     |
 | `twitter.png`                | 1200x600  | 19 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/png/twitter.png                |
 
-### `logo/`
-
-Product icons and share images (SVG sources).
-
-| File                    | Pixels | Size | URL                                                                                            |
-| ----------------------- | ------ | ---- | ---------------------------------------------------------------------------------------------- |
-| `app-icon-maskable.svg` |        | 1 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/app-icon-maskable.svg |
-| `app-icon.svg`          |        | 1 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/app-icon.svg          |
-| `favicon.svg`           |        | 1 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/favicon.svg           |
-| `og-twitter.svg`        |        | 2 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/og-twitter.svg        |
-| `og.svg`                |        | 2 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/logo/og.svg                |
-
 ### `devpost/gallery/`
 
-Devpost Image Gallery, 1200x800 (3:2). Upload the PNGs in file order; the GIFs are animated versions.
+Devpost Image Gallery, 1200x800 (3:2). The hero is the one animated GIF; the rest are static PNGs.
+
+Used in: Devpost gallery (hero GIF and PNGs 02 to 08); the hero PNG is also the thumbnail.
 
 | File                         | Pixels   | Size   | URL                                                                                                            |
 | ---------------------------- | -------- | ------ | -------------------------------------------------------------------------------------------------------------- |
 | `01-hero.gif`                | 1200x800 | 1.3 MB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/gallery/01-hero.gif                |
 | `01-hero.png`                | 1200x800 | 107 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/gallery/01-hero.png                |
-| `02-how-it-works.gif`        | 1200x800 | 514 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/gallery/02-how-it-works.gif        |
 | `02-how-it-works.png`        | 1200x800 | 63 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/gallery/02-how-it-works.png        |
-| `03-architecture.gif`        | 1200x800 | 532 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/gallery/03-architecture.gif        |
 | `03-architecture.png`        | 1200x800 | 71 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/gallery/03-architecture.png        |
-| `04-judge-flow.gif`          | 1200x800 | 788 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/gallery/04-judge-flow.gif          |
 | `04-judge-flow.png`          | 1200x800 | 318 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/gallery/04-judge-flow.png          |
-| `05-audit-and-verify.gif`    | 1200x800 | 567 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/gallery/05-audit-and-verify.gif    |
 | `05-audit-and-verify.png`    | 1200x800 | 84 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/gallery/05-audit-and-verify.png    |
-| `06-partners.gif`            | 1200x800 | 605 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/gallery/06-partners.gif            |
 | `06-partners.png`            | 1200x800 | 64 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/gallery/06-partners.png            |
-| `07-open-data-and-gates.gif` | 1200x800 | 563 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/gallery/07-open-data-and-gates.gif |
 | `07-open-data-and-gates.png` | 1200x800 | 85 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/gallery/07-open-data-and-gates.png |
-| `08-ending.gif`              | 1200x800 | 779 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/gallery/08-ending.gif              |
 | `08-ending.png`              | 1200x800 | 53 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/gallery/08-ending.png              |
 
 ### `devpost/story/`
 
-Images for the Devpost description, GIF plus poster PNG. Put the banner at the top.
+Devpost description images: nine section loops (GIF plus poster) and seven animated slides (`slide-*`).
 
-| File                            | Pixels   | Size   | URL                                                                                                             |
-| ------------------------------- | -------- | ------ | --------------------------------------------------------------------------------------------------------------- |
-| `00-story-banner-poster.png`    | 1600x500 | 68 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/00-story-banner-poster.png    |
-| `00-story-banner.gif`           | 1200x375 | 478 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/00-story-banner.gif           |
-| `01-inspiration-poster.png`     | 1000x560 | 43 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/01-inspiration-poster.png     |
-| `01-inspiration.gif`            | 1000x560 | 232 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/01-inspiration.gif            |
-| `02-what-it-does-poster.png`    | 1000x560 | 184 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/02-what-it-does-poster.png    |
-| `02-what-it-does.gif`           | 1000x560 | 542 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/02-what-it-does.gif           |
-| `03-how-we-built-it-poster.png` | 1000x560 | 35 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/03-how-we-built-it-poster.png |
-| `03-how-we-built-it.gif`        | 1000x560 | 255 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/03-how-we-built-it.gif        |
-| `04-challenges-poster.png`      | 1000x560 | 47 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/04-challenges-poster.png      |
-| `04-challenges.gif`             | 1000x560 | 291 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/04-challenges.gif             |
-| `05-accomplishments-poster.png` | 1000x560 | 48 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/05-accomplishments-poster.png |
-| `05-accomplishments.gif`        | 1000x560 | 315 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/05-accomplishments.gif        |
-| `06-what-we-learned-poster.png` | 1000x560 | 38 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/06-what-we-learned-poster.png |
-| `06-what-we-learned.gif`        | 1000x560 | 219 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/06-what-we-learned.gif        |
-| `07-what-is-next-poster.png`    | 1000x560 | 43 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/07-what-is-next-poster.png    |
-| `07-what-is-next.gif`           | 1000x560 | 262 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/07-what-is-next.gif           |
-| `08-built-with-poster.png`      | 1000x560 | 53 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/08-built-with-poster.png      |
-| `08-built-with.gif`             | 1000x560 | 304 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/08-built-with.gif             |
+Used in: Devpost description: the section loops by heading, the slides under "Animated slides" and "Try it".
+
+| File                               | Pixels   | Size   | URL                                                                                                                |
+| ---------------------------------- | -------- | ------ | ------------------------------------------------------------------------------------------------------------------ |
+| `00-story-banner-poster.png`       | 1600x500 | 68 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/00-story-banner-poster.png       |
+| `00-story-banner.gif`              | 1200x375 | 478 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/00-story-banner.gif              |
+| `01-inspiration-poster.png`        | 1000x560 | 43 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/01-inspiration-poster.png        |
+| `01-inspiration.gif`               | 1000x560 | 232 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/01-inspiration.gif               |
+| `02-what-it-does-poster.png`       | 1000x560 | 184 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/02-what-it-does-poster.png       |
+| `02-what-it-does.gif`              | 1000x560 | 542 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/02-what-it-does.gif              |
+| `03-how-we-built-it-poster.png`    | 1000x560 | 35 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/03-how-we-built-it-poster.png    |
+| `03-how-we-built-it.gif`           | 1000x560 | 255 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/03-how-we-built-it.gif           |
+| `04-challenges-poster.png`         | 1000x560 | 47 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/04-challenges-poster.png         |
+| `04-challenges.gif`                | 1000x560 | 291 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/04-challenges.gif                |
+| `05-accomplishments-poster.png`    | 1000x560 | 48 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/05-accomplishments-poster.png    |
+| `05-accomplishments.gif`           | 1000x560 | 315 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/05-accomplishments.gif           |
+| `06-what-we-learned-poster.png`    | 1000x560 | 38 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/06-what-we-learned-poster.png    |
+| `06-what-we-learned.gif`           | 1000x560 | 219 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/06-what-we-learned.gif           |
+| `07-what-is-next-poster.png`       | 1000x560 | 43 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/07-what-is-next-poster.png       |
+| `07-what-is-next.gif`              | 1000x560 | 262 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/07-what-is-next.gif              |
+| `08-built-with-poster.png`         | 1000x560 | 53 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/08-built-with-poster.png         |
+| `08-built-with.gif`                | 1000x560 | 304 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/08-built-with.gif                |
+| `slide-02-how-it-works.gif`        | 1200x800 | 514 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/slide-02-how-it-works.gif        |
+| `slide-03-architecture.gif`        | 1200x800 | 532 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/slide-03-architecture.gif        |
+| `slide-04-judge-flow.gif`          | 1200x800 | 788 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/slide-04-judge-flow.gif          |
+| `slide-05-audit-and-verify.gif`    | 1200x800 | 567 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/slide-05-audit-and-verify.gif    |
+| `slide-06-partners.gif`            | 1200x800 | 605 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/slide-06-partners.gif            |
+| `slide-07-open-data-and-gates.gif` | 1200x800 | 563 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/slide-07-open-data-and-gates.gif |
+| `slide-08-ending.gif`              | 1200x800 | 779 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/slide-08-ending.gif              |
 
 ### `devpost/`
 
 Devpost thumbnail and paste-ready text.
 
+Used in: Devpost form: thumbnail, About the project, fields.
+
 | File                | Pixels   | Size   | URL                                                                                           |
 | ------------------- | -------- | ------ | --------------------------------------------------------------------------------------------- |
-| `DESCRIPTION.md`    |          | 11 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/DESCRIPTION.md    |
-| `FIELDS.md`         |          | 7 KB   | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/FIELDS.md         |
+| `DESCRIPTION.md`    |          | 14 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/DESCRIPTION.md    |
+| `FIELDS.md`         |          | 10 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/FIELDS.md         |
 | `build-preview.mjs` |          | 1 KB   | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/build-preview.mjs |
 | `thumbnail.png`     | 1200x800 | 107 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/thumbnail.png     |
 
 ### `devpost/preview/`
 
-Preview page of the Devpost project page, rendered from DESCRIPTION.md.
+Preview of the Devpost project page, built from DESCRIPTION.md.
+
+Used in: Preview only, not uploaded anywhere.
 
 | File            | Pixels | Size  | URL                                                                                               |
 | --------------- | ------ | ----- | ------------------------------------------------------------------------------------------------- |
-| `index.html`    |        | 18 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/preview/index.html    |
+| `index.html`    |        | 21 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/preview/index.html    |
 | `template.html` |        | 7 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/preview/template.html |
 
 ### `readme/`
 
-GitHub README banners, stats, footer, reel and diagram loops, GIF plus poster.
+GitHub README graphics, GIF plus poster, light and dark.
+
+Used in: Root `README.md`: banner, stats, footer, reel, how-it-works and results loops; `hero.gif`, `outro.gif` and `architecture-flow.gif` are in the README embed notes.
 
 | File                              | Pixels    | Size   | URL                                                                                                        |
 | --------------------------------- | --------- | ------ | ---------------------------------------------------------------------------------------------------------- |
@@ -213,6 +250,8 @@ GitHub README banners, stats, footer, reel and diagram loops, GIF plus poster.
 
 MP4 and WebM of the README loops.
 
+Used in: Editors, social posts and the video; same animation as `brand/readme`.
+
 | File                      | Pixels | Size   | URL                                                                                                      |
 | ------------------------- | ------ | ------ | -------------------------------------------------------------------------------------------------------- |
 | `how-it-works-dark.mp4`   |        | 67 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/readme/how-it-works-dark.mp4   |
@@ -238,6 +277,8 @@ MP4 and WebM of the README loops.
 
 MP4 and WebM of the logo intro and outro (1920x1080).
 
+Used in: Video bumpers for the demo video and social posts.
+
 | File                     | Pixels | Size   | URL                                                                                                     |
 | ------------------------ | ------ | ------ | ------------------------------------------------------------------------------------------------------- |
 | `gavel-intro-dark.mp4`   |        | 160 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/motion/gavel-intro-dark.mp4   |
@@ -252,6 +293,8 @@ MP4 and WebM of the logo intro and outro (1920x1080).
 ### `video/devpost-gallery/`
 
 MP4 and WebM of the eight animated gallery slides.
+
+Used in: Optional video versions of the slides; not uploaded to the Devpost gallery.
 
 | File                          | Pixels | Size   | URL                                                                                                                   |
 | ----------------------------- | ------ | ------ | --------------------------------------------------------------------------------------------------------------------- |
@@ -276,6 +319,8 @@ MP4 and WebM of the eight animated gallery slides.
 
 MP4 and WebM of the nine description loops.
 
+Used in: Optional video versions of the story loops.
+
 | File                      | Pixels | Size   | URL                                                                                                             |
 | ------------------------- | ------ | ------ | --------------------------------------------------------------------------------------------------------------- |
 | `00-story-banner.mp4`     |        | 177 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-story/00-story-banner.mp4     |
@@ -296,6 +341,93 @@ MP4 and WebM of the nine description loops.
 | `07-what-is-next.webm`    |        | 79 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-story/07-what-is-next.webm    |
 | `08-built-with.mp4`       |        | 127 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-story/08-built-with.mp4       |
 | `08-built-with.webm`      |        | 115 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-story/08-built-with.webm      |
+
+## Originals not copied here
+
+These stay where they are; the URLs are the raw files on `main`.
+
+### `docs/assets/social/`
+
+Social, YouTube and video-overlay images. Alt text for each is in `manifest.json`; the folder README says where each is uploaded.
+
+Used in: Share posts, GitHub social preview (upload by the repo owner), YouTube end card and thumbnails, lower thirds and chips in the demo video.
+
+| File                             | Size  | URL                                                                                                             |
+| -------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------- |
+| `bug-sandbox-only-1920x1080.png` | 15 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/bug-sandbox-only-1920x1080.png |
+| `bug-sandbox-only-tight.png`     | 14 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/bug-sandbox-only-tight.png     |
+| `chip-recorded-1920x1080.png`    | 11 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/chip-recorded-1920x1080.png    |
+| `chip-recorded.png`              | 7 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/chip-recorded.png              |
+| `chip-simulated-1920x1080.png`   | 11 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/chip-simulated-1920x1080.png   |
+| `chip-simulated.png`             | 6 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/chip-simulated.png             |
+| `github-social-preview.png`      | 59 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/github-social-preview.png      |
+| `linkedin-1200x627.png`          | 56 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/linkedin-1200x627.png          |
+| `lower-third-hook-alpha.webm`    | 39 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/lower-third-hook-alpha.webm    |
+| `lower-third-hook.png`           | 22 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/lower-third-hook.png           |
+| `lower-third-sandbox-alpha.webm` | 44 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/lower-third-sandbox-alpha.webm |
+| `lower-third-sandbox.png`        | 29 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/lower-third-sandbox.png        |
+| `og-1200x630.png`                | 56 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/og-1200x630.png                |
+| `x-card-1200x628.png`            | 56 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/x-card-1200x628.png            |
+| `x-card-1200x675.png`            | 56 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/x-card-1200x675.png            |
+| `youtube-end-card-1920x1080.png` | 76 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/youtube-end-card-1920x1080.png |
+| `youtube-end-card-guides.png`    | 82 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/youtube-end-card-guides.png    |
+| `youtube-thumbnail-A.png`        | 54 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/youtube-thumbnail-A.png        |
+| `youtube-thumbnail-B.png`        | 48 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/social/youtube-thumbnail-B.png        |
+
+### `docs/assets/readme/`
+
+Diagrams and UI recordings only (the loops are copied above): `architecture-*.svg/png`, `lifecycle-*.svg/png`, `hero-*.svg/png`, `outro*.svg/png`, `see-it-run-*`.
+
+Used in: Root `README.md`.
+
+| File                          | Size   | URL                                                                                                          |
+| ----------------------------- | ------ | ------------------------------------------------------------------------------------------------------------ |
+| `architecture-dark.png`       | 177 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/architecture-dark.png       |
+| `architecture-dark.svg`       | 144 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/architecture-dark.svg       |
+| `architecture-light.png`      | 179 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/architecture-light.png      |
+| `architecture-light.svg`      | 144 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/architecture-light.svg      |
+| `hero-dark.png`               | 114 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/hero-dark.png               |
+| `hero-dark.svg`               | 140 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/hero-dark.svg               |
+| `hero-light.png`              | 114 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/hero-light.png              |
+| `hero-light.svg`              | 140 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/hero-light.svg              |
+| `lifecycle-dark.png`          | 82 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/lifecycle-dark.png          |
+| `lifecycle-dark.svg`          | 141 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/lifecycle-dark.svg          |
+| `lifecycle-light.png`         | 82 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/lifecycle-light.png         |
+| `lifecycle-light.svg`         | 141 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/lifecycle-light.svg         |
+| `outro-light.svg`             | 139 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/outro-light.svg             |
+| `outro.png`                   | 102 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/outro.png                   |
+| `see-it-run-1-start-room.gif` | 909 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/see-it-run-1-start-room.gif |
+| `see-it-run-1-start-room.png` | 364 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/see-it-run-1-start-room.png |
+| `see-it-run-2-hold.gif`       | 511 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/see-it-run-2-hold.gif       |
+| `see-it-run-2-hold.png`       | 172 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/see-it-run-2-hold.png       |
+| `see-it-run-3-bids.gif`       | 419 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/see-it-run-3-bids.gif       |
+| `see-it-run-3-bids.png`       | 193 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/see-it-run-3-bids.png       |
+| `see-it-run-4-hammer.gif`     | 583 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/see-it-run-4-hammer.gif     |
+| `see-it-run-4-hammer.png`     | 204 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/see-it-run-4-hammer.png     |
+| `see-it-run-5-sold.gif`       | 632 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/see-it-run-5-sold.gif       |
+| `see-it-run-5-sold.png`       | 194 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/see-it-run-5-sold.png       |
+| `see-it-run-6-receipt.gif`    | 407 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/see-it-run-6-receipt.gif    |
+| `see-it-run-6-receipt.png`    | 224 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/readme/see-it-run-6-receipt.png    |
+
+### `docs/assets/ag-grid/`
+
+AG Grid screenshots.
+
+Used in: Docs and the AG Grid write-up.
+
+| File                        | Size   | URL                                                                                                         |
+| --------------------------- | ------ | ----------------------------------------------------------------------------------------------------------- |
+| `holds-desktop.png`         | 120 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/ag-grid/holds-desktop.png         |
+| `ledger-detail-desktop.png` | 220 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/ag-grid/ledger-detail-desktop.png |
+| `ledger-phone.png`          | 259 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/ag-grid/ledger-phone.png          |
+
+## 3D logo set (to be added)
+
+`brand/logo/3d/` is reserved for the 3D logo: a turntable video and GIF and still angles. It is being built separately; when it merges, list each file here with its size, raw URL and where it is used (outro, video, Devpost).
+
+| File        | Pixels | Size | Used in | URL |
+| ----------- | ------ | ---- | ------- | --- |
+| to be added |        |      |         |     |
 
 ## Logo reference
 
