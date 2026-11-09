@@ -60,7 +60,7 @@ No run read a buyer balance or available funds. The authorization keeps amount 5
 
 </NotVerified>
 
-- PayPal-account buyers only. Capture of a guest card order was never run on the sandbox.
+- PayPal-account buyers only. No `final_capture` and no 350.00 hammer capture was run on a guest card order. A later early G3 probe accepted a partial capture of 1.00 on the guest card authorization; it does not change the G1 verdict.
 - It does not measure latency or <Term id="webhook">webhooks</Term>.
 
 <CodePaths

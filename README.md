@@ -255,11 +255,11 @@ Full diagram and details: [docs/submission/ARCHITECTURE.md](docs/submission/ARCH
 
 ## Sponsors
 
-| Sponsor  | How GAVEL uses it                                  | Status                                                                                                                                  |
-| -------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Render   | Hosts the API and WebSocket host                   | In use: one service with a 1 GB persistent disk, see below                                                                              |
-| APIMatic | SDK and developer portal from the OpenAPI 3.1 spec | The spec is ready; APIMatic generation is pending (needs an account), so nothing is generated yet                                       |
-| AG Grid  | Ledger, bids and holds tables in the web app       | In review: [pull request #2046](https://github.com/harshbhx/gavel-auction/pull/2046) is open and not merged, so it is not on `main` yet |
+| Sponsor  | How GAVEL uses it                                  | Status                                                                                            |
+| -------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Render   | Hosts the API and WebSocket host                   | In use: one service with a 1 GB persistent disk, see below                                        |
+| APIMatic | SDK and developer portal from the OpenAPI 3.1 spec | The spec is ready; APIMatic generation is pending (needs an account), so nothing is generated yet |
+| AG Grid  | Ledger, bids and holds tables in the web app       | Merged on 9 Nov 2026: [pull request #2046](https://github.com/harshbhx/gavel-auction/pull/2046)   |
 
 **Render.** The GAVEL API and WebSocket host runs on [Render](https://render.com) as one Node web service (`starter` plan, always on) at [api.gavel.dualmindlab.tech](https://api.gavel.dualmindlab.tech/healthz), with a 1 GB persistent disk at `/var/data` that holds the hash-chained ledger, room log, settlement journals and hold records. [`render.yaml`](render.yaml) is the blueprint; deploys start from GitHub Actions through a Render deploy hook and are followed by `/version` and smoke checks. We do not use Render Postgres, cron jobs or preview environments yet. Details, the reasons for one instance, and the next steps: [Hosting on Render](https://docs.gavel.dualmindlab.tech/docs/run/hosting-on-render).
 

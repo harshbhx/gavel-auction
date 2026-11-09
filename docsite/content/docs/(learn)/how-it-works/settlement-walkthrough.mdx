@@ -91,7 +91,7 @@ Nightly sandbox spec R7 (workflows `nightly-sandbox`, runs of 6 and 7 Nov 2026 o
 
 - That the winner's remainder is released is **inferred** from the CAPTURED reading and the 422 on a later void (gate G1 decision A). The authorization keeps its original amount, and no run read a buyer balance.
 - The runner-up fallback and the void retries ran against the **fake PayPal**, not the sandbox.
-- Capture of a guest card authorization was never run on the sandbox.
+- On a guest card authorization only a 1.00 partial capture was seen (early G3 probe, 9 Nov). A `final_capture` and a void were never run on it.
 
 </NotVerified>
 

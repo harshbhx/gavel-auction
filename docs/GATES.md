@@ -21,8 +21,9 @@ Verdict: sandbox credentials work and the app can create an AUTHORIZE order.
 
 Decision: PASS
 Fallback if FAIL: none for payments; hold G1 to G4 and demo on the fake PayPal.
-Evidence: no evidence file is committed under docs/evidence/G0/ and the run published no artifact; the only record is the run log of workflow gate-g0, run 41815593520 (2026-11-04), which expires with the Actions log retention and is visible only with repository access. The run was made from branch gate/g0, before the main-only guard. Treat G0 as reported, not independently verifiable, until redacted evidence is committed.
-Links: workflow gate-g0, run 41815593520; secrets by name below.
+Evidence: docs/evidence/G0/G0-20261109T031839Z.jsonl (sha256 c85c66f3b2f016fae3f4105288fb4b35a59891572111cba3c8312dc757a8b073)
+Re-run: workflow gate-g0 dispatched from main on 2026-11-09 03:17 UTC, run 42555610707 (https://github.com/harshbhx/gavel-auction/actions/runs/42555610707), script version 710163d: token HTTP 200, order HTTP 201 CREATED, approve link present, intent AUTHORIZE read back, all assertions pass. The file is the redacted request and response log (tokens, app id, nonce and headers are [REDACTED]); it holds one order id. The original record is run 41815593520 (2026-11-04, branch gate/g0, before the main-only guard); its log expires and is not the evidence.
+Links: workflow gate-g0, runs 41815593520 (2026-11-04) and 42555610707 (2026-11-09); secrets by name below.
 Scope: connectivity, token scopes and order creation only. No buyer approval or capture was part of G0.
 Sandbox accounts: 1 business account that owns the app, and 5 personal buyer accounts, all US and USD. Buyer A, buyer B, buyer C (card), buyer D and buyer E use the emails gavel-buyer-a, gavel-buyer-b, gavel-buyer-card, gavel-buyer-d and gavel-buyer-e at personal.example.com. Passwords are not recorded in the repository.
 Secrets (names only): the app is `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET`; buyer credentials are the pairs `SANDBOX_BUYER`, `SANDBOX_BUYER2`, `SANDBOX_BUYER3` and `SANDBOX_CARD_BUYER`. The pair for buyer E (`SANDBOX_BUYER4`) is not set yet.
@@ -53,7 +54,7 @@ Fallback if FAIL: wallet buyers only, card path off (R-PAY-037).
 Evidence: docs/evidence/G1/G1-20261104T231047Z.jsonl (sha256 8ac39be0454bcab5c7e2764d87d1d09566ac384681fc3e361285f78c70422bb8)
 Evidence: docs/evidence/G1/G1-20261105T123116Z.jsonl (sha256 2c8ff2e139b0ecf66a1a273761ff8031f385f199f44dd0d2111cc54b10b7d4cb)
 Links: spec tags flipped: R-PAY-059, R-PAY-051.
-Scope: PayPal-account buyers only. Capture of a guest card order (the G2 guest AUTHORIZE) was never run on the sandbox.
+Scope: PayPal-account buyers only. No final_capture and no 350.00 hammer capture was run on a guest card order. A later early G3 probe accepted a partial capture of 1.00 on the guest card authorization (see G3 and docs/evidence/G3-early/); it does not change the G1 verdict or scope.
 Saga: a void refused with PREVIOUSLY_CAPTURED on the winner's remainder is treated as released (packages/payments/src/errorMap.ts, saga/remainder.ts).
 
 ## G2: card and guest AUTHORIZE
@@ -76,13 +77,13 @@ Decision: PASS
 Fallback if FAIL: restrict registration to wallet buyers.
 Evidence: docs/evidence/G2/G2-20261105T115228Z.jsonl (sha256 2a0e9ee97fbecfa3419647a93bf39a77369be82c7a5e624827fe0e1ebcfffdfe)
 Links: spec tags flipped: R-PAY-036, R-PAY-037. Flag: g2_card_authorize true.
-Scope: AUTHORIZE only. Capture and void of the guest card authorization were not run; G1 (run G1-20261105T123116Z) captured a PayPal-account order only.
+Scope: AUTHORIZE only. Void of the guest card authorization and a `final_capture` on it were not run; G1 (run G1-20261105T123116Z) captured a PayPal-account order only. Later, the early G3 probe accepted a partial capture of 1.00 on this guest card authorization at age 3.5075 days (run 42538613566, 9 Nov 2026, docs/evidence/G3-early/); that is an early reading, not part of the G2 result.
 
 ## G3: honor period versus validity and reauthorize
 
 Status: NOT RUN
 Run date / by: IN PROGRESS, real probe, day 0 was 7 Nov 2026 03:06 UTC (`.github/workflows/gate-g3.yml`; the earlier attempts on 4-7 Nov never ran, so no earlier day is claimed). Checkpoints at 3.5, 4 and 5 days; the final reading is about 12 Nov 06:17 UTC. Until those results exist the gate reads NOT RUN / IN PROGRESS.
-Early evidence: Additional early reading (not the full 5-day result): two older G2 authorizations are probed by `gate-g3-early.yml` (PR #1929, merged to main).
+Early evidence: Additional early reading (not the full 5-day result): two older G2 authorizations are probed by `gate-g3-early.yml` (PR #1929, merged to main). Redacted copies of its artifacts are committed under docs/evidence/G3-early/: g3-early-20261108T173529Z-read.json (sha256 47614397eda0f8d9b2c86ebd11c0414f9cdb8af4800acad90284caa880dc8477, run 42505706359, read only: both authorizations CREATED at ages 3.2374 and 3.234 days), g3-early-20261108T173639Z-probe.json (sha256 8f399464a0f0dd88a61d55f79128aa218507586c04c2dd5ae87078dfd2956b3a, run 42505780514: G2-wallet at 3.2383 days, capture HTTP 201, reauthorize 422 PAYER_CANNOT_PAY, then PARTIALLY_CAPTURED; G2-card not probed) and g3-early-20261109T000920Z-probe.json (sha256 7dfdc5277552d09e163a7e2a3f6800171bba8bce852319c6d917175b424df769, run 42538613566: G2-card at 3.5075 days, still CREATED, capture HTTP 201, reauthorize 422 PAYER_CANNOT_PAY, then PARTIALLY_CAPTURED; G2-wallet already PARTIALLY_CAPTURED and not probed). The artifact copies differ from the committed ones only by the line layout of one array (prettier). What this shows: a partial capture of 1.00 was accepted on both used authorizations after 3 days, and reauthorize was refused on both. What it does not show: the G3 validity window, whether reauthorize extends it (the probe captures 1.00 and then calls reauthorize in the same run, so the refusal is on an authorization that already holds a partial capture, which is not the clean reading), void of a guest card authorization, or a `final_capture`. G3 stays NOT RUN / IN PROGRESS.
 Simulated, not real: We simulated 30 days of auctions with a fake clock: holds, honor-period expiry, reauthorization, crashes and recovery, with the ledger balancing to the cent. This is a simulation, not a real sandbox result; PayPal's 29-day validity was not verified in the real sandbox. Details: [docs/evidence/SIM/SIM-MULTIDAY.md](evidence/SIM/SIM-MULTIDAY.md).
 Question: how long does an authorization stay capturable, and does reauthorize extend it?
 Setup: n/a
@@ -288,7 +289,7 @@ Verified, with evidence above:
 - Wallet and card AUTHORIZE work (G2), so the card and guest path is on (`g2_card_authorize` true).
 - Partial capture with `final_capture` closes the authorization as CAPTURED for two PayPal-account buyers (G1, decision A); that the remainder is released is inferred, not observed.
 - Real webhooks verify through PayPal's endpoint (G4). Tampered-event rejection is covered against the fake only.
-- The sandbox app and buyer accounts work (G0; Actions run log only, no committed evidence file).
+- The sandbox app and buyer accounts work (G0; redacted evidence file committed from the 9 Nov re-run, run 42555610707).
 
 Not run, results pending:
 
@@ -368,7 +369,7 @@ What this run changes: nothing in the status blocks above. It adds sandbox evide
 What this run does not prove:
 
 - G1: the remainder release is still inferred, not read from a buyer balance (decision A stands as written).
-- G2: no guest or card capture and no void of a card authorization ran; R2 stops at CREATED.
+- G2: R2 stops at CREATED; no void of a card authorization ran in the nightly. A 1.00 partial capture on the guest card authorization was accepted only in the early G3 probe (run 42538613566, 9 Nov).
 - G3: no honor-period or validity-window result; those results are still pending. The G3 probe runs every 6 hours (`gate-g3.yml`, cron `17 */6 * * *`) and the final reading is about 12 Nov 06:17 UTC. R3 answered 422, so reauthorize is unproven on this run.
 - G4 staging: R4 was skipped, so the real server kill after capture did not run. R10 is the in-process crash only.
 - G5: no audio ran, so no speech-to-text accuracy exists.

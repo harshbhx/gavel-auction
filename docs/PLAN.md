@@ -16,7 +16,7 @@ Deadline: Thu Nov 12 2026 12:00pm PST (= Fri Nov 13 01:30 IST). Early eligibilit
 | Crash and resume                                           | in-process test hook, one in-process crash on the sandbox    |                                          | trigger on a hosted server                                      |
 | Hosted demo                                                | web, API (Render) and docs site are up in sandbox mode       |                                          | a full recorded hosted run                                      |
 
-Gate G0, G1, G2 and G4: PASS on the sandbox (G1: two PayPal-account buyers, guest card capture not covered; G2: wallet and guest card AUTHORIZE). Gate G3: NOT RUN / IN PROGRESS (a real probe, day 0 7 Nov 2026 03:06 UTC). Gate G5: PARTIAL (synthetic, noise-free speech only, fixes chosen on the same clips, no real-room test; spoken bids always confirm). `docs/GATES.md` is the source of truth.
+Gate G0, G1, G2 and G4: PASS on the sandbox (G1: two PayPal-account buyers, guest card: only a 1.00 partial capture seen, no final_capture or void; G2: wallet and guest card AUTHORIZE). Gate G3: NOT RUN / IN PROGRESS (a real probe, day 0 7 Nov 2026 03:06 UTC). Gate G5: PARTIAL (synthetic, noise-free speech only, fixes chosen on the same clips, no real-room test; spoken bids always confirm). `docs/GATES.md` is the source of truth.
 
 ## 1. Pitch (one paragraph)
 

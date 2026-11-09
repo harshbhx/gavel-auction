@@ -16,7 +16,7 @@ The <Term id="sandbox">sandbox</Term> app authenticates (HTTP 200, payments scop
 
 <NotVerified title="Reported, not independently verifiable">
 
-No evidence file is committed for G0. The only record is the Actions run log of workflow `gate-g0`, which expires with log retention and needs repository access.
+G0 has a committed redacted evidence file, `docs/evidence/G0/G0-20261109T031839Z.jsonl`, from a re-run on 9 Nov 2026 (run 42555610707). The 4 Nov run log (41815593520) expires and is not the evidence.
 
 </NotVerified>
 
@@ -28,7 +28,7 @@ After a final <Term id="capture">capture</Term> the <Term id="authorization">aut
 
 <NotVerified title="Remainder release is inferred">
 
-No run read a buyer balance or available funds, so that the 150.00 remainder is released is inferred, not observed. Guest card capture was not run.
+No run read a buyer balance or available funds, so that the 150.00 remainder is released is inferred, not observed. On the guest card authorization only a 1.00 partial capture was seen (early G3 probe, 9 Nov); a `final_capture` and a void were not run.
 
 </NotVerified>
 
@@ -36,7 +36,7 @@ No run read a buyer balance or available funds, so that the 150.00 remainder is 
 
 <GateBadge id="G2" />
 
-A wallet buyer and a guest with a sandbox card were both authorized through the PayPal JS SDK v6 (5 Nov 2026). Authorize only: no capture and no void of a card authorization ran.
+A wallet buyer and a guest with a sandbox card were both authorized through the PayPal JS SDK v6 (5 Nov 2026). Authorize only in G2 itself. Later, a 1.00 partial capture was accepted on the guest card authorization in the early G3 probe (9 Nov); no void and no `final_capture` ran.
 
 ## G3: honor period versus validity and reauthorize
 

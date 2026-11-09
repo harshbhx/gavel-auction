@@ -26,11 +26,7 @@ Does the PayPal <Term id="sandbox">sandbox</Term> app authenticate, and can it c
 
 ## Evidence
 
-<Held title="Reported, not independently verifiable">
-
-No evidence file is committed under `docs/evidence/G0/`, and the run published no artifact. The only record is the run log of workflow `gate-g0`, run 41815593520 (4 Nov 2026), which is visible only with repository access and expires with the Actions log retention. The run was made from branch `gate/g0`, before the main-only guard. Treat G0 as reported until redacted evidence is committed.
-
-</Held>
+A redacted evidence file is committed: [`docs/evidence/G0/G0-20261109T031839Z.jsonl`](https://github.com/harshbhx/gavel-auction/blob/main/docs/evidence/G0/G0-20261109T031839Z.jsonl) (sha256 `c85c66f3b2f016fae3f4105288fb4b35a59891572111cba3c8312dc757a8b073`). It comes from a re-run of `gate-g0` dispatched from `main` on 9 Nov 2026 03:17 UTC, [run 42555610707](https://github.com/harshbhx/gavel-auction/actions/runs/42555610707): token HTTP 200, order HTTP 201 CREATED, approve link present, intent AUTHORIZE read back. Tokens, the app id and the nonce are redacted. The earlier record, run 41815593520 (4 Nov 2026, branch `gate/g0`, before the main-only guard), is a run log that expires and is not the evidence.
 
 The result is stated in [docs/GATES.md](https://github.com/harshbhx/gavel-auction/blob/main/docs/GATES.md). The badge above is read from that file when the site is built.
 
