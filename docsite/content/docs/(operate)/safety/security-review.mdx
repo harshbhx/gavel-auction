@@ -28,7 +28,7 @@ All eight P0 items (SEC-01 to SEC-07 and SEC-18) are PASS as of 2026-11-07, revi
 | SEC-11 | P1 | Audio and personal data | ACCEPTED | manual review |
 | SEC-12 | P1 | Dependency risk | PASS | `audit.yml`, `audit-waivers.json` |
 | SEC-13 | P1 | SSRF | PASS | `webhook.test.ts` (certificate URL host allowlist) |
-| SEC-14 | P1 | Denial of service on the parse path | PASS | `dos.test.ts` |
+| SEC-14 | P1 | Denial of service on the parse path | PARTIAL | `dos.test.ts`, proxy hops probe (2 hops on Render, checked once on 9 Nov) |
 | SEC-15 | P2 | Logging hygiene | PARTIAL | log scan after scenario S01 (run 42566851766) |
 | SEC-16 | P2 | Admin and ops pages | PASS | manual review |
 | SEC-17 | P2 | Clickjacking and PayPal return URL redirect | PASS | manual review |

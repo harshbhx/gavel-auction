@@ -26,8 +26,11 @@ services:
         value: '22'
       - key: NODE_ENV
         value: production
+      # Render's own Cloudflare edge and Render's proxy are two hops in front of the app, so the
+      # client is the second entry from the right of X-Forwarded-For. Verified once on 9 Nov 2026
+      # (docs/evidence/security/SEC-14/). Use 1 only behind a single proxy.
       - key: TRUSTED_PROXY_HOPS
-        value: '1'
+        value: '2'
       - key: STORE
         value: file
       - key: DATA_DIR

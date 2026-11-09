@@ -24,7 +24,7 @@ From `packages/server/src/config.ts` and the deploy guide. The server validates 
 | `CORS_ORIGINS` | list of origins | The web origin |
 | `GAVEL_HOLD_MAX_AGE_MS` | integer | Default 7200000: a <Term id="hold">hold</Term> older than this is flagged stale |
 | `RATE_JOIN_BURST`, `RATE_JOIN_PER_MIN` | integers | Defaults 40 and 10 |
-| `TRUSTED_PROXY_HOPS` | 0 to 10 | Default 0 |
+| `TRUSTED_PROXY_HOPS` | 0 to 10 | Default 0. The Render blueprint sets 2 (Render's Cloudflare edge and proxy); use 1 only behind a single proxy |
 | `LOG_LEVEL` | debug, info, warn, error | Default info |
 
 <Chip kind="fake">Fake PayPal</Chip> is the default. <Chip kind="sandbox">Sandbox</Chip> needs the three PayPal values.

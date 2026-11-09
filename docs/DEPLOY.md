@@ -14,6 +14,7 @@ Requirements: R-QA-042 (deploy), R-QA-044 (webhook registration). Hosting choice
 2. In the service Environment tab fill the variables the blueprint leaves empty. Names only:
    - `PUBLIC_URL`: the https URL Render gives the service (set after the first deploy, then redeploy).
    - `CORS_ORIGINS`: the origin of the hosted web app.
+   - `TRUSTED_PROXY_HOPS` is fixed in the blueprint at `2` for Render: Render's own Cloudflare edge and Render's proxy sit in front of the app, so the client is the second entry from the right of `X-Forwarded-For`. It was checked once on 9 Nov 2026 with two probe runners ([evidence](evidence/security/SEC-14/README.md)); use `1` only behind a single proxy, and repeat the probe after any change of the hosting chain.
    - `WEB_ORIGIN` (optional): the origin of the hosted web app, used for every link the API builds (console, screen, invite, receipt). Left out, the first `CORS_ORIGINS` entry is used, then `PUBLIC_URL`.
    - `TOKEN_SECRET`: at least 32 bytes, random.
    - `ADMIN_KEY`: at least 24 characters, random, different from `TOKEN_SECRET`.
