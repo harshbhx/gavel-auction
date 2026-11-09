@@ -36,7 +36,7 @@ export const en = {
   'mk.cta.try': 'Try the demo',
   'mk.hero.kicker': 'Auctions on PayPal holds',
   'mk.hero.sub':
-    'Set a limit once, bid by tap or QR, and the winner is charged only if the hammer falls.',
+    'Set a limit once, bid by voice or tap, and the winner is charged only if the hammer falls.',
   'mk.hero.demoNote': 'The demo replays a recorded room in your browser. No sign-in needed.',
   'mk.hero.or': 'Or start a live sandbox room, or join one with its code.',
   'mk.lot.aria': 'An example lot and what happens to a hold',
@@ -53,9 +53,9 @@ export const en = {
   'mk.how.step': 'Step {n}',
   'mk.how.s1.title': 'Hold',
   'mk.how.s1.body': 'Approve a PayPal hold for your limit. Held, not charged.',
-  'mk.how.s2.title': 'Bid by tap or voice',
+  'mk.how.s2.title': 'Bid by voice or tap',
   'mk.how.s2.body':
-    'Tap a bid on your phone, or the auctioneer says one into the console microphone. A spoken bid always shows a confirm step on the bidder screen before it counts.',
+    'Say a bid or tap a preset. A spoken bid always shows a confirm step before it counts.',
   'mk.how.s3.title': 'Hammer',
   'mk.how.s3.body':
     'The winner is charged only if PayPal confirms the hold. Every other hold is released.',
@@ -68,7 +68,7 @@ export const en = {
     'Hatched while held, solid at the hammer, hollow when released. Always with words, never colour alone.',
   'mk.feat.voice.title': 'Voice with a confirm step',
   'mk.feat.voice.body':
-    'The auctioneer speaks a bid into the console microphone and the bidder checks what the app heard. It counts only after the bidder confirms it.',
+    'Speak a bid and check what the app heard. It counts only after you confirm it.',
   'mk.feat.screen.title': 'Projector screen',
   'mk.feat.screen.body':
     'A large public view with the current bid and a fundraiser thermometer toward the goal.',
@@ -111,7 +111,7 @@ export const en = {
     'Run the room from a console with lots, a voice feed, a stop control and an audit trail.',
   'mk.aud.bid.title': 'Bidders',
   'mk.aud.bid.body':
-    'Join with a code or QR, set a limit, bid by tap, and see your hold at all times.',
+    'Join with a code or QR, set a limit, bid by voice or tap, and see your hold at all times.',
   'mk.faq.title': 'Questions',
   'mk.faq.q1': 'What is a hold?',
   'mk.faq.a1':
@@ -124,7 +124,7 @@ export const en = {
     'Bids you already placed stand and your hold stays in place. Open the room link again to carry on.',
   'mk.faq.q4': 'How does voice work?',
   'mk.faq.a4':
-    'The auctioneer says a bid into the console microphone, which works when the server has a speech service. The bidder sees what the app heard and confirms before it counts. The confirm step is always on. A bidder phone has no microphone.',
+    'Say a bid out loud. The app shows what it heard and asks you to confirm before it counts. The confirm step is always on.',
   'mk.faq.q5': 'Where is the data?',
   'mk.faq.a5':
     'Live demo rooms keep their records on the GAVEL server. The scripted demo runs from recorded events in your browser and makes no PayPal calls. The open datasets are published on Hugging Face and are synthetic by design.',
@@ -145,7 +145,7 @@ export const en = {
   'mk.sticky.label': 'Quick action',
   'mk.how.panel.label': 'What happens to your hold',
   'mk.how.panel.s1': 'Held: your limit is set aside and shown hatched.',
-  'mk.how.panel.s2': 'Still held: a voice bid from the auctioneer waits for your confirm.',
+  'mk.how.panel.s2': 'Still held: a voice bid waits for your confirm.',
   'mk.how.panel.s3': 'Hammer: the winning part is taken, the rest is released.',
   'mk.flow.title': 'Where the money is, step by step',
   'mk.flow.lead': 'One hold, one winning amount. Sample figures, not a real auction.',
