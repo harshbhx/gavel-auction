@@ -39,8 +39,10 @@ function osPort(): Promise<number> {
 export async function freePort(): Promise<number> {
   const worker = Number(process.env.VITEST_POOL_ID ?? process.env.VITEST_WORKER_ID ?? process.pid);
   const base = RANGE_START + (Number.isFinite(worker) ? worker % SLICES : 0) * SLICE;
-  for (let i = 0; i < 100; i += 1) {
-    const port = base + Math.floor(Math.random() * SLICE);
+  // Scan the slice from a pid-based offset, so processes sharing a slice start at different ports.
+  const offset = process.pid % SLICE;
+  for (let i = 0; i < SLICE; i += 1) {
+    const port = base + ((offset + i) % SLICE);
     if (issued.has(port) || !(await canBind(port))) continue;
     issued.add(port);
     return port;

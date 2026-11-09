@@ -50,8 +50,6 @@ describe('replay player', () => {
   it('shows the big screen view with the recorded lot title', async () => {
     mount();
     fireEvent.click(await screen.findByRole('button', { name: t('demo.roleScreen') }, LOAD));
-    expect(
-      await screen.findByRole('heading', { level: 1, name: bundle.title }, LOAD),
-    ).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: bundle.title }, LOAD)).toBeTruthy();
   });
 });
