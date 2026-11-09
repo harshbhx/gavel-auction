@@ -21,3 +21,14 @@ redteam-out/
 .idea/
 .vscode/
 *.swp
+
+# Secret files (issue 2327). The root .npmrc is committed project config (no credentials); any other .npmrc is ignored.
+.dev.vars
+.dev.vars.*
+*.pem
+*.key
+*.p12
+.npmrc
+!/.npmrc
+.netrc
+*.tfvars

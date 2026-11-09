@@ -4,7 +4,7 @@ name: evidence-hosted
 #   1. Warmup after idle: sleep IDLE minutes with no request to the host, then time GET /warmup and
 #      GET /healthz from a fresh process (new connection, DNS and TLS included). Repeated REPEATS
 #      times (so 3 repeats of 16 minutes is about 50 minutes of runner time). The host may never go
-#      cold, and the scheduled uptime workflow pings it every 5 minutes; the evidence file says so.
+#      cold (the scheduled uptime workflow runs only every few hours and is not a keep-alive); the evidence file says so.
 #   2. Webhook route: N sequential POSTs (20 to 100) of an event type the intake ignores. The route
 #      answers 200 without a verify call and stores nothing. The time includes the network from the
 #      GitHub runner, so it is an upper bound for the handler alone (the handler alone, on loopback,

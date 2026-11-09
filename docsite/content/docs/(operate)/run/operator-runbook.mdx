@@ -104,7 +104,7 @@ The full list the server reads is `.env.example` in the repository root. Never p
 
 By hand: `ADMIN_KEY=... scripts/smoke.sh https://<api-host>`. The smoke can pass against the old instance if it answers before the new build is live.
 
-The `uptime` workflow probes the three health routes every 5 minutes. It stays off until the variables `UPTIME_ENABLED` (`true`) and `PRODUCTION_URL` are set. Two failed rounds in a row raise an alert.
+The `uptime` workflow probes the health routes plus the web and docs hosts on GitHub's best-effort schedule: it asks for every 15 minutes and has been observed running every 4 to 8 hours. It is on by default (`UPTIME_ENABLED` set to `false` turns it off). A failed round is re-probed after 30 seconds, and a failure that stands opens the alert issue at once. For a minute-level probe use an external monitor (see `infra/uptime.md`); none is configured yet.
 
 ## What to do when
 
@@ -144,7 +144,7 @@ Voice bids always go through the confirm prompt ([G5](/docs/proof/gate-g5)). Wit
 </Accordion>
 <Accordion title="Uptime alert, or /warmup is slow">
 
-Two failed rounds raise the alert. Check `/healthz` first (process alive), then `/readyz` (store), then `/warmup` (it reports which step is cold). On the free tier the host sleeps; the keep-alive choice is decision D-0008 in `infra/uptime.md`. Warmup under 3 s after 15 minutes idle is not measured yet.
+A failed round that fails again on the re-probe raises the alert. Check `/healthz` first (process alive), then `/readyz` (store), then `/warmup` (it reports which step is cold). On the free tier the host sleeps; the keep-alive choice is decision D-0008 in `infra/uptime.md`. Warmup under 3 s after 15 minutes idle is not measured yet.
 
 </Accordion>
 <Accordion title="Bad release: roll back">
