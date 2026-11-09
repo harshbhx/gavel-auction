@@ -1,5 +1,7 @@
 # Devpost graphics
 
+> Curation (DOC-60): which of these animated files are used, and which were moved to `brand/archive/`, is listed in [`brand/CURATION.md`](../../../brand/CURATION.md).
+
 Poster-style set for the Devpost entry (different from the README set in `../readme/`). Sources: `graphics/devpost/`, rendered in CI by the `graphics` workflow (artifact `graphics-devpost`) with `node graphics/devpost/render.mjs <outDir>`. Upload order and caption text: [`docs/submission/DEVPOST-IMAGES.md`](../../submission/DEVPOST-IMAGES.md).
 
 ## Devpost image rules: confirmed and not confirmed

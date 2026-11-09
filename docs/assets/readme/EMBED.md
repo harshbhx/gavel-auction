@@ -1,5 +1,7 @@
 # Embed snippets for README.md
 
+> Curation (DOC-60): which of these animated files are used, and which were moved to `brand/archive/`, is listed in [`brand/CURATION.md`](../../../brand/CURATION.md).
+
 Paste these into the README (paths are relative to the repo root). Widths are 100% so GitHub scales them to the column. The animated GIFs sit on the paper background and read in both colour schemes; the static SVGs have light and dark variants through `prefers-color-scheme`. Visitors with reduced motion get the static PNG instead of the GIF.
 
 ## Hero (top of README, replaces docs/assets/gavel-banner.svg)
