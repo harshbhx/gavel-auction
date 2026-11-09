@@ -6,11 +6,11 @@ import { entriesFromAudit } from '../../grid/ledgerModel';
 import { LedgerFallback, type LedgerSlotProps } from './LedgerSlot';
 
 /**
- * The audit page's ledger slot: the plain table by default, the AG Grid LedgerGrid one switch away.
+ * The audit page's ledger slot: the AG Grid LedgerGrid by default, the plain table one switch away.
  * A selected grid row opens the page's own detail sheet, so the grid's own panel is off here.
  */
 function AuditLedger(props: LedgerSlotProps) {
-  const [view, setView] = useState<'table' | 'grid'>('table');
+  const [view, setView] = useState<'table' | 'grid'>('grid');
   const { rows, paddleOf, onOpen } = props;
   const entries = useMemo(() => entriesFromAudit(rows, paddleOf), [rows, paddleOf]);
   return (
@@ -29,10 +29,11 @@ function AuditLedger(props: LedgerSlotProps) {
           </button>
         ))}
       </div>
-      {view === 'grid' ? (
+      {view === 'grid' && rows.length > 0 ? (
         <LedgerGrid
           entries={entries}
-          fileName="gavel-audit"
+          roomId={props.roomId}
+          urlState
           detail={false}
           onOpenEntry={(seq) => {
             const row = rows.find((r) => r.seq === seq);

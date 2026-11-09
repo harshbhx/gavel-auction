@@ -7,7 +7,11 @@ import { formatUsd } from '../util/money';
 import { STATUS_ICON, STATUS_LABEL, STATUS_TONE, actorLabel, typeLabel, typeTone } from './labels';
 import { formatStamp, shortHash, type ChainStatus, type LedgerEntry } from './ledgerModel';
 
-export type LedgerRow = LedgerEntry & { status: ChainStatus | 'checking' };
+export type LedgerRow = LedgerEntry & {
+  status: ChainStatus | 'checking';
+  /** Set by a "Verify chain" run once it has reached this row. */
+  checked?: boolean;
+};
 
 export function StatusChip({ status }: { status: LedgerRow['status'] }) {
   if (status === 'checking') {

@@ -1386,6 +1386,31 @@ export const en = {
   'audit.view.label': 'Ledger view',
   'audit.view.table': 'Table',
   'audit.view.grid': 'Grid',
+  'grid.export.shown': 'Export what you see ({n} rows)',
+  'grid.export.shownOne': 'Export what you see (1 row)',
+  'grid.export.done': 'Saved {file}.csv. Rows written: {n}, filtered and sorted as shown here.',
+  'grid.kbd.help':
+    'Keyboard: Tab enters the table and Tab again leaves it. Arrow keys move between cells, Page Up and Page Down jump, Enter selects a row, Space toggles a checkbox.',
+  'grid.filter.region': 'Filter the ledger',
+  'grid.filter.type': 'Event',
+  'grid.filter.typeAny': 'Any event',
+  'grid.filter.paddle': 'Paddle',
+  'grid.filter.paddleHint': 'Number',
+  'grid.filter.hash': 'Hash starts with',
+  'grid.filter.hashHint': 'For example 3fa9',
+  'grid.filter.link': 'Copy link to this view',
+  'grid.filter.linked': 'Link copied. It opens the ledger with these filters.',
+  'grid.filter.linkFailed': 'Could not copy the link. Copy it from the address bar.',
+  'grid.verify.button': 'Verify chain',
+  'grid.verify.again': 'Verify chain again',
+  'grid.verify.scope':
+    'Recomputes every hash from the entries in this export, in your browser. It checks the public export, not the server copy.',
+  'grid.verify.hashing': 'Recomputing {n} hashes',
+  'grid.verify.progress': 'Checked {done} of {total} entries',
+  'grid.verify.done': 'Checked {n} entries in this export: every hash matches and every link holds',
+  'bids.quick': 'Search the bids',
+  'bids.quickHint': 'Paddle, amount, result',
+  'bids.shown': '{shown} of {total} bids, newest at the top',
 } as const;
 
 export type CopyKey = keyof typeof en;

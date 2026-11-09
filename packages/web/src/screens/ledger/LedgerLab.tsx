@@ -20,6 +20,8 @@ const TAB_KEY = {
 } as const;
 
 const SIM_DAYS = 30;
+/** Stands in for a room id in the lab's CSV file names. */
+const LAB_ROOM = 'simulated-30d';
 const BID_BASE = Date.UTC(2026, 8, 30, 20, 0, 0);
 
 function seedBids(n: number): BidStreamRow[] {
@@ -182,7 +184,7 @@ export default function LedgerLab() {
           (shown === null ? (
             <p role="status">{t('sim.building')}</p>
           ) : (
-            <LedgerGrid entries={shown} fileName="gavel-simulated-ledger" />
+            <LedgerGrid entries={shown} roomId={LAB_ROOM} urlState />
           ))}
         {tab === 'ledger' && shown !== null && (
           <div className="gv-lab__tamper">
@@ -197,7 +199,7 @@ export default function LedgerLab() {
             </Button>
           </div>
         )}
-        {tab === 'holds' && <HoldsGrid rows={holds} showDay fileName="gavel-simulated-holds" />}
+        {tab === 'holds' && <HoldsGrid rows={holds} showDay roomId={LAB_ROOM} />}
         {tab === 'bids' && (
           <>
             <p className="gv-lab__note">{t('sim.bids.note')}</p>
@@ -212,7 +214,7 @@ export default function LedgerLab() {
                 {running ? t('sim.bids.pause') : t('sim.bids.resume')}
               </Button>
             </div>
-            <BidsGrid rows={bids} />
+            <BidsGrid rows={bids} roomId={LAB_ROOM} />
           </>
         )}
       </div>

@@ -9,6 +9,8 @@ import { whoLabel } from './trailText';
 
 /** What the page hands to whatever renders the ledger (the AG Grid LedgerGrid, UIX-35). */
 export interface LedgerSlotProps {
+  /** The room the rows belong to (used in export file names). */
+  roomId: string;
   /** Rows after the page filters, in seq order. */
   rows: readonly AuditPayload[];
   /** Every row the room holds, before filters. */

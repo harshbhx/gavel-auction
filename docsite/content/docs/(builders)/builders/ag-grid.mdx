@@ -11,20 +11,26 @@ GAVEL's tables are [AG Grid](https://www.ag-grid.com/) Community edition (`ag-gr
 
 | Grid         | Where                                                | What it shows                                                  |
 | ------------ | ---------------------------------------------------- | -------------------------------------------------------------- |
-| `LedgerGrid` | Audit page (Table / Grid switch), the `/ledger` page | The ledger, one row per entry; chain status where entries are sealed (the lab) |
+| `LedgerGrid` | Audit page (grid by default, Table / Grid switch), the `/ledger` page | The ledger, one row per entry; chain status where entries are sealed (the lab) |
 | `BidsGrid`   | Auctioneer console (List / Table switch)             | The live bid history, applied as transactions, newest first    |
 | `HoldsGrid`  | The `/ledger` page                                   | Holds and settlement states with a totals row pinned at bottom |
 
 ## What they use
 
 - Quick filter, column filters, sorting, resize, reorder and a pinned number column.
-- Row selection with a detail panel, and CSV export (Community) with spreadsheet-safe cells.
+- Row selection with a detail panel.
+- CSV export (Community `exportDataAsCsv`) of what you see: the button states the row count, the file has the filtered rows in the order shown, is named `gavel-<grid>-<room id>-<UTC time>.csv`, and has spreadsheet-safe cells. It works on all three grids.
+- Ledger filters (event, paddle, hash prefix) that write into the column filters and the page URL, so a link opens the same filtered ledger.
+- Sort, column order and widths remembered per grid in `sessionStorage`.
+- Keyboard: Tab enters the table and leaves it again (`tabToNextCell` returns `false`), arrows move by row, Enter selects, the focus ring is 3 px. The grids are covered by the axe and keyboard specs.
 - `applyTransaction` with `getRowId`, cell flash on change (off for reduced motion).
 - Pinned bottom row for totals that follow the filters.
 - The theming API (`themeQuartz.withParams`) mapped to the Newsprint tokens, light only.
 - Virtualised rows for a 30-day simulated run of 2,134 entries, and one card per row under 700 px.
 
 The chain check runs on sealed entries (the `/ledger` lab); audit-page rows are not sealed yet and read "Not sealed". It re-hashes every entry in the browser and marks an entry edited after sealing. The `/ledger` page has a button that simulates such an edit.
+
+**Verify chain** is a button on the ledger. It recomputes every hash again, then marks the rows one by one: intact rows get a green edge and the words "Linked and intact", an edited row turns red and is named above the grid. The label beside it says what it checks, the public export and not the server's copy. With reduced motion the result appears at once.
 
 ## Bundle
 

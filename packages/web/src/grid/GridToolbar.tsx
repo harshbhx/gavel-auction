@@ -3,6 +3,8 @@ import { useId, useRef, useState, type ReactNode } from 'react';
 
 import { t } from '../copy/t';
 import { Button } from '../design/primitives/Button';
+import { forgetColumns } from './columnMemory';
+import { exportStamp } from './exportName';
 
 export interface SortOption {
   colId: string;
@@ -15,7 +17,18 @@ export interface GridToolbarProps {
   quickHint: string;
   shown: number;
   total: number;
+  /** File name without time or extension (see exportBaseName); the export adds the time and `.csv`. */
   fileName: string;
+  /** Key of the remembered column layout, so Reset can forget it. */
+  memoryKey?: string | null;
+  /** Called with the search text whenever it changes (the ledger writes it to the URL). */
+  onQuickChange?: (text: string) => void;
+  /** Starting text of the search box. */
+  initialQuick?: string;
+  /** Replaces the default count line ("{shown} of {total} entries"). */
+  count?: string;
+  /** Called after Reset has cleared the grid. */
+  onReset?: () => void;
   /** Column ids written to the CSV, in order. */
   exportKeys: readonly string[];
   /** How a cell is written to the CSV. Return undefined to use the formatted cell text. */
@@ -46,6 +59,11 @@ export function GridToolbar({
   processCell,
   selectedCount = 0,
   sortOptions,
+  memoryKey = null,
+  onQuickChange,
+  initialQuick = '',
+  count,
+  onReset,
   children,
 }: GridToolbarProps) {
   const inputId = useId();
@@ -55,22 +73,28 @@ export function GridToolbar({
   const [sortKey, setSortKey] = useState('');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
-  const csvParams = () => ({
+  const csvParams = (name: string) => ({
     columnKeys: [...exportKeys],
     onlySelected: selectedCount > 0,
-    fileName,
+    skipPinnedBottom: true,
+    fileName: name,
     processCellCallback: (p: ProcessCellForExportParams): string => {
       const custom = processCell?.(p.column.getColId(), p.node?.data);
       return safeCell(custom ?? p.formatValue(p.value));
     },
   });
 
+  // Export what is on screen: the rows that pass the filters, in the order shown (selected rows only
+  // when some are selected). The file name carries the room and the time of the export.
   const exportCsv = (): void => {
-    api?.exportDataAsCsv(csvParams());
+    if (api === null) return;
+    const name = `${fileName}-${exportStamp()}`;
+    api.exportDataAsCsv(csvParams(name));
+    setNotice(t('grid.export.done', { file: name, n: selectedCount > 0 ? selectedCount : shown }));
   };
 
   const copyCsv = (): void => {
-    const csv = api?.getDataAsCsv(csvParams());
+    const csv = api?.getDataAsCsv(csvParams(fileName));
     if (csv === undefined) return;
     navigator.clipboard.writeText(csv).then(
       () => {
@@ -88,8 +112,11 @@ export function GridToolbar({
     api.setFilterModel(null);
     api.setGridOption('quickFilterText', '');
     if (input.current !== null) input.current.value = '';
+    onQuickChange?.('');
+    if (memoryKey !== null) forgetColumns(memoryKey);
     setSortKey('');
     setNotice(null);
+    onReset?.();
   };
 
   const applySort = (colId: string, dir: 'asc' | 'desc'): void => {
@@ -110,8 +137,10 @@ export function GridToolbar({
           type="search"
           placeholder={quickHint}
           autoComplete="off"
+          defaultValue={initialQuick}
           onChange={(e) => {
             api?.setGridOption('quickFilterText', e.currentTarget.value);
+            onQuickChange?.(e.currentTarget.value);
           }}
         />
       </div>
@@ -148,13 +177,15 @@ export function GridToolbar({
         </div>
       )}
       <p className="gv-gridbar__count" role="status">
-        {t('ledger.count', { shown, total })}
+        {count ?? t('ledger.count', { shown, total })}
       </p>
       <div className="gv-gridbar__actions">
         <Button variant="outline" tone="neutral" onClick={exportCsv}>
           {selectedCount > 0
             ? t('ledger.exportSelected', { n: selectedCount })
-            : t('ledger.export')}
+            : shown === 1
+              ? t('grid.export.shownOne')
+              : t('grid.export.shown', { n: shown })}
         </Button>
         <Button variant="outline" tone="neutral" onClick={copyCsv}>
           {t('ledger.copy')}

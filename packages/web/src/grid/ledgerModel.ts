@@ -109,6 +109,11 @@ export function firstBad(statuses: ReadonlyMap<number, ChainStatus>): number | n
   return first;
 }
 
+/** Rows revealed per tick: a long ledger is shown in about 60 steps, a short one row by row. */
+export function revealStep(total: number): number {
+  return Math.max(1, Math.ceil(total / 60));
+}
+
 export function shortHash(h: string | null, n = 10): string {
   return h === null ? '' : h.slice(0, n);
 }

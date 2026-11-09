@@ -5,7 +5,7 @@ import type {
   GridReadyEvent,
   RowClassParams,
 } from 'ag-grid-community';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { t } from '../copy/t';
 import { Button } from '../design/primitives/Button';
@@ -13,12 +13,16 @@ import { sha256Hex } from '../util/hash';
 import { formatUsd } from '../util/money';
 import { AgGridReact } from './agRuntime';
 import { cardCell, statusCell, typeCell, type LedgerRow } from './cells';
+import { columnMemoryProps, gridStateFor, restoreSort } from './columnMemory';
+import { exportBaseName } from './exportName';
 import { GridToolbar, type SortOption } from './GridToolbar';
 import { actorLabel, typeLabel } from './labels';
+import { LedgerFilterBar, type TypeOption } from './LedgerFilterBar';
 import {
   GENESIS_PREV,
   chainCounts,
   firstBad,
+  revealStep,
   formatStamp,
   shortHash,
   verifyEntries,
@@ -28,6 +32,7 @@ import {
 } from './ledgerModel';
 import { gavelTheme } from './theme';
 import { useNarrow, useReducedMotion } from './useGridEnv';
+import { cleanModel, readLedgerUrl, writeLedgerUrl, type FilterModel } from './urlState';
 import './grid.css';
 
 export interface LedgerGridProps {
@@ -49,13 +54,39 @@ export interface LedgerGridProps {
   onReady?: (api: GridApi<LedgerRow>) => void;
   /** Called after each in-browser check. */
   onChecked?: (statuses: ReadonlyMap<number, ChainStatus>) => void;
-  fileName?: string;
+  /** Room id, for the CSV file name (`gavel-ledger-<room>-<time>.csv`). */
+  roomId?: string;
+  /** Keep the search and filters in the page URL (`gq`, `gf`), so a link opens this filtered view. */
+  urlState?: boolean;
+  /** Remember sort, column order and widths in sessionStorage. Default true. */
+  remember?: boolean;
   /** Called with the seq of the entry a visitor selects (a click or Enter on a row). */
   onOpenEntry?: (seq: number) => void;
   /** Show the built-in detail panel under the grid. Default true; a page with its own sheet turns it off. */
   detail?: boolean;
   /** Accessible name of the table region. */
   label?: string;
+}
+
+/** One run of the "Verify chain" action: hashes recomputed, then results shown row by row. */
+interface VerifyRun {
+  phase: 'hashing' | 'revealing' | 'done';
+  /** Rows revealed so far, counted from the first entry. */
+  done: number;
+  result: ReadonlyMap<number, ChainStatus>;
+}
+
+const REVEAL_MS = 45;
+
+/** Row data for the sealed entries in a list, with the status a verify run gives them. */
+function markRows(
+  list: readonly LedgerEntry[],
+  statusOf: (e: LedgerEntry) => LedgerRow['status'],
+  checked: boolean,
+): LedgerRow[] {
+  return list
+    .filter((e) => e.hash !== null)
+    .map((e): LedgerRow => ({ ...e, status: statusOf(e), ...(checked ? { checked: true } : {}) }));
 }
 
 const EXPORT_KEYS = ['seq', 'at', 'type', 'actor', 'amount', 'hash', 'prev', 'status', 'note'];
@@ -124,7 +155,9 @@ export default function LedgerGrid({
   virtualise = true,
   onReady,
   onChecked,
-  fileName = 'ledger',
+  roomId = 'room',
+  urlState = false,
+  remember = true,
   onOpenEntry,
   detail: showDetail = true,
   label,
@@ -136,12 +169,68 @@ export default function LedgerGrid({
   const [selected, setSelected] = useState<LedgerRow[]>([]);
   const statuses = useChain(entries, verdicts, hash, onChecked);
 
+  const [run, setRun] = useState<VerifyRun | null>(null);
+  const runId = useRef(0);
+  const timer = useRef<number | null>(null);
+  const stopRun = useCallback((): void => {
+    runId.current += 1;
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+  }, []);
+  // New entries (or leaving the page) end a run: its marks belong to the entries it checked.
+  useEffect(() => {
+    setRun(null);
+    return stopRun;
+  }, [entries, verdicts, stopRun]);
+
+  const startVerify = useCallback(async (): Promise<void> => {
+    if (api === null) return;
+    stopRun();
+    const id = runId.current;
+    setRun({ phase: 'hashing', done: 0, result: new Map() });
+    // Rows read "Checking" while the hashes are recomputed. The reveal below touches only the rows it
+    // reaches (a transaction per step), so a long ledger stays smooth.
+    api.applyTransaction({ update: markRows(entries, () => 'checking', false) });
+    let result: Map<number, ChainStatus>;
+    try {
+      result = await verifyEntries(entries, hash);
+    } catch {
+      if (id === runId.current) setRun(null);
+      return;
+    }
+    if (id !== runId.current) return;
+    const total = entries.length;
+    // Reduced motion: show the whole result at once, no row-by-row reveal.
+    const step = calm ? total : revealStep(total);
+    let done = 0;
+    const tick = (): void => {
+      if (id !== runId.current || api.isDestroyed()) return;
+      const from = done;
+      done = Math.min(total, done + step);
+      api.applyTransaction({
+        update: markRows(entries.slice(from, done), (e) => result.get(e.seq) ?? 'checking', true),
+      });
+      const finished = done >= total;
+      setRun({ phase: finished ? 'done' : 'revealing', done, result });
+      if (finished) {
+        onChecked?.(result);
+        return;
+      }
+      timer.current = window.setTimeout(tick, REVEAL_MS);
+    };
+    tick();
+    // onChecked is a callback for the parent; a new function must not rebuild this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api, entries, hash, calm, stopRun]);
+
   const rows = useMemo<LedgerRow[]>(
     () =>
-      entries.map((e) => ({
-        ...e,
-        status: e.hash === null ? 'unsealed' : (statuses?.get(e.seq) ?? 'checking'),
-      })),
+      entries.map(
+        (e): LedgerRow => ({
+          ...e,
+          status: e.hash === null ? 'unsealed' : (statuses?.get(e.seq) ?? 'checking'),
+        }),
+      ),
     [entries, statuses],
   );
   const hasHash = useMemo(() => entries.some((e) => e.hash !== null), [entries]);
@@ -201,6 +290,8 @@ export default function LedgerGrid({
         valueGetter: (p) => shortHash(p.data?.hash ?? null),
         getQuickFilterText: (p) => p.data?.hash ?? '',
         tooltipValueGetter: (p) => p.data?.hash ?? '',
+        filter: 'agTextColumnFilter',
+        filterValueGetter: (p) => p.data?.hash ?? '',
         width: 150,
         cellClass: 'gv-grid-num',
         hide: !hasHash,
@@ -259,15 +350,60 @@ export default function LedgerGrid({
 
   const getRowClass = useCallback((p: RowClassParams<LedgerRow>): string | undefined => {
     const s = p.data?.status;
-    return s === 'tampered' || s === 'broken' ? 'gv-grid-row--bad' : undefined;
+    if (s === 'tampered' || s === 'broken') return 'gv-grid-row--bad';
+    return p.data?.checked === true && s === 'verified' ? 'gv-grid-row--ok' : undefined;
   }, []);
+
+  // Filters and search: held in the URL when asked, so a shared link opens the same view.
+  const start = useMemo(
+    () => (urlState ? readLedgerUrl(window.location.search) : { quick: '', model: {} }),
+    [urlState],
+  );
+  const live = useRef<{ quick: string; model: FilterModel }>(start);
+  const [model, setModel] = useState<FilterModel>(start.model);
+  const memoryKey = remember
+    ? `ledger.${hasHash ? 'sealed' : 'plain'}.${narrow ? 'cards' : 'table'}`
+    : null;
+  const initialState = useMemo(() => gridStateFor(memoryKey), [memoryKey]);
+
+  const pushUrl = useCallback(
+    (patch: Partial<{ quick: string; model: FilterModel }>): void => {
+      live.current = { ...live.current, ...patch };
+      if (urlState) writeLedgerUrl(live.current);
+    },
+    [urlState],
+  );
+  const onQuickChange = useCallback(
+    (text: string): void => {
+      pushUrl({ quick: text });
+    },
+    [pushUrl],
+  );
+
+  const types = useMemo<TypeOption[]>(() => {
+    const seen = new Map<string, TypeOption>();
+    for (const e of entries) {
+      const label = typeLabel(e.type);
+      if (!seen.has(label)) seen.set(label, { value: label, label });
+    }
+    return [...seen.values()];
+  }, [entries]);
 
   const onReadyCb = useCallback(
     (e: GridReadyEvent<LedgerRow>) => {
+      // A link's filters (or the ones held before the grid was rebuilt) go in once the grid exists.
+      const { quick, model: held } = live.current;
+      try {
+        if (Object.keys(held).length > 0) e.api.setFilterModel(cleanModel(held));
+      } catch {
+        // A filter the grid does not accept is dropped; the unfiltered ledger shows.
+      }
+      if (quick !== '') e.api.setGridOption('quickFilterText', quick);
+      restoreSort(e.api, memoryKey);
       setApi(e.api);
       onReady?.(e.api);
     },
-    [onReady],
+    [onReady, memoryKey],
   );
 
   const sortOptions = useMemo<SortOption[]>(
@@ -293,12 +429,52 @@ export default function LedgerGrid({
         quickHint={t('ledger.quickHint')}
         shown={shown}
         total={entries.length}
-        fileName={fileName}
+        fileName={exportBaseName('ledger', roomId)}
+        memoryKey={memoryKey}
+        onQuickChange={onQuickChange}
+        initialQuick={start.quick}
         exportKeys={EXPORT_KEYS.filter((k) => (k !== 'hash' && k !== 'prev') || hasHash)}
         processCell={exportCell}
         selectedCount={selected.length}
         {...(narrow ? { sortOptions } : {})}
+      >
+        {hasHash && (
+          <Button
+            variant="outline"
+            tone="neutral"
+            disabled={run !== null && run.phase !== 'done'}
+            onClick={() => {
+              void startVerify();
+            }}
+          >
+            {run === null ? t('grid.verify.button') : t('grid.verify.again')}
+          </Button>
+        )}
+      </GridToolbar>
+      <LedgerFilterBar
+        api={api as GridApi | null}
+        model={model}
+        types={types}
+        showHash={hasHash}
+        showPaddle={hasActor}
+        linkable={urlState}
       />
+      {hasHash && <p className="gv-gridscope">{t('grid.verify.scope')}</p>}
+      {run !== null && (
+        <p
+          className="gv-gridchain"
+          data-state={run.phase === 'done' ? 'ok' : 'checking'}
+          role="status"
+        >
+          {run.phase === 'hashing'
+            ? t('grid.verify.hashing', { n: entries.length })
+            : run.phase === 'revealing'
+              ? t('grid.verify.progress', { done: run.done, total: entries.length })
+              : firstBad(run.result) === null
+                ? t('grid.verify.done', { n: entries.length })
+                : t('ledger.chain.bad', { n: firstBad(run.result) ?? 0 })}
+        </p>
+      )}
       {statuses === null && hasHash && (
         <p className="gv-gridchain" data-state="checking" role="status">
           {t('ledger.chain.checking', { n: entries.length })}
@@ -311,6 +487,7 @@ export default function LedgerGrid({
             : t('ledger.chain.bad', { n: bad })}
         </p>
       )}
+      <p className="gv-grid-sr">{t('grid.kbd.help')}</p>
       <div
         className="gv-gridbox"
         data-testid="ledger-grid"
@@ -318,6 +495,11 @@ export default function LedgerGrid({
         style={height === undefined ? undefined : { height }}
       >
         <AgGridReact<LedgerRow>
+          {...(initialState === undefined ? {} : { initialState })}
+          {...columnMemoryProps(memoryKey)}
+          onFirstDataRendered={(e) => {
+            restoreSort(e.api, memoryKey);
+          }}
           key={narrow ? 'cards' : 'table'}
           theme={gavelTheme}
           rowData={rows}
@@ -338,6 +520,13 @@ export default function LedgerGrid({
           suppressRowVirtualisation={!virtualise}
           suppressColumnVirtualisation={!virtualise}
           onGridReady={onReadyCb}
+          tabToNextCell={() => false}
+          tabToNextHeader={() => false}
+          onFilterChanged={(e) => {
+            const m = e.api.getFilterModel() as FilterModel;
+            setModel(m);
+            pushUrl({ model: m });
+          }}
           onModelUpdated={(e) => {
             setShown(e.api.getDisplayedRowCount());
           }}

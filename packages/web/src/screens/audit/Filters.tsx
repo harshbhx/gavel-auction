@@ -27,7 +27,14 @@ export function useUrlFilters(): readonly [AuditFilters, (next: AuditFilters) =>
 
   const update = useCallback((next: AuditFilters) => {
     setFilters(next);
-    const search = filtersToSearch(next);
+    // Keep the ledger grid's own keys (gq, gf) that share this query string.
+    const keep = new URLSearchParams(window.location.search);
+    const merged = new URLSearchParams(filtersToSearch(next));
+    for (const key of ['gq', 'gf']) {
+      const v = keep.get(key);
+      if (v !== null) merged.set(key, v);
+    }
+    const search = merged.toString();
     const url = `${window.location.pathname}${search === '' ? '' : `?${search}`}${window.location.hash}`;
     window.history.replaceState(window.history.state, '', url);
   }, []);

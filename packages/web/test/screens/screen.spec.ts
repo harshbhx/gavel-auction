@@ -27,6 +27,11 @@ async function screen(page: Page, opts: Opts): Promise<void> {
   await page.locator('main.gv-screen').waitFor();
 }
 
+/** The audit page shows the AG Grid ledger by default; wait until its rows are drawn. */
+async function ledgerRows(page: Page): Promise<void> {
+  await page.locator('[data-testid="ledger-grid"] .ag-row').first().waitFor();
+}
+
 async function audit(page: Page, opts: Opts): Promise<void> {
   await openRoom(page, { role: 'reviewer', route: 'audit', ...opts });
 }
@@ -143,19 +148,19 @@ test.describe('screen', () => {
 test.describe('audit', () => {
   test('table with every outcome', async ({ page, shoot }) => {
     await audit(page, { scenario: auditRoom, at: 9_000 });
-    await expect(page.getByRole('table')).toBeVisible();
+    await ledgerRows(page);
     await shoot('audit', 'table');
   });
 
   test('filtered to rejected rows', async ({ page, shoot }) => {
     await audit(page, { scenario: auditRoom, at: 9_000, query: 'result=rejected' });
-    await expect(page.getByRole('table')).toBeVisible();
+    await ledgerRows(page);
     await shoot('audit', 'filtered-rejected');
   });
 
   test('filtered to voice below 60 percent', async ({ page, shoot }) => {
     await audit(page, { scenario: auditRoom, at: 9_000, query: 'source=voice&conf=60' });
-    await expect(page.getByRole('table')).toBeVisible();
+    await ledgerRows(page);
     await shoot('audit', 'filtered-voice-low-confidence');
   });
 
@@ -167,7 +172,9 @@ test.describe('audit', () => {
 
   test('row detail drawer', async ({ page, shoot }) => {
     await audit(page, { scenario: auditRoom, at: 9_000 });
-    await page.locator('tbody tr th button').nth(1).click();
+    // The grid is the default view: a click on a row opens the page's detail sheet.
+    await ledgerRows(page);
+    await page.locator('[data-testid="ledger-grid"] .ag-row[row-index="1"]').first().click();
     await page.getByRole('dialog').waitFor();
     await shoot('audit', 'row-drawer');
   });
@@ -187,7 +194,7 @@ test.describe('audit', () => {
 
   test('filtered to bid lines', async ({ page, shoot }) => {
     await audit(page, { scenario: auditRoom, at: 9_000, query: 'type=bid' });
-    await expect(page.getByRole('table')).toBeVisible();
+    await ledgerRows(page);
     await shoot('audit', 'filtered-type-bid');
   });
 
@@ -215,7 +222,7 @@ test.describe('audit', () => {
 
   test('offline', async ({ page, shoot }) => {
     await audit(page, { scenario: auditRoom, at: 9_000 });
-    await expect(page.getByRole('table')).toBeVisible();
+    await ledgerRows(page);
     // The browser reports it is offline; the page keeps what it had and says so.
     await page.context().setOffline(true);
     await expect(page.getByText(t('state.offline')).first()).toBeVisible();

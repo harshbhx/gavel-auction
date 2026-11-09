@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Cents, EpochMs, SETTLEMENT_STATES } from '@gavel/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AuditRoute, ReceiptRoute } from '../../src/App';
@@ -206,6 +206,8 @@ describe('audit route shows the audio window', () => {
       roomStore.dispatch({ kind: 'wire', msg: stateMsg(1, snap) });
     });
     render(<AuditRoute />);
+    // The grid is the default ledger view; the audio window is in the plain table.
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
     expect(screen.getByText(`00:12.345 ${String.fromCharCode(0x2013)} 00:14.000`)).toBeTruthy();
   });
 });
