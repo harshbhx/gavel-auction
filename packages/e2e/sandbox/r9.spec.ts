@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { diffLedger } from '../src/sandbox/harness.js';
+import { diffLedger, writeSpecResult } from '../src/sandbox/harness.js';
 import { ledgerFromJournal, ledgerFromTruth, settleLot, type LotHold } from '../src/sandbox/lot.js';
-import { availability, env, newRunId, sleep } from '../src/sandbox/kit.js';
+import { availability, env, finish, newRunId, resultDir, sleep } from '../src/sandbox/kit.js';
 import { openSession } from '../src/sandbox/session.js';
 
 // R9: three different sandbox buyers. A wins and is captured, B is the runner-up and D loses; B
@@ -71,7 +71,32 @@ describe.skipIf(!availability.ok || !extraBuyers)(`sandbox R9 three buyers (${re
       expect(lot.truth['d']?.status).toBe('VOIDED');
       expect(lot.truth['d']?.capturedCents).toBe(0);
       expect(diffs).toEqual([]);
+
+      // Every expectation above held; record it for the nightly report (a thrown expectation
+      // leaves no result file, which the report counts as a fail).
+      finish('R9', sa, {
+        gate: 'G1',
+        met: true,
+        observed:
+          'three buyers: winner captured, runner-up and loser released, journal equals PayPal',
+        facts: { buyers: 3, captured: lot.truth['a']?.capturedCents ?? 0 },
+      });
     },
     TIMEOUT,
   );
+});
+
+// With the main sandbox secrets present but the extra buyers absent, R9 cannot run. Write an
+// honest skipped result so the report shows `skipped` for R9, not a missing-result failure.
+describe.runIf(availability.ok && !extraBuyers)('sandbox R9 without the extra buyers', () => {
+  it('records R9 as skipped', () => {
+    writeSpecResult(resultDir, {
+      spec: 'R9',
+      gate: 'G1',
+      status: 'skipped',
+      observed: 'SANDBOX_BUYER2_* or SANDBOX_BUYER3_* secrets are absent',
+      facts: {},
+      finishedAt: new Date().toISOString(),
+    });
+  });
 });

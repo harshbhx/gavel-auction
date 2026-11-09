@@ -1,0 +1,106 @@
+name: evidence-voice-live-socket
+# Live speech through the /audio socket (issue 2194). Manual dispatch only, from main.
+# What runs: the real server process (packages/server composition, fake PayPal in its own process,
+# file store in a temp folder) is started with VOICE_STT set to ONE live provider and only that
+# provider's key. packages/e2e/src/voice/live-socket-cli.ts registers 14 bidders, opens a lot and
+# streams the 24 committed 16 kHz clips (packages/voice/fixtures/audio/recordings) in real time over
+# /audio with an auctioneer token, one fresh socket per clip. It records the captions the provider
+# returned, the confirm prompts the bidders received and any price change. The cached recording the
+# server holds is empty, so a transcript can only come from the live provider. No bidder answers a
+# prompt, so a price change would be a spoken bid accepted without a confirm (the room microphone
+# must never do that).
+# Keys: GROQ_API_KEY and DEEPGRAM_API_KEY come from repository secrets and are only passed through
+# env. A provider whose secret is missing ends with "VOICE LIVE SOCKET VERDICT: NOT RUN (...)".
+# After the run the server log is scanned with the provider key itself as the canary, so a key in
+# the log fails the job.
+# Not covered: the web console has no audio sender (this is the server path only); the clips are
+# synthetic, noise-free speech; the Deepgram and Groq runs use the same clips on different days.
+# Artifact: voice-live-socket-<provider> (LIVE-SOCKET-<provider>.json and .md, server log, scan).
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: 'Live provider to run'
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - groq
+          - deepgram
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  live:
+    if: ${{ github.ref == 'refs/heads/main' && !github.event.repository.fork }}
+    name: live socket (${{ matrix.provider }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        provider: [groq, deepgram]
+    concurrency:
+      group: evidence-voice-live-socket-${{ matrix.provider }}
+      cancel-in-progress: false
+    env:
+      OUT_DIR: ${{ github.workspace }}/voice-live-out
+      PROVIDER: ${{ matrix.provider }}
+      SELECTED: ${{ inputs.provider }}
+    steps:
+      - name: Skip a provider that was not asked for
+        id: gate
+        run: |
+          if [ "$SELECTED" = both ] || [ "$SELECTED" = "$PROVIDER" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "VOICE LIVE SOCKET VERDICT: NOT RUN ($PROVIDER was not selected)"
+          fi
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        if: ${{ steps.gate.outputs.run == 'true' }}
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+        if: ${{ steps.gate.outputs.run == 'true' }}
+      - name: Stream the clips over the audio socket
+        if: ${{ steps.gate.outputs.run == 'true' }}
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+        run: |
+          mkdir -p "$OUT_DIR"
+          set -o pipefail
+          npm run voice:live-socket -w @gavel/e2e -- --provider "$PROVIDER" --out "$OUT_DIR" | tee "$OUT_DIR/run.txt"
+      - name: Scan the server log for the provider key
+        if: ${{ steps.gate.outputs.run == 'true' && !cancelled() }}
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+        run: |
+          log="$OUT_DIR/server-$PROVIDER.log"
+          if [ ! -f "$log" ]; then echo "no server log, nothing to scan"; exit 0; fi
+          if [ "$PROVIDER" = groq ]; then name=GROQ_API_KEY; else name=DEEPGRAM_API_KEY; fi
+          node scripts/scan-logs.mjs --log "$log" --canary "$name" --min-lines 1 --out "$OUT_DIR/log-scan-$PROVIDER.json"
+      - name: Job summary
+        if: ${{ steps.gate.outputs.run == 'true' && !cancelled() }}
+        run: |
+          if [ -f "$OUT_DIR/LIVE-SOCKET-$PROVIDER.md" ]; then
+            cat "$OUT_DIR/LIVE-SOCKET-$PROVIDER.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            grep -h "VERDICT" "$OUT_DIR/run.txt" >> "$GITHUB_STEP_SUMMARY" || echo "VOICE LIVE SOCKET VERDICT: NOT RUN (no verdict printed)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload the evidence
+        if: ${{ steps.gate.outputs.run == 'true' && !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: voice-live-socket-${{ matrix.provider }}
+          path: ${{ github.workspace }}/voice-live-out
+          if-no-files-found: warn
+          retention-days: 30

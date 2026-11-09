@@ -17,14 +17,27 @@ export interface RosterProps {
   readonly highBids?: Readonly<Record<number, number>>;
   /** Ceiling per paddle, in cents, where the server reports it (the settlement view). */
   readonly ceilings?: Readonly<Record<number, number>>;
+  /** The lot is closed: no hold is "in place" any more, the settlement line says what happened. */
+  readonly closed?: boolean;
 }
 
 /** The live bidder ladder: paddle, name, hold status, best bid and ceiling when known. */
-export function Roster({ roster, connected, leaderId = null, highBids, ceilings }: RosterProps) {
+export function Roster({
+  roster,
+  connected,
+  leaderId = null,
+  highBids,
+  ceilings,
+  closed = false,
+}: RosterProps) {
   const holds = roster.filter((r) => r.hold === 'HELD').length;
   return (
     <section className="gv-console-ladder" aria-label={t('console.roster')}>
-      <p>{t('console.bidders', { n: connected, m: holds })}</p>
+      <p>
+        {closed
+          ? t('console.biddersClosed', { n: connected })
+          : t('console.bidders', { n: connected, m: holds })}
+      </p>
       {roster.length === 0 ? (
         <p>{t('console.noBidders')}</p>
       ) : (
@@ -51,12 +64,14 @@ export function Roster({ roster, connected, leaderId = null, highBids, ceilings 
                   </span>
                 )}
                 {r.bidderId === leaderId && (
-                  <StatusPill tone="win">{t('console.ladder.leading')}</StatusPill>
+                  <StatusPill tone="win">
+                    {closed ? t('console.ladder.winner') : t('console.ladder.leading')}
+                  </StatusPill>
                 )}
-                {r.hold === 'HELD' && (
+                {!closed && r.hold === 'HELD' && (
                   <StatusPill tone="held">{t('console.ladder.held')}</StatusPill>
                 )}
-                {r.hold !== 'HELD' && (
+                {!closed && r.hold !== 'HELD' && (
                   <Chip
                     state="hold-warning"
                     label={t('console.holdWarn')}

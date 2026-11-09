@@ -138,6 +138,8 @@ async function json<T>(res: Response): Promise<T> {
 
 export interface StackRunOptions {
   seed?: number;
+  /** Runs after the scenario and before the stack stops: probes, copying the data folder. */
+  beforeStop?: (stack: Stack) => Promise<void>;
 }
 
 export async function runScenarioInStack(
@@ -152,7 +154,9 @@ export async function runScenarioInStack(
     ...(checkpoint === undefined ? {} : { checkpointKill: checkpoint }),
   });
   try {
-    return await drive(scenario, opts.seed ?? scenario.seed, stack, checkpoint);
+    const result = await drive(scenario, opts.seed ?? scenario.seed, stack, checkpoint);
+    if (opts.beforeStop !== undefined) await opts.beforeStop(stack);
+    return result;
   } finally {
     await stack.stop();
   }

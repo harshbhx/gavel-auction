@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "kind": "webhook-handler",
+  "label": "our route and handler on loopback; the event type is ignored so no verify call is made; network and PayPal not included",
+  "n": 500,
+  "statusCounts": {
+    "200": 500
+  },
+  "p50Ms": 0.71,
+  "p95Ms": 1.07,
+  "p99Ms": 3.25,
+  "maxMs": 22.88,
+  "targetMs": 300,
+  "verdict": "MET"
+}

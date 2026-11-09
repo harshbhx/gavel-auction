@@ -186,6 +186,7 @@ export function LiveConsole({
         leaderId={leaderId}
         highBids={highBids}
         ceilings={ceilings}
+        closed={status === 'CLOSING' || status === 'SETTLING' || status === 'DONE'}
       />
       <KillSwitch stopped={stopped} onKill={kill} />
       {killFailed !== '' && <p role="alert">{killFailed}</p>}

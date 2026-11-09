@@ -57,8 +57,10 @@ export interface Stack {
 
 const E2E_DIR = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const ROOT = resolve(fileURLToPath(new URL('../../../..', import.meta.url)));
-const SECRET = 'e2e-token-secret-0123456789-abcdefghij';
-const ADMIN = 'e2e-admin-key-0123456789-abcdef';
+// The SEC-15 log scan replaces both with canary values (GAVEL_E2E_TOKEN_SECRET and
+// GAVEL_E2E_ADMIN_KEY) so that a leak into the server log is recognisable.
+const SECRET = process.env['GAVEL_E2E_TOKEN_SECRET'] ?? 'e2e-token-secret-0123456789-abcdefghij';
+const ADMIN = process.env['GAVEL_E2E_ADMIN_KEY'] ?? 'e2e-admin-key-0123456789-abcdef';
 
 function bin(pkgDir: string, spec: string): string {
   return createRequire(join(pkgDir, 'package.json')).resolve(spec);
@@ -102,6 +104,8 @@ export async function startStack(opts: StackOptions = {}): Promise<Stack> {
     ...opts.env,
     ...(checkpoint === undefined ? {} : { GAVEL_CHECKPOINT_KILL: checkpoint }),
   });
+  // GAVEL_E2E_SERVER_LOG: file that receives the server's stdout and stderr, kept across restarts.
+  const serverLog = process.env['GAVEL_E2E_SERVER_LOG'];
   const makeServer = (checkpoint: Checkpoint | undefined): ManagedProcess =>
     new ManagedProcess({
       name: 'server',
@@ -113,6 +117,7 @@ export async function startStack(opts: StackOptions = {}): Promise<Stack> {
           : [viteNode, 'src/main.ts'],
       cwd: external || sandbox ? E2E_DIR : serverDir,
       env: serverEnv(checkpoint),
+      ...(serverLog === undefined ? {} : { logPath: serverLog }),
     });
 
   let server = group.add(makeServer(opts.checkpointKill));

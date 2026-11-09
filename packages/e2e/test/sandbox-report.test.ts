@@ -30,10 +30,10 @@ describe('nightly sandbox report (T-QA-058)', () => {
 
   it('marks every spec skipped when the secrets are absent', () => {
     const r = buildSandboxReport({ ...base, secretsPresent: false, results: [] });
-    expect(r.specs).toHaveLength(10);
+    expect(r.specs).toHaveLength(11);
     expect(r.specs.every((s) => s.status === 'skipped')).toBe(true);
     expect(r.overall).toBe('skipped');
-    expect(r.counts).toEqual({ pass: 0, fail: 0, inconclusive: 0, skipped: 10 });
+    expect(r.counts).toEqual({ pass: 0, fail: 0, inconclusive: 0, skipped: 11 });
   });
 
   it('records pass, fail, inconclusive and skipped side by side', () => {
