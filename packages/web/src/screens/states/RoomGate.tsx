@@ -13,11 +13,22 @@ export interface RoomGateProps {
   readonly apiBase: string | undefined;
   readonly roomId: string;
   readonly onNavigate: (path: string) => void;
+  /**
+   * Only a room the server says is gone replaces the page. A lookup that failed (server down,
+   * rate limited) shows the page as is, so a link that lacks its token still says so.
+   */
+  readonly onlyNotFound?: boolean;
   readonly children: ReactNode;
 }
 
 /** Shows its page only when the server knows the room; otherwise says why it cannot. */
-export function RoomGate({ apiBase, roomId, onNavigate, children }: RoomGateProps) {
+export function RoomGate({
+  apiBase,
+  roomId,
+  onNavigate,
+  onlyNotFound = false,
+  children,
+}: RoomGateProps) {
   const [check, setCheck] = useState<Check>(
     apiBase === undefined ? { kind: 'ok' } : { kind: 'checking' },
   );
@@ -45,6 +56,9 @@ export function RoomGate({ apiBase, roomId, onNavigate, children }: RoomGateProp
     };
   }, [apiBase, roomId, attempt]);
   if (check.kind === 'ok') return <>{children}</>;
+  if (onlyNotFound && check.kind === 'problem' && check.error.kind !== 'notFound') {
+    return <>{children}</>;
+  }
   if (check.kind === 'checking') {
     return (
       <main className="gv-flow" aria-busy="true">
