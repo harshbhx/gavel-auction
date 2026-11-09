@@ -8,7 +8,7 @@ import { SpotlightCard } from '../../ui/fx';
 import { HammerArt, HoldArt, VoiceArt } from './LandingArt';
 import { HowPanel, useActiveStep } from './LandingHow';
 
-export const DOCS_URL = 'https://gavel-docs.creharsh.workers.dev';
+export const DOCS_URL = 'https://docs.gavel.dualmindlab.tech';
 export const OPEN_DATA_URL =
   'https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504';
 export const REPO_URL = 'https://github.com/harshbhx/gavel-auction';

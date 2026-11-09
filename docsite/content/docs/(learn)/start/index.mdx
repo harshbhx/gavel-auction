@@ -28,7 +28,7 @@ The path below is the intended flow. A recorded click-through of it on the hoste
 | 1 | Judge | Open the hosted web URL (see above). | The landing page shows "Start a demo auction". |
 | 2 | Judge | Press "Start a demo auction". | A demo room opens with a link for each role. |
 | 3 | Auctioneer | Open the console link. | The console shows the lot and its controls. |
-| 4 | Bidder | Open a bidder link in a second tab and place a bid. | The bid shows on the big screen. A bid is a hold; nothing is charged. |
+| 4 | Bidder | Open a bidder link in a second tab and place a bid. | The bid shows on the big screen. A bid is a hold, held and not charged until the hammer. |
 | 5 | Auditor | Open the <Term id="audit-trail">audit trail</Term> link. | The <Term id="ledger">ledger</Term> entries show, chained by hash. |
 
 The nightly `judge-smoke` workflow walks this journey on the public site with `qa/live-redteam/run.mjs` (its own steps 1 to 17: start a room, hub, join, register, bid, hammer, screen, receipt). `packages/e2e/specs/judge-walkthrough.spec.ts` covers steps 1 and 2 on the fake stack.

@@ -4,7 +4,7 @@ import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
 import { LandingScreen } from '../../src/screens/landing/LandingScreen';
 
-const DOCS = 'https://gavel-docs.creharsh.workers.dev';
+const DOCS = 'https://docs.gavel.dualmindlab.tech';
 
 function setup(overrides: Partial<Parameters<typeof LandingScreen>[0]> = {}) {
   const props = {

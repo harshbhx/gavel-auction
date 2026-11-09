@@ -103,7 +103,7 @@ export const en = {
     'Thirty days of auctions on a fake clock, with the ledger balanced to the cent. A simulation, not a sandbox result.',
   'mk.trust.lat.title': 'Latency',
   'mk.trust.lat.body':
-    'Measured on the PayPal sandbox over 49 settlements, not on the hosted demo rooms: hammer to captured p95 3.8 s against a target of 2.5 s, hammer to settled p95 6.9 s against a target of 6 s. Whether to change the targets or the code is an open owner decision.',
+    'Measured on the PayPal sandbox over 49 settlements, not on the hosted demo rooms: hammer to captured p95 3.8 s against a target of 2.5 s, hammer to settled p95 6.9 s against a target of 6 s. The run is incomplete: 1 timeout and 3 capture calls with an error. Whether to change the targets or the code is an open owner decision.',
   'mk.trust.note': 'Sandbox only. Nothing on this site moved real money.',
   'mk.aud.title': 'Who it is for',
   'mk.aud.auc.title': 'Auctioneers',
@@ -712,7 +712,7 @@ export const en = {
   'console.settlement.needsReview':
     'Settlement failed and needs review. Contact the winner or move to the runner-up.',
   'console.settlement.reviewNoRunnerUp':
-    'Settlement failed and needs review. Holds are held, not charged. Contact the winner, then open the audit trail to see what happened.',
+    'Settlement failed and needs review. The winning hold may already be taken; the auctioneer is checking. Contact the winner, then open the audit trail to see what happened.',
   'console.settlement.inProgress': 'Settlement is in progress.',
   'console.mic.denied': 'Microphone blocked. Use manual entry.',
   'console.notBid': 'Not a bid',
@@ -862,7 +862,8 @@ export const en = {
   'screen.settleSummary': '{c} charged, {r} released',
   'screen.wonReview': 'Paddle {n} won at {amount}',
   'screen.wonReviewUnknown': 'Won at {amount}',
-  'screen.settleReview': 'Settlement needs review. Holds are held, not charged.',
+  'screen.settleReview':
+    'Settlement needs review. The auctioneer is checking whether the winning hold was taken.',
   'screen.stopped': 'Auction stopped',
   'screen.clockFrozen': 'last known, reconnecting',
   'screen.untitled': 'Live auction',

@@ -106,10 +106,10 @@ describe('/try judge panel: the Ledger front page', () => {
     expect(within(not).getByText(t('try.ev.n4'))).toBeTruthy();
     expect(within(not).getByText(t('try.ev.n5d'))).toBeTruthy();
     expect(screen.getByRole('link', { name: t('try.ev.trust') }).getAttribute('href')).toBe(
-      'https://gavel-docs.creharsh.workers.dev/docs/judges/trust-and-faq',
+      'https://docs.gavel.dualmindlab.tech/docs/judges/trust-and-faq',
     );
     expect(screen.getByRole('link', { name: t('try.ev.buyers') }).getAttribute('href')).toBe(
-      'https://gavel-docs.creharsh.workers.dev/docs/judges/sandbox-buyers',
+      'https://docs.gavel.dualmindlab.tech/docs/judges/sandbox-buyers',
     );
   });
 
