@@ -51,10 +51,10 @@ _A price counts up to $20, then the line "Held, not charged" sweeps across it._
 GAVEL turns that idea into a working room. Everything runs in the PayPal sandbox; no real money moves.
 
 - **Hold.** A bidder approves a ceiling as a PayPal authorization. It is held, not charged.
-- **Bid.** A deterministic engine runs an ascending English auction with a minimum increment and a soft close. A bid above the ceiling is refused. Bids come from phones, a QR code or the console. Voice bids go through the server audio socket with a confirm step; the web console microphone is not connected yet.
+- **Bid.** A deterministic engine runs an ascending English auction with a minimum increment and a soft close. A bid above the ceiling is refused. Bids come from phones, a QR code or the console. The auctioneer can also speak a bid into the console microphone; it waits for the bidder's confirm.
 - **Hammer.** The auctioneer holds a button to close the lot. GAVEL captures only the winning price from the winner's hold and voids every other hold. Until that capture, money is held, not charged.
 - **Receipt and verify.** Every accepted bid goes into a hash-chained ledger that anyone can check in the browser.
-- **Voice.** A spoken bid sent to the server audio socket is parsed, validated and then waits for a confirm ("Did you mean 350 for paddle 12?"). This is proven on synthetic clips; the web console microphone is not connected yet, so a judge bids by tap, QR or typed entry.
+- **Voice.** The auctioneer speaks a bid into the console microphone (tap to start and stop, or press and hold). It is parsed, validated and then waits for the bidder's confirm ("Did you mean 350 for paddle 12?"). The microphone works when the server has a speech provider, a bidder phone has no microphone, and accuracy is measured on synthetic clips only, so a judge can also bid by tap, QR or typed entry.
 
 ![Four steps, Hold, Bid, Hammer, Receipt, each lit in turn while the real GAVEL screen for that step wipes in beside it.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/03-what-it-does.png)
 
@@ -118,7 +118,7 @@ _Open data and the gate status._
 
 ### AI in the product
 
-**Runtime AI.** AI is used for voice bidding. Audio sent to the server's audio socket goes to speech-to-text: Deepgram (model nova-3) with Groq (model whisper-large-v3-turbo) as failover. A rule-based parser turns the transcript into a structured bid, and a deterministic validator checks it against the auction rules. The model never decides a winner and never moves money, and every spoken bid waits for a confirm.
+**Runtime AI.** AI is used for voice bidding. Audio from the auctioneer's console microphone goes to speech-to-text: Deepgram (model nova-3) with Groq (model whisper-large-v3-turbo) as failover. A rule-based parser turns the transcript into a structured bid, and a deterministic validator checks it against the auction rules. The model never decides a winner and never moves money, and every spoken bid waits for a confirm.
 
 **AI tools used while building.** An AI coding assistant (name added by hand on Devpost), for coding assistance and documentation drafts.
 
@@ -171,7 +171,7 @@ _The same event arrives twice and is counted once._
 ## What's next for GAVEL
 
 - Read out the G3 probe and set the reauthorize behaviour from it.
-- Connect the web console microphone to the audio socket, then test voice with a person in a real room and in recorded noise.
+- Test the console microphone with a person in a real room and in recorded noise.
 - More payment methods through the same hold and capture shape.
 - An organizer dashboard: lots, bidders, settlement and the ledger in one view.
 - Repeat the process kill on the deployed host.
