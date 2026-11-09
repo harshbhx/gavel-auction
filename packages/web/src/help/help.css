@@ -135,3 +135,8 @@ body:has(.help-layer) {
 html:has(.help-layer) {
   scroll-padding-bottom: calc(48px + var(--space-4) * 2);
 }
+
+/* Sticky bars (the bid bar) stop above the help button instead of under it. */
+body:has(.help-layer) {
+  --help-reserve: calc(48px + var(--space-4) * 2);
+}

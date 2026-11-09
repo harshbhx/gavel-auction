@@ -21,6 +21,15 @@
   cursor: pointer;
 }
 
+/* A link-styled button is a real touch target (Hide amount), not a 20 px strip of text. */
+button.ui-link {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 44px;
+  min-width: 44px;
+}
+
 .ui-hold button:focus-visible,
 .ui-link:focus-visible,
 .ui-slider__track:focus-visible,
