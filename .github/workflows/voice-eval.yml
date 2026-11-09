@@ -74,6 +74,25 @@ jobs:
           path: packages/voice/eval-out/text
           if-no-files-found: ignore
 
+  heldout-render:
+    # The held-out noisy set generator must produce exactly the 120 clips of its manifest without any
+    # provider key (issue 2192). Renders only; nothing is sent to a provider.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install speech synthesizer and ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq espeak-ng ffmpeg jq
+      - name: Render the held-out clips and count them
+        run: |
+          bash packages/voice/scripts/render-heldout.sh "$RUNNER_TEMP/heldout-wav"
+          test "$(find "$RUNNER_TEMP/heldout-wav" -name '*.wav' | wc -l)" = 120
+          test "$(wc -l < "$RUNNER_TEMP/heldout-wav/SHA256SUMS")" = 120
+          for id in $(jq -r '.[].id' packages/voice/fixtures/audio-heldout/manifest.json); do
+            test -s "$RUNNER_TEMP/heldout-wav/$id.wav" || { echo "missing or empty clip $id"; exit 1; }
+          done
+
   cached:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

@@ -359,6 +359,7 @@ export interface RoomDeps {
     ids: Ids;
     // (undocumented)
     limiter?: RateLimiter;
+    maxCeilingCents?: number;
     metrics?: {
         bidAccepted(): void;
         bidRejected(): void;

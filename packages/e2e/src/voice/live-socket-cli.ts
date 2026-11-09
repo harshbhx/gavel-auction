@@ -5,8 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { encodeBatch } from '@gavel/voice';
 import { startStack, type Stack } from '../runner/stack';
 import {
+  CEILING_CENTS,
   FLAG_END_OF_UTTERANCE,
   FLAG_KEEPALIVE,
+  LIVE_STACK_ENV,
   buildReport,
   reportMarkdown,
   parseWav,
@@ -37,7 +39,6 @@ const CLIP_DIR = join(ROOT, 'packages', 'voice', 'fixtures', 'audio', 'recording
 const MANIFEST = join(ROOT, 'packages', 'voice', 'fixtures', 'audio', 'manifest.json');
 
 const BIDDERS = 14; // the clips name paddles up to 14
-const CEILING_CENTS = 500_000;
 const BATCH_MS = 100;
 const WAIT_FINAL_MS = 12_000;
 const SETTLE_MS = 2_500;
@@ -63,7 +64,11 @@ interface ManifestClip {
 }
 
 async function json<T>(res: Response): Promise<T> {
-  if (!res.ok) throw new Error(`${new URL(res.url).pathname} answered ${res.status}`);
+  if (!res.ok) {
+    // The body of a failed test route is an error message, never a secret.
+    const body = (await res.text()).slice(0, 200);
+    throw new Error(`${new URL(res.url).pathname} answered ${res.status}: ${body}`);
+  }
   return (await res.json()) as T;
 }
 
@@ -311,7 +316,7 @@ async function main(): Promise<number> {
   providerKeys[keyName] = key;
   const stack = await startStack({
     externalFake: true,
-    env: { VOICE_STT: provider, ...providerKeys },
+    env: { VOICE_STT: provider, ...LIVE_STACK_ENV, ...providerKeys },
   });
   const rows = [];
   try {

@@ -11,7 +11,7 @@ import {
 } from '@gavel/shared';
 import { HoldError, toHoldError, type HoldService, type HoldStore } from '@gavel/payments';
 import { authenticate, json, parseBody, type Ctx, type HttpApp, type Mount } from './app';
-import { roomFor, snapshotFor } from './auctions';
+import { roomFor } from './auctions';
 
 /** What the hold routes call: the payments hold service and its store. Both exist already. */
 export interface HoldsPort {
@@ -91,14 +91,12 @@ export function mountHolds(port: HoldsPort): Mount {
         const body = parseBody(CreateHoldRequest, await c.body());
         const who = await authenticate(c, body.auctionId, ['session']);
         if (who.bidderId === undefined) return notFound();
-        const room = await roomFor(c.deps, body.auctionId);
+        await roomFor(c.deps, body.auctionId);
         await requireOpen(port, body.auctionId);
-        const { snapshot } = await snapshotFor(c.deps, room, 'screen', 'holds');
         const created = await port.service.createHoldOrder({
           auctionId: body.auctionId,
           bidderId: who.bidderId,
           ceilingCents: body.ceilingCents,
-          presetsCents: snapshot.config.ceilingPresets,
         });
         // The approval link lets the browser fall back to PayPal's own page when the popup
         // cannot open (issue 1778). The client token stays out until a server source exists (G2).

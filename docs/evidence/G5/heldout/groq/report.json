@@ -1,0 +1,1305 @@
+{
+  "gitSha": "0085f1480673ea899cf80fd0a75f5aad31d975d1",
+  "mode": "live",
+  "set": "audio",
+  "provider": "groq",
+  "metrics": {
+    "n": 120,
+    "bidN": 78,
+    "noneN": 24,
+    "exactRate": 0.884615,
+    "wrongAcceptRate": 0.058333,
+    "confirmRate": 0.175,
+    "recoverableRate": 0.038462,
+    "missedBidRate": 0.051282,
+    "falsePromptRate": 0,
+    "numberTokenErrorRate": {
+      "groq": 0.191667
+    },
+    "latencyP50Ms": 252,
+    "latencyP95Ms": 361
+  },
+  "gate": {
+    "pass": false,
+    "usableRate": 0.923077,
+    "wrongAcceptRate": 0.058333,
+    "reasons": ["wrong accept 0.058 is above 0.05"],
+    "notice": "G5 failed: the product switches to assist mode, every voice bid requires confirm."
+  },
+  "categories": [
+    {
+      "category": "snr10",
+      "n": 40,
+      "exactRate": 0.961538,
+      "wrongAcceptRate": 0.05,
+      "confirmRate": 0.175
+    },
+    {
+      "category": "snr20",
+      "n": 40,
+      "exactRate": 1,
+      "wrongAcceptRate": 0.05,
+      "confirmRate": 0.15
+    },
+    {
+      "category": "snr5",
+      "n": 40,
+      "exactRate": 0.692308,
+      "wrongAcceptRate": 0.075,
+      "confirmRate": 0.2
+    }
+  ],
+  "sweep": [
+    {
+      "threshold": 0.7,
+      "wrongAcceptRate": 0.058333,
+      "confirmRate": 0.175
+    },
+    {
+      "threshold": 0.75,
+      "wrongAcceptRate": 0.058333,
+      "confirmRate": 0.175
+    },
+    {
+      "threshold": 0.8,
+      "wrongAcceptRate": 0.058333,
+      "confirmRate": 0.175
+    },
+    {
+      "threshold": 0.85,
+      "wrongAcceptRate": 0.058333,
+      "confirmRate": 0.175
+    },
+    {
+      "threshold": 0.9,
+      "wrongAcceptRate": 0.058333,
+      "confirmRate": 0.175
+    },
+    {
+      "threshold": 0.95,
+      "wrongAcceptRate": 0.058333,
+      "confirmRate": 0.175
+    }
+  ],
+  "gated": {
+    "note": "Outcome after the room pipeline: rules parse, rescoring, validation, AUTO/CONFIRM policy and mic rule.",
+    "mic": "room",
+    "assumptions": "Roster of paddles 1 to 99 with active holds; price 0 and minimum increment 100 cents where the fixture gives none; neutral speech-to-text confidence where none was recorded; model off, so every bid is rules-only.",
+    "outcomes": {
+      "auto": 0,
+      "confirm": 90,
+      "drop": 30
+    },
+    "autoAccepted": 0,
+    "autoWrongAccepts": 0,
+    "autoWrongAcceptRate": 0,
+    "sttConfidence": {
+      "recorded": 0,
+      "neutralAssumed": 120
+    },
+    "metrics": {
+      "n": 120,
+      "bidN": 78,
+      "noneN": 24,
+      "exactRate": 0,
+      "wrongAcceptRate": 0,
+      "confirmRate": 0.75,
+      "recoverableRate": 0.923077,
+      "missedBidRate": 0.064103,
+      "falsePromptRate": 0,
+      "numberTokenErrorRate": {
+        "groq": 0.191667
+      },
+      "latencyP50Ms": 252,
+      "latencyP95Ms": 361
+    },
+    "sweep": [
+      {
+        "threshold": 0.7,
+        "wrongAcceptRate": 0,
+        "confirmRate": 0.75
+      },
+      {
+        "threshold": 0.75,
+        "wrongAcceptRate": 0,
+        "confirmRate": 0.75
+      },
+      {
+        "threshold": 0.8,
+        "wrongAcceptRate": 0,
+        "confirmRate": 0.75
+      },
+      {
+        "threshold": 0.85,
+        "wrongAcceptRate": 0,
+        "confirmRate": 0.75
+      },
+      {
+        "threshold": 0.9,
+        "wrongAcceptRate": 0,
+        "confirmRate": 0.75
+      },
+      {
+        "threshold": 0.95,
+        "wrongAcceptRate": 0,
+        "confirmRate": 0.75
+      }
+    ]
+  },
+  "confusion": [
+    {
+      "id": "h01-s5-babble",
+      "kind": "missed_bid",
+      "expected": "bid 4 40000",
+      "actual": "none"
+    },
+    {
+      "id": "h05-s5-babble",
+      "kind": "wrong_accept",
+      "expected": "bid 6 130000",
+      "actual": "accept 6 100300"
+    },
+    {
+      "id": "h07-s5-babble",
+      "kind": "missed_bid",
+      "expected": "bid 5 90000",
+      "actual": "none"
+    },
+    {
+      "id": "h11-s5-babble",
+      "kind": "missed_bid",
+      "expected": "bid 3 110000",
+      "actual": "none"
+    },
+    {
+      "id": "h17-s5-babble",
+      "kind": "unrecovered_confirm",
+      "expected": "bid 6 50000",
+      "actual": "confirm 6 10000 /  60000"
+    },
+    {
+      "id": "h23-s5-babble",
+      "kind": "missed_bid",
+      "expected": "bid 16 20000",
+      "actual": "none"
+    },
+    {
+      "id": "h35-s10-babble",
+      "kind": "wrong_accept",
+      "expected": "none",
+      "actual": "accept 7 300"
+    },
+    {
+      "id": "h35-s20-babble",
+      "kind": "wrong_accept",
+      "expected": "none",
+      "actual": "accept 7 300"
+    },
+    {
+      "id": "h35-s5-babble",
+      "kind": "wrong_accept",
+      "expected": "none",
+      "actual": "accept 7 300"
+    },
+    {
+      "id": "h40-s10-room",
+      "kind": "wrong_accept",
+      "expected": "none",
+      "actual": "accept 7 20000"
+    },
+    {
+      "id": "h40-s20-room",
+      "kind": "wrong_accept",
+      "expected": "none",
+      "actual": "accept 7 20000"
+    },
+    {
+      "id": "h40-s5-room",
+      "kind": "wrong_accept",
+      "expected": "none",
+      "actual": "accept 7 20000"
+    }
+  ],
+  "utterances": [
+    {
+      "id": "h01-s10-babble",
+      "category": "snr10",
+      "expected": "bid 4 40000",
+      "actual": "accept 4 40000",
+      "confidence": 1,
+      "latencyMs": 406,
+      "provider": "groq"
+    },
+    {
+      "id": "h01-s20-babble",
+      "category": "snr20",
+      "expected": "bid 4 40000",
+      "actual": "accept 4 40000",
+      "confidence": 1,
+      "latencyMs": 403,
+      "provider": "groq"
+    },
+    {
+      "id": "h01-s5-babble",
+      "category": "snr5",
+      "expected": "bid 4 40000",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 201,
+      "provider": "groq"
+    },
+    {
+      "id": "h02-s10-room",
+      "category": "snr10",
+      "expected": "bid 5 60000",
+      "actual": "accept 5 60000",
+      "confidence": 1,
+      "latencyMs": 223,
+      "provider": "groq"
+    },
+    {
+      "id": "h02-s20-room",
+      "category": "snr20",
+      "expected": "bid 5 60000",
+      "actual": "accept 5 60000",
+      "confidence": 1,
+      "latencyMs": 245,
+      "provider": "groq"
+    },
+    {
+      "id": "h02-s5-room",
+      "category": "snr5",
+      "expected": "bid 5 60000",
+      "actual": "accept 5 60000",
+      "confidence": 1,
+      "latencyMs": 226,
+      "provider": "groq"
+    },
+    {
+      "id": "h03-s10-babble",
+      "category": "snr10",
+      "expected": "bid 3 65000",
+      "actual": "accept 3 65000",
+      "confidence": 1,
+      "latencyMs": 288,
+      "provider": "groq"
+    },
+    {
+      "id": "h03-s20-babble",
+      "category": "snr20",
+      "expected": "bid 3 65000",
+      "actual": "accept 3 65000",
+      "confidence": 1,
+      "latencyMs": 198,
+      "provider": "groq"
+    },
+    {
+      "id": "h03-s5-babble",
+      "category": "snr5",
+      "expected": "bid 3 65000",
+      "actual": "accept 3 65000",
+      "confidence": 1,
+      "latencyMs": 231,
+      "provider": "groq"
+    },
+    {
+      "id": "h04-s10-room",
+      "category": "snr10",
+      "expected": "bid 4 87500",
+      "actual": "accept 4 87500",
+      "confidence": 1,
+      "latencyMs": 221,
+      "provider": "groq"
+    },
+    {
+      "id": "h04-s20-room",
+      "category": "snr20",
+      "expected": "bid 4 87500",
+      "actual": "accept 4 87500",
+      "confidence": 1,
+      "latencyMs": 204,
+      "provider": "groq"
+    },
+    {
+      "id": "h04-s5-room",
+      "category": "snr5",
+      "expected": "bid 4 87500",
+      "actual": "accept 4 87500",
+      "confidence": 1,
+      "latencyMs": 254,
+      "provider": "groq"
+    },
+    {
+      "id": "h05-s10-babble",
+      "category": "snr10",
+      "expected": "bid 6 130000",
+      "actual": "accept 6 130000",
+      "confidence": 1,
+      "latencyMs": 228,
+      "provider": "groq"
+    },
+    {
+      "id": "h05-s20-babble",
+      "category": "snr20",
+      "expected": "bid 6 130000",
+      "actual": "accept 6 130000",
+      "confidence": 1,
+      "latencyMs": 257,
+      "provider": "groq"
+    },
+    {
+      "id": "h05-s5-babble",
+      "category": "snr5",
+      "expected": "bid 6 130000",
+      "actual": "accept 6 100300",
+      "confidence": 1,
+      "latencyMs": 251,
+      "provider": "groq"
+    },
+    {
+      "id": "h06-s10-room",
+      "category": "snr10",
+      "expected": "bid 8 32500",
+      "actual": "accept 8 32500",
+      "confidence": 1,
+      "latencyMs": 194,
+      "provider": "groq"
+    },
+    {
+      "id": "h06-s20-room",
+      "category": "snr20",
+      "expected": "bid 8 32500",
+      "actual": "accept 8 32500",
+      "confidence": 1,
+      "latencyMs": 205,
+      "provider": "groq"
+    },
+    {
+      "id": "h06-s5-room",
+      "category": "snr5",
+      "expected": "bid 8 32500",
+      "actual": "accept 8 32500",
+      "confidence": 1,
+      "latencyMs": 242,
+      "provider": "groq"
+    },
+    {
+      "id": "h07-s10-babble",
+      "category": "snr10",
+      "expected": "bid 5 90000",
+      "actual": "accept 5 90000",
+      "confidence": 1,
+      "latencyMs": 191,
+      "provider": "groq"
+    },
+    {
+      "id": "h07-s20-babble",
+      "category": "snr20",
+      "expected": "bid 5 90000",
+      "actual": "accept 5 90000",
+      "confidence": 1,
+      "latencyMs": 217,
+      "provider": "groq"
+    },
+    {
+      "id": "h07-s5-babble",
+      "category": "snr5",
+      "expected": "bid 5 90000",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 313,
+      "provider": "groq"
+    },
+    {
+      "id": "h08-s10-room",
+      "category": "snr10",
+      "expected": "bid 6 75000",
+      "actual": "accept 6 75000",
+      "confidence": 1,
+      "latencyMs": 253,
+      "provider": "groq"
+    },
+    {
+      "id": "h08-s20-room",
+      "category": "snr20",
+      "expected": "bid 6 75000",
+      "actual": "accept 6 75000",
+      "confidence": 1,
+      "latencyMs": 257,
+      "provider": "groq"
+    },
+    {
+      "id": "h08-s5-room",
+      "category": "snr5",
+      "expected": "bid 6 75000",
+      "actual": "accept 6 75000",
+      "confidence": 1,
+      "latencyMs": 224,
+      "provider": "groq"
+    },
+    {
+      "id": "h09-s10-babble",
+      "category": "snr10",
+      "expected": "bid 4 42500",
+      "actual": "accept 4 42500",
+      "confidence": 1,
+      "latencyMs": 226,
+      "provider": "groq"
+    },
+    {
+      "id": "h09-s20-babble",
+      "category": "snr20",
+      "expected": "bid 4 42500",
+      "actual": "accept 4 42500",
+      "confidence": 1,
+      "latencyMs": 316,
+      "provider": "groq"
+    },
+    {
+      "id": "h09-s5-babble",
+      "category": "snr5",
+      "expected": "bid 4 42500",
+      "actual": "accept 4 42500",
+      "confidence": 1,
+      "latencyMs": 256,
+      "provider": "groq"
+    },
+    {
+      "id": "h10-s10-room",
+      "category": "snr10",
+      "expected": "bid 8 67500",
+      "actual": "accept 8 67500",
+      "confidence": 1,
+      "latencyMs": 234,
+      "provider": "groq"
+    },
+    {
+      "id": "h10-s20-room",
+      "category": "snr20",
+      "expected": "bid 8 67500",
+      "actual": "accept 8 67500",
+      "confidence": 1,
+      "latencyMs": 352,
+      "provider": "groq"
+    },
+    {
+      "id": "h10-s5-room",
+      "category": "snr5",
+      "expected": "bid 8 67500",
+      "actual": "accept 8 67500",
+      "confidence": 1,
+      "latencyMs": 407,
+      "provider": "groq"
+    },
+    {
+      "id": "h11-s10-babble",
+      "category": "snr10",
+      "expected": "bid 3 110000",
+      "actual": "accept 3 110000",
+      "confidence": 1,
+      "latencyMs": 289,
+      "provider": "groq"
+    },
+    {
+      "id": "h11-s20-babble",
+      "category": "snr20",
+      "expected": "bid 3 110000",
+      "actual": "accept 3 110000",
+      "confidence": 1,
+      "latencyMs": 228,
+      "provider": "groq"
+    },
+    {
+      "id": "h11-s5-babble",
+      "category": "snr5",
+      "expected": "bid 3 110000",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 344,
+      "provider": "groq"
+    },
+    {
+      "id": "h12-s10-room",
+      "category": "snr10",
+      "expected": "bid 5 145000",
+      "actual": "accept 5 145000",
+      "confidence": 1,
+      "latencyMs": 265,
+      "provider": "groq"
+    },
+    {
+      "id": "h12-s20-room",
+      "category": "snr20",
+      "expected": "bid 5 145000",
+      "actual": "accept 5 145000",
+      "confidence": 1,
+      "latencyMs": 252,
+      "provider": "groq"
+    },
+    {
+      "id": "h12-s5-room",
+      "category": "snr5",
+      "expected": "bid 5 145000",
+      "actual": "accept 5 145000",
+      "confidence": 1,
+      "latencyMs": 239,
+      "provider": "groq"
+    },
+    {
+      "id": "h13-s10-babble",
+      "category": "snr10",
+      "expected": "bid 6 82500",
+      "actual": "confirm 6 825 / 6 82500",
+      "confidence": 0.5,
+      "latencyMs": 226,
+      "provider": "groq"
+    },
+    {
+      "id": "h13-s20-babble",
+      "category": "snr20",
+      "expected": "bid 6 82500",
+      "actual": "accept 6 82500",
+      "confidence": 1,
+      "latencyMs": 333,
+      "provider": "groq"
+    },
+    {
+      "id": "h13-s5-babble",
+      "category": "snr5",
+      "expected": "bid 6 82500",
+      "actual": "confirm 6 825 / 6 82500",
+      "confidence": 0.5,
+      "latencyMs": 229,
+      "provider": "groq"
+    },
+    {
+      "id": "h14-s10-room",
+      "category": "snr10",
+      "expected": "bid 4 95000",
+      "actual": "accept 4 95000",
+      "confidence": 1,
+      "latencyMs": 267,
+      "provider": "groq"
+    },
+    {
+      "id": "h14-s20-room",
+      "category": "snr20",
+      "expected": "bid 4 95000",
+      "actual": "accept 4 95000",
+      "confidence": 1,
+      "latencyMs": 350,
+      "provider": "groq"
+    },
+    {
+      "id": "h14-s5-room",
+      "category": "snr5",
+      "expected": "bid 4 95000",
+      "actual": "accept 4 95000",
+      "confidence": 1,
+      "latencyMs": 277,
+      "provider": "groq"
+    },
+    {
+      "id": "h15-s10-babble",
+      "category": "snr10",
+      "expected": "bid 8 170000",
+      "actual": "accept 8 170000",
+      "confidence": 1,
+      "latencyMs": 255,
+      "provider": "groq"
+    },
+    {
+      "id": "h15-s20-babble",
+      "category": "snr20",
+      "expected": "bid 8 170000",
+      "actual": "accept 8 170000",
+      "confidence": 1,
+      "latencyMs": 357,
+      "provider": "groq"
+    },
+    {
+      "id": "h15-s5-babble",
+      "category": "snr5",
+      "expected": "bid 8 170000",
+      "actual": "accept 8 170000",
+      "confidence": 1,
+      "latencyMs": 254,
+      "provider": "groq"
+    },
+    {
+      "id": "h16-s10-room",
+      "category": "snr10",
+      "expected": "bid 11 45000",
+      "actual": "accept 11 45000",
+      "confidence": 1,
+      "latencyMs": 232,
+      "provider": "groq"
+    },
+    {
+      "id": "h16-s20-room",
+      "category": "snr20",
+      "expected": "bid 11 45000",
+      "actual": "accept 11 45000",
+      "confidence": 1,
+      "latencyMs": 311,
+      "provider": "groq"
+    },
+    {
+      "id": "h16-s5-room",
+      "category": "snr5",
+      "expected": "bid 11 45000",
+      "actual": "accept 11 45000",
+      "confidence": 1,
+      "latencyMs": 261,
+      "provider": "groq"
+    },
+    {
+      "id": "h17-s10-babble",
+      "category": "snr10",
+      "expected": "bid 6 50000",
+      "actual": "accept 6 50000",
+      "confidence": 1,
+      "latencyMs": 322,
+      "provider": "groq"
+    },
+    {
+      "id": "h17-s20-babble",
+      "category": "snr20",
+      "expected": "bid 6 50000",
+      "actual": "accept 6 50000",
+      "confidence": 1,
+      "latencyMs": 240,
+      "provider": "groq"
+    },
+    {
+      "id": "h17-s5-babble",
+      "category": "snr5",
+      "expected": "bid 6 50000",
+      "actual": "confirm 6 10000 /  60000",
+      "confidence": 0.5,
+      "latencyMs": 272,
+      "provider": "groq"
+    },
+    {
+      "id": "h18-s10-room",
+      "category": "snr10",
+      "expected": "bid 13 60000",
+      "actual": "accept 13 60000",
+      "confidence": 1,
+      "latencyMs": 224,
+      "provider": "groq"
+    },
+    {
+      "id": "h18-s20-room",
+      "category": "snr20",
+      "expected": "bid 13 60000",
+      "actual": "accept 13 60000",
+      "confidence": 1,
+      "latencyMs": 360,
+      "provider": "groq"
+    },
+    {
+      "id": "h18-s5-room",
+      "category": "snr5",
+      "expected": "bid 13 60000",
+      "actual": "accept 13 60000",
+      "confidence": 1,
+      "latencyMs": 239,
+      "provider": "groq"
+    },
+    {
+      "id": "h19-s10-babble",
+      "category": "snr10",
+      "expected": "bid 8 75000",
+      "actual": "accept 8 75000",
+      "confidence": 1,
+      "latencyMs": 226,
+      "provider": "groq"
+    },
+    {
+      "id": "h19-s20-babble",
+      "category": "snr20",
+      "expected": "bid 8 75000",
+      "actual": "accept 8 75000",
+      "confidence": 1,
+      "latencyMs": 361,
+      "provider": "groq"
+    },
+    {
+      "id": "h19-s5-babble",
+      "category": "snr5",
+      "expected": "bid 8 75000",
+      "actual": "confirm 8 750 / 8 75000",
+      "confidence": 0.5,
+      "latencyMs": 260,
+      "provider": "groq"
+    },
+    {
+      "id": "h20-s10-room",
+      "category": "snr10",
+      "expected": "bid 15 80000",
+      "actual": "accept 15 80000",
+      "confidence": 1,
+      "latencyMs": 193,
+      "provider": "groq"
+    },
+    {
+      "id": "h20-s20-room",
+      "category": "snr20",
+      "expected": "bid 15 80000",
+      "actual": "accept 15 80000",
+      "confidence": 1,
+      "latencyMs": 346,
+      "provider": "groq"
+    },
+    {
+      "id": "h20-s5-room",
+      "category": "snr5",
+      "expected": "bid 15 80000",
+      "actual": "accept 15 80000",
+      "confidence": 1,
+      "latencyMs": 322,
+      "provider": "groq"
+    },
+    {
+      "id": "h21-s10-babble",
+      "category": "snr10",
+      "expected": "bid 3 37500",
+      "actual": "accept 3 37500",
+      "confidence": 1,
+      "latencyMs": 312,
+      "provider": "groq"
+    },
+    {
+      "id": "h21-s20-babble",
+      "category": "snr20",
+      "expected": "bid 3 37500",
+      "actual": "accept 3 37500",
+      "confidence": 1,
+      "latencyMs": 242,
+      "provider": "groq"
+    },
+    {
+      "id": "h21-s5-babble",
+      "category": "snr5",
+      "expected": "bid 3 37500",
+      "actual": "accept 3 37500",
+      "confidence": 1,
+      "latencyMs": 308,
+      "provider": "groq"
+    },
+    {
+      "id": "h22-s10-room",
+      "category": "snr10",
+      "expected": "bid 10 100000",
+      "actual": "accept 10 100000",
+      "confidence": 1,
+      "latencyMs": 230,
+      "provider": "groq"
+    },
+    {
+      "id": "h22-s20-room",
+      "category": "snr20",
+      "expected": "bid 10 100000",
+      "actual": "accept 10 100000",
+      "confidence": 1,
+      "latencyMs": 200,
+      "provider": "groq"
+    },
+    {
+      "id": "h22-s5-room",
+      "category": "snr5",
+      "expected": "bid 10 100000",
+      "actual": "accept 10 100000",
+      "confidence": 1,
+      "latencyMs": 239,
+      "provider": "groq"
+    },
+    {
+      "id": "h23-s10-babble",
+      "category": "snr10",
+      "expected": "bid 16 20000",
+      "actual": "accept 16 20000",
+      "confidence": 1,
+      "latencyMs": 197,
+      "provider": "groq"
+    },
+    {
+      "id": "h23-s20-babble",
+      "category": "snr20",
+      "expected": "bid 16 20000",
+      "actual": "accept 16 20000",
+      "confidence": 1,
+      "latencyMs": 237,
+      "provider": "groq"
+    },
+    {
+      "id": "h23-s5-babble",
+      "category": "snr5",
+      "expected": "bid 16 20000",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 230,
+      "provider": "groq"
+    },
+    {
+      "id": "h24-s10-room",
+      "category": "snr10",
+      "expected": "bid 4 200000",
+      "actual": "accept 4 200000",
+      "confidence": 1,
+      "latencyMs": 194,
+      "provider": "groq"
+    },
+    {
+      "id": "h24-s20-room",
+      "category": "snr20",
+      "expected": "bid 4 200000",
+      "actual": "accept 4 200000",
+      "confidence": 1,
+      "latencyMs": 218,
+      "provider": "groq"
+    },
+    {
+      "id": "h24-s5-room",
+      "category": "snr5",
+      "expected": "bid 4 200000",
+      "actual": "accept 4 200000",
+      "confidence": 1,
+      "latencyMs": 249,
+      "provider": "groq"
+    },
+    {
+      "id": "h25-s10-babble",
+      "category": "snr10",
+      "expected": "bid 5 260000",
+      "actual": "accept 5 260000",
+      "confidence": 1,
+      "latencyMs": 219,
+      "provider": "groq"
+    },
+    {
+      "id": "h25-s20-babble",
+      "category": "snr20",
+      "expected": "bid 5 260000",
+      "actual": "accept 5 260000",
+      "confidence": 1,
+      "latencyMs": 221,
+      "provider": "groq"
+    },
+    {
+      "id": "h25-s5-babble",
+      "category": "snr5",
+      "expected": "bid 5 260000",
+      "actual": "accept 5 260000",
+      "confidence": 1,
+      "latencyMs": 183,
+      "provider": "groq"
+    },
+    {
+      "id": "h26-s10-room",
+      "category": "snr10",
+      "expected": "bid 6 350000",
+      "actual": "accept 6 350000",
+      "confidence": 1,
+      "latencyMs": 261,
+      "provider": "groq"
+    },
+    {
+      "id": "h26-s20-room",
+      "category": "snr20",
+      "expected": "bid 6 350000",
+      "actual": "accept 6 350000",
+      "confidence": 1,
+      "latencyMs": 233,
+      "provider": "groq"
+    },
+    {
+      "id": "h26-s5-room",
+      "category": "snr5",
+      "expected": "bid 6 350000",
+      "actual": "accept 6 350000",
+      "confidence": 1,
+      "latencyMs": 221,
+      "provider": "groq"
+    },
+    {
+      "id": "h27-s10-babble",
+      "category": "snr10",
+      "expected": "confirm",
+      "actual": "confirm 7 45000",
+      "confidence": 0.5,
+      "latencyMs": 227,
+      "provider": "groq"
+    },
+    {
+      "id": "h27-s20-babble",
+      "category": "snr20",
+      "expected": "confirm",
+      "actual": "confirm 7 45000",
+      "confidence": 0.5,
+      "latencyMs": 238,
+      "provider": "groq"
+    },
+    {
+      "id": "h27-s5-babble",
+      "category": "snr5",
+      "expected": "confirm",
+      "actual": "confirm 7 45000",
+      "confidence": 0.5,
+      "latencyMs": 253,
+      "provider": "groq"
+    },
+    {
+      "id": "h28-s10-room",
+      "category": "snr10",
+      "expected": "confirm",
+      "actual": "confirm 7 50000",
+      "confidence": 0.5,
+      "latencyMs": 246,
+      "provider": "groq"
+    },
+    {
+      "id": "h28-s20-room",
+      "category": "snr20",
+      "expected": "confirm",
+      "actual": "confirm 7 50000",
+      "confidence": 0.5,
+      "latencyMs": 417,
+      "provider": "groq"
+    },
+    {
+      "id": "h28-s5-room",
+      "category": "snr5",
+      "expected": "confirm",
+      "actual": "confirm 7 50000",
+      "confidence": 0.5,
+      "latencyMs": 236,
+      "provider": "groq"
+    },
+    {
+      "id": "h29-s10-babble",
+      "category": "snr10",
+      "expected": "confirm",
+      "actual": "confirm 7 60000 / 7 65000",
+      "confidence": 0.5,
+      "latencyMs": 233,
+      "provider": "groq"
+    },
+    {
+      "id": "h29-s20-babble",
+      "category": "snr20",
+      "expected": "confirm",
+      "actual": "confirm 7 60000 / 7 65000",
+      "confidence": 0.5,
+      "latencyMs": 319,
+      "provider": "groq"
+    },
+    {
+      "id": "h29-s5-babble",
+      "category": "snr5",
+      "expected": "confirm",
+      "actual": "confirm 7 60000 / 7 65000",
+      "confidence": 0.5,
+      "latencyMs": 252,
+      "provider": "groq"
+    },
+    {
+      "id": "h30-s10-room",
+      "category": "snr10",
+      "expected": "confirm",
+      "actual": "confirm 4 30000 / 9 32500",
+      "confidence": 0.5,
+      "latencyMs": 266,
+      "provider": "groq"
+    },
+    {
+      "id": "h30-s20-room",
+      "category": "snr20",
+      "expected": "confirm",
+      "actual": "confirm 4 30000 / 9 32500",
+      "confidence": 0.5,
+      "latencyMs": 322,
+      "provider": "groq"
+    },
+    {
+      "id": "h30-s5-room",
+      "category": "snr5",
+      "expected": "confirm",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 471,
+      "provider": "groq"
+    },
+    {
+      "id": "h31-s10-babble",
+      "category": "snr10",
+      "expected": "confirm",
+      "actual": "confirm 7 70000",
+      "confidence": 0.5,
+      "latencyMs": 258,
+      "provider": "groq"
+    },
+    {
+      "id": "h31-s20-babble",
+      "category": "snr20",
+      "expected": "confirm",
+      "actual": "confirm 7 70000",
+      "confidence": 0.5,
+      "latencyMs": 258,
+      "provider": "groq"
+    },
+    {
+      "id": "h31-s5-babble",
+      "category": "snr5",
+      "expected": "confirm",
+      "actual": "confirm 7 70000",
+      "confidence": 0.5,
+      "latencyMs": 263,
+      "provider": "groq"
+    },
+    {
+      "id": "h32-s10-room",
+      "category": "snr10",
+      "expected": "confirm",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 255,
+      "provider": "groq"
+    },
+    {
+      "id": "h32-s20-room",
+      "category": "snr20",
+      "expected": "confirm",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 266,
+      "provider": "groq"
+    },
+    {
+      "id": "h32-s5-room",
+      "category": "snr5",
+      "expected": "confirm",
+      "actual": "confirm ",
+      "confidence": 0.5,
+      "latencyMs": 235,
+      "provider": "groq"
+    },
+    {
+      "id": "h33-s10-babble",
+      "category": "snr10",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 225,
+      "provider": "groq"
+    },
+    {
+      "id": "h33-s20-babble",
+      "category": "snr20",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 326,
+      "provider": "groq"
+    },
+    {
+      "id": "h33-s5-babble",
+      "category": "snr5",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 255,
+      "provider": "groq"
+    },
+    {
+      "id": "h34-s10-room",
+      "category": "snr10",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 341,
+      "provider": "groq"
+    },
+    {
+      "id": "h34-s20-room",
+      "category": "snr20",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 244,
+      "provider": "groq"
+    },
+    {
+      "id": "h34-s5-room",
+      "category": "snr5",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 265,
+      "provider": "groq"
+    },
+    {
+      "id": "h35-s10-babble",
+      "category": "snr10",
+      "expected": "none",
+      "actual": "accept 7 300",
+      "confidence": 1,
+      "latencyMs": 335,
+      "provider": "groq"
+    },
+    {
+      "id": "h35-s20-babble",
+      "category": "snr20",
+      "expected": "none",
+      "actual": "accept 7 300",
+      "confidence": 1,
+      "latencyMs": 359,
+      "provider": "groq"
+    },
+    {
+      "id": "h35-s5-babble",
+      "category": "snr5",
+      "expected": "none",
+      "actual": "accept 7 300",
+      "confidence": 1,
+      "latencyMs": 253,
+      "provider": "groq"
+    },
+    {
+      "id": "h36-s10-room",
+      "category": "snr10",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 257,
+      "provider": "groq"
+    },
+    {
+      "id": "h36-s20-room",
+      "category": "snr20",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 365,
+      "provider": "groq"
+    },
+    {
+      "id": "h36-s5-room",
+      "category": "snr5",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 355,
+      "provider": "groq"
+    },
+    {
+      "id": "h37-s10-babble",
+      "category": "snr10",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 200,
+      "provider": "groq"
+    },
+    {
+      "id": "h37-s20-babble",
+      "category": "snr20",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 229,
+      "provider": "groq"
+    },
+    {
+      "id": "h37-s5-babble",
+      "category": "snr5",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 224,
+      "provider": "groq"
+    },
+    {
+      "id": "h38-s10-room",
+      "category": "snr10",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 238,
+      "provider": "groq"
+    },
+    {
+      "id": "h38-s20-room",
+      "category": "snr20",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 250,
+      "provider": "groq"
+    },
+    {
+      "id": "h38-s5-room",
+      "category": "snr5",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 339,
+      "provider": "groq"
+    },
+    {
+      "id": "h39-s10-babble",
+      "category": "snr10",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 224,
+      "provider": "groq"
+    },
+    {
+      "id": "h39-s20-babble",
+      "category": "snr20",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 200,
+      "provider": "groq"
+    },
+    {
+      "id": "h39-s5-babble",
+      "category": "snr5",
+      "expected": "none",
+      "actual": "none",
+      "confidence": 0.5,
+      "latencyMs": 242,
+      "provider": "groq"
+    },
+    {
+      "id": "h40-s10-room",
+      "category": "snr10",
+      "expected": "none",
+      "actual": "accept 7 20000",
+      "confidence": 1,
+      "latencyMs": 257,
+      "provider": "groq"
+    },
+    {
+      "id": "h40-s20-room",
+      "category": "snr20",
+      "expected": "none",
+      "actual": "accept 7 20000",
+      "confidence": 1,
+      "latencyMs": 260,
+      "provider": "groq"
+    },
+    {
+      "id": "h40-s5-room",
+      "category": "snr5",
+      "expected": "none",
+      "actual": "accept 7 20000",
+      "confidence": 1,
+      "latencyMs": 259,
+      "provider": "groq"
+    }
+  ]
+}

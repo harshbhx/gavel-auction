@@ -374,6 +374,28 @@ export async function readBuyerView(
   }
 }
 
+/**
+ * Fetch options of one API call. PayPal answers 415 to a POST without a JSON payload (the gate http
+ * layer sends "{}" too), so a bodyless POST sends "{}" with a JSON content type.
+ */
+export function requestInit(
+  method: 'GET' | 'POST',
+  token: string,
+  body?: unknown,
+  extra?: Record<string, string>,
+): { method: string; headers: Record<string, string>; body?: string } {
+  const payload = body === undefined && method === 'POST' ? {} : body;
+  return {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(payload === undefined ? {} : { 'Content-Type': 'application/json' }),
+      ...(extra ?? {}),
+    },
+    ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
+  };
+}
+
 export interface RunObserveOptions {
   env: Record<string, string | undefined>;
   outDir: string;
@@ -437,15 +459,7 @@ export async function runObserve(opts: RunObserveOptions): Promise<number> {
     runTag,
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     request: async (method, path, body, extra) => {
-      const res = await doFetch(`${base}${path}`, {
-        method,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-          ...(extra ?? {}),
-        },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      });
+      const res = await doFetch(`${base}${path}`, requestInit(method, token, body, extra));
       const json: unknown = await res.json().catch(() => undefined);
       return { status: res.status, json };
     },

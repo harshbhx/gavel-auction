@@ -191,6 +191,8 @@ export interface RoomDeps {
   /** Builds a fresh engine for a config; called again whenever the room is rebuilt from its log. */
   engine: (config: AuctionConfig, createdAt: EpochMs) => EnginePort;
   limiter?: RateLimiter;
+  /** The server's bidder limit cap in cents; sent in every snapshot when set (FIX-78). */
+  maxCeilingCents?: number;
   /** Connection, roster and bid-count caps parsed from the config (R-RT-121); defaults when absent. */
   caps?: CapLimits;
   /** Counters fed from the bid path (R-RT-122, R-RT-135). */
@@ -1877,6 +1879,9 @@ export class Room {
       leaderId: view.leader,
       endTs: this.endTsFor(view, this.deps.clock.now()),
       minNext: view.minNext,
+      ...(this.deps.maxCeilingCents === undefined
+        ? {}
+        : { maxCeilingCents: this.deps.maxCeilingCents as Cents }),
       ...(view.paused ? { paused: true, remainingMs: view.remainingMs ?? 0 } : {}),
       ...(this.hammered && this.endedByAuctioneer ? { stopped: true } : {}),
       ...(this.hammered || this.done ? { registrationClosed: true } : {}),

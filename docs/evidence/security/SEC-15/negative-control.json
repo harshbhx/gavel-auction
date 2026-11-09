@@ -1,0 +1,32 @@
+{
+  "schema": "sec15-log-scan/1",
+  "verdict": "FAIL",
+  "problems": ["1 finding(s)"],
+  "canaries": ["JUDGE_KEY"],
+  "logLines": 44,
+  "countsByRule": {
+    "canary": 1
+  },
+  "files": [
+    {
+      "path": "/home/runner/work/gavel-auction/gavel-auction/sec15-out/leaky.log",
+      "kind": "log",
+      "lines": 44,
+      "sha256": "7855442f5b322daa08e03763aebc3060b8e86929ac9b1a22413d8249deb671fb",
+      "findings": 1
+    }
+  ],
+  "findings": [
+    {
+      "file": "/home/runner/work/gavel-auction/gavel-auction/sec15-out/leaky.log",
+      "rule": "canary",
+      "name": "JUDGE_KEY",
+      "line": 44,
+      "fingerprint": "b5f013ca"
+    }
+  ],
+  "notCovered": [
+    "raw audio transcripts: scenario S01 sends no audio, so no private transcript was injected",
+    "any log line the server wrote that this run did not exercise (other routes, error paths)"
+  ]
+}

@@ -65,6 +65,7 @@ import type { MintReceiptLink } from './screens/receipt/ShareControls';
 import { Approve } from './screens/register/Approve';
 import { Return } from './screens/register/Return';
 import { RegisterScreen, type RegistrationDraft } from './screens/register/RegisterScreen';
+import { ceilingRange } from './screens/register/validate';
 import { ScreenView } from './screens/screen/ScreenView';
 import { ErrorBoundary } from './screens/states/ErrorBoundary';
 import { NotFound } from './screens/states/NotFound';
@@ -651,9 +652,6 @@ function openJoinForRoom(apiBase: string, roomId: string): Promise<OpenJoinResul
   return started;
 }
 
-const CEILING_MIN_CENTS = 10000;
-const CEILING_MAX_CENTS = 100000;
-
 function RegisterRoute({
   roomId,
   api,
@@ -824,15 +822,20 @@ function RegisterRoute({
   }
   if (draft === null || !approving) {
     const presets = snapshot?.config.ceilingPresets;
+    const range = ceilingRange(snapshot?.config.reserve, snapshot?.maxCeilingCents, presets);
     return (
       // RegisterScreen renders the page's one main landmark.
       <div data-route="register">
         {sessionNotice}
         <RegisterScreen
-          minCents={presets === undefined ? CEILING_MIN_CENTS : Math.min(...presets)}
-          maxCents={presets === undefined ? CEILING_MAX_CENTS : Math.max(...presets)}
-          {...(presets === undefined ? {} : { presetsCents: presets })}
-          allowCustom={presets === undefined}
+          minCents={range.minCents}
+          maxCents={range.maxCents}
+          {...(presets === undefined
+            ? {}
+            : {
+                presetsCents: presets.filter((p) => p >= range.minCents && p <= range.maxCents),
+              })}
+          allowCustom
           {...(draft === null ? {} : { initial: draft })}
           onApprove={(next) => {
             setDraft(next);

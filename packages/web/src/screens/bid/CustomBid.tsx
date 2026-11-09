@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react';
 
+import { announce } from '../../a11y/announce';
 import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
 import { Field } from '../../design/primitives/Field';
-import { formatUsd, parseUsdToCents } from '../../util/money';
+import { formatUsd, formatUsdCompact, parseUsdToCents } from '../../util/money';
 
 export interface CustomBidProps {
   nextMinCents: number;
@@ -20,20 +21,44 @@ export function customHint(
 ): string | undefined {
   if (cents === null) return undefined;
   if (cents < nextMinCents) return t('bid.rej.below_increment', { min: formatUsd(nextMinCents) });
-  if (ceilingCents !== null && cents > ceilingCents) return t('bid.aboveCeiling');
+  if (ceilingCents !== null && cents > ceilingCents) {
+    return t('bid.rej.over_ceiling', { max: formatUsdCompact(ceilingCents) });
+  }
   return undefined;
 }
 
-/** Custom amount: sent only by Enter or the Place bid button (R-WEB-056, R-WEB-057). */
+/** Why an amount typed in the box cannot be sent, or undefined when it can. Never silent. */
+export function customReason(
+  text: string,
+  nextMinCents: number,
+  ceilingCents: number | null,
+): string | undefined {
+  if (text.trim() === '') return t('bid.enterAmount', { min: formatUsd(nextMinCents) });
+  const cents = parseUsdToCents(text);
+  if (cents === null) return t('bid.notAnAmount');
+  return customHint(cents, nextMinCents, ceilingCents);
+}
+
+/**
+ * Custom amount: sent only by Enter or the Place bid button (R-WEB-056, R-WEB-057). The button
+ * stays pressable: an amount that cannot be sent gets its reason on screen, never a dead button.
+ */
 export function CustomBid({ nextMinCents, ceilingCents, onBid }: CustomBidProps) {
   const [text, setText] = useState('');
+  const [attempted, setAttempted] = useState(false);
   const cents = parseUsdToCents(text);
-  const hint = customHint(cents, nextMinCents, ceilingCents);
-  const sendable = cents !== null && hint === undefined;
+  const reason = customReason(text, nextMinCents, ceilingCents);
+  const live = text.trim() === '' ? undefined : reason;
 
   const submit = (e: FormEvent): void => {
     e.preventDefault();
-    if (cents !== null && sendable) onBid(cents);
+    if (reason !== undefined || cents === null) {
+      setAttempted(true);
+      announce('assertive', reason ?? t('bid.notAnAmount'));
+      return;
+    }
+    setAttempted(false);
+    onBid(cents);
   };
 
   return (
@@ -42,12 +67,18 @@ export function CustomBid({ nextMinCents, ceilingCents, onBid }: CustomBidProps)
         label={t('bid.custom')}
         value={text}
         inputMode="numeric"
-        onChange={(e) => setText(e.target.value)}
-        {...(hint === undefined ? {} : { hint })}
+        autoComplete="off"
+        onChange={(e) => {
+          setText(e.target.value);
+          setAttempted(false);
+        }}
+        {...(attempted && reason !== undefined
+          ? { error: reason }
+          : live === undefined
+            ? {}
+            : { hint: live })}
       />
-      <Button type="submit" disabled={!sendable}>
-        {t('bid.place')}
-      </Button>
+      <Button type="submit">{t('bid.place')}</Button>
     </form>
   );
 }

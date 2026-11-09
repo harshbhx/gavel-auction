@@ -651,6 +651,9 @@ class Service implements AuctionService, SettlePort {
       durable: (id, engine) => this.flushLedger(id, engine, false),
       ...(this.deps.limiter !== undefined ? { limiter: this.deps.limiter } : {}),
       caps: this.caps,
+      ...(this.deps.maxCeilingCents !== undefined
+        ? { maxCeilingCents: this.deps.maxCeilingCents }
+        : {}),
       ...(this.deps.roomMetrics !== undefined ? { metrics: this.deps.roomMetrics } : {}),
     };
   }

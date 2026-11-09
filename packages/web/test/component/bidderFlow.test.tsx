@@ -50,7 +50,7 @@ describe('QuickBid and CustomBid (T-WEB-033)', () => {
     fireEvent.change(input, { target: { value: '20' } });
     expect(screen.getByText(t('bid.rej.below_increment', { min: '$50.00' }))).toBeTruthy();
     fireEvent.change(input, { target: { value: '500' } });
-    expect(screen.getByText(t('bid.aboveCeiling'))).toBeTruthy();
+    expect(screen.getByText(t('bid.rej.over_ceiling', { max: '$100' }))).toBeTruthy();
     fireEvent.change(input, { target: { value: '60' } });
     expect(send).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: t('bid.place') }));

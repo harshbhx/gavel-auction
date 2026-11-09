@@ -91,7 +91,7 @@ function setup(extra: Partial<HoldsPort> = {}): Setup {
     service: {
       createHoldOrder: async (i) => {
         calls.created.push(i);
-        if (i.ceilingCents === 12345) throw new HoldError('ceiling_out_of_range', 'not a preset');
+        if (i.ceilingCents === 12345) throw new HoldError('ceiling_out_of_range', 'out of range');
         return { holdId: 'hold-1', orderId: 'order-1' };
       },
       completeApproval: async (i) => {
@@ -156,9 +156,7 @@ describe('hold routes (INT-R3-20)', () => {
     const res = await post(app, '/api/holds', { auctionId, ceilingCents: 30000 }, m.token);
     expect(res.status).toBe(201);
     expect(await res.json()).toEqual({ holdId: 'hold-1', orderId: 'order-1' });
-    expect(calls.created).toEqual([
-      { auctionId, bidderId: bidder, ceilingCents: 30000, presetsCents: [30000, 50000] },
-    ]);
+    expect(calls.created).toEqual([{ auctionId, bidderId: bidder, ceilingCents: 30000 }]);
   });
 
   it('hands the PayPal approval link back so the redirect fallback can run (issue 1778)', async () => {
