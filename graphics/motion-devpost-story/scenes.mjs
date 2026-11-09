@@ -25,7 +25,14 @@ const frame = (section, no, sandbox = true) =>
   F(0, 0.5, 'left:56px;top:28px', `<span class="lab">GAVEL &nbsp;/&nbsp; ${section}</span>`) +
   F(0, 0.5, 'right:56px;top:28px', `<span class="lab">${no} / 08</span>`) +
   R(0.05, 0.9, 'left:56px;width:888px;top:52px') +
-  (sandbox ? F(0.4, 0.5, 'left:56px;bottom:26px', '<span class="lab" style="color:var(--muted)">PayPal sandbox only</span>') : '');
+  (sandbox
+    ? F(
+        0.4,
+        0.5,
+        'left:56px;bottom:26px',
+        '<span class="lab" style="color:var(--muted)">PayPal sandbox only</span>',
+      )
+    : '');
 
 const LIB = `
 function L(t,h){
@@ -219,9 +226,21 @@ export const proof = {
   poster: 3.8,
   html: `${frame('Accomplishments', '05')}
 ${[
-  ['Kill <span class="or">survived.</span>', 'A real server kill on the sandbox. One capture, ledger intact.', 0.15],
-  ['Voice <span class="or cn" data-t=".95" data-d="1" data-f="0" data-v="24">0</span> of 24.', 'Live voice socket, 24 synthetic clips. Every spoken bid waits for a confirm.', 1.0],
-  ['Chain <span class="or">verifies.</span>', 'Anyone holding the ledger export can re-check it.', 1.85],
+  [
+    'Kill <span class="or">survived.</span>',
+    'A real server kill on the sandbox. One capture, ledger intact.',
+    0.15,
+  ],
+  [
+    'Voice <span class="or cn" data-t=".95" data-d="1" data-f="0" data-v="24">0</span> of 24.',
+    'Live voice socket, 24 synthetic clips. Every spoken bid waits for a confirm.',
+    1.0,
+  ],
+  [
+    'Chain <span class="or">verifies.</span>',
+    'Anyone holding the ledger export can re-check it.',
+    1.85,
+  ],
 ]
   .map(
     ([big, cap, t], i) =>
@@ -281,10 +300,20 @@ export const next = {
 ${nexts
   .map(
     ([n, d, st], i) =>
-      F(0.1 + i * 0.3, 0.4, `left:56px;top:${94 + i * 140}px`, `<span class="lab" style="color:var(--muted)">0${i + 1}</span>`) +
+      F(
+        0.1 + i * 0.3,
+        0.4,
+        `left:56px;top:${94 + i * 140}px`,
+        `<span class="lab" style="color:var(--muted)">0${i + 1}</span>`,
+      ) +
       M(0.15 + i * 0.3, `left:100px;top:${80 + i * 140}px;${disp(84)}width:760px`, n, 0.8) +
       F(0.7 + i * 0.3, 0.4, `left:102px;top:${164 + i * 140}px`, `<span class="cap">${d}</span>`) +
-      F(0.5 + i * 0.3, 0.4, `right:56px;top:${96 + i * 140}px`, `<span class="lab" ${i ? 'style="color:var(--muted)"' : ''}>${st}</span>`) +
+      F(
+        0.5 + i * 0.3,
+        0.4,
+        `right:56px;top:${96 + i * 140}px`,
+        `<span class="lab" ${i ? 'style="color:var(--muted)"' : ''}>${st}</span>`,
+      ) +
       R(0.3 + i * 0.3, 0.9, `left:56px;width:888px;top:${200 + i * 140}px`),
   )
   .join('')}
@@ -317,8 +346,18 @@ ${tools
   .map(
     ([n, r], i) =>
       R(0.1 + i * 0.12, 0.7, `left:56px;width:888px;top:${68 + i * 74}px`) +
-      F(0.2 + i * 0.12, 0.4, `left:56px;top:${96 + i * 74}px`, `<span class="lab" style="color:var(--muted)">0${i + 1}</span>`) +
-      M(0.2 + i * 0.12, `left:100px;top:${76 + i * 74}px;${disp(66)}width:620px;white-space:nowrap`, `<span class="ln">${n}</span>`, 0.7) +
+      F(
+        0.2 + i * 0.12,
+        0.4,
+        `left:56px;top:${96 + i * 74}px`,
+        `<span class="lab" style="color:var(--muted)">0${i + 1}</span>`,
+      ) +
+      M(
+        0.2 + i * 0.12,
+        `left:100px;top:${76 + i * 74}px;${disp(66)}width:620px;white-space:nowrap`,
+        `<span class="ln">${n}</span>`,
+        0.7,
+      ) +
       F(0.5 + i * 0.12, 0.4, `right:56px;top:${96 + i * 74}px`, `<span class="cap">${r}</span>`),
   )
   .join('')}

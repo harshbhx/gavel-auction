@@ -1,7 +1,7 @@
 // Devpost story set (GFX-09): a 1600x500 header banner and eight 1000x560 inline illustrations for the written
 // project description. Output per scene: GIF (15 fps), MP4 and WebM (24 fps), a poster PNG and a contact
 // sheet (contact-*.png, review only). Usage: node graphics/motion-devpost-story/render.mjs <outDir> (CI only).
-import { mkdirSync, writeFileSync, statSync, readdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { openBrowser, frames, still } from '../lib/render.mjs';
@@ -45,10 +45,21 @@ for (const s of all) {
   });
   mp4v(vdir, path.join(out, `${s.name}.mp4`), VIDEO_FPS);
   webm(vdir, path.join(out, `${s.name}.webm`), VIDEO_FPS);
-  await still(browser, file, path.join(out, `${s.name}-poster.png`), s.W, s.H, { at: s.poster * 1000 });
+  await still(browser, file, path.join(out, `${s.name}-poster.png`), s.W, s.H, {
+    at: s.poster * 1000,
+  });
   execFileSync('ffmpeg', [
-    '-loglevel', 'error', '-y', '-framerate', String(VIDEO_FPS), '-i', path.join(vdir, 'f%04d.png'),
-    '-vf', `select='not(mod(n\\,8))',scale=480:-1,tile=4x4`, '-frames:v', '1',
+    '-loglevel',
+    'error',
+    '-y',
+    '-framerate',
+    String(VIDEO_FPS),
+    '-i',
+    path.join(vdir, 'f%04d.png'),
+    '-vf',
+    `select='not(mod(n\\,8))',scale=480:-1,tile=4x4`,
+    '-frames:v',
+    '1',
     path.join(out, `contact-${s.name}.png`),
   ]);
   report.push(
