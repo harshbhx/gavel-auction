@@ -1364,6 +1364,8 @@ export const en = {
   'ui.code.group': 'Room code, {length} characters after {prefix}',
   'ui.code.char': 'Character {n} of {length}',
   'help.button': 'Help',
+  'nav.home': 'Home',
+  'nav.homeLabel': 'GAVEL home',
   'help.title': 'Help',
   'help.close': 'Close',
   'help.open.hold': 'What is a hold?',
