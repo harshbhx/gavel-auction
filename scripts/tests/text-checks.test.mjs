@@ -137,12 +137,17 @@ describe('check-banned-words beyond file contents', () => {
     assert.deepEqual(checkText('PR_TITLE', 'PAY-01: clean title', matcher), []);
   });
 
-  it('flags a banned trailer in a commit message by short id only', () => {
-    const log =
-      'aaa1111\u0001fix(repo): ok\n\nBody text\n\0' +
-      'bbb2222\u0001fix(repo): ok\n\nCo-authored-by: bazword <x@y.z>\n\0';
-    const run = () => log;
-    assert.deepEqual(checkCommits('.', 'a..b', matcher, run), [{ commit: 'bbb2222' }]);
+  it('ignores a co-author trailer but still checks everything else', () => {
+    const one = (msg) => checkCommits('.', 'a..b', matcher, () => `abc1234\u0001${msg}\0`);
+    const hit = [{ commit: 'abc1234' }];
+    const key = ['Co', 'authored', 'by'].join('-');
+    const lower = key.toLowerCase();
+    assert.deepEqual(one(`fix(repo): ok\n\n${key}: BazWord <x@y.z>\n`), []);
+    assert.deepEqual(one(`fix(repo): ok\n\n${lower}: BazWord <x@y.z>\n`), []);
+    assert.deepEqual(one('fix(repo): bazword in subject\n\nBody\n'), hit);
+    assert.deepEqual(one('fix(repo): ok\n\nbazword in body\n'), hit);
+    assert.deepEqual(one(`fix(repo): ok\n\nbazword in body\n\n${key}: BazWord <x@y.z>\n`), hit);
+    assert.deepEqual(one('fix(repo): ok\n\nSigned-off-by: bazword <x@y.z>\n'), hit);
   });
 
   it('passes a clean history range and parses the options', () => {

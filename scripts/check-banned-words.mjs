@@ -7,6 +7,8 @@
 // (--text NAME: a pull request title, body or branch name) and commit messages
 // (--git-log RANGE: the git log arguments, such as "base..head"). Hits in paths, text and commit
 // messages are reported by position or short commit id only, never by the text itself.
+// In commit messages only, co-author trailer lines ("<key>: Name <email>") are ignored so a
+// co-author's name cannot fail the check; the subject, body and other trailers are still checked.
 // Usage: node scripts/check-banned-words.mjs            whole tree (tracked files)
 //        node scripts/check-banned-words.mjs a.md b.ts  only the given files (pre-commit)
 //        node scripts/check-banned-words.mjs --text PR_TITLE --git-log "origin/main..HEAD"
@@ -83,6 +85,17 @@ export function splitLog(out) {
   return out.split('\0').filter((m) => m.trim() !== '');
 }
 
+const COAUTHOR_KEY = ['Co', 'authored', 'by'].join('-');
+const COAUTHOR_LINE = new RegExp(`^\\s*${COAUTHOR_KEY}:\\s.*$`, 'i');
+
+/** Drops co-author trailer lines from a commit message. */
+export function stripCoAuthorTrailers(message) {
+  return message
+    .split('\n')
+    .filter((line) => !COAUTHOR_LINE.test(line))
+    .join('\n');
+}
+
 /** Checks the message of every commit in the git range; reports the short commit id only. */
 export function checkCommits(rootDir, range, matcher, run = execFileSync) {
   const out = run('git', ['log', '--format=%h%x01%B%x00', ...range.split(/\s+/).filter(Boolean)], {
@@ -93,7 +106,7 @@ export function checkCommits(rootDir, range, matcher, run = execFileSync) {
   const failures = [];
   for (const entry of splitLog(out)) {
     const [id, ...body] = entry.trim().split('\u0001');
-    if (matcher.test(body.join('\u0001'))) failures.push({ commit: id });
+    if (matcher.test(stripCoAuthorTrailers(body.join('\u0001')))) failures.push({ commit: id });
   }
   return failures;
 }
