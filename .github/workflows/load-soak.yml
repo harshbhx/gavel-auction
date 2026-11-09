@@ -10,13 +10,17 @@ on:
       minutes:
         description: 'Soak length in minutes'
         default: '30'
+      diag:
+        description: 'Diagnostic run: only L5, with memory samples every 5 s (use minutes=2)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   load:
-    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    if: ${{ github.repository == 'harshbhx/gavel-auction' && !inputs.diag }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -77,5 +81,33 @@ jobs:
         with:
           name: load-l3-l5
           path: load-report
+          if-no-files-found: ignore
+          retention-days: 30
+
+  # Memory diagnosis (#2203): L5 alone with --diag, node --expose-gc for a live heap figure after a
+  # forced collection. Manual only: gh workflow run load-soak.yml -f minutes=2 -f diag=true
+  diag:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' && inputs.diag }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: L5 soak with diagnostics
+        env:
+          MINUTES: ${{ inputs.minutes || '2' }}
+          NODE_OPTIONS: --max-old-space-size=6144 --expose-gc
+        run: |
+          mkdir -p load-diag
+          npx vite-node packages/e2e/src/load/cli.ts -- L5 --minutes "$MINUTES" --out load-diag/l5.json --diag load-diag/diag.json > load-diag/l5.log 2>&1 || { tail -n 40 load-diag/l5.log; true; }
+          grep -E '^(L5|  (ok|FAIL))' load-diag/l5.log || true
+          node -e "const d=require('./load-diag/diag.json');console.log('rssGrowthMb',d.rssGrowthMb,'liveHeapGrowthMb',d.liveHeapGrowthMb);for(const c of d.counterGrowth.slice(0,15))console.log(c.name,c.first,'->',c.last)" | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ always() }}
+        with:
+          name: load-diag
+          path: load-diag
           if-no-files-found: ignore
           retention-days: 30

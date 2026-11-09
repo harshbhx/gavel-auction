@@ -1,6 +1,7 @@
 import { CONFIG, makeRig } from '../../test/flow/rig';
 import { tally } from './clients';
 import { LIMITS, setUp, type Check, type LoadDeps } from './run';
+import type { Rig } from '../../test/flow/rig';
 
 // L5 soak (R-QA-030, T-QA-064): 20 bidders keep bidding across fresh auctions for 30 minutes.
 // Pass means no lost or duplicate reply, no unhandled rejection and a stable heap: resident memory
@@ -16,6 +17,10 @@ export interface SoakDeps extends LoadDeps {
   durationMs?: number;
   /** Waits between rounds; default 250 ms of real time. */
   pause?: () => Promise<void>;
+  /** Called once with the rig before the first round (the diagnostic mode hooks its probes here). */
+  onStart?: (rig: Rig) => void;
+  /** Called once after the last round, before the fake PayPal stops. */
+  onEnd?: (rig: Rig) => void;
 }
 
 export interface SoakReport {
@@ -41,6 +46,7 @@ export async function runSoak(deps: SoakDeps): Promise<SoakReport> {
   };
   process.on('unhandledRejection', onUnhandled);
   const rig = await makeRig();
+  deps.onStart?.(rig);
   const start = deps.now();
   let baseline = -1;
   let peak = 0;
@@ -69,6 +75,7 @@ export async function runSoak(deps: SoakDeps): Promise<SoakReport> {
       await pause();
     } while (deps.now() - start < durationMs);
   } finally {
+    deps.onEnd?.(rig);
     process.off('unhandledRejection', onUnhandled);
     await rig.paypal.stop();
   }
