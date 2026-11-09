@@ -1,0 +1,118 @@
+<!doctype html><meta charset="utf-8" /><title>GAVEL audit</title>
+<link rel="stylesheet" href="../lib/theme.css" /><link rel="stylesheet" href="poster.css" />
+<style>
+  .ch {
+    display: flex;
+    gap: 18px;
+    margin-top: 30px;
+    align-items: stretch;
+  }
+  .e {
+    flex: 1;
+    background: var(--paper-2);
+    border: 3px solid var(--ink);
+    box-shadow: 7px 7px 0 var(--ink);
+    padding: 18px 18px 16px;
+  }
+  .e .s {
+    font: 900 56px/1 var(--display);
+  }
+  .e .t {
+    font: 800 30px/1.1 var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin: 6px 0 12px;
+  }
+  .e .hs {
+    font: 600 22px/1.3 var(--mono);
+    word-break: break-all;
+  }
+  .e .pv {
+    font: 600 22px/1.3 var(--mono);
+    color: var(--muted);
+    margin-top: 8px;
+  }
+  .e.bad {
+    background: var(--red);
+    color: #fff;
+    border-color: var(--ink);
+  }
+  .e.bad .pv {
+    color: #fff;
+  }
+  .lk {
+    align-self: center;
+    font: 900 44px var(--display);
+    color: var(--orange);
+  }
+  .cap {
+    display: flex;
+    gap: 28px;
+    margin-top: 30px;
+  }
+  .cap .card {
+    flex: 1;
+  }
+  .cap p {
+    font: 500 27px/1.35 var(--body);
+    margin: 0;
+  }
+  .cap b {
+    font: 900 40px/1 var(--display);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 8px;
+  }
+</style>
+<body>
+  <div class="p paper">
+    <div class="top">
+      <img src="../../brand/svg/lockup-h-color.svg" alt="GAVEL" /><span>05 / 07</span>
+    </div>
+    <h1 class="h" style="margin-top: 30px; font-size: 170px">
+      Do not trust.<br /><span class="or">Verify.</span>
+    </h1>
+    <div class="ch">
+      <div class="e">
+        <div class="s">#1</div>
+        <div class="t">Hold placed</div>
+        <div class="hs">a41f90c2</div>
+        <div class="pv">prev 00000000</div>
+      </div>
+      <div class="lk">&rarr;</div>
+      <div class="e">
+        <div class="s">#2</div>
+        <div class="t">Bid accepted</div>
+        <div class="hs">7be3d518</div>
+        <div class="pv">prev a41f90c2</div>
+      </div>
+      <div class="lk">&rarr;</div>
+      <div class="e bad">
+        <div class="s">#3</div>
+        <div class="t">Edited entry</div>
+        <div class="hs">c90d2e47</div>
+        <div class="pv">bad_hash</div>
+      </div>
+      <div class="lk">&rarr;</div>
+      <div class="e">
+        <div class="s">#4</div>
+        <div class="t">Hammer</div>
+        <div class="hs">1d6fa8b3</div>
+        <div class="pv">prev 55e0c1aa</div>
+      </div>
+    </div>
+    <div class="cap">
+      <div class="card">
+        <b>Any edit breaks the chain</b>
+        <p>verifyPublicExport returns ok: false at the first bad index.</p>
+      </div>
+      <div class="card">
+        <b>Anyone can re-check</b>
+        <p>Take the public export, run the check. No account needed.</p>
+      </div>
+    </div>
+    <div class="foot">
+      <span>Illustration: shortened example hashes</span><span>Redacted public export</span>
+    </div>
+  </div>
+</body>

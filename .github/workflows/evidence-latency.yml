@@ -1,0 +1,137 @@
+name: evidence-latency
+# Latency evidence with larger samples (issue 2183), manual dispatch only, from main, in the
+# sandbox-nightly environment. It runs the existing measurements one after the other against the
+# real PayPal sandbox: per-call latency (order, authorize, capture, void; `measure:sandbox`, N
+# cycles) and end to end hammer to CAPTURED and SETTLED (`measure:settlement`, N settlements of H
+# holds). Size with the defaults: 60 cycles = 60 authorizations, 50 settlements x 6 holds = 300
+# authorizations, so about 360 authorizations in one run. A buyer approves every order in a browser
+# (not timed). Sequential only, no parallel load. The sandbox secrets only pass through env; without
+# them the job ends green with a notice and the verdict line says NOT RUN.
+# Output: latency-evidence.json (+ .md, .sha256) with n, p50/p95/p99/max per call and per span, the
+# targets from docs/GATES.md and a MET or MISSED per target. The targets are never changed to fit.
+# Verdict line: "LATENCY EVIDENCE VERDICT: RECORDED|INCOMPLETE|NOT RUN". INCOMPLETE (exit 1) when a
+# sample is below 40, a call failed or a settlement did not match PayPal's read-back.
+on:
+  workflow_dispatch:
+    inputs:
+      cycles:
+        description: 'Per-call cycles (40 to 100)'
+        required: false
+        default: '60'
+      settlements:
+        description: 'Settlements of the end-to-end measurement (40 to 60)'
+        required: false
+        default: '50'
+      holds:
+        description: 'Holds per settlement (2 to 6, one winner)'
+        required: false
+        default: '6'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  latency:
+    if: ${{ github.ref == 'refs/heads/main' && !github.event.repository.fork }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    environment: sandbox-nightly
+    concurrency:
+      group: measure-sandbox
+      cancel-in-progress: false
+    env:
+      CYCLES: ${{ inputs.cycles }}
+      SETTLEMENTS: ${{ inputs.settlements }}
+      HOLDS: ${{ inputs.holds }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check the sizes
+        run: |
+          check() { # name value min max
+            if ! printf '%s' "$2" | grep -Eq '^[0-9]+$' || [ "$2" -lt "$3" ] || [ "$2" -gt "$4" ]; then
+              echo "::error title=Bad input::$1 must be an integer from $3 to $4"; exit 1
+            fi
+          }
+          check cycles "$CYCLES" 40 100
+          check settlements "$SETTLEMENTS" 40 60
+          check holds "$HOLDS" 2 6
+          echo "Planned authorizations: $((CYCLES + SETTLEMENTS * HOLDS))"
+      - uses: ./.github/actions/setup
+      - name: Check which secrets exist
+        id: secrets
+        # Only the names of missing secrets are printed, never a value.
+        env:
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+        run: |
+          missing=""
+          for name in PAYPAL_CLIENT_ID PAYPAL_CLIENT_SECRET SANDBOX_BUYER_EMAIL SANDBOX_BUYER_PASSWORD; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Latency evidence skipped::Missing secrets:$missing"
+            echo "LATENCY EVIDENCE VERDICT: NOT RUN (missing secrets:$missing)"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install the browser
+        if: ${{ steps.secrets.outputs.present == 'true' }}
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.49.1
+          cd "$RUNNER_TEMP/pw"
+          npx playwright install --with-deps chromium
+      - name: Measure each call
+        id: calls
+        if: ${{ steps.secrets.outputs.present == 'true' }}
+        env:
+          PAYPAL_ENV: sandbox
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          MEASURE_SANDBOX_CYCLES: ${{ inputs.cycles }}
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
+        run: npm run measure:sandbox -w @gavel/e2e -- --out "$RUNNER_TEMP/measure" | tee "$RUNNER_TEMP/measure-calls.txt"
+      - name: Measure hammer to CAPTURED and SETTLED
+        if: ${{ steps.secrets.outputs.present == 'true' && always() && steps.calls.conclusion != 'skipped' }}
+        env:
+          PAYPAL_ENV: sandbox
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          MEASURE_SETTLEMENTS: ${{ inputs.settlements }}
+          MEASURE_SETTLE_HOLDS: ${{ inputs.holds }}
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
+        run: npm run measure:settlement -w @gavel/e2e -- --out "$RUNNER_TEMP/measure" | tee "$RUNNER_TEMP/measure-settle.txt"
+      - name: Build the evidence file and the verdict
+        if: ${{ steps.secrets.outputs.present == 'true' && always() }}
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/measure"
+          node scripts/evidence/latency-report.mjs --dir "$RUNNER_TEMP/measure" --out "$RUNNER_TEMP/evidence" --run-url "$RUN_URL" | tee "$RUNNER_TEMP/verdict.txt"
+          cat "$RUNNER_TEMP/evidence/latency-evidence.md" >> "$GITHUB_STEP_SUMMARY"
+          grep -h "VERDICT" "$RUNNER_TEMP/verdict.txt" >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload the evidence
+        if: ${{ steps.secrets.outputs.present == 'true' && always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: latency-evidence
+          path: |
+            ${{ runner.temp }}/evidence/latency-evidence.*
+            ${{ runner.temp }}/measure/measure-sandbox.json
+            ${{ runner.temp }}/measure/measure-sandbox.md
+            ${{ runner.temp }}/measure/measure-settlement.json
+            ${{ runner.temp }}/measure/measure-settlement.md
+          if-no-files-found: warn
+          retention-days: 30

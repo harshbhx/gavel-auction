@@ -65,7 +65,7 @@ Novelty, and how it differs from existing concepts.
 | --- | --- | --- |
 | [Money flow](/docs/how-it-works/money-flow) | Every bid is an AUTHORIZE hold, only the winning price is captured, the remainder is released | G1 PASS for the capture and authorization state; release of the remainder is inferred, not observed |
 | [Engine and ledger](/docs/how-it-works/engine-and-ledger) | A deterministic <Term id="engine">engine</Term> with a <Term id="hash-chain">hash-chained</Term> <Term id="ledger">ledger</Term> that anyone can re-verify | Covered by tests; verify it yourself in the [ten-minute path](/docs/judges/ten-minute-path) |
-| [Crash recovery](/docs/how-it-works/crash-recovery) | A <Term id="saga">saga</Term> that resumes after a crash without a second capture | Fake PayPal plus one in-process crash on the sandbox (spec R10). No real process kill. |
+| [Crash recovery](/docs/how-it-works/crash-recovery) | A <Term id="saga">saga</Term> that resumes after a crash without a second capture | Fake PayPal, one in-process crash on the sandbox (spec R10) and one real server process kill on a CI runner against the sandbox (run 42558021614, one kill point, not the deployed host). |
 
 ### 5. Presentation
 

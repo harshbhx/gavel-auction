@@ -1,0 +1,36 @@
+{
+  "mode": "probe",
+  "runTag": "261109000921",
+  "results": [
+    {
+      "label": "G2-wallet",
+      "checkpointDays": 3,
+      "ageDays": 3.511,
+      "atIso": "2026-11-09T00:09:21.232Z",
+      "dueAtIso": "2026-11-08T11:53:35.000Z",
+      "readBeforeHttp": 200,
+      "statusBefore": "PARTIALLY_CAPTURED",
+      "statusNameBefore": "",
+      "probed": false
+    },
+    {
+      "label": "G2-card",
+      "checkpointDays": 3.5,
+      "ageDays": 3.5075,
+      "atIso": "2026-11-09T00:09:21.232Z",
+      "dueAtIso": "2026-11-08T23:58:33.000Z",
+      "readBeforeHttp": 200,
+      "statusBefore": "CREATED",
+      "statusNameBefore": "",
+      "probed": true,
+      "captureHttp": 201,
+      "captureName": "",
+      "captureIssues": [],
+      "reauthorizeHttp": 422,
+      "reauthorizeName": "UNPROCESSABLE_ENTITY",
+      "reauthorizeIssues": ["PAYER_CANNOT_PAY"],
+      "readAfterHttp": 200,
+      "statusAfter": "PARTIALLY_CAPTURED"
+    }
+  ]
+}

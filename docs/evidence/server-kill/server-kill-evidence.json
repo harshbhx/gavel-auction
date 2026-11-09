@@ -1,0 +1,146 @@
+{
+  "v": 1,
+  "kind": "server-kill-evidence",
+  "label": "real server process on a CI runner against the real PayPal sandbox (not a deployed host)",
+  "mode": "sandbox",
+  "checkpoint": "after_capture_request_before_response",
+  "verdict": "PASS",
+  "runUrl": "https://github.com/harshbhx/gavel-auction/actions/runs/42558021614",
+  "startedAt": "2026-11-09T03:45:37.072Z",
+  "pidBefore": 3299,
+  "pidAfter": 3567,
+  "exitedAtCheckpoint": true,
+  "secondsHammerToSettled": 9.4,
+  "journalState": "SETTLED",
+  "holds": 3,
+  "winnerCaptures": 1,
+  "capturedCents": 12500,
+  "hammerPriceCents": 12500,
+  "voidedLosers": 2,
+  "journalDiffs": 0,
+  "ledger": {
+    "entries": 19,
+    "headSeq": 19
+  },
+  "checks": [
+    {
+      "name": "server_died_at_checkpoint",
+      "pass": true,
+      "detail": "the server process ended itself at after_capture_request_before_response"
+    },
+    {
+      "name": "restarted_as_new_process",
+      "pass": true,
+      "detail": "pid before 3299, pid after 3567"
+    },
+    {
+      "name": "journal_settled_after_restart",
+      "pass": true,
+      "detail": "journal state SETTLED"
+    },
+    {
+      "name": "one_capture_for_hammer_price",
+      "pass": true,
+      "detail": "winner has 1 capture(s), 12500 captured, hammer price 12500"
+    },
+    {
+      "name": "losers_voided",
+      "pass": true,
+      "detail": "2 of 2 other holds are VOIDED with nothing captured"
+    },
+    {
+      "name": "journal_equals_paypal",
+      "pass": true,
+      "detail": "0 difference(s)"
+    },
+    {
+      "name": "ledger_chain_verifies",
+      "pass": true,
+      "detail": "19 entries, head seq 19"
+    },
+    {
+      "name": "ledger_capture_equals_paypal",
+      "pass": true,
+      "detail": "ledger captured 12500, PayPal 12500"
+    }
+  ],
+  "steps": [
+    {
+      "at": "2026-11-09T03:45:37.289Z",
+      "step": "sandbox session opened"
+    },
+    {
+      "at": "2026-11-09T03:45:38.525Z",
+      "step": "server process started",
+      "note": "checkpoint after_capture_request_before_response armed"
+    },
+    {
+      "at": "2026-11-09T03:45:38.554Z",
+      "step": "auction created"
+    },
+    {
+      "at": "2026-11-09T03:46:06.882Z",
+      "step": "bidder enrolled with a hold",
+      "note": "a"
+    },
+    {
+      "at": "2026-11-09T03:47:01.944Z",
+      "step": "bidder enrolled with a hold",
+      "note": "b"
+    },
+    {
+      "at": "2026-11-09T03:47:28.603Z",
+      "step": "bidder enrolled with a hold",
+      "note": "c"
+    },
+    {
+      "at": "2026-11-09T03:47:28.629Z",
+      "step": "bid",
+      "note": "b 10000: bid_accepted"
+    },
+    {
+      "at": "2026-11-09T03:47:28.654Z",
+      "step": "bid",
+      "note": "c 11000: bid_accepted"
+    },
+    {
+      "at": "2026-11-09T03:47:28.679Z",
+      "step": "bid",
+      "note": "a 12500: bid_accepted"
+    },
+    {
+      "at": "2026-11-09T03:47:28.679Z",
+      "step": "hammer",
+      "note": "server pid 3299"
+    },
+    {
+      "at": "2026-11-09T03:47:31.552Z",
+      "step": "server exited",
+      "note": "at checkpoint: true"
+    },
+    {
+      "at": "2026-11-09T03:47:33.889Z",
+      "step": "PayPal read after the kill, before the restart",
+      "note": "CAPTURED/12500/1 CREATED/0/0 CREATED/0/0"
+    },
+    {
+      "at": "2026-11-09T03:47:35.110Z",
+      "step": "server restarted on the same data folder",
+      "note": "pid 3567"
+    },
+    {
+      "at": "2026-11-09T03:47:38.121Z",
+      "step": "journal read after restart",
+      "note": "state SETTLED"
+    },
+    {
+      "at": "2026-11-09T03:47:40.556Z",
+      "step": "PayPal read at the end"
+    },
+    {
+      "at": "2026-11-09T03:47:40.564Z",
+      "step": "ledger exported",
+      "note": "19 entries"
+    }
+  ]
+}

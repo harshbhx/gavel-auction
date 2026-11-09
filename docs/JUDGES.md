@@ -17,7 +17,7 @@ What is built and measured:
 How to read the labels:
 
 - The fake PayPal demo and the replay are recorded or simulated, not live PayPal. Gates G0, G1, G2 and G4 ran against the real sandbox. Committed run logs exist for G1, G2 and G4; G0 is an Actions run log.
-- Settlement of a whole auction and crash recovery are covered against the fake PayPal. On the real sandbox the nightly specs R7, R8 and R10 ran (one lot of three holds, one in-process crash; runs 42200708552 and 42317068784), and 20 settlements of 6 holds were measured end to end. Driving a whole auction through a server and a real process kill are the next sandbox runs.
+- Settlement of a whole auction and crash recovery are covered against the fake PayPal. On the real sandbox the nightly specs R7, R8 and R10 ran (one lot of three holds, one in-process crash; runs 42200708552 and 42317068784), and 20 settlements of 6 holds were measured end to end. A real server process was killed once on a CI runner against the sandbox and recovered with one capture (run 42558021614, `docs/evidence/server-kill/`); driving a whole auction through the deployed Render server, and a kill on that host, are the next sandbox runs.
 - See `docs/GATES.md` for each gate and its result.
 
 ## Real auction in two minutes (when judge rooms are on)

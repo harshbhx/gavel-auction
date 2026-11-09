@@ -1,0 +1,111 @@
+<!doctype html><meta charset="utf-8" /><title>GAVEL architecture</title>
+<link rel="stylesheet" href="../lib/theme.css" /><link rel="stylesheet" href="poster.css" />
+<style>
+  .g {
+    position: relative;
+    height: 520px;
+    margin-top: 30px;
+  }
+  .nd {
+    position: absolute;
+    width: 270px;
+    height: 170px;
+    background: var(--paper);
+    color: var(--ink);
+    border: 3px solid var(--paper);
+    box-shadow: 8px 8px 0 var(--orange);
+    padding: 20px 22px;
+  }
+  .nd b {
+    display: block;
+    font: 900 52px/1 var(--display);
+    text-transform: uppercase;
+  }
+  .nd span {
+    display: block;
+    font: 500 24px/1.3 var(--body);
+    margin-top: 10px;
+  }
+  .nd.hot {
+    background: var(--orange);
+    border-color: var(--orange);
+    box-shadow: 8px 8px 0 var(--paper);
+  }
+  .ar {
+    position: absolute;
+    height: 6px;
+    background: var(--paper);
+  }
+  .ar::after {
+    content: '';
+    position: absolute;
+    right: -2px;
+    top: -12px;
+    border-left: 24px solid var(--paper);
+    border-top: 15px solid transparent;
+    border-bottom: 15px solid transparent;
+  }
+  .ar.v {
+    width: 6px;
+  }
+  .ar.v::after {
+    right: auto;
+    top: auto;
+    left: -12px;
+    bottom: -2px;
+    border-left: 15px solid transparent;
+    border-right: 15px solid transparent;
+    border-top: 24px solid var(--paper);
+    border-bottom: 0;
+  }
+  .lb {
+    position: absolute;
+    font: 700 22px var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--orange);
+  }
+</style>
+<body>
+  <div class="p ink">
+    <div class="top">
+      <img src="../../brand/svg/lockup-h-reversed.svg" alt="GAVEL" /><span>03 / 07</span>
+    </div>
+    <h1 class="h m" style="margin-top: 26px">One bid, five hops.</h1>
+    <div class="g">
+      <div class="nd" style="left: 0; top: 0">
+        <b>Browser</b><span>Bidder, console, big screen</span>
+      </div>
+      <div class="ar" style="left: 276px; top: 84px; width: 76px"></div>
+      <div class="nd" style="left: 356px; top: 0">
+        <b>Cloudflare</b><span>Worker serves web and docs</span>
+      </div>
+      <div class="ar" style="left: 632px; top: 84px; width: 76px"></div>
+      <div class="nd hot" style="left: 712px; top: 0">
+        <b>Render API</b><span>Auction engine and rooms</span>
+      </div>
+      <div class="ar" style="left: 988px; top: 84px; width: 76px"></div>
+      <div class="nd" style="left: 1068px; top: 0">
+        <b>PayPal</b><span>Sandbox holds, capture, void</span>
+      </div>
+      <div class="ar v" style="left: 847px; top: 176px; height: 100px"></div>
+      <div class="lb" style="left: 867px; top: 208px">Append</div>
+      <div class="nd" style="left: 712px; top: 290px">
+        <b>Ledger</b><span>Hash-chained, replayable</span>
+      </div>
+      <div
+        class="ar"
+        style="left: 600px; top: 374px; width: 100px; transform: rotate(180deg)"
+      ></div>
+      <div class="nd" style="left: 330px; top: 290px">
+        <b>Receipt</b><span>Share link, QR, print</span>
+      </div>
+      <div class="lb" style="left: 1068px; top: 200px; width: 270px">
+        authorize<br />capture<br />void
+      </div>
+    </div>
+    <div class="foot">
+      <span>Typed bids, QR bids and voice bids all enter here</span><span>Sandbox only</span>
+    </div>
+  </div>
+</body>

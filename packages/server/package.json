@@ -10,6 +10,7 @@
     "start": "vite-node src/main.ts",
     "start:prod": "node dist/main.js",
     "bench": "vite-node bench/latency.ts",
+    "bench:webhook-handler": "vite-node bench/webhook-handler.ts --",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit",
     "check:trace": "node scripts/trace-check.mjs"

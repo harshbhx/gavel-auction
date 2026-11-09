@@ -23,6 +23,7 @@
     "gate:g2": "vite-node gates/g2/server.ts --",
     "gate:g3": "vite-node gates/g3.ts --",
     "gate:g4": "vite-node gates/g4.ts --",
+    "gate:g4-tamper": "vite-node gates/g4-tamper.ts --",
     "gate:g4-events": "vite-node gates/g4-events.ts --",
     "gate:idem": "vite-node gates/idempotency.ts --",
     "measure": "vite-node gates/measure.ts --",

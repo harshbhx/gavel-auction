@@ -1,0 +1,84 @@
+=== 2026-11-09T03:19:21Z HEAD https://gavel.dualmindlab.tech/
+HTTP/2 200 
+content-type: text/html
+cf-cache-status: HIT
+cache-control: no-cache
+strict-transport-security: max-age=31536000; includeSubDomains
+content-security-policy: frame-ancestors 'none'
+permissions-policy: camera=(), geolocation=(), microphone=(self), usb=()
+referrer-policy: no-referrer
+x-content-type-options: nosniff
+x-frame-options: DENY
+server: cloudflare
+
+=== 2026-11-09T03:19:22Z HEAD https://docs.gavel.dualmindlab.tech/
+HTTP/2 200 
+content-type: text/html
+cf-cache-status: MISS
+cache-control: public, max-age=0, must-revalidate
+strict-transport-security: max-age=31536000; includeSubDomains
+content-security-policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; worker-src 'self' blob:; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+permissions-policy: camera=(), geolocation=(), microphone=(), usb=()
+referrer-policy: strict-origin-when-cross-origin
+x-content-type-options: nosniff
+x-frame-options: DENY
+server: cloudflare
+
+=== 2026-11-09T03:19:22Z HEAD https://api.gavel.dualmindlab.tech/
+HTTP/2 404 
+content-type: application/json
+content-security-policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none'
+permissions-policy: camera=(), geolocation=(), microphone=()
+referrer-policy: no-referrer
+rndr-id: b502d025-b568-4430
+server: cloudflare
+strict-transport-security: max-age=31536000; includeSubDomains
+vary: Accept-Encoding
+x-content-type-options: nosniff
+x-render-origin-server: Render
+cf-cache-status: DYNAMIC
+alt-svc: h3=":443"; ma=86400
+
+=== 2026-11-09T03:19:22Z GET https://api.gavel.dualmindlab.tech/healthz (headers)
+HTTP/2 200 
+content-type: application/json
+cache-control: no-store
+cf-cache-status: DYNAMIC
+content-security-policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none'
+permissions-policy: camera=(), geolocation=(), microphone=()
+referrer-policy: no-referrer
+rndr-id: c006f825-a1a4-47e7
+server: cloudflare
+strict-transport-security: max-age=31536000; includeSubDomains
+vary: Accept-Encoding
+x-content-type-options: nosniff
+x-render-origin-server: Render
+alt-svc: h3=":443"; ma=86400
+
+=== 2026-11-09T03:19:23Z POST https://api.gavel.dualmindlab.tech/api/judge/rooms with x-judge-key: wrong-key-evidence-check (ONE request)
+HTTP/2 401 
+content-type: application/json; charset=utf-8
+cache-control: no-store
+cf-cache-status: DYNAMIC
+content-security-policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none'
+permissions-policy: camera=(), geolocation=(), microphone=()
+referrer-policy: no-referrer
+rndr-id: 71c81ec8-0c00-4ce2
+server: cloudflare
+strict-transport-security: max-age=31536000; includeSubDomains
+vary: Accept-Encoding
+x-content-type-options: nosniff
+x-render-origin-server: Render
+x-request-id: 01M6Z52N01W75N965GSN9XM1G3
+alt-svc: h3=":443"; ma=86400
+
+{"error":"judge_key_invalid","message":"That key was not accepted."}
+== 2026-11-09T03:19:27Z GET https://gavel.dualmindlab.tech/ body scan
+4479 body-gavel.dualmindlab.tech.html
+cdn-cgi/challenge-platform/scripts/precursor/main.js?ray=a579ad0e39da6ccc
+cdn-cgi/cloudflareinsights matches: 1
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: https://www.sandbox.paypal.com; connect-src 'self' https://gavel-auction-z2nm.onrender.com wss://gavel-auction-z2nm.onrender.com https://www.sandbox.paypal.com https://api-m.sandbox.paypal.com; frame-src https://www.sandbox.paypal.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self'" />
+== 2026-11-09T03:19:27Z GET https://docs.gavel.dualmindlab.tech/ body scan
+189350 body-docs.gavel.dualmindlab.tech.html
+cdn-cgi/challenge-platform/scripts/precursor/main.js?ray=a579ad0fab21ffa7
+cdn-cgi/cloudflareinsights matches: 1
