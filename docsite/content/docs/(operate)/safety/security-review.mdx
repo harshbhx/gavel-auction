@@ -9,7 +9,7 @@ Checklist SEC-01 to SEC-20. Each item is PASS, FAIL (with an issue link), ACCEPT
 
 <NotVerified title="Reviewed independently of the authors, not yet signed by the owner">
 
-All eight P0 items (SEC-01 to SEC-07 and SEC-18) are PASS as of 2026-11-07, reviewed by someone who did not write the code, from the code, CI and read-only requests to the live hosts. SEC-10 and SEC-17 are PASS since the web headers were deployed and checked, and SEC-15 (log scan) is the next item to run. SEC-19 (judge rooms) and SEC-20 (receipt link) were added later and wait for an independent reviewer. SEC-11 is an accepted risk (speech vendor retention unverified, see the privacy notice). No FAIL is recorded. A human second look at the P0 rows is still advisable.
+All eight P0 items (SEC-01 to SEC-07 and SEC-18) are PASS as of 2026-11-07, reviewed by someone who did not write the code, from the code, CI and read-only requests to the live hosts. SEC-10 and SEC-17 are PASS since the web headers were deployed and checked, and SEC-15 (log scan) has a recorded scan of one S01 server log (run 42566851766, 0 findings, PARTIAL). SEC-19 (judge rooms) and SEC-20 (receipt link) were added later and wait for an independent reviewer. SEC-11 is an accepted risk (speech vendor retention unverified, see the privacy notice). No FAIL is recorded. A human second look at the P0 rows is still advisable.
 
 </NotVerified>
 
@@ -29,7 +29,7 @@ All eight P0 items (SEC-01 to SEC-07 and SEC-18) are PASS as of 2026-11-07, revi
 | SEC-12 | P1 | Dependency risk | PASS | `audit.yml`, `audit-waivers.json` |
 | SEC-13 | P1 | SSRF | PASS | `webhook.test.ts` (certificate URL host allowlist) |
 | SEC-14 | P1 | Denial of service on the parse path | PASS | `dos.test.ts` |
-| SEC-15 | P2 | Logging hygiene | OPEN | log scan after scenario S01 |
+| SEC-15 | P2 | Logging hygiene | PARTIAL | log scan after scenario S01 (run 42566851766) |
 | SEC-16 | P2 | Admin and ops pages | PASS | manual review |
 | SEC-17 | P2 | Clickjacking and PayPal return URL redirect | PASS | manual review |
 | SEC-18 | P0 | Server time is authoritative | PASS | T-QA-079 |

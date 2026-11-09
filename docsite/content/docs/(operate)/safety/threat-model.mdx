@@ -153,7 +153,7 @@ A trust boundary is a line where data passes from something we do not control to
 
 <NotVerified title="This is a design map, not a sign-off">
 
-- Security checklist: all eight P0 items are PASS as of 2026-11-07, and 16 of the original 18 pass. SEC-15 (log scan), SEC-19 and SEC-20 are open and wait for an independent reviewer; automated checks exist for most items.
+- Security checklist: all eight P0 items are PASS as of 2026-11-07, and 16 of the original 18 pass. SEC-19 and SEC-20 are open and wait for an independent reviewer; SEC-15 (log scan) is PARTIAL (one S01 server log scanned, 0 findings, run 42566851766); automated checks exist for most items.
 - Tampered-webhook rejection is tested against the fake PayPal only. Retry behaviour of real PayPal deliveries is unverified.
 - The sandbox accounts hold no real money, so the stakes of a leaked sandbox secret are low, but they are still kept out of the repository, logs and the web bundle.
 - Staging security tests and load tests stay unverified until a staging URL exists.
