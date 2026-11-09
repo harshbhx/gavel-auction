@@ -1,4 +1,4 @@
-import type { ColumnState, GridApi, GridState } from 'ag-grid-community';
+import type { ColumnSizeState, ColumnState, GridApi, GridState } from 'ag-grid-community';
 import { useEffect } from 'react';
 
 const PREFIX = 'gavel.grid.columns.';
@@ -87,7 +87,7 @@ export function gridStateFor(key: string | null): GridState | undefined {
   return {
     columnOrder: { orderedColIds: saved.map((c) => c.colId) },
     columnSizing: {
-      columnSizingModel: saved.flatMap((c) =>
+      columnSizingModel: saved.flatMap((c): ColumnSizeState[] =>
         c.flex !== undefined
           ? [{ colId: c.colId, flex: c.flex }]
           : c.width !== undefined
