@@ -1,11 +1,5 @@
 export type HoldStatus =
-  | 'PENDING_APPROVAL'
-  | 'HELD'
-  | 'CAPTURED'
-  | 'VOIDED'
-  | 'EXPIRED'
-  | 'DENIED'
-  | 'UNKNOWN';
+  'PENDING_APPROVAL' | 'HELD' | 'CAPTURED' | 'VOIDED' | 'EXPIRED' | 'DENIED' | 'UNKNOWN';
 
 export const SETTLEMENT_STATES = [
   'HELD',
@@ -111,6 +105,11 @@ export interface HoldRecord {
   status: HoldStatus;
   createdAtMs: number;
   stale?: boolean;
+  /**
+   * Set on a hold made to raise a limit: the id of the HELD hold it replaces. That hold is voided
+   * only after the room has switched to this one, so a bidder is never left without a hold.
+   */
+  supersedes?: string;
   /** Authorization ids replaced by a reauthorization, oldest first (R11-O06). */
   priorAuthIds?: string[];
 }
@@ -137,12 +136,7 @@ export interface PaymentAudit {
    * deadline; the saga keeps retrying, an operator should look.
    */
   kind:
-    | 'paypal_call'
-    | 'state_change'
-    | 'kill_switch'
-    | 'stale_hold'
-    | 'void_all'
-    | 'settlement_alert';
+    'paypal_call' | 'state_change' | 'kill_switch' | 'stale_hold' | 'void_all' | 'settlement_alert';
   auctionId?: string;
   holdId?: string;
   op?: string;

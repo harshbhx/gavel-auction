@@ -1,0 +1,10 @@
+{
+  "auctionId": "01J9ZQ4Y6Z8K3M5N7P9R1S3T5V",
+  "seq": 13,
+  "ts": 1789000000013,
+  "type": "ceiling_raised",
+  "bidderId": "01J9ZQ3A0B2C4D6F8H0J2K4M6N",
+  "from": 50000,
+  "ceiling": 80000,
+  "holdRef": "h2"
+}

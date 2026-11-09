@@ -309,4 +309,129 @@ describe('hold routes in the production composition (HRD-69, issue 1074)', () =>
     const after = paypal.core.calls.filter((c) => c.op === 'authorize' || c.op === 'void').length;
     expect(after - before).toBe(0);
   });
+
+  describe('FEAT-61 raising a limit', () => {
+    /** Registers Ada with a hold of `ceilingCents` and returns what the raise tests need. */
+    async function registeredAda(ceilingCents = 30000) {
+      const booted = await boot();
+      const auction = await auctionWithBidders(booted.url);
+      const { url, paypal } = booted;
+      const { auctionId, ada } = auction;
+      const hold = async (cents: number, name?: string) => {
+        const created = await call(url, 'POST', '/api/holds', ada.sessionToken, {
+          auctionId,
+          ceilingCents: cents,
+        });
+        if (created.status !== 201) return { created };
+        const order = CreateHoldResponse.parse(await created.json());
+        paypal.core.approveOrder(order.orderId);
+        const approve = () =>
+          call(
+            url,
+            'POST',
+            `/api/holds/${encodeURIComponent(order.holdId)}/approve`,
+            ada.sessionToken,
+            { orderId: order.orderId, ...(name === undefined ? {} : { name }) },
+          );
+        return { created, order, approve };
+      };
+      const first = await hold(ceilingCents, 'Ada');
+      expect((await first.approve?.())?.status).toBe(200);
+      const ceilingOf = async (): Promise<number> => {
+        const read = await call(
+          url,
+          'GET',
+          `/api/holds/${encodeURIComponent(first.order?.holdId ?? '')}`,
+          ada.sessionToken,
+        );
+        return HoldViewResponse.parse(await read.json()).ceilingCents;
+      };
+      return { ...booted, ...auction, hold, first, ceilingOf };
+    }
+
+    it('swaps the hold for a bigger one, voids the old one only afterwards, and is idempotent', async () => {
+      const { url, paypal, auctionId, auctioneer, ada, hold, first } = await registeredAda();
+      const voids = (): number => paypal.core.calls.filter((c) => c.op === 'void').length;
+      expect(voids()).toBe(0);
+
+      const raise = await hold(60000);
+      expect(raise.created.status).toBe(201);
+      // Ordering: the order exists and the old hold is untouched until the new one is approved.
+      expect(voids()).toBe(0);
+      const old = await call(
+        url,
+        'GET',
+        `/api/holds/${encodeURIComponent(first.order?.holdId ?? '')}`,
+        ada.sessionToken,
+      );
+      expect(HoldViewResponse.parse(await old.json()).status).toBe('HELD');
+
+      // The same request again hands back the same order.
+      const again = await hold(60000);
+      expect(again.order).toEqual(raise.order);
+
+      // Approving, with or without a name, twice: one raise, one void.
+      for (let i = 0; i < 2; i += 1) {
+        const res = await raise.approve?.();
+        expect(res?.status).toBe(200);
+        expect(ApproveHoldResponse.parse(await res?.json()).ceilingCents).toBe(60000);
+      }
+      expect(voids()).toBe(1);
+      const oldAfter = await call(
+        url,
+        'GET',
+        `/api/holds/${encodeURIComponent(first.order?.holdId ?? '')}`,
+        ada.sessionToken,
+      );
+      expect(HoldViewResponse.parse(await oldAfter.json()).status).toBe('VOIDED');
+
+      // The log has one registration and one raise; the auctioneer's copy has no amounts.
+      const res = await call(url, 'GET', `/api/auctions/${auctionId}/events?after=0`, auctioneer);
+      const events = ((await res.json()) as { events: Array<Record<string, unknown>> }).events;
+      expect(events.filter((e) => e.type === 'bidder_registered')).toHaveLength(1);
+      const raised = events.filter((e) => e.type === 'ceiling_raised');
+      expect(raised).toHaveLength(1);
+      expect(raised[0]).toMatchObject({ bidderId: ada.bidderId });
+      expect(raised[0]).not.toHaveProperty('ceiling');
+      expect(raised[0]).not.toHaveProperty('from');
+      expect(raised[0]).not.toHaveProperty('holdRef');
+    });
+
+    it('refuses a limit that is not higher or is above the cap, and another bidder token', async () => {
+      const { url, bo, hold, ceilingOf } = await registeredAda();
+      expect((await hold(30000)).created.status).toBe(409);
+      expect((await hold(20000)).created.status).toBe(409);
+      const over = await hold(100001);
+      expect(over.created.status).toBe(400);
+      expect(await holdError(over.created)).toBe('ceiling_out_of_range');
+      expect(await ceilingOf()).toBe(30000);
+
+      // Bo cannot approve Ada's raise.
+      const raise = await hold(50000);
+      const stolen = await call(
+        url,
+        'POST',
+        `/api/holds/${encodeURIComponent(raise.order?.holdId ?? '')}/approve`,
+        bo.sessionToken,
+        { orderId: raise.order?.orderId },
+      );
+      expect(stolen.status).toBe(404);
+    });
+
+    it('refuses a raise once the lot is hammered and keeps the old hold', async () => {
+      const { url, auctionId, auctioneer, hold, ceilingOf } = await registeredAda();
+      const raise = await hold(50000);
+      expect(raise.created.status).toBe(201);
+      const hammer = await fetch(`${url}/api/auctions/${auctionId}/control`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${auctioneer}` },
+        body: JSON.stringify({ controlId: 'hammer-2', action: 'hammer', args: { closeNow: 1 } }),
+      });
+      expect(hammer.status).toBe(200);
+      const late = await raise.approve?.();
+      expect(late?.status).toBe(409);
+      expect((await hold(70000)).created.status).toBe(409);
+      expect(await ceilingOf()).toBe(30000);
+    });
+  });
 });

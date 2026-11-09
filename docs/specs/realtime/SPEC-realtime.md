@@ -57,7 +57,7 @@ Each requirement is testable and appears in the Coverage table in DEPS.md. MUST 
 - **R-RT-017** Every server frame after a successful join MUST carry `seq` (integer, per-room, gapless) and `ts` (server epoch ms), except `error` frames that have no event behind them (`seq` omitted).
 - **R-RT-018** `encodeMsg` and `decodeMsg` MUST return a Result and never throw on arbitrary input (property: fuzzed strings and bytes).
 - **R-RT-019** `audit_event` payload MUST carry: bidId, bidderId, source (voice|qr|manual), audioTsMs?, transcript?, parsedAmount?, confidence?, confirmed?, outcome (accepted|rejected|expired|superseded), reason?, serverTs, seq.
-- **R-RT-020** `RoomEvent` union (persisted log record) MUST be a zod discriminated union with gapless `seq` starting at 1; types: auction_created, bidder_registered, bid_accepted, bid_rejected, confirm_requested, confirm_resolved, control, state_changed, hammered, settlement_update.
+- **R-RT-020** `RoomEvent` union (persisted log record) MUST be a zod discriminated union with gapless `seq` starting at 1; types: auction_created, bidder_registered, bid_accepted, bid_rejected, confirm_requested, confirm_resolved, control, state_changed, hammered, settlement_update; ceiling_raised (D-0035).
 - **R-RT-021** Golden JSON fixtures for every message and every RoomEvent MUST live in `packages/shared/fixtures/` and round-trip byte-stably through decode then encode.
 - **R-RT-022** Port interfaces (`RoomStore`, `PaymentsPort`, `EnginePort`, `Logger`, `TokenSigner`) MUST be declared in `packages/shared/src/ports.ts`; no implementation code lives there.
 - **R-RT-023** `join` MUST carry the client protocol version; a version other than 1 MUST be answered with `error unsupported_version` and a close.
@@ -88,7 +88,7 @@ Each requirement is testable and appears in the Coverage table in DEPS.md. MUST 
 - **R-RT-051** The hammer outcome MUST be handed to `PaymentsPort.settle` exactly once per auction, idempotent by auctionId, including after crash and restart.
 - **R-RT-052** Inbound settlement updates MUST be schema-validated, deduplicated, ordered by `rev` (stale rev dropped), persisted and broadcast; non-winners receive their own state only plus the public auction-level state.
 - **R-RT-053** The room MUST reach DONE only when the auction-level settlement state is SETTLED or FAILED_NEEDS_REVIEW.
-- **R-RT-054** When payments reports a hold, the room MUST append `bidder_registered`, send `registered` {bidderId, ceiling, paddle} to that bidder and broadcast a roster delta without ceilings.
+- **R-RT-054** When payments reports a hold, the room MUST append `bidder_registered`, send `registered` {bidderId, ceiling, paddle} to that bidder and broadcast a roster delta without ceilings. A registered bidder whose new hold is larger is raised in place: the room appends `ceiling_raised`, sends `registered` with the new ceiling and everyone else a snapshot (D-0035).
 - **R-RT-055** Ceilings MUST be visible only to their owner and the server; screen and other bidders never receive them; the auctioneer view shows hold state, not ceiling.
 - **R-RT-056** `state` MUST be a full role-filtered snapshot at a given seq (config, status, price, leader, endTs, roster, last 50 audit rows, settlement).
 - **R-RT-057** `join` with `lastSeq`: if the gap is <= 200 events and still retained, replay the missed frames then send `state`; otherwise send `state` only. Clients dedupe by seq.

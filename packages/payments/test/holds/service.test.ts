@@ -361,3 +361,65 @@ describe('failures map to contract codes', () => {
     });
   });
 });
+
+describe('FEAT-61 raising a limit', () => {
+  async function held(ceilingCents = 15000): Promise<string> {
+    const { holdId, orderId } = await create(rig, 'b1', ceilingCents);
+    await rig.approve(orderId);
+    await rig.service.completeApproval({ holdId, orderId });
+    return holdId;
+  }
+
+  it('makes a second order that names the hold it replaces and leaves the old hold HELD', async () => {
+    const first = await held();
+    const raise = await create(rig, 'b1', 20000);
+    expect(raise.holdId).not.toBe(first);
+    expect(rig.counts.createOrder).toBe(2);
+    expect((await rig.holds.get(raise.holdId))?.supersedes).toBe(first);
+    expect((await rig.holds.get(first))?.status).toBe('HELD');
+    expect((await rig.holds.get(first))?.ceilingCents).toBe(15000);
+  });
+
+  it('answers the same raise request twice with the same order', async () => {
+    await held();
+    const a = await create(rig, 'b1', 20000);
+    const b = await create(rig, 'b1', 20000);
+    expect(b).toEqual(a);
+    expect(rig.counts.createOrder).toBe(2);
+  });
+
+  it('holds the new amount once approved; the old authorization is not touched here', async () => {
+    const first = await held();
+    const { holdId, orderId } = await create(rig, 'b1', 20000);
+    await rig.approve(orderId);
+    await expect(rig.service.completeApproval({ holdId, orderId })).resolves.toMatchObject({
+      status: 'HELD',
+      ceilingCents: 20000,
+    });
+    expect((await rig.holds.get(first))?.status).toBe('HELD');
+    // A third raise builds on the larger hold.
+    expect(await codeOf(create(rig, 'b1', 20000))).toBe('hold_exists');
+    expect(await codeOf(create(rig, 'b1', 15000))).toBe('hold_exists');
+  });
+
+  it('refuses a limit that is not higher, and one above the cap', async () => {
+    await held();
+    expect(await codeOf(create(rig, 'b1', 15000))).toBe('hold_exists');
+    expect(await codeOf(create(rig, 'b1', 5000))).toBe('hold_exists');
+    expect(await codeOf(create(rig, 'b1', 25001))).toBe('ceiling_out_of_range');
+    expect(rig.counts.createOrder).toBe(1);
+  });
+
+  it('replaces a pending raise for another amount and keeps the old hold when a raise is abandoned', async () => {
+    const first = await held();
+    const a = await create(rig, 'b1', 20000);
+    const b = await create(rig, 'b1', 22000);
+    expect(b.holdId).not.toBe(a.holdId);
+    expect((await rig.holds.get(a.holdId))?.status).toBe('EXPIRED');
+    await expect(rig.service.abandonHold(b.holdId)).resolves.toBe(true);
+    expect((await rig.holds.get(first))?.status).toBe('HELD');
+    // After the abandon the bidder can ask for a raise again.
+    const c = await create(rig, 'b1', 20000);
+    expect((await rig.holds.get(c.holdId))?.supersedes).toBe(first);
+  });
+});

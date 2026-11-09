@@ -127,13 +127,25 @@ export class HoldService {
     this.queue = deps.queue ?? sharedHoldQueue;
   }
 
-  /** The bidder's hold that counts: HELD or CAPTURED first, then a pending one. */
-  private async current(auctionId: string, bidderId: string): Promise<HoldRecord | null> {
+  /**
+   * The bidder's live (not terminal) holds: `settled` is the HELD, CAPTURED or UNKNOWN one with
+   * the highest ceiling (a raise leaves two HELD for a moment, the old one is voided next),
+   * `pending` the PENDING_APPROVAL ones, oldest first.
+   */
+  private async live(
+    auctionId: string,
+    bidderId: string,
+  ): Promise<{ settled: HoldRecord | null; pending: HoldRecord[] }> {
     const all = (await this.deps.holds.listByAuction(auctionId)).filter(
       (h) => h.bidderId === bidderId && !TERMINAL.has(h.status),
     );
-    const settled = all.find((h) => h.status !== 'PENDING_APPROVAL');
-    return settled ?? all[all.length - 1] ?? null;
+    const settled = all
+      .filter((h) => h.status !== 'PENDING_APPROVAL')
+      .sort((a, b) => b.ceilingCents - a.ceilingCents || b.createdAtMs - a.createdAtMs)[0];
+    return {
+      settled: settled ?? null,
+      pending: all.filter((h) => h.status === 'PENDING_APPROVAL'),
+    };
   }
 
   /**
@@ -162,13 +174,27 @@ export class HoldService {
         maxCeilingCents: this.deps.maxCeilingCents,
       });
       const now = this.deps.clock.nowMs();
-      const existing = await this.current(i.auctionId, i.bidderId);
-      if (existing !== null) {
-        if (existing.status !== 'PENDING_APPROVAL') {
+      const { settled, pending } = await this.live(i.auctionId, i.bidderId);
+      // A bidder with a HELD hold may raise the limit: the new order carries `supersedes`, and
+      // the old hold stays HELD until the room has switched to the new one (D-0025). Anything
+      // that does not raise (same or lower amount, a captured hold) is still `hold_exists`.
+      let supersedes: string | undefined;
+      if (settled !== null) {
+        if (settled.status !== 'HELD' || i.ceilingCents <= settled.ceilingCents) {
           throw new HoldError('hold_exists', 'the bidder already has a hold in this auction');
         }
+        supersedes = settled.holdId;
+      }
+      const existing = pending
+        .filter((h) => (h.supersedes !== undefined) === (supersedes !== undefined))
+        .at(-1);
+      if (existing !== undefined) {
         const fresh = now - existing.createdAtMs <= this.pendingTtlMs;
-        if (fresh && existing.ceilingCents === i.ceilingCents) {
+        if (
+          fresh &&
+          existing.ceilingCents === i.ceilingCents &&
+          existing.supersedes === supersedes
+        ) {
           return this.created(existing.holdId, existing.orderId);
         }
         // A lapsed order, or one for another amount, is abandoned; no PayPal call is needed.
@@ -202,9 +228,15 @@ export class HoldService {
         ceilingCents: i.ceilingCents,
         status: 'PENDING_APPROVAL',
         createdAtMs: now,
+        ...(supersedes === undefined ? {} : { supersedes }),
       };
       await this.deps.holds.put(record);
-      await this.audit(record, '', 'PENDING_APPROVAL', 'hold_created');
+      await this.audit(
+        record,
+        '',
+        'PENDING_APPROVAL',
+        supersedes === undefined ? 'hold_created' : 'hold_raise_created',
+      );
       if (order.approveUrl !== undefined && order.approveUrl !== '') {
         this.approveUrls.set(holdId, order.approveUrl);
       }

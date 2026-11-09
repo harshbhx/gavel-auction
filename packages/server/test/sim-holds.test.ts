@@ -58,6 +58,34 @@ describe('simulated holds', () => {
     expect(rows.get('sim-hold-B1')?.status).toBe('VOIDED');
   });
 
+  it('FEAT-61: a larger ceiling is a raise with its own hold, written once per amount', async () => {
+    const rows = new Map<string, HoldRecord>();
+    const store = {
+      get: (id: string) => Promise.resolve(rows.get(id) ?? null),
+      put: (h: HoldRecord) => {
+        rows.set(h.holdId, h);
+        return Promise.resolve();
+      },
+    } as unknown as HoldStore;
+    const source = createSimHoldSource(store, () => 5);
+    await source('B1' as BidderId, 5_000 as Cents, 'A1' as AuctionId);
+    const raised = await source('B1' as BidderId, 8_000 as Cents, 'A1' as AuctionId);
+    expect(raised).toBe('sim-hold-B1-8000');
+    expect(rows.get(raised)).toMatchObject({
+      status: 'HELD',
+      ceilingCents: 8_000,
+      authId: 'sim-auth-B1-8000',
+    });
+    // The same request again finds the same hold; the old one is not rewritten.
+    expect(await source('B1' as BidderId, 8_000 as Cents, 'A1' as AuctionId)).toBe(raised);
+    expect(rows.get('sim-hold-B1')?.ceilingCents).toBe(5_000);
+    // A raise to an amount already used by a voided hold is not reused.
+    rows.set(raised, { ...(rows.get(raised) as HoldRecord), status: 'VOIDED' });
+    await expect(source('B1' as BidderId, 8_000 as Cents, 'A1' as AuctionId)).rejects.toMatchObject(
+      { code: 'conflict' },
+    );
+  });
+
   it('races two calls for one bidder into a single write', async () => {
     const rows = new Map<string, HoldRecord>();
     const put = vi.fn(async (h: HoldRecord) => {

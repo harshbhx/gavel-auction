@@ -644,19 +644,22 @@ export class Room {
       } catch {
         throw this.storeError();
       }
-      if (this.roster.has(reg.bidderId)) {
-        // A revoked bidder cannot be backed by a second hold; the caller releases it (D-0023).
-        if (
-          this.revoked.has(reg.bidderId) &&
-          this.roster.get(reg.bidderId)?.holdRef !== reg.holdRef
-        ) {
-          throw new GavelError('conflict', 'ceiling was revoked');
+      const known = this.roster.get(reg.bidderId);
+      if (known !== undefined) {
+        // The same hold again: nothing to do (a retry of the same registration stays harmless).
+        if (known.holdRef === reg.holdRef) {
+          await this.makeDurable();
+          return;
         }
-        // Another hold for a registered bidder is refused; the caller voids it (HRD-16).
-        if (this.roster.get(reg.bidderId)?.holdRef !== reg.holdRef) {
+        // A revoked bidder cannot be backed by a second hold; the caller releases it (D-0023).
+        if (this.revoked.has(reg.bidderId)) throw new GavelError('conflict', 'ceiling was revoked');
+        // A bigger hold replaces the old one (D-0025); any other hold for a registered bidder is
+        // refused and the caller voids it (HRD-16). The old hold is voided by the caller once
+        // this returns, so the bidder is never without a hold.
+        if (reg.ceiling <= known.ceiling) {
           throw new GavelError('conflict', 'bidder is registered with another hold');
         }
-        await this.makeDurable();
+        await this.raiseCeiling(reg, known);
         return;
       }
       // The settlement plan is cut at the hammer; a later registration could never be voided (R-RT-054).
@@ -734,6 +737,68 @@ export class Room {
       }
       await this.makeDurable();
     });
+  }
+
+  /**
+   * Raises a registered bidder's ceiling to the one of their new hold (D-0025). Runs inside the
+   * mailbox, after the guards of `registerBidder`. The engine decides first and the room event is
+   * written next, so a refused raise never reaches the log. The caller voids the old hold.
+   */
+  private async raiseCeiling(reg: RegisterBidder, known: RosterEntry): Promise<void> {
+    // The settlement plan is cut at the hammer; a hold raised later could never be voided.
+    if (this.hammered) throw new GavelError('conflict', 'auction is hammered');
+    if (
+      !isCents(reg.ceiling) ||
+      reg.holdRef.length === 0 ||
+      reg.holdRef.length > MAX_HOLD_REF_CHARS
+    ) {
+      throw new GavelError('bad_message', 'invalid registration');
+    }
+    const seq = this.seq + 1;
+    const ts = this.deps.clock.now();
+    const event: RoomEvent = {
+      type: 'ceiling_raised',
+      auctionId: this.auctionId,
+      seq,
+      ts,
+      bidderId: reg.bidderId,
+      from: known.ceiling,
+      ceiling: reg.ceiling,
+      holdRef: reg.holdRef,
+    };
+    try {
+      this.applyRaised(event);
+    } catch {
+      this.dirty = true;
+      throw new GavelError('bad_message', 'raise refused by the engine');
+    }
+    try {
+      await this.appendFenced(this.auctionId, this.seq, [event]);
+    } catch (e) {
+      // The engine already has the raise; rebuild it from the stored log (R-RT-033).
+      await this.recover().catch(() => undefined);
+      throw e;
+    }
+    this.seq = seq;
+    for (const conn of this.conns.values()) {
+      if (conn.role !== 'bidder' || conn.bidderId !== reg.bidderId) {
+        // The seq is consumed, so everyone else gets a snapshot instead of a gap (R-RT-036).
+        this.sendState(conn);
+        continue;
+      }
+      // The bidder's own sockets learn the new limit through the same message as a registration.
+      this.send(conn, {
+        v: 1,
+        t: 'registered',
+        seq,
+        ts,
+        bidderId: reg.bidderId,
+        paddle: known.paddle,
+        ceiling: reg.ceiling,
+        role: 'bidder',
+      });
+    }
+    await this.makeDurable();
   }
 
   /**
@@ -2211,6 +2276,13 @@ export class Room {
           // The roster stays without this bidder, matching the engine.
         }
         break;
+      case 'ceiling_raised':
+        try {
+          this.applyRaised(event);
+        } catch {
+          // A raise the engine refuses (written by an older build) must not brick the load.
+        }
+        break;
       case 'bid_accepted':
         placeBidOn(
           this.requireEngine(),
@@ -2320,6 +2392,13 @@ export class Room {
       ceiling: event.ceiling,
       holdRef: event.holdRef,
     });
+  }
+
+  private applyRaised(event: Extract<RoomEvent, { type: 'ceiling_raised' }>): void {
+    const known = this.roster.get(event.bidderId);
+    if (known === undefined) throw new GavelError('internal', 'raise for an unknown bidder');
+    this.requireEngine().register(event.bidderId, event.ceiling);
+    this.roster.set(event.bidderId, { ...known, ceiling: event.ceiling, holdRef: event.holdRef });
   }
 
   /** Remember a reply for replay; the oldest are dropped past MAX_REPLIES (R12-S05). */

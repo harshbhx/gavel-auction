@@ -403,7 +403,7 @@ Evidence: packages/server/src/runtime/ledger-engine.ts (lotIdOf), packages/payme
 ## D-0023: No ceiling raises in the demo; the first hold decides
 
 Date: 2026-11-04
-Status: accepted
+Status: superseded by D-0035
 Owner: server
 Context: A bidder can ask for a second hold while the first is still live, and the room could register that second hold as a ceiling raise. The engine supports `CEILING_RAISED`, but a raise would change payments, the room and the web copy together, and the demo does not need it.
 Decision: A bidder has one hold per auction and cannot raise it. Payments answers a second hold request for a bidder with a live hold with 409 `hold_exists`. If a second authorization is approved anyway (a lapsed order approved late), the room keeps the first registration: `registerBidder` for a bidder already on the roster is a no-op that appends no event, the engine never receives a raise, and the plan uses the first hold. The settlement service voids the unused second authorization as a spare. The engine keeps its `CEILING_RAISED` support for later, but nothing in the server reaches it.
@@ -671,3 +671,22 @@ Consequences:
 - Every HTTP request now produces an info log line; it holds the method, path (no query) and status.
 
 Evidence: git grep for each module name under packages/\*/src before this change.
+
+## D-0035: A bidder can raise their limit during an open lot
+
+Date: 2026-11-09
+Status: accepted
+Owner: server
+Context: D-0023 gave each bidder one hold and no way to raise it, so a bidder who was outbid beyond their limit could not carry on. D-0023 named the supersede flow as the way to reopen this and asked for a regression test per component.
+Decision: A bidder with a HELD hold may ask for a larger one. `POST /api/holds` with a ceiling above the held one creates a second order that names the hold it replaces (`HoldRecord.supersedes`); a request that is not higher still answers 409 `hold_exists`, and the cap (`GAVEL_MAX_CEILING_CENTS`) still applies. The same request twice returns the same order. When the new order is approved, the approve route hands the new hold to the room. The room (a `registerBidder` call with another hold and a higher ceiling from a registered, not revoked bidder before the hammer) appends one `ceiling_raised` event, applies a `CEILING_RAISED` to the engine ledger (an existing event, so no hash input and no old event changed), and sends the owner `registered` with the new ceiling. Only after that does the service void the old authorization, so the bidder is never without a hold and never double held beyond that moment. A raise the room refuses (hammered, revoked, not higher) voids the new authorization and leaves the old hold in force. A limit is never lowered, so a leader keeps the lead. The hold stays "held, not charged" and sandbox only. Judge rooms follow the same rule through `sim-hold`.
+Alternatives:
+
+- Void first, then authorize the bigger hold: rejected, a failure in between leaves the bidder unheld.
+- A new engine event `hold_increased`: rejected, `CEILING_RAISED` already carries the same facts and replays on every existing ledger reader.
+
+Consequences:
+
+- The room log has a new persisted type `ceiling_raised`; exports hide its amounts like `bidder_registered`.
+- The old hold is voided in the same call; if that void is unconfirmed, the orphan sweep retries it and the settlement releases it as a spare at the latest.
+
+Evidence: packages/payments/src/holds/service.ts, packages/server/src/room/room.ts (raiseCeiling), packages/server/src/runtime/auction-service.ts (registerBidder), packages/server/test/boot-holds.test.ts, packages/server/test/room-raise.test.ts, packages/engine/test/raise-limit.test.ts.

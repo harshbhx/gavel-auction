@@ -156,8 +156,9 @@ function isOwn(you: unknown, viewer: string | undefined): boolean {
 
 /** A persisted event as exported: the bidder's ceiling is never included. */
 export type ExportedEvent =
-  | Exclude<RoomEvent, { type: 'bidder_registered' }>
-  | Omit<Extract<RoomEvent, { type: 'bidder_registered' }>, 'ceiling'>;
+  | Exclude<RoomEvent, { type: 'bidder_registered' | 'ceiling_raised' }>
+  | Omit<Extract<RoomEvent, { type: 'bidder_registered' }>, 'ceiling'>
+  | Omit<Extract<RoomEvent, { type: 'ceiling_raised' }>, 'ceiling' | 'from'>;
 
 /**
  * Event log export for a role (R-RT-108). The auctioneer export drops ceilings
@@ -169,6 +170,12 @@ export function redactEventForExport(role: AuthRole, event: RoomEvent): Exported
     const copy: Partial<typeof event> = { ...event };
     delete copy.ceiling;
     return copy as Omit<typeof event, 'ceiling'>;
+  }
+  if (event.type === 'ceiling_raised') {
+    const copy: Partial<typeof event> = { ...event };
+    delete copy.ceiling;
+    delete copy.from;
+    return copy as Omit<typeof event, 'ceiling' | 'from'>;
   }
   if (event.type === 'bid_rejected' && event.reason === 'over_ceiling') {
     const copy: Partial<typeof event> = { ...event };

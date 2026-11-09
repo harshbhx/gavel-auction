@@ -46,6 +46,17 @@ export const BidderRegisteredEvent = record('bidder_registered', {
   holdRef: z.string().min(1).max(MAX_HOLD_REF_CHARS),
 });
 
+/**
+ * A bidder replaced their hold with a larger one: the private ceiling goes up to `ceiling` and the
+ * roster entry follows `holdRef`. Only raises are logged; a limit never goes down (D-0025).
+ */
+export const CeilingRaisedEvent = record('ceiling_raised', {
+  bidderId: ulid<BidderId>(),
+  from: cents(),
+  ceiling: cents(),
+  holdRef: z.string().min(1).max(MAX_HOLD_REF_CHARS),
+});
+
 export const BidAcceptedEvent = record('bid_accepted', {
   bidId: ulid<BidId>(),
   bidderId: ulid<BidderId>(),
@@ -137,6 +148,7 @@ export const SettlementUpdateEvent = record('settlement_update', {
 export const RoomEventSchema = z.discriminatedUnion('type', [
   AuctionCreatedEvent,
   BidderRegisteredEvent,
+  CeilingRaisedEvent,
   BidAcceptedEvent,
   BidRejectedEvent,
   ConfirmRequestedEvent,

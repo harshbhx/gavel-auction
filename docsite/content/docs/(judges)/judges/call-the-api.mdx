@@ -42,6 +42,7 @@ curl -s -X POST $API/api/judge/join -H 'content-type: application/json' \
 # 4. Simulated hold, so the bidder is in the room
 curl -s -X POST $API/api/judge/rooms/$ID/sim-hold -H "authorization: Bearer $SESSION" \
   -H 'content-type: application/json' -d '{"ceilingCents":5000,"name":"Asha"}'
+# To raise the limit later, send the same call with a higher ceilingCents (up to the room cap).
 
 # 5. Bid 15.00 (amount is in cents)
 curl -s -X POST $API/api/judge/rooms/$ID/bids -H "authorization: Bearer $SESSION" \

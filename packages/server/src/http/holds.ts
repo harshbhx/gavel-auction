@@ -79,7 +79,8 @@ async function guarded(run: () => Promise<Response>): Promise<Response> {
  * Hold routes for the web approval flow. The bidder is always the one named by the session
  * token, never by the request body (R-PAY-030).
  *
- *   POST /api/holds                    create the hold order
+ *   POST /api/holds                    create the hold order; for a bidder who already holds,
+ *                                      a larger ceiling creates a raise order (D-0025)
  *   POST /api/holds/:holdId/approve    authorize the approved order
  *   GET  /api/holds/:holdId            read the hold of this session
  *   DELETE /api/holds/:holdId          abandon an unapproved hold (idempotent)
@@ -120,12 +121,16 @@ export function mountHolds(port: HoldsPort): Mount {
         await requireOpen(port, hold.auctionId);
         const approved = await port.service.completeApproval({ holdId, orderId: body.orderId });
         try {
-          if (body.name !== undefined && port.registerBidder !== undefined) {
+          // A hold that raises a limit (`supersedes`) always goes to the room: the room switches
+          // the bidder to it and the old hold is voided afterwards (D-0025). The name only
+          // matters for a first registration and is ignored for a raise.
+          const raising = hold.supersedes !== undefined;
+          if ((body.name !== undefined || raising) && port.registerBidder !== undefined) {
             await port.registerBidder({
               auctionId: hold.auctionId,
               bidderId: hold.bidderId,
               holdId,
-              name: body.name,
+              name: body.name ?? '',
             });
           }
         } finally {
