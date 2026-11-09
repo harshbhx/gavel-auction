@@ -168,7 +168,7 @@ function buildRequest(
     };
   }
   const form = new FormData();
-  form.append('file', new Blob([audio], { type: 'audio/wav' }), 'audio.wav');
+  form.append('file', new Blob([new Uint8Array(audio)], { type: 'audio/wav' }), 'audio.wav');
   form.append('model', options.groqModel ?? LIVE_GROQ_MODEL);
   form.append('response_format', 'verbose_json');
   form.append('language', 'en');
