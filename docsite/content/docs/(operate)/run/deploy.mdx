@@ -1,6 +1,6 @@
 ---
 title: Deploy staging
-description: Hosting the server on Render and the web client on Cloudflare Pages.
+description: Hosting the server on Render and the web client on Cloudflare.
 icon: CloudUpload
 status: planned
 ---
@@ -36,7 +36,7 @@ Socket upgrades and HTTP joins share one per-address bucket. `RATE_JOIN_BURST` (
 ## Known limits
 
 - The smoke may pass against the old instance if it answers before the new build is live; the workflow waits 60 seconds first.
-- Boot validation that exits 78 on a missing variable is not wired into `main.ts` yet; today `config.ts` refuses to boot with a message naming the variable.
+- Boot validation exits 78 and names each missing or invalid variable before the server listens.
 
 <CodePaths
   paths={[

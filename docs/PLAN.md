@@ -6,15 +6,15 @@ Deadline: Thu Nov 12 2026 12:00pm PST (= Fri Nov 13 01:30 IST). Early eligibilit
 
 | Area                                                       | Works now                                                    | Works with the fake PayPal only          | Not done yet                                                    |
 | ---------------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------- | --------------------------------------------------------------- |
-| Engine and hash-chained ledger                             | yes                                                          |                                          | ledger verify command                                           |
+| Engine and hash-chained ledger                             | yes                                                          |                                          |  |
 | Settlement saga (capture, void, journal, resume, webhooks) | single sandbox calls (G1, G2, G4) and nightly R7, R8, R10    | whole-auction settlement, crash recovery | a whole auction driven through a deployed server on the sandbox |
 | Hold creation and approval service                         | HTTP routes mounted in the server                            | yes, in tests                            | a recorded hold and approval through the hosted web app         |
-| Room and runtime service with file stores                  | server entry point, HTTP and WebSocket routes, Render deploy |                                          | a persistent disk on the hosted service                         |
+| Room and runtime service with file stores                  | server entry point, HTTP and WebSocket routes, Render deploy |                                          | a recorded run on the hosted disk |
 | Web components, routes and replay player                   | deployed Worker (https://gavel-web.creharsh.workers.dev)     |                                          | a recorded walk of all screens against a live hosted room       |
 | Voice package (capture, STT clients, parser)               | `/audio` socket feeds decisions into the room                |                                          | audio sender in the web console, a live speech run              |
 | Replay of recorded audio                                   | player and bundle format                                     |                                          | recording export, published recording                           |
 | Crash and resume                                           | in-process test hook, one in-process crash on the sandbox    |                                          | trigger on a hosted server                                      |
-| Hosted demo                                                | web, API (Render) and docs site are up in sandbox mode       |                                          | persistent disk; a judge-startable live room; a full hosted run |
+| Hosted demo                                                | web, API (Render) and docs site are up in sandbox mode       |                                          | a full recorded hosted run |
 
 Gate G0, G1, G2 and G4: PASS on the sandbox (G1: two PayPal-account buyers, guest card capture not covered; G2: wallet and guest card AUTHORIZE). Gate G3: NOT RUN / IN PROGRESS (a real probe, day 0 7 Nov 2026 03:06 UTC). Gate G5: PARTIAL (synthetic, noise-free speech only, fixes chosen on the same clips, no real-room test; spoken bids always confirm). `docs/GATES.md` is the source of truth.
 
@@ -36,12 +36,12 @@ Judge line: "Every charity auction has winners who never pay; GAVEL makes the bi
 ## 3. Architecture
 
 - Web app: React + TypeScript + Vite (bidder view, auctioneer console, public big-screen view, audit view).
-- Real-time: a single Node process per host (decision D-0006), with the room and runtime in `packages/server`. There is no HTTP or WebSocket server entry point yet. A Cloudflare Durable Object per auction was considered and is not used.
-- Backend: Node + TypeScript on Render (PayPal secrets, webhooks). The payments package and the runtime service exist; the API routes and the process that wires them together do not.
+- Real-time: a single Node process per host (decision D-0006), with the room and runtime in `packages/server`. The entry point is `packages/server/src/main.ts`, which composes the HTTP routes, the WebSocket gateway and the `/audio` socket in `src/boot/compose.ts`. A Cloudflare Durable Object per auction was considered and is not used.
+- Backend: Node + TypeScript on Render (PayPal secrets, webhooks). The payments package, the runtime service, the API routes and the process that wires them together exist in `packages/server` and run on Render.
 - Payments: PayPal Orders v2 intent=AUTHORIZE; Payments v2 capture (partial, final_capture=true), void, reauthorize if needed; PayPal-Request-Id idempotency; webhooks (authorization voided, capture completed).
 - Speech: Deepgram Nova-3 streaming (primary), Groq Whisper (fallback), browser Web Speech (try-it mode), plus recorded-audio "Replay auction" for judges.
 - AI parse: structured-output LLM with deterministic validator; ambiguity -> "Did you mean 350 for paddle 12?" confirmation. LLM never decides winner or moves money.
-- Store: JSON and JSON-lines files on local disk (room log, ledger, journals, holds, webhook events). Each file belongs to one process; there is no cross-process lock. A hosted deploy needs a persistent disk and a single instance, or a move to a database; neither exists yet. Tests: Vitest + Playwright, run in GitHub Actions.
+- Store: JSON and JSON-lines files on local disk (room log, ledger, journals, holds, webhook events). Each file belongs to one process; there is no cross-process lock. The hosted deploy runs a single instance on a persistent disk at `/var/data` (`render.yaml`); a move to a database stays an option. Tests: Vitest + Playwright, run in GitHub Actions.
 - Reference implementation (Python, `reference/python`): engine, fake PayPal, saga, parser and its tests. The TypeScript packages port its logic and reuse its test cases and labelled utterances.
 
 ## 4. Settlement state machine (must be crash-safe)
