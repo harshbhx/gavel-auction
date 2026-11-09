@@ -6,6 +6,9 @@ interface Journal {
   value: unknown;
 }
 
+/** How many token writes pass between sweeps of expired token ids. */
+export const TOKEN_SWEEP_EVERY = 512;
+
 /** Full RoomStore contract in process memory: the default for tests and the demo. */
 export class MemoryStore implements RoomStore {
   private readonly logs = new Map<AuctionId, RoomEvent[]>();
@@ -14,7 +17,37 @@ export class MemoryStore implements RoomStore {
   private readonly denied = new Map<string, number>();
   private readonly journals = new Map<string, Journal>();
 
+  /** Token writes since the last sweep of expired ids. */
+  private tokenWrites = 0;
+
   constructor(private readonly now: () => number = () => 0) {}
+
+  /**
+   * Forgets consumed and denied token ids whose time has passed. An expired entry already
+   * counts as absent (`jtiIsFresh`, `consumeJti`, `isDenied` compare against `now`), so
+   * dropping it changes no answer. Runs by itself every TOKEN_SWEEP_EVERY token writes.
+   */
+  pruneExpiredTokens(): number {
+    const now = this.now();
+    let dropped = 0;
+    for (const m of [this.used, this.denied]) {
+      for (const [id, until] of m) {
+        if (until <= now) {
+          m.delete(id);
+          dropped += 1;
+        }
+      }
+    }
+    return dropped;
+  }
+
+  private noteTokenWrite(): void {
+    this.tokenWrites += 1;
+    if (this.tokenWrites >= TOKEN_SWEEP_EVERY) {
+      this.tokenWrites = 0;
+      this.pruneExpiredTokens();
+    }
+  }
 
   /** The append rules without the write, so a durable store can check before it persists. */
   protected checkAppend(auctionId: AuctionId, expectedSeq: number, events: RoomEvent[]): void {
@@ -56,7 +89,9 @@ export class MemoryStore implements RoomStore {
         throw new GavelError('conflict', 'events must be gapless and belong to the auction');
       }
     });
-    this.logs.set(auctionId, [...log, ...events]);
+    if (log.length === 0 && !this.logs.has(auctionId)) this.logs.set(auctionId, log);
+    // Push in place: copying the whole log on every append made each one cost the log's length.
+    for (const e of events) log.push(e);
   }
 
   async readEvents(auctionId: AuctionId, fromSeq: number, limit: number): Promise<RoomEvent[]> {
@@ -82,11 +117,13 @@ export class MemoryStore implements RoomStore {
     const until = this.used.get(jti);
     if (until !== undefined && until > this.now()) return false;
     this.used.set(jti, this.now() + ttlMs);
+    this.noteTokenWrite();
     return true;
   }
 
   async denyJti(jti: Jti, untilMs: EpochMs): Promise<void> {
     this.denied.set(jti, untilMs);
+    this.noteTokenWrite();
   }
 
   async isDenied(jti: Jti): Promise<boolean> {
