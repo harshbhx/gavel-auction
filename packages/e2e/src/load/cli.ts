@@ -27,15 +27,23 @@ async function main(argv: readonly string[]): Promise<number> {
   const out = flag(argv, '--out');
   const deps = { now: () => performance.now(), rss: () => process.memoryUsage().rss };
   const results: Result[] = [];
+  // The report is rewritten after every scenario, with the peak rss so far, so a crash in a later
+  // scenario still leaves the earlier results on disk (#2066).
+  const save = (): void => {
+    if (out === undefined) return;
+    mkdirSync(dirname(out), { recursive: true });
+    const report = { peakRssMb: Math.round(process.memoryUsage().rss / 1048576), results };
+    writeFileSync(out, `${JSON.stringify(report, null, 2)}\n`);
+  };
+  save();
   if (which === 'L3' || which === 'all') results.push(await runL3(deps));
+  save();
   if (which === 'L4' || which === 'all') results.push(await runL4());
+  save();
   if (which === 'L5' || which === 'all') {
     results.push(await runSoak({ ...deps, durationMs: minutes * 60 * 1000 }));
   }
-  if (out !== undefined) {
-    mkdirSync(dirname(out), { recursive: true });
-    writeFileSync(out, `${JSON.stringify(results, null, 2)}\n`);
-  }
+  save();
   for (const r of results) {
     process.stdout.write(`${r.scenario} ${r.ok ? 'pass' : 'FAIL'}\n`);
     for (const c of r.checks)

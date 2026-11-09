@@ -24,10 +24,54 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
-      - name: Run the load scenarios
+      # One process per scenario: a heap that grows in one scenario cannot take the others down, and
+      # each writes its own report. The per-call fake PayPal log goes to a file, not the job log.
+      - name: L3 hammer race
+        id: l3
+        continue-on-error: true
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: |
+          mkdir -p load-report
+          npx vite-node packages/e2e/src/load/cli.ts -- L3 --out load-report/l3.json > load-report/l3.log 2>&1 || { tail -n 40 load-report/l3.log; exit 1; }
+          grep -E '^(L3|  (ok|FAIL))' load-report/l3.log
+      - name: L4 webhook storm
+        id: l4
+        continue-on-error: true
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: |
+          mkdir -p load-report
+          npx vite-node packages/e2e/src/load/cli.ts -- L4 --out load-report/l4.json > load-report/l4.log 2>&1 || { tail -n 40 load-report/l4.log; exit 1; }
+          grep -E '^(L4|  (ok|FAIL))' load-report/l4.log
+      - name: L5 soak
+        id: l5
+        continue-on-error: true
         env:
           MINUTES: ${{ inputs.minutes || '30' }}
-        run: npx vite-node packages/e2e/src/load/cli.ts -- all --minutes "$MINUTES" --out load-report/l3-l5.json
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: |
+          mkdir -p load-report
+          npx vite-node packages/e2e/src/load/cli.ts -- L5 --minutes "$MINUTES" --out load-report/l5.json > load-report/l5.log 2>&1 || { tail -n 40 load-report/l5.log; exit 1; }
+          grep -E '^(L5|  (ok|FAIL))' load-report/l5.log
+      - name: Summary
+        if: ${{ always() }}
+        run: |
+          mkdir -p load-report
+          {
+            echo "## load-soak"
+            echo "| scenario | outcome |"
+            echo "| --- | --- |"
+            echo "| L3 | ${{ steps.l3.outcome }} |"
+            echo "| L4 | ${{ steps.l4.outcome }} |"
+            echo "| L5 | ${{ steps.l5.outcome }} |"
+            for f in load-report/l3.json load-report/l4.json load-report/l5.json; do
+              if [ -f "$f" ]; then grep -H peakRssMb "$f" || true; fi
+            done
+          } | tee load-report/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Fail when a scenario failed
+        if: ${{ steps.l3.outcome != 'success' || steps.l4.outcome != 'success' || steps.l5.outcome != 'success' }}
+        run: exit 1
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: ${{ always() }}
         with:
