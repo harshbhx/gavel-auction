@@ -126,7 +126,7 @@ export const arch = {
 `,
   js: `
 var names = [['Browser','Bidders and screen'],['Cloudflare','Web and docs'],['Render','Auction engine'],['PayPal','Holds and capture']];
-var BW = 232, BG = 42, BX = 72, BY = 330, BH = 150;
+var BW = 232, BG = 42, BX = 72, BY = 320, BH = 182;
 var arrive = [0.55, 1.2, 1.85, 2.5];
 var blocks = [], dot, trail;
 function cx(i){ return i*(BW+BG) + BW/2; }
@@ -239,7 +239,7 @@ function update(t,h){
     // incoming first window enters; others wait offscreen to the right until the stack is shown
     w.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) scale(' + sc.toFixed(4) + ')';
     w.style.opacity = Math.max(0, op) * en * (1-ex);
-    w.style.zIndex = 10 - Math.round(ao*2);
+    w.style.zIndex = 10 - Math.round(ao*2); w.style.filter = 'blur(' + (Math.min(ao,1)*2.5).toFixed(2) + 'px)';
   });
   chips.forEach(function(c,k){
     var on = Math.abs(k - pos) < .5;

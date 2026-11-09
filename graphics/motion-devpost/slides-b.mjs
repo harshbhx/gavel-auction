@@ -72,13 +72,14 @@ export const partners = {
 `,
   js: `
 var T5 = [['PayPal','Payments'],['Cloudflare','Web and docs'],['Render','API hosting'],['AG Grid','Data tables'],['Hugging Face','Open datasets']];
-var TW = 200, TG = 14, TX = 72, TY = 320, TH = 280;
+var TW = 340, TG = 18, TX = 72, TY = 300, TH = 170;
 var tl = [];
 function setup(h){
   var html = '';
   T5.forEach(function(n,i){
     var nm = n[0].split(' ');
-    html += '<div class="a card tl" data-a="0" data-d="0" style="left:' + (TX + i*(TW+TG)) + 'px;top:' + TY + 'px;width:' + TW + 'px;height:' + TH + 'px;padding:28px 24px"><div class="nm" style="font:800 46px/.95 var(--display);text-transform:uppercase;letter-spacing:.01em">' + nm.join('<br>') + '</div><div class="rl" style="position:absolute;left:24px;bottom:56px;font:600 20px/1.2 var(--body);color:var(--muted)">' + n[1] + '</div><div class="ul" style="position:absolute;left:24px;bottom:30px;height:6px;width:60px;border-radius:3px;background:var(--orange);transform-origin:0 50%"></div></div>';
+    var row = i < 3 ? 0 : 1, col = i < 3 ? i : i - 3, x0 = row ? TX + (1056 - 2*TW - TG)/2 : TX;
+    html += '<div class="a card tl" data-a="0" data-d="0" style="left:' + (x0 + col*(TW+TG)) + 'px;top:' + (TY + row*(TH+TG)) + 'px;width:' + TW + 'px;height:' + TH + 'px;padding:26px 28px"><div class="nm" style="font:800 64px/.95 var(--display);text-transform:uppercase;letter-spacing:.01em;white-space:nowrap">' + nm.join(' ') + '</div><div class="rl" style="position:absolute;left:28px;bottom:50px;font:600 22px/1.2 var(--body);color:var(--muted)">' + n[1] + '</div><div class="ul" style="position:absolute;left:28px;bottom:26px;height:6px;width:60px;border-radius:3px;background:var(--orange);transform-origin:0 50%"></div></div>';
   });
   h.$('#tiles').innerHTML = html;
   tl = h.$$('.tl');
@@ -167,7 +168,7 @@ function setup(h){
   waves = h.Waves(h.$$('.wave'), [mk.strike], {min:.5, max:4.2, dur:1.4, alpha:.5});
   var html = '';
   LINKS.forEach(function(l,i){
-    html += '<div class="a card lr" data-a="' + (1.55 + i*.18) + '" data-d=".6" data-dy="40" style="left:210px;top:' + (350 + i*112) + 'px;width:780px;height:92px;border-radius:46px;padding:0 34px 0 40px;display:flex;align-items:center;justify-content:space-between"><span class="mono" style="font:700 14px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);width:110px;flex:none">' + l[0] + '</span><span style="font:800 40px/1 var(--display);letter-spacing:.02em;text-transform:lowercase;flex:1;text-align:left;white-space:nowrap">' + l[1] + '</span><span style="width:38px;height:38px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M6 12h12M13 7l5 5-5 5" fill="none" stroke="#1d1712" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>';
+    html += '<div class="a card lr" data-a="' + (1.55 + i*.18) + '" data-d=".6" data-dy="40" style="left:210px;top:' + (350 + i*112) + 'px;width:780px;height:92px;border-radius:46px;padding:0 34px 0 40px;display:flex;align-items:center;justify-content:space-between"><span class="mono" style="font:700 14px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);width:110px;flex:none">' + l[0] + '</span><span style="font:800 36px/1 var(--display);letter-spacing:.02em;text-transform:lowercase;flex:1;text-align:left;white-space:nowrap">' + l[1] + '</span><span style="width:38px;height:38px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M6 12h12M13 7l5 5-5 5" fill="none" stroke="#1d1712" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>';
   });
   h.$('#lnk').innerHTML = html;
 }
