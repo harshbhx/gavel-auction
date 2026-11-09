@@ -43,7 +43,7 @@ import { ApiError, apiErrorFor, unreachable } from './net/apiError';
 import { WatcherGate } from './screens/join/WatcherGate';
 import { LandingScreen } from './screens/landing/LandingScreen';
 import { HistoryRecorder } from './home/HistoryRecorder';
-import { HomeScreen, type RoomCheck } from './home/HomeScreen';
+import type { RoomCheck } from './home/HomeScreen';
 import { clearHistory, readHistory, type HistoryRoom } from './home/history';
 import { JudgePanel, type RoomsState } from './screens/judge/JudgePanel';
 import { VerifyScreen } from './screens/verify/VerifyScreen';
@@ -96,6 +96,8 @@ export interface AppProps {
   api?: { apiBase: string; payments: PaymentsMode; paypalClientId: string };
 }
 
+// The Home screen loads as its own chunk: the first visit (landing) never pays for it.
+const HomeScreen = lazyWithRetry(() => import('./home/HomeScreen'));
 const ReplayScreen = lazyWithRetry(() => import('./screens/replay/ReplayScreen'));
 const LedgerLab = lazyWithRetry(() => import('./screens/ledger/LedgerLab'));
 
@@ -554,17 +556,19 @@ function HomeOrLanding({ api, match }: { api: Api | undefined; match: RouteMatch
     return api === undefined ? <RouteScreen match={match} /> : <LandingRoute api={api} />;
   }
   return (
-    <HomeScreen
-      rooms={rooms}
-      {...(checkRoom === undefined ? {} : { checkRoom })}
-      onJoin={(code) => joinByCode(api, code)}
-      onCreate={() => navigate('/try')}
-      onNavigate={navigate}
-      onClear={() => {
-        clearHistory();
-        setRooms([]);
-      }}
-    />
+    <ChunkBoundary fallback={null}>
+      <HomeScreen
+        rooms={rooms}
+        {...(checkRoom === undefined ? {} : { checkRoom })}
+        onJoin={(code) => joinByCode(api, code)}
+        onCreate={() => navigate('/try')}
+        onNavigate={navigate}
+        onClear={() => {
+          clearHistory();
+          setRooms([]);
+        }}
+      />
+    </ChunkBoundary>
   );
 }
 

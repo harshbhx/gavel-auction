@@ -35,10 +35,12 @@ describe('the start page', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(t('landing.title'));
   });
 
-  it('shows the Home screen when it has history', () => {
+  it('shows the Home screen when it has history', async () => {
     remember();
     render(<App initialPath="/" api={API} />);
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Welcome back, Paddle 7.');
+    expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe(
+      'Welcome back, Paddle 7.',
+    );
     expect(screen.getByRole('button', { name: /Join a room/ })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Create a room/ })).toBeTruthy();
   });
@@ -61,7 +63,7 @@ describe('the start page', () => {
   it('Clear my history empties the store and falls back to the landing page', async () => {
     remember();
     render(<App initialPath="/" api={API} />);
-    fireEvent.click(screen.getByRole('button', { name: t('home.footer.clear') }));
+    fireEvent.click(await screen.findByRole('button', { name: t('home.footer.clear') }));
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(t('landing.title')),
     );
@@ -72,13 +74,13 @@ describe('the start page', () => {
   it('Create a room opens the judge room flow at /try', async () => {
     remember();
     render(<App initialPath="/" api={API} />);
-    fireEvent.click(screen.getByRole('button', { name: /Create a room/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Create a room/ }));
     await waitFor(() => expect(window.location.pathname).toBe('/try'));
   });
 
   it('asks the host about the last room once, with a read-only request', async () => {
     remember();
-    recordRoom('roomA', { expiresAt: Date.now() + 10 * 60_000 });
+    recordRoom('roomA', { expiresAt: 4_000_000_000_000 });
     render(<App initialPath="/" api={API} />);
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const calls = fetchMock.mock.calls as unknown as [string, RequestInit | undefined][];
