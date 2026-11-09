@@ -34,8 +34,7 @@
   text-transform: uppercase;
 }
 
-.gv-demo__gets ul,
-.gv-demo__ways ul {
+.gv-demo__gets ul {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -49,40 +48,131 @@
   border-left: var(--border-width-strong, 3px) solid var(--color-rule);
 }
 
+/* Other ways in: a ruled catalogue list. Each row is one link, lettered like a lot. */
+
+.gv-demo__ways {
+  margin-top: var(--space-4);
+}
+
+.gv-demo__ways h2 {
+  padding-bottom: var(--space-2);
+  border-bottom: var(--border-width-strong, 3px) solid var(--color-fg);
+}
+
+.gv-demo__ways ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .gv-demo__ways li {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--space-2) 0;
   border-bottom: var(--border-width) solid var(--color-rule);
 }
 
-.gv-demo__ways li > span {
-  color: var(--color-fg-muted);
-  font-size: var(--font-size-2);
+.gv-demo__way {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-3);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 72px;
+  margin: 0;
+  padding: var(--space-3) var(--space-2);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--color-fg);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--duration-micro) var(--ease-out);
 }
 
-.gv-demo__ways a,
-.gv-demo__linkbtn {
+.gv-demo__way-mark {
   display: inline-flex;
   align-items: center;
-  align-self: flex-start;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--color-accent);
-  font: inherit;
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: var(--border-width) solid var(--color-fg);
+  font-family: var(--font-display);
+  font-size: var(--font-size-4);
+  line-height: 1;
+  text-transform: uppercase;
+  transition:
+    background-color var(--duration-micro) var(--ease-out),
+    color var(--duration-micro) var(--ease-out);
 }
 
-.gv-demo__ways a:focus-visible,
-.gv-demo__linkbtn:focus-visible {
+.gv-demo__way-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.gv-demo__way-title {
+  font-size: var(--font-size-4);
+  font-weight: 700;
+  line-height: 1.2;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+}
+
+.gv-demo__way-hint {
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-2);
+  line-height: 1.4;
+}
+
+.gv-demo__way-arrow {
+  color: var(--color-accent);
+  font-size: var(--font-size-5);
+  line-height: 1;
+  transition: transform var(--duration-micro) var(--ease-out);
+}
+
+.gv-demo__way:hover {
+  background: var(--color-surface);
+}
+
+.gv-demo__way:hover .gv-demo__way-title,
+.gv-demo__way:focus-visible .gv-demo__way-title {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.gv-demo__way:hover .gv-demo__way-mark,
+.gv-demo__way:focus-visible .gv-demo__way-mark {
+  border-color: var(--color-fg);
+  background: var(--color-action);
+  color: var(--color-on-action);
+}
+
+.gv-demo__way:hover .gv-demo__way-arrow,
+.gv-demo__way:focus-visible .gv-demo__way-arrow {
+  transform: translateX(4px);
+}
+
+.gv-demo__way:focus-visible {
   outline: var(--border-width-strong, 3px) solid var(--color-focus);
-  outline-offset: 3px;
+  outline-offset: -3px;
+  background: var(--color-surface);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-demo__way,
+  .gv-demo__way-mark,
+  .gv-demo__way-arrow {
+    transition: none;
+  }
+
+  .gv-demo__way:hover .gv-demo__way-arrow,
+  .gv-demo__way:focus-visible .gv-demo__way-arrow {
+    transform: none;
+  }
 }
 
 .gv-flow__error:focus-visible {
@@ -98,4 +188,16 @@
 
 .gv-demo__code h2 {
   margin: 0;
+}
+
+/* Forced colours drop backgrounds and rules, so each row keeps its own border. */
+@media (forced-colors: active) {
+  .gv-demo__way {
+    border: var(--border-width) solid ButtonText;
+  }
+
+  .gv-demo__way:hover,
+  .gv-demo__way:focus-visible {
+    border-color: Highlight;
+  }
 }

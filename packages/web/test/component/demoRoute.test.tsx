@@ -50,6 +50,27 @@ describe('demo launcher on the real route (R-WEB-036..038)', () => {
     expect(screen.getByRole('link', { name: t('demo.judge') }).getAttribute('href')).toBe('/try');
   });
 
+  it('lists the other ways in as three described rows (UIX-43)', () => {
+    render(<App initialPath="/demo" api={API} />);
+    const nav = screen.getByRole('navigation', { name: t('demo.otherWays') });
+    const rows = nav.querySelectorAll('li');
+    expect(rows).toHaveLength(3);
+    const cases: ReadonlyArray<[string, string, string]> = [
+      ['link', t('demo.tour'), t('demo.tourHint')],
+      ['link', t('demo.judge'), t('demo.judgeHint')],
+      ['button', t('demo.haveCode'), t('demo.haveCodeHint')],
+    ];
+    cases.forEach(([role, name, hint], i) => {
+      const control = screen.getByRole(role, { name });
+      expect(rows[i]?.contains(control)).toBe(true);
+      expect(control.getAttribute('aria-describedby')).toBeTruthy();
+      expect(control).toHaveProperty('textContent', expect.stringContaining(hint));
+      const described = document.getElementById(control.getAttribute('aria-describedby') ?? '');
+      expect(described?.textContent).toBe(hint);
+    });
+    expect(t('demo.haveCodeHint').length).toBeGreaterThan(0);
+  });
+
   it('opens a code dialog, rejects empty and odd codes, and goes to the join page', () => {
     render(<App initialPath="/demo" api={API} />);
     fireEvent.click(screen.getByRole('button', { name: t('demo.haveCode') }));

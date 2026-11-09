@@ -92,6 +92,45 @@ const ROLES: ReadonlyArray<{
   { key: 'audit', label: 'demo.roleAudit' },
 ];
 
+/** Ids that tie a way's heading and description to its link, so the link keeps a short name. */
+function wayAria(id: string): { 'aria-labelledby': string; 'aria-describedby': string } {
+  return { 'aria-labelledby': `gv-way-${id}`, 'aria-describedby': `gv-way-${id}-hint` };
+}
+
+const ARROW = '\u2192';
+
+/** One ruled row of "Other ways in": lot letter, heading, one line, arrow. */
+function WayBody({
+  id,
+  mark,
+  title,
+  hint,
+}: {
+  readonly id: string;
+  readonly mark: string;
+  readonly title: string;
+  readonly hint: string;
+}) {
+  return (
+    <>
+      <span className="gv-demo__way-mark" aria-hidden="true">
+        {mark}
+      </span>
+      <span className="gv-demo__way-text">
+        <span className="gv-demo__way-title" id={`gv-way-${id}`}>
+          {title}
+        </span>
+        <span className="gv-demo__way-hint" id={`gv-way-${id}-hint`}>
+          {hint}
+        </span>
+      </span>
+      <span className="gv-demo__way-arrow" aria-hidden="true">
+        {ARROW}
+      </span>
+    </>
+  );
+}
+
 /** One click makes a room and shows the four role links with their provenance (R-WEB-036..038). */
 export function DemoLauncher({
   createRoom,
@@ -243,16 +282,28 @@ export function DemoLauncher({
         <h2 id="gv-demo-ways">{t('demo.otherWays')}</h2>
         <ul>
           <li>
-            <a href="/demo/scripted">{t('demo.tour')}</a>
-            <span>{t('demo.tourHint')}</span>
+            <a className="gv-demo__way" href="/demo/scripted" {...wayAria('tour')}>
+              <WayBody id="tour" mark="A" title={t('demo.tour')} hint={t('demo.tourHint')} />
+            </a>
           </li>
           <li>
-            <a href="/try">{t('demo.judge')}</a>
-            <span>{t('demo.judgeHint')}</span>
+            <a className="gv-demo__way" href="/try" {...wayAria('judge')}>
+              <WayBody id="judge" mark="B" title={t('demo.judge')} hint={t('demo.judgeHint')} />
+            </a>
           </li>
           <li>
-            <button type="button" className="gv-demo__linkbtn" onClick={() => setCodeOpen(true)}>
-              {t('demo.haveCode')}
+            <button
+              type="button"
+              className="gv-demo__way"
+              {...wayAria('code')}
+              onClick={() => setCodeOpen(true)}
+            >
+              <WayBody
+                id="code"
+                mark="C"
+                title={t('demo.haveCode')}
+                hint={t('demo.haveCodeHint')}
+              />
             </button>
           </li>
         </ul>

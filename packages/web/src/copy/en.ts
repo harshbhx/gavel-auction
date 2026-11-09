@@ -233,6 +233,7 @@ export const en = {
   'demo.creatingStatus': 'Creating your room. This takes a few seconds.',
   'demo.otherWays': 'Other ways in',
   'demo.haveCode': 'I have a room code',
+  'demo.haveCodeHint': 'Join a room someone already opened.',
   'goal.label': 'Fundraiser goal in USD (optional)',
   'goal.hint': 'Shows a thermometer on the big screen. Leave empty to hide it.',
   'goal.invalid': 'Enter a dollar amount such as 5000 or 5,000.50, or leave it empty.',
