@@ -1,33 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { ConnectionManager } from '../../src/net/connection';
 import { RESYNC_RETRY_MS, bindResync } from '../../src/net/resync';
-import type { Transport } from '../../src/net/transport';
 import { RoomStore } from '../../src/store/roomStore';
 import { auctionId, openSnapshot, priceMsg, stateMsg } from '../../src/testing/builders';
-import type { ClientMessage } from '../../src/wire';
 
 const A = auctionId();
 
 function harness() {
   const timers: Array<{ fn: () => void; ms: number; live: boolean }> = [];
-  const sent: ClientMessage[] = [];
-  const transport: Transport = {
-    connect: () => {},
-    send: (m) => sent.push(m),
-    onMessage: () => () => {},
-    onStatus: () => () => {},
-    close: () => {},
-  };
+  // One entry per request for a fresh snapshot (a reconnect, never a second join on the socket).
+  const sent: string[] = [];
   const store = new RoomStore(A);
-  const manager = new ConnectionManager({
-    transport,
-    auctionId: A,
-    getLastSeq: () => store.getState().lastSeq,
-    getToken: () => 'bidder-token',
-    onMessage: () => {},
-  });
   const unbind = bindResync(store, {
-    sendJoin: () => manager.sendJoin(),
+    requestSnapshot: () => sent.push('snapshot'),
     setTimer: (fn, ms) => {
       const t = { fn, ms, live: true };
       timers.push(t);
@@ -47,12 +31,12 @@ function harness() {
 }
 
 describe('resync (WEB-RT-04, WEB-RT-05)', () => {
-  it('sends the resync join through the connection, with the session token', () => {
+  it('asks for a fresh snapshot instead of a second join (#2226)', () => {
     const { store, sent } = harness();
     store.dispatch({ kind: 'wire', msg: stateMsg(1, openSnapshot([])) });
     store.dispatch({ kind: 'wire', msg: priceMsg(4, 1, 1_000) });
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatchObject({ t: 'join', token: 'bidder-token', lastSeq: 1 });
+    expect(sent[0]).toBe('snapshot');
   });
 
   it('sends the join again until a snapshot arrives', () => {

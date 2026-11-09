@@ -1142,6 +1142,10 @@ export const en = {
   'err.tokenMissing': 'This link needs its token.',
   'err.newLink': 'Create a new room',
   'err.refusedTitle': 'This link cannot open the page',
+  'err.superseded.title': 'This room is open in another tab',
+  'err.superseded.help':
+    'The same link is open in another tab or window, so this one stopped. Use this tab to take over from the other one.',
+  'err.superseded.use': 'Use this tab',
   'err.rejoin': 'Join again with a fresh link',
   'err.room.full': 'This room is full right now.',
   'err.room.rateLimited': 'Too many attempts. Try again in {seconds} seconds.',

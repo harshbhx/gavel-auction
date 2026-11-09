@@ -5,7 +5,7 @@ import type { Transport, TransportStatus, Unsubscribe } from './transport';
 export interface SocketLike {
   readonly readyState: number;
   onopen: (() => void) | null;
-  onclose: (() => void) | null;
+  onclose: ((ev?: { code?: number }) => void) | null;
   onerror: (() => void) | null;
   onmessage: ((ev: { data: unknown }) => void) | null;
   send(data: string): void;
@@ -35,6 +35,8 @@ export class WebSocketTransport implements Transport {
   private readonly statusListeners = new Set<(s: TransportStatus) => void>();
   private readonly problemListeners = new Set<(p: FrameProblem) => void>();
   private problems = 0;
+  /** Close code of the socket that ended last, or null when it had none (or is still open). */
+  lastCloseCode: number | null = null;
 
   constructor(
     private readonly url: string,
@@ -55,17 +57,19 @@ export class WebSocketTransport implements Transport {
       return;
     }
     this.socket = socket;
+    this.lastCloseCode = null;
     this.setStatus('connecting');
     socket.onopen = () => {
       if (this.socket === socket) this.setStatus('open');
     };
-    const lost = (): void => {
+    const lost = (ev?: { code?: number }): void => {
       if (this.socket !== socket) return;
       this.socket = null;
+      this.lastCloseCode = typeof ev?.code === 'number' ? ev.code : null;
       this.setStatus('closed');
     };
-    socket.onclose = lost;
-    socket.onerror = lost;
+    socket.onclose = (ev) => lost(ev);
+    socket.onerror = () => lost();
     socket.onmessage = (ev) => {
       if (this.socket !== socket) return;
       if (typeof ev.data !== 'string') {

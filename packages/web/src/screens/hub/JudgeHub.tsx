@@ -35,6 +35,8 @@ type InviteState =
 interface Summary {
   readonly title: string | null;
   readonly code: string | null;
+  /** Server clock minus device clock in ms, when the server's date could be read. */
+  readonly offsetMs: number | null;
 }
 
 async function mintInvite(
@@ -63,6 +65,16 @@ async function mintInvite(
   }
 }
 
+/**
+ * Server clock minus device clock, from a response `Date` header read at local time `localMs`.
+ * Null when the header is missing or unreadable (a browser hides it unless the server exposes it).
+ */
+export function offsetFromDate(header: string | null, localMs: number): number | null {
+  if (header === null) return null;
+  const serverMs = Date.parse(header);
+  return Number.isFinite(serverMs) ? serverMs - localMs : null;
+}
+
 async function fetchSummary(apiBase: string, roomId: string): Promise<Summary | null> {
   try {
     const res = await fetch(`${apiBase}/api/auctions/${encodeURIComponent(roomId)}`);
@@ -71,6 +83,7 @@ async function fetchSummary(apiBase: string, roomId: string): Promise<Summary | 
     return {
       code: typeof body.joinCode === 'string' && body.joinCode !== '' ? body.joinCode : null,
       title: typeof body.title === 'string' && body.title !== '' ? body.title : null,
+      offsetMs: offsetFromDate(res.headers.get('date'), Date.now()),
     };
   } catch {
     return null;
@@ -124,7 +137,11 @@ export function JudgeHub({
   writeClipboard = (text) => navigator.clipboard.writeText(text),
 }: JudgeHubProps) {
   const heading = useRef<HTMLHeadingElement>(null);
-  const [summary, setSummary] = useState<Summary>({ title: null, code: keys.code });
+  const [summary, setSummary] = useState<Summary>({
+    title: null,
+    code: keys.code,
+    offsetMs: null,
+  });
   const code = summary.code;
   const [invite, setInvite] = useState<InviteState>({ kind: 'idle' });
   const [copied, setCopied] = useState<string | null>(null);
@@ -158,7 +175,11 @@ export function JudgeHub({
     let live = true;
     fetchSummary(apiBase, roomId).then((got) => {
       if (live && got !== null)
-        setSummary((prev) => ({ title: got.title, code: got.code ?? prev.code }));
+        setSummary((prev) => ({
+          title: got.title,
+          code: got.code ?? prev.code,
+          offsetMs: got.offsetMs ?? prev.offsetMs,
+        }));
     });
     return () => {
       live = false;
@@ -194,7 +215,8 @@ export function JudgeHub({
   const bidderLink = invite.kind === 'ready' ? invite.invite.link : null;
   // The QR is the join link with the room code: it works for every phone, not just the first one.
   const qrTarget = joinLink;
-  const leftMs = keys.expiresAt === null ? null : keys.expiresAt - tick;
+  const serverNowMs = tick + (summary.offsetMs ?? 0);
+  const leftMs = keys.expiresAt === null ? null : keys.expiresAt - serverNowMs;
 
   const shareText = [
     t('hub.shareHeader'),
