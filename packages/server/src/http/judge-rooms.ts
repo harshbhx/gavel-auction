@@ -361,7 +361,8 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
       const stored = (flag?.value as { paused?: unknown } | undefined)?.paused;
       if (typeof stored === 'boolean') paused = stored || opts.paused;
       const revoked = (await deps.store.getJournal(KEYS_KEY))?.value as
-        { revoked?: unknown } | undefined;
+        | { revoked?: unknown }
+        | undefined;
       if (Array.isArray(revoked?.revoked)) {
         registry.setRevoked(revoked.revoked.filter((x): x is string => typeof x === 'string'));
       }

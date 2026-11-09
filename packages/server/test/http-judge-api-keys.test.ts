@@ -212,7 +212,7 @@ describe('judge keys: over HTTP', () => {
       keyId: A.id,
       roomsMax: 2,
       roomsLive: 0,
-      expiresAt: EXPIRES,
+      expiresAt: new Date(EXPIRES).toISOString(),
     });
     const room = await call(app, 'POST', JUDGE_ROOMS_PATH, { headers: withKey(A.key) });
     expect(room.status).toBe(201);
