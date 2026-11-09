@@ -5,6 +5,16 @@
  * the caller passes in and the whole file is unit tested.
  */
 
+/**
+ * The ceiling every bidder of the live run holds, in cents. The server refuses holds above
+ * GAVEL_MAX_CEILING_CENTS (default 100000), so the run raises the cap to this value; a ceiling
+ * above the cap makes the enrol route answer 500 (seen in the first dispatch of the run).
+ */
+export const CEILING_CENTS = 500_000;
+export const LIVE_STACK_ENV: Readonly<Record<string, string>> = {
+  GAVEL_MAX_CEILING_CENTS: String(CEILING_CENTS),
+};
+
 export const SAMPLE_RATE = 16_000;
 /** Samples in one 20 ms frame (the socket's frame size). */
 export const FRAME_SAMPLES = 320;

@@ -93,3 +93,70 @@ export async function seedSession(page: Page, room: SeededRoom): Promise<void> {
     { id: room.auctionId, token: room.token, bidderId: room.bidderId },
   );
 }
+
+/**
+ * One auctioneer control call on a seeded room (open, pause, resume, hammer). Returns the HTTP
+ * status and never throws, so a caller can tolerate "already open" and still assert the call it
+ * needs.
+ */
+export async function controlRoom(
+  stack: BrowserStack,
+  room: SeededRoom,
+  action: 'open' | 'pause' | 'resume' | 'hammer',
+  args?: Record<string, number>,
+): Promise<number> {
+  const res = await fetch(`${stack.serverUrl}/api/auctions/${room.auctionId}/control`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${room.auctioneerToken}`,
+    },
+    body: JSON.stringify({
+      controlId: `${action}-${Date.now()}`,
+      action,
+      ...(args === undefined ? {} : { args }),
+    }),
+  });
+  await res.arrayBuffer();
+  return res.status;
+}
+
+/**
+ * Stores the bidder session from a loaded page of the same origin. With the CSP bypass on, WebKit
+ * does not run an init script before the app reads the session, so a stored value is the safe way.
+ */
+export async function storeBidderSession(
+  page: Page,
+  stack: BrowserStack,
+  room: SeededRoom,
+): Promise<void> {
+  await page.goto(`${stack.webUrl}/gallery`);
+  await page.evaluate(
+    ({ id, token, bidderId }) => {
+      sessionStorage.setItem(`gavel:session:${id}:bidder`, JSON.stringify({ token, bidderId }));
+    },
+    { id: room.auctionId, token: room.token, bidderId: room.bidderId },
+  );
+}
+
+/** A seeded room in one of the states the bid screen and the audit view show. */
+export type RoomState = 'open' | 'paused' | 'stopped';
+
+/**
+ * Puts a seeded room in `state` through the server's own control route: `paused` pauses the open
+ * lot, `stopped` hammers it with closeNow, which sets the stopped flag on the snapshot.
+ */
+export async function putRoomInState(
+  stack: BrowserStack,
+  room: SeededRoom,
+  state: RoomState,
+): Promise<void> {
+  // A seeded room may already be open; any other answer to open is caught by the next call.
+  await controlRoom(stack, room, 'open');
+  if (state === 'paused') {
+    const status = await controlRoom(stack, room, 'pause');
+    if (status !== 200) throw new Error(`pause answered ${status}`);
+  } else if (state === 'stopped') {
+    await hammerRoom(stack, room);
+  }
+}
