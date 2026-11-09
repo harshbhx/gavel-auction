@@ -1221,6 +1221,10 @@ export const en = {
   'time.hours': '{n} h',
   'err.pay.ceilingOutOfRange': 'That limit is outside the allowed range. Pick another amount.',
   'err.pay.holdExists': 'Your hold is already in place.',
+  'err.pay.raiseLimitReached':
+    'You have used all your limit raises for this lot. Your current hold stays in place.',
+  'err.pay.raiseTooSmall':
+    'That raise is too small. Pick a clearly higher limit than your current one.',
   'err.pay.orderNotFound': 'We could not find that approval attempt. Start again.',
   'err.pay.orderNotApproved': 'The approval did not go through. Approve it to continue.',
   'err.pay.unavailable': 'Holds are unavailable right now. Try again in a moment.',

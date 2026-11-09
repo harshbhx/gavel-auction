@@ -3,6 +3,7 @@ import {
   EpochMs,
   ERROR_TABLE,
   GavelError,
+  HOLD_ERROR_STATUS,
   MAX_CENTS,
   MAX_NAME_CHARS,
   MIN_CEILING_CENTS,
@@ -13,6 +14,7 @@ import {
   type Logger,
 } from '@gavel/shared';
 import { ChainError, type LedgerStore, type Ulid } from '@gavel/engine';
+import { HoldError } from '@gavel/payments';
 import { z } from 'zod';
 import { buildReplayBundle } from '../admin/replay-bundle';
 import { raiseAuctioneerFloor } from '../auth/auctioneer-floor';
@@ -946,12 +948,26 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     if (!(await sim.acceptsHolds(auctionId))) {
       throw new GavelError('closed', 'the auction no longer takes holds');
     }
-    const holdId = await sim.place({
-      auctionId,
-      bidderId: who.bidderId,
-      name: body.name,
-      ceilingCents: body.ceilingCents,
-    });
+    let holdId: string;
+    try {
+      holdId = await sim.place({
+        auctionId,
+        bidderId: who.bidderId,
+        name: body.name,
+        ceilingCents: body.ceilingCents,
+      });
+    } catch (e) {
+      // A raise past the cap or below the minimum step answers with its hold error code.
+      if (
+        e instanceof HoldError &&
+        (e.code === 'raise_limit_reached' || e.code === 'raise_too_small')
+      ) {
+        const why = `sim_hold_${e.code}`;
+        const src = sourceTag(auctionId);
+        return refuse(deps, HOLD_ERROR_STATUS[e.code], e.code, why, src, undefined, e.message);
+      }
+      throw e;
+    }
     // The bidder now has a hold, so its seat stays for as long as the room lives.
     seatsOf(auctionId, deps.clock.now()).set(who.bidderId, {
       at: deps.clock.now(),

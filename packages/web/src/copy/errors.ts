@@ -76,6 +76,8 @@ export const errorCopyTable: Readonly<Record<KnownErrorCode, CopyKey>> = {
 export const holdErrorCopyTable: Readonly<Record<HoldErrorCode, CopyKey>> = {
   ceiling_out_of_range: 'err.pay.ceilingOutOfRange',
   hold_exists: 'err.pay.holdExists',
+  raise_limit_reached: 'err.pay.raiseLimitReached',
+  raise_too_small: 'err.pay.raiseTooSmall',
   order_not_found: 'err.pay.orderNotFound',
   order_not_approved: 'err.pay.orderNotApproved',
   paypal_unavailable: 'err.pay.unavailable',

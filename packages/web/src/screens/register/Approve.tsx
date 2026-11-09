@@ -66,6 +66,8 @@ export function errorView(code: string | undefined): ErrorView {
       case 'kill_switch_engaged':
         return { key, action: 'wait' };
       case 'ceiling_out_of_range':
+      case 'raise_limit_reached':
+      case 'raise_too_small':
       case 'order_not_found':
       case 'payments_not_sandbox':
         return { key, action: 'back' };

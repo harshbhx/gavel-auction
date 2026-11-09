@@ -9,6 +9,7 @@ import {
 } from '@gavel/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { composeServer, type Composed } from '../src/boot/compose';
+import { Room } from '../src/room/room';
 
 // The composition starts its own fake PayPal; keep a handle so the test can play the buyer.
 const fakes = vi.hoisted(() => [] as FakePayPalServer[]);
@@ -39,13 +40,13 @@ afterEach(async () => {
 });
 
 /** Boots exactly as main.ts does: no extraRoutes option, PAYMENTS=fake. */
-async function boot(): Promise<{ url: string; paypal: FakePayPalServer }> {
+async function boot(): Promise<{ url: string; paypal: FakePayPalServer; app: Composed }> {
   const app = await composeServer(env, { sink: () => undefined });
   running.push(app);
   const url = `http://127.0.0.1:${String(await app.listen(0))}`;
   const paypal = fakes.at(-1);
   if (paypal === undefined) throw new Error('the composition started no fake PayPal');
-  return { url, paypal };
+  return { url, paypal, app };
 }
 
 function auctionConfig(): Record<string, unknown> {
@@ -416,6 +417,87 @@ describe('hold routes in the production composition (HRD-69, issue 1074)', () =>
         { orderId: raise.order?.orderId },
       );
       expect(stolen.status).toBe(404);
+    });
+
+    it('lets a raise be retried when the room never took the approved hold (#2399)', async () => {
+      const { url, paypal, ada, hold, first } = await registeredAda();
+      const statusOf = async (holdId: string): Promise<string> => {
+        const read = await call(
+          url,
+          'GET',
+          `/api/holds/${encodeURIComponent(holdId)}`,
+          ada.sessionToken,
+        );
+        return HoldViewResponse.parse(await read.json()).status;
+      };
+      const raise = await hold(60000);
+      expect(raise.created.status).toBe(201);
+      // The registration fails after PayPal authorized: the hold is approved, the room unchanged.
+      const spy = vi
+        .spyOn(Room.prototype, 'registerBidder')
+        .mockRejectedValueOnce(new Error('store unavailable'));
+      const failed = await raise.approve?.();
+      spy.mockRestore();
+      expect(failed?.status).toBeGreaterThanOrEqual(500);
+      expect(await statusOf(first.order?.holdId ?? '')).toBe('HELD');
+      // Asking for the same amount again hands back the same order, not hold_exists.
+      const again = await hold(60000);
+      expect(again.created.status).toBe(201);
+      expect(again.order).toEqual(raise.order);
+      expect((await again.approve?.())?.status).toBe(200);
+      // The room switched and the old authorization was voided; one authorization is live.
+      expect(paypal.core.calls.filter((c) => c.op === 'void')).toHaveLength(1);
+      expect(await statusOf(first.order?.holdId ?? '')).toBe('VOIDED');
+      expect(await statusOf(raise.order?.holdId ?? '')).toBe('HELD');
+    });
+
+    it('voids an approved raise hold the room never took once it is old enough (#2399)', async () => {
+      const { url, app, paypal, ada, hold } = await registeredAda();
+      const raise = await hold(60000);
+      const spy = vi
+        .spyOn(Room.prototype, 'registerBidder')
+        .mockRejectedValueOnce(new Error('store unavailable'));
+      expect((await raise.approve?.())?.status).toBeGreaterThanOrEqual(500);
+      spy.mockRestore();
+      const voids = (): number => paypal.core.calls.filter((c) => c.op === 'void').length;
+      // Too young: left alone, so a retry can still register it.
+      await app.service.resume();
+      expect(voids()).toBe(0);
+      vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 11 * 60_000 });
+      try {
+        await app.service.resume();
+      } finally {
+        vi.useRealTimers();
+      }
+      expect(voids()).toBe(1);
+      const read = await call(
+        url,
+        'GET',
+        `/api/holds/${encodeURIComponent(raise.order?.holdId ?? '')}`,
+        ada.sessionToken,
+      );
+      expect(HoldViewResponse.parse(await read.json()).status).toBe('VOIDED');
+    });
+
+    it('refuses the sixth raise and a raise below the step, before any PayPal order (#2397)', async () => {
+      const { paypal, hold } = await registeredAda(10000);
+      const orders = (): number => paypal.core.calls.filter((c) => c.op === 'order').length;
+      const before = orders();
+      const small = await hold(10001);
+      expect(small.created.status).toBe(422);
+      expect(HoldErrorResponse.parse(await small.created.json()).error).toBe('raise_too_small');
+      expect(orders()).toBe(before);
+      let ceiling = 10000;
+      for (let n = 0; n < 5; n += 1) {
+        ceiling = Math.round(ceiling * 1.1);
+        // Cap on the demo: the server maximum is 100000 cents.
+        const raise = await hold(ceiling);
+        expect(raise.created.status).toBe(201);
+        expect((await raise.approve?.())?.status).toBe(200);
+      }
+      const sixth = await hold(ceiling * 2);
+      expect(sixth.created.status).toBe(409);
+      expect(HoldErrorResponse.parse(await sixth.created.json()).error).toBe('raise_limit_reached');
     });
 
     it('refuses a raise once the lot is hammered and keeps the old hold', async () => {
