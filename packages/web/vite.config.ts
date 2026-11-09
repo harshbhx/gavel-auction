@@ -127,11 +127,15 @@ export function fontPreloadPlugin(): Plugin {
  * Names the AG Grid chunk. Without this the library lands in a chunk named after whichever module
  * Rollup picked first. scripts/check-size.mjs finds the chunk by its ag-grid- prefix: it keeps it out
  * of the initial route and holds it to its own size budget.
+ *
+ * Rollup also pulls the dependencies of a manual chunk's modules into that chunk unless they are
+ * assigned to another one. ag-grid-react depends on React, so React gets its own chunk here: without
+ * it the whole of React would move into ag-grid-*.js and the entry would import AG Grid.
  */
 export function manualChunks(id: string): string | undefined {
-  return /[\\/]node_modules[\\/](?:ag-grid-community|ag-grid-react)[\\/]/.test(id)
-    ? 'ag-grid'
-    : undefined;
+  if (/[\\/]node_modules[\\/](?:ag-grid-community|ag-grid-react)[\\/]/.test(id)) return 'ag-grid';
+  if (/[\\/]node_modules[\\/](?:react|react-dom|scheduler)[\\/]/.test(id)) return 'react';
+  return undefined;
 }
 
 export default defineConfig({
