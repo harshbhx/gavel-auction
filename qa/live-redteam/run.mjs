@@ -1037,9 +1037,22 @@ async function main() {
       }
     }
     await cons.waitForTimeout(6000);
-    const body = await visibleText(cons);
-    note(`console after hammer: ${body}`);
-    check(/sold|closed|done|settl|captur/i.test(body), 'console shows the lot as closed/sold');
+    // The console follows the hammer frame, then the settlement updates: poll up to 30 s.
+    const CLOSED_RE = /sold|closed|done|settl|captur/i;
+    let body = await visibleText(cons);
+    const deadline = Date.now() + 30_000;
+    while (!CLOSED_RE.test(body) && Date.now() < deadline) {
+      await cons.waitForTimeout(1500);
+      body = await visibleText(cons);
+    }
+    const seen = body.match(CLOSED_RE);
+    note(
+      `console after hammer (state seen: ${seen === null ? 'none after 30 s' : seen[0]}): ${body}`,
+    );
+    check(
+      seen !== null,
+      `console shows the lot as closed/sold (state seen: ${seen === null ? 'none' : seen[0]})`,
+    );
     const sb = await visibleText(screenPage);
     note(`screen after hammer: ${sb}`);
     check(/sold|passed|captured|released/i.test(sb), 'screen shows the result');

@@ -205,20 +205,22 @@ export function Controls({
           </div>
         );
       })}
-      <div className="gv-console-hammer">
-        <DeskHold
-          key={holdRound}
-          label={t('console.hammerDesk')}
-          hint={t('console.hammerDeskHint')}
-          disabled={hammerReason !== null}
-          confirmAlternative={false}
-          onConfirm={() => {
-            hammerNow({ leader, priceCents });
-            setHoldRound((n) => n + 1);
-          }}
-        />
-        <p className="gv-console-hammer__alt">{t('console.hammerDialogHint')}</p>
-      </div>
+      {status !== 'CLOSING' && status !== 'SETTLING' && status !== 'DONE' && (
+        <div className="gv-console-hammer">
+          <DeskHold
+            key={holdRound}
+            label={t('console.hammerDesk')}
+            hint={t('console.hammerDeskHint')}
+            disabled={hammerReason !== null}
+            confirmAlternative={false}
+            onConfirm={() => {
+              hammerNow({ leader, priceCents });
+              setHoldRound((n) => n + 1);
+            }}
+          />
+          <p className="gv-console-hammer__alt">{t('console.hammerDialogHint')}</p>
+        </div>
+      )}
       <p role="status">{result}</p>
       <ShortcutHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
       <HammerDialog
