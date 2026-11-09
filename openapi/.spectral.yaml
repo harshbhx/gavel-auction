@@ -17,14 +17,14 @@ rules:
   gavel-property-description:
     description: Every inline schema property needs a description.
     severity: warn
-    given: "$.components.schemas..properties[*]"
+    given: '$.components.schemas..properties[*]'
     then:
       field: description
       function: truthy
   gavel-parameter-description:
     description: Every inline parameter needs a description.
     severity: warn
-    given: "$.paths..parameters[*]"
+    given: '$.paths..parameters[*]'
     then:
       field: description
       function: truthy
