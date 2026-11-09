@@ -11,3 +11,16 @@ Every file in this folder, with the alt text to use. Source: `graphics/readme/` 
 | `outro.gif`, `outro.png`, `outro-light.svg`                                                          | GAVEL closing card with the logo and links: repository github.com/harshbhx/gavel-auction, web app gavel.dualmindlab.tech, docs docs.gavel.dualmindlab.tech. PayPal sandbox only, no real money moves.                                                                                                                                                                             |
 
 Notes: the example lot in the hero is labelled SIMULATED in the image. GIFs are on the paper background in both colour schemes and have PNG fallbacks (`hero-light.png`, `architecture-light.png`, `outro.png`).
+
+## Motion set (GFX-06)
+
+Source: `graphics/motion-readme/` and `graphics/motion-ui/`, rendered in CI (see `docs/assets/GRAPHICS-NOTES.md`). Each GIF has an MP4 and WebM twin in the same folder and a `-poster.png` (reduced-motion fallback, the finished frame) and most have a `-dark` twin. The exact alt text is in `README.md` next to each image; in short:
+
+| File                 | What it shows                                                                                                                                                                           |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `readme-banner.gif`  | The Mallet G draws round, the mallet strikes and a round shockwave leaves it, GAVEL and the tagline glide in, a simulated bid ladder ticks up. PayPal sandbox only.                     |
+| `readme-stats.gif`   | Three measured numbers: hammer to settled p95 5.59 s (target 6 s, met), webhook handler p95 112 ms (target 300 ms, met), hammer to captured p95 3.01 s (target 2.5 s, missed).          |
+| `reel.gif`           | 10 s, five quick scenes: logo and strike, a bid ladder ticking up (simulated), the hammer (simulated lot), hash-chain links snapping into a receipt (19 entries, 0 differences), links. |
+| `how-it-works.gif`   | The flow in four words: Hold, Bid, Hammer, Receipt, each with one line. Simulated lot.                                                                                                  |
+| `readme-footer.gif`  | Closing card with the animated logo and the three links.                                                                                                                                |
+| `see-it-run-N-*.gif` | Real recordings of the live app, about 5 s each with the waiting sped up: start room and hub, hold, bids, console hammer, big screen sold, receipt.                                     |

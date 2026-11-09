@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: read
+  actions: read # motion-ui downloads the videos of a judge-smoke run
 
 concurrency:
   group: graphics-${{ github.event.pull_request.number || github.sha }}
@@ -59,6 +60,8 @@ jobs:
           npx playwright install --with-deps chromium
           sudo apt-get install -y -qq ffmpeg imagemagick gifsicle librsvg2-bin
       - name: Render the set
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: PW_DIR="$RUNNER_TEMP/pw" node graphics/${{ matrix.set }}/render.mjs "$PWD/out/${{ matrix.set }}"
       - name: List outputs and sizes
         run: |

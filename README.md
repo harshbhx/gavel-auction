@@ -4,9 +4,10 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/assets/readme/hero-dark.png">
-    <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/hero-light.png">
-    <img src="docs/assets/readme/hero.gif" alt="GAVEL, the Mallet G logo, with the tagline: every bid is a PayPal hold, the hammer is the payment. A simulated lot shows bidder A captured at the winning bid and bidders B and C voided. PayPal sandbox only." width="100%">
+    <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/assets/readme/readme-banner-dark-poster.png">
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/readme-banner-poster.png">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/readme-banner-dark.gif">
+    <img src="docs/assets/readme/readme-banner.gif" alt="GAVEL logo animation: the Mallet G draws round, the mallet strikes and a round shockwave leaves the G, the wordmark GAVEL glides in, then the tagline: every bid is a PayPal hold, only the winner pays." width="100%">
   </picture>
 </p>
 
@@ -29,14 +30,33 @@ Live demo: [gavel.dualmindlab.tech](https://gavel.dualmindlab.tech) or [gavel-we
 
 Built for the PayPal Hackathon 2026.
 
+<p align="center">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/reel-poster.png">
+    <img src="docs/assets/readme/reel.gif" alt="GAVEL in 10 seconds, five quick scenes. One: the logo draws, the mallet strikes and the tagline appears. Two: a bid is a hold, a simulated bid ladder ticks from 10 to 15 to 20 dollars, held on PayPal, not charged. Three: the hammer falls, a simulated lot sold to paddle 2 for 20 dollars, winner captured and other holds released. Four: check it yourself, hash-chain links snap together and a receipt shows 19 ledger entries with 0 differences, measured in the server-kill run. Five: links to the web app, the docs and the source. PayPal sandbox only." width="100%">
+  </picture>
+  <br><sub><b>In 10 seconds.</b> The lot in scenes two and three is a simulated example. The live app is below under <a href="#see-it-run">See it run</a>.</sub>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/assets/readme/readme-stats-dark-poster.png">
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/readme-stats-poster.png">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/readme-stats-dark.gif">
+    <img src="docs/assets/readme/readme-stats.gif" alt="Three measured numbers on the real PayPal sandbox. Hammer to settled, p95, 5.59 seconds against a 6 second target: met. Webhook handler, p95, 112 milliseconds against a 300 millisecond target: met. Hammer to captured, p95, 3.01 seconds against a 2.5 second target: missed." width="100%">
+  </picture>
+</p>
+
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/lifecycle-dark.svg">
-  <img src="docs/assets/readme/lifecycle-light.svg" alt="The GAVEL lifecycle in five steps: hold, bid, hammer, receipt, verify. PayPal holds the bidder's ceiling, each bid is checked against that hold, the highest valid bid wins and pays the winning bid, other holds are voided and the result is in the ledger, and anyone can check the hash chain from the export." width="100%">
+  <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/assets/readme/lifecycle-dark.svg">
+  <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/lifecycle-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/how-it-works-dark.gif">
+  <img src="docs/assets/readme/how-it-works.gif" alt="The flow of one lot in four words: Hold, a PayPal hold sets the ceiling and is held, not charged; Bid, every bid is checked against that hold; Hammer, the highest valid bid wins; Receipt, the winner pays and every other hold is released. A simulated lot, PayPal sandbox only." width="100%">
 </picture>
 
 ## Contents
 
-[For judges](#for-judges) | [How it works](#how-it-works) | [Screens](#screens) | [Tech and architecture](#tech-and-architecture) | [Sponsors](#sponsors) | [Evidence and gates](#evidence-and-gates) | [Open data](#open-data) | [Repo map](#repo-map) | [Quick start](#quick-start) | [Security and data notes](#security-and-data-notes) | [Documentation](#documentation)
+[For judges](#for-judges) | [How it works](#how-it-works) | [See it run](#see-it-run) | [Screens](#screens) | [Tech and architecture](#tech-and-architecture) | [Sponsors](#sponsors) | [Evidence and gates](#evidence-and-gates) | [Open data](#open-data) | [Repo map](#repo-map) | [Quick start](#quick-start) | [Security and data notes](#security-and-data-notes) | [Documentation](#documentation)
 
 ## For judges
 
@@ -183,7 +203,7 @@ stateDiagram-v2
 
 <br>
 
-The web app (`packages/web`) was redesigned on 7 Nov 2026 in the Scoreboard design: flat panels, hard shadows, big numerals. Details in [docs/DESIGN.md](docs/DESIGN.md). Each line below is something the code does, covered by unit, component or browser tests that run in CI. A recorded click-through of the hosted site is the next step.
+The web app (`packages/web`) was redesigned on 7 Nov 2026 in the Scoreboard design: flat panels, hard shadows, big numerals. Details in [docs/DESIGN.md](docs/DESIGN.md). Each line below is something the code does, covered by unit, component or browser tests that run in CI.
 
 - **Hold button.** Press and hold for 3 seconds to approve a ceiling, or to hammer a lot on the console; release cancels. Keyboard users hold Space or Enter. The ceiling approval also offers a two-tap alternative for people who cannot hold; the console hammer does not.
 - **Price roll.** Prices are integer cents in tabular numerals, and only the changed digits roll. Reduced motion swaps the value at once.
@@ -199,9 +219,28 @@ The web app (`packages/web`) was redesigned on 7 Nov 2026 in the Scoreboard desi
 
 </details>
 
+## See it run
+
+Real recordings of the live app at [gavel.dualmindlab.tech](https://gavel.dualmindlab.tech), cut from the nightly judge smoke run [42561627128](https://github.com/harshbhx/gavel-auction/actions/runs/42561627128) (9 Nov 2026). Nothing is mocked: a sandbox demo room with simulated demo holds, and the app's own sandbox banner is on screen. In that run one check failed (the console did not show the lot as closed), so the console clip stops at the hammer confirmation. Each clip is about 5 seconds, with the waiting sped up.
+
+<table>
+  <tr>
+    <td width="50%"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/see-it-run-1-start-room.png"><img src="docs/assets/readme/see-it-run-1-start-room.gif" alt="Recording of the hosted app: a demo room starts and the hub shows the six character room code and a QR code, with buttons to open the screen, the console and a bidder." width="100%"></picture><br><sub>Start a demo room: the hub opens with the room code and the QR to scan.</sub></td>
+    <td width="50%"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/see-it-run-2-hold.png"><img src="docs/assets/readme/see-it-run-2-hold.gif" alt="Recording of the hosted app: a bidder picks a ceiling and presses and holds Approve hold with PayPal, then sees that the hold of 20 dollars is in place. A demo hold, simulated; the sandbox banner is at the top of the app." width="100%"></picture><br><sub>A bidder approves a hold (the demo hold, simulated).</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/see-it-run-3-bids.png"><img src="docs/assets/readme/see-it-run-3-bids.gif" alt="Recording of the hosted app on a bidder phone view: the price goes from 10 to 15 dollars, the screen turns green for leading and red when another paddle outbids." width="100%"></picture><br><sub>Bids stream in: leading, then outbid.</sub></td>
+    <td width="50%"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/see-it-run-4-hammer.png"><img src="docs/assets/readme/see-it-run-4-hammer.gif" alt="Recording of the hosted app, auctioneer console: the dialog asks to hammer 15 dollars to paddle 2 and the red Hold to hammer button is pressed and held." width="100%"></picture><br><sub>The console: hold the button to hammer.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/see-it-run-5-sold.png"><img src="docs/assets/readme/see-it-run-5-sold.gif" alt="Recording of the hosted big screen: paddle 2 leads at 15 dollars and the screen then reads sold to paddle 2 for 15 dollars, with the holds settled." width="100%"></picture><br><sub>The big screen: sold, with the other hold released.</sub></td>
+    <td width="50%"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/see-it-run-6-receipt.png"><img src="docs/assets/readme/see-it-run-6-receipt.gif" alt="Recording of the hosted app: a bidder receipt with the hold amount, the released or captured status, a print or download button, a share link and a QR code." width="100%"></picture><br><sub>The receipt, with a share link and QR.</sub></td>
+  </tr>
+</table>
+
 ## Screens
 
-Pictures from the committed browser-test baselines (scripted data, not a live auction). A recorded click-through of the hosted site is the next step.
+Pictures from the committed browser-test baselines (scripted data, not a live auction).
 
 <table>
   <tr>
@@ -406,7 +445,9 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUC
 
 <p align="center">
   <picture>
-    <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/outro.png">
-    <img src="docs/assets/readme/outro.gif" alt="GAVEL closing card with the logo and links: repository github.com/harshbhx/gavel-auction, web app gavel.dualmindlab.tech, docs docs.gavel.dualmindlab.tech. PayPal sandbox only, no real money moves." width="100%">
+    <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/assets/readme/readme-footer-dark-poster.png">
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/readme-footer-poster.png">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/readme-footer-dark.gif">
+    <img src="docs/assets/readme/readme-footer.gif" alt="GAVEL closing card with the animated logo and links: web app gavel.dualmindlab.tech, docs docs.gavel.dualmindlab.tech, source github.com/harshbhx/gavel-auction. PayPal sandbox only, bids are held, not charged." width="100%">
   </picture>
 </p>
