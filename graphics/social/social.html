@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>GAVEL social</title>
+    <link rel="stylesheet" href="../lib/theme.css" />
+    <style>
+      html,
+      body {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        margin: 0;
+      }
+      body {
+        position: relative;
+        --u: calc(100vw / 1200);
+      }
+      .hide {
+        display: none !important;
+      }
+      .mono {
+        font-family: var(--mono);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .disp {
+        font-family: var(--display);
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.005em;
+      }
+      .grid {
+        position: absolute;
+        inset: 0;
+        background-image: linear-gradient(var(--rule) 1px, transparent 1px),
+          linear-gradient(90deg, var(--rule) 1px, transparent 1px);
+        background-size: calc(var(--u) * 60) calc(var(--u) * 60);
+        opacity: 0.45;
+      }
+      .mark-hit {
+        position: relative;
+      }
+      /* ---------- link preview card ---------- */
+      .card {
+        position: absolute;
+        inset: 0;
+        padding: calc(var(--pad));
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .card .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+      }
+      .card .top img {
+        height: calc(var(--u) * 58);
+      }
+      .pill {
+        font-size: calc(var(--u) * 20);
+        border: calc(var(--u) * 2) solid var(--ink);
+        padding: calc(var(--u) * 7) calc(var(--u) * 14);
+        background: var(--paper-2);
+      }
+      .card .mid {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        gap: calc(var(--u) * 30);
+      }
+      .card h1 {
+        margin: 0;
+        font-size: calc(var(--u) * 118);
+        line-height: 0.93;
+      }
+      .hl {
+        display: inline-block;
+        background: var(--orange);
+        color: var(--ink);
+        padding: 0 calc(var(--u) * 14);
+        margin-left: calc(var(--u) * -14);
+      }
+      .plate {
+        flex: none;
+        width: calc(var(--u) * 270);
+        height: calc(var(--u) * 270);
+        border: calc(var(--u) * 3) solid var(--ink);
+        box-shadow: calc(var(--u) * 12) calc(var(--u) * 12) 0 var(--ink);
+      }
+      .plate img {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .card .bot {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        gap: calc(var(--u) * 20);
+      }
+      .steps {
+        display: flex;
+        align-items: center;
+        gap: calc(var(--u) * 8);
+      }
+      .step {
+        font-size: calc(var(--u) * 20);
+        padding: calc(var(--u) * 8) calc(var(--u) * 12);
+        border: calc(var(--u) * 2) solid var(--ink);
+        background: var(--paper-2);
+      }
+      .step.on {
+        background: var(--orange);
+      }
+      .arr {
+        font-family: var(--mono);
+        font-weight: 800;
+        font-size: calc(var(--u) * 20);
+      }
+      .url {
+        font-size: calc(var(--u) * 22);
+        color: var(--ink);
+      }
+      /* ---------- thumbnails ---------- */
+      .thumb {
+        position: absolute;
+        inset: 0;
+        padding: 56px 72px 64px 72px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .thumb h1 {
+        margin: 0;
+        font-size: 136px;
+        line-height: 0.92;
+      }
+      .thumb .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        position: relative;
+      }
+      .thumb .chip {
+        font-size: 30px;
+        padding: 10px 18px;
+        border: 3px solid var(--ink);
+        background: var(--paper-2);
+      }
+      .thumb .plate {
+        width: 250px;
+        height: 250px;
+        box-shadow: 12px 12px 0 var(--ink);
+        align-self: center;
+        margin-right: 14px;
+      }
+      .thumb .hl {
+        padding: 0 18px;
+        margin-left: -18px;
+      }
+      .dark.thumb-b-bg {
+        background: #1d1712;
+      }
+      .thumb-b h1 {
+        font-size: 160px;
+      }
+      .thumb-b .hl {
+        background: transparent;
+        color: var(--orange);
+        padding: 0;
+        margin: 0;
+      }
+      .thumb-b .plate {
+        border-color: var(--paper);
+        box-shadow: 14px 14px 0 var(--orange);
+      }
+      .thumb-b .chip {
+        border-color: var(--paper);
+        background: transparent;
+        color: var(--paper);
+      }
+      /* ---------- end card (1920x1080) ---------- */
+      .end {
+        position: absolute;
+        inset: 0;
+        --u: calc(100vw / 1920);
+      }
+      .end .head {
+        position: absolute;
+        left: 96px;
+        top: 72px;
+        display: flex;
+        align-items: center;
+        gap: 36px;
+      }
+      .end .head img {
+        height: 92px;
+      }
+      .end h1 {
+        position: absolute;
+        left: 96px;
+        top: 215px;
+        margin: 0;
+        font-size: 132px;
+        line-height: 0.92;
+      }
+      .end p.sub {
+        position: absolute;
+        left: 96px;
+        top: 540px;
+        margin: 0;
+        width: 440px;
+        font-size: 30px;
+        line-height: 1.35;
+        font-weight: 600;
+      }
+      .slot,
+      .circle {
+        position: absolute;
+        border: 3px dashed var(--muted);
+      }
+      .slot {
+        width: 560px;
+        height: 315px;
+        top: 560px;
+      }
+      .circle {
+        width: 300px;
+        height: 300px;
+        border-radius: 50%;
+        left: 96px;
+        top: 650px;
+      }
+      .end .s1 {
+        left: 640px;
+      }
+      .end .s2 {
+        left: 1260px;
+      }
+      .end .foot {
+        position: absolute;
+        left: 96px;
+        right: 96px;
+        bottom: 60px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 28px;
+      }
+      .guide-label {
+        position: absolute;
+        font-family: var(--mono);
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--muted);
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        inset: 0;
+      }
+      .endbox {
+        position: absolute;
+        left: 640px;
+        top: 96px;
+        width: 1180px;
+        height: 360px;
+        border: 3px solid var(--ink);
+        background: var(--paper-2);
+        box-shadow: 12px 12px 0 var(--ink);
+        display: none;
+      }
+      /* ---------- lower third (1920x1080 transparent) ---------- */
+      .lower {
+        position: absolute;
+        inset: 0;
+        --u: calc(100vw / 1920);
+      }
+      .lower .lt {
+        position: absolute;
+        left: 96px;
+        bottom: 118px;
+        display: flex;
+        align-items: stretch;
+        background: var(--ink);
+        box-shadow: 10px 10px 0 #000;
+        animation: ltio 3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        color: #efe6d3;
+      }
+      .lower .lt .bar {
+        width: 18px;
+        background: var(--orange);
+      }
+      .lower .lt .logo {
+        padding: 22px 26px 22px 30px;
+        display: flex;
+        align-items: center;
+        border-right: 2px solid #4a3d2d;
+      }
+      .lower .lt .logo img {
+        height: 84px;
+      }
+      .lower .lt .txt {
+        padding: 20px 40px 20px 30px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 6px;
+      }
+      .lower .lt .t {
+        font-size: 76px;
+        line-height: 0.95;
+      }
+      .lower .lt .s {
+        font-size: 30px;
+        color: #ff6a1f;
+        font-family: var(--mono);
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+      }
+      @keyframes ltio {
+        0% {
+          transform: translateX(-120%);
+          opacity: 0;
+        }
+        14% {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        86% {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        100% {
+          transform: translateX(-120%);
+          opacity: 0;
+        }
+      }
+      /* ---------- overlays ---------- */
+      html.clear,
+      html.clear body {
+        background: transparent !important;
+      }
+      .ov {
+        position: absolute;
+        left: 96px;
+        top: 72px;
+        font-size: 34px;
+        padding: 12px 22px;
+        line-height: 1;
+        white-space: nowrap;
+      }
+      .ov.tight {
+        position: static;
+        display: inline-block;
+      }
+      .ov.bug {
+        background: #1d1712;
+        color: #efe6d3;
+        border: 3px solid #efe6d3;
+        box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.85);
+      }
+      .ov.sim {
+        background: #ff6a1f;
+        color: #1d1712;
+        border: 3px solid #1d1712;
+        box-shadow: 6px 6px 0 #1d1712;
+      }
+      .ov.rec {
+        background: #efe6d3;
+        color: #1d1712;
+        border: 3px solid #1d1712;
+        box-shadow: 6px 6px 0 #1d1712;
+      }
+      .ov .dot {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #b3261e;
+        margin-right: 14px;
+        vertical-align: -2px;
+        border: 2px solid #1d1712;
+      }
+      .wrapper {
+        position: absolute;
+        inset: 0;
+        padding: 0;
+      }
+      .tightwrap {
+        display: inline-block;
+        padding: 0 14px 14px 0;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .lower .lt {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      const q = new URLSearchParams(location.search);
+      const k = q.get('k');
+      const root = document.getElementById('root');
+      const logoH = '../../brand/svg/lockup-h-color.svg';
+      const html = {
+        card: () => `
+  <div class="grid"></div>
+  <div class="card">
+    <div class="top"><img src="${logoH}" alt="GAVEL"><span class="pill mono">PayPal sandbox only &middot; no real money</span></div>
+    <div class="mid">
+      <h1 class="disp">Bids are holds.<br><span class="hl">The hammer<br>is the charge.</span></h1>
+      <div class="plate"><img src="../../brand/svg/mark-plate.svg" alt=""></div>
+    </div>
+    <div class="bot">
+      <div class="steps mono"><span class="step">Hold</span><span class="arr">&rarr;</span><span class="step">Bid</span><span class="arr">&rarr;</span><span class="step on">Hammer</span><span class="arr">&rarr;</span><span class="step">Receipt</span><span class="arr">&rarr;</span><span class="step">Verify</span></div>
+      <div class="url mono">gavel.dualmindlab.tech</div>
+    </div>
+  </div>`,
+        thumbA: () => `
+  <div class="grid"></div>
+  <div class="thumb">
+    <div class="row" style="align-items:flex-start"><img src="${logoH}" alt="GAVEL" style="height:78px"><span class="chip mono">PayPal sandbox</span></div>
+    <div class="row">
+      <h1 class="disp">Bids are holds.<br><span class="hl">The hammer<br>is the charge.</span></h1>
+      <div class="plate"><img src="../../brand/svg/mark-plate.svg" alt=""></div>
+    </div>
+  </div>`,
+        thumbB: () => `
+  <div class="thumb thumb-b">
+    <div class="row" style="align-items:flex-start"><img src="../../brand/svg/lockup-h-reversed.svg" alt="GAVEL" style="height:78px"><span class="chip mono">PayPal sandbox</span></div>
+    <div class="row">
+      <h1 class="disp">Nobody pays<br>until the<br><span class="hl">hammer.</span></h1>
+      <div class="plate"><img src="../../brand/svg/mark-plate.svg" alt=""></div>
+    </div>
+  </div>`,
+        end: (guides) => `
+  <div class="grid"></div>
+  <div class="end">
+    <div class="head"><img src="${logoH}" alt="GAVEL"></div>
+    <h1 class="disp">Hold the bid.<br>Hammer the charge.</h1>
+    <p class="sub">Open the judge room, replay the audit trail, read the repo.</p>
+    <div class="slot s1">${guides ? '<div class="guide-label">Video<br>end element</div>' : ''}</div>
+    <div class="slot s2">${guides ? '<div class="guide-label">Video<br>end element</div>' : ''}</div>
+    <div class="circle">${guides ? '<div class="guide-label">Subscribe<br>circle</div>' : ''}</div>
+    <div class="foot mono"><span>gavel.dualmindlab.tech</span><span>github.com/harshbhx/gavel-auction</span><span>PayPal sandbox only</span></div>
+  </div>`,
+        lower: () => `
+  <div class="lower"><div class="lt"><div class="bar"></div><div class="logo"><img src="../../brand/svg/mark-reversed.svg" alt=""></div><div class="txt"><div class="t disp" id="lt-t"></div><div class="s" id="lt-s"></div></div></div></div>`,
+        bug: () => `<div class="ov bug mono">Sandbox only &middot; no real money</div>`,
+        sim: () => `<div class="ov sim mono">Simulated</div>`,
+        rec: () => `<div class="ov rec mono"><span class="dot"></span>Recorded</div>`,
+      };
+      if (k === 'thumbB') document.documentElement.classList.add('dark');
+      if (['bug', 'sim', 'rec', 'lower'].includes(k))
+        document.documentElement.classList.add('clear');
+      const tight = q.get('tight') === '1';
+      if (k === 'card') {
+        const [w, h] = [innerWidth, innerHeight];
+        document.body.style.setProperty('--pad', `${Math.round(w * 0.055)}px`);
+      }
+      root.innerHTML = k === 'end' ? html.end(q.get('guides') === '1') : html[k]();
+      if (k === 'lower') {
+        document.getElementById('lt-t').textContent = q.get('t');
+        document.getElementById('lt-s').textContent = q.get('s');
+      }
+      if (tight) {
+        const o = root.firstElementChild;
+        o.classList.add('tight');
+        document.body.style.width = 'auto';
+        document.body.style.height = 'auto';
+        document.body.style.overflow = 'visible';
+        document.documentElement.style.width = 'auto';
+        document.documentElement.style.height = 'auto';
+        document.body.style.padding = '0 14px 14px 0';
+      }
+      if (!['card', 'thumbA', 'thumbB', 'end'].includes(k))
+        document.body.style.background = 'transparent';
+    </script>
+  </body>
+</html>
