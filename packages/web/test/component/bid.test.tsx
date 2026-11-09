@@ -191,7 +191,7 @@ describe('BidScreen (T-WEB-033)', () => {
 });
 
 describe('BidScreen confirm sheet clock', () => {
-  it('uses server time, so a fast phone clock does not expire the question', () => {
+  it('uses server time, so a fast phone clock does not expire the question', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(1_000_000);
     const store = new RoomStore();
@@ -217,12 +217,17 @@ describe('BidScreen confirm sheet clock', () => {
       1_000_000,
     );
     render(<BidScreen store={store} onBid={vi.fn()} myPaddle={12} onConfirm={vi.fn()} />);
+    // The sheet is a lazy chunk: let its import settle before looking for it.
+    await import('../../src/screens/bid/ConfirmSheet');
+    await act(async () => {
+      await Promise.resolve();
+    });
     const yes = screen.getByRole('button', { name: t('confirm.yes') });
     expect(yes.getAttribute('aria-disabled')).not.toBe('true');
     expect(screen.queryByText(t('confirm.expired'))).toBeNull();
     act(() => {
       vi.advanceTimersByTime(10_000);
     });
-    expect(screen.getByText(t('confirm.expired'))).toBeTruthy();
+    expect(screen.getAllByText(t('confirm.expired')).length).toBeGreaterThan(0);
   });
 });

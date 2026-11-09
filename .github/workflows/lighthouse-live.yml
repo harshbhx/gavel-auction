@@ -1,0 +1,66 @@
+name: lighthouse-live
+# Lab performance run of the hosted landing page with Lighthouse 13.6.0 (the version PageSpeed
+# Insights runs), desktop and mobile. Manual only (workflow_dispatch).
+# Informational: not part of the roll-up in ci.yml. Uploads the JSON and HTML reports.
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Page to measure'
+        required: false
+        default: 'https://gavel.dualmindlab.tech/'
+        type: string
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lighthouse:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TARGET: ${{ inputs.url || 'https://gavel.dualmindlab.tech/' }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check the target
+        run: bash scripts/ci/assert-live-host.sh "url=$TARGET"
+      - name: Run Lighthouse, desktop and mobile
+        run: |
+          mkdir -p lh
+          # PageSpeed Insights does not announce itself as an automated browser (navigator.webdriver is
+          # false), so the first-visit tour used to open there. The "pagespeed" runs repeat that.
+          for mode in plain pagespeed; do
+            flags="--headless=new --no-sandbox"
+            if [ "$mode" = pagespeed ]; then flags="$flags --disable-blink-features=AutomationControlled"; fi
+            for preset in desktop mobile; do
+              for run in 1 2; do
+                args=(--chrome-flags="$flags" --output=json --output=html
+                  --output-path="lh/$mode-$preset-$run" --only-categories=performance,accessibility,best-practices,seo --quiet)
+                if [ "$preset" = desktop ]; then args+=(--preset=desktop); fi
+                npx --yes lighthouse@13.6.0 "$TARGET" "${args[@]}"
+              done
+            done
+          done
+          ls -la lh
+      - name: Summarize
+        run: |
+          node scripts/perf/lighthouse-summary.mjs lh/pagespeed-desktop-1.report.json lh/pagespeed-mobile-1.report.json | tee lh/summary.txt
+          {
+            echo '## Lighthouse 13.6.0 (lab)'
+            for f in lh/*.report.json; do
+              node -e 'const r=require("./"+process.argv[1]);const c=k=>Math.round((r.categories[k].score??0)*100);const a=r.audits;console.log(`- ${process.argv[1]}: perf ${c("performance")}, a11y ${c("accessibility")}, bp ${c("best-practices")}, seo ${c("seo")}, FCP ${a["first-contentful-paint"].displayValue}, LCP ${a["largest-contentful-paint"].displayValue??"none"}, TBT ${a["total-blocking-time"].displayValue??"none"}, CLS ${a["cumulative-layout-shift"].displayValue}, SI ${a["speed-index"].displayValue}`)' "$f"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: lighthouse-live
+          path: lh
+          if-no-files-found: error

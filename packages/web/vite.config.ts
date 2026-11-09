@@ -152,5 +152,7 @@ export default defineConfig({
       VITE_PAYMENTS: 'fake',
     },
     include: ['test/**/*.test.{ts,tsx}'],
+    // Browser history (the Home screen) lives in localStorage: no test may leak it into the next.
+    setupFiles: ['test/support/clearHistory.ts'],
   },
 });

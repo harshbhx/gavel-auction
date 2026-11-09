@@ -61,15 +61,15 @@ Step through it, or hover and focus a box to see what it does and which file imp
     **The bridge hands it to the room.** An accept becomes a voice bid carrying its confidence. A confirm becomes a voice bid flagged ambiguous. A drop is written to the <Term id="audit-trail">audit trail</Term> without the transcript.
   </Step>
   <Step>
-    **The room gate applies.** A voice bid below 0.85, or flagged ambiguous, is held for 15 seconds and its bidder is asked. A clean bid at 0.85 or more goes straight to the engine, which still checks price, increment and ceiling.
+    **The room gate applies.** A voice bid below 0.85, or flagged ambiguous, is held for 20 seconds and its bidder is asked. A clean bid at 0.85 or more goes straight to the engine, which still checks price, increment and ceiling.
   </Step>
   <Step>
-    **The answer is checked again.** A yes runs the normal bid pipeline at the server time of the answer. A no, or no answer within 15 seconds, places nothing and is audited.
+    **The answer is checked again.** A yes runs the normal bid pipeline at the server time of the answer. A no, or no answer within 20 seconds, places nothing and is audited. The bidder's sheet shows a countdown, and an answer that arrives after the 20 seconds is refused: nothing is placed, and the bidder is asked to say the bid again.
   </Step>
 </Steps>
 
 <Callout type="warn" title="Two timers, two layers">
-  The decision step keeps its own prompt for 8 seconds (`CONFIRM_TTL_MS` in `packages/voice/src/decide/decide.ts`). The room holds a bid for 15 seconds (`CONFIRM_TTL_MS` in `packages/server/src/room/confirm.ts`). The bridge submits a confirm decision to the room, so the room's 15 second hold is the one a bidder meets.
+  The decision step keeps its own prompt for 8 seconds (`CONFIRM_TTL_MS` in `packages/voice/src/decide/decide.ts`). The room holds a bid for 20 seconds (`CONFIRM_TTL_MS` in `packages/server/src/room/confirm.ts`). The bridge submits a confirm decision to the room, so the room's 20 second hold is the one a bidder meets.
 </Callout>
 
 ### Mute and the drop monitor

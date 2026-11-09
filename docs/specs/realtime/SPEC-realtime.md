@@ -79,7 +79,7 @@ Each requirement is testable and appears in the Coverage table in DEPS.md. MUST 
 - **R-RT-042** Soft-close extension MUST follow the engine rule (bid within window extends to ts+extension, up to maxExtensions) and the new `endTs` MUST appear in the same `price` frame.
 - **R-RT-043** A bid whose server time equals `endTs` is closed (`closed`); one at `endTs - 1` is accepted; verified at the boundary under ManualClock.
 - **R-RT-044** If `autoHammerDelayMs` is set, the room MUST call hammer that many ms after entering CLOSING unless the auctioneer already did.
-- **R-RT-045** A voice bid with confidence below `confirmConfidenceThreshold` (default 0.85) or flagged ambiguous MUST yield `confirm_request` to its bidder and be held pending with a 15 s TTL; the engine MUST NOT be touched until acceptance.
+- **R-RT-045** A voice bid with confidence below `confirmConfidenceThreshold` (default 0.85) or flagged ambiguous MUST yield `confirm_request` to its bidder and be held pending with a 20 s TTL; the engine MUST NOT be touched until acceptance.
 - **R-RT-046** `confirm_response` accept runs the normal pipeline with server time at acceptance; reject or TTL expiry writes an audit event `rejected|expired` and creates no bid.
 - **R-RT-047** At most one pending confirmation per bidder; a new voice bid supersedes the old one (audited `superseded`).
 - **R-RT-048** Auctioneer controls open, pause, resume, extend, hammer MUST be HTTP commands, role `auctioneer` only, idempotent by `controlId`, audited.
@@ -605,7 +605,7 @@ Failure branch: on append failure the engine mutation is discarded by rebuilding
 ### 5.3 Confirmation
 
 ```
-voice bid conf<0.85 -> confirm_requested(event) -> confirm_request(frame, TTL 15 s)
+voice bid conf<0.85 -> confirm_requested(event) -> confirm_request(frame, TTL 20 s)
    accept -> pipeline at acceptance time -> bid_accepted | bid_rejected
    reject -> confirm_resolved(rejected)     TTL -> confirm_resolved(expired)   new voice bid -> superseded
 ```
@@ -708,7 +708,7 @@ All tests run in GitHub Actions (Vitest; fast-check for property tests; Postgres
 - **T-RT-034** [unit] (R-RT-043) bid at endTs-1 accepted; at endTs rejected closed; with soft close, bid at endTs-1 extends
 - **T-RT-035** [unit] (R-RT-044) autoHammerDelayMs=3000: hammer fires at CLOSING+3000; skipped if auctioneer hammered at +1000
 - **T-RT-036** [unit] (R-RT-045) voice bid conf 0.62 -> confirm_request to bidder only; engine bid list empty; conf 0.85 -> no confirm; ambiguous flag with 0.99 -> confirm
-- **T-RT-037** [unit] (R-RT-046) accept after 4 s: bid placed with serverTs of acceptance; reject: audit rejected, no bid; no response 15 s: audit expired
+- **T-RT-037** [unit] (R-RT-046) accept after 4 s: bid placed with serverTs of acceptance; reject: audit rejected, no bid; no response 20 s: audit expired
 - **T-RT-038** [unit] (R-RT-047) two low-confidence voice bids: first marked superseded, only second pending
 - **T-RT-039** [unit] (R-RT-048, R-RT-085) each of open/pause/resume/extend/hammer: bidder token 403, screen 403, auctioneer 200; replay with same controlId returns first result
 - **T-RT-040** [unit] (R-RT-049) pause at 5000 with endTs 10000, bid -> auction_paused; resume at 9000 -> endTs 14000; timer re-armed
