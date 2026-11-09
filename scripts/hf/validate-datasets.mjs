@@ -158,21 +158,34 @@ const EXTRA = {
       calls.every((r) => r.p50_ms <= r.p95_ms && r.p95_ms <= r.max_ms),
       'unordered percentiles',
     );
+    const runIds = [...new Set(spans.map((r) => r.run_id))];
     rep.check(
       d,
-      'settled is never faster than captured in the same run',
-      ['pilot', 'main'].every((l) => {
-        const c = spans.find((r) => r.run_label === l && r.span === 'hammer_to_captured');
-        const s = spans.find((r) => r.run_label === l && r.span === 'hammer_to_settled');
-        return c !== undefined && s !== undefined && s.p50_ms >= c.p50_ms;
-      }),
-      'settled faster than captured',
+      'every run has a captured and a settled row, and settled is never faster than captured',
+      runIds.length > 0 &&
+        runIds.every((id) => {
+          const c = spans.find((r) => r.run_id === id && r.span === 'hammer_to_captured');
+          const s = spans.find((r) => r.run_id === id && r.span === 'hammer_to_settled');
+          return c !== undefined && s !== undefined && s.p50_ms >= c.p50_ms;
+        }),
+      'settled faster than captured or a span is missing',
     );
     rep.check(
       d,
-      'failures never exceed n',
-      [...spans, ...calls].every((r) => r.failures <= r.n),
-      'failures above n',
+      'attempts = n + failures on every row',
+      [...spans, ...calls].every((r) => r.attempts === r.n + r.failures),
+      'attempts do not add up',
+    );
+    rep.check(
+      d,
+      'a row with failures is never MET, and the worst-case p95 is never below the reported p95',
+      [...spans, ...calls].every(
+        (r) =>
+          (r.failures === 0 || r.status !== 'MET') &&
+          (r.p95_all_attempts_ms === null || r.p95_all_attempts_ms >= r.p95_ms) &&
+          r.met === (r.status === 'MET'),
+      ),
+      'a failed run reads as met, or the worst-case p95 is below the p95',
     );
   },
   'gavel-stt-bids'(rep, d, t, dir) {
@@ -288,9 +301,20 @@ const EXTRA = {
     );
     rep.check(
       d,
-      'G3 reads IN PROGRESS while the probe runs',
-      gates.find((g) => g.gate === 'G3')?.status === 'IN PROGRESS',
-      'G3 status',
+      'a gate reads IN PROGRESS only with a status note quoting docs/GATES.md',
+      gates.every((g) => g.status !== 'IN PROGRESS' || (g.status_note ?? '') !== ''),
+      'IN PROGRESS without a note',
+    );
+    rep.check(
+      d,
+      'every gate folder G0 to G4 has its evidence listed on the gate row',
+      ['G0', 'G1', 'G2', 'G4'].every((id) => {
+        const row = gates.find((g) => g.gate === id);
+        return (
+          row !== undefined && files.some((f) => f.gate === id) === (row.evidence_files !== '')
+        );
+      }),
+      'a gate row lacks its evidence files',
     );
     rep.check(
       d,
@@ -314,10 +338,17 @@ const EXTRA = {
       const rt = as.find((r) => r.dimension === 'label' && r.key === 'red-team');
       rep.check(
         d,
-        'assurance: severity rows add up to at most the red-team count',
+        'assurance: severity rows (with unlabelled) cover the red-team count',
         rt !== undefined &&
-          sum(as.filter((r) => r.dimension === 'severity').map((r) => r.found)) <= rt.found,
-        'severity above total',
+          sum(as.filter((r) => r.dimension === 'severity').map((r) => r.found)) >= rt.found &&
+          as.some((r) => r.dimension === 'severity' && r.key === 'unlabelled'),
+        'severity rows do not reconcile with the red-team count',
+      );
+      rep.check(
+        d,
+        'assurance: area dimension has an unlabelled row',
+        as.some((r) => r.dimension === 'area' && r.key === 'unlabelled'),
+        'no unlabelled area row',
       );
       const all = as.find((r) => r.dimension === 'overall');
       rep.check(

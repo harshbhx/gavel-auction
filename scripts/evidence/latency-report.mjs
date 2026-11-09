@@ -21,9 +21,40 @@ export const TARGETS = { capturedP95Ms: 2500, settledP95Ms: 6000, callP95Ms: 100
 export const MIN_SAMPLES = 40;
 const OPS = ['order', 'authorize', 'capture', 'void'];
 
-function status(p95, target) {
-  return p95 <= target ? 'MET' : 'MISSED';
+/**
+ * MET only when the target holds on the successful samples AND no attempt failed. A run with
+ * failed or timed-out attempts that looks fine on the survivors is UNPROVEN, never MET (issue 2324).
+ */
+function status(p95, target, failures = 0) {
+  if (p95 > target) return 'MISSED';
+  return failures > 0 ? 'UNPROVEN' : 'MET';
 }
+
+const rankOf = (q, n) => Math.max(1, Math.ceil(q * n));
+
+/**
+ * Conservative p95 over all attempts (successes plus failures), counting every failed or
+ * timed-out attempt as the worst case. The tools keep only the summary (p50, p95, p99, max) of the
+ * successes, so this returns an upper bound read from that summary:
+ *   - null when the 95th-percentile rank among all attempts falls on a failed attempt (unbounded),
+ *   - otherwise the smallest of p95, p99 or max that is guaranteed to cover that rank.
+ * With no failures it equals the reported p95. The reported p95 itself is never changed.
+ */
+export { status as targetStatus };
+
+export function conservativeP95(p) {
+  const failures = p.failures ?? 0;
+  const attempts = p.count + failures;
+  if (failures === 0) return { attempts, value: p.p95, bound: false };
+  const rank = rankOf(0.95, attempts);
+  if (rank > p.count) return { attempts, value: null, bound: true };
+  if (rank <= rankOf(0.95, p.count)) return { attempts, value: p.p95, bound: true };
+  if (rank <= rankOf(0.99, p.count)) return { attempts, value: p.p99, bound: true };
+  return { attempts, value: p.max, bound: true };
+}
+
+const showConservative = (c) =>
+  c.value === null ? 'unbounded (a failed attempt)' : `${c.bound ? '<= ' : ''}${c.value}`;
 
 /**
  * Builds the evidence object from the two parsed tool outputs (either may be undefined).
@@ -42,7 +73,14 @@ export function buildLatencyEvidence({ calls, settlement, sources = {}, runUrl =
         problems.push(`per-call ${op} missing`);
         continue;
       }
-      ops[op] = { ...p, budgetP95Ms: TARGETS.callP95Ms, status: status(p.p95, TARGETS.callP95Ms) };
+      const c = conservativeP95(p);
+      ops[op] = {
+        ...p,
+        attempts: c.attempts,
+        p95AllAttemptsMs: c.value,
+        budgetP95Ms: TARGETS.callP95Ms,
+        status: status(p.p95, TARGETS.callP95Ms, p.failures),
+      };
       if (p.count < MIN_SAMPLES)
         problems.push(`per-call ${op} n=${p.count} is below ${MIN_SAMPLES}`);
       if (p.failures > 0) problems.push(`per-call ${op} had ${p.failures} failed calls`);
@@ -68,16 +106,29 @@ export function buildLatencyEvidence({ calls, settlement, sources = {}, runUrl =
       errors: settlement.errors,
       hammerToCaptured: {
         ...cap,
+        attempts: conservativeP95(cap).attempts,
+        p95AllAttemptsMs: conservativeP95(cap).value,
         targetP95Ms: TARGETS.capturedP95Ms,
-        status: status(cap.p95, TARGETS.capturedP95Ms),
+        status: status(cap.p95, TARGETS.capturedP95Ms, cap.failures),
       },
       hammerToSettled: {
         ...set,
+        attempts: conservativeP95(set).attempts,
+        p95AllAttemptsMs: conservativeP95(set).value,
         targetP95Ms: TARGETS.settledP95Ms,
-        status: status(set.p95, TARGETS.settledP95Ms),
+        status: status(set.p95, TARGETS.settledP95Ms, set.failures),
       },
     };
     if (cap.count < MIN_SAMPLES) problems.push(`settlement n=${cap.count} is below ${MIN_SAMPLES}`);
+    for (const [name, span] of [
+      ['hammer to CAPTURED', cap],
+      ['hammer to SETTLED', set],
+    ]) {
+      if (span.failures > 0)
+        problems.push(
+          `${name}: ${span.failures} of ${span.count + span.failures} attempts failed or timed out and are not in the percentiles; a span with failures is never MET`,
+        );
+    }
     if (settlement.mismatches > 0 || settlement.errors > 0) {
       problems.push(
         `settlement had ${settlement.mismatches} mismatches and ${settlement.errors} errors`,
@@ -95,7 +146,17 @@ export function renderLatencyMarkdown(ev) {
     lines.push(`## Per call (${ev.calls.completed} of ${ev.calls.cycles} cycles completed)`, '');
     lines.push(
       mdTable(
-        ['call', 'n', 'failed', 'p50 ms', 'p95 ms', 'p99 ms', 'max ms', 'p95 vs 1000 ms'],
+        [
+          'call',
+          'n',
+          'failed',
+          'p50 ms',
+          'p95 ms',
+          'p99 ms',
+          'max ms',
+          'p95 all attempts ms',
+          'p95 vs 1000 ms',
+        ],
         Object.entries(ev.calls.ops).map(([op, p]) => [
           op,
           p.count,
@@ -104,6 +165,7 @@ export function renderLatencyMarkdown(ev) {
           p.p95,
           p.p99,
           p.max,
+          showConservative(conservativeP95(p)),
           p.status,
         ]),
       ),
@@ -124,11 +186,22 @@ export function renderLatencyMarkdown(ev) {
       p.p95,
       p.p99,
       p.max,
+      showConservative(conservativeP95(p)),
       `${p.targetP95Ms} ms: ${p.status}`,
     ];
     lines.push(
       mdTable(
-        ['span', 'n', 'failed', 'p50 ms', 'p95 ms', 'p99 ms', 'max ms', 'p95 target'],
+        [
+          'span',
+          'n',
+          'failed',
+          'p50 ms',
+          'p95 ms',
+          'p99 ms',
+          'max ms',
+          'p95 all attempts ms',
+          'p95 target',
+        ],
         [
           row('hammer to CAPTURED', s.hammerToCaptured),
           row('hammer to SETTLED', s.hammerToSettled),
@@ -139,6 +212,10 @@ export function renderLatencyMarkdown(ev) {
   }
   if (ev.problems.length > 0)
     lines.push('## Problems', '', ...ev.problems.map((p) => `- ${p}`), '');
+  lines.push(
+    'n counts the attempts that completed. "p95 all attempts" counts every failed or timed-out attempt as the worst case (a bound read from the summary; "unbounded" when a failed attempt sits at the 95th percentile). A span with failures is never MET.',
+    '',
+  );
   return lines.join('\n');
 }
 
@@ -147,10 +224,19 @@ export function latencyVerdictLine(ev) {
   const parts = [];
   const c = ev.settlement?.hammerToCaptured;
   const s = ev.settlement?.hammerToSettled;
-  if (c) parts.push(`CAPTURED p95 ${c.p95} ms vs ${c.targetP95Ms}: ${c.status}, n=${c.count}`);
-  if (s) parts.push(`SETTLED p95 ${s.p95} ms vs ${s.targetP95Ms}: ${s.status}, n=${s.count}`);
+  if (c)
+    parts.push(
+      `CAPTURED p95 ${c.p95} ms vs ${c.targetP95Ms}: ${c.status}, n=${c.count}, failed ${c.failures}`,
+    );
+  if (s)
+    parts.push(
+      `SETTLED p95 ${s.p95} ms vs ${s.targetP95Ms}: ${s.status}, n=${s.count}, failed ${s.failures}`,
+    );
   const v = ev.calls?.ops?.void;
-  if (v) parts.push(`void call p95 ${v.p95} ms vs ${v.budgetP95Ms}: ${v.status}, n=${v.count}`);
+  if (v)
+    parts.push(
+      `void call p95 ${v.p95} ms vs ${v.budgetP95Ms}: ${v.status}, n=${v.count}, failed ${v.failures}`,
+    );
   if (ev.problems.length > 0) parts.push(`${ev.problems.length} problem(s)`);
   return verdictLine('LATENCY EVIDENCE', ev.verdict, parts.join('; '));
 }

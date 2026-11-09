@@ -64,7 +64,7 @@ Where the partners fit:
 - **Remainder release.** After a final capture a follow-up void answers 422 PREVIOUSLY_CAPTURED and the authorization reads CAPTURED, which we read as the remainder being released. That is inferred, not read from a buyer balance, and the saga treats the answer as released instead of an error.
 - **Webhooks arrive twice or out of order.** Handlers de-duplicate and the saga never trusts an event alone. Real events carry fields our simulator lacked, so we committed six sanitized real fixtures and test against them.
 - **SDK v6 details.** A client token request with `domains[]` answers 401 `invalid_domain` on localhost, and `isEligible('basic_card')` throws; guest card needs no eligibility key.
-- **Speed.** On the sandbox, hammer to settled for 6 holds has p95 6927.43 ms against a 6000 ms target and hammer to captured p95 3766.67 ms against 2500 ms (n=49, run INCOMPLETE). Both targets are missed, and PayPal call latency is most of it. The decision to keep, raise or reduce is open.
+- **Speed.** On the sandbox, hammer to settled for 6 holds has p95 6927.43 ms against a 6000 ms target and hammer to captured p95 3766.67 ms against 2500 ms (49 of 50 completed, run INCOMPLETE). Both targets are missed, and PayPal call latency is most of it. The decision to keep, raise or reduce is open.
 - **Voice in noise.** A held-out noisy set of 120 synthetic clips, measured once against thresholds fixed beforehand, read wrong accept 0.058 for Groq and 0.092 for Deepgram against 0.05. That is why every spoken bid stays behind a confirm prompt.
 
 ### Accomplishments that we are proud of

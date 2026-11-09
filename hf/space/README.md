@@ -24,8 +24,8 @@ Every number comes from a dataset file built from evidence committed in
 https://github.com/harshbhx/gavel-auction (the build is `scripts/hf/build-space.mjs`), or from the results table
 of `docs/GATES.md`. Nothing is typed in by hand. No server, no tracking, no cookies.
 
-- Live demo (sandbox payments): https://gavel-web.creharsh.workers.dev/demo
-- Documentation: https://gavel-docs.creharsh.workers.dev/docs/judges/open-data
+- Live demo (sandbox payments): https://gavel.dualmindlab.tech/demo
+- Documentation: https://docs.gavel.dualmindlab.tech/docs/judges/open-data
 - Source of this Space: `hf/space/` in the repository above
 
 Labels: real sandbox (PayPal sandbox, never production), simulated (fake clock, model of PayPal),

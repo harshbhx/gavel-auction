@@ -26,10 +26,18 @@ import {
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  evidenceGroup,
+  gateStatus,
+  latencyRows,
+  loadLatencyRuns,
+  parseClaims,
+  parseDate,
+  walkEvidence,
+} from './evidence-index.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const FIXTURES = join(ROOT, 'packages', 'voice', 'fixtures');
-const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_URL = 'https://github.com/harshbhx/gavel-auction';
 
 export const DATASETS = [
@@ -140,8 +148,8 @@ export function wavSeconds(buf) {
   return null;
 }
 
-const DEMO_URL = 'https://gavel-web.creharsh.workers.dev/demo';
-const DOCS_URL = 'https://gavel-docs.creharsh.workers.dev/docs/judges/open-data';
+const DEMO_URL = 'https://gavel.dualmindlab.tech/demo';
+const DOCS_URL = 'https://docs.gavel.dualmindlab.tech/docs/judges/open-data';
 const LICENSE_NAMES = {
   'cc-by-4.0': 'CC-BY-4.0 (Creative Commons Attribution 4.0 International)',
 };
@@ -677,44 +685,28 @@ function buildSim(ctx) {
 function buildLatency(ctx) {
   const name = 'gavel-latency';
   const dir = join(ctx.out, name);
-  const runs = readJson(join(HERE, 'data', 'latency-settlement-runs.json'));
-  const callsRun = readJson(join(HERE, 'data', 'latency-calls-run.json'));
-  const spanRows = [];
-  for (const run of runs) {
-    for (const [span, key] of [
-      ['hammer_to_captured', 'hammerToCaptured'],
-      ['hammer_to_settled', 'hammerToSettled'],
-    ]) {
-      const s = run[key];
-      spanRows.push({
-        run_id: run.runId,
-        run_label: run.label,
-        run_date: run.date,
-        span,
-        n: s.count,
-        failures: s.failures,
-        min_ms: s.min,
-        p50_ms: s.p50,
-        p95_ms: s.p95,
-        p99_ms: s.p99,
-        max_ms: s.max,
-        holds_per_settlement: run.holdsPerSettlement,
-        void_concurrency: run.voidConcurrency,
-        mismatches: run.mismatches,
-        errors: run.errors,
-      });
-    }
-  }
-  const callRows = Object.entries(callsRun.calls).map(([call, s]) => ({
-    run_id: callsRun.runId,
-    run_date: callsRun.date,
-    call,
-    n: callsRun.cycles,
-    failures: callsRun.failures,
-    p50_ms: s.p50,
-    p95_ms: s.p95,
-    max_ms: s.max,
-  }));
+  const gatesText = readFileSync(join(ROOT, 'docs', 'GATES.md'), 'utf8');
+  const latency = loadLatencyRuns(ROOT, gatesText);
+  if (latency.settlements.length === 0) throw new Error('no settlement runs under docs/evidence');
+  if (latency.calls.length === 0) throw new Error('no per-call run under docs/evidence/latency');
+  const { spanRows, callRows } = latencyRows(latency);
+  const runs = latency.settlements;
+  const latest = runs[runs.length - 1];
+  const callsRun = latency.calls[latency.calls.length - 1];
+  const spanOf = (id, span) => spanRows.find((r) => String(r.run_id) === id && r.span === span);
+  const latestVerdict = ['hammer_to_captured', 'hammer_to_settled']
+    .map((span) => spanOf(latest.id, span))
+    .map(
+      (r) =>
+        `${r.span.replace(/_/g, ' ')} p95 ${r.p95_ms} ms against ${r.target_p95_ms} ms: ${r.status} (${r.n} of ${r.attempts} completed)`,
+    )
+    .join('; ');
+  const failureNotes = [...spanRows, ...callRows]
+    .filter((r) => r.failures > 0)
+    .map(
+      (r) =>
+        `run ${r.run_id} ${r.span ?? r.call}: ${r.failures} of ${r.attempts} attempts failed or timed out`,
+    );
   const counts = {};
   counts['settlement_spans.jsonl'] = writeTable(dir, 'settlement_spans', spanRows);
   counts['api_calls.jsonl'] = writeTable(dir, 'api_calls', callRows);
@@ -730,11 +722,10 @@ function buildLatency(ctx) {
         tags: ['sandbox', 'latency', 'payments', 'paypal-sandbox', 'benchmark', 'small-n', 'gavel'],
         labels: ['sandbox'],
         verify: [
-          `Run pages (GitHub sign-in with access to the repository may be needed, and logs expire): ${url(runs[0].runId)}, ${url(runs[1].runId)}, ${url(callsRun.runId)}. Each run's artifact \`measure-sandbox\` holds the JSON these tables were reshaped from; compare the numbers.`,
-          'The `api_calls` rows are also recorded in `docs/GATES.md` of the repository.',
+          `Run pages (GitHub sign-in with access to the repository may be needed, and logs expire): ${[...new Set([...runs.map((r) => r.id), callsRun.id])].map(url).join(', ')}. Every row has a \`source_path\`: the redacted summary committed in the repository (\`docs/evidence/latency\` and \`docs/evidence/measure\`) that the row was reshaped from; compare the numbers.`,
+          'The same numbers are recorded in `docs/GATES.md` of the repository.',
         ],
-        labelNote:
-          'Measured against the PayPal sandbox, not production, and with very few samples. Sandbox latency is not production latency.',
+        labelNote: `Measured against the PayPal sandbox, not production, and with few samples. Sandbox latency is not production latency. Latest run (${latest.id}): ${latestVerdict}. Read \`status\` and \`met\` per row; a row with failures is never \`MET\`.`,
         configs: [
           'configs:',
           '  - config_name: settlement_spans',
@@ -745,47 +736,76 @@ function buildLatency(ctx) {
         what: [
           'Latency of the payment calls an auction settlement makes, measured against the real PayPal sandbox: the time from the hammer to the winner being captured, from the hammer to the whole settlement being finished (winner captured, every other hold released), and the per-call latency of order, authorize, capture and void.',
           '',
-          'The tables hold summary statistics (min, p50, p95, p99, max in milliseconds, counts of failures). The raw per-call samples were not kept by the measuring job.',
+          'The tables hold summary statistics (min, p50, p95, p99, max in milliseconds, attempt and failure counts). The raw per-call samples were not kept by the measuring job. Percentiles are over the attempts that completed; `p95_all_attempts_ms` counts every failed or timed-out attempt as the worst case.',
         ].join('\n'),
         how: [
-          `- Settlement spans: workflow \`measure-sandbox\`, mode \`settlement\`, runs ${url(runs[0].runId)} (${runs[0].label}, ${runs[0].settlements} settlements) and ${url(runs[1].runId)} (${runs[1].label}, ${runs[1].settlements} settlements). Each settlement has ${runs[0].holdsPerSettlement} holds, one winner, and voids five holds three at a time. A sandbox buyer approves every order in a browser; the approval is not timed.`,
-          `- API calls: workflow \`measure-sandbox\`, mode \`calls\`, run ${url(callsRun.runId)}, ${callsRun.cycles} sequential cycles. The same numbers are in \`docs/GATES.md\` of the repository.`,
-          '- The measuring job uploads numbers only (counts, milliseconds, status counts). These files are copies of those summaries; the build script only reshapes them.',
+          `- Settlement spans: ${runs.map((r) => `run ${url(r.id)} (${r.report.settlements} settlements, ${r.report.hammerToSettled.count} timed, source \`${r.path}\`)`).join(' and ')}. Each settlement has ${runs[0].report.holdsPerSettlement} holds, one winner, and voids five holds three at a time. A sandbox buyer approves every order in a browser; the approval is not timed.`,
+          `- API calls: run ${url(callsRun.id)}, ${callsRun.report.cycles} sequential cycles (source \`${callsRun.path}\`). The same numbers are in \`docs/GATES.md\` of the repository.`,
+          '- The measuring job uploads numbers only (counts, milliseconds, status counts). The build script reads the redacted summaries committed under `docs/evidence` directly and only reshapes them; there are no hand-copied inputs. The targets are the ones in `docs/GATES.md` and are never changed to fit a result.',
         ].join('\n'),
         tables: [
           {
             file: 'settlement_spans.jsonl / .csv',
-            about: 'One row per run and span (4 rows).',
+            about: `One row per run and span (${spanRows.length} rows).`,
             fields: [
               ['run_id', 'integer', 'GitHub Actions run id'],
-              ['run_label', 'string', '`pilot` (3 settlements) or `main` (20 settlements)'],
-              ['run_date', 'string', 'Date of the run (UTC)'],
+              ['run_label', 'string', 'Settlements attempted in the run, e.g. `50 settlements`'],
+              ['run_date', 'string or null', 'Date of the run (UTC), from `docs/GATES.md`'],
               ['span', 'string', '`hammer_to_captured` or `hammer_to_settled`'],
-              ['n', 'integer', 'Settlements measured'],
-              ['failures', 'integer', 'Settlements that failed'],
+              ['n', 'integer', 'Settlements that completed and are in the percentiles'],
+              [
+                'failures',
+                'integer',
+                'Settlements that failed or timed out (not in the percentiles)',
+              ],
+              ['attempts', 'integer', '`n` plus `failures`'],
+              [
+                'p95_all_attempts_ms',
+                'float or null',
+                'p95 over all attempts with every failure counted as the worst case; an upper bound read from the summary, null when a failed attempt sits at the 95th percentile (unbounded)',
+              ],
+              ['target_p95_ms', 'integer', 'Target for this span from `docs/GATES.md`'],
+              [
+                'met, status',
+                'boolean, string',
+                '`MET`, `MISSED` or `UNPROVEN` (target met on the completed attempts but some attempts failed, so not met)',
+              ],
               [
                 'min_ms, p50_ms, p95_ms, p99_ms, max_ms',
                 'float',
-                'Latency statistics in milliseconds',
+                'Latency statistics in milliseconds over the completed attempts',
               ],
               ['holds_per_settlement', 'integer', 'Holds per settlement'],
               ['void_concurrency', 'integer', 'Voids in flight at a time'],
-              [
-                'mismatches, errors',
-                'integer',
-                'Ledger mismatches and errors reported by the run (0 in both runs)',
-              ],
+              ['mismatches, errors', 'integer', 'Ledger mismatches and errors reported by the run'],
+              ['source_path', 'string', 'Committed evidence file the row was reshaped from'],
             ],
           },
           {
             file: 'api_calls.jsonl / .csv',
-            about: 'One row per PayPal call type (4 rows).',
+            about: `One row per run and PayPal call type (${callRows.length} rows).`,
             fields: [
-              ['run_id, run_date', 'integer, string', 'Run and date'],
+              ['run_id, run_date', 'integer, string or null', 'Run and date'],
               ['call', 'string', '`order`, `authorize`, `capture` or `void`'],
-              ['n', 'integer', 'Sequential cycles (one sample per call per cycle)'],
-              ['failures', 'integer', 'Failed cycles'],
-              ['p50_ms, p95_ms, max_ms', 'float', 'Latency statistics in milliseconds'],
+              ['n', 'integer', 'Calls that completed and are in the percentiles'],
+              ['failures', 'integer', 'Calls that failed'],
+              ['attempts, cycles', 'integer', '`n` plus `failures`; sequential cycles in the run'],
+              [
+                'p95_all_attempts_ms',
+                'float or null',
+                'p95 with every failed call counted as the worst case (bound; null = unbounded)',
+              ],
+              [
+                'target_p95_ms, met, status',
+                'integer, boolean, string',
+                'Per-call p95 budget and whether it was met (`MET`, `MISSED`, `UNPROVEN`)',
+              ],
+              [
+                'min_ms, p50_ms, p95_ms, p99_ms, max_ms',
+                'float',
+                'Latency statistics in milliseconds over the completed calls',
+              ],
+              ['source_path', 'string', 'Committed evidence file the row was reshaped from'],
             ],
           },
         ],
@@ -793,7 +813,11 @@ function buildLatency(ctx) {
           'Sizing timeouts and retry budgets for payment flows, sanity-checking latency targets, and as a reference point for how slow a sandbox payment provider can be.',
         limitations: [
           '- Sandbox only, from a GitHub-hosted runner, at one time of day. Production will differ.',
-          '- Small n: 3 and 20 settlements, 10 call cycles. With n=10 the p95 equals the max. Treat percentiles as indicative, not as service-level numbers.',
+          `- Small n: ${runs.map((r) => `${r.report.settlements} settlements`).join(' and ')}, ${callRows[0].cycles} call cycles. Treat percentiles as indicative, not as service-level numbers.`,
+          failureNotes.length === 0
+            ? '- No run in this dataset had failed or timed-out attempts.'
+            : `- Failed or timed-out attempts are not in the percentiles (${failureNotes.join('; ')}). They are usually the slowest attempts, so the reported p95 can understate the tail; use \`p95_all_attempts_ms\` and \`status\`.`,
+          '- Only runs whose redacted summaries are committed under `docs/evidence` are included. A 3-settlement pilot (run 42346020463) and a 10-cycle per-call run (42047543821) were never committed as evidence files; `docs/GATES.md` still records them.',
           '- Summary statistics only; no per-sample data.',
           '- The sandbox rate limits shaped how the runs were paced.',
         ].join('\n'),
@@ -1079,7 +1103,7 @@ const GATE_META = {
   G0: { method: 'real sandbox', label: 'real sandbox' },
   G1: { method: 'real sandbox', label: 'real sandbox' },
   G2: { method: 'real sandbox', label: 'real sandbox' },
-  G3: { method: 'real sandbox probe over several real days', label: 'real sandbox, in progress' },
+  G3: { method: 'real sandbox probe over several real days', label: 'real sandbox' },
   G4: { method: 'real sandbox webhooks', label: 'real sandbox' },
   G5: {
     method: 'cached evaluation of recorded provider outputs on synthetic speech',
@@ -1109,7 +1133,7 @@ export function parseGates(text) {
       evidencePaths: [
         ...new Set(
           evidence.flatMap((e) =>
-            [...e.matchAll(/docs\/evidence\/[A-Za-z0-9_./-]+\.jsonl?/g)].map((m) => m[0]),
+            [...e.matchAll(/docs\/evidence\/[A-Za-z0-9_./-]*[A-Za-z0-9_]/g)].map((m) => m[0]),
           ),
         ),
       ],
@@ -1134,46 +1158,51 @@ function buildGates(ctx) {
   const dir = join(ctx.out, name);
   const sha = repoSha();
   const blob = (p) => `${REPO_URL}/blob/${sha}/${p}`;
-  const gates = parseGates(readFileSync(join(ROOT, 'docs', 'GATES.md'), 'utf8'));
+  const gatesText = readFileSync(join(ROOT, 'docs', 'GATES.md'), 'utf8');
+  const gates = parseGates(gatesText);
   if (gates.length !== 6)
     throw new Error(`expected gates G0 to G5 in docs/GATES.md, found ${gates.length}`);
-  const fileRows = [];
-  const seen = new Set();
+  // Every file under docs/evidence, any extension, one row each (issue 2322).
+  const files = walkEvidence(ROOT);
+  const claims = parseClaims(gatesText, files);
+  const fileRows = files.map((p) => {
+    const digest = sha256File(join(ROOT, p));
+    const claimed = claims.get(p) ?? null;
+    return {
+      gate: evidenceGroup(p),
+      path: p,
+      bytes: readFileSync(join(ROOT, p)).length,
+      sha256: digest,
+      sha256_claimed_in_gates_md:
+        claimed === null ? null : claimed.includes(digest) ? digest : claimed[0],
+      matches_claim: claimed === null ? null : claimed.includes(digest),
+      url_at_commit: blob(p),
+    };
+  });
   const gateRows = gates.map((g) => {
     const meta = GATE_META[g.id];
-    const isG3 = g.id === 'G3';
-    const date = isG3 ? '2026-11-07T03:06:00Z' : (/\d{4}-\d{2}-\d{2}/.exec(g.runLine) ?? [null])[0];
-    for (const p of g.evidencePaths) {
-      if (seen.has(p)) continue;
-      seen.add(p);
-      const abs = join(ROOT, p);
-      const digest = sha256File(abs);
-      fileRows.push({
-        gate: g.id,
-        path: p,
-        bytes: readFileSync(abs).length,
-        sha256: digest,
-        sha256_claimed_in_gates_md: g.claimed[p] ?? null,
-        matches_claim: g.claimed[p] === undefined ? null : g.claimed[p] === digest,
-        url_at_commit: blob(p),
-      });
-    }
+    const { status, note } = gateStatus(g);
+    const own = fileRows.filter((f) => f.gate === g.id).map((f) => f.path);
+    const cited = g.evidencePaths.filter((p) => files.includes(p));
     return {
       gate: g.id,
       title: g.title,
-      status: isG3 ? 'IN PROGRESS' : g.status,
-      status_note: isG3
-        ? 'day 0 of the real probe was 2026-11-07 03:06 UTC; regenerated when results land'
-        : null,
+      status,
+      status_note: note,
       decision: g.decision,
-      date_utc: date,
+      date_utc: parseDate(g.runLine),
       method: meta.method,
-      label: meta.label,
+      label: status === 'IN PROGRESS' ? `${meta.label}, in progress` : meta.label,
       workflow_run_urls: g.runIds.map((id) => `${REPO_URL}/actions/runs/${id}`).join(';'),
-      evidence_files: g.evidencePaths.join(';'),
+      evidence_files: [...new Set([...own, ...cited])].sort().join(';'),
       gates_doc_url: blob('docs/GATES.md'),
     };
   });
+  const g3 = gateRows.find((r) => r.gate === 'G3');
+  const g3Line =
+    g3.status === 'IN PROGRESS'
+      ? 'G3 is a real multi-day probe that is still running.'
+      : `G3 status in docs/GATES.md at build time: ${g3.status}.`;
   const nightlyDir = join(ROOT, 'docs', 'evidence', 'nightly');
   const nightly = [];
   for (const f of readdirSync(nightlyDir)
@@ -1181,15 +1210,6 @@ function buildGates(ctx) {
     .sort()) {
     const j = readJson(join(nightlyDir, f));
     const runId = /NIGHTLY-(\d+)\.json/.exec(f)?.[1] ?? null;
-    fileRows.push({
-      gate: 'nightly',
-      path: `docs/evidence/nightly/${f}`,
-      bytes: readFileSync(join(nightlyDir, f)).length,
-      sha256: sha256File(join(nightlyDir, f)),
-      sha256_claimed_in_gates_md: null,
-      matches_claim: null,
-      url_at_commit: blob(`docs/evidence/nightly/${f}`),
-    });
     for (const sp of j.specs) {
       nightly.push({
         run_id: runId,
@@ -1220,9 +1240,12 @@ function buildGates(ctx) {
         license: 'cc-by-4.0',
         taskCategories: ['other'],
         tags: ['evidence', 'sandbox', 'payments', 'verification', 'checksums', 'gavel'],
-        labels: ['real sandbox', 'synthetic audio', 'in progress'],
-        labelNote:
-          'Gates G0 to G4 ran against the real PayPal sandbox, never against live money. G5 is a cached evaluation on synthetic speech. G3 is a real multi-day probe that is still running.',
+        labels: [
+          'real sandbox',
+          'synthetic audio',
+          ...(g3.status === 'IN PROGRESS' ? ['in progress'] : []),
+        ],
+        labelNote: `Gates G0 to G4 ran against the real PayPal sandbox, never against live money. G5 is a cached evaluation on synthetic speech. ${g3Line}`,
         verify: [
           'Every row of `evidence_files` gives the repository path, the sha256 and a link to the file at the build commit. Download the file from that link, run `sha256sum`, compare. `matches_claim` says whether the hash equals the one written in `docs/GATES.md`.',
           'Assurance rows carry a `query_url`; opening it in GitHub (with repository access) shows the same count as the row.',
@@ -1244,8 +1267,8 @@ function buildGates(ctx) {
           'It is an index, not a copy: the narrative and the evidence files live in the repository.',
         ].join('\n'),
         how: [
-          '- `gates` is parsed by `scripts/hf/build-datasets.mjs` from the status lines of `docs/GATES.md`. Gate G3 is overridden to `IN PROGRESS` (day 0 of the probe was 2026-11-07 03:06 UTC; checkpoints at 3.5, 4 and 5 days) and the dataset is regenerated when results land.',
-          '- `evidence_files` hashes the committed files under `docs/evidence` at build time and compares each hash with the one recorded in `docs/GATES.md`.',
+          '- `gates` is parsed by `scripts/hf/build-datasets.mjs` from the status lines of `docs/GATES.md`; nothing is overridden in code. A gate whose status line says NOT RUN while its run line starts with IN PROGRESS (a probe still running) reads `IN PROGRESS`, and `status_note` quotes the run line; once GATES.md records a result, the dataset shows that result.',
+          '- `evidence_files` has one row for every file under `docs/evidence` (all extensions, all folders), hashed at build time. Where `docs/GATES.md` writes a sha256 next to a file name, `matches_claim` says whether it equals the computed hash; otherwise it is null.',
           '- `nightly_results` reshapes the committed nightly reports (`docs/evidence/nightly/NIGHTLY-<run id>.json`).',
         ].join('\n'),
         tables: [
@@ -1256,9 +1279,17 @@ function buildGates(ctx) {
               ['gate', 'string', '`G0` to `G5`'],
               ['title', 'string', 'Short title'],
               ['status', 'string', '`PASS`, `FAIL`, `PARTIAL`, `NOT RUN` or `IN PROGRESS`'],
-              ['status_note', 'string or null', 'Extra note, used for G3'],
+              [
+                'status_note',
+                'string or null',
+                'Extra note when the status is derived (IN PROGRESS)',
+              ],
               ['decision', 'string or null', 'Recorded decision keyword'],
-              ['date_utc', 'string or null', 'Run date (G3: start of the probe)'],
+              [
+                'date_utc',
+                'string or null',
+                "First date or timestamp on the gate's run line in `docs/GATES.md` (G3: start of the probe)",
+              ],
               ['method', 'string', 'How the gate was run'],
               ['label', 'string', 'Honest label: real sandbox, synthetic audio'],
               ['workflow_run_urls', 'string', 'GitHub Actions run URLs, separated by semicolons'],
@@ -1274,7 +1305,11 @@ function buildGates(ctx) {
             file: 'evidence_files.jsonl / .csv',
             about: 'One row per evidence file.',
             fields: [
-              ['gate', 'string', 'Gate or `nightly`'],
+              [
+                'gate',
+                'string',
+                'Gate (`G0` to `G5`, `G3-early` belongs to `G3`) or the evidence folder (`nightly`, `latency`, `measure`, `hosted`, ...)',
+              ],
               ['path', 'string', 'Path in the repository'],
               ['bytes, sha256', 'integer, string', 'Size and sha256 at the build commit'],
               [
@@ -1291,7 +1326,7 @@ function buildGates(ctx) {
                 {
                   file: 'assurance.jsonl / .csv',
                   about:
-                    'Aggregate counts of the red-team and audit findings of the repository, from the GitHub issues API. Counts only: no issue title, text or author is stored. The query is pinned to issues (not pull requests) carrying at least one of the labels red-team, audit-r1, audit-r2 or redteam-r4; severity rows are for the red-team label.',
+                    'Aggregate counts of the red-team and audit findings of the repository, from the GitHub issues API. Counts only: no issue title, text or author is stored. The query is pinned to issues (not pull requests) carrying at least one of the labels red-team, audit-r1, audit-r2 or redteam-r4; severity rows are for the red-team label and include an `unlabelled` row (red-team findings with no severity label), so they add up to the red-team count; area labels overlap (an issue can carry several), so area rows can add up to more than the population, and the `unlabelled` area row counts findings with no area label.',
                   fields: [
                     ['dimension', 'string', '`overall`, `label`, `severity` or `area`'],
                     ['key', 'string', 'Label, severity or area the row counts'],
@@ -1333,9 +1368,9 @@ function buildGates(ctx) {
           'Letting a reader check, in a few minutes, which claims about the payment and voice features rest on real sandbox runs, which on simulation, and what is still open.',
         limitations: [
           "- Status lines are the maintainer's own record. The index proves that a file existed with a given hash at a commit, not that the file is true; for that, follow the run links.",
-          '- G0 has no committed evidence file (only a run log that expires); G5 evidence is the fixtures of the other dataset.',
+          '- Evidence files without a sha256 in `docs/GATES.md` have `matches_claim` null: the hash is computed but there is nothing to compare it with. G5 also relies on recorded provider outputs and the fixtures of the other dataset.',
           '- Sandbox only. Nothing here says how production PayPal behaves.',
-          '- G3 is incomplete by design until the multi-day probe finishes.',
+          `- ${g3Line}${g3.status === 'IN PROGRESS' ? ' It is incomplete by design until the multi-day probe finishes.' : ''}`,
         ].join('\n'),
       },
       ctx.ns,
