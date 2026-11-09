@@ -2,7 +2,6 @@ import { DemoRoomError, type DemoLinks } from '../screens/demo/DemoLauncher';
 import { retryAfterSeconds } from './apiError';
 import { hubFragment, rememberHubKeys, type HubKeys } from '../screens/hub/hubKeys';
 import { JUDGE_KEY_HEADER } from './judgeKey';
-import { recordRoom } from '../home/history';
 
 /** Asks the host whether key-less judge rooms are on and have a free slot. Never throws. */
 export async function judgeRoomsAvailable(apiBase: string): Promise<boolean> {
@@ -126,7 +125,11 @@ async function postJudgeRoom(
   };
   rememberHubKeys(roomId, keys);
   // Browser history for the Home screen: the room id, role and join code only, never a token.
-  recordRoom(roomId, { role: 'auctioneer', expiresAt: keys.expiresAt, code: keys.code });
+  void import('../home/history').then(
+    ({ recordRoom }) =>
+      recordRoom(roomId, { role: 'auctioneer', expiresAt: keys.expiresAt, code: keys.code }),
+    () => undefined,
+  );
   return {
     console: `${base}/console#token=${auctioneer}`,
     screen: `${base}/screen#token=${screen}`,

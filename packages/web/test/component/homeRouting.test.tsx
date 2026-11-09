@@ -54,10 +54,10 @@ describe('the start page', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(t('landing.title'));
   });
 
-  it('ignores a history it cannot read and shows the landing page', () => {
+  it('ignores a history it cannot read and shows the landing page', async () => {
     window.localStorage.setItem(HISTORY_KEY, '{broken');
     render(<App initialPath="/" api={API} />);
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(t('landing.title'));
+    expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe(t('landing.title'));
   });
 
   it('Clear my history empties the store and falls back to the landing page', async () => {

@@ -5,7 +5,9 @@
  * tokens stay in sessionStorage where they already are. Every access is wrapped: storage can be
  * missing, blocked, full or corrupt, and the app must work the same without it.
  */
-export const HISTORY_KEY = 'gavel.history.v1';
+import { HISTORY_KEY } from './historyKey';
+
+export { HISTORY_KEY };
 export const HISTORY_VERSION = 1;
 export const MAX_ROOMS = 10;
 

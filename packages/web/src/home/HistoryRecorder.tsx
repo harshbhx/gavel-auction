@@ -105,3 +105,5 @@ export function HistoryRecorder({ match }: { match: RouteMatch }) {
   }, [routeId, roomId]);
   return null;
 }
+
+export default HistoryRecorder;

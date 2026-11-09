@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/App';
 import { HISTORY_KEY, readHistory } from '../../src/home/history';
@@ -18,22 +18,25 @@ afterEach(() => {
 });
 
 describe('history recorder', () => {
-  it('remembers a bidder room by id and role, and never writes the token', () => {
+  it('remembers a bidder room by id and role, and never writes the token', async () => {
     rememberBidderSession('roomZ', { token: 'bidder-secret-token', bidderId: 'b1' });
     render(<App initialPath="/r/roomZ/bid" api={API} />);
+    await waitFor(() => expect(readHistory()).toHaveLength(1));
     const [room] = readHistory();
     expect(room).toMatchObject({ roomId: 'roomZ', roles: ['bidder'] });
     expect(window.localStorage.getItem(HISTORY_KEY)).not.toContain('bidder-secret-token');
   });
 
-  it('does not turn a mistyped address into a remembered room', () => {
+  it('does not turn a mistyped address into a remembered room', async () => {
     render(<App initialPath="/r/nosuchroom/bid" api={API} />);
+    await new Promise((resolve) => setTimeout(resolve, 50));
     expect(readHistory()).toEqual([]);
   });
 
-  it('does not record the scripted demo room', () => {
+  it('does not record the scripted demo room', async () => {
     rememberBidderSession('demo', { token: 'x', bidderId: 'b1' });
     render(<App initialPath="/r/demo/bid" api={API} />);
+    await new Promise((resolve) => setTimeout(resolve, 50));
     expect(readHistory()).toEqual([]);
   });
 
@@ -57,6 +60,7 @@ describe('history recorder', () => {
       ),
     );
     await createJudgeRoom('http://localhost:1');
+    await waitFor(() => expect(readHistory()).toHaveLength(1));
     const [room] = readHistory();
     expect(room).toMatchObject({
       roomId: 'roomNew',
