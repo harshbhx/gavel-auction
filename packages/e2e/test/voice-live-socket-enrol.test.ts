@@ -1,3 +1,4 @@
+import { SystemClock } from '@gavel/shared';
 import { describe, expect, it } from 'vitest';
 import { startStack } from '../src/runner/stack';
 import { CEILING_CENTS, LIVE_STACK_ENV } from '../src/voice/live-socket';
@@ -34,7 +35,7 @@ describe('live socket run setup', () => {
                 currency: 'USD',
                 reserve: 5000,
                 minIncrement: 500,
-                endTs: Date.now() + 600_000,
+                endTs: new SystemClock().now() + 600_000,
                 softCloseWindowMs: 30_000,
                 softCloseExtensionMs: 30_000,
                 maxExtensions: 5,
