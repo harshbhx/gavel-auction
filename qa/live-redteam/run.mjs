@@ -1236,13 +1236,9 @@ async function main() {
       { code: ` ${code} `, displayName: 'QA Space' },
       [200, 410],
     );
-    const sum = await probe(
-      'room summary by id',
-      'GET',
-      `/api/auctions/${roomId}`,
-      undefined,
-      [200],
-    );
+    const sum = await probe('room summary by id', 'GET', `/api/auctions/${roomId}`, undefined, [
+      200,
+    ]);
     check(/joinCode/.test(sum.text), 'room summary has joinCode');
     await probe('room summary by CODE', 'GET', `/api/auctions/${code}`, undefined, [200, 404]);
     await probe(
