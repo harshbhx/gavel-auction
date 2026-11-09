@@ -53,8 +53,7 @@
   }
 }
 
-/* Logo motion (opt-in through the motion prop). The mallet winds up and strikes in stepped clicks, the
- * way a ratchet moves. Pivot is the end of the handle (100, 50 on the 100 unit mark grid). Off under
+/* Logo motion (opt-in through the motion prop). The mallet winds up and strikes with a confident ease. Pivot is the end of the handle (100, 50 on the 100 unit mark grid). Off under
  * prefers-reduced-motion. */
 .gv-logo__mallet {
   transform-origin: 100px 50px;
@@ -74,11 +73,11 @@
 @keyframes gv-logo-strike {
   0% {
     transform: rotate(0deg);
-    animation-timing-function: steps(4, end);
+    animation-timing-function: cubic-bezier(0.3, 0, 0.4, 1);
   }
   45% {
     transform: rotate(70deg);
-    animation-timing-function: steps(3, end);
+    animation-timing-function: cubic-bezier(0.75, 0, 1, 0.6);
   }
   75%,
   100% {
