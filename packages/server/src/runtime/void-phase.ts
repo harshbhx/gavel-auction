@@ -60,7 +60,7 @@ export async function voidSpareHolds(
   let open = 0;
   for (const hold of await deps.holds.listByAuction(journal.auctionId)) {
     const authId = hold.authId;
-    if (hold.status !== 'HELD' || authId === undefined || keep.has(hold.holdId)) continue;
+    if (hold.status !== 'HELD' || authId === undefined || keep.has(hold.holdId) || hold.supersedes !== undefined) continue;
     const status = await voidHold(deps, journal.auctionId, {
       holdId: hold.holdId,
       authId,

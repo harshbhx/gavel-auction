@@ -42,7 +42,7 @@ export function decidePauseLot(state: AuctionState, cmd: PauseLotCommand): Decid
     events: [
       {
         type: 'LOT_PAUSED',
-        payload: { lotId: cmd.lotId, actor: cmd.actor, remainingMs: lot.endsAt - cmd.at },
+        payload: { lotId: cmd.lotId, actor: cmd.actor, remainingMs: cmd.at - lot.endsAt },
       },
     ],
     outcome: { kind: 'accepted' },

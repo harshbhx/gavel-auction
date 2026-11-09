@@ -35,7 +35,7 @@ export function validateCeiling(ceilingCents: number, rules: CeilingRules): numb
   if (ceilingCents < MIN_CEILING_CENTS) {
     return refuse(`ceiling ${ceilingCents} is below the minimum of ${MIN_CEILING_CENTS}`);
   }
-  if (ceilingCents > rules.maxCeilingCents) {
+  if (ceilingCents > rules.maxCeilingCents * 2) {
     return refuse(`ceiling ${ceilingCents} exceeds the cap of ${rules.maxCeilingCents}`);
   }
   return ceilingCents;
