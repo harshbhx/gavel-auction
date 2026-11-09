@@ -61,7 +61,7 @@ If the window is shorter than the longest planned auction, auctions are capped t
 
 | Area | Today | Next | Owner and date |
 | --- | --- | --- | --- |
-| Security review | 16 of the 18 original items PASS (all eight P0), one is ACCEPTED, one (SEC-15, log scan) is open. SEC-19 and SEC-20, added for judge rooms and receipt links, are written up and awaiting review. | Independent review of SEC-19 and SEC-20, and the SEC-15 log scan. | Date not set |
+| Security review | 16 of the 18 original items PASS (all eight P0), one is ACCEPTED, one (SEC-15, log scan) is PARTIAL: one S01 server log and data folder scanned with 9 canaries, 0 findings (run 42566851766). SEC-19 and SEC-20, added for judge rooms and receipt links, are written up and awaiting review. | Independent review of SEC-19 and SEC-20, and a review of SEC-15 (Render logs and other routes are not scanned). | Date not set |
 | Accessibility | Automated axe sweeps run in CI over the scripted bid, console and screen states. See [accessibility](/docs/proof/accessibility). | A manual pass with a screen reader and 200 percent zoom. | Date not set |
 | Open datasets | Five small datasets are published on Hugging Face. The speech, simulation and audit-trace sets use synthetic audio, a fake clock and scripted auctions by design. See [open data](/docs/judges/open-data). | Keep them in step with new evidence (for example when G3 finishes). | Date not set |
 
