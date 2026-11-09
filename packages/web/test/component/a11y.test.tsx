@@ -214,6 +214,7 @@ describe('axe on the registration and bid screens', () => {
   const bidStates: ReadonlyArray<[string, Partial<Parameters<typeof BidScreen>[0]>, number]> = [
     ['open', {}, 50000],
     ['above the ceiling', {}, 6000],
+    ['with stepper and slider', {}, 200000],
     ['pending', { pending: true }, 50000],
     ['rejected', { rejection: { reason: 'below_increment', mid: 'm1' } }, 50000],
     ['unsent', { unsent: true, onResend: vi.fn() }, 50000],

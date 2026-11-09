@@ -24,6 +24,7 @@ import './bid.css';
 import { CeilingMeter } from './CeilingMeter';
 import { ConfirmSheet } from './ConfirmSheet';
 import { CustomBid } from './CustomBid';
+import { LotBlock } from './LotBlock';
 import { QuickBid, useSendGuard } from './QuickBid';
 import { Rejection, REJECTION_CLEAR_MS, type BidRejection } from './Rejection';
 import { StateBanner, bidsLocked, bidsNotice } from './StateBanner';
@@ -95,6 +96,7 @@ export function BidScreen({
   const increment = useRoom((s) => s.snapshot?.config.minIncrement ?? 0, store);
   const reserve = useRoom((s) => s.snapshot?.config.reserve ?? 0, store);
   const auctionStatus = useRoom(selectAuctionStatus, store);
+  const lotTitle = useRoom((s) => s.snapshot?.lotTitle ?? null, store);
   const loaded = useRoom((s) => s.snapshot !== null, store);
   const connection = useConnection();
   const serverNow = useServerNow(store);
@@ -166,7 +168,7 @@ export function BidScreen({
       </div>
 
       <section className="bid__lot">
-        <div data-slot="lot-image" aria-hidden="true" className="bid__lotimg" />
+        <LotBlock title={lotTitle} />
         {price === null && <p className="bid__wait">{t('bid.waitingLot')}</p>}
       </section>
 
@@ -231,7 +233,12 @@ export function BidScreen({
             ceilingCents={ceiling}
             onBid={send}
           />
-          <CustomBid nextMinCents={nextMin} ceilingCents={ceiling} onBid={send} />
+          <CustomBid
+            nextMinCents={nextMin}
+            ceilingCents={ceiling}
+            incrementCents={increment}
+            onBid={send}
+          />
         </section>
       )}
 
