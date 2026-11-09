@@ -1,5 +1,4 @@
 import { canonicalJson } from '../util/hash';
-import type { AuditPayload } from '../wire';
 
 /** One line of a hash-chained ledger, as the ledger grid shows it. */
 export interface LedgerEntry {
@@ -26,8 +25,10 @@ export interface LedgerEntry {
  * tampered: the body no longer matches its own hash, so the entry was edited after sealing.
  * broken: the body is intact but it does not point at the entry before it.
  * unsealed: the row has no hash (an audit row), so there is nothing to check.
+ * unchecked: this browser has no SHA-256 (WebCrypto), so the row could not be checked here. It says
+ * nothing about whether the entry was edited.
  */
-export type ChainStatus = 'verified' | 'tampered' | 'broken' | 'unsealed';
+export type ChainStatus = 'verified' | 'tampered' | 'broken' | 'unsealed' | 'unchecked';
 
 export const GENESIS_PREV = '0'.repeat(64);
 
@@ -91,7 +92,8 @@ export async function verifyEntries(
       }
       const before = entries[i - 1];
       const expectedPrev = before === undefined ? GENESIS_PREV : before.hash;
-      if (hashes[j] !== entry.hash) result.set(entry.seq, 'tampered');
+      if (hashes[j] === null) result.set(entry.seq, 'unchecked');
+      else if (hashes[j] !== entry.hash) result.set(entry.seq, 'tampered');
       else if (entry.prev !== expectedPrev) result.set(entry.seq, 'broken');
       else result.set(entry.seq, 'verified');
     });
@@ -127,30 +129,15 @@ export function formatStamp(ms: number): string {
 export function chainCounts(
   statuses: ReadonlyMap<number, ChainStatus>,
 ): Record<ChainStatus, number> {
-  const counts: Record<ChainStatus, number> = { verified: 0, tampered: 0, broken: 0, unsealed: 0 };
+  const counts: Record<ChainStatus, number> = {
+    verified: 0,
+    tampered: 0,
+    broken: 0,
+    unsealed: 0,
+    unchecked: 0,
+  };
   for (const s of statuses.values()) counts[s] += 1;
   return counts;
 }
 
-/**
- * Audit rows as ledger entries. Audit rows are not sealed (the server keeps the chain; the page has no
- * hashes for them), so hash and prev stay null and the grid hides those columns.
- */
-export function entriesFromAudit(
-  rows: readonly AuditPayload[],
-  paddleOf: (bidderId: string) => number | null,
-): LedgerEntry[] {
-  return rows.map((row) => {
-    const paddle = paddleOf(row.bidderId);
-    return {
-      seq: row.seq,
-      at: Number(row.serverTs),
-      type: `audit_${row.outcome}`,
-      actor: paddle === null ? null : `paddle:${paddle}`,
-      amountCents: row.parsedAmount === undefined ? null : Number(row.parsedAmount),
-      note: row.reason ?? null,
-      hash: null,
-      prev: null,
-    };
-  });
-}
+export { entriesFromAudit } from './auditEntries';

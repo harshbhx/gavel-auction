@@ -3,7 +3,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { check, dynamicImports, initialGraph, staticImports } from '../../scripts/check-size.mjs';
+import {
+  GRID_LIMIT_BYTES,
+  check,
+  dynamicImports,
+  initialGraph,
+  staticImports,
+} from '../../scripts/check-size.mjs';
 
 const CSP = "default-src 'self'; script-src 'self'; connect-src 'self' https://api.example.test";
 const HTML = `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="${CSP}"><script type="module" src="/assets/index-aaa.js"></script></head><body></body></html>`;
@@ -96,5 +102,30 @@ describe('check-size dynamic imports (initial route includes the App chunk)', ()
       'config-ccc.js': '',
     });
     expect(sizeProblems(marker).some((p) => p.includes('AG Grid'))).toBe(true);
+  });
+});
+
+describe('check-size AG Grid budget', () => {
+  it('passes a small named ag-grid chunk and reports its size', () => {
+    const dir = dist({
+      'index-aaa.js': 'export const a = 1;',
+      'ag-grid-eee.js': 'export const g = 1;',
+    });
+    const result = check(dir);
+    expect(result.gridFiles).toBe(1);
+    expect(result.gridBytes).toBeGreaterThan(0);
+    expect(sizeProblems(dir)).toEqual([]);
+  });
+
+  it('fails when the AG Grid chunk is over its own budget', () => {
+    // Random-looking text does not compress, so this goes over the gzip budget.
+    let seed = 7;
+    let noise = '';
+    while (noise.length < GRID_LIMIT_BYTES * 3) {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      noise += seed.toString(36);
+    }
+    const dir = dist({ 'index-aaa.js': 'export const a = 1;', 'ag-grid-eee.js': noise });
+    expect(sizeProblems(dir).some((p) => p.includes('AG Grid chunk'))).toBe(true);
   });
 });

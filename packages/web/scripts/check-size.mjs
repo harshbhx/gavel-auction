@@ -8,17 +8,22 @@
  * in the App chunk itself are the lazy chunks and are not followed. The gate sums the gzip size of
  * that JS and fails when it is over 180 KB. It also fails when the PayPal SDK loader, the QR
  * encoder, the replay player or AG Grid is part of that initial graph: those must be lazy chunks.
+ * The lazy AG Grid chunk (assets/ag-grid-*.js, named by the Vite config) has its own budget: its gzip
+ * size must stay under 320 KB, so a module added by accident shows up here.
  * It also checks that index.html ships a Content-Security-Policy with
  * no inline script allowance (R-WEB-004).
  *
  * Usage: node packages/web/scripts/check-size.mjs [distDir]
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
 const LIMIT_BYTES = 180 * 1000;
+
+/** Budget for the lazy AG Grid chunk, gzip. Only the modules the grids use are registered. */
+export const GRID_LIMIT_BYTES = 320 * 1000;
 
 /** What must stay out of the initial route: a chunk file name pattern or a string only it holds. */
 const LAZY = [
@@ -146,10 +151,24 @@ export function initialGraph(dist, html) {
   return files;
 }
 
+/** The AG Grid chunk files in dist/assets, with their gzip size. */
+export function gridChunks(dist) {
+  const dir = path.join(dist, 'assets');
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((name) => /^ag-grid-.*\.js$/.test(name))
+    .map((name) => ({ name, bytes: gzipSync(readFileSync(path.join(dir, name))).length }));
+}
+
 export function check(dist) {
   const indexPath = path.join(dist, 'index.html');
   if (!existsSync(indexPath))
-    return { problems: [`no build output at ${dist}; run the build first`], bytes: 0 };
+    return {
+      problems: [`no build output at ${dist}; run the build first`],
+      bytes: 0,
+      gridBytes: 0,
+      gridFiles: 0,
+    };
   const html = readFileSync(indexPath, 'utf8');
   const problems = cspProblems(html);
   const files = initialGraph(dist, html);
@@ -159,23 +178,43 @@ export function check(dist) {
     for (const lazy of LAZY) {
       const byName = lazy.file.test(path.posix.basename(rel));
       const byText = lazy.text !== null && code.includes(lazy.text);
-      if (byName || byText)
-        problems.push(`${lazy.name} is in the initial route (${rel}); it must be a lazy chunk`);
+      if (byName || byText) {
+        // Name the chunks that mention this one, so the import that pulls it in is easy to find.
+        const base = path.posix.basename(rel);
+        const via = [...files]
+          .filter(([other, otherCode]) => other !== rel && otherCode.includes(base))
+          .map(([other]) => other);
+        const note = via.length === 0 ? '' : `, referenced by ${via.join(', ')}`;
+        problems.push(
+          `${lazy.name} is in the initial route (${rel}${note}); it must be a lazy chunk`,
+        );
+      }
     }
   }
   if (bytes > LIMIT_BYTES)
     problems.push(`initial route is ${bytes} bytes gzip, over the ${LIMIT_BYTES} limit`);
-  return { problems, bytes };
+  const chunks = gridChunks(dist);
+  const gridBytes = chunks.reduce((sum, c) => sum + c.bytes, 0);
+  if (gridBytes > GRID_LIMIT_BYTES)
+    problems.push(`AG Grid chunk is ${gridBytes} bytes gzip, over the ${GRID_LIMIT_BYTES} budget`);
+  return { problems, bytes, gridBytes, gridFiles: chunks.length };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const dist = path.resolve(
     process.argv[2] ?? path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist'),
   );
-  const { problems, bytes } = check(dist);
+  const { problems, bytes, gridBytes, gridFiles } = check(dist);
+  // A real build always has the named chunk; without it the budget above would pass by default.
+  if (gridFiles === 0 && existsSync(path.join(dist, 'index.html')))
+    problems.push(
+      'no ag-grid-*.js chunk in the build: the Vite config must name the AG Grid chunk',
+    );
   if (problems.length > 0) {
     for (const p of problems) console.error(`check:size ${p}`);
     process.exit(1);
   }
-  console.log(`check:size ok (initial route ${bytes} bytes gzip, limit ${LIMIT_BYTES})`);
+  console.log(
+    `check:size ok (initial route ${bytes} bytes gzip, limit ${LIMIT_BYTES}; AG Grid chunk ${gridBytes} bytes gzip, budget ${GRID_LIMIT_BYTES})`,
+  );
 }
