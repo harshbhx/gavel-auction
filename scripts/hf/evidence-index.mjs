@@ -34,7 +34,7 @@ export function evidenceGroup(path) {
 export function parseClaims(text, files) {
   const claims = new Map();
   const re =
-    /([A-Za-z0-9_.\/-]+\.(?:jsonl?|md|txt|csv|log))`?(?: \(sha256:? | with sha256 )([0-9a-f]{64})/g;
+    /([A-Za-z0-9_./-]+\.(?:jsonl?|md|txt|csv|log))`?(?: \(sha256:? | with sha256 )([0-9a-f]{64})/g;
   for (const m of text.matchAll(re)) {
     const token = m[1];
     const hits = token.includes('/')

@@ -38,7 +38,6 @@ import {
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const FIXTURES = join(ROOT, 'packages', 'voice', 'fixtures');
-const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_URL = 'https://github.com/harshbhx/gavel-auction';
 
 export const DATASETS = [
