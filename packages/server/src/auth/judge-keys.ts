@@ -19,7 +19,10 @@ export interface JudgeKeyEntry {
   /** sha256 of the secret part, 64 lowercase hex characters. */
   hash: string;
   label: string;
-  /** Epoch ms; the key is refused from this moment on. */
+  /**
+   * Epoch ms; the key is refused from this moment on. `Number.POSITIVE_INFINITY` means it never
+   * expires (a config entry with `"expiresAt": null`, and the legacy shared key).
+   */
   expiresAt: number;
   /** Judge rooms this key may keep alive at once. */
   maxRooms: number;
@@ -85,15 +88,21 @@ export function parseJudgeKeys(raw: string | undefined): {
     if (typeof o.hash !== 'string' || !HEX64.test(o.hash)) {
       return void problems.push(`${at}: hash must be 64 lowercase hex characters (sha256)`);
     }
+    // `"expiresAt": null` is the one way to say "never expires" (a shared judging key, FEAT-63);
+    // a missing field is still a problem. Dated entries keep the cap below.
+    const never = o.expiresAt === null;
     // ISO-8601 with a Z or offset only: Date.parse alone also takes local-time text like "Nov 5".
-    const expiresAt =
-      typeof o.expiresAt === 'string' && ISO_RE.test(o.expiresAt)
+    const expiresAt = never
+      ? Number.POSITIVE_INFINITY
+      : typeof o.expiresAt === 'string' && ISO_RE.test(o.expiresAt)
         ? Date.parse(o.expiresAt)
         : Number.NaN;
-    if (Number.isNaN(expiresAt)) return void problems.push(`${at}: expiresAt must be an ISO date`);
+    if (Number.isNaN(expiresAt)) {
+      return void problems.push(`${at}: expiresAt must be an ISO date, or null for no expiry`);
+    }
     // A date in the past is allowed: the key is simply refused as expired, and a restart after
     // the judging window must not stop the host from booting.
-    if (expiresAt > latest) {
+    if (!never && expiresAt > latest) {
       return void problems.push(`${at}: expiresAt is after ${JUDGE_KEY_LATEST_EXPIRY}`);
     }
     const maxRooms = o.maxRooms ?? 2;

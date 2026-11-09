@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { settlePage } from './settle';
 
 /**
  * Phone baselines (issue 2314): the key routes at 360x640 and at 844x390 landscape, the sizes the
@@ -23,13 +24,6 @@ const VIEWPORTS = [
 
 const FROZEN_AT = new Date('2026-01-15T12:00:00.000Z');
 
-async function settleFonts(page: Page): Promise<void> {
-  await page.evaluate(async () => {
-    await Promise.all([...document.fonts].map((face) => face.load().catch(() => undefined)));
-    await document.fonts.ready;
-  });
-}
-
 for (const screen of SCREENS) {
   for (const viewport of VIEWPORTS) {
     test(`${screen.name} on a phone at ${viewport.name}`, async ({ page }) => {
@@ -40,7 +34,7 @@ for (const screen of SCREENS) {
       });
       await page.goto(screen.path);
       await page.locator(screen.ready).first().waitFor();
-      await settleFonts(page);
+      await settlePage(page);
       const overflow = await page.evaluate(() => {
         const root = document.scrollingElement;
         return root === null ? 0 : root.scrollWidth - window.innerWidth;

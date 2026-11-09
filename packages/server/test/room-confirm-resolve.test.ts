@@ -50,7 +50,7 @@ describe('confirm response, rejection and expiry (T-RT-037)', () => {
     expect(c1.transport.messages('bid_rejected')[0]).toMatchObject({ mid, reason: 'unconfirmed' });
   });
 
-  it('no answer for 15 s audits expired and creates no bid', async () => {
+  it('no answer for 20 s audits expired and creates no bid', async () => {
     const { t, resolved } = await held();
     t.clock.set((t.clock.now() + CONFIRM_TTL_MS) as EpochMs);
     await t.connect('screen');
