@@ -19,7 +19,7 @@
     "test": "vitest run --project 'unit:*'",
     "test:pkg": "vitest run --passWithNoTests --project",
     "test:coverage": "vitest run --coverage --project 'unit:*' && node scripts/check-coverage.mjs",
-    "test:property": "vitest run --project 'property:*'",
+    "test:property": "vitest run --project 'property:*' .property.test.",
     "test:scenarios": "vitest run --project 'unit:e2e'",
     "test:e2e": "echo 'test:e2e: not implemented' && exit 1",
     "test:e2e:sandbox": "echo 'test:e2e:sandbox: not implemented' && exit 1",

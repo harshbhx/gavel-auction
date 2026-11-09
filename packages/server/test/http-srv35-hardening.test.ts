@@ -468,17 +468,40 @@ describe('SRV-35 H: the public code lookup is throttled', () => {
     expect((await lookup(s, room.joinCode, src)).status).toBe(200);
   });
 
-  it('rate limits lookups per address and recovers after a minute', async () => {
+  it('does not count lookups of an existing room toward the minute budget', async () => {
+    const s = setup({ join: { attemptsPerIpPerMin: 2, wrongCodesBeforeLockout: 100 } });
+    const room = await createRoom(s);
+    const src = '5.4.3.1';
+    for (let i = 0; i < 60; i++) expect((await lookup(s, room.joinCode, src)).status).toBe(200);
+    // Hits left the budget alone: misses still get the full allowance of six.
+    for (let i = 0; i < 6; i++) expect((await lookup(s, `MISS${i}X`, src)).status).toBe(404);
+  });
+
+  it('rate limits missed lookups per address and recovers after a minute', async () => {
     const s = setup({ join: { attemptsPerIpPerMin: 2, wrongCodesBeforeLockout: 100 } });
     const room = await createRoom(s);
     const src = '5.4.3.2';
-    // Lookups get three times the join allowance.
-    for (let i = 0; i < 6; i++) expect((await lookup(s, room.joinCode, src)).status).toBe(200);
+    // Lookups get three times the join allowance, and only misses use it up.
+    for (let i = 0; i < 6; i++) expect((await lookup(s, `ZZZZZ${i}`, src)).status).toBe(404);
     const limited = await lookup(s, room.joinCode, src);
     expect(limited.status).toBe(429);
     expect(await bodyOf(limited)).toMatchObject({ error: 'rate_limited' });
+    expect(limited.headers.get('retry-after')).toBe('60');
     s.clock.set(s.clock.now() + 60_001);
     expect((await lookup(s, room.joinCode, src)).status).toBe(200);
+  });
+
+  it('hits do not stop wrong codes from locking the address out', async () => {
+    const s = setup({ join: { wrongCodesBeforeLockout: 2, attemptsPerIpPerMin: 100 } });
+    const room = await createRoom(s);
+    const src = '5.4.3.3';
+    for (let i = 0; i < 10; i++) expect((await lookup(s, room.joinCode, src)).status).toBe(200);
+    expect((await lookup(s, 'AAAAAA', src)).status).toBe(404);
+    s.clock.set(s.clock.now() + 6_000);
+    expect((await lookup(s, 'BBBBBB', src)).status).toBe(404);
+    expect(await bodyOf(await lookup(s, room.joinCode, src))).toMatchObject({
+      error: 'code_locked',
+    });
   });
 
   it('does not throttle a lookup by full auction id', async () => {

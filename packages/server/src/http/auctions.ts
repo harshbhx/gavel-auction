@@ -262,6 +262,8 @@ export function mountAuctions(app: HttpApp): void {
       }
       try {
         auctionId = await auctionIdForCode(c.deps, raw);
+        // A real room does not use up the per-minute budget; only misses do (see CodeGuard.release).
+        guard.release(tag, now, 'lookup');
       } catch (e) {
         if (e instanceof GavelError && e.code === 'not_found' && looksLikeJoinCode(raw)) {
           guard.noteWrong(tag, now, normalizeJoinCode(raw), 'lookup');
