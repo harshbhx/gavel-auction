@@ -1,0 +1,10 @@
+SEC-14 source-address probe: the `src` field of the audit line `judge_room.created`, quoted from the Render logs of service gavel-host
+(only the `src` value and the time; no other field of the log line). Read from the Render logs on 9 Nov 2026 by the project; the logs are not in the repository.
+
+Before, TRUSTED_PROXY_HOPS=1 (probe run 42564773281, 9 Nov 2026 05:00 UTC)
+  runner a expected tag 20b205d26b38   Render src=3f86d59cc425   no match
+  runner b expected tag 39c852f8947b   Render src=5a46afc6ca13   no match
+
+After, TRUSTED_PROXY_HOPS=2 (probe run 42578306983, 9 Nov 2026 07:17 UTC)
+  runner a expected tag 8692d2ad411a   Render src=8692d2ad411a   07:17:33Z   exact match
+  runner b expected tag 8a4d2cf432c0   Render src=8a4d2cf432c0   07:18:08Z   exact match
