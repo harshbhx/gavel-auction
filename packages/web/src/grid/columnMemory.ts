@@ -100,7 +100,8 @@ export function gridStateFor(key: string | null): GridState | undefined {
   };
 }
 
-const armed = new WeakSet<GridApi>();
+/** Layout keys whose grid has been restored; saving starts for a key once it is in here. */
+const armed = new Set<string>();
 
 /**
  * Grid event props that keep the saved layout up to date. Spread them onto the grid; `key` names
@@ -116,7 +117,7 @@ export function columnMemoryProps(key: string | null): {
   const save = (e: { api: GridApi }): void => {
     // Events fired while the grid is being built (its default sort, first layout) must not overwrite
     // the saved layout before it is put back; saving starts once restoreSort has run.
-    if (key !== null && armed.has(e.api)) saveColumns(key, e.api);
+    if (key !== null && armed.has(key)) saveColumns(key, e.api);
   };
   return {
     onSortChanged: save,
@@ -132,19 +133,22 @@ export function columnMemoryProps(key: string | null): {
  * Puts the saved sort back when the grid is ready. `initialState` carries the whole layout; this
  * covers the sort in case the grid applied a column's own default sort after reading it.
  */
-export function restoreSort(api: GridApi, key: string | null, settled = false): void {
-  // Later changes are the visitor's own; start saving them once the grid has settled (right after its
-  // first data render, or after a short wait when that event does not come).
-  window.setTimeout(
-    () => {
-      armed.add(api);
-    },
-    settled ? 0 : 250,
-  );
+export function restoreSort(api: GridApi, key: string | null): void {
+  // Events fired while the grid was being built are over once it is ready; from here on a change is
+  // the visitor's own, so saving starts (for this layout key) as soon as the saved sort is back.
+  const arm = (): void => {
+    if (key !== null) armed.add(key);
+  };
   const saved = key === null ? null : loadColumns(key);
-  if (saved === null) return;
+  if (saved === null) {
+    arm();
+    return;
+  }
   const known = saved.filter((c) => api.getColumn(c.colId) !== null);
-  if (!known.some((c) => c.sort === 'asc' || c.sort === 'desc')) return;
+  if (!known.some((c) => c.sort === 'asc' || c.sort === 'desc')) {
+    arm();
+    return;
+  }
   api.applyColumnState({
     state: known.map((c) => ({
       colId: c.colId,
@@ -153,4 +157,5 @@ export function restoreSort(api: GridApi, key: string | null, settled = false): 
     })),
     defaultState: { sort: null },
   });
+  arm();
 }
