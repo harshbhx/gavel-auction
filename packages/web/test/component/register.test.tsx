@@ -62,13 +62,10 @@ describe('registration validation (T-WEB-031)', () => {
     setup();
     fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
     fireEvent.click(continueButton());
-    fireEvent.click(screen.getByLabelText(t('reg.custom')));
     const field = screen.getByRole('textbox', { name: t('reg.custom') });
     fireEvent.change(field, { target: { value: '1001' } });
     fireEvent.blur(field);
-    expect(screen.getByRole('alert').textContent).toContain(
-      t('reg.customRange', { min: '$100', max: '$1,000' }),
-    );
+    expect(screen.getByRole('alert').textContent).toContain(t('reg.overCap', { max: '$1,000' }));
     expect(screen.queryByTestId('held-block')).toBeNull();
   });
 });
