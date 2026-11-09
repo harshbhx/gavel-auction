@@ -18,7 +18,7 @@ import {
   selectStream,
 } from '../../store/selectors';
 import { roomStore, useRoom, type RoomStore } from '../../store/roomStore';
-import { formatUsd } from '../../util/money';
+import { formatUsd, formatUsdCompact } from '../../util/money';
 import { HoldCard, PriceRoll, Skeleton, SkeletonGroup } from '../../ui';
 import './bid.css';
 import { CeilingMeter } from './CeilingMeter';
@@ -95,6 +95,7 @@ export function BidScreen({
   const increment = useRoom((s) => s.snapshot?.config.minIncrement ?? 0, store);
   const reserve = useRoom((s) => s.snapshot?.config.reserve ?? 0, store);
   const auctionStatus = useRoom(selectAuctionStatus, store);
+  const loaded = useRoom((s) => s.snapshot !== null, store);
   const connection = useConnection();
   const serverNow = useServerNow(store);
 
@@ -104,6 +105,11 @@ export function BidScreen({
   // Bid controls stay off while the connection is down: the offline banner says why.
   const canBid =
     base !== 'watching' && !bidsLocked(auctionStatus, stopped) && canSend && !connection.offline;
+
+  // The reason the bid controls are missing; paused, closed, stopped and offline have banners.
+  let blockedReason: string | null = null;
+  if (base === 'watching' && loaded) blockedReason = t('bid.watchingOnly');
+  else if (!canSend && !bidsLocked(auctionStatus, stopped)) blockedReason = t('bid.notConnected');
 
   const { vibrate, setVibrate } = useOutbid(base, price?.currentCents ?? 0);
   useAlerts(store);
@@ -190,6 +196,24 @@ export function BidScreen({
         <Button size="bid" onClick={onJoin}>
           {t('join.asBidder')}
         </Button>
+      )}
+
+      {blockedReason !== null && (
+        <p role="status" data-testid="bid-blocked" className="bid__panel">
+          {blockedReason}
+        </p>
+      )}
+
+      {canBid && !unsent && pending && (
+        <p role="status" data-testid="bid-sent">
+          {t('bid.sentWaiting')}
+        </p>
+      )}
+
+      {canBid && !unsent && ceiling !== null && nextMin > ceiling && (
+        <p role="status" data-testid="bid-at-ceiling">
+          {t('bid.atCeiling', { min: formatUsd(nextMin), max: formatUsdCompact(ceiling) })}
+        </p>
       )}
 
       {canBid && !unsent && (

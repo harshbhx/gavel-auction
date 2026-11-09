@@ -103,6 +103,11 @@ export const RoomSnapshotSchema = z
       .object({ goalCents: cents().refine((c) => c > 0, 'goal must be positive') })
       .strict()
       .optional(),
+    /**
+     * The most one bidder may hold as a limit in this room (the server's cap), so the bid
+     * limit picker never offers an amount the server refuses. Absent on older servers.
+     */
+    maxCeilingCents: cents().optional(),
     /** Short human join code of the auction, set by the HTTP snapshot route. */
     joinCode: z.string().min(4).max(12).optional(),
     roster: z

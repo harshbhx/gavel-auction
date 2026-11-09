@@ -114,11 +114,11 @@ describe('judge rooms: scenario on the fake PayPal', () => {
     const { sessionToken } = (await joined.json()) as { sessionToken: string };
     const bidder = { ...json, authorization: `Bearer ${sessionToken}` };
 
-    // An off-grid ceiling is refused; a preset one is held.
+    // A ceiling under the minimum is refused; a preset one is held.
     const odd = await fetch(`${url}/api/holds`, {
       method: 'POST',
       headers: bidder,
-      body: JSON.stringify({ auctionId: room.auctionId, ceilingCents: 12345 }),
+      body: JSON.stringify({ auctionId: room.auctionId, ceilingCents: 99 }),
     });
     expect(odd.status).toBe(400);
     const hold = await fetch(`${url}/api/holds`, {

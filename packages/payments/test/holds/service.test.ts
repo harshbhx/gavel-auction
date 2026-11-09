@@ -193,8 +193,8 @@ describe('T-PAY-020 create, approve, complete', () => {
     }
   });
 
-  it('refuses a ceiling outside the cap or the presets before any PayPal call', async () => {
-    for (const c of [0, -5, 7000, 30000, 150.5]) {
+  it('refuses a ceiling outside the minimum and the cap before any PayPal call', async () => {
+    for (const c of [0, -5, 99, 30000, 150.5]) {
       expect(await codeOf(create(rig, 'b1', c))).toBe('ceiling_out_of_range');
     }
     expect(rig.counts.createOrder).toBe(0);

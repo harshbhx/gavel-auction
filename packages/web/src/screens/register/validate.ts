@@ -23,3 +23,25 @@ export function customCeilingCents(raw: string, minCents: number, maxCents: numb
   const cents = parseWholeDollars(raw);
   return cents !== null && cents >= minCents && cents <= maxCents ? cents : null;
 }
+
+const CENT_DOLLAR = 100;
+/** Used only when a server sends no cap and the room has no presets (older servers). */
+const FALLBACK_MAX_CENTS = 100000;
+
+/**
+ * The limit a bidder may type, in whole-dollar cents: from the reserve (a limit under it could
+ * never bid) up to the cap the server sends in the room snapshot (`maxCeilingCents`). An older
+ * server sends no cap; the largest preset then stands in for it, so the field never offers more
+ * than the room is known to take.
+ */
+export function ceilingRange(
+  reserveCents: number | undefined,
+  capCents: number | undefined,
+  presetsCents: readonly number[] | undefined,
+): { minCents: number; maxCents: number } {
+  const known = presetsCents !== undefined && presetsCents.length > 0;
+  const cap = capCents ?? (known ? Math.max(...presetsCents) : FALLBACK_MAX_CENTS);
+  const maxCents = Math.max(CENT_DOLLAR, Math.floor(cap / CENT_DOLLAR) * CENT_DOLLAR);
+  const floor = Math.ceil((reserveCents ?? 0) / CENT_DOLLAR) * CENT_DOLLAR;
+  return { minCents: Math.min(maxCents, Math.max(CENT_DOLLAR, floor)), maxCents };
+}

@@ -568,6 +568,7 @@ export const en = {
   'reg.custom': 'Custom amount',
   'reg.sessionNotSaved':
     'Your browser blocked storage. Keep this tab open: reloading will end this session.',
+  'reg.customHint': 'Type your own limit in whole dollars, from {min} to {max}.',
   'reg.customRange': 'Enter a whole dollar amount from {min} to {max}.',
   'reg.heldNotCharged': 'Held, not charged.',
   'reg.heldExplain':
@@ -646,6 +647,13 @@ export const en = {
   'bid.custom': 'Your amount',
   'bid.place': 'Place bid',
   'bid.aboveCeiling': 'Above your ceiling',
+  'bid.enterAmount': 'Enter your bid in dollars, at least {min}.',
+  'bid.notAnAmount': 'Use digits for a dollar amount, for example 55.',
+  'bid.watchingOnly': 'You are watching only. Join as a bidder to place a bid.',
+  'bid.notConnected': 'Connecting to the room. You can bid in a moment.',
+  'bid.atCeiling':
+    'The next bid of {min} is above your ceiling of {max}. A ceiling is set when you register and cannot be raised here.',
+  'bid.sentWaiting': 'Your bid was sent. Waiting for the room to answer.',
   'bid.ceilingMeter': 'Ceiling {used} of {max}',
   'bid.rej.over_ceiling': 'That is above your ceiling of {max}.',
   'bid.rej.below_increment': 'The next bid must be at least {min}.',
@@ -666,6 +674,7 @@ export const en = {
   'bid.resendAmount': 'Resend {amount}',
   'bid.resendCurrent': 'Price moved. Bid {amount} instead',
   'bid.paused': 'Paused by the auctioneer',
+  'bid.notOpenYet': 'Bidding has not opened yet.',
   'bid.closedBanner': 'Lot closed',
   'bid.stoppedBanner': 'Auction stopped',
   'bid.announce.price': 'Price is now {amount}. Paddle {n} is leading.',

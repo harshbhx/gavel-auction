@@ -6,6 +6,7 @@ import {
   GavelError,
   MAX_CENTS,
   MAX_NAME_CHARS,
+  MIN_CEILING_CENTS,
   scrubMessage,
   type RoomSnapshot,
   type AuctionConfig,
@@ -188,7 +189,9 @@ export function judgeRoomConfig(
   nowMs: number,
   opts: Pick<JudgeRoomsOptions, 'lotWindowMs' | 'maxCeilingCents'>,
 ): AuctionConfig {
-  const presets = [...new Set([2_000, 5_000].map((c) => Math.min(c, opts.maxCeilingCents)))];
+  const presets = [
+    ...new Set([2_000, 5_000, 10_000, 25_000].map((c) => Math.min(c, opts.maxCeilingCents))),
+  ];
   return {
     mode: 'english',
     currency: 'USD',
@@ -707,10 +710,15 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     if (marker.expired === true || marker.expiresAt <= deps.clock.now()) {
       return refuse(deps, 410, 'judge_room_expired', 'sim_hold_expired', sourceTag(auctionId));
     }
-    const room = await roomFor(deps, auctionId);
-    const { snapshot } = await snapshotFor(deps, room, 'screen', 'judge-sim-hold');
-    if (!snapshot.config.ceilingPresets.includes(body.ceilingCents as Cents)) {
-      throw new GavelError('bad_message', 'ceiling is not one of the offered amounts');
+    await roomFor(deps, auctionId);
+    // Any whole-dollar limit from the minimum to the room cap is fine; the presets are only
+    // quick picks (FIX-78).
+    if (
+      !Number.isSafeInteger(body.ceilingCents) ||
+      body.ceilingCents < MIN_CEILING_CENTS ||
+      body.ceilingCents > opts.maxCeilingCents
+    ) {
+      throw new GavelError('bad_message', 'ceiling is outside the allowed range');
     }
     if (!(await sim.acceptsHolds(auctionId))) {
       throw new GavelError('closed', 'the auction no longer takes holds');
