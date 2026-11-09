@@ -1,6 +1,6 @@
 name: lighthouse-live
 # Lab performance run of the hosted landing page with Lighthouse 13.6.0 (the version PageSpeed
-# Insights runs), desktop and mobile. Manual, and on a change to this file or its summary script.
+# Insights runs), desktop and mobile. Manual only (workflow_dispatch).
 # Informational: not part of the roll-up in ci.yml. Uploads the JSON and HTML reports.
 on:
   workflow_dispatch:
@@ -10,10 +10,6 @@ on:
         required: false
         default: 'https://gavel.dualmindlab.tech/'
         type: string
-  pull_request:
-    paths:
-      - '.github/workflows/lighthouse-live.yml'
-      - 'scripts/perf/lighthouse-summary.mjs'
 
 permissions:
   contents: read
