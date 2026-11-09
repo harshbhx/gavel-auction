@@ -41,6 +41,9 @@ export function receiptJson(
   const own = view.holds.find((h) => h.paddle === paddle);
   return JSON.stringify(
     {
+      // The exported file leaves the page, so it carries the sandbox marker itself.
+      sandbox: true,
+      note: t('receipt.sandboxNote'),
       lotId: view.lotId,
       phase: view.phase,
       ...(view.hammerPriceCents === undefined ? {} : { hammerPriceCents: view.hammerPriceCents }),
@@ -49,6 +52,15 @@ export function receiptJson(
     },
     null,
     2,
+  );
+}
+
+/** Inside the receipt body (not the page banner) so print, PDF and shared copies keep it. */
+function SandboxLine() {
+  return (
+    <p className="gv-receipt__sandbox" role="note" data-testid="receipt-sandbox">
+      {t('receipt.sandboxLine')}
+    </p>
   );
 }
 
@@ -109,6 +121,7 @@ export function Receipt(props: ReceiptProps) {
       <article className="gv-receipt" aria-labelledby="gv-receipt-title">
         <Logo variant="wordmark" height={20} decorative />
         <h2 id="gv-receipt-title">{t('receipt.title')}</h2>
+        <SandboxLine />
         <section className="gv-receipt__body" data-outcome="nohold">
           <dl className="gv-receipt__rows">
             <dt>{t('receipt.item')}</dt>
@@ -127,6 +140,7 @@ export function Receipt(props: ReceiptProps) {
     <article className="gv-receipt" aria-labelledby="gv-receipt-title">
       <Logo variant="wordmark" height={20} decorative />
       <h2 id="gv-receipt-title">{t('receipt.title')}</h2>
+      <SandboxLine />
       <FakePaymentsLabel />
       <Body view={view} hold={hold} props={props} />
       <div className="gv-receipt__actions">

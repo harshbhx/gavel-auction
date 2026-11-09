@@ -25,9 +25,9 @@ The smoke script checks, with timeouts: `GET /healthz` is 200, `GET /warmup` is 
 | --- | --- |
 | Render environment | `PUBLIC_URL`, `CORS_ORIGINS`, `TOKEN_SECRET`, `ADMIN_KEY`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID` |
 | GitHub environment `staging` | secret `RENDER_DEPLOY_HOOK_URL`, secret `ADMIN_KEY` (optional), variable `STAGING_URL` |
-| Hosted checks | variables `UPTIME_ENABLED`, `PRODUCTION_URL`, `JUDGE_URL` |
+| Hosted checks | variables `UPTIME_ENABLED`, `PRODUCTION_URL` |
 
-Without them the uptime probe is skipped and the nightly judge smoke fails red with an error naming `JUDGE_URL`.
+Without them the uptime probe is skipped. The nightly judge smoke needs no variable: it targets the public domains unless a run is started with other `web_url` and `api_url` inputs.
 
 ## Rate limits behind one address
 

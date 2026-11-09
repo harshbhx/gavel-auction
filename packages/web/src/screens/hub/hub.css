@@ -517,3 +517,11 @@
 .gv-hub__joinlabel {
   font-weight: 600;
 }
+
+.gv-hub__ended {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-danger);
+  border-radius: var(--radius-md);
+  font-weight: 700;
+}

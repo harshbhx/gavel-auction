@@ -42,9 +42,9 @@ describe('routes mount the state screens', () => {
 });
 
 describe('return route', () => {
-  it('shows the expired message when this device has no registration for the room', () => {
+  it('shows the no-approval message when this device has no registration for the room', () => {
     render(<App initialPath="/r/nowhere/return" api={API} />);
-    expect(screen.getByText(t('reg.expired'))).toBeTruthy();
+    expect(screen.getByText(t('reg.returnLost'))).toBeTruthy();
   });
 });
 

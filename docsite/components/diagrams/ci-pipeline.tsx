@@ -137,8 +137,8 @@ const NODES: N[] = [
     l3: 'traces on failure, 7 days',
     detail: (
       <>
-        <b>judge-smoke.yml.</b> Cron <code>45 21 * * *</code>. Runs the judge walkthrough spec in Chromium against the hosted web app named by the variable <code>JUDGE_URL</code>; the
-        spec must finish within 300 seconds. With <code>JUDGE_URL</code> empty the run fails, so a night that tested nothing never looks like a pass.
+        <b>judge-smoke.yml.</b> Cron <code>45 21 * * *</code>. Runs the live red-team walk (<code>qa/live-redteam/run.mjs</code>) in smoke mode against the public domains (inputs <code>web_url</code> and <code>api_url</code>); the
+        job fails when any step fails, so a green run means the journey worked.
       </>
     ),
   },

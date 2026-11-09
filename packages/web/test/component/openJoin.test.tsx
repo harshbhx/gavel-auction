@@ -92,7 +92,7 @@ describe('register with the room code and no invite', () => {
     expect(await screen.findByLabelText(t('reg.name'))).toBeTruthy();
     const join = calls.find((c) => c.url.endsWith('/api/judge/join'));
     expect(JSON.parse(join?.body ?? '{}').code).toBe('EMY48N');
-    expect(screen.queryByText(t('reg.expired'))).toBeNull();
+    expect(screen.queryByText(t('reg.noInviteTitle'))).toBeNull();
   });
 
   it('prefers the code in the link and skips the summary', async () => {
@@ -110,7 +110,9 @@ describe('register with the room code and no invite', () => {
   it('asks for an invite when the room is not a judge room', async () => {
     stubApi(summary);
     render(<App initialPath={`/r/${ROOM}/register`} api={API} />);
-    expect(await screen.findByText(t('reg.expired'))).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: t('reg.noInviteTitle') })).toBeTruthy();
+    expect(screen.queryByText(t('reg.expired'))).toBeNull();
+    expect(screen.queryByText(t('reg.step1'))).toBeNull();
     expect(screen.getByText(t('tokenHelp.registerLead'))).toBeTruthy();
   });
 

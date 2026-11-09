@@ -271,7 +271,7 @@ function LiveRoute({
       ? undefined
       : s.snapshot?.roster.find((r) => r.bidderId === bidderId)?.paddle,
   );
-  const stopped = useRoom((s) => s.snapshot?.stopped ?? false);
+  const stopped = useRoom(selectors.stopped);
   const joinCode = useRoom((s) => s.snapshot?.joinCode ?? null);
   const respond = (confirmId: string, accept: boolean): void =>
     transport?.send({ v: PROTOCOL_VERSION, t: 'confirm_response', confirmId, accept });
@@ -762,35 +762,42 @@ function RegisterRoute({
   }, [api, roomId, who, invite]);
 
   if (who === null) {
-    if (
-      invite === null &&
-      (openState === null || openState === 'full' || openState === 'expired')
-    ) {
+    if (invite === null) {
       if (openState === null) {
         return (
           <main data-route="register" aria-busy="true">
-            <h1 tabIndex={-1}>{t('reg.step1')}</h1>
+            <h1 tabIndex={-1}>{t('reg.checkingTitle')}</h1>
             <p role="status">{t('reg.confirming')}</p>
           </main>
         );
       }
+      if (openState === 'full' || openState === 'expired') {
+        return (
+          <main data-route="register">
+            <h1 tabIndex={-1}>{t(openState === 'full' ? 'reg.fullTitle' : 'reg.closedTitle')}</h1>
+            <p role="alert">{t(openState === 'full' ? 'join.full' : 'join.ended')}</p>
+            <p>{t(openState === 'full' ? 'join.fullHelp' : 'join.endedHelp')}</p>
+            <a className="ui-link" href={`/r/${encodeURIComponent(roomId)}/bid`}>
+              {t('join.watch')}
+            </a>
+          </main>
+        );
+      }
+      // No invite and the room does not let visitors in with its code: nothing was started, so
+      // nothing expired.
       return (
         <main data-route="register">
-          <h1 tabIndex={-1}>{t('reg.step1')}</h1>
-          <p role="alert">{t(openState === 'full' ? 'join.full' : 'join.ended')}</p>
-          <p>{t(openState === 'full' ? 'join.fullHelp' : 'join.endedHelp')}</p>
-          <a className="ui-link" href={`/r/${encodeURIComponent(roomId)}/bid`}>
-            {t('join.watch')}
-          </a>
+          <h1 tabIndex={-1}>{t('reg.noInviteTitle')}</h1>
+          <TokenHelp roomId={roomId} kind="register" />
         </main>
       );
     }
     return (
       <main data-route="register">
-        <h1 tabIndex={-1}>{t('reg.step1')}</h1>
-        {failed || invite === null ? (
+        <h1 tabIndex={-1}>{failed ? t('reg.inviteFailedTitle') : t('reg.step1')}</h1>
+        {failed ? (
           <>
-            <p role="alert">{t('reg.expired')}</p>
+            <p role="alert">{t('reg.inviteFailed')}</p>
             <TokenHelp roomId={roomId} kind="register" />
           </>
         ) : (
@@ -820,7 +827,7 @@ function RegisterRoute({
   if (snapshot !== null && registrationClosed) {
     return (
       <main data-route="register">
-        <h1 tabIndex={-1}>{t('reg.step1')}</h1>
+        <h1 tabIndex={-1}>{t('reg.closedTitle')}</h1>
         <Approve
           state="idle"
           result={null}
@@ -949,7 +956,7 @@ function ReturnRoute({ roomId, api }: { roomId: string; api: Api }) {
   if (stored === null || stored.bidderId === undefined) {
     return (
       <main data-route="return">
-        <p role="alert">{t('reg.expired')}</p>
+        <p role="alert">{t('reg.returnLost')}</p>
       </main>
     );
   }

@@ -23,6 +23,8 @@ export interface PriceHeaderProps {
   tickMs?: number;
   /** Set while the clock is frozen: shown as is, and the countdown stops. */
   frozenMs?: number | null;
+  /** The auction was stopped: the clock stops and says so. */
+  stopped?: boolean;
   /** The lot is closed: the clock stops and says so. */
   closed?: boolean;
 }
@@ -42,17 +44,18 @@ export function PriceHeader({
   nextMinCents,
   tickMs = 250,
   frozenMs = null,
+  stopped = false,
   closed = false,
 }: PriceHeaderProps) {
   const [ticking, setRemaining] = useState(() => endTs - now());
   const remaining = frozenMs ?? ticking;
 
   useEffect(() => {
-    if (frozenMs !== null) return undefined;
+    if (frozenMs !== null || stopped) return undefined;
     setRemaining(endTs - now());
     const id = setInterval(() => setRemaining(endTs - now()), tickMs);
     return () => clearInterval(id);
-  }, [endTs, now, tickMs, frozenMs]);
+  }, [endTs, now, tickMs, frozenMs, stopped]);
 
   return (
     <header className="gv-console-board" aria-label={t('bid.price')}>
@@ -80,7 +83,13 @@ export function PriceHeader({
         data-field="countdown"
       >
         <Icon name="clock" />
-        <span>{closed ? t('console.clockClosed') : formatCountdown(remaining)}</span>
+        <span>
+          {stopped
+            ? t('console.clockStopped')
+            : closed
+              ? t('console.clockClosed')
+              : formatCountdown(remaining)}
+        </span>
       </p>
       <p className="gv-console-board__stat" style={{ ...NUMERIC, margin: 0 }} data-field="next">
         {t('bid.quick', { amount: formatUsd(nextMinCents) })}

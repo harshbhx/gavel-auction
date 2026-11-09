@@ -79,6 +79,21 @@ button.ui-link {
   color: var(--color-on-charged);
 }
 
+.ui-hold__btn[data-tone='danger'] {
+  background: var(--color-danger);
+  color: var(--color-on-danger);
+}
+
+.ui-hold__btn[data-tone='danger'] .ui-hold__track,
+.ui-hold__btn[data-tone='danger'] .ui-hold__fill {
+  stroke: var(--color-on-danger);
+}
+
+.ui-hold__btn[data-tone='danger'][data-phase='done'] {
+  background: var(--color-danger);
+  color: var(--color-on-danger);
+}
+
 .ui-hold__btn[aria-disabled='true'] {
   opacity: 0.55;
   cursor: not-allowed;
@@ -110,6 +125,11 @@ button.ui-link {
 .ui-hold__btn[data-phase='done'] .ui-hold__track,
 .ui-hold__btn[data-phase='done'] .ui-hold__fill {
   stroke: var(--color-on-charged);
+}
+
+.ui-hold__btn[data-tone='danger'][data-phase='done'] .ui-hold__track,
+.ui-hold__btn[data-tone='danger'][data-phase='done'] .ui-hold__fill {
+  stroke: var(--color-on-danger);
 }
 
 .ui-hold__text small {

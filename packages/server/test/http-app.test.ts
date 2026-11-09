@@ -2,7 +2,7 @@ import { ERROR_CODES, ERROR_TABLE, GavelError, ManualClock, SeqIds } from '@gave
 import { describe, expect, it } from 'vitest';
 import { createLogger, MemorySink } from '../src/log/logger';
 import { secretSetFromConfig } from '../src/auth/rotation';
-import { createHttpApp, json, MAX_BODY_BYTES, type HttpDeps } from '../src/http/app';
+import { createHttpApp, json, MAX_BODY_BYTES, type HttpDeps, type Mount } from '../src/http/app';
 import { MemoryStore } from '../src/store/memory-store';
 
 const ORIGIN = 'https://app.example.test';
@@ -271,5 +271,52 @@ describe('http request log context (R-RT-133, T-RT-092)', () => {
       path: '/t/err/not_found',
       status: 404,
     });
+  });
+});
+
+describe('one origin allow-list for writes and CORS headers (#2233)', () => {
+  const WEB = 'https://web.example.test';
+  const route: Mount = (a) => {
+    a.post('/t/echo', async (c) => json(200, { body: await c.body() }));
+  };
+  const make = (over: Partial<HttpDeps>) => createHttpApp({ ...baseDeps(), ...over }, [route]);
+  const send = (origin: string, method = 'POST') =>
+    new Request('http://h.test/t/echo', { method, headers: { origin } });
+
+  it('WEB_ORIGIN passes the write check and gets the allow-origin header and preflight', async () => {
+    const app = make({ webOrigin: WEB });
+    const res = await app.fetch(send(WEB));
+    expect(res.status).toBe(200);
+    expect(res.headers.get('access-control-allow-origin')).toBe(WEB);
+    expect((await app.fetch(send(WEB, 'OPTIONS'))).status).toBe(204);
+  });
+
+  it('the API own origin gets the same treatment', async () => {
+    const app = make({});
+    const res = await app.fetch(send('https://gavel.example.test'));
+    expect(res.status).toBe(200);
+    expect(res.headers.get('access-control-allow-origin')).toBe('https://gavel.example.test');
+  });
+
+  it('a configured entry with a trailing slash or upper case still matches the browser Origin', async () => {
+    const app = make({ corsOrigins: ['HTTPS://App.Example.Test/'] });
+    const res = await app.fetch(send(ORIGIN));
+    expect(res.status).toBe(200);
+    expect(res.headers.get('access-control-allow-origin')).toBe(ORIGIN);
+  });
+
+  it('keeps refusing a null or foreign origin with 403 (#2168)', async () => {
+    const app = make({ webOrigin: WEB });
+    for (const origin of ['null', 'https://evil.example.test', `${WEB}.evil.test`]) {
+      const res = await app.fetch(send(origin));
+      expect(res.status, origin).toBe(403);
+      expect(res.headers.get('access-control-allow-origin')).toBeNull();
+    }
+  });
+
+  it('an unusable configured entry allows nothing', async () => {
+    const app = make({ corsOrigins: ['*', 'https://x.example.test/path'] });
+    expect((await app.fetch(send('*'))).status).toBe(403);
+    expect((await app.fetch(send('https://x.example.test'))).status).toBe(403);
   });
 });
