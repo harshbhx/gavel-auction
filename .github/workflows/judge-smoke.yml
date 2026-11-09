@@ -9,11 +9,6 @@ name: judge-smoke
 on:
   schedule:
     - cron: '45 21 * * *'
-  push:
-    branches: ['ci/FIX-54-workflow-hardening']
-    paths:
-      - '.github/workflows/judge-smoke.yml'
-      - 'qa/live-redteam/**'
   workflow_dispatch:
     inputs:
       web_url:

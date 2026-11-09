@@ -15,6 +15,8 @@ concurrency:
 # log and never to a comment; the failed check is the signal.
 jobs:
   branch-and-title:
+    # Dependabot branches and titles follow its own format (see .github/dependabot.yml).
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

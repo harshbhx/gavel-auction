@@ -223,7 +223,7 @@ jobs:
       # The squash subject on main is the PR title, so its length is the one rule worth enforcing
       # there (the key-first rule is checked by pr-meta). The text arrives through the environment.
       - name: Pull request title length
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' }}
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
@@ -234,7 +234,7 @@ jobs:
           fi
           echo "title length $len ok"
   ownership:
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

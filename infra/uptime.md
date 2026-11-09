@@ -22,7 +22,7 @@ A scheduled GitHub workflow runs every 5 minutes at best; GitHub may delay sched
 
 ## Scheduled workflow
 
-`.github/workflows/uptime.yml` probes the three routes every 5 minutes. It stays off until the repository variable `UPTIME_ENABLED` is `true` and `PRODUCTION_URL` is set, because it needs the spend approval (Q2) and the keep-alive decision (D-0008). A failed round is an error annotation; when the previous round also failed, the job opens one `Needs you` issue (or comments on the open one).
+`.github/workflows/uptime.yml` probes the three routes every 5 minutes. It is on by default; set the repository variable `UPTIME_ENABLED` to `false` to turn it off. `PRODUCTION_URL` overrides the default API origin. A failed round is an error annotation; when the previous round also failed, the job opens one `Needs you` issue (or comments on the open one).
 
 ## Open items
 
