@@ -55,6 +55,7 @@ import { TokenHelp } from './screens/hub/TokenHelp';
 import { hubHref, readHubKeys, stripHubFragment } from './screens/hub/hubKeys';
 import './screens/hub/hub.css';
 import { SandboxBanner } from './design/SandboxBanner';
+import { HomeLink } from './nav/HomeLink';
 import { ReceiptView } from './screens/receipt/ReceiptView';
 import { SharedReceiptRoute, mintReceiptLink } from './screens/receipt/SharedReceipt';
 import type { MintReceiptLink } from './screens/receipt/ShareControls';
@@ -1433,6 +1434,7 @@ export function App({ initialPath, gallery = import.meta.env.DEV, liveBase, api 
     <ErrorBoundary>
       {match.route.id !== 'gallery' && <SkipLink />}
       {match.route.id !== 'gallery' && <SandboxBanner />}
+      <HomeLink routeId={match.route.id} />
       {match.route.id !== 'gallery' && match.route.id !== 'bid' && <OfflineBanner />}
       {match.route.id !== 'gallery' && <BusyBanner />}
       {match.route.id !== 'gallery' && <Announcer />}
