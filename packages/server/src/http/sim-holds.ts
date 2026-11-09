@@ -1,5 +1,10 @@
-import type { HoldStore, HoldTruth, PaymentsGateway } from '@gavel/payments';
-import type { AuctionId, BidderId, Cents } from '@gavel/shared';
+import {
+  sharedHoldQueue,
+  type HoldStore,
+  type HoldTruth,
+  type PaymentsGateway,
+} from '@gavel/payments';
+import { GavelError, type AuctionId, type BidderId, type Cents } from '@gavel/shared';
 
 /**
  * Simulated holds for judge rooms: a hold that is written already approved, with no PayPal call,
@@ -22,24 +27,42 @@ function simAmount(authId: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** Writes a HELD hold with a simulated authorization. Returns the hold id. */
+/**
+ * Writes a HELD hold with a simulated authorization. Returns the hold id. Like a real hold it is
+ * written once: a repeat with the same ceiling returns the hold already there, and a repeat with
+ * another ceiling is refused (`conflict`), so the stored ceiling never drifts from the one the
+ * room registered. The read and the write run inside the per-hold queue.
+ */
 export function createSimHoldSource(
   holds: HoldStore,
   nowMs: () => number,
 ): (bidderId: BidderId, ceiling: Cents, auctionId: AuctionId) => Promise<string> {
-  return async (bidderId, ceiling, auctionId) => {
+  return (bidderId, ceiling, auctionId) => {
     const holdId = `sim-hold-${bidderId}`;
-    await holds.put({
-      holdId,
-      auctionId,
-      bidderId,
-      orderId: `sim-order-${bidderId}`,
-      authId: simAuthId(bidderId, ceiling),
-      ceilingCents: ceiling,
-      status: 'HELD',
-      createdAtMs: nowMs(),
+    return sharedHoldQueue.run(holdId, async () => {
+      const existing = await holds.get(holdId);
+      if (existing !== null) {
+        if (
+          existing.status === 'HELD' &&
+          existing.ceilingCents === ceiling &&
+          existing.auctionId === auctionId
+        ) {
+          return holdId;
+        }
+        throw new GavelError('conflict', 'this bidder already has a hold; it cannot change');
+      }
+      await holds.put({
+        holdId,
+        auctionId,
+        bidderId,
+        orderId: `sim-order-${bidderId}`,
+        authId: simAuthId(bidderId, ceiling),
+        ceilingCents: ceiling,
+        status: 'HELD',
+        createdAtMs: nowMs(),
+      });
+      return holdId;
     });
-    return holdId;
   };
 }
 

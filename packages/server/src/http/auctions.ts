@@ -3,6 +3,8 @@ import {
   Cents,
   GavelError,
   isErrorCode,
+  LOT_TITLE_FORBIDDEN_PATTERN,
+  MAX_CENTS,
   type AuctionId,
   type BidderId,
   type ConnId,
@@ -25,12 +27,21 @@ import {
   type HttpDeps,
 } from './app';
 
+/** A lot title: trimmed, 1..max characters, no control, zero-width or bidi characters. */
+export const lotTitleSchema = (max: number): z.ZodEffects<z.ZodString, string, string> =>
+  z
+    .string()
+    .trim()
+    .min(1)
+    .max(max)
+    .refine((v) => !LOT_TITLE_FORBIDDEN_PATTERN.test(v), 'title holds a forbidden character');
+
 const CreateBody = z
   .object({
-    title: z.string().trim().min(1).max(120).default('Untitled auction'),
+    title: lotTitleSchema(120).default('Untitled auction'),
     config: AuctionConfigSchema,
     /** Optional fundraiser goal in integer cents; the projector shows a thermometer only when set. */
-    fundraiserGoalCents: z.number().int().positive().max(1_000_000_000_00).optional(),
+    fundraiserGoalCents: z.number().int().positive().max(MAX_CENTS).optional(),
   })
   .strict();
 
@@ -134,7 +145,8 @@ export function withMeta(snapshot: RoomSnapshot, meta: AuctionMeta): RoomSnapsho
     ...snapshot,
     ...(meta.title !== undefined ? { lotTitle: meta.title } : {}),
     ...(meta.joinCode !== undefined ? { joinCode: meta.joinCode } : {}),
-    ...(meta.fundraiserGoalCents !== undefined
+    // A stored goal above the money limit (made before it was enforced) is left out, not thrown.
+    ...(meta.fundraiserGoalCents !== undefined && meta.fundraiserGoalCents <= MAX_CENTS
       ? { fundraiser: { goalCents: Cents(meta.fundraiserGoalCents) } }
       : {}),
   };

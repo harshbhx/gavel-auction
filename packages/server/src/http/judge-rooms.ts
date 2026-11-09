@@ -4,6 +4,7 @@ import {
   EpochMs,
   ERROR_TABLE,
   GavelError,
+  MAX_CENTS,
   MAX_NAME_CHARS,
   scrubMessage,
   type RoomSnapshot,
@@ -33,6 +34,7 @@ import {
   looksLikeJoinCode,
   normalizeJoinCode,
   linkFor,
+  lotTitleSchema,
   reserveJoinCode,
   roomFor,
   snapshotFor,
@@ -120,6 +122,9 @@ export interface JudgeJoinLimits {
   lockoutMs: number;
 }
 
+/** How long a joined session may sit without a hold before its seat is given back. */
+const SEAT_IDLE_MS = 2 * 60_000;
+
 export const JUDGE_JOIN_DEFAULTS: JudgeJoinLimits = {
   maxBiddersPerRoom: 20,
   attemptsPerIpPerMin: 10,
@@ -137,9 +142,9 @@ export const JUDGE_ROOM_DEFAULTS = {
 
 const CreateBody = z
   .object({
-    title: z.string().trim().min(1).max(60).optional(),
+    title: lotTitleSchema(60).optional(),
     /** Optional fundraiser goal in integer cents; the projector shows a thermometer only when set. */
-    fundraiserGoalCents: z.number().int().positive().max(1_000_000_000_00).optional(),
+    fundraiserGoalCents: z.number().int().positive().max(MAX_CENTS).optional(),
   })
   .strict();
 
@@ -269,8 +274,26 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
   let keyedStamps: number[] = [];
   const perIp = new Map<string, number[]>();
   const joinLimits: JudgeJoinLimits = { ...JUDGE_JOIN_DEFAULTS, ...(opts.join ?? {}) };
-  /** Bidder sessions the open join issued per room. */
-  const joined = new Map<string, number>();
+  /**
+   * Seats per room: bidder id -> when the session joined and whether it has a hold. A seat is
+   * kept while its bidder holds a place in the room; a session that joined and never took a
+   * hold frees its seat after `SEAT_IDLE_MS`, so idle or abandoned joins cannot fill a room.
+   */
+  const joined = new Map<string, Map<string, { at: number; registered: boolean }>>();
+  const seatsOf = (
+    roomId: string,
+    now: number,
+  ): Map<string, { at: number; registered: boolean }> => {
+    let seats = joined.get(roomId);
+    if (seats === undefined) {
+      seats = new Map();
+      joined.set(roomId, seats);
+    }
+    for (const [bidderId, seat] of seats) {
+      if (!seat.registered && now - seat.at >= SEAT_IDLE_MS) seats.delete(bidderId);
+    }
+    return seats;
+  };
   let global: number[] = [];
   let paused = opts.paused;
   let loaded = false;
@@ -637,20 +660,20 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
     }
     const roomId: string = auctionId;
     // Reserve the seat before the first await below.
-    const taken = joined.get(roomId) ?? 0;
-    if (taken >= joinLimits.maxBiddersPerRoom) {
+    const bidderId = deps.ids.mint<'BidderId'>();
+    const seats = seatsOf(roomId, now);
+    if (seats.size >= joinLimits.maxBiddersPerRoom) {
       return refuse(deps, 429, 'judge_room_full', 'join_full', tag, 60);
     }
-    joined.set(roomId, taken + 1);
+    seats.set(bidderId, { at: now, registered: false });
     try {
       await roomFor(deps, roomId);
-      const bidderId = deps.ids.mint<'BidderId'>();
       const session = await mintToken(deps, 'session', roomId, bidderId, bidderId);
       audit(deps)?.info('judge room joined', {
         event: 'judge_room.joined',
         auctionId: roomId,
         src: tag,
-        seats: taken + 1,
+        seats: seats.size,
       });
       return json(200, {
         auctionId: roomId,
@@ -660,7 +683,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
         wsUrl: wsUrlOf(deps),
       });
     } catch (e) {
-      joined.set(roomId, Math.max(0, (joined.get(roomId) ?? 1) - 1));
+      joined.get(roomId)?.delete(bidderId);
       throw e;
     }
   };
@@ -697,6 +720,11 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
       bidderId: who.bidderId,
       name: body.name,
       ceilingCents: body.ceilingCents,
+    });
+    // The bidder now has a hold, so its seat stays for as long as the room lives.
+    seatsOf(auctionId, deps.clock.now()).set(who.bidderId, {
+      at: deps.clock.now(),
+      registered: true,
     });
     audit(deps)?.info('judge room simulated hold', {
       event: 'judge_room.sim_hold',

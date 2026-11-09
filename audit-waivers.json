@@ -67,7 +67,7 @@
     },
     {
       "advisory": "GHSA-mrhx-c7xc-m3w5",
-      "reason": "zod memory exhaustion on oversized constrained collections; no 3.x fix exists (needs zod 4, a breaking API change). Mitigated: HTTP bodies are capped at 64 KiB (MAX_BODY_BYTES in packages/server/src/http/app.ts). Revisit with a zod 4 migration. Upgrade tracked in https://github.com/harshbhx/gavel-auction/issues/2145.",
+      "reason": "zod memory exhaustion on oversized constrained collections; no 3.x fix exists (needs zod 4, a breaking API change). Mitigated: HTTP bodies are capped at 64 KiB (MAX_BODY_BYTES in packages/server/src/http/app.ts); WebSocket frames are capped at 16 KiB (MAX_PAYLOAD_BYTES in host/node-ws.ts) and audio frames at 8 KiB (AUDIO_MAX_PAYLOAD_BYTES in host/audio-ws.ts), each parsed separately from the HTTP path. Revisit with a zod 4 migration. Upgrade tracked in https://github.com/harshbhx/gavel-auction/issues/2145.",
       "expires": "2027-02-05"
     }
   ]

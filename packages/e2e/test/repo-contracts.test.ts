@@ -58,9 +58,11 @@ describe('documentation names what the code reads (R8-Q04)', () => {
     expect(readme).toMatch(/TOKEN_SECRET/);
   });
 
-  it('does not say the server has no entry point and says no socket gateway is mounted', () => {
+  it('does not say the server has no entry point or no socket gateway', () => {
     expect(read('docs/DEMO.md')).not.toMatch(/has no entry point or HTTP routes/);
-    expect(read('packages/server/README.md')).toMatch(/No WebSocket gateway is mounted/);
+    const serverReadme = read('packages/server/README.md');
+    expect(serverReadme).not.toMatch(/No WebSocket gateway is mounted/);
+    expect(serverReadme).toMatch(/mounts the WebSocket gateway/);
   });
 
   it('does not point at a security review file that does not exist', () => {

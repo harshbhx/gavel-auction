@@ -9,7 +9,7 @@ The repository was reviewed in repeated adversarial passes: red-team rounds 1 to
 
 ## The numbers
 
-Counted with `gh` on 7 Nov 2026 (queries at the end of the page).
+Counted with `gh` on 7 Nov 2026 (queries at the end of the page); the open issues in "What is still open" were re-checked on 9 Nov 2026.
 
 - 606 issues carry the `red-team` label. 589 are closed and 17 are open.
 - Of those 606, 37 are batch or epic issues that track the fix work (their titles start with `FEATURE:` or `EPIC`). The other 569 are individual findings: 560 closed, 9 open.
@@ -215,9 +215,9 @@ Money, realtime state and the wire contract between packages hold most of the hi
 
 ## What is still open
 
-Open today: 17 `red-team` issues, of which 8 are batch trackers and 9 are findings. The 9 findings are 3 high ([#710](https://github.com/harshbhx/gavel-auction/issues/710), [#712](https://github.com/harshbhx/gavel-auction/issues/712), [#1074](https://github.com/harshbhx/gavel-auction/issues/1074)), 2 medium ([#760](https://github.com/harshbhx/gavel-auction/issues/760), [#959](https://github.com/harshbhx/gavel-auction/issues/959)), 2 low ([#824](https://github.com/harshbhx/gavel-auction/issues/824), [#986](https://github.com/harshbhx/gavel-auction/issues/986)) and 2 with no severity label ([#1598](https://github.com/harshbhx/gavel-auction/issues/1598), [#1602](https://github.com/harshbhx/gavel-auction/issues/1602)).
+As of 9 Nov 2026, 9 issues carry the `red-team` label and are open: 6 are batch trackers or the epic ([#697](https://github.com/harshbhx/gavel-auction/issues/697), [#841](https://github.com/harshbhx/gavel-auction/issues/841), [#842](https://github.com/harshbhx/gavel-auction/issues/842), [#846](https://github.com/harshbhx/gavel-auction/issues/846), [#847](https://github.com/harshbhx/gavel-auction/issues/847), [#1127](https://github.com/harshbhx/gavel-auction/issues/1127)) and 3 are findings: 1 medium ([#760](https://github.com/harshbhx/gavel-auction/issues/760), replay mode and audit export are not tied to the hash chain) and 2 with no severity label ([#1598](https://github.com/harshbhx/gavel-auction/issues/1598) and [#1602](https://github.com/harshbhx/gavel-auction/issues/1602), both about the sandbox specs and the staging security tests). The earlier open findings, including the high ones (#710, #712, #1074) and the low ones (#824, #986), have merged fixes and are closed.
 
-Outside the `red-team` label, 4 `audit-r1` issues and 1 `redteam-r4` issue are open. One of them is rated high: [#1708](https://github.com/harshbhx/gavel-auction/issues/1708), the auction HTTP routes are not mounted in the running server. These are gaps between modules that exist and what the running server wires up, not hidden defects.
+Outside the `red-team` label, no `audit-r1` or `redteam-r4` issue is open. The auction HTTP routes that [#1708](https://github.com/harshbhx/gavel-auction/issues/1708) found missing are mounted in the running server, and the issue is closed.
 
 Closed does not mean proven correct. A closed finding has a merged fix and, where the issue asked for one, a regression test. It has not been checked by an independent reviewer, and the real PayPal sandbox gates are tracked separately in the [evidence index](/docs/judges/evidence-index).
 

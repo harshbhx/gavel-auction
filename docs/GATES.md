@@ -256,15 +256,16 @@ Per category (n, exact, wrong accept, confirm) for dev and held-out:
 Wrong accept is 0.000 in every category. The AUTO threshold sweep (0.70 to 0.95) is flat at the
 text level, because the parser emits only a few confidence values (0.50, 0.95, 1.00).
 
-Not measured: audio, speech-to-text error, latency (text mode reports 0 ms), the cached and live
-modes (no recorded provider output is in the repo, no live run was done), and the AUTO and CONFIRM
-threshold calibration of issue 478. The G5 status above comes from the synthetic runs (PR #1940, VOI-01 and VOI-02); there is no real-room or noisy-room run.
+Not measured at the text level: audio, speech-to-text error and latency (text mode reports 0 ms). The cached
+mode is measured: recorded provider outputs are in the repo under `packages/voice/fixtures/stt-cache` and
+`stt-cache-human` and are scored in the G5 sections above. No live provider run was done, and the
+calibration of issue 478 is described below. The G5 status above comes from the synthetic runs (PR #1940, VOI-01 and VOI-02); there is no real-room or noisy-room run.
 
 ### G5 threshold calibration (issue 478)
 
 Decision: keep the defaults AUTO 0.85 and CONFIRM 0.50 (`defaultConfig`, R-VOX-063). Rationale: the
 text-level sweep above is flat from 0.70 to 0.95 (the parser emits only 0.50, 0.95 and 1.00), wrong
-accepts are 0.000 on the dev and held-out sets, and the confirm rate is 0.263 on the 175 cases. The
+accepts are 0.000 on the dev and held-out sets, and the confirm rate is 0.272 on the 169 cases. The
 audio sweep (cached mode on both clip sets, both providers, room and device microphone, with and without
 an agreeing second reading) is flat at 0.000 wrong accepts from 0.70 to 0.95, so the audio set cannot
 move the thresholds either way; the system-level result is in "G5 system level" above. The held-out
@@ -315,7 +316,7 @@ Targets (R-PAY-152) against the sandbox measurement. Call table date: 2026-11-05
 | capture   | 1871.69  | 2280.66  | 2280.66  |
 | void      | 939.76   | 1235.96  | 1235.96  |
 
-Earlier, the same script ran against the fake PayPal (`npm run measure -- --fake`, 2026-11-04, 50 sequential and 10 parallel cycles). Those numbers were our client overhead on loopback, not PayPal latency, and they do not count as a sandbox measurement.
+Earlier, the same script ran against the fake PayPal (`npm run measure -w @gavel/payments -- --fake`, 2026-11-04, 50 sequential and 10 parallel cycles). Those numbers were our client overhead on loopback, not PayPal latency, and they do not count as a sandbox measurement.
 
 | Target                                   | Value  | Measured (sandbox)                                                                                                     | Status                      |
 | ---------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------- | --------------------------- |
@@ -323,7 +324,7 @@ Earlier, the same script ran against the fake PayPal (`npm run measure -- --fake
 | hammer to SETTLED, 6 holds, p95          | 6 s    | end to end, n=20, 6 holds: p95 5591.30 ms (p50 4937.13, max 5724.31)                                                   | MET (run 42346811713)       |
 | webhook handler 200, without verify call | 300 ms | not part of this script (covered by T-PAY-068)                                                                         | UNVERIFIED (G1 measurement) |
 
-Staging security tests and load tests stay UNVERIFIED until the Render URL exists. The judge smoke test has not run against a live site.
+The Render API is hosted, but no staging security test, load test or judge smoke run against it is recorded in this file, so those stay UNVERIFIED until a run is recorded here.
 
 Fallback: where a target is not met on sandbox numbers, the target is raised to the sandbox p95 (a decision for the owner; targets are not raised automatically). The CAPTURED target is missed: its end-to-end p95 is 3010.04 ms against 2500 ms, and the capture call alone has p95 2280.66 ms (5 Nov, n=10), which leaves about 0.2 s for the truth check and journal writes. Reaching 2.5 s would need a change in PayPal call behaviour, which is not made here. The SETTLED target is met on sandbox numbers (p95 5591.30 ms against 6000 ms), so no fallback applies to it. Whether to keep the 2.5 s target, change the saga or raise the target is an owner decision, still open. The saga defaults below are not changed by this record.
 
@@ -368,11 +369,11 @@ What this run does not prove:
 
 - G1: the remainder release is still inferred, not read from a buyer balance (decision A stands as written).
 - G2: no guest or card capture and no void of a card authorization ran; R2 stops at CREATED.
-- G3: no honor-period or validity-window result; those results are still pending (planned 8 and 9 November). R3 answered 422, so reauthorize is unproven on this run.
+- G3: no honor-period or validity-window result; those results are still pending. The G3 probe runs every 6 hours (`gate-g3.yml`, cron `17 */6 * * *`) and the final reading is about 12 Nov 06:17 UTC. R3 answered 422, so reauthorize is unproven on this run.
 - G4 staging: R4 was skipped, so the real server kill after capture did not run. R10 is the in-process crash only.
 - G5: no audio ran, so no speech-to-text accuracy exists.
 - R9 is not in the report counts; its pass comes from vitest output only.
-- Latency: this run recorded no timings for the targets, so the table above is unchanged. The void p95 caveat stands: 1235.96 ms against the 1000 ms budget, and the SETTLED budget assumption (each call under 1 s at p95) still fails.
+- Latency: this run recorded no timings for the targets, so the table above is unchanged. The void p95 caveat stands: 1235.96 ms against the 1000 ms budget, and, as of 6 Nov, the SETTLED budget assumption (each call under 1 s at p95) failed; the Latency section above records SETTLED as MET on the end-to-end measurement of run 42346811713.
 - Only the run log and the summary artifact exist; no redacted evidence file is committed, so the figures are reported, not independently verifiable, until one is.
 
 Decision: no change. G1 PASS (decision A), G2 PASS, G3 NOT RUN / IN PROGRESS, G5 PARTIAL on synthetic speech (confirm prompt kept).
@@ -399,10 +400,10 @@ environment up once:
    cannot read them.
 
 The nightly workflow `.github/workflows/nightly-sandbox.yml` uses the same environment. It runs
-every spec file in `packages/e2e/sandbox` through `npm run test:sandbox` (R1 to R4, R5 to R8, R9 and R10)
+every spec file in `packages/e2e/sandbox` through `npm run test:sandbox -w @gavel/e2e` (R1 to R4, R5 to R8, R9 and R10)
 at 20:30 UTC and on manual dispatch. R9 is skipped unless the second and third sandbox buyer secrets
 (`SANDBOX_BUYER2_*` and `SANDBOX_BUYER3_*`) are also set. The same job then runs the G5 speech harness
-(`npm run gate:g5`), which skips each provider whose key or audio recordings are missing; G5 stays NOT RUN
+(`npm run gate:g5 -w @gavel/e2e`), which skips each provider whose key or audio recordings are missing; G5 stays NOT RUN
 until a real run exists. The job then writes `report/sandbox.json` with one of pass, fail, inconclusive or skipped per spec. Without the
 secrets every spec is skipped and the run is green, so a green nightly run alone does not show that any sandbox spec ran: read `report/sandbox.json`. Only the summary is uploaded (14 days); the
 transcripts stay on the runner. A spec whose gate is still open reports `inconclusive`, not `fail`.
