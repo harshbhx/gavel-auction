@@ -82,6 +82,6 @@ export function allowedOriginsOf(src: {
 export function isOriginAllowed(
   allowed: readonly string[],
   origin: string | null | undefined,
-): boolean {
+): origin is string {
   return typeof origin === 'string' && origin !== 'null' && allowed.includes(origin);
 }
