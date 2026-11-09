@@ -31,7 +31,6 @@ export const CONFIRM_SERVER_TTL_MS = 20_000;
 export const CONFIRM_GRACE_MS = 2_000;
 export const CONFIRM_EXPIRED_LINGER_MS = 3_000;
 
-
 /**
  * Bottom sheet asking the bidder to confirm a heard bid. An answer closes it at once; an expired,
  * stale or forgotten question closes itself, so it can never stay on screen with dead buttons.

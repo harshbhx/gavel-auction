@@ -123,7 +123,7 @@ describe('voice confirm gate in one process', () => {
       bidMessage(s.rig, 15000, 'voice', { confidence: 0.5, transcript: TRANSCRIPT }),
     );
     const id = confirmId(s);
-    s.rig.clock.advance(15_001);
+    s.rig.clock.advance(20_001);
     await s.service.idle();
 
     expect(await roomEvents(s, 'confirm_resolved')).toMatchObject([{ outcome: 'expired' }]);
