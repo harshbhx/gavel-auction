@@ -103,7 +103,7 @@ export const en = {
     'Thirty days of auctions on a fake clock, with the ledger balanced to the cent. A simulation, not a sandbox result.',
   'mk.trust.lat.title': 'Latency',
   'mk.trust.lat.body':
-    'Measured on the PayPal sandbox over 20 settlements, not on the hosted demo rooms. SETTLED p95 5.6 s, inside the 6 s target. CAPTURED p95 3.0 s against a 2.5 s target, target missed; whether to change the target or the code is an open owner decision.',
+    'Measured on the PayPal sandbox over 49 settlements, not on the hosted demo rooms. Hammer to captured p95 3.8 s and hammer to settled p95 6.9 s, both above the targets (2.5 s and 6 s). Whether to change the targets or the code is an open owner decision.',
   'mk.trust.note': 'Sandbox only. Nothing on this site moved real money.',
   'mk.aud.title': 'Who it is for',
   'mk.aud.auc.title': 'Auctioneers',
