@@ -1,0 +1,30 @@
+[
+  {
+    "label": "idle-1",
+    "path": "/warmup",
+    "status": 200,
+    "ms": 662.17,
+    "error": ""
+  },
+  {
+    "label": "idle-1",
+    "path": "/healthz",
+    "status": 200,
+    "ms": 138.05,
+    "error": ""
+  },
+  {
+    "label": "idle-2",
+    "path": "/warmup",
+    "status": 200,
+    "ms": 249.35,
+    "error": ""
+  },
+  {
+    "label": "idle-2",
+    "path": "/healthz",
+    "status": 200,
+    "ms": 233.41,
+    "error": ""
+  }
+]

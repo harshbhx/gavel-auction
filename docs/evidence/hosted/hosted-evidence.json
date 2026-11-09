@@ -1,0 +1,150 @@
+{
+  "v": 1,
+  "kind": "hosted-evidence",
+  "runUrl": "https://github.com/harshbhx/gavel-auction/actions/runs/42558107791",
+  "problems": [],
+  "warmupAfterIdle": {
+    "idleMinutes": 16,
+    "budgetMs": 3000,
+    "warmup": {
+      "count": 2,
+      "min": 249.35,
+      "p50": 249.35,
+      "p95": 662.17,
+      "p99": 662.17,
+      "max": 662.17,
+      "failed": 0
+    },
+    "healthz": {
+      "count": 2,
+      "min": 138.05,
+      "p50": 138.05,
+      "p95": 233.41,
+      "p99": 233.41,
+      "max": 233.41,
+      "failed": 0
+    },
+    "status": "MET",
+    "note": "Each sample is a fresh process with a new connection. The host may never go cold; if every sample is fast, that is the finding. The scheduled uptime workflow can also keep it warm."
+  },
+  "webhookHandler": {
+    "label": "hosted API, client on a GitHub runner, network included; the event type is ignored so no verify call is made and nothing is stored",
+    "n": 50,
+    "statusCounts": {
+      "200": 50
+    },
+    "count": 50,
+    "min": 79.35,
+    "p50": 89.06,
+    "p95": 112.03,
+    "p99": 176.35,
+    "max": 176.35,
+    "targetMs": 300,
+    "status": "MET"
+  },
+  "judgeSmoke": {
+    "listed": 5,
+    "success": 3,
+    "failure": 2,
+    "runs": [
+      {
+        "url": "https://github.com/harshbhx/gavel-auction/actions/runs/42544303747",
+        "event": "schedule",
+        "conclusion": "failure",
+        "createdAt": "2026-11-09T01:12:19Z",
+        "durationSec": 468
+      },
+      {
+        "url": "https://github.com/harshbhx/gavel-auction/actions/runs/42539975547",
+        "event": "push",
+        "conclusion": "failure",
+        "createdAt": "2026-11-09T00:24:04Z",
+        "durationSec": 493
+      },
+      {
+        "url": "https://github.com/harshbhx/gavel-auction/actions/runs/42431918057",
+        "event": "schedule",
+        "conclusion": "success",
+        "createdAt": "2026-11-08T00:54:45Z",
+        "durationSec": 87
+      },
+      {
+        "url": "https://github.com/harshbhx/gavel-auction/actions/runs/42322730367",
+        "event": "schedule",
+        "conclusion": "success",
+        "createdAt": "2026-11-07T01:11:57Z",
+        "durationSec": 8
+      },
+      {
+        "url": "https://github.com/harshbhx/gavel-auction/actions/runs/42146223270",
+        "event": "schedule",
+        "conclusion": "success",
+        "createdAt": "2026-11-06T01:48:12Z",
+        "durationSec": 9
+      }
+    ],
+    "latestSteps": [
+      {
+        "name": "Set up job",
+        "conclusion": "success",
+        "seconds": 1
+      },
+      {
+        "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+        "conclusion": "success",
+        "seconds": 2
+      },
+      {
+        "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+        "conclusion": "success",
+        "seconds": 1
+      },
+      {
+        "name": "Check the inputs",
+        "conclusion": "success",
+        "seconds": 0
+      },
+      {
+        "name": "Wake the API",
+        "conclusion": "success",
+        "seconds": 0
+      },
+      {
+        "name": "Install Playwright and chromium",
+        "conclusion": "success",
+        "seconds": 23
+      },
+      {
+        "name": "Walk the judge journey",
+        "conclusion": "failure",
+        "seconds": 394
+      },
+      {
+        "name": "Job summary",
+        "conclusion": "success",
+        "seconds": 0
+      },
+      {
+        "name": "Upload screenshots, video, logs",
+        "conclusion": "success",
+        "seconds": 3
+      },
+      {
+        "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+        "conclusion": "skipped",
+        "seconds": 0
+      },
+      {
+        "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+        "conclusion": "success",
+        "seconds": 0
+      },
+      {
+        "name": "Complete job",
+        "conclusion": "success",
+        "seconds": 0
+      }
+    ]
+  },
+  "verdict": "RECORDED"
+}
