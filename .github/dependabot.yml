@@ -22,6 +22,12 @@ updates:
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
+      # These run in every job or in the deploy paths. Even minor bumps cannot be tested before
+      # merge (the api-reports job went red on the bump), so they are updated by hand.
+      - dependency-name: 'actions/checkout'
+      - dependency-name: 'actions/setup-node'
+      - dependency-name: 'gitleaks/gitleaks-action'
+      - dependency-name: 'cloudflare/wrangler-action'
   - package-ecosystem: npm
     directory: /
     schedule:
