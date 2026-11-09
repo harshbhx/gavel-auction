@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 
 import { WideAside } from '../WideAside';
 import { t } from '../../copy/t';
+import { ActionGroup } from '../../design/primitives/ActionGroup';
 import { Button } from '../../design/primitives/Button';
 import '../flows.css';
 import { loadRegistration } from '../../payments/registrationStore';
@@ -115,12 +116,12 @@ export function JoinScreen({
         <h1 tabIndex={-1}>{t('join.title', { room: roomName })}</h1>
         <p role="alert">{t('join.ended')}</p>
         <p className="gv-join__help">{t('join.endedHelp')}</p>
-        <div className="gv-join__actions">
+        <ActionGroup>
           <Button onClick={() => onNavigate(bidPath)}>{t('join.watch')}</Button>
           <Button variant="outline" onClick={() => onNavigate('/demo')}>
             {t('join.startDemo')}
           </Button>
-        </div>
+        </ActionGroup>
       </main>
     );
   }
@@ -131,12 +132,12 @@ export function JoinScreen({
         <h1 tabIndex={-1}>{t('join.title', { room: roomName })}</h1>
         <p role="alert">{t('join.full')}</p>
         <p className="gv-join__help">{t('join.fullHelp')}</p>
-        <div className="gv-join__actions">
+        <ActionGroup>
           <Button onClick={() => onNavigate(bidPath)}>{t('join.watch')}</Button>
           <Button variant="outline" onClick={() => onNavigate('/')}>
             {t('join.tryAgain')}
           </Button>
-        </div>
+        </ActionGroup>
       </main>
     );
   }
@@ -157,28 +158,35 @@ export function JoinScreen({
         <section className="gv-join__ways" aria-labelledby="gv-join-ways">
           <h2 id="gv-join-ways">{t('join.waysTitle')}</h2>
           <p className="gv-join__help">{t('join.waysWhy')}</p>
-          <Button size="bid" onClick={() => onNavigate(registerPath)}>
-            {t('join.wayPaypal')}
-          </Button>
-          <Button
-            size="bid"
-            variant="outline"
-            onClick={() => onNavigate(`${registerPath}?mode=demo`)}
-          >
-            {t('join.wayDemo')}
-          </Button>
+          <ActionGroup>
+            <Button size="bid" onClick={() => onNavigate(registerPath)}>
+              {t('join.wayPaypal')}
+            </Button>
+            <Button
+              size="bid"
+              variant="outline"
+              onClick={() => onNavigate(`${registerPath}?mode=demo`)}
+            >
+              {t('join.wayDemo')}
+            </Button>
+            <Button size="bid" variant="text" onClick={() => onNavigate(bidPath)}>
+              {t('join.watch')}
+            </Button>
+          </ActionGroup>
         </section>
       ) : (
         <>
           <p className="gv-join__note">{t('join.sandboxNote')}</p>
-          <Button size="bid" onClick={() => onNavigate(registerPath)}>
-            {t('join.asBidder')}
-          </Button>
+          <ActionGroup>
+            <Button size="bid" onClick={() => onNavigate(registerPath)}>
+              {t('join.asBidder')}
+            </Button>
+            <Button size="bid" variant="text" onClick={() => onNavigate(bidPath)}>
+              {t('join.watch')}
+            </Button>
+          </ActionGroup>
         </>
       )}
-      <Button variant="outline" onClick={() => onNavigate(bidPath)}>
-        {t('join.watch')}
-      </Button>
       <WideAside />
     </main>
   );

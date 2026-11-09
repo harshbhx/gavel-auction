@@ -1290,7 +1290,7 @@ function Routed({
   if (id === 'ledger') return <LedgerRoute match={match} />;
   if (id === 'audit' && roomId !== undefined && who === null && !hasReviewerAccess(roomId)) {
     return (
-      <RoomGate apiBase={api?.apiBase} roomId={roomId} onNavigate={navigate}>
+      <RoomGate apiBase={api?.apiBase} roomId={roomId} onNavigate={navigate} onlyNotFound>
         <TokenGate role="reviewer" token={null} roomId={roomId}>
           {null}
         </TokenGate>
@@ -1306,7 +1306,7 @@ function Routed({
     !hasAuctioneerAccess(roomId)
   ) {
     return (
-      <RoomGate apiBase={api?.apiBase} roomId={roomId} onNavigate={navigate}>
+      <RoomGate apiBase={api?.apiBase} roomId={roomId} onNavigate={navigate} onlyNotFound>
         <TokenGate role="auctioneer" token={null} roomId={roomId}>
           {null}
         </TokenGate>
@@ -1315,7 +1315,7 @@ function Routed({
   }
   if (id === 'screen' && liveBase !== undefined && roomId !== undefined && who === null) {
     return (
-      <RoomGate apiBase={api?.apiBase} roomId={roomId} onNavigate={navigate}>
+      <RoomGate apiBase={api?.apiBase} roomId={roomId} onNavigate={navigate} onlyNotFound>
         <TokenGate role="screen" token={null} roomId={roomId}>
           {null}
         </TokenGate>

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 
 import { t } from '../../copy/t';
 import { FakePaymentsLabel } from '../../design/FakePaymentsLabel';
+import { ActionGroup } from '../../design/primitives/ActionGroup';
 import { Button } from '../../design/primitives/Button';
 import type { HoldView, SettlementView } from '../../ladder/ladderModel';
 import { Failed } from './Failed';
@@ -143,14 +144,14 @@ export function Receipt(props: ReceiptProps) {
       <SandboxLine />
       <FakePaymentsLabel />
       <Body view={view} hold={hold} props={props} />
-      <div className="gv-receipt__actions">
+      <ActionGroup className="gv-receipt__actions">
         <Button variant="outline" onClick={() => window.print()}>
           {t('receipt.print')}
         </Button>
         <Button variant="outline" onClick={() => saveJson(view, paddle, props.at)}>
           {t('receipt.download')}
         </Button>
-      </div>
+      </ActionGroup>
       <p className="gv-receipt__hint">{t('receipt.printHint')}</p>
       {props.share !== undefined && <ShareControls mint={props.share} />}
     </article>

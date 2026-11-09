@@ -99,9 +99,3 @@
 .gv-demo__code h2 {
   margin: 0;
 }
-
-.gv-demo__code-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
