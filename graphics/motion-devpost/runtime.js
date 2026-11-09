@@ -186,6 +186,9 @@
   }
 
   var H = {
+    mask: mask,
+    draw: draw,
+    fade: fade,
     E: E,
     cl: cl,
     pr: pr,
