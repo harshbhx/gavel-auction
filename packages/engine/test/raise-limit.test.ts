@@ -4,7 +4,7 @@ import { A, B, L1, bid, errCode, mk, open, run, scene } from './decide-helpers.j
 // FEAT-61: a registered bidder can raise their limit while the lot is open. The ledger event is the
 // existing CEILING_RAISED, so no event type and no hash input changed.
 describe('raising a limit during an open lot', () => {
-  it('keeps the lead, lifts the bidder over the old limit and never lowers it', () => {
+  it('T-ENG-032 R-ENG-041 keeps the lead, lifts the bidder over the old limit and never lowers it', () => {
     let s = open(scene(), L1);
     s = bid(s, 200, A, 80000).state;
     expect(s.lots[L1]?.leaderId).toBe(A);
@@ -30,7 +30,7 @@ describe('raising a limit during an open lot', () => {
     expect(t.lots[L1]?.leaderId).toBe(A);
   });
 
-  it('refuses a limit above the server cap', () => {
+  it('T-ENG-032 R-ENG-040 refuses a limit above the server cap', () => {
     const s = open(scene(), L1);
     expect(
       errCode(() => run(s, mk(300, { type: 'RegisterBidder', bidderId: A, ceilingCents: 100001 }))),
