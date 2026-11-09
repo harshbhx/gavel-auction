@@ -43,16 +43,16 @@ them, not because they are public.
 
 ## Authentication
 
-| Credential       | Sent as                               | Lifetime             | Where it comes from                                                  |
-| ---------------- | ------------------------------------- | -------------------- | -------------------------------------------------------------------- |
-| Operator key     | header `X-Admin-Key`                  | n/a                  | the host setting `ADMIN_KEY`                                         |
-| Auctioneer token | `Authorization: Bearer ...`           | 12 hours             | auction creation, judge-room creation, rotate                        |
-| Screen token     | `Authorization: Bearer ...`           | 12 hours             | auction creation, judge-room creation                                |
-| Session token    | `Authorization: Bearer ...`           | 4 hours              | the join routes                                                      |
-| Receipt token    | `Authorization: Bearer ...`           | 4 hours              | `POST /api/auctions/{id}/receipt-link`                               |
-| Reviewer token   | `Authorization: Bearer ...`           | 12 hours             | `reviewerToken` and `reviewerLink` in the judge-room create response |
-| Judge key        | header `X-Judge-Key`                  | n/a                  | the host setting `JUDGE_KEY` or an entry of `JUDGE_KEYS`; judges get the one shared non-expiring key in the Devpost testing instructions; optional             |
-| Invite token     | body field `invite` of the join route | 24 hours, single use | `POST /api/auctions/{id}/invites`                                    |
+| Credential       | Sent as                               | Lifetime             | Where it comes from                                                                                                                                |
+| ---------------- | ------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Operator key     | header `X-Admin-Key`                  | n/a                  | the host setting `ADMIN_KEY`                                                                                                                       |
+| Auctioneer token | `Authorization: Bearer ...`           | 12 hours             | auction creation, judge-room creation, rotate                                                                                                      |
+| Screen token     | `Authorization: Bearer ...`           | 12 hours             | auction creation, judge-room creation                                                                                                              |
+| Session token    | `Authorization: Bearer ...`           | 4 hours              | the join routes                                                                                                                                    |
+| Receipt token    | `Authorization: Bearer ...`           | 4 hours              | `POST /api/auctions/{id}/receipt-link`                                                                                                             |
+| Reviewer token   | `Authorization: Bearer ...`           | 12 hours             | `reviewerToken` and `reviewerLink` in the judge-room create response                                                                               |
+| Judge key        | header `X-Judge-Key`                  | n/a                  | the host setting `JUDGE_KEY` or an entry of `JUDGE_KEYS`; judges get the one shared non-expiring key in the Devpost testing instructions; optional |
+| Invite token     | body field `invite` of the join route | 24 hours, single use | `POST /api/auctions/{id}/invites`                                                                                                                  |
 
 A token is bound to one auction and one kind. A wrong kind or another auction is 401; a
 valid token whose role may not do the thing is 403.

@@ -333,7 +333,7 @@ Every pull request runs tests, type checks, lint and the other quality checks in
 
 ## Call the API
 
-With a judge key (`gvl_judge_<id>_<secret>`) you can open a sandbox room, bid, hammer and read the ledger with plain HTTP. The key opens judge rooms only, never an operator route, and PayPal stays in the sandbox. Each key has its own room cap, hourly cap and expiry. A personal key stops on 30 November 2026 by default; the one shared judging key does not expire, can be revoked, and is the one judges receive in the Devpost testing instructions (Harsh adds it there by hand; it is never in this repository). You do not need a key to try GAVEL: a keyless judge room on `/try` works without one.
+With a judge key (`gvl_judge_<id>_<secret>`) you can open a sandbox room, bid, hammer and read the ledger with plain HTTP. The key opens judge rooms only, never an operator route, and PayPal stays in the sandbox. Each key has its own room cap, hourly cap and expiry. A personal key stops on 30 November 2026 by default; the one shared judging key does not expire, can be revoked, and is the one judges receive in the Devpost testing instructions (added there by hand; it is never in this repository). You do not need a key to try GAVEL: a keyless judge room on `/try` works without one.
 
 ```sh
 API=https://api.gavel.dualmindlab.tech
