@@ -2343,6 +2343,9 @@ export interface Logger {
 }
 
 // @public
+export const LOT_TITLE_FORBIDDEN_PATTERN: RegExp;
+
+// @public
 export function makeApiError(code: ErrorCode, message: string, detail?: string): ApiError;
 
 // @public
