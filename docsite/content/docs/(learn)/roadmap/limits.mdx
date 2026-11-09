@@ -13,7 +13,7 @@ Every row below follows the committed evidence. Where this page and `docs/GATES.
 | <GateBadge id="G0" /> <GateBadge id="G1" /> <GateBadge id="G2" /> <GateBadge id="G4" /> | Four sandbox gates passed on the real PayPal sandbox: app and buyers, partial capture with `final_capture`, wallet and guest card AUTHORIZE, and six real webhooks verified. See [gates](/docs/proof/gates). |
 | Hammer to settled | p95 5.59 s, inside the 6 s target (20 settlements of 6 holds on the real sandbox, 0 failed). See [latency](/docs/proof/latency). |
 | One lot on the real sandbox | One lot of three holds settled and one in-process crash recovered, by the nightly specs R7, R8 and R10 (runs [42200708552](https://github.com/harshbhx/gavel-auction/actions/runs/42200708552) and [42317068784](https://github.com/harshbhx/gavel-auction/actions/runs/42317068784)). |
-| <GateBadge id="G5" /> | Voice measured on 24 synthetic clips in two sets: wrong accept 0.000, exact plus recoverable 1.000 for both providers. Every spoken bid goes through a confirm prompt. |
+| <GateBadge id="G5" /> | Voice measured on 24 synthetic clips in two sets (tuned on those clips): wrong accept 0.000, exact plus recoverable 1.000. On a synthetic held-out noisy set measured once (120 clips), neither provider met the thresholds: wrong accept 0.058 (Groq) and 0.092 (Deepgram) against 0.05. Every spoken bid goes through a confirm prompt. |
 | Security review | All eight P0 items PASS as of 2026-11-07. See [security review](/docs/safety/security-review). |
 | Hosted | Web app on Cloudflare and API on Render, in sandbox mode, with key-less judge rooms. See [demo guide](/docs/start/demo). |
 
@@ -45,7 +45,7 @@ If the window is shorter than the longest planned auction, auctions are capped t
 
 | Area | Today | Next | Owner and date |
 | --- | --- | --- | --- |
-| <GateBadge id="G5" /> speech accuracy | Measured on synthetic audio: 24 eSpeak and 24 human-like clips, Deepgram nova-3 and Groq whisper-large-v3-turbo. Fixes were chosen on those same clips. See [voice and confirm](/docs/how-it-works/voice-and-confirm). | Confirm in a live room, with new clips and background noise. Until then no code path auto-accepts a spoken bid. | Date not set |
+| <GateBadge id="G5" /> speech accuracy | Measured on synthetic audio: 24 eSpeak and 24 human-like clips, Deepgram nova-3 and Groq whisper-large-v3-turbo. Fixes were chosen on those same clips. A synthetic held-out noisy set of 120 clips, measured once, was not met by either provider (run 42567832671). See [voice and confirm](/docs/how-it-works/voice-and-confirm). | Confirm in a live room with a person and a real noisy room. Until then no code path auto-accepts a spoken bid. | Date not set |
 | Live speech | Cached transcripts by default; live speech runs only with `VOICE_STT` set. | Record a live run through the `/audio` socket, and add an audio sender to the web console. | Date not set |
 
 ## Hosting and demo

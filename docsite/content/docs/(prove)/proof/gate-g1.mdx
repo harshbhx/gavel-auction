@@ -56,7 +56,7 @@ Decision A means the saga treats a void refused with `PREVIOUSLY_CAPTURED` on th
 
 <NotVerified title="The remainder release is inferred">
 
-No run read a buyer balance or available funds. The authorization keeps amount 500.00 after the capture, so the evidence cannot tell a released remainder from an open one. Release is inferred from the CAPTURED status, the 422 on the later void and PayPal's documentation.
+One attempt to read the buyer view ran on 9 Nov 2026 ([run 42567836032](https://github.com/harshbhx/gavel-auction/actions/runs/42567836032), `gate-g1-observe`): the buyer account pages asked for a sign-in again, so no available funds were read at any step. The API readings were: order APPROVED before authorize, order COMPLETED and authorization CREATED after authorize, order COMPLETED and authorization CAPTURED after the 350.00 capture. No run read a buyer balance or available funds. The authorization keeps amount 500.00 after the capture, so the evidence cannot tell a released remainder from an open one. Release is inferred from the CAPTURED status, the 422 on the later void and PayPal's documentation.
 
 </NotVerified>
 
