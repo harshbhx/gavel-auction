@@ -147,7 +147,7 @@ for (const t of ['paper', 'dark'])
   const L = [3.1, 1.8, 1.8, 1.9, 1.4];
   const AT = L.reduce((a, l, i) => (a.push(i ? a[i - 1] + L[i - 1] : 0), a), []);
   const t = (s, x) => (AT[s] + x).toFixed(2);
-  const scn = (s, inner) => `<div class="scn" style="--at:${AT[s]}s;--len:${L[s]}s">${inner}</div>`;
+  const scn = (s, inner) => `<div class="scn" style="--at:${AT[s]}s;--sl:${L[s]}s">${inner}</div>`;
   const small = (html) =>
     `<div style="position:absolute;left:0;top:0;width:1920px;height:1080px;transform:scale(.5);transform-origin:0 0">${html}</div>`;
   const head = (s, lot) =>

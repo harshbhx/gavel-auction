@@ -139,7 +139,7 @@ html,body{margin:0;overflow:hidden;background:var(--bg);color:var(--ink);font-fa
 .drop{animation:gv-drop .5s cubic-bezier(.55,0,.1,1) var(--d,0s) backwards}
 .shk{animation:gv-shk .32s cubic-bezier(.2,.7,.1,1) var(--d,0s)}
 .ringl{position:absolute;border:2px solid var(--ink);border-radius:50%;opacity:0;animation:gv-ringl 1.1s cubic-bezier(.12,.7,.25,1) var(--d,0s)}
-.scn{position:absolute;inset:0;animation:gv-scn var(--len,4s) linear var(--at,0s)}
+.scn{position:absolute;inset:0;animation:gv-scn var(--sl,4s) linear var(--at,0s)}
 .scn{opacity:0}
 .cur{position:absolute;inset:0;background:var(--ink);clip-path:inset(100% 0 0 0);animation:gv-cur .5s cubic-bezier(.7,0,.3,1) var(--at,0s)}
 @keyframes gv-rev{from{transform:translateY(106%)}}
