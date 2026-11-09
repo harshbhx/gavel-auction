@@ -23,6 +23,8 @@ export interface PriceHeaderProps {
   tickMs?: number;
   /** Set while the clock is frozen: shown as is, and the countdown stops. */
   frozenMs?: number | null;
+  /** The lot is closed: the clock stops and says so. */
+  closed?: boolean;
 }
 
 /** Fixed width tabular numerals so a price change never moves the layout (R-WEB-064). */
@@ -40,6 +42,7 @@ export function PriceHeader({
   nextMinCents,
   tickMs = 250,
   frozenMs = null,
+  closed = false,
 }: PriceHeaderProps) {
   const [ticking, setRemaining] = useState(() => endTs - now());
   const remaining = frozenMs ?? ticking;
@@ -77,7 +80,7 @@ export function PriceHeader({
         data-field="countdown"
       >
         <Icon name="clock" />
-        <span>{formatCountdown(remaining)}</span>
+        <span>{closed ? t('console.clockClosed') : formatCountdown(remaining)}</span>
       </p>
       <p className="gv-console-board__stat" style={{ ...NUMERIC, margin: 0 }} data-field="next">
         {t('bid.quick', { amount: formatUsd(nextMinCents) })}

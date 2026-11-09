@@ -68,8 +68,11 @@ export function LadderCompact({ view }: LadderCompactProps) {
   if (model.waiting) return <p role="status">{t('ladder.waiting')}</p>;
   const counts = view?.counts;
   const kinds = model.lanes.map(classOf);
-  const captured = kinds.filter((k) => k === 'captured').length;
-  const released = kinds.filter((k) => k === 'released').length;
+  // Without per-hold lanes the server's counts are the only truth: the line must agree with them.
+  const laneless = model.lanes.length === 0 && counts !== undefined;
+  const captured = laneless ? (counts.CAPTURED ?? 0) : kinds.filter((k) => k === 'captured').length;
+  const released = laneless ? (counts.SETTLED ?? 0) : kinds.filter((k) => k === 'released').length;
+  const final = model.phase !== null && FINAL_PHASES.includes(model.phase);
   return (
     <div className="gv-ladder-compact">
       <ul
@@ -86,7 +89,7 @@ export function LadderCompact({ view }: LadderCompactProps) {
           </li>
         ))}
       </ul>
-      {model.lanes.length === 0 && counts !== undefined && (
+      {laneless && !final && (
         <ul aria-label={t('ladder.counts')} style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {SETTLEMENT_STATES.flatMap((s) => {
             const n = counts[s] ?? 0;
@@ -94,7 +97,7 @@ export function LadderCompact({ view }: LadderCompactProps) {
           })}
         </ul>
       )}
-      {model.phase !== null && FINAL_PHASES.includes(model.phase) ? (
+      {final ? (
         <p role="status">{t('screen.settleSummary', { c: captured, r: released })}</p>
       ) : null}
     </div>
