@@ -13,7 +13,7 @@ nvm use
 npm ci
 ```
 
-Copy `.env.example` to `.env` only when a task needs configuration. Use PayPal sandbox values only. Never commit a real key, token or secret; the secret scanners run on every pull request and will fail the build.
+Copy `.env.example` to `.env` only when a task needs configuration. Nothing loads that file by itself: delete the lines you do not fill in (empty values are treated as unset), then export it before starting the server with `set -a; source .env; set +a`, or pass the variables inline on the command line. Use PayPal sandbox values only. Never commit a real key, token or secret; the secret scanners run on every pull request and will fail the build.
 
 To confirm the setup works, run the unit tests:
 
@@ -40,9 +40,8 @@ All scripts run from the repository root.
 | `npm run check:banned-words`      | Fail on banned words in checked files                              |
 | `npm run check:deps`              | Dependency boundaries and engine purity                            |
 | `npm run check:ownership`         | Verify a pull request touches one area only                        |
-| `npm run report`                  | Build the test report (`report/summary.json`, `report/index.html`) |
 
-Some scripts print "not implemented" until the issue that owns them is merged. That is expected.
+The root scripts `test:e2e`, `test:e2e:sandbox`, `test:load` and `report` are placeholders that print "not implemented" and exit 1. The quality report is built in CI by `.github/workflows/report.yml` (`npx vite-node infra/pages/quality/build.mjs -- quality-out`).
 
 ## Branch and commit rules
 

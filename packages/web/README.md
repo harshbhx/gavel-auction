@@ -40,11 +40,20 @@ Root scripts that cover this package as well: `npm run lint`, `npm run typecheck
 The client reads these variables at build time and refuses to start when one is missing or
 invalid (see `src/config.ts`):
 
-- `VITE_API_BASE`: HTTP base of the server, for example `http://localhost:8787`.
-- `VITE_WS_BASE`: WebSocket base, for example `ws://localhost:8787`.
+- `VITE_API_BASE`: HTTP base of the server, for example `http://localhost:8080` (the server Quick start port).
+- `VITE_WS_BASE`: WebSocket base, for example `ws://localhost:8080`.
 - `VITE_SANDBOX`: must be `true`.
 - `VITE_PAYMENTS`: `fake` for the in-process fake PayPal, `paypal` for the PayPal sandbox.
 - `VITE_PAYPAL_CLIENT_ID`: sandbox client id, needed when `VITE_PAYMENTS` is `paypal`.
+
+`packages/web/.env.example` has working local values (server on `localhost:8080`, `VITE_PAYMENTS=fake`). Vite does not read that file by name, so copy it first:
+
+```
+cp packages/web/.env.example packages/web/.env.local
+npm run dev -w @gavel/web
+```
+
+A production build with `VITE_PAYMENTS=fake` also needs `VITE_ALLOW_FAKE=true`.
 
 Keep `VITE_PAYMENTS` in line with `PAYMENTS` on the server (see `.env.example` at the root).
 
@@ -60,7 +69,7 @@ npx vite-node packages/web/mock/server.ts
 
 It listens on port 8787 and prints a URL of the form `ws://localhost:8787/?scenario=happy`.
 Available scenarios: `happy`, `outbid_race`, `soft_close` and `rejections`. Run the web app
-with the variables above pointing at `localhost:8787` and `VITE_PAYMENTS=fake`.
+with the variables above pointing at `localhost:8787` (mock server port) and `VITE_PAYMENTS=fake`.
 
 ## Live demo
 

@@ -50,6 +50,40 @@ describe('.env.example (INTEGRATION-R2-09)', () => {
   });
 });
 
+/** Pull the `npm start -w @gavel/server` block out of a document and read its env assignments. */
+function quickStartEnv(relPath: string): Record<string, string> {
+  const text = readFileSync(fileURLToPath(new URL(`../../../${relPath}`, import.meta.url)), 'utf8');
+  const block = /```[a-z]*\n([^`]*npm start -w @gavel\/server[^`]*)```/.exec(text)?.[1] ?? '';
+  const command = block.replace(/\\\n/g, ' ');
+  const out: Record<string, string> = {};
+  const re = /\b([A-Z][A-Z0-9_]*)=("\$\(openssl rand -hex (\d+)\)"|\S+)/g;
+  for (const m of command.matchAll(re)) {
+    const key = m[1];
+    const raw = m[2];
+    if (key === undefined || raw === undefined) continue;
+    // A generated value is 2 hex characters per byte asked for; stand in with a fixed string of that length.
+    out[key] = m[3] === undefined ? raw : 'a'.repeat(Number(m[3]) * 2);
+  }
+  return out;
+}
+
+describe('documented quick start command', () => {
+  const docs = [
+    'packages/server/README.md',
+    'docsite/content/docs/(operate)/run/index.mdx',
+  ];
+  it.each(docs)('passes config validation with NODE_ENV unset (%s)', (doc) => {
+    const env = quickStartEnv(doc);
+    expect(Object.keys(env)).toEqual(
+      expect.arrayContaining(['PUBLIC_URL', 'TOKEN_SECRET', 'ADMIN_KEY', 'PAYMENTS']),
+    );
+    expect(env.NODE_ENV).toBeUndefined();
+    const r = parseConfig(env);
+    expect(r.ok ? [] : r.errors).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+});
+
 describe('payments mode switch', () => {
   const env = {
     PUBLIC_URL: 'http://localhost:8080',

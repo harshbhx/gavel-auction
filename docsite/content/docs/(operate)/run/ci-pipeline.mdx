@@ -53,7 +53,6 @@ Values never go in the repository. Only throwaway sandbox values belong in the s
     STAGING_URL: { description: 'deploy-staging smoke target.', type: 'variable' },
     PRODUCTION_URL: { description: 'deploy-prod, uptime and backup.', type: 'variable' },
     UPTIME_ENABLED: { description: 'The uptime probe runs only when this is true.', type: 'variable' },
-    JUDGE_URL: { description: 'judge-smoke target; empty makes the run fail on purpose.', type: 'variable' },
     NIGHTLY_SANDBOX_REQUIRED: { description: 'When true, a scheduled nightly-sandbox run without secrets ends red.', type: 'variable' },
     CLOUDFLARE_API_TOKEN: { description: 'Docs site deploy. Without both Cloudflare values the deploy job ends green with a notice.', type: 'secret' },
     CLOUDFLARE_ACCOUNT_ID: { description: 'Docs site deploy.', type: 'secret' },
