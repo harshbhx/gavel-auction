@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { Button } from '../../src/design/primitives/Button';
 import {
   backoffDelay,
+  BUSY_MESSAGE,
   ConnectionManager,
   STABLE_AFTER_MS,
   setActiveConnection,
@@ -101,11 +102,73 @@ function setup(random = 0.5, seq = 0, token = 'tok') {
     random: () => random,
     setTimer: clock.setTimer,
     clearTimer: clock.clearTimer,
+    now: () => clock.now,
   });
   return { clock, transport, manager, received };
 }
 
 afterEach(() => setActiveConnection(null));
+
+describe('ConnectionManager refused as too busy (FIX-84, #2228)', () => {
+  const busy = (retryAfterMs: number): ServerMessage => ({
+    v: 1,
+    t: 'error',
+    code: 'rate_limited',
+    message: BUSY_MESSAGE,
+    retryAfterMs,
+  });
+
+  /** The server accepts the socket, sends the refusal frame and closes it (4429). */
+  function refuse(transport: FakeTransport, retryAfterMs: number): void {
+    transport.set('open');
+    (transport as unknown as { msgCbs: Set<(m: ServerMessage) => void> }).msgCbs.forEach((cb) =>
+      cb(busy(retryAfterMs)),
+    );
+    transport.set('closed');
+  }
+
+  it('keeps retrying with a capped backoff, shows when, and never reports offline', () => {
+    const { clock, transport, manager, received } = setup();
+    transport.failConnect = false;
+    manager.start();
+    const waits: number[] = [];
+    for (let i = 0; i < 7; i += 1) {
+      refuse(transport, 3000);
+      const until = manager.getSnapshot().busyUntilMs;
+      expect(until).toBeDefined();
+      waits.push(Math.round(((until ?? 0) - clock.now) / 1000));
+      clock.advance(60_000);
+    }
+    // 5, 10, 20, 40, then capped at 60 s.
+    expect(waits.map((w) => Math.round(w / 5) * 5)).toEqual([5, 10, 20, 40, 60, 60, 60]);
+    expect(transport.connects).toBe(8);
+    expect(manager.getSnapshot().offline).toBe(false);
+    // The refusal is not forwarded as a room error.
+    expect(received).toEqual([]);
+  });
+
+  it('honours a longer retryAfterMs, up to one minute', () => {
+    const { clock, transport, manager } = setup();
+    transport.failConnect = false;
+    manager.start();
+    refuse(transport, 30_000);
+    const wait = ((manager.getSnapshot().busyUntilMs ?? 0) - clock.now) / 1000;
+    expect(Math.round(wait)).toBe(30);
+  });
+
+  it('clears the notice once the room accepts the join', () => {
+    const { clock, transport, manager } = setup();
+    transport.failConnect = false;
+    manager.start();
+    refuse(transport, 1000);
+    expect(manager.getSnapshot().busyUntilMs).toBeDefined();
+    clock.advance(5000);
+    (transport as unknown as { msgCbs: Set<(m: ServerMessage) => void> }).msgCbs.forEach((cb) =>
+      cb(stateMsg(1)),
+    );
+    expect(manager.getSnapshot().busyUntilMs).toBeUndefined();
+  });
+});
 
 describe('backoffDelay', () => {
   it('doubles from 500 to 8000 and then stays at 8000', () => {

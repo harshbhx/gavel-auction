@@ -1,15 +1,16 @@
-import { lazy, Suspense, type ComponentProps } from 'react';
+import { type ComponentProps } from 'react';
 
 import { t } from '../copy/t';
+import { ChunkBoundary, lazyWithRetry } from '../screens/states/ChunkBoundary';
 import './grid.css';
 
 /**
  * The grids are lazy: AG Grid (its own lazy chunks) is fetched only when a page that shows a table
  * opens, so the landing and bidder bundles do not carry it (the size gate checks that).
  */
-const LedgerGridLazy = lazy(() => import('./LedgerGrid'));
-const BidsGridLazy = lazy(() => import('./BidsGrid'));
-const HoldsGridLazy = lazy(() => import('./HoldsGrid'));
+const LedgerGridLazy = lazyWithRetry(() => import('./LedgerGrid'));
+const BidsGridLazy = lazyWithRetry(() => import('./BidsGrid'));
+const HoldsGridLazy = lazyWithRetry(() => import('./HoldsGrid'));
 
 /** Holds the table's place while the chunk loads, at the height the grid will have, so nothing jumps. */
 export function GridFallback({ height }: { height?: number }) {
@@ -26,31 +27,31 @@ export function GridFallback({ height }: { height?: number }) {
 
 export function LedgerGrid(props: ComponentProps<typeof LedgerGridLazy>) {
   return (
-    <Suspense
+    <ChunkBoundary
       fallback={<GridFallback {...(props.height === undefined ? {} : { height: props.height })} />}
     >
       <LedgerGridLazy {...props} />
-    </Suspense>
+    </ChunkBoundary>
   );
 }
 
 export function BidsGrid(props: ComponentProps<typeof BidsGridLazy>) {
   return (
-    <Suspense
+    <ChunkBoundary
       fallback={<GridFallback {...(props.height === undefined ? {} : { height: props.height })} />}
     >
       <BidsGridLazy {...props} />
-    </Suspense>
+    </ChunkBoundary>
   );
 }
 
 export function HoldsGrid(props: ComponentProps<typeof HoldsGridLazy>) {
   return (
-    <Suspense
+    <ChunkBoundary
       fallback={<GridFallback {...(props.height === undefined ? {} : { height: props.height })} />}
     >
       <HoldsGridLazy {...props} />
-    </Suspense>
+    </ChunkBoundary>
   );
 }
 

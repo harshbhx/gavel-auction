@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useHammerAlert } from '../../alerts/useAlerts';
 import { t } from '../../copy/t';
 import { useConnection } from '../../net/connection';
@@ -13,7 +13,7 @@ import { capturedTotal, lotRaise, thermometer } from './fundraiser';
 import { FundraiserThermometer } from './Thermometer';
 
 // The QR encoder is a lazy chunk (R-WEB-009), like on the join page and the hub.
-const QrCode = lazy(() => import('../join/QrCode'));
+const QrCode = lazyWithRetry(() => import('../join/QrCode'));
 import { StoryRail } from './StoryRail';
 import { FrozenChip, PriceFlash, Sold, type SettleCounts, type SoldOutcome } from './Sold';
 import type { SettlementDetail } from '../../store/roomReducer';
@@ -21,6 +21,7 @@ import type { SettlementDetail } from '../../store/roomReducer';
 type SettlementHold = SettlementDetail['holds'][number];
 import { Logo } from '../../design/Logo';
 import './screen.css';
+import { ChunkBoundary, lazyWithRetry } from '../states/ChunkBoundary';
 
 /** The ticker shows the last five accepted bids (R-WEB-075). */
 export const TICKER_SIZE = 5;
@@ -241,9 +242,9 @@ export function ScreenView({
         )}
         {!closed && (
           <div className="gv-screen__join">
-            <Suspense fallback={null}>
+            <ChunkBoundary>
               <QrCode url={joinUrl} size={260} />
-            </Suspense>
+            </ChunkBoundary>
             {code !== null && <p className="tabular">{t('screen.join', { code })}</p>}
           </div>
         )}

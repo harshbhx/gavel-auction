@@ -25,11 +25,60 @@ describe('join link Worker', () => {
     },
   );
 
+  // FIX-84 (#2227): an unknown /assets/ file used to get index.html with the immutable header.
+  describe('unknown files under /assets/', () => {
+    const html = (): Response =>
+      new Response('<!doctype html>', {
+        headers: {
+          'content-type': 'text/html',
+          'cache-control': 'public, max-age=31536000, immutable',
+        },
+      });
+    const run = (path: string, assets: () => Response, method = 'GET') =>
+      worker.default.fetch(new Request(`https://x.test${path}`, { method }), {
+        ASSETS: { fetch: (() => Promise.resolve(assets())) as unknown as typeof fetch },
+      });
+
+    it('answers 404 with no-store instead of the SPA fallback', async () => {
+      const res = await run('/assets/QrCode-deadbeef.js', html);
+      expect(res.status).toBe(404);
+      expect(res.headers.get('cache-control')).toBe('no-store');
+      expect(res.headers.get('content-type')).not.toContain('html');
+      expect(await res.text()).toBe('Not Found');
+    });
+
+    it('answers HEAD with 404 and no body', async () => {
+      const res = await run('/assets/nope.js', html, 'HEAD');
+      expect(res.status).toBe(404);
+      expect(await res.text()).toBe('');
+    });
+
+    it('passes a real hashed file through with its own headers', async () => {
+      const real = (): Response =>
+        new Response('export{}', {
+          headers: {
+            'content-type': 'text/javascript',
+            'cache-control': 'public, max-age=31536000, immutable',
+          },
+        });
+      const res = await run('/assets/index-BeQU48pZ.js', real);
+      expect(res.status).toBe(200);
+      expect(res.headers.get('cache-control')).toContain('immutable');
+      expect(await res.text()).toBe('export{}');
+    });
+
+    it('keeps a 404 from the asset layer as it is', async () => {
+      const res = await run('/assets/x.js', () => new Response('nope', { status: 404 }));
+      expect(res.status).toBe(404);
+      expect(await res.text()).toBe('nope');
+    });
+  });
+
   it('wires the Worker and the join route in wrangler.toml', async () => {
     const { readFileSync } = await import('node:fs');
     const toml = readFileSync(resolve(dirname(file), 'wrangler.toml'), 'utf8');
     expect(toml).toContain('main = "worker.mjs"');
-    expect(toml).toContain('run_worker_first = ["/join/*"]');
+    expect(toml).toContain('run_worker_first = ["/join/*", "/assets/*"]');
     expect(toml).toContain('binding = "ASSETS"');
   });
 });

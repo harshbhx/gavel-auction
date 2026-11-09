@@ -1,12 +1,4 @@
-import {
-  lazy,
-  Suspense,
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-  type ReactNode,
-} from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Cents, type MsgId } from '@gavel/shared';
 import { PROTOCOL_VERSION } from './wire';
 import { t } from './copy/t';
@@ -41,6 +33,7 @@ import { AuditPage } from './screens/audit/AuditPage';
 import { renderAuditLedger } from './screens/audit/AuditGridSlot';
 import { JoinScreen, type JoinState } from './screens/join/JoinScreen';
 import { OfflineBanner } from './a11y/OfflineBanner';
+import { BusyBanner } from './a11y/BusyBanner';
 import { SkipLink } from './a11y/SkipLink';
 import { useRouteChrome } from './a11y/useRouteChrome';
 import { RoomGate } from './screens/states/RoomGate';
@@ -68,6 +61,7 @@ import { RegisterScreen, type RegistrationDraft } from './screens/register/Regis
 import { ceilingRange } from './screens/register/validate';
 import { ScreenView } from './screens/screen/ScreenView';
 import { ErrorBoundary } from './screens/states/ErrorBoundary';
+import { ChunkBoundary, lazyWithRetry } from './screens/states/ChunkBoundary';
 import { NotFound } from './screens/states/NotFound';
 import { TokenGate } from './screens/states/TokenGate';
 import { RoomError, isHaltingError, isTerminalError } from './screens/states/RoomError';
@@ -97,8 +91,8 @@ export interface AppProps {
   api?: { apiBase: string; payments: PaymentsMode; paypalClientId: string };
 }
 
-const ReplayScreen = lazy(() => import('./screens/replay/ReplayScreen'));
-const LedgerLab = lazy(() => import('./screens/ledger/LedgerLab'));
+const ReplayScreen = lazyWithRetry(() => import('./screens/replay/ReplayScreen'));
+const LedgerLab = lazyWithRetry(() => import('./screens/ledger/LedgerLab'));
 
 const NAVIGATE_EVENT = 'gavel:navigate';
 
@@ -418,9 +412,9 @@ function ScreenRoute({
 function LedgerRoute({ match }: { match: RouteMatch }) {
   return (
     <RouteScreen match={match}>
-      <Suspense fallback={<p role="status">{t('grid.loading')}</p>}>
+      <ChunkBoundary fallback={<p role="status">{t('grid.loading')}</p>}>
         <LedgerLab />
-      </Suspense>
+      </ChunkBoundary>
     </RouteScreen>
   );
 }
@@ -434,9 +428,9 @@ function ReplayRoute({ match }: { match: RouteMatch }) {
         {t('err.home')}
       </a>
       {recordingId !== undefined && (
-        <Suspense fallback={<p role="status">{t('net.resyncing')}</p>}>
+        <ChunkBoundary fallback={<p role="status">{t('net.resyncing')}</p>}>
           <ReplayScreen recordingId={recordingId} />
-        </Suspense>
+        </ChunkBoundary>
       )}
     </RouteScreen>
   );
@@ -1364,6 +1358,7 @@ export function App({ initialPath, gallery = import.meta.env.DEV, liveBase, api 
       {match.route.id !== 'gallery' && <SkipLink />}
       {match.route.id !== 'gallery' && <SandboxBanner />}
       {match.route.id !== 'gallery' && match.route.id !== 'bid' && <OfflineBanner />}
+      {match.route.id !== 'gallery' && <BusyBanner />}
       {match.route.id !== 'gallery' && <Announcer />}
       <Routed match={match} liveBase={liveBase} api={api} />
       {HELP_ROUTES.has(match.route.id) && <HelpLayer />}

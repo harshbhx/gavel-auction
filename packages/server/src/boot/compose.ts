@@ -57,7 +57,7 @@ import { createReplayBundleHandler } from '../admin/replay-bundle';
 import { createExportHandler } from '../http/export';
 import { createGateway } from '../host/gateway';
 import { createAudioHost, AUDIO_PATH } from '../host/audio-ws';
-import { createNodeWsHost } from '../host/node-ws';
+import { createNodeWsHost, type UpgradeDenied } from '../host/node-ws';
 import { chooseStt } from '../voice/stt';
 import { createHealthRoutes, createVersionRoute, resolveSha } from '../http/health';
 import { createMetricsRoute } from '../http/metrics';
@@ -107,6 +107,28 @@ export const WEBHOOK_PATH = '/webhooks/paypal';
 const EXPORT_PATH = /^\/api\/auctions\/([^/]+)\/export\/?$/;
 /** R-RT-120: most sockets one source address may hold open at once. */
 const MAX_SOCKETS_PER_SOURCE = 20;
+/** Wait a device refused by the socket cap is told to keep before it tries again. */
+const SOCKET_CAP_RETRY_MS = 10_000;
+/** Refusals one address may receive over the socket per minute before a bare 429. */
+const MAX_DENIALS_PER_MINUTE = 120;
+
+/** Counts refusals per source in a fixed one-minute window. */
+class DenialWindow {
+  private readonly windows = new Map<string, { until: number; n: number }>();
+  /** True while this source is still inside its refusal allowance. */
+  take(source: string, nowMs: number): boolean {
+    if (this.windows.size > 5000) {
+      for (const [key, w] of this.windows) if (w.until <= nowMs) this.windows.delete(key);
+    }
+    const w = this.windows.get(source);
+    if (w === undefined || w.until <= nowMs) {
+      this.windows.set(source, { until: nowMs + 60_000, n: 1 });
+      return true;
+    }
+    w.n += 1;
+    return w.n <= MAX_DENIALS_PER_MINUTE;
+  }
+}
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -761,11 +783,22 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     });
   });
 
-  const admitUpgrade = (req: IncomingMessage): (() => void) | undefined => {
+  const denials = new DenialWindow();
+  const admitUpgrade = (req: IncomingMessage): (() => void) | UpgradeDenied | undefined => {
     const source = clientKey(sourceOf(req, config.TRUSTED_PROXY_HOPS) ?? 'unknown');
-    if (!limiter.checkJoin(source).ok) return undefined;
     const open = socketsBySource.get(source) ?? 0;
-    if (open >= MAX_SOCKETS_PER_SOURCE) return undefined;
+    const refusal = ((): UpgradeDenied | undefined => {
+      const joined = limiter.checkJoin(source);
+      if (!joined.ok) return { deny: { retryAfterMs: joined.retryAfterMs } };
+      // A per-address cap: the refused device is told to wait (4429), not to give up.
+      if (open >= MAX_SOCKETS_PER_SOURCE) return { deny: { retryAfterMs: SOCKET_CAP_RETRY_MS } };
+      return undefined;
+    })();
+    if (refusal !== undefined) {
+      // Past the hard cap of refusals per minute the answer is a bare HTTP 429 again, so a flood
+      // does not get a handshake each.
+      return denials.take(source, clock.now()) ? refusal : undefined;
+    }
     socketsBySource.set(source, open + 1);
     let released = false;
     return () => {
@@ -809,7 +842,11 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     store: stores.room,
     service,
     makeStt: stt.make,
-    admitUpgrade,
+    // The audio socket has no client that reads a refusal frame: a denial stays a bare 429.
+    admitUpgrade: (req) => {
+      const admitted = admitUpgrade(req);
+      return typeof admitted === 'object' ? undefined : admitted;
+    },
     log: (message, fields) => log.warn(message, fields),
   });
 
