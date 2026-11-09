@@ -21,31 +21,62 @@ URL="https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/${TARBAL
 IMAGE="ghcr.io/gitleaks/gitleaks@sha256:723399e184f90831c6e69bcd1404bca0ee383e45a6f7c3f94e8d78520a350f4c"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CONFIG="${GITLEAKS_CONFIG:-$ROOT/.gitleaks.toml}"
+# docker needs absolute paths; a relative name would be read as a volume name.
+case "$CONFIG" in /*) ;; *) CONFIG="$PWD/$CONFIG" ;; esac
+# Verified tarballs are kept here so an actions/cache step can restore them on later runs.
+CACHE_DIR="${GITLEAKS_CACHE_DIR:-}"
+# GITLEAKS_FORCE_DOCKER=1 skips the release and the cache so CI can prove the container path.
+FORCE_DOCKER="${GITLEAKS_FORCE_DOCKER:-0}"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 GITLEAKS=""
 USE_DOCKER=0
 
+verify_tarball() {
+  (cd "$(dirname "$1")" && grep " $TARBALL\$" "$ROOT/scripts/ci/gitleaks-checksums.txt" | sha256sum --check --strict -)
+}
+
+unpack() {
+  mkdir "$WORK/bin"
+  tar -xzf "$1" -C "$WORK/bin" gitleaks
+  GITLEAKS="$WORK/bin/gitleaks"
+}
+
+install_from_cache() {
+  [ -n "$CACHE_DIR" ] && [ -f "$CACHE_DIR/$TARBALL" ] || return 1
+  verify_tarball "$CACHE_DIR/$TARBALL" || { echo "cached tarball failed its sha256 check; ignoring it" >&2; return 1; }
+  unpack "$CACHE_DIR/$TARBALL"
+}
+
 install_from_release() {
   curl --fail --silent --show-error --location \
     --retry 6 --retry-all-errors --retry-delay 10 --connect-timeout 20 --max-time 120 \
     --output "$WORK/$TARBALL" "$URL" || return 1
-  (cd "$WORK" && grep " $TARBALL\$" "$ROOT/scripts/ci/gitleaks-checksums.txt" | sha256sum --check --strict -) || {
+  verify_tarball "$WORK/$TARBALL" || {
     echo "gitleaks tarball failed its sha256 check; refusing to use it" >&2
     exit 1
   }
-  mkdir "$WORK/bin"
-  tar -xzf "$WORK/$TARBALL" -C "$WORK/bin" gitleaks
-  GITLEAKS="$WORK/bin/gitleaks"
+  if [ -n "$CACHE_DIR" ]; then
+    mkdir -p "$CACHE_DIR" && cp "$WORK/$TARBALL" "$CACHE_DIR/$TARBALL"
+  fi
+  unpack "$WORK/$TARBALL"
 }
 
 install() {
-  if install_from_release; then
-    echo "gitleaks ${VERSION} installed from the GitHub release (sha256 verified)"
-    return
+  if [ "$FORCE_DOCKER" != 1 ]; then
+    if install_from_cache; then
+      echo "gitleaks ${VERSION} installed from the cached tarball (sha256 verified)"
+      return
+    fi
+    if install_from_release; then
+      echo "gitleaks ${VERSION} installed from the GitHub release (sha256 verified)"
+      return
+    fi
+    echo "Release download failed after retries; falling back to the pinned container image" >&2
+  else
+    echo "GITLEAKS_FORCE_DOCKER=1: using the pinned container image" >&2
   fi
-  echo "Release download failed after retries; falling back to the pinned container image" >&2
   local attempt
   for attempt in 1 2 3 4; do
     if docker pull --quiet "$IMAGE" >/dev/null; then
@@ -64,8 +95,11 @@ run_gitleaks() {
   local repo="$1" config="$2"
   shift 2
   if [ "$USE_DOCKER" = 1 ]; then
-    docker run --rm -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' -v "$repo:/repo" -v "$config:/gitleaks.toml:ro" "$IMAGE" \
-      detect --source /repo --config /gitleaks.toml "$@"
+    # The repository is mounted at /repo and the config's directory at /cfg, both by absolute path.
+    docker run --rm -w /repo \
+      -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
+      -v "$repo":/repo -v "$(dirname "$config")":/cfg:ro "$IMAGE" \
+      detect --source /repo --config "/cfg/$(basename "$config")" "$@"
   else
     "$GITLEAKS" detect --source "$repo" --config "$config" "$@"
   fi

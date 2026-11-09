@@ -137,11 +137,26 @@ jobs:
       # fallback) instead of through the action, so a release-host outage cannot fail the job.
       # Same config and the same range the action used: a pull request scans BASE^..HEAD, a push
       # scans BEFORE^..AFTER. Any finding fails the job.
+      # Third fallback: a verified tarball restored from the Actions cache (keyed by the checksum).
+      - name: Restore the gitleaks tarball cache
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        with:
+          path: ${{ runner.temp }}/gitleaks-cache
+          key: gitleaks-${{ hashFiles('scripts/ci/gitleaks-checksums.txt') }}
       - name: Gitleaks self-test (planted fake secrets must be detected)
+        env:
+          GITLEAKS_CACHE_DIR: ${{ runner.temp }}/gitleaks-cache
+        run: scripts/ci/gitleaks-scan.sh --control
+      # Proves the container fallback works before an outage needs it.
+      - name: Gitleaks self-test through the container fallback
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          GITLEAKS_FORCE_DOCKER: '1'
         run: scripts/ci/gitleaks-scan.sh --control
       - name: Scan commits for secrets
         env:
           GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_CACHE_DIR: ${{ runner.temp }}/gitleaks-cache
           EVENT: ${{ github.event_name }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
