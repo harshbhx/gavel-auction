@@ -65,8 +65,8 @@
       '" height="' +
       size +
       '" style="overflow:visible;display:block" role="img" aria-label="GAVEL">' +
-      '<g class="jolt"><circle class="s0" cx="50" cy="50" r="46" fill="none" stroke="#ff6a1f" stroke-width="3.5" opacity="0"/>' +
-      '<circle class="s1" cx="50" cy="50" r="46" fill="none" stroke="#ff6a1f" stroke-width="1.6" opacity="0"/>' +
+      '<g class="jolt"><circle class="s0" cx="50" cy="50" r="46" fill="none" stroke="#ff6a1f" stroke-width="1.6" opacity="0"/>' +
+      '<circle class="s1" cx="50" cy="50" r="46" fill="none" stroke="#ff6a1f" stroke-width="1" opacity="0"/>' +
       '<path class="ring" pathLength="1" d="M78.98 23.90A39 39 0 1 0 89.00 50.00" fill="none" stroke="' +
       ink +
       '" stroke-width="22" stroke-dasharray="1"/>' +
