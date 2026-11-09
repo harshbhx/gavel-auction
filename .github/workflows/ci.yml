@@ -133,12 +133,30 @@ jobs:
         run: node scripts/check-no-tracked-node-modules.mjs
       - name: Fail on live host references
         run: npm run check:live-host
+      # Runs gitleaks directly (pinned version, sha256-verified, retried download, container
+      # fallback) instead of through the action, so a release-host outage cannot fail the job.
+      # Same config and the same range the action used: a pull request scans BASE^..HEAD, a push
+      # scans BEFORE^..AFTER. Any finding fails the job.
+      - name: Gitleaks self-test (planted fake secrets must be detected)
+        run: scripts/ci/gitleaks-scan.sh --control
       - name: Scan commits for secrets
-        uses: gitleaks/gitleaks-action@83373cf2f8c4db6e24b41c1a9b086bb9619e9cd3
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          range=""
+          if [ "$EVENT" = "pull_request" ]; then
+            range="${PR_BASE}^..${PR_HEAD}"
+          elif [ "$EVENT" = "push" ] && [ "${PUSH_BEFORE#0000000}" != "$PUSH_BEFORE" ] && [ -z "${PUSH_BEFORE//0/}" ]; then
+            range=""
+          elif [ "$EVENT" = "push" ]; then
+            range="${PUSH_BEFORE}^..${PUSH_AFTER}"
+          fi
+          scripts/ci/gitleaks-scan.sh "$range"
       - run: node scripts/check-bundle-secrets.mjs --self-test
       - name: Build the web bundle with canary secrets and scan it
         run: npm run check:secrets
