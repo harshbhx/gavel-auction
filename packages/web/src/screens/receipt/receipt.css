@@ -92,9 +92,6 @@
 }
 
 .gv-receipt__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
   padding-block-start: var(--space-3);
   border-block-start: var(--border-width) solid var(--color-rule);
 }

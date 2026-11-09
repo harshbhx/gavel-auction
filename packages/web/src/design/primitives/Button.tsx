@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, MouseEvent, ReactNode } from 'react';
 import './primitives.css';
 
 export type ButtonSize = 'bid' | 'default';
-export type ButtonVariant = 'solid' | 'outline';
+export type ButtonVariant = 'solid' | 'outline' | 'text';
 export type ButtonTone = 'accent' | 'danger' | 'positive' | 'neutral';
 
 export interface ButtonProps
