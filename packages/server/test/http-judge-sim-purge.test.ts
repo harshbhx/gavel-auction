@@ -1,9 +1,4 @@
-import {
-  ManualClock,
-  SeqIds,
-  type AuctionConfig,
-  type AuctionId,
-} from '@gavel/shared';
+import { ManualClock, SeqIds, type AuctionConfig, type AuctionId } from '@gavel/shared';
 import { describe, expect, it } from 'vitest';
 import { secretSetFromConfig } from '../src/auth/rotation';
 import { createHttpApp, type HttpApp, type HttpDeps } from '../src/http/app';
