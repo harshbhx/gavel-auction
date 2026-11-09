@@ -108,8 +108,8 @@ export const data = {
   poster: 3.8,
   html: `
 <div class="a h1" data-a=".05" data-d=".6" style="left:72px;top:112px;font-size:140px;width:520px">The evidence<br>is <span class="or">open</span><span class="or">.</span></div>
-<div class="a sub" data-a="1.0" data-d=".6" data-dy="18" style="left:76px;top:560px;width:470px;font-size:30px;color:var(--ink);font-weight:600;line-height:1.25">Real, simulated, pending. Every claim says which.</div>
-<div class="a" data-a="1.5" data-d=".5" data-dy="14" style="left:76px;top:690px"><span class="chip"><i></i>G3 in progress. G5 partial, held-out set missed</span></div>
+<div class="a sub" data-a="1.0" data-d=".6" data-dy="18" style="left:76px;top:560px;width:470px;font-size:30px;color:var(--ink);font-weight:600;line-height:1.25">Real or simulated, every file says which.</div>
+<div class="a" data-a="1.5" data-d=".5" data-dy="14" style="left:76px;top:690px"><span class="chip"><i></i>sha256 manifest on every file</span></div>
 <div id="rows"></div>
 `,
   js: `
