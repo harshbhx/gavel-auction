@@ -2089,19 +2089,19 @@ components:
         `code ?? error`. 413 and 415 use `bad_message`.
       properties:
         error:
-          example: "order_not_found"
+          example: 'order_not_found'
           type: string
           description: Stable code (hold, judge and operator routes).
         code:
-          example: "bad_message"
+          example: 'bad_message'
           type: string
           description: Stable code (core and judge routes). One of ErrorCode.
         message:
           description: Text for a person. Never contains a token or a stack trace.
-          example: "invalid request body"
+          example: 'invalid request body'
           type: string
         detail:
-          example: "title: Expected string, received number"
+          example: 'title: Expected string, received number'
           type: string
           description: 'Optional extra text, for example the failing field path and reason.'
       anyOf:
@@ -2157,7 +2157,7 @@ components:
             properties:
               name:
                 description: Name of the warm-up step.
-                example: "database"
+                example: 'database'
                 type: string
               ok:
                 description: True when this step succeeded.
@@ -2169,12 +2169,14 @@ components:
                 type: integer
     AuctionStatus:
       type: string
+      description: Lifecycle state of the auction, from SCHEDULED to DONE.
       enum: [SCHEDULED, OPEN, PAUSED, CLOSING, SETTLING, DONE]
     HoldStatus:
       type: string
       enum: [PENDING_APPROVAL, HELD, CAPTURED, VOIDED, EXPIRED, DENIED, UNKNOWN]
     AuctionConfig:
       type: object
+      description: Settings of one auction. Amounts are in cents, durations in milliseconds.
       additionalProperties: false
       required:
         - currency
@@ -2251,7 +2253,11 @@ components:
           type: string
           enum: [event, lot]
         incrementLadder:
-          example: [{"fromCents": 0, "incrementCents": 100}, {"fromCents": 5000, "incrementCents": 500}]
+          example:
+            [
+              { 'fromCents': 0, 'incrementCents': 100 },
+              { 'fromCents': 5000, 'incrementCents': 500 },
+            ]
           type: array
           minItems: 1
           maxItems: 16
@@ -2278,7 +2284,7 @@ components:
       properties:
         title:
           description: Lot title shown to bidders.
-          example: "Vintage typewriter"
+          example: 'Vintage typewriter'
           type: string
           minLength: 1
           maxLength: 120
@@ -2301,7 +2307,7 @@ components:
           $ref: '#/components/schemas/JoinCode'
         lotTitle:
           description: Title of the lot, as given in the request.
-          example: "Vintage typewriter"
+          example: 'Vintage typewriter'
           type: string
         auctioneerLink:
           description: Link to the auctioneer console. The auctioneer token is in the URL fragment.
@@ -2323,7 +2329,7 @@ components:
           $ref: '#/components/schemas/Ulid'
         title:
           description: Lot title.
-          example: "Vintage typewriter"
+          example: 'Vintage typewriter'
           type: string
         joinCode:
           $ref: '#/components/schemas/JoinCode'
@@ -2363,7 +2369,7 @@ components:
       required: [controlId, action]
       properties:
         controlId:
-          example: "ctl-0001"
+          example: 'ctl-0001'
           type: string
           minLength: 1
           maxLength: 64
@@ -2373,7 +2379,7 @@ components:
           type: string
           enum: [open, pause, resume, extend, hammer]
         args:
-          example: {"extraMs": 30000}
+          example: { 'extraMs': 30000 }
           type: object
           additionalProperties:
             type: number
@@ -2390,7 +2396,7 @@ components:
           const: true
         controlId:
           description: The controlId you sent.
-          example: "ctl-0001"
+          example: 'ctl-0001'
           type: string
         hammer:
           type: object
@@ -2440,7 +2446,7 @@ components:
           $ref: '#/components/schemas/JoinCode'
         lotTitle:
           description: Title of the lot in the room.
-          example: "Sandbox lot"
+          example: 'Sandbox lot'
           type: string
         auctioneerToken:
           description: Auctioneer token for this room (12 hours). Send it as a bearer token.
@@ -2488,7 +2494,7 @@ components:
           type: integer
         auctionId:
           description: Id of the exported auction.
-          example: "01J9ZZ0000000000000000000A"
+          example: '01J9ZZ0000000000000000000A'
           type: string
         generatedAt:
           $ref: '#/components/schemas/EpochMs'
@@ -2518,11 +2524,11 @@ components:
       properties:
         holdId:
           description: Id of the hold on this host.
-          example: "hold_01"
+          example: 'hold_01'
           type: string
         orderId:
           description: PayPal sandbox order id for the hold.
-          example: "5O190127TN364715T"
+          example: '5O190127TN364715T'
           type: string
         approveUrl:
           type: string
@@ -2543,7 +2549,7 @@ components:
           minimum: 1
         type:
           description: Event type, for example auction_created or bid_accepted. Absent for non-public events seen by a screen.
-          example: "auction_created"
+          example: 'auction_created'
           type: string
       additionalProperties: true
     RoomSnapshot:
@@ -2605,7 +2611,7 @@ components:
               $ref: '#/components/schemas/Cents'
         lotTitle:
           description: Title of the lot.
-          example: "Vintage typewriter"
+          example: 'Vintage typewriter'
           type: string
         joinCode:
           $ref: '#/components/schemas/JoinCode'
@@ -2637,7 +2643,7 @@ components:
                 maximum: 9999
               name:
                 description: Display name of the bidder.
-                example: "Bidder 7"
+                example: 'Bidder 7'
                 type: string
               hold:
                 description: HELD when the bidder has a hold, otherwise NONE.
