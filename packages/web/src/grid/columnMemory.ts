@@ -1,5 +1,4 @@
 import type { ColumnSizeState, ColumnState, GridApi, GridState } from 'ag-grid-community';
-import { useEffect } from 'react';
 
 const PREFIX = 'gavel.grid.columns.';
 
@@ -102,45 +101,25 @@ export function gridStateFor(key: string | null): GridState | undefined {
 }
 
 /**
- * Remembers sort, column order and widths of one grid for the rest of the browser session
- * (sessionStorage, so it is gone when the tab closes). `key` names the grid and its layout. The grid
- * gets the saved layout through `initialState` (see gridStateFor); this hook keeps it up to date.
+ * Grid event props that keep the saved layout up to date. Spread them onto the grid; `key` names
+ * the grid and its layout (null: remember nothing). The saved layout comes back through
+ * `initialState` (see gridStateFor), so there is no flash of the default order.
  */
-export function useColumnMemory(api: GridApi | null, key: string | null): void {
-  useEffect(() => {
-    if (api === null || key === null) return undefined;
-    // The layout also goes in through initialState; this puts the sort back once the grid has settled,
-    // in case the grid applied its own default sort after creating the columns.
-    const saved = loadColumns(key);
-    const settle = window.setTimeout(() => {
-      if (saved === null || api.isDestroyed()) return;
-      const known = saved.filter((c) => api.getColumn(c.colId) !== null);
-      if (!known.some((c) => c.sort === 'asc' || c.sort === 'desc')) return;
-      api.applyColumnState({
-        state: known.map((c) => ({
-          colId: c.colId,
-          sort: c.sort ?? null,
-          sortIndex: c.sortIndex ?? null,
-        })),
-        defaultState: { sort: null },
-      });
-    }, 0);
-    const save = (): void => {
-      saveColumns(key, api);
-    };
-    const onResize = (e: { finished?: boolean }): void => {
-      if (e.finished !== false) save();
-    };
-    api.addEventListener('sortChanged', save);
-    api.addEventListener('columnMoved', save);
-    api.addEventListener('columnResized', onResize);
-    return () => {
-      window.clearTimeout(settle);
-      if (!api.isDestroyed()) {
-        api.removeEventListener('sortChanged', save);
-        api.removeEventListener('columnMoved', save);
-        api.removeEventListener('columnResized', onResize);
-      }
-    };
-  }, [api, key]);
+export function columnMemoryProps(key: string | null): {
+  onSortChanged: (e: { api: GridApi }) => void;
+  onColumnMoved: (e: { api: GridApi }) => void;
+  onColumnResized: (e: { api: GridApi; finished: boolean }) => void;
+  onStateUpdated: (e: { api: GridApi }) => void;
+} {
+  const save = (e: { api: GridApi }): void => {
+    if (key !== null) saveColumns(key, e.api);
+  };
+  return {
+    onSortChanged: save,
+    onColumnMoved: save,
+    onColumnResized: (e) => {
+      if (e.finished) save(e);
+    },
+    onStateUpdated: save,
+  };
 }

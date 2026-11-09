@@ -15,7 +15,7 @@ import {
   type StreamControl,
 } from '../screens/console/BidStream';
 import { AgGridReact } from './agRuntime';
-import { gridStateFor, useColumnMemory } from './columnMemory';
+import { columnMemoryProps, gridStateFor } from './columnMemory';
 import { exportBaseName } from './exportName';
 import { GridToolbar } from './GridToolbar';
 import { bidRowId, diffBids, isEmptyDiff } from './bidsModel';
@@ -105,7 +105,6 @@ export default function BidsGrid({
   const [api, setApi] = useState<GridApi<BidStreamRow> | null>(null);
   const [shown, setShown] = useState(rows.length);
   const memoryKey = remember ? `bids.${narrow ? 'cards' : 'table'}` : null;
-  useColumnMemory(api as GridApi | null, memoryKey);
   const initialState = useMemo(() => gridStateFor(memoryKey), [memoryKey]);
   // The grid is given its first rows once; every later change is a transaction.
   const [initial] = useState<readonly BidStreamRow[]>(rows);
@@ -246,6 +245,7 @@ export default function BidsGrid({
       >
         <AgGridReact<BidStreamRow>
           {...(initialState === undefined ? {} : { initialState })}
+          {...columnMemoryProps(memoryKey)}
           theme={gavelTheme}
           rowData={initial as BidStreamRow[]}
           columnDefs={columns}

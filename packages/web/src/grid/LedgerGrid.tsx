@@ -13,7 +13,7 @@ import { sha256Hex } from '../util/hash';
 import { formatUsd } from '../util/money';
 import { AgGridReact } from './agRuntime';
 import { cardCell, statusCell, typeCell, type LedgerRow } from './cells';
-import { gridStateFor, useColumnMemory } from './columnMemory';
+import { columnMemoryProps, gridStateFor } from './columnMemory';
 import { exportBaseName } from './exportName';
 import { GridToolbar, type SortOption } from './GridToolbar';
 import { actorLabel, typeLabel } from './labels';
@@ -364,7 +364,6 @@ export default function LedgerGrid({
   const memoryKey = remember
     ? `ledger.${hasHash ? 'sealed' : 'plain'}.${narrow ? 'cards' : 'table'}`
     : null;
-  useColumnMemory(api as GridApi | null, memoryKey);
   const initialState = useMemo(() => gridStateFor(memoryKey), [memoryKey]);
 
   const pushUrl = useCallback(
@@ -496,6 +495,7 @@ export default function LedgerGrid({
       >
         <AgGridReact<LedgerRow>
           {...(initialState === undefined ? {} : { initialState })}
+          {...columnMemoryProps(memoryKey)}
           key={narrow ? 'cards' : 'table'}
           theme={gavelTheme}
           rowData={rows}
