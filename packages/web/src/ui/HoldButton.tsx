@@ -28,6 +28,8 @@ export interface HoldButtonProps {
   disabled?: boolean;
   /** Offers two taps for people who cannot hold. Default true. */
   confirmAlternative?: boolean;
+  /** Red variant for destructive confirms such as stopping the auction. Same hold, same keys. */
+  tone?: 'default' | 'danger';
   id?: string;
 }
 
@@ -43,6 +45,7 @@ export function HoldButton({
   holdMs = HOLD_MS,
   disabled = false,
   confirmAlternative = true,
+  tone = 'default',
   id,
 }: HoldButtonProps) {
   const [phase, setPhase] = useState<HoldPhase>('idle');
@@ -156,6 +159,7 @@ export function HoldButton({
         id={id}
         className="ui-hold__btn"
         data-phase={phase}
+        data-tone={tone}
         aria-disabled={disabled ? true : undefined}
         aria-describedby={noteId}
         style={{ '--ui-hold-p': progress } as CSSProperties}

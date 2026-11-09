@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ConfigError, validateEnv } from '../../src/config';
 
@@ -147,7 +148,7 @@ describe('boot', () => {
 
 describe('packages/web/.env.example', () => {
   it('is a complete local configuration', () => {
-    const text = readFileSync(new URL('../../.env.example', import.meta.url), 'utf8');
+    const text = readFileSync(path.resolve(__dirname, '../../.env.example'), 'utf8');
     const env: Record<string, string> = {};
     for (const line of text.split('\n')) {
       const m = /^(VITE_[A-Z_]+)=(.*)$/.exec(line);

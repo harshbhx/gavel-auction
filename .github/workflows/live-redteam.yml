@@ -69,13 +69,7 @@ jobs:
           node-version: '22'
       - name: Check the inputs
         run: |
-          for pair in "web_url=$WEB_URL" "api_url=$API_URL"; do
-            value="${pair#*=}"
-            if ! printf '%s' "$value" | grep -Eq '^https://[A-Za-z0-9.-]+(:[0-9]+)?/?$'; then
-              echo "::error title=Bad input::${pair%%=*} must be an https origin with no path"
-              exit 1
-            fi
-          done
+          bash scripts/ci/assert-live-host.sh "web_url=$WEB_URL" "api_url=$API_URL"
       - name: Wake the API
         run: curl -fsS -o /dev/null --max-time 30 --retry 6 --retry-delay 10 --retry-all-errors "${API_URL%/}/healthz"
       - name: Install Playwright and chromium

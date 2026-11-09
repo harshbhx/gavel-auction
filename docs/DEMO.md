@@ -59,7 +59,11 @@ Timing. A hold older than 2 hours (`GAVEL_HOLD_MAX_AGE_MS`, 7,200,000 ms) when t
 
 - QR: the big screen shows a QR code that opens `/join/<roomId>?c=<code>` on your phone. After joining, the bid screen at `/r/<roomId>/bid` has a quick-bid button, +increment buttons and a custom amount field. Bids above your ceiling are blocked.
 - Typed entry: the auctioneer console at `/r/<roomId>/console` has "Manual entry" to place a bid for a registered bidder. It is recorded with source `manual`.
+<<<<<<< HEAD
 - Voice: the server `/audio` socket turns a spoken bid into a structured bid and asks for confirmation when the amount is ambiguous. The web console has no audio sender to that socket yet, so its microphone button is disabled and says voice is not available in this build; use manual entry. Live speech needs `VOICE_STT=groq` and `GROQ_API_KEY` on that server, and no live speech run is recorded (gate G5 is PARTIAL, synthetic audio only), so there is no hosted voice path yet: use manual entry, the scripted demo at `/demo/scripted`, or the local fake demo.
+=======
+- Voice: the server `/audio` socket turns a spoken bid into a structured bid and asks for confirmation when the amount is ambiguous. The web console has no audio sender to that socket yet, so its microphone button is disabled and says voice is not available in this build; use manual entry. Live speech needs `VOICE_STT=groq` and `GROQ_API_KEY` on that server, and one live run of the socket is recorded (run 42575018866: 24 synthetic clips streamed with an auctioneer token to a local server with fake PayPal; both providers answered 24 of 24 and no spoken bid was accepted without a confirm; no human voice, no real room). Gate G5 stays PARTIAL, so on a hosted server use the replay below.
+>>>>>>> origin/main
 
 ## 4. Replay mode for voice
 

@@ -46,7 +46,7 @@ If the window is shorter than the longest planned auction, auctions are capped t
 | Area | Today | Next | Owner and date |
 | --- | --- | --- | --- |
 | <GateBadge id="G5" /> speech accuracy | Measured on synthetic audio: 24 eSpeak and 24 human-like clips, Deepgram nova-3 and Groq whisper-large-v3-turbo. Fixes were chosen on those same clips. A synthetic held-out noisy set of 120 clips, measured once, was not met by either provider (run 42567832671). See [voice and confirm](/docs/how-it-works/voice-and-confirm). | Confirm in a live room with a person and a real noisy room. Until then no code path auto-accepts a spoken bid. | Date not set |
-| Live speech | Cached transcripts by default; live speech runs only with `VOICE_STT` set. | Record a live run through the `/audio` socket, and add an audio sender to the web console. | Date not set |
+| Live speech | Cached transcripts by default; live speech runs only with `VOICE_STT` set. | One live run through the `/audio` socket is recorded ([run 42575018866](https://github.com/harshbhx/gavel-auction/actions/runs/42575018866): 24 synthetic clips, both providers, fake PayPal in the server, no spoken bid accepted without a confirm). Still open: an audio sender in the web console, and a human voice in a real room. | Date not set |
 
 ## Hosting and demo
 
