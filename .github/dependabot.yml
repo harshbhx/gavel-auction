@@ -51,6 +51,15 @@ updates:
         update-types: ['version-update:semver-minor']
       - dependency-name: '@playwright/test'
         update-types: ['version-update:semver-minor']
+      # A TypeScript minor tightens typed-array and lib typings (5.9 rejected `new Blob([u8])`),
+      # and typescript-eslint minors track it. Both are bumped by hand in one dedicated pull
+      # request that carries the code fixes (issue 2453).
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'typescript-eslint'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: '@typescript-eslint/*'
+        update-types: ['version-update:semver-minor']
   - package-ecosystem: npm
     directory: /docsite
     schedule:
@@ -60,6 +69,12 @@ updates:
     commit-message:
       prefix: 'chore(docs)'
     groups:
+      # The fumadocs packages pin each other with exact peer ranges (fumadocs-ui requires
+      # fumadocs-core at the same version), so they must bump in one pull request (issue 2454).
+      # Group order matters: a dependency joins the first group that matches it.
+      fumadocs:
+        patterns: ['fumadocs-*', '@fumadocs/*']
+        update-types: [minor, patch]
       docsite-minor-and-patch:
         update-types: [minor, patch]
     ignore:

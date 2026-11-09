@@ -202,7 +202,7 @@ export async function groqTranscribe(
   doFetch: G5FormFetch,
 ): Promise<string> {
   const form = new FormData();
-  form.append('file', new Blob([audio], { type: 'audio/wav' }), 'audio.wav');
+  form.append('file', new Blob([audio.slice().buffer], { type: 'audio/wav' }), 'audio.wav');
   form.append('model', GROQ_MODEL);
   form.append('response_format', 'json');
   form.append('language', 'en');
