@@ -59,7 +59,7 @@ valid token whose role may not do the thing is 403.
 
 A reviewer token is read only. It opens the snapshot and event log with a screen's view, the
 room ledger (`GET /api/judge/rooms/{id}/ledger`) and the audit page, for its own judge room
-only. The ledger route stops answering 15 minutes after the room ends (410 `judge_room_ended`). Judge rooms need no key. The judge key is a separate, limited key (never the operator
+only. It keeps working for the token's full 12 hours, also after the room ends, so a judge can verify the ledger and audit trail later; it is read only and exposes only the public chain export. Judge rooms need no key. The judge key is a separate, limited key (never the operator
 key) that a host may set: sent as `X-Judge-Key` on `POST /api/judge/rooms` it skips the public
 limits and the response carries `unlocked: true`; `POST /api/judge/key` checks it without
 creating anything. A wrong key counts toward the same lockout as a wrong room code. The key

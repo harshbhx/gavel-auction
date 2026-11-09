@@ -27,7 +27,6 @@ import {
   JUDGE_PAUSE_PATH,
   JUDGE_JOIN_PATH,
   JUDGE_ROOMS_PATH,
-  LEDGER_GRACE_MS,
   type JudgeRoomsOptions,
 } from '../src/http/judge-rooms';
 import { requestSources } from '../src/http/node-bridge';
@@ -371,36 +370,6 @@ describe('reviewer link', () => {
     expect([401, 403]).toContain((await get(app, path, sessionToken)).status);
     expect([401, 403]).toContain((await get(app, path, c.screenToken)).status);
     expect((await get(app, path, c.reviewerToken)).status).toBe(200);
-  });
-
-  it('keeps the ledger open for 15 minutes after the room ends, then refuses it', async () => {
-    const { app, clock, rooms, ledger } = setup();
-    const c = await created(await post(app, JUDGE_ROOMS_PATH));
-    const id = c.auctionId as Ulid;
-    const events = [{ type: 'AUCTION_CREATED', payload: { note: 'x' } }] as unknown as LedgerEvent[];
-    await ledger.append(id, sealBatch(events, genesisHead(id), 1000, null), 0);
-    const path = `/api/judge/rooms/${c.auctionId}/ledger`;
-    expect((await get(app, path, c.reviewerToken)).status).toBe(200);
-    clock.set(clock.now() + OPTS.ttlMs + 1);
-    await rooms.sweep();
-    expect((await get(app, path, c.reviewerToken)).status).toBe(200);
-    clock.set(clock.now() + LEDGER_GRACE_MS - 10);
-    expect((await get(app, path, c.reviewerToken)).status).toBe(200);
-    clock.set(clock.now() + 20);
-    const late = await get(app, path, c.reviewerToken);
-    expect(late.status).toBe(410);
-    expect(((await late.json()) as { error: string }).error).toBe('judge_room_ended');
-  });
-
-  it('refuses the ledger after the grace window even if the sweeper has not run', async () => {
-    const { app, clock, ledger } = setup();
-    const c = await created(await post(app, JUDGE_ROOMS_PATH));
-    const id = c.auctionId as Ulid;
-    const events = [{ type: 'AUCTION_CREATED', payload: { note: 'x' } }] as unknown as LedgerEvent[];
-    await ledger.append(id, sealBatch(events, genesisHead(id), 1000, null), 0);
-    clock.set(clock.now() + OPTS.ttlMs + LEDGER_GRACE_MS + 1);
-    const path = `/api/judge/rooms/${c.auctionId}/ledger`;
-    expect((await get(app, path, c.reviewerToken)).status).toBe(410);
   });
 
   it('answers 404 when the host passes no ledger', async () => {
