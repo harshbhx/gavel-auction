@@ -1,19 +1,14 @@
 import {
+  DEFAULT_RAISE_POLICY,
   HoldError,
+  raiseRefusal,
   sharedHoldQueue,
   type HoldStore,
   type HoldTruth,
   type PaymentsGateway,
-} from '@gavel/payments';
-import {
-  DEFAULT_RAISE_POLICY,
-  GavelError,
-  raiseRefusal,
-  type AuctionId,
-  type BidderId,
-  type Cents,
   type RaisePolicy,
-} from '@gavel/shared';
+} from '@gavel/payments';
+import { GavelError, type AuctionId, type BidderId, type Cents } from '@gavel/shared';
 
 /**
  * Simulated holds for judge rooms: a hold that is written already approved, with no PayPal call,

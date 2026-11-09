@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { DEFAULT_RAISE_POLICY, raiseRefusal, type RaisePolicy } from '@gavel/shared';
 import { validateCeiling } from '../ceiling.js';
 import { PaymentsConfigError } from '../config.js';
 import type { HoldErrorCode } from '../contract/web.js';
@@ -9,6 +8,7 @@ import { buildRequestId } from '../requestId.js';
 import type { HoldRecord } from '../types.js';
 import { sharedHoldQueue, type KeyedQueue } from '../webhooks/merge.js';
 import { auditedCall } from './audited.js';
+import { DEFAULT_RAISE_POLICY, raiseRefusal, type RaisePolicy } from './raise-policy.js';
 
 /**
  * HoldService: the server side of the hold flow (SPEC 3.3, R-PAY-030 to R-PAY-033).

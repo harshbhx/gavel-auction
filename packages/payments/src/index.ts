@@ -16,6 +16,7 @@ export * from './orders.js';
 export * from './paymentsApi.js';
 export * from './requestId.js';
 export * from './transport.js';
+export * from './holds/raise-policy.js';
 export * from './holds/service.js';
 export * from './saga/capture.js';
 export * from './saga/create.js';
