@@ -8,7 +8,7 @@
   position: relative;
   min-height: 100vh;
   overflow-x: clip;
-  padding-bottom: 112px;
+  padding-bottom: var(--judge-bar-clear, 112px);
   background: var(--color-bg);
   background-image: radial-gradient(
     color-mix(in srgb, var(--color-fg) 5%, transparent) 1px,
@@ -1122,7 +1122,11 @@
   gap: var(--space-4);
 }
 
-/* Floating action bar */
+/* Floating action bar: focused controls scroll clear of it, and the page ends above it. */
+
+html:has(.gv-judge) {
+  scroll-padding-bottom: var(--judge-bar-clear, 112px);
+}
 
 .gv-judge__bar {
   position: fixed;

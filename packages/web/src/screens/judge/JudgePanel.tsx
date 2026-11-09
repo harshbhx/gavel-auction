@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
 import { t } from '../../copy/t';
 import { Icon, type IconName } from '../../design/icons';
 import { Button } from '../../design/primitives/Button';
@@ -30,6 +30,30 @@ import './judge.css';
 
 /** What the panel knows about live rooms: the host's answer, or why there is none. */
 export type RoomsState = 'checking' | 'noServer' | JudgeRoomsStatus;
+
+/**
+ * Publishes the floating action bar's real height (and its bottom offset) as `--judge-bar-clear`
+ * on the root element, so the page pads its end and scrolls focused controls clear of the bar
+ * whatever the viewport or wrapping makes of it.
+ */
+export function useDockClearance(bar: RefObject<HTMLElement | null>): void {
+  useEffect(() => {
+    const el = bar.current;
+    const root = document.documentElement;
+    if (el === null) return undefined;
+    const measure = (): void => {
+      const { height } = el.getBoundingClientRect();
+      if (height > 0) root.style.setProperty('--judge-bar-clear', `${Math.ceil(height) + 40}px`);
+    };
+    measure();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    observer?.observe(el);
+    return () => {
+      observer?.disconnect();
+      root.style.removeProperty('--judge-bar-clear');
+    };
+  }, [bar]);
+}
 
 export interface JudgePanelProps {
   readonly rooms: RoomsState;
@@ -105,6 +129,8 @@ export function JudgePanel({
   loadLedger,
 }: JudgePanelProps) {
   const heading = useRef<HTMLHeadingElement>(null);
+  const bar = useRef<HTMLElement>(null);
+  useDockClearance(bar);
   const [phase, setPhase] = useState<'idle' | 'busy' | 'failed'>('idle');
   const [failure, setFailure] = useState<DemoFailure | null>(null);
   const [code, setCode] = useState('');
@@ -406,7 +432,7 @@ export function JudgePanel({
         </span>
       </footer>
 
-      <nav className="gv-judge__bar" aria-label={t('try.bar.label')}>
+      <nav ref={bar} className="gv-judge__bar" aria-label={t('try.bar.label')}>
         <Button size="bid" className="gv-judge__go" disabled={running} onClick={script.run}>
           <span>
             {running
