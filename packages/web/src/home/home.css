@@ -1,0 +1,568 @@
+/* Home screen for a returning visitor. Newsprint and auction-catalogue: ink on paper, hairline rules,
+ * big display type, one orange accent (the primary action and the drawn rule). No cards, chips,
+ * pills, glows or gradients. Tokens only; motion ends inside about a second and switches off under
+ * prefers-reduced-motion. Nothing here changes size after first paint: the price reserves the width
+ * of its final figure and the room note reserves its line. */
+
+.gv-home {
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  display: flex;
+  flex-direction: column;
+}
+
+.gv-home__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- Bar ---- */
+.gv-home__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  max-width: 1040px;
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--space-2) var(--space-4);
+}
+
+.gv-home__brand {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 44px;
+  color: var(--color-fg);
+}
+
+.gv-home__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--color-fg);
+  font-size: var(--font-size-2);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+
+.gv-home__link:hover {
+  text-decoration-thickness: 2px;
+}
+
+.gv-home__brand:focus-visible,
+.gv-home__link:focus-visible,
+.gv-home__act:focus-visible,
+.gv-home__go:focus-visible,
+.gv-home__clear:focus-visible,
+.gv-home__recent-code:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+/* ---- Page frame ---- */
+.gv-home__main {
+  flex: 1;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 var(--space-4) var(--space-7);
+}
+
+.gv-home__main:focus {
+  outline: none;
+}
+
+/* ---- Hero ---- */
+.gv-home__hero {
+  position: relative;
+  padding: var(--space-6) 0 var(--space-5);
+}
+
+.gv-home__mark {
+  position: absolute;
+  top: var(--space-5);
+  right: 0;
+  opacity: 0.9;
+}
+
+.gv-home__kicker {
+  margin: 0 0 var(--space-3);
+}
+
+.gv-home__hello {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(52px, 13vw, 128px);
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.gv-home__hello:focus {
+  outline: none;
+}
+
+/* The type reveal: the line rises through a mask, as if struck into place. */
+.gv-home__mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+
+.gv-home__strike {
+  display: block;
+  animation: gv-home-strike 560ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+
+.gv-home__sub {
+  margin: var(--space-4) 0 var(--space-5);
+  max-width: 34ch;
+  font-size: var(--font-size-4);
+  line-height: 1.35;
+  color: var(--color-fg-muted);
+  animation: gv-home-rise 360ms ease-out 320ms both;
+}
+
+.gv-home__rule {
+  display: block;
+  height: var(--border-width-strong);
+  background: var(--color-action);
+  transform-origin: left center;
+  animation: gv-home-draw 520ms cubic-bezier(0.3, 0.7, 0.2, 1) 180ms both;
+}
+
+/* ---- Last auction, set like a lot record ---- */
+.gv-home__last {
+  padding-top: var(--space-5);
+  animation: gv-home-rise 380ms ease-out 480ms both;
+}
+
+.gv-home__label {
+  margin: 0 0 var(--space-3);
+}
+
+.gv-home__record {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  border-top: var(--border-width) solid var(--color-fg);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.gv-home__record .ui-kicker {
+  margin: 0 0 var(--space-1);
+}
+
+.gv-home__lot-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(28px, 6vw, 44px);
+  font-weight: 700;
+  line-height: 1.02;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.gv-home__meta {
+  margin: var(--space-2) 0 0;
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-2);
+}
+
+.gv-home__price {
+  position: relative;
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: clamp(56px, 14vw, 120px);
+  font-weight: 800;
+  line-height: 0.95;
+  font-variant-numeric: tabular-nums;
+}
+
+.gv-home__price-size {
+  visibility: hidden;
+}
+
+.gv-home__price-live {
+  position: absolute;
+  inset: 0 auto auto 0;
+  white-space: nowrap;
+}
+
+.gv-home__nobids {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(28px, 6vw, 44px);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+}
+
+.gv-home__result {
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-rule);
+  font-size: var(--font-size-4);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.gv-home__room {
+  min-height: calc(var(--space-7) + var(--space-2));
+  padding: var(--space-2) 0 0;
+}
+
+.gv-home__note {
+  margin: var(--space-2) 0 0;
+  max-width: 56ch;
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-2);
+  line-height: 1.45;
+}
+
+.gv-home__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ---- The two ways in ---- */
+.gv-home__actions {
+  padding-top: var(--space-5);
+  animation: gv-home-rise 380ms ease-out 600ms both;
+}
+
+.gv-home__pair {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+.gv-home__act {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 132px;
+  padding: var(--space-4) var(--space-5);
+  border: var(--border-width-strong) solid var(--color-fg);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-micro),
+    color var(--duration-micro),
+    transform var(--duration-micro);
+}
+
+.gv-home__act:hover {
+  background: var(--color-fg);
+  color: var(--color-bg);
+}
+
+.gv-home__act:active {
+  transform: translateY(2px);
+}
+
+.gv-home__act--primary {
+  background: var(--color-action);
+  color: var(--color-on-action);
+}
+
+.gv-home__act--primary:hover {
+  background: var(--color-fg);
+  color: var(--color-action);
+}
+
+.gv-home__act-title {
+  font-family: var(--font-display);
+  font-size: clamp(34px, 7vw, 52px);
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.gv-home__act-hint {
+  font-size: var(--font-size-3);
+  line-height: 1.35;
+}
+
+.gv-home__join {
+  margin-top: var(--space-3);
+  padding: var(--space-4) 0 0;
+  border-top: var(--border-width) solid var(--color-fg);
+}
+
+.gv-home__join[hidden] {
+  display: none;
+}
+
+.gv-home__join .ui-kicker {
+  margin: 0 0 var(--space-2);
+}
+
+.gv-home__code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.gv-home__go {
+  min-height: 48px;
+  min-width: 96px;
+  padding: 0 var(--space-5);
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: 0;
+  background: var(--color-fg);
+  color: var(--color-bg);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gv-home__go[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.gv-home__recent ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gv-home__recent {
+  margin-top: var(--space-3);
+}
+
+.gv-home__recent-code {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-fg);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-3);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+/* ---- Earlier rooms: ruled rows ---- */
+.gv-home__earlier {
+  padding-top: var(--space-6);
+  animation: gv-home-rise 380ms ease-out 720ms both;
+}
+
+.gv-home__rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: var(--border-width) solid var(--color-fg);
+}
+
+.gv-home__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-1) var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-rule);
+  font-size: var(--font-size-2);
+}
+
+.gv-home__row-title {
+  grid-column: 1;
+  font-weight: 700;
+  font-size: var(--font-size-3);
+  overflow-wrap: anywhere;
+}
+
+.gv-home__row-price {
+  grid-column: 2;
+  grid-row: 1;
+  font-family: var(--font-display);
+  font-size: var(--font-size-5);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.gv-home__row-result {
+  grid-column: 1;
+}
+
+.gv-home__row-ago {
+  grid-column: 2;
+  text-align: right;
+  color: var(--color-fg-muted);
+}
+
+.gv-home__row-gone {
+  color: var(--color-fg-muted);
+}
+
+/* ---- Footer ---- */
+.gv-home__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-5);
+  max-width: 1040px;
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-4) var(--space-5);
+  border-top: 1px solid var(--color-rule);
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-2);
+}
+
+.gv-home__foot p {
+  margin: 0;
+}
+
+.gv-home__clear {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-fg);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+/* ---- Wider screens ---- */
+@media (min-width: 720px) {
+  .gv-home__bar,
+  .gv-home__main,
+  .gv-home__foot {
+    padding-left: var(--space-6);
+    padding-right: var(--space-6);
+  }
+
+  .gv-home__hero {
+    padding-top: var(--space-7);
+  }
+
+  .gv-home__record {
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: var(--space-4) var(--space-6);
+  }
+
+  .gv-home__result {
+    grid-column: 1 / -1;
+  }
+
+  .gv-home__fig {
+    text-align: right;
+  }
+
+  .gv-home__pair {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+  }
+
+  .gv-home__row {
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    align-items: baseline;
+  }
+
+  .gv-home__row-title,
+  .gv-home__row-result,
+  .gv-home__row-price,
+  .gv-home__row-ago {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .gv-home__foot {
+    gap: var(--space-1) var(--space-6);
+  }
+}
+
+/* ---- Entrance ---- */
+@keyframes gv-home-strike {
+  0% {
+    transform: translateY(108%);
+  }
+
+  70% {
+    transform: translateY(-3%);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes gv-home-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gv-home-draw {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-home__strike,
+  .gv-home__sub,
+  .gv-home__rule,
+  .gv-home__last,
+  .gv-home__actions,
+  .gv-home__earlier {
+    animation: none;
+  }
+
+  .gv-home__act {
+    transition: none;
+  }
+}

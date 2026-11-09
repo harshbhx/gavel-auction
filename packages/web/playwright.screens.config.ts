@@ -13,9 +13,19 @@ const BAD_CONFIG_PORT = 4175;
  * Views captured by the narrow, tablet and phone-dark/projector projects (metadata.views): the
  * routes a person actually uses on those devices. It keeps the artifact and the run time near flat.
  */
-const KEY_VIEWS = ['landing', 'join', 'register', 'bid', 'receipt', 'console', 'hub', 'screen'];
+const KEY_VIEWS = [
+  'landing',
+  'home',
+  'join',
+  'register',
+  'bid',
+  'receipt',
+  'console',
+  'hub',
+  'screen',
+];
 /** Phone routes for the short and the 360 px projects: the main bidder, console and audit states. */
-const PHONE_VIEWS = ['join', 'bid', 'console', 'receipt', 'audit', 'try'];
+const PHONE_VIEWS = ['join', 'bid', 'console', 'receipt', 'audit', 'try', 'home'];
 const PHONE = { deviceScaleFactor: 2, isMobile: true, hasTouch: true } as const;
 
 export default defineConfig({
