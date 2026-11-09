@@ -27,10 +27,17 @@ const CARD = {
   expiry: process.env.SANDBOX_GUEST_CARD_EXPIRY || '',
   cvv: process.env.SANDBOX_GUEST_CARD_CVV || '',
 };
-const GUEST_EMAIL = process.env.SANDBOX_GUEST_EMAIL || `guest-${randomBytes(4).toString('hex')}@example.com`;
-const SECRETS = [WALLET.email, WALLET.pass, CARD.number, CARD.expiry, CARD.cvv, JUDGE_KEY, LOG_TOKEN].filter(
-  (s) => s.length >= 3,
-);
+const GUEST_EMAIL =
+  process.env.SANDBOX_GUEST_EMAIL || `guest-${randomBytes(4).toString('hex')}@example.com`;
+const SECRETS = [
+  WALLET.email,
+  WALLET.pass,
+  CARD.number,
+  CARD.expiry,
+  CARD.cvv,
+  JUDGE_KEY,
+  LOG_TOKEN,
+].filter((s) => s.length >= 3);
 
 const SHOTS = path.join(OUT, 'shots');
 const VIDEOS = path.join(OUT, 'videos');
@@ -40,14 +47,19 @@ for (const d of [SHOTS, VIDEOS, TRACES]) fs.mkdirSync(d, { recursive: true });
 const steps = [];
 const apiCalls = []; // statuses of the hosted API calls the pages made (method, path shape, status)
 let blocked = null; // first PayPal popup stage that stopped the automation
-const clip = (s, n = 200) => String(s ?? '').replace(/\s+/g, ' ').slice(0, n);
+const clip = (s, n = 200) =>
+  String(s ?? '')
+    .replace(/\s+/g, ' ')
+    .slice(0, n);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (...a) => console.log(...a.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))));
 
 function pathShape(url) {
   try {
     const u = new URL(url);
-    return u.pathname.replace(/\/[0-9A-HJKMNP-TV-Z]{26}(?=\/|$)/g, '/:id').replace(/\/[A-Z0-9]{6}(?=\/|$)/g, '/:code');
+    return u.pathname
+      .replace(/\/[0-9A-HJKMNP-TV-Z]{26}(?=\/|$)/g, '/:id')
+      .replace(/\/[A-Z0-9]{6}(?=\/|$)/g, '/:code');
   } catch {
     return 'unparsed';
   }
@@ -90,7 +102,12 @@ async function actor(label, withTrace) {
   if (withTrace) await ctx.tracing.start({ screenshots: true, snapshots: true });
   page.on('response', (r) => {
     if (r.url().startsWith(API))
-      apiCalls.push({ actor: label, method: r.request().method(), path: pathShape(r.url()), status: r.status() });
+      apiCalls.push({
+        actor: label,
+        method: r.request().method(),
+        path: pathShape(r.url()),
+        status: r.status(),
+      });
   });
   actors[label] = a;
   return a;
@@ -99,7 +116,9 @@ async function actor(label, withTrace) {
 async function saveChunk(a, tag) {
   if (!a.tracing) return;
   a.chunk += 1;
-  await a.ctx.tracing.stopChunk({ path: path.join(TRACES, `${a.label}-${String(a.chunk).padStart(2, '0')}-${tag}.zip`) });
+  await a.ctx.tracing.stopChunk({
+    path: path.join(TRACES, `${a.label}-${String(a.chunk).padStart(2, '0')}-${tag}.zip`),
+  });
 }
 async function startChunk(a) {
   if (a.tracing) await a.ctx.tracing.startChunk();
@@ -137,7 +156,8 @@ async function shot(page, name) {
 }
 
 // ----------------------------------------------------------------------------- PayPal popup
-const INPUT_MASK = 'input,textarea,select{-webkit-text-security:disc!important;color:transparent!important;caret-color:transparent!important}';
+const INPUT_MASK =
+  'input,textarea,select{-webkit-text-security:disc!important;color:transparent!important;caret-color:transparent!important}';
 const TEXT_MASK = `${INPUT_MASK}*{color:transparent!important}img,svg,canvas{visibility:hidden!important}`;
 
 async function mask(pop, css) {
@@ -148,7 +168,8 @@ async function popupShot(pop, name, css = TEXT_MASK) {
   await shot(pop, name);
 }
 
-const BOT_RE = /captcha|verify (that )?you('| a)re (a )?human|are you a robot|unusual activity|security challenge|access denied|blocked/i;
+const BOT_RE =
+  /captcha|verify (that )?you('| a)re (a )?human|are you a robot|unusual activity|security challenge|access denied|blocked/i;
 
 async function firstVisible(pop, selectors) {
   for (const f of pop.frames()) {
@@ -171,7 +192,10 @@ async function fillIn(pop, selectors, value) {
 }
 
 async function popupBlocked(pop) {
-  const t = await pop.locator('body').innerText({ timeout: 4000 }).catch(() => '');
+  const t = await pop
+    .locator('body')
+    .innerText({ timeout: 4000 })
+    .catch(() => '');
   return BOT_RE.test(t.slice(0, 4000));
 }
 
@@ -220,7 +244,10 @@ async function paypalPopup(pop, kind, label) {
     }
     if (!email) {
       await popupShot(pop, `${label}-popup-no-email-field`, INPUT_MASK);
-      return { done: false, stage: (await popupBlocked(pop)) ? 'bot-check-at-login' : 'no-login-form' };
+      return {
+        done: false,
+        stage: (await popupBlocked(pop)) ? 'bot-check-at-login' : 'no-login-form',
+      };
     }
     await email.fill(WALLET.email);
     const next = await firstVisible(pop, ['#btnNext', 'button:has-text("Next")']);
@@ -228,15 +255,26 @@ async function paypalPopup(pop, kind, label) {
     await pop.waitForTimeout(2500);
     let pw = null;
     for (let i = 0; i < 8 && !pw; i += 1) {
-      pw = await firstVisible(pop, ['#password', 'input[name=login_password]', 'input[type=password]']);
+      pw = await firstVisible(pop, [
+        '#password',
+        'input[name=login_password]',
+        'input[type=password]',
+      ]);
       if (!pw) await pop.waitForTimeout(1500);
     }
     if (!pw) {
       await popupShot(pop, `${label}-popup-no-password-field`, INPUT_MASK);
-      return { done: false, stage: (await popupBlocked(pop)) ? 'bot-check-after-email' : 'no-password-form' };
+      return {
+        done: false,
+        stage: (await popupBlocked(pop)) ? 'bot-check-after-email' : 'no-password-form',
+      };
     }
     await pw.fill(WALLET.pass);
-    const login = await firstVisible(pop, ['#btnLogin', 'button:has-text("Log In")', 'button:has-text("Login")']);
+    const login = await firstVisible(pop, [
+      '#btnLogin',
+      'button:has-text("Log In")',
+      'button:has-text("Login")',
+    ]);
     if (login) await login.click();
   } else {
     const cardBtn = await firstVisible(pop, [
@@ -251,21 +289,51 @@ async function paypalPopup(pop, kind, label) {
       await pop.waitForTimeout(3500);
     }
     await mask(pop, INPUT_MASK);
-    const gotNumber = await fillIn(pop, ['#cardNumber', 'input[name=cardNumber]', 'input[autocomplete="cc-number"]'], CARD.number);
+    const gotNumber = await fillIn(
+      pop,
+      ['#cardNumber', 'input[name=cardNumber]', 'input[autocomplete="cc-number"]'],
+      CARD.number,
+    );
     if (!gotNumber) {
       await popupShot(pop, `${label}-popup-no-card-form`, INPUT_MASK);
-      return { done: false, stage: (await popupBlocked(pop)) ? 'bot-check-before-card-form' : 'no-card-form' };
+      return {
+        done: false,
+        stage: (await popupBlocked(pop)) ? 'bot-check-before-card-form' : 'no-card-form',
+      };
     }
-    await fillIn(pop, ['#cardExpiry', 'input[name=cardExpiry]', 'input[autocomplete="cc-exp"]'], CARD.expiry);
-    await fillIn(pop, ['#cardCvv', 'input[name=cardCvv]', 'input[autocomplete="cc-csc"]'], CARD.cvv);
+    await fillIn(
+      pop,
+      ['#cardExpiry', 'input[name=cardExpiry]', 'input[autocomplete="cc-exp"]'],
+      CARD.expiry,
+    );
+    await fillIn(
+      pop,
+      ['#cardCvv', 'input[name=cardCvv]', 'input[autocomplete="cc-csc"]'],
+      CARD.cvv,
+    );
     // Non-secret contact and billing values for a guest checkout in the sandbox.
     await fillIn(pop, ['#firstName', 'input[name=firstName]'], 'Test');
     await fillIn(pop, ['#lastName', 'input[name=lastName]'], 'Guest');
-    await fillIn(pop, ['#billingLine1', 'input[name=billingLine1]', 'input[autocomplete="address-line1"]'], '1 Main St');
-    await fillIn(pop, ['#billingCity', 'input[name=billingCity]', 'input[autocomplete="address-level2"]'], 'San Jose');
+    await fillIn(
+      pop,
+      ['#billingLine1', 'input[name=billingLine1]', 'input[autocomplete="address-line1"]'],
+      '1 Main St',
+    );
+    await fillIn(
+      pop,
+      ['#billingCity', 'input[name=billingCity]', 'input[autocomplete="address-level2"]'],
+      'San Jose',
+    );
     const state = await firstVisible(pop, ['#billingState', 'select[name=billingState]']);
-    if (state) await state.selectOption({ label: 'CA' }).catch(() => state.selectOption('CA').catch(() => {}));
-    await fillIn(pop, ['#billingPostalCode', 'input[name=billingPostalCode]', 'input[autocomplete="postal-code"]'], '95131');
+    if (state)
+      await state
+        .selectOption({ label: 'CA' })
+        .catch(() => state.selectOption('CA').catch(() => {}));
+    await fillIn(
+      pop,
+      ['#billingPostalCode', 'input[name=billingPostalCode]', 'input[autocomplete="postal-code"]'],
+      '95131',
+    );
     await fillIn(pop, ['#phone', 'input[name=phone]', 'input[type=tel]'], '4085551234');
     await fillIn(pop, ['#email', 'input[name=email]', 'input[type=email]'], GUEST_EMAIL);
     await popupShot(pop, `${label}-popup-card-form-filled`, TEXT_MASK);
@@ -289,7 +357,11 @@ async function paypalPopup(pop, kind, label) {
 async function registerWithRealHold(a, name, kind, joinUrl, rec) {
   const { page } = a;
   await page.goto(joinUrl, { waitUntil: 'load' });
-  await page.getByRole('button', { name: /join as bidder|join with/i }).first().waitFor({ timeout: 15000 }).catch(() => {});
+  await page
+    .getByRole('button', { name: /join as bidder|join with/i })
+    .first()
+    .waitFor({ timeout: 15000 })
+    .catch(() => {});
   // "Join as bidder" is the real-hold route; "Join with the demo" is the simulated one and is not used here.
   const joined = await clickText(page, /join as bidder/i, { roles: ['button'] });
   if (!joined) {
@@ -298,17 +370,30 @@ async function registerWithRealHold(a, name, kind, joinUrl, rec) {
   }
   await page.waitForTimeout(2500);
   const nameField = page.getByLabel(/display name/i).first();
-  if (!(await nameField.isVisible().catch(() => false))) return { held: false, reason: 'no-name-field' };
+  if (!(await nameField.isVisible().catch(() => false)))
+    return { held: false, reason: 'no-name-field' };
   await nameField.fill(name);
   await clickText(page, /continue to bidding|continue/i, { roles: ['button'], enabledOnly: true });
   await page.waitForTimeout(1000);
   const radios = page.getByRole('radio');
-  if ((await radios.count()) > 0) await radios.first().check({ force: true }).catch(() => radios.first().click());
+  if ((await radios.count()) > 0)
+    await radios
+      .first()
+      .check({ force: true })
+      .catch(() => radios.first().click());
   const twoTap = page.getByRole('button', { name: /two taps/i }).first();
-  if (!(await twoTap.isVisible().catch(() => false))) return { held: false, reason: `no-two-tap-button: ${await actions(page)}` };
-  const popupP = page.context().waitForEvent('page', { timeout: 40000 }).catch(() => null);
+  if (!(await twoTap.isVisible().catch(() => false)))
+    return { held: false, reason: `no-two-tap-button: ${await actions(page)}` };
+  const popupP = page
+    .context()
+    .waitForEvent('page', { timeout: 40000 })
+    .catch(() => null);
   await twoTap.click();
-  await page.getByRole('button', { name: /tap again to confirm/i }).first().click({ timeout: 8000 }).catch(() => {});
+  await page
+    .getByRole('button', { name: /tap again to confirm/i })
+    .first()
+    .click({ timeout: 8000 })
+    .catch(() => {});
   const pop = await popupP;
   if (!pop) return { held: false, reason: 'paypal-popup-did-not-open' };
   await saveChunk(a, `before-popup-${kind}`);
@@ -317,14 +402,22 @@ async function registerWithRealHold(a, name, kind, joinUrl, rec) {
   try {
     res = await paypalPopup(pop, kind, a.label);
   } finally {
-    await pop.video()?.delete().catch(() => {});
+    await pop
+      .video()
+      ?.delete()
+      .catch(() => {});
     await startChunk(a).catch(() => {});
   }
   if (!res.done) {
     blocked = blocked || { actor: a.label, kind, stage: res.stage };
     return { held: false, reason: `popup-stopped-at-${res.stage}` };
   }
-  const held = await page.getByText(/hold of .* is in place/i).first().waitFor({ timeout: 60000 }).then(() => true).catch(() => false);
+  const held = await page
+    .getByText(/hold of .* is in place/i)
+    .first()
+    .waitFor({ timeout: 60000 })
+    .then(() => true)
+    .catch(() => false);
   return { held, reason: held ? 'hold-in-place' : 'popup-finished-no-hold-banner' };
 }
 
@@ -350,14 +443,17 @@ async function bid(page) {
   await page.waitForTimeout(2500);
   const c = await clickText(page, /^bid \$|^\+\$/i, { roles: ['button'], enabledOnly: true });
   await page.waitForTimeout(600);
-  await clickText(page, /^confirm|place bid|yes/i, { roles: ['button'], enabledOnly: true }).catch(() => {});
+  await clickText(page, /^confirm|place bid|yes/i, { roles: ['button'], enabledOnly: true }).catch(
+    () => {},
+  );
   await page.waitForTimeout(2500);
   return c;
 }
 
 // ----------------------------------------------------------------------------- PayPal's own record
 async function receiverEvents() {
-  if (!RECEIVER || !LOG_TOKEN) return { available: false, reason: 'receiver url or log token not set', events: [] };
+  if (!RECEIVER || !LOG_TOKEN)
+    return { available: false, reason: 'receiver url or log token not set', events: [] };
   const events = [];
   try {
     const res = await fetch(`${RECEIVER}/log?token=${encodeURIComponent(LOG_TOKEN)}`);
@@ -373,7 +469,10 @@ async function receiverEvents() {
           status: r.status ?? null,
           amount: r.amount ? `${r.amount.value} ${r.amount.currency_code}` : null,
           final_capture: r.final_capture ?? null,
-          id_hash: createHash('sha256').update(String(r.id ?? body.id)).digest('hex').slice(0, 12),
+          id_hash: createHash('sha256')
+            .update(String(r.id ?? body.id))
+            .digest('hex')
+            .slice(0, 12),
         });
       } catch {
         /* one bad line is skipped */
@@ -390,9 +489,17 @@ async function main() {
   const t0 = new Date();
   const missing = [];
   if (!WALLET.email || !WALLET.pass) missing.push('SANDBOX_BUYER_EMAIL/PASSWORD');
-  if (!CARD.number || !CARD.expiry || !CARD.cvv) missing.push('SANDBOX_GUEST_CARD_NUMBER/EXPIRY/CVV');
+  if (!CARD.number || !CARD.expiry || !CARD.cvv)
+    missing.push('SANDBOX_GUEST_CARD_NUMBER/EXPIRY/CVV');
   if (missing.length > 0) {
-    fs.writeFileSync(path.join(OUT, 'verdict.json'), JSON.stringify({ outcome: 'FAIL', reason: `missing secrets: ${missing.join(', ')}` }, null, 2));
+    fs.writeFileSync(
+      path.join(OUT, 'verdict.json'),
+      JSON.stringify(
+        { outcome: 'FAIL', reason: `missing secrets: ${missing.join(', ')}` },
+        null,
+        2,
+      ),
+    );
     console.log(`HOSTED JUDGE PATH VERDICT: FAIL (missing ${missing.join(', ')})`);
     process.exitCode = 1;
     return;
@@ -404,14 +511,23 @@ async function main() {
   await step('Probe the host', async (rec) => {
     const r = await apiCtx.get('/api/judge/capabilities');
     const caps = await r.json().catch(() => ({}));
-    rec.notes.push(`capabilities status ${r.status()} judgeRooms=${caps.judgeRooms} accepting=${caps.accepting} simHolds=${caps.simHolds}`);
-    ok(rec, r.status() === 200 && caps.judgeRooms === true && caps.accepting === true, 'judge rooms on and accepting');
+    rec.notes.push(
+      `capabilities status ${r.status()} judgeRooms=${caps.judgeRooms} accepting=${caps.accepting} simHolds=${caps.simHolds}`,
+    );
+    ok(
+      rec,
+      r.status() === 200 && caps.judgeRooms === true && caps.accepting === true,
+      'judge rooms on and accepting',
+    );
   });
 
   await step('Create one judge room', async (rec) => {
     const r = await apiCtx.post('/api/judge/rooms', {
       data: {},
-      headers: { 'content-type': 'application/json', ...(JUDGE_KEY ? { 'x-judge-key': JUDGE_KEY } : {}) },
+      headers: {
+        'content-type': 'application/json',
+        ...(JUDGE_KEY ? { 'x-judge-key': JUDGE_KEY } : {}),
+      },
     });
     rec.notes.push(`create status ${r.status()} keyed=${JUDGE_KEY ? 'yes' : 'no'}`);
     if (ok(rec, r.status() === 201, 'room created')) room = await r.json();
@@ -490,7 +606,9 @@ async function main() {
 
     await step('Receipts for A, B and C', async (rec) => {
       for (const a of [bidA, bidB, bidC]) {
-        await a.page.goto(`${WEB}/r/${encodeURIComponent(room.auctionId)}/receipt`, { waitUntil: 'load' });
+        await a.page.goto(`${WEB}/r/${encodeURIComponent(room.auctionId)}/receipt`, {
+          waitUntil: 'load',
+        });
         await a.page.waitForTimeout(6000);
         const t = await visibleText(a.page);
         rec.notes.push(`${a.label} receipt: ${t}`);
@@ -507,7 +625,10 @@ async function main() {
   await apiCtx
     .post(`/api/auctions/${room.auctionId}/kill`, {
       data: { confirm: 'STOP' },
-      headers: { authorization: `Bearer ${room.auctioneerToken}`, 'content-type': 'application/json' },
+      headers: {
+        authorization: `Bearer ${room.auctioneerToken}`,
+        'content-type': 'application/json',
+      },
     })
     .catch(() => {});
   await finish(t0, { holds, pp, heldCount, joinCodeShape: 'redacted' });
@@ -527,19 +648,27 @@ async function finish(t0, ctxInfo) {
   const holds = ctxInfo?.holds || {};
   const pp = ctxInfo?.pp || { available: false, reason: 'not reached', events: [] };
   const count = (t) => pp.events.filter((e) => e.event_type === t).length;
-  const post = (re) => apiCalls.filter((c) => c.method === 'POST' && re.test(c.path)).map((c) => c.status);
+  const post = (re) =>
+    apiCalls.filter((c) => c.method === 'POST' && re.test(c.path)).map((c) => c.status);
   const statuses = {
-    note:
-      'Two independent records. hostedApiCalls are the HTTP statuses the browser saw from the hosted API (paths with ids replaced). paypalEvents are the sandbox webhook events PayPal delivered for this run (id hashed). The HTTP status of the hosted server\'s own PayPal calls (authorize 201, capture 201, void 204) is not visible from outside the server, so it is not claimed here.',
+    note: "Two independent records. hostedApiCalls are the HTTP statuses the browser saw from the hosted API (paths with ids replaced). paypalEvents are the sandbox webhook events PayPal delivered for this run (id hashed). The HTTP status of the hosted server's own PayPal calls (authorize 201, capture 201, void 204) is not visible from outside the server, so it is not claimed here.",
     hostedApiCalls: summarize(apiCalls),
-    paypalEvents: { available: pp.available, reason: pp.reason, counts: countBy(pp.events), events: pp.events },
+    paypalEvents: {
+      available: pp.available,
+      reason: pp.reason,
+      counts: countBy(pp.events),
+      events: pp.events,
+    },
     expected: { authorizationsCreated: 3, capturesCompleted: 1, authorizationsVoided: 2 },
     observed: {
-      authorizationsCreated: count('PAYMENT.AUTHORIZATION.CREATED') || count('AUTHORIZATION.CREATED'),
+      authorizationsCreated:
+        count('PAYMENT.AUTHORIZATION.CREATED') || count('AUTHORIZATION.CREATED'),
       capturesCompleted: count('PAYMENT.CAPTURE.COMPLETED'),
       authorizationsVoided: count('PAYMENT.AUTHORIZATION.VOIDED') || count('AUTHORIZATION.VOIDED'),
     },
-    holds: Object.fromEntries(Object.entries(holds).map(([k, v]) => [k, { held: v.held, reason: v.reason }])),
+    holds: Object.fromEntries(
+      Object.entries(holds).map(([k, v]) => [k, { held: v.held, reason: v.reason }]),
+    ),
     postStatusesSeen: { rooms: post(/\/api\/judge\/rooms$/) },
   };
   fs.writeFileSync(path.join(OUT, 'statuses.json'), JSON.stringify(statuses, null, 2));
@@ -566,7 +695,13 @@ async function finish(t0, ctxInfo) {
       ? `PayPal events do not match: ${JSON.stringify(statuses.observed)}`
       : `walk completed but PayPal events could not be read (${pp.reason})`;
   }
-  const verdict = { outcome, reason, startedAt: t0.toISOString(), finishedAt: new Date().toISOString(), steps };
+  const verdict = {
+    outcome,
+    reason,
+    startedAt: t0.toISOString(),
+    finishedAt: new Date().toISOString(),
+    steps,
+  };
   fs.writeFileSync(path.join(OUT, 'verdict.json'), JSON.stringify(verdict, null, 2));
   fs.writeFileSync(
     path.join(OUT, 'summary.md'),

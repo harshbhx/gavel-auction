@@ -15,7 +15,9 @@ for (const v of [...values]) {
 }
 
 function walk(dir) {
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
 }
 
 let hits = 0;
@@ -23,7 +25,9 @@ for (const file of walk(out)) {
   let text;
   if (file.endsWith('.zip')) {
     try {
-      text = execFileSync('unzip', ['-p', file], { maxBuffer: 1024 * 1024 * 512 }).toString('latin1');
+      text = execFileSync('unzip', ['-p', file], { maxBuffer: 1024 * 1024 * 512 }).toString(
+        'latin1',
+      );
     } catch {
       text = '';
     }
@@ -38,5 +42,7 @@ for (const file of walk(out)) {
     fs.rmSync(file);
   }
 }
-console.log(hits === 0 ? `scan clean (${values.length} values checked)` : `scan found ${hits} file(s)`);
+console.log(
+  hits === 0 ? `scan clean (${values.length} values checked)` : `scan found ${hits} file(s)`,
+);
 if (hits > 0) process.exitCode = 1;
