@@ -2,7 +2,7 @@
 title: AG Grid tables
 description: How the ledger, bid history and holds tables are built with AG Grid Community.
 icon: Table
-status: verified
+status: partial
 ---
 
 GAVEL's tables are [AG Grid](https://www.ag-grid.com/) Community edition (`ag-grid-community` and `ag-grid-react`, MIT). No licence key, no watermark, nothing from Enterprise.
@@ -11,7 +11,7 @@ GAVEL's tables are [AG Grid](https://www.ag-grid.com/) Community edition (`ag-gr
 
 | Grid         | Where                                                | What it shows                                                  |
 | ------------ | ---------------------------------------------------- | -------------------------------------------------------------- |
-| `LedgerGrid` | Audit page (Table / Grid switch), the `/ledger` page | The hash-chained ledger with a chain status on every row       |
+| `LedgerGrid` | Audit page (Table / Grid switch), the `/ledger` page | The ledger, one row per entry; chain status where entries are sealed (the lab) |
 | `BidsGrid`   | Auctioneer console (List / Table switch)             | The live bid history, applied as transactions, newest first    |
 | `HoldsGrid`  | The `/ledger` page                                   | Holds and settlement states with a totals row pinned at bottom |
 
@@ -22,9 +22,9 @@ GAVEL's tables are [AG Grid](https://www.ag-grid.com/) Community edition (`ag-gr
 - `applyTransaction` with `getRowId`, cell flash on change (off for reduced motion).
 - Pinned bottom row for totals that follow the filters.
 - The theming API (`themeQuartz.withParams`) mapped to the Newsprint tokens, light only.
-- Virtualised rows for a 30-day simulated run of a few thousand entries, and one card per row under 700 px.
+- Virtualised rows for a 30-day simulated run of 2,134 entries, and one card per row under 700 px.
 
-The chain check re-hashes every entry in the browser and marks an entry edited after sealing. The `/ledger` page has a button that simulates such an edit.
+The chain check runs on sealed entries (the `/ledger` lab); audit-page rows are not sealed yet and read "Not sealed". It re-hashes every entry in the browser and marks an entry edited after sealing. The `/ledger` page has a button that simulates such an edit.
 
 ## Bundle
 

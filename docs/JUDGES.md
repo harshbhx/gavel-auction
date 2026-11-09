@@ -38,7 +38,7 @@ The hosted site offers a short real room on the PayPal sandbox with no operator 
 2. Open the big screen link in a second window, or scan its QR code with a phone, and join as a bidder.
 3. Enter a name, pick a ceiling and approve the hold in the PayPal sandbox login. Sandbox buyer credentials: see the Devpost testing instructions. They are not in this repository.
 4. Place a bid from the bidder view, then press hammer in the console.
-5. You should see the hold show as held while bidding, then the settlement after the hammer and the other holds released. The audit trail link shows the ledger chained by hash.
+5. You should see the hold show as held while bidding, then the settlement after the hammer and the other holds released. The audit trail link shows the ledger entries; the hash chain is checked on the sealed public export.
 
 Along the way, check these parts of the interface (each is covered by tests in CI, none by a recorded click-through of the hosted site):
 
@@ -62,8 +62,8 @@ The web app is hosted (see `docs/DEMO.md`). The nightly `.github/workflows/judge
 | 1    | Judge      | Open the hosted web URL.                            | The landing page shows a heading and the "Start a demo auction" button.                                  |
 | 2    | Judge      | Press "Start a demo auction".                       | A demo auction opens with a link for each role: big screen, auctioneer console, bidders and audit trail. |
 | 3    | Auctioneer | Open the auctioneer console link.                   | The console shows the lot and its controls.                                                              |
-| 4    | Bidder     | Open a bidder link in a second tab and place a bid. | The bid shows on the big screen. A bid is a hold; nothing is charged.                                    |
-| 5    | Auditor    | Open the audit trail link.                          | The ledger entries show, chained by hash.                                                                |
+| 4    | Bidder     | Open a bidder link in a second tab and place a bid. | The bid shows on the big screen. A bid is a hold, held and not charged until the hammer.                                    |
+| 5    | Auditor    | Open the audit trail link.                          | The ledger entries show. The hash chain is checked on the sealed public export.                                                                |
 
 Where to look afterwards:
 
