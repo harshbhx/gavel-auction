@@ -21,7 +21,12 @@ export function TechSection() {
       <h2 id="tech-title" className="ui-kicker gv-tech__title">
         {t('mk.tech.title')}
       </h2>
-      <Marquee items={TECH} label={t('mk.tech.label')} />
+      <Marquee
+        items={TECH}
+        label={t('mk.tech.label')}
+        pauseLabel={t('mk.tech.pause')}
+        playLabel={t('mk.tech.play')}
+      />
     </section>
   );
 }

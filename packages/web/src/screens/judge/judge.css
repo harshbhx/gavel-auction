@@ -51,6 +51,7 @@
 }
 
 .gv-judge__page {
+  box-sizing: border-box;
   width: 100%;
   max-width: 1840px;
   margin-inline: auto;
@@ -148,6 +149,7 @@
 
 .gv-judge__grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
   margin-top: var(--space-5);
 }
@@ -800,10 +802,12 @@
 
 .gv-judge__cols {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .gv-judge__col {
   display: grid;
+  min-width: 0;
   gap: var(--space-2);
   align-content: start;
   padding-block: var(--space-4);
@@ -858,6 +862,7 @@
 
 .gv-judge__join {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
 }
 
@@ -873,7 +878,7 @@
 .gv-judge__join .ui-otp__slot {
   flex: 1 1 0;
   width: auto;
-  min-width: 32px;
+  min-width: 24px;
   max-width: 60px;
   height: 56px;
   font-size: var(--font-size-5);
