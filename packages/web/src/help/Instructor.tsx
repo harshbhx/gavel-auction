@@ -1,7 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { t } from '../copy/t';
 import { INSTRUCTOR_STEPS, type InstructorScreen } from './instructorSteps';
-import { isAutomatedBrowser } from './tourState';
 import './instructor.css';
 
 export interface InstructorProps {
@@ -39,9 +38,19 @@ function writeCollapsed(screen: InstructorScreen, collapsed: boolean): void {
   }
 }
 
+/** Tests and screenshot jobs run in automated browsers. */
+function isAutomatedBrowser(): boolean {
+  try {
+    if (import.meta.env.MODE === 'test') return true;
+    return typeof navigator !== 'undefined' && navigator.webdriver === true;
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Automated browsers (tests, screenshot jobs) do not see the panel unless the URL asks for it,
- * the same rule the first-visit tour follows, so committed baselines stay the same.
+ * Automated browsers do not see the panel unless the URL asks for it (?instructor=1), so
+ * committed baselines stay the same.
  */
 export function instructorEnabled(search: string): boolean {
   const flag = new URLSearchParams(search).get('instructor');
