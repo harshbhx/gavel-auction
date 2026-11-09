@@ -1321,7 +1321,6 @@ export const en = {
   'help.title': 'Help',
   'help.close': 'Close',
   'help.open.hold': 'What is a hold?',
-  'help.open.tour': 'Replay the tour',
   'help.hold.title': 'What is a hold?',
   'help.hold.intro':
     'A hold sets money aside, up to your limit, while you bid. It does not take the money.',
@@ -1334,28 +1333,6 @@ export const en = {
   'help.hold.released':
     'Whatever is not charged is released. If you do not win, the whole hold is released.',
   'help.hold.sample': 'Example amounts',
-  'tour.aria': 'Guided tour',
-  'tour.progress': 'Step {n} of {total}',
-  'tour.next': 'Next',
-  'tour.back': 'Back',
-  'tour.skip': 'Skip tour',
-  'tour.done': 'Done',
-  'tour.join.title': 'Join the room',
-  'tour.join.body': 'Enter the room code, then register once with a name.',
-  'tour.ceiling.title': 'Set your limit',
-  'tour.ceiling.body':
-    'Pick the most you are willing to spend. Your limit is the most you can owe.',
-  'tour.hold.title': 'Your hold',
-  'tour.hold.body': 'The limit is held on PayPal and not charged. The hatched bar means held.',
-  'tour.bid.title': 'Place a bid',
-  'tour.bid.body':
-    'Tap a quick bid or type your own. A bid heard in the room asks you to confirm, and you can say no.',
-  'tour.hammer.title': 'The hammer',
-  'tour.hammer.body':
-    'When the auctioneer closes the lot, the top bid wins. The winning amount is charged only if you win.',
-  'tour.receipt.title': 'Your receipt',
-  'tour.receipt.body':
-    'The receipt shows the final amount. Everything else on your hold is released, shown hollow.',
   'grid.loading': 'Loading table',
   'grid.noRows': 'No rows match',
   'grid.note.lead': 'Built with ',

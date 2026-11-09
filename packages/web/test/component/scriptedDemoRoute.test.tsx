@@ -45,7 +45,7 @@ describe('/demo/scripted', () => {
 describe('help menu', () => {
   it('has no colour or theme control and ignores an old stored palette', () => {
     window.localStorage.setItem('gavel.palette', 'b');
-    render(<HelpLayer autoStart={false} />);
+    render(<HelpLayer />);
     fireEvent.click(screen.getByRole('button', { name: t('help.button') }));
     expect(screen.queryByRole('group', { name: /palette|theme|colour/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /night board|salon/i })).toBeNull();
@@ -53,7 +53,7 @@ describe('help menu', () => {
   });
 
   it('has no axe violations', async () => {
-    const { container } = render(<HelpLayer autoStart={false} />);
+    const { container } = render(<HelpLayer />);
     fireEvent.click(screen.getByRole('button', { name: t('help.button') }));
     const results = await axe.run(container, { rules: { 'color-contrast': { enabled: false } } });
     expect(results.violations).toEqual([]);
