@@ -103,8 +103,8 @@ describe('join screen (T-WEB-032)', () => {
     } as const;
     const { rerender } = render(<JoinScreen {...base} roomName={null} state="notFound" />);
     expect(screen.getByText(t('join.notFoundHelp'))).toBeTruthy();
-    screen.getByRole('button', { name: t('join.tryAgain') }).click();
-    expect(onNavigate).toHaveBeenCalledWith('/');
+    expect(screen.getByRole('link', { name: t('join.tryAgain') }).getAttribute('href')).toBe('/');
+    expect(screen.queryByText(t('join.sandboxNote'))).toBeNull();
     rerender(<JoinScreen {...base} roomName="Gala" state="ended" />);
     expect(screen.getByText(t('join.endedHelp'))).toBeTruthy();
     rerender(<JoinScreen {...base} roomName="Gala" state="full" />);

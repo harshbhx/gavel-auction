@@ -65,8 +65,8 @@
       '" height="' +
       size +
       '" style="overflow:visible;display:block" role="img" aria-label="GAVEL">' +
-      '<g class="jolt"><circle class="s0" cx="50" cy="50" r="46" fill="none" stroke="#ff6a1f" stroke-width="3.5" opacity="0"/>' +
-      '<circle class="s1" cx="50" cy="50" r="46" fill="none" stroke="#ff6a1f" stroke-width="1.6" opacity="0"/>' +
+      '<g class="jolt"><circle class="s0" cx="50" cy="50" r="46" fill="none" stroke="#ff6a1f" stroke-width="1.6" opacity="0"/>' +
+      '<circle class="s1" cx="50" cy="50" r="46" fill="none" stroke="#ff6a1f" stroke-width="1" opacity="0"/>' +
       '<path class="ring" pathLength="1" d="M78.98 23.90A39 39 0 1 0 89.00 50.00" fill="none" stroke="' +
       ink +
       '" stroke-width="22" stroke-dasharray="1"/>' +
@@ -157,27 +157,38 @@
     };
   }
 
+  /* Reveal primitives. mask: type rises out of a clipped line. draw: a hairline draws itself. fade: plain. */
+  function mask(el, t, a, d) {
+    var en = pr(t, a, d || 0.75, E.o5),
+      ex = exitp(t);
+    el.style.transform = 'translateY(' + ((1 - en) * 108 - ex * 108).toFixed(2) + '%)';
+  }
+  function draw(el, t, a, d, axis) {
+    var en = pr(t, a, d || 0.8, E.io),
+      ex = exitp(t),
+      v = ex > 0 ? 1 - ex : en;
+    var y = axis === 'y';
+    el.style.transformOrigin = y ? (ex > 0 ? '50% 100%' : '50% 0') : ex > 0 ? '100% 50%' : '0 50%';
+    el.style.transform = y ? 'scaleY(' + v.toFixed(4) + ')' : 'scaleX(' + v.toFixed(4) + ')';
+  }
+  function fade(el, t, a, d) {
+    var ex = exitp(t);
+    el.style.opacity = pr(t, a, d || 0.5, E.o2) * (1 - ex);
+  }
   function reveal(el, t) {
     var a = +el.dataset.a,
-      d = +(el.dataset.d || 0.6),
-      dx = +(el.dataset.dx || 0),
-      dy = el.dataset.dy == null ? 28 : +el.dataset.dy;
-    var s = el.dataset.s == null ? 1 : +el.dataset.s;
-    var en = pr(t, a, d, el.dataset.e === 'back' ? E.back : E.o4),
-      ex = exitp(t);
-    var op = Math.min(1, pr(t, a, d * 0.7, E.o2)) * (1 - ex);
-    el.style.opacity = op;
-    el.style.transform =
-      'translate(' +
-      (dx * (1 - en)).toFixed(2) +
-      'px,' +
-      (dy * (1 - en) - ex * 18).toFixed(2) +
-      'px) scale(' +
-      (1 - (1 - s) * (1 - en)).toFixed(4) +
-      ')';
+      d = el.dataset.d ? +el.dataset.d : 0,
+      k = el.dataset.k || 'fade';
+    if (k === 'mask') mask(el, t, a, d);
+    else if (k === 'draw') draw(el, t, a, d, 'x');
+    else if (k === 'drawy') draw(el, t, a, d, 'y');
+    else fade(el, t, a, d);
   }
 
   var H = {
+    mask: mask,
+    draw: draw,
+    fade: fade,
     E: E,
     cl: cl,
     pr: pr,

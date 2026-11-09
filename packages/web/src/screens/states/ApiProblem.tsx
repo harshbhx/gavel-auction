@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { NotFound } from './NotFound';
 import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
 import { waitText } from '../../net/apiError';
@@ -25,7 +26,20 @@ const AUTO_RETRY_MAX_S = 120;
 const AUTO_RETRY_DEFAULT_S = 5;
 
 /** A room page that cannot load: missing or ended, slowed down by the server, or no network. */
-export function ApiProblem({ kind, retryAfterS = null, onNavigate, onRetry }: ApiProblemProps) {
+export function ApiProblem({ kind, retryAfterS = null, onRetry }: ApiProblemProps) {
+  if (kind === 'notFound') return <NotFound kind="room" />;
+  return <ApiRetry kind={kind} retryAfterS={retryAfterS} onRetry={onRetry} />;
+}
+
+function ApiRetry({
+  kind,
+  retryAfterS,
+  onRetry,
+}: {
+  readonly kind: 'rateLimited' | 'unreachable';
+  readonly retryAfterS: number | null;
+  readonly onRetry: (() => void) | undefined;
+}) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     heading.current?.focus();
@@ -38,20 +52,13 @@ export function ApiProblem({ kind, retryAfterS = null, onNavigate, onRetry }: Ap
     const timer = window.setTimeout(onRetry, autoS * 1000);
     return () => window.clearTimeout(timer);
   }, [auto, autoS, onRetry]);
-  const title =
-    kind === 'notFound'
-      ? t('room.missingTitle')
-      : kind === 'rateLimited'
-        ? t('join.rateTitle')
-        : t('join.offlineTitle');
+  const title = kind === 'rateLimited' ? t('join.rateTitle') : t('join.offlineTitle');
   const help =
-    kind === 'notFound'
-      ? t('room.missingHelp')
-      : kind === 'rateLimited'
-        ? retryAfterS === null
-          ? t('api.rateHelpUnknown')
-          : t('api.rateHelp', { wait: waitText(retryAfterS) })
-        : t('api.offlineHelp');
+    kind === 'rateLimited'
+      ? retryAfterS === null
+        ? t('api.rateHelpUnknown')
+        : t('api.rateHelp', { wait: waitText(retryAfterS) })
+      : t('api.offlineHelp');
   return (
     <main className="gv-flow" data-route="room-problem" data-state={kind}>
       <p className="ui-kicker">{t('app.name')}</p>
@@ -62,20 +69,9 @@ export function ApiProblem({ kind, retryAfterS = null, onNavigate, onRetry }: Ap
         {help}
       </p>
       <div className="gv-join__actions">
-        {kind === 'notFound' ? (
-          <>
-            <Button size="bid" onClick={() => onNavigate('/')}>
-              {t('join.tryAgain')}
-            </Button>
-            <Button variant="outline" onClick={() => onNavigate('/try')}>
-              {t('join.startDemo')}
-            </Button>
-          </>
-        ) : (
-          <Button size="bid" onClick={retry}>
-            {t('generic.retry')}
-          </Button>
-        )}
+        <Button size="bid" onClick={retry}>
+          {t('generic.retry')}
+        </Button>
       </div>
     </main>
   );

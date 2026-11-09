@@ -611,3 +611,10 @@ main[data-route='token-gate'] .gv-flow__action,
     padding-bottom: 0;
   }
 }
+
+/* Not found: the help links stack on a phone and sit in a row where there is room. */
+.gv-notfound__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

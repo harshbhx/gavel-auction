@@ -11,9 +11,12 @@ Every row below follows the committed evidence. Where this page and `docs/GATES.
 | What | Where it stands |
 | --- | --- |
 | <GateBadge id="G0" /> <GateBadge id="G1" /> <GateBadge id="G2" /> <GateBadge id="G4" /> | Four sandbox gates passed on the real PayPal sandbox: app and buyers, partial capture with `final_capture`, wallet and guest card AUTHORIZE, and six real webhooks verified. See [gates](/docs/proof/gates). |
-| Hammer to settled | p95 5.59 s, inside the 6 s target (20 settlements of 6 holds on the real sandbox, 0 failed). See [latency](/docs/proof/latency). |
+| Real server kill | A real server process was killed once on a CI runner after the capture request and before the response, and settled with one capture, two losers voided, a journal equal to PayPal and a verifying ledger of 19 entries ([run 42558021614](https://github.com/harshbhx/gavel-auction/actions/runs/42558021614)). |
+| Live speech socket | Both providers answered 24 of 24 synthetic clips through the `/audio` socket, with no spoken bid accepted without a confirm ([run 42575018866](https://github.com/harshbhx/gavel-auction/actions/runs/42575018866)). |
+| Hosted API | Webhook route p95 112.03 ms against a 300 ms target (n=50) and warmup after 16 minutes idle at most 0.66 s (n=2). See [latency](/docs/proof/latency). |
+| Hammer to settled | Measured at p95 6.93 s against a 6 s target (run 42563147792, n=49 settlements of 6 holds, INCOMPLETE); an earlier n=20 run measured 5.59 s. Owner decision open: keep the targets, raise them with a reason, or reduce latency. See [latency](/docs/proof/latency). |
 | One lot on the real sandbox | One lot of three holds settled and one in-process crash recovered, by the nightly specs R7, R8 and R10 (runs [42200708552](https://github.com/harshbhx/gavel-auction/actions/runs/42200708552) and [42317068784](https://github.com/harshbhx/gavel-auction/actions/runs/42317068784)). |
-| <GateBadge id="G5" /> | Voice measured on 24 synthetic clips in two sets (tuned on those clips): wrong accept 0.000, exact plus recoverable 1.000. On a synthetic held-out noisy set measured once (120 clips), neither provider met the thresholds: wrong accept 0.058 (Groq) and 0.092 (Deepgram) against 0.05. Every spoken bid goes through a confirm prompt. |
+| <GateBadge id="G5" /> | Voice measured on 24 synthetic clips in two sets (tuned on those clips): wrong accept 0.000, exact plus recoverable 1.000. On a synthetic held-out noisy set measured once (120 clips), wrong accept was 0.058 (Groq) and 0.092 (Deepgram) against 0.05. Every spoken bid goes through a confirm prompt. |
 | Security review | All eight P0 items PASS as of 2026-11-07. See [security review](/docs/safety/security-review). |
 | Hosted | Web app on Cloudflare and API on Render, in sandbox mode, with key-less judge rooms. See [demo guide](/docs/start/demo). |
 
@@ -26,7 +29,7 @@ Every row below follows the committed evidence. Where this page and `docs/GATES.
 | Remainder release (G1) | After the final capture the authorization reads CAPTURED and a later void answers 422 `PREVIOUSLY_CAPTURED`, so the remainder is treated as released. | Read a buyer balance to confirm the release directly, and capture a guest card order. | Date not set |
 | Webhooks (G4) | Six real deliveries verified. Rejecting a tampered event is covered against the fake PayPal. | Record a tampered event and a PayPal retry delivery on the sandbox. | Date not set |
 | Card and guest in a live room | G2 shows the SDK authorize flow for a wallet buyer and a guest card. | Record a card checkout inside a live judge room. | Date not set |
-| Whole auction, hosted | The settlement saga is covered against the fake PayPal, and on the sandbox by the nightly specs and the 20-settlement measurement (one script, no server in the loop). See [crash recovery](/docs/how-it-works/crash-recovery). | Settle a whole auction through the hosted Render server. A real process kill ran on a CI runner ([run 42558021614](https://github.com/harshbhx/gavel-auction/actions/runs/42558021614), one kill point); the kill on the deployed host is not run. | Date not set |
+| Whole auction, hosted | The settlement saga is covered against the fake PayPal, and on the sandbox by the nightly specs and the 20-settlement measurement (one script, no server in the loop). See [crash recovery](/docs/how-it-works/crash-recovery). | Settle a whole auction through the hosted Render server. A real process kill ran on a CI runner ([run 42558021614](https://github.com/harshbhx/gavel-auction/actions/runs/42558021614), one kill point); the kill on the deployed host is the next step. | Date not set |
 
 <Held title="What the G3 readings decide">
 
@@ -38,14 +41,14 @@ If the window is shorter than the longest planned auction, auctions are capped t
 
 | Target | Today | Next | Owner and date |
 | --- | --- | --- | --- |
-| Hammer to settled, 6 s | p95 5.59 s, inside the target (n=20, 6 holds, sandbox, run 42346811713). | Repeat on a larger sample. | Date not set |
-| Hammer to captured, 2.5 s | p95 3.01 s (p50 2.56 s). The capture call alone is p95 2.28 s (5 Nov, n=10). | Tune toward 2.5 s, or set the target from the sandbox figure. This is an owner decision. | harshbhx, date not set |
+| Hammer to settled, 6 s | Measured at p95 6.93 s (n=49, run 42563147792, INCOMPLETE); earlier n=20 run 5.59 s. | Owner decision: keep, raise with a reason, or reduce latency. | Date not set |
+| Hammer to captured, 2.5 s | p95 3.77 s (p50 2.78 s, n=49, run 42563147792); earlier n=20 run 3.01 s. The capture call alone is p95 2.72 s (3 calls failed). | Tune toward 2.5 s, or set the target from the sandbox figure. This is an owner decision. | harshbhx, date not set |
 
 ## Voice
 
 | Area | Today | Next | Owner and date |
 | --- | --- | --- | --- |
-| <GateBadge id="G5" /> speech accuracy | Measured on synthetic audio: 24 eSpeak and 24 human-like clips, Deepgram nova-3 and Groq whisper-large-v3-turbo. Fixes were chosen on those same clips. A synthetic held-out noisy set of 120 clips, measured once, was not met by either provider (run 42567832671). See [voice and confirm](/docs/how-it-works/voice-and-confirm). | Confirm in a live room with a person and a real noisy room. Until then no code path auto-accepts a spoken bid. | Date not set |
+| <GateBadge id="G5" /> speech accuracy | Measured on synthetic audio: 24 eSpeak and 24 human-like clips, Deepgram nova-3 and Groq whisper-large-v3-turbo. Fixes were chosen on those same clips. A synthetic held-out noisy set of 120 clips, measured once, read wrong accept 0.058 (Groq) and 0.092 (Deepgram) against 0.05 (run 42567832671). See [voice and confirm](/docs/how-it-works/voice-and-confirm). | Confirm in a live room with a person and a real noisy room. Until then no code path auto-accepts a spoken bid. | Date not set |
 | Live speech | Cached transcripts by default; live speech runs only with `VOICE_STT` set. | One live run through the `/audio` socket is recorded ([run 42575018866](https://github.com/harshbhx/gavel-auction/actions/runs/42575018866): 24 synthetic clips, both providers, fake PayPal in the server, no spoken bid accepted without a confirm). Still open: an audio sender in the web console, and a human voice in a real room. | Date not set |
 
 ## Hosting and demo

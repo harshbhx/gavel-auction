@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'motion/react';
+import { m } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { useReduced } from './use-reduced';
 import type { ReactNode } from 'react';
@@ -23,7 +23,7 @@ export function Reveal({
   useEffect(() => setEnhance(true), []);
   if (reduce || !enhance) return <div className={className}>{children}</div>;
   return (
-    <motion.div
+    <m.div
       className={className}
       initial={{ opacity: 0, y }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -31,6 +31,6 @@ export function Reveal({
       transition={{ duration: 0.6, delay, ease: [0.16, 1, 0.3, 1] }}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }

@@ -1,0 +1,29 @@
+{
+  "v": 1,
+  "env": "sandbox",
+  "settlements": 50,
+  "holdsPerSettlement": 6,
+  "voidConcurrency": 3,
+  "authorizationsUsed": 299,
+  "hammerToCaptured": {
+    "count": 49,
+    "failures": 1,
+    "min": 2194.23,
+    "p50": 2784.72,
+    "p95": 3766.67,
+    "p99": 5094.52,
+    "max": 5094.52
+  },
+  "hammerToSettled": {
+    "count": 49,
+    "failures": 1,
+    "min": 4443.04,
+    "p50": 5577.1,
+    "p95": 6927.43,
+    "p99": 8622.66,
+    "max": 8622.66
+  },
+  "mismatches": 0,
+  "errors": 1,
+  "table": "| span | n | failed | p50 ms | p95 ms | p99 ms | max ms |\n|------|---|--------|--------|--------|--------|--------|\n| hammer to CAPTURED | 49 | 1 | 2784.72 | 3766.67 | 5094.52 | 5094.52 |\n| hammer to SETTLED | 49 | 1 | 5577.1 | 6927.43 | 8622.66 | 8622.66 |"
+}

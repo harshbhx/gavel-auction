@@ -58,6 +58,10 @@ services:
       # panel offers a key field only while this is set. Share it in the slide deck only.
       - key: JUDGE_KEY
         sync: false
+      # Per-judge keys: a JSON array of {id, hash, label, expiresAt, maxRooms, perHour}. Only the
+      # sha256 of each secret goes here (node scripts/make-judge-key.mjs prints it). Needs JUDGE_ROOMS.
+      - key: JUDGE_KEYS
+        sync: false
       # PAYMENTS=sandbox needs the PayPal sandbox app credentials (config.ts refuses to boot without).
       - key: PAYPAL_CLIENT_ID
         sync: false

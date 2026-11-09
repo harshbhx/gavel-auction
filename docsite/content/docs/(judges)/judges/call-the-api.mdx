@@ -1,0 +1,82 @@
+---
+title: Call the API as a judge
+description: Use the key you were given to open a sandbox room, bid, hammer and read the ledger with curl, or try each call on this page.
+icon: Terminal
+status: code-checked
+evidence: Written from packages/server/src/http/judge-rooms.ts and openapi/gavel.yaml. Server tests cover expiry, revoke, per-key limits and the bid route; the panel on this page calls the hosted API.
+---
+
+If you were given a judge key, you can drive a whole sandbox auction over plain HTTP. The key looks like `gvl_judge_<id>_<secret>`. It opens judge rooms and nothing else: it never reaches an operator route, and no real money moves. PayPal stays in the sandbox.
+
+<Held title="Limits of a key">
+
+Each key has its own cap on rooms alive at once (2 by default) and on rooms created per hour (10 by default), and it stops working on 30 November 2026 (`judge_key_expired`). The host can revoke a key at any time (`judge_key_revoked`). A room lasts 30 minutes. Bids and holds in these rooms are simulated, with no PayPal login. Voice bidding is switched off in rooms opened with a key.
+
+</Held>
+
+## Try it here
+
+Paste your key, pick a call, edit the body if you like and press Send. The answer is the host's real answer. Steps 3 to 9 use the tokens that steps 2, 3 and 8 return.
+
+<JudgeTryIt />
+
+## The same calls with curl
+
+The API is at `https://api.gavel.dualmindlab.tech`. Keep the key in a shell variable so it never lands in your history file.
+
+```sh
+API=https://api.gavel.dualmindlab.tech
+read -rs JUDGE_KEY   # paste the key, press Enter
+
+# 1. Check the key (creates nothing)
+curl -s -X POST $API/api/judge/key -H "x-judge-key: $JUDGE_KEY"
+
+# 2. Create a room. Note auctionId, joinCode, auctioneerToken, reviewerToken in the answer.
+curl -s -X POST $API/api/judge/rooms -H "x-judge-key: $JUDGE_KEY" \
+  -H 'content-type: application/json' -d '{"title":"My lot"}'
+
+# 3. Join as a bidder. The answer holds sessionToken.
+curl -s -X POST $API/api/judge/join -H 'content-type: application/json' \
+  -d '{"code":"K7M2QX","displayName":"Asha"}'
+
+# 4. Simulated hold, so the bidder is in the room
+curl -s -X POST $API/api/judge/rooms/$ID/sim-hold -H "authorization: Bearer $SESSION" \
+  -H 'content-type: application/json' -d '{"ceilingCents":5000,"name":"Asha"}'
+
+# 5. Bid 15.00 (amount is in cents)
+curl -s -X POST $API/api/judge/rooms/$ID/bids -H "authorization: Bearer $SESSION" \
+  -H 'content-type: application/json' -d '{"amount":1500}'
+
+# 6. Hammer, with the auctioneer token
+curl -s -X POST $API/api/auctions/$ID/control -H "authorization: Bearer $AUCTIONEER" \
+  -H 'content-type: application/json' \
+  -d '{"controlId":"c1","action":"hammer","args":{"closeNow":1}}'
+
+# 7. The ledger, with the reviewer token
+curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" > bundle.json
+
+# 8 and 9. A receipt for the bidder
+curl -s -X POST $API/api/auctions/$ID/receipt-link -H "authorization: Bearer $SESSION" \
+  -H 'content-type: application/json' -d '{}'
+curl -s $API/api/auctions/$ID/receipt -H "authorization: Bearer $RECEIPT"
+```
+
+A bid the engine refuses answers `409` with `{"accepted":false,"reason":"below_reserve", ...}`. Send a `mid` (a ULID) with a bid to retry it safely: the same `mid` returns the first answer and records nothing twice.
+
+## Why there is a bid route
+
+Live bidding in the app runs on a WebSocket, and the socket only accepts a browser `Origin`, so curl and generated clients cannot use it. `POST /api/judge/rooms/{id}/bids` takes the same path as a socket bid (rate limit, registered check, the auction engine) over plain HTTP. The socket rules are unchanged.
+
+## Errors you may see
+
+| Status | `error` | Meaning |
+| --- | --- | --- |
+| 401 | `judge_key_invalid` | The key was not accepted. Five wrong keys in a row lock that address out for 15 minutes. |
+| 401 | `judge_key_expired` | The key is past its expiry date. |
+| 401 | `judge_key_revoked` | The key was revoked. |
+| 429 | `judge_key_room_cap` | You already have the most rooms this key allows. Wait for one to end. |
+| 429 | `judge_rate_limited` | Too many creates this hour. See `Retry-After`. |
+| 409 | `bid_rejected` | The engine refused the bid. `reason` says why. |
+| 410 | `judge_room_expired` | The room ended. |
+
+The full request and response shapes are in the [API reference](/docs/reference/api-reference) and `openapi/gavel.yaml`.

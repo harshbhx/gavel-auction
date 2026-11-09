@@ -84,8 +84,8 @@ describe('a failed room read says what went wrong (SRV-37)', () => {
     render(<App initialPath="/r/nope/hub" api={API} />);
     expect(await screen.findByText(t('room.missingTitle'))).toBeTruthy();
     expect(screen.queryByText(t('hub.title'))).toBeNull();
-    expect(screen.getByRole('button', { name: t('join.tryAgain') })).toBeTruthy();
-    expect(screen.getByRole('button', { name: t('join.startDemo') })).toBeTruthy();
+    expect(screen.getByRole('link', { name: t('join.tryAgain') })).toBeTruthy();
+    expect(screen.getByRole('link', { name: t('nf.demo') })).toBeTruthy();
   });
 
   it('bid page of a room that does not exist says so, a real room keeps the watcher page', async () => {

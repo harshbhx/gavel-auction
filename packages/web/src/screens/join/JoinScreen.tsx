@@ -6,6 +6,7 @@ import { Button } from '../../design/primitives/Button';
 import '../flows.css';
 import { loadRegistration } from '../../payments/registrationStore';
 import { getBidderSession } from '../../store/session';
+import { NotFound } from '../states/NotFound';
 import { ApiProblem } from '../states/ApiProblem';
 import { ChunkBoundary, lazyWithRetry } from '../states/ChunkBoundary';
 
@@ -96,25 +97,7 @@ export function JoinScreen({
       />
     );
   }
-  if (state === 'notFound') {
-    return (
-      <main className="gv-flow" data-state="not-found">
-        <p className="ui-kicker">{t('app.name')}</p>
-        <h1 tabIndex={-1}>{t('join.notFound')}</h1>
-        <p role="alert" className="gv-join__help">
-          {t('join.notFoundHelp')}
-        </p>
-        <div className="gv-join__actions">
-          <Button size="bid" onClick={() => onNavigate('/')}>
-            {t('join.tryAgain')}
-          </Button>
-          <Button variant="outline" onClick={() => onNavigate('/demo')}>
-            {t('join.startDemo')}
-          </Button>
-        </div>
-      </main>
-    );
-  }
+  if (state === 'notFound') return <NotFound kind="code" />;
   if (state === 'loading' || roomName === null) {
     return (
       <main className="gv-flow" aria-busy="true">

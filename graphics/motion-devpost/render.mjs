@@ -33,7 +33,7 @@ const size = (f) => statSync(f).size;
 for (const s of slides) {
   if (only && !only.includes(s.name.slice(0, 2))) continue;
   const file = path.join(tmp, `${s.name}.html`);
-  writeFileSync(file, pageHtml({ T: s.T, html: s.html, js: s.js, header: s.header !== false }));
+  writeFileSync(file, pageHtml({ T: s.T, html: s.html, js: s.js }));
   const vdir = path.join(tmp, `${s.name}-v`);
   const gdir = path.join(tmp, `${s.name}-g`);
   await frames(browser, file, vdir, W, H, VIDEO_FPS, s.T);

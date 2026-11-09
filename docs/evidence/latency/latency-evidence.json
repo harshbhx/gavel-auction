@@ -1,0 +1,96 @@
+{
+  "v": 1,
+  "kind": "latency-evidence",
+  "runUrl": "https://github.com/harshbhx/gavel-auction/actions/runs/42563147792",
+  "targets": {
+    "capturedP95Ms": 2500,
+    "settledP95Ms": 6000,
+    "callP95Ms": 1000
+  },
+  "sources": {
+    "measure-sandbox.json": "d35671f9127e6fee2c9d3d1a91ae67b7d8a90515a4672e0b541d1d1ef84ae1a6",
+    "measure-settlement.json": "9ce414af201afcd028c252fced734f559770c465c4c8faa338afc9698789ded3"
+  },
+  "problems": ["per-call capture had 3 failed calls", "settlement had 0 mismatches and 1 errors"],
+  "calls": {
+    "cycles": 60,
+    "completed": 60,
+    "ops": {
+      "order": {
+        "count": 60,
+        "failures": 0,
+        "min": 563.37,
+        "p50": 759.42,
+        "p95": 1227.49,
+        "p99": 1473.48,
+        "max": 1473.48,
+        "budgetP95Ms": 1000,
+        "status": "MISSED"
+      },
+      "authorize": {
+        "count": 60,
+        "failures": 0,
+        "min": 1028.12,
+        "p50": 1308.01,
+        "p95": 1538.31,
+        "p99": 1911.93,
+        "max": 1911.93,
+        "budgetP95Ms": 1000,
+        "status": "MISSED"
+      },
+      "capture": {
+        "count": 59,
+        "failures": 3,
+        "min": 1614.21,
+        "p50": 2093.26,
+        "p95": 2718.84,
+        "p99": 3724.76,
+        "max": 3724.76,
+        "budgetP95Ms": 1000,
+        "status": "MISSED"
+      },
+      "void": {
+        "count": 60,
+        "failures": 0,
+        "min": 702.19,
+        "p50": 947.66,
+        "p95": 1249.84,
+        "p99": 1458.67,
+        "max": 1458.67,
+        "budgetP95Ms": 1000,
+        "status": "MISSED"
+      }
+    },
+    "count429": 0
+  },
+  "settlement": {
+    "settlements": 50,
+    "holdsPerSettlement": 6,
+    "authorizationsUsed": 299,
+    "mismatches": 0,
+    "errors": 1,
+    "hammerToCaptured": {
+      "count": 49,
+      "failures": 1,
+      "min": 2194.23,
+      "p50": 2784.72,
+      "p95": 3766.67,
+      "p99": 5094.52,
+      "max": 5094.52,
+      "targetP95Ms": 2500,
+      "status": "MISSED"
+    },
+    "hammerToSettled": {
+      "count": 49,
+      "failures": 1,
+      "min": 4443.04,
+      "p50": 5577.1,
+      "p95": 6927.43,
+      "p99": 8622.66,
+      "max": 8622.66,
+      "targetP95Ms": 6000,
+      "status": "MISSED"
+    }
+  },
+  "verdict": "INCOMPLETE"
+}
