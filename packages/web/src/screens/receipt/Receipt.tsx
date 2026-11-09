@@ -76,7 +76,14 @@ function Body({
 }) {
   const isWinner = view.winnerPaddle !== null && hold.paddle === view.winnerPaddle;
   if (view.phase === 'FAILED_NEEDS_REVIEW' || hold.state === 'FAILED_NEEDS_REVIEW') {
-    return <Failed uncertain={isWinner} reference={hold.idSuffix} contact={props.contact} />;
+    return (
+      <Failed
+        uncertain={isWinner}
+        reference={hold.idSuffix}
+        contact={props.contact}
+        priceCents={isWinner && props.runnerUp !== true ? (view.hammerPriceCents ?? null) : null}
+      />
+    );
   }
   if (!isWinner) return <NonWinner hold={hold} itemName={props.itemName} at={props.at} />;
   // The hammer price belongs to the original winner's receipt only.

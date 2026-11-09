@@ -824,6 +824,9 @@ export const en = {
   'screen.passed': 'Passed',
   'screen.join': 'Join: {code}',
   'screen.settleSummary': '{c} captured, {r} released',
+  'screen.wonReview': 'Paddle {n} won at {amount}',
+  'screen.wonReviewUnknown': 'Won at {amount}',
+  'screen.settleReview': 'Settlement needs review. Holds are held, not charged.',
   'screen.stopped': 'Auction stopped',
   'screen.clockFrozen': 'last known, reconnecting',
   'screen.untitled': 'Live auction',
@@ -1062,7 +1065,8 @@ export const en = {
   'receipt.fallback':
     'Another bidder could not be charged, so you are the winner. Charged {amount}.',
   'receipt.failed':
-    'We could not confirm whether this payment went through. The organizer will review it and tell you the result.',
+    'The settlement step needs a manual review. Your hold is held, not charged, until the organizer reviews it and tells you the result.',
+  'receipt.failedWon': 'Your bid won at {amount}.',
   'receipt.failedNoCapture':
     'We could not complete this auction for you. Your hold is held, not charged, until the organizer reviews it.',
   'receipt.none': 'No receipt for this session.',

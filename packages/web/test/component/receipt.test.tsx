@@ -79,6 +79,20 @@ describe('receipts (T-WEB-045)', () => {
     expect(container.textContent).toContain('ABC123');
   });
 
+  it('a failed receipt tells the winner their bid won and that nothing was charged', () => {
+    const v = view('FAILED_NEEDS_REVIEW', [hold(1, 'FAILED_NEEDS_REVIEW')]);
+    const { container } = render(<Receipt {...base} view={v} paddle={1} />);
+    expect(container.textContent).toContain('Your bid won at $350.00.');
+    expect(container.textContent).toContain('held, not charged');
+    expect(container.textContent).not.toMatch(/stopped|captured|SOLD/i);
+  });
+
+  it('a failed receipt for a non-winner does not claim a win', () => {
+    const v = view('FAILED_NEEDS_REVIEW', [hold(2, 'FAILED_NEEDS_REVIEW')]);
+    const { container } = render(<Receipt {...base} view={v} paddle={2} />);
+    expect(container.textContent).not.toContain('Your bid won');
+  });
+
   it('shows the fallback receipt with the final charge', () => {
     const v = view('CAPTURED', [hold(1, 'CAPTURED', { capturedCents: 30000 })]);
     const { container } = render(<Receipt {...base} view={v} paddle={1} runnerUp />);
