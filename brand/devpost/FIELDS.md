@@ -18,7 +18,7 @@ A live auction where every bid is a PayPal hold. At the hammer GAVEL captures th
 
 ## About the project
 
-Paste the full content of `brand/devpost/DESCRIPTION.md`. Headings used, in Devpost's order: Inspiration, What it does, How we built it, Challenges we ran into, Accomplishments that we're proud of, What we learned, What's next for GAVEL. Extra H3 subsections: "Where the partners fit" and "AI in the product" (under How we built it). The AI section answers the rules item "identify which tools (model or AI service) were used and how".
+Paste the full content of `brand/devpost/DESCRIPTION.md`. Headings used, in Devpost's order: Inspiration, What it does, How we built it, Challenges we ran into, Accomplishments that we're proud of, What we learned, What's next for GAVEL. Extra H3 subsections: "Animated slides" (under What it does), and "Team", "Where the partners fit" and "AI in the product" (under How we built it). Every image has an italic caption line. The AI section answers the rules item "identify which tools (model or AI service) were used and how".
 
 Markdown used: H2 and H3 headings, bold, bullet lists, inline code, links, images by URL. No tables, no HTML, no fenced code, no strikethrough (Devpost's Markdown tips list tables, fenced code and strikethrough as extended syntax that not every renderer supports).
 
@@ -26,7 +26,7 @@ Markdown used: H2 and H3 headings, bold, bullet lists, inline code, links, image
 
 typescript, node.js, react, vite, python, paypal, paypal-orders-api, paypal-payments-api, paypal-js-sdk, cloudflare-workers, render, ag-grid, hugging-face, deepgram, groq, websockets, openapi, apimatic, vitest, playwright, github-actions, next.js, fumadocs
 
-Two spare slots. Add `paypal-webhooks` or `speech-to-text` if you like. Removed from the older list: `cloudflare-pages` (the web app is a Worker with static assets; not confirmed as Pages) and added `apimatic` (the spec is linted and the portal is in progress; remove it if you would rather not list it until the SDK ships).
+Two spare slots. Add `paypal-webhooks` or `speech-to-text` if you like. Removed from the older list: `cloudflare-pages` (the web app is a Worker with static assets; not confirmed as Pages). `apimatic` stays (see flag 2).
 
 ## Try it out links
 
@@ -40,7 +40,7 @@ Two spare slots. Add `paypal-webhooks` or `speech-to-text` if you like. Removed 
 | Evidence Explorer (Hugging Face) | https://huggingface.co/spaces/harshbhx/gavel-evidence-explorer |
 | GitHub repository                | https://github.com/harshbhx/gavel-auction                      |
 
-The APIMatic developer portal is not listed because it is not live yet (SUBMISSION-STATUS: in progress). Add it only if it is live before you submit.
+The APIMatic developer portal is not listed because https://docs.gavel.dualmindlab.tech/portal returned 404 on 9 Nov. Add it when it is live.
 
 ## Code repository URL
 
@@ -60,27 +60,39 @@ Paste `docs/judges/DEVPOST-TESTING.md` and fill the two sandbox buyer logins on 
 
 ## Image gallery (upload in this order, JPG/PNG/GIF, 5 MB max, 3:2)
 
-All files are in `brand/devpost/gallery/` (1200x800 PNG, largest 326 KB). Thumbnail: `brand/devpost/thumbnail.png`.
+Rule: at most one animated GIF in the gallery (the hero). Every other slide is a static PNG. All animated slides sit in the description instead (see "Animated slides" in `DESCRIPTION.md`; files in `brand/devpost/story/`).
 
-| #   | File                       | Caption                                                                                                                                                                                                                        |
-| --- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | 01-hero.png                | GAVEL is a live auction where every bid is a PayPal authorization hold and only the winner is charged, at the hammer. PayPal sandbox only, no real money.                                                                      |
-| 2   | 02-how-it-works.png        | Four moves. A bidder approves a ceiling as a hold, bids in an ascending auction, the auctioneer hammers, and only the winning price is captured while every other hold is released.                                            |
-| 3   | 03-architecture.png        | One bid, four hops. The browser reaches a Cloudflare Worker, which reaches the auction API on Render. The API holds and captures with PayPal sandbox and appends every accepted bid to a hash-chained ledger.                  |
-| 4   | 04-judge-flow.png          | Try it in two minutes, no login. Open /try, start a room, bid, hammer and read the receipt. /demo/scripted plays a recorded room in your tab in about a minute.                                                                |
-| 5   | 05-audit-and-verify.png    | Do not trust, verify. Every accepted bid goes into a hash-chained ledger, and anyone can re-check the public export. The hashes shown are shortened examples.                                                                  |
-| 6   | 06-partners.png            | PayPal runs the holds, Cloudflare serves the web app and the docs, Render hosts the API, AG Grid draws the ledger, bids and holds tables, Hugging Face hosts the open evidence.                                                |
-| 7   | 07-open-data-and-gates.png | The evidence is open: five small datasets, each with a sha256 manifest and labelled for what it is. Gates G0, G1, G2 and G4 passed on the PayPal sandbox, G3 is a real probe in progress and G5 is partial on synthetic audio. |
-| 8   | 08-ending.png              | Try it. Verify it. No login. Web app, docs and source links.                                                                                                                                                                   |
+All files are in `brand/devpost/gallery/` (1200x800, 3:2, largest 1.4 MB). Thumbnail: `brand/devpost/thumbnail.png` (static).
 
-Animated versions of 01 to 08 (GIF, 0.5 to 1.4 MB, same file names) sit next to the PNGs in `brand/devpost/gallery/` if you want to try GIFs in the gallery. Devpost lists GIF as allowed, but the posters are the safe choice. Every slide image is a poster; no sponsor logos are used.
+| #   | File                       | Type         | Caption                                                                                                                                                                                                                        |
+| --- | -------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | 01-hero.gif                | animated GIF | GAVEL is a live auction where every bid is a PayPal authorization hold and only the winner is charged, at the hammer. PayPal sandbox only, no real money. (`01-hero.png` is the static fallback if the GIF is refused.)        |
+| 2   | 02-how-it-works.png        | static PNG   | Four moves. A bidder approves a ceiling as a hold, bids in an ascending auction, the auctioneer hammers, and only the winning price is captured while every other hold is released.                                            |
+| 3   | 03-architecture.png        | static PNG   | One bid, four hops. The browser reaches a Cloudflare Worker, which reaches the auction API on Render. The API holds and captures with PayPal sandbox and appends every accepted bid to a hash-chained ledger.                  |
+| 4   | 04-judge-flow.png          | static PNG   | Try it in two minutes, no login. Open /try, start a room, bid, hammer and read the receipt. /demo/scripted plays a recorded room in your tab in about a minute.                                                                |
+| 5   | 05-audit-and-verify.png    | static PNG   | Do not trust, verify. Every accepted bid goes into a hash-chained ledger, and anyone can re-check the public export. The hashes shown are shortened examples.                                                                  |
+| 6   | 06-partners.png            | static PNG   | PayPal runs the holds, Cloudflare serves the web app and the docs, Render hosts the API, AG Grid draws the ledger, bids and holds tables, Hugging Face hosts the open evidence.                                                |
+| 7   | 07-open-data-and-gates.png | static PNG   | The evidence is open: five small datasets, each with a sha256 manifest and labelled for what it is. Gates G0, G1, G2 and G4 passed on the PayPal sandbox, G3 is a real probe in progress and G5 is partial on synthetic audio. |
+| 8   | 08-ending.png              | static PNG   | Try it. Verify it. No login. Web app, docs and source links.                                                                                                                                                                   |
+
+Slot reserved: the outro GIF with credits (being built by the 3D logo task). It is a GIF, so it goes in the description (under "Try it", next to the closing slide), not in the gallery. Add its file to `brand/devpost/story/` and one image line in `DESCRIPTION.md` when it lands.
+
+## Team members (Devpost field)
+
+Devpost has its own team members field: add Harsh Bhanushali (harshbhx) and Dhairya Patel (DhairyaPatel-Devloper) there, as well as in the description "Team" subsection. Credits in the text follow `git log` (Dhairya's commits are mostly the web app, its accessibility and visual tests, and the end-to-end scenario runner), plus the manual Render deploys, which Harsh confirmed are Dhairya's.
+
+## Flags: confirm with Harsh before posting
+
+1. **AI tools used while building.** The rules require naming every AI tool and how it was used. The description now has this block under "AI in the product". It is Harsh's call, so confirm before posting. The repository's banned-word check rejects the assistant's product name and its vendor name, so the text says "an AI coding assistant (name added by hand on Devpost)". Replace that bracket with the real product and vendor name in the Devpost editor only; never commit it. Both versions:
+   - With: "AI tools used while building: an AI coding assistant (name added by hand on Devpost), for coding assistance and documentation drafts." followed by the runtime AI paragraph (Deepgram nova-3, Groq whisper-large-v3-turbo).
+   - Without: delete the "AI tools used while building" paragraph and keep only the runtime AI paragraph. The rules say every AI tool used, so leaving it out is a disclosure risk.
+2. **APIMatic claim.** The text says the API portal and the TypeScript and Python SDKs are generated with APIMatic. `docs/API.md` still says nothing has been generated, and https://docs.gavel.dualmindlab.tech/portal answered 404 on 9 Nov 12:05 UTC (DOC-55 has not merged). Do not submit this sentence unless the portal and SDKs exist; if not, replace it with "the OpenAPI spec is linted in CI; portal and SDK generation is in progress". Add the portal to the try-it links when it is live.
 
 ## Rules check, in short
 
 Open items for the submitter:
 
-1. Tools statement: the description names the runtime AI (Deepgram nova-3, Groq whisper-large-v3-turbo). If you used AI coding assistants to build GAVEL, the rules say "every AI tool used"; decide whether to add one sentence about that under "AI in the product". It is not in the text now.
-2. Confirm the About box on GitHub shows the MIT licence.
-3. Fill the form extras the live form adds (category, developer account ID, country, tool feedback), and the reuse statement: the project started on 4 Nov 2026, after the 1 Oct start, so it counts as new.
-4. Upload the video, the thumbnail and the 8 gallery images, paste the testing instructions with buyer logins.
-5. After G3 reports (about 12 Nov 06:17 UTC), the deadline is 12 Nov 12:00 pm PT (20:00 UTC, Fri 13 Nov 01:30 IST). Reword the G3 lines if the result lands before you submit.
+1. Confirm the About box on GitHub shows the MIT licence.
+2. Fill the form extras the live form adds (category, developer account ID, country, tool feedback), and the reuse statement: the project started on 4 Nov 2026, after the 1 Oct start, so it counts as new.
+3. Upload the video, the thumbnail (static) and the 8 gallery images, paste the testing instructions with buyer logins.
+4. After G3 reports (about 12 Nov 06:17 UTC), the deadline is 12 Nov 12:00 pm PT (20:00 UTC, Fri 13 Nov 01:30 IST). Reword the G3 lines if the result lands before you submit.

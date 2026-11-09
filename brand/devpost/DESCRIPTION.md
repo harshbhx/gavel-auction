@@ -1,5 +1,7 @@
 ![GAVEL: every bid is a hold, the hammer is the payment. PayPal sandbox only.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/00-story-banner.gif)
 
+_GAVEL: every bid is a hold, the hammer is the payment._
+
 ## Inspiration
 
 At a live auction or a fundraiser, bidders hesitate when a card is charged up front, so they bid less or not at all. The other way round, bids are unsecured: a winner can walk away after the hammer and the organizer chases payment afterwards. Paper sheets and shouted bids make the record hard to trust.
@@ -7,6 +9,8 @@ At a live auction or a fundraiser, bidders hesitate when a card is charged up fr
 PayPal already separates authorizing money from capturing it, and that is the shape of an auction: hold a ceiling, bid under it, capture only the winning price at the hammer.
 
 ![A price counts up to $20, then an orange line sweeps across it: Held, not charged.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/01-inspiration.gif)
+
+_A price counts up to $20, then the line "Held, not charged" sweeps across it._
 
 ## What it does
 
@@ -20,7 +24,35 @@ GAVEL makes each bid a PayPal AUTHORIZE hold. Everything runs in the PayPal sand
 
 ![Four steps, Hold, Bid, Hammer, Receipt, each lit in turn while the real GAVEL screen for that step wipes in beside it.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/02-what-it-does.gif)
 
+_Hold, bid, hammer, receipt: the four steps, with the real screen for each._
+
 A judge can run the whole thing without an account: open the [judge panel](https://gavel.dualmindlab.tech/try), start a demo room, join as a bidder, bid, hammer, and read the receipt. A recorded tour of about one minute plays at [the scripted demo](https://gavel.dualmindlab.tech/demo/scripted).
+
+### Animated slides
+
+![Animated slide: the title Four moves, then Hold, Bid, Hammer and Settle click in one by one.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/slide-02-how-it-works.gif)
+
+_Slide: four moves, hold, bid, hammer, receipt._
+
+![Animated slide: the architecture from the browser through a Cloudflare Worker and the Render API to PayPal sandbox and the hash-chained ledger.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/slide-03-architecture.gif)
+
+_Slide: one bid, four hops through the stack._
+
+![Animated slide: the real room at /try and the scripted demo.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/slide-04-judge-flow.gif)
+
+_Slide: two ways in for a judge, no login._
+
+![Animated slide: ledger entries linked by hashes with the verify result. The hashes are a labelled illustration.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/slide-05-audit-and-verify.gif)
+
+_Slide: do not trust, verify. Example hashes are shortened._
+
+![Animated slide: the partner tiles click in.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/slide-06-partners.gif)
+
+_Slide: the partners and what each one does._
+
+![Animated slide: open datasets and gate status, G0, G1, G2 and G4 pass, G3 in progress, G5 partial.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/slide-07-open-data-and-gates.gif)
+
+_Slide: open data and the gate status._
 
 ## How we built it
 
@@ -37,20 +69,31 @@ The settlement saga is journaled. If the process dies mid-settlement, it checks 
 
 ![A line diagram: Cloudflare Workers, Render, PayPal, AG Grid and Hugging Face joined by thin lines with a packet moving along each.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/03-how-we-built-it.gif)
 
+_The stack: Cloudflare Workers, Render, PayPal sandbox, AG Grid and Hugging Face._
+
+### Team
+
+- **Harsh Bhanushali** ([harshbhx](https://github.com/harshbhx)) built the auction engine, the PayPal payments and settlement saga, the voice pipeline, the host, and the evidence, docs and operations work.
+- **Dhairya Patel** ([DhairyaPatel-Devloper](https://github.com/DhairyaPatel-Devloper)) built much of the web app: the bidder, console, big screen, receipt and audit screens, plus the accessibility and visual tests and the end-to-end scenario runner. He also does the manual deploys to Render.
+
 ### Where the partners fit
 
 - **PayPal:** all payments run on the sandbox: Orders v2, Payments v2, webhook signature verification and JS SDK v6.
 - **Cloudflare:** the web app runs as a Worker with static assets, and the docs site is deployed to Cloudflare, both on custom domains with security headers.
 - **Render:** the API and WebSocket host is one Node web service on the starter plan, always on, with a 1 GB persistent disk for the ledger, room log, settlement journals and hold records.
 - **AG Grid:** the audit ledger, the console bid history and the holds table are AG Grid Community tables, with sorting, filters, CSV export and an in-browser chain check.
-- **APIMatic:** the OpenAPI 3.1 spec of the host API is linted in CI and checked against the server router; SDK and portal generation from it is in progress.
+- **APIMatic:** the OpenAPI 3.1 spec of the host API is linted in CI and checked against the server router. The API portal and the TypeScript and Python SDKs are generated with APIMatic from that spec.
 - **Hugging Face:** five small datasets and a read-only Evidence Explorer Space, each labelled real sandbox, simulated or synthetic.
 
 ### AI in the product
 
-AI is used for voice bidding. Audio from the auctioneer's microphone goes to speech-to-text: Deepgram (model nova-3) with Groq (model whisper-large-v3-turbo) as failover. A rule-based parser turns the transcript into a structured bid, and a deterministic validator checks it against the auction rules. The model never decides a winner and never moves money, and every spoken bid waits for a confirm. The code also has an optional language-model second reading, but it is not wired into the running pipeline.
+**Runtime AI.** AI is used for voice bidding. Audio from the auctioneer's microphone goes to speech-to-text: Deepgram (model nova-3) with Groq (model whisper-large-v3-turbo) as failover. A rule-based parser turns the transcript into a structured bid, and a deterministic validator checks it against the auction rules. The model never decides a winner and never moves money, and every spoken bid waits for a confirm. The code also has an optional language-model second reading, but it is not wired into the running pipeline.
+
+**AI tools used while building.** An AI coding assistant (name added by hand on Devpost), for coding assistance and documentation drafts.
 
 ![PayPal, Cloudflare Workers, Render, Hugging Face and AG Grid in large type, then the rest of the stack in small type.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/08-built-with.gif)
+
+_The partners in large type, the rest of the stack below._
 
 ## Challenges we ran into
 
@@ -63,6 +106,8 @@ AI is used for voice bidding. Audio from the auctioneer's microphone goes to spe
 - **Voice in noise.** A held-out noisy set of 120 synthetic clips, measured once against thresholds fixed beforehand, read wrong accept 0.058 for Groq and 0.092 for Deepgram against 0.05. That is why every spoken bid stays behind a confirm prompt.
 
 ![Two $25 bids from paddle 12 and paddle 7 arrive together. One is accepted as ledger entry 41, the other is refused as not higher.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/04-challenges.gif)
+
+_Two bids arrive together: one is accepted, one is refused as not higher._
 
 ## Accomplishments that we're proud of
 
@@ -77,6 +122,8 @@ AI is used for voice bidding. Audio from the auctioneer's microphone goes to spe
 
 ![Three results in large type: kill survived, voice 24 of 24 (synthetic clips, confirm before every bid), chain verifies.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/05-accomplishments.gif)
 
+_Kill survived, voice 24 of 24 synthetic clips, chain verifies._
+
 ## What we learned
 
 - A hold is a better auction primitive than a charge: the ceiling is backed by an actual hold, so a refused bid is a fact, not a guess.
@@ -86,17 +133,25 @@ AI is used for voice bidding. Audio from the auctioneer's microphone goes to spe
 
 ![The same event arrives twice. It is counted once as entry 41 and the duplicate is struck out.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/06-what-we-learned.gif)
 
+_The same event arrives twice and is counted once._
+
 ## What's next for GAVEL
 
 - Record the G3 result and set the reauthorize behaviour from it.
 - Run G5 with a person in a real room and in recorded noise, and add an audio sender to the console.
 - Decide the latency targets: keep, raise with a reason, or reduce latency.
 - Drive a whole auction through the deployed server and repeat the process kill and resume there.
-- Host recorded auctions for replay, and finish SDK and portal generation from the OpenAPI spec.
+- Host recorded auctions for replay.
 
 ![Three lines: the G3 probe (running), real-room voice, and a kill on the deployed host.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/07-what-is-next.gif)
 
+_Next: the G3 probe result, real-room voice, a kill on the deployed host._
+
 ## Try it
+
+![Animated slide: the logo assembles and the links click in.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/story/slide-08-ending.gif)
+
+_Closing slide: web app, docs and source._
 
 - [Judge panel](https://gavel.dualmindlab.tech/try): a live sandbox room, no login
 - [Scripted demo](https://gavel.dualmindlab.tech/demo/scripted): about one minute, recorded
