@@ -20,7 +20,9 @@ describe('wide first screens (FIX-66)', () => {
   it('centres the one-column pages with a bounded measure', () => {
     expect(wide).toContain('main.gv-flow:not(:has(> .gv-aside))');
     expect(wide).toContain('max-width: 640px;');
-    expect(wide).toContain('justify-content: center;');
+    // Padding sets the page down; a viewport-high box could add a scrollbar.
+    expect(wide).not.toContain('100vh');
+    expect(wide).toContain('padding-block: clamp(');
   });
 
   it('gives gallery, replay, receipt and the ops key form a place on the wide screen', () => {
