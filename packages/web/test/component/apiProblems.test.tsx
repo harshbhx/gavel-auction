@@ -49,6 +49,36 @@ describe('a failed room read says what went wrong (SRV-37)', () => {
     expect(screen.queryByText(t('join.notFound'))).toBeNull();
   });
 
+  it('a 429 on a room page retries in place after Retry-After and then shows the page', async () => {
+    let calls = 0;
+    stubFetch(() => {
+      calls += 1;
+      return calls === 1
+        ? limited(1)
+        : new Response('{"auctionId":"real","title":"Lot"}', { status: 200 });
+    });
+    render(<App initialPath="/r/real/bid" api={API} />);
+    expect(await screen.findByText(t('join.rateTitle'))).toBeTruthy();
+    expect(screen.getByText(t('api.rateHelp', { wait: waitText(1) }))).toBeTruthy();
+    expect(screen.queryByText(t('room.missingTitle'))).toBeNull();
+    expect(await screen.findByText(t('watch.title'), {}, { timeout: 4000 })).toBeTruthy();
+    expect(calls).toBeGreaterThanOrEqual(2);
+  });
+
+  it('the retry button asks again at once, and a long lockout does not retry by itself', async () => {
+    let calls = 0;
+    stubFetch(() => {
+      calls += 1;
+      return calls < 3 ? limited(900) : new Response('{"auctionId":"real"}', { status: 200 });
+    });
+    render(<App initialPath="/r/real/bid" api={API} />);
+    fireEvent.click(await screen.findByRole('button', { name: t('generic.retry') }));
+    await waitFor(() => expect(calls).toBe(2));
+    fireEvent.click(await screen.findByRole('button', { name: t('generic.retry') }));
+    expect(await screen.findByText(t('watch.title'))).toBeTruthy();
+    expect(calls).toBeGreaterThanOrEqual(3);
+  });
+
   it('hub of a room that does not exist says so instead of "ready"', async () => {
     stubFetch(() => new Response('{}', { status: 404 }));
     render(<App initialPath="/r/nope/hub" api={API} />);
