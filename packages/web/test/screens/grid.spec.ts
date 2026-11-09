@@ -163,7 +163,18 @@ test.describe('ledger lab: export, filters in the link, verify, memory', () => {
     const stored = await page.evaluate(() =>
       Object.entries(window.sessionStorage).filter(([k]) => k.startsWith('gavel.grid.columns.')),
     );
-    expect(stored.map(([, v]) => v).join('\n')).toContain('"sort":"asc"');
+    await expect
+      .poll(
+        async () => {
+          const raw = await page.evaluate(
+            () => window.sessionStorage.getItem('gavel.grid.columns.ledger.sealed.table') ?? '[]',
+          );
+          const cols = JSON.parse(raw) as { colId: string; sort: string | null }[];
+          return cols.find((c) => c.colId === 'amount')?.sort ?? null;
+        },
+        { message: `saved layout after the click: ${JSON.stringify(stored)}` },
+      )
+      .toBe('asc');
     const logs: string[] = [];
     page.on('console', (m) => logs.push(`${m.type()}: ${m.text().slice(0, 200)}`));
     await page.reload();
