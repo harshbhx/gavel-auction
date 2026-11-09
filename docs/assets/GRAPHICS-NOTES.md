@@ -54,4 +54,4 @@ Older static and animated assets (`hero.*`, `outro.*`, `architecture-*`, `lifecy
 
 ## Binaries budget
 
-Raised to 40 MB across the three motion PRs (GFX-06, GFX-07, GFX-08). GFX-06 adds about 5.7 MB (GIF, MP4, WebM, posters and SVGs).
+Raised to 40 MB across the three motion PRs (GFX-06, GFX-07, GFX-08). GFX-06 adds about 12.8 MB (GIF, MP4, WebM, posters and SVGs).
