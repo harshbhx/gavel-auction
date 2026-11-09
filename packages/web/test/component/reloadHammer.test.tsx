@@ -64,7 +64,10 @@ describe('receipt page after a reload', () => {
   beforeEach(() => {
     roomStore.enter('');
   });
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    roomStore.enter('');
+  });
 
   it('shows the receipt and share controls for a sold lot, not "stopped"', () => {
     act(() => roomStore.dispatch({ kind: 'wire', msg: stateMsg(1, afterHammer(1)) }));
@@ -118,6 +121,7 @@ class FakeSocket {
 describe('console after the hammer frame', () => {
   beforeEach(() => {
     FakeSocket.last = null;
+    roomStore.enter('');
     vi.stubGlobal('WebSocket', FakeSocket);
   });
   afterEach(() => {
