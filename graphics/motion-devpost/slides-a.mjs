@@ -7,22 +7,22 @@ export const hero = {
   T: 5,
   poster: 3.3,
   html: `
-<div class="a" style="left:1004px;top:272px;width:0;height:0">
+<div class="a" style="left:990px;top:450px;width:0;height:0">
   <div class="wave" style="position:absolute;left:0;top:0;width:300px;height:300px;border-radius:50%;border:1.5px solid #ff6a1f;opacity:0"></div>
   <div class="wave" style="position:absolute;left:0;top:0;width:300px;height:300px;border-radius:50%;border:1.5px solid #ff6a1f;opacity:0"></div>
   <div class="wave" style="position:absolute;left:0;top:0;width:300px;height:300px;border-radius:50%;border:1px solid #ff6a1f;opacity:0"></div>
 </div>
 ${frame({ lot: '01' })}
-<div class="a" id="g" data-a="0" data-d=".2" style="left:884px;top:152px;width:240px;height:240px"></div>
-${ln('Every bid', { x: 58, y: 150, size: 250, a: 0.15, d: 0.9 })}
-${ln('is a <span class="or">hold.</span>', { x: 58, y: 366, size: 250, a: 0.3, d: 0.9 })}
-${rule({ x: 64, y: 614, w: 1072, a: 0.9, d: 0.9 })}
-${ln('The hammer is the charge.', { x: 64, y: 634, size: 40, fam: 'b', a: 1.15, d: 0.7 })}
+<div class="a" id="g" data-a="0" data-d=".2" style="left:840px;top:300px;width:300px;height:300px"></div>
+${ln('Every bid', { x: 58, y: 140, size: 226, a: 0.15, d: 0.9 })}
+${ln('is a <span class="or">hold.</span>', { x: 58, y: 336, size: 226, a: 0.3, d: 0.9 })}
+${rule({ x: 64, y: 604, w: 1072, a: 0.9, d: 0.9 })}
+${ln('The hammer is the charge.', { x: 64, y: 626, size: 40, fam: 'b', a: 1.15, d: 0.7 })}
 `,
   js: `
 var mk, waves;
 function setup(h){
-  mk = h.Mark(h.$('#g'), {size:240, swingStart:.3, swingDur:.85, echoes:[2.8]});
+  mk = h.Mark(h.$('#g'), {size:300, swingStart:.3, swingDur:.85, echoes:[2.8]});
   waves = h.Waves(h.$$('.wave'), [mk.strike, 2.8], {min:.45, max:4.4, dur:1.5, alpha:.8});
 }
 function update(t,h){ mk.update(t); waves(t); }
@@ -113,7 +113,7 @@ function setup(h){
   var html = '';
   N.forEach(function(n,i){
     var x = X0 + i*GAPX, y = Y0 + i*GAPY;
-    html += '<div class="ln" style="left:' + x + 'px;top:' + y + 'px;width:340px;height:' + Math.round(FS*.86) + 'px"><span class="d nw" style="font-size:' + FS + 'px;line-height:' + Math.round(FS*.86) + 'px;display:inline-block">' + n[0] + '</span></div>';
+    html += '<div class="ln" style="left:' + x + 'px;top:' + y + 'px;width:460px;height:' + Math.round(FS*.86) + 'px"><span class="d nw" style="font-size:' + FS + 'px;line-height:' + Math.round(FS*.86) + 'px;display:inline-block">' + n[0] + '</span></div>';
     html += '<div class="ln" style="left:' + x + 'px;top:' + (y+88) + 'px;width:340px;height:22px"><span class="m nr" style="font-size:14px;line-height:22px;color:#6f6250">' + n[1] + '</span></div>';
   });
   h.$('#nodes').innerHTML = html;
@@ -187,9 +187,9 @@ export const judge = {
   html: `
 <div class="a" id="pics" style="left:452px;top:0;width:748px;height:800px;overflow:hidden"></div>
 ${frame({ lot: '04', ruleW: 356, side: true })}
-${ln('Try it', { x: 58, y: 126, size: 124, a: 0.15, d: 0.85 })}
-${ln('in two', { x: 58, y: 232, size: 124, a: 0.27, d: 0.85 })}
-${ln('<span class="or">minutes.</span>', { x: 58, y: 338, size: 124, a: 0.39, d: 0.85 })}
+${ln('Try it', { x: 58, y: 132, size: 112, a: 0.15, d: 0.85 })}
+${ln('in two', { x: 58, y: 232, size: 112, a: 0.27, d: 0.85 })}
+${ln('<span class="or">minutes.</span>', { x: 58, y: 332, size: 112, a: 0.39, d: 0.85 })}
 <div id="list"></div>
 ${ln('gavel.dualmindlab.tech/try', { x: 64, y: 708, size: 18, fam: 'm', a: 1.0, d: 0.6, w: 360, color: 'var(--ink);text-transform:none' })}
 `,

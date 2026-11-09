@@ -146,7 +146,7 @@ var mk, waves, lets = [];
 var LINKS = [['Web app','gavel.dualmindlab.tech'],['Docs','docs.gavel.dualmindlab.tech'],['Source','github.com/harshbhx/gavel-auction']];
 function setup(h){
   var host = h.$('#lk');
-  host.innerHTML = '<div id="lkm" style="position:absolute;left:0;top:0;width:220px;height:220px"></div><svg viewBox="-22 -22 450.24 144" style="position:absolute;left:0;top:0;width:688px;height:220px;overflow:visible"><g transform="translate(126 19) scale(0.62)">' + LETTERS.map(function(l){ return '<g class="lt">' + l + '</g>'; }).join('') + '</g></svg>';
+  host.innerHTML = '<div id="lkm" style="position:absolute;left:0;top:0;width:220px;height:220px"></div><svg viewBox="-22 -22 450.24 144" style="position:absolute;left:0;top:0;width:688px;height:220px;overflow:visible"><g transform="translate(31 13) scale(0.74)">' + LETTERS.slice(1).map(function(l){ return '<g class="lt">' + l + '</g>'; }).join('') + '</g></svg>';
   mk = h.Mark(h.$('#lkm'), {size:220, swingStart:.25, swingDur:.85});
   lets = h.$$('.lt');
   waves = h.Waves(h.$$('.wave'), [mk.strike], {min:.45, max:5.2, dur:1.5, alpha:.8});
@@ -155,7 +155,7 @@ function setup(h){
     var y = 404 + i*100;
     html += '<div class="rl rr" style="left:64px;top:' + y + 'px;width:1072px"></div>';
     html += '<div class="ln" style="left:64px;top:' + (y+40) + 'px;width:200px;height:24px"><span class="m lb" style="font-size:16px;line-height:24px;color:#6f6250">' + l[0] + '</span></div>';
-    html += '<div class="ln" style="left:300px;top:' + (y+18) + 'px;width:830px;height:62px"><span class="d ur" style="font-size:70px;line-height:62px;text-transform:lowercase">' + l[1] + '</span></div>';
+    html += '<div class="ln" style="left:300px;top:' + (y+18) + 'px;width:830px;height:62px"><span class="d ur" style="font-size:58px;line-height:62px;text-transform:lowercase">' + l[1] + '</span></div>';
   });
   html += '<div class="rl rr" style="left:64px;top:704px;width:1072px"></div>';
   h.$('#lnk').innerHTML = html;
@@ -164,7 +164,7 @@ function update(t,h){
   mk.update(t); waves(t);
   lets.forEach(function(g,i){
     var p = h.pr(t, 0.95 + i*0.07, 0.6, h.E.o5);
-    g.setAttribute('transform', 'translate(' + h.lerp(i === 0 ? 0 : -60, 0, p).toFixed(2) + ' 0)');
+    g.setAttribute('transform', 'translate(' + h.lerp(-60, 0, p).toFixed(2) + ' 0)');
     g.setAttribute('opacity', Math.min(1, p*2.5) * (1 - h.exitp(t)));
   });
   h.$$('.rr').forEach(function(r,i){ h.draw(r, t, 1.4 + i*0.14, 0.7, 'x'); });
