@@ -357,7 +357,7 @@ describe('judge rooms: close now', () => {
     );
     expect(snap.status).toBe(200);
     // New joins are refused.
-    const join = await post(app, JUDGE_JOIN_PATH, { body: { code: c.joinCode } });
+    const join = await post(app, JUDGE_JOIN_PATH, { body: { code: c.joinCode, displayName: 'Ada' } });
     expect(join.status).toBe(410);
   });
 

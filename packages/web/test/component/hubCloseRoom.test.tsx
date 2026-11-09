@@ -86,7 +86,11 @@ describe('hub: close room', () => {
     renderHub();
     fireEvent.click(screen.getByRole('button', { name: t('hub.close.button') }));
     fireEvent.click(screen.getByRole('button', { name: t('hub.close.confirm') }));
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe(t('hub.close.failed')));
+    await waitFor(() =>
+      expect(screen.getAllByRole('alert').map((n) => n.textContent)).toContain(
+        t('hub.close.failed'),
+      ),
+    );
     expect(screen.queryByTestId('hub-ended')).toBeNull();
   });
 
