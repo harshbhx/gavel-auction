@@ -267,7 +267,9 @@ export function BidScreen({
         {stream.slice(0, LAST_EVENTS).map((b, i) => (
           <li key={b.seq}>
             <span>
-              {b.paddle === null ? null : t(i === 0 ? 'bid.rowLeading' : 'bid.row', { n: b.paddle })}
+              {b.paddle === null
+                ? null
+                : t(i === 0 ? 'bid.rowLeading' : 'bid.row', { n: b.paddle })}
             </span>
             <span className="bid__amt">{formatUsd(b.amount)}</span>
           </li>
