@@ -15,10 +15,10 @@ export function introBody(th, at = 0) {
 <div class="abs cap fade" style="--d:${at + 0.1}s;left:120px;top:44px;font-size:22px">Lot 01 &nbsp; Gavel</div>
 <div class="abs cap fade" style="--d:${at + 0.1}s;right:120px;top:44px;font-size:22px">PayPal sandbox only</div>
 <div class="abs hr" style="--d:${at + 0.05}s;--len:1.1s;left:120px;top:96px;width:1680px;height:3px"></div>
-<div class="abs" style="left:96px;top:170px;width:1240px">${logoSvg({ variant: th.variant, start: at })}</div>
-<div class="abs vr" style="--d:${at + 1.6}s;left:1480px;top:230px;width:3px;height:520px"></div>
-${rev(at + 1.75, 'Every bid is<br>a PayPal hold.', 'left:1530px;top:230px;font-size:104px;line-height:.92;width:380px;font-family:var(--display);font-weight:800;text-transform:uppercase')}
-${rev(at + 1.95, 'Only the<br>winner pays.', 'left:1530px;top:450px;font-size:104px;line-height:.92;width:380px;font-family:var(--display);font-weight:800;text-transform:uppercase;color:var(--orange)')}
+<div class="abs" style="left:96px;top:170px;width:1220px">${logoSvg({ variant: th.variant, start: at })}</div>
+<div class="abs vr" style="--d:${at + 1.6}s;left:1410px;top:236px;width:3px;height:420px"></div>
+${rev(at + 1.75, 'Every bid is<br>a PayPal hold.', 'left:1450px;top:236px;font-size:80px;line-height:.92;white-space:nowrap;font-family:var(--display);font-weight:800;text-transform:uppercase')}
+${rev(at + 1.95, 'Only the<br>winner pays.', 'left:1450px;top:430px;font-size:80px;line-height:.92;white-space:nowrap;font-family:var(--display);font-weight:800;text-transform:uppercase;color:var(--orange)')}
 <div class="abs hr" style="--d:${at + 2.1}s;--len:.7s;left:120px;top:990px;width:1680px;height:3px"></div>`;
 }
 

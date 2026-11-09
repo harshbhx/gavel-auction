@@ -69,8 +69,8 @@ ${cap(0.1, 'left:56px;top:20px', 'Lot 01 &nbsp; Gavel')}${cap(0.1, 'right:56px;t
 ${hr(0.05, 56, 50, 1168, '1s')}
 <div class="abs" style="left:26px;top:74px;width:700px">${logoSvg({ variant: th.variant, start: 0 })}</div>
 ${vr(1.5, 770, 84, 250)}
-${rev(1.65, 'Every bid is<br>a PayPal hold.', `left:800px;top:84px;font-size:70px;line-height:.92;${DISP}`)}
-${rev(1.85, 'Only the<br>winner pays.', `left:800px;top:236px;font-size:70px;line-height:.92;${DISP}color:var(--orange);`)}
+${rev(1.65, 'Every bid is<br>a PayPal hold.', `left:800px;top:84px;font-size:60px;line-height:.92;white-space:nowrap;${DISP}`)}
+${rev(1.85, 'Only the<br>winner pays.', `left:800px;top:214px;font-size:60px;line-height:.92;white-space:nowrap;${DISP}color:var(--orange);`)}
 ${hr(2, 56, 352, 1168, '.8s')}
 ${cap(2.2, 'left:56px;top:366px', 'Hold &nbsp;/&nbsp; Bid &nbsp;/&nbsp; Hammer &nbsp;/&nbsp; Receipt')}`;
 for (const t of ['paper', 'dark'])
@@ -86,7 +86,7 @@ for (const t of ['paper', 'dark'])
 const num = (i, label, to, unit, sub, color = '') => `
 ${vr(0.1 + i * 0.12, 40 + i * 420, 56, 330)}
 ${cap(0.1 + i * 0.12, `left:${64 + i * 420}px;top:66px`, label)}
-<div class="abs disp" style="left:${60 + i * 420}px;top:96px;font-size:290px;white-space:nowrap;${color}"><span data-count="${to}" data-from="0" data-start="${0.15 + i * 0.12}" data-dur="1.1" data-dec="0" data-suf="<small style='font-size:70px;letter-spacing:.01em'> ${unit}</small>">0</span></div>
+<div class="abs disp" style="left:${60 + i * 420}px;top:110px;font-size:240px;white-space:nowrap;${color}"><span data-count="${to}" data-from="0" data-start="${0.15 + i * 0.12}" data-dur="1.1" data-dec="0" data-suf="<small style='font-size:54px;letter-spacing:.01em'> ${unit}</small>">0</span></div>
 ${rev(1 + i * 0.12, sub, `left:${64 + i * 420}px;top:366px;font:600 19px var(--body);text-transform:none;line-height:1.3;width:360px`, '.6s')}`;
 const statsBody = `
 ${hr(0, 40, 40, 1200, '1s')}
@@ -135,7 +135,7 @@ for (const t of ['paper', 'dark'])
 const link = (i, k, u) => `
 ${hr(1.2 + i * 0.16, 690, 52 + i * 70, 500, '.6s')}
 ${cap(1.35 + i * 0.16, `left:690px;top:${72 + i * 70}px;font-size:12px`, k)}
-${rev(1.3 + i * 0.16, u, `left:780px;top:${60 + i * 70}px;font-size:34px;line-height:1;white-space:nowrap;${DISP}`, '.6s')}`;
+${rev(1.3 + i * 0.16, u, `left:780px;top:${62 + i * 70}px;font-size:30px;line-height:1;white-space:nowrap;${DISP}`, '.6s')}`;
 const footBody = (th) => `
 <div class="abs" style="left:10px;top:30px;width:620px">${logoSvg({ variant: th.variant, start: 0 })}</div>
 ${vr(1.1, 650, 40, 230)}
