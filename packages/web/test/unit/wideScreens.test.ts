@@ -61,4 +61,16 @@ describe('wide first screens (FIX-66)', () => {
     expect(fab).toContain('border-radius: 50%;');
     expect(fab).toContain("content: '?';");
   });
+
+  it('treats a short screen as a phone too: 844x390 landscape gets the round button and the band', () => {
+    expect(helpCss).toContain('@media (max-width: 839px), (max-height: 480px) {');
+    expect(phone).toContain('@media (max-width: 839px), (max-height: 480px) {');
+  });
+
+  it('sizes the full-height bidder and public screens with dvh, with a vh fallback', () => {
+    for (const file of ['screens/bid/bid.css', 'screens/screen/screen.css']) {
+      const source = readFileSync(new URL(`../../src/${file}`, import.meta.url), 'utf8');
+      expect(source).toMatch(/100vh;\s*\n\s*(?:min-)?height: 100dvh;/);
+    }
+  });
 });
