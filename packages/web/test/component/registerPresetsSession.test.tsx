@@ -161,9 +161,7 @@ describe('register route with a custom ceiling', () => {
     expect(
       screen
         .getAllByRole('alert')
-        .some((a) =>
-          (a.textContent ?? '').includes(t('reg.overCap', { max: '$2,500' })),
-        ),
+        .some((a) => (a.textContent ?? '').includes(t('reg.overCap', { max: '$2,500' }))),
     ).toBe(true);
   });
 });

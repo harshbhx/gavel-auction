@@ -65,9 +65,7 @@ describe('registration validation (T-WEB-031)', () => {
     const field = screen.getByRole('textbox', { name: t('reg.custom') });
     fireEvent.change(field, { target: { value: '1001' } });
     fireEvent.blur(field);
-    expect(screen.getByRole('alert').textContent).toContain(
-      t('reg.overCap', { max: '$1,000' }),
-    );
+    expect(screen.getByRole('alert').textContent).toContain(t('reg.overCap', { max: '$1,000' }));
     expect(screen.queryByTestId('held-block')).toBeNull();
   });
 });
