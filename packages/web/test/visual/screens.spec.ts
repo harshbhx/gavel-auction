@@ -30,6 +30,19 @@ async function prepare(page: Page, theme: string): Promise<void> {
   }, theme);
 }
 
+/**
+ * Waits until every declared web font face has loaded. `document.fonts.ready` alone can resolve
+ * before a lazily rendered route has asked for its faces, and the later swap (font-display: swap)
+ * reflows text, which showed up as a few percent of pixels moving at 768 wide on some runs.
+ * Loading the declared faces by hand removes the dependence on when the page first lays text out.
+ */
+async function settleFonts(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    await Promise.all([...document.fonts].map((face) => face.load().catch(() => undefined)));
+    await document.fonts.ready;
+  });
+}
+
 for (const screen of SCREENS) {
   for (const viewport of VIEWPORTS) {
     for (const theme of THEMES) {
@@ -37,8 +50,10 @@ for (const screen of SCREENS) {
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await prepare(page, theme);
         await page.goto(screen.path);
-        await page.evaluate(() => document.fonts.ready);
-        await expect(page).toHaveScreenshot(`${screen.name}-${viewport.name}-${theme}.png`);
+        await settleFonts(page);
+        await expect(page).toHaveScreenshot(`${screen.name}-${viewport.name}-${theme}.png`, {
+          caret: 'hide',
+        });
       });
     }
   }
