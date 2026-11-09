@@ -1,6 +1,6 @@
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
   FileHoldStore,
@@ -197,5 +197,34 @@ describe('hold index by authorization id (#2086)', () => {
     expect((await b.byAuthId('A1'))?.holdId).toBe('h1');
     expect((await b.listByAuction('y')).map((h) => h.holdId)).toEqual(['h2']);
     expect(await b.listByAuction('nope')).toEqual([]);
+  });
+});
+
+describe('leases are not written to disk (#2070)', () => {
+  it('a file journal store still enforces leases but writes nothing for them', async () => {
+    const path = join(freshDir(), 'j.json');
+    const s = new FileJournalStore(path);
+    expect(await s.acquireLease('a1', 'r1', 1000, 0)).toBe(true);
+    expect(await s.acquireLease('a1', 'r2', 1000, 500)).toBe(false);
+    await s.releaseLease('a1', 'r2');
+    expect(await s.acquireLease('a1', 'r2', 1000, 600)).toBe(false);
+    await s.releaseLease('a1', 'r1');
+    expect(await s.acquireLease('a1', 'r2', 1000, 600)).toBe(true);
+    expect(readdirSync(dirname(path))).toEqual([]);
+  });
+
+  it('a journal write is still durable before the call returns', async () => {
+    const path = join(freshDir(), 'j.json');
+    const s = new FileJournalStore(path);
+    await s.create(makeJournal('a1', 0));
+    expect(Object.keys(JSON.parse(readFileSync(path, 'utf8')).journals)).toEqual(['a1']);
+  });
+
+  it('the in-memory store still reports lease changes unless told not to', async () => {
+    const calls: number[] = [];
+    const s = new MemoryJournalStore(undefined, () => calls.push(1));
+    await s.acquireLease('a1', 'r1', 1000, 0);
+    await s.releaseLease('a1', 'r1');
+    expect(calls).toHaveLength(2);
   });
 });

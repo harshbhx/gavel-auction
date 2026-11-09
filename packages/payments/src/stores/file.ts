@@ -22,7 +22,13 @@ import {
  * took it, and one process owns the file (the server takes the data directory lock
  * before it opens the stores). A lease found in the file was left by a process that
  * was killed before its `finally` ran, so honouring it would only block the restarted
- * process from resuming the settlement until the lease expired.
+ * process from resuming the settlement until the lease expired. For the same reason taking
+ * or releasing a lease writes nothing: it kept two full rewrites in every settlement run.
+ *
+ * Writes stay synchronous and one per mutation, on purpose: a hold, a journal step or a
+ * webhook event is durable before its call returns, and batching or debouncing would let
+ * the caller act on money state the disk does not have yet. Archiving settled journals and
+ * terminal holds is not done either, because they are the evidence for a settled lot.
  */
 
 function readJson<T>(path: string, empty: T): T {
@@ -49,7 +55,7 @@ function writeJsonAtomic(path: string, value: unknown): void {
 export class FileJournalStore extends MemoryJournalStore {
   constructor(readonly path: string) {
     const saved = readJson<JournalSnapshot>(path, { journals: {}, leases: {} });
-    super({ journals: saved.journals, leases: {} }, (s) => writeJsonAtomic(path, s));
+    super({ journals: saved.journals, leases: {} }, (s) => writeJsonAtomic(path, s), false);
   }
 }
 

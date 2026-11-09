@@ -65,6 +65,11 @@ export class MemoryJournalStore implements JournalStore {
   constructor(
     initial?: JournalSnapshot,
     private readonly onChange?: (s: JournalSnapshot) => void,
+    /**
+     * When false, a lease change does not call `onChange`: a lease is process-local and a
+     * durable store does not carry it over, so writing it only costs a full rewrite.
+     */
+    private readonly persistLeases = true,
   ) {
     if (initial !== undefined) {
       for (const [k, v] of Object.entries(initial.journals)) this.journals.set(k, v);
@@ -127,6 +132,7 @@ export class MemoryJournalStore implements JournalStore {
     const cur = this.leases.get(auctionId);
     if (cur !== undefined && cur.owner !== owner && cur.expiresAtMs > nowMs) return false;
     this.leases.set(auctionId, { owner, expiresAtMs: nowMs + ttlMs });
+    if (!this.persistLeases) return true;
     try {
       this.changed();
     } catch (e) {
@@ -141,6 +147,7 @@ export class MemoryJournalStore implements JournalStore {
     const cur = this.leases.get(auctionId);
     if (cur === undefined || cur.owner !== owner) return;
     this.leases.delete(auctionId);
+    if (!this.persistLeases) return;
     try {
       this.changed();
     } catch (e) {
