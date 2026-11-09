@@ -195,8 +195,8 @@ export default function HomePage() {
       </Section>
 
       <Section id="gates" labelledBy="gates-title" className="border-t border-[var(--hl-hairline)] bg-fd-card/40">
-        <SectionHeading id="gates-title" eyebrow="Proof" title="Six gates against the real sandbox.">
-          Source of truth: <code>docs/GATES.md</code>. A gate closes only with a recorded result.
+        <SectionHeading id="gates-title" eyebrow="Proof" title="Six gates: four passed on the PayPal sandbox.">
+          Source of truth: <code>docs/GATES.md</code>. G0, G1, G2 and G4 ran against the PayPal sandbox and passed. G3 is a timed probe on the sandbox that is still running. G5 is a speech-to-text evaluation on synthetic audio and never calls PayPal (PARTIAL). A gate closes only with a recorded result.
         </SectionHeading>
         <GatesTable />
         <p className="text-sm text-fd-muted-foreground">

@@ -1,6 +1,6 @@
 # Deploy staging
 
-Requirements: R-QA-042 (deploy), R-QA-044 (webhook registration). Hosting choices: D-0006 (Node host on Render), D-0007 (web on Cloudflare Pages). Nothing here uses live PayPal; both app environments point at the sandbox.
+Requirements: R-QA-042 (deploy), R-QA-044 (webhook registration). Hosting choices: D-0006 (Node host on Render), D-0007 (static web hosting on Cloudflare; the web app now runs as a Worker with static assets, see step 7). Nothing here uses live PayPal; both app environments point at the sandbox.
 
 ## What is automated
 
@@ -36,6 +36,37 @@ Requirements: R-QA-042 (deploy), R-QA-044 (webhook registration). Hosting choice
    Then add the Worker origin (for example `https://gavel-web.creharsh.workers.dev`) to `CORS_ORIGINS` on Render, with no trailing slash. The API checks both browser requests and WebSocket upgrades against that list. The web app builds its join links and return route from `window.location.origin`, so `PUBLIC_URL` on Render stays the API origin. The operator key for `/ops` and the demo launcher is typed into the page and is never part of the build.
 
    To switch the API the web build talks to, either set the repository variable `API_ORIGIN` (Settings, Secrets and variables, Actions, Variables; an `https://` origin with no path and no trailing slash, for example `https://api.example.org`), which applies to every later build, or run `deploy-web` once with the `api_origin` input (`gh workflow run deploy-web.yml -f api_origin=https://api.example.org`), which overrides the variable for that run only. An empty variable and an empty input use the current Render host, `https://gavel-auction-aufz.onrender.com`. The build fails if the origin is malformed or the output still points at localhost. Rebuild and redeploy after any change, because the origin is compiled into the bundle.
+
+## Production deploy and rollback
+
+Surfaces and how each is deployed:
+
+| Surface                | Where it runs                                             | How it deploys                                                                                                                                       | Rollback                                                     |
+| ---------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| API and WebSocket host | Render web service `gavel-host`, Starter plan, 1 GB disk  | Manual deploys (auto deploy is off): `deploy-prod` calls the deploy hook after approval                                                              | `deploy-prod` with `rollback=true`                           |
+| Web app                | Cloudflare Worker `gavel-web` (`infra/web/wrangler.toml`) | `deploy-web` builds the artifact `web-dist` and runs `wrangler deploy`                                                                               | `npx wrangler rollback` (see `infra/rollback.md`)            |
+| Docs site              | Cloudflare, deployed by `docsite.yml` with wrangler       | The `docsite` artifact is published with `wrangler pages deploy` to the project named by the variable `DOCSITE_PAGES_PROJECT` (default `gavel-docs`) | Roll back to a previous deployment (see `infra/rollback.md`) |
+
+### Deploy the API to production
+
+1. Make sure the commit is the head of `main` and CI is green. The deploy hook builds the head of `main`, so the workflow stops early for any other commit.
+2. Tag it (`git tag v0.1.0 && git push origin v0.1.0`) or start the workflow by hand: `gh workflow run deploy-prod.yml`.
+3. A reviewer approves the run on the GitHub environment `production` (Settings, Environments, production, required reviewers).
+4. The job records the live Render deploy id, calls the deploy hook, polls `GET /version` until it serves the commit (15 minutes at most) and runs `scripts/smoke.sh` against `PRODUCTION_URL`. If the commit never appears, it restores the deploy that was live before.
+
+Settings in the `production` environment, names only: secrets `RENDER_API_KEY` and `RENDER_DEPLOY_HOOK_URL`; variables `RENDER_SERVICE_ID` and `PRODUCTION_URL`. Without them the job ends green with a notice and deploys nothing.
+
+### Deploy the web app and the docs site
+
+Both deploy from GitHub Actions on pushes to `main` (`deploy-web.yml` for the Worker, `docsite.yml` for the docs site) and need the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Without them the run ends green and leaves the build as an artifact (`web-dist`, `docsite`) for a manual `wrangler` deploy, as in step 7 above. Artifacts expire, so rebuild if a run is old. The docs site is also served on its own domain; the domain is attached to the Cloudflare project in the Cloudflare dashboard, not in this repository, and a new deploy of the project updates it.
+
+### Roll back
+
+- API: `gh workflow run deploy-prod.yml -f rollback=true` (add `-f rollback_deploy_id=<Render deploy id>` to pick the deploy). Code only; the disk stays as it is.
+- Web: `cd infra/web && npx wrangler rollback` restores the previous Worker version, or `npx wrangler rollback <version-id>` a chosen one (`npx wrangler deployments list` shows them).
+- Docs site: roll back to an earlier deployment of the Pages project in the Cloudflare dashboard (Workers and Pages, the project, Deployments), or redeploy an earlier `docsite` artifact.
+
+The web build embeds `VITE_API_BASE` at build time, so roll web and API back together when a release changed the protocol between them. Full steps, who can run each and the rehearsal table: [infra/rollback.md](../infra/rollback.md).
 
 ## Judge rooms (optional, sandbox hosts only)
 
@@ -95,4 +126,4 @@ Other HTTP requests have two buckets per address. Public reads (GET, HEAD, OPTIO
 ## Known limits
 
 - The smoke may pass against the old instance if it answers before the new build is live. The workflow waits 60 seconds first.
-- Boot validation that exits 78 on a missing variable (R-QA-043) is not wired into `main.ts` yet; today `config.ts` refuses to boot with a message naming the variable.
+- Boot validation exits 78 and names each missing or invalid variable before the server listens (R-QA-043, `packages/server/src/main.ts`).

@@ -1,6 +1,6 @@
 # @gavel/server
 
-The single-process host: HTTP routes, room runtime, settlement scheduling and file stores. No WebSocket gateway is mounted by `src/main.ts` yet, so bidding over a socket is not possible in the booted process. Sandbox only; no real money moves.
+The single-process host: HTTP routes, room runtime, settlement scheduling and file stores. `src/main.ts` boots `composeServer` (`src/boot/compose.ts`), which mounts the WebSocket gateway for live bidding and the `/audio` voice socket next to the HTTP routes. Sandbox only; no real money moves.
 
 ## Run
 
@@ -16,7 +16,7 @@ Production runs `npm run build -w @gavel/server` (esbuild bundle to `dist/main.j
 
 Health: `GET /healthz` (process is up), `GET /readyz` (the room store answers a ping; payments are not probed), `GET /metrics` (JSON snapshot).
 
-The booted process serves the ops, webhook and admin routes (`/admin/export?auction=<id>`, `/admin/replay-bundle`, `/warmup`, `/metrics`, `/ops/*`, `/webhooks/paypal`). The auction, invite, join, control, read and token routes under `/api/` are mounted by `composeServer`, so `main.ts` serves them (create needs `x-admin-key`); the scripted `/api/demo/*` routes are not mounted yet. Every route but `/healthz`, `/readyz` and the webhook is limited per client by `RATE_HTTP_*`; set `TRUSTED_PROXY_HOPS` to the number of proxies in front of the host (1 on Render) so the client address is read from `x-forwarded-for`.
+The booted process serves the ops, webhook and admin routes (`/admin/export?auction=<id>`, `/admin/replay-bundle`, `/warmup`, `/metrics`, `/ops/*`, `/webhooks/paypal`). The auction, invite, join, control, read and token routes under `/api/` are mounted by `composeServer`, so `main.ts` serves them (create needs `x-admin-key`); the scripted `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake` (config refuses that combination under production-like settings), and the judge room routes (`/api/judge/*`) are mounted by `composeServer` too. Every route but `/healthz`, `/readyz` and the webhook is limited per client by `RATE_HTTP_*`; set `TRUSTED_PROXY_HOPS` to the number of proxies in front of the host (1 on Render) so the client address is read from `x-forwarded-for`.
 
 ## Configure
 

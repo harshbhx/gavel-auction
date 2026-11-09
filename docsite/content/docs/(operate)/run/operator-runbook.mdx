@@ -62,7 +62,7 @@ Run `deploy-staging` by hand. It calls the deploy hook, waits 60 seconds, then r
 
 ### Deploy the web app
 
-Create a Cloudflare Pages project, build with `npm ci && npm run build -w @gavel/web` and pass `VITE_API_BASE` and `VITE_WS_BASE`. Add the Pages origin to `CORS_ORIGINS`.
+The web app is a Cloudflare Worker with static assets (`infra/web/wrangler.toml`). Build with `npm ci && npm run build -w @gavel/web`, passing `VITE_API_BASE` and `VITE_WS_BASE`, then run `npx wrangler deploy` from `infra/web` (the `deploy-web` workflow does this on pushes to `main`). Add the Worker origin to `CORS_ORIGINS`.
 
 </Step>
 </Steps>
@@ -150,6 +150,8 @@ Two failed rounds raise the alert. Check `/healthz` first (process alive), then 
 <Accordion title="Bad release: roll back">
 
 Run `deploy-prod` by hand with `rollback` set to true (or pass `rollback_deploy_id`). The job restores the newest earlier deploy built from a different commit and waits until `/version` serves it. The disk is not rolled back: a release that changed the stored data format also needs a data restore.
+
+The web Worker rolls back with `npx wrangler rollback` from `infra/web`; the docs site rolls back to a previous deployment of its Cloudflare project. Roll web and API back together if a release changed the protocol between them. Steps: [infra/rollback.md](https://github.com/harshbhx/gavel-auction/blob/main/infra/rollback.md).
 
 </Accordion>
 <Accordion title="Restore after a disk loss">

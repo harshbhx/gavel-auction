@@ -73,7 +73,7 @@ Copy `.env.example` to `.env` only when a task needs configuration, with PayPal 
 | `npm run test -w @gavel/payments` | Vitest against the <Term id="fake-paypal">fake PayPal</Term> |
 | `npm run check:deps -w @gavel/payments` | Fails on any runtime dependency other than `zod` |
 | `npm run demo:settle -w @gavel/payments` | Settlement demo with a crash and a resume |
-| `npm run gate:g0`, `gate:g1`, `gate:g2`, `gate:g3`, `gate:g4`, `gate:g4-events`, `gate:idem` | Gate scripts. They call the PayPal sandbox and need sandbox credentials; normally started through their workflows |
+| `npm run gate:g0 -w @gavel/payments` (likewise `gate:g1`, `gate:g2`, `gate:g3`, `gate:g4`, `gate:g4-events`, `gate:idem`) | Gate scripts. They call the PayPal sandbox and need sandbox credentials; normally started through their workflows |
 | `npm run measure -w @gavel/payments` | Sandbox latency measurement |
 
 </Tab>
@@ -120,7 +120,7 @@ Copy `.env.example` to `.env` only when a task needs configuration, with PayPal 
 | `npm run test -w @gavel/e2e` | Vitest: DSL, runners, scenarios, harnesses |
 | `npm run test:browser -w @gavel/e2e` | Playwright, five browser projects |
 | `npm run test:sandbox -w @gavel/e2e` | Real-sandbox specs; skipped without secrets |
-| `npm run measure:sandbox`, `measure:settlement`, `report:sandbox`, `gate:g5` | Measurement and report tools |
+| `npm run measure:sandbox -w @gavel/e2e` (likewise `measure:settlement`, `report:sandbox`, `gate:g5`) | Measurement and report tools |
 
 </Tab>
 </Tabs>

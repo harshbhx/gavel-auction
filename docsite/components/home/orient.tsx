@@ -16,7 +16,7 @@ const steps = [
     icon: FlaskConical,
     title: 'Check the proof',
     time: '4 min',
-    text: 'Six gates against the PayPal sandbox, each with its run and its stamp: PASS, PARTIAL or simulated.',
+    text: 'Six gates, each with its run and its stamp: PASS, PARTIAL or simulated. Four ran on the PayPal sandbox, G3 is a timed probe and G5 is a speech evaluation.',
     href: '/docs/proof',
   },
   {
