@@ -1,14 +1,40 @@
 # Devpost images: upload order, alt text, captions
 
-Files live in [`docs/assets/devpost/`](https://github.com/harshbhx/gavel-auction/blob/main/docs/assets/devpost). Rules we confirmed and did not confirm: [`docs/assets/devpost/README.md`](https://github.com/harshbhx/gavel-auction/blob/main/docs/assets/devpost/README.md). Required fields and the rest of the submission: `DEVPOST-CHECKLIST.md`. All images are 1500x1000 (3:2); until this branch is merged the same files are in the PR.
+Current set (GFX-10, auction broadside), files in [`docs/assets/devpost/`](https://github.com/harshbhx/gavel-auction/blob/main/docs/assets/devpost). Rules we confirmed and did not confirm: [`docs/assets/devpost/README.md`](https://github.com/harshbhx/gavel-auction/blob/main/docs/assets/devpost/README.md). Required fields and the rest of the submission: [`DEVPOST-CHECKLIST.md`](DEVPOST-CHECKLIST.md). HAND: the upload itself is done by the submitter on Devpost.
 
-## Project thumbnail
+## Upload plan
+
+1. **Thumbnail:** `01-hero-poster.png` (1200x800, 3:2, about 109 KB; the limit is 5 MB, JPG, PNG or GIF).
+2. **Image Gallery:** the seven poster PNGs below, in this order. Devpost does not confirm that the gallery accepts GIFs, so the gallery uses the static posters.
+3. **Description:** the animated GIF of the same name can go in the story if the editor accepts an image (Markdown `![alt](url)` with the raw URL, or the editor's image button). Every GIF is under 1.4 MB (the largest is 01-hero at about 1.3 MB), far below the 5 MB limit.
+4. **Optional last slide:** `08-ending-poster.png` (the closing card with the three links).
+5. The slide numbers in the images (LOT 01 to LOT 07) match the order below, so do not reorder.
+
+## Gallery, current set (upload in this order)
+
+| #   | File                                                                                                                                           | Alt text                                                                                                                                                                    | Caption to paste                                                                                                                                                                                                               |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | [01-hero-poster.png](https://github.com/harshbhx/gavel-auction/blob/main/docs/assets/devpost/01-hero-poster.png)                               | Poster: "Every bid is a hold." in huge type, with "The hammer is the charge." under it, the Mallet G on the right and orange rings leaving it. PayPal sandbox only.         | GAVEL is a live auction where every bid is a PayPal authorization hold and only the winner is charged, at the hammer. PayPal sandbox only, no real money.                                                                      |
+| 2   | [02-how-it-works-poster.png](https://github.com/harshbhx/gavel-auction/blob/main/docs/assets/devpost/02-how-it-works-poster.png)               | A four line ledger: hold, bid, hammer, receipt, with the price counting from 10 to 20 dollars and the word Sold.                                                            | Four moves. A bidder approves a ceiling as a hold, bids in an ascending auction, the auctioneer hammers, and only the winning price is captured while every other hold is released.                                            |
+| 3   | [03-architecture-poster.png](https://github.com/harshbhx/gavel-auction/blob/main/docs/assets/devpost/03-architecture-poster.png)               | Thin-line staircase: Browser, Cloudflare, Render, PayPal, with a return line closing at the ledger.                                                                         | One bid, four hops. The browser reaches a Cloudflare Worker, which reaches the auction API on Render. The API holds and captures with PayPal sandbox and appends every accepted bid to a hash-chained ledger.                  |
+| 4   | [04-judge-flow-poster.png](https://github.com/harshbhx/gavel-auction/blob/main/docs/assets/devpost/04-judge-flow-poster.png)                   | Real app frames of a room, a bid, the hammer and a receipt with a share link and QR, beside the list room, bid, hammer, receipt and the address gavel.dualmindlab.tech/try. | Try it in two minutes, no login. Open /try, start a room, bid, hammer and read the receipt. /demo/scripted plays a recorded room in your tab in about a minute. Sandbox buyer logins are in the testing notes.                 |
+| 5   | [05-audit-and-verify-poster.png](https://github.com/harshbhx/gavel-auction/blob/main/docs/assets/devpost/05-audit-and-verify-poster.png)       | Four ledger rows, hold, bid, bid, hammer, linked by an orange line with shortened example hashes, and the words "Chain verified". Labelled as an illustration.              | Do not trust, verify. Every accepted bid goes into a hash-chained ledger, and anyone can re-check the public export. Edit any entry and the check fails at that entry. The hashes shown are shortened examples.                |
+| 6   | [06-partners-poster.png](https://github.com/harshbhx/gavel-auction/blob/main/docs/assets/devpost/06-partners-poster.png)                       | Five partner names in large type: PayPal for payments, Cloudflare for web and docs, Render for API hosting, AG Grid for data tables, Hugging Face for open datasets.        | Built with the best. PayPal runs the holds, Cloudflare serves the web app and the docs, Render hosts the API, AG Grid draws the ledger, bids and holds tables, Hugging Face hosts the open evidence.                           |
+| 7   | [07-open-data-and-gates-poster.png](https://github.com/harshbhx/gavel-auction/blob/main/docs/assets/devpost/07-open-data-and-gates-poster.png) | "The evidence is open." beside five datasets, each labelled real sandbox, simulated or synthetic audio, with a sha256 manifest note.                                        | The evidence is open: five small datasets, each with a sha256 manifest and labelled for what it is. Gates G0, G1, G2 and G4 passed on the PayPal sandbox, G3 is a real probe in progress and G5 is partial on synthetic audio. |
+
+Raw URLs after merge to main: `https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/devpost/<file>`. The GIF, MP4 and WebM of each slide sit next to its poster.
+
+## Previous static set (kept as a fallback)
+
+The files below are the earlier dark-poster design. Use them only if the current set is refused. Their captions still match the facts; gallery 06 there says APIMatic is "spec ready, SDK pending", which is also true today.
+
+### Project thumbnail
 
 | File                                                                                                   | Alt text                                                        |
 | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
 | [thumbnail.png](https://github.com/harshbhx/gavel-auction/blob/main/docs/assets/devpost/thumbnail.png) | GAVEL logo, a mallet in a G, beside the words "Bids are holds." |
 
-## Image Gallery (upload in this order)
+### Image Gallery (previous set)
 
 | #   | File                                                                                                                               | Alt text                                                                                                                                     | Caption to paste                                                                                                                                                                                                                          |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -20,7 +46,7 @@ Files live in [`docs/assets/devpost/`](https://github.com/harshbhx/gavel-auction
 | 6   | [gallery-06-partners.png](https://github.com/harshbhx/gavel-auction/blob/main/docs/assets/devpost/gallery-06-partners.png)         | Four tiles: AG Grid, Render, APIMatic, Hugging Face, each with a status line.                                                                | Built with four partners. AG Grid powers the ledger, bids and holds tables. Render hosts the auction API. APIMatic: the OpenAPI spec is ready and SDK generation is pending. Hugging Face hosts the public evidence collection.           |
 | 7   | [gallery-07-open-data.png](https://github.com/harshbhx/gavel-auction/blob/main/docs/assets/devpost/gallery-07-open-data.png)       | List of five open datasets labelled real sandbox, simulated or synthetic audio, above a row of gate statuses G0 to G5.                       | The evidence is open: five small datasets, each with a sha256 manifest and labelled for what it is. Gates G0, G1, G2 and G4 passed on the PayPal sandbox, G3 is still in progress and G5 is partial on synthetic audio.                   |
 
-## GIFs for the description text
+### GIFs for the description text (previous set)
 
 Place each as an image in the description (Markdown `![alt](url)` if the editor allows a URL; otherwise upload). Static fallbacks sit next to each.
 
@@ -32,7 +58,7 @@ Place each as an image in the description (Markdown `![alt](url)` if the editor 
 
 Raw URLs after merge to main: `https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/devpost/<file>`.
 
-## Animated gallery (GFX-07)
+### Animated gallery (GFX-07, replaced by GFX-10)
 
 One GIF per gallery slide, 1200x800 (3:2), 10 fps, 9 s loops (the ending is 1200x675, 5 s). Each starts with the Mallet G intro, then the slide's blocks click in. The text is the same as the static slides above; the motion is added by `graphics/motion-devpost/`. Each has a `-poster.png` (the finished frame). Whether Devpost accepts GIFs in the Image Gallery is Not confirmed (see the Devpost README); the static PNGs above stay the safe upload, and the GIFs also work in the description. Every file is far below the 5 MB limit.
 

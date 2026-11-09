@@ -1,113 +1,148 @@
-# GAVEL: Devpost draft
+# GAVEL: Devpost entry (paste-ready)
 
-## For judges
+How to use this file: copy each block into the Devpost field named in its heading, in the order of the headings. Every claim is checked against [`docs/GATES.md`](../GATES.md) and the evidence under [`docs/evidence/`](../evidence); the README says the same things in the same words. Lines marked HAND need the submitter on Devpost (see [`DEVPOST-CHECKLIST.md`](DEVPOST-CHECKLIST.md)). PayPal sandbox only: no live charge is made anywhere in this project.
 
-Start here: **https://gavel.dualmindlab.tech/try** is the judge panel. It starts a live PayPal sandbox room with no operator key. No real money moves; do not use your own PayPal account.
+## Fields
 
-- No login, about 1 minute: https://gavel.dualmindlab.tech/demo/scripted (a recorded room, no server, no PayPal calls)
-- Demo room, about 3 minutes: https://gavel.dualmindlab.tech/demo (start a room, open the hub, join as a bidder, bid, hammer, receipt)
-- Trust and FAQ: https://docs.gavel.dualmindlab.tech/docs/judges/trust-and-faq
-- All judge pages (paths, rubric map, evidence): https://docs.gavel.dualmindlab.tech/docs/judges
-- Open data on Hugging Face: https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504 (five datasets and the Evidence Explorer Space https://huggingface.co/spaces/harshbhx/gavel-evidence-explorer)
-- Sandbox buyer login: OWNER fills in from the sandbox dashboard (email and password placeholders; never committed)
+| Devpost field              | Value                                                                                                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project name               | GAVEL                                                                                                                                                         |
+| Tagline (49 characters)    | Every bid is a PayPal hold. Only the winner pays.                                                                                                             |
+| Elevator pitch (under 200) | A live auction where every bid is a PayPal hold. At the hammer GAVEL captures the winning price, voids the rest, and seals the result in a verifiable ledger. |
+| Thumbnail                  | `docs/assets/devpost/01-hero-poster.png` (1200x800, 3:2)                                                                                                      |
+| Code repository            | https://github.com/harshbhx/gavel-auction (public, MIT)                                                                                                       |
+| Try it out links           | See "Try it out links" below                                                                                                                                  |
+| Video demo link            | HAND: the YouTube link, after the video is recorded and uploaded                                                                                              |
+| Built with                 | See "Built with" below (25 tags at most)                                                                                                                      |
 
-Proven so far: gates G0, G1, G2 and G4 passed on the real PayPal sandbox; a real server process kill on a CI runner settled with one capture and a verifying ledger; live speech through the `/audio` socket answered 24 of 24 synthetic clips with no bid accepted without a confirm; the hosted API checks ran (webhook route p95 112.03 ms against 300 ms); the judge flow is live on the hosted site; more than 4,500 test cases run in CI. The limits (G5 PARTIAL, G3 in progress, the latency targets under owner decision) are stated once in the sections below.
+## Project story
 
-Draft text for the Devpost entry. Refs #99 and #321. The owner finalizes it: numbers from the latest `quality-report` artifact (report.yml run), the tools and models list the Devpost form asks for, the reuse statement and the links are filled in by the owner and are marked OWNER below. Everything here is checked against `docs/GATES.md` and the code on main at the time of writing. PayPal sandbox only: no live charge is made anywhere in this project.
+Paste from here to "What's next" into the story field. Devpost accepts Markdown.
 
-## Tagline
+### Inspiration
 
-Every bid is a PayPal hold. The hammer is the payment.
+At a live auction or a fundraiser, bidders hesitate when a card is charged up front, so they bid less or not at all. The other way round, bids are unsecured: a winner can walk away after the hammer and the organizer chases payment afterwards. Paper sheets and shouted bids make the record hard to trust. PayPal already separates authorizing money from capturing it, and that is the shape of an auction: hold a ceiling, bid under it, capture only the winning price at the hammer.
 
-## Logo and media
-
-The Mallet G: a heavy circular G whose crossbar is a mallet handle ending in an orange head. From the `brand-raster` artifact of the brand-assets workflow, upload `android-chrome-512x512.png` as the project logo and `og.png` as the thumbnail or cover image. Use `gavel-sting-1080p.mp4` from the `brand-sting` artifact as the opening or closing card of the demo video. Sources, colours and usage rules are in `brand/README.md`.
-
-## The problem
-
-In a live auction or a fundraiser, bidders hesitate when a card is charged up front, so they bid less or do not bid. The other way round, bids are unsecured: a winner can walk away after the hammer and the organizer chases payment afterwards. Paper sheets and shouted bids make the record hard to trust. We do not quote a non-payment rate, because we found no data we can stand behind.
-
-## The solution
+### What it does
 
 GAVEL makes each bid a PayPal AUTHORIZE hold.
 
-- A bidder approves a ceiling (the most they may bid) as an authorization hold. It is held, not charged.
-- A deterministic engine runs an ascending English auction (minimum increment, soft close). Bids above a bidder's ceiling are refused.
-- At the hammer GAVEL captures only the winning price from the winner's hold. Every other hold is voided or released. Until the capture, money is held, not charged.
-- Settlement is a journaled saga designed to resume after a crash without a second capture. It is exercised on the project's own fake PayPal server and on the specific real-sandbox pieces listed in `docs/GATES.md`; on the real sandbox, 20 end-to-end settlements of 6 holds were measured (run 42346811713, `docs/evidence/measure`) and the nightly sandbox run has two recorded real runs (runs 42200708552 and 42317068784, specs R7, R8 and R10; `docs/evidence/nightly`; it is skipped when its secrets are absent). Not yet done: a whole auction driven through the deployed server, and a real process kill. If PayPal's answer to a capture is unknown, settlement stops for review rather than guessing.
-- Every accepted bid goes into a deterministic, hash-chained ledger, so the audit trail can be re-verified by anyone holding the export.
-- Voice bids: a spoken bid is turned into a structured bid by a parser with a deterministic validator. Ambiguous bids go through a confirm gate ("Did you mean 350 for paddle 12?"). The parser never decides a winner and never moves money. Typed entry and QR bids are the other input paths, so the auction still works if speech fails.
+- **Hold.** A bidder approves a ceiling, the most they may bid, as an authorization hold. It is held, not charged.
+- **Bid.** A deterministic engine runs an ascending English auction with a minimum increment and a soft close. A bid above a bidder's ceiling is refused. Bids come from phones, a QR code, the console or, with a confirm step, by voice.
+- **Hammer.** The auctioneer holds a button to close the lot. GAVEL captures only the winning price from the winner's hold and voids every other hold. Until the capture, money is held, not charged.
+- **Receipt and verify.** Every accepted bid goes into a hash-chained ledger. Anyone can replay the public export and check the chain; an edited entry is marked as edited.
+- **Voice bids.** A spoken bid is turned into a structured bid by a parser with a deterministic validator. Every spoken bid goes through a confirm prompt ("Did you mean 350 for paddle 12?"). The parser never decides a winner and never moves money.
 
-## How it is built
+A judge can run the whole thing without an account: open the [judge panel](https://gavel.dualmindlab.tech/try), start a demo room, join as a bidder from the hub, bid, hammer, and read the receipt.
 
-A TypeScript monorepo (npm workspaces, Node 22), with a Python reference implementation used for differential tests of the engine and the parser.
+### How we built it
 
-| Package             | Job                                                                                                              |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `packages/engine`   | Auction rules, commands and events, hash-chained ledger, replay                                                  |
-| `packages/payments` | PayPal Orders v2 and Payments v2 client, hold service, settlement saga, webhook verification, fake PayPal server |
-| `packages/server`   | Room and runtime service, HTTP routes, file stores, admin and ops                                                |
-| `packages/voice`    | Audio capture, speech-to-text clients, bid parser, replay of recorded audio                                      |
-| `packages/web`      | Bidder, auctioneer console, big screen, audit and replay screens                                                 |
-| `packages/shared`   | Money, ids, wire types and contracts shared by the others                                                        |
-| `packages/e2e`      | Property tests, sandbox specs, gate runners                                                                      |
+A TypeScript monorepo (npm workspaces, Node 22) with a Python reference implementation used for differential tests of the engine and the parser.
 
-Real PayPal sandbox gates (see `docs/GATES.md`, evidence files under `docs/evidence`):
+- `packages/engine`: auction rules, commands and events, the hash-chained ledger and replay, with no Node built-ins so the same events always give the same result.
+- `packages/payments`: PayPal Orders v2 (intent AUTHORIZE) and Payments v2 (authorize, capture, void, reauthorize), JS SDK v6, signature-verified webhooks, the hold service, the settlement saga and a built-in fake PayPal for offline tests.
+- `packages/server`: one Node host with HTTP routes, a room WebSocket gateway and file stores.
+- `packages/voice`: audio capture, Deepgram and Groq speech-to-text with failover, and the bid parser.
+- `packages/web`: bidder phone, auctioneer console, big screen, receipt, audit and replay screens, in React and Vite.
+- `packages/shared` and `packages/e2e`: money in integer cents, wire types, and the scenario DSL and sandbox specs.
 
-| Gate | Question                                                                      | Status on main                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| ---- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| G0   | Sandbox connectivity                                                          | PASS in `docs/GATES.md`, with a redacted evidence file committed from a re-run on 9 Nov (`docs/evidence/G0/`)                                                                                                                                                                                                                                                                                                                                                                   |
-| G1   | Authorize 500, capture 350 with final_capture: is the 150 remainder released? | PASS for two PayPal-account buyers (2026-11-04, 2026-11-05; the "card" buyer is a PayPal account funded by a card, not a guest card checkout). The authorization reads CAPTURED after the final capture and an explicit void answers 422 PREVIOUSLY_CAPTURED; release of the remainder is inferred                                                                                                                                                                              |
-| G2   | Card and guest AUTHORIZE in the JS SDK v6                                     | PASS (2026-11-05): wallet and guest card both authorized, HTTP 201                                                                                                                                                                                                                                                                                                                                                                                                              |
-| G3   | Honor period versus validity, and reauthorize                                 | Real probe in progress (day 0 7 Nov 2026 03:06 UTC, checkpoints at 3.5, 4 and 5 days, final about 12 Nov 06:17 UTC); `docs/GATES.md` records it as in progress                                                                                                                                                                                                                                                                                                                  |
-| G4   | Webhook signature verification on real events                                 | PASS (2026-11-05): 6 real deliveries each verified SUCCESS                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| G5   | Speech-to-text accuracy on noisy bids                                         | PARTIAL on synthetic, noise-free speech, two sets of 24 clips (eSpeak and a human-like voice): Deepgram nova-3 and Groq whisper-large-v3-turbo wrong-accept 0.000 against a 0.05 limit (the earlier run measured 0.083 to 0.167), after fixes chosen on those same clips. A held-out noisy set (120 clips, measured once) read 0.058 (Groq) and 0.092 (Deepgram) against 0.05. Spoken bids always go through the confirm prompt. Scope: synthetic audio; next step: a real room |
+The settlement saga is journaled. If the process dies mid-settlement, it checks the truth at PayPal, then continues the capture and the voids instead of repeating them. If PayPal's answer is unknown, settlement stops for review rather than guessing.
+
+Where the partners fit:
+
+- **PayPal:** all payments run on the sandbox: Orders v2, Payments v2, webhook signature verification and JS SDK v6.
+- **Cloudflare:** the web app runs as a Worker with static assets, and the docs site is deployed to Cloudflare, both on custom domains with security headers.
+- **Render:** the API and WebSocket host is one Node web service on the `starter` plan, always on, with a 1 GB persistent disk for the ledger, room log, settlement journals and hold records.
+- **AG Grid:** the audit ledger, the console bid history and the holds table are AG Grid Community tables, with sorting, filters, CSV export and an in-browser chain check.
+- **APIMatic:** the OpenAPI 3.1 spec of the host API is linted in CI and checked against the server router; SDK and portal generation from it is in progress.
+- **Hugging Face:** five small datasets and a read-only Evidence Explorer Space, each labelled real sandbox, simulated or synthetic.
+
+### Challenges we ran into
+
+- **Sandbox account region.** The sandbox accounts must be US accounts. PayPal rejects INR orders for sandbox buyers with 422 CURRENCY_NOT_SUPPORTED, so every gate sends USD.
+- **Authorization validity.** PayPal documents an honor period and a validity window that disagree across pages (3 days versus 29 days, with one reauthorization). A real probe has been running since 7 Nov 2026 03:06 UTC (gate G3, final reading about 12 Nov 06:17 UTC); the 29-day figure is not yet verified in the real sandbox. Until it reports, the demo creates holds minutes before the capture and the saga flags holds older than two hours as stale.
+- **Remainder release.** After a final capture a follow-up void answers 422 PREVIOUSLY_CAPTURED and the authorization reads CAPTURED, which we read as the remainder being released. That is inferred, not read from a buyer balance, and the saga treats the answer as released instead of an error.
+- **Webhooks arrive twice or out of order.** Handlers de-duplicate and the saga never trusts an event alone. Real events carry fields our simulator lacked, so we committed six sanitized real fixtures and test against them.
+- **SDK v6 details.** A client token request with `domains[]` answers 401 `invalid_domain` on localhost, and `isEligible('basic_card')` throws; guest card needs no eligibility key.
+- **Speed.** On the sandbox, hammer to settled for 6 holds has p95 6927.43 ms against a 6000 ms target and hammer to captured p95 3766.67 ms against 2500 ms (n=49, run INCOMPLETE). Both targets are missed, and PayPal call latency is most of it. The decision to keep, raise or reduce is open.
+- **Voice in noise.** A held-out noisy set of 120 synthetic clips, measured once against thresholds fixed beforehand, read wrong accept 0.058 for Groq and 0.092 for Deepgram against 0.05. That is why every spoken bid stays behind a confirm prompt.
+
+### Accomplishments that we are proud of
+
+- Gates G0, G1, G2 and G4 PASS on the real PayPal sandbox: app and buyers, partial capture with `final_capture`, wallet and guest card holds, and six real webhooks verified ([`docs/GATES.md`](../GATES.md)).
+- A real server process was killed once after the capture request and before the response. After restart on the same data folder it settled with one capture of 12500 equal to the hammer price, two losers voided, a journal equal to PayPal and a ledger of 19 entries that verifies (run 42558021614, [`docs/evidence/server-kill`](../evidence/server-kill)).
+- Live speech through the `/audio` socket: both providers answered 24 of 24 synthetic clips, and no spoken bid was accepted without a confirm (run 42575018866).
+- The hosted judge flow passed all 17 steps on the live domains, from the judge panel through join, bids, hammer and receipts (judge smoke run 42584326641).
+- The hosted webhook route answered at p95 112.03 ms against a 300 ms target (n=50, runner network included), and warmup after 16 minutes idle took at most 0.66 s (n=2).
+- Per-judge API keys: with a key, a judge can open a sandbox room, bid, hammer and read the ledger over HTTP, with a Try it panel in the docs.
+- More than 4,500 test cases run in CI, and all eight P0 items of the security review PASS.
+- The evidence is open: five datasets with sha256 manifests, each labelled for what it is.
+
+### What we learned
+
+- A hold is a better auction primitive than a charge: the ceiling is real money, so a refused bid is a fact, not a guess.
+- Do not trust one source of truth during settlement. Ask PayPal what happened before acting, journal every step, and treat an unknown answer as a stop, not a retry.
+- Real services differ from their simulators in small ways, and the fixtures from real runs found those differences faster than reading documentation did.
+- Label every number with what it measured. We kept the real sandbox, simulated and synthetic results apart, and kept the misses on the page.
+
+### What's next
+
+- Record the G3 result and set the reauthorize behaviour from it.
+- Run G5 with a person in a real room and in recorded noise, and add an audio sender to the console.
+- Decide the latency targets: keep, raise with a reason, or reduce latency.
+- Drive a whole auction through the deployed server and repeat the process kill and resume there; one kill has run on a CI runner.
+- Host recorded auctions for replay, and finish SDK and portal generation from the OpenAPI spec.
+
+Full list with owners: [`docs/LIMITATIONS.md`](../LIMITATIONS.md).
 
 ## What is real versus simulated
 
-| Part                                                         | Real                                                                                                                                                                                                                                                                                                                                                                                           | Simulated or recorded                                                                                                                                                                                                                                  | Source              |
-| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- |
-| Authorize, capture 350 with final_capture, remainder release | Authorization reads CAPTURED after the final capture on the PayPal sandbox, for a wallet and a card-funded PayPal account; remainder release inferred                                                                                                                                                                                                                                          | Tests of the saga run against the project's fake PayPal                                                                                                                                                                                                | G1 evidence         |
-| Card and guest AUTHORIZE                                     | Observed on the sandbox in SDK v6                                                                                                                                                                                                                                                                                                                                                              | n/a                                                                                                                                                                                                                                                    | G2 evidence         |
-| Webhook signature verification                               | 6 real sandbox events verified through PayPal's endpoint                                                                                                                                                                                                                                                                                                                                       | Tampered-event rejection and the retry schedule are tested against the fake only                                                                                                                                                                       | G4 evidence         |
-| Honor period and reauthorize                                 | Real probe in progress (G3, final about 12 Nov 06:17 UTC); simulated, not real: 30 days of auctions on a fake clock                                                                                                                                                                                                                                                                            | Simulated: We simulated 30 days of auctions with a fake clock: holds, honor-period expiry, reauthorization, crashes and recovery, with the ledger balancing to the cent ([SIM-MULTIDAY](../evidence/SIM/SIM-MULTIDAY.md); simulated, not real PayPal). | G3 pending          |
-| Settlement of a whole auction (many holds, crash and resume) | 20 settlements of 6 holds measured end to end on the sandbox (run 42346811713); in-process crash resume passed in the nightly runs, and a real server process kill on a CI runner passed (run 42558021614: one capture, two losers voided, journal equal to PayPal). Scope: no auction driven through the deployed server yet, and the kill was not on the deployed host                       | Crash and resume across many process kills: run against the fake PayPal, in tests                                                                                                                                                                      | saga tests, measure |
-| Speech-to-text accuracy                                      | PARTIAL: wrong-accept 0.000 on two sets of 24 synthetic, noise-free clips after fixes chosen on those clips (the earlier run measured 0.083 to 0.167); a live socket run answered 24 of 24 synthetic clips with no bid accepted without a confirm (run 42575018866); a held-out noisy set measured 0.058 (Groq) and 0.092 (Deepgram) against 0.05; confirm prompt kept; next step: a real room | Parser measured on text transcripts only: 169 cases, wrong accepts 0.000                                                                                                                                                                               | G5-text             |
-| Demo replay                                                  | n/a                                                                                                                                                                                                                                                                                                                                                                                            | A recorded auction played back read only, labelled "Recorded" on screen                                                                                                                                                                                | replay player       |
-| Hosted demo                                                  | Web app at https://gavel.dualmindlab.tech and API at https://api.gavel.dualmindlab.tech, in sandbox mode on one Render service with a 1 GB persistent disk; judge rooms open a real sandbox room with no operator key                                                                                                                                                                          | Judge rooms can also use a simulated hold, and `/demo/scripted` is a recorded room in the browser                                                                                                                                                      | `docs/DEMO.md`      |
-| Money                                                        | No real money moves anywhere. All PayPal calls are sandbox                                                                                                                                                                                                                                                                                                                                     |                                                                                                                                                                                                                                                        | all                 |
+Paste under the story if the form allows a table; otherwise as a list.
 
-Latency, measured end to end on the real sandbox (run 42346811713, n=20 settlements of 6 holds, redacted evidence in `docs/evidence/measure`): the earlier n=20 run measured SETTLED p95 5591.30 ms and CAPTURED p95 3010.04 ms. A later, larger run (run 42563147792, n=49, INCOMPLETE: 1 timeout and 3 failed capture calls) measured hammer to SETTLED at p95 6.93 s against a 6 s target and hammer to CAPTURED at p95 3.77 s against 2.5 s (status PARTIAL); per call, p95 is 1.23 s for order, 1.54 s for authorize, 2.72 s for capture and 1.25 s for void, against a 1 s budget. Owner decision open: keep the targets, raise them with a reason, or reduce latency. See `docs/GATES.md`.
-
-## Challenges and what we learned
-
-- Sandbox account region. The sandbox accounts must be US accounts. PayPal rejects INR orders for sandbox buyers with 422 CURRENCY_NOT_SUPPORTED, and India sandbox buyers fail at the approval page with USD. Gates now send USD.
-- Authorization validity. PayPal documents an honor period and a validity window that disagree across pages (3 days versus 29 days, with one reauthorization). Our G3 real probe (day 0 7 Nov 2026 03:06 UTC, final about 12 Nov 06:17 UTC) is measuring this; the 29-day figure has not been verified in the real sandbox. Until it reports, we design the demo so holds are created minutes before the capture, and the saga flags holds older than two hours as stale.
-- Remainder release. After a final capture a follow-up void answers 422 PREVIOUSLY_CAPTURED and the authorization reads CAPTURED, which we read as the remainder being released (inferred, not observed on a buyer balance). The saga treats that answer as released instead of an error.
-- Redelivery and ordering. Webhooks can arrive twice or out of order, so handlers dedupe and the saga never trusts an event alone. Whether a PayPal retry keeps the original transmission id and time is not yet verified; we do not claim it.
-- Real response shapes. Real events carry fields our simulator lacked (event_version, resource_type, summary, links and more), and the simulator emits fields PayPal does not. We committed six sanitized real fixtures and test against them.
-- SDK v6 details. A client token request with domains[] answers 401 invalid_domain on localhost, and isEligible('basic_card') throws; guest card needs no eligibility key.
-
-## What is next
-
-- Record the G3 result and set the reauthorize behaviour from it.
-- Run G5 on real-room and noisy recorded bids with real speech-to-text and calibrate the confirm thresholds.
-- Put a human voice in a real room through the `/audio` socket (a live run with 24 synthetic clips is recorded) and add an audio sender to the console; and decide on the latency targets (hammer to CAPTURED p95 3.77 s against 2.5 s and hammer to SETTLED p95 6.93 s against 6 s on run 42563147792): keep, raise with a reason, or reduce latency.
-- Host a recorded replay and publish the screenshots.
-- Drive a whole auction through the deployed server and repeat the process kill and resume there (one kill ran on a CI runner, and 49 settlements of 6 holds are measured).
+| Part                          | Real                                                                                                                                                      | Simulated or recorded                                                                                       |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Authorize, capture, remainder | Authorization reads CAPTURED after a 350 of 500 final capture on the sandbox for two PayPal-account buyers (G1); the release of the remainder is inferred | Saga tests against the project's fake PayPal                                                                |
+| Card and guest holds          | Wallet and guest card AUTHORIZE in SDK v6 on the sandbox (G2)                                                                                             | n/a                                                                                                         |
+| Webhooks                      | Six real sandbox events verified through PayPal's endpoint (G4)                                                                                           | Tampered-event rejection and the retry schedule are tested against the fake only                            |
+| Honor period                  | A real probe is running (G3, final reading about 12 Nov 06:17 UTC)                                                                                        | 30 days of auctions on a fake clock ([SIM-MULTIDAY](../evidence/SIM/SIM-MULTIDAY.md)); not a sandbox result |
+| Settlement and crash          | 20 and 49 settlements of 6 holds measured on the sandbox; in-process crash resume in the nightly runs; one real process kill on a CI runner               | Many crash points and kills run against the fake PayPal; the kill was not on the deployed host              |
+| Speech                        | Live socket run with real providers on synthetic clips (24 of 24 answered)                                                                                | All audio is synthetic; the text parser is measured on 169 transcripts; no real room yet (G5 PARTIAL)       |
+| Hosted demo                   | Web at gavel.dualmindlab.tech and API at api.gavel.dualmindlab.tech, sandbox mode, one Render service with a 1 GB disk                                    | Demo holds can be simulated, and `/demo/scripted` is a recorded room in the browser                         |
+| Money                         | No real money moves anywhere; all PayPal calls are sandbox                                                                                                |                                                                                                             |
 
 ## Built with
 
-OWNER: list the tools, models and PayPal APIs exactly as the Devpost form asks. PayPal APIs used in code: Orders v2 (intent AUTHORIZE), Payments v2 (authorize, capture, void, reauthorize), Webhooks verify-webhook-signature, JS SDK v6. Other stack: TypeScript, Node 22, React, Vite, Vitest, Playwright, GitHub Actions, Render.
+Tags to add on the form (25 at most): `typescript`, `node.js`, `react`, `vite`, `paypal`, `paypal-orders-api`, `paypal-payments-api`, `paypal-js-sdk`, `cloudflare-workers`, `cloudflare-pages`, `render`, `ag-grid`, `hugging-face`, `deepgram`, `groq`, `websockets`, `openapi`, `vitest`, `playwright`, `github-actions`, `python`, `next.js`, `fumadocs`.
 
-## Built with Render
+PayPal APIs used in code: Orders v2 (intent AUTHORIZE), Payments v2 (authorize, capture, void, reauthorize), webhook signature verification (`verify-webhook-signature`) and JS SDK v6.
 
-The GAVEL host, the part that must stay up while a room is live, runs on Render. It is one Node web service on the `starter` plan, always on, with a 1 GB persistent disk mounted at `/var/data`. The room log, the hash-chained ledger, the settlement journals and the hold records are files on that disk, so a redeploy does not lose an auction; this is also why the service keeps a single instance (decision records D-0006 and D-0018). The blueprint is `render.yaml` in the repository, the health check is `/healthz` with `/readyz` behind it, and secrets are set in the Render dashboard and never committed. Deploys are not triggered by pushes: GitHub Actions calls the Render deploy hook, waits until `/version` serves the new commit, then runs a smoke test, and the production workflow can roll back through the Render API. The judge rooms behind our `/try` page and the simulated demo run on this service, with the web app on Cloudflare Workers (gavel.dualmindlab.tech) in front; an API domain, api.gavel.dualmindlab.tech, is planned, pending DNS. Honest limits: one instance means a short gap on each deploy, we publish no uptime figure, and we do not use Render Postgres, cron jobs or preview environments yet; moving the stores to Render Postgres and room fan-out to a managed Redis would be the path to more than one instance. Full write-up: https://docs.gavel.dualmindlab.tech/docs/run/hosting-on-render
+HAND: if the form asks for models, list the speech-to-text models, Deepgram nova-3 and Groq whisper-large-v3-turbo. The voice package also has an optional language-model second reading configured by `LLM_API_KEY` (see `packages/voice/README.md`); check whether the hosted API sets it before stating one way or the other.
+
+## Try it out links
+
+- Judge panel (live sandbox room, no login): https://gavel.dualmindlab.tech/try
+- Scripted demo (about 1 minute, recorded, no server): https://gavel.dualmindlab.tech/demo/scripted
+- Demo room (about 3 minutes): https://gavel.dualmindlab.tech/demo
+- Docs: https://docs.gavel.dualmindlab.tech
+- API reference: https://docs.gavel.dualmindlab.tech/api-reference
+- Call the API as a judge: https://docs.gavel.dualmindlab.tech/docs/judges/call-the-api
+- Trust and FAQ: https://docs.gavel.dualmindlab.tech/docs/judges/trust-and-faq
+- Hugging Face collection: https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504
+- Evidence Explorer Space: https://huggingface.co/spaces/harshbhx/gavel-evidence-explorer
+- Source: https://github.com/harshbhx/gavel-auction
+
+## Testing instructions
+
+Paste [`docs/judges/DEVPOST-TESTING.md`](../judges/DEVPOST-TESTING.md) into the testing field. HAND: add the two sandbox buyer logins there on Devpost only; never commit them.
+
+## Image gallery and thumbnail
+
+Upload order, alt text and captions are in [`DEVPOST-IMAGES.md`](DEVPOST-IMAGES.md). HAND: upload them on Devpost in that order.
 
 ## Reuse statement
 
-OWNER: state what was built during the hackathon period and what, if anything, was reused from earlier work.
+HAND: confirm before pasting. Draft from the repository history: all code in this repository was written during the hackathon period, from the initial commit on 4 Nov 2026 (599 commits on main by 9 Nov). It uses open-source libraries and the third-party services listed under Built with. The brand marks and graphics were made for this project.
 
-## Links
+## Hackathon form extras
 
-OWNER: repository https://github.com/harshbhx/gavel-auction, hosted demo URL, video URL, judge walkthrough.
+HAND: open the live Devpost form and fill what it adds beyond the generic fields (category, developer account ID, tool feedback, "how you improved the project"). The checklist lists them.
