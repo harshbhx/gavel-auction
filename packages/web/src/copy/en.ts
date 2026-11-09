@@ -565,10 +565,11 @@ export const en = {
   'reg.paddle': 'Paddle number',
   'reg.yourPaddle': 'Your paddle is {n}',
   'reg.step2': 'Choose your limit',
-  'reg.custom': 'Custom amount',
+  'reg.custom': 'Your limit in dollars',
   'reg.sessionNotSaved':
     'Your browser blocked storage. Keep this tab open: reloading will end this session.',
   'reg.customHint': 'Type your own limit in whole dollars, from {min} to {max}.',
+  'reg.overCap': 'The most a limit can be in this room is {max}.',
   'reg.customRange': 'Enter a whole dollar amount from {min} to {max}.',
   'reg.heldNotCharged': 'Held, not charged.',
   'reg.heldExplain':

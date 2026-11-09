@@ -44,21 +44,20 @@ function toCeilingStep(onApprove = vi.fn()) {
   );
   fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
   fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
-  fireEvent.click(screen.getByLabelText(t('reg.custom')));
   return { onApprove, field: screen.getByRole('textbox', { name: t('reg.custom') }) };
 }
 
 describe('custom ceiling at registration', () => {
   it('sits next to the presets and shows the allowed range', () => {
     toCeilingStep();
-    expect(screen.getAllByRole('radio')).toHaveLength(3);
+    expect(screen.getAllByRole('radio')).toHaveLength(2);
     expect(screen.getByText(t('reg.customHint', { min: '$10', max: '$2,500' }))).toBeTruthy();
   });
 
   it('keeps digits only and sends the typed whole-dollar amount in cents', () => {
     const { onApprove, field } = toCeilingStep();
     fireEvent.change(field, { target: { value: '$1,2a5.0' } });
-    expect((field as HTMLInputElement).value).toBe('1250');
+    expect((field as HTMLInputElement).value).toBe('1,250');
     expect(field.getAttribute('inputmode')).toBe('numeric');
     expect(screen.getByTestId('held-block').textContent).toContain(t('reg.heldNotCharged'));
     confirmHold();
@@ -67,12 +66,13 @@ describe('custom ceiling at registration', () => {
 
   it('refuses more than the server maximum and less than the minimum, with the range as text', () => {
     const { onApprove, field } = toCeilingStep();
-    for (const typed of ['2501', '9']) {
+    for (const [typed, message] of [
+      ['2501', t('reg.overCap', { max: '$2,500' })],
+      ['9', t('reg.customRange', { min: '$10', max: '$2,500' })],
+    ] as const) {
       fireEvent.change(field, { target: { value: typed } });
       fireEvent.blur(field);
-      expect(screen.getByRole('alert').textContent).toContain(
-        t('reg.customRange', { min: '$10', max: '$2,500' }),
-      );
+      expect(screen.getByRole('alert').textContent).toContain(message);
       expect(screen.queryByTestId('held-block')).toBeNull();
       expect(
         screen.getByRole('button', { name: t('reg.approve') }).getAttribute('aria-disabled'),

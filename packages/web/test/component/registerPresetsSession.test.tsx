@@ -134,7 +134,6 @@ describe('register route with a custom ceiling', () => {
     openLive(`/r/${ROOM}/register`);
     fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
     fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
-    fireEvent.click(screen.getByRole('radio', { name: t('reg.custom') }));
     fireEvent.change(screen.getByRole('textbox', { name: t('reg.custom') }), {
       target: { value: '420' },
     });
@@ -155,7 +154,6 @@ describe('register route with a custom ceiling', () => {
     act(() => socket.receive(stateMsg(1, { ...snapshot(), maxCeilingCents: Cents(250_000) })));
     fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
     fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
-    fireEvent.click(screen.getByRole('radio', { name: t('reg.custom') }));
     expect(screen.getByText(t('reg.customHint', { min: '$1', max: '$2,500' }))).toBeTruthy();
     const field = screen.getByRole('textbox', { name: t('reg.custom') });
     fireEvent.change(field, { target: { value: '2501' } });
@@ -164,7 +162,7 @@ describe('register route with a custom ceiling', () => {
       screen
         .getAllByRole('alert')
         .some((a) =>
-          (a.textContent ?? '').includes(t('reg.customRange', { min: '$1', max: '$2,500' })),
+          (a.textContent ?? '').includes(t('reg.overCap', { max: '$2,500' })),
         ),
     ).toBe(true);
   });
