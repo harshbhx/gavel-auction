@@ -29,7 +29,7 @@ PayPal sandbox only: no real money moves.
 
 > **GAVEL is a live auction where every bid is a PayPal authorization hold, and at the hammer only the winning price is captured.** Bidders approve a ceiling up front, a deterministic engine checks every bid against it, the winner pays the hammer price, every other hold is voided, and a hash-chained ledger lets anyone verify the result. Bids can be spoken, and a spoken bid never counts until the bidder confirms it.
 
-Built for the PayPal Hackathon 2026 by Harsh Bhanushali and Dhairya Patel.
+Built for the PayPal Hackathon 2026.
 
 ## Why GAVEL
 
@@ -64,7 +64,7 @@ Online auctions usually make a bidder pay first or trust the bidder to pay later
 
 ## Contents
 
-[Why GAVEL](#why-gavel) | [Live links](#live-links) | [Judge path](#judge-path-in-60-seconds) | [What is proven](#what-is-proven) | [How it works](#how-it-works) | [See it run](#see-it-run) | [Tech stack and sponsors](#tech-stack-and-sponsors) | [Evidence and gates](#evidence-and-gates) | [Run it locally](#run-it-locally) | [Call the API](#call-the-api) | [Security](#security-and-data-notes) | [Documentation](#documentation) | [Team](#team) | [License](#license)
+[Why GAVEL](#why-gavel) | [Live links](#live-links) | [Judge path](#judge-path-in-60-seconds) | [What is proven](#what-is-proven) | [How it works](#how-it-works) | [See it run](#see-it-run) | [Tech stack and sponsors](#tech-stack-and-sponsors) | [Evidence and gates](#evidence-and-gates) | [Run it locally](#run-it-locally) | [Call the API](#call-the-api) | [Security](#security-and-data-notes) | [Documentation](#documentation) | [License](#license)
 
 ## Live links
 
@@ -377,10 +377,6 @@ Package guides: [server](packages/server/README.md), [voice](packages/voice/READ
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md). Work goes through branches and pull requests, and the pull request template lists the checks.
-
-## Team
-
-Built by [Harsh Bhanushali](https://github.com/harshbhx) and Dhairya Patel for the PayPal Hackathon 2026. Product, engine, payments, voice, web app, docs and evidence are all in this repository.
 
 ## License
 
