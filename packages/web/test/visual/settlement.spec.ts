@@ -39,6 +39,8 @@ for (const state of STATES) {
       await settlePage(page);
       await expect(page).toHaveScreenshot(`settlement-${state.name}-${viewport.name}.png`, {
         caret: 'hide',
+        // The settlement panel sits below the fold on a phone, so the whole page is compared.
+        fullPage: true,
       });
     });
   }
