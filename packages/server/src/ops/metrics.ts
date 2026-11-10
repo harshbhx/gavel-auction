@@ -32,6 +32,19 @@ export class Histogram {
   }
 }
 
+/** PayPal gateway operations that are timed and counted (R-QA-047). */
+export type PaypalOp =
+  | 'createOrder'
+  | 'getOrder'
+  | 'authorizeOrder'
+  | 'getHoldTruth'
+  | 'capture'
+  | 'voidAuthorization'
+  | 'reauthorize';
+
+const MAX_REASONS = 32;
+const REASON = /^[a-z0-9_]{1,40}$/;
+
 export type WebhookOutcome = 'ok' | 'duplicate' | 'invalid_signature' | 'retry' | 'too_large';
 
 /** Live values read when a snapshot is taken. */
@@ -45,6 +58,11 @@ export interface MetricsSnapshot {
   connections: number;
   rooms: number;
   bids: { accepted: number; rejected: number };
+  /** Rejected bids by reason code; codes that are not plain snake_case count as `other`. */
+  bidRejectedByReason: Record<string, number>;
+  /** PayPal gateway calls by `<operation>.<ok|error>`. */
+  paypalCalls: Record<string, number>;
+  paypalLatencyMs: HistogramSnapshot;
   mailboxDepth: number;
   bidLatencyMs: HistogramSnapshot;
   storeAppendMs: HistogramSnapshot;
@@ -62,6 +80,9 @@ export class MetricsCollector {
   private previousUses = 0;
   private readonly bidLatency = new Histogram();
   private readonly storeAppend = new Histogram();
+  private readonly paypalLatency = new Histogram();
+  private readonly rejectedReasons = new Map<string, number>();
+  private readonly paypal = new Map<string, number>();
   private readonly webhooks: Record<WebhookOutcome, number> = {
     ok: 0,
     duplicate: 0,
@@ -75,8 +96,17 @@ export class MetricsCollector {
   bidAccepted(): void {
     this.accepted += 1;
   }
-  bidRejected(): void {
+  bidRejected(reason?: string): void {
     this.rejected += 1;
+    let key = reason !== undefined && REASON.test(reason) ? reason : 'other';
+    if (!this.rejectedReasons.has(key) && this.rejectedReasons.size >= MAX_REASONS) key = 'other';
+    this.rejectedReasons.set(key, (this.rejectedReasons.get(key) ?? 0) + 1);
+  }
+  /** One PayPal gateway call: its operation, whether it returned, and how long it took. */
+  paypalCall(op: PaypalOp, ok: boolean, ms: number): void {
+    const key = `${op}.${ok ? 'ok' : 'error'}`;
+    this.paypal.set(key, (this.paypal.get(key) ?? 0) + 1);
+    this.paypalLatency.observe(ms);
   }
   rateLimitHit(): void {
     this.rateLimited += 1;
@@ -99,6 +129,9 @@ export class MetricsCollector {
       connections: this.gauges.connections(),
       rooms: this.gauges.rooms(),
       bids: { accepted: this.accepted, rejected: this.rejected },
+      bidRejectedByReason: Object.fromEntries(this.rejectedReasons),
+      paypalCalls: Object.fromEntries(this.paypal),
+      paypalLatencyMs: this.paypalLatency.snapshot(),
       mailboxDepth: this.gauges.mailboxDepth(),
       bidLatencyMs: this.bidLatency.snapshot(),
       storeAppendMs: this.storeAppend.snapshot(),

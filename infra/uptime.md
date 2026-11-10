@@ -6,7 +6,7 @@ Requirements: R-QA-045 (uptime and warmup), R-QA-048 (error budget). Keep-alive 
 
 - `GET /healthz`: liveness, always 200 while the process runs.
 - `GET /readyz`: 200 when migrations are applied and the store answers, else 503.
-- `GET /warmup`: runs the warmup steps in parallel (database, PayPal token cache, demo auction) and answers 200 when all are warm within 3000 ms, else 503 with a per-step report.
+- `GET /warmup`: runs the warmup steps in parallel (database, PayPal token cache, demo auction) and answers 200 when all are warm within 3000 ms, else 503 with a per-step report. The scheduled workflow also fails a round when `/warmup` answers 2xx but took longer than 3000 ms (`WARMUP_BUDGET_MS`), because runs are hours apart and the host has been idle, which is the T-QA-084 case.
 
 The route handler is `createWarmupRoute` in `packages/server/src/warmup/warmup.ts`. It is registered in the host in `packages/server/src/boot/compose.ts`.
 
@@ -31,11 +31,11 @@ Any of these fires reliably, unlike GitHub cron. Point it at `/healthz`, `/ready
 - UptimeRobot or Better Stack free tier, HTTP checks every 1 to 5 minutes.
 - A Cloudflare Worker with a cron trigger (`crons = ["*/5 * * * *"]` in `wrangler.toml`) whose `scheduled` handler fetches the routes and posts to a webhook or opens a GitHub issue through the REST API with a fine-grained token. Cloudflare cron triggers run on schedule; this repository already deploys Workers.
 
-Status: not configured. The owner decides which service to use and holds the account.
+Status: not configured. The owner decides which service to use and holds the account (open question for Harsh: UptimeRobot or Better Stack free tier, or the Cloudflare Worker cron). Once chosen, record the service, the check list and the public status URL here and amend D-0008 in `docs/DECISIONS.md`. Nothing in this repository creates that account or spends money.
 
 ## Scheduled workflow
 
-`.github/workflows/uptime.yml` probes the API routes plus the web and docs hosts on GitHub's best-effort schedule (requested every 15 minutes, observed every 4 to 8 hours). It is on by default; set the repository variable `UPTIME_ENABLED` to `false` to turn it off. `PRODUCTION_URL`, `WEB_URL` and `DOCS_URL` override the default origins. A failed round is re-probed after 30 seconds; when the failure stands the job fails with an error annotation and opens one `Needs you` issue (or comments on the open one).
+`.github/workflows/uptime.yml` probes the API routes plus the web and docs hosts on GitHub's best-effort schedule (requested every 15 minutes, observed every 4 to 8 hours). It is on by default; set the repository variable `UPTIME_ENABLED` to `false` to turn it off. `PRODUCTION_URL`, `WEB_URL` and `DOCS_URL` override the default origins. Each round writes a status and timing table to the job summary, which is the report T-QA-084 asks for. A failed round is re-probed after 30 seconds; when the failure stands the job fails with an error annotation and opens one `Needs you` issue (or comments on the open one).
 
 ## Open items
 

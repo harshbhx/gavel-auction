@@ -7,6 +7,7 @@ import { createLogRing, maskEmails, OPS_LOG_LINES } from '../src/obs/logring';
 import { createOpsSummaryRoute, createPrometheusRoute } from '../src/obs/ops-summary';
 import { formatPrometheus } from '../src/obs/prometheus';
 import { MetricsCollector } from '../src/ops/metrics';
+import { meteredGateway } from '../src/obs/metered-gateway';
 
 const servers: Server[] = [];
 afterEach(async () => {
@@ -57,6 +58,60 @@ describe('prometheus text', () => {
       expect(text).toContain(name);
     }
     expect(text.endsWith('\n')).toBe(true);
+  });
+});
+
+describe('R-QA-047 metric families', () => {
+  it('exposes bid reasons, PayPal calls, saga transitions and webhook counts', () => {
+    const m = collector();
+    m.bidRejected('below_min');
+    m.bidRejected('Not A Code');
+    m.paypalCall('capture', true, 40);
+    m.paypalCall('capture', false, 80);
+    const text = formatPrometheus(m.snapshot(), [
+      { auctionId: 'a1', lotId: 'a1', state: 'SETTLED', transitions: { HOLDING: 1, SETTLED: 1 } },
+      { auctionId: 'a2', lotId: 'a2', state: 'HOLDING', transitions: { HOLDING: 1 } },
+    ]);
+    for (const line of [
+      'gavel_bids_rejected_total{reason="below_min"} 1',
+      'gavel_bids_rejected_total{reason="other"} 2',
+      'gavel_paypal_calls_total{op="capture",status="ok"} 1',
+      'gavel_paypal_calls_total{op="capture",status="error"} 1',
+      'gavel_paypal_latency_ms_count 2',
+      'gavel_saga_transitions_total{state="HOLDING"} 2',
+      'gavel_saga_transitions_total{state="SETTLED"} 1',
+      'gavel_saga_lots{state="SETTLED"} 1',
+      'gavel_saga_lots{state="HOLDING"} 1',
+      'gavel_webhook_total{outcome="duplicate"} 1',
+      'gavel_webhook_total{outcome="ok"} 0',
+      'gavel_ws_connections 3',
+    ]) {
+      expect(text).toContain(line);
+    }
+  });
+
+  it('counts gateway calls by outcome without touching arguments or results', async () => {
+    const m = collector();
+    let t = 0;
+    const gw = meteredGateway(
+      {
+        voidAuthorization: () => Promise.reject(new Error('boom')),
+        getOrder: () => Promise.resolve({ orderId: 'o', status: 'APPROVED' }),
+      } as never,
+      m,
+      () => (t += 10),
+    );
+    await expect(gw.voidAuthorization('auth', 'req')).rejects.toThrow('boom');
+    await gw.getOrder('o');
+    const snap = m.snapshot();
+    expect(snap.paypalCalls).toEqual({ 'voidAuthorization.error': 1, 'getOrder.ok': 1 });
+    expect(snap.paypalLatencyMs.count).toBe(2);
+  });
+
+  it('caps the number of reason labels', () => {
+    const m = collector();
+    for (let i = 0; i < 100; i += 1) m.bidRejected(`r_${String(i)}`);
+    expect(Object.keys(m.snapshot().bidRejectedByReason).length).toBeLessThanOrEqual(33);
   });
 });
 

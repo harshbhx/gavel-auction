@@ -87,6 +87,48 @@ describe('ops routes in the composed server (HRD-22)', () => {
     expect(Array.isArray(body.sagas)).toBe(true);
   });
 
+  it('writes only parseable log lines with the schema keys and no full email (T-QA-081)', async () => {
+    const lines: string[] = [];
+    const url = await boot({ sink: (l) => void lines.push(l) });
+    await fetch(`${url}/healthz`);
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) {
+      const rec = JSON.parse(line) as Record<string, unknown>;
+      expect(typeof rec['ts']).toBe('number');
+      expect(['debug', 'info', 'warn', 'error']).toContain(rec['level']);
+      expect(typeof rec['msg']).toBe('string');
+      expect(typeof rec['context']).toBe('object');
+      expect(line).not.toMatch(/[A-Za-z0-9._%+-]{2,}@[A-Za-z0-9-]{2,}\.[A-Za-z]{2,}/);
+    }
+  });
+
+  it('serves the R-QA-047 metric families and PayPal outcomes to the operator', async () => {
+    const url = await boot();
+    const headers = { 'x-admin-key': KEY };
+    const prom = await (await fetch(`${url}/metrics/prometheus`, { headers })).text();
+    for (const family of [
+      'gavel_bids_total',
+      'gavel_bids_rejected_total',
+      'gavel_bid_ack_latency_ms',
+      'gavel_saga_transitions_total',
+      'gavel_saga_lots',
+      'gavel_paypal_calls_total',
+      'gavel_paypal_latency_ms',
+      'gavel_webhook_total',
+      'gavel_ws_connections',
+    ]) {
+      expect(prom).toContain(`# TYPE ${family} `);
+    }
+    const summary = (await (await fetch(`${url}/ops/summary`, { headers })).json()) as {
+      paypal: object;
+      paypalCalls: object;
+      sagas: unknown[];
+    };
+    expect(summary.paypal).toHaveProperty('duplicate');
+    expect(summary.paypalCalls).toBeTypeOf('object');
+    expect(summary.sagas).toEqual([]);
+  });
+
   it('keeps /metrics working', async () => {
     const url = await boot();
     expect((await fetch(`${url}/metrics`)).status).toBe(401);

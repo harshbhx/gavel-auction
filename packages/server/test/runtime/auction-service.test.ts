@@ -606,6 +606,28 @@ describe('auction service: gauges and counters (R8-S03)', () => {
   });
 });
 
+describe('auction service: saga states for the ops page (R-QA-047)', () => {
+  it('lists the settlement state per lot with transition counts', async () => {
+    const rig = await makeRig();
+    const service = rig.service({ resumeIntervalMs: 0 });
+    expect(await service.opsSagas()).toEqual([]);
+    const run = await runToHammer(rig, service);
+    await service.idle();
+    const journal = await journalOf(rig, run.auctionId);
+    const rows = await service.opsSagas();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      auctionId: run.auctionId,
+      lotId: run.auctionId,
+      state: 'SETTLED',
+    });
+    expect(rows[0]?.transitions['SETTLED']).toBe(1);
+    const total = Object.values(rows[0]?.transitions ?? {}).reduce((a, b) => a + b, 0);
+    expect(total).toBe(journal.history.length);
+    await service.close();
+  });
+});
+
 describe('auction service: bidder registration', () => {
   it('revokes a bidder whose hold was denied while the registration waited (R12-S10)', async () => {
     const rig = await makeRig();

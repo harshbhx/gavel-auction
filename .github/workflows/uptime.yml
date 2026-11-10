@@ -41,6 +41,9 @@ jobs:
       WEB_URL: ${{ vars.WEB_URL || 'https://gavel.dualmindlab.tech' }}
       DOCS_URL: ${{ vars.DOCS_URL || 'https://docs.gavel.dualmindlab.tech' }}
       GH_TOKEN: ${{ github.token }}
+      # T-QA-084 / R-QA-045: /warmup must answer within 3 s. Runs are hours apart, so the host has
+      # been idle; a slower answer counts as a failed probe.
+      WARMUP_BUDGET_MS: '3000'
     steps:
       - name: Probe the routes
         id: probe
@@ -55,9 +58,19 @@ jobs:
               2??) echo "ok   $code ${ms}ms $url" ;;
               *) echo "FAIL ${code:-000} ${ms}ms $url"; failed="$failed $url" ;;
             esac
+            case "$code:$url" in
+              2??:*/warmup)
+                if [ "${ms:-0}" -gt "$WARMUP_BUDGET_MS" ]; then
+                  echo "FAIL slow ${ms}ms over the ${WARMUP_BUDGET_MS}ms budget $url"
+                  failed="$failed $url(slow)"
+                fi
+                ;;
+            esac
+            echo "| $url | ${code:-000} | ${ms} ms |" >> "$GITHUB_STEP_SUMMARY"
           }
           round() {
             failed=""
+            printf '\n| URL | Status | Time |\n| --- | --- | --- |\n' >> "$GITHUB_STEP_SUMMARY"
             for path in /healthz /readyz /warmup; do probe "${PRODUCTION_URL%/}$path"; done
             probe "${WEB_URL%/}/"
             probe "${DOCS_URL%/}/"
