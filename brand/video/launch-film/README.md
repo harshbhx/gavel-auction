@@ -7,7 +7,7 @@ intro, the hook and the outro. Storyboard, research and the motion language: [ST
 
 | File                           | What it is                                                                      |
 | ------------------------------ | ------------------------------------------------------------------------------- |
-| `gavel-launch-film.mp4`        | H.264, 1920x1080, 60 fps, no audio track (committed under 50 MB)                |
+| `gavel-launch-film.mp4`        | H.264, 1920x1080, 60 fps, 2:45, no audio track, 21.07 MB                        |
 | `gavel-launch-film-poster.png` | Poster, 1920x1080, the title card                                               |
 | `gavel-launch-film.en.srt`     | Every on-screen line with timecodes, for YouTube captions or a voice-over later |
 | `timeline.json`                | Scene starts and caption times in seconds, machine readable                     |
@@ -48,4 +48,5 @@ Everything runs in GitHub Actions (nothing is rendered on a laptop or the VM):
    it re-encodes under a bitrate cap. Remotion is free for individuals and companies of up to three people.
 3. Inputs: `fps` (60 for the final, 30 for a quick pass), `raw_run`, `record_only`, `webm`.
 
-The run that produced these files is named in the pull request that committed them.
+The run that produced these files: https://github.com/harshbhx/gavel-auction/actions/runs/42763598583 (artifact
+`launch-film`, which also holds the contact sheets and `report.txt`).
