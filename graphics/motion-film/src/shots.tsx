@@ -1,16 +1,18 @@
-// The paper world: the recorded app on a plane under a camera, captions beside it, graphics tied to
-// the recorded events (press rings, hold tiles, the bid ladder).
+// The paper world: the recorded app on a plane under a camera, captions beside it, and the brand
+// components tied to the recorded events (the hold card, the big screen, the press rings, the tiles).
+import type { ReactNode } from 'react';
 import { AbsoluteFill } from 'remotion';
 import { IO, pr, useT } from './anim';
+import { BigScreen, ChapterTick, HoldCard } from './components';
 import { Camera, Pane, Ring } from './pane';
 import { DISPLAY, INK, MUTE, ORANGE, PAPER } from './theme';
 import type { Box, SceneProps } from './types';
-import type { ReactNode } from 'react';
-import { Caps, Chrome, Mono, Rule, SOURCE } from './ui';
+import { Caps, Chrome, Mono, SOURCE } from './ui';
 
 type P = { sc: SceneProps; letters: string[] };
+type Rect = { x: number; y: number; w: number; h?: number };
 
-/** The stage of a recorded scene: chrome, camera with the panes, captions. */
+/** The stage of a recorded scene: chrome, camera with the panes and components, captions. */
 function Stage({
   sc,
   children,
@@ -24,6 +26,7 @@ function Stage({
   return (
     <AbsoluteFill style={{ background: PAPER }}>
       <Chrome world="paper" chapter={sc.chapter} source={SOURCE} t={t} />
+      {sc.chapter ? <ChapterTick t={t} a={0.1} n={sc.chapter.n} x={1392} y={116} /> : null}
       <Camera cam={sc.cam} t={t}>
         {sc.panes.map((p) => (
           <Pane key={p.id} spec={p} t={t} />
@@ -117,30 +120,39 @@ export function Join({ sc }: P) {
   return <Stage sc={sc} />;
 }
 
-/* ---------- 7. hold: ceiling, the 3 second press, held not charged ---------- */
+/* ---------- 7. hold: the hold card builds while the phone does the real thing ---------- */
 export function Hold({ sc }: P) {
   const t = useT();
   const box = rectOf(sc, 'phoneA', 'holdA.hold');
   const press = sc.ev.press ?? 6;
   const released = sc.ev.released ?? press + 3.4;
   const held = sc.ev.held ?? released + 0.8;
+  const ceiling = sc.ev.ceiling ?? 3;
+  const card = (sc.data.card as Rect | undefined) ?? { x: 96, y: 200, w: 560 };
+  const cents = (sc.data.ceilingCents as number | undefined) ?? 5000;
   return (
     <Stage
       sc={sc}
       overlay={
         <>
-          <HoldTile
+          <HoldCard
             t={t}
-            a={held + 0.4}
-            x={1392}
-            y={640}
-            w={464}
-            name="Paddle 1. Asha. Phone"
-            note="A PayPal authorization in a live room. Simulated here."
+            x={card.x}
+            y={card.y}
+            w={card.w}
+            state={{
+              a: 0.4,
+              name: 'Paddle 1. Asha. Phone',
+              ceilingAt: ceiling + 0.2,
+              ceiling: cents,
+              press,
+              released,
+              held,
+            }}
           />
           <Mono
             x={1392}
-            y={768}
+            y={700}
             w={464}
             size={15}
             color={MUTE}
@@ -158,80 +170,25 @@ export function Hold({ sc }: P) {
   );
 }
 
-/* ---------- 8. bid: open the lot, then the ladder climbs ---------- */
+/* ---------- 8. bid: open the lot, then the phones beside the brand big screen ---------- */
 export function Bid({ sc }: P) {
   const t = useT();
   const b = [sc.ev.b1 ?? 4.5, sc.ev.b2 ?? 7.5, sc.ev.b3 ?? 10.5];
-  const rungs = [
-    { at: b[0] + 0.9, amount: '$10.00', who: 'Paddle 1. Asha' },
-    { at: b[1] + 0.9, amount: '$15.00', who: 'Paddle 2. Ben' },
-    { at: b[2] + 0.9, amount: '$20.00', who: 'Paddle 1. Asha' },
-  ];
-  const shown = rungs.filter((r) => t >= r.at);
   const cut = sc.ev.cut ?? 3;
+  const screen = (sc.data.screen as Required<Rect> | undefined) ?? {
+    x: 840,
+    y: 170,
+    w: 504,
+    h: 660,
+  };
   return (
     <Stage
       sc={sc}
       overlay={
         <>
-          {/* the ladder */}
-          <div
-            style={{
-              position: 'absolute',
-              left: 1392,
-              top: 430,
-              width: 464,
-              opacity: pr(t, cut + 0.3, 0.5),
-            }}
-          >
-            <Mono x={0} y={0} w={464} size={15} color={MUTE}>
-              Bid ladder. Prices only go up
-            </Mono>
-            <Rule t={t} a={cut + 0.3} d={0.6} x={0} y={28} w={464} color={INK} />
-            {rungs.map((r, i) => {
-              const p = pr(t, r.at, 0.6);
-              const lead = shown.length - 1 === i;
-              const slot = Math.max(0, shown.length - 1 - i);
-              return (
-                <div
-                  key={i}
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 44 + slot * 78 + (1 - p) * 40,
-                    width: 464,
-                    height: 70,
-                    opacity: p * (lead ? 1 : 0.55),
-                  }}
-                >
-                  <div
-                    style={{
-                      position: 'absolute',
-                      left: 0,
-                      top: 0,
-                      fontFamily: DISPLAY,
-                      fontWeight: 800,
-                      fontSize: 64,
-                      lineHeight: '64px',
-                      color: lead ? ORANGE : INK,
-                    }}
-                  >
-                    {r.amount}
-                  </div>
-                  <Mono x={250} y={10} w={214} size={14} color={MUTE} align="right">
-                    {r.who}
-                  </Mono>
-                  <Mono x={250} y={34} w={214} size={14} color={lead ? ORANGE : MUTE} align="right">
-                    {lead ? 'Leading' : 'Outbid'}
-                  </Mono>
-                </div>
-              );
-            })}
-          </div>
-          {/* the two holds, small */}
           <HoldTile
             t={t}
-            a={cut - 1.2}
+            a={cut + 0.6}
             x={1392}
             y={748}
             w={224}
@@ -240,26 +197,72 @@ export function Bid({ sc }: P) {
           />
           <HoldTile
             t={t}
-            a={cut - 0.9}
+            a={cut + 0.9}
             x={1632}
             y={748}
             w={224}
             name="Paddle 2. Ben"
-            note="Phone, joined from the QR link"
+            note="Phone, from the QR link"
           />
         </>
       }
-    />
+    >
+      <BigScreen
+        t={t}
+        x={screen.x}
+        y={screen.y}
+        w={screen.w}
+        h={screen.h}
+        state={{
+          a: cut + 0.2,
+          lot: 'Sandbox demo lot',
+          bids: [
+            [1000, b[0] + 0.8],
+            [1500, b[1] + 0.8],
+            [2000, b[2] + 0.8],
+          ],
+        }}
+      />
+    </Stage>
   );
 }
 
-/* ---------- 10. hammer ---------- */
+/* ---------- 10. hammer, then the big screen names the winner ---------- */
 export function Hammer({ sc }: P) {
   const t = useT();
   const box = rectOf(sc, 'console', 'hammer.hold');
   const press = sc.ev.press ?? 3;
   const released = sc.ev.released ?? press + 3.4;
-  return <Stage sc={sc}>{box ? <Ring box={box} t={t} from={press} to={released} /> : null}</Stage>;
+  const cut = sc.ev.cut ?? 8.5;
+  const screen = (sc.data.screen as Required<Rect> | undefined) ?? {
+    x: 64,
+    y: 140,
+    w: 1280,
+    h: 720,
+  };
+  return (
+    <Stage sc={sc}>
+      {box ? <Ring box={box} t={t} from={press} to={released} /> : null}
+      <BigScreen
+        t={t}
+        x={screen.x}
+        y={screen.y}
+        w={screen.w}
+        h={screen.h}
+        state={{
+          a: cut,
+          lot: 'Sandbox demo lot',
+          bids: [
+            [1000, -3],
+            [1500, -2],
+            [2000, -1],
+          ],
+          soldAt: cut + 0.6,
+          winner: 'paddle 1',
+        }}
+      />
+    </Stage>
+  );
 }
 
 /* ---------- 12. receipt ---------- */
@@ -281,7 +284,7 @@ export function Verify({ sc }: P) {
             style={{
               position: 'absolute',
               left: 1392,
-              top: 150 + 2 * 68 + 20,
+              top: 150 + 68 + 20,
               width: 464,
               height: 3,
               background: ORANGE,

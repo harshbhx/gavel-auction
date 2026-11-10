@@ -5,7 +5,8 @@ import { Lockup, Mark, strikeTime, Waves } from './brand';
 import { Pane } from './pane';
 import { DIM, DISPLAY, INK, MONO, ORANGE, PALE, PAPER, W, worldColors } from './theme';
 import type { SceneProps } from './types';
-import { Body, Chrome, Em, Mono, Rise, Rule, Wipe } from './ui';
+import { Body, Chrome, Em, Mono, Push, Rise, Rule, Wipe } from './ui';
+import { Img, staticFile } from 'remotion';
 
 type P = { sc: SceneProps; letters: string[] };
 const paper = worldColors('paper');
@@ -116,79 +117,90 @@ export function Title({ letters }: P) {
 
 /* ---------- 3. problem ---------- */
 const ROWS: [string, string][] = [
-  ['Charge a card up front,', 'and bidders **hold back.**'],
-  ['Leave bids unsecured,', 'and winners **walk away.**'],
-  ['Shout bids on paper,', 'and the record is **hard to trust.**'],
+  ['Charge first,', 'bidders **hold back.**'],
+  ['No hold,', 'winners **walk away.**'],
+  ['Paper sheets,', '**no proof.**'],
 ];
 export function Problem(_p: P) {
   const t = useT();
   return (
     <AbsoluteFill style={{ background: INK }}>
       <Chrome world="ink" t={t} />
-      {ROWS.map((r, i) => {
-        const y = 136 + i * 286;
-        const a = 0.4 + i * 2.9;
-        const act = a + 1.7; // the enacted motion of the row
-        // row 1 sinks, row 2 slides off to the right, row 3 tears its rule
-        const sink = i === 0 ? pr(t, act, 0.7, IO) : 0;
-        const slide = i === 1 ? pr(t, act, 0.7, EXIT) : 0;
-        const tear = i === 2 ? pr(t, act, 0.6, IO) : 0;
-        const dim = 1 - 0.55 * Math.max(sink, slide, tear);
-        return (
-          <div
-            key={i}
-            style={{ position: 'absolute', left: 0, top: sink * 26, width: W, opacity: dim }}
-          >
-            {i === 2 ? (
-              <>
-                <Rule t={t} a={a} d={0.7} x={96} y={y} w={860 - tear * 28} color={PAPER} />
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: 956 + tear * 28,
-                    top: y + tear * 10,
-                    width: 868 - tear * 28,
-                    height: 1.5,
-                    background: PAPER,
-                    opacity: pr(t, a + 0.3, 0.4),
-                    transform: `rotate(${(tear * 1.2).toFixed(2)}deg)`,
-                    transformOrigin: '0 50%',
-                  }}
-                />
-              </>
-            ) : (
-              <Rule t={t} a={a} d={0.7} x={96} y={y} w={1728} color={PAPER} />
-            )}
-            <Rise t={t} a={a + 0.1} x={96} y={y + 30} w={80} size={24} f="m" color={DIM}>
-              0{i + 1}
-            </Rise>
-            <Rise t={t} a={a + 0.15} d={0.8} x={240} y={y + 24} w={1560} size={104} color={PAPER}>
-              {r[0]}
-            </Rise>
-            <div style={{ position: 'absolute', left: slide * 700, top: 0, opacity: 1 - slide }}>
-              <Rise t={t} a={a + 0.3} d={0.8} x={240} y={y + 122} w={1560} size={104} color={PAPER}>
-                <Em text={r[1]} />
+      <Push t={t} dur={7.5}>
+        {ROWS.map((r, i) => {
+          const y = 136 + i * 286;
+          const a = 0.4 + i * 2.3;
+          const act = a + 1.4; // the enacted motion of the row
+          // row 1 sinks, row 2 slides off to the right, row 3 tears its rule
+          const sink = i === 0 ? pr(t, act, 0.7, IO) : 0;
+          const slide = i === 1 ? pr(t, act, 0.7, EXIT) : 0;
+          const tear = i === 2 ? pr(t, act, 0.6, IO) : 0;
+          const dim = 1 - 0.55 * Math.max(sink, slide, tear);
+          return (
+            <div
+              key={i}
+              style={{ position: 'absolute', left: 0, top: sink * 26, width: W, opacity: dim }}
+            >
+              {i === 2 ? (
+                <>
+                  <Rule t={t} a={a} d={0.7} x={96} y={y} w={860 - tear * 28} color={PAPER} />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: 956 + tear * 28,
+                      top: y + tear * 10,
+                      width: 868 - tear * 28,
+                      height: 1.5,
+                      background: PAPER,
+                      opacity: pr(t, a + 0.3, 0.4),
+                      transform: `rotate(${(tear * 1.2).toFixed(2)}deg)`,
+                      transformOrigin: '0 50%',
+                    }}
+                  />
+                </>
+              ) : (
+                <Rule t={t} a={a} d={0.7} x={96} y={y} w={1728} color={PAPER} />
+              )}
+              <Rise t={t} a={a + 0.1} x={96} y={y + 30} w={80} size={24} f="m" color={DIM}>
+                0{i + 1}
               </Rise>
+              <Rise t={t} a={a + 0.15} d={0.8} x={240} y={y + 24} w={1560} size={104} color={PAPER}>
+                {r[0]}
+              </Rise>
+              <div style={{ position: 'absolute', left: slide * 700, top: 0, opacity: 1 - slide }}>
+                <Rise
+                  t={t}
+                  a={a + 0.3}
+                  d={0.8}
+                  x={240}
+                  y={y + 122}
+                  w={1560}
+                  size={104}
+                  color={PAPER}
+                >
+                  <Em text={r[1]} />
+                </Rise>
+              </div>
+              {i === 0 ? (
+                <Rise
+                  t={t}
+                  a={a + 0.5}
+                  d={0.3}
+                  x={1500}
+                  y={y + 40}
+                  w={324}
+                  size={120}
+                  align="right"
+                  color={ORANGE}
+                >
+                  ${Math.round(lerp(0, 200, pr(t, a + 0.5, 0.9)))}
+                </Rise>
+              ) : null}
             </div>
-            {i === 0 ? (
-              <Rise
-                t={t}
-                a={a + 0.5}
-                d={0.3}
-                x={1500}
-                y={y + 40}
-                w={324}
-                size={120}
-                align="right"
-                color={ORANGE}
-              >
-                ${Math.round(lerp(0, 200, pr(t, a + 0.5, 0.9)))}
-              </Rise>
-            ) : null}
-          </div>
-        );
-      })}
-      <Rule t={t} a={7.6} d={0.6} x={96} y={136 + 3 * 286 - 6} w={1728} color={PAPER} />
+          );
+        })}
+        <Rule t={t} a={6.6} d={0.6} x={96} y={136 + 3 * 286 - 6} w={1728} color={PAPER} />
+      </Push>
     </AbsoluteFill>
   );
 }
@@ -356,7 +368,7 @@ export function Idea(_p: P) {
 export function Voice(_p: P) {
   const t = useT();
   const bars = 140;
-  const draw = pr(t, 0.9, 2.2, (x) => x);
+  const draw = pr(t, 0.8, 1.8, (x) => x);
   const x0 = 96;
   const wid = 1728;
   return (
@@ -405,7 +417,7 @@ export function Voice(_p: P) {
         { x: 96, label: 'amount', value: '350.00' },
         { x: 560, label: 'paddle', value: '12' },
       ].map((c, i) => {
-        const a = 4.1 + i * 0.25;
+        const a = 3.5 + i * 0.25;
         const p = pr(t, a, 0.6);
         return (
           <div
@@ -441,8 +453,8 @@ export function Voice(_p: P) {
         );
       })}
       {(() => {
-        const p = pr(t, 5.5, 0.7);
-        const ok = pr(t, 7.0, 0.4);
+        const p = pr(t, 4.7, 0.7);
+        const ok = pr(t, 6.0, 0.4);
         return (
           <div
             style={{
@@ -601,45 +613,47 @@ export function Settle(_p: P) {
   return (
     <AbsoluteFill style={{ background: INK }}>
       <Chrome world="ink" t={t} />
-      <Rise t={t} a={0.3} d={0.8} x={90} y={130} w={1750} size={120} color={PAPER}>
-        Capture only the <span style={{ color: ORANGE }}>winning price.</span>
-      </Rise>
-      <Rise t={t} a={3.4} d={0.8} x={90} y={240} w={1750} size={120} color={PAPER}>
-        Release every other hold.
-      </Rise>
-      <div style={{ opacity: pr(t, 0.9, 0.5) }}>
-        <Tile
-          t={t}
-          x={96}
-          y={430}
-          w={840}
-          name="Paddle 1. Asha. Winner at $20.00"
-          state={['Hold', 'Capture $20.00']}
-          sweep={sweepA}
-          journal="capture 2000 cents, final_capture: true. Order COMPLETED. The rest of the hold is released."
-          jAt={3.0}
-        />
-        <Tile
-          t={t}
-          x={984}
-          y={430}
-          w={840}
-          name="Paddle 2. Ben. Outbid"
-          state={['Hold', 'Released']}
-          sweep={sweepB}
-          journal="void. Authorization VOIDED. Nothing was charged."
-          jAt={4.4}
-        />
-      </div>
-      <Rule t={t} a={5.2} d={0.7} x={96} y={720} w={1728} color={PAPER} />
-      <Body t={t} a={5.4} x={96} y={744} w={1728} size={27} color={DIM}>
-        A journaled settlement saga does this at the hammer. If the process dies halfway, it asks
-        PayPal what is true and continues instead of repeating a capture.
-      </Body>
-      <Mono x={96} y={930} w={1728} size={18} color={ORANGE} opacity={pr(t, 0.8, 0.6)}>
-        Drawn, not recorded. The holds in this film are simulated. Real sandbox capture, remainder
-        release and void are proven in G1 and G4 (docs/GATES.md).
-      </Mono>
+      <Push t={t} dur={9}>
+        <Rise t={t} a={0.3} d={0.8} x={90} y={130} w={1750} size={120} color={PAPER}>
+          Capture only the <span style={{ color: ORANGE }}>winning price.</span>
+        </Rise>
+        <Rise t={t} a={3.4} d={0.8} x={90} y={240} w={1750} size={120} color={PAPER}>
+          Release every other hold.
+        </Rise>
+        <div style={{ opacity: pr(t, 0.9, 0.5) }}>
+          <Tile
+            t={t}
+            x={96}
+            y={430}
+            w={840}
+            name="Paddle 1. Asha. Winner at $20.00"
+            state={['Hold', 'Capture $20.00']}
+            sweep={sweepA}
+            journal="capture 2000 cents, final_capture: true. Order COMPLETED. The rest of the hold is released."
+            jAt={3.0}
+          />
+          <Tile
+            t={t}
+            x={984}
+            y={430}
+            w={840}
+            name="Paddle 2. Ben. Outbid"
+            state={['Hold', 'Released']}
+            sweep={sweepB}
+            journal="void. Authorization VOIDED. Nothing was charged."
+            jAt={4.4}
+          />
+        </div>
+        <Rule t={t} a={5.2} d={0.7} x={96} y={720} w={1728} color={PAPER} />
+        <Body t={t} a={5.4} x={96} y={744} w={1728} size={27} color={DIM}>
+          A journaled settlement saga does this at the hammer. If the process dies halfway, it asks
+          PayPal what is true and continues instead of repeating a capture.
+        </Body>
+        <Mono x={96} y={930} w={1728} size={18} color={ORANGE} opacity={pr(t, 0.8, 0.6)}>
+          Drawn, not recorded. The holds in this film are simulated. Real sandbox capture, remainder
+          release and void are proven in G1 and G4 (docs/GATES.md).
+        </Mono>
+      </Push>
     </AbsoluteFill>
   );
 }
@@ -649,25 +663,25 @@ const EVID = [
   {
     w: 'Kill survived',
     n: null,
-    t: 'A real server kill during settlement, on the PayPal sandbox: one capture, two holds voided, a ledger of 19 entries that verifies.',
+    t: 'A real server kill mid-settlement on the PayPal sandbox: one capture, two voids, 19 ledger entries that verify.',
     s: 'docs/GATES.md. Run 42558021614',
   },
   {
     w: 'Live voice {n} of 24',
     n: 24,
-    t: 'Both speech providers answered 24 of 24 synthetic clips through the live socket. No bid accepted without a confirm.',
+    t: 'Both speech providers, 24 of 24 synthetic clips through the live socket. No bid without a confirm.',
     s: 'docs/GATES.md. Run 42575018866. Synthetic audio only',
   },
   {
     w: 'Webhooks {n} of 6',
     n: 6,
-    t: 'Six real PayPal sandbox deliveries, each verified SUCCESS against the webhook id: approved, authorized, captured, voided.',
+    t: 'Six real sandbox deliveries, each verified SUCCESS against the webhook id.',
     s: 'docs/GATES.md. Run 41947655945',
   },
   {
     w: 'Latency, honestly',
     n: null,
-    t: 'Hammer to captured p95 3.8 s against a 2.5 s target. Hammer to settled p95 6.9 s against 6 s. Both missed.',
+    t: 'Hammer to captured p95 3.8 s against 2.5 s. To settled 6.9 s against 6 s. Both missed.',
     s: 'docs/GATES.md. Run 42563147792. 49 of 50 runs, incomplete',
   },
 ];
@@ -676,37 +690,39 @@ export function Proof(_p: P) {
   return (
     <AbsoluteFill style={{ background: INK }}>
       <Chrome world="ink" t={t} />
-      {EVID.map((r, i) => {
-        const y = 128 + i * 218;
-        const a = 0.4 + i * 2.6;
-        const count = r.n === null ? '' : String(Math.round(lerp(0, r.n, pr(t, a + 0.3, 0.9))));
-        return (
-          <div key={i}>
-            <Rule t={t} a={a} d={0.7} x={96} y={y} w={1728} color={PAPER} />
-            <Rise t={t} a={a + 0.1} x={96} y={y + 28} w={70} size={22} f="m" color={DIM}>
-              0{i + 1}
-            </Rise>
-            <Rise t={t} a={a + 0.1} d={0.8} x={170} y={y + 22} w={840} size={100} color={PAPER}>
-              {r.w.replace('{n}', count)}
-            </Rise>
-            <Body t={t} a={a + 0.35} x={1060} y={y + 26} w={764} size={28} color={PAPER}>
-              {r.t}
-            </Body>
-            <Mono
-              x={1060}
-              y={y + 176}
-              w={764}
-              size={15}
-              color={DIM}
-              upper={false}
-              opacity={pr(t, a + 0.5, 0.5)}
-            >
-              {r.s}
-            </Mono>
-          </div>
-        );
-      })}
-      <Rule t={t} a={11.0} d={0.5} x={96} y={128 + 4 * 218 - 6} w={1728} color={PAPER} />
+      <Push t={t} dur={10.5}>
+        {EVID.map((r, i) => {
+          const y = 128 + i * 218;
+          const a = 0.4 + i * 2.3;
+          const count = r.n === null ? '' : String(Math.round(lerp(0, r.n, pr(t, a + 0.3, 0.9))));
+          return (
+            <div key={i}>
+              <Rule t={t} a={a} d={0.7} x={96} y={y} w={1728} color={PAPER} />
+              <Rise t={t} a={a + 0.1} x={96} y={y + 28} w={70} size={22} f="m" color={DIM}>
+                0{i + 1}
+              </Rise>
+              <Rise t={t} a={a + 0.1} d={0.8} x={170} y={y + 22} w={840} size={100} color={PAPER}>
+                {r.w.replace('{n}', count)}
+              </Rise>
+              <Body t={t} a={a + 0.35} x={1060} y={y + 26} w={764} size={28} color={PAPER}>
+                {r.t}
+              </Body>
+              <Mono
+                x={1060}
+                y={y + 176}
+                w={764}
+                size={15}
+                color={DIM}
+                upper={false}
+                opacity={pr(t, a + 0.5, 0.5)}
+              >
+                {r.s}
+              </Mono>
+            </div>
+          );
+        })}
+        <Rule t={t} a={9.6} d={0.5} x={96} y={128 + 4 * 218 - 6} w={1728} color={PAPER} />
+      </Push>
     </AbsoluteFill>
   );
 }
@@ -839,7 +855,108 @@ export function Judges({ sc }: P) {
   );
 }
 
-/* ---------- 16. what is still open ---------- */
+/* ---------- 16. built with: partner marks, cream background, clear space ---------- */
+export function BuiltWith({ sc }: P) {
+  const t = useT();
+  const logos = sc.data.logos !== false;
+  const pp = pr(t, 1.6, 0.7);
+  const rd = pr(t, 3.8, 0.7);
+  return (
+    <AbsoluteFill style={{ background: PAPER }}>
+      <Chrome world="paper" t={t} />
+      <Push t={t} dur={7.5} amount={0.02}>
+        <Rise t={t} a={0.3} d={0.8} x={90} y={130} w={1750} size={150} color={INK}>
+          Built <span style={{ color: ORANGE }}>with.</span>
+        </Rise>
+        <Rule t={t} a={1.3} d={0.8} x={96} y={320} w={1728} color={INK} />
+        {/* PayPal: the official mark and wordmark, unaltered, clear space of at least the mark's height */}
+        <div
+          style={{
+            position: 'absolute',
+            left: 96,
+            top: 380,
+            width: 800,
+            opacity: pp,
+            transform: `translateY(${((1 - pp) * 16).toFixed(1)}px)`,
+          }}
+        >
+          {logos ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 28, height: 96 }}>
+              <Img src={staticFile('partners/paypal-mark.svg')} style={{ height: 96, width: 96 }} />
+              <Img src={staticFile('partners/paypal-wordmark.svg')} style={{ height: 68 }} />
+            </div>
+          ) : (
+            <div
+              style={{
+                fontFamily: DISPLAY,
+                fontWeight: 800,
+                fontSize: 110,
+                lineHeight: '96px',
+                color: INK,
+              }}
+            >
+              PayPal
+            </div>
+          )}
+          <Mono x={0} y={150} w={800} size={20} color={INK}>
+            Payments. PayPal sandbox, Orders v2 and Payments v2
+          </Mono>
+          <Mono x={0} y={186} w={800} size={17} color={paper.mute} upper={false}>
+            Built for the PayPal AI Hackathon 2026. Authorization holds, capture, void, verified
+            webhooks.
+          </Mono>
+        </div>
+        {/* Render: named in type (no public brand assets) */}
+        <div
+          style={{
+            position: 'absolute',
+            left: 1024,
+            top: 380,
+            width: 800,
+            opacity: rd,
+            transform: `translateY(${((1 - rd) * 16).toFixed(1)}px)`,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: DISPLAY,
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              fontSize: 110,
+              lineHeight: '96px',
+              color: INK,
+            }}
+          >
+            Render
+          </div>
+          <Mono x={0} y={150} w={800} size={20} color={INK}>
+            API hosting. One always-on service with a disk
+          </Mono>
+          <Mono x={0} y={186} w={800} size={17} color={paper.mute} upper={false}>
+            The auction API and WebSocket host, with the ledger and the settlement journals on its
+            disk.
+          </Mono>
+        </div>
+        <Rule t={t} a={5.0} d={0.8} x={96} y={660} w={1728} color={INK} />
+        <Mono
+          x={96}
+          y={684}
+          w={1728}
+          size={17}
+          color={paper.mute}
+          upper={false}
+          opacity={pr(t, 5.2, 0.6)}
+        >
+          Also: Cloudflare Workers (web app and docs), AG Grid (ledger tables), Deepgram and Groq
+          (speech, synthetic clips only). Names only; no endorsement implied. PayPal mark: PayPal's
+          own file, used as the payment mark of a PayPal integration.
+        </Mono>
+      </Push>
+    </AbsoluteFill>
+  );
+}
+
+/* ---------- 17. what is still open ---------- */
 const OPEN: [string, string][] = [
   [
     'G3 in progress',
@@ -859,25 +976,27 @@ export function OpenItems(_p: P) {
   return (
     <AbsoluteFill style={{ background: INK }}>
       <Chrome world="ink" t={t} />
-      <Rise t={t} a={0.2} d={0.8} x={96} y={140} w={1700} size={30} f="m" color={ORANGE}>
-        What is still open
-      </Rise>
-      {OPEN.map((r, i) => {
-        const y = 214 + i * 250;
-        const a = 0.5 + i * 1.5;
-        return (
-          <div key={i}>
-            <Rule t={t} a={a} d={0.7} x={96} y={y} w={1728} color={PAPER} />
-            <Rise t={t} a={a + 0.1} d={0.8} x={96} y={y + 26} w={900} size={124} color={PAPER}>
-              {r[0]}
-            </Rise>
-            <Body t={t} a={a + 0.3} x={1060} y={y + 34} w={764} size={30} color={PAPER}>
-              {r[1]}
-            </Body>
-          </div>
-        );
-      })}
-      <Rule t={t} a={5.0} d={0.5} x={96} y={214 + 3 * 250 - 6} w={1728} color={PAPER} />
+      <Push t={t} dur={6}>
+        <Rise t={t} a={0.2} d={0.8} x={96} y={140} w={1700} size={30} f="m" color={ORANGE}>
+          What is still open
+        </Rise>
+        {OPEN.map((r, i) => {
+          const y = 214 + i * 250;
+          const a = 0.5 + i * 1.5;
+          return (
+            <div key={i}>
+              <Rule t={t} a={a} d={0.7} x={96} y={y} w={1728} color={PAPER} />
+              <Rise t={t} a={a + 0.1} d={0.8} x={96} y={y + 26} w={900} size={124} color={PAPER}>
+                {r[0]}
+              </Rise>
+              <Body t={t} a={a + 0.3} x={1060} y={y + 34} w={764} size={30} color={PAPER}>
+                {r[1]}
+              </Body>
+            </div>
+          );
+        })}
+        <Rule t={t} a={5.0} d={0.5} x={96} y={214 + 3 * 250 - 6} w={1728} color={PAPER} />
+      </Push>
     </AbsoluteFill>
   );
 }

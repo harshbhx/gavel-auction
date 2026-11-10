@@ -89,6 +89,7 @@ export function Rise({
           lineHeight: `${h}px`,
           color,
           textAlign: align,
+          ...(f === 'd' ? { letterSpacing: `${(0.004 + (1 - en) * 0.05).toFixed(4)}em` } : {}),
           transform: `translateY(${ty.toFixed(2)}%)`,
         }}
       >
@@ -414,5 +415,37 @@ export function Wipe({
         background: color,
       }}
     />
+  );
+}
+
+/** A slow push on a block of content (about 3 % over the scene), the ambient motion of a card. */
+export function Push({
+  t,
+  dur,
+  amount = 0.03,
+  origin = '50% 45%',
+  children,
+}: {
+  t: number;
+  dur: number;
+  amount?: number;
+  origin?: string;
+  children: ReactNode;
+}) {
+  const s = 1 + amount * cl(t / dur);
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        width: W,
+        height: '100%',
+        transformOrigin: origin,
+        transform: `scale(${s.toFixed(4)})`,
+      }}
+    >
+      {children}
+    </div>
   );
 }

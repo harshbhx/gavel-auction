@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import { AbsoluteFill, Series, useVideoConfig } from 'remotion';
 import {
+  BuiltWith,
   Cold,
   Idea,
   Judges,
@@ -34,6 +35,7 @@ const SCENES: Record<string, SceneComponent> = {
   verify: Verify,
   proof: Proof,
   judges: Judges,
+  builtWith: BuiltWith,
   openItems: OpenItems,
   outro: Outro,
 };

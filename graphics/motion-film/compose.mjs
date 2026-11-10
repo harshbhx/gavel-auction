@@ -177,8 +177,19 @@ const paneBox = (panes, paneId, pad = 40) => {
 
 // ----------------------------------------------------------------------------- the scenes
 const scenes = [];
-const card = (id, dur, lines = []) =>
-  scenes.push({ id, dur, world: 'ink', panes: [], cam: [], caps: [], ev: {}, data: {}, lines });
+const card = (id, dur, lines = [], extra = {}) =>
+  scenes.push({
+    id,
+    dur,
+    world: 'ink',
+    panes: [],
+    cam: [],
+    caps: [],
+    ev: {},
+    data: {},
+    lines,
+    ...extra,
+  });
 
 card('cold', 4.5, [
   { a: 0.3, b: 1.9, text: 'A bid is a promise.' },
@@ -191,15 +202,15 @@ card('cold', 4.5, [
 card('title', 7.5, [
   { a: 1.25, b: 7.5, text: 'GAVEL. Every bid is a hold. The hammer is the payment.' },
 ]);
-card('problem', 9, [
-  { a: 0.5, b: 3.3, text: 'Charge a card up front, and bidders hold back.' },
-  { a: 3.4, b: 6.2, text: 'Leave bids unsecured, and winners walk away.' },
-  { a: 6.3, b: 9, text: 'Shout bids on paper, and the record is hard to trust.' },
+card('problem', 7.5, [
+  { a: 0.5, b: 2.8, text: 'Charge first, bidders hold back.' },
+  { a: 2.8, b: 5.1, text: 'No hold, winners walk away.' },
+  { a: 5.1, b: 7.5, text: 'Paper sheets, no proof.' },
 ]);
 card('idea', 10.5, [
-  { a: 1.0, b: 2.7, text: 'Authorize a ceiling.' },
-  { a: 2.7, b: 5.7, text: 'Bid under it.' },
-  { a: 5.7, b: 7.3, text: 'Capture only the winner.' },
+  { a: 1.0, b: 2.7, text: 'A ceiling.' },
+  { a: 2.7, b: 5.7, text: 'Bids under it.' },
+  { a: 5.7, b: 7.3, text: 'Capture the winner.' },
   {
     a: 7.3,
     b: 10.5,
@@ -230,7 +241,7 @@ card('idea', 10.5, [
   const clicked = at(w1, 0, 'try.clicked', 3.2);
   const start = rectIn(p1, 'host', 'try.start');
   const flaps = rectIn(p2, 'hub', 'hub.flaps');
-  const qr = rectIn(p2, 'hub', 'hub.qr');
+  const qr = p2[0].rects['hub.qr'] ?? null;
   const union =
     flaps && qr
       ? {
@@ -250,16 +261,11 @@ card('idea', 10.5, [
       { at: 0, dur: 0, box: null },
       { at: Math.max(0.6, clicked - 1.8), dur: 1.4, box: focus(start, 1.9) },
       { at: cut, dur: 0, box: null },
-      { at: cut + 1.2, dur: 1.5, box: focus(union, union && union.w > 700 ? 1.5 : 1.9) },
+      { at: cut + 1.0, dur: 1.5, box: focus(union, union && union.w > 700 ? 1.5 : 1.9) },
     ],
     caps: [
-      {
-        a: 0.4,
-        b: cut - 0.2,
-        text: 'A judge opens / **/try.**',
-        sub: 'One tap, one sandbox room.',
-      },
-      { a: cut + 0.3, b: dur - 0.3, text: 'A **join code** / and a ticket QR.' },
+      { a: 0.4, b: cut - 0.2, text: 'Open **/try.**', sub: 'One tap. One sandbox room.' },
+      { a: cut + 0.3, b: dur - 0.3, text: 'A **code.** / A QR.' },
     ],
     ev: { clicked, cut },
     data: {},
@@ -268,7 +274,7 @@ card('idea', 10.5, [
 
 // 6. join
 {
-  const dur = 9;
+  const dur = 7.5;
   const w = window('joinA', { fill: dur });
   const panes = panesOf(
     'joinA',
@@ -288,32 +294,27 @@ card('idea', 10.5, [
     panes,
     cam: [
       { at: 0, dur: 0, box: null },
-      { at: 0.8, dur: dur - 1.6, box: focus(paneBox(panes, 'phoneA', 200), 1.12) },
+      { at: 0.6, dur: dur - 1.2, box: focus(paneBox(panes, 'phoneA', 200), 1.14) },
     ],
-    caps: [
-      {
-        a: 0.4,
-        b: dur - 0.3,
-        text: 'A bidder types / the **code.**',
-        sub: 'Or scans the ticket QR.',
-      },
-    ],
+    caps: [{ a: 0.4, b: dur - 0.3, text: 'Type the **code.**', sub: 'Or scan the QR.' }],
     ev: {},
     data: {},
   });
 }
 
-// 7. hold
+// 7. hold: the hold card (brand component) on the left, phone A on the right
 {
   const dur = 13.5;
   const w = window('holdA', { fill: dur });
   const panes = panesOf(
     'holdA',
     w,
-    row([
-      { id: 'screen', actor: 'screen', w: 860, label: 'Big screen' },
-      { id: 'phoneA', actor: 'phoneA', h: 700, kind: 'phone', label: 'Bidder A. Phone' },
-    ]),
+    row([{ id: 'phoneA', actor: 'phoneA', h: 700, kind: 'phone', label: 'Bidder A. Phone' }], {
+      x: 720,
+      y: 140,
+      w: 624,
+      h: 720,
+    }),
     0,
     dur,
   );
@@ -332,26 +333,26 @@ card('idea', 10.5, [
       {
         at: Math.max(0.5, ceiling - 1.4),
         dur: 1.2,
-        box: focus(rectIn(panes, 'phoneA', 'holdA.ceiling'), 1.7),
+        box: focus(rectIn(panes, 'phoneA', 'holdA.ceiling'), 1.6),
       },
       {
         at: Math.max(ceiling + 0.2, press - 1.3),
         dur: 1.1,
-        box: focus(rectIn(panes, 'phoneA', 'holdA.hold'), 2.2),
+        box: focus(rectIn(panes, 'phoneA', 'holdA.hold'), 2.0),
       },
       { at: released + 1.0, dur: 1.4, box: null },
     ],
     caps: [
-      { a: 0.4, b: press - 0.5, text: 'Pick a **ceiling.**', sub: 'The most this bidder may bid.' },
-      { a: press - 0.3, b: released + 0.2, text: 'Hold the button / **3 seconds.**' },
+      { a: 0.4, b: press - 0.5, text: 'Pick a **ceiling.**' },
+      { a: press - 0.3, b: released + 0.2, text: 'Hold **3 seconds.**' },
       { a: released + 0.3, b: dur - 0.3, text: '**Held,** / not charged.' },
     ],
     ev: { ceiling, press, released, held },
-    data: {},
+    data: { card: { x: 96, y: 200, w: 560 }, ceilingCents: 5000 },
   });
 }
 
-// 8. bid: the console opens the lot (0 to 3), then the bids (3 to 15)
+// 8. bid: the console opens the lot (0 to 3), then the phones beside the brand big screen (3 to 15)
 {
   const dur = 15;
   const cut = 3;
@@ -367,17 +368,19 @@ card('idea', 10.5, [
   const p2 = panesOf(
     'bids',
     w2,
-    row([
-      { id: 'phoneA', actor: 'phoneA', h: 640, kind: 'phone', label: 'Bidder A' },
-      {
-        id: 'phoneB',
-        actor: 'phoneB',
-        h: 640,
-        kind: 'phone',
-        label: 'Bidder B. Joined from the QR link',
-      },
-      { id: 'screen', actor: 'screen', w: 560, label: 'Big screen' },
-    ]),
+    row(
+      [
+        { id: 'phoneA', actor: 'phoneA', h: 620, kind: 'phone', label: 'Bidder A' },
+        {
+          id: 'phoneB',
+          actor: 'phoneB',
+          h: 620,
+          kind: 'phone',
+          label: 'Bidder B. From the QR link',
+        },
+      ],
+      { x: 64, y: 140, w: 740, h: 720 },
+    ),
     cut,
     dur,
   );
@@ -394,33 +397,34 @@ card('idea', 10.5, [
       { at: 0, dur: 0, box: null },
       { at: 0.5, dur: 1.2, box: focus(rectIn(p1, 'console', 'open.button'), 1.8) },
       { at: cut, dur: 0, box: null },
+      { at: cut + 0.8, dur: dur - cut - 1.4, box: focus({ x: 64, y: 140, w: 1280, h: 720 }, 1.06) },
     ],
     caps: [
-      { a: 0.3, b: cut - 0.2, text: 'The auctioneer / **opens the lot.**' },
-      { a: Math.max(cut + 0.3, b1 - 0.2), b: b2, text: '**Bids** arrive / from the phones.' },
-      { a: b2 + 0.1, b: b3, text: 'Prices only / go **up.**' },
+      { a: 0.3, b: cut - 0.2, text: '**Open** the lot.' },
+      { a: Math.max(cut + 0.3, b1 - 0.2), b: b2, text: '**Bids** arrive.' },
+      { a: b2 + 0.1, b: b3, text: 'Only **up.**' },
       { a: b3 + 0.1, b: dur - 0.3, text: 'Every screen / **agrees.**' },
     ],
     ev: { cut, b1, b2, b3 },
-    data: {},
+    data: { screen: { x: 840, y: 170, w: 504, h: 660 } },
   });
 }
 
-card('voice', 9, [
+card('voice', 7.5, [
   { a: 0.3, b: 1.6, text: 'Or say it.' },
-  { a: 1.6, b: 4.1, text: '"three fifty for paddle twelve"' },
-  { a: 4.1, b: 5.5, text: 'amount 350.00, paddle 12' },
+  { a: 1.6, b: 3.8, text: '"three fifty for paddle twelve"' },
+  { a: 3.8, b: 5.0, text: 'amount 350.00, paddle 12' },
   {
-    a: 5.5,
-    b: 9,
+    a: 5.0,
+    b: 7.5,
     text: 'Did you mean $350 for paddle 12? Confirm. Illustration: speech is measured on 24 synthetic clips only (G5 partial).',
   },
 ]);
 
-// 10. hammer (0 to 9), sold (9 to 12)
+// 10. hammer (0 to 8.5), then the brand big screen names the winner (8.5 to 12)
 {
   const dur = 12;
-  const cut = 9;
+  const cut = 8.5;
   const w1 = window('hammer', { fill: cut });
   const p1 = panesOf(
     'hammer',
@@ -429,14 +433,6 @@ card('voice', 9, [
     0,
     cut,
   );
-  const w2 = window('sold', { fill: dur - cut });
-  const p2 = panesOf(
-    'sold',
-    w2,
-    row([{ id: 'screen', actor: 'screen', w: 1280, label: 'Big screen' }]),
-    cut,
-    dur,
-  );
   const press = at(w1, 0, 'hammer.press', 2.6);
   const released = at(w1, 0, 'hammer.released', press + 3.4 / w1.speed);
   scenes.push({
@@ -444,7 +440,7 @@ card('voice', 9, [
     dur,
     world: 'paper',
     chapter: { n: 5, name: 'Hammer' },
-    panes: [...p1, ...p2],
+    panes: p1,
     cam: [
       { at: 0, dur: 0, box: null },
       {
@@ -454,19 +450,20 @@ card('voice', 9, [
       },
       { at: released + 0.9, dur: 1.2, box: null },
       { at: cut, dur: 0, box: null },
+      { at: cut + 0.3, dur: dur - cut - 0.6, box: focus({ x: 64, y: 140, w: 1280, h: 720 }, 1.05) },
     ],
     caps: [
       {
         a: 0.3,
         b: released + 0.2,
-        text: 'Hold the **hammer** / 3 seconds.',
-        sub: 'No accidental sales.',
+        text: 'Hold the / **hammer.**',
+        sub: '3 seconds. No accidents.',
       },
       { a: released + 0.3, b: cut - 0.2, text: '**Sold.**' },
-      { a: cut + 0.3, b: dur - 0.3, text: 'The big screen / names the / winner.' },
+      { a: cut + 0.4, b: dur - 0.3, text: 'The screen / names the / **winner.**' },
     ],
     ev: { press, released, cut },
-    data: {},
+    data: { screen: { x: 64, y: 140, w: 1280, h: 720 } },
   });
 }
 
@@ -502,13 +499,14 @@ card('settle', 9, [
     panes,
     cam: [
       { at: 0, dur: 0, box: null },
+      { at: 0.5, dur: 3.0, box: focus(paneBox(panes, 'phoneA', 300), 1.08) },
       ...(qr
-        ? [{ at: 3.6, dur: 1.4, box: focus(qr, 2.0) }]
-        : [{ at: 0.6, dur: dur - 1.2, box: focus(paneBox(panes, 'phoneA', 300), 1.08) }]),
+        ? [{ at: 3.8, dur: 1.4, box: focus(qr, 2.0) }]
+        : [{ at: 3.8, dur: 2.5, box: focus(paneBox(panes, 'phoneB', 300), 1.1) }]),
     ],
     caps: [
-      { a: 0.4, b: 3.6, text: 'A **receipt** / for every bidder.' },
-      { a: 3.8, b: dur - 0.3, text: 'With a / share link / and a QR.' },
+      { a: 0.4, b: 3.6, text: 'A **receipt** / for everyone.' },
+      { a: 3.8, b: dur - 0.3, text: 'Share link. / **QR.**' },
     ],
     ev: {},
     data: {},
@@ -517,7 +515,7 @@ card('settle', 9, [
 
 // 13. verify
 {
-  const dur = 12;
+  const dur = 10.5;
   const w = window('verify', { fill: dur });
   const panes = panesOf(
     'verify',
@@ -526,9 +524,9 @@ card('settle', 9, [
     0,
     dur,
   );
-  const verified = at(w, 0, 'verify.clicked', 4.5);
-  const edit = at(w, 0, 'verify.edit', 7.5);
-  const broken = at(w, 0, 'verify.broken', 9.5);
+  const verified = at(w, 0, 'verify.clicked', 4.0);
+  const edit = at(w, 0, 'verify.edit', 6.5);
+  const broken = at(w, 0, 'verify.broken', 8.2);
   scenes.push({
     id: 'verify',
     dur,
@@ -537,6 +535,11 @@ card('settle', 9, [
     panes,
     cam: [
       { at: 0, dur: 0, box: null },
+      {
+        at: 0.4,
+        dur: Math.max(0.8, verified - 1.2),
+        box: focus({ x: 64, y: 140, w: 1280, h: 720 }, 1.06),
+      },
       {
         at: Math.max(0.5, verified - 0.4),
         dur: 1.0,
@@ -550,7 +553,7 @@ card('settle', 9, [
       },
     ],
     caps: [
-      { a: 0.4, b: verified - 0.2, text: 'Paste a ledger / **export.**' },
+      { a: 0.4, b: verified - 0.2, text: 'Paste the / **export.**' },
       {
         a: verified,
         b: broken - 0.1,
@@ -564,37 +567,32 @@ card('settle', 9, [
   });
 }
 
-card('proof', 12, [
+card('proof', 10.5, [
   {
     a: 0.5,
-    b: 3.1,
-    text: 'Kill survived. A real server kill during settlement, on the PayPal sandbox: one capture, two holds voided, a ledger of 19 entries that verifies.',
+    b: 2.8,
+    text: 'Kill survived. A real server kill during settlement on the PayPal sandbox: one capture, two voids, 19 ledger entries verify.',
   },
   {
-    a: 3.1,
-    b: 5.7,
-    text: 'Live voice 24 of 24. Both speech providers answered 24 of 24 synthetic clips through the live socket. No bid accepted without a confirm.',
+    a: 2.8,
+    b: 5.1,
+    text: 'Live voice 24 of 24 synthetic clips. No bid accepted without a confirm.',
   },
+  { a: 5.1, b: 7.4, text: 'Webhooks 6 of 6 real sandbox deliveries verified.' },
   {
-    a: 5.7,
-    b: 8.3,
-    text: 'Webhooks 6 of 6. Six real PayPal sandbox deliveries verified SUCCESS against the webhook id.',
-  },
-  {
-    a: 8.3,
-    b: 12,
-    text: 'Latency, honestly. Hammer to captured p95 3.8 s against a 2.5 s target. Hammer to settled p95 6.9 s against 6 s. Both missed.',
+    a: 7.4,
+    b: 10.5,
+    text: 'Latency, honestly. Hammer to captured p95 3.8 s against 2.5 s; to settled 6.9 s against 6 s. Both missed.',
   },
 ]);
 
 // 15. judges: terminal (real answers) plus the recorded key field and the docs page in a paper panel
 {
-  const dur = 12;
-  const docsAt = 6.5;
+  const dur = 10.5;
+  const docsAt = 5.5;
   const panel = { x: 1000, y: 300, w: 824, h: 546 };
   const wk = window('key', { fill: docsAt });
   const hostA = meta.actors.host;
-  // the key field: the host page at 0.9x, positioned so the field sits in the panel's upper third
   const kScale = 0.9;
   const kw = hostA ? Math.round(hostA.w * kScale) : 1296;
   const kh = hostA ? Math.round(hostA.h * kScale) : 729;
@@ -624,7 +622,6 @@ card('proof', 12, [
     docsAt,
     dur,
   );
-  const esc = (s) => s;
   const cut = (s, n = 10) => (typeof s === 'string' && s.length > n ? s.slice(0, n) + '...' : s);
   const cmds = [
     {
@@ -653,7 +650,7 @@ card('proof', 12, [
         ? JSON.stringify({ count: api.ledger.count, headHash: api.ledger.headHash })
         : '{ "count": 5 }',
     },
-  ].map((x) => ({ c: esc(x.c), o: x.o.length > 160 ? x.o.slice(0, 157) + '...' : x.o }));
+  ].map((x) => ({ c: x.c, o: x.o.length > 160 ? x.o.slice(0, 157) + '...' : x.o }));
   scenes.push({
     id: 'judges',
     dur,
@@ -667,22 +664,40 @@ card('proof', 12, [
       {
         a: 0.3,
         b: 4.0,
-        text: 'For judges. One shared judge key, in the Devpost testing instructions. It opens sandbox rooms over plain HTTP and nothing else. No key is needed for /try.',
+        text: 'For judges. One shared judge key, in the Devpost testing instructions. It opens sandbox rooms over plain HTTP. No key is needed for /try.',
       },
       {
         a: 4.0,
-        b: 8.8,
+        b: 7.8,
         text: 'The key goes into a password field on /try. The docs list every call with a Try-it panel.',
       },
       {
-        a: 8.8,
-        b: 12,
+        a: 7.8,
+        b: 10.5,
         text: 'gavel.dualmindlab.tech/try. docs.gavel.dualmindlab.tech/docs/judges/call-the-api. api.gavel.dualmindlab.tech',
       },
     ],
   });
 }
 
+card(
+  'builtWith',
+  7.5,
+  [
+    { a: 0.3, b: 2.0, text: 'Built with.' },
+    {
+      a: 2.0,
+      b: 4.5,
+      text: 'PayPal: payments in the PayPal sandbox (Orders v2, Payments v2, webhooks). Built for the PayPal AI Hackathon 2026.',
+    },
+    {
+      a: 4.5,
+      b: 7.5,
+      text: 'Render: API hosted on Render. Also Cloudflare Workers, AG Grid, Deepgram and Groq. Names only, no endorsement implied.',
+    },
+  ],
+  { world: 'paper', data: { logos: process.env.SPONSOR_LOGOS !== 'none' } },
+);
 card('openItems', 6, [
   {
     a: 0.6,
@@ -734,6 +749,7 @@ cpSync(path.join(root, 'packages/web/src/design/fonts'), path.join(PUBLIC, 'font
   recursive: true,
 });
 cpSync(path.join(root, 'brand/svg'), path.join(PUBLIC, 'brand'), { recursive: true });
+cpSync(path.join(root, 'brand/partners'), path.join(PUBLIC, 'partners'), { recursive: true });
 
 // ----------------------------------------------------------------------------- render
 const mp4 = path.join(OUT, `${NAME}.mp4`);
@@ -834,6 +850,66 @@ if (WEBM) {
   );
 }
 
+// the share copy: 1280x720 at 30 fps, under 15 MB (WhatsApp takes 16 MB)
+const share = path.join(OUT, `${NAME}-720p30.mp4`);
+ff(
+  [
+    '-i',
+    mp4,
+    '-vf',
+    'scale=1280:720:flags=lanczos',
+    '-r',
+    '30',
+    '-c:v',
+    'libx264',
+    '-preset',
+    'slow',
+    '-crf',
+    '26',
+    '-pix_fmt',
+    'yuv420p',
+    '-movflags',
+    '+faststart',
+    '-an',
+    share,
+  ],
+  'share 720p',
+);
+if (size(share) > 14.5) {
+  const kbps = Math.floor((13.5 * 8 * 1024) / total);
+  log(`share copy is ${size(share).toFixed(1)} MB, re-encoding at ${kbps} kbps`);
+  const tmp = path.join(OUT, 'tmp-share.mp4');
+  ff(
+    [
+      '-i',
+      mp4,
+      '-vf',
+      'scale=1280:720:flags=lanczos',
+      '-r',
+      '30',
+      '-c:v',
+      'libx264',
+      '-preset',
+      'slow',
+      '-b:v',
+      `${kbps}k`,
+      '-maxrate',
+      `${Math.floor(kbps * 1.3)}k`,
+      '-bufsize',
+      `${kbps * 2}k`,
+      '-pix_fmt',
+      'yuv420p',
+      '-movflags',
+      '+faststart',
+      '-an',
+      tmp,
+    ],
+    'share cap',
+  );
+  rmSync(share);
+  execFileSync('mv', [tmp, share]);
+}
+
 // ----------------------------------------------------------------------------- poster, SRT, timeline, sheets, report
 let cursor = 0;
 const timeline = [];
@@ -898,7 +974,7 @@ ff(
 
 const report = [
   `duration ${total.toFixed(1)} s, ${FPS} fps, ${W}x${H}`,
-  `mp4 ${size(mp4).toFixed(2)} MB${WEBM ? `, webm ${size(path.join(OUT, `${NAME}.webm`)).toFixed(2)} MB` : ''}`,
+  `mp4 ${size(mp4).toFixed(2)} MB, share 720p30 ${size(share).toFixed(2)} MB${WEBM ? `, webm ${size(path.join(OUT, `${NAME}.webm`)).toFixed(2)} MB` : ''}`,
   '',
   ...timeline.map((s) => `${tc(s.start)}  ${s.dur.toFixed(1).padStart(5)} s  ${s.id}`),
   '',
