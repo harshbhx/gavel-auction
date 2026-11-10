@@ -75,6 +75,48 @@ function typeCode(value: string): void {
 describe('/try judge panel: the Ledger front page', () => {
   beforeEach(() => stubReducedMotion(false));
 
+  it('numbers three moves in order: start, join, judge tools', () => {
+    render(panel());
+    const moves = screen.getAllByRole('article');
+    expect(moves.map((m) => m.getAttribute('aria-labelledby'))).toEqual([
+      'gv-judge-a1',
+      'gv-judge-a2',
+      'gv-judge-a3',
+    ]);
+    // The room code and the code field are part of the join move, not a separate sidebar.
+    expect(within(moves[1] as HTMLElement).getByText(t('try.room.sample'))).toBeTruthy();
+    expect(
+      within(moves[1] as HTMLElement).getByRole('button', { name: t('try.a2.go') }),
+    ).toBeTruthy();
+  });
+
+  it('makes starting a room the one solid action, and the scripted demo when rooms are off', () => {
+    const { unmount } = render(panel({ rooms: 'on' }));
+    expect(screen.getByRole('button', { name: t('try.a1.room') }).className).toContain(
+      'gv-btn--solid',
+    );
+    expect(screen.getByRole('link', { name: t('try.a1.script') }).className).toContain(
+      'gv-judge__linkbtn--alt',
+    );
+    unmount();
+    render(panel({ rooms: 'off' }));
+    expect(screen.getByRole('button', { name: t('try.a1.room') }).className).toContain(
+      'gv-btn--outline',
+    );
+    expect(screen.getByRole('link', { name: t('try.a1.script') }).className).not.toContain(
+      'gv-judge__linkbtn--alt',
+    );
+  });
+
+  it('keeps detail in collapsible help and opens the verify tab from the tools', () => {
+    render(panel());
+    expect(document.querySelectorAll('.gv-judge__more').length).toBe(3);
+    fireEvent.click(screen.getByRole('button', { name: t('try.tab.verify') }));
+    expect(
+      screen.getByRole('tab', { name: t('try.tab.verify') }).getAttribute('aria-selected'),
+    ).toBe('true');
+  });
+
   it('has a masthead, one headline, the simulated figure and three moves', () => {
     render(<App initialPath="/try" />);
     expect(screen.getByText(t('try.brand'))).toBeTruthy();

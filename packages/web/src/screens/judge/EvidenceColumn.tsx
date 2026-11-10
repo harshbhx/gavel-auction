@@ -1,7 +1,5 @@
 import { t } from '../../copy/t';
 import { DOCS_URL } from '../landing/LandingSections';
-import { RoomCard } from './RoomCard';
-import type { LiveRoom } from './liveRoom';
 
 export const TRUST_DOC_URL = `${DOCS_URL}/docs/judges/trust-and-faq`;
 export const BUYERS_DOC_URL = `${DOCS_URL}/docs/judges/sandbox-buyers`;
@@ -75,34 +73,22 @@ export function ProvenLists({ idPrefix = 'gv-judge' }: { idPrefix?: string }) {
   );
 }
 
-/** The right-hand trust column: evidence, the room code, and the one rule as a pull quote. */
-export function EvidenceColumn({ room }: { room: LiveRoom | null }) {
+/** The evidence band: what is proven and what is not claimed, side by side, with the docs links. */
+export function EvidenceColumn() {
   return (
     <aside className="gv-judge__side" aria-label={t('try.ev.title')}>
-      <section aria-labelledby="gv-judge-ev">
-        <h2 id="gv-judge-ev" className="gv-judge__rule">
-          {t('try.ev.title')}
-        </h2>
-        <ProvenLists />
-        <p className="gv-judge__docs">
-          <a className="ui-link" href={TRUST_DOC_URL}>
-            {t('try.ev.trust')}
-          </a>
-          <a className="ui-link" href={BUYERS_DOC_URL}>
-            {t('try.ev.buyers')}
-          </a>
-        </p>
-      </section>
-      <section aria-labelledby="gv-judge-rm">
-        <h2 id="gv-judge-rm" className="gv-judge__rule">
-          {t('try.room.title')}
-        </h2>
-        <RoomCard room={room} id="gv-judge-room-side" />
-      </section>
-      <blockquote className="gv-judge__quote">
-        <p>{t('try.quote')}</p>
-        <cite>{t('try.quoteCite')}</cite>
-      </blockquote>
+      <h2 id="gv-judge-ev" className="gv-judge__rule">
+        {t('try.ev.title')}
+      </h2>
+      <ProvenLists />
+      <p className="gv-judge__docs">
+        <a className="ui-link" href={TRUST_DOC_URL}>
+          {t('try.ev.trust')}
+        </a>
+        <a className="ui-link" href={BUYERS_DOC_URL}>
+          {t('try.ev.buyers')}
+        </a>
+      </p>
     </aside>
   );
 }
