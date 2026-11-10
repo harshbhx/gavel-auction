@@ -1,0 +1,215 @@
+{
+  "scenes": [
+    {
+      "id": "hook",
+      "dur": 5.5,
+      "world": "ink",
+      "srtOnly": true,
+      "caps": [
+        { "a": 0.4, "b": 2.4, "text": "$500. Held." },
+        {
+          "a": 2.4,
+          "b": 5.5,
+          "text": "Charged: $0.00. A film by Harsh Bhanushali and Dhairya Patel."
+        }
+      ]
+    },
+    {
+      "id": "title",
+      "dur": 6,
+      "world": "ink",
+      "srtOnly": true,
+      "caps": [
+        {
+          "a": 1.2,
+          "b": 6,
+          "text": "GAVEL. Every bid is a hold. The hammer is the payment. Harsh Bhanushali and Dhairya Patel."
+        }
+      ]
+    },
+    {
+      "id": "problem",
+      "dur": 8,
+      "world": "ink",
+      "srtOnly": true,
+      "caps": [
+        { "a": 0.3, "b": 2.8, "text": "Charge first, bidders hold back." },
+        { "a": 2.8, "b": 5.3, "text": "No hold, winners walk away." },
+        { "a": 5.3, "b": 8, "text": "Paper sheets, no proof." }
+      ]
+    },
+    {
+      "id": "mechanism",
+      "dur": 13,
+      "world": "paper",
+      "srtOnly": true,
+      "caps": [
+        { "a": 0.6, "b": 3, "text": "A ceiling." },
+        { "a": 3, "b": 6.5, "text": "Bids under it." },
+        { "a": 6.5, "b": 8.5, "text": "Hammer." },
+        {
+          "a": 8.5,
+          "b": 13,
+          "text": "Capture the winner. Release the rest. Orders v2 intent AUTHORIZE; Payments v2 capture with final_capture, void. Sandbox only."
+        }
+      ]
+    },
+    {
+      "id": "join",
+      "dur": 7,
+      "world": "ink",
+      "caps": [
+        { "a": 0.5, "b": 4, "text": "Join with / a **code.**" },
+        { "a": 4, "b": 7, "text": "Or scan / the **QR.**" }
+      ]
+    },
+    {
+      "id": "hold",
+      "dur": 11,
+      "world": "paper",
+      "caps": [
+        { "a": 0.4, "b": 3.6, "text": "Pick a / **limit.**" },
+        { "a": 3.6, "b": 7.6, "text": "Approve / a **hold.**" },
+        { "a": 7.6, "b": 11, "text": "**Held,** / not charged." }
+      ]
+    },
+    {
+      "id": "bid",
+      "dur": 14,
+      "world": "ink",
+      "caps": [
+        { "a": 0.3, "b": 2.5, "text": "**Open** / the lot." },
+        { "a": 2.5, "b": 6.5, "text": "Bids / arrive." },
+        { "a": 6.5, "b": 10, "text": "Only / **up.**" },
+        { "a": 10, "b": 14, "text": "Every screen / **agrees.**" }
+      ]
+    },
+    {
+      "id": "voice",
+      "dur": 9,
+      "world": "ink",
+      "caps": [
+        { "a": 0.3, "b": 2.5, "text": "Or **say** it." },
+        { "a": 2.5, "b": 5.5, "text": "\"three fifty for / paddle twelve\"" },
+        { "a": 5.5, "b": 9, "text": "Did you mean / **$350** for paddle 12?" }
+      ]
+    },
+    {
+      "id": "hammer",
+      "dur": 11,
+      "world": "ink",
+      "caps": [
+        { "a": 0.3, "b": 3, "text": "Hold the / **hammer.**" },
+        { "a": 3, "b": 5.5, "text": "Going once. / Going twice." },
+        { "a": 5.5, "b": 8, "text": "**Sold.**" },
+        { "a": 8, "b": 11, "text": "Paddle 12, / **$350.**" }
+      ]
+    },
+    {
+      "id": "settle",
+      "dur": 11,
+      "world": "paper",
+      "caps": [
+        { "a": 0.4, "b": 5.5, "text": "Capture only the / **winning price.**" },
+        { "a": 5.5, "b": 11, "text": "Release / **every other** hold." }
+      ]
+    },
+    {
+      "id": "receipt",
+      "dur": 12,
+      "world": "paper",
+      "caps": [
+        { "a": 0.4, "b": 3.5, "text": "A **receipt** / for everyone." },
+        { "a": 3.5, "b": 6, "text": "Share link. / **QR.**" },
+        { "a": 6, "b": 9, "text": "Chain / **verified.**" },
+        { "a": 9, "b": 12, "text": "Chain / **broken.**" }
+      ]
+    },
+    {
+      "id": "proof",
+      "dur": 9,
+      "world": "ink",
+      "srtOnly": true,
+      "caps": [
+        { "a": 0.3, "b": 2, "text": "Proof." },
+        {
+          "a": 2,
+          "b": 6,
+          "text": "Kill survived: one capture, two voids, 19 ledger entries verify. Live voice 24 of 24 synthetic clips, no bid without a confirm. Webhooks 6 of 6 real sandbox deliveries verified."
+        },
+        {
+          "a": 6,
+          "b": 9,
+          "text": "Latency, honestly: hammer to captured p95 3.8 s against 2.5 s, to settled 6.9 s against 6 s. Both missed."
+        }
+      ]
+    },
+    {
+      "id": "speed",
+      "dur": 8,
+      "world": "paper",
+      "caps": [
+        { "a": 0.4, "b": 4.5, "text": "The landing page: / **100 / 100 / 100 / 100.**" },
+        { "a": 4.5, "b": 8, "text": "Mobile / and desktop." }
+      ]
+    },
+    {
+      "id": "judges",
+      "dur": 10,
+      "world": "ink",
+      "caps": [
+        { "a": 0.3, "b": 3, "text": "For / **judges.**" },
+        { "a": 3, "b": 6.5, "text": "One shared key, / in the Devpost / testing instructions." },
+        { "a": 6.5, "b": 10, "text": "No key needed / for **/try.**" }
+      ]
+    },
+    {
+      "id": "builtWith",
+      "dur": 7,
+      "world": "paper",
+      "srtOnly": true,
+      "caps": [
+        { "a": 0.3, "b": 2.5, "text": "Built with." },
+        {
+          "a": 2.5,
+          "b": 5,
+          "text": "PayPal: payments in the PayPal sandbox (Orders v2, Payments v2, webhooks). Built for the PayPal AI Hackathon 2026."
+        },
+        {
+          "a": 5,
+          "b": 7,
+          "text": "Render: API hosted on Render. Also Cloudflare Workers, Deepgram and Groq. Names only, no endorsement implied."
+        }
+      ]
+    },
+    {
+      "id": "open",
+      "dur": 6,
+      "world": "ink",
+      "srtOnly": true,
+      "caps": [
+        { "a": 0.3, "b": 2, "text": "Still open." },
+        {
+          "a": 2,
+          "b": 4.5,
+          "text": "G3 honor period: in progress, final reading about 12 Nov. G5 speech: partial, synthetic clips only."
+        },
+        { "a": 4.5, "b": 6, "text": "Sandbox only. No real money moves." }
+      ]
+    },
+    {
+      "id": "outro",
+      "dur": 10.5,
+      "world": "ink",
+      "srtOnly": true,
+      "caps": [
+        { "a": 1.5, "b": 6, "text": "Built by Harsh Bhanushali and Dhairya Patel." },
+        {
+          "a": 6,
+          "b": 10.5,
+          "text": "gavel.dualmindlab.tech. docs.gavel.dualmindlab.tech. github.com/harshbhx/gavel-auction. PayPal sandbox only."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+name: film-v3-stills
+# GFX-17 launch film v3: renders STILLS ONLY (no video) of every scene with Remotion, plus a contact sheet.
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/GFX-17-film-v3]
+    paths:
+      - 'graphics/motion-film-v3/**'
+      - '.github/workflows/film-v3-stills.yml'
+permissions:
+  contents: read
+jobs:
+  stills:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version-file: .nvmrc
+      - name: Install
+        working-directory: graphics/motion-film-v3
+        run: |
+          npm ci --no-audit --no-fund
+          npx tsc --noEmit || echo "::warning::type errors (render continues)"
+      - name: Render stills
+        working-directory: graphics/motion-film-v3
+        run: node stills.mjs "$GITHUB_WORKSPACE/out/stills"
+      - name: Contact sheet and zip
+        run: |
+          sudo apt-get install -y -qq imagemagick zip >/dev/null
+          cd out/stills
+          montage -label '%t' -font DejaVu-Sans -pointsize 14 -fill white -background '#120e0b' \
+            -tile 5x -geometry 480x270+8+8 [0-9]*.png ../contact-sheet.png
+          zip -q ../film-v3-stills.zip *.png index.json
+          ls -la ..
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ !cancelled() }}
+        with:
+          name: film-v3-stills
+          path: |
+            out/contact-sheet.png
+            out/film-v3-stills.zip
+          retention-days: 14
