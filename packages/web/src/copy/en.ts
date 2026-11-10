@@ -364,8 +364,8 @@ export const en = {
   'try.a2.body':
     'Type the room code from the host screen. Any case, spaces and a GVL- start are fine.',
   'try.a2.go': 'Find room',
-  'try.a2.typeCode': 'Type the {n} characters of the room code first.',
-  'try.key.typeKey': 'Type the judge key first.',
+  'try.a2.typeCode': 'Type the {n} characters of the room code.',
+  'try.key.typeKey': 'Type the judge key.',
   'try.a1.goalFirst': 'Fix the fundraiser goal above to start a room.',
   'try.a2.checking': 'Looking for the room',
   'try.a2.nocode': 'No code yet? Start a live demo room to get one.',
