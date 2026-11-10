@@ -4,16 +4,20 @@
  * signal: the paddle, the clock and the SOLD or Passed words always say it too. */
 .gv-screen {
   --screen-state: var(--color-accent);
+  /* One hundredth of the screen height: the hub preview pins it to its own 1080 px design height. */
+  --sv: 1vh;
   box-sizing: border-box;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 30vw);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(min-content, 1fr);
   gap: var(--space-6);
   width: 100%;
-  height: 100vh;
-  height: 100dvh;
-  padding: var(--space-6) var(--space-7);
-  overflow: hidden;
+  /* A projector fills the screen; a shorter window grows the page and scrolls instead of cutting
+   * the QR code or the price card. */
+  min-height: calc(100vh - var(--gv-chrome, 0px));
+  min-height: calc(100dvh - var(--gv-chrome, 0px));
+  padding: clamp(12px, calc(var(--sv) * 3), var(--space-6)) var(--space-7);
+  overflow-x: clip;
   font-family: var(--font-sans);
   font-size: 28px;
   line-height: 1.25;
@@ -44,7 +48,7 @@
 .gv-screen__head {
   grid-column: 1 / -1;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--space-5);
   padding-block-end: var(--space-4);
@@ -54,10 +58,11 @@
 .gv-screen__lot {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 56px;
+  font-size: clamp(32px, calc(var(--sv) * 5.2), 56px);
   font-weight: 700;
   line-height: 1.05;
   letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
   text-transform: uppercase;
 }
 
@@ -82,6 +87,7 @@
   justify-content: center;
   gap: var(--space-4);
   min-width: 0;
+  container-type: inline-size;
   padding: var(--space-6) var(--space-7);
   border: var(--border-width-strong) solid var(--screen-state);
   border-radius: var(--radius-md);
@@ -109,8 +115,9 @@
 .gv-screen__leader {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 56px;
+  font-size: clamp(32px, calc(var(--sv) * 5.2), 56px);
   font-weight: 700;
+  overflow-wrap: anywhere;
   color: var(--color-accent);
 }
 
@@ -121,7 +128,7 @@
 .gv-screen__clock {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 56px;
+  font-size: clamp(32px, calc(var(--sv) * 5.2), 56px);
   color: var(--color-fg-muted);
 }
 
@@ -142,6 +149,7 @@
   border-radius: var(--radius-md);
   font-family: var(--font-display);
   font-size: min(16vh, 6.4vw);
+  overflow-wrap: anywhere;
   font-weight: 800;
   line-height: 1.1;
   text-transform: uppercase;
@@ -188,8 +196,6 @@
   flex-direction: column;
   gap: var(--space-5);
   min-width: 0;
-  min-height: 0;
-  overflow: hidden;
 }
 
 .gv-screen__ticker {
@@ -199,7 +205,7 @@
 .gv-screen__ticker-title {
   margin: 0 0 var(--space-2);
   font-family: var(--font-mono);
-  font-size: 28px;
+  font-size: clamp(16px, calc(var(--sv) * 2.6), 28px);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -213,11 +219,11 @@
   padding: 0;
   list-style: none;
   font-family: var(--font-mono);
-  font-size: 36px;
+  font-size: clamp(18px, calc(var(--sv) * 3.34), 36px);
 }
 
 .gv-screen__ticker li {
-  padding-block: var(--space-2);
+  padding-block: clamp(2px, calc(var(--sv) * 0.75), var(--space-2));
   border-block-end: var(--border-width) solid var(--color-rule);
   color: var(--color-fg-muted);
 }
@@ -233,6 +239,7 @@
   gap: var(--space-3);
   align-items: center;
   margin-block-start: auto;
+  min-width: 0;
   padding: var(--space-4);
   border: var(--border-width-strong) solid var(--color-border);
   border-radius: var(--radius-md);
@@ -244,9 +251,17 @@
 .gv-screen__join p {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 44px;
+  font-size: clamp(22px, calc(var(--sv) * 4.1), 44px);
   font-weight: 700;
   letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+}
+
+/* The code is drawn at 260 px; the slot scales it with the screen height so it is never cut. */
+.gv-screen__join svg {
+  width: clamp(132px, calc(var(--sv) * 22), 260px);
+  height: auto;
+  aspect-ratio: 1;
 }
 
 @media (forced-colors: active) {
@@ -310,8 +325,11 @@
 
 /* Hub preview: the real layout at 1920x1080, scaled down by the hub. */
 .gv-screen--preview {
+  --sv: 10.8px;
   width: 1920px;
   height: 1080px;
+  min-height: 0;
+  overflow: hidden;
   pointer-events: none;
   user-select: none;
 }
@@ -329,7 +347,7 @@
 .gv-story {
   display: flex;
   flex-wrap: wrap;
-  flex: 1 1 100%;
+  flex: 1 1 0;
   min-width: 0;
   gap: var(--space-3);
   margin: 0;
@@ -339,7 +357,7 @@
 
 .gv-story__step {
   display: flex;
-  flex: 1 1 200px;
+  flex: 1 1 0;
   flex-direction: column;
   min-width: 0;
   padding: var(--space-2) var(--space-4);
@@ -383,5 +401,114 @@
 @media (forced-colors: active) {
   .gv-story__step[data-status='now'] {
     border-color: CanvasText;
+  }
+}
+
+/* The sandbox notice sits above the projector page: a slim bar, and the screen leaves room for it so
+ * a 16:9 display never scrolls for the sake of the notice. */
+:root[data-theme='projector'] {
+  --gv-chrome: 32px;
+}
+
+:root[data-theme='projector'] .gv-banner {
+  box-sizing: border-box;
+  height: var(--gv-chrome);
+  padding-block: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Header strip scales with the height so a 720p laptop keeps room for the board and the QR code. */
+.gv-story__label {
+  font-size: clamp(18px, calc(var(--sv) * 2.6), 28px);
+}
+
+.gv-story__note {
+  font-size: clamp(14px, calc(var(--sv) * 2), 22px);
+}
+
+/* Phones and small tablets: one column, content never wider than the viewport. The hub preview is a
+ * fixed 1920 px layout and keeps the projector grid at any window size. */
+@media (max-width: 899px) {
+  .gv-screen:not(.gv-screen--preview) {
+    --sv: 0.9vh;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    font-size: 20px;
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-screen__head {
+    flex-wrap: wrap;
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-story {
+    flex-basis: 100%;
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-screen__lot {
+    font-size: clamp(26px, 8vw, 44px);
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-screen__board {
+    padding: var(--space-4);
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-screen__price {
+    font-size: clamp(40px, 14cqw, 200px);
+    overflow-wrap: anywhere;
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-screen__opening {
+    font-size: clamp(28px, 9cqw, 72px);
+    overflow-wrap: anywhere;
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-screen__stamp {
+    font-size: clamp(28px, 9cqw, 72px);
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-screen__leader,
+  .gv-screen:not(.gv-screen--preview) .gv-screen__clock {
+    font-size: clamp(24px, 6cqw, 48px);
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-screen__settle {
+    font-size: 20px;
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-screen__ticker ol {
+    font-size: 24px;
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-screen__ticker-title {
+    font-size: 18px;
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-screen__join {
+    margin-block-start: 0;
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-screen__join p {
+    font-size: 28px;
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-screen__join svg {
+    width: clamp(160px, 50vw, 240px);
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-story__label {
+    font-size: 20px;
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-story__note {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 599px) {
+  .gv-screen:not(.gv-screen--preview) .gv-story__step {
+    flex-basis: 100%;
   }
 }

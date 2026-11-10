@@ -23,6 +23,7 @@ async function readProbe(page: Page, webUrl: string, theme: string): Promise<Rea
   await page.addInitScript((value) => {
     document.documentElement.setAttribute('data-theme', value);
   }, theme);
+  await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto(`${webUrl}/gallery`);
   await page.locator('h1').first().waitFor();
   return page.evaluate(() => {

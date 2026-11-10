@@ -13,6 +13,9 @@
   min-height: 100dvh;
   padding: var(--space-4);
   background: var(--bid-bg);
+  /* Extends the state ground one screen height below the room, so a page taller than the room (banners,
+     the keyboard) never shows a cream band under the tint. Shadows add no scroll height. */
+  box-shadow: 0 100vh 0 0 var(--bid-bg);
   color: var(--bid-ink);
   font-family: var(--font-sans);
 }
