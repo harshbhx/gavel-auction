@@ -154,6 +154,12 @@ const say = (key: Beat['label'] | Beat['body']): string => t(key as 'scriptedDem
 /** Speed labels have no placeholders, so a union of their keys is safe to look up. */
 const speedText = (s: PlaybackSpeed): string => t(SPEED_LABEL[s] as 'scriptedDemo.speed1');
 
+/** Phones fold the step list so the screen and the controls stay in view; wide pages show it. */
+function stepsStartOpen(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
+  return window.matchMedia('(min-width: 901px)').matches;
+}
+
 /** Caption, transport controls and the step list that sit beside the scripted screen. */
 export function ScriptedPlayer({
   playback,
@@ -230,24 +236,27 @@ export function ScriptedPlayer({
           speed: speedText(speed),
         })}
       </p>
-      <ol className="gv-player__steps" aria-label={t('scriptedDemo.steps')}>
-        {beats.map((b, i) => (
-          <li
-            key={b.at}
-            className="gv-player__step"
-            data-status={i < beat ? 'done' : i === beat ? 'now' : 'next'}
-          >
-            <button
-              type="button"
-              className="gv-player__jump tabular"
-              aria-current={i === beat ? 'step' : undefined}
-              onClick={() => playback.jump(i)}
+      <details className="gv-player__more" open={stepsStartOpen()}>
+        <summary>{t('scriptedDemo.allSteps')}</summary>
+        <ol className="gv-player__steps" aria-label={t('scriptedDemo.steps')}>
+          {beats.map((b, i) => (
+            <li
+              key={b.at}
+              className="gv-player__step"
+              data-status={i < beat ? 'done' : i === beat ? 'now' : 'next'}
             >
-              {`${i + 1}. ${say(b.label)}`}
-            </button>
-          </li>
-        ))}
-      </ol>
+              <button
+                type="button"
+                className="gv-player__jump tabular"
+                aria-current={i === beat ? 'step' : undefined}
+                onClick={() => playback.jump(i)}
+              >
+                {`${i + 1}. ${say(b.label)}`}
+              </button>
+            </li>
+          ))}
+        </ol>
+      </details>
     </section>
   );
 }
