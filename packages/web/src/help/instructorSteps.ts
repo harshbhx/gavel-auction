@@ -11,15 +11,18 @@ export type InstructorScreen =
   | 'try'
   | 'register';
 
+/** Per-button keys only: none take parameters, so t() accepts them without a second argument. */
+export type GuideKey = Extract<CopyKey, `instructor.${string}.${number}.${'name' | 'text'}`>;
+
 export interface GuideButton {
-  readonly name: CopyKey;
-  readonly text: CopyKey;
+  readonly name: GuideKey;
+  readonly text: GuideKey;
 }
 
 const buttons = (screen: InstructorScreen, count: number): readonly GuideButton[] =>
   Array.from({ length: count }, (_, i) => ({
-    name: `instructor.${screen}.${i + 1}.name` as CopyKey,
-    text: `instructor.${screen}.${i + 1}.text` as CopyKey,
+    name: `instructor.${screen}.${i + 1}.name` as GuideKey,
+    text: `instructor.${screen}.${i + 1}.text` as GuideKey,
   }));
 
 export const INSTRUCTOR_BUTTONS: Readonly<Record<InstructorScreen, readonly GuideButton[]>> = {
