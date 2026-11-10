@@ -31,7 +31,7 @@
     "demo:settle": "vite-node demo/settle-with-crash.ts --"
   },
   "dependencies": {
-    "zod": "3.25.76"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@gavel/engine": "0.1.0",
