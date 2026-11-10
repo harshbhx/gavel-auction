@@ -30,6 +30,8 @@ PayPal sandbox only: no real money moves.
 
 Built for the PayPal Hackathon 2026.
 
+**PageSpeed Insights, landing page `/`: 100 Performance, 100 Accessibility, 100 Best Practices and 100 SEO on both mobile and desktop** (Lighthouse 13.6.0, lab data, measured by hand on 10 Nov 2026; this URL only, not the whole app). Details and screenshots: [docs/evidence/perf](docs/evidence/perf/PAGESPEED.md).
+
 <p align="center">
   <picture>
     <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/reel-poster.png">
