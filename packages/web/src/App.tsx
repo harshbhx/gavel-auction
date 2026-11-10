@@ -283,6 +283,23 @@ function LiveRoute({
           { apiBase: api.apiBase, clientId: api.paypalClientId, token },
         );
   }, [api, bidderId, scripted, roomId, token]);
+  // The lot name from the public summary, for the bid screen while its snapshot has none.
+  const [summaryTitle, setSummaryTitle] = useState<string | null>(null);
+  useEffect(() => {
+    if (api === undefined || scripted !== undefined || role !== 'bidder') return undefined;
+    let live = true;
+    fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(roomId)}`)
+      .then((body) => {
+        const got = (body ?? {}) as { title?: unknown };
+        if (live && typeof got.title === 'string' && got.title.trim() !== '') {
+          setSummaryTitle(got.title);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [api, scripted, role, roomId]);
   const respond = (confirmId: string, accept: boolean): void =>
     transport?.send({ v: PROTOCOL_VERSION, t: 'confirm_response', confirmId, accept });
   if (connection.superseded === true) {
@@ -342,6 +359,7 @@ function LiveRoute({
             }}
             stopped={stopped}
             onJoin={() => navigate(`/r/${encodeURIComponent(roomId)}/register`)}
+            lotTitleFallback={summaryTitle}
             onHome={() => navigate('/')}
             onJoinCode={() => navigate('/?join=1')}
             onReceipt={() => navigate(`/r/${encodeURIComponent(roomId)}/receipt`)}

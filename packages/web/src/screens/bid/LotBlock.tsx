@@ -42,9 +42,12 @@ export function LotBlock({ title, story = null }: LotBlockProps) {
       <LotArt />
       <div className="bid__lottext">
         <h2 className="bid__lotname">{name}</h2>
-        <p className="bid__lotstory">
-          {story !== null && story.trim() !== '' ? story : t('bid.lot.story')}
-        </p>
+        <details className="bid__lothow">
+          <summary>{t('bid.lot.howTo')}</summary>
+          <p className="bid__lotstory">
+            {story !== null && story.trim() !== '' ? story : t('bid.lot.story')}
+          </p>
+        </details>
       </div>
     </div>
   );
