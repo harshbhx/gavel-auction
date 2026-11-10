@@ -540,6 +540,7 @@ export const en = {
   'scriptedDemo.speedOption': 'Speed {speed}',
   'scriptedDemo.duration': 'The whole recording takes about {seconds} seconds at {speed}.',
   'scriptedDemo.steps': 'Steps',
+  'scriptedDemo.allSteps': 'All steps',
   'scriptedDemo.reduced':
     'Reduced motion is on, so the demo waits for you. Use Next step to move on.',
   'scriptedDemo.done': 'End of the demo. Press Play again to watch it once more.',
@@ -569,6 +570,8 @@ export const en = {
     'Settled: $350 taken, $150 of her hold released. The holds of Sam and Ana are released in full. The receipt is recorded.',
   'scriptedDemo.live': 'Start a live demo room',
   'scriptedDemo.judge': 'Judge guide',
+  'bid.recorded': 'Recorded demo: bids are played by the tour, so the bid controls are off here.',
+  'bid.recordedLive': 'Start a live demo to place a real sandbox bid',
   'reg.step1': 'Your name',
   'reg.name': 'Display name',
   'reg.nameHint': 'Shown to the room.',
