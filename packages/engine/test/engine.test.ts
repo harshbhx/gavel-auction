@@ -125,5 +125,6 @@ describe('invariants', () => {
       const out = a.hammer(1000);
       if (out.winner) expect(out.price).toBeLessThanOrEqual(a.ceilings.get(out.winner) ?? 0);
     }
-  });
+    // 300 auctions take about 1 s plain and several times that under v8 coverage (vitest 4).
+  }, 60_000);
 });

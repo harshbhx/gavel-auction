@@ -3,7 +3,7 @@ version: 2
 #
 # Policy (FIX-63): version updates are minor and patch only. Major bumps are done by hand in a
 # dedicated pull request, because several of them need code or config changes (eslint 10, jsdom,
-# commitlint, vitest 4 / vite 7 in issue 2145, the github actions that pin deploy paths). The
+# commitlint, the github actions that pin deploy paths). The
 # `ignore` lists below apply to version updates only; Dependabot security updates are not
 # affected by them and keep arriving.
 updates:

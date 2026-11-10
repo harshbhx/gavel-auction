@@ -19,11 +19,11 @@
     "check:bundle": "node scripts/bundle-check.mjs"
   },
   "devDependencies": {
-    "@types/node": "22.10.2",
-    "esbuild": "0.24.2",
-    "fast-check": "3.23.1",
+    "@types/node": "22.20.5",
+    "esbuild": "0.28.2",
+    "fast-check": "3.23.2",
     "typescript": "5.6.3",
-    "vitest": "2.1.8"
+    "vitest": "4.1.11"
   },
   "bin": {
     "verify-ledger": "./bin/verify-ledger.mjs"

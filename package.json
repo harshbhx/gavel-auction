@@ -18,7 +18,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run --project 'unit:*'",
     "test:pkg": "vitest run --passWithNoTests --project",
-    "test:coverage": "vitest run --coverage --project 'unit:*' && node scripts/check-coverage.mjs",
+    "test:coverage": "GAVEL_COVERAGE=1 vitest run --coverage --project 'unit:*' && node scripts/check-coverage.mjs",
     "test:property": "vitest run --project 'property:*' .property.test.",
     "test:scenarios": "vitest run --project 'unit:e2e'",
     "test:e2e": "echo 'test:e2e: not implemented' && exit 1",
@@ -37,21 +37,22 @@
     "prepare": "husky || true"
   },
   "devDependencies": {
-    "@commitlint/cli": "19.5.0",
-    "@eslint/js": "9.15.0",
+    "@commitlint/cli": "19.8.1",
+    "@eslint/js": "9.39.5",
     "@microsoft/api-extractor": "7.60.1",
     "@stryker-mutator/core": "10.1.1",
     "@stryker-mutator/vitest-runner": "10.1.1",
-    "@vitest/coverage-v8": "2.1.8",
-    "dependency-cruiser": "16.8.0",
+    "@vitest/coverage-v8": "4.1.11",
+    "dependency-cruiser": "16.10.4",
     "eslint": "9.15.0",
-    "eslint-plugin-react-hooks": "5.0.0",
-    "globals": "15.12.0",
-    "husky": "9.1.6",
-    "lint-staged": "15.2.10",
+    "eslint-plugin-react-hooks": "5.2.0",
+    "globals": "15.15.0",
+    "husky": "9.1.7",
+    "lint-staged": "15.5.2",
     "prettier": "3.3.3",
     "typescript": "5.6.3",
     "typescript-eslint": "8.15.0",
-    "vitest": "2.1.8"
+    "vite": "7.3.8",
+    "vitest": "4.1.11"
   }
 }
