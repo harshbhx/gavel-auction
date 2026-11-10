@@ -680,7 +680,7 @@ export const en = {
   'bid.voice.listening': 'Listening',
   'bid.voice.aria': 'Press and hold to say your amount',
   'bid.voice.note': 'A spoken bid is only placed after you confirm it.',
-  'bid.voice.noAmount': 'No amount heard. Hold the button and say a dollar amount.',
+  'bid.voice.noAmount': 'No amount heard. Press and hold the button and say a dollar amount.',
   'bid.voice.problem': 'The microphone could not start. Type your amount instead.',
   'bid.aboveCeiling': 'Bids above {max} are over your limit',
   'bid.enterAmount': 'Enter your bid in dollars, at least {min}.',
