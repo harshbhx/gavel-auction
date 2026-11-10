@@ -1,0 +1,40 @@
+name: landing-resize
+# One-off helper (FIX-131, #2442): makes the right-sized WebP variants of the landing screenshots in
+# packages/web/public/landing (480 and 720 px wide for the console and public screen views) and
+# uploads them as the artifact `landing-resized`; copy its files back into that folder.
+# Informational: uses no secrets and is not part of the required roll-up in ci.yml.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/landing-resize.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  resize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install the WebP tools
+        run: sudo apt-get install -y --no-install-recommends webp
+      - name: Resize
+        run: |
+          mkdir -p out
+          for name in console screen; do
+            dwebp -quiet "packages/web/public/landing/$name.webp" -o "$name.png"
+            for w in 480 720; do
+              cwebp -quiet -q 80 -m 6 -resize "$w" 0 "$name.png" -o "out/$name-$w.webp"
+            done
+          done
+          ls -l out packages/web/public/landing
+          for f in out/*.webp; do webpinfo "$f" | grep -E 'Width|Height'; done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: landing-resized
+          path: out
+          if-no-files-found: error

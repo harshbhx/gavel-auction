@@ -26,9 +26,14 @@ export function StorySection() {
   );
 }
 
+/** Display width of the console and screen views: about 356 px on a phone, about 560 px on a desktop. */
+const SHOT_SIZES = '(min-width: 900px) 560px, calc(100vw - 34px)';
+
 interface Shot {
   id: 'console' | 'screen' | 'bidder' | 'receipt';
   src: string;
+  /** Smaller variants for the browser to pick from, as a `srcset` value. */
+  srcSet?: string;
   width: number;
   height: number;
   cap: string;
@@ -44,6 +49,8 @@ export function ShotsSection() {
     {
       id: 'console',
       src: '/landing/console.webp',
+      srcSet:
+        '/landing/console-480.webp 480w, /landing/console-720.webp 720w, /landing/console.webp 1000w',
       width: 1000,
       height: 694,
       cap: t('mk.shots.console.cap'),
@@ -52,6 +59,8 @@ export function ShotsSection() {
     {
       id: 'screen',
       src: '/landing/screen.webp',
+      srcSet:
+        '/landing/screen-480.webp 480w, /landing/screen-720.webp 720w, /landing/screen.webp 1000w',
       width: 1000,
       height: 677,
       cap: t('mk.shots.screen.cap'),
@@ -82,9 +91,12 @@ export function ShotsSection() {
             <img
               className="gv-shot__img"
               src={s.src}
+              srcSet={s.srcSet}
+              sizes={s.srcSet ? SHOT_SIZES : undefined}
               width={s.width}
               height={s.height}
               alt={s.alt}
+              loading="lazy"
               decoding="async"
             />
             <figcaption className="gv-shot__cap">{s.cap}</figcaption>

@@ -139,3 +139,33 @@ describe('unknown pages', () => {
     );
   });
 });
+
+// FIX-131 (#2078): /.well-known/security.txt is a real file and must pass through as text.
+describe('security.txt', () => {
+  it('passes the static file through and keeps it out of the SPA fallback', async () => {
+    const body = 'Contact: https://example.test\n';
+    const res = await worker.default.fetch(new Request('https://x.test/.well-known/security.txt'), {
+      ASSETS: {
+        fetch: (() =>
+          Promise.resolve(
+            new Response(body, { headers: { 'content-type': 'text/plain; charset=utf-8' } }),
+          )) as unknown as typeof fetch,
+      },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/plain');
+    expect(await res.text()).toBe(body);
+  });
+
+  it('answers 404, not HTML, when the file is missing', async () => {
+    const res = await worker.default.fetch(new Request('https://x.test/.well-known/security.txt'), {
+      ASSETS: {
+        fetch: (() =>
+          Promise.resolve(
+            new Response('<!doctype html>', { headers: { 'content-type': 'text/html' } }),
+          )) as unknown as typeof fetch,
+      },
+    });
+    expect(res.status).toBe(404);
+  });
+});

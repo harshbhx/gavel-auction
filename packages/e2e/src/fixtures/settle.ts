@@ -24,6 +24,9 @@ export async function settle(page: Page): Promise<void> {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
     await document.fonts.ready;
+    // A lazy image below the fold is never fetched, so decode() would wait for it forever: load it
+    // eagerly first, as a visitor who scrolled down would have.
+    for (const img of Array.from(document.images)) img.loading = 'eager';
     await Promise.all(
       Array.from(document.images).map((img) => img.decode().catch(() => undefined)),
     );
