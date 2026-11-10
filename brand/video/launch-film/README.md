@@ -1,13 +1,15 @@
 # GAVEL launch film
 
-The launch film of GAVEL for the PayPal Hackathon 2026 judges: 2:45, 1920x1080, 60 fps, no voice and no audio track,
-every line on screen. The product chapters are a recording of the real web app; the argument, proof and judge beats
-are type and graphics in the brand's motion language. Built by Harsh Bhanushali and Dhairya Patel, credited in the
+The launch film of GAVEL for the PayPal AI Hackathon 2026 judges (version 2): 2:44, 1920x1080, 60 fps, no voice and no audio track,
+every line on screen. The product chapters are a recording of the real web app; the argument, proof, judge and
+"built with" beats are type and graphics in the brand's motion language; the room's projection screen and the hold are
+rebuilt as animated brand components (no off-palette capture). Built by Harsh Bhanushali and Dhairya Patel, credited in the
 intro, the hook and the outro. Storyboard, research and the motion language: [STORYBOARD.md](STORYBOARD.md).
 
 | File                           | What it is                                                                      |
 | ------------------------------ | ------------------------------------------------------------------------------- |
-| `gavel-launch-film.mp4`        | H.264, 1920x1080, 60 fps, 2:45, no audio track, 21.07 MB                        |
+| `gavel-launch-film.mp4`        | H.264, 1920x1080, 60 fps, 2:44, no audio track, 26.53 MB                        |
+| `gavel-launch-film-720p30.mp4` | Share copy: H.264, 1280x720, 30 fps, 6.59 MB (under the 16 MB WhatsApp limit)   |
 | `gavel-launch-film-poster.png` | Poster, 1920x1080, the title card                                               |
 | `gavel-launch-film.en.srt`     | Every on-screen line with timecodes, for YouTube captions or a voice-over later |
 | `timeline.json`                | Scene starts and caption times in seconds, machine readable                     |
@@ -48,5 +50,5 @@ Everything runs in GitHub Actions (nothing is rendered on a laptop or the VM):
    it re-encodes under a bitrate cap. Remotion is free for individuals and companies of up to three people.
 3. Inputs: `fps` (60 for the final, 30 for a quick pass), `raw_run`, `record_only`, `webm`.
 
-The run that produced these files: https://github.com/harshbhx/gavel-auction/actions/runs/42763598583 (artifact
+The run that produced these files: https://github.com/harshbhx/gavel-auction/actions/runs/42768523412 (artifact
 `launch-film`, which also holds the contact sheets and `report.txt`).

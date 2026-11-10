@@ -9,14 +9,6 @@ name: launch-film
 # Artifacts: silent-raw (the recording, reusable by both films) and launch-film (the cut). Commit the
 # final files to brand/video/launch-film/.
 on:
-  # Development trigger while the workflow is not on main yet; reads graphics/motion-film/ci.json. Remove before merge.
-  push:
-    branches: [feat/GFX-15-launch-film]
-    paths:
-      - 'graphics/motion-film/**'
-      - 'graphics/motion-silent/**'
-      - '.github/workflows/launch-film.yml'
-      - '.github/actions/record-ui/**'
   workflow_dispatch:
     inputs:
       raw_run:
@@ -75,14 +67,7 @@ jobs:
           IN_RECORD_ONLY: ${{ inputs.record_only }}
           IN_WEBM: ${{ inputs.webm }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            RAW_RUN="$IN_RAW"; FPS="$IN_FPS"; RECORD_ONLY="$IN_RECORD_ONLY"; WEBM="$IN_WEBM"
-          else
-            RAW_RUN="$(jq -r '.raw_run // ""' graphics/motion-film/ci.json)"
-            FPS="$(jq -r '.fps // "60"' graphics/motion-film/ci.json)"
-            RECORD_ONLY="$(jq -r '.record_only // false' graphics/motion-film/ci.json)"
-            WEBM="$(jq -r '.webm // false' graphics/motion-film/ci.json)"
-          fi
+          RAW_RUN="$IN_RAW"; FPS="$IN_FPS"; RECORD_ONLY="$IN_RECORD_ONLY"; WEBM="$IN_WEBM"
           { echo "RAW_RUN=$RAW_RUN"; echo "FPS=${FPS:-60}"; echo "RECORD_ONLY=$RECORD_ONLY"; echo "WEBM=$WEBM"; } >> "$GITHUB_ENV"
           echo "raw_run='$RAW_RUN' fps=$FPS record_only=$RECORD_ONLY webm=$WEBM"
       - name: Install Playwright, chromium and ffmpeg
