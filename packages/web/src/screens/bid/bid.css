@@ -216,7 +216,8 @@
   font-weight: 700;
   letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
-  color: var(--bid-ink);
+  /* The bar is a raised panel, so its text takes the panel ink, not the state ink. */
+  color: var(--color-fg);
 }
 
 .bid__nextamt {
