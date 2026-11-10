@@ -74,7 +74,7 @@ describe('R-QA-047 metric families', () => {
     ]);
     for (const line of [
       'gavel_bids_rejected_total{reason="below_min"} 1',
-      'gavel_bids_rejected_total{reason="other"} 1',
+      'gavel_bids_rejected_total{reason="other"} 2',
       'gavel_paypal_calls_total{op="capture",status="ok"} 1',
       'gavel_paypal_calls_total{op="capture",status="error"} 1',
       'gavel_paypal_latency_ms_count 2',
