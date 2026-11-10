@@ -152,7 +152,7 @@ export function ConsoleScreen({
     );
   const biddersPanel =
     bidders === undefined ? null : (
-      <div className="gv-console-panel gv-console-panel--bidders">{bidders}</div>
+      <div className="gv-console-panel gv-console-panel--bidders" tabIndex={0}>{bidders}</div>
     );
   const dangerZone =
     danger === undefined ? null : (
@@ -160,7 +160,11 @@ export function ConsoleScreen({
     );
 
   const centre = (
-    <section className="gv-console-panel gv-console-panel--stream" aria-label={t('console.stream')}>
+    <section
+      className="gv-console-panel gv-console-panel--stream"
+      aria-label={t('console.stream')}
+      tabIndex={0}
+    >
       <h2 className="ui-kicker">{t('console.stream')}</h2>
       {audit.length > 0 ? (
         <BidHistory

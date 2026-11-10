@@ -73,7 +73,8 @@ describe('control bar slots (UIX-46)', () => {
     });
     expect(port.extend).toHaveBeenCalledWith(30_000);
     expect(port.open).not.toHaveBeenCalled();
-    expect(document.body.textContent).not.toContain(t('controls.reason.alreadyOpen'));
+    // The reason line (visible) stays empty; the disabled Open button keeps its spoken reason only.
+    expect(document.querySelector('[data-slot="control-reason"]')?.textContent).toBe('');
   });
 
   it('keeps the same slots while a request is in flight and spins inside the clicked one', async () => {

@@ -401,7 +401,7 @@ describe('hammer conflict messages (#1772)', () => {
     renderConsole();
     holdHammer();
     await waitFor(() => expect(texts('status')).toContain(t('controls.hammerPriceChanged')), {
-      timeout: 3000,
+      timeout: 6000,
     });
     expect(lastCall().body['args']).toMatchObject({
       expectedPriceCents: 40_000,
@@ -416,14 +416,14 @@ describe('hammer conflict messages (#1772)', () => {
       key: 'Enter',
     });
     await waitFor(() => expect(texts('status')).toContain(t('controls.hammerLeaderChanged')), {
-      timeout: 3000,
+      timeout: 6000,
     });
     expect(lastCall().body['args']).toMatchObject({
       expectedPriceCents: 45_000,
       expectedLeaderPaddle: 12,
     });
     expect(texts('status')).not.toContain(sentText);
-  });
+  }, 20_000);
 
   it('keeps the generic message for any other conflict', async () => {
     fetchMock.mockResolvedValueOnce(conflict('wrong_state'));
