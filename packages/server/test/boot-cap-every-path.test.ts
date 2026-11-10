@@ -48,7 +48,7 @@ async function until<T>(read: () => T | undefined, what: string): Promise<T> {
 }
 
 describe('TST-12: the ceiling cap holds on every path', () => {
-  it.each([3000, 7500])(
+  it.each([3000, 7500, 2_500_000])(
     'cap %i: HTTP hold, sim-hold, judge bid and socket bid all refuse above it',
     async (cap) => {
       const app = await composeServer(

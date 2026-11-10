@@ -9,7 +9,10 @@ import { customCeilingCents, parseWholeDollars } from './validate';
 const CUSTOM = 'custom';
 /** The slider's usual span; a typed limit above it stretches the slider up to the server cap. */
 const DEFAULT_SLIDER_MAX_CENTS = 100000;
-const STEP_CHOICES: readonly number[] = [1000, 2500, 5000, 10000, 25000, 50000, 100000];
+const STEP_CHOICES: readonly number[] = [
+  1000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000, 2500000, 5000000,
+  10000000,
+];
 const MAX_TICKS = 24;
 
 /** The smallest round step that keeps the slider to a readable number of ticks. */
@@ -18,7 +21,7 @@ export function sliderStep(minCents: number, maxCents: number): number {
   return (
     STEP_CHOICES.find((s) => span / s <= MAX_TICKS) ??
     STEP_CHOICES[STEP_CHOICES.length - 1] ??
-    100000
+    10000000
   );
 }
 
@@ -36,6 +39,29 @@ export function sliderMax(
 ): number {
   const base = Math.max(minCents, DEFAULT_SLIDER_MAX_CENTS, ...presetsCents);
   return Math.min(maxCents, Math.max(base, typedCents ?? 0));
+}
+
+const SCALED_FRACTIONS: readonly number[] = [0.25, 0.5, 0.75];
+
+/**
+ * Quick picks that follow a big typed limit: a quarter, half and three quarters of it in whole
+ * dollars. They appear only once the typed limit is above every preset and within the cap, stay
+ * inside the allowed range and never repeat a preset or each other.
+ */
+export function scaledPicks(
+  minCents: number,
+  maxCents: number,
+  presetsCents: readonly number[],
+  anchorCents: number | null,
+): number[] {
+  if (anchorCents === null || anchorCents > maxCents || anchorCents < minCents) return [];
+  if (anchorCents <= Math.max(0, ...presetsCents)) return [];
+  const out = new Set<number>();
+  for (const f of SCALED_FRACTIONS) {
+    const cents = Math.round((anchorCents * f) / 100) * 100;
+    if (cents >= minCents && cents < anchorCents && !presetsCents.includes(cents)) out.add(cents);
+  }
+  return [...out].sort((a, b) => a - b);
 }
 
 export interface LimitEntryOptions {
@@ -90,6 +116,8 @@ export function useLimitEntry(opts: LimitEntryOptions): LimitEntryState {
     parseWholeDollars(customText),
   );
   const rangeMax = sliderMax(minCents, maxCents, presetsCents, stretchCents);
+
+  const scaled = allowCustom ? scaledPicks(minCents, maxCents, presetsCents, stretchCents) : [];
 
   const customCents = customCeilingCents(customText, minCents, maxCents);
   let ceilingCents: number | null = null;
@@ -146,6 +174,21 @@ export function useLimitEntry(opts: LimitEntryOptions): LimitEntryState {
               checked={choice === String(cents)}
               onChange={() => {
                 setChoice(String(cents));
+                setCustomText(String(cents / 100));
+                setTouched(false);
+              }}
+            />
+            <span>{formatUsdCompact(cents)}</span>
+          </label>
+        ))}
+        {scaled.map((cents) => (
+          <label key={`scaled-${cents}`}>
+            <input
+              type="radio"
+              name="ceiling"
+              checked={choice === CUSTOM && customText === String(cents / 100)}
+              onChange={() => {
+                setChoice(CUSTOM);
                 setCustomText(String(cents / 100));
                 setTouched(false);
               }}

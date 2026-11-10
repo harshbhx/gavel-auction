@@ -426,10 +426,15 @@ describe('review round 12: time, scope and history', () => {
     } finally {
       Object.assign(defaults, saved);
     }
-    // A retry of the original command still dedupes against the partial entry.
+    // A retry of the original command still dedupes against the partial entry. The retry names the
+    // cap the old ledger meant, because the code default for a new auction is now higher.
     const retry = mk(
       5,
-      { type: 'CreateAuction', title: 'Gala', config: { currency: 'USD', holdScope: 'event' } },
+      {
+        type: 'CreateAuction',
+        title: 'Gala',
+        config: { currency: 'USD', holdScope: 'event', maxCeilingCents: 100000 },
+      },
       createId,
     );
     expect(decide(evolveAll(old), retry).outcome.kind).toBe('duplicate');

@@ -1966,7 +1966,7 @@ export function decodeMsg(raw: unknown, from: Direction): CodecResult<WireMsg>;
 export function decodeServerMsg(raw: string | Uint8Array): FrameResult<ServerMsg>;
 
 // @public
-export const DEFAULT_MAX_CEILING_CENTS = 100000;
+export const DEFAULT_MAX_CEILING_CENTS = 10000000;
 
 // @public
 export type Direction = 'client' | 'server';

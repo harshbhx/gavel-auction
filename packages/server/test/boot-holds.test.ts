@@ -402,7 +402,7 @@ describe('hold routes in the production composition (HRD-69, issue 1074)', () =>
       const { url, bo, hold, ceilingOf } = await registeredAda();
       expect((await hold(30000)).created.status).toBe(409);
       expect((await hold(20000)).created.status).toBe(409);
-      const over = await hold(100001);
+      const over = await hold(10_000_001);
       expect(over.created.status).toBe(400);
       expect(await holdError(over.created)).toBe('ceiling_out_of_range');
       expect(await ceilingOf()).toBe(30000);
