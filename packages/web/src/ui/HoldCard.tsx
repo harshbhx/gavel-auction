@@ -96,20 +96,20 @@ export function HoldCard({
         {state === 'released' && <i className="ui-holdbar__released ui-holdbar__released--full" />}
       </div>
       {legend && (
-      <ul className="ui-legend" aria-label={t('ui.hold.legend')}>
-        <li>
-          <i className="ui-legend__held" />
-          {t('ui.hold.legendHeld')}
-        </li>
-        <li>
-          <i className="ui-legend__charged" />
-          {t('ui.hold.legendCharged')}
-        </li>
-        <li>
-          <i className="ui-legend__released" />
-          {t('ui.hold.legendReleased')}
-        </li>
-      </ul>
+        <ul className="ui-legend" aria-label={t('ui.hold.legend')}>
+          <li>
+            <i className="ui-legend__held" />
+            {t('ui.hold.legendHeld')}
+          </li>
+          <li>
+            <i className="ui-legend__charged" />
+            {t('ui.hold.legendCharged')}
+          </li>
+          <li>
+            <i className="ui-legend__released" />
+            {t('ui.hold.legendReleased')}
+          </li>
+        </ul>
       )}
     </section>
   );

@@ -358,9 +358,7 @@ export function BidScreen({
           }}
         >
           <p className="bid__barprice" data-testid="bid-bar-price">
-            <span>
-              {t('bid.barNow', { price: formatUsd(price?.currentCents ?? reserve) })}
-            </span>
+            <span>{t('bid.barNow', { price: formatUsd(price?.currentCents ?? reserve) })}</span>
             {ceiling !== null && (
               <span>{t('bid.barLimit', { max: formatUsdCompact(ceiling) })}</span>
             )}
