@@ -1,6 +1,6 @@
 # PageSpeed Insights: landing page, 10 Nov 2026
 
-Measured by Harsh (harshbhx) by hand on the public PageSpeed Insights site, not by a CI job.
+Measured by the project owner by hand on the public PageSpeed Insights site, not by a CI job.
 
 | Field         | Value                                                                                   |
 | ------------- | --------------------------------------------------------------------------------------- |
