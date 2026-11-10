@@ -58,6 +58,7 @@ import { createExportHandler } from '../http/export';
 import { createGateway } from '../host/gateway';
 import { createAudioHost, AUDIO_PATH } from '../host/audio-ws';
 import { createNodeWsHost, type UpgradeDenied } from '../host/node-ws';
+import { DEMO_TIMELINE } from '@gavel/voice';
 import { chooseStt } from '../voice/stt';
 import { createHealthRoutes, createVersionRoute, resolveSha } from '../http/health';
 import { createMetricsRoute } from '../http/metrics';
@@ -137,6 +138,12 @@ type Env = Readonly<Record<string, string | undefined>>;
 export type ExtraRoutes = (req: IncomingMessage, res: ServerResponse) => Promise<boolean>;
 
 const DEMO_PATHS: readonly string[] = [DEMO_RESET_PATH, DEMO_SEED_PATH, DEMO_ROOMS_PATH];
+
+/** VOICE_STT unset, empty or `replay`: the host runs the cached speech provider. */
+function cachedVoice(raw: string | undefined): boolean {
+  const v = raw?.trim().toLowerCase();
+  return v === undefined || v === '' || v === 'replay';
+}
 
 function demoRoutesFor(
   handler: (req: IncomingMessage, res: ServerResponse) => Promise<void>,
@@ -645,12 +652,18 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
       GROQ_API_KEY: env['GROQ_API_KEY'],
       DEEPGRAM_API_KEY: env['DEEPGRAM_API_KEY'],
     },
-    { log: (message, fields) => log.warn(message, fields) },
+    {
+      log: (message, fields) => log.warn(message, fields),
+      // Cached mode plays the recorded demo run, so the console's replay control has something to
+      // play. A named live provider never gets it: its failover must stay mute (see chooseStt).
+      ...(cachedVoice(config.VOICE_STT) ? { timeline: DEMO_TIMELINE } : {}),
+    },
   );
   // Judge rooms (R-JRM): key-less real sandbox rooms behind JUDGE_ROOMS=1; config refuses the
   // flag with live PayPal. The create route is mounted always and answers 404 while it is off.
   const judgeRooms = createJudgeRooms({
     voiceLive: () => stt.name === 'groq' || stt.name === 'deepgram',
+    voiceReplay: () => stt.name === 'replay' && cachedVoice(config.VOICE_STT),
     enabled: config.JUDGE_ROOMS,
     paused: config.JUDGE_ROOMS_PAUSED,
     maxLive: config.JUDGE_ROOMS_MAX,

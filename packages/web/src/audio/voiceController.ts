@@ -55,6 +55,8 @@ export interface VoiceState {
   problem: VoiceProblem | null;
   /** A short notice that is not a failure. */
   note: 'confirmExpired' | 'maxClip' | null;
+  /** The recorded demo is playing: the host reads its own cached transcripts, no microphone is used. */
+  replay: boolean;
 }
 
 export interface VoiceOptions {
@@ -74,6 +76,7 @@ const IDLE: VoiceState = {
   stt: null,
   problem: null,
   note: null,
+  replay: false,
 };
 
 /**
@@ -179,6 +182,7 @@ export class VoiceController {
       level: 0,
       problem,
       note: null,
+      replay: false,
     });
   }
 
@@ -264,6 +268,53 @@ export class VoiceController {
     if (gen !== this.gen) {
       this.mic.stop();
       this.mic = null;
+    }
+  }
+
+  /**
+   * Plays the host's recorded demo (cached speech mode): the same audio socket and the same host
+   * pipeline, but no microphone and no audio sent. The host answers with captions at the recorded
+   * offsets and decides bids as it would for live speech. Stops with the session limit or `stop`.
+   */
+  replay(): void {
+    if (this.state.phase !== 'off') return;
+    const gen = (this.gen += 1);
+    this.seq = 0;
+    this.discontinuity = false;
+    this.batcher = new Batcher();
+    this.micLive = false;
+    this.socketReady = false;
+    this.startedAt = this.now();
+    this.lastSpeechAt = this.startedAt;
+    this.lastActiveAt = this.startedAt;
+    this.lastSendAt = this.startedAt;
+    this.set({
+      phase: 'connecting',
+      talking: false,
+      level: 0,
+      caption: null,
+      stt: null,
+      problem: null,
+      note: null,
+      replay: true,
+    });
+    try {
+      this.socket = openAudioSocket(audioSocketUrl(this.o.apiBase, this.o.roomId), this.o.token, {
+        onReady: () => {
+          if (gen !== this.gen) return;
+          this.socketReady = true;
+          this.set({ phase: 'ready' });
+          this.timer = setInterval(() => this.tick(), TICK_MS);
+        },
+        onFeed: (msg) => {
+          if (gen === this.gen) this.onFeed(msg);
+        },
+        onClose: (problem) => {
+          if (gen === this.gen && problem !== null) this.stop(problem);
+        },
+      });
+    } catch {
+      this.stop('lost');
     }
   }
 
@@ -356,6 +407,10 @@ export class VoiceController {
     if (this.state.phase !== 'ready') return;
     const now = this.now();
     if (now - this.startedAt >= MAX_SESSION_MS) return this.stop('maxSession');
+    if (this.state.replay) {
+      if (now - this.lastSendAt >= KEEPALIVE_MS) this.sendKeepalive(FLAG_KEEPALIVE);
+      return;
+    }
     if (this.mode === 'toggle' && now - this.lastSpeechAt >= SILENCE_CUTOFF_MS) {
       return this.stop('silence');
     }

@@ -797,6 +797,16 @@ export const en = {
   'console.mic.reason.checking': 'Checking whether this server can read speech',
   'console.mic.reason.off':
     'Voice is off on this server: no speech service is set up. Use manual entry.',
+  'console.mic.reason.replay':
+    'Live speech is off on this server. Play the recorded demo instead, or use manual entry.',
+  'replay.frames.agree': 'The hammer price in this replay matches the ledger.',
+  'replay.frames.disagree':
+    'The hammer price in this replay does not match the ledger (hammer {n}). The ledger is the record; do not rely on the frames.',
+  'console.replay.start': 'Play recorded voice demo',
+  'console.replay.stop': 'Stop recorded demo',
+  'console.replay.hint':
+    'Plays three recorded bids through the same pipeline as live speech. No microphone is used. Each bid still goes to the bidder as a question.',
+  'console.replay.running': 'Recorded demo playing',
   'console.mic.reason.unreachable': 'Could not ask the server about voice. Use manual entry.',
   'console.mic.reason.scripted': 'Voice is not part of the scripted demo. Use manual entry.',
   'console.mic.reason.closed': 'The lot is closed, so the microphone is off.',

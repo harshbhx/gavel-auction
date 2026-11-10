@@ -5,6 +5,7 @@ import { publicSource } from '../../ladder/fromWire';
 import { ScenarioTransport } from '../../net/scenarioTransport';
 import { RoomStore, useRoom } from '../../store/roomStore';
 import { ChainCheck } from '../../chain/ChainCheck';
+import { frameAgreement } from '../../chain/frameAgreement';
 import { t } from '../../copy/t';
 import { formatUsd } from '../../util/money';
 import { ScreenView } from '../screen/ScreenView';
@@ -89,11 +90,21 @@ export default function ReplayScreen({
       {phase.kind === 'ready' && (
         <>
           <ChainCheck ledger={phase.ledger} allowFile />
+          <FrameAgreementNote bundle={phase.bundle} ledger={phase.ledger} />
           <ReplayPlayer bundle={phase.bundle} autoplay={autoplay} createMedia={createMedia} />
         </>
       )}
     </div>
   );
+}
+
+function FrameAgreementNote({ bundle, ledger }: { bundle: ReplayBundle; ledger: unknown }) {
+  const agreement = useMemo(() => frameAgreement(bundle, ledger), [bundle, ledger]);
+  if (agreement.kind === 'agree') return <p role="status">{t('replay.frames.agree')}</p>;
+  if (agreement.kind === 'disagree') {
+    return <p role="alert">{t('replay.frames.disagree', { n: agreement.hammer })}</p>;
+  }
+  return null;
 }
 
 function ReplayPlayer({
