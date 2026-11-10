@@ -63,7 +63,7 @@ describe('registration validation (T-WEB-031)', () => {
 
     const approve = (): HTMLElement => screen.getByRole('button', { name: t('reg.approve') });
     expect(approve().getAttribute('aria-disabled')).toBe('true');
-    expect(screen.queryByTestId('held-block')).toBeNull();
+    expect(screen.getByTestId('held-block').textContent).not.toContain('The rest is released');
 
     fireEvent.click(screen.getByLabelText('$250'));
     const block = screen.getByTestId('held-block');
@@ -84,7 +84,7 @@ describe('registration validation (T-WEB-031)', () => {
     fireEvent.change(field, { target: { value: '1001' } });
     fireEvent.blur(field);
     expect(screen.getByRole('alert').textContent).toContain(t('reg.overCap', { max: '$1,000' }));
-    expect(screen.queryByTestId('held-block')).toBeNull();
+    expect(screen.getByTestId('held-block').textContent).not.toContain('The rest is released');
   });
 });
 
@@ -102,5 +102,26 @@ describe('ceiling slider', () => {
     const draft = onApprove.mock.calls[0]?.[0] as { ceilingCents: number };
     expect(draft.ceilingCents % 100).toBe(0);
     expect(draft.ceilingCents).toBeLessThan(100000);
+  });
+});
+
+describe('registration reasons for disabled buttons', () => {
+  it('says why Continue is off while the name is empty', () => {
+    setup();
+    expect(screen.getByTestId('continue-reason').textContent).toBe(t('reg.continueReason'));
+    fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
+    expect(screen.queryByTestId('continue-reason')).toBeNull();
+  });
+
+  it('says why Approve is off until a limit is chosen and shows the held block with the range', () => {
+    setup();
+    fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
+    fireEvent.click(continueButton());
+    expect(screen.getByText(t('reg.chooseFirst'))).toBeTruthy();
+    expect(screen.getByTestId('held-block').textContent).toContain(
+      t('reg.heldExplainRange', { min: '$100', max: '$1,000' }),
+    );
+    fireEvent.click(screen.getByLabelText('$250'));
+    expect(screen.queryByText(t('reg.chooseFirst'))).toBeNull();
   });
 });
