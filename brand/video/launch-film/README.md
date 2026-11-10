@@ -5,12 +5,12 @@ every line on screen. The product chapters are a recording of the real web app; 
 are type and graphics in the brand's motion language. Built by Harsh Bhanushali and Dhairya Patel, credited in the
 intro, the hook and the outro. Storyboard, research and the motion language: [STORYBOARD.md](STORYBOARD.md).
 
-| File                                                         | What it is                                                     |
-| ------------------------------------------------------------ | -------------------------------------------------------------- |
-| `gavel-launch-film.mp4`                                      | H.264, 1920x1080, 60 fps, no audio track (committed under 50 MB) |
-| `gavel-launch-film-poster.png`                               | Poster, 1920x1080, the title card                              |
-| `gavel-launch-film.en.srt`                                   | Every on-screen line with timecodes, for YouTube captions or a voice-over later |
-| `timeline.json`                                              | Scene starts and caption times in seconds, machine readable    |
+| File                           | What it is                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------- |
+| `gavel-launch-film.mp4`        | H.264, 1920x1080, 60 fps, no audio track (committed under 50 MB)                |
+| `gavel-launch-film-poster.png` | Poster, 1920x1080, the title card                                               |
+| `gavel-launch-film.en.srt`     | Every on-screen line with timecodes, for YouTube captions or a voice-over later |
+| `timeline.json`                | Scene starts and caption times in seconds, machine readable                     |
 
 No third-party audio is used (the Devpost rules forbid copyrighted music). If a voice-over is added later, follow the SRT
 line by line and mux it without re-encoding the picture:

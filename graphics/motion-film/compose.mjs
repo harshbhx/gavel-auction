@@ -706,7 +706,7 @@ const letterSvg = letters.map((l) => l.replace(/fill="#1d1712"/g, 'fill="current
 const props = {
   fps: FPS,
   letters: letterSvg,
-  scenes: scenes.map(({ lines, ...sc }) => sc),
+  scenes: scenes.map(({ lines: _lines, ...sc }) => sc),
 };
 const propsFile = path.join(here, 'props.json');
 writeFileSync(propsFile, JSON.stringify(props));

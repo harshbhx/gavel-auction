@@ -706,7 +706,7 @@ export function Judges({ sc }: P) {
   const t = useT();
   const cmds = (sc.data.cmds as Cmd[] | undefined) ?? [];
   // the terminal types the commands and prints the real answers
-  let out: { text: string; color: string }[] = [];
+  const out: { text: string; color: string }[] = [];
   let t0 = 1.0;
   for (const cmd of cmds) {
     const cd = Math.min(1.5, cmd.c.length * 0.012 + 0.4);
@@ -821,7 +821,7 @@ export function Judges({ sc }: P) {
         color={ORANGE}
         upper={false}
       >
-        gavel.dualmindlab.tech/try · docs.gavel.dualmindlab.tech/docs/judges/call-the-api ·
+        gavel.dualmindlab.tech/try . docs.gavel.dualmindlab.tech/docs/judges/call-the-api .
         api.gavel.dualmindlab.tech
       </Rise>
     </AbsoluteFill>
