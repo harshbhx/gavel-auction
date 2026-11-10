@@ -1,6 +1,10 @@
 import { useEffect } from 'react';
 type ShortcutLabel =
-  'shortcuts.help' | 'console.open' | 'console.pause' | 'console.resume' | 'shortcuts.extend';
+  | 'shortcuts.help'
+  | 'console.open'
+  | 'console.pause'
+  | 'console.resume'
+  | 'shortcuts.extend';
 
 import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
