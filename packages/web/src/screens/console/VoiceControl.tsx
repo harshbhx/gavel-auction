@@ -91,6 +91,9 @@ const PLAIN_ENDS: readonly VoiceProblem[] = ['silence', 'idle', 'maxSession', 'h
 function reasonFor(capability: VoiceCapability, scripted: boolean, closed: boolean): string | null {
   if (scripted) return t('console.mic.reason.scripted');
   if (capability === 'checking') return t('console.mic.reason.checking');
+  if (capability === 'replay') {
+    return t(closed ? 'console.mic.reason.closed' : 'console.mic.reason.replay');
+  }
   if (capability === 'off') return t('console.mic.reason.off');
   if (capability === 'unreachable') return t('console.mic.reason.unreachable');
   if (closed) return t('console.mic.reason.closed');
@@ -119,7 +122,7 @@ export function VoiceControl({
   const serverReason = reasonFor(capability, scripted, closed);
   const unsupported = serverReason === null ? support : null;
   const disabled = serverReason !== null || unsupported !== null;
-  const active = state.phase !== 'off';
+  const active = state.phase !== 'off' && !state.replay;
   const hold = mode === 'hold';
 
   const keyDown = (ev: KeyboardEvent<HTMLButtonElement>): void => {
@@ -131,6 +134,13 @@ export function VoiceControl({
     if (!hold || (ev.key !== ' ' && ev.key !== 'Enter')) return;
     ev.preventDefault();
     voice.release();
+  };
+
+  // The recorded demo is for hosts without live speech; it never uses the microphone.
+  const replayOffered = capability === 'replay' && !scripted && !closed;
+  const replayToggle = (): void => {
+    if (state.replay) voice.stop();
+    else voice.replay();
   };
 
   const label = hold
@@ -188,6 +198,16 @@ export function VoiceControl({
           </Button>
         )}
       </div>
+      {replayOffered && (
+        <div className="gv-voice-control__replay">
+          <Button variant="outline" aria-pressed={state.replay} onClick={replayToggle}>
+            {t(state.replay ? 'console.replay.stop' : 'console.replay.start')}
+          </Button>
+          <p className="gv-voice-control__hint">
+            {t(state.replay ? 'console.replay.running' : 'console.replay.hint')}
+          </p>
+        </div>
+      )}
       {!disabled && (
         <p className="gv-voice-control__hint">
           {hold

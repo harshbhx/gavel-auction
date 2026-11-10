@@ -6,6 +6,8 @@ export interface VoiceControls {
   mode: VoiceMode;
   setMode: (mode: VoiceMode) => void;
   toggle: () => void;
+  /** Plays the host's recorded demo; no microphone. */
+  replay: () => void;
   press: () => void;
   release: () => void;
   stop: () => void;
@@ -19,6 +21,7 @@ const OFF: VoiceState = {
   stt: null,
   problem: null,
   note: null,
+  replay: false,
 };
 
 /**
@@ -57,6 +60,7 @@ export function useVoice(input: {
     mode,
     setMode,
     toggle: () => controller.toggle(),
+    replay: () => controller.replay(),
     press: () => controller.press(),
     release: () => controller.release(),
     stop: () => controller.stop(),
