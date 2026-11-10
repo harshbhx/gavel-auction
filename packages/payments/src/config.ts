@@ -22,7 +22,7 @@ export interface PaymentsConfig {
 
 export const DEFAULT_BASE_URL = 'https://api-m.sandbox.paypal.com';
 export const DEFAULT_FAKE_BASE_URL = 'http://127.0.0.1';
-export const DEFAULT_MAX_CEILING_CENTS = 100000;
+export const DEFAULT_MAX_CEILING_CENTS = 10_000_000;
 export const DEFAULT_HOLD_MAX_AGE_MS = 7200000;
 
 /**

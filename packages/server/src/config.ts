@@ -131,7 +131,7 @@ const EnvObject = z.object({
    * cached provider when they fail.
    */
   VOICE_STT: z.enum(['replay', 'fake', 'groq', 'deepgram']).optional(),
-  /** In the range the engine can run: MIN_CEILING_CENTS..MAX_CEILING_CENTS_LIMIT (default 100000). */
+  /** In the range the engine can run: MIN_CEILING_CENTS..MAX_CEILING_CENTS_LIMIT (default 10000000, $100,000). */
   GAVEL_MAX_CEILING_CENTS: int(1)
     .pipe(
       z
