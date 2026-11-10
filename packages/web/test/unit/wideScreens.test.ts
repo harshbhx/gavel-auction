@@ -70,7 +70,7 @@ describe('wide first screens (FIX-66)', () => {
   it('sizes the full-height bidder and public screens with dvh, with a vh fallback', () => {
     for (const file of ['screens/bid/bid.css', 'screens/screen/screen.css']) {
       const source = readFileSync(new URL(`../../src/${file}`, import.meta.url), 'utf8');
-      expect(source).toMatch(/100vh;\s*\n\s*(?:min-)?height: 100dvh;/);
+      expect(source).toMatch(/100vh[^;\n]*;\s*\n\s*(?:min-)?height: (?:calc\()?100dvh/);
     }
   });
 });

@@ -42,6 +42,20 @@ test.describe('screen', () => {
     await shoot('screen', 'lobby-not-opened');
   });
 
+  test('live, nothing wider than the viewport and the QR code whole', async ({ page, shoot }) => {
+    await screen(page, { scenario: happy, at: HAPPY.outbid });
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+    const qr = await page.locator('.gv-screen__join svg').boundingBox();
+    const view = page.viewportSize();
+    if (qr === null || view === null) throw new Error('QR code or viewport missing');
+    expect(qr.x).toBeGreaterThanOrEqual(0);
+    expect(qr.x + qr.width).toBeLessThanOrEqual(view.width);
+    await shoot('screen', 'live-fits');
+  });
+
   test('lobby, open with no bids', async ({ page, shoot }) => {
     await screen(page, { scenario: noBids, at: 0 });
     await shoot('screen', 'lobby-no-bids');
