@@ -39,7 +39,7 @@ describe('raising a limit during an open lot', () => {
     ).toBe('bad_ceiling');
   });
 
-  it('UIX-59 a limit above $1000 registers and raises on the default cap', () => {
+  it('T-ENG-032 R-ENG-040 UIX-59 a limit above $1000 registers and raises on the default cap', () => {
     const s = open(scene(), L1);
     const big = run(s, mk(300, { type: 'RegisterBidder', bidderId: A, ceilingCents: 250_000 }));
     expect(big.state.bidders[A]?.ceilingCents).toBe(250_000);

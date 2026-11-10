@@ -22,7 +22,7 @@ describe('policy', () => {
     expect(checkCeiling(Number.NaN, 100000)).toBe('bad_ceiling');
   });
 
-  it('UIX-59: the default cap lets a bidder type a limit above $1000, and refuses past it', () => {
+  it('T-ENG-013 R-ENG-040 UIX-59: the default cap lets a bidder type a limit above $1000, and refuses past it', () => {
     expect(checkCeiling(100_001, DEFAULT_MAX_CEILING_CENTS)).toBe('ok');
     expect(checkCeiling(250_000, DEFAULT_MAX_CEILING_CENTS)).toBe('ok');
     expect(checkCeiling(DEFAULT_MAX_CEILING_CENTS, DEFAULT_MAX_CEILING_CENTS)).toBe('ok');
