@@ -668,3 +668,53 @@
 .gv-voice__level::-moz-meter-bar {
   background: var(--color-accent);
 }
+
+/* One screen on a laptop (1000 px wide, 640 px tall and up): the console takes the height the
+ * browser gives it, the rows share it, and whatever does not fit scrolls inside its own panel,
+ * never the page. The stop card and the ladder strip stay at the bottom. Phones keep the stack. */
+@media (min-width: 1000px) and (min-height: 640px) {
+  .gv-console[data-layout='wide'] {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    /* The sandbox banner and the page margin above the console. */
+    height: calc(100vh - var(--gv-console-chrome, 100px));
+    height: calc(100dvh - var(--gv-console-chrome, 100px));
+    overflow: hidden;
+    padding-block: var(--space-3);
+  }
+
+  [data-layout='wide'] .gv-console-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1.1fr) minmax(0, 1fr) auto;
+    gap: var(--space-3);
+  }
+
+  [data-layout='wide'] .gv-console-grid > *,
+  [data-layout='wide'] .gv-console-stack > * {
+    min-height: 0;
+  }
+
+  [data-layout='wide'] .gv-console-panel {
+    padding: var(--space-3);
+    overflow-y: auto;
+  }
+
+  [data-layout='wide'] .gv-console-stack {
+    gap: var(--space-3);
+    overflow: hidden;
+  }
+
+  [data-layout='wide'] .gv-console-stack > .gv-console-panel--stream {
+    flex: 1 1 0;
+  }
+
+  [data-layout='wide'] .gv-console-strip {
+    flex: 0 0 auto;
+    margin-top: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    max-height: 20dvh;
+    overflow-y: auto;
+  }
+}

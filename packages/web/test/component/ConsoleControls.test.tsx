@@ -153,7 +153,7 @@ describe('Controls', () => {
 
 describe('HammerDialog', () => {
   const leader = { paddle: 7, name: 'Ada' };
-  it('sends once at 800 ms, not at 799 ms, and never on click', () => {
+  it('sends once at 3 s, not at 2.999 s, and never on click', () => {
     const onConfirm = vi.fn();
     render(
       <HammerDialog
@@ -169,7 +169,7 @@ describe('HammerDialog', () => {
     expect(onConfirm).not.toHaveBeenCalled();
     fireEvent.pointerDown(btn);
     act(() => {
-      vi.advanceTimersByTime(799);
+      vi.advanceTimersByTime(2999);
     });
     expect(onConfirm).not.toHaveBeenCalled();
     act(() => {
@@ -213,7 +213,7 @@ describe('HammerDialog', () => {
     fireEvent.keyDown(btn, { key: 'Enter' });
     fireEvent.keyDown(btn, { key: 'Enter', repeat: true });
     act(() => {
-      vi.advanceTimersByTime(800);
+      vi.advanceTimersByTime(3000);
     });
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });

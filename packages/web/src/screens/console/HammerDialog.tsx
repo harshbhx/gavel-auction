@@ -4,7 +4,7 @@ import { Button, type ButtonTone } from '../../design/primitives/Button';
 import { Dialog } from '../../design/primitives/Dialog';
 import { formatUsd } from '../../util/money';
 
-export const HAMMER_HOLD_MS = 800;
+export const HAMMER_HOLD_MS = 3000;
 
 export interface HoldButtonProps {
   readonly label: string;

@@ -56,7 +56,25 @@ describe('control bar slots (UIX-46)', () => {
     expect(reasons.length).toBeGreaterThan(0);
     reasons.forEach((r) => expect(r.classList.contains('gv-sr-only')).toBe(true));
     const line = document.querySelector('[data-slot="control-reason"]');
-    expect(line?.textContent).toBe(t('controls.reason.alreadyOpen'));
+    expect(line?.textContent).toBe('');
+  });
+
+  it('Extend works while the lot is open and never says it is already open', async () => {
+    const port = fakePort();
+    render(bar('OPEN', port));
+    const extend = screen.getByRole('button', { name: t('console.extend', { s: 30 }) });
+    expect(extend.getAttribute('aria-disabled')).toBeNull();
+    fireEvent.focus(extend);
+    const line = document.querySelector('[data-slot="control-reason"]');
+    expect(line?.textContent).toBe('');
+    await act(async () => {
+      fireEvent.click(extend);
+      await Promise.resolve();
+    });
+    expect(port.extend).toHaveBeenCalledWith(30_000);
+    expect(port.open).not.toHaveBeenCalled();
+    // The reason line (visible) stays empty; the disabled Open button keeps its spoken reason only.
+    expect(document.querySelector('[data-slot="control-reason"]')?.textContent).toBe('');
   });
 
   it('keeps the same slots while a request is in flight and spins inside the clicked one', async () => {
