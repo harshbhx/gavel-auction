@@ -13,5 +13,5 @@ export const MIN_CEILING_CENTS = 100;
 /** Largest cap the engine can run (GAVEL_MAX_CEILING_CENTS must be MIN_CEILING_CENTS..this). */
 export const MAX_CEILING_CENTS_LIMIT = 100_000_000;
 
-/** Default cap on a ceiling, in cents; the largest preset must fit under it. */
-export const DEFAULT_MAX_CEILING_CENTS = 100000;
+/** Default cap on a ceiling, in cents ($100,000, sandbox); the largest preset must fit under it. */
+export const DEFAULT_MAX_CEILING_CENTS = 10_000_000;

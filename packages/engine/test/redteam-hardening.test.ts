@@ -217,7 +217,7 @@ describe('red-team hardening (engine)', () => {
     expect(validateLotConfig({ ...base, increment: { flatCents: 2 ** 53 - 1 } }).ok).toBe(false);
     expect(validateLotConfig({ ...base, reserveCents: 100_000_000 }).ok).toBe(true);
     const s = scene();
-    const big = mk(9, { type: 'AddLot', lot: lotConfig(id('M8'), { reserveCents: 100_001 }) });
+    const big = mk(9, { type: 'AddLot', lot: lotConfig(id('M8'), { reserveCents: 10_000_001 }) });
     expect(errCode(() => decide(s, big))).toBe('bad_command');
   });
 

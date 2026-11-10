@@ -11,7 +11,7 @@ export type Result<T, E> = { ok: true; value: T } | { ok: false; errors: E };
 export const DEFAULT_AUCTION_CONFIG: AuctionConfig = {
   currency: 'USD',
   holdScope: 'event',
-  maxCeilingCents: 100000,
+  maxCeilingCents: 10_000_000,
   confirmBelowBps: 8500,
   fallbackPolicy: 'runner_up',
   maxFallbackDepth: 2,

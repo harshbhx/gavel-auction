@@ -5,7 +5,7 @@ export const CEILING_PRESETS_CENTS = [10000, 25000, 50000, 100000] as const;
 export const MIN_CEILING_CENTS = 100;
 
 /** Sandbox demo cap used as the default `maxCeilingCents`. */
-export const DEFAULT_MAX_CEILING_CENTS = 100000;
+export const DEFAULT_MAX_CEILING_CENTS = 10_000_000;
 
 /** R-ENG-040: a ceiling must be an integer within [MIN_CEILING_CENTS, max]. */
 export function checkCeiling(cents: number, max: number): 'ok' | 'bad_ceiling' {

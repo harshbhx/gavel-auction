@@ -133,6 +133,29 @@ describe('raising a limit from the bid screen (FEAT-61)', () => {
     expect(screen.getByTestId('bid-bar')).toBeTruthy();
   });
 
+  it('raises past $1,000 on a room with a $100,000 cap and refuses past the cap (UIX-59)', async () => {
+    const { port, starts } = heldPort();
+    render(
+      <BidScreen
+        store={storeFor({ ceiling: 40_000, cap: 10_000_000 })}
+        onBid={() => undefined}
+        raise={raise(port)}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: t('raise.cta') }));
+    const box = screen.getByRole('textbox', { name: t('reg.custom') }) as HTMLInputElement;
+    const slider = screen.getByRole('slider');
+    fireEvent.change(box, { target: { value: '25000' } });
+    expect(slider.getAttribute('aria-valuemax')).toBe('2500000');
+    expect(screen.queryByRole('alert')).toBeNull();
+    fireEvent.change(box, { target: { value: '100001' } });
+    expect(screen.getByRole('alert').textContent).toContain(t('reg.overCap', { max: '$100,000' }));
+    fireEvent.change(box, { target: { value: '25000' } });
+    confirmHold();
+    await waitFor(() => expect(starts).toHaveLength(1));
+    expect(starts[0]).toMatchObject({ ceilingCents: 2_500_000 });
+  });
+
   it('keeps the typed limit when the bidder goes back from the approval (#2394)', async () => {
     const port: PaymentApprovalPort = {
       start: (_req, on) => {

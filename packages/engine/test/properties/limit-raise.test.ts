@@ -42,7 +42,10 @@ describe('limit raise properties', () => {
     fc.assert(
       fc.property(fc.array(op, { minLength: 1, maxLength: 40 }), (list) => {
         const base = open(
-          scene({ lots: [lotConfig(L1, { durationMs: 1_000_000 })] }),
+          scene({
+            lots: [lotConfig(L1, { durationMs: 1_000_000 })],
+            config: { maxCeilingCents: CAP },
+          }),
           L1,
           OPENED_AT,
         );

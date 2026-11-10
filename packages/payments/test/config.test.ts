@@ -11,7 +11,7 @@ const base = {
 describe('config', () => {
   it('applies defaults', () => {
     const c = loadConfig(base);
-    expect(c.maxCeilingCents).toBe(100000);
+    expect(c.maxCeilingCents).toBe(10_000_000);
     expect(c.holdMaxAgeMs).toBe(7200000);
     expect(c.baseUrl).toBe('https://api-m.sandbox.paypal.com');
     expect(c.fake).toBe(false);
