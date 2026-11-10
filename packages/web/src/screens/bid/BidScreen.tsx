@@ -91,6 +91,8 @@ export interface BidScreenProps {
   onJoinCode?: () => void;
   /** Winner pop-up: "View receipt". */
   onReceipt?: () => void;
+  /** Lot title from the room's public summary, used while the live snapshot has none. */
+  lotTitleFallback?: string | null;
   /** A recording plays instead of a room: bids cannot be taken, so the controls give the reason. */
   recorded?: boolean;
   /** Sends a bidder with no registered hold back to registration. */
@@ -123,6 +125,7 @@ export function BidScreen({
   onConfirm,
   stopped = false,
   onJoin,
+  lotTitleFallback = null,
   recorded = false,
   onHome,
   onJoinCode,
@@ -272,19 +275,6 @@ export function BidScreen({
         <StatusChip status={status} />
       </div>
 
-      <div className="bid__prefs">
-        <label className="bid__vibrate">
-          <input type="checkbox" checked={vibrate} onChange={(e) => setVibrate(e.target.checked)} />
-          <span>{t('bid.vibrate')}</span>
-        </label>
-        <MuteToggle />
-      </div>
-
-      <section className="bid__lot">
-        <LotBlock title={lotTitle} />
-        {price === null && <p className="bid__wait">{t('bid.waitingLot')}</p>}
-      </section>
-
       <section aria-label={t('bid.price')} className="bid__panel bid__priceboard">
         <h1 tabIndex={-1} className="bid__kicker">
           {t('bid.price')}
@@ -299,13 +289,27 @@ export function BidScreen({
         {leader !== null && <p className="bid__leader">{leader}</p>}
       </section>
 
+      <section className="bid__lot">
+        <LotBlock title={lotTitle ?? lotTitleFallback} />
+        {price === null && <p className="bid__wait">{t('bid.waitingLot')}</p>}
+      </section>
+
       {ceilingHold !== null && (
         <HoldCard
           state="held"
+          legend={false}
           ceilingCents={ceilingHold}
           {...(myPaddle === undefined ? {} : { caption: t('reg.yourPaddle', { n: myPaddle }) })}
         />
       )}
+
+      <div className="bid__prefs">
+        <label className="bid__vibrate">
+          <input type="checkbox" checked={vibrate} onChange={(e) => setVibrate(e.target.checked)} />
+          <span>{t('bid.vibrate')}</span>
+        </label>
+        <MuteToggle />
+      </div>
 
       {canRaise && (
         <section className="bid__raise" data-testid="raise-limit">
@@ -365,6 +369,12 @@ export function BidScreen({
             paddingBottom: 'env(safe-area-inset-bottom)',
           }}
         >
+          <p className="bid__barprice" data-testid="bid-bar-price">
+            <span>{t('bid.barNow', { price: formatUsd(price?.currentCents ?? reserve) })}</span>
+            {ceiling !== null && (
+              <span>{t('bid.barLimit', { max: formatUsdCompact(ceiling) })}</span>
+            )}
+          </p>
           <QuickBid
             nextMinCents={nextMin}
             incrementCents={increment}
@@ -376,6 +386,7 @@ export function BidScreen({
             ceilingCents={ceiling}
             incrementCents={increment}
             onBid={send}
+            {...(canRaise ? { onRaise: () => setRaising(true) } : {})}
           />
         </section>
       )}

@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://gavel.dualmindlab.tech/sitemap.xml
