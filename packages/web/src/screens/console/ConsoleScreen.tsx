@@ -66,7 +66,7 @@ function useWide(forced: boolean | undefined): boolean {
   return forced ?? wide;
 }
 
-/** Auctioneer console layout: two balanced columns from 1000 px, one column below. */
+/** Auctioneer console layout: one balanced grid from 1000 px, one column below. */
 export function ConsoleScreen({
   store = roomStore,
   settlementView,
@@ -143,17 +143,17 @@ export function ConsoleScreen({
 
   const floorPanel =
     floor === undefined ? null : (
-      <section className="gv-console-panel" aria-label={t('console.manual')}>
+      <section className="gv-console-panel gv-console-panel--floor" aria-label={t('console.manual')}>
         {floor}
       </section>
     );
   const biddersPanel =
-    bidders === undefined ? null : <div className="gv-console-panel">{bidders}</div>;
+    bidders === undefined ? null : <div className="gv-console-panel gv-console-panel--bidders">{bidders}</div>;
   const dangerZone =
-    danger === undefined ? null : <div className="gv-console-danger">{danger}</div>;
+    danger === undefined ? null : <div className="gv-console-panel gv-console-panel--danger gv-console-danger">{danger}</div>;
 
   const centre = (
-    <section className="gv-console-panel" aria-label={t('console.stream')}>
+    <section className="gv-console-panel gv-console-panel--stream" aria-label={t('console.stream')}>
       <h2 className="ui-kicker">{t('console.stream')}</h2>
       {audit.length > 0 ? (
         <BidHistory
@@ -183,10 +183,10 @@ export function ConsoleScreen({
   );
 
   const right = (
-    <section className="gv-console-panel" aria-label={t('console.voice')}>
+    <section className="gv-console-panel gv-console-panel--voice" aria-label={t('console.voice')}>
       <h2 className="ui-kicker">{t('console.voice')}</h2>
       {voiceFeed}
-      <h2 className="ui-kicker">{t('console.confirmQueue')}</h2>
+      <h2 className="ui-kicker gv-console-panel__sub">{t('console.confirmQueue')}</h2>
       <ConfirmQueue requests={confirms} now={now} onAnswer={onConfirmAnswer ?? noAnswer} />
     </section>
   );
@@ -203,17 +203,15 @@ export function ConsoleScreen({
         <h1 className="gv-sr-only">{t('demo.roleConsole')}</h1>
         <FakePaymentsLabel />
         {skew}
-        <div className="gv-console-columns" data-testid="console-columns">
-          <div className="gv-console-col" data-col="lot">
-            {left}
-            {right}
-            {dangerZone}
-          </div>
-          <div className="gv-console-col" data-col="floor">
+        <div className="gv-console-grid" data-testid="console-columns">
+          {left}
+          <div className="gv-console-stack" data-area="floor">
             {floorPanel}
             {centre}
-            {biddersPanel}
           </div>
+          {right}
+          {biddersPanel}
+          {dangerZone}
         </div>
         {strip}
       </main>
