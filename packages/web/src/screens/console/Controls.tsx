@@ -89,7 +89,8 @@ function firstReason(s: ControlState): ReasonKey | null {
   }
   if (s.status === 'SCHEDULED') return 'controls.reason.openFirst';
   if (s.status === 'PAUSED') return 'controls.reason.paused';
-  if (s.status === 'OPEN') return 'controls.reason.alreadyOpen';
+  // An open lot has nothing to explain: the controls that work are simply enabled.
+  if (s.status === 'OPEN') return null;
   return 'controls.reason.ended';
 }
 
@@ -233,7 +234,8 @@ export function Controls({
   // else the reason that holds for the lot as a whole. Never one line per button.
   const aimedReason = aimed === null ? null : disabledReason(aimed, state);
   const lotReason = firstReason(state);
-  const reasonLine = aimedReason ?? lotReason;
+  // An enabled control that is aimed at has no reason; it must not fall back to the lot-wide line.
+  const reasonLine = aimed === null ? lotReason : aimedReason;
 
   return (
     <div className="gv-console-controls">

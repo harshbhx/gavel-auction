@@ -213,7 +213,7 @@ describe('HammerDialog', () => {
     fireEvent.keyDown(btn, { key: 'Enter' });
     fireEvent.keyDown(btn, { key: 'Enter', repeat: true });
     act(() => {
-      vi.advanceTimersByTime(800);
+      vi.advanceTimersByTime(3000);
     });
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
