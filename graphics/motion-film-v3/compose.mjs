@@ -8,7 +8,16 @@
 //    MP4 passes MAX_MB (56, so the voice-over copy stays under 60 MB).
 // 3. Full cuts also get a voice-over copy of each MP4 (the picture is copied, audio/voiceover.mp3 is added).
 //    The captions are burned into the picture by the Film composition (src/captions.tsx).
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,7 +39,11 @@ const H = Math.round(1080 * SCALE);
 const sh = (cmd, args, label = cmd, opts = {}) => {
   log('$', cmd, args.join(' ').slice(0, 160));
   try {
-    return execFileSync(cmd, args, { stdio: opts.capture ? 'pipe' : 'inherit', cwd: here, ...opts });
+    return execFileSync(cmd, args, {
+      stdio: opts.capture ? 'pipe' : 'inherit',
+      cwd: here,
+      ...opts,
+    });
   } catch {
     throw new Error(`${label} failed`);
   }
@@ -51,14 +64,18 @@ const scenes = ids.map((id) => {
 });
 const total = scenes.reduce((n, s) => n + s.dur, 0);
 const full = ids.length === table.length;
-log(`${scenes.length} scenes, ${total.toFixed(1)} s at ${FPS} fps, ${W}x${H}${full ? '' : ' (subset)'}`);
-if (full && (total < 150 || total > 170)) warn.push(`duration ${total.toFixed(1)} s is outside 2:30 to 2:50`);
+log(
+  `${scenes.length} scenes, ${total.toFixed(1)} s at ${FPS} fps, ${W}x${H}${full ? '' : ' (subset)'}`,
+);
+if (full && (total < 150 || total > 170))
+  warn.push(`duration ${total.toFixed(1)} s is outside 2:30 to 2:50`);
 
 const lockup = readFileSync(path.join(root, 'brand/svg/lockup-h-color.svg'), 'utf8');
 const letters = [
   ...lockup.matchAll(/<g><g transform="translate\(([\d.]+) 0\)">([\s\S]*?)<\/g><\/g>/g),
 ].map((x) => `<g transform="translate(${x[1]} 0)">${x[2]}</g>`);
-if (letters.length !== 5) throw new Error('expected 5 wordmark letters in brand/svg/lockup-h-color.svg');
+if (letters.length !== 5)
+  throw new Error('expected 5 wordmark letters in brand/svg/lockup-h-color.svg');
 const letterSvg = letters.map((l) => l.replace(/fill="#1d1712"/g, 'fill="currentColor"'));
 
 const props = { fps: FPS, ids, scale: SCALE, letters: letterSvg, sponsorLogos: SPONSOR_LOGOS };
@@ -68,7 +85,9 @@ writeFileSync(propsFile, JSON.stringify(props));
 const PUBLIC = path.join(here, 'public');
 rmSync(PUBLIC, { recursive: true, force: true });
 mkdirSync(PUBLIC, { recursive: true });
-cpSync(path.join(root, 'packages/web/src/design/fonts'), path.join(PUBLIC, 'fonts'), { recursive: true });
+cpSync(path.join(root, 'packages/web/src/design/fonts'), path.join(PUBLIC, 'fonts'), {
+  recursive: true,
+});
 cpSync(path.join(root, 'brand/svg'), path.join(PUBLIC, 'brand'), { recursive: true });
 if (existsSync(path.join(root, 'brand/partners')))
   cpSync(path.join(root, 'brand/partners'), path.join(PUBLIC, 'partners'), { recursive: true });
@@ -82,7 +101,19 @@ const frames = scenes.reduce((n, s) => n + Math.max(1, Math.round(s.dur * FPS)),
 const render = (out, range) =>
   sh(
     'npx',
-    ['remotion', 'render', 'Film', out, `--props=${propsFile}`, `--concurrency=${concurrency}`, '--crf=17', '--codec=h264', '--muted', '--log=info', ...(range ? [`--frames=${range}`] : [])],
+    [
+      'remotion',
+      'render',
+      'Film',
+      out,
+      `--props=${propsFile}`,
+      `--concurrency=${concurrency}`,
+      '--crf=17',
+      '--codec=h264',
+      '--muted',
+      '--log=info',
+      ...(range ? [`--frames=${range}`] : []),
+    ],
     'remotion render',
   );
 if (process.env.SHARD) {
@@ -95,13 +126,38 @@ if (process.env.SHARD) {
 }
 if (process.env.CHUNKS) {
   const dir = path.resolve(process.env.CHUNKS);
-  const chunks = readdirSync(dir).filter((f) => /^chunk-\d+\.mp4$/.test(f)).sort();
+  const chunks = readdirSync(dir)
+    .filter((f) => /^chunk-\d+\.mp4$/.test(f))
+    .sort();
   if (!chunks.length) throw new Error(`no chunk-*.mp4 in ${dir}`);
   const list = path.join(OUT, 'chunks.txt');
   writeFileSync(list, chunks.map((f) => `file '${path.join(dir, f)}'`).join('\n') + '\n');
-  ff(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', '-an', '-movflags', '+faststart', mp4], 'stitch');
+  ff(
+    ['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', '-an', '-movflags', '+faststart', mp4],
+    'stitch',
+  );
   rmSync(list);
-  const got = Number(sh('ffprobe', ['-v', 'error', '-count_packets', '-select_streams', 'v:0', '-show_entries', 'stream=nb_read_packets', '-of', 'csv=p=0', mp4], 'ffprobe', { capture: true }).toString().trim());
+  const got = Number(
+    sh(
+      'ffprobe',
+      [
+        '-v',
+        'error',
+        '-count_packets',
+        '-select_streams',
+        'v:0',
+        '-show_entries',
+        'stream=nb_read_packets',
+        '-of',
+        'csv=p=0',
+        mp4,
+      ],
+      'ffprobe',
+      { capture: true },
+    )
+      .toString()
+      .trim(),
+  );
   log(`stitched ${chunks.length} chunks, ${got} frames (expected ${frames})`);
   if (got !== frames) throw new Error(`stitched ${got} frames, expected ${frames}`);
 } else {
@@ -112,10 +168,37 @@ const size = (f) => statSync(f).size / 1048576;
 const cap = (src, dst, mb, vf) => {
   const kbps = Math.floor((mb * 8 * 1024) / total);
   log(`${path.basename(src)} is ${size(src).toFixed(1)} MB, re-encoding at ${kbps} kbps`);
-  const common = ['-c:v', 'libx264', '-preset', 'slow', '-b:v', `${kbps}k`, '-maxrate', `${Math.floor(kbps * 1.3)}k`, '-bufsize', `${kbps * 2}k`, '-an'];
+  const common = [
+    '-c:v',
+    'libx264',
+    '-preset',
+    'slow',
+    '-b:v',
+    `${kbps}k`,
+    '-maxrate',
+    `${Math.floor(kbps * 1.3)}k`,
+    '-bufsize',
+    `${kbps * 2}k`,
+    '-an',
+  ];
   const v = vf ? ['-vf', vf] : [];
   ff(['-i', src, ...v, ...common, '-pass', '1', '-f', 'mp4', '/dev/null'], 'pass 1');
-  ff(['-i', src, ...v, ...common, '-pass', '2', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', dst], 'pass 2');
+  ff(
+    [
+      '-i',
+      src,
+      ...v,
+      ...common,
+      '-pass',
+      '2',
+      '-pix_fmt',
+      'yuv420p',
+      '-movflags',
+      '+faststart',
+      dst,
+    ],
+    'pass 2',
+  );
 };
 const maxMb = full ? Number(process.env.MAX_MB || 56) : 12;
 if (size(mp4) > maxMb) {
@@ -128,7 +211,29 @@ if (size(mp4) > maxMb) {
 let share = null;
 if (SHARE && full) {
   share = path.join(OUT, `${NAME}-720p30.mp4`);
-  ff(['-i', mp4, '-vf', 'scale=1280:720:flags=lanczos', '-r', '30', '-c:v', 'libx264', '-preset', 'slow', '-crf', '25', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an', share], 'share 720p');
+  ff(
+    [
+      '-i',
+      mp4,
+      '-vf',
+      'scale=1280:720:flags=lanczos',
+      '-r',
+      '30',
+      '-c:v',
+      'libx264',
+      '-preset',
+      'slow',
+      '-crf',
+      '25',
+      '-pix_fmt',
+      'yuv420p',
+      '-movflags',
+      '+faststart',
+      '-an',
+      share,
+    ],
+    'share 720p',
+  );
   if (size(share) > 24) {
     const tmp = path.join(OUT, 'tmp-share.mp4');
     cap(mp4, tmp, 22, 'scale=1280:720:flags=lanczos,fps=30');
@@ -143,7 +248,34 @@ if (SHARE && full) {
 const VO = path.join(here, 'audio/voiceover.mp3');
 const withVoice = (src) => {
   const dst = src.replace(/\.mp4$/, '-voiceover.mp4');
-  ff(['-i', src, '-i', VO, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-af', 'apad', '-c:a', 'aac', '-b:a', '160k', '-ac', '2', '-t', total.toFixed(3), '-movflags', '+faststart', dst], 'voice-over mux');
+  ff(
+    [
+      '-i',
+      src,
+      '-i',
+      VO,
+      '-map',
+      '0:v:0',
+      '-map',
+      '1:a:0',
+      '-c:v',
+      'copy',
+      '-af',
+      'apad',
+      '-c:a',
+      'aac',
+      '-b:a',
+      '160k',
+      '-ac',
+      '2',
+      '-t',
+      total.toFixed(3),
+      '-movflags',
+      '+faststart',
+      dst,
+    ],
+    'voice-over mux',
+  );
   return dst;
 };
 let voiced = null;
@@ -155,7 +287,9 @@ if (full && existsSync(VO)) {
 
 // ----------------------------------------------------------------------------- timeline, SRT, poster, sheets
 // The captions are the narration cues (src/captions.json, film seconds), the same lines that are burned in.
-const cues = full ? JSON.parse(readFileSync(path.join(here, 'src/captions.json'), 'utf8')).cues : [];
+const cues = full
+  ? JSON.parse(readFileSync(path.join(here, 'src/captions.json'), 'utf8')).cues
+  : [];
 let cursor = 0;
 const timeline = [];
 for (const sc of scenes) {
@@ -175,20 +309,76 @@ for (const sc of timeline)
   for (const c of sc.caps) {
     n += 1;
     srt.push(`${n}\n${tc(c.a)} --> ${tc(c.b)}\n${c.text}\n`);
-    rows.push(`${String(n).padStart(2)}  ${tc(c.a)} --> ${tc(c.b)}  ${(c.b - c.a).toFixed(1)} s  [${sc.id}] ${c.text}`);
-    if (c.b - c.a < 0.8) warn.push(`caption ${n} [${sc.id}] shows ${(c.b - c.a).toFixed(1)} s (< 0.8 s)`);
+    rows.push(
+      `${String(n).padStart(2)}  ${tc(c.a)} --> ${tc(c.b)}  ${(c.b - c.a).toFixed(1)} s  [${sc.id}] ${c.text}`,
+    );
+    if (c.b - c.a < 0.8)
+      warn.push(`caption ${n} [${sc.id}] shows ${(c.b - c.a).toFixed(1)} s (< 0.8 s)`);
   }
 writeFileSync(path.join(OUT, `${NAME}.en.srt`), srt.join('\n'));
 writeFileSync(
   path.join(OUT, 'timeline.json'),
-  JSON.stringify({ name: NAME, fps: FPS, width: W, height: H, duration: +total.toFixed(3), bpm: 120, beat: 0.5, scenes: timeline }, null, 2),
+  JSON.stringify(
+    {
+      name: NAME,
+      fps: FPS,
+      width: W,
+      height: H,
+      duration: +total.toFixed(3),
+      bpm: 120,
+      beat: 0.5,
+      scenes: timeline,
+    },
+    null,
+    2,
+  ),
 );
 const title = timeline.find((s) => s.id === 'title') ?? timeline[0];
-ff(['-ss', ((title?.start ?? 0) + 3.8).toFixed(2), '-i', mp4, '-frames:v', '1', path.join(OUT, `${NAME}-poster.png`)], 'poster');
-ff(['-i', mp4, '-vf', 'fps=4,scale=320:180,tile=6x5:padding=4:color=0x1d1712', '-vsync', '0', path.join(OUT, 'contact-%02d.png')], 'contact');
+ff(
+  [
+    '-ss',
+    ((title?.start ?? 0) + 3.8).toFixed(2),
+    '-i',
+    mp4,
+    '-frames:v',
+    '1',
+    path.join(OUT, `${NAME}-poster.png`),
+  ],
+  'poster',
+);
+ff(
+  [
+    '-i',
+    mp4,
+    '-vf',
+    'fps=4,scale=320:180,tile=6x5:padding=4:color=0x1d1712',
+    '-vsync',
+    '0',
+    path.join(OUT, 'contact-%02d.png'),
+  ],
+  'contact',
+);
 
 // ----------------------------------------------------------------------------- frame-difference check (no static hold > 1 s)
-const grey = sh('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', mp4, '-vf', 'fps=4,scale=96:54', '-pix_fmt', 'gray', '-f', 'rawvideo', '-'], 'diff', { capture: true, maxBuffer: 1 << 28 });
+const grey = sh(
+  'ffmpeg',
+  [
+    '-hide_banner',
+    '-loglevel',
+    'error',
+    '-i',
+    mp4,
+    '-vf',
+    'fps=4,scale=96:54',
+    '-pix_fmt',
+    'gray',
+    '-f',
+    'rawvideo',
+    '-',
+  ],
+  'diff',
+  { capture: true, maxBuffer: 1 << 28 },
+);
 const F = 96 * 54;
 const count = Math.floor(grey.length / F);
 const diffs = [];
@@ -205,7 +395,7 @@ let run = 0;
 for (let i = 0; i < diffs.length; i += 1) {
   if (diffs[i] < THRESH) run += 1;
   else run = 0;
-  if (run === 4) holds.push(+(((i - 3) / 4)).toFixed(2));
+  if (run === 4) holds.push(+((i - 3) / 4).toFixed(2));
 }
 const sceneAt = (s) => timeline.find((x) => s >= x.start && s < x.start + x.dur)?.id ?? '?';
 for (const h of holds) warn.push(`static hold of 1 s or more at ${h.toFixed(2)} s [${sceneAt(h)}]`);
@@ -214,10 +404,14 @@ const meanDiff = diffs.reduce((a, b) => a + b, 0) / Math.max(1, diffs.length);
 const report = [
   `${NAME}: duration ${total.toFixed(1)} s, ${FPS} fps, ${W}x${H}${full ? '' : ` (scenes: ${ids.join(', ')})`}`,
   `mp4 ${size(mp4).toFixed(2)} MB${share ? `, share 720p30 ${size(share).toFixed(2)} MB` : ''}`,
-  voiced ? `voice-over ${size(voiced).toFixed(2)} MB${voicedShare ? `, share 720p30 ${size(voicedShare).toFixed(2)} MB` : ''}` : 'voice-over: not built',
+  voiced
+    ? `voice-over ${size(voiced).toFixed(2)} MB${voicedShare ? `, share 720p30 ${size(voicedShare).toFixed(2)} MB` : ''}`
+    : 'voice-over: not built',
   `motion: mean frame difference ${(meanDiff * 100).toFixed(2)} % at 4 fps, static holds (>= 1 s under ${THRESH * 100} %): ${holds.length}`,
   '',
-  ...timeline.map((s) => `${tc(s.start)}  ${s.dur.toFixed(1).padStart(5)} s  ${s.world.padEnd(5)}  ${s.id}`),
+  ...timeline.map(
+    (s) => `${tc(s.start)}  ${s.dur.toFixed(1).padStart(5)} s  ${s.world.padEnd(5)}  ${s.id}`,
+  ),
   '',
   ...rows,
   '',

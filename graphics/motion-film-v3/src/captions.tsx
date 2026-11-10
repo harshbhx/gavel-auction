@@ -13,7 +13,17 @@ export function Captions({ t }: { t: number }) {
   if (!cue) return null;
   const p = ENTER(cl((t - cue.a) / 0.2));
   return (
-    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 36, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+    <div
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 36,
+        display: 'flex',
+        justifyContent: 'center',
+        pointerEvents: 'none',
+      }}
+    >
       <div
         style={{
           maxWidth: 1680,

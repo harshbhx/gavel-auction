@@ -111,7 +111,9 @@ export function PhoneTop({ title, sub }: { title: string; sub?: string }) {
       >
         Sandbox: no real money moves
       </div>
-      <div style={{ fontFamily: DISPLAY, fontSize: 30, fontWeight: 800, marginTop: 10 }}>{title}</div>
+      <div style={{ fontFamily: DISPLAY, fontSize: 30, fontWeight: 800, marginTop: 10 }}>
+        {title}
+      </div>
       {sub ? <div style={{ fontSize: 14, color: MUTE, marginTop: 2 }}>{sub}</div> : null}
     </div>
   );
@@ -119,7 +121,13 @@ export function PhoneTop({ title, sub }: { title: string; sub?: string }) {
 
 /** Hatch pattern definition (one per SVG). */
 export const Hatch = ({ id, color = ORANGE_DEEP }: { id: string; color?: string }) => (
-  <pattern id={id} width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+  <pattern
+    id={id}
+    width="10"
+    height="10"
+    patternUnits="userSpaceOnUse"
+    patternTransform="rotate(45)"
+  >
     <rect width="10" height="10" fill={PAPER_HI} />
     <rect width="4" height="10" fill={color} />
   </pattern>
@@ -168,7 +176,15 @@ export function HoldBar({
           opacity={1 - release}
         />
         {cap > 0 ? (
-          <rect x={1} y={1} width={Math.max(0, cw - 2)} height={h - 2} fill={ORANGE} stroke={stroke} strokeWidth={2} />
+          <rect
+            x={1}
+            y={1}
+            width={Math.max(0, cw - 2)}
+            height={h - 2}
+            fill={ORANGE}
+            stroke={stroke}
+            strokeWidth={2}
+          />
         ) : null}
         {release > 0 ? (
           <rect
@@ -251,7 +267,9 @@ export function RingButton({
   const r = size / 2 - 8;
   const C = 2 * Math.PI * r;
   const finished = p >= 1;
-  const k = finished ? 1 + 0.06 * Math.sin(Math.PI * cl((t - pressAt - holdDur) / 0.4)) : 1 - down * 0.04;
+  const k = finished
+    ? 1 + 0.06 * Math.sin(Math.PI * cl((t - pressAt - holdDur) / 0.4))
+    : 1 - down * 0.04;
   const fg = world === 'paper' ? INK : PAPER;
   return (
     <div
@@ -262,8 +280,20 @@ export function RingButton({
         transform: `scale(${k.toFixed(3)})`,
       }}
     >
-      <svg width={size} height={size} style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={fg} strokeOpacity={0.18} strokeWidth={6} />
+      <svg
+        width={size}
+        height={size}
+        style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}
+      >
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={fg}
+          strokeOpacity={0.18}
+          strokeWidth={6}
+        />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -412,7 +442,11 @@ export function QR({
       );
     }
   return (
-    <svg width={size} height={size} style={{ display: 'block', background: light, borderRadius: 4 }}>
+    <svg
+      width={size}
+      height={size}
+      style={{ display: 'block', background: light, borderRadius: 4 }}
+    >
       {cells}
     </svg>
   );
@@ -491,15 +525,29 @@ export function Row({
         ...style,
       }}
     >
-      <span style={{ color: c.mute, fontFamily: MONO, fontSize: size - 2, letterSpacing: '0.06em' }}>{k}</span>
-      <span style={{ fontWeight: strong ? 700 : 500, fontVariantNumeric: 'tabular-nums' }}>{v}</span>
+      <span
+        style={{ color: c.mute, fontFamily: MONO, fontSize: size - 2, letterSpacing: '0.06em' }}
+      >
+        {k}
+      </span>
+      <span style={{ fontWeight: strong ? 700 : 500, fontVariantNumeric: 'tabular-nums' }}>
+        {v}
+      </span>
     </div>
   );
 }
 
 /** A plane that tilts in from `from` and levels to 0 by `at + dur` (3D card entrance). */
-export const tiltIn = (t: number, at: number, dur: number, from: { rx?: number; ry?: number; z?: number }) => {
+export const tiltIn = (
+  t: number,
+  at: number,
+  dur: number,
+  from: { rx?: number; ry?: number; z?: number },
+) => {
   const p = pr(t, at, dur);
   const e = 1 - pr(t, at, dur, EXIT);
-  return `translateZ(${((from.z ?? -200) * (1 - p)).toFixed(1)}px) rotateX(${((from.rx ?? 0) * (1 - p)).toFixed(2)}deg) rotateY(${((from.ry ?? 0) * (1 - p)).toFixed(2)}deg)` + (e ? '' : '');
+  return (
+    `translateZ(${((from.z ?? -200) * (1 - p)).toFixed(1)}px) rotateX(${((from.rx ?? 0) * (1 - p)).toFixed(2)}deg) rotateY(${((from.ry ?? 0) * (1 - p)).toFixed(2)}deg)` +
+    (e ? '' : '')
+  );
 };

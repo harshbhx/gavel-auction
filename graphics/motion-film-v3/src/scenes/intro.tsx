@@ -27,7 +27,17 @@ export function Hook({ t, frame, fps }: SceneCtx) {
       ]}
       over={
         <>
-          <Waves t={t} strikes={[strikeAt]} x={960} y={540} size={300} n={3} dur={1.2} max={9} alpha={0.9} />
+          <Waves
+            t={t}
+            strikes={[strikeAt]}
+            x={960}
+            y={540}
+            size={300}
+            n={3}
+            dur={1.2}
+            max={9}
+            alpha={0.9}
+          />
           <div
             style={{
               position: 'absolute',
@@ -42,7 +52,14 @@ export function Hook({ t, frame, fps }: SceneCtx) {
     >
       <Rule t={t} at={0} dur={0.5} x={360} y={539} w={1200} color={ORANGE} />
       {/* the hatch band behind the price */}
-      <div style={{ position: 'absolute', left: 500, top: 330, opacity: 0.9 * (1 - dim * 0.6) * (1 - clear) }}>
+      <div
+        style={{
+          position: 'absolute',
+          left: 500,
+          top: 330,
+          opacity: 0.9 * (1 - dim * 0.6) * (1 - clear),
+        }}
+      >
         <HoldBar id="hookHatch" w={920} h={340} held={sweep} stroke="transparent" />
       </div>
       <div
@@ -66,7 +83,12 @@ export function Hook({ t, frame, fps }: SceneCtx) {
         fps={fps}
         text="Held"
         size={96}
-        style={{ left: 1180, top: 560, transformOrigin: '50% 50%', ...(clear > 0 ? { opacity: 1 - clear } : {}) }}
+        style={{
+          left: 1180,
+          top: 560,
+          transformOrigin: '50% 50%',
+          ...(clear > 0 ? { opacity: 1 - clear } : {}),
+        }}
       />
       {t >= 2.6 ? (
         <div
@@ -82,7 +104,9 @@ export function Hook({ t, frame, fps }: SceneCtx) {
             opacity: pr(t, 2.6, 0.5),
           }}
         >
-          <div style={{ fontFamily: MONO, fontSize: 28, letterSpacing: '0.14em', color: DIM }}>CHARGED</div>
+          <div style={{ fontFamily: MONO, fontSize: 28, letterSpacing: '0.14em', color: DIM }}>
+            CHARGED
+          </div>
           <div style={{ color: ORANGE }}>
             <Roll
               t={t}
@@ -97,8 +121,15 @@ export function Hook({ t, frame, fps }: SceneCtx) {
           </div>
         </div>
       ) : null}
-      <div style={{ position: 'absolute', left: 830, top: 410, opacity: pr(t, strikeAt - 0.6, 0.2) }}>
-        <Mark t={t - (strikeAt - 0.6)} size={260} ink={PAPER} timing={{ ringStart: -1, swingStart: 0, swingDur: 0.83 }} />
+      <div
+        style={{ position: 'absolute', left: 830, top: 410, opacity: pr(t, strikeAt - 0.6, 0.2) }}
+      >
+        <Mark
+          t={t - (strikeAt - 0.6)}
+          size={260}
+          ink={PAPER}
+          timing={{ ringStart: -1, swingStart: 0, swingDur: 0.83 }}
+        />
       </div>
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 96, textAlign: 'center' }}>
         <Mono
@@ -214,10 +245,10 @@ export function Problem({ t, frame }: SceneCtx) {
       world="ink"
       seed={2}
       cam={[
-        { at: 0, dur: 0, cam: { z: 240, ry: -4 } },
-        { at: 2.3, dur: 1.0, cam: { z: 1140, ry: 0 } },
-        { at: 4.9, dur: 1.0, cam: { z: 2040, ry: 4 } },
-        { at: 5.9, dur: 2.1, cam: { z: 2090, ry: 2 } },
+        { at: 0, dur: 0, cam: { z: 400, ry: -4 } },
+        { at: 2.3, dur: 1.0, cam: { z: 1300, ry: 0 } },
+        { at: 4.9, dur: 1.0, cam: { z: 2200, ry: 4 } },
+        { at: 5.9, dur: 2.1, cam: { z: 2250, ry: 2 } },
       ]}
     >
       {cards.map((c, i) => {
@@ -250,7 +281,17 @@ export function Problem({ t, frame }: SceneCtx) {
                 boxShadow: '0 50px 120px rgba(0,0,0,0.5)',
               }}
             />
-            <div style={{ position: 'absolute', left: 64, top: 48, fontFamily: MONO, fontSize: 24, color: ORANGE, letterSpacing: '0.2em' }}>
+            <div
+              style={{
+                position: 'absolute',
+                left: 64,
+                top: 48,
+                fontFamily: MONO,
+                fontSize: 24,
+                color: ORANGE,
+                letterSpacing: '0.2em',
+              }}
+            >
               {c.n}
             </div>
             <div style={{ position: 'absolute', left: 64, top: 110 }}>
@@ -270,7 +311,11 @@ export function Problem({ t, frame }: SceneCtx) {
                   gap: 20,
                 }}
               >
-                <span style={{ fontFamily: MONO, fontSize: 22, color: DIM, letterSpacing: '0.14em' }}>CHARGED NOW</span>
+                <span
+                  style={{ fontFamily: MONO, fontSize: 22, color: DIM, letterSpacing: '0.14em' }}
+                >
+                  CHARGED NOW
+                </span>
                 <Roll t={t} steps={[{ at: 0.5, v: 20000 }]} fmt={dollars} size={128} first={0.9} />
               </div>
             ) : null}
@@ -322,7 +367,12 @@ export function Problem({ t, frame }: SceneCtx) {
 /** A paper sheet of handwritten rows that tears along a diagonal at `at`. */
 function Sheet({ t, at }: { t: number; at: number }) {
   const p = pr(t, at, 0.9);
-  const rows = ['Lot 07  paddle 12  $350', 'Lot 07  paddle 7   $325', 'Lot 06  paddle 3   $90 ?', 'Lot 05  —  cash?'];
+  const rows = [
+    'Lot 07  paddle 12  $350',
+    'Lot 07  paddle 7   $325',
+    'Lot 06  paddle 3   $90 ?',
+    'Lot 05  \u2014  cash?',
+  ];
   const half = (which: 0 | 1) => (
     <div
       style={{
@@ -338,7 +388,10 @@ function Sheet({ t, at }: { t: number; at: number }) {
         lineHeight: 1.9,
         padding: '14px 18px',
         borderRadius: 4,
-        clipPath: which === 0 ? 'polygon(0 0, 100% 0, 100% 38%, 0 62%)' : 'polygon(0 62%, 100% 38%, 100% 100%, 0 100%)',
+        clipPath:
+          which === 0
+            ? 'polygon(0 0, 100% 0, 100% 38%, 0 62%)'
+            : 'polygon(0 62%, 100% 38%, 100% 100%, 0 100%)',
         transform:
           which === 0
             ? `translate(${(-p * 90).toFixed(1)}px, ${(-p * 60).toFixed(1)}px) rotate(${(-p * 9).toFixed(1)}deg)`
@@ -399,14 +452,30 @@ export function Mechanism({ t, frame, fps }: SceneCtx) {
         {captions.map((c, i) =>
           t >= c.a && t <= c.b + 0.35 ? (
             <div key={i} style={{ position: 'absolute', left: 0, top: 0, width: 1400 }}>
-              <Display t={t} at={c.a + (i > 0 ? 0.3 : 0)} out={c.b} text={c.text} size={128} color={INK} />
+              <Display
+                t={t}
+                at={c.a + (i > 0 ? 0.3 : 0)}
+                out={c.b}
+                text={c.text}
+                size={128}
+                color={INK}
+              />
             </div>
           ) : null,
         )}
       </div>
       {/* the ceiling bar */}
       <div style={{ position: 'absolute', left: X, top: Y - 72 }}>
-        <HoldBar id="mechBar" w={BW} h={BH} held={held} cap={cap} capFrac={0.7} release={rel} lift={70} />
+        <HoldBar
+          id="mechBar"
+          w={BW}
+          h={BH}
+          held={held}
+          cap={cap}
+          capFrac={0.7}
+          release={rel}
+          lift={70}
+        />
       </div>
       <div
         style={{
@@ -433,7 +502,10 @@ export function Mechanism({ t, frame, fps }: SceneCtx) {
         const isLast = i === bids.length - 1;
         const fade = isLast ? 1 : 1 - pr(t, 8.6, 0.5) * 0.7;
         return (
-          <div key={b.at} style={{ position: 'absolute', left: x, top: Y + BH + 24, opacity: fade }}>
+          <div
+            key={b.at}
+            style={{ position: 'absolute', left: x, top: Y + BH + 24, opacity: fade }}
+          >
             <div
               style={{
                 position: 'absolute',
@@ -457,29 +529,100 @@ export function Mechanism({ t, frame, fps }: SceneCtx) {
                 width: 220,
               }}
             >
-              <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 50, color: isLast && t > strikeAt ? ORANGE_DEEP : INK, lineHeight: 1 }}>
+              <div
+                style={{
+                  fontFamily: DISPLAY,
+                  fontWeight: 800,
+                  fontSize: 50,
+                  color: isLast && t > strikeAt ? ORANGE_DEEP : INK,
+                  lineHeight: 1,
+                }}
+              >
                 {dollars(b.v)}
               </div>
-              <div style={{ fontFamily: MONO, fontSize: 14, color: MUTE, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{b.who}</div>
+              <div
+                style={{
+                  fontFamily: MONO,
+                  fontSize: 14,
+                  color: MUTE,
+                  letterSpacing: '0.06em',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {b.who}
+              </div>
             </div>
           </div>
         );
       })}
       {/* the current price follows the ladder */}
-      <div style={{ position: 'absolute', left: X, top: Y + BH + 170, display: 'flex', alignItems: 'baseline', gap: 20, opacity: pr(t, 2.8, 0.5) }}>
-        <span style={{ fontFamily: MONO, fontSize: 18, color: MUTE, letterSpacing: '0.14em' }}>PRICE</span>
+      <div
+        style={{
+          position: 'absolute',
+          left: X,
+          top: Y + BH + 170,
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 20,
+          opacity: pr(t, 2.8, 0.5),
+        }}
+      >
+        <span style={{ fontFamily: MONO, fontSize: 18, color: MUTE, letterSpacing: '0.14em' }}>
+          PRICE
+        </span>
         <div style={{ color: INK }}>
-          <Roll t={t} steps={bids.map((b) => ({ at: b.at, v: b.v }))} fmt={dollars} size={88} first={0.5} />
+          <Roll
+            t={t}
+            steps={bids.map((b) => ({ at: b.at, v: b.v }))}
+            fmt={dollars}
+            size={88}
+            first={0.5}
+          />
         </div>
       </div>
       {/* the mallet falls on $350 */}
-      <div style={{ position: 'absolute', left: posOf(35000) - 110, top: Y - 290, opacity: pr(t, strikeAt - 0.7, 0.2) * (1 - pr(t, 8.3, 0.4)) }}>
-        <Mark t={t - (strikeAt - 0.62)} size={220} timing={{ ringStart: -1, swingStart: 0, swingDur: 0.86 }} />
+      <div
+        style={{
+          position: 'absolute',
+          left: posOf(35000) - 110,
+          top: Y - 290,
+          opacity: pr(t, strikeAt - 0.7, 0.2) * (1 - pr(t, 8.3, 0.4)),
+        }}
+      >
+        <Mark
+          t={t - (strikeAt - 0.62)}
+          size={220}
+          timing={{ ringStart: -1, swingStart: 0, swingDur: 0.86 }}
+        />
       </div>
-      <Waves t={t} strikes={[strikeAt]} x={posOf(35000)} y={Y + BH / 2} size={200} n={2} dur={1.3} max={7} alpha={0.7} />
-      <Stamp t={t} at={9.0} fps={fps} text="Capture $350" size={56} style={{ left: X + 240, top: Y - 104 }} />
+      <Waves
+        t={t}
+        strikes={[strikeAt]}
+        x={posOf(35000)}
+        y={Y + BH / 2}
+        size={200}
+        n={2}
+        dur={1.3}
+        max={7}
+        alpha={0.7}
+      />
+      <Stamp
+        t={t}
+        at={9.0}
+        fps={fps}
+        text="Capture $350"
+        size={56}
+        style={{ left: X + 330, top: Y - 112 }}
+      />
       {rel > 0 ? (
-        <div style={{ position: 'absolute', left: posOf(35000) + 160, top: Y - 70 - rel * 70 + 14, opacity: rel }}>
+        <div
+          style={{
+            position: 'absolute',
+            left: posOf(35000) + 160,
+            top: Y - 70 - rel * 70 + 14,
+            opacity: rel,
+          }}
+        >
           <Chip text="Released $150" tone="hollow" size={22} />
         </div>
       ) : null}
@@ -498,12 +641,14 @@ export function Mechanism({ t, frame, fps }: SceneCtx) {
               left: X,
               top: Y + 330 + i * 70,
               opacity: show * (1 - r * 0.5),
-              transform: `translateY(${(-r * 40).toFixed(1)}px)`,
+              transform: `translateY(${(-r * 10).toFixed(1)}px)`,
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
               <HoldBar id={`mechN${i}`} w={(h.v / 50000) * BW} h={30} held={show} release={r} />
-              <span style={{ fontFamily: MONO, fontSize: 16, color: MUTE, letterSpacing: '0.1em' }}>{h.who}</span>
+              <span style={{ fontFamily: MONO, fontSize: 16, color: MUTE, letterSpacing: '0.1em' }}>
+                {h.who}
+              </span>
               {r > 0.5 ? <Chip text="Released" tone="hollow" size={13} /> : null}
             </div>
           </div>

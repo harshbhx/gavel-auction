@@ -33,11 +33,29 @@ const SCENES: Record<string, ComponentType<SceneCtx>> = {
 export const SPECS = table.scenes as SceneSpec[];
 export const specOf = (id: string) => SPECS.find((s) => s.id === id);
 
-function Scene({ spec, letters, sponsorLogos }: { spec: SceneSpec; letters: string[]; sponsorLogos: boolean }) {
+function Scene({
+  spec,
+  letters,
+  sponsorLogos,
+}: {
+  spec: SceneSpec;
+  letters: string[];
+  sponsorLogos: boolean;
+}) {
   const { t, fps, frame } = useT();
   const C = SCENES[spec.id];
   if (!C) return <AbsoluteFill style={{ background: INK }} />;
-  return <C t={t} dur={spec.dur} fps={fps} frame={frame} spec={spec} letters={letters} sponsorLogos={sponsorLogos} />;
+  return (
+    <C
+      t={t}
+      dur={spec.dur}
+      fps={fps}
+      frame={frame}
+      spec={spec}
+      letters={letters}
+      sponsorLogos={sponsorLogos}
+    />
+  );
 }
 
 /** The film: hard cuts between scenes; the shared-element moves and wipes live inside the scenes; the
@@ -52,10 +70,24 @@ export function Film({ ids, letters, scale, sponsorLogos, captions = true }: Fil
   const specs = ids.map(specOf).filter((s): s is SceneSpec => Boolean(s));
   return (
     <AbsoluteFill style={{ background: INK }}>
-      <div style={{ position: 'absolute', left: 0, top: 0, width: W, height: H, transform: `scale(${scale})`, transformOrigin: '0 0' }}>
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: W,
+          height: H,
+          transform: `scale(${scale})`,
+          transformOrigin: '0 0',
+        }}
+      >
         <Series>
           {specs.map((sc) => (
-            <Series.Sequence key={sc.id} name={sc.id} durationInFrames={Math.max(1, Math.round(sc.dur * fps))}>
+            <Series.Sequence
+              key={sc.id}
+              name={sc.id}
+              durationInFrames={Math.max(1, Math.round(sc.dur * fps))}
+            >
               <Scene spec={sc} letters={letters} sponsorLogos={sponsorLogos} />
             </Series.Sequence>
           ))}

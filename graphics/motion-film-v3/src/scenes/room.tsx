@@ -2,7 +2,20 @@ import type { CSSProperties } from 'react';
 import { cl, EXIT, lerp, mix, pr, press, pulse, sp, usd } from '../anim';
 import { Mark, Waves } from '../brand';
 import { BLEED, Eyebrow, Footer, LightSweep, Stage } from '../stage';
-import { BODY, DIM, DISPLAY, INK, INK_DEEP, MONO, MUTE, ORANGE, ORANGE_DEEP, PAPER, PAPER_HI, RULE_PAPER } from '../theme';
+import {
+  BODY,
+  DIM,
+  DISPLAY,
+  INK,
+  INK_DEEP,
+  MONO,
+  MUTE,
+  ORANGE,
+  ORANGE_DEEP,
+  PAPER,
+  PAPER_HI,
+  RULE_PAPER,
+} from '../theme';
 import { Caps, Display, Mono, Roll, type Step } from '../type';
 import { card, Chip, HoldBar, Phone, PhoneTop, QR, RingButton, Stamp, Waveform } from '../ui';
 import type { SceneCtx } from '../types';
@@ -12,7 +25,17 @@ const LOT = 'Lot 07';
 const LOT_NAME = 'Signed press plate, 1923';
 
 /** A preset bid button of the bidder screen. */
-function Preset({ t, at, label, primary }: { t: number; at?: number; label: string; primary?: boolean }) {
+function Preset({
+  t,
+  at,
+  label,
+  primary,
+}: {
+  t: number;
+  at?: number;
+  label: string;
+  primary?: boolean;
+}) {
   const k = at === undefined ? 0 : press(t, at);
   return (
     <div
@@ -61,24 +84,61 @@ function BidderScreen({
     <>
       <PhoneTop title={LOT} sub={LOT_NAME} />
       <div style={{ padding: '26px 22px 0' }}>
-        <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '0.12em', color: MUTE }}>PRICE</div>
+        <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '0.12em', color: MUTE }}>
+          PRICE
+        </div>
         <div style={{ color: INK, marginTop: 2 }}>
           <Roll t={t} steps={price} fmt={dollars} size={92} first={0.6} dur={0.45} />
         </div>
         <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Chip text={lead === you ? `Leading: paddle ${lead} (you)` : `Leading: paddle ${lead}`} tone={lead === you ? 'orange' : 'ink'} size={12} />
+          <Chip
+            text={lead === you ? `Leading: paddle ${lead} (you)` : `Leading: paddle ${lead}`}
+            tone={lead === you ? 'orange' : 'ink'}
+            size={12}
+          />
         </div>
-        <div style={{ marginTop: 34, fontFamily: MONO, fontSize: 12, letterSpacing: '0.12em', color: MUTE }}>YOUR HOLD</div>
+        <div
+          style={{
+            marginTop: 34,
+            fontFamily: MONO,
+            fontSize: 12,
+            letterSpacing: '0.12em',
+            color: MUTE,
+          }}
+        >
+          YOUR HOLD
+        </div>
         <div style={{ marginTop: 8 }}>
-          <HoldBar id={`bidderHold${you}`} w={346} h={30} held={1} cap={1} capFrac={cl(cur / limit) * (lead === you ? 1 : mine > 0 ? 1 : 0)} />
+          <HoldBar
+            id={`bidderHold${you}`}
+            w={346}
+            h={30}
+            held={1}
+            cap={1}
+            capFrac={cl(cur / limit) * (lead === you ? 1 : mine > 0 ? 1 : 0)}
+          />
         </div>
         <div style={{ marginTop: 8, fontSize: 14, color: MUTE }}>
-          Your highest bid {dollars(lead === you ? cur : Math.min(cur, limit))} of your {dollars(limit)} limit
+          Your highest bid {dollars(lead === you ? cur : Math.min(cur, limit))} of your{' '}
+          {dollars(limit)} limit
         </div>
         <div style={{ marginTop: 40, display: 'flex', gap: 10 }}>
-          <Preset t={t} at={taps.find((x) => x.i === 0 && t >= x.at - 0.01 && t < x.at + 0.5)?.at} label="+$25" />
-          <Preset t={t} at={taps.find((x) => x.i === 1 && t >= x.at - 0.01 && t < x.at + 0.5)?.at} label="+$50" primary />
-          <Preset t={t} at={taps.find((x) => x.i === 2 && t >= x.at - 0.01 && t < x.at + 0.5)?.at} label="+$100" />
+          <Preset
+            t={t}
+            at={taps.find((x) => x.i === 0 && t >= x.at - 0.01 && t < x.at + 0.5)?.at}
+            label="+$25"
+          />
+          <Preset
+            t={t}
+            at={taps.find((x) => x.i === 1 && t >= x.at - 0.01 && t < x.at + 0.5)?.at}
+            label="+$50"
+            primary
+          />
+          <Preset
+            t={t}
+            at={taps.find((x) => x.i === 2 && t >= x.at - 0.01 && t < x.at + 0.5)?.at}
+            label="+$100"
+          />
         </div>
         <div style={{ marginTop: 14, fontSize: 12, color: MUTE, lineHeight: 1.5 }}>
           Your bid never goes above your limit. Held, not charged.
@@ -127,11 +187,66 @@ export function Join({ t, frame, fps, spec }: SceneCtx) {
           opacity: pr(t, 0.3, 1.0),
         }}
       >
-        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(170deg, #2a211b, ${INK_DEEP})`, border: '1px solid #4a3b31', borderRadius: 12 }} />
-        <div style={{ position: 'absolute', left: 44, top: 40, fontFamily: MONO, fontSize: 18, letterSpacing: '0.14em', color: DIM }}>ROOM SCREEN</div>
-        <div style={{ position: 'absolute', left: 44, top: 84, fontFamily: DISPLAY, fontWeight: 800, fontSize: 56, color: PAPER }}>{LOT}</div>
-        <div style={{ position: 'absolute', left: 44, top: 150, fontFamily: BODY, fontSize: 20, color: DIM }}>{LOT_NAME}</div>
-        <div style={{ position: 'absolute', left: 44, top: 240, fontFamily: MONO, fontSize: 18, letterSpacing: '0.14em', color: DIM }}>JOIN WITH THE CODE</div>
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: `linear-gradient(170deg, #2a211b, ${INK_DEEP})`,
+            border: '1px solid #4a3b31',
+            borderRadius: 12,
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            left: 44,
+            top: 40,
+            fontFamily: MONO,
+            fontSize: 18,
+            letterSpacing: '0.14em',
+            color: DIM,
+          }}
+        >
+          ROOM SCREEN
+        </div>
+        <div
+          style={{
+            position: 'absolute',
+            left: 44,
+            top: 84,
+            fontFamily: DISPLAY,
+            fontWeight: 800,
+            fontSize: 56,
+            color: PAPER,
+          }}
+        >
+          {LOT}
+        </div>
+        <div
+          style={{
+            position: 'absolute',
+            left: 44,
+            top: 150,
+            fontFamily: BODY,
+            fontSize: 20,
+            color: DIM,
+          }}
+        >
+          {LOT_NAME}
+        </div>
+        <div
+          style={{
+            position: 'absolute',
+            left: 44,
+            top: 240,
+            fontFamily: MONO,
+            fontSize: 18,
+            letterSpacing: '0.14em',
+            color: DIM,
+          }}
+        >
+          JOIN WITH THE CODE
+        </div>
         <div
           style={{
             position: 'absolute',
@@ -150,7 +265,16 @@ export function Join({ t, frame, fps, spec }: SceneCtx) {
         <div style={{ position: 'absolute', right: 44, top: 240 }}>
           <QR t={t} at={4.2} size={260} seed={3} />
         </div>
-        <div style={{ position: 'absolute', left: 44, bottom: 36, fontFamily: MONO, fontSize: 16, color: DIM }}>
+        <div
+          style={{
+            position: 'absolute',
+            left: 44,
+            bottom: 36,
+            fontFamily: MONO,
+            fontSize: 16,
+            color: DIM,
+          }}
+        >
           or scan the QR
         </div>
       </div>
@@ -186,7 +310,9 @@ export function Join({ t, frame, fps, spec }: SceneCtx) {
         <Phone scale={0.82}>
           <PhoneTop title="Join a room" sub="Type the code from the screen" />
           <div style={{ padding: '36px 22px 0' }}>
-            <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '0.12em', color: MUTE }}>ROOM CODE</div>
+            <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '0.12em', color: MUTE }}>
+              ROOM CODE
+            </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
               {code.split('').map((ch, i) => {
                 const on = i < typed;
@@ -235,17 +361,31 @@ export function Join({ t, frame, fps, spec }: SceneCtx) {
             >
               Find room
             </div>
-            <div style={{ marginTop: 28, opacity: found, transform: `translateY(${((1 - found) * 24).toFixed(1)}px)` }}>
+            <div
+              style={{
+                marginTop: 28,
+                opacity: found,
+                transform: `translateY(${((1 - found) * 24).toFixed(1)}px)`,
+              }}
+            >
               <div style={{ ...card('paper'), padding: 18 }}>
-                <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '0.12em', color: MUTE }}>ROOM FOUND</div>
-                <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 30, marginTop: 6 }}>{LOT}</div>
+                <div
+                  style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '0.12em', color: MUTE }}
+                >
+                  ROOM FOUND
+                </div>
+                <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 30, marginTop: 6 }}>
+                  {LOT}
+                </div>
                 <div style={{ fontSize: 14, color: MUTE }}>{LOT_NAME}</div>
                 <div style={{ marginTop: 12 }}>
                   <Chip text="Your paddle is 12" tone="orange" />
                 </div>
               </div>
             </div>
-            <div style={{ marginTop: 20, fontSize: 12, color: MUTE, textAlign: 'center' }}>Or scan the QR on the screen</div>
+            <div style={{ marginTop: 20, fontSize: 12, color: MUTE, textAlign: 'center' }}>
+              Or scan the QR on the screen
+            </div>
           </div>
         </Phone>
       </div>
@@ -272,7 +412,7 @@ export function Hold({ t, frame, fps, spec }: SceneCtx) {
       cam={[
         { at: 0, dur: 0, cam: { s: 1.0 } },
         { at: 0.2, dur: 3.4, cam: { s: 1.03 } },
-        { at: 3.5, dur: 0.9, cam: { s: 1.1, x: 10, y: -46 } },
+        { at: 3.5, dur: 0.9, cam: { s: 1.08, x: 10, y: 10 } },
         { at: heldAt + 0.1, dur: 1.0, cam: { s: 1.02, x: 0, y: 0 } },
       ]}
       vignette={pr(t, 3.5, 0.9) * (1 - pr(t, heldAt + 0.1, 1.0))}
@@ -297,14 +437,50 @@ export function Hold({ t, frame, fps, spec }: SceneCtx) {
         <Phone scale={0.92}>
           <PhoneTop title={LOT} sub="Step 2 of 3. Choose your limit" />
           <div style={{ padding: '26px 22px 0' }}>
-            <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '0.12em', color: MUTE }}>YOUR LIMIT</div>
+            <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '0.12em', color: MUTE }}>
+              YOUR LIMIT
+            </div>
             <div style={{ color: INK }}>
-              <Roll t={t} steps={[{ at: 0, v: 10000 }, ...Array.from({ length: 8 }, (_, i) => ({ at: 0.8 + ((i + 1) / 8) * 1.6, v: 10000 + (i + 1) * 5000 }))]} fmt={dollars} size={96} first={0.1} dur={0.2} />
+              <Roll
+                t={t}
+                steps={[
+                  { at: 0, v: 10000 },
+                  ...Array.from({ length: 8 }, (_, i) => ({
+                    at: 0.8 + ((i + 1) / 8) * 1.6,
+                    v: 10000 + (i + 1) * 5000,
+                  })),
+                ]}
+                fmt={dollars}
+                size={96}
+                first={0.1}
+                dur={0.2}
+              />
             </div>
             {/* the slider */}
             <div style={{ position: 'relative', height: 44, marginTop: 10 }}>
-              <div style={{ position: 'absolute', left: 0, right: 0, top: 18, height: 8, borderRadius: 4, background: RULE_PAPER, border: `1px solid ${INK}` }} />
-              <div style={{ position: 'absolute', left: 0, top: 18, height: 8, width: `${slide * 100}%`, borderRadius: 4, background: '#f5b488' }} />
+              <div
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  top: 18,
+                  height: 8,
+                  borderRadius: 4,
+                  background: RULE_PAPER,
+                  border: `1px solid ${INK}`,
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 18,
+                  height: 8,
+                  width: `${slide * 100}%`,
+                  borderRadius: 4,
+                  background: '#f5b488',
+                }}
+              />
               <div
                 style={{
                   position: 'absolute',
@@ -319,7 +495,15 @@ export function Hold({ t, frame, fps, spec }: SceneCtx) {
                 }}
               />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: MONO, fontSize: 12, color: MUTE }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontFamily: MONO,
+                fontSize: 12,
+                color: MUTE,
+              }}
+            >
               <span>$100</span>
               <span>$500</span>
             </div>
@@ -363,7 +547,15 @@ export function Hold({ t, frame, fps, spec }: SceneCtx) {
                 done={<span>Held</span>}
               />
             </div>
-            <div style={{ marginTop: 14, textAlign: 'center', fontFamily: MONO, fontSize: 12, color: MUTE }}>
+            <div
+              style={{
+                marginTop: 14,
+                textAlign: 'center',
+                fontFamily: MONO,
+                fontSize: 12,
+                color: MUTE,
+              }}
+            >
               Press and hold 3 seconds
             </div>
           </div>
@@ -383,13 +575,32 @@ export function Hold({ t, frame, fps, spec }: SceneCtx) {
         <div style={{ ...card('paper'), padding: 32, position: 'relative', overflow: 'hidden' }}>
           <LightSweep t={t} at={heldAt + 0.2} alpha={0.7} color="#ffffff" />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontFamily: MONO, fontSize: 14, letterSpacing: '0.14em', color: MUTE }}>YOUR HOLD</div>
+            <div style={{ fontFamily: MONO, fontSize: 14, letterSpacing: '0.14em', color: MUTE }}>
+              YOUR HOLD
+            </div>
             <div style={{ transform: `rotateX(${(flip * 360).toFixed(1)}deg)` }}>
-              <Chip text={flip > 0.5 ? 'Held' : t >= pressAt ? 'Authorize' : 'Not placed'} tone={flip > 0.5 ? 'orange' : t >= pressAt ? 'ink' : 'hollow'} size={14} />
+              <Chip
+                text={flip > 0.5 ? 'Held' : t >= pressAt ? 'Authorize' : 'Not placed'}
+                tone={flip > 0.5 ? 'orange' : t >= pressAt ? 'ink' : 'hollow'}
+                size={14}
+              />
             </div>
           </div>
           <div style={{ color: INK, marginTop: 10 }}>
-            <Roll t={t} steps={[{ at: 0, v: 10000 }, ...Array.from({ length: 8 }, (_, i) => ({ at: 0.8 + ((i + 1) / 8) * 1.6, v: 10000 + (i + 1) * 5000 }))]} fmt={dollars} size={150} first={0.1} dur={0.2} />
+            <Roll
+              t={t}
+              steps={[
+                { at: 0, v: 10000 },
+                ...Array.from({ length: 8 }, (_, i) => ({
+                  at: 0.8 + ((i + 1) / 8) * 1.6,
+                  v: 10000 + (i + 1) * 5000,
+                })),
+              ]}
+              fmt={dollars}
+              size={150}
+              first={0.1}
+              dur={0.2}
+            />
           </div>
           <div style={{ marginTop: 10 }}>
             <HoldBar id="holdCardBar" w={536} h={56} held={held} />
@@ -398,7 +609,14 @@ export function Hold({ t, frame, fps, spec }: SceneCtx) {
             <Display t={t} at={heldAt + 0.3} text="**Held,** not charged." size={54} color={INK} />
           </div>
           <div style={{ marginTop: 10, minHeight: 28 }}>
-            <Mono t={t} at={heldAt + 0.9} text="Reference ending 4F2A. Orders v2 intent AUTHORIZE. Sandbox." size={16} color={MUTE} dur={1.4} />
+            <Mono
+              t={t}
+              at={heldAt + 0.9}
+              text="Reference ending 4F2A. Orders v2 intent AUTHORIZE. Sandbox."
+              size={16}
+              color={MUTE}
+              dur={1.4}
+            />
           </div>
         </div>
       </div>
@@ -422,10 +640,17 @@ export function Bid({ t, frame, fps, spec }: SceneCtx) {
   const open = pr(t, openAt, 0.6);
   // camera: a gentle turn toward the phone that taps
   const cam = bids.flatMap((b) => [
-    { at: b.at - 0.05, dur: 0.4, cam: { ry: b.side === 'A' ? 5 : -5, x: b.side === 'A' ? 60 : -60 } },
+    {
+      at: b.at - 0.05,
+      dur: 0.4,
+      cam: { ry: b.side === 'A' ? 5 : -5, x: b.side === 'A' ? 60 : -60 },
+    },
     { at: b.at + 0.9, dur: 0.8, cam: { ry: 0, x: 0 } },
   ]);
-  const flash = bids.reduce((m, b) => Math.max(m, pulse(t, b.at + FLY, 100) * (t < b.at + FLY + 0.5 ? 1 : 0)), 0);
+  const flash = bids.reduce(
+    (m, b) => Math.max(m, pulse(t, b.at + FLY, 100) * (t < b.at + FLY + 0.5 ? 1 : 0)),
+    0,
+  );
   return (
     <Stage
       t={t}
@@ -441,7 +666,15 @@ export function Bid({ t, frame, fps, spec }: SceneCtx) {
             {spec.caps.map((c, i) =>
               t >= c.a && t <= c.b + 0.35 ? (
                 <div key={i} style={{ position: 'absolute', left: 0, right: 0 }}>
-                  <Display t={t} at={c.a + (i > 0 ? 0.3 : 0)} out={c.b} text={c.text.replace(' / ', ' ')} size={96} color={PAPER} align="center" />
+                  <Display
+                    t={t}
+                    at={c.a + (i > 0 ? 0.3 : 0)}
+                    out={c.b}
+                    text={c.text.replace(' / ', ' ')}
+                    size={96}
+                    color={PAPER}
+                    align="center"
+                  />
                 </div>
               ) : null,
             )}
@@ -450,7 +683,16 @@ export function Bid({ t, frame, fps, spec }: SceneCtx) {
       }
     >
       {/* the big screen */}
-      <div style={{ position: 'absolute', left: 620, top: 90, width: 680, height: 720, transform: 'translateZ(-80px)' }}>
+      <div
+        style={{
+          position: 'absolute',
+          left: 620,
+          top: 90,
+          width: 680,
+          height: 720,
+          transform: 'translateZ(-80px)',
+        }}
+      >
         <div
           style={{
             position: 'absolute',
@@ -461,16 +703,42 @@ export function Bid({ t, frame, fps, spec }: SceneCtx) {
             boxShadow: `0 40px 120px rgba(0,0,0,0.5), 0 0 ${60 * flash}px ${ORANGE}`,
           }}
         />
-        <div style={{ position: 'absolute', left: 40, top: 34, display: 'flex', justifyContent: 'space-between', right: 40, alignItems: 'center' }}>
+        <div
+          style={{
+            position: 'absolute',
+            left: 40,
+            top: 34,
+            display: 'flex',
+            justifyContent: 'space-between',
+            right: 40,
+            alignItems: 'center',
+          }}
+        >
           <div>
-            <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 44, color: PAPER }}>{LOT}</div>
+            <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 44, color: PAPER }}>
+              {LOT}
+            </div>
             <div style={{ fontFamily: BODY, fontSize: 17, color: DIM }}>{LOT_NAME}</div>
           </div>
           <div style={{ transform: `rotateX(${(open * 360).toFixed(0)}deg)` }}>
-            <Chip text={open > 0.5 ? 'Bidding open' : 'Ready'} tone={open > 0.5 ? 'orange' : 'paper'} size={14} />
+            <Chip
+              text={open > 0.5 ? 'Bidding open' : 'Ready'}
+              tone={open > 0.5 ? 'orange' : 'paper'}
+              size={14}
+            />
           </div>
         </div>
-        <div style={{ position: 'absolute', left: 40, top: 140, fontFamily: MONO, fontSize: 16, letterSpacing: '0.14em', color: DIM }}>
+        <div
+          style={{
+            position: 'absolute',
+            left: 40,
+            top: 140,
+            fontFamily: MONO,
+            fontSize: 16,
+            letterSpacing: '0.14em',
+            color: DIM,
+          }}
+        >
           {t < openAt + 0.6 ? 'OPENING BID' : 'CURRENT PRICE'}
         </div>
         <div style={{ position: 'absolute', left: 36, top: 160, color: PAPER }}>
@@ -479,7 +747,18 @@ export function Bid({ t, frame, fps, spec }: SceneCtx) {
         <div style={{ position: 'absolute', left: 40, top: 380 }}>
           <Leader t={t} leader={leader} bids={bids} fly={FLY} />
         </div>
-        <div style={{ position: 'absolute', left: 40, top: 450, right: 40, fontFamily: MONO, fontSize: 14, letterSpacing: '0.14em', color: DIM }}>
+        <div
+          style={{
+            position: 'absolute',
+            left: 40,
+            top: 450,
+            right: 40,
+            fontFamily: MONO,
+            fontSize: 14,
+            letterSpacing: '0.14em',
+            color: DIM,
+          }}
+        >
           LATEST BIDS
         </div>
         <div style={{ position: 'absolute', left: 40, right: 40, top: 480 }}>
@@ -510,14 +789,40 @@ export function Bid({ t, frame, fps, spec }: SceneCtx) {
                   transition: 'none',
                 }}
               >
-                <span style={{ fontFamily: MONO, fontSize: 15, letterSpacing: '0.08em' }}>paddle {b.who}</span>
-                <span style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 26 }}>{dollars(b.v)}</span>
+                <span style={{ fontFamily: MONO, fontSize: 15, letterSpacing: '0.08em' }}>
+                  paddle {b.who}
+                </span>
+                <span style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 26 }}>
+                  {dollars(b.v)}
+                </span>
               </div>
             );
           })}
         </div>
-        <div style={{ position: 'absolute', right: 40, bottom: 28, fontFamily: MONO, fontSize: 14, color: DIM }}>Join 7K2P</div>
-        <div style={{ position: 'absolute', left: 40, bottom: 28, fontFamily: MONO, fontSize: 14, color: DIM }}>Sandbox: no real money moves</div>
+        <div
+          style={{
+            position: 'absolute',
+            right: 40,
+            bottom: 28,
+            fontFamily: MONO,
+            fontSize: 14,
+            color: DIM,
+          }}
+        >
+          Join 7K2P
+        </div>
+        <div
+          style={{
+            position: 'absolute',
+            left: 40,
+            bottom: 28,
+            fontFamily: MONO,
+            fontSize: 14,
+            color: DIM,
+          }}
+        >
+          Sandbox: no real money moves
+        </div>
       </div>
       {/* flying chips */}
       {bids.map((b) => {
@@ -577,7 +882,20 @@ export function Bid({ t, frame, fps, spec }: SceneCtx) {
                 taps={bids.filter((b) => b.side === side).map((b) => ({ at: b.at, i: b.i }))}
               />
             </Phone>
-            <div style={{ position: 'absolute', left: 0, top: 650, width: 300, textAlign: 'center', whiteSpace: 'nowrap', fontFamily: MONO, fontSize: 16, letterSpacing: '0.12em', color: DIM }}>
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 650,
+                width: 300,
+                textAlign: 'center',
+                whiteSpace: 'nowrap',
+                fontFamily: MONO,
+                fontSize: 16,
+                letterSpacing: '0.12em',
+                color: DIM,
+              }}
+            >
               {side === 'A' ? 'BIDDER A, PADDLE 12' : 'BIDDER B, PADDLE 7'}
             </div>
           </div>
@@ -587,12 +905,30 @@ export function Bid({ t, frame, fps, spec }: SceneCtx) {
   );
 }
 
-function Leader({ t, leader, bids, fly }: { t: number; leader: (t: number) => number; bids: { at: number; who: number }[]; fly: number }) {
+function Leader({
+  t,
+  leader,
+  bids,
+  fly,
+}: {
+  t: number;
+  leader: (t: number) => number;
+  bids: { at: number; who: number }[];
+  fly: number;
+}) {
   const lead = leader(t);
   const last = bids.filter((b) => b.at + fly <= t).pop();
   const flip = last ? pr(t, last.at + fly, 0.5) : 1;
   return (
-    <div style={{ transform: `rotateX(${((1 - flip) * 90).toFixed(1)}deg)`, transformOrigin: '50% 100%', fontFamily: BODY, fontSize: 24, color: PAPER }}>
+    <div
+      style={{
+        transform: `rotateX(${((1 - flip) * 90).toFixed(1)}deg)`,
+        transformOrigin: '50% 100%',
+        fontFamily: BODY,
+        fontSize: 24,
+        color: PAPER,
+      }}
+    >
       {lead ? (
         <span>
           Leading: <span style={{ color: ORANGE, fontWeight: 700 }}>paddle {lead}</span>
@@ -613,9 +949,14 @@ export function Voice({ t, frame, fps, spec }: SceneCtx) {
     { at: 4.0, w: 'paddle' },
     { at: 4.5, w: 'twelve' },
   ];
-  const level = words.reduce((m, w) => Math.max(m, Math.exp(-Math.pow((t - w.at - 0.18) / 0.22, 2))), 0) * 0.95 + (t > 1 && t < 5.4 ? 0.06 : 0.02);
-  const transcript = words.filter((w) => w.at <= t).map((w) => w.w).join(' ');
-  const parsed = pr(t, 5.1, 0.6);
+  const level =
+    words.reduce((m, w) => Math.max(m, Math.exp(-Math.pow((t - w.at - 0.18) / 0.22, 2))), 0) *
+      0.95 +
+    (t > 1 && t < 5.4 ? 0.06 : 0.02);
+  const transcript = words
+    .filter((w) => w.at <= t)
+    .map((w) => w.w)
+    .join(' ');
   const confirm = sp(t, 5.7, fps, { damping: 16, stiffness: 120 });
   return (
     <Stage
@@ -623,10 +964,17 @@ export function Voice({ t, frame, fps, spec }: SceneCtx) {
       frame={frame}
       world="ink"
       seed={7}
-      cam={[{ at: 0, dur: 0, cam: { s: 1.0 } }, { at: 0, dur: 9, cam: { s: 1.05, ry: 2 } }]}
+      cam={[
+        { at: 0, dur: 0, cam: { s: 1.0 } },
+        { at: 0, dur: 9, cam: { s: 1.05, ry: 2 } },
+      ]}
       over={
         <>
-          <Footer t={t} world="ink" text="Always a confirm step. Assist mode. Measured on synthetic clips only (G5 partial)." />
+          <Footer
+            t={t}
+            world="ink"
+            text="Always a confirm step. Assist mode. Measured on synthetic clips only (G5 partial)."
+          />
           <Eyebrow t={t} world="ink" text="04  Voice" />
           <Caps t={t} caps={spec.caps} world="ink" x={96} y={300} size={112} width={820} />
         </>
@@ -644,14 +992,27 @@ export function Voice({ t, frame, fps, spec }: SceneCtx) {
       >
         <div style={{ ...card('ink'), padding: 32, borderRadius: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontFamily: MONO, fontSize: 14, letterSpacing: '0.14em', color: DIM }}>AUCTIONEER MICROPHONE</div>
-            <Chip text={t < 5.4 ? 'Listening' : 'Heard'} tone={t < 5.4 ? 'orange' : 'paper'} size={13} style={{ opacity: 0.7 + 0.3 * pulse(t, 1.0, 1.0) }} />
+            <div style={{ fontFamily: MONO, fontSize: 14, letterSpacing: '0.14em', color: DIM }}>
+              AUCTIONEER MICROPHONE
+            </div>
+            <Chip
+              text={t < 5.4 ? 'Listening' : 'Heard'}
+              tone={t < 5.4 ? 'orange' : 'paper'}
+              size={13}
+              style={{ opacity: 0.7 + 0.3 * pulse(t, 1.0, 1.0) }}
+            />
           </div>
           <div style={{ marginTop: 24 }}>
             <Waveform t={t} level={level} w={776} h={170} />
           </div>
-          <div style={{ marginTop: 18, minHeight: 44, fontFamily: BODY, fontSize: 30, color: PAPER }}>
-            {transcript ? <span>&ldquo;{transcript}&rdquo;</span> : <span style={{ color: DIM }}>&nbsp;</span>}
+          <div
+            style={{ marginTop: 18, minHeight: 44, fontFamily: BODY, fontSize: 30, color: PAPER }}
+          >
+            {transcript ? (
+              <span>&ldquo;{transcript}&rdquo;</span>
+            ) : (
+              <span style={{ color: DIM }}>&nbsp;</span>
+            )}
             {t > 2.4 && t < 5.2 ? <span style={{ color: ORANGE }}>|</span> : null}
           </div>
           <div style={{ marginTop: 22, display: 'flex', gap: 12, minHeight: 40 }}>
@@ -693,7 +1054,15 @@ export function Voice({ t, frame, fps, spec }: SceneCtx) {
                 opacity: cl(confirm * 2),
               }}
             >
-              <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 38, color: INK, lineHeight: 1.05 }}>
+              <div
+                style={{
+                  fontFamily: DISPLAY,
+                  fontWeight: 800,
+                  fontSize: 38,
+                  color: INK,
+                  lineHeight: 1.05,
+                }}
+              >
                 Did you mean <span style={{ color: ORANGE_DEEP }}>$350</span> for paddle 12?
               </div>
               <div style={{ display: 'flex', gap: 12, marginTop: 18 }}>
@@ -717,17 +1086,40 @@ export function Voice({ t, frame, fps, spec }: SceneCtx) {
                 >
                   Confirm
                 </div>
-                <div style={{ flex: 1, height: 56, borderRadius: 6, border: `2px solid ${INK}`, color: INK, fontFamily: DISPLAY, fontWeight: 700, fontSize: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div
+                  style={{
+                    flex: 1,
+                    height: 56,
+                    borderRadius: 6,
+                    border: `2px solid ${INK}`,
+                    color: INK,
+                    fontFamily: DISPLAY,
+                    fontWeight: 700,
+                    fontSize: 24,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
                   No
                 </div>
               </div>
-              <div style={{ marginTop: 12, fontFamily: MONO, fontSize: 13, color: MUTE }}>Nothing counts until you confirm.</div>
+              <div style={{ marginTop: 12, fontFamily: MONO, fontSize: 13, color: MUTE }}>
+                Nothing counts until you confirm.
+              </div>
             </div>
           ) : null}
         </div>
       </div>
       <div style={{ position: 'absolute', left: 96, top: 700 }}>
-        <Mono t={t} at={6.4} text="Speech by Deepgram or Groq. The parser never accepts a bid on its own." size={18} color={DIM} dur={1.4} />
+        <Mono
+          t={t}
+          at={6.4}
+          text="Speech by Deepgram or Groq. The parser never accepts a bid on its own."
+          size={18}
+          color={DIM}
+          dur={1.4}
+        />
       </div>
     </Stage>
   );
@@ -740,7 +1132,12 @@ export function Hammer({ t, frame, fps, spec }: SceneCtx) {
   const kick = Math.sin(Math.PI * cl((t - soldAt) / 0.3)) * (t >= soldAt ? 1 : 0);
   const flash = t >= soldAt ? Math.max(0, 1 - (t - soldAt) / 0.14) : 0;
   const after = pr(t, soldAt, 0.01);
-  const goingStyle: CSSProperties = { fontFamily: MONO, fontSize: 18, letterSpacing: '0.16em', color: DIM };
+  const goingStyle: CSSProperties = {
+    fontFamily: MONO,
+    fontSize: 18,
+    letterSpacing: '0.16em',
+    color: DIM,
+  };
   return (
     <Stage
       t={t}
@@ -759,8 +1156,26 @@ export function Hammer({ t, frame, fps, spec }: SceneCtx) {
           <Footer t={t} world="ink" />
           <Eyebrow t={t} world="ink" text="05  Hammer" />
           <Caps t={t} caps={spec.caps} world="ink" x={96} y={300} size={128} />
-          <div style={{ position: 'absolute', inset: BLEED, background: PAPER, opacity: flash, pointerEvents: 'none' }} />
-          <Waves t={t} strikes={[soldAt]} x={1290} y={560} size={320} n={3} dur={1.4} max={8} alpha={0.9} />
+          <div
+            style={{
+              position: 'absolute',
+              inset: BLEED,
+              background: PAPER,
+              opacity: flash,
+              pointerEvents: 'none',
+            }}
+          />
+          <Waves
+            t={t}
+            strikes={[soldAt]}
+            x={1290}
+            y={560}
+            size={320}
+            n={3}
+            dur={1.4}
+            max={8}
+            alpha={0.9}
+          />
         </>
       }
     >
@@ -776,22 +1191,68 @@ export function Hammer({ t, frame, fps, spec }: SceneCtx) {
         }}
       >
         <div style={{ ...card('paper'), position: 'absolute', inset: 0, borderRadius: 12 }} />
-        <div style={{ position: 'absolute', left: 40, top: 32, right: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div
+          style={{
+            position: 'absolute',
+            left: 40,
+            top: 32,
+            right: 40,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <div>
-            <div style={{ fontFamily: MONO, fontSize: 13, letterSpacing: '0.14em', color: MUTE }}>AUCTIONEER CONSOLE</div>
-            <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 40, color: INK, marginTop: 4 }}>
+            <div style={{ fontFamily: MONO, fontSize: 13, letterSpacing: '0.14em', color: MUTE }}>
+              AUCTIONEER CONSOLE
+            </div>
+            <div
+              style={{
+                fontFamily: DISPLAY,
+                fontWeight: 800,
+                fontSize: 40,
+                color: INK,
+                marginTop: 4,
+              }}
+            >
               {LOT} <span style={{ color: MUTE, fontWeight: 500, fontSize: 24 }}>{LOT_NAME}</span>
             </div>
           </div>
           <div style={{ transform: `rotateX(${(after * 360).toFixed(0)}deg)` }}>
-            <Chip text={after ? 'Sold' : 'Bidding open'} tone={after ? 'orange' : 'ink'} size={14} />
+            <Chip
+              text={after ? 'Sold' : 'Bidding open'}
+              tone={after ? 'orange' : 'ink'}
+              size={14}
+            />
           </div>
         </div>
         <div style={{ position: 'absolute', left: 40, top: 120, width: 380 }}>
-          <div style={{ fontFamily: MONO, fontSize: 13, letterSpacing: '0.14em', color: MUTE }}>LEADING</div>
-          <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 120, color: after ? ORANGE_DEEP : INK, lineHeight: 1 }}>$350</div>
+          <div style={{ fontFamily: MONO, fontSize: 13, letterSpacing: '0.14em', color: MUTE }}>
+            LEADING
+          </div>
+          <div
+            style={{
+              fontFamily: DISPLAY,
+              fontWeight: 800,
+              fontSize: 120,
+              color: after ? ORANGE_DEEP : INK,
+              lineHeight: 1,
+            }}
+          >
+            $350
+          </div>
           <div style={{ fontFamily: BODY, fontSize: 20, color: INK }}>paddle 12, Asha</div>
-          <div style={{ marginTop: 26, fontFamily: MONO, fontSize: 13, letterSpacing: '0.14em', color: MUTE }}>BID STREAM</div>
+          <div
+            style={{
+              marginTop: 26,
+              fontFamily: MONO,
+              fontSize: 13,
+              letterSpacing: '0.14em',
+              color: MUTE,
+            }}
+          >
+            BID STREAM
+          </div>
           {[
             ['paddle 12', '$350'],
             ['paddle 7', '$325'],
@@ -799,31 +1260,84 @@ export function Hammer({ t, frame, fps, spec }: SceneCtx) {
             ['paddle 7', '$250'],
             ['paddle 12', '$225'],
           ].map((r, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: `1px solid ${RULE_PAPER}`, fontFamily: BODY, fontSize: 17, color: INK, opacity: pr(t, 0.6 + i * 0.1, 0.5) * (i === 0 ? 1 : 0.75) }}>
+            <div
+              key={i}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                padding: '9px 0',
+                borderBottom: `1px solid ${RULE_PAPER}`,
+                fontFamily: BODY,
+                fontSize: 17,
+                color: INK,
+                opacity: pr(t, 0.6 + i * 0.1, 0.5) * (i === 0 ? 1 : 0.75),
+              }}
+            >
               <span style={{ fontFamily: MONO, fontSize: 14, color: MUTE }}>{r[0]}</span>
               <span style={{ fontWeight: 600 }}>{r[1]}</span>
             </div>
           ))}
-          <div style={{ marginTop: 22, ...goingStyle, opacity: pr(t, pressAt + 1, 0.3) }}>GOING ONCE</div>
-          <div style={{ marginTop: 8, ...goingStyle, opacity: pr(t, pressAt + 2, 0.3) }}>GOING TWICE</div>
+          <div style={{ marginTop: 22, ...goingStyle, opacity: pr(t, pressAt + 1, 0.3) }}>
+            GOING ONCE
+          </div>
+          <div style={{ marginTop: 8, ...goingStyle, opacity: pr(t, pressAt + 2, 0.3) }}>
+            GOING TWICE
+          </div>
         </div>
         <div style={{ position: 'absolute', left: 520, top: 150, width: 440, textAlign: 'center' }}>
-          <div style={{ fontFamily: BODY, fontSize: 20, color: INK, lineHeight: 1.4, minHeight: 60 }}>
+          <div
+            style={{ fontFamily: BODY, fontSize: 20, color: INK, lineHeight: 1.4, minHeight: 60 }}
+          >
             Press and hold 3 seconds to close the lot.
             <br />
-            <span style={{ color: MUTE, fontSize: 16 }}>Falls at the current price. Release early to cancel.</span>
+            <span style={{ color: MUTE, fontSize: 16 }}>
+              Falls at the current price. Release early to cancel.
+            </span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: 34 }}>
-            <RingButton t={t} pressAt={pressAt} size={340} label={<span>Hold to hammer</span>} done={<span>Sold</span>} />
+            <RingButton
+              t={t}
+              pressAt={pressAt}
+              size={340}
+              label={<span>Hold to hammer</span>}
+              done={<span>Sold</span>}
+            />
           </div>
         </div>
-        <div style={{ position: 'absolute', left: 600, top: 150, opacity: pr(t, soldAt - 0.62, 0.1) * (1 - pr(t, soldAt + 1.6, 0.5)) }}>
-          <Mark t={t - (soldAt - 0.62)} size={300} timing={{ ringStart: -1, swingStart: 0, swingDur: 0.86 }} />
+        <div
+          style={{
+            position: 'absolute',
+            left: 600,
+            top: 150,
+            opacity: pr(t, soldAt - 0.62, 0.1) * (1 - pr(t, soldAt + 0.3, 0.35)),
+          }}
+        >
+          <Mark
+            t={t - (soldAt - 0.62)}
+            size={300}
+            timing={{ ringStart: -1, swingStart: 0, swingDur: 0.86 }}
+          />
         </div>
-        <Stamp t={t} at={soldAt + 0.1} fps={fps} text="Sold" size={140} style={{ left: 560, top: 560 }} />
+        <Stamp
+          t={t}
+          at={soldAt + 0.1}
+          fps={fps}
+          text="Sold"
+          size={140}
+          style={{ left: 560, top: 560 }}
+        />
         {t > soldAt + 0.6 ? (
-          <div style={{ position: 'absolute', left: 520, top: 740, width: 440, textAlign: 'center' }}>
-            <Display t={t} at={soldAt + 0.6} text="to **paddle 12** / at $350" size={54} color={INK} align="center" />
+          <div
+            style={{ position: 'absolute', left: 520, top: 740, width: 440, textAlign: 'center' }}
+          >
+            <Display
+              t={t}
+              at={soldAt + 0.6}
+              text="to **paddle 12** / at $350"
+              size={54}
+              color={INK}
+              align="center"
+            />
           </div>
         ) : null}
       </div>

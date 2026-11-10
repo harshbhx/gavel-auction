@@ -18,7 +18,10 @@ export const RemotionRoot = () => (
     defaultProps={defaultProps}
     calculateMetadata={({ props }) => {
       const specs = props.ids.map(specOf).filter(Boolean);
-      const frames = specs.reduce((n, s) => n + Math.max(1, Math.round((s?.dur ?? 0) * props.fps)), 0);
+      const frames = specs.reduce(
+        (n, s) => n + Math.max(1, Math.round((s?.dur ?? 0) * props.fps)),
+        0,
+      );
       return {
         fps: props.fps,
         durationInFrames: Math.max(1, frames),

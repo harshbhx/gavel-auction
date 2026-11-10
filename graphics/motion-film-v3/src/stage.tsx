@@ -8,7 +8,7 @@ import { colors, H, INK, INK_DEEP, MONO, ORANGE, PAPER, PAPER_HI, W, type World 
    glow drift and the grain moving even while a type line holds. */
 
 /** Picture-area transform (see Stage). Full-frame fills inside a scene bleed by BLEED px to cover the frame. */
-export const SAFE = 'translateY(8px) scale(0.87)';
+export const SAFE = 'translateY(20px) scale(0.87)';
 export const BLEED = -260;
 
 const NOISE =
@@ -235,7 +235,14 @@ export function Stage({
       {/* The picture area: everything a scene draws sits in the upper part of the frame, so the burned-in
           captions own the bottom band and never cover the product. Ground, glows, vignette and grain stay full frame. */}
       <div style={{ position: 'absolute', inset: 0, transform: SAFE, transformOrigin: '50% 0' }}>
-        <div style={{ position: 'absolute', inset: 0, perspective: 1800, perspectiveOrigin: '50% 50%' }}>
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            perspective: 1800,
+            perspectiveOrigin: '50% 50%',
+          }}
+        >
           <div
             style={{
               position: 'absolute',
