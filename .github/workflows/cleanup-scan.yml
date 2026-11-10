@@ -14,7 +14,7 @@ jobs:
       - uses: ./.github/actions/setup
       - name: knip
         continue-on-error: true
-        run: npx --yes knip@5.43.6 --no-progress --reporter json > knip.json 2> knip.err; npx --yes knip@5.43.6 --no-progress > knip.txt 2>&1 || true
+        run: npx --yes knip@5.85.0 --no-progress --reporter json > knip.json 2> knip.err; npx --yes knip@5.85.0 --no-progress > knip.txt 2>&1 || true
       - name: jscpd
         continue-on-error: true
         run: npx --yes jscpd@4.0.5 packages scripts --min-lines 25 --min-tokens 200 --ignore "**/node_modules/**,**/dist/**,**/*.test.*" --reporters json,console --output jscpd-out > jscpd.txt 2>&1 || true
