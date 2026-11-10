@@ -899,6 +899,7 @@ function RegisterRoute({
                 presetsCents: presets.filter((p) => p >= range.minCents && p <= range.maxCents),
               })}
           allowCustom
+          roomId={roomId}
           {...(draft === null ? {} : { initial: draft })}
           onApprove={(next) => {
             setDraft(next);

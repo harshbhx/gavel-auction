@@ -1,11 +1,11 @@
-import { useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { t } from '../copy/t';
-import { INSTRUCTOR_STEPS, type InstructorScreen } from './instructorSteps';
+import { INSTRUCTOR_BUTTONS, type InstructorScreen } from './instructorSteps';
 import './instructor.css';
 
 export interface InstructorProps {
   readonly screen: InstructorScreen;
-  /** Index into the screen's steps, from real room state. Null when it is not known. */
+  /** Kept so screens can still report their step; the guide does not use it. */
   readonly current?: number | null;
   /**
    * True on a judge room (a sandbox demo room), false on any other room. Left out, the room is
@@ -13,28 +13,25 @@ export interface InstructorProps {
    */
   readonly judge?: boolean;
   readonly roomId?: string;
-  /** Query string that can force the panel on (?instructor=1) or off (?instructor=0). */
+  /** Query string that can force the guide on (?instructor=1, even when seen) or off (?instructor=0). */
   readonly search?: string;
 }
 
-const storeKey = (screen: InstructorScreen): string => `gavel:instructor:${screen}`;
+const storeKey = (screen: InstructorScreen): string => `gavel:guide:${screen}`;
 
-function readCollapsed(screen: InstructorScreen): boolean {
+function wasSeen(screen: InstructorScreen): boolean {
   try {
-    const saved = sessionStorage.getItem(storeKey(screen));
-    if (saved === 'closed') return true;
-    if (saved === 'open') return false;
+    return localStorage.getItem(storeKey(screen)) === 'seen';
   } catch {
-    // No storage: use the default.
+    return false;
   }
-  return false;
 }
 
-function writeCollapsed(screen: InstructorScreen, collapsed: boolean): void {
+function markSeen(screen: InstructorScreen): void {
   try {
-    sessionStorage.setItem(storeKey(screen), collapsed ? 'closed' : 'open');
+    localStorage.setItem(storeKey(screen), 'seen');
   } catch {
-    // The choice only lasts for this view.
+    // The guide may show again next time.
   }
 }
 
@@ -97,57 +94,71 @@ function useIsJudgeRoom(
 }
 
 /**
- * A short, collapsible step list at the top of a judge screen: what to do here and what comes
- * next. The current step follows the room, not a button. A region with a heading, not a dialog,
- * so it never covers a control.
+ * A small guide card that explains the buttons on a screen, once per device. Closing it (Got it,
+ * Escape or a click outside) is remembered; ?instructor=1 shows it again. Not modal: the screen
+ * behind stays usable.
  */
-export function Instructor({ screen, current = null, judge, roomId, search }: InstructorProps) {
-  const enabled = instructorEnabled(search ?? window.location.search);
+export function Instructor({ screen, judge, roomId, search }: InstructorProps) {
+  const query = search ?? window.location.search;
+  const enabled = instructorEnabled(query);
+  const forced = new URLSearchParams(query).get('instructor') === '1';
   const isJudge = useIsJudgeRoom(enabled, judge, roomId);
-  const [collapsed, setCollapsed] = useState(() => readCollapsed(screen));
+  const [open, setOpen] = useState(() => forced || !wasSeen(screen));
   const headingId = useId();
-  const listId = useId();
-  if (!enabled || !isJudge) return null;
-  const steps = INSTRUCTOR_STEPS[screen];
-  const toggle = (): void => {
-    setCollapsed(!collapsed);
-    writeCollapsed(screen, !collapsed);
-  };
+  const cardRef = useRef<HTMLElement | null>(null);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const shown = enabled && isJudge && open;
+
+  const close = useCallback((): void => {
+    markSeen(screen);
+    setOpen(false);
+  }, [screen]);
+
+  useEffect(() => {
+    if (!shown) return undefined;
+    const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    headingRef.current?.focus();
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') close();
+    };
+    const onPointer = (e: PointerEvent): void => {
+      const card = cardRef.current;
+      if (card !== null && e.target instanceof Node && !card.contains(e.target)) close();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointer);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointer);
+      if (before !== null && before.isConnected) before.focus();
+    };
+  }, [shown, close]);
+
+  if (!shown) return null;
   return (
     <section
+      ref={cardRef}
       className="gv-instructor"
-      role="region"
+      role="dialog"
+      aria-modal="false"
       aria-labelledby={headingId}
       data-screen={screen}
     >
-      <div className="gv-instructor__head">
-        <h2 className="gv-instructor__title ui-kicker" id={headingId}>
-          {t('instructor.title')}
-        </h2>
-        <button
-          type="button"
-          className="gv-instructor__toggle"
-          aria-expanded={!collapsed}
-          aria-controls={listId}
-          onClick={toggle}
-        >
-          {collapsed ? t('instructor.show') : t('instructor.hide')}
-        </button>
-      </div>
-      <div id={listId} hidden={collapsed}>
-        <p className="gv-instructor__lead">{t('instructor.lead')}</p>
-        <ol className="gv-instructor__steps">
-          {steps.map((key, i) => {
-            const here = i === current;
-            return (
-              <li key={key} {...(here ? { 'aria-current': 'step' as const } : {})} data-here={here}>
-                {here && <strong className="gv-instructor__now">{t('instructor.now')} </strong>}
-                {t(key)}
-              </li>
-            );
-          })}
-        </ol>
-      </div>
+      <h2 className="gv-instructor__title ui-kicker" id={headingId} ref={headingRef} tabIndex={-1}>
+        {t('instructor.title')}
+      </h2>
+      <p className="gv-instructor__lead">{t('instructor.lead')}</p>
+      <ul className="gv-instructor__buttons">
+        {INSTRUCTOR_BUTTONS[screen].map((b) => (
+          <li key={b.name}>
+            <strong className="gv-instructor__name">{t(b.name)}</strong>
+            <span className="gv-instructor__text">{t(b.text)}</span>
+          </li>
+        ))}
+      </ul>
+      <button type="button" className="gv-instructor__done" onClick={close}>
+        {t('instructor.gotIt')}
+      </button>
     </section>
   );
 }

@@ -1,29 +1,35 @@
-/** Instructor: which steps each judge screen shows and which one is current. Copy lives in en.ts. */
+/** Instructor: the buttons each screen's one-time guide explains. Copy lives in en.ts. */
 import type { CopyKey } from '../copy/en';
 import type { AuctionStatus } from '../wire';
 
-export type InstructorScreen = 'hub' | 'console' | 'bid' | 'receipt' | 'verify' | 'try';
+export type InstructorScreen =
+  | 'hub'
+  | 'console'
+  | 'bid'
+  | 'receipt'
+  | 'verify'
+  | 'try'
+  | 'register';
 
-type StepKey = Extract<CopyKey, `instructor.${InstructorScreen}.${number}`>;
+export interface GuideButton {
+  readonly name: CopyKey;
+  readonly text: CopyKey;
+}
 
-export const INSTRUCTOR_STEPS: Readonly<Record<InstructorScreen, readonly StepKey[]>> = {
-  hub: [
-    'instructor.hub.1',
-    'instructor.hub.2',
-    'instructor.hub.3',
-    'instructor.hub.4',
-    'instructor.hub.5',
-  ],
-  console: [
-    'instructor.console.1',
-    'instructor.console.2',
-    'instructor.console.3',
-    'instructor.console.4',
-  ],
-  bid: ['instructor.bid.1', 'instructor.bid.2', 'instructor.bid.3', 'instructor.bid.4'],
-  receipt: ['instructor.receipt.1', 'instructor.receipt.2', 'instructor.receipt.3'],
-  verify: ['instructor.verify.1', 'instructor.verify.2', 'instructor.verify.3'],
-  try: ['instructor.try.1', 'instructor.try.2', 'instructor.try.3'],
+const buttons = (screen: InstructorScreen, count: number): readonly GuideButton[] =>
+  Array.from({ length: count }, (_, i) => ({
+    name: `instructor.${screen}.${i + 1}.name` as CopyKey,
+    text: `instructor.${screen}.${i + 1}.text` as CopyKey,
+  }));
+
+export const INSTRUCTOR_BUTTONS: Readonly<Record<InstructorScreen, readonly GuideButton[]>> = {
+  console: buttons('console', 5),
+  bid: buttons('bid', 5),
+  hub: buttons('hub', 6),
+  try: buttons('try', 4),
+  receipt: buttons('receipt', 3),
+  verify: buttons('verify', 4),
+  register: buttons('register', 3),
 };
 
 export interface RoomFacts {
@@ -32,7 +38,7 @@ export interface RoomFacts {
   readonly ended: boolean;
 }
 
-/** Current step of the hub from the live room: before the lot opens, while it runs, after it. */
+/** Where the room is, for screens that still report it. The guide itself does not use it. */
 export function hubStep({ status, ended }: RoomFacts): number {
   if (ended) return 4;
   if (status === 'OPEN' || status === 'PAUSED' || status === 'CLOSING') return 3;

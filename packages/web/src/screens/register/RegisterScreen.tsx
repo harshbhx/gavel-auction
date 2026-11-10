@@ -8,6 +8,7 @@ import { Icon } from '../../design/icons';
 import { Button } from '../../design/primitives/Button';
 import { Field } from '../../design/primitives/Field';
 import { formatUsdCompact } from '../../util/money';
+import { Instructor } from '../../help';
 import { HoldButton } from '../../ui';
 import '../flows.css';
 import { useLimitEntry } from './LimitEntry';
@@ -31,6 +32,8 @@ export interface RegisterScreenProps {
   /** What the bidder entered before going back from the approval step; shown again as typed. */
   initial?: RegistrationDraft;
   onApprove: (draft: RegistrationDraft) => void;
+  /** The room, so the one-time guide can tell whether it is a sandbox demo room. */
+  roomId?: string;
 }
 
 const DEFAULT_PRESETS: readonly number[] = [10000, 25000, 50000, 100000];
@@ -43,6 +46,7 @@ export function RegisterScreen({
   allowCustom = true,
   initial,
   onApprove,
+  roomId,
 }: RegisterScreenProps) {
   const [step, setStep] = useState<1 | 2>(initial === undefined ? 1 : 2);
   const [name, setName] = useState(initial?.name ?? '');
@@ -118,6 +122,7 @@ export function RegisterScreen({
 
   return (
     <main className="gv-flow" data-step="ceiling">
+      <Instructor screen="register" {...(roomId === undefined ? {} : { roomId })} />
       <h1 tabIndex={-1}>{t('reg.step2')}</h1>
       <p className="gv-flow__summary">{t('reg.summary', { name: name.trim() })}</p>
       <form onSubmit={submitStepTwo} noValidate>

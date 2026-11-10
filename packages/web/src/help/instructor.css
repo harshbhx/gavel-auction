@@ -1,35 +1,24 @@
 .gv-instructor {
-  margin: 0 0 var(--space-4);
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 40;
+  box-sizing: border-box;
+  width: min(360px, calc(100vw - 2 * var(--space-4)));
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
   color: var(--color-fg);
   font-size: var(--font-size-1);
 }
 
-.gv-instructor__head {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
 .gv-instructor__title {
-  margin: 0;
+  margin: 0 0 var(--space-2);
 }
 
-.gv-instructor__toggle {
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.gv-instructor__toggle:focus-visible {
+.gv-instructor__title:focus-visible {
   outline: 2px solid var(--color-fg);
   outline-offset: 2px;
 }
@@ -39,16 +28,46 @@
   color: var(--color-fg-muted);
 }
 
-.gv-instructor__steps {
+.gv-instructor__buttons {
   margin: 0 0 var(--space-3);
-  padding-left: var(--space-5);
+  padding: 0;
+  list-style: none;
   overflow-wrap: anywhere;
 }
 
-.gv-instructor__steps li {
+.gv-instructor__buttons li {
   padding: var(--space-1) 0;
 }
 
-.gv-instructor__steps li[data-here='true'] {
+.gv-instructor__name {
+  display: block;
   font-weight: 600;
+}
+
+.gv-instructor__done {
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-fg);
+  background: var(--color-fg);
+  color: var(--color-bg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.gv-instructor__done:focus-visible {
+  outline: 2px solid var(--color-fg);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .gv-instructor {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-height: 60vh;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+  }
 }
