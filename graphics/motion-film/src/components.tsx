@@ -249,8 +249,8 @@ export function BigScreen({
           <Stamp
             t={t}
             a={(state.soldAt ?? 0) + 0.1}
-            x={w - pad - Math.round(w * 0.2)}
-            y={Math.round(h * 0.42)}
+            x={Math.round(w * 0.6)}
+            y={Math.round(h * 0.56)}
             text="Sold"
             size={Math.round(w * 0.07)}
           />
@@ -333,7 +333,7 @@ export function HoldCard({
         style={{
           position: 'absolute',
           left: pad,
-          top: pad + Math.round(w * 0.06),
+          top: pad + Math.round(w * 0.05),
           ...mono(Math.round(w * 0.024), INK),
         }}
       >
@@ -343,7 +343,7 @@ export function HoldCard({
         style={{
           position: 'absolute',
           left: pad - 4,
-          top: pad + Math.round(w * 0.1),
+          top: pad + Math.round(w * 0.13),
           ...display(Math.round(w * 0.3), INK),
         }}
       >
@@ -353,7 +353,7 @@ export function HoldCard({
         style={{
           position: 'absolute',
           left: pad,
-          top: pad + Math.round(w * 0.41),
+          top: pad + Math.round(w * 0.45),
           width: w - 2 * pad,
           ...{
             fontFamily: BODY,

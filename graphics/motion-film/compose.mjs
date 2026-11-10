@@ -958,7 +958,7 @@ for (const sc of timeline) {
   }
 }
 writeFileSync(path.join(OUT, `${NAME}.en.srt`), srt.join('\n'));
-writeFileSync(path.join(OUT, 'timeline.json'), JSON.stringify(timeline, null, 1));
+writeFileSync(path.join(OUT, 'timeline.json'), JSON.stringify(timeline, null, 2));
 ff(
   [
     '-i',
