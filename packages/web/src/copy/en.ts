@@ -1471,7 +1471,7 @@ export const en = {
   'ledger.detail.close': 'Close detail',
   'ledger.detail.hash': 'Hash (SHA-256)',
   'ledger.detail.prev': 'Previous hash',
-  'ledger.chain.ok': 'Chain intact: {n} entries sealed and linked (checked when the page opened)',
+  'ledger.chain.ok': 'Chain intact: {n} entries sealed and linked',
   'ledger.chain.bad': 'Chain broken at entry {n}',
   'ledger.chain.unchecked':
     'This browser cannot compute SHA-256 here (it needs a secure page), so the chain could not be checked. Nothing was found edited.',
