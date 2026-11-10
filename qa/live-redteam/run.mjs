@@ -718,7 +718,9 @@ async function main() {
     roomId = roomFromUrl(hubUrl);
     const hash = new URL(hubUrl).hash;
     note(`hub hash keys: ${hash.replace(/=[^&]+/g, '=<redacted>')}`);
-    check(/token=|a=|s=|code=/.test(hash), 'hub url carries keys in the fragment');
+    // The hub reads the keys from the fragment, keeps them in this tab and strips them from the
+    // address bar (#2446). The hub links and the later steps prove the keys were kept.
+    check(!/token=|a=|s=|code=/.test(hash), 'hub keys are not left in the address bar');
   });
 
   await step('Hub: code, QR, links, copy buttons', async () => {
