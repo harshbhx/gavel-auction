@@ -1,0 +1,191 @@
+1
+00:00:00,300 --> 00:00:01,900
+A bid is a promise.
+
+2
+00:00:01,950 --> 00:00:04,500
+Most bids cost nothing. A film by Harsh Bhanushali and Dhairya Patel.
+
+3
+00:00:05,750 --> 00:00:12,000
+GAVEL. Every bid is a hold. The hammer is the payment.
+
+4
+00:00:12,500 --> 00:00:14,800
+Charge first, bidders hold back.
+
+5
+00:00:14,800 --> 00:00:17,100
+No hold, winners walk away.
+
+6
+00:00:17,100 --> 00:00:19,500
+Paper sheets, no proof.
+
+7
+00:00:20,500 --> 00:00:22,200
+A ceiling.
+
+8
+00:00:22,200 --> 00:00:25,200
+Bids under it.
+
+9
+00:00:25,200 --> 00:00:26,800
+Capture the winner.
+
+10
+00:00:26,800 --> 00:00:30,000
+Release the rest. Orders v2 intent AUTHORIZE; Payments v2 capture with final_capture, void.
+
+11
+00:00:30,400 --> 00:00:34,300
+Open /try. One tap. One sandbox room.
+
+12
+00:00:34,800 --> 00:00:38,700
+A code. A QR.
+
+13
+00:00:39,400 --> 00:00:46,200
+Type the code. Or scan the QR.
+
+14
+00:00:46,900 --> 00:00:52,682
+Pick a ceiling.
+
+15
+00:00:52,882 --> 00:00:56,981
+Hold 3 seconds.
+
+16
+00:00:57,081 --> 00:00:59,700
+Held, not charged.
+
+17
+00:01:00,300 --> 00:01:02,800
+Open the lot.
+
+18
+00:01:03,300 --> 00:01:06,757
+Bids arrive.
+
+19
+00:01:06,857 --> 00:01:10,495
+Only up.
+
+20
+00:01:10,595 --> 00:01:14,700
+Every screen agrees.
+
+21
+00:01:15,300 --> 00:01:16,600
+Or say it.
+
+22
+00:01:16,600 --> 00:01:18,800
+"three fifty for paddle twelve"
+
+23
+00:01:18,800 --> 00:01:20,000
+amount 350.00, paddle 12
+
+24
+00:01:20,000 --> 00:01:22,500
+Did you mean $350 for paddle 12? Confirm. Illustration: speech is measured on 24 synthetic clips only (G5 partial).
+
+25
+00:01:22,800 --> 00:01:28,392
+Hold the hammer. 3 seconds. No accidents.
+
+26
+00:01:28,492 --> 00:01:30,800
+Sold.
+
+27
+00:01:31,400 --> 00:01:34,200
+The screen names the winner.
+
+28
+00:01:34,800 --> 00:01:37,900
+Capture only the winning price.
+
+29
+00:01:37,900 --> 00:01:43,500
+Release every other hold. Drawn, not recorded: real sandbox capture and void are proven in G1 and G4.
+
+30
+00:01:43,900 --> 00:01:47,100
+A receipt for everyone.
+
+31
+00:01:47,300 --> 00:01:50,700
+Share link. QR.
+
+32
+00:01:51,400 --> 00:01:55,159
+Paste the export.
+
+33
+00:01:55,359 --> 00:01:59,527
+Chain verified. Then one entry is edited.
+
+34
+00:01:59,627 --> 00:02:01,200
+Chain broken.
+
+35
+00:02:02,000 --> 00:02:04,300
+Kill survived. A real server kill during settlement on the PayPal sandbox: one capture, two voids, 19 ledger entries verify.
+
+36
+00:02:04,300 --> 00:02:06,600
+Live voice 24 of 24 synthetic clips. No bid accepted without a confirm.
+
+37
+00:02:06,600 --> 00:02:08,900
+Webhooks 6 of 6 real sandbox deliveries verified.
+
+38
+00:02:08,900 --> 00:02:12,000
+Latency, honestly. Hammer to captured p95 3.8 s against 2.5 s; to settled 6.9 s against 6 s. Both missed.
+
+39
+00:02:12,300 --> 00:02:16,000
+For judges. One shared judge key, in the Devpost testing instructions. It opens sandbox rooms over plain HTTP. No key is needed for /try.
+
+40
+00:02:16,000 --> 00:02:19,800
+The key goes into a password field on /try. The docs list every call with a Try-it panel.
+
+41
+00:02:19,800 --> 00:02:22,500
+gavel.dualmindlab.tech/try. docs.gavel.dualmindlab.tech/docs/judges/call-the-api. api.gavel.dualmindlab.tech
+
+42
+00:02:22,800 --> 00:02:24,500
+Built with.
+
+43
+00:02:24,500 --> 00:02:27,000
+PayPal: payments in the PayPal sandbox (Orders v2, Payments v2, webhooks). Built for the PayPal AI Hackathon 2026.
+
+44
+00:02:27,000 --> 00:02:30,000
+Render: API hosted on Render. Also Cloudflare Workers, AG Grid, Deepgram and Groq. Names only, no endorsement implied.
+
+45
+00:02:30,600 --> 00:02:32,100
+G3 in progress. The honor-period probe is still timing. The final reading is about 12 Nov.
+
+46
+00:02:32,100 --> 00:02:33,600
+G5 partial. Speech is measured on synthetic, noise-free audio only.
+
+47
+00:02:33,600 --> 00:02:36,000
+Sandbox only. No real money moves.
+
+48
+00:02:37,500 --> 00:02:43,500
+Built by Harsh Bhanushali and Dhairya Patel. gavel.dualmindlab.tech. docs.gavel.dualmindlab.tech. github.com/harshbhx/gavel-auction. PayPal sandbox only.

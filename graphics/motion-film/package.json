@@ -1,0 +1,24 @@
+{
+  "name": "gavel-launch-film",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The GAVEL launch film (GFX-15): a Remotion project rendered by .github/workflows/launch-film.yml. Not a workspace of the monorepo; installed only in that workflow.",
+  "license": "MIT",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "studio": "remotion studio",
+    "compose": "node compose.mjs"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.542",
+    "@remotion/fonts": "4.0.542",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.542"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,368 @@
+[
+  {
+    "id": "cold",
+    "start": 0,
+    "dur": 4.5,
+    "caps": [
+      {
+        "a": 0.3,
+        "b": 1.9,
+        "text": "A bid is a promise."
+      },
+      {
+        "a": 1.95,
+        "b": 4.5,
+        "text": "Most bids cost nothing. A film by Harsh Bhanushali and Dhairya Patel."
+      }
+    ]
+  },
+  {
+    "id": "title",
+    "start": 4.5,
+    "dur": 7.5,
+    "caps": [
+      {
+        "a": 5.75,
+        "b": 12,
+        "text": "GAVEL. Every bid is a hold. The hammer is the payment."
+      }
+    ]
+  },
+  {
+    "id": "problem",
+    "start": 12,
+    "dur": 7.5,
+    "caps": [
+      {
+        "a": 12.5,
+        "b": 14.8,
+        "text": "Charge first, bidders hold back."
+      },
+      {
+        "a": 14.8,
+        "b": 17.1,
+        "text": "No hold, winners walk away."
+      },
+      {
+        "a": 17.1,
+        "b": 19.5,
+        "text": "Paper sheets, no proof."
+      }
+    ]
+  },
+  {
+    "id": "idea",
+    "start": 19.5,
+    "dur": 10.5,
+    "caps": [
+      {
+        "a": 20.5,
+        "b": 22.2,
+        "text": "A ceiling."
+      },
+      {
+        "a": 22.2,
+        "b": 25.2,
+        "text": "Bids under it."
+      },
+      {
+        "a": 25.2,
+        "b": 26.8,
+        "text": "Capture the winner."
+      },
+      {
+        "a": 26.8,
+        "b": 30,
+        "text": "Release the rest. Orders v2 intent AUTHORIZE; Payments v2 capture with final_capture, void."
+      }
+    ]
+  },
+  {
+    "id": "open",
+    "start": 30,
+    "dur": 9,
+    "caps": [
+      {
+        "a": 30.4,
+        "b": 34.3,
+        "text": "Open /try. One tap. One sandbox room."
+      },
+      {
+        "a": 34.8,
+        "b": 38.7,
+        "text": "A code. A QR."
+      }
+    ]
+  },
+  {
+    "id": "join",
+    "start": 39,
+    "dur": 7.5,
+    "caps": [
+      {
+        "a": 39.4,
+        "b": 46.2,
+        "text": "Type the code. Or scan the QR."
+      }
+    ]
+  },
+  {
+    "id": "hold",
+    "start": 46.5,
+    "dur": 13.5,
+    "caps": [
+      {
+        "a": 46.9,
+        "b": 52.682,
+        "text": "Pick a ceiling."
+      },
+      {
+        "a": 52.882,
+        "b": 56.981,
+        "text": "Hold 3 seconds."
+      },
+      {
+        "a": 57.081,
+        "b": 59.7,
+        "text": "Held, not charged."
+      }
+    ]
+  },
+  {
+    "id": "bid",
+    "start": 60,
+    "dur": 15,
+    "caps": [
+      {
+        "a": 60.3,
+        "b": 62.8,
+        "text": "Open the lot."
+      },
+      {
+        "a": 63.3,
+        "b": 66.757,
+        "text": "Bids arrive."
+      },
+      {
+        "a": 66.857,
+        "b": 70.495,
+        "text": "Only up."
+      },
+      {
+        "a": 70.595,
+        "b": 74.7,
+        "text": "Every screen agrees."
+      }
+    ]
+  },
+  {
+    "id": "voice",
+    "start": 75,
+    "dur": 7.5,
+    "caps": [
+      {
+        "a": 75.3,
+        "b": 76.6,
+        "text": "Or say it."
+      },
+      {
+        "a": 76.6,
+        "b": 78.8,
+        "text": "\"three fifty for paddle twelve\""
+      },
+      {
+        "a": 78.8,
+        "b": 80,
+        "text": "amount 350.00, paddle 12"
+      },
+      {
+        "a": 80,
+        "b": 82.5,
+        "text": "Did you mean $350 for paddle 12? Confirm. Illustration: speech is measured on 24 synthetic clips only (G5 partial)."
+      }
+    ]
+  },
+  {
+    "id": "hammer",
+    "start": 82.5,
+    "dur": 12,
+    "caps": [
+      {
+        "a": 82.8,
+        "b": 88.392,
+        "text": "Hold the hammer. 3 seconds. No accidents."
+      },
+      {
+        "a": 88.492,
+        "b": 90.8,
+        "text": "Sold."
+      },
+      {
+        "a": 91.4,
+        "b": 94.2,
+        "text": "The screen names the winner."
+      }
+    ]
+  },
+  {
+    "id": "settle",
+    "start": 94.5,
+    "dur": 9,
+    "caps": [
+      {
+        "a": 94.8,
+        "b": 97.9,
+        "text": "Capture only the winning price."
+      },
+      {
+        "a": 97.9,
+        "b": 103.5,
+        "text": "Release every other hold. Drawn, not recorded: real sandbox capture and void are proven in G1 and G4."
+      }
+    ]
+  },
+  {
+    "id": "receipt",
+    "start": 103.5,
+    "dur": 7.5,
+    "caps": [
+      {
+        "a": 103.9,
+        "b": 107.1,
+        "text": "A receipt for everyone."
+      },
+      {
+        "a": 107.3,
+        "b": 110.7,
+        "text": "Share link. QR."
+      }
+    ]
+  },
+  {
+    "id": "verify",
+    "start": 111,
+    "dur": 10.5,
+    "caps": [
+      {
+        "a": 111.4,
+        "b": 115.159,
+        "text": "Paste the export."
+      },
+      {
+        "a": 115.359,
+        "b": 119.527,
+        "text": "Chain verified. Then one entry is edited."
+      },
+      {
+        "a": 119.627,
+        "b": 121.2,
+        "text": "Chain broken."
+      }
+    ]
+  },
+  {
+    "id": "proof",
+    "start": 121.5,
+    "dur": 10.5,
+    "caps": [
+      {
+        "a": 122,
+        "b": 124.3,
+        "text": "Kill survived. A real server kill during settlement on the PayPal sandbox: one capture, two voids, 19 ledger entries verify."
+      },
+      {
+        "a": 124.3,
+        "b": 126.6,
+        "text": "Live voice 24 of 24 synthetic clips. No bid accepted without a confirm."
+      },
+      {
+        "a": 126.6,
+        "b": 128.9,
+        "text": "Webhooks 6 of 6 real sandbox deliveries verified."
+      },
+      {
+        "a": 128.9,
+        "b": 132,
+        "text": "Latency, honestly. Hammer to captured p95 3.8 s against 2.5 s; to settled 6.9 s against 6 s. Both missed."
+      }
+    ]
+  },
+  {
+    "id": "judges",
+    "start": 132,
+    "dur": 10.5,
+    "caps": [
+      {
+        "a": 132.3,
+        "b": 136,
+        "text": "For judges. One shared judge key, in the Devpost testing instructions. It opens sandbox rooms over plain HTTP. No key is needed for /try."
+      },
+      {
+        "a": 136,
+        "b": 139.8,
+        "text": "The key goes into a password field on /try. The docs list every call with a Try-it panel."
+      },
+      {
+        "a": 139.8,
+        "b": 142.5,
+        "text": "gavel.dualmindlab.tech/try. docs.gavel.dualmindlab.tech/docs/judges/call-the-api. api.gavel.dualmindlab.tech"
+      }
+    ]
+  },
+  {
+    "id": "builtWith",
+    "start": 142.5,
+    "dur": 7.5,
+    "caps": [
+      {
+        "a": 142.8,
+        "b": 144.5,
+        "text": "Built with."
+      },
+      {
+        "a": 144.5,
+        "b": 147,
+        "text": "PayPal: payments in the PayPal sandbox (Orders v2, Payments v2, webhooks). Built for the PayPal AI Hackathon 2026."
+      },
+      {
+        "a": 147,
+        "b": 150,
+        "text": "Render: API hosted on Render. Also Cloudflare Workers, AG Grid, Deepgram and Groq. Names only, no endorsement implied."
+      }
+    ]
+  },
+  {
+    "id": "openItems",
+    "start": 150,
+    "dur": 6,
+    "caps": [
+      {
+        "a": 150.6,
+        "b": 152.1,
+        "text": "G3 in progress. The honor-period probe is still timing. The final reading is about 12 Nov."
+      },
+      {
+        "a": 152.1,
+        "b": 153.6,
+        "text": "G5 partial. Speech is measured on synthetic, noise-free audio only."
+      },
+      {
+        "a": 153.6,
+        "b": 156,
+        "text": "Sandbox only. No real money moves."
+      }
+    ]
+  },
+  {
+    "id": "outro",
+    "start": 156,
+    "dur": 7.5,
+    "caps": [
+      {
+        "a": 157.5,
+        "b": 163.5,
+        "text": "Built by Harsh Bhanushali and Dhairya Patel. gavel.dualmindlab.tech. docs.gavel.dualmindlab.tech. github.com/harshbhx/gavel-auction. PayPal sandbox only."
+      }
+    ]
+  }
+]
