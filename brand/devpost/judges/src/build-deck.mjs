@@ -1326,7 +1326,7 @@ function rings(s, cx, cy, fades) {
     s,
     'close-guide',
     'Test steps, architecture, security, evidence and limits are in the GAVEL judge guide (PDF) that comes with this deck.',
-    { x: 0.6, y: 6.2, w: 7.6, h: 0.6 },
+    { x: 0.6, y: 6.2, w: 6.9, h: 0.6 },
     { fontSize: 13, color: K.mutedDark },
   );
   fx('close-l1', 'float', { dur: 600, delay: 200 });
