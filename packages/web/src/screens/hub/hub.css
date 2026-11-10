@@ -176,15 +176,13 @@
 }
 
 .gv-hub__live {
-  position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
-  z-index: 1;
-  display: inline-flex;
+  /* A caption row above the preview, not a badge on top of it. */
+  margin: 0;
+  display: flex;
+  border-bottom: var(--border-width) solid var(--color-fg);
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-1) var(--space-2);
-  border: var(--border-width) solid var(--color-fg);
   background: var(--color-bg);
   color: var(--color-fg);
   font-family: var(--font-mono);
@@ -533,5 +531,37 @@
 }
 
 .gv-hub__close p {
+  margin: 0;
+}
+
+.gv-hub__preview-wait {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-fg-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+  text-align: center;
+}
+
+.gv-hub__nokeys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.gv-hub__nokeys p {
+  flex: 1 1 18rem;
   margin: 0;
 }

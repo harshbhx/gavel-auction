@@ -469,13 +469,12 @@ export const en = {
   'hub.joinLinkLabel': 'Join link',
   'hub.joinHere': 'Join as a bidder',
   'hub.joinHereOpen': 'Open join page',
-  'hub.watcherNote':
-    'You opened this hub without the room keys, so you can join as a bidder but not run the room.',
   'hub.ticket': 'Join ticket',
   'hub.ticketAdmit': 'Admit one bidder',
   'hub.scanToBid': 'Scan with a phone to bid',
   'hub.closesIn': 'Room closes in {time}',
   'hub.live': 'Live preview',
+  'hub.previewWaiting': 'Preview starts when the lot opens',
   'hub.previewLabel': 'Preview of the projection screen',
   'hub.qrLabel': 'QR code for a bidder on a phone',
   'hub.step3': 'Auctioneer console',
@@ -487,7 +486,8 @@ export const en = {
   'hub.newInvite': 'New bidder invite',
   'hub.inviteBusy': 'Making an invite',
   'hub.inviteFailed': 'We could not make a bidder invite. Try again.',
-  'hub.noToken': 'This link has no token, so it cannot be opened from here.',
+  'hub.noToken':
+    'The screen and console links only work in the tab that created this room. You can still join as a bidder from here, or start a new demo.',
   'hub.noInviteToken': 'Bidder invites need the console token. Open the hub from the console.',
   'hub.testTitle': 'Test it in 2 minutes',
   'hub.test1': 'Open the projection screen.',
@@ -616,9 +616,10 @@ export const en = {
   'join.watch': 'Just watch',
   'join.waysTitle': 'Two ways to try bidding',
   'join.waysWhy':
-    'Judges can test either way: with the PayPal sandbox, or with the demo version that needs no PayPal login. Sandbox only, held, not charged.',
+    'The demo needs no login and takes a few seconds. The PayPal sandbox shows the real hold. Sandbox only, held, not charged.',
   'join.wayPaypal': 'Use the PayPal sandbox',
-  'join.wayDemo': 'Join with the demo',
+  'join.wayDemo': 'Join with the demo (quickest)',
+  'join.showQr': 'Show the room QR code',
   'watch.title': 'You are watching this room',
   'watch.lead':
     'You have not joined as a bidder yet. Join to register a sandbox hold and place bids.',
