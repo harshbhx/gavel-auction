@@ -292,7 +292,7 @@
 }
 
 /* The one main action of a page: the brand orange, ink edge, same on landing, /demo, /try and join. */
-.gv-btn.gv-cta {
+.gv-btn.gv-btn--main {
   background: var(--color-action);
   border-color: var(--color-fg);
   color: var(--color-on-action);

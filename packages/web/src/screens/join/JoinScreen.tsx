@@ -163,7 +163,7 @@ export function JoinScreen({
           <ActionGroup>
             <Button
               size="bid"
-              className="gv-cta"
+              className="gv-btn--main"
               onClick={() => onNavigate(`${registerPath}?mode=demo`)}
             >
               {t('join.wayDemo')}
@@ -180,7 +180,7 @@ export function JoinScreen({
         <>
           <p className="gv-join__note">{t('join.sandboxNote')}</p>
           <ActionGroup>
-            <Button size="bid" className="gv-cta" onClick={() => onNavigate(registerPath)}>
+            <Button size="bid" className="gv-btn--main" onClick={() => onNavigate(registerPath)}>
               {t('join.asBidder')}
             </Button>
             <Button size="bid" variant="text" onClick={() => onNavigate(bidPath)}>
