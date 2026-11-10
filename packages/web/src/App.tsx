@@ -360,6 +360,7 @@ function LiveRoute({
             stopped={stopped}
             onJoin={() => navigate(`/r/${encodeURIComponent(roomId)}/register`)}
             lotTitleFallback={summaryTitle}
+            {...(scripted?.attach === undefined ? {} : { recorded: true })}
             onHome={() => navigate('/')}
             onJoinCode={() => navigate('/?join=1')}
             onReceipt={() => navigate(`/r/${encodeURIComponent(roomId)}/receipt`)}
@@ -1454,8 +1455,10 @@ export function App({ initialPath, gallery = import.meta.env.DEV, liveBase, api 
   return (
     <ErrorBoundary>
       {match.route.id !== 'gallery' && <SkipLink />}
-      {match.route.id !== 'gallery' && <SandboxBanner />}
-      <HomeLink routeId={match.route.id} />
+      <div className="gv-chrome">
+        {match.route.id !== 'gallery' && <SandboxBanner />}
+        <HomeLink routeId={match.route.id} />
+      </div>
       {match.route.id !== 'gallery' && match.route.id !== 'bid' && <OfflineBanner />}
       {match.route.id !== 'gallery' && <BusyBanner />}
       {match.route.id !== 'gallery' && <Announcer />}

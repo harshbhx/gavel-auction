@@ -93,6 +93,8 @@ export interface BidScreenProps {
   onReceipt?: () => void;
   /** Lot title from the room's public summary, used while the live snapshot has none. */
   lotTitleFallback?: string | null;
+  /** A recording plays instead of a room: bids cannot be taken, so the controls give the reason. */
+  recorded?: boolean;
   /** Sends a bidder with no registered hold back to registration. */
   onJoin?: () => void;
   /**
@@ -124,6 +126,7 @@ export function BidScreen({
   stopped = false,
   onJoin,
   lotTitleFallback = null,
+  recorded = false,
   onHome,
   onJoinCode,
   onReceipt,
@@ -348,7 +351,16 @@ export function BidScreen({
         </p>
       )}
 
-      {canBid && !unsent && (
+      {canBid && recorded && (
+        <section className="bid__panel bid__recorded" data-testid="bid-recorded">
+          <p role="status">{t('bid.recorded')}</p>
+          <a className="ui-link" href="/demo">
+            {t('bid.recordedLive')}
+          </a>
+        </section>
+      )}
+
+      {canBid && !recorded && !unsent && (
         <section
           data-testid="bid-bar"
           className="bid__bar"
