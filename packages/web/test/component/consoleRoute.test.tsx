@@ -384,7 +384,7 @@ describe('stop switch through the console route (T-WEB-040)', () => {
       FakeSocket.last?.onopen?.();
     });
     deliver(stateMsg(1, stoppedSnapshot));
-    expect(screen.getAllByText(t('screen.passedNoBids')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(t('screen.stopped')).length).toBeGreaterThan(0);
   });
 });
 

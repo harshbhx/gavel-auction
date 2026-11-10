@@ -59,14 +59,11 @@ export function Sold({ outcome, settlement = null, review = false, noBids = fals
           {t('ladder.state.CAPTURING')}
         </p>
       )}
-      {!review &&
-        !noBids &&
-        settlement !== null &&
-        (outcome.kind !== 'sold' || settlement.captured > 0) && (
-          <p className="gv-screen__settle tabular" data-testid="settle-summary">
-            {t('screen.settleSummary', { c: settlement.captured, r: settlement.released })}
-          </p>
-        )}
+      {!review && settlement !== null && (outcome.kind !== 'sold' || settlement.captured > 0) && (
+        <p className="gv-screen__settle tabular" data-testid="settle-summary">
+          {t('screen.settleSummary', { c: settlement.captured, r: settlement.released })}
+        </p>
+      )}
     </section>
   );
 }
