@@ -29,4 +29,15 @@ describe('commitlint config', () => {
     assert.notEqual(lint('feat(billing): add ledger'), 0);
     assert.notEqual(lint('feat(engine): add ledger.'), 0);
   });
+  it('ignores merge commits', () => {
+    assert.equal(lint("Merge branch 'main' into feat/x"), 0);
+    assert.equal(lint('Merge pull request #12 from harshbhx/feat/x'), 0);
+    assert.equal(lint('merge main into fix/FIX-130-demo'), 0);
+    assert.equal(lint('chore(repo): merge main'), 0);
+  });
+  it('still rejects a bad header that merely mentions merge', () => {
+    assert.notEqual(lint('fix(engine): merge. '), 0);
+    assert.notEqual(lint('remerge main into x'), 0);
+    assert.notEqual(lint('chore(billing): merge main'), 0);
+  });
 });

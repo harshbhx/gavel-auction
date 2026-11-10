@@ -13,7 +13,12 @@ const SCOPES = [
   'repo',
 ];
 
+// Merge commits (agents update PR branches with 'merge main into X', git writes 'Merge branch ...')
+// have no type or scope, so they are skipped. Every other message is linted by the rules below.
+const MERGE_COMMIT = /^merge\b/i;
+
 module.exports = {
+  ignores: [(message) => MERGE_COMMIT.test(String(message).trimStart())],
   rules: {
     'type-empty': [2, 'never'],
     'type-case': [2, 'always', 'lower-case'],
